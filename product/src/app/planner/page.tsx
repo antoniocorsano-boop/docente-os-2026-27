@@ -1,5 +1,7 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { PlannerTask } from '@/core/domain/planner-task'
+import { parseKnowledgeTaskSourceRef } from '@/core/domain/knowledge-task-source'
 import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import {
@@ -176,6 +178,7 @@ function TaskRow({ task, today }: { task: PlannerTask; today: string }) {
       : null
 
   const tomorrow = addDays(today, 1)
+  const knowledgeSource = parseKnowledgeTaskSourceRef(task.sourceRef)
 
   return (
     <article className="taskRow">
@@ -193,6 +196,7 @@ function TaskRow({ task, today }: { task: PlannerTask; today: string }) {
           {task.priority === 'URGENT' ? <span className="priorityChip urgent">Urgente</span> : null}
           {task.priority === 'HIGH' ? <span className="priorityChip high">Alta</span> : null}
           {task.status === 'WAITING' ? <span className="waitingChip">In attesa</span> : null}
+          {knowledgeSource ? <Link className="knowledgeSourceChip" href={`/knowledge/${knowledgeSource.assetId}`}>Fonte KB · Generazione #{knowledgeSource.generationNo}</Link> : null}
         </div>
         {task.status === 'OPEN' ? (
           <div className="taskInlineActions" aria-label={`Azioni per ${task.title}`}>

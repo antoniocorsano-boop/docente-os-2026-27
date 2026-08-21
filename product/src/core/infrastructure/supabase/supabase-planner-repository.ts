@@ -66,6 +66,20 @@ export class SupabasePlannerRepository implements PlannerRepository {
     return data.map(toDomain)
   }
 
+  async findBySourceRef(workspaceId: string, sourceRef: string): Promise<PlannerTask | null> {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('planner_tasks')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .eq('source_ref', sourceRef)
+      .limit(1)
+      .maybeSingle()
+
+    if (error) throw new Error(error.message)
+    return data ? toDomain(data) : null
+  }
+
   async create(input: CreatePlannerTaskInput): Promise<PlannerTask> {
     const supabase = await createClient()
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
