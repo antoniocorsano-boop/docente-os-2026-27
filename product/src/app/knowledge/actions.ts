@@ -8,6 +8,17 @@ import { SchoolCommunicationEnrichment } from '@/core/infrastructure/knowledge/s
 import { NativeKnowledgeContentPort, SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { createClient } from '@/lib/supabase/server'
+
+const KNOWLEDGE_BUCKET = 'knowledge-assets'
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+const ALLOWED_UPLOAD_MIMES = new Set([
+  'application/pdf',
+  DOCX_MIME,
+  'text/plain',
+  'text/markdown',
+])
 
 export async function captureKnowledgeNote(formData: FormData) {
   const titleValue = formData.get('title')
@@ -16,19 +27,9 @@ export async function captureKnowledgeNote(formData: FormData) {
   const text = typeof textValue === 'string' ? textValue.trim() : ''
   if (!text) return
 
-  const workspaceRepository = new SupabaseWorkspaceRepository()
-  const context = await workspaceRepository.getCurrentContext()
-  if (!context) redirect('/login')
-
+  const context = await requireWorkspaceContext()
   const repository = new SupabaseKnowledgeRepository()
-  const ingestion = new KnowledgeIngestionService(
-    repository,
-    repository,
-    new NativeKnowledgeContentPort(),
-    [new PlainTextKnowledgeTransformer()],
-    repository,
-    new SchoolCommunicationEnrichment(),
-  )
+  const ingestion = buildTextIngestion(repository)
 
   const asset = await ingestion.ingest({
     workspaceId: context.workspace.id,
@@ -46,14 +47,91 @@ export async function captureKnowledgeNote(formData: FormData) {
   redirect(`/knowledge/${asset.id}`)
 }
 
+export async function uploadKnowledgeFile(formData: FormData) {
+  const value = formData.get('file')
+  if (!(value instanceof File) || value.size === 0) redirect('/knowledge?upload=missing')
+  if (value.size > MAX_UPLOAD_BYTES) redirect('/knowledge?upload=too_large')
+
+  const mimeType = normalizeMime(value.type, value.name)
+  if (!ALLOWED_UPLOAD_MIMES.has(mimeType)) redirect('/knowledge?upload=unsupported')
+
+  const context = await requireWorkspaceContext()
+  const bytes = new Uint8Array(await value.arrayBuffer())
+  const safeName = sanitizeFilename(value.name || 'asset')
+  const objectPath = `${context.workspace.id}/${crypto.randomUUID()}-${safeName}`
+  const supabase = await createClient()
+
+  const { error: uploadError } = await supabase.storage
+    .from(KNOWLEDGE_BUCKET)
+    .upload(objectPath, bytes, {
+      contentType: mimeType,
+      cacheControl: '3600',
+      upsert: false,
+    })
+
+  if (uploadError) {
+    console.error('Knowledge asset upload failed', uploadError.message)
+    redirect('/knowledge?upload=failed')
+  }
+
+  const sourceLocator = `storage:${KNOWLEDGE_BUCKET}/${objectPath}`
+  const repository = new SupabaseKnowledgeRepository()
+
+  if (mimeType === 'text/plain' || mimeType === 'text/markdown') {
+    const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes).trim()
+    if (!text) redirect('/knowledge?upload=empty_text')
+
+    const ingestion = buildTextIngestion(repository)
+    const asset = await ingestion.ingest({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear?.id ?? null,
+      assetKind: 'FILE',
+      sourceProvider: 'UPLOAD',
+      sourceLocator,
+      originalName: value.name,
+      originalText: text,
+      mimeType,
+      byteSize: value.size,
+      sourceMetadata: {
+        captureMode: 'file-upload',
+        storageBucket: KNOWLEDGE_BUCKET,
+        storagePath: objectPath,
+        originalFilename: value.name,
+      },
+    })
+
+    revalidatePath('/knowledge')
+    redirect(`/knowledge/${asset.id}`)
+  }
+
+  const asset = await repository.capture({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear?.id ?? null,
+    assetKind: 'FILE',
+    sourceProvider: 'UPLOAD',
+    sourceLocator,
+    originalName: value.name,
+    mimeType,
+    byteSize: value.size,
+    sourceMetadata: {
+      captureMode: 'file-upload',
+      storageBucket: KNOWLEDGE_BUCKET,
+      storagePath: objectPath,
+      originalFilename: value.name,
+      transformerStatus: 'PENDING',
+      transformerHint: mimeType === 'application/pdf' ? 'PDF' : 'DOCX',
+    },
+  })
+
+  revalidatePath('/knowledge')
+  redirect(`/knowledge/${asset.id}`)
+}
+
 export async function confirmKnowledgeAction(formData: FormData) {
   const unitId = stringValue(formData.get('unitId'))
   if (!unitId) return
 
-  const workspaceRepository = new SupabaseWorkspaceRepository()
-  const context = await workspaceRepository.getCurrentContext()
-  if (!context) redirect('/login')
-
+  const context = await requireWorkspaceContext()
   const knowledge = new SupabaseKnowledgeRepository()
   const unitContext = await knowledge.getUnitContext(unitId)
   if (!unitContext || unitContext.unit.workspaceId !== context.workspace.id) return
@@ -110,10 +188,7 @@ export async function rejectKnowledgeCandidate(formData: FormData) {
   const unitId = stringValue(formData.get('unitId'))
   if (!unitId) return
 
-  const workspaceRepository = new SupabaseWorkspaceRepository()
-  const context = await workspaceRepository.getCurrentContext()
-  if (!context) redirect('/login')
-
+  const context = await requireWorkspaceContext()
   const knowledge = new SupabaseKnowledgeRepository()
   const unitContext = await knowledge.getUnitContext(unitId)
   if (!unitContext || unitContext.unit.workspaceId !== context.workspace.id) return
@@ -127,16 +202,47 @@ export async function confirmKnowledgeCandidate(formData: FormData) {
   const unitId = stringValue(formData.get('unitId'))
   if (!unitId) return
 
-  const workspaceRepository = new SupabaseWorkspaceRepository()
-  const context = await workspaceRepository.getCurrentContext()
-  if (!context) redirect('/login')
-
+  const context = await requireWorkspaceContext()
   const knowledge = new SupabaseKnowledgeRepository()
   const unitContext = await knowledge.getUnitContext(unitId)
   if (!unitContext || unitContext.unit.workspaceId !== context.workspace.id) return
 
   await knowledge.setUnitValidationStatus(unitId, 'REVIEWED')
   revalidatePath(`/knowledge/${unitContext.asset.id}`)
+}
+
+function buildTextIngestion(repository: SupabaseKnowledgeRepository) {
+  return new KnowledgeIngestionService(
+    repository,
+    repository,
+    new NativeKnowledgeContentPort(),
+    [new PlainTextKnowledgeTransformer()],
+    repository,
+    new SchoolCommunicationEnrichment(),
+  )
+}
+
+async function requireWorkspaceContext() {
+  const workspaceRepository = new SupabaseWorkspaceRepository()
+  const context = await workspaceRepository.getCurrentContext()
+  if (!context) redirect('/login')
+  return context
+}
+
+function normalizeMime(rawMime: string, filename: string) {
+  if (rawMime && ALLOWED_UPLOAD_MIMES.has(rawMime)) return rawMime
+  const extension = filename.toLowerCase().split('.').pop()
+  if (extension === 'pdf') return 'application/pdf'
+  if (extension === 'docx') return DOCX_MIME
+  if (extension === 'md' || extension === 'markdown') return 'text/markdown'
+  if (extension === 'txt') return 'text/plain'
+  return rawMime || 'application/octet-stream'
+}
+
+function sanitizeFilename(filename: string) {
+  const normalized = filename.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+  const safe = normalized.replace(/[^A-Za-z0-9_.-]+/g, '_').replace(/^_+|_+$/g, '')
+  return (safe || 'asset').slice(-160)
 }
 
 function stringValue(value: FormDataEntryValue | null) {
