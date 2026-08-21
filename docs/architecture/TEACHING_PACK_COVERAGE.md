@@ -2,12 +2,12 @@
 
 ## Stato consolidato
 
-La KB contiene 14 pacchetti operativi canonici: 12 già presenti in Drive e due creati per le scoperture prioritarie della classe seconda. Ogni pacchetto conserva l'identità della fonte originale, viene collegato alle UDA che supporta tramite `SUPPORTS_UDA` e alla programmazione annuale tramite `BELONGS_TO_PROGRAMMING`.
+La KB contiene 16 pacchetti operativi canonici: 12 già presenti in Drive e quattro creati per completare le scoperture della classe seconda. Ogni pacchetto conserva l'identità della fonte originale, viene collegato alle UDA che supporta tramite `SUPPORTS_UDA` e alla programmazione annuale tramite `BELONGS_TO_PROGRAMMING`.
 
 | Classe | Pacchetti | UDA coperte | UDA ancora scoperte |
 |---|---:|---|---|
 | Prima | 4 | `00`, `01`, `02`, `03`, `05`, `07` | `04`, `06` |
-| Seconda | 6 | `01`, `02`, `03`, `04`, `05`, `06` | `07`, `08` |
+| Seconda | 8 | `01`, `02`, `03`, `04`, `05`, `06`, `07`, `08` | — |
 | Terza | 4 | `01`, `02`, `03`, `06` | `04`, `05`, `07`, `08`, `09` |
 
 ## Registro dei pacchetti
@@ -24,6 +24,8 @@ La KB contiene 14 pacchetti operativi canonici: 12 già presenti in Drive e due 
 | `CAN-PACK-2D` | Seconda | `CAN-UDA-2-06` |
 | `CAN-PACK-2E` | Seconda | `CAN-UDA-2-04` |
 | `CAN-PACK-2F` | Seconda | `CAN-UDA-2-05` |
+| `CAN-PACK-2G` | Seconda | `CAN-UDA-2-07` |
+| `CAN-PACK-2H` | Seconda | `CAN-UDA-2-08` |
 | `CAN-PACK-3A` | Terza | `CAN-UDA-3-01` |
 | `CAN-PACK-3B` | Terza | `CAN-UDA-3-02` |
 | `CAN-PACK-3C` | Terza | `CAN-UDA-3-03` |
@@ -39,9 +41,9 @@ La KB contiene 14 pacchetti operativi canonici: 12 già presenti in Drive e due 
 
 ## Gate dati verificato
 
-- 14 pacchetti operativi indicizzati;
-- 16 collegamenti pacchetto → UDA;
-- 14 collegamenti pacchetto → programmazione;
-- 42 fonti Drive distinte complessive;
+- 16 pacchetti operativi indicizzati;
+- 18 collegamenti pacchetto → UDA;
+- 16 collegamenti pacchetto → programmazione;
+- 44 fonti Drive distinte complessive;
 - 0 asset senza generazione corrente;
 - 0 puntatori correnti invalidi.
