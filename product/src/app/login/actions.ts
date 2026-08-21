@@ -13,9 +13,10 @@ export async function requestMagicLink(formData: FormData) {
   }
 
   const headerStore = await headers()
-  const origin = headerStore.get('origin') ?? process.env.NEXT_PUBLIC_APP_URL
+  const requestOrigin = headerStore.get('origin')
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? requestOrigin
 
-  if (!origin) {
+  if (!appUrl) {
     throw new Error('NEXT_PUBLIC_APP_URL is required when request origin is unavailable')
   }
 
@@ -23,7 +24,7 @@ export async function requestMagicLink(formData: FormData) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${origin}/auth/confirm`,
+      emailRedirectTo: `${appUrl.replace(/\/$/, '')}/auth/confirm`,
       shouldCreateUser: true,
     },
   })
