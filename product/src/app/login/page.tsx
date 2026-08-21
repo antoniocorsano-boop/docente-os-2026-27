@@ -16,9 +16,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams
   const message = params.sent
     ? 'Controlla la posta: ti abbiamo inviato il link di accesso.'
-    : params.error
-      ? 'Non è stato possibile avviare l’accesso. Controlla l’indirizzo e riprova.'
-      : null
+    : params.error === 'email_rate_limited'
+      ? 'Sono stati richiesti troppi link in poco tempo. Attendi qualche minuto prima di richiederne uno nuovo.'
+      : params.error
+        ? 'Non è stato possibile avviare l’accesso. Controlla l’indirizzo e riprova.'
+        : null
 
   return (
     <main className="shell">
