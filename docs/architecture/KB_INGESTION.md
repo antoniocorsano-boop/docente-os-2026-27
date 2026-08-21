@@ -18,7 +18,8 @@ DOCENTE OS must not become a collection of disconnected files. A circular, email
 
 ## Storage responsibilities
 
-- External provider (Drive/Gmail/Calendar/upload source): authoritative original payload/file where applicable.
+- External provider (Drive/Gmail/Calendar): authoritative original payload/file where applicable.
+- Direct uploads: authoritative binary is stored in the private Supabase Storage bucket `knowledge-assets`, scoped by workspace path and RLS.
 - PostgreSQL/Supabase: canonical metadata, normalized knowledge, relations, workflow state and audit.
 - Knowledge Base: derived text/structure suitable for search and orchestration; never a silent replacement of the source.
 
@@ -73,6 +74,8 @@ Initial unit types:
 
 Every automatically extracted unit carries confidence and validation status. AI output is therefore evidence-linked and reviewable rather than promoted silently to fact.
 
+For PDFs, chunk units retain `source_page`, so normalized knowledge can be traced back to the original page.
+
 ### KnowledgeLink
 Generic typed relation from a KB asset/unit to another application object.
 
@@ -103,14 +106,44 @@ Stages may include:
 
 ## Transformation policy by asset type
 
-- PDF: preserve original; extract selectable text; OCR only when no usable text exists; normalize page/section boundaries; retain page provenance.
-- DOCX/ODT: preserve original; extract headings, paragraphs, tables and metadata; normalize to Markdown + structured blocks.
+- PDF: preserve original; extract selectable text page-by-page using `unpdf`; normalize page boundaries; retain page provenance. OCR is deferred and must be used only when no usable text exists.
+- DOCX: preserve original; extract raw textual semantics using `mammoth`; do not render unsanitized source HTML into the UI. Structured heading/table extraction may be added later.
+- TXT/Markdown: preserve uploaded original; extract UTF-8 text and index immediately.
 - XLSX/CSV: preserve original; produce schema-aware structured JSON/table summaries rather than flattening blindly to prose.
 - Images/scans: preserve original; extract only useful textual/document semantics; retain image as evidence.
 - Gmail: retain provider IDs and minimal message metadata; normalize body/attachments into KB without duplicating the entire mailbox unnecessarily.
 - Calendar: normalize event facts and links; do not treat Calendar as task storage.
 - User notes: native text asset, immediately normalized.
 - Generated documents: store generation provenance and links to source units used.
+
+## Implemented file intake V1
+
+The private `knowledge-assets` bucket currently accepts:
+- `application/pdf`
+- DOCX OpenXML MIME
+- `text/plain`
+- `text/markdown`
+
+Per-file limit: 20 MB.
+
+Upload flow:
+
+`UPLOAD -> PRIVATE STORAGE -> KNOWLEDGE ASSET -> BYTE LOAD -> TRANSFORMER -> ENRICHMENT -> UNITS -> INDEX`
+
+If transformation fails, the asset is marked `FAILED` but the original binary remains available under the same immutable locator.
+
+## Safe reprocessing rule
+
+Reprocessing must never delete or silently overwrite evidentiary knowledge units.
+
+A future `Rielabora` operation must therefore use **processing generations**:
+1. read the same immutable original;
+2. create a new derivative generation;
+3. publish that generation atomically as current only after successful normalization/enrichment/indexing;
+4. retain older generations for audit/provenance;
+5. keep existing validated links tied to the exact historical unit that created them.
+
+Until generation-safe publishing exists, DOCENTE OS must not expose a destructive delete-and-replace reprocessing command.
 
 ## Human validation
 
@@ -129,39 +162,41 @@ This avoids provider lock-in and allows deterministic search for names, dates, c
 
 ## Privacy and isolation
 
-All KB tables are workspace-scoped and protected by RLS. No anonymous access. Derived content inherits the visibility boundary of the source asset.
+All KB tables are workspace-scoped and protected by RLS. No anonymous access. Derived content inherits the visibility boundary of the source asset. Direct-upload binaries use a private Storage bucket; upload and authenticated read policies verify membership against the workspace encoded in the first path segment.
 
 ## Application ports
 
-Planned provider-neutral boundaries:
+Provider-neutral boundaries:
 
 - `KnowledgeAssetRepository`
 - `KnowledgeDocumentRepository`
 - `KnowledgeSearchPort`
+- `AssetContentPort`
 - `AssetTransformerPort`
 - `KnowledgeEnrichmentPort`
 - `KnowledgeLinkRepository`
+- `KnowledgeIngestionLog`
 
-Provider adapters may implement PDF/DOCX parsing, Google data acquisition or AI enrichment, but domain objects do not import provider SDK types.
+Provider adapters implement PDF/DOCX parsing, Storage loading, Google data acquisition or AI enrichment, but domain objects do not import provider SDK types.
 
-## First implementation slice
+## Current implementation slices
 
-Migration `0006_knowledge_base.sql` introduces:
-- `knowledge_assets`
-- `knowledge_documents`
-- `knowledge_units`
-- `knowledge_links`
-- `knowledge_ingestion_runs`
-
-with workspace RLS and full-text indexes.
+- `0006_knowledge_base.sql`: core KB tables, RLS and full-text indexes.
+- `0007_knowledge_base_hardening.sql`: immutable provenance and no application DELETE on KB evidence.
+- `0008_knowledge_native_original_text.sql`: original text for native NOTE/GENERATED assets.
+- `0009_knowledge_asset_storage.sql`: private workspace-scoped file storage.
+- PDF transformer: `unpdf`, page-aware extraction.
+- DOCX transformer: `mammoth.extractRawText`.
+- deterministic school communication enrichment: ACTION/DEADLINE candidates requiring human validation.
 
 ## Acceptance gates
 
 1. Original source identity remains immutable.
 2. Derived representation is separately versioned.
-3. Every unit can be traced back to a document/asset.
-4. Cross-workspace access is denied.
+3. Every unit can be traced back to a document/asset; PDF units retain page provenance.
+4. Cross-workspace database and binary access is denied.
 5. Automated extraction cannot masquerade as human-validated knowledge.
 6. Search works without requiring embeddings.
-7. Planner and future modules link to KB rather than copy source content.
+7. Planner and future modules link to KB rather than copy source identity.
 8. A failed transform leaves the original asset available and records the failure.
+9. Reprocessing must be generation-safe before it is exposed to users.
