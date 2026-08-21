@@ -64,6 +64,15 @@ export interface VisualExtractionPort {
   }>
 }
 
+export interface PdfNativeTextExtractionPort {
+  extract(bytes: Uint8Array): Promise<{
+    totalPages: number
+    pages: string[]
+    processor: string
+    processorVersion: string
+  }>
+}
+
 export interface KnowledgeEnrichmentPort {
   enrich(input: NormalizedKnowledge): Promise<NormalizedKnowledge>
 }

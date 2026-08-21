@@ -1,13 +1,16 @@
 import mammoth from 'mammoth'
 import { extractText, getDocumentProxy } from 'unpdf'
-import type { AssetTransformerPort, VisualExtractionPort, VisualExtractionPage } from '@/core/application/ports/knowledge-base'
+import type { AssetTransformerPort, PdfNativeTextExtractionPort, VisualExtractionPort, VisualExtractionPage } from '@/core/application/ports/knowledge-base'
 import type { NormalizedKnowledge, TransformableAsset } from '@/core/domain/knowledge'
 
 const PDF_MIME = 'application/pdf'
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
 export class PdfKnowledgeTransformer implements AssetTransformerPort {
-  constructor(private readonly visualExtraction?: VisualExtractionPort) {}
+  constructor(
+    private readonly visualExtraction?: VisualExtractionPort,
+    private readonly nativeExtraction: PdfNativeTextExtractionPort = new UnpdfNativeTextExtraction(),
+  ) {}
 
   supports(asset: TransformableAsset['asset']): boolean {
     return asset.mimeType === PDF_MIME
@@ -16,9 +19,8 @@ export class PdfKnowledgeTransformer implements AssetTransformerPort {
   async transform(input: TransformableAsset): Promise<NormalizedKnowledge> {
     if (!input.bytes?.length) throw new Error('PDF transformer requires file bytes')
 
-    const pdf = await getDocumentProxy(input.bytes)
-    const { totalPages, text } = await extractText(pdf, { mergePages: false })
-    const nativePages = text.map((page) => normalizeExtractedText(page))
+    const native = await this.nativeExtraction.extract(input.bytes)
+    const nativePages = native.pages.map((page) => normalizeExtractedText(page))
     const missingPages = nativePages.flatMap((page, index) => isUsableText(page) ? [] : [index + 1])
     let visualPages: VisualExtractionPage[] = []
     let visualProcessor: string | null = null
@@ -38,7 +40,7 @@ export class PdfKnowledgeTransformer implements AssetTransformerPort {
     }
 
     const visualByPage = new Map(visualPages.map((page) => [page.page, page]))
-    const pages = Array.from({ length: totalPages }, (_, index) => {
+    const pages = Array.from({ length: native.totalPages }, (_, index) => {
       const page = index + 1
       const nativeText = nativePages[index] ?? ''
       if (isUsableText(nativeText)) return { page, text: nativeText, method: 'NATIVE_TEXT' as const, confidence: 1, description: null }
@@ -62,7 +64,7 @@ export class PdfKnowledgeTransformer implements AssetTransformerPort {
       markdown: merged,
       summary: firstSentence(merged),
       extractedData: {
-        totalPages,
+        totalPages: native.totalPages,
         extraction: {
           nativePageCount: pages.filter((page) => page.method === 'NATIVE_TEXT').length,
           visualPageCount: pages.filter((page) => page.method === 'VISUAL_OCR').length,
@@ -71,8 +73,21 @@ export class PdfKnowledgeTransformer implements AssetTransformerPort {
         },
       },
       units: pages.flatMap((page) => pageUnits(page)),
-      processor: missingPages.length ? 'unpdf+visual-ocr' : 'unpdf',
-      processorVersion: missingPages.length ? `1.8.1+${visualProcessorVersion ?? 'unknown'}` : '1.8.1',
+      processor: missingPages.length ? `${native.processor}+visual-ocr` : native.processor,
+      processorVersion: missingPages.length ? `${native.processorVersion}+${visualProcessorVersion ?? 'unknown'}` : native.processorVersion,
+    }
+  }
+}
+
+export class UnpdfNativeTextExtraction implements PdfNativeTextExtractionPort {
+  async extract(bytes: Uint8Array) {
+    const pdf = await getDocumentProxy(bytes)
+    const { totalPages, text } = await extractText(pdf, { mergePages: false })
+    return {
+      totalPages,
+      pages: text,
+      processor: 'unpdf',
+      processorVersion: '1.8.1',
     }
   }
 }
