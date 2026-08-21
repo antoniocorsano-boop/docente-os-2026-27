@@ -58,8 +58,10 @@ export default async function PlannerPage() {
           </div>
         </div>
         <nav className="navList">
-          <a className="navItem active" href="/planner"><span aria-hidden>◎</span> Oggi</a>
-          <a className="navItem" href="/planner"><span aria-hidden>☷</span> Planner</a>
+          <Link className="navItem" href="/"><span aria-hidden>⌂</span> Home</Link>
+          <Link className="navItem active" href="/planner"><span aria-hidden>◎</span> Oggi</Link>
+          <Link className="navItem" href="/knowledge"><span aria-hidden>◇</span> Conoscenza</Link>
+          <Link className="navItem" href="/classi"><span aria-hidden>▦</span> Classi</Link>
         </nav>
         <div className="navFooter">
           <span className="workspaceDot" aria-hidden />
@@ -133,10 +135,10 @@ export default async function PlannerPage() {
       </main>
 
       <nav className="bottomNav" aria-label="Navigazione mobile">
-        <a className="active" href="/planner"><span aria-hidden>◎</span><small>Oggi</small></a>
-        <a href="/planner"><span aria-hidden>☷</span><small>Planner</small></a>
-        <button type="button" disabled aria-label="Inbox non ancora disponibile"><span aria-hidden>↓</span><small>Inbox</small></button>
-        <button type="button" disabled aria-label="Documenti non ancora disponibili"><span aria-hidden>▤</span><small>Documenti</small></button>
+        <Link href="/"><span aria-hidden>⌂</span><small>Home</small></Link>
+        <Link className="active" href="/planner"><span aria-hidden>◎</span><small>Oggi</small></Link>
+        <Link href="/knowledge"><span aria-hidden>◇</span><small>KB</small></Link>
+        <Link href="/classi"><span aria-hidden>▦</span><small>Classi</small></Link>
       </nav>
     </div>
   )
