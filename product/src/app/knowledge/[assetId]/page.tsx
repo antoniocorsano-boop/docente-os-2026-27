@@ -2,14 +2,18 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { confirmKnowledgeAction, confirmKnowledgeCandidate, rejectKnowledgeCandidate } from '../actions'
+import { confirmKnowledgeAction, confirmKnowledgeCandidate, rejectKnowledgeCandidate, reprocessKnowledgeAsset } from '../actions'
 
 export const dynamic = 'force-dynamic'
 
-type PageProps = { params: Promise<{ assetId: string }> }
+type PageProps = {
+  params: Promise<{ assetId: string }>
+  searchParams: Promise<{ reprocess?: string }>
+}
 
-export default async function KnowledgeAssetPage({ params }: PageProps) {
+export default async function KnowledgeAssetPage({ params, searchParams }: PageProps) {
   const { assetId } = await params
+  const query = await searchParams
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
   if (!context) redirect('/login')
@@ -18,7 +22,8 @@ export default async function KnowledgeAssetPage({ params }: PageProps) {
   const bundle = await repository.getBundle(context.workspace.id, assetId)
   if (!bundle) notFound()
 
-  const { asset, document, units } = bundle
+  const { asset, document, units, generations } = bundle
+  const currentGeneration = generations.find((generation) => generation.id === asset.currentGenerationId) ?? null
   const candidates = units.filter((unit) => unit.unitType === 'ACTION' || unit.unitType === 'DEADLINE')
   const chunks = units.filter((unit) => unit.unitType !== 'ACTION' && unit.unitType !== 'DEADLINE')
   const taskLinks = new Map<string, string>()
@@ -44,7 +49,20 @@ export default async function KnowledgeAssetPage({ params }: PageProps) {
       <main className="workSurface knowledgeSurface detailSurface">
         <header className="mobileHeader"><div><span className="mobileEyebrow">KNOWLEDGE BASE</span><strong>Dettaglio asset</strong></div><Link className="iconButton knowledgeBack" href="/knowledge" aria-label="Torna alla KB">←</Link></header>
 
-        <div className="detailTopbar"><Link href="/knowledge">← Torna alla Conoscenza</Link><span className={`processingPill ${asset.processingStatus.toLowerCase()}`}>{asset.processingStatus}</span></div>
+        <div className="detailTopbar">
+          <Link href="/knowledge">← Torna alla Conoscenza</Link>
+          <div className="detailActions">
+            <span className={`processingPill ${asset.processingStatus.toLowerCase()}`}>{asset.processingStatus}</span>
+            <form action={reprocessKnowledgeAsset}>
+              <input type="hidden" name="assetId" value={asset.id} />
+              <button className="secondaryCandidateAction" type="submit">Rielabora</button>
+            </form>
+          </div>
+        </div>
+
+        {query.reprocess === 'ok' ? <div className="knowledgeFeedback success" role="status">Nuova generazione elaborata e promossa come corrente.</div> : null}
+        {query.reprocess === 'failed' ? <div className="knowledgeFeedback error" role="status">La nuova elaborazione non è riuscita. La generazione precedente resta attiva.</div> : null}
+
         <section className="plannerHeader knowledgeHeader">
           <div><p className="contextLine">{asset.sourceProvider} · {asset.assetKind}</p><h1>{document?.title ?? asset.originalName ?? 'Asset senza titolo'}</h1><p className="dayLine">Acquisito {formatDate(asset.capturedAt)}</p></div>
         </section>
@@ -52,7 +70,7 @@ export default async function KnowledgeAssetPage({ params }: PageProps) {
         <section className="provenanceBar" aria-label="Provenienza">
           <div><span>Fonte</span><strong>{asset.sourceProvider}</strong></div>
           <div><span>Tipo</span><strong>{asset.assetKind}</strong></div>
-          <div><span>MIME</span><strong>{asset.mimeType ?? '—'}</strong></div>
+          <div><span>Generazione</span><strong>{currentGeneration ? `#${currentGeneration.generationNo}` : '—'}</strong></div>
           <div><span>Processore</span><strong>{document?.processingVersion ?? 'Non ancora elaborato'}</strong></div>
         </section>
 
@@ -71,6 +89,18 @@ export default async function KnowledgeAssetPage({ params }: PageProps) {
           </section>
         </div>
 
+        <section className="recentKnowledge generationSection">
+          <div className="sectionHeading"><h2>Generazioni di elaborazione</h2><span>{generations.length}</span></div>
+          <div className="generationList">
+            {generations.map((generation) => (
+              <div className={`generationRow ${generation.status.toLowerCase()}`} key={generation.id}>
+                <div><strong>Generazione #{generation.generationNo}</strong><span>{generation.processorLabel ?? 'Elaborazione non completata'}</span></div>
+                <div><span className={`validationPill ${generation.status === 'SUCCEEDED' ? 'reviewed' : generation.status === 'FAILED' ? 'rejected' : ''}`}>{generationStatusLabel(generation.status)}</span><small>{formatDate(generation.startedAt)}</small>{generation.id === asset.currentGenerationId ? <b>Corrente</b> : null}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <section className="recentKnowledge candidateSection">
           <div className="sectionHeading"><h2>3 · Candidati operativi</h2><span>{candidates.length}</span></div>
           <p className="candidateIntro">Sono proposte estratte automaticamente. Nessuna attività viene creata senza conferma.</p>
@@ -87,25 +117,14 @@ export default async function KnowledgeAssetPage({ params }: PageProps) {
                   <p>{unit.content}</p>
                   {typeof unit.structuredData.dueDate === 'string' ? <p className="candidateDate">Data associata: <strong>{formatIsoDate(unit.structuredData.dueDate)}</strong></p> : null}
                   {typeof unit.structuredData.date === 'string' ? <p className="candidateDate">Data rilevata: <strong>{formatIsoDate(unit.structuredData.date)}</strong></p> : null}
-
                   {linkedTask ? <div className="candidateOutcome"><span>✓</span><div><strong>Task Planner creato</strong><Link href="/planner">Apri Planner</Link></div></div> : null}
-
                   {unit.validationStatus === 'AUTO' ? <div className="candidateActions">
                     {unit.unitType === 'ACTION' ? (
-                      <form action={confirmKnowledgeAction}>
-                        <input type="hidden" name="unitId" value={unit.id} />
-                        <button className="primaryCandidateAction" type="submit">Conferma e crea task</button>
-                      </form>
+                      <form action={confirmKnowledgeAction}><input type="hidden" name="unitId" value={unit.id} /><button className="primaryCandidateAction" type="submit">Conferma e crea task</button></form>
                     ) : (
-                      <form action={confirmKnowledgeCandidate}>
-                        <input type="hidden" name="unitId" value={unit.id} />
-                        <button className="primaryCandidateAction" type="submit">Conferma scadenza</button>
-                      </form>
+                      <form action={confirmKnowledgeCandidate}><input type="hidden" name="unitId" value={unit.id} /><button className="primaryCandidateAction" type="submit">Conferma scadenza</button></form>
                     )}
-                    <form action={rejectKnowledgeCandidate}>
-                      <input type="hidden" name="unitId" value={unit.id} />
-                      <button className="secondaryCandidateAction" type="submit">Scarta</button>
-                    </form>
+                    <form action={rejectKnowledgeCandidate}><input type="hidden" name="unitId" value={unit.id} /><button className="secondaryCandidateAction" type="submit">Scarta</button></form>
                   </div> : null}
                 </article>
               )
@@ -136,6 +155,12 @@ function validationLabel(value: string) {
   if (value === 'REVIEWED') return 'Confermato'
   if (value === 'REJECTED') return 'Scartato'
   return 'Da verificare'
+}
+
+function generationStatusLabel(value: string) {
+  if (value === 'SUCCEEDED') return 'Riuscita'
+  if (value === 'FAILED') return 'Fallita'
+  return 'In corso'
 }
 
 function formatDate(value: string) {
