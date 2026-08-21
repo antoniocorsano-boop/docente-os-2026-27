@@ -36,6 +36,10 @@ export function toggleTask(tasks: DemoTask[], id: string): DemoTask[] {
   return tasks.map((task) => task.id === id ? { ...task, completed: !task.completed } : task)
 }
 
+export function updateTask(tasks: DemoTask[], id: string, patch: Pick<DemoTask, 'priority' | 'dueDate' | 'completed'>): DemoTask[] {
+  return tasks.map((task) => task.id === id ? { ...task, ...patch } : task)
+}
+
 export function createTaskFromAsset(tasks: DemoTask[], asset: DemoAsset, dueDate = ''): DemoTask[] {
   const existing = tasks.find((task) => task.sourceAssetId === asset.id && !task.completed)
   if (existing) return tasks

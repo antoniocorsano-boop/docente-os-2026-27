@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { addTask, commaList, createTaskFromAsset, filterAssets, formatDueDate, INITIAL_ASSETS, INITIAL_TASKS, toggleTask, updateAssetContext } from './demo-state'
+import { addTask, commaList, createTaskFromAsset, filterAssets, formatDueDate, INITIAL_ASSETS, INITIAL_TASKS, toggleTask, updateAssetContext, updateTask } from './demo-state'
 
 test('aggiunge e completa una attività locale', () => {
   const added = addTask(INITIAL_TASKS, 'Preparare griglia di valutazione')
@@ -39,4 +39,12 @@ test('crea una sola attività aperta collegata alla generazione dell’asset', (
 test('formatta la scadenza per il planner', () => {
   assert.equal(formatDueDate('2026-09-03'), '3 set')
   assert.equal(formatDueDate(''), 'Da pianificare')
+})
+
+test('aggiorna la scheda operativa senza alterare le altre attività', () => {
+  const updated = updateTask(INITIAL_TASKS, 'task-1', { priority: 'Urgente', dueDate: '2026-09-01', completed: true })
+  assert.equal(updated[0].priority, 'Urgente')
+  assert.equal(updated[0].dueDate, '2026-09-01')
+  assert.equal(updated[0].completed, true)
+  assert.equal(updated[1], INITIAL_TASKS[1])
 })

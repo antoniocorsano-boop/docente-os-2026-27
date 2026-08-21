@@ -2,7 +2,7 @@
 
 import { FormEvent, useDeferredValue, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { addTask, commaList, createTaskFromAsset, filterAssets, formatDueDate, INITIAL_ASSETS, INITIAL_TASKS, toggleTask, updateAssetContext } from './demo-state'
+import { addTask, commaList, createTaskFromAsset, filterAssets, formatDueDate, INITIAL_ASSETS, INITIAL_TASKS, toggleTask, updateAssetContext, updateTask } from './demo-state'
 
 const CATEGORIES = ['Tutti', 'Programmazione', 'Circolare', 'Risorsa didattica']
 
@@ -15,9 +15,12 @@ export function DemoWorkspace() {
   const [selectedId, setSelectedId] = useState(INITIAL_ASSETS[1].id)
   const [notice, setNotice] = useState('')
   const [plannedDate, setPlannedDate] = useState('2026-08-28')
+  const [selectedTaskId, setSelectedTaskId] = useState(INITIAL_TASKS[0].id)
+  const [taskNotice, setTaskNotice] = useState('')
   const deferredQuery = useDeferredValue(query)
   const filteredAssets = useMemo(() => filterAssets(assets, category, deferredQuery), [assets, category, deferredQuery])
   const selected = assets.find((asset) => asset.id === selectedId) ?? assets[0]
+  const selectedTask = tasks.find((task) => task.id === selectedTaskId) ?? tasks[0]
   const openTasks = tasks.filter((task) => !task.completed).length
 
   function submitTask(event: FormEvent<HTMLFormElement>) {
@@ -45,6 +48,24 @@ export function DemoWorkspace() {
     setNotice(alreadyOpen ? 'L’attività collegata è già presente nel Planner.' : 'Attività creata nel Planner con riferimento alla generazione corrente.')
   }
 
+  function saveTask(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    setTasks((current) => updateTask(current, selectedTask.id, {
+      priority: String(data.get('priority')) as 'Urgente' | 'Alta' | 'Normale',
+      dueDate: String(data.get('dueDate')),
+      completed: data.get('status') === 'Completata',
+    }))
+    setTaskNotice('Scheda operativa aggiornata.')
+  }
+
+  function openTaskSource() {
+    if (!selectedTask.sourceAssetId) return
+    setSelectedId(selectedTask.sourceAssetId)
+    setTaskNotice('Fonte selezionata nella base di conoscenza.')
+    document.getElementById('contesto')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <div className="demoShell">
       <aside className="demoRail">
@@ -59,7 +80,17 @@ export function DemoWorkspace() {
         <section id="oggi" className="demoSection">
           <div className="demoSectionTitle"><div><span>PLANNER</span><h2>Prossime attività</h2></div><b>{openTasks} aperte</b></div>
           <form className="demoQuickTask" onSubmit={submitTask}><label htmlFor="demo-task">Nuova attività</label><input id="demo-task" value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} placeholder="Scrivi un’attività da pianificare…" /><button type="submit">Aggiungi</button></form>
-          <div className="demoTaskList">{tasks.map((task) => <article className={task.completed ? 'completed' : ''} key={task.id}><button onClick={() => setTasks((current) => toggleTask(current, task.id))} aria-label={`${task.completed ? 'Riapri' : 'Completa'} ${task.title}`}>{task.completed ? '✓' : ''}</button><div><strong>{task.title}</strong><span>{[task.schoolYear, ...task.disciplines, ...task.classLabels].join(' · ')}</span>{task.sourceGeneration && <small>{task.meta} · Generazione #{task.sourceGeneration} · {task.verificationStatus}</small>}</div><em>{task.priority}</em><time>{formatDueDate(task.dueDate)}</time></article>)}</div>
+          <div className="demoTaskList">{tasks.map((task) => <article className={`${task.completed ? 'completed ' : ''}${selectedTask.id === task.id ? 'selected' : ''}`} key={task.id}><button type="button" onClick={() => setTasks((current) => toggleTask(current, task.id))} aria-label={`${task.completed ? 'Riapri' : 'Completa'} ${task.title}`}>{task.completed ? '✓' : ''}</button><div><strong>{task.title}</strong><span>{[task.schoolYear, ...task.disciplines, ...task.classLabels].join(' · ')}</span>{task.sourceGeneration && <small>{task.meta} · Generazione #{task.sourceGeneration} · {task.verificationStatus}</small>}</div><em>{task.priority}</em><time>{formatDueDate(task.dueDate)}</time><button type="button" className="demoTaskOpen" onClick={() => { setSelectedTaskId(task.id); setTaskNotice('') }}>Apri</button></article>)}</div>
+          <div className="demoTaskEditor">
+            <div><span>SCHEDA OPERATIVA</span><h3>{selectedTask.title}</h3><p>{[selectedTask.schoolYear, ...selectedTask.disciplines, ...selectedTask.classLabels].join(' · ') || 'Contesto da completare'}</p></div>
+            <form onSubmit={saveTask} key={`${selectedTask.id}-${selectedTask.completed}-${selectedTask.priority}-${selectedTask.dueDate}`}>
+              <label>Stato<select name="status" defaultValue={selectedTask.completed ? 'Completata' : 'Aperta'}><option>Aperta</option><option>Completata</option></select></label>
+              <label>Priorità<select name="priority" defaultValue={selectedTask.priority}><option>Urgente</option><option>Alta</option><option>Normale</option></select></label>
+              <label>Scadenza<input type="date" name="dueDate" defaultValue={selectedTask.dueDate} /></label>
+              <button type="submit">Salva attività</button>
+            </form>
+            <div className="demoTaskSource">{selectedTask.sourceAssetId ? <button type="button" onClick={openTaskSource}>Apri fonte KB · Generazione #{selectedTask.sourceGeneration}</button> : <span>Attività inserita direttamente, senza fonte KB.</span>}{taskNotice && <p role="status">{taskNotice}</p>}</div>
+          </div>
         </section>
 
         <section id="conoscenza" className="demoSection">
