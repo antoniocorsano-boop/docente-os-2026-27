@@ -73,10 +73,10 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
               <div className="captureModeHeading"><strong>Carica file</strong><span>Bucket privato · max 20 MB</span></div>
               <form action={uploadKnowledgeFile} className="knowledgeUploadForm">
                 <label className="fileDrop">
-                  <input name="file" type="file" required accept=".pdf,.docx,.txt,.md,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+                  <input name="file" type="file" required accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/webp" />
                   <span className="fileDropIcon" aria-hidden>↑</span>
-                  <strong>PDF, DOCX, TXT o Markdown</strong>
-                  <small>L’originale viene salvato nel bucket privato e il testo viene estratto, normalizzato e indicizzato automaticamente.</small>
+                  <strong>PDF, immagini, DOCX, TXT o Markdown</strong>
+                  <small>L’originale resta nel bucket privato. L’OCR visivo viene usato solo per immagini, scansioni o pagine prive di testo utile.</small>
                 </label>
                 <button type="submit">Carica e trasforma</button>
               </form>
@@ -151,6 +151,7 @@ function uploadFeedback(code?: string) {
 function fileIcon(mimeType: string | null) {
   if (mimeType === 'application/pdf') return 'P'
   if (mimeType?.includes('wordprocessingml')) return 'W'
+  if (mimeType?.startsWith('image/')) return 'I'
   return 'F'
 }
 

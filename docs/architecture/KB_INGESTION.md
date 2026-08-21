@@ -71,11 +71,11 @@ Tracks each transformation stage, version, status and failure. Stages include `C
 
 ## Transformation policy by asset type
 
-- PDF: preserve original; extract selectable text page-by-page using `unpdf`; retain page provenance. OCR is deferred and must be used only when no usable text exists.
+- PDF: preserve original; extract selectable text page-by-page using `unpdf`; retain page provenance. Visual OCR is invoked only for pages without usable native text, and never replaces usable native extraction.
 - DOCX: preserve original; extract raw textual semantics using `mammoth`; never render unsanitized source HTML.
 - TXT/Markdown: preserve uploaded original; extract UTF-8 text and index immediately.
 - XLSX/CSV: preserve original; produce schema-aware structured JSON/table summaries rather than flattening blindly to prose.
-- Images/scans: preserve original; extract only useful textual/document semantics; retain image as evidence.
+- Images/scans: preserve original; extract only useful textual/document semantics through the provider-neutral visual extraction port; retain image as evidence and mark derivatives for human review.
 - Gmail: retain provider IDs and minimal message metadata; normalize body/attachments without duplicating the whole mailbox.
 - Calendar: normalize event facts and links; do not treat Calendar as task storage.
 - User notes: native text asset, immediately normalized.
@@ -83,7 +83,7 @@ Tracks each transformation stage, version, status and failure. Stages include `C
 
 ## Implemented file intake V1
 
-Private bucket `knowledge-assets` accepts PDF, DOCX, TXT and Markdown with a 20 MB per-file limit.
+Private bucket `knowledge-assets` accepts PDF, DOCX, TXT, Markdown, PNG, JPEG and WebP with a 20 MB per-file limit.
 
 Upload flow:
 
@@ -133,10 +133,13 @@ Provider-neutral boundaries include `KnowledgeAssetRepository`, `KnowledgeGenera
 - `0008_knowledge_native_original_text.sql`: original text for native NOTE/GENERATED assets.
 - `0009_knowledge_asset_storage.sql`: private workspace-scoped file storage.
 - `0010_knowledge_processing_generations.sql`: generation-safe derivative publishing and current-generation pointer.
+- `0011_knowledge_visual_assets.sql`: private bucket allowlist for PNG, JPEG and WebP sources.
 - PDF transformer: `unpdf`, page-aware extraction.
 - DOCX transformer: `mammoth.extractRawText`.
 - deterministic school communication enrichment: ACTION/DEADLINE candidates requiring human validation.
 - `Rielabora`: generation-safe reprocessing with rollback-by-pointer semantics.
+- visual extraction adapter: OpenAI Responses file/image input behind `VisualExtractionPort`; configured only server-side.
+- mixed PDF extraction: native text retained page-by-page, visual OCR limited to pages without useful text.
 
 ## Acceptance gates
 

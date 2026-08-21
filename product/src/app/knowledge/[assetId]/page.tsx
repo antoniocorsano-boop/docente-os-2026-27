@@ -137,7 +137,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
           {chunks.length ? <div className="knowledgeUnits">
             {chunks.map((unit) => (
               <article className="knowledgeUnit" key={unit.id}>
-                <div className="unitHeader"><span className="unitType">{unit.unitType}</span>{unit.sourcePage ? <span className="sourcePagePill">Pag. {unit.sourcePage}</span> : null}<span className="validationPill">{unit.validationStatus}</span>{unit.confidence !== null ? <small>{Math.round(unit.confidence * 100)}%</small> : null}</div>
+                <div className="unitHeader"><span className="unitType">{unit.unitType}</span>{unit.sourcePage ? <span className="sourcePagePill">Pag. {unit.sourcePage}</span> : null}{unit.structuredData.extractionMethod === 'VISUAL_OCR' ? <span className="visualExtractionPill">OCR · da verificare</span> : null}<span className="validationPill">{unit.validationStatus}</span>{unit.confidence !== null ? <small>{Math.round(unit.confidence * 100)}%</small> : null}</div>
                 {unit.title ? <h3>{unit.title}</h3> : null}
                 <p>{unit.content}</p>
               </article>

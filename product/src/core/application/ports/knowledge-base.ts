@@ -44,6 +44,26 @@ export interface AssetTransformerPort {
   transform(input: TransformableAsset): Promise<NormalizedKnowledge>
 }
 
+export type VisualExtractionPage = {
+  page: number
+  text: string
+  description: string | null
+  confidence: number | null
+}
+
+export interface VisualExtractionPort {
+  extract(input: {
+    bytes: Uint8Array
+    mimeType: string
+    filename: string
+    pageNumbers?: number[]
+  }): Promise<{
+    pages: VisualExtractionPage[]
+    processor: string
+    processorVersion: string
+  }>
+}
+
 export interface KnowledgeEnrichmentPort {
   enrich(input: NormalizedKnowledge): Promise<NormalizedKnowledge>
 }

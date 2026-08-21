@@ -3,7 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { KnowledgeIngestionService } from '@/core/application/knowledge-ingestion-service'
-import { DocxKnowledgeTransformer, PdfKnowledgeTransformer } from '@/core/infrastructure/knowledge/file-transformers'
+import { DocxKnowledgeTransformer, ImageKnowledgeTransformer, PdfKnowledgeTransformer } from '@/core/infrastructure/knowledge/file-transformers'
+import { OpenAiVisualExtraction } from '@/core/infrastructure/knowledge/openai-visual-extraction'
 import { PlainTextKnowledgeTransformer } from '@/core/infrastructure/knowledge/plain-text-transformer'
 import { SchoolCommunicationEnrichment } from '@/core/infrastructure/knowledge/school-communication-enrichment'
 import { NativeKnowledgeContentPort, SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
@@ -15,7 +16,7 @@ import { createClient } from '@/lib/supabase/server'
 const KNOWLEDGE_BUCKET = 'knowledge-assets'
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-const ALLOWED_UPLOAD_MIMES = new Set(['application/pdf', DOCX_MIME, 'text/plain', 'text/markdown'])
+const ALLOWED_UPLOAD_MIMES = new Set(['application/pdf', DOCX_MIME, 'text/plain', 'text/markdown', 'image/png', 'image/jpeg', 'image/webp'])
 
 export async function captureKnowledgeNote(formData: FormData) {
   const titleValue = formData.get('title')
@@ -189,12 +190,13 @@ function buildTextIngestion(repository: SupabaseKnowledgeRepository) {
 }
 
 function buildFileIngestion(repository: SupabaseKnowledgeRepository) {
+  const visualExtraction = new OpenAiVisualExtraction()
   return new KnowledgeIngestionService(
     repository,
     repository,
     repository,
     new SupabaseStorageKnowledgeContentPort(),
-    [new PlainTextKnowledgeTransformer(), new PdfKnowledgeTransformer(), new DocxKnowledgeTransformer()],
+    [new PlainTextKnowledgeTransformer(), new PdfKnowledgeTransformer(visualExtraction), new DocxKnowledgeTransformer(), new ImageKnowledgeTransformer(visualExtraction)],
     repository,
     new SchoolCommunicationEnrichment(),
   )
@@ -214,6 +216,9 @@ function normalizeMime(rawMime: string, filename: string) {
   if (extension === 'docx') return DOCX_MIME
   if (extension === 'md' || extension === 'markdown') return 'text/markdown'
   if (extension === 'txt') return 'text/plain'
+  if (extension === 'png') return 'image/png'
+  if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg'
+  if (extension === 'webp') return 'image/webp'
   return rawMime || 'application/octet-stream'
 }
 
