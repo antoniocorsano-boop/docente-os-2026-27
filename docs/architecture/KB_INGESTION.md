@@ -105,6 +105,19 @@ If the first transformation fails, the asset is `FAILED` but the original remain
 
 Search, recent-asset summaries and asset detail operate on the current generation only.
 
+## Professional context and classification
+
+Context belongs to the immutable asset identity, not to a single derivative generation. It includes the referenced academic year, a professional content category, discipline labels, class/section labels, classification workflow status and reliability assessment.
+
+Initial categories are `CIRCULAR`, `MODEL`, `PROGRAMMING`, `UDA`, `ASSESSMENT`, `TEACHING_RESOURCE`, `COMMUNICATION`, `OTHER`. Discipline and class labels remain explicit multi-value labels until the canonical teaching registry is introduced; they can later be migrated to references without changing derivative history.
+
+Classification status is distinct from extraction validation:
+- `UNCLASSIFIED`: context has not been reviewed;
+- `NEEDS_REVIEW`: context is present but requires human control;
+- `REVIEWED`: context has been checked by the user.
+
+Reliability is independently recorded as `AUTO`, `TO_VERIFY` or `VERIFIED`. Updating context never mutates the original, creates a processing generation or invalidates historical links.
+
 ## Human validation
 
 The KB distinguishes extraction from validation:
@@ -134,6 +147,7 @@ Provider-neutral boundaries include `KnowledgeAssetRepository`, `KnowledgeGenera
 - `0009_knowledge_asset_storage.sql`: private workspace-scoped file storage.
 - `0010_knowledge_processing_generations.sql`: generation-safe derivative publishing and current-generation pointer.
 - `0011_knowledge_visual_assets.sql`: private bucket allowlist for PNG, JPEG and WebP sources.
+- `0012_knowledge_asset_context.sql`: professional category, disciplines, classes/sections, context workflow and reliability.
 - PDF transformer: `unpdf`, page-aware extraction.
 - DOCX transformer: `mammoth.extractRawText`.
 - deterministic school communication enrichment: ACTION/DEADLINE candidates requiring human validation.
@@ -153,3 +167,4 @@ Provider-neutral boundaries include `KnowledgeAssetRepository`, `KnowledgeGenera
 8. Search works without requiring embeddings and uses only the current generation.
 9. Planner and future modules link to exact KB units rather than copying source identity.
 10. Historical generations and validated links are retained for audit.
+11. Professional context is workspace-scoped, filterable and independently human-reviewable.

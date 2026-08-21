@@ -10,6 +10,7 @@ import type {
 import type {
   CapturedAssetInput,
   KnowledgeAsset,
+  KnowledgeAssetContextInput,
   KnowledgeDocument,
   KnowledgeDocumentType,
   KnowledgeGenerationStatus,
@@ -31,6 +32,7 @@ function asAsset(row: {
   id: string; workspace_id: string; academic_year_id: string | null; asset_kind: string; source_provider: string;
   source_locator: string | null; original_name: string | null; original_text: string | null; mime_type: string | null; byte_size: number | null;
   sha256: string | null; processing_status: string; source_metadata: Json; current_generation_id: string | null; captured_at: string; created_by: string;
+  content_category: string; disciplines: string[]; class_labels: string[]; context_status: string; reliability: string;
   created_at: string; updated_at: string
 }): KnowledgeAsset {
   return {
@@ -48,6 +50,11 @@ function asAsset(row: {
     processingStatus: row.processing_status as KnowledgeProcessingStatus,
     sourceMetadata: object(row.source_metadata),
     currentGenerationId: row.current_generation_id,
+    contentCategory: row.content_category as KnowledgeAsset['contentCategory'],
+    disciplines: row.disciplines,
+    classLabels: row.class_labels,
+    contextStatus: row.context_status as KnowledgeAsset['contextStatus'],
+    reliability: row.reliability as KnowledgeAsset['reliability'],
     capturedAt: row.captured_at,
     createdBy: row.created_by,
     createdAt: row.created_at,
@@ -171,6 +178,19 @@ export class SupabaseKnowledgeRepository implements
     return data ? asAsset(data) : null
   }
 
+  async updateContext(assetId: string, input: KnowledgeAssetContextInput): Promise<void> {
+    const supabase = await createClient()
+    const { error } = await supabase.from('knowledge_assets').update({
+      academic_year_id: input.academicYearId,
+      content_category: input.contentCategory,
+      disciplines: input.disciplines,
+      class_labels: input.classLabels,
+      context_status: input.contextStatus,
+      reliability: input.reliability,
+    }).eq('id', assetId)
+    if (error) throw new Error(error.message)
+  }
+
   async startGeneration(asset: KnowledgeAsset): Promise<KnowledgeProcessingGeneration> {
     const supabase = await createClient()
     const { data: latest, error: latestError } = await supabase.from('knowledge_processing_generations')
@@ -278,9 +298,13 @@ export class SupabaseKnowledgeRepository implements
     })
   }
 
-  async listRecent(workspaceId: string, limit = 20): Promise<Array<{ asset: KnowledgeAsset; document: KnowledgeDocument | null }>> {
+  async listRecent(workspaceId: string, limit = 20, filters: { category?: string; discipline?: string; classLabel?: string } = {}): Promise<Array<{ asset: KnowledgeAsset; document: KnowledgeDocument | null }>> {
     const supabase = await createClient()
-    const { data: assets, error } = await supabase.from('knowledge_assets').select('*').eq('workspace_id', workspaceId).order('captured_at', { ascending: false }).limit(limit)
+    let request = supabase.from('knowledge_assets').select('*').eq('workspace_id', workspaceId)
+    if (filters.category) request = request.eq('content_category', filters.category)
+    if (filters.discipline) request = request.contains('disciplines', [filters.discipline])
+    if (filters.classLabel) request = request.contains('class_labels', [filters.classLabel])
+    const { data: assets, error } = await request.order('captured_at', { ascending: false }).limit(limit)
     if (error) throw new Error(error.message)
     const generationIds = assets.flatMap((asset) => asset.current_generation_id ? [asset.current_generation_id] : [])
     const documents = generationIds.length ? await supabase.from('knowledge_documents').select('*').in('generation_id', generationIds) : { data: [], error: null }

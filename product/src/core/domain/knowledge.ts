@@ -5,6 +5,9 @@ export type KnowledgeDocumentType = 'CIRCULAR' | 'TEMPLATE' | 'ATTESTATION' | 'T
 export type KnowledgeUnitType = 'CHUNK' | 'ENTITY' | 'DATE' | 'DEADLINE' | 'ACTION' | 'PERSON' | 'CLASS' | 'TOPIC' | 'RULE'
 export type KnowledgeValidationStatus = 'AUTO' | 'REVIEWED' | 'REJECTED'
 export type KnowledgeGenerationStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED'
+export type KnowledgeContentCategory = 'CIRCULAR' | 'MODEL' | 'PROGRAMMING' | 'UDA' | 'ASSESSMENT' | 'TEACHING_RESOURCE' | 'COMMUNICATION' | 'OTHER'
+export type KnowledgeContextStatus = 'UNCLASSIFIED' | 'REVIEWED' | 'NEEDS_REVIEW'
+export type KnowledgeReliability = 'AUTO' | 'VERIFIED' | 'TO_VERIFY'
 
 export type KnowledgeAsset = {
   id: string
@@ -21,10 +24,24 @@ export type KnowledgeAsset = {
   processingStatus: KnowledgeProcessingStatus
   sourceMetadata: Record<string, unknown>
   currentGenerationId: string | null
+  contentCategory: KnowledgeContentCategory
+  disciplines: string[]
+  classLabels: string[]
+  contextStatus: KnowledgeContextStatus
+  reliability: KnowledgeReliability
   capturedAt: string
   createdBy: string
   createdAt: string
   updatedAt: string
+}
+
+export type KnowledgeAssetContextInput = {
+  academicYearId: string | null
+  contentCategory: KnowledgeContentCategory
+  disciplines: string[]
+  classLabels: string[]
+  contextStatus: KnowledgeContextStatus
+  reliability: KnowledgeReliability
 }
 
 export type KnowledgeProcessingGeneration = {

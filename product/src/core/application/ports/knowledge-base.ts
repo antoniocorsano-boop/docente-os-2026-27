@@ -1,6 +1,7 @@
 import type {
   CapturedAssetInput,
   KnowledgeAsset,
+  KnowledgeAssetContextInput,
   KnowledgeDocument,
   KnowledgeProcessingGeneration,
   KnowledgeUnit,
@@ -13,6 +14,7 @@ export interface KnowledgeAssetRepository {
   setProcessingStatus(assetId: string, status: KnowledgeAsset['processingStatus']): Promise<void>
   setCurrentGeneration(assetId: string, generationId: string): Promise<void>
   getById(assetId: string): Promise<KnowledgeAsset | null>
+  updateContext(assetId: string, input: KnowledgeAssetContextInput): Promise<void>
 }
 
 export interface KnowledgeGenerationRepository {

@@ -1,3 +1,5 @@
+@import './knowledge/knowledge-context.css';
+
 :root{
   color-scheme:light;
   --canvas:#f3f6fa;

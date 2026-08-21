@@ -12,6 +12,7 @@ import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supaba
 import { SupabaseStorageKnowledgeContentPort } from '@/core/infrastructure/supabase/supabase-storage-knowledge-content-port'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { createClient } from '@/lib/supabase/server'
+import type { KnowledgeAssetContextInput } from '@/core/domain/knowledge'
 
 const KNOWLEDGE_BUCKET = 'knowledge-assets'
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024
@@ -117,6 +118,28 @@ export async function reprocessKnowledgeAsset(formData: FormData) {
     revalidatePath(`/knowledge/${assetId}`)
     redirect(`/knowledge/${assetId}?reprocess=failed`)
   }
+}
+
+export async function updateKnowledgeContext(formData: FormData) {
+  const assetId = stringValue(formData.get('assetId'))
+  if (!assetId) return
+  const context = await requireWorkspaceContext()
+  const repository = new SupabaseKnowledgeRepository()
+  const asset = await repository.getById(assetId)
+  if (!asset || asset.workspaceId !== context.workspace.id) return
+
+  const input: KnowledgeAssetContextInput = {
+    academicYearId: nullableString(formData.get('academicYearId')),
+    contentCategory: enumValue(formData.get('contentCategory'), CONTENT_CATEGORIES, 'OTHER'),
+    disciplines: listValue(formData.get('disciplines')),
+    classLabels: listValue(formData.get('classLabels')),
+    contextStatus: enumValue(formData.get('contextStatus'), CONTEXT_STATUSES, 'UNCLASSIFIED'),
+    reliability: enumValue(formData.get('reliability'), RELIABILITIES, 'AUTO'),
+  }
+  await repository.updateContext(assetId, input)
+  revalidatePath('/knowledge')
+  revalidatePath(`/knowledge/${assetId}`)
+  redirect(`/knowledge/${assetId}?context=updated`)
 }
 
 export async function confirmKnowledgeAction(formData: FormData) {
@@ -230,6 +253,23 @@ function sanitizeFilename(filename: string) {
 
 function stringValue(value: FormDataEntryValue | null) {
   return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+const CONTENT_CATEGORIES = ['CIRCULAR', 'MODEL', 'PROGRAMMING', 'UDA', 'ASSESSMENT', 'TEACHING_RESOURCE', 'COMMUNICATION', 'OTHER'] as const
+const CONTEXT_STATUSES = ['UNCLASSIFIED', 'REVIEWED', 'NEEDS_REVIEW'] as const
+const RELIABILITIES = ['AUTO', 'VERIFIED', 'TO_VERIFY'] as const
+
+function nullableString(value: FormDataEntryValue | null) {
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+function listValue(value: FormDataEntryValue | null) {
+  if (typeof value !== 'string') return []
+  return [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))].slice(0, 20)
+}
+
+function enumValue<T extends string>(value: FormDataEntryValue | null, allowed: readonly T[], fallback: T): T {
+  return typeof value === 'string' && allowed.includes(value as T) ? value as T : fallback
 }
 
 function priorityFor(dueDate: string | null) {

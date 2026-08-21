@@ -87,7 +87,8 @@ function asset(mimeType: string, originalName: string): KnowledgeAsset {
   return {
     id: 'asset-1', workspaceId: 'workspace-1', academicYearId: null, assetKind: 'FILE', sourceProvider: 'UPLOAD',
     sourceLocator: 'storage:test', originalName, originalText: null, mimeType, byteSize: 3, sha256: null,
-    processingStatus: 'CAPTURED', sourceMetadata: {}, currentGenerationId: null, capturedAt: '2026-08-21T00:00:00Z',
+    processingStatus: 'CAPTURED', sourceMetadata: {}, currentGenerationId: null,
+    contentCategory: 'OTHER', disciplines: [], classLabels: [], contextStatus: 'UNCLASSIFIED', reliability: 'AUTO', capturedAt: '2026-08-21T00:00:00Z',
     createdBy: 'user-1', createdAt: '2026-08-21T00:00:00Z', updatedAt: '2026-08-21T00:00:00Z',
   }
 }

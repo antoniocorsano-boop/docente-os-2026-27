@@ -6,12 +6,13 @@ import { captureKnowledgeNote, uploadKnowledgeFile } from './actions'
 
 export const dynamic = 'force-dynamic'
 
-type PageProps = { searchParams: Promise<{ q?: string; upload?: string }> }
+type PageProps = { searchParams: Promise<{ q?: string; upload?: string; category?: string; discipline?: string; classLabel?: string }> }
 
 export default async function KnowledgePage({ searchParams }: PageProps) {
   const params = await searchParams
   const query = params.q?.trim() ?? ''
   const uploadMessage = uploadFeedback(params.upload)
+  const filters = { category: params.category?.trim(), discipline: params.discipline?.trim(), classLabel: params.classLabel?.trim() }
 
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
@@ -19,7 +20,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
 
   const repository = new SupabaseKnowledgeRepository()
   const [recent, results] = await Promise.all([
-    repository.listRecent(context.workspace.id, 20),
+    repository.listRecent(context.workspace.id, 50, filters),
     query ? repository.search(context.workspace.id, query, 30) : Promise.resolve([]),
   ])
 
@@ -113,11 +114,17 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
 
         <section className="recentKnowledge">
           <div className="sectionHeading"><h2>Asset recenti</h2><span>{recent.length}</span></div>
+          <form className="knowledgeFilters" action="/knowledge" method="get">
+            <select name="category" defaultValue={filters.category ?? ''} aria-label="Filtra per tipologia"><option value="">Tutte le tipologie</option>{CONTENT_CATEGORIES.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>
+            <input name="discipline" defaultValue={filters.discipline ?? ''} placeholder="Disciplina" aria-label="Filtra per disciplina" />
+            <input name="classLabel" defaultValue={filters.classLabel ?? ''} placeholder="Classe, es. 2C" aria-label="Filtra per classe" />
+            <button type="submit">Filtra</button>
+          </form>
           {recent.length ? <div className="knowledgeAssetList">
             {recent.map(({ asset, document }) => (
               <Link key={asset.id} className="knowledgeAssetRow" href={`/knowledge/${asset.id}`}>
                 <div className="assetIcon">{asset.assetKind === 'NOTE' ? 'N' : fileIcon(asset.mimeType)}</div>
-                <div className="assetMain"><strong>{document?.title ?? asset.originalName ?? 'Asset senza titolo'}</strong><span>{document?.summary ?? asset.originalText?.slice(0, 150) ?? assetStatusLabel(asset.processingStatus)}</span></div>
+                <div className="assetMain"><strong>{document?.title ?? asset.originalName ?? 'Asset senza titolo'}</strong><span>{document?.summary ?? asset.originalText?.slice(0, 150) ?? assetStatusLabel(asset.processingStatus)}</span><div className="assetContext"><small>{categoryLabel(asset.contentCategory)}</small>{asset.disciplines.map((item) => <small key={item}>{item}</small>)}{asset.classLabels.map((item) => <small key={item}>{item}</small>)}</div></div>
                 <div className="assetMeta"><span className={`processingPill ${asset.processingStatus.toLowerCase()}`}>{asset.processingStatus}</span><small>{formatDate(asset.capturedAt)}</small></div>
               </Link>
             ))}
@@ -163,4 +170,13 @@ function assetStatusLabel(status: string) {
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' }).format(new Date(value))
+}
+
+const CONTENT_CATEGORIES = [
+  ['CIRCULAR', 'Circolare'], ['MODEL', 'Modello'], ['PROGRAMMING', 'Programmazione'], ['UDA', 'Unità di apprendimento'],
+  ['ASSESSMENT', 'Verifica o valutazione'], ['TEACHING_RESOURCE', 'Risorsa didattica'], ['COMMUNICATION', 'Comunicazione'], ['OTHER', 'Altro'],
+] as const
+
+function categoryLabel(value: string) {
+  return CONTENT_CATEGORIES.find(([key]) => key === value)?.[1] ?? value
 }

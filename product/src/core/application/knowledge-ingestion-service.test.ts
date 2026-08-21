@@ -38,6 +38,7 @@ class MemoryAssets implements KnowledgeAssetRepository {
     id: 'asset-1', workspaceId: 'workspace-1', academicYearId: null, assetKind: 'FILE', sourceProvider: 'UPLOAD',
     sourceLocator: 'storage:test', originalName: 'scansione.pdf', originalText: null, mimeType: 'application/pdf', byteSize: 3,
     sha256: null, processingStatus: 'INDEXED', sourceMetadata: {}, currentGenerationId: 'generation-stable',
+    contentCategory: 'OTHER', disciplines: [], classLabels: [], contextStatus: 'UNCLASSIFIED', reliability: 'AUTO',
     capturedAt: '2026-08-21T00:00:00Z', createdBy: 'user-1', createdAt: '2026-08-21T00:00:00Z', updatedAt: '2026-08-21T00:00:00Z',
   }
 
@@ -45,6 +46,7 @@ class MemoryAssets implements KnowledgeAssetRepository {
   async setProcessingStatus() { this.statusUpdates += 1 }
   async setCurrentGeneration() { this.currentGenerationUpdates += 1 }
   async getById() { return this.asset }
+  async updateContext() {}
 }
 
 class MemoryGenerations implements KnowledgeGenerationRepository {

@@ -1,0 +1,14 @@
+.contextPanel{margin-bottom:18px}
+.contextForm{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.contextForm label{display:grid;gap:6px}
+.contextForm label>span{font-size:10px;font-weight:800;color:var(--ink-soft)}
+.contextForm input,.contextForm select{width:100%;min-height:40px;border:1px solid var(--line-strong);border-radius:10px;background:#fff;color:var(--ink);padding:0 11px}
+.contextForm button{align-self:end;min-height:40px;border:0;border-radius:10px;background:var(--brand);color:#fff;font-weight:800}
+.contextHint{margin:10px 0 0;color:var(--ink-faint);font-size:10px}
+.knowledgeFilters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:8px;margin-bottom:12px}
+.knowledgeFilters select,.knowledgeFilters input{min-height:38px;border:1px solid var(--line-strong);border-radius:10px;background:#fff;padding:0 10px;color:var(--ink)}
+.knowledgeFilters button{border:0;border-radius:10px;background:var(--ink);color:#fff;padding:0 12px;font-weight:750}
+.assetContext{display:flex;gap:5px;flex-wrap:wrap;margin-top:2px}
+.assetContext small{border-radius:999px;background:var(--surface-soft);color:var(--ink-faint);padding:3px 7px;font-size:9px}
+@media(max-width:900px){.contextForm{grid-template-columns:repeat(2,minmax(0,1fr))}.knowledgeFilters{grid-template-columns:1fr 1fr}}
+@media(max-width:719px){.contextForm,.knowledgeFilters{grid-template-columns:1fr}}

@@ -2,13 +2,13 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { confirmKnowledgeAction, confirmKnowledgeCandidate, rejectKnowledgeCandidate, reprocessKnowledgeAsset } from '../actions'
+import { confirmKnowledgeAction, confirmKnowledgeCandidate, rejectKnowledgeCandidate, reprocessKnowledgeAsset, updateKnowledgeContext } from '../actions'
 
 export const dynamic = 'force-dynamic'
 
 type PageProps = {
   params: Promise<{ assetId: string }>
-  searchParams: Promise<{ reprocess?: string }>
+  searchParams: Promise<{ reprocess?: string; context?: string }>
 }
 
 export default async function KnowledgeAssetPage({ params, searchParams }: PageProps) {
@@ -62,6 +62,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
 
         {query.reprocess === 'ok' ? <div className="knowledgeFeedback success" role="status">Nuova generazione elaborata e promossa come corrente.</div> : null}
         {query.reprocess === 'failed' ? <div className="knowledgeFeedback error" role="status">La nuova elaborazione non è riuscita. La generazione precedente resta attiva.</div> : null}
+        {query.context === 'updated' ? <div className="knowledgeFeedback success" role="status">Contesto professionale aggiornato.</div> : null}
 
         <section className="plannerHeader knowledgeHeader">
           <div><p className="contextLine">{asset.sourceProvider} · {asset.assetKind}</p><h1>{document?.title ?? asset.originalName ?? 'Asset senza titolo'}</h1><p className="dayLine">Acquisito {formatDate(asset.capturedAt)}</p></div>
@@ -72,6 +73,21 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
           <div><span>Tipo</span><strong>{asset.assetKind}</strong></div>
           <div><span>Generazione</span><strong>{currentGeneration ? `#${currentGeneration.generationNo}` : '—'}</strong></div>
           <div><span>Processore</span><strong>{document?.processingVersion ?? 'Non ancora elaborato'}</strong></div>
+        </section>
+
+        <section className="knowledgePanel contextPanel">
+          <div className="knowledgePanelHeading"><div><span className="panelEyebrow">CONTESTO PROFESSIONALE</span><h2>Classificazione dell’asset</h2></div><span className={`validationPill ${asset.contextStatus === 'REVIEWED' ? 'reviewed' : ''}`}>{contextStatusLabel(asset.contextStatus)}</span></div>
+          <form action={updateKnowledgeContext} className="contextForm">
+            <input type="hidden" name="assetId" value={asset.id} />
+            <label><span>Anno scolastico</span><select name="academicYearId" defaultValue={asset.academicYearId ?? ''}><option value="">Non associato</option>{context.academicYear ? <option value={context.academicYear.id}>{context.academicYear.label}</option> : null}</select></label>
+            <label><span>Tipologia</span><select name="contentCategory" defaultValue={asset.contentCategory}>{CONTENT_CATEGORIES.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
+            <label><span>Discipline</span><input name="disciplines" defaultValue={asset.disciplines.join(', ')} placeholder="Tecnologia, Educazione civica" /></label>
+            <label><span>Classi e sezioni</span><input name="classLabels" defaultValue={asset.classLabels.join(', ')} placeholder="1A, 2C, 3E" /></label>
+            <label><span>Stato classificazione</span><select name="contextStatus" defaultValue={asset.contextStatus}><option value="UNCLASSIFIED">Da classificare</option><option value="NEEDS_REVIEW">Da controllare</option><option value="REVIEWED">Controllata</option></select></label>
+            <label><span>Attendibilità</span><select name="reliability" defaultValue={asset.reliability}><option value="AUTO">Automatica</option><option value="TO_VERIFY">Da verificare</option><option value="VERIFIED">Verificata</option></select></label>
+            <button type="submit">Salva contesto</button>
+          </form>
+          <p className="contextHint">Separa più discipline o classi con una virgola. La classificazione non modifica l’originale né le generazioni elaborate.</p>
         </section>
 
         <div className="knowledgeFlowGrid">
@@ -169,4 +185,15 @@ function formatDate(value: string) {
 
 function formatIsoDate(value: string) {
   return new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`))
+}
+
+const CONTENT_CATEGORIES = [
+  ['CIRCULAR', 'Circolare'], ['MODEL', 'Modello'], ['PROGRAMMING', 'Programmazione'], ['UDA', 'Unità di apprendimento'],
+  ['ASSESSMENT', 'Verifica o valutazione'], ['TEACHING_RESOURCE', 'Risorsa didattica'], ['COMMUNICATION', 'Comunicazione'], ['OTHER', 'Altro'],
+] as const
+
+function contextStatusLabel(status: string) {
+  if (status === 'REVIEWED') return 'Controllata'
+  if (status === 'NEEDS_REVIEW') return 'Da controllare'
+  return 'Da classificare'
 }
