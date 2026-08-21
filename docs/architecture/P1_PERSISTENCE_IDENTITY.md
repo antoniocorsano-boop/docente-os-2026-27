@@ -1,6 +1,6 @@
 # P1 — Persistence & Identity
 
-Status: IMPLEMENTED_IN_REPOSITORY / NOT_YET_CONNECTED_TO_LIVE_SUPABASE
+Status: LIVE_SUPABASE_CONNECTED / MIGRATIONS_APPLIED / AUTH_E2E_PENDING
 
 ## Scope
 
@@ -21,6 +21,10 @@ P1 introduces the product persistence and identity foundation without coupling t
 - idempotent bootstrap_personal_workspace RPC
 - one-active-academic-year-per-workspace invariant
 - authenticated grants and anon revocation
+- live Supabase project connected in eu-west-1
+- migrations 0001-0004 applied successfully
+- live database types generated and committed
+- Supabase security advisor checked after hardening
 
 ## Security invariants
 
@@ -30,19 +34,31 @@ P1 introduces the product persistence and identity foundation without coupling t
 4. Service-role credentials must never be exposed to browser code.
 5. Google Workspace authorization remains separate from DOCENTE OS product identity.
 6. Exposed public-schema tables use RLS.
+7. SECURITY DEFINER bootstrap is callable only by authenticated users; anonymous execution is revoked.
+8. The pre-existing RLS auto-enable event-trigger function is not externally executable.
+
+## Verified live
+
+- all four application tables have RLS enabled;
+- anonymous RPC access to bootstrap_personal_workspace is revoked;
+- security advisor no longer reports anonymous SECURITY DEFINER exposure;
+- only remaining advisor warning is the intentional authenticated bootstrap RPC;
+- project currently contains zero auth users, so authenticated isolation tests cannot yet be completed.
 
 ## P1 acceptance gates
 
-P1 can be marked COMPLETE only when a real Supabase project is connected and all gates pass:
+1. migrations apply cleanly to an empty database — PASS;
+2. unauthenticated reads/writes fail — STRUCTURALLY ENFORCED / E2E PENDING;
+3. authenticated user can bootstrap exactly one PERSONAL workspace — PENDING AUTH USER;
+4. repeated bootstrap is idempotent — PENDING AUTH USER;
+5. user A cannot read user B workspace data — PENDING TWO AUTH USERS;
+6. one workspace cannot have two active academic years — DB INVARIANT PRESENT;
+7. Next.js typecheck, lint and build pass with Supabase dependencies — CI VERIFICATION PENDING;
+8. no service-role key exists in client-visible environment variables or repository history — PASS BY DESIGN.
 
-1. migrations apply cleanly to an empty database;
-2. unauthenticated reads/writes fail;
-3. authenticated user can bootstrap exactly one PERSONAL workspace;
-4. repeated bootstrap is idempotent;
-5. user A cannot read user B workspace data;
-6. one workspace cannot have two active academic years;
-7. Next.js typecheck, lint and build pass with Supabase dependencies;
-8. no service-role key exists in client-visible environment variables or repository history.
+## Next action
+
+Add the first product sign-in flow and create the first authenticated product user. Then execute the P1 E2E RLS/bootstrap tests before declaring P1 COMPLETE.
 
 ## Next vertical slice after P1
 
