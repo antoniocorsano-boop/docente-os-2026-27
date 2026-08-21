@@ -1,10 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import type { Database } from './database.types'
 
 export async function createClient() {
   const cookieStore = await cookies()
 
-  return createServerClient(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
@@ -18,8 +19,8 @@ export async function createClient() {
               cookieStore.set(name, value, options),
             )
           } catch {
-            // Server Components cannot always write cookies. Session refresh is
-            // handled at the request boundary when proxy/middleware is enabled.
+            // Cookie writes can fail inside a Server Component; proxy.ts refreshes
+            // the session at the request boundary.
           }
         },
       },
