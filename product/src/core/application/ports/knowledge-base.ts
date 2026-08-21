@@ -26,6 +26,10 @@ export interface KnowledgeSearchPort {
   }>>
 }
 
+export interface AssetContentPort {
+  load(asset: KnowledgeAsset): Promise<{ text?: string | null; bytes?: Uint8Array | null }>
+}
+
 export interface AssetTransformerPort {
   supports(asset: KnowledgeAsset): boolean
   transform(input: TransformableAsset): Promise<NormalizedKnowledge>
@@ -33,4 +37,28 @@ export interface AssetTransformerPort {
 
 export interface KnowledgeEnrichmentPort {
   enrich(input: NormalizedKnowledge): Promise<NormalizedKnowledge>
+}
+
+export interface KnowledgeLinkRepository {
+  link(input: {
+    workspaceId: string
+    assetId?: string | null
+    unitId?: string | null
+    relationType: string
+    targetType: string
+    targetRef: string
+    metadata?: Record<string, unknown>
+  }): Promise<void>
+}
+
+export interface KnowledgeIngestionLog {
+  start(input: {
+    workspaceId: string
+    assetId: string
+    stage: 'CAPTURE' | 'TEXT_EXTRACT' | 'NORMALIZE' | 'CLASSIFY' | 'STRUCTURE' | 'CHUNK' | 'ENRICH' | 'INDEX' | 'LINK'
+    processor: string
+    processorVersion?: string | null
+  }): Promise<string>
+  succeed(runId: string, details?: Record<string, unknown>): Promise<void>
+  fail(runId: string, error: unknown): Promise<void>
 }
