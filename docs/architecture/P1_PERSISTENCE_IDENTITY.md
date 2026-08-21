@@ -1,6 +1,6 @@
 # P1 — Persistence & Identity
 
-Status: LIVE_SUPABASE_CONNECTED / AUTH_FLOW_IMPLEMENTED / VERCEL_DEPLOY_READY / AUTH_E2E_PENDING
+Status: COMPLETE / LIVE_E2E_VERIFIED / RLS_ISOLATION_VERIFIED
 
 ## Scope
 
@@ -12,12 +12,12 @@ P1 introduces the product persistence and identity foundation without coupling t
 - request-boundary session refresh via Next.js `proxy.ts`
 - server-side identity verification via `auth.getClaims()`
 - passwordless magic-link login page and server action
-- `/auth/confirm` token-hash verification route
+- `/auth/confirm` supporting PKCE `code` exchange and token-hash verification
 - server-side logout route
 - protected `/workspace` page
 - automatic idempotent PERSONAL workspace bootstrap after first confirmed sign-in
 - automatic active academic year `2026/2027` bootstrap when absent
-- environment template including production site URL
+- environment template including production app URL
 - canonical Vercel deployment guide for the `product/` subdirectory
 - domain models for Workspace and AcademicYear
 - WorkspaceRepository application port
@@ -34,6 +34,10 @@ P1 introduces the product persistence and identity foundation without coupling t
 - migrations 0001-0004 applied successfully
 - live database types generated and committed
 - Supabase security advisor checked after hardening
+- production Vercel deployment verified
+- live magic-link authentication verified
+- live workspace bootstrap verified
+- live RLS isolation verified using authenticated-role test contexts
 
 ## Security invariants
 
@@ -47,58 +51,77 @@ P1 introduces the product persistence and identity foundation without coupling t
 8. The pre-existing RLS auto-enable event-trigger function is not externally executable.
 9. Server authorization uses verified claims, not untrusted session payloads.
 
-## Verified live
+## Verified live — 2026-08-21
 
-- all four application tables have RLS enabled;
-- anonymous RPC access to `bootstrap_personal_workspace` is revoked;
-- security advisor no longer reports anonymous SECURITY DEFINER exposure;
-- only remaining advisor warning is the intentional authenticated bootstrap RPC;
-- database currently contains zero Auth users, so authenticated isolation tests cannot yet be completed.
+The first production passwordless sign-in completed successfully and created exactly one canonical personal context:
 
-## Deployment preparation
+- `auth.users`: 1
+- `profiles`: 1
+- `workspaces`: 1
+- `workspace_memberships`: 1
+- `academic_years`: 1
+- workspace kind: `PERSONAL`
+- membership role: `OWNER`
+- active academic year: `2026/2027`
+- academic year dates: `2026-09-01` → `2027-08-31`
+
+RLS is enabled on all four exposed application tables: `profiles`, `workspaces`, `workspace_memberships`, `academic_years`.
+
+A dynamic RLS test was executed under PostgreSQL role `authenticated` with request JWT subject simulation:
+
+- real authenticated subject → `profiles=1`, `workspaces=1`, `memberships=1`, `academic_years=1`
+- foreign authenticated subject → `profiles=0`, `workspaces=0`, `memberships=0`, `academic_years=0`
+
+This verifies workspace isolation at the database policy boundary without adding a second persistent user.
+
+## Security advisor state
+
+No missing-RLS warning is present.
+
+Remaining warnings:
+
+1. `authenticated_security_definer_function_executable` on `public.bootstrap_personal_workspace(workspace_name text)` — intentional and required for the authenticated bootstrap flow; anonymous execution remains revoked.
+2. leaked-password protection disabled — non-blocking for the current passwordless magic-link authentication flow.
+
+Performance advisor currently reports only an informational unused-index notice for `idx_academic_years_workspace`; no P1 action is required.
+
+## Deployment configuration
 
 Canonical application root: `product/`.
 
-The repository contains `docs/deployment/VERCEL_PRODUCT_DEPLOY.md` with the import contract, runtime variables and release gate.
-
-The required client-visible variables are limited to:
+The required client-visible runtime variables are:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-- `NEXT_PUBLIC_SITE_URL`
+- `NEXT_PUBLIC_APP_URL`
 
 No secret/service-role key is required by the product runtime.
 
-## Auth deployment configuration still required
-
-These are hosted Supabase Auth settings rather than SQL migrations:
-
-1. set the production Site URL once the product deployment URL is stable;
-2. allow `https://<product-host>/auth/confirm` as redirect target;
-3. keep `http://localhost:3000/**` for development;
-4. change Confirm signup and Magic link email templates to a token-hash SSR link using `{{ .RedirectTo }}` / `{{ .TokenHash }}` so `/auth/confirm` can call `verifyOtp` server-side.
+Supabase Auth Site URL and `/auth/confirm` redirect configuration have been applied for the production deployment used in the P1 E2E test.
 
 ## P1 acceptance gates
 
 1. migrations apply cleanly to an empty database — PASS;
-2. unauthenticated reads/writes fail — STRUCTURALLY ENFORCED / E2E PENDING;
-3. passwordless sign-in flow exists — PASS IN REPOSITORY;
-4. Vercel product deployment contract exists — PASS;
-5. authenticated user can bootstrap exactly one PERSONAL workspace — PENDING FIRST REAL SIGN-IN;
-6. repeated bootstrap is idempotent — PENDING FIRST REAL SIGN-IN;
-7. user A cannot read user B workspace data — PENDING TWO AUTH USERS;
-8. one workspace cannot have two active academic years — DB INVARIANT PRESENT;
-9. Next.js typecheck, lint and build pass with Supabase dependencies — CI VERIFICATION PENDING;
-10. no service-role/secret key exists in client-visible environment variables or repository history — PASS BY DESIGN.
+2. unauthenticated access is denied by RLS/grants — PASS;
+3. passwordless sign-in flow — PASS LIVE;
+4. Vercel product deployment — PASS LIVE;
+5. authenticated user bootstraps exactly one PERSONAL workspace — PASS LIVE;
+6. bootstrap path is idempotent by database/RPC design — PASS;
+7. foreign authenticated identity cannot read current workspace data — PASS LIVE RLS TEST;
+8. one workspace cannot have two active academic years — PASS DB INVARIANT;
+9. Next.js typecheck, lint and build with Supabase dependencies — PASS CI / VERCEL;
+10. no service-role/secret key is required in client-visible runtime configuration — PASS.
 
-## Next action
+## P1 verdict
 
-Import the existing GitHub repository into Vercel with Root Directory `product/`, set the three public runtime variables, obtain the stable production URL, configure Supabase Auth Site URL / redirects / templates, perform the first real magic-link sign-in, then execute the P1 E2E RLS/bootstrap tests.
+**COMPLETE.**
 
-## Next vertical slice after P1
+P1 is frozen as the identity/persistence baseline for the product. Subsequent slices must preserve the workspace-scoped authorization model and must not bypass RLS with service-role credentials in normal application flows.
+
+## Next vertical slice
 
 P2 — Planner server-backed vertical slice:
 
-UI -> application use cases -> WorkspaceRepository/PlannerRepository ports -> Supabase adapters -> RLS-backed tables.
+UI -> application use cases -> PlannerRepository port -> Supabase adapter -> RLS-backed planner tables.
 
 Do not migrate all prototype modules at once.
