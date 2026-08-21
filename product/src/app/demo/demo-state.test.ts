@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { addTask, commaList, createTaskFromAsset, filterAssets, INITIAL_ASSETS, INITIAL_TASKS, toggleTask, updateAssetContext } from './demo-state'
+import { addTask, commaList, createTaskFromAsset, filterAssets, formatDueDate, INITIAL_ASSETS, INITIAL_TASKS, toggleTask, updateAssetContext } from './demo-state'
 
 test('aggiunge e completa una attività locale', () => {
   const added = addTask(INITIAL_TASKS, 'Preparare griglia di valutazione')
@@ -24,10 +24,19 @@ test('normalizza gli elenchi separati da virgole', () => {
 })
 
 test('crea una sola attività aperta collegata alla generazione dell’asset', () => {
-  const created = createTaskFromAsset(INITIAL_TASKS, INITIAL_ASSETS[2])
+  const created = createTaskFromAsset(INITIAL_TASKS, INITIAL_ASSETS[2], '2026-08-28')
   const linked = created.at(-1)!
   assert.equal(linked.sourceAssetId, 'asset-3')
   assert.equal(linked.sourceGeneration, 1)
   assert.equal(linked.priority, 'Alta')
+  assert.equal(linked.dueDate, '2026-08-28')
+  assert.equal(linked.schoolYear, '2026/27')
+  assert.deepEqual(linked.classLabels, ['Tutte le classi'])
+  assert.equal(linked.verificationStatus, 'Fonte da verificare')
   assert.equal(createTaskFromAsset(created, INITIAL_ASSETS[2]), created)
+})
+
+test('formatta la scadenza per il planner', () => {
+  assert.equal(formatDueDate('2026-09-03'), '3 set')
+  assert.equal(formatDueDate(''), 'Da pianificare')
 })

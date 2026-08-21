@@ -2,7 +2,7 @@
 
 import { FormEvent, useDeferredValue, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { addTask, commaList, createTaskFromAsset, filterAssets, INITIAL_ASSETS, INITIAL_TASKS, toggleTask, updateAssetContext } from './demo-state'
+import { addTask, commaList, createTaskFromAsset, filterAssets, formatDueDate, INITIAL_ASSETS, INITIAL_TASKS, toggleTask, updateAssetContext } from './demo-state'
 
 const CATEGORIES = ['Tutti', 'Programmazione', 'Circolare', 'Risorsa didattica']
 
@@ -14,6 +14,7 @@ export function DemoWorkspace() {
   const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState(INITIAL_ASSETS[1].id)
   const [notice, setNotice] = useState('')
+  const [plannedDate, setPlannedDate] = useState('2026-08-28')
   const deferredQuery = useDeferredValue(query)
   const filteredAssets = useMemo(() => filterAssets(assets, category, deferredQuery), [assets, category, deferredQuery])
   const selected = assets.find((asset) => asset.id === selectedId) ?? assets[0]
@@ -40,7 +41,7 @@ export function DemoWorkspace() {
 
   function planSelectedAsset() {
     const alreadyOpen = tasks.some((task) => task.sourceAssetId === selected.id && !task.completed)
-    setTasks((current) => createTaskFromAsset(current, selected))
+    setTasks((current) => createTaskFromAsset(current, selected, plannedDate))
     setNotice(alreadyOpen ? 'L’attività collegata è già presente nel Planner.' : 'Attività creata nel Planner con riferimento alla generazione corrente.')
   }
 
@@ -58,7 +59,7 @@ export function DemoWorkspace() {
         <section id="oggi" className="demoSection">
           <div className="demoSectionTitle"><div><span>PLANNER</span><h2>Prossime attività</h2></div><b>{openTasks} aperte</b></div>
           <form className="demoQuickTask" onSubmit={submitTask}><label htmlFor="demo-task">Nuova attività</label><input id="demo-task" value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} placeholder="Scrivi un’attività da pianificare…" /><button type="submit">Aggiungi</button></form>
-          <div className="demoTaskList">{tasks.map((task) => <article className={task.completed ? 'completed' : ''} key={task.id}><button onClick={() => setTasks((current) => toggleTask(current, task.id))} aria-label={`${task.completed ? 'Riapri' : 'Completa'} ${task.title}`}>{task.completed ? '✓' : ''}</button><div><strong>{task.title}</strong><span>{task.meta}</span></div><em>{task.priority}</em><time>{task.date}</time></article>)}</div>
+          <div className="demoTaskList">{tasks.map((task) => <article className={task.completed ? 'completed' : ''} key={task.id}><button onClick={() => setTasks((current) => toggleTask(current, task.id))} aria-label={`${task.completed ? 'Riapri' : 'Completa'} ${task.title}`}>{task.completed ? '✓' : ''}</button><div><strong>{task.title}</strong><span>{[task.schoolYear, ...task.disciplines, ...task.classLabels].join(' · ')}</span>{task.sourceGeneration && <small>{task.meta} · Generazione #{task.sourceGeneration} · {task.verificationStatus}</small>}</div><em>{task.priority}</em><time>{formatDueDate(task.dueDate)}</time></article>)}</div>
         </section>
 
         <section id="conoscenza" className="demoSection">
@@ -80,6 +81,7 @@ export function DemoWorkspace() {
             <button type="submit">Salva classificazione</button>
           </form>
           <div className="demoContextActions">
+            <label>Scadenza attività<input type="date" value={plannedDate} onChange={(event) => setPlannedDate(event.target.value)} /></label>
             <button type="button" onClick={planSelectedAsset}>Crea attività nel Planner</button>
             {notice && <p role="status">{notice}</p>}
           </div>
