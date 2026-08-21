@@ -39,6 +39,15 @@ export interface KnowledgeEnrichmentPort {
   enrich(input: NormalizedKnowledge): Promise<NormalizedKnowledge>
 }
 
+export interface KnowledgeReviewRepository {
+  getUnitContext(unitId: string): Promise<{
+    unit: KnowledgeUnit
+    document: KnowledgeDocument
+    asset: KnowledgeAsset
+  } | null>
+  setUnitValidationStatus(unitId: string, status: KnowledgeUnit['validationStatus']): Promise<void>
+}
+
 export interface KnowledgeLinkRepository {
   link(input: {
     workspaceId: string
@@ -49,6 +58,12 @@ export interface KnowledgeLinkRepository {
     targetRef: string
     metadata?: Record<string, unknown>
   }): Promise<void>
+  findTargetRef(input: {
+    workspaceId: string
+    unitId: string
+    relationType: string
+    targetType: string
+  }): Promise<string | null>
 }
 
 export interface KnowledgeIngestionLog {
