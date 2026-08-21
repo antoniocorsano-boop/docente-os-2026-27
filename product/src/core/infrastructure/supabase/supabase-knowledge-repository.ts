@@ -2,6 +2,8 @@ import type {
   KnowledgeAssetRepository,
   KnowledgeDocumentRepository,
   KnowledgeIngestionLog,
+  KnowledgeLinkRepository,
+  KnowledgeReviewRepository,
   KnowledgeSearchPort,
 } from '@/core/application/ports/knowledge-base'
 import type {
@@ -24,11 +26,10 @@ function object(value: Json): Record<string, unknown> {
 
 function asAsset(row: {
   id: string; workspace_id: string; academic_year_id: string | null; asset_kind: string; source_provider: string;
-  source_locator: string | null; original_name: string | null; mime_type: string | null; byte_size: number | null;
+  source_locator: string | null; original_name: string | null; original_text: string | null; mime_type: string | null; byte_size: number | null;
   sha256: string | null; processing_status: string; source_metadata: Json; captured_at: string; created_by: string;
   created_at: string; updated_at: string
 }): KnowledgeAsset {
-  const metadata = object(row.source_metadata)
   return {
     id: row.id,
     workspaceId: row.workspace_id,
@@ -37,12 +38,12 @@ function asAsset(row: {
     sourceProvider: row.source_provider as KnowledgeAsset['sourceProvider'],
     sourceLocator: row.source_locator,
     originalName: row.original_name,
-    originalText: typeof metadata.originalText === 'string' ? metadata.originalText : null,
+    originalText: row.original_text,
     mimeType: row.mime_type,
     byteSize: row.byte_size,
     sha256: row.sha256,
     processingStatus: row.processing_status as KnowledgeProcessingStatus,
-    sourceMetadata: metadata,
+    sourceMetadata: object(row.source_metadata),
     capturedAt: row.captured_at,
     createdBy: row.created_by,
     createdAt: row.created_at,
@@ -96,14 +97,19 @@ function asUnit(row: {
   }
 }
 
-export class SupabaseKnowledgeRepository implements KnowledgeAssetRepository, KnowledgeDocumentRepository, KnowledgeSearchPort, KnowledgeIngestionLog {
+export class SupabaseKnowledgeRepository implements
+  KnowledgeAssetRepository,
+  KnowledgeDocumentRepository,
+  KnowledgeSearchPort,
+  KnowledgeIngestionLog,
+  KnowledgeReviewRepository,
+  KnowledgeLinkRepository {
   async capture(input: CapturedAssetInput): Promise<KnowledgeAsset> {
     const supabase = await createClient()
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
     const userId = claimsData?.claims?.sub
     if (claimsError || !userId) throw new Error('Authenticated user required')
 
-    const metadata = { ...(input.sourceMetadata ?? {}), ...(input.originalText ? { originalText: input.originalText } : {}) }
     const payload = {
       workspace_id: input.workspaceId,
       academic_year_id: input.academicYearId ?? null,
@@ -115,7 +121,7 @@ export class SupabaseKnowledgeRepository implements KnowledgeAssetRepository, Kn
       mime_type: input.mimeType ?? null,
       byte_size: input.byteSize ?? null,
       sha256: input.sha256 ?? null,
-      source_metadata: metadata as Json,
+      source_metadata: (input.sourceMetadata ?? {}) as Json,
       created_by: userId,
     }
     const { data, error } = await supabase.from('knowledge_assets').insert(payload).select('*').single()
@@ -191,8 +197,7 @@ export class SupabaseKnowledgeRepository implements KnowledgeAssetRepository, Kn
 
     const documentIds = [...new Set(units.map((unit) => unit.document_id))]
     if (!documentIds.length) return []
-    const { data: documents, error: documentError } = await supabase
-      .from('knowledge_documents').select('*').in('id', documentIds)
+    const { data: documents, error: documentError } = await supabase.from('knowledge_documents').select('*').in('id', documentIds)
     if (documentError) throw new Error(documentError.message)
     const byId = new Map(documents.map((document) => [document.id, asDocument(document)]))
 
@@ -207,9 +212,7 @@ export class SupabaseKnowledgeRepository implements KnowledgeAssetRepository, Kn
     const { data: assets, error } = await supabase.from('knowledge_assets').select('*').eq('workspace_id', workspaceId).order('captured_at', { ascending: false }).limit(limit)
     if (error) throw new Error(error.message)
     const assetIds = assets.map((asset) => asset.id)
-    const documents = assetIds.length
-      ? await supabase.from('knowledge_documents').select('*').in('asset_id', assetIds)
-      : { data: [], error: null }
+    const documents = assetIds.length ? await supabase.from('knowledge_documents').select('*').in('asset_id', assetIds) : { data: [], error: null }
     if (documents.error) throw new Error(documents.error.message)
     const byAsset = new Map((documents.data ?? []).map((document) => [document.asset_id, asDocument(document)]))
     return assets.map((asset) => ({ asset: asAsset(asset), document: byAsset.get(asset.id) ?? null }))
@@ -226,6 +229,57 @@ export class SupabaseKnowledgeRepository implements KnowledgeAssetRepository, Kn
     const { data: units, error: unitError } = await supabase.from('knowledge_units').select('*').eq('document_id', document.id).order('ordinal')
     if (unitError) throw new Error(unitError.message)
     return { asset: asAsset(asset), document: asDocument(document), units: units.map(asUnit) }
+  }
+
+  async getUnitContext(unitId: string) {
+    const supabase = await createClient()
+    const { data: unit, error } = await supabase.from('knowledge_units').select('*').eq('id', unitId).maybeSingle()
+    if (error) throw new Error(error.message)
+    if (!unit) return null
+    const { data: document, error: documentError } = await supabase.from('knowledge_documents').select('*').eq('id', unit.document_id).maybeSingle()
+    if (documentError) throw new Error(documentError.message)
+    if (!document) return null
+    const { data: asset, error: assetError } = await supabase.from('knowledge_assets').select('*').eq('id', document.asset_id).maybeSingle()
+    if (assetError) throw new Error(assetError.message)
+    if (!asset) return null
+    return { unit: asUnit(unit), document: asDocument(document), asset: asAsset(asset) }
+  }
+
+  async setUnitValidationStatus(unitId: string, status: KnowledgeValidationStatus): Promise<void> {
+    const supabase = await createClient()
+    const { error } = await supabase.from('knowledge_units').update({ validation_status: status }).eq('id', unitId)
+    if (error) throw new Error(error.message)
+  }
+
+  async link(input: { workspaceId: string; assetId?: string | null; unitId?: string | null; relationType: string; targetType: string; targetRef: string; metadata?: Record<string, unknown> }): Promise<void> {
+    const supabase = await createClient()
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+    const userId = claimsData?.claims?.sub
+    if (claimsError || !userId) throw new Error('Authenticated user required')
+    const { error } = await supabase.from('knowledge_links').insert({
+      workspace_id: input.workspaceId,
+      asset_id: input.assetId ?? null,
+      unit_id: input.unitId ?? null,
+      relation_type: input.relationType,
+      target_type: input.targetType,
+      target_ref: input.targetRef,
+      metadata: (input.metadata ?? {}) as Json,
+      created_by: userId,
+    })
+    if (error) throw new Error(error.message)
+  }
+
+  async findTargetRef(input: { workspaceId: string; unitId: string; relationType: string; targetType: string }): Promise<string | null> {
+    const supabase = await createClient()
+    const { data, error } = await supabase.from('knowledge_links')
+      .select('target_ref')
+      .eq('workspace_id', input.workspaceId)
+      .eq('unit_id', input.unitId)
+      .eq('relation_type', input.relationType)
+      .eq('target_type', input.targetType)
+      .maybeSingle()
+    if (error) throw new Error(error.message)
+    return data?.target_ref ?? null
   }
 
   async start(input: { workspaceId: string; assetId: string; stage: 'CAPTURE' | 'TEXT_EXTRACT' | 'NORMALIZE' | 'CLASSIFY' | 'STRUCTURE' | 'CHUNK' | 'ENRICH' | 'INDEX' | 'LINK'; processor: string; processorVersion?: string | null }): Promise<string> {
