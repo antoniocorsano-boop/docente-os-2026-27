@@ -58,7 +58,7 @@ export default async function KnowledgeAssetPage({ params }: PageProps) {
         <div className="knowledgeFlowGrid">
           <section className="knowledgePanel flowPanel originalPanel">
             <div className="knowledgePanelHeading"><div><span className="panelEyebrow">1 · ORIGINALE</span><h2>Contenuto acquisito</h2></div><span className="statusPill neutral">Immutabile</span></div>
-            <pre className="knowledgeText">{asset.originalText ?? 'L’originale è conservato presso il provider indicato dalla provenienza.'}</pre>
+            <pre className="knowledgeText">{asset.originalText ?? (asset.sourceProvider === 'UPLOAD' ? 'L’originale binario è conservato nel bucket privato del workspace.' : 'L’originale è conservato presso il provider indicato dalla provenienza.')}</pre>
           </section>
 
           <section className="knowledgePanel flowPanel normalizedPanel">
@@ -117,7 +117,7 @@ export default async function KnowledgeAssetPage({ params }: PageProps) {
           {chunks.length ? <div className="knowledgeUnits">
             {chunks.map((unit) => (
               <article className="knowledgeUnit" key={unit.id}>
-                <div className="unitHeader"><span className="unitType">{unit.unitType}</span><span className="validationPill">{unit.validationStatus}</span>{unit.confidence !== null ? <small>{Math.round(unit.confidence * 100)}%</small> : null}</div>
+                <div className="unitHeader"><span className="unitType">{unit.unitType}</span>{unit.sourcePage ? <span className="sourcePagePill">Pag. {unit.sourcePage}</span> : null}<span className="validationPill">{unit.validationStatus}</span>{unit.confidence !== null ? <small>{Math.round(unit.confidence * 100)}%</small> : null}</div>
                 {unit.title ? <h3>{unit.title}</h3> : null}
                 <p>{unit.content}</p>
               </article>
