@@ -1,0 +1,13 @@
+{
+  "name": "DOCENTE OS 2026/27",
+  "short_name": "DOCENTE OS",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#0b1f3a",
+  "description": "Sistema operativo personale per la gestione dell'anno scolastico del docente.",
+  "icons": [
+    {"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
