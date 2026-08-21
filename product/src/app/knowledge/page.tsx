@@ -32,8 +32,10 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
           <div><strong>DOCENTE OS</strong><span>{context.academicYear?.label ?? 'Anno da configurare'}</span></div>
         </div>
         <nav className="navList">
+          <Link className="navItem" href="/"><span aria-hidden>⌂</span> Home</Link>
           <Link className="navItem" href="/planner"><span aria-hidden>◎</span> Oggi</Link>
           <Link className="navItem active" href="/knowledge"><span aria-hidden>◇</span> Conoscenza</Link>
+          <Link className="navItem" href="/classi"><span aria-hidden>▦</span> Classi</Link>
         </nav>
         <div className="navFooter"><span className="workspaceDot" aria-hidden /><div><strong>{context.workspace.name}</strong><span>{context.role}</span></div></div>
       </aside>
@@ -133,10 +135,10 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
       </main>
 
       <nav className="bottomNav" aria-label="Navigazione mobile">
+        <Link href="/"><span aria-hidden>⌂</span><small>Home</small></Link>
         <Link href="/planner"><span aria-hidden>◎</span><small>Oggi</small></Link>
         <Link className="active" href="/knowledge"><span aria-hidden>◇</span><small>KB</small></Link>
-        <button type="button" disabled><span aria-hidden>↓</span><small>Inbox</small></button>
-        <button type="button" disabled><span aria-hidden>▤</span><small>Documenti</small></button>
+        <Link href="/classi"><span aria-hidden>▦</span><small>Classi</small></Link>
       </nav>
     </div>
   )

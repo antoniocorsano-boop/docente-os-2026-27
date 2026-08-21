@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import './home.css';
 import './planner/planner-enhancements.css';
 import './knowledge/knowledge.css';
 import './knowledge/knowledge-provenance.css';
