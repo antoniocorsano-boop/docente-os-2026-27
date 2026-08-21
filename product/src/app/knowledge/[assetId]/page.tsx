@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { confirmKnowledgeAction, confirmKnowledgeCandidate, rejectKnowledgeCandidate } from '../actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,6 +18,19 @@ export default async function KnowledgeAssetPage({ params }: PageProps) {
   if (!bundle) notFound()
 
   const { asset, document, units } = bundle
+  const candidates = units.filter((unit) => unit.unitType === 'ACTION' || unit.unitType === 'DEADLINE')
+  const chunks = units.filter((unit) => unit.unitType !== 'ACTION' && unit.unitType !== 'DEADLINE')
+  const taskLinks = new Map<string, string>()
+
+  await Promise.all(candidates.filter((unit) => unit.unitType === 'ACTION').map(async (unit) => {
+    const target = await repository.findTargetRef({
+      workspaceId: context.workspace.id,
+      unitId: unit.id,
+      relationType: 'CREATED_TASK',
+      targetType: 'PLANNER_TASK',
+    })
+    if (target) taskLinks.set(unit.id, target)
+  }))
 
   return (
     <div className="appShell">
@@ -56,17 +70,59 @@ export default async function KnowledgeAssetPage({ params }: PageProps) {
           </section>
         </div>
 
+        <section className="recentKnowledge candidateSection">
+          <div className="sectionHeading"><h2>3 · Candidati operativi</h2><span>{candidates.length}</span></div>
+          <p className="candidateIntro">Sono proposte estratte automaticamente. Nessuna attività viene creata senza conferma.</p>
+          {candidates.length ? <div className="candidateGrid">
+            {candidates.map((unit) => {
+              const linkedTask = taskLinks.get(unit.id)
+              return (
+                <article className={`knowledgeCandidate ${unit.validationStatus.toLowerCase()}`} key={unit.id}>
+                  <div className="candidateHeader">
+                    <div><span className={`candidateType ${unit.unitType.toLowerCase()}`}>{unit.unitType === 'ACTION' ? 'Azione candidata' : 'Scadenza candidata'}</span>{unit.confidence !== null ? <small>Confidenza {Math.round(unit.confidence * 100)}%</small> : null}</div>
+                    <span className={`validationPill ${unit.validationStatus.toLowerCase()}`}>{validationLabel(unit.validationStatus)}</span>
+                  </div>
+                  {unit.title ? <h3>{unit.title}</h3> : null}
+                  <p>{unit.content}</p>
+                  {typeof unit.structuredData.dueDate === 'string' ? <p className="candidateDate">Data associata: <strong>{formatIsoDate(unit.structuredData.dueDate)}</strong></p> : null}
+                  {typeof unit.structuredData.date === 'string' ? <p className="candidateDate">Data rilevata: <strong>{formatIsoDate(unit.structuredData.date)}</strong></p> : null}
+
+                  {linkedTask ? <div className="candidateOutcome"><span>✓</span><div><strong>Task Planner creato</strong><a href="/planner">Apri Planner</a></div></div> : null}
+
+                  {unit.validationStatus === 'AUTO' ? <div className="candidateActions">
+                    {unit.unitType === 'ACTION' ? (
+                      <form action={confirmKnowledgeAction}>
+                        <input type="hidden" name="unitId" value={unit.id} />
+                        <button className="primaryCandidateAction" type="submit">Conferma e crea task</button>
+                      </form>
+                    ) : (
+                      <form action={confirmKnowledgeCandidate}>
+                        <input type="hidden" name="unitId" value={unit.id} />
+                        <button className="primaryCandidateAction" type="submit">Conferma scadenza</button>
+                      </form>
+                    )}
+                    <form action={rejectKnowledgeCandidate}>
+                      <input type="hidden" name="unitId" value={unit.id} />
+                      <button className="secondaryCandidateAction" type="submit">Scarta</button>
+                    </form>
+                  </div> : null}
+                </article>
+              )
+            })}
+          </div> : <p className="emptyLine">Nessuna azione o scadenza candidata rilevata.</p>}
+        </section>
+
         <section className="recentKnowledge unitsSection">
-          <div className="sectionHeading"><h2>3 · Unità di conoscenza</h2><span>{units.length}</span></div>
-          {units.length ? <div className="knowledgeUnits">
-            {units.map((unit) => (
+          <div className="sectionHeading"><h2>4 · Unità di conoscenza</h2><span>{chunks.length}</span></div>
+          {chunks.length ? <div className="knowledgeUnits">
+            {chunks.map((unit) => (
               <article className="knowledgeUnit" key={unit.id}>
                 <div className="unitHeader"><span className="unitType">{unit.unitType}</span><span className="validationPill">{unit.validationStatus}</span>{unit.confidence !== null ? <small>{Math.round(unit.confidence * 100)}%</small> : null}</div>
                 {unit.title ? <h3>{unit.title}</h3> : null}
                 <p>{unit.content}</p>
               </article>
             ))}
-          </div> : <p className="emptyLine">Nessuna unità estratta.</p>}
+          </div> : <p className="emptyLine">Nessuna ulteriore unità estratta.</p>}
         </section>
       </main>
 
@@ -75,6 +131,16 @@ export default async function KnowledgeAssetPage({ params }: PageProps) {
   )
 }
 
+function validationLabel(value: string) {
+  if (value === 'REVIEWED') return 'Confermato'
+  if (value === 'REJECTED') return 'Scartato'
+  return 'Da verificare'
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('it-IT', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Rome' }).format(new Date(value))
+}
+
+function formatIsoDate(value: string) {
+  return new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`))
 }
