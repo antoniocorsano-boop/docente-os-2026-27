@@ -42,36 +42,33 @@ export default function AnnualPlanClient() {
   const [newSection, setNewSection] = useState('')
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<StoredState>
-        const defaults = cloneDefaults()
-        setState({
-          sections: {
-            Prima: parsed.sections?.Prima ?? defaults.sections.Prima,
-            Seconda: parsed.sections?.Seconda ?? defaults.sections.Seconda,
-            Terza: parsed.sections?.Terza ?? defaults.sections.Terza,
-          },
-          progress: parsed.progress ?? {},
-        })
+    const timer = window.setTimeout(() => {
+      try {
+        const raw = window.localStorage.getItem(STORAGE_KEY)
+        if (raw) {
+          const parsed = JSON.parse(raw) as Partial<StoredState>
+          const defaults = cloneDefaults()
+          setState({
+            sections: {
+              Prima: parsed.sections?.Prima ?? defaults.sections.Prima,
+              Seconda: parsed.sections?.Seconda ?? defaults.sections.Seconda,
+              Terza: parsed.sections?.Terza ?? defaults.sections.Terza,
+            },
+            progress: parsed.progress ?? {},
+          })
+        }
+      } catch {
+        setState(cloneDefaults())
       }
-    } catch {
-      setState(cloneDefaults())
-    } finally {
       setHydrated(true)
-    }
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [])
 
   useEffect(() => {
     if (!hydrated) return
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   }, [hydrated, state])
-
-  useEffect(() => {
-    const available = state.sections[grade]
-    if (section && !available.some((item) => item.code === section)) setSection('')
-  }, [grade, section, state.sections])
 
   const blocks = useMemo(() => buildBlocks(grade), [grade])
   const source = CANONICAL_PLAN_SOURCES[grade]
