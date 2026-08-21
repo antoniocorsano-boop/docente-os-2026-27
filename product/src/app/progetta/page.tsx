@@ -41,7 +41,7 @@ export default async function ProgettaPage() {
         <div className="progettaSummary"><div><span>ASSET DI PROGETTAZIONE</span><strong>{total}</strong></div><p>La vista usa soltanto la generazione corrente degli asset già acquisiti nella KB. Gli originali restano immutabili.</p></div>
 
         <section className="planningCoverage" aria-label="Copertura della progettazione per classe">
-          {coverage.map((item) => <div key={item.grade}><span>CLASSE {item.grade.toUpperCase()}</span><strong>{item.programming ? 'Programmazione acquisita' : 'Programmazione mancante'}</strong><small className={item.uda ? 'covered' : ''}>{item.uda} {item.uda === 1 ? 'UDA collegata' : 'UDA collegate'}</small></div>)}
+          {coverage.map((item) => <div key={item.grade}><span>CLASSE {item.grade.toUpperCase()}</span><strong>{item.programming ? 'Programmazione acquisita' : 'Programmazione mancante'}</strong><small className={item.uda ? 'covered' : ''}>{item.uda} {item.uda === 1 ? 'UDA collegata' : 'UDA collegate'}</small><small className={item.materials ? 'covered' : ''}>{item.materials} {item.materials === 1 ? 'pacchetto operativo' : 'pacchetti operativi'}</small></div>)}
         </section>
 
         <section className="progettaGroups" aria-label="Aree di progettazione">

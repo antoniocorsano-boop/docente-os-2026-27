@@ -24,10 +24,11 @@ test('rende esplicita la copertura per classe senza inventare UDA mancanti', () 
   const prima = { asset: { ...item('p1', 'PROGRAMMING').asset, sourceMetadata: { grade: 'prima' } }, document: null }
   const seconda = { asset: { ...item('p2', 'PROGRAMMING').asset, sourceMetadata: { grade: 'seconda' } }, document: null }
   const uda = { asset: { ...item('u1', 'UDA').asset, sourceMetadata: { grade: 'prima' } }, document: null }
+  const material = { asset: { ...item('r1', 'TEACHING_RESOURCE').asset, sourceMetadata: { grade: 'prima' } }, document: null }
 
-  assert.deepEqual(planningCoverage([prima, seconda, uda]), [
-    { grade: 'prima', programming: 1, uda: 1 },
-    { grade: 'seconda', programming: 1, uda: 0 },
-    { grade: 'terza', programming: 0, uda: 0 },
+  assert.deepEqual(planningCoverage([prima, seconda, uda, material]), [
+    { grade: 'prima', programming: 1, uda: 1, materials: 1 },
+    { grade: 'seconda', programming: 1, uda: 0, materials: 0 },
+    { grade: 'terza', programming: 0, uda: 0, materials: 0 },
   ])
 })
