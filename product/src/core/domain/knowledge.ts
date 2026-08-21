@@ -13,6 +13,7 @@ export type KnowledgeAsset = {
   sourceProvider: KnowledgeSourceProvider
   sourceLocator: string | null
   originalName: string | null
+  originalText: string | null
   mimeType: string | null
   byteSize: number | null
   sha256: string | null
@@ -65,6 +66,7 @@ export type CapturedAssetInput = {
   sourceProvider: KnowledgeSourceProvider
   sourceLocator?: string | null
   originalName?: string | null
+  originalText?: string | null
   mimeType?: string | null
   byteSize?: number | null
   sha256?: string | null
