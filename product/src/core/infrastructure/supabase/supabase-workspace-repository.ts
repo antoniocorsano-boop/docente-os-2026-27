@@ -2,8 +2,23 @@ import type {
   CreateAcademicYearInput,
   WorkspaceRepository,
 } from '@/core/application/ports/workspace-repository'
-import type { AcademicYear, WorkspaceContext } from '@/core/domain/workspace'
+import type {
+  AcademicYear,
+  WorkspaceContext,
+  WorkspaceKind,
+  WorkspaceRole,
+} from '@/core/domain/workspace'
 import { createClient } from '@/lib/supabase/server'
+
+function asWorkspaceKind(value: string): WorkspaceKind {
+  if (value === 'PERSONAL' || value === 'SCHOOL') return value
+  throw new Error(`Unsupported workspace kind: ${value}`)
+}
+
+function asWorkspaceRole(value: string): WorkspaceRole {
+  if (value === 'OWNER' || value === 'ADMIN' || value === 'MEMBER') return value
+  throw new Error(`Unsupported workspace role: ${value}`)
+}
 
 export class SupabaseWorkspaceRepository implements WorkspaceRepository {
   async bootstrapPersonalWorkspace(name?: string): Promise<string> {
@@ -16,31 +31,33 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
       throw new Error(error?.message ?? 'Workspace bootstrap failed')
     }
 
-    return data as string
+    return data
   }
 
   async getCurrentContext(): Promise<WorkspaceContext | null> {
     const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+    const userId = claimsData?.claims?.sub
 
-    if (!user) return null
+    if (claimsError || !userId) return null
 
     const { data: membership, error: membershipError } = await supabase
       .from('workspace_memberships')
-      .select('role, workspaces!inner(id, kind, name, owner_user_id)')
-      .eq('user_id', user.id)
+      .select('workspace_id, role')
+      .eq('user_id', userId)
       .limit(1)
       .maybeSingle()
 
     if (membershipError) throw new Error(membershipError.message)
     if (!membership) return null
 
-    const workspaceRow = Array.isArray(membership.workspaces)
-      ? membership.workspaces[0]
-      : membership.workspaces
+    const { data: workspaceRow, error: workspaceError } = await supabase
+      .from('workspaces')
+      .select('id, kind, name, owner_user_id')
+      .eq('id', membership.workspace_id)
+      .maybeSingle()
 
+    if (workspaceError) throw new Error(workspaceError.message)
     if (!workspaceRow) return null
 
     const { data: year, error: yearError } = await supabase
@@ -56,7 +73,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
     return {
       workspace: {
         id: workspaceRow.id,
-        kind: workspaceRow.kind,
+        kind: asWorkspaceKind(workspaceRow.kind),
         name: workspaceRow.name,
         ownerUserId: workspaceRow.owner_user_id,
       },
@@ -70,7 +87,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
             isActive: year.is_active,
           }
         : null,
-      role: membership.role,
+      role: asWorkspaceRole(membership.role),
     }
   }
 
