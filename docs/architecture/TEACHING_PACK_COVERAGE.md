@@ -2,13 +2,13 @@
 
 ## Stato consolidato
 
-La KB contiene 18 pacchetti operativi canonici: 12 già presenti in Drive e sei creati per completare progressivamente le scoperture delle classi prima e seconda. Ogni pacchetto conserva l'identità della fonte originale, viene collegato alle UDA che supporta tramite `SUPPORTS_UDA` e alla programmazione annuale tramite `BELONGS_TO_PROGRAMMING`.
+La KB contiene 23 pacchetti operativi canonici: 12 già presenti in Drive e 11 creati per completare progressivamente le scoperture delle classi prima, seconda e terza. Ogni pacchetto conserva l'identità della fonte originale, viene collegato alle UDA che supporta tramite `SUPPORTS_UDA` e alla programmazione annuale tramite `BELONGS_TO_PROGRAMMING`.
 
 | Classe | Pacchetti | UDA coperte | UDA ancora scoperte |
 |---|---:|---|---|
 | Prima | 6 | `00`, `01`, `02`, `03`, `04`, `05`, `06`, `07` | — |
 | Seconda | 8 | `01`, `02`, `03`, `04`, `05`, `06`, `07`, `08` | — |
-| Terza | 4 | `01`, `02`, `03`, `06` | `04`, `05`, `07`, `08`, `09` |
+| Terza | 9 | `01`, `02`, `03`, `04`, `05`, `06`, `07`, `08`, `09` | — |
 
 ## Registro dei pacchetti
 
@@ -32,6 +32,11 @@ La KB contiene 18 pacchetti operativi canonici: 12 già presenti in Drive e sei 
 | `CAN-PACK-3B` | Terza | `CAN-UDA-3-02` |
 | `CAN-PACK-3C` | Terza | `CAN-UDA-3-03` |
 | `CAN-PACK-3D` | Terza | `CAN-UDA-3-06` |
+| `CAN-PACK-3E` | Terza | `CAN-UDA-3-04` |
+| `CAN-PACK-3F` | Terza | `CAN-UDA-3-05` |
+| `CAN-PACK-3G` | Terza | `CAN-UDA-3-07` |
+| `CAN-PACK-3H` | Terza | `CAN-UDA-3-08` |
+| `CAN-PACK-3I` | Terza | `CAN-UDA-3-09` |
 
 ## Regole applicative
 
@@ -43,9 +48,9 @@ La KB contiene 18 pacchetti operativi canonici: 12 già presenti in Drive e sei 
 
 ## Gate dati verificato
 
-- 18 pacchetti operativi indicizzati;
-- 20 collegamenti pacchetto → UDA;
-- 18 collegamenti pacchetto → programmazione;
-- 46 fonti Drive distinte complessive;
+- 23 pacchetti operativi indicizzati;
+- 25 collegamenti pacchetto → UDA;
+- 23 collegamenti pacchetto → programmazione;
+- 51 fonti Drive distinte complessive;
 - 0 asset senza generazione corrente;
 - 0 puntatori correnti invalidi.
