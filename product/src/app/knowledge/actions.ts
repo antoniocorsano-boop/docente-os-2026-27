@@ -13,6 +13,8 @@ import { SupabaseStorageKnowledgeContentPort } from '@/core/infrastructure/supab
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { createClient } from '@/lib/supabase/server'
 import type { KnowledgeAssetContextInput } from '@/core/domain/knowledge'
+import { buildKnowledgeTaskSourceRef } from '@/core/domain/knowledge-task-source'
+import type { PlannerTaskPriority, PlannerTaskSourceKind } from '@/core/domain/planner-task'
 
 const KNOWLEDGE_BUCKET = 'knowledge-assets'
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024
@@ -142,6 +144,63 @@ export async function updateKnowledgeContext(formData: FormData) {
   redirect(`/knowledge/${assetId}?context=updated`)
 }
 
+export async function createPlannerTaskFromKnowledgeAsset(formData: FormData) {
+  const assetId = stringValue(formData.get('assetId'))
+  if (!assetId) return
+
+  const context = await requireWorkspaceContext()
+  const knowledge = new SupabaseKnowledgeRepository()
+  const bundle = await knowledge.getBundle(context.workspace.id, assetId)
+  if (!bundle || !bundle.asset.currentGenerationId) redirect(`/knowledge/${assetId}?task=unavailable`)
+
+  const currentGeneration = bundle.generations.find((generation) => generation.id === bundle.asset.currentGenerationId)
+  if (!currentGeneration || currentGeneration.status !== 'SUCCEEDED') redirect(`/knowledge/${assetId}?task=unavailable`)
+
+  const sourceRef = buildKnowledgeTaskSourceRef({
+    assetId: bundle.asset.id,
+    generationId: currentGeneration.id,
+    generationNo: currentGeneration.generationNo,
+    unitId: null,
+  })
+  const planner = new SupabasePlannerRepository()
+  const existing = await planner.findBySourceRef(context.workspace.id, sourceRef)
+  if (existing) redirect('/planner')
+
+  const fallbackTitle = bundle.document?.title ?? bundle.asset.originalName ?? 'Attività da contenuto KB'
+  const title = stringValue(formData.get('title'))?.slice(0, 240) ?? fallbackTitle.slice(0, 240)
+  const plannedFor = isoDateValue(formData.get('plannedFor'))
+  const priority = enumValue(formData.get('priority'), PLANNER_PRIORITIES, bundle.asset.contextStatus === 'NEEDS_REVIEW' ? 'HIGH' : 'NORMAL')
+  const task = await planner.create({
+    workspaceId: context.workspace.id,
+    academicYearId: bundle.asset.academicYearId ?? context.academicYear?.id ?? null,
+    title,
+    notes: assetTaskNotes(bundle.asset.disciplines, bundle.asset.classLabels, bundle.asset.reliability, currentGeneration.generationNo),
+    priority,
+    plannedFor,
+    sourceKind: sourceKindFor(bundle.asset.contentCategory),
+    sourceRef,
+  })
+
+  await knowledge.link({
+    workspaceId: context.workspace.id,
+    assetId: bundle.asset.id,
+    relationType: 'CREATED_TASK',
+    targetType: 'PLANNER_TASK',
+    targetRef: task.id,
+    metadata: {
+      generationId: currentGeneration.id,
+      generationNo: currentGeneration.generationNo,
+      reliability: bundle.asset.reliability,
+      disciplines: bundle.asset.disciplines,
+      classLabels: bundle.asset.classLabels,
+    },
+  })
+
+  revalidatePath('/planner')
+  revalidatePath(`/knowledge/${assetId}`)
+  redirect('/planner')
+}
+
 export async function confirmKnowledgeAction(formData: FormData) {
   const unitId = stringValue(formData.get('unitId'))
   if (!unitId) return
@@ -158,6 +217,8 @@ export async function confirmKnowledgeAction(formData: FormData) {
   }
 
   const dueDate = typeof unitContext.unit.structuredData.dueDate === 'string' ? unitContext.unit.structuredData.dueDate : null
+  const generations = await knowledge.listGenerations(unitContext.asset.id)
+  const sourceGeneration = generations.find((generation) => generation.id === unitContext.document.generationId)
   const planner = new SupabasePlannerRepository()
   const task = await planner.create({
     workspaceId: context.workspace.id,
@@ -167,9 +228,14 @@ export async function confirmKnowledgeAction(formData: FormData) {
     priority: priorityFor(dueDate),
     plannedFor: dueDate,
     sourceKind: unitContext.document.documentType === 'CIRCULAR' || unitContext.document.documentType === 'COMMUNICATION' ? 'COMMUNICATION' : 'DOCUMENT',
-    sourceRef: `kb-unit:${unitId}`,
+    sourceRef: buildKnowledgeTaskSourceRef({
+      assetId: unitContext.asset.id,
+      generationId: unitContext.document.generationId,
+      generationNo: sourceGeneration?.generationNo ?? 1,
+      unitId,
+    }),
   })
-  await knowledge.link({ workspaceId: context.workspace.id, unitId, relationType: 'CREATED_TASK', targetType: 'PLANNER_TASK', targetRef: task.id, metadata: { sourceAssetId: unitContext.asset.id } })
+  await knowledge.link({ workspaceId: context.workspace.id, unitId, relationType: 'CREATED_TASK', targetType: 'PLANNER_TASK', targetRef: task.id, metadata: { sourceAssetId: unitContext.asset.id, generationId: unitContext.document.generationId, generationNo: sourceGeneration?.generationNo ?? 1 } })
   await knowledge.setUnitValidationStatus(unitId, 'REVIEWED')
   revalidatePath('/planner')
   revalidatePath('/knowledge')
@@ -258,6 +324,7 @@ function stringValue(value: FormDataEntryValue | null) {
 const CONTENT_CATEGORIES = ['CIRCULAR', 'MODEL', 'PROGRAMMING', 'UDA', 'ASSESSMENT', 'TEACHING_RESOURCE', 'COMMUNICATION', 'OTHER'] as const
 const CONTEXT_STATUSES = ['UNCLASSIFIED', 'REVIEWED', 'NEEDS_REVIEW'] as const
 const RELIABILITIES = ['AUTO', 'VERIFIED', 'TO_VERIFY'] as const
+const PLANNER_PRIORITIES = ['LOW', 'NORMAL', 'HIGH', 'URGENT'] as const satisfies readonly PlannerTaskPriority[]
 
 function nullableString(value: FormDataEntryValue | null) {
   return typeof value === 'string' && value.trim() ? value.trim() : null
@@ -270,6 +337,23 @@ function listValue(value: FormDataEntryValue | null) {
 
 function enumValue<T extends string>(value: FormDataEntryValue | null, allowed: readonly T[], fallback: T): T {
   return typeof value === 'string' && allowed.includes(value as T) ? value as T : fallback
+}
+
+function isoDateValue(value: FormDataEntryValue | null) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
+  return Number.isNaN(Date.parse(`${value}T12:00:00Z`)) ? null : value
+}
+
+function sourceKindFor(category: string): PlannerTaskSourceKind {
+  if (category === 'CIRCULAR' || category === 'COMMUNICATION') return 'COMMUNICATION'
+  if (category === 'PROGRAMMING' || category === 'UDA' || category === 'TEACHING_RESOURCE' || category === 'ASSESSMENT') return 'TEACHING'
+  return 'DOCUMENT'
+}
+
+function assetTaskNotes(disciplines: string[], classLabels: string[], reliability: string, generationNo: number) {
+  const context = [...disciplines, ...classLabels].join(' · ') || 'Contesto professionale non specificato'
+  const verification = reliability === 'VERIFIED' ? 'Fonte verificata' : 'Fonte da verificare'
+  return `Derivato dalla generazione #${generationNo} della base di conoscenza.\n${context}\n${verification}`
 }
 
 function priorityFor(dueDate: string | null) {

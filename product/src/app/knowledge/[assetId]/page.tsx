@@ -2,13 +2,13 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { confirmKnowledgeAction, confirmKnowledgeCandidate, rejectKnowledgeCandidate, reprocessKnowledgeAsset, updateKnowledgeContext } from '../actions'
+import { confirmKnowledgeAction, confirmKnowledgeCandidate, createPlannerTaskFromKnowledgeAsset, rejectKnowledgeCandidate, reprocessKnowledgeAsset, updateKnowledgeContext } from '../actions'
 
 export const dynamic = 'force-dynamic'
 
 type PageProps = {
   params: Promise<{ assetId: string }>
-  searchParams: Promise<{ reprocess?: string; context?: string }>
+  searchParams: Promise<{ reprocess?: string; context?: string; task?: string }>
 }
 
 export default async function KnowledgeAssetPage({ params, searchParams }: PageProps) {
@@ -63,6 +63,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
         {query.reprocess === 'ok' ? <div className="knowledgeFeedback success" role="status">Nuova generazione elaborata e promossa come corrente.</div> : null}
         {query.reprocess === 'failed' ? <div className="knowledgeFeedback error" role="status">La nuova elaborazione non è riuscita. La generazione precedente resta attiva.</div> : null}
         {query.context === 'updated' ? <div className="knowledgeFeedback success" role="status">Contesto professionale aggiornato.</div> : null}
+        {query.task === 'unavailable' ? <div className="knowledgeFeedback error" role="status">L’attività può essere creata solo da una generazione elaborata con successo.</div> : null}
 
         <section className="plannerHeader knowledgeHeader">
           <div><p className="contextLine">{asset.sourceProvider} · {asset.assetKind}</p><h1>{document?.title ?? asset.originalName ?? 'Asset senza titolo'}</h1><p className="dayLine">Acquisito {formatDate(asset.capturedAt)}</p></div>
@@ -88,6 +89,18 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
             <button type="submit">Salva contesto</button>
           </form>
           <p className="contextHint">Separa più discipline o classi con una virgola. La classificazione non modifica l’originale né le generazioni elaborate.</p>
+        </section>
+
+        <section className="knowledgePanel taskCreatorPanel">
+          <div className="knowledgePanelHeading"><div><span className="panelEyebrow">COLLEGAMENTO OPERATIVO</span><h2>Crea attività nel Planner</h2></div><span className="statusPill">{currentGeneration ? `Generazione #${currentGeneration.generationNo}` : 'Non disponibile'}</span></div>
+          <p>La nuova attività conserverà il riferimento a questo asset e alla generazione corrente. Una rielaborazione successiva non ne modificherà la fonte storica.</p>
+          <form action={createPlannerTaskFromKnowledgeAsset} className="taskCreatorForm">
+            <input type="hidden" name="assetId" value={asset.id} />
+            <label><span>Attività</span><input name="title" maxLength={240} defaultValue={`Esamina: ${document?.title ?? asset.originalName ?? 'contenuto KB'}`} required /></label>
+            <label><span>Scadenza</span><input name="plannedFor" type="date" /></label>
+            <label><span>Priorità</span><select name="priority" defaultValue={asset.contextStatus === 'NEEDS_REVIEW' ? 'HIGH' : 'NORMAL'}><option value="NORMAL">Normale</option><option value="HIGH">Alta</option><option value="URGENT">Urgente</option><option value="LOW">Bassa</option></select></label>
+            <button type="submit" disabled={!currentGeneration}>Crea attività</button>
+          </form>
         </section>
 
         <div className="knowledgeFlowGrid">
