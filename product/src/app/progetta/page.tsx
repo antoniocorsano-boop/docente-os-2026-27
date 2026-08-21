@@ -2,8 +2,9 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { groupProgettaItems } from './progetta-model'
+import { groupProgettaItems, planningCoverage } from './progetta-model'
 import './progetta.css'
+import './progetta-coverage.css'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +14,9 @@ export default async function ProgettaPage() {
   if (!context) redirect('/login')
 
   const knowledgeRepository = new SupabaseKnowledgeRepository()
-  const groups = groupProgettaItems(await knowledgeRepository.listRecent(context.workspace.id, 100))
+  const items = await knowledgeRepository.listRecent(context.workspace.id, 100)
+  const groups = groupProgettaItems(items)
+  const coverage = planningCoverage(items)
   const total = groups.reduce((sum, group) => sum + group.items.length, 0)
 
   return (
@@ -37,12 +40,16 @@ export default async function ProgettaPage() {
 
         <div className="progettaSummary"><div><span>ASSET DI PROGETTAZIONE</span><strong>{total}</strong></div><p>La vista usa soltanto la generazione corrente degli asset già acquisiti nella KB. Gli originali restano immutabili.</p></div>
 
+        <section className="planningCoverage" aria-label="Copertura della progettazione per classe">
+          {coverage.map((item) => <div key={item.grade}><span>CLASSE {item.grade.toUpperCase()}</span><strong>{item.programming ? 'Programmazione acquisita' : 'Programmazione mancante'}</strong><small className={item.uda ? 'covered' : ''}>{item.uda} {item.uda === 1 ? 'UDA collegata' : 'UDA collegate'}</small></div>)}
+        </section>
+
         <section className="progettaGroups" aria-label="Aree di progettazione">
           {groups.map((group, index) => <article className="progettaGroup" key={group.key}>
             <header><span>0{index + 1}</span><div><h2>{group.title}</h2><p>{group.description}</p></div><b>{group.items.length}</b></header>
             {group.items.length ? <div className="progettaItems">{group.items.map(({ asset, document }) => <Link href={`/knowledge/${asset.id}`} key={asset.id}>
               <div><strong>{document?.title ?? asset.originalName ?? 'Asset senza titolo'}</strong><span>{document?.summary ?? 'Apri il contenuto e verifica il contesto.'}</span></div>
-              <aside>{asset.classLabels.length ? asset.classLabels.map((label) => <small key={label}>{label}</small>) : <small>Comune</small>}<em>{reliabilityLabel(asset.reliability)}</em></aside>
+              <aside>{asset.classLabels.length ? asset.classLabels.map((label) => <small key={label}>{label}</small>) : <small>{gradeLabel(asset.sourceMetadata.grade)}</small>}<em>{reliabilityLabel(asset.reliability)}</em></aside>
             </Link>)}</div> : <div className="progettaEmpty"><p>Nessun contenuto classificato in questa area.</p><Link href={`/knowledge?category=${categoryFor(group.key)}`}>Vai alla KB <span aria-hidden>→</span></Link></div>}
           </article>)}
         </section>
@@ -64,4 +71,11 @@ function reliabilityLabel(value: string) {
   if (value === 'VERIFIED') return 'Verificato'
   if (value === 'TO_VERIFY') return 'Da verificare'
   return 'Automatico'
+}
+
+function gradeLabel(value: unknown) {
+  if (value === 'prima') return 'Classe prima'
+  if (value === 'seconda') return 'Classe seconda'
+  if (value === 'terza') return 'Classe terza'
+  return 'Comune'
 }
