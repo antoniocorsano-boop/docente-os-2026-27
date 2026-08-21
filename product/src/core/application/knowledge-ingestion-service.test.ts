@@ -9,7 +9,7 @@ import type {
   KnowledgeIngestionLog,
 } from '@/core/application/ports/knowledge-base'
 import type { CapturedAssetInput, KnowledgeAsset, KnowledgeProcessingGeneration } from '@/core/domain/knowledge'
-import { KnowledgeIngestionService } from './knowledge-ingestion-service'
+import { KnowledgeIngestionService } from './knowledge-ingestion-service.ts'
 
 test('Errore OCR: registra FAILED e conserva la generazione corrente', async () => {
   const assets = new MemoryAssets()
