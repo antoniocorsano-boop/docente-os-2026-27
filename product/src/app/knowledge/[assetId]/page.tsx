@@ -23,6 +23,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
   if (!bundle) notFound()
 
   const { asset, document, units, generations } = bundle
+  const driveUrl = asset.sourceProvider === 'DRIVE' && typeof asset.sourceMetadata.driveUrl === 'string' ? asset.sourceMetadata.driveUrl : null
   const currentGeneration = generations.find((generation) => generation.id === asset.currentGenerationId) ?? null
   const candidates = units.filter((unit) => unit.unitType === 'ACTION' || unit.unitType === 'DEADLINE')
   const chunks = units.filter((unit) => unit.unitType !== 'ACTION' && unit.unitType !== 'DEADLINE')
@@ -75,6 +76,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
           <div><span>Generazione</span><strong>{currentGeneration ? `#${currentGeneration.generationNo}` : '—'}</strong></div>
           <div><span>Processore</span><strong>{document?.processingVersion ?? 'Non ancora elaborato'}</strong></div>
         </section>
+        {driveUrl ? <a className="driveSourceLink" href={driveUrl} target="_blank" rel="noreferrer"><span>↗</span><div><strong>Apri l’originale in Google Drive</strong><small>La KB conserva identificativo e revisione della fonte.</small></div></a> : null}
 
         <section className="knowledgePanel contextPanel">
           <div className="knowledgePanelHeading"><div><span className="panelEyebrow">CONTESTO PROFESSIONALE</span><h2>Classificazione dell’asset</h2></div><span className={`validationPill ${asset.contextStatus === 'REVIEWED' ? 'reviewed' : ''}`}>{contextStatusLabel(asset.contextStatus)}</span></div>

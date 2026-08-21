@@ -14,6 +14,7 @@ export interface KnowledgeAssetRepository {
   setProcessingStatus(assetId: string, status: KnowledgeAsset['processingStatus']): Promise<void>
   setCurrentGeneration(assetId: string, generationId: string): Promise<void>
   getById(assetId: string): Promise<KnowledgeAsset | null>
+  findBySource(workspaceId: string, sourceProvider: KnowledgeAsset['sourceProvider'], sourceLocator: string): Promise<KnowledgeAsset | null>
   updateContext(assetId: string, input: KnowledgeAssetContextInput): Promise<void>
 }
 

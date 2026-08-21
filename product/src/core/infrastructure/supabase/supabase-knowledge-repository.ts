@@ -178,6 +178,14 @@ export class SupabaseKnowledgeRepository implements
     return data ? asAsset(data) : null
   }
 
+  async findBySource(workspaceId: string, sourceProvider: KnowledgeAsset['sourceProvider'], sourceLocator: string): Promise<KnowledgeAsset | null> {
+    const supabase = await createClient()
+    const { data, error } = await supabase.from('knowledge_assets').select('*')
+      .eq('workspace_id', workspaceId).eq('source_provider', sourceProvider).eq('source_locator', sourceLocator).maybeSingle()
+    if (error) throw new Error(error.message)
+    return data ? asAsset(data) : null
+  }
+
   async updateContext(assetId: string, input: KnowledgeAssetContextInput): Promise<void> {
     const supabase = await createClient()
     const { error } = await supabase.from('knowledge_assets').update({
