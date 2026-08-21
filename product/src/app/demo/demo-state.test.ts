@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { addTask, commaList, filterAssets, INITIAL_ASSETS, INITIAL_TASKS, toggleTask, updateAssetContext } from './demo-state'
+import { addTask, commaList, createTaskFromAsset, filterAssets, INITIAL_ASSETS, INITIAL_TASKS, toggleTask, updateAssetContext } from './demo-state'
 
 test('aggiunge e completa una attività locale', () => {
   const added = addTask(INITIAL_TASKS, 'Preparare griglia di valutazione')
@@ -21,4 +21,13 @@ test('aggiorna il contesto senza modificare gli altri asset', () => {
 
 test('normalizza gli elenchi separati da virgole', () => {
   assert.deepEqual(commaList('Tecnologia, Educazione civica, Tecnologia'), ['Tecnologia', 'Educazione civica'])
+})
+
+test('crea una sola attività aperta collegata alla generazione dell’asset', () => {
+  const created = createTaskFromAsset(INITIAL_TASKS, INITIAL_ASSETS[2])
+  const linked = created.at(-1)!
+  assert.equal(linked.sourceAssetId, 'asset-3')
+  assert.equal(linked.sourceGeneration, 1)
+  assert.equal(linked.priority, 'Alta')
+  assert.equal(createTaskFromAsset(created, INITIAL_ASSETS[2]), created)
 })

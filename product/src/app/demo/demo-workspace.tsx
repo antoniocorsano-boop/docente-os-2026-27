@@ -2,7 +2,7 @@
 
 import { FormEvent, useDeferredValue, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { addTask, commaList, filterAssets, INITIAL_ASSETS, INITIAL_TASKS, toggleTask, updateAssetContext } from './demo-state'
+import { addTask, commaList, createTaskFromAsset, filterAssets, INITIAL_ASSETS, INITIAL_TASKS, toggleTask, updateAssetContext } from './demo-state'
 
 const CATEGORIES = ['Tutti', 'Programmazione', 'Circolare', 'Risorsa didattica']
 
@@ -13,6 +13,7 @@ export function DemoWorkspace() {
   const [category, setCategory] = useState('Tutti')
   const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState(INITIAL_ASSETS[1].id)
+  const [notice, setNotice] = useState('')
   const deferredQuery = useDeferredValue(query)
   const filteredAssets = useMemo(() => filterAssets(assets, category, deferredQuery), [assets, category, deferredQuery])
   const selected = assets.find((asset) => asset.id === selectedId) ?? assets[0]
@@ -34,6 +35,13 @@ export function DemoWorkspace() {
       disciplines: commaList(String(data.get('disciplines'))),
       classLabels: commaList(String(data.get('classLabels'))),
     }))
+    setNotice('Classificazione aggiornata nella dimostrazione locale.')
+  }
+
+  function planSelectedAsset() {
+    const alreadyOpen = tasks.some((task) => task.sourceAssetId === selected.id && !task.completed)
+    setTasks((current) => createTaskFromAsset(current, selected))
+    setNotice(alreadyOpen ? 'L’attività collegata è già presente nel Planner.' : 'Attività creata nel Planner con riferimento alla generazione corrente.')
   }
 
   return (
@@ -71,6 +79,10 @@ export function DemoWorkspace() {
             <label>Attendibilità<select name="reliability" defaultValue={selected.reliability}><option>Automatica</option><option>Da verificare</option><option>Verificata</option></select></label>
             <button type="submit">Salva classificazione</button>
           </form>
+          <div className="demoContextActions">
+            <button type="button" onClick={planSelectedAsset}>Crea attività nel Planner</button>
+            {notice && <p role="status">{notice}</p>}
+          </div>
           <div className="demoPipeline"><span>Originale immutabile</span><i>→</i><span>Generazione #{selected.generation}</span><i>→</i><span>Documento normalizzato</span><i>→</i><span>Unità KB</span></div>
         </section>
       </main>

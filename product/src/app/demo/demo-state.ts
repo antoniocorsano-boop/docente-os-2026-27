@@ -1,4 +1,4 @@
-export type DemoTask = { id: string; title: string; meta: string; priority: 'Urgente' | 'Alta' | 'Normale'; date: string; completed: boolean }
+export type DemoTask = { id: string; title: string; meta: string; priority: 'Urgente' | 'Alta' | 'Normale'; date: string; completed: boolean; sourceAssetId?: string; sourceGeneration?: number }
 export type DemoAsset = { id: string; title: string; summary: string; category: string; context: string; reliability: string; disciplines: string[]; classLabels: string[]; generation: number }
 
 export const INITIAL_TASKS: DemoTask[] = [
@@ -21,6 +21,22 @@ export function addTask(tasks: DemoTask[], title: string): DemoTask[] {
 
 export function toggleTask(tasks: DemoTask[], id: string): DemoTask[] {
   return tasks.map((task) => task.id === id ? { ...task, completed: !task.completed } : task)
+}
+
+export function createTaskFromAsset(tasks: DemoTask[], asset: DemoAsset): DemoTask[] {
+  const existing = tasks.find((task) => task.sourceAssetId === asset.id && !task.completed)
+  if (existing) return tasks
+
+  return [...tasks, {
+    id: `task-${tasks.length + 1}`,
+    title: `Esamina: ${asset.title}`,
+    meta: `${asset.category} · Generazione #${asset.generation}`,
+    priority: asset.context === 'Da controllare' ? 'Alta' : 'Normale',
+    date: 'Da pianificare',
+    completed: false,
+    sourceAssetId: asset.id,
+    sourceGeneration: asset.generation,
+  }]
 }
 
 export function filterAssets(assets: DemoAsset[], category: string, query: string): DemoAsset[] {
