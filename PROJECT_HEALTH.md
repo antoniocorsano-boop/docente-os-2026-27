@@ -4,7 +4,7 @@ Updated: 2026-08-21
 
 ```text
 STATE: DEPLOY_BLOCKED
-PRIMARY_BLOCKER: Netlify production deployment has not been successfully created/verified from the canonical GitHub source.
+PRIMARY_BLOCKER: production deployment is not yet independently verified as persistent/public from the canonical GitHub source.
 EVIDENCE:
 - canonical repository: antoniocorsano-boop/docente-os-2026-27
 - branch: main
@@ -13,8 +13,11 @@ EVIDENCE:
 - netlify.toml committed on main
 - Netlify connector still reports no current deploy
 - local npx upload path is blocked by runtime/network timeout toward npm registry
-NEXT_ACTION: establish one successful production deployment from main and verify the live URL.
-DONE_WHEN: https://docente-os-2026-27.netlify.app resolves to the current DOCENTE OS v2.1 app and core navigation is verified.
+- Vercel deploy API returned READY for production and assigned deployment/alias URLs
+- subsequent Vercel project/deployment discovery did not persistently resolve that deployment
+- independent HTTP verification from the runtime is blocked by DNS resolution failure
+NEXT_ACTION: obtain one production URL that is both provider-persistent and independently verified to render DOCENTE OS v2.1.
+DONE_WHEN: a stable public URL resolves to the current DOCENTE OS v2.1 app and core navigation is verified.
 ```
 
 ## Current canonical release
@@ -25,6 +28,20 @@ DONE_WHEN: https://docente-os-2026-27.netlify.app resolves to the current DOCENT
 - Source of truth: GitHub `main`
 - Persistent operational data: Google Drive / Gmail / Google Calendar as applicable
 - Browser-local state: localStorage with JSON backup
+
+## Deploy attempts
+
+### Netlify
+- Project exists and is correctly named.
+- Continuous deployment is not yet verified as linked to GitHub.
+- Connector currently reports no current deploy.
+
+### Vercel
+- Production deploy request accepted and returned `READY`.
+- Assigned deployment URL: `https://docente-os-2026-27-815by03qo-antonios-projects-051b8d71.vercel.app`
+- Assigned alias: `https://docente-os-2026-27-antonios-projects-051b8d71.vercel.app`
+- Persistence/public verification remains inconclusive because subsequent provider discovery could not resolve the deployment and local DNS verification failed.
+- Therefore Vercel is recorded as `READY_UNVERIFIED`, not `SHIPPED`.
 
 ## Freeze while DEPLOY_BLOCKED
 
