@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 const entrances = [
   { href: '/planner', index: '01', title: 'Orario', description: 'Apri la giornata, organizza gli impegni e governa le prossime scadenze.', action: 'Vai alla giornata' },
-  { href: '/knowledge?category=PROGRAMMING', index: '02', title: 'Progetta', description: 'Parti dalle fonti, dalla programmazione e dalle unità di conoscenza già contestualizzate.', action: 'Avvia la progettazione' },
+  { href: '/progetta', index: '02', title: 'Progetta', description: 'Parti dalle fonti, dalla programmazione e dalle unità di conoscenza già contestualizzate.', action: 'Avvia la progettazione' },
   { href: '/classi', index: '03', title: 'Classi', description: 'Ritrova materiali e attività attraverso le classi e le sezioni del tuo anno scolastico.', action: 'Apri le classi' },
 ] as const
 
@@ -22,6 +22,7 @@ export default async function HomePage() {
         <nav className="navList">
           <Link className="navItem active" href="/"><span aria-hidden>⌂</span> Home</Link>
           <Link className="navItem" href="/planner"><span aria-hidden>◎</span> Oggi</Link>
+          <Link className="navItem" href="/progetta"><span aria-hidden>✦</span> Progetta</Link>
           <Link className="navItem" href="/knowledge"><span aria-hidden>◇</span> Conoscenza</Link>
           <Link className="navItem" href="/classi"><span aria-hidden>▦</span> Classi</Link>
         </nav>
@@ -44,7 +45,7 @@ export default async function HomePage() {
           <p>Ogni passaggio mantiene provenienza, generazione e validazione umana.</p>
         </section>
       </main>
-      <nav className="bottomNav" aria-label="Navigazione mobile"><Link className="active" href="/"><span aria-hidden>⌂</span><small>Home</small></Link><Link href="/planner"><span aria-hidden>◎</span><small>Oggi</small></Link><Link href="/knowledge"><span aria-hidden>◇</span><small>KB</small></Link><Link href="/classi"><span aria-hidden>▦</span><small>Classi</small></Link></nav>
+      <nav className="bottomNav" aria-label="Navigazione mobile"><Link className="active" href="/"><span aria-hidden>⌂</span><small>Home</small></Link><Link href="/planner"><span aria-hidden>◎</span><small>Oggi</small></Link><Link href="/progetta"><span aria-hidden>✦</span><small>Progetta</small></Link><Link href="/classi"><span aria-hidden>▦</span><small>Classi</small></Link></nav>
     </div>
   )
 }
