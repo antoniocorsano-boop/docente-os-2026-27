@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "tsx --test src/core/application/knowledge-ingestion-service.test.ts src/core/infrastructure/knowledge/file-transformers.test.ts",
+    "test": "tsx --test src/core/application/knowledge-ingestion-service.test.ts src/core/infrastructure/knowledge/file-transformers.test.ts src/app/demo/demo-state.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
