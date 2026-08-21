@@ -3,10 +3,12 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { KnowledgeIngestionService } from '@/core/application/knowledge-ingestion-service'
+import { DocxKnowledgeTransformer, PdfKnowledgeTransformer } from '@/core/infrastructure/knowledge/file-transformers'
 import { PlainTextKnowledgeTransformer } from '@/core/infrastructure/knowledge/plain-text-transformer'
 import { SchoolCommunicationEnrichment } from '@/core/infrastructure/knowledge/school-communication-enrichment'
 import { NativeKnowledgeContentPort, SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
+import { SupabaseStorageKnowledgeContentPort } from '@/core/infrastructure/supabase/supabase-storage-knowledge-content-port'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { createClient } from '@/lib/supabase/server'
 
@@ -74,22 +76,17 @@ export async function uploadKnowledgeFile(formData: FormData) {
     redirect('/knowledge?upload=failed')
   }
 
-  const sourceLocator = `storage:${KNOWLEDGE_BUCKET}/${objectPath}`
   const repository = new SupabaseKnowledgeRepository()
+  const ingestion = buildFileIngestion(repository)
 
-  if (mimeType === 'text/plain' || mimeType === 'text/markdown') {
-    const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes).trim()
-    if (!text) redirect('/knowledge?upload=empty_text')
-
-    const ingestion = buildTextIngestion(repository)
+  try {
     const asset = await ingestion.ingest({
       workspaceId: context.workspace.id,
       academicYearId: context.academicYear?.id ?? null,
       assetKind: 'FILE',
       sourceProvider: 'UPLOAD',
-      sourceLocator,
+      sourceLocator: `storage:${KNOWLEDGE_BUCKET}/${objectPath}`,
       originalName: value.name,
-      originalText: text,
       mimeType,
       byteSize: value.size,
       sourceMetadata: {
@@ -102,29 +99,10 @@ export async function uploadKnowledgeFile(formData: FormData) {
 
     revalidatePath('/knowledge')
     redirect(`/knowledge/${asset.id}`)
+  } catch (error) {
+    console.error('Knowledge file ingestion failed', error)
+    redirect('/knowledge?upload=parse_failed')
   }
-
-  const asset = await repository.capture({
-    workspaceId: context.workspace.id,
-    academicYearId: context.academicYear?.id ?? null,
-    assetKind: 'FILE',
-    sourceProvider: 'UPLOAD',
-    sourceLocator,
-    originalName: value.name,
-    mimeType,
-    byteSize: value.size,
-    sourceMetadata: {
-      captureMode: 'file-upload',
-      storageBucket: KNOWLEDGE_BUCKET,
-      storagePath: objectPath,
-      originalFilename: value.name,
-      transformerStatus: 'PENDING',
-      transformerHint: mimeType === 'application/pdf' ? 'PDF' : 'DOCX',
-    },
-  })
-
-  revalidatePath('/knowledge')
-  redirect(`/knowledge/${asset.id}`)
 }
 
 export async function confirmKnowledgeAction(formData: FormData) {
@@ -217,6 +195,21 @@ function buildTextIngestion(repository: SupabaseKnowledgeRepository) {
     repository,
     new NativeKnowledgeContentPort(),
     [new PlainTextKnowledgeTransformer()],
+    repository,
+    new SchoolCommunicationEnrichment(),
+  )
+}
+
+function buildFileIngestion(repository: SupabaseKnowledgeRepository) {
+  return new KnowledgeIngestionService(
+    repository,
+    repository,
+    new SupabaseStorageKnowledgeContentPort(),
+    [
+      new PlainTextKnowledgeTransformer(),
+      new PdfKnowledgeTransformer(),
+      new DocxKnowledgeTransformer(),
+    ],
     repository,
     new SchoolCommunicationEnrichment(),
   )
