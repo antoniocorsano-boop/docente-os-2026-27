@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b1f3a">
+  <title>Piano annuale · DOCENTE OS</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">DOCENTE OS<small>Anno scolastico 2026/27</small></div>
+    <div class="nav">
+      <button onclick="location.href='index.html'">← Centro operativo</button>
+      <button class="active">▣ Piano annuale</button>
+      <button onclick="window.open('https://docs.google.com/spreadsheets/d/154b5mQdnzaGZgROhhaQtKDVXv0Px2R5h8eI_Qh65IaU/edit','_blank')">▦ Registro Google</button>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="top">
+      <div><button class="mobile" onclick="document.querySelector('.side').classList.toggle('open')">☰</button> <h1 style="display:inline">Piano annuale esecutivo</h1></div>
+      <div class="muted">Tecnologia · 2026/2027</div>
+    </header>
+    <main>
+      <div class="banner"><b>Dal canone all'attuazione reale.</b><div class="muted">33 blocchi da 2 ore per classe. Le sezioni derivate dal 2025/2026 restano provvisorie fino all'assegnazione ufficiale. Nessuna nuova prima viene inventata.</div></div>
+
+      <div class="grid">
+        <div class="card s4">
+          <h3>Contesto</h3>
+          <div class="form">
+            <label>Classe<select id="grade"><option>Prima</option><option>Seconda</option><option>Terza</option></select></label>
+            <label>Sezione<select id="section"></select></label>
+          </div>
+          <div id="sectionInfo" class="muted" style="margin-top:10px"></div>
+          <div class="toolbar"><button onclick="addSection()">＋ Aggiungi sezione locale</button></div>
+        </div>
+        <div class="card s2"><div class="muted">Blocchi svolti</div><div id="kBlocks" class="kpi">0/33</div></div>
+        <div class="card s2"><div class="muted">Ore svolte</div><div id="kHours" class="kpi">0/66</div></div>
+        <div class="card s2"><div class="muted">Prossimo blocco</div><div id="kNext" class="kpi">B01</div></div>
+        <div class="card s2"><div class="muted">Stato sezione</div><div id="kSection" style="margin-top:8px"><span class="status warn">DA CONFERMARE</span></div></div>
+
+        <div class="card s12">
+          <div class="toolbar">
+            <button class="primary" onclick="markNextDone()">Segna svolto il prossimo blocco</button>
+            <button onclick="resetSection()">Azzera avanzamento sezione</button>
+            <button onclick="window.open('https://docs.google.com/spreadsheets/d/154b5mQdnzaGZgROhhaQtKDVXv0Px2R5h8eI_Qh65IaU/edit','_blank')">Apri registro Google</button>
+          </div>
+          <div id="planTable"></div>
+        </div>
+
+        <div class="card s6"><h3>Regola di scorrimento</h3><p class="muted">Un blocco conta come eseguito soltanto quando la lezione è realmente svolta. Se una lezione salta, il blocco resta aperto e passa alla prima lezione utile. Le attività Open Day non creano ore o valutazioni duplicate.</p></div>
+        <div class="card s6"><h3>Dipendenze ancora aperte</h3><div class="row"><b>Sezioni nuove prime</b><span class="status warn">DA CONFERMARE</span></div><div class="row"><b>Assegnazioni 2A/2C · 3A/3C/3E</b><span class="status warn">PROVVISORIE</span></div><div class="row"><b>Orario settimanale</b><span class="status warn">DA INSERIRE</span></div><div class="row"><b>Data Open Day</b><span class="status warn">DA CONFERMARE</span></div></div>
+      </div>
+    </main>
+    <div class="footer">DOCENTE OS · CAN-PLAN runtime · dati di avanzamento salvati solo nel browser</div>
+  </div>
+</div>
+<script src="planner-annuale.js"></script>
+</body>
+</html>
