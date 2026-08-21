@@ -2,6 +2,7 @@ import type {
   CapturedAssetInput,
   KnowledgeAsset,
   KnowledgeDocument,
+  KnowledgeProcessingGeneration,
   KnowledgeUnit,
   NormalizedKnowledge,
   TransformableAsset,
@@ -10,11 +11,19 @@ import type {
 export interface KnowledgeAssetRepository {
   capture(input: CapturedAssetInput): Promise<KnowledgeAsset>
   setProcessingStatus(assetId: string, status: KnowledgeAsset['processingStatus']): Promise<void>
+  setCurrentGeneration(assetId: string, generationId: string): Promise<void>
   getById(assetId: string): Promise<KnowledgeAsset | null>
 }
 
+export interface KnowledgeGenerationRepository {
+  startGeneration(asset: KnowledgeAsset): Promise<KnowledgeProcessingGeneration>
+  succeedGeneration(generationId: string, processorLabel: string): Promise<void>
+  failGeneration(generationId: string, error: unknown): Promise<void>
+  listGenerations(assetId: string): Promise<KnowledgeProcessingGeneration[]>
+}
+
 export interface KnowledgeDocumentRepository {
-  upsertNormalized(asset: KnowledgeAsset, normalized: NormalizedKnowledge): Promise<KnowledgeDocument>
+  upsertNormalized(asset: KnowledgeAsset, generationId: string, normalized: NormalizedKnowledge): Promise<KnowledgeDocument>
   replaceUnits(document: KnowledgeDocument, normalized: NormalizedKnowledge): Promise<KnowledgeUnit[]>
 }
 
