@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import './planner/planner-enhancements.css';
 
 export const metadata: Metadata = {
   title: 'DOCENTE OS 2026/27',
