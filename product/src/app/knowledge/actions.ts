@@ -15,12 +15,7 @@ import { createClient } from '@/lib/supabase/server'
 const KNOWLEDGE_BUCKET = 'knowledge-assets'
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-const ALLOWED_UPLOAD_MIMES = new Set([
-  'application/pdf',
-  DOCX_MIME,
-  'text/plain',
-  'text/markdown',
-])
+const ALLOWED_UPLOAD_MIMES = new Set(['application/pdf', DOCX_MIME, 'text/plain', 'text/markdown'])
 
 export async function captureKnowledgeNote(formData: FormData) {
   const titleValue = formData.get('title')
@@ -63,13 +58,11 @@ export async function uploadKnowledgeFile(formData: FormData) {
   const objectPath = `${context.workspace.id}/${crypto.randomUUID()}-${safeName}`
   const supabase = await createClient()
 
-  const { error: uploadError } = await supabase.storage
-    .from(KNOWLEDGE_BUCKET)
-    .upload(objectPath, bytes, {
-      contentType: mimeType,
-      cacheControl: '3600',
-      upsert: false,
-    })
+  const { error: uploadError } = await supabase.storage.from(KNOWLEDGE_BUCKET).upload(objectPath, bytes, {
+    contentType: mimeType,
+    cacheControl: '3600',
+    upsert: false,
+  })
 
   if (uploadError) {
     console.error('Knowledge asset upload failed', uploadError.message)
@@ -96,7 +89,6 @@ export async function uploadKnowledgeFile(formData: FormData) {
         originalFilename: value.name,
       },
     })
-
     revalidatePath('/knowledge')
     redirect(`/knowledge/${asset.id}`)
   } catch (error) {
@@ -105,33 +97,43 @@ export async function uploadKnowledgeFile(formData: FormData) {
   }
 }
 
+export async function reprocessKnowledgeAsset(formData: FormData) {
+  const assetId = stringValue(formData.get('assetId'))
+  if (!assetId) return
+  const context = await requireWorkspaceContext()
+  const repository = new SupabaseKnowledgeRepository()
+  const asset = await repository.getById(assetId)
+  if (!asset || asset.workspaceId !== context.workspace.id) return
+
+  const ingestion = asset.sourceProvider === 'UPLOAD' ? buildFileIngestion(repository) : buildTextIngestion(repository)
+  try {
+    await ingestion.reprocess(assetId)
+    revalidatePath('/knowledge')
+    revalidatePath(`/knowledge/${assetId}`)
+    redirect(`/knowledge/${assetId}?reprocess=ok`)
+  } catch (error) {
+    console.error('Knowledge reprocessing failed', error)
+    revalidatePath(`/knowledge/${assetId}`)
+    redirect(`/knowledge/${assetId}?reprocess=failed`)
+  }
+}
+
 export async function confirmKnowledgeAction(formData: FormData) {
   const unitId = stringValue(formData.get('unitId'))
   if (!unitId) return
-
   const context = await requireWorkspaceContext()
   const knowledge = new SupabaseKnowledgeRepository()
   const unitContext = await knowledge.getUnitContext(unitId)
-  if (!unitContext || unitContext.unit.workspaceId !== context.workspace.id) return
-  if (unitContext.unit.unitType !== 'ACTION') return
+  if (!unitContext || unitContext.unit.workspaceId !== context.workspace.id || unitContext.unit.unitType !== 'ACTION') return
 
-  const existingTaskId = await knowledge.findTargetRef({
-    workspaceId: context.workspace.id,
-    unitId,
-    relationType: 'CREATED_TASK',
-    targetType: 'PLANNER_TASK',
-  })
-
+  const existingTaskId = await knowledge.findTargetRef({ workspaceId: context.workspace.id, unitId, relationType: 'CREATED_TASK', targetType: 'PLANNER_TASK' })
   if (existingTaskId) {
     await knowledge.setUnitValidationStatus(unitId, 'REVIEWED')
     revalidatePath(`/knowledge/${unitContext.asset.id}`)
     redirect('/planner')
   }
 
-  const dueDate = typeof unitContext.unit.structuredData.dueDate === 'string'
-    ? unitContext.unit.structuredData.dueDate
-    : null
-
+  const dueDate = typeof unitContext.unit.structuredData.dueDate === 'string' ? unitContext.unit.structuredData.dueDate : null
   const planner = new SupabasePlannerRepository()
   const task = await planner.create({
     workspaceId: context.workspace.id,
@@ -140,22 +142,11 @@ export async function confirmKnowledgeAction(formData: FormData) {
     notes: `Derivato da ${unitContext.document.title ?? 'contenuto KB'}\n\n${unitContext.unit.content}`,
     priority: priorityFor(dueDate),
     plannedFor: dueDate,
-    sourceKind: unitContext.document.documentType === 'CIRCULAR' || unitContext.document.documentType === 'COMMUNICATION'
-      ? 'COMMUNICATION'
-      : 'DOCUMENT',
+    sourceKind: unitContext.document.documentType === 'CIRCULAR' || unitContext.document.documentType === 'COMMUNICATION' ? 'COMMUNICATION' : 'DOCUMENT',
     sourceRef: `kb-unit:${unitId}`,
   })
-
-  await knowledge.link({
-    workspaceId: context.workspace.id,
-    unitId,
-    relationType: 'CREATED_TASK',
-    targetType: 'PLANNER_TASK',
-    targetRef: task.id,
-    metadata: { sourceAssetId: unitContext.asset.id },
-  })
+  await knowledge.link({ workspaceId: context.workspace.id, unitId, relationType: 'CREATED_TASK', targetType: 'PLANNER_TASK', targetRef: task.id, metadata: { sourceAssetId: unitContext.asset.id } })
   await knowledge.setUnitValidationStatus(unitId, 'REVIEWED')
-
   revalidatePath('/planner')
   revalidatePath('/knowledge')
   revalidatePath(`/knowledge/${unitContext.asset.id}`)
@@ -165,13 +156,11 @@ export async function confirmKnowledgeAction(formData: FormData) {
 export async function rejectKnowledgeCandidate(formData: FormData) {
   const unitId = stringValue(formData.get('unitId'))
   if (!unitId) return
-
   const context = await requireWorkspaceContext()
   const knowledge = new SupabaseKnowledgeRepository()
   const unitContext = await knowledge.getUnitContext(unitId)
   if (!unitContext || unitContext.unit.workspaceId !== context.workspace.id) return
   if (unitContext.unit.unitType !== 'ACTION' && unitContext.unit.unitType !== 'DEADLINE') return
-
   await knowledge.setUnitValidationStatus(unitId, 'REJECTED')
   revalidatePath(`/knowledge/${unitContext.asset.id}`)
 }
@@ -179,18 +168,17 @@ export async function rejectKnowledgeCandidate(formData: FormData) {
 export async function confirmKnowledgeCandidate(formData: FormData) {
   const unitId = stringValue(formData.get('unitId'))
   if (!unitId) return
-
   const context = await requireWorkspaceContext()
   const knowledge = new SupabaseKnowledgeRepository()
   const unitContext = await knowledge.getUnitContext(unitId)
   if (!unitContext || unitContext.unit.workspaceId !== context.workspace.id) return
-
   await knowledge.setUnitValidationStatus(unitId, 'REVIEWED')
   revalidatePath(`/knowledge/${unitContext.asset.id}`)
 }
 
 function buildTextIngestion(repository: SupabaseKnowledgeRepository) {
   return new KnowledgeIngestionService(
+    repository,
     repository,
     repository,
     new NativeKnowledgeContentPort(),
@@ -204,12 +192,9 @@ function buildFileIngestion(repository: SupabaseKnowledgeRepository) {
   return new KnowledgeIngestionService(
     repository,
     repository,
+    repository,
     new SupabaseStorageKnowledgeContentPort(),
-    [
-      new PlainTextKnowledgeTransformer(),
-      new PdfKnowledgeTransformer(),
-      new DocxKnowledgeTransformer(),
-    ],
+    [new PlainTextKnowledgeTransformer(), new PdfKnowledgeTransformer(), new DocxKnowledgeTransformer()],
     repository,
     new SchoolCommunicationEnrichment(),
   )
@@ -252,9 +237,7 @@ function priorityFor(dueDate: string | null) {
 }
 
 function currentRomeDate() {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).formatToParts(new Date())
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
   const value = Object.fromEntries(parts.map((part) => [part.type, part.value]))
   return `${value.year}-${value.month}-${value.day}`
 }
