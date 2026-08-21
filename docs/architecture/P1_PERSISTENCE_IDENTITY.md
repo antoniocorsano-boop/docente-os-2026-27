@@ -1,6 +1,6 @@
 # P1 — Persistence & Identity
 
-Status: LIVE_SUPABASE_CONNECTED / AUTH_FLOW_IMPLEMENTED / AUTH_E2E_PENDING
+Status: LIVE_SUPABASE_CONNECTED / AUTH_FLOW_IMPLEMENTED / VERCEL_DEPLOY_READY / AUTH_E2E_PENDING
 
 ## Scope
 
@@ -17,7 +17,8 @@ P1 introduces the product persistence and identity foundation without coupling t
 - protected `/workspace` page
 - automatic idempotent PERSONAL workspace bootstrap after first confirmed sign-in
 - automatic active academic year `2026/2027` bootstrap when absent
-- environment template
+- environment template including production site URL
+- canonical Vercel deployment guide for the `product/` subdirectory
 - domain models for Workspace and AcademicYear
 - WorkspaceRepository application port
 - SupabaseWorkspaceRepository infrastructure adapter
@@ -54,6 +55,20 @@ P1 introduces the product persistence and identity foundation without coupling t
 - only remaining advisor warning is the intentional authenticated bootstrap RPC;
 - database currently contains zero Auth users, so authenticated isolation tests cannot yet be completed.
 
+## Deployment preparation
+
+Canonical application root: `product/`.
+
+The repository contains `docs/deployment/VERCEL_PRODUCT_DEPLOY.md` with the import contract, runtime variables and release gate.
+
+The required client-visible variables are limited to:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_SITE_URL`
+
+No secret/service-role key is required by the product runtime.
+
 ## Auth deployment configuration still required
 
 These are hosted Supabase Auth settings rather than SQL migrations:
@@ -68,16 +83,17 @@ These are hosted Supabase Auth settings rather than SQL migrations:
 1. migrations apply cleanly to an empty database — PASS;
 2. unauthenticated reads/writes fail — STRUCTURALLY ENFORCED / E2E PENDING;
 3. passwordless sign-in flow exists — PASS IN REPOSITORY;
-4. authenticated user can bootstrap exactly one PERSONAL workspace — PENDING FIRST REAL SIGN-IN;
-5. repeated bootstrap is idempotent — PENDING FIRST REAL SIGN-IN;
-6. user A cannot read user B workspace data — PENDING TWO AUTH USERS;
-7. one workspace cannot have two active academic years — DB INVARIANT PRESENT;
-8. Next.js typecheck, lint and build pass with Supabase dependencies — CI VERIFICATION PENDING;
-9. no service-role/secret key exists in client-visible environment variables or repository history — PASS BY DESIGN.
+4. Vercel product deployment contract exists — PASS;
+5. authenticated user can bootstrap exactly one PERSONAL workspace — PENDING FIRST REAL SIGN-IN;
+6. repeated bootstrap is idempotent — PENDING FIRST REAL SIGN-IN;
+7. user A cannot read user B workspace data — PENDING TWO AUTH USERS;
+8. one workspace cannot have two active academic years — DB INVARIANT PRESENT;
+9. Next.js typecheck, lint and build pass with Supabase dependencies — CI VERIFICATION PENDING;
+10. no service-role/secret key exists in client-visible environment variables or repository history — PASS BY DESIGN.
 
 ## Next action
 
-Deploy `product/` to a stable Next.js host, configure Supabase Auth Site URL / redirects / templates, perform the first real magic-link sign-in, then execute the P1 E2E RLS/bootstrap tests.
+Import the existing GitHub repository into Vercel with Root Directory `product/`, set the three public runtime variables, obtain the stable production URL, configure Supabase Auth Site URL / redirects / templates, perform the first real magic-link sign-in, then execute the P1 E2E RLS/bootstrap tests.
 
 ## Next vertical slice after P1
 
