@@ -13,8 +13,12 @@ export async function requestMagicLink(formData: FormData) {
   }
 
   const headerStore = await headers()
-  const requestOrigin = headerStore.get('origin')
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? requestOrigin
+  const requestOrigin = safeOrigin(headerStore.get('origin'))
+  const forwardedHost = headerStore.get('x-forwarded-host') ?? headerStore.get('host')
+  const forwardedProtocol = headerStore.get('x-forwarded-proto') ?? 'https'
+  const proxyOrigin = forwardedHost ? safeOrigin(`${forwardedProtocol}://${forwardedHost}`) : null
+  const configuredOrigin = safeOrigin(process.env.NEXT_PUBLIC_APP_URL ?? null)
+  const appUrl = requestOrigin ?? proxyOrigin ?? configuredOrigin
 
   if (!appUrl) {
     throw new Error('NEXT_PUBLIC_APP_URL is required when request origin is unavailable')
@@ -38,4 +42,14 @@ export async function requestMagicLink(formData: FormData) {
   }
 
   redirect('/login?sent=1')
+}
+
+function safeOrigin(value: string | null) {
+  if (!value) return null
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.origin : null
+  } catch {
+    return null
+  }
 }
