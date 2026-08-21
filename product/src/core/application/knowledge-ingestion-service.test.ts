@@ -31,6 +31,25 @@ test('Errore OCR: registra FAILED e conserva la generazione corrente', async () 
   assert.equal(assets.statusUpdates, 0)
 })
 
+test('Drive: la stessa identità sorgente non crea un secondo asset', async () => {
+  const assets = new MemoryAssets()
+  assets.asset = { ...assets.asset, sourceProvider: 'DRIVE', sourceLocator: 'drive:file-1' }
+  let transformed = false
+  const service = new KnowledgeIngestionService(
+    assets,
+    new MemoryGenerations(),
+    noDocuments,
+    emptyContent,
+    [{ supports: () => true, async transform() { transformed = true; throw new Error('non previsto') } }],
+    noLog,
+  )
+
+  const result = await service.ingest({ workspaceId: assets.asset.workspaceId, assetKind: 'FILE', sourceProvider: 'DRIVE', sourceLocator: 'drive:file-1' })
+
+  assert.equal(result.id, assets.asset.id)
+  assert.equal(transformed, false)
+})
+
 class MemoryAssets implements KnowledgeAssetRepository {
   currentGenerationUpdates = 0
   statusUpdates = 0
@@ -46,6 +65,9 @@ class MemoryAssets implements KnowledgeAssetRepository {
   async setProcessingStatus() { this.statusUpdates += 1 }
   async setCurrentGeneration() { this.currentGenerationUpdates += 1 }
   async getById() { return this.asset }
+  async findBySource(_workspaceId: string, _sourceProvider: KnowledgeAsset['sourceProvider'], sourceLocator: string) {
+    return sourceLocator === this.asset.sourceLocator ? this.asset : null
+  }
   async updateContext() {}
 }
 
