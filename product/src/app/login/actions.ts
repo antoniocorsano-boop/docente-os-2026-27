@@ -30,6 +30,9 @@ export async function requestMagicLink(formData: FormData) {
 
   if (error) {
     console.error('Magic-link request failed', error.code)
+    if (error.code === 'over_email_send_rate_limit' || error.status === 429) {
+      redirect('/login?error=email_rate_limited')
+    }
     redirect('/login?error=auth_request_failed')
   }
 
