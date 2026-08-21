@@ -31,6 +31,32 @@ create index if not exists idx_planner_tasks_workspace_planned
   on public.planner_tasks(workspace_id, planned_for)
   where planned_for is not null;
 
+create or replace function private.enforce_planner_task_invariants()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if tg_op = 'UPDATE' then
+    if new.workspace_id <> old.workspace_id then
+      raise exception 'planner task workspace_id is immutable';
+    end if;
+    if new.created_by <> old.created_by then
+      raise exception 'planner task created_by is immutable';
+    end if;
+    new.created_at := old.created_at;
+  end if;
+
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+create trigger planner_tasks_enforce_invariants
+before update on public.planner_tasks
+for each row execute function private.enforce_planner_task_invariants();
+
 alter table public.planner_tasks enable row level security;
 
 create policy planner_tasks_select_member
