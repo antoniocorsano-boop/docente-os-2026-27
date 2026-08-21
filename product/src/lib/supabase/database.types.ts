@@ -10,9 +10,9 @@ export type Database = {
         Relationships: []
       }
       knowledge_assets: {
-        Row: { id: string; workspace_id: string; academic_year_id: string | null; asset_kind: string; source_provider: string; source_locator: string | null; original_name: string | null; mime_type: string | null; byte_size: number | null; sha256: string | null; processing_status: string; source_metadata: Json; captured_at: string; created_by: string; created_at: string; updated_at: string }
-        Insert: { id?: string; workspace_id: string; academic_year_id?: string | null; asset_kind: string; source_provider: string; source_locator?: string | null; original_name?: string | null; mime_type?: string | null; byte_size?: number | null; sha256?: string | null; processing_status?: string; source_metadata?: Json; captured_at?: string; created_by: string; created_at?: string; updated_at?: string }
-        Update: { academic_year_id?: string | null; original_name?: string | null; mime_type?: string | null; byte_size?: number | null; processing_status?: string; source_metadata?: Json; captured_at?: string; updated_at?: string }
+        Row: { id: string; workspace_id: string; academic_year_id: string | null; asset_kind: string; source_provider: string; source_locator: string | null; original_name: string | null; original_text: string | null; mime_type: string | null; byte_size: number | null; sha256: string | null; processing_status: string; source_metadata: Json; captured_at: string; created_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; workspace_id: string; academic_year_id?: string | null; asset_kind: string; source_provider: string; source_locator?: string | null; original_name?: string | null; original_text?: string | null; mime_type?: string | null; byte_size?: number | null; sha256?: string | null; processing_status?: string; source_metadata?: Json; captured_at?: string; created_by: string; created_at?: string; updated_at?: string }
+        Update: { academic_year_id?: string | null; original_name?: string | null; original_text?: string | null; mime_type?: string | null; byte_size?: number | null; processing_status?: string; source_metadata?: Json; captured_at?: string; updated_at?: string }
         Relationships: []
       }
       knowledge_documents: {
