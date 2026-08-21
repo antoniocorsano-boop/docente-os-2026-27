@@ -4,6 +4,7 @@ export type KnowledgeProcessingStatus = 'CAPTURED' | 'NORMALIZED' | 'INDEXED' | 
 export type KnowledgeDocumentType = 'CIRCULAR' | 'TEMPLATE' | 'ATTESTATION' | 'TEACHING' | 'COMMUNICATION' | 'GENERAL'
 export type KnowledgeUnitType = 'CHUNK' | 'ENTITY' | 'DATE' | 'DEADLINE' | 'ACTION' | 'PERSON' | 'CLASS' | 'TOPIC' | 'RULE'
 export type KnowledgeValidationStatus = 'AUTO' | 'REVIEWED' | 'REJECTED'
+export type KnowledgeGenerationStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED'
 
 export type KnowledgeAsset = {
   id: string
@@ -19,15 +20,30 @@ export type KnowledgeAsset = {
   sha256: string | null
   processingStatus: KnowledgeProcessingStatus
   sourceMetadata: Record<string, unknown>
+  currentGenerationId: string | null
   capturedAt: string
   createdBy: string
   createdAt: string
   updatedAt: string
 }
 
+export type KnowledgeProcessingGeneration = {
+  id: string
+  assetId: string
+  workspaceId: string
+  generationNo: number
+  status: KnowledgeGenerationStatus
+  processorLabel: string | null
+  startedAt: string
+  finishedAt: string | null
+  errorMessage: string | null
+  createdAt: string
+}
+
 export type KnowledgeDocument = {
   id: string
   assetId: string
+  generationId: string
   workspaceId: string
   title: string | null
   documentType: KnowledgeDocumentType
