@@ -10,12 +10,21 @@ export default async function WorkspacePage() {
   const userId = claimsData.claims.sub
   const { data: memberships, error: membershipError } = await supabase
     .from('workspace_memberships')
-    .select('workspace_id, role, workspaces(id, name, kind)')
+    .select('workspace_id, role')
     .eq('user_id', userId)
 
   if (membershipError || !memberships?.length) redirect('/login?error=workspace_missing')
 
   const workspaceId = memberships[0].workspace_id
+
+  const { data: workspace, error: workspaceError } = await supabase
+    .from('workspaces')
+    .select('id, name, kind')
+    .eq('id', workspaceId)
+    .maybeSingle()
+
+  if (workspaceError || !workspace) redirect('/login?error=workspace_missing')
+
   const { data: year } = await supabase
     .from('academic_years')
     .select('label, starts_on, ends_on')
@@ -27,7 +36,7 @@ export default async function WorkspacePage() {
     <main className="shell">
       <section className="panel">
         <p className="eyebrow">DOCENTE OS</p>
-        <h1>{memberships[0].workspaces?.name ?? 'Il mio spazio docente'}</h1>
+        <h1>{workspace.name}</h1>
         <p className="muted">Workspace personale autenticato e protetto da Row Level Security.</p>
         <dl className="facts">
           <div><dt>Ruolo</dt><dd>{memberships[0].role}</dd></div>
