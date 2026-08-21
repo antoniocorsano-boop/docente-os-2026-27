@@ -9,7 +9,12 @@ export type ProgettaGroup = {
   items: ProgettaItem[]
 }
 
-export type PlanningCoverage = { grade: 'prima' | 'seconda' | 'terza'; programming: number; uda: number }
+export type PlanningCoverage = {
+  grade: 'prima' | 'seconda' | 'terza'
+  programming: number
+  uda: number
+  materials: number
+}
 
 export function groupProgettaItems(items: ProgettaItem[]): ProgettaGroup[] {
   return [
@@ -39,5 +44,9 @@ export function planningCoverage(items: ProgettaItem[]): PlanningCoverage[] {
     grade,
     programming: items.filter(({ asset }) => asset.contentCategory === 'PROGRAMMING' && asset.sourceMetadata.grade === grade).length,
     uda: items.filter(({ asset }) => asset.contentCategory === 'UDA' && asset.sourceMetadata.grade === grade).length,
+    materials: items.filter(({ asset }) =>
+      ['TEACHING_RESOURCE', 'MODEL', 'ASSESSMENT'].includes(asset.contentCategory)
+      && asset.sourceMetadata.grade === grade,
+    ).length,
   }))
 }
