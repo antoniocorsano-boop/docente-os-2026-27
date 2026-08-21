@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
@@ -30,8 +31,8 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
           <div><strong>DOCENTE OS</strong><span>{context.academicYear?.label ?? 'Anno da configurare'}</span></div>
         </div>
         <nav className="navList">
-          <a className="navItem" href="/planner"><span aria-hidden>◎</span> Oggi</a>
-          <a className="navItem active" href="/knowledge"><span aria-hidden>◇</span> Conoscenza</a>
+          <Link className="navItem" href="/planner"><span aria-hidden>◎</span> Oggi</Link>
+          <Link className="navItem active" href="/knowledge"><span aria-hidden>◇</span> Conoscenza</Link>
         </nav>
         <div className="navFooter"><span className="workspaceDot" aria-hidden /><div><strong>{context.workspace.name}</strong><span>{context.role}</span></div></div>
       </aside>
@@ -39,7 +40,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
       <main className="workSurface knowledgeSurface">
         <header className="mobileHeader">
           <div><span className="mobileEyebrow">DOCENTE OS</span><strong>Conoscenza</strong></div>
-          <a className="iconButton knowledgeBack" href="/planner" aria-label="Torna al Planner">←</a>
+          <Link className="iconButton knowledgeBack" href="/planner" aria-label="Torna al Planner">←</Link>
         </header>
 
         <section className="plannerHeader knowledgeHeader">
@@ -75,9 +76,9 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
                   <input name="file" type="file" required accept=".pdf,.docx,.txt,.md,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
                   <span className="fileDropIcon" aria-hidden>↑</span>
                   <strong>PDF, DOCX, TXT o Markdown</strong>
-                  <small>TXT/MD vengono trasformati subito. PDF/DOCX vengono conservati integralmente e messi in coda al parser.</small>
+                  <small>L’originale viene salvato nel bucket privato e il testo viene estratto, normalizzato e indicizzato automaticamente.</small>
                 </label>
-                <button type="submit">Carica nella KB</button>
+                <button type="submit">Carica e trasforma</button>
               </form>
             </div>
           </section>
@@ -92,11 +93,11 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
               <div className="knowledgeResults">
                 <p className="resultsLabel">{results.length} risultati per “{query}”</p>
                 {results.length ? results.map(({ document, unit }) => (
-                  <a className="knowledgeResult" key={unit?.id ?? document.id} href={`/knowledge/${document.assetId}`}>
+                  <Link className="knowledgeResult" key={unit?.id ?? document.id} href={`/knowledge/${document.assetId}`}>
                     <strong>{document.title ?? 'Senza titolo'}</strong>
                     <span>{unit?.content ?? document.summary ?? 'Apri il documento'}</span>
                     <small>{unit?.unitType ?? document.documentType}</small>
-                  </a>
+                  </Link>
                 )) : <p className="emptyLine">Nessuna corrispondenza nella KB.</p>}
               </div>
             ) : <>
@@ -114,19 +115,19 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
           <div className="sectionHeading"><h2>Asset recenti</h2><span>{recent.length}</span></div>
           {recent.length ? <div className="knowledgeAssetList">
             {recent.map(({ asset, document }) => (
-              <a key={asset.id} className="knowledgeAssetRow" href={`/knowledge/${asset.id}`}>
+              <Link key={asset.id} className="knowledgeAssetRow" href={`/knowledge/${asset.id}`}>
                 <div className="assetIcon">{asset.assetKind === 'NOTE' ? 'N' : fileIcon(asset.mimeType)}</div>
-                <div className="assetMain"><strong>{document?.title ?? asset.originalName ?? 'Asset senza titolo'}</strong><span>{document?.summary ?? asset.originalText?.slice(0, 150) ?? pendingAssetLabel(asset.mimeType, asset.processingStatus)}</span></div>
+                <div className="assetMain"><strong>{document?.title ?? asset.originalName ?? 'Asset senza titolo'}</strong><span>{document?.summary ?? asset.originalText?.slice(0, 150) ?? assetStatusLabel(asset.processingStatus)}</span></div>
                 <div className="assetMeta"><span className={`processingPill ${asset.processingStatus.toLowerCase()}`}>{asset.processingStatus}</span><small>{formatDate(asset.capturedAt)}</small></div>
-              </a>
+              </Link>
             ))}
           </div> : <p className="emptyLine">La Knowledge Base è vuota. Cattura il primo contenuto.</p>}
         </section>
       </main>
 
       <nav className="bottomNav" aria-label="Navigazione mobile">
-        <a href="/planner"><span aria-hidden>◎</span><small>Oggi</small></a>
-        <a className="active" href="/knowledge"><span aria-hidden>◇</span><small>KB</small></a>
+        <Link href="/planner"><span aria-hidden>◎</span><small>Oggi</small></Link>
+        <Link className="active" href="/knowledge"><span aria-hidden>◇</span><small>KB</small></Link>
         <button type="button" disabled><span aria-hidden>↓</span><small>Inbox</small></button>
         <button type="button" disabled><span aria-hidden>▤</span><small>Documenti</small></button>
       </nav>
@@ -142,6 +143,7 @@ function uploadFeedback(code?: string) {
     unsupported: 'Formato non supportato. Usa PDF, DOCX, TXT o Markdown.',
     failed: 'Il caricamento non è riuscito. Riprova.',
     empty_text: 'Il file di testo non contiene contenuto indicizzabile.',
+    parse_failed: 'L’originale è stato conservato, ma la trasformazione automatica non è riuscita. Il file resta disponibile per una nuova elaborazione.',
   }
   return messages[code] ?? null
 }
@@ -152,10 +154,9 @@ function fileIcon(mimeType: string | null) {
   return 'F'
 }
 
-function pendingAssetLabel(mimeType: string | null, status: string) {
-  if (status === 'CAPTURED' && (mimeType === 'application/pdf' || mimeType?.includes('wordprocessingml'))) {
-    return 'Originale conservato · trasformazione in attesa del parser'
-  }
+function assetStatusLabel(status: string) {
+  if (status === 'FAILED') return 'Originale conservato · trasformazione da ripetere'
+  if (status === 'INDEXED') return 'Asset indicizzato nella Knowledge Base'
   return 'Asset acquisito nella Knowledge Base'
 }
 
