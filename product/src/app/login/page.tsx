@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requestMagicLink } from './actions'
 
+export const dynamic = 'force-dynamic'
+
 type LoginPageProps = {
   searchParams: Promise<{ sent?: string; error?: string }>
 }
