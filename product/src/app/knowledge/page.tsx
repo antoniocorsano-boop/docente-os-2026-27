@@ -34,6 +34,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
         <nav className="navList">
           <Link className="navItem" href="/"><span aria-hidden>⌂</span> Home</Link>
           <Link className="navItem" href="/planner"><span aria-hidden>◎</span> Oggi</Link>
+          <Link className="navItem" href="/progetta"><span aria-hidden>✦</span> Progetta</Link>
           <Link className="navItem active" href="/knowledge"><span aria-hidden>◇</span> Conoscenza</Link>
           <Link className="navItem" href="/classi"><span aria-hidden>▦</span> Classi</Link>
         </nav>
@@ -137,7 +138,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
       <nav className="bottomNav" aria-label="Navigazione mobile">
         <Link href="/"><span aria-hidden>⌂</span><small>Home</small></Link>
         <Link href="/planner"><span aria-hidden>◎</span><small>Oggi</small></Link>
-        <Link className="active" href="/knowledge"><span aria-hidden>◇</span><small>KB</small></Link>
+        <Link href="/progetta"><span aria-hidden>✦</span><small>Progetta</small></Link>
         <Link href="/classi"><span aria-hidden>▦</span><small>Classi</small></Link>
       </nav>
     </div>
