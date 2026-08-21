@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
+export const dynamic = 'force-dynamic'
+
 export default async function WorkspacePage() {
   const supabase = await createClient()
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
@@ -21,7 +23,7 @@ export default async function WorkspacePage() {
     .from('workspaces')
     .select('id, name, kind')
     .eq('id', workspaceId)
-    .maybeSingle()
+    .single()
 
   if (workspaceError || !workspace) redirect('/login?error=workspace_missing')
 
