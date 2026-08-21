@@ -3,21 +3,29 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
+  const code = request.nextUrl.searchParams.get('code')
   const tokenHash = request.nextUrl.searchParams.get('token_hash')
   const type = request.nextUrl.searchParams.get('type') as EmailOtpType | null
   const redirectTo = request.nextUrl.clone()
   redirectTo.search = ''
 
-  if (!tokenHash || !type) {
+  const supabase = await createClient()
+
+  let authError: Error | null = null
+
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    authError = error
+  } else if (tokenHash && type) {
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
+    authError = error
+  } else {
     redirectTo.pathname = '/login'
     redirectTo.searchParams.set('error', 'missing_token')
     return NextResponse.redirect(redirectTo)
   }
 
-  const supabase = await createClient()
-  const { error: verifyError } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
-
-  if (verifyError) {
+  if (authError) {
     redirectTo.pathname = '/login'
     redirectTo.searchParams.set('error', 'invalid_token')
     return NextResponse.redirect(redirectTo)
