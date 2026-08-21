@@ -5,7 +5,11 @@ import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supa
 import {
   completePlannerTask,
   createPlannerTask,
+  movePlannerTaskToday,
+  movePlannerTaskTomorrow,
+  movePlannerTaskWeek,
   reopenPlannerTask,
+  unschedulePlannerTask,
   waitPlannerTask,
 } from './actions'
 
@@ -88,19 +92,41 @@ export default async function PlannerPage() {
           <p>{todayCount === 0 ? 'Giornata libera da attività pianificate.' : todayCount <= 5 ? 'Carico di oggi contenuto.' : 'Giornata densa: valuta cosa rinviare.'}</p>
         </section>
 
-        <form action={createPlannerTask} className="quickCapture">
-          <span className="capturePlus" aria-hidden>＋</span>
-          <label className="srOnly" htmlFor="new-task">Nuova attività</label>
-          <input id="new-task" name="title" type="text" maxLength={240} placeholder="Aggiungi un’attività per oggi…" required />
-          <button type="submit">Aggiungi</button>
+        <form action={createPlannerTask} className="quickCapture advancedCapture">
+          <div className="captureMain">
+            <span className="capturePlus" aria-hidden>＋</span>
+            <label className="srOnly" htmlFor="new-task">Nuova attività</label>
+            <input id="new-task" name="title" type="text" maxLength={240} placeholder="Aggiungi un’attività…" required />
+            <button type="submit">Aggiungi</button>
+          </div>
+          <div className="captureOptions" aria-label="Opzioni nuova attività">
+            <label>
+              <span>Quando</span>
+              <select name="destination" defaultValue="today">
+                <option value="today">Oggi</option>
+                <option value="tomorrow">Domani</option>
+                <option value="week">Questa settimana</option>
+                <option value="undated">Senza data</option>
+              </select>
+            </label>
+            <label>
+              <span>Priorità</span>
+              <select name="priority" defaultValue="NORMAL">
+                <option value="NORMAL">Normale</option>
+                <option value="HIGH">Alta</option>
+                <option value="URGENT">Urgente</option>
+                <option value="LOW">Bassa</option>
+              </select>
+            </label>
+          </div>
         </form>
 
         <div className="taskSections">
-          <TaskSection title="Da fare ora" tone="critical" tasks={sections.now} />
-          <TaskSection title="Oggi" tasks={sections.today} />
-          <TaskSection title="Questa settimana" tasks={sections.week} />
-          <TaskSection title="In attesa" tone="waiting" tasks={sections.waiting} />
-          <TaskSection title="Senza data" tone="muted" tasks={sections.undated} />
+          <TaskSection title="Da fare ora" tone="critical" tasks={sections.now} today={today} />
+          <TaskSection title="Oggi" tasks={sections.today} today={today} />
+          <TaskSection title="Questa settimana" tasks={sections.week} today={today} />
+          <TaskSection title="In attesa" tone="waiting" tasks={sections.waiting} today={today} />
+          <TaskSection title="Senza data" tone="muted" tasks={sections.undated} today={today} />
         </div>
       </main>
 
@@ -117,10 +143,12 @@ export default async function PlannerPage() {
 function TaskSection({
   title,
   tasks,
+  today,
   tone = 'default',
 }: {
   title: string
   tasks: PlannerTask[]
+  today: string
   tone?: 'default' | 'critical' | 'waiting' | 'muted'
 }) {
   return (
@@ -131,7 +159,7 @@ function TaskSection({
       </div>
       {tasks.length ? (
         <div className="taskList">
-          {tasks.map((task) => <TaskRow key={task.id} task={task} />)}
+          {tasks.map((task) => <TaskRow key={task.id} task={task} today={today} />)}
         </div>
       ) : (
         <p className="emptyLine">Nessuna attività in questa sezione.</p>
@@ -140,12 +168,14 @@ function TaskSection({
   )
 }
 
-function TaskRow({ task }: { task: PlannerTask }) {
+function TaskRow({ task, today }: { task: PlannerTask; today: string }) {
   const dateLabel = task.dueAt
     ? `Scade ${formatShortDate(task.dueAt)}`
     : task.plannedFor
       ? formatPlannedDate(task.plannedFor)
       : null
+
+  const tomorrow = addDays(today, 1)
 
   return (
     <article className="taskRow">
@@ -164,14 +194,34 @@ function TaskRow({ task }: { task: PlannerTask }) {
           {task.priority === 'HIGH' ? <span className="priorityChip high">Alta</span> : null}
           {task.status === 'WAITING' ? <span className="waitingChip">In attesa</span> : null}
         </div>
+        {task.status === 'OPEN' ? (
+          <div className="taskInlineActions" aria-label={`Azioni per ${task.title}`}>
+            {task.plannedFor !== today ? <MoveButton action={movePlannerTaskToday} taskId={task.id} label="Oggi" /> : null}
+            {task.plannedFor !== tomorrow ? <MoveButton action={movePlannerTaskTomorrow} taskId={task.id} label="Domani" /> : null}
+            <MoveButton action={movePlannerTaskWeek} taskId={task.id} label="Settimana" />
+            {task.plannedFor ? <MoveButton action={unschedulePlannerTask} taskId={task.id} label="Senza data" /> : null}
+            <MoveButton action={waitPlannerTask} taskId={task.id} label="Attendi" />
+          </div>
+        ) : null}
       </div>
-      {task.status === 'OPEN' ? (
-        <form action={waitPlannerTask}>
-          <input type="hidden" name="taskId" value={task.id} />
-          <button className="rowAction" type="submit">Attendi</button>
-        </form>
-      ) : null}
     </article>
+  )
+}
+
+function MoveButton({
+  action,
+  taskId,
+  label,
+}: {
+  action: (formData: FormData) => Promise<void>
+  taskId: string
+  label: string
+}) {
+  return (
+    <form action={action}>
+      <input type="hidden" name="taskId" value={taskId} />
+      <button className="inlineAction" type="submit">{label}</button>
+    </form>
   )
 }
 
