@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
@@ -36,14 +37,14 @@ export default async function KnowledgeAssetPage({ params }: PageProps) {
     <div className="appShell">
       <aside className="navRail" aria-label="Navigazione principale">
         <div className="brandLockup"><span className="brandMark">D</span><div><strong>DOCENTE OS</strong><span>{context.academicYear?.label ?? 'Anno da configurare'}</span></div></div>
-        <nav className="navList"><a className="navItem" href="/planner"><span aria-hidden>◎</span> Oggi</a><a className="navItem active" href="/knowledge"><span aria-hidden>◇</span> Conoscenza</a></nav>
+        <nav className="navList"><Link className="navItem" href="/planner"><span aria-hidden>◎</span> Oggi</Link><Link className="navItem active" href="/knowledge"><span aria-hidden>◇</span> Conoscenza</Link></nav>
         <div className="navFooter"><span className="workspaceDot" aria-hidden /><div><strong>{context.workspace.name}</strong><span>{context.role}</span></div></div>
       </aside>
 
       <main className="workSurface knowledgeSurface detailSurface">
-        <header className="mobileHeader"><div><span className="mobileEyebrow">KNOWLEDGE BASE</span><strong>Dettaglio asset</strong></div><a className="iconButton knowledgeBack" href="/knowledge" aria-label="Torna alla KB">←</a></header>
+        <header className="mobileHeader"><div><span className="mobileEyebrow">KNOWLEDGE BASE</span><strong>Dettaglio asset</strong></div><Link className="iconButton knowledgeBack" href="/knowledge" aria-label="Torna alla KB">←</Link></header>
 
-        <div className="detailTopbar"><a href="/knowledge">← Torna alla Conoscenza</a><span className={`processingPill ${asset.processingStatus.toLowerCase()}`}>{asset.processingStatus}</span></div>
+        <div className="detailTopbar"><Link href="/knowledge">← Torna alla Conoscenza</Link><span className={`processingPill ${asset.processingStatus.toLowerCase()}`}>{asset.processingStatus}</span></div>
         <section className="plannerHeader knowledgeHeader">
           <div><p className="contextLine">{asset.sourceProvider} · {asset.assetKind}</p><h1>{document?.title ?? asset.originalName ?? 'Asset senza titolo'}</h1><p className="dayLine">Acquisito {formatDate(asset.capturedAt)}</p></div>
         </section>
@@ -87,7 +88,7 @@ export default async function KnowledgeAssetPage({ params }: PageProps) {
                   {typeof unit.structuredData.dueDate === 'string' ? <p className="candidateDate">Data associata: <strong>{formatIsoDate(unit.structuredData.dueDate)}</strong></p> : null}
                   {typeof unit.structuredData.date === 'string' ? <p className="candidateDate">Data rilevata: <strong>{formatIsoDate(unit.structuredData.date)}</strong></p> : null}
 
-                  {linkedTask ? <div className="candidateOutcome"><span>✓</span><div><strong>Task Planner creato</strong><a href="/planner">Apri Planner</a></div></div> : null}
+                  {linkedTask ? <div className="candidateOutcome"><span>✓</span><div><strong>Task Planner creato</strong><Link href="/planner">Apri Planner</Link></div></div> : null}
 
                   {unit.validationStatus === 'AUTO' ? <div className="candidateActions">
                     {unit.unitType === 'ACTION' ? (
@@ -126,7 +127,7 @@ export default async function KnowledgeAssetPage({ params }: PageProps) {
         </section>
       </main>
 
-      <nav className="bottomNav" aria-label="Navigazione mobile"><a href="/planner"><span aria-hidden>◎</span><small>Oggi</small></a><a className="active" href="/knowledge"><span aria-hidden>◇</span><small>KB</small></a><button type="button" disabled><span aria-hidden>↓</span><small>Inbox</small></button><button type="button" disabled><span aria-hidden>▤</span><small>Documenti</small></button></nav>
+      <nav className="bottomNav" aria-label="Navigazione mobile"><Link href="/planner"><span aria-hidden>◎</span><small>Oggi</small></Link><Link className="active" href="/knowledge"><span aria-hidden>◇</span><small>KB</small></Link><button type="button" disabled><span aria-hidden>↓</span><small>Inbox</small></button><button type="button" disabled><span aria-hidden>▤</span><small>Documenti</small></button></nav>
     </div>
   )
 }
