@@ -69,6 +69,18 @@ export type Database = {
         Update: { user_id?: string; display_name?: string | null; created_at?: string; updated_at?: string }
         Relationships: []
       }
+      teacher_workspace_settings: {
+        Row: { id: string; workspace_id: string; academic_year_id: string; user_id: string; teacher_display_name: string; school_name: string; school_code: string | null; school_city: string | null; school_type: string; daily_period_count: number; school_day_start: string; default_period_minutes: number; teaching_weekdays: number[]; created_at: string; updated_at: string }
+        Insert: { id?: string; workspace_id: string; academic_year_id: string; user_id: string; teacher_display_name?: string; school_name?: string; school_code?: string | null; school_city?: string | null; school_type?: string; daily_period_count?: number; school_day_start?: string; default_period_minutes?: number; teaching_weekdays?: number[]; created_at?: string; updated_at?: string }
+        Update: { teacher_display_name?: string; school_name?: string; school_code?: string | null; school_city?: string | null; school_type?: string; daily_period_count?: number; school_day_start?: string; default_period_minutes?: number; teaching_weekdays?: number[]; updated_at?: string }
+        Relationships: []
+      }
+      teaching_disciplines: {
+        Row: { id: string; workspace_id: string; academic_year_id: string; name: string; is_active: boolean; created_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; workspace_id: string; academic_year_id: string; name: string; is_active?: boolean; created_by: string; created_at?: string; updated_at?: string }
+        Update: { name?: string; is_active?: boolean; updated_at?: string }
+        Relationships: []
+      }
       workspace_memberships: {
         Row: { workspace_id: string; user_id: string; role: string; created_at: string }
         Insert: { workspace_id: string; user_id: string; role: string; created_at?: string }
