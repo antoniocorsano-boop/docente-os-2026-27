@@ -6,6 +6,7 @@ import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supa
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { buildTaskAwareKnowledgeHref } from '@/core/presentation/task-continuity'
 import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes } from '../class-workspace-model'
 import '../classi.css'
 import '../class-workspace-operational.css'
@@ -39,6 +40,7 @@ export default async function ClassWorkspacePage({ params }: { params: Promise<{
   const focusPlanningHref = learningFocus.nextBlock ? `${planningHref}&block=${encodeURIComponent(learningFocus.nextBlock.id)}&uda=${encodeURIComponent(learningFocus.nextBlock.uda)}&pack=${encodeURIComponent(learningFocus.nextBlock.pack)}#focus-operativo` : planningHref
   const annualPlanHref = `/piano-annuale?section=${encodeURIComponent(summary.sectionId)}`
   const knowledgeHref = `/knowledge?classLabel=${encodeURIComponent(summary.compactLabel)}`
+  const classHref = `/classi/${encodeURIComponent(summary.sectionId)}`
 
   return (
     <AppShell active="classes" academicYearLabel={context.academicYear.label} workspaceName={settings.schoolName || context.workspace.name} role={context.role} contentClassName="classesWorkspaceSurface">
@@ -53,7 +55,7 @@ export default async function ClassWorkspacePage({ params }: { params: Promise<{
 
       <article className="classWorkspaceCard classMaterialsCard">
         <div><h2>Materiali pertinenti</h2><p>Solo contenuti collegati esplicitamente alla fase corrente, al grado o a questa sezione.</p></div>
-        {learningFocus.materials.length ? <div className="classMaterialList">{learningFocus.materials.map((material) => <Link href={`/knowledge/${material.assetId}`} key={material.assetId}><div><strong>{material.title}</strong><span>{material.categoryLabel}</span></div><small>{material.relevanceLabel}</small></Link>)}</div> : <div className="classMaterialsEmpty"><span>Nessun materiale esplicitamente collegato a questa fase.</span><Link href={knowledgeHref}>Cerca nei materiali</Link></div>}
+        {learningFocus.materials.length ? <div className="classMaterialList">{learningFocus.materials.map((material) => <Link href={buildTaskAwareKnowledgeHref(material.assetId, { mode: 'class', returnTo: classHref, sectionId: summary.sectionId, blockId: learningFocus.nextBlock?.id })} key={material.assetId}><div><strong>{material.title}</strong><span>{material.categoryLabel}</span></div><small>{material.relevanceLabel}</small></Link>)}</div> : <div className="classMaterialsEmpty"><span>Nessun materiale esplicitamente collegato a questa fase.</span><Link href={knowledgeHref}>Cerca nei materiali</Link></div>}
       </article>
 
       <details className="humanTaskSecondary">
