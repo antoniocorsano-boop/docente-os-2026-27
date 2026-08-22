@@ -6,9 +6,11 @@ import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/sup
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { addTeachingAssignment, updateTeachingAssignment, updateTimetableDraft } from './actions'
+import { updateTimetableDraft } from './actions'
 import TimetableGrid from './TimetableGrid'
+import TimetableTodayFocus from './TimetableTodayFocus'
 import './timetable.css'
+import './cockpit.css'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,7 +32,6 @@ export default async function TimetablePage() {
     timetableRepository.list(context.workspace.id, context.academicYear.id, context.academicYear.startsOn),
   ])
 
-  const activeDisciplines = disciplines.filter((item) => item.isActive)
   const sectionById = new Map(annualSnapshot.sections.map((section) => [section.id, section]))
   const disciplineById = new Map(disciplines.map((discipline) => [discipline.id, discipline]))
   const slotsByAssignment = new Map<string, number>()
@@ -42,27 +43,30 @@ export default async function TimetablePage() {
     )
   }
 
-  const configuredPairs = new Set(timetable.assignments.map((assignment) => `${assignment.sectionId}:${assignment.disciplineId}`))
-  const availablePairCount = annualSnapshot.sections.length * activeDisciplines.length - configuredPairs.size
   const periodPresets = buildPeriods(settings.schoolDayStart, settings.defaultPeriodMinutes, settings.dailyPeriodCount)
   const weekdayOptions = TIMETABLE_WEEKDAYS.filter((day) => settings.teachingWeekdays.includes(day.value))
   const totalAssignedMinutes = timetable.assignments.reduce((sum, assignment) => sum + assignment.weeklyMinutes, 0)
   const totalScheduledMinutes = timetable.slots
     .filter((slot) => slot.slotKind === 'LESSON')
     .reduce((sum, slot) => sum + slotDurationMinutes(slot.startTime, slot.endTime), 0)
-  const gridAssignments = timetable.assignments.map((assignment) => {
-    const section = sectionById.get(assignment.sectionId)
-    const discipline = disciplineById.get(assignment.disciplineId)
-    return {
-      id: assignment.id,
-      label: `${section ? sectionLabel(section.grade, section.sectionCode) : 'Sezione'} · ${discipline?.name ?? 'Disciplina'}`,
-      status: assignment.status,
-      weeklyMinutes: assignment.weeklyMinutes,
-      scheduledMinutes: slotsByAssignment.get(assignment.id) ?? 0,
-    }
-  })
+  const confirmedAssignments = timetable.assignments.filter((assignment) => assignment.status === 'CONFIRMED').length
+  const coverageDelta = totalAssignedMinutes - totalScheduledMinutes
+  const gridAssignments = timetable.assignments
+    .map((assignment) => {
+      const section = sectionById.get(assignment.sectionId)
+      const discipline = disciplineById.get(assignment.disciplineId)
+      return {
+        id: assignment.id,
+        label: `${section ? sectionLabel(section.grade, section.sectionCode) : 'Sezione'} · ${discipline?.name ?? 'Disciplina'}`,
+        status: assignment.status,
+        weeklyMinutes: assignment.weeklyMinutes,
+        scheduledMinutes: slotsByAssignment.get(assignment.id) ?? 0,
+      }
+    })
+    .sort((a, b) => Number(b.status === 'CONFIRMED') - Number(a.status === 'CONFIRMED') || a.label.localeCompare(b.label))
 
   const draftLabel = versionStatusLabel(timetable.draftVersion.status)
+  const days = weekdayOptions.map((day) => ({ value: day.value, label: day.label, short: day.short }))
 
   return (
     <AppShell
@@ -75,70 +79,80 @@ export default async function TimetablePage() {
       <section className="timetableHero">
         <div>
           <p>ORARIO · {context.academicYear.label}</p>
-          <h1>La tua settimana, in griglia</h1>
-          <span>Qui definisci la struttura settimanale ricorrente. L’Orario funziona autonomamente: Calendario, date reali ed eccezioni restano separati e saranno composti solo quando serve.</span>
+          <h1>Il tuo orario</h1>
+          <span>La settimana tipo che usi ogni giorno. Oggi viene messo in primo piano, mentre date, eventi ed eccezioni restano fuori dall’Orario.</span>
         </div>
-        <Link className="secondaryButton" href="/impostazioni">Modifica impostazioni</Link>
+        <div className="timetableHeroActions">
+          <Link className="primary" href="/impostazioni#cattedra">Cattedra</Link>
+          <Link href="/impostazioni#organizzazione">Organizzazione</Link>
+        </div>
       </section>
 
       <section className="timetableMetrics" aria-label="Riepilogo dell’orario">
-        <article><span>Cattedra</span><strong>{timetable.assignments.length}</strong><small>abbinamenti</small></article>
+        <article><span>Cattedra</span><strong>{confirmedAssignments}/{timetable.assignments.length}</strong><small>associazioni confermate</small></article>
         <article><span>Monte ore</span><strong>{formatHours(totalAssignedMinutes)}</strong><small>settimanali previste</small></article>
-        <article><span>In settimana</span><strong>{formatHours(totalScheduledMinutes)}</strong><small>lezioni già inserite</small></article>
-        <article><span>{draftLabel}</span><strong>{timetable.slots.length}</strong><small>attività in griglia</small></article>
+        <article><span>In griglia</span><strong>{formatHours(totalScheduledMinutes)}</strong><small>lezioni ricorrenti</small></article>
+        <article><span>Copertura</span><strong>{coverageDelta === 0 ? 'Allineata' : formatHours(Math.abs(coverageDelta))}</strong><small>{coverageDelta > 0 ? 'ancora da collocare' : coverageDelta < 0 ? 'oltre il monte ore' : 'monte ore coperto'}</small></article>
       </section>
 
       <section className="timetableCard timetableGridCard" aria-labelledby="grid-title">
-        <div className="timetableCardHeading"><span>01</span><div><h2 id="grid-title">Orario settimanale</h2><p>Passa da Settimana a Giorno. Seleziona una cella vuota per aggiungere un’attività ricorrente oppure una cella occupata per modificarla.</p></div><b className="draftBadge">{draftLabel}</b></div>
+        <div className="timetableCardHeading"><span>01</span><div><h2 id="grid-title">Settimana tipo</h2><p>La griglia è il centro operativo dell’Orario. Seleziona una cella per aggiungere o modificare una lezione o un altro impegno ricorrente.</p></div><b className="draftBadge">{draftLabel}</b></div>
+        <TimetableTodayFocus days={days} slots={timetable.slots} assignments={gridAssignments} />
         <TimetableGrid
           versionId={timetable.draftVersion.id}
-          days={weekdayOptions.map((day) => ({ value: day.value, label: day.label, short: day.short }))}
+          days={days}
           periods={periodPresets}
           slots={timetable.slots}
           assignments={gridAssignments}
         />
       </section>
 
-      <section className="timetableCard timetableConfigCard" aria-labelledby="assignments-title">
-        <div className="timetableCardHeading"><span>02</span><div><h2 id="assignments-title">Cattedra</h2><p>Associa ogni classe o sezione alla disciplina e indica quante ore settimanali prevedi. DOCENTE OS le confronterà con quelle inserite in griglia.</p></div><b>{availablePairCount > 0 ? `${availablePairCount} combinazioni disponibili` : 'Completa'}</b></div>
-        {annualSnapshot.sections.length && activeDisciplines.length ? (
-          <form action={addTeachingAssignment} className="timetableForm assignmentForm">
-            <label><span>Classe / sezione</span><select name="sectionId" required>{annualSnapshot.sections.map((section) => <option key={section.id} value={section.id}>{sectionLabel(section.grade, section.sectionCode)} · {statusLabel(section.status)}</option>)}</select></label>
-            <label><span>Disciplina</span><select name="disciplineId" required>{activeDisciplines.map((discipline) => <option key={discipline.id} value={discipline.id}>{discipline.name}</option>)}</select></label>
-            <label><span>Minuti a settimana</span><input name="weeklyMinutes" type="number" min="30" max="2400" step="5" defaultValue="120" required /></label>
-            <label className="wideField"><span>Nota o riferimento</span><input name="sourceNote" maxLength={1000} placeholder="Es. assegnazione provvisoria; orario da confermare" /></label>
-            <button className="timetablePrimaryButton" type="submit">Aggiungi alla cattedra</button>
+      <section className="timetableCard timetableCoverageCard" aria-labelledby="coverage-title">
+        <div className="timetableCoverageHeader">
+          <div className="timetableCardHeading"><span>02</span><div><h2 id="coverage-title">Copertura della cattedra</h2><p>Qui controlli soltanto se le ore della cattedra sono state distribuite nella settimana. La cattedra si modifica nelle Impostazioni.</p></div></div>
+          <Link href="/impostazioni#cattedra">Gestisci cattedra</Link>
+        </div>
+
+        {gridAssignments.length ? (
+          <div className="timetableCoverageList">
+            {gridAssignments.map((assignment) => {
+              const delta = assignment.weeklyMinutes - assignment.scheduledMinutes
+              return (
+                <article className="timetableCoverageItem" key={assignment.id}>
+                  <div className="timetableCoverageIdentity">
+                    <strong>{assignment.label}<span className={`timetableCoverageStatus ${assignment.status === 'CONFIRMED' ? 'confirmed' : ''}`}>{assignment.status === 'CONFIRMED' ? 'Confermata' : 'Da confermare'}</span></strong>
+                    <span>{formatHours(assignment.weeklyMinutes)} previste</span>
+                  </div>
+                  <div className="timetableCoverageValue">
+                    <strong>{formatHours(assignment.scheduledMinutes)} in griglia</strong>
+                    <span className={delta === 0 ? 'ok' : delta < 0 ? 'over' : ''}>{delta === 0 ? 'Allineata' : delta > 0 ? `Mancano ${formatHours(delta)}` : `Eccesso ${formatHours(Math.abs(delta))}`}</span>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="timetableEmpty"><strong>Prima configura la cattedra</strong><span>Per inserire lezioni nella settimana tipo servono almeno una classe e una disciplina associate.</span><Link href="/impostazioni#cattedra">Configura la cattedra</Link></div>
+        )}
+      </section>
+
+      <details className="timetableVersionDetails">
+        <summary><div><strong>Versione dell’orario · {timetable.draftVersion.label}</strong><span>{draftLabel} · prevista dal {formatDate(timetable.draftVersion.effectiveFrom)}</span></div></summary>
+        <div className="timetableVersionDetailsBody">
+          <form action={updateTimetableDraft} className="timetableForm versionForm">
+            <input type="hidden" name="versionId" value={timetable.draftVersion.id} />
+            <label><span>Nome della bozza</span><input name="label" defaultValue={timetable.draftVersion.label} maxLength={160} required /></label>
+            <label><span>Prevista dal</span><input name="effectiveFrom" type="date" defaultValue={timetable.draftVersion.effectiveFrom} min={context.academicYear.startsOn} max={context.academicYear.endsOn} required /></label>
+            <label><span>Da dove deriva</span><select name="sourceKind" defaultValue={timetable.draftVersion.sourceKind}><option value="MANUAL">Inserimento manuale</option><option value="INSTITUTION_DOCUMENT">Documento istituzionale</option><option value="IMPORT">Importazione</option></select></label>
+            <label className="wideField"><span>Riferimento della fonte</span><input name="sourceRef" defaultValue={timetable.draftVersion.sourceRef ?? ''} maxLength={1000} placeholder="Opzionale: circolare, file, nota…" /></label>
+            <button className="timetablePrimaryButton" type="submit">Salva versione</button>
           </form>
-        ) : <div className="timetableEmpty"><strong>Completa prima le Impostazioni</strong><span>Per costruire la cattedra servono almeno una classe o sezione e una disciplina attiva.</span><Link href="/impostazioni">Apri Impostazioni</Link></div>}
+        </div>
+      </details>
 
-        {timetable.assignments.length ? <div className="assignmentList">{timetable.assignments.map((assignment) => {
-          const section = sectionById.get(assignment.sectionId)
-          const discipline = disciplineById.get(assignment.disciplineId)
-          const scheduled = slotsByAssignment.get(assignment.id) ?? 0
-          const delta = assignment.weeklyMinutes - scheduled
-          return <article key={assignment.id} className="assignmentRow">
-            <div><strong>{section ? sectionLabel(section.grade, section.sectionCode) : 'Sezione'} · {discipline?.name ?? 'Disciplina'}</strong><span>{assignment.status === 'CONFIRMED' ? 'Confermata' : 'Provvisoria'}</span>{assignment.sourceNote && <small>{assignment.sourceNote}</small>}</div>
-            <div className="assignmentCapacity"><strong>{scheduled}/{assignment.weeklyMinutes} min</strong><span className={delta === 0 ? 'capacityOk' : delta < 0 ? 'capacityOver' : ''}>{delta === 0 ? 'Allineata' : delta > 0 ? `Mancano ${delta} min` : `Eccesso ${Math.abs(delta)} min`}</span></div>
-            <form action={updateTeachingAssignment} className="assignmentEdit"><input type="hidden" name="assignmentId" value={assignment.id} /><input name="weeklyMinutes" type="number" min="30" max="2400" step="5" defaultValue={assignment.weeklyMinutes} aria-label="Minuti settimanali" /><select name="status" defaultValue={assignment.status} aria-label="Stato cattedra"><option value="PROVISIONAL">Provvisoria</option><option value="CONFIRMED">Confermata</option></select><button type="submit">Salva</button></form>
-          </article>
-        })}</div> : null}
-      </section>
-
-      <section className="timetableCard timetableConfigCard" aria-labelledby="draft-title">
-        <div className="timetableCardHeading"><span>03</span><div><h2 id="draft-title">Bozza dell’orario</h2><p>Questa è la settimana tipo che stai preparando. La data indica da quando prevedi di usarla; attivazione e versionamento restano funzioni dell’Orario, indipendenti dal Calendario.</p></div><b className="draftBadge">{draftLabel}</b></div>
-        <form action={updateTimetableDraft} className="timetableForm versionForm">
-          <input type="hidden" name="versionId" value={timetable.draftVersion.id} />
-          <label><span>Nome della bozza</span><input name="label" defaultValue={timetable.draftVersion.label} maxLength={160} required /></label>
-          <label><span>Prevista dal</span><input name="effectiveFrom" type="date" defaultValue={timetable.draftVersion.effectiveFrom} min={context.academicYear.startsOn} max={context.academicYear.endsOn} required /></label>
-          <label><span>Da dove deriva</span><select name="sourceKind" defaultValue={timetable.draftVersion.sourceKind}><option value="MANUAL">Inserimento manuale</option><option value="INSTITUTION_DOCUMENT">Documento istituzionale</option><option value="IMPORT">Importazione</option></select></label>
-          <label className="wideField"><span>Riferimento della fonte</span><input name="sourceRef" defaultValue={timetable.draftVersion.sourceRef ?? ''} maxLength={1000} placeholder="Opzionale: circolare, file, nota…" /></label>
-          <button className="timetablePrimaryButton" type="submit">Salva la bozza</button>
-        </form>
-      </section>
-
-      <aside className="timetableContract">
-        <strong>Orario e Calendario restano separati</strong>
-        <span>Qui modifichi soltanto la struttura ricorrente della settimana. Il Calendario gestirà date ed eventi reali. Un livello di proiezione potrà leggerli insieme senza cambiare nessuno dei due.</span>
+      <aside className="timetableContract compact">
+        <strong>Orario autonomo</strong>
+        <span>Questa pagina descrive solo la struttura ricorrente della settimana. Il Calendario non la controlla e non è necessario per usarla.</span>
       </aside>
     </AppShell>
   )
@@ -157,12 +171,6 @@ function sectionLabel(grade: keyof typeof GRADE_LABELS, sectionCode: string) {
   return `${GRADE_LABELS[grade]} ${sectionCode}`
 }
 
-function statusLabel(value: string) {
-  if (value === 'CONFERMATA') return 'confermata'
-  if (value === 'PROVVISORIA') return 'provvisoria'
-  return 'da confermare'
-}
-
 function versionStatusLabel(value: string) {
   if (value === 'DRAFT') return 'Bozza'
   if (value === 'ACTIVE') return 'Attivo'
@@ -174,5 +182,11 @@ function formatHours(minutes: number) {
   if (!minutes) return '0h'
   const hours = Math.floor(minutes / 60)
   const rest = minutes % 60
+  if (!hours) return `${rest}m`
   return rest ? `${hours}h ${rest}m` : `${hours}h`
+}
+
+function formatDate(value: string) {
+  const [year, month, day] = value.split('-')
+  return `${day}/${month}/${year}`
 }
