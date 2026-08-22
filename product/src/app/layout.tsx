@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './tailwind.css'
 import './globals.css'
+import './app-shell.css'
 import './home.css'
 import './planner/planner-enhancements.css'
 import './knowledge/knowledge.css'
