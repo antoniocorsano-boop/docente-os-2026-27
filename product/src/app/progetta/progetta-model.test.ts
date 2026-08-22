@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { KnowledgeAsset, KnowledgeDocument } from '@/core/domain/knowledge'
-import { groupProgettaItems, planningCoverage } from './progetta-model'
+import { asProgettaGrade, filterProgettaItemsByGrade, groupProgettaItems, planningCoverage } from './progetta-model'
 
 function item(id: string, contentCategory: KnowledgeAsset['contentCategory']) {
   return { asset: { id, contentCategory, sourceMetadata: {} } as KnowledgeAsset, document: null as KnowledgeDocument | null }
@@ -31,4 +31,14 @@ test('rende esplicita la copertura per classe senza inventare UDA mancanti', () 
     { grade: 'seconda', programming: 1, uda: 0, materials: 0 },
     { grade: 'terza', programming: 0, uda: 0, materials: 0 },
   ])
+})
+
+test('filtra Progetta per grado mantenendo i contenuti comuni', () => {
+  const prima = { asset: { ...item('p1', 'PROGRAMMING').asset, sourceMetadata: { grade: 'prima' } }, document: null }
+  const seconda = { asset: { ...item('p2', 'PROGRAMMING').asset, sourceMetadata: { grade: 'seconda' } }, document: null }
+  const comune = item('shared', 'TEACHING_RESOURCE')
+
+  assert.deepEqual(filterProgettaItemsByGrade([prima, seconda, comune], 'seconda').map(({ asset }) => asset.id), ['p2', 'shared'])
+  assert.equal(asProgettaGrade('seconda'), 'seconda')
+  assert.equal(asProgettaGrade('quarta'), null)
 })
