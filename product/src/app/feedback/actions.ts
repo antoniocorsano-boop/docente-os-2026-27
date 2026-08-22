@@ -6,14 +6,9 @@ import { resolveHumanTaskLessonProjection } from '@/core/presentation/human-task
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { createClient } from '@/lib/supabase/server'
 
-export type ExperienceFeedbackState = {
+type ExperienceFeedbackState = {
   status: 'idle' | 'success' | 'error'
   message: string
-}
-
-export const INITIAL_EXPERIENCE_FEEDBACK_STATE: ExperienceFeedbackState = {
-  status: 'idle',
-  message: '',
 }
 
 const COMPLETE_STATUSES = new Set(['SVOLTO', 'RECUPERATO', 'RIMODULATO'])
