@@ -197,20 +197,20 @@ export default function AnnualPlanClient({
   }
 
   const saveStateLabel = syncError
-    ? `Errore di sincronizzazione: ${syncError}`
+    ? `Non sono riuscito a salvare le ultime modifiche: ${syncError}. Puoi riprovare.`
     : isPending
-      ? 'Sincronizzazione con Supabase…'
-      : 'Supabase sincronizzato · cache locale aggiornata'
+      ? 'Sto salvando le modifiche…'
+      : 'Modifiche salvate'
 
   return (
     <>
       <section className="annualHero">
         <div>
-          <p className="contextLine">Tecnologia · piano didattico annuale esecutivo</p>
+          <p className="contextLine">Tecnologia · piano didattico annuale</p>
           <h1>Piano annuale</h1>
-          <p>33 blocchi da 2 ore per classe, collegati a UDA, pacchetti e fonti canoniche della KB.</p>
+          <p>Segui le 66 ore previste per ogni classe, registra ciò che hai svolto e mantieni collegati UDA, materiali e fonti nella Conoscenza.</p>
         </div>
-        <Link className="secondaryButton" href={`/knowledge/${source.assetId}`}>Apri {source.code} in KB</Link>
+        <Link className="secondaryButton" href={`/knowledge/${source.assetId}`}>Apri il piano di riferimento</Link>
       </section>
 
       <section className="annualContextPanel">
@@ -224,7 +224,7 @@ export default function AnnualPlanClient({
           <label>
             <span>Sezione</span>
             <select value={sectionId} onChange={(event) => setSectionId(event.target.value)}>
-              <option value="">Vista canonica</option>
+              <option value="">Vista generale</option>
               {state.sections[grade].map((item) => <option key={item.id} value={item.id}>{grade} {item.code}</option>)}
             </select>
           </label>
@@ -237,7 +237,7 @@ export default function AnnualPlanClient({
               {selectedSection.status !== 'CONFERMATA' ? <button className="inlineAction" type="button" onClick={confirmSection} disabled={isPending}>Conferma assegnazione</button> : null}
             </>
           ) : (
-            <span>{grade === 'Prima' ? 'Le nuove sezioni di prima non sono ancora note: nessuna sezione viene inventata.' : 'Vista del canone generale, senza avanzamento di una sezione specifica.'}</span>
+            <span>{grade === 'Prima' ? 'Le nuove sezioni di prima non sono ancora note: le aggiungerai quando avrai l’assegnazione.' : 'Stai guardando il piano generale della classe. Seleziona una sezione per registrare l’avanzamento effettivo.'}</span>
           )}
         </div>
         <div className="annualAddSection">
@@ -247,13 +247,13 @@ export default function AnnualPlanClient({
       </section>
 
       <section className="annualMetrics" aria-label="Avanzamento annuale">
-        <Metric value={`${completed.length}/33`} label="blocchi chiusi" />
+        <Metric value={`${completed.length}/33`} label="blocchi completati" />
         <Metric value={`${completed.length * 2}/66`} label="ore registrate" />
         <Metric value={nextBlock?.id ?? 'CHIUSO'} label="prossimo blocco" />
         <div className="annualSourceMetric">
-          <span>Fonte corrente</span>
+          <span>Piano di riferimento</span>
           <strong>{source.code}</strong>
-          <small>generazione #{source.generationId.slice(0, 8)}</small>
+          <small>versione di lavoro collegata</small>
         </div>
       </section>
 
@@ -265,7 +265,7 @@ export default function AnnualPlanClient({
 
       <section className="annualTableCard">
         <div className="annualTableHeader">
-          <div><h2>Sequenza didattica</h2><p>Il blocco scorre alla prima lezione utile se una lezione salta.</p></div>
+          <div><h2>Sequenza didattica</h2><p>Se una lezione salta, il blocco resta aperto e passa automaticamente alla prima lezione utile.</p></div>
           <span>{blocks.length} blocchi · 66 ore</span>
         </div>
         <div className="annualTableWrap">
@@ -284,9 +284,9 @@ export default function AnnualPlanClient({
                     <td>
                       {selectedSection ? (
                         <select value={progress.status} onChange={(event) => applyAndPersist(block.id, { status: event.target.value as AnnualPlanBlockStatus })} aria-label={`Stato ${block.id}`} disabled={isPending}>
-                          {BLOCK_STATUSES.map((status) => <option key={status}>{status}</option>)}
+                          {BLOCK_STATUSES.map((status) => <option key={status} value={status}>{blockStatusLabel(status)}</option>)}
                         </select>
-                      ) : <span className="annualNeutralStatus">PIANIFICATO</span>}
+                      ) : <span className="annualNeutralStatus">Pianificato</span>}
                     </td>
                     <td>{selectedSection ? <input type="date" value={progress.date} onChange={(event) => applyAndPersist(block.id, { date: event.target.value })} aria-label={`Data ${block.id}`} disabled={isPending} /> : '—'}</td>
                     <td>{selectedSection ? <input value={progress.note} onChange={(event) => updateLocalProgress(block.id, { ...progress, note: event.target.value })} onBlur={(event) => persistProgressEntry(block.id, { ...progressFor(block.id), note: event.currentTarget.value })} placeholder="Prodotto, verifica, recupero…" aria-label={`Evidenza ${block.id}`} maxLength={4000} /> : '—'}</td>
@@ -299,9 +299,17 @@ export default function AnnualPlanClient({
       </section>
 
       <section className="annualRulesGrid">
-        <article><h2>Regola di scorrimento</h2><p>Una lezione saltata non consuma il blocco. Il blocco resta aperto e passa alla prima lezione utile; Open Day e altre interruzioni non duplicano ore o valutazioni.</p></article>
-        <article><h2>Persistenza</h2><p>Supabase conserva l’attuazione per sezione. Ogni blocco è ancorato alla generazione CAN-PLAN usata; la copia nel browser è soltanto una cache locale.</p></article>
+        <article><h2>Come scorre il piano</h2><p>Una lezione saltata non consuma il blocco. Il lavoro previsto passa alla prima lezione utile, evitando di duplicare ore o valutazioni.</p></article>
+        <article><h2>Come registro l’avanzamento</h2><p>Ogni sezione mantiene il proprio percorso effettivo. Le modifiche vengono salvate mentre lavori e restano collegate al piano di riferimento usato in quel momento.</p></article>
       </section>
+
+      <details className="technicalDetails annualTechnicalDetails">
+        <summary><span><strong>Dettagli tecnici</strong><small>Persistenza e versione del piano di riferimento</small></span><b aria-hidden>＋</b></summary>
+        <div className="technicalDetailsBody">
+          <div className="technicalMetaLine"><span>Codice fonte: <strong>{source.code}</strong></span><span>Generazione: <strong>{source.generationId}</strong></span><span>Cache browser: <strong>{storageKey}</strong></span></div>
+          <p className="panelIntro">L’avanzamento principale è persistito sul servizio dati. La copia nel browser serve soltanto come cache locale di supporto.</p>
+        </div>
+      </details>
     </>
   )
 }
@@ -329,7 +337,7 @@ function sectionToRecord(section: AnnualPlanSection): SectionRecord {
     id: section.id,
     code: section.sectionCode,
     status: section.status,
-    source: section.sourceNote ?? 'Contesto di sezione registrato nel piano annuale',
+    source: section.sourceNote ?? 'Contesto della sezione registrato nel piano annuale',
   }
 }
 
@@ -362,7 +370,15 @@ function Metric({ value, label }: { value: string; label: string }) {
 }
 
 function StatusBadge({ status }: { status: AnnualPlanSectionStatus }) {
-  const label = status === 'DA_CONFERMARE' ? 'DA CONFERMARE' : status
+  const label = status === 'CONFERMATA' ? 'Confermata' : status === 'PROVVISORIA' ? 'Provvisoria' : 'Da confermare'
   const className = status === 'CONFERMATA' ? 'annualBadge confirmed' : status === 'PROVVISORIA' ? 'annualBadge provisional' : 'annualBadge pending'
   return <span className={className}>{label}</span>
+}
+
+function blockStatusLabel(status: AnnualPlanBlockStatus) {
+  if (status === 'PIANIFICATO') return 'Pianificato'
+  if (status === 'SVOLTO') return 'Svolto'
+  if (status === 'RECUPERATO') return 'Recuperato'
+  if (status === 'RIMODULATO') return 'Rimodulato'
+  return 'Annullato'
 }

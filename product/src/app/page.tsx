@@ -6,11 +6,11 @@ import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supa
 export const dynamic = 'force-dynamic'
 
 const entrances = [
-  { href: '/planner', index: '01', title: 'Oggi', description: 'Apri la giornata, organizza gli impegni e governa le prossime scadenze.', action: 'Vai alla giornata' },
-  { href: '/orario', index: '02', title: 'Orario', description: 'Configura cattedra, versione e slot settimanali a partire dalle tue Impostazioni.', action: 'Configura l’orario' },
-  { href: '/piano-annuale', index: '03', title: 'Piano annuale', description: 'Segui i 33 blocchi e le 66 ore per classe, con UDA, pacchetti, sezioni ed evidenze.', action: 'Apri il piano annuale' },
-  { href: '/progetta', index: '04', title: 'Progetta', description: 'Parti dalle fonti, dalla programmazione e dalle unità di conoscenza già contestualizzate.', action: 'Avvia la progettazione' },
-  { href: '/classi', index: '05', title: 'Classi', description: 'Ritrova materiali e attività attraverso le classi e le sezioni del tuo anno scolastico.', action: 'Apri le classi' },
+  { href: '/planner', index: '01', title: 'Oggi', description: 'Vedi cosa richiede attenzione, aggiungi attività e scegli cosa affrontare per primo.', action: 'Apri la giornata' },
+  { href: '/orario', index: '02', title: 'Orario', description: 'Costruisci la tua settimana tipo e controlla il monte ore delle classi.', action: 'Apri l’orario' },
+  { href: '/piano-annuale', index: '03', title: 'Piano annuale', description: 'Segui la distribuzione delle ore e collega UDA, materiali ed evidenze alle classi.', action: 'Apri il piano annuale' },
+  { href: '/progetta', index: '04', title: 'Progetta', description: 'Parti dalle fonti già raccolte e costruisci percorsi, UDA e materiali per la classe.', action: 'Vai alla progettazione' },
+  { href: '/classi', index: '05', title: 'Classi', description: 'Ritrova rapidamente i contenuti collegati a ciascuna classe e sezione.', action: 'Apri le classi' },
 ] as const
 
 export default async function HomePage() {
@@ -47,17 +47,17 @@ export default async function HomePage() {
       <main className="workSurface homeSurface">
         <header className="mobileHeader"><div><span className="mobileEyebrow">DOCENTE OS</span><strong>{context.academicYear?.label ?? 'Anno scolastico'}</strong></div><form action="/auth/signout" method="post"><button className="iconButton" type="submit" aria-label="Esci">↗</button></form></header>
         <section className="homeHero">
-          <div><p>{professionalContext}</p><h1>Il lavoro docente, organizzato intorno alle tue attività.</h1><span>Scegli da dove iniziare. Fonti, decisioni e documenti restano collegati e verificabili.</span></div>
+          <div><p>{professionalContext}</p><h1>Il lavoro docente, organizzato intorno alle tue attività.</h1><span>Riparti da ciò che devi fare. Documenti, decisioni e materiali restano collegati, così puoi ricostruire sempre il percorso.</span></div>
           <form action="/auth/signout" method="post" className="desktopSignout"><button className="secondaryButton" type="submit">Esci</button></form>
         </section>
         <section className="homeEntrances" aria-labelledby="home-entrances-title">
-          <div className="homeSectionHeading"><span>INGRESSI PRINCIPALI</span><h2 id="home-entrances-title">Cosa devi fare adesso?</h2></div>
+          <div className="homeSectionHeading"><span>DA DOVE RIPARTIRE</span><h2 id="home-entrances-title">Cosa vuoi fare adesso?</h2></div>
           <div className="entranceGrid">{entrances.map((entrance) => <Link className="entranceCard" href={entrance.href} key={entrance.title}><span>{entrance.index}</span><h3>{entrance.title}</h3><p>{entrance.description}</p><strong>{entrance.action} <i aria-hidden>→</i></strong></Link>)}</div>
         </section>
         <section className="homeContinuity" aria-labelledby="continuity-title">
           <div className="homeSectionHeading"><span>CONTINUITÀ DEL LAVORO</span><h2 id="continuity-title">Dalla fonte all’azione</h2></div>
-          <div className="continuityFlow"><span>Documenti e comunicazioni</span><i>→</i><span>Base di conoscenza</span><i>→</i><span>Piano annuale e progettazione</span><i>→</i><span>Orario e classi</span></div>
-          <p>Ogni passaggio mantiene provenienza, generazione e validazione umana.</p>
+          <div className="continuityFlow"><span>Documenti e comunicazioni</span><i>→</i><span>Conoscenza</span><i>→</i><span>Progettazione e piano annuale</span><i>→</i><span>Orario e classi</span></div>
+          <p>DOCENTE OS conserva la provenienza e distingue sempre ciò che è automatico da ciò che hai confermato tu.</p>
         </section>
       </main>
       <nav className="bottomNav" aria-label="Navigazione mobile"><Link className="active" href="/"><span aria-hidden>⌂</span><small>Home</small></Link><Link href="/planner"><span aria-hidden>◎</span><small>Oggi</small></Link><Link href="/orario"><span aria-hidden>◷</span><small>Orario</small></Link><Link href="/progetta"><span aria-hidden>✦</span><small>Progetta</small></Link><Link href="/classi"><span aria-hidden>▦</span><small>Classi</small></Link><Link href="/impostazioni"><span aria-hidden>⚙</span><small>Impost.</small></Link></nav>
