@@ -1,6 +1,7 @@
 import type { KnowledgeAsset, KnowledgeDocument } from '@/core/domain/knowledge'
 
 export type ProgettaItem = { asset: KnowledgeAsset; document: KnowledgeDocument | null }
+export type ProgettaGrade = 'prima' | 'seconda' | 'terza'
 
 export type ProgettaGroup = {
   key: 'programming' | 'uda' | 'materials'
@@ -10,10 +11,22 @@ export type ProgettaGroup = {
 }
 
 export type PlanningCoverage = {
-  grade: 'prima' | 'seconda' | 'terza'
+  grade: ProgettaGrade
   programming: number
   uda: number
   materials: number
+}
+
+export function filterProgettaItemsByGrade(items: ProgettaItem[], grade: ProgettaGrade | null) {
+  if (!grade) return items
+  return items.filter(({ asset }) => {
+    const itemGrade = asset.sourceMetadata.grade
+    return itemGrade === grade || itemGrade == null || itemGrade === ''
+  })
+}
+
+export function asProgettaGrade(value: string | undefined): ProgettaGrade | null {
+  return value === 'prima' || value === 'seconda' || value === 'terza' ? value : null
 }
 
 export function groupProgettaItems(items: ProgettaItem[]): ProgettaGroup[] {
