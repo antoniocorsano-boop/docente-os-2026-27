@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
+import { AppShell } from '@/components/app-shell/app-shell'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import {
@@ -65,179 +66,173 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
       : 'Il contenuto è organizzato. Ti consiglio di controllare il contesto professionale prima di usarlo nel lavoro.'
 
   return (
-    <div className="appShell">
-      <aside className="navRail" aria-label="Navigazione principale">
-        <div className="brandLockup"><span className="brandMark">D</span><div><strong>DOCENTE OS</strong><span>{context.academicYear?.label ?? 'Anno da configurare'}</span></div></div>
-        <nav className="navList"><Link className="navItem" href="/"><span aria-hidden>⌂</span> Home</Link><Link className="navItem" href="/planner"><span aria-hidden>◎</span> Oggi</Link><Link className="navItem" href="/progetta"><span aria-hidden>✦</span> Progetta</Link><Link className="navItem active" href="/knowledge"><span aria-hidden>◇</span> Conoscenza</Link><Link className="navItem" href="/classi"><span aria-hidden>▦</span> Classi</Link></nav>
-        <div className="navFooter"><span className="workspaceDot" aria-hidden /><div><strong>{context.workspace.name}</strong><span>{context.role}</span></div></div>
-      </aside>
+    <AppShell
+      active="knowledge"
+      academicYearLabel={context.academicYear?.label}
+      workspaceName={context.workspace.name}
+      role={context.role}
+      contentClassName="knowledgeSurface detailSurface"
+    >
+      <div className="detailTopbar">
+        <Link href="/knowledge">← Torna alla Conoscenza</Link>
+        <span className={`processingPill ${processing.tone}`}>{processing.label}</span>
+      </div>
 
-      <main className="workSurface knowledgeSurface detailSurface">
-        <header className="mobileHeader"><div><span className="mobileEyebrow">CONOSCENZA</span><strong>Documento</strong></div><Link className="iconButton knowledgeBack" href="/knowledge" aria-label="Torna alla Conoscenza">←</Link></header>
+      {query.reprocess === 'ok' ? <div className="knowledgeFeedback success" role="status">Analisi aggiornata. L’originale è rimasto invariato e questa è ora la versione di lavoro corrente.</div> : null}
+      {query.reprocess === 'failed' ? <div className="knowledgeFeedback error" role="status">Non sono riuscito ad aggiornare l’analisi. La versione precedente resta disponibile e l’originale non è stato modificato.</div> : null}
+      {query.context === 'updated' ? <div className="knowledgeFeedback success" role="status">Contesto professionale aggiornato. Da ora questo contenuto sarà più facile da ritrovare e collegare al lavoro.</div> : null}
+      {query.task === 'unavailable' ? <div className="knowledgeFeedback error" role="status">Non posso ancora creare l’attività nel Planner perché manca una versione di analisi completata. Il contenuto resta comunque disponibile.</div> : null}
 
-        <div className="detailTopbar">
-          <Link href="/knowledge">← Torna alla Conoscenza</Link>
-          <span className={`processingPill ${processing.tone}`}>{processing.label}</span>
+      <section className="plannerHeader knowledgeHeader humanKnowledgeHeader">
+        <div>
+          <p className="contextLine">{category} · {sourceLabel}</p>
+          <h1>{displayTitle}</h1>
+          <p className="dayLine">{sourceLabel === 'DOCENTE OS' ? 'Creato' : 'Acquisito'} {formatDate(asset.capturedAt)}</p>
         </div>
-
-        {query.reprocess === 'ok' ? <div className="knowledgeFeedback success" role="status">Analisi aggiornata. L’originale è rimasto invariato e questa è ora la versione di lavoro corrente.</div> : null}
-        {query.reprocess === 'failed' ? <div className="knowledgeFeedback error" role="status">Non sono riuscito ad aggiornare l’analisi. La versione precedente resta disponibile e l’originale non è stato modificato.</div> : null}
-        {query.context === 'updated' ? <div className="knowledgeFeedback success" role="status">Contesto professionale aggiornato. Da ora questo contenuto sarà più facile da ritrovare e collegare al lavoro.</div> : null}
-        {query.task === 'unavailable' ? <div className="knowledgeFeedback error" role="status">Non posso ancora creare l’attività nel Planner perché manca una versione di analisi completata. Il contenuto resta comunque disponibile.</div> : null}
-
-        <section className="plannerHeader knowledgeHeader humanKnowledgeHeader">
-          <div>
-            <p className="contextLine">{category} · {sourceLabel}</p>
-            <h1>{displayTitle}</h1>
-            <p className="dayLine">{sourceLabel === 'DOCENTE OS' ? 'Creato' : 'Acquisito'} {formatDate(asset.capturedAt)}</p>
-          </div>
-          <div className={`knowledgeStateCard ${processing.tone}`}>
-            <strong>{processing.label}</strong>
-            <span>{processing.description}</span>
-          </div>
-        </section>
-
-        <section className="provenanceBar humanProvenance" aria-label="Contesto del contenuto">
-          <div><span>Provenienza</span><strong>{sourceLabel}</strong></div>
-          <div><span>Tipologia</span><strong>{category}</strong></div>
-          <div><span>Riferimento</span><strong>{contextReference}</strong></div>
-          <div><span>Stato</span><strong>{processing.label}</strong></div>
-        </section>
-
-        {driveUrl ? <a className="driveSourceLink" href={driveUrl} target="_blank" rel="noreferrer"><span>↗</span><div><strong>Apri la fonte originale in Google Drive</strong><small>Puoi consultarla in qualsiasi momento. Le elaborazioni di DOCENTE OS non modificano l’originale.</small></div></a> : null}
-
-        <section className="knowledgeGuidance" aria-labelledby="knowledge-guidance-title">
-          <div className="guidanceLead">
-            <span className="panelEyebrow">TI AIUTO DA QUI</span>
-            <h2 id="knowledge-guidance-title">Cosa puoi fare con questo contenuto</h2>
-            <p>{candidateSummary}</p>
-          </div>
-          <div className="guidanceActions">
-            <a href="#professional-context">Controlla il contesto</a>
-            <a href="#planner-action">Crea attività nel Planner</a>
-            <a href="#content-view">Leggi il contenuto</a>
-            <form action={reprocessKnowledgeAsset}>
-              <input type="hidden" name="assetId" value={asset.id} />
-              <button type="submit">Aggiorna analisi</button>
-            </form>
-          </div>
-          <p className="guidanceSafety">Quando aggiorni l’analisi, l’originale e le versioni precedenti restano conservati.</p>
-        </section>
-
-        <section className="knowledgePanel contextPanel" id="professional-context">
-          <div className="knowledgePanelHeading"><div><span className="panelEyebrow">CONTESTO PROFESSIONALE</span><h2>Dove userai questo contenuto</h2></div><span className={`validationPill ${asset.contextStatus === 'REVIEWED' ? 'reviewed' : ''}`}>{contextStatusLabel(asset.contextStatus)}</span></div>
-          <p className="panelIntro">Classe, disciplina e tipologia aiutano DOCENTE OS a proporti questo contenuto nel momento giusto. La fonte originale non viene modificata.</p>
-          <form action={updateKnowledgeContext} className="contextForm">
-            <input type="hidden" name="assetId" value={asset.id} />
-            <label><span>Anno scolastico</span><select name="academicYearId" defaultValue={asset.academicYearId ?? ''}><option value="">Non associato</option>{context.academicYear ? <option value={context.academicYear.id}>{context.academicYear.label}</option> : null}</select></label>
-            <label><span>Tipologia</span><select name="contentCategory" defaultValue={asset.contentCategory}>{CONTENT_CATEGORIES.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
-            <label><span>Discipline</span><input name="disciplines" defaultValue={asset.disciplines.join(', ')} placeholder="Tecnologia, Educazione civica" /></label>
-            <label><span>Classi e sezioni</span><input name="classLabels" defaultValue={asset.classLabels.join(', ')} placeholder="1A, 2C, 3E" /></label>
-            <label><span>Stato del controllo</span><select name="contextStatus" defaultValue={asset.contextStatus}><option value="UNCLASSIFIED">Da classificare</option><option value="NEEDS_REVIEW">Da controllare</option><option value="REVIEWED">Controllato</option></select></label>
-            <label><span>Attendibilità</span><select name="reliability" defaultValue={asset.reliability}><option value="AUTO">Automatica</option><option value="TO_VERIFY">Da verificare</option><option value="VERIFIED">Verificata</option></select></label>
-            <button type="submit">Salva contesto</button>
-          </form>
-          <p className="contextHint">Separa più discipline o classi con una virgola. Puoi correggere questo contesto in qualsiasi momento.</p>
-        </section>
-
-        <section className="knowledgePanel taskCreatorPanel" id="planner-action">
-          <div className="knowledgePanelHeading"><div><span className="panelEyebrow">DAL CONTENUTO ALL’AZIONE</span><h2>Portalo nel Planner</h2></div><span className="statusPill">{currentGeneration ? 'Disponibile' : 'Non disponibile'}</span></div>
-          <p>Puoi trasformare questo contenuto in un’attività concreta. DOCENTE OS conserverà il collegamento alla fonte usata oggi, anche se in futuro aggiornerai l’analisi.</p>
-          <form action={createPlannerTaskFromKnowledgeAsset} className="taskCreatorForm">
-            <input type="hidden" name="assetId" value={asset.id} />
-            <label><span>Attività</span><input name="title" maxLength={240} defaultValue={`Esamina: ${displayTitle}`} required /></label>
-            <label><span>Scadenza</span><input name="plannedFor" type="date" /></label>
-            <label><span>Priorità</span><select name="priority" defaultValue={asset.contextStatus === 'NEEDS_REVIEW' ? 'HIGH' : 'NORMAL'}><option value="NORMAL">Normale</option><option value="HIGH">Alta</option><option value="URGENT">Urgente</option><option value="LOW">Bassa</option></select></label>
-            <button type="submit" disabled={!currentGeneration}>Crea attività nel Planner</button>
-          </form>
-        </section>
-
-        <div className="knowledgeFlowGrid" id="content-view">
-          <section className="knowledgePanel flowPanel originalPanel">
-            <div className="knowledgePanelHeading"><div><span className="panelEyebrow">FONTE ORIGINALE</span><h2>Contenuto acquisito</h2></div><span className="statusPill neutral">Preservato</span></div>
-            <pre className="knowledgeText">{asset.originalText ?? (asset.sourceProvider === 'UPLOAD' ? 'Il file originale è conservato nel tuo spazio privato.' : 'L’originale è conservato presso la fonte indicata nella provenienza.')}</pre>
-          </section>
-
-          <section className="knowledgePanel flowPanel normalizedPanel">
-            <div className="knowledgePanelHeading"><div><span className="panelEyebrow">CONTENUTO ORGANIZZATO</span><h2>Versione leggibile e ricercabile</h2></div><span className="statusPill">{document ? documentTypeLabel(document.documentType) : 'In preparazione'}</span></div>
-            {document ? <>
-              {document.summary ? <p className="knowledgeSummary">{document.summary}</p> : null}
-              <pre className="knowledgeText">{document.normalizedText ?? 'Non c’è ancora testo organizzato da mostrare.'}</pre>
-            </> : <p className="emptyLine">Non ho ancora una versione organizzata. L’originale resta disponibile e puoi aggiornare l’analisi più tardi.</p>}
-          </section>
+        <div className={`knowledgeStateCard ${processing.tone}`}>
+          <strong>{processing.label}</strong>
+          <span>{processing.description}</span>
         </div>
+      </section>
 
-        <section className="recentKnowledge candidateSection">
-          <div className="sectionHeading"><h2>Proposte da verificare</h2><span>{candidates.length}</span></div>
-          <p className="candidateIntro">{candidates.length ? 'Queste proposte derivano dal contenuto che ho letto. Controllale: diventano operative solo quando confermi tu.' : 'Non ho trovato azioni o scadenze da proporti in questo contenuto.'}</p>
-          {candidates.length ? <div className="candidateGrid">
-            {candidates.map((unit) => {
-              const linkedTask = taskLinks.get(unit.id)
-              return (
-                <article className={`knowledgeCandidate ${unit.validationStatus.toLowerCase()}`} key={unit.id}>
-                  <div className="candidateHeader">
-                    <div><span className={`candidateType ${unit.unitType.toLowerCase()}`}>{unit.unitType === 'ACTION' ? 'Azione proposta' : 'Scadenza proposta'}</span>{unit.confidence !== null ? <small>Stima automatica {Math.round(unit.confidence * 100)}%</small> : null}</div>
-                    <span className={`validationPill ${unit.validationStatus.toLowerCase()}`}>{validationStatusLabel(unit.validationStatus)}</span>
-                  </div>
-                  {unit.title ? <h3>{unit.title}</h3> : null}
-                  <p>{unit.content}</p>
-                  {typeof unit.structuredData.dueDate === 'string' ? <p className="candidateDate">Data associata: <strong>{formatIsoDate(unit.structuredData.dueDate)}</strong></p> : null}
-                  {typeof unit.structuredData.date === 'string' ? <p className="candidateDate">Data rilevata: <strong>{formatIsoDate(unit.structuredData.date)}</strong></p> : null}
-                  {linkedTask ? <div className="candidateOutcome"><span>✓</span><div><strong>Attività già creata</strong><Link href="/planner">Apri il Planner</Link></div></div> : null}
-                  {unit.validationStatus === 'AUTO' ? <div className="candidateActions">
-                    {unit.unitType === 'ACTION' ? (
-                      <form action={confirmKnowledgeAction}><input type="hidden" name="unitId" value={unit.id} /><button className="primaryCandidateAction" type="submit">Conferma e crea attività</button></form>
-                    ) : (
-                      <form action={confirmKnowledgeCandidate}><input type="hidden" name="unitId" value={unit.id} /><button className="primaryCandidateAction" type="submit">Conferma scadenza</button></form>
-                    )}
-                    <form action={rejectKnowledgeCandidate}><input type="hidden" name="unitId" value={unit.id} /><button className="secondaryCandidateAction" type="submit">Scarta proposta</button></form>
-                  </div> : null}
-                </article>
-              )
-            })}
-          </div> : null}
+      <section className="provenanceBar humanProvenance" aria-label="Contesto del contenuto">
+        <div><span>Provenienza</span><strong>{sourceLabel}</strong></div>
+        <div><span>Tipologia</span><strong>{category}</strong></div>
+        <div><span>Riferimento</span><strong>{contextReference}</strong></div>
+        <div><span>Stato</span><strong>{processing.label}</strong></div>
+      </section>
+
+      {driveUrl ? <a className="driveSourceLink" href={driveUrl} target="_blank" rel="noreferrer"><span>↗</span><div><strong>Apri la fonte originale in Google Drive</strong><small>Puoi consultarla in qualsiasi momento. Le elaborazioni di DOCENTE OS non modificano l’originale.</small></div></a> : null}
+
+      <section className="knowledgeGuidance" aria-labelledby="knowledge-guidance-title">
+        <div className="guidanceLead">
+          <span className="panelEyebrow">TI AIUTO DA QUI</span>
+          <h2 id="knowledge-guidance-title">Cosa puoi fare con questo contenuto</h2>
+          <p>{candidateSummary}</p>
+        </div>
+        <div className="guidanceActions">
+          <a href="#professional-context">Controlla il contesto</a>
+          <a href="#planner-action">Crea attività nel Planner</a>
+          <a href="#content-view">Leggi il contenuto</a>
+          <form action={reprocessKnowledgeAsset}>
+            <input type="hidden" name="assetId" value={asset.id} />
+            <button type="submit">Aggiorna analisi</button>
+          </form>
+        </div>
+        <p className="guidanceSafety">Quando aggiorni l’analisi, l’originale e le versioni precedenti restano conservati.</p>
+      </section>
+
+      <section className="knowledgePanel contextPanel" id="professional-context">
+        <div className="knowledgePanelHeading"><div><span className="panelEyebrow">CONTESTO PROFESSIONALE</span><h2>Dove userai questo contenuto</h2></div><span className={`validationPill ${asset.contextStatus === 'REVIEWED' ? 'reviewed' : ''}`}>{contextStatusLabel(asset.contextStatus)}</span></div>
+        <p className="panelIntro">Classe, disciplina e tipologia aiutano DOCENTE OS a proporti questo contenuto nel momento giusto. La fonte originale non viene modificata.</p>
+        <form action={updateKnowledgeContext} className="contextForm">
+          <input type="hidden" name="assetId" value={asset.id} />
+          <label><span>Anno scolastico</span><select name="academicYearId" defaultValue={asset.academicYearId ?? ''}><option value="">Non associato</option>{context.academicYear ? <option value={context.academicYear.id}>{context.academicYear.label}</option> : null}</select></label>
+          <label><span>Tipologia</span><select name="contentCategory" defaultValue={asset.contentCategory}>{CONTENT_CATEGORIES.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
+          <label><span>Discipline</span><input name="disciplines" defaultValue={asset.disciplines.join(', ')} placeholder="Tecnologia, Educazione civica" /></label>
+          <label><span>Classi e sezioni</span><input name="classLabels" defaultValue={asset.classLabels.join(', ')} placeholder="1A, 2C, 3E" /></label>
+          <label><span>Stato del controllo</span><select name="contextStatus" defaultValue={asset.contextStatus}><option value="UNCLASSIFIED">Da classificare</option><option value="NEEDS_REVIEW">Da controllare</option><option value="REVIEWED">Controllato</option></select></label>
+          <label><span>Attendibilità</span><select name="reliability" defaultValue={asset.reliability}><option value="AUTO">Automatica</option><option value="TO_VERIFY">Da verificare</option><option value="VERIFIED">Verificata</option></select></label>
+          <button type="submit">Salva contesto</button>
+        </form>
+        <p className="contextHint">Separa più discipline o classi con una virgola. Puoi correggere questo contesto in qualsiasi momento.</p>
+      </section>
+
+      <section className="knowledgePanel taskCreatorPanel" id="planner-action">
+        <div className="knowledgePanelHeading"><div><span className="panelEyebrow">DAL CONTENUTO ALL’AZIONE</span><h2>Portalo nel Planner</h2></div><span className="statusPill">{currentGeneration ? 'Disponibile' : 'Non disponibile'}</span></div>
+        <p>Puoi trasformare questo contenuto in un’attività concreta. DOCENTE OS conserverà il collegamento alla fonte usata oggi, anche se in futuro aggiornerai l’analisi.</p>
+        <form action={createPlannerTaskFromKnowledgeAsset} className="taskCreatorForm">
+          <input type="hidden" name="assetId" value={asset.id} />
+          <label><span>Attività</span><input name="title" maxLength={240} defaultValue={`Esamina: ${displayTitle}`} required /></label>
+          <label><span>Scadenza</span><input name="plannedFor" type="date" /></label>
+          <label><span>Priorità</span><select name="priority" defaultValue={asset.contextStatus === 'NEEDS_REVIEW' ? 'HIGH' : 'NORMAL'}><option value="NORMAL">Normale</option><option value="HIGH">Alta</option><option value="URGENT">Urgente</option><option value="LOW">Bassa</option></select></label>
+          <button type="submit" disabled={!currentGeneration}>Crea attività nel Planner</button>
+        </form>
+      </section>
+
+      <div className="knowledgeFlowGrid" id="content-view">
+        <section className="knowledgePanel flowPanel originalPanel">
+          <div className="knowledgePanelHeading"><div><span className="panelEyebrow">FONTE ORIGINALE</span><h2>Contenuto acquisito</h2></div><span className="statusPill neutral">Preservato</span></div>
+          <pre className="knowledgeText">{asset.originalText ?? (asset.sourceProvider === 'UPLOAD' ? 'Il file originale è conservato nel tuo spazio privato.' : 'L’originale è conservato presso la fonte indicata nella provenienza.')}</pre>
         </section>
 
-        <section className="recentKnowledge unitsSection">
-          <div className="sectionHeading"><h2>Informazioni organizzate</h2><span>{chunks.length}</span></div>
-          {chunks.length ? <div className="knowledgeUnits">
-            {chunks.map((unit) => (
-              <article className="knowledgeUnit" key={unit.id}>
-                <div className="unitHeader"><span className="unitType">{unitTypeLabel(unit.unitType)}</span>{unit.sourcePage ? <span className="sourcePagePill">Pag. {unit.sourcePage}</span> : null}{unit.structuredData.extractionMethod === 'VISUAL_OCR' ? <span className="visualExtractionPill">Da immagine · verifica consigliata</span> : null}<span className="validationPill">{validationStatusLabel(unit.validationStatus)}</span>{unit.confidence !== null ? <small>Stima {Math.round(unit.confidence * 100)}%</small> : null}</div>
+        <section className="knowledgePanel flowPanel normalizedPanel">
+          <div className="knowledgePanelHeading"><div><span className="panelEyebrow">CONTENUTO ORGANIZZATO</span><h2>Versione leggibile e ricercabile</h2></div><span className="statusPill">{document ? documentTypeLabel(document.documentType) : 'In preparazione'}</span></div>
+          {document ? <>
+            {document.summary ? <p className="knowledgeSummary">{document.summary}</p> : null}
+            <pre className="knowledgeText">{document.normalizedText ?? 'Non c’è ancora testo organizzato da mostrare.'}</pre>
+          </> : <p className="emptyLine">Non ho ancora una versione organizzata. L’originale resta disponibile e puoi aggiornare l’analisi più tardi.</p>}
+        </section>
+      </div>
+
+      <section className="recentKnowledge candidateSection">
+        <div className="sectionHeading"><h2>Proposte da verificare</h2><span>{candidates.length}</span></div>
+        <p className="candidateIntro">{candidates.length ? 'Queste proposte derivano dal contenuto che ho letto. Controllale: diventano operative solo quando confermi tu.' : 'Non ho trovato azioni o scadenze da proporti in questo contenuto.'}</p>
+        {candidates.length ? <div className="candidateGrid">
+          {candidates.map((unit) => {
+            const linkedTask = taskLinks.get(unit.id)
+            return (
+              <article className={`knowledgeCandidate ${unit.validationStatus.toLowerCase()}`} key={unit.id}>
+                <div className="candidateHeader">
+                  <div><span className={`candidateType ${unit.unitType.toLowerCase()}`}>{unit.unitType === 'ACTION' ? 'Azione proposta' : 'Scadenza proposta'}</span>{unit.confidence !== null ? <small>Stima automatica {Math.round(unit.confidence * 100)}%</small> : null}</div>
+                  <span className={`validationPill ${unit.validationStatus.toLowerCase()}`}>{validationStatusLabel(unit.validationStatus)}</span>
+                </div>
                 {unit.title ? <h3>{unit.title}</h3> : null}
                 <p>{unit.content}</p>
+                {typeof unit.structuredData.dueDate === 'string' ? <p className="candidateDate">Data associata: <strong>{formatIsoDate(unit.structuredData.dueDate)}</strong></p> : null}
+                {typeof unit.structuredData.date === 'string' ? <p className="candidateDate">Data rilevata: <strong>{formatIsoDate(unit.structuredData.date)}</strong></p> : null}
+                {linkedTask ? <div className="candidateOutcome"><span>✓</span><div><strong>Attività già creata</strong><Link href="/planner">Apri il Planner</Link></div></div> : null}
+                {unit.validationStatus === 'AUTO' ? <div className="candidateActions">
+                  {unit.unitType === 'ACTION' ? (
+                    <form action={confirmKnowledgeAction}><input type="hidden" name="unitId" value={unit.id} /><button className="primaryCandidateAction" type="submit">Conferma e crea attività</button></form>
+                  ) : (
+                    <form action={confirmKnowledgeCandidate}><input type="hidden" name="unitId" value={unit.id} /><button className="primaryCandidateAction" type="submit">Conferma scadenza</button></form>
+                  )}
+                  <form action={rejectKnowledgeCandidate}><input type="hidden" name="unitId" value={unit.id} /><button className="secondaryCandidateAction" type="submit">Scarta proposta</button></form>
+                </div> : null}
               </article>
-            ))}
-          </div> : <p className="emptyLine">Non ci sono altre informazioni organizzate da mostrare.</p>}
-        </section>
+            )
+          })}
+        </div> : null}
+      </section>
 
-        <details className="technicalDetails">
-          <summary><span><strong>Dettagli tecnici</strong><small>Versioni, codici interni e processore</small></span><b aria-hidden>＋</b></summary>
-          <div className="technicalDetailsBody">
-            <section className="provenanceBar technicalProvenance" aria-label="Dettagli tecnici della provenienza">
-              <div><span>Provider</span><strong>{asset.sourceProvider}</strong></div>
-              <div><span>Tipo asset</span><strong>{asset.assetKind} · {assetKindLabel(asset.assetKind)}</strong></div>
-              <div><span>Generazione corrente</span><strong>{currentGeneration ? `#${currentGeneration.generationNo}` : '—'}</strong></div>
-              <div><span>Processore</span><strong>{document?.processingVersion ?? 'Non ancora disponibile'}</strong></div>
-            </section>
-            <div className="technicalMetaLine"><span>Stato interno: <strong>{asset.processingStatus}</strong></span><span>Contesto: <strong>{asset.contextStatus}</strong></span><span>Attendibilità: <strong>{asset.reliability} · {reliabilityLabel(asset.reliability)}</strong></span></div>
-            <section className="generationSection">
-              <div className="sectionHeading"><h2>Versioni dell’analisi</h2><span>{generations.length}</span></div>
-              <div className="generationList">
-                {generations.map((generation) => (
-                  <div className={`generationRow ${generation.status.toLowerCase()}`} key={generation.id}>
-                    <div><strong>Versione #{generation.generationNo}</strong><span>{generation.processorLabel ?? 'Elaborazione non completata'}</span></div>
-                    <div><span className={`validationPill ${generation.status === 'SUCCEEDED' ? 'reviewed' : generation.status === 'FAILED' ? 'rejected' : ''}`}>{generationStatusLabel(generation.status)}</span><small>{formatDate(generation.startedAt)}</small>{generation.id === asset.currentGenerationId ? <b>Corrente</b> : null}</div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
-        </details>
-      </main>
+      <section className="recentKnowledge unitsSection">
+        <div className="sectionHeading"><h2>Informazioni organizzate</h2><span>{chunks.length}</span></div>
+        {chunks.length ? <div className="knowledgeUnits">
+          {chunks.map((unit) => (
+            <article className="knowledgeUnit" key={unit.id}>
+              <div className="unitHeader"><span className="unitType">{unitTypeLabel(unit.unitType)}</span>{unit.sourcePage ? <span className="sourcePagePill">Pag. {unit.sourcePage}</span> : null}{unit.structuredData.extractionMethod === 'VISUAL_OCR' ? <span className="visualExtractionPill">Da immagine · verifica consigliata</span> : null}<span className="validationPill">{validationStatusLabel(unit.validationStatus)}</span>{unit.confidence !== null ? <small>Stima {Math.round(unit.confidence * 100)}%</small> : null}</div>
+              {unit.title ? <h3>{unit.title}</h3> : null}
+              <p>{unit.content}</p>
+            </article>
+          ))}
+        </div> : <p className="emptyLine">Non ci sono altre informazioni organizzate da mostrare.</p>}
+      </section>
 
-      <nav className="bottomNav" aria-label="Navigazione mobile"><Link href="/"><span aria-hidden>⌂</span><small>Home</small></Link><Link href="/planner"><span aria-hidden>◎</span><small>Oggi</small></Link><Link href="/progetta"><span aria-hidden>✦</span><small>Progetta</small></Link><Link href="/classi"><span aria-hidden>▦</span><small>Classi</small></Link></nav>
-    </div>
+      <details className="technicalDetails">
+        <summary><span><strong>Dettagli tecnici</strong><small>Versioni, codici interni e processore</small></span><b aria-hidden>＋</b></summary>
+        <div className="technicalDetailsBody">
+          <section className="provenanceBar technicalProvenance" aria-label="Dettagli tecnici della provenienza">
+            <div><span>Provider</span><strong>{asset.sourceProvider}</strong></div>
+            <div><span>Tipo asset</span><strong>{asset.assetKind} · {assetKindLabel(asset.assetKind)}</strong></div>
+            <div><span>Generazione corrente</span><strong>{currentGeneration ? `#${currentGeneration.generationNo}` : '—'}</strong></div>
+            <div><span>Processore</span><strong>{document?.processingVersion ?? 'Non ancora disponibile'}</strong></div>
+          </section>
+          <div className="technicalMetaLine"><span>Stato interno: <strong>{asset.processingStatus}</strong></span><span>Contesto: <strong>{asset.contextStatus}</strong></span><span>Attendibilità: <strong>{asset.reliability} · {reliabilityLabel(asset.reliability)}</strong></span></div>
+          <section className="generationSection">
+            <div className="sectionHeading"><h2>Versioni dell’analisi</h2><span>{generations.length}</span></div>
+            <div className="generationList">
+              {generations.map((generation) => (
+                <div className={`generationRow ${generation.status.toLowerCase()}`} key={generation.id}>
+                  <div><strong>Versione #{generation.generationNo}</strong><span>{generation.processorLabel ?? 'Elaborazione non completata'}</span></div>
+                  <div><span className={`validationPill ${generation.status === 'SUCCEEDED' ? 'reviewed' : generation.status === 'FAILED' ? 'rejected' : ''}`}>{generationStatusLabel(generation.status)}</span><small>{formatDate(generation.startedAt)}</small>{generation.id === asset.currentGenerationId ? <b>Corrente</b> : null}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </details>
+    </AppShell>
   )
 }
 
