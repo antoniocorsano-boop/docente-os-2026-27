@@ -16,7 +16,6 @@ import {
   planningCoverage,
   resolveCanonicalProgettaFocus,
   type ProgettaItem,
-  type ResolvedProgettaFocus,
 } from './progetta-model'
 import './progetta.css'
 import './progetta-coverage.css'
