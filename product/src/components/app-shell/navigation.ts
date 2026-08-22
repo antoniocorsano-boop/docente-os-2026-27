@@ -17,6 +17,13 @@ export type NavigationItem = {
   keywords: string[]
 }
 
+export type NavigationGroup = {
+  key: 'work' | 'teaching' | 'time' | 'resources' | 'system'
+  label: string
+  description: string
+  items: NavigationKey[]
+}
+
 export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
   {
     key: 'home',
@@ -31,7 +38,7 @@ export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
     href: '/planner',
     label: 'Oggi',
     shortLabel: 'Oggi',
-    description: 'Attività da fare e priorità operative.',
+    description: 'Attività, priorità e cose da fare adesso.',
     keywords: ['attività', 'da fare', 'priorità', 'scadenze', 'oggi'],
   },
   {
@@ -39,8 +46,8 @@ export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
     href: '/progetta',
     label: 'Progetta',
     shortLabel: 'Progetta',
-    description: 'Progettazione didattica, UDA e lavoro delle classi.',
-    keywords: ['uda', 'progettazione', 'didattica', 'curricolo'],
+    description: 'Prepara UDA, percorsi, attività e materiali didattici.',
+    keywords: ['uda', 'progettazione', 'didattica', 'curricolo', 'materiali'],
   },
   {
     key: 'knowledge',
@@ -55,7 +62,7 @@ export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
     href: '/classi',
     label: 'Classi',
     shortLabel: 'Classi',
-    description: 'Sezioni, contesto didattico e avanzamento.',
+    description: 'Sezioni, contesto didattico e lavoro delle classi.',
     keywords: ['classi', 'sezioni', 'prima', 'seconda', 'terza'],
   },
   {
@@ -63,8 +70,8 @@ export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
     href: '/orario',
     label: 'Orario',
     shortLabel: 'Orario',
-    description: 'Schema settimanale ricorrente delle lezioni.',
-    keywords: ['orario', 'lezioni', 'settimana', 'ore', 'ricorrente'],
+    description: 'Il tuo schema settimanale ricorrente, autonomo dal Calendario.',
+    keywords: ['orario', 'lezioni', 'settimana', 'ore', 'schema settimanale'],
   },
   {
     key: 'annual-plan',
@@ -84,6 +91,43 @@ export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
   },
 ] as const
 
+export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
+  {
+    key: 'work',
+    label: 'Il mio lavoro',
+    description: 'Cosa richiede attenzione e cosa devo fare.',
+    items: ['home', 'today'],
+  },
+  {
+    key: 'teaching',
+    label: 'Didattica',
+    description: 'Cosa preparo, insegno e seguo nelle classi.',
+    items: ['design', 'annual-plan', 'classes'],
+  },
+  {
+    key: 'time',
+    label: 'Tempo',
+    description: 'Come è organizzata la settimana di lavoro.',
+    items: ['timetable'],
+  },
+  {
+    key: 'resources',
+    label: 'Risorse',
+    description: 'Fonti e contenuti da cui partire.',
+    items: ['knowledge'],
+  },
+  {
+    key: 'system',
+    label: 'Sistema',
+    description: 'Configurazione dello spazio docente.',
+    items: ['settings'],
+  },
+] as const
+
 export function navigationItem(key: NavigationKey) {
   return PRIMARY_NAVIGATION.find((item) => item.key === key) ?? PRIMARY_NAVIGATION[0]
+}
+
+export function navigationGroupItems(group: NavigationGroup) {
+  return group.items.map(navigationItem)
 }

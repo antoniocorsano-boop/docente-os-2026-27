@@ -22,7 +22,12 @@ import { useRouter } from 'next/navigation'
 import { type ReactNode, useEffect, useState } from 'react'
 import { ContextualAssistantBoundary } from '@/components/assistant/contextual-assistant-boundary'
 import { cn } from '@/lib/utils'
-import { PRIMARY_NAVIGATION, navigationItem, type NavigationKey } from './navigation'
+import {
+  NAVIGATION_GROUPS,
+  navigationGroupItems,
+  navigationItem,
+  type NavigationKey,
+} from './navigation'
 
 const ICONS: Record<NavigationKey, LucideIcon> = {
   home: Home,
@@ -95,21 +100,28 @@ export function AppShell({
         </button>
 
         <nav className="dosNavList">
-          {PRIMARY_NAVIGATION.map((item) => {
-            const Icon = ICONS[item.key]
-            return (
-              <Link
-                key={item.key}
-                href={item.href}
-                className={cn('dosNavItem', item.key === active && 'active')}
-                aria-current={item.key === active ? 'page' : undefined}
-                title={item.description}
-              >
-                <Icon size={18} strokeWidth={1.9} aria-hidden />
-                <span>{item.label}</span>
-              </Link>
-            )
-          })}
+          {NAVIGATION_GROUPS.map((group) => (
+            <div className="dosNavGroup" key={group.key}>
+              <span className="dosNavGroupLabel">{group.label}</span>
+              <div className="dosNavGroupItems">
+                {navigationGroupItems(group).map((item) => {
+                  const Icon = ICONS[item.key]
+                  return (
+                    <Link
+                      key={item.key}
+                      href={item.href}
+                      className={cn('dosNavItem', item.key === active && 'active')}
+                      aria-current={item.key === active ? 'page' : undefined}
+                      title={`${item.label} — ${item.description}`}
+                    >
+                      <Icon size={18} strokeWidth={1.9} aria-hidden />
+                      <span>{item.label}</span>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="dosSidebarFooter">
@@ -183,35 +195,37 @@ function CommandPalette({
           <Command className="dosCommand" label="Cerca nelle funzioni di DOCENTE OS">
             <div className="dosCommandInputRow">
               <Search size={19} aria-hidden />
-              <Command.Input autoFocus placeholder="Cerca una sezione o una funzione…" />
+              <Command.Input autoFocus placeholder="Cosa vuoi fare o aprire?" />
               <span className="dosCommandShortcut">Esc</span>
             </div>
             <Command.List className="dosCommandList">
               <Command.Empty className="dosCommandEmpty">Nessuna funzione trovata. Prova con una parola più generale.</Command.Empty>
-              <Command.Group heading="Vai a">
-                {PRIMARY_NAVIGATION.map((item) => {
-                  const Icon = ICONS[item.key]
-                  return (
-                    <Command.Item
-                      key={item.key}
-                      value={`${item.label} ${item.keywords.join(' ')}`}
-                      onSelect={() => onNavigate(item.href)}
-                      className="dosCommandItem"
-                    >
-                      <span className="dosCommandIcon"><Icon size={18} aria-hidden /></span>
-                      <span>
-                        <strong>{item.label}</strong>
-                        <small>{item.description}</small>
-                      </span>
-                      <span className="dosCommandArrow" aria-hidden>↵</span>
-                    </Command.Item>
-                  )
-                })}
-              </Command.Group>
+              {NAVIGATION_GROUPS.map((group) => (
+                <Command.Group heading={group.label} key={group.key}>
+                  {navigationGroupItems(group).map((item) => {
+                    const Icon = ICONS[item.key]
+                    return (
+                      <Command.Item
+                        key={item.key}
+                        value={`${item.label} ${item.description} ${item.keywords.join(' ')}`}
+                        onSelect={() => onNavigate(item.href)}
+                        className="dosCommandItem"
+                      >
+                        <span className="dosCommandIcon"><Icon size={18} aria-hidden /></span>
+                        <span>
+                          <strong>{item.label}</strong>
+                          <small>{item.description}</small>
+                        </span>
+                        <span className="dosCommandArrow" aria-hidden>↵</span>
+                      </Command.Item>
+                    )
+                  })}
+                </Command.Group>
+              ))}
             </Command.List>
             <div className="dosCommandFooter">
               <span><CommandIcon size={14} aria-hidden /> Cerca e apri</span>
-              <span>Le azioni che modificano dati restano nelle rispettive pagine.</span>
+              <span>Qui ti orienti; le modifiche restano nelle rispettive pagine.</span>
             </div>
           </Command>
         </Dialog.Content>
@@ -246,17 +260,27 @@ function MobileMenu({
             <Dialog.Close className="dosSheetClose" aria-label="Chiudi menu"><X size={20} aria-hidden /></Dialog.Close>
           </div>
           <Dialog.Title>Tutto il tuo spazio docente</Dialog.Title>
-          <p className="dosMobileSheetLead">Vai direttamente alla parte di lavoro che ti serve.</p>
-          <div className="dosMobileMenuGrid">
-            {PRIMARY_NAVIGATION.map((item) => {
-              const Icon = ICONS[item.key]
-              return (
-                <button key={item.key} type="button" className={cn('dosMobileMenuItem', item.key === active && 'active')} onClick={() => onNavigate(item.href)}>
-                  <Icon size={21} aria-hidden />
-                  <span><strong>{item.label}</strong><small>{item.description}</small></span>
-                </button>
-              )
-            })}
+          <p className="dosMobileSheetLead">Scegli in base al tipo di lavoro che devi fare.</p>
+          <div className="dosMobileMenuGroups">
+            {NAVIGATION_GROUPS.map((group) => (
+              <section className="dosMobileMenuGroup" key={group.key}>
+                <div className="dosMobileMenuGroupHeading">
+                  <strong>{group.label}</strong>
+                  <span>{group.description}</span>
+                </div>
+                <div className="dosMobileMenuGrid">
+                  {navigationGroupItems(group).map((item) => {
+                    const Icon = ICONS[item.key]
+                    return (
+                      <button key={item.key} type="button" className={cn('dosMobileMenuItem', item.key === active && 'active')} onClick={() => onNavigate(item.href)}>
+                        <Icon size={21} aria-hidden />
+                        <span><strong>{item.label}</strong><small>{item.description}</small></span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
+            ))}
           </div>
         </Dialog.Content>
       </Dialog.Portal>
