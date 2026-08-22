@@ -285,7 +285,7 @@ export function buildProjectionDraft(candidate: HumanTaskContentCandidate, recip
         packs: packSources.map((source) => ({ code: source.code, assetId: source.assetId, generationId: source.generationId })),
         selectedUdaPhases: selectedPhases.map((phase) => phase.ordinal),
         selectedPackHeadings,
-        selectedUdaSectionHeadings: [outcomesSection.heading, observationSection.heading],
+        selectedUdaSectionHeadings: [recipe.outcomes.udaSectionHeading, recipe.observation.udaSectionHeading],
       },
     },
   }
