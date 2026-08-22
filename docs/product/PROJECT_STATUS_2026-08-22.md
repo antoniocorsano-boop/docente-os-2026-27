@@ -1,16 +1,22 @@
 # DOCENTE OS — Stato generale consolidato
 
 Data: 2026-08-22  
-Baseline runtime: `develop` @ `aeb66cd8d1752de1ee4f8de33103c0617db330e6`  
+Baseline runtime: `develop` @ `2067c130c217730ae6f74a8cf664f85ba207c50c`  
 Stato documento: CANONICAL CHECKPOINT
 
 ## 1. Sintesi
 
-DOCENTE OS dispone di una base prodotto reale e verificata: autenticazione e persistenza Supabase, RLS, Planner, Conoscenza, Piano annuale, Classi, Impostazioni e Orario T1/T2. Il Language & Collaboration System v1 è applicato alle viste principali.
+DOCENTE OS è una applicazione Next.js persistente con Supabase/RLS, autenticazione, Attività/Oggi, Conoscenza, Progetta, Classi, Piano annuale, Impostazioni e Orario T1/T2.
 
-Il programma Product Experience è entrato anche nel runtime: **X0 e X1 sono completati**. Tailwind v4 e la prima component foundation open-code sono attivi senza riscrittura delle superfici esistenti.
+Il programma Product Experience ha raggiunto:
 
-La prossima priorità è **X2 — Professional AppShell**: shell unica, navigazione responsive, command palette e progressiva migrazione delle superfici di lavoro.
+- **X0 COMPLETE** — architettura esperienza e documenti canonici;
+- **X1 COMPLETE** — Tailwind v4 e component foundation open-code;
+- **X2 COMPLETE** — AppShell professionale, responsive navigation e command palette;
+- **X3 TECHNICALLY COMPLETE** — assistant-ui contestuale READ_ONLY/PROPOSE;
+- **X3 UX REFINED** — navigazione raggruppata e assistente meno invasivo, in attesa di nuova accettazione interattiva.
+
+Il principio temporale è ora congelato: **Orario e Calendario sono domini indipendenti**. Un futuro servizio `Temporal Projection` potrà leggerli insieme senza introdurre dipendenze reciproche.
 
 ## 2. Runtime corrente
 
@@ -21,88 +27,75 @@ La prossima priorità è **X2 — Professional AppShell**: shell unica, navigazi
 - npm;
 - Supabase Auth + PostgreSQL + RLS;
 - server-side session/auth helpers;
-- repository/port pattern per separare dominio e provider;
-- Tailwind CSS v4 via PostCSS, senza preflight globale;
-- primitive open-code DOCENTE OS/shadcn-style: Button, Badge, Card, Alert, Separator, Skeleton;
-- CI GitHub Actions con test, typecheck, lint e build;
-- deploy preview Netlify su `develop` come riferimento operativo.
+- repository/port pattern;
+- Tailwind CSS v4 via PostCSS senza preflight globale;
+- componenti open-code DOCENTE OS/shadcn-style;
+- assistant-ui LocalRuntime provider-neutral;
+- GitHub Actions: test + typecheck + lint + build;
+- Netlify deploy preview su `develop` come runtime operativo.
 
 ## 3. Autenticazione
-
-Stato corrente:
 
 - e-mail + password come accesso ordinario;
 - magic link per prima attivazione/recupero;
 - sessione Supabase persistente;
-- flusso Netlify autorizzato negli URL di redirect;
-- nessuna dipendenza quotidiana dall'invio e-mail per il login con password;
-- Login migrato alla nuova component foundation X1.
+- redirect Netlify autorizzato;
+- nessuna dipendenza quotidiana dalla quota e-mail per il login con password.
 
 Residui:
 
-- recovery password da rendere più guidato nella UX;
-- production URL definitivo da congelare prima del rilascio.
+- recovery password da rendere più guidato;
+- production URL definitivo da congelare.
 
-## 4. Conoscenza / KB
+## 4. Conoscenza
 
 Disponibile:
 
 - acquisizione da fonti/documenti;
 - trasformazione e normalizzazione;
-- generazioni/versioni;
+- versioni/generazioni;
 - provenienza;
 - classificazione professionale;
-- collegamenti a Planner;
-- linguaggio umano e dettagli tecnici progressivi;
-- pannello “Ti aiuto da qui”.
+- proposte azione/scadenza;
+- collegamenti alle Attività;
+- Language & Collaboration System;
+- assistente contestuale X3 READ_ONLY/PROPOSE.
 
-Residuo strategico:
+X3 non dispone di tool di scrittura e non persiste la conversazione.
 
-- il pannello di aiuto è ancora deterministico/UI, non collegato a un vero runtime AI contestuale;
-- migrazione ai componenti V2 prevista progressivamente da X2.
+## 5. Oggi / Attività
 
-## 5. Planner / Oggi
+`PlannerTask` resta l'oggetto canonico delle cose da fare.
 
 Disponibile:
 
 - task persistenti;
 - priorità;
-- planning temporale;
+- pianificazione e scadenza;
 - waiting/done/reopen;
 - provenienza;
 - collegamenti da Conoscenza;
-- viste Oggi/settimana/in attesa/senza data;
+- viste Da fare ora / Oggi / settimana / attesa / senza data;
 - quick capture.
 
-Residui:
-
-- undo/feedback evoluto;
-- assistant proposal -> Planner;
-- workload/timeboxing più avanzato;
-- integrazione calendario reale in slice dedicata.
+Una attività con data non diventa automaticamente un evento di Calendario.
 
 ## 6. Piano annuale
 
 Disponibile:
 
-- piano canonico per classi I/II/III;
-- sezioni persistenti/provvisorie/confermate;
-- avanzamento blocchi;
+- CAN-PLAN per classi I/II/III;
 - 33 blocchi / 66 ore come modello corrente;
-- stato per sezione;
+- sezioni persistenti/provvisorie/confermate;
+- avanzamento per sezione;
 - evidenze/note;
-- persistenza Supabase e cache locale ausiliaria;
-- provenienza della fonte canonica.
+- provenienza del piano di riferimento.
 
-Residui:
-
-- integrazione più profonda con UDA/materiali;
-- assistente per copertura/lacune/prossimo passo;
-- convergenza con calendario/orario T3-T4.
+Il Piano annuale esiste indipendentemente da Orario e Calendario.
 
 ## 7. Orario
 
-### T1 — completato
+### T1 — COMPLETE
 
 - settings -> classi/discipline -> cattedra -> versione -> slot;
 - assignment con minuti settimanali;
@@ -111,122 +104,147 @@ Residui:
 - trigger DB anti-overlap;
 - modifiche consentite solo su DRAFT.
 
-### T2 — completato
+### T2 — COMPLETE
 
 - griglia Settimana/Giorno;
 - cella vuota -> crea;
 - cella occupata -> modifica/rimuovi;
-- capacità minuti assegnati vs pianificati;
+- capacità minuti assegnati vs inseriti in griglia;
 - stampa;
 - responsive;
-- nessun consumo B01-B33.
+- nessun consumo B01–B33.
 
-### T3 — pending
+La vista Orario è ora migrata alla AppShell comune.
 
-- calendario/materializzazione date;
-- activation lifecycle;
-- eccezioni.
+### Invariante temporale
 
-### T4 — pending
+**Orario non dipende dal Calendario.**
 
-- allocazione/materializzazione B01-B33 sul calendario didattico.
+Gestisce autonomamente struttura settimanale, cattedra, slot e versioni.
 
-## 8. Impostazioni e Classi
+## 8. Calendario e composizione temporale
 
-Disponibile:
+Il Calendario sarà un dominio separato per:
 
-- identità docente;
-- istituto;
-- discipline;
-- classi/sezioni condivise col Piano annuale;
-- preset orario;
-- riuso dello stesso registro canonico senza duplicazioni.
+- giorni scolastici;
+- sospensioni/festività;
+- eventi e vincoli reali;
+- date effettive.
 
-## 9. Linguaggio, design e collaborazione
+`Temporal Projection` sarà un application service che potrà leggere:
 
-Completato:
+```text
+Timetable read model + Calendar read model -> ProjectedOccurrence[]
+```
 
-- Language & Collaboration System v1;
-- rollout linguistico su Home, Oggi, Progetta, Classi, Orario, Impostazioni, Piano annuale, Conoscenza;
-- Product Experience Masterplan;
-- ADR-002 Experience Platform;
-- AI Collaboration Canonical Spec;
-- Design System V2 Canonical;
-- X1 Component Foundation runtime.
+Né Orario né Calendario importeranno repository o tipi dell'altro dominio.
 
-Decisioni attive:
+Documenti canonici:
 
-- shadcn/open-code come component strategy;
-- assistant-ui come prima scelta per X3;
-- BlockNote candidato X5;
-- CopilotKit/AG-UI candidato X6;
-- provider AI dietro porta sostituibile, con Ollama possibile per sviluppo locale.
+- `docs/architecture/WORK_TIME_MENTAL_MODEL.md`;
+- `docs/architecture/TEMPORAL_COMPOSITION_CANONICAL_SPEC.md`;
+- `docs/architecture/TIMETABLE_CANONICAL_SPEC.md` per le entità verticali Orario.
 
-## 10. Divergenze chiuse
+## 9. AppShell e modello mentale
 
-### UI stack
+Le superfici principali usano progressivamente la shell condivisa.
 
-La precedente divergenza “shadcn/Tailwind documentati ma non presenti” è **chiusa**: X1 ha introdotto Tailwind v4 e primitive canoniche.
+Baseline consolidata:
 
-### Hosting
+- Conoscenza lista/dettaglio;
+- Oggi;
+- Piano annuale;
+- Orario.
 
-Il progetto è hosting-neutral. Netlify è il runtime di sviluppo verificato; Vercel non è gate finché persistono limiti di build dell'account.
+Navigazione desktop raggruppata in:
 
-### Package manager
+- **Il mio lavoro** — Home, Oggi;
+- **Didattica** — Progetta, Piano annuale, Classi;
+- **Tempo** — Orario;
+- **Risorse** — Conoscenza;
+- **Sistema** — Impostazioni.
 
-`npm` è il riferimento operativo e di CI.
+Questo raggruppamento è presentazionale: non fonde i relativi domini.
 
-## 11. Programma X
+## 10. Assistente contestuale
 
-- **X0 — canonical freeze esperienza:** COMPLETE.
-- **X1 — component foundation:** COMPLETE (`aeb66cd8…`).
-- **X2 — AppShell, sidebar responsive, command palette:** NEXT.
-- **X3 — assistant-ui shell, read/propose only:** PLANNED.
-- **X4 — assistant actions con human-in-the-loop:** PLANNED.
-- **X5 — authoring professionale con BlockNote:** PLANNED.
-- **X6 — evaluation CopilotKit/AG-UI:** PLANNED.
+X3 baseline:
 
-## 12. Rischi aperti
+- assistant-ui;
+- contesto autenticato e minimizzato;
+- provider-neutral local adapter;
+- READ_ONLY / PROPOSE;
+- nessuna scrittura;
+- nessuna nuova persistenza.
 
-1. duplicazione della shell/navigation tra le viste prima di X2;
-2. CSS locale ancora ampio durante la migrazione progressiva;
-3. introdurre AI prima di completare i boundary X3;
-4. confondere dati proposti con dati canonici;
-5. dipendere da un provider LLM/cloud specifico;
-6. accelerare T3/T4 senza coordinamento con shell/calendario.
+Raffinamento `2067c130…`:
 
-## 13. Regola di sequenza
+- trigger flottante più piccolo;
+- pannello aperto meno invasivo;
+- copy di sicurezza più breve;
+- documento sempre utilizzabile senza assistente.
 
-Ordine raccomandato:
+X4 resta **HOLD** fino all'accettazione visiva della versione raffinata.
 
-1. X2 shell e command palette;
-2. T3 oppure X3 in parallelo solo se i confini restano indipendenti;
-3. X4 dopo validazione dell'assistente read/propose;
-4. T4 quando calendario e activation lifecycle sono stabili;
-5. X5 authoring;
-6. X6 agentic evaluation.
+## 11. Programma temporale corretto
 
-## 14. Next concrete action
+### T3A — Timetable lifecycle
 
-**X2 — Professional AppShell**.
+- attivazione/archiviazione versioni Orario;
+- `effective_from/effective_to`;
+- nessuna dipendenza Calendar.
 
-Obiettivo:
+### T3B — Calendar core
 
-- eliminare gradualmente la duplicazione di navigazione;
-- introdurre componenti overlay/navigation soltanto quando realmente usati;
-- command palette `Ctrl/Cmd + K`;
-- sidebar/drawer responsive;
-- page header e contesto professionale canonici;
-- prima migrazione di Conoscenza alla nuova shell.
+- date, giorni scolastici, sospensioni, eventi;
+- nessuna dipendenza Timetable.
 
-Gate X2:
+### T3C — Temporal Projection
 
+- composizione read-only dei due domini;
+- occorrenze reali proiettate;
+- prima integrazione nella vista Oggi.
+
+### T4 — Didactic allocation
+
+- sessioni/occorrenze -> CAN-PLAN B01–B33;
+- avanzamento da minuti/evidenze effettive;
+- nessuna riscrittura del canone.
+
+## 12. Gate correnti
+
+Ultima slice runtime, PR #36:
+
+- npm install PASS;
 - test PASS;
-- typecheck PASS;
+- TypeScript PASS;
 - lint PASS;
 - build PASS;
-- Netlify preview READY;
-- login/RLS invariati;
-- navigazione tastiera funzionante;
-- nessuna modifica dati;
-- vecchie route ancora raggiungibili.
+- Product CI #220 PASS;
+- Netlify `READY` sul merge `2067c130…`;
+- nessuna migrazione DB;
+- RLS invariata;
+- X4 non autorizzata.
+
+## 13. Rischi aperti
+
+1. alcune superfici secondarie conservano ancora shell/CSS legacy;
+2. X3 raffinato deve essere verificato nuovamente su desktop e mobile;
+3. nessun provider LLM reale è ancora necessario/autorizzato per X3;
+4. T3A/B/C devono mantenere rigorosamente le dipendenze definite nel Temporal Composition Canonical Spec;
+5. produzione definitiva e recovery UX restano da congelare.
+
+## 14. Prossima azione
+
+**Accettazione interattiva della baseline `2067c130…`.**
+
+Controllare:
+
+1. sidebar raggruppata;
+2. chiarezza della distinzione Oggi / Piano annuale / Orario / Conoscenza;
+3. Orario esplicitamente autonomo dal Calendario;
+4. assistente chiuso poco invasivo;
+5. assistente aperto utilizzabile senza coprire eccessivamente il documento;
+6. comportamento mobile.
+
+Dopo accettazione, il prossimo sviluppo temporale autorizzabile è **T3A — Timetable lifecycle**. X4 resta separato e in HOLD.
