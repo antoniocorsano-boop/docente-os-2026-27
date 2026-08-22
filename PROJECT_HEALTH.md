@@ -5,11 +5,12 @@ Updated: 2026-08-22
 ```text
 STATE: ACTIVE_DEVELOPMENT_STABLE
 CANONICAL_DEV_BRANCH: develop
-BASELINE_COMMIT: 2067c130c217730ae6f74a8cf664f85ba207c50c
+BASELINE_COMMIT: f8a52de795f3a60813c096d3c0958ea2cfa08a58
 CANONICAL_DEV_RUNTIME: Netlify deploy preview for develop
 CI_GATE: test + typecheck + lint + build
 PRODUCT_EXPERIENCE: X0 COMPLETE / X1 COMPLETE / X2 COMPLETE / X3 TECHNICALLY COMPLETE
-PRIMARY_FOCUS: X3 REFINED INTERACTIVE ACCEPTANCE
+SETTINGS_EXPERIENCE: GUIDED CONTRACT COMPLETE / RUNTIME COMPLETE / INTERACTIVE ACCEPTANCE PENDING
+PRIMARY_FOCUS: SETTINGS + X3 INTERACTIVE ACCEPTANCE
 X4_GATE: HOLD_FOR_X3_UX_ACCEPTANCE
 TEMPORAL_ARCHITECTURE: TIMETABLE INDEPENDENT / CALENDAR INDEPENDENT / TEMPORAL PROJECTION COMPOSES BOTH
 ```
@@ -36,12 +37,16 @@ The static root application is retained as legacy/reference material only. It is
 - Product Experience canonical package X0.
 - Tailwind v4 + open-code component foundation X1.
 - Professional AppShell X2 with command palette and mobile navigation.
-- Knowledge list/detail, Oggi, Piano annuale and Orario on shared AppShell.
+- Knowledge list/detail, Oggi, Piano annuale, Orario and Impostazioni on shared AppShell.
 - grouped navigation by teacher mental model: `Il mio lavoro / Didattica / Tempo / Risorse / Sistema`.
 - assistant-ui contextual assistant X3 on Knowledge detail, READ_ONLY / PROPOSE only.
 - lighter floating assistant trigger and reduced expanded footprint.
 - canonical Work/Time mental model separating Activities, Annual Plan, Timetable and Calendar.
 - Timetable and Calendar frozen as independent domains; Temporal Projection is the only composition boundary.
+- **Settings Experience Contract** with guided setup and maintenance mode.
+- Settings five-area read model: `Tu e la scuola / Discipline / Classi / Cattedra / Organizzazione scolastica`.
+- Cattedra configured from Settings using the same canonical `teaching_assignments` consumed by Orario.
+- read-only teaching-assignment reader in Settings that does not create a Timetable draft.
 - GitHub Actions product gates passing on merged slices.
 - Netlify Next.js deploy preview verified as the operational development runtime.
 
@@ -53,7 +58,7 @@ Status: `DEV_RUNTIME_VERIFIED`.
 
 - project: `docente-os-dev`;
 - develop preview is the current interactive reference;
-- baseline `2067c130…` deployed `READY`;
+- Settings baseline `f8a52de…` deployed `READY`;
 - Next.js server handler is deployed;
 - Supabase redirect configuration includes the Netlify preview pattern.
 
@@ -74,10 +79,46 @@ A production alias/provider decision will be made only after release gates are s
 1. alcune superfici secondarie non sono ancora migrate alla shell condivisa;
 2. parte del CSS rimane locale mentre la migrazione prosegue;
 3. X3 raffinato richiede una nuova accettazione visiva desktop/mobile;
-4. nessun provider LLM reale è ancora collegato: X3 resta deterministico/provider-neutral per validare UX e confini;
-5. T3A/T3B/T3C e T4 restano da implementare;
-6. production URL and final auth recovery UX remain to be frozen;
-7. legacy static files remain in root and must stay clearly marked as non-canonical.
+4. le Impostazioni guidate hanno superato tutti i gate tecnici ma richiedono accettazione interattiva con dati reali;
+5. nessun provider LLM reale è ancora collegato: X3 resta deterministico/provider-neutral per validare UX e confini;
+6. T3A/T3B/T3C e T4 restano da implementare;
+7. production URL and final auth recovery UX remain to be frozen;
+8. legacy static files remain in root and must stay clearly marked as non-canonical.
+
+## Settings program
+
+### Guided Settings contract
+
+Status: `COMPLETE / INTERACTIVE_ACCEPTANCE_PENDING`.
+
+Canonical sources:
+
+- `docs/architecture/SETTINGS_CANONICAL_SPEC.md` — persistence and invariants;
+- `docs/product/SETTINGS_EXPERIENCE_CONTRACT.md` — guided experience, states, explanations and feedback;
+- `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` — tone and microcopy.
+
+Runtime evidence merged in `f8a52de…`:
+
+- `/impostazioni` migrated to AppShell;
+- summary of five areas and `N/5` readiness;
+- deterministic `Complete / Da completare / Da controllare` read model;
+- explicit `Serve a / Usato in / Non modifica` contract on every area;
+- Cattedra moved into professional-context configuration without duplicating data;
+- same `teaching_assignments` remain authoritative for Settings and Orario;
+- no automatic Timetable slot creation;
+- no Calendar/Piano annuale/Planner side effects;
+- read-only assignment reader avoids creating a Timetable draft just to render Settings;
+- Product CI #224: test/typecheck/lint/build all PASS;
+- Netlify deploy READY.
+
+Interactive acceptance checklist:
+
+1. open `/impostazioni` with the real workspace;
+2. verify the five-area summary correctly reflects actual completeness;
+3. verify provisional classes appear as `Da controllare`;
+4. verify missing Cattedra associations lead to the correct next step;
+5. add/update one Cattedra association and confirm it is immediately visible in Orario without creating a lesson;
+6. verify desktop and mobile readability.
 
 ## Active program
 
@@ -97,8 +138,6 @@ Status: `COMPLETE`.
 
 Status: `COMPLETE_TECHNICAL / REFINED_ACCEPTANCE_PENDING`.
 
-Technical evidence:
-
 - `@assistant-ui/react` LocalRuntime;
 - authenticated read-only AssistantContext endpoint;
 - minimized context builder;
@@ -106,26 +145,8 @@ Technical evidence:
 - deterministic provider-neutral ChatModelAdapter;
 - no write tools;
 - no chat persistence;
-- optional/off state.
-
-Refinement merged in `2067c130…`:
-
-- grouped AppShell navigation;
-- Orario migrated to AppShell;
-- compact assistant trigger;
-- smaller expanded assistant panel;
-- shorter safety/context copy;
-- Product CI #220 fully green;
-- Netlify deploy `READY`.
-
-Interactive acceptance checklist:
-
-1. verify grouped sidebar is clearer than the previous flat list;
-2. verify Orario is clearly autonomous from Calendario;
-3. open a real Knowledge document;
-4. verify “Chiedi a DOCENTE OS” does not compete with the document when closed;
-5. open the assistant and verify the smaller panel remains usable;
-6. test desktop and mobile.
+- optional/off state;
+- compact assistant trigger and smaller expanded panel.
 
 ### X4 — Human-in-the-loop writes
 
