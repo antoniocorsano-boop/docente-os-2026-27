@@ -1,3 +1,5 @@
+import type { AnnualPlanGrade } from '@/core/domain/annual-plan-execution'
+
 export type GradeKey = 'Prima' | 'Seconda' | 'Terza'
 
 export type AnnualPlanSegment = {
@@ -12,6 +14,18 @@ export type CanonicalPlanSource = {
   code: string
   assetId: string
   generationId: string
+}
+
+export const GRADE_STORAGE: Record<GradeKey, AnnualPlanGrade> = {
+  Prima: 'PRIMA',
+  Seconda: 'SECONDA',
+  Terza: 'TERZA',
+}
+
+export const GRADE_UI: Record<AnnualPlanGrade, GradeKey> = {
+  PRIMA: 'Prima',
+  SECONDA: 'Seconda',
+  TERZA: 'Terza',
 }
 
 export const CANONICAL_PLAN_SOURCES: Record<GradeKey, CanonicalPlanSource> = {
