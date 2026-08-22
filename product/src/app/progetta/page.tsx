@@ -14,7 +14,9 @@ import {
   groupProgettaItems,
   partitionProgettaFocusBySection,
   planningCoverage,
+  resolveCanonicalProgettaFocus,
   type ProgettaItem,
+  type ResolvedProgettaFocus,
 } from './progetta-model'
 import './progetta.css'
 import './progetta-coverage.css'
@@ -36,7 +38,8 @@ type ProgettaSearchParams = {
 export default async function ProgettaPage({ searchParams }: { searchParams: Promise<ProgettaSearchParams> }) {
   const params = await searchParams
   const grade = asProgettaGrade(params.grade)
-  const focus = asProgettaFocus({ block: params.block, uda: params.uda, pack: params.pack })
+  const requestedFocus = asProgettaFocus({ block: params.block, uda: params.uda, pack: params.pack })
+  const focus = resolveCanonicalProgettaFocus(grade, requestedFocus)
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
   if (!context) redirect('/login')
@@ -61,14 +64,75 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
 
   const gradeItems = filterProgettaItemsByGrade(items, grade)
   const scopedItems = filterProgettaItemsBySectionContext(gradeItems, compactSectionLabel)
-  const focusedItems = filterProgettaItemsByFocus(scopedItems, focus)
-  const focused = partitionProgettaFocusBySection(focusedItems, compactSectionLabel)
-  const focusedIds = new Set(focusedItems.map(({ asset }) => asset.id))
-  const remainingItems = focus ? scopedItems.filter(({ asset }) => !focusedIds.has(asset.id)) : scopedItems
-  const groups = groupProgettaItems(remainingItems)
-  const coverage = planningCoverage(items)
-  const total = groupProgettaItems(scopedItems).reduce((sum, group) => sum + group.items.length, 0)
   const gradeLabel = grade ? `Classe ${grade}` : null
+
+  if (focus) {
+    const focusedItems = filterProgettaItemsByFocus(scopedItems, focus)
+    const focused = partitionProgettaFocusBySection(focusedItems, compactSectionLabel)
+    const coreItems = prioritizeGuidedItems(focused.core).slice(0, 4)
+    const sectionItems = prioritizeGuidedItems(focused.section).slice(0, 3)
+    const fullPlanningHref = grade ? `/progetta?grade=${grade}` : '/progetta'
+    const annualPlanHref = sectionContext ? `/piano-annuale?section=${encodeURIComponent(sectionContext.id)}` : '/piano-annuale'
+
+    return (
+      <AppShell active="design" academicYearLabel={context.academicYear?.label} workspaceName={context.workspace.name} role={context.role} contentClassName="progettaSurface progettaGuidedSurface">
+        <section className="guidedPlanningHeader">
+          <div className="guidedPlanningPath">
+            <span>{displaySectionLabel ?? gradeLabel ?? 'Progetta'}</span>
+            <i aria-hidden>›</i>
+            <span>{focus.blockId}</span>
+          </div>
+          <p>PROSSIMA FASE</p>
+          <h1>{focus.title}</h1>
+          <div className="guidedPlanningMeta">
+            <span>UDA {focus.uda}</span>
+            <span>{focus.pack}</span>
+            <span>{focus.period}</span>
+          </div>
+          <p className="guidedPlanningInstruction">Parti dal nucleo comune del grado. Adatta alla sezione solo quando serve davvero: non è necessario creare una copia dell’UDA.</p>
+        </section>
+
+        <section className="guidedNow" aria-labelledby="guided-now-title">
+          <header>
+            <div><span>ADESSO</span><h2 id="guided-now-title">Apri ciò che ti serve</h2></div>
+            <small>{coreItems.length} {coreItems.length === 1 ? 'risorsa pertinente' : 'risorse pertinenti'}</small>
+          </header>
+          {coreItems.length ? (
+            <div className="guidedResourceList">
+              {coreItems.map((item, index) => <GuidedResourceLink item={item} order={index + 1} key={item.asset.id} />)}
+            </div>
+          ) : (
+            <div className="guidedEmpty">
+              <strong>Nessun contenuto è ancora collegato esplicitamente a questa fase.</strong>
+              <p>Il piano annuale resta valido; puoi cercare o acquisire il materiale senza perdere il contesto della classe.</p>
+              <Link href="/knowledge">Apri Conoscenza</Link>
+            </div>
+          )}
+        </section>
+
+        {sectionContext ? (
+          <section className="guidedSectionAdaptation" aria-label={`Adattamento ${displaySectionLabel}`}>
+            <header><div><span>SOLO SE SERVE</span><h2>Adattamento {displaySectionLabel}</h2></div></header>
+            {sectionItems.length ? (
+              <div className="guidedAdaptationItems">{sectionItems.map((item) => <GuidedResourceLink item={item} compact key={item.asset.id} />)}</div>
+            ) : (
+              <p>Nessun adattamento specifico registrato. Per questa fase puoi usare direttamente il nucleo comune.</p>
+            )}
+          </section>
+        ) : null}
+
+        <nav className="guidedPlanningActions" aria-label="Altri percorsi disponibili">
+          {sectionContext ? <Link className="primary" href={`/classi/${encodeURIComponent(sectionContext.id)}`}>Torna alla classe</Link> : null}
+          <Link href={annualPlanHref}>Piano annuale</Link>
+          <Link href={fullPlanningHref}>Esplora tutta la progettazione</Link>
+        </nav>
+      </AppShell>
+    )
+  }
+
+  const groups = groupProgettaItems(scopedItems)
+  const coverage = planningCoverage(items)
+  const total = groups.reduce((sum, group) => sum + group.items.length, 0)
 
   return (
     <AppShell active="design" academicYearLabel={context.academicYear?.label} workspaceName={context.workspace.name} role={context.role} contentClassName="progettaSurface">
@@ -81,20 +145,7 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
         </div>
       </section>
 
-      {grade ? <section className="progettaContextBanner"><span>NUCLEO COMUNE</span><strong>{gradeLabel}</strong><p>Il nucleo didattico appartiene al grado. {displaySectionLabel ? `La ${displaySectionLabel} è il contesto corrente per eventuali adattamenti, che restano separati e non duplicano l’UDA comune.` : 'Gli adattamenti per una singola sezione restano separati dal nucleo condiviso.'}</p></section> : null}
-
-      {focus ? (
-        <section className="progettaFocus" id="focus-operativo" aria-labelledby="focus-operativo-title">
-          <header>
-            <div><span>FASE DA PREPARARE</span><h2 id="focus-operativo-title">{focus.uda ? `UDA ${focus.uda}` : 'Focus di progettazione'}</h2><p>{[focus.blockId, focus.pack].filter(Boolean).join(' · ')}</p></div>
-            {displaySectionLabel ? <strong>Contesto: {displaySectionLabel}</strong> : null}
-          </header>
-          <div className="progettaFocusColumns">
-            <FocusColumn title="Nucleo comune del grado" description="UDA, pacchetto e materiali condivisi da cui partire." items={focused.core} empty="Nessun contenuto è ancora collegato esplicitamente a questo UDA/pacchetto nel nucleo comune." />
-            {sectionContext ? <FocusColumn title={`Adattamento ${displaySectionLabel}`} description="Solo materiali collegati esplicitamente a questa sezione." items={focused.section} empty="Nessun adattamento specifico registrato: puoi lavorare direttamente sul nucleo comune senza crearne una copia." /> : null}
-          </div>
-        </section>
-      ) : null}
+      {grade ? <section className="progettaContextBanner"><div className="progettaContextIdentity"><span>NUCLEO COMUNE</span><strong>{gradeLabel}</strong></div><p>Il nucleo didattico appartiene al grado. {displaySectionLabel ? `La ${displaySectionLabel} è il contesto corrente per eventuali adattamenti, che restano separati e non duplicano l’UDA comune.` : 'Gli adattamenti per una singola sezione restano separati dal nucleo condiviso.'}</p></section> : null}
 
       <section className="progettaWorkflow" aria-label="Percorso di progettazione">
         <div><span>01</span><strong>Fonti</strong><small>Documenti e riferimenti originali</small></div><i>→</i><div><span>02</span><strong>Quadro annuale</strong><small>Obiettivi, tempi e copertura</small></div><i>→</i><div><span>03</span><strong>UDA</strong><small>Percorsi ed evidenze</small></div><i>→</i><div><span>04</span><strong>Materiali</strong><small>Attività, rubriche e verifiche</small></div>
@@ -106,10 +157,10 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
         {coverage.map((item) => <div key={item.grade}><span>CLASSE {item.grade.toUpperCase()}</span><strong>{item.programming ? 'Programmazione disponibile' : 'Programmazione da aggiungere'}</strong><small className={item.uda ? 'covered' : ''}>{item.uda} {item.uda === 1 ? 'UDA collegata' : 'UDA collegate'}</small><small className={item.materials ? 'covered' : ''}>{item.materials} {item.materials === 1 ? 'pacchetto operativo' : 'pacchetti operativi'}</small></div>)}
       </section> : null}
 
-      <section className="progettaGroups" aria-label={focus ? 'Altri contenuti della progettazione' : 'Aree di progettazione'}>
+      <section className="progettaGroups" aria-label="Aree di progettazione">
         {groups.map((group, index) => <article className="progettaGroup" key={group.key}>
-          <header><span>0{index + 1}</span><div><h2>{focus ? `Altri · ${group.title}` : group.title}</h2><p>{group.description}</p></div><b>{group.items.length}</b></header>
-          {group.items.length ? <div className="progettaItems">{group.items.map((item) => <ProgettaItemLink item={item} key={item.asset.id} />)}</div> : <div className="progettaEmpty"><p>Non ci sono altri contenuti collegati a questa area{gradeLabel ? ` per la ${gradeLabel.toLowerCase()}` : ''}.</p><Link href={`/knowledge?category=${categoryFor(group.key)}`}>Apri Conoscenza <span aria-hidden>→</span></Link></div>}
+          <header><span>0{index + 1}</span><div><h2>{group.title}</h2><p>{group.description}</p></div><b>{group.items.length}</b></header>
+          {group.items.length ? <div className="progettaItems">{group.items.map((item) => <ProgettaItemLink item={item} key={item.asset.id} />)}</div> : <div className="progettaEmpty"><p>Non ci sono ancora contenuti collegati a questa area{gradeLabel ? ` per la ${gradeLabel.toLowerCase()}` : ''}.</p><Link href={`/knowledge?category=${categoryFor(group.key)}`}>Apri Conoscenza <span aria-hidden>→</span></Link></div>}
         </article>)}
       </section>
 
@@ -118,12 +169,18 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
   )
 }
 
-function FocusColumn({ title, description, items, empty }: { title: string; description: string; items: ProgettaItem[]; empty: string }) {
+function GuidedResourceLink({ item, order, compact = false }: { item: ProgettaItem; order?: number; compact?: boolean }) {
+  const { asset, document } = item
   return (
-    <article className="progettaFocusColumn">
-      <div><h3>{title}</h3><p>{description}</p></div>
-      {items.length ? <div className="progettaFocusItems">{items.map((item) => <ProgettaItemLink item={item} key={item.asset.id} />)}</div> : <p className="progettaFocusEmpty">{empty}</p>}
-    </article>
+    <Link className={compact ? 'guidedResource compact' : 'guidedResource'} href={`/knowledge/${asset.id}`}>
+      {order ? <span className="guidedResourceOrder">{String(order).padStart(2, '0')}</span> : null}
+      <div className="guidedResourceCopy">
+        <small>{guidedCategoryLabel(asset.contentCategory)}</small>
+        <strong>{humanizeKnowledgeTitle(document?.title ?? asset.originalName)}</strong>
+        <p>{document?.summary ?? guidedFallback(asset.contentCategory)}</p>
+      </div>
+      <b>{guidedActionLabel(asset.contentCategory)} <span aria-hidden>→</span></b>
+    </Link>
   )
 }
 
@@ -135,6 +192,32 @@ function ProgettaItemLink({ item }: { item: ProgettaItem }) {
       <aside>{(asset.classLabels ?? []).length ? asset.classLabels.map((label) => <small key={label}>{label}</small>) : <small>{sourceGradeLabel(asset.sourceMetadata.grade)}</small>}<em>{reliabilityLabel(asset.reliability)}</em></aside>
     </Link>
   )
+}
+
+function prioritizeGuidedItems(items: ProgettaItem[]) {
+  const rank: Record<string, number> = { UDA: 0, TEACHING_RESOURCE: 1, ASSESSMENT: 2, MODEL: 3, PROGRAMMING: 4 }
+  return [...items].sort((a, b) => (rank[a.asset.contentCategory] ?? 9) - (rank[b.asset.contentCategory] ?? 9) || b.asset.capturedAt.localeCompare(a.asset.capturedAt))
+}
+
+function guidedCategoryLabel(category: string) {
+  if (category === 'UDA') return 'Unità di apprendimento'
+  if (category === 'ASSESSMENT') return 'Valutazione'
+  if (category === 'MODEL') return 'Modello'
+  if (category === 'PROGRAMMING') return 'Quadro annuale'
+  return 'Materiale operativo'
+}
+
+function guidedActionLabel(category: string) {
+  if (category === 'UDA') return 'Apri UDA'
+  if (category === 'ASSESSMENT') return 'Apri valutazione'
+  if (category === 'PROGRAMMING') return 'Apri quadro'
+  return 'Apri materiale'
+}
+
+function guidedFallback(category: string) {
+  if (category === 'UDA') return 'Controlla obiettivi, attività, evidenze e criteri prima di preparare la lezione.'
+  if (category === 'ASSESSMENT') return 'Controlla lo strumento di osservazione o valutazione collegato alla fase.'
+  return 'Apri la risorsa operativa collegata a questa fase del piano.'
 }
 
 function categoryFor(key: string) {
