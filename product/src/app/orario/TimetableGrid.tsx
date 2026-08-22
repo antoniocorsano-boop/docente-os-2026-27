@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import type { TimetableSlot, TimetableSlotKind } from '@/core/domain/timetable'
-import { addLessonSlot, addSpecialSlot, deleteTimetableSlot, updateTimetableSlot } from './actions'
+import type { TimetablePresenceKind, TimetableSlot, TimetableSlotKind } from '@/core/domain/timetable'
+import { addClassPresenceSlot, addLessonSlot, addSpecialSlot, deleteTimetableSlot, updateTimetableSlot } from './actions'
 import { buildTimetableGridRows, timetableCellKey, type TimetableGridPeriod } from './timetable-grid-model'
 
 export type TimetableGridDay = {
@@ -36,15 +36,26 @@ type EditorState = {
   ordinal: number | null
   kind: TimetableSlotKind
   assignmentId: string
+  manualClassLabel: string
+  presenceKind: TimetablePresenceKind
   room: string
   note: string
 }
 
 const KIND_LABELS: Record<TimetableSlotKind, string> = {
-  LESSON: 'Lezione',
+  LESSON: 'Lezione della mia cattedra',
+  CLASS_PRESENCE: 'Presenza in altra classe',
   DISPOSITION: 'Disposizione',
   RECEPTION: 'Ricevimento',
   OTHER: 'Altro',
+}
+
+const PRESENCE_LABELS: Record<TimetablePresenceKind, string> = {
+  SUBSTITUTION: 'Supplenza',
+  CO_TEACHING: 'Compresenza',
+  SUPERVISION: 'Sorveglianza / assistenza',
+  PROJECT: 'Progetto / attività',
+  OTHER: 'Altra presenza',
 }
 
 export default function TimetableGrid({ versionId, days, periods, slots, assignments }: TimetableGridProps) {
@@ -93,6 +104,8 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
       ordinal,
       kind: 'LESSON',
       assignmentId: assignments[0]?.id ?? '',
+      manualClassLabel: '',
+      presenceKind: 'SUBSTITUTION',
       room: '',
       note: '',
     })
@@ -108,6 +121,8 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
       ordinal: slot.ordinal,
       kind: slot.slotKind,
       assignmentId: slot.teachingAssignmentId ?? assignments[0]?.id ?? '',
+      manualClassLabel: slot.manualClassLabel ?? '',
+      presenceKind: slot.presenceKind ?? 'SUBSTITUTION',
       room: slot.room ?? '',
       note: slot.note ?? '',
     })
@@ -122,6 +137,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
   async function createSlot(formData: FormData) {
     if (!editor) return
     if (editor.kind === 'LESSON') await addLessonSlot(formData)
+    else if (editor.kind === 'CLASS_PRESENCE') await addClassPresenceSlot(formData)
     else await addSpecialSlot(formData)
     setEditor(null)
   }
@@ -221,6 +237,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
 
       <div className="timetableLegend" aria-label="Legenda">
         <span><i className="legendLesson" /> Lezione</span>
+        <span><i className="legendPresence" /> Presenza in altra classe</span>
         <span><i className="legendDisposition" /> Disposizione</span>
         <span><i className="legendReception" /> Ricevimento</span>
         <span><i className="legendOther" /> Altro</span>
@@ -230,7 +247,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
         <div className="timetableEditorBackdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setEditor(null) }}>
           <section className="timetableEditor" role="dialog" aria-modal="true" aria-labelledby="timetable-editor-title">
             <div className="timetableEditorHeading">
-              <div><span>{editor.mode === 'create' ? 'Nuovo slot' : 'Modifica slot'}</span><h3 id="timetable-editor-title">{days.find((day) => day.value === editor.weekday)?.label ?? 'Giorno'} · {editor.startTime}–{editor.endTime}</h3></div>
+              <div><span>{editor.mode === 'create' ? 'Nuova voce' : 'Modifica voce'}</span><h3 id="timetable-editor-title">{days.find((day) => day.value === editor.weekday)?.label ?? 'Giorno'} · {editor.startTime}–{editor.endTime}</h3></div>
               <button type="button" aria-label="Chiudi" onClick={() => setEditor(null)}>×</button>
             </div>
 
@@ -238,28 +255,32 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
               <input type="hidden" name="versionId" value={versionId} />
               {editor.slotId ? <input type="hidden" name="slotId" value={editor.slotId} /> : null}
 
-              <label><span>Tipo attività</span><select name="kind" value={editor.kind} onChange={(event) => setEditor((current) => current ? { ...current, kind: event.target.value as TimetableSlotKind } : current)}>{Object.entries(KIND_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label className="editorWide"><span>Che cosa fai in quest’ora?</span><select name="kind" value={editor.kind} onChange={(event) => setEditor((current) => current ? { ...current, kind: event.target.value as TimetableSlotKind } : current)}>{Object.entries(KIND_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               <label><span>Giorno</span><select name="weekday" value={editor.weekday} onChange={(event) => setEditor((current) => current ? { ...current, weekday: Number(event.target.value) } : current)}>{days.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}</select></label>
+              <label><span>Ora n.</span><input name="ordinal" type="number" min="1" max="20" value={editor.ordinal ?? ''} onChange={(event) => setEditor((current) => current ? { ...current, ordinal: event.target.value ? Number(event.target.value) : null } : current)} /></label>
               <label><span>Inizio</span><input name="startTime" type="time" value={editor.startTime} onChange={(event) => setEditor((current) => current ? { ...current, startTime: event.target.value } : current)} required /></label>
               <label><span>Fine</span><input name="endTime" type="time" value={editor.endTime} onChange={(event) => setEditor((current) => current ? { ...current, endTime: event.target.value } : current)} required /></label>
-              <label><span>Ora n.</span><input name="ordinal" type="number" min="1" max="20" value={editor.ordinal ?? ''} onChange={(event) => setEditor((current) => current ? { ...current, ordinal: event.target.value ? Number(event.target.value) : null } : current)} /></label>
 
               {editor.kind === 'LESSON' ? (
                 <>
-                  <label className="editorWide"><span>Cattedra</span><select name="assignmentId" value={editor.assignmentId} onChange={(event) => setEditor((current) => current ? { ...current, assignmentId: event.target.value } : current)} required>{assignments.map((assignment) => <option key={assignment.id} value={assignment.id}>{assignment.label}{assignment.status === 'PROVISIONAL' ? ' · provvisoria' : ''}</option>)}</select></label>
-                  <label><span>Aula</span><input name="room" maxLength={80} value={editor.room} onChange={(event) => setEditor((current) => current ? { ...current, room: event.target.value } : current)} /></label>
+                  <label className="editorWide"><span>Classe e disciplina della tua cattedra</span><select name="assignmentId" value={editor.assignmentId} onChange={(event) => setEditor((current) => current ? { ...current, assignmentId: event.target.value } : current)} required>{assignments.map((assignment) => <option key={assignment.id} value={assignment.id}>{assignment.label}{assignment.status === 'PROVISIONAL' ? ' · da confermare' : ''}</option>)}</select></label>
+                  <label><span>Aula <small>facoltativa</small></span><input name="room" maxLength={80} value={editor.room} onChange={(event) => setEditor((current) => current ? { ...current, room: event.target.value } : current)} /></label>
                 </>
-              ) : (
-                <><input type="hidden" name="assignmentId" value="" /><input type="hidden" name="room" value="" /></>
-              )}
+              ) : editor.kind === 'CLASS_PRESENCE' ? (
+                <>
+                  <label><span>Classe</span><input name="manualClassLabel" maxLength={12} value={editor.manualClassLabel} onChange={(event) => setEditor((current) => current ? { ...current, manualClassLabel: event.target.value.toUpperCase() } : current)} placeholder="Es. 3B" required /></label>
+                  <label><span>Tipo di presenza</span><select name="presenceKind" value={editor.presenceKind} onChange={(event) => setEditor((current) => current ? { ...current, presenceKind: event.target.value as TimetablePresenceKind } : current)}>{Object.entries(PRESENCE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                  <label className="editorWide"><span>Aula <small>facoltativa</small></span><input name="room" maxLength={80} value={editor.room} onChange={(event) => setEditor((current) => current ? { ...current, room: event.target.value } : current)} /></label>
+                </>
+              ) : null}
 
-              <label className="editorWide"><span>Nota</span><input name="note" maxLength={1000} value={editor.note} onChange={(event) => setEditor((current) => current ? { ...current, note: event.target.value } : current)} placeholder="Opzionale" /></label>
+              <label className="editorWide"><span>Nota <small>facoltativa</small></span><input name="note" maxLength={1000} value={editor.note} onChange={(event) => setEditor((current) => current ? { ...current, note: event.target.value } : current)} placeholder="Solo se ti serve un promemoria" /></label>
 
-              {editor.kind === 'LESSON' && !assignments.length ? <p className="editorWarning">Definisci prima almeno una voce di cattedra.</p> : null}
+              {editor.kind === 'LESSON' && !assignments.length ? <p className="editorWarning">Per una lezione della tua cattedra serve prima almeno una associazione in Impostazioni. Puoi comunque registrare una presenza in altra classe.</p> : null}
 
               <div className="timetableEditorActions">
                 <button className="secondaryButton" type="button" onClick={() => setEditor(null)}>Annulla</button>
-                <button className="timetablePrimaryButton" type="submit" disabled={editor.kind === 'LESSON' && !assignments.length}>{editor.mode === 'create' ? 'Aggiungi alla griglia' : 'Salva modifiche'}</button>
+                <button className="timetablePrimaryButton" type="submit" disabled={editor.kind === 'LESSON' && !assignments.length}>{editor.mode === 'create' ? 'Aggiungi all’orario' : 'Salva modifiche'}</button>
               </div>
             </form>
 
@@ -267,7 +288,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
               <form action={removeSlot} className="editorDeleteForm">
                 <input type="hidden" name="versionId" value={versionId} />
                 <input type="hidden" name="slotId" value={editor.slotId} />
-                <button className="textDangerButton" type="submit">Rimuovi questo slot</button>
+                <button className="textDangerButton" type="submit">Rimuovi dall’orario</button>
               </form>
             ) : null}
           </section>
@@ -278,6 +299,20 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
 }
 
 function OccupiedCell({ slot, assignment, onClick }: { slot: TimetableSlot; assignment?: TimetableGridAssignment; onClick: () => void }) {
+  if (slot.slotKind === 'CLASS_PRESENCE') {
+    const presence = slot.presenceKind ? PRESENCE_LABELS[slot.presenceKind] : 'Presenza'
+    const title = `${slot.manualClassLabel ?? 'Classe'} · ${presence}`
+    const subtitle = [slot.room ? `Aula ${slot.room}` : null, slot.note].filter(Boolean).join(' · ')
+    return (
+      <button className="occupiedTimetableCell kind-class_presence" type="button" onClick={onClick} aria-label={`${title}, ${slot.startTime}–${slot.endTime}`}>
+        <span className="cellKind">Presenza</span>
+        <strong>{title}</strong>
+        <small>{subtitle || `${slot.startTime}–${slot.endTime}`}</small>
+        {slot.ordinal ? <b>{slot.ordinal}ª ora</b> : null}
+      </button>
+    )
+  }
+
   const special = slot.slotKind !== 'LESSON'
   const title = special ? KIND_LABELS[slot.slotKind] : assignment?.label ?? 'Lezione'
   const subtitle = special ? slot.note || 'Impegno non didattico' : [slot.room ? `Aula ${slot.room}` : null, slot.note].filter(Boolean).join(' · ')

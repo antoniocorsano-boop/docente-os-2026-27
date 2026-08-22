@@ -2,10 +2,12 @@ import type { Database } from '@/lib/supabase/database.types'
 import { createClient } from '@/lib/supabase/server'
 import {
   asTeachingAssignmentStatus,
+  asTimetablePresenceKind,
   asTimetableSlotKind,
   asTimetableSourceKind,
   asTimetableVersionStatus,
   type TeachingAssignment,
+  type TimetablePresenceKind,
   type TimetableSlot,
   type TimetableSlotKind,
   type TimetableT1Snapshot,
@@ -15,6 +17,8 @@ import {
 type AssignmentRow = Database['public']['Tables']['teaching_assignments']['Row']
 type VersionRow = Database['public']['Tables']['timetable_versions']['Row']
 type SlotRow = Database['public']['Tables']['timetable_slots']['Row']
+type SlotRowWithPresence = SlotRow & { manual_class_label: string | null; presence_kind: string | null }
+type SlotInsert = Database['public']['Tables']['timetable_slots']['Insert']
 
 export class SupabaseTimetableRepository {
   async getOrCreateDraft(
@@ -231,9 +235,45 @@ export class SupabaseTimetableRepository {
     return toSlot(data)
   }
 
+  async addClassPresenceSlot(input: {
+    versionId: string
+    weekday: number
+    startTime: string
+    endTime: string
+    ordinal?: number | null
+    manualClassLabel: string
+    presenceKind: TimetablePresenceKind
+    room?: string | null
+    note?: string | null
+  }): Promise<TimetableSlot> {
+    const supabase = await createClient()
+    const userId = await authenticatedUserId(supabase)
+    const payload: SlotInsert & { manual_class_label: string; presence_kind: TimetablePresenceKind } = {
+      timetable_version_id: input.versionId,
+      weekday: normalizeWeekday(input.weekday),
+      start_time: normalizeTime(input.startTime),
+      end_time: normalizeTime(input.endTime),
+      slot_kind: 'CLASS_PRESENCE',
+      manual_class_label: normalizeClassLabel(input.manualClassLabel),
+      presence_kind: input.presenceKind,
+      ordinal: normalizeOrdinal(input.ordinal),
+      room: normalizeNullable(input.room, 80),
+      note: normalizeNullable(input.note, 1000),
+      created_by: userId,
+    }
+    const { data, error } = await supabase
+      .from('timetable_slots')
+      .insert(payload)
+      .select('*')
+      .single()
+
+    if (error) throw new Error(error.message)
+    return toSlot(data)
+  }
+
   async addSpecialSlot(input: {
     versionId: string
-    kind: Exclude<TimetableSlotKind, 'LESSON'>
+    kind: Exclude<TimetableSlotKind, 'LESSON' | 'CLASS_PRESENCE'>
     weekday: number
     startTime: string
     endTime: string
@@ -311,6 +351,7 @@ function toVersion(row: VersionRow): TimetableVersion {
 }
 
 function toSlot(row: SlotRow): TimetableSlot {
+  const extended = row as SlotRowWithPresence
   return {
     id: row.id,
     timetableVersionId: row.timetable_version_id,
@@ -321,6 +362,8 @@ function toSlot(row: SlotRow): TimetableSlot {
     sectionId: row.section_id,
     disciplineId: row.discipline_id,
     teachingAssignmentId: row.teaching_assignment_id,
+    manualClassLabel: extended.manual_class_label,
+    presenceKind: asTimetablePresenceKind(extended.presence_kind),
     room: row.room,
     note: row.note,
     ordinal: row.ordinal,
@@ -348,6 +391,12 @@ function normalizeOrdinal(value?: number | null) {
 function normalizeTime(value: string) {
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) throw new Error('Invalid time')
   return value
+}
+
+function normalizeClassLabel(value: string) {
+  const normalized = value.trim().replace(/\s+/g, '').toUpperCase()
+  if (!normalized || normalized.length > 12) throw new Error('Manual class label required')
+  return normalized
 }
 
 function normalizeNullable(value: string | null | undefined, maxLength: number) {

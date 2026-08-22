@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { updateDraftTimetableSlot } from '@/core/infrastructure/supabase/supabase-timetable-slot-editor'
 import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import type { TimetablePresenceKind } from '@/core/domain/timetable'
 
 export async function addTeachingAssignment(formData: FormData) {
   const context = await requireContext()
@@ -63,6 +64,23 @@ export async function addLessonSlot(formData: FormData) {
   revalidatePath('/orario')
 }
 
+export async function addClassPresenceSlot(formData: FormData) {
+  await requireContext()
+  const repository = new SupabaseTimetableRepository()
+  await repository.addClassPresenceSlot({
+    versionId: text(formData, 'versionId'),
+    weekday: integer(formData, 'weekday'),
+    startTime: text(formData, 'startTime'),
+    endTime: text(formData, 'endTime'),
+    ordinal: optionalInteger(formData, 'ordinal'),
+    manualClassLabel: text(formData, 'manualClassLabel'),
+    presenceKind: presenceKind(text(formData, 'presenceKind')),
+    room: nullableText(formData, 'room'),
+    note: nullableText(formData, 'note'),
+  })
+  revalidatePath('/orario')
+}
+
 export async function addSpecialSlot(formData: FormData) {
   await requireContext()
   const kindValue = text(formData, 'kind')
@@ -90,11 +108,13 @@ export async function updateTimetableSlot(formData: FormData) {
     slotId: text(formData, 'slotId'),
     kind,
     assignmentId: kind === 'LESSON' ? text(formData, 'assignmentId') : null,
+    manualClassLabel: kind === 'CLASS_PRESENCE' ? text(formData, 'manualClassLabel') : null,
+    presenceKind: kind === 'CLASS_PRESENCE' ? presenceKind(text(formData, 'presenceKind')) : null,
     weekday: integer(formData, 'weekday'),
     startTime: text(formData, 'startTime'),
     endTime: text(formData, 'endTime'),
     ordinal: optionalInteger(formData, 'ordinal'),
-    room: kind === 'LESSON' ? nullableText(formData, 'room') : null,
+    room: kind === 'LESSON' || kind === 'CLASS_PRESENCE' ? nullableText(formData, 'room') : null,
     note: nullableText(formData, 'note'),
   })
   revalidatePath('/orario')
@@ -146,6 +166,11 @@ function sourceKind(value: string) {
 }
 
 function timetableSlotKind(value: string) {
-  if (value === 'LESSON' || value === 'DISPOSITION' || value === 'RECEPTION' || value === 'OTHER') return value
+  if (value === 'LESSON' || value === 'CLASS_PRESENCE' || value === 'DISPOSITION' || value === 'RECEPTION' || value === 'OTHER') return value
   throw new Error('Unsupported timetable slot kind')
+}
+
+function presenceKind(value: string): TimetablePresenceKind {
+  if (value === 'SUBSTITUTION' || value === 'CO_TEACHING' || value === 'SUPERVISION' || value === 'PROJECT' || value === 'OTHER') return value
+  throw new Error('Unsupported presence kind')
 }

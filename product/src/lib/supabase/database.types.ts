@@ -94,9 +94,9 @@ export type Database = {
         Relationships: []
       }
       timetable_slots: {
-        Row: { id: string; timetable_version_id: string; weekday: number; start_time: string; end_time: string; slot_kind: string; section_id: string | null; discipline_id: string | null; teaching_assignment_id: string | null; room: string | null; note: string | null; ordinal: number | null; created_by: string; created_at: string; updated_at: string }
-        Insert: { id?: string; timetable_version_id: string; weekday: number; start_time: string; end_time: string; slot_kind?: string; section_id?: string | null; discipline_id?: string | null; teaching_assignment_id?: string | null; room?: string | null; note?: string | null; ordinal?: number | null; created_by: string; created_at?: string; updated_at?: string }
-        Update: { weekday?: number; start_time?: string; end_time?: string; slot_kind?: string; section_id?: string | null; discipline_id?: string | null; teaching_assignment_id?: string | null; room?: string | null; note?: string | null; ordinal?: number | null; updated_at?: string }
+        Row: { id: string; timetable_version_id: string; weekday: number; start_time: string; end_time: string; slot_kind: string; section_id: string | null; discipline_id: string | null; teaching_assignment_id: string | null; manual_class_label: string | null; presence_kind: string | null; room: string | null; note: string | null; ordinal: number | null; created_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; timetable_version_id: string; weekday: number; start_time: string; end_time: string; slot_kind?: string; section_id?: string | null; discipline_id?: string | null; teaching_assignment_id?: string | null; manual_class_label?: string | null; presence_kind?: string | null; room?: string | null; note?: string | null; ordinal?: number | null; created_by: string; created_at?: string; updated_at?: string }
+        Update: { weekday?: number; start_time?: string; end_time?: string; slot_kind?: string; section_id?: string | null; discipline_id?: string | null; teaching_assignment_id?: string | null; manual_class_label?: string | null; presence_kind?: string | null; room?: string | null; note?: string | null; ordinal?: number | null; updated_at?: string }
         Relationships: []
       }
       workspace_memberships: {

@@ -14,6 +14,8 @@ function slot(overrides: Partial<TimetableSlot>): TimetableSlot {
     sectionId: 'section-1',
     disciplineId: 'discipline-1',
     teachingAssignmentId: 'assignment-1',
+    manualClassLabel: null,
+    presenceKind: null,
     room: null,
     note: null,
     ordinal: 1,
@@ -40,6 +42,23 @@ test('buildTimetableGridRows merges preset rows and adds custom persisted interv
     ['09:00', '10:00', 'PRESET'],
     ['10:15', '11:00', 'CUSTOM'],
   ])
+})
+
+test('class presence remains a normal timetable interval without requiring a canonical class', () => {
+  const rows = buildTimetableGridRows(
+    [{ ordinal: 1, start: '08:00', end: '09:00' }],
+    [slot({
+      slotKind: 'CLASS_PRESENCE',
+      sectionId: null,
+      disciplineId: null,
+      teachingAssignmentId: null,
+      manualClassLabel: '3B',
+      presenceKind: 'SUBSTITUTION',
+    })],
+  )
+
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0]?.source, 'PRESET')
 })
 
 test('timetableCellKey is stable across persisted time strings with seconds', () => {
