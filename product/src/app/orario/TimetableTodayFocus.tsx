@@ -21,9 +21,12 @@ export default function TimetableTodayFocus({ days, slots, assignments }: Props)
 
   useEffect(() => {
     const update = () => setNow(new Date())
-    update()
+    const frame = window.requestAnimationFrame(update)
     const timer = window.setInterval(update, 60_000)
-    return () => window.clearInterval(timer)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.clearInterval(timer)
+    }
   }, [])
 
   const assignmentById = useMemo(
