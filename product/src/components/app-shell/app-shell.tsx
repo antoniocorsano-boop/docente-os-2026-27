@@ -40,7 +40,7 @@ const ICONS: Record<NavigationKey, LucideIcon> = {
   settings: Settings2,
 }
 
-const MOBILE_PRIMARY: NavigationKey[] = ['home', 'today', 'design', 'knowledge']
+const MOBILE_PRIMARY: NavigationKey[] = ['home', 'today', 'timetable', 'classes']
 
 export type AppShellProps = {
   active: NavigationKey
@@ -95,7 +95,7 @@ export function AppShell({
 
         <button className="dosCommandTrigger" type="button" onClick={() => setCommandOpen(true)}>
           <Search size={17} aria-hidden />
-          <span>Cerca o vai a…</span>
+          <span>Cosa vuoi fare?</span>
           <kbd>⌘K</kbd>
         </button>
 
@@ -191,15 +191,15 @@ function CommandPalette({
         <Dialog.Overlay className="dosDialogOverlay" />
         <Dialog.Content className="dosCommandDialog" aria-describedby="command-description">
           <Dialog.Title className="srOnly">Cerca o vai a una sezione</Dialog.Title>
-          <p id="command-description" className="srOnly">Scrivi il nome di una funzione di DOCENTE OS e premi Invio per aprirla.</p>
+          <p id="command-description" className="srOnly">Scrivi ciò che vuoi fare e apri la funzione pertinente.</p>
           <Command className="dosCommand" label="Cerca nelle funzioni di DOCENTE OS">
             <div className="dosCommandInputRow">
               <Search size={19} aria-hidden />
-              <Command.Input autoFocus placeholder="Cosa vuoi fare o aprire?" />
+              <Command.Input autoFocus placeholder="Cosa vuoi fare adesso?" />
               <span className="dosCommandShortcut">Esc</span>
             </div>
             <Command.List className="dosCommandList">
-              <Command.Empty className="dosCommandEmpty">Nessuna funzione trovata. Prova con una parola più generale.</Command.Empty>
+              <Command.Empty className="dosCommandEmpty">Nessun percorso trovato. Prova con un verbo: prepara, registra, cerca, organizza.</Command.Empty>
               {NAVIGATION_GROUPS.map((group) => (
                 <Command.Group heading={group.label} key={group.key}>
                   {navigationGroupItems(group).map((item) => {
@@ -224,8 +224,8 @@ function CommandPalette({
               ))}
             </Command.List>
             <div className="dosCommandFooter">
-              <span><CommandIcon size={14} aria-hidden /> Cerca e apri</span>
-              <span>Qui ti orienti; le modifiche restano nelle rispettive pagine.</span>
+              <span><CommandIcon size={14} aria-hidden /> Cerca per intenzione</span>
+              <span>DOCENTE OS apre il contesto; le modifiche restano nella superficie corretta.</span>
             </div>
           </Command>
         </Dialog.Content>
@@ -259,8 +259,8 @@ function MobileMenu({
             </div>
             <Dialog.Close className="dosSheetClose" aria-label="Chiudi menu"><X size={20} aria-hidden /></Dialog.Close>
           </div>
-          <Dialog.Title>Tutto il tuo spazio docente</Dialog.Title>
-          <p className="dosMobileSheetLead">Scegli in base al tipo di lavoro che devi fare.</p>
+          <Dialog.Title>Cosa vuoi fare?</Dialog.Title>
+          <p className="dosMobileSheetLead">Scegli il tipo di lavoro; il sistema ti porta nella superficie pertinente.</p>
           <div className="dosMobileMenuGroups">
             {NAVIGATION_GROUPS.map((group) => (
               <section className="dosMobileMenuGroup" key={group.key}>
