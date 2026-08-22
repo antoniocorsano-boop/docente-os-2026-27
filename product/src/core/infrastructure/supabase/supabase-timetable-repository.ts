@@ -138,6 +138,26 @@ export class SupabaseTimetableRepository {
     return toAssignment(data)
   }
 
+  async setAssignmentStatus(input: {
+    workspaceId: string
+    academicYearId: string
+    assignmentId: string
+    status: 'PROVISIONAL' | 'CONFIRMED'
+  }): Promise<TeachingAssignment> {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('teaching_assignments')
+      .update({ status: input.status })
+      .eq('id', input.assignmentId)
+      .eq('workspace_id', input.workspaceId)
+      .eq('academic_year_id', input.academicYearId)
+      .select('*')
+      .single()
+
+    if (error) throw new Error(error.message)
+    return toAssignment(data)
+  }
+
   async updateDraftVersion(input: {
     workspaceId: string
     academicYearId: string
