@@ -114,6 +114,16 @@ test('B15 combines PACK 1B and 1C but never exposes logistics-only PACK 1D as di
   assert.equal(projection.resources[0].prompts.length, 8)
 })
 
+test('approved PACK_COMPOSED projections fail closed when support PACK binding drifts', () => {
+  for (const blockId of ['B13', 'B14', 'B15']) {
+    const block = primaBlock(blockId)
+    assert.equal(resolveRuntimeHumanTaskLessonProjection('Prima', { ...block, supportPacks: [] }), null)
+  }
+
+  const b15 = primaBlock('B15')
+  assert.equal(resolveRuntimeHumanTaskLessonProjection('Prima', { ...b15, supportPacks: ['CAN-PACK-1D', 'CAN-PACK-1C'] }), null)
+})
+
 test('approved B07-B15 projections fail closed when canonical plan metadata drifts', () => {
   for (const blockId of ['B07', 'B08', 'B09', 'B10', 'B11', 'B12', 'B13', 'B14', 'B15']) {
     const block = primaBlock(blockId)
