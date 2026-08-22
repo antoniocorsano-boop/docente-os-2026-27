@@ -22,6 +22,27 @@ Di conseguenza, Piano annuale, UDA e CAN-PACK devono essere preservati come font
 
 Una futura slice che reintroduce come interazione primaria l'apertura di un documento lungo deve essere considerata non conforme finché non dimostra perché il documento, e non una vista operativa derivata, è necessario al compito corrente.
 
+## Research baseline obbligatoria per supporto e feedback
+
+`docs/research/USER_FEEDBACK_AND_CONTEXTUAL_SUPPORT_RESEARCH.md` governa aiuto contestuale e raccolta del feedback sull'esperienza.
+
+Principio derivato:
+
+> Supporto nel punto di bisogno; feedback alla fine del compito.
+
+Regole vincolanti:
+
+1. il supporto non compete con l'azione primaria;
+2. le informazioni necessarie al compito non vengono nascoste nel supporto;
+3. una vista FOCUSED usa al massimo un accesso leggero al supporto allo stesso livello;
+4. il feedback non interrompe un task in corso;
+5. il feedback compare dopo un completamento reale, non per il solo effetto di un parametro URL;
+6. contesto e identificatori tecnici già noti vengono catturati automaticamente;
+7. l'utente non deve conoscere o digitare codici CAN, UUID, route o identificatori interni;
+8. il feedback non contiene dati degli alunni e non modifica automaticamente i dati didattici;
+9. un singolo commento è evidenza, non una decisione di prodotto;
+10. i feedback alimentano il ciclo Capture → Contextualize → Cluster → Prioritize → Test → Implement → Re-measure.
+
 ## Intents
 
 - **ACT_NOW — Agisci adesso:** attività urgente, scadenza o elemento che richiede attenzione immediata.
@@ -59,6 +80,18 @@ Usata quando il sistema conosce compito, oggetto e contesto. Regole vincolanti:
 6. la via di uscita non deve dominare l'azione principale;
 7. il sistema non inventa stati, priorità o preparazioni non registrati.
 
+## Linguaggio umano e riferimenti tecnici
+
+Il primo livello dell'interfaccia usa nomi comprensibili nel lavoro reale: classe, percorso, lezione, materiale, evidenza, stato e azione.
+
+Codici come `B01`, `CAN-UDA-*`, `CAN-PACK-*`, UUID e identificatori di generazione sono **dati di provenienza e diagnosi**, non etichette operative. Possono essere mostrati solo:
+
+- in dettagli tecnici esplicitamente aperti dall'utente;
+- in funzioni di governance/diagnosi;
+- quando il codice stesso è necessario a una verifica professionale precisa.
+
+La rimozione del codice dalla vista umana non deve eliminare il legame canonico sottostante.
+
 ## Task continuity
 
 Quando un oggetto viene aperto dentro un compito specifico, **eredita il compito**. Il cambio di dominio non deve azzerare intento e contesto.
@@ -75,9 +108,9 @@ Regole:
 
 Esempio canonico:
 
-**Classe → Prepara B01 → Apri UDA → usa/consulta UDA → Torna alla preparazione**
+**Classe → Prepara la prossima lezione → Apri un materiale → usa/consulta → Torna alla preparazione**
 
-L'apertura dell'UDA non deve trasformarsi implicitamente in **Conoscenza → gestione asset → metadati → versioni**.
+L'apertura di un contenuto non deve trasformarsi implicitamente in **Conoscenza → gestione asset → metadati → versioni**.
 
 ## Canonical human sequence
 
@@ -95,8 +128,8 @@ Le superfici operative devono poter rispondere, nell'ordine, a queste domande:
 - **Home:** orchestratore; propone il prossimo passo più plausibile e rende gli altri ingressi secondari.
 - **Oggi:** ACT_NOW; mostra prima il prossimo compito operativo, poi il resto della giornata.
 - **Orario:** TEACH/REVIEW; evidenzia la lezione corrente o prossima, mentre copertura e configurazione restano secondarie.
-- **Classe:** TEACH/PREPARE; proietta il prossimo blocco didattico e collega alle risorse pertinenti.
-- **Piano annuale:** RECORD/REVIEW; con una sezione selezionata mostra prima il prossimo blocco e le azioni di registrazione; la tabella B01–B33 è approfondimento.
+- **Classe:** TEACH/PREPARE; proietta la prossima lezione e collega alle risorse pertinenti usando nomi umani; codici e provenienza restano nei dettagli tecnici.
+- **Piano annuale:** RECORD/REVIEW; con una sezione selezionata mostra prima la prossima lezione e le azioni di registrazione; la struttura completa B01–B33 è approfondimento.
 - **Progetta:** PREPARE; con blocco/UDA/pacchetto validi usa modalità FOCUSED; senza contesto resta esplorativa.
 - **Conoscenza:** EXPLORE quando aperta genericamente; FOCUSED quando una risorsa è aperta da PREPARE/TEACH, conservando il ritorno al compito.
 - **Impostazioni:** configurazione; non compete con le azioni operative quotidiane.
@@ -111,7 +144,10 @@ Le superfici operative devono poter rispondere, nell'ordine, a queste domande:
 - metriche e configurazione mostrate come se fossero azioni operative;
 - più azioni primarie concorrenti nella stessa vista specifica;
 - perdita del contesto quando l'utente attraversa domini interni del prodotto;
-- documento canonico lungo usato come interfaccia primaria quando il compito richiede solo una porzione semantica del contenuto.
+- documento canonico lungo usato come interfaccia primaria quando il compito richiede solo una porzione semantica del contenuto;
+- help esteso sempre visibile quando il compito è già comprensibile;
+- popup o survey nel mezzo del task;
+- richiesta all'utente di identificatori tecnici che il sistema possiede già.
 
 ## Acceptance
 
@@ -126,3 +162,5 @@ Un attraversamento tra superfici è maturo quando l'utente può aggiungere:
 Per i contenuti didattici, l'acceptance deve inoltre seguire i test e i budget definiti in `docs/research/HUMAN_TASK_CONTENT_MODEL_RESEARCH.md`, a partire dal verticale pilota:
 
 **1ª A → UDA 1-00 → B01 → CAN-PACK-1A → orienta → prepara → conduci → osserva → registra → continua.**
+
+Per supporto e feedback l'acceptance segue `docs/research/USER_FEEDBACK_AND_CONTEXTUAL_SUPPORT_RESEARCH.md`: il task deve essere completabile senza aprire l'aiuto; il feedback deve apparire soltanto dopo il completamento, essere facoltativo e non richiedere nomi tecnici o dati degli alunni.
