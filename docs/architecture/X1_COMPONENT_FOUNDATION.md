@@ -1,31 +1,30 @@
 # X1 — Component Foundation
 
 Data: 2026-08-22  
-Stato: APPROVED_FOR_IMPLEMENTATION  
+Stato: COMPLETE  
+Merge runtime: `aeb66cd8d1752de1ee4f8de33103c0617db330e6`  
 Dipende da: ADR-001, ADR-002, Product Experience Masterplan, Design System V2
 
 ## 1. Obiettivo
 
 Introdurre la fondazione tecnica per una UI professionale senza riscrivere le superfici esistenti e senza modificare dominio, database, RLS o dati.
 
-## 2. Dipendenze runtime previste
+## 2. Implementazione effettiva
 
-Baseline preferita:
+Introdotti nel runtime:
 
-- `tailwindcss`
-- integrazione PostCSS richiesta dalla versione Tailwind adottata
-- `class-variance-authority`
-- `clsx`
-- `tailwind-merge`
-- `lucide-react`
-- primitive Radix necessarie esclusivamente ai componenti effettivamente introdotti
-- `cmdk` se necessario per Command palette nella slice X2
+- Tailwind CSS v4 via `@tailwindcss/postcss`;
+- Tailwind caricato in un layer dedicato **senza preflight**, così il CSS DOCENTE OS corrente resta autorevole durante la migrazione;
+- token semantici mappati sui CSS custom properties esistenti;
+- `class-variance-authority`;
+- `clsx`;
+- `tailwind-merge`;
+- configurazione `components.json` per il flusso shadcn;
+- utility canonica `cn()` in `src/lib/utils.ts`.
 
-Regola: non installare un catalogo intero di dipendenze se non usato.
+## 3. Primitive canoniche disponibili
 
-## 3. Componenti X1
-
-Creare sotto `product/src/components/ui/`:
+Sotto `product/src/components/ui/`:
 
 - `button`
 - `badge`
@@ -33,98 +32,76 @@ Creare sotto `product/src/components/ui/`:
 - `alert`
 - `separator`
 - `skeleton`
-- `tooltip`
-- `dialog`
-- `sheet`
-- `dropdown-menu`
 
-`command` può essere preparato in X1 oppure entrare in X2 se richiede dipendenze non ancora necessarie.
+Decisione compatibile con il piano: Tooltip, Dialog, Sheet, Dropdown e Command **non sono stati installati anticipatamente** perché X1 vieta dipendenze inutilizzate. Entrano in X2 insieme ai primi casi d'uso reali.
 
-## 4. Utility
+## 4. Strategia CSS
 
-Creare utility canonica:
-
-`product/src/lib/utils.ts`
-
-con `cn()` basato su `clsx` + `tailwind-merge`.
-
-## 5. Token
-
-Integrare token semantici del Design System V2 in `globals.css`/Tailwind layer mantenendo compatibilità con le classi CSS correnti.
-
-Non eliminare i CSS legacy in X1.
-
-## 6. Superficie pilota
-
-**Conoscenza dettaglio** è la superficie pilota preferita perché contiene:
-
-- title/header;
-- status;
-- metadata;
-- azioni;
-- card;
-- dettagli tecnici;
-- pannello “Ti aiuto da qui”.
-
-Migrare soltanto elementi a basso rischio:
-
-- badge stato;
-- pulsanti principali/secondari;
-- card metadati;
-- disclosure/pannelli ove utile.
-
-Non cambiare query, server actions o modello dati.
-
-## 7. Compatibilità CSS
-
-Durante X1 è consentito:
+La convivenza è intenzionale:
 
 ```text
-legacy CSS + new component classes
+Tailwind theme/utilities layer
++ CSS legacy DOCENTE OS non layered
 ```
 
-È vietato:
+Il CSS esistente continua quindi ad avere precedenza dove una superficie non è ancora migrata. Questo evita una regressione globale da reset/preflight e rende possibile una sostituzione per strati.
 
-- rinominare massivamente classi esistenti;
-- cambiare il layout di tutte le pagine;
-- rimuovere CSS non dimostrato inutilizzato;
-- introdurre una seconda theme system indipendente.
+## 5. Superficie pilota
 
-## 8. Test
+La specifica iniziale indicava Conoscenza come superficie preferita. In implementazione è stato scelto **Login** come pilot a rischio inferiore perché:
 
-Minimo:
+- è una superficie reale e critica;
+- è indipendente dal modello didattico e dai dati KB;
+- consente di verificare componenti, token, responsive e server actions senza toccare query o dati;
+- un eventuale difetto visuale resta isolato dal lavoro docente già operativo.
 
-- test `cn()` se contiene comportamento proprio;
-- test dei mapping prodotto già esistenti devono restare verdi;
-- componenti puramente shadcn non richiedono test duplicativi se non modificati sostanzialmente;
-- build server/client deve restare verde.
+Il Login ora usa Card, Alert, Button e Separator canonici e mantiene invariato il flusso Auth.
 
-## 9. Gate
+Conoscenza viene migrata in X2 insieme alla shell, quando Dialog/Sheet/Tooltip/Command saranno disponibili.
 
-```bash
-npm install
-npm test
-npm run typecheck
-npm run lint
-npm run build
-```
+## 6. Gate eseguiti
 
-Poi:
+Product CI #200:
 
-- deploy preview Netlify READY;
-- login ancora funzionante;
-- pagina Conoscenza renderizza dati reali;
+- `npm install` — PASS
+- `npm test` — PASS
+- `npm run typecheck` — PASS
+- `npm run lint` — PASS
+- `npm run build` — PASS
+
+Netlify:
+
+- deploy preview `develop` — READY
+- commit pubblicato: `aeb66cd8d1752de1ee4f8de33103c0617db330e6`
+- Next.js server handler — presente
+
+## 7. Invarianti preservate
+
 - nessuna migrazione DB;
 - nessun seed;
-- nessuna dipendenza AI richiesta.
+- nessuna modifica RLS;
+- nessuna modifica dati;
+- nessuna dipendenza AI;
+- nessuna riscrittura delle superfici esistenti;
+- Auth server-side invariata.
 
-## 10. Definition of done
+## 8. Definition of done
 
-X1 è chiusa quando:
+X1 è `COMPLETE` perché:
 
 1. Tailwind funziona insieme al CSS esistente;
-2. i componenti base sono disponibili nel repository;
-3. almeno una superficie reale usa componenti canonici;
-4. Design System V2 è traducibile in token runtime;
+2. i componenti base sono versionati nel repository;
+3. una superficie reale usa componenti canonici;
+4. Design System V2 è tradotto in token runtime iniziali;
 5. CI e deploy sono verdi;
-6. X2 può introdurre shell/command palette senza rifare la fondazione.
+6. X2 può introdurre overlay, shell e command palette senza rifare la fondazione.
+
+## 9. Next
+
+**X2 — Professional AppShell**:
+
+- componenti overlay/navigation solo quando usati;
+- shell unica e responsive;
+- command palette `Ctrl/Cmd + K`;
+- progressiva migrazione di Conoscenza e delle viste principali;
+- nessuna modifica al dominio.
