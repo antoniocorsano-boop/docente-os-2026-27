@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import AnnualPlanClient from './AnnualPlanClient'
+import { DEFAULT_SECTION_SETS, GRADE_STORAGE, type GradeKey } from './model'
 import './annual-plan.css'
 
 export const dynamic = 'force-dynamic'
@@ -10,6 +12,22 @@ export default async function AnnualPlanPage() {
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
   if (!context) redirect('/login')
+  if (!context.academicYear) redirect('/workspace')
+
+  const executionRepository = new SupabaseAnnualPlanExecutionRepository()
+  await executionRepository.ensureDefaultSections(
+    context.workspace.id,
+    context.academicYear.id,
+    (['Prima', 'Seconda', 'Terza'] as GradeKey[]).flatMap((grade) =>
+      DEFAULT_SECTION_SETS[grade].map((section) => ({
+        grade: GRADE_STORAGE[grade],
+        sectionCode: section.code,
+        status: section.status,
+        sourceNote: section.source,
+      })),
+    ),
+  )
+  const initialSnapshot = await executionRepository.list(context.workspace.id, context.academicYear.id)
 
   return (
     <div className="appShell">
@@ -18,7 +36,7 @@ export default async function AnnualPlanPage() {
           <span className="brandMark">D</span>
           <div>
             <strong>DOCENTE OS</strong>
-            <span>{context.academicYear?.label ?? 'Anno da configurare'}</span>
+            <span>{context.academicYear.label}</span>
           </div>
         </div>
         <nav className="navList">
@@ -39,12 +57,12 @@ export default async function AnnualPlanPage() {
         <header className="mobileHeader">
           <div>
             <span className="mobileEyebrow">DOCENTE OS</span>
-            <strong>{context.academicYear?.label ?? 'Anno scolastico'}</strong>
+            <strong>{context.academicYear.label}</strong>
           </div>
           <form action="/auth/signout" method="post"><button className="iconButton" type="submit" aria-label="Esci">↗</button></form>
         </header>
 
-        <AnnualPlanClient />
+        <AnnualPlanClient initialSnapshot={initialSnapshot} academicYearId={context.academicYear.id} />
       </main>
 
       <nav className="bottomNav annualBottomNav" aria-label="Navigazione mobile">

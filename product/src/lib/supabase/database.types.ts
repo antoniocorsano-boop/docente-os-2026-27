@@ -9,6 +9,18 @@ export type Database = {
         Update: { id?: string; workspace_id?: string; label?: string; starts_on?: string; ends_on?: string; is_active?: boolean; created_at?: string }
         Relationships: []
       }
+      annual_plan_sections: {
+        Row: { id: string; workspace_id: string; academic_year_id: string; grade: string; section_code: string; status: string; source_note: string | null; created_by: string; confirmed_by: string | null; confirmed_at: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; workspace_id: string; academic_year_id: string; grade: string; section_code: string; status?: string; source_note?: string | null; created_by: string; confirmed_by?: string | null; confirmed_at?: string | null; created_at?: string; updated_at?: string }
+        Update: { status?: string; source_note?: string | null; confirmed_by?: string | null; confirmed_at?: string | null; updated_at?: string }
+        Relationships: []
+      }
+      annual_plan_block_progress: {
+        Row: { id: string; section_id: string; canonical_plan_asset_id: string; canonical_generation_id: string; block_id: string; status: string; executed_on: string | null; evidence_note: string | null; updated_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; section_id: string; canonical_plan_asset_id: string; canonical_generation_id: string; block_id: string; status?: string; executed_on?: string | null; evidence_note?: string | null; updated_by: string; created_at?: string; updated_at?: string }
+        Update: { status?: string; executed_on?: string | null; evidence_note?: string | null; updated_by?: string; updated_at?: string }
+        Relationships: []
+      }
       knowledge_assets: {
         Row: { id: string; workspace_id: string; academic_year_id: string | null; asset_kind: string; source_provider: string; source_locator: string | null; original_name: string | null; original_text: string | null; mime_type: string | null; byte_size: number | null; sha256: string | null; processing_status: string; source_metadata: Json; current_generation_id: string | null; content_category: string; disciplines: string[]; class_labels: string[]; context_status: string; reliability: string; captured_at: string; created_by: string; created_at: string; updated_at: string }
         Insert: { id?: string; workspace_id: string; academic_year_id?: string | null; asset_kind: string; source_provider: string; source_locator?: string | null; original_name?: string | null; original_text?: string | null; mime_type?: string | null; byte_size?: number | null; sha256?: string | null; processing_status?: string; source_metadata?: Json; current_generation_id?: string | null; content_category?: string; disciplines?: string[]; class_labels?: string[]; context_status?: string; reliability?: string; captured_at?: string; created_by: string; created_at?: string; updated_at?: string }
