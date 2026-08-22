@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { resolveHumanTaskLessonProjection } from '@/core/presentation/human-task-content'
+import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import LessonWorkspaceClient, { type LessonWorkspaceMode } from './lesson-workspace-client'
 import './lesson-workspace.css'
@@ -37,7 +37,7 @@ export default async function LessonWorkspacePage({
   const block = blocks.find((item) => item.id === blockId)
   if (!block) notFound()
 
-  const projection = resolveHumanTaskLessonProjection(grade, block)
+  const projection = resolveRuntimeHumanTaskLessonProjection(grade, block)
   if (!projection) {
     const gradeQuery = GRADE_QUERY[section.grade]
     redirect(`/progetta?grade=${gradeQuery}&section=${encodeURIComponent(section.id)}&block=${encodeURIComponent(block.id)}&uda=${encodeURIComponent(block.uda)}&pack=${encodeURIComponent(block.pack)}#focus-operativo`)
