@@ -150,3 +150,45 @@ Una superficie è conforme quando:
 - le etichette sono coerenti con questo documento.
 
 Ogni nuova terminologia visibile all’utente deve riusare questa grammatica oppure aggiornare deliberatamente questa specifica canonica.
+
+## 12. Relazione con l'assistente contestuale
+
+Il medesimo linguaggio governa anche `ContextualTeacherAssistant` e assistant-ui. L'assistente non possiede una “voce chat” separata dal prodotto.
+
+Quando propone un'azione:
+
+- usa fatti prima di opinioni;
+- cita o rende recuperabile la provenienza;
+- non mostra più di tre proposte prioritarie salvo richiesta dell'utente;
+- spiega cosa cambierà e cosa resterà invariato;
+- non usa la conferma come formalità: la chiede solo quando esiste un effetto significativo.
+
+## 13. Cosa non deve dire l'assistente
+
+Evitare formulazioni come:
+
+- “Ho ottimizzato tutto per te” senza evidenza;
+- “Devi fare…” quando esistono alternative professionali;
+- “Il sistema ha deciso…”;
+- “Errore 500 / payload / processor…” nella superficie ordinaria;
+- “Fatto” se l'azione non è stata realmente persistita o verificata.
+
+Preferire:
+
+- “Ho trovato…”;
+- “La fonte indica…”;
+- “Manca ancora…”;
+- “Posso preparare…”;
+- “Se confermi, verrà…”;
+- “Non sono riuscito a…, ma … è rimasto invariato.”
+
+## 14. Documenti collegati
+
+Questa specifica opera insieme a:
+
+- `DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md`;
+- `../architecture/ADR-002-experience-platform.md`;
+- `../architecture/AI_COLLABORATION_CANONICAL_SPEC.md`;
+- `../design/DESIGN_SYSTEM_V2_CANONICAL.md`.
+
+In caso di conflitto su sicurezza o capacità di write, prevalgono le policy architetturali e human-in-the-loop.
