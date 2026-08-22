@@ -6,14 +6,28 @@ export type AnnualPlanSegment = {
   uda: string
   hours: number
   pack: string
+  supportPacks?: string[]
   period: string
   focus: string
+  blockTitles?: string[]
 }
 
 export type CanonicalPlanSource = {
   code: string
   assetId: string
   generationId: string
+}
+
+export type AnnualPlanBlock = {
+  id: string
+  uda: string
+  hours: 2
+  pack: string
+  supportPacks: string[]
+  period: string
+  focus: string
+  title: string
+  segmentKey: string
 }
 
 export const GRADE_STORAGE: Record<GradeKey, AnnualPlanGrade> = {
@@ -48,15 +62,101 @@ export const CANONICAL_PLAN_SOURCES: Record<GradeKey, CanonicalPlanSource> = {
 
 export const ANNUAL_PLAN_SEGMENTS: Record<GradeKey, AnnualPlanSegment[]> = {
   Prima: [
-    { uda: '1-00', hours: 4, pack: 'CAN-PACK-1A', period: 'Settembre', focus: 'Ingresso, laboratorio e metodo' },
-    { uda: '1-01', hours: 8, pack: 'CAN-PACK-1A', period: 'Settembre/Ottobre', focus: 'Bisogni, risorse e sistemi' },
-    { uda: '1-02', hours: 12, pack: 'CAN-PACK-1B', period: 'Ottobre/Dicembre', focus: 'Materiali: risorsa → prodotto' },
-    { uda: '1-03', hours: 6, pack: 'CAN-PACK-1B', period: 'Novembre/Dicembre', focus: 'Disegno tecnico — prima parte / Open Day' },
-    { uda: '1-03', hours: 8, pack: 'CAN-PACK-1B', period: 'Gennaio/Febbraio', focus: 'Disegno tecnico — seconda parte' },
-    { uda: '1-04', hours: 6, pack: 'CAN-PACK-1E', period: 'Gennaio/Febbraio', focus: 'Rifiuti, recupero ed economia circolare' },
-    { uda: '1-05', hours: 10, pack: 'CAN-PACK-1C', period: 'Marzo/Aprile', focus: 'Dal problema al progetto' },
-    { uda: '1-06', hours: 6, pack: 'CAN-PACK-1F', period: 'Aprile/Maggio', focus: 'Dati, informazioni e sistemi digitali' },
-    { uda: '1-07', hours: 6, pack: 'CAN-PACK-1D', period: 'Maggio/Giugno', focus: 'Progetto tecnologico sostenibile' },
+    {
+      uda: '1-00',
+      hours: 4,
+      pack: 'CAN-PACK-1A',
+      period: 'Settembre',
+      focus: 'Ingresso, laboratorio e metodo',
+      blockTitles: ['Che cos’è Tecnologia?', 'Laboratorio, strumenti e sicurezza'],
+    },
+    {
+      uda: '1-01',
+      hours: 8,
+      pack: 'CAN-PACK-1A',
+      period: 'Settembre/Ottobre',
+      focus: 'Bisogni, risorse e sistemi',
+      blockTitles: ['Dai bisogni alle soluzioni', 'Risorse e vincoli', 'Pensare per sistemi', 'Compito significativo e verifica'],
+    },
+    {
+      uda: '1-02',
+      hours: 8,
+      pack: 'CAN-PACK-1B',
+      period: 'Ottobre/Dicembre',
+      focus: 'Materiali: osservare, provare, scegliere e ricostruire una filiera',
+      blockTitles: [
+        'Riconoscere e classificare i materiali',
+        'Proprietà e prove comparative',
+        'Scegliere un materiale per una funzione',
+        'Dalla risorsa al prodotto',
+      ],
+    },
+    {
+      uda: '1-03',
+      hours: 4,
+      pack: 'CAN-PACK-1B',
+      period: 'Novembre/Dicembre',
+      focus: 'Disegno tecnico: avvio e costruzioni fondamentali',
+      blockTitles: ['Entrare nel disegno tecnico', 'Costruzioni fondamentali e controllo dell’errore'],
+    },
+    {
+      uda: '1-02',
+      hours: 4,
+      pack: 'CAN-PACK-1B',
+      supportPacks: ['CAN-PACK-1C'],
+      period: 'Novembre/Dicembre',
+      focus: 'Micro-progetto Open Day: materiali, requisiti, scelta e prova',
+      blockTitles: ['Materiali, requisiti e micro-progetto trasversale', 'Confronto, scelta e prova del micro-progetto'],
+    },
+    {
+      uda: '1-03',
+      hours: 2,
+      pack: 'CAN-PACK-1B',
+      supportPacks: ['CAN-PACK-1C', 'CAN-PACK-1D'],
+      period: 'Novembre/Dicembre',
+      focus: 'Composizione geometrica e restituzione Open Day',
+      blockTitles: ['Composizione geometrica e restituzione Open Day'],
+    },
+    {
+      uda: '1-03',
+      hours: 8,
+      pack: 'CAN-PACK-1B',
+      period: 'Gennaio/Febbraio',
+      focus: 'Disegno tecnico: seconda parte',
+      blockTitles: ['Segmenti, angoli, assi e bisettrici', 'Figure piane I', 'Figure piane II', 'Tavola di sintesi e verifica'],
+    },
+    {
+      uda: '1-04',
+      hours: 6,
+      pack: 'CAN-PACK-1E',
+      period: 'Gennaio/Febbraio',
+      focus: 'Rifiuti, recupero ed economia circolare',
+      blockTitles: ['Dal prodotto al rifiuto', 'Filiera di recupero ed economia circolare', 'Dallo scarto alla nuova risorsa'],
+    },
+    {
+      uda: '1-05',
+      hours: 10,
+      pack: 'CAN-PACK-1C',
+      period: 'Marzo/Aprile',
+      focus: 'Dal problema al progetto',
+      blockTitles: ['Dal bisogno al problema', 'Informazioni e alternative', 'Confrontare e scegliere', 'Rappresentare e pianificare', 'Realizzare, verificare, migliorare'],
+    },
+    {
+      uda: '1-06',
+      hours: 6,
+      pack: 'CAN-PACK-1F',
+      period: 'Aprile/Maggio',
+      focus: 'Dati, informazioni e sistemi digitali',
+      blockTitles: ['Dai dati all’informazione', 'Tabelle, grafici e interpretazione', 'Sistema digitale: input, elaborazione, output, memoria'],
+    },
+    {
+      uda: '1-07',
+      hours: 6,
+      pack: 'CAN-PACK-1D',
+      period: 'Maggio/Giugno',
+      focus: 'Progetto tecnologico sostenibile',
+      blockTitles: ['Problema finale e criteri di sostenibilità', 'Progetto e modello', 'Verifica, comunicazione e chiusura annuale'],
+    },
   ],
   Seconda: [
     { uda: '2-01', hours: 8, pack: 'CAN-PACK-2A', period: 'Settembre/Ottobre', focus: 'Agricoltura, suolo e produzioni sostenibili' },
@@ -96,15 +196,25 @@ export const DEFAULT_SECTION_SETS: Record<GradeKey, Array<{ code: string; status
   ],
 }
 
-export function buildBlocks(grade: GradeKey) {
+export function buildBlocks(grade: GradeKey): AnnualPlanBlock[] {
   let ordinal = 1
-  return ANNUAL_PLAN_SEGMENTS[grade].flatMap((segment) =>
-    Array.from({ length: segment.hours / 2 }, () => ({
+  return ANNUAL_PLAN_SEGMENTS[grade].flatMap((segment, segmentIndex) => {
+    const { blockTitles, supportPacks = [], ...base } = segment
+    const blockCount = segment.hours / 2
+    if (!Number.isInteger(blockCount)) throw new Error(`CAN-PLAN ${grade}: segment hours must be divisible by 2`)
+    if (blockTitles && blockTitles.length !== blockCount) {
+      throw new Error(`CAN-PLAN ${grade}: ${segment.focus} expected ${blockCount} block titles, received ${blockTitles.length}`)
+    }
+
+    return Array.from({ length: blockCount }, (_, localIndex) => ({
       id: `B${String(ordinal++).padStart(2, '0')}`,
-      ...segment,
-      hours: 2,
-    })),
-  )
+      ...base,
+      supportPacks: [...supportPacks],
+      title: blockTitles?.[localIndex] ?? segment.focus,
+      segmentKey: `${grade}:${segmentIndex + 1}`,
+      hours: 2 as const,
+    }))
+  })
 }
 
 for (const grade of ['Prima', 'Seconda', 'Terza'] as GradeKey[]) {
