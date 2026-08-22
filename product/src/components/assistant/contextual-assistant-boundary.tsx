@@ -14,37 +14,38 @@ export function ContextualAssistantBoundary({ active }: { active: string }) {
   const assetId = active === 'knowledge' ? knowledgeAssetId(pathname) : null
 
   useEffect(() => {
-    if (!assistantEnabled || !assetId) {
-      setContext(null)
-      setState('idle')
-      return
-    }
+    if (!assistantEnabled || !assetId) return
 
     const controller = new AbortController()
-    setState('loading')
-    setContext(null)
+    const frame = window.requestAnimationFrame(() => {
+      setState('loading')
+      setContext(null)
 
-    void fetch(`/api/assistant/knowledge-context?assetId=${encodeURIComponent(assetId)}`, {
-      method: 'GET',
-      cache: 'no-store',
-      signal: controller.signal,
+      void fetch(`/api/assistant/knowledge-context?assetId=${encodeURIComponent(assetId)}`, {
+        method: 'GET',
+        cache: 'no-store',
+        signal: controller.signal,
+      })
+        .then(async (response) => {
+          if (!response.ok) throw new Error(`assistant-context-${response.status}`)
+          return response.json() as Promise<KnowledgeAssistantContext>
+        })
+        .then((payload) => {
+          setContext(payload)
+          setState('ready')
+        })
+        .catch((error: unknown) => {
+          if (controller.signal.aborted) return
+          console.warn('[DOCENTE OS] Assistant context unavailable', error)
+          setContext(null)
+          setState('unavailable')
+        })
     })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`assistant-context-${response.status}`)
-        return response.json() as Promise<KnowledgeAssistantContext>
-      })
-      .then((payload) => {
-        setContext(payload)
-        setState('ready')
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) return
-        console.warn('[DOCENTE OS] Assistant context unavailable', error)
-        setContext(null)
-        setState('unavailable')
-      })
 
-    return () => controller.abort()
+    return () => {
+      window.cancelAnimationFrame(frame)
+      controller.abort()
+    }
   }, [assistantEnabled, assetId])
 
   if (!assistantEnabled || !assetId) return null
