@@ -5,13 +5,13 @@ Updated: 2026-08-22
 ```text
 STATE: ACTIVE_DEVELOPMENT_STABLE
 CANONICAL_DEV_BRANCH: develop
-BASELINE_COMMIT: 1813a17ff6414439f8a5195a8de1d48b72925111
+BASELINE_COMMIT: 3685066ed91695357b10a20e821199464e06f593
 CANONICAL_DEV_RUNTIME: Netlify deploy preview for develop
 CI_GATE: test + typecheck + lint + build
-PRODUCT_EXPERIENCE: X0 COMPLETE / X1 COMPLETE / X2 COMPLETE
-PRIMARY_FOCUS: X3 Contextual Assistant — READ_ONLY / PROPOSE
-NEXT_ACTION: mount optional assistant experience on Knowledge using authentic AssistantContext and a mock/local runtime first
-DONE_WHEN_X3: contextual assistant renders real context and proposals, performs no writes, remains optional, passes CI and Netlify gates
+PRODUCT_EXPERIENCE: X0 COMPLETE / X1 COMPLETE / X2 COMPLETE / X3 TECHNICALLY COMPLETE
+PRIMARY_FOCUS: X3 INTERACTIVE ACCEPTANCE
+NEXT_ACTION: verify the contextual assistant on a real Knowledge document on desktop/mobile
+X4_GATE: HOLD_FOR_X3_INTERACTIVE_ACCEPTANCE
 ```
 
 ## Current product line
@@ -32,13 +32,14 @@ The static root application is retained as legacy/reference material only. It is
 - Canonical teacher/settings/class registry.
 - Timetable T1 persistence/configuration.
 - Timetable T2 Week/Day visual grid and slot editing.
-- Product Language & Collaboration System v1 rolled out to primary surfaces.
+- Product Language & Collaboration System v1.
 - Product Experience canonical package X0.
 - Tailwind v4 + open-code component foundation X1.
 - Professional AppShell X2 with shared navigation, command palette and mobile navigation.
-- Knowledge list/detail migrated to the shared AppShell.
-- GitHub Actions product gate passing on merged slices.
-- Netlify Next.js deploy preview on `develop` verified as the operational development runtime.
+- Knowledge list/detail on shared AppShell.
+- assistant-ui contextual assistant X3 on Knowledge detail, READ_ONLY / PROPOSE only.
+- GitHub Actions product gates passing on merged slices.
+- Netlify Next.js deploy preview verified as the operational development runtime.
 
 ## Deployment status
 
@@ -47,8 +48,8 @@ The static root application is retained as legacy/reference material only. It is
 Status: `DEV_RUNTIME_VERIFIED`.
 
 - project: `docente-os-dev`;
-- `develop` deploy preview is the current reference for interactive acceptance;
-- merge X2 `1813a17…` deployed `READY`;
+- develop preview is the current interactive reference;
+- X3 merge `3685066…` deployed `READY`;
 - Next.js server handler is deployed;
 - Supabase redirect configuration includes the Netlify preview pattern.
 
@@ -56,22 +57,23 @@ Status: `DEV_RUNTIME_VERIFIED`.
 
 Status: `OPTIONAL_PROVIDER / NOT_A_GATE`.
 
-Current automated builds are constrained by account build-rate limits. This does not block product development. DOCENTE OS remains hosting-neutral.
+Automated builds remain constrained by account build-rate limits. This does not block product development. DOCENTE OS remains hosting-neutral.
 
 ### Production
 
 Status: `NOT_YET_FROZEN`.
 
-A production alias/provider decision will be made only after release gates are satisfied. A successful development preview is not automatically a production release.
+A production alias/provider decision will be made only after release gates are satisfied.
 
 ## Current risks
 
 1. alcune superfici non sono ancora migrate alla shell condivisa;
 2. parte del CSS rimane locale mentre la migrazione prosegue;
-3. AI collaboration è specificata ma non ancora collegata a un runtime assistente reale;
-4. Timetable T3/T4 remain pending;
-5. production URL and final auth recovery UX remain to be frozen;
-6. legacy static files remain in root and must stay clearly marked as non-canonical.
+3. X3 ha superato i gate tecnici ma richiede ancora accettazione interattiva;
+4. nessun provider LLM reale è ancora collegato: il runtime X3 è deterministico/provider-neutral per validare UX e confini;
+5. Timetable T3/T4 remain pending;
+6. production URL and final auth recovery UX remain to be frozen;
+7. legacy static files remain in root and must stay clearly marked as non-canonical.
 
 ## Active program
 
@@ -85,14 +87,12 @@ Status: `COMPLETE`.
 
 Evidence:
 
-- Tailwind v4/PostCSS integrated without preflight;
-- semantic theme layer active;
-- `cn()` utility;
-- Button, Badge, Card, Alert, Separator, Skeleton;
-- shadcn registry configuration;
-- Login pilot migrated;
-- Product CI #200 all green;
-- Netlify deploy READY on merge `aeb66cd8…`.
+- Tailwind v4/PostCSS without preflight;
+- semantic theme layer;
+- canonical open-code UI primitives;
+- Login pilot;
+- Product CI #200 green;
+- Netlify READY on `aeb66cd8…`.
 
 ### X2 — Professional AppShell
 
@@ -102,35 +102,46 @@ Evidence:
 
 - shared AppShell;
 - canonical navigation registry;
-- responsive sidebar;
-- bottom navigation + complete mobile menu;
+- responsive sidebar and mobile navigation;
 - `Ctrl/Cmd+K` command palette;
-- Radix dialog / cmdk / Lucide integration;
-- Knowledge list and document detail migrated;
-- Product CI #208 all green;
-- Netlify deploy READY on merge `1813a17…`;
-- no DB/RLS/data changes.
+- Knowledge list/detail rollout;
+- Product CI #208 green;
+- Netlify READY on `1813a17…`.
 
 ### X3 — Contextual Assistant
 
-Status: `NEXT`.
+Status: `COMPLETE_TECHNICAL / INTERACTIVE_ACCEPTANCE_PENDING`.
 
-Baseline:
+Evidence:
 
-- mount assistant experience on a real Knowledge surface;
-- derive `AssistantContext` from real workspace/document data;
-- support `READ_ONLY` and `PROPOSE` only;
-- start with mock/local provider-neutral runtime;
-- assistant must be optional and non-blocking;
-- no write capability in X3.
+- `@assistant-ui/react` LocalRuntime;
+- authenticated read-only AssistantContext endpoint;
+- minimized context builder;
+- capability allowlist/denylist;
+- deterministic provider-neutral ChatModelAdapter;
+- no write tools;
+- no chat persistence;
+- optional/off state;
+- 27/27 tests PASS;
+- typecheck PASS;
+- lint PASS;
+- build PASS;
+- Product CI #213 green;
+- Netlify READY on merge `3685066…`.
+
+Interactive acceptance checklist:
+
+1. open a real Knowledge document;
+2. verify “Ti aiuto da qui” appears without obscuring the document;
+3. ask “Cosa contiene questo documento?”;
+4. ask “Crea una attività nel Planner” and confirm the assistant refuses/degrades to a manual proposal;
+5. verify desktop and mobile usability.
 
 ### X4 — Human-in-the-loop writes
 
-Status: `PLANNED`.
+Status: `HOLD_FOR_X3_INTERACTIVE_ACCEPTANCE`.
 
-- preview + explicit confirmation;
-- first reversible Planner write through application layer;
-- proposal provenance preserved.
+No write capability is authorized before the acceptance checklist above passes.
 
 ### T3/T4 — Timetable evolution
 
