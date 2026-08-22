@@ -10,6 +10,18 @@ DOCENTE OS organizza l'esperienza a partire dal compito umano, non dalla quantit
 
 Il sistema può restringere il contesto automaticamente solo se rende sempre visibile **perché** lo ha fatto e mantiene una via esplicita verso la vista completa.
 
+## Research baseline obbligatoria per i contenuti didattici
+
+La ricerca salvata in `docs/research/HUMAN_TASK_CONTENT_MODEL_RESEARCH.md` è il riferimento obbligatorio per la rappresentazione runtime di Piano annuale, UDA, CAN-PACK, materiali, Classe, Progetta e Conoscenza quando il docente opera in un contesto didattico specifico.
+
+Principio derivato:
+
+> Il documento canonico è una forma di conservazione, validazione e rendicontazione. Non è automaticamente una buona forma di interazione.
+
+Di conseguenza, Piano annuale, UDA e CAN-PACK devono essere preservati come fonti canoniche ma presentati nel lavoro quotidiano attraverso oggetti e viste semantiche coerenti con il compito: orientare, preparare, condurre, osservare, registrare e approfondire.
+
+Una futura slice che reintroduce come interazione primaria l'apertura di un documento lungo deve essere considerata non conforme finché non dimostra perché il documento, e non una vista operativa derivata, è necessario al compito corrente.
+
 ## Intents
 
 - **ACT_NOW — Agisci adesso:** attività urgente, scadenza o elemento che richiede attenzione immediata.
@@ -98,7 +110,8 @@ Le superfici operative devono poter rispondere, nell'ordine, a queste domande:
 - duplicazione del nucleo comune per creare artificialmente contesto di sezione;
 - metriche e configurazione mostrate come se fossero azioni operative;
 - più azioni primarie concorrenti nella stessa vista specifica;
-- perdita del contesto quando l'utente attraversa domini interni del prodotto.
+- perdita del contesto quando l'utente attraversa domini interni del prodotto;
+- documento canonico lungo usato come interfaccia primaria quando il compito richiede solo una porzione semantica del contenuto.
 
 ## Acceptance
 
@@ -109,3 +122,7 @@ Una superficie è matura quando un docente può rispondere entro pochi secondi a
 Un attraversamento tra superfici è maturo quando l'utente può aggiungere:
 
 **Perché ho aperto questo oggetto? Come torno esattamente al lavoro che stavo facendo?**
+
+Per i contenuti didattici, l'acceptance deve inoltre seguire i test e i budget definiti in `docs/research/HUMAN_TASK_CONTENT_MODEL_RESEARCH.md`, a partire dal verticale pilota:
+
+**1ª A → UDA 1-00 → B01 → CAN-PACK-1A → orienta → prepara → conduci → osserva → registra → continua.**
