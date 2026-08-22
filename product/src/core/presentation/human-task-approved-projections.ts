@@ -102,7 +102,7 @@ const B08_PRIMA: HumanTaskLessonProjection = {
     'Eseguire semplici prove comparative in condizioni controllate.',
     'Documentare un’attività con tabella, schema, breve relazione o supporto digitale.',
   ],
-  preparation: [],
+  preparation: ['Campioni predisposti e sicuri per le prove qualitative.'],
   steps: [
     {
       id: 'S01',
@@ -163,7 +163,7 @@ const B09_PRIMA: HumanTaskLessonProjection = {
     'Motivare la scelta di un materiale in rapporto a funzione, proprietà, costo, disponibilità, sicurezza e impatto ambientale.',
     'Documentare un’attività con tabella, schema, breve relazione o supporto digitale.',
   ],
-  preparation: [],
+  preparation: ['Tre materiali da confrontare per un semplice oggetto.'],
   steps: [
     {
       id: 'S01',
