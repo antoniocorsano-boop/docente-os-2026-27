@@ -123,12 +123,13 @@ export async function confirmSettingsSection(formData: FormData) {
 
 export async function addSettingsTeachingAssignment(formData: FormData) {
   const context = await requireContext()
+  const [sectionId, disciplineId] = assignmentPair(text(formData, 'assignmentPair'))
   const repository = new SupabaseTimetableRepository()
   await repository.addAssignment({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
-    sectionId: text(formData, 'sectionId'),
-    disciplineId: text(formData, 'disciplineId'),
+    sectionId,
+    disciplineId,
     weeklyMinutes: integer(formData, 'weeklyMinutes'),
     sourceNote: nullableText(formData, 'sourceNote'),
   })
@@ -161,6 +162,12 @@ async function requireContext() {
 function revalidateSettingsContext() {
   revalidatePath('/impostazioni')
   revalidatePath('/')
+}
+
+function assignmentPair(value: string): [string, string] {
+  const [sectionId, disciplineId, extra] = value.split('|')
+  if (!sectionId || !disciplineId || extra) throw new Error('Invalid teaching assignment pair')
+  return [sectionId, disciplineId]
 }
 
 function text(formData: FormData, key: string) {
