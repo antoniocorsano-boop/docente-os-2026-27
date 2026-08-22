@@ -25,10 +25,14 @@ export async function submitLessonExperienceFeedback(
   const sectionId = requiredText(formData, 'sectionId')
   const blockId = requiredText(formData, 'blockId').toUpperCase()
   const satisfaction = Number(requiredText(formData, 'satisfaction'))
-  const comment = optionalComment(formData.get('comment'))
+  const rawComment = formData.get('comment')
+  const comment = typeof rawComment === 'string' ? rawComment.trim() : ''
 
   if (!Number.isInteger(satisfaction) || satisfaction < 1 || satisfaction > 5) {
     return { status: 'error', message: 'Scegli una valutazione prima di inviare il feedback.' }
+  }
+  if (comment.length > 1500) {
+    return { status: 'error', message: 'Accorcia il commento a 1500 caratteri o meno.' }
   }
 
   try {
@@ -82,7 +86,7 @@ export async function submitLessonExperienceFeedback(
         projectionId: projection.projectionId,
       },
       satisfaction,
-      comment,
+      comment: comment || null,
       created_by: userId,
     })
 
@@ -103,11 +107,4 @@ function requiredText(formData: FormData, name: string) {
   const value = formData.get(name)
   if (typeof value !== 'string' || !value.trim()) return ''
   return value.trim()
-}
-
-function optionalComment(value: FormDataEntryValue | null) {
-  if (typeof value !== 'string') return null
-  const comment = value.trim()
-  if (!comment) return null
-  return comment.slice(0, 1500)
 }
