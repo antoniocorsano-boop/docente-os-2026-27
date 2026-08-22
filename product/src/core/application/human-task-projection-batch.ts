@@ -1,6 +1,10 @@
 import type { GradeKey } from '@/app/piano-annuale/model'
 import type { HumanTaskContentCandidate } from './human-task-content-pipeline'
 import {
+  buildPackComposedProjectionDraft,
+  type HumanTaskPackComposedProjectionRecipe,
+} from './human-task-pack-composed-projection-recipe'
+import {
   buildProjectionDraft,
   type HumanTaskProjectionDraft,
   type HumanTaskProjectionRecipe,
@@ -22,7 +26,10 @@ export type HumanTaskProjectionGap = {
   note: string
 }
 
-export type HumanTaskProjectionBatchRecipe = HumanTaskProjectionRecipe | HumanTaskUdaOnlyProjectionRecipe
+export type HumanTaskProjectionBatchRecipe =
+  | HumanTaskProjectionRecipe
+  | HumanTaskUdaOnlyProjectionRecipe
+  | HumanTaskPackComposedProjectionRecipe
 
 export type HumanTaskProjectionBatchItem = {
   grade: GradeKey
@@ -59,7 +66,9 @@ export function buildProjectionBatchReview(
 
     const draft = isUdaOnlyRecipe(recipe)
       ? buildUdaOnlyProjectionDraft(candidate, recipe)
-      : buildProjectionDraft(candidate, recipe)
+      : isPackComposedRecipe(recipe)
+        ? buildPackComposedProjectionDraft(candidate, recipe)
+        : buildProjectionDraft(candidate, recipe)
 
     if (draft.status === 'INVALID') {
       return {
@@ -85,6 +94,10 @@ export function buildProjectionBatchReview(
 
 function isUdaOnlyRecipe(recipe: HumanTaskProjectionBatchRecipe): recipe is HumanTaskUdaOnlyProjectionRecipe {
   return 'mode' in recipe && recipe.mode === 'UDA_ONLY'
+}
+
+function isPackComposedRecipe(recipe: HumanTaskProjectionBatchRecipe): recipe is HumanTaskPackComposedProjectionRecipe {
+  return 'mode' in recipe && recipe.mode === 'PACK_COMPOSED'
 }
 
 function key(grade: GradeKey, blockId: string) {
