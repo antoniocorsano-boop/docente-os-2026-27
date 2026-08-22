@@ -1,7 +1,7 @@
 # X3 — Contextual Assistant
 
 Data: 2026-08-22  
-Stato: APPROVED_FOR_IMPLEMENTATION  
+Stato: COMPLETE_TECHNICAL / INTERACTIVE_ACCEPTANCE_PENDING  
 Dipende da: X0, X1, X2, ADR-002, AI Collaboration Canonical Spec
 
 ## 1. Obiettivo
@@ -13,7 +13,7 @@ X3 autorizza esclusivamente:
 - `READ_ONLY`;
 - `PROPOSE`.
 
-Sono vietati in X3:
+Sono vietati:
 
 - `WRITE_REVERSIBLE`;
 - `WRITE_EXTERNAL`;
@@ -21,65 +21,61 @@ Sono vietati in X3:
 - tool che modificano database/provider;
 - chiamate dirette a Supabase/Google dal runtime AI.
 
-## 2. Libreria
+## 2. Implementazione congelata
 
-Baseline verificata su GitHub il 2026-08-22:
+Baseline runtime:
 
-- repository: `assistant-ui/assistant-ui`;
-- licenza: MIT;
-- package: `@assistant-ui/react`;
-- versione osservata: `0.15.16`;
-- peer React: `^18 || ^19`;
-- API utilizzata: `useLocalRuntime`, `AssistantRuntimeProvider`, `ChatModelAdapter`, primitive Thread/Composer/Message.
+- `@assistant-ui/react` 0.15.x;
+- `useLocalRuntime`;
+- `AssistantRuntimeProvider`;
+- `ChatModelAdapter` deterministico/provider-neutral;
+- primitive Thread / Composer / Message;
+- nessuna API key;
+- nessun provider LLM esterno;
+- conversazione effimera.
 
-`LocalRuntime` è scelto perché gestisce lo stato conversazionale nel client e consente un backend/adattatore personalizzato tramite un singolo `ChatModelAdapter.run()`.
-
-## 3. Provider strategy X3
-
-X3 NON richiede un provider commerciale.
-
-Prima implementazione:
+Flusso:
 
 ```text
-AssistantContext autentico
-  -> ProviderNeutralContextAdapter
-  -> deterministic/mock ChatModelAdapter
+Knowledge detail
+  -> AppShell ContextualAssistantBoundary
+  -> GET /api/assistant/knowledge-context?assetId=...
+  -> authenticated server repositories + RLS
+  -> minimized AssistantContext
+  -> deterministic ChatModelAdapter
   -> assistant-ui LocalRuntime
-  -> UI contestuale
+  -> READ_ONLY / PROPOSE response
 ```
 
-Il mock non inventa dati: genera risposte soltanto da `AssistantContext` e da snapshot minimizzati esplicitamente passati alla componente.
+## 3. AssistantContext
 
-Questa baseline dimostra l'interazione e i confini. Il provider LLM reale entrerà soltanto tramite un adapter successivo senza cambiare il contratto della UI.
-
-## 4. AssistantContext runtime
-
-Il contratto canonico resta quello di `AI_COLLABORATION_CANONICAL_SPEC.md`.
-
-Per `KNOWLEDGE`, il builder riceve dati autentici già disponibili lato server e produce un read model minimizzato:
+Il builder `buildKnowledgeAssistantContext()` passa al runtime soltanto dati allowlisted:
 
 - workspace id;
 - anno scolastico id quando disponibile;
-- documento/asset id;
+- asset id;
 - titolo umano;
-- stato umano/tecnico minimo necessario;
-- discipline/classi se presenti;
-- provenienza;
-- numero proposte azione/scadenza;
-- disponibilità della versione organizzata;
-- informazioni mancanti;
+- stato;
+- tipologia;
+- provenienza umana;
+- summary fino a 900 caratteri;
+- excerpt fino a 700 caratteri;
+- discipline/classi;
+- conteggio proposte azione/scadenza;
+- dati mancanti;
 - capability consentite/vietate.
 
-Non passa al runtime:
+Non passa:
 
 - token;
-- service keys;
-- credenziali provider;
-- oggetti Supabase client;
-- payload provider raw;
-- dati alunno non necessari.
+- service role key;
+- client Supabase;
+- credenziali Google;
+- payload raw provider;
+- intero documento se non necessario;
+- dati alunno non richiesti.
 
-## 5. Capability X3
+## 4. Capability X3
 
 Consentite:
 
@@ -96,94 +92,82 @@ Vietate:
 - `KNOWLEDGE_REPROCESS`;
 - `DRIVE_WRITE`;
 - `CALENDAR_WRITE`;
-- `GMAIL_SEND`;
-- qualsiasi capability non esplicitamente allowlisted.
+- `GMAIL_SEND`.
 
-## 6. Esperienza
+Una richiesta di scrittura viene declassata a proposta: l’assistente descrive il percorso manuale ma non lo attiva.
+
+## 5. Esperienza
 
 Superficie pilota: `Conoscenza / dettaglio documento`.
 
-Il pannello deve comunicare chiaramente:
+La AppShell riconosce la route documento e monta un trigger contestuale non bloccante:
 
+**Ti aiuto da qui**  
 **Assistente contestuale · nessuna modifica automatica**
 
-Prompt suggeriti iniziali:
+Prompt guida:
 
-- “Cosa contiene questo documento?”
-- “Cosa devo controllare?”
-- “Ci sono azioni o scadenze?”
-- “Qual è il prossimo passo utile?”
+- Cosa contiene questo documento?
+- Cosa devo controllare?
+- Ci sono azioni o scadenze?
+- Qual è il prossimo passo utile?
 
-La risposta operativa segue:
+Le risposte seguono la grammatica:
 
-**Ho trovato**  
-Fatti/supporto disponibile.
+**Ho trovato → Ti propongo → Se scegli questa opzione**
 
-**Ti propongo**  
-Massimo tre opzioni.
+## 6. Optional / failure state
 
-**Se scegli questa opzione**  
-Effetto previsto; in X3 l'effetto è sempre informativo/propositivo e non viene eseguito.
+- `NEXT_PUBLIC_DOCENTE_OS_ASSISTANT=off` disabilita l’assistente;
+- la pagina resta completamente operativa;
+- se il read model non è disponibile, compare un messaggio non bloccante;
+- le server actions manuali esistenti non dipendono dall’assistente.
 
-## 7. Relazione con le azioni manuali esistenti
+## 7. Persistenza
 
-L'assistente può indicare che esiste una funzione manuale (“Crea attività nel Planner”, “Controlla il contesto”, “Aggiorna analisi”), ma non la invoca.
-
-Le server actions correnti restano l'unica via per le scritture dell'utente.
-
-## 8. Persistenza
-
-Baseline:
-
-- conversazione effimera;
 - nessuna nuova tabella;
-- nessuna persistenza della chat;
-- nessuna chat come registro decisionale.
+- nessuna persistenza chat;
+- nessuna chat come registro decisionale;
+- nessun nuovo schema/migration.
 
-## 9. Failure/off state
+## 8. Test e gate verificati
 
-L'assistente deve poter essere disabilitato senza cambiare la funzionalità della pagina.
+Test aggiunti per:
 
-Se il runtime non è disponibile:
+- capability allowlist/denylist;
+- informazioni mancanti;
+- minimizzazione testo;
+- conteggi proposte reali;
+- downgrade delle richieste write;
+- assenza di claim di scritture eseguite;
+- priorità del contesto mancante nel prossimo passo.
 
-- il documento resta completamente utilizzabile;
-- le azioni manuali restano disponibili;
-- viene mostrato uno stato non bloccante.
+Gate runtime:
 
-## 10. Test obbligatori
+- Product CI #213 PASS;
+- 27/27 test PASS;
+- TypeScript PASS;
+- lint PASS;
+- Next build PASS;
+- Netlify READY;
+- merge `3685066ed91695357b10a20e821199464e06f593`;
+- nessuna migrazione DB/RLS/dati;
+- nessun secret/API key.
 
-- builder `AssistantContext` usa solo dati allowlisted;
-- capability consentite/vietate corrette;
-- dati mancanti esplicitati;
-- adapter locale non produce una write;
-- prompt classificati in intent read/propose;
-- risposte non dichiarano effetti già eseguiti;
-- rendering non necessario ai test duplicativi della libreria, ma il build React/Next deve passare.
+## 9. Definition of done tecnica
 
-## 11. Gate
+Soddisfatta.
 
-```bash
-npm install
-npm test
-npm run typecheck
-npm run lint
-npm run build
-```
+Resta il gate umano:
 
-Poi:
+- verificare in browser il trigger;
+- aprire l’assistente;
+- porre almeno una domanda READ_ONLY;
+- porre una richiesta di scrittura e confermare che venga rifiutata/declassata;
+- verificare che il pannello non ostacoli l’uso mobile/desktop.
 
-- Netlify preview READY;
-- dettaglio Conoscenza con dati reali renderizza;
-- assistant-ui montato;
-- nessuna nuova migrazione DB;
-- nessun secret/API key richiesto;
-- nessuna write dall'assistente;
-- pagina identicamente operativa con assistente disabilitato.
+## 10. Next
 
-## 12. Definition of done
+X4 resta **HOLD_FOR_X3_INTERACTIVE_ACCEPTANCE**.
 
-X3 è completa quando l'assistente contestuale è montato sul dettaglio Conoscenza, usa un `AssistantContext` autentico e minimizzato, funziona con LocalRuntime/mock provider-neutral, genera soltanto READ_ONLY/PROPOSE e supera CI + deploy preview senza regressioni.
-
-## 13. Next
-
-X4 può introdurre una prima `WRITE_REVERSIBLE` soltanto dopo accettazione X3, con preview, conferma esplicita, application layer, policy dominio/RLS e provenienza della proposta.
+Dopo accettazione, una prima `WRITE_REVERSIBLE` potrà essere progettata soltanto con preview, conferma esplicita, application layer, policy dominio/RLS e provenienza della proposta.
