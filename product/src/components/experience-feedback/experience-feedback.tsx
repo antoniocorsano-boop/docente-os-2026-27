@@ -39,7 +39,7 @@ export function LessonExperienceFeedback({
         <input type="hidden" name="blockId" value={blockId} />
 
         <fieldset className={styles.rating}>
-          <legend>Quanto è stato facile arrivare dalla preparazione alla registrazione?</legend>
+          <legend>Nel complesso, com’è andato?</legend>
           <div>
             {OPTIONS.map((option) => (
               <label key={option.value}>
