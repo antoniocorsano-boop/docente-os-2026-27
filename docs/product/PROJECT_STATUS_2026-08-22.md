@@ -1,14 +1,16 @@
 # DOCENTE OS — Stato generale consolidato
 
 Data: 2026-08-22  
-Baseline runtime: `develop` @ `eba03168bcb20892a61508fc8ef37bf7e6a60367`  
+Baseline runtime: `develop` @ `aeb66cd8d1752de1ee4f8de33103c0617db330e6`  
 Stato documento: CANONICAL CHECKPOINT
 
 ## 1. Sintesi
 
-DOCENTE OS dispone ormai di una base prodotto reale: autenticazione e persistenza Supabase, RLS, Planner, Conoscenza con ingestione/trasformazione, Piano annuale, Classi, Impostazioni e Orario T1/T2. Il Language & Collaboration System v1 è stato applicato alle viste principali.
+DOCENTE OS dispone di una base prodotto reale e verificata: autenticazione e persistenza Supabase, RLS, Planner, Conoscenza, Piano annuale, Classi, Impostazioni e Orario T1/T2. Il Language & Collaboration System v1 è applicato alle viste principali.
 
-La priorità successiva non è aggiungere funzioni isolate, ma consolidare l'esperienza in una **platform UI + assistant experience** professionale, coerente e progressivamente agentica.
+Il programma Product Experience è entrato anche nel runtime: **X0 e X1 sono completati**. Tailwind v4 e la prima component foundation open-code sono attivi senza riscrittura delle superfici esistenti.
+
+La prossima priorità è **X2 — Professional AppShell**: shell unica, navigazione responsive, command palette e progressiva migrazione delle superfici di lavoro.
 
 ## 2. Runtime corrente
 
@@ -16,9 +18,12 @@ La priorità successiva non è aggiungere funzioni isolate, ma consolidare l'esp
 - React 19.2.8;
 - TypeScript 5.9 strict;
 - Node 22;
+- npm;
 - Supabase Auth + PostgreSQL + RLS;
 - server-side session/auth helpers;
 - repository/port pattern per separare dominio e provider;
+- Tailwind CSS v4 via PostCSS, senza preflight globale;
+- primitive open-code DOCENTE OS/shadcn-style: Button, Badge, Card, Alert, Separator, Skeleton;
 - CI GitHub Actions con test, typecheck, lint e build;
 - deploy preview Netlify su `develop` come riferimento operativo.
 
@@ -30,11 +35,12 @@ Stato corrente:
 - magic link per prima attivazione/recupero;
 - sessione Supabase persistente;
 - flusso Netlify autorizzato negli URL di redirect;
-- nessuna dipendenza quotidiana dall'invio e-mail per il login con password.
+- nessuna dipendenza quotidiana dall'invio e-mail per il login con password;
+- Login migrato alla nuova component foundation X1.
 
 Residui:
 
-- recupero password completo da rendere più esplicito nella UX;
+- recovery password da rendere più guidato nella UX;
 - production URL definitivo da congelare prima del rilascio.
 
 ## 4. Conoscenza / KB
@@ -52,7 +58,8 @@ Disponibile:
 
 Residuo strategico:
 
-- il pannello di aiuto è ancora deterministico/UI, non collegato a un vero runtime AI contestuale.
+- il pannello di aiuto è ancora deterministico/UI, non collegato a un vero runtime AI contestuale;
+- migrazione ai componenti V2 prevista progressivamente da X2.
 
 ## 5. Planner / Oggi
 
@@ -135,84 +142,91 @@ Disponibile:
 - preset orario;
 - riuso dello stesso registro canonico senza duplicazioni.
 
-## 9. Linguaggio e collaborazione
+## 9. Linguaggio, design e collaborazione
 
 Completato:
 
 - Language & Collaboration System v1;
-- rollout Home, Oggi, Progetta, Classi, Orario, Impostazioni, Piano annuale, Conoscenza;
-- stati umani;
-- microcopy orientata all'azione;
-- progressiva esposizione dei dettagli tecnici.
-
-Nuovo livello approvato:
-
+- rollout linguistico su Home, Oggi, Progetta, Classi, Orario, Impostazioni, Piano annuale, Conoscenza;
 - Product Experience Masterplan;
 - ADR-002 Experience Platform;
 - AI Collaboration Canonical Spec;
-- Design System V2 Canonical.
+- Design System V2 Canonical;
+- X1 Component Foundation runtime.
 
-## 10. Divergenze documentali/runtimes da chiudere
+Decisioni attive:
+
+- shadcn/open-code come component strategy;
+- assistant-ui come prima scelta per X3;
+- BlockNote candidato X5;
+- CopilotKit/AG-UI candidato X6;
+- provider AI dietro porta sostituibile, con Ollama possibile per sviluppo locale.
+
+## 10. Divergenze chiuse
 
 ### UI stack
 
-ADR-001 dichiarava Tailwind + shadcn/ui come stack target, ma il runtime corrente non li ha ancora installati. La decisione resta valida come target e viene attuata con X1.
+La precedente divergenza “shadcn/Tailwind documentati ma non presenti” è **chiusa**: X1 ha introdotto Tailwind v4 e primitive canoniche.
 
 ### Hosting
 
-ADR-001 indicava Vercel come target preferito. Nello sviluppo corrente Netlify è il runtime effettivamente verificato; Vercel presenta limiti di build dell'account. Il progetto viene quindi dichiarato hosting-neutral, con Netlify come riferimento di sviluppo fino a nuova decisione production.
+Il progetto è hosting-neutral. Netlify è il runtime di sviluppo verificato; Vercel non è gate finché persistono limiti di build dell'account.
 
 ### Package manager
 
-La CI corrente usa `npm`. `npm` diventa il riferimento operativo fino a eventuale migrazione esplicita.
+`npm` è il riferimento operativo e di CI.
 
-## 11. Nuovo programma X
+## 11. Programma X
 
-- **X0** — canonical freeze esperienza: IN CORSO/CHIUSURA con questo pacchetto.
-- **X1** — Tailwind + shadcn component foundation: NEXT.
-- **X2** — AppShell, sidebar responsive, command palette.
-- **X3** — assistant-ui shell, read/propose only.
-- **X4** — assistant actions con human-in-the-loop.
-- **X5** — authoring professionale con BlockNote.
-- **X6** — evaluation CopilotKit/AG-UI.
+- **X0 — canonical freeze esperienza:** COMPLETE.
+- **X1 — component foundation:** COMPLETE (`aeb66cd8…`).
+- **X2 — AppShell, sidebar responsive, command palette:** NEXT.
+- **X3 — assistant-ui shell, read/propose only:** PLANNED.
+- **X4 — assistant actions con human-in-the-loop:** PLANNED.
+- **X5 — authoring professionale con BlockNote:** PLANNED.
+- **X6 — evaluation CopilotKit/AG-UI:** PLANNED.
 
 ## 12. Rischi aperti
 
-1. crescita di CSS locale prima della component foundation;
-2. duplicazione di pattern tra viste;
-3. introdurre AI prima di congelare capability/policy;
-4. fare una migrazione UI big-bang e perdere stabilità;
-5. confondere dati proposti con dati canonici;
-6. dipendere da un provider LLM/cloud specifico;
-7. accelerare T3/T4 mentre la shell prodotto è ancora in transizione.
+1. duplicazione della shell/navigation tra le viste prima di X2;
+2. CSS locale ancora ampio durante la migrazione progressiva;
+3. introdurre AI prima di completare i boundary X3;
+4. confondere dati proposti con dati canonici;
+5. dipendere da un provider LLM/cloud specifico;
+6. accelerare T3/T4 senza coordinamento con shell/calendario.
 
 ## 13. Regola di sequenza
 
 Ordine raccomandato:
 
-1. chiudere X0;
-2. X1 foundation;
-3. X2 shell;
-4. riprendere T3 oppure X3 in parallelo solo se i confini sono indipendenti;
-5. X4 dopo validazione dell'assistente read/propose;
-6. T4 quando calendario e activation lifecycle sono stabili;
-7. X5 authoring;
-8. X6 agentic evaluation.
+1. X2 shell e command palette;
+2. T3 oppure X3 in parallelo solo se i confini restano indipendenti;
+3. X4 dopo validazione dell'assistente read/propose;
+4. T4 quando calendario e activation lifecycle sono stabili;
+5. X5 authoring;
+6. X6 agentic evaluation.
 
 ## 14. Next concrete action
 
-**X1 — Component Foundation**.
+**X2 — Professional AppShell**.
 
-Obiettivo: introdurre Tailwind/shadcn senza cambiare dominio e migrare una prima superficie campione, preferibilmente Conoscenza, con componenti canonici e test di regressione.
+Obiettivo:
 
-Gate X1:
+- eliminare gradualmente la duplicazione di navigazione;
+- introdurre componenti overlay/navigation soltanto quando realmente usati;
+- command palette `Ctrl/Cmd + K`;
+- sidebar/drawer responsive;
+- page header e contesto professionale canonici;
+- prima migrazione di Conoscenza alla nuova shell.
 
-- dependencies installabili;
+Gate X2:
+
 - test PASS;
 - typecheck PASS;
 - lint PASS;
 - build PASS;
 - Netlify preview READY;
-- nessuna regressione login/RLS;
+- login/RLS invariati;
+- navigazione tastiera funzionante;
 - nessuna modifica dati;
-- vecchie superfici continuano a funzionare.
+- vecchie route ancora raggiungibili.
