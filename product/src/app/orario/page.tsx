@@ -61,6 +61,8 @@ export default async function TimetablePage() {
     }
   })
 
+  const draftLabel = versionStatusLabel(timetable.draftVersion.status)
+
   return (
     <div className="appShell">
       <aside className="navRail" aria-label="Navigazione principale">
@@ -82,19 +84,19 @@ export default async function TimetablePage() {
         <header className="mobileHeader"><div><span className="mobileEyebrow">DOCENTE OS</span><strong>Orario</strong></div><Link className="iconButton" href="/impostazioni" aria-label="Apri Impostazioni">⚙</Link></header>
 
         <section className="timetableHero">
-          <div><p>ORARIO · {context.academicYear.label}</p><h1>La tua settimana, in griglia</h1><span>Gli slot sono persistenti e versionati. La griglia modifica la bozza corrente senza consumare blocchi del piano annuale.</span></div>
+          <div><p>ORARIO · {context.academicYear.label}</p><h1>La tua settimana, in griglia</h1><span>Costruisci la settimana tipo e controlla come si distribuiscono le ore. Stai lavorando su una bozza: puoi modificarla senza cambiare il piano annuale.</span></div>
           <Link className="secondaryButton" href="/impostazioni">Modifica impostazioni</Link>
         </section>
 
-        <section className="timetableMetrics" aria-label="Riepilogo configurazione">
+        <section className="timetableMetrics" aria-label="Riepilogo dell’orario">
           <article><span>Cattedra</span><strong>{timetable.assignments.length}</strong><small>abbinamenti</small></article>
-          <article><span>Monte ore</span><strong>{formatHours(totalAssignedMinutes)}</strong><small>settimanali dichiarate</small></article>
-          <article><span>In griglia</span><strong>{formatHours(totalScheduledMinutes)}</strong><small>lezioni pianificate</small></article>
-          <article><span>Bozza</span><strong>{timetable.slots.length}</strong><small>slot ricorrenti</small></article>
+          <article><span>Monte ore</span><strong>{formatHours(totalAssignedMinutes)}</strong><small>settimanali previste</small></article>
+          <article><span>In settimana</span><strong>{formatHours(totalScheduledMinutes)}</strong><small>lezioni già inserite</small></article>
+          <article><span>{draftLabel}</span><strong>{timetable.slots.length}</strong><small>attività in griglia</small></article>
         </section>
 
         <section className="timetableCard timetableGridCard" aria-labelledby="grid-title">
-          <div className="timetableCardHeading"><span>01</span><div><h2 id="grid-title">Orario settimanale</h2><p>Passa da Settimana a Giorno, seleziona una cella vuota per aggiungere un’attività oppure una cella occupata per modificarla.</p></div><b className="draftBadge">{timetable.draftVersion.status}</b></div>
+          <div className="timetableCardHeading"><span>01</span><div><h2 id="grid-title">Orario settimanale</h2><p>Passa da Settimana a Giorno. Seleziona una cella vuota per aggiungere un’attività oppure una cella occupata per modificarla.</p></div><b className="draftBadge">{draftLabel}</b></div>
           <TimetableGrid
             versionId={timetable.draftVersion.id}
             days={weekdayOptions.map((day) => ({ value: day.value, label: day.label, short: day.short }))}
@@ -105,16 +107,16 @@ export default async function TimetablePage() {
         </section>
 
         <section className="timetableCard timetableConfigCard" aria-labelledby="assignments-title">
-          <div className="timetableCardHeading"><span>02</span><div><h2 id="assignments-title">Cattedra</h2><p>Associa una classe/sezione a una disciplina e definisci il monte minuti settimanale da confrontare con la griglia.</p></div><b>{availablePairCount > 0 ? `${availablePairCount} combinazioni disponibili` : 'Completa'}</b></div>
+          <div className="timetableCardHeading"><span>02</span><div><h2 id="assignments-title">Cattedra</h2><p>Associa ogni classe o sezione alla disciplina e indica quante ore settimanali prevedi. DOCENTE OS le confronterà con quelle inserite in griglia.</p></div><b>{availablePairCount > 0 ? `${availablePairCount} combinazioni disponibili` : 'Completa'}</b></div>
           {annualSnapshot.sections.length && activeDisciplines.length ? (
             <form action={addTeachingAssignment} className="timetableForm assignmentForm">
               <label><span>Classe / sezione</span><select name="sectionId" required>{annualSnapshot.sections.map((section) => <option key={section.id} value={section.id}>{sectionLabel(section.grade, section.sectionCode)} · {statusLabel(section.status)}</option>)}</select></label>
               <label><span>Disciplina</span><select name="disciplineId" required>{activeDisciplines.map((discipline) => <option key={discipline.id} value={discipline.id}>{discipline.name}</option>)}</select></label>
-              <label><span>Minuti / settimana</span><input name="weeklyMinutes" type="number" min="30" max="2400" step="5" defaultValue="120" required /></label>
-              <label className="wideField"><span>Fonte / nota</span><input name="sourceNote" maxLength={1000} placeholder="Es. assegnazione provvisoria; orario da confermare" /></label>
+              <label><span>Minuti a settimana</span><input name="weeklyMinutes" type="number" min="30" max="2400" step="5" defaultValue="120" required /></label>
+              <label className="wideField"><span>Nota o riferimento</span><input name="sourceNote" maxLength={1000} placeholder="Es. assegnazione provvisoria; orario da confermare" /></label>
               <button className="timetablePrimaryButton" type="submit">Aggiungi alla cattedra</button>
             </form>
-          ) : <div className="timetableEmpty"><strong>Completa prima le Impostazioni</strong><span>Servono almeno una classe/sezione e una disciplina attiva.</span><Link href="/impostazioni">Apri Impostazioni</Link></div>}
+          ) : <div className="timetableEmpty"><strong>Completa prima le Impostazioni</strong><span>Per costruire la cattedra servono almeno una classe o sezione e una disciplina attiva.</span><Link href="/impostazioni">Apri Impostazioni</Link></div>}
 
           {timetable.assignments.length ? <div className="assignmentList">{timetable.assignments.map((assignment) => {
             const section = sectionById.get(assignment.sectionId)
@@ -130,18 +132,18 @@ export default async function TimetablePage() {
         </section>
 
         <section className="timetableCard timetableConfigCard" aria-labelledby="draft-title">
-          <div className="timetableCardHeading"><span>03</span><div><h2 id="draft-title">Versione orario</h2><p>La configurazione resta in bozza: la data indica l’efficacia prevista, ma T2 non attiva ancora la versione né materializza le date.</p></div><b className="draftBadge">{timetable.draftVersion.status}</b></div>
+          <div className="timetableCardHeading"><span>03</span><div><h2 id="draft-title">Bozza dell’orario</h2><p>Questa è la settimana tipo che stai preparando. La data indica da quando prevedi di usarla; l’attivazione definitiva e le variazioni dei singoli giorni saranno gestite separatamente.</p></div><b className="draftBadge">{draftLabel}</b></div>
           <form action={updateTimetableDraft} className="timetableForm versionForm">
             <input type="hidden" name="versionId" value={timetable.draftVersion.id} />
-            <label><span>Nome versione</span><input name="label" defaultValue={timetable.draftVersion.label} maxLength={160} required /></label>
-            <label><span>Valida dal</span><input name="effectiveFrom" type="date" defaultValue={timetable.draftVersion.effectiveFrom} min={context.academicYear.startsOn} max={context.academicYear.endsOn} required /></label>
-            <label><span>Origine</span><select name="sourceKind" defaultValue={timetable.draftVersion.sourceKind}><option value="MANUAL">Inserimento manuale</option><option value="INSTITUTION_DOCUMENT">Documento istituzionale</option><option value="IMPORT">Importazione</option></select></label>
-            <label className="wideField"><span>Riferimento fonte</span><input name="sourceRef" defaultValue={timetable.draftVersion.sourceRef ?? ''} maxLength={1000} placeholder="Opzionale: circolare, file, nota…" /></label>
-            <button className="timetablePrimaryButton" type="submit">Salva bozza</button>
+            <label><span>Nome della bozza</span><input name="label" defaultValue={timetable.draftVersion.label} maxLength={160} required /></label>
+            <label><span>Prevista dal</span><input name="effectiveFrom" type="date" defaultValue={timetable.draftVersion.effectiveFrom} min={context.academicYear.startsOn} max={context.academicYear.endsOn} required /></label>
+            <label><span>Da dove deriva</span><select name="sourceKind" defaultValue={timetable.draftVersion.sourceKind}><option value="MANUAL">Inserimento manuale</option><option value="INSTITUTION_DOCUMENT">Documento istituzionale</option><option value="IMPORT">Importazione</option></select></label>
+            <label className="wideField"><span>Riferimento della fonte</span><input name="sourceRef" defaultValue={timetable.draftVersion.sourceRef ?? ''} maxLength={1000} placeholder="Opzionale: circolare, file, nota…" /></label>
+            <button className="timetablePrimaryButton" type="submit">Salva la bozza</button>
           </form>
         </section>
 
-        <aside className="timetableContract"><strong>Regola T2</strong><span>La griglia modifica soltanto il pattern ricorrente della versione DRAFT. Calendario, eccezioni, attivazione e allocazione B01–B33 restano separati e saranno introdotti nelle slice successive.</span></aside>
+        <aside className="timetableContract"><strong>Come funziona questa bozza</strong><span>Qui modifichi soltanto la settimana tipo. Calendario scolastico, festività, eccezioni e piano annuale restano separati, così una variazione quotidiana non altera la struttura di base.</span></aside>
       </main>
 
       <nav className="bottomNav" aria-label="Navigazione mobile"><Link href="/"><span aria-hidden>⌂</span><small>Home</small></Link><Link href="/planner"><span aria-hidden>◎</span><small>Oggi</small></Link><Link className="active" href="/orario"><span aria-hidden>◷</span><small>Orario</small></Link><Link href="/progetta"><span aria-hidden>✦</span><small>Progetta</small></Link><Link href="/classi"><span aria-hidden>▦</span><small>Classi</small></Link><Link href="/impostazioni"><span aria-hidden>⚙</span><small>Impost.</small></Link></nav>
@@ -166,6 +168,13 @@ function statusLabel(value: string) {
   if (value === 'CONFERMATA') return 'confermata'
   if (value === 'PROVVISORIA') return 'provvisoria'
   return 'da confermare'
+}
+
+function versionStatusLabel(value: string) {
+  if (value === 'DRAFT') return 'Bozza'
+  if (value === 'ACTIVE') return 'Attivo'
+  if (value === 'ARCHIVED') return 'Archiviato'
+  return value
 }
 
 function formatHours(minutes: number) {
