@@ -5,7 +5,7 @@ import { buildProjectionBatchReview } from './human-task-projection-batch'
 import {
   B08_PRIMA_RECIPE_PROPOSAL,
   B09_PRIMA_RECIPE_PROPOSAL,
-  B10_PRIMA_RECIPE_GAP,
+  B10_PRIMA_UDA_ONLY_RECIPE_PROPOSAL,
 } from './human-task-projection-recipes'
 
 const UDA_102 = `CAN-UDA-1-02 — MATERIALI: DALLA RISORSA AL PRODOTTO
@@ -30,7 +30,7 @@ Costruzione di una mappa delle famiglie di materiali.
 Fase 3 — Proprietà e prove — 3 ore
 Semplici prove comparative adeguate alle dotazioni disponibili.
 Fase 4 — Dalla risorsa al prodotto — 2 ore
-Ricostruzione di una o più filiere esemplificative.
+Ricostruzione di una o più filiere esemplificative, ad esempio legno–carta, minerale–metallo, sabbia–vetro, petrolio/biomassa–polimero. Uso di diagrammi lineari o di flusso.
 Fase 5 — Scegliere il materiale — 2 ore
 Compito significativo con matrice di criteri.
 Fase 6 — Verifica e restituzione — 1 ora
@@ -87,26 +87,24 @@ function source(code: string, generationId: string, text: string): HumanTaskPipe
   return { code, assetId: `asset-${code}`, generationId, title: code, normalizedText: text }
 }
 
-function candidate(blockId: 'B08' | 'B09' | 'B10') {
+function candidate(blockId: 'B08' | 'B09' | 'B10', udaText = UDA_102) {
   return compileHumanTaskContentCandidate('Prima', blockId, {
-    uda: source('CAN-UDA-1-02', '5e0d5ae7-9f43-4d55-b470-533f2ac806fe', UDA_102),
+    uda: source('CAN-UDA-1-02', '5e0d5ae7-9f43-4d55-b470-533f2ac806fe', udaText),
     pack: source('CAN-PACK-1B', '1902bdd3-c65f-46c0-b419-99bcd45131ad', PACK_1B),
   })
 }
 
-test('batch review prepares B08 and B09 but blocks B10 without an operational guide', () => {
+test('batch review prepares B08, B09 and the explicitly composed B10 independently', () => {
   const review = buildProjectionBatchReview(
     [candidate('B08'), candidate('B09'), candidate('B10')],
-    [B08_PRIMA_RECIPE_PROPOSAL, B09_PRIMA_RECIPE_PROPOSAL],
-    [B10_PRIMA_RECIPE_GAP],
+    [B08_PRIMA_RECIPE_PROPOSAL, B09_PRIMA_RECIPE_PROPOSAL, B10_PRIMA_UDA_ONLY_RECIPE_PROPOSAL],
   )
 
   assert.deepEqual(review.map((item) => [item.blockId, item.status, item.reason]), [
     ['B08', 'READY_FOR_HUMAN_APPROVAL', 'DRAFT_READY'],
     ['B09', 'READY_FOR_HUMAN_APPROVAL', 'DRAFT_READY'],
-    ['B10', 'BLOCKED', 'NO_OPERATIONAL_GUIDE'],
+    ['B10', 'READY_FOR_HUMAN_APPROVAL', 'DRAFT_READY'],
   ])
-  assert.match(review[2].note ?? '', /non esiste quindi una guida docente 2h/i)
 })
 
 test('B08 draft preserves one untimed experimental activity and binds Scheda F', () => {
@@ -131,4 +129,32 @@ test('B09 draft turns the source semicolon into two source-derived steps and bin
   assert.deepEqual(item.draft.projection.steps[1].resourceIds, ['STUDENT-G'])
   assert.equal(item.draft.projection.resources[0].title, 'Matrice di scelta')
   assert.deepEqual(item.draft.projection.provenance.selectedUdaPhases, [5])
+})
+
+test('B10 UDA-only draft uses exactly phase 4, no PACK headings and no invented timings or resources', () => {
+  const [item] = buildProjectionBatchReview([candidate('B10')], [B10_PRIMA_UDA_ONLY_RECIPE_PROPOSAL])
+  assert.equal(item.status, 'READY_FOR_HUMAN_APPROVAL')
+  assert.ok(item.draft?.projection)
+  const projection = item.draft.projection
+  assert.equal(projection.title, 'Dalla risorsa al prodotto')
+  assert.equal(projection.durationMinutes, 120)
+  assert.equal(projection.sourceAlignment.level, 'COMPOSED')
+  assert.equal(projection.steps.length, 2)
+  assert.deepEqual(projection.steps.map((step) => step.minutes), [null, null])
+  assert.match(projection.steps[0].instruction, /filiere esemplificative/i)
+  assert.match(projection.steps[1].instruction, /diagrammi lineari o di flusso/i)
+  assert.deepEqual(projection.preparation, [])
+  assert.deepEqual(projection.resources, [])
+  assert.match(projection.evidence, /ricostruisce una semplice filiera/i)
+  assert.deepEqual(projection.provenance.selectedUdaPhases, [4])
+  assert.deepEqual(projection.provenance.selectedPackHeadings, [])
+  assert.deepEqual(projection.provenance.packs, [])
+})
+
+test('B10 UDA-only fails closed when the selected UDA phase no longer matches the two-hour block', () => {
+  const changedUda = UDA_102.replace('Fase 4 — Dalla risorsa al prodotto — 2 ore', 'Fase 4 — Dalla risorsa al prodotto — 3 ore')
+  const [item] = buildProjectionBatchReview([candidate('B10', changedUda)], [B10_PRIMA_UDA_ONLY_RECIPE_PROPOSAL])
+  assert.equal(item.status, 'BLOCKED')
+  assert.equal(item.reason, 'DRAFT_INVALID')
+  assert.equal(item.draft?.issues.some((issue) => issue.code === 'GUIDE_DURATION_MISMATCH'), true)
 })

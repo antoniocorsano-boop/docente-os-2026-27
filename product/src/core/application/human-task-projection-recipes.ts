@@ -1,5 +1,5 @@
 import type { HumanTaskProjectionRecipe } from './human-task-projection-recipe'
-import type { HumanTaskProjectionGap } from './human-task-projection-batch'
+import type { HumanTaskUdaOnlyProjectionRecipe } from './human-task-uda-only-projection-recipe'
 
 // Proposal only. The candidateId binds each Recipe to the exact UDA/PACK generations;
 // planBinding binds it to the exact canonical block structure verified against CAN-PLAN-1.
@@ -139,9 +139,41 @@ export const B09_PRIMA_RECIPE_PROPOSAL: HumanTaskProjectionRecipe = {
   },
 }
 
-export const B10_PRIMA_RECIPE_GAP: HumanTaskProjectionGap = {
+export const B10_PRIMA_UDA_ONLY_RECIPE_PROPOSAL: HumanTaskUdaOnlyProjectionRecipe = {
+  mode: 'UDA_ONLY',
+  recipeId: 'HTC-RECIPE-PRIMA-B10-UDA-v1',
+  candidateId: 'HTC-CANDIDATE:Prima:B10:5e0d5ae7-9f43-4d55-b470-533f2ac806fe:1902bdd3-c65f-46c0-b419-99bcd45131ad',
   grade: 'Prima',
   blockId: 'B10',
-  reason: 'NO_OPERATIONAL_GUIDE',
-  note: 'CAN-UDA-1-02 assegna 2 ore alla fase “Dalla risorsa al prodotto”, ma CAN-PACK-1B passa dalla Lezione 7 sui materiali alla Lezione 8 di avvio al disegno tecnico. Non esiste quindi una guida docente 2h direttamente allineata a B10 da promuovere senza una composizione esplicita.',
+  planBinding: {
+    planSourceCode: 'CAN-PLAN-1',
+    segmentKey: 'Prima:3',
+    udaCode: '1-02',
+    packCode: 'CAN-PACK-1B',
+    supportPackCodes: [],
+    title: 'Dalla risorsa al prodotto',
+  },
+  sourceAlignment: {
+    level: 'COMPOSED',
+    note: 'Il Piano colloca B10 in UDA 1-02, ma CAN-PACK-1B non contiene una guida docente dedicata. La vista usa esclusivamente la Fase 4 da 2 ore e le evidenze della stessa UDA; il pacchetto resta un vincolo strutturale del Piano ma non alimenta il contenuto operativo di questa lezione.',
+  },
+  operationalPhaseOrdinal: 4,
+  outcomes: {
+    udaSectionHeading: 'OBIETTIVI DI APPRENDIMENTO',
+    itemIndexes: [1, 6, 9],
+  },
+  evidence: {
+    udaSectionHeading: 'EVIDENZE OSSERVABILI',
+    itemIndex: 6,
+  },
+  observation: {
+    udaSectionHeading: 'EVIDENZE OSSERVABILI',
+    itemIndexes: [6, 8, 9],
+  },
+  editorial: {
+    why: 'Collegare risorsa, trasformazione e prodotto ricostruendo una filiera materiale in forma semplice e leggibile.',
+    objective: 'Ricostruire in forma semplificata una o più filiere materiali usando un diagramma lineare o di flusso.',
+    assessmentNote: 'Formativa: osserva soprattutto se la classe ricostruisce una semplice filiera e usa un lessico tecnico essenziale. Il diagramma non genera automaticamente un voto.',
+    continuation: 'La lezione successiva apre il percorso di disegno tecnico con strumenti, impostazione del foglio e funzione della linea.',
+  },
 }
