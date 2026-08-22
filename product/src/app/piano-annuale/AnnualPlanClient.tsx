@@ -204,13 +204,20 @@ export default function AnnualPlanClient({
 
   return (
     <>
-      <section className="annualHero">
+      <section className="annualHero annualHeroClarified">
         <div>
-          <p className="contextLine">Tecnologia · piano didattico annuale</p>
+          <p className="contextLine">Didattica annuale · registro di attuazione</p>
           <h1>Piano annuale</h1>
-          <p>Segui le 66 ore previste per ogni classe, registra ciò che hai svolto e mantieni collegati UDA, materiali e fonti nella Conoscenza.</p>
+          <p>Qui segui <strong>cosa insegnare</strong> e <strong>quanto hai realmente svolto</strong> per ogni classe e sezione. Le date registrate documentano l’esecuzione: il Calendario delle occorrenze reali resta un oggetto distinto.</p>
         </div>
-        <Link className="secondaryButton" href={`/knowledge/${source.assetId}`}>Apri il piano di riferimento</Link>
+        <Link className="secondaryButton" href={`/knowledge/${source.assetId}`}>Apri il documento di riferimento</Link>
+      </section>
+
+      <section className="workObjectGuide annualWorkObjectGuide" aria-label="Ruolo del Piano annuale nel sistema">
+        <div><span>ATTIVITÀ</span><strong>Oggi</strong><small>Cose da fare e priorità.</small></div>
+        <div className="active"><span>QUI</span><strong>Piano annuale</strong><small>Sequenza didattica B01–B33 e avanzamento.</small></div>
+        <div><span>SETTIMANA</span><strong>Orario</strong><small>Pattern ricorrente delle lezioni.</small></div>
+        <div className="future"><span>DATE REALI · T3</span><strong>Calendario</strong><small>Occorrenze, eventi ed eccezioni effettive.</small></div>
       </section>
 
       <section className="annualContextPanel">
@@ -251,9 +258,9 @@ export default function AnnualPlanClient({
         <Metric value={`${completed.length * 2}/66`} label="ore registrate" />
         <Metric value={nextBlock?.id ?? 'CHIUSO'} label="prossimo blocco" />
         <div className="annualSourceMetric">
-          <span>Piano di riferimento</span>
+          <span>Documento di riferimento</span>
           <strong>{source.code}</strong>
-          <small>versione di lavoro collegata</small>
+          <small>fonte canonica collegata in Conoscenza</small>
         </div>
       </section>
 
@@ -270,7 +277,7 @@ export default function AnnualPlanClient({
         </div>
         <div className="annualTableWrap">
           <table className="annualTable">
-            <thead><tr><th>Blocco</th><th>UDA</th><th>Pacchetto</th><th>Periodo</th><th>Focus</th><th>Stato</th><th>Data</th><th>Evidenza / nota</th></tr></thead>
+            <thead><tr><th>Blocco</th><th>UDA</th><th>Pacchetto</th><th>Periodo</th><th>Focus</th><th>Stato</th><th>Data svolta</th><th>Evidenza / nota</th></tr></thead>
             <tbody>
               {blocks.map((block) => {
                 const progress = progressFor(block.id)
@@ -300,11 +307,11 @@ export default function AnnualPlanClient({
 
       <section className="annualRulesGrid">
         <article><h2>Come scorre il piano</h2><p>Una lezione saltata non consuma il blocco. Il lavoro previsto passa alla prima lezione utile, evitando di duplicare ore o valutazioni.</p></article>
-        <article><h2>Come registro l’avanzamento</h2><p>Ogni sezione mantiene il proprio percorso effettivo. Le modifiche vengono salvate mentre lavori e restano collegate al piano di riferimento usato in quel momento.</p></article>
+        <article><h2>Come registro l’avanzamento</h2><p>Ogni sezione mantiene il proprio percorso effettivo. Le modifiche vengono salvate mentre lavori e restano collegate al documento di riferimento usato in quel momento.</p></article>
       </section>
 
       <details className="technicalDetails annualTechnicalDetails">
-        <summary><span><strong>Dettagli tecnici</strong><small>Persistenza e versione del piano di riferimento</small></span><b aria-hidden>＋</b></summary>
+        <summary><span><strong>Dettagli tecnici</strong><small>Persistenza e versione del documento di riferimento</small></span><b aria-hidden>＋</b></summary>
         <div className="technicalDetailsBody">
           <div className="technicalMetaLine"><span>Codice fonte: <strong>{source.code}</strong></span><span>Generazione: <strong>{source.generationId}</strong></span><span>Cache browser: <strong>{storageKey}</strong></span></div>
           <p className="panelIntro">L’avanzamento principale è persistito sul servizio dati. La copia nel browser serve soltanto come cache locale di supporto.</p>
