@@ -32,6 +32,12 @@ export async function recordLessonExecution(formData: FormData) {
   if (!resolveHumanTaskLessonProjection(grade, block)) throw new Error('Human-task lesson projection is not available for this block')
 
   const source = CANONICAL_PLAN_SOURCES[grade]
+  const existingProgress = snapshot.progress.find((entry) =>
+    entry.sectionId === section.id &&
+    entry.canonicalGenerationId === source.generationId &&
+    entry.blockId === block.id,
+  )
+
   await repository.saveProgress({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
@@ -40,7 +46,7 @@ export async function recordLessonExecution(formData: FormData) {
     canonicalGenerationId: source.generationId,
     blockId,
     status: status as 'SVOLTO' | 'RECUPERATO' | 'RIMODULATO',
-    executedOn: currentRomeDate(),
+    executedOn: existingProgress?.executedOn ?? currentRomeDate(),
     evidenceNote,
   })
 

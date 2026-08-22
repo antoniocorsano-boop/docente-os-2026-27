@@ -2,7 +2,10 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import type { HumanTaskLessonProjection } from '@/core/presentation/human-task-content'
+import {
+  resolveHumanTaskLessonTiming,
+  type HumanTaskLessonProjection,
+} from '@/core/presentation/human-task-content'
 import { recordLessonExecution } from '../actions'
 
 export type LessonWorkspaceMode = 'prepare' | 'teach' | 'observe' | 'record'
@@ -58,6 +61,7 @@ export default function LessonWorkspaceClient({
   const studentSheet = projection.resources.find((resource) => resource.kind === 'STUDENT_SHEET') ?? null
   const exitTicket = projection.resources.find((resource) => resource.kind === 'EXIT_TICKET') ?? null
   const modeIndex = useMemo(() => MODE_LABELS.findIndex((item) => item.key === mode), [mode])
+  const timing = useMemo(() => resolveHumanTaskLessonTiming(projection), [projection])
 
   function advanceStep() {
     if (activeStep < projection.steps.length - 1) {
@@ -71,15 +75,14 @@ export default function LessonWorkspaceClient({
     <>
       <header className="lessonWorkspaceHeader">
         <Link className="lessonBack" href={classHref}>← {sectionLabel}</Link>
-        <div className="lessonContextPath"><span>{sectionLabel}</span><i aria-hidden>›</i><span>UDA {projection.udaCode}</span><i aria-hidden>›</i><strong>{block.id}</strong></div>
+        <div className="lessonContextPath"><span>{sectionLabel}</span><i aria-hidden>›</i><span>{projection.udaTitle}</span><i aria-hidden>›</i><strong>{projection.title}</strong></div>
         <p className="lessonEyebrow">LEZIONE · {recorded ? 'REGISTRATA' : 'DA SVOLGERE'}</p>
         <h1>{projection.title}</h1>
         <p className="lessonWhy">{projection.why}</p>
         <div className="lessonMeta">
-          <span>2 ore</span>
+          <span>{formatDuration(projection.durationMinutes)}</span>
           <span>{projection.period}</span>
-          <span>UDA {udaProgress.completed}/{udaProgress.total} lezioni concluse</span>
-          <span>{projection.packCode}</span>
+          <span>{udaProgress.completed}/{udaProgress.total} lezioni del percorso concluse</span>
         </div>
         {recorded ? <div className="lessonRecordedState">Registrata {progress.executedOn ? `il ${formatDate(progress.executedOn)}` : ''} · {progressStatusLabel(progress.status)}</div> : null}
       </header>
@@ -97,6 +100,8 @@ export default function LessonWorkspaceClient({
           </button>
         ))}
       </nav>
+
+      <ContextSupport mode={mode} timing={timing} recorded={recorded} />
 
       {mode === 'prepare' ? (
         <main className="lessonTaskPane" aria-labelledby="prepare-title">
@@ -173,7 +178,7 @@ export default function LessonWorkspaceClient({
 
           <section className="lessonChecklist observation" aria-label="Indicatori di osservazione">
             <div className="lessonSectionHeading"><div><span>OSSERVAZIONE</span><h3>Cosa guardare</h3></div><small>{observedCount}/{projection.observation.length} richiamati</small></div>
-            <p className="lessonPrivacyNote">Promemoria per il docente: questi check restano nella schermata e non registrano dati individuali degli alunni.</p>
+            <p className="lessonPrivacyNote">Questi check sono un promemoria locale e non registrano dati individuali degli alunni.</p>
             {projection.observation.map((item, index) => (
               <label key={item}>
                 <input type="checkbox" checked={Boolean(observed[index])} onChange={(event) => setObserved((current) => ({ ...current, [index]: event.target.checked }))} />
@@ -196,7 +201,7 @@ export default function LessonWorkspaceClient({
           <section className="lessonTaskLead">
             <p>CHIUSURA · {sectionLabel}</p>
             <h2 id="record-title">Registra soltanto ciò che è successo</h2>
-            <span>Dopo il salvataggio torni alla classe e DOCENTE OS mostrerà il prossimo blocco reale del piano.</span>
+            <span>Dopo il salvataggio torni alla classe e DOCENTE OS mostra la prossima lezione prevista dal piano.</span>
           </section>
 
           <form action={recordLessonExecution} className="lessonRecordForm">
@@ -205,7 +210,7 @@ export default function LessonWorkspaceClient({
             <label><span>Com’è andata?</span><select name="status" defaultValue={recordableDefault(progress.status)}><option value="SVOLTO">Svolta come prevista</option><option value="RIMODULATO">Rimodulata</option><option value="RECUPERATO">Lezione di recupero</option></select></label>
             <label><span>Evidenza o nota <small>facoltativa</small></span><textarea name="evidenceNote" rows={4} maxLength={2000} defaultValue={progress.evidenceNote ?? ''} placeholder="Per esempio: scheda completata; tempi ridotti; da riprendere il lessico…" /></label>
             <div className="lessonRecordEvidence"><span>Evidenza prevista</span><strong>{projection.evidence}</strong><small>È un promemoria: viene registrato solo ciò che scrivi tu.</small></div>
-            <button className="primary" type="submit">Salva e continua</button>
+            <button className="primary" type="submit">{recorded ? 'Aggiorna e torna alla classe' : 'Salva e continua'}</button>
           </form>
 
           <button className="lessonTextAction" type="button" onClick={() => setMode('observe')}>Torna all’osservazione senza salvare</button>
@@ -213,11 +218,41 @@ export default function LessonWorkspaceClient({
       ) : null}
 
       <details className="lessonSources">
-        <summary>Fonti canoniche e documenti completi</summary>
-        <div><p>Questa vista non sostituisce i documenti: ne espone solo le parti necessarie al compito corrente.</p>{projection.sources.map((source) => <a href={source.url} target="_blank" rel="noreferrer" key={source.code}><span>{source.code}</span><strong>{source.label}</strong><small>Apri documento completo ↗</small></a>)}</div>
+        <summary>Documenti e fonti</summary>
+        <div>
+          <p>Qui trovi i documenti completi da cui è stata ricavata questa vista. Servono per approfondire, verificare o documentare il percorso.</p>
+          {projection.sources.map((source) => <a href={source.url} target="_blank" rel="noreferrer" key={source.code}><span>{sourceRoleLabel(source.role)}</span><strong>{source.label}</strong><small>Apri documento ↗</small></a>)}
+          <details className="lessonTechnicalRefs"><summary>Riferimenti tecnici</summary><p>{projection.sources.map((source) => source.code).join(' · ')}</p></details>
+        </div>
       </details>
     </>
   )
+}
+
+function ContextSupport({
+  mode,
+  timing,
+  recorded,
+}: {
+  mode: LessonWorkspaceMode
+  timing: { durationMinutes: number; guidedMinutes: number; flexibleMinutes: number }
+  recorded: boolean
+}) {
+  let content: string
+  if (mode === 'prepare') {
+    content = 'Le spunte servono solo come promemoria mentre prepari: non vengono salvate e non devi completarle tutte per iniziare.'
+  } else if (mode === 'teach') {
+    content = timing.flexibleMinutes > 0
+      ? `La fonte scandisce ${timing.guidedMinutes} dei ${timing.durationMinutes} minuti: ${timing.flexibleMinutes} minuti restano volutamente non assegnati. I tempi sono una guida, non un timer.`
+      : 'I tempi sono una guida, non un timer: puoi adattarli alla risposta reale della classe.'
+  } else if (mode === 'observe') {
+    content = 'Non devi spuntare tutti gli indicatori. Usali per richiamare l’attenzione su poche evidenze utili; le spunte non vengono salvate.'
+  } else {
+    content = recorded
+      ? 'Stai modificando una registrazione già esistente. Se salvi di nuovo, la data originaria della lezione resta invariata.'
+      : 'Registra solo l’esito reale e, se serve, una nota breve. Non è necessario ricopiare ciò che è già descritto nella lezione.'
+  }
+  return <details className="lessonSupport"><summary>Serve una mano?</summary><p>{content}</p></details>
 }
 
 function InlineResource({ resource }: { resource: HumanTaskLessonProjection['resources'][number] }) {
@@ -233,6 +268,18 @@ function progressStatusLabel(status: string) {
   if (status === 'RECUPERATO') return 'Recuperata'
   if (status === 'RIMODULATO') return 'Rimodulata'
   return 'Svolta'
+}
+
+function sourceRoleLabel(role: HumanTaskLessonProjection['sources'][number]['role']) {
+  if (role === 'PLAN') return 'Piano annuale'
+  if (role === 'UDA') return 'Percorso didattico'
+  return 'Materiali operativi'
+}
+
+function formatDuration(minutes: number) {
+  if (minutes === 120) return '2 ore'
+  if (minutes % 60 === 0) return `${minutes / 60} ore`
+  return `${minutes} min`
 }
 
 function formatDate(value: string) {

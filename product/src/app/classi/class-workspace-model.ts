@@ -137,12 +137,13 @@ function selectPertinentMaterials(section: AnnualPlanSection, pack: string | nul
 
     const score = (packMatch ? 300 : 0) + (classMatch ? 200 : 0) + (gradeMatch ? 100 : 0)
     const relevanceLabel: ClassWorkspaceMaterial['relevanceLabel'] = packMatch ? 'Fase corrente' : classMatch ? 'Classe' : 'Grado'
+    const rawTitle = document?.title?.trim() || asset.originalName?.trim() || 'Materiale didattico'
     return [{
       score,
       capturedAt: asset.capturedAt,
       material: {
         assetId: asset.id,
-        title: document?.title?.trim() || asset.originalName?.trim() || 'Materiale didattico',
+        title: humanMaterialTitle(rawTitle),
         categoryLabel: materialCategoryLabel(asset.contentCategory),
         relevanceLabel,
       } satisfies ClassWorkspaceMaterial,
@@ -151,6 +152,16 @@ function selectPertinentMaterials(section: AnnualPlanSection, pack: string | nul
     .sort((a, b) => b.score - a.score || b.capturedAt.localeCompare(a.capturedAt))
     .slice(0, 4)
     .map(({ material }) => material)
+}
+
+export function humanMaterialTitle(value: string) {
+  const withoutCodes = value.replace(/CAN-(?:PLAN|PRG|UDA|PACK|ORCH)(?:-[A-Z0-9]+)+(?=[\s_—–:,-]|$)/gi, '')
+  const human = withoutCodes
+    .replace(/_/g, ' ')
+    .replace(/^\s*[—–:,-]+\s*/, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+  return human || 'Materiale didattico'
 }
 
 function normalizeClassLabel(value: string) {
@@ -166,7 +177,7 @@ function safeMetadataText(value: Record<string, unknown>) {
 }
 
 function materialCategoryLabel(category: KnowledgeAsset['contentCategory']) {
-  if (category === 'UDA') return 'UDA'
+  if (category === 'UDA') return 'Percorso'
   if (category === 'ASSESSMENT') return 'Valutazione'
   return 'Materiale'
 }

@@ -54,6 +54,12 @@ export type HumanTaskLessonProjection = {
   sources: HumanTaskContentSource[]
 }
 
+export type HumanTaskLessonTiming = {
+  durationMinutes: number
+  guidedMinutes: number
+  flexibleMinutes: number
+}
+
 const B01_PRIMA: HumanTaskLessonProjection = {
   projectionId: 'HTC-PRIMA-B01-v1',
   grade: 'Prima',
@@ -159,6 +165,18 @@ export function resolveHumanTaskLessonProjection(grade: GradeKey, block: Canonic
   if (projection.packCode !== block.pack) return null
   if (projection.period !== block.period) return null
   return projection
+}
+
+export function resolveHumanTaskLessonTiming(projection: HumanTaskLessonProjection): HumanTaskLessonTiming {
+  const guidedMinutes = projection.steps.reduce((total, step) => total + step.minutes, 0)
+  if (guidedMinutes > projection.durationMinutes) {
+    throw new Error(`Lesson projection ${projection.projectionId} exceeds its duration`)
+  }
+  return {
+    durationMinutes: projection.durationMinutes,
+    guidedMinutes,
+    flexibleMinutes: projection.durationMinutes - guidedMinutes,
+  }
 }
 
 export function hasHumanTaskLessonProjection(grade: GradeKey, blockId: string) {
