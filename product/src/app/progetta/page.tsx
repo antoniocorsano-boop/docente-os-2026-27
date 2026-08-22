@@ -18,6 +18,7 @@ import {
 } from './progetta-model'
 import './progetta.css'
 import './progetta-coverage.css'
+import './progetta-focus.css'
 
 export const dynamic = 'force-dynamic'
 
