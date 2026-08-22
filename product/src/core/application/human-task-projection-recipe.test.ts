@@ -74,6 +74,13 @@ function source(code: string, generationId: string, text: string): HumanTaskPipe
   return { code, assetId: `asset-${code}`, generationId, title: code, normalizedText: text }
 }
 
+function candidate(generationId = '5e0d5ae7-9f43-4d55-b470-533f2ac806fe') {
+  return compileHumanTaskContentCandidate('Prima', 'B07', {
+    uda: source('CAN-UDA-1-02', generationId, UDA_102),
+    pack: source('CAN-PACK-1B', '1902bdd3-c65f-46c0-b419-99bcd45131ad', PACK_1B),
+  })
+}
+
 test('extracts phase-based UDA without forcing it into Ora N', () => {
   const uda = extractCanonicalUda('CAN-UDA-1-02', UDA_102)
   assert.equal(uda.durationHours, 12)
@@ -95,25 +102,20 @@ test('extracts numbered lesson guides and embedded student sheets from CAN-PACK-
 })
 
 test('B07 candidate remains reviewable even when UDA phases do not map mechanically to one block', () => {
-  const candidate = compileHumanTaskContentCandidate('Prima', 'B07', {
-    uda: source('CAN-UDA-1-02', '5e0d5ae7-9f43-4d55-b470-533f2ac806fe', UDA_102),
-    pack: source('CAN-PACK-1B', '1902bdd3-c65f-46c0-b419-99bcd45131ad', PACK_1B),
-  })
-  assert.equal(candidate.gate.status, 'READY_FOR_HUMAN_REVIEW')
-  assert.equal(candidate.block.title, 'Riconoscere e classificare i materiali')
-  assert.equal(candidate.block.udaCode, '1-02')
-  assert.equal(candidate.evidence.udaHourWindow, null)
-  assert.equal(candidate.gate.issues.some((item) => item.code === 'UDA_HOUR_WINDOW_AMBIGUOUS'), true)
+  const value = candidate()
+  assert.equal(value.gate.status, 'READY_FOR_HUMAN_REVIEW')
+  assert.equal(value.block.title, 'Riconoscere e classificare i materiali')
+  assert.equal(value.block.udaCode, '1-02')
+  assert.equal(value.block.segmentKey, 'Prima:3')
+  assert.equal(value.evidence.udaHourWindow, null)
+  assert.equal(value.gate.issues.some((item) => item.code === 'UDA_HOUR_WINDOW_AMBIGUOUS'), true)
 })
 
 test('B07 recipe produces a source-bound draft but never promotes it automatically', () => {
-  const candidate = compileHumanTaskContentCandidate('Prima', 'B07', {
-    uda: source('CAN-UDA-1-02', '5e0d5ae7-9f43-4d55-b470-533f2ac806fe', UDA_102),
-    pack: source('CAN-PACK-1B', '1902bdd3-c65f-46c0-b419-99bcd45131ad', PACK_1B),
-  })
-  assert.equal(candidate.candidateId, B07_PRIMA_RECIPE_PROPOSAL.candidateId)
+  const value = candidate()
+  assert.equal(value.candidateId, B07_PRIMA_RECIPE_PROPOSAL.candidateId)
 
-  const draft = buildProjectionDraft(candidate, B07_PRIMA_RECIPE_PROPOSAL)
+  const draft = buildProjectionDraft(value, B07_PRIMA_RECIPE_PROPOSAL)
   assert.equal(draft.status, 'READY_FOR_HUMAN_APPROVAL')
   assert.equal(draft.promotion, 'HUMAN_APPROVAL_REQUIRED')
   assert.equal(draft.projection?.title, 'Riconoscere e classificare i materiali')
@@ -124,14 +126,25 @@ test('B07 recipe produces a source-bound draft but never promotes it automatical
   assert.equal(draft.projection?.outcomes.length, 3)
   assert.equal(draft.projection?.observation.length, 3)
   assert.match(draft.projection?.evidence ?? '', /classificazione/i)
+  assert.equal(draft.projection?.provenance.planBinding.segmentKey, 'Prima:3')
 })
 
 test('recipe fails closed when source generations change', () => {
-  const candidate = compileHumanTaskContentCandidate('Prima', 'B07', {
-    uda: source('CAN-UDA-1-02', 'new-generation', UDA_102),
-    pack: source('CAN-PACK-1B', '1902bdd3-c65f-46c0-b419-99bcd45131ad', PACK_1B),
-  })
-  const draft = buildProjectionDraft(candidate, B07_PRIMA_RECIPE_PROPOSAL)
+  const draft = buildProjectionDraft(candidate('new-generation'), B07_PRIMA_RECIPE_PROPOSAL)
   assert.equal(draft.status, 'INVALID')
   assert.equal(draft.issues.some((item) => item.code === 'CANDIDATE_ID_MISMATCH'), true)
+})
+
+test('recipe fails closed when annual-plan structure drifts', () => {
+  const value = candidate()
+  const changedPlanRecipe = {
+    ...B07_PRIMA_RECIPE_PROPOSAL,
+    planBinding: {
+      ...B07_PRIMA_RECIPE_PROPOSAL.planBinding,
+      title: 'Titolo non più canonico',
+    },
+  }
+  const draft = buildProjectionDraft(value, changedPlanRecipe)
+  assert.equal(draft.status, 'INVALID')
+  assert.equal(draft.issues.some((item) => item.code === 'PLAN_BINDING_MISMATCH'), true)
 })
