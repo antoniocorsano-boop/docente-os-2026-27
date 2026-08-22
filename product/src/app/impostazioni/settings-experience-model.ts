@@ -34,6 +34,8 @@ export function buildSettingsExperienceModel(input: {
   assignments: Pick<TeachingAssignment, 'id' | 'sectionId' | 'disciplineId' | 'status' | 'weeklyMinutes'>[]
 }): SettingsExperienceModel {
   const activeDisciplines = input.disciplines.filter((item) => item.isActive)
+  const activeDisciplineIds = new Set(activeDisciplines.map((item) => item.id))
+  const activeAssignments = input.assignments.filter((assignment) => activeDisciplineIds.has(assignment.disciplineId))
   const contextComplete = Boolean(
     input.settings.teacherDisplayName.trim() && input.settings.schoolName.trim() && input.settings.schoolType.trim(),
   )
@@ -50,11 +52,11 @@ export function buildSettingsExperienceModel(input: {
       ? 'REVIEW'
       : 'COMPLETE'
 
-  const assignmentSectionIds = new Set(input.assignments.map((assignment) => assignment.sectionId))
+  const assignmentSectionIds = new Set(activeAssignments.map((assignment) => assignment.sectionId))
   const missingAssignmentCount = input.sections.filter((section) => !assignmentSectionIds.has(section.id)).length
   const assignmentStatus: SettingsAreaStatus = input.sections.length === 0 || activeDisciplines.length === 0 || missingAssignmentCount > 0
     ? 'INCOMPLETE'
-    : input.assignments.some((assignment) => assignment.status !== 'CONFIRMED')
+    : activeAssignments.some((assignment) => assignment.status !== 'CONFIRMED')
       ? 'REVIEW'
       : 'COMPLETE'
 
@@ -100,11 +102,11 @@ export function buildSettingsExperienceModel(input: {
       question: 'In quali classi insegni cosa e per quante ore?',
       status: assignmentStatus,
       summary: assignmentsSummary({
-        assignmentCount: input.assignments.length,
+        assignmentCount: activeAssignments.length,
         sectionCount: input.sections.length,
         activeDisciplineCount: activeDisciplines.length,
         missingAssignmentCount,
-        provisionalCount: input.assignments.filter((assignment) => assignment.status !== 'CONFIRMED').length,
+        provisionalCount: activeAssignments.filter((assignment) => assignment.status !== 'CONFIRMED').length,
       }),
       href: '#cattedra',
       nextAction: assignmentStatus === 'COMPLETE' ? 'Gestisci la cattedra' : assignmentStatus === 'REVIEW' ? 'Controlla la cattedra' : 'Completa la cattedra',
@@ -161,6 +163,6 @@ function assignmentsSummary(input: {
   if (input.activeDisciplineCount === 0) return 'Prima indica almeno una disciplina attiva.'
   if (input.assignmentCount === 0) return `Associa la cattedra alle ${input.sectionCount} ${input.sectionCount === 1 ? 'classe configurata' : 'classi configurate'}.`
   if (input.missingAssignmentCount > 0) return `${input.assignmentCount} associazioni · ${input.missingAssignmentCount} ${input.missingAssignmentCount === 1 ? 'classe da associare' : 'classi da associare'}`
-  if (input.provisionalCount > 0) return `${input.assignmentCount} associazioni · ${input.provisionalCount} ${input.provisionalCount === 1 ? 'da confermare' : 'da confermare'}`
+  if (input.provisionalCount > 0) return `${input.assignmentCount} associazioni · ${input.provisionalCount} da confermare`
   return `${input.assignmentCount} ${input.assignmentCount === 1 ? 'associazione confermata' : 'associazioni confermate'}`
 }
