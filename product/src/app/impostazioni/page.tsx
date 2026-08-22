@@ -42,6 +42,7 @@ export default async function SettingsPage() {
         <nav className="navList">
           <Link className="navItem" href="/"><span aria-hidden>⌂</span> Home</Link>
           <Link className="navItem" href="/planner"><span aria-hidden>◎</span> Oggi</Link>
+          <Link className="navItem" href="/orario"><span aria-hidden>◷</span> Orario</Link>
           <Link className="navItem" href="/piano-annuale"><span aria-hidden>▤</span> Piano annuale</Link>
           <Link className="navItem" href="/progetta"><span aria-hidden>✦</span> Progetta</Link>
           <Link className="navItem" href="/knowledge"><span aria-hidden>◇</span> Conoscenza</Link>
@@ -54,7 +55,7 @@ export default async function SettingsPage() {
       <main className="workSurface settingsSurface">
         <header className="settingsHeader">
           <div><p>IMPOSTAZIONI · {context.academicYear.label}</p><h1>Personalizza il tuo ambiente docente</h1><span>Questi dati alimentano classi, piano annuale e configurazione iniziale dell’orario.</span></div>
-          <Link className="secondaryButton" href="/">Torna alla Home</Link>
+          <Link className="secondaryButton" href="/orario">Apri Orario</Link>
         </header>
 
         <form action={saveTeacherSettings} className="settingsStack">
@@ -104,7 +105,7 @@ export default async function SettingsPage() {
         <section className="settingsInfoStrip"><strong>Contratto dati</strong><span>Le Impostazioni forniscono il contesto iniziale. L’orario ufficiale conserverà versioni, date di efficacia ed eccezioni senza riscrivere queste informazioni di base.</span></section>
       </main>
 
-      <nav className="bottomNav" aria-label="Navigazione mobile"><Link href="/"><span aria-hidden>⌂</span><small>Home</small></Link><Link href="/planner"><span aria-hidden>◎</span><small>Oggi</small></Link><Link href="/progetta"><span aria-hidden>✦</span><small>Progetta</small></Link><Link href="/classi"><span aria-hidden>▦</span><small>Classi</small></Link><Link className="active" href="/impostazioni"><span aria-hidden>⚙</span><small>Impostazioni</small></Link></nav>
+      <nav className="bottomNav" aria-label="Navigazione mobile"><Link href="/"><span aria-hidden>⌂</span><small>Home</small></Link><Link href="/planner"><span aria-hidden>◎</span><small>Oggi</small></Link><Link href="/orario"><span aria-hidden>◷</span><small>Orario</small></Link><Link href="/progetta"><span aria-hidden>✦</span><small>Progetta</small></Link><Link href="/classi"><span aria-hidden>▦</span><small>Classi</small></Link><Link className="active" href="/impostazioni"><span aria-hidden>⚙</span><small>Impost.</small></Link></nav>
     </div>
   )
 }
