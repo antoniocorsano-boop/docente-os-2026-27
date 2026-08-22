@@ -17,13 +17,22 @@ import {
   unitTypeLabel,
   validationStatusLabel,
 } from '@/core/presentation/product-language'
+import { asKnowledgeTaskMode, sanitizeInternalReturnTo } from '@/core/presentation/task-continuity'
 import { confirmKnowledgeAction, confirmKnowledgeCandidate, createPlannerTaskFromKnowledgeAsset, rejectKnowledgeCandidate, reprocessKnowledgeAsset, updateKnowledgeContext } from '../actions'
 
 export const dynamic = 'force-dynamic'
 
 type PageProps = {
   params: Promise<{ assetId: string }>
-  searchParams: Promise<{ reprocess?: string; context?: string; task?: string }>
+  searchParams: Promise<{
+    reprocess?: string
+    context?: string
+    task?: string
+    mode?: string
+    returnTo?: string
+    section?: string
+    block?: string
+  }>
 }
 
 export default async function KnowledgeAssetPage({ params, searchParams }: PageProps) {
@@ -40,6 +49,71 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
   const { asset, document, units, generations } = bundle
   const driveUrl = asset.sourceProvider === 'DRIVE' && typeof asset.sourceMetadata.driveUrl === 'string' ? asset.sourceMetadata.driveUrl : null
   const currentGeneration = generations.find((generation) => generation.id === asset.currentGenerationId) ?? null
+  const displayTitle = humanizeKnowledgeTitle(document?.title ?? asset.originalName)
+  const processing = knowledgeProcessingStatus(asset.processingStatus)
+  const sourceLabel = sourceProviderLabel(asset.sourceProvider)
+  const category = contentCategoryLabel(asset.contentCategory)
+  const contextReference = [...asset.disciplines, ...asset.classLabels].join(' · ') || 'Da completare'
+  const taskMode = asKnowledgeTaskMode(query.mode)
+
+  if (taskMode) {
+    const returnTo = sanitizeInternalReturnTo(query.returnTo, '/knowledge')
+    const returnLabel = taskMode === 'prepare' ? 'Torna alla preparazione' : 'Torna alla classe'
+    const focusLabel = taskMode === 'prepare' ? 'RISORSA NELLA PREPARAZIONE' : 'RISORSA DELLA CLASSE'
+    const normalizedText = document?.normalizedText?.trim() ?? ''
+    const fallbackUnits = units
+      .filter((unit) => unit.unitType !== 'ACTION' && unit.unitType !== 'DEADLINE')
+      .slice(0, 12)
+      .map((unit) => `${unit.title ? `${unit.title}\n` : ''}${unit.content}`)
+      .join('\n\n')
+    const readableText = normalizedText || fallbackUnits
+
+    return (
+      <AppShell
+        active="knowledge"
+        academicYearLabel={context.academicYear?.label}
+        workspaceName={context.workspace.name}
+        role={context.role}
+        contentClassName="knowledgeSurface focusedKnowledgeSurface"
+      >
+        <nav className="focusedKnowledgeContext" aria-label="Contesto del compito">
+          <Link href={returnTo}>← {returnLabel}</Link>
+          <span>{query.block ? `${query.block} · ` : ''}{contextReference}</span>
+        </nav>
+
+        <section className="focusedKnowledgeHero">
+          <p>{focusLabel}</p>
+          <h1>{displayTitle}</h1>
+          <p className="focusedKnowledgeSummary">{document?.summary ?? (asset.contentCategory === 'UDA' ? 'Consulta il percorso, le attività e le evidenze utili per la fase che stai preparando.' : 'Questa risorsa è stata aperta dentro il tuo compito corrente: DOCENTE OS mantiene il contesto finché non scegli di uscirne.')}</p>
+          <div className="focusedKnowledgeMeta">
+            <span>{category}</span>
+            <span>{sourceLabel}</span>
+            <span>{processing.label}</span>
+            {query.block ? <span>{query.block}</span> : null}
+          </div>
+        </section>
+
+        <section className="focusedKnowledgeUse" aria-labelledby="focused-use-title">
+          <header><span>USA ADESSO</span><h2 id="focused-use-title">{asset.contentCategory === 'UDA' ? 'Percorso operativo' : 'Contenuto della risorsa'}</h2></header>
+          {readableText ? <pre className="focusedKnowledgeText">{readableText}</pre> : <p className="focusedKnowledgeEmpty">Il contenuto leggibile non è ancora disponibile. La risorsa resta collegata al compito e puoi aprire la scheda completa per controllarne lo stato.</p>}
+        </section>
+
+        <nav className="focusedKnowledgeActions" aria-label="Continua il compito">
+          <Link className="primary" href={returnTo}>{returnLabel}</Link>
+          {driveUrl ? <a href={driveUrl} target="_blank" rel="noreferrer">Apri fonte originale</a> : null}
+        </nav>
+
+        <details className="humanTaskSecondary focusedKnowledgeManage">
+          <summary>Gestisci o approfondisci questa risorsa</summary>
+          <div className="humanTaskSecondaryBody">
+            <p>Esci dalla modalità operativa solo se devi modificare contesto, creare attività, verificare estrazioni o consultare versioni e provenienza.</p>
+            <Link href={`/knowledge/${encodeURIComponent(asset.id)}`}>Apri la scheda completa di Conoscenza →</Link>
+          </div>
+        </details>
+      </AppShell>
+    )
+  }
+
   const candidates = units.filter((unit) => unit.unitType === 'ACTION' || unit.unitType === 'DEADLINE')
   const chunks = units.filter((unit) => unit.unitType !== 'ACTION' && unit.unitType !== 'DEADLINE')
   const taskLinks = new Map<string, string>()
@@ -54,11 +128,6 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
     if (target) taskLinks.set(unit.id, target)
   }))
 
-  const displayTitle = humanizeKnowledgeTitle(document?.title ?? asset.originalName)
-  const processing = knowledgeProcessingStatus(asset.processingStatus)
-  const sourceLabel = sourceProviderLabel(asset.sourceProvider)
-  const category = contentCategoryLabel(asset.contentCategory)
-  const contextReference = [...asset.disciplines, ...asset.classLabels].join(' · ') || 'Da completare'
   const candidateSummary = candidates.length
     ? `Ho trovato ${candidates.length} ${candidates.length === 1 ? 'possibile azione o scadenza' : 'possibili azioni o scadenze'}. Restano proposte finché non le confermi.`
     : asset.contextStatus === 'REVIEWED'
