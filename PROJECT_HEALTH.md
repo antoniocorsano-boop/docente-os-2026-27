@@ -5,11 +5,11 @@ Updated: 2026-08-22
 ```text
 STATE: ACTIVE_DEVELOPMENT_STABLE
 CANONICAL_DEV_BRANCH: develop
-BASELINE_COMMIT: f8a52de795f3a60813c096d3c0958ea2cfa08a58
+BASELINE_COMMIT: cca482bdd761b77c4fa8b42e0f9f0ed097518c68
 CANONICAL_DEV_RUNTIME: Netlify deploy preview for develop
 CI_GATE: test + typecheck + lint + build
 PRODUCT_EXPERIENCE: X0 COMPLETE / X1 COMPLETE / X2 COMPLETE / X3 TECHNICALLY COMPLETE
-SETTINGS_EXPERIENCE: GUIDED CONTRACT COMPLETE / RUNTIME COMPLETE / INTERACTIVE ACCEPTANCE PENDING
+SETTINGS_EXPERIENCE: GUIDED CONTRACT COMPLETE / PROGRESSIVE DISCLOSURE BASELINE READY / INTERACTIVE ACCEPTANCE PENDING
 PRIMARY_FOCUS: SETTINGS + X3 INTERACTIVE ACCEPTANCE
 X4_GATE: HOLD_FOR_X3_UX_ACCEPTANCE
 TEMPORAL_ARCHITECTURE: TIMETABLE INDEPENDENT / CALENDAR INDEPENDENT / TEMPORAL PROJECTION COMPOSES BOTH
@@ -47,6 +47,8 @@ The static root application is retained as legacy/reference material only. It is
 - Settings five-area read model: `Tu e la scuola / Discipline / Classi / Cattedra / Organizzazione scolastica`.
 - Cattedra configured from Settings using the same canonical `teaching_assignments` consumed by Orario.
 - read-only teaching-assignment reader in Settings that does not create a Timetable draft.
+- Settings context governed by **progressive disclosure**: full explanation available on demand, minimal primary surface.
+- mobile Settings overview uses compact horizontal navigation instead of stacking five large cards.
 - GitHub Actions product gates passing on merged slices.
 - Netlify Next.js deploy preview verified as the operational development runtime.
 
@@ -58,7 +60,7 @@ Status: `DEV_RUNTIME_VERIFIED`.
 
 - project: `docente-os-dev`;
 - develop preview is the current interactive reference;
-- Settings baseline `f8a52de…` deployed `READY`;
+- compact Settings baseline `cca482bd…` deployed `READY`;
 - Next.js server handler is deployed;
 - Supabase redirect configuration includes the Netlify preview pattern.
 
@@ -79,7 +81,7 @@ A production alias/provider decision will be made only after release gates are s
 1. alcune superfici secondarie non sono ancora migrate alla shell condivisa;
 2. parte del CSS rimane locale mentre la migrazione prosegue;
 3. X3 raffinato richiede una nuova accettazione visiva desktop/mobile;
-4. le Impostazioni guidate hanno superato tutti i gate tecnici ma richiedono accettazione interattiva con dati reali;
+4. le Impostazioni guidate e compatte hanno superato tutti i gate tecnici ma richiedono accettazione interattiva con dati reali;
 5. nessun provider LLM reale è ancora collegato: X3 resta deterministico/provider-neutral per validare UX e confini;
 6. T3A/T3B/T3C e T4 restano da implementare;
 7. production URL and final auth recovery UX remain to be frozen;
@@ -89,36 +91,46 @@ A production alias/provider decision will be made only after release gates are s
 
 ### Guided Settings contract
 
-Status: `COMPLETE / INTERACTIVE_ACCEPTANCE_PENDING`.
+Status: `COMPLETE / REFINED_INTERACTIVE_ACCEPTANCE_PENDING`.
 
 Canonical sources:
 
 - `docs/architecture/SETTINGS_CANONICAL_SPEC.md` — persistence and invariants;
 - `docs/product/SETTINGS_EXPERIENCE_CONTRACT.md` — guided experience, states, explanations and feedback;
+- `docs/product/SETTINGS_CONTEXT_DISCLOSURE_NOTE.md` — **contesto completo, esposizione minima**;
 - `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` — tone and microcopy.
 
-Runtime evidence merged in `f8a52de…`:
+Runtime baseline:
 
-- `/impostazioni` migrated to AppShell;
+- `/impostazioni` uses AppShell;
 - summary of five areas and `N/5` readiness;
-- deterministic `Complete / Da completare / Da controllare` read model;
-- explicit `Serve a / Usato in / Non modifica` contract on every area;
-- Cattedra moved into professional-context configuration without duplicating data;
+- deterministic `Completo / Da completare / Da controllare` read model;
+- Cattedra lives in professional-context configuration without duplicating data;
 - same `teaching_assignments` remain authoritative for Settings and Orario;
 - no automatic Timetable slot creation;
 - no Calendar/Piano annuale/Planner side effects;
-- read-only assignment reader avoids creating a Timetable draft just to render Settings;
-- Product CI #224: test/typecheck/lint/build all PASS;
-- Netlify deploy READY.
+- read-only assignment reader avoids creating a Timetable draft just to render Settings.
+
+UX refinement merged in `cca482bd…`:
+
+- `Serve a / Usato in / Non modifica` preserved behind native `Come viene usata` disclosure;
+- disclosure closed by default and keyboard accessible;
+- redundant concept callouts removed from the primary reading flow;
+- only action-critical microcopy remains visible near fields, e.g. `Non crea lezioni nell'Orario` for Cattedra;
+- top next-step strip reduced to one actionable message;
+- mobile five-area summary changed to horizontal scrolling to reduce vertical density;
+- Product CI #229: test/typecheck/lint/build all PASS;
+- Netlify deploy `READY` on `cca482bd…`.
 
 Interactive acceptance checklist:
 
-1. open `/impostazioni` with the real workspace;
-2. verify the five-area summary correctly reflects actual completeness;
-3. verify provisional classes appear as `Da controllare`;
-4. verify missing Cattedra associations lead to the correct next step;
-5. add/update one Cattedra association and confirm it is immediately visible in Orario without creating a lesson;
-6. verify desktop and mobile readability.
+1. open `/impostazioni` on the real mobile workspace;
+2. verify Cattedra shows fields immediately without the previous three-row context panel;
+3. verify `Come viene usata` opens the full context only when requested;
+4. verify `Non crea lezioni nell'Orario` remains visible near the Cattedra action;
+5. verify the five-area overview can be scanned horizontally on mobile;
+6. verify states and next step remain understandable without opening any explanation;
+7. add/update one Cattedra association and confirm it is immediately visible in Orario without creating a lesson.
 
 ## Active program
 
