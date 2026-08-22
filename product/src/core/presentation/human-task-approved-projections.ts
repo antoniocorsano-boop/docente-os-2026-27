@@ -21,6 +21,8 @@ const PRIMA_MATERIAL_SOURCES: HumanTaskLessonProjection['sources'] = [
   },
 ]
 
+const PRIMA_MATERIAL_UDA_ONLY_SOURCES = PRIMA_MATERIAL_SOURCES.filter((source) => source.role !== 'PACK')
+
 const B07_PRIMA: HumanTaskLessonProjection = {
   projectionId: 'HTC-PRIMA-B07-v1',
   grade: 'Prima',
@@ -210,8 +212,57 @@ const B09_PRIMA: HumanTaskLessonProjection = {
   sources: PRIMA_MATERIAL_SOURCES,
 }
 
+const B10_PRIMA: HumanTaskLessonProjection = {
+  projectionId: 'HTC-PRIMA-B10-UDA-v1',
+  grade: 'Prima',
+  blockId: 'B10',
+  udaCode: '1-02',
+  udaTitle: 'Materiali: dalla risorsa al prodotto',
+  packCode: 'CAN-PACK-1B',
+  period: 'Ottobre/Dicembre',
+  title: 'Dalla risorsa al prodotto',
+  durationMinutes: 120,
+  why: 'Collegare risorsa, trasformazione e prodotto ricostruendo una filiera materiale in forma semplice e leggibile.',
+  objective: 'Ricostruire in forma semplificata una o più filiere materiali usando un diagramma lineare o di flusso.',
+  outcomes: [
+    'Distinguere risorsa naturale, materia prima, materiale, semilavorato e prodotto.',
+    'Ricostruire, in forma semplificata, le principali fasi di una filiera materiale.',
+    'Documentare un’attività con tabella, schema, breve relazione o supporto digitale.',
+  ],
+  preparation: [],
+  steps: [
+    {
+      id: 'S01',
+      minutes: null,
+      title: 'Ricostruisci una filiera',
+      instruction: 'Ricostruzione di una o più filiere esemplificative, ad esempio legno–carta, minerale–metallo, sabbia–vetro, petrolio/biomassa–polimero.',
+    },
+    {
+      id: 'S02',
+      minutes: null,
+      title: 'Rappresentala con un diagramma',
+      instruction: 'Uso di diagrammi lineari o di flusso.',
+    },
+  ],
+  resources: [],
+  evidence: 'Ricostruisce una semplice filiera.',
+  observation: [
+    'Ricostruisce una semplice filiera.',
+    'Utilizza lessico tecnico essenziale.',
+    'Collabora e documenta il lavoro.',
+  ],
+  assessmentNote: 'Formativa: osserva soprattutto se la classe ricostruisce una semplice filiera e usa un lessico tecnico essenziale. Il diagramma non genera automaticamente un voto.',
+  continuation: 'La lezione successiva apre il percorso di disegno tecnico con strumenti, impostazione del foglio e funzione della linea.',
+  sourceAlignment: {
+    level: 'COMPOSED',
+    note: 'Il Piano colloca questa lezione in UDA 1-02, ma il pacchetto operativo non contiene una guida docente dedicata. La sequenza è ricavata esclusivamente dalla Fase 4 da 2 ore e dalle evidenze della stessa UDA.',
+  },
+  sources: PRIMA_MATERIAL_UDA_ONLY_SOURCES,
+}
+
 export const APPROVED_HUMAN_TASK_PROJECTIONS: readonly HumanTaskLessonProjection[] = [
   B07_PRIMA,
   B08_PRIMA,
   B09_PRIMA,
+  B10_PRIMA,
 ]
