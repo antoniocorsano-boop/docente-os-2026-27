@@ -20,6 +20,26 @@ function asWorkspaceRole(value: string): WorkspaceRole {
   throw new Error(`Unsupported workspace role: ${value}`)
 }
 
+type CurrentWorkspaceContextRow = {
+  workspace_id: string
+  workspace_kind: string
+  workspace_name: string
+  owner_user_id: string
+  workspace_role: string
+  academic_year_id: string | null
+  academic_year_label: string | null
+  academic_year_starts_on: string | null
+  academic_year_ends_on: string | null
+  academic_year_is_active: boolean | null
+}
+
+type CurrentWorkspaceContextRpcClient = {
+  rpc: (name: 'current_workspace_context') => Promise<{
+    data: CurrentWorkspaceContextRow[] | null
+    error: { message: string } | null
+  }>
+}
+
 export class SupabaseWorkspaceRepository implements WorkspaceRepository {
   async bootstrapPersonalWorkspace(name?: string): Promise<string> {
     const supabase = await createClient()
@@ -36,58 +56,30 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
 
   async getCurrentContext(): Promise<WorkspaceContext | null> {
     const supabase = await createClient()
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
-    const userId = claimsData?.claims?.sub
+    const { data, error } = await (supabase as unknown as CurrentWorkspaceContextRpcClient).rpc('current_workspace_context')
 
-    if (claimsError || !userId) return null
-
-    const { data: membership, error: membershipError } = await supabase
-      .from('workspace_memberships')
-      .select('workspace_id, role')
-      .eq('user_id', userId)
-      .limit(1)
-      .maybeSingle()
-
-    if (membershipError) throw new Error(membershipError.message)
-    if (!membership) return null
-
-    const { data: workspaceRow, error: workspaceError } = await supabase
-      .from('workspaces')
-      .select('id, kind, name, owner_user_id')
-      .eq('id', membership.workspace_id)
-      .maybeSingle()
-
-    if (workspaceError) throw new Error(workspaceError.message)
-    if (!workspaceRow) return null
-
-    const { data: year, error: yearError } = await supabase
-      .from('academic_years')
-      .select('id, workspace_id, label, starts_on, ends_on, is_active')
-      .eq('workspace_id', workspaceRow.id)
-      .eq('is_active', true)
-      .limit(1)
-      .maybeSingle()
-
-    if (yearError) throw new Error(yearError.message)
+    if (error) throw new Error(error.message)
+    const row = data?.[0]
+    if (!row) return null
 
     return {
       workspace: {
-        id: workspaceRow.id,
-        kind: asWorkspaceKind(workspaceRow.kind),
-        name: workspaceRow.name,
-        ownerUserId: workspaceRow.owner_user_id,
+        id: row.workspace_id,
+        kind: asWorkspaceKind(row.workspace_kind),
+        name: row.workspace_name,
+        ownerUserId: row.owner_user_id,
       },
-      academicYear: year
+      academicYear: row.academic_year_id && row.academic_year_label && row.academic_year_starts_on && row.academic_year_ends_on
         ? {
-            id: year.id,
-            workspaceId: year.workspace_id,
-            label: year.label,
-            startsOn: year.starts_on,
-            endsOn: year.ends_on,
-            isActive: year.is_active,
+            id: row.academic_year_id,
+            workspaceId: row.workspace_id,
+            label: row.academic_year_label,
+            startsOn: row.academic_year_starts_on,
+            endsOn: row.academic_year_ends_on,
+            isActive: row.academic_year_is_active ?? true,
           }
         : null,
-      role: asWorkspaceRole(membership.role),
+      role: asWorkspaceRole(row.workspace_role),
     }
   }
 
