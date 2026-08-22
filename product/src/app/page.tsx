@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 
 export const dynamic = 'force-dynamic'
@@ -16,6 +17,15 @@ export default async function HomePage() {
   const context = await repository.getCurrentContext()
   if (!context) redirect('/login')
 
+  const teacherSettings = context.academicYear
+    ? await new SupabaseTeacherSettingsRepository().getOrCreate(context.workspace.id, context.academicYear.id)
+    : null
+  const professionalContext = [
+    teacherSettings?.teacherDisplayName || null,
+    teacherSettings?.schoolName || context.workspace.name,
+    context.academicYear?.label ?? null,
+  ].filter(Boolean).join(' · ')
+
   return (
     <div className="appShell">
       <aside className="navRail" aria-label="Navigazione principale">
@@ -29,13 +39,13 @@ export default async function HomePage() {
           <Link className="navItem" href="/classi"><span aria-hidden>▦</span> Classi</Link>
           <Link className="navItem" href="/impostazioni"><span aria-hidden>⚙</span> Impostazioni</Link>
         </nav>
-        <div className="navFooter"><span className="workspaceDot" aria-hidden /><div><strong>{context.workspace.name}</strong><span>{context.role}</span></div></div>
+        <div className="navFooter"><span className="workspaceDot" aria-hidden /><div><strong>{teacherSettings?.schoolName || context.workspace.name}</strong><span>{teacherSettings?.teacherDisplayName || context.role}</span></div></div>
       </aside>
 
       <main className="workSurface homeSurface">
         <header className="mobileHeader"><div><span className="mobileEyebrow">DOCENTE OS</span><strong>{context.academicYear?.label ?? 'Anno scolastico'}</strong></div><form action="/auth/signout" method="post"><button className="iconButton" type="submit" aria-label="Esci">↗</button></form></header>
         <section className="homeHero">
-          <div><p>{context.workspace.name} · {context.academicYear?.label ?? 'Anno scolastico'}</p><h1>Il lavoro docente, organizzato intorno alle tue attività.</h1><span>Scegli da dove iniziare. Fonti, decisioni e documenti restano collegati e verificabili.</span></div>
+          <div><p>{professionalContext}</p><h1>Il lavoro docente, organizzato intorno alle tue attività.</h1><span>Scegli da dove iniziare. Fonti, decisioni e documenti restano collegati e verificabili.</span></div>
           <form action="/auth/signout" method="post" className="desktopSignout"><button className="secondaryButton" type="submit">Esci</button></form>
         </section>
         <section className="homeEntrances" aria-labelledby="home-entrances-title">
