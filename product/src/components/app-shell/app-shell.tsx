@@ -20,6 +20,7 @@ import {
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { type ReactNode, useEffect, useState } from 'react'
+import { ContextualAssistantBoundary } from '@/components/assistant/contextual-assistant-boundary'
 import { cn } from '@/lib/utils'
 import { PRIMARY_NAVIGATION, navigationItem, type NavigationKey } from './navigation'
 
@@ -156,6 +157,7 @@ export function AppShell({
         </nav>
       </div>
 
+      <ContextualAssistantBoundary active={active} />
       <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} onNavigate={navigate} />
       <MobileMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen} active={active} onNavigate={navigate} academicYearLabel={academicYearLabel} />
     </div>
