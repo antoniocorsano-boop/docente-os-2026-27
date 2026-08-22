@@ -54,12 +54,15 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
   const [editor, setEditor] = useState<EditorState | null>(null)
 
   useEffect(() => {
-    const today = new Date().getDay()
-    if (days.some((day) => day.value === today)) {
-      setTodayWeekday(today)
-      setSelectedDay(today)
-    }
-    if (window.matchMedia('(max-width: 719px)').matches) setViewMode('day')
+    const frame = window.requestAnimationFrame(() => {
+      const today = new Date().getDay()
+      if (days.some((day) => day.value === today)) {
+        setTodayWeekday(today)
+        setSelectedDay(today)
+      }
+      if (window.matchMedia('(max-width: 719px)').matches) setViewMode('day')
+    })
+    return () => window.cancelAnimationFrame(frame)
   }, [days])
 
   useEffect(() => {
