@@ -1,6 +1,7 @@
 # DOCENTE OS — Class Workspace Contract
 
-Status: DRAFT FOR IMPLEMENTATION
+Status: COMPLETE / RUNTIME READY / INTERACTIVE ACCEPTANCE PENDING
+Runtime baseline: `3dfe546e0322cf18ea2dd5a57f93e337d7a10e75`
 
 ## Purpose
 
@@ -26,7 +27,7 @@ Status: DRAFT FOR IMPLEMENTATION
 
 ## Class workspace primary surface
 
-The class workspace must show, in this order:
+The class workspace shows, in this order:
 
 1. class identity and confirmation state;
 2. teaching assignment(s), discipline and weekly load;
@@ -38,7 +39,7 @@ The class workspace must show, in this order:
 
 Canonical route: `/classi/<sectionId>`.
 
-`sectionId` must be validated against the current workspace and academic-year snapshot. Invalid or foreign ids fail closed.
+`sectionId` is validated against the current workspace and academic-year snapshot. Invalid or foreign ids fail closed.
 
 From `Orario`:
 - canonical lesson -> `Apri classe` (primary), `Piano annuale` and `Modifica orario` (secondary);
@@ -46,13 +47,39 @@ From `Orario`:
 
 From `Progetta`:
 - grade context may be passed and used to narrow planning content;
-- section context may be displayed, but must not duplicate the common didactic nucleus per section.
+- common content remains visible;
+- section context does not duplicate the common didactic nucleus per section.
+
+## Runtime implementation
+
+Merged slices:
+
+- PR #49 — canonical Classi registry + `/classi/<sectionId>` workspace + grade-aware Progetta;
+- PR #50 — Orario opens the canonical class workspace as the primary lesson action.
+
+Verified gates:
+
+- tests: PASS;
+- TypeScript: PASS;
+- lint: PASS;
+- Next.js build: PASS;
+- Netlify develop preview: READY on `3dfe546e…`.
 
 ## Acceptance criteria
 
-- `Classi` renders canonical sections even when no Knowledge assets are linked.
-- Knowledge tags cannot create phantom classes.
-- Every canonical section card opens `/classi/<sectionId>`.
-- A class workspace can be opened from an Orario lesson bound to its teaching assignment.
-- Manual class presence remains isolated from the canonical section registry.
-- No database migration is required for this slice.
+- `Classi` renders canonical sections even when no Knowledge assets are linked. **IMPLEMENTED**
+- Knowledge tags cannot create phantom classes. **IMPLEMENTED**
+- Every canonical section card opens `/classi/<sectionId>`. **IMPLEMENTED**
+- A class workspace can be opened from an Orario lesson bound to its teaching assignment. **IMPLEMENTED**
+- Manual class presence remains isolated from the canonical section registry. **IMPLEMENTED**
+- Progetta can preserve grade context without duplicating planning per section. **IMPLEMENTED**
+- No database migration is required for this slice. **VERIFIED**
+
+## Interactive acceptance still required
+
+1. Open `Classi` with real workspace data and confirm all configured sections appear even without linked documents.
+2. Open one section and verify Cattedra and annual-plan progress correspond to the same canonical section.
+3. From Orario, tap a lesson and choose `Apri classe`; verify the correct section opens.
+4. From the class workspace open `Piano annuale`; verify the correct section remains selected.
+5. Open `Progetta`; verify the correct grade context is shown while common materials remain available.
+6. Verify a manual presence such as `3B · Supplenza` does not expose `Apri classe`.
