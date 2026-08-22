@@ -8,7 +8,11 @@ import './annual-plan.css'
 
 export const dynamic = 'force-dynamic'
 
-export default async function AnnualPlanPage() {
+export default async function AnnualPlanPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ section?: string }>
+}) {
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
   if (!context) redirect('/login')
@@ -28,6 +32,10 @@ export default async function AnnualPlanPage() {
     ),
   )
   const initialSnapshot = await executionRepository.list(context.workspace.id, context.academicYear.id)
+  const requestedSectionId = (await searchParams).section ?? null
+  const initialSectionId = requestedSectionId && initialSnapshot.sections.some((section) => section.id === requestedSectionId)
+    ? requestedSectionId
+    : null
 
   return (
     <AppShell
@@ -37,7 +45,7 @@ export default async function AnnualPlanPage() {
       role={context.role}
       contentClassName="annualPlanSurface"
     >
-      <AnnualPlanClient initialSnapshot={initialSnapshot} academicYearId={context.academicYear.id} />
+      <AnnualPlanClient initialSnapshot={initialSnapshot} academicYearId={context.academicYear.id} initialSectionId={initialSectionId} />
     </AppShell>
   )
 }
