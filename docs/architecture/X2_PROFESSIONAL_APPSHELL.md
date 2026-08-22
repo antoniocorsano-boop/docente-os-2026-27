@@ -1,7 +1,7 @@
 # X2 — Professional AppShell
 
 Data: 2026-08-22  
-Stato: IMPLEMENTATION_IN_PROGRESS  
+Stato: COMPLETE  
 Dipende da: X0, X1, ADR-002, Design System V2, Language & Collaboration System
 
 ## 1. Obiettivo
@@ -10,7 +10,7 @@ Rendere DOCENTE OS un ambiente unico e coerente, eliminando la duplicazione dell
 
 ## 2. Principi
 
-- una sola shell condivisa per le superfici autenticate;
+- una sola shell condivisa per le superfici migrate;
 - il contesto workspace/anno resta visibile ma non dominante;
 - navigazione sempre comprensibile e raggiungibile;
 - tastiera come acceleratore, mai come unico percorso;
@@ -18,17 +18,17 @@ Rendere DOCENTE OS un ambiente unico e coerente, eliminando la duplicazione dell
 - nessun cambiamento a dominio, database, RLS o dati;
 - nessun collegamento AI in X2.
 
-## 3. Componenti canonici
+## 3. Componenti implementati
 
-- `AppShell`
-- `PrimaryNavigation`
-- `MobileNavigation`
-- `CommandPalette`
-- `ShellCommandTrigger`
+- `AppShell` condivisa;
+- registro canonico `PRIMARY_NAVIGATION`;
+- sidebar responsive;
+- bottom navigation mobile;
+- menu mobile completo;
+- command palette;
+- trigger `Ctrl+K` / `Cmd+K` e pulsanti visibili.
 
-La configurazione delle destinazioni deve esistere in un unico registro.
-
-## 4. Destinazioni
+## 4. Destinazioni canoniche
 
 - Home
 - Oggi
@@ -39,37 +39,58 @@ La configurazione delle destinazioni deve esistere in un unico registro.
 - Piano annuale
 - Impostazioni
 
+Il registro è testato per unicità di chiavi e rotte.
+
 ## 5. Command palette
+
+Supporta navigazione e scoperta delle funzioni. Non modifica dati e non chiama AI.
 
 Apertura:
 
 - `Ctrl+K` / `Cmd+K`;
-- pulsante visibile nella shell;
-- comando visibile su mobile.
+- pulsante nella sidebar;
+- pulsante mobile.
 
-X2 supporta navigazione e scoperta delle funzioni. Ricerca su dati dinamici, azioni AI e scritture entrano in slice successive.
+Le write rimangono nelle rispettive superfici applicative.
 
-## 6. Rollout
+## 6. Rollout completato
 
-1. creare shell condivisa;
-2. migrare `Conoscenza` lista e dettaglio;
-3. validare desktop/tablet/mobile;
-4. migrare progressivamente le altre superfici in slice successive senza big-bang.
+`Conoscenza` è il primo modulo interamente migrato:
 
-## 7. Gate
+- lista contenuti;
+- dettaglio documento;
+- desktop;
+- tablet;
+- mobile.
+
+Le altre superfici verranno migrate progressivamente senza big-bang.
+
+## 7. Gate verificati
 
 - `npm install` PASS;
 - `npm test` PASS;
 - `npm run typecheck` PASS;
 - `npm run lint` PASS;
 - `npm run build` PASS;
+- Product CI #208 PASS;
 - Netlify preview READY;
-- Conoscenza renderizza dati reali;
-- keyboard command palette funzionante;
-- navigazione mobile esplicita;
+- merge runtime `1813a17ff6414439f8a5195a8de1d48b72925111`;
 - nessuna modifica DB/RLS/dati;
-- nessuna regressione Auth.
+- nessuna modifica alle server actions di Conoscenza;
+- nessuna dipendenza AI.
 
-## 8. Definition of done
+## 8. Dipendenze introdotte
 
-X2 è chiusa quando la shell condivisa è attiva almeno su Conoscenza, il registro di navigazione è unico, command palette e navigazione mobile sono usabili e tutti i gate risultano verdi.
+- `@radix-ui/react-dialog` per dialoghi accessibili;
+- `cmdk` per command palette;
+- `lucide-react` per iconografia coerente.
+
+## 9. Definition of done
+
+X2 è chiusa: shell condivisa, registro unico, command palette e navigazione mobile sono operativi su Conoscenza con gate completi verdi e deploy Netlify verificato.
+
+## 10. Next
+
+**X3 — Contextual Assistant, READ_ONLY / PROPOSE only.**
+
+L'assistente deve usare il contesto autentico della superficie, restare opzionale e non eseguire write.
