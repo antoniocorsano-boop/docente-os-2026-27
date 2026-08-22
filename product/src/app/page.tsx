@@ -21,25 +21,27 @@ const entrances = [
 ] as const
 
 export default async function HomePage() {
-  const repository = new SupabaseWorkspaceRepository()
-  const context = await repository.getCurrentContext()
+  const context = await new SupabaseWorkspaceRepository().getCurrentContext()
   if (!context) redirect('/login')
 
-  const settingsRepository = new SupabaseTeacherSettingsRepository()
-  const teacherSettings = context.academicYear
-    ? await settingsRepository.getOrCreate(context.workspace.id, context.academicYear.id)
-    : null
-  const plannerRepository = new SupabasePlannerRepository()
-  const tasks = await plannerRepository.listByWorkspace(context.workspace.id)
+  const year = context.academicYear
+  const [teacherSettings, tasks, timetable, annualSnapshot] = await Promise.all([
+    year
+      ? new SupabaseTeacherSettingsRepository().getOrCreate(context.workspace.id, year.id)
+      : Promise.resolve(null),
+    new SupabasePlannerRepository().listByWorkspace(context.workspace.id),
+    year
+      ? new SupabaseTimetableRepository().list(context.workspace.id, year.id, year.startsOn)
+      : Promise.resolve(null),
+    year
+      ? new SupabaseAnnualPlanExecutionRepository().list(context.workspace.id, year.id)
+      : Promise.resolve(null),
+  ])
 
   const moment = currentRomeMoment()
   let currentLesson: { sectionId: string | null; label: string; time: string } | null = null
 
-  if (context.academicYear && teacherSettings) {
-    const [timetable, annualSnapshot] = await Promise.all([
-      new SupabaseTimetableRepository().list(context.workspace.id, context.academicYear.id, context.academicYear.startsOn),
-      new SupabaseAnnualPlanExecutionRepository().list(context.workspace.id, context.academicYear.id),
-    ])
+  if (timetable && annualSnapshot) {
     const slot = timetable.slots.find((item) => item.weekday === moment.weekday && timeToMinutes(item.startTime) <= moment.minutes && timeToMinutes(item.endTime) > moment.minutes)
     if (slot) {
       const section = slot.sectionId ? annualSnapshot.sections.find((item) => item.id === slot.sectionId) ?? null : null
