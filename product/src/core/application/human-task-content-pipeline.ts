@@ -439,6 +439,7 @@ function extractPackChunks(lines: string[]): Array<{ heading: string; body: stri
 
 function isPackSectionHeading(line: string) {
   const normalized = stripNumberedHeadingPrefix(line).toUpperCase()
+  if (/^LEZIONE\b/.test(normalized)) return true
   if (/^SCHEDA DOCENTE\b/.test(normalized)) return true
   if (/^SCHEDA ALUNNO\b/.test(normalized)) return true
   if (/^SCHEDA\s+[A-Z]\b/.test(normalized)) return true
