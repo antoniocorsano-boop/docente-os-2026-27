@@ -15,6 +15,15 @@ export type ProjectionRecipeAlignment = {
 export type ProjectionRecipeResourceKind = 'STUDENT_SHEET' | 'EXIT_TICKET' | 'TASK_BRIEF' | 'RUBRIC' | 'ASSESSMENT_GUIDE'
 export type ProjectionRecipeSurface = 'PREPARE' | 'OBSERVE'
 
+export type ProjectionRecipePlanBinding = {
+  planSourceCode: string
+  segmentKey: string
+  udaCode: string
+  packCode: string
+  supportPackCodes: string[]
+  title: string
+}
+
 export type ProjectionRecipeResourceBinding = {
   id: string
   packCode: string
@@ -29,6 +38,7 @@ export type HumanTaskProjectionRecipe = {
   candidateId: string
   grade: GradeKey
   blockId: string
+  planBinding: ProjectionRecipePlanBinding
   sourceAlignment: ProjectionRecipeAlignment
   guide: {
     packCode: string
@@ -56,6 +66,7 @@ export type ProjectionDraftIssueCode =
   | 'CANDIDATE_NOT_REVIEWABLE'
   | 'CANDIDATE_ID_MISMATCH'
   | 'BLOCK_MISMATCH'
+  | 'PLAN_BINDING_MISMATCH'
   | 'COMPOSED_ALIGNMENT_NOTE_REQUIRED'
   | 'GUIDE_NOT_FOUND'
   | 'GUIDE_NOT_OPERATIONAL'
@@ -115,7 +126,7 @@ export type HumanTaskProjectionDraft = {
     continuation: string
     sourceAlignment: ProjectionRecipeAlignment
     provenance: {
-      planSourceCode: string
+      planBinding: ProjectionRecipePlanBinding
       candidateId: string
       uda: { code: string; assetId: string; generationId: string }
       packs: Array<{ code: string; assetId: string; generationId: string }>
@@ -132,10 +143,13 @@ export function buildProjectionDraft(candidate: HumanTaskContentCandidate, recip
     issues.push(issue('CANDIDATE_NOT_REVIEWABLE', 'BLOCKING', 'Il candidato sorgente non ha superato il gate strutturale della pipeline.'))
   }
   if (candidate.candidateId !== recipe.candidateId) {
-    issues.push(issue('CANDIDATE_ID_MISMATCH', 'BLOCKING', 'Il Recipe è legato a una diversa generazione delle fonti o a una diversa struttura del blocco.'))
+    issues.push(issue('CANDIDATE_ID_MISMATCH', 'BLOCKING', 'Il Recipe è legato a una diversa generazione delle fonti.'))
   }
   if (candidate.grade !== recipe.grade || candidate.blockId !== recipe.blockId.toUpperCase()) {
     issues.push(issue('BLOCK_MISMATCH', 'BLOCKING', 'Il Recipe non appartiene allo stesso grado/blocco del candidato.'))
+  }
+  if (!samePlanBinding(candidate, recipe.planBinding)) {
+    issues.push(issue('PLAN_BINDING_MISMATCH', 'BLOCKING', 'La struttura corrente del Piano annuale non coincide con quella approvata dal Recipe.'))
   }
   if (recipe.sourceAlignment.level === 'COMPOSED' && !recipe.sourceAlignment.note?.trim()) {
     issues.push(issue('COMPOSED_ALIGNMENT_NOTE_REQUIRED', 'BLOCKING', 'Un raccordo COMPOSED deve spiegare perché e come combina le fonti.'))
@@ -261,7 +275,7 @@ export function buildProjectionDraft(candidate: HumanTaskContentCandidate, recip
       continuation: recipe.editorial.continuation.trim(),
       sourceAlignment: recipe.sourceAlignment,
       provenance: {
-        planSourceCode: candidate.block.planSourceCode,
+        planBinding: { ...recipe.planBinding, supportPackCodes: [...recipe.planBinding.supportPackCodes] },
         candidateId: candidate.candidateId,
         uda: {
           code: candidate.sources.uda.code,
@@ -275,6 +289,19 @@ export function buildProjectionDraft(candidate: HumanTaskContentCandidate, recip
       },
     },
   }
+}
+
+function samePlanBinding(candidate: HumanTaskContentCandidate, binding: ProjectionRecipePlanBinding) {
+  return candidate.block.planSourceCode === binding.planSourceCode
+    && candidate.block.segmentKey === binding.segmentKey
+    && candidate.block.udaCode === binding.udaCode
+    && candidate.block.packCode === binding.packCode
+    && candidate.block.title === binding.title
+    && sameStringArray(candidate.block.supportPackCodes, binding.supportPackCodes)
+}
+
+function sameStringArray(left: string[], right: string[]) {
+  return left.length === right.length && left.every((value, index) => value === right[index])
 }
 
 function invalidDraft(candidate: HumanTaskContentCandidate, recipe: HumanTaskProjectionRecipe, issues: ProjectionDraftIssue[]): HumanTaskProjectionDraft {
