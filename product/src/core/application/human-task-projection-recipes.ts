@@ -1,12 +1,21 @@
 import type { HumanTaskProjectionRecipe } from './human-task-projection-recipe'
 
-// Proposal only. The candidateId binds this Recipe to the exact UDA/PACK generations
-// verified on 2026-08-22. Promotion to the lesson runtime remains a separate human gate.
+// Proposal only. The candidateId binds this Recipe to the exact UDA/PACK generations;
+// planBinding binds it to the exact canonical block structure verified against CAN-PLAN-1.
+// Promotion to the lesson runtime remains a separate human gate.
 export const B07_PRIMA_RECIPE_PROPOSAL: HumanTaskProjectionRecipe = {
   recipeId: 'HTC-RECIPE-PRIMA-B07-v1',
   candidateId: 'HTC-CANDIDATE:Prima:B07:5e0d5ae7-9f43-4d55-b470-533f2ac806fe:1902bdd3-c65f-46c0-b419-99bcd45131ad',
   grade: 'Prima',
   blockId: 'B07',
+  planBinding: {
+    planSourceCode: 'CAN-PLAN-1',
+    segmentKey: 'Prima:3',
+    udaCode: '1-02',
+    packCode: 'CAN-PACK-1B',
+    supportPackCodes: [],
+    title: 'Riconoscere e classificare i materiali',
+  },
   sourceAlignment: { level: 'DIRECT' },
   guide: {
     packCode: 'CAN-PACK-1B',
