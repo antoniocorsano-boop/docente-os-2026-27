@@ -20,12 +20,12 @@ export const dynamic = 'force-dynamic'
 type SectionKey = 'now' | 'today' | 'week' | 'waiting' | 'undated'
 
 const sourceLabels: Record<PlannerTask['sourceKind'], string> = {
-  MANUAL: 'Manuale',
-  COMMUNICATION: 'Circolare',
+  MANUAL: 'Inserita da te',
+  COMMUNICATION: 'Comunicazione',
   CALENDAR: 'Calendario',
   TEACHING: 'Didattica',
   DOCUMENT: 'Documento',
-  SYSTEM: 'Sistema',
+  SYSTEM: 'DOCENTE OS',
 }
 
 export default async function PlannerPage() {
@@ -94,7 +94,7 @@ export default async function PlannerPage() {
           <div><strong>{openTasks.length}</strong><span>aperte</span></div>
           <div className={overdueCount ? 'metricAlert' : ''}><strong>{overdueCount}</strong><span>scadute</span></div>
           <div><strong>{todayCount}</strong><span>per oggi</span></div>
-          <p>{todayCount === 0 ? 'Giornata libera da attività pianificate.' : todayCount <= 5 ? 'Carico di oggi contenuto.' : 'Giornata densa: valuta cosa rinviare.'}</p>
+          <p>{todayCount === 0 ? 'Non hai attività pianificate per oggi. Puoi dedicarti alla progettazione o anticipare qualcosa dalla settimana.' : todayCount <= 5 ? 'Il carico di oggi è contenuto: puoi procedere dalle attività più urgenti.' : 'La giornata è densa: valuta cosa è davvero prioritario e cosa può essere spostato.'}</p>
         </section>
 
         <form action={createPlannerTask} className="quickCapture advancedCapture">
@@ -167,7 +167,7 @@ function TaskSection({
           {tasks.map((task) => <TaskRow key={task.id} task={task} today={today} />)}
         </div>
       ) : (
-        <p className="emptyLine">Nessuna attività in questa sezione.</p>
+        <p className="emptyLine">Qui non ci sono attività. Le nuove attività compariranno automaticamente nella sezione corretta.</p>
       )}
     </section>
   )
@@ -199,7 +199,7 @@ function TaskRow({ task, today }: { task: PlannerTask; today: string }) {
           {task.priority === 'URGENT' ? <span className="priorityChip urgent">Urgente</span> : null}
           {task.priority === 'HIGH' ? <span className="priorityChip high">Alta</span> : null}
           {task.status === 'WAITING' ? <span className="waitingChip">In attesa</span> : null}
-          {knowledgeSource ? <Link className="knowledgeSourceChip" href={`/knowledge/${knowledgeSource.assetId}`}>Fonte KB · Generazione #{knowledgeSource.generationNo}</Link> : null}
+          {knowledgeSource ? <Link className="knowledgeSourceChip" href={`/knowledge/${knowledgeSource.assetId}`}>Fonte nella Conoscenza · versione {knowledgeSource.generationNo}</Link> : null}
         </div>
         {task.status === 'OPEN' ? (
           <div className="taskInlineActions" aria-label={`Azioni per ${task.title}`}>
@@ -207,7 +207,7 @@ function TaskRow({ task, today }: { task: PlannerTask; today: string }) {
             {task.plannedFor !== tomorrow ? <MoveButton action={movePlannerTaskTomorrow} taskId={task.id} label="Domani" /> : null}
             <MoveButton action={movePlannerTaskWeek} taskId={task.id} label="Settimana" />
             {task.plannedFor ? <MoveButton action={unschedulePlannerTask} taskId={task.id} label="Senza data" /> : null}
-            <MoveButton action={waitPlannerTask} taskId={task.id} label="Attendi" />
+            <MoveButton action={waitPlannerTask} taskId={task.id} label="Metti in attesa" />
           </div>
         ) : null}
       </div>
