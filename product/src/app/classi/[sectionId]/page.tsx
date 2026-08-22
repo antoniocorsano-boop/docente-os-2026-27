@@ -2,11 +2,13 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { buildClassWorkspaceSummary, formatWeeklyMinutes } from '../class-workspace-model'
+import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes } from '../class-workspace-model'
 import '../classi.css'
+import '../class-workspace-operational.css'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,43 +22,81 @@ export default async function ClassWorkspacePage({ params }: { params: Promise<{
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
   const settingsRepository = new SupabaseTeacherSettingsRepository()
   const assignmentReader = new SupabaseTeachingAssignmentReader()
-  const [snapshot, disciplines, assignments, settings] = await Promise.all([
+  const knowledgeRepository = new SupabaseKnowledgeRepository()
+  const [snapshot, disciplines, assignments, settings, knowledgeItems] = await Promise.all([
     annualRepository.list(context.workspace.id, context.academicYear.id),
     settingsRepository.listDisciplines(context.workspace.id, context.academicYear.id),
     assignmentReader.list(context.workspace.id, context.academicYear.id),
     settingsRepository.getOrCreate(context.workspace.id, context.academicYear.id),
+    knowledgeRepository.listRecent(context.workspace.id, 100),
   ])
 
   const section = snapshot.sections.find((item) => item.id === sectionId)
   if (!section) notFound()
   const summary = buildClassWorkspaceSummary(section, assignments, disciplines, snapshot.progress)
+  const learningFocus = buildClassWorkspaceLearningFocus(section, snapshot.progress, knowledgeItems)
+  const planningHref = `/progetta?grade=${summary.gradeQuery}&section=${encodeURIComponent(summary.sectionId)}`
+  const focusPlanningHref = learningFocus.nextBlock
+    ? `${planningHref}&block=${encodeURIComponent(learningFocus.nextBlock.id)}&uda=${encodeURIComponent(learningFocus.nextBlock.uda)}&pack=${encodeURIComponent(learningFocus.nextBlock.pack)}#focus-operativo`
+    : planningHref
+  const annualPlanHref = `/piano-annuale?section=${encodeURIComponent(summary.sectionId)}`
+  const knowledgeHref = `/knowledge?classLabel=${encodeURIComponent(summary.compactLabel)}`
 
   return (
     <AppShell active="classes" academicYearLabel={context.academicYear.label} workspaceName={settings.schoolName || context.workspace.name} role={context.role} contentClassName="classesWorkspaceSurface">
       <section className="classWorkspaceHeader">
         <div><p>CLASSE · {summary.sectionStatusLabel.toUpperCase()}</p><h1>{summary.displayLabel}</h1><span>Il punto di accesso alla didattica di questa sezione. I dati restano nei rispettivi registri: qui li ritrovi senza duplicarli.</span></div>
-        <div className="classWorkspaceActions"><Link className="primary" href={`/piano-annuale?section=${encodeURIComponent(summary.sectionId)}`}>Piano annuale</Link><Link href={`/progetta?grade=${summary.gradeQuery}&section=${encodeURIComponent(summary.sectionId)}`}>Progetta</Link></div>
+        <div className="classWorkspaceActions"><Link className="primary" href={annualPlanHref}>Piano annuale</Link><Link href={planningHref}>Progetta</Link></div>
+      </section>
+
+      <section className="classLessonFocus" aria-label="Posizione corrente nel Piano annuale">
+        {learningFocus.nextBlock ? (
+          <div className="classLessonFocusMain">
+            <p>PROSSIMO NEL PIANO · {learningFocus.nextBlock.statusLabel.toUpperCase()}</p>
+            <div className="classLessonFocusIdentity"><span>{learningFocus.nextBlock.id}</span><div><strong>{learningFocus.nextBlock.focus}</strong><small>UDA {learningFocus.nextBlock.uda} · {learningFocus.nextBlock.pack} · {learningFocus.nextBlock.period}</small></div></div>
+            <p className="classLessonFocusHint">DOCENTE OS non presume che tu la stia già preparando: questa è la prima fase non ancora completata nel Piano annuale della sezione.</p>
+          </div>
+        ) : (
+          <div className="classLessonFocusMain complete"><p>PIANO ANNUALE</p><div className="classLessonFocusIdentity"><span>✓</span><div><strong>Percorso annuale completato</strong><small>Tutti i blocchi attivi risultano conclusi o esclusi.</small></div></div></div>
+        )}
+        <div className="classLessonFocusAside">
+          <div className="classLessonProgress"><strong>{learningFocus.completedBlocks}/33</strong><span>blocchi completati</span></div>
+          <div className="classLessonFocusActions">
+            {learningFocus.nextBlock ? <Link className="primary" href={focusPlanningHref}>Prepara questa fase</Link> : null}
+            <Link href={annualPlanHref}>Apri piano</Link>
+          </div>
+        </div>
       </section>
 
       <section className="classWorkspaceGrid">
+        <article className="classWorkspaceCard classMaterialsCard">
+          <div><h2>Materiali pertinenti</h2><p>Solo contenuti collegati esplicitamente alla fase corrente, al grado o a questa sezione.</p></div>
+          {learningFocus.materials.length ? (
+            <div className="classMaterialList">
+              {learningFocus.materials.map((material) => (
+                <Link href={`/knowledge/${material.assetId}`} key={material.assetId}>
+                  <div><strong>{material.title}</strong><span>{material.categoryLabel}</span></div>
+                  <small>{material.relevanceLabel}</small>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="classMaterialsEmpty"><span>Nessun materiale esplicitamente collegato a questa fase.</span><Link href={knowledgeHref}>Apri Conoscenza</Link></div>
+          )}
+        </article>
+
         <article className="classWorkspaceCard">
           <div><h2>Cattedra</h2><p>Quello che insegni in questa classe e il carico settimanale previsto.</p></div>
           {summary.assignments.length ? <div className="classAssignmentList">{summary.assignments.map((assignment) => <div className="classAssignmentItem" key={assignment.id}><div><strong>{assignment.discipline}</strong><span>{assignment.status === 'CONFIRMED' ? 'Confermata' : 'Da confermare'}</span></div><small>{formatWeeklyMinutes(assignment.weeklyMinutes)}</small></div>)}</div> : <div className="classesEmpty"><strong>Questa classe non è ancora nella tua cattedra.</strong><Link href="/impostazioni#cattedra">Gestisci cattedra</Link></div>}
         </article>
-
-        <article className="classWorkspaceCard">
-          <div><h2>Piano annuale</h2><p>Avanzamento didattico registrato per questa sezione.</p></div>
-          <div className="classProgressHero"><strong>{summary.completedBlocks}/33</strong><span>blocchi completati</span></div>
-          <Link className="secondaryButton" href={`/piano-annuale?section=${encodeURIComponent(summary.sectionId)}`}>Apri avanzamento</Link>
-        </article>
       </section>
 
-      <section className="classWorkspaceCard">
-        <div><h2>Continua il lavoro</h2><p>Scegli la superficie giusta senza perdere il contesto della classe.</p></div>
+      <section className="classWorkspaceCard classContinueCard">
+        <div><h2>Continua il lavoro</h2><p>Le superfici restano distinte; il contesto della classe viene mantenuto nei collegamenti.</p></div>
         <div className="classQuickLinks">
-          <Link href={`/piano-annuale?section=${encodeURIComponent(summary.sectionId)}`}><strong>Piano annuale</strong><span>Cosa insegnare e cosa hai svolto.</span></Link>
-          <Link href={`/progetta?grade=${summary.gradeQuery}&section=${encodeURIComponent(summary.sectionId)}`}><strong>Progetta</strong><span>Programmazione, UDA e materiali del grado.</span></Link>
-          <Link href={`/knowledge?classLabel=${encodeURIComponent(summary.compactLabel)}`}><strong>Conoscenza</strong><span>Fonti e materiali collegati alla classe.</span></Link>
+          <Link href={annualPlanHref}><strong>Piano annuale</strong><span>Cosa insegnare e cosa hai svolto.</span></Link>
+          <Link href={planningHref}><strong>Progetta</strong><span>Programmazione, UDA e materiali del grado.</span></Link>
+          <Link href={knowledgeHref}><strong>Conoscenza</strong><span>Fonti e materiali collegati alla classe.</span></Link>
           <Link href="/orario"><strong>Orario</strong><span>Torna alla mappa della settimana.</span></Link>
         </div>
       </section>
