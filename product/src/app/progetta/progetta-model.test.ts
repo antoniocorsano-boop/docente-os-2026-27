@@ -1,10 +1,28 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { KnowledgeAsset, KnowledgeDocument } from '@/core/domain/knowledge'
-import { asProgettaGrade, filterProgettaItemsByGrade, groupProgettaItems, planningCoverage } from './progetta-model'
+import {
+  asProgettaFocus,
+  asProgettaGrade,
+  filterProgettaItemsByFocus,
+  filterProgettaItemsByGrade,
+  filterProgettaItemsBySectionContext,
+  groupProgettaItems,
+  partitionProgettaFocusBySection,
+  planningCoverage,
+} from './progetta-model'
 
 function item(id: string, contentCategory: KnowledgeAsset['contentCategory']) {
-  return { asset: { id, contentCategory, sourceMetadata: {} } as KnowledgeAsset, document: null as KnowledgeDocument | null }
+  return {
+    asset: {
+      id,
+      contentCategory,
+      sourceMetadata: {},
+      classLabels: [],
+      originalName: null,
+    } as KnowledgeAsset,
+    document: null as KnowledgeDocument | null,
+  }
 }
 
 test('organizza gli asset nelle tre aree di progettazione', () => {
@@ -41,4 +59,38 @@ test('filtra Progetta per grado mantenendo i contenuti comuni', () => {
   assert.deepEqual(filterProgettaItemsByGrade([prima, seconda, comune], 'seconda').map(({ asset }) => asset.id), ['p2', 'shared'])
   assert.equal(asProgettaGrade('seconda'), 'seconda')
   assert.equal(asProgettaGrade('quarta'), null)
+})
+
+test('mantiene il nucleo comune e la sola variante della sezione corrente', () => {
+  const comune = item('shared', 'TEACHING_RESOURCE')
+  const secondaC = { asset: { ...item('2c', 'TEACHING_RESOURCE').asset, classLabels: ['2C'] }, document: null }
+  const secondaA = { asset: { ...item('2a', 'TEACHING_RESOURCE').asset, classLabels: ['2A'] }, document: null }
+
+  assert.deepEqual(
+    filterProgettaItemsBySectionContext([comune, secondaC, secondaA], '2C').map(({ asset }) => asset.id),
+    ['shared', '2c'],
+  )
+})
+
+test('riconosce il focus blocco UDA pacchetto e separa nucleo comune da adattamento di sezione', () => {
+  const focus = asProgettaFocus({ block: 'b22', uda: '2-07', pack: 'can-pack-2g' })
+  assert.deepEqual(focus, { blockId: 'B22', uda: '2-07', pack: 'CAN-PACK-2G' })
+
+  const core = {
+    asset: { ...item('core', 'UDA').asset, originalName: 'CAN-PACK-2G UDA 2-07' },
+    document: null,
+  }
+  const section = {
+    asset: { ...item('section', 'TEACHING_RESOURCE').asset, sourceMetadata: { pack: 'CAN-PACK-2G' }, classLabels: ['2C'] },
+    document: null,
+  }
+  const other = {
+    asset: { ...item('other', 'UDA').asset, originalName: 'CAN-PACK-2F UDA 2-05' },
+    document: null,
+  }
+
+  const focused = filterProgettaItemsByFocus([core, section, other], focus)
+  assert.deepEqual(focused.map(({ asset }) => asset.id), ['core', 'section'])
+  assert.deepEqual(partitionProgettaFocusBySection(focused, '2C'), { core: [core], section: [section] })
+  assert.equal(asProgettaFocus({ block: '22', uda: 'foo', pack: '2G' }), null)
 })
