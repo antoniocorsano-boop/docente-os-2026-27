@@ -125,3 +125,5 @@ Regola Open Day: `CAN-PACK-1C` applica in modo introduttivo il metodo progettual
 ## Prossimo livello
 
 Quando sono disponibili orario e sezioni effettive, i tre `CAN-PLAN` vengono istanziati nel registro di attuazione: date reali, verifiche, materiali, recuperi, adattamenti e scostamenti restano nel livello di sezione, senza duplicare o alterare le UDA canoniche.
+
+La materializzazione delle date e il versionamento dell'orario sono regolati da `docs/architecture/TIMETABLE_CANONICAL_SPEC.md`. L'orario fornisce capacità temporale e occorrenze reali; non riscrive il CAN-PLAN. Una sospensione non consuma un blocco e un cambio d'orario ricalcola soltanto il futuro non ancora eseguito.
