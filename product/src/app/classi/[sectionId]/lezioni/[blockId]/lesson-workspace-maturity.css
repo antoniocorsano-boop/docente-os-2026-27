@@ -1,0 +1,7 @@
+.lessonSupport{margin:-7px 0 16px;border-bottom:1px solid var(--line,#e3e8ef)}
+.lessonSupport>summary{cursor:pointer;display:inline-flex;padding:8px 0 12px;color:var(--ink-soft,#667085);font-size:12px;font-weight:800}
+.lessonSupport>p{max-width:720px;margin:0 0 14px;padding:11px 13px;border-radius:12px;background:#f7f9fc;color:var(--ink-soft,#667085);font-size:12px;line-height:1.5}
+.lessonTechnicalRefs{margin-top:10px;padding-top:9px;border-top:1px solid #edf0f4}
+.lessonTechnicalRefs>summary{cursor:pointer;color:var(--ink-soft,#667085);font-size:11px;font-weight:750}
+.lessonTechnicalRefs>p{margin:8px 0 0!important;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px!important;word-break:break-word}
+@media(max-width:719px){.lessonSupport{margin-top:-9px}.lessonSupport>p{font-size:11px}}

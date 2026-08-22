@@ -1,5 +1,6 @@
 import type { EmailOtpType } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
+import { ensurePersonalWorkspace } from '@/app/auth/bootstrap-personal-workspace'
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
@@ -31,40 +32,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(redirectTo)
   }
 
-  const { data: workspaceId, error: bootstrapError } = await supabase.rpc(
-    'bootstrap_personal_workspace',
-    { workspace_name: 'Il mio spazio docente' },
-  )
-
-  if (bootstrapError || !workspaceId) {
+  const bootstrap = await ensurePersonalWorkspace(supabase)
+  if (!bootstrap.ok) {
     redirectTo.pathname = '/login'
-    redirectTo.searchParams.set('error', 'workspace_bootstrap_failed')
+    redirectTo.searchParams.set('error', bootstrap.error)
     return NextResponse.redirect(redirectTo)
   }
 
-  const { data: activeYear } = await supabase
-    .from('academic_years')
-    .select('id')
-    .eq('workspace_id', workspaceId)
-    .eq('is_active', true)
-    .maybeSingle()
-
-  if (!activeYear) {
-    const { error: yearError } = await supabase.from('academic_years').insert({
-      workspace_id: workspaceId,
-      label: '2026/2027',
-      starts_on: '2026-09-01',
-      ends_on: '2027-08-31',
-      is_active: true,
-    })
-
-    if (yearError) {
-      redirectTo.pathname = '/login'
-      redirectTo.searchParams.set('error', 'academic_year_bootstrap_failed')
-      return NextResponse.redirect(redirectTo)
-    }
-  }
-
-  redirectTo.pathname = '/workspace'
+  redirectTo.pathname = '/imposta-password'
+  redirectTo.searchParams.set('source', 'email')
   return NextResponse.redirect(redirectTo)
 }

@@ -1,7 +1,9 @@
 import type {
   CapturedAssetInput,
   KnowledgeAsset,
+  KnowledgeAssetContextInput,
   KnowledgeDocument,
+  KnowledgeProcessingGeneration,
   KnowledgeUnit,
   NormalizedKnowledge,
   TransformableAsset,
@@ -10,11 +12,21 @@ import type {
 export interface KnowledgeAssetRepository {
   capture(input: CapturedAssetInput): Promise<KnowledgeAsset>
   setProcessingStatus(assetId: string, status: KnowledgeAsset['processingStatus']): Promise<void>
+  setCurrentGeneration(assetId: string, generationId: string): Promise<void>
   getById(assetId: string): Promise<KnowledgeAsset | null>
+  findBySource(workspaceId: string, sourceProvider: KnowledgeAsset['sourceProvider'], sourceLocator: string): Promise<KnowledgeAsset | null>
+  updateContext(assetId: string, input: KnowledgeAssetContextInput): Promise<void>
+}
+
+export interface KnowledgeGenerationRepository {
+  startGeneration(asset: KnowledgeAsset): Promise<KnowledgeProcessingGeneration>
+  succeedGeneration(generationId: string, processorLabel: string): Promise<void>
+  failGeneration(generationId: string, error: unknown): Promise<void>
+  listGenerations(assetId: string): Promise<KnowledgeProcessingGeneration[]>
 }
 
 export interface KnowledgeDocumentRepository {
-  upsertNormalized(asset: KnowledgeAsset, normalized: NormalizedKnowledge): Promise<KnowledgeDocument>
+  upsertNormalized(asset: KnowledgeAsset, generationId: string, normalized: NormalizedKnowledge): Promise<KnowledgeDocument>
   replaceUnits(document: KnowledgeDocument, normalized: NormalizedKnowledge): Promise<KnowledgeUnit[]>
 }
 
@@ -33,6 +45,35 @@ export interface AssetContentPort {
 export interface AssetTransformerPort {
   supports(asset: KnowledgeAsset): boolean
   transform(input: TransformableAsset): Promise<NormalizedKnowledge>
+}
+
+export type VisualExtractionPage = {
+  page: number
+  text: string
+  description: string | null
+  confidence: number | null
+}
+
+export interface VisualExtractionPort {
+  extract(input: {
+    bytes: Uint8Array
+    mimeType: string
+    filename: string
+    pageNumbers?: number[]
+  }): Promise<{
+    pages: VisualExtractionPage[]
+    processor: string
+    processorVersion: string
+  }>
+}
+
+export interface PdfNativeTextExtractionPort {
+  extract(bytes: Uint8Array): Promise<{
+    totalPages: number
+    pages: string[]
+    processor: string
+    processorVersion: string
+  }>
 }
 
 export interface KnowledgeEnrichmentPort {

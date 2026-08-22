@@ -4,6 +4,10 @@ export type KnowledgeProcessingStatus = 'CAPTURED' | 'NORMALIZED' | 'INDEXED' | 
 export type KnowledgeDocumentType = 'CIRCULAR' | 'TEMPLATE' | 'ATTESTATION' | 'TEACHING' | 'COMMUNICATION' | 'GENERAL'
 export type KnowledgeUnitType = 'CHUNK' | 'ENTITY' | 'DATE' | 'DEADLINE' | 'ACTION' | 'PERSON' | 'CLASS' | 'TOPIC' | 'RULE'
 export type KnowledgeValidationStatus = 'AUTO' | 'REVIEWED' | 'REJECTED'
+export type KnowledgeGenerationStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED'
+export type KnowledgeContentCategory = 'CIRCULAR' | 'MODEL' | 'PROGRAMMING' | 'UDA' | 'ASSESSMENT' | 'TEACHING_RESOURCE' | 'COMMUNICATION' | 'OTHER'
+export type KnowledgeContextStatus = 'UNCLASSIFIED' | 'REVIEWED' | 'NEEDS_REVIEW'
+export type KnowledgeReliability = 'AUTO' | 'VERIFIED' | 'TO_VERIFY'
 
 export type KnowledgeAsset = {
   id: string
@@ -19,15 +23,44 @@ export type KnowledgeAsset = {
   sha256: string | null
   processingStatus: KnowledgeProcessingStatus
   sourceMetadata: Record<string, unknown>
+  currentGenerationId: string | null
+  contentCategory: KnowledgeContentCategory
+  disciplines: string[]
+  classLabels: string[]
+  contextStatus: KnowledgeContextStatus
+  reliability: KnowledgeReliability
   capturedAt: string
   createdBy: string
   createdAt: string
   updatedAt: string
 }
 
+export type KnowledgeAssetContextInput = {
+  academicYearId: string | null
+  contentCategory: KnowledgeContentCategory
+  disciplines: string[]
+  classLabels: string[]
+  contextStatus: KnowledgeContextStatus
+  reliability: KnowledgeReliability
+}
+
+export type KnowledgeProcessingGeneration = {
+  id: string
+  assetId: string
+  workspaceId: string
+  generationNo: number
+  status: KnowledgeGenerationStatus
+  processorLabel: string | null
+  startedAt: string
+  finishedAt: string | null
+  errorMessage: string | null
+  createdAt: string
+}
+
 export type KnowledgeDocument = {
   id: string
   assetId: string
+  generationId: string
   workspaceId: string
   title: string | null
   documentType: KnowledgeDocumentType

@@ -2,7 +2,7 @@ name: Product CI
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "develop"]
     paths:
       - "product/**"
       - ".github/workflows/product-ci.yml"
@@ -23,6 +23,7 @@ jobs:
         with:
           node-version: 22
       - run: npm install
+      - run: npm test
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
