@@ -34,6 +34,18 @@ type SaveProgressInput = {
   evidenceNote: string | null
 }
 
+type AnnualPlanSnapshotPayload = {
+  sections: SectionRow[]
+  progress: ProgressRow[]
+}
+
+type AnnualPlanSnapshotRpcClient = {
+  rpc: (
+    name: 'annual_plan_execution_snapshot',
+    args: { target_workspace_id: string; target_academic_year_id: string },
+  ) => Promise<{ data: AnnualPlanSnapshotPayload | null; error: { message: string } | null }>
+}
+
 function toSection(row: SectionRow): AnnualPlanSection {
   return {
     id: row.id,
@@ -66,26 +78,16 @@ function toProgress(row: ProgressRow): AnnualPlanBlockProgress {
 export class SupabaseAnnualPlanExecutionRepository {
   async list(workspaceId: string, academicYearId: string): Promise<AnnualPlanExecutionSnapshot> {
     const supabase = await createClient()
-    const { data: sectionRows, error: sectionError } = await supabase
-      .from('annual_plan_sections')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .eq('academic_year_id', academicYearId)
-      .order('grade')
-      .order('section_code')
+    const { data, error } = await (supabase as unknown as AnnualPlanSnapshotRpcClient).rpc(
+      'annual_plan_execution_snapshot',
+      { target_workspace_id: workspaceId, target_academic_year_id: academicYearId },
+    )
 
-    if (sectionError) throw new Error(sectionError.message)
-    const sections = sectionRows.map(toSection)
-    if (!sections.length) return { sections: [], progress: [] }
-
-    const { data: progressRows, error: progressError } = await supabase
-      .from('annual_plan_block_progress')
-      .select('*')
-      .in('section_id', sections.map((section) => section.id))
-      .order('block_id')
-
-    if (progressError) throw new Error(progressError.message)
-    return { sections, progress: progressRows.map(toProgress) }
+    if (error) throw new Error(error.message)
+    return {
+      sections: (data?.sections ?? []).map(toSection),
+      progress: (data?.progress ?? []).map(toProgress),
+    }
   }
 
   async ensureDefaultSections(
