@@ -5,6 +5,10 @@ import {
   type HumanTaskProjectionDraft,
   type HumanTaskProjectionRecipe,
 } from './human-task-projection-recipe'
+import {
+  buildUdaOnlyProjectionDraft,
+  type HumanTaskUdaOnlyProjectionRecipe,
+} from './human-task-uda-only-projection-recipe'
 
 export type HumanTaskProjectionGapReason =
   | 'NO_OPERATIONAL_GUIDE'
@@ -18,6 +22,8 @@ export type HumanTaskProjectionGap = {
   note: string
 }
 
+export type HumanTaskProjectionBatchRecipe = HumanTaskProjectionRecipe | HumanTaskUdaOnlyProjectionRecipe
+
 export type HumanTaskProjectionBatchItem = {
   grade: GradeKey
   blockId: string
@@ -29,7 +35,7 @@ export type HumanTaskProjectionBatchItem = {
 
 export function buildProjectionBatchReview(
   candidates: HumanTaskContentCandidate[],
-  recipes: HumanTaskProjectionRecipe[],
+  recipes: HumanTaskProjectionBatchRecipe[],
   gaps: HumanTaskProjectionGap[] = [],
 ): HumanTaskProjectionBatchItem[] {
   const recipeByKey = new Map(recipes.map((recipe) => [key(recipe.grade, recipe.blockId), recipe]))
@@ -51,7 +57,10 @@ export function buildProjectionBatchReview(
       }
     }
 
-    const draft = buildProjectionDraft(candidate, recipe)
+    const draft = isUdaOnlyRecipe(recipe)
+      ? buildUdaOnlyProjectionDraft(candidate, recipe)
+      : buildProjectionDraft(candidate, recipe)
+
     if (draft.status === 'INVALID') {
       return {
         grade: candidate.grade,
@@ -72,6 +81,10 @@ export function buildProjectionBatchReview(
       draft,
     }
   })
+}
+
+function isUdaOnlyRecipe(recipe: HumanTaskProjectionBatchRecipe): recipe is HumanTaskUdaOnlyProjectionRecipe {
+  return 'mode' in recipe && recipe.mode === 'UDA_ONLY'
 }
 
 function key(grade: GradeKey, blockId: string) {
