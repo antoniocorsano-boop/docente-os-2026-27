@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { updateDraftTimetableSlot } from '@/core/infrastructure/supabase/supabase-timetable-slot-editor'
 import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 
@@ -81,6 +82,24 @@ export async function addSpecialSlot(formData: FormData) {
   revalidatePath('/orario')
 }
 
+export async function updateTimetableSlot(formData: FormData) {
+  await requireContext()
+  const kind = timetableSlotKind(text(formData, 'kind'))
+  await updateDraftTimetableSlot({
+    versionId: text(formData, 'versionId'),
+    slotId: text(formData, 'slotId'),
+    kind,
+    assignmentId: kind === 'LESSON' ? text(formData, 'assignmentId') : null,
+    weekday: integer(formData, 'weekday'),
+    startTime: text(formData, 'startTime'),
+    endTime: text(formData, 'endTime'),
+    ordinal: optionalInteger(formData, 'ordinal'),
+    room: kind === 'LESSON' ? nullableText(formData, 'room') : null,
+    note: nullableText(formData, 'note'),
+  })
+  revalidatePath('/orario')
+}
+
 export async function deleteTimetableSlot(formData: FormData) {
   await requireContext()
   const repository = new SupabaseTimetableRepository()
@@ -124,4 +143,9 @@ function optionalInteger(formData: FormData, key: string) {
 function sourceKind(value: string) {
   if (value === 'MANUAL' || value === 'INSTITUTION_DOCUMENT' || value === 'IMPORT') return value
   throw new Error('Unsupported source kind')
+}
+
+function timetableSlotKind(value: string) {
+  if (value === 'LESSON' || value === 'DISPOSITION' || value === 'RECEPTION' || value === 'OTHER') return value
+  throw new Error('Unsupported timetable slot kind')
 }

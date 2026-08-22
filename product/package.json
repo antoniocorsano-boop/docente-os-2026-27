@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "tsx --test src/core/application/knowledge-ingestion-service.test.ts src/core/infrastructure/knowledge/file-transformers.test.ts src/core/domain/knowledge-task-source.test.ts src/app/classi/class-counts.test.ts src/app/progetta/progetta-model.test.ts",
+    "test": "tsx --test src/core/application/knowledge-ingestion-service.test.ts src/core/infrastructure/knowledge/file-transformers.test.ts src/core/domain/knowledge-task-source.test.ts src/app/classi/class-counts.test.ts src/app/progetta/progetta-model.test.ts src/app/orario/timetable-grid-model.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
