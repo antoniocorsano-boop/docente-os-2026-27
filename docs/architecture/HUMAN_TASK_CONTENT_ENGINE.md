@@ -1,6 +1,6 @@
 # DOCENTE OS — Human Task Content Engine
 
-Status: IMPLEMENTATION CONTRACT / B01-B06
+Status: IMPLEMENTATION CONTRACT / B01-B06 + PIPELINE P1
 Date: 2026-08-22
 
 ## Scopo
@@ -8,6 +8,8 @@ Date: 2026-08-22
 Il motore Human Task Content trasforma contenuti canonici (Piano annuale, UDA, CAN-PACK) in una vista operativa tracciabile senza trasformare i documenti in una seconda fonte autonoma.
 
 Il motore deve funzionare anche quando le fonti hanno granularità diverse. Non deve ottenere uniformità inventando tempi, passaggi, materiali, verifiche o corrispondenze inesistenti.
+
+La generazione scalabile delle future proiezioni è disciplinata anche da `docs/architecture/HUMAN_TASK_CONTENT_PIPELINE.md`. La pipeline prepara candidati ed evidenze; il runtime usa soltanto proiezioni approvate.
 
 ## Contratto minimo della proiezione
 
@@ -38,6 +40,7 @@ Ogni lezione operativa conserva:
 8. Il contenuto operativo non può introdurre esiti, valutazioni, materiali, procedure o quesiti non supportati dalle fonti.
 9. Quando più fonti devono essere raccordate, la proiezione deve dichiarare esplicitamente che è `COMPOSED` e spiegare il raccordo.
 10. Una proiezione `COMPOSED` priva di nota di allineamento fallisce chiusa.
+11. Un candidato prodotto dalla pipeline non può essere promosso direttamente: `HUMAN_REVIEW_REQUIRED` è obbligatorio.
 
 ## Timing contract
 
@@ -115,6 +118,14 @@ Quando la fonte definisce **il formato** di una verifica ma non i quesiti specif
 Non deve generare automaticamente quesiti presentandoli come parte canonica della UDA.
 
 B06 applica questa regola: la fonte prevede risposte brevi, classificazioni, completamento di uno schema e breve situazione-problema, ma non contiene le domande effettive.
+
+## Pipeline e prestazioni
+
+La pipeline semantica non viene eseguita nel percorso quotidiano ad alta frequenza.
+
+`Orario → Classe → Lezione` deve continuare a leggere una proiezione già approvata. UDA e CAN-PACK vengono interrogati dalla KB durante preparazione, generazione o revisione delle proiezioni, non ad ogni apertura della lezione.
+
+Questo evita di reintrodurre latenza dopo il lavoro P0 sulle prestazioni.
 
 ## Acceptance B01–B06
 
