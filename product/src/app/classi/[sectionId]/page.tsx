@@ -36,6 +36,9 @@ export default async function ClassWorkspacePage({ params }: { params: Promise<{
   const summary = buildClassWorkspaceSummary(section, assignments, disciplines, snapshot.progress)
   const learningFocus = buildClassWorkspaceLearningFocus(section, snapshot.progress, knowledgeItems)
   const planningHref = `/progetta?grade=${summary.gradeQuery}&section=${encodeURIComponent(summary.sectionId)}`
+  const focusPlanningHref = learningFocus.nextBlock
+    ? `${planningHref}&block=${encodeURIComponent(learningFocus.nextBlock.id)}&uda=${encodeURIComponent(learningFocus.nextBlock.uda)}&pack=${encodeURIComponent(learningFocus.nextBlock.pack)}#focus-operativo`
+    : planningHref
   const annualPlanHref = `/piano-annuale?section=${encodeURIComponent(summary.sectionId)}`
   const knowledgeHref = `/knowledge?classLabel=${encodeURIComponent(summary.compactLabel)}`
 
@@ -59,7 +62,7 @@ export default async function ClassWorkspacePage({ params }: { params: Promise<{
         <div className="classLessonFocusAside">
           <div className="classLessonProgress"><strong>{learningFocus.completedBlocks}/33</strong><span>blocchi completati</span></div>
           <div className="classLessonFocusActions">
-            {learningFocus.nextBlock ? <Link className="primary" href={planningHref}>Prepara questa fase</Link> : null}
+            {learningFocus.nextBlock ? <Link className="primary" href={focusPlanningHref}>Prepara questa fase</Link> : null}
             <Link href={annualPlanHref}>Apri piano</Link>
           </div>
         </div>
