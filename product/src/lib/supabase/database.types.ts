@@ -21,6 +21,12 @@ export type Database = {
         Update: { status?: string; executed_on?: string | null; evidence_note?: string | null; updated_by?: string; updated_at?: string }
         Relationships: []
       }
+      experience_feedback: {
+        Row: { id: string; workspace_id: string; academic_year_id: string | null; surface: string; journey: string; task_intent: string; context_ref: Json; satisfaction: number; comment: string | null; created_by: string; created_at: string }
+        Insert: { id?: string; workspace_id: string; academic_year_id?: string | null; surface: string; journey: string; task_intent: string; context_ref?: Json; satisfaction: number; comment?: string | null; created_by: string; created_at?: string }
+        Update: { id?: string; workspace_id?: string; academic_year_id?: string | null; surface?: string; journey?: string; task_intent?: string; context_ref?: Json; satisfaction?: number; comment?: string | null; created_by?: string; created_at?: string }
+        Relationships: []
+      }
       knowledge_assets: {
         Row: { id: string; workspace_id: string; academic_year_id: string | null; asset_kind: string; source_provider: string; source_locator: string | null; original_name: string | null; original_text: string | null; mime_type: string | null; byte_size: number | null; sha256: string | null; processing_status: string; source_metadata: Json; current_generation_id: string | null; content_category: string; disciplines: string[]; class_labels: string[]; context_status: string; reliability: string; captured_at: string; created_by: string; created_at: string; updated_at: string }
         Insert: { id?: string; workspace_id: string; academic_year_id?: string | null; asset_kind: string; source_provider: string; source_locator?: string | null; original_name?: string | null; original_text?: string | null; mime_type?: string | null; byte_size?: number | null; sha256?: string | null; processing_status?: string; source_metadata?: Json; current_generation_id?: string | null; content_category?: string; disciplines?: string[]; class_labels?: string[]; context_status?: string; reliability?: string; captured_at?: string; created_by: string; created_at?: string; updated_at?: string }
