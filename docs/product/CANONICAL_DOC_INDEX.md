@@ -45,6 +45,7 @@ In particolare sono vietati import/repository dependency `Timetable -> Calendar`
 - `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — north star e programma X0–X6.
 - `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` — tono, microcopy e grammatica collaborativa.
 - `docs/product/SETTINGS_EXPERIENCE_CONTRACT.md` — **contratto vincolante per configurazione guidata e gestione del contesto docente**.
+- `docs/product/SETTINGS_CONTEXT_DISCLOSURE_NOTE.md` — **regola canonica “contesto completo, esposizione minima” per le Impostazioni**.
 - `docs/product/PROJECT_STATUS_2026-08-22.md` — checkpoint generale corrente.
 
 ### Regola Impostazioni
@@ -52,8 +53,9 @@ In particolare sono vietati import/repository dependency `Timetable -> Calendar`
 Per ogni lavoro su `/impostazioni`:
 
 1. `SETTINGS_CANONICAL_SPEC.md` governa persistenza, sorgenti dati e invarianti;
-2. `SETTINGS_EXPERIENCE_CONTRACT.md` governa ordine, stati, spiegazioni, feedback e dipendenze percepite;
-3. `DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` governa tono e microcopy trasversali.
+2. `SETTINGS_EXPERIENCE_CONTRACT.md` governa ordine, stati, feedback e dipendenze percepite;
+3. `SETTINGS_CONTEXT_DISCLOSURE_NOTE.md` governa **quanto contesto mostrare per default** e impone progressive disclosure;
+4. `DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` governa tono e microcopy trasversali.
 
 È vietato introdurre una seconda Cattedra: Impostazioni e Orario devono usare gli stessi `teaching_assignments`.
 

@@ -78,8 +78,8 @@ export default async function SettingsPage() {
           <h1>{experience.mode === 'GUIDED' ? 'Configuriamo il tuo spazio docente' : 'Il tuo spazio docente'}</h1>
           <span>
             {experience.mode === 'GUIDED'
-              ? 'Servono alcune informazioni di base per adattare DOCENTE OS al tuo lavoro. Puoi modificarle in qualsiasi momento.'
-              : 'Qui mantieni aggiornate le informazioni che DOCENTE OS usa per capire il tuo contesto professionale.'}
+              ? 'Completa solo ciò che serve ora. Potrai modificare tutto in qualsiasi momento.'
+              : 'Qui mantieni aggiornato il contesto professionale usato da DOCENTE OS.'}
           </span>
         </div>
         <div className="settingsHeaderProgress" aria-label={`${experience.readyCount} di ${experience.totalCount} aree pronte`}>
@@ -96,13 +96,10 @@ export default async function SettingsPage() {
               ? `${experience.nextArea.label}: ${experience.nextArea.question}`
               : 'Le informazioni essenziali sono configurate.'}
           </strong>
-          <p>
-            {experience.nextArea
-              ? 'Completa questo passaggio e DOCENTE OS aggiornerà automaticamente il riepilogo, senza creare attività, lezioni o eventi.'
-              : 'Puoi rivedere ogni area quando cambia il tuo incarico o l’organizzazione scolastica.'}
-          </p>
         </div>
-        {experience.nextArea ? <a className="settingsPrimaryButton" href={experience.nextArea.href}>{experience.nextArea.nextAction}</a> : <Link className="settingsSecondaryButton" href="/orario">Apri Orario</Link>}
+        {experience.nextArea
+          ? <a className="settingsPrimaryButton" href={experience.nextArea.href}>{experience.nextArea.nextAction}</a>
+          : <Link className="settingsSecondaryButton" href="/orario">Apri Orario</Link>}
       </section>
 
       <nav className="settingsOverview" aria-label="Stato della configurazione">
@@ -120,11 +117,11 @@ export default async function SettingsPage() {
 
       <section className="settingsCard" id="contesto" aria-labelledby="context-title">
         <SettingsSectionHeading area={areaFor(experience.areas, 'context')} id="context-title" />
-        <div className="settingsUseMap">
-          <UseNote label="Serve a" text="identificare correttamente il tuo spazio di lavoro" />
-          <UseNote label="Usato in" text="contesto, intestazioni e documenti" />
-          <UseNote label="Non modifica" text="attività, Piano annuale, Orario o Calendario" />
-        </div>
+        <SettingsContextDisclosure
+          serves="Identifica correttamente il tuo spazio di lavoro."
+          usedIn="Contesto, intestazioni e documenti."
+          doesNotChange="Attività, Piano annuale, Orario o Calendario."
+        />
         <form action={saveProfessionalContext} className="settingsFormBlock">
           <div className="settingsGrid twoCols">
             <label className="settingsField"><span>Come vuoi essere indicato in DOCENTE OS?</span><input name="teacherDisplayName" defaultValue={settings.teacherDisplayName} maxLength={160} placeholder="Nome e cognome" /></label>
@@ -134,17 +131,17 @@ export default async function SettingsPage() {
             <label className="settingsField"><span>Città <small>facoltativa</small></span><input name="schoolCity" defaultValue={settings.schoolCity ?? ''} maxLength={120} placeholder="Comune" /></label>
             <label className="settingsField wideField"><span>Ordine / tipo di scuola</span><input name="schoolType" defaultValue={settings.schoolType} maxLength={160} placeholder="Es. Secondaria di primo grado" /></label>
           </div>
-          <div className="settingsActionRow"><span>Questi dati descrivono il tuo contesto professionale; non avviano nessun flusso operativo.</span><button className="settingsPrimaryButton" type="submit">Salva il contesto</button></div>
+          <div className="settingsActionRow"><span>Questi dati descrivono il tuo contesto professionale.</span><button className="settingsPrimaryButton" type="submit">Salva il contesto</button></div>
         </form>
       </section>
 
       <section className="settingsCard" id="discipline" aria-labelledby="disciplines-title">
         <SettingsSectionHeading area={areaFor(experience.areas, 'disciplines')} id="disciplines-title" />
-        <div className="settingsUseMap">
-          <UseNote label="Serve a" text="definire le discipline che fanno parte del tuo incarico" />
-          <UseNote label="Usato in" text="Cattedra, Orario, progettazione e classi" />
-          <UseNote label="Non modifica" text="classi o lezioni già inserite" />
-        </div>
+        <SettingsContextDisclosure
+          serves="Definisce le discipline che fanno parte del tuo incarico."
+          usedIn="Cattedra, Orario, progettazione e classi."
+          doesNotChange="Classi o lezioni già inserite."
+        />
         <form action={addTeachingDiscipline} className="inlineSettingsForm">
           <label className="settingsField"><span>Nuova disciplina</span><input name="disciplineName" maxLength={120} placeholder="Es. Tecnologia" required /></label>
           <button className="settingsSecondaryButton" type="submit">Aggiungi disciplina</button>
@@ -165,12 +162,12 @@ export default async function SettingsPage() {
 
       <section className="settingsCard" id="classi" aria-labelledby="classes-title">
         <SettingsSectionHeading area={areaFor(experience.areas, 'classes')} id="classes-title" />
-        <div className="settingsUseMap">
-          <UseNote label="Serve a" text="definire le sezioni con cui lavori quest’anno" />
-          <UseNote label="Usato in" text="Cattedra, Piano annuale, progettazione e Orario" />
-          <UseNote label="Non modifica" text="la Cattedra e non inserisce lezioni nell’Orario" />
-        </div>
-        <div className="settingsConceptCallout"><strong>Classe = esiste nel mio contesto.</strong><span>La disciplina e il monte ore vengono associati nel passaggio successivo.</span></div>
+        <SettingsContextDisclosure
+          serves="Definisce le sezioni con cui lavori quest’anno."
+          usedIn="Cattedra, Piano annuale, progettazione e Orario."
+          doesNotChange="La Cattedra e non inserisce lezioni nell’Orario."
+        />
+        <p className="settingsInlineHint">Disciplina e monte ore si associano nel passaggio <strong>Cattedra</strong>.</p>
         <form action={addSettingsSection} className="inlineSettingsForm classAddForm">
           <label className="settingsField"><span>Classe</span><select name="grade" defaultValue="PRIMA"><option value="PRIMA">Prima</option><option value="SECONDA">Seconda</option><option value="TERZA">Terza</option></select></label>
           <label className="settingsField"><span>Sezione</span><input name="sectionCode" maxLength={4} placeholder="A" required /></label>
@@ -188,12 +185,11 @@ export default async function SettingsPage() {
 
       <section className="settingsCard" id="cattedra" aria-labelledby="assignments-title">
         <SettingsSectionHeading area={areaFor(experience.areas, 'assignments')} id="assignments-title" />
-        <div className="settingsUseMap">
-          <UseNote label="Serve a" text="collegare classi, discipline e monte ore settimanale" />
-          <UseNote label="Usato in" text="Orario e controlli della capacità settimanale" />
-          <UseNote label="Non modifica" text="Piano annuale, attività o Calendario" />
-        </div>
-        <div className="settingsConceptCallout"><strong>Cattedra = la insegno.</strong><span>Aggiungere una classe alla Cattedra non inserisce automaticamente lezioni nell’Orario.</span></div>
+        <SettingsContextDisclosure
+          serves="Collega classi, discipline e monte ore settimanale."
+          usedIn="Orario e controlli della capacità settimanale."
+          doesNotChange="Piano annuale, Attività o Calendario."
+        />
 
         {!annualSnapshot.sections.length ? (
           <GuidedDependency title="Prima servono le tue classi" text="Per costruire la Cattedra devo sapere con quali classi lavori. Puoi aggiungerle senza definire ancora l’Orario." href="#classi" cta="Configura le classi" />
@@ -207,6 +203,7 @@ export default async function SettingsPage() {
                 <label className="settingsField"><span>Minuti a settimana</span><input name="weeklyMinutes" type="number" min="30" max="2400" step="5" defaultValue="120" required /></label>
                 <label className="settingsField wideField"><span>Nota <small>facoltativa</small></span><input name="sourceNote" maxLength={1000} placeholder="Es. assegnazione provvisoria, da confermare al collegio…" /></label>
                 <button className="settingsPrimaryButton" type="submit">Aggiungi alla cattedra</button>
+                <p className="settingsInlineHint settingsAssignmentHint">Non crea lezioni nell’Orario.</p>
               </form>
             ) : <div className="settingsInlineSuccess"><strong>Tutte le associazioni disponibili sono già presenti.</strong><span>Puoi controllare monte ore e stato qui sotto.</span></div>}
 
@@ -237,12 +234,11 @@ export default async function SettingsPage() {
 
       <section className="settingsCard" id="organizzazione" aria-labelledby="organization-title">
         <SettingsSectionHeading area={areaFor(experience.areas, 'organization')} id="organization-title" />
-        <div className="settingsUseMap">
-          <UseNote label="Serve a" text="preparare più velocemente la griglia della settimana tipo" />
-          <UseNote label="Usato in" text="interfaccia di costruzione dell’Orario" />
-          <UseNote label="Non modifica" text="slot già registrati, Calendario o Piano annuale" />
-        </div>
-        <div className="settingsConceptCallout"><strong>Il preset prepara la griglia. Non crea l’Orario.</strong><span>L’Orario mantiene versioni e slot propri, indipendenti da questi valori di base.</span></div>
+        <SettingsContextDisclosure
+          serves="Prepara più velocemente la griglia della settimana tipo."
+          usedIn="Interfaccia di costruzione dell’Orario."
+          doesNotChange="Slot già registrati, Calendario o Piano annuale."
+        />
         <form action={saveSchoolOrganization} className="settingsFormBlock">
           <div className="settingsGrid threeCols">
             <label className="settingsField"><span>Periodi abituali al giorno</span><select name="dailyPeriodCount" defaultValue={String(settings.dailyPeriodCount)}>{[4,5,6,7,8,9,10].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
@@ -250,14 +246,9 @@ export default async function SettingsPage() {
             <label className="settingsField"><span>Durata abituale di un periodo</span><select name="defaultPeriodMinutes" defaultValue={String(settings.defaultPeriodMinutes)}>{[45,50,55,60,65,70].map((value) => <option key={value} value={value}>{value} min</option>)}</select></label>
           </div>
           <fieldset className="weekdayFieldset"><legend>Giorni abituali di lezione</legend><div className="weekdayGrid">{WEEKDAYS.map((day) => <label key={day.value} className="weekdayChoice"><input type="checkbox" name="teachingWeekdays" value={day.value} defaultChecked={settings.teachingWeekdays.includes(day.value)} /><span>{day.label}</span></label>)}</div></fieldset>
-          <div className="settingsActionRow"><span>Se cambierai questi valori, gli slot dell’Orario già esistenti non verranno riscritti.</span><button className="settingsPrimaryButton" type="submit">Salva l’organizzazione</button></div>
+          <div className="settingsActionRow"><span>Prepara la griglia iniziale; non riscrive gli slot già esistenti.</span><button className="settingsPrimaryButton" type="submit">Salva l’organizzazione</button></div>
         </form>
       </section>
-
-      <aside className="settingsInfoStrip">
-        <strong>Impostazioni definisce il contesto.</strong>
-        <span>Oggi, Progetta, Piano annuale, Orario e Conoscenza fanno il lavoro usando questi riferimenti, ciascuno con il proprio stato e il proprio storico.</span>
-      </aside>
     </AppShell>
   )
 }
@@ -272,7 +263,20 @@ function SettingsSectionHeading({ area, id }: { area: SettingsArea; id: string }
   )
 }
 
-function UseNote({ label, text }: { label: string; text: string }) {
+function SettingsContextDisclosure({ serves, usedIn, doesNotChange }: { serves: string; usedIn: string; doesNotChange: string }) {
+  return (
+    <details className="settingsContextDisclosure">
+      <summary><span aria-hidden>ⓘ</span> Come viene usata</summary>
+      <div className="settingsContextDisclosureBody">
+        <ContextDetail label="Serve a" text={serves} />
+        <ContextDetail label="Usato in" text={usedIn} />
+        <ContextDetail label="Non modifica" text={doesNotChange} />
+      </div>
+    </details>
+  )
+}
+
+function ContextDetail({ label, text }: { label: string; text: string }) {
   return <div><span>{label}</span><strong>{text}</strong></div>
 }
 
