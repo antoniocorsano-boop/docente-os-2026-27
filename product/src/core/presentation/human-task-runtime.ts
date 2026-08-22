@@ -10,6 +10,7 @@ type CanonicalRuntimeBlock = {
   uda: string
   pack: string
   period: string
+  focus: string
   title?: string
 }
 
