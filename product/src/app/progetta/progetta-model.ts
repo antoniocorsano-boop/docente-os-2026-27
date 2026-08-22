@@ -1,4 +1,5 @@
 import type { KnowledgeAsset, KnowledgeDocument } from '@/core/domain/knowledge'
+import { buildBlocks, type GradeKey } from '../piano-annuale/model'
 
 export type ProgettaItem = { asset: KnowledgeAsset; document: KnowledgeDocument | null }
 export type ProgettaGrade = 'prima' | 'seconda' | 'terza'
@@ -7,6 +8,14 @@ export type ProgettaFocus = {
   blockId: string | null
   uda: string | null
   pack: string | null
+}
+
+export type ResolvedProgettaFocus = {
+  blockId: string
+  uda: string
+  pack: string
+  period: string
+  title: string
 }
 
 export type ProgettaGroup = {
@@ -21,6 +30,12 @@ export type PlanningCoverage = {
   programming: number
   uda: number
   materials: number
+}
+
+const GRADE_KEY: Record<ProgettaGrade, GradeKey> = {
+  prima: 'Prima',
+  seconda: 'Seconda',
+  terza: 'Terza',
 }
 
 export function filterProgettaItemsByGrade(items: ProgettaItem[], grade: ProgettaGrade | null) {
@@ -51,7 +66,22 @@ export function asProgettaFocus(input: { block?: string; uda?: string; pack?: st
   return blockId || uda || pack ? { blockId, uda, pack } : null
 }
 
-export function filterProgettaItemsByFocus(items: ProgettaItem[], focus: ProgettaFocus | null) {
+export function resolveCanonicalProgettaFocus(grade: ProgettaGrade | null, focus: ProgettaFocus | null): ResolvedProgettaFocus | null {
+  if (!grade || !focus?.blockId) return null
+  const block = buildBlocks(GRADE_KEY[grade]).find((candidate) => candidate.id === focus.blockId)
+  if (!block) return null
+  if (focus.uda && focus.uda !== block.uda) return null
+  if (focus.pack && focus.pack !== block.pack) return null
+  return {
+    blockId: block.id,
+    uda: block.uda,
+    pack: block.pack,
+    period: block.period,
+    title: block.focus,
+  }
+}
+
+export function filterProgettaItemsByFocus(items: ProgettaItem[], focus: ProgettaFocus | ResolvedProgettaFocus | null) {
   if (!focus) return []
   const needles = [focus.pack, focus.uda, focus.blockId].filter((value): value is string => Boolean(value)).map((value) => value.toLowerCase())
   if (!needles.length) return []
