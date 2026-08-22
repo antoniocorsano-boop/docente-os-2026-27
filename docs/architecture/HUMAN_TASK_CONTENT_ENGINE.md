@@ -1,13 +1,13 @@
 # DOCENTE OS — Human Task Content Engine
 
-Status: IMPLEMENTATION CONTRACT / B01-B02
+Status: IMPLEMENTATION CONTRACT / B01-B06
 Date: 2026-08-22
 
 ## Scopo
 
 Il motore Human Task Content trasforma contenuti canonici (Piano annuale, UDA, CAN-PACK) in una vista operativa tracciabile senza trasformare i documenti in una seconda fonte autonoma.
 
-La generalizzazione viene accettata solo se funziona su almeno due lezioni realmente diverse per struttura sorgente.
+Il motore deve funzionare anche quando le fonti hanno granularità diverse. Non deve ottenere uniformità inventando tempi, passaggi, materiali, verifiche o corrispondenze inesistenti.
 
 ## Contratto minimo della proiezione
 
@@ -18,11 +18,12 @@ Ogni lezione operativa conserva:
 - durata complessiva documentata;
 - materiali da predisporre;
 - sequenza di attività;
-- risorse collegate alle attività;
+- risorse collegate alle attività e alle superfici pertinenti;
 - evidenza attesa;
 - indicatori di osservazione;
 - criterio/nota di valutazione;
 - continuazione;
+- livello di allineamento delle fonti;
 - fonti canoniche.
 
 ## Regole di fedeltà alla fonte
@@ -32,8 +33,11 @@ Ogni lezione operativa conserva:
 3. Se la fonte non temporizza le attività, il motore mostra la durata complessiva ma non distribuisce artificialmente i minuti.
 4. Se solo alcune attività hanno un tempo, il motore non deduce la durata delle altre.
 5. Una risorsa viene mostrata dentro un passaggio solo se la proiezione dichiara esplicitamente il collegamento.
-6. I codici canonici restano nel modello e nei dettagli tecnici, non nel primo livello dell’esperienza.
-7. Il contenuto operativo non può introdurre esiti, valutazioni, materiali o procedure non supportati dalle fonti.
+6. Una risorsa può dichiarare una superficie `PREPARE` o `OBSERVE` quando serve prima della lezione o durante la chiusura, senza essere sempre visibile.
+7. I codici canonici restano nel modello e nei dettagli tecnici, non nel primo livello dell’esperienza.
+8. Il contenuto operativo non può introdurre esiti, valutazioni, materiali, procedure o quesiti non supportati dalle fonti.
+9. Quando più fonti devono essere raccordate, la proiezione deve dichiarare esplicitamente che è `COMPOSED` e spiegare il raccordo.
+10. Una proiezione `COMPOSED` priva di nota di allineamento fallisce chiusa.
 
 ## Timing contract
 
@@ -44,24 +48,85 @@ Lo stato dei tempi può essere:
 - `MIXED`: solo alcune attività hanno un tempo; nessun residuo viene dedotto;
 - `UNSPECIFIED`: nessuna attività ha un tempo; la durata complessiva resta informativa.
 
-B01 è `PARTIAL`: 110 minuti descritti su 120.
-B02 è `UNSPECIFIED`: 120 minuti complessivi, nessun tempo assegnato alle cinque attività.
+Esempi correnti:
+
+- B01 è `PARTIAL`: 110 minuti descritti su 120;
+- B02–B06 sono `UNSPECIFIED`: durata complessiva nota, nessun minuto inventato per i singoli passaggi.
+
+## Source alignment contract
+
+Il livello di allineamento può essere:
+
+### `DIRECT`
+
+Il Piano annuale e una guida operativa coincidono sostanzialmente per finalità e granularità del blocco.
+
+Esempi correnti:
+
+- B01 — Che cos’è Tecnologia?;
+- B02 — Laboratorio, strumenti e sicurezza;
+- B05 — Pensare per sistemi.
+
+### `COMPOSED`
+
+Il blocco operativo deve essere costruito raccordando più sezioni delle fonti perché non esiste una corrispondenza 1:1.
+
+Regole:
+
+- il Piano annuale resta autorità su collocazione e blocco;
+- UDA e pacchetto devono sostenere semanticamente ogni elemento mostrato;
+- la composizione non può produrre falsa precisione;
+- `sourceAlignment.note` è obbligatoria;
+- la nota resta dietro il supporto contestuale **Serve una mano?**, non nel primo viewport.
+
+Esempi correnti:
+
+- B03 — Dai bisogni alle soluzioni;
+- B04 — Risorse e vincoli;
+- B06 — Compito significativo e verifica.
+
+La motivazione dettagliata è conservata in `docs/research/UDA_1_01_HUMAN_TASK_SOURCE_ALIGNMENT.md`.
 
 ## Resource binding
 
 Il runtime non deve conoscere identificatori di passaggi specifici come `S04` o `S08`.
 
-Ogni `ActivityStep` può dichiarare `resourceIds`; il renderer risolve le risorse corrispondenti e le mostra nel punto corretto della sequenza. In questo modo B01, B02 e lezioni successive usano lo stesso motore senza condizioni dedicate alla singola lezione.
+Ogni `ActivityStep` può dichiarare `resourceIds`; il renderer risolve le risorse corrispondenti e le mostra nel punto corretto della sequenza.
 
-## Acceptance B02
+Ogni risorsa può inoltre dichiarare superfici di uso:
 
-Per **Laboratorio, strumenti e sicurezza** il sistema deve:
+- `PREPARE`: materiale da consultare o predisporre prima della lezione;
+- `OBSERVE`: criterio/rubrica utile nella fase di osservazione e chiusura.
 
-- mostrare la durata di 2 ore senza inventare minuti per attività;
-- proporre gli strumenti realmente disponibili a scuola, esempi di uso corretto/non corretto, cartoncini/post-it e Scheda alunno B;
-- mostrare le cinque attività canoniche nell’ordine della fonte;
-- rendere la Scheda alunno B disponibile nel passaggio di compilazione senza ricerca manuale;
-- richiamare come evidenza `scheda strumenti + Patto del laboratorio`;
-- osservare soprattutto uso corretto degli strumenti, procedure/sicurezza e organizzazione del lavoro;
-- mantenere la valutazione diagnostico-formativa e non trasformare automaticamente la griglia in voto;
-- continuare verso la prima lezione dell’UDA successiva senza esporre codici tecnici nel primo livello.
+Questo consente allo stesso renderer di gestire:
+
+- schede alunno;
+- exit ticket;
+- consegne di compito;
+- rubriche;
+- struttura di una verifica;
+
+senza condizioni dedicate alla singola lezione.
+
+## Regola sulle verifiche incomplete
+
+Quando la fonte definisce **il formato** di una verifica ma non i quesiti specifici, DOCENTE OS può mostrare soltanto la struttura documentata.
+
+Non deve generare automaticamente quesiti presentandoli come parte canonica della UDA.
+
+B06 applica questa regola: la fonte prevede risposte brevi, classificazioni, completamento di uno schema e breve situazione-problema, ma non contiene le domande effettive.
+
+## Acceptance B01–B06
+
+Il sistema deve:
+
+- mantenere B01 senza regressioni e rispettare i 110/120 minuti;
+- mostrare B02 senza inventare tempi;
+- rendere B03 e B04 comprensibili pur dichiarando internamente il raccordo tra fonti;
+- rendere Scheda C disponibile esattamente quando serve in B04;
+- rendere Scheda D disponibile in B05 senza logica hard-coded nel renderer;
+- mostrare in B06 la consegna del compito nel momento opportuno;
+- mostrare la struttura della verifica senza inventare quesiti;
+- mostrare i criteri di osservazione solo nella fase `Osserva`;
+- continuare dopo B06 verso il Piano annuale reale, senza fingere che B07 sia già modellato;
+- non reintrodurre codici tecnici nel primo livello dell’esperienza.
