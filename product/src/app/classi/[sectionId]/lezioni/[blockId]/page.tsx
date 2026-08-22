@@ -6,6 +6,7 @@ import { resolveHumanTaskLessonProjection } from '@/core/presentation/human-task
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import LessonWorkspaceClient, { type LessonWorkspaceMode } from './lesson-workspace-client'
 import './lesson-workspace.css'
+import './lesson-workspace-maturity.css'
 
 export const dynamic = 'force-dynamic'
 
