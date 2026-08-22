@@ -7,7 +7,7 @@ import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supa
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { buildLessonWorkspaceHref, resolveHumanTaskLessonProjection } from '@/core/presentation/human-task-content'
+import { buildLessonWorkspaceHref, resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 import { buildTaskAwareKnowledgeHref } from '@/core/presentation/task-continuity'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes } from '../class-workspace-model'
@@ -57,7 +57,7 @@ export default async function ClassWorkspacePage({
     ? blocks.find((item) => item.id === learningFocus.nextBlock?.id) ?? null
     : null
   const nextProjection = nextCanonicalBlock
-    ? resolveHumanTaskLessonProjection(grade, nextCanonicalBlock)
+    ? resolveRuntimeHumanTaskLessonProjection(grade, nextCanonicalBlock)
     : null
 
   const planningHref = `/progetta?grade=${summary.gradeQuery}&section=${encodeURIComponent(summary.sectionId)}`
@@ -85,7 +85,7 @@ export default async function ClassWorkspacePage({
       ) ?? null
     : null
   const recordedProjection = recordedBlock && recordedProgress
-    ? resolveHumanTaskLessonProjection(grade, recordedBlock)
+    ? resolveRuntimeHumanTaskLessonProjection(grade, recordedBlock)
     : null
 
   const nextTitle = nextProjection?.title ?? learningFocus.nextBlock?.focus ?? null
