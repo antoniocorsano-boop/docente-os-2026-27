@@ -17,10 +17,10 @@ import {
 } from '@/core/presentation/assistant-context'
 
 const SUGGESTED_PROMPTS = [
-  'Cosa contiene questo documento?',
+  'Cosa contiene?',
   'Cosa devo controllare?',
   'Ci sono azioni o scadenze?',
-  'Qual è il prossimo passo utile?',
+  'Qual è il prossimo passo?',
 ] as const
 
 export function KnowledgeAssistant({
@@ -59,8 +59,8 @@ function KnowledgeAssistantRuntime({
   if (presentation === 'floating' && !expanded) {
     return (
       <button className="dosAssistantFloatingTrigger" type="button" onClick={() => setExpanded(true)}>
-        <span className="dosAssistantIcon" aria-hidden><Sparkles size={18} /></span>
-        <span><strong>Ti aiuto da qui</strong><small>Assistente contestuale · nessuna modifica automatica</small></span>
+        <span className="dosAssistantIcon" aria-hidden><Sparkles size={17} /></span>
+        <span><strong>Chiedi a DOCENTE OS</strong><small>Su questo contenuto</small></span>
       </button>
     )
   }
@@ -71,34 +71,34 @@ function KnowledgeAssistantRuntime({
         <div className="dosAssistantIdentity">
           <span className="dosAssistantIcon" aria-hidden><Sparkles size={19} /></span>
           <div>
-            <span className="panelEyebrow">ASSISTENTE CONTESTUALE</span>
-            <h2 id="knowledge-assistant-title">Ti aiuto a capire cosa conta</h2>
+            <span className="panelEyebrow">AIUTO SUL CONTESTO</span>
+            <h2 id="knowledge-assistant-title">Cosa vuoi capire?</h2>
           </div>
         </div>
-        <div className="dosAssistantSafety"><ShieldCheck size={15} aria-hidden /><span>Nessuna modifica automatica</span></div>
+        <div className="dosAssistantSafety"><ShieldCheck size={15} aria-hidden /><span>Non modifica dati</span></div>
       </div>
 
       <p className="dosAssistantLead">
-        Sto usando soltanto il contesto di questo contenuto: provenienza, stato, riferimenti professionali e proposte già individuate. In questa fase posso leggere e proporre, non modificare dati.
+        Leggo solo le informazioni già disponibili in questa pagina e ti aiuto a orientarti. Le azioni restano sotto il tuo controllo.
       </p>
 
       <div className="dosAssistantContextStrip" aria-label="Contesto usato dall’assistente">
         <span>{context.knowledge.category}</span>
         <span>{context.knowledge.sourceLabel}</span>
         <span>{context.knowledge.statusLabel}</span>
-        {context.knowledge.classLabels.slice(0, 2).map((item) => <span key={`class-${item}`}>{item}</span>)}
-        {context.knowledge.disciplines.slice(0, 2).map((item) => <span key={`discipline-${item}`}>{item}</span>)}
+        {context.knowledge.classLabels.slice(0, 1).map((item) => <span key={`class-${item}`}>{item}</span>)}
+        {context.knowledge.disciplines.slice(0, 1).map((item) => <span key={`discipline-${item}`}>{item}</span>)}
       </div>
 
       {!expanded ? (
         <div className="dosAssistantStart">
           <div>
-            <strong>Puoi chiedermi, per esempio:</strong>
+            <strong>Puoi chiedere:</strong>
             <div className="dosAssistantPromptHints">
               {SUGGESTED_PROMPTS.map((prompt) => <span key={prompt}>{prompt}</span>)}
             </div>
           </div>
-          <button type="button" onClick={() => setExpanded(true)}>Apri assistente</button>
+          <button type="button" onClick={() => setExpanded(true)}>Apri</button>
         </div>
       ) : (
         <AssistantRuntimeProvider runtime={runtime}>
@@ -114,8 +114,8 @@ function KnowledgeAssistantThread({ onClose }: { onClose: () => void }) {
     <div className="dosAssistantConversation">
       <div className="dosAssistantConversationTop">
         <div>
-          <strong>Chiedi sul contenuto che stai guardando</strong>
-          <span>Le risposte sono letture o proposte; le azioni restano manuali.</span>
+          <strong>Parliamo di questo contenuto</strong>
+          <span>Posso leggere e proporre. Non eseguo modifiche.</span>
         </div>
         <button type="button" onClick={onClose}>Chiudi</button>
       </div>
@@ -131,7 +131,7 @@ function KnowledgeAssistantThread({ onClose }: { onClose: () => void }) {
             <ComposerPrimitive.Root className="dosAssistantComposer">
               <ComposerPrimitive.Input
                 className="dosAssistantInput"
-                placeholder="Es. Cosa devo controllare prima di usare questo documento?"
+                placeholder="Es. Cosa devo controllare?"
                 aria-label="Domanda per l’assistente contestuale"
                 rows={2}
               />
@@ -147,7 +147,7 @@ function KnowledgeAssistantThread({ onClose }: { onClose: () => void }) {
 
       <div className="dosAssistantFooterNote">
         <ShieldCheck size={14} aria-hidden />
-        <span>X3 · READ_ONLY / PROPOSE. Nessun tool di scrittura è disponibile.</span>
+        <span>Solo lettura e proposte. Nessuna scrittura automatica.</span>
       </div>
     </div>
   )
