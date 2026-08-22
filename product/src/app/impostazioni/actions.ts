@@ -133,8 +133,7 @@ export async function addSettingsTeachingAssignment(formData: FormData) {
     weeklyMinutes: integer(formData, 'weeklyMinutes'),
     sourceNote: nullableText(formData, 'sourceNote'),
   })
-  revalidatePath('/impostazioni')
-  revalidatePath('/orario')
+  revalidateTeachingContext()
 }
 
 export async function updateSettingsTeachingAssignment(formData: FormData) {
@@ -147,8 +146,30 @@ export async function updateSettingsTeachingAssignment(formData: FormData) {
     weeklyMinutes: integer(formData, 'weeklyMinutes'),
     status: text(formData, 'status') === 'CONFIRMED' ? 'CONFIRMED' : 'PROVISIONAL',
   })
-  revalidatePath('/impostazioni')
-  revalidatePath('/orario')
+  revalidateTeachingContext()
+}
+
+export async function confirmSettingsTeachingAssignment(formData: FormData) {
+  await setSettingsTeachingAssignmentStatus(formData, 'CONFIRMED')
+}
+
+export async function reopenSettingsTeachingAssignment(formData: FormData) {
+  await setSettingsTeachingAssignmentStatus(formData, 'PROVISIONAL')
+}
+
+async function setSettingsTeachingAssignmentStatus(
+  formData: FormData,
+  status: 'PROVISIONAL' | 'CONFIRMED',
+) {
+  const context = await requireContext()
+  const repository = new SupabaseTimetableRepository()
+  await repository.setAssignmentStatus({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    assignmentId: text(formData, 'assignmentId'),
+    status,
+  })
+  revalidateTeachingContext()
 }
 
 async function requireContext() {
@@ -161,6 +182,12 @@ async function requireContext() {
 
 function revalidateSettingsContext() {
   revalidatePath('/impostazioni')
+  revalidatePath('/')
+}
+
+function revalidateTeachingContext() {
+  revalidatePath('/impostazioni')
+  revalidatePath('/orario')
   revalidatePath('/')
 }
 

@@ -11,6 +11,8 @@ import {
   addSettingsTeachingAssignment,
   addTeachingDiscipline,
   confirmSettingsSection,
+  confirmSettingsTeachingAssignment,
+  reopenSettingsTeachingAssignment,
   saveProfessionalContext,
   saveSchoolOrganization,
   setTeachingDisciplineState,
@@ -23,6 +25,7 @@ import {
   type SettingsAreaKey,
 } from './settings-experience-model'
 import './settings.css'
+import './cattedra.css'
 
 export const dynamic = 'force-dynamic'
 
@@ -211,19 +214,46 @@ export default async function SettingsPage() {
               {assignments.length ? assignments.map((assignment) => {
                 const section = sectionById.get(assignment.sectionId)
                 const discipline = disciplineById.get(assignment.disciplineId)
+                const confirmed = assignment.status === 'CONFIRMED'
                 return (
-                  <div className="settingsAssignmentRow" key={assignment.id}>
-                    <div className="settingsAssignmentIdentity">
-                      <strong>{section ? sectionLabel(section.grade, section.sectionCode) : 'Classe'} · {discipline?.name ?? 'Disciplina'}</strong>
-                      <span>{assignment.status === 'CONFIRMED' ? 'Confermata' : 'Da confermare'} · {formatWeeklyMinutes(assignment.weeklyMinutes)}</span>
+                  <div className={`settingsAssignmentRow humanAssignmentRow ${confirmed ? 'isConfirmed' : 'needsConfirmation'}`} key={assignment.id}>
+                    <div className="settingsAssignmentIdentity humanAssignmentIdentity">
+                      <div className="humanAssignmentTitleRow">
+                        <strong>{section ? sectionLabel(section.grade, section.sectionCode) : 'Classe'} · {discipline?.name ?? 'Disciplina'}</strong>
+                        <span className={`humanAssignmentStatus ${confirmed ? 'confirmed' : 'pending'}`}>
+                          {confirmed ? '✓ Confermata' : 'Da confermare'}
+                        </span>
+                      </div>
+                      <span>{formatWeeklyMinutes(assignment.weeklyMinutes)}</span>
                       {assignment.sourceNote && <small>{assignment.sourceNote}</small>}
                     </div>
-                    <form action={updateSettingsTeachingAssignment} className="settingsAssignmentEdit">
-                      <input type="hidden" name="assignmentId" value={assignment.id} />
-                      <label><span>Min/settimana</span><input name="weeklyMinutes" type="number" min="30" max="2400" step="5" defaultValue={assignment.weeklyMinutes} /></label>
-                      <label><span>Stato</span><select name="status" defaultValue={assignment.status}><option value="PROVISIONAL">Da confermare</option><option value="CONFIRMED">Confermata</option></select></label>
-                      <button className="settingsSecondaryButton" type="submit">Salva modifiche</button>
-                    </form>
+
+                    <div className="humanAssignmentActions">
+                      {!confirmed ? (
+                        <form action={confirmSettingsTeachingAssignment} className="humanConfirmForm">
+                          <input type="hidden" name="assignmentId" value={assignment.id} />
+                          <button className="settingsPrimaryButton humanConfirmButton" type="submit">Conferma</button>
+                        </form>
+                      ) : null}
+
+                      <details className="humanAssignmentDetails">
+                        <summary>{confirmed ? 'Modifica dettagli' : 'Controlla o modifica le ore'}</summary>
+                        <div className="humanAssignmentDetailsBody">
+                          <form action={updateSettingsTeachingAssignment} className="humanMinutesForm">
+                            <input type="hidden" name="assignmentId" value={assignment.id} />
+                            <input type="hidden" name="status" value={assignment.status} />
+                            <label><span>Minuti a settimana</span><input name="weeklyMinutes" type="number" min="30" max="2400" step="5" defaultValue={assignment.weeklyMinutes} /></label>
+                            <button className="settingsSecondaryButton" type="submit">Salva monte ore</button>
+                          </form>
+                          {confirmed ? (
+                            <form action={reopenSettingsTeachingAssignment} className="humanReopenForm">
+                              <input type="hidden" name="assignmentId" value={assignment.id} />
+                              <button className="textButton humanReopenButton" type="submit">Rimetti da controllare</button>
+                            </form>
+                          ) : null}
+                        </div>
+                      </details>
+                    </div>
                   </div>
                 )
               }) : <GuidedEmpty title="Cattedra ancora vuota" text="Associa almeno una classe e una disciplina. L’Orario userà queste associazioni quando aggiungi le lezioni." />}
