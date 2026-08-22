@@ -5,13 +5,13 @@ Updated: 2026-08-22
 ```text
 STATE: ACTIVE_DEVELOPMENT_STABLE
 CANONICAL_DEV_BRANCH: develop
-BASELINE_COMMIT: 3685066ed91695357b10a20e821199464e06f593
+BASELINE_COMMIT: 0ad96c95b7a5b66bba627f3a304cb936c5e89026
 CANONICAL_DEV_RUNTIME: Netlify deploy preview for develop
 CI_GATE: test + typecheck + lint + build
 PRODUCT_EXPERIENCE: X0 COMPLETE / X1 COMPLETE / X2 COMPLETE / X3 TECHNICALLY COMPLETE
-PRIMARY_FOCUS: X3 INTERACTIVE ACCEPTANCE
-NEXT_ACTION: verify the contextual assistant on a real Knowledge document on desktop/mobile
-X4_GATE: HOLD_FOR_X3_INTERACTIVE_ACCEPTANCE
+PRIMARY_FOCUS: UX CONSOLIDATION — clear mental model, lighter shell/assistant
+X4_GATE: HOLD_FOR_X3_UX_ACCEPTANCE
+TEMPORAL_ARCHITECTURE: TIMETABLE INDEPENDENT / CALENDAR INDEPENDENT / TEMPORAL PROJECTION COMPOSES BOTH
 ```
 
 ## Current product line
@@ -25,7 +25,7 @@ The static root application is retained as legacy/reference material only. It is
 - Supabase Auth and server session handling.
 - Password login for routine access; magic link for activation/recovery.
 - PostgreSQL persistence with Row Level Security.
-- Planner/Oggi persistent workflow.
+- Oggi/Attività persistent workflow.
 - Knowledge ingestion/transformation/provenance/generations.
 - Progetta and Classes read models.
 - Annual plan execution by class/section.
@@ -36,8 +36,10 @@ The static root application is retained as legacy/reference material only. It is
 - Product Experience canonical package X0.
 - Tailwind v4 + open-code component foundation X1.
 - Professional AppShell X2 with shared navigation, command palette and mobile navigation.
-- Knowledge list/detail on shared AppShell.
+- Knowledge list/detail, Oggi and Piano annuale on shared AppShell.
 - assistant-ui contextual assistant X3 on Knowledge detail, READ_ONLY / PROPOSE only.
+- canonical Work/Time mental model separating Activities, Annual Plan, Timetable and Calendar.
+- Timetable and Calendar frozen as independent domains; Temporal Projection is the composition boundary.
 - GitHub Actions product gates passing on merged slices.
 - Netlify Next.js deploy preview verified as the operational development runtime.
 
@@ -49,7 +51,7 @@ Status: `DEV_RUNTIME_VERIFIED`.
 
 - project: `docente-os-dev`;
 - develop preview is the current interactive reference;
-- X3 merge `3685066…` deployed `READY`;
+- latest accepted baseline `0ad96c95…` deployed `READY`;
 - Next.js server handler is deployed;
 - Supabase redirect configuration includes the Netlify preview pattern.
 
@@ -69,9 +71,9 @@ A production alias/provider decision will be made only after release gates are s
 
 1. alcune superfici non sono ancora migrate alla shell condivisa;
 2. parte del CSS rimane locale mentre la migrazione prosegue;
-3. X3 ha superato i gate tecnici ma richiede ancora accettazione interattiva;
-4. nessun provider LLM reale è ancora collegato: il runtime X3 è deterministico/provider-neutral per validare UX e confini;
-5. Timetable T3/T4 remain pending;
+3. X3 ha superato i gate tecnici ma l'accettazione visiva ha mostrato eccessiva competizione con il documento;
+4. nessun provider LLM reale è ancora collegato: X3 resta deterministico/provider-neutral per validare UX e confini;
+5. T3A/T3B/T3C e T4 restano da implementare;
 6. production URL and final auth recovery UX remain to be frozen;
 7. legacy static files remain in root and must stay clearly marked as non-canonical.
 
@@ -85,34 +87,15 @@ Status: `COMPLETE`.
 
 Status: `COMPLETE`.
 
-Evidence:
-
-- Tailwind v4/PostCSS without preflight;
-- semantic theme layer;
-- canonical open-code UI primitives;
-- Login pilot;
-- Product CI #200 green;
-- Netlify READY on `aeb66cd8…`.
-
 ### X2 — Professional AppShell
 
 Status: `COMPLETE`.
 
-Evidence:
-
-- shared AppShell;
-- canonical navigation registry;
-- responsive sidebar and mobile navigation;
-- `Ctrl/Cmd+K` command palette;
-- Knowledge list/detail rollout;
-- Product CI #208 green;
-- Netlify READY on `1813a17…`.
-
 ### X3 — Contextual Assistant
 
-Status: `COMPLETE_TECHNICAL / INTERACTIVE_ACCEPTANCE_PENDING`.
+Status: `COMPLETE_TECHNICAL / UX_REFINEMENT_ACTIVE`.
 
-Evidence:
+Technical evidence:
 
 - `@assistant-ui/react` LocalRuntime;
 - authenticated read-only AssistantContext endpoint;
@@ -122,33 +105,64 @@ Evidence:
 - no write tools;
 - no chat persistence;
 - optional/off state;
-- 27/27 tests PASS;
-- typecheck PASS;
-- lint PASS;
-- build PASS;
-- Product CI #213 green;
-- Netlify READY on merge `3685066…`.
+- CI and Netlify gates green on the technical baseline.
 
-Interactive acceptance checklist:
+UX feedback already accepted:
 
-1. open a real Knowledge document;
-2. verify “Ti aiuto da qui” appears without obscuring the document;
-3. ask “Cosa contiene questo documento?”;
-4. ask “Crea una attività nel Planner” and confirm the assistant refuses/degrades to a manual proposal;
-5. verify desktop and mobile usability.
+- the direction is useful and collaborative;
+- the floating trigger is valid;
+- the expanded assistant is still too visually competitive with the document;
+- navigation hierarchy must make product objects easier to distinguish.
+
+Current refinement:
+
+- grouped navigation by `Il mio lavoro / Didattica / Tempo / Risorse / Sistema`;
+- lighter contextual-assistant trigger;
+- smaller expanded assistant footprint;
+- shorter safety copy;
+- preserve full manual usability beneath the assistant.
 
 ### X4 — Human-in-the-loop writes
 
-Status: `HOLD_FOR_X3_INTERACTIVE_ACCEPTANCE`.
+Status: `HOLD_FOR_X3_UX_ACCEPTANCE`.
 
-No write capability is authorized before the acceptance checklist above passes.
+No write capability is authorized until the refined X3 experience is accepted.
 
-### T3/T4 — Timetable evolution
+## Temporal program
+
+### T3A — Timetable lifecycle
+
+Status: `NEXT_AFTER_UX_CONSOLIDATION`.
+
+- activate/archive timetable versions;
+- effective date lifecycle;
+- independent of Calendar;
+- no Calendar imports in Timetable domain/repository.
+
+### T3B — Calendar core
+
+Status: `PLANNED`.
+
+- school days and suspensions;
+- real events and date constraints;
+- independent of Timetable.
+
+### T3C — Temporal Projection
+
+Status: `PLANNED`.
+
+- application read model combining Timetable + Calendar;
+- projected real occurrences;
+- first use in Oggi;
+- neither source domain is mutated.
+
+### T4 — Didactic allocation
 
 Status: `PENDING`.
 
-- T3 calendar/activation/exceptions;
-- T4 B01-B33 allocation/materialization.
+- map teaching sessions / projected occurrences to CAN-PLAN B01–B33;
+- actual minutes/evidence drive execution;
+- no rewrite of the canonical annual plan.
 
 ## Development rule
 
