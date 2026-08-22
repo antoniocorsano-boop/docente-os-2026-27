@@ -117,6 +117,7 @@ export function buildPackComposedProjectionDraft(
       minutes: null,
       title: extracted.title,
       instruction: extracted.instruction,
+      resourceIds: undefined as string[] | undefined,
     }]
   })
 
@@ -377,6 +378,7 @@ function extractPrompts(body: string, mode: 'ALL' | 'NUMBERED') {
       const label = line.slice(0, separator).replace(/[_]+/g, '').trim()
       return label ? [label] : []
     }
+    if (line.length <= 160) return [line.replace(/[.;]+$/, '').trim()]
     return []
   })
   return [...new Set(prompts)].slice(0, 16)
