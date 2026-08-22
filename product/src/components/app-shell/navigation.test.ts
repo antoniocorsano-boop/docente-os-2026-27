@@ -31,15 +31,16 @@ test('navigation groups cover every destination exactly once', () => {
   assert.deepEqual([...groupedKeys].sort(), [...primaryKeys].sort())
 })
 
-test('navigation groups preserve the user mental model', () => {
+test('navigation groups follow human tasks rather than technical containers', () => {
   assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[0]).map((item) => item.key), ['home', 'today'])
-  assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[1]).map((item) => item.key), ['design', 'annual-plan', 'classes'])
+  assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[1]).map((item) => item.key), ['classes', 'design', 'annual-plan'])
   assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[2]).map((item) => item.key), ['timetable'])
   assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[3]).map((item) => item.key), ['knowledge'])
+  assert.equal(NAVIGATION_GROUPS[1].label, 'Prepara e insegna')
 })
 
-test('navigation lookup is stable and Timetable is explicitly autonomous', () => {
+test('navigation lookup is stable and Orario is described as an operational weekly guide', () => {
   assert.equal(navigationItem('knowledge').href, '/knowledge')
   assert.equal(navigationItem('timetable').label, 'Orario')
-  assert.match(navigationItem('timetable').description, /autonomo dal Calendario/i)
+  assert.match(navigationItem('timetable').description, /settimana|lezione/i)
 })

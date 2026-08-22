@@ -83,10 +83,7 @@ export default function AnnualPlanClient({
   function updateLocalProgress(blockId: string, entry: ProgressEntry) {
     if (!selectedSection) return
     const key = progressKey(selectedSection.id, source.generationId, blockId)
-    setState((current) => ({
-      ...current,
-      progress: { ...current.progress, [key]: entry },
-    }))
+    setState((current) => ({ ...current, progress: { ...current.progress, [key]: entry } }))
   }
 
   function persistProgressEntry(blockId: string, entry: ProgressEntry) {
@@ -95,26 +92,9 @@ export default function AnnualPlanClient({
     setSyncError(null)
     startTransition(async () => {
       try {
-        const saved = await saveAnnualPlanProgress({
-          grade,
-          sectionId: currentSection.id,
-          blockId,
-          status: entry.status,
-          date: entry.date,
-          note: entry.note,
-        })
+        const saved = await saveAnnualPlanProgress({ grade, sectionId: currentSection.id, blockId, status: entry.status, date: entry.date, note: entry.note })
         const key = progressKey(saved.sectionId, saved.canonicalGenerationId, saved.blockId)
-        setState((current) => ({
-          ...current,
-          progress: {
-            ...current.progress,
-            [key]: {
-              status: saved.status,
-              date: saved.executedOn ?? '',
-              note: saved.evidenceNote ?? '',
-            },
-          },
-        }))
+        setState((current) => ({ ...current, progress: { ...current.progress, [key]: { status: saved.status, date: saved.executedOn ?? '', note: saved.evidenceNote ?? '' } } }))
       } catch (error) {
         setSyncError(errorMessage(error))
       }
@@ -130,10 +110,7 @@ export default function AnnualPlanClient({
   function markNextDone() {
     if (!selectedSection || !nextBlock) return
     const current = progressFor(nextBlock.id)
-    applyAndPersist(nextBlock.id, {
-      status: 'SVOLTO',
-      date: current.date || currentRomeDate(),
-    })
+    applyAndPersist(nextBlock.id, { status: 'SVOLTO', date: current.date || currentRomeDate() })
   }
 
   function addSection() {
@@ -144,13 +121,7 @@ export default function AnnualPlanClient({
       try {
         const saved = await addAnnualPlanSection(grade, code)
         const record = sectionToRecord(saved)
-        setState((current) => ({
-          ...current,
-          sections: {
-            ...current.sections,
-            [grade]: [...current.sections[grade], record].sort((a, b) => a.code.localeCompare(b.code)),
-          },
-        }))
+        setState((current) => ({ ...current, sections: { ...current.sections, [grade]: [...current.sections[grade], record].sort((a, b) => a.code.localeCompare(b.code)) } }))
         setSectionId(saved.id)
         setNewSection('')
       } catch (error) {
@@ -167,13 +138,7 @@ export default function AnnualPlanClient({
       try {
         const saved = await confirmAnnualPlanSection(currentSectionId)
         const record = sectionToRecord(saved)
-        setState((current) => ({
-          ...current,
-          sections: {
-            ...current.sections,
-            [grade]: current.sections[grade].map((item) => item.id === record.id ? record : item),
-          },
-        }))
+        setState((current) => ({ ...current, sections: { ...current.sections, [grade]: current.sections[grade].map((item) => item.id === record.id ? record : item) } }))
       } catch (error) {
         setSyncError(errorMessage(error))
       }
@@ -189,135 +154,61 @@ export default function AnnualPlanClient({
       try {
         await resetAnnualPlanProgress(grade, currentSection.id)
         const prefix = `${currentSection.id}|${source.generationId}|`
-        setState((current) => ({
-          ...current,
-          progress: Object.fromEntries(Object.entries(current.progress).filter(([key]) => !key.startsWith(prefix))),
-        }))
+        setState((current) => ({ ...current, progress: Object.fromEntries(Object.entries(current.progress).filter(([key]) => !key.startsWith(prefix))) }))
       } catch (error) {
         setSyncError(errorMessage(error))
       }
     })
   }
 
-  const saveStateLabel = syncError
-    ? `Non sono riuscito a salvare le ultime modifiche: ${syncError}. Puoi riprovare.`
-    : isPending
-      ? 'Sto salvando le modifiche…'
-      : 'Modifiche salvate'
+  const saveStateLabel = syncError ? `Salvataggio non riuscito: ${syncError}` : isPending ? 'Sto salvando…' : 'Modifiche salvate'
+  const sectionLabel = selectedSection ? `${gradeOrdinal(grade)} ${selectedSection.code}` : null
+  const prepareHref = selectedSection && nextBlock
+    ? `/progetta?grade=${grade.toLowerCase()}&section=${encodeURIComponent(selectedSection.id)}&block=${encodeURIComponent(nextBlock.id)}&uda=${encodeURIComponent(nextBlock.uda)}&pack=${encodeURIComponent(nextBlock.pack)}#focus-operativo`
+    : null
 
   return (
     <>
       <section className="annualHero annualHeroClarified">
-        <div>
-          <p className="contextLine">Didattica annuale · registro di attuazione</p>
-          <h1>Piano annuale</h1>
-          <p>Qui segui <strong>cosa insegnare</strong> e <strong>quanto hai realmente svolto</strong> per ogni classe e sezione. Le date registrate documentano l’esecuzione: il Calendario delle occorrenze reali resta un oggetto distinto.</p>
-        </div>
-        <Link className="secondaryButton" href={`/knowledge/${source.assetId}`}>Apri il documento di riferimento</Link>
+        <div><p className="contextLine">REGISTRA E RIVEDI</p><h1>Piano annuale</h1><p>{selectedSection ? `Stai seguendo l’avanzamento della ${sectionLabel}. Prima il prossimo tratto didattico; la sequenza completa resta disponibile sotto.` : 'Seleziona una sezione per passare dalla vista generale al lavoro operativo.'}</p></div>
       </section>
 
-      <section className="workObjectGuide annualWorkObjectGuide" aria-label="Ruolo del Piano annuale nel sistema">
-        <div><span>ATTIVITÀ</span><strong>Oggi</strong><small>Cose da fare e priorità.</small></div>
-        <div className="active"><span>QUI</span><strong>Piano annuale</strong><small>Sequenza didattica B01–B33 e avanzamento.</small></div>
-        <div><span>SETTIMANA</span><strong>Orario</strong><small>Pattern ricorrente delle lezioni.</small></div>
-        <div className="future"><span>DATE REALI · T3</span><strong>Calendario</strong><small>Occorrenze, eventi ed eccezioni effettive.</small></div>
-      </section>
-
-      <section className="annualContextPanel">
+      <section className="annualContextPanel annualContextCompact">
         <div className="annualSelectors">
-          <label>
-            <span>Classe</span>
-            <select value={grade} onChange={(event) => { setGrade(event.target.value as GradeKey); setSectionId('') }}>
-              {GRADES.map((item) => <option key={item}>{item}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>Sezione</span>
-            <select value={sectionId} onChange={(event) => setSectionId(event.target.value)}>
-              <option value="">Vista generale</option>
-              {state.sections[grade].map((item) => <option key={item.id} value={item.id}>{grade} {item.code}</option>)}
-            </select>
-          </label>
+          <label><span>Classe</span><select value={grade} onChange={(event) => { setGrade(event.target.value as GradeKey); setSectionId('') }}>{GRADES.map((item) => <option key={item}>{item}</option>)}</select></label>
+          <label><span>Sezione</span><select value={sectionId} onChange={(event) => setSectionId(event.target.value)}><option value="">Vista generale</option>{state.sections[grade].map((item) => <option key={item.id} value={item.id}>{grade} {item.code}</option>)}</select></label>
         </div>
         <div className="annualSectionState">
-          {selectedSection ? (
-            <>
-              <StatusBadge status={selectedSection.status} />
-              <span>{selectedSection.source}</span>
-              {selectedSection.status !== 'CONFERMATA' ? <button className="inlineAction" type="button" onClick={confirmSection} disabled={isPending}>Conferma assegnazione</button> : null}
-            </>
-          ) : (
-            <span>{grade === 'Prima' ? 'Le nuove sezioni di prima non sono ancora note: le aggiungerai quando avrai l’assegnazione.' : 'Stai guardando il piano generale della classe. Seleziona una sezione per registrare l’avanzamento effettivo.'}</span>
-          )}
-        </div>
-        <div className="annualAddSection">
-          <input value={newSection} onChange={(event) => setNewSection(event.target.value)} placeholder="Nuova sezione, es. A" aria-label="Nuova sezione" />
-          <button className="secondaryButton" type="button" onClick={addSection} disabled={isPending || !newSection.trim()}>Aggiungi sezione</button>
+          {selectedSection ? <><StatusBadge status={selectedSection.status} /><span>{selectedSection.source}</span>{selectedSection.status !== 'CONFERMATA' ? <button className="inlineAction" type="button" onClick={confirmSection} disabled={isPending}>Conferma assegnazione</button> : null}</> : <span>{grade === 'Prima' ? 'Aggiungi una sezione quando l’assegnazione sarà nota.' : 'Seleziona una sezione per registrare l’avanzamento effettivo.'}</span>}
         </div>
       </section>
 
-      <section className="annualMetrics" aria-label="Avanzamento annuale">
-        <Metric value={`${completed.length}/33`} label="blocchi completati" />
-        <Metric value={`${completed.length * 2}/66`} label="ore registrate" />
-        <Metric value={nextBlock?.id ?? 'CHIUSO'} label="prossimo blocco" />
-        <div className="annualSourceMetric">
-          <span>Documento di riferimento</span>
-          <strong>{source.code}</strong>
-          <small>fonte canonica collegata in Conoscenza</small>
+      {selectedSection ? (
+        <section className="humanTaskFocus annualCurrentFocus" aria-labelledby="annual-next-title">
+          <p className="humanTaskFocusEyebrow">PROSSIMO NEL PIANO · {sectionLabel}</p>
+          {nextBlock ? <><h2 id="annual-next-title">{nextBlock.focus}</h2><p>Questo è il primo blocco attivo non ancora completato. DOCENTE OS non presume che sia già stato preparato o svolto.</p><div className="humanTaskMeta"><span>{nextBlock.id}</span><span>UDA {nextBlock.uda}</span><span>{nextBlock.pack}</span><span>{nextBlock.period}</span><span>{completed.length}/33 completati</span></div><div className="humanTaskActions"><button className="primary" type="button" onClick={markNextDone} disabled={isPending}>Segna svolto</button>{prepareHref ? <Link href={prepareHref}>Prepara questa fase</Link> : null}</div></> : <><h2 id="annual-next-title">Percorso annuale completato</h2><p>Tutti i blocchi attivi risultano conclusi o esclusi.</p><div className="humanTaskMeta"><span>{completed.length}/33 completati</span></div></>}
+          <span className={`annualSaveState${syncError ? ' syncError' : ''}`}>{saveStateLabel}</span>
+        </section>
+      ) : (
+        <div className="humanTaskCompactStats" aria-label="Quadro generale"><span><strong>33</strong> blocchi per grado</span><span><strong>66</strong> ore</span><span><strong>{source.code}</strong> fonte canonica</span></div>
+      )}
+
+      <details className="humanTaskSecondary" open={!selectedSection}>
+        <summary>{selectedSection ? 'Vedi e modifica tutti i 33 blocchi' : 'Sequenza didattica completa'}</summary>
+        <div className="humanTaskSecondaryBody annualTableDisclosure">
+          <section className="annualTableCard">
+            <div className="annualTableHeader"><div><h2>Sequenza didattica</h2><p>Usala quando devi correggere uno stato, una data o una evidenza specifica.</p></div><span>{blocks.length} blocchi · 66 ore</span></div>
+            <div className="annualTableWrap"><table className="annualTable"><thead><tr><th>Blocco</th><th>UDA</th><th>Pacchetto</th><th>Periodo</th><th>Focus</th><th>Stato</th><th>Data svolta</th><th>Evidenza / nota</th></tr></thead><tbody>{blocks.map((block) => { const progress = progressFor(block.id); return <tr key={block.id} className={COMPLETE_STATUSES.has(progress.status) ? 'annualDoneRow' : ''}><td><strong>{block.id}</strong></td><td>{block.uda}</td><td><span className="annualPackChip">{block.pack}</span></td><td>{block.period}</td><td>{block.focus}</td><td>{selectedSection ? <select value={progress.status} onChange={(event) => applyAndPersist(block.id, { status: event.target.value as AnnualPlanBlockStatus })} aria-label={`Stato ${block.id}`} disabled={isPending}>{BLOCK_STATUSES.map((status) => <option key={status} value={status}>{blockStatusLabel(status)}</option>)}</select> : <span className="annualNeutralStatus">Pianificato</span>}</td><td>{selectedSection ? <input type="date" value={progress.date} onChange={(event) => applyAndPersist(block.id, { date: event.target.value })} aria-label={`Data ${block.id}`} disabled={isPending} /> : '—'}</td><td>{selectedSection ? <input value={progress.note} onChange={(event) => updateLocalProgress(block.id, { ...progress, note: event.target.value })} onBlur={(event) => persistProgressEntry(block.id, { ...progressFor(block.id), note: event.currentTarget.value })} placeholder="Prodotto, verifica, recupero…" aria-label={`Evidenza ${block.id}`} maxLength={4000} /> : '—'}</td></tr> })}</tbody></table></div>
+          </section>
         </div>
-      </section>
+      </details>
 
-      <section className="annualActions">
-        <button className="primaryButton" type="button" onClick={markNextDone} disabled={isPending || !selectedSection || !nextBlock}>Segna svolto il prossimo blocco</button>
-        <button className="secondaryButton" type="button" onClick={resetSection} disabled={isPending || !selectedSection}>Azzera avanzamento sezione</button>
-        <span className={`annualSaveState${syncError ? ' syncError' : ''}`}>{saveStateLabel}</span>
-      </section>
-
-      <section className="annualTableCard">
-        <div className="annualTableHeader">
-          <div><h2>Sequenza didattica</h2><p>Se una lezione salta, il blocco resta aperto e passa automaticamente alla prima lezione utile.</p></div>
-          <span>{blocks.length} blocchi · 66 ore</span>
-        </div>
-        <div className="annualTableWrap">
-          <table className="annualTable">
-            <thead><tr><th>Blocco</th><th>UDA</th><th>Pacchetto</th><th>Periodo</th><th>Focus</th><th>Stato</th><th>Data svolta</th><th>Evidenza / nota</th></tr></thead>
-            <tbody>
-              {blocks.map((block) => {
-                const progress = progressFor(block.id)
-                return (
-                  <tr key={block.id} className={COMPLETE_STATUSES.has(progress.status) ? 'annualDoneRow' : ''}>
-                    <td><strong>{block.id}</strong></td>
-                    <td>{block.uda}</td>
-                    <td><span className="annualPackChip">{block.pack}</span></td>
-                    <td>{block.period}</td>
-                    <td>{block.focus}</td>
-                    <td>
-                      {selectedSection ? (
-                        <select value={progress.status} onChange={(event) => applyAndPersist(block.id, { status: event.target.value as AnnualPlanBlockStatus })} aria-label={`Stato ${block.id}`} disabled={isPending}>
-                          {BLOCK_STATUSES.map((status) => <option key={status} value={status}>{blockStatusLabel(status)}</option>)}
-                        </select>
-                      ) : <span className="annualNeutralStatus">Pianificato</span>}
-                    </td>
-                    <td>{selectedSection ? <input type="date" value={progress.date} onChange={(event) => applyAndPersist(block.id, { date: event.target.value })} aria-label={`Data ${block.id}`} disabled={isPending} /> : '—'}</td>
-                    <td>{selectedSection ? <input value={progress.note} onChange={(event) => updateLocalProgress(block.id, { ...progress, note: event.target.value })} onBlur={(event) => persistProgressEntry(block.id, { ...progressFor(block.id), note: event.currentTarget.value })} placeholder="Prodotto, verifica, recupero…" aria-label={`Evidenza ${block.id}`} maxLength={4000} /> : '—'}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="annualRulesGrid">
-        <article><h2>Come scorre il piano</h2><p>Una lezione saltata non consuma il blocco. Il lavoro previsto passa alla prima lezione utile, evitando di duplicare ore o valutazioni.</p></article>
-        <article><h2>Come registro l’avanzamento</h2><p>Ogni sezione mantiene il proprio percorso effettivo. Le modifiche vengono salvate mentre lavori e restano collegate al documento di riferimento usato in quel momento.</p></article>
-      </section>
-
-      <details className="technicalDetails annualTechnicalDetails">
-        <summary><span><strong>Dettagli tecnici</strong><small>Persistenza e versione del documento di riferimento</small></span><b aria-hidden>＋</b></summary>
-        <div className="technicalDetailsBody">
-          <div className="technicalMetaLine"><span>Codice fonte: <strong>{source.code}</strong></span><span>Generazione: <strong>{source.generationId}</strong></span><span>Cache browser: <strong>{storageKey}</strong></span></div>
-          <p className="panelIntro">L’avanzamento principale è persistito sul servizio dati. La copia nel browser serve soltanto come cache locale di supporto.</p>
+      <details className="humanTaskSecondary">
+        <summary>Gestione del piano e della sezione</summary>
+        <div className="humanTaskSecondaryBody annualManagementPanel">
+          <div className="annualAddSection"><input value={newSection} onChange={(event) => setNewSection(event.target.value)} placeholder="Nuova sezione, es. A" aria-label="Nuova sezione" /><button className="secondaryButton" type="button" onClick={addSection} disabled={isPending || !newSection.trim()}>Aggiungi sezione</button></div>
+          <div className="annualManagementLinks"><Link className="secondaryButton" href={`/knowledge/${source.assetId}`}>Documento di riferimento</Link><button className="secondaryButton" type="button" onClick={resetSection} disabled={isPending || !selectedSection}>Azzera avanzamento sezione</button></div>
+          <p>Fonte {source.code} · generazione {source.generationId}. L’avanzamento è persistito sul servizio dati; la cache browser resta di supporto.</p>
         </div>
       </details>
     </>
@@ -326,69 +217,19 @@ export default function AnnualPlanClient({
 
 function snapshotToState(snapshot: AnnualPlanExecutionSnapshot): StoredState {
   const sections: StoredState['sections'] = { Prima: [], Seconda: [], Terza: [] }
-  for (const section of snapshot.sections) {
-    sections[GRADE_UI[section.grade]].push(sectionToRecord(section))
-  }
+  for (const section of snapshot.sections) sections[GRADE_UI[section.grade]].push(sectionToRecord(section))
   for (const grade of GRADES) sections[grade].sort((a, b) => a.code.localeCompare(b.code))
-
   const progress: StoredState['progress'] = {}
-  for (const entry of snapshot.progress) {
-    progress[progressKey(entry.sectionId, entry.canonicalGenerationId, entry.blockId)] = {
-      status: entry.status,
-      date: entry.executedOn ?? '',
-      note: entry.evidenceNote ?? '',
-    }
-  }
+  for (const entry of snapshot.progress) progress[progressKey(entry.sectionId, entry.canonicalGenerationId, entry.blockId)] = { status: entry.status, date: entry.executedOn ?? '', note: entry.evidenceNote ?? '' }
   return { sections, progress }
 }
 
-function sectionToRecord(section: AnnualPlanSection): SectionRecord {
-  return {
-    id: section.id,
-    code: section.sectionCode,
-    status: section.status,
-    source: section.sourceNote ?? 'Contesto della sezione registrato nel piano annuale',
-  }
-}
-
-function progressKey(sectionId: string, generationId: string, blockId: string) {
-  return `${sectionId}|${generationId}|${blockId}`
-}
-
-function emptyProgress(): ProgressEntry {
-  return { status: 'PIANIFICATO', date: '', note: '' }
-}
-
-function normalizeSectionCode(value: string) {
-  return value.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 4)
-}
-
-function currentRomeDate() {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).formatToParts(new Date())
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  return `${values.year}-${values.month}-${values.day}`
-}
-
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : 'salvataggio non riuscito'
-}
-
-function Metric({ value, label }: { value: string; label: string }) {
-  return <div className="annualMetric"><strong>{value}</strong><span>{label}</span></div>
-}
-
-function StatusBadge({ status }: { status: AnnualPlanSectionStatus }) {
-  const label = status === 'CONFERMATA' ? 'Confermata' : status === 'PROVVISORIA' ? 'Provvisoria' : 'Da confermare'
-  const className = status === 'CONFERMATA' ? 'annualBadge confirmed' : status === 'PROVVISORIA' ? 'annualBadge provisional' : 'annualBadge pending'
-  return <span className={className}>{label}</span>
-}
-
-function blockStatusLabel(status: AnnualPlanBlockStatus) {
-  if (status === 'PIANIFICATO') return 'Pianificato'
-  if (status === 'SVOLTO') return 'Svolto'
-  if (status === 'RECUPERATO') return 'Recuperato'
-  if (status === 'RIMODULATO') return 'Rimodulato'
-  return 'Annullato'
-}
+function sectionToRecord(section: AnnualPlanSection): SectionRecord { return { id: section.id, code: section.sectionCode, status: section.status, source: section.sourceNote ?? 'Contesto della sezione registrato nel piano annuale' } }
+function progressKey(sectionId: string, generationId: string, blockId: string) { return `${sectionId}|${generationId}|${blockId}` }
+function emptyProgress(): ProgressEntry { return { status: 'PIANIFICATO', date: '', note: '' } }
+function normalizeSectionCode(value: string) { return value.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 4) }
+function currentRomeDate() { const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()); const values = Object.fromEntries(parts.map((part) => [part.type, part.value])); return `${values.year}-${values.month}-${values.day}` }
+function errorMessage(error: unknown) { return error instanceof Error ? error.message : 'salvataggio non riuscito' }
+function StatusBadge({ status }: { status: AnnualPlanSectionStatus }) { const label = status === 'CONFERMATA' ? 'Confermata' : status === 'PROVVISORIA' ? 'Provvisoria' : 'Da confermare'; const className = status === 'CONFERMATA' ? 'annualBadge confirmed' : status === 'PROVVISORIA' ? 'annualBadge provisional' : 'annualBadge pending'; return <span className={className}>{label}</span> }
+function blockStatusLabel(status: AnnualPlanBlockStatus) { if (status === 'PIANIFICATO') return 'Pianificato'; if (status === 'SVOLTO') return 'Svolto'; if (status === 'RECUPERATO') return 'Recuperato'; if (status === 'RIMODULATO') return 'Rimodulato'; return 'Annullato' }
+function gradeOrdinal(grade: GradeKey) { if (grade === 'Prima') return '1ª'; if (grade === 'Seconda') return '2ª'; return '3ª' }
