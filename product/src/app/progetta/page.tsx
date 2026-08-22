@@ -5,6 +5,7 @@ import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/sup
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { humanizeKnowledgeTitle, reliabilityLabel } from '@/core/presentation/product-language'
+import { buildTaskAwareKnowledgeHref } from '@/core/presentation/task-continuity'
 import {
   asProgettaFocus,
   asProgettaGrade,
@@ -72,6 +73,13 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
     const sectionItems = prioritizeGuidedItems(focused.section).slice(0, 3)
     const fullPlanningHref = grade ? `/progetta?grade=${grade}` : '/progetta'
     const annualPlanHref = sectionContext ? `/piano-annuale?section=${encodeURIComponent(sectionContext.id)}` : '/piano-annuale'
+    const currentFocusParams = new URLSearchParams()
+    if (grade) currentFocusParams.set('grade', grade)
+    if (sectionContext) currentFocusParams.set('section', sectionContext.id)
+    currentFocusParams.set('block', focus.blockId)
+    currentFocusParams.set('uda', focus.uda)
+    currentFocusParams.set('pack', focus.pack)
+    const currentFocusHref = `/progetta?${currentFocusParams.toString()}#focus-operativo`
 
     return (
       <AppShell active="design" academicYearLabel={context.academicYear?.label} workspaceName={context.workspace.name} role={context.role} contentClassName="progettaSurface progettaGuidedSurface">
@@ -98,7 +106,19 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
           </header>
           {coreItems.length ? (
             <div className="guidedResourceList">
-              {coreItems.map((item, index) => <GuidedResourceLink item={item} order={index + 1} key={item.asset.id} />)}
+              {coreItems.map((item, index) => (
+                <GuidedResourceLink
+                  item={item}
+                  order={index + 1}
+                  key={item.asset.id}
+                  href={buildTaskAwareKnowledgeHref(item.asset.id, {
+                    mode: 'prepare',
+                    returnTo: currentFocusHref,
+                    sectionId: sectionContext?.id,
+                    blockId: focus.blockId,
+                  })}
+                />
+              ))}
             </div>
           ) : (
             <div className="guidedEmpty">
@@ -113,7 +133,21 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
           <section className="guidedSectionAdaptation" aria-label={`Adattamento ${displaySectionLabel}`}>
             <header><div><span>SOLO SE SERVE</span><h2>Adattamento {displaySectionLabel}</h2></div></header>
             {sectionItems.length ? (
-              <div className="guidedAdaptationItems">{sectionItems.map((item) => <GuidedResourceLink item={item} compact key={item.asset.id} />)}</div>
+              <div className="guidedAdaptationItems">
+                {sectionItems.map((item) => (
+                  <GuidedResourceLink
+                    item={item}
+                    compact
+                    key={item.asset.id}
+                    href={buildTaskAwareKnowledgeHref(item.asset.id, {
+                      mode: 'prepare',
+                      returnTo: currentFocusHref,
+                      sectionId: sectionContext.id,
+                      blockId: focus.blockId,
+                    })}
+                  />
+                ))}
+              </div>
             ) : (
               <p>Nessun adattamento specifico registrato. Per questa fase puoi usare direttamente il nucleo comune.</p>
             )}
@@ -168,10 +202,10 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
   )
 }
 
-function GuidedResourceLink({ item, order, compact = false }: { item: ProgettaItem; order?: number; compact?: boolean }) {
+function GuidedResourceLink({ item, order, compact = false, href }: { item: ProgettaItem; order?: number; compact?: boolean; href?: string }) {
   const { asset, document } = item
   return (
-    <Link className={compact ? 'guidedResource compact' : 'guidedResource'} href={`/knowledge/${asset.id}`}>
+    <Link className={compact ? 'guidedResource compact' : 'guidedResource'} href={href ?? `/knowledge/${asset.id}`}>
       {order ? <span className="guidedResourceOrder">{String(order).padStart(2, '0')}</span> : null}
       <div className="guidedResourceCopy">
         <small>{guidedCategoryLabel(asset.contentCategory)}</small>
