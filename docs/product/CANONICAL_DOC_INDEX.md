@@ -10,7 +10,7 @@ Quando due documenti sembrano divergere, applicare questo ordine:
 1. **Security / RLS / domain invariants**
 2. **ADR accettate**
 3. **Product Experience Masterplan**
-4. **Specifiche canoniche di prodotto**
+4. **Specifiche canoniche di prodotto e di composizione dominio**
 5. **Design System V2**
 6. **Specifiche verticali di modulo**
 7. documenti storici / implementation notes
@@ -21,11 +21,23 @@ Quando due documenti sembrano divergere, applicare questo ordine:
 - `docs/architecture/ADR-002-experience-platform.md` — component platform, assistant layer, hosting operativo.
 - `docs/architecture/STRUCTURE.md` — struttura generale repository/prodotto.
 - `docs/architecture/P1_PERSISTENCE_IDENTITY.md` — persistenza/identità.
-- `docs/architecture/P2_PLANNER.md` — Planner.
+- `docs/architecture/P2_PLANNER.md` — Attività/Oggi e `PlannerTask`.
 - `docs/architecture/KB_INGESTION.md` — ingestione Conoscenza.
 - `docs/architecture/SETTINGS_CANONICAL_SPEC.md` — Impostazioni.
-- `docs/architecture/TIMETABLE_CANONICAL_SPEC.md` — Orario T1–T4.
+- `docs/architecture/TIMETABLE_CANONICAL_SPEC.md` — Orario e sue entità verticali.
+- `docs/architecture/WORK_TIME_MENTAL_MODEL.md` — distinzione utente tra Attività, Piano annuale, Orario, Calendario e Oggi.
+- `docs/architecture/TEMPORAL_COMPOSITION_CANONICAL_SPEC.md` — **Orario e Calendario indipendenti; Temporal Projection come unico livello di composizione autorizzato**.
 - `docs/architecture/AI_COLLABORATION_CANONICAL_SPEC.md` — collaborazione AI e human-in-the-loop.
+
+### Regola temporale di autorità
+
+Per ogni lavoro T3/T4:
+
+1. `WORK_TIME_MENTAL_MODEL.md` governa il significato per l'utente;
+2. `TEMPORAL_COMPOSITION_CANONICAL_SPEC.md` governa le dipendenze tra Orario e Calendario;
+3. `TIMETABLE_CANONICAL_SPEC.md` governa le entità interne dell'Orario e va interpretato senza introdurre dipendenze dal dominio Calendario.
+
+In particolare sono vietati import/repository dependency `Timetable -> Calendar` e `Calendar -> Timetable`.
 
 ## Product
 
@@ -56,6 +68,7 @@ Prima di implementare una slice, leggere almeno:
 3. Product Experience Masterplan;
 4. Language & Collaboration System;
 5. Design System V2;
-6. la specifica verticale della slice.
+6. la specifica verticale della slice;
+7. per T3/T4, sempre anche Work/Time Mental Model e Temporal Composition Canonical Spec.
 
 Nessun agente deve inferire una nuova architettura da un singolo file runtime quando esiste una decisione canonica esplicita.
