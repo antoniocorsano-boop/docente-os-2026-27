@@ -47,6 +47,26 @@ Usata quando il sistema conosce compito, oggetto e contesto. Regole vincolanti:
 6. la via di uscita non deve dominare l'azione principale;
 7. il sistema non inventa stati, priorità o preparazioni non registrati.
 
+## Task continuity
+
+Quando un oggetto viene aperto dentro un compito specifico, **eredita il compito**. Il cambio di dominio non deve azzerare intento e contesto.
+
+Regole:
+
+1. il collegamento trasporta un contesto operativo minimo e validato;
+2. la destinazione apre la propria modalità FOCUSED, non la scheda generale;
+3. il ritorno al punto di origine è esplicito e prevedibile;
+4. l'utente può sempre scegliere di uscire dal compito e aprire la vista completa;
+5. il contesto operativo non modifica la proprietà canonica dei dati;
+6. i percorsi di ritorno accettati sono soltanto interni a DOCENTE OS;
+7. la modalità focalizzata evita letture o controlli secondari che non servono al compito corrente.
+
+Esempio canonico:
+
+**Classe → Prepara B01 → Apri UDA → usa/consulta UDA → Torna alla preparazione**
+
+L'apertura dell'UDA non deve trasformarsi implicitamente in **Conoscenza → gestione asset → metadati → versioni**.
+
 ## Canonical human sequence
 
 Le superfici operative devono poter rispondere, nell'ordine, a queste domande:
@@ -66,7 +86,7 @@ Le superfici operative devono poter rispondere, nell'ordine, a queste domande:
 - **Classe:** TEACH/PREPARE; proietta il prossimo blocco didattico e collega alle risorse pertinenti.
 - **Piano annuale:** RECORD/REVIEW; con una sezione selezionata mostra prima il prossimo blocco e le azioni di registrazione; la tabella B01–B33 è approfondimento.
 - **Progetta:** PREPARE; con blocco/UDA/pacchetto validi usa modalità FOCUSED; senza contesto resta esplorativa.
-- **Conoscenza:** EXPLORE quando aperta genericamente; FOCUSED quando si apre un asset preciso.
+- **Conoscenza:** EXPLORE quando aperta genericamente; FOCUSED quando una risorsa è aperta da PREPARE/TEACH, conservando il ritorno al compito.
 - **Impostazioni:** configurazione; non compete con le azioni operative quotidiane.
 
 ## Anti-patterns vietati
@@ -77,10 +97,15 @@ Le superfici operative devono poter rispondere, nell'ordine, a queste domande:
 - terminologia tecnica come primo livello del flusso umano;
 - duplicazione del nucleo comune per creare artificialmente contesto di sezione;
 - metriche e configurazione mostrate come se fossero azioni operative;
-- più azioni primarie concorrenti nella stessa vista specifica.
+- più azioni primarie concorrenti nella stessa vista specifica;
+- perdita del contesto quando l'utente attraversa domini interni del prodotto.
 
 ## Acceptance
 
 Una superficie è matura quando un docente può rispondere entro pochi secondi a:
 
 **Dove sono? Cosa devo fare ora? Perché proprio questo? Come torno alla vista completa?**
+
+Un attraversamento tra superfici è maturo quando l'utente può aggiungere:
+
+**Perché ho aperto questo oggetto? Come torno esattamente al lavoro che stavo facendo?**
