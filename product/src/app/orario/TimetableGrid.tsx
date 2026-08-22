@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { TimetablePresenceKind, TimetableSlot, TimetableSlotKind } from '@/core/domain/timetable'
 import { addClassPresenceSlot, addLessonSlot, addSpecialSlot, deleteTimetableSlot, updateTimetableSlot } from './actions'
 import { buildTimetableGridRows, timetableCellKey, type TimetableGridPeriod } from './timetable-grid-model'
+import { isCurrentTimetableInterval, isCurrentTimetableRow, type TimetableMoment } from './timetable-operational-model'
 
 export type TimetableGridDay = {
   value: number
@@ -14,6 +15,8 @@ export type TimetableGridDay = {
 export type TimetableGridAssignment = {
   id: string
   label: string
+  classLabel: string
+  disciplineLabel: string
   status: 'PROVISIONAL' | 'CONFIRMED'
   weeklyMinutes: number
   scheduledMinutes: number
@@ -61,19 +64,25 @@ const PRESENCE_LABELS: Record<TimetablePresenceKind, string> = {
 export default function TimetableGrid({ versionId, days, periods, slots, assignments }: TimetableGridProps) {
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week')
   const [selectedDay, setSelectedDay] = useState(days[0]?.value ?? 1)
-  const [todayWeekday, setTodayWeekday] = useState<number | null>(null)
+  const [moment, setMoment] = useState<TimetableMoment | null>(null)
   const [editor, setEditor] = useState<EditorState | null>(null)
 
   useEffect(() => {
+    const updateClock = () => {
+      const now = new Date()
+      setMoment({ weekday: now.getDay(), minutes: now.getHours() * 60 + now.getMinutes() })
+    }
     const frame = window.requestAnimationFrame(() => {
       const today = new Date().getDay()
-      if (days.some((day) => day.value === today)) {
-        setTodayWeekday(today)
-        setSelectedDay(today)
-      }
+      updateClock()
+      if (days.some((day) => day.value === today)) setSelectedDay(today)
       if (window.matchMedia('(max-width: 719px)').matches) setViewMode('day')
     })
-    return () => window.cancelAnimationFrame(frame)
+    const timer = window.setInterval(updateClock, 60_000)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.clearInterval(timer)
+    }
   }, [days])
 
   useEffect(() => {
@@ -93,6 +102,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
   )
   const assignmentById = useMemo(() => new Map(assignments.map((assignment) => [assignment.id, assignment])), [assignments])
   const selectedDayIndex = Math.max(0, days.findIndex((day) => day.value === selectedDay))
+  const unresolvedAssignments = assignments.filter((assignment) => assignment.weeklyMinutes !== assignment.scheduledMinutes).length
 
   function openEmptyCell(weekday: number, startTime: string, endTime: string, ordinal: number | null) {
     setEditor({
@@ -166,24 +176,10 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
             <strong>{visibleDays[0]?.label ?? 'Giorno'}</strong>
             <button type="button" onClick={() => navigateDay(1)} disabled={selectedDayIndex >= days.length - 1} aria-label="Giorno successivo">›</button>
           </div>
-        ) : <span className="gridHint">Seleziona una cella per configurarla</span>}
+        ) : <span className="gridHint">Tocca una voce per modificarla</span>}
 
         <button className="printTimetableButton" type="button" onClick={() => window.print()}>Stampa</button>
       </div>
-
-      {assignments.length ? (
-        <div className="capacityStrip" aria-label="Verifica monte ore">
-          {assignments.map((assignment) => {
-            const delta = assignment.weeklyMinutes - assignment.scheduledMinutes
-            return (
-              <div key={assignment.id} className={`capacityChip ${delta === 0 ? 'ok' : delta < 0 ? 'over' : 'pending'}`}>
-                <strong>{assignment.label}</strong>
-                <span>{assignment.scheduledMinutes}/{assignment.weeklyMinutes} min · {delta === 0 ? 'allineata' : delta > 0 ? `mancano ${delta}` : `eccesso ${Math.abs(delta)}`}</span>
-              </div>
-            )
-          })}
-        </div>
-      ) : null}
 
       <div className="visualTimetableScroller">
         <div
@@ -195,41 +191,51 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
           <div className="gridRowContents" role="row">
             <div className="timeHeader" role="columnheader">Ora</div>
             {visibleDays.map((day) => (
-              <div className={`dayHeader ${day.value === todayWeekday ? 'today' : ''}`} role="columnheader" key={day.value}>
+              <div className={`dayHeader ${day.value === moment?.weekday ? 'today' : ''}`} role="columnheader" key={day.value}>
                 <strong>{viewMode === 'week' ? day.short : day.label}</strong>
-                {day.value === todayWeekday ? <span>Oggi</span> : null}
+                {day.value === moment?.weekday ? <span>Oggi</span> : null}
               </div>
             ))}
           </div>
 
-          {rows.map((row) => (
-            <div className="gridRowContents" role="row" key={row.key}>
-              <div className="timeCell" role="rowheader">
-                <strong>{row.ordinal ? `${row.ordinal}ª` : row.start}</strong>
-                <span>{row.start}–{row.end}</span>
-                {row.source === 'CUSTOM' ? <small>fascia personalizzata</small> : null}
+          {rows.map((row) => {
+            const rowCurrent = isCurrentTimetableRow(row.start, row.end, moment)
+            return (
+              <div className="gridRowContents" role="row" key={row.key}>
+                <div className={`timeCell ${rowCurrent ? 'currentTime' : ''}`} role="rowheader">
+                  <strong>{row.ordinal ? `${row.ordinal}ª` : row.start}</strong>
+                  <span>{row.start}–{row.end}</span>
+                  {rowCurrent ? <small>adesso</small> : row.source === 'CUSTOM' ? <small>fascia personalizzata</small> : null}
+                </div>
+                {visibleDays.map((day) => {
+                  const slot = slotByCell.get(timetableCellKey(day.value, row.start, row.end))
+                  const current = slot ? isCurrentTimetableInterval(day.value, slot.startTime, slot.endTime, moment) : false
+                  const emptyCurrent = !slot && day.value === moment?.weekday && rowCurrent
+                  return (
+                    <div role="cell" key={`${day.value}-${row.key}`}>
+                      {slot ? (
+                        <OccupiedCell
+                          slot={slot}
+                          assignment={slot.teachingAssignmentId ? assignmentById.get(slot.teachingAssignmentId) : undefined}
+                          current={current}
+                          onClick={() => openOccupiedCell(slot)}
+                        />
+                      ) : (
+                        <button
+                          className={`emptyTimetableCell ${emptyCurrent ? 'currentEmpty' : ''}`}
+                          type="button"
+                          aria-label={`Aggiungi attività: ${day.label}, ${row.start}–${row.end}`}
+                          onClick={() => openEmptyCell(day.value, row.start, row.end, row.ordinal)}
+                        >
+                          <span aria-hidden>＋</span><small>{emptyCurrent ? 'Ora attuale · aggiungi' : 'Aggiungi'}</small>
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
-              {visibleDays.map((day) => {
-                const slot = slotByCell.get(timetableCellKey(day.value, row.start, row.end))
-                return (
-                  <div role="cell" key={`${day.value}-${row.key}`}>
-                    {slot ? (
-                      <OccupiedCell slot={slot} assignment={slot.teachingAssignmentId ? assignmentById.get(slot.teachingAssignmentId) : undefined} onClick={() => openOccupiedCell(slot)} />
-                    ) : (
-                      <button
-                        className="emptyTimetableCell"
-                        type="button"
-                        aria-label={`Aggiungi attività: ${day.label}, ${row.start}–${row.end}`}
-                        onClick={() => openEmptyCell(day.value, row.start, row.end, row.ordinal)}
-                      >
-                        <span aria-hidden>＋</span><small>Aggiungi</small>
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
@@ -242,6 +248,26 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
         <span><i className="legendReception" /> Ricevimento</span>
         <span><i className="legendOther" /> Altro</span>
       </div>
+
+      {assignments.length ? (
+        <details className="capacityDisclosure">
+          <summary>
+            <span>Controllo monte ore</span>
+            <strong>{unresolvedAssignments ? `${unresolvedAssignments} ${unresolvedAssignments === 1 ? 'voce da allineare' : 'voci da allineare'}` : 'Cattedra allineata'}</strong>
+          </summary>
+          <div className="capacityStrip" aria-label="Verifica monte ore">
+            {assignments.map((assignment) => {
+              const delta = assignment.weeklyMinutes - assignment.scheduledMinutes
+              return (
+                <div key={assignment.id} className={`capacityChip ${delta === 0 ? 'ok' : delta < 0 ? 'over' : 'pending'}`}>
+                  <strong>{assignment.label}</strong>
+                  <span>{assignment.scheduledMinutes}/{assignment.weeklyMinutes} min · {delta === 0 ? 'allineata' : delta > 0 ? `mancano ${delta}` : `eccesso ${Math.abs(delta)}`}</span>
+                </div>
+              )
+            })}
+          </div>
+        </details>
+      ) : null}
 
       {editor ? (
         <div className="timetableEditorBackdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setEditor(null) }}>
@@ -298,31 +324,44 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
   )
 }
 
-function OccupiedCell({ slot, assignment, onClick }: { slot: TimetableSlot; assignment?: TimetableGridAssignment; onClick: () => void }) {
+function OccupiedCell({ slot, assignment, current, onClick }: { slot: TimetableSlot; assignment?: TimetableGridAssignment; current: boolean; onClick: () => void }) {
   if (slot.slotKind === 'CLASS_PRESENCE') {
     const presence = slot.presenceKind ? PRESENCE_LABELS[slot.presenceKind] : 'Presenza'
-    const title = `${slot.manualClassLabel ?? 'Classe'} · ${presence}`
-    const subtitle = [slot.room ? `Aula ${slot.room}` : null, slot.note].filter(Boolean).join(' · ')
+    const classLabel = slot.manualClassLabel ?? 'Classe'
+    const meta = [slot.room ? `Aula ${slot.room}` : null, slot.note].filter(Boolean).join(' · ')
     return (
-      <button className="occupiedTimetableCell kind-class_presence" type="button" onClick={onClick} aria-label={`${title}, ${slot.startTime}–${slot.endTime}`}>
-        <span className="cellKind">Presenza</span>
-        <strong>{title}</strong>
-        <small>{subtitle || `${slot.startTime}–${slot.endTime}`}</small>
-        {slot.ordinal ? <b>{slot.ordinal}ª ora</b> : null}
+      <button className={`occupiedTimetableCell kind-class_presence ${current ? 'currentSlot' : ''}`} type="button" onClick={onClick} aria-label={`${classLabel}, ${presence}, ${slot.startTime}–${slot.endTime}`}>
+        <span className="cellKind">Presenza in altra classe</span>
+        <strong className="cellPrimary">{classLabel}</strong>
+        <span className="cellSecondary">{presence}</span>
+        {meta ? <small>{meta}</small> : null}
+        {current ? <b className="cellNow">Adesso</b> : null}
       </button>
     )
   }
 
-  const special = slot.slotKind !== 'LESSON'
-  const title = special ? KIND_LABELS[slot.slotKind] : assignment?.label ?? 'Lezione'
-  const subtitle = special ? slot.note || 'Impegno non didattico' : [slot.room ? `Aula ${slot.room}` : null, slot.note].filter(Boolean).join(' · ')
+  if (slot.slotKind === 'LESSON') {
+    const classLabel = assignment?.classLabel ?? assignment?.label ?? 'Lezione'
+    const disciplineLabel = assignment?.disciplineLabel ?? 'Lezione'
+    const meta = [slot.room ? `Aula ${slot.room}` : null, slot.note].filter(Boolean).join(' · ')
+    return (
+      <button className={`occupiedTimetableCell kind-lesson ${current ? 'currentSlot' : ''}`} type="button" onClick={onClick} aria-label={`${classLabel}, ${disciplineLabel}, ${slot.startTime}–${slot.endTime}`}>
+        <span className="cellKind">Lezione</span>
+        <strong className="cellPrimary">{classLabel}</strong>
+        <span className="cellSecondary">{disciplineLabel}</span>
+        {meta ? <small>{meta}</small> : null}
+        {current ? <b className="cellNow">Adesso</b> : null}
+      </button>
+    )
+  }
 
+  const title = KIND_LABELS[slot.slotKind]
   return (
-    <button className={`occupiedTimetableCell kind-${slot.slotKind.toLowerCase()}`} type="button" onClick={onClick} aria-label={`${title}, ${slot.startTime}–${slot.endTime}`}>
-      <span className="cellKind">{special ? KIND_LABELS[slot.slotKind] : 'Lezione'}</span>
-      <strong>{title}</strong>
-      <small>{subtitle || `${slot.startTime}–${slot.endTime}`}</small>
-      {slot.ordinal ? <b>{slot.ordinal}ª ora</b> : null}
+    <button className={`occupiedTimetableCell kind-${slot.slotKind.toLowerCase()} ${current ? 'currentSlot' : ''}`} type="button" onClick={onClick} aria-label={`${title}, ${slot.startTime}–${slot.endTime}`}>
+      <span className="cellKind">Impegno</span>
+      <strong className="cellPrimary">{title}</strong>
+      {slot.note ? <span className="cellSecondary">{slot.note}</span> : null}
+      {current ? <b className="cellNow">Adesso</b> : null}
     </button>
   )
 }
