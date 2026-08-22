@@ -48,7 +48,7 @@ export default async function SettingsPage() {
           <Link className="navItem" href="/classi"><span aria-hidden>▦</span> Classi</Link>
           <Link className="navItem active" href="/impostazioni"><span aria-hidden>⚙</span> Impostazioni</Link>
         </nav>
-        <div className="navFooter"><span className="workspaceDot" aria-hidden /><div><strong>{context.workspace.name}</strong><span>{context.role}</span></div></div>
+        <div className="navFooter"><span className="workspaceDot" aria-hidden /><div><strong>{settings.schoolName || context.workspace.name}</strong><span>{settings.teacherDisplayName || context.role}</span></div></div>
       </aside>
 
       <main className="workSurface settingsSurface">
@@ -86,7 +86,7 @@ export default async function SettingsPage() {
             <fieldset className="weekdayFieldset"><legend>Giorni di lezione</legend><div className="weekdayGrid">{WEEKDAYS.map((day) => <label key={day.value} className="weekdayChoice"><input type="checkbox" name="teachingWeekdays" value={day.value} defaultChecked={settings.teachingWeekdays.includes(day.value)} /><span>{day.label}</span></label>)}</div></fieldset>
           </section>
 
-          <div className="settingsSaveBar"><div><strong>Profilo di base</strong><span>Salvato in Supabase e riutilizzato dai moduli dell’app.</span></div><button className="primaryButton" type="submit">Salva impostazioni</button></div>
+          <div className="settingsSaveBar"><div><strong>Profilo di base</strong><span>Salvato in Supabase e riutilizzato dai moduli dell’app.</span></div><button className="settingsPrimaryButton" type="submit">Salva impostazioni</button></div>
         </form>
 
         <section className="settingsCard" aria-labelledby="disciplines-title">
@@ -103,6 +103,8 @@ export default async function SettingsPage() {
 
         <section className="settingsInfoStrip"><strong>Contratto dati</strong><span>Le Impostazioni forniscono il contesto iniziale. L’orario ufficiale conserverà versioni, date di efficacia ed eccezioni senza riscrivere queste informazioni di base.</span></section>
       </main>
+
+      <nav className="bottomNav" aria-label="Navigazione mobile"><Link href="/"><span aria-hidden>⌂</span><small>Home</small></Link><Link href="/planner"><span aria-hidden>◎</span><small>Oggi</small></Link><Link href="/progetta"><span aria-hidden>✦</span><small>Progetta</small></Link><Link href="/classi"><span aria-hidden>▦</span><small>Classi</small></Link><Link className="active" href="/impostazioni"><span aria-hidden>⚙</span><small>Impostazioni</small></Link></nav>
     </div>
   )
 }
