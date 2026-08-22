@@ -1,7 +1,7 @@
 # DOCENTE OS — Class Workspace Contract
 
 Status: COMPLETE / RUNTIME READY / INTERACTIVE ACCEPTANCE PENDING
-Runtime baseline: `037f35770a38d82a798f4eb2895df3347549768d`
+Runtime baseline: `c2175ed3741daadbceb6d08219bd589eb477abb9`
 
 ## Purpose
 
@@ -19,6 +19,8 @@ The class workspace is also the bridge between the recurring timetable and the t
 6. The class workspace is read/orient-first: it summarizes context and links to existing work surfaces. It does not duplicate Annual Plan, Progetta, Knowledge or Timetable data.
 7. The next didactic phase is derived only from the canonical Annual Plan sequence and recorded progress. DOCENTE OS must not claim that a phase is being prepared unless such a state exists explicitly.
 8. Section-specific planning adaptations remain separate from the common grade nucleus. Opening a section never creates a copy of the common UDA.
+9. **Cognitive scope follows user intent:** generic planning context may expose the broader Progetta catalogue; a specific class/block/UDA/pack context must collapse to a short guided task surface and must not append the general planning catalogue below it.
+10. A specific guided focus is valid only when the requested `Bxx` exists in the canonical grade plan and its UDA/pacchetto are coherent with that block. Incoherent combinations fail closed to the generic planning context.
 
 ## Human model
 
@@ -56,15 +58,27 @@ From `Classe` to focused `Progetta`:
 
 `/progetta?grade=<grade>&section=<sectionId>&block=<Bxx>&uda=<x-xx>&pack=<CAN-PACK-xY>#focus-operativo`
 
-The focus parameters are syntax-validated. `sectionId` is resolved again against the canonical current-year section registry before section context is applied.
+The section is resolved again against the canonical current-year registry. The focus is then resolved against the canonical grade plan; `block`, `uda` and `pack` must describe the same canonical block.
 
-From `Progetta`:
-- grade context narrows the common planning nucleus while common assets remain available;
-- when a valid section context is present, adaptations belonging to other sections are excluded;
-- focused assets matching block/UDA/pack are shown first;
-- focused assets are separated into **Nucleo comune del grado** and **Adattamento della sezione**;
-- if no section adaptation exists, the common nucleus remains the operative source and no copy is created;
-- focused assets are not repeated in the general planning groups below.
+### Focused Progetta
+
+When a valid specific focus exists, Progetta renders a short action surface only:
+
+1. current section/grade and canonical block;
+2. human-readable phase title, UDA, pack and period;
+3. **Adesso**: up to four explicitly pertinent common-grade resources, with UDA prioritized before operational materials;
+4. **Solo se serve**: section-specific adaptations, kept separate from the common nucleus;
+5. secondary exits to Class, Annual Plan and full grade planning.
+
+The general workflow strip, content counts, catalogue groups and governance note are **not rendered below a focused task**. Full planning remains available through an explicit secondary action.
+
+### Generic Progetta
+
+When no valid specific focus exists:
+- grade context may narrow the common planning catalogue;
+- common assets remain available;
+- if a section context is valid, adaptations belonging to other sections are excluded;
+- the broader planning workflow/catalogue may be shown because the user is exploring rather than executing one specific task.
 
 ## Runtime implementation
 
@@ -72,18 +86,19 @@ Merged slices:
 
 - PR #49 — canonical Classi registry + `/classi/<sectionId>` workspace + grade-aware Progetta;
 - PR #50 — Orario opens the canonical class workspace as the primary lesson action;
-- PR #51 — operational lesson focus + pertinent materials + exact Class → Progetta deep-link + common-nucleus/section-adaptation separation.
+- PR #51 — operational lesson focus + pertinent materials + exact Class → Progetta deep-link + common-nucleus/section-adaptation separation;
+- PR #52 — cognitive-scope rule + canonical focus resolution + short guided Progetta task surface.
 
-Verified gates for PR #51:
+Verified gates for PR #52:
 
-- tests: **44/44 PASS**;
+- tests: **45/45 PASS**;
 - TypeScript: **PASS**;
-- lint: **PASS**;
+- lint: **PASS** (one pre-existing warning outside this slice);
 - Next.js build: **PASS**;
 - automated review: **PASS**;
-- Netlify develop preview: **READY** on `037f3577…`.
+- Netlify develop preview: **READY** on `c2175ed3…`.
 
-Vercel failures observed on the same commit are quota/build-rate-limit failures and are not product validation failures.
+Vercel failures observed on the same development line are quota/build-rate-limit failures and are not product validation failures.
 
 ## Acceptance criteria
 
@@ -95,6 +110,8 @@ Vercel failures observed on the same commit are quota/build-rate-limit failures 
 - The class workspace projects the next canonical Annual Plan block without inventing a preparation state. **IMPLEMENTED**
 - `Prepara questa fase` carries grade, canonical section, block, UDA and pack into Progetta. **IMPLEMENTED**
 - Progetta validates the section before applying section context. **IMPLEMENTED**
+- Focused Progetta validates Bxx/UDA/pacchetto against the canonical grade plan. **IMPLEMENTED**
+- Focused Progetta does not append the general long planning catalogue below the specific task. **IMPLEMENTED**
 - Progetta keeps the common grade nucleus separate from section-specific adaptations. **IMPLEMENTED**
 - Adaptations of other sections are excluded from the current section context. **IMPLEMENTED**
 - No section-specific adaptation is required to use the common nucleus. **IMPLEMENTED**
@@ -102,13 +119,11 @@ Vercel failures observed on the same commit are quota/build-rate-limit failures 
 
 ## Interactive acceptance still required
 
-1. Open `Classi` with real workspace data and confirm all configured sections appear even without linked documents.
-2. From Orario, tap a canonical lesson and choose `Apri classe`; verify the correct section opens.
-3. In the class workspace verify that **Prossimo nel piano** corresponds to the first actual non-completed B01–B33 block for that section.
-4. Verify the material list contains only items explicitly pertinent to current pack, section or grade.
-5. Choose **Prepara questa fase** and verify Progetta opens directly on the expected block/UDA/CAN-PACK focus.
-6. In focused Progetta verify that **Nucleo comune del grado** and **Adattamento della sezione** are visually and semantically distinct.
-7. Verify another section's adaptation is not visible in the current section context.
-8. If no adaptation exists for the section, verify the common UDA remains usable without duplication.
-9. From the class workspace open `Piano annuale`; verify the correct section remains selected.
-10. Verify a manual presence such as `3B · Supplenza` does not expose `Apri classe`.
+1. From Orario, tap a canonical lesson and choose `Apri classe`; verify the correct section opens.
+2. In the class workspace verify that **Prossimo nel piano** corresponds to the first actual non-completed B01–B33 block for that section.
+3. Choose **Prepara questa fase** and verify the short guided Progetta surface opens on the expected canonical block/UDA/CAN-PACK.
+4. On mobile, verify the guided surface shows the phase and **Adesso** resources without exposing the former long catalogue below it.
+5. Verify UDA resources appear before operational materials when both are available.
+6. Verify **Adattamento <sezione>** remains visibly secondary and does not create a copy when no adaptation exists.
+7. Use **Esplora tutta la progettazione** and verify the broad grade catalogue is still reachable intentionally.
+8. Verify a manual presence such as `3B · Supplenza` does not expose `Apri classe`.
