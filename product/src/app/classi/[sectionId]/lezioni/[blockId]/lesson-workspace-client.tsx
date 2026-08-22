@@ -4,9 +4,13 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import {
   resolveHumanTaskLessonTiming,
+  resolveHumanTaskResourcesForSurface,
   resolveHumanTaskStepResources,
   type HumanTaskLessonProjection,
   type HumanTaskLessonTiming,
+  type HumanTaskResource,
+  type HumanTaskResourceKind,
+  type HumanTaskSourceAlignment,
 } from '@/core/presentation/human-task-content'
 import { recordLessonExecution } from '../actions'
 
@@ -60,7 +64,14 @@ export default function LessonWorkspaceClient({
   const recorded = progress.status === 'SVOLTO' || progress.status === 'RECUPERATO' || progress.status === 'RIMODULATO'
   const preparedCount = Object.values(prepared).filter(Boolean).length
   const observedCount = Object.values(observed).filter(Boolean).length
-  const preparationResources = projection.resources.filter((resource) => resource.kind === 'STUDENT_SHEET')
+  const preparationResources = useMemo(
+    () => resolveHumanTaskResourcesForSurface(projection, 'PREPARE'),
+    [projection],
+  )
+  const observationResources = useMemo(
+    () => resolveHumanTaskResourcesForSurface(projection, 'OBSERVE'),
+    [projection],
+  )
   const currentStepResources = useMemo(
     () => resolveHumanTaskStepResources(projection, currentStep),
     [projection, currentStep],
@@ -106,7 +117,7 @@ export default function LessonWorkspaceClient({
         ))}
       </nav>
 
-      <ContextSupport mode={mode} timing={timing} recorded={recorded} />
+      <ContextSupport mode={mode} timing={timing} recorded={recorded} alignment={projection.sourceAlignment} />
 
       {mode === 'prepare' ? (
         <main className="lessonTaskPane" aria-labelledby="prepare-title">
@@ -126,12 +137,7 @@ export default function LessonWorkspaceClient({
             ))}
           </section>
 
-          {preparationResources.map((resource) => (
-            <section className="lessonResourceCard" key={resource.id}>
-              <div><span>MATERIALE ALUNNI</span><h3>{resource.title}</h3><p>{resource.instruction}</p></div>
-              <details><summary>Vedi la scheda</summary><ol>{resource.prompts.map((prompt) => <li key={prompt}>{prompt}</li>)}</ol></details>
-            </section>
-          ))}
+          {preparationResources.map((resource) => <ResourceCard resource={resource} key={resource.id} />)}
 
           <details className="lessonDisclosure">
             <summary>Cosa devono imparare in questa lezione</summary>
@@ -193,6 +199,8 @@ export default function LessonWorkspaceClient({
 
           <aside className="lessonAssessmentNote"><strong>Valutazione</strong><p>{projection.assessmentNote}</p></aside>
 
+          {observationResources.map((resource) => <ResourceCard resource={resource} key={resource.id} />)}
+
           <div className="lessonPrimaryActions">
             <button className="primary" type="button" onClick={() => setMode('record')}>Registra la lezione</button>
             <button type="button" onClick={() => setMode('teach')}>Torna alla sequenza</button>
@@ -212,7 +220,7 @@ export default function LessonWorkspaceClient({
             <input type="hidden" name="sectionId" value={sectionId} />
             <input type="hidden" name="blockId" value={block.id} />
             <label><span>Com’è andata?</span><select name="status" defaultValue={recordableDefault(progress.status)}><option value="SVOLTO">Svolta come prevista</option><option value="RIMODULATO">Rimodulata</option><option value="RECUPERATO">Lezione di recupero</option></select></label>
-            <label><span>Evidenza o nota <small>facoltativa</small></span><textarea name="evidenceNote" rows={4} maxLength={2000} defaultValue={progress.evidenceNote ?? ''} placeholder="Per esempio: scheda completata; attività rimodulata; procedura da riprendere…" /></label>
+            <label><span>Evidenza o nota <small>facoltativa</small></span><textarea name="evidenceNote" rows={4} maxLength={2000} defaultValue={progress.evidenceNote ?? ''} placeholder="Per esempio: scheda completata; attività rimodulata; concetto da riprendere…" /></label>
             <div className="lessonRecordEvidence"><span>Evidenza prevista</span><strong>{projection.evidence}</strong><small>È un promemoria: viene registrato solo ciò che scrivi tu.</small></div>
             <button className="primary" type="submit">{recorded ? 'Aggiorna e torna alla classe' : 'Salva e continua'}</button>
           </form>
@@ -237,16 +245,19 @@ function ContextSupport({
   mode,
   timing,
   recorded,
+  alignment,
 }: {
   mode: LessonWorkspaceMode
   timing: HumanTaskLessonTiming
   recorded: boolean
+  alignment: HumanTaskSourceAlignment
 }) {
   let content: string
   if (mode === 'prepare') {
     content = 'Le spunte servono solo come promemoria mentre prepari: non vengono salvate e non devi completarle tutte per iniziare.'
   } else if (mode === 'teach') {
-    content = timingHelp(timing)
+    const alignmentHelp = alignment.level === 'COMPOSED' && alignment.note ? ` ${alignment.note}` : ''
+    content = `${timingHelp(timing)}${alignmentHelp}`
   } else if (mode === 'observe') {
     content = 'Non devi spuntare tutti gli indicatori. Usali per richiamare l’attenzione su poche evidenze utili; le spunte non vengono salvate.'
   } else {
@@ -257,7 +268,16 @@ function ContextSupport({
   return <details className="lessonSupport"><summary>Serve una mano?</summary><p>{content}</p></details>
 }
 
-function InlineResource({ resource }: { resource: HumanTaskLessonProjection['resources'][number] }) {
+function ResourceCard({ resource }: { resource: HumanTaskResource }) {
+  return (
+    <section className="lessonResourceCard">
+      <div><span>{resourceKindLabel(resource.kind)}</span><h3>{resource.title}</h3><p>{resource.instruction}</p></div>
+      <details><summary>{resourceDisclosureLabel(resource.kind)}</summary><ol>{resource.prompts.map((prompt) => <li key={prompt}>{prompt}</li>)}</ol></details>
+    </section>
+  )
+}
+
+function InlineResource({ resource }: { resource: HumanTaskResource }) {
   return <section className="lessonInlineResource"><span>{resourceKindLabel(resource.kind)}</span><h3>{resource.title}</h3><p>{resource.instruction}</p><ul>{resource.prompts.map((prompt) => <li key={prompt}>{prompt}</li>)}</ul></section>
 }
 
@@ -278,8 +298,20 @@ function stepLead(minutes: number | null, instruction: string) {
   return minutes === null ? instruction : `${minutes} min · ${instruction}`
 }
 
-function resourceKindLabel(kind: HumanTaskLessonProjection['resources'][number]['kind']) {
-  return kind === 'EXIT_TICKET' ? 'CHIUSURA' : 'MATERIALE ALUNNI'
+function resourceKindLabel(kind: HumanTaskResourceKind) {
+  if (kind === 'EXIT_TICKET') return 'CHIUSURA'
+  if (kind === 'TASK_BRIEF') return 'CONSEGNA'
+  if (kind === 'RUBRIC') return 'CRITERI'
+  if (kind === 'ASSESSMENT_GUIDE') return 'VERIFICA'
+  return 'MATERIALE ALUNNI'
+}
+
+function resourceDisclosureLabel(kind: HumanTaskResourceKind) {
+  if (kind === 'TASK_BRIEF') return 'Vedi la consegna'
+  if (kind === 'RUBRIC') return 'Vedi i criteri'
+  if (kind === 'ASSESSMENT_GUIDE') return 'Vedi la struttura'
+  if (kind === 'EXIT_TICKET') return 'Vedi la chiusura'
+  return 'Vedi la scheda'
 }
 
 function recordableDefault(status: string) {
