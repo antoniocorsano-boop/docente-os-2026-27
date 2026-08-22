@@ -47,18 +47,20 @@ function toDiscipline(row: DisciplineRow): TeachingDiscipline {
 export class SupabaseTeacherSettingsRepository {
   async getOrCreate(workspaceId: string, academicYearId: string): Promise<TeacherWorkspaceSettings> {
     const supabase = await createClient()
-    const userId = await authenticatedUserId(supabase)
     const { data: existing, error: existingError } = await supabase
       .from('teacher_workspace_settings')
       .select('*')
       .eq('workspace_id', workspaceId)
       .eq('academic_year_id', academicYearId)
-      .eq('user_id', userId)
+      .limit(1)
       .maybeSingle()
 
     if (existingError) throw new Error(existingError.message)
     if (existing) return toSettings(existing)
 
+    // The common read path above is protected by RLS and needs no explicit user lookup.
+    // Resolve the authenticated user only on the first-run creation path.
+    const userId = await authenticatedUserId(supabase)
     const { data: profile } = await supabase
       .from('profiles')
       .select('display_name')
