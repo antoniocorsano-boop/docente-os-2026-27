@@ -3,6 +3,12 @@ import type { KnowledgeAsset, KnowledgeDocument } from '@/core/domain/knowledge'
 export type ProgettaItem = { asset: KnowledgeAsset; document: KnowledgeDocument | null }
 export type ProgettaGrade = 'prima' | 'seconda' | 'terza'
 
+export type ProgettaFocus = {
+  blockId: string | null
+  uda: string | null
+  pack: string | null
+}
+
 export type ProgettaGroup = {
   key: 'programming' | 'uda' | 'materials'
   title: string
@@ -25,8 +31,47 @@ export function filterProgettaItemsByGrade(items: ProgettaItem[], grade: Progett
   })
 }
 
+export function filterProgettaItemsBySectionContext(items: ProgettaItem[], compactSectionLabel: string | null) {
+  if (!compactSectionLabel) return items
+  const target = normalizeClassLabel(compactSectionLabel)
+  return items.filter(({ asset }) => {
+    const labels = asset.classLabels ?? []
+    return !labels.length || labels.some((label) => normalizeClassLabel(label) === target)
+  })
+}
+
 export function asProgettaGrade(value: string | undefined): ProgettaGrade | null {
   return value === 'prima' || value === 'seconda' || value === 'terza' ? value : null
+}
+
+export function asProgettaFocus(input: { block?: string; uda?: string; pack?: string }): ProgettaFocus | null {
+  const blockId = input.block && /^B\d{2}$/i.test(input.block) ? input.block.toUpperCase() : null
+  const uda = input.uda && /^\d-\d{2}$/i.test(input.uda) ? input.uda.toLowerCase() : null
+  const pack = input.pack && /^CAN-PACK-\d[A-Z]$/i.test(input.pack) ? input.pack.toUpperCase() : null
+  return blockId || uda || pack ? { blockId, uda, pack } : null
+}
+
+export function filterProgettaItemsByFocus(items: ProgettaItem[], focus: ProgettaFocus | null) {
+  if (!focus) return []
+  const needles = [focus.pack, focus.uda, focus.blockId].filter((value): value is string => Boolean(value)).map((value) => value.toLowerCase())
+  if (!needles.length) return []
+  return items.filter((item) => {
+    const searchable = searchableText(item)
+    return needles.some((needle) => searchable.includes(needle))
+  })
+}
+
+export function partitionProgettaFocusBySection(items: ProgettaItem[], compactSectionLabel: string | null) {
+  if (!compactSectionLabel) return { core: items, section: [] as ProgettaItem[] }
+  const target = normalizeClassLabel(compactSectionLabel)
+  const section: ProgettaItem[] = []
+  const core: ProgettaItem[] = []
+  for (const item of items) {
+    const labels = item.asset.classLabels ?? []
+    if (labels.some((label) => normalizeClassLabel(label) === target)) section.push(item)
+    else core.push(item)
+  }
+  return { core, section }
 }
 
 export function groupProgettaItems(items: ProgettaItem[]): ProgettaGroup[] {
@@ -62,4 +107,23 @@ export function planningCoverage(items: ProgettaItem[]): PlanningCoverage[] {
       && asset.sourceMetadata.grade === grade,
     ).length,
   }))
+}
+
+function searchableText({ asset, document }: ProgettaItem) {
+  return [asset.originalName, document?.title, document?.summary, safeMetadataText(asset.sourceMetadata)]
+    .filter((value): value is string => Boolean(value))
+    .join(' ')
+    .toLowerCase()
+}
+
+function normalizeClassLabel(value: string) {
+  return value.trim().replace(/\s+/g, '').toUpperCase()
+}
+
+function safeMetadataText(value: Record<string, unknown>) {
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return ''
+  }
 }
