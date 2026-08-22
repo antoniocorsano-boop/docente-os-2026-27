@@ -2,13 +2,38 @@
 
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { ensurePersonalWorkspace } from '@/app/auth/bootstrap-personal-workspace'
 import { createClient } from '@/lib/supabase/server'
 
-export async function requestMagicLink(formData: FormData) {
-  const rawEmail = formData.get('email')
-  const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : ''
+export async function signInWithPassword(formData: FormData) {
+  const email = normalizeEmail(formData.get('email'))
+  const password = normalizePassword(formData.get('password'))
 
-  if (!/^\S+@\S+\.\S+$/.test(email)) {
+  if (!isValidEmail(email) || password.length < 8) {
+    redirect('/login?error=invalid_credentials')
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+
+  if (error) {
+    console.error('Password sign-in failed', error.code)
+    redirect('/login?error=invalid_credentials')
+  }
+
+  const bootstrap = await ensurePersonalWorkspace(supabase)
+  if (!bootstrap.ok) {
+    await supabase.auth.signOut()
+    redirect(`/login?error=${bootstrap.error}`)
+  }
+
+  redirect('/workspace')
+}
+
+export async function requestMagicLink(formData: FormData) {
+  const email = normalizeEmail(formData.get('email'))
+
+  if (!isValidEmail(email)) {
     redirect('/login?error=invalid_email')
   }
 
@@ -42,6 +67,18 @@ export async function requestMagicLink(formData: FormData) {
   }
 
   redirect('/login?sent=1')
+}
+
+function normalizeEmail(value: FormDataEntryValue | null) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : ''
+}
+
+function normalizePassword(value: FormDataEntryValue | null) {
+  return typeof value === 'string' ? value : ''
+}
+
+function isValidEmail(email: string) {
+  return /^\S+@\S+\.\S+$/.test(email)
 }
 
 function safeOrigin(value: string | null) {
