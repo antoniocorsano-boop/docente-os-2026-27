@@ -58,6 +58,7 @@ export default async function TimetablePage() {
       const disciplineLabel = discipline?.name ?? 'Disciplina'
       return {
         id: assignment.id,
+        sectionId: assignment.sectionId,
         label: `${classLabel} · ${disciplineLabel}`,
         classLabel,
         disciplineLabel,

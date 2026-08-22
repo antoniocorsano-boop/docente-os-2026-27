@@ -46,13 +46,16 @@ const GRADES: GradeKey[] = ['Prima', 'Seconda', 'Terza']
 export default function AnnualPlanClient({
   initialSnapshot,
   academicYearId,
+  initialSectionId,
 }: {
   initialSnapshot: AnnualPlanExecutionSnapshot
   academicYearId: string
+  initialSectionId?: string | null
 }) {
+  const initialSection = initialSectionId ? initialSnapshot.sections.find((section) => section.id === initialSectionId) ?? null : null
   const [state, setState] = useState<StoredState>(() => snapshotToState(initialSnapshot))
-  const [grade, setGrade] = useState<GradeKey>('Prima')
-  const [sectionId, setSectionId] = useState('')
+  const [grade, setGrade] = useState<GradeKey>(initialSection ? GRADE_UI[initialSection.grade] : 'Prima')
+  const [sectionId, setSectionId] = useState(initialSection?.id ?? '')
   const [newSection, setNewSection] = useState('')
   const [syncError, setSyncError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()

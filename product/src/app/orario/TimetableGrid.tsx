@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import type { TimetablePresenceKind, TimetableSlot, TimetableSlotKind } from '@/core/domain/timetable'
 import { addClassPresenceSlot, addLessonSlot, addSpecialSlot, deleteTimetableSlot, updateTimetableSlot } from './actions'
@@ -14,6 +15,7 @@ export type TimetableGridDay = {
 
 export type TimetableGridAssignment = {
   id: string
+  sectionId: string
   label: string
   classLabel: string
   disciplineLabel: string
@@ -65,6 +67,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week')
   const [selectedDay, setSelectedDay] = useState(days[0]?.value ?? 1)
   const [moment, setMoment] = useState<TimetableMoment | null>(null)
+  const [focusedSlotId, setFocusedSlotId] = useState<string | null>(null)
   const [editor, setEditor] = useState<EditorState | null>(null)
 
   useEffect(() => {
@@ -86,13 +89,16 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
   }, [days])
 
   useEffect(() => {
-    if (!editor) return
+    if (!editor && !focusedSlotId) return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setEditor(null)
+      if (event.key === 'Escape') {
+        setEditor(null)
+        setFocusedSlotId(null)
+      }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [editor])
+  }, [editor, focusedSlotId])
 
   const rows = useMemo(() => buildTimetableGridRows(periods, slots), [periods, slots])
   const visibleDays = viewMode === 'week' ? days : days.filter((day) => day.value === selectedDay)
@@ -101,6 +107,8 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
     [slots],
   )
   const assignmentById = useMemo(() => new Map(assignments.map((assignment) => [assignment.id, assignment])), [assignments])
+  const focusedSlot = focusedSlotId ? slots.find((slot) => slot.id === focusedSlotId) ?? null : null
+  const focusedAssignment = focusedSlot?.teachingAssignmentId ? assignmentById.get(focusedSlot.teachingAssignmentId) : undefined
   const selectedDayIndex = Math.max(0, days.findIndex((day) => day.value === selectedDay))
   const unresolvedAssignments = assignments.filter((assignment) => assignment.weeklyMinutes !== assignment.scheduledMinutes).length
 
@@ -136,6 +144,12 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
       room: slot.room ?? '',
       note: slot.note ?? '',
     })
+  }
+
+  function editFocusedSlot() {
+    if (!focusedSlot) return
+    setFocusedSlotId(null)
+    openOccupiedCell(focusedSlot)
   }
 
   function navigateDay(offset: number) {
@@ -176,7 +190,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
             <strong>{visibleDays[0]?.label ?? 'Giorno'}</strong>
             <button type="button" onClick={() => navigateDay(1)} disabled={selectedDayIndex >= days.length - 1} aria-label="Giorno successivo">›</button>
           </div>
-        ) : <span className="gridHint">Tocca una voce per modificarla</span>}
+        ) : <span className="gridHint">Tocca una voce per aprire il contesto</span>}
 
         <button className="printTimetableButton" type="button" onClick={() => window.print()}>Stampa</button>
       </div>
@@ -218,7 +232,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
                           slot={slot}
                           assignment={slot.teachingAssignmentId ? assignmentById.get(slot.teachingAssignmentId) : undefined}
                           current={current}
-                          onClick={() => openOccupiedCell(slot)}
+                          onClick={() => setFocusedSlotId(slot.id)}
                         />
                       ) : (
                         <button
@@ -267,6 +281,37 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
             })}
           </div>
         </details>
+      ) : null}
+
+      {focusedSlot ? (
+        <div className="timetableContextBackdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setFocusedSlotId(null) }}>
+          <section className="timetableContextSheet" role="dialog" aria-modal="true" aria-labelledby="timetable-context-title">
+            <div className="timetableContextHeading">
+              <div>
+                <span>{days.find((day) => day.value === focusedSlot.weekday)?.label ?? 'Giorno'} · {focusedSlot.startTime}–{focusedSlot.endTime}</span>
+                <h3 id="timetable-context-title">{contextTitle(focusedSlot, focusedAssignment)}</h3>
+                <p>{contextSubtitle(focusedSlot, focusedAssignment)}</p>
+              </div>
+              <button type="button" aria-label="Chiudi" onClick={() => setFocusedSlotId(null)}>×</button>
+            </div>
+
+            {focusedSlot.room || focusedSlot.note ? (
+              <div className="timetableContextMeta">
+                {focusedSlot.room ? <span><strong>Aula</strong>{focusedSlot.room}</span> : null}
+                {focusedSlot.note ? <span><strong>Nota</strong>{focusedSlot.note}</span> : null}
+              </div>
+            ) : null}
+
+            {focusedSlot.slotKind === 'CLASS_PRESENCE' ? <p className="timetableContextHint">Questa è una presenza registrata manualmente nell’Orario: non crea una classe nella tua Cattedra.</p> : null}
+
+            <div className="timetableContextActions">
+              {focusedSlot.slotKind === 'LESSON' && focusedAssignment ? (
+                <Link className="timetablePrimaryButton contextPrimaryAction" href={`/piano-annuale?section=${encodeURIComponent(focusedAssignment.sectionId)}`}>Apri Piano annuale</Link>
+              ) : null}
+              <button className="secondaryButton" type="button" onClick={editFocusedSlot}>Modifica orario</button>
+            </div>
+          </section>
+        </div>
       ) : null}
 
       {editor ? (
@@ -322,6 +367,18 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
       ) : null}
     </div>
   )
+}
+
+function contextTitle(slot: TimetableSlot, assignment?: TimetableGridAssignment) {
+  if (slot.slotKind === 'LESSON') return assignment?.classLabel ?? 'Lezione'
+  if (slot.slotKind === 'CLASS_PRESENCE') return slot.manualClassLabel ?? 'Classe'
+  return KIND_LABELS[slot.slotKind]
+}
+
+function contextSubtitle(slot: TimetableSlot, assignment?: TimetableGridAssignment) {
+  if (slot.slotKind === 'LESSON') return assignment?.disciplineLabel ?? 'Lezione della cattedra'
+  if (slot.slotKind === 'CLASS_PRESENCE') return slot.presenceKind ? PRESENCE_LABELS[slot.presenceKind] : 'Presenza in altra classe'
+  return 'Impegno ricorrente della settimana tipo'
 }
 
 function OccupiedCell({ slot, assignment, current, onClick }: { slot: TimetableSlot; assignment?: TimetableGridAssignment; current: boolean; onClick: () => void }) {
