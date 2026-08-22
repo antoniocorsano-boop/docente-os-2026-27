@@ -10,6 +10,7 @@ import {
   groupProgettaItems,
   partitionProgettaFocusBySection,
   planningCoverage,
+  resolveCanonicalProgettaFocus,
 } from './progetta-model'
 
 function item(id: string, contentCategory: KnowledgeAsset['contentCategory']) {
@@ -109,4 +110,19 @@ test('riconosce il focus blocco UDA pacchetto e separa nucleo comune da adattame
   assert.deepEqual(focused.map(({ asset }) => asset.id), ['core', 'section'])
   assert.deepEqual(partitionProgettaFocusBySection(focused, '2C'), { core: [core], section: [section] })
   assert.equal(asProgettaFocus({ block: '22', uda: 'foo', pack: '2G' }), null)
+})
+
+test('la modalità guidata accetta solo un blocco coerente col piano canonico', () => {
+  const prima = asProgettaFocus({ block: 'B01', uda: '1-00', pack: 'CAN-PACK-1A' })
+  assert.deepEqual(resolveCanonicalProgettaFocus('prima', prima), {
+    blockId: 'B01',
+    uda: '1-00',
+    pack: 'CAN-PACK-1A',
+    period: 'Settembre',
+    title: 'Ingresso, laboratorio e metodo',
+  })
+
+  const incoerente = asProgettaFocus({ block: 'B01', uda: '1-02', pack: 'CAN-PACK-1B' })
+  assert.equal(resolveCanonicalProgettaFocus('prima', incoerente), null)
+  assert.equal(resolveCanonicalProgettaFocus(null, prima), null)
 })
