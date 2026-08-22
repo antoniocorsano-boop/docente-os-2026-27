@@ -5,13 +5,13 @@ Updated: 2026-08-22
 ```text
 STATE: ACTIVE_DEVELOPMENT_STABLE
 CANONICAL_DEV_BRANCH: develop
-BASELINE_COMMIT: aeb66cd8d1752de1ee4f8de33103c0617db330e6
+BASELINE_COMMIT: 1813a17ff6414439f8a5195a8de1d48b72925111
 CANONICAL_DEV_RUNTIME: Netlify deploy preview for develop
 CI_GATE: test + typecheck + lint + build
-PRODUCT_EXPERIENCE: X0 COMPLETE / X1 COMPLETE
-PRIMARY_FOCUS: X2 Professional AppShell
-NEXT_ACTION: implement shared shell + responsive navigation + command palette
-DONE_WHEN_X2: primary navigation is shared, keyboard/mobile usable, CI green, Netlify READY, no auth/RLS/data regression
+PRODUCT_EXPERIENCE: X0 COMPLETE / X1 COMPLETE / X2 COMPLETE
+PRIMARY_FOCUS: X3 Contextual Assistant — READ_ONLY / PROPOSE
+NEXT_ACTION: mount optional assistant experience on Knowledge using authentic AssistantContext and a mock/local runtime first
+DONE_WHEN_X3: contextual assistant renders real context and proposals, performs no writes, remains optional, passes CI and Netlify gates
 ```
 
 ## Current product line
@@ -35,7 +35,8 @@ The static root application is retained as legacy/reference material only. It is
 - Product Language & Collaboration System v1 rolled out to primary surfaces.
 - Product Experience canonical package X0.
 - Tailwind v4 + open-code component foundation X1.
-- Login migrated as first canonical-component pilot.
+- Professional AppShell X2 with shared navigation, command palette and mobile navigation.
+- Knowledge list/detail migrated to the shared AppShell.
 - GitHub Actions product gate passing on merged slices.
 - Netlify Next.js deploy preview on `develop` verified as the operational development runtime.
 
@@ -47,7 +48,7 @@ Status: `DEV_RUNTIME_VERIFIED`.
 
 - project: `docente-os-dev`;
 - `develop` deploy preview is the current reference for interactive acceptance;
-- merge X1 `aeb66cd8…` deployed `READY`;
+- merge X2 `1813a17…` deployed `READY`;
 - Next.js server handler is deployed;
 - Supabase redirect configuration includes the Netlify preview pattern.
 
@@ -65,9 +66,9 @@ A production alias/provider decision will be made only after release gates are s
 
 ## Current risks
 
-1. shell/navigation markup is still duplicated across primary pages;
-2. UI patterns are partly local CSS while migration proceeds;
-3. AI collaboration is specified but not yet connected to a real assistant runtime;
+1. alcune superfici non sono ancora migrate alla shell condivisa;
+2. parte del CSS rimane locale mentre la migrazione prosegue;
+3. AI collaboration è specificata ma non ancora collegata a un runtime assistente reale;
 4. Timetable T3/T4 remain pending;
 5. production URL and final auth recovery UX remain to be frozen;
 6. legacy static files remain in root and must stay clearly marked as non-canonical.
@@ -95,20 +96,41 @@ Evidence:
 
 ### X2 — Professional AppShell
 
+Status: `COMPLETE`.
+
+Evidence:
+
+- shared AppShell;
+- canonical navigation registry;
+- responsive sidebar;
+- bottom navigation + complete mobile menu;
+- `Ctrl/Cmd+K` command palette;
+- Radix dialog / cmdk / Lucide integration;
+- Knowledge list and document detail migrated;
+- Product CI #208 all green;
+- Netlify deploy READY on merge `1813a17…`;
+- no DB/RLS/data changes.
+
+### X3 — Contextual Assistant
+
 Status: `NEXT`.
 
-- shared sidebar/navigation;
-- responsive mobile sheet/bottom navigation;
-- command palette;
-- canonical page headers/status feedback;
-- first migration of Conoscenza to the shared shell.
+Baseline:
 
-### X3/X4 — Contextual Assistant
+- mount assistant experience on a real Knowledge surface;
+- derive `AssistantContext` from real workspace/document data;
+- support `READ_ONLY` and `PROPOSE` only;
+- start with mock/local provider-neutral runtime;
+- assistant must be optional and non-blocking;
+- no write capability in X3.
+
+### X4 — Human-in-the-loop writes
 
 Status: `PLANNED`.
 
-- assistant-ui read/propose first;
-- write actions only with human-in-the-loop.
+- preview + explicit confirmation;
+- first reversible Planner write through application layer;
+- proposal provenance preserved.
 
 ### T3/T4 — Timetable evolution
 
