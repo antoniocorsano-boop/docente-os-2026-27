@@ -6,15 +6,24 @@ import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supa
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { buildLessonWorkspaceHref, hasHumanTaskLessonProjection } from '@/core/presentation/human-task-content'
 import { buildTaskAwareKnowledgeHref } from '@/core/presentation/task-continuity'
+import { GRADE_UI } from '@/app/piano-annuale/model'
 import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes } from '../class-workspace-model'
 import '../classi.css'
 import '../class-workspace-operational.css'
 
 export const dynamic = 'force-dynamic'
 
-export default async function ClassWorkspacePage({ params }: { params: Promise<{ sectionId: string }> }) {
+export default async function ClassWorkspacePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ sectionId: string }>
+  searchParams: Promise<{ recorded?: string }>
+}) {
   const { sectionId } = await params
+  const query = await searchParams
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
   if (!context) redirect('/login')
@@ -38,6 +47,10 @@ export default async function ClassWorkspacePage({ params }: { params: Promise<{
   const learningFocus = buildClassWorkspaceLearningFocus(section, snapshot.progress, knowledgeItems)
   const planningHref = `/progetta?grade=${summary.gradeQuery}&section=${encodeURIComponent(summary.sectionId)}`
   const focusPlanningHref = learningFocus.nextBlock ? `${planningHref}&block=${encodeURIComponent(learningFocus.nextBlock.id)}&uda=${encodeURIComponent(learningFocus.nextBlock.uda)}&pack=${encodeURIComponent(learningFocus.nextBlock.pack)}#focus-operativo` : planningHref
+  const modeledLessonHref = learningFocus.nextBlock && hasHumanTaskLessonProjection(GRADE_UI[section.grade], learningFocus.nextBlock.id)
+    ? buildLessonWorkspaceHref(summary.sectionId, learningFocus.nextBlock.id)
+    : null
+  const prepareHref = modeledLessonHref ?? focusPlanningHref
   const annualPlanHref = `/piano-annuale?section=${encodeURIComponent(summary.sectionId)}`
   const knowledgeHref = `/knowledge?classLabel=${encodeURIComponent(summary.compactLabel)}`
   const classHref = `/classi/${encodeURIComponent(summary.sectionId)}`
@@ -48,9 +61,11 @@ export default async function ClassWorkspacePage({ params }: { params: Promise<{
         <div><p>CLASSE · {summary.sectionStatusLabel.toUpperCase()}</p><h1>{summary.displayLabel}</h1><span>Il contesto operativo della sezione: prossimo tratto didattico e materiali pertinenti prima di tutto.</span></div>
       </section>
 
+      {query.recorded ? <div className="classRecordFeedback" role="status"><strong>{query.recorded.toUpperCase()} registrata.</strong><span>Il prossimo passo qui sotto è stato ricalcolato dal Piano annuale reale della classe.</span></div> : null}
+
       <section className="classLessonFocus" aria-label="Posizione corrente nel Piano annuale">
         {learningFocus.nextBlock ? <div className="classLessonFocusMain"><p>PROSSIMO NEL PIANO · {learningFocus.nextBlock.statusLabel.toUpperCase()}</p><div className="classLessonFocusIdentity"><span>{learningFocus.nextBlock.id}</span><div><strong>{learningFocus.nextBlock.focus}</strong><small>UDA {learningFocus.nextBlock.uda} · {learningFocus.nextBlock.pack} · {learningFocus.nextBlock.period}</small></div></div><p className="classLessonFocusHint">È la prima fase non ancora completata. DOCENTE OS non presume che tu la stia già preparando.</p></div> : <div className="classLessonFocusMain complete"><p>PIANO ANNUALE</p><div className="classLessonFocusIdentity"><span>✓</span><div><strong>Percorso annuale completato</strong><small>Tutti i blocchi attivi risultano conclusi o esclusi.</small></div></div></div>}
-        <div className="classLessonFocusAside"><div className="classLessonProgress"><strong>{learningFocus.completedBlocks}/33</strong><span>blocchi completati</span></div><div className="classLessonFocusActions">{learningFocus.nextBlock ? <Link className="primary" href={focusPlanningHref}>Prepara questa fase</Link> : null}<Link href={annualPlanHref}>Registra / rivedi</Link></div></div>
+        <div className="classLessonFocusAside"><div className="classLessonProgress"><strong>{learningFocus.completedBlocks}/33</strong><span>blocchi completati</span></div><div className="classLessonFocusActions">{learningFocus.nextBlock ? <Link className="primary" href={prepareHref}>{modeledLessonHref ? 'Prepara la lezione' : 'Prepara questa fase'}</Link> : null}<Link href={annualPlanHref}>Registra / rivedi</Link></div></div>
       </section>
 
       <article className="classWorkspaceCard classMaterialsCard">
