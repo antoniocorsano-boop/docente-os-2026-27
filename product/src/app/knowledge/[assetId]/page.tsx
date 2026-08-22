@@ -62,7 +62,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
   const candidateSummary = candidates.length
     ? `Ho trovato ${candidates.length} ${candidates.length === 1 ? 'possibile azione o scadenza' : 'possibili azioni o scadenze'}. Restano proposte finché non le confermi.`
     : asset.contextStatus === 'REVIEWED'
-      ? 'Il contenuto è organizzato e il contesto professionale è stato controllato. Puoi usarlo nel lavoro o collegarlo al Planner.'
+      ? 'Il contenuto è organizzato e il contesto professionale è stato controllato. Puoi usarlo nel lavoro o trasformarlo in una attività concreta.'
       : 'Il contenuto è organizzato. Ti consiglio di controllare il contesto professionale prima di usarlo nel lavoro.'
 
   return (
@@ -81,7 +81,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
       {query.reprocess === 'ok' ? <div className="knowledgeFeedback success" role="status">Analisi aggiornata. L’originale è rimasto invariato e questa è ora la versione di lavoro corrente.</div> : null}
       {query.reprocess === 'failed' ? <div className="knowledgeFeedback error" role="status">Non sono riuscito ad aggiornare l’analisi. La versione precedente resta disponibile e l’originale non è stato modificato.</div> : null}
       {query.context === 'updated' ? <div className="knowledgeFeedback success" role="status">Contesto professionale aggiornato. Da ora questo contenuto sarà più facile da ritrovare e collegare al lavoro.</div> : null}
-      {query.task === 'unavailable' ? <div className="knowledgeFeedback error" role="status">Non posso ancora creare l’attività nel Planner perché manca una versione di analisi completata. Il contenuto resta comunque disponibile.</div> : null}
+      {query.task === 'unavailable' ? <div className="knowledgeFeedback error" role="status">Non posso ancora creare l’attività perché manca una versione di analisi completata. Il contenuto resta comunque disponibile.</div> : null}
 
       <section className="plannerHeader knowledgeHeader humanKnowledgeHeader">
         <div>
@@ -112,7 +112,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
         </div>
         <div className="guidanceActions">
           <a href="#professional-context">Controlla il contesto</a>
-          <a href="#planner-action">Crea attività nel Planner</a>
+          <a href="#planner-action">Crea attività</a>
           <a href="#content-view">Leggi il contenuto</a>
           <form action={reprocessKnowledgeAsset}>
             <input type="hidden" name="assetId" value={asset.id} />
@@ -139,14 +139,14 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
       </section>
 
       <section className="knowledgePanel taskCreatorPanel" id="planner-action">
-        <div className="knowledgePanelHeading"><div><span className="panelEyebrow">DAL CONTENUTO ALL’AZIONE</span><h2>Portalo nel Planner</h2></div><span className="statusPill">{currentGeneration ? 'Disponibile' : 'Non disponibile'}</span></div>
-        <p>Puoi trasformare questo contenuto in un’attività concreta. DOCENTE OS conserverà il collegamento alla fonte usata oggi, anche se in futuro aggiornerai l’analisi.</p>
+        <div className="knowledgePanelHeading"><div><span className="panelEyebrow">DAL CONTENUTO ALL’AZIONE</span><h2>Crea un’attività</h2></div><span className="statusPill">{currentGeneration ? 'Disponibile' : 'Non disponibile'}</span></div>
+        <p>Trasforma questo contenuto in qualcosa che devi fare. L’attività comparirà in <strong>Oggi</strong> e manterrà il collegamento alla fonte. Non modifica il <strong>Piano annuale</strong> e non crea un evento nel <strong>Calendario</strong>.</p>
         <form action={createPlannerTaskFromKnowledgeAsset} className="taskCreatorForm">
           <input type="hidden" name="assetId" value={asset.id} />
           <label><span>Attività</span><input name="title" maxLength={240} defaultValue={`Esamina: ${displayTitle}`} required /></label>
-          <label><span>Scadenza</span><input name="plannedFor" type="date" /></label>
+          <label><span>Quando farla</span><input name="plannedFor" type="date" /></label>
           <label><span>Priorità</span><select name="priority" defaultValue={asset.contextStatus === 'NEEDS_REVIEW' ? 'HIGH' : 'NORMAL'}><option value="NORMAL">Normale</option><option value="HIGH">Alta</option><option value="URGENT">Urgente</option><option value="LOW">Bassa</option></select></label>
-          <button type="submit" disabled={!currentGeneration}>Crea attività nel Planner</button>
+          <button type="submit" disabled={!currentGeneration}>Aggiungi alle attività</button>
         </form>
       </section>
 
@@ -181,7 +181,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
                 <p>{unit.content}</p>
                 {typeof unit.structuredData.dueDate === 'string' ? <p className="candidateDate">Data associata: <strong>{formatIsoDate(unit.structuredData.dueDate)}</strong></p> : null}
                 {typeof unit.structuredData.date === 'string' ? <p className="candidateDate">Data rilevata: <strong>{formatIsoDate(unit.structuredData.date)}</strong></p> : null}
-                {linkedTask ? <div className="candidateOutcome"><span>✓</span><div><strong>Attività già creata</strong><Link href="/planner">Apri il Planner</Link></div></div> : null}
+                {linkedTask ? <div className="candidateOutcome"><span>✓</span><div><strong>Attività già creata</strong><Link href="/planner">Vai a Oggi</Link></div></div> : null}
                 {unit.validationStatus === 'AUTO' ? <div className="candidateActions">
                   {unit.unitType === 'ACTION' ? (
                     <form action={confirmKnowledgeAction}><input type="hidden" name="unitId" value={unit.id} /><button className="primaryCandidateAction" type="submit">Conferma e crea attività</button></form>
