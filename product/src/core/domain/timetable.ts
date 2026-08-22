@@ -1,7 +1,8 @@
 export type TeachingAssignmentStatus = 'PROVISIONAL' | 'CONFIRMED'
 export type TimetableVersionStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED'
 export type TimetableSourceKind = 'MANUAL' | 'INSTITUTION_DOCUMENT' | 'IMPORT'
-export type TimetableSlotKind = 'LESSON' | 'DISPOSITION' | 'RECEPTION' | 'OTHER'
+export type TimetableSlotKind = 'LESSON' | 'CLASS_PRESENCE' | 'DISPOSITION' | 'RECEPTION' | 'OTHER'
+export type TimetablePresenceKind = 'SUBSTITUTION' | 'CO_TEACHING' | 'SUPERVISION' | 'PROJECT' | 'OTHER'
 
 export type TeachingAssignment = {
   id: string
@@ -40,6 +41,8 @@ export type TimetableSlot = {
   sectionId: string | null
   disciplineId: string | null
   teachingAssignmentId: string | null
+  manualClassLabel: string | null
+  presenceKind: TimetablePresenceKind | null
   room: string | null
   note: string | null
   ordinal: number | null
@@ -69,8 +72,14 @@ export function asTimetableSourceKind(value: string): TimetableSourceKind {
 }
 
 export function asTimetableSlotKind(value: string): TimetableSlotKind {
-  if (value === 'LESSON' || value === 'DISPOSITION' || value === 'RECEPTION' || value === 'OTHER') return value
+  if (value === 'LESSON' || value === 'CLASS_PRESENCE' || value === 'DISPOSITION' || value === 'RECEPTION' || value === 'OTHER') return value
   throw new Error(`Unsupported timetable slot kind: ${value}`)
+}
+
+export function asTimetablePresenceKind(value: string | null): TimetablePresenceKind | null {
+  if (value == null) return null
+  if (value === 'SUBSTITUTION' || value === 'CO_TEACHING' || value === 'SUPERVISION' || value === 'PROJECT' || value === 'OTHER') return value
+  throw new Error(`Unsupported timetable presence kind: ${value}`)
 }
 
 export const TIMETABLE_WEEKDAYS = [
