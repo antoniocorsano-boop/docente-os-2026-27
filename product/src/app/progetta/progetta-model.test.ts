@@ -13,16 +13,32 @@ import {
 } from './progetta-model'
 
 function item(id: string, contentCategory: KnowledgeAsset['contentCategory']) {
-  return {
-    asset: {
-      id,
-      contentCategory,
-      sourceMetadata: {},
-      classLabels: [],
-      originalName: null,
-    } as KnowledgeAsset,
-    document: null as KnowledgeDocument | null,
+  const asset: KnowledgeAsset = {
+    id,
+    workspaceId: 'w',
+    academicYearId: 'y',
+    assetKind: 'GENERATED',
+    sourceProvider: 'SYSTEM',
+    sourceLocator: null,
+    originalName: null,
+    originalText: null,
+    mimeType: null,
+    byteSize: null,
+    sha256: null,
+    processingStatus: 'INDEXED',
+    sourceMetadata: {},
+    currentGenerationId: null,
+    contentCategory,
+    disciplines: [],
+    classLabels: [],
+    contextStatus: 'REVIEWED',
+    reliability: 'VERIFIED',
+    capturedAt: '2026-08-22T10:00:00Z',
+    createdBy: 'u',
+    createdAt: '',
+    updatedAt: '',
   }
+  return { asset, document: null as KnowledgeDocument | null }
 }
 
 test('organizza gli asset nelle tre aree di progettazione', () => {
