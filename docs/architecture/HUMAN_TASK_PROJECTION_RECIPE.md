@@ -1,6 +1,6 @@
 # DOCENTE OS — Human Task Projection Recipe
 
-Status: IMPLEMENTATION CONTRACT / P2
+Status: IMPLEMENTATION CONTRACT / P2–P4  
 Date: 2026-08-22
 
 ## Scopo
@@ -11,7 +11,7 @@ Catena:
 
 **Piano canonico → KB normalizzata → Candidate → Projection Recipe → Draft → approvazione umana → proiezione runtime**
 
-P2 si arresta a `READY_FOR_HUMAN_APPROVAL`.
+Candidate e Draft non autorizzano mai da soli la promozione. Il massimo stato automatico resta `READY_FOR_HUMAN_APPROVAL`.
 
 Non esiste promozione automatica.
 
@@ -64,7 +64,7 @@ I pacchetti di supporto non sostituiscono il pacchetto principale e non generano
 
 ## 4. Binding del Recipe
 
-Ogni `HumanTaskProjectionRecipe` è vincolato a due livelli.
+Ogni Recipe è vincolato a due livelli.
 
 ### Generazioni contenuto
 
@@ -83,9 +83,9 @@ Ogni `HumanTaskProjectionRecipe` è vincolato a due livelli.
 
 Se uno di questi elementi cambia, il Draft diventa `INVALID` con `PLAN_BINDING_MISMATCH`.
 
-## 5. Cosa seleziona un Recipe
+## 5. Cosa seleziona un Recipe DIRECT
 
-Il Recipe dichiara esplicitamente:
+Il Recipe DIRECT dichiara esplicitamente:
 
 - guida docente da usare;
 - eventuali fasi UDA che forniscono contesto;
@@ -93,12 +93,12 @@ Il Recipe dichiara esplicitamente:
 - indicatori di osservazione selezionati;
 - risorse e relativo punto d'uso;
 - superfici `PREPARE` / `OBSERVE`;
-- allineamento `DIRECT` / `COMPOSED`;
+- allineamento `DIRECT` o, dove la guida esiste ma richiede raccordo, `COMPOSED`;
 - quattro brevi testi editoriali Human Task: perché, obiettivo, nota valutativa, continuazione.
 
 I testi editoriali non possono introdurre attività, tempi, materiali, risultati o criteri non sostenuti dalle fonti.
 
-## 6. Regole di validazione
+## 6. Regole di validazione DIRECT
 
 Il Draft fallisce chiuso se:
 
@@ -113,11 +113,11 @@ Il Draft fallisce chiuso se:
 - guida DIRECT con durata esplicita diversa dal blocco;
 - campi editoriali obbligatori vuoti.
 
-Un mismatch di durata in un raccordo COMPOSED resta visibile come issue da review e non viene risolto inventando minuti.
+Un mismatch di durata in un raccordo COMPOSED con guida resta visibile come issue da review e non viene risolto inventando minuti.
 
 ## 7. Supporto a formati documentali diversi
 
-P2 dimostra che il parser non deve imporre un'unica grammatica ai documenti.
+Il parser non impone un'unica grammatica ai documenti.
 
 Sono supportati almeno:
 
@@ -129,9 +129,9 @@ Sono supportati almeno:
 
 La diversa granularità genera review, non falsa precisione.
 
-## 8. Caso di prova B07
+## 8. Primo caso DIRECT — B07
 
-B07 è il primo Recipe P2:
+B07 è stato il primo Recipe P2:
 
 **Riconoscere e classificare i materiali**
 
@@ -148,13 +148,64 @@ Il Recipe seleziona:
 - Scheda E nel passaggio di classificazione;
 - tre obiettivi e tre evidenze osservabili presenti nella UDA.
 
-Il Draft può raggiungere solo:
+B07 è stata successivamente approvata e materializzata nel runtime. Lo stesso percorso DIRECT è stato poi applicato a B08 e B09.
 
-`READY_FOR_HUMAN_APPROVAL`
+## 9. Batch review
 
-Non è ancora una proiezione runtime approvata.
+La revisione di più blocchi non usa il principio “o tutto o niente”.
 
-## 9. Prestazioni
+Ogni blocco può risultare:
+
+- `READY_FOR_HUMAN_APPROVAL` se Candidate e Recipe producono un Draft valido;
+- `BLOCKED` se il Draft è invalido o esiste un gap esplicito;
+- senza Recipe, che equivale a nessuna autorizzazione a derivare liberamente contenuto.
+
+Questa regola ha permesso di approvare B08 e B09 lasciando inizialmente B10 bloccata per assenza di guida PACK direttamente allineata.
+
+## 10. Seconda modalità canonica — COMPOSED / UDA_ONLY
+
+P4 introduce una seconda modalità matura per i casi in cui il Piano assegna un blocco a una UDA ma il CAN-PACK non contiene una guida operativa pertinente.
+
+Il contratto completo è definito in:
+
+`docs/architecture/HUMAN_TASK_UDA_ONLY_RECIPE.md`
+
+La modalità `UDA_ONLY` non riutilizza il builder DIRECT con eccezioni. Ha un builder e gate dedicati.
+
+Condizioni essenziali:
+
+- una singola fase UDA viene selezionata come sorgente operativa;
+- la durata della fase deve coincidere **esattamente** con quella del blocco;
+- il testo della fase deve essere già orientato all'azione;
+- passaggi, obiettivi, evidenze e osservazione provengono dalla UDA;
+- materiali e risorse restano vuoti se la fase non li specifica;
+- il PACK può restare nel `planBinding`, ma non viene dichiarato come fonte del contenuto operativo se non ha contribuito;
+- ogni passo resta senza minuti interni se la fonte non li attribuisce;
+- una nota `COMPOSED` esplicita è obbligatoria;
+- il Draft richiede comunque approvazione umana separata.
+
+Il primo caso di riferimento è **B10 — Dalla risorsa al prodotto**, costruito esclusivamente dalla Fase 4 di `CAN-UDA-1-02` da 2 ore e dalle evidenze della stessa UDA.
+
+## 11. Limite dell'approvazione umana
+
+L'approvazione non è una fase di authoring libero.
+
+Può:
+
+- rendere un titolo più leggibile;
+- trasformare una frase sorgente in micro-copy equivalente;
+- rendere umano il nome di una risorsa;
+- selezionare fra evidenze già presenti.
+
+Non può:
+
+- aggiungere attività;
+- inventare materiali o risorse;
+- assegnare tempi assenti;
+- aggiungere criteri valutativi;
+- colmare un gap documentale con conoscenza implicita non tracciata.
+
+## 12. Prestazioni
 
 Candidate, Recipe e Draft appartengono al ciclo di preparazione/revisione.
 
@@ -162,18 +213,20 @@ Non devono introdurre letture KB nel percorso quotidiano:
 
 **Orario → Classe → Lezione**.
 
-Il runtime continua a usare soltanto proiezioni già promosse.
+Il runtime continua a usare soltanto proiezioni già promosse e materializzate.
 
-## 10. Acceptance P2
+## 13. Acceptance corrente
 
-P2 è accettato quando:
+Il sistema Projection Recipe è accettato quando:
 
-1. la sequenza B07–B15 coincide con CAN-PLAN-1 completo;
-2. B13–B15 conservano i pacchetti di supporto senza sostituire quello principale;
-3. UDA 1-02 viene estratta correttamente come UDA a fasi;
-4. CAN-PACK-1B riconosce lezioni e schede senza convenzioni hard-coded su B07;
-5. il B07 Recipe genera una bozza tracciabile;
-6. variazione di generazione sorgente invalida il Recipe;
-7. variazione della struttura del Piano invalida il Recipe;
-8. nessun Draft viene promosso automaticamente;
-9. nessuna nuova dipendenza KB entra nel rendering quotidiano.
+1. la sequenza dei blocchi coincide con il CAN-PLAN completo;
+2. i pacchetti di supporto restano distinti dal pacchetto principale;
+3. UDA e PACK vengono estratti senza imporre un formato unico;
+4. ogni Recipe è vincolato alle generazioni e alla struttura del Piano;
+5. il batch review produce esiti indipendenti per blocco;
+6. DIRECT richiede una guida operativa PACK identificabile;
+7. UDA_ONLY richiede una fase UDA temporalmente coincidente e sufficientemente operativa;
+8. variazione della generazione o del Piano invalida la proiezione;
+9. nessun Draft viene promosso automaticamente;
+10. nessuna nuova dipendenza KB entra nel rendering quotidiano;
+11. il runtime espone soltanto fonti che hanno realmente contribuito al contenuto mostrato.
