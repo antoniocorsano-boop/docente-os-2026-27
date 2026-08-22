@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { KnowledgeAsset, KnowledgeDocument } from '@/core/domain/knowledge'
-import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes } from './class-workspace-model'
+import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes, humanMaterialTitle } from './class-workspace-model'
 
 const section2C = {
   id: 'section-2c', workspaceId: 'w', academicYearId: 'y', grade: 'SECONDA' as const, sectionCode: 'C',
@@ -49,7 +49,14 @@ test('projects the next canonical block and only explicitly pertinent materials'
   assert.equal(focus.nextBlock?.pack, 'CAN-PACK-2A')
   assert.equal(focus.nextBlock?.statusLabel, 'Pianificato')
   assert.deepEqual(focus.materials.map((item) => item.assetId), ['pack', 'class'])
+  assert.equal(focus.materials[0]?.title, 'Scheda operativa')
   assert.equal(focus.materials[0]?.relevanceLabel, 'Fase corrente')
+})
+
+test('technical document identifiers are removed from human material titles', () => {
+  assert.equal(humanMaterialTitle('CAN-UDA-1-00 — Entrare_nel_laboratorio'), 'Entrare nel laboratorio')
+  assert.equal(humanMaterialTitle('CAN-PACK-1A_Avvio_classe_prima'), 'Avvio classe prima')
+  assert.equal(humanMaterialTitle('Scheda operativa CAN-PACK-2A'), 'Scheda operativa')
 })
 
 test('weekly minutes are presented in human form', () => {
