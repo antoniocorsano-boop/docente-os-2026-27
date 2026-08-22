@@ -4,6 +4,7 @@ import './home.css';
 import './planner/planner-enhancements.css';
 import './knowledge/knowledge.css';
 import './knowledge/knowledge-provenance.css';
+import './communication.css';
 
 export const metadata: Metadata = {
   title: 'DOCENTE OS 2026/27',
