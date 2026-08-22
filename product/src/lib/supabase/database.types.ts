@@ -75,10 +75,28 @@ export type Database = {
         Update: { teacher_display_name?: string; school_name?: string; school_code?: string | null; school_city?: string | null; school_type?: string; daily_period_count?: number; school_day_start?: string; default_period_minutes?: number; teaching_weekdays?: number[]; updated_at?: string }
         Relationships: []
       }
+      teaching_assignments: {
+        Row: { id: string; workspace_id: string; academic_year_id: string; section_id: string; discipline_id: string; weekly_minutes: number; status: string; source_note: string | null; created_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; workspace_id: string; academic_year_id: string; section_id: string; discipline_id: string; weekly_minutes?: number; status?: string; source_note?: string | null; created_by: string; created_at?: string; updated_at?: string }
+        Update: { weekly_minutes?: number; status?: string; source_note?: string | null; updated_at?: string }
+        Relationships: []
+      }
       teaching_disciplines: {
         Row: { id: string; workspace_id: string; academic_year_id: string; name: string; is_active: boolean; created_by: string; created_at: string; updated_at: string }
         Insert: { id?: string; workspace_id: string; academic_year_id: string; name: string; is_active?: boolean; created_by: string; created_at?: string; updated_at?: string }
         Update: { name?: string; is_active?: boolean; updated_at?: string }
+        Relationships: []
+      }
+      timetable_versions: {
+        Row: { id: string; workspace_id: string; academic_year_id: string; label: string; status: string; effective_from: string; effective_to: string | null; source_kind: string; source_ref: string | null; created_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; workspace_id: string; academic_year_id: string; label: string; status?: string; effective_from: string; effective_to?: string | null; source_kind?: string; source_ref?: string | null; created_by: string; created_at?: string; updated_at?: string }
+        Update: { label?: string; status?: string; effective_from?: string; effective_to?: string | null; source_kind?: string; source_ref?: string | null; updated_at?: string }
+        Relationships: []
+      }
+      timetable_slots: {
+        Row: { id: string; timetable_version_id: string; weekday: number; start_time: string; end_time: string; slot_kind: string; section_id: string | null; discipline_id: string | null; teaching_assignment_id: string | null; room: string | null; note: string | null; ordinal: number | null; created_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; timetable_version_id: string; weekday: number; start_time: string; end_time: string; slot_kind?: string; section_id?: string | null; discipline_id?: string | null; teaching_assignment_id?: string | null; room?: string | null; note?: string | null; ordinal?: number | null; created_by: string; created_at?: string; updated_at?: string }
+        Update: { weekday?: number; start_time?: string; end_time?: string; slot_kind?: string; section_id?: string | null; discipline_id?: string | null; teaching_assignment_id?: string | null; room?: string | null; note?: string | null; ordinal?: number | null; updated_at?: string }
         Relationships: []
       }
       workspace_memberships: {
