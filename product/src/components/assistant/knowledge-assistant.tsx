@@ -10,7 +10,7 @@ import {
   type ChatModelAdapter,
 } from '@assistant-ui/react'
 import { SendHorizontal, ShieldCheck, Sparkles } from 'lucide-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import {
   respondToKnowledgeAssistant,
   type KnowledgeAssistantContext,
@@ -26,15 +26,23 @@ const SUGGESTED_PROMPTS = [
 export function KnowledgeAssistant({
   context,
   enabled = true,
+  presentation = 'inline',
 }: {
   context: KnowledgeAssistantContext
   enabled?: boolean
+  presentation?: 'inline' | 'floating'
 }) {
   if (!enabled) return null
-  return <KnowledgeAssistantRuntime context={context} />
+  return <KnowledgeAssistantRuntime context={context} presentation={presentation} />
 }
 
-function KnowledgeAssistantRuntime({ context }: { context: KnowledgeAssistantContext }) {
+function KnowledgeAssistantRuntime({
+  context,
+  presentation,
+}: {
+  context: KnowledgeAssistantContext
+  presentation: 'inline' | 'floating'
+}) {
   const [expanded, setExpanded] = useState(false)
   const adapter = useMemo<ChatModelAdapter>(() => ({
     async run({ messages }) {
@@ -48,8 +56,17 @@ function KnowledgeAssistantRuntime({ context }: { context: KnowledgeAssistantCon
 
   const runtime = useLocalRuntime(adapter)
 
+  if (presentation === 'floating' && !expanded) {
+    return (
+      <button className="dosAssistantFloatingTrigger" type="button" onClick={() => setExpanded(true)}>
+        <span className="dosAssistantIcon" aria-hidden><Sparkles size={18} /></span>
+        <span><strong>Ti aiuto da qui</strong><small>Assistente contestuale · nessuna modifica automatica</small></span>
+      </button>
+    )
+  }
+
   return (
-    <section className="dosAssistantPanel" aria-labelledby="knowledge-assistant-title">
+    <section className={`dosAssistantPanel ${presentation === 'floating' ? 'floating' : ''}`} aria-labelledby="knowledge-assistant-title">
       <div className="dosAssistantHeader">
         <div className="dosAssistantIdentity">
           <span className="dosAssistantIcon" aria-hidden><Sparkles size={19} /></span>
@@ -202,8 +219,4 @@ function extractLastUserText(messages: readonly { role: string; content: readonl
     }
     return []
   }).join('\n')
-}
-
-export function AssistantOptionalBoundary({ enabled, children }: { enabled: boolean; children: ReactNode }) {
-  return enabled ? children : null
 }
