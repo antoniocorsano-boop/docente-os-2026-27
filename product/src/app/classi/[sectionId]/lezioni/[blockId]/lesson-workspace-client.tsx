@@ -4,7 +4,9 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import {
   resolveHumanTaskLessonTiming,
+  resolveHumanTaskStepResources,
   type HumanTaskLessonProjection,
+  type HumanTaskLessonTiming,
 } from '@/core/presentation/human-task-content'
 import { recordLessonExecution } from '../actions'
 
@@ -58,8 +60,11 @@ export default function LessonWorkspaceClient({
   const recorded = progress.status === 'SVOLTO' || progress.status === 'RECUPERATO' || progress.status === 'RIMODULATO'
   const preparedCount = Object.values(prepared).filter(Boolean).length
   const observedCount = Object.values(observed).filter(Boolean).length
-  const studentSheet = projection.resources.find((resource) => resource.kind === 'STUDENT_SHEET') ?? null
-  const exitTicket = projection.resources.find((resource) => resource.kind === 'EXIT_TICKET') ?? null
+  const preparationResources = projection.resources.filter((resource) => resource.kind === 'STUDENT_SHEET')
+  const currentStepResources = useMemo(
+    () => resolveHumanTaskStepResources(projection, currentStep),
+    [projection, currentStep],
+  )
   const modeIndex = useMemo(() => MODE_LABELS.findIndex((item) => item.key === mode), [mode])
   const timing = useMemo(() => resolveHumanTaskLessonTiming(projection), [projection])
 
@@ -121,12 +126,12 @@ export default function LessonWorkspaceClient({
             ))}
           </section>
 
-          {studentSheet ? (
-            <section className="lessonResourceCard">
-              <div><span>MATERIALE ALUNNI</span><h3>{studentSheet.title}</h3><p>{studentSheet.instruction}</p></div>
-              <details><summary>Vedi la scheda</summary><ol>{studentSheet.prompts.map((prompt) => <li key={prompt}>{prompt}</li>)}</ol></details>
+          {preparationResources.map((resource) => (
+            <section className="lessonResourceCard" key={resource.id}>
+              <div><span>MATERIALE ALUNNI</span><h3>{resource.title}</h3><p>{resource.instruction}</p></div>
+              <details><summary>Vedi la scheda</summary><ol>{resource.prompts.map((prompt) => <li key={prompt}>{prompt}</li>)}</ol></details>
             </section>
-          ) : null}
+          ))}
 
           <details className="lessonDisclosure">
             <summary>Cosa devono imparare in questa lezione</summary>
@@ -145,7 +150,7 @@ export default function LessonWorkspaceClient({
           <section className="lessonTaskLead compact">
             <p>IN CLASSE · PASSO {activeStep + 1} DI {projection.steps.length}</p>
             <h2 id="teach-title">{currentStep.title}</h2>
-            <span>{currentStep.minutes} min · {currentStep.instruction}</span>
+            <span>{stepLead(currentStep.minutes, currentStep.instruction)}</span>
           </section>
 
           <section className="lessonCurrentStep">
@@ -153,8 +158,7 @@ export default function LessonWorkspaceClient({
             <div><strong>{currentStep.title}</strong><p>{currentStep.instruction}</p>{currentStep.cue ? <small>{currentStep.cue}</small> : null}</div>
           </section>
 
-          {currentStep.id === 'S04' && studentSheet ? <InlineResource resource={studentSheet} /> : null}
-          {currentStep.id === 'S08' && exitTicket ? <InlineResource resource={exitTicket} /> : null}
+          {currentStepResources.map((resource) => <InlineResource resource={resource} key={resource.id} />)}
 
           <div className="lessonStepActions">
             <button type="button" onClick={() => setActiveStep((value) => Math.max(0, value - 1))} disabled={activeStep === 0}>Indietro</button>
@@ -163,7 +167,7 @@ export default function LessonWorkspaceClient({
 
           <details className="lessonDisclosure">
             <summary>Vedi tutta la sequenza</summary>
-            <div className="lessonSequenceList">{projection.steps.map((step, index) => <button type="button" key={step.id} onClick={() => setActiveStep(index)}><span>{index + 1}</span><div><strong>{step.title}</strong><small>{step.minutes} min</small></div></button>)}</div>
+            <div className="lessonSequenceList">{projection.steps.map((step, index) => <button type="button" key={step.id} onClick={() => setActiveStep(index)}><span>{index + 1}</span><div><strong>{step.title}</strong>{step.minutes !== null ? <small>{step.minutes} min</small> : null}</div></button>)}</div>
           </details>
         </main>
       ) : null}
@@ -208,7 +212,7 @@ export default function LessonWorkspaceClient({
             <input type="hidden" name="sectionId" value={sectionId} />
             <input type="hidden" name="blockId" value={block.id} />
             <label><span>Com’è andata?</span><select name="status" defaultValue={recordableDefault(progress.status)}><option value="SVOLTO">Svolta come prevista</option><option value="RIMODULATO">Rimodulata</option><option value="RECUPERATO">Lezione di recupero</option></select></label>
-            <label><span>Evidenza o nota <small>facoltativa</small></span><textarea name="evidenceNote" rows={4} maxLength={2000} defaultValue={progress.evidenceNote ?? ''} placeholder="Per esempio: scheda completata; tempi ridotti; da riprendere il lessico…" /></label>
+            <label><span>Evidenza o nota <small>facoltativa</small></span><textarea name="evidenceNote" rows={4} maxLength={2000} defaultValue={progress.evidenceNote ?? ''} placeholder="Per esempio: scheda completata; attività rimodulata; procedura da riprendere…" /></label>
             <div className="lessonRecordEvidence"><span>Evidenza prevista</span><strong>{projection.evidence}</strong><small>È un promemoria: viene registrato solo ciò che scrivi tu.</small></div>
             <button className="primary" type="submit">{recorded ? 'Aggiorna e torna alla classe' : 'Salva e continua'}</button>
           </form>
@@ -235,16 +239,14 @@ function ContextSupport({
   recorded,
 }: {
   mode: LessonWorkspaceMode
-  timing: { durationMinutes: number; guidedMinutes: number; flexibleMinutes: number }
+  timing: HumanTaskLessonTiming
   recorded: boolean
 }) {
   let content: string
   if (mode === 'prepare') {
     content = 'Le spunte servono solo come promemoria mentre prepari: non vengono salvate e non devi completarle tutte per iniziare.'
   } else if (mode === 'teach') {
-    content = timing.flexibleMinutes > 0
-      ? `La fonte scandisce ${timing.guidedMinutes} dei ${timing.durationMinutes} minuti: ${timing.flexibleMinutes} minuti restano volutamente non assegnati. I tempi sono una guida, non un timer.`
-      : 'I tempi sono una guida, non un timer: puoi adattarli alla risposta reale della classe.'
+    content = timingHelp(timing)
   } else if (mode === 'observe') {
     content = 'Non devi spuntare tutti gli indicatori. Usali per richiamare l’attenzione su poche evidenze utili; le spunte non vengono salvate.'
   } else {
@@ -256,7 +258,28 @@ function ContextSupport({
 }
 
 function InlineResource({ resource }: { resource: HumanTaskLessonProjection['resources'][number] }) {
-  return <section className="lessonInlineResource"><span>{resource.kind === 'EXIT_TICKET' ? 'CHIUSURA' : 'MATERIALE ALUNNI'}</span><h3>{resource.title}</h3><p>{resource.instruction}</p><ul>{resource.prompts.map((prompt) => <li key={prompt}>{prompt}</li>)}</ul></section>
+  return <section className="lessonInlineResource"><span>{resourceKindLabel(resource.kind)}</span><h3>{resource.title}</h3><p>{resource.instruction}</p><ul>{resource.prompts.map((prompt) => <li key={prompt}>{prompt}</li>)}</ul></section>
+}
+
+function timingHelp(timing: HumanTaskLessonTiming) {
+  if (timing.status === 'UNSPECIFIED') {
+    return `La fonte indica ${formatDuration(timing.durationMinutes)} complessive ma non assegna minuti alle singole attività. Segui l’ordine e adatta i tempi alla risposta reale della classe.`
+  }
+  if (timing.status === 'MIXED') {
+    return `La fonte assegna un tempo solo ad alcune attività (${timing.knownMinutes} minuti descritti). Non vengono dedotte durate per i passaggi senza tempo.`
+  }
+  if (timing.status === 'PARTIAL') {
+    return `La fonte scandisce ${timing.knownMinutes} dei ${timing.durationMinutes} minuti: ${timing.unallocatedMinutes} minuti restano non assegnati. I tempi sono una guida, non un timer.`
+  }
+  return 'La fonte temporizza l’intera sequenza. I tempi restano una guida e possono essere adattati alla risposta reale della classe.'
+}
+
+function stepLead(minutes: number | null, instruction: string) {
+  return minutes === null ? instruction : `${minutes} min · ${instruction}`
+}
+
+function resourceKindLabel(kind: HumanTaskLessonProjection['resources'][number]['kind']) {
+  return kind === 'EXIT_TICKET' ? 'CHIUSURA' : 'MATERIALE ALUNNI'
 }
 
 function recordableDefault(status: string) {
