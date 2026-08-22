@@ -1,7 +1,7 @@
 # DOCENTE OS — Stato generale consolidato
 
 Data: 2026-08-22  
-Baseline runtime: `develop` @ `2067c130c217730ae6f74a8cf664f85ba207c50c`  
+Baseline runtime: `develop` @ `f8a52de795f3a60813c096d3c0958ea2cfa08a58`  
 Stato documento: CANONICAL CHECKPOINT
 
 ## 1. Sintesi
@@ -13,10 +13,10 @@ Il programma Product Experience ha raggiunto:
 - **X0 COMPLETE** — architettura esperienza e documenti canonici;
 - **X1 COMPLETE** — Tailwind v4 e component foundation open-code;
 - **X2 COMPLETE** — AppShell professionale, responsive navigation e command palette;
-- **X3 TECHNICALLY COMPLETE** — assistant-ui contestuale READ_ONLY/PROPOSE;
-- **X3 UX REFINED** — navigazione raggruppata e assistente meno invasivo, in attesa di nuova accettazione interattiva.
+- **X3 TECHNICALLY COMPLETE / UX REFINED** — assistant-ui contestuale READ_ONLY/PROPOSE, in attesa di accettazione interattiva;
+- **Settings Guided Contract COMPLETE** — configurazione guidata e gestione del contesto sulla stessa sorgente canonica.
 
-Il principio temporale è ora congelato: **Orario e Calendario sono domini indipendenti**. Un futuro servizio `Temporal Projection` potrà leggerli insieme senza introdurre dipendenze reciproche.
+Il principio temporale rimane congelato: **Orario e Calendario sono domini indipendenti**. Un futuro servizio `Temporal Projection` potrà leggerli insieme senza introdurre dipendenze reciproche.
 
 ## 2. Runtime corrente
 
@@ -47,7 +47,45 @@ Residui:
 - recovery password da rendere più guidato;
 - production URL definitivo da congelare.
 
-## 4. Conoscenza
+## 4. Impostazioni / contesto professionale
+
+Stato: **GUIDED RUNTIME COMPLETE / INTERACTIVE ACCEPTANCE PENDING**.
+
+Contratto canonico:
+
+- `docs/architecture/SETTINGS_CANONICAL_SPEC.md` — persistenza e invarianti;
+- `docs/product/SETTINGS_EXPERIENCE_CONTRACT.md` — esperienza guidata;
+- `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` — tono e microcopy.
+
+Le cinque aree sono:
+
+1. **Tu e la scuola** — chi sei e dove insegni;
+2. **Discipline** — che cosa insegni;
+3. **Classi** — con quali classi lavori;
+4. **Cattedra** — in quali classi insegni quale disciplina e per quante ore/minuti;
+5. **Organizzazione scolastica** — preset abituali usati per costruire più velocemente la griglia Orario.
+
+La pagina `/impostazioni` ora:
+
+- usa AppShell;
+- mostra `N/5 aree pronte`;
+- calcola `Completo / Da completare / Da controllare` da un read model deterministico;
+- spiega per ogni area `Serve a / Usato in / Non modifica`;
+- indica sempre il prossimo passo utile;
+- gestisce la Cattedra sugli stessi `teaching_assignments` dell'Orario;
+- non crea slot o versioni Orario quando viene aggiunta una Cattedra;
+- legge la Cattedra tramite reader read-only senza creare una bozza Orario;
+- non modifica Calendario, Attività o Piano annuale salvo il legame canonico già esistente delle classi con `annual_plan_sections`.
+
+Formula utente congelata:
+
+```text
+Classe = esiste nel mio contesto
+Cattedra = la insegno
+Orario = quando la insegno ricorrentemente
+```
+
+## 5. Conoscenza
 
 Disponibile:
 
@@ -63,7 +101,7 @@ Disponibile:
 
 X3 non dispone di tool di scrittura e non persiste la conversazione.
 
-## 5. Oggi / Attività
+## 6. Oggi / Attività
 
 `PlannerTask` resta l'oggetto canonico delle cose da fare.
 
@@ -75,12 +113,12 @@ Disponibile:
 - waiting/done/reopen;
 - provenienza;
 - collegamenti da Conoscenza;
-- viste Da fare ora / Oggi / settimana / attesa / senza data;
+- viste operative;
 - quick capture.
 
 Una attività con data non diventa automaticamente un evento di Calendario.
 
-## 6. Piano annuale
+## 7. Piano annuale
 
 Disponibile:
 
@@ -93,11 +131,11 @@ Disponibile:
 
 Il Piano annuale esiste indipendentemente da Orario e Calendario.
 
-## 7. Orario
+## 8. Orario
 
 ### T1 — COMPLETE
 
-- settings -> classi/discipline -> cattedra -> versione -> slot;
+- classi/discipline -> Cattedra -> versione -> slot;
 - assignment con minuti settimanali;
 - versioni DRAFT;
 - slot LESSON/DISPOSITION/RECEPTION/OTHER;
@@ -114,15 +152,15 @@ Il Piano annuale esiste indipendentemente da Orario e Calendario.
 - responsive;
 - nessun consumo B01–B33.
 
-La vista Orario è ora migrata alla AppShell comune.
+La vista Orario usa la AppShell comune e legge la stessa Cattedra configurabile da Impostazioni.
 
 ### Invariante temporale
 
 **Orario non dipende dal Calendario.**
 
-Gestisce autonomamente struttura settimanale, cattedra, slot e versioni.
+Gestisce autonomamente struttura settimanale, Cattedra, slot e versioni.
 
-## 8. Calendario e composizione temporale
+## 9. Calendario e composizione temporale
 
 Il Calendario sarà un dominio separato per:
 
@@ -139,22 +177,15 @@ Timetable read model + Calendar read model -> ProjectedOccurrence[]
 
 Né Orario né Calendario importeranno repository o tipi dell'altro dominio.
 
-Documenti canonici:
+## 10. AppShell e modello mentale
 
-- `docs/architecture/WORK_TIME_MENTAL_MODEL.md`;
-- `docs/architecture/TEMPORAL_COMPOSITION_CANONICAL_SPEC.md`;
-- `docs/architecture/TIMETABLE_CANONICAL_SPEC.md` per le entità verticali Orario.
-
-## 9. AppShell e modello mentale
-
-Le superfici principali usano progressivamente la shell condivisa.
-
-Baseline consolidata:
+Baseline AppShell:
 
 - Conoscenza lista/dettaglio;
 - Oggi;
 - Piano annuale;
-- Orario.
+- Orario;
+- Impostazioni.
 
 Navigazione desktop raggruppata in:
 
@@ -164,9 +195,9 @@ Navigazione desktop raggruppata in:
 - **Risorse** — Conoscenza;
 - **Sistema** — Impostazioni.
 
-Questo raggruppamento è presentazionale: non fonde i relativi domini.
+Il raggruppamento è presentazionale: non fonde i domini.
 
-## 10. Assistente contestuale
+## 11. Assistente contestuale
 
 X3 baseline:
 
@@ -175,18 +206,12 @@ X3 baseline:
 - provider-neutral local adapter;
 - READ_ONLY / PROPOSE;
 - nessuna scrittura;
-- nessuna nuova persistenza.
-
-Raffinamento `2067c130…`:
-
-- trigger flottante più piccolo;
-- pannello aperto meno invasivo;
-- copy di sicurezza più breve;
-- documento sempre utilizzabile senza assistente.
+- nessuna nuova persistenza;
+- trigger e pannello raffinati per ridurre la competizione con il contenuto.
 
 X4 resta **HOLD** fino all'accettazione visiva della versione raffinata.
 
-## 11. Programma temporale corretto
+## 12. Programma temporale corretto
 
 ### T3A — Timetable lifecycle
 
@@ -211,40 +236,40 @@ X4 resta **HOLD** fino all'accettazione visiva della versione raffinata.
 - avanzamento da minuti/evidenze effettive;
 - nessuna riscrittura del canone.
 
-## 12. Gate correnti
+## 13. Gate correnti
 
-Ultima slice runtime, PR #36:
+Ultima slice runtime, PR #38:
 
-- npm install PASS;
-- test PASS;
+- test PASS, inclusi i nuovi test del read model Impostazioni;
 - TypeScript PASS;
 - lint PASS;
 - build PASS;
-- Product CI #220 PASS;
-- Netlify `READY` sul merge `2067c130…`;
+- Product CI #224 PASS;
+- Netlify `READY` sul merge `f8a52de…`;
 - nessuna migrazione DB;
 - RLS invariata;
+- nessuna bozza Orario creata dalla sola lettura della Cattedra in Impostazioni;
 - X4 non autorizzata.
 
-## 13. Rischi aperti
+## 14. Rischi aperti
 
 1. alcune superfici secondarie conservano ancora shell/CSS legacy;
 2. X3 raffinato deve essere verificato nuovamente su desktop e mobile;
-3. nessun provider LLM reale è ancora necessario/autorizzato per X3;
+3. Impostazioni guidate devono essere validate con il workspace reale, soprattutto stati delle classi e Cattedra;
 4. T3A/B/C devono mantenere rigorosamente le dipendenze definite nel Temporal Composition Canonical Spec;
 5. produzione definitiva e recovery UX restano da congelare.
 
-## 14. Prossima azione
+## 15. Prossima azione
 
-**Accettazione interattiva della baseline `2067c130…`.**
+**Accettazione interattiva di Impostazioni + X3.**
 
-Controllare:
+Per Impostazioni verificare:
 
-1. sidebar raggruppata;
-2. chiarezza della distinzione Oggi / Piano annuale / Orario / Conoscenza;
-3. Orario esplicitamente autonomo dal Calendario;
-4. assistente chiuso poco invasivo;
-5. assistente aperto utilizzabile senza coprire eccessivamente il documento;
+1. correttezza del riepilogo 5 aree;
+2. leggibilità di `Serve a / Usato in / Non modifica`;
+3. classi provvisorie come `Da controllare`;
+4. Cattedra mancante come prossimo passo;
+5. aggiunta/modifica della Cattedra e immediata disponibilità in Orario senza creare lezioni;
 6. comportamento mobile.
 
-Dopo accettazione, il prossimo sviluppo temporale autorizzabile è **T3A — Timetable lifecycle**. X4 resta separato e in HOLD.
+Dopo questa accettazione, il prossimo sviluppo temporale autorizzabile resta **T3A — Timetable lifecycle**. X4 rimane separato e in HOLD.
