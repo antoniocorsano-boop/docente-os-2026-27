@@ -27,6 +27,7 @@ export default async function HomePage() {
           <Link className="navItem" href="/progetta"><span aria-hidden>✦</span> Progetta</Link>
           <Link className="navItem" href="/knowledge"><span aria-hidden>◇</span> Conoscenza</Link>
           <Link className="navItem" href="/classi"><span aria-hidden>▦</span> Classi</Link>
+          <Link className="navItem" href="/impostazioni"><span aria-hidden>⚙</span> Impostazioni</Link>
         </nav>
         <div className="navFooter"><span className="workspaceDot" aria-hidden /><div><strong>{context.workspace.name}</strong><span>{context.role}</span></div></div>
       </aside>
@@ -47,7 +48,7 @@ export default async function HomePage() {
           <p>Ogni passaggio mantiene provenienza, generazione e validazione umana.</p>
         </section>
       </main>
-      <nav className="bottomNav" aria-label="Navigazione mobile"><Link className="active" href="/"><span aria-hidden>⌂</span><small>Home</small></Link><Link href="/planner"><span aria-hidden>◎</span><small>Oggi</small></Link><Link href="/progetta"><span aria-hidden>✦</span><small>Progetta</small></Link><Link href="/classi"><span aria-hidden>▦</span><small>Classi</small></Link></nav>
+      <nav className="bottomNav" aria-label="Navigazione mobile"><Link className="active" href="/"><span aria-hidden>⌂</span><small>Home</small></Link><Link href="/planner"><span aria-hidden>◎</span><small>Oggi</small></Link><Link href="/progetta"><span aria-hidden>✦</span><small>Progetta</small></Link><Link href="/classi"><span aria-hidden>▦</span><small>Classi</small></Link><Link href="/impostazioni"><span aria-hidden>⚙</span><small>Impostazioni</small></Link></nav>
     </div>
   )
 }
