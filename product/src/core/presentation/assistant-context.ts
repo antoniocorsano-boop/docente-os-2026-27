@@ -143,7 +143,7 @@ export function respondToKnowledgeAssistant(context: KnowledgeAssistantContext, 
       actionKind: 'PROPOSE',
       text: [
         '**Ho trovato**',
-        'La richiesta implica una modifica. In questa fase l’assistente non esegue scritture e non cambia documenti, Planner o fonti esterne.',
+        'La richiesta implica una modifica. In questa fase l’assistente non esegue scritture e non cambia documenti, attività operative, Piano annuale o fonti esterne.',
         '',
         '**Ti propongo**',
         manualPath(context, normalized),
@@ -258,7 +258,7 @@ function nextStepResponse(context: KnowledgeAssistantContext) {
   if (context.missingInformation.length) {
     proposal = `Completa prima “${context.missingInformation[0]}”. Questo riduce il rischio di usare il contenuto nel contesto sbagliato.`
   } else if (proposalCount > 0) {
-    proposal = `Rivedi le ${proposalCount} proposte individuate nel contenuto e decidi quali meritano di diventare operative.`
+    proposal = `Rivedi le ${proposalCount} proposte individuate nel contenuto e decidi quali meritano di diventare attività operative.`
   } else if (context.knowledge.hasOrganizedDocument) {
     proposal = 'Leggi la versione organizzata e collegala al lavoro didattico solo se è pertinente alla classe o disciplina corrente.'
   } else {
@@ -279,7 +279,7 @@ function nextStepResponse(context: KnowledgeAssistantContext) {
 
 function manualPath(context: KnowledgeAssistantContext, normalizedPrompt: string) {
   if (containsAny(normalizedPrompt, ['planner', 'attività', 'task', 'scadenza'])) {
-    return 'Usa “Crea attività nel Planner” nella pagina del documento dopo aver controllato titolo, data e priorità.'
+    return 'Usa “Crea attività” nella pagina del documento dopo aver controllato titolo, data e priorità. L’attività comparirà in Oggi; non modifica il Piano annuale e non crea un evento nel Calendario.'
   }
   if (containsAny(normalizedPrompt, ['contesto', 'classe', 'disciplina', 'classific'])) {
     return 'Usa “Contesto professionale” per correggere classe, disciplina o stato del controllo.'

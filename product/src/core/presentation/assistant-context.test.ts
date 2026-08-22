@@ -74,11 +74,13 @@ test('read-only response reports authentic proposal counts', () => {
 })
 
 test('write-like request is downgraded to a proposal and never claims a write occurred', () => {
-  const response = respondToKnowledgeAssistant(build(), 'Crea una attività nel Planner')
+  const response = respondToKnowledgeAssistant(build(), 'Crea una attività')
 
   assert.equal(response.actionKind, 'PROPOSE')
   assert.match(response.text, /non esegue scritture/i)
-  assert.match(response.text, /Crea attività nel Planner/)
+  assert.match(response.text, /Crea attività/)
+  assert.match(response.text, /non modifica il Piano annuale/i)
+  assert.match(response.text, /non crea un evento nel Calendario/i)
   assert.doesNotMatch(response.text, /attività (è stata|creata)/i)
 })
 

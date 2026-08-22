@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { AppShell } from '@/components/app-shell/app-shell'
 import type { PlannerTask } from '@/core/domain/planner-task'
 import { parseKnowledgeTaskSourceRef } from '@/core/domain/knowledge-task-source'
 import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
@@ -22,7 +23,7 @@ type SectionKey = 'now' | 'today' | 'week' | 'waiting' | 'undated'
 const sourceLabels: Record<PlannerTask['sourceKind'], string> = {
   MANUAL: 'Inserita da te',
   COMMUNICATION: 'Comunicazione',
-  CALENDAR: 'Calendario',
+  CALENDAR: 'Dal calendario',
   TEACHING: 'Didattica',
   DOCUMENT: 'Documento',
   SYSTEM: 'DOCENTE OS',
@@ -48,100 +49,76 @@ export default async function PlannerPage() {
   }).format(new Date())
 
   return (
-    <div className="appShell">
-      <aside className="navRail" aria-label="Navigazione principale">
-        <div className="brandLockup">
-          <span className="brandMark">D</span>
-          <div>
-            <strong>DOCENTE OS</strong>
-            <span>{context.academicYear?.label ?? 'Anno da configurare'}</span>
-          </div>
+    <AppShell
+      active="today"
+      academicYearLabel={context.academicYear?.label}
+      workspaceName={context.workspace.name}
+      role={context.role}
+      contentClassName="plannerSurface"
+    >
+      <section className="plannerHeader plannerHeaderClarified">
+        <div>
+          <p className="contextLine">Attività operative · {context.workspace.name}</p>
+          <h1>Oggi</h1>
+          <p className="dayLine">{capitalize(humanDate)}</p>
+          <p className="plannerPurpose">Qui trovi le cose che devi fare. Una data o una scadenza organizza un’attività: non la trasforma automaticamente in un evento del Calendario.</p>
         </div>
-        <nav className="navList">
-          <Link className="navItem" href="/"><span aria-hidden>⌂</span> Home</Link>
-          <Link className="navItem active" href="/planner"><span aria-hidden>◎</span> Oggi</Link>
-          <Link className="navItem" href="/progetta"><span aria-hidden>✦</span> Progetta</Link>
-          <Link className="navItem" href="/knowledge"><span aria-hidden>◇</span> Conoscenza</Link>
-          <Link className="navItem" href="/classi"><span aria-hidden>▦</span> Classi</Link>
-        </nav>
-        <div className="navFooter">
-          <span className="workspaceDot" aria-hidden />
-          <div><strong>{context.workspace.name}</strong><span>{context.role}</span></div>
-        </div>
-      </aside>
-
-      <main className="workSurface">
-        <header className="mobileHeader">
-          <div>
-            <span className="mobileEyebrow">DOCENTE OS</span>
-            <strong>{context.academicYear?.label ?? 'Anno scolastico'}</strong>
-          </div>
-          <form action="/auth/signout" method="post"><button className="iconButton" type="submit" aria-label="Esci">↗</button></form>
-        </header>
-
-        <section className="plannerHeader">
-          <div>
-            <p className="contextLine">{context.workspace.name} · {context.academicYear?.label ?? 'Anno scolastico'}</p>
-            <h1>Oggi</h1>
-            <p className="dayLine">{capitalize(humanDate)}</p>
-          </div>
-          <form action="/auth/signout" method="post" className="desktopSignout">
-            <button className="secondaryButton" type="submit">Esci</button>
-          </form>
-        </section>
-
-        <section className="workloadStrip" aria-label="Riepilogo operativo">
-          <div><strong>{openTasks.length}</strong><span>aperte</span></div>
-          <div className={overdueCount ? 'metricAlert' : ''}><strong>{overdueCount}</strong><span>scadute</span></div>
-          <div><strong>{todayCount}</strong><span>per oggi</span></div>
-          <p>{todayCount === 0 ? 'Non hai attività pianificate per oggi. Puoi dedicarti alla progettazione o anticipare qualcosa dalla settimana.' : todayCount <= 5 ? 'Il carico di oggi è contenuto: puoi procedere dalle attività più urgenti.' : 'La giornata è densa: valuta cosa è davvero prioritario e cosa può essere spostato.'}</p>
-        </section>
-
-        <form action={createPlannerTask} className="quickCapture advancedCapture">
-          <div className="captureMain">
-            <span className="capturePlus" aria-hidden>＋</span>
-            <label className="srOnly" htmlFor="new-task">Nuova attività</label>
-            <input id="new-task" name="title" type="text" maxLength={240} placeholder="Aggiungi un’attività…" required />
-            <button type="submit">Aggiungi</button>
-          </div>
-          <div className="captureOptions" aria-label="Opzioni nuova attività">
-            <label>
-              <span>Quando</span>
-              <select name="destination" defaultValue="today">
-                <option value="today">Oggi</option>
-                <option value="tomorrow">Domani</option>
-                <option value="week">Questa settimana</option>
-                <option value="undated">Senza data</option>
-              </select>
-            </label>
-            <label>
-              <span>Priorità</span>
-              <select name="priority" defaultValue="NORMAL">
-                <option value="NORMAL">Normale</option>
-                <option value="HIGH">Alta</option>
-                <option value="URGENT">Urgente</option>
-                <option value="LOW">Bassa</option>
-              </select>
-            </label>
-          </div>
+        <form action="/auth/signout" method="post" className="desktopSignout">
+          <button className="secondaryButton" type="submit">Esci</button>
         </form>
+      </section>
 
-        <div className="taskSections">
-          <TaskSection title="Da fare ora" tone="critical" tasks={sections.now} today={today} />
-          <TaskSection title="Oggi" tasks={sections.today} today={today} />
-          <TaskSection title="Questa settimana" tasks={sections.week} today={today} />
-          <TaskSection title="In attesa" tone="waiting" tasks={sections.waiting} today={today} />
-          <TaskSection title="Senza data" tone="muted" tasks={sections.undated} today={today} />
+      <section className="workObjectGuide" aria-label="Come si distinguono lavoro e tempo in DOCENTE OS">
+        <div className="active"><span>QUI</span><strong>Attività</strong><small>Cose da fare e priorità.</small></div>
+        <div><span>DIDATTICA</span><strong>Piano annuale</strong><small>Cosa insegnare e avanzamento.</small></div>
+        <div><span>SETTIMANA</span><strong>Orario</strong><small>Quando insegni ricorrentemente.</small></div>
+        <div className="future"><span>DATE REALI · T3</span><strong>Calendario</strong><small>Eventi e occorrenze effettive.</small></div>
+      </section>
+
+      <section className="workloadStrip" aria-label="Riepilogo operativo">
+        <div><strong>{openTasks.length}</strong><span>aperte</span></div>
+        <div className={overdueCount ? 'metricAlert' : ''}><strong>{overdueCount}</strong><span>scadute</span></div>
+        <div><strong>{todayCount}</strong><span>per oggi</span></div>
+        <p>{todayCount === 0 ? 'Non hai attività pianificate per oggi. Puoi dedicarti alla progettazione o anticipare qualcosa dalla settimana.' : todayCount <= 5 ? 'Il carico di oggi è contenuto: puoi procedere dalle attività più urgenti.' : 'La giornata è densa: valuta cosa è davvero prioritario e cosa può essere spostato.'}</p>
+      </section>
+
+      <form action={createPlannerTask} className="quickCapture advancedCapture">
+        <div className="captureMain">
+          <span className="capturePlus" aria-hidden>＋</span>
+          <label className="srOnly" htmlFor="new-task">Nuova attività</label>
+          <input id="new-task" name="title" type="text" maxLength={240} placeholder="Aggiungi un’attività da fare…" required />
+          <button type="submit">Aggiungi</button>
         </div>
-      </main>
+        <div className="captureOptions" aria-label="Opzioni nuova attività">
+          <label>
+            <span>Quando vuoi farla</span>
+            <select name="destination" defaultValue="today">
+              <option value="today">Oggi</option>
+              <option value="tomorrow">Domani</option>
+              <option value="week">Questa settimana</option>
+              <option value="undated">Senza data</option>
+            </select>
+          </label>
+          <label>
+            <span>Priorità</span>
+            <select name="priority" defaultValue="NORMAL">
+              <option value="NORMAL">Normale</option>
+              <option value="HIGH">Alta</option>
+              <option value="URGENT">Urgente</option>
+              <option value="LOW">Bassa</option>
+            </select>
+          </label>
+        </div>
+      </form>
 
-      <nav className="bottomNav" aria-label="Navigazione mobile">
-        <Link href="/"><span aria-hidden>⌂</span><small>Home</small></Link>
-        <Link className="active" href="/planner"><span aria-hidden>◎</span><small>Oggi</small></Link>
-        <Link href="/progetta"><span aria-hidden>✦</span><small>Progetta</small></Link>
-        <Link href="/classi"><span aria-hidden>▦</span><small>Classi</small></Link>
-      </nav>
-    </div>
+      <div className="taskSections">
+        <TaskSection title="Da fare ora" tone="critical" tasks={sections.now} today={today} />
+        <TaskSection title="Oggi" tasks={sections.today} today={today} />
+        <TaskSection title="Questa settimana" tasks={sections.week} today={today} />
+        <TaskSection title="In attesa" tone="waiting" tasks={sections.waiting} today={today} />
+        <TaskSection title="Senza data" tone="muted" tasks={sections.undated} today={today} />
+      </div>
+    </AppShell>
   )
 }
 
@@ -288,7 +265,7 @@ function formatShortDate(value: string) {
 }
 
 function formatPlannedDate(value: string) {
-  return `Pianificata ${new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`))}`
+  return `Da fare ${new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`))}`
 }
 
 function capitalize(value: string) {
