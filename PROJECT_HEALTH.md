@@ -5,12 +5,13 @@ Updated: 2026-08-22
 ```text
 STATE: ACTIVE_DEVELOPMENT_STABLE
 CANONICAL_DEV_BRANCH: develop
-BASELINE_COMMIT: eba03168bcb20892a61508fc8ef37bf7e6a60367
+BASELINE_COMMIT: aeb66cd8d1752de1ee4f8de33103c0617db330e6
 CANONICAL_DEV_RUNTIME: Netlify deploy preview for develop
 CI_GATE: test + typecheck + lint + build
-PRIMARY_FOCUS: X0/X1 Product Experience Platform
-NEXT_ACTION: merge canonical experience package, then implement X1 component foundation
-DONE_WHEN_X1: shadcn/Tailwind foundation is integrated progressively with all gates green and no regression to auth/RLS/data
+PRODUCT_EXPERIENCE: X0 COMPLETE / X1 COMPLETE
+PRIMARY_FOCUS: X2 Professional AppShell
+NEXT_ACTION: implement shared shell + responsive navigation + command palette
+DONE_WHEN_X2: primary navigation is shared, keyboard/mobile usable, CI green, Netlify READY, no auth/RLS/data regression
 ```
 
 ## Current product line
@@ -32,6 +33,9 @@ The static root application is retained as legacy/reference material only. It is
 - Timetable T1 persistence/configuration.
 - Timetable T2 Week/Day visual grid and slot editing.
 - Product Language & Collaboration System v1 rolled out to primary surfaces.
+- Product Experience canonical package X0.
+- Tailwind v4 + open-code component foundation X1.
+- Login migrated as first canonical-component pilot.
 - GitHub Actions product gate passing on merged slices.
 - Netlify Next.js deploy preview on `develop` verified as the operational development runtime.
 
@@ -43,6 +47,7 @@ Status: `DEV_RUNTIME_VERIFIED`.
 
 - project: `docente-os-dev`;
 - `develop` deploy preview is the current reference for interactive acceptance;
+- merge X1 `aeb66cd8…` deployed `READY`;
 - Next.js server handler is deployed;
 - Supabase redirect configuration includes the Netlify preview pattern.
 
@@ -60,45 +65,43 @@ A production alias/provider decision will be made only after release gates are s
 
 ## Current risks
 
-1. UI patterns are still partly local CSS rather than canonical components.
-2. ADR-001's shadcn/Tailwind target is not yet implemented in runtime.
-3. AI collaboration is specified but not yet connected to a real assistant runtime.
-4. Timetable T3/T4 remain pending.
-5. Legacy static files at repository root may mislead agents unless canonical docs are read first.
-6. Production URL and final auth recovery UX remain to be frozen.
+1. shell/navigation markup is still duplicated across primary pages;
+2. UI patterns are partly local CSS while migration proceeds;
+3. AI collaboration is specified but not yet connected to a real assistant runtime;
+4. Timetable T3/T4 remain pending;
+5. production URL and final auth recovery UX remain to be frozen;
+6. legacy static files remain in root and must stay clearly marked as non-canonical.
 
 ## Active program
 
 ### X0 — Product Experience canonical freeze
 
-Status: `IN_PROGRESS` in documentation PR.
-
-Outputs:
-
-- Product Experience Masterplan;
-- ADR-002 Experience Platform;
-- AI Collaboration Canonical Spec;
-- Design System V2;
-- canonical documentation index;
-- updated repository/readme/health state.
+Status: `COMPLETE`.
 
 ### X1 — Component Foundation
 
-Status: `NEXT`.
+Status: `COMPLETE`.
 
-- Tailwind foundation;
-- shadcn component base;
-- semantic tokens;
-- first migrated surface;
-- regression gates.
+Evidence:
+
+- Tailwind v4/PostCSS integrated without preflight;
+- semantic theme layer active;
+- `cn()` utility;
+- Button, Badge, Card, Alert, Separator, Skeleton;
+- shadcn registry configuration;
+- Login pilot migrated;
+- Product CI #200 all green;
+- Netlify deploy READY on merge `aeb66cd8…`.
 
 ### X2 — Professional AppShell
 
-Status: `PLANNED`.
+Status: `NEXT`.
 
-- responsive sidebar/sheet;
+- shared sidebar/navigation;
+- responsive mobile sheet/bottom navigation;
 - command palette;
-- canonical page headers/status feedback.
+- canonical page headers/status feedback;
+- first migration of Conoscenza to the shared shell.
 
 ### X3/X4 — Contextual Assistant
 
@@ -116,7 +119,7 @@ Status: `PENDING`.
 
 ## Development rule
 
-Do not freeze the project waiting for a perfect platform. Continue through small isolated slices, but do not introduce a second competing architecture.
+Continue through small isolated slices; do not introduce a second competing architecture and do not rewrite working modules in bulk.
 
 Every meaningful slice must:
 
