@@ -8,9 +8,8 @@ import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supa
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { updateTimetableDraft } from './actions'
 import TimetableGrid from './TimetableGrid'
-import TimetableTodayFocus from './TimetableTodayFocus'
 import './timetable.css'
-import './cockpit.css'
+import './orario-guidance.css'
 
 export const dynamic = 'force-dynamic'
 
@@ -80,7 +79,7 @@ export default async function TimetablePage() {
         <div>
           <p>ORARIO · {context.academicYear.label}</p>
           <h1>Il tuo orario</h1>
-          <span>La settimana tipo che usi ogni giorno. Oggi viene messo in primo piano, mentre date, eventi ed eccezioni restano fuori dall’Orario.</span>
+          <span>La mappa della tua settimana: ore, classi e tipo di presenza. Ti orienta durante la giornata senza diventare un Calendario.</span>
         </div>
         <div className="timetableHeroActions">
           <Link className="primary" href="/impostazioni#cattedra">Cattedra</Link>
@@ -91,13 +90,12 @@ export default async function TimetablePage() {
       <section className="timetableMetrics" aria-label="Riepilogo dell’orario">
         <article><span>Cattedra</span><strong>{confirmedAssignments}/{timetable.assignments.length}</strong><small>associazioni confermate</small></article>
         <article><span>Monte ore</span><strong>{formatHours(totalAssignedMinutes)}</strong><small>settimanali previste</small></article>
-        <article><span>In griglia</span><strong>{formatHours(totalScheduledMinutes)}</strong><small>lezioni ricorrenti</small></article>
+        <article><span>In griglia</span><strong>{formatHours(totalScheduledMinutes)}</strong><small>lezioni della cattedra</small></article>
         <article><span>Copertura</span><strong>{coverageDelta === 0 ? 'Allineata' : formatHours(Math.abs(coverageDelta))}</strong><small>{coverageDelta > 0 ? 'ancora da collocare' : coverageDelta < 0 ? 'oltre il monte ore' : 'monte ore coperto'}</small></article>
       </section>
 
       <section className="timetableCard timetableGridCard" aria-labelledby="grid-title">
-        <div className="timetableCardHeading"><span>01</span><div><h2 id="grid-title">Settimana tipo</h2><p>La griglia è il centro operativo dell’Orario. Seleziona una cella per aggiungere o modificare una lezione o un altro impegno ricorrente.</p></div><b className="draftBadge">{draftLabel}</b></div>
-        <TimetableTodayFocus days={days} slots={timetable.slots} assignments={gridAssignments} />
+        <div className="timetableCardHeading"><span>01</span><div><h2 id="grid-title">Settimana tipo</h2><p>La griglia è la tua mappa operativa. In ogni ora puoi indicare una lezione della cattedra, una presenza in un’altra classe oppure un altro impegno ricorrente.</p></div><b className="draftBadge">{draftLabel}</b></div>
         <TimetableGrid
           versionId={timetable.draftVersion.id}
           days={days}
@@ -109,7 +107,7 @@ export default async function TimetablePage() {
 
       <section className="timetableCard timetableCoverageCard" aria-labelledby="coverage-title">
         <div className="timetableCoverageHeader">
-          <div className="timetableCardHeading"><span>02</span><div><h2 id="coverage-title">Copertura della cattedra</h2><p>Qui controlli soltanto se le ore della cattedra sono state distribuite nella settimana. La cattedra si modifica nelle Impostazioni.</p></div></div>
+          <div className="timetableCardHeading"><span>02</span><div><h2 id="coverage-title">Copertura della cattedra</h2><p>Controlla se le ore delle tue classi sono distribuite nella settimana. Le presenze in altre classi restano separate e non incidono sul monte ore della cattedra.</p></div></div>
           <Link href="/impostazioni#cattedra">Gestisci cattedra</Link>
         </div>
 
@@ -132,7 +130,7 @@ export default async function TimetablePage() {
             })}
           </div>
         ) : (
-          <div className="timetableEmpty"><strong>Prima configura la cattedra</strong><span>Per inserire lezioni nella settimana tipo servono almeno una classe e una disciplina associate.</span><Link href="/impostazioni#cattedra">Configura la cattedra</Link></div>
+          <div className="timetableEmpty"><strong>La cattedra non è ancora configurata</strong><span>Puoi comunque registrare presenze in altre classi; per inserire le tue lezioni serve almeno una associazione di cattedra.</span><Link href="/impostazioni#cattedra">Configura la cattedra</Link></div>
         )}
       </section>
 
@@ -149,11 +147,6 @@ export default async function TimetablePage() {
           </form>
         </div>
       </details>
-
-      <aside className="timetableContract compact">
-        <strong>Orario autonomo</strong>
-        <span>Questa pagina descrive solo la struttura ricorrente della settimana. Il Calendario non la controlla e non è necessario per usarla.</span>
-      </aside>
     </AppShell>
   )
 }
