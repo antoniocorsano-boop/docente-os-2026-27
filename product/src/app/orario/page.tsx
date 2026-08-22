@@ -54,9 +54,13 @@ export default async function TimetablePage() {
     .map((assignment) => {
       const section = sectionById.get(assignment.sectionId)
       const discipline = disciplineById.get(assignment.disciplineId)
+      const classLabel = section ? sectionLabel(section.grade, section.sectionCode) : 'Sezione'
+      const disciplineLabel = discipline?.name ?? 'Disciplina'
       return {
         id: assignment.id,
-        label: `${section ? sectionLabel(section.grade, section.sectionCode) : 'Sezione'} · ${discipline?.name ?? 'Disciplina'}`,
+        label: `${classLabel} · ${disciplineLabel}`,
+        classLabel,
+        disciplineLabel,
         status: assignment.status,
         weeklyMinutes: assignment.weeklyMinutes,
         scheduledMinutes: slotsByAssignment.get(assignment.id) ?? 0,
@@ -87,15 +91,8 @@ export default async function TimetablePage() {
         </div>
       </section>
 
-      <section className="timetableMetrics" aria-label="Riepilogo dell’orario">
-        <article><span>Cattedra</span><strong>{confirmedAssignments}/{timetable.assignments.length}</strong><small>associazioni confermate</small></article>
-        <article><span>Monte ore</span><strong>{formatHours(totalAssignedMinutes)}</strong><small>settimanali previste</small></article>
-        <article><span>In griglia</span><strong>{formatHours(totalScheduledMinutes)}</strong><small>lezioni della cattedra</small></article>
-        <article><span>Copertura</span><strong>{coverageDelta === 0 ? 'Allineata' : formatHours(Math.abs(coverageDelta))}</strong><small>{coverageDelta > 0 ? 'ancora da collocare' : coverageDelta < 0 ? 'oltre il monte ore' : 'monte ore coperto'}</small></article>
-      </section>
-
       <section className="timetableCard timetableGridCard" aria-labelledby="grid-title">
-        <div className="timetableCardHeading"><span>01</span><div><h2 id="grid-title">Settimana tipo</h2><p>La griglia è la tua mappa operativa. In ogni ora puoi indicare una lezione della cattedra, una presenza in un’altra classe oppure un altro impegno ricorrente.</p></div><b className="draftBadge">{draftLabel}</b></div>
+        <div className="timetableCardHeading"><span>01</span><div><h2 id="grid-title">Settimana tipo</h2><p>La griglia è la tua mappa operativa. Classe e tipo di attività hanno la precedenza; i controlli di configurazione restano in secondo piano.</p></div><b className="draftBadge">{draftLabel}</b></div>
         <TimetableGrid
           versionId={timetable.draftVersion.id}
           days={days}
@@ -103,6 +100,13 @@ export default async function TimetablePage() {
           slots={timetable.slots}
           assignments={gridAssignments}
         />
+      </section>
+
+      <section className="timetableMetrics" aria-label="Riepilogo di configurazione dell’orario">
+        <article><span>Cattedra</span><strong>{confirmedAssignments}/{timetable.assignments.length}</strong><small>associazioni confermate</small></article>
+        <article><span>Monte ore</span><strong>{formatHours(totalAssignedMinutes)}</strong><small>settimanali previste</small></article>
+        <article><span>In griglia</span><strong>{formatHours(totalScheduledMinutes)}</strong><small>lezioni della cattedra</small></article>
+        <article><span>Copertura</span><strong>{coverageDelta === 0 ? 'Allineata' : formatHours(Math.abs(coverageDelta))}</strong><small>{coverageDelta > 0 ? 'ancora da collocare' : coverageDelta < 0 ? 'oltre il monte ore' : 'monte ore coperto'}</small></article>
       </section>
 
       <section className="timetableCard timetableCoverageCard" aria-labelledby="coverage-title">
