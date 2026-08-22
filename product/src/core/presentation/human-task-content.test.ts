@@ -5,6 +5,7 @@ import {
   buildLessonWorkspaceHref,
   hasHumanTaskLessonProjection,
   resolveHumanTaskLessonProjection,
+  resolveHumanTaskLessonTiming,
 } from './human-task-content'
 
 test('resolves the canonical Prima B01 human-task projection', () => {
@@ -17,7 +18,11 @@ test('resolves the canonical Prima B01 human-task projection', () => {
   assert.equal(projection.packCode, 'CAN-PACK-1A')
   assert.equal(projection.durationMinutes, 120)
   assert.equal(projection.steps.length, 8)
-  assert.equal(projection.steps.reduce((total, step) => total + step.minutes, 0), 110)
+  assert.deepEqual(resolveHumanTaskLessonTiming(projection), {
+    durationMinutes: 120,
+    guidedMinutes: 110,
+    flexibleMinutes: 10,
+  })
   assert.equal(projection.resources[0]?.kind, 'STUDENT_SHEET')
   assert.deepEqual(projection.sources.map((source) => source.code), ['CAN-PLAN-1', 'CAN-UDA-1-00', 'CAN-PACK-1A'])
 })
