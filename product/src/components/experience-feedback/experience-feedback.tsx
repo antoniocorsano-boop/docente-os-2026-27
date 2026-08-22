@@ -1,10 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
-import {
-  INITIAL_EXPERIENCE_FEEDBACK_STATE,
-  submitLessonExperienceFeedback,
-} from '@/app/feedback/actions'
+import { submitLessonExperienceFeedback } from '@/app/feedback/actions'
 import styles from './experience-feedback.module.css'
 
 const OPTIONS = [
@@ -15,6 +12,8 @@ const OPTIONS = [
   { value: 1, label: 'Molto male' },
 ] as const
 
+const INITIAL_STATE = { status: 'idle' as const, message: '' }
+
 export function LessonExperienceFeedback({
   sectionId,
   blockId,
@@ -24,7 +23,7 @@ export function LessonExperienceFeedback({
 }) {
   const [state, action, pending] = useActionState(
     submitLessonExperienceFeedback,
-    INITIAL_EXPERIENCE_FEEDBACK_STATE,
+    INITIAL_STATE,
   )
 
   if (state.status === 'success') {
