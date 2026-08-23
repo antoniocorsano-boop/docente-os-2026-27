@@ -1,7 +1,11 @@
 # DOCENTE OS — T4 Didactic Allocation Review
 
 Data: 2026-08-23  
-Stato: HUMAN_DECISION_REQUIRED
+Stato: APPROVED  
+Decisione: APPROVE  
+Governance: SATISFIED  
+Approvato il: 2026-08-23T19:44:00+02:00  
+Ricevuta: `T4-HUMAN-APPROVAL:2026-08-23T19:44+02:00`
 
 ## 1. Contesto già canonico
 
@@ -19,7 +23,7 @@ registro di attuazione
 
 T3A, T3B e T3C forniscono già i due prerequisiti tecnici: un Orario versionato, un Calendario indipendente e una proiezione temporale deterministica che non riscrive i domini sorgente.
 
-Il Piano annuale dispone già di un registro di avanzamento per sezione/blocco con stato, data di esecuzione e nota di evidenza. T4 deve aggiungere la capacità di rappresentare il tempo realmente svolto senza trasformare una previsione in una attestazione didattica automatica.
+Il Piano annuale dispone già di un registro di avanzamento per sezione/blocco con stato, data di esecuzione e nota di evidenza. T4 aggiunge la capacità di rappresentare il tempo realmente svolto senza trasformare una previsione in una attestazione didattica automatica.
 
 ## 2. Problema professionale
 
@@ -33,7 +37,7 @@ Una `ProjectedOccurrence` dice che una lezione era temporalmente prevista e mate
 
 Trasformare automaticamente l'occorrenza in avanzamento del Piano produrrebbe quindi una inferenza professionale non documentata.
 
-## 3. Regola proposta
+## 3. Regola approvata
 
 ### A. Occorrenza ≠ sessione svolta
 
@@ -82,7 +86,7 @@ Una riallocazione effettiva tra blocchi/UDA è una modifica esplicita del regist
 
 Se una data/lezione non viene registrata come TeachingSession, il sistema non presume né presenza né assenza di svolgimento. Rimane semplicemente una occorrenza prevista senza evidenza di esecuzione.
 
-## 4. UX proposta
+## 4. UX approvata
 
 Nel contesto Classe/Oggi, dopo una lezione proiettata il sistema può presentare un'azione compatta:
 
@@ -100,7 +104,7 @@ La superficie successiva mostra:
 
 Il docente non deve conoscere identificativi tecnici, generazioni o provenance IDs: restano nella ricevuta di sistema.
 
-## 5. Invarianti tecniche proposte
+## 5. Invarianti tecniche approvate
 
 - `TeachingSession` è append-only per la provenienza; le rettifiche conservano traccia.
 - allocazioni riferite alla stessa sessione non possono superare i minuti effettivi;
@@ -110,10 +114,10 @@ Il docente non deve conoscere identificativi tecnici, generazioni o provenance I
 - nessun doppio conteggio di minuti trasversali;
 - letture storiche mantengono gli snapshot anche dopo nuove versioni Orario/Calendario/Piano.
 
-## 6. Decisione richiesta
+## 6. Decisione professionale
 
-Approvare o modificare la seguente regola professionale:
+È approvata la seguente regola:
 
 > **L'Orario e il Calendario possono suggerire una TeachingSession, ma non attestano automaticamente ciò che è stato svolto. Il docente registra i minuti effettivi e li alloca esplicitamente a uno o più blocchi Bxx; la somma non può superare la durata reale e gli stessi minuti non possono essere conteggiati due volte. Il raggiungimento del monte minuti può generare una proposta, ma lo stato `SVOLTO` del blocco resta una decisione professionale esplicita. Le evidenze trasversali possono essere riusate semanticamente senza duplicare il tempo.**
 
-Finché questa regola non è approvata, T4 può preparare solo contratti/read-model e validatori che non producono avanzamento didattico persistente.
+Questa approvazione autorizza la persistenza T4, i controlli anti-doppio-conteggio e la UX di registrazione, mantenendo la promozione `SVOLTO` sotto conferma umana esplicita.
