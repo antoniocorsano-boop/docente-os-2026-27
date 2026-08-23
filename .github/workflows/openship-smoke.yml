@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - test/openship-smoke-20260823
+    paths-ignore:
+      - .openship-smoke-result.json
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   smoke:
@@ -22,42 +24,33 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install Docente OS dependencies
+      - id: product
+        name: Run canonical Docente OS gates
+        continue-on-error: true
         working-directory: product
-        run: npm install
-
-      - name: Run Docente OS tests
-        working-directory: product
-        run: npm test
-
-      - name: Run TypeScript gate
-        working-directory: product
-        run: npm run typecheck
-
-      - name: Run lint gate
-        working-directory: product
-        run: npm run lint
-
-      - name: Build Docente OS
-        working-directory: product
-        run: npm run build
-
-      - name: Install Openship CLI
-        run: npm install --global openship
-
-      - name: Verify Openship CLI
         run: |
-          openship --version
-          openship --help
-          openship deploy --help
+          npm install
+          npm test
+          npm run typecheck
+          npm run lint
+          npm run build
 
-      - name: Start isolated Openship instance
+      - id: cli
+        name: Install and verify Openship CLI
+        continue-on-error: true
+        run: |
+          npm install --global openship
+          openship --version | tee /tmp/openship-version.txt
+          openship deploy --help > /tmp/openship-deploy-help.txt
+
+      - id: health
+        name: Start isolated Openship and verify health
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
           nohup openship up --foreground > /tmp/openship.log 2>&1 &
           echo $! > /tmp/openship.pid
-
           for attempt in $(seq 1 60); do
             if curl --fail --silent --show-error http://127.0.0.1:4000/api/health > /tmp/openship-health.json; then
               cat /tmp/openship-health.json
@@ -65,12 +58,12 @@ jobs:
             fi
             sleep 2
           done
-
-          echo "Openship did not expose /api/health on the default local API port."
           cat /tmp/openship.log
           exit 1
 
-      - name: Probe Openship build detection endpoint
+      - id: prepare
+        name: Probe Openship build detection for product
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -80,21 +73,77 @@ jobs:
             --request POST http://127.0.0.1:4000/api/deployments/prepare \
             --header 'Content-Type: application/json' \
             --data "{\"source\":\"local\",\"path\":\"${GITHUB_WORKSPACE}/product\"}")
+          echo "$status" > /tmp/openship-prepare-status.txt
           echo "prepare_http_status=${status}"
           cat /tmp/openship-prepare.json
-
-          # 200 means local stack detection is available without additional setup.
-          # 401/403 is also an expected secure first-run outcome: the instance is healthy,
-          # but project/deployment APIs require onboarding/authentication before use.
           case "$status" in
             200|401|403) exit 0 ;;
             *) exit 1 ;;
           esac
 
-      - name: Show Openship diagnostics
+      - name: Write machine-readable smoke result
+        if: always()
+        env:
+          PRODUCT_OUTCOME: ${{ steps.product.outcome }}
+          CLI_OUTCOME: ${{ steps.cli.outcome }}
+          HEALTH_OUTCOME: ${{ steps.health.outcome }}
+          PREPARE_OUTCOME: ${{ steps.prepare.outcome }}
+          TESTED_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          def text(path):
+              p = Path(path)
+              return p.read_text(errors="replace").strip() if p.exists() else None
+
+          def json_file(path):
+              raw = text(path)
+              if not raw:
+                  return None
+              try:
+                  return json.loads(raw)
+              except Exception:
+                  return raw
+
+          result = {
+              "test": "openship-compatibility-smoke",
+              "base_develop_sha": "4ba3831a8a0285792ae0a03890eea9c387d466ab",
+              "tested_workflow_sha": os.environ.get("TESTED_SHA"),
+              "product_gates": os.environ.get("PRODUCT_OUTCOME"),
+              "openship_cli": os.environ.get("CLI_OUTCOME"),
+              "openship_version": text("/tmp/openship-version.txt"),
+              "openship_health": os.environ.get("HEALTH_OUTCOME"),
+              "health_payload": json_file("/tmp/openship-health.json"),
+              "prepare_probe": os.environ.get("PREPARE_OUTCOME"),
+              "prepare_http_status": text("/tmp/openship-prepare-status.txt"),
+              "prepare_payload": json_file("/tmp/openship-prepare.json"),
+              "server_log_tail": "\n".join((text("/tmp/openship.log") or "").splitlines()[-80:]),
+          }
+          Path(".openship-smoke-result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
+          PY
+          cat .openship-smoke-result.json
+
+      - name: Commit smoke result to test branch only
         if: always()
         run: |
-          openship status --json || true
-          openship doctor --json || true
-          echo '--- Openship server log ---'
-          tail -n 200 /tmp/openship.log 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .openship-smoke-result.json
+          git diff --cached --quiet && exit 0
+          git commit -m "test: record Openship smoke result"
+          git push origin HEAD:test/openship-smoke-20260823
+
+      - name: Enforce core smoke outcome
+        if: always()
+        env:
+          PRODUCT_OUTCOME: ${{ steps.product.outcome }}
+          CLI_OUTCOME: ${{ steps.cli.outcome }}
+          HEALTH_OUTCOME: ${{ steps.health.outcome }}
+          PREPARE_OUTCOME: ${{ steps.prepare.outcome }}
+        run: |
+          test "$PRODUCT_OUTCOME" = success
+          test "$CLI_OUTCOME" = success
+          test "$HEALTH_OUTCOME" = success
+          test "$PREPARE_OUTCOME" = success
