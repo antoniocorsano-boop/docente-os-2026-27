@@ -57,7 +57,12 @@ export async function requestKnowledgeUploadGrant(input: {
     .createSignedUploadUrl(objectPath, { upsert: false })
 
   if (error || !data?.token) {
-    console.error('Knowledge signed upload grant failed', error?.message ?? 'Missing signed upload token')
+    console.error('Knowledge signed upload grant failed', {
+      message: error?.message ?? 'Missing signed upload token',
+      workspaceId: context.workspace.id,
+      bucket: KNOWLEDGE_BUCKET,
+      objectPath,
+    })
     return { ok: false, code: 'authorization_failed' }
   }
 
