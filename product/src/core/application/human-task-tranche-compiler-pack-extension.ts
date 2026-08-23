@@ -16,12 +16,12 @@ import {
 
 export type HumanTaskExtendedCompilerRecipe = 'PLAN_GUIDED_UDA' | 'PACK_COMPOSED' | 'UNRESOLVED'
 
-export type HumanTaskExtendedCompilerItem = HumanTaskTrancheCompilerReview['items'][number] & {
+export type HumanTaskExtendedCompilerItem = Omit<HumanTaskTrancheCompilerReview['items'][number], 'proposedRecipe'> & {
   proposedRecipe: HumanTaskExtendedCompilerRecipe
   proposedPackHeadings: string[]
 }
 
-export type HumanTaskExtendedTrancheReview = Omit<HumanTaskTrancheCompilerReview, 'items' | 'status'> & {
+export type HumanTaskExtendedTrancheReview = Omit<HumanTaskTrancheCompilerReview, 'compilerVersion' | 'items' | 'status'> & {
   compilerVersion: 2
   status: HumanTaskTrancheCompilerReview['status']
   items: HumanTaskExtendedCompilerItem[]
@@ -99,13 +99,13 @@ export function compileHumanTaskTrancheReviewWithPackAlignment(
   }
 
   const recommendedByBlock = new Map(packAlignment.recommended.blocks.map((item) => [item.blockId, item]))
-  const items = defaultItems.map((item) => {
+  const items: HumanTaskExtendedCompilerItem[] = defaultItems.map((item) => {
     const pack = recommendedByBlock.get(item.blockId)
     if (!pack) return item
     return {
       ...item,
-      status: 'READY_FOR_HUMAN_REVIEW' as const,
-      proposedRecipe: 'PACK_COMPOSED' as const,
+      status: 'READY_FOR_HUMAN_REVIEW',
+      proposedRecipe: 'PACK_COMPOSED',
       proposedPackHeadings: [...pack.headings],
       score: pack.score,
       note: `${packAlignment.note} Per ${item.blockId}: ${pack.headings.join(' + ')}. Piano mantiene durata ed evidenza; il PACK fornisce i passaggi operativi.`,
