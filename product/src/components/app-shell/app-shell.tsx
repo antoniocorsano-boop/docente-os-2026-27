@@ -5,6 +5,7 @@ import { Command } from 'cmdk'
 import {
   BookOpenCheck,
   CalendarClock,
+  CalendarDays,
   CheckCircle2,
   Command as CommandIcon,
   Home,
@@ -36,6 +37,7 @@ const ICONS: Record<NavigationKey, LucideIcon> = {
   knowledge: LibraryBig,
   classes: UsersRound,
   timetable: CalendarClock,
+  calendar: CalendarDays,
   'annual-plan': BookOpenCheck,
   settings: Settings2,
 }
