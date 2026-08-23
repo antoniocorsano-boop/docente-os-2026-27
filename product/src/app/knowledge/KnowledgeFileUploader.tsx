@@ -1,11 +1,13 @@
 'use client'
 
-import { FormEvent, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import type { FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { finalizeKnowledgeFileUpload } from './upload-actions'
 import {
   buildKnowledgeObjectPath,
+  isAllowedKnowledgeUploadMime,
   KNOWLEDGE_BUCKET,
   MAX_KNOWLEDGE_UPLOAD_BYTES,
   normalizeKnowledgeUploadMime,
@@ -35,7 +37,7 @@ export function KnowledgeFileUploader({ workspaceId }: { workspaceId: string }) 
     }
 
     const mimeType = normalizeKnowledgeUploadMime(file.type, file.name)
-    if (mimeType === 'application/octet-stream') {
+    if (!isAllowedKnowledgeUploadMime(mimeType)) {
       fail('Questo formato non è supportato. Usa PDF, immagini, DOCX, TXT o Markdown.')
       return
     }
