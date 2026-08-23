@@ -56,6 +56,13 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
 
   async getCurrentContext(): Promise<WorkspaceContext | null> {
     const supabase = await createClient()
+
+    // Keep the workspace RPC restricted to authenticated callers. An anonymous
+    // request to a protected page should produce a null context so the page can
+    // redirect to /login, not attempt an RPC that anon is intentionally denied.
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+    if (claimsError || !claimsData?.claims?.sub) return null
+
     const { data, error } = await (supabase as unknown as CurrentWorkspaceContextRpcClient).rpc('current_workspace_context')
 
     if (error) throw new Error(error.message)
