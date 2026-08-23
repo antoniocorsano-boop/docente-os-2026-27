@@ -1,4 +1,4 @@
-name: Openship Docker Compose deployment smoke
+name: Openship final local-domain deployment smoke
 
 on:
   push:
@@ -14,7 +14,7 @@ permissions:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
 
@@ -22,19 +22,8 @@ jobs:
         with:
           node-version: 22
 
-      - id: product
-        name: Run canonical Docente OS gates
-        continue-on-error: true
-        working-directory: product
-        run: |
-          npm install
-          npm test
-          npm run typecheck
-          npm run lint
-          npm run build
-
       - id: setup
-        name: Provision Openship with Docker Compose
+        name: Provision Openship Compose with local managed domain
         continue-on-error: true
         shell: bash
         run: |
@@ -49,7 +38,6 @@ jobs:
           printf '%s' "$password" > /tmp/openship-admin-password
           chmod 600 /tmp/openship-admin-password
           export OPENSHIP_ADMIN_PASSWORD="$password"
-          export HOST_DOMAIN=localhost
 
           openship up \
             --compose \
@@ -61,21 +49,34 @@ jobs:
             --domain-kind none \
             > /tmp/openship-provision.log 2>&1
 
+          compose_dir="$HOME/.openship/compose"
+          test -f "$compose_dir/.env"
+          if grep -q '^HOST_DOMAIN=' "$compose_dir/.env"; then
+            sed -i 's/^HOST_DOMAIN=.*/HOST_DOMAIN=localhost/' "$compose_dir/.env"
+          else
+            printf '\nHOST_DOMAIN=localhost\n' >> "$compose_dir/.env"
+          fi
+
+          docker compose --project-directory "$compose_dir" \
+            --env-file "$compose_dir/.env" \
+            -f "$compose_dir/docker-compose.yml" \
+            up -d --force-recreate api dashboard edge \
+            > /tmp/openship-recreate.log 2>&1
+
           for attempt in $(seq 1 90); do
             if curl --fail --silent --show-error http://127.0.0.1:4000/api/health > /tmp/openship-health.json; then
-              cat /tmp/openship-health.json
               docker ps --format '{{.Names}} {{.Status}} {{.Ports}}' > /tmp/docker-ps.txt
-              cat /tmp/docker-ps.txt
               exit 0
             fi
             sleep 2
           done
           cat /tmp/openship-provision.log
+          cat /tmp/openship-recreate.log
           docker ps -a
           exit 1
 
       - id: auth
-        name: Authenticate and configure CLI
+        name: Authenticate CLI with ephemeral admin
         continue-on-error: true
         shell: bash
         run: |
@@ -100,15 +101,13 @@ jobs:
             --request POST http://127.0.0.1:4000/api/tokens \
             --header 'Content-Type: application/json' \
             --header 'Origin: http://localhost:3001' \
-            --data '{"name":"docente-os-compose-smoke","fullAccess":true,"expiresInDays":1}')"
+            --data '{"name":"docente-os-final-smoke","fullAccess":true,"expiresInDays":1}')"
           echo "$token_status" > /tmp/openship-token-status.txt
           test "$token_status" -ge 200 -a "$token_status" -lt 300
 
           token="$(jq -r '.data.token // empty' /tmp/openship-token-response.json)"
           test -n "$token"
           echo "::add-mask::$token"
-          printf '%s' "$token" > /tmp/openship-token
-          chmod 600 /tmp/openship-token
           openship login \
             --token "$token" \
             --api-url http://127.0.0.1:4000 \
@@ -117,27 +116,8 @@ jobs:
             > /tmp/openship-cli-login.txt 2>&1
           openship context use docente-os-smoke
 
-      - id: prepare
-        name: Detect Docente OS stack
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -euo pipefail
-          token="$(cat /tmp/openship-token)"
-          echo "::add-mask::$token"
-          status="$(curl --silent --show-error \
-            --output /tmp/openship-prepare.json \
-            --write-out '%{http_code}' \
-            --request POST http://127.0.0.1:4000/api/deployments/prepare \
-            --header "Authorization: Bearer $token" \
-            --header 'Content-Type: application/json' \
-            --data "{\"source\":\"local\",\"path\":\"${GITHUB_WORKSPACE}/product\"}")"
-          echo "$status" > /tmp/openship-prepare-status.txt
-          test "$status" -ge 200 -a "$status" -lt 300
-          cat /tmp/openship-prepare.json
-
       - id: deploy
-        name: Deploy Docente OS through Openship
+        name: Deploy current Docente OS product folder
         continue-on-error: true
         shell: bash
         run: |
@@ -157,7 +137,7 @@ jobs:
             2>&1 | tee /tmp/openship-deploy.log
 
       - id: inspect
-        name: Inspect project and runtime
+        name: Inspect deployment and probe routed runtime
         continue-on-error: true
         shell: bash
         run: |
@@ -176,19 +156,19 @@ jobs:
           url='http://docente-os-openship-smoke.localhost'
           printf '%s' "$url" > /tmp/openship-runtime-url.txt
           status="$(curl --location --silent --show-error \
+            --header 'Host: docente-os-openship-smoke.localhost' \
             --output /tmp/openship-runtime-body.html \
             --write-out '%{http_code}' \
-            --max-time 20 "$url" || true)"
+            --max-time 20 http://127.0.0.1/ || true)"
           printf '%s' "$status" > /tmp/openship-runtime-status.txt
-          echo "runtime_url=$url status=$status" > /tmp/openship-runtime-probe.txt
+          printf 'runtime_url=%s status=%s\n' "$url" "$status" > /tmp/openship-runtime-probe.txt
+          test "$status" -ge 200 -a "$status" -lt 400
 
       - name: Record result
         if: always()
         env:
-          PRODUCT: ${{ steps.product.outcome }}
           SETUP: ${{ steps.setup.outcome }}
           AUTH: ${{ steps.auth.outcome }}
-          PREPARE: ${{ steps.prepare.outcome }}
           DEPLOY: ${{ steps.deploy.outcome }}
           INSPECT: ${{ steps.inspect.outcome }}
           TESTED_SHA: ${{ github.sha }}
@@ -197,7 +177,7 @@ jobs:
           import json, os
           from pathlib import Path
 
-          def text(path, limit=22000):
+          def text(path, limit=24000):
               p = Path(path)
               if not p.exists(): return None
               return p.read_text(errors='replace').strip()[-limit:]
@@ -209,10 +189,9 @@ jobs:
               except Exception: return raw
 
           result = {
-              'test': 'openship-compose-deployment-smoke',
+              'test': 'openship-final-local-domain-deployment-smoke',
               'base_develop_sha': '4ba3831a8a0285792ae0a03890eea9c387d466ab',
               'tested_workflow_sha': os.environ.get('TESTED_SHA'),
-              'product_gates': os.environ.get('PRODUCT'),
               'openship_version': text('/tmp/openship-version.txt'),
               'setup': os.environ.get('SETUP'),
               'health_payload': json_file('/tmp/openship-health.json'),
@@ -220,9 +199,6 @@ jobs:
               'auth': os.environ.get('AUTH'),
               'login_http_status': text('/tmp/openship-login-status.txt'),
               'pat_http_status': text('/tmp/openship-token-status.txt'),
-              'prepare': os.environ.get('PREPARE'),
-              'prepare_http_status': text('/tmp/openship-prepare-status.txt'),
-              'prepare_payload': json_file('/tmp/openship-prepare.json'),
               'deployment': os.environ.get('DEPLOY'),
               'deployment_log_tail': text('/tmp/openship-deploy.log'),
               'inspect': os.environ.get('INSPECT'),
@@ -234,6 +210,7 @@ jobs:
               'runtime_log_tail': text('/tmp/openship-runtime.log'),
               'docker_after_deploy': text('/tmp/docker-ps-after.txt'),
               'provision_log_tail': text('/tmp/openship-provision.log'),
+              'recreate_log_tail': text('/tmp/openship-recreate.log'),
           }
           Path('.openship-smoke-result.json').write_text(json.dumps(result, indent=2, ensure_ascii=False) + '\n')
           PY
@@ -246,5 +223,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .openship-smoke-result.json
           git diff --cached --quiet && exit 0
-          git commit -m "test: record Openship Compose result"
+          git commit -m "test: record final Openship smoke result"
           git push origin HEAD:test/openship-smoke-20260823
