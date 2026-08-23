@@ -10,7 +10,7 @@ function primaBlock(blockId: string) {
   return block
 }
 
-test('runtime exposes approved B07-B19 and stops before B20', () => {
+test('runtime exposes approved B07-B22 and stops before B23', () => {
   const expected = [
     ['B07', 'HTC-PRIMA-B07-v1'],
     ['B08', 'HTC-PRIMA-B08-v1'],
@@ -25,6 +25,9 @@ test('runtime exposes approved B07-B19 and stops before B20', () => {
     ['B17', 'HTC-PRIMA-B17-PLAN-v1'],
     ['B18', 'HTC-PRIMA-B18-PLAN-v1'],
     ['B19', 'HTC-PRIMA-B19-PLAN-v1'],
+    ['B20', 'HTC-PRIMA-B20-PLAN-v1'],
+    ['B21', 'HTC-PRIMA-B21-PLAN-v1'],
+    ['B22', 'HTC-PRIMA-B22-PLAN-v1'],
   ] as const
 
   for (const [blockId, projectionId] of expected) {
@@ -34,7 +37,7 @@ test('runtime exposes approved B07-B19 and stops before B20', () => {
     assert.equal(projection.durationMinutes, 120)
   }
 
-  assert.equal(resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock('B20')), null)
+  assert.equal(resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock('B23')), null)
 })
 
 test('B07 keeps its classified material sheet binding', () => {
@@ -149,6 +152,35 @@ test('B19 preserves the final Plan evidence and does not reduce it to a generic 
   assert.match(projection.assessmentNote, /valutazione formalizzata/i)
 })
 
+test('B20-B22 reuse plan-guided UDA with two untimed one-hour source phases per block', () => {
+  for (const blockId of ['B20', 'B21', 'B22']) {
+    const projection = resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock(blockId))
+    assert.ok(projection)
+    assert.equal(projection.sourceAlignment.level, 'COMPOSED')
+    assert.equal(resolveHumanTaskLessonTiming(projection).status, 'UNSPECIFIED')
+    assert.equal(projection.steps.length, 2)
+    assert.deepEqual(projection.steps.map((step) => step.minutes), [null, null])
+  }
+})
+
+test('B20-B21 expose only Plan and UDA while B22 adds PACK 1E only for the operational worksheet', () => {
+  for (const blockId of ['B20', 'B21']) {
+    const projection = resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock(blockId))
+    assert.ok(projection)
+    assert.deepEqual(projection.sources.map((source) => source.code), ['CAN-PLAN-1', 'CAN-UDA-1-04'])
+    assert.deepEqual(projection.resources, [])
+  }
+
+  const b22 = resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock('B22'))
+  assert.ok(b22)
+  assert.deepEqual(b22.sources.map((source) => source.code), ['CAN-PLAN-1', 'CAN-UDA-1-04', 'CAN-PACK-1E'])
+  assert.deepEqual(b22.resources.map((resource) => resource.id), ['STUDENT-CIRCULAR-LIFE'])
+  assert.deepEqual(resolveHumanTaskStepResources(b22, b22.steps[0]).map((resource) => resource.id), ['STUDENT-CIRCULAR-LIFE'])
+  assert.deepEqual(resolveHumanTaskStepResources(b22, b22.steps[1]).map((resource) => resource.id), ['STUDENT-CIRCULAR-LIFE'])
+  assert.ok(b22.resources[0].prompts.some((prompt) => /conferimento verificata/i.test(prompt)))
+  assert.match(b22.assessmentNote, /fonte istituzionale aggiornata/i)
+})
+
 test('approved PACK_COMPOSED projections fail closed when support PACK binding drifts', () => {
   for (const blockId of ['B13', 'B14', 'B15']) {
     const block = primaBlock(blockId)
@@ -159,8 +191,8 @@ test('approved PACK_COMPOSED projections fail closed when support PACK binding d
   assert.equal(resolveRuntimeHumanTaskLessonProjection('Prima', { ...b15, supportPacks: ['CAN-PACK-1D', 'CAN-PACK-1C'] }), null)
 })
 
-test('approved B07-B19 projections fail closed when canonical plan metadata drifts', () => {
-  for (const blockId of ['B07', 'B08', 'B09', 'B10', 'B11', 'B12', 'B13', 'B14', 'B15', 'B16', 'B17', 'B18', 'B19']) {
+test('approved B07-B22 projections fail closed when canonical plan metadata drifts', () => {
+  for (const blockId of ['B07', 'B08', 'B09', 'B10', 'B11', 'B12', 'B13', 'B14', 'B15', 'B16', 'B17', 'B18', 'B19', 'B20', 'B21', 'B22']) {
     const block = primaBlock(blockId)
     assert.equal(resolveRuntimeHumanTaskLessonProjection('Prima', { ...block, uda: '9-99' }), null)
     assert.equal(resolveRuntimeHumanTaskLessonProjection('Prima', { ...block, pack: 'CAN-PACK-X' }), null)
@@ -183,5 +215,11 @@ test('direct material projections expose PLAN UDA PACK while UDA/Plan-guided pro
     const projection = resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock(blockId))
     assert.ok(projection)
     assert.deepEqual(projection.sources.map((source) => source.code), ['CAN-PLAN-1', 'CAN-UDA-1-03'])
+  }
+
+  for (const blockId of ['B20', 'B21']) {
+    const projection = resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock(blockId))
+    assert.ok(projection)
+    assert.deepEqual(projection.sources.map((source) => source.code), ['CAN-PLAN-1', 'CAN-UDA-1-04'])
   }
 })
