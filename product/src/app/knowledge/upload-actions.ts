@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { KnowledgeIngestionService } from '@/core/application/knowledge-ingestion-service'
-import { DocxKnowledgeTransformer, ImageKnowledgeTransformer, PdfKnowledgeTransformer } from '@/core/infrastructure/knowledge/file-transformers'
+import { DocxKnowledgeTransformer, ImageKnowledgeTransformer, InvalidPdfContentError, PdfKnowledgeTransformer } from '@/core/infrastructure/knowledge/file-transformers'
 import { OpenAiVisualExtraction } from '@/core/infrastructure/knowledge/openai-visual-extraction'
 import { PlainTextKnowledgeTransformer } from '@/core/infrastructure/knowledge/plain-text-transformer'
 import { SchoolCommunicationEnrichment } from '@/core/infrastructure/knowledge/school-communication-enrichment'
@@ -17,7 +17,7 @@ import {
 
 export type FinalizeKnowledgeUploadResult =
   | { ok: true; assetId: string }
-  | { ok: false; code: 'missing' | 'too_large' | 'unsupported' | 'invalid_path' | 'parse_failed' }
+  | { ok: false; code: 'missing' | 'too_large' | 'unsupported' | 'invalid_path' | 'invalid_pdf' | 'parse_failed' }
 
 export async function finalizeKnowledgeFileUpload(
   input: Omit<KnowledgeUploadReference, 'workspaceId'>,
@@ -59,6 +59,7 @@ export async function finalizeKnowledgeFileUpload(
     return { ok: true, assetId: asset.id }
   } catch (error) {
     console.error('Knowledge same-origin ingestion failed', error)
+    if (error instanceof InvalidPdfContentError) return { ok: false, code: 'invalid_pdf' }
     return { ok: false, code: 'parse_failed' }
   }
 }
