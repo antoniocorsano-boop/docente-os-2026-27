@@ -6,6 +6,8 @@ import {
   B31_B33_RECIPE_PROPOSALS,
   B31_EVIDENCE_BINDING,
   B31_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL,
+  B33_EVIDENCE_BINDING,
+  B33_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL,
 } from './human-task-projection-recipes-b31-b33'
 import { assessPlanGuidedStakeholderCognition } from './human-task-stakeholder-cognition-assessor'
 import { isHumanTaskStakeholderCognitiveReviewComplete } from './human-task-stakeholder-cognition'
@@ -36,7 +38,17 @@ Controllo del risultato rispetto ai requisiti iniziali; rilevazione di criticit�
 Fase 6 — Comunicazione e valutazione — 1 ora.
 Presentazione del progetto, restituzione individuale, autovalutazione e verifica finale.
 10. PRODOTTO ATTESO
-Dossier progettuale composto almeno da scheda del problema, requisiti e vincoli, schizzi delle alternative, scelta motivata, rappresentazione grafica, elenco materiali e strumenti, sequenza delle fasi, eventuale modello/prototipo, breve valutazione di sostenibilità e autovalutazione finale.
+Dossier progettuale composto almeno da:
+- scheda del problema;
+- requisiti e vincoli;
+- schizzi delle alternative;
+- scelta motivata;
+- rappresentazione grafica della soluzione;
+- elenco materiali e strumenti;
+- sequenza delle fasi;
+- eventuale modello/prototipo;
+- breve valutazione di sostenibilità;
+- autovalutazione finale.
 11. EVIDENZE OSSERVABILI
 - identifica correttamente il problema e la funzione della soluzione;
 - considera requisiti e vincoli;
@@ -68,7 +80,7 @@ function candidate(blockId: 'B31' | 'B32' | 'B33') {
   })
 }
 
-test('B31-B33 use UDA evidence explicitly without promoting CAN-PACK-1D to a didactic source', () => {
+test('B31-B33 derive evidence from the current UDA and never promote CAN-PACK-1D as a didactic source', () => {
   const outputs = B31_B33_RECIPE_PROPOSALS.map(({ recipe, evidence }) =>
     buildPlanGuidedUdaProjectionDraftWithEvidence(candidate(recipe.blockId as 'B31' | 'B32' | 'B33'), recipe, evidence),
   )
@@ -83,9 +95,16 @@ test('B31-B33 use UDA evidence explicitly without promoting CAN-PACK-1D to a did
     [3, 4],
     [5, 6],
   ])
-  assert.equal(outputs.every((item) => item.evidenceBinding.source === 'UDA_PHASES'), true)
+  assert.deepEqual(outputs.map((item) => item.evidenceBinding.source), [
+    'UDA_SECTION_ITEMS',
+    'UDA_SECTION_ITEMS',
+    'UDA_PHASES',
+  ])
+  assert.equal(outputs[0].evidenceBinding.text, 'scheda del problema · requisiti e vincoli · schizzi delle alternative')
+  assert.match(outputs[1].evidenceBinding.text, /scelta motivata.*rappresentazione grafica.*elenco materiali.*sequenza delle fasi.*modello\/prototipo/i)
+  assert.match(outputs[2].evidenceBinding.text, /Controllo del risultato rispetto ai requisiti iniziali.*Presentazione del progetto.*autovalutazione/i)
   assert.equal(outputs.every((item) => item.draft.projection?.provenance.packs.length === 0), true)
-  assert.equal(outputs.every((item) => /Evidenza operativa: sostenuta dalle fasi UDA/i.test(item.draft.projection?.sourceAlignment.note ?? '')), true)
+  assert.equal(outputs.every((item) => /Evidenza operativa: derivata deterministicamente da/i.test(item.draft.projection?.sourceAlignment.note ?? '')), true)
 })
 
 test('B31-B33 satisfy the contextual stakeholder cognitive gate from the actual projections', () => {
@@ -103,16 +122,29 @@ test('B31-B33 satisfy the contextual stakeholder cognitive gate from the actual 
   ])
 })
 
-test('UDA evidence fails closed when it cites phases outside the current block recipe', () => {
-  assert.equal(B31_EVIDENCE_BINDING.source, 'UDA_PHASES')
+test('UDA phase evidence fails closed when it cites phases outside the current block recipe', () => {
+  assert.equal(B33_EVIDENCE_BINDING.source, 'UDA_PHASES')
+  assert.throws(() => buildPlanGuidedUdaProjectionDraftWithEvidence(
+    candidate('B33'),
+    B33_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL,
+    {
+      source: 'UDA_PHASES',
+      rationale: B33_EVIDENCE_BINDING.rationale,
+      phaseOrdinals: [4, 6],
+    },
+  ), /fasi operative/i)
+})
+
+test('UDA section evidence fails closed when a declared product item is not in the current source', () => {
+  assert.equal(B31_EVIDENCE_BINDING.source, 'UDA_SECTION_ITEMS')
   assert.throws(() => buildPlanGuidedUdaProjectionDraftWithEvidence(
     candidate('B31'),
     B31_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL,
     {
-      source: 'UDA_PHASES',
-      text: B31_EVIDENCE_BINDING.text,
+      source: 'UDA_SECTION_ITEMS',
+      sectionHeading: B31_EVIDENCE_BINDING.sectionHeading,
+      itemIndexes: [1, 99],
       rationale: B31_EVIDENCE_BINDING.rationale,
-      phaseOrdinals: [1, 3],
     },
-  ), /fasi operative|autorizzata/i)
+  ), /voce 99/i)
 })
