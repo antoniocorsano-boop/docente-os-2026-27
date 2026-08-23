@@ -10,38 +10,35 @@ import {
   B33_PROJECTION as B33_V1,
 } from './human-task-approved-manifests-b31-b33'
 
-const DIDACTIC_SOURCES = B31_V1.sources.filter((source) => source.role !== 'PACK')
+const PROVENANCE_SOURCES = B31_V1.sources
 
 export const B31_PROJECTION_V2 = {
   ...B31_V1,
-  projectionId: 'HTC-PRIMA-B31-PLAN-v2',
   evidence: 'scheda del problema · requisiti e vincoli · schizzi delle alternative',
-  sources: DIDACTIC_SOURCES,
+  sources: PROVENANCE_SOURCES,
   sourceAlignment: {
     level: 'COMPOSED' as const,
-    note: 'CAN-PLAN-1 assegna struttura, titolo e durata. Le fasi 1-2 di CAN-UDA-1-07 definiscono l’azione e le voci 1-3 di PRODOTTO ATTESO sostengono deterministicamente l’evidenza. CAN-PACK-1D resta soltanto nel binding strutturale.',
+    note: 'CAN-PLAN-1 assegna struttura, titolo e durata. Le fasi 1-2 di CAN-UDA-1-07 definiscono l’azione e le voci 1-3 di PRODOTTO ATTESO sostengono deterministicamente l’evidenza. CAN-PACK-1D resta una provenienza strutturale esplicitamente etichettata e non autorità didattica.',
   },
 }
 
 export const B32_PROJECTION_V2 = {
   ...B32_V1,
-  projectionId: 'HTC-PRIMA-B32-PLAN-v2',
   evidence: 'scelta motivata · rappresentazione grafica della soluzione · elenco materiali e strumenti · sequenza delle fasi · eventuale modello/prototipo',
-  sources: DIDACTIC_SOURCES,
+  sources: PROVENANCE_SOURCES,
   sourceAlignment: {
     level: 'COMPOSED' as const,
-    note: 'CAN-PLAN-1 assegna struttura, titolo e durata. Le fasi 3-4 di CAN-UDA-1-07 definiscono l’azione e le voci 4-8 di PRODOTTO ATTESO sostengono deterministicamente l’evidenza. CAN-PACK-1D resta soltanto nel binding strutturale.',
+    note: 'CAN-PLAN-1 assegna struttura, titolo e durata. Le fasi 3-4 di CAN-UDA-1-07 definiscono l’azione e le voci 4-8 di PRODOTTO ATTESO sostengono deterministicamente l’evidenza. CAN-PACK-1D resta una provenienza strutturale esplicitamente etichettata e non autorità didattica.',
   },
 }
 
 export const B33_PROJECTION_V2 = {
   ...B33_V1,
-  projectionId: 'HTC-PRIMA-B33-PLAN-v2',
   evidence: 'Controllo del risultato rispetto ai requisiti iniziali; rilevazione di criticità; proposta di almeno un miglioramento tecnico o ambientale. Presentazione del progetto, restituzione individuale, autovalutazione e verifica finale.',
-  sources: DIDACTIC_SOURCES,
+  sources: PROVENANCE_SOURCES,
   sourceAlignment: {
     level: 'COMPOSED' as const,
-    note: 'CAN-PLAN-1 assegna struttura, titolo e durata. Le sole fasi 5-6 di CAN-UDA-1-07 sostengono deterministicamente verifica, miglioramento, presentazione e autovalutazione. CAN-PACK-1D resta soltanto nel binding strutturale.',
+    note: 'CAN-PLAN-1 assegna struttura, titolo e durata. Le sole fasi 5-6 di CAN-UDA-1-07 sostengono deterministicamente verifica, miglioramento, presentazione e autovalutazione. CAN-PACK-1D resta una provenienza strutturale esplicitamente etichettata e non autorità didattica.',
   },
 }
 
@@ -101,7 +98,7 @@ const APPROVAL = {
   approvedAt: '2026-08-23T10:55:00+02:00',
   reviewPackageId: 'HTC-REVIEW-PACKAGE:Prima:Prima:11:B31-B33:v2',
   improvementDisposition: 'SYSTEM_IMPROVEMENT_APPLIED' as const,
-  improvementNote: 'Aggiunto LEARNER al gate; evidenza vincolata a frammenti UDA; PACK 1D mantenuto solo come provenienza strutturale.',
+  improvementNote: 'Aggiunto LEARNER al gate; evidenza vincolata a frammenti UDA; PACK 1D mantenuto come provenienza strutturale esplicitamente tipizzata nel manifest.',
   cognitiveFulfillment: COGNITIVE_RECEIPT,
 }
 
