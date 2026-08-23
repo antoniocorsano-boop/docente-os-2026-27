@@ -41,7 +41,7 @@ test('learner fulfillment fails closed when the projection loses observable crit
   const invalid = {
     ...B31_PROJECTION_V2,
     observation: [],
-    steps: B31_PROJECTION_V2.steps.map((step) => ({ ...step, instruction: 'Esegui il passaggio.' })),
+    steps: B31_PROJECTION_V2.steps.map((step) => ({ ...step, title: 'Passaggio', instruction: 'Esegui il passaggio.' })),
     objective: 'Completa il lavoro.',
     assessmentNote: 'Formativa.',
     continuation: 'Continua.',
@@ -58,7 +58,7 @@ test('learner fulfillment fails closed when the projection loses observable crit
   assert.ok(learner?.missing.includes('possibilità di confronto, verifica, miglioramento o autovalutazione'))
 })
 
-test('B31-B33 evidence provenance uses exact UDA bindings and PACK 1D is not a didactic source', () => {
+test('B31-B33 evidence provenance uses exact UDA bindings while PACK 1D is structural-only', () => {
   assert.deepEqual(B31_B33_EVIDENCE_PROVENANCE_V2.B31.binding, {
     kind: 'UDA_SECTION_ITEMS', sectionHeading: 'PRODOTTO ATTESO', itemIndexes: [1, 2, 3],
   })
@@ -72,7 +72,9 @@ test('B31-B33 evidence provenance uses exact UDA bindings and PACK 1D is not a d
   for (const [, projection, evidenceProvenance] of cases) {
     assert.equal(evidenceProvenance.sourceRole, 'UDA')
     assert.equal(evidenceProvenance.sourceCode, 'CAN-UDA-1-07')
-    assert.equal(projection.sources.some((source) => source.code === 'CAN-PACK-1D'), false)
+    const pack = projection.sources.find((source) => source.code === 'CAN-PACK-1D')
+    assert.ok(pack)
+    assert.match(pack.label, /collegamento strutturale/i)
     assert.equal(projection.sources.some((source) => source.code === 'CAN-PLAN-1'), true)
     assert.equal(projection.sources.some((source) => source.code === 'CAN-UDA-1-07'), true)
   }
