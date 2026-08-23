@@ -1,0 +1,100 @@
+name: Openship compatibility smoke
+
+on:
+  push:
+    branches:
+      - test/openship-smoke-20260823
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact test branch
+        uses: actions/checkout@v6
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Docente OS dependencies
+        working-directory: product
+        run: npm install
+
+      - name: Run Docente OS tests
+        working-directory: product
+        run: npm test
+
+      - name: Run TypeScript gate
+        working-directory: product
+        run: npm run typecheck
+
+      - name: Run lint gate
+        working-directory: product
+        run: npm run lint
+
+      - name: Build Docente OS
+        working-directory: product
+        run: npm run build
+
+      - name: Install Openship CLI
+        run: npm install --global openship
+
+      - name: Verify Openship CLI
+        run: |
+          openship --version
+          openship --help
+          openship deploy --help
+
+      - name: Start isolated Openship instance
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup openship up --foreground > /tmp/openship.log 2>&1 &
+          echo $! > /tmp/openship.pid
+
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error http://127.0.0.1:4000/api/health > /tmp/openship-health.json; then
+              cat /tmp/openship-health.json
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Openship did not expose /api/health on the default local API port."
+          cat /tmp/openship.log
+          exit 1
+
+      - name: Probe Openship build detection endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl --silent --show-error \
+            --output /tmp/openship-prepare.json \
+            --write-out '%{http_code}' \
+            --request POST http://127.0.0.1:4000/api/deployments/prepare \
+            --header 'Content-Type: application/json' \
+            --data "{\"source\":\"local\",\"path\":\"${GITHUB_WORKSPACE}/product\"}")
+          echo "prepare_http_status=${status}"
+          cat /tmp/openship-prepare.json
+
+          # 200 means local stack detection is available without additional setup.
+          # 401/403 is also an expected secure first-run outcome: the instance is healthy,
+          # but project/deployment APIs require onboarding/authentication before use.
+          case "$status" in
+            200|401|403) exit 0 ;;
+            *) exit 1 ;;
+          esac
+
+      - name: Show Openship diagnostics
+        if: always()
+        run: |
+          openship status --json || true
+          openship doctor --json || true
+          echo '--- Openship server log ---'
+          tail -n 200 /tmp/openship.log 2>/dev/null || true
