@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import type { FormEvent } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { finalizeKnowledgeFileUpload, requestKnowledgeUploadGrant } from './upload-actions'
 import {
@@ -15,15 +15,36 @@ type UploadPhase = 'IDLE' | 'AUTHORIZING' | 'UPLOADING' | 'ORGANIZING' | 'ERROR'
 export function KnowledgeFileUploader() {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [phase, setPhase] = useState<UploadPhase>('IDLE')
   const [message, setMessage] = useState<string | null>(null)
   const busy = phase === 'AUTHORIZING' || phase === 'UPLOADING' || phase === 'ORGANIZING'
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0] ?? null
+    setSelectedFile(file)
+    setPhase('IDLE')
+    setMessage(null)
+  }
+
+  function clearSelection() {
+    if (busy) return
+    if (inputRef.current) inputRef.current.value = ''
+    setSelectedFile(null)
+    setPhase('IDLE')
+    setMessage(null)
+  }
+
+  function chooseAnotherFile() {
+    if (busy) return
+    inputRef.current?.click()
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (busy) return
 
-    const file = inputRef.current?.files?.[0]
+    const file = selectedFile ?? inputRef.current?.files?.[0] ?? null
     if (!file || file.size <= 0) {
       fail('Seleziona un file da caricare.')
       return
@@ -108,7 +129,7 @@ export function KnowledgeFileUploader() {
 
   return (
     <form className="knowledgeUploadForm" onSubmit={handleSubmit}>
-      <label className="fileDrop">
+      <label className={`fileDrop ${selectedFile ? 'hasSelection' : ''}`}>
         <input
           ref={inputRef}
           name="file"
@@ -116,24 +137,43 @@ export function KnowledgeFileUploader() {
           required
           disabled={busy}
           accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/webp"
-          onChange={() => {
-            setPhase('IDLE')
-            setMessage(null)
-          }}
+          onChange={handleFileChange}
         />
-        <span className="fileDropIcon" aria-hidden>↑</span>
-        <strong>PDF, immagini, DOCX, TXT o Markdown</strong>
-        <small>DOCENTE OS autorizza solo questo trasferimento; l’originale va poi direttamente nel tuo spazio privato.</small>
+        <span className="fileDropIcon" aria-hidden>{selectedFile ? '✓' : '↑'}</span>
+        <strong>{selectedFile ? 'File individuato' : 'PDF, immagini, DOCX, TXT o Markdown'}</strong>
+        <small>
+          {selectedFile
+            ? 'Controlla il file selezionato prima di avviare il caricamento.'
+            : 'DOCENTE OS autorizza solo questo trasferimento; l’originale va poi direttamente nel tuo spazio privato.'}
+        </small>
       </label>
+
+      {selectedFile ? (
+        <div className="selectedFileCard" role="status" aria-live="polite" aria-atomic="true">
+          <span className="selectedFileCheck" aria-hidden>✓</span>
+          <div className="selectedFileBody">
+            <strong>File selezionato</strong>
+            <span title={selectedFile.name}>{selectedFile.name}</span>
+            <small>{fileTypeLabel(selectedFile)} · {formatFileSize(selectedFile.size)}</small>
+          </div>
+          <div className="selectedFileActions">
+            <button type="button" className="selectedFileAction" onClick={chooseAnotherFile} disabled={busy}>Cambia</button>
+            <button type="button" className="selectedFileAction danger" onClick={clearSelection} disabled={busy}>Rimuovi</button>
+          </div>
+        </div>
+      ) : null}
+
       {message ? <div className="knowledgeFeedback" role={phase === 'ERROR' ? 'alert' : 'status'} aria-live="polite">{message}</div> : null}
-      <button type="submit" disabled={busy}>
+      <button type="submit" disabled={busy || !selectedFile}>
         {phase === 'AUTHORIZING'
           ? 'Preparazione…'
           : phase === 'UPLOADING'
             ? 'Caricamento…'
             : phase === 'ORGANIZING'
               ? 'Organizzazione…'
-              : 'Carica e organizza'}
+              : selectedFile
+                ? 'Carica e organizza'
+                : 'Seleziona prima un file'}
       </button>
     </form>
   )
@@ -145,6 +185,20 @@ async function safeResponseText(response: Response) {
   } catch {
     return ''
   }
+}
+
+function fileTypeLabel(file: File) {
+  const extension = file.name.split('.').pop()?.toUpperCase()
+  if (extension && extension.length <= 8) return extension
+  return file.type || 'File'
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  const kilobytes = bytes / 1024
+  if (kilobytes < 1024) return `${kilobytes < 10 ? kilobytes.toFixed(1) : Math.round(kilobytes)} KB`
+  const megabytes = kilobytes / 1024
+  return `${megabytes.toFixed(megabytes < 10 ? 1 : 0)} MB`
 }
 
 function grantMessage(code: 'missing' | 'too_large' | 'unsupported' | 'authorization_failed') {
