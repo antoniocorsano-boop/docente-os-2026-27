@@ -1,9 +1,12 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
+import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
 import type { PlannerTask } from '@/core/domain/planner-task'
 import { parseKnowledgeTaskSourceRef } from '@/core/domain/knowledge-task-source'
+import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
+import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import {
   completePlannerTask,
@@ -15,6 +18,7 @@ import {
   unschedulePlannerTask,
   waitPlannerTask,
 } from './actions'
+import { TemporalTodayPanel } from './TemporalTodayPanel'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,8 +39,25 @@ export default async function PlannerPage() {
   if (!context) redirect('/login')
 
   const plannerRepository = new SupabasePlannerRepository()
-  const tasks = await plannerRepository.listByWorkspace(context.workspace.id)
   const today = currentRomeDate()
+  const temporalProjection = context.academicYear
+    ? new TemporalProjectionService(
+        new SupabaseTimetableProjectionReadRepository(),
+        new SupabaseCalendarProjectionReadRepository(),
+      )
+    : null
+
+  const [tasks, temporalDay] = await Promise.all([
+    plannerRepository.listByWorkspace(context.workspace.id),
+    temporalProjection && context.academicYear
+      ? temporalProjection.projectDay({
+          workspaceId: context.workspace.id,
+          academicYearId: context.academicYear.id,
+          localDate: today,
+        })
+      : Promise.resolve(null),
+  ])
+
   const sections = groupTasks(tasks, today)
   const openTasks = tasks.filter((task) => task.status === 'OPEN')
   const overdueCount = openTasks.filter((task) => task.dueAt && task.dueAt.slice(0, 10) < today).length
@@ -77,6 +98,8 @@ export default async function PlannerPage() {
           <div className="humanTaskActions"><Link className="primary" href="/orario">Guarda l’orario</Link><Link href="/classi">Apri le classi</Link></div>
         </section>
       )}
+
+      {temporalDay ? <TemporalTodayPanel day={temporalDay} nowMinutes={currentRomeMinutes()} /> : null}
 
       <div className="humanTaskCompactStats" aria-label="Riepilogo attività"><span><strong>{openTasks.length}</strong> aperte</span><span><strong>{overdueCount}</strong> scadute</span><span><strong>{todayCount}</strong> per oggi</span></div>
 
@@ -185,6 +208,7 @@ function priorityLabel(priority: PlannerTask['priority']) {
 }
 
 function currentRomeDate() { const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()); const value = Object.fromEntries(parts.map((part) => [part.type, part.value])); return `${value.year}-${value.month}-${value.day}` }
+function currentRomeMinutes() { const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()); const value = Object.fromEntries(parts.map((part) => [part.type, part.value])); return Number(value.hour) * 60 + Number(value.minute) }
 function addDays(isoDate: string, days: number) { const date = new Date(`${isoDate}T12:00:00Z`); date.setUTCDate(date.getUTCDate() + days); return date.toISOString().slice(0, 10) }
 function formatShortDate(value: string) { return new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', timeZone: 'Europe/Rome' }).format(new Date(value)) }
 function formatPlannedDate(value: string) { return `Da fare ${new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`))}` }
