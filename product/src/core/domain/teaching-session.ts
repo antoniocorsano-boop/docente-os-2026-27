@@ -35,6 +35,26 @@ export type TeachingSessionAllocationContext = {
   canonicalGenerationId: string
 }
 
+export type TeachingSessionRecord = TeachingSessionDraft & {
+  id: string
+  workspaceId: string
+  academicYearId: string
+  supersedesSessionId: string | null
+  recordedBy: string
+  recordedAt: string
+}
+
+export type TeachingSessionAllocationRecord = TeachingSessionAllocationDraft & {
+  id: string
+  sessionId: string
+  createdAt: string
+}
+
+export type TeachingSessionSnapshot = {
+  sessions: TeachingSessionRecord[]
+  allocations: TeachingSessionAllocationRecord[]
+}
+
 export type TeachingSessionAllocationValidationCode =
   | 'INVALID_SESSION_SECTION'
   | 'INVALID_ACTUAL_MINUTES'
@@ -95,6 +115,21 @@ export function validateTeachingSessionAllocations(input: {
     unallocatedMinutes: Math.max(0, input.session.actualMinutes - allocatedMinutes),
     codes: uniqueCodes,
   }
+}
+
+export function currentTeachingSessions(snapshot: TeachingSessionSnapshot) {
+  const superseded = new Set(snapshot.sessions.map((session) => session.supersedesSessionId).filter((id): id is string => Boolean(id)))
+  return snapshot.sessions.filter((session) => !superseded.has(session.id))
+}
+
+export function allocatedMinutesByBlock(snapshot: TeachingSessionSnapshot, canonicalGenerationId: string) {
+  const currentIds = new Set(currentTeachingSessions(snapshot).map((session) => session.id))
+  const totals = new Map<string, number>()
+  for (const allocation of snapshot.allocations) {
+    if (!currentIds.has(allocation.sessionId) || allocation.canonicalGenerationId !== canonicalGenerationId) continue
+    totals.set(allocation.blockId, (totals.get(allocation.blockId) ?? 0) + allocation.minutes)
+  }
+  return totals
 }
 
 export function completionProposal(input: { allocatedMinutes: number; plannedBlockMinutes: number }) {
