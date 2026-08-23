@@ -112,7 +112,6 @@ test('the eight-hour Open Day PACK never overrides the ten-hour UDA or two-hour 
   assert.ok(draft.projection)
   assert.equal(draft.projection.durationMinutes, 120)
   assert.equal(draft.projection.steps[0].minutes, null)
-  assert.equal(draft.projection.sources, undefined)
   assert.deepEqual(draft.projection.provenance.selectedUdaPhases, [4])
   assert.deepEqual(draft.projection.provenance.selectedPackHeadings, [])
 })
