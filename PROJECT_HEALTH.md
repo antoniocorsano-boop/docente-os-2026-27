@@ -1,74 +1,75 @@
 # DOCENTE OS — Project Health
 
-Updated: 2026-08-22
+Updated: 2026-08-23
 
 ```text
 STATE: ACTIVE_DEVELOPMENT_STABLE
 CANONICAL_DEV_BRANCH: develop
-BASELINE_COMMIT: cca482bdd761b77c4fa8b42e0f9f0ed097518c68
-CANONICAL_DEV_RUNTIME: Netlify deploy preview for develop
+BASELINE_COMMIT: cba24b1257d7f276d6621da0f6dbb55b18d361b2
+CANONICAL_BETA_RUNTIME: Render Free / docente-os-2026-27-beta
 CI_GATE: test + typecheck + lint + build
 PRODUCT_EXPERIENCE: X0 COMPLETE / X1 COMPLETE / X2 COMPLETE / X3 TECHNICALLY COMPLETE
-SETTINGS_EXPERIENCE: GUIDED CONTRACT COMPLETE / PROGRESSIVE DISCLOSURE BASELINE READY / INTERACTIVE ACCEPTANCE PENDING
-PRIMARY_FOCUS: SETTINGS + X3 INTERACTIVE ACCEPTANCE
+SETTINGS_EXPERIENCE: GUIDED CONTRACT COMPLETE / INTERACTIVE ACCEPTANCE PARTIAL
 X4_GATE: HOLD_FOR_X3_UX_ACCEPTANCE
-TEMPORAL_ARCHITECTURE: TIMETABLE INDEPENDENT / CALENDAR INDEPENDENT / TEMPORAL PROJECTION COMPOSES BOTH
+TEMPORAL_PROGRAM: T3A COMPLETE / T3B COMPLETE / T3C COMPLETE / T4 COMPLETE
+T4_DATABASE: MIGRATION APPLIED / RLS AUDITED / HUMAN COMPLETION REQUIRED
 ```
 
 ## Current product line
 
-The canonical product line is the Next.js application under `product/`.
+The canonical product line is the Next.js application under `product/` on branch `develop`.
 
-The static root application is retained as legacy/reference material only. It is no longer the source of truth for architecture, persistence or deployment state.
+The static root application is legacy/reference material only. It is not the source of truth for architecture, persistence or deployment.
 
 ## Verified capabilities
 
 - Supabase Auth and server session handling.
-- Password login for routine access; magic link for activation/recovery.
 - PostgreSQL persistence with Row Level Security.
 - Oggi/Attività persistent workflow.
-- Knowledge ingestion/transformation/provenance/generations.
-- Progetta and Classes read models.
-- Annual plan execution by class/section.
+- Knowledge ingestion, transformation, provenance and generations.
+- Progetta and Classes human-task read models.
+- Annual-plan execution by class/section.
 - Canonical teacher/settings/class registry.
-- Timetable T1 persistence/configuration.
-- Timetable T2 Week/Day visual grid and slot editing.
+- Timetable persistence, visual week/day grid and lifecycle.
+- Independent Calendar core for real school dates, suspensions and events.
+- Read-only Temporal Projection composing Timetable + Calendar without mutating either source domain.
+- TeachingSession persistence for actual teaching evidence and canonical B01–B33 minute allocations.
+- Explicit anti-double-counting rules: allocated minutes cannot exceed actual session minutes.
+- Quantitative completion can generate a proposal but never auto-promotes a block to `SVOLTO`.
 - Product Language & Collaboration System v1.
 - Product Experience canonical package X0.
 - Tailwind v4 + open-code component foundation X1.
 - Professional AppShell X2 with command palette and mobile navigation.
-- Knowledge list/detail, Oggi, Piano annuale, Orario and Impostazioni on shared AppShell.
-- grouped navigation by teacher mental model: `Il mio lavoro / Didattica / Tempo / Risorse / Sistema`.
-- assistant-ui contextual assistant X3 on Knowledge detail, READ_ONLY / PROPOSE only.
-- lighter floating assistant trigger and reduced expanded footprint.
-- canonical Work/Time mental model separating Activities, Annual Plan, Timetable and Calendar.
-- Timetable and Calendar frozen as independent domains; Temporal Projection is the only composition boundary.
-- **Settings Experience Contract** with guided setup and maintenance mode.
-- Settings five-area read model: `Tu e la scuola / Discipline / Classi / Cattedra / Organizzazione scolastica`.
-- Cattedra configured from Settings using the same canonical `teaching_assignments` consumed by Orario.
-- read-only teaching-assignment reader in Settings that does not create a Timetable draft.
-- Settings context governed by **progressive disclosure**: full explanation available on demand, minimal primary surface.
-- mobile Settings overview uses compact horizontal navigation instead of stacking five large cards.
-- GitHub Actions product gates passing on merged slices.
-- Netlify Next.js deploy preview verified as the operational development runtime.
+- Contextual Assistant X3 in READ_ONLY / PROPOSE mode.
+- GitHub Actions product gates passing on promoted slices.
 
 ## Deployment status
 
+### Render beta
+
+Status: `BETA_RUNTIME_WORKING / LATEST_T4_RUNTIME_CONFIRMATION_PENDING`.
+
+- service: `docente-os-2026-27-beta`;
+- plan: Free;
+- region: Frankfurt;
+- source branch: `develop`;
+- root: `product`;
+- deployment trigger: commit;
+- user verified successful navigation through Orario and class workspace on 2026-08-23;
+- baseline Render deployment was verified Live before T4;
+- current T4 merge is expected to auto-deploy, but the exact Render release SHA must still be confirmed externally before marking the latest runtime `VERIFIED`.
+
 ### Netlify
 
-Status: `DEV_RUNTIME_VERIFIED`.
+Status: `LEGACY_BETA / NOT_CANONICAL`.
 
-- project: `docente-os-dev`;
-- develop preview is the current interactive reference;
-- compact Settings baseline `cca482bd…` deployed `READY`;
-- Next.js server handler is deployed;
-- Supabase redirect configuration includes the Netlify preview pattern.
+Netlify is no longer the development reference runtime. Old `netlify.app` links may still exist but must not be treated as canonical.
 
 ### Vercel
 
-Status: `OPTIONAL_PROVIDER / NOT_A_GATE`.
+Status: `OUT / NOT_A_GATE`.
 
-Automated builds remain constrained by account build-rate limits. This does not block product development. DOCENTE OS remains hosting-neutral.
+Vercel free build-rate limits make it unsuitable for the current beta workflow. Vercel checks must not block Render deployment.
 
 ### Production
 
@@ -76,63 +77,45 @@ Status: `NOT_YET_FROZEN`.
 
 A production alias/provider decision will be made only after release gates are satisfied.
 
-## Current risks
+## Supabase state
 
-1. alcune superfici secondarie non sono ancora migrate alla shell condivisa;
-2. parte del CSS rimane locale mentre la migrazione prosegue;
-3. X3 raffinato richiede una nuova accettazione visiva desktop/mobile;
-4. le Impostazioni guidate e compatte hanno superato tutti i gate tecnici ma richiedono accettazione interattiva con dati reali;
-5. nessun provider LLM reale è ancora collegato: X3 resta deterministico/provider-neutral per validare UX e confini;
-6. T3A/T3B/T3C e T4 restano da implementare;
-7. production URL and final auth recovery UX remain to be frozen;
-8. legacy static files remain in root and must stay clearly marked as non-canonical.
+### Calendar
+
+`calendar_core` migration is applied.
+
+### T4 TeachingSession
+
+`teaching_sessions` migration is applied to project `gnshgapmwyjamhmlikeg`.
+
+Audited properties:
+
+- RLS enabled on `teaching_sessions` and `teaching_session_allocations`;
+- `authenticated` receives `SELECT` only on both tables;
+- direct table writes are not granted to `authenticated` or `anon`;
+- atomic write boundary: `public.record_teaching_session(...)`;
+- RPC is `SECURITY DEFINER` with `search_path=''`;
+- `EXECUTE` is granted to `authenticated`, not to `anon`/`public`;
+- workspace/year/section and canonical-generation constraints are enforced in PostgreSQL;
+- no T4 write marks `annual_plan_block_progress` as `SVOLTO` automatically.
+
+Canonical human approval receipt:
+
+`T4-HUMAN-APPROVAL:2026-08-23T19:44+02:00`
 
 ## Settings program
 
-### Guided Settings contract
-
-Status: `COMPLETE / REFINED_INTERACTIVE_ACCEPTANCE_PENDING`.
+Status: `COMPLETE_TECHNICAL / INTERACTIVE_ACCEPTANCE_PARTIAL`.
 
 Canonical sources:
 
-- `docs/architecture/SETTINGS_CANONICAL_SPEC.md` — persistence and invariants;
-- `docs/product/SETTINGS_EXPERIENCE_CONTRACT.md` — guided experience, states, explanations and feedback;
-- `docs/product/SETTINGS_CONTEXT_DISCLOSURE_NOTE.md` — **contesto completo, esposizione minima**;
-- `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` — tone and microcopy.
+- `docs/architecture/SETTINGS_CANONICAL_SPEC.md`;
+- `docs/product/SETTINGS_EXPERIENCE_CONTRACT.md`;
+- `docs/product/SETTINGS_CONTEXT_DISCLOSURE_NOTE.md`;
+- `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md`.
 
-Runtime baseline:
+The canonical Cattedra registry is shared with Orario and does not create timetable slots implicitly.
 
-- `/impostazioni` uses AppShell;
-- summary of five areas and `N/5` readiness;
-- deterministic `Completo / Da completare / Da controllare` read model;
-- Cattedra lives in professional-context configuration without duplicating data;
-- same `teaching_assignments` remain authoritative for Settings and Orario;
-- no automatic Timetable slot creation;
-- no Calendar/Piano annuale/Planner side effects;
-- read-only assignment reader avoids creating a Timetable draft just to render Settings.
-
-UX refinement merged in `cca482bd…`:
-
-- `Serve a / Usato in / Non modifica` preserved behind native `Come viene usata` disclosure;
-- disclosure closed by default and keyboard accessible;
-- redundant concept callouts removed from the primary reading flow;
-- only action-critical microcopy remains visible near fields, e.g. `Non crea lezioni nell'Orario` for Cattedra;
-- top next-step strip reduced to one actionable message;
-- mobile five-area summary changed to horizontal scrolling to reduce vertical density;
-- Product CI #229: test/typecheck/lint/build all PASS;
-- Netlify deploy `READY` on `cca482bd…`.
-
-Interactive acceptance checklist:
-
-1. open `/impostazioni` on the real mobile workspace;
-2. verify Cattedra shows fields immediately without the previous three-row context panel;
-3. verify `Come viene usata` opens the full context only when requested;
-4. verify `Non crea lezioni nell'Orario` remains visible near the Cattedra action;
-5. verify the five-area overview can be scanned horizontally on mobile;
-6. verify states and next step remain understandable without opening any explanation;
-7. add/update one Cattedra association and confirm it is immediately visible in Orario without creating a lesson.
-
-## Active program
+## Active experience program
 
 ### X0 — Product Experience canonical freeze
 
@@ -150,67 +133,76 @@ Status: `COMPLETE`.
 
 Status: `COMPLETE_TECHNICAL / REFINED_ACCEPTANCE_PENDING`.
 
-- `@assistant-ui/react` LocalRuntime;
-- authenticated read-only AssistantContext endpoint;
-- minimized context builder;
+Current constraints:
+
+- authenticated read-only AssistantContext;
+- deterministic/provider-neutral adapter;
 - capability allowlist/denylist;
-- deterministic provider-neutral ChatModelAdapter;
 - no write tools;
 - no chat persistence;
 - optional/off state;
-- compact assistant trigger and smaller expanded panel.
+- compact assistant surface.
 
-### X4 — Human-in-the-loop writes
+### X4 — Human-in-the-loop AI writes
 
 Status: `HOLD_FOR_X3_UX_ACCEPTANCE`.
 
-No write capability is authorized until the refined X3 experience is accepted.
+No AI write capability is authorized until the refined X3 interaction has been accepted in the real beta experience. Technical contracts and guardrails may be prepared, but persistent AI actions must remain disabled.
 
 ## Temporal program
 
 ### T3A — Timetable lifecycle
 
-Status: `NEXT_AFTER_UX_ACCEPTANCE`.
+Status: `COMPLETE`.
 
-- activate/archive timetable versions;
-- effective date lifecycle;
-- independent of Calendar;
-- no Calendar imports in Timetable domain/repository.
+Version activation/archive and effective intervals are implemented without Calendar dependencies.
 
 ### T3B — Calendar core
 
-Status: `PLANNED`.
+Status: `COMPLETE`.
 
-- school days and suspensions;
-- real events and date constraints;
-- independent of Timetable.
+Calendar remains an independent domain with explicit source-bound dates and events. Absence of a date classification remains `UNDETERMINED`.
 
 ### T3C — Temporal Projection
 
-Status: `PLANNED`.
+Status: `COMPLETE`.
 
-- application read model combining Timetable + Calendar through read ports;
-- projected real occurrences;
-- first use in Oggi;
-- neither source domain is mutated.
+Timetable + Calendar composition is read-only and first integrated into Oggi. Suspensions suppress only the projected occurrence for the date and never rewrite recurring timetable slots.
 
 ### T4 — Didactic allocation
 
-Status: `PENDING`.
+Status: `COMPLETE / DATABASE_APPLIED`.
 
-- map teaching sessions / projected occurrences to CAN-PLAN B01–B33;
-- actual minutes/evidence drive execution;
-- no rewrite of the canonical annual plan.
+- projected occurrences are candidates, not execution evidence;
+- teacher explicitly records actual TeachingSessions;
+- actual minutes may be allocated to one or more canonical B01–B33 blocks;
+- the allocation total cannot exceed actual session minutes;
+- current successful plan generation is required;
+- historical evidence preserves provenance;
+- minute thresholds may suggest completion but never auto-mark `SVOLTO`.
+
+The temporal roadmap currently ends at T4. A `T5` label must not be invented until a new canonical problem and dependency boundary are explicitly defined.
+
+## Current risks and next gates
+
+1. Confirm the latest T4 merge is actually Live on the Render beta runtime.
+2. X3 refined assistant still needs real interactive acceptance before X4 persistent AI writes.
+3. Settings guided experience still needs final interactive acceptance with real data.
+4. Magic-link/auth recovery URL policy should be frozen on the canonical Render beta domain.
+5. Some secondary surfaces and local CSS still need convergence toward the shared design system.
+6. Legacy static files and old Netlify links must remain clearly non-canonical.
+7. No real LLM provider is connected; X3 remains provider-neutral by design.
 
 ## Development rule
 
-Continue through small isolated slices; do not introduce a second competing architecture and do not rewrite working modules in bulk.
+Continue through small isolated slices. Do not introduce a second competing architecture or rewrite working modules in bulk.
 
 Every meaningful slice must:
 
 - preserve domain boundaries;
 - preserve RLS;
 - avoid fabricated school data;
+- distinguish system inference from professional evidence;
 - pass test/typecheck/lint/build;
-- deploy successfully to the reference preview when runtime is changed;
-- update canonical docs if it changes a product or architecture decision.
+- deploy successfully to the canonical beta runtime when runtime code changes;
+- update canonical docs when a product or architecture decision changes.
