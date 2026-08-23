@@ -52,12 +52,19 @@ export type CompileDirectHumanTaskTrancheInput = {
   sources: HumanTaskPipelineSource[]
 }
 
+export type ExplicitPackSetTiming =
+  | { status: 'NONE'; lessonCount: null; durationMinutes: null; note: string }
+  | { status: 'READY'; lessonCount: number; durationMinutes: number; note: string }
+  | { status: 'INVALID'; lessonCount: number | null; durationMinutes: number | null; note: string }
+
 /**
  * Compiler v3 adds the strongest PACK case: one explicit operational lesson
  * maps to one canonical two-hour block in source order. DIRECT is proposed
  * only when timing, activity, product and evidence are all documented by the
- * PACK. A non phase-structured UDA is tolerated only for this exact case; any
- * other blocking source problem remains fail-closed.
+ * PACK. Timing may be written on each lesson or once for the whole set using
+ * an explicit grammar such as “4 lezioni da 2 ore”; it is never inferred from
+ * the Plan alone. A non phase-structured UDA is tolerated only for this exact
+ * case; any other blocking source problem remains fail-closed.
  */
 export function compileHumanTaskTrancheReviewWithDirectPack(
   input: CompileDirectHumanTaskTrancheInput,
@@ -149,15 +156,28 @@ export function compileHumanTaskTrancheReviewWithDirectPack(
     })
   }
 
+  const packSource = sourceMap.get(packCode)
+  const setTiming = resolveExplicitPackSetTiming(packSource?.normalizedText ?? '', tranche.length)
+  if (setTiming.status === 'INVALID') {
+    return fallback(base, defaultItems, {
+      status: 'BLOCKED',
+      packCode,
+      blocks: [],
+      note: setTiming.note,
+    })
+  }
+
   const directBlocks: HumanTaskDirectAlignmentBlock[] = []
+  const setTimedBlockIds: string[] = []
   for (let index = 0; index < tranche.length; index += 1) {
     const block = tranche[index]
     const section = lessonSections[index]
     const lessonNumber = explicitLessonNumber(section.heading)
-    const durationMinutes = explicitPackSectionDurationMinutes(section)
+    const sectionDurationMinutes = explicitPackSectionDurationMinutes(section)
+    const durationMinutes = sectionDurationMinutes ?? (setTiming.status === 'READY' ? setTiming.durationMinutes : null)
     const activity = section.activity?.trim() ?? ''
     const product = section.product?.trim() ?? ''
-    const evidence = section.evidence?.trim() ?? ''
+    const evidence = explicitPackSectionEvidence(section)
 
     if (lessonNumber !== index + 1) {
       return fallback(base, defaultItems, {
@@ -172,7 +192,7 @@ export function compileHumanTaskTrancheReviewWithDirectPack(
         status: 'BLOCKED',
         packCode,
         blocks: [],
-        note: `${section.heading} non dichiara esattamente ${block.hours * 60} minuti; la durata non viene inferita.`,
+        note: `${section.heading} non documenta esattamente ${block.hours * 60} minuti né nella lezione né in una dichiarazione esplicita valida dell’intero set; la durata non viene inferita.`,
       })
     }
     if (!activity || !product || !evidence) {
@@ -180,9 +200,10 @@ export function compileHumanTaskTrancheReviewWithDirectPack(
         status: 'BLOCKED',
         packCode,
         blocks: [],
-        note: `${section.heading} non contiene contemporaneamente Attività, Prodotto ed Evidenza: DIRECT richiede tutti e tre i campi documentati.`,
+        note: `${section.heading} non contiene contemporaneamente Attività, Prodotto ed Evidenza/Evidenze: DIRECT richiede tutti e tre i campi documentati.`,
       })
     }
+    if (sectionDurationMinutes === null) setTimedBlockIds.push(block.id)
 
     directBlocks.push({
       blockId: block.id,
@@ -199,6 +220,9 @@ export function compileHumanTaskTrancheReviewWithDirectPack(
   const items: HumanTaskDirectCompilerItem[] = tranche.map((block) => {
     const direct = byBlock.get(block.id)
     if (!direct) throw new Error(`Raccordo DIRECT incompleto per ${block.id}.`)
+    const timingNote = setTimedBlockIds.includes(block.id)
+      ? 'La durata è dichiarata esplicitamente dall’articolazione complessiva del PACK.'
+      : 'La durata è dichiarata esplicitamente nella singola lezione.'
     return {
       blockId: block.id,
       title: block.title,
@@ -208,9 +232,13 @@ export function compileHumanTaskTrancheReviewWithDirectPack(
       alternativePhaseSets: [],
       score: null,
       proposedPackHeadings: [direct.heading],
-      note: `${direct.heading} copre esattamente il blocco da ${direct.durationMinutes} minuti e documenta attività, prodotto ed evidenza. La proposta resta soggetta a revisione umana e al gate cognitivo degli stakeholder.`,
+      note: `${direct.heading} copre esattamente il blocco da ${direct.durationMinutes} minuti e documenta attività, prodotto ed evidenza. ${timingNote} La proposta resta soggetta a revisione umana e al gate cognitivo degli stakeholder.`,
     }
   })
+
+  const timingProvenance = setTimedBlockIds.length
+    ? ` Per ${setTimedBlockIds.join(', ')} la durata deriva dalla dichiarazione esplicita del set “${setTiming.status === 'READY' ? `${setTiming.lessonCount} lezioni da ${setTiming.durationMinutes / 60} ore` : ''}”, non da inferenza.`
+    : ''
 
   return {
     compilerVersion: 3,
@@ -229,7 +257,7 @@ export function compileHumanTaskTrancheReviewWithDirectPack(
       status: 'READY',
       packCode,
       blocks: directBlocks,
-      note: 'Raccordo DIRECT documentato: il Piano mantiene ordine e durata del segmento; il PACK fornisce quattro lezioni operative 1:1; la UDA resta sorgente semantica e valutativa anche quando non espone fasi temporizzate estraibili.',
+      note: `Raccordo DIRECT documentato: il Piano mantiene ordine e durata del segmento; il PACK fornisce lezioni operative 1:1; la UDA resta sorgente semantica e valutativa anche quando non espone fasi temporizzate estraibili.${timingProvenance}`,
     },
   }
 }
@@ -240,6 +268,47 @@ export function explicitPackSectionDurationMinutes(section: ExtractedPackSection
   if (!match) return null
   const hours = Number(match[1].replace(',', '.'))
   return Number.isFinite(hours) && hours > 0 ? hours * 60 : null
+}
+
+/**
+ * Reads only a closed, explicit set-level grammar. The declaration is usable
+ * only when its lesson count exactly equals the discovered tranche. Multiple
+ * declarations or count mismatches are treated as ambiguity and block DIRECT.
+ */
+export function resolveExplicitPackSetTiming(normalizedText: string, expectedLessonCount: number): ExplicitPackSetTiming {
+  const matches = Array.from(normalizedText.matchAll(/(?:ARTICOLAZIONE\s*[—–-]\s*)?(\d+)\s+LEZIONI\s+DA\s+(\d+(?:[.,]\d+)?)\s*ORE?\b/giu))
+  if (!matches.length) {
+    return { status: 'NONE', lessonCount: null, durationMinutes: null, note: 'Nessuna temporizzazione esplicita del set trovata.' }
+  }
+  if (matches.length !== 1) {
+    return { status: 'INVALID', lessonCount: null, durationMinutes: null, note: 'Il PACK contiene più dichiarazioni di temporizzazione del set: DIRECT non sceglie implicitamente quale usare.' }
+  }
+
+  const lessonCount = Number(matches[0][1])
+  const hours = Number(matches[0][2].replace(',', '.'))
+  const durationMinutes = Number.isFinite(hours) && hours > 0 ? hours * 60 : null
+  if (!Number.isInteger(lessonCount) || lessonCount !== expectedLessonCount || durationMinutes === null) {
+    return {
+      status: 'INVALID',
+      lessonCount: Number.isFinite(lessonCount) ? lessonCount : null,
+      durationMinutes,
+      note: `La temporizzazione esplicita del set dichiara ${lessonCount} lezioni per ${expectedLessonCount} blocchi oppure una durata non valida: DIRECT resta bloccato.`,
+    }
+  }
+
+  return {
+    status: 'READY',
+    lessonCount,
+    durationMinutes,
+    note: `Temporizzazione esplicita del set verificata: ${lessonCount} lezioni da ${hours} ore.`,
+  }
+}
+
+function explicitPackSectionEvidence(section: ExtractedPackSection) {
+  const singular = section.evidence?.trim()
+  if (singular) return singular
+  const match = section.content.match(/(?:^|\n)Evidenze\s*:\s*([^\n]+)/i)
+  return match?.[1]?.trim() ?? ''
 }
 
 function isExplicitLessonSection(section: ExtractedPackSection) {
