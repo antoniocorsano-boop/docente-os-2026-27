@@ -392,7 +392,12 @@ function rankPackSections(pack: ExtractedPack, context: string): HumanTaskPackMa
 function classifyPackHeading(heading: string): PackSectionKind {
   const normalized = stripNumberedHeadingPrefix(heading).toUpperCase()
   if (normalized.startsWith('SCHEDA DOCENTE') || normalized.startsWith('LEZIONE ')) return 'TEACHER_GUIDE'
-  if (normalized.startsWith('SCHEDA ALUNNO') || /^SCHEDA\s+[A-Z]\b/.test(normalized) || /^TAVOLA\s+[A-Z]\b/.test(normalized)) return 'STUDENT_SHEET'
+  if (
+    normalized.startsWith('SCHEDA ALUNNO')
+    || /^SCHEDA\s+[A-Z]\b/.test(normalized)
+    || isNamedStudentSheetHeading(normalized)
+    || /^TAVOLA\s+[A-Z]\b/.test(normalized)
+  ) return 'STUDENT_SHEET'
   if (normalized.startsWith('EXIT TICKET') || (normalized.includes('GRIGLIA') && normalized.includes('OSSERVAZIONE'))) return 'OBSERVATION_TOOL'
   if (normalized.startsWith('COMPITO SIGNIFICATIVO') || normalized.startsWith('MINI-COMPITO SIGNIFICATIVO')) return 'TASK_BRIEF'
   if (normalized.startsWith('RUBRICA')) return 'RUBRIC'
@@ -426,9 +431,28 @@ function extractNumberedSections(lines: string[]): ExtractedUdaSection[] {
 
 function extractPackChunks(lines: string[]): Array<{ heading: string; body: string[] }> {
   const starts: Array<{ lineIndex: number; heading: string }> = []
+  let inOperationalPath = false
+  let nextOperationalOrdinal = 1
+
   lines.forEach((rawLine, lineIndex) => {
     const line = cleanLine(rawLine)
-    if (isPackSectionHeading(line)) starts.push({ lineIndex, heading: line })
+    if (normalizeHeading(line) === 'percorso operativo') {
+      inOperationalPath = true
+      nextOperationalOrdinal = 1
+      return
+    }
+
+    const operationalOrdinal = inOperationalPath ? operationalPathHeadingOrdinal(line) : null
+    if (operationalOrdinal === nextOperationalOrdinal) {
+      starts.push({ lineIndex, heading: line })
+      nextOperationalOrdinal += 1
+      return
+    }
+
+    if (isPackSectionHeading(line)) {
+      starts.push({ lineIndex, heading: line })
+      if (inOperationalPath && operationalOrdinal === null) inOperationalPath = false
+    }
   })
 
   return starts.map((start, index) => ({
@@ -437,12 +461,23 @@ function extractPackChunks(lines: string[]): Array<{ heading: string; body: stri
   }))
 }
 
+function operationalPathHeadingOrdinal(line: string) {
+  const match = line.match(/^(\d+)\.\s+(.+)$/)
+  if (!match) return null
+  const label = cleanLine(match[2])
+  if (!label || label.length > 90) return null
+  if (/[?:;.]$/.test(label)) return null
+  if (!/^[A-ZÀ-Ý]/u.test(label)) return null
+  return Number(match[1])
+}
+
 function isPackSectionHeading(line: string) {
   const normalized = stripNumberedHeadingPrefix(line).toUpperCase()
   if (/^LEZIONE\b/.test(normalized)) return true
   if (/^SCHEDA DOCENTE\b/.test(normalized)) return true
   if (/^SCHEDA ALUNNO\b/.test(normalized)) return true
   if (/^SCHEDA\s+[A-Z]\b/.test(normalized)) return true
+  if (isNamedStudentSheetHeading(normalized)) return true
   if (/^TAVOLA\s+[A-Z]\b/.test(normalized)) return true
   if (/^EXIT TICKET\b/.test(normalized)) return true
   if (/^(?:MINI-)?COMPITO SIGNIFICATIVO\b/.test(normalized)) return true
@@ -451,6 +486,19 @@ function isPackSectionHeading(line: string) {
   if (/^ADATTAMENTI\b/.test(normalized)) return true
   if (/^\d+\.\s+/.test(line) && isLikelyDocumentHeading(line.replace(/^\d+\.\s+/, ''))) return true
   return false
+}
+
+function isNamedStudentSheetHeading(value: string) {
+  return /^SCHEDA\s+[«“"][^»”"]+[»”"]?$/u.test(value.trim())
+}
+
+function normalizeHeading(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('it')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 function isLikelyDocumentHeading(value: string) {
