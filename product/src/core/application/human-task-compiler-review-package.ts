@@ -1,6 +1,11 @@
 import type { GradeKey } from '@/app/piano-annuale/model'
 import type { HumanTaskCompilerPlanFragment } from './human-task-pack-alignment-classifier'
 import type { HumanTaskExtendedTrancheReview } from './human-task-tranche-compiler-pack-extension'
+import {
+  createPendingHumanTaskImprovementReview,
+  isHumanTaskImprovementReviewComplete,
+  type HumanTaskImprovementReview,
+} from './human-task-continuous-improvement'
 
 export type HumanTaskCompilerReviewDecision = 'PENDING' | 'APPROVE' | 'CORRECT' | 'BLOCK'
 
@@ -28,7 +33,14 @@ export type HumanTaskCompilerReviewPackage = {
     decision: HumanTaskCompilerReviewDecision
   }>
   constraints: string[]
+  improvementReview: HumanTaskImprovementReview
   decision: HumanTaskCompilerReviewDecision
+}
+
+export type HumanTaskCompilerApproval = {
+  decision: 'APPROVE'
+  approvedAt: string
+  improvementReview: HumanTaskImprovementReview
 }
 
 /**
@@ -70,7 +82,31 @@ export function buildHumanTaskCompilerReviewPackage(input: {
       'UDA e PACK devono restare legati alle generazioni correnti registrate nel pacchetto.',
       'Nessuna temporizzazione interna viene dedotta quando non è esplicita nella fonte.',
       'Il pacchetto di revisione non è una proiezione runtime e non equivale ad approvazione.',
+      'Prima della promozione deve essere chiusa anche la revisione di miglioramento del processo.',
     ],
+    improvementReview: createPendingHumanTaskImprovementReview(),
     decision: 'PENDING',
+  }
+}
+
+export function approveHumanTaskCompilerReviewPackage(
+  reviewPackage: HumanTaskCompilerReviewPackage,
+  approval: HumanTaskCompilerApproval,
+): HumanTaskCompilerReviewPackage {
+  if (reviewPackage.status !== 'READY_FOR_HUMAN_REVIEW') {
+    throw new Error('Il pacchetto non è pronto per approvazione umana.')
+  }
+  if (reviewPackage.items.some((item) => item.proposedRecipe === 'UNRESOLVED')) {
+    throw new Error('Il pacchetto contiene blocchi semantici non risolti.')
+  }
+  if (!isHumanTaskImprovementReviewComplete(approval.improvementReview)) {
+    throw new Error('La promozione richiede una revisione di miglioramento conclusa.')
+  }
+
+  return {
+    ...reviewPackage,
+    items: reviewPackage.items.map((item) => ({ ...item, decision: 'APPROVE' })),
+    improvementReview: { ...approval.improvementReview },
+    decision: approval.decision,
   }
 }
