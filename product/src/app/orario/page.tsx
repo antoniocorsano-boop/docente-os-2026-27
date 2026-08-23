@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
-import { minutesToTime, slotDurationMinutes, timeToMinutes, TIMETABLE_WEEKDAYS } from '@/core/domain/timetable'
+import { canActivateTimetableDraft, minutesToTime, slotDurationMinutes, timeToMinutes, TIMETABLE_WEEKDAYS } from '@/core/domain/timetable'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTimetableLifecycleRepository } from '@/core/infrastructure/supabase/supabase-timetable-lifecycle-repository'
@@ -65,7 +65,7 @@ export default async function TimetablePage() {
   const nextSlot = currentSlot ?? todaySlots.find((slot) => timeToMinutes(slot.startTime) > moment.minutes) ?? null
   const focusSlot = nextSlot ? describeSlot(nextSlot, sectionById, disciplineById) : null
   const archivedVersions = lifecycle.versions.filter((version) => version.status === 'ARCHIVED').slice(0, 3)
-  const canActivateDraft = !lifecycle.activeVersion || timetable.draftVersion.effectiveFrom > lifecycle.activeVersion.effectiveFrom
+  const canActivateDraft = canActivateTimetableDraft(lifecycle.activeVersion, timetable.draftVersion)
 
   return (
     <AppShell active="timetable" academicYearLabel={context.academicYear.label} workspaceName={settings.schoolName || context.workspace.name} role={context.role} contentClassName="timetableSurface">
