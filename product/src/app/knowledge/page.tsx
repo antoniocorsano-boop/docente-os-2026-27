@@ -68,7 +68,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
 
           <div className="captureModeBlock">
             <div className="captureModeHeading"><strong>Carica un file</strong><span>Privato · massimo 20 MB</span></div>
-            <KnowledgeFileUploader workspaceId={context.workspace.id} />
+            <KnowledgeFileUploader />
           </div>
         </section>
 
