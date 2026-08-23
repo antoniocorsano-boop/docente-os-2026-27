@@ -1,4 +1,4 @@
-import type { GradeKey } from '@/app/piano-annuale/model'
+import { buildBlocks, type GradeKey } from '@/app/piano-annuale/model'
 import {
   buildLessonWorkspaceHref,
   resolveHumanTaskLessonProjection as resolveLegacyHumanTaskLessonProjection,
@@ -46,6 +46,19 @@ export function resolveRuntimeHumanTaskLessonProjection(
 
 export function hasRuntimeHumanTaskLessonProjection(grade: GradeKey, block: CanonicalRuntimeBlock) {
   return resolveRuntimeHumanTaskLessonProjection(grade, block) !== null
+}
+
+/**
+ * Returns canonical blocks that are genuinely modeled by the current runtime,
+ * regardless of whether their projection comes from the legacy baseline or
+ * the approved manifest/registry pipeline. This is the canonical coverage
+ * boundary for compiler discovery and avoids treating a storage mechanism as
+ * the definition of modeled content.
+ */
+export function discoverRuntimeHumanTaskCoveredBlockIds(grade: GradeKey): string[] {
+  return buildBlocks(grade)
+    .filter((block) => hasRuntimeHumanTaskLessonProjection(grade, block))
+    .map((block) => block.id)
 }
 
 export { buildLessonWorkspaceHref }
