@@ -4,9 +4,9 @@ import { buildBlocks } from '@/app/piano-annuale/model'
 import { discoverNextHumanTaskTranche } from '@/core/application/human-task-tranche-compiler'
 import { APPROVED_HUMAN_TASK_MANIFESTS_SECONDA_B01_B04 } from './human-task-approved-manifests-seconda-b01-b04'
 import { validateApprovedHumanTaskManifest } from './human-task-approved-manifest'
-import { discoverRuntimeHumanTaskCoveredBlockIds, resolveRuntimeHumanTaskLessonProjection } from './human-task-runtime'
+import { resolveRuntimeHumanTaskLessonProjection } from './human-task-runtime'
 
-test('Seconda B01-B04 manifests are approved, source-bound and cognitively fulfilled', () => {
+test('Seconda B01-B04 manifests remain approved, source-bound and cognitively fulfilled', () => {
   assert.equal(APPROVED_HUMAN_TASK_MANIFESTS_SECONDA_B01_B04.length, 4)
   for (const manifest of APPROVED_HUMAN_TASK_MANIFESTS_SECONDA_B01_B04) {
     assert.deepEqual(validateApprovedHumanTaskManifest(manifest), [])
@@ -18,7 +18,7 @@ test('Seconda B01-B04 manifests are approved, source-bound and cognitively fulfi
   }
 })
 
-test('runtime exposes four distinct human titles while canonical Plan segment keeps structural focus', () => {
+test('runtime keeps four distinct B01-B04 human titles while canonical Plan segment keeps structural focus', () => {
   const blocks = buildBlocks('Seconda').slice(0, 4)
   assert.equal(new Set(blocks.map((block) => block.title)).size, 1)
   const projections = blocks.map((block) => resolveRuntimeHumanTaskLessonProjection('Seconda', block))
@@ -30,16 +30,15 @@ test('runtime exposes four distinct human titles while canonical Plan segment ke
   ])
 })
 
-test('Seconda runtime coverage advances to B04 and autonomous discovery selects the next segment', () => {
-  const covered = discoverRuntimeHumanTaskCoveredBlockIds('Seconda')
-  assert.deepEqual(covered, ['B01', 'B02', 'B03', 'B04'])
-  const next = discoverNextHumanTaskTranche('Seconda', covered)
+test('historical B01-B04 coverage boundary deterministically selected B05-B08', () => {
+  const historicalCovered = ['B01', 'B02', 'B03', 'B04']
+  const next = discoverNextHumanTaskTranche('Seconda', historicalCovered)
   assert.equal(next[0]?.segmentKey, 'Seconda:2')
   assert.deepEqual(next.map((block) => block.id), ['B05', 'B06', 'B07', 'B08'])
   assert.equal(next.every((block) => block.uda === '2-02' && block.pack === 'CAN-PACK-2B'), true)
 })
 
-test('approved title override does not weaken structural drift checks', () => {
+test('approved B01-B04 title override does not weaken structural drift checks', () => {
   const block = buildBlocks('Seconda')[0]
   assert.equal(resolveRuntimeHumanTaskLessonProjection('Seconda', { ...block, uda: '2-99' }), null)
   assert.equal(resolveRuntimeHumanTaskLessonProjection('Seconda', { ...block, pack: 'CAN-PACK-OTHER' }), null)
