@@ -23,10 +23,10 @@ export type HumanTaskFinalTaskTrancheReview = Omit<HumanTaskDirectTrancheReview,
 
 /**
  * Compiler v4 keeps v3 as the default path and adds one explicit grammar for
- * a final authentic task. It is accepted only when the source itself contains:
- * `Compito significativo`, `Consegna`, `Il gruppo deve produrre`, an explicit
- * student-sheet heading, a rubric and `CRITERI OD-READY`. No missing field is
- * invented and the canonical duration rules of v3 remain unchanged.
+ * a final authentic task. The canonical PACK parser may expose that task as
+ * an adjacent TASK_BRIEF after the final LEZIONE. Recovery is allowed only
+ * when the task brief, product list, student sheet, rubric and OD-READY
+ * criteria are all explicit in the same frozen source generation.
  */
 export function compileHumanTaskTrancheReviewWithFinalTask(
   input: CompileDirectHumanTaskTrancheInput,
@@ -91,7 +91,7 @@ export function compileHumanTaskTrancheReviewWithFinalTask(
       continue
     }
 
-    const recovered = recoverExplicitFinalTask(section, packSource.normalizedText)
+    const recovered = recoverExplicitFinalTask(section, pack.sections, packSource.normalizedText)
     if (!recovered) {
       return blocked(base, block.id, `${section.heading} non documenta integralmente compito, consegna, prodotto, scheda, rubrica e criteri OD-READY.`)
     }
@@ -120,7 +120,7 @@ export function compileHumanTaskTrancheReviewWithFinalTask(
       score: null,
       proposedPackHeadings: [direct.heading],
       note: block.id === tranche.at(-1)?.id
-        ? `${direct.heading} usa la grammatica esplicita del compito significativo: consegna, prodotto, scheda, rubrica e criteri sono tutti presenti nella fonte. Nessuna evidenza è sintetizzata.`
+        ? `${direct.heading} usa la grammatica esplicita del compito significativo: task brief, prodotto, scheda, rubrica e criteri sono tutti presenti nella fonte. Nessuna evidenza è sintetizzata.`
         : `${direct.heading} soddisfa il contratto DIRECT standard.`,
     }
   })
@@ -136,30 +136,44 @@ export function compileHumanTaskTrancheReviewWithFinalTask(
       status: 'READY',
       packCode,
       blocks: aligned,
-      note: 'Raccordo DIRECT completo. Le lezioni ordinarie usano Attività/Prodotto/Evidenza; l’ultima usa esclusivamente la grammatica documentata del compito significativo con scheda, rubrica e criteri OD-READY.',
+      note: 'Raccordo DIRECT completo. Le lezioni ordinarie usano Attività/Prodotto/Evidenza; l’ultima è completata dal TASK_BRIEF canonico adiacente con scheda, rubrica e criteri OD-READY.',
     },
     finalTaskRecovery: {
       status: 'READY',
       blockId: tranche.at(-1)?.id ?? null,
-      note: 'Compito finale recuperato da campi e artefatti espliciti della fonte; nessuna inferenza di contenuto o durata.',
+      note: 'Compito finale recuperato dalla struttura canonica LEZIONE → TASK_BRIEF → RUBRICA della stessa fonte; nessuna inferenza di contenuto o durata.',
     },
   }
 }
 
-function recoverExplicitFinalTask(section: ExtractedPackSection, sourceText: string) {
-  const task = labeled(section.content, 'Compito significativo')
-  const delivery = labeled(section.content, 'Consegna')
-  const sheetHeading = inlineStudentSheetHeading(section.content)
-  const product = boundedProduct(section.content, sheetHeading)
-  const rubricHeading = sourceText.match(/(?:^|\n)(RUBRICA[^\n]+)/i)?.[1]?.trim() ?? ''
+function recoverExplicitFinalTask(
+  lesson: ExtractedPackSection,
+  sections: ExtractedPackSection[],
+  sourceText: string,
+) {
+  const taskBrief = sections.find((candidate) => candidate.ordinal > lesson.ordinal && candidate.kind === 'TASK_BRIEF')
+  if (!taskBrief) return null
+
+  const nextLesson = sections.find((candidate) => candidate.ordinal > lesson.ordinal && isLesson(candidate))
+  if (nextLesson && taskBrief.ordinal > nextLesson.ordinal) return null
+
+  const task = taskFromHeading(taskBrief.heading)
+  const delivery = labeled(taskBrief.content, 'Consegna')
+  const sheetHeading = inlineStudentSheetHeading(taskBrief.content)
+  const product = boundedProduct(taskBrief.content, sheetHeading)
+  const rubric = sections.find((candidate) => candidate.ordinal > taskBrief.ordinal && candidate.kind === 'RUBRIC')
   const hasOdReady = /(?:^|\n)CRITERI\s+OD-READY\b/i.test(sourceText)
-  if (!task || !delivery || !product || !sheetHeading || !rubricHeading || !hasOdReady) return null
+  if (!task || !delivery || !product || !sheetHeading || !rubric || !hasOdReady) return null
 
   return {
     activity: `Compito significativo: ${task}\nConsegna: ${delivery}`,
     product: `Il gruppo deve produrre: ${product}`,
-    evidence: `${sheetHeading}; ${rubricHeading}; CRITERI OD-READY`,
+    evidence: `${sheetHeading}; ${rubric.heading}; CRITERI OD-READY`,
   }
+}
+
+function taskFromHeading(heading: string) {
+  return heading.match(/^(?:MINI-)?COMPITO SIGNIFICATIVO\s*:\s*(.+)$/i)?.[1]?.trim() ?? ''
 }
 
 function labeled(content: string, label: string) {
