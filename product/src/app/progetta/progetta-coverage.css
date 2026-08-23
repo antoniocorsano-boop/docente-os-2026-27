@@ -1,0 +1,7 @@
+.planningCoverage{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:18px}
+.planningCoverage>div{display:grid;gap:5px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.planningCoverage span{color:var(--brand);font-size:9px;font-weight:900;letter-spacing:.1em}
+.planningCoverage strong{font-size:12px}
+.planningCoverage small{color:#b45309;font-size:10px;font-weight:750}
+.planningCoverage small.covered{color:#15803d}
+@media(max-width:719px){.planningCoverage{grid-template-columns:1fr}}

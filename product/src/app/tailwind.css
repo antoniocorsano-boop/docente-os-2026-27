@@ -1,0 +1,24 @@
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/*
+ * X1 intentionally omits Tailwind preflight.
+ * The existing DOCENTE OS CSS remains authoritative while surfaces migrate
+ * incrementally to canonical components.
+ */
+@theme inline {
+  --color-background: var(--canvas);
+  --color-foreground: var(--ink);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--ink);
+  --color-muted: var(--surface-soft);
+  --color-muted-foreground: var(--ink-soft);
+  --color-border: var(--line);
+  --color-input: var(--line-strong);
+  --color-primary: var(--brand);
+  --color-primary-foreground: #ffffff;
+  --color-destructive: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+}

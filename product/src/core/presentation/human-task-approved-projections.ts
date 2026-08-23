@@ -1,0 +1,268 @@
+import type { HumanTaskLessonProjection } from './human-task-content'
+
+const PRIMA_MATERIAL_SOURCES: HumanTaskLessonProjection['sources'] = [
+  {
+    code: 'CAN-PLAN-1',
+    label: 'Piano annuale operativo Tecnologia — classe prima',
+    role: 'PLAN',
+    url: 'https://docs.google.com/document/d/1rNF-MsPXnDuCsBQ_9h31rT1mqjHj4SXD8s3j2lVJ-C4/edit',
+  },
+  {
+    code: 'CAN-UDA-1-02',
+    label: 'Materiali: dalla risorsa al prodotto',
+    role: 'UDA',
+    url: 'https://docs.google.com/document/d/1MziCI5IjvYjhHjU-rpe25ASMl48HlCQeh2FDIoJRROo/edit',
+  },
+  {
+    code: 'CAN-PACK-1B',
+    label: 'Materiali e avvio al disegno tecnico per l’Open Day',
+    role: 'PACK',
+    url: 'https://docs.google.com/document/d/1QnrzAD1rHWwp97r-KPUuCC8XdFNXUFqMk5hi33GxuxQ/edit',
+  },
+]
+
+const PRIMA_MATERIAL_UDA_ONLY_SOURCES = PRIMA_MATERIAL_SOURCES.filter((source) => source.role !== 'PACK')
+
+const B07_PRIMA: HumanTaskLessonProjection = {
+  projectionId: 'HTC-PRIMA-B07-v1',
+  grade: 'Prima',
+  blockId: 'B07',
+  udaCode: '1-02',
+  udaTitle: 'Materiali: dalla risorsa al prodotto',
+  packCode: 'CAN-PACK-1B',
+  period: 'Ottobre/Dicembre',
+  title: 'Riconoscere e classificare i materiali',
+  durationMinutes: 120,
+  why: 'Avviare lo studio dei materiali partendo da campioni reali e distinguendo risorsa, materia prima, materiale, semilavorato e prodotto.',
+  objective: 'Riconoscere e classificare materiali di uso comune usando criteri espliciti e un lessico tecnico iniziale.',
+  outcomes: [
+    'Distinguere risorsa naturale, materia prima, materiale, semilavorato e prodotto.',
+    'Riconoscere famiglie di materiali di uso comune.',
+    'Osservare e confrontare campioni o oggetti mediante criteri definiti.',
+  ],
+  preparation: [
+    'Piccoli campioni sicuri di legno.',
+    'Carta/cartone.',
+    'Metallo.',
+    'Plastica.',
+    'Vetro.',
+    'Tessuto.',
+    'Materiali compositi semplici.',
+  ],
+  steps: [
+    { id: 'S01', minutes: null, title: 'Osserva oggetti e campioni', instruction: 'Osservazione guidata di oggetti e campioni.' },
+    { id: 'S02', minutes: null, title: 'Distingui le trasformazioni', instruction: 'Distingui risorsa, materia prima, materiale, semilavorato e prodotto.' },
+    { id: 'S03', minutes: null, title: 'Classifica per famiglie', instruction: 'Classifica i materiali per famiglie.', resourceIds: ['STUDENT-E'] },
+  ],
+  resources: [
+    {
+      id: 'STUDENT-E',
+      kind: 'STUDENT_SHEET',
+      title: 'Carta d’identità di un materiale',
+      instruction: 'Usa questa scheda nel passaggio di classificazione e conserva l’elaborato come evidenza quando pertinente.',
+      surfaces: ['PREPARE'],
+      prompts: [
+        'Nome materiale',
+        'Famiglia',
+        'Origine prevalente',
+        'Aspetto',
+        'Proprietà osservabili',
+        'Possibili usi',
+        'Un vantaggio',
+        'Un limite',
+        'Fine vita possibile',
+        'Disegno o piccolo schema del campione',
+      ],
+    },
+  ],
+  evidence: 'Correttezza della classificazione, proprietà osservate, uso del lessico.',
+  observation: [
+    'Riconosce e denomina materiali.',
+    'Usa criteri coerenti di classificazione.',
+    'Utilizza lessico tecnico essenziale.',
+  ],
+  assessmentNote: 'Formativa: osserva correttezza della classificazione, proprietà riconosciute e uso del lessico. La singola scheda non viene trasformata automaticamente in voto.',
+  continuation: 'La lezione successiva passa alle proprietà e alle prove comparative.',
+  sourceAlignment: { level: 'DIRECT' },
+  sources: PRIMA_MATERIAL_SOURCES,
+}
+
+const B08_PRIMA: HumanTaskLessonProjection = {
+  projectionId: 'HTC-PRIMA-B08-v1',
+  grade: 'Prima',
+  blockId: 'B08',
+  udaCode: '1-02',
+  udaTitle: 'Materiali: dalla risorsa al prodotto',
+  packCode: 'CAN-PACK-1B',
+  period: 'Ottobre/Dicembre',
+  title: 'Proprietà e prove comparative',
+  durationMinutes: 120,
+  why: 'Passare dalla semplice osservazione al confronto controllato delle proprietà, distinguendo procedura, dato osservato e conclusione.',
+  objective: 'Eseguire semplici prove comparative in condizioni controllate e registrare i risultati senza confondere osservazioni e interpretazioni.',
+  outcomes: [
+    'Descrivere alcune proprietà fisiche, meccaniche, tecnologiche e funzionali con esempi concreti.',
+    'Eseguire semplici prove comparative in condizioni controllate.',
+    'Documentare un’attività con tabella, schema, breve relazione o supporto digitale.',
+  ],
+  preparation: ['Campioni predisposti e sicuri per le prove qualitative.'],
+  steps: [
+    {
+      id: 'S01',
+      minutes: null,
+      title: 'Esegui e documenta una prova comparativa',
+      instruction: 'Prove qualitative e controllate, senza rischio, su rigidità/flessibilità, trasparenza/opacità, assorbimento superficiale, resistenza alla semplice deformazione manuale ove appropriato, risposta al graffio solo su campioni predisposti e sicuri.',
+      cue: 'Una variabile alla volta: osservazione, confronto, registrazione.',
+      resourceIds: ['STUDENT-F'],
+    },
+  ],
+  resources: [
+    {
+      id: 'STUDENT-F',
+      kind: 'STUDENT_SHEET',
+      title: 'Prova comparativa',
+      instruction: 'Usa questa scheda nel passaggio indicato e conserva l’elaborato come evidenza quando pertinente.',
+      surfaces: ['PREPARE'],
+      prompts: [
+        'Domanda',
+        'Campione A',
+        'Campione B',
+        'Che cosa mantengo uguale',
+        'Che cosa confronto',
+        'Procedura',
+        'Osservazioni A',
+        'Osservazioni B',
+        'Conclusione',
+        'Limite della prova',
+      ],
+    },
+  ],
+  evidence: 'Capacità di descrivere procedura, dato osservato e conclusione senza confondere opinione e risultato.',
+  observation: [
+    'Esegue una procedura rispettando consegne e sicurezza.',
+    'Registra dati senza confondere osservazioni e interpretazioni.',
+    'Collega proprietà e funzione.',
+  ],
+  assessmentNote: 'Formativa: osserva rispetto della procedura, qualità della registrazione e coerenza fra dato osservato e conclusione. La prova non diventa automaticamente un voto.',
+  continuation: 'La lezione successiva usa proprietà e criteri per scegliere un materiale adatto a una funzione.',
+  sourceAlignment: { level: 'DIRECT' },
+  sources: PRIMA_MATERIAL_SOURCES,
+}
+
+const B09_PRIMA: HumanTaskLessonProjection = {
+  projectionId: 'HTC-PRIMA-B09-v1',
+  grade: 'Prima',
+  blockId: 'B09',
+  udaCode: '1-02',
+  udaTitle: 'Materiali: dalla risorsa al prodotto',
+  packCode: 'CAN-PACK-1B',
+  period: 'Ottobre/Dicembre',
+  title: 'Scegliere un materiale per una funzione',
+  durationMinutes: 120,
+  why: 'Usare proprietà e vincoli per passare dal confronto alla decisione tecnica, motivando la scelta fra materiali alternativi.',
+  objective: 'Confrontare tre materiali con criteri espliciti e motivare una scelta coerente con funzione, proprietà, sicurezza, durata e fine vita.',
+  outcomes: [
+    'Descrivere alcune proprietà fisiche, meccaniche, tecnologiche e funzionali con esempi concreti.',
+    'Motivare la scelta di un materiale in rapporto a funzione, proprietà, costo, disponibilità, sicurezza e impatto ambientale.',
+    'Documentare un’attività con tabella, schema, breve relazione o supporto digitale.',
+  ],
+  preparation: ['Tre materiali da confrontare per un semplice oggetto.'],
+  steps: [
+    {
+      id: 'S01',
+      minutes: null,
+      title: 'Confronta tre alternative',
+      instruction: 'Confronto tra tre materiali per un semplice oggetto.',
+    },
+    {
+      id: 'S02',
+      minutes: null,
+      title: 'Applica i criteri e motiva la scelta',
+      instruction: 'Criteri: funzione, proprietà, disponibilità, lavorabilità, sicurezza, durata, fine vita.',
+      resourceIds: ['STUDENT-G'],
+    },
+  ],
+  resources: [
+    {
+      id: 'STUDENT-G',
+      kind: 'STUDENT_SHEET',
+      title: 'Matrice di scelta',
+      instruction: 'Usa questa scheda nel passaggio indicato e conserva l’elaborato come evidenza quando pertinente.',
+      surfaces: ['PREPARE'],
+      prompts: [
+        'Oggetto/funzione',
+        'Materiale 1',
+        'Materiale 2',
+        'Materiale 3',
+        'Criteri',
+        'Scelta finale',
+        'La scelgo perché',
+        'Una conseguenza ambientale da considerare',
+      ],
+    },
+  ],
+  evidence: 'Scelta motivata con almeno due criteri.',
+  observation: [
+    'Collega proprietà e funzione.',
+    'Motiva una scelta fra alternative.',
+    'Utilizza lessico tecnico essenziale.',
+  ],
+  assessmentNote: 'Formativa e prestazionale: osserva soprattutto la coerenza fra criteri, confronto e scelta finale. La matrice sostiene l’argomentazione e non genera automaticamente un voto.',
+  continuation: 'Il percorso sui materiali prosegue ricostruendo il passaggio dalla risorsa al prodotto.',
+  sourceAlignment: { level: 'DIRECT' },
+  sources: PRIMA_MATERIAL_SOURCES,
+}
+
+const B10_PRIMA: HumanTaskLessonProjection = {
+  projectionId: 'HTC-PRIMA-B10-UDA-v1',
+  grade: 'Prima',
+  blockId: 'B10',
+  udaCode: '1-02',
+  udaTitle: 'Materiali: dalla risorsa al prodotto',
+  packCode: 'CAN-PACK-1B',
+  period: 'Ottobre/Dicembre',
+  title: 'Dalla risorsa al prodotto',
+  durationMinutes: 120,
+  why: 'Collegare risorsa, trasformazione e prodotto ricostruendo una filiera materiale in forma semplice e leggibile.',
+  objective: 'Ricostruire in forma semplificata una o più filiere materiali usando un diagramma lineare o di flusso.',
+  outcomes: [
+    'Distinguere risorsa naturale, materia prima, materiale, semilavorato e prodotto.',
+    'Ricostruire, in forma semplificata, le principali fasi di una filiera materiale.',
+    'Documentare un’attività con tabella, schema, breve relazione o supporto digitale.',
+  ],
+  preparation: [],
+  steps: [
+    {
+      id: 'S01',
+      minutes: null,
+      title: 'Ricostruisci una filiera',
+      instruction: 'Ricostruzione di una o più filiere esemplificative, ad esempio legno–carta, minerale–metallo, sabbia–vetro, petrolio/biomassa–polimero.',
+    },
+    {
+      id: 'S02',
+      minutes: null,
+      title: 'Rappresentala con un diagramma',
+      instruction: 'Uso di diagrammi lineari o di flusso.',
+    },
+  ],
+  resources: [],
+  evidence: 'Ricostruisce una semplice filiera.',
+  observation: [
+    'Ricostruisce una semplice filiera.',
+    'Utilizza lessico tecnico essenziale.',
+    'Collabora e documenta il lavoro.',
+  ],
+  assessmentNote: 'Formativa: osserva soprattutto se la classe ricostruisce una semplice filiera e usa un lessico tecnico essenziale. Il diagramma non genera automaticamente un voto.',
+  continuation: 'La lezione successiva apre il percorso di disegno tecnico con strumenti, impostazione del foglio e funzione della linea.',
+  sourceAlignment: {
+    level: 'COMPOSED',
+    note: 'Il Piano colloca questa lezione in UDA 1-02, ma il pacchetto operativo non contiene una guida docente dedicata. La sequenza è ricavata esclusivamente dalla Fase 4 da 2 ore e dalle evidenze della stessa UDA.',
+  },
+  sources: PRIMA_MATERIAL_UDA_ONLY_SOURCES,
+}
+
+export const APPROVED_HUMAN_TASK_PROJECTIONS: readonly HumanTaskLessonProjection[] = [
+  B07_PRIMA,
+  B08_PRIMA,
+  B09_PRIMA,
+  B10_PRIMA,
+]

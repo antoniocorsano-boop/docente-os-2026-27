@@ -10,21 +10,35 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "test": "tsx --test src/core/application/knowledge-ingestion-service.test.ts src/core/application/human-task-content-pipeline.test.ts src/core/application/human-task-tranche-compiler.test.ts src/core/application/human-task-next-cycle-discovery.test.ts src/core/application/human-task-tranche-compiler-pack-extension.test.ts src/core/application/human-task-compiler-review-package.test.ts src/core/application/human-task-projection-recipe.test.ts src/core/application/human-task-projection-batch.test.ts src/core/application/human-task-pack-composed-projection-recipe.test.ts src/core/application/human-task-plan-guided-uda-projection-recipe.test.ts src/core/application/human-task-plan-guided-project-process.test.ts src/core/application/human-task-stakeholder-cognitive-gate.test.ts src/core/application/human-task-evidence-source-binding.test.ts src/core/infrastructure/knowledge/file-transformers.test.ts src/core/domain/knowledge-task-source.test.ts src/core/presentation/product-language.test.ts src/core/presentation/assistant-context.test.ts src/core/presentation/human-task-model.test.ts src/core/presentation/task-continuity.test.ts src/core/presentation/human-task-content.test.ts src/core/presentation/human-task-approved-manifest.test.ts src/core/presentation/human-task-runtime.test.ts src/components/app-shell/navigation.test.ts src/app/classi/class-counts.test.ts src/app/classi/class-workspace-model.test.ts src/app/progetta/progetta-model.test.ts src/app/orario/timetable-grid-model.test.ts src/app/orario/timetable-operational-model.test.ts src/app/impostazioni/settings-experience-model.test.ts src/app/piano-annuale/model.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@assistant-ui/react": "^0.15.16",
+    "@radix-ui/react-dialog": "^1.1.15",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.57.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
+    "lucide-react": "^0.468.0",
+    "mammoth": "^1.12.1",
     "next": "16.3.1",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "tailwind-merge": "^3.6.0",
+    "unpdf": "^1.8.1"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.0",
     "@types/node": "^24.3.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "eslint": "^9.34.0",
     "eslint-config-next": "16.3.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.3.0",
+    "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   }
 }
