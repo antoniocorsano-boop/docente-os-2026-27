@@ -55,7 +55,7 @@ export type TeachingSessionAllocationValidation = {
 export function teachingSessionCandidateFromOccurrence(
   occurrence: ProjectedOccurrence,
 ): Omit<TeachingSessionDraft, 'actualMinutes' | 'evidenceNote'> {
-  if (!occurrence.sectionId || occurrence.kind === 'CALENDAR_EVENT') {
+  if (!occurrence.sectionId || (occurrence.kind !== 'LESSON' && occurrence.kind !== 'CLASS_PRESENCE')) {
     throw new Error('Projected occurrence is not a class teaching candidate')
   }
 
