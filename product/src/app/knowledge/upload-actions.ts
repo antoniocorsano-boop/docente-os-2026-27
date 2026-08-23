@@ -21,7 +21,7 @@ import {
 } from './upload-policy'
 
 export type KnowledgeUploadGrantResult =
-  | { ok: true; objectPath: string; token: string; mimeType: string }
+  | { ok: true; objectPath: string; signedUrl: string; mimeType: string }
   | { ok: false; code: 'missing' | 'too_large' | 'unsupported' | 'authorization_failed' }
 
 export type FinalizeKnowledgeUploadResult =
@@ -56,9 +56,9 @@ export async function requestKnowledgeUploadGrant(input: {
     .from(KNOWLEDGE_BUCKET)
     .createSignedUploadUrl(objectPath, { upsert: false })
 
-  if (error || !data?.token) {
+  if (error || !data?.signedUrl) {
     console.error('Knowledge signed upload grant failed', {
-      message: error?.message ?? 'Missing signed upload token',
+      message: error?.message ?? 'Missing signed upload URL',
       workspaceId: context.workspace.id,
       bucket: KNOWLEDGE_BUCKET,
       objectPath,
@@ -66,7 +66,7 @@ export async function requestKnowledgeUploadGrant(input: {
     return { ok: false, code: 'authorization_failed' }
   }
 
-  return { ok: true, objectPath, token: data.token, mimeType }
+  return { ok: true, objectPath, signedUrl: data.signedUrl, mimeType }
 }
 
 export async function finalizeKnowledgeFileUpload(
