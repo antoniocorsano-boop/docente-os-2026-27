@@ -20,7 +20,7 @@ function baseBinding(blockId: string, title: string) {
     packCode: 'CAN-PACK-1C',
     supportPackCodes: [],
     title,
-  } as const
+  }
 }
 
 export const B23_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL: HumanTaskPlanGuidedUdaProjectionRecipe = {
