@@ -6,6 +6,13 @@ import type { NormalizedKnowledge, TransformableAsset } from '@/core/domain/know
 const PDF_MIME = 'application/pdf'
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
+export class InvalidPdfContentError extends Error {
+  constructor() {
+    super('PDF content is not readable or is incomplete')
+    this.name = 'InvalidPdfContentError'
+  }
+}
+
 export class PdfKnowledgeTransformer implements AssetTransformerPort {
   constructor(
     private readonly visualExtraction?: VisualExtractionPort,
@@ -19,7 +26,7 @@ export class PdfKnowledgeTransformer implements AssetTransformerPort {
   async transform(input: TransformableAsset): Promise<NormalizedKnowledge> {
     if (!input.bytes?.length) throw new Error('PDF transformer requires file bytes')
 
-    const native = await this.nativeExtraction.extract(input.bytes)
+    const native = await extractPdfNativeText(this.nativeExtraction, input.bytes)
     const nativePages = native.pages.map((page) => normalizeExtractedText(page))
     const missingPages = nativePages.flatMap((page, index) => isUsableText(page) ? [] : [index + 1])
     let visualPages: VisualExtractionPage[] = []
@@ -190,6 +197,14 @@ export class DocxKnowledgeTransformer implements AssetTransformerPort {
       processor: 'mammoth-raw-text',
       processorVersion: '1.12.1',
     }
+  }
+}
+
+async function extractPdfNativeText(nativeExtraction: PdfNativeTextExtractionPort, bytes: Uint8Array) {
+  try {
+    return await nativeExtraction.extract(bytes)
+  } catch {
+    throw new InvalidPdfContentError()
   }
 }
 

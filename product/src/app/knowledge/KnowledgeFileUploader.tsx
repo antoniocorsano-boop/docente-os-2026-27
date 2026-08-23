@@ -199,9 +199,10 @@ function formatFileSize(bytes: number) {
   return `${megabytes.toFixed(megabytes < 10 ? 1 : 0)} MB`
 }
 
-function finalizeMessage(code: 'missing' | 'too_large' | 'unsupported' | 'invalid_path' | 'parse_failed') {
+function finalizeMessage(code: 'missing' | 'too_large' | 'unsupported' | 'invalid_path' | 'invalid_pdf' | 'parse_failed') {
   if (code === 'too_large') return 'Il file supera il limite di 20 MB.'
   if (code === 'unsupported') return 'Questo formato non è supportato.'
+  if (code === 'invalid_pdf') return 'L’originale è stato conservato, ma questo PDF non è leggibile oppure è incompleto. Scarica di nuovo il documento originale e riprova.'
   if (code === 'parse_failed') return 'L’originale è stato conservato, ma non sono riuscito a organizzarlo automaticamente. Puoi riprovare più tardi.'
   return 'Non sono riuscito a completare il caricamento in modo sicuro. Riprova.'
 }

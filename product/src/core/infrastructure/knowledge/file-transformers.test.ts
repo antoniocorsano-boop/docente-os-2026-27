@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { PdfNativeTextExtractionPort, VisualExtractionPage, VisualExtractionPort } from '@/core/application/ports/knowledge-base'
 import type { KnowledgeAsset } from '@/core/domain/knowledge'
-import { ImageKnowledgeTransformer, PdfKnowledgeTransformer } from './file-transformers'
+import { ImageKnowledgeTransformer, InvalidPdfContentError, PdfKnowledgeTransformer } from './file-transformers'
 
 const PDF_BYTES = new Uint8Array([1, 2, 3])
 const IMAGE_BYTES = new Uint8Array([4, 5, 6])
@@ -53,6 +53,15 @@ test('PDF misto: chiama OCR soltanto per le pagine prive di testo utile', async 
   assert.equal(result.units.find((unit) => unit.sourcePage === 3)?.structuredData?.extractionMethod, 'NATIVE_TEXT')
 })
 
+test('PDF non leggibile: espone un errore di contenuto distinguibile dal guasto temporaneo di ingestione', async () => {
+  const transformer = new PdfKnowledgeTransformer(new FakeVisualExtraction(), failingNativePdf())
+
+  await assert.rejects(
+    transformer.transform({ asset: asset('application/pdf', 'download-incompleto.pdf'), bytes: PDF_BYTES }),
+    InvalidPdfContentError,
+  )
+})
+
 test('Immagine: separa testo OCR e descrizione visiva', async () => {
   const visual = new FakeVisualExtraction([{ page: 1, text: 'Avviso del collegio docenti.', description: 'Firma e timbro della scuola.', confidence: 0.9 }])
   const transformer = new ImageKnowledgeTransformer(visual)
@@ -79,6 +88,14 @@ function nativePdf(pages: string[]): PdfNativeTextExtractionPort {
   return {
     async extract() {
       return { totalPages: pages.length, pages, processor: 'fake-native-pdf', processorVersion: 'test' }
+    },
+  }
+}
+
+function failingNativePdf(): PdfNativeTextExtractionPort {
+  return {
+    async extract() {
+      throw new Error('Invalid PDF structure')
     },
   }
 }
