@@ -6,12 +6,12 @@ import { APPROVED_HUMAN_TASK_PROJECTIONS_B16_B19 } from './human-task-approved-p
 import { APPROVED_HUMAN_TASK_PROJECTIONS_B20_B22 } from './human-task-approved-projections-b20-b22'
 import { APPROVED_HUMAN_TASK_PROJECTIONS_B23_B27 } from './human-task-approved-projections-b23-b27'
 import { APPROVED_HUMAN_TASK_MANIFESTS } from './human-task-approved-manifests'
-import { APPROVED_HUMAN_TASK_MANIFESTS_B31_B33 } from './human-task-approved-manifests-b31-b33'
+import { APPROVED_HUMAN_TASK_MANIFESTS_B31_B33_V2 } from './human-task-approved-manifests-b31-b33-v2'
 import { materializeApprovedHumanTaskManifests } from './human-task-approved-manifest'
 
 const ALL_MANIFESTS = [
   ...APPROVED_HUMAN_TASK_MANIFESTS,
-  ...APPROVED_HUMAN_TASK_MANIFESTS_B31_B33,
+  ...APPROVED_HUMAN_TASK_MANIFESTS_B31_B33_V2,
 ]
 
 const MANIFEST_PROJECTIONS = materializeApprovedHumanTaskManifests(ALL_MANIFESTS)
