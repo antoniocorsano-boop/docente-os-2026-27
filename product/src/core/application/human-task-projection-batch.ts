@@ -5,6 +5,10 @@ import {
   type HumanTaskPackComposedProjectionRecipe,
 } from './human-task-pack-composed-projection-recipe'
 import {
+  buildPlanGuidedUdaProjectionDraft,
+  type HumanTaskPlanGuidedUdaProjectionRecipe,
+} from './human-task-plan-guided-uda-projection-recipe'
+import {
   buildProjectionDraft,
   type HumanTaskProjectionDraft,
   type HumanTaskProjectionRecipe,
@@ -30,6 +34,7 @@ export type HumanTaskProjectionBatchRecipe =
   | HumanTaskProjectionRecipe
   | HumanTaskUdaOnlyProjectionRecipe
   | HumanTaskPackComposedProjectionRecipe
+  | HumanTaskPlanGuidedUdaProjectionRecipe
 
 export type HumanTaskProjectionBatchItem = {
   grade: GradeKey
@@ -68,7 +73,9 @@ export function buildProjectionBatchReview(
       ? buildUdaOnlyProjectionDraft(candidate, recipe)
       : isPackComposedRecipe(recipe)
         ? buildPackComposedProjectionDraft(candidate, recipe)
-        : buildProjectionDraft(candidate, recipe)
+        : isPlanGuidedUdaRecipe(recipe)
+          ? buildPlanGuidedUdaProjectionDraft(candidate, recipe)
+          : buildProjectionDraft(candidate, recipe)
 
     if (draft.status === 'INVALID') {
       return {
@@ -98,6 +105,10 @@ function isUdaOnlyRecipe(recipe: HumanTaskProjectionBatchRecipe): recipe is Huma
 
 function isPackComposedRecipe(recipe: HumanTaskProjectionBatchRecipe): recipe is HumanTaskPackComposedProjectionRecipe {
   return 'mode' in recipe && recipe.mode === 'PACK_COMPOSED'
+}
+
+function isPlanGuidedUdaRecipe(recipe: HumanTaskProjectionBatchRecipe): recipe is HumanTaskPlanGuidedUdaProjectionRecipe {
+  return 'mode' in recipe && recipe.mode === 'PLAN_GUIDED_UDA'
 }
 
 function key(grade: GradeKey, blockId: string) {
