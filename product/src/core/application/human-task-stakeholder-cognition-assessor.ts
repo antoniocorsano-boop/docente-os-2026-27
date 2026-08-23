@@ -93,15 +93,22 @@ function assessReviewer(items: HumanTaskPlanGuidedEvidenceDraft[]) {
     if (!projection.provenance.planBinding.planSourceCode || !projection.provenance.uda.generationId || !projection.provenance.candidateId) {
       failures.push(`${projection.blockId}: provenienza canonica incompleta.`)
     }
+
     if (item.evidenceBinding.source === 'UDA_PHASES') {
       const selected = new Set(projection.provenance.selectedUdaPhases)
       if (item.evidenceBinding.phaseOrdinals.some((ordinal) => !selected.has(ordinal))) {
         failures.push(`${projection.blockId}: evidenza UDA non coincide con le fasi registrate nella provenienza.`)
       }
-      if (!/Evidenza operativa: sostenuta dalle fasi UDA/i.test(projection.sourceAlignment.note ?? '')) {
-        failures.push(`${projection.blockId}: la provenienza UDA dell’evidenza non è dichiarata nel raccordo.`)
+    }
+    if (item.evidenceBinding.source === 'UDA_SECTION_ITEMS') {
+      if (!item.evidenceBinding.sectionHeading.trim() || !item.evidenceBinding.itemIndexes.length) {
+        failures.push(`${projection.blockId}: binding alla sezione UDA incompleto.`)
       }
     }
+    if (item.evidenceBinding.source !== 'PLAN' && !/Evidenza operativa: derivata deterministicamente da/i.test(projection.sourceAlignment.note ?? '')) {
+      failures.push(`${projection.blockId}: la provenienza UDA dell’evidenza non è dichiarata come derivazione deterministica.`)
+    }
+
     evidence.push(`${projection.blockId}: ${projection.provenance.planBinding.planSourceCode} + ${projection.provenance.uda.code}/${projection.provenance.uda.generationId} + binding evidenza ${item.evidenceBinding.source}.`)
   }
 
@@ -123,11 +130,15 @@ function assessAutomation(items: HumanTaskPlanGuidedEvidenceDraft[]) {
       failures.push(`${item.draft.candidateId}: persistono issue bloccanti.`)
     }
     if (!projection) continue
+
     if (item.evidenceBinding.source === 'UDA_PHASES') {
       const selected = new Set(projection.provenance.selectedUdaPhases)
       if (item.evidenceBinding.phaseOrdinals.some((ordinal) => !selected.has(ordinal))) {
         failures.push(`${projection.blockId}: l’automazione userebbe una fase non autorizzata per l’evidenza.`)
       }
+    }
+    if (item.evidenceBinding.source !== 'PLAN' && !/derivata deterministicamente/i.test(projection.sourceAlignment.note ?? '')) {
+      failures.push(`${projection.blockId}: evidenza UDA non vincolata a estrazione deterministica.`)
     }
     evidence.push(`${projection.blockId}: HUMAN_APPROVAL_REQUIRED; fasi ${projection.provenance.selectedUdaPhases.join('+')}; evidenza ${item.evidenceBinding.source}.`)
   }
