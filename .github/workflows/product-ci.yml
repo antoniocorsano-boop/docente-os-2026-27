@@ -5,10 +5,12 @@ on:
     branches: ["main", "develop"]
     paths:
       - "product/**"
+      - "render.yaml"
       - ".github/workflows/product-ci.yml"
   pull_request:
     paths:
       - "product/**"
+      - "render.yaml"
       - ".github/workflows/product-ci.yml"
 
 jobs:
