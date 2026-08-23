@@ -10,7 +10,7 @@ function primaBlock(blockId: string) {
   return block
 }
 
-test('runtime exposes approved B07-B30 and stops before B31', () => {
+test('runtime exposes approved B07-B33 after the final Prima tranche', () => {
   const expected = [
     ['B07', 'HTC-PRIMA-B07-v1'],
     ['B08', 'HTC-PRIMA-B08-v1'],
@@ -36,6 +36,9 @@ test('runtime exposes approved B07-B30 and stops before B31', () => {
     ['B28', 'HTC-PRIMA-B28-PACK-v1'],
     ['B29', 'HTC-PRIMA-B29-PACK-v1'],
     ['B30', 'HTC-PRIMA-B30-PACK-v1'],
+    ['B31', 'HTC-PRIMA-B31-PLAN-v1'],
+    ['B32', 'HTC-PRIMA-B32-PLAN-v1'],
+    ['B33', 'HTC-PRIMA-B33-PLAN-v1'],
   ] as const
 
   for (const [blockId, projectionId] of expected) {
@@ -44,8 +47,6 @@ test('runtime exposes approved B07-B30 and stops before B31', () => {
     assert.equal(projection.projectionId, projectionId)
     assert.equal(projection.durationMinutes, 120)
   }
-
-  assert.equal(resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock('B31')), null)
 })
 
 test('B07 keeps its classified material sheet binding', () => {
@@ -242,6 +243,19 @@ test('B28-B30 are manifest-backed PACK_COMPOSED lessons with no invented interna
   assert.deepEqual(resolveHumanTaskStepResources(b30, b30.steps[1]).map((resource) => resource.id), ['STUDENT-DATA-INFO'])
 })
 
+test('B31-B33 are manifest-backed PLAN_GUIDED_UDA lessons with UDA evidence provenance', () => {
+  for (const blockId of ['B31', 'B32', 'B33']) {
+    const projection = resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock(blockId))
+    assert.ok(projection)
+    assert.equal(projection.sourceAlignment.level, 'COMPOSED')
+    assert.equal(resolveHumanTaskLessonTiming(projection).status, 'UNSPECIFIED')
+    assert.equal(projection.steps.every((step) => step.minutes === null), true)
+    assert.deepEqual(projection.sources.map((source) => source.code), ['CAN-PLAN-1', 'CAN-UDA-1-07', 'CAN-PACK-1D'])
+    assert.match(projection.sourceAlignment.note ?? '', /UDA 1-07/)
+    assert.deepEqual(projection.resources, [])
+  }
+})
+
 test('approved PACK_COMPOSED projections fail closed when support PACK binding drifts', () => {
   for (const blockId of ['B13', 'B14', 'B15']) {
     const block = primaBlock(blockId)
@@ -252,8 +266,8 @@ test('approved PACK_COMPOSED projections fail closed when support PACK binding d
   assert.equal(resolveRuntimeHumanTaskLessonProjection('Prima', { ...b15, supportPacks: ['CAN-PACK-1D', 'CAN-PACK-1C'] }), null)
 })
 
-test('approved B07-B30 projections fail closed when canonical plan metadata drifts', () => {
-  for (const blockId of ['B07', 'B08', 'B09', 'B10', 'B11', 'B12', 'B13', 'B14', 'B15', 'B16', 'B17', 'B18', 'B19', 'B20', 'B21', 'B22', 'B23', 'B24', 'B25', 'B26', 'B27', 'B28', 'B29', 'B30']) {
+test('approved B07-B33 projections fail closed when canonical plan metadata drifts', () => {
+  for (const blockId of ['B07', 'B08', 'B09', 'B10', 'B11', 'B12', 'B13', 'B14', 'B15', 'B16', 'B17', 'B18', 'B19', 'B20', 'B21', 'B22', 'B23', 'B24', 'B25', 'B26', 'B27', 'B28', 'B29', 'B30', 'B31', 'B32', 'B33']) {
     const block = primaBlock(blockId)
     assert.equal(resolveRuntimeHumanTaskLessonProjection('Prima', { ...block, uda: '9-99' }), null)
     assert.equal(resolveRuntimeHumanTaskLessonProjection('Prima', { ...block, pack: 'CAN-PACK-X' }), null)
