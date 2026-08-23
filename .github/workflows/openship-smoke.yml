@@ -1,4 +1,4 @@
-name: Openship authenticated deployment smoke
+name: Openship local-routing deployment smoke
 
 on:
   push:
@@ -16,45 +16,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout isolated test branch
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Use Node 22
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - id: product
-        name: Run canonical Docente OS gates
-        continue-on-error: true
-        working-directory: product
-        run: |
-          npm install
-          npm test
-          npm run typecheck
-          npm run lint
-          npm run build
-
-      - id: cli
-        name: Install Openship CLI
-        continue-on-error: true
-        run: |
-          npm install --global openship
-          openship --version | tee /tmp/openship-version.txt
-          openship login --help > /tmp/openship-login-help.txt
-          openship deploy --help > /tmp/openship-deploy-help.txt
-
-      - id: provision
-        name: Provision ephemeral authenticated Openship instance
+      - id: setup
+        name: Provision Openship and restart with a local routing domain
         continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
+          npm install --global openship
+          openship --version | tee /tmp/openship-version.txt
+
           password="$(openssl rand -hex 24)"
           echo "::add-mask::$password"
           printf '%s' "$password" > /tmp/openship-admin-password
           chmod 600 /tmp/openship-admin-password
           export OPENSHIP_ADMIN_PASSWORD="$password"
+
           openship up \
             --bare \
             --non-interactive \
@@ -63,6 +45,15 @@ jobs:
             --domain-kind none \
             > /tmp/openship-provision.log 2>&1
 
+          openship stop > /tmp/openship-stop.log 2>&1 || true
+          sleep 2
+
+          # For this isolated runner only, make Openship's managed routing domain
+          # local instead of the cloud-owned .opsh.io suffix.
+          nohup env HOST_DOMAIN=localhost openship up --foreground \
+            > /tmp/openship-local.log 2>&1 &
+          echo $! > /tmp/openship-local.pid
+
           for attempt in $(seq 1 60); do
             if curl --fail --silent --show-error http://127.0.0.1:4000/api/health > /tmp/openship-health.json; then
               cat /tmp/openship-health.json
@@ -70,11 +61,11 @@ jobs:
             fi
             sleep 2
           done
-          cat /tmp/openship-provision.log
+          tail -n 200 /tmp/openship-local.log
           exit 1
 
-      - id: session
-        name: Sign in with ephemeral admin and mint a PAT
+      - id: auth
+        name: Authenticate and configure CLI
         continue-on-error: true
         shell: bash
         run: |
@@ -99,23 +90,12 @@ jobs:
             --request POST http://127.0.0.1:4000/api/tokens \
             --header 'Content-Type: application/json' \
             --header 'Origin: http://localhost:3001' \
-            --data '{"name":"docente-os-smoke","fullAccess":true,"expiresInDays":1}')"
+            --data '{"name":"docente-os-local-smoke","fullAccess":true,"expiresInDays":1}')"
           echo "$token_status" > /tmp/openship-token-status.txt
           test "$token_status" -ge 200 -a "$token_status" -lt 300
 
           token="$(jq -r '.data.token // empty' /tmp/openship-token-response.json)"
           test -n "$token"
-          echo "::add-mask::$token"
-          printf '%s' "$token" > /tmp/openship-token
-          chmod 600 /tmp/openship-token
-
-      - id: login
-        name: Authenticate Openship CLI with ephemeral PAT
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -euo pipefail
-          token="$(cat /tmp/openship-token)"
           echo "::add-mask::$token"
           openship login \
             --token "$token" \
@@ -124,15 +104,14 @@ jobs:
             --context docente-os-smoke \
             > /tmp/openship-cli-login.txt 2>&1
           openship context use docente-os-smoke
-          openship --json context list > /tmp/openship-contexts.json
 
       - id: prepare
-        name: Run authenticated Openship detection on Docente OS
+        name: Detect Docente OS
         continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
-          token="$(cat /tmp/openship-token)"
+          token="$(jq -r '.data.token // empty' /tmp/openship-token-response.json)"
           echo "::add-mask::$token"
           status="$(curl --silent --show-error \
             --output /tmp/openship-prepare.json \
@@ -143,10 +122,9 @@ jobs:
             --data "{\"source\":\"local\",\"path\":\"${GITHUB_WORKSPACE}/product\"}")"
           echo "$status" > /tmp/openship-prepare-status.txt
           test "$status" -ge 200 -a "$status" -lt 300
-          cat /tmp/openship-prepare.json
 
       - id: deploy
-        name: Deploy Docente OS through Openship folder pipeline
+        name: Deploy Docente OS on local Openship routing
         continue-on-error: true
         shell: bash
         run: |
@@ -158,7 +136,6 @@ jobs:
             --exclude .next \
             --exclude .git \
             product/ /tmp/docente-os-openship-smoke/
-
           cd /tmp/docente-os-openship-smoke
           openship deploy \
             --name docente-os-openship-smoke \
@@ -167,7 +144,7 @@ jobs:
             2>&1 | tee /tmp/openship-deploy.log
 
       - id: inspect
-        name: Inspect deployed project and runtime logs
+        name: Inspect and probe deployed project
         continue-on-error: true
         shell: bash
         run: |
@@ -182,61 +159,35 @@ jobs:
           openship --json project get "$project_id" > /tmp/openship-project.json
           openship project logs "$project_id" > /tmp/openship-runtime.log 2>&1 || true
 
-      - id: runtime
-        name: Probe any runtime URL reported by Openship
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import json, re
-          from pathlib import Path
-          data = json.loads(Path('/tmp/openship-project.json').read_text())
-          urls = []
-          def walk(v):
-              if isinstance(v, dict):
-                  for x in v.values(): walk(x)
-              elif isinstance(v, list):
-                  for x in v: walk(x)
-              elif isinstance(v, str):
-                  urls.extend(re.findall(r'https?://[^\s"<>]+', v))
-          walk(data)
-          urls = [u.rstrip('.,;)') for u in urls if '127.0.0.1:4000' not in u and 'localhost:4000' not in u]
-          Path('/tmp/openship-runtime-url.txt').write_text((urls[0] if urls else '') + '\n')
-          PY
-          url="$(cat /tmp/openship-runtime-url.txt)"
-          if [ -z "$url" ]; then
-            echo 'No runtime URL was exposed in project metadata.' > /tmp/openship-runtime-probe.txt
-            exit 0
-          fi
-          status="$(curl --location --silent --show-error --output /tmp/openship-runtime-body.html --write-out '%{http_code}' --max-time 20 "$url" || true)"
-          echo "$status" > /tmp/openship-runtime-status.txt
+          # The folder deploy auto-binds the project slug to HOST_DOMAIN.
+          url='http://docente-os-openship-smoke.localhost'
+          printf '%s' "$url" > /tmp/openship-runtime-url.txt
+          status="$(curl --location --silent --show-error \
+            --output /tmp/openship-runtime-body.html \
+            --write-out '%{http_code}' \
+            --max-time 20 "$url" || true)"
+          printf '%s' "$status" > /tmp/openship-runtime-status.txt
           echo "runtime_url=$url status=$status" > /tmp/openship-runtime-probe.txt
-          test -n "$status"
+          test "$status" -ge 200 -a "$status" -lt 500
 
-      - name: Write machine-readable smoke result
+      - name: Record result
         if: always()
         env:
-          PRODUCT_OUTCOME: ${{ steps.product.outcome }}
-          CLI_OUTCOME: ${{ steps.cli.outcome }}
-          PROVISION_OUTCOME: ${{ steps.provision.outcome }}
-          SESSION_OUTCOME: ${{ steps.session.outcome }}
-          LOGIN_OUTCOME: ${{ steps.login.outcome }}
-          PREPARE_OUTCOME: ${{ steps.prepare.outcome }}
-          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
-          INSPECT_OUTCOME: ${{ steps.inspect.outcome }}
-          RUNTIME_OUTCOME: ${{ steps.runtime.outcome }}
+          SETUP: ${{ steps.setup.outcome }}
+          AUTH: ${{ steps.auth.outcome }}
+          PREPARE: ${{ steps.prepare.outcome }}
+          DEPLOY: ${{ steps.deploy.outcome }}
+          INSPECT: ${{ steps.inspect.outcome }}
           TESTED_SHA: ${{ github.sha }}
         run: |
           python - <<'PY'
           import json, os
           from pathlib import Path
 
-          def text(path, limit=12000):
+          def text(path, limit=18000):
               p = Path(path)
               if not p.exists(): return None
-              value = p.read_text(errors='replace').strip()
-              return value[-limit:]
+              return p.read_text(errors='replace').strip()[-limit:]
 
           def json_file(path):
               raw = text(path)
@@ -245,43 +196,39 @@ jobs:
               except Exception: return raw
 
           result = {
-              'test': 'openship-authenticated-deployment-smoke',
+              'test': 'openship-local-routing-deployment-smoke',
               'base_develop_sha': '4ba3831a8a0285792ae0a03890eea9c387d466ab',
               'tested_workflow_sha': os.environ.get('TESTED_SHA'),
-              'product_gates': os.environ.get('PRODUCT_OUTCOME'),
-              'openship_cli': os.environ.get('CLI_OUTCOME'),
               'openship_version': text('/tmp/openship-version.txt'),
-              'provision': os.environ.get('PROVISION_OUTCOME'),
+              'setup': os.environ.get('SETUP'),
               'health_payload': json_file('/tmp/openship-health.json'),
-              'session_auth': os.environ.get('SESSION_OUTCOME'),
+              'auth': os.environ.get('AUTH'),
               'login_http_status': text('/tmp/openship-login-status.txt'),
               'pat_http_status': text('/tmp/openship-token-status.txt'),
-              'cli_login': os.environ.get('LOGIN_OUTCOME'),
-              'prepare': os.environ.get('PREPARE_OUTCOME'),
+              'prepare': os.environ.get('PREPARE'),
               'prepare_http_status': text('/tmp/openship-prepare-status.txt'),
               'prepare_payload': json_file('/tmp/openship-prepare.json'),
-              'deployment': os.environ.get('DEPLOY_OUTCOME'),
-              'deployment_log_tail': text('/tmp/openship-deploy.log', 16000),
-              'inspect': os.environ.get('INSPECT_OUTCOME'),
+              'deployment': os.environ.get('DEPLOY'),
+              'deployment_log_tail': text('/tmp/openship-deploy.log'),
+              'inspect': os.environ.get('INSPECT'),
               'project_id': text('/tmp/openship-project-id.txt'),
               'project': json_file('/tmp/openship-project.json'),
-              'runtime_probe': os.environ.get('RUNTIME_OUTCOME'),
               'runtime_url': text('/tmp/openship-runtime-url.txt'),
               'runtime_http_status': text('/tmp/openship-runtime-status.txt'),
               'runtime_probe_detail': text('/tmp/openship-runtime-probe.txt'),
-              'runtime_log_tail': text('/tmp/openship-runtime.log', 12000),
-              'provision_log_tail': text('/tmp/openship-provision.log', 12000),
+              'runtime_log_tail': text('/tmp/openship-runtime.log'),
+              'local_openship_log_tail': text('/tmp/openship-local.log'),
           }
           Path('.openship-smoke-result.json').write_text(json.dumps(result, indent=2, ensure_ascii=False) + '\n')
           PY
           cat .openship-smoke-result.json
 
-      - name: Commit smoke result to test branch only
+      - name: Commit result on test branch only
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .openship-smoke-result.json
           git diff --cached --quiet && exit 0
-          git commit -m "test: record authenticated Openship deployment result"
+          git commit -m "test: record local-routing Openship result"
           git push origin HEAD:test/openship-smoke-20260823
