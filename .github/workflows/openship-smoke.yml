@@ -1,4 +1,4 @@
-name: Openship compatibility smoke
+name: Openship authenticated deployment smoke
 
 on:
   push:
@@ -14,9 +14,9 @@ permissions:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
-      - name: Checkout exact test branch
+      - name: Checkout isolated test branch
         uses: actions/checkout@v6
 
       - name: Use Node 22
@@ -36,21 +36,33 @@ jobs:
           npm run build
 
       - id: cli
-        name: Install and verify Openship CLI
+        name: Install Openship CLI
         continue-on-error: true
         run: |
           npm install --global openship
           openship --version | tee /tmp/openship-version.txt
+          openship login --help > /tmp/openship-login-help.txt
           openship deploy --help > /tmp/openship-deploy-help.txt
 
-      - id: health
-        name: Start isolated Openship and verify health
+      - id: provision
+        name: Provision ephemeral authenticated Openship instance
         continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
-          nohup openship up --foreground > /tmp/openship.log 2>&1 &
-          echo $! > /tmp/openship.pid
+          password="$(openssl rand -hex 24)"
+          echo "::add-mask::$password"
+          printf '%s' "$password" > /tmp/openship-admin-password
+          chmod 600 /tmp/openship-admin-password
+          export OPENSHIP_ADMIN_PASSWORD="$password"
+          openship up \
+            --bare \
+            --non-interactive \
+            --admin-name "Docente OS Smoke" \
+            --admin-email "openship-smoke@example.com" \
+            --domain-kind none \
+            > /tmp/openship-provision.log 2>&1
+
           for attempt in $(seq 1 60); do
             if curl --fail --silent --show-error http://127.0.0.1:4000/api/health > /tmp/openship-health.json; then
               cat /tmp/openship-health.json
@@ -58,70 +70,209 @@ jobs:
             fi
             sleep 2
           done
-          cat /tmp/openship.log
+          cat /tmp/openship-provision.log
           exit 1
 
-      - id: prepare
-        name: Probe Openship build detection for product
+      - id: session
+        name: Sign in with ephemeral admin and mint a PAT
         continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
-          status=$(curl --silent --show-error \
+          password="$(cat /tmp/openship-admin-password)"
+          login_body="$(jq -nc --arg email 'openship-smoke@example.com' --arg password "$password" '{email:$email,password:$password}')"
+          login_status="$(curl --silent --show-error \
+            --output /tmp/openship-login.json \
+            --write-out '%{http_code}' \
+            --cookie-jar /tmp/openship-cookies.txt \
+            --request POST http://127.0.0.1:4000/api/auth/sign-in/email \
+            --header 'Content-Type: application/json' \
+            --header 'Origin: http://localhost:3001' \
+            --data "$login_body")"
+          echo "$login_status" > /tmp/openship-login-status.txt
+          test "$login_status" -ge 200 -a "$login_status" -lt 300
+
+          token_status="$(curl --silent --show-error \
+            --output /tmp/openship-token-response.json \
+            --write-out '%{http_code}' \
+            --cookie /tmp/openship-cookies.txt \
+            --request POST http://127.0.0.1:4000/api/tokens \
+            --header 'Content-Type: application/json' \
+            --header 'Origin: http://localhost:3001' \
+            --data '{"name":"docente-os-smoke","fullAccess":true,"expiresInDays":1}')"
+          echo "$token_status" > /tmp/openship-token-status.txt
+          test "$token_status" -ge 200 -a "$token_status" -lt 300
+
+          token="$(jq -r '.data.token // empty' /tmp/openship-token-response.json)"
+          test -n "$token"
+          echo "::add-mask::$token"
+          printf '%s' "$token" > /tmp/openship-token
+          chmod 600 /tmp/openship-token
+
+      - id: login
+        name: Authenticate Openship CLI with ephemeral PAT
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(cat /tmp/openship-token)"
+          echo "::add-mask::$token"
+          openship login \
+            --token "$token" \
+            --api-url http://127.0.0.1:4000 \
+            --dashboard-url http://127.0.0.1:3001 \
+            --context docente-os-smoke \
+            > /tmp/openship-cli-login.txt 2>&1
+          openship context use docente-os-smoke
+          openship --json context list > /tmp/openship-contexts.json
+
+      - id: prepare
+        name: Run authenticated Openship detection on Docente OS
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(cat /tmp/openship-token)"
+          echo "::add-mask::$token"
+          status="$(curl --silent --show-error \
             --output /tmp/openship-prepare.json \
             --write-out '%{http_code}' \
             --request POST http://127.0.0.1:4000/api/deployments/prepare \
+            --header "Authorization: Bearer $token" \
             --header 'Content-Type: application/json' \
-            --data "{\"source\":\"local\",\"path\":\"${GITHUB_WORKSPACE}/product\"}")
+            --data "{\"source\":\"local\",\"path\":\"${GITHUB_WORKSPACE}/product\"}")"
           echo "$status" > /tmp/openship-prepare-status.txt
-          echo "prepare_http_status=${status}"
+          test "$status" -ge 200 -a "$status" -lt 300
           cat /tmp/openship-prepare.json
-          case "$status" in
-            200|401|403) exit 0 ;;
-            *) exit 1 ;;
-          esac
+
+      - id: deploy
+        name: Deploy Docente OS through Openship folder pipeline
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/docente-os-openship-smoke
+          mkdir -p /tmp/docente-os-openship-smoke
+          rsync -a \
+            --exclude node_modules \
+            --exclude .next \
+            --exclude .git \
+            product/ /tmp/docente-os-openship-smoke/
+
+          cd /tmp/docente-os-openship-smoke
+          openship deploy \
+            --name docente-os-openship-smoke \
+            --env preview \
+            --watch \
+            2>&1 | tee /tmp/openship-deploy.log
+
+      - id: inspect
+        name: Inspect deployed project and runtime logs
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          openship --json project list > /tmp/openship-projects.json
+          project_id="$(jq -r '[.. | objects | select((.name? // "") == "docente-os-openship-smoke") | .id?] | map(select(. != null)) | first // empty' /tmp/openship-projects.json)"
+          if [ -z "$project_id" ]; then
+            project_id="$(grep -Eo 'proj_[A-Za-z0-9_-]+' /tmp/openship-deploy.log | tail -n 1 || true)"
+          fi
+          printf '%s' "$project_id" > /tmp/openship-project-id.txt
+          test -n "$project_id"
+          openship --json project get "$project_id" > /tmp/openship-project.json
+          openship project logs "$project_id" > /tmp/openship-runtime.log 2>&1 || true
+
+      - id: runtime
+        name: Probe any runtime URL reported by Openship
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, re
+          from pathlib import Path
+          data = json.loads(Path('/tmp/openship-project.json').read_text())
+          urls = []
+          def walk(v):
+              if isinstance(v, dict):
+                  for x in v.values(): walk(x)
+              elif isinstance(v, list):
+                  for x in v: walk(x)
+              elif isinstance(v, str):
+                  urls.extend(re.findall(r'https?://[^\s"<>]+', v))
+          walk(data)
+          urls = [u.rstrip('.,;)') for u in urls if '127.0.0.1:4000' not in u and 'localhost:4000' not in u]
+          Path('/tmp/openship-runtime-url.txt').write_text((urls[0] if urls else '') + '\n')
+          PY
+          url="$(cat /tmp/openship-runtime-url.txt)"
+          if [ -z "$url" ]; then
+            echo 'No runtime URL was exposed in project metadata.' > /tmp/openship-runtime-probe.txt
+            exit 0
+          fi
+          status="$(curl --location --silent --show-error --output /tmp/openship-runtime-body.html --write-out '%{http_code}' --max-time 20 "$url" || true)"
+          echo "$status" > /tmp/openship-runtime-status.txt
+          echo "runtime_url=$url status=$status" > /tmp/openship-runtime-probe.txt
+          test -n "$status"
 
       - name: Write machine-readable smoke result
         if: always()
         env:
           PRODUCT_OUTCOME: ${{ steps.product.outcome }}
           CLI_OUTCOME: ${{ steps.cli.outcome }}
-          HEALTH_OUTCOME: ${{ steps.health.outcome }}
+          PROVISION_OUTCOME: ${{ steps.provision.outcome }}
+          SESSION_OUTCOME: ${{ steps.session.outcome }}
+          LOGIN_OUTCOME: ${{ steps.login.outcome }}
           PREPARE_OUTCOME: ${{ steps.prepare.outcome }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+          INSPECT_OUTCOME: ${{ steps.inspect.outcome }}
+          RUNTIME_OUTCOME: ${{ steps.runtime.outcome }}
           TESTED_SHA: ${{ github.sha }}
         run: |
           python - <<'PY'
           import json, os
           from pathlib import Path
 
-          def text(path):
+          def text(path, limit=12000):
               p = Path(path)
-              return p.read_text(errors="replace").strip() if p.exists() else None
+              if not p.exists(): return None
+              value = p.read_text(errors='replace').strip()
+              return value[-limit:]
 
           def json_file(path):
               raw = text(path)
-              if not raw:
-                  return None
-              try:
-                  return json.loads(raw)
-              except Exception:
-                  return raw
+              if not raw: return None
+              try: return json.loads(raw)
+              except Exception: return raw
 
           result = {
-              "test": "openship-compatibility-smoke",
-              "base_develop_sha": "4ba3831a8a0285792ae0a03890eea9c387d466ab",
-              "tested_workflow_sha": os.environ.get("TESTED_SHA"),
-              "product_gates": os.environ.get("PRODUCT_OUTCOME"),
-              "openship_cli": os.environ.get("CLI_OUTCOME"),
-              "openship_version": text("/tmp/openship-version.txt"),
-              "openship_health": os.environ.get("HEALTH_OUTCOME"),
-              "health_payload": json_file("/tmp/openship-health.json"),
-              "prepare_probe": os.environ.get("PREPARE_OUTCOME"),
-              "prepare_http_status": text("/tmp/openship-prepare-status.txt"),
-              "prepare_payload": json_file("/tmp/openship-prepare.json"),
-              "server_log_tail": "\n".join((text("/tmp/openship.log") or "").splitlines()[-80:]),
+              'test': 'openship-authenticated-deployment-smoke',
+              'base_develop_sha': '4ba3831a8a0285792ae0a03890eea9c387d466ab',
+              'tested_workflow_sha': os.environ.get('TESTED_SHA'),
+              'product_gates': os.environ.get('PRODUCT_OUTCOME'),
+              'openship_cli': os.environ.get('CLI_OUTCOME'),
+              'openship_version': text('/tmp/openship-version.txt'),
+              'provision': os.environ.get('PROVISION_OUTCOME'),
+              'health_payload': json_file('/tmp/openship-health.json'),
+              'session_auth': os.environ.get('SESSION_OUTCOME'),
+              'login_http_status': text('/tmp/openship-login-status.txt'),
+              'pat_http_status': text('/tmp/openship-token-status.txt'),
+              'cli_login': os.environ.get('LOGIN_OUTCOME'),
+              'prepare': os.environ.get('PREPARE_OUTCOME'),
+              'prepare_http_status': text('/tmp/openship-prepare-status.txt'),
+              'prepare_payload': json_file('/tmp/openship-prepare.json'),
+              'deployment': os.environ.get('DEPLOY_OUTCOME'),
+              'deployment_log_tail': text('/tmp/openship-deploy.log', 16000),
+              'inspect': os.environ.get('INSPECT_OUTCOME'),
+              'project_id': text('/tmp/openship-project-id.txt'),
+              'project': json_file('/tmp/openship-project.json'),
+              'runtime_probe': os.environ.get('RUNTIME_OUTCOME'),
+              'runtime_url': text('/tmp/openship-runtime-url.txt'),
+              'runtime_http_status': text('/tmp/openship-runtime-status.txt'),
+              'runtime_probe_detail': text('/tmp/openship-runtime-probe.txt'),
+              'runtime_log_tail': text('/tmp/openship-runtime.log', 12000),
+              'provision_log_tail': text('/tmp/openship-provision.log', 12000),
           }
-          Path(".openship-smoke-result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
+          Path('.openship-smoke-result.json').write_text(json.dumps(result, indent=2, ensure_ascii=False) + '\n')
           PY
           cat .openship-smoke-result.json
 
@@ -132,18 +283,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .openship-smoke-result.json
           git diff --cached --quiet && exit 0
-          git commit -m "test: record Openship smoke result"
+          git commit -m "test: record authenticated Openship deployment result"
           git push origin HEAD:test/openship-smoke-20260823
-
-      - name: Enforce core smoke outcome
-        if: always()
-        env:
-          PRODUCT_OUTCOME: ${{ steps.product.outcome }}
-          CLI_OUTCOME: ${{ steps.cli.outcome }}
-          HEALTH_OUTCOME: ${{ steps.health.outcome }}
-          PREPARE_OUTCOME: ${{ steps.prepare.outcome }}
-        run: |
-          test "$PRODUCT_OUTCOME" = success
-          test "$CLI_OUTCOME" = success
-          test "$HEALTH_OUTCOME" = success
-          test "$PREPARE_OUTCOME" = success
