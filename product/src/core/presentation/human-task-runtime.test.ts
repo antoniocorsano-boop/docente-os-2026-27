@@ -10,7 +10,7 @@ function primaBlock(blockId: string) {
   return block
 }
 
-test('runtime exposes approved B07-B15 and stops before B16', () => {
+test('runtime exposes approved B07-B19 and stops before B20', () => {
   const expected = [
     ['B07', 'HTC-PRIMA-B07-v1'],
     ['B08', 'HTC-PRIMA-B08-v1'],
@@ -21,6 +21,10 @@ test('runtime exposes approved B07-B15 and stops before B16', () => {
     ['B13', 'HTC-PRIMA-B13-PACK-v1'],
     ['B14', 'HTC-PRIMA-B14-PACK-v1'],
     ['B15', 'HTC-PRIMA-B15-PACK-v1'],
+    ['B16', 'HTC-PRIMA-B16-PLAN-v1'],
+    ['B17', 'HTC-PRIMA-B17-PLAN-v1'],
+    ['B18', 'HTC-PRIMA-B18-PLAN-v1'],
+    ['B19', 'HTC-PRIMA-B19-PLAN-v1'],
   ] as const
 
   for (const [blockId, projectionId] of expected) {
@@ -30,7 +34,7 @@ test('runtime exposes approved B07-B15 and stops before B16', () => {
     assert.equal(projection.durationMinutes, 120)
   }
 
-  assert.equal(resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock('B16')), null)
+  assert.equal(resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock('B20')), null)
 })
 
 test('B07 keeps its classified material sheet binding', () => {
@@ -114,6 +118,37 @@ test('B15 combines PACK 1B and 1C but never exposes logistics-only PACK 1D as di
   assert.equal(projection.resources[0].prompts.length, 8)
 })
 
+test('B16-B19 are plan-guided UDA projections and expose only PLAN + UDA as didactic sources', () => {
+  for (const blockId of ['B16', 'B17', 'B18', 'B19']) {
+    const projection = resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock(blockId))
+    assert.ok(projection)
+    assert.equal(projection.sourceAlignment.level, 'COMPOSED')
+    assert.equal(resolveHumanTaskLessonTiming(projection).status, 'UNSPECIFIED')
+    assert.deepEqual(projection.sources.map((source) => source.code), ['CAN-PLAN-1', 'CAN-UDA-1-03'])
+    assert.deepEqual(projection.resources, [])
+    assert.deepEqual(projection.preparation, [])
+    assert.deepEqual(projection.steps.map((step) => step.minutes), [null])
+  }
+})
+
+test('B17 and B18 preserve the Plan split of the shared four-hour UDA phase', () => {
+  const b17 = resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock('B17'))
+  const b18 = resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock('B18'))
+  assert.ok(b17)
+  assert.ok(b18)
+  assert.equal(b17.steps[0].instruction, 'Triangoli e quadrilateri selezionati.')
+  assert.equal(b18.steps[0].instruction, 'Poligoni regolari selezionati, procedure e controllo.')
+  assert.equal(b17.evidence, 'Tavola grafica controllata.')
+  assert.equal(b18.evidence, 'Tavola grafica.')
+})
+
+test('B19 preserves the final Plan evidence and does not reduce it to a generic UDA indicator', () => {
+  const projection = resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock('B19'))
+  assert.ok(projection)
+  assert.equal(projection.evidence, 'Tavola VAL + breve prova.')
+  assert.match(projection.assessmentNote, /valutazione formalizzata/i)
+})
+
 test('approved PACK_COMPOSED projections fail closed when support PACK binding drifts', () => {
   for (const blockId of ['B13', 'B14', 'B15']) {
     const block = primaBlock(blockId)
@@ -124,8 +159,8 @@ test('approved PACK_COMPOSED projections fail closed when support PACK binding d
   assert.equal(resolveRuntimeHumanTaskLessonProjection('Prima', { ...b15, supportPacks: ['CAN-PACK-1D', 'CAN-PACK-1C'] }), null)
 })
 
-test('approved B07-B15 projections fail closed when canonical plan metadata drifts', () => {
-  for (const blockId of ['B07', 'B08', 'B09', 'B10', 'B11', 'B12', 'B13', 'B14', 'B15']) {
+test('approved B07-B19 projections fail closed when canonical plan metadata drifts', () => {
+  for (const blockId of ['B07', 'B08', 'B09', 'B10', 'B11', 'B12', 'B13', 'B14', 'B15', 'B16', 'B17', 'B18', 'B19']) {
     const block = primaBlock(blockId)
     assert.equal(resolveRuntimeHumanTaskLessonProjection('Prima', { ...block, uda: '9-99' }), null)
     assert.equal(resolveRuntimeHumanTaskLessonProjection('Prima', { ...block, pack: 'CAN-PACK-X' }), null)
@@ -133,7 +168,7 @@ test('approved B07-B15 projections fail closed when canonical plan metadata drif
   }
 })
 
-test('direct material projections expose PLAN UDA PACK while B10 exposes only sources that supplied operational content', () => {
+test('direct material projections expose PLAN UDA PACK while UDA/Plan-guided projections expose only contributing sources', () => {
   for (const blockId of ['B07', 'B08', 'B09']) {
     const projection = resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock(blockId))
     assert.ok(projection)
@@ -143,4 +178,10 @@ test('direct material projections expose PLAN UDA PACK while B10 exposes only so
   const b10 = resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock('B10'))
   assert.ok(b10)
   assert.deepEqual(b10.sources.map((source) => source.code), ['CAN-PLAN-1', 'CAN-UDA-1-02'])
+
+  for (const blockId of ['B16', 'B17', 'B18', 'B19']) {
+    const projection = resolveRuntimeHumanTaskLessonProjection('Prima', primaBlock(blockId))
+    assert.ok(projection)
+    assert.deepEqual(projection.sources.map((source) => source.code), ['CAN-PLAN-1', 'CAN-UDA-1-03'])
+  }
 })
