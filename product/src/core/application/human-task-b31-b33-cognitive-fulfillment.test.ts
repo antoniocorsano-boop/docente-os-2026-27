@@ -104,9 +104,15 @@ test('B31-B33 satisfy the contextual stakeholder cognitive gate from the actual 
 })
 
 test('UDA evidence fails closed when it cites phases outside the current block recipe', () => {
+  assert.equal(B31_EVIDENCE_BINDING.source, 'UDA_PHASES')
   assert.throws(() => buildPlanGuidedUdaProjectionDraftWithEvidence(
     candidate('B31'),
     B31_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL,
-    { ...B31_EVIDENCE_BINDING, phaseOrdinals: [1, 3] },
+    {
+      source: 'UDA_PHASES',
+      text: B31_EVIDENCE_BINDING.text,
+      rationale: B31_EVIDENCE_BINDING.rationale,
+      phaseOrdinals: [1, 3],
+    },
   ), /fasi operative|autorizzata/i)
 })
