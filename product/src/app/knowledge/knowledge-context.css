@@ -11,5 +11,11 @@
 .knowledgeFilters button{border:0;border-radius:10px;background:var(--ink);color:#fff;padding:0 12px;font-weight:750}
 .assetContext{display:flex;gap:5px;flex-wrap:wrap;margin-top:2px}
 .assetContext small{border-radius:999px;background:var(--surface-soft);color:var(--ink-faint);padding:3px 7px;font-size:9px}
+.fileDrop.hasSelection{border-color:#9fc9b5;background:var(--success-soft)}
+.selectedFileCard{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:10px;align-items:center;margin-top:10px;padding:12px 13px;border:1px solid #b9ddca;border-radius:12px;background:var(--success-soft)}
+.selectedFileCheck{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--success);color:#fff;font-weight:900}
+.selectedFileBody{display:grid;gap:2px;min-width:0}.selectedFileBody strong{font-size:11px;color:var(--success);letter-spacing:.02em}.selectedFileBody span{font-size:13px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.selectedFileBody small{font-size:10px;color:var(--ink-soft)}
+.selectedFileActions{display:flex;gap:5px}.selectedFileAction{min-height:34px!important;padding:0 9px!important;border:1px solid var(--line-strong)!important;border-radius:9px!important;background:#fff!important;color:var(--ink-soft)!important;font-size:11px!important;font-weight:750!important}.selectedFileAction:hover{color:var(--ink)!important;border-color:#9aabc0!important}.selectedFileAction.danger{color:var(--danger)!important}.selectedFileAction:disabled{opacity:.5;cursor:not-allowed}
+.knowledgeUploadForm>button[type="submit"]:disabled{cursor:not-allowed;opacity:.55}
 @media(max-width:900px){.contextForm{grid-template-columns:repeat(2,minmax(0,1fr))}.knowledgeFilters{grid-template-columns:1fr 1fr}.taskCreatorForm{grid-template-columns:1fr 1fr}}
-@media(max-width:719px){.contextForm,.knowledgeFilters,.taskCreatorForm{grid-template-columns:1fr}}
+@media(max-width:719px){.contextForm,.knowledgeFilters,.taskCreatorForm{grid-template-columns:1fr}.selectedFileCard{grid-template-columns:34px minmax(0,1fr)}.selectedFileActions{grid-column:2;justify-self:start}.selectedFileAction{min-height:36px!important}}
