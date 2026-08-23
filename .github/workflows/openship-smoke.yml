@@ -6,6 +6,12 @@ on:
       - test/openship-smoke-20260823
     paths-ignore:
       - .openship-smoke-result.json
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - .github/workflows/openship-smoke.yml
+      - product/**
   workflow_dispatch:
 
 permissions:
@@ -217,7 +223,7 @@ jobs:
           cat .openship-smoke-result.json
 
       - name: Commit result on test branch only
-        if: always()
+        if: always() && github.event_name != 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
