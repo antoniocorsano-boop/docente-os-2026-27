@@ -8,7 +8,7 @@ services:
     rootDir: product
     buildCommand: npm install --no-audit --no-fund && npm run build
     startCommand: npm start
-    autoDeployTrigger: checksPass
+    autoDeployTrigger: commit
     healthCheckPath: /
     envVars:
       - key: NEXT_PUBLIC_SUPABASE_URL
