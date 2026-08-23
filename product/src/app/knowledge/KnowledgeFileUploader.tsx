@@ -3,11 +3,9 @@
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { finalizeKnowledgeFileUpload, requestKnowledgeUploadGrant } from './upload-actions'
 import {
   isAllowedKnowledgeUploadMime,
-  KNOWLEDGE_BUCKET,
   MAX_KNOWLEDGE_UPLOAD_BYTES,
   normalizeKnowledgeUploadMime,
 } from './upload-policy'
@@ -55,20 +53,32 @@ export function KnowledgeFileUploader() {
       return
     }
 
-    const supabase = createClient()
     setPhase('UPLOADING')
     setMessage('Sto trasferendo l’originale nel tuo spazio privato…')
 
-    const { error: uploadError } = await supabase.storage
-      .from(KNOWLEDGE_BUCKET)
-      .uploadToSignedUrl(grant.objectPath, grant.token, file, {
-        contentType: grant.mimeType,
-        cacheControl: '3600',
-      })
+    const body = new FormData()
+    body.append('cacheControl', '3600')
+    body.append('', file)
 
-    if (uploadError) {
-      console.error('Knowledge signed upload failed', uploadError.message)
-      fail('Il trasferimento non è riuscito. Il file non è stato modificato: puoi riprovare.')
+    let uploadResponse: Response
+    try {
+      uploadResponse = await fetch(grant.signedUrl, {
+        method: 'PUT',
+        body,
+      })
+    } catch (error) {
+      console.error('Knowledge raw signed upload network failure', error)
+      fail('Il collegamento con lo spazio privato si è interrotto prima del trasferimento. Riprova.')
+      return
+    }
+
+    if (!uploadResponse.ok) {
+      const detail = await safeResponseText(uploadResponse)
+      console.error('Knowledge raw signed upload rejected', {
+        status: uploadResponse.status,
+        detail,
+      })
+      fail(`Il trasferimento è stato rifiutato dal servizio (${uploadResponse.status}). Puoi riprovare.`)
       return
     }
 
@@ -127,6 +137,14 @@ export function KnowledgeFileUploader() {
       </button>
     </form>
   )
+}
+
+async function safeResponseText(response: Response) {
+  try {
+    return (await response.text()).slice(0, 400)
+  } catch {
+    return ''
+  }
 }
 
 function grantMessage(code: 'missing' | 'too_large' | 'unsupported' | 'authorization_failed') {
