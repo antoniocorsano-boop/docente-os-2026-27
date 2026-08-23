@@ -67,14 +67,14 @@ function compilePrePromotion(sources = CURRENT_SOURCES) {
   })
 }
 
-test('portfolio discovery completes Prima and now advances Seconda coverage through B04', () => {
+test('portfolio discovery completes Prima and now advances Seconda coverage through B08', () => {
   const frontier = discoverHumanTaskPortfolioFrontier()
   const prima = frontier.grades.find((item) => item.grade === 'Prima')
   assert.ok(prima)
   assert.equal(prima.complete, true)
   assert.equal(prima.coveredBlockIds.length, 33)
   assert.equal(frontier.nextGrade, 'Seconda')
-  assert.deepEqual(frontier.coveredBlockIds, ['B01', 'B02', 'B03', 'B04'])
+  assert.deepEqual(frontier.coveredBlockIds, ['B01', 'B02', 'B03', 'B04', 'B05', 'B06', 'B07', 'B08'])
 })
 
 test('compiler v3 historical contract proves the approved Seconda:1 DIRECT 1:1 alignment', () => {
