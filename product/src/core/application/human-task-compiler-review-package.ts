@@ -6,6 +6,11 @@ import {
   isHumanTaskImprovementReviewComplete,
   type HumanTaskImprovementReview,
 } from './human-task-continuous-improvement'
+import {
+  createPendingHumanTaskStakeholderCognitiveReview,
+  isHumanTaskStakeholderCognitiveReviewComplete,
+  type HumanTaskStakeholderCognitiveReview,
+} from './human-task-stakeholder-cognition'
 
 export type HumanTaskCompilerReviewDecision = 'PENDING' | 'APPROVE' | 'CORRECT' | 'BLOCK'
 
@@ -34,6 +39,7 @@ export type HumanTaskCompilerReviewPackage = {
   }>
   constraints: string[]
   improvementReview: HumanTaskImprovementReview
+  stakeholderCognitiveReview: HumanTaskStakeholderCognitiveReview
   decision: HumanTaskCompilerReviewDecision
 }
 
@@ -41,6 +47,7 @@ export type HumanTaskCompilerApproval = {
   decision: 'APPROVE'
   approvedAt: string
   improvementReview: HumanTaskImprovementReview
+  stakeholderCognitiveReview: HumanTaskStakeholderCognitiveReview
 }
 
 /**
@@ -77,14 +84,17 @@ export function buildHumanTaskCompilerReviewPackage(input: {
       }
     }),
     constraints: [
-      'Il Piano annuale mantiene ordine, blocco, durata ed evidenza canonica.',
+      'Il Piano annuale mantiene ordine, blocco, durata ed evidenza canonica quando la specifica esplicitamente.',
+      'Quando il Piano non specifica l’evidenza del singolo blocco, una fonte UDA può sostenerla soltanto con provenienza esplicita e revisione umana.',
       'Il PACK può fornire passaggi operativi ma non inventare o sostituire la durata del blocco.',
       'UDA e PACK devono restare legati alle generazioni correnti registrate nel pacchetto.',
       'Nessuna temporizzazione interna viene dedotta quando non è esplicita nella fonte.',
       'Il pacchetto di revisione non è una proiezione runtime e non equivale ad approvazione.',
       'Prima della promozione deve essere chiusa anche la revisione di miglioramento del processo.',
+      'Prima della promozione deve risultare soddisfatto l’adempimento cognitivo di tutti gli stakeholder di contesto.',
     ],
     improvementReview: createPendingHumanTaskImprovementReview(),
+    stakeholderCognitiveReview: createPendingHumanTaskStakeholderCognitiveReview(),
     decision: 'PENDING',
   }
 }
@@ -102,11 +112,22 @@ export function approveHumanTaskCompilerReviewPackage(
   if (!isHumanTaskImprovementReviewComplete(approval.improvementReview)) {
     throw new Error('La promozione richiede una revisione di miglioramento conclusa.')
   }
+  if (!isHumanTaskStakeholderCognitiveReviewComplete(approval.stakeholderCognitiveReview)) {
+    throw new Error('La promozione richiede l’adempimento cognitivo verificato di tutti gli stakeholder di contesto.')
+  }
 
   return {
     ...reviewPackage,
     items: reviewPackage.items.map((item) => ({ ...item, decision: 'APPROVE' })),
     improvementReview: { ...approval.improvementReview },
+    stakeholderCognitiveReview: {
+      ...approval.stakeholderCognitiveReview,
+      assessments: approval.stakeholderCognitiveReview.assessments.map((assessment) => ({
+        ...assessment,
+        answeredQuestions: [...assessment.answeredQuestions],
+        evidence: [...assessment.evidence],
+      })),
+    },
     decision: approval.decision,
   }
 }
