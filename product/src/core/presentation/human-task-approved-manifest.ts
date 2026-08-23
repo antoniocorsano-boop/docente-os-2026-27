@@ -1,17 +1,33 @@
 import type { GradeKey } from '@/app/piano-annuale/model'
 import type { HumanTaskLessonProjection } from './human-task-content'
 import type { HumanTaskImprovementDisposition } from '@/core/application/human-task-continuous-improvement'
+import {
+  HUMAN_TASK_REQUIRED_STAKEHOLDERS,
+  type HumanTaskStakeholder,
+} from '@/core/application/human-task-stakeholder-cognitive-gate'
 
 export type ApprovedHumanTaskSourceBinding = {
   code: string
   role: 'PLAN' | 'UDA' | 'PACK'
+  /** DIDACTIC is exposed in the projection; STRUCTURAL is retained only for validation/fingerprint provenance. */
+  contribution?: 'DIDACTIC' | 'STRUCTURAL'
   assetId: string
   generationId: string
   sourceRevision?: string
 }
 
+export type ApprovedHumanTaskCognitiveReceipt = {
+  status: 'SATISFIED'
+  stakeholders: Array<{
+    stakeholder: HumanTaskStakeholder
+    evidence: string[]
+    note: string
+  }>
+  note: string
+}
+
 export type ApprovedHumanTaskManifest = {
-  schemaVersion: 1
+  schemaVersion: 1 | 2
   recipeFamily: 'DIRECT' | 'PACK_COMPOSED' | 'UDA_ONLY' | 'PLAN_GUIDED_UDA'
   timingSpecificity: 'FULL' | 'PARTIAL' | 'UNSPECIFIED'
   structuralBinding: {
@@ -31,6 +47,7 @@ export type ApprovedHumanTaskManifest = {
     reviewPackageId: string
     improvementDisposition: Exclude<HumanTaskImprovementDisposition, 'PENDING' | 'SYSTEM_IMPROVEMENT_REQUIRED'>
     improvementNote: string
+    cognitiveFulfillment?: ApprovedHumanTaskCognitiveReceipt
   }
 }
 
@@ -45,13 +62,15 @@ export function validateApprovedHumanTaskManifest(manifest: ApprovedHumanTaskMan
   if (!manifest.sourceBindings.length || manifest.sourceBindings.some((source) => !source.assetId || !source.generationId)) {
     issues.push('SOURCE_GENERATION_BINDING_MISSING')
   }
+  if (manifest.schemaVersion >= 2) issues.push(...validateCognitiveReceipt(manifest.approval.cognitiveFulfillment))
   if (projection.grade !== binding.grade) issues.push('GRADE_MISMATCH')
   if (projection.blockId !== binding.blockId) issues.push('BLOCK_MISMATCH')
   if (projection.udaCode !== binding.udaCode) issues.push('UDA_MISMATCH')
   if (projection.packCode !== binding.packCode) issues.push('PACK_MISMATCH')
   if (projection.period !== binding.period) issues.push('PERIOD_MISMATCH')
   if (projection.title !== binding.title) issues.push('TITLE_MISMATCH')
-  if (manifest.recipeFamily === 'PACK_COMPOSED' && (projection.sourceAlignment.level !== 'COMPOSED' || !projection.sourceAlignment.note?.trim())) {
+  if ((manifest.recipeFamily === 'PACK_COMPOSED' || manifest.recipeFamily === 'PLAN_GUIDED_UDA')
+    && (projection.sourceAlignment.level !== 'COMPOSED' || !projection.sourceAlignment.note?.trim())) {
     issues.push('COMPOSED_ALIGNMENT_NOTE_REQUIRED')
   }
   if (manifest.timingSpecificity === 'UNSPECIFIED' && projection.steps.some((step) => step.minutes !== null)) {
@@ -62,7 +81,7 @@ export function validateApprovedHumanTaskManifest(manifest: ApprovedHumanTaskMan
     issues.push('BROKEN_RESOURCE_BINDING')
   }
   const contributingCodes = new Set(projection.sources.map((source) => source.code))
-  if (manifest.sourceBindings.some((source) => !contributingCodes.has(source.code))) {
+  if (manifest.sourceBindings.some((source) => (source.contribution ?? 'DIDACTIC') === 'DIDACTIC' && !contributingCodes.has(source.code))) {
     issues.push('BOUND_SOURCE_NOT_EXPOSED')
   }
 
@@ -77,4 +96,17 @@ export function materializeApprovedHumanTaskManifests(manifests: readonly Approv
     seen.add(key)
     return validateApprovedHumanTaskManifest(manifest).length ? [] : [manifest.projection]
   })
+}
+
+function validateCognitiveReceipt(receipt: ApprovedHumanTaskCognitiveReceipt | undefined) {
+  if (!receipt) return ['COGNITIVE_FULFILLMENT_MISSING']
+  const issues: string[] = []
+  if (receipt.status !== 'SATISFIED' || !receipt.note.trim()) issues.push('COGNITIVE_FULFILLMENT_INCOMPLETE')
+  const byStakeholder = new Map(receipt.stakeholders.map((item) => [item.stakeholder, item]))
+  if (byStakeholder.size !== HUMAN_TASK_REQUIRED_STAKEHOLDERS.length) issues.push('COGNITIVE_STAKEHOLDER_SET_MISMATCH')
+  for (const stakeholder of HUMAN_TASK_REQUIRED_STAKEHOLDERS) {
+    const item = byStakeholder.get(stakeholder)
+    if (!item || !item.note.trim() || item.evidence.length === 0) issues.push(`COGNITIVE_STAKEHOLDER_UNFULFILLED:${stakeholder}`)
+  }
+  return issues
 }
