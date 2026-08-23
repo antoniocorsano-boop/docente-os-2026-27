@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { buildBlocks } from '@/app/piano-annuale/model'
 import type { HumanTaskPipelineSource } from './human-task-content-pipeline'
+import { buildHumanTaskCompilerReviewPackage } from './human-task-compiler-review-package'
 import { compileHumanTaskTrancheReviewWithPackAlignment } from './human-task-tranche-compiler-pack-extension'
 
 const UDA_1_06 = `CAN-UDA-1-06 — INFORMAZIONI, DATI E SISTEMI DIGITALI
@@ -145,4 +146,22 @@ test('without exact Plan fragments v2 does not pretend the PACK partition is pro
   const review = compile([])
   assert.notEqual(review.packAlignment?.status, 'READY')
   assert.equal(review.items.some((item) => item.proposedRecipe === 'UNRESOLVED'), true)
+})
+
+test('review package is declarative, pending and preserves exact Plan evidence', () => {
+  const review = compile()
+  const reviewPackage = buildHumanTaskCompilerReviewPackage({ review, planFragments: PLAN_FRAGMENTS })
+
+  assert.equal(reviewPackage.packageVersion, 1)
+  assert.equal(reviewPackage.compilerVersion, 2)
+  assert.equal(reviewPackage.status, 'READY_FOR_HUMAN_REVIEW')
+  assert.equal(reviewPackage.promotion, 'HUMAN_APPROVAL_REQUIRED')
+  assert.equal(reviewPackage.decision, 'PENDING')
+  assert.equal(reviewPackage.items.every((item) => item.decision === 'PENDING'), true)
+  assert.deepEqual(reviewPackage.items.map((item) => [item.blockId, item.planEvidence]), [
+    ['B28', 'set dati ordinato'],
+    ['B29', 'tabella + grafico + interpretazione'],
+    ['B30', 'schema funzionale + breve verifica'],
+  ])
+  assert.equal(reviewPackage.constraints.some((item) => /non equivale ad approvazione/i.test(item)), true)
 })
