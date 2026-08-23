@@ -1,8 +1,8 @@
 # DOCENTE OS — Human Task Review · Classe seconda · UDA 2-01
 
-Stato: READY_FOR_HUMAN_REVIEW  
+Stato: APPROVED  
 Data: 2026-08-23  
-Promotion: HUMAN_APPROVAL_REQUIRED
+Promotion: AUTHORIZED
 
 ## Discovery autonoma
 
@@ -25,7 +25,7 @@ La discovery multi-grado ha rilevato:
 
 Qualunque source drift invalida questa review.
 
-## Raccordo proposto
+## Raccordo approvato
 
 | Blocco | Titolo operativo documentato dal PACK | Durata | Prodotto | Evidenza |
 | --- | --- | ---: | --- | --- |
@@ -36,7 +36,7 @@ Qualunque source drift invalida questa review.
 
 Il compiler ha verificato meccanicamente che le quattro lezioni sono in ordine, hanno durata esplicita di due ore e contengono tutte `Attività`, `Prodotto` ed `Evidenza`.
 
-## Autorità delle fonti proposta
+## Autorità delle fonti approvata
 
 ### Piano annuale
 
@@ -52,7 +52,7 @@ Resta autorità su:
 
 ### PACK 2A
 
-Diventa autorità operativa, per questa tranche, su:
+È autorità operativa, per questa tranche, su:
 
 - titolo umano della singola lezione;
 - attività;
@@ -61,7 +61,7 @@ Diventa autorità operativa, per questa tranche, su:
 - scheda alunno pertinente;
 - criteri e materiali esplicitamente documentati.
 
-Questo non modifica il Piano e non trasforma il PACK in autorità curricolare.
+Questo non modifica l’autorità curricolare del Piano.
 
 ### UDA 2-01
 
@@ -75,60 +75,41 @@ Resta autorità semantica e valutativa su:
 
 L’assenza di una sequenza temporizzata `Fase 1…` nella UDA non viene compensata con fasi inventate: il tempo della singola lezione è già documentato dal PACK e il tempo del segmento dal Piano.
 
-## Adempimento cognitivo — pre-gate
+## Adempimento cognitivo — gate approvato
 
-### Docente operativo — READY
+### Docente operativo — SATISFIED
 
-Può ricostruire senza codici tecnici:
+Può ricostruire senza codici tecnici cosa fare, quale prodotto attendere, quale evidenza osservare, quali materiali predisporre e come adattare il compito.
 
-- cosa fare in ciascuna lezione;
-- quale scheda/prodotto attendere;
-- quale evidenza osservare;
-- quali materiali predisporre;
-- come adattare il compito per inclusione, recupero e potenziamento.
+### Alunno / gruppo — SATISFIED
 
-### Alunno / gruppo — READY
+Le schede esplicitano azione, prodotto, domande/criteri e possibilità di controllo/miglioramento; compito significativo, criteri di qualità e rubrica rendono il lavoro comprensibile senza esporre la struttura tecnica delle fonti.
 
-Le quattro schede esplicitano domande, campi da completare, diagrammi o scelte da motivare. Il PACK aggiunge un compito significativo, criteri di qualità e rubrica a quattro livelli. L’alunno può quindi comprendere azione, prodotto, controllo e miglioramento senza conoscere Piano, UDA o codici CAN.
+### Revisore professionale-istituzionale — SATISFIED
 
-### Revisore professionale-istituzionale — READY
+Può distinguere struttura del Piano, semantica/valutazione della UDA, operatività del PACK, decisione umana e versioni congelate delle fonti.
 
-Può distinguere:
+### Governance — SATISFIED
 
-- struttura documentata dal Piano;
-- semantica/valutazione documentata dalla UDA;
-- operatività documentata dal PACK;
-- proposta del compiler;
-- futura approvazione umana.
+Responsabilità professionale, decisione, source binding e improvement disposition sono tracciati e verificabili.
 
-Asset e generation sono congelati nella review.
+### Automazione — SATISFIED
 
-### Automazione — READY
-
-Può derivare deterministicamente:
-
-- primo grado e segmento incompleti;
-- ordine delle quattro lezioni;
-- durata 120 minuti per ciascuna;
-- attività/prodotto/evidenza dai campi del PACK.
-
-Deve fermarsi se manca una lezione, una durata esplicita, un prodotto, un’evidenza o una sorgente corrente.
+Può derivare deterministicamente grado/segmento, ordine, durata e campi operativi; deve fermarsi se manca una lezione, una durata esplicita, un prodotto, un’evidenza o una sorgente corrente.
 
 ## Miglioramento del ciclo
 
-Disposition proposta: `SYSTEM_IMPROVEMENT_APPLIED`.
+Disposition: `SYSTEM_IMPROVEMENT_APPLIED`.
 
-Il ciclo ha prodotto due miglioramenti generalizzabili già integrati:
+Miglioramenti generalizzabili già integrati:
 
 1. discovery di portafoglio basata sulla copertura runtime, non su un grado prescritto;
 2. compiler v3 `DIRECT` fail-closed per PACK con lezioni 1:1.
 
-## Decisione professionale residua
+## Decisione professionale
 
-Serve una sola decisione umana:
+> **APPROVATO:** quando il Piano definisce soltanto il segmento e il PACK documenta in modo completo lezioni 1:1, i titoli delle lezioni, le attività, i prodotti e le evidenze operative sono derivati dal PACK; Piano e UDA mantengono rispettivamente autorità strutturale e semantico-valutativa.
 
-> **Approvare che, quando il Piano definisce soltanto il segmento e il PACK documenta in modo completo lezioni 1:1, i titoli delle lezioni, le attività, i prodotti e le evidenze operative siano derivati dal PACK, mentre Piano e UDA mantengono rispettivamente autorità strutturale e semantico-valutativa.**
-
-Se approvata, il sistema può produrre le proiezioni B01–B04, applicare il gate cognitivo completo, creare i manifest approvati e poi riscoprire autonomamente la tranche successiva.
-
-Decisione corrente: `PENDING`.
+Decisione: `APPROVE`.  
+Approvata dall’utente in chat il 23 agosto 2026 alle 11:47 Europe/Rome.  
+Review package: `HTC-REVIEW-PACKAGE:Seconda:Seconda:1:B01-B04:v1`.
