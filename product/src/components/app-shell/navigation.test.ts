@@ -18,7 +18,7 @@ test('canonical navigation has unique keys and routes', () => {
 test('canonical navigation exposes every primary teacher destination', () => {
   assert.deepEqual(
     PRIMARY_NAVIGATION.map((item) => item.key),
-    ['home', 'today', 'design', 'knowledge', 'classes', 'timetable', 'annual-plan', 'settings'],
+    ['home', 'today', 'design', 'knowledge', 'classes', 'timetable', 'calendar', 'annual-plan', 'settings'],
   )
 })
 
@@ -34,13 +34,15 @@ test('navigation groups cover every destination exactly once', () => {
 test('navigation groups follow human tasks rather than technical containers', () => {
   assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[0]).map((item) => item.key), ['home', 'today'])
   assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[1]).map((item) => item.key), ['classes', 'design', 'annual-plan'])
-  assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[2]).map((item) => item.key), ['timetable'])
+  assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[2]).map((item) => item.key), ['timetable', 'calendar'])
   assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[3]).map((item) => item.key), ['knowledge'])
   assert.equal(NAVIGATION_GROUPS[1].label, 'Prepara e insegna')
+  assert.equal(NAVIGATION_GROUPS[2].label, 'Tempo')
 })
 
-test('navigation lookup is stable and Orario is described as an operational weekly guide', () => {
-  assert.equal(navigationItem('knowledge').href, '/knowledge')
+test('Orario and Calendario stay distinct in labels and intent', () => {
   assert.equal(navigationItem('timetable').label, 'Orario')
   assert.match(navigationItem('timetable').description, /settimana|lezione/i)
+  assert.equal(navigationItem('calendar').href, '/calendario')
+  assert.match(navigationItem('calendar').description, /date|sospensioni|scadenze/i)
 })
