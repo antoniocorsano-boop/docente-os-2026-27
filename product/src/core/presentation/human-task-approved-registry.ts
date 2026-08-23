@@ -8,12 +8,14 @@ import { APPROVED_HUMAN_TASK_PROJECTIONS_B23_B27 } from './human-task-approved-p
 import { APPROVED_HUMAN_TASK_MANIFESTS } from './human-task-approved-manifests'
 import { APPROVED_HUMAN_TASK_MANIFESTS_B31_B33_V2 } from './human-task-approved-manifests-b31-b33-v2'
 import { APPROVED_HUMAN_TASK_MANIFESTS_SECONDA_B01_B04 } from './human-task-approved-manifests-seconda-b01-b04'
+import { APPROVED_HUMAN_TASK_MANIFESTS_SECONDA_B05_B08 } from './human-task-approved-manifests-seconda-b05-b08'
 import { materializeApprovedHumanTaskManifests } from './human-task-approved-manifest'
 
 const ALL_MANIFESTS = [
   ...APPROVED_HUMAN_TASK_MANIFESTS,
   ...APPROVED_HUMAN_TASK_MANIFESTS_B31_B33_V2,
   ...APPROVED_HUMAN_TASK_MANIFESTS_SECONDA_B01_B04,
+  ...APPROVED_HUMAN_TASK_MANIFESTS_SECONDA_B05_B08,
 ]
 
 const MANIFEST_PROJECTIONS = materializeApprovedHumanTaskManifests(ALL_MANIFESTS)
@@ -42,8 +44,13 @@ export const APPROVED_HUMAN_TASK_SUPPORT_PACK_BINDINGS = new Map<string, readonl
  * from the canonical Plan may override the human-facing title. Other manifests
  * keep the canonical title-drift check unchanged.
  */
+const APPROVED_TITLE_OVERRIDE_MANIFESTS = [
+  ...APPROVED_HUMAN_TASK_MANIFESTS_SECONDA_B01_B04,
+  ...APPROVED_HUMAN_TASK_MANIFESTS_SECONDA_B05_B08,
+]
+
 export const APPROVED_HUMAN_TASK_TITLE_OVERRIDES = new Map<string, string>(
-  APPROVED_HUMAN_TASK_MANIFESTS_SECONDA_B01_B04.map((manifest) => [
+  APPROVED_TITLE_OVERRIDE_MANIFESTS.map((manifest) => [
     projectionKey(manifest.structuralBinding.grade, manifest.structuralBinding.blockId),
     manifest.structuralBinding.title,
   ]),
