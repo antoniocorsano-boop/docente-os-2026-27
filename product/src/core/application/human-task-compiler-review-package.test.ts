@@ -4,6 +4,30 @@ import {
   approveHumanTaskCompilerReviewPackage,
   type HumanTaskCompilerReviewPackage,
 } from './human-task-compiler-review-package'
+import {
+  HUMAN_TASK_STAKEHOLDER_COGNITIVE_POLICY,
+  createPendingHumanTaskStakeholderCognitiveReview,
+  type HumanTaskContextStakeholder,
+  type HumanTaskStakeholderCognitiveReview,
+} from './human-task-stakeholder-cognition'
+
+function satisfiedCognition(): HumanTaskStakeholderCognitiveReview {
+  return {
+    policyVersion: 1,
+    required: true,
+    assessments: (Object.entries(HUMAN_TASK_STAKEHOLDER_COGNITIVE_POLICY.requirements) as Array<[
+      HumanTaskContextStakeholder,
+      readonly string[],
+    ]>).map(([stakeholder, questions]) => ({
+      stakeholder,
+      status: 'SATISFIED',
+      answeredQuestions: [...questions],
+      evidence: [`evidence-${stakeholder}`],
+      note: `Copertura cognitiva verificata per ${stakeholder}.`,
+    })),
+    note: 'Tutti gli stakeholder di contesto risultano cognitivamente serviti.',
+  }
+}
 
 function readyPackage(): HumanTaskCompilerReviewPackage {
   return {
@@ -35,6 +59,7 @@ function readyPackage(): HumanTaskCompilerReviewPackage {
       disposition: 'PENDING',
       note: 'non ancora valutato',
     },
+    stakeholderCognitiveReview: createPendingHumanTaskStakeholderCognitiveReview(),
     decision: 'PENDING',
   }
 }
@@ -42,29 +67,46 @@ function readyPackage(): HumanTaskCompilerReviewPackage {
 test('promotion refuses a human approval if process improvement was not assessed', () => {
   assert.throws(() => approveHumanTaskCompilerReviewPackage(readyPackage(), {
     decision: 'APPROVE',
-    approvedAt: '2026-08-23T09:42:00+02:00',
+    approvedAt: '2026-08-23T10:29:00+02:00',
     improvementReview: {
       policyVersion: 1,
       required: true,
       disposition: 'PENDING',
       note: 'non ancora valutato',
     },
+    stakeholderCognitiveReview: satisfiedCognition(),
   }), /miglioramento/i)
 })
 
-test('promotion accepts approval only after a closed improvement review', () => {
-  const approved = approveHumanTaskCompilerReviewPackage(readyPackage(), {
+test('promotion refuses approval when any contextual stakeholder remains cognitively unresolved', () => {
+  assert.throws(() => approveHumanTaskCompilerReviewPackage(readyPackage(), {
     decision: 'APPROVE',
-    approvedAt: '2026-08-23T09:42:00+02:00',
+    approvedAt: '2026-08-23T10:29:00+02:00',
     improvementReview: {
       policyVersion: 1,
       required: true,
       disposition: 'SYSTEM_IMPROVEMENT_APPLIED',
       note: 'Registry generico e manifest dichiarativi introdotti.',
     },
+    stakeholderCognitiveReview: createPendingHumanTaskStakeholderCognitiveReview(),
+  }), /cognitivo|stakeholder/i)
+})
+
+test('promotion accepts approval only after improvement and stakeholder cognition are both closed', () => {
+  const approved = approveHumanTaskCompilerReviewPackage(readyPackage(), {
+    decision: 'APPROVE',
+    approvedAt: '2026-08-23T10:29:00+02:00',
+    improvementReview: {
+      policyVersion: 1,
+      required: true,
+      disposition: 'SYSTEM_IMPROVEMENT_APPLIED',
+      note: 'Registry generico e manifest dichiarativi introdotti.',
+    },
+    stakeholderCognitiveReview: satisfiedCognition(),
   })
 
   assert.equal(approved.decision, 'APPROVE')
   assert.equal(approved.items.every((item) => item.decision === 'APPROVE'), true)
   assert.equal(approved.improvementReview.disposition, 'SYSTEM_IMPROVEMENT_APPLIED')
+  assert.equal(approved.stakeholderCognitiveReview.assessments.every((item) => item.status === 'SATISFIED'), true)
 })
