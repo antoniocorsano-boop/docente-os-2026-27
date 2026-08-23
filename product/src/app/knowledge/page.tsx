@@ -9,7 +9,8 @@ import {
   humanizeKnowledgeTitle,
   knowledgeProcessingStatus,
 } from '@/core/presentation/product-language'
-import { captureKnowledgeNote, uploadKnowledgeFile } from './actions'
+import { captureKnowledgeNote } from './actions'
+import { KnowledgeFileUploader } from './KnowledgeFileUploader'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,15 +68,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
 
           <div className="captureModeBlock">
             <div className="captureModeHeading"><strong>Carica un file</strong><span>Privato · massimo 20 MB</span></div>
-            <form action={uploadKnowledgeFile} className="knowledgeUploadForm">
-              <label className="fileDrop">
-                <input name="file" type="file" required accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/webp" />
-                <span className="fileDropIcon" aria-hidden>↑</span>
-                <strong>PDF, immagini, DOCX, TXT o Markdown</strong>
-                <small>L’originale resta nel tuo spazio privato. Per scansioni e immagini, il testo riconosciuto viene sempre trattato come contenuto da verificare.</small>
-              </label>
-              <button type="submit">Carica e organizza</button>
-            </form>
+            <KnowledgeFileUploader workspaceId={context.workspace.id} />
           </div>
         </section>
 
