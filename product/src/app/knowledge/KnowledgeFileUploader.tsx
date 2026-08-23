@@ -3,14 +3,18 @@
 import { useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { finalizeKnowledgeFileUpload, requestKnowledgeUploadGrant } from './upload-actions'
+import { finalizeKnowledgeFileUpload } from './upload-actions'
 import {
   isAllowedKnowledgeUploadMime,
   MAX_KNOWLEDGE_UPLOAD_BYTES,
   normalizeKnowledgeUploadMime,
 } from './upload-policy'
 
-type UploadPhase = 'IDLE' | 'AUTHORIZING' | 'UPLOADING' | 'ORGANIZING' | 'ERROR'
+type UploadPhase = 'IDLE' | 'UPLOADING' | 'ORGANIZING' | 'ERROR'
+
+type SameOriginUploadResult =
+  | { ok: true; objectPath: string; mimeType: string; byteSize: number }
+  | { ok: false; code?: string }
 
 export function KnowledgeFileUploader() {
   const router = useRouter()
@@ -18,7 +22,7 @@ export function KnowledgeFileUploader() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [phase, setPhase] = useState<UploadPhase>('IDLE')
   const [message, setMessage] = useState<string | null>(null)
-  const busy = phase === 'AUTHORIZING' || phase === 'UPLOADING' || phase === 'ORGANIZING'
+  const busy = phase === 'UPLOADING' || phase === 'ORGANIZING'
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0] ?? null
@@ -60,46 +64,33 @@ export function KnowledgeFileUploader() {
       return
     }
 
-    setPhase('AUTHORIZING')
-    setMessage('Preparo un trasferimento sicuro per questo file…')
-
-    const grant = await requestKnowledgeUploadGrant({
-      originalName: file.name,
-      rawMimeType: file.type,
-      byteSize: file.size,
-    })
-
-    if (!grant.ok) {
-      fail(grantMessage(grant.code))
-      return
-    }
-
     setPhase('UPLOADING')
     setMessage('Sto trasferendo l’originale nel tuo spazio privato…')
 
-    const body = new FormData()
-    body.append('cacheControl', '3600')
-    body.append('', file)
-
     let uploadResponse: Response
     try {
-      uploadResponse = await fetch(grant.signedUrl, {
-        method: 'PUT',
-        body,
+      uploadResponse = await fetch('/api/knowledge/upload', {
+        method: 'POST',
+        headers: {
+          'content-type': localMimeType,
+          'x-docente-file-name': encodeURIComponent(file.name),
+          'x-docente-file-size': String(file.size),
+        },
+        body: file,
       })
     } catch (error) {
-      console.error('Knowledge raw signed upload network failure', error)
-      fail('Il collegamento con lo spazio privato si è interrotto prima del trasferimento. Riprova.')
+      console.error('Knowledge same-origin upload network failure', error)
+      fail('Il collegamento con DOCENTE OS si è interrotto durante il trasferimento. Riprova.')
       return
     }
 
-    if (!uploadResponse.ok) {
-      const detail = await safeResponseText(uploadResponse)
-      console.error('Knowledge raw signed upload rejected', {
+    const uploadResult = await readUploadResult(uploadResponse)
+    if (!uploadResponse.ok || !uploadResult?.ok) {
+      console.error('Knowledge same-origin upload rejected', {
         status: uploadResponse.status,
-        detail,
+        result: uploadResult,
       })
-      fail(`Il trasferimento è stato rifiutato dal servizio (${uploadResponse.status}). Puoi riprovare.`)
+      fail(uploadFailureMessage(uploadResponse.status, uploadResult?.ok === false ? uploadResult.code : undefined))
       return
     }
 
@@ -107,10 +98,10 @@ export function KnowledgeFileUploader() {
     setMessage('Originale al sicuro. Ora lo sto organizzando nella Conoscenza…')
 
     const result = await finalizeKnowledgeFileUpload({
-      objectPath: grant.objectPath,
+      objectPath: uploadResult.objectPath,
       originalName: file.name,
-      mimeType: grant.mimeType,
-      byteSize: file.size,
+      mimeType: uploadResult.mimeType,
+      byteSize: uploadResult.byteSize,
     })
 
     if (!result.ok) {
@@ -144,7 +135,7 @@ export function KnowledgeFileUploader() {
         <small>
           {selectedFile
             ? 'Controlla il file selezionato prima di avviare il caricamento.'
-            : 'DOCENTE OS autorizza solo questo trasferimento; l’originale va poi direttamente nel tuo spazio privato.'}
+            : 'L’originale viene trasferito nel tuo spazio privato e poi organizzato nella Conoscenza.'}
         </small>
       </label>
 
@@ -165,26 +156,33 @@ export function KnowledgeFileUploader() {
 
       {message ? <div className="knowledgeFeedback" role={phase === 'ERROR' ? 'alert' : 'status'} aria-live="polite">{message}</div> : null}
       <button type="submit" disabled={busy || !selectedFile}>
-        {phase === 'AUTHORIZING'
-          ? 'Preparazione…'
-          : phase === 'UPLOADING'
-            ? 'Caricamento…'
-            : phase === 'ORGANIZING'
-              ? 'Organizzazione…'
-              : selectedFile
-                ? 'Carica e organizza'
-                : 'Seleziona prima un file'}
+        {phase === 'UPLOADING'
+          ? 'Caricamento…'
+          : phase === 'ORGANIZING'
+            ? 'Organizzazione…'
+            : selectedFile
+              ? 'Carica e organizza'
+              : 'Seleziona prima un file'}
       </button>
     </form>
   )
 }
 
-async function safeResponseText(response: Response) {
+async function readUploadResult(response: Response): Promise<SameOriginUploadResult | null> {
   try {
-    return (await response.text()).slice(0, 400)
+    return await response.json() as SameOriginUploadResult
   } catch {
-    return ''
+    return null
   }
+}
+
+function uploadFailureMessage(status: number, code?: string) {
+  if (status === 401) return 'La sessione è scaduta. Ricarica la pagina e accedi di nuovo.'
+  if (status === 413 || code === 'too_large') return 'Il file supera il limite di 20 MB.'
+  if (status === 415 || code === 'unsupported') return 'Questo formato non è supportato.'
+  if (code === 'size_mismatch') return 'Il trasferimento è arrivato incompleto. Riprova con lo stesso file.'
+  if (status >= 500) return 'Lo spazio privato non ha accettato il file. Puoi riprovare tra poco.'
+  return `Il trasferimento non è riuscito (${status}). Puoi riprovare.`
 }
 
 function fileTypeLabel(file: File) {
@@ -199,13 +197,6 @@ function formatFileSize(bytes: number) {
   if (kilobytes < 1024) return `${kilobytes < 10 ? kilobytes.toFixed(1) : Math.round(kilobytes)} KB`
   const megabytes = kilobytes / 1024
   return `${megabytes.toFixed(megabytes < 10 ? 1 : 0)} MB`
-}
-
-function grantMessage(code: 'missing' | 'too_large' | 'unsupported' | 'authorization_failed') {
-  if (code === 'too_large') return 'Il file supera il limite di 20 MB.'
-  if (code === 'unsupported') return 'Questo formato non è supportato.'
-  if (code === 'authorization_failed') return 'Non sono riuscito ad autorizzare il trasferimento. Ricarica la pagina e riprova.'
-  return 'Seleziona nuovamente il file e riprova.'
 }
 
 function finalizeMessage(code: 'missing' | 'too_large' | 'unsupported' | 'invalid_path' | 'parse_failed') {
