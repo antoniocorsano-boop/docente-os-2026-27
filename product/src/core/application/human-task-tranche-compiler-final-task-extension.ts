@@ -24,8 +24,9 @@ export type HumanTaskFinalTaskTrancheReview = Omit<HumanTaskDirectTrancheReview,
 /**
  * Compiler v4 keeps v3 as the default path and adds one explicit grammar for
  * a final authentic task. It is accepted only when the source itself contains:
- * `Compito significativo`, `Consegna`, `Il gruppo deve produrre`, a following
- * student sheet, a rubric and `CRITERI OD-READY`. No missing field is invented.
+ * `Compito significativo`, `Consegna`, `Il gruppo deve produrre`, an explicit
+ * student-sheet heading, a rubric and `CRITERI OD-READY`. No missing field is
+ * invented and the canonical duration rules of v3 remain unchanged.
  */
 export function compileHumanTaskTrancheReviewWithFinalTask(
   input: CompileDirectHumanTaskTrancheInput,
@@ -148,17 +149,17 @@ export function compileHumanTaskTrancheReviewWithFinalTask(
 function recoverExplicitFinalTask(section: ExtractedPackSection, allSections: ExtractedPackSection[]) {
   const task = labeled(section.content, 'Compito significativo')
   const delivery = labeled(section.content, 'Consegna')
-  const product = trailingLabeled(section.content, 'Il gruppo deve produrre')
+  const sheetHeading = inlineStudentSheetHeading(section.content)
+  const product = boundedProduct(section.content, sheetHeading)
   const later = allSections.filter((candidate) => candidate.ordinal > section.ordinal)
-  const studentSheet = later.find((candidate) => candidate.kind === 'STUDENT_SHEET')
   const rubric = later.find((candidate) => candidate.kind === 'RUBRIC')
   const hasOdReady = Boolean(rubric?.content.match(/CRITERI\s+OD-READY/i))
-  if (!task || !delivery || !product || !studentSheet || !rubric || !hasOdReady) return null
+  if (!task || !delivery || !product || !sheetHeading || !rubric || !hasOdReady) return null
 
   return {
     activity: `Compito significativo: ${task}\nConsegna: ${delivery}`,
     product: `Il gruppo deve produrre: ${product}`,
-    evidence: `${studentSheet.heading}; ${rubric.heading}; CRITERI OD-READY`,
+    evidence: `${sheetHeading}; ${rubric.heading}; CRITERI OD-READY`,
   }
 }
 
@@ -167,9 +168,18 @@ function labeled(content: string, label: string) {
   return content.match(pattern)?.[1]?.trim() ?? ''
 }
 
-function trailingLabeled(content: string, label: string) {
-  const pattern = new RegExp(`(?:^|\\n)${escapeRegExp(label)}\\s*:\\s*([\\s\\S]+)$`, 'i')
-  return content.match(pattern)?.[1]?.trim() ?? ''
+function inlineStudentSheetHeading(content: string) {
+  return content.match(/(?:^|\n)(SCHEDA\s+[A-Z0-9-]+\s*[—–-]\s*[^\n]+)/i)?.[1]?.trim() ?? ''
+}
+
+function boundedProduct(content: string, sheetHeading: string) {
+  if (!sheetHeading) return ''
+  const start = content.match(/(?:^|\n)Il gruppo deve produrre\s*:\s*/i)
+  if (!start || start.index === undefined) return ''
+  const from = start.index + start[0].length
+  const end = content.indexOf(sheetHeading, from)
+  if (end < 0) return ''
+  return content.slice(from, end).trim()
 }
 
 function sourceEvidence(section: ExtractedPackSection) {
