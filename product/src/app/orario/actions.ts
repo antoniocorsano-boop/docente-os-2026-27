@@ -1,10 +1,11 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import type { TimetablePresenceKind } from '@/core/domain/timetable'
+import { SupabaseTimetableLifecycleRepository } from '@/core/infrastructure/supabase/supabase-timetable-lifecycle-repository'
 import { updateDraftTimetableSlot } from '@/core/infrastructure/supabase/supabase-timetable-slot-editor'
 import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import type { TimetablePresenceKind } from '@/core/domain/timetable'
 
 export async function addTeachingAssignment(formData: FormData) {
   const context = await requireContext()
@@ -45,6 +46,14 @@ export async function updateTimetableDraft(formData: FormData) {
     sourceKind: sourceKind(text(formData, 'sourceKind')),
     sourceRef: nullableText(formData, 'sourceRef'),
   })
+  revalidatePath('/orario')
+}
+
+export async function activateTimetableDraft(formData: FormData) {
+  await requireContext()
+  const repository = new SupabaseTimetableLifecycleRepository()
+  await repository.activateDraft(text(formData, 'versionId'))
+  revalidatePath('/')
   revalidatePath('/orario')
 }
 
