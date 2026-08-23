@@ -7,11 +7,13 @@ import { APPROVED_HUMAN_TASK_PROJECTIONS_B20_B22 } from './human-task-approved-p
 import { APPROVED_HUMAN_TASK_PROJECTIONS_B23_B27 } from './human-task-approved-projections-b23-b27'
 import { APPROVED_HUMAN_TASK_MANIFESTS } from './human-task-approved-manifests'
 import { APPROVED_HUMAN_TASK_MANIFESTS_B31_B33_V2 } from './human-task-approved-manifests-b31-b33-v2'
+import { APPROVED_HUMAN_TASK_MANIFESTS_SECONDA_B01_B04 } from './human-task-approved-manifests-seconda-b01-b04'
 import { materializeApprovedHumanTaskManifests } from './human-task-approved-manifest'
 
 const ALL_MANIFESTS = [
   ...APPROVED_HUMAN_TASK_MANIFESTS,
   ...APPROVED_HUMAN_TASK_MANIFESTS_B31_B33_V2,
+  ...APPROVED_HUMAN_TASK_MANIFESTS_SECONDA_B01_B04,
 ]
 
 const MANIFEST_PROJECTIONS = materializeApprovedHumanTaskManifests(ALL_MANIFESTS)
@@ -34,6 +36,18 @@ export const APPROVED_HUMAN_TASK_SUPPORT_PACK_BINDINGS = new Map<string, readonl
     manifest.structuralBinding.supportPackCodes,
   ] as const),
 ])
+
+/**
+ * Only manifests whose review explicitly approved a title authority different
+ * from the canonical Plan may override the human-facing title. Other manifests
+ * keep the canonical title-drift check unchanged.
+ */
+export const APPROVED_HUMAN_TASK_TITLE_OVERRIDES = new Map<string, string>(
+  APPROVED_HUMAN_TASK_MANIFESTS_SECONDA_B01_B04.map((manifest) => [
+    projectionKey(manifest.structuralBinding.grade, manifest.structuralBinding.blockId),
+    manifest.structuralBinding.title,
+  ]),
+)
 
 function projectionKey(grade: GradeKey, blockId: string) {
   return `${grade}:${blockId.toUpperCase()}`

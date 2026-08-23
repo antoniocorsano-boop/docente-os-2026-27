@@ -54,56 +54,31 @@ function source(code: string, assetId: string, generationId: string, normalizedT
 }
 
 const CURRENT_SOURCES = [
-  source(
-    'CAN-UDA-2-01',
-    'b407c74c-6c04-476e-a444-7262ae830ba0',
-    '8d905b43-7cb7-4640-977f-6b036fa36910',
-    UDA_2_01,
-  ),
-  source(
-    'CAN-PACK-2A',
-    'c0e97e14-eb14-4541-ba14-259df6c8106a',
-    '78ba42d8-f209-4355-bae9-4c9732ea38e4',
-    PACK_2A,
-  ),
+  source('CAN-UDA-2-01', 'b407c74c-6c04-476e-a444-7262ae830ba0', '8d905b43-7cb7-4640-977f-6b036fa36910', UDA_2_01),
+  source('CAN-PACK-2A', 'c0e97e14-eb14-4541-ba14-259df6c8106a', '78ba42d8-f209-4355-bae9-4c9732ea38e4', PACK_2A),
 ]
 
-function compileFromPortfolio(sources = CURRENT_SOURCES) {
-  const frontier = discoverHumanTaskPortfolioFrontier()
-  assert.equal(frontier.status, 'INCOMPLETE')
-  assert.ok(frontier.nextGrade)
-  return {
-    frontier,
-    review: compileHumanTaskTrancheReviewWithDirectPack({
-      grade: frontier.nextGrade,
-      coveredBlockIds: frontier.coveredBlockIds,
-      sources,
-    }),
-  }
+/** Replays the pre-promotion classifier contract explicitly; runtime coverage no longer represents that historical state. */
+function compilePrePromotion(sources = CURRENT_SOURCES) {
+  return compileHumanTaskTrancheReviewWithDirectPack({
+    grade: 'Seconda',
+    coveredBlockIds: [],
+    sources,
+  })
 }
 
-test('portfolio discovery completes Prima and independently selects the next incomplete grade', () => {
+test('portfolio discovery completes Prima and now advances Seconda coverage through B04', () => {
   const frontier = discoverHumanTaskPortfolioFrontier()
   const prima = frontier.grades.find((item) => item.grade === 'Prima')
-
   assert.ok(prima)
   assert.equal(prima.complete, true)
   assert.equal(prima.coveredBlockIds.length, 33)
   assert.equal(frontier.nextGrade, 'Seconda')
-  assert.deepEqual(frontier.coveredBlockIds, [])
+  assert.deepEqual(frontier.coveredBlockIds, ['B01', 'B02', 'B03', 'B04'])
 })
 
-test('compiler v3 discovers the first Seconda segment and proves a DIRECT 1:1 PACK alignment', () => {
-  const { review } = compileFromPortfolio()
-
-  console.info('HUMAN_TASK_PORTFOLIO_NEXT', JSON.stringify({
-    grade: review.grade,
-    segmentKey: review.segmentKey,
-    blockIds: review.blockIds,
-    status: review.status,
-    recipes: review.items.map((item) => [item.blockId, item.proposedRecipe, item.proposedPackHeadings]),
-  }))
-
+test('compiler v3 historical contract proves the approved Seconda:1 DIRECT 1:1 alignment', () => {
+  const review = compilePrePromotion()
   assert.equal(review.compilerVersion, 3)
   assert.equal(review.grade, 'Seconda')
   assert.equal(review.segmentKey, 'Seconda:1')
@@ -116,8 +91,8 @@ test('compiler v3 discovers the first Seconda segment and proves a DIRECT 1:1 PA
   assert.equal(review.directAlignment.blocks.every((item) => Boolean(item.activity && item.product && item.evidence)), true)
 })
 
-test('DIRECT preserves current source generations in the review receipt', () => {
-  const { review } = compileFromPortfolio()
+test('DIRECT preserves approved source generations in the historical review receipt', () => {
+  const review = compilePrePromotion()
   assert.deepEqual(review.sourceBindings.map((item) => [item.code, item.generationId]), [
     ['CAN-PACK-2A', '78ba42d8-f209-4355-bae9-4c9732ea38e4'],
     ['CAN-UDA-2-01', '8d905b43-7cb7-4640-977f-6b036fa36910'],
@@ -125,39 +100,26 @@ test('DIRECT preserves current source generations in the review receipt', () => 
 })
 
 test('a missing PACK evidence fails closed instead of being synthesized', () => {
-  const brokenPack = PACK_2A.replace(
-    'Evidenza: ricostruisce una sequenza produttiva e riconosce input/output.',
-    '',
-  )
-  const sources = [CURRENT_SOURCES[0], { ...CURRENT_SOURCES[1], normalizedText: brokenPack }]
-  const { review } = compileFromPortfolio(sources)
-
+  const brokenPack = PACK_2A.replace('Evidenza: ricostruisce una sequenza produttiva e riconosce input/output.', '')
+  const review = compilePrePromotion([CURRENT_SOURCES[0], { ...CURRENT_SOURCES[1], normalizedText: brokenPack }])
   assert.equal(review.directAlignment.status, 'BLOCKED')
   assert.notEqual(review.status, 'READY_FOR_HUMAN_REVIEW')
   assert.match(review.directAlignment.note, /Attività, Prodotto ed Evidenza/i)
 })
 
 test('a non-explicit two-hour lesson duration fails closed', () => {
-  const brokenPack = PACK_2A.replace(
-    'LEZIONE 2 — Il suolo: struttura, funzioni e rischi — 2 ore',
-    'LEZIONE 2 — Il suolo: struttura, funzioni e rischi',
-  )
-  const sources = [CURRENT_SOURCES[0], { ...CURRENT_SOURCES[1], normalizedText: brokenPack }]
-  const { review } = compileFromPortfolio(sources)
-
+  const brokenPack = PACK_2A.replace('LEZIONE 2 — Il suolo: struttura, funzioni e rischi — 2 ore', 'LEZIONE 2 — Il suolo: struttura, funzioni e rischi')
+  const review = compilePrePromotion([CURRENT_SOURCES[0], { ...CURRENT_SOURCES[1], normalizedText: brokenPack }])
   assert.equal(review.directAlignment.status, 'BLOCKED')
   assert.notEqual(review.status, 'READY_FOR_HUMAN_REVIEW')
   assert.match(review.directAlignment.note, /durata non viene inferita/i)
 })
 
 test('a non phase-structured UDA is tolerated only when DIRECT is otherwise complete', () => {
-  const { review: ready } = compileFromPortfolio()
+  const ready = compilePrePromotion()
   assert.equal(ready.status, 'READY_FOR_HUMAN_REVIEW')
-
   const incompletePack = PACK_2A.replace(/\nLEZIONE 4[\s\S]*$/, '')
-  const sources = [CURRENT_SOURCES[0], { ...CURRENT_SOURCES[1], normalizedText: incompletePack }]
-  const { review: blocked } = compileFromPortfolio(sources)
-
+  const blocked = compilePrePromotion([CURRENT_SOURCES[0], { ...CURRENT_SOURCES[1], normalizedText: incompletePack }])
   assert.notEqual(blocked.status, 'READY_FOR_HUMAN_REVIEW')
   assert.notEqual(blocked.directAlignment.status, 'READY')
 })

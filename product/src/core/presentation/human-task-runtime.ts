@@ -7,6 +7,7 @@ import {
 import {
   APPROVED_HUMAN_TASK_RUNTIME_PROJECTIONS,
   APPROVED_HUMAN_TASK_SUPPORT_PACK_BINDINGS,
+  APPROVED_HUMAN_TASK_TITLE_OVERRIDES,
 } from './human-task-approved-registry'
 
 type CanonicalRuntimeBlock = {
@@ -38,7 +39,8 @@ export function resolveRuntimeHumanTaskLessonProjection(
   if (projection.udaCode !== block.uda) return null
   if (projection.packCode !== block.pack) return null
   if (projection.period !== block.period) return null
-  if (block.title && projection.title !== block.title) return null
+  const expectedTitle = APPROVED_HUMAN_TASK_TITLE_OVERRIDES.get(key) ?? block.title
+  if (expectedTitle && projection.title !== expectedTitle) return null
   if (!sameStringArray(block.supportPacks ?? [], APPROVED_HUMAN_TASK_SUPPORT_PACK_BINDINGS.get(key) ?? [])) return null
   if (!hasValidResourceBindings(projection)) return null
   return projection
