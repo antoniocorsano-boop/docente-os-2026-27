@@ -38,12 +38,12 @@ export const APPROVED_HUMAN_TASK_SUPPORT_PACK_BINDINGS = new Map<string, readonl
 ])
 
 /**
- * Operational titles may be sourced by an approved manifest when the canonical
- * Plan intentionally names only the segment. This preserves Plan authority for
- * order/duration while allowing a human-facing PACK title after explicit review.
+ * Only manifests whose review explicitly approved a title authority different
+ * from the canonical Plan may override the human-facing title. Other manifests
+ * keep the canonical title-drift check unchanged.
  */
 export const APPROVED_HUMAN_TASK_TITLE_OVERRIDES = new Map<string, string>(
-  ALL_MANIFESTS.map((manifest) => [
+  APPROVED_HUMAN_TASK_MANIFESTS_SECONDA_B01_B04.map((manifest) => [
     projectionKey(manifest.structuralBinding.grade, manifest.structuralBinding.blockId),
     manifest.structuralBinding.title,
   ]),
