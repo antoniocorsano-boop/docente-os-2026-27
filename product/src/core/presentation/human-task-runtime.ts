@@ -7,6 +7,7 @@ import {
 import { APPROVED_HUMAN_TASK_PROJECTIONS } from './human-task-approved-projections'
 import { APPROVED_HUMAN_TASK_PROJECTIONS_B11_B15 } from './human-task-approved-projections-b11-b15'
 import { APPROVED_HUMAN_TASK_PROJECTIONS_B16_B19 } from './human-task-approved-projections-b16-b19'
+import { APPROVED_HUMAN_TASK_PROJECTIONS_B20_B22 } from './human-task-approved-projections-b20-b22'
 
 type CanonicalRuntimeBlock = {
   id: string
@@ -23,6 +24,7 @@ const APPROVED_PROJECTIONS = new Map<string, HumanTaskLessonProjection>(
     ...APPROVED_HUMAN_TASK_PROJECTIONS,
     ...APPROVED_HUMAN_TASK_PROJECTIONS_B11_B15,
     ...APPROVED_HUMAN_TASK_PROJECTIONS_B16_B19,
+    ...APPROVED_HUMAN_TASK_PROJECTIONS_B20_B22,
   ].map((projection) => [projectionKey(projection.grade, projection.blockId), projection]),
 )
 
