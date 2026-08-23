@@ -62,10 +62,10 @@ export const B31_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL: HumanTaskPlanGuidedUdaProjec
 }
 
 export const B31_EVIDENCE_BINDING: PlanGuidedEvidenceBinding = {
-  source: 'UDA_PHASES',
-  phaseOrdinals: [1, 2],
-  text: 'Scheda del problema con requisiti e vincoli, schizzi delle alternative e confronto mediante criteri.',
-  rationale: 'Le fasi 1 e 2 richiedono problema, destinatari, funzione, requisiti, vincoli, più ipotesi, schizzi e confronto; il prodotto atteso della UDA include scheda del problema, requisiti/vincoli e schizzi delle alternative.',
+  source: 'UDA_SECTION_ITEMS',
+  sectionHeading: 'PRODOTTO ATTESO',
+  itemIndexes: [1, 2, 3],
+  rationale: 'Il prodotto atteso della UDA identifica direttamente scheda del problema, requisiti/vincoli e schizzi delle alternative; le fasi 1 e 2 spiegano come produrli.',
 }
 
 export const B32_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL: HumanTaskPlanGuidedUdaProjectionRecipe = {
@@ -100,10 +100,10 @@ export const B32_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL: HumanTaskPlanGuidedUdaProjec
 }
 
 export const B32_EVIDENCE_BINDING: PlanGuidedEvidenceBinding = {
-  source: 'UDA_PHASES',
-  phaseOrdinals: [3, 4],
-  text: 'Scelta motivata, rappresentazione grafica, materiali e strumenti, sequenza operativa ed eventuale modello/prototipo o simulazione documentata.',
-  rationale: 'Le fasi 3 e 4 richiedono scelta motivata, rappresentazione, dimensioni, materiali, strumenti, fasi e modello/prototipo o simulazione; gli stessi elementi sono elencati nel prodotto atteso della UDA.',
+  source: 'UDA_SECTION_ITEMS',
+  sectionHeading: 'PRODOTTO ATTESO',
+  itemIndexes: [4, 5, 6, 7, 8],
+  rationale: 'Il prodotto atteso della UDA identifica direttamente scelta motivata, rappresentazione grafica, materiali/strumenti, sequenza delle fasi ed eventuale modello/prototipo; le fasi 3 e 4 ne definiscono l’azione.',
 }
 
 export const B33_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL: HumanTaskPlanGuidedUdaProjectionRecipe = {
@@ -140,8 +140,7 @@ export const B33_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL: HumanTaskPlanGuidedUdaProjec
 export const B33_EVIDENCE_BINDING: PlanGuidedEvidenceBinding = {
   source: 'UDA_PHASES',
   phaseOrdinals: [5, 6],
-  text: 'Verifica rispetto ai requisiti, criticità e miglioramento proposto, valutazione di sostenibilità, presentazione e autovalutazione finale.',
-  rationale: 'Le fasi 5 e 6 richiedono verifica, criticità, miglioramento, presentazione, restituzione individuale e autovalutazione; prodotto atteso e valutazione finale della UDA confermano dossier, sostenibilità e presentazione.',
+  rationale: 'Le fasi 5 e 6 sono la fonte canonica che esplicita insieme verifica rispetto ai requisiti, criticità, miglioramento, presentazione, restituzione individuale, autovalutazione e verifica finale.',
 }
 
 export const B31_B33_RECIPE_PROPOSALS = [
