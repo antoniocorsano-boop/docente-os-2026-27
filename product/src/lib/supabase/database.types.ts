@@ -21,6 +21,18 @@ export type Database = {
         Update: { status?: string; executed_on?: string | null; evidence_note?: string | null; updated_by?: string; updated_at?: string }
         Relationships: []
       }
+      calendar_days: {
+        Row: { id: string; workspace_id: string; academic_year_id: string; local_date: string; day_kind: string; label: string; note: string | null; source_kind: string; source_ref: string | null; created_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; workspace_id: string; academic_year_id: string; local_date: string; day_kind: string; label: string; note?: string | null; source_kind?: string; source_ref?: string | null; created_by: string; created_at?: string; updated_at?: string }
+        Update: { day_kind?: string; label?: string; note?: string | null; source_kind?: string; source_ref?: string | null; updated_at?: string }
+        Relationships: []
+      }
+      calendar_events: {
+        Row: { id: string; workspace_id: string; academic_year_id: string; title: string; event_kind: string; starts_on: string; ends_on: string; all_day: boolean; start_time: string | null; end_time: string | null; note: string | null; source_kind: string; source_ref: string | null; created_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; workspace_id: string; academic_year_id: string; title: string; event_kind?: string; starts_on: string; ends_on: string; all_day?: boolean; start_time?: string | null; end_time?: string | null; note?: string | null; source_kind?: string; source_ref?: string | null; created_by: string; created_at?: string; updated_at?: string }
+        Update: { title?: string; event_kind?: string; starts_on?: string; ends_on?: string; all_day?: boolean; start_time?: string | null; end_time?: string | null; note?: string | null; source_kind?: string; source_ref?: string | null; updated_at?: string }
+        Relationships: []
+      }
       experience_feedback: {
         Row: { id: string; workspace_id: string; academic_year_id: string | null; surface: string; journey: string; task_intent: string; context_ref: Json; satisfaction: number; comment: string | null; created_by: string; created_at: string }
         Insert: { id?: string; workspace_id: string; academic_year_id?: string | null; surface: string; journey: string; task_intent: string; context_ref?: Json; satisfaction: number; comment?: string | null; created_by: string; created_at?: string }
