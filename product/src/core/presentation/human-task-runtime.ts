@@ -4,11 +4,10 @@ import {
   resolveHumanTaskLessonProjection as resolveLegacyHumanTaskLessonProjection,
   type HumanTaskLessonProjection,
 } from './human-task-content'
-import { APPROVED_HUMAN_TASK_PROJECTIONS } from './human-task-approved-projections'
-import { APPROVED_HUMAN_TASK_PROJECTIONS_B11_B15 } from './human-task-approved-projections-b11-b15'
-import { APPROVED_HUMAN_TASK_PROJECTIONS_B16_B19 } from './human-task-approved-projections-b16-b19'
-import { APPROVED_HUMAN_TASK_PROJECTIONS_B20_B22 } from './human-task-approved-projections-b20-b22'
-import { APPROVED_HUMAN_TASK_PROJECTIONS_B23_B27 } from './human-task-approved-projections-b23-b27'
+import {
+  APPROVED_HUMAN_TASK_RUNTIME_PROJECTIONS,
+  APPROVED_HUMAN_TASK_SUPPORT_PACK_BINDINGS,
+} from './human-task-approved-registry'
 
 type CanonicalRuntimeBlock = {
   id: string
@@ -21,20 +20,8 @@ type CanonicalRuntimeBlock = {
 }
 
 const APPROVED_PROJECTIONS = new Map<string, HumanTaskLessonProjection>(
-  [
-    ...APPROVED_HUMAN_TASK_PROJECTIONS,
-    ...APPROVED_HUMAN_TASK_PROJECTIONS_B11_B15,
-    ...APPROVED_HUMAN_TASK_PROJECTIONS_B16_B19,
-    ...APPROVED_HUMAN_TASK_PROJECTIONS_B20_B22,
-    ...APPROVED_HUMAN_TASK_PROJECTIONS_B23_B27,
-  ].map((projection) => [projectionKey(projection.grade, projection.blockId), projection]),
+  APPROVED_HUMAN_TASK_RUNTIME_PROJECTIONS.map((projection) => [projectionKey(projection.grade, projection.blockId), projection]),
 )
-
-const APPROVED_SUPPORT_PACK_BINDINGS = new Map<string, readonly string[]>([
-  [projectionKey('Prima', 'B13'), ['CAN-PACK-1C']],
-  [projectionKey('Prima', 'B14'), ['CAN-PACK-1C']],
-  [projectionKey('Prima', 'B15'), ['CAN-PACK-1C', 'CAN-PACK-1D']],
-])
 
 export function resolveRuntimeHumanTaskLessonProjection(
   grade: GradeKey,
@@ -52,7 +39,7 @@ export function resolveRuntimeHumanTaskLessonProjection(
   if (projection.packCode !== block.pack) return null
   if (projection.period !== block.period) return null
   if (block.title && projection.title !== block.title) return null
-  if (!sameStringArray(block.supportPacks ?? [], APPROVED_SUPPORT_PACK_BINDINGS.get(key) ?? [])) return null
+  if (!sameStringArray(block.supportPacks ?? [], APPROVED_HUMAN_TASK_SUPPORT_PACK_BINDINGS.get(key) ?? [])) return null
   if (!hasValidResourceBindings(projection)) return null
   return projection
 }
