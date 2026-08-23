@@ -10,7 +10,6 @@ services:
     startCommand: npm start
     autoDeployTrigger: checksPass
     healthCheckPath: /
-    maxShutdownDelaySeconds: 30
     envVars:
       - key: NEXT_PUBLIC_SUPABASE_URL
         value: https://gnshgapmwyjamhmlikeg.supabase.co
