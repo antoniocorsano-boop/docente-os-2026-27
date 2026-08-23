@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: docente-os-2026-27-beta
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: develop
+    rootDir: product
+    buildCommand: npm install --no-audit --no-fund && npm run build
+    startCommand: npm start
+    autoDeployTrigger: checksPass
+    healthCheckPath: /
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        value: https://gnshgapmwyjamhmlikeg.supabase.co
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        value: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://docente-os-2026-27-beta.onrender.com
+      - key: OPENAI_VISION_MODEL
+        value: gpt-5.6
