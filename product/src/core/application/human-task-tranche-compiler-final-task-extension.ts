@@ -91,7 +91,7 @@ export function compileHumanTaskTrancheReviewWithFinalTask(
       continue
     }
 
-    const recovered = recoverExplicitFinalTask(section, pack.sections)
+    const recovered = recoverExplicitFinalTask(section, packSource.normalizedText)
     if (!recovered) {
       return blocked(base, block.id, `${section.heading} non documenta integralmente compito, consegna, prodotto, scheda, rubrica e criteri OD-READY.`)
     }
@@ -146,20 +146,19 @@ export function compileHumanTaskTrancheReviewWithFinalTask(
   }
 }
 
-function recoverExplicitFinalTask(section: ExtractedPackSection, allSections: ExtractedPackSection[]) {
+function recoverExplicitFinalTask(section: ExtractedPackSection, sourceText: string) {
   const task = labeled(section.content, 'Compito significativo')
   const delivery = labeled(section.content, 'Consegna')
   const sheetHeading = inlineStudentSheetHeading(section.content)
   const product = boundedProduct(section.content, sheetHeading)
-  const later = allSections.filter((candidate) => candidate.ordinal > section.ordinal)
-  const rubric = later.find((candidate) => candidate.kind === 'RUBRIC')
-  const hasOdReady = Boolean(rubric?.content.match(/CRITERI\s+OD-READY/i))
-  if (!task || !delivery || !product || !sheetHeading || !rubric || !hasOdReady) return null
+  const rubricHeading = sourceText.match(/(?:^|\n)(RUBRICA[^\n]+)/i)?.[1]?.trim() ?? ''
+  const hasOdReady = /(?:^|\n)CRITERI\s+OD-READY\b/i.test(sourceText)
+  if (!task || !delivery || !product || !sheetHeading || !rubricHeading || !hasOdReady) return null
 
   return {
     activity: `Compito significativo: ${task}\nConsegna: ${delivery}`,
     product: `Il gruppo deve produrre: ${product}`,
-    evidence: `${sheetHeading}; ${rubric.heading}; CRITERI OD-READY`,
+    evidence: `${sheetHeading}; ${rubricHeading}; CRITERI OD-READY`,
   }
 }
 
