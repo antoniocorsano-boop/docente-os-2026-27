@@ -1,6 +1,6 @@
 # DOCENTE OS — Stakeholder Cognitive Fulfillment Contract
 
-Stato: CANONICAL CANDIDATE / REQUIRED BY HUMAN APPROVAL  
+Stato: CANONICAL / APPROVED  
 Data: 2026-08-23
 
 ## Scopo
@@ -84,6 +84,7 @@ Quando il Piano non specifica l'evidenza a quella granularità, la UDA può sost
 
 - la sorgente è esplicita e versionata;
 - il legame con fase/sezione UDA è recuperabile;
+- il testo dell'evidenza è derivato deterministicamente dalla fonte selezionata, non fornito come testo libero dall'automazione;
 - la formulazione non introduce un prodotto o un criterio non sostenuto dalla fonte;
 - docente e revisore possono distinguere fonte documentata, proposta e approvazione umana;
 - il gate cognitivo risulta soddisfatto.
@@ -100,6 +101,24 @@ La tranche finale della classe prima può essere promossa soltanto se:
 - l'automazione conserva le fasi 1+2 / 3+4 / 5+6 come derivazione deterministica e non inventa evidenze mancanti;
 - ogni evidenza operativa aggiunta dalla UDA resta proposta fino alla conferma umana;
 - il miglioramento di processo e il gate cognitivo risultano entrambi chiusi.
+
+## Receipt di implementazione B31–B33
+
+Approvazione umana condizionata: 23 agosto 2026, confermata per l'esecuzione alle 10:55 Europe/Rome.
+
+Fonti congelate:
+
+- `CAN-PLAN-1` — generazione `d327355b-76a9-496f-99cb-dc942fd950e4`;
+- `CAN-UDA-1-07` — generazione `92194b46-b7e5-4c52-82a7-b1d75403b8b1`;
+- `CAN-PACK-1D` — generazione `1d150f77-6a7f-4f8b-8e85-2fa370956e29`, mantenuta come provenienza strutturale e non come fonte didattica dei blocchi finali.
+
+Derivazione approvata:
+
+- **B31** — fasi UDA 1+2; evidenza estratta dalle voci 1–3 di `PRODOTTO ATTESO`;
+- **B32** — fasi UDA 3+4; evidenza estratta dalle voci 4–8 di `PRODOTTO ATTESO`;
+- **B33** — fasi UDA 5+6; evidenza estratta direttamente dal contenuto delle due fasi, perché esse esplicitano verifica, miglioramento, presentazione e autovalutazione.
+
+La promozione usa manifest schema v2 con ricevuta `SATISFIED` per docente operativo, alunno/gruppo classe, revisore professionale-istituzionale e automazione assistita. Una futura modifica delle fonti o del set di stakeholder invalida la ricevuta e richiede nuova verifica.
 
 ## Regola di fallimento
 
