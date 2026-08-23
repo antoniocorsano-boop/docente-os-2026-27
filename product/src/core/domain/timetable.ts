@@ -82,6 +82,12 @@ export function asTimetablePresenceKind(value: string | null): TimetablePresence
   throw new Error(`Unsupported timetable presence kind: ${value}`)
 }
 
+export function canActivateTimetableDraft(activeVersion: TimetableVersion | null, draftVersion: TimetableVersion) {
+  if (draftVersion.status !== 'DRAFT') return false
+  if (!activeVersion) return true
+  return draftVersion.effectiveFrom > activeVersion.effectiveFrom
+}
+
 export const TIMETABLE_WEEKDAYS = [
   { value: 1, label: 'Lunedì', short: 'Lun' },
   { value: 2, label: 'Martedì', short: 'Mar' },

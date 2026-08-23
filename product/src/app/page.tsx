@@ -6,6 +6,7 @@ import { timeToMinutes } from '@/core/domain/timetable'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
+import { SupabaseTimetableLifecycleRepository } from '@/core/infrastructure/supabase/supabase-timetable-lifecycle-repository'
 import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 
@@ -25,7 +26,7 @@ export default async function HomePage() {
   if (!context) redirect('/login')
 
   const year = context.academicYear
-  const [teacherSettings, tasks, timetable, annualSnapshot] = await Promise.all([
+  const [teacherSettings, tasks, timetable, timetableLifecycle, annualSnapshot] = await Promise.all([
     year
       ? new SupabaseTeacherSettingsRepository().getOrCreate(context.workspace.id, year.id)
       : Promise.resolve(null),
@@ -34,15 +35,19 @@ export default async function HomePage() {
       ? new SupabaseTimetableRepository().list(context.workspace.id, year.id, year.startsOn)
       : Promise.resolve(null),
     year
+      ? new SupabaseTimetableLifecycleRepository().read(context.workspace.id, year.id)
+      : Promise.resolve(null),
+    year
       ? new SupabaseAnnualPlanExecutionRepository().list(context.workspace.id, year.id)
       : Promise.resolve(null),
   ])
 
   const moment = currentRomeMoment()
   let currentLesson: { sectionId: string | null; label: string; time: string } | null = null
+  const operationalSlots = timetableLifecycle?.activeVersion ? timetableLifecycle.activeSlots : timetable?.slots ?? []
 
   if (timetable && annualSnapshot) {
-    const slot = timetable.slots.find((item) => item.weekday === moment.weekday && timeToMinutes(item.startTime) <= moment.minutes && timeToMinutes(item.endTime) > moment.minutes)
+    const slot = operationalSlots.find((item) => item.weekday === moment.weekday && timeToMinutes(item.startTime) <= moment.minutes && timeToMinutes(item.endTime) > moment.minutes)
     if (slot) {
       const section = slot.sectionId ? annualSnapshot.sections.find((item) => item.id === slot.sectionId) ?? null : null
       currentLesson = {
