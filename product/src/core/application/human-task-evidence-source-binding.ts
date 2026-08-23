@@ -43,17 +43,19 @@ export function resolveHumanTaskEvidenceFromCandidate(
   }
 
   const uda = candidate.evidence.uda
-  if (provenance.binding.kind === 'UDA_SECTION_ITEMS') {
-    const section = uda.sections.find((item) => normalize(item.heading) === normalize(provenance.binding.sectionHeading))
-    if (!section) throw new Error(`Sezione UDA non trovata: ${provenance.binding.sectionHeading}.`)
-    return provenance.binding.itemIndexes.map((index) => {
+  const binding = provenance.binding
+  if (binding.kind === 'UDA_SECTION_ITEMS') {
+    const sectionHeading = binding.sectionHeading
+    const section = uda.sections.find((item) => normalize(item.heading) === normalize(sectionHeading))
+    if (!section) throw new Error(`Sezione UDA non trovata: ${sectionHeading}.`)
+    return binding.itemIndexes.map((index) => {
       const item = section.listItems[index - 1]
       if (!item?.trim()) throw new Error(`${section.heading}: voce ${index} non disponibile.`)
       return stripTerminalPunctuation(clean(item))
     }).join(' · ')
   }
 
-  return provenance.binding.phaseOrdinals.map((ordinal) => {
+  return binding.phaseOrdinals.map((ordinal) => {
     const phase = uda.phases.find((item) => item.ordinal === ordinal)
     if (!phase?.content.trim()) throw new Error(`Fase UDA ${ordinal} non disponibile per l’evidenza.`)
     return clean(phase.content)
