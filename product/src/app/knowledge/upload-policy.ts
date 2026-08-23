@@ -26,8 +26,12 @@ export type KnowledgeUploadReferenceValidation =
   | { valid: true }
   | { valid: false; code: 'missing' | 'too_large' | 'unsupported' | 'invalid_path' }
 
+export function isAllowedKnowledgeUploadMime(mimeType: string) {
+  return ALLOWED_MIMES.has(mimeType)
+}
+
 export function normalizeKnowledgeUploadMime(rawMime: string, filename: string) {
-  if (rawMime && ALLOWED_MIMES.has(rawMime)) return rawMime
+  if (rawMime && isAllowedKnowledgeUploadMime(rawMime)) return rawMime
 
   const extension = filename.toLowerCase().split('.').pop()
   if (extension === 'pdf') return 'application/pdf'
@@ -58,7 +62,7 @@ export function validateKnowledgeUploadReference(input: KnowledgeUploadReference
     return { valid: false, code: 'missing' }
   }
   if (input.byteSize > MAX_KNOWLEDGE_UPLOAD_BYTES) return { valid: false, code: 'too_large' }
-  if (!ALLOWED_MIMES.has(input.mimeType)) return { valid: false, code: 'unsupported' }
+  if (!isAllowedKnowledgeUploadMime(input.mimeType)) return { valid: false, code: 'unsupported' }
 
   const expectedPrefix = `${input.workspaceId.trim()}/`
   if (!input.workspaceId.trim() || !input.objectPath.startsWith(expectedPrefix)) {
