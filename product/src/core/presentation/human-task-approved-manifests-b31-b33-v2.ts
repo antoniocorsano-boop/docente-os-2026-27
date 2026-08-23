@@ -18,7 +18,7 @@ export const B31_PROJECTION_V2 = {
   sources: PROVENANCE_SOURCES,
   sourceAlignment: {
     level: 'COMPOSED' as const,
-    note: 'CAN-PLAN-1 assegna struttura, titolo e durata. Le fasi 1-2 di CAN-UDA-1-07 definiscono l’azione e le voci 1-3 di PRODOTTO ATTESO sostengono deterministicamente l’evidenza. CAN-PACK-1D resta una provenienza strutturale esplicitamente etichettata e non autorità didattica.',
+    note: 'CAN-PLAN-1 assegna struttura, titolo e durata. Le fasi 1-2 della UDA 1-07 (CAN-UDA-1-07) definiscono l’azione e le voci 1-3 di PRODOTTO ATTESO sostengono deterministicamente l’evidenza. CAN-PACK-1D resta una provenienza strutturale esplicitamente etichettata e non autorità didattica.',
   },
 }
 
@@ -28,7 +28,7 @@ export const B32_PROJECTION_V2 = {
   sources: PROVENANCE_SOURCES,
   sourceAlignment: {
     level: 'COMPOSED' as const,
-    note: 'CAN-PLAN-1 assegna struttura, titolo e durata. Le fasi 3-4 di CAN-UDA-1-07 definiscono l’azione e le voci 4-8 di PRODOTTO ATTESO sostengono deterministicamente l’evidenza. CAN-PACK-1D resta una provenienza strutturale esplicitamente etichettata e non autorità didattica.',
+    note: 'CAN-PLAN-1 assegna struttura, titolo e durata. Le fasi 3-4 della UDA 1-07 (CAN-UDA-1-07) definiscono l’azione e le voci 4-8 di PRODOTTO ATTESO sostengono deterministicamente l’evidenza. CAN-PACK-1D resta una provenienza strutturale esplicitamente etichettata e non autorità didattica.',
   },
 }
 
@@ -38,7 +38,7 @@ export const B33_PROJECTION_V2 = {
   sources: PROVENANCE_SOURCES,
   sourceAlignment: {
     level: 'COMPOSED' as const,
-    note: 'CAN-PLAN-1 assegna struttura, titolo e durata. Le sole fasi 5-6 di CAN-UDA-1-07 sostengono deterministicamente verifica, miglioramento, presentazione e autovalutazione. CAN-PACK-1D resta una provenienza strutturale esplicitamente etichettata e non autorità didattica.',
+    note: 'CAN-PLAN-1 assegna struttura, titolo e durata. Le sole fasi 5-6 della UDA 1-07 (CAN-UDA-1-07) sostengono deterministicamente verifica, miglioramento, presentazione e autovalutazione. CAN-PACK-1D resta una provenienza strutturale esplicitamente etichettata e non autorità didattica.',
   },
 }
 
