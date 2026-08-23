@@ -1,20 +1,55 @@
 {
-  "test": "openship-compatibility-smoke",
+  "test": "openship-authenticated-deployment-smoke",
   "base_develop_sha": "4ba3831a8a0285792ae0a03890eea9c387d466ab",
-  "tested_workflow_sha": "942229f581f96473bb70b3c21b76ccf4095d9669",
+  "tested_workflow_sha": "096e00e61daeb9155e9e46ce340379cd9129fc29",
   "product_gates": "success",
   "openship_cli": "success",
   "openship_version": "0.6.7",
-  "openship_health": "success",
+  "provision": "success",
   "health_payload": {
     "status": "ok",
     "cloudMode": false,
-    "timestamp": "2026-08-23T12:51:01.302Z"
+    "timestamp": "2026-08-23T12:57:18.701Z"
   },
-  "prepare_probe": "success",
-  "prepare_http_status": "401",
+  "session_auth": "success",
+  "login_http_status": "200",
+  "pat_http_status": "201",
+  "cli_login": "success",
+  "prepare": "success",
+  "prepare_http_status": "200",
   "prepare_payload": {
-    "error": "Unauthorized"
+    "repository": {
+      "name": "docente-os-product",
+      "full_name": "/home/runner/work/docente-os-2026-27/docente-os-2026-27/product",
+      "owner": {
+        "login": "local"
+      },
+      "private": true,
+      "default_branch": "main",
+      "selected_branch": "main"
+    },
+    "stack": "nextjs",
+    "projectType": "app",
+    "category": "fullstack",
+    "packageManager": "npm",
+    "buildCommand": "npm run build",
+    "installCommand": "npm i --force",
+    "startCommand": "npm run start",
+    "buildImage": "node:22",
+    "outputDirectory": ".next",
+    "rootDirectory": "./",
+    "productionPaths": [],
+    "port": 3000
   },
-  "server_log_tail": "- Starting Openship on http://localhost:4000 …\n\u001b[32m✔\u001b[39m Openship API running at http://localhost:4000\n- Preparing the dashboard…"
+  "deployment": "failure",
+  "deployment_log_tail": "- Deploying folder\n\u001b[31m✖\u001b[39m Folder deploy failed\nPre-deploy checks failed: Free domain routing: Free .opsh.io domains require Openship Cloud for routing. To deploy to your own server, either connect Openship Cloud or switch this project to a custom domain.",
+  "inspect": "failure",
+  "project_id": "",
+  "project": null,
+  "runtime_probe": "failure",
+  "runtime_url": null,
+  "runtime_http_status": null,
+  "runtime_probe_detail": null,
+  "runtime_log_tail": null,
+  "provision_log_tail": "✔ Openship is running as a service.\n  Dashboard: http://localhost:3001  (login required)\n  API:       http://localhost:4000/api\n  systemd unit openship (--user)\n  Starts on boot and auto-restarts. Stop with `openship stop`.\n\n  Waiting for the API to become healthy…\n  Creating the admin account…\n  Registering domain (none)…\n\n  ✓ Openship provisioned."
 }
