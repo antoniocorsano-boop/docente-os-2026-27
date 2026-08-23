@@ -1,8 +1,9 @@
 # DOCENTE OS — Human Task Review · Classe seconda · UDA 2-02
 
-Stato: READY_FOR_HUMAN_REVIEW  
+Stato: APPROVED  
 Data: 2026-08-23  
-Promotion: HUMAN_APPROVAL_REQUIRED
+Approvazione umana registrata: 2026-08-23T13:03:00+02:00  
+Promotion: HUMAN_APPROVED
 
 ## Discovery autonoma
 
@@ -27,7 +28,7 @@ Dopo la promozione di B01–B04, la discovery runtime ha rilevato:
 
 Qualunque source drift invalida questa review.
 
-## Raccordo proposto
+## Raccordo approvato
 
 | Blocco | Titolo operativo documentato dal PACK | Durata documentata | Prodotto | Evidenza |
 | --- | --- | ---: | --- | --- |
@@ -46,9 +47,9 @@ La durata non è inferita dal Piano. Il PACK dichiara esplicitamente `ARTICOLAZI
 
 Conteggio diverso, durata diversa, più dichiarazioni o assenza di temporizzazione esplicita bloccano DIRECT.
 
-## Autorità delle fonti
+## Autorità delle fonti — APPROVATA
 
-La regola già approvata nella tranche precedente è riutilizzabile senza introdurre una nuova architettura:
+La decisione professionale conferma la regola già adottata nella tranche precedente:
 
 - **Piano**: struttura, ordine, collocazione, UDA e durata del segmento;
 - **UDA 2-02**: senso formativo, competenze, nuclei disciplinari, compito autentico, verifica, valutazione e inclusione;
@@ -58,27 +59,27 @@ La regola già approvata nella tranche precedente è riutilizzabile senza introd
 
 Il lavoro su packaging ed etichetta resta nel campo tecnologico: funzione dell’imballaggio, materiali, conservazione, informazioni essenziali, distribuzione, fine vita e scelte responsabili. Non viene trasformato automaticamente in educazione nutrizionale specialistica.
 
-## Pre-gate di adempimento cognitivo
+## Gate di adempimento cognitivo
 
-### Docente operativo — SOURCE_SUFFICIENT
+### Docente operativo — SATISFIED
 
 Le fonti espongono per ciascun blocco focus, attività, prodotto ed evidenza; il PACK aggiunge materiali, compito significativo, criteri e registro di attuazione. Il docente può capire cosa preparare, cosa far fare e cosa osservare.
 
-### Alunno / gruppo — SOURCE_SUFFICIENT
+### Alunno / gruppo — SATISFIED
 
 Le quattro schede rendono concrete consegna e prodotto. Compito significativo, criteri di qualità e rubrica consentono di comprendere cosa conta e come migliorare il lavoro.
 
-### Revisore professionale / coordinamento — SOURCE_SUFFICIENT
+### Revisore professionale / coordinamento — SATISFIED
 
 Il raccordo distingue chiaramente Piano, UDA e PACK; source generation, timing e criteri di classificazione sono verificabili.
 
-### Governance — HUMAN_DECISION_PENDING
+### Governance — SATISFIED
 
-La responsabilità della promozione resta umana. Nessun manifest runtime viene creato finché questa review non riceve una decisione professionale esplicita.
+La promozione è stata autorizzata esplicitamente dall’utente il 23 agosto 2026. La decisione riguarda B05–B08 e riusa la separazione di autorità già approvata; non costituisce approvazione automatica delle tranche future.
 
-### Automazione — SOURCE_SUFFICIENT
+### Automazione — SATISFIED
 
-Il sistema conosce i campi derivabili e i casi che devono bloccare il ciclo. Il nuovo supporto al timing di set è deterministico e coperto da test fail-closed.
+Il sistema conosce i campi derivabili e i casi che devono bloccare il ciclo. Il supporto al timing di set è deterministico e coperto da test fail-closed.
 
 ## Miglioramento del ciclo
 
@@ -92,10 +93,9 @@ Miglioramento generalizzabile già integrato prima di questa review:
 
 Product CI della slice di compilazione: **163/163 test PASS + typecheck + lint senza errori + build PASS**.
 
-## Decisione richiesta
+## Decisione
 
-Confermare che B05–B08 possano essere promossi come quattro proiezioni `DIRECT` usando i titoli e i contenuti operativi di CAN-PACK-2B, mantenendo Piano e UDA nelle rispettive autorità sopra definite.
-
-Decisione: `PENDING`.
+`APPROVED` — promuovere B05–B08 come quattro proiezioni `DIRECT` usando i titoli e i contenuti operativi di CAN-PACK-2B, mantenendo Piano e UDA nelle rispettive autorità sopra definite.
 
 Review package: `HTC-REVIEW-PACKAGE:Seconda:Seconda:2:B05-B08:v1`.
+Approval receipt: `HTC-HUMAN-APPROVAL:Seconda:Seconda:2:B05-B08:2026-08-23T13:03+02:00`.
