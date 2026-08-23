@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { APPROVED_HUMAN_TASK_RUNTIME_PROJECTIONS } from '@/core/presentation/human-task-approved-registry'
+import { discoverRuntimeHumanTaskCoveredBlockIds } from '@/core/presentation/human-task-runtime'
 import type { HumanTaskPipelineSource } from './human-task-content-pipeline'
 import { compileHumanTaskTrancheReviewFromCanonicalSources } from './human-task-tranche-compiler-source-adapter'
 
@@ -61,18 +61,14 @@ function source(code: string, generationId: string, text: string): HumanTaskPipe
   }
 }
 
-function approvedPrimaBlockIds() {
-  return APPROVED_HUMAN_TASK_RUNTIME_PROJECTIONS
-    .filter((projection) => projection.grade === 'Prima')
-    .map((projection) => projection.blockId)
-}
-
-test('current approved registry autonomously discovers the next Prima segment and compiles it from current source generations', () => {
-  const coveredBlockIds = approvedPrimaBlockIds()
+test('runtime coverage autonomously discovers the next Prima segment and compiles it from current source generations', () => {
+  const coveredBlockIds = discoverRuntimeHumanTaskCoveredBlockIds('Prima')
   const covered = new Set(coveredBlockIds)
 
+  assert.equal(covered.has('B01'), true)
   assert.equal(covered.has('B30'), true)
   assert.equal(covered.has('B31'), false)
+  assert.equal(coveredBlockIds.length, 30)
 
   const { review } = compileHumanTaskTrancheReviewFromCanonicalSources({
     grade: 'Prima',
