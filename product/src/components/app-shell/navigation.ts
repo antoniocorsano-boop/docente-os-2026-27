@@ -5,6 +5,7 @@ export type NavigationKey =
   | 'knowledge'
   | 'classes'
   | 'timetable'
+  | 'calendar'
   | 'annual-plan'
   | 'settings'
 
@@ -74,6 +75,14 @@ export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
     keywords: ['orario', 'lezioni', 'settimana', 'adesso', 'ore'],
   },
   {
+    key: 'calendar',
+    href: '/calendario',
+    label: 'Calendario',
+    shortLabel: 'Calendario',
+    description: 'Registra giorni reali, sospensioni, impegni e scadenze dell’anno scolastico.',
+    keywords: ['calendario', 'date', 'sospensioni', 'festività', 'riunioni', 'scadenze', 'eventi'],
+  },
+  {
     key: 'annual-plan',
     href: '/piano-annuale',
     label: 'Piano annuale',
@@ -106,9 +115,9 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
   },
   {
     key: 'time',
-    label: 'Settimana',
-    description: 'Orientati nell’orario ricorrente e nelle lezioni.',
-    items: ['timetable'],
+    label: 'Tempo',
+    description: 'Distingui lo schema ricorrente dalle date reali dell’anno scolastico.',
+    items: ['timetable', 'calendar'],
   },
   {
     key: 'resources',
