@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { teachingSessionCandidateFromOccurrence } from '@/core/application/teaching-session-candidate'
 import type { ProjectedOccurrence } from '@/core/application/temporal-projection-service'
 import {
   completionProposal,
-  teachingSessionCandidateFromOccurrence,
   validateTeachingSessionAllocations,
   type TeachingSessionDraft,
 } from './teaching-session'
@@ -49,9 +49,9 @@ test('a projected lesson becomes only a candidate and preserves source snapshot'
   assert.notEqual(candidate.source.provenance, occurrence.provenance)
 })
 
-test('calendar events and non-class occurrences cannot become automatic teaching candidates', () => {
+test('calendar events and non-teaching timetable occurrences cannot become automatic teaching candidates', () => {
   assert.throws(() => teachingSessionCandidateFromOccurrence({ ...occurrence, kind: 'CALENDAR_EVENT', sectionId: null }))
-  assert.throws(() => teachingSessionCandidateFromOccurrence({ ...occurrence, kind: 'DISPOSITION', sectionId: null }))
+  assert.throws(() => teachingSessionCandidateFromOccurrence({ ...occurrence, kind: 'DISPOSITION' }))
 })
 
 test('allocated minutes may be split across blocks but cannot exceed actual session minutes', () => {
