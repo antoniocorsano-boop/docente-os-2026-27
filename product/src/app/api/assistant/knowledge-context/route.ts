@@ -36,6 +36,7 @@ export async function GET(request: Request) {
     statusLabel: processing.label,
     summary: document?.summary,
     excerpt: document?.normalizedText ?? asset.originalText,
+    contentHighlights: buildAssistantHighlights(units),
     contextReviewed: asset.contextStatus === 'REVIEWED',
     hasOrganizedDocument: Boolean(document),
     actionProposalCount: units.filter((unit) => unit.unitType === 'ACTION').length,
@@ -49,4 +50,69 @@ export async function GET(request: Request) {
       'Cache-Control': 'private, no-store',
     },
   })
+}
+
+type AssistantUnit = {
+  unitType: string
+  title?: string | null
+  content: string
+}
+
+function buildAssistantHighlights(units: AssistantUnit[], maxItems = 10) {
+  const readable = units.filter((unit) => unit.unitType !== 'ACTION' && unit.unitType !== 'DEADLINE' && unit.content.trim())
+  if (readable.length === 0) return []
+
+  const count = Math.min(maxItems, readable.length)
+  const indexes = count === 1
+    ? [0]
+    : Array.from({ length: count }, (_, index) => Math.round(index * (readable.length - 1) / (count - 1)))
+
+  const seenIndexes = [...new Set(indexes)]
+  const seenText = new Set<string>()
+  const highlights: string[] = []
+
+  for (const index of seenIndexes) {
+    const highlight = highlightFromUnit(readable[index])
+    if (!highlight) continue
+    const key = highlight.toLocaleLowerCase('it-IT')
+    if (seenText.has(key)) continue
+    seenText.add(key)
+    highlights.push(highlight)
+  }
+
+  return highlights
+}
+
+function highlightFromUnit(unit: AssistantUnit) {
+  const title = collapse(unit.title ?? '')
+  const usefulTitle = title && !/^(?:pagina|page)\s+\d+$/i.test(title) ? title : ''
+  const lines = unit.content
+    .split(/\r?\n/)
+    .map(collapse)
+    .filter((line) => line && !/^\d+$/.test(line))
+
+  const lead = lines
+    .slice(0, 10)
+    .map((line, index) => ({ line, index, score: salience(line, index) }))
+    .sort((a, b) => b.score - a.score || a.index - b.index)[0]?.line ?? collapse(unit.content)
+
+  const combined = usefulTitle && lead && !lead.toLocaleLowerCase('it-IT').startsWith(usefulTitle.toLocaleLowerCase('it-IT'))
+    ? `${usefulTitle}: ${lead}`
+    : usefulTitle || lead
+
+  return combined.slice(0, 220)
+}
+
+function salience(line: string, index: number) {
+  let score = Math.max(0, 10 - index) * 0.05
+  if (line.includes(':')) score += 3
+  if (/[.!?]$/.test(line)) score += 1
+  if (line.length >= 20 && line.length <= 140) score += 2
+  if (line.length >= 12 && line.length <= 90) score += 1
+  if (line.length < 10) score -= 2
+  return score
+}
+
+function collapse(value: string) {
+  return value.replace(/\s+/g, ' ').trim()
 }
