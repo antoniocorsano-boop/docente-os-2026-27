@@ -1,12 +1,20 @@
-# Gate X3 end-to-end su Render
+# Gate X3 end-to-end
 
 Questo pacchetto contiene il collaudo browser autenticato del gate X3 di DOCENTE OS.
 
-## Scopo
+## Due gate indipendenti
 
-Il test verifica il comportamento reale del runtime beta Render su viewport mobile, senza usare il workspace personale dell'utente e senza abilitare capacità X4.
+Il workflow `.github/workflows/x3-e2e.yml` mantiene separati due problemi che non devono mascherarsi a vicenda.
 
-Sequenza coperta:
+### `x3-e2e/application`
+
+Avvia il commit corrente come applicazione Next.js dentro GitHub Actions e lo collauda con Playwright su viewport mobile 412×915. Usa Supabase reale e l'account tecnico E2E reale, quindi verifica autenticazione, RLS, upload, indicizzazione, persistenza del contesto, assistente e Planner senza dipendere dal canale Render.
+
+### `x3-e2e/render-beta`
+
+Aspetta che `https://docente-os-2026-27-beta.onrender.com/api/build-info` esponga esattamente il `GITHUB_SHA` dell'esecuzione e solo dopo ripete lo stesso collaudo browser sul beta Render. Un ritardo o un guasto di pubblicazione resta quindi un errore del gate runtime e non viene confuso con un errore applicativo X3.
+
+## Sequenza browser coperta
 
 1. accesso con l'account tecnico E2E;
 2. caricamento e indicizzazione della fixture `fixtures/x3-responsible-ai.txt`;
@@ -26,21 +34,19 @@ Sequenza coperta:
 - `PLANNER_CREATE_TASK` resta vietato in X3;
 - un gate non eseguito non viene mai presentato come PASS.
 
-## Runtime verificato
+## Evidenze e telemetria
 
-Il workflow `.github/workflows/x3-e2e.yml` aspetta che `/api/build-info` sul beta Render esponga esattamente il `GITHUB_SHA` dell'esecuzione. In questo modo il browser non può validare accidentalmente una versione precedente dell'applicazione.
-
-## Evidenze
-
-Ogni esecuzione configurata pubblica, per 14 giorni, il rapporto Playwright e le evidenze disponibili in `product/playwright-report/` e `product/test-results/`, incluse schermate delle tre risposte canoniche e tracce/video in caso di errore.
+Ogni job pubblica uno status context sul commit e collega la relativa esecuzione GitHub Actions. Le evidenze Playwright vengono conservate per 14 giorni: rapporto HTML, schermate delle tre risposte canoniche, tracce e video in caso di errore. Il gate applicativo conserva anche il registro del server Next locale.
 
 ## Criterio di promozione X3
 
-Il gate automatico è necessario ma non sostituisce la decisione umana sul significato del comportamento. X3 può essere proposto per APPROVE solo quando:
+Il gate automatico è necessario ma non sostituisce la decisione umana sul significato del comportamento. X3 può essere proposto per APPROVE quando:
 
-- il workflow browser è PASS sul commit Render corrente;
+- `x3-e2e/application` è PASS;
 - il contesto mostra tutte le classi e discipline attese;
 - il pannello mobile rispetta il limite di ingombro previsto;
 - le risposte sono contestuali e utili;
 - la richiesta di scrittura produce soltanto un'anteprima;
 - il Planner resta invariato dopo la prova di scrittura.
+
+La promozione del **beta Render** richiede inoltre `x3-e2e/render-beta = PASS`. Se questo secondo gate è rosso mentre il primo è verde, il residuo è classificato come problema di distribuzione/runtime, non come regressione X3.
