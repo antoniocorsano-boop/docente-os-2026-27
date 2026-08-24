@@ -13,6 +13,7 @@ import {
 
 type UploadPhase = 'IDLE' | 'READY' | 'UPLOADING' | 'ORGANIZING' | 'ERROR'
 type FailedAt = 'SELECT' | 'UPLOAD' | 'ORGANIZE' | null
+type StoredUploadReference = { objectPath: string; mimeType: string; byteSize: number }
 
 type SameOriginUploadResult =
   | { ok: true; objectPath: string; mimeType: string; byteSize: number }
@@ -24,6 +25,7 @@ export function KnowledgeFileUploader() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [phase, setPhase] = useState<UploadPhase>('IDLE')
   const [failedAt, setFailedAt] = useState<FailedAt>(null)
+  const [storedUpload, setStoredUpload] = useState<StoredUploadReference | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const busy = phase === 'UPLOADING' || phase === 'ORGANIZING'
 
@@ -32,6 +34,7 @@ export function KnowledgeFileUploader() {
     setSelectedFile(file)
     setPhase(file ? 'READY' : 'IDLE')
     setFailedAt(null)
+    setStoredUpload(null)
     setMessage(null)
   }
 
@@ -41,6 +44,7 @@ export function KnowledgeFileUploader() {
     setSelectedFile(null)
     setPhase('IDLE')
     setFailedAt(null)
+    setStoredUpload(null)
     setMessage(null)
   }
 
@@ -69,7 +73,14 @@ export function KnowledgeFileUploader() {
       return
     }
 
+    if (failedAt === 'ORGANIZE' && storedUpload) {
+      setFailedAt(null)
+      await organizeStoredFile(file, storedUpload)
+      return
+    }
+
     setFailedAt(null)
+    setStoredUpload(null)
     setPhase('UPLOADING')
     setMessage('Il file selezionato resta qui mentre metto al sicuro l’originale nel tuo spazio privato.')
 
@@ -100,14 +111,24 @@ export function KnowledgeFileUploader() {
       return
     }
 
+    const reference: StoredUploadReference = {
+      objectPath: uploadResult.objectPath,
+      mimeType: uploadResult.mimeType,
+      byteSize: uploadResult.byteSize,
+    }
+    setStoredUpload(reference)
+    await organizeStoredFile(file, reference)
+  }
+
+  async function organizeStoredFile(file: File, reference: StoredUploadReference) {
     setPhase('ORGANIZING')
     setMessage('L’originale è al sicuro. Ora preparo una versione leggibile e ricercabile senza sostituire la fonte.')
 
     const result = await finalizeKnowledgeFileUpload({
-      objectPath: uploadResult.objectPath,
+      objectPath: reference.objectPath,
       originalName: file.name,
-      mimeType: uploadResult.mimeType,
-      byteSize: uploadResult.byteSize,
+      mimeType: reference.mimeType,
+      byteSize: reference.byteSize,
     })
 
     if (!result.ok) {
@@ -115,6 +136,7 @@ export function KnowledgeFileUploader() {
       return
     }
 
+    setStoredUpload(null)
     router.push(`/knowledge/${result.assetId}`)
     router.refresh()
   }
@@ -133,6 +155,18 @@ export function KnowledgeFileUploader() {
       : phase === 'ERROR'
         ? 'Serve un intervento'
         : null
+
+  const submitLabel = phase === 'UPLOADING'
+    ? 'Caricamento…'
+    : phase === 'ORGANIZING'
+      ? 'Organizzazione…'
+      : phase === 'ERROR' && failedAt === 'ORGANIZE' && storedUpload
+        ? 'Riprova organizzazione'
+        : phase === 'ERROR' && selectedFile
+          ? 'Riprova'
+          : selectedFile
+            ? 'Carica e organizza'
+            : 'Seleziona prima un file'
 
   return (
     <form className="knowledgeUploadForm knowledgeUploadComfort" onSubmit={handleSubmit}>
@@ -159,7 +193,7 @@ export function KnowledgeFileUploader() {
         <div className="selectedFileCard" role="status" aria-live="polite" aria-atomic="true">
           <span className="selectedFileCheck" aria-hidden>✓</span>
           <div className="selectedFileBody">
-            <strong>Pronto a caricare</strong>
+            <strong>{storedUpload ? 'Originale già al sicuro' : 'Pronto a caricare'}</strong>
             <span title={selectedFile.name}>{selectedFile.name}</span>
             <small>{fileTypeLabel(selectedFile)} · {formatFileSize(selectedFile.size)}</small>
           </div>
@@ -188,17 +222,7 @@ export function KnowledgeFileUploader() {
         </div>
       ) : null}
 
-      <button type="submit" disabled={busy || !selectedFile}>
-        {phase === 'UPLOADING'
-          ? 'Caricamento…'
-          : phase === 'ORGANIZING'
-            ? 'Organizzazione…'
-            : phase === 'ERROR' && selectedFile
-              ? 'Riprova'
-              : selectedFile
-                ? 'Carica e organizza'
-                : 'Seleziona prima un file'}
-      </button>
+      <button type="submit" disabled={busy || !selectedFile}>{submitLabel}</button>
       {selectedFile && !busy ? <p className="knowledgeUploadTrust">Prima salvo l’originale. Solo dopo lo organizzo. Se la seconda fase non riesce, la fonte resta conservata.</p> : null}
     </form>
   )
@@ -261,6 +285,6 @@ function finalizeMessage(code: 'missing' | 'too_large' | 'unsupported' | 'invali
   if (code === 'unsupported') return 'Questo formato non è supportato.'
   if (code === 'invalid_pdf') return 'L’originale è al sicuro, ma questo PDF non è leggibile oppure è incompleto. Scarica di nuovo il documento originale e riprova.'
   if (code === 'visual_unavailable') return 'L’originale è al sicuro. Questo contenuto richiede una lettura visiva che non è ancora attiva in questo ambiente.'
-  if (code === 'parse_failed') return 'L’originale è al sicuro, ma non sono riuscito a organizzarlo automaticamente. Puoi riprovare più tardi senza ricaricare la fonte.'
+  if (code === 'parse_failed') return 'L’originale è al sicuro, ma non sono riuscito a organizzarlo automaticamente. Puoi riprovare l’organizzazione senza ricaricare la fonte.'
   return 'Non sono riuscito a completare l’organizzazione in modo sicuro. L’originale non è stato sostituito.'
 }
