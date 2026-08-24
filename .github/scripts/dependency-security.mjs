@@ -26,7 +26,8 @@ const prod = readAudit(prodPath)
 const tool = readAudit(toolPath)
 const receipt = {
   checkedAt: new Date().toISOString(),
-  lockfilePresent: fs.existsSync('package-lock.json'),
+  repositoryLockfilePresentBeforeResolution: process.env.LOCKFILE_PRESENT_BEFORE === 'true',
+  resolvedLockfilePresent: fs.existsSync('package-lock.json'),
   baseline: {
     repositoryFullGraph: summary(full),
     productionGraph: summary(prod),
@@ -36,6 +37,7 @@ const receipt = {
     productionHighOrCriticalAllowed: 0,
     repositoryHighOrCriticalAllowed: 0,
     temporaryToolingFindingsBlockProduction: false,
+    lockfileRequiredForCanonicalBaseline: true,
   },
 }
 
