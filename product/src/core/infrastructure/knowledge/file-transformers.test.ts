@@ -117,7 +117,7 @@ class FakeVisualExtraction implements VisualExtractionPort {
 }
 
 class UnavailableVisualExtraction implements VisualExtractionPort {
-  async extract() {
+  async extract(): Promise<{ pages: VisualExtractionPage[]; processor: string; processorVersion: string }> {
     throw new VisualExtractionUnavailableError('Visual extraction intentionally unavailable in test')
   }
 }
