@@ -84,9 +84,10 @@ test('X3 mobile gate: grounded answers, useful proposals, write preview and no a
   })
 
   await askAndCheck(page, 'Come devono essere verificate le risposte generate?', 3, async (response) => {
-    await expect(response).toContainText('Risposta')
+    await expect(response).toContainText(/Risposta|Ho trovato/)
     await expect(response).toContainText(/verific.*rispost|rispost.*verific/i)
-    await expect(response).toContainText(/fonte|informaz|controll/i)
+    await expect(response).toContainText(/fonte indipendente/i)
+    await expect(response).toContainText(/informaz|controll/i)
     await expect(response).not.toContainText('Puoi chiedermi cosa contiene')
     await page.screenshot({ path: 'test-results/x3-03-open-answer.png' })
   })
