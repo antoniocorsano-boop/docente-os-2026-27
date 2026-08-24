@@ -3,6 +3,7 @@ import { E2E_EMAIL, E2E_PASSWORD, requireE2ECredentials } from './e2e-auth.mjs'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://gnshgapmwyjamhmlikeg.supabase.co'
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L'
+const KNOWLEDGE_BUCKET = 'knowledge-assets'
 
 let fixtureIdentityPromise = null
 
@@ -39,6 +40,66 @@ export async function retainNewestKnowledgeFixture(page, titleFragment) {
   const [keep, ...duplicates] = ids
   for (const id of duplicates) await deleteKnowledgeAsset(page, id)
   return keep ?? null
+}
+
+export async function deleteOrphanedKnowledgeFixtureObjects(titleFragments) {
+  const fragments = [...new Set(titleFragments.filter(Boolean))]
+  if (!fragments.length) return []
+
+  const { supabase, userId } = await fixtureIdentity()
+  const { data: memberships, error: membershipError } = await supabase
+    .from('workspace_memberships')
+    .select('workspace_id')
+    .eq('user_id', userId)
+
+  if (membershipError) throw new Error(`Fixture workspace lookup failed: ${membershipError.message}`)
+
+  const { data: assets, error: assetError } = await supabase
+    .from('knowledge_assets')
+    .select('source_metadata')
+    .eq('created_by', userId)
+
+  if (assetError) throw new Error(`Fixture storage reference lookup failed: ${assetError.message}`)
+
+  const referencedPaths = new Set(
+    (assets ?? [])
+      .map((asset) => asset.source_metadata?.storagePath)
+      .filter((value) => typeof value === 'string' && value.length > 0),
+  )
+
+  const removed = []
+  for (const membership of memberships ?? []) {
+    const workspaceId = membership.workspace_id
+    const { data: objects, error: listError } = await supabase.storage
+      .from(KNOWLEDGE_BUCKET)
+      .list(workspaceId, { limit: 1000, sortBy: { column: 'name', order: 'asc' } })
+
+    if (listError) throw new Error(`Fixture storage listing failed for ${workspaceId}: ${listError.message}`)
+
+    const stalePaths = (objects ?? [])
+      .map((item) => `${workspaceId}/${item.name}`)
+      .filter((path) => fragments.some((fragment) => path.includes(fragment)))
+      .filter((path) => !referencedPaths.has(path))
+
+    if (!stalePaths.length) continue
+
+    const { data: deleted, error: removeError } = await supabase.storage
+      .from(KNOWLEDGE_BUCKET)
+      .remove(stalePaths)
+
+    if (removeError) throw new Error(`Fixture storage cleanup failed: ${removeError.message}`)
+
+    const deletedNames = new Set((deleted ?? []).map((item) => item.name))
+    for (const path of stalePaths) {
+      const name = path.slice(`${workspaceId}/`.length)
+      if (!deletedNames.has(name) && deletedNames.size > 0) {
+        throw new Error(`Fixture storage cleanup did not confirm deletion for ${path}`)
+      }
+      removed.push(path)
+    }
+  }
+
+  return removed
 }
 
 async function fixtureIdentity() {
