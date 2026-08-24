@@ -10,7 +10,7 @@ if (!password) {
   throw new Error('E2E_PASSWORD is required for the authenticated X3 acceptance test')
 }
 
-test('X3 mobile gate: context, useful answers, write preview and no automatic write', async ({ page }) => {
+test('X3 mobile gate: grounded answers, useful proposals, write preview and no automatic write', async ({ page }) => {
   await test.step('Accede con l’account tecnico isolato', async () => {
     await page.goto('/login')
     await page.locator('#email').fill(email)
@@ -83,8 +83,16 @@ test('X3 mobile gate: context, useful answers, write preview and no automatic wr
     await page.screenshot({ path: 'test-results/x3-02-next-step.png' })
   })
 
+  await askAndCheck(page, 'Come devono essere verificate le risposte generate?', 3, async (response) => {
+    await expect(response).toContainText('Risposta')
+    await expect(response).toContainText(/verific.*rispost|rispost.*verific/i)
+    await expect(response).toContainText(/fonte|informaz|controll/i)
+    await expect(response).not.toContainText('Puoi chiedermi cosa contiene')
+    await page.screenshot({ path: 'test-results/x3-03-open-answer.png' })
+  })
+
   const previewTitle = 'Esamina e adatta per la classe: x3-responsible-ai'
-  await askAndCheck(page, 'Crea un’attività nel Planner da questo documento.', 3, async (response) => {
+  await askAndCheck(page, 'Crea un’attività nel Planner da questo documento.', 4, async (response) => {
     await expect(response).toContainText('Anteprima proposta — nessuna scrittura eseguita')
     await expect(response).toContainText(previewTitle)
     await expect(response).toContainText('Destinazione: Planner → Oggi')
@@ -92,7 +100,7 @@ test('X3 mobile gate: context, useful answers, write preview and no automatic wr
     await expect(response).toContainText('Priorità: Normale, da confermare')
     await expect(response).toContainText(/non modifica il Piano annuale/i)
     await expect(response).toContainText(/non crea un evento nel Calendario/i)
-    await page.screenshot({ path: 'test-results/x3-03-write-preview.png' })
+    await page.screenshot({ path: 'test-results/x3-04-write-preview.png' })
   })
 
   await test.step('Verifica che la richiesta X3 non abbia scritto nel Planner', async () => {
