@@ -56,10 +56,15 @@ export default async function globalSetup() {
     await page.goto('/progetta?grade=prima')
     const udaGroup = page.locator('.progettaGroup').filter({ hasText: /Unità di apprendimento|UDA/i }).first()
     await expect(udaGroup, 'Il provisioning deve rendere disponibile il gruppo UDA della classe prima.').toBeVisible()
+    const udaLink = udaGroup.locator(`a[href^="/knowledge/${assetId}?"]`).first()
     await expect(
-      udaGroup.locator(`a[href="/knowledge/${assetId}"]`),
+      udaLink,
       'L’UDA tecnica deve essere raggiungibile da Progetta tramite la normale risorsa Knowledge.',
     ).toBeVisible()
+    await expect(
+      udaLink,
+      'Progetta deve già esporre la UDA tecnica nel contesto di preparazione.',
+    ).toHaveAttribute('href', /[?&]mode=prepare(?:&|$)/)
 
     process.stdout.write(`HVA UDA fixture ready: ${assetId}\n`)
   } catch (error) {
