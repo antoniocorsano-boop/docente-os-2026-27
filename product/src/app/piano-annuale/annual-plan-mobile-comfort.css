@@ -1,0 +1,37 @@
+@media(max-width:760px){
+  .annualTableWrap{overflow:visible;padding:0 10px 12px}
+  .annualTable{display:block;width:100%;min-width:0;border-collapse:separate}
+  .annualTable thead{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  .annualTable tbody{display:grid;gap:10px}
+  .annualTable tr{display:grid;width:100%;overflow:hidden;border:1px solid var(--line,#e4e7ec);border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(15,23,42,.035)}
+  .annualTable tbody tr:hover{background:#fff}
+  .annualTable tr.annualDoneRow{background:#f7fcf8;border-color:#cfe7d7}
+  .annualTable td{display:grid;grid-template-columns:minmax(78px,92px) minmax(0,1fr);gap:10px;align-items:center;width:100%;padding:9px 11px;border-bottom:1px solid #edf0f4;font-size:12px;line-height:1.4}
+  .annualTable td:last-child{border-bottom:0}
+  .annualTable td::before{color:var(--ink-faint,#7b8494);font-size:9px;font-weight:850;letter-spacing:.055em;text-transform:uppercase}
+  .annualTable td:nth-child(1)::before{content:'Blocco'}
+  .annualTable td:nth-child(2)::before{content:'UDA'}
+  .annualTable td:nth-child(3)::before{content:'Pacchetto'}
+  .annualTable td:nth-child(4)::before{content:'Periodo'}
+  .annualTable td:nth-child(5)::before{content:'Focus'}
+  .annualTable td:nth-child(6)::before{content:'Stato'}
+  .annualTable td:nth-child(7)::before{content:'Data svolta'}
+  .annualTable td:nth-child(8)::before{content:'Evidenza'}
+  .annualTable td:nth-child(1){grid-template-columns:minmax(78px,92px) minmax(0,1fr);padding-top:11px;background:color-mix(in srgb,var(--surface-soft,#f7f8fa) 65%,#fff)}
+  .annualTable td:nth-child(1) strong{font-size:13px}
+  .annualTable td:nth-child(5){align-items:start}
+  .annualTable select,.annualTable input,.annualTable td:last-child input{min-width:0;width:100%;font-size:12px}
+  .annualTable select,.annualTable input{min-height:40px}
+  .annualTableHeader{padding:14px 14px 12px;border-bottom:0}
+  .annualTableHeader h2{font-size:1rem}
+  .annualTableHeader p{font-size:11px;line-height:1.45}
+  .annualTableHeader>span{display:inline-flex;align-self:flex-start;padding:5px 8px;border-radius:999px;background:var(--surface-soft,#f7f8fa);font-size:10px}
+}
+
+@media(max-width:420px){
+  .annualTable td{grid-template-columns:78px minmax(0,1fr);gap:8px;padding-inline:9px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .annualTable tr{scroll-behavior:auto}
+}
