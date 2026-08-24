@@ -10,6 +10,7 @@ import { SchoolCommunicationEnrichment } from '@/core/infrastructure/knowledge/s
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseStorageKnowledgeContentPort } from '@/core/infrastructure/supabase/supabase-storage-knowledge-content-port'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { createClient } from '@/lib/supabase/server'
 import {
   KNOWLEDGE_BUCKET,
   validateKnowledgeUploadReference,
@@ -21,15 +22,21 @@ export type FinalizeKnowledgeUploadResult =
   | { ok: false; code: 'missing' | 'too_large' | 'unsupported' | 'invalid_path' | 'invalid_pdf' | 'visual_unavailable' | 'parse_failed' }
 
 export async function finalizeKnowledgeFileUpload(
-  input: Omit<KnowledgeUploadReference, 'workspaceId'>,
+  input: Omit<KnowledgeUploadReference, 'workspaceId' | 'ownerUserId'>,
 ): Promise<FinalizeKnowledgeUploadResult> {
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
   if (!context) return { ok: false, code: 'invalid_path' }
 
+  const supabase = await createClient()
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+  const userId = claimsData?.claims?.sub
+  if (claimsError || !userId) return { ok: false, code: 'invalid_path' }
+
   const reference: KnowledgeUploadReference = {
     ...input,
     workspaceId: context.workspace.id,
+    ownerUserId: userId,
   }
   const validation = validateKnowledgeUploadReference(reference)
   if (!validation.valid) return { ok: false, code: validation.code }
@@ -51,6 +58,7 @@ export async function finalizeKnowledgeFileUpload(
         captureMode: 'same-origin-storage-upload',
         storageBucket: KNOWLEDGE_BUCKET,
         storagePath: input.objectPath,
+        storageOwnerUserId: userId,
         originalFilename: input.originalName,
         transferPath: 'browser-to-docente-os-to-supabase-storage',
       },
