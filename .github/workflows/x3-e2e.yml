@@ -203,9 +203,11 @@ jobs:
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
 
-      - name: Checkout tested commit
+      - name: Checkout tested commit with history
         if: steps.credentials.outputs.ready == 'true'
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node 22
         if: steps.credentials.outputs.ready == 'true'
@@ -213,11 +215,11 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Wait for Render to serve this exact commit
+      - name: Wait for Render to serve the tested product state
         if: steps.credentials.outputs.ready == 'true'
         shell: bash
         run: |
-          expected="$GITHUB_SHA"
+          target="$GITHUB_SHA"
           last_http="000"
           last_deployed=""
           rm -f /tmp/render-gate-reason
@@ -229,15 +231,19 @@ jobs:
             deployed="$(printf '%s' "$payload" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).commit||'')}catch{console.log('')}})" )"
             last_http="$http_code"
             last_deployed="$deployed"
-            echo "Attempt $attempt/120: http=$http_code, deployed=${deployed:-unavailable}, expected=$expected"
-            if [ "$deployed" = "$expected" ]; then
+            echo "Attempt $attempt/120: http=$http_code, deployed=${deployed:-unavailable}, target=$target"
+            if [ "$deployed" = "$target" ]; then
               echo "Render is serving the exact commit under test."
+              exit 0
+            fi
+            if [ -n "$deployed" ] && git cat-file -e "$deployed^{commit}" 2>/dev/null && git diff --quiet "$deployed" "$target" -- product; then
+              echo "Render commit differs only outside product/: deployed product state is equivalent to the tested product state."
               exit 0
             fi
             sleep 15
           done
-          printf 'DEPLOY_STALE http=%s deployed=%s expected=%s\n' "$last_http" "${last_deployed:-unavailable}" "$expected" > /tmp/render-gate-reason
-          echo "Render did not expose the expected commit within 30 minutes; browser acceptance was not executed." >&2
+          printf 'DEPLOY_STALE http=%s deployed=%s target=%s\n' "$last_http" "${last_deployed:-unavailable}" "$target" > /tmp/render-gate-reason
+          echo "Render did not expose an equivalent product state within 30 minutes; browser acceptance was not executed." >&2
           exit 1
 
       - name: Install product dependencies
@@ -288,7 +294,7 @@ jobs:
             const description = !ready
               ? 'Gate X3 Render non eseguito: credenziale mancante'
               : deployStale
-                ? 'Render non allineato al commit: browser non eseguito'
+                ? 'Render non allineato allo stato product: browser non eseguito'
                 : state === 'success'
                   ? 'Gate X3 superato sul beta Render'
                   : 'Gate X3 applicativo non superato sul beta Render'
