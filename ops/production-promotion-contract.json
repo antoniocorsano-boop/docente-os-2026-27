@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "candidateSourceBranch": "develop",
+  "promotionModel": "immutable_commit",
+  "productionEnvironmentState": "NOT_CREATED",
+  "productionDataTopologyState": "UNDECIDED",
+  "minimumGates": [
+    "product-ci",
+    "ops-security/supabase",
+    "ops-security/dependencies",
+    "ops-health/render-beta",
+    "p6-performance/render-beta",
+    "x3-e2e/render-beta",
+    "x4-planner/render-beta",
+    "x5-authoring/render-beta",
+    "x5b-export/render-beta",
+    "hva/runtime"
+  ],
+  "promotionRules": {
+    "exactCandidateShaRequired": true,
+    "betaMustServeCandidateOrProductEquivalent": true,
+    "humanReleaseDecisionRequired": true,
+    "automaticProductionPromotionAllowed": false,
+    "productionDataTopologyMustBeExplicit": true,
+    "productionSecretsMustBeEnvironmentScoped": true,
+    "destructiveDatabaseMigrationsAllowed": false,
+    "rollbackTargetMustBePreviouslyCertified": true,
+    "databaseRollbackAutomatic": false,
+    "releaseReceiptRequired": true
+  },
+  "rollback": {
+    "application": "redeploy_previous_certified_sha",
+    "database": "forward_recovery_only_unless_restore_rehearsal_is_proven",
+    "storage": "no_destructive_rollback_without_verified_backup"
+  }
+}
