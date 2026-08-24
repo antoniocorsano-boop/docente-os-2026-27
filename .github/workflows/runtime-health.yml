@@ -1,0 +1,102 @@
+name: Runtime Health Monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - '.github/scripts/runtime-health.mjs'
+      - '.github/workflows/runtime-health.yml'
+  push:
+    branches:
+      - develop
+    paths:
+      - '.github/scripts/runtime-health.mjs'
+      - '.github/workflows/runtime-health.yml'
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  DOCENTE_OS_BETA_URL: https://docente-os-2026-27-beta.onrender.com
+  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+
+jobs:
+  runtime-health:
+    name: runtime-health
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check E2E credential configuration
+        shell: bash
+        run: |
+          if [ -z "${E2E_PASSWORD:-}" ]; then
+            echo 'Repository secret DOCENTE_OS_E2E_PASSWORD is required.' >&2
+            exit 1
+          fi
+
+      - name: Checkout current develop history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Probe app, auth and database
+        shell: bash
+        run: |
+          node .github/scripts/runtime-health.mjs | tee runtime-health.json
+
+      - name: Verify deployed product state
+        shell: bash
+        run: |
+          deployed="$(node -e "const r=require('./runtime-health.json'); console.log(r.deployedCommit || '')")"
+          expected="$GITHUB_SHA"
+          echo "deployed=$deployed expected=$expected"
+          if [ "$deployed" = "$expected" ]; then
+            echo 'Render is serving the exact monitored commit.'
+            exit 0
+          fi
+          if [ -n "$deployed" ] && git cat-file -e "$deployed^{commit}" 2>/dev/null && git diff --quiet "$deployed" "$expected" -- product; then
+            echo 'Render product state is equivalent to the monitored develop state.'
+            exit 0
+          fi
+          echo 'Render is not serving an equivalent current product state.' >&2
+          exit 1
+
+      - name: Publish health evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-health-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 30
+          path: runtime-health.json
+
+      - name: Publish runtime health status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'ops-health/render-beta',
+              description: ok ? 'Beta, Auth e DB operativi' : 'Runtime health Beta non superato',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
