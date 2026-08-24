@@ -45,6 +45,11 @@ export async function POST(request: Request) {
   const context = await workspaceRepository.getCurrentContext()
   if (!context) return json({ ok: false, code: 'unauthorized' }, 401)
 
+  const supabase = await createClient()
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+  const userId = claimsData?.claims?.sub
+  if (claimsError || !userId) return json({ ok: false, code: 'unauthorized' }, 401)
+
   let bytes: ArrayBuffer
   try {
     bytes = await request.arrayBuffer()
@@ -61,8 +66,7 @@ export async function POST(request: Request) {
     return json({ ok: false, code: 'size_mismatch' }, 400)
   }
 
-  const objectPath = buildKnowledgeObjectPath(context.workspace.id, originalName, crypto.randomUUID())
-  const supabase = await createClient()
+  const objectPath = buildKnowledgeObjectPath(context.workspace.id, userId, originalName, crypto.randomUUID())
   const { error } = await supabase.storage.from(KNOWLEDGE_BUCKET).upload(
     objectPath,
     Buffer.from(bytes),
@@ -77,6 +81,7 @@ export async function POST(request: Request) {
     console.error('Knowledge same-origin storage upload failed', {
       message: error.message,
       workspaceId: context.workspace.id,
+      userId,
       bucket: KNOWLEDGE_BUCKET,
       objectPath,
       byteSize: actualSize,
