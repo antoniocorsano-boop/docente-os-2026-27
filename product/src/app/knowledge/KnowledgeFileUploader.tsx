@@ -10,7 +10,8 @@ import {
   normalizeKnowledgeUploadMime,
 } from './upload-policy'
 
-type UploadPhase = 'IDLE' | 'UPLOADING' | 'ORGANIZING' | 'ERROR'
+type UploadPhase = 'IDLE' | 'READY' | 'UPLOADING' | 'ORGANIZING' | 'ERROR'
+type FailedAt = 'SELECT' | 'UPLOAD' | 'ORGANIZE' | null
 
 type SameOriginUploadResult =
   | { ok: true; objectPath: string; mimeType: string; byteSize: number }
@@ -21,13 +22,15 @@ export function KnowledgeFileUploader() {
   const inputRef = useRef<HTMLInputElement>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [phase, setPhase] = useState<UploadPhase>('IDLE')
+  const [failedAt, setFailedAt] = useState<FailedAt>(null)
   const [message, setMessage] = useState<string | null>(null)
   const busy = phase === 'UPLOADING' || phase === 'ORGANIZING'
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0] ?? null
     setSelectedFile(file)
-    setPhase('IDLE')
+    setPhase(file ? 'READY' : 'IDLE')
+    setFailedAt(null)
     setMessage(null)
   }
 
@@ -36,6 +39,7 @@ export function KnowledgeFileUploader() {
     if (inputRef.current) inputRef.current.value = ''
     setSelectedFile(null)
     setPhase('IDLE')
+    setFailedAt(null)
     setMessage(null)
   }
 
@@ -50,22 +54,23 @@ export function KnowledgeFileUploader() {
 
     const file = selectedFile ?? inputRef.current?.files?.[0] ?? null
     if (!file || file.size <= 0) {
-      fail('Seleziona un file da caricare.')
+      fail('Seleziona un file da caricare.', 'SELECT')
       return
     }
     if (file.size > MAX_KNOWLEDGE_UPLOAD_BYTES) {
-      fail('Il file supera il limite di 20 MB. Scegline uno più piccolo.')
+      fail('Il file supera il limite di 20 MB. Scegline uno più piccolo.', 'SELECT')
       return
     }
 
     const localMimeType = normalizeKnowledgeUploadMime(file.type, file.name)
     if (!isAllowedKnowledgeUploadMime(localMimeType)) {
-      fail('Questo formato non è supportato. Usa PDF, immagini, DOCX, TXT o Markdown.')
+      fail('Questo formato non è supportato. Usa PDF, immagini, DOCX, TXT o Markdown.', 'SELECT')
       return
     }
 
+    setFailedAt(null)
     setPhase('UPLOADING')
-    setMessage('Sto trasferendo l’originale nel tuo spazio privato…')
+    setMessage('Il file selezionato resta qui mentre metto al sicuro l’originale nel tuo spazio privato.')
 
     let uploadResponse: Response
     try {
@@ -80,7 +85,7 @@ export function KnowledgeFileUploader() {
       })
     } catch (error) {
       console.error('Knowledge same-origin upload network failure', error)
-      fail('Il collegamento con DOCENTE OS si è interrotto durante il trasferimento. Riprova.')
+      fail('Il collegamento si è interrotto prima di salvare il file. Il file selezionato è ancora qui: puoi riprovare.', 'UPLOAD')
       return
     }
 
@@ -90,12 +95,12 @@ export function KnowledgeFileUploader() {
         status: uploadResponse.status,
         result: uploadResult,
       })
-      fail(uploadFailureMessage(uploadResponse.status, uploadResult?.ok === false ? uploadResult.code : undefined))
+      fail(uploadFailureMessage(uploadResponse.status, uploadResult?.ok === false ? uploadResult.code : undefined), 'UPLOAD')
       return
     }
 
     setPhase('ORGANIZING')
-    setMessage('Originale al sicuro. Ora lo sto organizzando nella Conoscenza…')
+    setMessage('L’originale è al sicuro. Ora preparo una versione leggibile e ricercabile senza sostituire la fonte.')
 
     const result = await finalizeKnowledgeFileUpload({
       objectPath: uploadResult.objectPath,
@@ -105,7 +110,7 @@ export function KnowledgeFileUploader() {
     })
 
     if (!result.ok) {
-      fail(finalizeMessage(result.code))
+      fail(finalizeMessage(result.code), 'ORGANIZE')
       return
     }
 
@@ -113,13 +118,23 @@ export function KnowledgeFileUploader() {
     router.refresh()
   }
 
-  function fail(text: string) {
+  function fail(text: string, stage: Exclude<FailedAt, null>) {
+    setFailedAt(stage)
     setPhase('ERROR')
     setMessage(text)
   }
 
+  const steps = uploadSteps({ phase, failedAt, hasFile: Boolean(selectedFile) })
+  const feedbackTitle = phase === 'UPLOADING'
+    ? 'Sto mettendo al sicuro l’originale'
+    : phase === 'ORGANIZING'
+      ? 'Originale al sicuro'
+      : phase === 'ERROR'
+        ? 'Serve un intervento'
+        : null
+
   return (
-    <form className="knowledgeUploadForm" onSubmit={handleSubmit}>
+    <form className="knowledgeUploadForm knowledgeUploadComfort" onSubmit={handleSubmit}>
       <label className={`fileDrop ${selectedFile ? 'hasSelection' : ''}`}>
         <input
           ref={inputRef}
@@ -131,11 +146,11 @@ export function KnowledgeFileUploader() {
           onChange={handleFileChange}
         />
         <span className="fileDropIcon" aria-hidden>{selectedFile ? '✓' : '↑'}</span>
-        <strong>{selectedFile ? 'File individuato' : 'PDF, immagini, DOCX, TXT o Markdown'}</strong>
+        <strong>{selectedFile ? 'File individuato' : 'Scegli un file'}</strong>
         <small>
           {selectedFile
-            ? 'Controlla il file selezionato prima di avviare il caricamento.'
-            : 'L’originale viene trasferito nel tuo spazio privato e poi organizzato nella Conoscenza.'}
+            ? 'Resta selezionato anche se qualcosa si interrompe, così non devi ricominciare da capo.'
+            : 'PDF, immagini, DOCX, TXT o Markdown · massimo 20 MB'}
         </small>
       </label>
 
@@ -143,7 +158,7 @@ export function KnowledgeFileUploader() {
         <div className="selectedFileCard" role="status" aria-live="polite" aria-atomic="true">
           <span className="selectedFileCheck" aria-hidden>✓</span>
           <div className="selectedFileBody">
-            <strong>File selezionato</strong>
+            <strong>Pronto a caricare</strong>
             <span title={selectedFile.name}>{selectedFile.name}</span>
             <small>{fileTypeLabel(selectedFile)} · {formatFileSize(selectedFile.size)}</small>
           </div>
@@ -154,18 +169,59 @@ export function KnowledgeFileUploader() {
         </div>
       ) : null}
 
-      {message ? <div className="knowledgeFeedback" role={phase === 'ERROR' ? 'alert' : 'status'} aria-live="polite">{message}</div> : null}
+      {selectedFile ? (
+        <ol className="knowledgeUploadJourney" aria-label="Avanzamento del caricamento">
+          {steps.map((step, index) => (
+            <li key={step.label} className={`knowledgeUploadStep ${step.state}`} aria-current={step.state === 'active' ? 'step' : undefined}>
+              <span className="knowledgeUploadStepMark" aria-hidden>{step.state === 'done' ? '✓' : step.state === 'problem' ? '!' : index + 1}</span>
+              <span className="knowledgeUploadStepText"><strong>{step.label}</strong><small>{step.hint}</small></span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+
+      {message && feedbackTitle ? (
+        <div className={`knowledgeUploadFeedback ${phase === 'ERROR' ? 'error' : 'progress'}`} role={phase === 'ERROR' ? 'alert' : 'status'} aria-live="polite">
+          <span className="knowledgeUploadFeedbackIcon" aria-hidden>{phase === 'ERROR' ? '!' : phase === 'ORGANIZING' ? '✓' : '↥'}</span>
+          <div><strong>{feedbackTitle}</strong><p>{message}</p></div>
+        </div>
+      ) : null}
+
       <button type="submit" disabled={busy || !selectedFile}>
         {phase === 'UPLOADING'
           ? 'Caricamento…'
           : phase === 'ORGANIZING'
             ? 'Organizzazione…'
-            : selectedFile
-              ? 'Carica e organizza'
-              : 'Seleziona prima un file'}
+            : phase === 'ERROR' && selectedFile
+              ? 'Riprova'
+              : selectedFile
+                ? 'Carica e organizza'
+                : 'Seleziona prima un file'}
       </button>
+      {selectedFile && !busy ? <p className="knowledgeUploadTrust">Prima salvo l’originale. Solo dopo lo organizzo. Se la seconda fase non riesce, la fonte resta conservata.</p> : null}
     </form>
   )
+}
+
+function uploadSteps(input: { phase: UploadPhase; failedAt: FailedAt; hasFile: boolean }) {
+  const { phase, failedAt, hasFile } = input
+  return [
+    {
+      label: 'File scelto',
+      hint: 'Resta disponibile finché decidi tu',
+      state: failedAt === 'SELECT' ? 'problem' : hasFile ? 'done' : 'pending',
+    },
+    {
+      label: 'Originale al sicuro',
+      hint: 'Copiato nello spazio privato',
+      state: failedAt === 'UPLOAD' ? 'problem' : phase === 'UPLOADING' ? 'active' : phase === 'ORGANIZING' || failedAt === 'ORGANIZE' ? 'done' : 'pending',
+    },
+    {
+      label: 'Organizzato',
+      hint: 'Leggibile e pronto per la ricerca',
+      state: failedAt === 'ORGANIZE' ? 'problem' : phase === 'ORGANIZING' ? 'active' : 'pending',
+    },
+  ] as const
 }
 
 async function readUploadResult(response: Response): Promise<SameOriginUploadResult | null> {
@@ -177,12 +233,12 @@ async function readUploadResult(response: Response): Promise<SameOriginUploadRes
 }
 
 function uploadFailureMessage(status: number, code?: string) {
-  if (status === 401) return 'La sessione è scaduta. Ricarica la pagina e accedi di nuovo.'
-  if (status === 413 || code === 'too_large') return 'Il file supera il limite di 20 MB.'
-  if (status === 415 || code === 'unsupported') return 'Questo formato non è supportato.'
-  if (code === 'size_mismatch') return 'Il trasferimento è arrivato incompleto. Riprova con lo stesso file.'
-  if (status >= 500) return 'Lo spazio privato non ha accettato il file. Puoi riprovare tra poco.'
-  return `Il trasferimento non è riuscito (${status}). Puoi riprovare.`
+  if (status === 401) return 'La sessione è scaduta prima del salvataggio. Ricarica la pagina e accedi di nuovo.'
+  if (status === 413 || code === 'too_large') return 'Il file supera il limite di 20 MB. Scegline uno più piccolo.'
+  if (status === 415 || code === 'unsupported') return 'Questo formato non è supportato. Usa PDF, immagini, DOCX, TXT o Markdown.'
+  if (code === 'size_mismatch') return 'Il trasferimento è arrivato incompleto. Il file selezionato è ancora qui: riprova.'
+  if (status >= 500) return 'Il file non è stato salvato nello spazio privato. Il file selezionato è ancora qui: puoi riprovare tra poco.'
+  return `Il trasferimento non è riuscito (${status}). Il file selezionato è ancora qui: puoi riprovare.`
 }
 
 function fileTypeLabel(file: File) {
@@ -202,8 +258,8 @@ function formatFileSize(bytes: number) {
 function finalizeMessage(code: 'missing' | 'too_large' | 'unsupported' | 'invalid_path' | 'invalid_pdf' | 'visual_unavailable' | 'parse_failed') {
   if (code === 'too_large') return 'Il file supera il limite di 20 MB.'
   if (code === 'unsupported') return 'Questo formato non è supportato.'
-  if (code === 'invalid_pdf') return 'L’originale è stato conservato, ma questo PDF non è leggibile oppure è incompleto. Scarica di nuovo il documento originale e riprova.'
-  if (code === 'visual_unavailable') return 'L’originale è stato conservato, ma questo contenuto richiede la lettura visiva, che non è ancora attiva su questo ambiente.'
-  if (code === 'parse_failed') return 'L’originale è stato conservato, ma non sono riuscito a organizzarlo automaticamente. Puoi riprovare più tardi.'
-  return 'Non sono riuscito a completare il caricamento in modo sicuro. Riprova.'
+  if (code === 'invalid_pdf') return 'L’originale è al sicuro, ma questo PDF non è leggibile oppure è incompleto. Scarica di nuovo il documento originale e riprova.'
+  if (code === 'visual_unavailable') return 'L’originale è al sicuro. Questo contenuto richiede una lettura visiva che non è ancora attiva in questo ambiente.'
+  if (code === 'parse_failed') return 'L’originale è al sicuro, ma non sono riuscito a organizzarlo automaticamente. Puoi riprovare più tardi senza ricaricare la fonte.'
+  return 'Non sono riuscito a completare l’organizzazione in modo sicuro. L’originale non è stato sostituito.'
 }
