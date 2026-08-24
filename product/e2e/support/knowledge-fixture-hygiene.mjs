@@ -70,36 +70,39 @@ export async function deleteOrphanedKnowledgeFixtureObjects(titleFragments) {
   const removed = []
   for (const membership of memberships ?? []) {
     const workspaceId = membership.workspace_id
-    const { data: objects, error: listError } = await supabase.storage
-      .from(KNOWLEDGE_BUCKET)
-      .list(workspaceId, { limit: 1000, sortBy: { column: 'name', order: 'asc' } })
-
-    if (listError) throw new Error(`Fixture storage listing failed for ${workspaceId}: ${listError.message}`)
-
-    const stalePaths = (objects ?? [])
+    const before = await listWorkspaceObjects(supabase, workspaceId)
+    const stalePaths = before
       .map((item) => `${workspaceId}/${item.name}`)
       .filter((path) => fragments.some((fragment) => path.includes(fragment)))
       .filter((path) => !referencedPaths.has(path))
 
     if (!stalePaths.length) continue
 
-    const { data: deleted, error: removeError } = await supabase.storage
+    const { error: removeError } = await supabase.storage
       .from(KNOWLEDGE_BUCKET)
       .remove(stalePaths)
 
     if (removeError) throw new Error(`Fixture storage cleanup failed: ${removeError.message}`)
 
-    const deletedNames = new Set((deleted ?? []).map((item) => item.name))
-    for (const path of stalePaths) {
-      const name = path.slice(`${workspaceId}/`.length)
-      if (!deletedNames.has(name) && deletedNames.size > 0) {
-        throw new Error(`Fixture storage cleanup did not confirm deletion for ${path}`)
-      }
-      removed.push(path)
+    const remainingPaths = new Set(
+      (await listWorkspaceObjects(supabase, workspaceId)).map((item) => `${workspaceId}/${item.name}`),
+    )
+    const notRemoved = stalePaths.filter((path) => remainingPaths.has(path))
+    if (notRemoved.length) {
+      throw new Error(`Fixture storage cleanup incomplete: ${notRemoved.join(', ')}`)
     }
+    removed.push(...stalePaths)
   }
 
   return removed
+}
+
+async function listWorkspaceObjects(supabase, workspaceId) {
+  const { data, error } = await supabase.storage
+    .from(KNOWLEDGE_BUCKET)
+    .list(workspaceId, { limit: 1000, sortBy: { column: 'name', order: 'asc' } })
+  if (error) throw new Error(`Fixture storage listing failed for ${workspaceId}: ${error.message}`)
+  return data ?? []
 }
 
 async function fixtureIdentity() {
