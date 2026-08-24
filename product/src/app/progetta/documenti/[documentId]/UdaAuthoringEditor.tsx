@@ -1,17 +1,21 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import type { AuthoredDocumentSnapshot } from '@/core/domain/authored-document'
 import { saveUdaAuthoring } from '../../authoring-actions'
 
 export function UdaAuthoringEditor({ snapshot }: { snapshot: AuthoredDocumentSnapshot }) {
+  const router = useRouter()
   const [title, setTitle] = useState(snapshot.current.title)
   const [body, setBody] = useState(snapshot.current.bodyMarkdown)
+  const [savedTitle, setSavedTitle] = useState(snapshot.current.title)
+  const [savedBody, setSavedBody] = useState(snapshot.current.bodyMarkdown)
   const [version, setVersion] = useState(snapshot.document.currentVersionNo)
   const [message, setMessage] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
-  const dirty = title !== snapshot.current.title || body !== snapshot.current.bodyMarkdown || version !== snapshot.document.currentVersionNo
+  const dirty = title !== savedTitle || body !== savedBody
 
   function save() {
     setMessage(null)
@@ -24,7 +28,10 @@ export function UdaAuthoringEditor({ snapshot }: { snapshot: AuthoredDocumentSna
           bodyMarkdown: body,
         })
         setVersion(next)
+        setSavedTitle(title)
+        setSavedBody(body)
         setMessage(`Versione ${next} salvata`)
+        router.refresh()
       } catch (error) {
         setMessage(error instanceof Error ? error.message : 'Salvataggio non riuscito')
       }
@@ -36,7 +43,7 @@ export function UdaAuthoringEditor({ snapshot }: { snapshot: AuthoredDocumentSna
       <main className="udaAuthoringMain">
         <div className="udaAuthoringToolbar">
           <div><span>DOCUMENTO DI LAVORO</span><strong>Versione {version}</strong></div>
-          <button type="button" onClick={save} disabled={pending || !title.trim()}>{pending ? 'Salvataggio…' : 'Salva nuova versione'}</button>
+          <button type="button" onClick={save} disabled={pending || !dirty || !title.trim()}>{pending ? 'Salvataggio…' : 'Salva nuova versione'}</button>
         </div>
         {message ? <p className="udaAuthoringMessage" role="status">{message}</p> : null}
         <label className="udaAuthoringTitle">Titolo<input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={300} /></label>
@@ -47,7 +54,7 @@ export function UdaAuthoringEditor({ snapshot }: { snapshot: AuthoredDocumentSna
         <span>CRONOLOGIA</span>
         <h2>Versioni</h2>
         <ol>{snapshot.versions.map((item) => <li key={item.id}><strong>v{item.versionNo}</strong><span>{item.title}</span><small>{new Date(item.createdAt).toLocaleString('it-IT')}</small></li>)}</ol>
-        {dirty ? <p>Modifiche locali non ancora salvate.</p> : null}
+        {dirty ? <p>Modifiche locali non ancora salvate.</p> : <p>Tutte le modifiche sono salvate.</p>}
       </aside>
     </div>
   )
