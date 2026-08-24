@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, test } from '@playwright/test'
+import { retainNewestKnowledgeFixture } from './support/knowledge-fixture-hygiene.mjs'
 
 const email = process.env.E2E_EMAIL ?? 'docente-os-e2e-2dbf49e1@example.invalid'
 const password = process.env.E2E_PASSWORD
@@ -14,13 +15,12 @@ test('X3 mobile gate: grounded answers, useful proposals, write preview and no a
   await login(page)
 
   await test.step('Apre o crea una fixture autonoma deterministica', async () => {
-    await page.goto('/knowledge')
-    const existing = page.locator('a.knowledgeAssetRow').filter({ hasText: 'x3-responsible-ai' }).first()
+    const existingAssetId = await retainNewestKnowledgeFixture(page, 'x3-responsible-ai')
 
-    if (await existing.count()) {
-      await existing.click()
-      await page.waitForURL(/\/knowledge\/[^/?#]+$/, { timeout: 30_000 })
+    if (existingAssetId) {
+      await page.goto(`/knowledge/${encodeURIComponent(existingAssetId)}`)
     } else {
+      await page.goto('/knowledge')
       const upload = page.locator('input[type="file"][name="file"]')
       await upload.setInputFiles(fixturePath)
       await expect(page.getByText('x3-responsible-ai.txt')).toBeVisible()
