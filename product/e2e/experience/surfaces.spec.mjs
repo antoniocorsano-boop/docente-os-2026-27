@@ -76,6 +76,10 @@ test.describe('Human + Visual Acceptance — superfici principali', () => {
         }
       }
 
+      if (surface.id === 'planner' && testInfo.project.name.startsWith('mobile')) {
+        await assertMobileAssistantClearsBottomNavigation(page)
+      }
+
       const observation = await observer.capture({
         surface: surface.id,
         label: surface.label,
@@ -95,3 +99,32 @@ test.describe('Human + Visual Acceptance — superfici principali', () => {
     })
   }
 })
+
+async function assertMobileAssistantClearsBottomNavigation(page) {
+  const assistant = page.locator('.dosAssistantFloatingTrigger')
+  await expect(
+    assistant,
+    'Il Planner mobile deve rendere disponibile l’assistente senza occupare la navigazione primaria.',
+  ).toBeVisible({ timeout: 20_000 })
+
+  await assistant.scrollIntoViewIfNeeded()
+  const geometry = await page.evaluate(() => {
+    const support = document.querySelector('.dosAssistantFloatingTrigger')
+    const nav = document.querySelector('.dosBottomNav')
+    if (!support || !nav) return null
+    const supportRect = support.getBoundingClientRect()
+    const navRect = nav.getBoundingClientRect()
+    return {
+      position: getComputedStyle(support).position,
+      supportBottom: supportRect.bottom,
+      navTop: navRect.top,
+    }
+  })
+
+  expect(geometry, 'Impossibile misurare assistente e navigazione nel Planner mobile.').not.toBeNull()
+  expect(geometry.position, 'L’assistente chiuso del Planner non deve essere fixed sul contenuto.').toBe('absolute')
+  expect(
+    geometry.supportBottom,
+    'L’assistente del Planner deve terminare prima della navigazione mobile.',
+  ).toBeLessThanOrEqual(geometry.navTop - 8)
+}
