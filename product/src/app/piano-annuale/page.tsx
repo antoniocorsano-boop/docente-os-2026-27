@@ -5,6 +5,7 @@ import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supa
 import AnnualPlanClient from './AnnualPlanClient'
 import { DEFAULT_SECTION_SETS, GRADE_STORAGE, type GradeKey } from './model'
 import './annual-plan.css'
+import './annual-plan-mobile-comfort.css'
 
 export const dynamic = 'force-dynamic'
 

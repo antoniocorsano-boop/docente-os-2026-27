@@ -1,0 +1,123 @@
+name: H1 Human Task Comfort Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'product/e2e/h1-human-task-comfort.spec.mjs'
+      - 'product/playwright.config.mjs'
+      - 'product/src/app/human-task.css'
+      - 'product/src/app/piano-annuale/**'
+      - 'product/src/app/progetta/**'
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
+
+jobs:
+  h1-render-acceptance:
+    name: h1-render-acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Check E2E credential configuration
+        shell: bash
+        run: |
+          if [ -z "${E2E_PASSWORD:-}" ]; then
+            echo 'Repository secret DOCENTE_OS_E2E_PASSWORD is required.' >&2
+            exit 1
+          fi
+
+      - name: Publish pending H1 status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: 'pending',
+              context: 'h1-human-task/render-beta',
+              description: 'Gate comfort mobile in esecuzione',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Wait for Render to serve this product commit
+        shell: bash
+        run: |
+          expected="$GITHUB_SHA"
+          for attempt in $(seq 1 120); do
+            : > /tmp/build-info.json
+            http_code="$(curl -sS --max-time 20 -o /tmp/build-info.json -w '%{http_code}' "$E2E_BASE_URL/api/build-info" 2>/dev/null || true)"
+            payload="$(cat /tmp/build-info.json 2>/dev/null || true)"
+            deployed="$(printf '%s' "$payload" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).commit||'')}catch{console.log('')}})")"
+            echo "Attempt $attempt/120: http=${http_code:-000}, deployed=${deployed:-unavailable}, expected=$expected"
+            if [ "$deployed" = "$expected" ]; then
+              echo 'Render is serving the H1 product commit.'
+              exit 0
+            fi
+            sleep 15
+          done
+          echo 'Render did not expose the expected H1 product commit within 30 minutes.' >&2
+          exit 1
+
+      - name: Install product dependencies
+        working-directory: product
+        run: npm install --no-audit --no-fund
+
+      - name: Install Playwright runner without changing the lockfile
+        working-directory: product
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Install Chromium
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run H1 mobile comfort gate
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/h1-human-task-comfort.spec.mjs
+
+      - name: Publish H1 visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h1-human-task-evidence-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            product/playwright-report/
+            product/test-results/
+
+      - name: Publish final H1 status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const state = process.env.JOB_STATUS === 'success' ? 'success' : 'failure'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state,
+              context: 'h1-human-task/render-beta',
+              description: state === 'success' ? 'Comfort mobile verificato sul beta Render' : 'Gate comfort mobile non superato',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
