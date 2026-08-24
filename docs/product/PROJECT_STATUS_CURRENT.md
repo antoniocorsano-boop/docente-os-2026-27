@@ -1,7 +1,7 @@
 # DOCENTE OS — Stato corrente canonico
 
 Data: 2026-08-24  
-Baseline prodotto certificata: `develop` @ `1d92e4b57efeb4ccfa19378daf27468bfb848c4e`  
+Baseline prodotto certificata: `develop` @ `ea1315e4ce77126603e1cc9e87051d79ce98824c`  
 Stato documento: **CURRENT / CANONICAL STATUS**
 
 Questo documento è la sintesi corrente autorevole dello stato del sistema. I checkpoint datati precedenti restano storici e non devono essere usati per dedurre lo stato operativo quando divergono da questo file.
@@ -126,26 +126,30 @@ Per le slice applicative rilevanti il ciclo comprende, secondo ambito:
 7. evidence/receipt e cleanup;
 8. aggiornamento della decisione canonica.
 
-Dal primo ciclo di hardening è inoltre permanente `ops-security/supabase`, che verifica almeno:
+Sono inoltre permanenti:
 
-- diniego delle RPC X5 al ruolo anonimo;
-- lifecycle X5 autenticato ancora funzionante;
-- accesso X4 alle receipt conforme alla RLS.
+- `ops-security/supabase` — diniego RPC X5 al ruolo anonimo, lifecycle X5 autenticato, accesso X4 alle receipt conforme alla RLS;
+- `ops-health/render-beta` — probe periodico di Render, login, Supabase Auth, DB/RLS e coerenza exact/product-equivalent con `develop`.
 
 Le failure Vercel per quota non sono failure del canale Beta Render.
 
 ## 8. Operational hardening
 
-Stato: **IN PROGRESS — P0 SECURITY BASELINE PASS**.
+Stato: **IN PROGRESS — P0 SECURITY PASS / P1 MONITORING BASELINE PASS**.
 
-Completato nella prima tranche:
+Completato:
 
 - quattro RPC X5 `SECURITY DEFINER` non sono più eseguibili dal ruolo `anon`;
 - accesso intenzionale `authenticated` preservato e provato end-to-end;
 - policy X4 receipt ottimizzata con inizializzazione unica di `auth.uid()` per statement;
 - aggiunti gli indici FK mancanti introdotti da X4/X5 che interessano lifecycle e referential checks;
-- nuovo gate permanente `ops-security/supabase`;
-- Product CI, K1, X3 e X4 regressivi PASS dopo il merge `1d92e4b…`.
+- gate permanente `ops-security/supabase`;
+- Product CI, K1, X3 e X4 regressivi PASS dopo il security hardening;
+- monitor `ops-health/render-beta` ogni 6 ore e on-demand;
+- monitor verificato nel primo run: `/api/build-info`, login, Supabase Auth, lettura DB/RLS e stato prodotto Render exact/equivalent;
+- artifact JSON del probe conservato per 30 giorni.
+
+Il monitor GitHub costituisce una **monitoring baseline**, non ancora un sistema completo di incident management/alert escalation.
 
 Non equivale a production readiness completa.
 
@@ -153,7 +157,7 @@ Residui hardening aperti:
 
 - backup/restore verificato;
 - recovery account e password policy, inclusa leaked-password protection attualmente non abilitata;
-- monitoring/alerting operativo;
+- alert escalation/incident response oltre alla failure del monitor GitHub;
 - dipendenze npm: warning corrente di 2 vulnerabilità high da classificare e risolvere senza upgrade ciechi;
 - data lifecycle/retention/export dei dati utente;
 - performance/load con dataset significativamente più grandi;
@@ -164,20 +168,20 @@ Residui hardening aperti:
 Valutazione audit aggiornata del 2026-08-24:
 
 - architettura/dominio: **molto matura**;
-- persistenza/sicurezza/RLS: **matura e ora sottoposta a gate operativo dedicato**;
+- persistenza/sicurezza/RLS: **matura e sottoposta a gate operativo dedicato**;
 - core operativo docente: **avanzato**;
 - Human/UX: **molto avanzato e verificato**;
 - Conoscenza: **tra le capability più mature**;
 - CI/E2E/HVA: **molto maturo per la fase Beta**;
 - authoring professionale UDA + export PDF: **Beta-proven**;
 - azioni AI persistenti: **prima capability minima attiva, controllata e reversibile**;
-- operations/produzione: **in hardening, non ancora production-ready**.
+- operations/produzione: **security e monitoring baseline attive; hardening ancora incompleto**.
 
 Le percentuali di maturità restano indicative e non sostituiscono i gate.
 
 ## 10. Rischi e residui prioritari
 
-1. **Operational hardening** — backup/restore, recovery/password protection, monitoring/alerting, data lifecycle, dependency security, performance/load, canale produzione.
+1. **Operational hardening** — backup/restore, recovery/password protection, incident response, data lifecycle, dependency security, performance/load, canale produzione.
 2. **Longitudinal proof** — validare settimane e mesi reali: cambi orario, sospensioni, correzioni, accumulo documenti/task/sessioni, fine quadrimestre/anno.
 3. **Governance X4** — mantenere `PLANNER_CREATE_TASK` come unica write capability assistita finché non esiste evidenza sufficiente per un'estensione controllata.
 4. **Estensione authoring** — valutare altri documenti professionali solo sulla base dell'uso reale, evitando duplicazioni indiscriminate.
@@ -186,7 +190,7 @@ Le percentuali di maturità restano indicative e non sostituiscono i gate.
 
 Il ciclo corrente è:
 
-1. **hardening operativo/produzione**;
+1. **hardening operativo/produzione** — prossimo focus: backup/restore + recovery;
 2. pilotaggio continuativo settembre–ottobre;
 3. nuove tranche guidate da evidenza reale.
 
