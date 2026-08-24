@@ -5,8 +5,9 @@ on:
   push:
     branches:
       - develop
+    # Render watches rootDir=product, so workflow-only commits do not deploy.
+    # Keep this gate tied only to changes that can alter the deployed product.
     paths:
-      - '.github/workflows/k1-knowledge-e2e.yml'
       - 'product/e2e/k1-knowledge-upload.spec.mjs'
       - 'product/playwright.config.mjs'
       - 'product/src/app/knowledge/**'
