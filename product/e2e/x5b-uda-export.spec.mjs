@@ -35,29 +35,42 @@ test('X5B export: saved immutable version, provenance, no write and explicit pri
     await page.goto(`/progetta/documenti/${documentId}/export?version=1`)
 
     await expect(page.getByRole('heading', { level: 1 })).toContainText(initial.current.title)
-    await expect(page.getByText('Versione').locator('..')).toContainText('1')
+    const versionFact = page.locator('.udaExportHeader dl div').filter({ hasText: 'Versione' })
+    await expect(versionFact).toContainText('1')
     await expect(page.getByText(/Fonte originale preservata/i)).toBeVisible()
     await expect(page.getByText(/versione esportata v1/i)).toBeVisible()
     await expect(page.getByRole('button', { name: 'Stampa / Salva PDF' })).toBeVisible()
 
-    const printCallsBefore = await page.evaluate(() => window.__x5bPrintCalls)
-    expect(printCallsBefore).toBe(0)
-
+    expect(await page.evaluate(() => window.__x5bPrintCalls)).toBe(0)
     const beforePrint = await authoredSnapshot(identity, documentId)
     await page.getByRole('button', { name: 'Stampa / Salva PDF' }).click()
     expect(await page.evaluate(() => window.__x5bPrintCalls)).toBe(1)
-    const afterPrint = await authoredSnapshot(identity, documentId)
-    expect(afterPrint).toEqual(beforePrint)
+    expect(await authoredSnapshot(identity, documentId)).toEqual(beforePrint)
 
     const bodyText = await page.locator('.udaExportBody').innerText()
     expect(bodyText).toContain(initial.current.body_markdown.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '') ?? '')
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1)
-    await page.screenshot({ path: 'test-results/x5b-01-export.png', fullPage: true })
+
+    await assertNoHorizontalOverflow(page)
+    await page.screenshot({ path: 'test-results/x5b-01-export-mobile.png', fullPage: true })
+
+    await page.setViewportSize({ width: 1440, height: 1000 })
+    await assertNoHorizontalOverflow(page)
+    await expect(page.locator('.udaExportDocument')).toBeVisible()
+    await page.screenshot({ path: 'test-results/x5b-02-export-desktop.png', fullPage: true })
+
+    await page.emulateMedia({ media: 'print' })
+    await expect(page.locator('.udaExportActions')).not.toBeVisible()
+    await expect(page.locator('.udaExportDocument')).toBeVisible()
+    await page.emulateMedia({ media: 'screen' })
   } finally {
     await cleanupAuthoredDocuments(identity, source.id)
     expect(await authoredDocuments(identity, source.id)).toHaveLength(0)
   }
 })
+
+async function assertNoHorizontalOverflow(page) {
+  expect(await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - window.innerWidth))).toBeLessThanOrEqual(1)
+}
 
 async function login(page) {
   await page.goto('/login')
