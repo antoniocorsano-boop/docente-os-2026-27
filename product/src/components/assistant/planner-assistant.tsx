@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react'
 import { ContextualAssistantPanel } from './contextual-assistant-panel'
+import { PlannerCreateTaskAction } from './planner-create-task-action'
 import {
   respondToPlannerAssistant,
   type PlannerAssistantContext,
@@ -27,7 +28,7 @@ export function PlannerAssistant({
   return (
     <ContextualAssistantPanel
       presentation={presentation}
-      lead="Leggo le attività reali del Planner e ti aiuto a capire priorità, scadenze e ordine di lavoro. Non cambio lo stato delle attività."
+      lead="Leggo le attività reali del Planner e ti aiuto a capire priorità, scadenze e ordine di lavoro. Se vuoi creare una nuova attività, uso un percorso separato con anteprima e conferma esplicita."
       contextChips={[
         `${p.openCount} aperte`,
         `${p.overdueCount} scadute`,
@@ -37,8 +38,10 @@ export function PlannerAssistant({
       suggestedPrompts={SUGGESTED_PROMPTS}
       conversationTitle="Organizziamo il Planner"
       placeholder="Es. Cosa devo affrontare prima oggi?"
-      footerLabel="Solo lettura e proposte. Nessuna attività viene creata, completata o spostata automaticamente."
+      safetyLabel="Scrive solo dopo conferma"
+      footerLabel="L’assistente resta in lettura/proposta. La sola creazione di un’attività usa un gate separato con anteprima, conferma e annullamento."
       respond={respond}
+      actionSlot={<PlannerCreateTaskAction localDate={p.localDate} />}
     />
   )
 }

@@ -10,7 +10,7 @@ import {
   type ChatModelAdapter,
 } from '@assistant-ui/react'
 import { SendHorizontal, ShieldCheck, Sparkles } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 
 export type ContextualAssistantPanelProps = {
   presentation?: 'inline' | 'floating'
@@ -24,6 +24,7 @@ export type ContextualAssistantPanelProps = {
   footerLabel?: string
   placeholder?: string
   respond: (prompt: string) => string
+  actionSlot?: ReactNode
 }
 
 export function ContextualAssistantPanel({
@@ -38,6 +39,7 @@ export function ContextualAssistantPanel({
   footerLabel = 'Solo lettura e proposte. Nessuna scrittura automatica.',
   placeholder = 'Scrivi una domanda sul contesto corrente',
   respond,
+  actionSlot,
 }: ContextualAssistantPanelProps) {
   const [expanded, setExpanded] = useState(false)
   const adapter = useMemo<ChatModelAdapter>(() => ({
@@ -95,14 +97,17 @@ export function ContextualAssistantPanel({
           <button type="button" onClick={() => setExpanded(true)}>Apri</button>
         </div>
       ) : (
-        <AssistantRuntimeProvider runtime={runtime}>
-          <ContextualAssistantThread
-            conversationTitle={conversationTitle}
-            footerLabel={footerLabel}
-            placeholder={placeholder}
-            onClose={() => setExpanded(false)}
-          />
-        </AssistantRuntimeProvider>
+        <>
+          <AssistantRuntimeProvider runtime={runtime}>
+            <ContextualAssistantThread
+              conversationTitle={conversationTitle}
+              footerLabel={footerLabel}
+              placeholder={placeholder}
+              onClose={() => setExpanded(false)}
+            />
+          </AssistantRuntimeProvider>
+          {actionSlot ? <div className="dosAssistantActionSlot">{actionSlot}</div> : null}
+        </>
       )}
     </section>
   )
@@ -124,7 +129,7 @@ function ContextualAssistantThread({
       <div className="dosAssistantConversationTop">
         <div>
           <strong>{conversationTitle}</strong>
-          <span>Posso leggere, spiegare e proporre. Non eseguo modifiche.</span>
+          <span>Posso leggere, spiegare e proporre. Le modifiche richiedono sempre una conferma separata.</span>
         </div>
         <button type="button" onClick={onClose}>Chiudi</button>
       </div>
