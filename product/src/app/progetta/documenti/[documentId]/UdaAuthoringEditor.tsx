@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import type { AuthoredDocumentSnapshot } from '@/core/domain/authored-document'
@@ -53,7 +54,7 @@ export function UdaAuthoringEditor({ snapshot }: { snapshot: AuthoredDocumentSna
       <aside className="udaAuthoringHistory" aria-label="Cronologia versioni">
         <span>CRONOLOGIA</span>
         <h2>Versioni</h2>
-        <ol>{snapshot.versions.map((item) => <li key={item.id}><strong>v{item.versionNo}</strong><span>{item.title}</span><small>{new Date(item.createdAt).toLocaleString('it-IT')}</small></li>)}</ol>
+        <ol>{snapshot.versions.map((item) => <li key={item.id}><strong>v{item.versionNo}</strong><span>{item.title}</span><small>{new Date(item.createdAt).toLocaleString('it-IT')}</small><Link href={`/progetta/documenti/${encodeURIComponent(snapshot.document.id)}/export?version=${item.versionNo}`}>Esporta v{item.versionNo}</Link></li>)}</ol>
         {dirty ? <p>Modifiche locali non ancora salvate.</p> : <p>Tutte le modifiche sono salvate.</p>}
       </aside>
     </div>

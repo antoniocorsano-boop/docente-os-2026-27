@@ -22,7 +22,11 @@ export default async function UdaAuthoringPage({ params }: { params: Promise<{ d
     <AppShell active="design" academicYearLabel={context.academicYear?.label} workspaceName={context.workspace.name} role={context.role} contentClassName="udaAuthoringSurface">
       <header className="udaAuthoringHeader">
         <div><p>PROGETTA · UDA</p><h1>{snapshot.document.title}</h1><span>Documento di lavoro versionato · fonte originale preservata</span></div>
-        <nav><Link href={`/knowledge/${snapshot.document.sourceAssetId}`}>Apri fonte</Link><Link href="/progetta">Torna a Progetta</Link></nav>
+        <nav>
+          <Link className="primary" href={`/progetta/documenti/${encodeURIComponent(documentId)}/export?version=${snapshot.document.currentVersionNo}`}>Esporta PDF</Link>
+          <Link href={`/knowledge/${snapshot.document.sourceAssetId}`}>Apri fonte</Link>
+          <Link href="/progetta">Torna a Progetta</Link>
+        </nav>
       </header>
       <UdaAuthoringEditor snapshot={snapshot} />
     </AppShell>
