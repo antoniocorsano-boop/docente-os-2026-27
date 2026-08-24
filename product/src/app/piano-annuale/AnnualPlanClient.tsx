@@ -193,7 +193,7 @@ export default function AnnualPlanClient({
         <div className="humanTaskCompactStats" aria-label="Quadro generale"><span><strong>33</strong> blocchi per grado</span><span><strong>66</strong> ore</span><span><strong>{source.code}</strong> fonte canonica</span></div>
       )}
 
-      <details className="humanTaskSecondary" open={!selectedSection}>
+      <details className="humanTaskSecondary">
         <summary>{selectedSection ? 'Vedi e modifica tutti i 33 blocchi' : 'Sequenza didattica completa'}</summary>
         <div className="humanTaskSecondaryBody annualTableDisclosure">
           <section className="annualTableCard">
