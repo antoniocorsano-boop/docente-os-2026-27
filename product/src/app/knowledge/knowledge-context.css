@@ -11,6 +11,10 @@
 .knowledgeFilters button{border:0;border-radius:10px;background:var(--ink);color:#fff;padding:0 12px;font-weight:750}
 .assetContext{display:flex;gap:5px;flex-wrap:wrap;margin-top:2px}
 .assetContext small{border-radius:999px;background:var(--surface-soft);color:var(--ink-faint);padding:3px 7px;font-size:9px}
+.knowledgeRecentMore{margin-top:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.knowledgeRecentMore summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:center;min-height:42px;padding:0 12px;color:var(--brand);font-size:11px;font-weight:800}
+.knowledgeRecentMore summary::-webkit-details-marker{display:none}.knowledgeRecentMore summary::after{content:'+';margin-left:7px;font-size:15px}.knowledgeRecentMore[open] summary::after{content:'−'}
+.knowledgeAssetListMore{border-top:1px solid var(--line);border-radius:0 0 12px 12px}
 .fileDrop.hasSelection{border-color:#9fc9b5;background:var(--success-soft)}
 .selectedFileCard{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:10px;align-items:center;margin-top:10px;padding:12px 13px;border:1px solid #b9ddca;border-radius:12px;background:var(--success-soft)}
 .selectedFileCheck{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--success);color:#fff;font-weight:900}
@@ -19,4 +23,4 @@
 .knowledgeUploadForm>button[type="submit"]:disabled{cursor:not-allowed;opacity:.55}
 .detailSurface>.knowledgeFeedback{position:sticky;top:16px;z-index:25;box-shadow:0 10px 28px rgba(15,23,42,.12)}
 @media(max-width:900px){.contextForm{grid-template-columns:repeat(2,minmax(0,1fr))}.knowledgeFilters{grid-template-columns:1fr 1fr}.taskCreatorForm{grid-template-columns:1fr 1fr}}
-@media(max-width:719px){.contextForm,.knowledgeFilters,.taskCreatorForm{grid-template-columns:1fr}.selectedFileCard{grid-template-columns:34px minmax(0,1fr)}.selectedFileActions{grid-column:2;justify-self:start}.selectedFileAction{min-height:36px!important}.detailSurface>.knowledgeFeedback{top:78px;z-index:26;margin-left:4px;margin-right:4px;box-shadow:0 12px 30px rgba(15,23,42,.16)}}
+@media(max-width:719px){.contextForm,.knowledgeFilters,.taskCreatorForm{grid-template-columns:1fr}.selectedFileCard{grid-template-columns:34px minmax(0,1fr)}.selectedFileActions{grid-column:2;justify-self:start}.selectedFileAction{min-height:36px!important}.detailSurface>.knowledgeFeedback{top:78px;z-index:26;margin-left:4px;margin-right:4px;box-shadow:0 12px 30px rgba(15,23,42,.16)}.knowledgeRecentMore summary{min-height:46px;font-size:12px}}

@@ -16,6 +16,8 @@ export const dynamic = 'force-dynamic'
 
 type PageProps = { searchParams: Promise<{ q?: string; upload?: string; category?: string; discipline?: string; classLabel?: string }> }
 
+const RECENT_VISIBLE_COUNT = 8
+
 export default async function KnowledgePage({ searchParams }: PageProps) {
   const params = await searchParams
   const query = params.q?.trim() ?? ''
@@ -31,6 +33,19 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
     repository.listRecent(context.workspace.id, 50, filters),
     query ? repository.search(context.workspace.id, query, 30) : Promise.resolve([]),
   ])
+  const recentVisible = recent.slice(0, RECENT_VISIBLE_COUNT)
+  const recentMore = recent.slice(RECENT_VISIBLE_COUNT)
+
+  const renderRecentRows = (items: typeof recent) => items.map(({ asset, document }) => {
+    const status = knowledgeProcessingStatus(asset.processingStatus)
+    return (
+      <Link key={asset.id} className="knowledgeAssetRow" href={`/knowledge/${asset.id}`}>
+        <div className="assetIcon">{asset.assetKind === 'NOTE' ? 'N' : fileIcon(asset.mimeType)}</div>
+        <div className="assetMain"><strong>{humanizeKnowledgeTitle(document?.title ?? asset.originalName)}</strong><span>{document?.summary ?? asset.originalText?.slice(0, 150) ?? status.description}</span><div className="assetContext"><small>{contentCategoryLabel(asset.contentCategory)}</small>{asset.disciplines.map((item) => <small key={item}>{item}</small>)}{asset.classLabels.map((item) => <small key={item}>{item}</small>)}</div></div>
+        <div className="assetMeta"><span className={`processingPill ${status.tone}`}>{status.label}</span><small>{formatDate(asset.capturedAt)}</small></div>
+      </Link>
+    )
+  })
 
   return (
     <AppShell
@@ -108,18 +123,19 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
           <input name="classLabel" defaultValue={filters.classLabel ?? ''} placeholder="Classe, es. 2C" aria-label="Filtra per classe" />
           <button type="submit">Applica filtri</button>
         </form>
-        {recent.length ? <div className="knowledgeAssetList">
-          {recent.map(({ asset, document }) => {
-            const status = knowledgeProcessingStatus(asset.processingStatus)
-            return (
-              <Link key={asset.id} className="knowledgeAssetRow" href={`/knowledge/${asset.id}`}>
-                <div className="assetIcon">{asset.assetKind === 'NOTE' ? 'N' : fileIcon(asset.mimeType)}</div>
-                <div className="assetMain"><strong>{humanizeKnowledgeTitle(document?.title ?? asset.originalName)}</strong><span>{document?.summary ?? asset.originalText?.slice(0, 150) ?? status.description}</span><div className="assetContext"><small>{contentCategoryLabel(asset.contentCategory)}</small>{asset.disciplines.map((item) => <small key={item}>{item}</small>)}{asset.classLabels.map((item) => <small key={item}>{item}</small>)}</div></div>
-                <div className="assetMeta"><span className={`processingPill ${status.tone}`}>{status.label}</span><small>{formatDate(asset.capturedAt)}</small></div>
-              </Link>
-            )
-          })}
-        </div> : <p className="emptyLine">Non ci sono ancora contenuti. Aggiungi un appunto o un file per iniziare a costruire la tua Conoscenza.</p>}
+        {recent.length ? <>
+          <div className="knowledgeAssetList knowledgeAssetListPrimary">
+            {renderRecentRows(recentVisible)}
+          </div>
+          {recentMore.length ? (
+            <details className="knowledgeRecentMore">
+              <summary>Mostra altri {recentMore.length} contenuti</summary>
+              <div className="knowledgeAssetList knowledgeAssetListMore">
+                {renderRecentRows(recentMore)}
+              </div>
+            </details>
+          ) : null}
+        </> : <p className="emptyLine">Non ci sono ancora contenuti. Aggiungi un appunto o un file per iniziare a costruire la tua Conoscenza.</p>}
       </section>
     </AppShell>
   )
