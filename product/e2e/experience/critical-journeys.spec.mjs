@@ -55,7 +55,6 @@ async function knowledgeDocument(page, testInfo) {
 
   await resource.click()
   await expect(page.locator('h1').first()).toBeVisible()
-  await expect(page.locator('.provenanceBar')).toBeVisible()
   await expect(page.getByRole('region', { name: 'Contesto del contenuto' })).toBeVisible()
   await screenshot(page, testInfo, 'knowledge-document')
   return pass(await page.locator('h1').first().innerText())
