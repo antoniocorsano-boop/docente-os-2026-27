@@ -1,10 +1,13 @@
 import mammoth from 'mammoth'
 import { extractText, getDocumentProxy } from 'unpdf'
+import { VisualExtractionUnavailableError } from '@/core/application/ports/knowledge-base'
 import type { AssetTransformerPort, PdfNativeTextExtractionPort, VisualExtractionPort, VisualExtractionPage } from '@/core/application/ports/knowledge-base'
 import type { NormalizedKnowledge, TransformableAsset } from '@/core/domain/knowledge'
 
 const PDF_MIME = 'application/pdf'
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
+type PdfPageExtractionMethod = 'NATIVE_TEXT' | 'VISUAL_OCR' | 'VISUAL_UNAVAILABLE'
 
 export class InvalidPdfContentError extends Error {
   constructor() {
@@ -32,36 +35,75 @@ export class PdfKnowledgeTransformer implements AssetTransformerPort {
     let visualPages: VisualExtractionPage[] = []
     let visualProcessor: string | null = null
     let visualProcessorVersion: string | null = null
+    let visualUnavailableError: VisualExtractionUnavailableError | null = null
 
     if (missingPages.length) {
-      if (!this.visualExtraction) throw new Error('PDF requires visual extraction but no OCR provider is configured')
-      const visual = await this.visualExtraction.extract({
-        bytes: input.bytes,
-        mimeType: PDF_MIME,
-        filename: input.asset.originalName ?? 'document.pdf',
-        pageNumbers: missingPages,
-      })
-      visualPages = visual.pages
-      visualProcessor = visual.processor
-      visualProcessorVersion = visual.processorVersion
+      if (!this.visualExtraction) {
+        visualUnavailableError = new VisualExtractionUnavailableError('PDF contains pages that require visual extraction, but no visual provider is configured')
+      } else {
+        try {
+          const visual = await this.visualExtraction.extract({
+            bytes: input.bytes,
+            mimeType: PDF_MIME,
+            filename: input.asset.originalName ?? 'document.pdf',
+            pageNumbers: missingPages,
+          })
+          visualPages = visual.pages
+          visualProcessor = visual.processor
+          visualProcessorVersion = visual.processorVersion
+        } catch (error) {
+          if (error instanceof VisualExtractionUnavailableError) visualUnavailableError = error
+          else throw error
+        }
+      }
     }
 
     const visualByPage = new Map(visualPages.map((page) => [page.page, page]))
     const pages = Array.from({ length: native.totalPages }, (_, index) => {
       const page = index + 1
       const nativeText = nativePages[index] ?? ''
-      if (isUsableText(nativeText)) return { page, text: nativeText, method: 'NATIVE_TEXT' as const, confidence: 1, description: null }
+      if (isUsableText(nativeText)) {
+        return { page, text: nativeText, method: 'NATIVE_TEXT' as PdfPageExtractionMethod, confidence: 1, description: null }
+      }
       const visual = visualByPage.get(page)
+      if (visual) {
+        return {
+          page,
+          text: normalizeExtractedText(visual.text ?? ''),
+          method: 'VISUAL_OCR' as PdfPageExtractionMethod,
+          confidence: visual.confidence ?? null,
+          description: visual.description ?? null,
+        }
+      }
       return {
         page,
-        text: normalizeExtractedText(visual?.text ?? ''),
-        method: 'VISUAL_OCR' as const,
-        confidence: visual?.confidence ?? null,
-        description: visual?.description ?? null,
+        text: '',
+        method: 'VISUAL_UNAVAILABLE' as PdfPageExtractionMethod,
+        confidence: null,
+        description: null,
       }
     })
-    const merged = pages.flatMap((page) => [page.text, page.description ? `Descrizione visiva (pagina ${page.page}): ${page.description}` : '']).filter(Boolean).join('\n\n')
-    if (!merged) throw new Error('No useful text found in PDF after native and visual extraction')
+
+    const unresolvedVisualPages = pages
+      .filter((page) => page.method === 'VISUAL_UNAVAILABLE')
+      .map((page) => page.page)
+    const merged = pages
+      .flatMap((page) => [page.text, page.description ? `Descrizione visiva (pagina ${page.page}): ${page.description}` : ''])
+      .filter(Boolean)
+      .join('\n\n')
+
+    if (!merged) {
+      if (visualUnavailableError) throw visualUnavailableError
+      throw new Error('No useful text found in PDF after native and visual extraction')
+    }
+
+    const visualExtractionStatus = missingPages.length === 0
+      ? 'NOT_REQUIRED'
+      : visualUnavailableError
+        ? 'UNAVAILABLE'
+        : unresolvedVisualPages.length
+          ? 'PARTIAL'
+          : 'COMPLETE'
 
     return {
       title: cleanFileTitle(input.asset.originalName) ?? inferTitle(merged),
@@ -75,13 +117,23 @@ export class PdfKnowledgeTransformer implements AssetTransformerPort {
         extraction: {
           nativePageCount: pages.filter((page) => page.method === 'NATIVE_TEXT').length,
           visualPageCount: pages.filter((page) => page.method === 'VISUAL_OCR').length,
+          unresolvedVisualPages,
+          visualExtractionStatus,
           visualProcessor,
           visualProcessorVersion,
         },
       },
       units: pages.flatMap((page) => pageUnits(page)),
-      processor: missingPages.length ? `${native.processor}+visual-ocr` : native.processor,
-      processorVersion: missingPages.length ? `${native.processorVersion}+${visualProcessorVersion ?? 'unknown'}` : native.processorVersion,
+      processor: visualUnavailableError
+        ? `${native.processor}+partial-native`
+        : missingPages.length
+          ? `${native.processor}+visual-ocr`
+          : native.processor,
+      processorVersion: visualUnavailableError
+        ? `${native.processorVersion}+visual-unavailable`
+        : missingPages.length
+          ? `${native.processorVersion}+${visualProcessorVersion ?? 'unknown'}`
+          : native.processorVersion,
     }
   }
 }
@@ -222,7 +274,7 @@ function isUsableText(text: string) {
   return alphanumeric >= 20
 }
 
-function pageUnits(page: { page: number; text: string; method: 'NATIVE_TEXT' | 'VISUAL_OCR'; confidence: number | null; description: string | null }): NormalizedKnowledge['units'] {
+function pageUnits(page: { page: number; text: string; method: PdfPageExtractionMethod; confidence: number | null; description: string | null }): NormalizedKnowledge['units'] {
   const textUnits = chunkText(page.text).map((content, chunkIndex) => ({
     type: 'CHUNK' as const,
     title: chunkIndex === 0 ? `Pagina ${page.page}` : null,
@@ -232,7 +284,7 @@ function pageUnits(page: { page: number; text: string; method: 'NATIVE_TEXT' | '
     structuredData: {
       extractionMethod: page.method,
       extractionContentType: page.method === 'NATIVE_TEXT' ? 'NATIVE_TEXT' : 'OCR_TEXT',
-      requiresHumanReview: page.method === 'VISUAL_OCR',
+      requiresHumanReview: page.method !== 'NATIVE_TEXT',
     },
   }))
   if (!page.description) return textUnits
