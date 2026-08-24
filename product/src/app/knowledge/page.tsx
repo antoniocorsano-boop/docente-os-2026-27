@@ -9,8 +9,7 @@ import {
   humanizeKnowledgeTitle,
   knowledgeProcessingStatus,
 } from '@/core/presentation/product-language'
-import { captureKnowledgeNote } from './actions'
-import { KnowledgeFileUploader } from './KnowledgeFileUploader'
+import { KnowledgeCaptureModes } from './KnowledgeCaptureModes'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,23 +67,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
       <div className="knowledgeGrid">
         <section className="knowledgePanel capturePanel">
           <div className="knowledgePanelHeading"><div><span className="panelEyebrow">AGGIUNGI</span><h2>Porta un contenuto nella Conoscenza</h2></div><span className="statusPill">Originale preservato</span></div>
-
-          <div className="captureModeBlock">
-            <div className="captureModeHeading"><strong>Incolla un testo</strong><span>Pronto per la ricerca in pochi secondi</span></div>
-            <form action={captureKnowledgeNote} className="knowledgeCaptureForm">
-              <label><span>Titolo, se vuoi</span><input name="title" maxLength={180} placeholder="Es. Collegio docenti — appunti" /></label>
-              <label><span>Contenuto</span><textarea name="text" rows={7} required placeholder="Incolla o scrivi qui. Conserverò il testo originale e lo organizzerò nella Conoscenza…" /></label>
-              <div className="pipelineHint"><span>Originale</span><b>→</b><span>Contenuto leggibile</span><b>→</b><span>Informazioni utili</span><b>→</b><span>Ricerca</span></div>
-              <button type="submit">Salva e organizza</button>
-            </form>
-          </div>
-
-          <div className="captureDivider"><span>oppure</span></div>
-
-          <div className="captureModeBlock">
-            <div className="captureModeHeading"><strong>Carica un file</strong><span>Privato · massimo 20 MB</span></div>
-            <KnowledgeFileUploader />
-          </div>
+          <KnowledgeCaptureModes />
         </section>
 
         <section className="knowledgePanel searchPanel">

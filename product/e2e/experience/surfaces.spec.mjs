@@ -25,6 +25,41 @@ test.describe('Human + Visual Acceptance — superfici principali', () => {
         expect(await primaryRows.count(), 'Conoscenza should expose at most eight recent items before disclosure').toBeLessThanOrEqual(8)
         const more = recent.locator('details.knowledgeRecentMore')
         if (await more.count()) await expect(more).not.toHaveAttribute('open', '')
+
+        const textPanel = page.locator('[data-capture-mode-panel="text"]')
+        const filePanel = page.locator('[data-capture-mode-panel="file"]')
+        const textMode = page.getByRole('button', { name: /Incolla un testo/ })
+        const fileMode = page.getByRole('button', { name: /Carica un file/ })
+
+        if (testInfo.project.name.startsWith('mobile')) {
+          await expect(textMode).toBeVisible()
+          await expect(fileMode).toBeVisible()
+          await expect(textMode).toHaveAttribute('aria-pressed', 'true')
+          await expect(fileMode).toHaveAttribute('aria-pressed', 'false')
+          await expect(textPanel).toBeVisible()
+          await expect(filePanel).not.toBeVisible()
+          await page.screenshot({
+            path: await screenshotPath(testInfo.project.name, 'knowledge-capture-text'),
+            fullPage: true,
+          })
+
+          await fileMode.click()
+          await expect(textPanel).not.toBeVisible()
+          await expect(filePanel).toBeVisible()
+          await expect(fileMode).toHaveAttribute('aria-pressed', 'true')
+          await page.screenshot({
+            path: await screenshotPath(testInfo.project.name, 'knowledge-capture-file'),
+            fullPage: true,
+          })
+
+          await textMode.click()
+          await expect(textPanel).toBeVisible()
+          await expect(filePanel).not.toBeVisible()
+        } else {
+          await expect(page.locator('.knowledgeCaptureModeSwitch')).not.toBeVisible()
+          await expect(textPanel).toBeVisible()
+          await expect(filePanel).toBeVisible()
+        }
       }
 
       if (surface.id === 'settings' && testInfo.project.name.startsWith('mobile')) {
