@@ -1,0 +1,191 @@
+name: P3 Workspace Export Gate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - 'product/e2e/p3-workspace-export.spec.mjs'
+      - 'product/src/app/api/account/export-manifest/**'
+      - 'product/supabase/migrations/0033_workspace_export_manifest.sql'
+      - '.github/workflows/p3-workspace-export-e2e.yml'
+  push:
+    branches:
+      - develop
+    paths:
+      - 'product/e2e/p3-workspace-export.spec.mjs'
+      - 'product/src/app/api/account/export-manifest/**'
+      - 'product/supabase/migrations/0033_workspace_export_manifest.sql'
+      - '.github/workflows/p3-workspace-export-e2e.yml'
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+
+jobs:
+  p3-export-application:
+    if: github.event_name == 'pull_request'
+    name: p3-export-application
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      E2E_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+    steps:
+      - name: Check E2E credential configuration
+        shell: bash
+        run: |
+          test -n "${E2E_PASSWORD:-}" || { echo 'DOCENTE_OS_E2E_PASSWORD is required.' >&2; exit 1; }
+
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install product dependencies
+        working-directory: product
+        run: npm install --no-audit --no-fund
+
+      - name: Install Playwright runner
+        working-directory: product
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Build tested application
+        working-directory: product
+        run: npm run build
+
+      - name: Start tested application
+        working-directory: product
+        shell: bash
+        run: |
+          npm start > /tmp/docente-os-p3-export.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 5 "$E2E_BASE_URL/login" >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/docente-os-p3-export.log >&2 || true
+          exit 1
+
+      - name: Install Chromium
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run P3 workspace export gate
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/p3-workspace-export.spec.mjs
+
+      - name: Publish evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p3-workspace-export-${{ github.run_id }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            product/playwright-report/
+            product/test-results/
+            /tmp/docente-os-p3-export.log
+
+      - name: Publish application status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'p3-export/application',
+              description: ok ? 'Export workspace completo e read-only' : 'Gate export workspace non superato',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+
+  p3-export-runtime:
+    if: github.event_name == 'push'
+    name: p3-export-runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
+    steps:
+      - name: Check E2E credential configuration
+        shell: bash
+        run: |
+          test -n "${E2E_PASSWORD:-}" || { echo 'DOCENTE_OS_E2E_PASSWORD is required.' >&2; exit 1; }
+
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Wait for equivalent Beta product state
+        shell: bash
+        run: |
+          expected="$GITHUB_SHA"
+          for attempt in $(seq 1 40); do
+            deployed="$(curl -fsS --max-time 15 "$E2E_BASE_URL/api/build-info" | node -pe "JSON.parse(require('fs').readFileSync(0,'utf8')).commit || ''" 2>/dev/null || true)"
+            if [ "$deployed" = "$expected" ]; then exit 0; fi
+            if [ -n "$deployed" ] && git cat-file -e "$deployed^{commit}" 2>/dev/null && git diff --quiet "$deployed" "$expected" -- product; then exit 0; fi
+            sleep 15
+          done
+          exit 1
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright runner
+        working-directory: product
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Install Chromium
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run P3 workspace export gate on Beta
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/p3-workspace-export.spec.mjs
+
+      - name: Publish runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p3-workspace-export-runtime-${{ github.run_id }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            product/playwright-report/
+            product/test-results/
+
+      - name: Publish runtime status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'p3-export/render-beta',
+              description: ok ? 'Export workspace Beta verificato' : 'Export workspace Beta non superato',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
