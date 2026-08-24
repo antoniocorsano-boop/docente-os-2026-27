@@ -2,19 +2,34 @@ name: K1 Knowledge Upload Gate
 
 on:
   workflow_dispatch:
-  push:
+  pull_request:
     branches:
       - develop
-    # Render watches rootDir=product, so workflow-only commits do not deploy.
-    # Keep this gate tied only to changes that can alter the deployed product.
     paths:
       - 'product/e2e/k1-knowledge-upload.spec.mjs'
+      - 'product/e2e/support/knowledge-fixture-hygiene.mjs'
       - 'product/playwright.config.mjs'
       - 'product/src/app/knowledge/**'
       - 'product/src/app/api/knowledge/**'
       - 'product/src/core/application/knowledge-ingestion-service.ts'
       - 'product/src/core/infrastructure/knowledge/**'
       - 'product/src/core/infrastructure/supabase/supabase-storage-knowledge-content-port.ts'
+      - 'product/supabase/migrations/**'
+      - '.github/workflows/k1-knowledge-e2e.yml'
+  push:
+    branches:
+      - develop
+    paths:
+      - 'product/e2e/k1-knowledge-upload.spec.mjs'
+      - 'product/e2e/support/knowledge-fixture-hygiene.mjs'
+      - 'product/playwright.config.mjs'
+      - 'product/src/app/knowledge/**'
+      - 'product/src/app/api/knowledge/**'
+      - 'product/src/core/application/knowledge-ingestion-service.ts'
+      - 'product/src/core/infrastructure/knowledge/**'
+      - 'product/src/core/infrastructure/supabase/supabase-storage-knowledge-content-port.ts'
+      - 'product/supabase/migrations/**'
+      - '.github/workflows/k1-knowledge-e2e.yml'
 
 permissions:
   contents: read
@@ -22,13 +37,90 @@ permissions:
 env:
   E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
   E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
-  E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
 
 jobs:
+  k1-application-acceptance:
+    if: github.event_name == 'pull_request'
+    name: k1-application-acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      E2E_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+
+    steps:
+      - name: Check E2E credential configuration
+        shell: bash
+        run: |
+          if [ -z "${E2E_PASSWORD:-}" ]; then
+            echo 'Repository secret DOCENTE_OS_E2E_PASSWORD is required.' >&2
+            exit 1
+          fi
+
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install product dependencies
+        working-directory: product
+        run: npm install --no-audit --no-fund
+
+      - name: Install Playwright runner without changing the lockfile
+        working-directory: product
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Build tested application
+        working-directory: product
+        run: npm run build
+
+      - name: Start tested application
+        working-directory: product
+        shell: bash
+        run: |
+          npm start > /tmp/docente-os-k1-server.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 5 "$E2E_BASE_URL/login" >/dev/null; then
+              echo 'Local DOCENTE OS runtime is ready.'
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/docente-os-k1-server.log >&2 || true
+          exit 1
+
+      - name: Install Chromium
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run K1 Knowledge acceptance gate
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/k1-knowledge-upload.spec.mjs
+
+      - name: Publish K1 application evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k1-application-evidence-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            product/playwright-report/
+            product/test-results/
+            /tmp/docente-os-k1-server.log
+
   k1-render-acceptance:
+    if: github.event_name != 'pull_request'
     name: k1-render-acceptance
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    env:
+      E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
 
     steps:
       - name: Check E2E credential configuration
