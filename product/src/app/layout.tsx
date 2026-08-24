@@ -10,6 +10,7 @@ import './planner/planner-enhancements.css'
 import './knowledge/knowledge.css'
 import './knowledge/knowledge-provenance.css'
 import './knowledge/knowledge-focus.css'
+import './knowledge/knowledge-capture-modes.css'
 import './communication.css'
 
 export const metadata: Metadata = {
