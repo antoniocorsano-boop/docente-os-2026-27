@@ -255,7 +255,11 @@ function nextStepResponse(context: KnowledgeAssistantContext) {
   if (context.missingInformation.length) {
     proposal = [`Completa prima “${context.missingInformation[0]}”. Questo riduce il rischio di usare il contenuto nel contesto sbagliato.`]
   } else if (proposalCount > 0) {
-    proposal = [`Rivedi le ${proposalCount} proposte individuate nel contenuto e decidi quali meritano di diventare attività operative.`]
+    proposal = [
+      `Rivedi le ${proposalCount} proposte individuate e scegli quale è davvero pertinente a ${professionalContextLabel(context)}.`,
+      ...context.knowledge.contentHighlights.slice(0, 2).map((item) => `• ${item}`),
+      'Dopo la scelta posso preparare una anteprima dell’attività da inserire nel Planner, senza salvarla.',
+    ]
   } else if (context.knowledge.hasOrganizedDocument) {
     proposal = [
       `Per ${professionalContextLabel(context)}, il passo più utile è scegliere quale nucleo del documento vuoi trasformare in lavoro didattico.`,
