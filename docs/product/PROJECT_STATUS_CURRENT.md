@@ -10,7 +10,7 @@ Questo documento è la sintesi corrente autorevole dello stato del sistema. I ch
 
 DOCENTE OS è una **Beta operativa avanzata**. Non è più un prototipo/MVP: possiede persistenza reale, autenticazione, RLS, domini separati, flussi didattici persistenti, prima scrittura assistita controllata, authoring UDA versionato, export PDF professionale, recovery account esplicito, export/manifest completo del workspace, dependency graph riproducibile, integrità DB↔Storage misurata, baseline performance autenticata e runtime Beta verificato con gate end-to-end e Human + Visual Acceptance.
 
-Il sistema non è ancora classificabile come produzione definitiva perché restano aperti il restore rehearsal isolato, la strategia di copia/restore off-site degli oggetti Storage, la prova load/scale su dataset significativamente maggiori, incident escalation, il contratto Beta → produzione e la prova longitudinale durante un anno scolastico reale.
+Il sistema non è ancora classificabile come produzione definitiva perché restano aperti il restore rehearsal isolato, la strategia di copia/restore off-site degli oggetti Storage, la prova load/scale su dataset significativamente maggiori, incident escalation, la decisione sulla topologia dati di produzione e la prova longitudinale durante un anno scolastico reale.
 
 ## 2. Runtime canonico
 
@@ -22,6 +22,7 @@ Il sistema non è ancora classificabile come produzione definitiva perché resta
 - `rootDir`: `product`;
 - auto-deploy: commit;
 - dipendenze prodotto congelate da `product/package-lock.json` e installate con `npm ci` nei gate canonici;
+- Blueprint Render allineato a `npm ci --no-audit --no-fund && npm run build` dalla precondizione P7;
 - Vercel non è un gate canonico; le failure dovute a quota/build-rate-limit non descrivono lo stato applicativo;
 - Netlify è legacy rispetto all'attuale Beta Render.
 
@@ -139,13 +140,14 @@ Gate permanenti:
 - `ops-health/render-beta` — probe periodico di Render, login, Supabase Auth, DB/RLS e coerenza exact/product-equivalent;
 - `p3-export/application` / `p3-export/render-beta` — export workspace owner-only e coerenza inventario;
 - `p5-storage-integrity/application` / `p5-storage-integrity/render-beta` — riconciliazione DB↔Storage e fixture hygiene;
-- `p6-performance/application` / `p6-performance/render-beta` — baseline prestazionale autenticata, warm-up separato dal cold start e receipt median/p95/max.
+- `p6-performance/application` / `p6-performance/render-beta` — baseline prestazionale autenticata, warm-up separato dal cold start e receipt median/p95/max;
+- `production-promotion/contract` — vincoli machine-readable di promozione, rollback e decisione umana per il futuro canale produzione.
 
 Le failure Vercel per quota non sono failure del canale Beta Render.
 
 ## 8. Operational hardening
 
-Stato: **IN PROGRESS — P0 SECURITY PASS / P1 MONITORING PASS / P2 ACCOUNT RECOVERY PASS / P3 DATA LIFECYCLE + EXPORT PASS / P4 DEPENDENCY SECURITY PASS / P5 STORAGE INTEGRITY PASS / P6-A PERFORMANCE BASELINE PASS / P6-B PLANNER QUERY + RE-BENCHMARK PASS**.
+Stato: **IN PROGRESS — P0 SECURITY PASS / P1 MONITORING PASS / P2 ACCOUNT RECOVERY PASS / P3 DATA LIFECYCLE + EXPORT PASS / P4 DEPENDENCY SECURITY PASS / P5 STORAGE INTEGRITY PASS / P6-A PERFORMANCE BASELINE PASS / P6-B PLANNER QUERY + RE-BENCHMARK PASS / P7-A PRODUCTION PROMOTION CONTRACT PASS**.
 
 ### P0 — Security baseline: PASS
 
@@ -223,15 +225,31 @@ Stato: **IN PROGRESS — P0 SECURITY PASS / P1 MONITORING PASS / P2 ACCOUNT RECO
 - il p95 aggregato migliora rispetto a **1.206 ms**, mentre mediana aggregata e massimo oscillano in senso opposto: la variabilità del runtime Render Free non consente di attribuire causalmente le differenze complessive alla sola query Planner;
 - l'evidenza robusta di P6-B è quindi: **trasferimento storico inutile eliminato, Planner median leggermente migliore e budget prestazionali ancora rispettati**, non una dichiarazione di accelerazione sistemica.
 
+### P7-A — Contratto Beta → produzione: PASS / CONTRACT READY
+
+- precondizione infrastrutturale: `render.yaml` allineato al lockfile canonico con `npm ci`; validazione Render + Product CI PASS;
+- contratto machine-readable in `ops/production-promotion-contract.json`;
+- gate permanente `production-promotion/contract`: **PASS**;
+- candidato di rilascio identificato da SHA immutabile proveniente da `develop`;
+- decisione umana finale obbligatoria; promozione automatica disabilitata;
+- produzione non può diventare `ACTIVE` mentre `productionDataTopologyState=UNDECIDED`;
+- segreti production-scoped obbligatori;
+- migrazioni distruttive non ammesse nel percorso ordinario;
+- rollback applicativo soltanto verso SHA precedentemente certificato;
+- rollback DB automatico disabilitato finché il restore rehearsal non è provato;
+- rollback Storage distruttivo vietato senza backup verificato;
+- release receipt minima definita;
+- stato intenzionale corrente: **PRODUCTION NOT CREATED / DATA TOPOLOGY UNDECIDED**.
+
 ### Residui hardening aperti
 
+- decisione P7-B sulla topologia dati e sul perimetro del primo rilascio produzione;
 - load/scale isolato con dataset significativamente maggiori, senza contaminare il Beta canonico;
 - restore rehearsal reale su ambiente isolato quando il piano lo consente;
 - replica/copia off-site e procedura di restore degli oggetti Storage;
 - leaked-password protection quando il piano Supabase lo consente;
 - alert escalation/incident response oltre alla failure del monitor GitHub;
-- policy retention e, solo dopo evidenza sufficiente, eventuale cancellazione account controllata;
-- canale produzione definitivo e contratto Beta → produzione.
+- policy retention e, solo dopo evidenza sufficiente, eventuale cancellazione account controllata.
 
 ## 9. Maturità corrente
 
@@ -247,7 +265,8 @@ Stato: **IN PROGRESS — P0 SECURITY PASS / P1 MONITORING PASS / P2 ACCOUNT RECO
 - data lifecycle/export: **Beta-proven**, distruzione ancora intenzionalmente non abilitata;
 - azioni AI persistenti: **prima capability minima controllata e reversibile**;
 - performance operativa corrente: **baseline e re-benchmark Beta-proven entro budget**, ma load/scale non ancora provati;
-- operations/produzione: **security, monitoring, recovery applicativo, export dati, dependency security, Storage integrity e performance baseline attivi; restore, off-site backup, scale/load e promozione produzione ancora incompleti**.
+- promotion governance: **contratto Beta → produzione formalizzato e sottoposto a gate, ambiente produzione non ancora creato**;
+- operations/produzione: **security, monitoring, recovery applicativo, export dati, dependency security, Storage integrity, performance baseline e promotion contract attivi; restore, off-site backup, scale/load e attivazione produzione ancora incompleti**.
 
 Le misure P6 sul piano Render Free sono snapshot operative ripetibili, non una prova causale isolata di micro-ottimizzazioni; i confronti prima/dopo devono essere interpretati insieme alla variabilità del runtime.
 
@@ -255,8 +274,8 @@ Le percentuali di maturità restano indicative e non sostituiscono i gate.
 
 ## 10. Rischi e residui prioritari
 
-1. **Load/scale isolato** — provare volumi significativamente maggiori in un ambiente che non contamini il Beta canonico.
-2. **Beta → produzione** — definire canale definitivo, criteri di promozione e rollback.
+1. **P7-B data topology + release scope** — decidere esplicitamente separazione/condivisione dei dati e perimetro del primo rilascio prima di creare produzione.
+2. **Load/scale isolato** — provare volumi significativamente maggiori in un ambiente che non contamini il Beta canonico.
 3. **Restore + off-site Storage** — provare realmente DB/Auth e oggetti su ambiente isolato e definire una copia indipendente degli originali.
 4. **Incident response** — escalation oltre ai monitor GitHub e ricevuta operativa degli incidenti.
 5. **Password/platform hardening** — leaked-password protection quando disponibile.
@@ -267,8 +286,8 @@ Le percentuali di maturità restano indicative e non sostituiscono i gate.
 
 Il ciclo corrente è:
 
-1. definire una prova **load/scale isolata** con dataset significativamente maggiori, senza contaminare il Beta canonico;
-2. definire il contratto **Beta → produzione** con criteri di promozione e rollback;
+1. **P7-B** — decidere topologia dati e perimetro del primo rilascio, senza creare ancora produzione se restano precondizioni non soddisfatte;
+2. definire una prova **load/scale isolata** con dataset significativamente maggiori, senza contaminare il Beta canonico;
 3. definire la strategia **off-site Storage** senza confonderla con l'integrità già certificata;
 4. eseguire il restore rehearsal quando sarà disponibile un ambiente Supabase isolato;
 5. definire retention/cancellazione soltanto dopo export e restore affidabili;
