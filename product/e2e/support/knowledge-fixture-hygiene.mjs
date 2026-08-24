@@ -22,7 +22,7 @@ export async function deleteKnowledgeAsset(page, assetId, { tolerateMissing = tr
 
 export async function deleteAllKnowledgeFixtures(page, titleFragment) {
   const ids = await knowledgeFixtureAssetIds(page, titleFragment)
-  for (const id of ids) await deleteKnowledgeAsset(page, id)
+  for (const id of ids) await deleteKnowledgeAsset(page, id, { tolerateMissing: false })
   return ids.length
 }
 
