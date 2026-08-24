@@ -36,6 +36,7 @@ export type KnowledgeAssistantContext = AssistantContext & {
     statusLabel: string
     summary?: string
     excerpt?: string
+    contentHighlights: string[]
     contextReviewed: boolean
     hasOrganizedDocument: boolean
     actionProposalCount: number
@@ -57,6 +58,7 @@ export type KnowledgeAssistantContextInput = {
   statusLabel: string
   summary?: string | null
   excerpt?: string | null
+  contentHighlights?: string[]
   contextReviewed: boolean
   hasOrganizedDocument: boolean
   actionProposalCount: number
@@ -120,6 +122,7 @@ export function buildKnowledgeAssistantContext(input: KnowledgeAssistantContextI
       statusLabel: input.statusLabel,
       summary: cleanOptionalText(input.summary, 900),
       excerpt: cleanOptionalText(input.excerpt, 700),
+      contentHighlights: cleanHighlights(input.contentHighlights),
       contextReviewed: input.contextReviewed,
       hasOrganizedDocument: input.hasOrganizedDocument,
       actionProposalCount: Math.max(0, input.actionProposalCount),
@@ -141,16 +144,7 @@ export function respondToKnowledgeAssistant(context: KnowledgeAssistantContext, 
   if (isWriteRequest(normalized)) {
     return {
       actionKind: 'PROPOSE',
-      text: [
-        '**Ho trovato**',
-        'La richiesta implica una modifica. In questa fase l’assistente non esegue scritture e non cambia documenti, attività operative, Piano annuale o fonti esterne.',
-        '',
-        '**Ti propongo**',
-        manualPath(context, normalized),
-        '',
-        '**Se scegli questa opzione**',
-        'Aprirai il percorso manuale già disponibile nella pagina; la modifica avverrà solo attraverso i controlli applicativi e la tua conferma.',
-      ].join('\n'),
+      text: writePreviewResponse(context, normalized),
     }
   }
 
@@ -187,7 +181,7 @@ export function respondToKnowledgeAssistant(context: KnowledgeAssistantContext, 
         '**Ti propongo**',
         context.missingInformation.length
           ? 'Parti dal primo elemento mancante e usa la sezione “Contesto professionale” della pagina.'
-          : 'Puoi concentrarti sul contenuto e sulle eventuali proposte operative.',
+          : contextualReviewSuggestion(context),
         '',
         '**Se scegli questa opzione**',
         'La verifica resta manuale; l’assistente non cambia classificazioni o stati.',
@@ -217,6 +211,7 @@ export function respondToKnowledgeAssistant(context: KnowledgeAssistantContext, 
       context.knowledge.summary || context.knowledge.excerpt
         ? `Sintesi disponibile: ${context.knowledge.summary ?? context.knowledge.excerpt}`
         : 'Non è disponibile una sintesi testuale sufficiente nel contesto minimizzato dell’assistente.',
+      ...evidenceBlock(context, 3),
       '',
       '**Ti propongo**',
       'Puoi chiedermi cosa contiene, cosa manca, quali azioni o scadenze sono state individuate oppure qual è il prossimo passo utile.',
@@ -234,16 +229,18 @@ function summaryResponse(context: KnowledgeAssistantContext) {
   ].filter(Boolean)
 
   return [
-    '**Ho trovato**',
-    `${context.knowledge.title} è classificato come ${context.knowledge.category} e proviene da ${context.knowledge.sourceLabel}. Stato: ${context.knowledge.statusLabel}.`,
+    '**In sintesi**',
     context.knowledge.summary || context.knowledge.excerpt
       ? context.knowledge.summary ?? context.knowledge.excerpt ?? ''
-      : 'Nel contesto minimizzato non c’è ancora una sintesi testuale disponibile.',
-    references.length ? `Riferimenti professionali: ${references.join(' · ')}.` : 'Non risultano ancora riferimenti completi a disciplina o classe.',
+      : `${context.knowledge.title} è classificato come ${context.knowledge.category} e proviene da ${context.knowledge.sourceLabel}.`,
+    ...evidenceBlock(context, 6),
+    '',
+    '**Contesto professionale**',
+    references.length ? references.join(' · ') : 'Non risultano ancora riferimenti completi a disciplina o classe.',
     '',
     '**Ti propongo**',
     context.knowledge.hasOrganizedDocument
-      ? 'Usa la versione organizzata per orientarti e torna alla fonte originale quando devi verificare un passaggio puntuale.'
+      ? 'Usa questi nuclei per decidere che cosa è davvero pertinente al tuo lavoro; torna alla fonte originale quando devi verificare formulazioni, esempi o passaggi puntuali.'
       : 'Consulta la fonte originale: la versione organizzata non è ancora disponibile.',
     '',
     '**Se scegli questa opzione**',
@@ -253,33 +250,105 @@ function summaryResponse(context: KnowledgeAssistantContext) {
 
 function nextStepResponse(context: KnowledgeAssistantContext) {
   const proposalCount = context.knowledge.actionProposalCount + context.knowledge.deadlineProposalCount
-  let proposal: string
+  let proposal: string[]
 
   if (context.missingInformation.length) {
-    proposal = `Completa prima “${context.missingInformation[0]}”. Questo riduce il rischio di usare il contenuto nel contesto sbagliato.`
+    proposal = [`Completa prima “${context.missingInformation[0]}”. Questo riduce il rischio di usare il contenuto nel contesto sbagliato.`]
   } else if (proposalCount > 0) {
-    proposal = `Rivedi le ${proposalCount} proposte individuate nel contenuto e decidi quali meritano di diventare attività operative.`
+    proposal = [`Rivedi le ${proposalCount} proposte individuate nel contenuto e decidi quali meritano di diventare attività operative.`]
   } else if (context.knowledge.hasOrganizedDocument) {
-    proposal = 'Leggi la versione organizzata e collegala al lavoro didattico solo se è pertinente alla classe o disciplina corrente.'
+    proposal = [
+      `Per ${professionalContextLabel(context)}, il passo più utile è scegliere quale nucleo del documento vuoi trasformare in lavoro didattico.`,
+      ...context.knowledge.contentHighlights.slice(0, 3).map((item) => `• ${item}`),
+      'Dopo la scelta posso preparare una anteprima dell’attività da inserire nel Planner, senza salvarla.',
+    ]
   } else {
-    proposal = 'Consulta la fonte originale e, se serve, usa manualmente “Aggiorna analisi”.'
+    proposal = ['Consulta la fonte originale e, se serve, usa manualmente “Aggiorna analisi”.']
   }
 
   return [
     '**Ho trovato**',
-    `Il contenuto è nello stato “${context.knowledge.statusLabel}”. ${context.missingInformation.length ? `Restano ${context.missingInformation.length} elementi da controllare.` : 'Il contesto minimo non presenta lacune evidenti.'}`,
+    `Il contenuto è nello stato “${context.knowledge.statusLabel}”. ${context.missingInformation.length ? `Restano ${context.missingInformation.length} elementi da controllare.` : `Il contesto risulta completo per ${professionalContextLabel(context)}.`}`,
     '',
     '**Ti propongo**',
-    proposal,
+    ...proposal,
     '',
     '**Se scegli questa opzione**',
-    'L’assistente non esegue l’azione: ti indica soltanto il percorso. Le eventuali modifiche restano sotto il tuo controllo nella pagina.',
+    'L’assistente non esegue l’azione: prepara soltanto il percorso o l’anteprima. Le eventuali modifiche restano sotto il tuo controllo nella pagina.',
   ].join('\n')
+}
+
+function writePreviewResponse(context: KnowledgeAssistantContext, normalizedPrompt: string) {
+  if (containsAny(normalizedPrompt, ['planner', 'attività', 'task', 'scadenza'])) {
+    const proposedTitle = `Esamina e adatta per la classe: ${shorten(context.knowledge.title, 92)}`
+    return [
+      '**Ho trovato**',
+      'La richiesta implica una modifica. In X3 l’assistente non esegue scritture e non cambia documenti, attività operative, Piano annuale o fonti esterne.',
+      '',
+      '**Anteprima proposta — nessuna scrittura eseguita**',
+      `Titolo: ${proposedTitle}`,
+      'Destinazione: Planner → Oggi',
+      `Fonte: ${context.knowledge.title}`,
+      `Contesto: ${professionalContextLabel(context)}`,
+      'Data: da scegliere',
+      'Priorità: Normale, da confermare',
+      ...previewEvidence(context),
+      '',
+      '**Se scegli questa opzione**',
+      `${manualPath(context, normalizedPrompt)} Prima della conferma potrai ancora modificare titolo, data e priorità. Non modifica il Piano annuale e non crea un evento nel Calendario.`,
+    ].join('\n')
+  }
+
+  return [
+    '**Ho trovato**',
+    'La richiesta implica una modifica. In questa fase l’assistente non esegue scritture e non cambia documenti, attività operative, Piano annuale o fonti esterne.',
+    '',
+    '**Ti propongo**',
+    manualPath(context, normalizedPrompt),
+    '',
+    '**Se scegli questa opzione**',
+    'Aprirai il percorso manuale già disponibile nella pagina; la modifica avverrà solo attraverso i controlli applicativi e la tua conferma.',
+  ].join('\n')
+}
+
+function contextualReviewSuggestion(context: KnowledgeAssistantContext) {
+  if (context.knowledge.contentHighlights.length === 0) {
+    return 'Puoi concentrarti sul contenuto e sulle eventuali proposte operative.'
+  }
+  return `Il contesto è completo: verifica ora se i nuclei emersi dal documento sono pertinenti a ${professionalContextLabel(context)}.`
+}
+
+function evidenceBlock(context: KnowledgeAssistantContext, limit: number) {
+  const highlights = context.knowledge.contentHighlights.slice(0, limit)
+  if (highlights.length === 0) return []
+  return [
+    '',
+    '**Punti principali rilevati nel contenuto**',
+    ...highlights.map((item) => `• ${item}`),
+  ]
+}
+
+function previewEvidence(context: KnowledgeAssistantContext) {
+  const highlights = context.knowledge.contentHighlights.slice(0, 2)
+  if (highlights.length === 0) return []
+  return [
+    'Focus da verificare prima del salvataggio:',
+    ...highlights.map((item) => `• ${item}`),
+  ]
+}
+
+function professionalContextLabel(context: KnowledgeAssistantContext) {
+  const disciplines = context.knowledge.disciplines.join(', ')
+  const classes = context.knowledge.classLabels.join(', ')
+  if (disciplines && classes) return `${disciplines} · ${classes}`
+  if (disciplines) return disciplines
+  if (classes) return classes
+  return 'il contesto professionale corrente'
 }
 
 function manualPath(context: KnowledgeAssistantContext, normalizedPrompt: string) {
   if (containsAny(normalizedPrompt, ['planner', 'attività', 'task', 'scadenza'])) {
-    return 'Usa “Crea attività” nella pagina del documento dopo aver controllato titolo, data e priorità. L’attività comparirà in Oggi; non modifica il Piano annuale e non crea un evento nel Calendario.'
+    return 'Usa “Crea attività” nella pagina del documento solo dopo aver controllato l’anteprima.'
   }
   if (containsAny(normalizedPrompt, ['contesto', 'classe', 'disciplina', 'classific'])) {
     return 'Usa “Contesto professionale” per correggere classe, disciplina o stato del controllo.'
@@ -325,4 +394,25 @@ function cleanOptionalText(value: string | null | undefined, maxLength: number) 
   const cleaned = value?.replace(/\s+/g, ' ').trim()
   if (!cleaned) return undefined
   return cleaned.slice(0, maxLength)
+}
+
+function cleanHighlights(values: string[] | undefined) {
+  const seen = new Set<string>()
+  const cleaned: string[] = []
+  for (const value of values ?? []) {
+    const item = cleanOptionalText(value, 220)
+    if (!item) continue
+    const key = item.toLocaleLowerCase('it-IT')
+    if (seen.has(key)) continue
+    seen.add(key)
+    cleaned.push(item)
+    if (cleaned.length === 10) break
+  }
+  return cleaned
+}
+
+function shorten(value: string, maxLength: number) {
+  const cleaned = value.replace(/\s+/g, ' ').trim()
+  if (cleaned.length <= maxLength) return cleaned
+  return `${cleaned.slice(0, Math.max(1, maxLength - 1)).trimEnd()}…`
 }
