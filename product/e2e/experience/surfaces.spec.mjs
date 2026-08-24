@@ -19,6 +19,28 @@ test.describe('Human + Visual Acceptance — superfici principali', () => {
       await expect(heading, `${surface.id} must expose one visible primary heading`).toBeVisible()
       await page.waitForTimeout(600)
 
+      if (surface.id === 'knowledge') {
+        const recent = page.locator('.recentKnowledge')
+        const primaryRows = recent.locator('.knowledgeAssetListPrimary > .knowledgeAssetRow')
+        expect(await primaryRows.count(), 'Conoscenza should expose at most eight recent items before disclosure').toBeLessThanOrEqual(8)
+        const more = recent.locator('details.knowledgeRecentMore')
+        if (await more.count()) await expect(more).not.toHaveAttribute('open', '')
+      }
+
+      if (surface.id === 'settings' && testInfo.project.name.startsWith('mobile')) {
+        await expect(page.locator('.settingsCard form:visible')).toHaveCount(0)
+        await page.screenshot({
+          path: await screenshotPath(testInfo.project.name, 'settings-compact'),
+          fullPage: true,
+        })
+        const nextStep = page.locator('.settingsGuidance a[href^="#"]')
+        if (await nextStep.count()) {
+          await nextStep.click()
+          await expect(page.locator('.settingsCard:target')).toBeVisible()
+          expect(await page.locator('.settingsCard:target form:visible').count(), 'Selected settings area should expose its controls').toBeGreaterThan(0)
+        }
+      }
+
       const observation = await observer.capture({
         surface: surface.id,
         label: surface.label,
