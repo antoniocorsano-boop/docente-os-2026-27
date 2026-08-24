@@ -1,0 +1,172 @@
+name: P6 Performance Baseline Gate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - 'product/src/**'
+      - 'product/e2e/p6-performance-baseline.spec.mjs'
+      - 'product/playwright.config.mjs'
+      - 'product/package-lock.json'
+      - '.github/workflows/p6-performance.yml'
+  push:
+    branches:
+      - develop
+    paths:
+      - 'product/src/**'
+      - 'product/e2e/p6-performance-baseline.spec.mjs'
+      - 'product/playwright.config.mjs'
+      - 'product/package-lock.json'
+      - '.github/workflows/p6-performance.yml'
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+
+jobs:
+  p6-performance-application:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      E2E_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      P6_ROUTE_BUDGET_MS: 2500
+      P6_P95_BUDGET_MS: 1800
+    steps:
+      - name: Require E2E credential
+        run: test -n "${E2E_PASSWORD:-}"
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked dependencies
+        working-directory: product
+        run: npm ci --no-audit --no-fund
+      - name: Install Playwright runner without changing lockfile
+        working-directory: product
+        run: npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund @playwright/test@1.55.0
+      - name: Build application
+        working-directory: product
+        run: npm run build
+      - name: Start application
+        working-directory: product
+        shell: bash
+        run: |
+          npm start > /tmp/docente-os-p6.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 5 "$E2E_BASE_URL/login" >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/docente-os-p6.log >&2 || true
+          exit 1
+      - name: Install Chromium
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+      - name: Run performance baseline
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/p6-performance-baseline.spec.mjs
+      - name: Publish evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p6-performance-application-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: warn
+          path: |
+            product/test-results/p6-performance-receipt.json
+            product/playwright-report/
+            /tmp/docente-os-p6.log
+      - name: Publish application status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'p6-performance/application',
+              description: ok ? 'Baseline performance applicativa entro budget' : 'Baseline performance applicativa fuori budget',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+
+  p6-performance-runtime:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
+      P6_ROUTE_BUDGET_MS: 3000
+      P6_P95_BUDGET_MS: 2200
+    steps:
+      - name: Require E2E credential
+        run: test -n "${E2E_PASSWORD:-}"
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Wait for Beta to serve tested product state
+        shell: bash
+        run: |
+          expected="$GITHUB_SHA"
+          for attempt in $(seq 1 40); do
+            deployed="$(curl -fsS --max-time 15 "$E2E_BASE_URL/api/build-info" | node -pe "JSON.parse(require('fs').readFileSync(0,'utf8')).commit || ''" 2>/dev/null || true)"
+            if [ "$deployed" = "$expected" ]; then exit 0; fi
+            if [ -n "$deployed" ] && git cat-file -e "$deployed^{commit}" 2>/dev/null && git diff --quiet "$deployed" "$expected" -- product; then exit 0; fi
+            sleep 15
+          done
+          exit 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked dependencies
+        working-directory: product
+        run: npm ci --no-audit --no-fund
+      - name: Install Playwright runner without changing lockfile
+        working-directory: product
+        run: npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund @playwright/test@1.55.0
+      - name: Install Chromium
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+      - name: Run Render Beta performance baseline
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/p6-performance-baseline.spec.mjs
+      - name: Publish runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p6-performance-render-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: warn
+          path: |
+            product/test-results/p6-performance-receipt.json
+            product/playwright-report/
+      - name: Publish runtime status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'p6-performance/render-beta',
+              description: ok ? 'Render Beta warm performance entro budget' : 'Render Beta warm performance fuori budget',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
