@@ -37,7 +37,11 @@ if ([302, 303, 307, 308].includes(passwordSetup.response.status)) {
   assert.equal(passwordSetup.response.status, 200, `password setup without session returned ${passwordSetup.response.status}`)
   const passwordSetupHtml = await passwordSetup.response.text()
   assert.doesNotMatch(passwordSetupHtml, /Salva password e continua/i, 'password form must not be exposed without a verified session')
-  assert.match(passwordSetupHtml, /Accedi a DOCENTE OS|ACCESSO ORDINARIO/i, 'unauthenticated password setup must resolve to the login surface')
+  assert.match(
+    passwordSetupHtml,
+    /NEXT_REDIRECT;replace;\/login\?error=session_required;307;|url=\/login\?error=session_required/i,
+    'unauthenticated password setup must encode the Next.js redirect to login',
+  )
 }
 receipt.checks.passwordSetupBoundaryMs = passwordSetup.elapsedMs
 receipt.checks.passwordSetupBoundary = 'PASS'
