@@ -11,15 +11,7 @@ if (!password) {
 }
 
 test('X3 mobile gate: grounded answers, useful proposals, write preview and no automatic write', async ({ page }) => {
-  await test.step('Accede con l’account tecnico isolato', async () => {
-    await page.goto('/login')
-    await page.locator('#email').fill(email)
-    await page.locator('#password').fill(password)
-    await Promise.all([
-      page.waitForURL(/\/workspace(?:$|\?)/, { timeout: 30_000 }),
-      page.getByRole('button', { name: 'Entra nel tuo spazio docente' }).click(),
-    ])
-  })
+  await login(page)
 
   await test.step('Carica e organizza una fixture autonoma', async () => {
     await page.goto('/knowledge')
@@ -110,6 +102,59 @@ test('X3 mobile gate: grounded answers, useful proposals, write preview and no a
   })
 })
 
+test('X3 Planner gate: real counts, useful answer and no automatic mutation', async ({ page }) => {
+  await login(page)
+  await page.goto('/planner')
+
+  const stats = page.locator('.humanTaskCompactStats')
+  await expect(stats).toBeVisible()
+  const beforeText = await stats.innerText()
+  const openCount = plannerOpenCount(beforeText)
+
+  const trigger = page.getByRole('button', { name: /Chiedi a DOCENTE OS/ })
+  await expect(trigger).toBeVisible({ timeout: 30_000 })
+  await trigger.click()
+
+  const panel = page.locator('.dosAssistantPanel.floating.expanded')
+  await expect(panel).toBeVisible()
+  await expect(panel.locator('.dosAssistantContextStrip')).toContainText(`${openCount} aperte`)
+
+  await askAndCheck(page, 'Cosa devo fare?', 1, async (response) => {
+    await expect(response).toContainText('Situazione Planner')
+    if (openCount === 0) {
+      await expect(response).toContainText(/Non risultano attività attive/i)
+    } else {
+      await expect(response).toContainText(new RegExp(`${openCount} aperte`, 'i'))
+      await expect(response).toContainText(/Da tenere davanti/)
+    }
+    await expect(response).toContainText(/Non completo, sposto o creo attività automaticamente/i)
+    await page.screenshot({ path: 'test-results/x3-05-planner-summary.png' })
+  })
+
+  await askAndCheck(page, 'Completa tutte le attività urgenti.', 2, async (response) => {
+    await expect(response).toContainText(/implica una modifica del Planner/i)
+    await expect(response).toContainText(/Nessuna attività è stata creata, completata, riaperta, spostata o eliminata/i)
+    await expect(response).not.toContainText(/ho completato|attività completate/i)
+    await page.screenshot({ path: 'test-results/x3-06-planner-write-boundary.png' })
+  })
+
+  await page.goto('/planner')
+  const afterText = await page.locator('.humanTaskCompactStats').innerText()
+  expect(plannerOpenCount(afterText)).toBe(openCount)
+})
+
+async function login(page) {
+  await test.step('Accede con l’account tecnico isolato', async () => {
+    await page.goto('/login')
+    await page.locator('#email').fill(email)
+    await page.locator('#password').fill(password)
+    await Promise.all([
+      page.waitForURL(/\/workspace(?:$|\?)/, { timeout: 30_000 }),
+      page.getByRole('button', { name: 'Entra nel tuo spazio docente' }).click(),
+    ])
+  })
+}
+
 async function askAndCheck(page, prompt, expectedAssistantMessages, assertion) {
   const input = page.locator('.dosAssistantInput')
   await input.fill(prompt)
@@ -118,4 +163,10 @@ async function askAndCheck(page, prompt, expectedAssistantMessages, assertion) {
   const responses = page.locator('.dosAssistantBubble.assistant')
   await expect(responses).toHaveCount(expectedAssistantMessages)
   await assertion(responses.last())
+}
+
+function plannerOpenCount(text) {
+  const match = text.match(/(\d+)\s+aperte/i)
+  if (!match) throw new Error(`Planner open count not found in: ${text}`)
+  return Number(match[1])
 }
