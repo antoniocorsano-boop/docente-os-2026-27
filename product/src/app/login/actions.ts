@@ -37,6 +37,47 @@ export async function requestMagicLink(formData: FormData) {
     redirect('/login?error=invalid_email')
   }
 
+  const appUrl = await resolveAppUrl()
+  const supabase = await createClient()
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: `${appUrl}/auth/confirm`,
+      shouldCreateUser: true,
+    },
+  })
+
+  if (error) {
+    console.error('Magic-link request failed', error.code)
+    handleEmailAuthError(error)
+  }
+
+  redirect('/login?sent=setup')
+}
+
+export async function requestPasswordRecovery(formData: FormData) {
+  const email = normalizeEmail(formData.get('email'))
+
+  if (!isValidEmail(email)) {
+    redirect('/login?error=invalid_email')
+  }
+
+  const appUrl = await resolveAppUrl()
+  const supabase = await createClient()
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${appUrl}/auth/confirm?recovery=1`,
+  })
+
+  if (error) {
+    console.error('Password recovery request failed', error.code)
+    handleEmailAuthError(error)
+  }
+
+  // Keep the response non-enumerating: the user sees the same receipt whether or not the address exists.
+  redirect('/login?sent=recovery')
+}
+
+async function resolveAppUrl() {
   const headerStore = await headers()
   const requestOrigin = safeOrigin(headerStore.get('origin'))
   const forwardedHost = headerStore.get('x-forwarded-host') ?? headerStore.get('host')
@@ -49,24 +90,14 @@ export async function requestMagicLink(formData: FormData) {
     throw new Error('NEXT_PUBLIC_APP_URL is required when request origin is unavailable')
   }
 
-  const supabase = await createClient()
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: `${appUrl.replace(/\/$/, '')}/auth/confirm`,
-      shouldCreateUser: true,
-    },
-  })
+  return appUrl.replace(/\/$/, '')
+}
 
-  if (error) {
-    console.error('Magic-link request failed', error.code)
-    if (error.code === 'over_email_send_rate_limit' || error.status === 429) {
-      redirect('/login?error=email_rate_limited')
-    }
-    redirect('/login?error=auth_request_failed')
+function handleEmailAuthError(error: { code?: string; status?: number }) {
+  if (error.code === 'over_email_send_rate_limit' || error.status === 429) {
+    redirect('/login?error=email_rate_limited')
   }
-
-  redirect('/login?sent=1')
+  redirect('/login?error=auth_request_failed')
 }
 
 function normalizeEmail(value: FormDataEntryValue | null) {
