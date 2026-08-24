@@ -107,7 +107,11 @@ async function assertMobileAssistantClearsBottomNavigation(page) {
     'Il Planner mobile deve rendere disponibile l’assistente senza occupare la navigazione primaria.',
   ).toBeVisible({ timeout: 20_000 })
 
-  await assistant.scrollIntoViewIfNeeded()
+  const position = await assistant.evaluate((element) => getComputedStyle(element).position)
+  expect(position, 'L’assistente chiuso del Planner deve appartenere al normale flusso della pagina.').toBe('static')
+
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+  await page.waitForTimeout(100)
   const geometry = await page.evaluate(() => {
     const support = document.querySelector('.dosAssistantFloatingTrigger')
     const nav = document.querySelector('.dosBottomNav')
@@ -115,16 +119,14 @@ async function assertMobileAssistantClearsBottomNavigation(page) {
     const supportRect = support.getBoundingClientRect()
     const navRect = nav.getBoundingClientRect()
     return {
-      position: getComputedStyle(support).position,
       supportBottom: supportRect.bottom,
       navTop: navRect.top,
     }
   })
 
   expect(geometry, 'Impossibile misurare assistente e navigazione nel Planner mobile.').not.toBeNull()
-  expect(geometry.position, 'L’assistente chiuso del Planner non deve essere fixed sul contenuto.').toBe('absolute')
   expect(
     geometry.supportBottom,
-    'L’assistente del Planner deve terminare prima della navigazione mobile.',
+    'L’assistente del Planner deve terminare prima della navigazione mobile a fine pagina.',
   ).toBeLessThanOrEqual(geometry.navTop - 8)
 }
