@@ -1,0 +1,54 @@
+name: Production Promotion Contract
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - 'ops/production-promotion-contract.json'
+      - 'docs/product/PRODUCTION_PROMOTION_CONTRACT.md'
+      - '.github/scripts/validate-production-promotion-contract.mjs'
+      - '.github/workflows/production-promotion-contract.yml'
+      - 'render.yaml'
+  push:
+    branches:
+      - develop
+    paths:
+      - 'ops/production-promotion-contract.json'
+      - 'docs/product/PRODUCTION_PROMOTION_CONTRACT.md'
+      - '.github/scripts/validate-production-promotion-contract.mjs'
+      - '.github/workflows/production-promotion-contract.yml'
+      - 'render.yaml'
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  validate-production-promotion-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate production promotion contract
+        run: node .github/scripts/validate-production-promotion-contract.mjs
+      - name: Publish contract status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'production-promotion/contract',
+              description: ok ? 'Contratto Beta → produzione valido' : 'Contratto Beta → produzione non valido',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
