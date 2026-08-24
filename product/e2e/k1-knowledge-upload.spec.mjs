@@ -20,6 +20,7 @@ test('K1 Knowledge: stato comprensibile, errore recuperabile, retry reale e clea
   await retainNewestKnowledgeFixture(page, 'x3-responsible-ai')
   expect(await knowledgeFixtureAssetIds(page, 'x3-responsible-ai')).toHaveLength(1)
   await deleteAllKnowledgeFixtures(page, fixtureName)
+  expect(await knowledgeFixtureAssetIds(page, fixtureName)).toHaveLength(0)
   let createdAssetId = null
 
   try {
