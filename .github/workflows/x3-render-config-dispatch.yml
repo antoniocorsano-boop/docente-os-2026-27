@@ -6,7 +6,6 @@ on:
       - develop
     paths:
       - 'render.yaml'
-      - '.github/workflows/x3-render-config-dispatch.yml'
 
 permissions:
   actions: write
