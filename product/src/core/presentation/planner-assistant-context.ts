@@ -372,7 +372,10 @@ function response(
 }
 
 function isWriteRequest(value: string) {
-  return containsAny(value, ['crea ', 'creami', 'aggiungi', 'completa', 'segna', 'sposta', 'rimanda', 'ripianifica', 'riapri', 'elimina', 'rimuovi', 'metti in attesa'])
+  const directImperative = /^(?:per favore\s+)?(?:crea|creami|aggiungi|completa|segna|sposta|rimanda|ripianifica|riapri|elimina|rimuovi)\b/u
+  const waitingImperative = /^(?:per favore\s+)?metti\s+.+\s+in\s+attesa\b/u
+  const explicitRequest = /\b(?:puoi|potresti|ti\s+chiedo\s+di)\s+(?:creare|aggiungere|completare|segnare|spostare|rimandare|ripianificare|riaprire|eliminare|rimuovere|mettere)\b/u
+  return directImperative.test(value) || waitingImperative.test(value) || explicitRequest.test(value)
 }
 
 function normalize(value: string) {
