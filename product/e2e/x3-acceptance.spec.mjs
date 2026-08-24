@@ -64,7 +64,7 @@ test('X3 mobile gate: context, useful answers, write preview and no automatic wr
     await expect(response).toContainText('Punti principali rilevati nel contenuto')
     await expect(response).toContainText(/verific|rispost|informaz/i)
     await expect(response).toContainText(/dati personali|riserv/i)
-    await expect(response).toContainText(/integrità|lavoro personale/i)
+    await expect(response).toContainText(/attività conclusiva|piano di uso responsabile/i)
     await expect(response).toContainText('Tecnologia')
     await expect(response).toContainText('3A')
     await expect(response).toContainText('3C')
