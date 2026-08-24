@@ -106,37 +106,41 @@ export default async function CalendarPage() {
       <details className="calendarAdd" open={!snapshot.days.length && !snapshot.events.length}>
         <summary>Aggiungi una data o un impegno</summary>
         <div className="calendarAddBody">
-          <section>
-            <h2>Registra un giorno</h2>
-            <p>Usa questa voce quando la data cambia il normale svolgimento scolastico o quando vuoi documentare esplicitamente un giorno di lezione.</p>
-            <form action={saveCalendarDay} className="calendarForm">
-              <label><span>Data</span><input name="localDate" type="date" min={context.academicYear.startsOn} max={context.academicYear.endsOn} required /></label>
-              <label><span>Cosa succede</span><select name="dayKind" defaultValue="SUSPENSION"><option value="SCHOOL_DAY">Giorno di lezione</option><option value="SUSPENSION">Lezioni sospese</option><option value="HOLIDAY">Festività</option><option value="CLOSURE">Chiusura</option></select></label>
-              <label className="wide"><span>Titolo umano</span><input name="label" maxLength={160} placeholder="Es. Sospensione per festività patronale" required /></label>
-              <label><span>Fonte</span><select name="sourceKind" defaultValue="INSTITUTION_DOCUMENT"><option value="INSTITUTION_DOCUMENT">Documento istituzionale</option><option value="MANUAL">Inserimento manuale</option><option value="IMPORT">Importazione</option></select></label>
-              <label><span>Riferimento</span><input name="sourceRef" maxLength={1000} placeholder="Circolare, delibera, file…" /></label>
-              <label className="wide"><span>Nota</span><textarea name="note" maxLength={1000} rows={3} /></label>
-              <button type="submit">Registra il giorno</button>
-            </form>
-          </section>
+          <details className="calendarAddChoice" name="calendar-add-mode">
+            <summary><span><strong>Registra un giorno</strong><small>Quando una data cambia il normale svolgimento scolastico.</small></span></summary>
+            <div className="calendarAddChoiceBody">
+              <p>Usa questa voce per un giorno di lezione, una sospensione, una festività o una chiusura documentata.</p>
+              <form action={saveCalendarDay} className="calendarForm">
+                <label><span>Data</span><input name="localDate" type="date" min={context.academicYear.startsOn} max={context.academicYear.endsOn} required /></label>
+                <label><span>Cosa succede</span><select name="dayKind" defaultValue="SUSPENSION"><option value="SCHOOL_DAY">Giorno di lezione</option><option value="SUSPENSION">Lezioni sospese</option><option value="HOLIDAY">Festività</option><option value="CLOSURE">Chiusura</option></select></label>
+                <label className="wide"><span>Titolo umano</span><input name="label" maxLength={160} placeholder="Es. Sospensione per festività patronale" required /></label>
+                <label><span>Fonte</span><select name="sourceKind" defaultValue="INSTITUTION_DOCUMENT"><option value="INSTITUTION_DOCUMENT">Documento istituzionale</option><option value="MANUAL">Inserimento manuale</option><option value="IMPORT">Importazione</option></select></label>
+                <label><span>Riferimento</span><input name="sourceRef" maxLength={1000} placeholder="Circolare, delibera, file…" /></label>
+                <label className="wide"><span>Nota</span><textarea name="note" maxLength={1000} rows={3} /></label>
+                <button type="submit">Registra il giorno</button>
+              </form>
+            </div>
+          </details>
 
-          <section>
-            <h2>Registra un impegno</h2>
-            <p>L’impegno appartiene al Calendario e conserva la propria natura; non genera automaticamente ore di lezione.</p>
-            <form action={createCalendarEvent} className="calendarForm">
-              <label className="wide"><span>Titolo</span><input name="title" maxLength={200} placeholder="Es. Collegio docenti" required /></label>
-              <label><span>Tipo</span><select name="eventKind" defaultValue="INSTITUTION"><option value="INSTITUTION">Istituto</option><option value="MEETING">Riunione</option><option value="DEADLINE">Scadenza</option><option value="TRAINING">Formazione</option><option value="OTHER">Altro</option></select></label>
-              <label><span>Durata</span><select name="timing" defaultValue="ALL_DAY"><option value="ALL_DAY">Intera giornata / senza orario</option><option value="TIMED">Con orario</option></select></label>
-              <label><span>Dal</span><input name="startsOn" type="date" min={context.academicYear.startsOn} max={context.academicYear.endsOn} required /></label>
-              <label><span>Al</span><input name="endsOn" type="date" min={context.academicYear.startsOn} max={context.academicYear.endsOn} required /></label>
-              <label><span>Ora inizio</span><input name="startTime" type="time" defaultValue="08:00" /></label>
-              <label><span>Ora fine</span><input name="endTime" type="time" defaultValue="09:00" /></label>
-              <label><span>Fonte</span><select name="sourceKind" defaultValue="MANUAL"><option value="MANUAL">Inserimento manuale</option><option value="INSTITUTION_DOCUMENT">Documento istituzionale</option><option value="IMPORT">Importazione</option></select></label>
-              <label><span>Riferimento</span><input name="sourceRef" maxLength={1000} placeholder="Circolare, email, file…" /></label>
-              <label className="wide"><span>Nota</span><textarea name="note" maxLength={2000} rows={3} /></label>
-              <button type="submit">Registra l’impegno</button>
-            </form>
-          </section>
+          <details className="calendarAddChoice" name="calendar-add-mode">
+            <summary><span><strong>Registra un impegno</strong><small>Riunione, attività d’istituto, formazione o scadenza.</small></span></summary>
+            <div className="calendarAddChoiceBody">
+              <p>L’impegno appartiene al Calendario e conserva la propria natura; non genera automaticamente ore di lezione.</p>
+              <form action={createCalendarEvent} className="calendarForm">
+                <label className="wide"><span>Titolo</span><input name="title" maxLength={200} placeholder="Es. Collegio docenti" required /></label>
+                <label><span>Tipo</span><select name="eventKind" defaultValue="INSTITUTION"><option value="INSTITUTION">Istituto</option><option value="MEETING">Riunione</option><option value="DEADLINE">Scadenza</option><option value="TRAINING">Formazione</option><option value="OTHER">Altro</option></select></label>
+                <label><span>Durata</span><select name="timing" defaultValue="ALL_DAY"><option value="ALL_DAY">Intera giornata / senza orario</option><option value="TIMED">Con orario</option></select></label>
+                <label><span>Dal</span><input name="startsOn" type="date" min={context.academicYear.startsOn} max={context.academicYear.endsOn} required /></label>
+                <label><span>Al</span><input name="endsOn" type="date" min={context.academicYear.startsOn} max={context.academicYear.endsOn} required /></label>
+                <label><span>Ora inizio</span><input name="startTime" type="time" defaultValue="08:00" /></label>
+                <label><span>Ora fine</span><input name="endTime" type="time" defaultValue="09:00" /></label>
+                <label><span>Fonte</span><select name="sourceKind" defaultValue="MANUAL"><option value="MANUAL">Inserimento manuale</option><option value="INSTITUTION_DOCUMENT">Documento istituzionale</option><option value="IMPORT">Importazione</option></select></label>
+                <label><span>Riferimento</span><input name="sourceRef" maxLength={1000} placeholder="Circolare, email, file…" /></label>
+                <label className="wide"><span>Nota</span><textarea name="note" maxLength={2000} rows={3} /></label>
+                <button type="submit">Registra l’impegno</button>
+              </form>
+            </div>
+          </details>
         </div>
       </details>
 
