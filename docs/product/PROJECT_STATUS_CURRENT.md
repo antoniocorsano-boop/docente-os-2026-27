@@ -104,11 +104,11 @@ Stato corrente:
 - HVA Render Beta: **PASS** sulla tranche X5-B dopo rerun sul medesimo commit certificato; un singolo `net::ERR_ABORTED` su stylesheet Next.js del Planner mobile è stato osservato nel primo tentativo e non si è riprodotto nel retry, senza finding automatici di prodotto;
 - K1 Render Beta: **PASS**;
 - X3 application + Render Beta: **PASS**;
-- X4 Planner Render Beta: **PASS** sul current head `fa570f44…`;
+- X4 Planner Render Beta: **PASS** sul current product head `fa570f44…`;
 - Operational Security: **PASS**;
 - P3 Workspace Export Render Beta: **PASS**;
 - P5 Storage Integrity Render Beta: **PASS**;
-- P6 Performance baseline Render Beta: **PASS** sulla baseline P6-A.
+- P6 Performance Render Beta: **PASS** sia sulla baseline P6-A sia sul re-benchmark post-P6-B del current product head `fa570f44…`.
 
 **V-07 PASS** — Conoscenza privilegia consultazione/ricerca prima dell'acquisizione.  
 **V-08 PASS** — target tattile mobile dei filtri conforme.  
@@ -117,7 +117,7 @@ Stato corrente:
 **P3 EXPORT PASS** — l'owner può ottenere un manifest completo e read-only del workspace; accesso anonimo negato.  
 **P5 STORAGE INTEGRITY PASS** — DB e Storage sono riconciliati nel manifest e il Beta corrente non presenta riferimenti mancanti o blob orfani.  
 **P6-A PERFORMANCE PASS** — baseline autenticata e non mutante su 8 superfici operative.  
-**P6-B PLANNER QUERY PASS** — il Planner carica dal DB solo task `OPEN`/`WAITING`, preservando la cronologia completa e mantenendo verdi X3/X4 sul Beta corrente.
+**P6-B PLANNER QUERY PASS** — il Planner carica dal DB solo task `OPEN`/`WAITING`, preservando la cronologia completa; X3/X4 e il re-benchmark P6 sono verdi sul Beta corrente.
 
 ## 7. Gate canonici correnti
 
@@ -145,7 +145,7 @@ Le failure Vercel per quota non sono failure del canale Beta Render.
 
 ## 8. Operational hardening
 
-Stato: **IN PROGRESS — P0 SECURITY PASS / P1 MONITORING PASS / P2 ACCOUNT RECOVERY PASS / P3 DATA LIFECYCLE + EXPORT PASS / P4 DEPENDENCY SECURITY PASS / P5 STORAGE INTEGRITY PASS / P6-A PERFORMANCE BASELINE PASS / P6-B PLANNER QUERY PASS**.
+Stato: **IN PROGRESS — P0 SECURITY PASS / P1 MONITORING PASS / P2 ACCOUNT RECOVERY PASS / P3 DATA LIFECYCLE + EXPORT PASS / P4 DEPENDENCY SECURITY PASS / P5 STORAGE INTEGRITY PASS / P6-A PERFORMANCE BASELINE PASS / P6-B PLANNER QUERY + RE-BENCHMARK PASS**.
 
 ### P0 — Security baseline: PASS
 
@@ -204,25 +204,28 @@ Stato: **IN PROGRESS — P0 SECURITY PASS / P1 MONITORING PASS / P2 ACCOUNT RECO
 - 3 campioni per superficie, 24 campioni complessivi;
 - dataset classificato `CURRENT_BETA_NON_MUTATING`, senza generare volume sintetico nel Beta canonico;
 - budget: route max **3.000 ms**, aggregate p95 **2.200 ms**;
-- risultato Render Beta: mediana aggregata **291 ms**, p95 **1.206 ms**, massimo **1.355 ms**;
+- baseline Render Beta pre-P6-B: mediana aggregata **291 ms**, p95 **1.206 ms**, massimo **1.355 ms**;
 - Planner pre-P6-B: mediana **721 ms**, p95/max **794 ms**;
 - nessuna dichiarazione di load/scale proven: il dataset misurato resta troppo piccolo per quel livello di certificazione.
 
-### P6-B — Planner operational query: PASS / BETA-PROVEN funzionale
+### P6-B — Planner operational query: PASS / BETA-PROVEN
 
 - `SupabasePlannerRepository.listByWorkspace()` filtra lato DB `status IN (OPEN, WAITING)`;
 - task `DONE`/`CANCELLED` non vengono più trasferiti inutilmente alle superfici operative;
 - cronologia persistente DB preservata integralmente;
 - nessun limite arbitrario introdotto;
-- Render serve esattamente `fa570f44bf79955068ac916581f5ddf24336fd30`;
+- Render serve esattamente il product head `fa570f44bf79955068ac916581f5ddf24336fd30`;
 - regressione X3 no-implicit-write: **PASS**;
 - X4 Planner acceptance: **PASS**;
-- il miglioramento prestazionale non è ancora quantificato con un nuovo P6 benchmark sul current head, perché P6-B non ha attivato automaticamente il workflow performance.
+- re-benchmark P6 post-merge: **PASS** sullo stesso product head;
+- Planner post-P6-B: mediana **684 ms** contro **721 ms** prima della correzione (circa −5%); p95/max **810 ms** contro **794 ms**, quindi coda sostanzialmente invariata;
+- aggregate post-P6-B: mediana **461 ms**, p95 **1.037 ms**, massimo **1.611 ms**; tutti i valori restano entro budget;
+- il p95 aggregato migliora rispetto a **1.206 ms**, mentre mediana aggregata e massimo oscillano in senso opposto: la variabilità del runtime Render Free non consente di attribuire causalmente le differenze complessive alla sola query Planner;
+- l'evidenza robusta di P6-B è quindi: **trasferimento storico inutile eliminato, Planner median leggermente migliore e budget prestazionali ancora rispettati**, non una dichiarazione di accelerazione sistemica.
 
 ### Residui hardening aperti
 
 - load/scale isolato con dataset significativamente maggiori, senza contaminare il Beta canonico;
-- re-benchmark P6 sul current head per quantificare l'effetto di P6-B;
 - restore rehearsal reale su ambiente isolato quando il piano lo consente;
 - replica/copia off-site e procedura di restore degli oggetti Storage;
 - leaked-password protection quando il piano Supabase lo consente;
@@ -243,8 +246,10 @@ Stato: **IN PROGRESS — P0 SECURITY PASS / P1 MONITORING PASS / P2 ACCOUNT RECO
 - account recovery: **implementato e verificato**;
 - data lifecycle/export: **Beta-proven**, distruzione ancora intenzionalmente non abilitata;
 - azioni AI persistenti: **prima capability minima controllata e reversibile**;
-- performance operativa corrente: **baseline Beta-proven e entro budget**, ma load/scale non ancora provati;
+- performance operativa corrente: **baseline e re-benchmark Beta-proven entro budget**, ma load/scale non ancora provati;
 - operations/produzione: **security, monitoring, recovery applicativo, export dati, dependency security, Storage integrity e performance baseline attivi; restore, off-site backup, scale/load e promozione produzione ancora incompleti**.
+
+Le misure P6 sul piano Render Free sono snapshot operative ripetibili, non una prova causale isolata di micro-ottimizzazioni; i confronti prima/dopo devono essere interpretati insieme alla variabilità del runtime.
 
 Le percentuali di maturità restano indicative e non sostituiscono i gate.
 
@@ -262,7 +267,7 @@ Le percentuali di maturità restano indicative e non sostituiscono i gate.
 
 Il ciclo corrente è:
 
-1. eseguire **re-benchmark P6 sul current head** e poi definire una prova **load/scale isolata**;
+1. definire una prova **load/scale isolata** con dataset significativamente maggiori, senza contaminare il Beta canonico;
 2. definire il contratto **Beta → produzione** con criteri di promozione e rollback;
 3. definire la strategia **off-site Storage** senza confonderla con l'integrità già certificata;
 4. eseguire il restore rehearsal quando sarà disponibile un ambiente Supabase isolato;
