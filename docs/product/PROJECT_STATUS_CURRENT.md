@@ -1,16 +1,16 @@
 # DOCENTE OS — Stato corrente canonico
 
 Data: 2026-08-24  
-Baseline prodotto certificata: `develop` @ `9b4e88595b8e176d36e6b158d5e4e2a12082d092`  
+Baseline prodotto certificata: `develop` @ `1d92e4b57efeb4ccfa19378daf27468bfb848c4e`  
 Stato documento: **CURRENT / CANONICAL STATUS**
 
 Questo documento è la sintesi corrente autorevole dello stato del sistema. I checkpoint datati precedenti restano storici e non devono essere usati per dedurre lo stato operativo quando divergono da questo file.
 
 ## 1. Classificazione del prodotto
 
-DOCENTE OS è una **Beta operativa avanzata**. Non è più un prototipo/MVP: possiede persistenza reale, autenticazione, RLS, domini separati, flussi didattici persistenti, prima scrittura assistita controllata, authoring UDA versionato, runtime Beta verificato, gate end-to-end e Human + Visual Acceptance.
+DOCENTE OS è una **Beta operativa avanzata**. Non è più un prototipo/MVP: possiede persistenza reale, autenticazione, RLS, domini separati, flussi didattici persistenti, prima scrittura assistita controllata, authoring UDA versionato, export PDF professionale, runtime Beta verificato, gate end-to-end e Human + Visual Acceptance.
 
-Il sistema non è ancora classificabile come produzione definitiva perché restano aperti l'export professionale X5-B, l'hardening operativo/produzione e la prova longitudinale durante un anno scolastico reale.
+Il sistema non è ancora classificabile come produzione definitiva perché restano aperti l'hardening operativo/produzione e la prova longitudinale durante un anno scolastico reale.
 
 ## 2. Runtime canonico
 
@@ -34,7 +34,7 @@ Il sistema non è ancora classificabile come produzione definitiva perché resta
 - **X3 COMPLETE entro READ_ONLY / PROPOSE** — assistente contestuale senza autorizzazione implicita alla scrittura;
 - **X4-A COMPLETE / BETA-PROVEN** — una sola capability persistente autorizzata: `PLANNER_CREATE_TASK`, con proposta → anteprima → conferma esplicita → creazione → ricevuta → annullamento; nessuna estensione generalizzata delle write capability;
 - **X5-A COMPLETE / BETA-PROVEN** — authoring professionale UDA separato dalla fonte, versioni immutabili, cronologia, RLS e protezione dai conflitti di concorrenza;
-- **X5-B OPEN** — export professionale del documento versionato;
+- **X5-B COMPLETE / BETA-PROVEN** — export professionale PDF di una versione UDA salvata e immutabile, con provenienza/versione visibili e nessuna write persistente durante l'export;
 - **X6 FUTURE / NOT BASELINE** — valutazione agentica avanzata intenzionalmente successiva.
 
 ### Tempo e attività didattica
@@ -55,6 +55,7 @@ Invariante: **Orario e Calendario restano domini indipendenti**; la composizione
 - Piano annuale;
 - Progetta;
 - authoring UDA versionato;
+- export PDF professionale UDA;
 - Classi;
 - Orario;
 - Calendario;
@@ -78,7 +79,7 @@ Disponibili e provati:
 - PDF testuali e PDF misti con fallback parziale;
 - errori recuperabili, retry e cleanup;
 - ricerca come compito primario con acquisizione in progressive disclosure;
-- continuità Progetta → fonte in Conoscenza preservata anche dopo X5-A.
+- continuità Progetta → fonte in Conoscenza preservata dopo X5.
 
 Residui non bloccanti:
 
@@ -92,16 +93,16 @@ Il sistema HVA è parte permanente del ciclo di sviluppo.
 Copre:
 
 - mobile `412×915` e desktop `1440×1000`;
-- **18 osservazioni di superficie**;
-- 8 journey Human;
+- osservazioni di superficie e journey Human;
 - console, rete, errori HTTP, overflow, layout e target interattivi;
 - screenshot e receipt strutturate;
 - fixture E2E isolate e cleanup.
 
-Baseline prodotto `9b4e8859…` certificata post-merge:
+Stato corrente:
 
 - X5 authoring Render Beta: **PASS**;
-- HVA Render Beta: **PASS**;
+- X5-B export Render Beta: **PASS**;
+- HVA Render Beta: **PASS** sulle tranche pertinenti;
 - K1 Render Beta: **PASS**;
 - X3 Render Beta: **PASS**;
 - X4 Planner Render Beta: **PASS**;
@@ -109,7 +110,8 @@ Baseline prodotto `9b4e8859…` certificata post-merge:
 
 **V-07 PASS** — Conoscenza privilegia consultazione/ricerca prima dell'acquisizione.  
 **V-08 PASS** — target tattile mobile dei filtri conforme.  
-**X5-A PASS** — consultazione della fonte e trasformazione in documento di lavoro restano azioni distinte.
+**X5-A PASS** — consultazione della fonte e trasformazione in documento di lavoro restano azioni distinte.  
+**X5-B PASS** — l'export parte da una versione salvata/immutabile e non introduce una nuova write capability.
 
 ## 7. Gate canonici correnti
 
@@ -124,39 +126,68 @@ Per le slice applicative rilevanti il ciclo comprende, secondo ambito:
 7. evidence/receipt e cleanup;
 8. aggiornamento della decisione canonica.
 
+Dal primo ciclo di hardening è inoltre permanente `ops-security/supabase`, che verifica almeno:
+
+- diniego delle RPC X5 al ruolo anonimo;
+- lifecycle X5 autenticato ancora funzionante;
+- accesso X4 alle receipt conforme alla RLS.
+
 Le failure Vercel per quota non sono failure del canale Beta Render.
 
-## 8. Maturità corrente
+## 8. Operational hardening
+
+Stato: **IN PROGRESS — P0 SECURITY BASELINE PASS**.
+
+Completato nella prima tranche:
+
+- quattro RPC X5 `SECURITY DEFINER` non sono più eseguibili dal ruolo `anon`;
+- accesso intenzionale `authenticated` preservato e provato end-to-end;
+- policy X4 receipt ottimizzata con inizializzazione unica di `auth.uid()` per statement;
+- aggiunti gli indici FK mancanti introdotti da X4/X5 che interessano lifecycle e referential checks;
+- nuovo gate permanente `ops-security/supabase`;
+- Product CI, K1, X3 e X4 regressivi PASS dopo il merge `1d92e4b…`.
+
+Non equivale a production readiness completa.
+
+Residui hardening aperti:
+
+- backup/restore verificato;
+- recovery account e password policy, inclusa leaked-password protection attualmente non abilitata;
+- monitoring/alerting operativo;
+- dipendenze npm: warning corrente di 2 vulnerabilità high da classificare e risolvere senza upgrade ciechi;
+- data lifecycle/retention/export dei dati utente;
+- performance/load con dataset significativamente più grandi;
+- canale produzione definitivo e contratto Beta → produzione.
+
+## 9. Maturità corrente
 
 Valutazione audit aggiornata del 2026-08-24:
 
 - architettura/dominio: **molto matura**;
-- persistenza/sicurezza/RLS: **matura**;
+- persistenza/sicurezza/RLS: **matura e ora sottoposta a gate operativo dedicato**;
 - core operativo docente: **avanzato**;
 - Human/UX: **molto avanzato e verificato**;
 - Conoscenza: **tra le capability più mature**;
 - CI/E2E/HVA: **molto maturo per la fase Beta**;
-- authoring professionale: **avanzato per UDA, export ancora aperto**;
+- authoring professionale UDA + export PDF: **Beta-proven**;
 - azioni AI persistenti: **prima capability minima attiva, controllata e reversibile**;
-- operations/produzione: **parzialmente maturo**.
+- operations/produzione: **in hardening, non ancora production-ready**.
 
-Stima orientativa, non gate: **completamento funzionale ~84% / maturità del prodotto esistente ~87%**.
+Le percentuali di maturità restano indicative e non sostituiscono i gate.
 
-## 9. Rischi e residui prioritari
+## 10. Rischi e residui prioritari
 
-1. **X5-B export professionale** — produrre output realmente utilizzabili a partire dal documento versionato, senza alterare la fonte o perdere provenienza/versione.
-2. **Production hardening** — canale produzione, backup/restore, recovery account, monitoring/alerting, data lifecycle, performance con dataset maggiori.
-3. **Longitudinal proof** — validare settimane e mesi reali: cambi orario, sospensioni, correzioni, accumulo documenti/task/sessioni, fine quadrimestre/anno.
-4. **Estensione authoring** — solo dopo X5-B valutare programmazioni e ulteriori documenti professionali, evitando duplicazioni indiscriminate.
-5. **Governance X4** — mantenere `PLANNER_CREATE_TASK` come unica write capability assistita finché non esiste evidenza sufficiente per un'estensione controllata.
+1. **Operational hardening** — backup/restore, recovery/password protection, monitoring/alerting, data lifecycle, dependency security, performance/load, canale produzione.
+2. **Longitudinal proof** — validare settimane e mesi reali: cambi orario, sospensioni, correzioni, accumulo documenti/task/sessioni, fine quadrimestre/anno.
+3. **Governance X4** — mantenere `PLANNER_CREATE_TASK` come unica write capability assistita finché non esiste evidenza sufficiente per un'estensione controllata.
+4. **Estensione authoring** — valutare altri documenti professionali solo sulla base dell'uso reale, evitando duplicazioni indiscriminate.
 
-## 10. Ordine di maturazione autorizzato
+## 11. Ordine di maturazione autorizzato
 
-Il ciclo successivo è:
+Il ciclo corrente è:
 
-1. **X5-B — export professionale del documento UDA versionato**;
-2. hardening operativo/produzione;
-3. pilotaggio continuativo settembre–ottobre;
-4. nuove tranche guidate da evidenza reale.
+1. **hardening operativo/produzione**;
+2. pilotaggio continuativo settembre–ottobre;
+3. nuove tranche guidate da evidenza reale.
 
 Non introdurre nuove macro-capability non previste per riempire artificialmente la roadmap.
