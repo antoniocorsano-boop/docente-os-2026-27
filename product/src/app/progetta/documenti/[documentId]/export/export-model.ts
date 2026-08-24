@@ -4,7 +4,7 @@ export type ExportBlock =
   | { kind: 'heading'; level: 1 | 2 | 3; text: string }
   | { kind: 'paragraph'; text: string }
   | { kind: 'bullet'; text: string }
-  | { kind: 'numbered'; text: string }
+  | { kind: 'numbered'; number: string; text: string }
   | { kind: 'blank' }
 
 export function selectExportVersion(snapshot: AuthoredDocumentSnapshot, requestedVersion?: string | null): AuthoredDocumentVersion | null {
@@ -22,8 +22,8 @@ export function exportBlocks(markdown: string): ExportBlock[] {
     if (heading) return { kind: 'heading', level: heading[1].length as 1 | 2 | 3, text: heading[2].trim() } as const
     const bullet = /^[-*]\s+(.+)$/.exec(line.trim())
     if (bullet) return { kind: 'bullet', text: bullet[1].trim() } as const
-    const numbered = /^\d+[.)]\s+(.+)$/.exec(line.trim())
-    if (numbered) return { kind: 'numbered', text: numbered[1].trim() } as const
+    const numbered = /^(\d+)[.)]\s+(.+)$/.exec(line.trim())
+    if (numbered) return { kind: 'numbered', number: numbered[1], text: numbered[2].trim() } as const
     return { kind: 'paragraph', text: line.trim() } as const
   })
 }
