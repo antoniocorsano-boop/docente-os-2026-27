@@ -7,6 +7,7 @@ on:
       - develop
     paths:
       - 'product/e2e/x4-planner-write.spec.mjs'
+      - 'product/e2e/x3-acceptance.spec.mjs'
       - 'product/playwright.config.mjs'
       - 'product/src/app/api/assistant/planner-write/**'
       - 'product/src/components/assistant/**'
@@ -20,6 +21,7 @@ on:
       - develop
     paths:
       - 'product/e2e/x4-planner-write.spec.mjs'
+      - 'product/e2e/x3-acceptance.spec.mjs'
       - 'product/playwright.config.mjs'
       - 'product/src/app/api/assistant/planner-write/**'
       - 'product/src/components/assistant/**'
@@ -44,7 +46,7 @@ jobs:
     if: github.event_name == 'pull_request'
     name: x4-application-acceptance
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     env:
       E2E_BASE_URL: http://127.0.0.1:3000
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
@@ -68,7 +70,7 @@ jobs:
               sha: context.sha,
               state: 'pending',
               context: 'x4-planner/application',
-              description: 'Gate X4 Planner applicativo in esecuzione',
+              description: 'Gate X4 Planner + regressione X3 in esecuzione',
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
 
@@ -111,6 +113,10 @@ jobs:
         working-directory: product
         run: npx playwright install --with-deps chromium
 
+      - name: Run X3 no-implicit-write regression
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/x3-acceptance.spec.mjs
+
       - name: Run X4 Planner acceptance gate
         working-directory: product
         run: npx playwright test --config=playwright.config.mjs e2e/x4-planner-write.spec.mjs
@@ -141,7 +147,7 @@ jobs:
               sha: context.sha,
               state: ok ? 'success' : 'failure',
               context: 'x4-planner/application',
-              description: ok ? 'Gate X4 Planner applicativo superato' : 'Gate X4 Planner applicativo non superato',
+              description: ok ? 'X4 Planner e confine X3 superati' : 'Gate X4 Planner/X3 non superato',
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
 
@@ -149,7 +155,7 @@ jobs:
     if: github.event_name != 'pull_request'
     name: x4-render-acceptance
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
     env:
       E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
 
@@ -172,7 +178,7 @@ jobs:
               sha: context.sha,
               state: 'pending',
               context: 'x4-planner/render-beta',
-              description: 'Gate X4 Planner Beta in esecuzione',
+              description: 'Gate X4 Planner + X3 sul Beta in esecuzione',
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
 
@@ -221,6 +227,10 @@ jobs:
         working-directory: product
         run: npx playwright install --with-deps chromium
 
+      - name: Run X3 no-implicit-write regression
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/x3-acceptance.spec.mjs
+
       - name: Run X4 Planner acceptance gate
         working-directory: product
         run: npx playwright test --config=playwright.config.mjs e2e/x4-planner-write.spec.mjs
@@ -250,6 +260,6 @@ jobs:
               sha: context.sha,
               state: ok ? 'success' : 'failure',
               context: 'x4-planner/render-beta',
-              description: ok ? 'Gate X4 Planner superato sul Beta Render' : 'Gate X4 Planner non superato sul Beta Render',
+              description: ok ? 'X4 Planner e confine X3 superati sul Beta' : 'Gate X4 Planner/X3 Beta non superato',
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
