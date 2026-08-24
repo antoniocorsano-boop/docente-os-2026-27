@@ -13,9 +13,10 @@ on:
       - 'product/src/app/api/assistant/**'
       - 'product/src/app/assistant.css'
       - 'product/src/components/assistant/**'
-      - 'product/src/core/presentation/assistant-context.ts'
-      - 'product/src/core/presentation/assistant-context.test.ts'
+      - 'product/src/core/presentation/*assistant-context.ts'
+      - 'product/src/core/presentation/*assistant-context.test.ts'
       - 'product/src/app/knowledge/**'
+      - 'product/src/app/planner/**'
 
 permissions:
   contents: read
@@ -166,7 +167,7 @@ jobs:
   x3-render-acceptance:
     name: x3-render-acceptance
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     env:
       E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
 
@@ -217,20 +218,26 @@ jobs:
         shell: bash
         run: |
           expected="$GITHUB_SHA"
-          for attempt in $(seq 1 48); do
+          last_http="000"
+          last_deployed=""
+          rm -f /tmp/render-gate-reason
+          for attempt in $(seq 1 120); do
             : > /tmp/build-info.json
             http_code="$(curl -sS --max-time 20 -o /tmp/build-info.json -w '%{http_code}' "$E2E_BASE_URL/api/build-info" 2>/dev/null || true)"
             [ -n "$http_code" ] || http_code="000"
             payload="$(cat /tmp/build-info.json 2>/dev/null || true)"
             deployed="$(printf '%s' "$payload" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).commit||'')}catch{console.log('')}})" )"
-            echo "Attempt $attempt/48: http=$http_code, deployed=${deployed:-unavailable}, expected=$expected"
+            last_http="$http_code"
+            last_deployed="$deployed"
+            echo "Attempt $attempt/120: http=$http_code, deployed=${deployed:-unavailable}, expected=$expected"
             if [ "$deployed" = "$expected" ]; then
               echo "Render is serving the exact commit under test."
               exit 0
             fi
             sleep 15
           done
-          echo "Render did not expose the expected commit within 12 minutes." >&2
+          printf 'DEPLOY_STALE http=%s deployed=%s expected=%s\n' "$last_http" "${last_deployed:-unavailable}" "$expected" > /tmp/render-gate-reason
+          echo "Render did not expose the expected commit within 30 minutes; browser acceptance was not executed." >&2
           exit 1
 
       - name: Install product dependencies
@@ -263,6 +270,7 @@ jobs:
           path: |
             product/playwright-report/
             product/test-results/
+            /tmp/render-gate-reason
 
       - name: Publish final Render status
         if: always()
@@ -272,14 +280,18 @@ jobs:
           JOB_STATUS: ${{ job.status }}
         with:
           script: |
+            const fs = require('fs')
             const ready = process.env.GATE_READY === 'true'
             const jobStatus = process.env.JOB_STATUS
-            const state = !ready ? 'error' : jobStatus === 'success' ? 'success' : 'failure'
+            const deployStale = fs.existsSync('/tmp/render-gate-reason')
+            const state = !ready || deployStale ? 'error' : jobStatus === 'success' ? 'success' : 'failure'
             const description = !ready
               ? 'Gate X3 Render non eseguito: credenziale mancante'
-              : state === 'success'
-                ? 'Gate X3 superato sul beta Render'
-                : 'Gate X3 non superato sul beta Render'
+              : deployStale
+                ? 'Render non allineato al commit: browser non eseguito'
+                : state === 'success'
+                  ? 'Gate X3 superato sul beta Render'
+                  : 'Gate X3 applicativo non superato sul beta Render'
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
