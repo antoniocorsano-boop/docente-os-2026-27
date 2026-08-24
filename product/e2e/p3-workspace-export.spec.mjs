@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test'
+import { deleteOrphanedKnowledgeFixtureObjects } from './support/knowledge-fixture-hygiene.mjs'
 
 const email = process.env.E2E_EMAIL
 const password = process.env.E2E_PASSWORD
+const historicalFixtureFragments = ['x3-responsible-ai', 'k1-upload-recovery']
 
-test('P3 workspace export: owner riceve dati DB e inventario Storage senza mutazioni', async ({ page, baseURL }) => {
+test('P3/P5 workspace export: owner riceve dati DB, inventario Storage e integrità senza mutazioni', async ({ page, baseURL }) => {
   if (!email || !password) throw new Error('E2E_EMAIL and E2E_PASSWORD are required')
 
   await page.goto('/login')
@@ -11,6 +13,9 @@ test('P3 workspace export: owner riceve dati DB e inventario Storage senza mutaz
   await page.getByLabel('Password').fill(password)
   await page.getByRole('button', { name: /Entra nel tuo spazio docente/i }).click()
   await page.waitForURL((url) => !url.pathname.startsWith('/login'))
+
+  const removedOrphans = await deleteOrphanedKnowledgeFixtureObjects(historicalFixtureFragments)
+  console.log(`P5 fixture storage cleanup removed ${removedOrphans.length} historical orphan object(s).`)
 
   const response = await page.context().request.get(`${baseURL}/api/account/export-manifest`)
   expect(response.status()).toBe(200)
@@ -46,9 +51,17 @@ test('P3 workspace export: owner riceve dati DB e inventario Storage senza mutaz
   for (const object of payload.inventory.storage.objects) {
     expect(object.path.startsWith(`${payload.workspace.id}/`)).toBe(true)
   }
+
+  const integrity = payload.inventory?.storage?.integrity
+  expect(integrity?.status).toBe('PASS')
+  expect(integrity?.missingObjectCount).toBe(0)
+  expect(integrity?.orphanObjectCount).toBe(0)
+  expect(integrity?.missingPaths).toEqual([])
+  expect(integrity?.orphanPaths).toEqual([])
+  expect(integrity?.expectedObjectCount).toBe(payload.inventory.storage.objectCount)
 })
 
-test('P3 workspace export: endpoint anonimo è negato', async ({ request, baseURL }) => {
+test('P3/P5 workspace export: endpoint anonimo è negato', async ({ request, baseURL }) => {
   const response = await request.get(`${baseURL}/api/account/export-manifest`)
   expect(response.status()).toBe(401)
 })
