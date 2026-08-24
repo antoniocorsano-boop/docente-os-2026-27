@@ -120,6 +120,23 @@ test('next-step proposal prioritizes missing context over operational suggestion
   assert.match(response.text, /non esegue l’azione/i)
 })
 
+test('next-step proposal keeps document evidence and preview path when extracted proposals already exist', () => {
+  const context = build({
+    disciplines: ['Tecnologia', 'educazione civica'],
+    classLabels: ['3A', '3C'],
+  })
+  const response = respondToKnowledgeAssistant(context, 'Qual è il prossimo passo utile?')
+
+  assert.equal(response.actionKind, 'PROPOSE')
+  assert.match(response.text, /3 proposte individuate/)
+  assert.match(response.text, /Tecnologia, educazione civica · 3A, 3C/)
+  assert.match(response.text, /Uso critico delle fonti digitali/)
+  assert.match(response.text, /Attività laboratoriale/)
+  assert.match(response.text, /anteprima dell’attività/i)
+  assert.match(response.text, /senza salvarla/i)
+  assert.match(response.text, /non esegue l’azione/i)
+})
+
 test('next-step proposal uses document evidence and the complete professional context when nothing is missing', () => {
   const context = build({
     actionProposalCount: 0,
