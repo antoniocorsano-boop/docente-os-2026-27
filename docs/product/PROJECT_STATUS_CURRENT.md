@@ -1,16 +1,16 @@
 # DOCENTE OS — Stato corrente canonico
 
 Data: 2026-08-24  
-Baseline: `develop` @ `eaa29f65e0d540e820e07b4a719a91c99539a45d`  
+Baseline prodotto certificata: `develop` @ `9b4e88595b8e176d36e6b158d5e4e2a12082d092`  
 Stato documento: **CURRENT / CANONICAL STATUS**
 
-Questo documento è la sintesi corrente dello stato del sistema. I checkpoint datati precedenti restano storici e non devono essere usati per dedurre lo stato operativo quando divergono da questo file.
+Questo documento è la sintesi corrente autorevole dello stato del sistema. I checkpoint datati precedenti restano storici e non devono essere usati per dedurre lo stato operativo quando divergono da questo file.
 
 ## 1. Classificazione del prodotto
 
-DOCENTE OS è una **Beta operativa avanzata**. Non è più un prototipo/MVP: possiede persistenza reale, autenticazione, RLS, domini separati, flussi didattici persistenti, runtime Beta verificato, gate end-to-end e Human + Visual Acceptance.
+DOCENTE OS è una **Beta operativa avanzata**. Non è più un prototipo/MVP: possiede persistenza reale, autenticazione, RLS, domini separati, flussi didattici persistenti, prima scrittura assistita controllata, authoring UDA versionato, runtime Beta verificato, gate end-to-end e Human + Visual Acceptance.
 
-Il sistema non è ancora classificabile come produzione definitiva perché restano aperti authoring professionale, prima capacità X4 persistente controllata, hardening operativo e prova di continuità su un anno scolastico reale.
+Il sistema non è ancora classificabile come produzione definitiva perché restano aperti l'export professionale X5-B, l'hardening operativo/produzione e la prova longitudinale durante un anno scolastico reale.
 
 ## 2. Runtime canonico
 
@@ -21,7 +21,7 @@ Il sistema non è ancora classificabile come produzione definitiva perché resta
 - ramo Beta: `develop`;
 - `rootDir`: `product`;
 - auto-deploy: commit;
-- Vercel non è un gate canonico; eventuali failure dovute a quote/build-rate-limit non descrivono lo stato applicativo;
+- Vercel non è un gate canonico; le failure correnti dovute a quota/build-rate-limit non descrivono lo stato applicativo;
 - Netlify è legacy rispetto all'attuale Beta Render.
 
 ## 3. Stato macro-capability
@@ -31,9 +31,10 @@ Il sistema non è ancora classificabile come produzione definitiva perché resta
 - **X0 COMPLETE** — documentazione/decisioni canoniche di esperienza;
 - **X1 COMPLETE** — component foundation;
 - **X2 COMPLETE** — AppShell, responsive navigation, command palette;
-- **X3 COMPLETE entro il confine READ_ONLY / PROPOSE** — assistente contestuale su Conoscenza e Planner, Answer First, nessuna scrittura automatica;
-- **X4 PREPARED / EXECUTION NOT ENABLED** — contratti di proposta, fingerprint e conferma predisposti; nessuna capability AI persistente autorizzata nel runtime corrente;
-- **X5 NOT COMPLETE** — authoring professionale/versionato ed export restano la principale macro-capability funzionale aperta;
+- **X3 COMPLETE entro READ_ONLY / PROPOSE** — assistente contestuale senza autorizzazione implicita alla scrittura;
+- **X4-A COMPLETE / BETA-PROVEN** — una sola capability persistente autorizzata: `PLANNER_CREATE_TASK`, con proposta → anteprima → conferma esplicita → creazione → ricevuta → annullamento; nessuna estensione generalizzata delle write capability;
+- **X5-A COMPLETE / BETA-PROVEN** — authoring professionale UDA separato dalla fonte, versioni immutabili, cronologia, RLS e protezione dai conflitti di concorrenza;
+- **X5-B OPEN** — export professionale del documento versionato;
 - **X6 FUTURE / NOT BASELINE** — valutazione agentica avanzata intenzionalmente successiva.
 
 ### Tempo e attività didattica
@@ -42,8 +43,8 @@ Il sistema non è ancora classificabile come produzione definitiva perché resta
 - **T2 COMPLETE** — griglia e gestione operativa;
 - **T3A COMPLETE** — lifecycle versioni Orario e attivazione;
 - **T3B COMPLETE** — Calendario indipendente;
-- **T3C COMPLETE** — Temporal Projection read-only Orario + Calendario, prima integrazione in Oggi;
-- **T4 COMPLETE** — TeachingSession persistente e allocazione minuti ai blocchi B01–B33, con decisione umana separata per il completamento didattico.
+- **T3C COMPLETE** — Temporal Projection read-only Orario + Calendario;
+- **T4 COMPLETE** — TeachingSession persistente e allocazione minuti ai blocchi B01–B33.
 
 Invariante: **Orario e Calendario restano domini indipendenti**; la composizione avviene solo attraverso Temporal Projection.
 
@@ -53,11 +54,13 @@ Invariante: **Orario e Calendario restano domini indipendenti**; la composizione
 - Conoscenza;
 - Piano annuale;
 - Progetta;
+- authoring UDA versionato;
 - Classi;
 - Orario;
 - Calendario;
 - Impostazioni;
-- assistente contestuale X3 su superfici autorizzate.
+- assistente contestuale X3 sulle superfici autorizzate;
+- scrittura X4-A controllata esclusivamente nel Planner.
 
 ## 5. Conoscenza
 
@@ -72,17 +75,15 @@ Disponibili e provati:
 - trasformazione/normalizzazione;
 - generazioni e provenienza;
 - classificazione e contesto professionale;
-- PDF testuali e PDF misti con fallback parziale quando la lettura visuale non è disponibile;
-- errore PDF non leggibile distinto dagli errori temporanei;
-- recovery e retry senza perdita della selezione;
-- cleanup E2E;
+- PDF testuali e PDF misti con fallback parziale;
+- errori recuperabili, retry e cleanup;
 - ricerca come compito primario con acquisizione in progressive disclosure;
-- target tattili mobile conformi nel gate HVA corrente.
+- continuità Progetta → fonte in Conoscenza preservata anche dopo X5-A.
 
 Residui non bloccanti:
 
 - documenti interamente visuali/scansionati senza provider visivo;
-- upload grandi/resumable (TUS o equivalente) oltre il percorso standard.
+- upload grandi/resumable oltre il percorso standard.
 
 ## 6. Human + Visual Acceptance
 
@@ -91,46 +92,43 @@ Il sistema HVA è parte permanente del ciclo di sviluppo.
 Copre:
 
 - mobile `412×915` e desktop `1440×1000`;
-- 16 osservazioni di superficie;
+- **18 osservazioni di superficie**;
 - 8 journey Human;
 - console, rete, errori HTTP, overflow, layout e target interattivi;
 - screenshot e receipt strutturate;
 - fixture E2E isolate e cleanup.
 
-Ultima tranche HVA-11 / V-08 sulla baseline corrente:
+Baseline prodotto `9b4e8859…` certificata post-merge:
 
-- Product CI: PASS;
-- K1 applicativo: PASS;
-- HVA applicativo: 24/24 PASS;
-- `mobileTargets`: PASS;
-- `layout`: PASS;
-- finding automatici: 0;
-- K1 Render Beta: PASS;
-- X3 application: PASS;
-- X3 Render Beta: PASS;
-- HVA Render Beta: PASS.
+- X5 authoring Render Beta: **PASS**;
+- HVA Render Beta: **PASS**;
+- K1 Render Beta: **PASS**;
+- X3 Render Beta: **PASS**;
+- X4 Planner Render Beta: **PASS**;
+- H1 Human Task Render Beta: **PASS**.
 
 **V-07 PASS** — Conoscenza privilegia consultazione/ricerca prima dell'acquisizione.  
-**V-08 PASS** — il controllo mobile `Applica filtri` non ricade più sotto la soglia tattile HVA.
+**V-08 PASS** — target tattile mobile dei filtri conforme.  
+**X5-A PASS** — consultazione della fonte e trasformazione in documento di lavoro restano azioni distinte.
 
 ## 7. Gate canonici correnti
 
-Per le slice applicative rilevanti il ciclo corrente comprende, secondo ambito:
+Per le slice applicative rilevanti il ciclo comprende, secondo ambito:
 
 1. Product CI: test → typecheck → lint → build;
-2. gate specialistico applicativo (es. K1/X3/HVA);
-3. merge su `develop`;
-4. Render Beta e verifica stato prodotto esatto/equivalente;
-5. gate specialistico sul runtime Beta;
-6. evidence/receipt;
-7. osservazione Human/visual quando richiesta;
+2. gate specialistico applicativo;
+3. HVA applicativo quando pertinente;
+4. merge su `develop` vincolato alla testa certificata;
+5. Render Beta e verifica stato prodotto esatto/equivalente;
+6. gate specialistico sul runtime Beta;
+7. evidence/receipt e cleanup;
 8. aggiornamento della decisione canonica.
 
-Il sistema non deve considerare una failure Vercel per quota come failure applicativa del canale Beta Render.
+Le failure Vercel per quota non sono failure del canale Beta Render.
 
 ## 8. Maturità corrente
 
-Valutazione audit del 2026-08-24:
+Valutazione audit aggiornata del 2026-08-24:
 
 - architettura/dominio: **molto matura**;
 - persistenza/sicurezza/RLS: **matura**;
@@ -138,28 +136,27 @@ Valutazione audit del 2026-08-24:
 - Human/UX: **molto avanzato e verificato**;
 - Conoscenza: **tra le capability più mature**;
 - CI/E2E/HVA: **molto maturo per la fase Beta**;
-- operations/produzione: **parzialmente maturo**;
-- authoring professionale: **incompleto**;
-- azioni AI persistenti: **guardrail pronti, esecuzione non autorizzata**.
+- authoring professionale: **avanzato per UDA, export ancora aperto**;
+- azioni AI persistenti: **prima capability minima attiva, controllata e reversibile**;
+- operations/produzione: **parzialmente maturo**.
 
-Stima orientativa, non gate: **completamento funzionale ~80% / maturità del prodotto esistente ~84%**.
+Stima orientativa, non gate: **completamento funzionale ~84% / maturità del prodotto esistente ~87%**.
 
 ## 9. Rischi e residui prioritari
 
-1. **Authoring X5** — UDA, programmazioni e documentazione devono diventare oggetti professionalmente editabili, versionabili ed esportabili.
-2. **X4 minimo** — aprire una sola azione persistente reversibile con preview → effetto → conferma → esecuzione → traccia/annullamento; nessuna espansione generalizzata delle write capability.
-3. **Production hardening** — URL/canale produzione, backup/restore, recovery account, monitoring/alerting, data lifecycle, performance con dataset più grandi.
-4. **Longitudinal proof** — verificare il comportamento durante settimane e mesi reali: cambi orario, sospensioni, correzioni, accumulo documenti/task/sessioni, fine quadrimestre/anno.
-5. **Document governance** — mantenere questo file come stato sintetico corrente e trattare i checkpoint datati come storia, evitando nuove divergenze.
+1. **X5-B export professionale** — produrre output realmente utilizzabili a partire dal documento versionato, senza alterare la fonte o perdere provenienza/versione.
+2. **Production hardening** — canale produzione, backup/restore, recovery account, monitoring/alerting, data lifecycle, performance con dataset maggiori.
+3. **Longitudinal proof** — validare settimane e mesi reali: cambi orario, sospensioni, correzioni, accumulo documenti/task/sessioni, fine quadrimestre/anno.
+4. **Estensione authoring** — solo dopo X5-B valutare programmazioni e ulteriori documenti professionali, evitando duplicazioni indiscriminate.
+5. **Governance X4** — mantenere `PLANNER_CREATE_TASK` come unica write capability assistita finché non esiste evidenza sufficiente per un'estensione controllata.
 
 ## 10. Ordine di maturazione autorizzato
 
-Il ciclo successivo raccomandato è:
+Il ciclo successivo è:
 
-1. consolidamento canonico dello stato — **questa tranche**;
-2. X4 limitato e reversibile;
-3. X5 authoring professionale;
-4. hardening operativo/produzione;
-5. pilotaggio continuativo settembre–ottobre e nuove tranche guidate da evidenza reale.
+1. **X5-B — export professionale del documento UDA versionato**;
+2. hardening operativo/produzione;
+3. pilotaggio continuativo settembre–ottobre;
+4. nuove tranche guidate da evidenza reale.
 
 Non introdurre nuove macro-capability non previste per riempire artificialmente la roadmap.
