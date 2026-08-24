@@ -28,7 +28,10 @@ test('X3 mobile gate: context, useful answers, write preview and no automatic wr
     await expect(page.getByText('x3-responsible-ai.txt')).toBeVisible()
     await page.getByRole('button', { name: 'Carica e organizza' }).click()
     await page.waitForURL(/\/knowledge\/[^/?#]+$/, { timeout: 60_000 })
-    await expect(page.getByText('Pronto').first()).toBeVisible()
+
+    // The responsive detail view keeps hidden duplicate status nodes in the DOM.
+    // Assert the status that is actually visible to the user, not the first text match.
+    await expect(page.locator('.processingPill.ready:visible').first()).toHaveText('Pronto')
   })
 
   await test.step('Salva il contesto professionale e verifica il feedback', async () => {
