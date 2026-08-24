@@ -1,6 +1,6 @@
 # DOCENTE OS — Canonical Documentation Index
 
-Data: 2026-08-22  
+Data: 2026-08-24  
 Stato: CANONICAL
 
 ## Ordine di autorità
@@ -15,6 +15,8 @@ Quando due documenti sembrano divergere, applicare questo ordine:
 6. **Design System V2**
 7. **Specifiche verticali di modulo**
 8. documenti storici / implementation notes
+
+Per il solo **stato operativo corrente** (runtime attivo, capability complete/aperta, gate correnti e residui), la fonte sintetica autorevole è `docs/product/PROJECT_STATUS_CURRENT.md`. I file `PROJECT_STATUS_YYYY-MM-DD.md` sono checkpoint storici e non prevalgono sullo stato CURRENT.
 
 ## Core architecture
 
@@ -38,15 +40,16 @@ Per ogni lavoro T3/T4:
 2. `TEMPORAL_COMPOSITION_CANONICAL_SPEC.md` governa le dipendenze tra Orario e Calendario;
 3. `TIMETABLE_CANONICAL_SPEC.md` governa le entità interne dell'Orario e va interpretato senza introdurre dipendenze dal dominio Calendario.
 
-In particolare sono vietati import/repository dependency `Timetable -> Calendar` e `Calendar -> Timetable`.
+Sono vietati import/repository dependency `Timetable -> Calendar` e `Calendar -> Timetable`; la composizione resta confinata al servizio di Temporal Projection.
 
 ## Product
 
+- `docs/product/PROJECT_STATUS_CURRENT.md` — **stato sintetico corrente: runtime, capability, gate, maturità e residui**.
 - `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — north star e programma X0–X6.
 - `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` — tono, microcopy e grammatica collaborativa.
 - `docs/product/SETTINGS_EXPERIENCE_CONTRACT.md` — **contratto vincolante per configurazione guidata e gestione del contesto docente**.
 - `docs/product/SETTINGS_CONTEXT_DISCLOSURE_NOTE.md` — **regola canonica “contesto completo, esposizione minima” per le Impostazioni**.
-- `docs/product/PROJECT_STATUS_2026-08-22.md` — checkpoint generale corrente.
+- `docs/product/PROJECT_STATUS_2026-08-22.md` — checkpoint storico del 22 agosto; non descrive più da solo il runtime/capability correnti.
 
 ### Regola Impostazioni
 
@@ -58,6 +61,16 @@ Per ogni lavoro su `/impostazioni`:
 4. `DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` governa tono e microcopy trasversali.
 
 È vietato introdurre una seconda Cattedra: Impostazioni e Orario devono usare gli stessi `teaching_assignments`.
+
+## Human + Visual Acceptance
+
+- `product/design/HUMAN-EXPERIENCE-CONTRACT.md` — contratto Human.
+- `product/design/VISUAL-ACCEPTANCE.md` — procedura di accettazione visuale.
+- `product/design/MOBILE-RULES.md` — regole mobile.
+- `product/design/ACCESSIBILITY-RULES.md` — regole di accessibilità.
+- `product/design/reviews/` — decisioni visuali datate e closure evidence.
+
+Le review datate sono append-only come evidenza storica: una review successiva può chiudere un WATCH precedente senza riscrivere il documento storico. Lo stato sintetico corrente dei finding chiusi/aperti deve essere riportato in `PROJECT_STATUS_CURRENT.md`.
 
 ## Design
 
@@ -71,19 +84,22 @@ Ogni slice che modifica una decisione canonica deve:
 1. aggiornare prima o insieme il documento pertinente;
 2. dichiarare se la modifica è `COMPATIBLE`, `SUPERSEDING` o `BREAKING`;
 3. non lasciare nel repository istruzioni operative incompatibili;
-4. aggiornare il checkpoint generale quando cambia una capability o un gate maggiore.
+4. aggiornare `PROJECT_STATUS_CURRENT.md` quando cambia una macro-capability, il runtime canonico, un gate maggiore o un rischio di maturità rilevante.
+
+I checkpoint datati non devono essere continuamente riscritti: preservano la storia del progetto.
 
 ## Regola per agenti di sviluppo
 
 Prima di implementare una slice, leggere almeno:
 
-1. ADR-001;
-2. ADR-002;
-3. Product Experience Masterplan;
-4. Language & Collaboration System;
-5. Design System V2;
-6. la specifica verticale della slice;
-7. il relativo contratto di esperienza, se presente;
-8. per T3/T4, sempre anche Work/Time Mental Model e Temporal Composition Canonical Spec.
+1. `PROJECT_STATUS_CURRENT.md`;
+2. ADR-001;
+3. ADR-002;
+4. Product Experience Masterplan;
+5. Language & Collaboration System;
+6. Design System V2;
+7. la specifica verticale della slice;
+8. il relativo contratto di esperienza, se presente;
+9. per T3/T4, sempre anche Work/Time Mental Model e Temporal Composition Canonical Spec.
 
-Nessun agente deve inferire una nuova architettura da un singolo file runtime quando esiste una decisione canonica esplicita.
+Nessun agente deve inferire una nuova architettura da un singolo file runtime quando esiste una decisione canonica esplicita; nessun agente deve inferire lo stato corrente da un checkpoint datato quando esiste `PROJECT_STATUS_CURRENT.md`.
