@@ -45,6 +45,7 @@ Sono vietati import/repository dependency `Timetable -> Calendar` e `Calendar ->
 ## Product
 
 - `docs/product/PROJECT_STATUS_CURRENT.md` — **stato sintetico corrente: runtime, capability, gate, maturità e residui**.
+- `docs/product/X4A_CERTIFICATION_2026-08-24.md` — **ricevuta canonica di certificazione Beta della prima write assistita `PLANNER_CREATE_TASK`, inclusi gate, exact commit, undo e igiene fixture**.
 - `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — north star e programma X0–X6.
 - `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` — tono, microcopy e grammatica collaborativa.
 - `docs/product/SETTINGS_EXPERIENCE_CONTRACT.md` — **contratto vincolante per configurazione guidata e gestione del contesto docente**.
