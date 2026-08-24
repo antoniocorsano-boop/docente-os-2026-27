@@ -51,10 +51,14 @@ async function udaReading(page, testInfo) {
   ).toBeVisible()
 
   await resource.click()
-  await expect(page.locator('h1').first()).toBeVisible()
-  await expect(page.locator('.provenanceBar, .focusedKnowledgeHero').first()).toBeVisible()
+  await expect(page.locator('.focusedKnowledgeHero')).toBeVisible()
+  await expect(page.locator('.focusedKnowledgeUse')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Torna alla preparazione' }).first()).toBeVisible()
+  await expect(page.locator('form.contextForm')).toHaveCount(0)
+  await expect(page.locator('.focusedKnowledgeManage')).toBeVisible()
+  expect(new URL(page.url()).searchParams.get('mode'), 'L’UDA aperta da Progetta deve mantenere la modalità prepare.').toBe('prepare')
   await screenshot(page, testInfo, 'uda-reading')
-  return pass(await page.locator('h1').first().innerText())
+  return pass(`Preparazione contestuale: ${await page.locator('h1').first().innerText()}`)
 }
 
 async function knowledgeDocument(page, testInfo) {
