@@ -29,9 +29,9 @@ test('X3 mobile gate: context, useful answers, write preview and no automatic wr
     await page.getByRole('button', { name: 'Carica e organizza' }).click()
     await page.waitForURL(/\/knowledge\/[^/?#]+$/, { timeout: 60_000 })
 
-    // The responsive detail view keeps hidden duplicate status nodes in the DOM.
-    // Assert the status that is actually visible to the user, not the first text match.
-    await expect(page.locator('.processingPill.ready:visible').first()).toHaveText('Pronto')
+    const contentContext = page.getByRole('region', { name: 'Contesto del contenuto' })
+    await expect(contentContext).toBeVisible()
+    await expect(contentContext.getByText('Pronto', { exact: true })).toBeVisible()
   })
 
   await test.step('Salva il contesto professionale e verifica il feedback', async () => {
