@@ -26,10 +26,42 @@ test.describe('Human + Visual Acceptance — superfici principali', () => {
         const more = recent.locator('details.knowledgeRecentMore')
         if (await more.count()) await expect(more).not.toHaveAttribute('open', '')
 
+        const searchPanel = page.locator('.searchPanel')
+        const capture = page.locator('details.knowledgeCaptureDisclosure')
+        await expect(searchPanel, 'La consultazione deve essere immediatamente disponibile in Conoscenza.').toBeVisible()
+        await expect(capture, 'L’acquisizione deve restare disponibile come divulgazione progressiva.').toBeVisible()
+        await expect(
+          capture,
+          'Con una libreria già popolata, Aggiungi contenuto non deve competere con la consultazione iniziale.',
+        ).not.toHaveAttribute('open', '')
+
         const textPanel = page.locator('[data-capture-mode-panel="text"]')
         const filePanel = page.locator('[data-capture-mode-panel="file"]')
         const textMode = page.getByRole('button', { name: /Incolla un testo/ })
         const fileMode = page.getByRole('button', { name: /Carica un file/ })
+
+        await expect(textPanel).not.toBeVisible()
+        await expect(filePanel).not.toBeVisible()
+
+        if (testInfo.project.name.startsWith('mobile')) {
+          const order = await page.evaluate(() => {
+            const search = document.querySelector('.searchPanel')
+            const add = document.querySelector('details.knowledgeCaptureDisclosure')
+            if (!search || !add) return null
+            return {
+              searchBottom: search.getBoundingClientRect().bottom,
+              captureTop: add.getBoundingClientRect().top,
+            }
+          })
+          expect(order, 'Impossibile misurare la priorità visiva della Conoscenza mobile.').not.toBeNull()
+          expect(
+            order.searchBottom,
+            'Su mobile Cerca deve precedere visivamente Aggiungi contenuto.',
+          ).toBeLessThanOrEqual(order.captureTop + 1)
+        }
+
+        await capture.locator(':scope > summary').click()
+        await expect(capture).toHaveAttribute('open', '')
 
         if (testInfo.project.name.startsWith('mobile')) {
           await expect(textMode).toBeVisible()
@@ -60,6 +92,11 @@ test.describe('Human + Visual Acceptance — superfici principali', () => {
           await expect(textPanel).toBeVisible()
           await expect(filePanel).toBeVisible()
         }
+
+        await capture.locator(':scope > summary').click()
+        await expect(capture).not.toHaveAttribute('open', '')
+        await expect(textPanel).not.toBeVisible()
+        await expect(filePanel).not.toBeVisible()
       }
 
       if (surface.id === 'settings' && testInfo.project.name.startsWith('mobile')) {

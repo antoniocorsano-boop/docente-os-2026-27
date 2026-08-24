@@ -26,6 +26,11 @@ test('K1 Knowledge: scelta file, errore recuperabile, retry reale e cleanup', as
   try {
     await page.goto('/knowledge')
 
+    const capture = page.locator('details.knowledgeCaptureDisclosure')
+    await expect(capture).toBeVisible()
+    if (await capture.getAttribute('open') === null) await capture.locator(':scope > summary').click()
+    await expect(capture).toHaveAttribute('open', '')
+
     const fileMode = page.getByRole('button', { name: /Carica un file/ })
     await expect(fileMode).toBeVisible()
     await expect(page.locator('[data-capture-mode-panel="file"]')).not.toBeVisible()

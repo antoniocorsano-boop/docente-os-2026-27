@@ -34,6 +34,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
   ])
   const recentVisible = recent.slice(0, RECENT_VISIBLE_COUNT)
   const recentMore = recent.slice(RECENT_VISIBLE_COUNT)
+  const captureOpen = recent.length === 0 || Boolean(uploadMessage)
 
   const renderRecentRows = (items: typeof recent) => items.map(({ asset, document }) => {
     const status = knowledgeProcessingStatus(asset.processingStatus)
@@ -65,11 +66,6 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
       {uploadMessage ? <div className="knowledgeFeedback" role="status">{uploadMessage}</div> : null}
 
       <div className="knowledgeGrid">
-        <section className="knowledgePanel capturePanel">
-          <div className="knowledgePanelHeading"><div><span className="panelEyebrow">AGGIUNGI</span><h2>Porta un contenuto nella Conoscenza</h2></div><span className="statusPill">Originale preservato</span></div>
-          <KnowledgeCaptureModes />
-        </section>
-
         <section className="knowledgePanel searchPanel">
           <div className="knowledgePanelHeading"><div><span className="panelEyebrow">RITROVA</span><h2>Cerca nella Conoscenza</h2></div></div>
           <form className="knowledgeSearch" action="/knowledge" method="get">
@@ -96,6 +92,21 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
             </div>
           </>}
         </section>
+
+        <details className="knowledgePanel capturePanel knowledgeCaptureDisclosure" open={captureOpen}>
+          <summary className="knowledgeCaptureSummary">
+            <div>
+              <span className="panelEyebrow">AGGIUNGI</span>
+              <strong>Aggiungi un contenuto</strong>
+              <small>Testo o file, con originale preservato.</small>
+            </div>
+            <span className="knowledgeCaptureSummaryAction" aria-hidden>{captureOpen ? 'Riduci' : 'Apri'}</span>
+          </summary>
+          <div className="knowledgeCaptureBody">
+            <div className="knowledgeCaptureAssurance"><span className="statusPill">Originale preservato</span><p>Il contenuto entra nella Conoscenza solo quando scegli di aggiungerlo.</p></div>
+            <KnowledgeCaptureModes />
+          </div>
+        </details>
       </div>
 
       <section className="recentKnowledge">
