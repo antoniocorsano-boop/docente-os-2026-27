@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
+import { experienceUdaFixtureTitle } from '../support/experience-uda-fixture.mjs'
 
 requireE2ECredentials()
 
@@ -35,11 +36,19 @@ async function classNextTask(page, testInfo) {
 }
 
 async function udaReading(page, testInfo) {
+  const expectedTitle = experienceUdaFixtureTitle()
   await page.goto('/progetta?grade=prima')
   const udaGroup = page.locator('.progettaGroup').filter({ hasText: /Unità di apprendimento|UDA/i }).first()
-  if (!(await udaGroup.count())) return na('Nessun gruppo UDA disponibile per la classe prima.')
-  const resource = udaGroup.locator('.progettaItems a').first()
-  if (!(await resource.count())) return na('Nessuna UDA disponibile nel gruppo corrente.')
+  await expect(
+    udaGroup,
+    'Progetta deve esporre il gruppo UDA dopo il provisioning della fixture tecnica.',
+  ).toBeVisible()
+
+  const resource = udaGroup.locator('.progettaItems a').filter({ hasText: expectedTitle }).first()
+  await expect(
+    resource,
+    'La UDA tecnica della run corrente deve essere raggiungibile da Progetta; la sua assenza è un FAIL di copertura.',
+  ).toBeVisible()
 
   await resource.click()
   await expect(page.locator('h1').first()).toBeVisible()
