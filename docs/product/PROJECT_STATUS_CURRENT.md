@@ -1,16 +1,16 @@
 # DOCENTE OS — Stato corrente canonico
 
 Data: 2026-08-24  
-Baseline prodotto certificata: `develop` @ `7e9194f0997bc13d0dfe6715518f7debe771bb5a`  
+Baseline prodotto certificata: `develop` @ `fa570f44bf79955068ac916581f5ddf24336fd30`  
 Stato documento: **CURRENT / CANONICAL STATUS**
 
 Questo documento è la sintesi corrente autorevole dello stato del sistema. I checkpoint datati precedenti restano storici e non devono essere usati per dedurre lo stato operativo quando divergono da questo file.
 
 ## 1. Classificazione del prodotto
 
-DOCENTE OS è una **Beta operativa avanzata**. Non è più un prototipo/MVP: possiede persistenza reale, autenticazione, RLS, domini separati, flussi didattici persistenti, prima scrittura assistita controllata, authoring UDA versionato, export PDF professionale, recovery account esplicito, export/manifest completo del workspace, dependency graph riproducibile, integrità DB↔Storage misurata e runtime Beta verificato con gate end-to-end e Human + Visual Acceptance.
+DOCENTE OS è una **Beta operativa avanzata**. Non è più un prototipo/MVP: possiede persistenza reale, autenticazione, RLS, domini separati, flussi didattici persistenti, prima scrittura assistita controllata, authoring UDA versionato, export PDF professionale, recovery account esplicito, export/manifest completo del workspace, dependency graph riproducibile, integrità DB↔Storage misurata, baseline performance autenticata e runtime Beta verificato con gate end-to-end e Human + Visual Acceptance.
 
-Il sistema non è ancora classificabile come produzione definitiva perché restano aperti il restore rehearsal isolato, la strategia di copia/restore off-site degli oggetti Storage, performance/load, incident escalation, il contratto Beta → produzione e la prova longitudinale durante un anno scolastico reale.
+Il sistema non è ancora classificabile come produzione definitiva perché restano aperti il restore rehearsal isolato, la strategia di copia/restore off-site degli oggetti Storage, la prova load/scale su dataset significativamente maggiori, incident escalation, il contratto Beta → produzione e la prova longitudinale durante un anno scolastico reale.
 
 ## 2. Runtime canonico
 
@@ -99,22 +99,25 @@ Residui non bloccanti:
 
 Il sistema HVA è parte permanente del ciclo di sviluppo e copre mobile/desktop, journey Human, console, rete, HTTP, overflow, layout, target interattivi, screenshot, receipt e fixture hygiene.
 
-Stato corrente sul commit P5:
+Stato corrente:
 
-- HVA Render Beta: **PASS**;
+- HVA Render Beta: **PASS** sulla tranche X5-B dopo rerun sul medesimo commit certificato; un singolo `net::ERR_ABORTED` su stylesheet Next.js del Planner mobile è stato osservato nel primo tentativo e non si è riprodotto nel retry, senza finding automatici di prodotto;
 - K1 Render Beta: **PASS**;
 - X3 application + Render Beta: **PASS**;
-- X4 Planner Render Beta: **PASS**;
+- X4 Planner Render Beta: **PASS** sul current head `fa570f44…`;
 - Operational Security: **PASS**;
 - P3 Workspace Export Render Beta: **PASS**;
-- P5 Storage Integrity Render Beta: **PASS**.
+- P5 Storage Integrity Render Beta: **PASS**;
+- P6 Performance baseline Render Beta: **PASS** sulla baseline P6-A.
 
 **V-07 PASS** — Conoscenza privilegia consultazione/ricerca prima dell'acquisizione.  
 **V-08 PASS** — target tattile mobile dei filtri conforme.  
 **X5-A PASS** — consultazione della fonte e trasformazione in documento di lavoro restano azioni distinte.  
 **X5-B PASS** — l'export parte da una versione salvata/immutabile e non introduce una nuova write capability.  
 **P3 EXPORT PASS** — l'owner può ottenere un manifest completo e read-only del workspace; accesso anonimo negato.  
-**P5 STORAGE INTEGRITY PASS** — DB e Storage sono riconciliati nel manifest e il Beta corrente non presenta riferimenti mancanti o blob orfani.
+**P5 STORAGE INTEGRITY PASS** — DB e Storage sono riconciliati nel manifest e il Beta corrente non presenta riferimenti mancanti o blob orfani.  
+**P6-A PERFORMANCE PASS** — baseline autenticata e non mutante su 8 superfici operative.  
+**P6-B PLANNER QUERY PASS** — il Planner carica dal DB solo task `OPEN`/`WAITING`, preservando la cronologia completa e mantenendo verdi X3/X4 sul Beta corrente.
 
 ## 7. Gate canonici correnti
 
@@ -135,13 +138,14 @@ Gate permanenti:
 - `ops-security/dependencies` — lockfile canonico, `npm ci`, audit full/prod/tooling e blocco di finding high/critical;
 - `ops-health/render-beta` — probe periodico di Render, login, Supabase Auth, DB/RLS e coerenza exact/product-equivalent;
 - `p3-export/application` / `p3-export/render-beta` — export workspace owner-only e coerenza inventario;
-- `p5-storage-integrity/application` / `p5-storage-integrity/render-beta` — riconciliazione DB↔Storage e fixture hygiene.
+- `p5-storage-integrity/application` / `p5-storage-integrity/render-beta` — riconciliazione DB↔Storage e fixture hygiene;
+- `p6-performance/application` / `p6-performance/render-beta` — baseline prestazionale autenticata, warm-up separato dal cold start e receipt median/p95/max.
 
 Le failure Vercel per quota non sono failure del canale Beta Render.
 
 ## 8. Operational hardening
 
-Stato: **IN PROGRESS — P0 SECURITY PASS / P1 MONITORING PASS / P2 ACCOUNT RECOVERY PASS / P3 DATA LIFECYCLE + EXPORT PASS / P4 DEPENDENCY SECURITY PASS / P5 STORAGE INTEGRITY PASS**.
+Stato: **IN PROGRESS — P0 SECURITY PASS / P1 MONITORING PASS / P2 ACCOUNT RECOVERY PASS / P3 DATA LIFECYCLE + EXPORT PASS / P4 DEPENDENCY SECURITY PASS / P5 STORAGE INTEGRITY PASS / P6-A PERFORMANCE BASELINE PASS / P6-B PLANNER QUERY PASS**.
 
 ### P0 — Security baseline: PASS
 
@@ -193,14 +197,37 @@ Stato: **IN PROGRESS — P0 SECURITY PASS / P1 MONITORING PASS / P2 ACCOUNT RECO
 - P3/P5 applicativo e `p5-storage-integrity/render-beta`: **PASS**;
 - K1 post-merge: **PASS**, senza ricreare orfani.
 
+### P6-A — Performance baseline: PASS / BETA-PROVEN
+
+- prova autenticata su 8 superfici operative: workspace, Planner, Conoscenza, Classi, Piano annuale, Progetta, Orario e Calendario;
+- warm-up separato per non confondere il cold start del piano Render Free con la latenza operativa;
+- 3 campioni per superficie, 24 campioni complessivi;
+- dataset classificato `CURRENT_BETA_NON_MUTATING`, senza generare volume sintetico nel Beta canonico;
+- budget: route max **3.000 ms**, aggregate p95 **2.200 ms**;
+- risultato Render Beta: mediana aggregata **291 ms**, p95 **1.206 ms**, massimo **1.355 ms**;
+- Planner pre-P6-B: mediana **721 ms**, p95/max **794 ms**;
+- nessuna dichiarazione di load/scale proven: il dataset misurato resta troppo piccolo per quel livello di certificazione.
+
+### P6-B — Planner operational query: PASS / BETA-PROVEN funzionale
+
+- `SupabasePlannerRepository.listByWorkspace()` filtra lato DB `status IN (OPEN, WAITING)`;
+- task `DONE`/`CANCELLED` non vengono più trasferiti inutilmente alle superfici operative;
+- cronologia persistente DB preservata integralmente;
+- nessun limite arbitrario introdotto;
+- Render serve esattamente `fa570f44bf79955068ac916581f5ddf24336fd30`;
+- regressione X3 no-implicit-write: **PASS**;
+- X4 Planner acceptance: **PASS**;
+- il miglioramento prestazionale non è ancora quantificato con un nuovo P6 benchmark sul current head, perché P6-B non ha attivato automaticamente il workflow performance.
+
 ### Residui hardening aperti
 
+- load/scale isolato con dataset significativamente maggiori, senza contaminare il Beta canonico;
+- re-benchmark P6 sul current head per quantificare l'effetto di P6-B;
 - restore rehearsal reale su ambiente isolato quando il piano lo consente;
 - replica/copia off-site e procedura di restore degli oggetti Storage;
 - leaked-password protection quando il piano Supabase lo consente;
 - alert escalation/incident response oltre alla failure del monitor GitHub;
 - policy retention e, solo dopo evidenza sufficiente, eventuale cancellazione account controllata;
-- performance/load con dataset significativamente più grandi;
 - canale produzione definitivo e contratto Beta → produzione.
 
 ## 9. Maturità corrente
@@ -216,15 +243,16 @@ Stato: **IN PROGRESS — P0 SECURITY PASS / P1 MONITORING PASS / P2 ACCOUNT RECO
 - account recovery: **implementato e verificato**;
 - data lifecycle/export: **Beta-proven**, distruzione ancora intenzionalmente non abilitata;
 - azioni AI persistenti: **prima capability minima controllata e reversibile**;
-- operations/produzione: **security, monitoring, recovery applicativo, export dati, dependency security e Storage integrity attivi; restore, off-site backup, load e promozione produzione ancora incompleti**.
+- performance operativa corrente: **baseline Beta-proven e entro budget**, ma load/scale non ancora provati;
+- operations/produzione: **security, monitoring, recovery applicativo, export dati, dependency security, Storage integrity e performance baseline attivi; restore, off-site backup, scale/load e promozione produzione ancora incompleti**.
 
 Le percentuali di maturità restano indicative e non sostituiscono i gate.
 
 ## 10. Rischi e residui prioritari
 
-1. **Restore + off-site Storage** — provare realmente DB/Auth e oggetti su ambiente isolato e definire una copia indipendente degli originali.
-2. **Performance/load** — provare dataset significativamente maggiori e individuare soglie operative.
-3. **Beta → produzione** — definire canale definitivo, criteri di promozione e rollback.
+1. **Load/scale isolato** — provare volumi significativamente maggiori in un ambiente che non contamini il Beta canonico.
+2. **Beta → produzione** — definire canale definitivo, criteri di promozione e rollback.
+3. **Restore + off-site Storage** — provare realmente DB/Auth e oggetti su ambiente isolato e definire una copia indipendente degli originali.
 4. **Incident response** — escalation oltre ai monitor GitHub e ricevuta operativa degli incidenti.
 5. **Password/platform hardening** — leaked-password protection quando disponibile.
 6. **Longitudinal proof** — validare settimane e mesi reali di lavoro scolastico.
@@ -234,11 +262,12 @@ Le percentuali di maturità restano indicative e non sostituiscono i gate.
 
 Il ciclo corrente è:
 
-1. proseguire con **performance/load e contratto Beta → produzione**;
-2. definire la strategia **off-site Storage** senza confonderla con l'integrità già certificata;
-3. eseguire il restore rehearsal quando sarà disponibile un ambiente Supabase isolato;
-4. definire retention/cancellazione soltanto dopo export e restore affidabili;
-5. pilotaggio continuativo settembre–ottobre;
-6. nuove tranche guidate da evidenza reale.
+1. eseguire **re-benchmark P6 sul current head** e poi definire una prova **load/scale isolata**;
+2. definire il contratto **Beta → produzione** con criteri di promozione e rollback;
+3. definire la strategia **off-site Storage** senza confonderla con l'integrità già certificata;
+4. eseguire il restore rehearsal quando sarà disponibile un ambiente Supabase isolato;
+5. definire retention/cancellazione soltanto dopo export e restore affidabili;
+6. pilotaggio continuativo settembre–ottobre;
+7. nuove tranche guidate da evidenza reale.
 
 Non introdurre nuove macro-capability non previste per riempire artificialmente la roadmap.
