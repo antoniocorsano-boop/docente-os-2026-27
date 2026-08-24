@@ -14,16 +14,24 @@ if (!password) {
   throw new Error('E2E_PASSWORD is required for the authenticated K1 acceptance test')
 }
 
-test('K1 Knowledge: stato comprensibile, errore recuperabile, retry reale e cleanup', async ({ page }) => {
+test('K1 Knowledge: scelta file, errore recuperabile, retry reale e cleanup', async ({ page }) => {
   await login(page)
 
   await retainNewestKnowledgeFixture(page, 'x3-responsible-ai')
   expect(await knowledgeFixtureAssetIds(page, 'x3-responsible-ai')).toHaveLength(1)
   await deleteAllKnowledgeFixtures(page, fixtureName)
+  expect(await knowledgeFixtureAssetIds(page, fixtureName)).toHaveLength(0)
   let createdAssetId = null
 
   try {
     await page.goto('/knowledge')
+
+    const fileMode = page.getByRole('button', { name: /Carica un file/ })
+    await expect(fileMode).toBeVisible()
+    await expect(page.locator('[data-capture-mode-panel="file"]')).not.toBeVisible()
+    await fileMode.click()
+    await expect(page.locator('[data-capture-mode-panel="file"]')).toBeVisible()
+    await expect(page.locator('[data-capture-mode-panel="text"]')).not.toBeVisible()
 
     const upload = page.locator('input[type="file"][name="file"]')
     await upload.setInputFiles({
@@ -77,11 +85,9 @@ test('K1 Knowledge: stato comprensibile, errore recuperabile, retry reale e clea
     await page.screenshot({ path: 'test-results/k1-02-complete.png' })
   } finally {
     await page.unroute('**/api/knowledge/upload').catch(() => {})
-    if (createdAssetId) {
-      await deleteKnowledgeAsset(page, createdAssetId)
-    } else {
-      await deleteAllKnowledgeFixtures(page, fixtureName)
-    }
+    if (createdAssetId) await deleteKnowledgeAsset(page, createdAssetId)
+    await deleteAllKnowledgeFixtures(page, fixtureName)
+    expect(await knowledgeFixtureAssetIds(page, fixtureName)).toHaveLength(0)
   }
 })
 
