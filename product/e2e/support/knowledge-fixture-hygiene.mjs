@@ -1,15 +1,23 @@
-export async function knowledgeFixtureAssetIds(page, titleFragment) {
-  await page.goto(`/knowledge?q=${encodeURIComponent(titleFragment)}`)
-  return page.locator('a.knowledgeResult, a.knowledgeAssetRow').evaluateAll((links, fragment) => {
-    const needle = String(fragment).toLocaleLowerCase('it')
-    const ids = links.flatMap((link) => {
-      if (!link.textContent?.toLocaleLowerCase('it').includes(needle)) return []
-      const href = link.getAttribute('href') ?? ''
-      const match = href.match(/^\/knowledge\/([^/?#]+)$/)
-      return match ? [decodeURIComponent(match[1])] : []
-    })
-    return [...new Set(ids)]
-  }, titleFragment)
+import { createClient } from '@supabase/supabase-js'
+import { E2E_EMAIL, E2E_PASSWORD, requireE2ECredentials } from './e2e-auth.mjs'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://gnshgapmwyjamhmlikeg.supabase.co'
+const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L'
+
+let fixtureIdentityPromise = null
+
+export async function knowledgeFixtureAssetIds(_page, titleFragment) {
+  const { supabase, userId } = await fixtureIdentity()
+  const { data, error } = await supabase
+    .from('knowledge_assets')
+    .select('id, original_name, captured_at, created_by')
+    .eq('created_by', userId)
+    .ilike('original_name', `%${titleFragment}%`)
+    .order('captured_at', { ascending: false })
+    .order('id', { ascending: false })
+
+  if (error) throw new Error(`Knowledge fixture lookup failed: ${error.message}`)
+  return [...new Set((data ?? []).map((asset) => asset.id))]
 }
 
 export async function deleteKnowledgeAsset(page, assetId, { tolerateMissing = true } = {}) {
@@ -31,4 +39,26 @@ export async function retainNewestKnowledgeFixture(page, titleFragment) {
   const [keep, ...duplicates] = ids
   for (const id of duplicates) await deleteKnowledgeAsset(page, id)
   return keep ?? null
+}
+
+async function fixtureIdentity() {
+  if (!fixtureIdentityPromise) fixtureIdentityPromise = authenticateFixtureIdentity()
+  return fixtureIdentityPromise
+}
+
+async function authenticateFixtureIdentity() {
+  requireE2ECredentials()
+  const supabase = createClient(supabaseUrl, supabasePublishableKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  })
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: E2E_EMAIL,
+    password: E2E_PASSWORD,
+  })
+  if (error || !data.user) throw new Error(`Knowledge fixture identity failed: ${error?.message ?? 'missing user'}`)
+  return { supabase, userId: data.user.id }
 }
