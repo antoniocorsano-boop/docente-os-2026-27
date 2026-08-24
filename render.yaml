@@ -15,7 +15,7 @@ projects:
             repo: https://github.com/antoniocorsano-boop/docente-os-2026-27
             branch: develop
             rootDir: product
-            buildCommand: npm install --no-audit --no-fund && npm run build
+            buildCommand: npm ci --no-audit --no-fund && npm run build
             startCommand: npm start
             autoDeployTrigger: commit
             healthCheckPath: /
