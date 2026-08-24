@@ -1,10 +1,29 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "product": "DOCENTE OS",
   "candidateSourceBranch": "develop",
   "promotionModel": "immutable_commit",
   "productionEnvironmentState": "NOT_CREATED",
-  "productionDataTopologyState": "UNDECIDED",
+  "productionDataTopologyState": "SEPARATE",
+  "firstReleaseScope": "SINGLE_OWNER_PILOT",
+  "dataTopology": {
+    "supabaseProject": "SEPARATE_REQUIRED",
+    "database": "SEPARATE_REQUIRED",
+    "auth": "SEPARATE_REQUIRED",
+    "storage": "SEPARATE_REQUIRED",
+    "environmentSecrets": "SEPARATE_REQUIRED",
+    "betaDataAutomaticCopyAllowed": false,
+    "betaCredentialsReuseAllowed": false,
+    "crossEnvironmentStorageWritesAllowed": false,
+    "crossEnvironmentDatabaseWritesAllowed": false
+  },
+  "firstRelease": {
+    "publicSignupAllowed": false,
+    "multiTenantOnboardingAllowed": false,
+    "betaDataMigrationAutomatic": false,
+    "manualImportRequiresExplicitOwnerDecision": true,
+    "releaseAudience": "named_owner_only"
+  },
   "minimumGates": [
     "product-ci",
     "ops-security/supabase",
