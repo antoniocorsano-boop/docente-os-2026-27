@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { captureKnowledgeNote } from './actions'
 import { KnowledgeFileUploader } from './KnowledgeFileUploader'
+import './knowledge-capture-modes.css'
 
 type CaptureMode = 'FILE' | 'TEXT'
 
