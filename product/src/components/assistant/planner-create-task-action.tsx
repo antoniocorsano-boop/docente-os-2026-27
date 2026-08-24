@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import styles from './planner-create-task-action.module.css'
 
 type Proposal = {
   proposalId: string
@@ -101,7 +102,7 @@ export function PlannerCreateTaskAction({ localDate }: { localDate: string }) {
   }
 
   return (
-    <section className="dosAssistantWrite" aria-labelledby="assistant-write-title">
+    <section className={`${styles.root} dosAssistantWrite`} aria-labelledby="assistant-write-title">
       <div className="dosAssistantWriteHeading">
         <div>
           <span className="panelEyebrow">AZIONE CON CONFERMA</span>
