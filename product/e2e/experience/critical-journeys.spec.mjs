@@ -57,8 +57,54 @@ async function udaReading(page, testInfo) {
   await expect(page.locator('form.contextForm')).toHaveCount(0)
   await expect(page.locator('.focusedKnowledgeManage')).toBeVisible()
   expect(new URL(page.url()).searchParams.get('mode'), 'L’UDA aperta da Progetta deve mantenere la modalità prepare.').toBe('prepare')
+
+  if (testInfo.project.name.startsWith('mobile')) {
+    await assertMobileAssistantDoesNotCoverTask(page)
+  }
+
   await screenshot(page, testInfo, 'uda-reading')
   return pass(`Preparazione contestuale: ${await page.locator('h1').first().innerText()}`)
+}
+
+async function assertMobileAssistantDoesNotCoverTask(page) {
+  const support = page.locator('.dosAssistantFloatingTrigger, .dosAssistantFloatingStatus').first()
+  await expect(support, 'Il supporto contestuale deve restare disponibile anche quando non fluttua sul contenuto.').toBeVisible({ timeout: 20_000 })
+
+  const documentGeometry = await page.evaluate(() => {
+    const taskEnd = document.querySelector('.focusedKnowledgeManage')
+    const assistant = document.querySelector('.dosAssistantFloatingTrigger, .dosAssistantFloatingStatus')
+    if (!taskEnd || !assistant) return null
+    const taskRect = taskEnd.getBoundingClientRect()
+    const assistantRect = assistant.getBoundingClientRect()
+    return {
+      position: getComputedStyle(assistant).position,
+      taskBottom: taskRect.bottom + window.scrollY,
+      assistantTop: assistantRect.top + window.scrollY,
+    }
+  })
+
+  expect(documentGeometry, 'Impossibile misurare la relazione fra compito e assistente mobile.').not.toBeNull()
+  expect(documentGeometry.position, 'Su mobile l’assistente chiuso non deve essere fixed sopra il contenuto.').toBe('absolute')
+  expect(
+    documentGeometry.assistantTop,
+    'L’assistente deve iniziare dopo l’ultimo contenuto operativo della UDA.',
+  ).toBeGreaterThanOrEqual(documentGeometry.taskBottom + 8)
+
+  await support.scrollIntoViewIfNeeded()
+  const viewportGeometry = await page.evaluate(() => {
+    const assistant = document.querySelector('.dosAssistantFloatingTrigger, .dosAssistantFloatingStatus')
+    const nav = document.querySelector('.dosBottomNav')
+    if (!assistant || !nav) return null
+    const assistantRect = assistant.getBoundingClientRect()
+    const navRect = nav.getBoundingClientRect()
+    return { assistantBottom: assistantRect.bottom, navTop: navRect.top }
+  })
+
+  expect(viewportGeometry, 'Impossibile misurare assistente e navigazione mobile.').not.toBeNull()
+  expect(
+    viewportGeometry.assistantBottom,
+    'L’assistente non deve entrare nell’area della navigazione mobile.',
+  ).toBeLessThanOrEqual(viewportGeometry.navTop - 8)
 }
 
 async function knowledgeDocument(page, testInfo) {
