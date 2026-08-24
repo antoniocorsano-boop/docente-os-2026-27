@@ -1,0 +1,346 @@
+name: Human + Visual Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Target pubblico da collaudare
+        required: true
+        default: beta
+        type: choice
+        options:
+          - beta
+          - preview
+      base_url:
+        description: URL pubblico richiesto solo per target preview
+        required: false
+        type: string
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - 'product/design/**'
+      - 'product/experience/**'
+      - 'product/e2e/experience/**'
+      - 'product/e2e/support/**'
+      - 'product/playwright.experience.config.mjs'
+      - 'product/scripts/experience/**'
+      - 'product/src/app/**'
+      - 'product/src/components/**'
+      - 'product/src/core/presentation/**'
+  push:
+    branches:
+      - develop
+    paths:
+      - 'product/design/**'
+      - 'product/experience/**'
+      - 'product/e2e/experience/**'
+      - 'product/e2e/support/**'
+      - 'product/playwright.experience.config.mjs'
+      - 'product/scripts/experience/**'
+      - 'product/src/app/**'
+      - 'product/src/components/**'
+      - 'product/src/core/presentation/**'
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: hva-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  EXPERIENCE_OUTPUT_DIR: test-results/experience
+
+jobs:
+  application-acceptance:
+    if: github.event_name == 'pull_request'
+    name: hva-application
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      EXPERIENCE_TARGET: local
+      E2E_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+
+    steps:
+      - name: Check E2E credential configuration
+        id: credentials
+        shell: bash
+        run: |
+          if [ -n "${E2E_PASSWORD:-}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo 'Repository secret DOCENTE_OS_E2E_PASSWORD is required.' >&2
+          fi
+
+      - name: Publish pending application status
+        if: steps.credentials.outputs.ready == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: 'pending',
+              context: 'hva/application',
+              description: 'Human + Visual Acceptance locale in esecuzione',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+
+      - name: Checkout tested commit
+        if: steps.credentials.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        if: steps.credentials.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install product dependencies
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: npm install --no-audit --no-fund
+
+      - name: Install Playwright runner without changing the lockfile
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Build tested application
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: npm run build
+
+      - name: Start tested application
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        shell: bash
+        run: |
+          npm start > /tmp/docente-os-hva-server.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 5 "$E2E_BASE_URL/login" >/dev/null; then
+              echo 'Local DOCENTE OS runtime is ready.'
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/docente-os-hva-server.log >&2 || true
+          exit 1
+
+      - name: Install Chromium
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Human + Visual Acceptance
+        id: browser
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        shell: bash
+        run: |
+          set +e
+          npx playwright test --config=playwright.experience.config.mjs
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Generate acceptance receipt
+        if: always() && steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        env:
+          EXPERIENCE_TEST_EXIT_CODE: ${{ steps.browser.outputs.exit_code || '99' }}
+          EXPECTED_COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/experience/acceptance-report.mjs
+
+      - name: Publish acceptance evidence
+        if: always() && steps.credentials.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hva-application-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 90
+          path: |
+            product/test-results/experience/
+            product/playwright-report/experience/
+            /tmp/docente-os-hva-server.log
+
+      - name: Enforce automated receipt
+        if: always() && steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: node -e "const r=require('./test-results/experience/receipt/acceptance.json'); if(Object.values(r.gates).includes('FAIL')) process.exit(1)"
+
+      - name: Publish final application status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          READY: ${{ steps.credentials.outputs.ready }}
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ready = process.env.READY === 'true'
+            const ok = ready && process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: !ready ? 'error' : ok ? 'success' : 'failure',
+              context: 'hva/application',
+              description: !ready ? 'HVA non eseguito: credenziale mancante' : ok ? 'Gate automatico HVA locale superato' : 'Gate automatico HVA locale non superato',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+
+  runtime-acceptance:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    name: hva-runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    steps:
+      - name: Resolve target
+        id: target
+        shell: bash
+        env:
+          INPUT_TARGET: ${{ inputs.target }}
+          INPUT_BASE_URL: ${{ inputs.base_url }}
+        run: |
+          target="${INPUT_TARGET:-beta}"
+          if [ "$target" = "preview" ]; then
+            if [ -z "${INPUT_BASE_URL:-}" ]; then
+              echo 'base_url is required for preview target.' >&2
+              exit 1
+            fi
+            base_url="${INPUT_BASE_URL%/}"
+          else
+            target="beta"
+            base_url="https://docente-os-2026-27-beta.onrender.com"
+          fi
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          echo "base_url=$base_url" >> "$GITHUB_OUTPUT"
+          echo "EXPERIENCE_TARGET=$target" >> "$GITHUB_ENV"
+          echo "E2E_BASE_URL=$base_url" >> "$GITHUB_ENV"
+
+      - name: Check E2E credential configuration
+        id: credentials
+        shell: bash
+        run: |
+          if [ -n "${E2E_PASSWORD:-}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo 'Repository secret DOCENTE_OS_E2E_PASSWORD is required.' >&2
+          fi
+
+      - name: Publish pending runtime status
+        if: steps.credentials.outputs.ready == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: 'pending',
+              context: 'hva/runtime',
+              description: 'Human + Visual Acceptance runtime in esecuzione',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+
+      - name: Checkout tested commit with history
+        if: steps.credentials.outputs.ready == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node 22
+        if: steps.credentials.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Wait for Beta to serve tested product state
+        if: steps.credentials.outputs.ready == 'true' && steps.target.outputs.target == 'beta'
+        working-directory: product
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: node scripts/experience/wait-for-target.mjs
+
+      - name: Install product dependencies
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: npm install --no-audit --no-fund
+
+      - name: Install Playwright runner without changing the lockfile
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Install Chromium
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Human + Visual Acceptance
+        id: browser
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        shell: bash
+        run: |
+          set +e
+          npx playwright test --config=playwright.experience.config.mjs
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Generate acceptance receipt
+        if: always() && steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        env:
+          EXPERIENCE_TEST_EXIT_CODE: ${{ steps.browser.outputs.exit_code || '99' }}
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: node scripts/experience/acceptance-report.mjs
+
+      - name: Publish acceptance evidence
+        if: always() && steps.credentials.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hva-${{ steps.target.outputs.target }}-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 90
+          path: |
+            product/test-results/experience/
+            product/playwright-report/experience/
+
+      - name: Enforce automated receipt
+        if: always() && steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: node -e "const r=require('./test-results/experience/receipt/acceptance.json'); if(Object.values(r.gates).includes('FAIL')) process.exit(1)"
+
+      - name: Publish final runtime status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          READY: ${{ steps.credentials.outputs.ready }}
+          JOB_STATUS: ${{ job.status }}
+          TARGET: ${{ steps.target.outputs.target }}
+        with:
+          script: |
+            const ready = process.env.READY === 'true'
+            const ok = ready && process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: !ready ? 'error' : ok ? 'success' : 'failure',
+              context: 'hva/runtime',
+              description: !ready ? 'HVA non eseguito: credenziale mancante' : ok ? `Gate automatico HVA ${process.env.TARGET} superato` : `Gate automatico HVA ${process.env.TARGET || 'runtime'} non superato`,
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
