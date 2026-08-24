@@ -1,16 +1,18 @@
 # DOCENTE OS — Project Health
 
-Updated: 2026-08-23
+Updated: 2026-08-24
 
 ```text
 STATE: ACTIVE_DEVELOPMENT_STABLE
 CANONICAL_DEV_BRANCH: develop
-BASELINE_COMMIT: cba24b1257d7f276d6621da0f6dbb55b18d361b2
+BASELINE_COMMIT: 98bbd6f48285df3e25477587e8f6f5804a08ab7d
 CANONICAL_BETA_RUNTIME: Render Free / docente-os-2026-27-beta
 CI_GATE: test + typecheck + lint + build
-PRODUCT_EXPERIENCE: X0 COMPLETE / X1 COMPLETE / X2 COMPLETE / X3 TECHNICALLY COMPLETE
+RUNTIME_GATE: exact commit + authenticated Playwright
+PRODUCT_EXPERIENCE: X0 COMPLETE / X1 COMPLETE / X2 COMPLETE / X3 KNOWLEDGE ACCEPTED / PLANNER EXTENSION IN ACCEPTANCE
+ASSISTANT_CONTRACT: ANSWER_FIRST / GROUNDED / READ_ONLY + PROPOSE
 SETTINGS_EXPERIENCE: GUIDED CONTRACT COMPLETE / INTERACTIVE ACCEPTANCE PARTIAL
-X4_GATE: HOLD_FOR_X3_UX_ACCEPTANCE
+X4_GATE: HOLD / NOT_AUTHORIZED
 TEMPORAL_PROGRAM: T3A COMPLETE / T3B COMPLETE / T3C COMPLETE / T4 COMPLETE
 T4_DATABASE: MIGRATION APPLIED / RLS AUDITED / HUMAN COMPLETION REQUIRED
 ```
@@ -40,36 +42,121 @@ The static root application is legacy/reference material only. It is not the sou
 - Product Experience canonical package X0.
 - Tailwind v4 + open-code component foundation X1.
 - Professional AppShell X2 with command palette and mobile navigation.
-- Contextual Assistant X3 in READ_ONLY / PROPOSE mode.
-- GitHub Actions product gates passing on promoted slices.
+- Contextual Assistant X3 with authenticated minimized context, explicit allowlist/denylist and no write tools.
+- Answer First response contract with `SUPPORTED / PARTIAL / NOT_FOUND`, explicit grounding and anti-evasion tests.
+- Authenticated mobile E2E gates for local application and canonical Render beta.
+- Exact-commit runtime verification through `/api/build-info` before browser acceptance.
+
+## Assistant program
+
+### Canonical Answer First rule
+
+An operational restriction may prevent execution, but it must not be used as a substitute for an answer.
+
+The assistant must, in this order:
+
+1. answer from available, relevant evidence;
+2. distinguish supported facts, partial support and information not found;
+3. provide a useful proposal when appropriate;
+4. state the operational boundary only after the useful content;
+5. never invent missing school/professional data;
+6. never claim a mutation that did not occur.
+
+Navigation instructions such as “open this page” or “check manually” are not sufficient when the requested information is already present in the assistant context.
+
+### X3 — Contextual Assistant
+
+Status: `KNOWLEDGE REAL-BETA ACCEPTED / PLANNER EXTENSION MERGED_AND_IN_GATE`.
+
+Knowledge baseline verified on commit:
+
+`efd5432fc5e537a4b2b0345c59a78f286b72a948`
+
+Both checks are green on that exact commit:
+
+- `x3-e2e/application`;
+- `x3-e2e/render-beta`.
+
+The authenticated mobile scenario verifies:
+
+- document context;
+- substantive summary;
+- useful next step;
+- free-form question not limited to suggested prompts;
+- Answer First behavior;
+- write-like request downgraded to preview;
+- no automatic Planner mutation.
+
+Planner X3 was integrated in `develop` by PR #120 at baseline `98bbd6f48285df3e25477587e8f6f5804a08ab7d`.
+
+Planner X3 is limited to `READ_ONLY / PROPOSE` and can:
+
+- summarize real Planner tasks;
+- explain priorities and due dates;
+- propose a sequence for today;
+- explain waiting tasks;
+- answer free questions about named tasks;
+- provide an informative preview for write-like requests without execution.
+
+Explicitly forbidden in X3:
+
+- task creation;
+- task completion;
+- task reopening;
+- task movement/rescheduling;
+- task deletion;
+- Calendar writes;
+- Drive writes;
+- Gmail sends.
+
+The Planner browser gate additionally compares the task count visible in the page with the assistant context and verifies after a write-like request that the Planner count is unchanged.
+
+A review defect was fixed before merge: an informational question such as “Cosa devo completare oggi?” must not be classified as a write command merely because it contains the verb “completare”. Write intent now requires an imperative or an explicit request for modification.
+
+### X4 — Human-in-the-loop AI writes
+
+Status: `HOLD / NOT_AUTHORIZED`.
+
+Closure of X3 acceptance does **not** authorize persistent AI writes. Any first X4 slice requires a separate gate and must include at minimum:
+
+- explicit preview;
+- action-specific confirmation bound to the preview;
+- server-side capability validation;
+- domain/RLS enforcement;
+- provenance/audit receipt;
+- reversible action/undo where the domain permits it.
+
+No external write or institutional decision is implicitly authorized by X3.
 
 ## Deployment status
 
 ### Render beta
 
-Status: `BETA_RUNTIME_WORKING / LATEST_T4_RUNTIME_CONFIRMATION_PENDING`.
+Status: `CANONICAL / EXACT_COMMIT_VERIFIED` for X3 Knowledge baseline; current Planner baseline under the same gate.
 
 - service: `docente-os-2026-27-beta`;
 - plan: Free;
 - region: Frankfurt;
 - source branch: `develop`;
 - root: `product`;
-- deployment trigger: commit;
-- user verified successful navigation through Orario and class workspace on 2026-08-23;
-- baseline Render deployment was verified Live before T4;
-- current T4 merge is expected to auto-deploy, but the exact Render release SHA must still be confirmed externally before marking the latest runtime `VERIFIED`.
+- deployment trigger: `commit`;
+- canonical URL: `https://docente-os-2026-27-beta.onrender.com`.
+
+The first exact-commit check on `efd5432...` timed out after 12 minutes while `/api/build-info` still returned 404. Re-running the same job without changing code then observed the exact SHA and the full Render browser test passed. This is recorded as Render Free deployment latency, not application failure.
+
+The gate now allows up to 30 minutes for Render to expose the expected SHA. If alignment does not occur, the state is classified as `DEPLOY_STALE` and the browser is not reported as failed or passed. If the SHA matches and Playwright fails, it is an application/runtime failure.
 
 ### Netlify
 
 Status: `LEGACY_BETA / NOT_CANONICAL`.
 
-Netlify is no longer the development reference runtime. Old `netlify.app` links may still exist but must not be treated as canonical.
+Old `netlify.app` links may still exist but are not the development reference runtime.
 
 ### Vercel
 
 Status: `OUT / NOT_A_GATE`.
 
-Vercel free build-rate limits make it unsuitable for the current beta workflow. Vercel checks must not block Render deployment.
+Vercel free build-rate failures are legacy hosting signals and must not block Render deployment or product promotion when Product CI and the canonical Render gate are valid.
 
 ### Production
 
@@ -115,40 +202,6 @@ Canonical sources:
 
 The canonical Cattedra registry is shared with Orario and does not create timetable slots implicitly.
 
-## Active experience program
-
-### X0 — Product Experience canonical freeze
-
-Status: `COMPLETE`.
-
-### X1 — Component Foundation
-
-Status: `COMPLETE`.
-
-### X2 — Professional AppShell
-
-Status: `COMPLETE`.
-
-### X3 — Contextual Assistant
-
-Status: `COMPLETE_TECHNICAL / REFINED_ACCEPTANCE_PENDING`.
-
-Current constraints:
-
-- authenticated read-only AssistantContext;
-- deterministic/provider-neutral adapter;
-- capability allowlist/denylist;
-- no write tools;
-- no chat persistence;
-- optional/off state;
-- compact assistant surface.
-
-### X4 — Human-in-the-loop AI writes
-
-Status: `HOLD_FOR_X3_UX_ACCEPTANCE`.
-
-No AI write capability is authorized until the refined X3 interaction has been accepted in the real beta experience. Technical contracts and guardrails may be prepared, but persistent AI actions must remain disabled.
-
 ## Temporal program
 
 ### T3A — Timetable lifecycle
@@ -185,13 +238,14 @@ The temporal roadmap currently ends at T4. A `T5` label must not be invented unt
 
 ## Current risks and next gates
 
-1. Confirm the latest T4 merge is actually Live on the Render beta runtime.
-2. X3 refined assistant still needs real interactive acceptance before X4 persistent AI writes.
+1. Complete exact-commit application + Render acceptance for Planner X3 baseline `98bbd6f...`.
+2. Keep X4 disabled until a distinct write-capability gate is intentionally opened.
 3. Settings guided experience still needs final interactive acceptance with real data.
 4. Magic-link/auth recovery URL policy should be frozen on the canonical Render beta domain.
-5. Some secondary surfaces and local CSS still need convergence toward the shared design system.
-6. Legacy static files and old Netlify links must remain clearly non-canonical.
-7. No real LLM provider is connected; X3 remains provider-neutral by design.
+5. Continue horizontal AssistantContext expansion only through isolated read/propose slices with Answer First contract tests.
+6. Some secondary surfaces and local CSS still need convergence toward the shared design system.
+7. Legacy static files and old Netlify links must remain clearly non-canonical.
+8. X3 remains provider-neutral; connecting a real LLM is a separate architecture/security decision and is not required for current deterministic contextual behavior.
 
 ## Development rule
 
@@ -203,6 +257,8 @@ Every meaningful slice must:
 - preserve RLS;
 - avoid fabricated school data;
 - distinguish system inference from professional evidence;
+- obey Answer First without weakening execution boundaries;
 - pass test/typecheck/lint/build;
 - deploy successfully to the canonical beta runtime when runtime code changes;
+- match the exact tested commit before runtime acceptance;
 - update canonical docs when a product or architecture decision changes.
