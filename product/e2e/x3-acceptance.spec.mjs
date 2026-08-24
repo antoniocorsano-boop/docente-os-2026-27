@@ -13,13 +13,20 @@ if (!password) {
 test('X3 mobile gate: grounded answers, useful proposals, write preview and no automatic write', async ({ page }) => {
   await login(page)
 
-  await test.step('Carica e organizza una fixture autonoma', async () => {
+  await test.step('Apre o crea una fixture autonoma deterministica', async () => {
     await page.goto('/knowledge')
-    const upload = page.locator('input[type="file"][name="file"]')
-    await upload.setInputFiles(fixturePath)
-    await expect(page.getByText('x3-responsible-ai.txt')).toBeVisible()
-    await page.getByRole('button', { name: 'Carica e organizza' }).click()
-    await page.waitForURL(/\/knowledge\/[^/?#]+$/, { timeout: 60_000 })
+    const existing = page.locator('a.knowledgeAssetRow').filter({ hasText: 'x3-responsible-ai' }).first()
+
+    if (await existing.count()) {
+      await existing.click()
+      await page.waitForURL(/\/knowledge\/[^/?#]+$/, { timeout: 30_000 })
+    } else {
+      const upload = page.locator('input[type="file"][name="file"]')
+      await upload.setInputFiles(fixturePath)
+      await expect(page.getByText('x3-responsible-ai.txt')).toBeVisible()
+      await page.getByRole('button', { name: 'Carica e organizza' }).click()
+      await page.waitForURL(/\/knowledge\/[^/?#]+$/, { timeout: 60_000 })
+    }
 
     const contentContext = page.getByRole('region', { name: 'Contesto del contenuto' })
     await expect(contentContext).toBeVisible()

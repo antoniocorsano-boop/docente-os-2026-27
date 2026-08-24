@@ -7,11 +7,13 @@ on:
       - "product/**"
       - "render.yaml"
       - ".github/workflows/product-ci.yml"
+      - ".github/workflows/experience-acceptance.yml"
   pull_request:
     paths:
       - "product/**"
       - "render.yaml"
       - ".github/workflows/product-ci.yml"
+      - ".github/workflows/experience-acceptance.yml"
 
 jobs:
   validate:
@@ -37,9 +39,35 @@ jobs:
             echo 'Render auto-deploy must remain On Commit: checksPass/off would break the exact-commit runtime gate.' >&2
             exit 1
           fi
+      - name: Validate Human + Visual Acceptance contract
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f product/design/HUMAN-EXPERIENCE-CONTRACT.md
+          test -f product/design/DESIGN.md
+          test -f product/design/VISUAL-ACCEPTANCE.md
+          test -f product/playwright.experience.config.mjs
+          test -f product/e2e/experience/surfaces.spec.mjs
+          test -f product/scripts/experience/wait-for-target.mjs
+          test -f product/scripts/experience/acceptance-report.mjs
+          test -f .github/workflows/experience-acceptance.yml
+          grep -Fq "context: 'hva/application'" .github/workflows/experience-acceptance.yml
+          grep -Fq "context: 'hva/runtime'" .github/workflows/experience-acceptance.yml
+          grep -Fq 'retention-days: 90' .github/workflows/experience-acceptance.yml
+          grep -Fq "visual: 'REVIEW_REQUIRED'" product/scripts/experience/acceptance-report.mjs
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Validate HVA script syntax
+        run: |
+          node --check scripts/experience/wait-for-target.mjs
+          node --check scripts/experience/acceptance-report.mjs
+          node --check e2e/support/e2e-auth.mjs
+          node --check e2e/support/experience-observer.mjs
+          node --check e2e/experience/surfaces.mjs
+          node --check e2e/experience/surfaces.spec.mjs
+          node --check playwright.experience.config.mjs
       - run: npm install
       - run: npm test
       - run: npm run typecheck
