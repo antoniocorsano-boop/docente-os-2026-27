@@ -60,6 +60,7 @@ export class SupabasePlannerRepository implements PlannerRepository {
       .from('planner_tasks')
       .select('*')
       .eq('workspace_id', workspaceId)
+      .in('status', ['OPEN', 'WAITING'])
       .order('created_at', { ascending: false })
 
     if (error) throw new Error(error.message)
