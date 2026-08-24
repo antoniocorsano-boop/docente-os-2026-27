@@ -70,6 +70,14 @@ test('Planner summary gives real counts and tasks before operational limits', ()
   assert.equal(validateAssistantResponseContract(response).valid, true)
 })
 
+test('Planner informational question about completion is answered instead of treated as a write command', () => {
+  const response = respondToPlannerAssistant(build(), 'Cosa devo completare oggi?')
+  assert.equal(response.actionKind, 'PROPOSE')
+  assert.match(response.text, /Piano di lavoro per oggi/i)
+  assert.doesNotMatch(response.text, /implica una modifica del Planner/i)
+  assert.match(response.text, /Preparare materiali 3A|Controllare circolare urgente/)
+})
+
 test('Planner prioritization puts overdue and urgent work first', () => {
   const response = respondToPlannerAssistant(build(), 'Cosa viene prima adesso?')
   assert.equal(response.actionKind, 'PROPOSE')
@@ -96,6 +104,13 @@ test('Planner write request becomes an informative preview, never an executed ac
   assert.match(response.text, /Preparare materiali 3A/)
   assert.match(response.text, /Nessuna attività è stata creata, completata, riaperta, spostata o eliminata/i)
   assert.doesNotMatch(response.text, /ho completato/i)
+})
+
+test('Planner explicit polite write request is still recognized as a write request', () => {
+  const response = respondToPlannerAssistant(build(), 'Puoi completare Preparare materiali 3A?')
+  assert.equal(response.actionKind, 'PROPOSE')
+  assert.match(response.text, /implica una modifica del Planner/i)
+  assert.match(response.text, /Nessuna attività è stata creata, completata, riaperta, spostata o eliminata/i)
 })
 
 test('Planner free question retrieves a named task instead of returning navigation advice', () => {
