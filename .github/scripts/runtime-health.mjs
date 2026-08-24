@@ -23,7 +23,18 @@ receipt.checks.buildInfoMs = build.elapsedMs
 
 const loginPage = await timedFetch(`${appUrl}/login`)
 assert.equal(loginPage.response.status, 200, `login page returned ${loginPage.response.status}`)
+const loginHtml = await loginPage.response.text()
+assert.match(loginHtml, /Ho dimenticato la password/i, 'login must expose the password recovery path')
+assert.match(loginHtml, /Invia collegamento di recupero/i, 'login must expose an explicit recovery action')
 receipt.checks.loginPageMs = loginPage.elapsedMs
+receipt.checks.recoverySurface = 'PASS'
+
+const passwordSetup = await timedFetch(`${appUrl}/imposta-password`, { redirect: 'manual' })
+assert.ok([302, 303, 307, 308].includes(passwordSetup.response.status), `password setup without session returned ${passwordSetup.response.status}`)
+const passwordSetupLocation = passwordSetup.response.headers.get('location') ?? ''
+assert.match(passwordSetupLocation, /\/login\?error=session_required/, 'password setup must require a verified session')
+receipt.checks.passwordSetupBoundaryMs = passwordSetup.elapsedMs
+receipt.checks.passwordSetupBoundary = 'PASS'
 
 const auth = await timedFetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
   method: 'POST',
