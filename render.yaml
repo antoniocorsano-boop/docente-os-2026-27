@@ -1,9 +1,14 @@
+# DOCENTE OS beta Render service.
+# This file is intended to be the authoritative Render Blueprint definition.
+# The X3 runtime gate waits for Render to serve the exact commit under test,
+# therefore `checksPass` would create a circular dependency. Keep `commit`.
 services:
   - type: web
     name: docente-os-2026-27-beta
     runtime: node
     plan: free
     region: frankfurt
+    repo: https://github.com/antoniocorsano-boop/docente-os-2026-27
     branch: develop
     rootDir: product
     buildCommand: npm install --no-audit --no-fund && npm run build

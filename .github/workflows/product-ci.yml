@@ -21,6 +21,19 @@ jobs:
         working-directory: product
     steps:
       - uses: actions/checkout@v6
+      - name: Validate Render deployment contract
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'repo: https://github.com/antoniocorsano-boop/docente-os-2026-27' render.yaml
+          grep -Eq '^[[:space:]]+branch:[[:space:]]+develop[[:space:]]*$' render.yaml
+          grep -Eq '^[[:space:]]+rootDir:[[:space:]]+product[[:space:]]*$' render.yaml
+          grep -Eq '^[[:space:]]+autoDeployTrigger:[[:space:]]+commit[[:space:]]*$' render.yaml
+          if grep -Eq '^[[:space:]]+autoDeployTrigger:[[:space:]]+(checksPass|off)[[:space:]]*$' render.yaml; then
+            echo 'Render auto-deploy must remain On Commit: checksPass/off would break the exact-commit runtime gate.' >&2
+            exit 1
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: 22
