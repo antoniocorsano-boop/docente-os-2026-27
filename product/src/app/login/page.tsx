@@ -98,7 +98,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                       Email
                       <input className="min-h-12 rounded-[var(--radius-sm)] border border-input bg-card px-3.5 text-base outline-none transition-shadow focus:border-primary focus:ring-3 focus:ring-primary/15" id="setup-email" name="email" type="email" autoComplete="email" required />
                     </label>
-                    <Button variant="outline" type="submit">Invia collegamento di configurazione</Button>
+                    <Button variant="ghost" type="submit">Invia collegamento di configurazione</Button>
                   </form>
                 </section>
               </div>
