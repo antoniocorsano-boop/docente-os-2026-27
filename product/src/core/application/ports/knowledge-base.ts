@@ -54,6 +54,13 @@ export type VisualExtractionPage = {
   confidence: number | null
 }
 
+export class VisualExtractionUnavailableError extends Error {
+  constructor(message = 'Visual extraction is unavailable') {
+    super(message)
+    this.name = 'VisualExtractionUnavailableError'
+  }
+}
+
 export interface VisualExtractionPort {
   extract(input: {
     bytes: Uint8Array

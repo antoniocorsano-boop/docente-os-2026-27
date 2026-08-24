@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { VisualExtractionUnavailableError } from '@/core/application/ports/knowledge-base'
 import type { PdfNativeTextExtractionPort, VisualExtractionPage, VisualExtractionPort } from '@/core/application/ports/knowledge-base'
 import type { KnowledgeAsset } from '@/core/domain/knowledge'
 import { ImageKnowledgeTransformer, InvalidPdfContentError, PdfKnowledgeTransformer } from './file-transformers'
@@ -19,6 +20,7 @@ test('PDF testuale: conserva il testo nativo e non chiama OCR', async () => {
   assert.equal(result.processor, 'fake-native-pdf')
   assert.equal(extraction(result).nativePageCount, 1)
   assert.equal(extraction(result).visualPageCount, 0)
+  assert.equal(extraction(result).visualExtractionStatus, 'NOT_REQUIRED')
   assert.equal(result.units[0]?.structuredData?.extractionMethod, 'NATIVE_TEXT')
 })
 
@@ -31,6 +33,7 @@ test('PDF scansionato: chiama OCR per la pagina senza testo', async () => {
   assert.deepEqual(visual.calls[0]?.pageNumbers, [1])
   assert.equal(extraction(result).nativePageCount, 0)
   assert.equal(extraction(result).visualPageCount, 1)
+  assert.equal(extraction(result).visualExtractionStatus, 'COMPLETE')
   assert.ok(result.units.some((unit) => unit.structuredData?.extractionContentType === 'OCR_TEXT'))
   assert.ok(result.units.some((unit) => unit.structuredData?.extractionContentType === 'VISUAL_DESCRIPTION'))
 })
@@ -48,9 +51,38 @@ test('PDF misto: chiama OCR soltanto per le pagine prive di testo utile', async 
   assert.deepEqual(visual.calls[0]?.pageNumbers, [2])
   assert.equal(extraction(result).nativePageCount, 2)
   assert.equal(extraction(result).visualPageCount, 1)
+  assert.equal(extraction(result).visualExtractionStatus, 'COMPLETE')
   assert.equal(result.units.find((unit) => unit.sourcePage === 1)?.structuredData?.extractionMethod, 'NATIVE_TEXT')
   assert.equal(result.units.find((unit) => unit.sourcePage === 2)?.structuredData?.extractionMethod, 'VISUAL_OCR')
   assert.equal(result.units.find((unit) => unit.sourcePage === 3)?.structuredData?.extractionMethod, 'NATIVE_TEXT')
+})
+
+test('PDF misto senza lettura visiva: indicizza il testo nativo e registra le sole pagine residue', async () => {
+  const transformer = new PdfKnowledgeTransformer(new UnavailableVisualExtraction(), nativePdf([
+    'Prima pagina con testo nativo sufficiente e utilizzabile nella Conoscenza.',
+    '',
+    'Terza pagina con altro testo nativo sufficiente e utilizzabile.',
+  ]))
+
+  const result = await transformer.transform({ asset: asset('application/pdf', 'misto-senza-visione.pdf'), bytes: PDF_BYTES })
+
+  assert.equal(extraction(result).nativePageCount, 2)
+  assert.equal(extraction(result).visualPageCount, 0)
+  assert.deepEqual(extraction(result).unresolvedVisualPages, [2])
+  assert.equal(extraction(result).visualExtractionStatus, 'UNAVAILABLE')
+  assert.match(result.text ?? '', /Prima pagina/)
+  assert.match(result.text ?? '', /Terza pagina/)
+  assert.equal(result.units.some((unit) => unit.sourcePage === 2), false)
+  assert.equal(result.processor, 'fake-native-pdf+partial-native')
+})
+
+test('PDF interamente visuale senza lettura visiva: fallisce in modo esplicito', async () => {
+  const transformer = new PdfKnowledgeTransformer(new UnavailableVisualExtraction(), nativePdf(['', '']))
+
+  await assert.rejects(
+    transformer.transform({ asset: asset('application/pdf', 'solo-scansione.pdf'), bytes: PDF_BYTES }),
+    VisualExtractionUnavailableError,
+  )
 })
 
 test('PDF non leggibile: espone un errore di contenuto distinguibile dal guasto temporaneo di ingestione', async () => {
@@ -84,6 +116,12 @@ class FakeVisualExtraction implements VisualExtractionPort {
   }
 }
 
+class UnavailableVisualExtraction implements VisualExtractionPort {
+  async extract(): Promise<{ pages: VisualExtractionPage[]; processor: string; processorVersion: string }> {
+    throw new VisualExtractionUnavailableError('Visual extraction intentionally unavailable in test')
+  }
+}
+
 function nativePdf(pages: string[]): PdfNativeTextExtractionPort {
   return {
     async extract() {
@@ -111,5 +149,10 @@ function asset(mimeType: string, originalName: string): KnowledgeAsset {
 }
 
 function extraction(result: Awaited<ReturnType<PdfKnowledgeTransformer['transform']>>) {
-  return result.extractedData?.extraction as { nativePageCount: number; visualPageCount: number }
+  return result.extractedData?.extraction as {
+    nativePageCount: number
+    visualPageCount: number
+    unresolvedVisualPages: number[]
+    visualExtractionStatus: 'NOT_REQUIRED' | 'UNAVAILABLE' | 'PARTIAL' | 'COMPLETE'
+  }
 }
