@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test'
-import { deleteAllKnowledgeFixtures, deleteKnowledgeAsset } from './support/knowledge-fixture-hygiene.mjs'
+import {
+  deleteAllKnowledgeFixtures,
+  deleteKnowledgeAsset,
+  knowledgeFixtureAssetIds,
+  retainNewestKnowledgeFixture,
+} from './support/knowledge-fixture-hygiene.mjs'
 
 const email = process.env.E2E_EMAIL ?? 'docente-os-e2e-2dbf49e1@example.invalid'
 const password = process.env.E2E_PASSWORD
@@ -11,6 +16,9 @@ if (!password) {
 
 test('K1 Knowledge: stato comprensibile, errore recuperabile, retry reale e cleanup', async ({ page }) => {
   await login(page)
+
+  await retainNewestKnowledgeFixture(page, 'x3-responsible-ai')
+  expect(await knowledgeFixtureAssetIds(page, 'x3-responsible-ai')).toHaveLength(1)
   await deleteAllKnowledgeFixtures(page, fixtureName)
   let createdAssetId = null
 
