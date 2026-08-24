@@ -7,7 +7,7 @@ test('P3 workspace export: owner riceve dati DB e inventario Storage senza mutaz
   if (!email || !password) throw new Error('E2E_EMAIL and E2E_PASSWORD are required')
 
   await page.goto('/login')
-  await page.getByLabel('Email').fill(email)
+  await page.locator('#email').fill(email)
   await page.getByLabel('Password').fill(password)
   await page.getByRole('button', { name: /Entra nel tuo spazio docente/i }).click()
   await page.waitForURL((url) => !url.pathname.startsWith('/login'))
