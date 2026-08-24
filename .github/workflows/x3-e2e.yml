@@ -1,0 +1,110 @@
+name: X3 E2E Mobile Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/x3-e2e.yml'
+      - 'product/e2e/**'
+      - 'product/playwright.config.mjs'
+      - 'product/src/app/api/build-info/**'
+      - 'product/src/app/api/assistant/**'
+      - 'product/src/app/assistant.css'
+      - 'product/src/components/assistant/**'
+      - 'product/src/core/presentation/assistant-context.ts'
+      - 'product/src/core/presentation/assistant-context.test.ts'
+      - 'product/src/app/knowledge/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: x3-e2e-beta
+  cancel-in-progress: true
+
+jobs:
+  x3-mobile-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
+      E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
+      E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+
+    steps:
+      - name: Check E2E credential configuration
+        id: credentials
+        shell: bash
+        run: |
+          if [ -n "${E2E_PASSWORD:-}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "Authenticated X3 gate is configured." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "## X3 E2E gate not executed"
+              echo "Repository secret \`DOCENTE_OS_E2E_PASSWORD\` is not configured yet."
+              echo "No application check was bypassed or reported as passed."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Checkout tested commit
+        if: steps.credentials.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        if: steps.credentials.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Wait for Render to serve this exact commit
+        if: steps.credentials.outputs.ready == 'true'
+        shell: bash
+        run: |
+          expected="$GITHUB_SHA"
+          for attempt in $(seq 1 48); do
+            payload="$(curl -fsS --max-time 20 "$E2E_BASE_URL/api/build-info" 2>/dev/null || true)"
+            deployed="$(printf '%s' "$payload" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).commit||'')}catch{console.log('')}})" )"
+            echo "Attempt $attempt/48: deployed=${deployed:-unavailable}, expected=$expected"
+            if [ "$deployed" = "$expected" ]; then
+              echo "Render is serving the exact commit under test."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Render did not expose the expected commit within 12 minutes." >&2
+          exit 1
+
+      - name: Install product dependencies
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: npm install --no-audit --no-fund
+
+      - name: Install Playwright runner without changing the lockfile
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Install Chromium
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run X3 mobile acceptance gate
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/x3-acceptance.spec.mjs
+
+      - name: Publish browser evidence
+        if: always() && steps.credentials.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: x3-e2e-browser-evidence-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            product/playwright-report/
+            product/test-results/
