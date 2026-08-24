@@ -23,7 +23,28 @@ receipt.checks.buildInfoMs = build.elapsedMs
 
 const loginPage = await timedFetch(`${appUrl}/login`)
 assert.equal(loginPage.response.status, 200, `login page returned ${loginPage.response.status}`)
+const loginHtml = await loginPage.response.text()
+assert.match(loginHtml, /Ho dimenticato la password/i, 'login must expose the password recovery path')
+assert.match(loginHtml, /Invia collegamento di recupero/i, 'login must expose an explicit recovery action')
 receipt.checks.loginPageMs = loginPage.elapsedMs
+receipt.checks.recoverySurface = 'PASS'
+
+const passwordSetup = await timedFetch(`${appUrl}/imposta-password`, { redirect: 'manual' })
+if ([302, 303, 307, 308].includes(passwordSetup.response.status)) {
+  const location = passwordSetup.response.headers.get('location') ?? ''
+  assert.match(location, /\/login\?error=session_required/, 'password setup redirect must require a verified session')
+} else {
+  assert.equal(passwordSetup.response.status, 200, `password setup without session returned ${passwordSetup.response.status}`)
+  const passwordSetupHtml = await passwordSetup.response.text()
+  assert.doesNotMatch(passwordSetupHtml, /Salva password e continua/i, 'password form must not be exposed without a verified session')
+  assert.match(
+    passwordSetupHtml,
+    /NEXT_REDIRECT;replace;\/login\?error=session_required;307;|url=\/login\?error=session_required/i,
+    'unauthenticated password setup must encode the Next.js redirect to login',
+  )
+}
+receipt.checks.passwordSetupBoundaryMs = passwordSetup.elapsedMs
+receipt.checks.passwordSetupBoundary = 'PASS'
 
 const auth = await timedFetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
   method: 'POST',
