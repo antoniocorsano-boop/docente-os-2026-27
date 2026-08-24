@@ -41,7 +41,7 @@ test('K1 Knowledge: stato comprensibile, errore recuperabile, retry reale e clea
 
     await page.getByRole('button', { name: 'Carica e organizza' }).click()
 
-    const error = page.getByRole('alert')
+    const error = page.locator('.knowledgeUploadFeedback[role="alert"]')
     await expect(error).toContainText('Serve un intervento')
     await expect(error).toContainText('Il file non è stato salvato nello spazio privato')
     await expect(page.getByText(fixtureName)).toBeVisible()
