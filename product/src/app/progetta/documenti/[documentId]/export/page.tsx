@@ -52,7 +52,7 @@ export default async function UdaExportPage({ params, searchParams }: { params: 
         </header>
 
         <section className="udaExportBody" aria-label="Contenuto UDA">
-          {blocks.map((block, index) => <ExportBlockView block={block} index={index} key={`${block.kind}-${index}`} />)}
+          {blocks.map((block, index) => <ExportBlockView block={block} key={`${block.kind}-${index}`} />)}
         </section>
 
         <footer className="udaExportProvenance">
@@ -65,7 +65,7 @@ export default async function UdaExportPage({ params, searchParams }: { params: 
   )
 }
 
-function ExportBlockView({ block, index }: { block: ReturnType<typeof exportBlocks>[number]; index: number }) {
+function ExportBlockView({ block }: { block: ReturnType<typeof exportBlocks>[number] }) {
   if (block.kind === 'blank') return <div className="udaExportBlank" aria-hidden />
   if (block.kind === 'heading') {
     if (block.level === 1) return <h2>{block.text}</h2>
@@ -73,6 +73,6 @@ function ExportBlockView({ block, index }: { block: ReturnType<typeof exportBloc
     return <h4>{block.text}</h4>
   }
   if (block.kind === 'bullet') return <p className="udaExportListItem"><span aria-hidden>•</span>{block.text}</p>
-  if (block.kind === 'numbered') return <p className="udaExportListItem"><span aria-hidden>{index + 1}.</span>{block.text}</p>
+  if (block.kind === 'numbered') return <p className="udaExportListItem"><span aria-hidden>{block.number}.</span>{block.text}</p>
   return <p>{block.text}</p>
 }
