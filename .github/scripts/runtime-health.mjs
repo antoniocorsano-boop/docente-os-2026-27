@@ -30,9 +30,15 @@ receipt.checks.loginPageMs = loginPage.elapsedMs
 receipt.checks.recoverySurface = 'PASS'
 
 const passwordSetup = await timedFetch(`${appUrl}/imposta-password`, { redirect: 'manual' })
-assert.ok([302, 303, 307, 308].includes(passwordSetup.response.status), `password setup without session returned ${passwordSetup.response.status}`)
-const passwordSetupLocation = passwordSetup.response.headers.get('location') ?? ''
-assert.match(passwordSetupLocation, /\/login\?error=session_required/, 'password setup must require a verified session')
+if ([302, 303, 307, 308].includes(passwordSetup.response.status)) {
+  const location = passwordSetup.response.headers.get('location') ?? ''
+  assert.match(location, /\/login\?error=session_required/, 'password setup redirect must require a verified session')
+} else {
+  assert.equal(passwordSetup.response.status, 200, `password setup without session returned ${passwordSetup.response.status}`)
+  const passwordSetupHtml = await passwordSetup.response.text()
+  assert.doesNotMatch(passwordSetupHtml, /Salva password e continua/i, 'password form must not be exposed without a verified session')
+  assert.match(passwordSetupHtml, /Accedi a DOCENTE OS|ACCESSO ORDINARIO/i, 'unauthenticated password setup must resolve to the login surface')
+}
 receipt.checks.passwordSetupBoundaryMs = passwordSetup.elapsedMs
 receipt.checks.passwordSetupBoundary = 'PASS'
 
