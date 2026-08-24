@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import './knowledge-upload-comfort.css'
 import { finalizeKnowledgeFileUpload } from './upload-actions'
 import {
   isAllowedKnowledgeUploadMime,
