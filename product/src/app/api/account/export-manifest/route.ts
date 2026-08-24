@@ -20,6 +20,16 @@ type ExportManifest = {
   data?: Record<string, unknown[]>
 }
 
+type KnowledgeAssetExportRow = {
+  source_provider?: unknown
+  source_metadata?: unknown
+}
+
+type StorageSourceMetadata = {
+  storageBucket?: unknown
+  storagePath?: unknown
+}
+
 export async function GET() {
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
@@ -68,6 +78,15 @@ export async function GET() {
     return total + (typeof metadata?.size === 'number' ? metadata.size : 0)
   }, 0)
 
+  const expectedStoragePaths = new Set(
+    ((tables.knowledge_assets ?? []) as KnowledgeAssetExportRow[])
+      .map(storagePathForAsset)
+      .filter((path): path is string => Boolean(path)),
+  )
+  const actualStoragePaths = new Set(storage.map((item) => item.path))
+  const missingPaths = [...expectedStoragePaths].filter((path) => !actualStoragePaths.has(path)).sort()
+  const orphanPaths = [...actualStoragePaths].filter((path) => !expectedStoragePaths.has(path)).sort()
+
   const exportPayload = {
     ...manifest,
     exportKind: 'DOCENTE_OS_WORKSPACE_EXPORT',
@@ -85,6 +104,14 @@ export async function GET() {
         objectCount: storage.length,
         byteSize: storageBytes,
         objects: storage,
+        integrity: {
+          status: missingPaths.length === 0 && orphanPaths.length === 0 ? 'PASS' : 'FAIL',
+          expectedObjectCount: expectedStoragePaths.size,
+          missingObjectCount: missingPaths.length,
+          orphanObjectCount: orphanPaths.length,
+          missingPaths,
+          orphanPaths,
+        },
       },
     },
     deletionReady: false,
@@ -100,4 +127,13 @@ export async function GET() {
       'cache-control': 'no-store',
     },
   })
+}
+
+function storagePathForAsset(asset: KnowledgeAssetExportRow) {
+  if (asset.source_provider !== 'UPLOAD') return null
+  if (!asset.source_metadata || typeof asset.source_metadata !== 'object') return null
+
+  const metadata = asset.source_metadata as StorageSourceMetadata
+  if (metadata.storageBucket !== STORAGE_BUCKET || typeof metadata.storagePath !== 'string') return null
+  return metadata.storagePath
 }
