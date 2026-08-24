@@ -6,6 +6,7 @@ const password = process.env.E2E_PASSWORD
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://gnshgapmwyjamhmlikeg.supabase.co'
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L'
 const sourceLocator = 'x5-e2e-uda-source'
+const sourceTitle = 'X5 E2E — UDA fonte controllata'
 const runId = process.env.GITHUB_RUN_ID ?? 'local'
 
 if (!password) throw new Error('E2E_PASSWORD is required for the authenticated X5 acceptance test')
@@ -20,7 +21,9 @@ test('X5A UDA authoring: explicit entry, immutable source, versions and conflict
   let documentId = null
   try {
     await page.goto('/progetta?grade=prima')
-    await page.getByText('X5 E2E — UDA fonte controllata', { exact: true }).click()
+    const row = page.locator('.progettaItemRow').filter({ hasText: sourceTitle }).first()
+    await expect(row.getByRole('link', { name: new RegExp(sourceTitle) }), 'La fonte UDA deve restare apribile in Conoscenza.').toHaveAttribute('href', new RegExp(`^/knowledge/${source.id}\\?`))
+    await row.getByRole('link', { name: /Prepara documento/ }).click()
     await expect(page).toHaveURL(new RegExp(`/progetta/documenti/nuovo/${source.id}`))
     await expect(page.getByRole('heading', { name: 'Prepara questa UDA' })).toBeVisible()
     await expect(page.getByText(/La fonte resta invariata/i)).toBeVisible()
