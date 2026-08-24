@@ -1,26 +1,30 @@
-# DOCENTE OS beta Render service.
-# This file is intended to be the authoritative Render Blueprint definition.
+# DOCENTE OS beta Render Blueprint.
+# The Render project and environment are part of the infrastructure contract.
 # The X3 runtime gate waits for Render to serve the exact commit under test,
 # therefore `checksPass` would create a circular dependency. Keep `commit`.
-services:
-  - type: web
-    name: docente-os-2026-27-beta
-    runtime: node
-    plan: free
-    region: frankfurt
-    repo: https://github.com/antoniocorsano-boop/docente-os-2026-27
-    branch: develop
-    rootDir: product
-    buildCommand: npm install --no-audit --no-fund && npm run build
-    startCommand: npm start
-    autoDeployTrigger: commit
-    healthCheckPath: /
-    envVars:
-      - key: NEXT_PUBLIC_SUPABASE_URL
-        value: https://gnshgapmwyjamhmlikeg.supabase.co
-      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-        value: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
-      - key: NEXT_PUBLIC_APP_URL
-        value: https://docente-os-2026-27-beta.onrender.com
-      - key: OPENAI_VISION_MODEL
-        value: gpt-5.6
+projects:
+  - name: Docente OS
+    environments:
+      - name: Beta
+        services:
+          - type: web
+            name: docente-os-2026-27-beta
+            runtime: node
+            plan: free
+            region: frankfurt
+            repo: https://github.com/antoniocorsano-boop/docente-os-2026-27
+            branch: develop
+            rootDir: product
+            buildCommand: npm install --no-audit --no-fund && npm run build
+            startCommand: npm start
+            autoDeployTrigger: commit
+            healthCheckPath: /
+            envVars:
+              - key: NEXT_PUBLIC_SUPABASE_URL
+                value: https://gnshgapmwyjamhmlikeg.supabase.co
+              - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+                value: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+              - key: NEXT_PUBLIC_APP_URL
+                value: https://docente-os-2026-27-beta.onrender.com
+              - key: OPENAI_VISION_MODEL
+                value: gpt-5.6
