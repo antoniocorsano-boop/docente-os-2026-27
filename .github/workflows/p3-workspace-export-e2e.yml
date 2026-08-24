@@ -1,4 +1,4 @@
-name: P3 Workspace Export Gate
+name: P3/P5 Workspace Export + Storage Integrity Gate
 
 on:
   workflow_dispatch:
@@ -7,6 +7,7 @@ on:
       - develop
     paths:
       - 'product/e2e/p3-workspace-export.spec.mjs'
+      - 'product/e2e/support/knowledge-fixture-hygiene.mjs'
       - 'product/src/app/api/account/export-manifest/**'
       - 'product/supabase/migrations/0033_workspace_export_manifest.sql'
       - '.github/workflows/p3-workspace-export-e2e.yml'
@@ -15,6 +16,7 @@ on:
       - develop
     paths:
       - 'product/e2e/p3-workspace-export.spec.mjs'
+      - 'product/e2e/support/knowledge-fixture-hygiene.mjs'
       - 'product/src/app/api/account/export-manifest/**'
       - 'product/supabase/migrations/0033_workspace_export_manifest.sql'
       - '.github/workflows/p3-workspace-export-e2e.yml'
@@ -32,7 +34,7 @@ env:
 jobs:
   p3-export-application:
     if: github.event_name == 'pull_request'
-    name: p3-export-application
+    name: p3-p5-export-storage-application
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -45,18 +47,18 @@ jobs:
           test -n "${E2E_PASSWORD:-}" || { echo 'DOCENTE_OS_E2E_PASSWORD is required.' >&2; exit 1; }
 
       - name: Checkout tested commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Install product dependencies
+      - name: Install locked product dependencies
         working-directory: product
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
-      - name: Install Playwright runner
+      - name: Install Playwright runner without changing lockfile
         working-directory: product
         run: npm install --no-save --package-lock=false @playwright/test@1.55.0
 
@@ -80,7 +82,7 @@ jobs:
         working-directory: product
         run: npx playwright install --with-deps chromium
 
-      - name: Run P3 workspace export gate
+      - name: Run P3/P5 export and Storage integrity gate
         working-directory: product
         run: npx playwright test --config=playwright.config.mjs e2e/p3-workspace-export.spec.mjs
 
@@ -88,15 +90,15 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: p3-workspace-export-${{ github.run_id }}
-          retention-days: 30
+          name: p3-p5-workspace-export-${{ github.run_id }}
+          retention-days: 90
           if-no-files-found: warn
           path: |
             product/playwright-report/
             product/test-results/
             /tmp/docente-os-p3-export.log
 
-      - name: Publish application status
+      - name: Publish application statuses
         if: always()
         uses: actions/github-script@v7
         env:
@@ -104,19 +106,24 @@ jobs:
         with:
           script: |
             const ok = process.env.JOB_STATUS === 'success'
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: context.sha,
-              state: ok ? 'success' : 'failure',
-              context: 'p3-export/application',
-              description: ok ? 'Export workspace completo e read-only' : 'Gate export workspace non superato',
-              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-            })
+            for (const [contextName, successDescription, failureDescription] of [
+              ['p3-export/application', 'Export workspace completo e read-only', 'Gate export workspace non superato'],
+              ['p5-storage-integrity/application', 'Integrità DB↔Storage verificata', 'Gate integrità DB↔Storage non superato'],
+            ]) {
+              await github.rest.repos.createCommitStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha: context.sha,
+                state: ok ? 'success' : 'failure',
+                context: contextName,
+                description: ok ? successDescription : failureDescription,
+                target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              })
+            }
 
   p3-export-runtime:
     if: github.event_name == 'push'
-    name: p3-export-runtime
+    name: p3-p5-export-storage-runtime
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -128,7 +135,7 @@ jobs:
           test -n "${E2E_PASSWORD:-}" || { echo 'DOCENTE_OS_E2E_PASSWORD is required.' >&2; exit 1; }
 
       - name: Checkout tested commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -149,7 +156,11 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install Playwright runner
+      - name: Install locked product dependencies
+        working-directory: product
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Playwright runner without changing lockfile
         working-directory: product
         run: npm install --no-save --package-lock=false @playwright/test@1.55.0
 
@@ -157,7 +168,7 @@ jobs:
         working-directory: product
         run: npx playwright install --with-deps chromium
 
-      - name: Run P3 workspace export gate on Beta
+      - name: Run P3/P5 export and Storage integrity gate on Beta
         working-directory: product
         run: npx playwright test --config=playwright.config.mjs e2e/p3-workspace-export.spec.mjs
 
@@ -165,14 +176,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: p3-workspace-export-runtime-${{ github.run_id }}
-          retention-days: 30
+          name: p3-p5-workspace-export-runtime-${{ github.run_id }}
+          retention-days: 90
           if-no-files-found: warn
           path: |
             product/playwright-report/
             product/test-results/
 
-      - name: Publish runtime status
+      - name: Publish runtime statuses
         if: always()
         uses: actions/github-script@v7
         env:
@@ -180,12 +191,17 @@ jobs:
         with:
           script: |
             const ok = process.env.JOB_STATUS === 'success'
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: context.sha,
-              state: ok ? 'success' : 'failure',
-              context: 'p3-export/render-beta',
-              description: ok ? 'Export workspace Beta verificato' : 'Export workspace Beta non superato',
-              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-            })
+            for (const [contextName, successDescription, failureDescription] of [
+              ['p3-export/render-beta', 'Export workspace Beta verificato', 'Export workspace Beta non superato'],
+              ['p5-storage-integrity/render-beta', 'Integrità DB↔Storage Beta verificata', 'Integrità DB↔Storage Beta non superata'],
+            ]) {
+              await github.rest.repos.createCommitStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha: context.sha,
+                state: ok ? 'success' : 'failure',
+                context: contextName,
+                description: ok ? successDescription : failureDescription,
+                target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              })
+            }
