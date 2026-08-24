@@ -16,6 +16,7 @@ const ALLOWED_MIMES = new Set<string>(ALLOWED_KNOWLEDGE_UPLOAD_MIMES)
 
 export type KnowledgeUploadReference = {
   workspaceId: string
+  ownerUserId: string
   objectPath: string
   originalName: string
   mimeType: string
@@ -50,11 +51,14 @@ export function sanitizeKnowledgeFilename(filename: string) {
   return (safe || 'asset').slice(-160)
 }
 
-export function buildKnowledgeObjectPath(workspaceId: string, filename: string, objectId: string) {
+export function buildKnowledgeObjectPath(workspaceId: string, ownerUserId: string, filename: string, objectId: string) {
   const cleanWorkspaceId = workspaceId.trim()
+  const cleanOwnerUserId = ownerUserId.trim()
   const cleanObjectId = objectId.trim()
-  if (!cleanWorkspaceId || !cleanObjectId) throw new Error('Workspace and object id are required')
-  return `${cleanWorkspaceId}/${cleanObjectId}-${sanitizeKnowledgeFilename(filename)}`
+  if (!cleanWorkspaceId || !cleanOwnerUserId || !cleanObjectId) {
+    throw new Error('Workspace, owner user and object id are required')
+  }
+  return `${cleanWorkspaceId}/${cleanOwnerUserId}/${cleanObjectId}-${sanitizeKnowledgeFilename(filename)}`
 }
 
 export function validateKnowledgeUploadReference(input: KnowledgeUploadReference): KnowledgeUploadReferenceValidation {
@@ -64,8 +68,10 @@ export function validateKnowledgeUploadReference(input: KnowledgeUploadReference
   if (input.byteSize > MAX_KNOWLEDGE_UPLOAD_BYTES) return { valid: false, code: 'too_large' }
   if (!isAllowedKnowledgeUploadMime(input.mimeType)) return { valid: false, code: 'unsupported' }
 
-  const expectedPrefix = `${input.workspaceId.trim()}/`
-  if (!input.workspaceId.trim() || !input.objectPath.startsWith(expectedPrefix)) {
+  const workspaceId = input.workspaceId.trim()
+  const ownerUserId = input.ownerUserId.trim()
+  const expectedPrefix = `${workspaceId}/${ownerUserId}/`
+  if (!workspaceId || !ownerUserId || !input.objectPath.startsWith(expectedPrefix)) {
     return { valid: false, code: 'invalid_path' }
   }
 
