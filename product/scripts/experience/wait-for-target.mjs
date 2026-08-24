@@ -48,7 +48,7 @@ async function readBuildInfo() {
 function productEquivalent(deployed, expected) {
   try {
     execFileSync('git', ['cat-file', '-e', `${deployed}^{commit}`], { stdio: 'ignore' })
-    execFileSync('git', ['diff', '--quiet', deployed, expected, '--', 'product'], { stdio: 'ignore' })
+    execFileSync('git', ['diff', '--quiet', deployed, expected, '--', ':(top)product'], { stdio: 'ignore' })
     return true
   } catch {
     return false
