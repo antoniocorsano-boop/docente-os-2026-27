@@ -7,6 +7,7 @@ export function createExperienceObserver(page) {
   const consoleErrors = []
   const pageErrors = []
   const requestFailures = []
+  const ignoredRequestFailures = []
   const httpErrors = []
 
   page.on('console', (message) => {
@@ -14,12 +15,14 @@ export function createExperienceObserver(page) {
   })
   page.on('pageerror', (error) => pageErrors.push(error.message))
   page.on('requestfailed', (request) => {
-    requestFailures.push({
+    const failure = {
       url: request.url(),
       method: request.method(),
       resourceType: request.resourceType(),
       errorText: request.failure()?.errorText ?? 'request failed',
-    })
+    }
+    if (isExpectedFrameworkAbort(failure)) ignoredRequestFailures.push(failure)
+    else requestFailures.push(failure)
   })
   page.on('response', (response) => {
     const status = response.status()
@@ -41,7 +44,7 @@ export function createExperienceObserver(page) {
           .flatMap((element) => {
             const rect = element.getBoundingClientRect()
             const style = getComputedStyle(element)
-            const visible = rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none'
+            const visible = rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none' && style.opacity !== '0'
             if (!visible) return []
             if (rect.bottom < 0 || rect.top > viewportHeight) return []
             const label = element.getAttribute('aria-label') || element.textContent?.trim() || element.getAttribute('name') || element.tagName.toLowerCase()
@@ -75,6 +78,7 @@ export function createExperienceObserver(page) {
         consoleErrors,
         pageErrors,
         requestFailures,
+        ignoredRequestFailures,
         httpErrors,
       }
 
@@ -90,6 +94,18 @@ export async function screenshotPath(project, surface) {
   const screenshotsDir = path.join(OUTPUT_ROOT, 'screenshots')
   await fs.mkdir(screenshotsDir, { recursive: true })
   return path.join(screenshotsDir, `${safe(project)}--${safe(surface)}.png`)
+}
+
+function isExpectedFrameworkAbort(failure) {
+  if (failure.errorText !== 'net::ERR_ABORTED' || failure.resourceType !== 'fetch') return false
+  try {
+    const url = new URL(failure.url)
+    if (failure.method === 'GET' && url.searchParams.has('_rsc')) return true
+    if (failure.method === 'POST' && url.pathname === '/login') return true
+  } catch {
+    return false
+  }
+  return false
 }
 
 function safe(value) {
