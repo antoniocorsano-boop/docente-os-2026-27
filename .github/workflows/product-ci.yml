@@ -26,6 +26,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          grep -Eq '^[[:space:]]*- name:[[:space:]]+Docente OS[[:space:]]*$' render.yaml
+          grep -Eq '^[[:space:]]*- name:[[:space:]]+Beta[[:space:]]*$' render.yaml
+          grep -Eq '^[[:space:]]+name:[[:space:]]+docente-os-2026-27-beta[[:space:]]*$' render.yaml
           grep -Fq 'repo: https://github.com/antoniocorsano-boop/docente-os-2026-27' render.yaml
           grep -Eq '^[[:space:]]+branch:[[:space:]]+develop[[:space:]]*$' render.yaml
           grep -Eq '^[[:space:]]+rootDir:[[:space:]]+product[[:space:]]*$' render.yaml
