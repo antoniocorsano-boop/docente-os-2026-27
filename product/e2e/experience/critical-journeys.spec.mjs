@@ -84,13 +84,14 @@ async function assertMobileAssistantDoesNotCoverTask(page) {
   })
 
   expect(documentGeometry, 'Impossibile misurare la relazione fra compito e assistente mobile.').not.toBeNull()
-  expect(documentGeometry.position, 'Su mobile l’assistente chiuso non deve essere fixed sopra il contenuto.').toBe('absolute')
+  expect(documentGeometry.position, 'Su mobile l’assistente chiuso deve appartenere al normale flusso della pagina.').toBe('static')
   expect(
     documentGeometry.assistantTop,
     'L’assistente deve iniziare dopo l’ultimo contenuto operativo della UDA.',
   ).toBeGreaterThanOrEqual(documentGeometry.taskBottom + 8)
 
-  await support.scrollIntoViewIfNeeded()
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+  await page.waitForTimeout(100)
   const viewportGeometry = await page.evaluate(() => {
     const assistant = document.querySelector('.dosAssistantFloatingTrigger, .dosAssistantFloatingStatus')
     const nav = document.querySelector('.dosBottomNav')
@@ -103,7 +104,7 @@ async function assertMobileAssistantDoesNotCoverTask(page) {
   expect(viewportGeometry, 'Impossibile misurare assistente e navigazione mobile.').not.toBeNull()
   expect(
     viewportGeometry.assistantBottom,
-    'L’assistente non deve entrare nell’area della navigazione mobile.',
+    'L’assistente non deve entrare nell’area della navigazione mobile a fine pagina.',
   ).toBeLessThanOrEqual(viewportGeometry.navTop - 8)
 }
 
