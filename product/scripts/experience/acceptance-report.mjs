@@ -18,6 +18,7 @@ const missingObservationCount = Math.max(0, expectedObservationCount - observati
 
 const consoleIssueCount = observations.reduce((sum, item) => sum + item.consoleErrors.length + item.pageErrors.length, 0)
 const requestFailureCount = observations.reduce((sum, item) => sum + item.requestFailures.length, 0)
+const ignoredFrameworkAbortCount = observations.reduce((sum, item) => sum + (item.ignoredRequestFailures?.length ?? 0), 0)
 const serverErrorCount = observations.reduce((sum, item) => sum + item.httpErrors.filter((error) => error.status >= 500).length, 0)
 const clientHttpIssueCount = observations.reduce((sum, item) => sum + item.httpErrors.filter((error) => error.status >= 400 && error.status < 500).length, 0)
 const overflowCount = observations.filter((item) => item.horizontalOverflow > 1).length
@@ -63,6 +64,7 @@ const receipt = {
   metrics: {
     consoleIssueCount,
     requestFailureCount,
+    ignoredFrameworkAbortCount,
     serverErrorCount,
     clientHttpIssueCount,
     overflowCount,
@@ -99,5 +101,8 @@ function markdown(value) {
   const findingRows = value.findings.length
     ? value.findings.map((item) => `- **${item.severity} · ${item.code}** — ${item.message}`).join('\n')
     : '- Nessun finding automatico.'
-  return `# Human + Visual Acceptance Receipt\n\n- **Commit:** \`${value.commit}\`\n- **Target:** ${value.target}\n- **Base URL:** ${value.baseUrl}\n- **Esito automatico complessivo:** **${value.overall}**\n- **Evidenze:** ${value.coverage.actualObservations}/${value.coverage.expectedObservations} osservazioni\n\n| Gate | Stato |\n| --- | --- |\n${gateRows}\n\n## Finding automatici\n\n${findingRows}\n\n## Giudizio visuale\n\n**REVIEW_REQUIRED** — gli screenshot devono essere osservati secondo \`product/design/VISUAL-ACCEPTANCE.md\`.\n`
+  const frameworkNote = value.metrics.ignoredFrameworkAbortCount
+    ? `\n- **Abort di framework registrati e ignorati:** ${value.metrics.ignoredFrameworkAbortCount} (solo pattern Next.js esplicitamente ammessi).`
+    : ''
+  return `# Human + Visual Acceptance Receipt\n\n- **Commit:** \`${value.commit}\`\n- **Target:** ${value.target}\n- **Base URL:** ${value.baseUrl}\n- **Esito automatico complessivo:** **${value.overall}**\n- **Evidenze:** ${value.coverage.actualObservations}/${value.coverage.expectedObservations} osservazioni${frameworkNote}\n\n| Gate | Stato |\n| --- | --- |\n${gateRows}\n\n## Finding automatici\n\n${findingRows}\n\n## Giudizio visuale\n\n**REVIEW_REQUIRED** — gli screenshot devono essere osservati secondo \`product/design/VISUAL-ACCEPTANCE.md\`.\n`
 }
