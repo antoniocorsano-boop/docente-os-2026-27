@@ -1,0 +1,95 @@
+name: K1 Knowledge Upload Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/k1-knowledge-e2e.yml'
+      - 'product/e2e/k1-knowledge-upload.spec.mjs'
+      - 'product/playwright.config.mjs'
+      - 'product/src/app/knowledge/**'
+      - 'product/src/app/api/knowledge/**'
+      - 'product/src/core/application/knowledge-ingestion-service.ts'
+      - 'product/src/core/infrastructure/knowledge/**'
+      - 'product/src/core/infrastructure/supabase/supabase-storage-knowledge-content-port.ts'
+
+permissions:
+  contents: read
+
+env:
+  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
+
+jobs:
+  k1-render-acceptance:
+    name: k1-render-acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Check E2E credential configuration
+        shell: bash
+        run: |
+          if [ -z "${E2E_PASSWORD:-}" ]; then
+            echo 'Repository secret DOCENTE_OS_E2E_PASSWORD is required.' >&2
+            exit 1
+          fi
+
+      - name: Checkout tested commit with history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Wait for Render to serve this product commit
+        shell: bash
+        run: |
+          expected="$GITHUB_SHA"
+          for attempt in $(seq 1 120); do
+            : > /tmp/build-info.json
+            http_code="$(curl -sS --max-time 20 -o /tmp/build-info.json -w '%{http_code}' "$E2E_BASE_URL/api/build-info" 2>/dev/null || true)"
+            payload="$(cat /tmp/build-info.json 2>/dev/null || true)"
+            deployed="$(printf '%s' "$payload" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).commit||'')}catch{console.log('')}})")"
+            echo "Attempt $attempt/120: http=${http_code:-000}, deployed=${deployed:-unavailable}, expected=$expected"
+            if [ "$deployed" = "$expected" ]; then
+              echo 'Render is serving the K1 product commit.'
+              exit 0
+            fi
+            sleep 15
+          done
+          echo 'Render did not expose the expected K1 product commit within 30 minutes.' >&2
+          exit 1
+
+      - name: Install product dependencies
+        working-directory: product
+        run: npm install --no-audit --no-fund
+
+      - name: Install Playwright runner without changing the lockfile
+        working-directory: product
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Install Chromium
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run K1 Knowledge acceptance gate
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/k1-knowledge-upload.spec.mjs
+
+      - name: Publish K1 browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k1-knowledge-evidence-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            product/playwright-report/
+            product/test-results/
