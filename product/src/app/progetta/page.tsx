@@ -224,14 +224,15 @@ function GuidedResourceLink({ item, order, compact = false, href }: { item: Prog
 
 function ProgettaItemLink({ item, returnTo }: { item: ProgettaItem; returnTo: string }) {
   const { asset, document } = item
-  const href = asset.contentCategory === 'UDA'
-    ? `/progetta/documenti/nuovo/${encodeURIComponent(asset.id)}`
-    : buildTaskAwareKnowledgeHref(asset.id, { mode: 'prepare', returnTo })
+  const sourceHref = buildTaskAwareKnowledgeHref(asset.id, { mode: 'prepare', returnTo })
   return (
-    <Link href={href}>
-      <div><strong>{humanizeKnowledgeTitle(document?.title ?? asset.originalName)}</strong><span>{document?.summary ?? 'Apri il contenuto per controllare il contesto e decidere come usarlo.'}</span></div>
-      <aside>{(asset.classLabels ?? []).length ? asset.classLabels.map((label) => <small key={label}>{label}</small>) : <small>{sourceGradeLabel(asset.sourceMetadata.grade)}</small>}<em>{asset.contentCategory === 'UDA' ? 'Documento di lavoro' : reliabilityLabel(asset.reliability)}</em></aside>
-    </Link>
+    <div className="progettaItemRow">
+      <Link className="progettaItemSource" href={sourceHref}>
+        <div><strong>{humanizeKnowledgeTitle(document?.title ?? asset.originalName)}</strong><span>{document?.summary ?? 'Apri il contenuto per controllare il contesto e decidere come usarlo.'}</span></div>
+        <aside>{(asset.classLabels ?? []).length ? asset.classLabels.map((label) => <small key={label}>{label}</small>) : <small>{sourceGradeLabel(asset.sourceMetadata.grade)}</small>}<em>{reliabilityLabel(asset.reliability)}</em></aside>
+      </Link>
+      {asset.contentCategory === 'UDA' ? <Link className="progettaAuthoringAction" href={`/progetta/documenti/nuovo/${encodeURIComponent(asset.id)}`}>Prepara documento <span aria-hidden>→</span></Link> : null}
+    </div>
   )
 }
 
