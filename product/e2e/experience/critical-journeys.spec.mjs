@@ -66,11 +66,26 @@ async function calendarControls(page, testInfo) {
   await expect(page.locator('.calendarBoundary')).toBeVisible()
   const add = page.locator('details.calendarAdd')
   await expect(add).toBeVisible()
-  if (!(await add.getAttribute('open') !== null)) await add.locator('summary').click()
-  await expect(add.locator('form')).toHaveCount(2)
-  await expect(add.locator('form').first()).toBeVisible()
+  if (!(await add.getAttribute('open') !== null)) await add.locator(':scope > summary').click()
+
+  const choices = add.locator('details.calendarAddChoice')
+  await expect(choices).toHaveCount(2)
+  const dayForm = choices.nth(0).locator('form')
+  const eventForm = choices.nth(1).locator('form')
+
+  await expect(dayForm).not.toBeVisible()
+  await expect(eventForm).not.toBeVisible()
+
+  await choices.nth(0).locator('summary').click()
+  await expect(dayForm).toBeVisible()
+  await expect(eventForm).not.toBeVisible()
   await screenshot(page, testInfo, 'calendar-controls')
-  return pass('Controlli aperti intenzionalmente senza scritture.')
+
+  await choices.nth(1).locator('summary').click()
+  await expect(dayForm).not.toBeVisible()
+  await expect(eventForm).toBeVisible()
+
+  return pass('Una sola modalità di registrazione è aperta per volta.')
 }
 
 async function recordJourney(project, journey, result) {
