@@ -1,0 +1,90 @@
+name: Operational Security Gate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - 'product/e2e/operational-security.spec.mjs'
+      - 'product/supabase/migrations/**'
+      - '.github/workflows/operational-security.yml'
+  push:
+    branches:
+      - develop
+    paths:
+      - 'product/e2e/operational-security.spec.mjs'
+      - 'product/supabase/migrations/**'
+      - '.github/workflows/operational-security.yml'
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+
+jobs:
+  operational-security:
+    name: operational-security
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check E2E credential configuration
+        shell: bash
+        run: |
+          if [ -z "${E2E_PASSWORD:-}" ]; then
+            echo 'Repository secret DOCENTE_OS_E2E_PASSWORD is required.' >&2
+            exit 1
+          fi
+
+      - name: Publish pending security status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: 'pending',
+              context: 'ops-security/supabase',
+              description: 'Verifica ACL/RLS operative in esecuzione',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install product dependencies
+        working-directory: product
+        run: npm install --no-audit --no-fund
+
+      - name: Verify anonymous denial and authenticated boundaries
+        working-directory: product
+        run: node e2e/operational-security.spec.mjs
+
+      - name: Publish final security status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'ops-security/supabase',
+              description: ok ? 'ACL/RLS operative verificate' : 'Gate sicurezza operativo non superato',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
