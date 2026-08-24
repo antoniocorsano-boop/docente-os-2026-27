@@ -30,6 +30,10 @@ export default async function globalSetup() {
 
     if (!assetId) {
       await page.goto('/knowledge')
+      const capture = page.locator('details.knowledgeCaptureDisclosure')
+      await expect(capture).toBeVisible()
+      if (await capture.getAttribute('open') === null) await capture.locator(':scope > summary').click()
+      await expect(capture).toHaveAttribute('open', '')
       await page.locator('input[name="title"]').fill(title)
       await page.locator('textarea[name="text"]').fill(EXPERIENCE_UDA_FIXTURE_TEXT)
       await Promise.all([
