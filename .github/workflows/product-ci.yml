@@ -68,7 +68,7 @@ jobs:
           node --check e2e/experience/surfaces.mjs
           node --check e2e/experience/surfaces.spec.mjs
           node --check playwright.experience.config.mjs
-      - run: npm install
+      - run: npm ci --no-audit --no-fund
       - run: npm test
       - run: npm run typecheck
       - run: npm run lint
