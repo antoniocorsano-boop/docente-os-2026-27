@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code')
   const tokenHash = request.nextUrl.searchParams.get('token_hash')
   const type = request.nextUrl.searchParams.get('type') as EmailOtpType | null
+  const isRecovery = request.nextUrl.searchParams.get('recovery') === '1' || type === 'recovery'
   const redirectTo = request.nextUrl.clone()
   redirectTo.search = ''
 
@@ -40,6 +41,6 @@ export async function GET(request: NextRequest) {
   }
 
   redirectTo.pathname = '/imposta-password'
-  redirectTo.searchParams.set('source', 'email')
+  redirectTo.searchParams.set('source', isRecovery ? 'recovery' : 'email')
   return NextResponse.redirect(redirectTo)
 }
