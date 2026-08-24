@@ -1,3 +1,4 @@
+import { VisualExtractionUnavailableError } from '@/core/application/ports/knowledge-base'
 import type { VisualExtractionPort, VisualExtractionPage } from '@/core/application/ports/knowledge-base'
 
 type ResponsesPayload = {
@@ -17,7 +18,7 @@ export class OpenAiVisualExtraction implements VisualExtractionPort {
     filename: string
     pageNumbers?: number[]
   }) {
-    if (!this.apiKey) throw new Error('OPENAI_API_KEY is required for visual extraction')
+    if (!this.apiKey) throw new VisualExtractionUnavailableError('OPENAI_API_KEY is required for visual extraction')
     const requestedPages = input.pageNumbers?.length ? input.pageNumbers : [1]
     const media = input.mimeType === 'application/pdf'
       ? { type: 'input_file', filename: input.filename, file_data: dataUrl(input.bytes, input.mimeType), detail: 'high' }
