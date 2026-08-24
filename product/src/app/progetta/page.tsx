@@ -65,6 +65,11 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
   const gradeItems = filterProgettaItemsByGrade(items, grade)
   const scopedItems = filterProgettaItemsBySectionContext(gradeItems, compactSectionLabel)
   const gradeLabel = grade ? `Classe ${grade}` : null
+  const planningReturnParams = new URLSearchParams()
+  if (grade) planningReturnParams.set('grade', grade)
+  if (sectionContext) planningReturnParams.set('section', sectionContext.id)
+  const planningReturnQuery = planningReturnParams.toString()
+  const planningReturnHref = planningReturnQuery ? `/progetta?${planningReturnQuery}` : '/progetta'
 
   if (focus) {
     const focusedItems = filterProgettaItemsByFocus(scopedItems, focus)
@@ -193,7 +198,7 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
       <section className="progettaGroups" aria-label="Aree di progettazione">
         {groups.map((group, index) => <article className="progettaGroup" key={group.key}>
           <header><span>0{index + 1}</span><div><h2>{group.title}</h2><p>{group.description}</p></div><b>{group.items.length}</b></header>
-          {group.items.length ? <div className="progettaItems">{group.items.map((item) => <ProgettaItemLink item={item} key={item.asset.id} />)}</div> : <div className="progettaEmpty"><p>Non ci sono ancora contenuti collegati a questa area{gradeLabel ? ` per la ${gradeLabel.toLowerCase()}` : ''}.</p><Link href={`/knowledge?category=${categoryFor(group.key)}`}>Apri Conoscenza <span aria-hidden>→</span></Link></div>}
+          {group.items.length ? <div className="progettaItems">{group.items.map((item) => <ProgettaItemLink item={item} returnTo={planningReturnHref} key={item.asset.id} />)}</div> : <div className="progettaEmpty"><p>Non ci sono ancora contenuti collegati a questa area{gradeLabel ? ` per la ${gradeLabel.toLowerCase()}` : ''}.</p><Link href={`/knowledge?category=${categoryFor(group.key)}`}>Apri Conoscenza <span aria-hidden>→</span></Link></div>}
         </article>)}
       </section>
 
@@ -217,10 +222,10 @@ function GuidedResourceLink({ item, order, compact = false, href }: { item: Prog
   )
 }
 
-function ProgettaItemLink({ item }: { item: ProgettaItem }) {
+function ProgettaItemLink({ item, returnTo }: { item: ProgettaItem; returnTo: string }) {
   const { asset, document } = item
   return (
-    <Link href={`/knowledge/${asset.id}`}>
+    <Link href={buildTaskAwareKnowledgeHref(asset.id, { mode: 'prepare', returnTo })}>
       <div><strong>{humanizeKnowledgeTitle(document?.title ?? asset.originalName)}</strong><span>{document?.summary ?? 'Apri il contenuto per controllare il contesto e decidere come usarlo.'}</span></div>
       <aside>{(asset.classLabels ?? []).length ? asset.classLabels.map((label) => <small key={label}>{label}</small>) : <small>{sourceGradeLabel(asset.sourceMetadata.grade)}</small>}<em>{reliabilityLabel(asset.reliability)}</em></aside>
     </Link>
