@@ -1,0 +1,24 @@
+name: X3 Render Config Dispatch
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'render.yaml'
+      - '.github/workflows/x3-render-config-dispatch.yml'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch-x3-gate:
+    name: dispatch-x3-gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch canonical X3 gate on develop
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run x3-e2e.yml --ref develop
