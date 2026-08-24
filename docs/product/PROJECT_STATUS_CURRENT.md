@@ -1,16 +1,16 @@
 # DOCENTE OS — Stato corrente canonico
 
 Data: 2026-08-24  
-Baseline prodotto certificata: `develop` @ `ea1315e4ce77126603e1cc9e87051d79ce98824c`  
+Baseline prodotto certificata: `develop` @ `9d79f76c3502950a8fcb475fbe1b2a8633ca2315`  
 Stato documento: **CURRENT / CANONICAL STATUS**
 
 Questo documento è la sintesi corrente autorevole dello stato del sistema. I checkpoint datati precedenti restano storici e non devono essere usati per dedurre lo stato operativo quando divergono da questo file.
 
 ## 1. Classificazione del prodotto
 
-DOCENTE OS è una **Beta operativa avanzata**. Non è più un prototipo/MVP: possiede persistenza reale, autenticazione, RLS, domini separati, flussi didattici persistenti, prima scrittura assistita controllata, authoring UDA versionato, export PDF professionale, runtime Beta verificato, gate end-to-end e Human + Visual Acceptance.
+DOCENTE OS è una **Beta operativa avanzata**. Non è più un prototipo/MVP: possiede persistenza reale, autenticazione, RLS, domini separati, flussi didattici persistenti, prima scrittura assistita controllata, authoring UDA versionato, export PDF professionale, recovery account esplicito, runtime Beta verificato, gate end-to-end e Human + Visual Acceptance.
 
-Il sistema non è ancora classificabile come produzione definitiva perché restano aperti l'hardening operativo/produzione e la prova longitudinale durante un anno scolastico reale.
+Il sistema non è ancora classificabile come produzione definitiva perché restano aperti il restore rehearsal isolato, ulteriori tranche di hardening operativo/produzione e la prova longitudinale durante un anno scolastico reale.
 
 ## 2. Runtime canonico
 
@@ -60,6 +60,7 @@ Invariante: **Orario e Calendario restano domini indipendenti**; la composizione
 - Orario;
 - Calendario;
 - Impostazioni;
+- accesso con password, prima configurazione e recupero password distinti;
 - assistente contestuale X3 sulle superfici autorizzate;
 - scrittura X4-A controllata esclusivamente nel Planner.
 
@@ -102,7 +103,8 @@ Stato corrente:
 
 - X5 authoring Render Beta: **PASS**;
 - X5-B export Render Beta: **PASS**;
-- HVA Render Beta: **PASS** sulle tranche pertinenti;
+- HVA applicativo P2 recovery: **PASS**;
+- HVA Render Beta: **PASS** sulle tranche pertinenti precedenti;
 - K1 Render Beta: **PASS**;
 - X3 Render Beta: **PASS**;
 - X4 Planner Render Beta: **PASS**;
@@ -135,7 +137,7 @@ Le failure Vercel per quota non sono failure del canale Beta Render.
 
 ## 8. Operational hardening
 
-Stato: **IN PROGRESS — P0 SECURITY PASS / P1 MONITORING BASELINE PASS**.
+Stato: **IN PROGRESS — P0 SECURITY PASS / P1 MONITORING PASS / P2 ACCOUNT RECOVERY PASS + RESTORE PREPARED**.
 
 Completato:
 
@@ -146,19 +148,46 @@ Completato:
 - gate permanente `ops-security/supabase`;
 - Product CI, K1, X3 e X4 regressivi PASS dopo il security hardening;
 - monitor `ops-health/render-beta` ogni 6 ore e on-demand;
-- monitor verificato nel primo run: `/api/build-info`, login, Supabase Auth, lettura DB/RLS e stato prodotto Render exact/equivalent;
-- artifact JSON del probe conservato per 30 giorni.
+- monitor verificato su `/api/build-info`, login, Supabase Auth, lettura DB/RLS e stato prodotto Render exact/equivalent;
+- account recovery separato dalla prima configurazione: `resetPasswordForEmail → callback recovery → sessione verificata → nuova password`;
+- recovery non crea utenti e usa risposta non enumerante;
+- durante una sessione recovery non è possibile bypassare il cambio password con “Continua senza modificare la password”;
+- Product CI P2: **209/209 test PASS + typecheck + lint + build PASS**;
+- HVA applicativo P2: **PASS**;
+- runbook `docs/operations/RECOVERY_RUNBOOK.md` e verifica `product/supabase/recovery/verify_restore.sql` disponibili;
+- manifest Beta catturato per DB/Auth/Storage e migrazioni.
 
-Il monitor GitHub costituisce una **monitoring baseline**, non ancora un sistema completo di incident management/alert escalation.
+### Restore readiness
 
-Non equivale a production readiness completa.
+Stato: **PREPARED / NOT YET REHEARSED**.
 
-Residui hardening aperti:
+Baseline di recovery catturata il 2026-08-24:
 
-- backup/restore verificato;
-- recovery account e password policy, inclusa leaked-password protection attualmente non abilitata;
+- 3 utenti Auth;
+- 2 workspace;
+- 2 anni scolastici;
+- 17 planner task;
+- 66 knowledge assets;
+- 62 knowledge documents;
+- 65 knowledge generations;
+- 36 assistant write proposals;
+- 30 oggetti nel bucket `knowledge-assets`;
+- 5.052.771 byte registrati nei metadati Storage;
+- 33 migrazioni applicate al momento della cattura.
+
+Invariante operativo: **backup PostgreSQL/Auth e backup degli oggetti Storage sono distinti**. Un restore del database non ricrea oggetti Storage cancellati.
+
+P2 restore non può diventare `PASS` finché non viene eseguito un rehearsal su ambiente Supabase isolato con confronto manifest, verifica ACL/RLS/RPC, ripristino Storage e gate funzionali.
+
+Il costo rilevato per un branch Supabase temporaneo è **€0,01344/ora**; la creazione richiede approvazione esplicita del costo e non è stata eseguita.
+
+### Residui hardening aperti
+
+- restore rehearsal reale su ambiente isolato;
+- leaked-password protection: advisor Supabase la segnala ancora disabilitata; abilitarla/verificarla quando il piano lo consente;
+- strategia off-site/restore degli oggetti Storage;
 - alert escalation/incident response oltre alla failure del monitor GitHub;
-- dipendenze npm: warning corrente di 2 vulnerabilità high da classificare e risolvere senza upgrade ciechi;
+- dependency security da riesaminare sulla baseline corrente; il CI P2 ha riportato `npm install` con 0 vulnerabilità, quindi il precedente warning di 2 high non va più assunto come corrente senza nuova verifica;
 - data lifecycle/retention/export dei dati utente;
 - performance/load con dataset significativamente più grandi;
 - canale produzione definitivo e contratto Beta → produzione.
@@ -174,24 +203,28 @@ Valutazione audit aggiornata del 2026-08-24:
 - Conoscenza: **tra le capability più mature**;
 - CI/E2E/HVA: **molto maturo per la fase Beta**;
 - authoring professionale UDA + export PDF: **Beta-proven**;
+- account recovery: **baseline applicativa implementata e verificata**;
 - azioni AI persistenti: **prima capability minima attiva, controllata e reversibile**;
-- operations/produzione: **security e monitoring baseline attive; hardening ancora incompleto**.
+- operations/produzione: **security, monitoring e recovery applicativo attivi; restore e altri gate di produzione ancora incompleti**.
 
 Le percentuali di maturità restano indicative e non sostituiscono i gate.
 
 ## 10. Rischi e residui prioritari
 
-1. **Operational hardening** — backup/restore, recovery/password protection, incident response, data lifecycle, dependency security, performance/load, canale produzione.
-2. **Longitudinal proof** — validare settimane e mesi reali: cambi orario, sospensioni, correzioni, accumulo documenti/task/sessioni, fine quadrimestre/anno.
-3. **Governance X4** — mantenere `PLANNER_CREATE_TASK` come unica write capability assistita finché non esiste evidenza sufficiente per un'estensione controllata.
-4. **Estensione authoring** — valutare altri documenti professionali solo sulla base dell'uso reale, evitando duplicazioni indiscriminate.
+1. **Restore rehearsal** — provare realmente DB/Auth + Storage su ambiente isolato senza alterare il Beta canonico.
+2. **Password/platform hardening** — leaked-password protection e configurazioni Auth di produzione.
+3. **Operational hardening restante** — incident response, data lifecycle, dependency security, performance/load, canale produzione.
+4. **Longitudinal proof** — validare settimane e mesi reali: cambi orario, sospensioni, correzioni, accumulo documenti/task/sessioni, fine quadrimestre/anno.
+5. **Governance X4** — mantenere `PLANNER_CREATE_TASK` come unica write capability assistita finché non esiste evidenza sufficiente per un'estensione controllata.
+6. **Estensione authoring** — valutare altri documenti professionali solo sulla base dell'uso reale, evitando duplicazioni indiscriminate.
 
 ## 11. Ordine di maturazione autorizzato
 
 Il ciclo corrente è:
 
-1. **hardening operativo/produzione** — prossimo focus: backup/restore + recovery;
-2. pilotaggio continuativo settembre–ottobre;
-3. nuove tranche guidate da evidenza reale.
+1. completare **P2 restore rehearsal** quando il costo dell'ambiente isolato viene esplicitamente approvato;
+2. proseguire hardening di piattaforma, dati, performance e promozione;
+3. pilotaggio continuativo settembre–ottobre;
+4. nuove tranche guidate da evidenza reale.
 
 Non introdurre nuove macro-capability non previste per riempire artificialmente la roadmap.
