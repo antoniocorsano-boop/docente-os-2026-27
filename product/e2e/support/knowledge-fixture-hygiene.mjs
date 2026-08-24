@@ -1,13 +1,14 @@
 export async function knowledgeFixtureAssetIds(page, titleFragment) {
-  await page.goto('/knowledge')
-  return page.locator('a.knowledgeAssetRow').evaluateAll((links, fragment) => {
+  await page.goto(`/knowledge?q=${encodeURIComponent(titleFragment)}`)
+  return page.locator('a.knowledgeResult, a.knowledgeAssetRow').evaluateAll((links, fragment) => {
     const needle = String(fragment).toLocaleLowerCase('it')
-    return links.flatMap((link) => {
+    const ids = links.flatMap((link) => {
       if (!link.textContent?.toLocaleLowerCase('it').includes(needle)) return []
       const href = link.getAttribute('href') ?? ''
       const match = href.match(/^\/knowledge\/([^/?#]+)$/)
       return match ? [decodeURIComponent(match[1])] : []
     })
+    return [...new Set(ids)]
   }, titleFragment)
 }
 
