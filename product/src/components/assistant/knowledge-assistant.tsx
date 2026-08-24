@@ -65,8 +65,14 @@ function KnowledgeAssistantRuntime({
     )
   }
 
+  const panelClassName = [
+    'dosAssistantPanel',
+    presentation === 'floating' ? 'floating' : '',
+    expanded ? 'expanded' : '',
+  ].filter(Boolean).join(' ')
+
   return (
-    <section className={`dosAssistantPanel ${presentation === 'floating' ? 'floating' : ''}`} aria-labelledby="knowledge-assistant-title">
+    <section className={panelClassName} aria-labelledby="knowledge-assistant-title">
       <div className="dosAssistantHeader">
         <div className="dosAssistantIdentity">
           <span className="dosAssistantIcon" aria-hidden><Sparkles size={19} /></span>
@@ -86,8 +92,8 @@ function KnowledgeAssistantRuntime({
         <span>{context.knowledge.category}</span>
         <span>{context.knowledge.sourceLabel}</span>
         <span>{context.knowledge.statusLabel}</span>
-        {context.knowledge.classLabels.slice(0, 1).map((item) => <span key={`class-${item}`}>{item}</span>)}
-        {context.knowledge.disciplines.slice(0, 1).map((item) => <span key={`discipline-${item}`}>{item}</span>)}
+        {context.knowledge.classLabels.map((item) => <span key={`class-${item}`}>{item}</span>)}
+        {context.knowledge.disciplines.map((item) => <span key={`discipline-${item}`}>{item}</span>)}
       </div>
 
       {!expanded ? (
@@ -198,7 +204,11 @@ function StructuredAssistantText({ text }: { text: string }) {
           return (
             <section key={`${heading}-${index}`}>
               <strong>{heading}</strong>
-              {lines.slice(1).map((line) => <p key={line}>{line}</p>)}
+              {lines.slice(1).map((line, lineIndex) => (
+                <p className={line.startsWith('• ') ? 'dosAssistantBullet' : undefined} key={`${line}-${lineIndex}`}>
+                  {line}
+                </p>
+              ))}
             </section>
           )
         }
