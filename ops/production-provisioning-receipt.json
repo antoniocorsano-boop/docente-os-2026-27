@@ -1,42 +1,47 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "gate": "P7-F2",
-  "overallState": "PARTIALLY_PROVISIONED",
+  "overallState": "PROVISIONED_INACTIVE",
   "activationState": "HOLD",
   "realUserDataAccepted": false,
   "supabase": {
     "state": "PROVISIONED_SCHEMA_READY",
     "projectRef": "xpxhlmpsvfzgsjxgieks",
     "region": "eu-central-1",
-    "migrationsApplied": 36,
+    "historicalMigrationsApplied": 36,
     "canonicalMigrationNamesMatched": true,
-    "authUsers": 0,
+    "technicalAuthUsers": 1,
     "workspaceRows": 0,
     "storageBucketCount": 1,
     "storageObjectCount": 0,
+    "applicationDataRows": 0,
     "securityAdvisors": "CANONICAL_WARNING_PROFILE_NO_NEW_PRODUCTION_SPECIFIC_WARNING"
   },
   "render": {
-    "state": "NOT_PROVISIONED",
-    "reason": "AUTHENTICATED_RENDER_CONNECTOR_UNAVAILABLE",
-    "handoffState": "BLUEPRINT_READY",
-    "blueprintPath": "ops/render-production-blueprint.yaml",
-    "plannedServiceName": "docente-os-2026-27-production",
+    "state": "PROVISIONED_INACTIVE",
+    "serviceName": "docente-os-2026-27-production",
+    "serviceUrl": "https://docente-os-2026-27-production.onrender.com",
     "region": "frankfurt",
     "inactiveValidationTier": "free",
     "autoDeployAllowed": false,
-    "environmentValuesStoredInRepository": false
+    "environmentValuesStoredInRepository": false,
+    "servedCommitAtCertifiedSmoke": "f33eb4785ed66630c3a162ae2f2c1bd5db64d532"
   },
   "runtimeSmoke": {
-    "state": "PREPARED_NOT_RUN",
+    "state": "PASS",
     "workflow": "Production Runtime Smoke",
+    "runId": 32836204567,
+    "authenticatedTechnicalIdentity": true,
+    "currentWorkspaceContextRpc": "PASS",
     "mutatingActionsAllowed": false,
-    "requiresDedicatedProductionTechnicalIdentity": true
+    "mutatingActionsPerformed": false,
+    "applicationRowsCreated": 0
   },
   "bootstrapFinding": {
     "migration": "0004_harden_event_trigger_rpc_exposure.sql",
     "finding": "NOT_FRESH_INSTALL_SAFE",
-    "remediation": "GUARDED_OPTIONAL_FUNCTION_REVOKE"
+    "remediation": "GUARDED_OPTIONAL_FUNCTION_REVOKE",
+    "remediationState": "APPLIED"
   },
-  "nextGate": "P7-F2-RUNTIME"
+  "nextGate": "P7-RECOVERY-REMAINDER"
 }
