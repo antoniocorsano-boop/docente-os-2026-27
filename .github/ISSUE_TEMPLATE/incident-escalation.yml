@@ -1,0 +1,99 @@
+name: Incident / escalation
+description: Registra un incidente operativo owner-visible con receipt minima.
+title: "[INCIDENT] "
+body:
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - BETA
+        - PRODUCTION_INACTIVE
+        - PRODUCTION_ACTIVE
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - SEV-1
+        - SEV-2
+        - SEV-3
+        - SEV-4
+    validations:
+      required: true
+  - type: input
+    id: detection_time
+    attributes:
+      label: Detection time
+      description: Timestamp UTC o offset-aware.
+      placeholder: 2026-08-25T10:45:00Z
+    validations:
+      required: true
+  - type: textarea
+    id: observed_condition
+    attributes:
+      label: Observed condition
+      description: Descrivere solo ciò che è stato osservato.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: User/data impact
+      description: Usare UNKNOWN se non ancora determinato.
+    validations:
+      required: true
+  - type: dropdown
+    id: real_data
+    attributes:
+      label: Real data involved
+      options:
+        - 'NO'
+        - UNKNOWN
+        - 'YES'
+    validations:
+      required: true
+  - type: textarea
+    id: containment
+    attributes:
+      label: Immediate containment
+      description: Azione già eseguita oppure NONE.
+    validations:
+      required: true
+  - type: textarea
+    id: owner_action
+    attributes:
+      label: Owner action required
+      description: Decisione o verifica richiesta al proprietario; usare NONE solo se non necessaria.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence links
+      description: Inserire almeno un riferimento verificabile. Non inserire segreti o dati personali reali.
+    validations:
+      required: true
+  - type: dropdown
+    id: status
+    attributes:
+      label: Status
+      options:
+        - OPEN
+        - CONTAINED
+        - MONITORING
+        - RESOLVED
+        - FALSE_POSITIVE
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: Non ho inserito password, token, cookie, service-role key o altri segreti.
+          required: true
+        - label: Non ho inserito dati personali scolastici reali nella descrizione.
+          required: true
