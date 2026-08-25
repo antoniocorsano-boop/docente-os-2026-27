@@ -13,9 +13,9 @@ const fail = (message) => {
   process.exit(1)
 }
 
-if (spec.schemaVersion !== 2) fail('schemaVersion must be 2')
+if (spec.schemaVersion !== 3) fail('schemaVersion must be 3')
 if (spec.environment !== 'production') fail('environment must be production')
-if (!['NOT_PROVISIONED', 'PROVISIONED_NOT_ACTIVE', 'ACTIVE'].includes(spec.provisioningState)) fail('invalid provisioningState')
+if (!['NOT_PROVISIONED', 'PARTIALLY_PROVISIONED', 'PROVISIONED_NOT_ACTIVE', 'ACTIVE'].includes(spec.provisioningState)) fail('invalid provisioningState')
 if (promotion.productionDataTopologyState !== 'SEPARATE') fail('promotion contract must require separate production data topology')
 if (spec.release?.scope !== promotion.firstReleaseScope) fail('release scope must match promotion contract')
 if (spec.release?.audience !== promotion.firstRelease?.releaseAudience) fail('release audience must match promotion contract')
@@ -24,7 +24,6 @@ if (spec.hosting?.providerDecisionState !== 'SELECTED') fail('hosting provider m
 if (spec.hosting?.provider !== 'RENDER') fail('P7-E pilot provider must be RENDER')
 if (spec.hosting?.region !== 'frankfurt') fail('Production pilot must remain in Render Frankfurt')
 if (spec.hosting?.plannedServiceName !== 'docente-os-2026-27-production') fail('unexpected planned Production service name')
-if (spec.hosting?.runtimeTier !== 'UNDECIDED_BEFORE_PROVISIONING') fail('runtime tier must remain undecided until provisioning review')
 if (spec.hosting?.customDomainState !== 'DEFERRED_UNTIL_ACTIVATION_READY') fail('custom domain must be deferred until activation readiness')
 
 for (const key of ['separateFromBetaRequired', 'databaseSeparateRequired', 'authSeparateRequired', 'storageSeparateRequired']) {
@@ -38,6 +37,7 @@ for (const key of ['automaticBetaCopyAllowed', 'crossEnvironmentDatabaseWritesAl
   if (spec.data?.[key] !== false) fail(`data.${key} must be false`)
 }
 if (spec.data?.manualImportRequiresOwnerDecision !== true) fail('manual import must require owner decision')
+if (spec.data?.realUserDataAccepted !== false) fail('real user data must remain disabled before activation')
 if (spec.release?.publicSignupAllowed !== false) fail('public signup must remain disabled for first release')
 if (spec.release?.multiTenantOnboardingAllowed !== false) fail('multi-tenant onboarding must remain disabled for first release')
 if (spec.release?.humanPromotionDecisionRequired !== true) fail('human promotion decision is required')
@@ -60,11 +60,30 @@ if (spec.provisioningState === 'NOT_PROVISIONED') {
   if (spec.hosting?.serviceName !== 'UNASSIGNED') fail('serviceName must remain UNASSIGNED before provisioning')
 }
 
+if (spec.provisioningState === 'PARTIALLY_PROVISIONED') {
+  if (spec.supabase?.projectState !== 'PROVISIONED') fail('partial provisioning requires provisioned Supabase')
+  if (['UNASSIGNED', ''].includes(spec.supabase?.projectRef)) fail('partial provisioning requires Supabase projectRef')
+  if (['UNASSIGNED', ''].includes(spec.supabase?.projectUrl)) fail('partial provisioning requires Supabase projectUrl')
+  if (spec.supabase?.schemaState !== 'CANONICAL_MIGRATIONS_APPLIED') fail('partial provisioning requires canonical schema')
+  if (spec.supabase?.migrationCount !== 36) fail('partial provisioning requires all 36 canonical migrations')
+  if (spec.supabase?.dataState !== 'EMPTY') fail('partial provisioning must remain empty')
+  if (spec.hosting?.serviceState !== 'NOT_PROVISIONED') fail('Render must remain not provisioned in partial state')
+  if (spec.hosting?.serviceName !== 'UNASSIGNED') fail('Render serviceName must remain unassigned before provisioning')
+}
+
+if (spec.provisioningState === 'PROVISIONED_NOT_ACTIVE') {
+  if (spec.supabase?.projectState !== 'PROVISIONED') fail('provisioned inactive production requires Supabase')
+  if (['UNASSIGNED', ''].includes(spec.supabase?.projectRef)) fail('provisioned inactive production requires projectRef')
+  if (spec.hosting?.serviceState !== 'PROVISIONED') fail('provisioned inactive production requires Render service')
+  if (['UNASSIGNED', ''].includes(spec.hosting?.serviceName)) fail('provisioned inactive production requires serviceName')
+}
+
 if (spec.provisioningState === 'ACTIVE') {
   if (promotion.productionEnvironmentState !== 'ACTIVE') fail('production cannot be active while promotion contract is not ACTIVE')
   if (spec.supabase?.projectState !== 'PROVISIONED') fail('active production requires provisioned Supabase')
   if (['UNASSIGNED', ''].includes(spec.supabase?.projectRef)) fail('active production requires projectRef')
   if (['UNASSIGNED', ''].includes(spec.supabase?.projectUrl)) fail('active production requires projectUrl')
+  if (spec.hosting?.serviceState !== 'PROVISIONED') fail('active production requires provisioned Render service')
   if (['UNASSIGNED', ''].includes(spec.hosting?.serviceName)) fail('active production requires serviceName')
 }
 
@@ -72,4 +91,4 @@ for (const [key, value] of Object.entries(spec.activationPrerequisites ?? {})) {
   if (value !== true) fail(`activationPrerequisites.${key} must be true`)
 }
 
-console.log(`Production infrastructure spec PASS: provisioning=${spec.provisioningState}, hosting=${spec.hosting.provider}, region=${spec.hosting.region}, scope=${spec.release.scope}`)
+console.log(`Production infrastructure spec PASS: provisioning=${spec.provisioningState}, hosting=${spec.hosting.provider}, supabase=${spec.supabase.projectState}, scope=${spec.release.scope}`)
