@@ -1,0 +1,140 @@
+name: P7 Off-site Storage Destination
+
+on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - '.github/workflows/p7-offsite-storage-destination.yml'
+      - '.github/scripts/run-offsite-storage-recovery.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  export-to-r2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      R2_BACKUP_BUCKET: ${{ vars.R2_BACKUP_BUCKET }}
+      R2_PREFIX: p7-destination/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Validate R2 configuration presence
+        run: |
+          test -n "$AWS_ACCESS_KEY_ID"
+          test -n "$AWS_SECRET_ACCESS_KEY"
+          test -n "$R2_ENDPOINT"
+          test -n "$R2_BACKUP_BUCKET"
+      - name: Initialize isolated source Supabase Storage
+        run: |
+          mkdir -p "$RUNNER_TEMP/source-supabase" "$RUNNER_TEMP/offsite-backup"
+          cd "$RUNNER_TEMP/source-supabase"
+          supabase init
+          supabase start
+      - name: Publish pending destination status
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.payload.pull_request.head.sha,
+              state: 'pending',
+              context: 'p7-recovery/offsite-storage-destination',
+              description: 'Persistent off-site destination verification in corso',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+      - name: Export independent synthetic binary backup and simulate source loss
+        env:
+          SUPABASE_REHEARSAL_DIR: ${{ runner.temp }}/source-supabase
+          OFFSITE_BACKUP_DIR: ${{ runner.temp }}/offsite-backup
+        run: node .github/scripts/run-offsite-storage-recovery.mjs export
+      - name: Upload backup only to persistent R2 destination
+        run: |
+          aws s3 cp "$RUNNER_TEMP/offsite-backup/recovery-sentinel.bin" "s3://$R2_BACKUP_BUCKET/$R2_PREFIX/recovery-sentinel.bin" --endpoint-url "$R2_ENDPOINT"
+          aws s3 cp "$RUNNER_TEMP/offsite-backup/manifest.json" "s3://$R2_BACKUP_BUCKET/$R2_PREFIX/manifest.json" --endpoint-url "$R2_ENDPOINT"
+          aws s3api head-object --bucket "$R2_BACKUP_BUCKET" --key "$R2_PREFIX/recovery-sentinel.bin" --endpoint-url "$R2_ENDPOINT" >/dev/null
+          aws s3api head-object --bucket "$R2_BACKUP_BUCKET" --key "$R2_PREFIX/manifest.json" --endpoint-url "$R2_ENDPOINT" >/dev/null
+      - name: Remove runner copy after R2 upload
+        run: rm -rf "$RUNNER_TEMP/offsite-backup"
+      - name: Destroy source Storage stack
+        if: always()
+        run: |
+          cd "$RUNNER_TEMP/source-supabase"
+          supabase stop --no-backup || true
+
+  restore-from-r2:
+    needs: export-to-r2
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      R2_BACKUP_BUCKET: ${{ vars.R2_BACKUP_BUCKET }}
+      R2_PREFIX: p7-destination/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Validate R2 configuration presence
+        run: |
+          test -n "$AWS_ACCESS_KEY_ID"
+          test -n "$AWS_SECRET_ACCESS_KEY"
+          test -n "$R2_ENDPOINT"
+          test -n "$R2_BACKUP_BUCKET"
+      - name: Download independent backup from R2 on second runner
+        run: |
+          mkdir -p "$RUNNER_TEMP/offsite-backup"
+          aws s3 cp "s3://$R2_BACKUP_BUCKET/$R2_PREFIX/recovery-sentinel.bin" "$RUNNER_TEMP/offsite-backup/recovery-sentinel.bin" --endpoint-url "$R2_ENDPOINT"
+          aws s3 cp "s3://$R2_BACKUP_BUCKET/$R2_PREFIX/manifest.json" "$RUNNER_TEMP/offsite-backup/manifest.json" --endpoint-url "$R2_ENDPOINT"
+      - name: Initialize fresh restore Supabase Storage
+        run: |
+          mkdir -p "$RUNNER_TEMP/restore-supabase"
+          cd "$RUNNER_TEMP/restore-supabase"
+          supabase init
+          supabase start
+      - name: Restore binary object and verify SHA-256
+        env:
+          SUPABASE_REHEARSAL_DIR: ${{ runner.temp }}/restore-supabase
+          OFFSITE_BACKUP_DIR: ${{ runner.temp }}/offsite-backup
+        run: node .github/scripts/run-offsite-storage-recovery.mjs restore
+      - name: Remove synthetic test objects from R2
+        if: always()
+        run: |
+          aws s3 rm "s3://$R2_BACKUP_BUCKET/$R2_PREFIX/recovery-sentinel.bin" --endpoint-url "$R2_ENDPOINT" || true
+          aws s3 rm "s3://$R2_BACKUP_BUCKET/$R2_PREFIX/manifest.json" --endpoint-url "$R2_ENDPOINT" || true
+      - name: Publish final destination status
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.payload.pull_request.head.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'p7-recovery/offsite-storage-destination',
+              description: ok ? 'Persistent R2 destination and restore verified' : 'Persistent R2 destination verification failed',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+      - name: Destroy fresh restore stack
+        if: always()
+        run: |
+          cd "$RUNNER_TEMP/restore-supabase"
+          supabase stop --no-backup || true
