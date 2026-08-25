@@ -20,48 +20,53 @@ Questa review distingue l'esistenza di una Production inattiva tecnicamente funz
 - P7-E: provider Render / Frankfurt.
 - P7-F: Supabase Production separato, schema-ready e senza dati applicativi reali.
 - P7-F2: Render Production provisionato inattivo; `Production Runtime Smoke` run `32836204567`: PASS.
-- autenticazione tecnica Production: PASS.
-- RPC autenticato `current_workspace_context`: PASS.
-- verifica post-smoke: nessuna mutazione applicativa e nessun dato professionale reale.
 - `DB_LOGICAL_RESTORE`: PASS, run `32837945388`.
-- `INCIDENT_ESCALATION_MINIMUM`: PASS.
-  - implementazione PR #192, merge `075bf9e5f00b76ee1555656a98d87a88caa714b4`;
-  - gate `p7-incident/escalation-contract`: PASS, run `32838659845`;
-  - rehearsal sintetico issue #193: owner-visible, assegnato all'owner, receipt finale presente, chiuso `completed`.
+- `INCIDENT_ESCALATION_MINIMUM`: PASS; rehearsal sintetico issue #193 owner-visible e chiuso `completed`.
+- `SUPABASE_AUTH_SERVICE_RECOVERY`: **PASS**, run `32841165988`.
+  - stack Supabase completo effimero in GitHub Actions;
+  - GoTrue `v2.195.0`;
+  - identità sintetica confermata;
+  - login iniziale riuscito;
+  - `POST /auth/v1/recover` accettata;
+  - email di recovery catturata da Mailpit;
+  - recovery session emessa;
+  - password modificata attraverso la recovery session;
+  - vecchia password rifiutata;
+  - nuova password accettata;
+  - Beta/Production non toccati.
 
 Ricevute canoniche:
 
 - `docs/product/P7F2_PRODUCTION_RUNTIME_RECEIPT.md`;
 - `docs/product/P7_DB_RESTORE_REHEARSAL_RECEIPT.md`;
-- `docs/product/P7_INCIDENT_ESCALATION_REHEARSAL_RECEIPT.md`.
+- `docs/product/P7_INCIDENT_ESCALATION_REHEARSAL_RECEIPT.md`;
+- `docs/product/P7_SUPABASE_AUTH_RECOVERY_RECEIPT.md`.
 
 ## Blocker prima dell'attivazione con dati reali
 
-### 1. Supabase Auth service recovery
+Resta **un solo blocker**.
+
+### Off-site Storage recovery
 
 Stato: **NOT PROVEN / BLOCKER**.
 
-Il logical restore PostgreSQL ha provato schema e catalogo `auth.users`, ma non dimostra che GoTrue/Supabase Auth sia recuperabile end-to-end dopo un disaster recovery reale. Serve una prova in ambiente Supabase isolato o un meccanismo equivalente e verificabile.
-
-### 2. Off-site Storage recovery
-
-Stato: **NOT PROVEN / BLOCKER**.
-
-Il restore del catalogo Storage non equivale al backup indipendente degli oggetti binari. Deve esistere una copia off-site degli originali e deve essere verificato almeno un percorso di restore binario.
+Il restore del catalogo Storage non equivale al backup indipendente degli oggetti binari. Deve esistere una copia off-site degli originali e deve essere verificato almeno un percorso di restore binario, usando esclusivamente dati sintetici fino alla nuova decisione di readiness.
 
 ## Blocker chiusi
 
 ### DB logical restore
 
-**PASS.** PostgreSQL 16 effimero, tutti i file SQL canonici presenti applicati, dati sintetici, `pg_dump`, distruzione DB, `pg_restore`, fingerprint invariato e RLS preservato. Beta/Production non toccati.
+**PASS.** PostgreSQL effimero, migrazioni canoniche, dati sintetici, `pg_dump`, distruzione DB, `pg_restore`, fingerprint invariato e RLS preservato.
+
+### Supabase Auth service recovery
+
+**PASS.** Il run `32841165988` ha esercitato il servizio GoTrue reale dello stack Supabase locale, non soltanto il catalogo `auth.users`. Ha provato richiesta di recovery, emissione email, recovery session e sostituzione effettiva della password.
+
+Questa prova non equivale a certificare il disaster recovery gestito dell'infrastruttura cloud Supabase; certifica però il comportamento end-to-end del servizio Auth richiesto dal blocker.
 
 ### Incident escalation minimum
 
-**PASS.** Il percorso canonico è GitHub Issue con template strutturato, severità, impatto, contenimento, owner action, evidenze e receipt di chiusura. Il rehearsal #193 ha provato la sequenza:
-
-**creazione → classificazione → assegnazione owner → evidenze → receipt → chiusura**.
-
-La prova non implica paging 24/7, SMS/email esterne o incident response multi-operatore; tali capability non sono richieste per il pilot single-owner.
+**PASS.** Il percorso owner-visible via GitHub Issue è stato provato con receipt di chiusura sintetica e gate automatico.
 
 ## Watch non bloccanti per il pilot
 
@@ -88,9 +93,8 @@ Nessun elemento di questa review autorizza:
 
 ## Prossimo gate
 
-Restano due soli blocker di activation:
+Il solo blocker residuo è:
 
-1. `SUPABASE_AUTH_SERVICE_RECOVERY`;
-2. `OFFSITE_STORAGE_RECOVERY`.
+`OFFSITE_STORAGE_RECOVERY`.
 
-Production activation resta **HOLD** fino alla loro chiusura e a una nuova readiness review.
+Production activation resta **HOLD** fino alla prova di copia indipendente e restore binario degli oggetti Storage e alla successiva Production Readiness Review.
