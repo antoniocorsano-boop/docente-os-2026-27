@@ -13,12 +13,19 @@ const fail = (message) => {
   process.exit(1)
 }
 
-if (spec.schemaVersion !== 1) fail('schemaVersion must be 1')
+if (spec.schemaVersion !== 2) fail('schemaVersion must be 2')
 if (spec.environment !== 'production') fail('environment must be production')
 if (!['NOT_PROVISIONED', 'PROVISIONED_NOT_ACTIVE', 'ACTIVE'].includes(spec.provisioningState)) fail('invalid provisioningState')
 if (promotion.productionDataTopologyState !== 'SEPARATE') fail('promotion contract must require separate production data topology')
 if (spec.release?.scope !== promotion.firstReleaseScope) fail('release scope must match promotion contract')
 if (spec.release?.audience !== promotion.firstRelease?.releaseAudience) fail('release audience must match promotion contract')
+
+if (spec.hosting?.providerDecisionState !== 'SELECTED') fail('hosting provider must be explicitly selected before provisioning')
+if (spec.hosting?.provider !== 'RENDER') fail('P7-E pilot provider must be RENDER')
+if (spec.hosting?.region !== 'frankfurt') fail('Production pilot must remain in Render Frankfurt')
+if (spec.hosting?.plannedServiceName !== 'docente-os-2026-27-production') fail('unexpected planned Production service name')
+if (spec.hosting?.runtimeTier !== 'UNDECIDED_BEFORE_PROVISIONING') fail('runtime tier must remain undecided until provisioning review')
+if (spec.hosting?.customDomainState !== 'DEFERRED_UNTIL_ACTIVATION_READY') fail('custom domain must be deferred until activation readiness')
 
 for (const key of ['separateFromBetaRequired', 'databaseSeparateRequired', 'authSeparateRequired', 'storageSeparateRequired']) {
   if (spec.supabase?.[key] !== true) fail(`supabase.${key} must be true`)
@@ -39,9 +46,11 @@ if (spec.hosting?.deployModel !== 'IMMUTABLE_CERTIFIED_SHA') fail('production mu
 
 const betaSupabaseRef = /https:\/\/([a-z0-9]+)\.supabase\.co/.exec(render)?.[1]
 const betaAppUrl = /NEXT_PUBLIC_APP_URL[\s\S]*?value:\s*(https?:\/\/\S+)/.exec(render)?.[1]
+const betaServiceName = /name:\s*(docente-os-2026-27-beta)/.exec(render)?.[1]
 const serialized = JSON.stringify(spec)
 if (betaSupabaseRef && serialized.includes(betaSupabaseRef)) fail('spec must not reference the Beta Supabase project')
 if (betaAppUrl && serialized.includes(betaAppUrl)) fail('spec must not reference the Beta app URL')
+if (betaServiceName && spec.hosting?.plannedServiceName === betaServiceName) fail('Production service name must differ from Beta')
 if (/sb_(publishable|secret)_[A-Za-z0-9_-]+/.test(serialized)) fail('real Supabase key material must not be committed in production spec')
 
 if (spec.provisioningState === 'NOT_PROVISIONED') {
@@ -63,4 +72,4 @@ for (const [key, value] of Object.entries(spec.activationPrerequisites ?? {})) {
   if (value !== true) fail(`activationPrerequisites.${key} must be true`)
 }
 
-console.log(`Production infrastructure spec PASS: provisioning=${spec.provisioningState}, hosting=${spec.hosting.provider}, scope=${spec.release.scope}`)
+console.log(`Production infrastructure spec PASS: provisioning=${spec.provisioningState}, hosting=${spec.hosting.provider}, region=${spec.hosting.region}, scope=${spec.release.scope}`)

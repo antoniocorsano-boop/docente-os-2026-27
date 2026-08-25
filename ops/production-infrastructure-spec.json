@@ -1,16 +1,20 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "product": "DOCENTE OS",
   "environment": "production",
   "provisioningState": "NOT_PROVISIONED",
   "hosting": {
-    "provider": "UNDECIDED",
+    "provider": "RENDER",
+    "providerDecisionState": "SELECTED",
     "serviceName": "UNASSIGNED",
-    "region": "EU_REQUIRED",
+    "plannedServiceName": "docente-os-2026-27-production",
+    "region": "frankfurt",
     "sourceBranch": "develop",
     "deployModel": "IMMUTABLE_CERTIFIED_SHA",
     "autoDeployAllowed": false,
-    "healthCheckPath": "/"
+    "healthCheckPath": "/",
+    "runtimeTier": "UNDECIDED_BEFORE_PROVISIONING",
+    "customDomainState": "DEFERRED_UNTIL_ACTIVATION_READY"
   },
   "supabase": {
     "projectState": "NOT_PROVISIONED",

@@ -1,10 +1,11 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "product": "DOCENTE OS",
   "review": "P7-D",
+  "lastUpdatedBy": "P7-E",
   "reviewState": "COMPLETE",
   "productionActivationDecision": "HOLD",
-  "inactiveProvisioningDecision": "ALLOWED_AFTER_PROVIDER_SELECTION",
+  "inactiveProvisioningDecision": "ALLOWED",
   "scope": "SINGLE_OWNER_PILOT",
   "principles": {
     "provisioningIsNotActivation": true,
@@ -27,6 +28,11 @@
       "id": "P7C_INFRASTRUCTURE_SPEC",
       "classification": "SATISFIED",
       "evidence": "production-infrastructure/spec"
+    },
+    {
+      "id": "P7E_PROVIDER_SELECTION",
+      "classification": "SATISFIED",
+      "evidence": "hosting.provider=RENDER; region=frankfurt; autoDeployAllowed=false"
     },
     {
       "id": "SECURITY_BASELINE",
@@ -57,12 +63,6 @@
       "classification": "BLOCKER",
       "state": "NOT_IMPLEMENTED",
       "reason": "Production activation needs a minimal owner-visible escalation and incident receipt beyond a GitHub monitor failure."
-    },
-    {
-      "id": "PRODUCTION_PROVIDER_SELECTION",
-      "classification": "BLOCKER_FOR_PROVISIONING",
-      "state": "UNDECIDED",
-      "reason": "The hosting provider/service must be explicitly selected before inactive infrastructure is provisioned."
     }
   ],
   "watches": [
@@ -92,8 +92,9 @@
     }
   ],
   "nextGate": {
-    "id": "P7-E",
-    "purpose": "Select the production hosting provider and define an inactive provisioning plan without activation or real user data.",
+    "id": "P7-F",
+    "purpose": "Provision the isolated Production infrastructure in an inactive state for recovery and policy verification, without real user data or activation.",
+    "mayCreateInactiveProduction": true,
     "mayCreateActiveProduction": false,
     "mayAcceptRealUserData": false
   }
