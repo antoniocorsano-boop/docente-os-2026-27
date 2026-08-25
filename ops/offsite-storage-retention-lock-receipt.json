@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "gate": "OFFSITE_STORAGE_RETENTION_LOCK",
+  "result": "PASS",
+  "provider": "CLOUDFLARE_R2",
+  "bucket": "docente-os-backup-eu",
+  "jurisdiction": "EU",
+  "protectedPrefix": "production/",
+  "retentionPolicy": {
+    "mode": "BUCKET_LOCK",
+    "durationDays": 90,
+    "scope": "PREFIX"
+  },
+  "workflow": {
+    "runId": 32891383829,
+    "jobId": 97943868034,
+    "statusContext": "p7-recovery/r2-retention-lock"
+  },
+  "probe": {
+    "key": "production/p7-retention-probe/32891383829/sentinel.bin",
+    "byteLength": 38,
+    "sha256": "0f61c37e11d23342438df4d2b13a5da4e7d1f88e3378626ecd899090f7623e06"
+  },
+  "evidence": {
+    "initialUploadSucceeded": true,
+    "overwriteBlocked": true,
+    "overwriteError": "ObjectLockedByBucketPolicy",
+    "deletionBlocked": true,
+    "deletionError": "ObjectLockedByBucketPolicy",
+    "originalReadableAfterBlockedMutations": true,
+    "sha256Verified": true,
+    "byteIdentityVerified": true
+  },
+  "safety": {
+    "syntheticDataOnly": true,
+    "productionApplicationTouched": false,
+    "betaTouched": false,
+    "realUserDataUsed": false,
+    "activationAuthorized": false
+  }
+}

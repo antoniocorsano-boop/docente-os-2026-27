@@ -7,31 +7,32 @@ Questo documento è la sintesi autorevole dello stato operativo. I checkpoint pr
 
 ## 1. Classificazione
 
-DOCENTE OS è una **Beta operativa avanzata** con infrastruttura Production inattiva realmente provisionata e verificata tecnicamente.
+DOCENTE OS è una **Beta operativa avanzata** con infrastruttura Production separata, provisionata inattiva e tecnicamente verificata.
 
 La Production **non è attiva** e non è autorizzata a ricevere dati professionali reali. `productionActivationDecision = HOLD`.
 
 Stato infrastrutturale:
 
 - Beta Render: operativa;
-- Supabase Production: separato e schema-ready;
-- Render Production: `docente-os-2026-27-production`, Frankfurt, provisionato inattivo;
+- Supabase Production: separato, schema-ready e senza dati applicativi reali;
+- Render Production: Frankfurt, provisionato inattivo;
 - Production Runtime Smoke autenticato: PASS, run `32836204567`;
-- Production application rows dopo smoke: 0;
-- identità Auth tecnica dedicata: 1;
 - `DB_LOGICAL_RESTORE`: PASS;
 - `SUPABASE_AUTH_SERVICE_RECOVERY`: PASS;
 - `OFFSITE_STORAGE_RECOVERY_REHEARSAL`: PASS;
+- `OFFSITE_STORAGE_PERSISTENT_DESTINATION`: PASS;
+- `OFFSITE_STORAGE_RETENTION_LOCK`: PASS;
 - `INCIDENT_ESCALATION_MINIMUM`: PASS;
 - auto-deploy Production: OFF;
-- dati reali autorizzati: false.
+- dati reali autorizzati: false;
+- activation blocker tecnici P7: **0**.
 
 ## 2. Runtime e invarianti di prodotto
 
 - codice applicativo: `product/`;
 - Next.js 16 / React 19 / TypeScript strict;
 - Supabase Auth + PostgreSQL + Storage + RLS;
-- branch canonico: `develop`;
+- branch canonico di sviluppo: `develop`;
 - Vercel non è gate canonico; Netlify è legacy.
 
 Capability principali:
@@ -50,7 +51,7 @@ Orario e Calendario restano domini indipendenti; la composizione avviene solo vi
 
 Stato:
 
-**P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS / P7-D REVIEW CURRENT / P7-E PASS / P7-F PASS / P7-F2 COMPLETE / DB_LOGICAL_RESTORE PASS / SUPABASE_AUTH_SERVICE_RECOVERY PASS / OFFSITE_STORAGE_RECOVERY_REHEARSAL PASS / INCIDENT_ESCALATION_MINIMUM PASS / ACTIVATION HOLD**.
+**P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS / P7-D REVIEW CURRENT / P7-E PASS / P7-F PASS / P7-F2 COMPLETE / DB_LOGICAL_RESTORE PASS / SUPABASE_AUTH_SERVICE_RECOVERY PASS / OFFSITE_STORAGE_RECOVERY_REHEARSAL PASS / OFFSITE_STORAGE_PERSISTENT_DESTINATION PASS / OFFSITE_STORAGE_RETENTION_LOCK PASS / INCIDENT_ESCALATION_MINIMUM PASS / TECHNICAL BLOCKERS 0 / ACTIVATION HOLD**.
 
 ## 4. P7 — Production governance e recovery
 
@@ -68,64 +69,71 @@ Production non segue automaticamente `develop`; la promozione richiede SHA immut
 
 **PASS**, run `32837945388`.
 
-Backup logico, distruzione DB, restore, dati sintetici, fingerprint schema e RLS provati in ambiente isolato.
-
 ### Supabase Auth service recovery
 
 **PASS**, run `32841165988`.
-
-GoTrue/Auth reale dello stack Supabase locale ha provato login, richiesta recovery, email, recovery session, cambio password e verifica vecchia/nuova password con identità sintetica.
 
 ### Off-site Storage recovery rehearsal
 
 **PASS**, run `32842616571`.
 
-La prova ha usato due runner GitHub distinti:
+Due runner distinti hanno provato perdita della sorgente, copia indipendente, restore su Storage fresco e verifica byte/SHA-256.
 
-- runner A / job `97785243034`: crea oggetto sintetico in Supabase Storage, verifica i byte, produce una copia indipendente, cancella la sorgente, verifica la perdita e distrugge lo stack;
-- runner B / job `97785811124`: scarica la copia su host distinto, avvia un nuovo Supabase Storage vuoto, ripristina l'oggetto e verifica byte e SHA-256.
+### Off-site Storage persistent destination
 
-Evidenza:
+**PASS**, run `32888249839`.
 
-- fresh restore Storage: true;
-- separate runner boundary: true;
-- binary restore verified: true;
-- byte length: `131071`;
-- object SHA-256: `ab2f638970566aaf3f495b7a3860612f7bd91a2afe5d837e835a27f11ba811be`;
-- Beta/Production toccati: false;
-- dati reali: false.
+Destinazione reale verificata:
 
-Ricevuta: `docs/product/P7_OFFSITE_STORAGE_RECOVERY_RECEIPT.md`.
+- Cloudflare R2;
+- bucket `docente-os-backup-eu`;
+- jurisdiction EU;
+- backup medium `CLOUDFLARE_R2_EU_PERSISTENT`;
+- upload remoto, distruzione sorgente, download su secondo runner, restore e SHA-256 verificati;
+- Beta/Production applicativa non toccate;
+- dati reali non usati.
 
-L'artifact GitHub con retention di un giorno è **rehearsal-only** e non è approvato come backup operativo per dati professionali reali.
+### R2 retention / Bucket Lock
+
+**PASS**, run `32891383829`, job `97943868034`.
+
+Configurazione verificata:
+
+- protected prefix: `production/`;
+- retention: 90 giorni;
+- overwrite bloccato da `ObjectLockedByBucketPolicy`;
+- delete bloccato da `ObjectLockedByBucketPolicy`;
+- probe originale ancora leggibile e byte-identico;
+- probe SHA-256: `0f61c37e11d23342438df4d2b13a5da4e7d1f88e3378626ecd899090f7623e06`.
+
+Ricevuta: `docs/product/P7_R2_RETENTION_LOCK_RECEIPT.md`.
 
 ### Incident escalation minimum
 
 **PASS.** Gate owner-visible e rehearsal issue #193 con receipt finale.
 
-## 5. Readiness / blocker di activation
+## 5. Readiness / activation
 
-Production activation resta **HOLD**.
+La readiness tecnica P7 corrente registra:
 
-I rehearsal/capability tecnici richiesti sono provati:
+**activationBlockers = []**
 
-- `DB_LOGICAL_RESTORE` — PASS;
-- `SUPABASE_AUTH_SERVICE_RECOVERY` — PASS;
-- `OFFSITE_STORAGE_RECOVERY_REHEARSAL` — PASS;
-- `INCIDENT_ESCALATION_MINIMUM` — PASS.
+Quindi non restano blocker tecnici aperti per il pilot single-owner. Questo **non autorizza automaticamente Production**.
 
-Resta **un solo blocker operativo**:
+Restano invarianti obbligatori:
 
-`OFFSITE_STORAGE_PERSISTENT_DESTINATION` — **NOT CONFIGURED / BLOCKER**.
-
-Occorre una destinazione off-site persistente, cifrata, indipendente da Supabase Production e privacy-appropriata, con retention/accesso controllati e restore verificabile. GitHub Actions Artifact non è tale destinazione.
+- `productionActivationDecision = HOLD`;
+- `realUserDataAccepted = false`;
+- nessuna promozione automatica Beta → Production;
+- nessun auto-deploy Production;
+- decisione umana esplicita richiesta prima di qualunque activation.
 
 Watch non bloccanti:
 
 - load/scale isolato prima di rollout più ampio;
 - leaked-password protection quando il piano Supabase lo consente;
 - longitudinal proof;
-- retention/account deletion dopo sufficiente evidenza di export/recovery.
+- retention/account deletion a livello applicativo.
 
 ## 6. Gate permanenti rilevanti
 
@@ -149,14 +157,15 @@ Watch non bloccanti:
 - `p7-recovery/db-restore-rehearsal`;
 - `p7-recovery/supabase-auth-service`;
 - `p7-recovery/offsite-storage`;
+- `p7-recovery/offsite-storage-destination`;
+- `p7-recovery/r2-retention-lock`;
 - `p7-incident/escalation-contract`.
 
-## 7. Prossime priorità autorizzate
+## 7. Prossima priorità autorizzata
 
-1. **P7-OFFSITE-STORAGE-DESTINATION** — scegliere e verificare una destinazione persistente, cifrata e privacy-appropriata;
-2. nuova Production Readiness Review;
-3. decisione umana esplicita sull'eventuale activation del pilot;
-4. solo se autorizzato, promozione di uno SHA applicativo certificato più recente;
-5. load/scale isolato prima di rollout più ampio.
+1. **P7-PRODUCTION-ACTIVATION-DECISION** — review umana esplicita dello stato zero-blocker;
+2. solo in caso di autorizzazione, scegliere e certificare lo SHA applicativo da promuovere;
+3. attivare il pilot single-owner senza ampliare automaticamente scope o capability;
+4. mantenere load/scale come watch prima di rollout più ampio.
 
 Non introdurre nuove macro-capability per riempire artificialmente la roadmap.
