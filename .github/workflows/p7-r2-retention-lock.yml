@@ -1,0 +1,90 @@
+name: P7 R2 Retention Lock
+
+on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - '.github/workflows/p7-r2-retention-lock.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  verify-retention-lock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      R2_BACKUP_BUCKET: ${{ vars.R2_BACKUP_BUCKET }}
+      R2_KEY: production/p7-retention-probe/${{ github.run_id }}/sentinel.bin
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate R2 configuration presence
+        run: |
+          test -n "$AWS_ACCESS_KEY_ID"
+          test -n "$AWS_SECRET_ACCESS_KEY"
+          test -n "$R2_ENDPOINT"
+          test -n "$R2_BACKUP_BUCKET"
+
+      - name: Create and upload synthetic retention probe
+        run: |
+          printf 'DOCENTE_OS_P7_RETENTION_LOCK_PROBE_V1\n' > "$RUNNER_TEMP/original.bin"
+          sha256sum "$RUNNER_TEMP/original.bin" | tee "$RUNNER_TEMP/original.sha256"
+          aws s3 cp "$RUNNER_TEMP/original.bin" "s3://$R2_BACKUP_BUCKET/$R2_KEY" --endpoint-url "$R2_ENDPOINT"
+          aws s3api head-object --bucket "$R2_BACKUP_BUCKET" --key "$R2_KEY" --endpoint-url "$R2_ENDPOINT" >/dev/null
+
+      - name: Verify overwrite is blocked by retention lock
+        run: |
+          printf 'OVERWRITE_MUST_BE_REJECTED\n' > "$RUNNER_TEMP/replacement.bin"
+          set +e
+          aws s3 cp "$RUNNER_TEMP/replacement.bin" "s3://$R2_BACKUP_BUCKET/$R2_KEY" --endpoint-url "$R2_ENDPOINT" >"$RUNNER_TEMP/overwrite.log" 2>&1
+          rc=$?
+          set -e
+          cat "$RUNNER_TEMP/overwrite.log"
+          if [ "$rc" -eq 0 ]; then
+            echo 'Retention failure: overwrite unexpectedly succeeded' >&2
+            exit 1
+          fi
+
+      - name: Verify deletion is blocked by retention lock
+        run: |
+          set +e
+          aws s3 rm "s3://$R2_BACKUP_BUCKET/$R2_KEY" --endpoint-url "$R2_ENDPOINT" >"$RUNNER_TEMP/delete.log" 2>&1
+          rc=$?
+          set -e
+          cat "$RUNNER_TEMP/delete.log"
+          if [ "$rc" -eq 0 ]; then
+            echo 'Retention failure: deletion unexpectedly succeeded' >&2
+            exit 1
+          fi
+
+      - name: Verify retained original remains intact
+        run: |
+          aws s3 cp "s3://$R2_BACKUP_BUCKET/$R2_KEY" "$RUNNER_TEMP/restored.bin" --endpoint-url "$R2_ENDPOINT"
+          test "$(sha256sum "$RUNNER_TEMP/original.bin" | awk '{print $1}')" = "$(sha256sum "$RUNNER_TEMP/restored.bin" | awk '{print $1}')"
+          cmp "$RUNNER_TEMP/original.bin" "$RUNNER_TEMP/restored.bin"
+          echo "RETENTION_LOCK_ENFORCEMENT_PASS key=$R2_KEY sha256=$(sha256sum "$RUNNER_TEMP/restored.bin" | awk '{print $1}')"
+
+      - name: Publish retention-lock status
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.payload.pull_request.head.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'p7-recovery/r2-retention-lock',
+              description: ok ? 'R2 production-prefix retention lock enforced' : 'R2 retention lock verification failed',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
