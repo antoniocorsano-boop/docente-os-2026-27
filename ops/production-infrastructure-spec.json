@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "environment": "production",
+  "provisioningState": "NOT_PROVISIONED",
+  "hosting": {
+    "provider": "UNDECIDED",
+    "serviceName": "UNASSIGNED",
+    "region": "EU_REQUIRED",
+    "sourceBranch": "develop",
+    "deployModel": "IMMUTABLE_CERTIFIED_SHA",
+    "autoDeployAllowed": false,
+    "healthCheckPath": "/"
+  },
+  "supabase": {
+    "projectState": "NOT_PROVISIONED",
+    "projectRef": "UNASSIGNED",
+    "projectUrl": "UNASSIGNED",
+    "separateFromBetaRequired": true,
+    "databaseSeparateRequired": true,
+    "authSeparateRequired": true,
+    "storageSeparateRequired": true
+  },
+  "secrets": {
+    "repositoryValuesAllowed": false,
+    "betaCredentialReuseAllowed": false,
+    "productionScopedRequired": true,
+    "requiredVariableNames": [
+      "NEXT_PUBLIC_SUPABASE_URL",
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "NEXT_PUBLIC_APP_URL"
+    ]
+  },
+  "data": {
+    "automaticBetaCopyAllowed": false,
+    "crossEnvironmentDatabaseWritesAllowed": false,
+    "crossEnvironmentStorageWritesAllowed": false,
+    "initialState": "EMPTY_OR_EXPLICIT_OWNER_IMPORT",
+    "manualImportRequiresOwnerDecision": true
+  },
+  "release": {
+    "scope": "SINGLE_OWNER_PILOT",
+    "audience": "named_owner_only",
+    "publicSignupAllowed": false,
+    "multiTenantOnboardingAllowed": false,
+    "humanPromotionDecisionRequired": true
+  },
+  "activationPrerequisites": {
+    "promotionContractPassRequired": true,
+    "productionProjectProvisionedRequired": true,
+    "productionSecretsConfiguredRequired": true,
+    "schemaMigrationAppliedRequired": true,
+    "rlsVerificationRequired": true,
+    "storagePolicyVerificationRequired": true,
+    "authenticatedSmokeTestRequired": true,
+    "rollbackTargetRecordedRequired": true,
+    "releaseReceiptRequired": true
+  }
+}
