@@ -4,6 +4,7 @@ const review = JSON.parse(fs.readFileSync('ops/production-readiness-review.json'
 const infra = JSON.parse(fs.readFileSync('ops/production-infrastructure-spec.json', 'utf8'))
 const receipt = JSON.parse(fs.readFileSync('ops/production-provisioning-receipt.json', 'utf8'))
 const incident = JSON.parse(fs.readFileSync('ops/incident-escalation-rehearsal-receipt.json', 'utf8'))
+const authRecovery = JSON.parse(fs.readFileSync('ops/supabase-auth-recovery-rehearsal-receipt.json', 'utf8'))
 
 const fail = (message) => {
   console.error(`Production readiness review invalid: ${message}`)
@@ -13,7 +14,7 @@ const fail = (message) => {
 if (review.schemaVersion !== 4) fail('schemaVersion must be 4')
 if (review.review !== 'P7-D') fail('review must remain rooted in P7-D')
 if (review.reviewState !== 'CURRENT') fail('reviewState must be CURRENT')
-if (review.productionActivationDecision !== 'HOLD') fail('production activation must remain HOLD while recovery blockers exist')
+if (review.productionActivationDecision !== 'HOLD') fail('production activation must remain HOLD while Storage recovery is unproven')
 if (review.inactiveProvisioningDecision !== 'COMPLETE') fail('inactive provisioning must be COMPLETE after certified P7-F2 runtime')
 if (review.scope !== 'SINGLE_OWNER_PILOT') fail('scope must remain SINGLE_OWNER_PILOT')
 
@@ -34,6 +35,7 @@ const requiredSatisfied = [
   'P7F_SUPABASE_PROVISIONING',
   'P7F2_RUNTIME_PROVISIONING',
   'DB_LOGICAL_RESTORE',
+  'SUPABASE_AUTH_SERVICE_RECOVERY',
   'INCIDENT_ESCALATION_MINIMUM',
   'SECURITY_BASELINE',
   'BETA_RUNTIME_GATES',
@@ -72,12 +74,29 @@ if (incident.syntheticDataOnly !== true || incident.realDataInvolved !== false) 
 if (incident.productionTouched !== false || incident.betaTouched !== false || incident.mutatingApplicationActionsPerformed !== false) fail('incident rehearsal must not touch runtime')
 if (incident.ownerVisibilityVerified !== true) fail('owner visibility must be proven')
 
-const blockers = new Map((review.activationBlockers ?? []).map((item) => [item.id, item]))
-for (const id of ['SUPABASE_AUTH_SERVICE_RECOVERY', 'OFFSITE_STORAGE_RECOVERY']) {
-  if (blockers.get(id)?.classification !== 'BLOCKER' || blockers.get(id)?.state !== 'NOT_PROVEN') fail(`${id} must remain an unproven activation blocker`)
+if (authRecovery.schemaVersion !== 1 || authRecovery.gate !== 'SUPABASE_AUTH_SERVICE_RECOVERY' || authRecovery.result !== 'PASS') fail('Auth service recovery receipt must be PASS')
+if (authRecovery.runId !== 32841165988 || authRecovery.jobId !== 97780759559) fail('Auth service recovery workflow receipt mismatch')
+for (const key of [
+  'syntheticIdentityOnly',
+  'initialPasswordLogin',
+  'recoverEndpointAccepted',
+  'recoveryEmailCapturedByMailpit',
+  'recoverySessionIssued',
+  'passwordChangedThroughRecoverySession',
+  'oldPasswordRejected',
+  'newPasswordAccepted',
+]) {
+  if (authRecovery[key] !== true) fail(`Auth recovery evidence ${key} must be true`)
 }
-if (blockers.has('INCIDENT_ESCALATION_MINIMUM')) fail('incident escalation must no longer be an activation blocker')
-if (blockers.has('DB_LOGICAL_RESTORE') || blockers.has('RESTORE_REHEARSAL')) fail('proven DB restore must not remain as an aggregate blocker')
+if (authRecovery.productionTouched !== false || authRecovery.betaTouched !== false || authRecovery.realUserDataUsed !== false) fail('Auth recovery rehearsal must remain isolated and synthetic')
+if (authRecovery.remoteSupabaseResourceCreated !== false || authRecovery.activationAuthorized !== false) fail('Auth recovery rehearsal must not create remote resources or authorize activation')
+
+const blockers = new Map((review.activationBlockers ?? []).map((item) => [item.id, item]))
+if (blockers.size !== 1) fail('exactly one activation blocker must remain after Auth recovery')
+if (blockers.get('OFFSITE_STORAGE_RECOVERY')?.classification !== 'BLOCKER' || blockers.get('OFFSITE_STORAGE_RECOVERY')?.state !== 'NOT_PROVEN') fail('OFFSITE_STORAGE_RECOVERY must remain the sole unproven blocker')
+for (const id of ['SUPABASE_AUTH_SERVICE_RECOVERY', 'INCIDENT_ESCALATION_MINIMUM', 'DB_LOGICAL_RESTORE', 'RESTORE_REHEARSAL']) {
+  if (blockers.has(id)) fail(`${id} must not remain an activation blocker`)
+}
 if ((review.provisioningResidues ?? []).length !== 0) fail('inactive Production provisioning residues must be empty after P7-F2')
 
 const watches = new Map((review.watches ?? []).map((item) => [item.id, item]))
@@ -85,8 +104,8 @@ for (const id of ['LOAD_SCALE_ISOLATED', 'LEAKED_PASSWORD_PROTECTION', 'LONGITUD
   if (watches.get(id)?.classification !== 'WATCH') fail(`${id} must remain WATCH for single-owner pilot`)
 }
 
-if (review.nextGate?.id !== 'P7-RECOVERY-REMAINDER') fail('next gate must be recovery remainder')
+if (review.nextGate?.id !== 'P7-OFFSITE-STORAGE-RECOVERY') fail('next gate must be off-site Storage recovery')
 if (review.nextGate?.mayCreateInactiveProduction !== false) fail('Production is already provisioned; next gate must not create infrastructure')
-if (review.nextGate?.mayCreateActiveProduction !== false || review.nextGate?.mayAcceptRealUserData !== false) fail('recovery remainder cannot activate Production or accept real data')
+if (review.nextGate?.mayCreateActiveProduction !== false || review.nextGate?.mayAcceptRealUserData !== false) fail('Storage recovery gate cannot activate Production or accept real data')
 
-console.log(`Production readiness PASS: activation=${review.productionActivationDecision}, provisioning=${infra.provisioningState}, runtime=${infra.runtimeVerification.state}, incident=${incident.result}, blockers=${review.activationBlockers.length}`)
+console.log(`Production readiness PASS: activation=${review.productionActivationDecision}, provisioning=${infra.provisioningState}, authRecovery=${authRecovery.result}, incident=${incident.result}, blockers=${review.activationBlockers.length}`)
