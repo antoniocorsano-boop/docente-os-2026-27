@@ -2,7 +2,7 @@
   "schemaVersion": 4,
   "product": "DOCENTE OS",
   "review": "P7-D",
-  "lastUpdatedBy": "P7-INCIDENT-ESCALATION",
+  "lastUpdatedBy": "P7-AUTH-SERVICE-RECOVERY",
   "reviewState": "CURRENT",
   "productionActivationDecision": "HOLD",
   "inactiveProvisioningDecision": "COMPLETE",
@@ -50,6 +50,11 @@
       "evidence": "P7 DB Restore Rehearsal run 32837945388 PASS"
     },
     {
+      "id": "SUPABASE_AUTH_SERVICE_RECOVERY",
+      "classification": "SATISFIED",
+      "evidence": "P7 Supabase Auth Service Recovery run 32841165988 PASS; GoTrue + Mailpit isolated rehearsal"
+    },
+    {
       "id": "INCIDENT_ESCALATION_MINIMUM",
       "classification": "SATISFIED",
       "evidence": "p7-incident/escalation-contract PASS; synthetic rehearsal issue #193 closed/completed with final receipt"
@@ -66,12 +71,6 @@
     }
   ],
   "activationBlockers": [
-    {
-      "id": "SUPABASE_AUTH_SERVICE_RECOVERY",
-      "classification": "BLOCKER",
-      "state": "NOT_PROVEN",
-      "reason": "Logical restore of the auth catalog does not prove GoTrue/Supabase Auth service recovery end-to-end."
-    },
     {
       "id": "OFFSITE_STORAGE_RECOVERY",
       "classification": "BLOCKER",
@@ -107,8 +106,8 @@
     }
   ],
   "nextGate": {
-    "id": "P7-RECOVERY-REMAINDER",
-    "purpose": "Close Supabase Auth service recovery and off-site Storage object recovery without accepting real professional data.",
+    "id": "P7-OFFSITE-STORAGE-RECOVERY",
+    "purpose": "Prove independent binary backup and restore of Storage objects without accepting real professional data.",
     "mayCreateInactiveProduction": false,
     "mayCreateActiveProduction": false,
     "mayAcceptRealUserData": false
