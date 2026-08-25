@@ -1,10 +1,10 @@
 {
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "product": "DOCENTE OS",
   "review": "P7-D",
-  "lastUpdatedBy": "P7-PRODUCTION-ACTIVATION-DECISION",
+  "lastUpdatedBy": "P7-PRODUCTION-PROMOTION",
   "reviewState": "CURRENT",
-  "productionActivationDecision": "AUTHORIZED_PENDING_DEPLOY",
+  "productionActivationDecision": "ACTIVE_SINGLE_OWNER_PILOT",
   "inactiveProvisioningDecision": "COMPLETE",
   "scope": "SINGLE_OWNER_PILOT",
   "principles": {
@@ -19,25 +19,35 @@
     "decisionDate": "2026-08-25",
     "receipt": "ops/production-activation-decision-receipt.json"
   },
+  "productionPromotion": {
+    "state": "PASS",
+    "candidateRepositorySha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "productEquivalentSha": "0959c37e14e0224232f5040cb577c6332bd193fb",
+    "releaseReceipt": "ops/production-release-receipt.json",
+    "postPromotionSmokeRunId": 32903982577,
+    "exactCandidateShaVerified": true
+  },
   "satisfied": [
     {"id":"P7A_PROMOTION_CONTRACT","classification":"SATISFIED","evidence":"production-promotion/contract"},
     {"id":"P7B_DATA_TOPOLOGY","classification":"SATISFIED","evidence":"productionDataTopologyState=SEPARATE"},
     {"id":"P7C_INFRASTRUCTURE_SPEC","classification":"SATISFIED","evidence":"production-infrastructure/spec"},
     {"id":"P7E_PROVIDER_SELECTION","classification":"SATISFIED","evidence":"hosting.provider=RENDER; region=frankfurt; autoDeployAllowed=false"},
     {"id":"P7F_SUPABASE_PROVISIONING","classification":"SATISFIED","evidence":"Production Supabase provisioned, schema-ready and application data empty"},
-    {"id":"P7F2_RUNTIME_PROVISIONING","classification":"SATISFIED","evidence":"Render Production provisioned inactive; Production Runtime Smoke run 32836204567 PASS"},
+    {"id":"P7F2_RUNTIME_PROVISIONING","classification":"SATISFIED","evidence":"Render Production provisioned and authenticated smoke baseline PASS"},
     {"id":"DB_LOGICAL_RESTORE","classification":"SATISFIED","evidence":"P7 DB Restore Rehearsal run 32837945388 PASS"},
     {"id":"SUPABASE_AUTH_SERVICE_RECOVERY","classification":"SATISFIED","evidence":"P7 Supabase Auth Service Recovery run 32841165988 PASS"},
     {"id":"OFFSITE_STORAGE_RECOVERY_REHEARSAL","classification":"SATISFIED","evidence":"P7 Off-site Storage Recovery run 32842616571 PASS"},
     {"id":"OFFSITE_STORAGE_PERSISTENT_DESTINATION","classification":"SATISFIED","evidence":"Cloudflare R2 EU docente-os-backup-eu; run 32888249839 PASS"},
-    {"id":"OFFSITE_STORAGE_RETENTION_LOCK","classification":"SATISFIED","evidence":"Cloudflare R2 Bucket Lock prefix production/; 90 days; run 32891383829 PASS; overwrite/delete blocked by ObjectLockedByBucketPolicy"},
-    {"id":"INCIDENT_ESCALATION_MINIMUM","classification":"SATISFIED","evidence":"p7-incident/escalation-contract PASS; synthetic rehearsal issue #193 closed/completed"},
+    {"id":"OFFSITE_STORAGE_RETENTION_LOCK","classification":"SATISFIED","evidence":"Cloudflare R2 Bucket Lock prefix production/; 90 days; run 32891383829 PASS"},
+    {"id":"INCIDENT_ESCALATION_MINIMUM","classification":"SATISFIED","evidence":"p7-incident/escalation-contract PASS; rehearsal issue #193 completed"},
     {"id":"SECURITY_BASELINE","classification":"SATISFIED","evidence":"ops-security/supabase + ops-security/dependencies"},
     {"id":"BETA_RUNTIME_GATES","classification":"SATISFIED","evidence":"canonical Beta application/runtime gates"},
-    {"id":"P7_PRODUCTION_ACTIVATION_DECISION","classification":"SATISFIED","evidence":"explicit human owner authorization recorded 2026-08-25; SINGLE_OWNER_PILOT"}
+    {"id":"P7_PRODUCTION_ACTIVATION_DECISION","classification":"SATISFIED","evidence":"explicit human owner authorization recorded 2026-08-25; SINGLE_OWNER_PILOT"},
+    {"id":"P7_PRODUCTION_PROMOTION","classification":"SATISFIED","evidence":"Render LIVE on db3d4ab...; Production Runtime Smoke run 32903982577 PASS; exactCandidateShaVerified=true"}
   ],
   "activationBlockers": [],
   "provisioningResidues": [],
+  "realUserDataAccepted": false,
   "watches": [
     {"id":"LOAD_SCALE_ISOLATED","classification":"WATCH","state":"NOT_PROVEN","reason":"Required before broader rollout, not a blocker for a controlled single-owner pilot."},
     {"id":"LEAKED_PASSWORD_PROTECTION","classification":"WATCH","state":"PLAN_DEPENDENT","reason":"Continue to verify and enable when the Supabase plan permits it."},
@@ -45,12 +55,10 @@
     {"id":"RETENTION_ACCOUNT_DELETION","classification":"WATCH","state":"DEFERRED","reason":"Application-level account/data lifecycle policy remains distinct from backup retention and is deferred."}
   ],
   "nextGate": {
-    "id": "P7-PRODUCTION-PROMOTION",
-    "purpose": "Deploy the immutable authorized candidate to Render Production, then run authenticated non-mutating post-promotion smoke before activation is completed.",
-    "candidateRepositorySha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
-    "productEquivalentSha": "0959c37e14e0224232f5040cb577c6332bd193fb",
-    "mayCreateActiveProduction": true,
+    "id": "P7-REAL-DATA-ADMISSION",
+    "purpose": "Decide explicitly whether the active named-owner pilot may begin accepting professional real data; automatic Beta copy and public/multi-tenant onboarding remain prohibited.",
+    "mayKeepProductionActive": true,
     "mayAcceptRealUserData": false,
-    "postPromotionSmokeRequired": true
+    "explicitOwnerDecisionRequired": true
   }
 }
