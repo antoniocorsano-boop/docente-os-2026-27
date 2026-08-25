@@ -14,7 +14,7 @@ const fail = (message) => {
 
 if (review.schemaVersion !== 3) fail('schemaVersion must be 3')
 if (review.review !== 'P7-D') fail('review must remain rooted in P7-D')
-if (review.lastUpdatedBy !== 'P7-F') fail('lastUpdatedBy must be P7-F')
+if (review.lastUpdatedBy !== 'P7-F') fail('lastUpdatedBy must remain P7-F until Render runtime evidence exists')
 if (review.reviewState !== 'COMPLETE') fail('reviewState must be COMPLETE')
 if (review.productionActivationDecision !== 'HOLD') fail('production activation must remain HOLD while blockers exist')
 if (review.inactiveProvisioningDecision !== 'PARTIALLY_COMPLETED') fail('inactive provisioning must reflect the partial P7-F state')
@@ -48,18 +48,20 @@ if (infra.hosting?.provider !== 'RENDER') fail('readiness requires Render as sel
 if (infra.hosting?.providerDecisionState !== 'SELECTED') fail('provider decision must be SELECTED')
 if (infra.hosting?.region !== 'frankfurt') fail('Production pilot region must be Frankfurt')
 if (infra.hosting?.autoDeployAllowed !== false) fail('Production auto-deploy must remain disabled')
-if (infra.provisioningState !== 'PARTIALLY_PROVISIONED') fail('P7-F must record partial provisioning')
+if (infra.provisioningState !== 'PARTIALLY_PROVISIONED') fail('P7-F/P7-F2 preparation must record partial provisioning')
 if (infra.supabase?.projectState !== 'PROVISIONED') fail('P7-F requires provisioned Supabase')
 if (infra.supabase?.dataState !== 'EMPTY') fail('Production Supabase must remain empty')
-if (infra.hosting?.serviceState !== 'NOT_PROVISIONED') fail('Render must remain not provisioned until P7-F2')
+if (infra.hosting?.serviceState !== 'NOT_PROVISIONED') fail('Render must remain not provisioned until runtime handoff is completed')
 
-if (receipt.gate !== 'P7-F') fail('provisioning receipt must belong to P7-F')
+if (!['P7-F', 'P7-F2'].includes(receipt.gate)) fail('provisioning receipt must belong to P7-F or P7-F2 preparation')
 if (receipt.overallState !== 'PARTIALLY_PROVISIONED') fail('receipt must record partial provisioning')
 if (receipt.activationState !== 'HOLD') fail('receipt activation state must remain HOLD')
 if (receipt.realUserDataAccepted !== false) fail('receipt must confirm no real user data')
 if (receipt.supabase?.migrationsApplied !== 36 || receipt.supabase?.canonicalMigrationNamesMatched !== true) fail('receipt must prove 36 canonical migrations')
 if (receipt.supabase?.authUsers !== 0 || receipt.supabase?.workspaceRows !== 0 || receipt.supabase?.storageObjectCount !== 0) fail('Production must remain operationally empty')
 if (receipt.render?.state !== 'NOT_PROVISIONED') fail('receipt must record Render as not provisioned')
+if (receipt.gate === 'P7-F2' && receipt.render?.handoffState !== 'BLUEPRINT_READY') fail('P7-F2 preparation receipt must prove Blueprint readiness')
+if (receipt.gate === 'P7-F2' && receipt.runtimeSmoke?.state !== 'PREPARED_NOT_RUN') fail('P7-F2 preparation must not claim runtime smoke evidence')
 
 const blockers = new Map((review.activationBlockers ?? []).map((item) => [item.id, item]))
 for (const id of ['RESTORE_REHEARSAL', 'OFFSITE_STORAGE_RECOVERY', 'INCIDENT_ESCALATION_MINIMUM']) {
@@ -76,9 +78,9 @@ for (const id of ['LOAD_SCALE_ISOLATED', 'LEAKED_PASSWORD_PROTECTION', 'LONGITUD
   if (watches.get(id)?.classification !== 'WATCH') fail(`${id} must be classified as WATCH for the single-owner pilot review`)
 }
 
-if (review.nextGate?.id !== 'P7-F2') fail('next gate must be P7-F2')
+if (review.nextGate?.id !== 'P7-F2') fail('next gate must remain P7-F2 until Render runtime evidence exists')
 if (review.nextGate?.mayCreateInactiveProduction !== true) fail('P7-F2 may create only inactive Production infrastructure')
 if (review.nextGate?.mayCreateActiveProduction !== false) fail('P7-F2 must not create active Production')
 if (review.nextGate?.mayAcceptRealUserData !== false) fail('P7-F2 must not accept real user data')
 
-console.log(`Production readiness review PASS: activation=${review.productionActivationDecision}, provisioning=${infra.provisioningState}, supabase=${infra.supabase.projectState}, render=${infra.hosting.serviceState}, blockers=${review.activationBlockers.length}`)
+console.log(`Production readiness review PASS: activation=${review.productionActivationDecision}, provisioning=${infra.provisioningState}, supabase=${infra.supabase.projectState}, render=${infra.hosting.serviceState}, receipt=${receipt.gate}, blockers=${review.activationBlockers.length}`)
