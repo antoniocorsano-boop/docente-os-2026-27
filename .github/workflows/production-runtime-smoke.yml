@@ -7,6 +7,11 @@ on:
         description: Inactive Production Render URL
         required: true
         type: string
+      expected_commit:
+        description: Authorized immutable candidate SHA
+        required: true
+        default: db3d4ab014ad11dec4aeccdb5aa8740220e4ebde
+        type: string
 
 permissions:
   contents: read
@@ -14,6 +19,7 @@ permissions:
 
 env:
   PRODUCTION_BASE_URL: ${{ inputs.base_url }}
+  EXPECTED_PRODUCTION_COMMIT: ${{ inputs.expected_commit }}
   PRODUCTION_SUPABASE_URL: ${{ secrets.DOCENTE_OS_PRODUCTION_SUPABASE_URL }}
   PRODUCTION_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.DOCENTE_OS_PRODUCTION_SUPABASE_PUBLISHABLE_KEY }}
   PRODUCTION_E2E_EMAIL: ${{ secrets.DOCENTE_OS_PRODUCTION_E2E_EMAIL }}
@@ -34,10 +40,10 @@ jobs:
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: context.sha,
+              sha: process.env.EXPECTED_PRODUCTION_COMMIT,
               state: 'pending',
               context: 'production-runtime/smoke',
-              description: 'Smoke Production inattiva in esecuzione',
+              description: 'Smoke Production sul candidato autorizzato in corso',
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
       - name: Run non-mutating Production smoke
@@ -53,9 +59,9 @@ jobs:
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: context.sha,
+              sha: process.env.EXPECTED_PRODUCTION_COMMIT,
               state: ok ? 'success' : 'failure',
               context: 'production-runtime/smoke',
-              description: ok ? 'Smoke Production inattiva verificato' : 'Smoke Production non superato',
+              description: ok ? 'Smoke Production sullo SHA autorizzato verificato' : 'Smoke Production sullo SHA autorizzato non superato',
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
