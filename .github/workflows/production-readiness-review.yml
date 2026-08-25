@@ -1,0 +1,56 @@
+name: Production Readiness Review
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - 'ops/production-readiness-review.json'
+      - 'docs/product/PRODUCTION_READINESS_REVIEW.md'
+      - '.github/scripts/validate-production-readiness-review.mjs'
+      - '.github/workflows/production-readiness-review.yml'
+      - 'ops/production-infrastructure-spec.json'
+      - 'ops/production-promotion-contract.json'
+  push:
+    branches:
+      - develop
+    paths:
+      - 'ops/production-readiness-review.json'
+      - 'docs/product/PRODUCTION_READINESS_REVIEW.md'
+      - '.github/scripts/validate-production-readiness-review.mjs'
+      - '.github/workflows/production-readiness-review.yml'
+      - 'ops/production-infrastructure-spec.json'
+      - 'ops/production-promotion-contract.json'
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  validate-production-readiness-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate production readiness review
+        run: node .github/scripts/validate-production-readiness-review.mjs
+      - name: Publish readiness review status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'production-readiness/review',
+              description: ok ? 'Production readiness review coerente' : 'Production readiness review non coerente',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
