@@ -24,22 +24,28 @@ Questa review distingue l'esistenza di un'infrastruttura Production tecnicamente
 - autenticazione tecnica Production: PASS.
 - RPC autenticato `current_workspace_context`: PASS.
 - verifica post-smoke: nessun dato applicativo creato.
+- `P7 DB Restore Rehearsal` run `32837945388`: PASS per il logical restore PostgreSQL isolato.
 
-Ricevuta canonica runtime: `docs/product/P7F2_PRODUCTION_RUNTIME_RECEIPT.md`.
+Ricevute canoniche:
+
+- `docs/product/P7F2_PRODUCTION_RUNTIME_RECEIPT.md`;
+- `docs/product/P7_DB_RESTORE_REHEARSAL_RECEIPT.md`.
 
 ## Blocker prima dell'attivazione con dati reali
 
-### 1. Restore rehearsal DB/Auth
+### 1. Recovery DB/Auth
 
-Stato: **NOT PROVEN / BLOCKER**.
+Stato: **DB LOGICAL RESTORE PROVEN / SUPABASE AUTH SERVICE NOT PROVEN / BLOCKER RESIDUO**.
 
-Il percorso di recupero DB/Auth deve essere provato in ambiente isolato con una ricevuta riproducibile prima di autorizzare dati professionali reali.
+Il componente database del restore rehearsal è ora provato in ambiente PostgreSQL 16 effimero e isolato. Il run `32837945388` ha applicato tutti i 35 file SQL canonici presenti nel repository, prodotto un backup logico, distrutto il database e ripristinato schema, dati sintetici, relazioni e 26 tabelle `public` con RLS. Beta e Production non sono stati toccati.
+
+Questa prova non certifica ancora il servizio Supabase Auth end-to-end: il ripristino di una riga sintetica in `auth.users` prova il catalogo PostgreSQL, non GoTrue/Supabase Auth come servizio. Prima dell'attivazione resta quindi necessario dimostrare `SUPABASE_AUTH_SERVICE_RECOVERY` in un ambiente Supabase isolato o con un meccanismo equivalente e verificabile.
 
 ### 2. Off-site Storage recovery
 
 Stato: **NOT PROVEN / BLOCKER**.
 
-L'integrità DB↔Storage non equivale a backup indipendente. Deve esistere una copia off-site degli originali Storage e deve essere verificato almeno un percorso di restore.
+L'integrità DB↔Storage e il ripristino del catalogo `storage.buckets` non equivalgono al backup indipendente degli oggetti. Deve esistere una copia off-site degli originali Storage e deve essere verificato almeno un percorso di restore binario.
 
 ### 3. Incident escalation minima
 
@@ -74,4 +80,10 @@ Nessun elemento di questa review autorizza:
 
 ## Prossimo gate
 
-Il prossimo lavoro valido è chiudere, in ordine di rischio, i tre blocker di activation: `RESTORE_REHEARSAL`, `OFFSITE_STORAGE_RECOVERY`, `INCIDENT_ESCALATION_MINIMUM`. Solo dopo una nuova readiness review potrà essere valutata l'attivazione del pilot.
+Il rischio `DB_LOGICAL_RESTORE` è ridotto e provato. Restano tre condizioni di activation da chiudere:
+
+1. `SUPABASE_AUTH_SERVICE_RECOVERY`;
+2. `OFFSITE_STORAGE_RECOVERY`;
+3. `INCIDENT_ESCALATION_MINIMUM`.
+
+Per rapporto costo/rischio, il prossimo lavoro autonomamente chiudibile senza toccare Production è `INCIDENT_ESCALATION_MINIMUM`; la prova Auth completa richiederà invece un ambiente Supabase realmente isolato o un meccanismo equivalente. Solo dopo la chiusura dei blocker e una nuova readiness review potrà essere valutata l'attivazione del pilot.
