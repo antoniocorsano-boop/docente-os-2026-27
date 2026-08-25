@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/scripts/run-local-supabase-auth-recovery.mjs'
       - '.github/workflows/p7-auth-service-recovery.yml'
+      - 'ops/supabase-auth-recovery-rehearsal-receipt.json'
       - 'docs/product/P7_SUPABASE_AUTH_RECOVERY_RECEIPT.md'
   workflow_dispatch:
 
