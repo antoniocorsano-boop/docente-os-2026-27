@@ -3,7 +3,7 @@
   "product": "DOCENTE OS",
   "candidateSourceBranch": "develop",
   "promotionModel": "immutable_commit",
-  "productionEnvironmentState": "NOT_CREATED",
+  "productionEnvironmentState": "ACTIVE",
   "productionDataTopologyState": "SEPARATE",
   "firstReleaseScope": "SINGLE_OWNER_PILOT",
   "dataTopology": {
