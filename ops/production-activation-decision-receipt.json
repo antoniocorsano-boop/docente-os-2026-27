@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "gate": "P7-PRODUCTION-ACTIVATION-DECISION",
+  "decision": "AUTHORIZE_SINGLE_OWNER_PILOT",
+  "decisionDate": "2026-08-25",
+  "decisionSource": "EXPLICIT_HUMAN_OWNER_AUTHORIZATION",
+  "scope": "SINGLE_OWNER_PILOT",
+  "audience": "named_owner_only",
+  "candidate": {
+    "sourceBranch": "develop",
+    "repositoryHeadShaAtDecision": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "productEquivalentSha": "0959c37e14e0224232f5040cb577c6332bd193fb",
+    "previousCertifiedProductionSha": "f33eb4785ed66630c3a162ae2f2c1bd5db64d532",
+    "promotionModel": "IMMUTABLE_CERTIFIED_SHA"
+  },
+  "readiness": {
+    "technicalActivationBlockers": 0,
+    "productionReadinessReviewRunId": 32892644910,
+    "betaRuntimeGates": "SATISFIED_CANONICAL",
+    "securityBaseline": "SATISFIED_CANONICAL",
+    "offsiteBackupAndRetention": "SATISFIED"
+  },
+  "releaseConstraints": {
+    "publicSignupAllowed": false,
+    "multiTenantOnboardingAllowed": false,
+    "automaticBetaDataCopyAllowed": false,
+    "betaCredentialReuseAllowed": false,
+    "autoDeployProductionAllowed": false,
+    "manualImportRequiresExplicitOwnerDecision": true
+  },
+  "stateAfterDecision": "AUTHORIZED_PENDING_DEPLOY",
+  "deploymentCompleted": false,
+  "postPromotionSmokeRequired": true,
+  "realUserDataAccepted": false,
+  "activationCompleted": false
+}
