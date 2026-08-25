@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "gate": "OFFSITE_STORAGE_PERSISTENT_DESTINATION",
+  "result": "PASS_WITH_RESIDUAL",
+  "provider": "CLOUDFLARE_R2",
+  "bucket": "docente-os-backup-eu",
+  "jurisdiction": "EU",
+  "publicAccess": "DISABLED",
+  "credentialScope": "OBJECT_READ_WRITE_BUCKET_SCOPED",
+  "backupMedium": "CLOUDFLARE_R2_EU_PERSISTENT",
+  "workflow": {
+    "runId": 32888249839,
+    "exportJobId": 97933720676,
+    "restoreJobId": 97934645052,
+    "headSha": "acb1ae25654bb94d3df31500973531f49d2a09ec"
+  },
+  "evidence": {
+    "separateRunnerBoundary": true,
+    "persistentRemoteDestinationUsed": true,
+    "runnerCopyRemovedAfterUpload": true,
+    "sourceStorageDestroyedBeforeRestore": true,
+    "freshRestoreStorageService": true,
+    "binaryRestoreVerified": true,
+    "sha256Verified": true,
+    "byteLengthVerified": true,
+    "objectByteLength": 131071,
+    "objectSha256": "76e1460fbc7ca78e0f86c2aad8b7dd93b9cac0d2372f032f30c1e790301575f7",
+    "testObjectsRemovedAfterRehearsal": true
+  },
+  "safety": {
+    "syntheticDataOnly": true,
+    "productionTouched": false,
+    "betaTouched": false,
+    "realUserDataUsed": false,
+    "activationAuthorized": false
+  },
+  "residual": {
+    "id": "OFFSITE_STORAGE_RETENTION_LOCK",
+    "classification": "ACTIVATION_BLOCKER",
+    "state": "NOT_CONFIGURED",
+    "reason": "Persistent EU R2 destination and restore are proven; an explicit retention/Bucket Lock policy must still be configured and verified before real professional data is authorized."
+  }
+}
