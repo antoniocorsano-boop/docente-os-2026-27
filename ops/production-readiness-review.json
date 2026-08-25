@@ -1,10 +1,10 @@
 {
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "product": "DOCENTE OS",
   "review": "P7-D",
-  "lastUpdatedBy": "P7-OFFSITE-STORAGE-RETENTION-LOCK",
+  "lastUpdatedBy": "P7-PRODUCTION-ACTIVATION-DECISION",
   "reviewState": "CURRENT",
-  "productionActivationDecision": "HOLD",
+  "productionActivationDecision": "AUTHORIZED_PENDING_DEPLOY",
   "inactiveProvisioningDecision": "COMPLETE",
   "scope": "SINGLE_OWNER_PILOT",
   "principles": {
@@ -12,6 +12,12 @@
     "inactiveInfrastructureMayBeUsedForRecoveryTesting": true,
     "realUserDataRequiresActivationGate": true,
     "betaAndProductionMustRemainSeparated": true
+  },
+  "humanActivationDecision": {
+    "state": "AUTHORIZED",
+    "scope": "SINGLE_OWNER_PILOT",
+    "decisionDate": "2026-08-25",
+    "receipt": "ops/production-activation-decision-receipt.json"
   },
   "satisfied": [
     {"id":"P7A_PROMOTION_CONTRACT","classification":"SATISFIED","evidence":"production-promotion/contract"},
@@ -27,7 +33,8 @@
     {"id":"OFFSITE_STORAGE_RETENTION_LOCK","classification":"SATISFIED","evidence":"Cloudflare R2 Bucket Lock prefix production/; 90 days; run 32891383829 PASS; overwrite/delete blocked by ObjectLockedByBucketPolicy"},
     {"id":"INCIDENT_ESCALATION_MINIMUM","classification":"SATISFIED","evidence":"p7-incident/escalation-contract PASS; synthetic rehearsal issue #193 closed/completed"},
     {"id":"SECURITY_BASELINE","classification":"SATISFIED","evidence":"ops-security/supabase + ops-security/dependencies"},
-    {"id":"BETA_RUNTIME_GATES","classification":"SATISFIED","evidence":"canonical Beta application/runtime gates"}
+    {"id":"BETA_RUNTIME_GATES","classification":"SATISFIED","evidence":"canonical Beta application/runtime gates"},
+    {"id":"P7_PRODUCTION_ACTIVATION_DECISION","classification":"SATISFIED","evidence":"explicit human owner authorization recorded 2026-08-25; SINGLE_OWNER_PILOT"}
   ],
   "activationBlockers": [],
   "provisioningResidues": [],
@@ -38,11 +45,12 @@
     {"id":"RETENTION_ACCOUNT_DELETION","classification":"WATCH","state":"DEFERRED","reason":"Application-level account/data lifecycle policy remains distinct from backup retention and is deferred."}
   ],
   "nextGate": {
-    "id": "P7-PRODUCTION-ACTIVATION-DECISION",
-    "purpose": "Human review of the zero-blocker technical readiness state and explicit decision whether to activate the named single-owner Production pilot.",
-    "requiresExplicitHumanDecision": true,
-    "mayCreateInactiveProduction": false,
-    "mayCreateActiveProduction": false,
-    "mayAcceptRealUserData": false
+    "id": "P7-PRODUCTION-PROMOTION",
+    "purpose": "Deploy the immutable authorized candidate to Render Production, then run authenticated non-mutating post-promotion smoke before activation is completed.",
+    "candidateRepositorySha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "productEquivalentSha": "0959c37e14e0224232f5040cb577c6332bd193fb",
+    "mayCreateActiveProduction": true,
+    "mayAcceptRealUserData": false,
+    "postPromotionSmokeRequired": true
   }
 }
