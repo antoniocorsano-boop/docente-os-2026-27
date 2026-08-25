@@ -1,20 +1,21 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "product": "DOCENTE OS",
   "environment": "production",
-  "provisioningState": "PARTIALLY_PROVISIONED",
+  "provisioningState": "PROVISIONED_INACTIVE",
   "hosting": {
     "provider": "RENDER",
     "providerDecisionState": "SELECTED",
-    "serviceState": "NOT_PROVISIONED",
-    "serviceName": "UNASSIGNED",
-    "plannedServiceName": "docente-os-2026-27-production",
+    "serviceState": "PROVISIONED_INACTIVE",
+    "serviceName": "docente-os-2026-27-production",
+    "serviceUrl": "https://docente-os-2026-27-production.onrender.com",
     "region": "frankfurt",
     "sourceBranch": "develop",
     "deployModel": "IMMUTABLE_CERTIFIED_SHA",
     "autoDeployAllowed": false,
     "healthCheckPath": "/",
-    "runtimeTier": "UNDECIDED_BEFORE_PROVISIONING",
+    "runtimeTier": "FREE_INACTIVE_VALIDATION_ONLY",
+    "servedCommitAtCertifiedSmoke": "f33eb4785ed66630c3a162ae2f2c1bd5db64d532",
     "customDomainState": "DEFERRED_UNTIL_ACTIVATION_READY"
   },
   "supabase": {
@@ -23,8 +24,9 @@
     "projectUrl": "https://xpxhlmpsvfzgsjxgieks.supabase.co",
     "region": "eu-central-1",
     "schemaState": "CANONICAL_MIGRATIONS_APPLIED",
-    "migrationCount": 36,
-    "dataState": "EMPTY",
+    "historicalProvisioningMigrationCount": 36,
+    "applicationDataState": "EMPTY",
+    "technicalAuthIdentityCount": 1,
     "separateFromBetaRequired": true,
     "databaseSeparateRequired": true,
     "authSeparateRequired": true,
@@ -34,11 +36,21 @@
     "repositoryValuesAllowed": false,
     "betaCredentialReuseAllowed": false,
     "productionScopedRequired": true,
+    "configurationState": "CONFIGURED_OUTSIDE_REPOSITORY",
     "requiredVariableNames": [
       "NEXT_PUBLIC_SUPABASE_URL",
       "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
       "NEXT_PUBLIC_APP_URL"
     ]
+  },
+  "runtimeVerification": {
+    "state": "PASS",
+    "workflow": "Production Runtime Smoke",
+    "runId": 32836204567,
+    "authenticatedTechnicalIdentity": true,
+    "currentWorkspaceContextRpc": "PASS",
+    "mutatingActionsPerformed": false,
+    "applicationRowsCreated": 0
   },
   "data": {
     "automaticBetaCopyAllowed": false,
@@ -53,7 +65,8 @@
     "audience": "named_owner_only",
     "publicSignupAllowed": false,
     "multiTenantOnboardingAllowed": false,
-    "humanPromotionDecisionRequired": true
+    "humanPromotionDecisionRequired": true,
+    "activationState": "HOLD"
   },
   "activationPrerequisites": {
     "promotionContractPassRequired": true,
@@ -64,6 +77,9 @@
     "storagePolicyVerificationRequired": true,
     "authenticatedSmokeTestRequired": true,
     "rollbackTargetRecordedRequired": true,
-    "releaseReceiptRequired": true
+    "releaseReceiptRequired": true,
+    "authServiceRecoveryRequired": true,
+    "offsiteStorageRecoveryRequired": true,
+    "incidentEscalationRequired": true
   }
 }
