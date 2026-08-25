@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "gate": "P7-PRODUCTION-PROMOTION",
+  "result": "PASS",
+  "activationDate": "2026-08-25",
+  "scope": "SINGLE_OWNER_PILOT",
+  "audience": "named_owner_only",
+  "candidate": {
+    "repositorySha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "productEquivalentSha": "0959c37e14e0224232f5040cb577c6332bd193fb",
+    "previousCertifiedProductionSha": "f33eb4785ed66630c3a162ae2f2c1bd5db64d532",
+    "promotionModel": "IMMUTABLE_CERTIFIED_SHA"
+  },
+  "render": {
+    "serviceName": "docente-os-2026-27-production",
+    "serviceUrl": "https://docente-os-2026-27-production.onrender.com",
+    "deploymentState": "LIVE",
+    "servedCommit": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "autoDeployAllowed": false
+  },
+  "postPromotionSmoke": {
+    "workflow": "Production Runtime Smoke",
+    "runId": 32903982577,
+    "jobId": 97983821918,
+    "result": "PASS",
+    "expectedCommit": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "buildCommit": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "exactCandidateShaVerified": true,
+    "authenticated": true,
+    "technicalUserIdPresent": true,
+    "mutatingActionsPerformed": false
+  },
+  "releaseConstraints": {
+    "publicSignupAllowed": false,
+    "multiTenantOnboardingAllowed": false,
+    "automaticBetaDataCopyAllowed": false,
+    "betaCredentialReuseAllowed": false,
+    "autoDeployProductionAllowed": false,
+    "manualImportRequiresExplicitOwnerDecision": true
+  },
+  "activationCompleted": true,
+  "realUserDataAccepted": false,
+  "nextGate": "P7-REAL-DATA-ADMISSION"
+}
