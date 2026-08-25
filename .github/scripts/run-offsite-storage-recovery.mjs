@@ -43,10 +43,7 @@ async function request(url, init = {}, expected = [200]) {
   return response
 }
 
-async function ensureBucket() {
-  const res = await fetch(`${apiUrl}/storage/v1/bucket/${bucket}`, { headers })
-  if (res.status === 200) return
-  if (res.status !== 404) throw new Error(`bucket lookup returned ${res.status}`)
+async function createFreshBucket() {
   await request(`${apiUrl}/storage/v1/bucket`, {
     method: 'POST',
     headers: { ...headers, 'content-type': 'application/json' },
@@ -81,7 +78,7 @@ async function removeObject() {
 fs.mkdirSync(backupDir, { recursive: true })
 
 if (mode === 'export') {
-  await ensureBucket()
+  await createFreshBucket()
   const bytes = crypto.randomBytes(131071)
   const sourceHash = sha256(bytes)
   await upload(bytes)
@@ -128,7 +125,7 @@ if (mode === 'restore') {
   if (manifest.gate !== 'OFFSITE_STORAGE_RECOVERY' || manifest.syntheticDataOnly !== true) throw new Error('invalid off-site manifest')
   if (backupBytes.length !== manifest.byteLength || sha256(backupBytes) !== manifest.sha256) throw new Error('off-site backup hash/length mismatch before restore')
 
-  await ensureBucket()
+  await createFreshBucket()
   await assertMissing()
   await upload(backupBytes)
   const restored = await download()
