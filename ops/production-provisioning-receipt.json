@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 1,
-  "gate": "P7-F",
+  "schemaVersion": 2,
+  "gate": "P7-F2",
   "overallState": "PARTIALLY_PROVISIONED",
   "activationState": "HOLD",
   "realUserDataAccepted": false,
@@ -19,14 +19,24 @@
   "render": {
     "state": "NOT_PROVISIONED",
     "reason": "AUTHENTICATED_RENDER_CONNECTOR_UNAVAILABLE",
+    "handoffState": "BLUEPRINT_READY",
+    "blueprintPath": "ops/render-production-blueprint.yaml",
     "plannedServiceName": "docente-os-2026-27-production",
     "region": "frankfurt",
-    "autoDeployAllowed": false
+    "inactiveValidationTier": "free",
+    "autoDeployAllowed": false,
+    "environmentValuesStoredInRepository": false
+  },
+  "runtimeSmoke": {
+    "state": "PREPARED_NOT_RUN",
+    "workflow": "Production Runtime Smoke",
+    "mutatingActionsAllowed": false,
+    "requiresDedicatedProductionTechnicalIdentity": true
   },
   "bootstrapFinding": {
     "migration": "0004_harden_event_trigger_rpc_exposure.sql",
     "finding": "NOT_FRESH_INSTALL_SAFE",
     "remediation": "GUARDED_OPTIONAL_FUNCTION_REVOKE"
   },
-  "nextGate": "P7-F2"
+  "nextGate": "P7-F2-RUNTIME"
 }
