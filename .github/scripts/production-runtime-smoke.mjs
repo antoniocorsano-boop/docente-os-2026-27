@@ -1,0 +1,62 @@
+const required = [
+  'PRODUCTION_BASE_URL',
+  'PRODUCTION_SUPABASE_URL',
+  'PRODUCTION_SUPABASE_PUBLISHABLE_KEY',
+  'PRODUCTION_E2E_EMAIL',
+  'PRODUCTION_E2E_PASSWORD',
+]
+for (const key of required) {
+  if (!process.env[key]) {
+    console.error(`Production smoke blocked: missing ${key}`)
+    process.exit(2)
+  }
+}
+
+const baseUrl = process.env.PRODUCTION_BASE_URL.replace(/\/$/, '')
+const supabaseUrl = process.env.PRODUCTION_SUPABASE_URL.replace(/\/$/, '')
+const publishableKey = process.env.PRODUCTION_SUPABASE_PUBLISHABLE_KEY
+
+if (baseUrl.includes('docente-os-2026-27-beta')) throw new Error('Production smoke cannot target Beta app URL')
+if (supabaseUrl.includes('gnshgapmwyjamhmlikeg')) throw new Error('Production smoke cannot target Beta Supabase')
+
+const page = await fetch(`${baseUrl}/`, { redirect: 'follow' })
+if (!page.ok) throw new Error(`Production root returned ${page.status}`)
+
+const buildInfo = await fetch(`${baseUrl}/api/build-info`, { redirect: 'follow' })
+if (!buildInfo.ok) throw new Error(`Production build-info returned ${buildInfo.status}`)
+const build = await buildInfo.json()
+
+const auth = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+  method: 'POST',
+  headers: {
+    apikey: publishableKey,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    email: process.env.PRODUCTION_E2E_EMAIL,
+    password: process.env.PRODUCTION_E2E_PASSWORD,
+  }),
+})
+if (!auth.ok) throw new Error(`Production technical login failed with ${auth.status}`)
+const session = await auth.json()
+if (!session.access_token || !session.user?.id) throw new Error('Production technical login returned no session')
+
+const context = await fetch(`${supabaseUrl}/rest/v1/rpc/current_workspace_context`, {
+  method: 'POST',
+  headers: {
+    apikey: publishableKey,
+    Authorization: `Bearer ${session.access_token}`,
+    'Content-Type': 'application/json',
+  },
+  body: '{}',
+})
+if (!context.ok) throw new Error(`Production authenticated RPC returned ${context.status}`)
+
+console.log(JSON.stringify({
+  result: 'PASS',
+  baseUrl,
+  buildCommit: build.commit ?? build.commitSha ?? build.sha ?? null,
+  authenticated: true,
+  technicalUserIdPresent: true,
+  mutatingActionsPerformed: false,
+}, null, 2))
