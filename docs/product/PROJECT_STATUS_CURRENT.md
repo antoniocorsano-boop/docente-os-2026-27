@@ -7,25 +7,23 @@ Questo documento è la sintesi autorevole dello stato operativo. I checkpoint pr
 
 ## 1. Classificazione
 
-DOCENTE OS è una **Beta operativa avanzata** con infrastruttura Production separata, provisionata inattiva e tecnicamente verificata.
+DOCENTE OS dispone ora di una **Production attiva in modalità SINGLE_OWNER_PILOT**, separata dalla Beta e vincolata a un commit immutabile certificato.
 
-La Production **non è attiva** e non è autorizzata a ricevere dati professionali reali. `productionActivationDecision = HOLD`.
+Stato corrente:
 
-Stato infrastrutturale:
-
-- Beta Render: operativa;
-- Supabase Production: separato, schema-ready e senza dati applicativi reali;
-- Render Production: Frankfurt, provisionato inattivo;
-- Production Runtime Smoke autenticato: PASS, run `32836204567`;
-- `DB_LOGICAL_RESTORE`: PASS;
-- `SUPABASE_AUTH_SERVICE_RECOVERY`: PASS;
-- `OFFSITE_STORAGE_RECOVERY_REHEARSAL`: PASS;
-- `OFFSITE_STORAGE_PERSISTENT_DESTINATION`: PASS;
-- `OFFSITE_STORAGE_RETENTION_LOCK`: PASS;
-- `INCIDENT_ESCALATION_MINIMUM`: PASS;
-- auto-deploy Production: OFF;
-- dati reali autorizzati: false;
+- Render Production: **ACTIVE / LIVE** a Frankfurt;
+- commit servito: `db3d4ab014ad11dec4aeccdb5aa8740220e4ebde`;
+- Production Runtime Smoke certificante: **PASS**, run `32903982577`;
+- `exactCandidateShaVerified = true`;
+- Supabase Production separato e schema-ready;
+- auto-deploy Production: **OFF**;
+- signup pubblico: **OFF**;
+- onboarding multi-tenant: **OFF**;
+- copia automatica Beta → Production: **OFF**;
+- `realUserDataAccepted = false`;
 - activation blocker tecnici P7: **0**.
+
+La Production è quindi attiva come runtime del pilot nominativo, ma **non è ancora autorizzata a ricevere dati professionali reali**.
 
 ## 2. Runtime e invarianti di prodotto
 
@@ -33,6 +31,7 @@ Stato infrastrutturale:
 - Next.js 16 / React 19 / TypeScript strict;
 - Supabase Auth + PostgreSQL + Storage + RLS;
 - branch canonico di sviluppo: `develop`;
+- promozione Production: `IMMUTABLE_CERTIFIED_SHA`;
 - Vercel non è gate canonico; Netlify è legacy.
 
 Capability principali:
@@ -49,84 +48,36 @@ Orario e Calendario restano domini indipendenti; la composizione avviene solo vi
 
 ## 3. Operational hardening
 
-Stato:
-
-**P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS / P7-D REVIEW CURRENT / P7-E PASS / P7-F PASS / P7-F2 COMPLETE / DB_LOGICAL_RESTORE PASS / SUPABASE_AUTH_SERVICE_RECOVERY PASS / OFFSITE_STORAGE_RECOVERY_REHEARSAL PASS / OFFSITE_STORAGE_PERSISTENT_DESTINATION PASS / OFFSITE_STORAGE_RETENTION_LOCK PASS / INCIDENT_ESCALATION_MINIMUM PASS / TECHNICAL BLOCKERS 0 / ACTIVATION HOLD**.
+**P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS / P7-D REVIEW CURRENT / P7-E PASS / P7-F PASS / P7-F2 COMPLETE / DB_LOGICAL_RESTORE PASS / SUPABASE_AUTH_SERVICE_RECOVERY PASS / OFFSITE_STORAGE_RECOVERY_REHEARSAL PASS / OFFSITE_STORAGE_PERSISTENT_DESTINATION PASS / OFFSITE_STORAGE_RETENTION_LOCK PASS / INCIDENT_ESCALATION_MINIMUM PASS / P7_PRODUCTION_ACTIVATION_DECISION PASS / P7_PRODUCTION_PROMOTION PASS / TECHNICAL BLOCKERS 0 / SINGLE_OWNER_PILOT ACTIVE**.
 
 ## 4. P7 — Production governance e recovery
 
-### Production provisioning
+Sono soddisfatti:
 
-- P7-A: promotion contract PASS;
-- P7-B: Production data topology SEPARATE;
-- P7-C/P7-E: Render Frankfurt, auto-deploy disabilitato;
-- P7-F: Supabase Production provisionato e schema-ready;
-- P7-F2: Render Production provisionato inattivo e runtime smoke autenticato PASS.
+- promotion contract;
+- Production data topology separata;
+- Supabase Production provisionato;
+- Render Production Frankfurt con auto-deploy disabilitato;
+- DB logical restore;
+- Supabase Auth service recovery;
+- off-site Storage recovery rehearsal;
+- Cloudflare R2 EU persistent destination;
+- R2 Bucket Lock sul prefisso `production/`, retention 90 giorni;
+- incident escalation minimum;
+- decisione umana esplicita di attivazione;
+- promozione immutabile e smoke post-promozione sullo SHA esatto.
 
-Production non segue automaticamente `develop`; la promozione richiede SHA immutabile certificato e decisione umana esplicita.
-
-### DB logical restore
-
-**PASS**, run `32837945388`.
-
-### Supabase Auth service recovery
-
-**PASS**, run `32841165988`.
-
-### Off-site Storage recovery rehearsal
-
-**PASS**, run `32842616571`.
-
-Due runner distinti hanno provato perdita della sorgente, copia indipendente, restore su Storage fresco e verifica byte/SHA-256.
-
-### Off-site Storage persistent destination
-
-**PASS**, run `32888249839`.
-
-Destinazione reale verificata:
-
-- Cloudflare R2;
-- bucket `docente-os-backup-eu`;
-- jurisdiction EU;
-- backup medium `CLOUDFLARE_R2_EU_PERSISTENT`;
-- upload remoto, distruzione sorgente, download su secondo runner, restore e SHA-256 verificati;
-- Beta/Production applicativa non toccate;
-- dati reali non usati.
-
-### R2 retention / Bucket Lock
-
-**PASS**, run `32891383829`, job `97943868034`.
-
-Configurazione verificata:
-
-- protected prefix: `production/`;
-- retention: 90 giorni;
-- overwrite bloccato da `ObjectLockedByBucketPolicy`;
-- delete bloccato da `ObjectLockedByBucketPolicy`;
-- probe originale ancora leggibile e byte-identico;
-- probe SHA-256: `0f61c37e11d23342438df4d2b13a5da4e7d1f88e3378626ecd899090f7623e06`.
-
-Ricevuta: `docs/product/P7_R2_RETENTION_LOCK_RECEIPT.md`.
-
-### Incident escalation minimum
-
-**PASS.** Gate owner-visible e rehearsal issue #193 con receipt finale.
+Ricevuta di release: `docs/product/P7_PRODUCTION_RELEASE_RECEIPT.md`.
 
 ## 5. Readiness / activation
 
-La readiness tecnica P7 corrente registra:
+`productionActivationDecision = ACTIVE_SINGLE_OWNER_PILOT`
 
-**activationBlockers = []**
+`activationBlockers = []`
 
-Quindi non restano blocker tecnici aperti per il pilot single-owner. Questo **non autorizza automaticamente Production**.
+`realUserDataAccepted = false`
 
-Restano invarianti obbligatori:
-
-- `productionActivationDecision = HOLD`;
-- `realUserDataAccepted = false`;
-- nessuna promozione automatica Beta → Production;
-- nessun auto-deploy Production;
-- decisione umana esplicita richiesta prima di qualunque activation.
+Il runtime è attivo esclusivamente per il proprietario nominato. L'attivazione non amplia automaticamente scope, utenti o dati ammessi.
 
 Watch non bloccanti:
 
@@ -163,9 +114,13 @@ Watch non bloccanti:
 
 ## 7. Prossima priorità autorizzata
 
-1. **P7-PRODUCTION-ACTIVATION-DECISION** — review umana esplicita dello stato zero-blocker;
-2. solo in caso di autorizzazione, scegliere e certificare lo SHA applicativo da promuovere;
-3. attivare il pilot single-owner senza ampliare automaticamente scope o capability;
-4. mantenere load/scale come watch prima di rollout più ampio.
+**P7-REAL-DATA-ADMISSION** — decisione separata e volontaria sull'ammissione di dati professionali reali nel pilot attivo.
+
+Fino a quella decisione:
+
+- nessun dato professionale reale deve essere importato;
+- nessuna migrazione automatica Beta → Production;
+- nessun ampliamento a utenti ulteriori;
+- nessun auto-deploy.
 
 Non introdurre nuove macro-capability per riempire artificialmente la roadmap.
