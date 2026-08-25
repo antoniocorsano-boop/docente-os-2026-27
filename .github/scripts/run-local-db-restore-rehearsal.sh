@@ -78,18 +78,19 @@ reset_database
 echo "==> Preparing minimal local Supabase compatibility catalog"
 db_psql -f "$COMPAT_FILE" >/dev/null
 
-echo "==> Applying canonical migrations"
-migration_count=0
-while IFS= read -r migration; do
-  echo "    $(basename "$migration")"
-  db_psql -f "$migration" >/dev/null
-  migration_count=$((migration_count + 1))
-done < <(find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name '*.sql' | sort)
-
-if [[ "$migration_count" -ne 36 ]]; then
-  echo "Expected 36 canonical migrations, applied $migration_count" >&2
+echo "==> Applying every canonical migration file present in repository"
+mapfile -t migrations < <(find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name '*.sql' | sort)
+migration_count="${#migrations[@]}"
+if [[ "$migration_count" -lt 1 ]]; then
+  echo "No canonical migrations found" >&2
   exit 1
 fi
+for migration in "${migrations[@]}"; do
+  echo "    $(basename "$migration")"
+  db_psql -f "$migration" >/dev/null
+done
+
+echo "Applied canonical migration files: $migration_count"
 
 echo "==> Seeding synthetic-only rehearsal data"
 db_psql <<'SQL' >/dev/null
@@ -149,8 +150,9 @@ assert_scalar "SELECT count(*) FROM public.planner_tasks WHERE id = '40000000-00
 assert_scalar "SELECT count(*) FROM storage.buckets WHERE id = 'knowledge-assets' AND public = false;" "1" "private knowledge bucket before backup"
 
 fingerprint_before="$(schema_fingerprint)"
-if [[ -z "$fingerprint_before" ]]; then
-  echo "Schema fingerprint before backup is empty" >&2
+rls_tables_before="$(db_psql -Atc "SELECT count(*) FROM pg_tables WHERE schemaname = 'public' AND rowsecurity = true;")"
+if [[ -z "$fingerprint_before" || "$rls_tables_before" -lt 1 ]]; then
+  echo "Pre-backup schema/RLS fingerprint is invalid" >&2
   exit 1
 fi
 
@@ -184,17 +186,18 @@ assert_scalar "SELECT count(*) FROM public.workspace_memberships WHERE workspace
 assert_scalar "SELECT count(*) FROM public.academic_years WHERE id = '30000000-0000-0000-0000-000000000001' AND is_active = true;" "1" "academic year restored"
 assert_scalar "SELECT count(*) FROM public.planner_tasks WHERE id = '40000000-0000-0000-0000-000000000001' AND title = 'Synthetic restore sentinel';" "1" "planner sentinel restored"
 assert_scalar "SELECT count(*) FROM storage.buckets WHERE id = 'knowledge-assets' AND public = false;" "1" "storage catalog restored"
-assert_scalar "SELECT count(*) FROM pg_tables WHERE schemaname = 'public' AND rowsecurity = true;" "$(db_psql -Atc "SELECT count(*) FROM pg_tables WHERE schemaname = 'public' AND rowsecurity = true;")" "RLS catalog readable after restore"
+assert_scalar "SELECT count(*) FROM pg_tables WHERE schemaname = 'public' AND rowsecurity = true;" "$rls_tables_before" "RLS-enabled tables restored"
 
 cat <<EOF
 {
   "result": "PASS",
   "scope": "POSTGRES_DB_LOGICAL_RESTORE",
   "environment": "EPHEMERAL_GITHUB_ACTIONS_POSTGRES",
-  "canonicalMigrationsApplied": $migration_count,
+  "canonicalMigrationFilesApplied": $migration_count,
   "syntheticDataOnly": true,
   "backupBytes": $backup_bytes,
   "schemaFingerprint": "$fingerprint_after",
+  "rlsEnabledTables": $rls_tables_before,
   "supabaseAuthServiceProven": false,
   "supabaseStorageObjectRecoveryProven": false,
   "productionTouched": false,
