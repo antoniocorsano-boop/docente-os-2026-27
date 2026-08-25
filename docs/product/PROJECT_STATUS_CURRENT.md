@@ -14,13 +14,14 @@ La Production **non è attiva** e non è autorizzata a ricevere dati professiona
 Stato infrastrutturale:
 
 - Beta Render: operativa;
-- Supabase Production: separato, schema-ready;
+- Supabase Production: separato e schema-ready;
 - Render Production: `docente-os-2026-27-production`, Frankfurt, provisionato inattivo;
 - Production Runtime Smoke autenticato: PASS, run `32836204567`;
-- Production applicative rows dopo smoke: 0;
+- Production application rows dopo smoke: 0;
 - identità Auth tecnica dedicata: 1;
-- logical restore PostgreSQL isolato: PASS;
-- incident escalation owner-visible: PASS;
+- `DB_LOGICAL_RESTORE`: PASS;
+- `SUPABASE_AUTH_SERVICE_RECOVERY`: PASS;
+- `INCIDENT_ESCALATION_MINIMUM`: PASS;
 - auto-deploy Production: OFF;
 - dati reali autorizzati: false.
 
@@ -48,86 +49,54 @@ Orario e Calendario restano domini indipendenti; la composizione avviene solo vi
 
 Stato:
 
-**P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS / P7-D REVIEW CURRENT / P7-E PASS / P7-F PASS / P7-F2 COMPLETE / DB_LOGICAL_RESTORE PASS / INCIDENT_ESCALATION_MINIMUM PASS / ACTIVATION HOLD**.
+**P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS / P7-D REVIEW CURRENT / P7-E PASS / P7-F PASS / P7-F2 COMPLETE / DB_LOGICAL_RESTORE PASS / SUPABASE_AUTH_SERVICE_RECOVERY PASS / INCIDENT_ESCALATION_MINIMUM PASS / ACTIVATION HOLD**.
 
-## 4. P7 — Production governance e infrastruttura
+## 4. P7 — Production governance e recovery
 
-### Promotion e topologia
+### Production provisioning
 
-- P7-A: PASS; Production può essere promossa solo mediante SHA immutabile certificato e decisione umana esplicita.
-- P7-B: PASS / SEPARATE; nessuna copia automatica Beta → Production e nessun riuso di credenziali Beta.
-- P7-C/P7-E: PASS; Render Frankfurt, auto-deploy disabilitato.
+- P7-A: promotion contract PASS;
+- P7-B: Production data topology SEPARATE;
+- P7-C/P7-E: Render Frankfurt, auto-deploy disabilitato;
+- P7-F: Supabase Production provisionato e schema-ready;
+- P7-F2: Render Production provisionato inattivo e runtime smoke autenticato PASS.
 
-### Supabase e Render Production
+Production non segue automaticamente `develop`; la promozione richiede SHA immutabile certificato e decisione umana esplicita.
 
-Supabase Production:
+### DB logical restore
 
-- project ref `xpxhlmpsvfzgsjxgieks`;
-- regione `eu-central-1`;
-- schema canonico applicato;
-- application data: 0;
-- Storage objects: 0;
-- identità tecnica Auth dedicata: 1.
+**PASS**, run `32837945388`.
 
-Render Production:
-
-- servizio `docente-os-2026-27-production`;
-- URL `https://docente-os-2026-27-production.onrender.com`;
-- regione Frankfurt;
-- tier Free solo per validazione inattiva;
-- auto-deploy OFF;
-- runtime smoke PASS, run `32836204567`;
-- commit applicativo servito durante lo smoke: `f33eb4785ed66630c3a162ae2f2c1bd5db64d532`;
-- mutating actions: false.
-
-Production non segue automaticamente `develop`.
-
-### P7 Recovery — DB logical restore
-
-**PASS.** Run `32837945388`:
-
-- PostgreSQL 16 effimero;
-- tutti i 35 file SQL canonici presenti al momento del run applicati;
-- dati esclusivamente sintetici;
-- backup logico → distruzione DB → restore fresco;
-- fingerprint schema preservato: `4edad5ed83db226ebad83b0e915b684a`;
-- workspace, membership, anno scolastico e Planner sentinel ripristinati;
-- 26 tabelle `public` con RLS preservate;
-- Beta/Production toccati: false.
+Il rehearsal PostgreSQL isolato ha provato backup logico, distruzione, restore, dati sintetici, fingerprint schema e RLS. Beta e Production non sono stati toccati.
 
 Ricevuta: `docs/product/P7_DB_RESTORE_REHEARSAL_RECEIPT.md`.
 
-Il risultato non prova ancora il servizio Supabase Auth end-to-end.
+### Supabase Auth service recovery
 
-### P7 Incident escalation minimum
+**PASS**, run `32841165988`, job `97780759559`.
 
-**PASS.** Implementazione PR #192, merge `075bf9e5f00b76ee1555656a98d87a88caa714b4`.
+La prova ha usato uno stack Supabase completo ed effimero in GitHub Actions con GoTrue `v2.195.0` e Mailpit. Ha verificato:
 
-Il canale canonico minimo è GitHub Issue con:
-
-- environment;
-- severità SEV-1..SEV-4;
-- detection time;
-- observed condition;
-- user/data impact;
-- real-data flag;
-- containment;
-- owner action;
-- evidence links;
-- stato;
-- safety confirmation;
-- receipt finale di chiusura.
-
-Gate `p7-incident/escalation-contract`: PASS, run `32838659845`.
-
-Rehearsal sintetico issue #193:
-
-- `PRODUCTION_INACTIVE` / `SEV-4`;
-- assegnato a `antoniocorsano-boop`;
-- dati reali: false;
+- identità sintetica confermata;
+- login password iniziale;
+- richiesta `POST /auth/v1/recover`;
+- email recovery catturata;
+- recovery session emessa;
+- cambio password attraverso la recovery session;
+- vecchia password rifiutata;
+- nuova password accettata;
 - Beta/Production toccati: false;
-- receipt finale presente;
-- chiuso `completed` il `2026-08-25T10:45:02Z`.
+- dati reali: false.
+
+Implementazione: PR #195, merge `849f0b74e1ace3cb33a231a83ec9a9351cfa67cd`.
+
+Ricevuta: `docs/product/P7_SUPABASE_AUTH_RECOVERY_RECEIPT.md`.
+
+Nota: il test certifica il comportamento end-to-end del servizio Auth in uno stack Supabase reale e isolato; non dichiara provato il disaster recovery cloud gestito di Supabase.
+
+### Incident escalation minimum
+
+**PASS.** Gate `p7-incident/escalation-contract`; rehearsal sintetico issue #193, owner-visible, receipt finale e chiusura `completed`.
 
 Ricevuta: `docs/product/P7_INCIDENT_ESCALATION_REHEARSAL_RECEIPT.md`.
 
@@ -138,12 +107,12 @@ Production activation resta **HOLD**.
 Blocker chiusi:
 
 - `DB_LOGICAL_RESTORE` — PASS;
+- `SUPABASE_AUTH_SERVICE_RECOVERY` — PASS;
 - `INCIDENT_ESCALATION_MINIMUM` — PASS.
 
-Restano **due blocker**:
+Resta **un solo blocker**:
 
-1. `SUPABASE_AUTH_SERVICE_RECOVERY` — OPEN / BLOCKER: serve prova end-to-end del servizio Auth dopo recovery, non solo restore del catalogo DB;
-2. `OFFSITE_STORAGE_RECOVERY` — OPEN / BLOCKER: serve copia indipendente e restore binario verificato degli originali Storage.
+`OFFSITE_STORAGE_RECOVERY` — **OPEN / BLOCKER**: serve una copia indipendente degli oggetti Storage e una prova verificata di restore binario, usando dati sintetici.
 
 Watch non bloccanti:
 
@@ -172,14 +141,14 @@ Watch non bloccanti:
 - `production-render/blueprint`;
 - `production-runtime/smoke`;
 - `p7-recovery/db-restore-rehearsal`;
+- `p7-recovery/supabase-auth-service`;
 - `p7-incident/escalation-contract`.
 
 ## 7. Prossime priorità autorizzate
 
-1. **SUPABASE_AUTH_SERVICE_RECOVERY** — individuare una prova realmente isolata e rappresentativa senza usare dati reali;
-2. **OFFSITE_STORAGE_RECOVERY** — progettare copia indipendente e restore binario degli originali;
-3. nuova Production Readiness Review;
-4. solo dopo, valutare activation del pilot e promozione di uno SHA applicativo certificato più recente;
-5. load/scale isolato prima di rollout più ampio.
+1. **OFFSITE_STORAGE_RECOVERY** — copia indipendente e restore binario verificato degli oggetti Storage con soli dati sintetici;
+2. nuova Production Readiness Review;
+3. solo dopo, valutare activation del pilot e promozione di uno SHA applicativo certificato più recente;
+4. load/scale isolato prima di rollout più ampio.
 
 Non introdurre nuove macro-capability per riempire artificialmente la roadmap.
