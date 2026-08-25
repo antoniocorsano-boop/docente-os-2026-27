@@ -2,7 +2,7 @@
 
 Stato: **REVIEW CURRENT / INACTIVE PRODUCTION PROVISIONED / ACTIVATION HOLD**
 
-Questa review distingue l'esistenza di un'infrastruttura Production tecnicamente funzionante dall'autorizzazione ad attivarla con dati professionali reali.
+Questa review distingue l'esistenza di una Production inattiva tecnicamente funzionante dall'autorizzazione a usarla con dati professionali reali.
 
 ## Decisione corrente
 
@@ -17,54 +17,62 @@ Questa review distingue l'esistenza di un'infrastruttura Production tecnicamente
 - P7-A: contratto Beta → Production e gate `production-promotion/contract`.
 - P7-B: topologia Production separata.
 - P7-C: specifica infrastrutturale e gate `production-infrastructure/spec`.
-- P7-E: provider Render / Frankfurt scelto.
-- P7-F: Supabase Production separato provisionato e schema-ready.
-- P7-F2: Render Production provisionato e raggiungibile.
-- `Production Runtime Smoke` run `32836204567`: PASS.
+- P7-E: provider Render / Frankfurt.
+- P7-F: Supabase Production separato, schema-ready e senza dati applicativi reali.
+- P7-F2: Render Production provisionato inattivo; `Production Runtime Smoke` run `32836204567`: PASS.
 - autenticazione tecnica Production: PASS.
 - RPC autenticato `current_workspace_context`: PASS.
-- verifica post-smoke: nessun dato applicativo creato.
-- `P7 DB Restore Rehearsal` run `32837945388`: PASS per il logical restore PostgreSQL isolato.
+- verifica post-smoke: nessuna mutazione applicativa e nessun dato professionale reale.
+- `DB_LOGICAL_RESTORE`: PASS, run `32837945388`.
+- `INCIDENT_ESCALATION_MINIMUM`: PASS.
+  - implementazione PR #192, merge `075bf9e5f00b76ee1555656a98d87a88caa714b4`;
+  - gate `p7-incident/escalation-contract`: PASS, run `32838659845`;
+  - rehearsal sintetico issue #193: owner-visible, assegnato all'owner, receipt finale presente, chiuso `completed`.
 
 Ricevute canoniche:
 
 - `docs/product/P7F2_PRODUCTION_RUNTIME_RECEIPT.md`;
-- `docs/product/P7_DB_RESTORE_REHEARSAL_RECEIPT.md`.
+- `docs/product/P7_DB_RESTORE_REHEARSAL_RECEIPT.md`;
+- `docs/product/P7_INCIDENT_ESCALATION_REHEARSAL_RECEIPT.md`.
 
 ## Blocker prima dell'attivazione con dati reali
 
-### 1. Recovery DB/Auth
+### 1. Supabase Auth service recovery
 
-Stato: **DB LOGICAL RESTORE PROVEN / SUPABASE AUTH SERVICE NOT PROVEN / BLOCKER RESIDUO**.
+Stato: **NOT PROVEN / BLOCKER**.
 
-Il componente database del restore rehearsal è ora provato in ambiente PostgreSQL 16 effimero e isolato. Il run `32837945388` ha applicato tutti i 35 file SQL canonici presenti nel repository, prodotto un backup logico, distrutto il database e ripristinato schema, dati sintetici, relazioni e 26 tabelle `public` con RLS. Beta e Production non sono stati toccati.
-
-Questa prova non certifica ancora il servizio Supabase Auth end-to-end: il ripristino di una riga sintetica in `auth.users` prova il catalogo PostgreSQL, non GoTrue/Supabase Auth come servizio. Prima dell'attivazione resta quindi necessario dimostrare `SUPABASE_AUTH_SERVICE_RECOVERY` in un ambiente Supabase isolato o con un meccanismo equivalente e verificabile.
+Il logical restore PostgreSQL ha provato schema e catalogo `auth.users`, ma non dimostra che GoTrue/Supabase Auth sia recuperabile end-to-end dopo un disaster recovery reale. Serve una prova in ambiente Supabase isolato o un meccanismo equivalente e verificabile.
 
 ### 2. Off-site Storage recovery
 
 Stato: **NOT PROVEN / BLOCKER**.
 
-L'integrità DB↔Storage e il ripristino del catalogo `storage.buckets` non equivalgono al backup indipendente degli oggetti. Deve esistere una copia off-site degli originali Storage e deve essere verificato almeno un percorso di restore binario.
+Il restore del catalogo Storage non equivale al backup indipendente degli oggetti binari. Deve esistere una copia off-site degli originali e deve essere verificato almeno un percorso di restore binario.
 
-### 3. Incident escalation minima
+## Blocker chiusi
 
-Stato: **NOT IMPLEMENTED / BLOCKER**.
+### DB logical restore
 
-Una Production attiva richiede almeno un percorso owner-visible di escalation e una receipt minima dell'incidente. Il monitor tecnico da solo non basta.
+**PASS.** PostgreSQL 16 effimero, tutti i file SQL canonici presenti applicati, dati sintetici, `pg_dump`, distruzione DB, `pg_restore`, fingerprint invariato e RLS preservato. Beta/Production non toccati.
 
-## Watch che non bloccano il pilot single-owner
+### Incident escalation minimum
 
-- **Load/scale isolato:** necessario prima di rollout più ampio.
-- **Leaked-password protection:** da abilitare quando il piano Supabase lo consente.
-- **Longitudinal proof:** necessario oltre il pilot iniziale.
-- **Retention/account deletion:** resta soggetto a evidenza sufficiente di export e recovery.
+**PASS.** Il percorso canonico è GitHub Issue con template strutturato, severità, impatto, contenimento, owner action, evidenze e receipt di chiusura. Il rehearsal #193 ha provato la sequenza:
+
+**creazione → classificazione → assegnazione owner → evidenze → receipt → chiusura**.
+
+La prova non implica paging 24/7, SMS/email esterne o incident response multi-operatore; tali capability non sono richieste per il pilot single-owner.
+
+## Watch non bloccanti per il pilot
+
+- load/scale isolato prima di rollout più ampio;
+- leaked-password protection quando il piano Supabase lo consente;
+- longitudinal proof;
+- retention/account deletion dopo evidenza sufficiente di export/recovery.
 
 ## Stato di promozione applicativa
 
-La Production inattiva, durante il runtime smoke del 2026-08-25, serviva il commit applicativo `f33eb4785ed66630c3a162ae2f2c1bd5db64d532`, mentre `develop` era a `ee141fd156a788f2e4c2357ab0d09e6eec52f073`.
-
-Questa divergenza è intenzionalmente ammessa dal contratto: Production non segue automaticamente `develop`. Qualunque allineamento deve usare uno SHA immutabile certificato e una decisione umana esplicita. Il PASS dello smoke non costituisce una promozione.
+La Production inattiva durante il runtime smoke serviva il commit applicativo `f33eb4785ed66630c3a162ae2f2c1bd5db64d532`. Production non segue automaticamente `develop`: ogni allineamento richiede SHA immutabile certificato e decisione umana esplicita.
 
 ## Regola operativa
 
@@ -80,10 +88,9 @@ Nessun elemento di questa review autorizza:
 
 ## Prossimo gate
 
-Il rischio `DB_LOGICAL_RESTORE` è ridotto e provato. Restano tre condizioni di activation da chiudere:
+Restano due soli blocker di activation:
 
 1. `SUPABASE_AUTH_SERVICE_RECOVERY`;
-2. `OFFSITE_STORAGE_RECOVERY`;
-3. `INCIDENT_ESCALATION_MINIMUM`.
+2. `OFFSITE_STORAGE_RECOVERY`.
 
-Per rapporto costo/rischio, il prossimo lavoro autonomamente chiudibile senza toccare Production è `INCIDENT_ESCALATION_MINIMUM`; la prova Auth completa richiederà invece un ambiente Supabase realmente isolato o un meccanismo equivalente. Solo dopo la chiusura dei blocker e una nuova readiness review potrà essere valutata l'attivazione del pilot.
+Production activation resta **HOLD** fino alla loro chiusura e a una nuova readiness review.

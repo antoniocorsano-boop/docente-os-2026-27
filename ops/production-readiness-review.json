@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "product": "DOCENTE OS",
   "review": "P7-D",
-  "lastUpdatedBy": "P7-F",
-  "reviewState": "COMPLETE",
+  "lastUpdatedBy": "P7-INCIDENT-ESCALATION",
+  "reviewState": "CURRENT",
   "productionActivationDecision": "HOLD",
-  "inactiveProvisioningDecision": "PARTIALLY_COMPLETED",
+  "inactiveProvisioningDecision": "COMPLETE",
   "scope": "SINGLE_OWNER_PILOT",
   "principles": {
     "provisioningIsNotActivation": true,
@@ -37,7 +37,22 @@
     {
       "id": "P7F_SUPABASE_PROVISIONING",
       "classification": "SATISFIED",
-      "evidence": "Production Supabase xpxhlmpsvfzgsjxgieks; 36 migrations; zero auth users and workspace rows; zero Storage objects"
+      "evidence": "Production Supabase xpxhlmpsvfzgsjxgieks; schema-ready; application data empty"
+    },
+    {
+      "id": "P7F2_RUNTIME_PROVISIONING",
+      "classification": "SATISFIED",
+      "evidence": "Render Production provisioned inactive; Production Runtime Smoke run 32836204567 PASS"
+    },
+    {
+      "id": "DB_LOGICAL_RESTORE",
+      "classification": "SATISFIED",
+      "evidence": "P7 DB Restore Rehearsal run 32837945388 PASS"
+    },
+    {
+      "id": "INCIDENT_ESCALATION_MINIMUM",
+      "classification": "SATISFIED",
+      "evidence": "p7-incident/escalation-contract PASS; synthetic rehearsal issue #193 closed/completed with final receipt"
     },
     {
       "id": "SECURITY_BASELINE",
@@ -52,44 +67,19 @@
   ],
   "activationBlockers": [
     {
-      "id": "RESTORE_REHEARSAL",
+      "id": "SUPABASE_AUTH_SERVICE_RECOVERY",
       "classification": "BLOCKER",
       "state": "NOT_PROVEN",
-      "reason": "Real production data must not be accepted until DB/Auth recovery has been rehearsed in an isolated environment."
+      "reason": "Logical restore of the auth catalog does not prove GoTrue/Supabase Auth service recovery end-to-end."
     },
     {
       "id": "OFFSITE_STORAGE_RECOVERY",
       "classification": "BLOCKER",
       "state": "NOT_PROVEN",
-      "reason": "Original Storage objects need an independent copy and a verified restore path before destructive-loss scenarios are acceptable."
-    },
-    {
-      "id": "INCIDENT_ESCALATION_MINIMUM",
-      "classification": "BLOCKER",
-      "state": "NOT_IMPLEMENTED",
-      "reason": "Production activation needs a minimal owner-visible escalation and incident receipt beyond a GitHub monitor failure."
+      "reason": "Original Storage objects need an independent copy and a verified binary restore path before destructive-loss scenarios are acceptable."
     }
   ],
-  "provisioningResidues": [
-    {
-      "id": "RENDER_SERVICE_PROVISIONING",
-      "classification": "BLOCKER_FOR_FULL_INACTIVE_PROVISIONING",
-      "state": "NOT_PROVISIONED",
-      "reason": "No authenticated Render connector is available in this session; the planned isolated Render service has not been created."
-    },
-    {
-      "id": "PRODUCTION_SCOPED_ENV",
-      "classification": "BLOCKER_FOR_FULL_INACTIVE_PROVISIONING",
-      "state": "NOT_CONFIGURED",
-      "reason": "Production-scoped environment variables must be configured outside the repository after the Render service exists."
-    },
-    {
-      "id": "AUTHENTICATED_TECHNICAL_SMOKE",
-      "classification": "BLOCKER_FOR_FULL_INACTIVE_PROVISIONING",
-      "state": "NOT_RUN",
-      "reason": "Requires the inactive Render service and a dedicated Production technical identity."
-    }
-  ],
+  "provisioningResidues": [],
   "watches": [
     {
       "id": "LOAD_SCALE_ISOLATED",
@@ -100,8 +90,8 @@
     {
       "id": "LEAKED_PASSWORD_PROTECTION",
       "classification": "WATCH",
-      "state": "NO_PRODUCTION_WARNING_CURRENTLY",
-      "reason": "Production security advisor currently does not report the Beta leaked-password warning; continue to verify before activation."
+      "state": "PLAN_DEPENDENT",
+      "reason": "Continue to verify and enable when the Supabase plan permits it."
     },
     {
       "id": "LONGITUDINAL_USE",
@@ -113,13 +103,13 @@
       "id": "RETENTION_ACCOUNT_DELETION",
       "classification": "WATCH",
       "state": "DEFERRED",
-      "reason": "Remain disabled until export and recovery evidence is sufficient."
+      "reason": "Remain deferred until export and recovery evidence is sufficient."
     }
   ],
   "nextGate": {
-    "id": "P7-F2",
-    "purpose": "Create the isolated inactive Render service, configure production-scoped environment variables outside the repository, and run a synthetic authenticated technical smoke test without real user data or activation.",
-    "mayCreateInactiveProduction": true,
+    "id": "P7-RECOVERY-REMAINDER",
+    "purpose": "Close Supabase Auth service recovery and off-site Storage object recovery without accepting real professional data.",
+    "mayCreateInactiveProduction": false,
     "mayCreateActiveProduction": false,
     "mayAcceptRealUserData": false
   }

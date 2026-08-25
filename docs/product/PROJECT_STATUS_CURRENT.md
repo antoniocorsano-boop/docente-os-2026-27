@@ -1,7 +1,6 @@
 # DOCENTE OS — Stato corrente canonico
 
 Data: 2026-08-25  
-Head canonico `develop` dopo integrazione del gate DB restore: `7f2ad9b50d510cc447091bbf52e4826877a5f1fd`  
 Stato documento: **CURRENT / CANONICAL STATUS**
 
 Questo documento è la sintesi autorevole dello stato operativo. I checkpoint precedenti restano storici e non devono essere usati per dedurre lo stato corrente quando divergono da questo file.
@@ -12,16 +11,17 @@ DOCENTE OS è una **Beta operativa avanzata** con infrastruttura Production inat
 
 La Production **non è attiva** e non è autorizzata a ricevere dati professionali reali. `productionActivationDecision = HOLD`.
 
-Stato infrastrutturale corrente:
+Stato infrastrutturale:
 
-- Beta Render: operativa su `docente-os-2026-27-beta`;
+- Beta Render: operativa;
 - Supabase Production: separato, schema-ready;
-- Render Production: provisionato e raggiungibile su `https://docente-os-2026-27-production.onrender.com`;
-- Auth Production tecnica: verificata per il runtime smoke;
-- runtime smoke Production autenticato: PASS;
+- Render Production: `docente-os-2026-27-production`, Frankfurt, provisionato inattivo;
+- Production Runtime Smoke autenticato: PASS, run `32836204567`;
+- Production applicative rows dopo smoke: 0;
+- identità Auth tecnica dedicata: 1;
 - logical restore PostgreSQL isolato: PASS;
-- dati applicativi Production: 0;
-- auto-deploy Production: non autorizzato dal contratto;
+- incident escalation owner-visible: PASS;
+- auto-deploy Production: OFF;
 - dati reali autorizzati: false.
 
 ## 2. Runtime e invarianti di prodotto
@@ -48,128 +48,111 @@ Orario e Calendario restano domini indipendenti; la composizione avviene solo vi
 
 Stato:
 
-**P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS / P7-D REVIEW CURRENT / P7-E PASS / P7-F PASS infrastrutturale / P7-F2 COMPLETE / DB_LOGICAL_RESTORE PASS / ACTIVATION HOLD**.
-
-P0–P6 coprono security baseline, monitoring, account recovery applicativo, lifecycle/export, dependency security, Storage integrity e performance Beta entro budget.
+**P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS / P7-D REVIEW CURRENT / P7-E PASS / P7-F PASS / P7-F2 COMPLETE / DB_LOGICAL_RESTORE PASS / INCIDENT_ESCALATION_MINIMUM PASS / ACTIVATION HOLD**.
 
 ## 4. P7 — Production governance e infrastruttura
 
-### P7-A — Promotion contract
+### Promotion e topologia
 
-PASS. Production può essere allineata solo mediante SHA immutabile certificato e decisione umana esplicita. Nessun auto-deploy o promozione implicita da `develop`.
+- P7-A: PASS; Production può essere promossa solo mediante SHA immutabile certificato e decisione umana esplicita.
+- P7-B: PASS / SEPARATE; nessuna copia automatica Beta → Production e nessun riuso di credenziali Beta.
+- P7-C/P7-E: PASS; Render Frankfurt, auto-deploy disabilitato.
 
-### P7-B — Data topology
+### Supabase e Render Production
 
-PASS / SEPARATE. Production usa applicazione, progetto Supabase, DB, Auth, Storage e segreti distinti dal Beta. Nessuna copia automatica Beta → Production e nessun riuso di credenziali Beta.
+Supabase Production:
 
-### P7-C / P7-E
+- project ref `xpxhlmpsvfzgsjxgieks`;
+- regione `eu-central-1`;
+- schema canonico applicato;
+- application data: 0;
+- Storage objects: 0;
+- identità tecnica Auth dedicata: 1.
 
-Specifica infrastrutturale validata. Provider applicativo scelto: Render, regione Frankfurt.
+Render Production:
 
-### P7-F — Supabase Production
+- servizio `docente-os-2026-27-production`;
+- URL `https://docente-os-2026-27-production.onrender.com`;
+- regione Frankfurt;
+- tier Free solo per validazione inattiva;
+- auto-deploy OFF;
+- runtime smoke PASS, run `32836204567`;
+- commit applicativo servito durante lo smoke: `f33eb4785ed66630c3a162ae2f2c1bd5db64d532`;
+- mutating actions: false.
 
-Supabase Production reale:
+Production non segue automaticamente `develop`.
 
-- progetto: `DOCENTE OS Production`;
-- project ref: `xpxhlmpsvfzgsjxgieks`;
-- regione: `eu-central-1`;
-- stato: `ACTIVE_HEALTHY`;
-- schema canonico applicato e verificato;
-- bucket privato `knowledge-assets` presente;
-- nessun dato Beta importato.
+### P7 Recovery — DB logical restore
 
-Il fresh-bootstrap ha anche corretto la migrazione storica `0004_harden_event_trigger_rpc_exposure.sql` rendendo la revoca condizionale tramite `to_regprocedure(...)`.
+**PASS.** Run `32837945388`:
 
-Nota di conteggio: il provisioning Production storico registra 36 migrazioni applicate nel relativo registro; il nuovo gate di restore applica dinamicamente tutti i file SQL oggi presenti nel repository, che al run certificato erano 35. Il gate non usa più un numero hardcoded e non altera la ricevuta storica di provisioning.
-
-### P7-F2 — Render Production + authenticated runtime smoke
-
-Stato: **COMPLETE**.
-
-Render Production reale:
-
-- servizio: `docente-os-2026-27-production`;
-- URL: `https://docente-os-2026-27-production.onrender.com`;
-- regione: Frankfurt;
-- root: `product`;
-- auto-deploy: OFF per contratto;
-- tier Free usato soltanto per validazione inattiva, da rivalutare prima dell'attivazione.
-
-Il workflow `Production Runtime Smoke` è stato eseguito il 2026-08-25:
-
-- run: `32836204567`;
-- branch di esecuzione: `develop`;
-- commit del workflow/test: `ee141fd156a788f2e4c2357ab0d09e6eec52f073`;
-- commit applicativo servito da Render Production: `f33eb4785ed66630c3a162ae2f2c1bd5db64d532`;
-- root Production: PASS;
-- `/api/build-info`: PASS;
-- login tecnico Production: PASS;
-- sessione Auth: PASS;
-- RPC autenticato `current_workspace_context`: PASS;
-- `mutatingActionsPerformed = false`.
-
-Verifica diretta post-smoke su Supabase Production:
-
-- workspace: 0;
-- membership: 0;
-- academic years: 0;
-- planner tasks: 0;
-- Knowledge assets: 0;
-- authored documents: 0;
-- Storage objects: 0.
-
-È presente soltanto l'identità tecnica Production dedicata al test. Nessun dato professionale reale è stato introdotto.
-
-Ricevuta: `docs/product/P7F2_PRODUCTION_RUNTIME_RECEIPT.md`.
-
-La differenza tra il codice canonico `develop` e Production servita = `f33eb478...` è coerente con il contratto: Production non segue automaticamente `develop`. Un eventuale allineamento è una futura decisione di promozione, non una conseguenza dei gate P7.
-
-### P7 Recovery — logical DB restore
-
-Stato componente: **PASS**.
-
-PR #190 ha introdotto il gate permanente `p7-recovery/db-restore-rehearsal`. Sul run certificato `32837945388`, head `d2488cdf4399131696ba54bee375e87d7934446a`, il gate ha:
-
-- creato PostgreSQL 16 effimero in GitHub Actions;
-- applicato tutti i 35 file SQL canonici presenti;
-- usato esclusivamente dati sintetici;
-- creato un backup logico da 259526 byte;
-- distrutto il database;
-- eseguito restore in un database fresco;
-- preservato fingerprint schema `4edad5ed83db226ebad83b0e915b684a`;
-- ripristinato Auth catalog sintetico, workspace, membership, anno scolastico e Planner sentinel;
-- preservato 26 tabelle `public` con RLS;
-- toccato Beta: false;
-- toccato Production: false.
+- PostgreSQL 16 effimero;
+- tutti i 35 file SQL canonici presenti al momento del run applicati;
+- dati esclusivamente sintetici;
+- backup logico → distruzione DB → restore fresco;
+- fingerprint schema preservato: `4edad5ed83db226ebad83b0e915b684a`;
+- workspace, membership, anno scolastico e Planner sentinel ripristinati;
+- 26 tabelle `public` con RLS preservate;
+- Beta/Production toccati: false.
 
 Ricevuta: `docs/product/P7_DB_RESTORE_REHEARSAL_RECEIPT.md`.
 
-Il risultato **non** prova ancora il servizio Supabase Auth end-to-end. Il recupero di `auth.users` dimostra il restore del catalogo PostgreSQL, non il funzionamento di GoTrue/Supabase Auth dopo un disaster recovery reale.
+Il risultato non prova ancora il servizio Supabase Auth end-to-end.
+
+### P7 Incident escalation minimum
+
+**PASS.** Implementazione PR #192, merge `075bf9e5f00b76ee1555656a98d87a88caa714b4`.
+
+Il canale canonico minimo è GitHub Issue con:
+
+- environment;
+- severità SEV-1..SEV-4;
+- detection time;
+- observed condition;
+- user/data impact;
+- real-data flag;
+- containment;
+- owner action;
+- evidence links;
+- stato;
+- safety confirmation;
+- receipt finale di chiusura.
+
+Gate `p7-incident/escalation-contract`: PASS, run `32838659845`.
+
+Rehearsal sintetico issue #193:
+
+- `PRODUCTION_INACTIVE` / `SEV-4`;
+- assegnato a `antoniocorsano-boop`;
+- dati reali: false;
+- Beta/Production toccati: false;
+- receipt finale presente;
+- chiuso `completed` il `2026-08-25T10:45:02Z`.
+
+Ricevuta: `docs/product/P7_INCIDENT_ESCALATION_REHEARSAL_RECEIPT.md`.
 
 ## 5. Readiness / blocker di activation
 
 Production activation resta **HOLD**.
 
-Il precedente blocker aggregato `RESTORE_REHEARSAL` è ora scomposto correttamente:
+Blocker chiusi:
 
-- `DB_LOGICAL_RESTORE` — **PASS**;
-- `SUPABASE_AUTH_SERVICE_RECOVERY` — **OPEN / BLOCKER**.
+- `DB_LOGICAL_RESTORE` — PASS;
+- `INCIDENT_ESCALATION_MINIMUM` — PASS.
 
-Restano inoltre:
+Restano **due blocker**:
 
-- `OFFSITE_STORAGE_RECOVERY` — **OPEN / BLOCKER**: copia indipendente e restore binario degli oggetti Storage da provare;
-- `INCIDENT_ESCALATION_MINIMUM` — **OPEN / BLOCKER**: escalation owner-visible e receipt minima da implementare.
+1. `SUPABASE_AUTH_SERVICE_RECOVERY` — OPEN / BLOCKER: serve prova end-to-end del servizio Auth dopo recovery, non solo restore del catalogo DB;
+2. `OFFSITE_STORAGE_RECOVERY` — OPEN / BLOCKER: serve copia indipendente e restore binario verificato degli originali Storage.
 
-Watch non bloccanti per il pilot nominale:
+Watch non bloccanti:
 
 - load/scale isolato prima di rollout più ampio;
 - leaked-password protection quando il piano Supabase lo consente;
 - longitudinal proof;
-- retention/account deletion dopo evidenza sufficiente di export/recovery.
+- retention/account deletion dopo sufficiente evidenza di export/recovery.
 
 ## 6. Gate permanenti rilevanti
-
-Tra i gate permanenti restano:
 
 - `product-ci`;
 - `ops-security/supabase`;
@@ -188,20 +171,15 @@ Tra i gate permanenti restano:
 - `production-readiness/review`;
 - `production-render/blueprint`;
 - `production-runtime/smoke`;
-- `p7-recovery/db-restore-rehearsal`.
-
-Nota corrente HVA: sul merge `ee141fd...` i journey HVA runtime sono passati, ma il gate globale ha registrato un `net::ERR_ABORTED` su uno stylesheet Next.js nella superficie Calendario desktop. È un finding runtime separato da P7 e non viene mascherato come PASS.
+- `p7-recovery/db-restore-rehearsal`;
+- `p7-incident/escalation-contract`.
 
 ## 7. Prossime priorità autorizzate
 
-Ordine raccomandato per validità, rischio e costo:
-
-1. **INCIDENT_ESCALATION_MINIMUM** — chiudibile senza nuovo ambiente a pagamento e con alto valore operativo;
-2. **SUPABASE_AUTH_SERVICE_RECOVERY** — prova end-to-end in ambiente Supabase realmente isolato o equivalente verificabile;
-3. **OFFSITE_STORAGE_RECOVERY** — backup indipendente e restore binario degli originali Storage;
-4. nuova Production Readiness Review;
-5. solo successivamente decidere se promuovere uno SHA applicativo più recente su Production;
-6. load/scale isolato prima di rollout più ampio;
-7. pilotaggio continuativo settembre–ottobre.
+1. **SUPABASE_AUTH_SERVICE_RECOVERY** — individuare una prova realmente isolata e rappresentativa senza usare dati reali;
+2. **OFFSITE_STORAGE_RECOVERY** — progettare copia indipendente e restore binario degli originali;
+3. nuova Production Readiness Review;
+4. solo dopo, valutare activation del pilot e promozione di uno SHA applicativo certificato più recente;
+5. load/scale isolato prima di rollout più ampio.
 
 Non introdurre nuove macro-capability per riempire artificialmente la roadmap.

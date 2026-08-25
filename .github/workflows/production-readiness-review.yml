@@ -8,11 +8,14 @@ on:
     paths:
       - 'ops/production-readiness-review.json'
       - 'ops/production-provisioning-receipt.json'
+      - 'ops/production-infrastructure-spec.json'
+      - 'ops/incident-escalation-rehearsal-receipt.json'
       - 'docs/product/PRODUCTION_READINESS_REVIEW.md'
+      - 'docs/product/PROJECT_STATUS_CURRENT.md'
       - 'docs/product/P7F_PRODUCTION_PROVISIONING_RECEIPT.md'
+      - 'docs/product/P7_INCIDENT_ESCALATION_REHEARSAL_RECEIPT.md'
       - '.github/scripts/validate-production-readiness-review.mjs'
       - '.github/workflows/production-readiness-review.yml'
-      - 'ops/production-infrastructure-spec.json'
       - 'ops/production-promotion-contract.json'
       - 'product/supabase/migrations/**'
   push:
@@ -21,11 +24,14 @@ on:
     paths:
       - 'ops/production-readiness-review.json'
       - 'ops/production-provisioning-receipt.json'
+      - 'ops/production-infrastructure-spec.json'
+      - 'ops/incident-escalation-rehearsal-receipt.json'
       - 'docs/product/PRODUCTION_READINESS_REVIEW.md'
+      - 'docs/product/PROJECT_STATUS_CURRENT.md'
       - 'docs/product/P7F_PRODUCTION_PROVISIONING_RECEIPT.md'
+      - 'docs/product/P7_INCIDENT_ESCALATION_REHEARSAL_RECEIPT.md'
       - '.github/scripts/validate-production-readiness-review.mjs'
       - '.github/workflows/production-readiness-review.yml'
-      - 'ops/production-infrastructure-spec.json'
       - 'ops/production-promotion-contract.json'
       - 'product/supabase/migrations/**'
 
