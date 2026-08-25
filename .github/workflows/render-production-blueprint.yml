@@ -8,7 +8,9 @@ on:
     paths:
       - 'ops/render-production-blueprint.yaml'
       - '.github/scripts/validate-render-production-blueprint.mjs'
+      - '.github/scripts/production-runtime-smoke.mjs'
       - '.github/workflows/render-production-blueprint.yml'
+      - '.github/workflows/production-runtime-smoke.yml'
       - 'docs/product/P7F2_RENDER_PRODUCTION_HANDOFF.md'
   push:
     branches:
@@ -16,7 +18,9 @@ on:
     paths:
       - 'ops/render-production-blueprint.yaml'
       - '.github/scripts/validate-render-production-blueprint.mjs'
+      - '.github/scripts/production-runtime-smoke.mjs'
       - '.github/workflows/render-production-blueprint.yml'
+      - '.github/workflows/production-runtime-smoke.yml'
       - 'docs/product/P7F2_RENDER_PRODUCTION_HANDOFF.md'
 
 permissions:
@@ -33,6 +37,8 @@ jobs:
           node-version: '22'
       - name: Validate isolated Render Production blueprint
         run: node .github/scripts/validate-render-production-blueprint.mjs
+      - name: Validate Production smoke script syntax
+        run: node --check .github/scripts/production-runtime-smoke.mjs
       - name: Publish Render Production handoff status
         if: always()
         uses: actions/github-script@v7
