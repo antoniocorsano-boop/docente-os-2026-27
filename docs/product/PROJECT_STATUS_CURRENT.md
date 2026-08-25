@@ -8,9 +8,9 @@ Questo documento è la sintesi autorevole dello stato operativo. I checkpoint pr
 
 ## 1. Classificazione
 
-DOCENTE OS è una **Beta operativa avanzata**. Non è più un prototipo/MVP: persistenza, Auth, RLS, Storage, Planner, Orario, Calendario, Piano annuale, Progetta, Classi, Conoscenza, prima write assistita controllata, authoring UDA versionato, export PDF, account recovery, export workspace, dependency security, Storage integrity, performance baseline e governance di promozione sono implementati e sottoposti a gate.
+DOCENTE OS è una **Beta operativa avanzata**. Persistenza, Auth, RLS, Storage, Planner, Orario, Calendario, Piano annuale, Progetta, Classi, Conoscenza, prima write assistita controllata, authoring UDA versionato, export PDF, account recovery, export workspace, dependency security, Storage integrity, performance baseline, promotion governance e Production readiness governance sono implementati e sottoposti a gate.
 
-Non è ancora Production: l'ambiente Production non è stato creato né provisionato. La topologia dati e la specifica infrastrutturale sono però già decise e machine-validated. Restano aperti load/scale isolato, restore rehearsal, off-site backup Storage, incident escalation e prova longitudinale.
+Non è ancora Production. L'ambiente Production non è creato né provisionato; la sua attivazione è formalmente **HOLD**. Topologia dati, specifica infrastrutturale e readiness review sono però già decise e machine-validated.
 
 ## 2. Runtime canonico
 
@@ -19,17 +19,14 @@ Non è ancora Production: l'ambiente Production non è stato creato né provisio
 - Supabase Auth + PostgreSQL + Storage + RLS;
 - Beta canonico: Render `docente-os-2026-27-beta`;
 - ramo Beta: `develop`;
-- `rootDir`: `product`;
-- build dichiarativo Render: `npm ci --no-audit --no-fund && npm run build`;
-- dipendenze congelate da `product/package-lock.json`;
-- Vercel non è gate canonico; le failure di quota/build-rate-limit non descrivono lo stato applicativo;
+- build Render: `npm ci --no-audit --no-fund && npm run build`;
+- lockfile canonico: `product/package-lock.json`;
+- Vercel non è gate canonico; le failure di quota non descrivono lo stato applicativo;
 - Netlify è legacy.
 
-La baseline applicativa certificata resta `fa570f44bf79955068ac916581f5ddf24336fd30`; i commit P7-A/P7-B/P7-C modificano governance/infrastruttura, non `product/`.
+La baseline applicativa certificata resta `fa570f44bf79955068ac916581f5ddf24336fd30`; P7-A/B/C/D modificano governance e infrastruttura, non `product/`.
 
 ## 3. Macro-capability
-
-### Esperienza e assistenza
 
 - **X0 COMPLETE** — decisioni canoniche esperienza;
 - **X1 COMPLETE** — component foundation;
@@ -40,16 +37,7 @@ La baseline applicativa certificata resta `fa570f44bf79955068ac916581f5ddf24336f
 - **X5-B COMPLETE / BETA-PROVEN** — export professionale della versione UDA salvata/immutabile, senza write persistente;
 - **X6 FUTURE / NOT BASELINE**.
 
-### Tempo e attività didattica
-
-- **T1 COMPLETE** — dominio Orario;
-- **T2 COMPLETE** — griglia operativa;
-- **T3A COMPLETE** — lifecycle versioni Orario;
-- **T3B COMPLETE** — Calendario indipendente;
-- **T3C COMPLETE** — Temporal Projection read-only Orario + Calendario;
-- **T4 COMPLETE** — TeachingSession persistente e allocazione ai blocchi B01–B33.
-
-Invariante: Orario e Calendario restano domini indipendenti; la composizione avviene solo via Temporal Projection.
+Tempo e attività didattica: T1, T2, T3A, T3B, T3C e T4 sono COMPLETE. Orario e Calendario restano domini indipendenti; la composizione avviene solo via Temporal Projection.
 
 ## 4. Superfici operative
 
@@ -65,11 +53,9 @@ P5 ha corretto la policy DELETE Storage e rimosso 25 blob E2E storici orfani. Ve
 
 Residui: documenti completamente visuali senza provider visivo, upload grandi/resumable, copia/restore off-site Storage.
 
-## 6. Human + Visual Acceptance
+## 6. Human + Visual Acceptance e gate runtime
 
-HVA è permanente e copre mobile/desktop, journey Human, console, rete, HTTP, overflow, layout, target interattivi, screenshot, receipt e fixture hygiene.
-
-Stato rilevante:
+HVA è permanente. Stato rilevante:
 
 - HVA Render Beta: **PASS**;
 - K1 Render Beta: **PASS**;
@@ -78,13 +64,12 @@ Stato rilevante:
 - Operational Security: **PASS**;
 - P3 Workspace Export: **PASS**;
 - P5 Storage Integrity: **PASS**;
-- P6 Performance: **PASS** baseline e re-benchmark post-P6-B.
-
-V-07 PASS, V-08 PASS, X5-A PASS, X5-B PASS.
+- P6 Performance: **PASS** baseline e re-benchmark post-P6-B;
+- V-07, V-08, X5-A e X5-B: **PASS**.
 
 ## 7. Gate permanenti
 
-- `product-ci` — test, typecheck, lint, build;
+- `product-ci`;
 - `ops-security/supabase`;
 - `ops-security/dependencies`;
 - `ops-health/render-beta`;
@@ -97,88 +82,81 @@ V-07 PASS, V-08 PASS, X5-A PASS, X5-B PASS.
 - `x5b-export/render-beta`;
 - `hva/runtime`;
 - `production-promotion/contract`;
-- `production-infrastructure/spec`.
+- `production-infrastructure/spec`;
+- `production-readiness/review`.
 
 Il ciclo applicativo resta: slice piccola → CI/gate specialistico → HVA quando pertinente → merge exact-head → Render exact/equivalent → runtime gate → evidence/cleanup → aggiornamento canonico.
 
 ## 8. Operational hardening
 
-Stato: **IN PROGRESS — P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS**.
+Stato: **IN PROGRESS — P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS / P7-D PASS**.
 
-### P0 — Security baseline: PASS
+### P0–P6
 
-RPC sensibili hardenizzate, RLS e accessi autenticati verificati, indici pertinenti presenti.
-
-### P1 — Monitoring: PASS
-
-`ops-health/render-beta` verifica periodicamente runtime, login, Auth, DB/RLS e stato prodotto exact/equivalent.
-
-### P2 — Account recovery: PASS · Restore rehearsal: BLOCKED_BY_PLAN
-
-Recovery password verificato. Il restore rehearsal reale richiede un ambiente isolato; Supabase Branching non è disponibile sul piano corrente. Nessun restore distruttivo è stato tentato sul Beta.
-
-### P3 — Data lifecycle + export: PASS / BETA-PROVEN
-
-Export workspace owner-only completo, `deletionReady=false`, cancellazione account automatica non abilitata.
-
-### P4 — Dependency security: PASS
-
-Lockfile canonico, `npm ci`, audit full/prod/tooling senza high/critical nel run finale, nessun upgrade cieco.
-
-### P5 — Storage integrity: PASS / BETA-PROVEN
-
-DB e Storage riconciliati; missing 0, orphan 0 dopo cleanup E2E controllato.
-
-### P6-A — Performance baseline: PASS / BETA-PROVEN
-
-8 superfici, 24 campioni, warm-up separato, budget Render route max 3.000 ms / aggregate p95 2.200 ms. Baseline pre-P6-B: mediana 291 ms, p95 1.206 ms, max 1.355 ms.
-
-### P6-B — Planner query: PASS / BETA-PROVEN
-
-Filtro DB `status IN (OPEN, WAITING)`; cronologia preservata. Planner mediana 721 → 684 ms; p95 794 → 810 ms. Re-benchmark aggregato: mediana 461 ms, p95 1.037 ms, max 1.611 ms. Tutto entro budget; nessuna dichiarazione impropria di accelerazione sistemica.
+- P0 security baseline: PASS.
+- P1 monitoring: PASS.
+- P2 account recovery: PASS; restore rehearsal reale ancora non provato.
+- P3 data lifecycle/export: PASS / BETA-PROVEN; deletion automation disabilitata.
+- P4 dependency security: PASS; lockfile canonico, `npm ci`, nessun high/critical nel run finale.
+- P5 Storage integrity: PASS / BETA-PROVEN; missing 0, orphan 0.
+- P6-A performance baseline: PASS / BETA-PROVEN.
+- P6-B Planner query: PASS / BETA-PROVEN; trasferimento storico inutile eliminato, budget ancora rispettati.
 
 ### P7-A — Promotion contract: PASS / CONTRACT READY
 
-Contratto machine-readable, SHA immutabile, decisione umana obbligatoria, promozione automatica vietata, rollback applicativo solo verso SHA certificati, rollback DB automatico vietato prima del restore rehearsal, rollback Storage distruttivo vietato senza backup verificato.
+SHA immutabile, decisione umana obbligatoria, promozione automatica vietata, rollback applicativo solo verso SHA certificati, rollback DB automatico vietato prima del restore rehearsal, rollback Storage distruttivo vietato senza backup verificato.
 
 ### P7-B — Production data topology: PASS / DECIDED
 
-Decisione vincolante:
-
-- `productionDataTopologyState = SEPARATE`;
-- progetto Supabase Production distinto dal Beta;
-- DB, Auth, Storage e segreti Production separati;
+- Production Supabase separato dal Beta;
+- DB, Auth, Storage e segreti separati;
 - nessuna write cross-environment;
-- nessun riuso di credenziali tecniche Beta;
+- nessun riuso credenziali Beta;
 - nessuna copia automatica Beta → Production;
 - primo rilascio `SINGLE_OWNER_PILOT` / `named_owner_only`;
-- signup pubblico disabilitato;
-- onboarding multi-tenant disabilitato;
-- eventuale import manuale richiede decisione esplicita dell'owner;
+- signup pubblico e onboarding multi-tenant disabilitati;
 - `productionEnvironmentState = NOT_CREATED`.
-
-Il validator `production-promotion/contract` rende questi vincoli permanenti.
 
 ### P7-C — Production infrastructure spec: PASS / SPEC READY
 
-La specifica `ops/production-infrastructure-spec.json` è machine-readable e resta intenzionalmente `NOT_PROVISIONED`.
-
-Vincoli permanenti:
-
-- provider hosting Production ancora `UNDECIDED`;
-- servizio Production e progetto Supabase Production `UNASSIGNED` / `NOT_PROVISIONED`;
-- deploy Production solo da SHA immutabile certificato;
+- infrastruttura Production `NOT_PROVISIONED`;
+- provider hosting `UNDECIDED`;
+- servizio e progetto Supabase Production `UNASSIGNED`;
+- deploy solo da SHA immutabile certificato;
 - auto-deploy Production disabilitato;
-- segreti esclusivamente production-scoped e mai commessi nella specifica;
-- validator blocca project ref/URL Beta, URL app Beta e materiale di chiave Supabase reale;
-- DB/Auth/Storage Production devono restare materialmente separati dal Beta;
-- copia automatica Beta → Production e write cross-environment vietate;
-- stato dati iniziale `EMPTY_OR_EXPLICIT_OWNER_IMPORT`;
-- attivazione futura richiede schema, RLS, Storage policy, smoke autenticato, rollback target, release receipt e decisione umana coerente col contratto P7-A/B.
+- segreti production-scoped, mai nel repository;
+- validator blocca riferimenti al Beta e materiale di chiave reale;
+- dati iniziali `EMPTY_OR_EXPLICIT_OWNER_IMPORT`;
+- nessun servizio, dominio, DNS, segreto, utente o progetto Supabase creato.
 
-Gate permanente: `production-infrastructure/spec` — **PASS** sulla PR #177, head `72b0ebf3b6b29c472d8fce5bd270e06a019e9883`; merge P7-C `8880f64a13d9f2e89c01ac081e980b5f70d3f393`.
+### P7-D — Production Readiness Review: PASS / ACTIVATION HOLD
 
-P7-C non ha creato servizi, domini, DNS, segreti, utenti o progetti Supabase e non ha migrato dati.
+Il gate `production-readiness/review` è **PASS** sulla PR #179, head `c73fb5a615a7cacabe13c24237d649adf1342d60`; merge P7-D `1ef1dbddee32ef9fe32034e59fc6e95afbeb2a3a`.
+
+Il PASS certifica la **coerenza della review**, non la readiness finale. La decisione machine-readable è:
+
+- `productionActivationDecision = HOLD`;
+- `inactiveProvisioningDecision = ALLOWED_AFTER_PROVIDER_SELECTION`;
+- provisioning e attivazione sono separati;
+- infrastruttura inattiva può essere usata per prove di recovery;
+- dati reali richiedono un activation gate successivo.
+
+**Blocker di attivazione con dati reali:**
+
+1. `RESTORE_REHEARSAL` — DB/Auth recovery non ancora provato su ambiente isolato;
+2. `OFFSITE_STORAGE_RECOVERY` — copia indipendente degli originali e restore Storage non ancora provati;
+3. `INCIDENT_ESCALATION_MINIMUM` — manca una escalation owner-visible con receipt minima oltre al monitor GitHub.
+
+**Blocker di provisioning:**
+
+- `PRODUCTION_PROVIDER_SELECTION` — il provider hosting Production resta `UNDECIDED`.
+
+**Watch non bloccanti per il pilot single-owner:**
+
+- load/scale isolato, da chiudere prima di rollout più ampio;
+- leaked-password protection, plan-dependent;
+- prova longitudinale;
+- retention/account deletion, che resta disabilitata.
 
 ## 9. Maturità
 
@@ -192,29 +170,29 @@ P7-C non ha creato servizi, domini, DNS, segreti, utenti o progetti Supabase e n
 - authoring UDA + export PDF: **Beta-proven**;
 - account recovery: **verificato**;
 - data lifecycle/export: **Beta-proven**;
-- performance corrente: **Beta-proven entro budget**, load/scale non ancora provato;
-- promotion governance: **P7-A/P7-B formalizzati e gated**;
-- Production infrastructure governance: **P7-C formalizzata e gated, non provisionata**;
-- Production: **non creata / non provisionata / non attiva**.
+- performance: **Beta-proven entro budget**, load/scale non ancora provato;
+- Production governance: **P7-A/B/C/D formalizzati e gated**;
+- Production: **non creata / non provisionata / non attiva / activation HOLD**.
 
 ## 10. Rischi e residui prioritari
 
-1. **P7-D Production readiness review** — classificare formalmente prerequisiti e blocker prima di autorizzare qualunque provisioning reale.
-2. **Load/scale isolato** — dataset significativamente maggiori fuori dal Beta canonico.
-3. **Restore + off-site Storage** — restore rehearsal e copia indipendente degli originali.
-4. **Incident response** — escalation oltre ai monitor GitHub.
-5. **Password/platform hardening** — leaked-password protection quando disponibile.
-6. **Longitudinal proof** — settimane/mesi reali di uso scolastico.
-7. **Governance X4** — `PLANNER_CREATE_TASK` resta l'unica write assistita finché una nuova capability non supera un gate separato.
+1. **P7-E provider selection + inactive provisioning plan** — scegliere provider, service boundary, regione e secret mechanism senza attivazione né dati reali.
+2. **Restore rehearsal DB/Auth** — blocker di attivazione.
+3. **Off-site Storage backup/restore** — blocker di attivazione.
+4. **Incident escalation minima** — blocker di attivazione.
+5. **Load/scale isolato** — watch per pilot, requisito prima del rollout più ampio.
+6. **Leaked-password protection** — quando il piano lo consente.
+7. **Longitudinal proof** — settimane/mesi reali di uso scolastico.
+8. **Governance X4** — `PLANNER_CREATE_TASK` resta l'unica write assistita finché una nuova capability non supera un gate separato.
 
 ## 11. Ordine di maturazione autorizzato
 
-1. **P7-D** — readiness review: distinguere prerequisiti obbligatori, blocker reali e watch accettabili prima del provisioning Production;
-2. definire una prova **load/scale isolata**;
-3. definire **off-site Storage**;
-4. eseguire restore rehearsal quando esiste un ambiente Supabase isolato;
-5. definire retention/cancellazione solo dopo export e restore affidabili;
-6. pilotaggio continuativo settembre–ottobre;
-7. nuove tranche guidate da evidenza reale.
+1. **P7-E** — scegliere il provider Production e definire il piano di provisioning inattivo; nessuna attivazione e nessun dato reale;
+2. usare l'ambiente isolato per chiudere **restore rehearsal DB/Auth**;
+3. definire e provare **off-site Storage backup/restore**;
+4. introdurre una **incident escalation minima** owner-visible;
+5. rivalutare l'activation gate;
+6. eseguire **load/scale isolato** prima di rollout più ampio;
+7. pilotaggio continuativo settembre–ottobre e nuove tranche guidate da evidenza reale.
 
 Non introdurre nuove macro-capability per riempire artificialmente la roadmap.
