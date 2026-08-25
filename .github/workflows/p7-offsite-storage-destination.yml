@@ -23,6 +23,7 @@ jobs:
       R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       R2_BACKUP_BUCKET: ${{ vars.R2_BACKUP_BUCKET }}
       R2_PREFIX: p7-destination/${{ github.run_id }}
+      OFFSITE_BACKUP_MEDIUM: CLOUDFLARE_R2_EU_PERSISTENT
     steps:
       - uses: actions/checkout@v6
       - uses: supabase/setup-cli@v1
@@ -84,6 +85,7 @@ jobs:
       R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
       R2_BACKUP_BUCKET: ${{ vars.R2_BACKUP_BUCKET }}
       R2_PREFIX: p7-destination/${{ github.run_id }}
+      OFFSITE_BACKUP_MEDIUM: CLOUDFLARE_R2_EU_PERSISTENT
     steps:
       - uses: actions/checkout@v6
       - uses: supabase/setup-cli@v1
