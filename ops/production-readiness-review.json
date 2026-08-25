@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "product": "DOCENTE OS",
   "review": "P7-D",
-  "lastUpdatedBy": "P7-OFFSITE-STORAGE-RECOVERY-REHEARSAL",
+  "lastUpdatedBy": "P7-OFFSITE-STORAGE-PERSISTENT-DESTINATION",
   "reviewState": "CURRENT",
   "productionActivationDecision": "HOLD",
   "inactiveProvisioningDecision": "COMPLETE",
@@ -23,16 +23,17 @@
     {"id":"DB_LOGICAL_RESTORE","classification":"SATISFIED","evidence":"P7 DB Restore Rehearsal run 32837945388 PASS"},
     {"id":"SUPABASE_AUTH_SERVICE_RECOVERY","classification":"SATISFIED","evidence":"P7 Supabase Auth Service Recovery run 32841165988 PASS; GoTrue + Mailpit isolated rehearsal"},
     {"id":"OFFSITE_STORAGE_RECOVERY_REHEARSAL","classification":"SATISFIED","evidence":"P7 Off-site Storage Recovery run 32842616571 PASS; two runners, independent artifact, fresh Storage restore, SHA-256 verified"},
+    {"id":"OFFSITE_STORAGE_PERSISTENT_DESTINATION","classification":"SATISFIED","evidence":"Cloudflare R2 EU bucket docente-os-backup-eu; P7 Off-site Storage Destination run 32888249839 PASS; persistent R2 upload, source loss, second-runner restore and SHA-256 verified"},
     {"id":"INCIDENT_ESCALATION_MINIMUM","classification":"SATISFIED","evidence":"p7-incident/escalation-contract PASS; synthetic rehearsal issue #193 closed/completed with final receipt"},
     {"id":"SECURITY_BASELINE","classification":"SATISFIED","evidence":"ops-security/supabase + ops-security/dependencies"},
     {"id":"BETA_RUNTIME_GATES","classification":"SATISFIED","evidence":"canonical Beta application/runtime gates"}
   ],
   "activationBlockers": [
     {
-      "id": "OFFSITE_STORAGE_PERSISTENT_DESTINATION",
+      "id": "OFFSITE_STORAGE_RETENTION_LOCK",
       "classification": "BLOCKER",
       "state": "NOT_CONFIGURED",
-      "reason": "Independent binary Storage recovery is proven, but a persistent encrypted and privacy-appropriate off-site destination for future real professional Storage objects is not yet selected, configured and verified."
+      "reason": "The persistent EU R2 destination and restore path are proven, but an explicit retention/Bucket Lock policy has not yet been configured and verified for future real professional backups."
     }
   ],
   "provisioningResidues": [],
@@ -40,11 +41,11 @@
     {"id":"LOAD_SCALE_ISOLATED","classification":"WATCH","state":"NOT_PROVEN","reason":"Not an activation blocker for a named single-owner pilot while current Beta performance budgets remain satisfied; required before broader rollout."},
     {"id":"LEAKED_PASSWORD_PROTECTION","classification":"WATCH","state":"PLAN_DEPENDENT","reason":"Continue to verify and enable when the Supabase plan permits it."},
     {"id":"LONGITUDINAL_USE","classification":"WATCH","state":"NOT_PROVEN","reason":"Required for maturity claims beyond the controlled pilot, not for provisioning an inactive isolated environment."},
-    {"id":"RETENTION_ACCOUNT_DELETION","classification":"WATCH","state":"DEFERRED","reason":"Remain deferred until export and recovery evidence is sufficient."}
+    {"id":"RETENTION_ACCOUNT_DELETION","classification":"WATCH","state":"DEFERRED","reason":"Application-level account/data lifecycle policy remains deferred; this is distinct from the backup retention lock required before activation."}
   ],
   "nextGate": {
-    "id": "P7-OFFSITE-STORAGE-DESTINATION",
-    "purpose": "Select, configure and verify a persistent encrypted privacy-appropriate off-site destination for future Production Storage backups before any real professional data is accepted.",
+    "id": "P7-OFFSITE-STORAGE-RETENTION-LOCK",
+    "purpose": "Configure and verify a bounded retention/Bucket Lock policy on the persistent EU R2 backup destination before any real professional data is accepted.",
     "mayCreateInactiveProduction": false,
     "mayCreateActiveProduction": false,
     "mayAcceptRealUserData": false
