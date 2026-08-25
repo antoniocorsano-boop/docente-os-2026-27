@@ -21,6 +21,7 @@ Stato infrastrutturale:
 - identità Auth tecnica dedicata: 1;
 - `DB_LOGICAL_RESTORE`: PASS;
 - `SUPABASE_AUTH_SERVICE_RECOVERY`: PASS;
+- `OFFSITE_STORAGE_RECOVERY_REHEARSAL`: PASS;
 - `INCIDENT_ESCALATION_MINIMUM`: PASS;
 - auto-deploy Production: OFF;
 - dati reali autorizzati: false.
@@ -49,7 +50,7 @@ Orario e Calendario restano domini indipendenti; la composizione avviene solo vi
 
 Stato:
 
-**P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS / P7-D REVIEW CURRENT / P7-E PASS / P7-F PASS / P7-F2 COMPLETE / DB_LOGICAL_RESTORE PASS / SUPABASE_AUTH_SERVICE_RECOVERY PASS / INCIDENT_ESCALATION_MINIMUM PASS / ACTIVATION HOLD**.
+**P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS / P7-D REVIEW CURRENT / P7-E PASS / P7-F PASS / P7-F2 COMPLETE / DB_LOGICAL_RESTORE PASS / SUPABASE_AUTH_SERVICE_RECOVERY PASS / OFFSITE_STORAGE_RECOVERY_REHEARSAL PASS / INCIDENT_ESCALATION_MINIMUM PASS / ACTIVATION HOLD**.
 
 ## 4. P7 — Production governance e recovery
 
@@ -67,52 +68,57 @@ Production non segue automaticamente `develop`; la promozione richiede SHA immut
 
 **PASS**, run `32837945388`.
 
-Il rehearsal PostgreSQL isolato ha provato backup logico, distruzione, restore, dati sintetici, fingerprint schema e RLS. Beta e Production non sono stati toccati.
-
-Ricevuta: `docs/product/P7_DB_RESTORE_REHEARSAL_RECEIPT.md`.
+Backup logico, distruzione DB, restore, dati sintetici, fingerprint schema e RLS provati in ambiente isolato.
 
 ### Supabase Auth service recovery
 
-**PASS**, run `32841165988`, job `97780759559`.
+**PASS**, run `32841165988`.
 
-La prova ha usato uno stack Supabase completo ed effimero in GitHub Actions con GoTrue `v2.195.0` e Mailpit. Ha verificato:
+GoTrue/Auth reale dello stack Supabase locale ha provato login, richiesta recovery, email, recovery session, cambio password e verifica vecchia/nuova password con identità sintetica.
 
-- identità sintetica confermata;
-- login password iniziale;
-- richiesta `POST /auth/v1/recover`;
-- email recovery catturata;
-- recovery session emessa;
-- cambio password attraverso la recovery session;
-- vecchia password rifiutata;
-- nuova password accettata;
+### Off-site Storage recovery rehearsal
+
+**PASS**, run `32842616571`.
+
+La prova ha usato due runner GitHub distinti:
+
+- runner A / job `97785243034`: crea oggetto sintetico in Supabase Storage, verifica i byte, produce una copia indipendente, cancella la sorgente, verifica la perdita e distrugge lo stack;
+- runner B / job `97785811124`: scarica la copia su host distinto, avvia un nuovo Supabase Storage vuoto, ripristina l'oggetto e verifica byte e SHA-256.
+
+Evidenza:
+
+- fresh restore Storage: true;
+- separate runner boundary: true;
+- binary restore verified: true;
+- byte length: `131071`;
+- object SHA-256: `ab2f638970566aaf3f495b7a3860612f7bd91a2afe5d837e835a27f11ba811be`;
 - Beta/Production toccati: false;
 - dati reali: false.
 
-Implementazione: PR #195, merge `849f0b74e1ace3cb33a231a83ec9a9351cfa67cd`.
+Ricevuta: `docs/product/P7_OFFSITE_STORAGE_RECOVERY_RECEIPT.md`.
 
-Ricevuta: `docs/product/P7_SUPABASE_AUTH_RECOVERY_RECEIPT.md`.
-
-Nota: il test certifica il comportamento end-to-end del servizio Auth in uno stack Supabase reale e isolato; non dichiara provato il disaster recovery cloud gestito di Supabase.
+L'artifact GitHub con retention di un giorno è **rehearsal-only** e non è approvato come backup operativo per dati professionali reali.
 
 ### Incident escalation minimum
 
-**PASS.** Gate `p7-incident/escalation-contract`; rehearsal sintetico issue #193, owner-visible, receipt finale e chiusura `completed`.
-
-Ricevuta: `docs/product/P7_INCIDENT_ESCALATION_REHEARSAL_RECEIPT.md`.
+**PASS.** Gate owner-visible e rehearsal issue #193 con receipt finale.
 
 ## 5. Readiness / blocker di activation
 
 Production activation resta **HOLD**.
 
-Blocker chiusi:
+I rehearsal/capability tecnici richiesti sono provati:
 
 - `DB_LOGICAL_RESTORE` — PASS;
 - `SUPABASE_AUTH_SERVICE_RECOVERY` — PASS;
+- `OFFSITE_STORAGE_RECOVERY_REHEARSAL` — PASS;
 - `INCIDENT_ESCALATION_MINIMUM` — PASS.
 
-Resta **un solo blocker**:
+Resta **un solo blocker operativo**:
 
-`OFFSITE_STORAGE_RECOVERY` — **OPEN / BLOCKER**: serve una copia indipendente degli oggetti Storage e una prova verificata di restore binario, usando dati sintetici.
+`OFFSITE_STORAGE_PERSISTENT_DESTINATION` — **NOT CONFIGURED / BLOCKER**.
+
+Occorre una destinazione off-site persistente, cifrata, indipendente da Supabase Production e privacy-appropriata, con retention/accesso controllati e restore verificabile. GitHub Actions Artifact non è tale destinazione.
 
 Watch non bloccanti:
 
@@ -142,13 +148,15 @@ Watch non bloccanti:
 - `production-runtime/smoke`;
 - `p7-recovery/db-restore-rehearsal`;
 - `p7-recovery/supabase-auth-service`;
+- `p7-recovery/offsite-storage`;
 - `p7-incident/escalation-contract`.
 
 ## 7. Prossime priorità autorizzate
 
-1. **OFFSITE_STORAGE_RECOVERY** — copia indipendente e restore binario verificato degli oggetti Storage con soli dati sintetici;
+1. **P7-OFFSITE-STORAGE-DESTINATION** — scegliere e verificare una destinazione persistente, cifrata e privacy-appropriata;
 2. nuova Production Readiness Review;
-3. solo dopo, valutare activation del pilot e promozione di uno SHA applicativo certificato più recente;
-4. load/scale isolato prima di rollout più ampio.
+3. decisione umana esplicita sull'eventuale activation del pilot;
+4. solo se autorizzato, promozione di uno SHA applicativo certificato più recente;
+5. load/scale isolato prima di rollout più ampio.
 
 Non introdurre nuove macro-capability per riempire artificialmente la roadmap.
