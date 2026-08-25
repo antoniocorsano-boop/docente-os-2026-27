@@ -1,0 +1,56 @@
+name: Production Infrastructure Spec
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - 'ops/production-infrastructure-spec.json'
+      - 'ops/production-promotion-contract.json'
+      - 'docs/product/PRODUCTION_INFRASTRUCTURE_SPEC.md'
+      - '.github/scripts/validate-production-infrastructure-spec.mjs'
+      - '.github/workflows/production-infrastructure-spec.yml'
+      - 'render.yaml'
+  push:
+    branches:
+      - develop
+    paths:
+      - 'ops/production-infrastructure-spec.json'
+      - 'ops/production-promotion-contract.json'
+      - 'docs/product/PRODUCTION_INFRASTRUCTURE_SPEC.md'
+      - '.github/scripts/validate-production-infrastructure-spec.mjs'
+      - '.github/workflows/production-infrastructure-spec.yml'
+      - 'render.yaml'
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  validate-production-infrastructure-spec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate production infrastructure specification
+        run: node .github/scripts/validate-production-infrastructure-spec.mjs
+      - name: Publish infrastructure specification status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'production-infrastructure/spec',
+              description: ok ? 'Specifica Production valida' : 'Specifica Production non valida',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
