@@ -4,7 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       base_url:
-        description: Inactive Production Render URL
+        description: Production Render URL
+        required: true
+        type: string
+      expected_commit:
+        description: Full immutable commit SHA expected from /api/build-info
         required: true
         type: string
 
@@ -14,6 +18,7 @@ permissions:
 
 env:
   PRODUCTION_BASE_URL: ${{ inputs.base_url }}
+  EXPECTED_PRODUCTION_COMMIT: ${{ inputs.expected_commit }}
   PRODUCTION_SUPABASE_URL: ${{ secrets.DOCENTE_OS_PRODUCTION_SUPABASE_URL }}
   PRODUCTION_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.DOCENTE_OS_PRODUCTION_SUPABASE_PUBLISHABLE_KEY }}
   PRODUCTION_E2E_EMAIL: ${{ secrets.DOCENTE_OS_PRODUCTION_E2E_EMAIL }}
@@ -37,10 +42,10 @@ jobs:
               sha: context.sha,
               state: 'pending',
               context: 'production-runtime/smoke',
-              description: 'Smoke Production inattiva in esecuzione',
+              description: 'Smoke Production exact-SHA in esecuzione',
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
-      - name: Run non-mutating Production smoke
+      - name: Run non-mutating exact-SHA Production smoke
         run: node .github/scripts/production-runtime-smoke.mjs
       - name: Publish final Production smoke status
         if: always()
@@ -56,6 +61,6 @@ jobs:
               sha: context.sha,
               state: ok ? 'success' : 'failure',
               context: 'production-runtime/smoke',
-              description: ok ? 'Smoke Production inattiva verificato' : 'Smoke Production non superato',
+              description: ok ? 'Smoke Production exact-SHA verificato' : 'Smoke Production exact-SHA non superato',
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
