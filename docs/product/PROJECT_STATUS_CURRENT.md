@@ -1,31 +1,37 @@
 # DOCENTE OS — Stato corrente canonico
 
 Data: 2026-08-25  
-Baseline runtime applicativa certificata: `fa570f44bf79955068ac916581f5ddf24336fd30`  
+Head canonico `develop` al momento della certificazione P7-F2: `ee141fd156a788f2e4c2357ab0d09e6eec52f073`  
 Stato documento: **CURRENT / CANONICAL STATUS**
 
 Questo documento è la sintesi autorevole dello stato operativo. I checkpoint precedenti restano storici e non devono essere usati per dedurre lo stato corrente quando divergono da questo file.
 
 ## 1. Classificazione
 
-DOCENTE OS è una **Beta operativa avanzata** con governance Production molto avanzata. Core docente, persistenza, Auth/RLS/Storage, Conoscenza, Planner, Orario, Calendario, Piano annuale, Classi, Progetta, X3, X4-A, authoring UDA, export, recovery account, lifecycle/export workspace, security, integrity e performance Beta sono implementati e sottoposti a gate.
+DOCENTE OS è una **Beta operativa avanzata** con infrastruttura Production inattiva ormai realmente provisionata e verificata tecnicamente.
 
-La Production non è attiva. Lo stato infrastrutturale resta **PARTIALLY_PROVISIONED**: Supabase Production separato è realmente provisionato, schema-ready e vuoto; Render Production non è ancora stato creato. Dopo P7-F2 il repository contiene però un Blueprint Render Production separato, validato e non auto-deploy, più un gate di smoke runtime autenticato e non mutante pronto per l'esecuzione successiva. `productionActivationDecision = HOLD` e nessun dato reale è autorizzato.
+La Production **non è attiva** e non è autorizzata a ricevere dati professionali reali. `productionActivationDecision = HOLD`.
 
-## 2. Runtime canonico Beta
+Stato infrastrutturale corrente:
+
+- Beta Render: operativa su `docente-os-2026-27-beta`;
+- Supabase Production: separato, schema-ready;
+- Render Production: provisionato e raggiungibile su `https://docente-os-2026-27-production.onrender.com`;
+- Auth Production tecnica: verificata;
+- runtime smoke Production autenticato: PASS;
+- dati applicativi Production: 0;
+- auto-deploy Production: non autorizzato dal contratto;
+- dati reali autorizzati: false.
+
+## 2. Runtime e invarianti di prodotto
 
 - codice applicativo: `product/`;
 - Next.js 16 / React 19 / TypeScript strict;
 - Supabase Auth + PostgreSQL + Storage + RLS;
-- Beta: Render `docente-os-2026-27-beta`;
-- branch: `develop`;
-- build: `npm ci --no-audit --no-fund && npm run build`;
-- lockfile: `product/package-lock.json`;
+- branch canonico: `develop`;
 - Vercel non è gate canonico; Netlify è legacy.
 
-La baseline runtime applicativa resta `fa570f44bf79955068ac916581f5ddf24336fd30`. P7-F ha modificato una migrazione storica di bootstrap per renderla fresh-install-safe; P7-F2 modifica solo governance/ops/workflow e non il runtime applicativo Beta.
-
-## 3. Capability e invarianti
+Capability principali:
 
 - X0/X1/X2: COMPLETE;
 - X3: COMPLETE / `READ_ONLY-PROPOSE`;
@@ -37,156 +43,133 @@ La baseline runtime applicativa resta `fa570f44bf79955068ac916581f5ddf24336fd30`
 
 Orario e Calendario restano domini indipendenti; la composizione avviene solo via Temporal Projection. Nessuna nuova write assistita è autorizzata senza gate dedicato.
 
-## 4. Conoscenza e Storage Beta
+## 3. Operational hardening
 
-Stato: **ADVANCED / BETA-PROVEN**.
+Stato:
 
-Acquisizione testo/file, Storage privato, trasformazione/normalizzazione, generazioni, provenienza, classificazione, retry/cleanup, ricerca corrente, continuità Progetta → Conoscenza e ownership Storage sono provati. Ultima riconciliazione P5: **5 asset DB / 5 oggetti Storage / missing 0 / orphan 0**.
+**P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS / P7-D REVIEW COMPLETE / P7-E PASS / P7-F PASS infrastrutturale / P7-F2 COMPLETE / ACTIVATION HOLD**.
 
-Residui: documenti completamente visuali senza provider visivo, upload grandi/resumable e off-site Storage recovery.
+P0–P6 coprono security baseline, monitoring, account recovery applicativo, lifecycle/export, dependency security, Storage integrity e performance Beta entro budget.
 
-## 5. Gate permanenti rilevanti
+## 4. P7 — Production governance e infrastruttura
 
-- `product-ci`;
-- `ops-security/supabase`;
-- `ops-security/dependencies`;
-- `ops-health/render-beta`;
-- `p3-export/application` / `p3-export/render-beta`;
-- `p5-storage-integrity/application` / `p5-storage-integrity/render-beta`;
-- `p6-performance/application` / `p6-performance/render-beta`;
-- `x3-e2e/render-beta`;
-- `x4-planner/render-beta`;
-- `x5-authoring/render-beta`;
-- `x5b-export/render-beta`;
-- `hva/runtime`;
-- `production-promotion/contract`;
-- `production-infrastructure/spec`;
-- `production-readiness/review`;
-- `production-render/blueprint`;
-- `production-runtime/smoke` — manuale, pronto ma non ancora eseguito perché Render Production non esiste.
+### P7-A — Promotion contract
 
-Il ciclo resta: slice piccola → gate specialistici/CI → exact-head merge → evidenza runtime/provisioning → cleanup → stato canonico.
+PASS. Production può essere allineata solo mediante SHA immutabile certificato e decisione umana esplicita. Nessun auto-deploy o promozione implicita da `develop`.
 
-## 6. Operational hardening
+### P7-B — Data topology
 
-Stato: **P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS / P7-D PASS / P7-E PASS / P7-F PARTIAL PASS / P7-F2 HANDOFF PASS, RUNTIME PENDING**.
+PASS / SEPARATE. Production usa applicazione, progetto Supabase, DB, Auth, Storage e segreti distinti dal Beta. Nessuna copia automatica Beta → Production e nessun riuso di credenziali Beta.
 
-### P0–P6
+### P7-C / P7-E
 
-Security baseline, monitoring, account recovery applicativo, data lifecycle/export, dependency security, Storage integrity e performance baseline Beta sono chiusi. Restore rehearsal, off-site Storage recovery e load/scale ampio restano separati dai gate già superati.
+Specifica infrastrutturale validata. Provider applicativo scelto: Render, regione Frankfurt.
 
-### P7-A — Promotion contract: PASS
+### P7-F — Supabase Production
 
-Promozione solo da SHA immutabile certificato, decisione umana obbligatoria, nessuna promozione automatica, rollback applicativo verso SHA certificati, DB forward recovery finché restore non è provato, nessun rollback Storage distruttivo senza backup verificato.
-
-### P7-B — Data topology: PASS / SEPARATE
-
-Production usa progetto Supabase, DB, Auth, Storage e segreti distinti dal Beta. Vietati copia automatica Beta → Production, riuso credenziali e write cross-environment. Primo rilascio: `SINGLE_OWNER_PILOT` / `named_owner_only`, signup pubblico e onboarding multi-tenant disabilitati.
-
-### P7-C — Infrastructure spec: PASS
-
-Specifica machine-readable, nessun segreto nel repository, deploy Production solo da SHA certificato, auto-deploy off e blocco dei riferimenti Beta.
-
-### P7-D — Readiness review: PASS / ACTIVATION HOLD
-
-Il PASS certifica la correttezza della review, non la readiness finale.
-
-Blocker di attivazione con dati reali:
-
-1. `RESTORE_REHEARSAL` — DB/Auth recovery non ancora provato;
-2. `OFFSITE_STORAGE_RECOVERY` — copia indipendente e restore Storage non ancora provati;
-3. `INCIDENT_ESCALATION_MINIMUM` — escalation owner-visible non ancora implementata.
-
-### P7-E — Provider selection: PASS
-
-Provider applicativo del pilot Production: **Render**, regione **Frankfurt**, servizio pianificato `docente-os-2026-27-production`, auto-deploy disabilitato, deploy da SHA certificato.
-
-### P7-F — Inactive provisioning: PARTIAL PASS
-
-PR #183, head `7d44d42f920adbf70573f59a7a694f577ef78758`, merge `7ff1203d283398a03f2a01e46de0e3cec234c6bd`.
-
-**Supabase Production reale:**
+Supabase Production reale:
 
 - progetto: `DOCENTE OS Production`;
 - project ref: `xpxhlmpsvfzgsjxgieks`;
 - regione: `eu-central-1`;
 - stato: `ACTIVE_HEALTHY`;
-- 36/36 migrazioni canoniche applicate fino a `knowledge_search_current`;
-- Auth users: 0;
+- 36/36 migrazioni canoniche applicate;
+- bucket privato `knowledge-assets` presente;
+- nessun dato Beta importato.
+
+Il fresh-bootstrap ha anche corretto la migrazione storica `0004_harden_event_trigger_rpc_exposure.sql` rendendo la revoca condizionale tramite `to_regprocedure(...)`.
+
+### P7-F2 — Render Production + authenticated runtime smoke
+
+Stato: **COMPLETE**.
+
+Render Production reale:
+
+- servizio: `docente-os-2026-27-production`;
+- URL: `https://docente-os-2026-27-production.onrender.com`;
+- regione: Frankfurt;
+- root: `product`;
+- auto-deploy: OFF per contratto;
+- tier Free usato soltanto per validazione inattiva, da rivalutare prima dell'attivazione.
+
+Il workflow `Production Runtime Smoke` è stato eseguito il 2026-08-25:
+
+- run: `32836204567`;
+- branch di esecuzione: `develop`;
+- commit del workflow/test: `ee141fd156a788f2e4c2357ab0d09e6eec52f073`;
+- commit applicativo servito da Render Production: `f33eb4785ed66630c3a162ae2f2c1bd5db64d532`;
+- root Production: PASS;
+- `/api/build-info`: PASS;
+- login tecnico Production: PASS;
+- sessione Auth: PASS;
+- RPC autenticato `current_workspace_context`: PASS;
+- `mutatingActionsPerformed = false`.
+
+Verifica diretta post-smoke su Supabase Production:
+
 - workspace: 0;
-- dati operativi: 0;
-- bucket Storage privato `knowledge-assets`: 1;
-- oggetti Storage: 0;
-- nessun dato Beta o dato reale copiato.
+- membership: 0;
+- academic years: 0;
+- planner tasks: 0;
+- Knowledge assets: 0;
+- authored documents: 0;
+- Storage objects: 0.
 
-Finding fresh-bootstrap: `0004_harden_event_trigger_rpc_exposure.sql` non era fresh-install-safe; è stata resa condizionale con `to_regprocedure(...)`. I gate P7-F sul medesimo head sono stati tutti verdi: Product CI, Operational Security, K1, X4, Production Infrastructure e Production Readiness.
+È presente soltanto l'identità tecnica Production dedicata al test. Nessun dato professionale reale è stato introdotto.
 
-### P7-F2 — Render handoff + runtime smoke contract: HANDOFF PASS / RUNTIME PENDING
+Ricevuta: `docs/product/P7F2_PRODUCTION_RUNTIME_RECEIPT.md`.
 
-PR #185, head `6cafa529df3956d2b55f1e8ef1be229488548a6f`, merge `c9551ae4bb3eedbf1cce374b4143c5dc0d7f168b`.
+La differenza tra `develop = ee141fd...` e Production servita = `f33eb478...` è coerente con il contratto: Production non segue automaticamente `develop`. Un eventuale allineamento è una futura decisione di promozione, non una conseguenza di P7-F2.
 
-È stato integrato un Blueprint Production **separato dal Blueprint Beta**:
+## 5. Readiness / blocker di activation
 
-- file: `ops/render-production-blueprint.yaml`;
-- servizio pianificato: `docente-os-2026-27-production`;
-- runtime Node;
-- regione Frankfurt;
-- root `product`;
-- build `npm ci --no-audit --no-fund && npm run build`;
-- `autoDeployTrigger: off`;
-- tier `free` esclusivamente per validazione inattiva, da rivalutare prima dell'attivazione;
-- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e `NEXT_PUBLIC_APP_URL` dichiarate con `sync:false`, quindi nessun valore Production viene commesso nel repository.
+Production activation resta **HOLD** fino alla chiusura di tutti e tre i blocker:
 
-Il gate permanente `production-render/blueprint` verifica isolamento dal Beta, assenza di chiavi/URL Beta, auto-deploy off e sintassi del contratto smoke.
+1. `RESTORE_REHEARSAL` — DB/Auth recovery da provare realmente in ambiente isolato;
+2. `OFFSITE_STORAGE_RECOVERY` — copia indipendente e restore Storage da provare;
+3. `INCIDENT_ESCALATION_MINIMUM` — escalation owner-visible e receipt minima da implementare.
 
-È inoltre pronto `Production Runtime Smoke`, manuale e non mutante. Il gate:
+Watch non bloccanti per il pilot nominale:
 
-- rifiuta esplicitamente l'URL applicativo Beta e il Supabase Beta;
-- verifica root applicativa e `/api/build-info`;
-- esegue login con una futura identità tecnica Production dedicata;
-- verifica un RPC autenticato;
-- non crea workspace, task, documenti o altri dati applicativi.
+- load/scale isolato prima di rollout più ampio;
+- leaked-password protection quando il piano Supabase lo consente;
+- longitudinal proof;
+- retention/account deletion dopo evidenza sufficiente di export/recovery.
 
-Sul medesimo head P7-F2 sono PASS:
+## 6. Gate permanenti rilevanti
 
-- `production-render/blueprint`;
+Tra i gate permanenti restano:
+
+- `product-ci`;
+- `ops-security/supabase`;
+- `ops-security/dependencies`;
+- `ops-health/render-beta`;
+- `p3-export/*`;
+- `p5-storage-integrity/*`;
+- `p6-performance/*`;
+- `x3-e2e/*`;
+- `x4-planner/*`;
+- `x5-authoring/*`;
+- `x5b-export/*`;
+- `hva/runtime`;
+- `production-promotion/contract`;
 - `production-infrastructure/spec`;
-- `production-readiness/review`.
+- `production-readiness/review`;
+- `production-render/blueprint`;
+- `production-runtime/smoke`.
 
-**Stato reale dopo P7-F2:**
+Nota corrente HVA: sul merge `ee141fd...` i journey HVA runtime sono passati, ma il gate globale ha registrato un `net::ERR_ABORTED` su uno stylesheet Next.js nella superficie Calendario desktop. È un finding runtime separato da P7-F2 e non viene mascherato come PASS.
 
-- Supabase Production: `PROVISIONED / SCHEMA_READY / EMPTY`;
-- Render Production: `NOT_PROVISIONED`;
-- handoff Render: `BLUEPRINT_READY`;
-- runtime smoke: `PREPARED_NOT_RUN`;
-- Production complessiva: `PARTIALLY_PROVISIONED`;
-- activation: `HOLD`;
-- real user data accepted: `false`.
+## 7. Prossime priorità autorizzate
 
-L'unico passaggio non automatizzabile da questa sessione è la creazione/sincronizzazione del nuovo Blueprint nel dashboard Render autenticato e l'inserimento delle variabili Production-scoped. Blueprint Render e valori secret non vengono simulati come esistenti finché non sono realmente creati.
+Ordine raccomandato per validità e riduzione del rischio:
 
-## 7. Maturità
-
-- architettura/dominio: **molto matura**;
-- persistenza/sicurezza/RLS: **matura**;
-- dependency security/riproducibilità: **matura per Beta**;
-- core operativo docente: **avanzato**;
-- Human/UX: **molto avanzato e verificato**;
-- Conoscenza: **molto matura**;
-- CI/E2E/HVA: **molto maturo per Beta**;
-- authoring UDA + export: **Beta-proven**;
-- performance: **Beta-proven entro budget**;
-- Production governance: **molto avanzata**;
-- Production infrastructure: **Supabase provisionato; Render handoff pronto ma servizio non ancora creato**.
-
-## 8. Prossime priorità autorizzate
-
-1. **P7-F2-RUNTIME** — sincronizzare manualmente il Blueprint Render Production, configurare le variabili Production-scoped fuori dal repository, creare un'identità tecnica Production dedicata ed eseguire `production-runtime/smoke`; nessun dato reale e nessuna attivazione;
-2. eseguire **restore rehearsal DB/Auth** nell'ambiente isolato;
-3. definire e provare **off-site Storage backup/restore**;
-4. introdurre **incident escalation minima** owner-visible;
-5. rivalutare l'activation gate;
-6. eseguire **load/scale isolato** prima di rollout più ampio;
+1. **RESTORE_REHEARSAL** DB/Auth su ambiente isolato;
+2. **OFFSITE_STORAGE_RECOVERY** con backup indipendente e prova di restore;
+3. **INCIDENT_ESCALATION_MINIMUM** owner-visible;
+4. nuova Production Readiness Review;
+5. solo successivamente decidere se promuovere uno SHA applicativo più recente su Production;
+6. load/scale isolato prima di rollout più ampio;
 7. pilotaggio continuativo settembre–ottobre.
 
 Non introdurre nuove macro-capability per riempire artificialmente la roadmap.
