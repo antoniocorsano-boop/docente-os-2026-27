@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator'
 import { createClient } from '@/lib/supabase/server'
 import { requestMagicLink, requestPasswordRecovery, signInWithPassword } from './actions'
+import { RecoverySubmitButton } from './recovery-submit-button'
 
 export const dynamic = 'force-dynamic'
 
@@ -82,7 +83,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                       Email
                       <input className="min-h-12 rounded-[var(--radius-sm)] border border-input bg-card px-3.5 text-base outline-none transition-shadow focus:border-primary focus:ring-3 focus:ring-primary/15" id="recovery-email" name="email" type="email" autoComplete="email" required />
                     </label>
-                    <Button variant="secondary" type="submit">Invia collegamento di recupero</Button>
+                    <RecoverySubmitButton />
                   </form>
                 </section>
 
