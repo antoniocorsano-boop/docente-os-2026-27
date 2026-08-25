@@ -1,0 +1,110 @@
+name: P7 Off-site Storage Recovery
+
+on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - '.github/scripts/run-offsite-storage-recovery.mjs'
+      - '.github/workflows/p7-offsite-storage-recovery.yml'
+      - 'ops/offsite-storage-recovery-receipt.json'
+      - 'docs/product/P7_OFFSITE_STORAGE_RECOVERY_RECEIPT.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  export-offsite-backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Initialize source Supabase stack
+        run: |
+          mkdir -p "$RUNNER_TEMP/source-supabase" "$RUNNER_TEMP/offsite-backup"
+          cd "$RUNNER_TEMP/source-supabase"
+          supabase init
+          supabase start
+      - name: Publish pending storage recovery status
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.payload.pull_request.head.sha,
+              state: 'pending',
+              context: 'p7-recovery/offsite-storage',
+              description: 'Off-site Storage recovery rehearsal in corso',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+      - name: Export independent binary backup and simulate source loss
+        env:
+          SUPABASE_REHEARSAL_DIR: ${{ runner.temp }}/source-supabase
+          OFFSITE_BACKUP_DIR: ${{ runner.temp }}/offsite-backup
+        run: node .github/scripts/run-offsite-storage-recovery.mjs export
+      - name: Upload independent off-site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: p7-offsite-storage-backup
+          path: ${{ runner.temp }}/offsite-backup/
+          if-no-files-found: error
+          retention-days: 1
+      - name: Destroy source Storage stack
+        if: always()
+        run: |
+          cd "$RUNNER_TEMP/source-supabase"
+          supabase stop --no-backup || true
+
+  restore-from-offsite-backup:
+    needs: export-offsite-backup
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Download independent off-site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: p7-offsite-storage-backup
+          path: ${{ runner.temp }}/offsite-backup
+      - name: Initialize fresh restore Supabase stack
+        run: |
+          mkdir -p "$RUNNER_TEMP/restore-supabase"
+          cd "$RUNNER_TEMP/restore-supabase"
+          supabase init
+          supabase start
+      - name: Restore binary object and verify SHA-256
+        env:
+          SUPABASE_REHEARSAL_DIR: ${{ runner.temp }}/restore-supabase
+          OFFSITE_BACKUP_DIR: ${{ runner.temp }}/offsite-backup
+        run: node .github/scripts/run-offsite-storage-recovery.mjs restore
+      - name: Publish final storage recovery status
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.payload.pull_request.head.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'p7-recovery/offsite-storage',
+              description: ok ? 'Off-site Storage recovery verificato' : 'Off-site Storage recovery non superato',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+      - name: Destroy fresh restore stack
+        if: always()
+        run: |
+          cd "$RUNNER_TEMP/restore-supabase"
+          supabase stop --no-backup || true
