@@ -1,6 +1,6 @@
 # DOCENTE OS — Stato corrente canonico
 
-Data: 2026-08-24  
+Data: 2026-08-25  
 Baseline prodotto certificata: `develop` @ `fa570f44bf79955068ac916581f5ddf24336fd30`  
 Stato documento: **CURRENT / CANONICAL STATUS**
 
@@ -10,7 +10,7 @@ Questo documento è la sintesi autorevole dello stato operativo. I checkpoint pr
 
 DOCENTE OS è una **Beta operativa avanzata**. Non è più un prototipo/MVP: persistenza, Auth, RLS, Storage, Planner, Orario, Calendario, Piano annuale, Progetta, Classi, Conoscenza, prima write assistita controllata, authoring UDA versionato, export PDF, account recovery, export workspace, dependency security, Storage integrity, performance baseline e governance di promozione sono implementati e sottoposti a gate.
 
-Non è ancora Production: l'ambiente Production non è stato creato e restano aperti load/scale isolato, restore rehearsal, off-site backup Storage, incident escalation e prova longitudinale.
+Non è ancora Production: l'ambiente Production non è stato creato né provisionato. La topologia dati e la specifica infrastrutturale sono però già decise e machine-validated. Restano aperti load/scale isolato, restore rehearsal, off-site backup Storage, incident escalation e prova longitudinale.
 
 ## 2. Runtime canonico
 
@@ -25,7 +25,7 @@ Non è ancora Production: l'ambiente Production non è stato creato e restano ap
 - Vercel non è gate canonico; le failure di quota/build-rate-limit non descrivono lo stato applicativo;
 - Netlify è legacy.
 
-La baseline applicativa certificata resta `fa570f44bf79955068ac916581f5ddf24336fd30`; i commit successivi P7-A/P7-B modificano governance/infrastruttura, non `product/`.
+La baseline applicativa certificata resta `fa570f44bf79955068ac916581f5ddf24336fd30`; i commit P7-A/P7-B/P7-C modificano governance/infrastruttura, non `product/`.
 
 ## 3. Macro-capability
 
@@ -96,13 +96,14 @@ V-07 PASS, V-08 PASS, X5-A PASS, X5-B PASS.
 - `x5-authoring/render-beta`;
 - `x5b-export/render-beta`;
 - `hva/runtime`;
-- `production-promotion/contract`.
+- `production-promotion/contract`;
+- `production-infrastructure/spec`.
 
 Il ciclo applicativo resta: slice piccola → CI/gate specialistico → HVA quando pertinente → merge exact-head → Render exact/equivalent → runtime gate → evidence/cleanup → aggiornamento canonico.
 
 ## 8. Operational hardening
 
-Stato: **IN PROGRESS — P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS**.
+Stato: **IN PROGRESS — P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS**.
 
 ### P0 — Security baseline: PASS
 
@@ -158,6 +159,27 @@ Decisione vincolante:
 
 Il validator `production-promotion/contract` rende questi vincoli permanenti.
 
+### P7-C — Production infrastructure spec: PASS / SPEC READY
+
+La specifica `ops/production-infrastructure-spec.json` è machine-readable e resta intenzionalmente `NOT_PROVISIONED`.
+
+Vincoli permanenti:
+
+- provider hosting Production ancora `UNDECIDED`;
+- servizio Production e progetto Supabase Production `UNASSIGNED` / `NOT_PROVISIONED`;
+- deploy Production solo da SHA immutabile certificato;
+- auto-deploy Production disabilitato;
+- segreti esclusivamente production-scoped e mai commessi nella specifica;
+- validator blocca project ref/URL Beta, URL app Beta e materiale di chiave Supabase reale;
+- DB/Auth/Storage Production devono restare materialmente separati dal Beta;
+- copia automatica Beta → Production e write cross-environment vietate;
+- stato dati iniziale `EMPTY_OR_EXPLICIT_OWNER_IMPORT`;
+- attivazione futura richiede schema, RLS, Storage policy, smoke autenticato, rollback target, release receipt e decisione umana coerente col contratto P7-A/B.
+
+Gate permanente: `production-infrastructure/spec` — **PASS** sulla PR #177, head `72b0ebf3b6b29c472d8fce5bd270e06a019e9883`; merge P7-C `8880f64a13d9f2e89c01ac081e980b5f70d3f393`.
+
+P7-C non ha creato servizi, domini, DNS, segreti, utenti o progetti Supabase e non ha migrato dati.
+
 ## 9. Maturità
 
 - architettura/dominio: **molto matura**;
@@ -172,11 +194,12 @@ Il validator `production-promotion/contract` rende questi vincoli permanenti.
 - data lifecycle/export: **Beta-proven**;
 - performance corrente: **Beta-proven entro budget**, load/scale non ancora provato;
 - promotion governance: **P7-A/P7-B formalizzati e gated**;
-- Production: **non creata**.
+- Production infrastructure governance: **P7-C formalizzata e gated, non provisionata**;
+- Production: **non creata / non provisionata / non attiva**.
 
 ## 10. Rischi e residui prioritari
 
-1. **P7-C Production infrastructure spec** — predisporre la specifica infrastrutturale separata senza segreti reali e senza attivazione; deve essere impossibile puntare al Supabase/URL Beta.
+1. **P7-D Production readiness review** — classificare formalmente prerequisiti e blocker prima di autorizzare qualunque provisioning reale.
 2. **Load/scale isolato** — dataset significativamente maggiori fuori dal Beta canonico.
 3. **Restore + off-site Storage** — restore rehearsal e copia indipendente degli originali.
 4. **Incident response** — escalation oltre ai monitor GitHub.
@@ -186,7 +209,7 @@ Il validator `production-promotion/contract` rende questi vincoli permanenti.
 
 ## 11. Ordine di maturazione autorizzato
 
-1. **P7-C** — specifica infrastrutturale Production separata, senza attivazione e senza segreti reali;
+1. **P7-D** — readiness review: distinguere prerequisiti obbligatori, blocker reali e watch accettabili prima del provisioning Production;
 2. definire una prova **load/scale isolata**;
 3. definire **off-site Storage**;
 4. eseguire restore rehearsal quando esiste un ambiente Supabase isolato;
