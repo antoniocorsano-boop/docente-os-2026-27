@@ -7,20 +7,26 @@ on:
       - develop
     paths:
       - 'ops/production-infrastructure-spec.json'
+      - 'ops/production-provisioning-receipt.json'
       - 'ops/production-promotion-contract.json'
       - 'docs/product/PRODUCTION_INFRASTRUCTURE_SPEC.md'
+      - 'docs/product/P7F_PRODUCTION_PROVISIONING_RECEIPT.md'
       - '.github/scripts/validate-production-infrastructure-spec.mjs'
       - '.github/workflows/production-infrastructure-spec.yml'
+      - 'product/supabase/migrations/**'
       - 'render.yaml'
   push:
     branches:
       - develop
     paths:
       - 'ops/production-infrastructure-spec.json'
+      - 'ops/production-provisioning-receipt.json'
       - 'ops/production-promotion-contract.json'
       - 'docs/product/PRODUCTION_INFRASTRUCTURE_SPEC.md'
+      - 'docs/product/P7F_PRODUCTION_PROVISIONING_RECEIPT.md'
       - '.github/scripts/validate-production-infrastructure-spec.mjs'
       - '.github/workflows/production-infrastructure-spec.yml'
+      - 'product/supabase/migrations/**'
       - 'render.yaml'
 
 permissions:

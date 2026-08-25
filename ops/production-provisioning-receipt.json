@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "gate": "P7-F",
+  "overallState": "PARTIALLY_PROVISIONED",
+  "activationState": "HOLD",
+  "realUserDataAccepted": false,
+  "supabase": {
+    "state": "PROVISIONED_SCHEMA_READY",
+    "projectRef": "xpxhlmpsvfzgsjxgieks",
+    "region": "eu-central-1",
+    "migrationsApplied": 36,
+    "canonicalMigrationNamesMatched": true,
+    "authUsers": 0,
+    "workspaceRows": 0,
+    "storageBucketCount": 1,
+    "storageObjectCount": 0,
+    "securityAdvisors": "CANONICAL_WARNING_PROFILE_NO_NEW_PRODUCTION_SPECIFIC_WARNING"
+  },
+  "render": {
+    "state": "NOT_PROVISIONED",
+    "reason": "AUTHENTICATED_RENDER_CONNECTOR_UNAVAILABLE",
+    "plannedServiceName": "docente-os-2026-27-production",
+    "region": "frankfurt",
+    "autoDeployAllowed": false
+  },
+  "bootstrapFinding": {
+    "migration": "0004_harden_event_trigger_rpc_exposure.sql",
+    "finding": "NOT_FRESH_INSTALL_SAFE",
+    "remediation": "GUARDED_OPTIONAL_FUNCTION_REVOKE"
+  },
+  "nextGate": "P7-F2"
+}

@@ -1,11 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "product": "DOCENTE OS",
   "environment": "production",
-  "provisioningState": "NOT_PROVISIONED",
+  "provisioningState": "PARTIALLY_PROVISIONED",
   "hosting": {
     "provider": "RENDER",
     "providerDecisionState": "SELECTED",
+    "serviceState": "NOT_PROVISIONED",
     "serviceName": "UNASSIGNED",
     "plannedServiceName": "docente-os-2026-27-production",
     "region": "frankfurt",
@@ -17,9 +18,13 @@
     "customDomainState": "DEFERRED_UNTIL_ACTIVATION_READY"
   },
   "supabase": {
-    "projectState": "NOT_PROVISIONED",
-    "projectRef": "UNASSIGNED",
-    "projectUrl": "UNASSIGNED",
+    "projectState": "PROVISIONED",
+    "projectRef": "xpxhlmpsvfzgsjxgieks",
+    "projectUrl": "https://xpxhlmpsvfzgsjxgieks.supabase.co",
+    "region": "eu-central-1",
+    "schemaState": "CANONICAL_MIGRATIONS_APPLIED",
+    "migrationCount": 36,
+    "dataState": "EMPTY",
     "separateFromBetaRequired": true,
     "databaseSeparateRequired": true,
     "authSeparateRequired": true,
@@ -40,7 +45,8 @@
     "crossEnvironmentDatabaseWritesAllowed": false,
     "crossEnvironmentStorageWritesAllowed": false,
     "initialState": "EMPTY_OR_EXPLICIT_OWNER_IMPORT",
-    "manualImportRequiresOwnerDecision": true
+    "manualImportRequiresOwnerDecision": true,
+    "realUserDataAccepted": false
   },
   "release": {
     "scope": "SINGLE_OWNER_PILOT",

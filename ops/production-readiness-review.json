@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "product": "DOCENTE OS",
   "review": "P7-D",
-  "lastUpdatedBy": "P7-E",
+  "lastUpdatedBy": "P7-F",
   "reviewState": "COMPLETE",
   "productionActivationDecision": "HOLD",
-  "inactiveProvisioningDecision": "ALLOWED",
+  "inactiveProvisioningDecision": "PARTIALLY_COMPLETED",
   "scope": "SINGLE_OWNER_PILOT",
   "principles": {
     "provisioningIsNotActivation": true,
@@ -33,6 +33,11 @@
       "id": "P7E_PROVIDER_SELECTION",
       "classification": "SATISFIED",
       "evidence": "hosting.provider=RENDER; region=frankfurt; autoDeployAllowed=false"
+    },
+    {
+      "id": "P7F_SUPABASE_PROVISIONING",
+      "classification": "SATISFIED",
+      "evidence": "Production Supabase xpxhlmpsvfzgsjxgieks; 36 migrations; zero auth users and workspace rows; zero Storage objects"
     },
     {
       "id": "SECURITY_BASELINE",
@@ -65,6 +70,26 @@
       "reason": "Production activation needs a minimal owner-visible escalation and incident receipt beyond a GitHub monitor failure."
     }
   ],
+  "provisioningResidues": [
+    {
+      "id": "RENDER_SERVICE_PROVISIONING",
+      "classification": "BLOCKER_FOR_FULL_INACTIVE_PROVISIONING",
+      "state": "NOT_PROVISIONED",
+      "reason": "No authenticated Render connector is available in this session; the planned isolated Render service has not been created."
+    },
+    {
+      "id": "PRODUCTION_SCOPED_ENV",
+      "classification": "BLOCKER_FOR_FULL_INACTIVE_PROVISIONING",
+      "state": "NOT_CONFIGURED",
+      "reason": "Production-scoped environment variables must be configured outside the repository after the Render service exists."
+    },
+    {
+      "id": "AUTHENTICATED_TECHNICAL_SMOKE",
+      "classification": "BLOCKER_FOR_FULL_INACTIVE_PROVISIONING",
+      "state": "NOT_RUN",
+      "reason": "Requires the inactive Render service and a dedicated Production technical identity."
+    }
+  ],
   "watches": [
     {
       "id": "LOAD_SCALE_ISOLATED",
@@ -75,8 +100,8 @@
     {
       "id": "LEAKED_PASSWORD_PROTECTION",
       "classification": "WATCH",
-      "state": "PLAN_DEPENDENT",
-      "reason": "Enable when the Supabase plan permits; current password recovery and authentication gates remain active."
+      "state": "NO_PRODUCTION_WARNING_CURRENTLY",
+      "reason": "Production security advisor currently does not report the Beta leaked-password warning; continue to verify before activation."
     },
     {
       "id": "LONGITUDINAL_USE",
@@ -92,8 +117,8 @@
     }
   ],
   "nextGate": {
-    "id": "P7-F",
-    "purpose": "Provision the isolated Production infrastructure in an inactive state for recovery and policy verification, without real user data or activation.",
+    "id": "P7-F2",
+    "purpose": "Create the isolated inactive Render service, configure production-scoped environment variables outside the repository, and run a synthetic authenticated technical smoke test without real user data or activation.",
     "mayCreateInactiveProduction": true,
     "mayCreateActiveProduction": false,
     "mayAcceptRealUserData": false
