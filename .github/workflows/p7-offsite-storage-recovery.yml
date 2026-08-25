@@ -6,7 +6,7 @@ on:
     paths:
       - '.github/scripts/run-offsite-storage-recovery.mjs'
       - '.github/workflows/p7-offsite-storage-recovery.yml'
-      - 'ops/offsite-storage-recovery-receipt.json'
+      - 'ops/offsite-storage-recovery-rehearsal-receipt.json'
       - 'docs/product/P7_OFFSITE_STORAGE_RECOVERY_RECEIPT.md'
   workflow_dispatch:
 
