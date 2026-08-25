@@ -8,15 +8,16 @@ const authRecovery = JSON.parse(fs.readFileSync('ops/supabase-auth-recovery-rehe
 const storageRecovery = JSON.parse(fs.readFileSync('ops/offsite-storage-recovery-rehearsal-receipt.json', 'utf8'))
 const storageDestination = JSON.parse(fs.readFileSync('ops/offsite-storage-destination-receipt.json', 'utf8'))
 const retentionLock = JSON.parse(fs.readFileSync('ops/offsite-storage-retention-lock-receipt.json', 'utf8'))
+const activationDecision = JSON.parse(fs.readFileSync('ops/production-activation-decision-receipt.json', 'utf8'))
 
 const fail = (message) => {
   console.error(`Production readiness review invalid: ${message}`)
   process.exit(1)
 }
 
-if (review.schemaVersion !== 7) fail('schemaVersion must be 7')
+if (review.schemaVersion !== 8) fail('schemaVersion must be 8')
 if (review.review !== 'P7-D' || review.reviewState !== 'CURRENT') fail('review must remain current P7-D')
-if (review.productionActivationDecision !== 'HOLD') fail('Production must remain HOLD until an explicit human activation decision')
+if (review.productionActivationDecision !== 'AUTHORIZED_PENDING_DEPLOY') fail('Production decision must be AUTHORIZED_PENDING_DEPLOY until immutable deploy and post-promotion smoke pass')
 if (review.inactiveProvisioningDecision !== 'COMPLETE') fail('inactive provisioning must be COMPLETE')
 if (review.scope !== 'SINGLE_OWNER_PILOT') fail('scope must remain SINGLE_OWNER_PILOT')
 
@@ -24,22 +25,26 @@ for (const key of ['provisioningIsNotActivation','inactiveInfrastructureMayBeUse
   if (review.principles?.[key] !== true) fail(`${key} must be true`)
 }
 
+if (review.humanActivationDecision?.state !== 'AUTHORIZED' || review.humanActivationDecision?.scope !== 'SINGLE_OWNER_PILOT') fail('explicit human activation decision missing')
+if (review.humanActivationDecision?.decisionDate !== '2026-08-25' || review.humanActivationDecision?.receipt !== 'ops/production-activation-decision-receipt.json') fail('human activation decision receipt mismatch')
+
 const requiredSatisfied = [
   'P7A_PROMOTION_CONTRACT','P7B_DATA_TOPOLOGY','P7C_INFRASTRUCTURE_SPEC','P7E_PROVIDER_SELECTION',
   'P7F_SUPABASE_PROVISIONING','P7F2_RUNTIME_PROVISIONING','DB_LOGICAL_RESTORE',
   'SUPABASE_AUTH_SERVICE_RECOVERY','OFFSITE_STORAGE_RECOVERY_REHEARSAL','OFFSITE_STORAGE_PERSISTENT_DESTINATION',
   'OFFSITE_STORAGE_RETENTION_LOCK','INCIDENT_ESCALATION_MINIMUM','SECURITY_BASELINE','BETA_RUNTIME_GATES',
+  'P7_PRODUCTION_ACTIVATION_DECISION',
 ]
 const satisfied = new Map((review.satisfied ?? []).map((item) => [item.id, item]))
 for (const id of requiredSatisfied) {
   if (satisfied.get(id)?.classification !== 'SATISFIED') fail(`missing satisfied prerequisite ${id}`)
 }
 
-if (infra.schemaVersion !== 4 || infra.provisioningState !== 'PROVISIONED_INACTIVE') fail('Production infrastructure must remain provisioned inactive')
+if (infra.schemaVersion !== 4 || infra.provisioningState !== 'PROVISIONED_INACTIVE') fail('Production infrastructure must remain provisioned inactive before promotion')
 if (infra.hosting?.provider !== 'RENDER' || infra.hosting?.serviceState !== 'PROVISIONED_INACTIVE' || infra.hosting?.region !== 'frankfurt') fail('Render Production baseline mismatch')
 if (infra.hosting?.autoDeployAllowed !== false) fail('Production auto-deploy must remain disabled')
-if (infra.supabase?.projectState !== 'PROVISIONED' || infra.supabase?.applicationDataState !== 'EMPTY') fail('Production Supabase must remain provisioned and empty')
-if (infra.data?.realUserDataAccepted !== false || infra.release?.activationState !== 'HOLD') fail('real data/activation invariant violated')
+if (infra.supabase?.projectState !== 'PROVISIONED' || infra.supabase?.applicationDataState !== 'EMPTY') fail('Production Supabase must remain provisioned and empty before promotion')
+if (infra.data?.realUserDataAccepted !== false || infra.release?.activationState !== 'HOLD') fail('runtime must remain HOLD and real-data-free until promotion smoke passes')
 
 if (receipt.schemaVersion !== 3 || receipt.gate !== 'P7-F2' || receipt.overallState !== 'PROVISIONED_INACTIVE' || receipt.activationState !== 'HOLD') fail('P7-F2 provisioning receipt mismatch')
 if (receipt.realUserDataAccepted !== false) fail('provisioning receipt must confirm no real user data')
@@ -59,7 +64,7 @@ if (storageDestination.schemaVersion !== 1 || storageDestination.gate !== 'OFFSI
 if (storageDestination.provider !== 'CLOUDFLARE_R2' || storageDestination.bucket !== 'docente-os-backup-eu' || storageDestination.jurisdiction !== 'EU') fail('unexpected persistent off-site destination')
 if (storageDestination.backupMedium !== 'CLOUDFLARE_R2_EU_PERSISTENT') fail('R2 backup medium mismatch')
 if (storageDestination.workflow?.runId !== 32888249839 || storageDestination.workflow?.exportJobId !== 97933720676 || storageDestination.workflow?.restoreJobId !== 97934645052) fail('R2 destination workflow receipt mismatch')
-if (storageDestination.safety?.syntheticDataOnly !== true || storageDestination.safety?.activationAuthorized !== false) fail('R2 destination gate must remain synthetic and non-promotive')
+if (storageDestination.safety?.syntheticDataOnly !== true || storageDestination.safety?.activationAuthorized !== false) fail('R2 destination historical gate must remain synthetic and non-promotive')
 
 if (retentionLock.schemaVersion !== 1 || retentionLock.gate !== 'OFFSITE_STORAGE_RETENTION_LOCK' || retentionLock.result !== 'PASS') fail('retention lock receipt must be PASS')
 if (retentionLock.provider !== 'CLOUDFLARE_R2' || retentionLock.bucket !== 'docente-os-backup-eu' || retentionLock.jurisdiction !== 'EU') fail('retention lock destination mismatch')
@@ -71,9 +76,22 @@ for (const key of ['initialUploadSucceeded','overwriteBlocked','deletionBlocked'
   if (retentionLock.evidence?.[key] !== true) fail(`retention evidence ${key} must be true`)
 }
 if (retentionLock.evidence?.overwriteError !== 'ObjectLockedByBucketPolicy' || retentionLock.evidence?.deletionError !== 'ObjectLockedByBucketPolicy') fail('R2 lock enforcement error mismatch')
-if (retentionLock.safety?.syntheticDataOnly !== true || retentionLock.safety?.productionApplicationTouched !== false || retentionLock.safety?.betaTouched !== false || retentionLock.safety?.realUserDataUsed !== false || retentionLock.safety?.activationAuthorized !== false) fail('retention lock safety invariant violated')
 
-if ((review.activationBlockers ?? []).length !== 0) fail('technical activation blockers must be empty after retention lock PASS')
+if (activationDecision.schemaVersion !== 1 || activationDecision.gate !== 'P7-PRODUCTION-ACTIVATION-DECISION') fail('activation decision receipt missing')
+if (activationDecision.decision !== 'AUTHORIZE_SINGLE_OWNER_PILOT' || activationDecision.decisionSource !== 'EXPLICIT_HUMAN_OWNER_AUTHORIZATION') fail('activation decision must be explicit human authorization')
+if (activationDecision.scope !== 'SINGLE_OWNER_PILOT' || activationDecision.audience !== 'named_owner_only') fail('activation scope mismatch')
+if (activationDecision.candidate?.sourceBranch !== 'develop') fail('candidate source branch must be develop')
+if (activationDecision.candidate?.repositoryHeadShaAtDecision !== 'db3d4ab014ad11dec4aeccdb5aa8740220e4ebde') fail('authorized repository SHA mismatch')
+if (activationDecision.candidate?.productEquivalentSha !== '0959c37e14e0224232f5040cb577c6332bd193fb') fail('product-equivalent SHA mismatch')
+if (activationDecision.candidate?.previousCertifiedProductionSha !== 'f33eb4785ed66630c3a162ae2f2c1bd5db64d532') fail('rollback target mismatch')
+if (activationDecision.readiness?.technicalActivationBlockers !== 0 || activationDecision.readiness?.productionReadinessReviewRunId !== 32892644910) fail('zero-blocker readiness evidence mismatch')
+for (const key of ['publicSignupAllowed','multiTenantOnboardingAllowed','automaticBetaDataCopyAllowed','betaCredentialReuseAllowed','autoDeployProductionAllowed']) {
+  if (activationDecision.releaseConstraints?.[key] !== false) fail(`${key} must remain false for single-owner pilot`)
+}
+if (activationDecision.releaseConstraints?.manualImportRequiresExplicitOwnerDecision !== true) fail('manual import must require explicit owner decision')
+if (activationDecision.stateAfterDecision !== 'AUTHORIZED_PENDING_DEPLOY' || activationDecision.deploymentCompleted !== false || activationDecision.postPromotionSmokeRequired !== true || activationDecision.realUserDataAccepted !== false || activationDecision.activationCompleted !== false) fail('activation must remain pending deploy and smoke')
+
+if ((review.activationBlockers ?? []).length !== 0) fail('technical activation blockers must remain empty')
 if ((review.provisioningResidues ?? []).length !== 0) fail('provisioning residues must remain empty')
 
 const watches = new Map((review.watches ?? []).map((item) => [item.id, item]))
@@ -81,8 +99,8 @@ for (const id of ['LOAD_SCALE_ISOLATED','LEAKED_PASSWORD_PROTECTION','LONGITUDIN
   if (watches.get(id)?.classification !== 'WATCH') fail(`${id} must remain WATCH for single-owner pilot`)
 }
 
-if (review.nextGate?.id !== 'P7-PRODUCTION-ACTIVATION-DECISION') fail('next gate must be explicit human Production activation decision')
-if (review.nextGate?.requiresExplicitHumanDecision !== true) fail('next gate must require an explicit human decision')
-if (review.nextGate?.mayCreateActiveProduction !== false || review.nextGate?.mayAcceptRealUserData !== false) fail('current review cannot itself activate Production or accept real data')
+if (review.nextGate?.id !== 'P7-PRODUCTION-PROMOTION') fail('next gate must be immutable Production promotion')
+if (review.nextGate?.candidateRepositorySha !== activationDecision.candidate.repositoryHeadShaAtDecision || review.nextGate?.productEquivalentSha !== activationDecision.candidate.productEquivalentSha) fail('promotion candidate mismatch')
+if (review.nextGate?.mayCreateActiveProduction !== true || review.nextGate?.mayAcceptRealUserData !== false || review.nextGate?.postPromotionSmokeRequired !== true) fail('promotion gate invariants invalid')
 
-console.log(`Production readiness PASS: activation=${review.productionActivationDecision}, technicalBlockers=${review.activationBlockers.length}, nextGate=${review.nextGate.id}`)
+console.log(`Production readiness PASS: decision=${review.productionActivationDecision}, candidate=${review.nextGate.candidateRepositorySha}, technicalBlockers=${review.activationBlockers.length}`)
