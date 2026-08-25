@@ -8,9 +8,9 @@ Questo documento è la sintesi autorevole dello stato operativo. I checkpoint pr
 
 ## 1. Classificazione
 
-DOCENTE OS è una **Beta operativa avanzata**. Persistenza, Auth, RLS, Storage, Planner, Orario, Calendario, Piano annuale, Progetta, Classi, Conoscenza, prima write assistita controllata, authoring UDA versionato, export PDF, account recovery, export workspace, dependency security, Storage integrity, performance baseline, promotion governance e Production readiness governance sono implementati e sottoposti a gate.
+DOCENTE OS è una **Beta operativa avanzata**. Persistenza, Auth, RLS, Storage, Planner, Orario, Calendario, Piano annuale, Progetta, Classi, Conoscenza, prima write assistita controllata, authoring UDA versionato, export PDF, account recovery, export workspace, dependency security, Storage integrity, performance baseline e governance Production sono implementati e sottoposti a gate.
 
-Non è ancora Production. L'ambiente Production non è creato né provisionato; la sua attivazione è formalmente **HOLD**. Topologia dati, specifica infrastrutturale e readiness review sono però già decise e machine-validated.
+Non è ancora Production. L'ambiente Production non è creato né provisionato; la sua attivazione è formalmente **HOLD**. Topologia dati, specifica infrastrutturale, readiness review e provider del pilot sono però già decisi e machine-validated.
 
 ## 2. Runtime canonico
 
@@ -24,7 +24,7 @@ Non è ancora Production. L'ambiente Production non è creato né provisionato; 
 - Vercel non è gate canonico; le failure di quota non descrivono lo stato applicativo;
 - Netlify è legacy.
 
-La baseline applicativa certificata resta `fa570f44bf79955068ac916581f5ddf24336fd30`; P7-A/B/C/D modificano governance e infrastruttura, non `product/`.
+La baseline applicativa certificata resta `fa570f44bf79955068ac916581f5ddf24336fd30`; P7-A/B/C/D/E modificano governance e infrastruttura, non `product/`.
 
 ## 3. Macro-capability
 
@@ -89,7 +89,7 @@ Il ciclo applicativo resta: slice piccola → CI/gate specialistico → HVA quan
 
 ## 8. Operational hardening
 
-Stato: **IN PROGRESS — P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS / P7-D PASS**.
+Stato: **IN PROGRESS — P0 PASS / P1 PASS / P2 PASS applicativo / P3 PASS / P4 PASS / P5 PASS / P6-A PASS / P6-B PASS / P7-A PASS / P7-B PASS / P7-C PASS / P7-D PASS / P7-E PASS**.
 
 ### P0–P6
 
@@ -120,43 +120,49 @@ SHA immutabile, decisione umana obbligatoria, promozione automatica vietata, rol
 ### P7-C — Production infrastructure spec: PASS / SPEC READY
 
 - infrastruttura Production `NOT_PROVISIONED`;
-- provider hosting `UNDECIDED`;
-- servizio e progetto Supabase Production `UNASSIGNED`;
 - deploy solo da SHA immutabile certificato;
 - auto-deploy Production disabilitato;
 - segreti production-scoped, mai nel repository;
 - validator blocca riferimenti al Beta e materiale di chiave reale;
-- dati iniziali `EMPTY_OR_EXPLICIT_OWNER_IMPORT`;
-- nessun servizio, dominio, DNS, segreto, utente o progetto Supabase creato.
+- dati iniziali `EMPTY_OR_EXPLICIT_OWNER_IMPORT`.
 
 ### P7-D — Production Readiness Review: PASS / ACTIVATION HOLD
 
-Il gate `production-readiness/review` è **PASS** sulla PR #179, head `c73fb5a615a7cacabe13c24237d649adf1342d60`; merge P7-D `1ef1dbddee32ef9fe32034e59fc6e95afbeb2a3a`.
-
-Il PASS certifica la **coerenza della review**, non la readiness finale. La decisione machine-readable è:
-
-- `productionActivationDecision = HOLD`;
-- `inactiveProvisioningDecision = ALLOWED_AFTER_PROVIDER_SELECTION`;
-- provisioning e attivazione sono separati;
-- infrastruttura inattiva può essere usata per prove di recovery;
-- dati reali richiedono un activation gate successivo.
-
-**Blocker di attivazione con dati reali:**
+Il PASS certifica la **coerenza della review**, non la readiness finale. Restano blocker di attivazione con dati reali:
 
 1. `RESTORE_REHEARSAL` — DB/Auth recovery non ancora provato su ambiente isolato;
 2. `OFFSITE_STORAGE_RECOVERY` — copia indipendente degli originali e restore Storage non ancora provati;
 3. `INCIDENT_ESCALATION_MINIMUM` — manca una escalation owner-visible con receipt minima oltre al monitor GitHub.
 
-**Blocker di provisioning:**
+Watch non bloccanti per il pilot: load/scale isolato, leaked-password protection, prova longitudinale e retention/account deletion.
 
-- `PRODUCTION_PROVIDER_SELECTION` — il provider hosting Production resta `UNDECIDED`.
+### P7-E — Provider selection + inactive provisioning plan: PASS / PROVIDER SELECTED
 
-**Watch non bloccanti per il pilot single-owner:**
+PR #181, head `67c3358a3d81044369bbd93e822843f9eba76160`, merge `c88a219b9694663f91fe17128e959909fe6b3ced`.
 
-- load/scale isolato, da chiudere prima di rollout più ampio;
-- leaked-password protection, plan-dependent;
-- prova longitudinale;
-- retention/account deletion, che resta disabilitata.
+Decisione:
+
+- provider applicativo Production pilot: **Render**;
+- regione: **Frankfurt**;
+- nome pianificato servizio: `docente-os-2026-27-production`;
+- deploy solo da SHA immutabile certificato;
+- auto-deploy disabilitato;
+- servizio reale ancora `UNASSIGNED` / non creato;
+- Supabase Production ancora `NOT_PROVISIONED` / `UNASSIGNED`;
+- tier runtime da scegliere prima del provisioning;
+- dominio custom rinviato finché l'activation gate non è pronto.
+
+I gate `production-infrastructure/spec` e `production-readiness/review` sono entrambi **PASS** sul medesimo head P7-E.
+
+La readiness è aggiornata a:
+
+- `productionActivationDecision = HOLD`;
+- `inactiveProvisioningDecision = ALLOWED`;
+- `P7E_PROVIDER_SELECTION = SATISFIED`;
+- nessun blocker di provisioning residuo;
+- i tre blocker P7-D restano blocker dell'attivazione, non del provisioning inattivo.
+
+P7-E non ha creato servizi Render, progetti Supabase, domini, segreti, utenti o dati Production.
 
 ## 9. Maturità
 
@@ -171,12 +177,12 @@ Il PASS certifica la **coerenza della review**, non la readiness finale. La deci
 - account recovery: **verificato**;
 - data lifecycle/export: **Beta-proven**;
 - performance: **Beta-proven entro budget**, load/scale non ancora provato;
-- Production governance: **P7-A/B/C/D formalizzati e gated**;
-- Production: **non creata / non provisionata / non attiva / activation HOLD**.
+- Production governance: **P7-A/B/C/D/E formalizzati e gated**;
+- Production: **provider selezionato / non provisionata / non attiva / activation HOLD**.
 
 ## 10. Rischi e residui prioritari
 
-1. **P7-E provider selection + inactive provisioning plan** — scegliere provider, service boundary, regione e secret mechanism senza attivazione né dati reali.
+1. **P7-F inactive provisioning** — creare ambiente Render + Supabase Production isolato esclusivamente per recovery/policy testing, senza attivazione né dati reali.
 2. **Restore rehearsal DB/Auth** — blocker di attivazione.
 3. **Off-site Storage backup/restore** — blocker di attivazione.
 4. **Incident escalation minima** — blocker di attivazione.
@@ -187,7 +193,7 @@ Il PASS certifica la **coerenza della review**, non la readiness finale. La deci
 
 ## 11. Ordine di maturazione autorizzato
 
-1. **P7-E** — scegliere il provider Production e definire il piano di provisioning inattivo; nessuna attivazione e nessun dato reale;
+1. **P7-F** — provisionare solo infrastruttura Production inattiva e isolata; nessun dato reale e nessuna attivazione;
 2. usare l'ambiente isolato per chiudere **restore rehearsal DB/Auth**;
 3. definire e provare **off-site Storage backup/restore**;
 4. introdurre una **incident escalation minima** owner-visible;
