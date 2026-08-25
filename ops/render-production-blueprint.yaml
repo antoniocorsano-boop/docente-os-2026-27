@@ -1,0 +1,25 @@
+# DOCENTE OS — Production Render handoff blueprint
+# P7-F2: this file is intentionally NOT the linked Beta render.yaml.
+# Create/sync it explicitly in Render only after the Production-scoped env vars are supplied.
+services:
+  - type: web
+    name: docente-os-2026-27-production
+    runtime: node
+    plan: free
+    region: frankfurt
+    repo: https://github.com/antoniocorsano-boop/docente-os-2026-27
+    branch: develop
+    rootDir: product
+    buildCommand: npm ci --no-audit --no-fund && npm run build
+    startCommand: npm start
+    autoDeployTrigger: off
+    healthCheckPath: /
+    envVars:
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: OPENAI_VISION_MODEL
+        value: gpt-5.6
