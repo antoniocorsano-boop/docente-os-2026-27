@@ -1,12 +1,12 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "product": "DOCENTE OS",
   "environment": "production",
-  "provisioningState": "PROVISIONED_INACTIVE",
+  "provisioningState": "ACTIVE_SINGLE_OWNER_PILOT",
   "hosting": {
     "provider": "RENDER",
     "providerDecisionState": "SELECTED",
-    "serviceState": "PROVISIONED_INACTIVE",
+    "serviceState": "ACTIVE",
     "serviceName": "docente-os-2026-27-production",
     "serviceUrl": "https://docente-os-2026-27-production.onrender.com",
     "region": "frankfurt",
@@ -14,9 +14,9 @@
     "deployModel": "IMMUTABLE_CERTIFIED_SHA",
     "autoDeployAllowed": false,
     "healthCheckPath": "/",
-    "runtimeTier": "FREE_INACTIVE_VALIDATION_ONLY",
-    "servedCommitAtCertifiedSmoke": "f33eb4785ed66630c3a162ae2f2c1bd5db64d532",
-    "customDomainState": "DEFERRED_UNTIL_ACTIVATION_READY"
+    "runtimeTier": "FREE_SINGLE_OWNER_PILOT",
+    "servedCommitAtCertifiedSmoke": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "customDomainState": "DEFERRED"
   },
   "supabase": {
     "projectState": "PROVISIONED",
@@ -46,7 +46,11 @@
   "runtimeVerification": {
     "state": "PASS",
     "workflow": "Production Runtime Smoke",
-    "runId": 32836204567,
+    "runId": 32903982577,
+    "jobId": 97983821918,
+    "expectedCommit": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "buildCommit": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "exactCandidateShaVerified": true,
     "authenticatedTechnicalIdentity": true,
     "currentWorkspaceContextRpc": "PASS",
     "mutatingActionsPerformed": false,
@@ -66,7 +70,8 @@
     "publicSignupAllowed": false,
     "multiTenantOnboardingAllowed": false,
     "humanPromotionDecisionRequired": true,
-    "activationState": "HOLD"
+    "activationState": "ACTIVE",
+    "releaseReceipt": "ops/production-release-receipt.json"
   },
   "activationPrerequisites": {
     "promotionContractPassRequired": true,
