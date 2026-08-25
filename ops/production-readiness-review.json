@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "review": "P7-D",
+  "reviewState": "COMPLETE",
+  "productionActivationDecision": "HOLD",
+  "inactiveProvisioningDecision": "ALLOWED_AFTER_PROVIDER_SELECTION",
+  "scope": "SINGLE_OWNER_PILOT",
+  "principles": {
+    "provisioningIsNotActivation": true,
+    "inactiveInfrastructureMayBeUsedForRecoveryTesting": true,
+    "realUserDataRequiresActivationGate": true,
+    "betaAndProductionMustRemainSeparated": true
+  },
+  "satisfied": [
+    {
+      "id": "P7A_PROMOTION_CONTRACT",
+      "classification": "SATISFIED",
+      "evidence": "production-promotion/contract"
+    },
+    {
+      "id": "P7B_DATA_TOPOLOGY",
+      "classification": "SATISFIED",
+      "evidence": "productionDataTopologyState=SEPARATE"
+    },
+    {
+      "id": "P7C_INFRASTRUCTURE_SPEC",
+      "classification": "SATISFIED",
+      "evidence": "production-infrastructure/spec"
+    },
+    {
+      "id": "SECURITY_BASELINE",
+      "classification": "SATISFIED",
+      "evidence": "ops-security/supabase + ops-security/dependencies"
+    },
+    {
+      "id": "BETA_RUNTIME_GATES",
+      "classification": "SATISFIED",
+      "evidence": "canonical Beta application/runtime gates"
+    }
+  ],
+  "activationBlockers": [
+    {
+      "id": "RESTORE_REHEARSAL",
+      "classification": "BLOCKER",
+      "state": "NOT_PROVEN",
+      "reason": "Real production data must not be accepted until DB/Auth recovery has been rehearsed in an isolated environment."
+    },
+    {
+      "id": "OFFSITE_STORAGE_RECOVERY",
+      "classification": "BLOCKER",
+      "state": "NOT_PROVEN",
+      "reason": "Original Storage objects need an independent copy and a verified restore path before destructive-loss scenarios are acceptable."
+    },
+    {
+      "id": "INCIDENT_ESCALATION_MINIMUM",
+      "classification": "BLOCKER",
+      "state": "NOT_IMPLEMENTED",
+      "reason": "Production activation needs a minimal owner-visible escalation and incident receipt beyond a GitHub monitor failure."
+    },
+    {
+      "id": "PRODUCTION_PROVIDER_SELECTION",
+      "classification": "BLOCKER_FOR_PROVISIONING",
+      "state": "UNDECIDED",
+      "reason": "The hosting provider/service must be explicitly selected before inactive infrastructure is provisioned."
+    }
+  ],
+  "watches": [
+    {
+      "id": "LOAD_SCALE_ISOLATED",
+      "classification": "WATCH",
+      "state": "NOT_PROVEN",
+      "reason": "Not an activation blocker for a named single-owner pilot while current Beta performance budgets remain satisfied; required before broader rollout."
+    },
+    {
+      "id": "LEAKED_PASSWORD_PROTECTION",
+      "classification": "WATCH",
+      "state": "PLAN_DEPENDENT",
+      "reason": "Enable when the Supabase plan permits; current password recovery and authentication gates remain active."
+    },
+    {
+      "id": "LONGITUDINAL_USE",
+      "classification": "WATCH",
+      "state": "NOT_PROVEN",
+      "reason": "Required for maturity claims beyond the controlled pilot, not for provisioning an inactive isolated environment."
+    },
+    {
+      "id": "RETENTION_ACCOUNT_DELETION",
+      "classification": "WATCH",
+      "state": "DEFERRED",
+      "reason": "Remain disabled until export and recovery evidence is sufficient."
+    }
+  ],
+  "nextGate": {
+    "id": "P7-E",
+    "purpose": "Select the production hosting provider and define an inactive provisioning plan without activation or real user data.",
+    "mayCreateActiveProduction": false,
+    "mayAcceptRealUserData": false
+  }
+}
