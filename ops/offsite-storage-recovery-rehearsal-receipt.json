@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "gate": "OFFSITE_STORAGE_RECOVERY_REHEARSAL",
+  "result": "PASS",
+  "implementation": {
+    "pullRequest": 197,
+    "mergeSha": "5f1c91030b921e1c495d88a6ff1b656290208dfe"
+  },
+  "workflow": {
+    "name": "P7 Off-site Storage Recovery",
+    "runId": 32842616571,
+    "headSha": "9c792f4e6c98943f4c3c1414cde073f603587319",
+    "sourceJobId": 97785243034,
+    "restoreJobId": 97785811124
+  },
+  "evidence": {
+    "sourceEnvironment": "EPHEMERAL_LOCAL_SUPABASE_RUNNER_A",
+    "restoreEnvironment": "EPHEMERAL_LOCAL_SUPABASE_RUNNER_B",
+    "rehearsalBackupMedium": "GITHUB_ACTIONS_ARTIFACT",
+    "artifactId": 9561123190,
+    "artifactSha256": "139bac8e78baf46e4b9161f1ae294cde4ee76f86b437332c54a549200952c75d",
+    "separateRunnerBoundary": true,
+    "sourceStorageServiceDestroyedBeforeRestore": true,
+    "freshRestoreStorageService": true,
+    "sourceObjectDeleted": true,
+    "sourceLossVerified": true,
+    "binaryRestoreVerified": true,
+    "sha256Verified": true,
+    "byteLengthVerified": true,
+    "objectByteLength": 131071,
+    "objectSha256": "ab2f638970566aaf3f495b7a3860612f7bd91a2afe5d837e835a27f11ba811be"
+  },
+  "safety": {
+    "syntheticDataOnly": true,
+    "productionTouched": false,
+    "betaTouched": false,
+    "realUserDataUsed": false,
+    "rehearsalArtifactApprovedForRealProfessionalData": false,
+    "activationAuthorized": false
+  },
+  "residual": {
+    "id": "OFFSITE_STORAGE_PERSISTENT_DESTINATION",
+    "state": "NOT_CONFIGURED",
+    "classification": "ACTIVATION_BLOCKER",
+    "reason": "The rehearsal proves independent binary recovery, but the 1-day GitHub Actions artifact is rehearsal-only and is not an approved persistent destination for real professional Storage objects."
+  }
+}
