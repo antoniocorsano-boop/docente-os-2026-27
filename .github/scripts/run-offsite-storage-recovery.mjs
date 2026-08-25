@@ -11,6 +11,7 @@ if (!['export', 'restore'].includes(mode)) {
 
 const rehearsalDir = process.env.SUPABASE_REHEARSAL_DIR
 const backupDir = process.env.OFFSITE_BACKUP_DIR
+const offsiteMedium = process.env.OFFSITE_BACKUP_MEDIUM || 'GITHUB_ACTIONS_ARTIFACT'
 if (!rehearsalDir || !backupDir) throw new Error('SUPABASE_REHEARSAL_DIR and OFFSITE_BACKUP_DIR are required')
 
 const statusRaw = execFileSync('supabase', ['status', '--output', 'json'], {
@@ -97,7 +98,7 @@ if (mode === 'export') {
     sha256: sourceHash,
     syntheticDataOnly: true,
     sourceEnvironment: 'EPHEMERAL_LOCAL_SUPABASE_RUNNER_A',
-    offsiteMedium: 'GITHUB_ACTIONS_ARTIFACT',
+    offsiteMedium,
   }, null, 2))
 
   await removeObject()
@@ -108,6 +109,7 @@ if (mode === 'export') {
     stage: 'EXPORT_AND_SOURCE_LOSS',
     sourceStorageExercised: true,
     independentBackupWritten: true,
+    independentBackupMedium: offsiteMedium,
     sourceObjectDeleted: true,
     sourceLossVerified: true,
     byteLength: downloaded.length,
@@ -123,6 +125,9 @@ if (mode === 'restore') {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
   const backupBytes = fs.readFileSync(backupObjectPath)
   if (manifest.gate !== 'OFFSITE_STORAGE_RECOVERY' || manifest.syntheticDataOnly !== true) throw new Error('invalid off-site manifest')
+  if (process.env.OFFSITE_BACKUP_MEDIUM && manifest.offsiteMedium !== process.env.OFFSITE_BACKUP_MEDIUM) {
+    throw new Error(`off-site medium mismatch: manifest=${manifest.offsiteMedium} expected=${process.env.OFFSITE_BACKUP_MEDIUM}`)
+  }
   if (backupBytes.length !== manifest.byteLength || sha256(backupBytes) !== manifest.sha256) throw new Error('off-site backup hash/length mismatch before restore')
 
   await createFreshBucket()
