@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS storage.objects (
   bucket_id text REFERENCES storage.buckets(id) ON DELETE CASCADE,
   name text NOT NULL,
   owner uuid,
+  owner_id text,
   metadata jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
