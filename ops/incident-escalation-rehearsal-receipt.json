@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "gate": "INCIDENT_ESCALATION_MINIMUM",
+  "result": "PASS",
+  "channel": "GITHUB_ISSUE",
+  "repository": "antoniocorsano-boop/docente-os-2026-27",
+  "issueNumber": 193,
+  "issueState": "closed",
+  "stateReason": "completed",
+  "ownerAssignee": "antoniocorsano-boop",
+  "severity": "SEV-4",
+  "environment": "PRODUCTION_INACTIVE",
+  "syntheticDataOnly": true,
+  "realDataInvolved": false,
+  "productionTouched": false,
+  "betaTouched": false,
+  "mutatingApplicationActionsPerformed": false,
+  "implementationMerge": "075bf9e5f00b76ee1555656a98d87a88caa714b4",
+  "contractGateRun": 32838659845,
+  "finalReceiptRequired": true,
+  "ownerVisibilityVerified": true,
+  "closedAt": "2026-08-25T10:45:02Z"
+}
