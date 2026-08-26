@@ -24,7 +24,7 @@ const confirmedAssignment = {
   weeklyMinutes: 120,
 }
 
-test('complete context enters maintenance mode', () => {
+test('complete essential context enters maintenance mode while textbooks remain optional', () => {
   const model = buildSettingsExperienceModel({
     settings: baseSettings,
     disciplines: [discipline],
@@ -33,8 +33,10 @@ test('complete context enters maintenance mode', () => {
   })
 
   assert.equal(model.mode, 'MAINTENANCE')
-  assert.equal(model.readyCount, 5)
+  assert.equal(model.readyCount, 6)
+  assert.equal(model.totalCount, 6)
   assert.equal(model.nextArea, null)
+  assert.equal(model.areas.find((area) => area.key === 'textbooks')?.status, 'OPTIONAL')
 })
 
 test('missing disciplines block cattedra and guide to disciplines first', () => {
@@ -78,6 +80,32 @@ test('provisional teaching assignments require review after every class is cover
   assert.equal(model.nextArea?.key, 'assignments')
 })
 
+test('a proposed textbook becomes an explicit settings review step', () => {
+  const model = buildSettingsExperienceModel({
+    settings: baseSettings,
+    disciplines: [discipline],
+    sections: [confirmedSection],
+    assignments: [confirmedAssignment],
+    textbookAdoptions: [{ teachingAssignmentId: 'a1', status: 'PROPOSED', usageKind: 'ADOPTED' }],
+  })
+
+  assert.equal(model.areas.find((area) => area.key === 'textbooks')?.status, 'REVIEW')
+  assert.equal(model.nextArea?.key, 'textbooks')
+})
+
+test('a confirmed adopted textbook completes the textbook area', () => {
+  const model = buildSettingsExperienceModel({
+    settings: baseSettings,
+    disciplines: [discipline],
+    sections: [confirmedSection],
+    assignments: [confirmedAssignment],
+    textbookAdoptions: [{ teachingAssignmentId: 'a1', status: 'CONFIRMED', usageKind: 'ADOPTED' }],
+  })
+
+  assert.equal(model.areas.find((area) => area.key === 'textbooks')?.status, 'COMPLETE')
+  assert.equal(model.nextArea, null)
+})
+
 test('incomplete professional context is always the first guided step', () => {
   const model = buildSettingsExperienceModel({
     settings: { ...baseSettings, teacherDisplayName: '' },
@@ -87,5 +115,5 @@ test('incomplete professional context is always the first guided step', () => {
   })
 
   assert.equal(model.nextArea?.key, 'context')
-  assert.equal(model.readyCount, 1)
+  assert.equal(model.readyCount, 2)
 })
