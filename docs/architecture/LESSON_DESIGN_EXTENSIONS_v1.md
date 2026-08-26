@@ -84,7 +84,9 @@ Every extension carries a source kind and optional source reference/label:
 
 This contract intentionally separates provenance from authority. A web result, an AI-produced micro-video or an editorial suggestion can be useful source material but cannot become accepted teaching sequence content without the teacher.
 
-## Current v1 tool
+## Current v1 tools
+
+### Knowledge attachment
 
 The first operational tool reuses the existing Knowledge Base.
 
@@ -93,6 +95,31 @@ In `Prepara`, DOCENTE OS derives up to four Knowledge resources explicitly perti
 That explicit click creates the extension proposal and immediately crosses the human acceptance boundary because the teacher is selecting the exact already-visible resource. Tool-generated proposals that have not been individually selected MUST NOT use this shortcut.
 
 The attached source remains in Knowledge. The lesson stores only a binding/provenance layer.
+
+### Local activation-question proposal
+
+The first sequence-design tool is `LESSON_ACTIVATION_QUESTION_V1`.
+
+It is deliberately local and deterministic. It reads only the current canonical lesson projection already resolved by DOCENTE OS, using the lesson title and objective as grounding. It does not call an LLM, news source, video provider or any other external service.
+
+The tool creates a `HOOK_QUESTION` extension with:
+
+- status `PROPOSED` through the existing repository boundary;
+- placement `START`;
+- explicit provenance `EDITORIAL_KNOWLEDGE` with `projection:<projectionId>` as source reference;
+- payload markers `toolId`, `dedupeKey` and `executionKind = LOCAL_DETERMINISTIC`;
+- grounding to the current Bxx/projection/title/objective;
+- no direct acceptance.
+
+The proposal appears in **Da controllare**. Only the existing explicit teacher action **Aggiungi alla lezione** may cross `PROPOSED → ACCEPTED` and make the question part of `In classe`.
+
+The mutation path resolves the lesson through `resolveRuntimeHumanTaskLessonProjection`, the same runtime resolver used by the Lesson Workspace page. Runtime-only lesson projections therefore use the same stale-projection guard as the rendered page rather than falling back to the legacy projection map.
+
+Tool deduplication is enforced at the persistence boundary, not by a read-before-write UI check. Migration `0038_lesson_design_tool_deduplication.sql` adds a partial UNIQUE index over the full canonical lesson context plus `payload.dedupeKey`. Concurrent submissions therefore converge on one stored proposal: the winning insert creates the row and a conflicting request retrieves that same row after PostgreSQL returns `23505`.
+
+Removing the stored proposal makes the tool available again. If the canonical projection changes, the normal lesson-context guard requires a reload before a new mutation.
+
+This tool is intentionally a proof of the full proposal lifecycle before connecting richer adapters. It establishes that a lesson-design tool can be useful without weakening human authority or pretending that an external provider exists.
 
 ## Planned editorial knowledge integration
 
@@ -120,7 +147,7 @@ A hook tool may propose:
 1. a short relevant quotation, with attribution/provenance;
 2. a verified current or local event, with source and date;
 3. a brief micro-video or storyboard generated/assembled through an approved tool adapter;
-4. an activation question linked to the hook.
+4. further activation-question variants grounded in approved editorial knowledge.
 
 No provider is made canonical by this v1 foundation. The current contextual assistant in DOCENTE OS is a local/deterministic contextual responder; this tranche does not pretend that an external generative-video or news provider is already connected.
 
@@ -152,6 +179,9 @@ Anonymous student self-assessment/lesson/UDA feedback will be a separate subsyst
 - Stale anchored additions fail closed.
 - Resource attachments stay resources, not sequence steps.
 - Relevant Knowledge resources can be attached from `Prepara` without duplicating the source.
+- The local activation-question tool creates only a grounded `PROPOSED` extension and never self-accepts.
+- Runtime-only lesson projections use the same resolver for rendering and mutation.
+- Tool proposals declaring a `dedupeKey` are unique per canonical lesson context at the database boundary.
 - Accepted additions remain visible after refresh.
 - Removing an addition does not remove its Knowledge source or mutate the annual plan.
 - No external AI/news/video provider is falsely claimed as connected by this tranche.

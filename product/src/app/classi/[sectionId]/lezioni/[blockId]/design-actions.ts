@@ -3,6 +3,10 @@
 import { revalidatePath } from 'next/cache'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { filterProgettaItemsByFocus } from '@/app/progetta/progetta-model'
+import {
+  buildLessonActivationQuestionProposal,
+  LESSON_ACTIVATION_QUESTION_TOOL_ID,
+} from '@/core/application/lesson-activation-question-tool'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import {
@@ -11,7 +15,7 @@ import {
 } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { humanizeKnowledgeTitle } from '@/core/presentation/product-language'
-import { resolveHumanTaskLessonProjection } from '@/core/presentation/human-task-content'
+import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 
 export async function acceptLessonDesignExtension(formData: FormData) {
   const lesson = await requireLessonContext(formData)
@@ -24,6 +28,26 @@ export async function removeLessonDesignExtension(formData: FormData) {
   const lesson = await requireLessonContext(formData)
   const extensionId = requiredText(formData, 'extensionId')
   await new SupabaseLessonDesignRepository().remove(lesson.designContext, extensionId)
+  revalidateLesson(lesson.sectionId, lesson.blockId)
+}
+
+export async function proposeLessonActivationQuestion(formData: FormData) {
+  const lesson = await requireLessonContext(formData)
+  const repository = new SupabaseLessonDesignRepository()
+  await repository.addToolProposalOnce(
+    lesson.designContext,
+    buildLessonActivationQuestionProposal({
+      sectionId: lesson.sectionId,
+      canonicalPlanAssetId: lesson.designContext.canonicalPlanAssetId,
+      canonicalGenerationId: lesson.designContext.canonicalGenerationId,
+      blockId: lesson.blockId,
+      projectionId: lesson.designContext.projectionId,
+      lessonTitle: lesson.projection.title,
+      objective: lesson.projection.objective,
+    }),
+    LESSON_ACTIVATION_QUESTION_TOOL_ID,
+  )
+
   revalidateLesson(lesson.sectionId, lesson.blockId)
 }
 
@@ -88,7 +112,7 @@ async function requireLessonContext(formData: FormData) {
   const grade = GRADE_UI[section.grade]
   const block = buildBlocks(grade).find((item) => item.id === blockId)
   if (!block) throw new Error('Block is outside the canonical annual plan')
-  const projection = resolveHumanTaskLessonProjection(grade, block)
+  const projection = resolveRuntimeHumanTaskLessonProjection(grade, block)
   if (!projection || projection.projectionId !== projectionId) {
     throw new Error('Lesson projection has changed; reload before modifying the lesson design')
   }
@@ -110,6 +134,7 @@ async function requireLessonContext(formData: FormData) {
     blockId,
     uda: block.uda,
     pack: block.pack,
+    projection,
   }
 }
 

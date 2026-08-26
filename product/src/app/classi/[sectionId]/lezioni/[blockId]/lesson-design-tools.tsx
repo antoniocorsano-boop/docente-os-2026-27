@@ -5,6 +5,7 @@ import type { LessonDesignExtension } from '@/core/domain/lesson-design-extensio
 import {
   acceptLessonDesignExtension,
   attachKnowledgeResourceToLesson,
+  proposeLessonActivationQuestion,
   removeLessonDesignExtension,
 } from './design-actions'
 
@@ -14,6 +15,8 @@ export type LessonKnowledgeSuggestion = {
   summary: string
   category: string
 }
+
+const ACTIVATION_QUESTION_TOOL_ID = 'LESSON_ACTIVATION_QUESTION_V1'
 
 export function LessonDesignTools({
   sectionId,
@@ -32,6 +35,7 @@ export function LessonDesignTools({
   const accepted = extensions.filter((extension) => extension.status === 'ACCEPTED')
   const acceptedSequence = accepted.filter((extension) => !isResource(extension.kind))
   const acceptedResources = accepted.filter((extension) => isResource(extension.kind))
+  const activationQuestionPresent = extensions.some((extension) => extension.payload.toolId === ACTIVATION_QUESTION_TOOL_ID)
 
   return (
     <section className="lessonDesignTools" aria-labelledby="lesson-design-tools-title">
@@ -44,6 +48,21 @@ export function LessonDesignTools({
         <strong>La sequenza canonica resta intatta.</strong>
         <p>Frasi, eventi, micro-video, verifiche e materiali entrano nella lezione solo dopo una tua scelta esplicita. Le proposte degli strumenti compariranno qui prima di essere usate in classe.</p>
         <div aria-label="Tipi di attivazione previsti"><span>Frase</span><span>Evento</span><span>Micro-video</span><span>Domanda</span><span>Verifica rapida</span></div>
+      </div>
+
+      <div className="lessonDesignAvailableTools" aria-label="Strumenti disponibili">
+        <div className="lessonDesignSubheading"><strong>Prova uno strumento</strong><small>1 disponibile</small></div>
+        <article>
+          <div>
+            <span>DOMANDA · LOCALE</span>
+            <strong>Domanda di attivazione</strong>
+            <p>Parte dal titolo e dall’obiettivo della lezione canonica. Non usa servizi esterni e crea soltanto una proposta da controllare.</p>
+          </div>
+          <form action={proposeLessonActivationQuestion}>
+            <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
+            <button type="submit" disabled={activationQuestionPresent}>{activationQuestionPresent ? 'Già proposta' : 'Proponi domanda'}</button>
+          </form>
+        </article>
       </div>
 
       {proposals.length ? (

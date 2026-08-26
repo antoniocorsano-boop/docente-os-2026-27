@@ -8,16 +8,18 @@
 .lessonDesignSubheading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 2px 8px}
 .lessonDesignSubheading strong{font-size:14px}
 .lessonDesignSubheading small{display:grid;place-items:center;min-width:25px;height:25px;padding:0 7px;border-radius:999px;background:#eef3ff;color:var(--brand,#2864e8);font-size:11px;font-weight:900}
-.lessonDesignProposalList,.lessonDesignAccepted,.lessonKnowledgeSuggestions{display:grid;gap:9px}
-.lessonDesignProposal,.lessonKnowledgeSuggestions article,.lessonDesignAcceptedItem{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:14px;border:1px solid #e8ecf2;border-radius:14px;background:#fff}
-.lessonDesignProposal>div:first-child,.lessonKnowledgeSuggestions article>div:first-child,.lessonDesignAcceptedItem>div:first-child{display:grid;gap:4px;min-width:0}
-.lessonDesignProposal span,.lessonKnowledgeSuggestions article span,.lessonDesignAcceptedItem span{color:var(--brand,#2864e8);font-size:9px;font-weight:950;letter-spacing:.09em}
-.lessonDesignProposal strong,.lessonKnowledgeSuggestions article strong,.lessonDesignAcceptedItem strong{font-size:14px;line-height:1.35}
-.lessonDesignProposal p,.lessonKnowledgeSuggestions article p{margin:0;color:var(--ink-soft,#667085);font-size:12px;line-height:1.45}
+.lessonDesignAvailableTools,.lessonDesignProposalList,.lessonDesignAccepted,.lessonKnowledgeSuggestions{display:grid;gap:9px}
+.lessonDesignAvailableTools article,.lessonDesignProposal,.lessonKnowledgeSuggestions article,.lessonDesignAcceptedItem{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:14px;border:1px solid #e8ecf2;border-radius:14px;background:#fff}
+.lessonDesignAvailableTools article>div:first-child,.lessonDesignProposal>div:first-child,.lessonKnowledgeSuggestions article>div:first-child,.lessonDesignAcceptedItem>div:first-child{display:grid;gap:4px;min-width:0}
+.lessonDesignAvailableTools article span,.lessonDesignProposal span,.lessonKnowledgeSuggestions article span,.lessonDesignAcceptedItem span{color:var(--brand,#2864e8);font-size:9px;font-weight:950;letter-spacing:.09em}
+.lessonDesignAvailableTools article strong,.lessonDesignProposal strong,.lessonKnowledgeSuggestions article strong,.lessonDesignAcceptedItem strong{font-size:14px;line-height:1.35}
+.lessonDesignAvailableTools article p,.lessonDesignProposal p,.lessonKnowledgeSuggestions article p{margin:0;color:var(--ink-soft,#667085);font-size:12px;line-height:1.45}
 .lessonDesignProposal small,.lessonDesignAcceptedItem small{color:var(--ink-soft,#667085);font-size:11px;line-height:1.4}
-.lessonDesignProposalActions,.lessonKnowledgeSuggestions article>div:last-child,.lessonDesignAcceptedItem>div:last-child{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end}
-.lessonDesignProposal form,.lessonKnowledgeSuggestions form,.lessonDesignAcceptedItem form{margin:0}
-.lessonDesignProposal button,.lessonKnowledgeSuggestions button,.lessonDesignAcceptedItem button,.lessonKnowledgeSuggestions a,.lessonDesignAcceptedItem a{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 11px;border:1px solid var(--line,#dbe1ea);border-radius:10px;background:#fff;color:var(--ink,#172033);font:inherit;font-size:11px;font-weight:850;text-decoration:none;white-space:nowrap}
+.lessonDesignAvailableTools form,.lessonDesignProposalActions,.lessonKnowledgeSuggestions article>div:last-child,.lessonDesignAcceptedItem>div:last-child{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.lessonDesignAvailableTools form,.lessonDesignProposal form,.lessonKnowledgeSuggestions form,.lessonDesignAcceptedItem form{margin:0}
+.lessonDesignAvailableTools button,.lessonDesignProposal button,.lessonKnowledgeSuggestions button,.lessonDesignAcceptedItem button,.lessonKnowledgeSuggestions a,.lessonDesignAcceptedItem a{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 11px;border:1px solid var(--line,#dbe1ea);border-radius:10px;background:#fff;color:var(--ink,#172033);font:inherit;font-size:11px;font-weight:850;text-decoration:none;white-space:nowrap}
+.lessonDesignAvailableTools button:not(:disabled){border-color:#c9d7fb;color:var(--brand,#2864e8)}
+.lessonDesignAvailableTools button:disabled{cursor:default;background:#f3f5f8;color:var(--ink-soft,#667085)}
 .lessonDesignProposal button.primary{border-color:var(--brand,#2864e8);background:var(--brand,#2864e8);color:#fff}
 .lessonKnowledgeLead,.lessonDesignEmpty{margin:0;color:var(--ink-soft,#667085);font-size:12px;line-height:1.5}
 .lessonDesignWarning{padding:13px 15px;border:1px solid #f0d8a6;border-radius:14px;background:#fffaf0}
@@ -38,4 +40,4 @@
 .lessonAttachedResources article strong{font-size:13px}
 .lessonAttachedResources article p{margin:0;color:var(--ink-soft,#667085);font-size:11px;line-height:1.45}
 .lessonAttachedResources article a{align-self:center;color:var(--brand,#2864e8);font-size:11px;font-weight:850;text-decoration:none;white-space:nowrap}
-@media(max-width:719px){.lessonDesignTools{padding:15px;border-radius:16px}.lessonDesignProposal,.lessonKnowledgeSuggestions article,.lessonDesignAcceptedItem,.lessonAttachedResources article{display:grid;gap:10px}.lessonDesignProposalActions,.lessonKnowledgeSuggestions article>div:last-child,.lessonDesignAcceptedItem>div:last-child{justify-content:flex-start}.lessonDesignProposal button,.lessonKnowledgeSuggestions button,.lessonDesignAcceptedItem button,.lessonKnowledgeSuggestions a,.lessonDesignAcceptedItem a{min-height:40px}.lessonAttachedResources article a{justify-self:start}.lessonDesignContract>div{gap:5px}}
+@media(max-width:719px){.lessonDesignTools{padding:15px;border-radius:16px}.lessonDesignAvailableTools article,.lessonDesignProposal,.lessonKnowledgeSuggestions article,.lessonDesignAcceptedItem,.lessonAttachedResources article{display:grid;gap:10px}.lessonDesignAvailableTools form,.lessonDesignProposalActions,.lessonKnowledgeSuggestions article>div:last-child,.lessonDesignAcceptedItem>div:last-child{justify-content:flex-start}.lessonDesignAvailableTools button,.lessonDesignProposal button,.lessonKnowledgeSuggestions button,.lessonDesignAcceptedItem button,.lessonKnowledgeSuggestions a,.lessonDesignAcceptedItem a{min-height:40px}.lessonAttachedResources article a{justify-self:start}.lessonDesignContract>div{gap:5px}}
