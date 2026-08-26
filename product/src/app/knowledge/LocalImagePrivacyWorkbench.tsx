@@ -4,16 +4,18 @@ import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 
 type Point = { x: number; y: number }
-
-export function LocalImagePrivacyWorkbench({
-  file,
-  disabled,
-  onPrepared,
-}: {
+type WorkbenchProps = {
   file: File
   disabled: boolean
   onPrepared: (file: File | null) => void
-}) {
+}
+
+export function LocalImagePrivacyWorkbench(props: WorkbenchProps) {
+  const fileKey = `${props.file.name}:${props.file.size}:${props.file.lastModified}`
+  return <LocalImagePrivacyWorkbenchSession key={fileKey} {...props} />
+}
+
+function LocalImagePrivacyWorkbenchSession({ file, disabled, onPrepared }: WorkbenchProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sourceBitmapRef = useRef<ImageBitmap | null>(null)
   const dragStartRef = useRef<Point | null>(null)
