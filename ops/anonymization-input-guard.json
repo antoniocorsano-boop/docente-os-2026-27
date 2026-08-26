@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "gate": "P7_ANONYMIZATION_INPUT_GUARD",
+  "state": "IMPLEMENTED_WITH_BINARY_PREFLIGHT_RESIDUAL",
+  "pilotDataBoundary": {
+    "allowed": ["D0_NON_PERSONAL", "D1_ANONYMOUS_AGGREGATE"],
+    "deferred": ["D2_PSEUDONYMOUS_INDIVIDUAL"],
+    "prohibited": ["D3_DIRECT_IDENTIFIER", "D4_HIGH_RISK_PERSONAL_CONTEXT", "D5_SPECIAL_CATEGORY"],
+    "tier2SchoolPersonalDataState": "NOT_ADMITTED"
+  },
+  "guards": {
+    "ANON_FREE_TEXT_GUARD": {
+      "state": "SATISFIED",
+      "clientPreflight": true,
+      "serverEnforcement": true,
+      "externalAiUsed": false,
+      "sourceTextEchoedOnRefusal": false
+    },
+    "ANON_TEXT_FILE_GUARD": {
+      "state": "SATISFIED",
+      "formats": ["text/plain", "text/markdown"],
+      "clientPreflight": true,
+      "serverPrePersistenceInspection": true
+    },
+    "ANON_BINARY_UPLOAD_GUARD": {
+      "state": "PARTIAL",
+      "formats": ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/png", "image/jpeg", "image/webp"],
+      "filenameInspection": true,
+      "explicitHumanNoPersonalDataAttestationRequired": true,
+      "serverAttestationEnforced": true,
+      "contentPrePersistenceInspection": false
+    }
+  },
+  "residuals": [
+    {
+      "id": "ANON_BINARY_CONTENT_PREFLIGHT",
+      "state": "NOT_SATISFIED",
+      "description": "PDF, DOCX e immagini richiedono un preflight/redaction locale o equivalente prima della persistenza per poter dichiarare controllo contenuto pre-upload.",
+      "blocksClaim": "FULL_ANONYMIZATION_INPUT_ENFORCEMENT",
+      "doesNotAuthorizeTier2": true
+    }
+  ],
+  "principles": {
+    "anonymizationDefault": true,
+    "pseudonymizationRequiresSeparateNecessityGate": true,
+    "genericPedagogicalTermsAloneAreNotPersonalDataSignals": true,
+    "privacyGuardIsHeuristicNotLegalAnonymizationGuarantee": true,
+    "humanReviewRemainsRequired": true
+  },
+  "result": {
+    "freeTextGuard": "PASS",
+    "textFilePrePersistenceGuard": "PASS",
+    "binaryUploadGuard": "PASS_WITH_RESIDUAL",
+    "fullAnonymizationInputEnforcement": "NOT_YET_CLAIMED",
+    "tier2AdmissionEffect": "NONE"
+  }
+}
