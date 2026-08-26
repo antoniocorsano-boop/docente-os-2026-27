@@ -15,6 +15,7 @@ import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/hum
 import LessonWorkspaceClient, { type LessonKnowledgeSuggestion, type LessonWorkspaceMode } from './lesson-workspace-client'
 import './lesson-workspace.css'
 import './lesson-workspace-maturity.css'
+import './lesson-design-tools.css'
 
 export const dynamic = 'force-dynamic'
 
