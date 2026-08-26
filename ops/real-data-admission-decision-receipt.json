@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "gate": "P7-REAL-DATA-ADMISSION",
+  "decision": "AUTHORIZED",
+  "decisionDate": "2026-08-26",
+  "authorizedTier": "TIER_1_OWNER_PROFESSIONAL_NON_PERSONAL",
+  "scope": "SINGLE_OWNER_PILOT",
+  "audience": "named_owner_only",
+  "allowed": {
+    "ownerProfessionalContent": true,
+    "studentPersonalData": false,
+    "thirdPartyPersonalData": false,
+    "specialCategoryData": false,
+    "credentialsOrSecrets": false,
+    "automaticBetaMigration": false
+  },
+  "manualImportRequiresExplicitOwnerAction": true,
+  "higherRiskTier": {
+    "id": "TIER_2_SCHOOL_PERSONAL_DATA",
+    "state": "NOT_ADMITTED",
+    "requiresSeparateGate": true
+  }
+}
