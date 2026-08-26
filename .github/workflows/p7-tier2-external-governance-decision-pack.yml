@@ -1,0 +1,58 @@
+name: P7 Tier 2 External Governance Decision Pack
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - 'ops/tier2-external-governance-decision-pack.json'
+      - 'ops/tier2-personal-data-governance.json'
+      - 'ops/tier2-dedicated-privacy-review.json'
+      - 'ops/real-data-admission-review.json'
+      - '.github/scripts/validate-tier2-external-governance-decision-pack.mjs'
+      - '.github/workflows/p7-tier2-external-governance-decision-pack.yml'
+      - 'docs/product/P7_TIER2_EXTERNAL_GOVERNANCE_DECISION_PACK.md'
+  push:
+    branches:
+      - develop
+    paths:
+      - 'ops/tier2-external-governance-decision-pack.json'
+      - 'ops/tier2-personal-data-governance.json'
+      - 'ops/tier2-dedicated-privacy-review.json'
+      - 'ops/real-data-admission-review.json'
+      - '.github/scripts/validate-tier2-external-governance-decision-pack.mjs'
+      - '.github/workflows/p7-tier2-external-governance-decision-pack.yml'
+      - 'docs/product/P7_TIER2_EXTERNAL_GOVERNANCE_DECISION_PACK.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  validate-tier2-external-governance-decision-pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Tier 2 external governance decision pack
+        run: node .github/scripts/validate-tier2-external-governance-decision-pack.mjs
+      - name: Publish external governance decision-pack status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'p7-tier2/external-governance-decision-pack',
+              description: ok ? 'Quattro decisioni esterne preparate; Tier 2 bloccato' : 'Decision pack governance esterna non coerente',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
