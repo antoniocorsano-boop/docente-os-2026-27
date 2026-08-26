@@ -1,8 +1,11 @@
 import { extractText, getDocumentProxy } from 'unpdf'
 
+export const MAX_LOCAL_VISUAL_PDF_PAGES = 5
+
 export type LocalPdfVisualPreflightState =
   | 'NATIVE_TEXT_ONLY'
   | 'SINGLE_PAGE_VISUAL_REVIEWABLE'
+  | 'MULTI_PAGE_VISUAL_REVIEWABLE'
   | 'MULTI_PAGE_VISUAL_BLOCKED'
   | 'FAILED'
 
@@ -37,6 +40,10 @@ export function classifyPdfPages(totalPages: number, pages: string[]): LocalPdfV
 
   if (totalPages === 1 && missingNativeTextPages.length === 1) {
     return { state: 'SINGLE_PAGE_VISUAL_REVIEWABLE', totalPages, missingNativeTextPages }
+  }
+
+  if (totalPages <= MAX_LOCAL_VISUAL_PDF_PAGES) {
+    return { state: 'MULTI_PAGE_VISUAL_REVIEWABLE', totalPages, missingNativeTextPages }
   }
 
   return { state: 'MULTI_PAGE_VISUAL_BLOCKED', totalPages, missingNativeTextPages }
