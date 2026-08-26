@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import mammoth from 'mammoth'
 import { inspectFreeTextForPilot, pilotPrivacyErrorMessage } from '@/core/privacy/anonymization-guard'
 
-type DocxMode = 'ANALYZING' | 'TEXT_ONLY' | 'MEDIA_REQUIRES_DERIVATIVE' | 'FAILED'
+export type DocxMode = 'ANALYZING' | 'TEXT_ONLY' | 'MEDIA_REQUIRES_DERIVATIVE' | 'FAILED'
 
 type WorkbenchProps = {
   file: File
