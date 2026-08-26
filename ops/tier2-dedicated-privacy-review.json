@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "gate": "T2D_DEDICATED_PRIVACY_REVIEW",
+  "state": "REVIEW_COMPLETE_BLOCKED_EXTERNAL_GOVERNANCE",
+  "tier2AdmissionEffect": "NONE",
+  "scope": "SINGLE_OWNER_PILOT",
+  "reviewNature": "TECHNICAL_AND_GOVERNANCE_REVIEW_NOT_LEGAL_CERTIFICATION",
+  "regulatoryReferenceBaseline": [
+    {
+      "id": "GDPR_ART_5",
+      "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj",
+      "principles": ["purpose limitation","data minimisation","storage limitation","integrity and confidentiality","accountability"]
+    },
+    {
+      "id": "GDPR_ART_25",
+      "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj",
+      "principles": ["data protection by design","data protection by default"]
+    },
+    {
+      "id": "GDPR_ART_32",
+      "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj",
+      "principles": ["security appropriate to risk","testing and evaluation of safeguards"]
+    },
+    {
+      "id": "GARANTE_SCUOLA",
+      "url": "https://www.garanteprivacy.it/temi/scuola",
+      "principles": ["school transparency","institutional purpose boundary","student rights","personal data only when necessary"]
+    }
+  ],
+  "processingPurposeReview": {
+    "technicalProductPurposesIdentified": [
+      "teacher planning and scheduling",
+      "teacher-owned professional knowledge management",
+      "class and lesson organization",
+      "document authoring and export"
+    ],
+    "purposeExpansionByDefaultAllowed": false,
+    "externalAiPersonalDataTransferAllowed": false,
+    "specialCategoryDataAllowed": false,
+    "assessment": "CONDITIONAL",
+    "blockers": [
+      "INSTITUTIONAL_CONTROLLER_DEFINED_PURPOSE_NOT_EVIDENCED",
+      "LAWFUL_PROCESSING_AUTHORITY_NOT_EVIDENCED"
+    ]
+  },
+  "dataFlowReview": {
+    "runtimeProcessors": [
+      {"component":"Render","role":"application runtime","personalDataFlowIfTier2Admitted":true},
+      {"component":"Supabase","role":"authentication database and storage","personalDataFlowIfTier2Admitted":true},
+      {"component":"Cloudflare R2","role":"locked offsite backup destination","personalDataFlowIfTier2Admitted":true}
+    ],
+    "engineeringOnly": [
+      {"component":"GitHub Actions","role":"CI and synthetic rehearsals","realUserPersonalDataFlowAllowed":false}
+    ],
+    "externalAiProviderPresentInRepository": false,
+    "automaticBetaMigrationAllowed": false,
+    "publicSignupAllowed": false,
+    "assessment": "TECHNICAL_FLOW_IDENTIFIED_EXTERNAL_PROCESSOR_REVIEW_REQUIRED",
+    "blockers": [
+      "PROCESSOR_DPA_TERMS_NOT_EVIDENCED_IN_CANONICAL_REVIEW",
+      "SUBPROCESSOR_AND_TRANSFER_REVIEW_NOT_EVIDENCED_IN_CANONICAL_REVIEW"
+    ]
+  },
+  "accessControlReview": {
+    "singleOwnerPilot": true,
+    "workspaceIsolation": "RLS_AND_WORKSPACE_MEMBERSHIP_BASELINE",
+    "storageIsolation": "WORKSPACE_PREFIX_PLUS_AUTHENTICATED_OWNER_POLICY",
+    "publicSignupAllowed": false,
+    "multiTenantOnboardingAllowed": false,
+    "tier2DirectNamesDefaultAllowed": false,
+    "specialCategoryDataAllowed": false,
+    "exportRequiresAuthenticatedOwner": true,
+    "deletionRequiresValidatedOwnerDecision": true,
+    "assessment": "TECHNICAL_BASELINE_SATISFIED"
+  },
+  "residualRiskReview": {
+    "technicalControlsAlreadySatisfied": [
+      "T2A_DATA_MINIMIZATION_POLICY",
+      "T2B_APPLICATION_RETENTION_DELETION",
+      "T2C_PERSONAL_DATA_EXPORT_DELETION",
+      "SEPARATE_PRODUCTION_DATA_TOPOLOGY",
+      "RLS_AND_STORAGE_SECURITY_BASELINE",
+      "OFFSITE_BACKUP_AND_RETENTION_LOCK",
+      "INCIDENT_ESCALATION_BASELINE"
+    ],
+    "blockingResiduals": [
+      {
+        "id": "INSTITUTIONAL_CONTROLLER_AUTHORITY",
+        "requiredEvidence": "documented decision identifying the controller/authorized processing context and permitted purposes for Docente OS Tier 2"
+      },
+      {
+        "id": "PROCESSOR_AND_TRANSFER_REVIEW",
+        "requiredEvidence": "documented review of processor terms, subprocessors, data locations and any applicable transfer safeguards for Production services"
+      },
+      {
+        "id": "TRANSPARENCY_AND_RIGHTS_ROUTING",
+        "requiredEvidence": "approved transparency notice or integration into the controller's notice plus routing for access, rectification, export and deletion requests"
+      },
+      {
+        "id": "DPIA_SCREENING",
+        "requiredEvidence": "recorded controller/DPO assessment of whether a DPIA is required for the intended Tier 2 processing"
+      },
+      {
+        "id": "PURPOSE_SPECIFIC_RETENTION_SCHEDULE",
+        "requiredEvidence": "controller-approved retention periods or deletion triggers per admitted Tier 2 data category and purpose"
+      }
+    ],
+    "nonBlockingRestrictionsThatRemainMandatory": [
+      "SPECIAL_CATEGORY_DATA_REQUIRES_SEPARATE_EXPLICIT_GATE",
+      "NO_EXTERNAL_AI_PERSONAL_DATA_TRANSFER_WITHOUT_SEPARATE_GATE",
+      "NO_PUBLIC_SIGNUP",
+      "NO_MULTI_TENANT_ONBOARDING",
+      "NO_AUTOMATIC_BETA_DATA_MIGRATION"
+    ],
+    "assessment": "BLOCKED"
+  },
+  "evidence": {
+    "processing-purpose-review": true,
+    "data-flow-review": true,
+    "access-control-review": true,
+    "residual-risk-review": true
+  },
+  "closureRule": {
+    "reviewEvidenceComplete": true,
+    "blockingResidualsMustBeClosedBeforeT2DMayBecomeSatisfied": true,
+    "technicalReviewMayNotDetermineLawfulBasis": true,
+    "technicalReviewMayNotSelfAuthorizeInstitutionalProcessing": true,
+    "newExplicitHumanAdmissionDecisionStillRequiredAfterAllBlockersClose": true
+  },
+  "conclusion": {
+    "t2dWorkstreamState": "BLOCKED_EXTERNAL_GOVERNANCE",
+    "tier2AdmissionState": "NOT_ADMITTED",
+    "nextGate": "T2D_EXTERNAL_GOVERNANCE_EVIDENCE"
+  }
+}

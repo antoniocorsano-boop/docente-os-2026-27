@@ -50,8 +50,13 @@ if (receipt.cleanup?.workspaceCleanupVerified !== true) fail('workspace cleanup 
 for (const [key, value] of Object.entries(receipt.cleanup?.postCleanup ?? {})) if (value !== 0) fail(`post-cleanup ${key} must be zero`)
 
 const t2c = (governance.workstreams ?? []).find((item) => item.id === 'T2C_PERSONAL_DATA_EXPORT_DELETION')
+const t2d = (governance.workstreams ?? []).find((item) => item.id === 'T2D_DEDICATED_PRIVACY_REVIEW')
 if (t2c?.state !== 'SATISFIED' || t2c?.evidence !== 'ops/tier2-personal-data-export-deletion-policy.json' || t2c?.receipt !== 'ops/tier2-export-rehearsal-receipt.json') fail('governance T2C linkage invalid')
 if (governance.tier2?.admissionState !== 'NOT_ADMITTED') fail('Tier 2 must remain NOT_ADMITTED')
-if (governance.nextAuthorizedWorkstream !== 'T2D_DEDICATED_PRIVACY_REVIEW') fail('T2D must be next')
+if (t2d?.state === 'BLOCKED_EXTERNAL_GOVERNANCE') {
+  if (governance.nextAuthorizedWorkstream !== 'T2D_EXTERNAL_GOVERNANCE_EVIDENCE') fail('blocked T2D must point to external governance evidence')
+} else if (governance.nextAuthorizedWorkstream !== 'T2D_DEDICATED_PRIVACY_REVIEW') {
+  fail('before T2D review the next workstream must be T2D')
+}
 
-console.log('P7 T2C PASS: owner-scoped database+asset export verified; deletion procedure bound to T2B; Tier 2 remains NOT_ADMITTED')
+console.log('P7 T2C PASS: export/deletion invariants preserved across privacy review; Tier 2 remains NOT_ADMITTED')

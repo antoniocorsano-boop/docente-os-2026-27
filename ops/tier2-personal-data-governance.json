@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "product": "DOCENTE OS",
   "gate": "P7-TIER2-PERSONAL-DATA-GOVERNANCE",
-  "state": "T2A_T2B_T2C_COMPLETE_BLOCKED",
+  "state": "T2D_REVIEW_COMPLETE_BLOCKED_EXTERNAL_GOVERNANCE",
   "productionScope": "SINGLE_OWNER_PILOT",
   "currentTier1Admission": "TIER_1_OWNER_PROFESSIONAL_NON_PERSONAL",
   "tier2": {
@@ -47,15 +47,19 @@
     },
     {
       "id": "T2D_DEDICATED_PRIVACY_REVIEW",
-      "state": "NOT_SATISFIED",
-      "requiredEvidence": ["processing-purpose-review","data-flow-review","access-control-review","residual-risk-review"]
+      "state": "BLOCKED_EXTERNAL_GOVERNANCE",
+      "evidence": "ops/tier2-dedicated-privacy-review.json",
+      "requiredEvidence": ["processing-purpose-review","data-flow-review","access-control-review","residual-risk-review"],
+      "reviewEvidenceComplete": true,
+      "blockingResidualCount": 5
     }
   ],
   "blockingRule": {
     "allWorkstreamsMustBeSatisfied": true,
     "tier2MustRemainNotAdmittedUntilThen": true,
     "newExplicitHumanDecisionRequiredAfterTechnicalClosure": true,
-    "technicalClosureAloneMayNotAdmitPersonalData": true
+    "technicalClosureAloneMayNotAdmitPersonalData": true,
+    "externalGovernanceEvidenceMayNotBeSelfAssertedByProduct": true
   },
-  "nextAuthorizedWorkstream": "T2D_DEDICATED_PRIVACY_REVIEW"
+  "nextAuthorizedWorkstream": "T2D_EXTERNAL_GOVERNANCE_EVIDENCE"
 }
