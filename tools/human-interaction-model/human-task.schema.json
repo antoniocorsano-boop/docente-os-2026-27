@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://human-interaction-model.local/schemas/human-task.v1.json",
+  "title": "HIM Human Task v1",
+  "type": "object",
+  "required": ["id", "actor", "intent", "success", "primary_action", "failure_states", "recovery", "patterns"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^HT-[A-Z0-9][A-Z0-9_-]*$"},
+    "actor": {"type": "string", "minLength": 1},
+    "intent": {"type": "string", "minLength": 1},
+    "context": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "entry_points": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "success": {"type": "string", "minLength": 1},
+    "primary_action": {"type": "string", "minLength": 1},
+    "secondary_actions": {"type": "array", "items": {"type": "string"}, "maxItems": 2},
+    "failure_states": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+    "recovery": {
+      "type": "object",
+      "required": ["required"],
+      "properties": {
+        "required": {"type": "boolean"},
+        "strategies": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+      },
+      "additionalProperties": false
+    },
+    "consequential": {"type": "boolean", "default": false},
+    "human_authority_required": {"type": "boolean", "default": false},
+    "patterns": {"type": "array", "items": {"type": "string", "pattern": "^HP-[A-Z0-9_-]+$"}, "minItems": 1, "uniqueItems": true},
+    "accessibility": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "acceptance_evidence": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+  },
+  "additionalProperties": false
+}
