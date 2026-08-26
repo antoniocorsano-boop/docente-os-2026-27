@@ -1,11 +1,7 @@
 name: P7 Tier 2 Export Rehearsal
 
 on:
-  pull_request:
-    branches: [develop]
-    paths:
-      - 'product/scripts/p7-t2c-export-rehearsal.mjs'
-      - '.github/workflows/p7-tier2-export-rehearsal.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
