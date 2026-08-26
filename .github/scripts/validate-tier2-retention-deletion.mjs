@@ -46,7 +46,12 @@ if (receipt.realUserDataTouched !== false || receipt.tier2AdmissionChanged !== f
 
 if (admission.higherRiskTier?.state !== 'NOT_ADMITTED') fail('Tier 2 must remain NOT_ADMITTED')
 const t2b = (governance.workstreams ?? []).find((item) => item.id === 'T2B_APPLICATION_RETENTION_DELETION')
+const t2c = (governance.workstreams ?? []).find((item) => item.id === 'T2C_PERSONAL_DATA_EXPORT_DELETION')
 if (t2b?.state !== 'SATISFIED' || t2b?.receipt !== 'ops/tier2-retention-deletion-rehearsal-receipt.json') fail('governance T2B linkage missing')
-if (governance.nextAuthorizedWorkstream !== 'T2C_PERSONAL_DATA_EXPORT_DELETION') fail('next workstream must be T2C')
+if (t2c?.state === 'SATISFIED') {
+  if (governance.nextAuthorizedWorkstream !== 'T2D_DEDICATED_PRIVACY_REVIEW') fail('after T2C completion the next workstream must be T2D')
+} else if (governance.nextAuthorizedWorkstream !== 'T2C_PERSONAL_DATA_EXPORT_DELETION') {
+  fail('before T2C completion the next workstream must be T2C')
+}
 
-console.log('T2B retention/deletion PASS: DB + authenticated Storage rehearsals verified; Production empty; Tier 2 remains NOT_ADMITTED')
+console.log('T2B retention/deletion PASS: invariants preserved across later Tier 2 workstreams; Tier 2 remains NOT_ADMITTED')

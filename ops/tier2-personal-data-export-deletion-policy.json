@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "gate": "T2C_PERSONAL_DATA_EXPORT_DELETION",
+  "state": "SATISFIED",
+  "tier2AdmissionEffect": "NONE",
+  "scope": "SINGLE_OWNER_PILOT",
+  "personalDataExportProcedure": {
+    "requester": "AUTHENTICATED_WORKSPACE_OWNER",
+    "databaseSource": "public.workspace_export_manifest()",
+    "databaseManifestSchemaVersion": 1,
+    "workspaceCollectionsRequired": 25,
+    "storageAssets": "DOWNLOAD_WORKSPACE_PREFIXED_OBJECTS_REFERENCED_BY_WORKSPACE_DATA",
+    "packageIndexRequired": true,
+    "sha256RequiredForDatabaseManifest": true,
+    "sha256RequiredForEachExportedAsset": true,
+    "portableFormat": "JSON_MANIFEST_PLUS_ORIGINAL_ASSET_BYTES",
+    "credentialsOrSecretsIncluded": false,
+    "authIdentityCredentialMaterialIncluded": false
+  },
+  "personalDataDeletionProcedure": {
+    "semanticAuthority": "ops/tier2-application-retention-deletion-policy.json",
+    "requester": "AUTHENTICATED_WORKSPACE_OWNER",
+    "explicitValidatedDeleteDecisionRequired": true,
+    "exportBeforeDeletion": "OFFER_AND_COMPLETE_IF_REQUESTED",
+    "liveStorageObjectsRemoved": true,
+    "liveWorkspaceDataRemoved": true,
+    "authIdentityDeletion": "SEPARATE_ACCOUNT_LIFECYCLE_DECISION",
+    "lockedBackupMutationAllowed": false,
+    "deletionRecoveryJournalRequired": true,
+    "restoreReconciliationRequiredBeforeServiceReopens": true,
+    "idempotentOperatorProcedureRequired": true
+  },
+  "requestAuthenticationBoundary": {
+    "unauthenticatedExportAllowed": false,
+    "workspaceMembershipRequired": true,
+    "ownerRoleRequired": true,
+    "crossWorkspaceExportAllowed": false,
+    "anonymousRejectionRehearsed": true,
+    "ownerExportRehearsed": true
+  },
+  "operatorReceiptContract": {
+    "required": true,
+    "fields": [
+      "requestId",
+      "workspaceId",
+      "requesterAuthenticationVerified",
+      "ownerRoleVerified",
+      "operation",
+      "exportPackageDigest",
+      "liveDeletionVerified",
+      "storageDeletionVerified",
+      "backupBoundaryAcknowledged",
+      "deletionJournalEntryRecorded",
+      "completedAt"
+    ],
+    "mustNotContain": ["password","sessionToken","secret","deletedPersonalContent"]
+  },
+  "exportRehearsal": {
+    "state": "PASS",
+    "environment": "PRODUCTION_SYNTHETIC_ONLY",
+    "workflowRunId": 32931288784,
+    "jobId": 98063905054,
+    "artifactId": 9593288618,
+    "artifactDigest": "sha256:0402233e2495e83efcc35bf946187813cd8a739de361e43e0c81443a5df99fe5",
+    "workspaceMarker": "__P7_T2C_EXPORT_REHEARSAL_32931288784__",
+    "unauthenticatedRequestRejected": true,
+    "authenticatedTechnicalIdentity": true,
+    "ownerRoleVerified": true,
+    "manifestSchemaVersion": 1,
+    "workspaceCollectionsVerified": 25,
+    "databaseManifestBytes": 1271,
+    "databaseManifestSha256": "d25ddcb065cc7eb15cffe1637103eeac96c7972cc2b61bf4b121cae01ef85329",
+    "assetBytes": 47,
+    "assetSha256": "b92889026cd310c4bd6f0739569b03953b84261cbc7d8ad8fbd7cfd2259d9c31",
+    "assetDownloadIntegrityVerified": true,
+    "packageIndexSha256": "b7d429e8981681c0dbee819c11d1ae2521680d1fd4aa8c082c8aa99828e487ae",
+    "syntheticAssetCleanupVerified": true,
+    "workspaceCleanupVerified": true,
+    "productionApplicationEmptyAfterCleanup": true,
+    "realUserDataTouched": false
+  },
+  "evidence": {
+    "personal-data-export-procedure": true,
+    "personal-data-deletion-procedure": true,
+    "request-authentication-boundary": true,
+    "operator-receipt": true
+  },
+  "receipt": "ops/tier2-export-rehearsal-receipt.json",
+  "completionRule": {
+    "authenticatedOwnerExportPassRequired": true,
+    "unauthenticatedRequestMustBeRejected": true,
+    "databaseAndStorageExportIntegrityRequired": true,
+    "productionReturnsToApplicationEmptyRequired": true,
+    "deletionProcedureMustReuseT2BSemantics": true,
+    "tier2MustRemainNotAdmitted": true
+  }
+}

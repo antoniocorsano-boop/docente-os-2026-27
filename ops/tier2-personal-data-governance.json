@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "product": "DOCENTE OS",
   "gate": "P7-TIER2-PERSONAL-DATA-GOVERNANCE",
-  "state": "T2A_T2B_COMPLETE_BLOCKED",
+  "state": "T2A_T2B_T2C_COMPLETE_BLOCKED",
   "productionScope": "SINGLE_OWNER_PILOT",
   "currentTier1Admission": "TIER_1_OWNER_PROFESSIONAL_NON_PERSONAL",
   "tier2": {
@@ -40,7 +40,9 @@
     },
     {
       "id": "T2C_PERSONAL_DATA_EXPORT_DELETION",
-      "state": "NOT_SATISFIED",
+      "state": "SATISFIED",
+      "evidence": "ops/tier2-personal-data-export-deletion-policy.json",
+      "receipt": "ops/tier2-export-rehearsal-receipt.json",
       "requiredEvidence": ["personal-data-export-procedure","personal-data-deletion-procedure","request-authentication-boundary","operator-receipt"]
     },
     {
@@ -55,5 +57,5 @@
     "newExplicitHumanDecisionRequiredAfterTechnicalClosure": true,
     "technicalClosureAloneMayNotAdmitPersonalData": true
   },
-  "nextAuthorizedWorkstream": "T2C_PERSONAL_DATA_EXPORT_DELETION"
+  "nextAuthorizedWorkstream": "T2D_DEDICATED_PRIVACY_REVIEW"
 }

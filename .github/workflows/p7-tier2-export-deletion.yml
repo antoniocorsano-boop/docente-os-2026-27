@@ -1,0 +1,56 @@
+name: P7 Tier 2 Export Deletion
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - 'ops/tier2-personal-data-export-deletion-policy.json'
+      - 'ops/tier2-export-rehearsal-receipt.json'
+      - 'ops/tier2-personal-data-governance.json'
+      - '.github/scripts/validate-tier2-export-deletion.mjs'
+      - '.github/scripts/validate-tier2-personal-data-governance.mjs'
+      - '.github/workflows/p7-tier2-export-deletion.yml'
+  push:
+    branches:
+      - develop
+    paths:
+      - 'ops/tier2-personal-data-export-deletion-policy.json'
+      - 'ops/tier2-export-rehearsal-receipt.json'
+      - 'ops/tier2-personal-data-governance.json'
+      - '.github/scripts/validate-tier2-export-deletion.mjs'
+      - '.github/scripts/validate-tier2-personal-data-governance.mjs'
+      - '.github/workflows/p7-tier2-export-deletion.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  validate-tier2-export-deletion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Tier 2 export/deletion
+        run: node .github/scripts/validate-tier2-export-deletion.mjs
+      - name: Publish T2C status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'p7-tier2/export-deletion',
+              description: ok ? 'T2C export/deletion PASS' : 'T2C export/deletion FAIL',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
