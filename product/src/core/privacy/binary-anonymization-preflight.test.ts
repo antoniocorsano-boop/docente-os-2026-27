@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { docxContainsEmbeddedMedia, inspectBinaryForAnonymousPilot } from './binary-anonymization-preflight'
-import { classifyPdfPages } from './local-pdf-visual-preflight'
+import { classifyPdfPages, MAX_LOCAL_VISUAL_PDF_PAGES } from './local-pdf-visual-preflight'
 
 test('blocks images when local visual preflight is unavailable', async () => {
   const result = await inspectBinaryForAnonymousPilot({ bytes: cleanPng(), mimeType: 'image/png' })
@@ -11,33 +11,21 @@ test('blocks images when local visual preflight is unavailable', async () => {
 })
 
 test('allows metadata-free PNG only after local visual review', async () => {
-  const result = await inspectBinaryForAnonymousPilot({
-    bytes: cleanPng(),
-    mimeType: 'image/png',
-    localVisualReview: true,
-  })
+  const result = await inspectBinaryForAnonymousPilot({ bytes: cleanPng(), mimeType: 'image/png', localVisualReview: true })
   assert.equal(result.allowed, true)
   if (!result.allowed) return
   assert.equal(result.mode, 'IMAGE_LOCAL_REVIEWED_PNG')
 })
 
 test('blocks reviewed PNG when privacy metadata chunks remain', async () => {
-  const result = await inspectBinaryForAnonymousPilot({
-    bytes: pngWithTextMetadata(),
-    mimeType: 'image/png',
-    localVisualReview: true,
-  })
+  const result = await inspectBinaryForAnonymousPilot({ bytes: pngWithTextMetadata(), mimeType: 'image/png', localVisualReview: true })
   assert.equal(result.allowed, false)
   if (result.allowed) return
   assert.equal(result.code, 'privacy_blocked')
 })
 
 test('rejects non-PNG bytes even with local visual review proof', async () => {
-  const result = await inspectBinaryForAnonymousPilot({
-    bytes: new Uint8Array([1, 2, 3]),
-    mimeType: 'image/png',
-    localVisualReview: true,
-  })
+  const result = await inspectBinaryForAnonymousPilot({ bytes: new Uint8Array([1, 2, 3]), mimeType: 'image/png', localVisualReview: true })
   assert.equal(result.allowed, false)
   if (result.allowed) return
   assert.equal(result.code, 'privacy_preflight_failed')
@@ -72,14 +60,21 @@ test('classifies a single scanned page as locally reviewable', () => {
   assert.deepEqual(result.missingNativeTextPages, [1])
 })
 
-test('keeps multi-page visual PDF fail-closed', () => {
+test('classifies a bounded multi-page visual PDF as locally reviewable', () => {
   const result = classifyPdfPages(3, [
     'Pagina testuale con abbastanza caratteri per essere considerata nativa e controllabile.',
     '',
     'Altra pagina testuale con abbastanza caratteri per superare la soglia locale.',
   ])
-  assert.equal(result.state, 'MULTI_PAGE_VISUAL_BLOCKED')
+  assert.equal(result.state, 'MULTI_PAGE_VISUAL_REVIEWABLE')
   assert.deepEqual(result.missingNativeTextPages, [2])
+})
+
+test('keeps long visual PDFs fail-closed beyond the local review cap', () => {
+  const pages = Array.from({ length: MAX_LOCAL_VISUAL_PDF_PAGES + 1 }, (_, index) => index === 2 ? '' : `Pagina ${index + 1} con contenuto testuale sufficiente per il controllo locale anonimo.`)
+  const result = classifyPdfPages(pages.length, pages)
+  assert.equal(result.state, 'MULTI_PAGE_VISUAL_BLOCKED')
+  assert.deepEqual(result.missingNativeTextPages, [3])
 })
 
 test('fails closed when page accounting is inconsistent', () => {
@@ -89,11 +84,7 @@ test('fails closed when page accounting is inconsistent', () => {
 })
 
 function cleanPng() {
-  return png([
-    chunk('IHDR', new Uint8Array(13)),
-    chunk('IDAT', new Uint8Array([0])),
-    chunk('IEND', new Uint8Array()),
-  ])
+  return png([chunk('IHDR', new Uint8Array(13)), chunk('IDAT', new Uint8Array([0])), chunk('IEND', new Uint8Array())])
 }
 
 function pngWithTextMetadata() {
@@ -115,7 +106,6 @@ function chunk(type: string, data: Uint8Array) {
   writeUint32(result, 0, data.length)
   for (let index = 0; index < 4; index += 1) result[4 + index] = type.charCodeAt(index)
   result.set(data, 8)
-  // CRC deliberately zeroed: the privacy parser validates container structure, not image decoding.
   return result
 }
 
