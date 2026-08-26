@@ -10,8 +10,6 @@ export type IsbnLookupState = {
   message: string
 }
 
-export const INITIAL_ISBN_LOOKUP_STATE: IsbnLookupState = { status: 'idle', message: '' }
-
 type GoogleBooksResponse = {
   items?: Array<{
     id: string
