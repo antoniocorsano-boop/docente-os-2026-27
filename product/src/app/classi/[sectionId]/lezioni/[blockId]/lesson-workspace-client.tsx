@@ -3,6 +3,12 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import {
+  acceptedLessonDesignResources,
+  composeLessonSequence,
+  type ComposedLessonSequenceStep,
+  type LessonDesignExtension,
+} from '@/core/domain/lesson-design-extension'
+import {
   resolveHumanTaskLessonTiming,
   resolveHumanTaskResourcesForSurface,
   resolveHumanTaskStepResources,
@@ -13,8 +19,10 @@ import {
   type HumanTaskSourceAlignment,
 } from '@/core/presentation/human-task-content'
 import { recordLessonExecution } from '../actions'
+import { LessonDesignTools, type LessonKnowledgeSuggestion as DesignKnowledgeSuggestion } from './lesson-design-tools'
 
 export type LessonWorkspaceMode = 'prepare' | 'teach' | 'observe' | 'record'
+export type LessonKnowledgeSuggestion = DesignKnowledgeSuggestion
 
 type Block = {
   id: string
@@ -44,6 +52,8 @@ export default function LessonWorkspaceClient({
   block,
   projection,
   initialMode,
+  extensions,
+  knowledgeSuggestions,
   progress,
   udaProgress,
 }: {
@@ -52,6 +62,8 @@ export default function LessonWorkspaceClient({
   block: Block
   projection: HumanTaskLessonProjection
   initialMode: LessonWorkspaceMode
+  extensions: LessonDesignExtension[]
+  knowledgeSuggestions: LessonKnowledgeSuggestion[]
   progress: Progress
   udaProgress: { completed: number; total: number }
 }) {
@@ -59,7 +71,12 @@ export default function LessonWorkspaceClient({
   const [activeStep, setActiveStep] = useState(0)
   const [prepared, setPrepared] = useState<Record<number, boolean>>({})
   const [observed, setObserved] = useState<Record<number, boolean>>({})
-  const currentStep = projection.steps[activeStep]
+  const composedSequence = useMemo(() => composeLessonSequence(projection.steps, extensions), [projection.steps, extensions])
+  const effectiveSteps = composedSequence.steps
+  const currentStep = effectiveSteps[activeStep] ?? effectiveSteps[0]
+  const currentCanonicalStep = currentStep?.origin === 'CANONICAL'
+    ? projection.steps.find((step) => step.id === currentStep.id) ?? null
+    : null
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
   const recorded = progress.status === 'SVOLTO' || progress.status === 'RECUPERATO' || progress.status === 'RIMODULATO'
   const preparedCount = Object.values(prepared).filter(Boolean).length
@@ -73,14 +90,21 @@ export default function LessonWorkspaceClient({
     [projection],
   )
   const currentStepResources = useMemo(
-    () => resolveHumanTaskStepResources(projection, currentStep),
-    [projection, currentStep],
+    () => currentCanonicalStep ? resolveHumanTaskStepResources(projection, currentCanonicalStep) : [],
+    [projection, currentCanonicalStep],
+  )
+  const attachedResources = useMemo(() => acceptedLessonDesignResources(extensions), [extensions])
+  const addedMinutes = useMemo(
+    () => effectiveSteps
+      .filter((step) => step.origin === 'EXTENSION')
+      .reduce((total, step) => total + (step.minutes ?? 0), 0),
+    [effectiveSteps],
   )
   const modeIndex = useMemo(() => MODE_LABELS.findIndex((item) => item.key === mode), [mode])
   const timing = useMemo(() => resolveHumanTaskLessonTiming(projection), [projection])
 
   function advanceStep() {
-    if (activeStep < projection.steps.length - 1) {
+    if (activeStep < effectiveSteps.length - 1) {
       setActiveStep((value) => value + 1)
       return
     }
@@ -97,6 +121,7 @@ export default function LessonWorkspaceClient({
         <p className="lessonWhy">{projection.why}</p>
         <div className="lessonMeta">
           <span>{formatDuration(projection.durationMinutes)}</span>
+          {addedMinutes ? <span>+ {addedMinutes} min aggiunti</span> : null}
           <span>{projection.period}</span>
           <span>{udaProgress.completed}/{udaProgress.total} lezioni del percorso concluse</span>
         </div>
@@ -139,6 +164,21 @@ export default function LessonWorkspaceClient({
 
           {preparationResources.map((resource) => <ResourceCard resource={resource} key={resource.id} />)}
 
+          <LessonDesignTools
+            sectionId={sectionId}
+            blockId={block.id}
+            projectionId={projection.projectionId}
+            extensions={extensions}
+            knowledgeSuggestions={knowledgeSuggestions}
+          />
+
+          {composedSequence.ignoredExtensionIds.length ? (
+            <aside className="lessonDesignWarning">
+              <strong>{composedSequence.ignoredExtensionIds.length} aggiunta non è più agganciata alla sequenza corrente.</strong>
+              <p>La proiezione della lezione è cambiata. L’aggiunta resta conservata ma non viene spostata automaticamente: rimuovila o falla riesaminare.</p>
+            </aside>
+          ) : null}
+
           <details className="lessonDisclosure">
             <summary>Cosa devono imparare in questa lezione</summary>
             <div><ul>{projection.outcomes.map((outcome) => <li key={outcome}>{outcome}</li>)}</ul></div>
@@ -151,29 +191,37 @@ export default function LessonWorkspaceClient({
         </main>
       ) : null}
 
-      {mode === 'teach' ? (
+      {mode === 'teach' && currentStep ? (
         <main className="lessonTaskPane" aria-labelledby="teach-title">
           <section className="lessonTaskLead compact">
-            <p>IN CLASSE · PASSO {activeStep + 1} DI {projection.steps.length}</p>
+            <p>IN CLASSE · PASSO {activeStep + 1} DI {effectiveSteps.length}</p>
             <h2 id="teach-title">{currentStep.title}</h2>
             <span>{stepLead(currentStep.minutes, currentStep.instruction)}</span>
           </section>
 
-          <section className="lessonCurrentStep">
+          <section className={currentStep.origin === 'EXTENSION' ? 'lessonCurrentStep extension' : 'lessonCurrentStep'}>
             <div className="lessonStepNumber">{String(activeStep + 1).padStart(2, '0')}</div>
-            <div><strong>{currentStep.title}</strong><p>{currentStep.instruction}</p>{currentStep.cue ? <small>{currentStep.cue}</small> : null}</div>
+            <div>
+              {currentStep.origin === 'EXTENSION' ? <span className="lessonExtensionBadge">AGGIUNTA DOCENTE · {extensionKindLabel(currentStep.kind)}</span> : null}
+              <strong>{currentStep.title}</strong>
+              <p>{currentStep.instruction}</p>
+              {currentStep.cue ? <small>{currentStep.cue}</small> : null}
+              {currentStep.origin === 'EXTENSION' ? <ExtensionSource step={currentStep} /> : null}
+            </div>
           </section>
 
           {currentStepResources.map((resource) => <InlineResource resource={resource} key={resource.id} />)}
 
+          {attachedResources.length ? <AttachedResources resources={attachedResources} /> : null}
+
           <div className="lessonStepActions">
             <button type="button" onClick={() => setActiveStep((value) => Math.max(0, value - 1))} disabled={activeStep === 0}>Indietro</button>
-            <button className="primary" type="button" onClick={advanceStep}>{activeStep === projection.steps.length - 1 ? 'Passa all’osservazione' : 'Passo successivo'}</button>
+            <button className="primary" type="button" onClick={advanceStep}>{activeStep === effectiveSteps.length - 1 ? 'Passa all’osservazione' : 'Passo successivo'}</button>
           </div>
 
           <details className="lessonDisclosure">
             <summary>Vedi tutta la sequenza</summary>
-            <div className="lessonSequenceList">{projection.steps.map((step, index) => <button type="button" key={step.id} onClick={() => setActiveStep(index)}><span>{index + 1}</span><div><strong>{step.title}</strong>{step.minutes !== null ? <small>{step.minutes} min</small> : null}</div></button>)}</div>
+            <div className="lessonSequenceList">{effectiveSteps.map((step, index) => <button type="button" key={step.id} onClick={() => setActiveStep(index)}><span>{index + 1}</span><div><strong>{step.title}</strong><small>{step.origin === 'EXTENSION' ? `Aggiunta${step.minutes !== null ? ` · ${step.minutes} min` : ''}` : step.minutes !== null ? `${step.minutes} min` : 'Sequenza canonica'}</small></div></button>)}</div>
           </details>
         </main>
       ) : null}
@@ -254,7 +302,7 @@ function ContextSupport({
 }) {
   let content: string
   if (mode === 'prepare') {
-    content = 'Le spunte servono solo come promemoria mentre prepari: non vengono salvate e non devi completarle tutte per iniziare.'
+    content = 'Le spunte restano promemoria locali. Le aggiunte approvate dagli strumenti, invece, vengono salvate separatamente dalla sequenza canonica e puoi rimuoverle quando vuoi.'
   } else if (mode === 'teach') {
     const alignmentHelp = alignment.level === 'COMPOSED' && alignment.note ? ` ${alignment.note}` : ''
     content = `${timingHelp(timing)}${alignmentHelp}`
@@ -281,6 +329,43 @@ function InlineResource({ resource }: { resource: HumanTaskResource }) {
   return <section className="lessonInlineResource"><span>{resourceKindLabel(resource.kind)}</span><h3>{resource.title}</h3><p>{resource.instruction}</p><ul>{resource.prompts.map((prompt) => <li key={prompt}>{prompt}</li>)}</ul></section>
 }
 
+function AttachedResources({ resources }: { resources: LessonDesignExtension[] }) {
+  return (
+    <details className="lessonAttachedResources">
+      <summary>Materiali aggiunti dal docente <span>{resources.length}</span></summary>
+      <div>
+        {resources.map((resource) => {
+          const href = extensionSourceHref(resource.sourceRef)
+          return (
+            <article key={resource.id}>
+              <div><span>{resource.kind === 'STUDENT_RESOURCE' ? 'STUDENTI' : 'DOCENTE'}</span><strong>{resource.title}</strong><p>{resource.body}</p></div>
+              {href ? <Link href={href}>Apri materiale</Link> : null}
+            </article>
+          )
+        })}
+      </div>
+    </details>
+  )
+}
+
+function ExtensionSource({ step }: { step: ComposedLessonSequenceStep }) {
+  const href = extensionSourceHref(step.sourceRef)
+  if (!step.sourceLabel && !href) return null
+  return (
+    <div className="lessonExtensionSource">
+      <span>Fonte</span>
+      {href ? <Link href={href}>{step.sourceLabel ?? 'Apri fonte'}</Link> : <strong>{step.sourceLabel}</strong>}
+    </div>
+  )
+}
+
+function extensionSourceHref(sourceRef: string | null) {
+  if (!sourceRef) return null
+  if (sourceRef.startsWith('knowledge:')) return `/knowledge/${encodeURIComponent(sourceRef.slice('knowledge:'.length))}`
+  if (/^https:\/\//i.test(sourceRef)) return sourceRef
+  return null
+}
+
 function timingHelp(timing: HumanTaskLessonTiming) {
   if (timing.status === 'UNSPECIFIED') {
     return `La fonte indica ${formatDuration(timing.durationMinutes)} complessive ma non assegna minuti alle singole attività. Segui l’ordine e adatta i tempi alla risposta reale della classe.`
@@ -296,6 +381,15 @@ function timingHelp(timing: HumanTaskLessonTiming) {
 
 function stepLead(minutes: number | null, instruction: string) {
   return minutes === null ? instruction : `${minutes} min · ${instruction}`
+}
+
+function extensionKindLabel(kind: ComposedLessonSequenceStep['kind']) {
+  if (kind === 'HOOK_QUOTE') return 'FRASE'
+  if (kind === 'HOOK_EVENT') return 'EVENTO'
+  if (kind === 'HOOK_VIDEO') return 'MICRO-VIDEO'
+  if (kind === 'HOOK_QUESTION') return 'DOMANDA'
+  if (kind === 'FORMATIVE_CHECK') return 'VERIFICA RAPIDA'
+  return 'AGGIUNTA'
 }
 
 function resourceKindLabel(kind: HumanTaskResourceKind) {
