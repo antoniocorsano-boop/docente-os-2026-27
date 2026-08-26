@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { captureAnonymousKnowledgeNote } from './anonymous-actions'
+import { AnonymousKnowledgeNoteForm } from './AnonymousKnowledgeNoteForm'
 import { KnowledgeFileUploader } from './KnowledgeFileUploader'
 
 type CaptureMode = 'text' | 'file'
@@ -27,12 +27,7 @@ export function KnowledgeCaptureModes() {
 
       <div className={`captureModeBlock captureModeText ${mode === 'text' ? 'isActive' : ''}`} data-capture-mode-panel="text">
         <div className="captureModeHeading"><strong>Incolla un testo</strong><span>Pronto per la ricerca in pochi secondi</span></div>
-        <form action={captureAnonymousKnowledgeNote} className="knowledgeCaptureForm">
-          <label><span>Titolo, se vuoi</span><input name="title" maxLength={180} placeholder="Es. Collegio docenti — appunti" /></label>
-          <label><span>Contenuto</span><textarea name="text" rows={7} required placeholder="Incolla o scrivi qui solo contenuti privi di dati personali…" /></label>
-          <div className="pipelineHint"><span>Controllo privacy</span><b>→</b><span>Originale</span><b>→</b><span>Contenuto leggibile</span><b>→</b><span>Ricerca</span></div>
-          <button type="submit">Controlla, salva e organizza</button>
-        </form>
+        <AnonymousKnowledgeNoteForm />
       </div>
 
       <div className="captureDivider"><span>oppure</span></div>
