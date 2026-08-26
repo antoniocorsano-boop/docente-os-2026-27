@@ -86,6 +86,24 @@ export type ComposedLessonSequence = {
   ignoredExtensionIds: string[]
 }
 
+const SEQUENCE_KINDS = new Set<LessonDesignExtensionKind>([
+  'HOOK_QUOTE',
+  'HOOK_EVENT',
+  'HOOK_VIDEO',
+  'HOOK_QUESTION',
+  'FORMATIVE_CHECK',
+])
+
+export function isLessonSequenceExtension(extension: Pick<LessonDesignExtension, 'kind'>) {
+  return SEQUENCE_KINDS.has(extension.kind)
+}
+
+export function acceptedLessonDesignResources(extensions: LessonDesignExtension[]) {
+  return extensions
+    .filter((extension) => extension.status === 'ACCEPTED' && !isLessonSequenceExtension(extension))
+    .sort(compareExtensions)
+}
+
 export function validateLessonDesignExtensionDraft(draft: LessonDesignExtensionDraft) {
   if (!/^B(0[1-9]|[12][0-9]|3[0-3])$/.test(draft.blockId)) throw new Error('Invalid canonical block id')
   if (!draft.projectionId.trim()) throw new Error('Projection id is required')
@@ -117,7 +135,7 @@ export function composeLessonSequence(
   extensions: LessonDesignExtension[],
 ): ComposedLessonSequence {
   const accepted = extensions
-    .filter((extension) => extension.status === 'ACCEPTED')
+    .filter((extension) => extension.status === 'ACCEPTED' && isLessonSequenceExtension(extension))
     .sort(compareExtensions)
   const baseIds = new Set(baseSteps.map((step) => step.id))
   const ignoredExtensionIds: string[] = []
