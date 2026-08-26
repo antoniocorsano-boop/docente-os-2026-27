@@ -41,6 +41,7 @@ export function buildLessonActivationQuestionProposal(
     sourceLabel: 'Proiezione didattica canonica',
     payload: {
       toolId: LESSON_ACTIVATION_QUESTION_TOOL_ID,
+      dedupeKey: LESSON_ACTIVATION_QUESTION_TOOL_ID,
       executionKind: 'LOCAL_DETERMINISTIC',
       grounding: {
         blockId: input.blockId,
