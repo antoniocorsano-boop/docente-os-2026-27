@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { createClient } from '@/lib/supabase/server'
 import { inspectFilenameForPilot, inspectFreeTextForPilot } from '@/core/privacy/anonymization-guard'
+import { inspectBinaryForAnonymousPilot } from '@/core/privacy/binary-anonymization-preflight'
 import {
   buildKnowledgeObjectPath,
   isAllowedKnowledgeUploadMime,
@@ -14,9 +15,21 @@ import {
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+type UploadFailureCode =
+  | 'missing'
+  | 'too_large'
+  | 'unsupported'
+  | 'unauthorized'
+  | 'size_mismatch'
+  | 'storage_failed'
+  | 'privacy_confirmation_required'
+  | 'privacy_blocked'
+  | 'privacy_preflight_unavailable'
+  | 'privacy_preflight_failed'
+
 type UploadResponse =
   | { ok: true; objectPath: string; mimeType: string; byteSize: number }
-  | { ok: false; code: 'missing' | 'too_large' | 'unsupported' | 'unauthorized' | 'size_mismatch' | 'storage_failed' | 'privacy_confirmation_required' | 'privacy_blocked' }
+  | { ok: false; code: UploadFailureCode }
 
 export async function POST(request: Request) {
   const encodedName = request.headers.get('x-docente-file-name') ?? ''
@@ -65,13 +78,24 @@ export async function POST(request: Request) {
     return json({ ok: false, code: 'size_mismatch' }, 400)
   }
 
+  const uploadBytes = new Uint8Array(bytes)
   if (mimeType === 'text/plain' || mimeType === 'text/markdown') {
-    const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes)
+    const text = new TextDecoder('utf-8', { fatal: false }).decode(uploadBytes)
     if (!inspectFreeTextForPilot(text).allowed) return json({ ok: false, code: 'privacy_blocked' }, 422)
+  } else {
+    const preflight = await inspectBinaryForAnonymousPilot({ bytes: uploadBytes, mimeType })
+    if (!preflight.allowed) {
+      console.warn('Knowledge binary privacy preflight rejected upload', {
+        code: preflight.code,
+        mimeType,
+        reason: preflight.reason,
+      })
+      return json({ ok: false, code: preflight.code }, preflight.code === 'privacy_preflight_failed' ? 422 : 409)
+    }
   }
 
   const objectPath = buildKnowledgeObjectPath(context.workspace.id, userId, originalName, crypto.randomUUID())
-  const { error } = await supabase.storage.from(KNOWLEDGE_BUCKET).upload(objectPath, Buffer.from(bytes), {
+  const { error } = await supabase.storage.from(KNOWLEDGE_BUCKET).upload(objectPath, Buffer.from(uploadBytes), {
     contentType: mimeType,
     cacheControl: '3600',
     upsert: false,
