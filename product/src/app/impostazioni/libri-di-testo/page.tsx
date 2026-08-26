@@ -10,6 +10,7 @@ import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supa
 import { addTextbookProposal, confirmTextbookAdoption, removeTextbookAdoption } from './actions'
 import '../settings.css'
 import './textbooks.css'
+import './manage.css'
 
 export const dynamic = 'force-dynamic'
 
