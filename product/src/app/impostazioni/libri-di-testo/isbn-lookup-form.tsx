@@ -2,13 +2,12 @@
 
 import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
-import {
-  INITIAL_ISBN_LOOKUP_STATE,
-  lookupTextbookByIsbn,
-} from './actions'
+import { lookupTextbookByIsbn, type IsbnLookupState } from './actions'
+
+const INITIAL_STATE: IsbnLookupState = { status: 'idle', message: '' }
 
 export function IsbnLookupForm({ teachingAssignmentId }: { teachingAssignmentId: string }) {
-  const [state, action] = useActionState(lookupTextbookByIsbn, INITIAL_ISBN_LOOKUP_STATE)
+  const [state, action] = useActionState(lookupTextbookByIsbn, INITIAL_STATE)
 
   return (
     <form action={action} className="textbookLookupForm">
