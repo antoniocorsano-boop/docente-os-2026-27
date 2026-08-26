@@ -14,7 +14,7 @@ test('rejects an invalid ISBN-13 checksum', () => {
   assert.throws(() => normalizeIsbn13('9788808899799'), /checksum/)
 })
 
-test('validates a manual textbook proposal without requiring a publisher login', () => {
+test('validates an automatically resolved ISBN proposal without publisher credentials', () => {
   const draft = validateTextbookDraft({
     teachingAssignmentId: 'assignment-1',
     isbn13: '978-88-08-89979-8',
@@ -27,16 +27,16 @@ test('validates a manual textbook proposal without requiring a publisher login',
     officialUrl: 'https://www.zanichelli.it/',
     publisherProductRef: null,
     usageKind: 'ADOPTED',
-    sourceKind: 'MANUAL',
-    sourceRef: null,
+    sourceKind: 'ISBN_LOOKUP',
+    sourceRef: 'google-books:isbn:9788808899798',
   })
 
   assert.equal(draft.isbn13, '9788808899798')
   assert.equal(draft.title, 'Tecnologia.verde')
-  assert.equal(draft.sourceKind, 'MANUAL')
+  assert.equal(draft.sourceKind, 'ISBN_LOOKUP')
 })
 
-test('confirmed adopted books cover their teaching assignment while proposals stay reviewable', () => {
+test('every confirmed book is counted while only adopted books cover the assignment', () => {
   const coverage = buildTextbookSettingsCoverage({
     assignmentIds: ['a1', 'a2'],
     adoptions: [
@@ -47,7 +47,7 @@ test('confirmed adopted books cover their teaching assignment while proposals st
   })
 
   assert.equal(coverage.coveredAssignmentCount, 1)
-  assert.equal(coverage.confirmedBookCount, 1)
+  assert.equal(coverage.confirmedBookCount, 2)
   assert.equal(coverage.proposedBookCount, 1)
   assert.deepEqual(coverage.missingAssignmentIds, ['a2'])
 })
