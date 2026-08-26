@@ -41,6 +41,17 @@ export async function confirmTextbookAdoption(formData: FormData) {
   revalidateTextbooks()
 }
 
+export async function removeTextbookAdoption(formData: FormData) {
+  const context = await requireContext()
+  const repository = new SupabaseTextbookRepository()
+  await repository.remove(
+    context.workspace.id,
+    context.academicYear.id,
+    text(formData, 'adoptionId'),
+  )
+  revalidateTextbooks()
+}
+
 async function requireContext() {
   const repository = new SupabaseWorkspaceRepository()
   const context = await repository.getCurrentContext()
