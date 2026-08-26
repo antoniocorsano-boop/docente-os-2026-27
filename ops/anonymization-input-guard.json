@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "product": "DOCENTE OS",
   "gate": "P7_ANONYMIZATION_INPUT_GUARD",
-  "state": "IMPLEMENTED_WITH_MULTI_PAGE_AND_DOCX_MEDIA_VISUAL_RESIDUAL",
+  "state": "IMPLEMENTED_WITH_LONG_PDF_AND_DOCX_MEDIA_VISUAL_RESIDUAL",
   "pilotDataBoundary": {
     "allowed": ["D0_NON_PERSONAL", "D1_ANONYMOUS_AGGREGATE"],
     "deferred": ["D2_PSEUDONYMOUS_INDIVIDUAL"],
@@ -24,7 +24,7 @@
       "serverPrePersistenceInspection": true
     },
     "ANON_BINARY_UPLOAD_GUARD": {
-      "state": "SATISFIED_WITH_RESTRICTED_LOCAL_VISUAL_DERIVATIVES",
+      "state": "SATISFIED_WITH_BOUNDED_LOCAL_VISUAL_DERIVATIVES",
       "formats": ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/png", "image/jpeg", "image/webp"],
       "filenameInspection": true,
       "explicitHumanNoPersonalDataAttestationRequired": true,
@@ -32,7 +32,7 @@
       "contentPrePersistenceInspection": true,
       "storageWriteOccursOnlyAfterPreflightPass": true,
       "externalAiUsedForPrivacyPreflight": false,
-      "pdfPolicy": "ALLOW_NATIVE_TEXT_OR_SINGLE_PAGE_LOCAL_HUMAN_REVIEWED_PNG_DERIVATIVE; DENY_MULTI_PAGE_VISUAL_RESIDUAL",
+      "pdfPolicy": "ALLOW_NATIVE_TEXT_OR_LOCAL_HUMAN_REVIEWED_PNG_DERIVATIVE_UP_TO_5_PAGES; DENY_VISUAL_PDF_OVER_5_PAGES",
       "docxPolicy": "ALLOW_ONLY_TEXT_EXTRACTABLE_WITHOUT_EMBEDDED_MEDIA_AFTER_D0_D1_GUARD",
       "imagePolicy": "ALLOW_ONLY_LOCAL_HUMAN_REVIEWED_REDACTABLE_METADATA_STRIPPED_PNG"
     },
@@ -49,26 +49,28 @@
       "automatedVisualPiiDetection": false,
       "externalAiUsed": false
     },
-    "ANON_SINGLE_PAGE_PDF_LOCAL_VISUAL_GUARD": {
+    "ANON_BOUNDED_PDF_LOCAL_VISUAL_GUARD": {
       "state": "SATISFIED_WITH_HUMAN_REVIEW",
       "classificationRunsBeforeUpload": true,
-      "visualAdmissionScope": "SINGLE_PAGE_WITHOUT_USABLE_NATIVE_TEXT_ONLY",
+      "visualAdmissionScope": "PDF_WITH_VISUAL_RESIDUAL_UP_TO_5_PAGES",
+      "pageCap": 5,
+      "overPageCapAllowed": false,
       "originalPdfBytesLeaveDeviceOnVisualPath": false,
-      "localCanvasRenderRequired": true,
+      "allPagesLocalCanvasRenderRequired": true,
+      "wholeDocumentHumanReviewRequired": true,
       "localRedactionAvailable": true,
       "derivedFormat": "image/png",
       "derivedFilename": "scansione-anonima.png",
       "serverUsesExistingReviewedPngGuard": true,
-      "multiPageVisualResidualAllowed": false,
       "automatedVisualPiiDetection": false,
       "externalAiUsed": false
     }
   },
   "residuals": [
     {
-      "id": "ANON_MULTI_PAGE_AND_DOCX_MEDIA_VISUAL_PREFLIGHT",
+      "id": "ANON_LONG_PDF_AND_DOCX_MEDIA_VISUAL_PREFLIGHT",
       "state": "NOT_SATISFIED",
-      "description": "PDF multi-pagina con almeno una pagina priva di testo nativo sufficiente e DOCX con immagini/media incorporati restano bloccati finché non esiste un preflight visuale locale equivalente prima della persistenza.",
+      "description": "PDF con residui visuali oltre 5 pagine e DOCX con immagini/media incorporati restano bloccati finché non esiste un preflight locale equivalente prima della persistenza.",
       "blocksClaim": "FULL_VISUAL_ANONYMIZATION_INPUT_ENFORCEMENT",
       "doesNotAuthorizeTier2": true
     }
@@ -87,9 +89,9 @@
     "textFilePrePersistenceGuard": "PASS",
     "binaryTextualContentPrePersistenceGuard": "PASS",
     "standaloneImageLocalVisualPreflight": "PASS_WITH_HUMAN_REVIEW",
-    "singlePageScannedPdfLocalVisualPreflight": "PASS_WITH_HUMAN_REVIEW",
-    "scannedDocumentVisualAdmission": "PARTIAL_SINGLE_PAGE_ONLY",
-    "multiPagePdfVisualAdmission": "DENIED_PENDING_LOCAL_PREFLIGHT",
+    "boundedPdfLocalVisualPreflight": "PASS_WITH_HUMAN_REVIEW",
+    "pdfVisualAdmission": "PARTIAL_UP_TO_5_PAGES",
+    "longPdfVisualAdmission": "DENIED_OVER_5_PAGES",
     "docxEmbeddedMediaVisualAdmission": "DENIED_PENDING_LOCAL_PREFLIGHT",
     "fullVisualAnonymizationInputEnforcement": "NOT_YET_CLAIMED",
     "tier2AdmissionEffect": "NONE"
