@@ -5,6 +5,7 @@ import type { ChangeEvent, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import './knowledge-upload-comfort.css'
 import { finalizeKnowledgeFileUpload } from './upload-actions'
+import { LocalDocxMediaPrivacyWorkbench } from './LocalDocxMediaPrivacyWorkbench'
 import { LocalImagePrivacyWorkbench } from './LocalImagePrivacyWorkbench'
 import { LocalSinglePagePdfPrivacyWorkbench } from './LocalSinglePagePdfPrivacyWorkbench'
 import {
@@ -17,12 +18,14 @@ import { inspectFilenameForPilot, inspectFreeTextForPilot, pilotPrivacyErrorMess
 type UploadPhase = 'IDLE' | 'READY' | 'UPLOADING' | 'ORGANIZING' | 'ERROR'
 type FailedAt = 'SELECT' | 'UPLOAD' | 'ORGANIZE' | null
 type StoredUploadReference = { objectPath: string; mimeType: string; byteSize: number }
+type DocxMode = 'ANALYZING' | 'TEXT_ONLY' | 'MEDIA_REQUIRES_DERIVATIVE' | 'FAILED'
 
 type SameOriginUploadResult =
   | { ok: true; objectPath: string; mimeType: string; byteSize: number }
   | { ok: false; code?: string }
 
 const PDF_MIME = 'application/pdf'
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
 export function KnowledgeFileUploader() {
   const router = useRouter()
@@ -30,6 +33,8 @@ export function KnowledgeFileUploader() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [preparedImageFile, setPreparedImageFile] = useState<File | null>(null)
   const [preparedPdfFile, setPreparedPdfFile] = useState<File | null>(null)
+  const [preparedDocxFile, setPreparedDocxFile] = useState<File | null>(null)
+  const [docxMode, setDocxMode] = useState<DocxMode | null>(null)
   const [privacyConfirmed, setPrivacyConfirmed] = useState(false)
   const [phase, setPhase] = useState<UploadPhase>('IDLE')
   const [failedAt, setFailedAt] = useState<FailedAt>(null)
@@ -39,13 +44,16 @@ export function KnowledgeFileUploader() {
   const selectedMimeType = selectedFile ? normalizeKnowledgeUploadMime(selectedFile.type, selectedFile.name) : null
   const selectedIsImage = selectedMimeType?.startsWith('image/') === true
   const selectedIsPdf = selectedMimeType === PDF_MIME
-  const selectedUsesVisualDerivative = selectedIsImage || Boolean(preparedPdfFile)
+  const selectedIsDocx = selectedMimeType === DOCX_MIME
+  const selectedUsesAnonymousDerivative = selectedIsImage || Boolean(preparedPdfFile) || Boolean(preparedDocxFile)
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0] ?? null
     setSelectedFile(file)
     setPreparedImageFile(null)
     setPreparedPdfFile(null)
+    setPreparedDocxFile(null)
+    setDocxMode(null)
     setPrivacyConfirmed(false)
     setPhase(file ? 'READY' : 'IDLE')
     setFailedAt(null)
@@ -59,6 +67,8 @@ export function KnowledgeFileUploader() {
     setSelectedFile(null)
     setPreparedImageFile(null)
     setPreparedPdfFile(null)
+    setPreparedDocxFile(null)
+    setDocxMode(null)
     setPrivacyConfirmed(false)
     setPhase('IDLE')
     setFailedAt(null)
@@ -94,12 +104,19 @@ export function KnowledgeFileUploader() {
     if (imageUpload && !preparedImageFile) {
       return fail('Prima prepara la copia anonima nell’anteprima locale. L’immagine originale non verrà inviata.', 'SELECT')
     }
+    if (originalMimeType === DOCX_MIME && (docxMode === 'ANALYZING' || docxMode === 'FAILED' || docxMode === null)) {
+      return fail('Attendi il controllo locale del DOCX prima di procedere.', 'SELECT')
+    }
+    if (originalMimeType === DOCX_MIME && docxMode === 'MEDIA_REQUIRES_DERIVATIVE' && !preparedDocxFile) {
+      return fail('Il DOCX contiene media: prepara prima la derivazione testuale anonima oppure scegli un altro file.', 'SELECT')
+    }
 
     if (!privacyConfirmed) return fail('Conferma che il contenuto destinato al pilot non contiene dati personali di studenti o terzi.', 'SELECT')
 
-    const uploadFile = imageUpload ? preparedImageFile! : preparedPdfFile ?? originalFile
+    const uploadFile = imageUpload ? preparedImageFile! : preparedPdfFile ?? preparedDocxFile ?? originalFile
     const uploadMimeType = normalizeKnowledgeUploadMime(uploadFile.type, uploadFile.name)
     const localVisualUpload = imageUpload || Boolean(preparedPdfFile)
+    const docxTextDerivativeUpload = Boolean(preparedDocxFile)
 
     if (failedAt === 'ORGANIZE' && storedUpload) {
       setFailedAt(null)
@@ -112,7 +129,9 @@ export function KnowledgeFileUploader() {
     setPhase('UPLOADING')
     setMessage(localVisualUpload
       ? 'Revisione locale completata. Invio solo la copia PNG ricodificata: il file originale resta sul dispositivo.'
-      : 'Controllo privacy superato. Il file resta qui mentre completo il preflight prima della persistenza.')
+      : docxTextDerivativeUpload
+        ? 'Revisione locale completata. Invio solo il testo anonimo derivato: DOCX originale e media restano sul dispositivo.'
+        : 'Controllo privacy superato. Il file resta qui mentre completo il preflight prima della persistenza.')
 
     let uploadResponse: Response
     try {
@@ -171,16 +190,17 @@ export function KnowledgeFileUploader() {
     setMessage(text)
   }
 
-  const steps = uploadSteps({ phase, failedAt, hasFile: Boolean(selectedFile), usesVisualDerivative: selectedUsesVisualDerivative })
+  const steps = uploadSteps({ phase, failedAt, hasFile: Boolean(selectedFile), usesAnonymousDerivative: selectedUsesAnonymousDerivative })
   const feedbackTitle = phase === 'UPLOADING'
-    ? selectedUsesVisualDerivative ? 'Sto mettendo al sicuro la copia anonima' : 'Sto mettendo al sicuro l’originale'
+    ? selectedUsesAnonymousDerivative ? 'Sto mettendo al sicuro la copia anonima' : 'Sto mettendo al sicuro l’originale'
     : phase === 'ORGANIZING'
-      ? selectedUsesVisualDerivative ? 'Copia anonima al sicuro' : 'Originale al sicuro'
+      ? selectedUsesAnonymousDerivative ? 'Copia anonima al sicuro' : 'Originale al sicuro'
       : phase === 'ERROR'
         ? 'Serve un intervento'
         : null
 
   const imageReady = !selectedIsImage || Boolean(preparedImageFile)
+  const docxReady = !selectedIsDocx || docxMode === 'TEXT_ONLY' || Boolean(preparedDocxFile)
   const submitLabel = phase === 'UPLOADING'
     ? 'Caricamento…'
     : phase === 'ORGANIZING'
@@ -189,11 +209,13 @@ export function KnowledgeFileUploader() {
         ? 'Riprova organizzazione'
         : selectedIsImage && !preparedImageFile
           ? 'Prepara prima la copia anonima'
-          : phase === 'ERROR' && selectedFile
-            ? 'Riprova'
-            : selectedFile
-              ? 'Carica e organizza'
-              : 'Seleziona prima un file'
+          : selectedIsDocx && !docxReady
+            ? 'Completa prima la revisione DOCX'
+            : phase === 'ERROR' && selectedFile
+              ? 'Riprova'
+              : selectedFile
+                ? 'Carica e organizza'
+                : 'Seleziona prima un file'
 
   return (
     <form className="knowledgeUploadForm knowledgeUploadComfort" onSubmit={handleSubmit}>
@@ -216,7 +238,13 @@ export function KnowledgeFileUploader() {
         <div className="selectedFileCard" role="status" aria-live="polite" aria-atomic="true">
           <span className="selectedFileCheck" aria-hidden>✓</span>
           <div className="selectedFileBody">
-            <strong>{storedUpload ? 'Copia ammessa già al sicuro' : preparedPdfFile ? 'Copia anonima pronta' : selectedIsImage && preparedImageFile ? 'Copia anonima pronta' : selectedIsImage ? 'Pronto per la revisione locale' : 'Pronto a caricare'}</strong>
+            <strong>{storedUpload
+              ? 'Copia ammessa già al sicuro'
+              : preparedPdfFile || preparedDocxFile || (selectedIsImage && preparedImageFile)
+                ? 'Copia anonima pronta'
+                : selectedIsImage || (selectedIsDocx && docxMode === 'MEDIA_REQUIRES_DERIVATIVE')
+                  ? 'Pronto per la revisione locale'
+                  : 'Pronto a caricare'}</strong>
             <span title={selectedFile.name}>{selectedFile.name}</span>
             <small>{fileTypeLabel(selectedFile)} · {formatFileSize(selectedFile.size)}</small>
           </div>
@@ -253,6 +281,25 @@ export function KnowledgeFileUploader() {
         />
       ) : null}
 
+      {selectedFile && selectedIsDocx ? (
+        <LocalDocxMediaPrivacyWorkbench
+          file={selectedFile}
+          disabled={busy}
+          onPrepared={(safeFile) => {
+            setPreparedDocxFile(safeFile)
+            if (safeFile) {
+              setFailedAt(null)
+              setPhase('READY')
+              setMessage(null)
+            }
+          }}
+          onModeChange={(mode) => {
+            setDocxMode(mode)
+            if (mode !== 'MEDIA_REQUIRES_DERIVATIVE') setPreparedDocxFile(null)
+          }}
+        />
+      ) : null}
+
       {selectedFile ? (
         <label className="knowledgeUploadTrust">
           <input type="checkbox" checked={privacyConfirmed} onChange={(event) => setPrivacyConfirmed(event.currentTarget.checked)} disabled={busy} />{' '}
@@ -278,18 +325,18 @@ export function KnowledgeFileUploader() {
         </div>
       ) : null}
 
-      <button type="submit" disabled={busy || !selectedFile || !imageReady}>{submitLabel}</button>
+      <button type="submit" disabled={busy || !selectedFile || !imageReady || !docxReady}>{submitLabel}</button>
       {selectedFile && !busy ? (
         <p className="knowledgeUploadTrust">
-          TXT/Markdown, PDF testuali e DOCX senza media vengono controllati prima della persistenza. Immagini e scansioni PDF a pagina singola possono passare solo tramite una copia PNG revisionata e ricodificata localmente. PDF multi-pagina con residui visuali e DOCX con immagini restano bloccati.
+          TXT/Markdown, PDF testuali e DOCX senza media vengono controllati prima della persistenza. Immagini e PDF visuali entro il limite locale passano solo tramite copie PNG revisionate. Un DOCX con media può produrre solo un TXT revisionato se i media non sono necessari; altrimenti resta bloccato. PDF visuali oltre il limite restano fail-closed.
         </p>
       ) : null}
     </form>
   )
 }
 
-function uploadSteps(input: { phase: UploadPhase; failedAt: FailedAt; hasFile: boolean; usesVisualDerivative: boolean }) {
-  const { phase, failedAt, hasFile, usesVisualDerivative } = input
+function uploadSteps(input: { phase: UploadPhase; failedAt: FailedAt; hasFile: boolean; usesAnonymousDerivative: boolean }) {
+  const { phase, failedAt, hasFile, usesAnonymousDerivative } = input
   return [
     {
       label: 'File scelto',
@@ -297,7 +344,7 @@ function uploadSteps(input: { phase: UploadPhase; failedAt: FailedAt; hasFile: b
       state: failedAt === 'SELECT' ? 'problem' : hasFile ? 'done' : 'pending',
     },
     {
-      label: usesVisualDerivative ? 'Copia anonima al sicuro' : 'Originale al sicuro',
+      label: usesAnonymousDerivative ? 'Copia anonima al sicuro' : 'Originale al sicuro',
       hint: 'Salvata solo dopo il preflight',
       state: failedAt === 'UPLOAD' ? 'problem' : phase === 'UPLOADING' ? 'active' : phase === 'ORGANIZING' || failedAt === 'ORGANIZE' ? 'done' : 'pending',
     },
@@ -317,7 +364,7 @@ function uploadFailureMessage(status: number, code?: string) {
   if (status === 401) return 'La sessione è scaduta prima del salvataggio. Ricarica la pagina e accedi di nuovo.'
   if (code === 'privacy_confirmation_required') return 'Conferma esplicitamente che il contenuto destinato al pilot è privo di dati personali.'
   if (code === 'privacy_blocked') return 'Il controllo privacy ha rilevato dati o metadata non ammessi nel pilot anonimo. Rimuovili e riprova.'
-  if (code === 'privacy_preflight_unavailable') return 'Questo file richiede un controllo visuale che il pilot anonimo non può ancora certificare. Per immagini o scansioni PDF a pagina singola prepara la copia anonima locale; i documenti multi-pagina con residui visuali restano bloccati.'
+  if (code === 'privacy_preflight_unavailable') return 'Questo file richiede un controllo che il pilot anonimo non può ancora certificare. Prepara un derivato locale quando disponibile oppure scegli un altro file.'
   if (code === 'privacy_preflight_failed') return 'Il preflight non riesce a verificare questo file in modo affidabile. Nessuna copia è stata salvata.'
   if (status === 413 || code === 'too_large') return 'Il file supera il limite di 20 MB. Scegline uno più piccolo.'
   if (status === 415 || code === 'unsupported') return 'Questo formato non è supportato. Usa PDF, immagini, DOCX, TXT o Markdown.'
