@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import './knowledge-upload-comfort.css'
 import { finalizeKnowledgeFileUpload } from './upload-actions'
 import { LocalImagePrivacyWorkbench } from './LocalImagePrivacyWorkbench'
+import { LocalSinglePagePdfPrivacyWorkbench } from './LocalSinglePagePdfPrivacyWorkbench'
 import {
   isAllowedKnowledgeUploadMime,
   MAX_KNOWLEDGE_UPLOAD_BYTES,
@@ -21,11 +22,14 @@ type SameOriginUploadResult =
   | { ok: true; objectPath: string; mimeType: string; byteSize: number }
   | { ok: false; code?: string }
 
+const PDF_MIME = 'application/pdf'
+
 export function KnowledgeFileUploader() {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [preparedImageFile, setPreparedImageFile] = useState<File | null>(null)
+  const [preparedPdfFile, setPreparedPdfFile] = useState<File | null>(null)
   const [privacyConfirmed, setPrivacyConfirmed] = useState(false)
   const [phase, setPhase] = useState<UploadPhase>('IDLE')
   const [failedAt, setFailedAt] = useState<FailedAt>(null)
@@ -34,11 +38,14 @@ export function KnowledgeFileUploader() {
   const busy = phase === 'UPLOADING' || phase === 'ORGANIZING'
   const selectedMimeType = selectedFile ? normalizeKnowledgeUploadMime(selectedFile.type, selectedFile.name) : null
   const selectedIsImage = selectedMimeType?.startsWith('image/') === true
+  const selectedIsPdf = selectedMimeType === PDF_MIME
+  const selectedUsesVisualDerivative = selectedIsImage || Boolean(preparedPdfFile)
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0] ?? null
     setSelectedFile(file)
     setPreparedImageFile(null)
+    setPreparedPdfFile(null)
     setPrivacyConfirmed(false)
     setPhase(file ? 'READY' : 'IDLE')
     setFailedAt(null)
@@ -51,6 +58,7 @@ export function KnowledgeFileUploader() {
     if (inputRef.current) inputRef.current.value = ''
     setSelectedFile(null)
     setPreparedImageFile(null)
+    setPreparedPdfFile(null)
     setPrivacyConfirmed(false)
     setPhase('IDLE')
     setFailedAt(null)
@@ -89,8 +97,9 @@ export function KnowledgeFileUploader() {
 
     if (!privacyConfirmed) return fail('Conferma che il contenuto destinato al pilot non contiene dati personali di studenti o terzi.', 'SELECT')
 
-    const uploadFile = imageUpload ? preparedImageFile! : originalFile
+    const uploadFile = imageUpload ? preparedImageFile! : preparedPdfFile ?? originalFile
     const uploadMimeType = normalizeKnowledgeUploadMime(uploadFile.type, uploadFile.name)
+    const localVisualUpload = imageUpload || Boolean(preparedPdfFile)
 
     if (failedAt === 'ORGANIZE' && storedUpload) {
       setFailedAt(null)
@@ -101,8 +110,8 @@ export function KnowledgeFileUploader() {
     setFailedAt(null)
     setStoredUpload(null)
     setPhase('UPLOADING')
-    setMessage(imageUpload
-      ? 'Revisione locale completata. Invio solo la copia PNG ricodificata: l’immagine originale resta sul dispositivo.'
+    setMessage(localVisualUpload
+      ? 'Revisione locale completata. Invio solo la copia PNG ricodificata: il file originale resta sul dispositivo.'
       : 'Controllo privacy superato. Il file resta qui mentre completo il preflight prima della persistenza.')
 
     let uploadResponse: Response
@@ -114,7 +123,7 @@ export function KnowledgeFileUploader() {
           'x-docente-file-name': encodeURIComponent(uploadFile.name),
           'x-docente-file-size': String(uploadFile.size),
           'x-docente-anonymous-confirmed': 'true',
-          ...(imageUpload ? { 'x-docente-local-visual-preflight': 'reviewed-derived-png' } : {}),
+          ...(localVisualUpload ? { 'x-docente-local-visual-preflight': 'reviewed-derived-png' } : {}),
         },
         body: uploadFile,
       })
@@ -162,11 +171,11 @@ export function KnowledgeFileUploader() {
     setMessage(text)
   }
 
-  const steps = uploadSteps({ phase, failedAt, hasFile: Boolean(selectedFile), isImage: selectedIsImage })
+  const steps = uploadSteps({ phase, failedAt, hasFile: Boolean(selectedFile), usesVisualDerivative: selectedUsesVisualDerivative })
   const feedbackTitle = phase === 'UPLOADING'
-    ? selectedIsImage ? 'Sto mettendo al sicuro la copia anonima' : 'Sto mettendo al sicuro l’originale'
+    ? selectedUsesVisualDerivative ? 'Sto mettendo al sicuro la copia anonima' : 'Sto mettendo al sicuro l’originale'
     : phase === 'ORGANIZING'
-      ? selectedIsImage ? 'Copia anonima al sicuro' : 'Originale al sicuro'
+      ? selectedUsesVisualDerivative ? 'Copia anonima al sicuro' : 'Originale al sicuro'
       : phase === 'ERROR'
         ? 'Serve un intervento'
         : null
@@ -207,7 +216,7 @@ export function KnowledgeFileUploader() {
         <div className="selectedFileCard" role="status" aria-live="polite" aria-atomic="true">
           <span className="selectedFileCheck" aria-hidden>✓</span>
           <div className="selectedFileBody">
-            <strong>{storedUpload ? 'Copia ammessa già al sicuro' : selectedIsImage && preparedImageFile ? 'Copia anonima pronta' : selectedIsImage ? 'Pronto per la revisione locale' : 'Pronto a caricare'}</strong>
+            <strong>{storedUpload ? 'Copia ammessa già al sicuro' : preparedPdfFile ? 'Copia anonima pronta' : selectedIsImage && preparedImageFile ? 'Copia anonima pronta' : selectedIsImage ? 'Pronto per la revisione locale' : 'Pronto a caricare'}</strong>
             <span title={selectedFile.name}>{selectedFile.name}</span>
             <small>{fileTypeLabel(selectedFile)} · {formatFileSize(selectedFile.size)}</small>
           </div>
@@ -224,6 +233,19 @@ export function KnowledgeFileUploader() {
           disabled={busy}
           onPrepared={(safeFile) => {
             setPreparedImageFile(safeFile)
+            setFailedAt(null)
+            setPhase('READY')
+            setMessage(null)
+          }}
+        />
+      ) : null}
+
+      {selectedFile && selectedIsPdf ? (
+        <LocalSinglePagePdfPrivacyWorkbench
+          file={selectedFile}
+          disabled={busy}
+          onPrepared={(safeFile) => {
+            setPreparedPdfFile(safeFile)
             setFailedAt(null)
             setPhase('READY')
             setMessage(null)
@@ -259,15 +281,15 @@ export function KnowledgeFileUploader() {
       <button type="submit" disabled={busy || !selectedFile || !imageReady}>{submitLabel}</button>
       {selectedFile && !busy ? (
         <p className="knowledgeUploadTrust">
-          TXT/Markdown, PDF testuali e DOCX senza media vengono controllati prima della persistenza. Le immagini passano solo attraverso la copia PNG revisionata e ricodificata localmente. PDF scansione e DOCX con immagini restano bloccati.
+          TXT/Markdown, PDF testuali e DOCX senza media vengono controllati prima della persistenza. Immagini e scansioni PDF a pagina singola possono passare solo tramite una copia PNG revisionata e ricodificata localmente. PDF multi-pagina con residui visuali e DOCX con immagini restano bloccati.
         </p>
       ) : null}
     </form>
   )
 }
 
-function uploadSteps(input: { phase: UploadPhase; failedAt: FailedAt; hasFile: boolean; isImage: boolean }) {
-  const { phase, failedAt, hasFile, isImage } = input
+function uploadSteps(input: { phase: UploadPhase; failedAt: FailedAt; hasFile: boolean; usesVisualDerivative: boolean }) {
+  const { phase, failedAt, hasFile, usesVisualDerivative } = input
   return [
     {
       label: 'File scelto',
@@ -275,7 +297,7 @@ function uploadSteps(input: { phase: UploadPhase; failedAt: FailedAt; hasFile: b
       state: failedAt === 'SELECT' ? 'problem' : hasFile ? 'done' : 'pending',
     },
     {
-      label: isImage ? 'Copia anonima al sicuro' : 'Originale al sicuro',
+      label: usesVisualDerivative ? 'Copia anonima al sicuro' : 'Originale al sicuro',
       hint: 'Salvata solo dopo il preflight',
       state: failedAt === 'UPLOAD' ? 'problem' : phase === 'UPLOADING' ? 'active' : phase === 'ORGANIZING' || failedAt === 'ORGANIZE' ? 'done' : 'pending',
     },
@@ -295,7 +317,7 @@ function uploadFailureMessage(status: number, code?: string) {
   if (status === 401) return 'La sessione è scaduta prima del salvataggio. Ricarica la pagina e accedi di nuovo.'
   if (code === 'privacy_confirmation_required') return 'Conferma esplicitamente che il contenuto destinato al pilot è privo di dati personali.'
   if (code === 'privacy_blocked') return 'Il controllo privacy ha rilevato dati o metadata non ammessi nel pilot anonimo. Rimuovili e riprova.'
-  if (code === 'privacy_preflight_unavailable') return 'Questo file richiede un controllo visuale che il pilot anonimo non può ancora certificare. Usa una copia testuale oppure, per le immagini, prepara la copia anonima locale.'
+  if (code === 'privacy_preflight_unavailable') return 'Questo file richiede un controllo visuale che il pilot anonimo non può ancora certificare. Per immagini o scansioni PDF a pagina singola prepara la copia anonima locale; i documenti multi-pagina con residui visuali restano bloccati.'
   if (code === 'privacy_preflight_failed') return 'Il preflight non riesce a verificare questo file in modo affidabile. Nessuna copia è stata salvata.'
   if (status === 413 || code === 'too_large') return 'Il file supera il limite di 20 MB. Scegline uno più piccolo.'
   if (status === 415 || code === 'unsupported') return 'Questo formato non è supportato. Usa PDF, immagini, DOCX, TXT o Markdown.'
