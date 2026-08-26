@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import assert from 'node:assert/strict'
+import { describe, it } from 'node:test'
 import {
   buildAnnualPlanImportPreview,
   computeCmlLocalHandoffFootprint,
@@ -65,46 +66,46 @@ function fixture(): CmlLocalHandoffV1 {
 
 describe('CML local handoff preview consumer', () => {
   it('accepts a coherent Arena handoff', () => {
-    expect(validateCmlLocalHandoff(fixture())).toEqual({ valid: true, errors: [] })
+    assert.deepEqual(validateCmlLocalHandoff(fixture()), { valid: true, errors: [] })
   })
 
   it('creates preview-only annual plan projection', () => {
     const preview = buildAnnualPlanImportPreview(fixture())
-    expect(preview.status).toBe('READY_FOR_TEACHER_REVIEW')
-    expect(preview.persistenceAllowed).toBe(false)
-    expect(preview.acceptanceRequired).toBe(true)
-    expect(preview.periods).toHaveLength(2)
-    expect(preview.context.schoolYearRef).toBe('2026-2027')
+    assert.equal(preview.status, 'READY_FOR_TEACHER_REVIEW')
+    assert.equal(preview.persistenceAllowed, false)
+    assert.equal(preview.acceptanceRequired, true)
+    assert.equal(preview.periods.length, 2)
+    assert.equal(preview.context.schoolYearRef, '2026-2027')
   })
 
   it('rejects an attempt to bypass teacher acceptance', () => {
     const handoff = fixture() as unknown as Record<string, unknown>
     handoff.acceptanceRequired = false
-    expect(validateCmlLocalHandoff(handoff).valid).toBe(false)
+    assert.equal(validateCmlLocalHandoff(handoff).valid, false)
   })
 
   it('rejects import modes other than preview only', () => {
     const handoff = fixture() as unknown as Record<string, unknown>
     handoff.importMode = 'APPLY'
-    expect(validateCmlLocalHandoff(handoff).errors).toContain('importMode must remain PREVIEW_ONLY')
+    assert.ok(validateCmlLocalHandoff(handoff).errors.includes('importMode must remain PREVIEW_ONLY'))
   })
 
   it('rejects curriculum/framework mismatches', () => {
     const handoff = fixture()
     ;(handoff.annualPlanningFramework.payload as Record<string, unknown>).gradeRef = 'grade-2'
     handoff.structuralFootprint.hash = computeCmlLocalHandoffFootprint(handoff)
-    expect(validateCmlLocalHandoff(handoff).errors).toContain('gradeRef mismatch')
+    assert.ok(validateCmlLocalHandoff(handoff).errors.includes('gradeRef mismatch'))
   })
 
   it('rejects tampering when the structural footprint is stale', () => {
     const handoff = fixture()
     ;(handoff.annualPlanningFramework.payload as Record<string, unknown>).disciplineRef = 'mathematics'
-    expect(validateCmlLocalHandoff(handoff).errors).toContain('structural footprint mismatch')
+    assert.ok(validateCmlLocalHandoff(handoff).errors.includes('structural footprint mismatch'))
   })
 
   it('round-trips through JSON parsing without persistence', () => {
     const preview = buildAnnualPlanImportPreview(parseCmlLocalHandoffJson(JSON.stringify(fixture())))
-    expect(preview.persistenceAllowed).toBe(false)
-    expect(preview.source.contract).toBe('CML_LOCAL_HANDOFF_V1')
+    assert.equal(preview.persistenceAllowed, false)
+    assert.equal(preview.source.contract, 'CML_LOCAL_HANDOFF_V1')
   })
 })
