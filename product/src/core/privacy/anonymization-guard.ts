@@ -14,7 +14,7 @@ export type PrivacyGuardResult = {
 const DIRECT_IDENTIFIER_PATTERNS: Array<[string, RegExp, string]> = [
   ['EMAIL', /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i, 'indirizzo email'],
   ['ITALIAN_FISCAL_CODE', /\b[A-Z]{6}[0-9]{2}[A-EHLMPRST][0-9]{2}[A-Z][0-9]{3}[A-Z]\b/i, 'codice fiscale'],
-  ['PHONE', /(?:\+39\s*)?(?:3\d{2}|0\d{1,3})[\s./-]*\d{5,8}\b/, 'numero di telefono'],
+  ['PHONE', /(?:\+39\s*(?:3\d{2}|0\d{1,3})[\s./-]*\d{5,8}\b|\b(?:tel(?:efono)?|cell(?:ulare)?)\s*[:\-]?\s*(?:\+39\s*)?(?:3\d{2}|0\d{1,3})[\s./-]*\d{5,8}\b)/i, 'numero di telefono'],
   ['DATE_OF_BIRTH', /\b(?:data\s+di\s+nascita|nato\s+il|nata\s+il)\b/i, 'dato di nascita'],
   ['ADDRESS', /\b(?:via|viale|piazza|corso|contrada|localit[aà])\s+[A-ZÀ-ÖØ-Ý][\p{L}'’.-]+(?:\s+[A-ZÀ-ÖØ-Ý][\p{L}'’.-]+)*\s*,?\s*\d{1,4}\b/iu, 'indirizzo postale'],
   ['NAMED_STUDENT', /\b(?:[Aa]lunno|[Aa]lunna|[Ss]tudente|[Ss]tudentessa|[Nn]ome)\s*[:\-]?\s+[A-ZÀ-Ü][a-zà-ÿ'’-]+(?:\s+[A-ZÀ-Ü][a-zà-ÿ'’-]+)+/u, 'nominativo di studente'],
