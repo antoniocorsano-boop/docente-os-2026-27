@@ -14,7 +14,7 @@ if (!password) {
   throw new Error('E2E_PASSWORD is required for the authenticated K1 acceptance test')
 }
 
-test('K1 Knowledge: scelta file, errore recuperabile, retry reale e cleanup', async ({ page }) => {
+test('K1 Knowledge: scelta file, conferma privacy, errore recuperabile, retry reale e cleanup', async ({ page }) => {
   await login(page)
 
   await retainNewestKnowledgeFixture(page, 'x3-responsible-ai')
@@ -51,6 +51,11 @@ test('K1 Knowledge: scelta file, errore recuperabile, retry reale e cleanup', as
     await expect(journey.getByText('File scelto')).toBeVisible()
     await expect(journey.getByText('Originale al sicuro')).toBeVisible()
     await expect(journey.getByText('Organizzato')).toBeVisible()
+
+    const privacyConfirmation = page.getByRole('checkbox')
+    await expect(privacyConfirmation).not.toBeChecked()
+    await privacyConfirmation.check()
+    await expect(privacyConfirmation).toBeChecked()
 
     await page.route('**/api/knowledge/upload', async (route) => {
       await route.fulfill({
