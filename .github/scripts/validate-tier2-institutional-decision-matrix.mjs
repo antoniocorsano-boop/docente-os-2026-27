@@ -31,14 +31,22 @@ for (const decision of matrix.decisions) {
   if (decision.currentStatus !== 'AWAITING_EXTERNAL_EVIDENCE') fail(`${decision.evidenceId} must remain awaiting external evidence`)
   if (!decision.decisionOwner || !decision.decisionQuestion) fail(`${decision.evidenceId} decision owner/question missing`)
   if (!Array.isArray(decision.requiredSubdecisions) || decision.requiredSubdecisions.length === 0) fail(`${decision.evidenceId} subdecisions missing`)
-  if (!Array.isArray(decision.evidenceRequiredToVerify) || !decision.evidenceRequiredToVerify.includes('SHA-256 of approved/protocolled version') && !decision.evidenceRequiredToVerify.includes('SHA-256')) fail(`${decision.evidenceId} SHA evidence missing`)
+  if (!Array.isArray(decision.evidenceRequiredToVerify) || (!decision.evidenceRequiredToVerify.includes('SHA-256 of approved/protocolled version') && !decision.evidenceRequiredToVerify.includes('SHA-256'))) fail(`${decision.evidenceId} SHA evidence missing`)
 }
 
 if (matrix.closureRule?.allFourEvidenceReceiptsMustBeVerified !== true || matrix.closureRule?.templatesAloneNeverCloseAGate !== true) fail('closure rule incomplete')
 if (matrix.closureRule?.tier2MustRemainNotAdmittedUntilSeparateFinalHumanAdmissionDecision !== true) fail('final human admission boundary missing')
 
-if (receipts.currentResult?.verifiedDecisionCount !== 0 || receipts.currentResult?.requiredDecisionCount !== 4) fail('receipt baseline must remain 0/4')
-for (const receipt of receipts.receipts ?? []) if (receipt.verified !== false) fail(`${receipt.evidenceId} must not be pre-verified`)
+if (receipts.currentResult?.verifiedEvidenceCount !== 0 || receipts.currentResult?.requiredEvidenceCount !== 4) fail('receipt baseline must remain 0/4')
+if (receipts.tier2AdmissionState !== 'NOT_ADMITTED') fail('receipt Tier 2 state must remain NOT_ADMITTED')
+if (!Array.isArray(receipts.receipts) || receipts.receipts.length !== 4) fail('exactly four evidence receipts required')
+for (const receipt of receipts.receipts) {
+  if (receipt.state !== 'AWAITING_EXTERNAL_EVIDENCE') fail(`${receipt.evidenceId} receipt state invalid`)
+  if (receipt.verified !== false) fail(`${receipt.evidenceId} must not be pre-verified`)
+  for (const key of ['evidenceReference','documentDate','documentVersion','approverRole','decision','sha256','verifiedByRole','verifiedAt']) {
+    if (receipt[key] !== null) fail(`${receipt.evidenceId}.${key} must remain null before external evidence exists`)
+  }
+}
 if (admission.higherRiskTier?.state !== 'NOT_ADMITTED') fail('Tier 2 must remain NOT_ADMITTED')
 
 console.log('P7 T2D institutional decision matrix PASS: four decisions explicit, evidence 0/4, Tier 2 remains NOT_ADMITTED')
