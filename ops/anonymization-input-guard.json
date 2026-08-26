@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "product": "DOCENTE OS",
   "gate": "P7_ANONYMIZATION_INPUT_GUARD",
-  "state": "IMPLEMENTED_WITH_LONG_PDF_AND_DOCX_MEDIA_VISUAL_RESIDUAL",
+  "state": "IMPLEMENTED_WITH_LONG_PDF_AND_DOCX_MEDIA_PRESERVATION_RESIDUAL",
   "pilotDataBoundary": {
     "allowed": ["D0_NON_PERSONAL", "D1_ANONYMOUS_AGGREGATE"],
     "deferred": ["D2_PSEUDONYMOUS_INDIVIDUAL"],
@@ -24,7 +24,7 @@
       "serverPrePersistenceInspection": true
     },
     "ANON_BINARY_UPLOAD_GUARD": {
-      "state": "SATISFIED_WITH_BOUNDED_LOCAL_VISUAL_DERIVATIVES",
+      "state": "SATISFIED_WITH_BOUNDED_LOCAL_VISUAL_AND_TEXT_DERIVATIVES",
       "formats": ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/png", "image/jpeg", "image/webp"],
       "filenameInspection": true,
       "explicitHumanNoPersonalDataAttestationRequired": true,
@@ -33,7 +33,7 @@
       "storageWriteOccursOnlyAfterPreflightPass": true,
       "externalAiUsedForPrivacyPreflight": false,
       "pdfPolicy": "ALLOW_NATIVE_TEXT_OR_LOCAL_HUMAN_REVIEWED_PNG_DERIVATIVE_UP_TO_5_PAGES; DENY_VISUAL_PDF_OVER_5_PAGES",
-      "docxPolicy": "ALLOW_ONLY_TEXT_EXTRACTABLE_WITHOUT_EMBEDDED_MEDIA_AFTER_D0_D1_GUARD",
+      "docxPolicy": "ALLOW_TEXT_ONLY_DOCX_OR_LOCAL_REVIEWED_TEXT_DERIVATIVE_WHEN_EMBEDDED_MEDIA_NOT_REQUIRED; ORIGINAL_DOCX_WITH_MEDIA_DENIED",
       "imagePolicy": "ALLOW_ONLY_LOCAL_HUMAN_REVIEWED_REDACTABLE_METADATA_STRIPPED_PNG"
     },
     "ANON_IMAGE_LOCAL_VISUAL_GUARD": {
@@ -64,13 +64,29 @@
       "serverUsesExistingReviewedPngGuard": true,
       "automatedVisualPiiDetection": false,
       "externalAiUsed": false
+    },
+    "ANON_DOCX_MEDIA_TEXT_DERIVATIVE_GUARD": {
+      "state": "SATISFIED_WITH_HUMAN_REVIEW",
+      "classificationRunsBeforeUpload": true,
+      "embeddedMediaDetectionLocal": true,
+      "textExtractionLocal": true,
+      "textEditableBeforeDerivative": true,
+      "textD0D1GuardRequired": true,
+      "humanMediaNotRequiredDecisionRequired": true,
+      "originalDocxBytesLeaveDeviceOnDerivativePath": false,
+      "derivedFormat": "text/plain",
+      "derivedFilename": "documento-anonimo.txt",
+      "embeddedMediaPreserved": false,
+      "mediaPreservationAllowed": false,
+      "serverUsesExistingTextGuard": true,
+      "externalAiUsed": false
     }
   },
   "residuals": [
     {
-      "id": "ANON_LONG_PDF_AND_DOCX_MEDIA_VISUAL_PREFLIGHT",
+      "id": "ANON_LONG_PDF_AND_DOCX_MEDIA_PRESERVATION_PREFLIGHT",
       "state": "NOT_SATISFIED",
-      "description": "PDF con residui visuali oltre 5 pagine e DOCX con immagini/media incorporati restano bloccati finché non esiste un preflight locale equivalente prima della persistenza.",
+      "description": "PDF con residui visuali oltre 5 pagine e DOCX nei quali immagini/grafici/media devono essere preservati restano bloccati finché non esiste un preflight locale equivalente prima della persistenza.",
       "blocksClaim": "FULL_VISUAL_ANONYMIZATION_INPUT_ENFORCEMENT",
       "doesNotAuthorizeTier2": true
     }
@@ -82,7 +98,8 @@
     "privacyGuardIsHeuristicNotLegalAnonymizationGuarantee": true,
     "binaryPreflightFailsClosed": true,
     "humanReviewRemainsRequired": true,
-    "localHumanVisualReviewDoesNotEqualAutomatedPiiDetection": true
+    "localHumanVisualReviewDoesNotEqualAutomatedPiiDetection": true,
+    "textOnlyDerivativeMustNotBeRepresentedAsMediaPreservingSanitization": true
   },
   "result": {
     "freeTextGuard": "PASS",
@@ -92,7 +109,9 @@
     "boundedPdfLocalVisualPreflight": "PASS_WITH_HUMAN_REVIEW",
     "pdfVisualAdmission": "PARTIAL_UP_TO_5_PAGES",
     "longPdfVisualAdmission": "DENIED_OVER_5_PAGES",
-    "docxEmbeddedMediaVisualAdmission": "DENIED_PENDING_LOCAL_PREFLIGHT",
+    "docxMediaTextOnlyDerivative": "PASS_WITH_HUMAN_REVIEW",
+    "docxEmbeddedMediaAdmission": "TEXT_ONLY_DERIVATIVE_WHEN_MEDIA_NOT_REQUIRED",
+    "docxMediaPreservationAdmission": "DENIED_PENDING_LOCAL_PREFLIGHT",
     "fullVisualAnonymizationInputEnforcement": "NOT_YET_CLAIMED",
     "tier2AdmissionEffect": "NONE"
   }
