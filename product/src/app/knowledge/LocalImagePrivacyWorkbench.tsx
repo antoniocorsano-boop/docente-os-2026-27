@@ -29,11 +29,6 @@ export function LocalImagePrivacyWorkbench({
 
   useEffect(() => {
     let cancelled = false
-    onPreparedRef.current(null)
-    setReady(false)
-    setReviewConfirmed(false)
-    setRedactionCount(0)
-    setMessage(null)
 
     void (async () => {
       try {
