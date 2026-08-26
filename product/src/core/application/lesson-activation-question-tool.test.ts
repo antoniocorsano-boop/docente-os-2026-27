@@ -27,6 +27,7 @@ test('builds a local deterministic proposed activation question draft', () => {
   assert.equal(proposal.sourceLabel, 'Proiezione didattica canonica')
   assert.match(proposal.body, /Materiali e proprietà/)
   assert.equal(proposal.payload.toolId, LESSON_ACTIVATION_QUESTION_TOOL_ID)
+  assert.equal(proposal.payload.dedupeKey, LESSON_ACTIVATION_QUESTION_TOOL_ID)
   assert.equal(proposal.payload.executionKind, 'LOCAL_DETERMINISTIC')
 })
 
