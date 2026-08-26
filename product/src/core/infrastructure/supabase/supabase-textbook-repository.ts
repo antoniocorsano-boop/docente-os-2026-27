@@ -68,7 +68,7 @@ type TextbookDatabase = {
           created_at?: string
           updated_at?: string
         }
-        Update: Partial<Pick<AdoptionRow, 'source_kind' | 'source_ref' | 'source_metadata' | 'status' | 'confirmed_by' | 'confirmed_at' | 'updated_at'>>
+        Update: never
         Relationships: []
       }
       teaching_assignments: {
@@ -79,7 +79,12 @@ type TextbookDatabase = {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      confirm_textbook_adoption: {
+        Args: { target_adoption_id: string }
+        Returns: undefined
+      }
+    }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
   }
@@ -120,6 +125,8 @@ export class SupabaseTextbookRepository {
     draft: TextbookAdoptionDraft
   }): Promise<TextbookAdoptionWithBook> {
     const draft = validateTextbookDraft(input.draft)
+    if (draft.sourceKind === 'MANUAL') throw new Error('Manual textbook metadata entry is not supported')
+
     const supabase = await textbookClient()
     const userId = await authenticatedUserId(supabase)
 
@@ -172,17 +179,19 @@ export class SupabaseTextbookRepository {
 
   async confirm(workspaceId: string, academicYearId: string, adoptionId: string): Promise<void> {
     const supabase = await textbookClient()
-    const userId = await authenticatedUserId(supabase)
-    const { error } = await supabase
+    await authenticatedUserId(supabase)
+
+    const { data: adoption, error: adoptionError } = await supabase
       .from('textbook_adoptions')
-      .update({
-        status: 'CONFIRMED',
-        confirmed_by: userId,
-        confirmed_at: new Date().toISOString(),
-      })
+      .select('id')
       .eq('id', adoptionId)
       .eq('workspace_id', workspaceId)
       .eq('academic_year_id', academicYearId)
+      .maybeSingle()
+    if (adoptionError) throw new Error(adoptionError.message)
+    if (!adoption) throw new Error('Textbook adoption is outside the active workspace/year')
+
+    const { error } = await supabase.rpc('confirm_textbook_adoption', { target_adoption_id: adoptionId })
     if (error) throw new Error(error.message)
   }
 
@@ -268,7 +277,7 @@ function toTextbook(row: TextbookRow): Textbook {
 
 function toAdoption(row: AdoptionRow): TextbookAdoption {
   if (!['ADOPTED', 'RECOMMENDED', 'OTHER'].includes(row.usage_kind)) throw new Error('Unsupported textbook usage kind in storage')
-  if (!['MANUAL', 'MIM_OPEN_DATA'].includes(row.source_kind)) throw new Error('Unsupported textbook source kind in storage')
+  if (!['MANUAL', 'MIM_OPEN_DATA', 'ISBN_LOOKUP'].includes(row.source_kind)) throw new Error('Unsupported textbook source kind in storage')
   if (!['PROPOSED', 'CONFIRMED'].includes(row.status)) throw new Error('Unsupported textbook adoption status in storage')
   return {
     id: row.id,
