@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "product": "DOCENTE OS",
   "environment": "production",
   "provisioningState": "ACTIVE_SINGLE_OWNER_PILOT",
@@ -37,11 +37,7 @@
     "betaCredentialReuseAllowed": false,
     "productionScopedRequired": true,
     "configurationState": "CONFIGURED_OUTSIDE_REPOSITORY",
-    "requiredVariableNames": [
-      "NEXT_PUBLIC_SUPABASE_URL",
-      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-      "NEXT_PUBLIC_APP_URL"
-    ]
+    "requiredVariableNames": ["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY","NEXT_PUBLIC_APP_URL"]
   },
   "runtimeVerification": {
     "state": "PASS",
@@ -62,7 +58,13 @@
     "crossEnvironmentStorageWritesAllowed": false,
     "initialState": "EMPTY_OR_EXPLICIT_OWNER_IMPORT",
     "manualImportRequiresOwnerDecision": true,
-    "realUserDataAccepted": false
+    "realUserDataAccepted": true,
+    "admissionScope": "TIER_1_OWNER_PROFESSIONAL_NON_PERSONAL",
+    "studentPersonalDataAllowed": false,
+    "thirdPartyPersonalDataAllowed": false,
+    "specialCategoryDataAllowed": false,
+    "credentialsOrSecretsAllowed": false,
+    "admissionDecisionReceipt": "ops/real-data-admission-decision-receipt.json"
   },
   "release": {
     "scope": "SINGLE_OWNER_PILOT",
