@@ -138,12 +138,14 @@ export function parseMimSchoolRegistryBindings(bindings: SparqlBinding[]): MimSc
   for (const fields of subjects.values()) {
     const academicYearCode = field(fields, 'annoscolastico')
     const schoolCode = field(fields, 'codicescuola')
+    const instituteReference = nullableField(fields, 'codiceistitutoriferimento')
+      ?? nullableField(fields, 'codiceistitutodiriferimento')
     if (!academicYearCode || !schoolCode) continue
 
     records.push({
       academicYearCode,
       schoolCode: normalizeSchoolCode(schoolCode),
-      instituteReferenceCode: normalizeNullableSchoolCode(nullableField(fields, 'codiceistitutodiriferimento')),
+      instituteReferenceCode: normalizeNullableSchoolCode(instituteReference),
       province: nullableField(fields, 'provincia'),
     })
   }
