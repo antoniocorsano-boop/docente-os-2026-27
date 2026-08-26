@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "gate": "T2D_EXTERNAL_GOVERNANCE_EVIDENCE",
+  "state": "PREPARED_AWAITING_CONTROLLER_EVIDENCE",
+  "tier2AdmissionEffect": "NONE",
+  "scope": "SINGLE_OWNER_PILOT",
+  "purpose": "Provide a canonical, non-promotive evidence contract for the four external controller-governance decisions still required before Tier 2 technical closure can be considered.",
+  "authorityBoundary": {
+    "productMayPrepareTemplates": true,
+    "productMaySelfApproveEvidence": false,
+    "productMayDetermineLawfulBasis": false,
+    "productMayPerformDpiaDecisionForController": false,
+    "productMayApproveRetentionSchedule": false,
+    "productMayAdmitTier2": false
+  },
+  "requiredDecisions": [
+    {
+      "id": "INSTITUTIONAL_CONTROLLER_AUTHORITY",
+      "state": "AWAITING_EXTERNAL_EVIDENCE",
+      "decisionOwner": "INSTITUTIONAL_CONTROLLER_OR_FORMALLY_AUTHORIZED_DELEGATE",
+      "minimumEvidence": [
+        "controller identity",
+        "authorized processing context for Docente OS",
+        "permitted purposes",
+        "categories of personal data permitted",
+        "categories explicitly prohibited",
+        "reference to lawful processing authority determined by the controller",
+        "decision date",
+        "decision author/role"
+      ],
+      "evidenceReference": null,
+      "verified": false
+    },
+    {
+      "id": "TRANSPARENCY_AND_RIGHTS_ROUTING",
+      "state": "AWAITING_EXTERNAL_EVIDENCE",
+      "decisionOwner": "INSTITUTIONAL_CONTROLLER_OR_PRIVACY_FUNCTION",
+      "minimumEvidence": [
+        "approved transparency notice or approved integration into existing notice",
+        "identity/contact channel for the controller",
+        "purposes and categories relevant to Docente OS",
+        "processor/service disclosure appropriate to the controller notice",
+        "route for access and rectification requests",
+        "route for export and deletion requests where applicable",
+        "decision date",
+        "decision author/role"
+      ],
+      "evidenceReference": null,
+      "verified": false
+    },
+    {
+      "id": "DPIA_SCREENING",
+      "state": "AWAITING_EXTERNAL_EVIDENCE",
+      "decisionOwner": "INSTITUTIONAL_CONTROLLER_WITH_DPO_OR_PRIVACY_FUNCTION_AS_APPLICABLE",
+      "minimumEvidence": [
+        "intended Tier 2 processing description",
+        "screening criteria considered",
+        "decision whether a DPIA is required",
+        "reasoning summary",
+        "required follow-up if DPIA is required",
+        "decision date",
+        "decision author/role"
+      ],
+      "evidenceReference": null,
+      "verified": false
+    },
+    {
+      "id": "PURPOSE_SPECIFIC_RETENTION_SCHEDULE",
+      "state": "AWAITING_EXTERNAL_EVIDENCE",
+      "decisionOwner": "INSTITUTIONAL_CONTROLLER_OR_FORMALLY_AUTHORIZED_PRIVACY_FUNCTION",
+      "minimumEvidence": [
+        "admitted data category",
+        "specific purpose",
+        "retention period or objective deletion trigger",
+        "event starting the retention clock where applicable",
+        "deletion or review action at expiry",
+        "relationship to locked backup reconciliation",
+        "decision date",
+        "decision author/role"
+      ],
+      "evidenceReference": null,
+      "verified": false
+    }
+  ],
+  "submissionRule": {
+    "repositoryEvidenceMayReferenceExternalApprovedDocumentsWithoutCopyingSensitivePersonalContent": true,
+    "evidenceReferenceMustBeStableAndReviewable": true,
+    "credentialsSecretsAndUnnecessaryPersonalDataMustNotBeStoredInRepository": true,
+    "allFourDecisionsMustBeVerifiedBeforeT2dCanBecomeSatisfied": true,
+    "newExplicitHumanTier2AdmissionDecisionStillRequiredAfterTechnicalClosure": true
+  },
+  "currentResult": {
+    "verifiedDecisionCount": 0,
+    "requiredDecisionCount": 4,
+    "t2dState": "BLOCKED_EXTERNAL_GOVERNANCE",
+    "tier2AdmissionState": "NOT_ADMITTED"
+  }
+}
