@@ -7,7 +7,8 @@ import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabas
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseTextbookRepository } from '@/core/infrastructure/supabase/supabase-textbook-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { addTextbookProposal, confirmTextbookAdoption, removeTextbookAdoption } from './actions'
+import { confirmTextbookAdoption, removeTextbookAdoption } from './actions'
+import { IsbnLookupForm } from './isbn-lookup-form'
 import '../settings.css'
 import './textbooks.css'
 import './manage.css'
@@ -64,8 +65,8 @@ export default async function TextbookSettingsPage() {
       <header className="textbookHero">
         <div>
           <p>LIBRI DI TESTO · {context.academicYear.label}</p>
-          <h1>Collega i libri alle tue classi</h1>
-          <span>Un libro può servire più classi e ogni classe può avere più testi. DOCENTE OS li usa come risorse didattiche, senza confonderli con il curricolo.</span>
+          <h1>Controlla i libri associati alle tue classi</h1>
+          <span>DOCENTE OS recupera i dati del libro da fonti esterne e ti chiede solo di verificarli. Il libro resta una risorsa didattica, distinta dal curricolo.</span>
         </div>
         <div className="textbookHeroStats" aria-label="Stato libri di testo">
           <strong>{coverage.confirmedBookCount}</strong>
@@ -84,18 +85,18 @@ export default async function TextbookSettingsPage() {
       {settings.schoolCode ? (
         <section className="textbookSourceCallout">
           <div>
-            <span>FONTE UFFICIALE PRONTA</span>
+            <span>DISCOVERY MIM · CONTESTO PRONTO</span>
             <strong>Codice scuola {settings.schoolCode}</strong>
-            <p>Il codice meccanografico permetterà di proporre le adozioni dai dataset Open Data del Ministero. Ogni proposta dovrà comunque essere confermata da te.</p>
+            <p>Il codice meccanografico è il binding per proporre automaticamente le adozioni dai dataset Open Data MIM. Nessuna proposta diventa confermata senza una tua decisione.</p>
           </div>
           <Link href="/impostazioni#contesto">Modifica codice scuola</Link>
         </section>
       ) : (
         <section className="textbookSourceCallout needsContext">
           <div>
-            <span>PER I SUGGERIMENTI AUTOMATICI</span>
+            <span>PER LE PROPOSTE AUTOMATICHE MIM</span>
             <strong>Aggiungi il codice meccanografico della scuola</strong>
-            <p>Non è obbligatorio per inserire i libri manualmente, ma servirà per riconoscere le adozioni ufficiali senza doverle riscrivere.</p>
+            <p>Serve a riconoscere le adozioni ufficiali senza riscrivere titolo, autori, editore o altri dati bibliografici.</p>
           </div>
           <Link href="/impostazioni#contesto">Completa il contesto</Link>
         </section>
@@ -122,7 +123,7 @@ export default async function TextbookSettingsPage() {
                     <h2>{section ? `${GRADE_NUMBER[section.grade]}ª ${section.sectionCode}` : 'Classe'} · {discipline?.name ?? 'Disciplina'}</h2>
                   </div>
                   <span className={`textbookCoverageBadge ${confirmedAdopted ? 'complete' : 'optional'}`}>
-                    {confirmedAdopted ? `${confirmedAdopted} ${confirmedAdopted === 1 ? 'testo adottato' : 'testi adottati'}` : 'Nessun testo confermato'}
+                    {confirmedAdopted ? `${confirmedAdopted} ${confirmedAdopted === 1 ? 'testo adottato' : 'testi adottati'}` : 'Nessun testo adottato confermato'}
                   </span>
                 </header>
 
@@ -138,12 +139,12 @@ export default async function TextbookSettingsPage() {
                           <span>{adoption.textbook.publisher} · ISBN {formatIsbn(adoption.textbook.isbn13)}</span>
                           <small>
                             {adoption.textbook.editionLabel ? `${adoption.textbook.editionLabel} · ` : ''}
-                            {adoption.sourceKind === 'MIM_OPEN_DATA' ? 'Proposto da Open Data MIM' : 'Inserito dal docente'}
+                            {sourceLabel(adoption.sourceKind)}
                           </small>
                         </div>
                         <div className="textbookRowActions">
                           {adoption.textbook.officialUrl && (
-                            <a href={adoption.textbook.officialUrl} target="_blank" rel="noreferrer">Apri sito ufficiale</a>
+                            <a href={adoption.textbook.officialUrl} target="_blank" rel="noreferrer">Apri riferimento fonte</a>
                           )}
                           {adoption.status === 'PROPOSED' ? (
                             <form action={confirmTextbookAdoption}>
@@ -165,34 +166,20 @@ export default async function TextbookSettingsPage() {
                   </div>
                 ) : (
                   <div className="textbookNoBooks">
-                    <strong>Nessun libro collegato.</strong>
-                    <span>Puoi aggiungerlo ora oppure lasciare questa Cattedra senza testo: non blocca il lavoro.</span>
+                    <strong>Nessun libro ancora proposto.</strong>
+                    <span>Puoi lasciare la Cattedra senza testo. Se devi aggiungere un libro non ancora trovato dal sistema, basta il suo ISBN.</span>
                   </div>
                 )}
 
                 <details className="textbookAddDisclosure">
-                  <summary>Aggiungi un libro</summary>
-                  <form action={addTextbookProposal} className="textbookForm">
-                    <input type="hidden" name="teachingAssignmentId" value={assignment.id} />
-                    <input type="hidden" name="sourceKind" value="MANUAL" />
-                    <input type="hidden" name="sourceRef" value="" />
-                    <div className="textbookFormGrid">
-                      <label><span>ISBN-13</span><input name="isbn13" inputMode="numeric" placeholder="978…" required /></label>
-                      <label className="wide"><span>Titolo</span><input name="title" maxLength={320} required /></label>
-                      <label><span>Editore</span><input name="publisher" maxLength={200} required /></label>
-                      <label><span>Autori <small>facoltativo</small></span><input name="authors" maxLength={400} /></label>
-                      <label><span>Edizione <small>facoltativa</small></span><input name="editionLabel" maxLength={160} placeholder="Es. Seconda edizione" /></label>
-                      <label><span>Volume <small>facoltativo</small></span><input name="volumeLabel" maxLength={120} /></label>
-                      <label className="wide"><span>Sottotitolo <small>facoltativo</small></span><input name="subtitle" maxLength={320} /></label>
-                      <label className="wide"><span>Sito ufficiale del libro <small>facoltativo</small></span><input name="officialUrl" type="url" maxLength={1000} placeholder="https://…" /></label>
-                      <label><span>Riferimento editore <small>facoltativo</small></span><input name="publisherProductRef" maxLength={200} /></label>
-                      <label><span>Uso</span><select name="usageKind" defaultValue="ADOPTED"><option value="ADOPTED">Adottato</option><option value="RECOMMENDED">Consigliato</option><option value="OTHER">Altro testo</option></select></label>
+                  <summary>Trova un libro non ancora proposto</summary>
+                  <div className="textbookLookupPanel">
+                    <div>
+                      <strong>Niente catalogazione manuale</strong>
+                      <span>Inserisci o scansiona soltanto l’ISBN. DOCENTE OS recupera automaticamente i metadati e crea una proposta da controllare.</span>
                     </div>
-                    <div className="textbookFormAction">
-                      <span>Il libro verrà aggiunto come proposta. Potrai controllarlo prima di confermarlo.</span>
-                      <button className="settingsPrimaryButton" type="submit">Aggiungi come proposta</button>
-                    </div>
-                  </form>
+                    <IsbnLookupForm teachingAssignmentId={assignment.id} />
+                  </div>
                 </details>
               </article>
             )
@@ -207,6 +194,12 @@ function usageLabel(kind: 'ADOPTED' | 'RECOMMENDED' | 'OTHER') {
   if (kind === 'ADOPTED') return 'Adottato'
   if (kind === 'RECOMMENDED') return 'Consigliato'
   return 'Altro testo'
+}
+
+function sourceLabel(kind: 'MANUAL' | 'MIM_OPEN_DATA' | 'ISBN_LOOKUP') {
+  if (kind === 'MIM_OPEN_DATA') return 'Proposto da Open Data MIM'
+  if (kind === 'ISBN_LOOKUP') return 'Metadati recuperati da ISBN'
+  return 'Dato storico inserito manualmente'
 }
 
 function formatIsbn(value: string) {
