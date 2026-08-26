@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "product": "DOCENTE OS",
   "gate": "P7_ANONYMIZATION_INPUT_GUARD",
-  "state": "IMPLEMENTED_WITH_VISUAL_BINARY_RESIDUAL",
+  "state": "IMPLEMENTED_WITH_VISUAL_BINARY_ENGINE_RESIDUAL",
   "pilotDataBoundary": {
     "allowed": ["D0_NON_PERSONAL", "D1_ANONYMOUS_AGGREGATE"],
     "deferred": ["D2_PSEUDONYMOUS_INDIVIDUAL"],
@@ -34,14 +34,23 @@
       "externalAiUsedForPrivacyPreflight": false,
       "pdfPolicy": "ALLOW_ONLY_ALL_PAGES_WITH_USABLE_NATIVE_TEXT_AFTER_D0_D1_GUARD",
       "docxPolicy": "ALLOW_ONLY_TEXT_EXTRACTABLE_WITHOUT_EMBEDDED_MEDIA_AFTER_D0_D1_GUARD",
-      "imagePolicy": "DENY_UNTIL_LOCAL_VISUAL_PREFLIGHT_EXISTS"
+      "imagePolicy": "DENY_UNTIL_LOCAL_VISUAL_ENGINE_SATISFIES_CONTRACT"
+    },
+    "ANON_VISUAL_BINARY_PREFLIGHT": {
+      "state": "FOUNDATION_ONLY_ENGINE_NOT_CONNECTED",
+      "executionBoundary": "LOCAL_ONLY",
+      "externalNetworkAccess": false,
+      "requiredCapabilities": ["OCR_TEXT", "FACE_LIKENESS", "BARCODE_QR", "IMAGE_METADATA"],
+      "extractedTextReusesD0D1Guard": true,
+      "missingCapabilityPolicy": "DENY",
+      "productionEngine": "NOT_CONNECTED"
     }
   },
   "residuals": [
     {
       "id": "ANON_VISUAL_BINARY_PREFLIGHT",
       "state": "NOT_SATISFIED",
-      "description": "Immagini, PDF con pagine prive di testo nativo e DOCX con media incorporati restano bloccati finché non esiste un preflight visuale locale o equivalente prima della persistenza.",
+      "description": "Il contratto fail-closed del preflight visuale locale è implementato, ma manca ancora il motore di produzione che copra OCR, segnali di volto, barcode/QR e metadati per immagini, PDF raster e media DOCX.",
       "blocksClaim": "FULL_VISUAL_ANONYMIZATION_INPUT_ENFORCEMENT",
       "doesNotAuthorizeTier2": true
     }
@@ -52,13 +61,15 @@
     "genericPedagogicalTermsAloneAreNotPersonalDataSignals": true,
     "privacyGuardIsHeuristicNotLegalAnonymizationGuarantee": true,
     "binaryPreflightFailsClosed": true,
+    "visualPreflightRequiresCompleteDeclaredCoverage": true,
     "humanReviewRemainsRequired": true
   },
   "result": {
     "freeTextGuard": "PASS",
     "textFilePrePersistenceGuard": "PASS",
     "binaryTextualContentPrePersistenceGuard": "PASS",
-    "visualBinaryContentAdmission": "DENIED_PENDING_LOCAL_PREFLIGHT",
+    "visualBinaryPreflightFoundation": "PASS",
+    "visualBinaryContentAdmission": "DENIED_PENDING_LOCAL_ENGINE",
     "fullVisualAnonymizationInputEnforcement": "NOT_YET_CLAIMED",
     "tier2AdmissionEffect": "NONE"
   }
