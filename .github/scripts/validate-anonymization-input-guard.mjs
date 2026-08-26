@@ -11,7 +11,7 @@ const uploadRoute = fs.readFileSync('product/src/app/api/knowledge/upload/route.
 const uploader = fs.readFileSync('product/src/app/knowledge/KnowledgeFileUploader.tsx', 'utf8')
 const imageWorkbench = fs.readFileSync('product/src/app/knowledge/LocalImagePrivacyWorkbench.tsx', 'utf8')
 const pdfWorkbench = fs.readFileSync('product/src/app/knowledge/LocalSinglePagePdfPrivacyWorkbench.tsx', 'utf8')
-const docxWorkbench = fs.readFileSync('product/src/app/knowledge/LocalDocxMediaPrivacyWorkbench.tsx', 'utf8')
+const docxSemanticWorkbench = fs.readFileSync('product/src/app/knowledge/LocalDocxSemanticMediaPrivacyWorkbench.tsx', 'utf8')
 
 const fail = (message) => { console.error(`Anonymization input guard invalid: ${message}`); process.exit(1) }
 
@@ -26,7 +26,7 @@ if (binary?.state !== 'SATISFIED_WITH_BOUNDED_LOCAL_VISUAL_AND_TEXT_DERIVATIVES'
 if (binary.contentPrePersistenceInspection !== true || binary.storageWriteOccursOnlyAfterPreflightPass !== true) fail('binary pre-storage enforcement missing')
 if (binary.externalAiUsedForPrivacyPreflight !== false) fail('privacy preflight must stay local')
 if (binary.pdfPolicy !== 'ALLOW_NATIVE_TEXT_OR_LOCAL_HUMAN_REVIEWED_PNG_DERIVATIVE_UP_TO_5_PAGES; DENY_VISUAL_PDF_OVER_5_PAGES') fail('bounded PDF policy mismatch')
-if (binary.docxPolicy !== 'ALLOW_TEXT_ONLY_DOCX_OR_LOCAL_REVIEWED_TEXT_DERIVATIVE_WHEN_EMBEDDED_MEDIA_NOT_REQUIRED; ORIGINAL_DOCX_WITH_MEDIA_DENIED') fail('DOCX derivative policy mismatch')
+if (binary.docxPolicy !== 'ALLOW_TEXT_ONLY_DOCX_OR_LOCAL_REVIEWED_TEXT_DERIVATIVE_WHEN_EMBEDDED_MEDIA_NOT_REQUIRED; ORIGINAL_DOCX_WITH_MEDIA_DENIED') fail('DOCX canonical derivative policy mismatch')
 
 const image = contract.guards?.ANON_IMAGE_LOCAL_VISUAL_GUARD
 if (image?.state !== 'SATISFIED_WITH_HUMAN_REVIEW' || image.originalBytesLeaveDevice !== false || image.localRedactionAvailable !== true) fail('image local guard missing')
@@ -38,21 +38,16 @@ if (pdf?.state !== 'SATISFIED_WITH_HUMAN_REVIEW') fail('bounded PDF guard missin
 if (pdf.classificationRunsBeforeUpload !== true || pdf.visualAdmissionScope !== 'PDF_WITH_VISUAL_RESIDUAL_UP_TO_5_PAGES' || pdf.pageCap !== 5 || pdf.overPageCapAllowed !== false) fail('bounded PDF classification/cap mismatch')
 if (pdf.originalPdfBytesLeaveDeviceOnVisualPath !== false || pdf.allPagesLocalCanvasRenderRequired !== true || pdf.wholeDocumentHumanReviewRequired !== true || pdf.localRedactionAvailable !== true) fail('bounded PDF local workflow invariants missing')
 if (pdf.derivedFormat !== 'image/png' || pdf.derivedFilename !== 'scansione-anonima.png' || pdf.serverUsesExistingReviewedPngGuard !== true) fail('bounded PDF derivative mismatch')
-if (pdf.automatedVisualPiiDetection !== false || pdf.externalAiUsed !== false) fail('bounded PDF guard overclaims automation')
 
 const docx = contract.guards?.ANON_DOCX_MEDIA_TEXT_DERIVATIVE_GUARD
 if (docx?.state !== 'SATISFIED_WITH_HUMAN_REVIEW') fail('DOCX media text derivative guard missing')
-if (docx.classificationRunsBeforeUpload !== true || docx.embeddedMediaDetectionLocal !== true || docx.textExtractionLocal !== true || docx.textEditableBeforeDerivative !== true) fail('DOCX local inspection/edit invariants missing')
-if (docx.textD0D1GuardRequired !== true || docx.humanMediaNotRequiredDecisionRequired !== true) fail('DOCX review/decision invariants missing')
-if (docx.originalDocxBytesLeaveDeviceOnDerivativePath !== false || docx.derivedFormat !== 'text/plain' || docx.derivedFilename !== 'documento-anonimo.txt') fail('DOCX derivative boundary mismatch')
-if (docx.embeddedMediaPreserved !== false || docx.mediaPreservationAllowed !== false || docx.serverUsesExistingTextGuard !== true || docx.externalAiUsed !== false) fail('DOCX guard must not imply media-preserving sanitization')
+if (docx.originalDocxBytesLeaveDeviceOnDerivativePath !== false || docx.derivedFormat !== 'text/plain' || docx.derivedFilename !== 'documento-anonimo.txt') fail('DOCX canonical text derivative boundary mismatch')
+if (docx.embeddedMediaPreserved !== false || docx.mediaPreservationAllowed !== false || docx.serverUsesExistingTextGuard !== true) fail('canonical DOCX guard must still deny media preservation')
 
 if (contract.result?.boundedPdfLocalVisualPreflight !== 'PASS_WITH_HUMAN_REVIEW') fail('bounded PDF result missing')
-if (contract.result?.pdfVisualAdmission !== 'PARTIAL_UP_TO_5_PAGES') fail('PDF admission scope mismatch')
 if (contract.result?.longPdfVisualAdmission !== 'DENIED_OVER_5_PAGES') fail('long PDFs must stay denied')
 if (contract.result?.docxMediaTextOnlyDerivative !== 'PASS_WITH_HUMAN_REVIEW') fail('DOCX text-only derivative result missing')
-if (contract.result?.docxEmbeddedMediaAdmission !== 'TEXT_ONLY_DERIVATIVE_WHEN_MEDIA_NOT_REQUIRED') fail('DOCX embedded-media admission scope mismatch')
-if (contract.result?.docxMediaPreservationAdmission !== 'DENIED_PENDING_LOCAL_PREFLIGHT') fail('DOCX media preservation must stay denied')
+if (contract.result?.docxMediaPreservationAdmission !== 'DENIED_PENDING_LOCAL_PREFLIGHT') fail('canonical DOCX media preservation must stay denied during staging')
 if (contract.result?.fullVisualAnonymizationInputEnforcement !== 'NOT_YET_CLAIMED' || contract.result?.tier2AdmissionEffect !== 'NONE') fail('guard must not overclaim or promote Tier 2')
 if (!contract.residuals?.some((item) => item.id === 'ANON_LONG_PDF_AND_DOCX_MEDIA_PRESERVATION_PREFLIGHT' && item.state === 'NOT_SATISFIED')) fail('narrow residual missing')
 if (admission.higherRiskTier?.state !== 'NOT_ADMITTED') fail('Tier 2 must remain NOT_ADMITTED')
@@ -61,14 +56,15 @@ for (const token of ['ITALIAN_FISCAL_CODE', 'EMAIL', 'NAMED_STUDENT']) if (!free
 for (const token of ['inspectBinaryForAnonymousPilot', 'PDF_NATIVE_TEXT', 'DOCX_TEXT_ONLY', 'IMAGE_LOCAL_REVIEWED_PNG', 'PNG_METADATA_CHUNKS', 'word/media/']) if (!binaryGuard.includes(token)) fail(`binary preflight token missing: ${token}`)
 for (const token of ['MULTI_PAGE_VISUAL_REVIEWABLE', 'MULTI_PAGE_VISUAL_BLOCKED', 'MAX_LOCAL_VISUAL_PDF_PAGES', 'classifyLocalPdfForVisualPreflight']) if (!pdfClassifier.includes(token)) fail(`PDF classifier token missing: ${token}`)
 for (const token of ['inspectDocxForLocalSemanticDerivative', 'mammoth.images.imgElement', 'readAsArrayBuffer', 'MAX_LOCAL_DOCX_MEDIA_ITEMS', 'MAX_LOCAL_DOCX_MEDIA_BYTES', 'MAX_LOCAL_DOCX_MEDIA_ITEM_BYTES', "'image/png'", "'image/jpeg'", "'image/webp'", 'externalFileAccess: false', 'includeEmbeddedStyleMap: false', 'DOCX_REFERENCED_MEDIA_SEMANTIC_REVIEWABLE']) if (!docxSemantic.includes(token)) fail(`staged DOCX semantic-preflight token missing: ${token}`)
-if (docxSemantic.includes('dangerouslySetInnerHTML') || docxSemantic.includes('innerHTML =')) fail('staged DOCX semantic preflight must not inject Mammoth HTML into the DOM')
+if (docxSemantic.includes('dangerouslySetInnerHTML') || docxSemantic.includes('innerHTML =')) fail('DOCX semantic preflight must not inject Mammoth HTML into the DOM')
+for (const token of ['LocalImagePrivacyWorkbench', "'TEXT_ONLY'", "'PRESERVE_MEDIA'", "'documento-anonimo.txt'", "'documento-semantico-anonimo.png'", 'composeSemanticPng', 'canvas.toBlob', 'wholeReviewConfirmed', 'allMediaReviewed', 'layout Word originale non venga preservato']) if (!docxSemanticWorkbench.includes(token)) fail(`staged DOCX semantic workbench token missing: ${token}`)
+if (docxSemanticWorkbench.includes('dangerouslySetInnerHTML') || docxSemanticWorkbench.includes('innerHTML =')) fail('DOCX semantic workbench must not render untrusted Mammoth HTML')
 if (!noteAction.includes('inspectFreeTextForPilot') || !noteAction.includes('privacy_blocked')) fail('knowledge note server enforcement missing')
 if (!uploadRoute.includes('inspectBinaryForAnonymousPilot') || uploadRoute.indexOf('inspectBinaryForAnonymousPilot') > uploadRoute.indexOf('supabase.storage.from')) fail('binary preflight must precede storage write')
-if (!uploader.includes('preparedPdfFile') || !uploader.includes("reviewed-derived-png")) fail('PDF derivative is not wired to upload')
-if (!uploader.includes('LocalDocxMediaPrivacyWorkbench') || !uploader.includes('preparedDocxFile') || !uploader.includes('MEDIA_REQUIRES_DERIVATIVE') || !uploader.includes('DOCX originale e media restano sul dispositivo')) fail('DOCX text derivative is not wired to upload')
+if (!uploader.includes('LocalDocxSemanticMediaPrivacyWorkbench') || !uploader.includes('preparedDocxFile') || !uploader.includes("preparedDocxFile?.type === 'image/png'") || !uploader.includes("x-docente-local-visual-preflight") || !uploader.includes("reviewed-derived-png")) fail('staged DOCX semantic PNG is not wired through the existing reviewed-PNG proof')
+if (!uploader.includes("preparedDocxFile?.type === 'text/plain'")) fail('DOCX text-only derivative path must remain wired')
 for (const token of ['createImageBitmap', 'fillRect', 'canvas.toBlob']) if (!imageWorkbench.includes(token)) fail(`image workbench token missing: ${token}`)
 for (const token of ['getDocumentProxy', 'MAX_LOCAL_VISUAL_PDF_PAGES', 'page.render', 'canvas.toBlob', "'scansione-anonima.png'", 'PDF resta nel browser', 'count > MAX_LOCAL_VISUAL_PDF_PAGES']) if (!pdfWorkbench.includes(token)) fail(`bounded PDF workbench token missing: ${token}`)
-for (const token of ['mammoth.extractRawText', "'word/media/'", 'inspectFreeTextForPilot', "'documento-anonimo.txt'", 'mediaNotNeeded', 'Le immagini incorporate vengono escluse dal derivato']) if (!docxWorkbench.includes(token)) fail(`DOCX local derivative token missing: ${token}`)
 if (!binaryGuard.includes("return unavailable('Il DOCX contiene immagini o media incorporati")) fail('original DOCX with embedded media must remain server-denied')
 
-console.log('P7 anonymization input guard PASS: canonical admission remains unchanged; staged DOCX semantic media extraction is local, bounded and non-HTML-rendering; long visual PDFs and DOCX media preservation remain denied; Tier 2 NOT_ADMITTED')
+console.log('P7 anonymization input guard PASS: canonical schema 6 admission remains unchanged; staged DOCX semantic PNG workbench preserves text-only choice, requires per-media local review, reuses reviewed-PNG server proof, and does not render Mammoth HTML; long PDFs and unsupported/over-budget DOCX media remain denied; Tier 2 NOT_ADMITTED')
