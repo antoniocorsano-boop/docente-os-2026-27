@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "gate": "T2B_APPLICATION_RETENTION_DELETION",
+  "state": "REHEARSAL_IN_PROGRESS",
+  "tier2AdmissionEffect": "NONE",
+  "applicationRetentionPolicy": {
+    "principle": "PURPOSE_BOUND_NO_INDEFINITE_DEFAULT",
+    "liveDataDeletionOnExplicitValidatedRequest": "REMOVE_FROM_ACTIVE_DB_AND_STORAGE",
+    "automaticPermanentRetentionAllowed": false,
+    "timeBasedRetentionClaims": "NOT_LEGAL_CERTIFICATION",
+    "scope": "application live data only"
+  },
+  "deletionSemantics": {
+    "database": "workspace-scoped rows removed through constrained deletion; direct workspace foreign keys must be CASCADE or explicitly handled",
+    "storage": "workspace-prefixed objects removed before or with live-data deletion using authenticated owner policy",
+    "authIdentity": "not automatically deleted by application-data purge; separate account lifecycle decision required",
+    "operationMustBeIdempotent": true,
+    "syntheticRehearsalRequired": true
+  },
+  "backupBoundary": {
+    "liveDeletionDoesNotMutateLockedBackups": true,
+    "r2ProtectedPrefix": "production/",
+    "currentBackupRetentionDays": 90,
+    "backupCopiesAreNotActiveApplicationData": true,
+    "restoreMayNotReopenServiceBeforeDeletionReconciliation": true,
+    "deletionRecoveryJournalRequiredBeforeTier2Admission": true,
+    "recoveryModel": "FORWARD_RECONCILIATION_AFTER_RESTORE"
+  },
+  "rehearsals": {
+    "databaseCascade": {
+      "state": "PASS",
+      "environment": "PRODUCTION_SYNTHETIC_ONLY",
+      "workspaceMarker": "__P7_T2B_REHEARSAL_DB__",
+      "created": {
+        "workspace": 1,
+        "membership": 1,
+        "academicYear": 1,
+        "plannerTask": 1
+      },
+      "postDeleteRows": {
+        "workspace": 0,
+        "membership": 0,
+        "academicYear": 0,
+        "plannerTask": 0
+      },
+      "realUserDataTouched": false
+    },
+    "storageOwnerDelete": {
+      "state": "PENDING",
+      "environment": "PRODUCTION_SYNTHETIC_ONLY",
+      "authenticatedOwnerPolicyRequired": true,
+      "realUserDataTouched": false
+    }
+  },
+  "evidence": {
+    "application-retention-policy": true,
+    "deletion-semantics": true,
+    "backup-boundary-documented": true,
+    "deletion-rehearsal": false
+  },
+  "completionRule": {
+    "databaseCascadePassRequired": true,
+    "storageOwnerDeletePassRequired": true,
+    "productionReturnsToApplicationEmptyRequired": true,
+    "tier2MustRemainNotAdmitted": true
+  }
+}
