@@ -1,4 +1,4 @@
-export type TextbookSourceKind = 'MANUAL' | 'MIM_OPEN_DATA'
+export type TextbookSourceKind = 'MANUAL' | 'MIM_OPEN_DATA' | 'ISBN_LOOKUP'
 export type TextbookAdoptionStatus = 'PROPOSED' | 'CONFIRMED'
 export type TextbookUsageKind = 'ADOPTED' | 'RECOMMENDED' | 'OTHER'
 
@@ -101,7 +101,7 @@ export function validateTextbookDraft(input: TextbookAdoptionDraft): TextbookAdo
   if (!title) throw new Error('Textbook title is required')
   if (!publisher) throw new Error('Publisher is required')
   if (!['ADOPTED', 'RECOMMENDED', 'OTHER'].includes(input.usageKind)) throw new Error('Unsupported textbook usage kind')
-  if (!['MANUAL', 'MIM_OPEN_DATA'].includes(input.sourceKind)) throw new Error('Unsupported textbook source kind')
+  if (!['MANUAL', 'MIM_OPEN_DATA', 'ISBN_LOOKUP'].includes(input.sourceKind)) throw new Error('Unsupported textbook source kind')
 
   return {
     teachingAssignmentId: input.teachingAssignmentId.trim(),
@@ -127,8 +127,9 @@ export function buildTextbookSettingsCoverage(input: {
   const assignmentIds = [...new Set(input.assignmentIds.filter(Boolean))]
   const assignmentSet = new Set(assignmentIds)
   const relevant = input.adoptions.filter((adoption) => assignmentSet.has(adoption.teachingAssignmentId))
-  const confirmed = relevant.filter((adoption) => adoption.status === 'CONFIRMED' && adoption.usageKind === 'ADOPTED')
-  const covered = new Set(confirmed.map((adoption) => adoption.teachingAssignmentId))
+  const confirmed = relevant.filter((adoption) => adoption.status === 'CONFIRMED')
+  const confirmedAdopted = confirmed.filter((adoption) => adoption.usageKind === 'ADOPTED')
+  const covered = new Set(confirmedAdopted.map((adoption) => adoption.teachingAssignmentId))
 
   return {
     assignmentCount: assignmentIds.length,
