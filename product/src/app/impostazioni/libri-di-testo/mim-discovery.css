@@ -1,0 +1,71 @@
+.mimDiscoveryPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+  margin: -6px 0 24px;
+  padding: 18px 20px;
+  border: 1px solid var(--border, #d8dde6);
+  border-radius: 18px;
+  background: var(--surface, #fff);
+}
+
+.mimDiscoveryPanel > div:first-child > span {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.74rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.mimDiscoveryPanel strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.mimDiscoveryPanel p {
+  max-width: 760px;
+  margin: 6px 0 0;
+  line-height: 1.45;
+  opacity: 0.74;
+}
+
+.mimDiscoveryAction {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+  min-width: min(100%, 280px);
+}
+
+.mimDiscoveryMessage {
+  max-width: 360px;
+  margin: 0;
+  font-size: 0.84rem;
+  text-align: right;
+}
+
+.mimDiscoveryMessage.error {
+  font-weight: 650;
+}
+
+@media (max-width: 860px) {
+  .mimDiscoveryPanel {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .mimDiscoveryAction {
+    justify-items: stretch;
+  }
+
+  .mimDiscoveryAction .settingsPrimaryButton {
+    width: 100%;
+  }
+
+  .mimDiscoveryMessage {
+    max-width: none;
+    text-align: left;
+  }
+}
