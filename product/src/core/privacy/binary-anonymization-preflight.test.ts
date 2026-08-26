@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { docxContainsEmbeddedMedia, inspectBinaryForAnonymousPilot } from './binary-anonymization-preflight'
+import { classifyPdfPages } from './local-pdf-visual-preflight'
 
 test('blocks images when local visual preflight is unavailable', async () => {
   const result = await inspectBinaryForAnonymousPilot({ bytes: cleanPng(), mimeType: 'image/png' })
@@ -57,6 +58,34 @@ test('fails closed for unreadable PDF bytes', async () => {
   assert.equal(result.allowed, false)
   if (result.allowed) return
   assert.equal(result.code, 'privacy_preflight_failed')
+})
+
+test('classifies a textual PDF as native-text-only', () => {
+  const result = classifyPdfPages(1, ['Documento didattico anonimo con contenuto testuale sufficiente per il controllo locale.'])
+  assert.equal(result.state, 'NATIVE_TEXT_ONLY')
+  assert.deepEqual(result.missingNativeTextPages, [])
+})
+
+test('classifies a single scanned page as locally reviewable', () => {
+  const result = classifyPdfPages(1, [''])
+  assert.equal(result.state, 'SINGLE_PAGE_VISUAL_REVIEWABLE')
+  assert.deepEqual(result.missingNativeTextPages, [1])
+})
+
+test('keeps multi-page visual PDF fail-closed', () => {
+  const result = classifyPdfPages(3, [
+    'Pagina testuale con abbastanza caratteri per essere considerata nativa e controllabile.',
+    '',
+    'Altra pagina testuale con abbastanza caratteri per superare la soglia locale.',
+  ])
+  assert.equal(result.state, 'MULTI_PAGE_VISUAL_BLOCKED')
+  assert.deepEqual(result.missingNativeTextPages, [2])
+})
+
+test('fails closed when page accounting is inconsistent', () => {
+  const result = classifyPdfPages(2, ['una sola pagina esposta'])
+  assert.equal(result.state, 'FAILED')
+  assert.equal(result.totalPages, null)
 })
 
 function cleanPng() {
