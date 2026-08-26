@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "gate": "T2D_PROCESSOR_AND_TRANSFER_REVIEW",
+  "state": "SATISFIED_DOCUMENTARY_REVIEW",
+  "tier2AdmissionEffect": "NONE",
+  "scope": "SINGLE_OWNER_PILOT",
+  "reviewNature": "DOCUMENTARY_PROCESSOR_AND_TRANSFER_REVIEW_NOT_LEGAL_CERTIFICATION",
+  "reviewedAt": "2026-08-26",
+  "productionTopology": {
+    "render": {
+      "service": "docente-os-2026-27-production",
+      "region": "frankfurt",
+      "role": "application runtime"
+    },
+    "supabase": {
+      "projectRef": "xpxhlmpsvfzgsjxgieks",
+      "region": "eu-central-1",
+      "role": "authentication database and storage"
+    },
+    "cloudflareR2": {
+      "bucket": "docente-os-backup-eu",
+      "jurisdiction": "EU",
+      "role": "locked offsite backup destination"
+    }
+  },
+  "providers": [
+    {
+      "provider": "Render",
+      "officialSources": [
+        "https://render.com/dpa",
+        "https://render.com/security",
+        "https://render.com/docs/regions"
+      ],
+      "findings": {
+        "dpaPublished": true,
+        "gdprCoverageDocumented": true,
+        "subprocessorListPublished": true,
+        "frankfurtRegionAvailable": true,
+        "internationalTransfersPossible": true,
+        "transferSafeguardsDocumented": ["EU_US_DATA_PRIVACY_FRAMEWORK_WHERE_APPLICABLE", "EU_STANDARD_CONTRACTUAL_CLAUSES_WHERE_REQUIRED"]
+      },
+      "limitations": [
+        "Provider documentation does not itself establish the Institution's lawful basis or controller authority.",
+        "Frankfurt runtime location does not imply that every support, telemetry or subprocessor operation is confined to the EEA."
+      ]
+    },
+    {
+      "provider": "Supabase",
+      "officialSources": [
+        "https://supabase.com/downloads/docs/Supabase%2BDPA%2B260317.pdf",
+        "https://supabase.com/docs/guides/platform/regions",
+        "https://supabase.com/docs/guides/security"
+      ],
+      "findings": {
+        "dpaPublished": true,
+        "processorRoleDocumented": true,
+        "subprocessorSchedulePublished": true,
+        "specificRegionDataResidencyDocumented": true,
+        "productionPrimaryRegion": "eu-central-1",
+        "internationalOrSubprocessorProcessingPossible": true
+      },
+      "limitations": [
+        "Region selection is a data-location control and is not by itself proof of GDPR compliance.",
+        "The Institution must determine whether the contractual terms and any transfer mechanism are appropriate for its processing context."
+      ]
+    },
+    {
+      "provider": "Cloudflare R2",
+      "officialSources": [
+        "https://www.cloudflare.com/en-gb/cloudflare-customer-dpa/",
+        "https://www.cloudflare.com/gdpr/subprocessors/cloudflare-services/",
+        "https://developers.cloudflare.com/r2/reference/data-location/"
+      ],
+      "findings": {
+        "dpaPublished": true,
+        "subprocessorListPublished": true,
+        "euJurisdictionalRestrictionDocumented": true,
+        "productionBucketJurisdiction": "EU",
+        "internationalTransfersAddressedByDpa": true,
+        "transferSafeguardsDocumented": ["EU_STANDARD_CONTRACTUAL_CLAUSES", "SUPPLEMENTARY_SAFEGUARDS", "DATA_PRIVACY_FRAMEWORK_WHERE_APPLICABLE"]
+      },
+      "limitations": [
+        "EU jurisdictional restriction applies to R2 object storage/processing boundaries defined by Cloudflare documentation and does not self-certify the whole application processing chain.",
+        "Support, account and subprocessor metadata flows require the controller's contractual assessment."
+      ]
+    }
+  ],
+  "reviewConclusion": {
+    "processorTermsReviewed": true,
+    "subprocessorsReviewed": true,
+    "dataLocationsReviewed": true,
+    "transferSafeguardsReviewed": true,
+    "productionConfigurationCrossChecked": true,
+    "documentaryEvidenceSufficientForTechnicalResidual": true,
+    "institutionalAcceptanceOrExecutionOfDpasProven": false,
+    "lawfulBasisDetermined": false,
+    "controllerAuthorizationProven": false
+  },
+  "residualBoundaries": [
+    "INSTITUTIONAL_CONTROLLER_AUTHORITY",
+    "TRANSPARENCY_AND_RIGHTS_ROUTING",
+    "DPIA_SCREENING",
+    "PURPOSE_SPECIFIC_RETENTION_SCHEDULE"
+  ],
+  "completionRule": {
+    "officialProviderSourcesRequired": true,
+    "productionRegionConfigurationMustBeCrossChecked": true,
+    "reviewMayNotAssertInstitutionalContractAcceptance": true,
+    "reviewMayNotDetermineLawfulBasis": true,
+    "reviewMayNotAdmitTier2": true
+  }
+}
