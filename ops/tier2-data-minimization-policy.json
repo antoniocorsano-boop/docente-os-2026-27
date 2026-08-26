@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "gate": "T2A_DATA_MINIMIZATION_POLICY",
+  "state": "SATISFIED_POLICY_ONLY",
+  "tier2AdmissionEffect": "NONE",
+  "defaultRule": "DO_NOT_COLLECT_UNLESS_EXPLICIT_PURPOSE_AND_NECESSITY",
+  "purposeBinding": {
+    "allowedPurposes": [
+      "teacher-owned pedagogical planning",
+      "teacher-owned formative progress tracking",
+      "teacher workflow continuity"
+    ],
+    "prohibitedPurposes": [
+      "advertising",
+      "commercial profiling",
+      "external model training",
+      "emotion recognition",
+      "fully automated high-stakes educational decisions"
+    ]
+  },
+  "potentiallyAdmissibleDataClasses": [
+    {
+      "id": "STUDENT_PSEUDONYMOUS_REFERENCE",
+      "rule": "LOCAL_PSEUDONYMOUS_TOKEN_ONLY",
+      "directNameAllowed": false
+    },
+    {
+      "id": "CLASS_SECTION_CONTEXT",
+      "rule": "ONLY_WHEN_NEEDED_TO_INTERPRET_THE_PSEUDONYMOUS_RECORD"
+    },
+    {
+      "id": "STRUCTURED_LEARNING_PROGRESS",
+      "rule": "BOUNDED_FIELDS_ONLY_NO_SPECIAL_CATEGORY_CONTENT_NO_THIRD_PARTY_CONTENT"
+    }
+  ],
+  "prohibitedDataClasses": [
+    "DIRECT_STUDENT_NAME_INITIAL_TIER2",
+    "STUDENT_CONTACT_DETAILS",
+    "HOME_ADDRESS",
+    "DATE_OF_BIRTH",
+    "FAMILY_PERSONAL_DATA",
+    "COLLEAGUE_OR_OTHER_THIRD_PARTY_PERSONAL_DATA",
+    "HEALTH_DISABILITY_DSA_BES_DATA",
+    "RELIGION_OR_BELIEF_DATA",
+    "BIOMETRIC_DATA",
+    "POLITICAL_TRADE_UNION_OR_SEXUAL_ORIENTATION_DATA",
+    "DISCIPLINARY_OR_OTHER_DELICATE_FREE_TEXT",
+    "UNBOUNDED_PERSONAL_FREE_TEXT",
+    "CREDENTIALS_OR_SECRETS"
+  ],
+  "fieldLevelRules": {
+    "studentReference": "pseudonymous local token; no name, email, phone, address or birth date",
+    "classContext": "minimum class/section context needed for the teacher workflow",
+    "progressData": "structured and purpose-bound; no diagnostic, health, disability, religion or family information",
+    "freeText": "personal free text prohibited by default in initial Tier 2",
+    "attachments": "personal-data attachments prohibited until a feature-specific gate exists"
+  },
+  "reIdentificationControls": {
+    "mappingToDirectIdentityStoredInDocenteOs": false,
+    "directIdentifierExpansionRequiresSeparateGate": true,
+    "combinationRiskMustBeReviewed": true
+  },
+  "aiBoundary": {
+    "personalTier2DataMayBeSentToExternalAiByDefault": false,
+    "externalAiUseRequiresDedicatedProcessorAndDataFlowReview": true
+  },
+  "evidence": {
+    "allowed-data-categories": true,
+    "prohibited-data-categories": true,
+    "purpose-binding": true,
+    "field-level-minimization-rules": true
+  },
+  "references": [
+    "GDPR_ARTICLE_5_PRINCIPLES",
+    "GARANTE_PRIVACY_FUNDAMENTAL_PROCESSING_PRINCIPLES",
+    "GARANTE_PRIVACY_SCHOOL_GUIDANCE"
+  ]
+}
