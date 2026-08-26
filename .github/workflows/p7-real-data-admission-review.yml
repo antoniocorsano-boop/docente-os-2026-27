@@ -1,0 +1,56 @@
+name: P7 Real Data Admission Review
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - 'ops/real-data-admission-review.json'
+      - 'ops/production-release-receipt.json'
+      - 'ops/production-infrastructure-spec.json'
+      - '.github/scripts/validate-real-data-admission-review.mjs'
+      - '.github/workflows/p7-real-data-admission-review.yml'
+      - 'docs/product/P7_REAL_DATA_ADMISSION_REVIEW.md'
+  push:
+    branches:
+      - develop
+    paths:
+      - 'ops/real-data-admission-review.json'
+      - 'ops/production-release-receipt.json'
+      - 'ops/production-infrastructure-spec.json'
+      - '.github/scripts/validate-real-data-admission-review.mjs'
+      - '.github/workflows/p7-real-data-admission-review.yml'
+      - 'docs/product/P7_REAL_DATA_ADMISSION_REVIEW.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  validate-real-data-admission-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate real data admission review
+        run: node .github/scripts/validate-real-data-admission-review.mjs
+      - name: Publish real data admission review status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'p7-real-data/admission-review',
+              description: ok ? 'Real-data admission foundation coerente' : 'Real-data admission foundation non coerente',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
