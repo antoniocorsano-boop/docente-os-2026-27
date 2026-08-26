@@ -1,0 +1,38 @@
+.textbookRowManage {
+  position: relative;
+  font-size: 0.84rem;
+}
+
+.textbookRowManage > summary {
+  cursor: pointer;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  list-style-position: inside;
+}
+
+.textbookRowManage > form {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  max-width: 300px;
+  border: 1px solid var(--border, #d8dde6);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+
+.textbookRowManage > form > span {
+  line-height: 1.4;
+  opacity: 0.72;
+}
+
+.textbookRowManage .textButton {
+  justify-self: start;
+}
+
+@media (max-width: 860px) {
+  .textbookRowManage > form {
+    max-width: none;
+  }
+}

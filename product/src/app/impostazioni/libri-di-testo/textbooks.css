@@ -1,0 +1,370 @@
+.textbookSettingsSurface {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.textbookBackRow {
+  margin-bottom: 16px;
+}
+
+.textbookBackRow a,
+.textbookSourceCallout a,
+.textbookRowActions > a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.textbookHero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 28px;
+  align-items: end;
+  padding: 28px;
+  border: 1px solid var(--border, #d8dde6);
+  border-radius: 24px;
+  background: var(--surface, #fff);
+}
+
+.textbookHero p,
+.textbookSourceCallout > div > span,
+.textbookAssignmentCard > header > div > span {
+  margin: 0 0 8px;
+  font-size: 0.76rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.68;
+}
+
+.textbookHero h1 {
+  margin: 0 0 10px;
+  font-size: clamp(1.8rem, 4vw, 2.7rem);
+  line-height: 1.04;
+}
+
+.textbookHero > div > span {
+  display: block;
+  max-width: 760px;
+  line-height: 1.55;
+  opacity: 0.78;
+}
+
+.textbookHeroStats {
+  min-width: 155px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  text-align: right;
+}
+
+.textbookHeroStats strong {
+  display: block;
+  font-size: 2rem;
+}
+
+.textbookHeroStats span,
+.textbookHeroStats small {
+  display: block;
+}
+
+.textbookHeroStats small {
+  margin-top: 6px;
+  font-weight: 700;
+}
+
+.textbookPrinciples {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.textbookPrinciples > div {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border, #d8dde6);
+  border-radius: 16px;
+  background: var(--surface, #fff);
+}
+
+.textbookPrinciples strong,
+.textbookPrinciples span {
+  display: block;
+}
+
+.textbookPrinciples strong {
+  margin-bottom: 6px;
+  font-size: 0.82rem;
+}
+
+.textbookPrinciples span {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  opacity: 0.75;
+}
+
+.textbookSourceCallout {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 18px 0 24px;
+  padding: 18px 20px;
+  border: 1px solid var(--border, #d8dde6);
+  border-radius: 18px;
+  background: color-mix(in srgb, currentColor 3%, transparent);
+}
+
+.textbookSourceCallout strong,
+.textbookSourceCallout p {
+  display: block;
+}
+
+.textbookSourceCallout p {
+  max-width: 760px;
+  margin: 5px 0 0;
+  line-height: 1.45;
+  opacity: 0.72;
+}
+
+.textbookAssignmentGrid {
+  display: grid;
+  gap: 18px;
+}
+
+.textbookAssignmentCard {
+  overflow: hidden;
+  border: 1px solid var(--border, #d8dde6);
+  border-radius: 22px;
+  background: var(--surface, #fff);
+}
+
+.textbookAssignmentCard > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--border, #d8dde6);
+}
+
+.textbookAssignmentCard h2 {
+  margin: 0;
+  font-size: 1.18rem;
+}
+
+.textbookCoverageBadge {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 750;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+}
+
+.textbookCoverageBadge.optional {
+  opacity: 0.66;
+}
+
+.textbookList {
+  display: grid;
+}
+
+.textbookRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border, #d8dde6);
+}
+
+.textbookRow.proposed {
+  background: color-mix(in srgb, currentColor 2.5%, transparent);
+}
+
+.textbookIdentity {
+  min-width: 0;
+}
+
+.textbookIdentity > span,
+.textbookIdentity > small {
+  display: block;
+  margin-top: 4px;
+  opacity: 0.7;
+}
+
+.textbookTitleLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.textbookTitleLine > span {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  font-size: 0.74rem;
+}
+
+.textbookRowActions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.textbookConfirmedLabel {
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.textbookNoBooks {
+  display: flex;
+  gap: 8px;
+  flex-direction: column;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border, #d8dde6);
+}
+
+.textbookNoBooks span {
+  opacity: 0.72;
+}
+
+.textbookAddDisclosure summary {
+  cursor: pointer;
+  padding: 16px 22px;
+  font-weight: 750;
+  list-style-position: inside;
+}
+
+.textbookAddDisclosure[open] summary {
+  border-bottom: 1px solid var(--border, #d8dde6);
+}
+
+.textbookLookupPanel {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  gap: 20px;
+  align-items: start;
+  padding: 20px 22px 22px;
+}
+
+.textbookLookupPanel > div:first-child {
+  display: grid;
+  gap: 6px;
+}
+
+.textbookLookupPanel > div:first-child span {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  opacity: 0.72;
+}
+
+.textbookLookupForm {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border, #d8dde6);
+  border-radius: 16px;
+  background: color-mix(in srgb, currentColor 2%, transparent);
+}
+
+.textbookLookupFields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 0.42fr);
+  gap: 12px;
+}
+
+.textbookLookupFields label {
+  display: grid;
+  gap: 6px;
+}
+
+.textbookLookupFields label > span {
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.textbookLookupFields input,
+.textbookLookupFields select {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 11px;
+  border: 1px solid var(--border, #cbd2dc);
+  border-radius: 11px;
+  background: var(--surface, #fff);
+  color: inherit;
+  font: inherit;
+}
+
+.textbookLookupHint,
+.textbookLookupMessage {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.textbookLookupHint {
+  opacity: 0.7;
+}
+
+.textbookLookupMessage {
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  font-weight: 650;
+}
+
+.textbookLookupMessage.error {
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.textbookLookupForm .settingsSecondaryButton {
+  justify-self: start;
+}
+
+.textbookEmptyState {
+  padding: 28px;
+  border: 1px dashed var(--border, #cbd2dc);
+  border-radius: 20px;
+  text-align: center;
+}
+
+.textbookEmptyState p {
+  max-width: 650px;
+  margin: 8px auto 18px;
+  line-height: 1.5;
+  opacity: 0.72;
+}
+
+@media (max-width: 860px) {
+  .textbookHero,
+  .textbookPrinciples,
+  .textbookLookupPanel,
+  .textbookLookupFields {
+    grid-template-columns: 1fr;
+  }
+
+  .textbookHeroStats {
+    text-align: left;
+  }
+
+  .textbookRow,
+  .textbookAssignmentCard > header,
+  .textbookSourceCallout {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .textbookRowActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .textbookRowActions .settingsPrimaryButton,
+  .textbookLookupForm .settingsSecondaryButton {
+    width: 100%;
+  }
+}
