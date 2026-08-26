@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "product": "DOCENTE OS",
   "gate": "P7_ANONYMIZATION_INPUT_GUARD",
-  "state": "IMPLEMENTED_WITH_VISUAL_BINARY_RESIDUAL",
+  "state": "IMPLEMENTED_WITH_SCANNED_DOCUMENT_VISUAL_RESIDUAL",
   "pilotDataBoundary": {
     "allowed": ["D0_NON_PERSONAL", "D1_ANONYMOUS_AGGREGATE"],
     "deferred": ["D2_PSEUDONYMOUS_INDIVIDUAL"],
@@ -24,7 +24,7 @@
       "serverPrePersistenceInspection": true
     },
     "ANON_BINARY_UPLOAD_GUARD": {
-      "state": "SATISFIED_WITH_VISUAL_DENY",
+      "state": "SATISFIED_WITH_SCANNED_DOCUMENT_DENY",
       "formats": ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/png", "image/jpeg", "image/webp"],
       "filenameInspection": true,
       "explicitHumanNoPersonalDataAttestationRequired": true,
@@ -34,14 +34,27 @@
       "externalAiUsedForPrivacyPreflight": false,
       "pdfPolicy": "ALLOW_ONLY_ALL_PAGES_WITH_USABLE_NATIVE_TEXT_AFTER_D0_D1_GUARD",
       "docxPolicy": "ALLOW_ONLY_TEXT_EXTRACTABLE_WITHOUT_EMBEDDED_MEDIA_AFTER_D0_D1_GUARD",
-      "imagePolicy": "DENY_UNTIL_LOCAL_VISUAL_PREFLIGHT_EXISTS"
+      "imagePolicy": "ALLOW_ONLY_LOCAL_HUMAN_REVIEWED_REDACTABLE_METADATA_STRIPPED_PNG"
+    },
+    "ANON_IMAGE_LOCAL_VISUAL_GUARD": {
+      "state": "SATISFIED_WITH_HUMAN_REVIEW",
+      "originalBytesLeaveDevice": false,
+      "localPreviewRequired": true,
+      "localRedactionAvailable": true,
+      "derivedFormat": "image/png",
+      "originalFilenamePersisted": false,
+      "serverRequiresVisualReviewProof": true,
+      "serverVerifiesPngSignature": true,
+      "serverRejectsKnownMetadataChunks": ["eXIf", "tEXt", "zTXt", "iTXt", "tIME"],
+      "automatedVisualPiiDetection": false,
+      "externalAiUsed": false
     }
   },
   "residuals": [
     {
-      "id": "ANON_VISUAL_BINARY_PREFLIGHT",
+      "id": "ANON_SCANNED_DOCUMENT_VISUAL_PREFLIGHT",
       "state": "NOT_SATISFIED",
-      "description": "Immagini, PDF con pagine prive di testo nativo e DOCX con media incorporati restano bloccati finché non esiste un preflight visuale locale o equivalente prima della persistenza.",
+      "description": "PDF con pagine prive di testo nativo e DOCX con immagini/media incorporati restano bloccati finché non esiste un preflight visuale locale equivalente prima della persistenza.",
       "blocksClaim": "FULL_VISUAL_ANONYMIZATION_INPUT_ENFORCEMENT",
       "doesNotAuthorizeTier2": true
     }
@@ -52,13 +65,15 @@
     "genericPedagogicalTermsAloneAreNotPersonalDataSignals": true,
     "privacyGuardIsHeuristicNotLegalAnonymizationGuarantee": true,
     "binaryPreflightFailsClosed": true,
-    "humanReviewRemainsRequired": true
+    "humanReviewRemainsRequired": true,
+    "localHumanVisualReviewDoesNotEqualAutomatedPiiDetection": true
   },
   "result": {
     "freeTextGuard": "PASS",
     "textFilePrePersistenceGuard": "PASS",
     "binaryTextualContentPrePersistenceGuard": "PASS",
-    "visualBinaryContentAdmission": "DENIED_PENDING_LOCAL_PREFLIGHT",
+    "standaloneImageLocalVisualPreflight": "PASS_WITH_HUMAN_REVIEW",
+    "scannedDocumentVisualAdmission": "DENIED_PENDING_LOCAL_PREFLIGHT",
     "fullVisualAnonymizationInputEnforcement": "NOT_YET_CLAIMED",
     "tier2AdmissionEffect": "NONE"
   }
