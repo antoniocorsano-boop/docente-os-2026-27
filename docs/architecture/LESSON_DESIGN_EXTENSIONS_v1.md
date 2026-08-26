@@ -107,13 +107,17 @@ The tool creates a `HOOK_QUESTION` extension with:
 - status `PROPOSED` through the existing repository boundary;
 - placement `START`;
 - explicit provenance `EDITORIAL_KNOWLEDGE` with `projection:<projectionId>` as source reference;
-- payload marker `executionKind = LOCAL_DETERMINISTIC`;
+- payload markers `toolId`, `dedupeKey` and `executionKind = LOCAL_DETERMINISTIC`;
 - grounding to the current Bxx/projection/title/objective;
 - no direct acceptance.
 
 The proposal appears in **Da controllare**. Only the existing explicit teacher action **Aggiungi alla lezione** may cross `PROPOSED → ACCEPTED` and make the question part of `In classe`.
 
-The same tool proposal is deduplicated for the current projection while it remains stored. Removing it makes the tool available again. If the canonical projection changes, the normal lesson-context guard requires a reload before a new mutation.
+The mutation path resolves the lesson through `resolveRuntimeHumanTaskLessonProjection`, the same runtime resolver used by the Lesson Workspace page. Runtime-only lesson projections therefore use the same stale-projection guard as the rendered page rather than falling back to the legacy projection map.
+
+Tool deduplication is enforced at the persistence boundary, not by a read-before-write UI check. Migration `0038_lesson_design_tool_deduplication.sql` adds a partial UNIQUE index over the full canonical lesson context plus `payload.dedupeKey`. Concurrent submissions therefore converge on one stored proposal: the winning insert creates the row and a conflicting request retrieves that same row after PostgreSQL returns `23505`.
+
+Removing the stored proposal makes the tool available again. If the canonical projection changes, the normal lesson-context guard requires a reload before a new mutation.
 
 This tool is intentionally a proof of the full proposal lifecycle before connecting richer adapters. It establishes that a lesson-design tool can be useful without weakening human authority or pretending that an external provider exists.
 
@@ -176,6 +180,8 @@ Anonymous student self-assessment/lesson/UDA feedback will be a separate subsyst
 - Resource attachments stay resources, not sequence steps.
 - Relevant Knowledge resources can be attached from `Prepara` without duplicating the source.
 - The local activation-question tool creates only a grounded `PROPOSED` extension and never self-accepts.
+- Runtime-only lesson projections use the same resolver for rendering and mutation.
+- Tool proposals declaring a `dedupeKey` are unique per canonical lesson context at the database boundary.
 - Accepted additions remain visible after refresh.
 - Removing an addition does not remove its Knowledge source or mutate the annual plan.
 - No external AI/news/video provider is falsely claimed as connected by this tranche.
