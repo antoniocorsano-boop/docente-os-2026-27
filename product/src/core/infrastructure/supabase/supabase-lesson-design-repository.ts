@@ -62,6 +62,8 @@ type LessonDesignDatabase = {
   }
 }
 
+type LessonDesignInsert = LessonDesignDatabase['public']['Tables']['lesson_design_extensions']['Insert']
+
 export type LessonDesignContext = {
   workspaceId: string
   academicYearId: string
@@ -101,33 +103,54 @@ export class SupabaseLessonDesignRepository {
     const userId = await authenticatedUserId(supabase)
     const { data, error } = await supabase
       .from('lesson_design_extensions')
-      .insert({
-        workspace_id: context.workspaceId,
-        academic_year_id: context.academicYearId,
-        section_id: context.sectionId,
-        canonical_plan_asset_id: context.canonicalPlanAssetId,
-        canonical_generation_id: context.canonicalGenerationId,
-        block_id: context.blockId,
-        projection_id: context.projectionId,
-        kind: draft.kind,
-        status: 'PROPOSED',
-        insertion_position: draft.insertionPosition,
-        anchor_step_id: draft.anchorStepId,
-        title: draft.title,
-        body: draft.body,
-        cue: draft.cue,
-        minutes: draft.minutes,
-        source_kind: draft.sourceKind,
-        source_ref: draft.sourceRef,
-        source_label: draft.sourceLabel,
-        payload: draft.payload,
-        created_by: userId,
-      })
+      .insert(toProposalInsert(context, draft, userId))
       .select('*')
       .single()
 
     if (error) throw new Error(error.message)
     return toExtension(data)
+  }
+
+  async addToolProposalOnce(
+    context: LessonDesignContext,
+    input: LessonDesignExtensionDraft,
+    dedupeKey: string,
+  ): Promise<LessonDesignExtension> {
+    const draft = validateLessonDesignExtensionDraft(input)
+    assertDraftContext(context, draft)
+    const normalizedDedupeKey = dedupeKey.trim()
+    if (!normalizedDedupeKey || draft.payload.dedupeKey !== normalizedDedupeKey) {
+      throw new Error('Lesson design tool proposal requires a matching dedupe key')
+    }
+
+    const supabase = await lessonDesignClient()
+    const userId = await authenticatedUserId(supabase)
+    const { data, error } = await supabase
+      .from('lesson_design_extensions')
+      .insert(toProposalInsert(context, draft, userId))
+      .select('*')
+      .single()
+
+    if (!error) return toExtension(data)
+    if (error.code !== '23505') throw new Error(error.message)
+
+    const { data: existing, error: existingError } = await supabase
+      .from('lesson_design_extensions')
+      .select('*')
+      .eq('workspace_id', context.workspaceId)
+      .eq('academic_year_id', context.academicYearId)
+      .eq('section_id', context.sectionId)
+      .eq('canonical_plan_asset_id', context.canonicalPlanAssetId)
+      .eq('canonical_generation_id', context.canonicalGenerationId)
+      .eq('block_id', context.blockId)
+      .eq('projection_id', context.projectionId)
+      .contains('payload', { dedupeKey: normalizedDedupeKey })
+      .limit(1)
+      .maybeSingle()
+
+    if (existingError) throw new Error(existingError.message)
+    if (!existing) throw new Error('Lesson design proposal uniqueness conflict could not be resolved')
+    return toExtension(existing)
   }
 
   async accept(context: LessonDesignContext, extensionId: string): Promise<void> {
@@ -157,6 +180,35 @@ export class SupabaseLessonDesignRepository {
       .eq('projection_id', context.projectionId)
 
     if (error) throw new Error(error.message)
+  }
+}
+
+function toProposalInsert(
+  context: LessonDesignContext,
+  draft: LessonDesignExtensionDraft,
+  userId: string,
+): LessonDesignInsert {
+  return {
+    workspace_id: context.workspaceId,
+    academic_year_id: context.academicYearId,
+    section_id: context.sectionId,
+    canonical_plan_asset_id: context.canonicalPlanAssetId,
+    canonical_generation_id: context.canonicalGenerationId,
+    block_id: context.blockId,
+    projection_id: context.projectionId,
+    kind: draft.kind,
+    status: 'PROPOSED',
+    insertion_position: draft.insertionPosition,
+    anchor_step_id: draft.anchorStepId,
+    title: draft.title,
+    body: draft.body,
+    cue: draft.cue,
+    minutes: draft.minutes,
+    source_kind: draft.sourceKind,
+    source_ref: draft.sourceRef,
+    source_label: draft.sourceLabel,
+    payload: draft.payload,
+    created_by: userId,
   }
 }
 
