@@ -243,33 +243,52 @@
   border-bottom: 1px solid var(--border, #d8dde6);
 }
 
-.textbookForm {
+.textbookLookupPanel {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  gap: 20px;
+  align-items: start;
   padding: 20px 22px 22px;
 }
 
-.textbookFormGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.textbookFormGrid label {
+.textbookLookupPanel > div:first-child {
   display: grid;
   gap: 6px;
 }
 
-.textbookFormGrid label > span {
+.textbookLookupPanel > div:first-child span {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  opacity: 0.72;
+}
+
+.textbookLookupForm {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border, #d8dde6);
+  border-radius: 16px;
+  background: color-mix(in srgb, currentColor 2%, transparent);
+}
+
+.textbookLookupFields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 0.42fr);
+  gap: 12px;
+}
+
+.textbookLookupFields label {
+  display: grid;
+  gap: 6px;
+}
+
+.textbookLookupFields label > span {
   font-size: 0.84rem;
   font-weight: 700;
 }
 
-.textbookFormGrid label > span small {
-  font-weight: 500;
-  opacity: 0.65;
-}
-
-.textbookFormGrid input,
-.textbookFormGrid select {
+.textbookLookupFields input,
+.textbookLookupFields select {
   width: 100%;
   min-height: 44px;
   padding: 9px 11px;
@@ -280,23 +299,30 @@
   font: inherit;
 }
 
-.textbookFormGrid .wide {
-  grid-column: 1 / -1;
-}
-
-.textbookFormAction {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  align-items: center;
-  margin-top: 18px;
-}
-
-.textbookFormAction span {
-  max-width: 640px;
-  font-size: 0.88rem;
+.textbookLookupHint,
+.textbookLookupMessage {
+  margin: 0;
+  font-size: 0.84rem;
   line-height: 1.45;
-  opacity: 0.72;
+}
+
+.textbookLookupHint {
+  opacity: 0.7;
+}
+
+.textbookLookupMessage {
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  font-weight: 650;
+}
+
+.textbookLookupMessage.error {
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.textbookLookupForm .settingsSecondaryButton {
+  justify-self: start;
 }
 
 .textbookEmptyState {
@@ -316,7 +342,8 @@
 @media (max-width: 860px) {
   .textbookHero,
   .textbookPrinciples,
-  .textbookFormGrid {
+  .textbookLookupPanel,
+  .textbookLookupFields {
     grid-template-columns: 1fr;
   }
 
@@ -324,14 +351,9 @@
     text-align: left;
   }
 
-  .textbookFormGrid .wide {
-    grid-column: auto;
-  }
-
   .textbookRow,
   .textbookAssignmentCard > header,
-  .textbookSourceCallout,
-  .textbookFormAction {
+  .textbookSourceCallout {
     align-items: stretch;
     flex-direction: column;
   }
@@ -341,7 +363,8 @@
     flex-direction: column;
   }
 
-  .textbookRowActions .settingsPrimaryButton {
+  .textbookRowActions .settingsPrimaryButton,
+  .textbookLookupForm .settingsSecondaryButton {
     width: 100%;
   }
 }
