@@ -1,10 +1,13 @@
 import type { CmlCanonicalRef } from './cml-local-handoff'
 import type { AnnualPlanFrameworkApplyCommand } from './cml-handoff-acceptance'
+import type { AnnualPlanFrameworkApplyCommandV2 } from './cml-handoff-v2-acceptance'
 import {
   validateCurriculumContextForClassV1,
   type CurriculumContextForClassV1,
   type CurriculumRequirementV1,
 } from './cml-local-handoff-v2'
+
+export type AnnualPlanCurricularApplyCommand = AnnualPlanFrameworkApplyCommand | AnnualPlanFrameworkApplyCommandV2
 
 export type AnnualPlanTargetScope = {
   schoolYearRef: string
@@ -35,7 +38,7 @@ export type CurriculumCoverageEvaluation = {
   blockingRequirementIds: string[]
 }
 
-export type TransitionAwareAnnualPlanApplyCommand = AnnualPlanFrameworkApplyCommand & {
+export type TransitionAwareAnnualPlanApplyCommand = AnnualPlanCurricularApplyCommand & {
   curricularContext: CurriculumContextForClassV1
   curriculumCoverage: CurriculumCoverageEvaluation
 }
@@ -65,7 +68,7 @@ function assertScopeMatchesContext(scope: AnnualPlanTargetScope, context: Curric
   if (context.cohortRef && scope.cohortRef !== context.cohortRef) throw new Error('curricular context cohortRef mismatch')
 }
 
-function assertCommandMatchesContext(command: AnnualPlanFrameworkApplyCommand, context: CurriculumContextForClassV1): void {
+function assertCommandMatchesContext(command: AnnualPlanCurricularApplyCommand, context: CurriculumContextForClassV1): void {
   if (command.context.schoolYearRef !== context.schoolYearRef
     || command.context.disciplineRef !== context.disciplineRef
     || command.context.gradeRef !== context.gradeRef
@@ -74,7 +77,7 @@ function assertCommandMatchesContext(command: AnnualPlanFrameworkApplyCommand, c
   }
 }
 
-function planNodeRefs(command: AnnualPlanFrameworkApplyCommand): CmlCanonicalRef[] {
+function planNodeRefs(command: AnnualPlanCurricularApplyCommand): CmlCanonicalRef[] {
   return command.reviewedFramework.periods.flatMap((period) => period.suggestedNodeRefs)
 }
 
@@ -83,7 +86,7 @@ function requirementSatisfied(requirement: CurriculumRequirementV1, nodes: CmlCa
 }
 
 export function evaluateCurriculumCoverage(input: {
-  command: AnnualPlanFrameworkApplyCommand
+  command: AnnualPlanCurricularApplyCommand
   curricularContext: CurriculumContextForClassV1
   targetScope: AnnualPlanTargetScope
 }): CurriculumCoverageEvaluation {
@@ -123,7 +126,7 @@ export function evaluateCurriculumCoverage(input: {
 }
 
 export function bindCurriculumContextAndCoverage(input: {
-  command: AnnualPlanFrameworkApplyCommand
+  command: AnnualPlanCurricularApplyCommand
   curricularContext: CurriculumContextForClassV1
   targetScope: AnnualPlanTargetScope
 }): TransitionAwareAnnualPlanApplyCommand {
