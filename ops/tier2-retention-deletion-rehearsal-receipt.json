@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "gate": "T2B_APPLICATION_RETENTION_DELETION",
+  "result": "PASS",
+  "environment": "PRODUCTION_SYNTHETIC_ONLY",
+  "databaseRehearsal": {
+    "workspaceMarker": "__P7_T2B_REHEARSAL_DB__",
+    "created": {"workspace":1,"membership":1,"academicYear":1,"plannerTask":1},
+    "postDeleteRows": {"workspace":0,"membership":0,"academicYear":0,"plannerTask":0}
+  },
+  "storageRehearsal": {
+    "workflow": "P7 Tier 2 Storage Delete Rehearsal",
+    "runId": 32929911831,
+    "jobId": 98060037390,
+    "artifactId": 9592838127,
+    "bucket": "knowledge-assets",
+    "sentinelBytes": 48,
+    "sentinelSha256": "f2c6636009adf1827045b00918ad7b1bc59bb752727cb6694b9f469997f21160",
+    "authenticatedTechnicalIdentity": true,
+    "uploadVerified": true,
+    "downloadIntegrityVerified": true,
+    "authenticatedOwnerDeleteVerified": true,
+    "objectAbsentAfterDelete": true
+  },
+  "cleanup": {
+    "syntheticWorkspaceDeletedByExactIdAndMarker": true,
+    "workspacesAfterCleanup": 0,
+    "academicYearsAfterCleanup": 0,
+    "plannerTasksAfterCleanup": 0,
+    "knowledgeDocumentsAfterCleanup": 0,
+    "knowledgeUnitsAfterCleanup": 0,
+    "authoredDocumentsAfterCleanup": 0,
+    "teachingSessionsAfterCleanup": 0,
+    "storageObjectsAfterCleanup": 0
+  },
+  "backupBoundary": {
+    "lockedBackupsMutated": false,
+    "restoreRequiresDeletionReconciliation": true,
+    "recoveryModel": "FORWARD_RECONCILIATION_AFTER_RESTORE"
+  },
+  "realUserDataTouched": false,
+  "tier2AdmissionChanged": false
+}
