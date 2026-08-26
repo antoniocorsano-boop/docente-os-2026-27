@@ -1,11 +1,11 @@
 # Impostazioni canoniche DOCENTE OS
 
-Data: 2026-08-22  
+Data: 2026-08-26  
 Stato: **CANONICAL**
 
 ## Scopo
 
-Le **Impostazioni** costituiscono la sorgente del contesto personale e professionale usato dai moduli di DOCENTE OS. Non sono una copia dell'Orario, del Piano annuale o del Calendario.
+Le **Impostazioni** costituiscono la sorgente del contesto personale e professionale usato dai moduli di DOCENTE OS. Non sono una copia dell'Orario, del Piano annuale, delle UDA o del Calendario.
 
 Formula di dominio:
 
@@ -17,12 +17,14 @@ Impostazioni
   ├─ discipline
   ├─ classi / sezioni
   ├─ cattedra
+  ├─ libri di testo
   └─ preset organizzativi
         ↓
 moduli operativi indipendenti
 ```
 
 Il contratto di esperienza associato è `docs/product/SETTINGS_EXPERIENCE_CONTRACT.md`.
+Per il dominio libri/editore è inoltre autorevole `docs/architecture/TEXTBOOK_AND_PUBLISHER_RESOURCES_FOUNDATION_v1.md`.
 
 ## Principi
 
@@ -30,11 +32,12 @@ Il contratto di esperienza associato è `docs/product/SETTINGS_EXPERIENCE_CONTRA
 2. Le classi non vengono duplicate: la schermata usa `annual_plan_sections`.
 3. Le discipline hanno un registro canonico annuale `teaching_disciplines`.
 4. La Cattedra usa gli stessi `teaching_assignments` letti dall'Orario: non esiste una seconda associazione classe-disciplina.
-5. I dati di organizzazione scolastica presenti nelle Impostazioni sono **preset di costruzione**, non l'Orario ufficiale.
-6. Le versioni e gli slot dell'Orario mantengono il proprio lifecycle indipendente.
-7. Il Calendario è un dominio indipendente e non viene configurato nelle Impostazioni di base.
-8. Le sezioni o associazioni provvisorie non diventano confermate senza un'azione esplicita.
-9. Le Impostazioni definiscono il contesto; i moduli esecutivi mantengono storico, versioni e identità proprie.
+5. I libri di testo si collegano alla Cattedra tramite `textbook_adoptions`: non creano una seconda relazione classe-disciplina.
+6. I dati di organizzazione scolastica sono preset di costruzione, non l'Orario ufficiale.
+7. Le versioni e gli slot dell'Orario mantengono il proprio lifecycle indipendente.
+8. Il Calendario è un dominio indipendente e non viene configurato nelle Impostazioni di base.
+9. Classi, Cattedre o libri proposti non diventano confermati senza azione esplicita.
+10. Le Impostazioni definiscono il contesto; i moduli esecutivi mantengono storico, versioni e identità proprie.
 
 ## Profilo docente / istituto
 
@@ -56,7 +59,7 @@ Campi correnti:
 - durata standard del periodo;
 - giorni settimanali abituali di lezione.
 
-Questi dati sono modificabili dall'utente autenticato nel proprio workspace.
+Il codice meccanografico è anche il binding previsto per la futura discovery delle adozioni dal Portale Unico dei Dati della Scuola. Non avvia da solo import o modifiche.
 
 ## Discipline
 
@@ -103,28 +106,65 @@ Regole:
 
 - una Cattedra può essere creata solo su una classe/sezione esistente nello stesso workspace/anno;
 - una Cattedra può usare solo una disciplina esistente nello stesso workspace/anno;
-- il monte ore settimanale è espresso in minuti per evitare assunzioni sulla durata dell'ora;
+- il monte ore settimanale è espresso in minuti;
 - una Cattedra provvisoria non diventa confermata automaticamente;
 - creare o modificare una Cattedra non genera slot nell'Orario;
 - creare o modificare una Cattedra non modifica Piano annuale, attività o Calendario;
 - Impostazioni e Orario leggono gli stessi record.
 
-La Cattedra appartiene al **contesto professionale**; l'Orario la usa come sorgente per scegliere quali lezioni inserire nella settimana tipo.
+Formula canonica:
+
+> **Cattedra = la insegno.**
+
+## Libri di testo
+
+I libri sono **contesto didattico-professionale opzionale** collegato alla Cattedra.
+
+Oggetti persistenti:
+
+- `textbooks` — catalogo workspace/anno univoco per ISBN-13;
+- `textbook_adoptions` — relazione tra Cattedra e libro.
+
+Formula:
+
+```text
+TeachingAssignment
+        ↓
+TextbookAdoption
+        ↓
+Textbook
+```
+
+Regole:
+
+- uno stesso ISBN può essere riusato da più Cattedre senza duplicare il libro;
+- una Cattedra può avere più libri;
+- `usage_kind` distingue `ADOPTED`, `RECOMMENDED`, `OTHER`;
+- `source_kind` distingue `MANUAL` e `MIM_OPEN_DATA`;
+- lifecycle `PROPOSED → CONFIRMED`;
+- una proposta MIM o manuale non è confermata finché il docente non compie un'azione esplicita;
+- l'assenza di un libro non blocca l'uso di DOCENTE OS;
+- il libro non modifica curricolo, coverage, Piano annuale, Orario, UDA o TeachingSession;
+- nessuna credenziale di editore viene conservata nelle Impostazioni.
+
+Formula canonica:
+
+> **Libro di testo = risorsa adottata per quella Cattedra, non fonte normativa.**
 
 ## Organizzazione scolastica / preset Orario
 
-I preset derivano funzionalmente dalle specifiche storiche ricostruite da `DocenteDocAi_Beta`, ma sono generalizzati:
+I preset comprendono:
 
 - 4–10 periodi giornalieri;
 - ora iniziale libera in formato `HH:MM`;
 - durata standard configurabile;
 - giorni di lezione configurabili da lunedì a sabato.
 
-Questi valori servono a preparare l'interfaccia/griglia iniziale. Una volta esistenti versioni e slot Orario, ciascuno conserva i propri `start_time` e `end_time` e non viene riscritto automaticamente da un cambio di preset.
+Servono a preparare la griglia iniziale. Una volta esistenti versioni e slot Orario, ciascuno conserva i propri orari e non viene riscritto automaticamente da un cambio di preset.
 
 ## UX canonica
 
-Rotta canonica: `/impostazioni`.
+Rotta primaria: `/impostazioni`.
 
 Le aree, nell'ordine di configurazione, sono:
 
@@ -132,47 +172,59 @@ Le aree, nell'ordine di configurazione, sono:
 2. **Discipline**;
 3. **Classi**;
 4. **Cattedra**;
-5. **Organizzazione scolastica**.
+5. **Libri di testo**;
+6. **Organizzazione scolastica**.
 
 La stessa pagina opera in due modalità:
 
-- configurazione guidata quando il contesto è incompleto/da controllare;
+- configurazione guidata quando il contesto necessario è incompleto/da controllare;
 - gestione del contesto quando le aree necessarie risultano complete.
+
+`Libri di testo` può risultare `Facoltativo`: la sua assenza non blocca il contesto. Se esistono proposte non confermate, diventa `Da controllare`.
 
 Gli stati user-facing sono `Completo`, `Da completare`, `Da controllare`, `Facoltativo`.
 
-Per tono, microcopy, feedback, vicoli ciechi e regole di spiegazione è vincolante `SETTINGS_EXPERIENCE_CONTRACT.md`.
+La gestione dettagliata dei libri vive in `/impostazioni/libri-di-testo` ma appartiene alla stessa area Impostazioni e usa gli stessi principi di esperienza.
 
-## Vincoli di integrazione con l'Orario
+## Vincoli di integrazione
 
-L'Orario deve:
+L'Orario deve leggere Cattedra e preset senza dipendere dai libri.
 
-- leggere le discipline attive da `teaching_disciplines`;
-- leggere le classi/sezioni da `annual_plan_sections`;
-- leggere la Cattedra da `teaching_assignments`;
-- leggere i preset da `teacher_workspace_settings` soltanto come base di costruzione;
-- non duplicare nome scuola/docente nei record dell'Orario;
-- non promuovere automaticamente classi o Cattedre provvisorie;
-- non dipendere dal Calendario.
+Piano annuale, UDA e TeachingSession potranno leggere i libri come risorse pertinenti, ma non devono:
 
-Le Impostazioni, simmetricamente, non devono creare slot o versioni Orario come effetto collaterale di una modifica del contesto.
+- trasformare l'indice del libro in curricolo;
+- dichiarare coverage curricolare sulla sola base del libro;
+- scaricare contenuti editoriali senza un contratto di accesso/uso esplicito.
 
-## Relazione con il Calendario
+Le Impostazioni non devono creare slot, UDA, attività o eventi come effetto collaterale della modifica di un libro.
 
-Nessuna dipendenza diretta.
+## Relazione con CurManLight Arena
 
-Le Impostazioni non definiscono festività, eventi, sospensioni o occorrenze reali. Il Calendario mantiene un proprio dominio secondo `TEMPORAL_COMPOSITION_CANONICAL_SPEC.md`.
+Arena resta authority per curricolo applicabile e requirements. DOCENTE OS è authority per adozione/uso operativo del libro da parte del docente.
+
+Catena ammessa:
+
+```text
+Arena requirement
+      ↓
+Piano/UDA docente
+      ↓
+Textbook resource suggestion
+```
+
+Non è ammessa la catena inversa `indice libro → requisito curricolare canonico`.
 
 ## Decisione
 
 Le Impostazioni sono il **master data layer leggero del contesto professionale** di DOCENTE OS.
 
-La catena concettuale lato utente è:
+Catena concettuale:
 
 ```text
 Classe = esiste nel mio contesto
 Cattedra = la insegno
+Libro = quale risorsa editoriale adotto/uso
 Orario = quando la insegno ricorrentemente
 ```
 
-Nessuno dei tre passaggi viene implicitamente materializzato dal precedente.
+Nessun passaggio materializza automaticamente il successivo.
