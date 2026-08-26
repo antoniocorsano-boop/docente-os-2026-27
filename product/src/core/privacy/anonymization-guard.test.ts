@@ -8,20 +8,26 @@ test('allows ordinary D0-D1 teaching text', () => {
   assert.deepEqual(result.findings, [])
 })
 
+test('allows generic pedagogical references without an identified person', () => {
+  const result = inspectFreeTextForPilot('Strategie inclusive per DSA e BES; predisporre modelli PDP e PEI.')
+  assert.equal(result.allowed, true)
+})
+
 test('blocks direct identifiers', () => {
   const result = inspectFreeTextForPilot('Contattare mario.rossi@example.it per il recupero.')
   assert.equal(result.allowed, false)
   assert.ok(result.findings.some((finding) => finding.riskClass === 'D3' && finding.code === 'EMAIL'))
 })
 
-test('blocks special-category indicators', () => {
-  const result = inspectFreeTextForPilot('Predisporre il PDP per DSA.')
+test('blocks named student plus special-category context', () => {
+  const result = inspectFreeTextForPilot('Studente Mario Rossi: predisporre PDP per DSA.')
   assert.equal(result.allowed, false)
+  assert.ok(result.findings.some((finding) => finding.riskClass === 'D3' && finding.code === 'NAMED_STUDENT'))
   assert.ok(result.findings.some((finding) => finding.riskClass === 'D5'))
 })
 
-test('checks filenames before upload', () => {
-  const result = inspectFilenameForPilot('PDP_DSA_classe2C.pdf')
+test('checks filenames before upload for direct identifiers', () => {
+  const result = inspectFilenameForPilot('studente_Mario_Rossi_relazione.pdf')
   assert.equal(result.allowed, false)
 })
 
