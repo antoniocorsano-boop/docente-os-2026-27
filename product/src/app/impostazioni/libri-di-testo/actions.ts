@@ -72,12 +72,16 @@ export async function discoverMimTextbookAdoptions(
       return { status: 'error', message: 'Completa prima la Cattedra: servono almeno una classe e una disciplina attiva.' }
     }
 
+    const academicYearCode = toMimAcademicYearCode(
+      context.academicYear.startsOn,
+      context.academicYear.endsOn,
+    )
     const mimClient = new MimTextbookAdoptionClient()
-    const discovery = await mimClient.discoverBySchoolCode(settings.schoolCode)
+    const discovery = await mimClient.discoverBySchoolCode(settings.schoolCode, academicYearCode)
     if (!discovery.records.length) {
       return {
         status: 'success',
-        message: `Nessuna adozione MIM trovata per il codice scuola ${settings.schoolCode}. Non è stato creato alcun dato manuale.`,
+        message: `Nessuna adozione MIM trovata nei ${discovery.resolvedSchoolCodes.length} plessi/codici verificati per ${context.academicYear.label}. Non è stato creato alcun dato manuale.`,
       }
     }
 
@@ -85,7 +89,7 @@ export async function discoverMimTextbookAdoptions(
     if (!matches.length) {
       return {
         status: 'success',
-        message: `Il MIM contiene dati per ${settings.schoolCode}, ma nessuna riga coincide in modo sufficientemente affidabile con classe, sezione e disciplina della tua Cattedra.`,
+        message: `Il MIM contiene dati per i plessi collegati a ${settings.schoolCode}, ma nessuna riga coincide in modo sufficientemente affidabile con classe, sezione e disciplina della tua Cattedra.`,
       }
     }
 
@@ -108,7 +112,7 @@ export async function discoverMimTextbookAdoptions(
           publisherProductRef: null,
           usageKind: match.usageKind,
           sourceKind: 'MIM_OPEN_DATA',
-          sourceRef: mimSourceRef(record),
+          sourceRef: mimSourceRef(record, academicYearCode),
         },
       })
     }
@@ -235,8 +239,20 @@ function normalizeMimVolume(value: string | null) {
   return value.trim().toUpperCase() === 'U' ? 'Volume unico' : value.trim()
 }
 
-function mimSourceRef(record: { sourceDataset: string; schoolCode: string; gradeNumber: number; sectionCode: string; isbn13: string }) {
-  return `mim:${record.sourceDataset}:${record.schoolCode}:${record.gradeNumber}:${record.sectionCode}:${record.isbn13}`.slice(0, 500)
+function toMimAcademicYearCode(startsOn: string, endsOn: string) {
+  const startYear = Number.parseInt(startsOn.slice(0, 4), 10)
+  const endYear = Number.parseInt(endsOn.slice(0, 4), 10)
+  if (!Number.isInteger(startYear) || !Number.isInteger(endYear) || endYear !== startYear + 1) {
+    throw new Error('L’anno scolastico attivo non ha un intervallo compatibile con la discovery MIM.')
+  }
+  return `${startYear}${String(endYear).slice(-2)}`
+}
+
+function mimSourceRef(
+  record: { sourceDataset: string; schoolCode: string; gradeNumber: number; sectionCode: string; isbn13: string },
+  academicYearCode: string,
+) {
+  return `mim:${academicYearCode}:${record.sourceDataset}:${record.schoolCode}:${record.gradeNumber}:${record.sectionCode}:${record.isbn13}`.slice(0, 500)
 }
 
 function humanLookupError(message: string) {
@@ -247,5 +263,6 @@ function humanLookupError(message: string) {
 
 function humanMimError(message: string) {
   if (message.includes('Codice meccanografico')) return message
+  if (message.includes('discovery MIM è verificata')) return message
   return `Ricerca MIM non completata: ${message}`
 }
