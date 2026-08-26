@@ -207,7 +207,7 @@ export function KnowledgeFileUploader() {
         <div className="selectedFileCard" role="status" aria-live="polite" aria-atomic="true">
           <span className="selectedFileCheck" aria-hidden>✓</span>
           <div className="selectedFileBody">
-            <strong>{storedUpload ? 'Copia ammessa già al sicuro' : selectedIsImage && preparedImageFile ? 'Copia anonima pronta' : 'Pronto per il controllo'}</strong>
+            <strong>{storedUpload ? 'Copia ammessa già al sicuro' : selectedIsImage && preparedImageFile ? 'Copia anonima pronta' : selectedIsImage ? 'Pronto per la revisione locale' : 'Pronto a caricare'}</strong>
             <span title={selectedFile.name}>{selectedFile.name}</span>
             <small>{fileTypeLabel(selectedFile)} · {formatFileSize(selectedFile.size)}</small>
           </div>
