@@ -96,11 +96,18 @@ function sameRef(a: CmlCanonicalRef, b: CmlCanonicalRef): boolean {
 }
 
 function sameScope(a: CurriculumContextForClassV1, b: CurriculumContextForClassV1): boolean {
+  const sectionCompatible = !a.sectionRef || !b.sectionRef || a.sectionRef === b.sectionRef
+  const cohortCompatible = !a.cohortRef || !b.cohortRef || a.cohortRef === b.cohortRef
+  const sharedClassIdentity = Boolean(
+    (a.sectionRef && b.sectionRef && a.sectionRef === b.sectionRef)
+    || (a.cohortRef && b.cohortRef && a.cohortRef === b.cohortRef),
+  )
   return a.schoolYearRef === b.schoolYearRef
     && a.disciplineRef === b.disciplineRef
     && a.gradeRef === b.gradeRef
-    && (a.sectionRef ?? null) === (b.sectionRef ?? null)
-    && (a.cohortRef ?? null) === (b.cohortRef ?? null)
+    && sectionCompatible
+    && cohortCompatible
+    && sharedClassIdentity
     && stableRefKey(a.institutionRef) === stableRefKey(b.institutionRef)
     && stableRefKey(a.curriculumRef) === stableRefKey(b.curriculumRef)
 }
@@ -193,11 +200,22 @@ function fnv1a(value: string): string {
   return (hash >>> 0).toString(16).padStart(8, '0')
 }
 
+function occurrenceCounts(requirements: CurriculumRequirementV1[]): Map<string, number> {
+  const counts = new Map<string, number>()
+  requirements.forEach((requirement) => {
+    const key = semanticRequirementKey(requirement)
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  })
+  return counts
+}
+
 function makeDelta(
   previous: CurriculumRequirementV1[],
   incoming: CurriculumRequirementV1[],
 ): CurriculumRequirementDelta[] {
   const unmatchedIncoming = new Set(incoming.map((_, index) => index))
+  const previousSemanticCounts = occurrenceCounts(previous)
+  const incomingSemanticCounts = occurrenceCounts(incoming)
   const delta: CurriculumRequirementDelta[] = []
 
   function findIncoming(previousRequirement: CurriculumRequirementV1): number | undefined {
@@ -207,8 +225,10 @@ function makeDelta(
     for (const index of unmatchedIncoming) {
       if (stableRefKey(incoming[index].curriculumNodeRef) === stableRefKey(previousRequirement.curriculumNodeRef)) return index
     }
+    const semanticKey = semanticRequirementKey(previousRequirement)
+    if (previousSemanticCounts.get(semanticKey) !== 1 || incomingSemanticCounts.get(semanticKey) !== 1) return undefined
     for (const index of unmatchedIncoming) {
-      if (semanticRequirementKey(incoming[index]) === semanticRequirementKey(previousRequirement)) return index
+      if (semanticRequirementKey(incoming[index]) === semanticKey) return index
     }
     return undefined
   }
@@ -332,6 +352,9 @@ export function buildApprovedCurriculumRevalidationReview(input: {
   if (input.incoming.curricularContext.curriculumState !== 'APPROVED') {
     throw new Error('revalidation requires an APPROVED Arena curriculum context')
   }
+  if (input.incoming.curricularContext.transitionRemodulation.state === 'HYPOTHESIS') {
+    throw new Error('approved curriculum revalidation cannot finalize an unapproved transition remodulation hypothesis')
+  }
   if (input.current.curriculumState === 'PROVISIONAL_COMPLETE'
     && input.current.requiresRevalidationOnApproval !== true) {
     throw new Error('persisted provisional baseline is missing the revalidation obligation')
@@ -415,6 +438,9 @@ export function prepareApprovedCurriculumRevalidationApply(input: {
 
   const approvedContext = review.incomingHandoff.curricularContext
   if (approvedContext.curriculumState !== 'APPROVED') throw new Error('revalidation apply requires approved curriculum context')
+  if (approvedContext.transitionRemodulation.state === 'HYPOTHESIS') {
+    throw new Error('revalidation apply cannot finalize an unapproved transition remodulation hypothesis')
+  }
   const reviewedFramework = cloneFramework(input.reviewedFramework ?? review.preservedFramework)
   if (reviewedFramework.periods.length === 0) throw new Error('revalidated framework must contain at least one period')
   const curriculumCoverage = evaluateApprovedCoverage({
