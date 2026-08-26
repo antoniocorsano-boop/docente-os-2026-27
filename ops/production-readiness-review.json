@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 9,
+  "schemaVersion": 10,
   "product": "DOCENTE OS",
   "review": "P7-D",
-  "lastUpdatedBy": "P7-PRODUCTION-PROMOTION",
+  "lastUpdatedBy": "P7-REAL-DATA-ADMISSION",
   "reviewState": "CURRENT",
   "productionActivationDecision": "ACTIVE_SINGLE_OWNER_PILOT",
   "inactiveProvisioningDecision": "COMPLETE",
@@ -27,38 +27,52 @@
     "postPromotionSmokeRunId": 32903982577,
     "exactCandidateShaVerified": true
   },
+  "realDataAdmission": {
+    "state": "AUTHORIZED_TIER_1",
+    "scope": "TIER_1_OWNER_PROFESSIONAL_NON_PERSONAL",
+    "decisionDate": "2026-08-26",
+    "receipt": "ops/real-data-admission-decision-receipt.json",
+    "studentPersonalDataAllowed": false,
+    "thirdPartyPersonalDataAllowed": false,
+    "specialCategoryDataAllowed": false,
+    "credentialsOrSecretsAllowed": false,
+    "automaticBetaMigrationAllowed": false
+  },
   "satisfied": [
     {"id":"P7A_PROMOTION_CONTRACT","classification":"SATISFIED","evidence":"production-promotion/contract"},
     {"id":"P7B_DATA_TOPOLOGY","classification":"SATISFIED","evidence":"productionDataTopologyState=SEPARATE"},
     {"id":"P7C_INFRASTRUCTURE_SPEC","classification":"SATISFIED","evidence":"production-infrastructure/spec"},
     {"id":"P7E_PROVIDER_SELECTION","classification":"SATISFIED","evidence":"hosting.provider=RENDER; region=frankfurt; autoDeployAllowed=false"},
-    {"id":"P7F_SUPABASE_PROVISIONING","classification":"SATISFIED","evidence":"Production Supabase provisioned, schema-ready and application data empty"},
-    {"id":"P7F2_RUNTIME_PROVISIONING","classification":"SATISFIED","evidence":"Render Production provisioned and authenticated smoke baseline PASS"},
+    {"id":"P7F_SUPABASE_PROVISIONING","classification":"SATISFIED","evidence":"Production Supabase provisioned and schema-ready"},
+    {"id":"P7F2_RUNTIME_PROVISIONING","classification":"SATISFIED","evidence":"Render Production active and authenticated smoke PASS"},
     {"id":"DB_LOGICAL_RESTORE","classification":"SATISFIED","evidence":"P7 DB Restore Rehearsal run 32837945388 PASS"},
     {"id":"SUPABASE_AUTH_SERVICE_RECOVERY","classification":"SATISFIED","evidence":"P7 Supabase Auth Service Recovery run 32841165988 PASS"},
     {"id":"OFFSITE_STORAGE_RECOVERY_REHEARSAL","classification":"SATISFIED","evidence":"P7 Off-site Storage Recovery run 32842616571 PASS"},
     {"id":"OFFSITE_STORAGE_PERSISTENT_DESTINATION","classification":"SATISFIED","evidence":"Cloudflare R2 EU docente-os-backup-eu; run 32888249839 PASS"},
     {"id":"OFFSITE_STORAGE_RETENTION_LOCK","classification":"SATISFIED","evidence":"Cloudflare R2 Bucket Lock prefix production/; 90 days; run 32891383829 PASS"},
-    {"id":"INCIDENT_ESCALATION_MINIMUM","classification":"SATISFIED","evidence":"p7-incident/escalation-contract PASS; rehearsal issue #193 completed"},
+    {"id":"INCIDENT_ESCALATION_MINIMUM","classification":"SATISFIED","evidence":"p7-incident/escalation-contract PASS"},
     {"id":"SECURITY_BASELINE","classification":"SATISFIED","evidence":"ops-security/supabase + ops-security/dependencies"},
     {"id":"BETA_RUNTIME_GATES","classification":"SATISFIED","evidence":"canonical Beta application/runtime gates"},
-    {"id":"P7_PRODUCTION_ACTIVATION_DECISION","classification":"SATISFIED","evidence":"explicit human owner authorization recorded 2026-08-25; SINGLE_OWNER_PILOT"},
-    {"id":"P7_PRODUCTION_PROMOTION","classification":"SATISFIED","evidence":"Render LIVE on db3d4ab...; Production Runtime Smoke run 32903982577 PASS; exactCandidateShaVerified=true"}
+    {"id":"P7_PRODUCTION_ACTIVATION_DECISION","classification":"SATISFIED","evidence":"explicit human owner authorization 2026-08-25"},
+    {"id":"P7_PRODUCTION_PROMOTION","classification":"SATISFIED","evidence":"Production Runtime Smoke run 32903982577 PASS"},
+    {"id":"P7_REAL_DATA_ADMISSION_TIER_1","classification":"SATISFIED","evidence":"explicit human owner authorization 2026-08-26; Tier 1 only"}
   ],
   "activationBlockers": [],
   "provisioningResidues": [],
-  "realUserDataAccepted": false,
+  "realUserDataAccepted": true,
+  "realUserDataAdmissionScope": "TIER_1_OWNER_PROFESSIONAL_NON_PERSONAL",
   "watches": [
     {"id":"LOAD_SCALE_ISOLATED","classification":"WATCH","state":"NOT_PROVEN","reason":"Required before broader rollout, not a blocker for a controlled single-owner pilot."},
     {"id":"LEAKED_PASSWORD_PROTECTION","classification":"WATCH","state":"PLAN_DEPENDENT","reason":"Continue to verify and enable when the Supabase plan permits it."},
     {"id":"LONGITUDINAL_USE","classification":"WATCH","state":"NOT_PROVEN","reason":"Required for maturity claims beyond the controlled pilot."},
-    {"id":"RETENTION_ACCOUNT_DELETION","classification":"WATCH","state":"DEFERRED","reason":"Application-level account/data lifecycle policy remains distinct from backup retention and is deferred."}
+    {"id":"RETENTION_ACCOUNT_DELETION","classification":"WATCH","state":"DEFERRED","reason":"Required before admitting school personal data; not a blocker for Tier 1 non-personal professional content."}
   ],
   "nextGate": {
-    "id": "P7-REAL-DATA-ADMISSION",
-    "purpose": "Decide explicitly whether the active named-owner pilot may begin accepting professional real data; automatic Beta copy and public/multi-tenant onboarding remain prohibited.",
+    "id": "P7-TIER2-PERSONAL-DATA-GOVERNANCE",
+    "purpose": "Prepare governance prerequisites before any possible admission of school personal data.",
     "mayKeepProductionActive": true,
-    "mayAcceptRealUserData": false,
+    "mayAcceptTier1OwnerProfessionalNonPersonal": true,
+    "mayAcceptSchoolPersonalData": false,
     "explicitOwnerDecisionRequired": true
   }
 }
