@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  acceptedLessonDesignResources,
   composeLessonSequence,
   validateLessonDesignExtensionDraft,
   type LessonDesignExtension,
@@ -42,16 +43,28 @@ function extension(overrides: Partial<LessonDesignExtension> = {}): LessonDesign
   }
 }
 
-test('only accepted extensions enter the teaching sequence', () => {
+test('only accepted sequence extensions enter the teaching sequence', () => {
   const result = composeLessonSequence(BASE, [
     extension(),
     extension({ id: 'proposal-only', status: 'PROPOSED', title: 'Non ancora accettata' }),
+    extension({ id: 'resource', kind: 'TEACHER_RESOURCE', title: 'Guida docente' }),
   ])
 
   assert.equal(result.steps.length, 3)
   assert.equal(result.steps[0].origin, 'EXTENSION')
   assert.equal(result.steps[0].title, 'Una frase per entrare nel tema')
   assert.deepEqual(result.steps.slice(1).map((step) => step.id), ['S01', 'S02'])
+})
+
+test('accepted resource extensions remain attached resources rather than fake lesson steps', () => {
+  const resources = acceptedLessonDesignResources([
+    extension({ id: 'teacher-resource', kind: 'TEACHER_RESOURCE', title: 'Guida docente' }),
+    extension({ id: 'student-resource', kind: 'STUDENT_RESOURCE', title: 'Scheda alunni', createdAt: '2026-08-26T17:01:00Z' }),
+    extension({ id: 'hook', kind: 'HOOK_EVENT' }),
+    extension({ id: 'proposal', kind: 'STUDENT_RESOURCE', status: 'PROPOSED' }),
+  ])
+
+  assert.deepEqual(resources.map((item) => item.id), ['teacher-resource', 'student-resource'])
 })
 
 test('accepted extensions can be inserted around a canonical step without changing it', () => {
