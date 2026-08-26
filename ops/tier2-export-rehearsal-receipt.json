@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "gate": "T2C_PERSONAL_DATA_EXPORT_REHEARSAL",
+  "result": "PASS",
+  "environment": "PRODUCTION_SYNTHETIC_ONLY",
+  "workflow": {
+    "runId": 32931288784,
+    "jobId": 98063905054,
+    "artifactId": 9593288618,
+    "artifactDigest": "sha256:0402233e2495e83efcc35bf946187813cd8a739de361e43e0c81443a5df99fe5",
+    "headSha": "5675f97e410f39347001ac65ddfc4132c396e9c1"
+  },
+  "requestAuthenticationBoundary": {
+    "unauthenticatedRequestRejected": true,
+    "authenticatedTechnicalIdentity": true,
+    "ownerRoleVerified": true
+  },
+  "databaseExport": {
+    "source": "public.workspace_export_manifest()",
+    "manifestSchemaVersion": 1,
+    "collectionCount": 25,
+    "requiredCollectionsVerified": true,
+    "bytes": 1271,
+    "sha256": "d25ddcb065cc7eb15cffe1637103eeac96c7972cc2b61bf4b121cae01ef85329"
+  },
+  "assetExport": {
+    "bucket": "knowledge-assets",
+    "bytes": 47,
+    "sha256": "b92889026cd310c4bd6f0739569b03953b84261cbc7d8ad8fbd7cfd2259d9c31",
+    "downloadIntegrityVerified": true,
+    "cleanupVerified": true
+  },
+  "packageIndex": {
+    "schemaVersion": 1,
+    "sha256": "b7d429e8981681c0dbee819c11d1ae2521680d1fd4aa8c082c8aa99828e487ae"
+  },
+  "cleanup": {
+    "workspaceId": "9a0f677c-8429-42fd-989a-135e2f9b000e",
+    "workspaceMarker": "__P7_T2C_EXPORT_REHEARSAL_32931288784__",
+    "workspaceCleanupVerified": true,
+    "postCleanup": {
+      "workspaces": 0,
+      "workspaceMemberships": 0,
+      "academicYears": 0,
+      "plannerTasks": 0,
+      "knowledgeAssets": 0,
+      "knowledgeDocuments": 0,
+      "authoredDocuments": 0,
+      "calendarEvents": 0,
+      "storageObjects": 0
+    }
+  },
+  "realUserDataTouched": false,
+  "tier2AdmissionEffect": "NONE"
+}
