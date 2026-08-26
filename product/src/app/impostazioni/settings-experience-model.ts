@@ -1,8 +1,9 @@
 import type { AnnualPlanSection } from '@/core/domain/annual-plan-execution'
+import { buildTextbookSettingsCoverage, type TextbookAdoption } from '@/core/domain/textbook-adoption'
 import type { TeachingAssignment } from '@/core/domain/timetable'
 import type { TeacherWorkspaceSettings, TeachingDiscipline } from '@/core/domain/teacher-settings'
 
-export type SettingsAreaKey = 'context' | 'disciplines' | 'classes' | 'assignments' | 'organization'
+export type SettingsAreaKey = 'context' | 'disciplines' | 'classes' | 'assignments' | 'textbooks' | 'organization'
 export type SettingsAreaStatus = 'COMPLETE' | 'INCOMPLETE' | 'REVIEW' | 'OPTIONAL'
 
 export type SettingsArea = {
@@ -32,6 +33,7 @@ export function buildSettingsExperienceModel(input: {
   disciplines: Pick<TeachingDiscipline, 'id' | 'name' | 'isActive'>[]
   sections: Pick<AnnualPlanSection, 'id' | 'status'>[]
   assignments: Pick<TeachingAssignment, 'id' | 'sectionId' | 'disciplineId' | 'status' | 'weeklyMinutes'>[]
+  textbookAdoptions?: Pick<TextbookAdoption, 'teachingAssignmentId' | 'status' | 'usageKind'>[]
 }): SettingsExperienceModel {
   const activeDisciplines = input.disciplines.filter((item) => item.isActive)
   const activeDisciplineIds = new Set(activeDisciplines.map((item) => item.id))
@@ -59,6 +61,18 @@ export function buildSettingsExperienceModel(input: {
     : activeAssignments.some((assignment) => assignment.status !== 'CONFIRMED')
       ? 'REVIEW'
       : 'COMPLETE'
+
+  const textbookCoverage = buildTextbookSettingsCoverage({
+    assignmentIds: activeAssignments.map((assignment) => assignment.id),
+    adoptions: input.textbookAdoptions ?? [],
+  })
+  const textbookStatus: SettingsAreaStatus = activeAssignments.length === 0
+    ? 'OPTIONAL'
+    : textbookCoverage.proposedBookCount > 0
+      ? 'REVIEW'
+      : textbookCoverage.coveredAssignmentCount === activeAssignments.length
+        ? 'COMPLETE'
+        : 'OPTIONAL'
 
   const areas: SettingsArea[] = [
     {
@@ -112,8 +126,18 @@ export function buildSettingsExperienceModel(input: {
       nextAction: assignmentStatus === 'COMPLETE' ? 'Gestisci la cattedra' : assignmentStatus === 'REVIEW' ? 'Controlla la cattedra' : 'Completa la cattedra',
     },
     {
-      key: 'organization',
+      key: 'textbooks',
       number: 5,
+      label: 'Libri di testo',
+      question: 'Quali libri usi in ciascuna classe e disciplina?',
+      status: textbookStatus,
+      summary: textbooksSummary(textbookCoverage),
+      href: '/impostazioni/libri-di-testo',
+      nextAction: textbookStatus === 'REVIEW' ? 'Controlla i libri proposti' : 'Gestisci i libri di testo',
+    },
+    {
+      key: 'organization',
+      number: 6,
       label: 'Organizzazione scolastica',
       question: 'Com’è normalmente organizzata la settimana?',
       status: organizationComplete ? 'COMPLETE' : 'INCOMPLETE',
@@ -165,4 +189,12 @@ function assignmentsSummary(input: {
   if (input.missingAssignmentCount > 0) return `${input.assignmentCount} associazioni · ${input.missingAssignmentCount} ${input.missingAssignmentCount === 1 ? 'classe da associare' : 'classi da associare'}`
   if (input.provisionalCount > 0) return `${input.assignmentCount} associazioni · ${input.provisionalCount} da confermare`
   return `${input.assignmentCount} ${input.assignmentCount === 1 ? 'associazione confermata' : 'associazioni confermate'}`
+}
+
+function textbooksSummary(coverage: ReturnType<typeof buildTextbookSettingsCoverage>) {
+  if (coverage.assignmentCount === 0) return 'Disponibile quando hai almeno una Cattedra.'
+  if (coverage.proposedBookCount > 0) return `${coverage.confirmedBookCount} confermati · ${coverage.proposedBookCount} da controllare`
+  if (coverage.confirmedBookCount === 0) return 'Nessun libro collegato. Puoi aggiungerli quando ti servono.'
+  if (coverage.missingAssignmentIds.length > 0) return `${coverage.confirmedBookCount} libri · ${coverage.missingAssignmentIds.length} ${coverage.missingAssignmentIds.length === 1 ? 'cattedra senza libro' : 'cattedre senza libro'}`
+  return `${coverage.confirmedBookCount} ${coverage.confirmedBookCount === 1 ? 'libro confermato' : 'libri confermati'} · tutte le cattedre coperte`
 }
