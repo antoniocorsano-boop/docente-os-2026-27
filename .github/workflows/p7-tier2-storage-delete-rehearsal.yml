@@ -1,13 +1,6 @@
 name: P7 Tier 2 Storage Delete Rehearsal
 
 on:
-  pull_request:
-    branches:
-      - develop
-    paths:
-      - 'product/scripts/p7-t2b-storage-rehearsal.mjs'
-      - '.github/workflows/p7-tier2-storage-delete-rehearsal.yml'
-      - 'ops/tier2-application-retention-deletion-policy.json'
   workflow_dispatch:
 
 permissions:
