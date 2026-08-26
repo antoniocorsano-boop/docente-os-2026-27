@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "gate": "P7-REAL-DATA-ADMISSION",
+  "state": "READY_FOR_HUMAN_DECISION",
+  "productionStateRequired": "ACTIVE_SINGLE_OWNER_PILOT",
+  "releaseScope": "SINGLE_OWNER_PILOT",
+  "audience": "named_owner_only",
+  "currentAdmission": {
+    "realUserDataAccepted": false,
+    "automaticBetaDataCopyAllowed": false,
+    "publicSignupAllowed": false,
+    "multiTenantOnboardingAllowed": false
+  },
+  "proposedAdmissionTier": {
+    "id": "TIER_1_OWNER_PROFESSIONAL_NON_PERSONAL",
+    "description": "Professional content belonging to the named owner that does not contain personal data of students, families, colleagues or other third parties.",
+    "ownerProfessionalContentAllowed": true,
+    "studentPersonalDataAllowed": false,
+    "thirdPartyPersonalDataAllowed": false,
+    "specialCategoryDataAllowed": false,
+    "credentialsOrSecretsAllowed": false,
+    "automaticBetaMigrationAllowed": false,
+    "manualImportRequiresExplicitOwnerAction": true
+  },
+  "higherRiskTier": {
+    "id": "TIER_2_SCHOOL_PERSONAL_DATA",
+    "state": "NOT_ADMITTED",
+    "requiresSeparateGate": true,
+    "requiredBeforeAdmission": [
+      "data-minimization-policy",
+      "application-retention-and-deletion-policy",
+      "personal-data-export-deletion-procedure",
+      "dedicated-privacy-review"
+    ]
+  },
+  "technicalPrerequisites": {
+    "productionReleaseReceiptPass": true,
+    "exactCandidateShaVerified": true,
+    "productionDataTopologySeparate": true,
+    "rlsAndStorageSecurityBaselineSatisfied": true,
+    "dbRecoverySatisfied": true,
+    "authRecoverySatisfied": true,
+    "offsiteBackupSatisfied": true,
+    "retentionLockSatisfied": true,
+    "incidentEscalationSatisfied": true
+  },
+  "humanDecisionRequired": true,
+  "humanDecision": "PENDING",
+  "decisionMayAuthorizeOnly": "TIER_1_OWNER_PROFESSIONAL_NON_PERSONAL",
+  "realUserDataAcceptedAfterThisReview": false
+}
