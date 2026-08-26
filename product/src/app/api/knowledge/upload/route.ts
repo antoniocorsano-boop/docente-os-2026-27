@@ -2,6 +2,7 @@ import { Buffer } from 'node:buffer'
 import { NextResponse } from 'next/server'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { createClient } from '@/lib/supabase/server'
+import { inspectFilenameForPilot, inspectFreeTextForPilot } from '@/core/privacy/anonymization-guard'
 import {
   buildKnowledgeObjectPath,
   isAllowedKnowledgeUploadMime,
@@ -15,12 +16,15 @@ export const dynamic = 'force-dynamic'
 
 type UploadResponse =
   | { ok: true; objectPath: string; mimeType: string; byteSize: number }
-  | { ok: false; code: 'missing' | 'too_large' | 'unsupported' | 'unauthorized' | 'size_mismatch' | 'storage_failed' }
+  | { ok: false; code: 'missing' | 'too_large' | 'unsupported' | 'unauthorized' | 'size_mismatch' | 'storage_failed' | 'privacy_confirmation_required' | 'privacy_blocked' }
 
 export async function POST(request: Request) {
   const encodedName = request.headers.get('x-docente-file-name') ?? ''
   const declaredSize = Number(request.headers.get('x-docente-file-size') ?? '')
   const rawMimeType = request.headers.get('content-type') ?? ''
+  const privacyConfirmed = request.headers.get('x-docente-anonymous-confirmed') === 'true'
+
+  if (!privacyConfirmed) return json({ ok: false, code: 'privacy_confirmation_required' }, 400)
 
   let originalName = ''
   try {
@@ -29,17 +33,12 @@ export async function POST(request: Request) {
     return json({ ok: false, code: 'missing' }, 400)
   }
 
-  if (!originalName || !Number.isInteger(declaredSize) || declaredSize <= 0) {
-    return json({ ok: false, code: 'missing' }, 400)
-  }
-  if (declaredSize > MAX_KNOWLEDGE_UPLOAD_BYTES) {
-    return json({ ok: false, code: 'too_large' }, 413)
-  }
+  if (!originalName || !Number.isInteger(declaredSize) || declaredSize <= 0) return json({ ok: false, code: 'missing' }, 400)
+  if (declaredSize > MAX_KNOWLEDGE_UPLOAD_BYTES) return json({ ok: false, code: 'too_large' }, 413)
+  if (!inspectFilenameForPilot(originalName).allowed) return json({ ok: false, code: 'privacy_blocked' }, 422)
 
   const mimeType = normalizeKnowledgeUploadMime(rawMimeType, originalName)
-  if (!isAllowedKnowledgeUploadMime(mimeType)) {
-    return json({ ok: false, code: 'unsupported' }, 415)
-  }
+  if (!isAllowedKnowledgeUploadMime(mimeType)) return json({ ok: false, code: 'unsupported' }, 415)
 
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
@@ -66,16 +65,17 @@ export async function POST(request: Request) {
     return json({ ok: false, code: 'size_mismatch' }, 400)
   }
 
+  if (mimeType === 'text/plain' || mimeType === 'text/markdown') {
+    const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes)
+    if (!inspectFreeTextForPilot(text).allowed) return json({ ok: false, code: 'privacy_blocked' }, 422)
+  }
+
   const objectPath = buildKnowledgeObjectPath(context.workspace.id, userId, originalName, crypto.randomUUID())
-  const { error } = await supabase.storage.from(KNOWLEDGE_BUCKET).upload(
-    objectPath,
-    Buffer.from(bytes),
-    {
-      contentType: mimeType,
-      cacheControl: '3600',
-      upsert: false,
-    },
-  )
+  const { error } = await supabase.storage.from(KNOWLEDGE_BUCKET).upload(objectPath, Buffer.from(bytes), {
+    contentType: mimeType,
+    cacheControl: '3600',
+    upsert: false,
+  })
 
   if (error) {
     console.error('Knowledge same-origin storage upload failed', {
@@ -94,10 +94,5 @@ export async function POST(request: Request) {
 }
 
 function json(body: UploadResponse, status: number) {
-  return NextResponse.json(body, {
-    status,
-    headers: {
-      'Cache-Control': 'no-store',
-    },
-  })
+  return NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } })
 }
