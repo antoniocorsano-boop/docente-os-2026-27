@@ -11,7 +11,7 @@ const MEDIA_MARKER = new TextEncoder().encode('word/media/')
 export type LocalDocxMediaPart = {
   index: number
   contentType: 'image/png' | 'image/jpeg' | 'image/webp'
-  bytes: Uint8Array
+  bytes: ArrayBuffer
 }
 
 export type LocalDocxSemanticPreflightResult =
@@ -66,7 +66,7 @@ export async function inspectDocxForLocalSemanticDerivative(bytes: Uint8Array): 
         return { src: 'about:blank' }
       }
 
-      const itemBytes = new Uint8Array(raw.slice(0))
+      const itemBytes = raw.slice(0)
       totalMediaBytes += itemBytes.byteLength
       const index = media.length
       media.push({

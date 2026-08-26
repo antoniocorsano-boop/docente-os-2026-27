@@ -7,7 +7,7 @@ import './knowledge-upload-comfort.css'
 import { finalizeKnowledgeFileUpload } from './upload-actions'
 import { LocalImagePrivacyWorkbench } from './LocalImagePrivacyWorkbench'
 import { LocalSinglePagePdfPrivacyWorkbench } from './LocalSinglePagePdfPrivacyWorkbench'
-import { LocalDocxMediaPrivacyWorkbench, type DocxMode } from './LocalDocxMediaPrivacyWorkbench'
+import { LocalDocxSemanticMediaPrivacyWorkbench, type SemanticDocxMode } from './LocalDocxSemanticMediaPrivacyWorkbench'
 import {
   isAllowedKnowledgeUploadMime,
   MAX_KNOWLEDGE_UPLOAD_BYTES,
@@ -33,7 +33,7 @@ export function KnowledgeFileUploader() {
   const [preparedImageFile, setPreparedImageFile] = useState<File | null>(null)
   const [preparedPdfFile, setPreparedPdfFile] = useState<File | null>(null)
   const [preparedDocxFile, setPreparedDocxFile] = useState<File | null>(null)
-  const [docxMode, setDocxMode] = useState<DocxMode>('TEXT_ONLY')
+  const [docxMode, setDocxMode] = useState<SemanticDocxMode>('TEXT_ONLY')
   const [privacyConfirmed, setPrivacyConfirmed] = useState(false)
   const [phase, setPhase] = useState<UploadPhase>('IDLE')
   const [failedAt, setFailedAt] = useState<FailedAt>(null)
@@ -110,16 +110,17 @@ export function KnowledgeFileUploader() {
     if (docxUpload && docxMode === 'FAILED') {
       return fail('Questo DOCX non può essere verificato localmente in modo affidabile e resta bloccato.', 'SELECT')
     }
-    if (docxUpload && docxMode === 'MEDIA_REQUIRES_DERIVATIVE' && !preparedDocxFile) {
-      return fail('Il DOCX contiene media: prepara prima la derivazione testuale anonima oppure scegli un altro file.', 'SELECT')
+    if (docxUpload && docxMode === 'MEDIA_REVIEWABLE' && !preparedDocxFile) {
+      return fail('Il DOCX contiene media: prepara un derivato anonimo oppure scegli un altro file.', 'SELECT')
     }
 
     if (!privacyConfirmed) return fail('Conferma che il contenuto destinato al pilot non contiene dati personali di studenti o terzi.', 'SELECT')
 
     const uploadFile = imageUpload ? preparedImageFile! : preparedPdfFile ?? preparedDocxFile ?? originalFile
     const uploadMimeType = normalizeKnowledgeUploadMime(uploadFile.type, uploadFile.name)
-    const localVisualUpload = imageUpload || Boolean(preparedPdfFile)
-    const localDocxTextDerivative = Boolean(preparedDocxFile)
+    const docxSemanticPng = preparedDocxFile?.type === 'image/png'
+    const localVisualUpload = imageUpload || Boolean(preparedPdfFile) || docxSemanticPng
+    const localDocxTextDerivative = preparedDocxFile?.type === 'text/plain'
 
     if (failedAt === 'ORGANIZE' && storedUpload) {
       setFailedAt(null)
@@ -132,9 +133,11 @@ export function KnowledgeFileUploader() {
     setPhase('UPLOADING')
     setMessage(localDocxTextDerivative
       ? 'Revisione locale completata. Invio solo il TXT derivato: DOCX originale e media restano sul dispositivo.'
-      : localVisualUpload
-        ? 'Revisione locale completata. Invio solo la copia PNG ricodificata: il file originale resta sul dispositivo.'
-        : 'Controllo privacy superato. Il file resta qui mentre completo il preflight prima della persistenza.')
+      : docxSemanticPng
+        ? 'Revisione locale completata. Invio solo il PNG semantico ricodificato: DOCX originale e media originali restano sul dispositivo.'
+        : localVisualUpload
+          ? 'Revisione locale completata. Invio solo la copia PNG ricodificata: il file originale resta sul dispositivo.'
+          : 'Controllo privacy superato. Il file resta qui mentre completo il preflight prima della persistenza.')
 
     let uploadResponse: Response
     try {
@@ -214,7 +217,7 @@ export function KnowledgeFileUploader() {
           ? 'Pronto per la revisione locale'
           : selectedIsDocx && docxMode === 'ANALYZING'
             ? 'Controllo locale in corso'
-            : selectedIsDocx && docxMode === 'MEDIA_REQUIRES_DERIVATIVE'
+            : selectedIsDocx && docxMode === 'MEDIA_REVIEWABLE'
               ? 'Pronto per la revisione locale'
               : selectedIsDocx && docxMode === 'FAILED'
                 ? 'Controllo non disponibile'
@@ -230,8 +233,8 @@ export function KnowledgeFileUploader() {
           ? 'Prepara prima la copia anonima'
           : selectedIsDocx && docxMode === 'ANALYZING'
             ? 'Controllo DOCX…'
-            : selectedIsDocx && docxMode === 'MEDIA_REQUIRES_DERIVATIVE' && !preparedDocxFile
-              ? 'Prepara prima il testo anonimo'
+            : selectedIsDocx && docxMode === 'MEDIA_REVIEWABLE' && !preparedDocxFile
+              ? 'Prepara prima il derivato anonimo'
               : selectedIsDocx && docxMode === 'FAILED'
                 ? 'DOCX non ammesso'
                 : phase === 'ERROR' && selectedFile
@@ -299,12 +302,12 @@ export function KnowledgeFileUploader() {
       ) : null}
 
       {selectedFile && selectedIsDocx ? (
-        <LocalDocxMediaPrivacyWorkbench
+        <LocalDocxSemanticMediaPrivacyWorkbench
           file={selectedFile}
           disabled={busy}
           onModeChange={(mode) => {
             setDocxMode(mode)
-            if (mode !== 'MEDIA_REQUIRES_DERIVATIVE') setPreparedDocxFile(null)
+            if (mode !== 'MEDIA_REVIEWABLE') setPreparedDocxFile(null)
           }}
           onPrepared={(safeFile) => {
             setPreparedDocxFile(safeFile)
@@ -343,7 +346,7 @@ export function KnowledgeFileUploader() {
       <button type="submit" disabled={busy || !selectedFile || !imageReady || !docxReady}>{submitLabel}</button>
       {selectedFile && !busy ? (
         <p className="knowledgeUploadTrust">
-          TXT/Markdown, PDF testuali e DOCX senza media vengono controllati prima della persistenza. Immagini e PDF visuali fino a cinque pagine possono passare solo tramite una copia PNG revisionata e ricodificata localmente. Un DOCX con media può produrre soltanto un derivato testuale anonimo quando confermi che i media non sono necessari; DOCX con media da preservare e PDF visuali oltre cinque pagine restano bloccati.
+          TXT/Markdown, PDF testuali e DOCX senza media vengono controllati prima della persistenza. Immagini e PDF visuali fino a cinque pagine passano solo tramite PNG revisionati. Un DOCX con media può produrre un TXT anonimo oppure, entro i limiti locali, un PNG semantico con testo e media revisionati. PDF visuali oltre cinque pagine e media DOCX non coperti restano bloccati.
         </p>
       ) : null}
     </form>
@@ -379,7 +382,7 @@ function uploadFailureMessage(status: number, code?: string) {
   if (status === 401) return 'La sessione è scaduta prima del salvataggio. Ricarica la pagina e accedi di nuovo.'
   if (code === 'privacy_confirmation_required') return 'Conferma esplicitamente che il contenuto destinato al pilot è privo di dati personali.'
   if (code === 'privacy_blocked') return 'Il controllo privacy ha rilevato dati o metadata non ammessi nel pilot anonimo. Rimuovili e riprova.'
-  if (code === 'privacy_preflight_unavailable') return 'Questo file richiede un controllo locale che il pilot anonimo non può ancora certificare. Usa una copia anonima visuale, una derivazione testuale DOCX quando i media non sono necessari, oppure scegli un altro file.'
+  if (code === 'privacy_preflight_unavailable') return 'Questo file richiede un controllo locale che il pilot anonimo non può ancora certificare. Prepara un derivato anonimo quando disponibile oppure scegli un altro file.'
   if (code === 'privacy_preflight_failed') return 'Il preflight non riesce a verificare questo file in modo affidabile. Nessuna copia è stata salvata.'
   if (status === 413 || code === 'too_large') return 'Il file supera il limite di 20 MB. Scegline uno più piccolo.'
   if (status === 415 || code === 'unsupported') return 'Questo formato non è supportato. Usa PDF, immagini, DOCX, TXT o Markdown.'
