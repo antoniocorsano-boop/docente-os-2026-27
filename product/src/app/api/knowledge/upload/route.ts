@@ -36,6 +36,7 @@ export async function POST(request: Request) {
   const declaredSize = Number(request.headers.get('x-docente-file-size') ?? '')
   const rawMimeType = request.headers.get('content-type') ?? ''
   const privacyConfirmed = request.headers.get('x-docente-anonymous-confirmed') === 'true'
+  const localVisualReview = request.headers.get('x-docente-local-visual-preflight') === 'reviewed-derived-png'
 
   if (!privacyConfirmed) return json({ ok: false, code: 'privacy_confirmation_required' }, 400)
 
@@ -83,7 +84,7 @@ export async function POST(request: Request) {
     const text = new TextDecoder('utf-8', { fatal: false }).decode(uploadBytes)
     if (!inspectFreeTextForPilot(text).allowed) return json({ ok: false, code: 'privacy_blocked' }, 422)
   } else {
-    const preflight = await inspectBinaryForAnonymousPilot({ bytes: uploadBytes, mimeType })
+    const preflight = await inspectBinaryForAnonymousPilot({ bytes: uploadBytes, mimeType, localVisualReview })
     if (!preflight.allowed) {
       console.warn('Knowledge binary privacy preflight rejected upload', {
         code: preflight.code,

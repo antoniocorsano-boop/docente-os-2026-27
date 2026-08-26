@@ -5,6 +5,7 @@ import type { ChangeEvent, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import './knowledge-upload-comfort.css'
 import { finalizeKnowledgeFileUpload } from './upload-actions'
+import { LocalImagePrivacyWorkbench } from './LocalImagePrivacyWorkbench'
 import {
   isAllowedKnowledgeUploadMime,
   MAX_KNOWLEDGE_UPLOAD_BYTES,
@@ -24,16 +25,20 @@ export function KnowledgeFileUploader() {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [preparedImageFile, setPreparedImageFile] = useState<File | null>(null)
   const [privacyConfirmed, setPrivacyConfirmed] = useState(false)
   const [phase, setPhase] = useState<UploadPhase>('IDLE')
   const [failedAt, setFailedAt] = useState<FailedAt>(null)
   const [storedUpload, setStoredUpload] = useState<StoredUploadReference | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const busy = phase === 'UPLOADING' || phase === 'ORGANIZING'
+  const selectedMimeType = selectedFile ? normalizeKnowledgeUploadMime(selectedFile.type, selectedFile.name) : null
+  const selectedIsImage = selectedMimeType?.startsWith('image/') === true
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0] ?? null
     setSelectedFile(file)
+    setPreparedImageFile(null)
     setPrivacyConfirmed(false)
     setPhase(file ? 'READY' : 'IDLE')
     setFailedAt(null)
@@ -45,6 +50,7 @@ export function KnowledgeFileUploader() {
     if (busy) return
     if (inputRef.current) inputRef.current.value = ''
     setSelectedFile(null)
+    setPreparedImageFile(null)
     setPrivacyConfirmed(false)
     setPhase('IDLE')
     setFailedAt(null)
@@ -61,49 +67,60 @@ export function KnowledgeFileUploader() {
     event.preventDefault()
     if (busy) return
 
-    const file = selectedFile ?? inputRef.current?.files?.[0] ?? null
-    if (!file || file.size <= 0) return fail('Seleziona un file da caricare.', 'SELECT')
-    if (file.size > MAX_KNOWLEDGE_UPLOAD_BYTES) return fail('Il file supera il limite di 20 MB. Scegline uno più piccolo.', 'SELECT')
+    const originalFile = selectedFile ?? inputRef.current?.files?.[0] ?? null
+    if (!originalFile || originalFile.size <= 0) return fail('Seleziona un file da caricare.', 'SELECT')
+    if (originalFile.size > MAX_KNOWLEDGE_UPLOAD_BYTES) return fail('Il file supera il limite di 20 MB. Scegline uno più piccolo.', 'SELECT')
 
-    const localMimeType = normalizeKnowledgeUploadMime(file.type, file.name)
-    if (!isAllowedKnowledgeUploadMime(localMimeType)) return fail('Questo formato non è supportato. Usa PDF, immagini, DOCX, TXT o Markdown.', 'SELECT')
+    const originalMimeType = normalizeKnowledgeUploadMime(originalFile.type, originalFile.name)
+    if (!isAllowedKnowledgeUploadMime(originalMimeType)) return fail('Questo formato non è supportato. Usa PDF, immagini, DOCX, TXT o Markdown.', 'SELECT')
 
-    const filenameCheck = inspectFilenameForPilot(file.name)
+    const filenameCheck = inspectFilenameForPilot(originalFile.name)
     if (!filenameCheck.allowed) return fail(pilotPrivacyErrorMessage(filenameCheck) ?? 'Il nome del file contiene dati non ammessi nel pilot anonimo.', 'SELECT')
 
-    if (localMimeType === 'text/plain' || localMimeType === 'text/markdown') {
-      const textCheck = inspectFreeTextForPilot(await file.text())
+    if (originalMimeType === 'text/plain' || originalMimeType === 'text/markdown') {
+      const textCheck = inspectFreeTextForPilot(await originalFile.text())
       if (!textCheck.allowed) return fail(pilotPrivacyErrorMessage(textCheck) ?? 'Il file contiene dati non ammessi nel pilot anonimo.', 'SELECT')
     }
 
-    if (!privacyConfirmed) return fail('Conferma che il file non contiene dati personali di studenti o terzi prima del caricamento.', 'SELECT')
+    const imageUpload = originalMimeType.startsWith('image/')
+    if (imageUpload && !preparedImageFile) {
+      return fail('Prima prepara la copia anonima nell’anteprima locale. L’immagine originale non verrà inviata.', 'SELECT')
+    }
+
+    if (!privacyConfirmed) return fail('Conferma che il contenuto destinato al pilot non contiene dati personali di studenti o terzi.', 'SELECT')
+
+    const uploadFile = imageUpload ? preparedImageFile! : originalFile
+    const uploadMimeType = normalizeKnowledgeUploadMime(uploadFile.type, uploadFile.name)
 
     if (failedAt === 'ORGANIZE' && storedUpload) {
       setFailedAt(null)
-      await organizeStoredFile(file, storedUpload)
+      await organizeStoredFile(uploadFile, storedUpload)
       return
     }
 
     setFailedAt(null)
     setStoredUpload(null)
     setPhase('UPLOADING')
-    setMessage('Controllo privacy superato. Il file selezionato resta qui mentre metto al sicuro l’originale nel tuo spazio privato.')
+    setMessage(imageUpload
+      ? 'Revisione locale completata. Invio solo la copia PNG ricodificata: l’immagine originale resta sul dispositivo.'
+      : 'Controllo privacy superato. Il file resta qui mentre completo il preflight prima della persistenza.')
 
     let uploadResponse: Response
     try {
       uploadResponse = await fetch('/api/knowledge/upload', {
         method: 'POST',
         headers: {
-          'content-type': localMimeType,
-          'x-docente-file-name': encodeURIComponent(file.name),
-          'x-docente-file-size': String(file.size),
+          'content-type': uploadMimeType,
+          'x-docente-file-name': encodeURIComponent(uploadFile.name),
+          'x-docente-file-size': String(uploadFile.size),
           'x-docente-anonymous-confirmed': 'true',
+          ...(imageUpload ? { 'x-docente-local-visual-preflight': 'reviewed-derived-png' } : {}),
         },
-        body: file,
+        body: uploadFile,
       })
     } catch (error) {
       console.error('Knowledge same-origin upload network failure', error)
-      return fail('Il collegamento si è interrotto prima di salvare il file. Il file selezionato è ancora qui: puoi riprovare.', 'UPLOAD')
+      return fail('Il collegamento si è interrotto prima di salvare il file. La selezione è ancora qui: puoi riprovare.', 'UPLOAD')
     }
 
     const uploadResult = await readUploadResult(uploadResponse)
@@ -118,12 +135,12 @@ export function KnowledgeFileUploader() {
       byteSize: uploadResult.byteSize,
     }
     setStoredUpload(reference)
-    await organizeStoredFile(file, reference)
+    await organizeStoredFile(uploadFile, reference)
   }
 
   async function organizeStoredFile(file: File, reference: StoredUploadReference) {
     setPhase('ORGANIZING')
-    setMessage('L’originale è al sicuro. Ora preparo una versione leggibile e ricercabile senza sostituire la fonte.')
+    setMessage('La copia ammessa è al sicuro. Ora preparo una versione leggibile e ricercabile senza sostituire la fonte salvata.')
 
     const result = await finalizeKnowledgeFileUpload({
       objectPath: reference.objectPath,
@@ -145,26 +162,29 @@ export function KnowledgeFileUploader() {
     setMessage(text)
   }
 
-  const steps = uploadSteps({ phase, failedAt, hasFile: Boolean(selectedFile) })
+  const steps = uploadSteps({ phase, failedAt, hasFile: Boolean(selectedFile), isImage: selectedIsImage })
   const feedbackTitle = phase === 'UPLOADING'
-    ? 'Sto mettendo al sicuro l’originale'
+    ? selectedIsImage ? 'Sto mettendo al sicuro la copia anonima' : 'Sto mettendo al sicuro l’originale'
     : phase === 'ORGANIZING'
-      ? 'Originale al sicuro'
+      ? selectedIsImage ? 'Copia anonima al sicuro' : 'Originale al sicuro'
       : phase === 'ERROR'
         ? 'Serve un intervento'
         : null
 
+  const imageReady = !selectedIsImage || Boolean(preparedImageFile)
   const submitLabel = phase === 'UPLOADING'
     ? 'Caricamento…'
     : phase === 'ORGANIZING'
       ? 'Organizzazione…'
       : phase === 'ERROR' && failedAt === 'ORGANIZE' && storedUpload
         ? 'Riprova organizzazione'
-        : phase === 'ERROR' && selectedFile
-          ? 'Riprova'
-          : selectedFile
-            ? 'Carica e organizza'
-            : 'Seleziona prima un file'
+        : selectedIsImage && !preparedImageFile
+          ? 'Prepara prima la copia anonima'
+          : phase === 'ERROR' && selectedFile
+            ? 'Riprova'
+            : selectedFile
+              ? 'Carica e organizza'
+              : 'Seleziona prima un file'
 
   return (
     <form className="knowledgeUploadForm knowledgeUploadComfort" onSubmit={handleSubmit}>
@@ -180,14 +200,14 @@ export function KnowledgeFileUploader() {
         />
         <span className="fileDropIcon" aria-hidden>{selectedFile ? '✓' : '↑'}</span>
         <strong>{selectedFile ? 'File individuato' : 'Scegli un file'}</strong>
-        <small>{selectedFile ? 'Resta selezionato anche se qualcosa si interrompe, così non devi ricominciare da capo.' : 'PDF, immagini, DOCX, TXT o Markdown · massimo 20 MB'}</small>
+        <small>{selectedFile ? 'Resta sul dispositivo finché il preflight non decide cosa può essere inviato.' : 'PDF, immagini, DOCX, TXT o Markdown · massimo 20 MB'}</small>
       </label>
 
       {selectedFile ? (
         <div className="selectedFileCard" role="status" aria-live="polite" aria-atomic="true">
           <span className="selectedFileCheck" aria-hidden>✓</span>
           <div className="selectedFileBody">
-            <strong>{storedUpload ? 'Originale già al sicuro' : 'Pronto a caricare'}</strong>
+            <strong>{storedUpload ? 'Copia ammessa già al sicuro' : selectedIsImage && preparedImageFile ? 'Copia anonima pronta' : selectedIsImage ? 'Pronto per la revisione locale' : 'Pronto a caricare'}</strong>
             <span title={selectedFile.name}>{selectedFile.name}</span>
             <small>{fileTypeLabel(selectedFile)} · {formatFileSize(selectedFile.size)}</small>
           </div>
@@ -198,10 +218,23 @@ export function KnowledgeFileUploader() {
         </div>
       ) : null}
 
+      {selectedFile && selectedIsImage ? (
+        <LocalImagePrivacyWorkbench
+          file={selectedFile}
+          disabled={busy}
+          onPrepared={(safeFile) => {
+            setPreparedImageFile(safeFile)
+            setFailedAt(null)
+            setPhase('READY')
+            setMessage(null)
+          }}
+        />
+      ) : null}
+
       {selectedFile ? (
         <label className="knowledgeUploadTrust">
           <input type="checkbox" checked={privacyConfirmed} onChange={(event) => setPrivacyConfirmed(event.currentTarget.checked)} disabled={busy} />{' '}
-          Confermo che questo file è destinato al pilot anonimo e non contiene nomi, recapiti, dati familiari, sanitari o altri dati personali di studenti o terzi.
+          Confermo che il contenuto che verrà salvato è destinato al pilot anonimo e non contiene nomi, recapiti, dati familiari, sanitari o altri dati personali di studenti o terzi.
         </label>
       ) : null}
 
@@ -223,14 +256,18 @@ export function KnowledgeFileUploader() {
         </div>
       ) : null}
 
-      <button type="submit" disabled={busy || !selectedFile}>{submitLabel}</button>
-      {selectedFile && !busy ? <p className="knowledgeUploadTrust">TXT e Markdown vengono controllati anche nel contenuto prima dell’invio. Per PDF, DOCX e immagini il controllo automatico pre-upload non può garantire l’assenza di dati personali: la tua verifica resta obbligatoria. Prima salvo l’originale; solo dopo lo organizzo.</p> : null}
+      <button type="submit" disabled={busy || !selectedFile || !imageReady}>{submitLabel}</button>
+      {selectedFile && !busy ? (
+        <p className="knowledgeUploadTrust">
+          TXT/Markdown, PDF testuali e DOCX senza media vengono controllati prima della persistenza. Le immagini passano solo attraverso la copia PNG revisionata e ricodificata localmente. PDF scansione e DOCX con immagini restano bloccati.
+        </p>
+      ) : null}
     </form>
   )
 }
 
-function uploadSteps(input: { phase: UploadPhase; failedAt: FailedAt; hasFile: boolean }) {
-  const { phase, failedAt, hasFile } = input
+function uploadSteps(input: { phase: UploadPhase; failedAt: FailedAt; hasFile: boolean; isImage: boolean }) {
+  const { phase, failedAt, hasFile, isImage } = input
   return [
     {
       label: 'File scelto',
@@ -238,8 +275,8 @@ function uploadSteps(input: { phase: UploadPhase; failedAt: FailedAt; hasFile: b
       state: failedAt === 'SELECT' ? 'problem' : hasFile ? 'done' : 'pending',
     },
     {
-      label: 'Originale al sicuro',
-      hint: 'Copiato nello spazio privato',
+      label: isImage ? 'Copia anonima al sicuro' : 'Originale al sicuro',
+      hint: 'Salvata solo dopo il preflight',
       state: failedAt === 'UPLOAD' ? 'problem' : phase === 'UPLOADING' ? 'active' : phase === 'ORGANIZING' || failedAt === 'ORGANIZE' ? 'done' : 'pending',
     },
     {
@@ -256,13 +293,15 @@ async function readUploadResult(response: Response): Promise<SameOriginUploadRes
 
 function uploadFailureMessage(status: number, code?: string) {
   if (status === 401) return 'La sessione è scaduta prima del salvataggio. Ricarica la pagina e accedi di nuovo.'
-  if (code === 'privacy_confirmation_required') return 'Conferma esplicitamente che il file è privo di dati personali prima del caricamento.'
-  if (code === 'privacy_blocked') return 'Il controllo privacy ha rilevato dati non ammessi nel pilot anonimo. Rimuovili e riprova.'
+  if (code === 'privacy_confirmation_required') return 'Conferma esplicitamente che il contenuto destinato al pilot è privo di dati personali.'
+  if (code === 'privacy_blocked') return 'Il controllo privacy ha rilevato dati o metadata non ammessi nel pilot anonimo. Rimuovili e riprova.'
+  if (code === 'privacy_preflight_unavailable') return 'Questo file richiede un controllo visuale che il pilot anonimo non può ancora certificare. Usa una copia testuale oppure, per le immagini, prepara la copia anonima locale.'
+  if (code === 'privacy_preflight_failed') return 'Il preflight non riesce a verificare questo file in modo affidabile. Nessuna copia è stata salvata.'
   if (status === 413 || code === 'too_large') return 'Il file supera il limite di 20 MB. Scegline uno più piccolo.'
   if (status === 415 || code === 'unsupported') return 'Questo formato non è supportato. Usa PDF, immagini, DOCX, TXT o Markdown.'
   if (code === 'size_mismatch') return 'Il trasferimento è arrivato incompleto. Il file selezionato è ancora qui: riprova.'
-  if (status >= 500) return 'Il file non è stato salvato nello spazio privato. Il file selezionato è ancora qui: puoi riprovare tra poco.'
-  return `Il trasferimento non è riuscito (${status}). Il file selezionato è ancora qui: puoi riprovare.`
+  if (status >= 500) return 'Il file non è stato salvato nello spazio privato. La selezione è ancora qui: puoi riprovare tra poco.'
+  return `Il trasferimento non è riuscito (${status}). La selezione è ancora qui: puoi riprovare.`
 }
 
 function fileTypeLabel(file: File) {
@@ -282,8 +321,8 @@ function formatFileSize(bytes: number) {
 function finalizeMessage(code: 'missing' | 'too_large' | 'unsupported' | 'invalid_path' | 'invalid_pdf' | 'visual_unavailable' | 'parse_failed') {
   if (code === 'too_large') return 'Il file supera il limite di 20 MB.'
   if (code === 'unsupported') return 'Questo formato non è supportato.'
-  if (code === 'invalid_pdf') return 'L’originale è al sicuro, ma questo PDF non è leggibile oppure è incompleto. Scarica di nuovo il documento originale e riprova.'
-  if (code === 'visual_unavailable') return 'L’originale è al sicuro. Questo contenuto richiede una lettura visiva che non è ancora attiva in questo ambiente.'
-  if (code === 'parse_failed') return 'L’originale è al sicuro, ma non sono riuscito a organizzarlo automaticamente. Puoi riprovare l’organizzazione senza ricaricare la fonte.'
-  return 'Non sono riuscito a completare l’organizzazione in modo sicuro. L’originale non è stato sostituito.'
+  if (code === 'invalid_pdf') return 'La copia è al sicuro, ma questo PDF non è leggibile oppure è incompleto. Scarica di nuovo il documento originale e riprova.'
+  if (code === 'visual_unavailable') return 'La copia è al sicuro. Questo contenuto richiede una lettura visiva che non è ancora attiva in questo ambiente.'
+  if (code === 'parse_failed') return 'La copia è al sicuro, ma non sono riuscito a organizzarla automaticamente. Puoi riprovare l’organizzazione senza ricaricare la fonte.'
+  return 'Non sono riuscito a completare l’organizzazione in modo sicuro. La copia salvata non è stata sostituita.'
 }
