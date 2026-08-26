@@ -278,7 +278,7 @@ describe('approved curriculum revalidation', () => {
       reviewedFramework,
     })
 
-    assert.equal(apply.curriculumState, 'APPROVED')
+    assert.equal(apply.curricularContext.curriculumState, 'APPROVED')
     assert.equal(apply.curriculumCoverage.authority, 'APPROVED_INSTITUTIONAL')
     assert.equal(apply.curriculumCoverage.requiresRevalidationOnApproval, false)
     assert.equal(apply.curriculumCoverage.status, 'SATISFIED')
