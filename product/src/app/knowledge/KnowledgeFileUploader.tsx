@@ -162,7 +162,7 @@ export function KnowledgeFileUploader() {
     setMessage(text)
   }
 
-  const steps = uploadSteps({ phase, failedAt, hasFile: Boolean(selectedFile) })
+  const steps = uploadSteps({ phase, failedAt, hasFile: Boolean(selectedFile), isImage: selectedIsImage })
   const feedbackTitle = phase === 'UPLOADING'
     ? 'Sto completando il preflight'
     : phase === 'ORGANIZING'
@@ -266,8 +266,8 @@ export function KnowledgeFileUploader() {
   )
 }
 
-function uploadSteps(input: { phase: UploadPhase; failedAt: FailedAt; hasFile: boolean }) {
-  const { phase, failedAt, hasFile } = input
+function uploadSteps(input: { phase: UploadPhase; failedAt: FailedAt; hasFile: boolean; isImage: boolean }) {
+  const { phase, failedAt, hasFile, isImage } = input
   return [
     {
       label: 'File scelto',
@@ -275,7 +275,7 @@ function uploadSteps(input: { phase: UploadPhase; failedAt: FailedAt; hasFile: b
       state: failedAt === 'SELECT' ? 'problem' : hasFile ? 'done' : 'pending',
     },
     {
-      label: 'Copia ammessa al sicuro',
+      label: isImage ? 'Copia anonima al sicuro' : 'Originale al sicuro',
       hint: 'Salvata solo dopo il preflight',
       state: failedAt === 'UPLOAD' ? 'problem' : phase === 'UPLOADING' ? 'active' : phase === 'ORGANIZING' || failedAt === 'ORGANIZE' ? 'done' : 'pending',
     },
