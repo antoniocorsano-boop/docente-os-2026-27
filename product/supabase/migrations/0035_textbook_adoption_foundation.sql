@@ -185,11 +185,14 @@ create policy textbook_adoptions_update_member
     private.is_workspace_member(workspace_id)
     and (status <> 'CONFIRMED' or confirmed_by = (select auth.uid()))
   );
+create policy textbook_adoptions_delete_member
+  on public.textbook_adoptions for delete to authenticated
+  using (private.is_workspace_member(workspace_id));
 
 grant select, insert, update on public.textbooks to authenticated;
-grant select, insert, update on public.textbook_adoptions to authenticated;
+grant select, insert, update, delete on public.textbook_adoptions to authenticated;
 revoke all on public.textbooks from anon;
 revoke all on public.textbook_adoptions from anon;
 
 comment on table public.textbooks is 'Workspace/year textbook catalog. One ISBN may be reused by multiple teaching assignments without duplication.';
-comment on table public.textbook_adoptions is 'Teacher-confirmed relationship between a canonical teaching assignment and a textbook; MIM data remains proposed until explicit confirmation.';
+comment on table public.textbook_adoptions is 'Teacher-confirmed relationship between a canonical teaching assignment and a textbook; MIM data remains proposed until explicit confirmation. Removing an adoption deletes only the link, not the textbook catalog record or teaching assignment.';
