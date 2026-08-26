@@ -17,14 +17,19 @@ export function LocalImagePrivacyWorkbench({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sourceBitmapRef = useRef<ImageBitmap | null>(null)
   const dragStartRef = useRef<Point | null>(null)
+  const onPreparedRef = useRef(onPrepared)
   const [ready, setReady] = useState(false)
   const [reviewConfirmed, setReviewConfirmed] = useState(false)
   const [redactionCount, setRedactionCount] = useState(0)
   const [message, setMessage] = useState<string | null>(null)
 
   useEffect(() => {
+    onPreparedRef.current = onPrepared
+  }, [onPrepared])
+
+  useEffect(() => {
     let cancelled = false
-    onPrepared(null)
+    onPreparedRef.current(null)
     setReady(false)
     setReviewConfirmed(false)
     setRedactionCount(0)
@@ -74,7 +79,7 @@ export function LocalImagePrivacyWorkbench({
     drawSource(bitmap)
     setRedactionCount(0)
     setReviewConfirmed(false)
-    onPrepared(null)
+    onPreparedRef.current(null)
     setMessage('Copia locale ripristinata. Ricontrolla tutta l’immagine prima di prepararla.')
   }
 
@@ -111,7 +116,7 @@ export function LocalImagePrivacyWorkbench({
     context.fillRect(x, y, width, height)
     setRedactionCount((value) => value + 1)
     setReviewConfirmed(false)
-    onPrepared(null)
+    onPreparedRef.current(null)
     setMessage('Area oscurata solo nella copia locale. Controlla che non restino dettagli identificativi.')
   }
 
@@ -123,12 +128,12 @@ export function LocalImagePrivacyWorkbench({
     const blob = await canvasToPng(canvas)
     if (!blob) {
       setMessage('Non sono riuscito a creare la copia locale. L’originale non è stato inviato.')
-      onPrepared(null)
+      onPreparedRef.current(null)
       return
     }
 
     const safeFile = new File([blob], 'immagine-anonima.png', { type: 'image/png', lastModified: Date.now() })
-    onPrepared(safeFile)
+    onPreparedRef.current(safeFile)
     setMessage('Copia anonima pronta: verrà inviato solo questo PNG ricodificato, non l’originale selezionato.')
   }
 
@@ -156,7 +161,7 @@ export function LocalImagePrivacyWorkbench({
           checked={reviewConfirmed}
           onChange={(event) => {
             setReviewConfirmed(event.currentTarget.checked)
-            onPrepared(null)
+            onPreparedRef.current(null)
           }}
           disabled={!ready || disabled}
         />{' '}
