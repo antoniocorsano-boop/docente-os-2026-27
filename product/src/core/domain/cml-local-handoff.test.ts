@@ -14,11 +14,11 @@ function ref(entityType: string, entityId: string, versionId?: string) {
 
 function fixture(): CmlLocalHandoffV1 {
   const base = {
-    contract: 'CML_LOCAL_HANDOFF_V1' as const,
+    format: 'CML_LOCAL_HANDOFF_V1' as const,
     targetProduct: 'DOCENTE_OS' as const,
     acceptanceRequired: true as const,
     importMode: 'PREVIEW_ONLY' as const,
-    createdAt: '2026-08-26T12:15:00.000Z',
+    generatedAt: '2026-08-26T12:15:00.000Z',
     curriculumAdopted: {
       contract: 'CML_INTEROP_V1' as const,
       messageId: 'msg-curriculum-001',
@@ -65,7 +65,7 @@ function fixture(): CmlLocalHandoffV1 {
 }
 
 describe('CML local handoff preview consumer', () => {
-  it('accepts a coherent Arena handoff', () => {
+  it('accepts the exact Arena handoff shape', () => {
     assert.deepEqual(validateCmlLocalHandoff(fixture()), { valid: true, errors: [] })
   })
 
@@ -76,6 +76,7 @@ describe('CML local handoff preview consumer', () => {
     assert.equal(preview.acceptanceRequired, true)
     assert.equal(preview.periods.length, 2)
     assert.equal(preview.context.schoolYearRef, '2026-2027')
+    assert.equal(preview.source.format, 'CML_LOCAL_HANDOFF_V1')
   })
 
   it('rejects an attempt to bypass teacher acceptance', () => {
@@ -103,9 +104,15 @@ describe('CML local handoff preview consumer', () => {
     assert.ok(validateCmlLocalHandoff(handoff).errors.includes('structural footprint mismatch'))
   })
 
+  it('matches Arena footprint semantics by excluding generatedAt', () => {
+    const first = fixture()
+    const second = { ...first, generatedAt: '2026-08-26T13:15:00.000Z' }
+    assert.equal(computeCmlLocalHandoffFootprint(first), computeCmlLocalHandoffFootprint(second))
+  })
+
   it('round-trips through JSON parsing without persistence', () => {
     const preview = buildAnnualPlanImportPreview(parseCmlLocalHandoffJson(JSON.stringify(fixture())))
     assert.equal(preview.persistenceAllowed, false)
-    assert.equal(preview.source.contract, 'CML_LOCAL_HANDOFF_V1')
+    assert.equal(preview.source.format, 'CML_LOCAL_HANDOFF_V1')
   })
 })
