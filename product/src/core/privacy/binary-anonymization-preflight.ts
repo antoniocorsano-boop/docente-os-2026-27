@@ -105,7 +105,7 @@ function hasPngSignature(bytes: Uint8Array) {
 
 function inspectPngChunks(bytes: Uint8Array): { valid: boolean; metadataChunks: string[] } {
   const metadataChunks: string[] = []
-  let offset = PNG_SIGNATURE.length
+  let offset: number = PNG_SIGNATURE.length
   let sawIhdr = false
   let sawIend = false
 
