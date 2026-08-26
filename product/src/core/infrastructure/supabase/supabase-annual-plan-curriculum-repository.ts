@@ -4,6 +4,8 @@ import {
   prepareAnnualPlanCurriculumPersistence,
   type AnnualPlanCurriculumPersistencePayload,
 } from '@/core/domain/cml-annual-plan-curriculum-persistence'
+import type { AnnualPlanCurriculumBaselineSnapshot } from '@/core/domain/cml-curriculum-revalidation'
+import { validateCurriculumContextForClassV1 } from '@/core/domain/cml-local-handoff-v2'
 import { createClient } from '@/lib/supabase/server'
 
 export type AnnualPlanCurriculumAdoptionReceipt = {
@@ -114,6 +116,47 @@ function toReceipt(value: unknown): AnnualPlanCurriculumAdoptionReceipt {
   }
 }
 
+function toBaselineSnapshot(value: unknown): AnnualPlanCurriculumBaselineSnapshot {
+  if (!isRecord(value)) throw new Error('Invalid curriculum adoption baseline')
+  const receipt = toReceipt(value)
+  const contextValidation = validateCurriculumContextForClassV1(value.curricular_context)
+  if (!contextValidation.valid) {
+    throw new Error(`Invalid persisted curricular context: ${contextValidation.errors.join('; ')}`)
+  }
+  if (!isRecord(value.reviewed_framework)
+    || !Array.isArray(value.reviewed_framework.periods)
+    || !Array.isArray(value.reviewed_framework.constraints)) {
+    throw new Error('Invalid persisted reviewed framework')
+  }
+  if (!isRecord(value.curriculum_coverage)
+    || !['SATISFIED', 'PARTIALLY_SATISFIED', 'NOT_SATISFIED'].includes(String(value.curriculum_coverage.status))
+    || !['PROVISIONAL_BASELINE', 'APPROVED_INSTITUTIONAL'].includes(String(value.curriculum_coverage.authority))
+    || typeof value.curriculum_coverage.requiresRevalidationOnApproval !== 'boolean'
+    || !Array.isArray(value.curriculum_coverage.requirementCoverage)
+    || !Array.isArray(value.curriculum_coverage.blockingRequirementIds)) {
+    throw new Error('Invalid persisted curriculum coverage')
+  }
+
+  return {
+    id: receipt.id,
+    sectionId: receipt.sectionId,
+    curricularContextId: receipt.curricularContextId,
+    schoolYearRef: receipt.schoolYearRef,
+    disciplineRef: receipt.disciplineRef,
+    gradeRef: receipt.gradeRef,
+    curriculumState: receipt.curriculumState,
+    alignmentAuthority: receipt.alignmentAuthority,
+    requiresRevalidationOnApproval: receipt.requiresRevalidationOnApproval,
+    sourceHandoffFootprintHash: receipt.sourceHandoffFootprintHash,
+    sourceFrameworkMessageId: receipt.sourceFrameworkMessageId,
+    acceptanceDecisionId: receipt.acceptanceDecisionId,
+    acceptedAt: receipt.acceptedAt,
+    reviewedFramework: value.reviewed_framework as AnnualPlanCurriculumBaselineSnapshot['reviewedFramework'],
+    curriculumCoverage: value.curriculum_coverage as AnnualPlanCurriculumBaselineSnapshot['curriculumCoverage'],
+    curricularContext: value.curricular_context as AnnualPlanCurriculumBaselineSnapshot['curricularContext'],
+  }
+}
+
 function persistenceRpcArgs(
   workspaceId: string,
   academicYearId: string,
@@ -207,5 +250,23 @@ export class SupabaseAnnualPlanCurriculumRepository {
     })
     if (error) throw new Error(error.message)
     return data === null ? null : toReceipt(data)
+  }
+
+  async currentBaseline(input: {
+    workspaceId: string
+    academicYearId: string
+    sectionId: string
+    disciplineRef: string
+  }): Promise<AnnualPlanCurriculumBaselineSnapshot | null> {
+    const supabase = await createClient()
+    const rpc = supabase as unknown as CurriculumRpcClient
+    const { data, error } = await rpc.rpc('annual_plan_curriculum_current', {
+      target_workspace_id: input.workspaceId,
+      target_academic_year_id: input.academicYearId,
+      target_section_id: input.sectionId,
+      target_discipline_ref: input.disciplineRef,
+    })
+    if (error) throw new Error(error.message)
+    return data === null ? null : toBaselineSnapshot(data)
   }
 }
