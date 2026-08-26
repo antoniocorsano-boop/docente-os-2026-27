@@ -3,6 +3,7 @@
 import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { discoverMimTextbookAdoptions, type MimDiscoveryState } from './actions'
+import './mim-discovery.css'
 
 const INITIAL_STATE: MimDiscoveryState = { status: 'idle', message: '' }
 
