@@ -1,4 +1,4 @@
-export const CML_LOCAL_HANDOFF_CONTRACT = 'CML_LOCAL_HANDOFF_V1' as const
+export const CML_LOCAL_HANDOFF_FORMAT = 'CML_LOCAL_HANDOFF_V1' as const
 export const CML_INTEROP_CONTRACT = 'CML_INTEROP_V1' as const
 
 export type CmlCanonicalRef = {
@@ -27,11 +27,11 @@ export type CmlInteropEnvelope = {
 }
 
 export type CmlLocalHandoffV1 = {
-  contract: typeof CML_LOCAL_HANDOFF_CONTRACT
+  format: typeof CML_LOCAL_HANDOFF_FORMAT
   targetProduct: 'DOCENTE_OS'
   acceptanceRequired: true
   importMode: 'PREVIEW_ONLY'
-  createdAt: string
+  generatedAt: string
   curriculumAdopted: CmlInteropEnvelope
   annualPlanningFramework: CmlInteropEnvelope
   structuralFootprint: {
@@ -46,7 +46,7 @@ export type AnnualPlanImportPreview = {
   persistenceAllowed: false
   acceptanceRequired: true
   source: {
-    contract: typeof CML_LOCAL_HANDOFF_CONTRACT
+    format: typeof CML_LOCAL_HANDOFF_FORMAT
     curriculumMessageId: string
     frameworkMessageId: string
   }
@@ -118,9 +118,7 @@ function canonicalSerialize(value: unknown): string {
   if (typeof value === 'string') return JSON.stringify(value)
   if (typeof value === 'number' || typeof value === 'boolean') return JSON.stringify(value)
   if (Array.isArray(value)) return `[${value.map(canonicalSerialize).join(',')}]`
-  if (isRecord(value)) {
-    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalSerialize(value[key])}`).join(',')}}`
-  }
+  if (isRecord(value)) return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalSerialize(value[key])}`).join(',')}}`
   throw new Error(`Unsupported canonical value: ${typeof value}`)
 }
 
@@ -134,8 +132,14 @@ function fnv1a(value: string): string {
 }
 
 function footprintPayload(handoff: Omit<CmlLocalHandoffV1, 'structuralFootprint'> | CmlLocalHandoffV1) {
-  const { structuralFootprint: _ignored, ...rest } = handoff as CmlLocalHandoffV1
-  return rest
+  return {
+    format: handoff.format,
+    targetProduct: handoff.targetProduct,
+    acceptanceRequired: handoff.acceptanceRequired,
+    importMode: handoff.importMode,
+    curriculumAdopted: handoff.curriculumAdopted,
+    annualPlanningFramework: handoff.annualPlanningFramework,
+  }
 }
 
 export function computeCmlLocalHandoffFootprint(handoff: Omit<CmlLocalHandoffV1, 'structuralFootprint'> | CmlLocalHandoffV1) {
@@ -145,10 +149,11 @@ export function computeCmlLocalHandoffFootprint(handoff: Omit<CmlLocalHandoffV1,
 export function validateCmlLocalHandoff(input: unknown): CmlLocalHandoffValidation {
   const errors: string[] = []
   if (!isRecord(input)) return { valid: false, errors: ['handoff must be an object'] }
-  if (input.contract !== CML_LOCAL_HANDOFF_CONTRACT) errors.push('unsupported handoff contract')
+  if (input.format !== CML_LOCAL_HANDOFF_FORMAT) errors.push('unsupported handoff format')
   if (input.targetProduct !== 'DOCENTE_OS') errors.push('targetProduct must be DOCENTE_OS')
   if (input.acceptanceRequired !== true) errors.push('acceptanceRequired must remain true')
   if (input.importMode !== 'PREVIEW_ONLY') errors.push('importMode must remain PREVIEW_ONLY')
+  if (!nonEmpty(input.generatedAt) || Number.isNaN(Date.parse(input.generatedAt))) errors.push('generatedAt must be an ISO-compatible date')
 
   validateEnvelope(input.curriculumAdopted, 'CURRICULUM_ADOPTED', errors)
   validateEnvelope(input.annualPlanningFramework, 'ANNUAL_PLANNING_FRAMEWORK_AVAILABLE', errors)
@@ -198,7 +203,7 @@ export function buildAnnualPlanImportPreview(handoff: CmlLocalHandoffV1): Annual
     persistenceAllowed: false,
     acceptanceRequired: true,
     source: {
-      contract: CML_LOCAL_HANDOFF_CONTRACT,
+      format: CML_LOCAL_HANDOFF_FORMAT,
       curriculumMessageId: handoff.curriculumAdopted.messageId,
       frameworkMessageId: handoff.annualPlanningFramework.messageId,
     },
