@@ -1,18 +1,19 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "product": "DOCENTE OS",
   "gate": "P7-REAL-DATA-ADMISSION",
-  "state": "READY_FOR_HUMAN_DECISION",
+  "state": "AUTHORIZED_TIER_1",
   "productionStateRequired": "ACTIVE_SINGLE_OWNER_PILOT",
   "releaseScope": "SINGLE_OWNER_PILOT",
   "audience": "named_owner_only",
   "currentAdmission": {
-    "realUserDataAccepted": false,
+    "realUserDataAccepted": true,
+    "admissionScope": "TIER_1_OWNER_PROFESSIONAL_NON_PERSONAL",
     "automaticBetaDataCopyAllowed": false,
     "publicSignupAllowed": false,
     "multiTenantOnboardingAllowed": false
   },
-  "proposedAdmissionTier": {
+  "authorizedAdmissionTier": {
     "id": "TIER_1_OWNER_PROFESSIONAL_NON_PERSONAL",
     "description": "Professional content belonging to the named owner that does not contain personal data of students, families, colleagues or other third parties.",
     "ownerProfessionalContentAllowed": true,
@@ -46,7 +47,8 @@
     "incidentEscalationSatisfied": true
   },
   "humanDecisionRequired": true,
-  "humanDecision": "PENDING",
-  "decisionMayAuthorizeOnly": "TIER_1_OWNER_PROFESSIONAL_NON_PERSONAL",
-  "realUserDataAcceptedAfterThisReview": false
+  "humanDecision": "AUTHORIZED",
+  "humanDecisionReceipt": "ops/real-data-admission-decision-receipt.json",
+  "decisionAuthorizesOnly": "TIER_1_OWNER_PROFESSIONAL_NON_PERSONAL",
+  "realUserDataAcceptedAfterThisReview": true
 }
