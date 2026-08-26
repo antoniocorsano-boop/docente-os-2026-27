@@ -5,6 +5,7 @@ const admission = JSON.parse(fs.readFileSync('ops/real-data-admission-review.jso
 const freeTextGuard = fs.readFileSync('product/src/core/privacy/anonymization-guard.ts', 'utf8')
 const binaryGuard = fs.readFileSync('product/src/core/privacy/binary-anonymization-preflight.ts', 'utf8')
 const pdfClassifier = fs.readFileSync('product/src/core/privacy/local-pdf-visual-preflight.ts', 'utf8')
+const docxSemantic = fs.readFileSync('product/src/core/privacy/local-docx-media-semantic-preflight.ts', 'utf8')
 const noteAction = fs.readFileSync('product/src/app/knowledge/anonymous-actions.ts', 'utf8')
 const uploadRoute = fs.readFileSync('product/src/app/api/knowledge/upload/route.ts', 'utf8')
 const uploader = fs.readFileSync('product/src/app/knowledge/KnowledgeFileUploader.tsx', 'utf8')
@@ -59,6 +60,8 @@ if (admission.higherRiskTier?.state !== 'NOT_ADMITTED') fail('Tier 2 must remain
 for (const token of ['ITALIAN_FISCAL_CODE', 'EMAIL', 'NAMED_STUDENT']) if (!freeTextGuard.includes(token)) fail(`privacy signal missing: ${token}`)
 for (const token of ['inspectBinaryForAnonymousPilot', 'PDF_NATIVE_TEXT', 'DOCX_TEXT_ONLY', 'IMAGE_LOCAL_REVIEWED_PNG', 'PNG_METADATA_CHUNKS', 'word/media/']) if (!binaryGuard.includes(token)) fail(`binary preflight token missing: ${token}`)
 for (const token of ['MULTI_PAGE_VISUAL_REVIEWABLE', 'MULTI_PAGE_VISUAL_BLOCKED', 'MAX_LOCAL_VISUAL_PDF_PAGES', 'classifyLocalPdfForVisualPreflight']) if (!pdfClassifier.includes(token)) fail(`PDF classifier token missing: ${token}`)
+for (const token of ['inspectDocxForLocalSemanticDerivative', 'mammoth.images.imgElement', 'readAsArrayBuffer', 'MAX_LOCAL_DOCX_MEDIA_ITEMS', 'MAX_LOCAL_DOCX_MEDIA_BYTES', 'MAX_LOCAL_DOCX_MEDIA_ITEM_BYTES', "'image/png'", "'image/jpeg'", "'image/webp'", 'externalFileAccess: false', 'includeEmbeddedStyleMap: false', 'DOCX_REFERENCED_MEDIA_SEMANTIC_REVIEWABLE']) if (!docxSemantic.includes(token)) fail(`staged DOCX semantic-preflight token missing: ${token}`)
+if (docxSemantic.includes('dangerouslySetInnerHTML') || docxSemantic.includes('innerHTML =')) fail('staged DOCX semantic preflight must not inject Mammoth HTML into the DOM')
 if (!noteAction.includes('inspectFreeTextForPilot') || !noteAction.includes('privacy_blocked')) fail('knowledge note server enforcement missing')
 if (!uploadRoute.includes('inspectBinaryForAnonymousPilot') || uploadRoute.indexOf('inspectBinaryForAnonymousPilot') > uploadRoute.indexOf('supabase.storage.from')) fail('binary preflight must precede storage write')
 if (!uploader.includes('preparedPdfFile') || !uploader.includes("reviewed-derived-png")) fail('PDF derivative is not wired to upload')
@@ -68,4 +71,4 @@ for (const token of ['getDocumentProxy', 'MAX_LOCAL_VISUAL_PDF_PAGES', 'page.ren
 for (const token of ['mammoth.extractRawText', "'word/media/'", 'inspectFreeTextForPilot', "'documento-anonimo.txt'", 'mediaNotNeeded', 'Le immagini incorporate vengono escluse dal derivato']) if (!docxWorkbench.includes(token)) fail(`DOCX local derivative token missing: ${token}`)
 if (!binaryGuard.includes("return unavailable('Il DOCX contiene immagini o media incorporati")) fail('original DOCX with embedded media must remain server-denied')
 
-console.log('P7 anonymization input guard PASS: D0-D1 pre-storage guards active; images and visual PDFs up to 5 pages use reviewed PNG derivatives; DOCX media may yield reviewed text-only derivatives when media are not required; long visual PDFs and DOCX media preservation remain denied; Tier 2 NOT_ADMITTED')
+console.log('P7 anonymization input guard PASS: canonical admission remains unchanged; staged DOCX semantic media extraction is local, bounded and non-HTML-rendering; long visual PDFs and DOCX media preservation remain denied; Tier 2 NOT_ADMITTED')
