@@ -5,6 +5,7 @@ import { WEEKDAYS } from '@/core/domain/teacher-settings'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
+import { SupabaseTextbookRepository } from '@/core/infrastructure/supabase/supabase-textbook-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import {
   addSettingsSection,
@@ -44,11 +45,13 @@ export default async function SettingsPage() {
   const settingsRepository = new SupabaseTeacherSettingsRepository()
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
   const assignmentReader = new SupabaseTeachingAssignmentReader()
-  const [settings, disciplines, annualSnapshot, assignments] = await Promise.all([
+  const textbookRepository = new SupabaseTextbookRepository()
+  const [settings, disciplines, annualSnapshot, assignments, textbookAdoptions] = await Promise.all([
     settingsRepository.getOrCreate(context.workspace.id, context.academicYear.id),
     settingsRepository.listDisciplines(context.workspace.id, context.academicYear.id),
     annualRepository.list(context.workspace.id, context.academicYear.id),
     assignmentReader.list(context.workspace.id, context.academicYear.id),
+    textbookRepository.list(context.workspace.id, context.academicYear.id),
   ])
 
   const experience = buildSettingsExperienceModel({
@@ -56,6 +59,7 @@ export default async function SettingsPage() {
     disciplines,
     sections: annualSnapshot.sections,
     assignments,
+    textbookAdoptions,
   })
   const activeDisciplines = disciplines.filter((item) => item.isActive)
   const sectionById = new Map(annualSnapshot.sections.map((section) => [section.id, section]))
