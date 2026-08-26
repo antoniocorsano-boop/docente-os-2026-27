@@ -6,6 +6,7 @@ import {
   inspectDocxForLocalSemanticDerivative,
   type LocalDocxMediaPart,
 } from '@/core/privacy/local-docx-media-semantic-preflight'
+import { createSemanticDerivativeRevisionGate } from '@/core/privacy/semantic-derivative-revision-gate'
 import { LocalImagePrivacyWorkbench } from './LocalImagePrivacyWorkbench'
 
 export type SemanticDocxMode = 'ANALYZING' | 'TEXT_ONLY' | 'MEDIA_REVIEWABLE' | 'FAILED'
@@ -31,6 +32,7 @@ export function LocalDocxSemanticMediaPrivacyWorkbench(props: WorkbenchProps) {
 function LocalDocxSemanticMediaPrivacyWorkbenchSession({ file, disabled, onPrepared, onModeChange }: WorkbenchProps) {
   const onPreparedRef = useRef(onPrepared)
   const onModeChangeRef = useRef(onModeChange)
+  const revisionGateRef = useRef(createSemanticDerivativeRevisionGate())
   const [mode, setMode] = useState<SemanticDocxMode>('ANALYZING')
   const [choice, setChoice] = useState<DerivativeChoice>(null)
   const [text, setText] = useState('')
@@ -38,13 +40,14 @@ function LocalDocxSemanticMediaPrivacyWorkbenchSession({ file, disabled, onPrepa
   const [reviewedMedia, setReviewedMedia] = useState<Array<File | null>>([])
   const [mediaNotNeeded, setMediaNotNeeded] = useState(false)
   const [wholeReviewConfirmed, setWholeReviewConfirmed] = useState(false)
-  const [message, setMessage] = useState('Analizzo localmente testo e media referenziati. Nessun byte viene inviato.')
+  const [message, setMessage] = useState('Analizzo localmente testo e media del pacchetto. Nessun byte viene inviato.')
 
   useEffect(() => { onPreparedRef.current = onPrepared }, [onPrepared])
   useEffect(() => { onModeChangeRef.current = onModeChange }, [onModeChange])
 
   useEffect(() => {
     let cancelled = false
+    revisionGateRef.current.invalidate()
     onPreparedRef.current(null)
     onModeChangeRef.current('ANALYZING')
 
@@ -72,7 +75,7 @@ function LocalDocxSemanticMediaPrivacyWorkbenchSession({ file, disabled, onPrepa
 
       setMode('MEDIA_REVIEWABLE')
       onModeChangeRef.current('MEDIA_REVIEWABLE')
-      setMessage(`Ho estratto localmente ${result.media.length} media referenziati. Scegli se conservare solo il testo oppure testo + media revisionati.`)
+      setMessage(`Ho verificato il pacchetto ed estratto localmente ${result.media.length} media referenziati. Scegli se conservare solo il testo oppure testo + media revisionati.`)
     })()
 
     return () => { cancelled = true }
@@ -86,11 +89,16 @@ function LocalDocxSemanticMediaPrivacyWorkbenchSession({ file, disabled, onPrepa
     return <p role="status" aria-live="polite" className="knowledgeUploadTrust">{message}</p>
   }
 
-  function selectChoice(nextChoice: Exclude<DerivativeChoice, null>) {
-    setChoice(nextChoice)
-    setMediaNotNeeded(false)
+  function invalidateSemanticDerivative() {
+    revisionGateRef.current.invalidate()
     setWholeReviewConfirmed(false)
     onPreparedRef.current(null)
+  }
+
+  function selectChoice(nextChoice: Exclude<DerivativeChoice, null>) {
+    invalidateSemanticDerivative()
+    setChoice(nextChoice)
+    setMediaNotNeeded(false)
     setMessage(nextChoice === 'TEXT_ONLY'
       ? 'Revisiona il testo e conferma che i media non siano necessari. Verrà prodotto solo un TXT.'
       : 'Revisiona il testo e ogni media. Verrà prodotto un nuovo PNG semantico, non una copia fedele del DOCX.')
@@ -120,8 +128,25 @@ function LocalDocxSemanticMediaPrivacyWorkbenchSession({ file, disabled, onPrepa
       return
     }
 
+    const compositionToken = revisionGateRef.current.beginComposition()
+    if (!compositionToken) {
+      onPreparedRef.current(null)
+      return
+    }
+
+    const reviewedMediaSnapshot = [...reviewedMedia]
+    if (reviewedMediaSnapshot.some((item) => !item)) {
+      revisionGateRef.current.invalidate()
+      setWholeReviewConfirmed(false)
+      onPreparedRef.current(null)
+      return
+    }
+
     setMessage('Compongo localmente testo e media revisionati in un nuovo PNG semantico…')
-    const blob = await composeSemanticPng(normalizedText, reviewedMedia as File[])
+    const blob = await composeSemanticPng(normalizedText, reviewedMediaSnapshot as File[])
+
+    if (!revisionGateRef.current.isCurrent(compositionToken)) return
+
     if (!blob) {
       onPreparedRef.current(null)
       setMessage('La composizione locale supera i limiti sicuri o non può essere generata. Il DOCX originale non è stato inviato.')
@@ -156,8 +181,7 @@ function LocalDocxSemanticMediaPrivacyWorkbenchSession({ file, disabled, onPrepa
             onChange={(event) => {
               setText(event.currentTarget.value)
               setMediaNotNeeded(false)
-              setWholeReviewConfirmed(false)
-              onPreparedRef.current(null)
+              invalidateSemanticDerivative()
             }}
             disabled={disabled}
             rows={12}
@@ -191,7 +215,7 @@ function LocalDocxSemanticMediaPrivacyWorkbenchSession({ file, disabled, onPrepa
 
       {choice === 'PRESERVE_MEDIA' ? (
         <>
-          <p className="knowledgeUploadTrust">Il layout Word non verrà ricostruito. I media sono mostrati nell’ordine in cui vengono referenziati dal documento e devono essere revisionati uno per uno.</p>
+          <p className="knowledgeUploadTrust">Il layout Word non verrà ricostruito. Tutte le parti media del pacchetto vengono prima validate localmente; i media referenziati dal documento sono poi mostrati nell’ordine di estrazione e revisionati uno per uno.</p>
           <div style={{ display: 'grid', gap: 14 }}>
             {mediaFiles.map((mediaFile, index) => (
               <section key={`${mediaFile.name}:${index}`} aria-label={`Media DOCX ${index + 1}`}>
@@ -201,8 +225,7 @@ function LocalDocxSemanticMediaPrivacyWorkbenchSession({ file, disabled, onPrepa
                   disabled={disabled}
                   onPrepared={(safeFile) => {
                     setReviewedMedia((current) => current.map((value, itemIndex) => itemIndex === index ? safeFile : value))
-                    setWholeReviewConfirmed(false)
-                    onPreparedRef.current(null)
+                    invalidateSemanticDerivative()
                   }}
                 />
               </section>
@@ -213,8 +236,11 @@ function LocalDocxSemanticMediaPrivacyWorkbenchSession({ file, disabled, onPrepa
               type="checkbox"
               checked={wholeReviewConfirmed}
               onChange={(event) => {
-                setWholeReviewConfirmed(event.currentTarget.checked)
+                const checked = event.currentTarget.checked
                 onPreparedRef.current(null)
+                setWholeReviewConfirmed(checked)
+                if (checked) revisionGateRef.current.confirmCurrentRevision()
+                else revisionGateRef.current.revokeConfirmation()
               }}
               disabled={disabled || !textPrivacy.allowed || !allMediaReviewed}
             />{' '}
