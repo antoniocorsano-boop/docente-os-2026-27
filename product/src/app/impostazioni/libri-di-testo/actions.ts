@@ -1,33 +1,84 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { normalizeIsbn13, type TextbookUsageKind } from '@/core/domain/textbook-adoption'
 import { SupabaseTextbookRepository } from '@/core/infrastructure/supabase/supabase-textbook-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import type { TextbookSourceKind, TextbookUsageKind } from '@/core/domain/textbook-adoption'
 
-export async function addTextbookProposal(formData: FormData) {
-  const context = await requireContext()
-  const repository = new SupabaseTextbookRepository()
-  await repository.addProposal({
-    workspaceId: context.workspace.id,
-    academicYearId: context.academicYear.id,
-    draft: {
-      teachingAssignmentId: text(formData, 'teachingAssignmentId'),
-      isbn13: text(formData, 'isbn13'),
-      title: text(formData, 'title'),
-      subtitle: nullableText(formData, 'subtitle'),
-      authors: nullableText(formData, 'authors'),
-      publisher: text(formData, 'publisher'),
-      editionLabel: nullableText(formData, 'editionLabel'),
-      volumeLabel: nullableText(formData, 'volumeLabel'),
-      officialUrl: nullableText(formData, 'officialUrl'),
-      publisherProductRef: nullableText(formData, 'publisherProductRef'),
-      usageKind: usageKind(text(formData, 'usageKind')),
-      sourceKind: sourceKind(text(formData, 'sourceKind')),
-      sourceRef: nullableText(formData, 'sourceRef'),
-    },
-  })
-  revalidateTextbooks()
+export type IsbnLookupState = {
+  status: 'idle' | 'success' | 'error'
+  message: string
+}
+
+export const INITIAL_ISBN_LOOKUP_STATE: IsbnLookupState = { status: 'idle', message: '' }
+
+type GoogleBooksResponse = {
+  items?: Array<{
+    id: string
+    volumeInfo?: {
+      title?: string
+      subtitle?: string
+      authors?: string[]
+      publisher?: string
+      infoLink?: string
+    }
+  }>
+}
+
+export async function lookupTextbookByIsbn(
+  _previousState: IsbnLookupState,
+  formData: FormData,
+): Promise<IsbnLookupState> {
+  try {
+    const context = await requireContext()
+    const teachingAssignmentId = text(formData, 'teachingAssignmentId').trim()
+    const isbn13 = normalizeIsbn13(text(formData, 'isbn13'))
+    const usage = usageKind(text(formData, 'usageKind'))
+    const sourceUrl = `https://www.googleapis.com/books/v1/volumes?q=isbn:${encodeURIComponent(isbn13)}&maxResults=1&projection=lite`
+
+    const response = await fetch(sourceUrl, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+      signal: AbortSignal.timeout(8_000),
+    })
+    if (!response.ok) throw new Error('Il servizio di ricerca ISBN non è disponibile in questo momento.')
+
+    const payload = await response.json() as GoogleBooksResponse
+    const candidate = payload.items?.[0]
+    const info = candidate?.volumeInfo
+    if (!candidate || !info?.title || !info.publisher) {
+      throw new Error('Non ho trovato metadati sufficienti per questo ISBN. Non verranno richiesti dati manuali del libro.')
+    }
+
+    const repository = new SupabaseTextbookRepository()
+    await repository.addProposal({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      draft: {
+        teachingAssignmentId,
+        isbn13,
+        title: info.title,
+        subtitle: info.subtitle ?? null,
+        authors: info.authors?.join(', ') ?? null,
+        publisher: info.publisher,
+        editionLabel: null,
+        volumeLabel: null,
+        officialUrl: info.infoLink ?? null,
+        publisherProductRef: candidate.id,
+        usageKind: usage,
+        sourceKind: 'ISBN_LOOKUP',
+        sourceRef: `google-books:${candidate.id}`,
+      },
+    })
+    revalidateTextbooks()
+    return { status: 'success', message: 'Libro recuperato automaticamente. Controlla i dati e conferma la proposta.' }
+  } catch (error) {
+    return {
+      status: 'error',
+      message: error instanceof Error ? humanLookupError(error.message) : 'Impossibile recuperare il libro.',
+    }
+  }
 }
 
 export async function confirmTextbookAdoption(formData: FormData) {
@@ -72,17 +123,13 @@ function text(formData: FormData, key: string) {
   return value
 }
 
-function nullableText(formData: FormData, key: string) {
-  const value = text(formData, key).trim()
-  return value || null
-}
-
 function usageKind(value: string): TextbookUsageKind {
   if (value === 'ADOPTED' || value === 'RECOMMENDED' || value === 'OTHER') return value
   throw new Error('Invalid textbook usage kind')
 }
 
-function sourceKind(value: string): TextbookSourceKind {
-  if (value === 'MANUAL' || value === 'MIM_OPEN_DATA') return value
-  throw new Error('Invalid textbook source kind')
+function humanLookupError(message: string) {
+  if (message.includes('checksum')) return 'Controlla l’ISBN: il codice non supera la verifica ISBN-13.'
+  if (message.includes('13 digits')) return 'L’ISBN deve contenere 13 cifre. Puoi anche incollarlo con trattini o spazi.'
+  return message
 }
