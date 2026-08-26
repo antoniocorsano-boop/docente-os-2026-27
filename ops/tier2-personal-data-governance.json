@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "product": "DOCENTE OS",
   "gate": "P7-TIER2-PERSONAL-DATA-GOVERNANCE",
-  "state": "FOUNDATION_READY_BLOCKED",
+  "state": "T2A_COMPLETE_BLOCKED",
   "productionScope": "SINGLE_OWNER_PILOT",
   "currentTier1Admission": "TIER_1_OWNER_PROFESSIONAL_NON_PERSONAL",
   "tier2": {
@@ -27,7 +27,8 @@
   "workstreams": [
     {
       "id": "T2A_DATA_MINIMIZATION_POLICY",
-      "state": "NOT_SATISFIED",
+      "state": "SATISFIED",
+      "evidence": "ops/tier2-data-minimization-policy.json",
       "requiredEvidence": [
         "allowed-data-categories",
         "prohibited-data-categories",
@@ -72,5 +73,5 @@
     "newExplicitHumanDecisionRequiredAfterTechnicalClosure": true,
     "technicalClosureAloneMayNotAdmitPersonalData": true
   },
-  "nextAuthorizedWorkstream": "T2A_DATA_MINIMIZATION_POLICY"
+  "nextAuthorizedWorkstream": "T2B_APPLICATION_RETENTION_DELETION"
 }
