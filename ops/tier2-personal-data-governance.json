@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "gate": "P7-TIER2-PERSONAL-DATA-GOVERNANCE",
+  "state": "FOUNDATION_READY_BLOCKED",
+  "productionScope": "SINGLE_OWNER_PILOT",
+  "currentTier1Admission": "TIER_1_OWNER_PROFESSIONAL_NON_PERSONAL",
+  "tier2": {
+    "id": "TIER_2_SCHOOL_PERSONAL_DATA",
+    "admissionState": "NOT_ADMITTED",
+    "automaticAdmissionAllowed": false,
+    "explicitHumanDecisionRequiredAfterAllPrerequisites": true,
+    "publicSignupAllowed": false,
+    "multiTenantOnboardingAllowed": false,
+    "automaticBetaMigrationAllowed": false
+  },
+  "principles": {
+    "dataMinimizationRequired": true,
+    "purposeLimitationRequired": true,
+    "leastPrivilegeRequired": true,
+    "applicationLifecycleControlsRequired": true,
+    "exportAndDeletionProcedureRequired": true,
+    "dedicatedPrivacyReviewRequired": true,
+    "specialCategoryDataRequiresAdditionalExplicitGate": true,
+    "credentialsOrSecretsNeverAdmitted": true
+  },
+  "workstreams": [
+    {
+      "id": "T2A_DATA_MINIMIZATION_POLICY",
+      "state": "NOT_SATISFIED",
+      "requiredEvidence": [
+        "allowed-data-categories",
+        "prohibited-data-categories",
+        "purpose-binding",
+        "field-level-minimization-rules"
+      ]
+    },
+    {
+      "id": "T2B_APPLICATION_RETENTION_DELETION",
+      "state": "NOT_SATISFIED",
+      "requiredEvidence": [
+        "application-retention-policy",
+        "deletion-semantics",
+        "backup-boundary-documented",
+        "deletion-rehearsal"
+      ]
+    },
+    {
+      "id": "T2C_PERSONAL_DATA_EXPORT_DELETION",
+      "state": "NOT_SATISFIED",
+      "requiredEvidence": [
+        "personal-data-export-procedure",
+        "personal-data-deletion-procedure",
+        "request-authentication-boundary",
+        "operator-receipt"
+      ]
+    },
+    {
+      "id": "T2D_DEDICATED_PRIVACY_REVIEW",
+      "state": "NOT_SATISFIED",
+      "requiredEvidence": [
+        "processing-purpose-review",
+        "data-flow-review",
+        "access-control-review",
+        "residual-risk-review"
+      ]
+    }
+  ],
+  "blockingRule": {
+    "allWorkstreamsMustBeSatisfied": true,
+    "tier2MustRemainNotAdmittedUntilThen": true,
+    "newExplicitHumanDecisionRequiredAfterTechnicalClosure": true,
+    "technicalClosureAloneMayNotAdmitPersonalData": true
+  },
+  "nextAuthorizedWorkstream": "T2A_DATA_MINIMIZATION_POLICY"
+}
