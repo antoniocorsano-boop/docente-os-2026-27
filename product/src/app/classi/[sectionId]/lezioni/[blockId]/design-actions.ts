@@ -15,7 +15,7 @@ import {
 } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { humanizeKnowledgeTitle } from '@/core/presentation/product-language'
-import { resolveHumanTaskLessonProjection } from '@/core/presentation/human-task-content'
+import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 
 export async function acceptLessonDesignExtension(formData: FormData) {
   const lesson = await requireLessonContext(formData)
@@ -34,26 +34,19 @@ export async function removeLessonDesignExtension(formData: FormData) {
 export async function proposeLessonActivationQuestion(formData: FormData) {
   const lesson = await requireLessonContext(formData)
   const repository = new SupabaseLessonDesignRepository()
-  const current = await repository.list(lesson.designContext)
-  const alreadyPresent = current.some((extension) =>
-    extension.projectionId === lesson.designContext.projectionId &&
-    extension.payload.toolId === LESSON_ACTIVATION_QUESTION_TOOL_ID,
+  await repository.addToolProposalOnce(
+    lesson.designContext,
+    buildLessonActivationQuestionProposal({
+      sectionId: lesson.sectionId,
+      canonicalPlanAssetId: lesson.designContext.canonicalPlanAssetId,
+      canonicalGenerationId: lesson.designContext.canonicalGenerationId,
+      blockId: lesson.blockId,
+      projectionId: lesson.designContext.projectionId,
+      lessonTitle: lesson.projection.title,
+      objective: lesson.projection.objective,
+    }),
+    LESSON_ACTIVATION_QUESTION_TOOL_ID,
   )
-
-  if (!alreadyPresent) {
-    await repository.addProposal(
-      lesson.designContext,
-      buildLessonActivationQuestionProposal({
-        sectionId: lesson.sectionId,
-        canonicalPlanAssetId: lesson.designContext.canonicalPlanAssetId,
-        canonicalGenerationId: lesson.designContext.canonicalGenerationId,
-        blockId: lesson.blockId,
-        projectionId: lesson.designContext.projectionId,
-        lessonTitle: lesson.projection.title,
-        objective: lesson.projection.objective,
-      }),
-    )
-  }
 
   revalidateLesson(lesson.sectionId, lesson.blockId)
 }
@@ -119,7 +112,7 @@ async function requireLessonContext(formData: FormData) {
   const grade = GRADE_UI[section.grade]
   const block = buildBlocks(grade).find((item) => item.id === blockId)
   if (!block) throw new Error('Block is outside the canonical annual plan')
-  const projection = resolveHumanTaskLessonProjection(grade, block)
+  const projection = resolveRuntimeHumanTaskLessonProjection(grade, block)
   if (!projection || projection.projectionId !== projectionId) {
     throw new Error('Lesson projection has changed; reload before modifying the lesson design')
   }
