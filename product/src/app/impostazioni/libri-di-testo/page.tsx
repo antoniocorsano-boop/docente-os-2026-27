@@ -7,7 +7,7 @@ import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabas
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseTextbookRepository } from '@/core/infrastructure/supabase/supabase-textbook-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { addTextbookProposal, confirmTextbookAdoption } from './actions'
+import { addTextbookProposal, confirmTextbookAdoption, removeTextbookAdoption } from './actions'
 import '../settings.css'
 import './textbooks.css'
 
@@ -150,6 +150,14 @@ export default async function TextbookSettingsPage() {
                               <button className="settingsPrimaryButton" type="submit">Conferma questo libro</button>
                             </form>
                           ) : <span className="textbookConfirmedLabel">✓ Confermato</span>}
+                          <details className="textbookRowManage">
+                            <summary>Gestisci</summary>
+                            <form action={removeTextbookAdoption}>
+                              <input type="hidden" name="adoptionId" value={adoption.id} />
+                              <span>Rimuove solo il collegamento a questa Cattedra. Non modifica classe, disciplina o Piano annuale.</span>
+                              <button className="textButton" type="submit">Rimuovi collegamento</button>
+                            </form>
+                          </details>
                         </div>
                       </div>
                     ))}
