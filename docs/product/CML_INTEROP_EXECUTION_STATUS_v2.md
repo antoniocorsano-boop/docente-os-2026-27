@@ -3,7 +3,7 @@
 Status: CANONICAL EXECUTION CHECKPOINT  
 Date: 2026-08-26  
 Docente OS baseline: `6bbd35d924b0684d547c17a309a7f825604fea48`  
-Arena baseline before Runtime Binding v2: `a29b74e71e17837a7365b299f2d5cb5ac025881e`
+Arena canonical runtime-binding baseline: `d368b2bd0040dfe808d8ae65b13ba60942a831d5`
 
 ## 1. Product boundary
 
@@ -68,7 +68,8 @@ A proposal-level revision decision does not automatically mean the complete inst
 
 The current implemented chain is:
 
-`Arena handoff v2`
+`Arena runtime curriculum + IN2012/IN2025 resolver + revisionArchive`
+→ `Arena handoff v2`
 → `Docente OS preview`
 → `teacher review/edit`
 → `teacher acceptance`
@@ -78,17 +79,26 @@ The current implemented chain is:
 
 The persisted curriculum/framework state remains separate from B01–B33 execution progress.
 
-## 6. Highest-priority upstream dependency
+## 6. Arena runtime binding is canonical
 
-Before this checkpoint Arena's v2 sender contract was valid but caller-built. The next Arena slice binds it to the real runtime curriculum source, the IN2012/IN2025 resolver and the institutional `revisionArchive`.
+Arena now generates the provisional v2 planning context from the same `CurriculumMap` consumed by its runtime, the canonical IN2012/IN2025 resolver and the institutional `revisionArchive`.
 
-Docente OS must treat that runtime-bound Arena projection as the source for future revalidation work. It must not infer requirements locally from ministerial documents when Arena already provides the institutional context.
+The Arena binding:
+
+- derives mandatory requirements from real traguardi, obiettivi and institute curriculum content;
+- builds transition hypotheses from available revision proposals for legacy cohorts;
+- respects explicit reject/defer outcomes;
+- refuses to call an empty curriculum `completeForPlanning`;
+- does not infer full curriculum approval from a decision recorded on a single revision proposal;
+- keeps `CURRICULUM_PERSISTENCE_MODE = legacy-only` unchanged.
+
+Docente OS must treat that runtime-bound Arena projection as the source for future revalidation work. It must not independently reconstruct institutional curriculum requirements from ministerial documents when Arena already supplies the authoritative context.
 
 ## 7. Next execution order
 
 ### R2 — Provisional → Approved revalidation
 
-After Arena can produce runtime-bound handoffs, Docente OS must implement the complete transition from provisional to approved baseline:
+Now that Arena can produce runtime-bound handoffs, Docente OS must implement the complete transition from provisional to approved baseline:
 
 - identify `NEW`, `UPDATE_AVAILABLE`, `ALREADY_KNOWN`;
 - compare previous provisional requirements with the approved set;
