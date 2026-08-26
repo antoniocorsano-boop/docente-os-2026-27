@@ -1,0 +1,56 @@
+name: P7 Tier 2 Data Minimization
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - 'ops/tier2-data-minimization-policy.json'
+      - 'ops/tier2-personal-data-governance.json'
+      - 'ops/real-data-admission-review.json'
+      - '.github/scripts/validate-tier2-data-minimization.mjs'
+      - '.github/workflows/p7-tier2-data-minimization.yml'
+      - 'docs/product/P7_TIER2_DATA_MINIMIZATION_POLICY.md'
+  push:
+    branches:
+      - develop
+    paths:
+      - 'ops/tier2-data-minimization-policy.json'
+      - 'ops/tier2-personal-data-governance.json'
+      - 'ops/real-data-admission-review.json'
+      - '.github/scripts/validate-tier2-data-minimization.mjs'
+      - '.github/workflows/p7-tier2-data-minimization.yml'
+      - 'docs/product/P7_TIER2_DATA_MINIMIZATION_POLICY.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  validate-tier2-data-minimization:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Tier 2 data minimization
+        run: node .github/scripts/validate-tier2-data-minimization.mjs
+      - name: Publish T2A minimization status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'p7-tier2/data-minimization',
+              description: ok ? 'T2A minimizzazione dati coerente' : 'T2A minimizzazione dati non coerente',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
