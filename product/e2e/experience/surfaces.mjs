@@ -10,4 +10,5 @@ export const EXPERIENCE_SURFACES = [
   { id: 'timetable', label: 'Orario', path: '/orario' },
   { id: 'calendar', label: 'Calendario', path: '/calendario' },
   { id: 'settings', label: 'Impostazioni', path: '/impostazioni' },
+  { id: 'settings-textbooks', label: 'Impostazioni — Libri di testo', path: '/impostazioni/libri-di-testo' },
 ]
