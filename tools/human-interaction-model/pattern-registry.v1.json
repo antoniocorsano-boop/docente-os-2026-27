@@ -1,0 +1,18 @@
+{
+  "version": "1.0.0",
+  "patterns": [
+    {"id": "HP-PRIMARY_ACTION", "purpose": "Rendere evidente il compito dominante nel contesto corrente."},
+    {"id": "HP-PROGRESSIVE_DISCLOSURE", "purpose": "Mostrare complessità secondaria solo quando serve."},
+    {"id": "HP-CONTEXTUAL_ENTRY", "purpose": "Entrare nel compito dal contesto o oggetto già noto."},
+    {"id": "HP-PREVIEW_COMMIT", "purpose": "Separare proposta/anteprima dalla scrittura persistente."},
+    {"id": "HP-CONFIRM_CONSEQUENCE", "purpose": "Richiedere decisione esplicita prima di conseguenze significative."},
+    {"id": "HP-RECEIPT", "purpose": "Rendere visibile l'esito di una modifica completata."},
+    {"id": "HP-UNDO", "purpose": "Consentire annullamento o recupero quando tecnicamente possibile."},
+    {"id": "HP-ASYNC_STATUS", "purpose": "Rendere visibile lo stato di elaborazioni non immediate."},
+    {"id": "HP-RECOVERABLE_ERROR", "purpose": "Associare a ogni fallimento recuperabile una strada d'uscita esplicita."},
+    {"id": "HP-EMPTY_STATE", "purpose": "Spiegare assenza di dati e prossima azione utile."},
+    {"id": "HP-HUMAN_AI_REVIEW", "purpose": "Mantenere un confine umano esplicito tra proposta AI e azione con conseguenze."},
+    {"id": "HP-LIBRARY_FIRST", "purpose": "Favorire riuso e consultazione prima di nuova acquisizione quando pertinente."},
+    {"id": "HP-RECOGNITION_OVER_RECALL", "purpose": "Portare il contesto all'utente evitando memoria di codici o percorsi tecnici."}
+  ]
+}

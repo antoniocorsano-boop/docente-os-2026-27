@@ -1,0 +1,27 @@
+{
+  "human_model_version": "1.0.0",
+  "profile": "HIM-L2",
+  "product": {
+    "id": "docente-os-2026-27"
+  },
+  "requirements": {
+    "human_task_required": true,
+    "journey_required_for_critical_tasks": true,
+    "visible_system_status": true,
+    "recoverable_errors": true,
+    "progressive_disclosure": true,
+    "accessibility_required": true,
+    "hia_required": true
+  },
+  "consequential_actions": {
+    "preview_required": true,
+    "explicit_human_decision_required": true,
+    "receipt_required": true,
+    "recovery_required": true
+  },
+  "compatibility": {
+    "existing_human_task_model": "docs/architecture/HUMAN_TASK_MODEL.md",
+    "existing_visual_acceptance": ".github/workflows/experience-acceptance.yml",
+    "migration_mode": "HVA_AS_HIA_EVIDENCE"
+  }
+}

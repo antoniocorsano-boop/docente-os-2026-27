@@ -1,0 +1,26 @@
+{
+  "id": "HT-KNOWLEDGE-SEARCH",
+  "actor": "TEACHER",
+  "intent": "trovare un contenuto già disponibile nella Conoscenza",
+  "context": ["desktop_or_mobile", "interruption_possible", "existing_library_possible"],
+  "entry_points": ["knowledge_home", "class_workspace", "focused_task_context"],
+  "success": "il docente apre un contenuto pertinente senza dover conoscere identificatori tecnici",
+  "primary_action": "search_existing_content",
+  "secondary_actions": ["browse_library", "add_content_when_needed"],
+  "failure_states": ["no_results", "processing_unavailable", "content_not_ready"],
+  "recovery": {
+    "required": true,
+    "strategies": ["adjust_search", "return_to_library", "retry_processing", "add_content_if_absent"]
+  },
+  "consequential": false,
+  "human_authority_required": false,
+  "patterns": [
+    "HP-PRIMARY_ACTION",
+    "HP-PROGRESSIVE_DISCLOSURE",
+    "HP-RECOGNITION_OVER_RECALL",
+    "HP-RECOVERABLE_ERROR",
+    "HP-LIBRARY_FIRST"
+  ],
+  "accessibility": ["keyboard_operable", "visible_status", "clear_labels", "focus_preserved"],
+  "acceptance_evidence": ["existing_human_task_contract", "existing_experience_acceptance"]
+}
