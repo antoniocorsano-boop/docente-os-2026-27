@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "gate": "T2D_EXTERNAL_GOVERNANCE_EVIDENCE_RECEIPTS",
+  "state": "TEMPLATES_READY_NO_EXTERNAL_EVIDENCE_VERIFIED",
+  "tier2AdmissionEffect": "NONE",
+  "tier2AdmissionState": "NOT_ADMITTED",
+  "receiptRule": {
+    "repositoryStoresApprovedDocumentContent": false,
+    "stableExternalReferenceRequired": true,
+    "documentDateRequired": true,
+    "approverRoleRequired": true,
+    "decisionRequired": true,
+    "sha256Required": true,
+    "humanVerificationRequired": true,
+    "templateCompletionAloneCountsAsEvidence": false,
+    "allFourVerifiedRequiredForT2dClosure": true
+  },
+  "receipts": [
+    {
+      "evidenceId": "T2D-E1",
+      "blockerId": "INSTITUTIONAL_CONTROLLER_AUTHORITY",
+      "template": "docs/product/tier2-evidence-templates/E1_INSTITUTIONAL_CONTROLLER_AUTHORITY_TEMPLATE.md",
+      "state": "AWAITING_EXTERNAL_EVIDENCE",
+      "evidenceReference": null,
+      "documentDate": null,
+      "documentVersion": null,
+      "approverRole": null,
+      "decision": null,
+      "sha256": null,
+      "verified": false,
+      "verifiedByRole": null,
+      "verifiedAt": null
+    },
+    {
+      "evidenceId": "T2D-E2",
+      "blockerId": "TRANSPARENCY_AND_RIGHTS_ROUTING",
+      "template": "docs/product/tier2-evidence-templates/E2_TRANSPARENCY_AND_RIGHTS_ROUTING_TEMPLATE.md",
+      "state": "AWAITING_EXTERNAL_EVIDENCE",
+      "evidenceReference": null,
+      "documentDate": null,
+      "documentVersion": null,
+      "approverRole": null,
+      "decision": null,
+      "sha256": null,
+      "verified": false,
+      "verifiedByRole": null,
+      "verifiedAt": null
+    },
+    {
+      "evidenceId": "T2D-E3",
+      "blockerId": "DPIA_SCREENING",
+      "template": "docs/product/tier2-evidence-templates/E3_DPIA_SCREENING_TEMPLATE.md",
+      "state": "AWAITING_EXTERNAL_EVIDENCE",
+      "evidenceReference": null,
+      "documentDate": null,
+      "documentVersion": null,
+      "approverRole": null,
+      "decision": null,
+      "sha256": null,
+      "verified": false,
+      "verifiedByRole": null,
+      "verifiedAt": null
+    },
+    {
+      "evidenceId": "T2D-E4",
+      "blockerId": "PURPOSE_SPECIFIC_RETENTION_SCHEDULE",
+      "template": "docs/product/tier2-evidence-templates/E4_PURPOSE_SPECIFIC_RETENTION_SCHEDULE_TEMPLATE.md",
+      "state": "AWAITING_EXTERNAL_EVIDENCE",
+      "evidenceReference": null,
+      "documentDate": null,
+      "documentVersion": null,
+      "approverRole": null,
+      "decision": null,
+      "sha256": null,
+      "verified": false,
+      "verifiedByRole": null,
+      "verifiedAt": null
+    }
+  ],
+  "currentResult": {
+    "verifiedEvidenceCount": 0,
+    "requiredEvidenceCount": 4,
+    "t2dState": "BLOCKED_EXTERNAL_GOVERNANCE",
+    "tier2AdmissionState": "NOT_ADMITTED"
+  }
+}
