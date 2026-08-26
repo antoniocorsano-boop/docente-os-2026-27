@@ -37,6 +37,11 @@ type SparqlResponse = {
   results?: { bindings?: SparqlBinding[] }
 }
 
+type DatasetQueryResult = {
+  reachable: boolean
+  records: MimTextbookRecord[]
+}
+
 const PROVINCE_DATASET = buildProvinceDatasetMap()
 
 export class MimTextbookAdoptionClient {
@@ -47,26 +52,42 @@ export class MimTextbookAdoptionClient {
   }> {
     const normalizedSchoolCode = normalizeSchoolCode(schoolCode)
     const preferred = PROVINCE_DATASET.get(normalizedSchoolCode.slice(0, 2))
-    const orderedDatasets = preferred
-      ? [preferred, ...DATASETS.filter((dataset) => dataset !== preferred)]
-      : [...DATASETS]
     const checkedDatasets: string[] = []
 
-    for (const datasetCode of orderedDatasets) {
-      checkedDatasets.push(datasetCode)
-      const records = await this.queryDataset(datasetCode, normalizedSchoolCode)
-      if (records.length) return { datasetCode, records, checkedDatasets }
+    if (preferred) {
+      checkedDatasets.push(preferred)
+      const preferredResult = await this.queryDataset(preferred, normalizedSchoolCode)
+      if (preferredResult.reachable) {
+        return {
+          datasetCode: preferredResult.records.length ? preferred : null,
+          records: preferredResult.records,
+          checkedDatasets,
+        }
+      }
     }
 
+    let reachableDatasetCount = 0
+    const fallbackDatasets = preferred ? DATASETS.filter((dataset) => dataset !== preferred) : [...DATASETS]
+    for (const datasetCode of fallbackDatasets) {
+      checkedDatasets.push(datasetCode)
+      const result = await this.queryDataset(datasetCode, normalizedSchoolCode)
+      if (result.reachable) reachableDatasetCount += 1
+      if (result.records.length) return { datasetCode, records: result.records, checkedDatasets }
+    }
+
+    if (!reachableDatasetCount) throw new Error('Portale Open Data MIM temporaneamente non raggiungibile')
     return { datasetCode: null, records: [], checkedDatasets }
   }
 
-  private async queryDataset(datasetCode: MimDatasetCode, schoolCode: string): Promise<MimTextbookRecord[]> {
+  private async queryDataset(datasetCode: MimDatasetCode, schoolCode: string): Promise<DatasetQueryResult> {
     const query = buildSchoolQuery(schoolCode)
     const response = await querySparql(datasetCode, query)
-    if (!response) return []
-    return parseMimSparqlBindings(response.results?.bindings ?? [], datasetCode)
-      .filter((record) => normalizeSchoolCode(record.schoolCode) === schoolCode)
+    if (!response) return { reachable: false, records: [] }
+    return {
+      reachable: true,
+      records: parseMimSparqlBindings(response.results?.bindings ?? [], datasetCode)
+        .filter((record) => normalizeSchoolCode(record.schoolCode) === schoolCode),
+    }
   }
 }
 
