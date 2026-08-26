@@ -2,16 +2,17 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import type { CmlCanonicalRef } from './cml-local-handoff'
 import type { AnnualPlanFrameworkApplyCommand } from './cml-handoff-acceptance'
+import type { CurriculumContextForClassV1 } from './cml-local-handoff-v2'
 import {
-  bindCurriculumApplicability,
-  type CurriculumApplicabilityEvidence,
+  bindCurriculumContextAndCoverage,
+  evaluateCurriculumCoverage,
 } from './cml-curriculum-applicability'
 
 function ref(entityType: string, entityId: string, versionId?: string): CmlCanonicalRef {
   return { namespace: 'curmanlight.arena', entityType, entityId, ...(versionId ? { versionId } : {}) }
 }
 
-function command(): AnnualPlanFrameworkApplyCommand {
+function command(nodeIds: string[] = ['node-001', 'node-002']): AnnualPlanFrameworkApplyCommand {
   return {
     contract: 'CML_HANDOFF_APPLY_V1',
     status: 'AUTHORIZED_FOR_PERSISTENCE',
@@ -32,58 +33,144 @@ function command(): AnnualPlanFrameworkApplyCommand {
       curriculumVersionRef: ref('CurriculumVersion', 'technology-grade-1', '2026-27'),
     },
     reviewedFramework: {
-      periods: [{ periodId: 'p1', label: 'Primo periodo', suggestedNodeRefs: [ref('CurriculumNode', 'node-001')] }],
+      periods: [{ periodId: 'p1', label: 'Primo periodo', suggestedNodeRefs: nodeIds.map((id) => ref('CurriculumNode', id)) }],
       constraints: [],
     },
   }
 }
 
-function applicability(): CurriculumApplicabilityEvidence {
+function provisionalContext(): CurriculumContextForClassV1 {
   return {
-    contract: 'CML_CURRICULUM_APPLICABILITY_V1',
-    evidenceId: 'applicability-001',
-    curriculumVersionRef: ref('CurriculumVersion', 'technology-grade-1', '2026-27'),
+    contract: 'CML_CURRICULUM_CONTEXT_V1',
+    contextId: 'ctx-technology-1A-2026-27',
+    institutionRef: ref('Institution', 'school-demo'),
     schoolYearRef: '2026-2027',
     disciplineRef: 'technology',
     gradeRef: 'grade-1',
     sectionRef: '1A',
     cohortRef: 'cohort-2026-grade-1',
+    curriculumRef: ref('Curriculum', 'technology'),
+    curriculumVersionRef: ref('CurriculumVersion', 'technology-grade-1', '2026-27'),
+    curriculumState: 'PROVISIONAL_COMPLETE',
+    approvalProcessRef: ref('RevisionProcess', 'curriculum-2025-transition'),
     applicabilityStatus: 'TRANSITIONAL',
-    authorityRef: ref('InstitutionalDecision', 'curriculum-transition-2026'),
-    transitionRuleRef: ref('CurriculumTransitionRule', 'dm221-2025-progression'),
-    humanConfirmed: true,
+    transitionRuleRef: ref('TransitionRule', 'dm221-2025-art5'),
+    completeForPlanning: true,
+    requirements: [
+      {
+        requirementId: 'req-001',
+        kind: 'SPECIFIC_LEARNING_OBJECTIVE',
+        authorityLevel: 'NATIONAL_PRESCRIPTIVE',
+        curriculumNodeRef: ref('CurriculumNode', 'node-001'),
+        description: 'Obiettivo curricolare obbligatorio.',
+        coverageRequired: true,
+        sourceRefs: [ref('NationalFramework', 'indicazioni-2025')],
+      },
+      {
+        requirementId: 'req-002',
+        kind: 'INSTITUTIONAL_REQUIREMENT',
+        authorityLevel: 'TRANSITION_REQUIRED',
+        curriculumNodeRef: ref('CurriculumNode', 'node-002'),
+        description: 'Requisito della rimodulazione transitoria proposta.',
+        coverageRequired: true,
+        sourceRefs: [ref('CurriculumDraft', 'technology-transition-draft')],
+        transitionOriginRef: ref('RevisionProposal', 'remod-001'),
+      },
+      {
+        requirementId: 'req-rec',
+        kind: 'ESSENTIAL_KNOWLEDGE',
+        authorityLevel: 'RECOMMENDED',
+        curriculumNodeRef: ref('CurriculumNode', 'node-recommended'),
+        description: 'Conoscenza raccomandata non bloccante.',
+        coverageRequired: false,
+        sourceRefs: [ref('CurriculumDraft', 'technology-transition-draft')],
+      },
+    ],
+    transitionRemodulation: {
+      state: 'HYPOTHESIS',
+      rationale: 'Ipotesi di rimodulazione usabile durante l’iter di approvazione.',
+      sourceRefs: [ref('NationalFramework', 'indicazioni-2012'), ref('NationalFramework', 'indicazioni-2025')],
+      affectedRequirementIds: ['req-002'],
+      usableForPlanning: true,
+      institutionallyApproved: false,
+      proposalRef: ref('RevisionProposal', 'remod-001'),
+    },
+    sourceRefs: [ref('RevisionProposal', 'curriculum-draft-001')],
   }
 }
 
-describe('CML transition-aware curriculum applicability', () => {
-  it('binds an institutionally confirmed transition rule to the apply command', () => {
-    const result = bindCurriculumApplicability({ command: command(), evidence: applicability() })
-    assert.equal(result.applicability.applicabilityStatus, 'TRANSITIONAL')
-    assert.equal(result.applicability.sectionRef, '1A')
+const targetScope = {
+  schoolYearRef: '2026-2027',
+  disciplineRef: 'technology',
+  gradeRef: 'grade-1',
+  sectionRef: '1A',
+  cohortRef: 'cohort-2026-grade-1',
+}
+
+describe('CML curriculum applicability and minimum coverage', () => {
+  it('allows planning against a complete provisional curriculum when all mandatory requirements are covered', () => {
+    const result = bindCurriculumContextAndCoverage({ command: command(), curricularContext: provisionalContext(), targetScope })
+    assert.equal(result.curriculumCoverage.status, 'SATISFIED')
+    assert.equal(result.curriculumCoverage.authority, 'PROVISIONAL_BASELINE')
+    assert.equal(result.curriculumCoverage.requiresRevalidationOnApproval, true)
+    assert.equal(result.writeAuthorized, true)
   })
 
-  it('rejects persistence when transitionRuleRef is missing', () => {
-    const evidence = { ...applicability(), transitionRuleRef: { namespace: '', entityType: '', entityId: '' } }
-    assert.throws(() => bindCurriculumApplicability({ command: command(), evidence }), /transitionRuleRef/)
+  it('blocks apply when a mandatory curricular requirement is not covered', () => {
+    const evaluation = evaluateCurriculumCoverage({ command: command(['node-001']), curricularContext: provisionalContext(), targetScope })
+    assert.equal(evaluation.status, 'PARTIALLY_SATISFIED')
+    assert.deepEqual(evaluation.blockingRequirementIds, ['req-002'])
+    assert.throws(
+      () => bindCurriculumContextAndCoverage({ command: command(['node-001']), curricularContext: provisionalContext(), targetScope }),
+      /does not satisfy mandatory curricular requirements: req-002/,
+    )
   })
 
-  it('rejects applicability for a different curriculum version', () => {
-    const evidence = { ...applicability(), curriculumVersionRef: ref('CurriculumVersion', 'technology-grade-2', '2012') }
-    assert.throws(() => bindCurriculumApplicability({ command: command(), evidence }), /does not match annual-plan context/)
+  it('does not let an uncovered recommended requirement block curricular satisfaction', () => {
+    const result = bindCurriculumContextAndCoverage({ command: command(), curricularContext: provisionalContext(), targetScope })
+    const recommended = result.curriculumCoverage.requirementCoverage.find((requirement) => requirement.requirementId === 'req-rec')
+    assert.equal(recommended?.satisfied, false)
+    assert.equal(result.curriculumCoverage.status, 'SATISFIED')
   })
 
-  it('rejects applicability without class or cohort scope', () => {
-    const evidence = { ...applicability(), sectionRef: undefined, cohortRef: undefined }
-    assert.throws(() => bindCurriculumApplicability({ command: command(), evidence }), /sectionRef or cohortRef/)
+  it('rejects a curricular context for a different class', () => {
+    assert.throws(
+      () => evaluateCurriculumCoverage({ command: command(), curricularContext: provisionalContext(), targetScope: { ...targetScope, sectionRef: '1B' } }),
+      /sectionRef mismatch/,
+    )
   })
 
-  it('rejects a curriculum superseded for the target cohort', () => {
-    const evidence = { ...applicability(), applicabilityStatus: 'SUPERSEDED_FOR_NEW_COHORTS' as const }
-    assert.throws(() => bindCurriculumApplicability({ command: command(), evidence }), /superseded for this cohort/)
+  it('rejects a curricular context for a different curriculum version', () => {
+    const context = { ...provisionalContext(), curriculumVersionRef: ref('CurriculumVersion', 'technology-grade-2', '2012') }
+    assert.throws(
+      () => evaluateCurriculumCoverage({ command: command(), curricularContext: context, targetScope }),
+      /does not match accepted annual-plan command/,
+    )
   })
 
-  it('rejects non-human-confirmed applicability evidence', () => {
-    const evidence = { ...applicability(), humanConfirmed: false as unknown as true }
-    assert.throws(() => bindCurriculumApplicability({ command: command(), evidence }), /must be human confirmed/)
+  it('promotes alignment authority only after institutional approval exists', () => {
+    const base = provisionalContext()
+    const approved: CurriculumContextForClassV1 = {
+      ...base,
+      curriculumState: 'APPROVED',
+      approvalDecisionRef: ref('InstitutionalDecision', 'curriculum-approved-001'),
+      transitionRemodulation: {
+        ...base.transitionRemodulation,
+        state: 'APPROVED',
+        institutionallyApproved: true,
+        approvalDecisionRef: ref('InstitutionalDecision', 'remodulation-approved-001'),
+      },
+    }
+    const result = bindCurriculumContextAndCoverage({ command: command(), curricularContext: approved, targetScope })
+    assert.equal(result.curriculumCoverage.authority, 'APPROVED_INSTITUTIONAL')
+    assert.equal(result.curriculumCoverage.requiresRevalidationOnApproval, false)
+  })
+
+  it('rejects a false approval claim without an institutional decision', () => {
+    const invalid = { ...provisionalContext(), curriculumState: 'APPROVED' as const }
+    assert.throws(
+      () => evaluateCurriculumCoverage({ command: command(), curricularContext: invalid, targetScope }),
+      /approved curriculum requires approvalDecisionRef/,
+    )
   })
 })
