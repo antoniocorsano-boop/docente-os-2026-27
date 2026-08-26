@@ -164,9 +164,9 @@ export function KnowledgeFileUploader() {
 
   const steps = uploadSteps({ phase, failedAt, hasFile: Boolean(selectedFile), isImage: selectedIsImage })
   const feedbackTitle = phase === 'UPLOADING'
-    ? 'Sto completando il preflight'
+    ? selectedIsImage ? 'Sto mettendo al sicuro la copia anonima' : 'Sto mettendo al sicuro l’originale'
     : phase === 'ORGANIZING'
-      ? 'Copia ammessa al sicuro'
+      ? selectedIsImage ? 'Copia anonima al sicuro' : 'Originale al sicuro'
       : phase === 'ERROR'
         ? 'Serve un intervento'
         : null
