@@ -13,6 +13,17 @@ test('allows generic pedagogical references without an identified person', () =>
   assert.equal(result.allowed, true)
 })
 
+test('allows technical numeric identifiers that are not presented as contacts', () => {
+  const result = inspectFreeTextForPilot('UDA tecnica HVA classe prima — 32936721990')
+  assert.equal(result.allowed, true)
+})
+
+test('blocks contextual phone numbers', () => {
+  const result = inspectFreeTextForPilot('Telefono: 3293672199')
+  assert.equal(result.allowed, false)
+  assert.ok(result.findings.some((finding) => finding.riskClass === 'D3' && finding.code === 'PHONE'))
+})
+
 test('blocks direct identifiers', () => {
   const result = inspectFreeTextForPilot('Contattare mario.rossi@example.it per il recupero.')
   assert.equal(result.allowed, false)
