@@ -185,6 +185,18 @@ export class SupabaseTextbookRepository {
       .eq('academic_year_id', academicYearId)
     if (error) throw new Error(error.message)
   }
+
+  async remove(workspaceId: string, academicYearId: string, adoptionId: string): Promise<void> {
+    const supabase = await textbookClient()
+    await authenticatedUserId(supabase)
+    const { error } = await supabase
+      .from('textbook_adoptions')
+      .delete()
+      .eq('id', adoptionId)
+      .eq('workspace_id', workspaceId)
+      .eq('academic_year_id', academicYearId)
+    if (error) throw new Error(error.message)
+  }
 }
 
 async function findOrCreateTextbook(
