@@ -9,6 +9,7 @@ import {
 import { LocalImagePrivacyWorkbench } from './LocalImagePrivacyWorkbench'
 
 export type SemanticDocxMode = 'ANALYZING' | 'TEXT_ONLY' | 'MEDIA_REVIEWABLE' | 'FAILED'
+type DerivativeChoice = 'TEXT_ONLY' | 'PRESERVE_MEDIA' | null
 
 type WorkbenchProps = {
   file: File
@@ -31,9 +32,11 @@ function LocalDocxSemanticMediaPrivacyWorkbenchSession({ file, disabled, onPrepa
   const onPreparedRef = useRef(onPrepared)
   const onModeChangeRef = useRef(onModeChange)
   const [mode, setMode] = useState<SemanticDocxMode>('ANALYZING')
+  const [choice, setChoice] = useState<DerivativeChoice>(null)
   const [text, setText] = useState('')
   const [media, setMedia] = useState<LocalDocxMediaPart[]>([])
   const [reviewedMedia, setReviewedMedia] = useState<Array<File | null>>([])
+  const [mediaNotNeeded, setMediaNotNeeded] = useState(false)
   const [wholeReviewConfirmed, setWholeReviewConfirmed] = useState(false)
   const [message, setMessage] = useState('Analizzo localmente testo e media referenziati. Nessun byte viene inviato.')
 
@@ -69,7 +72,7 @@ function LocalDocxSemanticMediaPrivacyWorkbenchSession({ file, disabled, onPrepa
 
       setMode('MEDIA_REVIEWABLE')
       onModeChangeRef.current('MEDIA_REVIEWABLE')
-      setMessage(`Ho estratto localmente ${result.media.length} media referenziati. Revisiona testo e immagini: l’originale DOCX resta sul dispositivo.`)
+      setMessage(`Ho estratto localmente ${result.media.length} media referenziati. Scegli se conservare solo il testo oppure testo + media revisionati.`)
     })()
 
     return () => { cancelled = true }
@@ -81,6 +84,32 @@ function LocalDocxSemanticMediaPrivacyWorkbenchSession({ file, disabled, onPrepa
 
   if (mode === 'ANALYZING' || mode === 'TEXT_ONLY' || mode === 'FAILED') {
     return <p role="status" aria-live="polite" className="knowledgeUploadTrust">{message}</p>
+  }
+
+  function selectChoice(nextChoice: Exclude<DerivativeChoice, null>) {
+    setChoice(nextChoice)
+    setMediaNotNeeded(false)
+    setWholeReviewConfirmed(false)
+    onPreparedRef.current(null)
+    setMessage(nextChoice === 'TEXT_ONLY'
+      ? 'Revisiona il testo e conferma che i media non siano necessari. Verrà prodotto solo un TXT.'
+      : 'Revisiona il testo e ogni media. Verrà prodotto un nuovo PNG semantico, non una copia fedele del DOCX.')
+  }
+
+  function prepareTextOnlyDerivative() {
+    const normalized = normalizeText(text)
+    const privacy = inspectFreeTextForPilot(normalized)
+    if (!mediaNotNeeded || !privacy.allowed || !hasUsableText(normalized) || disabled) {
+      onPreparedRef.current(null)
+      return
+    }
+
+    const safeFile = new File([`${normalized}\n`], 'documento-anonimo.txt', {
+      type: 'text/plain',
+      lastModified: Date.now(),
+    })
+    onPreparedRef.current(safeFile)
+    setMessage('Derivazione testuale anonima pronta. Verrà inviato solo il TXT; DOCX originale e media restano sul dispositivo.')
   }
 
   async function prepareSemanticDerivative() {
@@ -108,63 +137,94 @@ function LocalDocxSemanticMediaPrivacyWorkbenchSession({ file, disabled, onPrepa
   }
 
   return (
-    <section aria-label="Revisione semantica locale del DOCX con media" style={{ border: '1px solid var(--border, #d7d7d7)', borderRadius: 12, padding: 12, display: 'grid', gap: 12 }}>
+    <section aria-label="Revisione locale del DOCX con media" style={{ border: '1px solid var(--border, #d7d7d7)', borderRadius: 12, padding: 12, display: 'grid', gap: 12 }}>
       <div>
-        <strong>DOCX con media: derivato semantico locale</strong>
-        <p style={{ margin: '4px 0 0' }}>Non ricostruisco il layout Word. Revisiona il testo e ogni immagine; il risultato sarà un nuovo PNG con contenuto semantico, non una copia fedele del DOCX.</p>
+        <strong>DOCX con immagini o media</strong>
+        <p style={{ margin: '4px 0 0' }}>L’originale resta sul dispositivo. Puoi conservare solo il testo oppure creare un derivato semantico con testo e immagini revisionati.</p>
       </div>
 
-      <label style={{ display: 'grid', gap: 6 }}>
-        <span><strong>Testo da conservare</strong></span>
-        <textarea
-          value={text}
-          onChange={(event) => {
-            setText(event.currentTarget.value)
-            setWholeReviewConfirmed(false)
-            onPreparedRef.current(null)
-          }}
-          disabled={disabled}
-          rows={12}
-          spellCheck
-          style={{ width: '100%', resize: 'vertical' }}
-        />
-      </label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <button type="button" onClick={() => selectChoice('TEXT_ONLY')} disabled={disabled}>Conserva solo il testo</button>
+        <button type="button" onClick={() => selectChoice('PRESERVE_MEDIA')} disabled={disabled}>Conserva anche i media</button>
+      </div>
 
-      {!textPrivacy.allowed ? <p role="alert" className="knowledgeUploadTrust">{pilotPrivacyErrorMessage(textPrivacy) ?? 'Il testo contiene dati non ammessi: correggili prima di preparare il derivato.'}</p> : null}
+      {choice ? (
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span><strong>Testo da conservare</strong></span>
+          <textarea
+            value={text}
+            onChange={(event) => {
+              setText(event.currentTarget.value)
+              setMediaNotNeeded(false)
+              setWholeReviewConfirmed(false)
+              onPreparedRef.current(null)
+            }}
+            disabled={disabled}
+            rows={12}
+            spellCheck
+            style={{ width: '100%', resize: 'vertical' }}
+          />
+        </label>
+      ) : null}
 
-      <div style={{ display: 'grid', gap: 14 }}>
-        {mediaFiles.map((mediaFile, index) => (
-          <section key={`${mediaFile.name}:${index}`} aria-label={`Media DOCX ${index + 1}`}>
-            <p className="knowledgeUploadTrust"><strong>Media {index + 1} di {mediaFiles.length}</strong> · revisiona e oscura eventuali dettagli personali.</p>
-            <LocalImagePrivacyWorkbench
-              file={mediaFile}
-              disabled={disabled}
-              onPrepared={(safeFile) => {
-                setReviewedMedia((current) => current.map((value, itemIndex) => itemIndex === index ? safeFile : value))
-                setWholeReviewConfirmed(false)
+      {choice && !textPrivacy.allowed ? <p role="alert" className="knowledgeUploadTrust">{pilotPrivacyErrorMessage(textPrivacy) ?? 'Il testo contiene dati non ammessi: correggili prima di preparare il derivato.'}</p> : null}
+
+      {choice === 'TEXT_ONLY' ? (
+        <>
+          <label className="knowledgeUploadTrust">
+            <input
+              type="checkbox"
+              checked={mediaNotNeeded}
+              onChange={(event) => {
+                setMediaNotNeeded(event.currentTarget.checked)
                 onPreparedRef.current(null)
               }}
-            />
-          </section>
-        ))}
-      </div>
+              disabled={disabled || !textPrivacy.allowed}
+            />{' '}
+            Ho revisionato il testo e confermo che immagini, grafici e altri media non sono necessari per il contenuto che voglio conservare.
+          </label>
+          <button type="button" onClick={prepareTextOnlyDerivative} disabled={disabled || !textPrivacy.allowed || !mediaNotNeeded || !hasUsableText(text)}>
+            Prepara derivazione testuale anonima
+          </button>
+        </>
+      ) : null}
 
-      <label className="knowledgeUploadTrust">
-        <input
-          type="checkbox"
-          checked={wholeReviewConfirmed}
-          onChange={(event) => {
-            setWholeReviewConfirmed(event.currentTarget.checked)
-            onPreparedRef.current(null)
-          }}
-          disabled={disabled || !textPrivacy.allowed || !allMediaReviewed}
-        />{' '}
-        Ho revisionato il testo e tutti i media estratti. Nel derivato non restano dati personali di studenti o terzi e accetto che il layout Word originale non venga preservato.
-      </label>
-
-      <button type="button" onClick={() => void prepareSemanticDerivative()} disabled={disabled || !textPrivacy.allowed || !allMediaReviewed || !wholeReviewConfirmed}>
-        Prepara derivato semantico anonimo
-      </button>
+      {choice === 'PRESERVE_MEDIA' ? (
+        <>
+          <p className="knowledgeUploadTrust">Il layout Word non verrà ricostruito. I media sono mostrati nell’ordine in cui vengono referenziati dal documento e devono essere revisionati uno per uno.</p>
+          <div style={{ display: 'grid', gap: 14 }}>
+            {mediaFiles.map((mediaFile, index) => (
+              <section key={`${mediaFile.name}:${index}`} aria-label={`Media DOCX ${index + 1}`}>
+                <p className="knowledgeUploadTrust"><strong>Media {index + 1} di {mediaFiles.length}</strong> · revisiona e oscura eventuali dettagli personali.</p>
+                <LocalImagePrivacyWorkbench
+                  file={mediaFile}
+                  disabled={disabled}
+                  onPrepared={(safeFile) => {
+                    setReviewedMedia((current) => current.map((value, itemIndex) => itemIndex === index ? safeFile : value))
+                    setWholeReviewConfirmed(false)
+                    onPreparedRef.current(null)
+                  }}
+                />
+              </section>
+            ))}
+          </div>
+          <label className="knowledgeUploadTrust">
+            <input
+              type="checkbox"
+              checked={wholeReviewConfirmed}
+              onChange={(event) => {
+                setWholeReviewConfirmed(event.currentTarget.checked)
+                onPreparedRef.current(null)
+              }}
+              disabled={disabled || !textPrivacy.allowed || !allMediaReviewed}
+            />{' '}
+            Ho revisionato il testo e tutti i media estratti. Nel derivato non restano dati personali di studenti o terzi e accetto che il layout Word originale non venga preservato.
+          </label>
+          <button type="button" onClick={() => void prepareSemanticDerivative()} disabled={disabled || !textPrivacy.allowed || !allMediaReviewed || !wholeReviewConfirmed}>
+            Prepara derivato semantico anonimo
+          </button>
+        </>
+      ) : null}
 
       <p role="status" aria-live="polite" className="knowledgeUploadTrust">{message}</p>
     </section>
@@ -178,6 +238,11 @@ function mediaPartToFile(part: LocalDocxMediaPart) {
 
 function normalizeText(value: string) {
   return value.replace(/\u0000/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+}
+
+function hasUsableText(value: string) {
+  const alphanumeric = value.match(/[\p{L}\p{N}]/gu)?.length ?? 0
+  return alphanumeric >= 20
 }
 
 async function composeSemanticPng(text: string, mediaFiles: File[]): Promise<Blob | null> {
@@ -204,7 +269,6 @@ async function composeSemanticPng(text: string, mediaFiles: File[]): Promise<Blo
     context.fillStyle = '#ffffff'
     context.fillRect(0, 0, canvas.width, canvas.height)
     context.fillStyle = '#111111'
-    context.font = '28px sans-serif'
     context.textBaseline = 'top'
 
     let y = COMPOSITE_MARGIN
