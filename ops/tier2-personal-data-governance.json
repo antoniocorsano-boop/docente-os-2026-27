@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "product": "DOCENTE OS",
   "gate": "P7-TIER2-PERSONAL-DATA-GOVERNANCE",
   "state": "T2D_REVIEW_COMPLETE_BLOCKED_EXTERNAL_GOVERNANCE",
@@ -51,7 +51,9 @@
       "evidence": "ops/tier2-dedicated-privacy-review.json",
       "requiredEvidence": ["processing-purpose-review","data-flow-review","access-control-review","residual-risk-review"],
       "reviewEvidenceComplete": true,
-      "blockingResidualCount": 5
+      "processorAndTransferReview": "SATISFIED_DOCUMENTARY_REVIEW",
+      "processorAndTransferEvidence": "ops/tier2-processor-transfer-review.json",
+      "blockingResidualCount": 4
     }
   ],
   "blockingRule": {
@@ -61,5 +63,11 @@
     "technicalClosureAloneMayNotAdmitPersonalData": true,
     "externalGovernanceEvidenceMayNotBeSelfAssertedByProduct": true
   },
+  "remainingExternalGovernanceEvidence": [
+    "INSTITUTIONAL_CONTROLLER_AUTHORITY",
+    "TRANSPARENCY_AND_RIGHTS_ROUTING",
+    "DPIA_SCREENING",
+    "PURPOSE_SPECIFIC_RETENTION_SCHEDULE"
+  ],
   "nextAuthorizedWorkstream": "T2D_EXTERNAL_GOVERNANCE_EVIDENCE"
 }

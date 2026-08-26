@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "product": "DOCENTE OS",
   "gate": "T2D_DEDICATED_PRIVACY_REVIEW",
   "state": "REVIEW_COMPLETE_BLOCKED_EXTERNAL_GOVERNANCE",
@@ -56,11 +56,14 @@
     "externalAiProviderPresentInRepository": false,
     "automaticBetaMigrationAllowed": false,
     "publicSignupAllowed": false,
-    "assessment": "TECHNICAL_FLOW_IDENTIFIED_EXTERNAL_PROCESSOR_REVIEW_REQUIRED",
-    "blockers": [
-      "PROCESSOR_DPA_TERMS_NOT_EVIDENCED_IN_CANONICAL_REVIEW",
-      "SUBPROCESSOR_AND_TRANSFER_REVIEW_NOT_EVIDENCED_IN_CANONICAL_REVIEW"
-    ]
+    "processorAndTransferReview": {
+      "state": "SATISFIED_DOCUMENTARY_REVIEW",
+      "evidence": "ops/tier2-processor-transfer-review.json",
+      "institutionalContractAcceptanceProven": false,
+      "legalCertification": false
+    },
+    "assessment": "TECHNICAL_FLOW_AND_PROCESSOR_TRANSFER_DOCUMENTATION_REVIEWED",
+    "blockers": []
   },
   "accessControlReview": {
     "singleOwnerPilot": true,
@@ -79,6 +82,7 @@
       "T2A_DATA_MINIMIZATION_POLICY",
       "T2B_APPLICATION_RETENTION_DELETION",
       "T2C_PERSONAL_DATA_EXPORT_DELETION",
+      "T2D_PROCESSOR_AND_TRANSFER_REVIEW",
       "SEPARATE_PRODUCTION_DATA_TOPOLOGY",
       "RLS_AND_STORAGE_SECURITY_BASELINE",
       "OFFSITE_BACKUP_AND_RETENTION_LOCK",
@@ -88,10 +92,6 @@
       {
         "id": "INSTITUTIONAL_CONTROLLER_AUTHORITY",
         "requiredEvidence": "documented decision identifying the controller/authorized processing context and permitted purposes for Docente OS Tier 2"
-      },
-      {
-        "id": "PROCESSOR_AND_TRANSFER_REVIEW",
-        "requiredEvidence": "documented review of processor terms, subprocessors, data locations and any applicable transfer safeguards for Production services"
       },
       {
         "id": "TRANSPARENCY_AND_RIGHTS_ROUTING",
@@ -104,6 +104,14 @@
       {
         "id": "PURPOSE_SPECIFIC_RETENTION_SCHEDULE",
         "requiredEvidence": "controller-approved retention periods or deletion triggers per admitted Tier 2 data category and purpose"
+      }
+    ],
+    "closedResiduals": [
+      {
+        "id": "PROCESSOR_AND_TRANSFER_REVIEW",
+        "evidence": "ops/tier2-processor-transfer-review.json",
+        "closureNature": "OFFICIAL_PROVIDER_DOCUMENTARY_REVIEW_ONLY",
+        "doesNotProveInstitutionalAcceptance": true
       }
     ],
     "nonBlockingRestrictionsThatRemainMandatory": [
@@ -119,7 +127,8 @@
     "processing-purpose-review": true,
     "data-flow-review": true,
     "access-control-review": true,
-    "residual-risk-review": true
+    "residual-risk-review": true,
+    "processor-and-transfer-review": true
   },
   "closureRule": {
     "reviewEvidenceComplete": true,
@@ -131,6 +140,7 @@
   "conclusion": {
     "t2dWorkstreamState": "BLOCKED_EXTERNAL_GOVERNANCE",
     "tier2AdmissionState": "NOT_ADMITTED",
+    "blockingResidualCount": 4,
     "nextGate": "T2D_EXTERNAL_GOVERNANCE_EVIDENCE"
   }
 }
