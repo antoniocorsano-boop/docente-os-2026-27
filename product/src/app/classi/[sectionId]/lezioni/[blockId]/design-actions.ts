@@ -3,6 +3,10 @@
 import { revalidatePath } from 'next/cache'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { filterProgettaItemsByFocus } from '@/app/progetta/progetta-model'
+import {
+  buildLessonActivationQuestionProposal,
+  LESSON_ACTIVATION_QUESTION_TOOL_ID,
+} from '@/core/application/lesson-activation-question-tool'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import {
@@ -24,6 +28,33 @@ export async function removeLessonDesignExtension(formData: FormData) {
   const lesson = await requireLessonContext(formData)
   const extensionId = requiredText(formData, 'extensionId')
   await new SupabaseLessonDesignRepository().remove(lesson.designContext, extensionId)
+  revalidateLesson(lesson.sectionId, lesson.blockId)
+}
+
+export async function proposeLessonActivationQuestion(formData: FormData) {
+  const lesson = await requireLessonContext(formData)
+  const repository = new SupabaseLessonDesignRepository()
+  const current = await repository.list(lesson.designContext)
+  const alreadyPresent = current.some((extension) =>
+    extension.projectionId === lesson.designContext.projectionId &&
+    extension.payload.toolId === LESSON_ACTIVATION_QUESTION_TOOL_ID,
+  )
+
+  if (!alreadyPresent) {
+    await repository.addProposal(
+      lesson.designContext,
+      buildLessonActivationQuestionProposal({
+        sectionId: lesson.sectionId,
+        canonicalPlanAssetId: lesson.designContext.canonicalPlanAssetId,
+        canonicalGenerationId: lesson.designContext.canonicalGenerationId,
+        blockId: lesson.blockId,
+        projectionId: lesson.designContext.projectionId,
+        lessonTitle: lesson.projection.title,
+        objective: lesson.projection.objective,
+      }),
+    )
+  }
+
   revalidateLesson(lesson.sectionId, lesson.blockId)
 }
 
@@ -110,6 +141,7 @@ async function requireLessonContext(formData: FormData) {
     blockId,
     uda: block.uda,
     pack: block.pack,
+    projection,
   }
 }
 
