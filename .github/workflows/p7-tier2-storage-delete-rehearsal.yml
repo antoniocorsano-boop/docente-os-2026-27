@@ -1,0 +1,55 @@
+name: P7 Tier 2 Storage Delete Rehearsal
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  storage-delete-rehearsal:
+    runs-on: ubuntu-latest
+    env:
+      PRODUCTION_SUPABASE_URL: ${{ secrets.DOCENTE_OS_PRODUCTION_SUPABASE_URL }}
+      PRODUCTION_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.DOCENTE_OS_PRODUCTION_SUPABASE_PUBLISHABLE_KEY }}
+      PRODUCTION_E2E_EMAIL: ${{ secrets.DOCENTE_OS_PRODUCTION_E2E_EMAIL }}
+      PRODUCTION_E2E_PASSWORD: ${{ secrets.DOCENTE_OS_PRODUCTION_E2E_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: product/package-lock.json
+      - name: Install product dependencies
+        working-directory: product
+        run: npm ci
+      - name: Run authenticated Production synthetic Storage delete rehearsal
+        working-directory: product
+        run: node scripts/p7-t2b-storage-rehearsal.mjs
+      - name: Upload synthetic rehearsal receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p7-t2b-storage-rehearsal-${{ github.run_id }}
+          path: p7-t2b-storage-rehearsal.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Publish T2B Storage rehearsal status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'p7-tier2/storage-delete-rehearsal',
+              description: ok ? 'T2B Storage delete rehearsal PASS' : 'T2B Storage delete rehearsal FAIL',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
