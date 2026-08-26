@@ -47,8 +47,11 @@ if (receipt.realUserDataTouched !== false || receipt.tier2AdmissionChanged !== f
 if (admission.higherRiskTier?.state !== 'NOT_ADMITTED') fail('Tier 2 must remain NOT_ADMITTED')
 const t2b = (governance.workstreams ?? []).find((item) => item.id === 'T2B_APPLICATION_RETENTION_DELETION')
 const t2c = (governance.workstreams ?? []).find((item) => item.id === 'T2C_PERSONAL_DATA_EXPORT_DELETION')
+const t2d = (governance.workstreams ?? []).find((item) => item.id === 'T2D_DEDICATED_PRIVACY_REVIEW')
 if (t2b?.state !== 'SATISFIED' || t2b?.receipt !== 'ops/tier2-retention-deletion-rehearsal-receipt.json') fail('governance T2B linkage missing')
-if (t2c?.state === 'SATISFIED') {
+if (t2c?.state === 'SATISFIED' && t2d?.state === 'BLOCKED_EXTERNAL_GOVERNANCE') {
+  if (governance.nextAuthorizedWorkstream !== 'T2D_EXTERNAL_GOVERNANCE_EVIDENCE') fail('blocked T2D must point to external governance evidence')
+} else if (t2c?.state === 'SATISFIED') {
   if (governance.nextAuthorizedWorkstream !== 'T2D_DEDICATED_PRIVACY_REVIEW') fail('after T2C completion the next workstream must be T2D')
 } else if (governance.nextAuthorizedWorkstream !== 'T2C_PERSONAL_DATA_EXPORT_DELETION') {
   fail('before T2C completion the next workstream must be T2C')
