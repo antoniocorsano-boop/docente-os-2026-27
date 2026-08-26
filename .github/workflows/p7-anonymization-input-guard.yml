@@ -38,9 +38,9 @@ jobs:
       - name: Install product dependencies
         working-directory: product
         run: npm ci
-      - name: Test privacy guard
+      - name: Test privacy guards
         working-directory: product
-        run: npx tsx --test src/core/privacy/anonymization-guard.test.ts
+        run: npx tsx --test src/core/privacy/anonymization-guard.test.ts src/core/privacy/binary-anonymization-preflight.test.ts
       - name: Typecheck product
         working-directory: product
         run: npm run typecheck
