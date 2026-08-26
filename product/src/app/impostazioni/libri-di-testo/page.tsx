@@ -9,6 +9,7 @@ import { SupabaseTextbookRepository } from '@/core/infrastructure/supabase/supab
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { confirmTextbookAdoption, removeTextbookAdoption } from './actions'
 import { IsbnLookupForm } from './isbn-lookup-form'
+import { MimDiscoveryForm } from './mim-discovery-form'
 import '../settings.css'
 import './textbooks.css'
 import './manage.css'
@@ -83,14 +84,17 @@ export default async function TextbookSettingsPage() {
       </section>
 
       {settings.schoolCode ? (
-        <section className="textbookSourceCallout">
-          <div>
-            <span>DISCOVERY MIM · CONTESTO PRONTO</span>
-            <strong>Codice scuola {settings.schoolCode}</strong>
-            <p>Il codice meccanografico è il binding per proporre automaticamente le adozioni dai dataset Open Data MIM. Nessuna proposta diventa confermata senza una tua decisione.</p>
-          </div>
-          <Link href="/impostazioni#contesto">Modifica codice scuola</Link>
-        </section>
+        <>
+          <section className="textbookSourceCallout">
+            <div>
+              <span>DISCOVERY MIM · CONTESTO PRONTO</span>
+              <strong>Codice scuola {settings.schoolCode}</strong>
+              <p>Il codice meccanografico è il binding per proporre automaticamente le adozioni dai dataset Open Data MIM. Nessuna proposta diventa confermata senza una tua decisione.</p>
+            </div>
+            <Link href="/impostazioni#contesto">Modifica codice scuola</Link>
+          </section>
+          {relevantAssignments.length ? <MimDiscoveryForm schoolCode={settings.schoolCode} /> : null}
+        </>
       ) : (
         <section className="textbookSourceCallout needsContext">
           <div>

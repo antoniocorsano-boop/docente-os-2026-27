@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { matchMimTextbookAdoptions, scoreDiscipline } from './mim-textbook-discovery'
 import {
   buildTextbookSettingsCoverage,
   normalizeIsbn13,
@@ -50,4 +51,64 @@ test('every confirmed book is counted while only adopted books cover the assignm
   assert.equal(coverage.confirmedBookCount, 2)
   assert.equal(coverage.proposedBookCount, 1)
   assert.deepEqual(coverage.missingAssignmentIds, ['a2'])
+})
+
+test('matches MIM adoption using class section and discipline from settings context', () => {
+  const matches = matchMimTextbookAdoptions([
+    {
+      schoolCode: 'AVMM000001',
+      gradeNumber: 2,
+      sectionCode: 'A',
+      schoolGradeType: 'MM',
+      combination: null,
+      discipline: 'TECNOLOGIA',
+      isbn13: '9788808899798',
+      authors: 'Paci, Paci, Bernardini',
+      title: 'Tecnologia.verde',
+      subtitle: null,
+      volume: 'U',
+      publisher: 'Zanichelli',
+      price: null,
+      newAdoption: 'NO',
+      toPurchase: 'SI',
+      recommended: 'NO',
+      sourceDataset: 'ALTCAMPANIA',
+      sourceSubject: 'urn:mim:adoption:1',
+    },
+    {
+      schoolCode: 'AVMM000001',
+      gradeNumber: 2,
+      sectionCode: 'B',
+      schoolGradeType: 'MM',
+      combination: null,
+      discipline: 'TECNOLOGIA',
+      isbn13: '9788808899798',
+      authors: null,
+      title: 'Wrong section',
+      subtitle: null,
+      volume: null,
+      publisher: 'Editore',
+      price: null,
+      newAdoption: null,
+      toPurchase: null,
+      recommended: 'NO',
+      sourceDataset: 'ALTCAMPANIA',
+      sourceSubject: 'urn:mim:adoption:2',
+    },
+  ], [{
+    teachingAssignmentId: 'assignment-2a-tech',
+    grade: 'SECONDA',
+    sectionCode: 'A',
+    disciplineName: 'Tecnologia',
+  }])
+
+  assert.equal(matches.length, 1)
+  assert.equal(matches[0].teachingAssignmentId, 'assignment-2a-tech')
+  assert.equal(matches[0].record.title, 'Tecnologia.verde')
+  assert.equal(matches[0].usageKind, 'ADOPTED')
+})
+
+test('discipline matcher accepts qualified labels without collapsing unrelated subjects', () => {
+  assert.ok(scoreDiscipline('Tecnologia', 'TECNOLOGIA E DISEGNO') >= 0.75)
+  assert.ok(scoreDiscipline('Tecnologia', 'MATEMATICA') < 0.75)
 })
