@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "gate": "T2D_INSTITUTIONAL_DECISION_MATRIX",
+  "state": "PREPARED_NOT_APPROVED",
+  "tier2AdmissionEffect": "NONE",
+  "scope": "SINGLE_OWNER_PILOT",
+  "currentTier2AdmissionState": "NOT_ADMITTED",
+  "authorityBoundary": {
+    "technicalTeamMayPrepareDecisionOptions": true,
+    "technicalTeamMayRecommendConservativeOption": true,
+    "technicalTeamMayApproveInstitutionalDecision": false,
+    "institutionalEvidenceRequired": true,
+    "explicitHumanTier2AdmissionDecisionStillRequiredAfterAllEvidenceIsVerified": true
+  },
+  "decisions": [
+    {
+      "evidenceId": "E1",
+      "gateId": "INSTITUTIONAL_CONTROLLER_AUTHORITY",
+      "decisionOwner": "INSTITUTIONAL_CONTROLLER_OR_FORMALLY_AUTHORIZED_DELEGATE",
+      "decisionQuestion": "L'Istituto autorizza l'uso di Docente OS, nel perimetro SINGLE_OWNER_PILOT, per specifiche finalità istituzionali e categorie di dati personali scolastici minimizzate?",
+      "requiredSubdecisions": [
+        "identify controller",
+        "identify authorized user/role",
+        "approve institutional purposes",
+        "approve categories of data subjects",
+        "approve permitted personal-data categories",
+        "approve prohibited categories",
+        "identify lawful processing authority",
+        "approve additional restrictions"
+      ],
+      "permittedOutcomes": ["APPROVED", "CONDITIONAL", "REJECTED"],
+      "technicalRecommendation": "CONDITIONAL",
+      "recommendedConditions": [
+        "single named teacher only",
+        "pseudonymous student identifier by default",
+        "no direct student names by default",
+        "no special-category data",
+        "no credentials or secrets",
+        "no external AI personal-data transfer",
+        "no public signup",
+        "no multi-tenant onboarding",
+        "no automatic Beta-to-Production migration"
+      ],
+      "evidenceRequiredToVerify": [
+        "stable institutional document or protocol reference",
+        "document date",
+        "approver role",
+        "explicit decision outcome",
+        "document version",
+        "SHA-256 of approved/protocolled version",
+        "human verification of receipt/document correspondence"
+      ],
+      "currentStatus": "AWAITING_EXTERNAL_EVIDENCE"
+    },
+    {
+      "evidenceId": "E2",
+      "gateId": "TRANSPARENCY_AND_RIGHTS_ROUTING",
+      "decisionOwner": "INSTITUTIONAL_CONTROLLER_OR_PRIVACY_FUNCTION",
+      "decisionQuestion": "L'informativa vigente copre il trattamento Docente OS oppure deve essere approvata una specifica integrazione, e quali canali istituzionali gestiscono i diritti applicabili?",
+      "requiredSubdecisions": [
+        "existing notice covers vs integration required",
+        "controller contact channel",
+        "DPO/privacy contact where applicable",
+        "purposes and data categories disclosed",
+        "processors/services disclosure",
+        "retention information",
+        "access route",
+        "rectification route",
+        "export/deletion route where applicable",
+        "opposition/restriction route where applicable"
+      ],
+      "permittedOutcomes": ["EXISTING_NOTICE_COVERS", "INTEGRATION_APPROVED", "NOT_COVERED"],
+      "technicalRecommendation": "INTEGRATION_APPROVED_UNLESS_EXISTING_NOTICE_IS_EXPLICITLY_MAPPED",
+      "evidenceRequiredToVerify": [
+        "approved notice or approved integration",
+        "stable reference/protocol",
+        "document date",
+        "approver role",
+        "document version",
+        "SHA-256",
+        "documented rights-routing roles/channels",
+        "human verification"
+      ],
+      "currentStatus": "AWAITING_EXTERNAL_EVIDENCE"
+    },
+    {
+      "evidenceId": "E3",
+      "gateId": "DPIA_SCREENING",
+      "decisionOwner": "INSTITUTIONAL_CONTROLLER_WITH_DPO_OR_PRIVACY_FUNCTION_AS_APPLICABLE",
+      "decisionQuestion": "Il trattamento Tier 2 previsto richiede una DPIA?",
+      "requiredSubdecisions": [
+        "assess vulnerable/minor data subjects",
+        "assess scale/frequency",
+        "assess systematic monitoring",
+        "assess dataset combination",
+        "assess innovative technology/high-risk use",
+        "assess effects on rights/services",
+        "record rationale",
+        "define follow-up if DPIA is required"
+      ],
+      "permittedOutcomes": ["DPIA_REQUIRED", "DPIA_NOT_REQUIRED_WITH_RATIONALE"],
+      "technicalRecommendation": "NO_PREDETERMINED_OUTCOME",
+      "evidenceRequiredToVerify": [
+        "completed screening document",
+        "reasoned outcome",
+        "controller/approver role",
+        "DPO/privacy involvement recorded where applicable",
+        "date",
+        "stable reference/protocol",
+        "version",
+        "SHA-256",
+        "human verification"
+      ],
+      "conditionalConsequence": "If DPIA_REQUIRED, open a separate DPIA completion/approval gate before T2D may close.",
+      "currentStatus": "AWAITING_EXTERNAL_EVIDENCE"
+    },
+    {
+      "evidenceId": "E4",
+      "gateId": "PURPOSE_SPECIFIC_RETENTION_SCHEDULE",
+      "decisionOwner": "INSTITUTIONAL_CONTROLLER_OR_FORMALLY_AUTHORIZED_PRIVACY_FUNCTION",
+      "decisionQuestion": "Per ogni categoria di dato autorizzata in E1, quale finalità, evento iniziale, periodo o trigger di cancellazione e azione a scadenza vengono approvati?",
+      "requiredSubdecisions": [
+        "map every E1-approved category to a specific purpose",
+        "define retention clock start",
+        "define period or objective deletion trigger",
+        "define DELETE/ANONYMIZE/REVIEW action",
+        "define justified exception or legal retention obligation",
+        "assign responsible role",
+        "approve restore reconciliation principle"
+      ],
+      "permittedOutcomes": ["SCHEDULE_APPROVED", "SCHEDULE_REJECTED_OR_INCOMPLETE"],
+      "technicalRecommendation": "APPROVE_SHORTEST_PURPOSE_COMPATIBLE_PERIODS_WITH_OBJECTIVE_TRIGGERS",
+      "mandatoryRecoveryPrinciple": "RESTORE -> REAPPLY_DELETION_JOURNAL -> VERIFY -> REOPEN",
+      "evidenceRequiredToVerify": [
+        "approved retention matrix covering every E1-approved category",
+        "stable reference/protocol",
+        "document date",
+        "approver role",
+        "version",
+        "SHA-256",
+        "human verification"
+      ],
+      "currentStatus": "AWAITING_EXTERNAL_EVIDENCE"
+    }
+  ],
+  "closureRule": {
+    "allFourEvidenceReceiptsMustBeVerified": true,
+    "templatesAloneNeverCloseAGate": true,
+    "institutionalDecisionMayBeConditionalOrRejectUse": true,
+    "tier2MustRemainNotAdmittedUntilSeparateFinalHumanAdmissionDecision": true
+  }
+}
