@@ -27,7 +27,7 @@ export function AnonymousKnowledgeNoteForm() {
       <label><span>Contenuto</span><textarea name="text" rows={7} required placeholder="Incolla o scrivi qui solo contenuti privi di dati personali…" /></label>
       {privacyMessage ? <div className="knowledgeUploadFeedback error" role="alert"><div><strong>Contenuto non ammesso nel pilot anonimo</strong><p>{privacyMessage}</p></div></div> : null}
       <div className="pipelineHint"><span>Controllo privacy</span><b>→</b><span>Originale</span><b>→</b><span>Contenuto leggibile</span><b>→</b><span>Ricerca</span></div>
-      <button type="submit">Controlla, salva e organizza</button>
+      <button type="submit">Salva e organizza</button>
     </form>
   )
 }
