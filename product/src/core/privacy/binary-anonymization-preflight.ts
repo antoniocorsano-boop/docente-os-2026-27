@@ -1,6 +1,10 @@
 import mammoth from 'mammoth'
 import { extractText, getDocumentProxy } from 'unpdf'
 import { inspectFreeTextForPilot } from './anonymization-guard'
+import {
+  evaluateLocalVisualPreflight,
+  type LocalVisualPrivacyInspector,
+} from './local-visual-privacy-preflight'
 
 const PDF_MIME = 'application/pdf'
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -11,15 +15,25 @@ export type BinaryPrivacyPreflightCode =
   | 'privacy_preflight_failed'
 
 export type BinaryPrivacyPreflightResult =
-  | { allowed: true; mode: 'PDF_NATIVE_TEXT' | 'DOCX_TEXT_ONLY'; inspectedCharacters: number }
+  | {
+      allowed: true
+      mode: 'PDF_NATIVE_TEXT' | 'DOCX_TEXT_ONLY' | 'LOCAL_VISUAL_PREFLIGHT'
+      inspectedCharacters: number
+      inspectedRegions?: number
+    }
   | { allowed: false; code: BinaryPrivacyPreflightCode; reason: string }
 
 export async function inspectBinaryForAnonymousPilot(input: {
   bytes: Uint8Array
   mimeType: string
+  visualInspector?: LocalVisualPrivacyInspector
 }): Promise<BinaryPrivacyPreflightResult> {
   if (input.mimeType.startsWith('image/')) {
-    return unavailable('Le immagini richiedono un preflight visuale locale prima di poter essere ammesse nel pilot anonimo.')
+    return evaluateLocalVisualPreflight({
+      bytes: input.bytes,
+      mimeType: input.mimeType,
+      inspector: input.visualInspector,
+    })
   }
 
   if (input.mimeType === DOCX_MIME) return inspectDocx(input.bytes)
