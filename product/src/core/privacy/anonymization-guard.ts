@@ -17,7 +17,7 @@ const DIRECT_IDENTIFIER_PATTERNS: Array<[string, RegExp, string]> = [
   ['PHONE', /(?:\+39\s*)?(?:3\d{2}|0\d{1,3})[\s./-]*\d{5,8}\b/, 'numero di telefono'],
   ['DATE_OF_BIRTH', /\b(?:data\s+di\s+nascita|nato\s+il|nata\s+il)\b/i, 'dato di nascita'],
   ['ADDRESS', /\b(?:via|viale|piazza|corso|contrada|localit[aà])\s+[A-ZÀ-ÖØ-Ý][\p{L}'’.-]+(?:\s+[A-ZÀ-ÖØ-Ý][\p{L}'’.-]+)*\s*,?\s*\d{1,4}\b/iu, 'indirizzo postale'],
-  ['NAMED_STUDENT', /\b(?:alunno|alunna|studente|studentessa|nome)\s*[:\-]?\s+[A-ZÀ-Ü][a-zà-ÿ'’-]+(?:\s+[A-ZÀ-Ü][a-zà-ÿ'’-]+)+/u, 'nominativo di studente'],
+  ['NAMED_STUDENT', /\b(?:[Aa]lunno|[Aa]lunna|[Ss]tudente|[Ss]tudentessa|[Nn]ome)\s*[:\-]?\s+[A-ZÀ-Ü][a-zà-ÿ'’-]+(?:\s+[A-ZÀ-Ü][a-zà-ÿ'’-]+)+/u, 'nominativo di studente'],
 ]
 
 const HIGH_RISK_CONTEXT = /\b(?:nota\s+disciplinare|sanzione\s+disciplinare|sospensione|madre|padre|genitore|famiglia|affidamento|tutore)\b/i
