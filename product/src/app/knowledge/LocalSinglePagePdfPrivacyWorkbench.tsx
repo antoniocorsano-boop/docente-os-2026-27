@@ -77,26 +77,22 @@ function LocalSinglePagePdfPrivacyWorkbenchSession({ file, disabled, onPrepared 
 
   async function renderSinglePage(bytes: Uint8Array) {
     const pdf = await getDocumentProxy(bytes)
-    try {
-      if (pdf.numPages !== 1) throw new Error('Expected exactly one PDF page')
-      const page = await pdf.getPage(1)
-      const baseViewport = page.getViewport({ scale: 1 })
-      const maxDimension = 2200
-      const scale = Math.min(2, maxDimension / Math.max(baseViewport.width, baseViewport.height))
-      const viewport = page.getViewport({ scale })
-      const sourceCanvas = document.createElement('canvas')
-      sourceCanvas.width = Math.max(1, Math.round(viewport.width))
-      sourceCanvas.height = Math.max(1, Math.round(viewport.height))
-      const sourceContext = sourceCanvas.getContext('2d', { alpha: false })
-      if (!sourceContext) throw new Error('Canvas unavailable')
-      sourceContext.fillStyle = '#ffffff'
-      sourceContext.fillRect(0, 0, sourceCanvas.width, sourceCanvas.height)
-      await page.render({ canvas: sourceCanvas, canvasContext: sourceContext, viewport }).promise
-      sourceCanvasRef.current = sourceCanvas
-      drawSourceCanvas(sourceCanvas)
-    } finally {
-      await pdf.destroy()
-    }
+    if (pdf.numPages !== 1) throw new Error('Expected exactly one PDF page')
+    const page = await pdf.getPage(1)
+    const baseViewport = page.getViewport({ scale: 1 })
+    const maxDimension = 2200
+    const scale = Math.min(2, maxDimension / Math.max(baseViewport.width, baseViewport.height))
+    const viewport = page.getViewport({ scale })
+    const sourceCanvas = document.createElement('canvas')
+    sourceCanvas.width = Math.max(1, Math.round(viewport.width))
+    sourceCanvas.height = Math.max(1, Math.round(viewport.height))
+    const sourceContext = sourceCanvas.getContext('2d', { alpha: false })
+    if (!sourceContext) throw new Error('Canvas unavailable')
+    sourceContext.fillStyle = '#ffffff'
+    sourceContext.fillRect(0, 0, sourceCanvas.width, sourceCanvas.height)
+    await page.render({ canvas: sourceCanvas, canvasContext: sourceContext, viewport }).promise
+    sourceCanvasRef.current = sourceCanvas
+    drawSourceCanvas(sourceCanvas)
   }
 
   function drawSourceCanvas(sourceCanvas: HTMLCanvasElement) {
