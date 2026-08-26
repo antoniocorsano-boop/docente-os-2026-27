@@ -1,0 +1,46 @@
+name: P7 Anonymization Input Guard
+
+on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - 'ops/anonymization-input-guard.json'
+      - 'product/src/core/privacy/**'
+      - 'product/src/app/knowledge/**'
+      - 'product/src/app/api/knowledge/upload/route.ts'
+      - '.github/scripts/validate-anonymization-input-guard.mjs'
+      - '.github/workflows/p7-anonymization-input-guard.yml'
+  push:
+    branches: [develop]
+    paths:
+      - 'ops/anonymization-input-guard.json'
+      - 'product/src/core/privacy/**'
+      - 'product/src/app/knowledge/**'
+      - 'product/src/app/api/knowledge/upload/route.ts'
+      - '.github/scripts/validate-anonymization-input-guard.mjs'
+      - '.github/workflows/p7-anonymization-input-guard.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  validate-anonymization-input-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate governance contract
+        run: node .github/scripts/validate-anonymization-input-guard.mjs
+      - name: Install product dependencies
+        working-directory: product
+        run: npm ci
+      - name: Test privacy guard
+        working-directory: product
+        run: npx tsx --test src/core/privacy/anonymization-guard.test.ts
+      - name: Typecheck product
+        working-directory: product
+        run: npm run typecheck
