@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "gate": "T2D_DATA_NECESSITY_AND_ANONYMIZATION",
+  "state": "ANONYMIZATION_FIRST_BASELINE",
+  "tier2AdmissionEffect": "NONE",
+  "currentTier2AdmissionState": "NOT_ADMITTED",
+  "principle": "NO_PERSONAL_DATA_WHEN_FUNCTION_CAN_BE_DELIVERED_WITH_NON_PERSONAL_OR_ANONYMOUS_DATA",
+  "definitions": {
+    "D0": "NON_PERSONAL: curriculum, UDA, plans, timetable structure, class/section labels, teaching materials without personal content",
+    "D1": "ANONYMOUS_AGGREGATE: statistics that do not reasonably permit singling out or re-identification",
+    "D2": "PSEUDONYMOUS_PERSON_LEVEL: stable or linkable learner reference; still personal data and not anonymous",
+    "D3": "DIRECT_IDENTIFIER: name, email, phone, photo, date of birth, address or equivalent identifier",
+    "D4": "HIGH_RISK_PERSONAL_CONTEXT: disciplinary, family, socioeconomic or similarly sensitive contextual information",
+    "D5": "SPECIAL_CATEGORY_OR_EQUIVALENT_HIGH_SENSITIVITY: health, disability, diagnostic/clinical information or other special-category data"
+  },
+  "pilotPolicy": {
+    "defaultAllowedClasses": ["D0", "D1"],
+    "d2State": "NOT_ADMITTED_PENDING_SEPARATE_FUNCTIONAL_NECESSITY_GATE",
+    "d3State": "PROHIBITED",
+    "d4State": "PROHIBITED",
+    "d5State": "PROHIBITED_SEPARATE_GATE_REQUIRED",
+    "persistentStudentIdentityModel": "NONE",
+    "studentTableAllowed": false,
+    "stableLearnerIdentifierAllowed": false,
+    "serverSideStudentIdentityMappingAllowed": false,
+    "externalAiWithPersonalDataAllowed": false,
+    "freeTextMayBeAssumedAnonymous": false,
+    "uploadedDocumentsMayBeAssumedAnonymous": false
+  },
+  "anonymousAggregateRules": {
+    "minimumGroupSizeDefault": 5,
+    "smallCellSuppressionRequired": true,
+    "singleLearnerDrilldownAllowed": false,
+    "stableCrossDatasetLearnerLinkageAllowed": false,
+    "rareAttributeCombinationReviewRequired": true,
+    "freeTextInAggregateRecordsAllowed": false,
+    "note": "Group-size threshold is a conservative product rule, not a claim of universal legal anonymization. Re-identification risk must still be assessed in context."
+  },
+  "functionalNecessity": [
+    {
+      "function": "annual_plan_and_uda_design",
+      "requiredClass": "D0",
+      "personalDataNecessary": false,
+      "allowedExamples": ["grade", "section_code", "discipline", "curricular_objective", "UDA", "annual_plan_progress"]
+    },
+    {
+      "function": "planner_and_teacher_tasks",
+      "requiredClass": "D0",
+      "personalDataNecessary": false,
+      "allowedExamples": ["task_title_without_person_name", "due_date", "priority", "class_or_section_context"]
+    },
+    {
+      "function": "timetable_and_class_space",
+      "requiredClass": "D0",
+      "personalDataNecessary": false,
+      "allowedExamples": ["section", "discipline", "lesson_slot", "room", "presence_kind"]
+    },
+    {
+      "function": "knowledge_base_and_documents",
+      "requiredClass": "D0",
+      "personalDataNecessary": false,
+      "risk": "HIGH_INPUT_RISK",
+      "reason": "original_text, normalized_text, metadata and uploaded assets can contain accidental personal data",
+      "requiredControl": "PRE_INGESTION_WARNING_AND_FUTURE_CONTENT_SCAN_GATE"
+    },
+    {
+      "function": "class_progress_overview",
+      "requiredClass": "D1",
+      "personalDataNecessary": false,
+      "allowedExamples": ["count_completed", "percentage_at_stage", "group_level_distribution"],
+      "constraints": ["minimum_group_size_5", "small_cell_suppression", "no_person_level_rows"]
+    },
+    {
+      "function": "individual_learning_support",
+      "requiredClass": "D2",
+      "personalDataNecessary": "NOT_PROVEN_FOR_INITIAL_PILOT",
+      "pilotDecision": "DEFER",
+      "requiredBeforeAdmission": ["specific_user_story", "necessity_test", "less_intrusive_alternative_test", "institutional_E1_update", "retention_rule", "separate_human_admission_decision"]
+    },
+    {
+      "function": "official_grades_student_records_family_communications",
+      "requiredClass": "D3_OR_HIGHER",
+      "personalDataNecessary": true,
+      "pilotDecision": "OUT_OF_SCOPE",
+      "preferredAuthoritativeSystem": "INSTITUTIONAL_REGISTER_OR_EXISTING_SCHOOL_SYSTEM"
+    },
+    {
+      "function": "PEI_PDP_DSA_BES_HEALTH_OR_DIAGNOSTIC_CONTEXT",
+      "requiredClass": "D5",
+      "personalDataNecessary": true,
+      "pilotDecision": "PROHIBITED",
+      "requiredBeforeAnyFutureConsideration": "SEPARATE_SPECIAL_CATEGORY_GOVERNANCE_GATE"
+    }
+  ],
+  "currentSchemaAudit": {
+    "source": "product/src/lib/supabase/database.types.ts on develop",
+    "studentEntityFound": false,
+    "directStudentIdentityFieldsFound": false,
+    "highestRiskSurfaces": [
+      "planner_tasks.notes",
+      "calendar_events.note",
+      "calendar_days.note",
+      "experience_feedback.comment",
+      "annual_plan_sections.source_note",
+      "annual_plan_block_progress.evidence_note",
+      "teaching_assignments.source_note",
+      "timetable_slots.note",
+      "knowledge_assets.original_name",
+      "knowledge_assets.original_text",
+      "knowledge_assets.source_metadata",
+      "knowledge_documents.normalized_text",
+      "knowledge_documents.normalized_markdown",
+      "knowledge_documents.summary",
+      "knowledge_documents.extracted_data",
+      "knowledge_units.content",
+      "knowledge_units.structured_data",
+      "knowledge_links.metadata",
+      "knowledge_ingestion_runs.details",
+      "knowledge_ingestion_runs.error_message"
+    ],
+    "interpretation": "The schema is currently student-identity-free, but unrestricted text and document ingestion can introduce personal data accidentally."
+  },
+  "designRules": {
+    "anonymousByDefault": true,
+    "collectIdentityOnlyIfStrictlyNecessary": true,
+    "preferStructuredFieldsOverFreeTextForAnyFutureLearnerContext": true,
+    "doNotDuplicateOfficialStudentRegister": true,
+    "doNotStoreIdentityLookupInsideDocenteOs": true,
+    "doNotInferSensitiveReasonForSupportAction": true,
+    "doNotTreatPseudonymizationAsAnonymization": true,
+    "uploadAndFreeTextNeedPreventiveControlsBeforeTier2": true
+  },
+  "nextTechnicalControls": [
+    "ANON_INPUT_GUARD: warnings and classification before KB/document ingestion",
+    "ANON_FREE_TEXT_GUARD: warnings for free-text surfaces that may receive names or sensitive details",
+    "ANON_AGGREGATE_GUARD: minimum group size and small-cell suppression for future analytics",
+    "D2_FUNCTIONAL_NECESSITY_GATE: no persistent learner reference until a concrete function proves necessity"
+  ],
+  "institutionalImpact": {
+    "recommendedE1Scope": "D0_D1_ONLY_FOR_INITIAL_SCHOOL_PILOT",
+    "d2RequiresE1Amendment": true,
+    "d3ToD5Excluded": true,
+    "tier2StillNotAdmitted": true
+  }
+}
