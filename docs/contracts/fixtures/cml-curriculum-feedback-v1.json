@@ -1,0 +1,60 @@
+{
+  "contract": "CML_INTEROP_V1",
+  "messageId": "feedback-001",
+  "messageType": "CURRICULUM_FEEDBACK_SUBMITTED",
+  "sourceProduct": "DOCENTE_OS",
+  "sourceVersion": "docente-os-2026-27",
+  "emittedAt": "2026-08-27T21:00:00.000Z",
+  "payloadVersion": 1,
+  "privacyClass": "PROFESSIONAL_NON_PERSONAL",
+  "provenance": {
+    "sourceRefs": [
+      {
+        "namespace": "docente.os",
+        "entityType": "CurricularContext",
+        "entityId": "ctx-tech-1a-2026",
+        "versionId": "deadbeef"
+      },
+      {
+        "namespace": "curmanlight.arena",
+        "entityType": "CurriculumVersion",
+        "entityId": "technology-grade-1",
+        "versionId": "2026-27"
+      },
+      {
+        "namespace": "docente.os",
+        "entityType": "AnnualPlanBlock",
+        "entityId": "section-1a:B04",
+        "versionId": "2026-27"
+      }
+    ],
+    "generatedBy": "HUMAN",
+    "humanConfirmed": true,
+    "note": "Teacher-confirmed professional observation; no student personal data."
+  },
+  "payload": {
+    "curriculumVersionRef": {
+      "namespace": "curmanlight.arena",
+      "entityType": "CurriculumVersion",
+      "entityId": "technology-grade-1",
+      "versionId": "2026-27"
+    },
+    "alignedNodeRefs": [
+      {
+        "namespace": "curmanlight.arena",
+        "entityType": "CurriculumNode",
+        "entityId": "node-001"
+      }
+    ],
+    "summary": "Il prerequisito grafico va anticipato prima dell’attività di modellazione.",
+    "evidenceRefs": [
+      {
+        "namespace": "docente.os",
+        "entityType": "AnnualPlanBlock",
+        "entityId": "section-1a:B04",
+        "versionId": "2026-27"
+      }
+    ],
+    "teacherConfirmed": true
+  }
+}
