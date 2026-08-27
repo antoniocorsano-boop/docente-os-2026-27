@@ -46,6 +46,7 @@
         "entityId": "node-001"
       }
     ],
+    "category": "PREREQUISITE",
     "summary": "Il prerequisito grafico va anticipato prima dell’attività di modellazione.",
     "evidenceRefs": [
       {
