@@ -96,7 +96,7 @@ export class SupabaseCurriculumFeedbackRelayRepository {
       sourceHandoffFootprintHash: requiredString(data.source_handoff_footprint_hash, 'sourceHandoffFootprintHash'),
       sourceFrameworkMessageId: requiredString(data.source_framework_message_id, 'sourceFrameworkMessageId'),
       acceptedAt: requiredString(data.accepted_at, 'acceptedAt'),
-      curricularContext: validation.value,
+      curricularContext: data.curricular_context as unknown as CurriculumContextForClassV1,
     }
   }
 
