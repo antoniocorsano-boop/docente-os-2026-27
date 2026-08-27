@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
@@ -52,6 +53,13 @@ export default async function AnnualPlanPage({
       contentClassName="annualPlanSurface"
     >
       <AnnualPlanClient initialSnapshot={initialSnapshot} academicYearId={context.academicYear.id} initialSectionId={initialSectionId} />
+      <section className="humanTaskSecondary annualManagementPanel" aria-label="Collegamento con CurManLight Arena">
+        <div>
+          <strong>Hai un’osservazione sul curricolo?</strong>
+          <p>Puoi condividerla volontariamente partendo dal quadro curricolare già accettato, senza inviare dati degli studenti.</p>
+        </div>
+        <Link className="secondaryButton" href="/piano-annuale/feedback">Condividi un’osservazione sul curricolo</Link>
+      </section>
     </AppShell>
   )
 }
