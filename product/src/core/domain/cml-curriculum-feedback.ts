@@ -49,6 +49,7 @@ export type CurriculumFeedbackEnvelopeV1 = {
   payload: {
     curriculumVersionRef: CmlCanonicalRef
     alignedNodeRefs: CmlCanonicalRef[]
+    category: CurriculumFeedbackCategory
     summary: string
     evidenceRefs: CmlCanonicalRef[]
     teacherConfirmed: true
@@ -174,6 +175,7 @@ export function submitCurriculumFeedback(input: {
     payload: {
       curriculumVersionRef: { ...preview.baseline.curriculumVersionRef },
       alignedNodeRefs: preview.alignedNodeRefs.map((ref) => ({ ...ref })),
+      category: preview.category,
       summary: preview.summary,
       evidenceRefs: preview.evidenceRefs.map((ref) => ({ ...ref })),
       teacherConfirmed: true,
