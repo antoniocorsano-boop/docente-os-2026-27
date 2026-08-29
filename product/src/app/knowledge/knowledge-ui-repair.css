@@ -1,0 +1,18 @@
+.knowledgeCaptureDisclosure>summary:focus-visible,
+.knowledgeRecentMore>summary:focus-visible{
+  outline:3px solid rgba(37,99,235,.3);
+  outline-offset:2px;
+}
+
+.knowledgeCaptureForm button,
+.knowledgeSearch button,
+.knowledgeUploadForm>button,
+.primaryCandidateAction,
+.secondaryCandidateAction,
+.knowledgeFilters select,
+.knowledgeFilters input,
+.knowledgeFilters button,
+.knowledgeRecentMore summary,
+.selectedFileAction{
+  min-height:44px!important;
+}
