@@ -1,20 +1,16 @@
 # DOCENTE OS — Audit UI Engineering: Conoscenza
 
 Data: 2026-08-29  
-Baseline: `develop@6dde1fd3aae5411a2474f896b461c7c077e6961c`  
-Tipo: `AUDIT`  
-Stato: `STATIC_AUDIT_COMPLETE / LIVE_BROWSER_AND_HVA_PENDING`
+Baseline iniziale: `develop@6dde1fd3aae5411a2474f896b461c7c077e6961c`  
+Revisione post-merge: `develop@ebdb2aa77ad68f1d65264671b4f61185b0ba2205`  
+Tipo: `AUDIT + LOCAL_REPAIR`  
+Stato: `STATIC_AUDIT_CORRECTED / LOCAL_REPAIR_IMPLEMENTED / LIVE_BROWSER_AND_HVA_PENDING`
 
 ## 1. Perimetro
 
-Superficie canonica esaminata:
+Superficie canonica esaminata: `product/src/app/knowledge/` con attenzione a pagina principale, acquisizione, filtri, lista recente, uploader e fogli CSS locali.
 
-- `product/src/app/knowledge/page.tsx`;
-- `product/src/app/knowledge/knowledge.css`;
-- `product/src/app/globals.css`;
-- struttura dei moduli `product/src/app/knowledge/`.
-
-Questo audit non modifica la UI e non promuove alcun gate. La verifica live in browser e HVA restano separati.
+La revisione successiva al primo audit ha corretto tre omissioni: stato della matrice ancora proposta, focus invisibile sul `summary` di acquisizione e inventario incompleto dei target tattili.
 
 ## 2. Human Task
 
@@ -22,147 +18,80 @@ Questo audit non modifica la UI e non promuove alcun gate. La verifica live in b
 
 **Azione primaria:** cercare nella Conoscenza.
 
-**Azione secondaria:** aggiungere un nuovo contenuto, esposta tramite divulgazione progressiva.
+**Azione secondaria:** aggiungere un nuovo contenuto tramite divulgazione progressiva.
 
-**Condizioni rilevanti:**
+Restano invariati i confini: originale preservato, provenienza leggibile, nessuna promozione automatica di candidati operativi, errori recuperabili e conferma umana dove prevista.
 
-- i contenuti appartengono allo spazio docente corrente;
-- l'originale deve restare preservato;
-- risultati elaborati e candidati operativi non acquisiscono autorità senza conferma umana;
-- errori di caricamento devono dichiarare ciò che resta sicuro e l'azione successiva possibile.
+## 3. Esito corretto
 
-## 3. Esito sintetico
-
-| Criterio | Esito | Evidenza sintetica |
+| Criterio | Esito | Evidenza |
 |---|---|---|
-| Task clarity | PASS | Ricerca resa dominante; acquisizione secondaria in `details` |
-| Visual hierarchy | PASS | Intestazione, ricerca, acquisizione e recenti hanno gerarchia leggibile |
-| Canonical reuse | PARTIAL | Uso consistente dei token principali, ma resta CSS locale con valori cromatici e misure ad hoc |
-| Interaction states | PARTIAL | Focus globale presente; hover e feedback presenti; copertura sistematica loading/disabled/authority non esplicitata per tutti i controlli |
-| Mobile behavior | PASS_STATIC | Breakpoint dedicato, ricerca a colonna singola, righe recenti adattate; verifica live ancora necessaria |
-| Accessibility | PARTIAL | `focus-visible` globale e diversi `aria-label`; campo di ricerca principale affidato al placeholder; alcuni target locali sotto 44 px |
-| Authority legibility | PASS | La pagina dichiara esplicitamente la conferma umana e preserva la distinzione tra fonte e azione operativa |
-| Error/empty quality | PASS | Errori di caricamento descrivono fallimento, stato preservato e possibilità di riprovare; empty state non è trattato come errore |
-| Visual debt | PARTIAL | Più fogli CSS locali per una stessa superficie; colori letterali e componenti locali ancora presenti |
-| Intervention scope | LOCAL_REPAIR | Non emerge necessità di redesign della superficie |
+| Task clarity | PASS | Ricerca dominante, acquisizione secondaria |
+| Visual hierarchy | PASS | Anatomia coerente e leggibile |
+| Canonical reuse | PARTIAL | Token condivisi presenti, resta CSS locale |
+| Interaction states | PARTIAL | Stati canonici principali presenti; runtime loading/submit da verificare |
+| Mobile behavior | PASS_STATIC | Breakpoint e ricomposizione presenti; verifica live pendente |
+| Accessibility | PARTIAL_REPAIRED | Riparati focus disclosure, etichetta ricerca e target tattili; verifica browser pendente |
+| Authority legibility | PASS | Conferma umana e provenienza restano esplicite |
+| Error/empty quality | PASS | Errori recuperabili e empty state distinti |
+| Visual debt | PARTIAL | Colori e misure locali da convergere in tranche future |
+| Intervention scope | LOCAL_REPAIR | Nessuna evidenza per redesign della superficie |
 
-## 4. Evidenze e rilievi
+## 4. Correzioni rispetto al primo audit
 
-### 4.1 Task e gerarchia — PASS
+### 4.1 Human Interaction State Matrix
 
-La superficie mette `Cerca nella Conoscenza` prima di `Aggiungi un contenuto`. L'acquisizione è contenuta in un `details` e si apre automaticamente quando la libreria è vuota o quando deve essere mostrato un messaggio relativo al caricamento.
+`docs/design/HUMAN_INTERACTION_STATE_MATRIX.md` resta `PROPOSED CANONICAL EXTENSION`.
 
-Questa organizzazione è coerente con il compito umano: consultare prima, acquisire quando necessario.
+Pertanto la matrice può essere usata solo come **strumento advisory** finché non viene formalmente promossa e indicizzata nell'ordine documentale canonico. Non costituisce un nuovo gate obbligatorio e non modifica la Definition of Done canonica.
 
-**Nessun redesign strutturale raccomandato.**
+### 4.2 Focus della disclosure
 
-### 4.2 Linguaggio e sicurezza — PASS
+Il primo audit aveva considerato sufficiente il focus globale, ma `knowledge-disclosure.css` applicava `outline:0` al `summary` di `Aggiungi un contenuto`, mentre la regola globale copriva soltanto `button`, `input` e `a`.
 
-Sono presenti tre rassicurazioni leggibili:
+Correzione implementata: stile `:focus-visible` esplicito per la disclosure di acquisizione e per `Mostra altri`.
 
-- originale preservato;
-- provenienza leggibile;
-- conferma umana per rendere operative azioni e scadenze.
+### 4.3 Target tattili
 
-I messaggi di errore principali sono già formulati in modo recuperabile. Esempio: un caricamento fallito dichiara che nessun contenuto è stato sostituito e invita a riprovare.
+L'inventario iniziale era incompleto. Oltre ai pulsanti già rilevati, risultavano sotto il minimo di 44 px anche:
 
-### 4.3 Accessibilità — PARTIAL
+- `Cambia` / `Rimuovi` dell'uploader (`.selectedFileAction`);
+- filtri di Conoscenza a larghezze intermedie;
+- disclosure `Mostra altri` prima del breakpoint mobile;
+- azioni candidate a 38 px;
+- pulsanti ricerca/acquisizione a 42 px.
 
-Aspetti conformi:
+Correzione implementata: override locale a `min-height:44px` per questi controlli, senza modificare struttura o semantica.
 
-- `button`, `input` e `a` ricevono un `focus-visible` globale;
-- i filtri hanno `aria-label` espliciti;
-- l'acquisizione usa `details/summary`, quindi conserva una semantica nativa;
-- è presente gestione `prefers-reduced-motion` globale.
+### 4.4 Etichetta ricerca
 
-Debito rilevato:
+Il campo `q` aveva il placeholder come unico nome locale. È stato aggiunto `aria-label="Cerca nella Conoscenza"` senza alterare l'anatomia visiva.
 
-1. il campo principale `q` usa il placeholder come unica etichetta visibile/accessibile nel markup locale;
-2. `.knowledgeCaptureForm button`, `.knowledgeSearch button` e `.knowledgeUploadForm>button` hanno `min-height:42px`;
-3. `.primaryCandidateAction` e `.secondaryCandidateAction` hanno `min-height:38px`;
-4. il contratto UI Engineering adotta 44 px come minimo tattile canonico.
+## 5. Stato delle interazioni
 
-**Intervento raccomandato:** correzione locale dei target e aggiunta di un'etichetta accessibile esplicita alla ricerca senza modificare l'anatomia della pagina.
+Sono osservabili o coperti staticamente `DEFAULT`, `HOVER`, `FOCUS_VISIBLE`, `ERROR`, `SUCCESS`, `EMPTY` e stati di elaborazione dell'asset.
 
-### 4.4 Coerenza del sistema grafico — PARTIAL
-
-La superficie usa correttamente molti token condivisi (`--surface`, `--line`, `--brand`, `--success`, `--danger`, raggi canonici), ma conserva valori letterali come:
-
-- `#f0d9a8`;
-- `#fff8e8`;
-- `#76521a`;
-- `#eef2f7`;
-- `#8ab4ff`;
-- `#f7faff`;
-- `#fbfcfe`.
-
-Non sono necessariamente difetti visivi, ma rappresentano **debito di convergenza**: un futuro intervento deve prima verificare se tali ruoli sono già coperti da token semantici canonici.
-
-Non è autorizzata una sostituzione massiva dei colori in questa tranche.
-
-### 4.5 Stati d'interazione — PARTIAL
-
-Sono osservabili:
-
-- `DEFAULT`;
-- `HOVER` per più elementi;
-- `FOCUS_VISIBLE` globale;
-- `ERROR` tramite messaggistica e pillole;
-- `SUCCESS` tramite token e stati elaborativi;
-- `EMPTY` con messaggi dedicati;
-- stati di elaborazione tramite `knowledgeProcessingStatus`.
-
-Da verificare in una tranche runtime:
+Restano da verificare in runtime:
 
 - `LOADING/IN_PROGRESS` durante ricerca, upload e rielaborazione;
-- comportamento dei controlli durante submit multipli;
-- rappresentazione di eventuali `DISABLED`;
-- distinzione visuale e testuale di stati bloccati per autorità, se applicabili alle azioni della pagina di dettaglio.
+- comportamento in caso di submit multipli;
+- eventuali controlli `DISABLED`;
+- stati bloccati per autorità nelle azioni della pagina dettaglio, se applicabili.
 
-Questi punti non autorizzano modifiche alla semantica delle azioni.
+Qualunque lettura multidimensionale visual/task/authority/data resta advisory finché la matrice non è promossa.
 
-### 4.6 Mobile — PASS_STATIC
+## 6. Decisione
 
-Il CSS prevede esplicitamente:
+**Classificazione:** `LOCAL_REPAIR_IMPLEMENTED`.
 
-- passaggio della griglia principale a una colonna;
-- ricerca con pulsante a larghezza piena;
-- righe dei contenuti recenti ricomposte su due colonne logiche;
-- metadati spostati su riga secondaria;
-- riduzione controllata di padding e altezza dei contenuti;
-- area inferiore compatibile con la navigazione mobile.
+Nessun redesign strutturale è autorizzato o necessario sulla base dell'audit corrente.
 
-L'esito resta `PASS_STATIC`, non `PASS_LIVE`, finché la Beta non viene verificata in browser reale a viewport mobile.
+## 7. Gate aperti
 
-## 5. Classificazione Human Interaction State Matrix
-
-| Elemento | Visual | Task | Authority | Data | Esito |
-|---|---|---|---|---|---|
-| Ricerca | DEFAULT / FOCUS | AVAILABLE | ALLOWED | AVAILABLE | PASS |
-| Nessun risultato | DEFAULT | AVAILABLE | ALLOWED | EMPTY | PASS |
-| Aggiungi contenuto | DEFAULT / OPEN | AVAILABLE | ALLOWED | EMPTY/AVAILABLE | PASS |
-| Feedback upload fallito | ERROR | RECOVERABLE_ERROR | ALLOWED | FAILED | PASS |
-| Elaborazione asset | stato tramite pillola | IN_PROGRESS/COMPLETED | n/a | PROCESSING/VERIFIED-like | PARTIAL — verificare runtime |
-| Azioni candidate nel dettaglio | variabile | REQUIRES_CONFIRMATION | ALLOWED_WITH_CONFIRMATION | PROVISIONAL | PARTIAL — audit dettaglio separato necessario |
-
-## 6. Decisione di audit
-
-**Classificazione:** `LOCAL_REPAIR`.
-
-Non risultano elementi sufficienti per dichiarare `SURFACE_REDESIGN_CANDIDATE`.
-
-Interventi ammessi nella tranche successiva:
-
-1. portare i target interattivi locali rilevanti ad almeno 44 px;
-2. aggiungere un'etichetta accessibile esplicita alla ricerca principale;
-3. verificare la copertura loading/submit tramite test e browser;
-4. registrare i valori cromatici locali candidati alla futura convergenza dei token, senza refactoring indiscriminato.
-
-## 7. Gate ancora aperti
-
+- `STRUCTURAL_TESTS`: PENDING_CI;
 - `LIVE_BROWSER_DESKTOP`: NOT_RUN;
 - `LIVE_BROWSER_MOBILE`: NOT_RUN;
 - `INTERACTION_STATE_RUNTIME`: NOT_RUN;
 - `HVA`: NOT_RUN.
 
-Nessuno di questi gate può essere promosso dal presente audit statico.
+La riparazione non promuove nessuno di questi gate.
