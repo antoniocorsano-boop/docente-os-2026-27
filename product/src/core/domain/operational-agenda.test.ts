@@ -71,8 +71,8 @@ test('il backup conserva uno snapshot minimo per rendere raggiungibile lo storic
   const backup = makeOperationalAgendaBackup(state, '2026-09-02T13:00:00.000Z')
 
   const restored = parseOperationalAgendaBackup(backup, 'user-1', 'workspace-1', 'year-1')
-  assert.equal(restored.eventWorkspaces['event-1'].eventSnapshot?.title, 'Incontro per ambiti disciplinari')
-  assert.equal(restored.eventWorkspaces['event-1'].eventSnapshot?.startsOn, '2026-09-03')
+  assert.equal(restored.eventWorkspaces['event-1'].eventSnapshot.title, 'Incontro per ambiti disciplinari')
+  assert.equal(restored.eventWorkspaces['event-1'].eventSnapshot.startsOn, '2026-09-03')
 })
 
 test('rifiuta un workspace evento annidato incompleto prima del ripristino', () => {
@@ -86,6 +86,21 @@ test('rifiuta un workspace evento annidato incompleto prima del ripristino', () 
   assert.throws(
     () => parseOperationalAgendaBackup(backup, 'user-1', 'workspace-1', 'year-1'),
     /Contenuto workspace locale incompleto/,
+  )
+})
+
+test('rifiuta workspace portabili senza snapshot evento', () => {
+  const now = '2026-09-02T12:00:00.000Z'
+  const state = createOperationalAgendaState('user-1', 'workspace-1', 'year-1', now)
+  state.eventWorkspaces['event-1'] = createEventWorkspace('event-1', now, snapshotOperationalAgendaEvent(event()))
+  const backup = structuredClone(makeOperationalAgendaBackup(state, '2026-09-02T13:00:00.000Z')) as unknown as {
+    state: { eventWorkspaces: Record<string, { eventSnapshot: unknown }> }
+  }
+  backup.state.eventWorkspaces['event-1'].eventSnapshot = null
+
+  assert.throws(
+    () => parseOperationalAgendaBackup(backup, 'user-1', 'workspace-1', 'year-1'),
+    /Snapshot evento locale mancante o malformato/,
   )
 })
 
@@ -124,4 +139,45 @@ test('rifiuta checklist e decisioni annidate con forme non valide', () => {
   }
   invalidDecision.state.eventWorkspaces['event-1'].decisions[0].status = 'AUTO_APPROVED'
   assert.throws(() => parseOperationalAgendaBackup(invalidDecision, 'user-1', 'workspace-1', 'year-1'), /decisione 1 non valida/)
+})
+
+test('rifiuta identificatori duplicati nelle collezioni annidate', () => {
+  const now = '2026-09-02T12:00:00.000Z'
+  const base = createOperationalAgendaState('user-1', 'workspace-1', 'year-1', now)
+  const workspace = createEventWorkspace('event-1', now, snapshotOperationalAgendaEvent(event()))
+  const task = {
+    id: 'task-1',
+    eventId: 'event-1',
+    suggestionId: 'curriculum-review',
+    title: 'Verifica il curricolo',
+    done: false,
+    createdAt: now,
+    updatedAt: now,
+  }
+  const decision = {
+    id: 'decision-1',
+    eventId: 'event-1',
+    title: 'Modello UDA comune',
+    status: 'TO_ACQUIRE' as const,
+    note: null,
+    createdAt: now,
+    updatedAt: now,
+  }
+  workspace.checklist.push(task, { ...task, title: 'Seconda attività con ID duplicato' })
+  workspace.decisions.push(decision, { ...decision, title: 'Seconda decisione con ID duplicato' })
+  base.eventWorkspaces['event-1'] = workspace
+
+  const duplicateTasks = structuredClone(makeOperationalAgendaBackup(base, '2026-09-02T13:00:00.000Z'))
+  duplicateTasks.state.eventWorkspaces['event-1'].decisions = [decision]
+  assert.throws(
+    () => parseOperationalAgendaBackup(duplicateTasks, 'user-1', 'workspace-1', 'year-1'),
+    /Identificatore attività locale duplicato/,
+  )
+
+  const duplicateDecisions = structuredClone(makeOperationalAgendaBackup(base, '2026-09-02T13:00:00.000Z'))
+  duplicateDecisions.state.eventWorkspaces['event-1'].checklist = [task]
+  assert.throws(
+    () => parseOperationalAgendaBackup(duplicateDecisions, 'user-1', 'workspace-1', 'year-1'),
+    /Identificatore decisione duplicato/,
+  )
 })
