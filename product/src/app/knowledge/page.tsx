@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
-import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
+import { SupabaseScaledKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-scaled-knowledge-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import {
   CONTENT_CATEGORIES,
@@ -27,7 +27,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
   const context = await workspaceRepository.getCurrentContext()
   if (!context) redirect('/login')
 
-  const repository = new SupabaseKnowledgeRepository()
+  const repository = new SupabaseScaledKnowledgeRepository()
   const [recent, results] = await Promise.all([
     repository.listRecent(context.workspace.id, 50, filters),
     query ? repository.search(context.workspace.id, query, 30) : Promise.resolve([]),
