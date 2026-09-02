@@ -79,6 +79,7 @@ export default async function CalendarPage() {
       <OperationalAgendaPanel
         workspaceId={context.workspace.id}
         academicYearId={context.academicYear.id}
+        today={today}
         events={snapshot.events}
       />
 
