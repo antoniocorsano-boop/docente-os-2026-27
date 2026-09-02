@@ -43,6 +43,7 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
   const [decisionTitle, setDecisionTitle] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [importRevision, setImportRevision] = useState(0)
   const importRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -241,6 +242,7 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
       const imported = parseOperationalAgendaBackup(raw, userId, workspaceId, academicYearId)
       await repository.replace(userId, workspaceId, academicYearId, imported)
       setState(imported)
+      setImportRevision((revision) => revision + 1)
       setError(null)
       setMessage('Backup locale importato.')
     } catch (reason) {
@@ -332,7 +334,7 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
 
             <article className="operationalCard">
               <div className="operationalCardTitle"><span>04</span><div><h3>Appunti della riunione</h3><p>Bozza privata locale; non modifica Calendario, Planner o progettazione.</p></div></div>
-              <LocalNote initialValue={eventWorkspace?.note ?? ''} onSave={saveNote} />
+              <LocalNote key={`${selectedEvent.id}:${importRevision}`} initialValue={eventWorkspace?.note ?? ''} onSave={saveNote} />
             </article>
           </div>
         </>
@@ -352,7 +354,6 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
 
 function LocalNote({ initialValue, onSave }: { initialValue: string; onSave: (value: string) => Promise<void> }) {
   const [value, setValue] = useState(initialValue)
-  useEffect(() => setValue(initialValue), [initialValue])
   return <div className="operationalNote"><textarea value={value} onChange={(event) => setValue(event.target.value)} maxLength={8000} rows={7} placeholder="Annota decisioni, modifiche richieste, responsabilità, scadenze e punti da verificare…" /><button type="button" onClick={() => onSave(value)}>Salva appunti</button></div>
 }
 
