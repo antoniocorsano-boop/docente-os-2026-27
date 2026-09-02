@@ -43,7 +43,7 @@ L'archivio usa IndexedDB:
 
 L'archivio locale contiene esclusivamente preparazioni, checklist, decisioni locali e appunti. Le entità calendario continuano a provenire dal repository Calendario.
 
-Ogni workspace evento locale conserva anche uno snapshot minimo dell'impegno (`id`, titolo, tipo, date, orari, nota e riferimento fonte). Lo snapshot non acquisisce autorità sul Calendario: serve soltanto a rendere nuovamente leggibili appunti e decisioni locali quando l'evento è concluso o non è più presente nel Calendario canonico.
+Ogni workspace evento locale conserva obbligatoriamente uno snapshot minimo dell'impegno (`id`, titolo, tipo, date, orari, nota e riferimento fonte). Lo snapshot non acquisisce autorità sul Calendario: serve soltanto a rendere nuovamente leggibili appunti e decisioni locali quando l'evento è concluso o non è più presente nel Calendario canonico. Uno stato o backup con workspace privo di snapshot viene rifiutato fail-closed.
 
 Le modifiche ordinarie non sostituiscono più ciecamente l'intero record a partire dallo stato React. Ogni mutazione usa una transazione IndexedDB `readwrite`, rilegge lo stato più recente nello stesso object store, applica la modifica e scrive il risultato nella stessa transazione. Le transazioni sullo store serializzano anche modifiche provenienti da schede browser differenti e riducono il rischio di lost update.
 
@@ -61,12 +61,15 @@ L'importazione fallisce prima di sostituire IndexedDB se:
 - la versione non è supportata;
 - utente, workspace o anno scolastico non corrispondono al contesto corrente;
 - timestamp o identificatori non sono validi;
-- un workspace evento annidato è incompleto;
-- checklist, decisioni, stati o snapshot evento hanno forme non valide.
+- un workspace evento annidato è incompleto o privo del proprio snapshot;
+- checklist, decisioni, stati o snapshot evento hanno forme non valide;
+- una checklist o una collezione di decisioni contiene identificatori duplicati.
 
 La validazione è fail-closed e riguarda l'intero albero importato, non soltanto i campi esterni. Questo evita che un backup sintatticamente valido ma strutturalmente corrotto renda inaccessibile l'agenda locale dopo il ripristino.
 
-Dopo l'importazione, gli editor locali sincronizzano il contenuto visualizzato con lo stato ripristinato prima di consentire un nuovo salvataggio.
+Durante il `replace` del backup l'applicazione entra in stato di importazione: un guard sincrono impedisce nuove mutazioni locali e i controlli di modifica, salvataggio, export e secondo import vengono disabilitati. In questo modo un valore catturato dalla UI precedente non può essere accodato dopo il ripristino e sovrascrivere lo stato appena importato.
+
+Dopo l'importazione, l'editor degli appunti viene rimontato sulla revisione importata prima di consentire un nuovo salvataggio.
 
 ## 5. Motore delle proposte
 
@@ -115,8 +118,11 @@ V1 è accettabile quando:
 3. nessuna proposta produce scritture canoniche automatiche;
 4. il backup è versionato e vincolato allo stesso utente/workspace/anno;
 5. l'intero contenuto annidato del backup viene validato prima del ripristino;
-6. le mutazioni ordinarie sono serializzate su IndexedDB e derivano dallo stato più recente disponibile;
-7. l'assenza o la corruzione di IndexedDB viene mostrata come errore esplicito, senza fallback silenzioso a memoria volatile;
-8. esportazione e importazione restano accessibili anche senza eventi futuri;
-9. gli eventi conclusi con lavoro locale e gli snapshot di eventi rimossi restano raggiungibili come storico locale;
-10. l'importazione aggiorna gli editor locali senza consentire che uno stato React precedente sovrascriva il contenuto ripristinato.
+6. ogni workspace locale possiede uno snapshot evento valido e resta quindi ricostruibile nello storico;
+7. gli identificatori di checklist e decisioni sono univoci nelle rispettive collezioni;
+8. le mutazioni ordinarie sono serializzate su IndexedDB e derivano dallo stato più recente disponibile;
+9. durante il ripristino nessuna mutazione locale può essere accodata sopra lo stato importato;
+10. l'assenza o la corruzione di IndexedDB viene mostrata come errore esplicito, senza fallback silenzioso a memoria volatile;
+11. esportazione e importazione restano accessibili anche senza eventi futuri;
+12. gli eventi conclusi con lavoro locale e gli snapshot di eventi rimossi restano raggiungibili come storico locale;
+13. l'importazione aggiorna gli editor locali senza consentire che uno stato React precedente sovrascriva il contenuto ripristinato.
