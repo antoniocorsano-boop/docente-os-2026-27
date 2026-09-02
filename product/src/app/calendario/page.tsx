@@ -9,6 +9,7 @@ import {
 import { SupabaseCalendarRepository } from '@/core/infrastructure/supabase/supabase-calendar-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { createClient } from '@/lib/supabase/server'
 import {
   createCalendarEvent,
   deleteCalendarDay,
@@ -32,6 +33,11 @@ export default async function CalendarPage() {
   const context = await new SupabaseWorkspaceRepository().getCurrentContext()
   if (!context) redirect('/login')
   if (!context.academicYear) redirect('/')
+
+  const supabase = await createClient()
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+  const userId = claimsData?.claims?.sub
+  if (claimsError || !userId) redirect('/login')
 
   const [settings, snapshot] = await Promise.all([
     new SupabaseTeacherSettingsRepository().getOrCreate(context.workspace.id, context.academicYear.id),
@@ -77,6 +83,7 @@ export default async function CalendarPage() {
       )}
 
       <OperationalAgendaPanel
+        userId={userId}
         workspaceId={context.workspace.id}
         academicYearId={context.academicYear.id}
         today={today}
