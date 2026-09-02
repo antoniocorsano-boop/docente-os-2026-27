@@ -1,7 +1,6 @@
 'use client'
 
 import {
-  createOperationalAgendaState,
   validateOperationalAgendaState,
   type OperationalAgendaState,
 } from '@/core/domain/operational-agenda'
@@ -12,6 +11,13 @@ import {
   withSharedOperationalAgendaMutationLock,
   type OperationalAgendaLockManager,
 } from './operational-agenda-context-lock'
+import {
+  assertOperationalAgendaRestoreGeneration,
+  makeOperationalAgendaMutationStorageRecord,
+  makeOperationalAgendaRestoreStorageRecord,
+  readOperationalAgendaStorageRecord,
+  type OperationalAgendaRepositorySnapshot,
+} from './operational-agenda-storage-record'
 
 const DATABASE_NAME = 'docente-os-local'
 const DATABASE_VERSION = 1
@@ -21,12 +27,15 @@ export class IndexedDbOperationalAgendaRepository {
   constructor(private readonly lockManager: OperationalAgendaLockManager | null = browserOperationalAgendaLockManager()) {}
 
   async get(userId: string, workspaceId: string, academicYearId: string): Promise<OperationalAgendaState> {
+    return (await this.getSnapshot(userId, workspaceId, academicYearId)).state
+  }
+
+  async getSnapshot(userId: string, workspaceId: string, academicYearId: string): Promise<OperationalAgendaRepositorySnapshot> {
     const database = await openDatabase()
     try {
       const key = contextKey(userId, workspaceId, academicYearId)
       const stored = await request<unknown>(database.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key))
-      if (stored === undefined) return createOperationalAgendaState(userId, workspaceId, academicYearId)
-      return validateOperationalAgendaState(stored, userId, workspaceId, academicYearId)
+      return readOperationalAgendaStorageRecord(stored, userId, workspaceId, academicYearId)
     } finally {
       database.close()
     }
@@ -36,6 +45,7 @@ export class IndexedDbOperationalAgendaRepository {
     userId: string,
     workspaceId: string,
     academicYearId: string,
+    expectedRestoreGeneration: number,
     mutation: (current: OperationalAgendaState) => OperationalAgendaState,
   ): Promise<OperationalAgendaState> {
     const lockName = operationalAgendaContextLockName(userId, workspaceId, academicYearId)
@@ -46,11 +56,10 @@ export class IndexedDbOperationalAgendaRepository {
         const store = transaction.objectStore(STORE_NAME)
         const key = contextKey(userId, workspaceId, academicYearId)
         const stored = await request<unknown>(store.get(key))
-        const current = stored === undefined
-          ? createOperationalAgendaState(userId, workspaceId, academicYearId)
-          : validateOperationalAgendaState(stored, userId, workspaceId, academicYearId)
-        const next = validateOperationalAgendaState(mutation(current), userId, workspaceId, academicYearId)
-        store.put(next, key)
+        const snapshot = readOperationalAgendaStorageRecord(stored, userId, workspaceId, academicYearId)
+        assertOperationalAgendaRestoreGeneration(snapshot.restoreGeneration, expectedRestoreGeneration)
+        const next = validateOperationalAgendaState(mutation(snapshot.state), userId, workspaceId, academicYearId)
+        store.put(makeOperationalAgendaMutationStorageRecord(snapshot, next), key)
         await transactionDone(transaction)
         return next
       } catch (error) {
@@ -66,13 +75,31 @@ export class IndexedDbOperationalAgendaRepository {
     })
   }
 
-  async replace(userId: string, workspaceId: string, academicYearId: string, state: OperationalAgendaState): Promise<void> {
+  async replace(
+    userId: string,
+    workspaceId: string,
+    academicYearId: string,
+    state: OperationalAgendaState,
+  ): Promise<OperationalAgendaRepositorySnapshot> {
     const validated = validateOperationalAgendaState(state, userId, workspaceId, academicYearId)
     const database = await openDatabase()
+    const transaction = database.transaction(STORE_NAME, 'readwrite')
     try {
-      const transaction = database.transaction(STORE_NAME, 'readwrite')
-      transaction.objectStore(STORE_NAME).put(validated, contextKey(userId, workspaceId, academicYearId))
+      const store = transaction.objectStore(STORE_NAME)
+      const key = contextKey(userId, workspaceId, academicYearId)
+      const stored = await request<unknown>(store.get(key))
+      const current = readOperationalAgendaStorageRecord(stored, userId, workspaceId, academicYearId)
+      const restored = makeOperationalAgendaRestoreStorageRecord(current, validated)
+      store.put(restored.record, key)
       await transactionDone(transaction)
+      return restored.snapshot
+    } catch (error) {
+      try {
+        transaction.abort()
+      } catch {
+        // The transaction may already have completed or aborted.
+      }
+      throw error
     } finally {
       database.close()
     }
