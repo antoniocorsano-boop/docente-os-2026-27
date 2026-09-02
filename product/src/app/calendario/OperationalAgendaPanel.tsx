@@ -15,6 +15,8 @@ import {
 import { IndexedDbOperationalAgendaRepository } from '@/core/infrastructure/local/indexeddb-operational-agenda-repository'
 import {
   canStartDecisionSubmission,
+  canStartOperationalAgendaExport,
+  canStartOperationalAgendaImport,
   shouldClearPersistedDecisionDraft,
 } from './operational-agenda-decision-guard'
 
@@ -46,11 +48,15 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
   const [selectedEventId, setSelectedEventId] = useState(activeEvents[0]?.id ?? '')
   const [decisionTitle, setDecisionTitle] = useState('')
   const [isDecisionSaving, setIsDecisionSaving] = useState(false)
+  const [pendingMutationCount, setPendingMutationCount] = useState(0)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [importRevision, setImportRevision] = useState(0)
   const [isImporting, setIsImporting] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const importInProgressRef = useRef(false)
+  const exportInProgressRef = useRef(false)
+  const pendingMutationCountRef = useRef(0)
   const decisionSaveInProgressRef = useRef(false)
   const importRef = useRef<HTMLInputElement>(null)
 
@@ -89,15 +95,19 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
   const selectedEvent = selectedChoice?.event ?? null
   const eventWorkspace = selectedEvent && state ? state.eventWorkspaces[selectedEvent.id] ?? null : null
   const suggestions = selectedEvent ? suggestOperationalPreparation(selectedEvent) : []
+  const portabilityBusy = isImporting || isExporting
+  const hasPendingMutations = pendingMutationCount > 0
 
   const persistMutation = async (
     mutation: (current: OperationalAgendaState) => OperationalAgendaState,
     successMessage?: string,
   ) => {
-    if (importInProgressRef.current) {
-      setMessage('Ripristino backup in corso: attendi il completamento prima di modificare il lavoro locale.')
+    if (importInProgressRef.current || exportInProgressRef.current) {
+      setMessage('Operazione backup in corso: attendi il completamento prima di modificare il lavoro locale.')
       return false
     }
+    pendingMutationCountRef.current += 1
+    setPendingMutationCount(pendingMutationCountRef.current)
     try {
       setError(null)
       const next = await repository.mutate(userId, workspaceId, academicYearId, mutation)
@@ -107,6 +117,9 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
     } catch (reason) {
       setError(humanError(reason))
       return false
+    } finally {
+      pendingMutationCountRef.current = Math.max(0, pendingMutationCountRef.current - 1)
+      setPendingMutationCount(pendingMutationCountRef.current)
     }
   }
 
@@ -188,6 +201,7 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
     const event = selectedEvent
     if (!canStartDecisionSubmission({
       importing: importInProgressRef.current,
+      exporting: exportInProgressRef.current,
       saving: decisionSaveInProgressRef.current,
       title: decisionTitle,
       hasSelectedEvent: Boolean(event),
@@ -249,20 +263,52 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
     })
   }
 
-  const exportBackup = () => {
-    if (!state || importInProgressRef.current || decisionSaveInProgressRef.current) return
-    const backup = makeOperationalAgendaBackup(state)
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `docente-os-agenda-${academicYearId}.json`
-    anchor.click()
-    URL.revokeObjectURL(url)
+  const exportBackup = async () => {
+    if (!canStartOperationalAgendaExport({
+      stateReady: Boolean(state),
+      importing: importInProgressRef.current,
+      exporting: exportInProgressRef.current,
+      decisionSaving: decisionSaveInProgressRef.current,
+      pendingMutations: pendingMutationCountRef.current,
+    })) {
+      if (pendingMutationCountRef.current > 0) setMessage('Salvataggio locale in corso: attendi prima di esportare il backup.')
+      return
+    }
+
+    exportInProgressRef.current = true
+    setIsExporting(true)
+    setError(null)
+    try {
+      const persistedState = await repository.get(userId, workspaceId, academicYearId)
+      setState(persistedState)
+      const backup = makeOperationalAgendaBackup(persistedState)
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `docente-os-agenda-${academicYearId}.json`
+      anchor.click()
+      URL.revokeObjectURL(url)
+      setMessage('Backup locale esportato dallo stato persistito corrente.')
+    } catch (reason) {
+      setError(humanError(reason))
+    } finally {
+      exportInProgressRef.current = false
+      setIsExporting(false)
+    }
   }
 
   const importBackup = async (file: File) => {
-    if (importInProgressRef.current || decisionSaveInProgressRef.current) return
+    if (!canStartOperationalAgendaImport({
+      importing: importInProgressRef.current,
+      exporting: exportInProgressRef.current,
+      decisionSaving: decisionSaveInProgressRef.current,
+      pendingMutations: pendingMutationCountRef.current,
+    })) {
+      if (pendingMutationCountRef.current > 0) setMessage('Salvataggio locale in corso: attendi prima di importare il backup.')
+      if (importRef.current) importRef.current.value = ''
+      return
+    }
     importInProgressRef.current = true
     setIsImporting(true)
     setError(null)
@@ -306,7 +352,7 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
         <>
           <label className="operationalEventPicker">
             <span>Impegno</span>
-            <select disabled={isImporting || isDecisionSaving} value={selectedEvent.id} onChange={(event) => { setSelectedEventId(event.target.value); setMessage(null) }}>
+            <select disabled={portabilityBusy || isDecisionSaving} value={selectedEvent.id} onChange={(event) => { setSelectedEventId(event.target.value); setMessage(null) }}>
               {eventChoices.map((choice) => (
                 <option value={choice.event.id} key={choice.event.id}>
                   {formatEventOption(choice.event, choice.historical, choice.detached)}
@@ -332,7 +378,7 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
                   return (
                     <div className="operationalSuggestion" key={suggestion.id}>
                       <div><strong>{suggestion.title}</strong><p>{suggestion.description}</p>{suggestion.referenceHint ? <small>{suggestion.referenceHint}</small> : null}</div>
-                      <button type="button" disabled={isImporting || added} onClick={() => addSuggestion(suggestion.id)}>{added ? 'Aggiunta' : 'Aggiungi'}</button>
+                      <button type="button" disabled={portabilityBusy || added} onClick={() => addSuggestion(suggestion.id)}>{added ? 'Aggiunta' : 'Aggiungi'}</button>
                     </div>
                   )
                 })}
@@ -345,7 +391,7 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
                 <div className="operationalChecklist">
                   {eventWorkspace.checklist.map((item) => (
                     <label key={item.id} className={item.done ? 'done' : ''}>
-                      <input type="checkbox" disabled={isImporting} checked={item.done} onChange={(event) => toggleChecklist(item.id, event.target.checked)} />
+                      <input type="checkbox" disabled={portabilityBusy} checked={item.done} onChange={(event) => toggleChecklist(item.id, event.target.checked)} />
                       <span>{item.title}</span>
                     </label>
                   ))}
@@ -356,28 +402,28 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
             <article className="operationalCard">
               <div className="operationalCardTitle"><span>03</span><div><h3>Decisioni</h3><p>Una decisione nasce come “da acquisire”; sei tu a promuoverla quando è realmente confermata.</p></div></div>
               <div className="operationalDecisionCapture">
-                <input disabled={isImporting || isDecisionSaving} value={decisionTitle} onChange={(event) => setDecisionTitle(event.target.value)} placeholder="Es. Modello UDA comune d’Istituto" maxLength={240} />
-                <button type="button" onClick={addDecision} disabled={isImporting || isDecisionSaving || !decisionTitle.trim()}>{isDecisionSaving ? 'Salvataggio…' : 'Registra'}</button>
+                <input disabled={portabilityBusy || isDecisionSaving} value={decisionTitle} onChange={(event) => setDecisionTitle(event.target.value)} placeholder="Es. Modello UDA comune d’Istituto" maxLength={240} />
+                <button type="button" onClick={addDecision} disabled={portabilityBusy || isDecisionSaving || !decisionTitle.trim()}>{isDecisionSaving ? 'Salvataggio…' : 'Registra'}</button>
               </div>
               {eventWorkspace?.decisions.length ? <div className="operationalDecisionList">{eventWorkspace.decisions.map((decision) => (
-                <div key={decision.id}><strong>{decision.title}</strong><select disabled={isImporting} value={decision.status} onChange={(event) => setDecisionStatus(decision.id, event.target.value as OperationalAgendaDecisionStatus)}><option value="TO_ACQUIRE">Da acquisire</option><option value="PROPOSED">Proposta</option><option value="TO_VERIFY">Da verificare</option><option value="CONFIRMED">Confermata</option></select></div>
+                <div key={decision.id}><strong>{decision.title}</strong><select disabled={portabilityBusy} value={decision.status} onChange={(event) => setDecisionStatus(decision.id, event.target.value as OperationalAgendaDecisionStatus)}><option value="TO_ACQUIRE">Da acquisire</option><option value="PROPOSED">Proposta</option><option value="TO_VERIFY">Da verificare</option><option value="CONFIRMED">Confermata</option></select></div>
               ))}</div> : null}
             </article>
 
             <article className="operationalCard">
               <div className="operationalCardTitle"><span>04</span><div><h3>Appunti della riunione</h3><p>Bozza privata locale; non modifica Calendario, Planner o progettazione.</p></div></div>
-              <LocalNote key={`${selectedEvent.id}:${importRevision}`} initialValue={eventWorkspace?.note ?? ''} disabled={isImporting} onSave={saveNote} />
+              <LocalNote key={`${selectedEvent.id}:${importRevision}`} initialValue={eventWorkspace?.note ?? ''} disabled={portabilityBusy} onSave={saveNote} />
             </article>
           </div>
         </>
       )}
 
       <div className="operationalBackup">
-        <div><strong>Backup sempre accessibile</strong><span>Esporta periodicamente il lavoro locale o importa un backup valido. I controlli restano disponibili anche senza eventi futuri.</span></div>
+        <div><strong>Backup sempre accessibile</strong><span>Esporta periodicamente il lavoro locale o importa un backup valido. I controlli restano disponibili anche senza eventi futuri e attendono la conclusione dei salvataggi locali.</span></div>
         <div>
-          <button type="button" onClick={exportBackup} disabled={!state || isImporting || isDecisionSaving}>Esporta backup</button>
-          <button type="button" disabled={isImporting || isDecisionSaving} onClick={() => importRef.current?.click()}>{isImporting ? 'Importazione…' : 'Importa backup'}</button>
-          <input ref={importRef} hidden type="file" accept="application/json,.json" disabled={isImporting || isDecisionSaving} onChange={(event) => { const file = event.target.files?.[0]; if (file) void importBackup(file) }} />
+          <button type="button" onClick={() => { void exportBackup() }} disabled={!state || portabilityBusy || isDecisionSaving || hasPendingMutations}>{isExporting ? 'Esportazione…' : 'Esporta backup'}</button>
+          <button type="button" disabled={portabilityBusy || isDecisionSaving || hasPendingMutations} onClick={() => importRef.current?.click()}>{isImporting ? 'Importazione…' : 'Importa backup'}</button>
+          <input ref={importRef} hidden type="file" accept="application/json,.json" disabled={portabilityBusy || isDecisionSaving || hasPendingMutations} onChange={(event) => { const file = event.target.files?.[0]; if (file) void importBackup(file) }} />
         </div>
       </div>
     </section>
