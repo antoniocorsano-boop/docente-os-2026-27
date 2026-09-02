@@ -90,15 +90,17 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
   ) => {
     if (importInProgressRef.current) {
       setMessage('Ripristino backup in corso: attendi il completamento prima di modificare il lavoro locale.')
-      return
+      return false
     }
     try {
       setError(null)
       const next = await repository.mutate(userId, workspaceId, academicYearId, mutation)
       setState(next)
       if (successMessage) setMessage(successMessage)
+      return true
     } catch (reason) {
       setError(humanError(reason))
+      return false
     }
   }
 
@@ -181,8 +183,7 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
     const title = decisionTitle.trim()
     if (!title || !selectedEvent) return
     const event = selectedEvent
-    setDecisionTitle('')
-    await persistMutation((current) => {
+    const persisted = await persistMutation((current) => {
       const now = new Date().toISOString()
       const workspace = ensureEventWorkspace(current, event, now)
       const decision = {
@@ -203,6 +204,7 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
         updatedAt: now,
       }
     }, 'Decisione registrata come da acquisire.')
+    if (persisted) setDecisionTitle('')
   }
 
   const setDecisionStatus = async (decisionId: string, status: OperationalAgendaDecisionStatus) => {
