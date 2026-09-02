@@ -47,6 +47,8 @@ Ogni workspace evento locale conserva obbligatoriamente uno snapshot minimo dell
 
 Le modifiche ordinarie non sostituiscono più ciecamente l'intero record a partire dallo stato React. Ogni mutazione usa una transazione IndexedDB `readwrite`, rilegge lo stato più recente nello stesso object store, applica la modifica e scrive il risultato nella stessa transazione. Le transazioni sullo store serializzano anche modifiche provenienti da schede browser differenti e riducono il rischio di lost update.
 
+L'interfaccia mantiene inoltre un conteggio sincrono delle mutazioni locali ancora in-flight. Questo contatore non sostituisce la serializzazione IndexedDB: serve a impedire che importazione o esportazione inizino mentre una mutazione avviata dalla UI deve ancora completarsi.
+
 ## 4. Backup e ripristino
 
 Il backup usa il formato:
@@ -67,7 +69,9 @@ L'importazione fallisce prima di sostituire IndexedDB se:
 
 La validazione è fail-closed e riguarda l'intero albero importato, non soltanto i campi esterni. Questo evita che un backup sintatticamente valido ma strutturalmente corrotto renda inaccessibile l'agenda locale dopo il ripristino.
 
-Durante il `replace` del backup l'applicazione entra in stato di importazione: un guard sincrono impedisce nuove mutazioni locali e i controlli di modifica, salvataggio, export e secondo import vengono disabilitati. In questo modo un valore catturato dalla UI precedente non può essere accodato dopo il ripristino e sovrascrivere lo stato appena importato.
+Importazione ed esportazione possono iniziare soltanto quando il contatore delle mutazioni locali è a zero. Durante il `replace` del backup l'applicazione entra in stato di importazione: un guard sincrono impedisce nuove mutazioni locali e i controlli di modifica, salvataggio, export e secondo import vengono disabilitati. In questo modo un valore catturato dalla UI precedente non può essere accodato dopo il ripristino e sovrascrivere lo stato appena importato.
+
+L'esportazione entra a sua volta in uno stato esclusivo che impedisce nuove mutazioni dalla stessa superficie durante la lettura. Il JSON non viene costruito dallo snapshot React: viene prima riletto il record persistito corrente tramite il repository IndexedDB e il backup viene serializzato da quello stato. Questo evita che un salvataggio appena concluso o una modifica proveniente da un'altra scheda già persistita restino fuori dal file di recovery soltanto perché la UI locale non è ancora aggiornata.
 
 Dopo l'importazione, l'editor degli appunti viene rimontato sulla revisione importata prima di consentire un nuovo salvataggio.
 
@@ -121,8 +125,10 @@ V1 è accettabile quando:
 6. ogni workspace locale possiede uno snapshot evento valido e resta quindi ricostruibile nello storico;
 7. gli identificatori di checklist e decisioni sono univoci nelle rispettive collezioni;
 8. le mutazioni ordinarie sono serializzate su IndexedDB e derivano dallo stato più recente disponibile;
-9. durante il ripristino nessuna mutazione locale può essere accodata sopra lo stato importato;
-10. l'assenza o la corruzione di IndexedDB viene mostrata come errore esplicito, senza fallback silenzioso a memoria volatile;
-11. esportazione e importazione restano accessibili anche senza eventi futuri;
-12. gli eventi conclusi con lavoro locale e gli snapshot di eventi rimossi restano raggiungibili come storico locale;
-13. l'importazione aggiorna gli editor locali senza consentire che uno stato React precedente sovrascriva il contenuto ripristinato.
+9. importazione ed esportazione non possono iniziare finché esiste una mutazione locale in-flight;
+10. durante il ripristino nessuna mutazione locale può essere accodata sopra lo stato importato;
+11. l'esportazione rilegge il record persistito corrente e non serializza uno snapshot React potenzialmente stale;
+12. l'assenza o la corruzione di IndexedDB viene mostrata come errore esplicito, senza fallback silenzioso a memoria volatile;
+13. esportazione e importazione restano accessibili anche senza eventi futuri;
+14. gli eventi conclusi con lavoro locale e gli snapshot di eventi rimossi restano raggiungibili come storico locale;
+15. l'importazione aggiorna gli editor locali senza consentire che uno stato React precedente sovrascriva il contenuto ripristinato.
