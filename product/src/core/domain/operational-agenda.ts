@@ -41,7 +41,7 @@ export type OperationalAgendaDecision = {
 
 export type OperationalAgendaEventWorkspace = {
   eventId: string
-  eventSnapshot: OperationalAgendaEventSnapshot | null
+  eventSnapshot: OperationalAgendaEventSnapshot
   note: string
   checklist: OperationalAgendaChecklistItem[]
   decisions: OperationalAgendaDecision[]
@@ -98,12 +98,12 @@ export function snapshotOperationalAgendaEvent(event: OperationalAgendaEventSnap
 
 export function createEventWorkspace(
   eventId: string,
-  now = new Date().toISOString(),
-  eventSnapshot: OperationalAgendaEventSnapshot | null = null,
+  now: string,
+  eventSnapshot: OperationalAgendaEventSnapshot,
 ): OperationalAgendaEventWorkspace {
   return {
     eventId,
-    eventSnapshot: eventSnapshot ? snapshotOperationalAgendaEvent(eventSnapshot) : null,
+    eventSnapshot: snapshotOperationalAgendaEvent(eventSnapshot),
     note: '',
     checklist: [],
     decisions: [],
@@ -245,7 +245,14 @@ export function validateOperationalAgendaState(value: unknown, userId: string, w
     validateEventWorkspace(workspace, eventId)
   }
 
-  value.standaloneDecisions.forEach((decision, index) => validateDecision(decision, null, `decisione autonoma ${index + 1}`))
+  const standaloneDecisionIds = new Set<string>()
+  value.standaloneDecisions.forEach((decision, index) => {
+    validateDecision(decision, null, `decisione autonoma ${index + 1}`)
+    const id = (decision as { id: string }).id
+    if (standaloneDecisionIds.has(id)) throw new Error(`Identificatore decisione autonoma duplicato: ${id}`)
+    standaloneDecisionIds.add(id)
+  })
+
   return value as OperationalAgendaState
 }
 
@@ -255,14 +262,28 @@ function validateEventWorkspace(value: unknown, eventId: string) {
   if (typeof value.note !== 'string' || !Array.isArray(value.checklist) || !Array.isArray(value.decisions) || !isTimestamp(value.updatedAt)) {
     throw new Error(`Contenuto workspace locale incompleto per ${eventId}`)
   }
-  if (value.eventSnapshot !== null) validateEventSnapshot(value.eventSnapshot, eventId)
 
-  value.checklist.forEach((item, index) => validateChecklistItem(item, eventId, index))
-  value.decisions.forEach((decision, index) => validateDecision(decision, eventId, `decisione ${index + 1}`))
+  validateEventSnapshot(value.eventSnapshot, eventId)
+
+  const checklistIds = new Set<string>()
+  value.checklist.forEach((item, index) => {
+    validateChecklistItem(item, eventId, index)
+    const id = (item as { id: string }).id
+    if (checklistIds.has(id)) throw new Error(`Identificatore attività locale duplicato per ${eventId}: ${id}`)
+    checklistIds.add(id)
+  })
+
+  const decisionIds = new Set<string>()
+  value.decisions.forEach((decision, index) => {
+    validateDecision(decision, eventId, `decisione ${index + 1}`)
+    const id = (decision as { id: string }).id
+    if (decisionIds.has(id)) throw new Error(`Identificatore decisione duplicato per ${eventId}: ${id}`)
+    decisionIds.add(id)
+  })
 }
 
 function validateEventSnapshot(value: unknown, eventId: string) {
-  if (!isRecord(value)) throw new Error(`Snapshot evento locale malformato per ${eventId}`)
+  if (!isRecord(value)) throw new Error(`Snapshot evento locale mancante o malformato per ${eventId}`)
   if (
     value.id !== eventId ||
     !isNonEmptyString(value.title) ||
