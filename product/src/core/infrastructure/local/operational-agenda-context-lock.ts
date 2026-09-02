@@ -4,7 +4,7 @@ export type OperationalAgendaLockManager = {
   request<T>(
     name: string,
     options: { mode: OperationalAgendaLockMode; ifAvailable?: boolean },
-    callback: (lock: object | null) => Promise<T> | T,
+    callback: (lock: object | null) => Promise<T>,
   ): Promise<T>
 }
 
@@ -15,8 +15,8 @@ export function operationalAgendaContextLockName(userId: string, workspaceId: st
 export function browserOperationalAgendaLockManager(): OperationalAgendaLockManager | null {
   if (typeof navigator === 'undefined' || !navigator.locks) return null
   return {
-    request<T>(name: string, options: { mode: OperationalAgendaLockMode; ifAvailable?: boolean }, callback: (lock: object | null) => Promise<T> | T) {
-      return navigator.locks.request(name, options, (lock) => callback(lock))
+    request<T>(name: string, options: { mode: OperationalAgendaLockMode; ifAvailable?: boolean }, callback: (lock: object | null) => Promise<T>) {
+      return navigator.locks.request(name, options, async (lock) => callback(lock))
     },
   }
 }
