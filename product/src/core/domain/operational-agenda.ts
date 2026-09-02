@@ -44,6 +44,7 @@ export type OperationalAgendaEventWorkspace = {
 
 export type OperationalAgendaState = {
   schemaVersion: typeof OPERATIONAL_AGENDA_SCHEMA_VERSION
+  userId: string
   workspaceId: string
   academicYearId: string
   eventWorkspaces: Record<string, OperationalAgendaEventWorkspace>
@@ -58,9 +59,10 @@ export type OperationalAgendaBackup = {
   state: OperationalAgendaState
 }
 
-export function createOperationalAgendaState(workspaceId: string, academicYearId: string, now = new Date().toISOString()): OperationalAgendaState {
+export function createOperationalAgendaState(userId: string, workspaceId: string, academicYearId: string, now = new Date().toISOString()): OperationalAgendaState {
   return {
     schemaVersion: OPERATIONAL_AGENDA_SCHEMA_VERSION,
+    userId,
     workspaceId,
     academicYearId,
     eventWorkspaces: {},
@@ -175,7 +177,7 @@ export function makeOperationalAgendaBackup(state: OperationalAgendaState, now =
   return { format: 'DOCENTE_OS_OPERATIONAL_AGENDA', schemaVersion: OPERATIONAL_AGENDA_SCHEMA_VERSION, exportedAt: now, state }
 }
 
-export function parseOperationalAgendaBackup(value: unknown, workspaceId: string, academicYearId: string): OperationalAgendaState {
+export function parseOperationalAgendaBackup(value: unknown, userId: string, workspaceId: string, academicYearId: string): OperationalAgendaState {
   if (!value || typeof value !== 'object') throw new Error('Backup agenda non valido')
   const backup = value as Partial<OperationalAgendaBackup>
   if (backup.format !== 'DOCENTE_OS_OPERATIONAL_AGENDA' || backup.schemaVersion !== OPERATIONAL_AGENDA_SCHEMA_VERSION) {
@@ -183,8 +185,8 @@ export function parseOperationalAgendaBackup(value: unknown, workspaceId: string
   }
   const state = backup.state
   if (!state || state.schemaVersion !== OPERATIONAL_AGENDA_SCHEMA_VERSION) throw new Error('Stato agenda non valido')
-  if (state.workspaceId !== workspaceId || state.academicYearId !== academicYearId) {
-    throw new Error('Il backup appartiene a uno spazio o anno scolastico diverso')
+  if (state.userId !== userId || state.workspaceId !== workspaceId || state.academicYearId !== academicYearId) {
+    throw new Error('Il backup appartiene a un utente, spazio o anno scolastico diverso')
   }
   if (!state.eventWorkspaces || typeof state.eventWorkspaces !== 'object' || !Array.isArray(state.standaloneDecisions)) {
     throw new Error('Contenuto del backup agenda incompleto')
