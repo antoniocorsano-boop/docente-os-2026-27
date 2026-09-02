@@ -12,7 +12,10 @@ import {
   type OperationalAgendaState,
 } from '@/core/domain/operational-agenda'
 import { IndexedDbOperationalAgendaRepository } from '@/core/infrastructure/local/indexeddb-operational-agenda-repository'
-import { OperationalAgendaStaleRestoreGenerationError } from '@/core/infrastructure/local/operational-agenda-storage-record'
+import {
+  OperationalAgendaStaleRestoreGenerationError,
+  shouldRefreshOperationalAgendaEditors,
+} from '@/core/infrastructure/local/operational-agenda-storage-record'
 import {
   canStartDecisionSubmission,
   canStartOperationalAgendaExport,
@@ -301,6 +304,7 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
     setIsExporting(true)
     setError(null)
     try {
+      const previousRestoreGeneration = restoreGenerationRef.current
       const { persistedSnapshot, serializedBackup } = await repository.withExclusiveContextLock(
         userId,
         workspaceId,
@@ -313,6 +317,9 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
       )
       restoreGenerationRef.current = persistedSnapshot.restoreGeneration
       setState(persistedSnapshot.state)
+      if (shouldRefreshOperationalAgendaEditors(previousRestoreGeneration, persistedSnapshot.restoreGeneration)) {
+        setImportRevision((revision) => revision + 1)
+      }
       const blob = new Blob([serializedBackup], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const anchor = document.createElement('a')
