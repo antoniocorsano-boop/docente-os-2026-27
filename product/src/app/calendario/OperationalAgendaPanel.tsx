@@ -13,6 +13,7 @@ import {
 import { IndexedDbOperationalAgendaRepository } from '@/core/infrastructure/local/indexeddb-operational-agenda-repository'
 
 type Props = {
+  userId: string
   workspaceId: string
   academicYearId: string
   today: string
@@ -21,7 +22,7 @@ type Props = {
 
 const repository = new IndexedDbOperationalAgendaRepository()
 
-export function OperationalAgendaPanel({ workspaceId, academicYearId, today, events }: Props) {
+export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, today, events }: Props) {
   const upcomingEvents = useMemo(
     () => events.filter((event) => event.endsOn >= today).sort((a, b) => `${a.startsOn}${a.startTime ?? ''}`.localeCompare(`${b.startsOn}${b.startTime ?? ''}`)),
     [events, today],
@@ -35,11 +36,11 @@ export function OperationalAgendaPanel({ workspaceId, academicYearId, today, eve
 
   useEffect(() => {
     let cancelled = false
-    repository.get(workspaceId, academicYearId)
+    repository.get(userId, workspaceId, academicYearId)
       .then((value) => { if (!cancelled) setState(value) })
       .catch((reason: unknown) => { if (!cancelled) setError(humanError(reason)) })
     return () => { cancelled = true }
-  }, [workspaceId, academicYearId])
+  }, [userId, workspaceId, academicYearId])
 
   const selectedEvent = upcomingEvents.find((event) => event.id === selectedEventId) ?? upcomingEvents[0] ?? null
   const eventWorkspace = selectedEvent && state ? state.eventWorkspaces[selectedEvent.id] ?? createEventWorkspace(selectedEvent.id) : null
@@ -159,8 +160,8 @@ export function OperationalAgendaPanel({ workspaceId, academicYearId, today, eve
   const importBackup = async (file: File) => {
     try {
       const raw = JSON.parse(await file.text()) as unknown
-      const imported = parseOperationalAgendaBackup(raw, workspaceId, academicYearId)
-      await repository.replace(workspaceId, academicYearId, imported)
+      const imported = parseOperationalAgendaBackup(raw, userId, workspaceId, academicYearId)
+      await repository.replace(userId, workspaceId, academicYearId, imported)
       setState(imported)
       setError(null)
       setMessage('Backup locale importato.')
@@ -177,7 +178,7 @@ export function OperationalAgendaPanel({ workspaceId, academicYearId, today, eve
         <div>
           <p>PREPARAZIONE LOCALE</p>
           <h2 id="operational-agenda-title">Dall’impegno a ciò che devi preparare</h2>
-          <span>Proposte, appunti e decisioni restano in questo browser finché non scegli di trasferirli in una superficie canonica.</span>
+          <span>Proposte, appunti e decisioni restano in questo browser e sono separate per utente, spazio e anno scolastico finché non scegli di trasferirle in una superficie canonica.</span>
         </div>
         <span className="operationalLocalBadge">Solo locale</span>
       </div>
@@ -246,7 +247,7 @@ export function OperationalAgendaPanel({ workspaceId, academicYearId, today, eve
           </div>
 
           <div className="operationalBackup">
-            <div><strong>Portabilità locale</strong><span>Esporta periodicamente un backup JSON. L’importazione è accettata solo per lo stesso spazio e anno scolastico.</span></div>
+            <div><strong>Portabilità locale</strong><span>Esporta periodicamente un backup JSON. L’importazione è accettata solo per lo stesso utente, spazio e anno scolastico.</span></div>
             <div><button type="button" onClick={exportBackup}>Esporta backup</button><button type="button" onClick={() => importRef.current?.click()}>Importa backup</button><input ref={importRef} hidden type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importBackup(file) }} /></div>
           </div>
         </>
