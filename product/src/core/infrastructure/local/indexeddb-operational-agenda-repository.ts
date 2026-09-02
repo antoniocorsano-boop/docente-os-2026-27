@@ -10,32 +10,32 @@ const DATABASE_VERSION = 1
 const STORE_NAME = 'operational-agenda'
 
 export class IndexedDbOperationalAgendaRepository {
-  async get(workspaceId: string, academicYearId: string): Promise<OperationalAgendaState> {
+  async get(userId: string, workspaceId: string, academicYearId: string): Promise<OperationalAgendaState> {
     const database = await openDatabase()
-    const key = contextKey(workspaceId, academicYearId)
+    const key = contextKey(userId, workspaceId, academicYearId)
     const stored = await request<OperationalAgendaState | undefined>(database.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key))
     database.close()
-    return stored ?? createOperationalAgendaState(workspaceId, academicYearId)
+    return stored ?? createOperationalAgendaState(userId, workspaceId, academicYearId)
   }
 
   async save(state: OperationalAgendaState): Promise<void> {
     const database = await openDatabase()
     const transaction = database.transaction(STORE_NAME, 'readwrite')
-    transaction.objectStore(STORE_NAME).put(state, contextKey(state.workspaceId, state.academicYearId))
+    transaction.objectStore(STORE_NAME).put(state, contextKey(state.userId, state.workspaceId, state.academicYearId))
     await transactionDone(transaction)
     database.close()
   }
 
-  async replace(workspaceId: string, academicYearId: string, state: OperationalAgendaState): Promise<void> {
-    if (state.workspaceId !== workspaceId || state.academicYearId !== academicYearId) {
+  async replace(userId: string, workspaceId: string, academicYearId: string, state: OperationalAgendaState): Promise<void> {
+    if (state.userId !== userId || state.workspaceId !== workspaceId || state.academicYearId !== academicYearId) {
       throw new Error('Contesto agenda non coerente')
     }
     await this.save(state)
   }
 }
 
-function contextKey(workspaceId: string, academicYearId: string) {
-  return `${workspaceId}:${academicYearId}`
+function contextKey(userId: string, workspaceId: string, academicYearId: string) {
+  return `${userId}:${workspaceId}:${academicYearId}`
 }
 
 function openDatabase(): Promise<IDBDatabase> {
