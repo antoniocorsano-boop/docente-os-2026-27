@@ -279,11 +279,19 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
     setIsExporting(true)
     setError(null)
     try {
-      const { persistedState, backup } = await readPersistedOperationalAgendaBackup(
-        () => repository.get(userId, workspaceId, academicYearId),
+      const { persistedState, serializedBackup } = await repository.withExclusiveContextLock(
+        userId,
+        workspaceId,
+        academicYearId,
+        async () => {
+          const { persistedState, backup } = await readPersistedOperationalAgendaBackup(
+            () => repository.get(userId, workspaceId, academicYearId),
+          )
+          return { persistedState, serializedBackup: JSON.stringify(backup, null, 2) }
+        },
       )
       setState(persistedState)
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+      const blob = new Blob([serializedBackup], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const anchor = document.createElement('a')
       anchor.href = url
@@ -315,9 +323,17 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
     setError(null)
     setMessage('Ripristino backup locale in corso…')
     try {
-      const raw = JSON.parse(await file.text()) as unknown
-      const imported = parseOperationalAgendaBackup(raw, userId, workspaceId, academicYearId)
-      await repository.replace(userId, workspaceId, academicYearId, imported)
+      const imported = await repository.withExclusiveContextLock(
+        userId,
+        workspaceId,
+        academicYearId,
+        async () => {
+          const raw = JSON.parse(await file.text()) as unknown
+          const parsed = parseOperationalAgendaBackup(raw, userId, workspaceId, academicYearId)
+          await repository.replace(userId, workspaceId, academicYearId, parsed)
+          return parsed
+        },
+      )
       setState(imported)
       setImportRevision((revision) => revision + 1)
       setMessage('Backup locale importato.')
