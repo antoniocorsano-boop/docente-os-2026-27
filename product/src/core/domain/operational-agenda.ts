@@ -12,6 +12,11 @@ export type OperationalAgendaSuggestion = {
   referenceHint: string | null
 }
 
+export type OperationalAgendaEventSnapshot = Pick<
+  CalendarEvent,
+  'id' | 'title' | 'eventKind' | 'startsOn' | 'endsOn' | 'allDay' | 'startTime' | 'endTime' | 'note' | 'sourceRef'
+>
+
 export type OperationalAgendaChecklistItem = {
   id: string
   eventId: string
@@ -36,6 +41,7 @@ export type OperationalAgendaDecision = {
 
 export type OperationalAgendaEventWorkspace = {
   eventId: string
+  eventSnapshot: OperationalAgendaEventSnapshot | null
   note: string
   checklist: OperationalAgendaChecklistItem[]
   decisions: OperationalAgendaDecision[]
@@ -59,6 +65,10 @@ export type OperationalAgendaBackup = {
   state: OperationalAgendaState
 }
 
+const DECISION_STATUSES = new Set<OperationalAgendaDecisionStatus>(['TO_ACQUIRE', 'PROPOSED', 'TO_VERIFY', 'CONFIRMED'])
+const EVENT_KINDS = new Set<CalendarEvent['eventKind']>(['INSTITUTION', 'MEETING', 'DEADLINE', 'TRAINING', 'OTHER'])
+const FORBIDDEN_RECORD_KEYS = new Set(['__proto__', 'prototype', 'constructor'])
+
 export function createOperationalAgendaState(userId: string, workspaceId: string, academicYearId: string, now = new Date().toISOString()): OperationalAgendaState {
   return {
     schemaVersion: OPERATIONAL_AGENDA_SCHEMA_VERSION,
@@ -71,8 +81,34 @@ export function createOperationalAgendaState(userId: string, workspaceId: string
   }
 }
 
-export function createEventWorkspace(eventId: string, now = new Date().toISOString()): OperationalAgendaEventWorkspace {
-  return { eventId, note: '', checklist: [], decisions: [], updatedAt: now }
+export function snapshotOperationalAgendaEvent(event: OperationalAgendaEventSnapshot): OperationalAgendaEventSnapshot {
+  return {
+    id: event.id,
+    title: event.title,
+    eventKind: event.eventKind,
+    startsOn: event.startsOn,
+    endsOn: event.endsOn,
+    allDay: event.allDay,
+    startTime: event.startTime,
+    endTime: event.endTime,
+    note: event.note,
+    sourceRef: event.sourceRef,
+  }
+}
+
+export function createEventWorkspace(
+  eventId: string,
+  now = new Date().toISOString(),
+  eventSnapshot: OperationalAgendaEventSnapshot | null = null,
+): OperationalAgendaEventWorkspace {
+  return {
+    eventId,
+    eventSnapshot: eventSnapshot ? snapshotOperationalAgendaEvent(eventSnapshot) : null,
+    note: '',
+    checklist: [],
+    decisions: [],
+    updatedAt: now,
+  }
 }
 
 export function suggestOperationalPreparation(event: Pick<CalendarEvent, 'id' | 'title' | 'note' | 'eventKind' | 'sourceRef'>): OperationalAgendaSuggestion[] {
@@ -174,24 +210,137 @@ export function suggestOperationalPreparation(event: Pick<CalendarEvent, 'id' | 
 }
 
 export function makeOperationalAgendaBackup(state: OperationalAgendaState, now = new Date().toISOString()): OperationalAgendaBackup {
-  return { format: 'DOCENTE_OS_OPERATIONAL_AGENDA', schemaVersion: OPERATIONAL_AGENDA_SCHEMA_VERSION, exportedAt: now, state }
+  return {
+    format: 'DOCENTE_OS_OPERATIONAL_AGENDA',
+    schemaVersion: OPERATIONAL_AGENDA_SCHEMA_VERSION,
+    exportedAt: now,
+    state,
+  }
 }
 
 export function parseOperationalAgendaBackup(value: unknown, userId: string, workspaceId: string, academicYearId: string): OperationalAgendaState {
-  if (!value || typeof value !== 'object') throw new Error('Backup agenda non valido')
-  const backup = value as Partial<OperationalAgendaBackup>
-  if (backup.format !== 'DOCENTE_OS_OPERATIONAL_AGENDA' || backup.schemaVersion !== OPERATIONAL_AGENDA_SCHEMA_VERSION) {
+  if (!isRecord(value)) throw new Error('Backup agenda non valido')
+  if (value.format !== 'DOCENTE_OS_OPERATIONAL_AGENDA' || value.schemaVersion !== OPERATIONAL_AGENDA_SCHEMA_VERSION) {
     throw new Error('Formato o versione del backup agenda non supportati')
   }
-  const state = backup.state
-  if (!state || state.schemaVersion !== OPERATIONAL_AGENDA_SCHEMA_VERSION) throw new Error('Stato agenda non valido')
-  if (state.userId !== userId || state.workspaceId !== workspaceId || state.academicYearId !== academicYearId) {
+  if (!isTimestamp(value.exportedAt)) throw new Error('Data di esportazione del backup non valida')
+  return validateOperationalAgendaState(value.state, userId, workspaceId, academicYearId)
+}
+
+export function validateOperationalAgendaState(value: unknown, userId: string, workspaceId: string, academicYearId: string): OperationalAgendaState {
+  if (!isRecord(value)) throw new Error('Stato agenda non valido')
+  if (value.schemaVersion !== OPERATIONAL_AGENDA_SCHEMA_VERSION) throw new Error('Versione stato agenda non supportata')
+  if (value.userId !== userId || value.workspaceId !== workspaceId || value.academicYearId !== academicYearId) {
     throw new Error('Il backup appartiene a un utente, spazio o anno scolastico diverso')
   }
-  if (!state.eventWorkspaces || typeof state.eventWorkspaces !== 'object' || !Array.isArray(state.standaloneDecisions)) {
+  if (!isNonEmptyString(value.userId) || !isNonEmptyString(value.workspaceId) || !isNonEmptyString(value.academicYearId)) {
+    throw new Error('Contesto agenda non valido')
+  }
+  if (!isRecord(value.eventWorkspaces) || !Array.isArray(value.standaloneDecisions) || !isTimestamp(value.updatedAt)) {
     throw new Error('Contenuto del backup agenda incompleto')
   }
-  return state
+
+  for (const [eventId, workspace] of Object.entries(value.eventWorkspaces)) {
+    if (!isSafeRecordKey(eventId) || !isNonEmptyString(eventId)) throw new Error('Identificatore workspace evento non valido')
+    validateEventWorkspace(workspace, eventId)
+  }
+
+  value.standaloneDecisions.forEach((decision, index) => validateDecision(decision, null, `decisione autonoma ${index + 1}`))
+  return value as OperationalAgendaState
+}
+
+function validateEventWorkspace(value: unknown, eventId: string) {
+  if (!isRecord(value)) throw new Error(`Workspace locale malformato per ${eventId}`)
+  if (value.eventId !== eventId || !isNonEmptyString(value.eventId)) throw new Error(`Identità workspace locale non valida per ${eventId}`)
+  if (typeof value.note !== 'string' || !Array.isArray(value.checklist) || !Array.isArray(value.decisions) || !isTimestamp(value.updatedAt)) {
+    throw new Error(`Contenuto workspace locale incompleto per ${eventId}`)
+  }
+  if (value.eventSnapshot !== null) validateEventSnapshot(value.eventSnapshot, eventId)
+
+  value.checklist.forEach((item, index) => validateChecklistItem(item, eventId, index))
+  value.decisions.forEach((decision, index) => validateDecision(decision, eventId, `decisione ${index + 1}`))
+}
+
+function validateEventSnapshot(value: unknown, eventId: string) {
+  if (!isRecord(value)) throw new Error(`Snapshot evento locale malformato per ${eventId}`)
+  if (
+    value.id !== eventId ||
+    !isNonEmptyString(value.title) ||
+    !EVENT_KINDS.has(value.eventKind as CalendarEvent['eventKind']) ||
+    !isDateOnly(value.startsOn) ||
+    !isDateOnly(value.endsOn) ||
+    typeof value.allDay !== 'boolean' ||
+    !isNullableTime(value.startTime) ||
+    !isNullableTime(value.endTime) ||
+    !isNullableString(value.note) ||
+    !isNullableString(value.sourceRef)
+  ) {
+    throw new Error(`Snapshot evento locale non valido per ${eventId}`)
+  }
+}
+
+function validateChecklistItem(value: unknown, eventId: string, index: number) {
+  if (!isRecord(value)) throw new Error(`Attività locale ${index + 1} malformata per ${eventId}`)
+  if (
+    !isNonEmptyString(value.id) ||
+    value.eventId !== eventId ||
+    !isNullableString(value.suggestionId) ||
+    !isNonEmptyString(value.title) ||
+    typeof value.done !== 'boolean' ||
+    !isTimestamp(value.createdAt) ||
+    !isTimestamp(value.updatedAt)
+  ) {
+    throw new Error(`Attività locale ${index + 1} non valida per ${eventId}`)
+  }
+}
+
+function validateDecision(value: unknown, expectedEventId: string | null, label: string) {
+  if (!isRecord(value)) throw new Error(`${label} malformata`)
+  if (
+    !isNonEmptyString(value.id) ||
+    !isNullableString(value.eventId) ||
+    (expectedEventId !== null && value.eventId !== expectedEventId) ||
+    !isNonEmptyString(value.title) ||
+    !DECISION_STATUSES.has(value.status as OperationalAgendaDecisionStatus) ||
+    !isNullableString(value.note) ||
+    !isTimestamp(value.createdAt) ||
+    !isTimestamp(value.updatedAt)
+  ) {
+    throw new Error(`${label} non valida`)
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const prototype = Object.getPrototypeOf(value)
+  if (prototype !== Object.prototype && prototype !== null) return false
+  return Object.keys(value).every(isSafeRecordKey)
+}
+
+function isSafeRecordKey(value: string) {
+  return !FORBIDDEN_RECORD_KEYS.has(value)
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === 'string'
+}
+
+function isTimestamp(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && Number.isFinite(Date.parse(value))
+}
+
+function isDateOnly(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const parsed = new Date(`${value}T00:00:00.000Z`)
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value
+}
+
+function isNullableTime(value: unknown): value is string | null {
+  return value === null || (typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(value))
 }
 
 function normalize(value: string) {
