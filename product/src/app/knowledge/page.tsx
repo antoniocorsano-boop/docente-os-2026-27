@@ -10,6 +10,7 @@ import {
   knowledgeProcessingStatus,
 } from '@/core/presentation/product-language'
 import { KnowledgeCaptureModes } from './KnowledgeCaptureModes'
+import './knowledge-ui-repair.css'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,7 +70,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
         <section className="knowledgePanel searchPanel">
           <div className="knowledgePanelHeading"><div><span className="panelEyebrow">RITROVA</span><h2>Cerca nella Conoscenza</h2></div></div>
           <form className="knowledgeSearch" action="/knowledge" method="get">
-            <input name="q" defaultValue={query} placeholder="Cerca un argomento, una scadenza, una classe…" />
+            <input name="q" defaultValue={query} placeholder="Cerca un argomento, una scadenza, una classe…" aria-label="Cerca nella Conoscenza" />
             <button type="submit">Cerca</button>
           </form>
           {query ? (
