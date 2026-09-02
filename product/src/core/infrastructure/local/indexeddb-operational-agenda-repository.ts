@@ -2,6 +2,7 @@
 
 import {
   createOperationalAgendaState,
+  validateOperationalAgendaState,
   type OperationalAgendaState,
 } from '@/core/domain/operational-agenda'
 
@@ -12,25 +13,57 @@ const STORE_NAME = 'operational-agenda'
 export class IndexedDbOperationalAgendaRepository {
   async get(userId: string, workspaceId: string, academicYearId: string): Promise<OperationalAgendaState> {
     const database = await openDatabase()
-    const key = contextKey(userId, workspaceId, academicYearId)
-    const stored = await request<OperationalAgendaState | undefined>(database.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key))
-    database.close()
-    return stored ?? createOperationalAgendaState(userId, workspaceId, academicYearId)
+    try {
+      const key = contextKey(userId, workspaceId, academicYearId)
+      const stored = await request<unknown>(database.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key))
+      if (stored === undefined) return createOperationalAgendaState(userId, workspaceId, academicYearId)
+      return validateOperationalAgendaState(stored, userId, workspaceId, academicYearId)
+    } finally {
+      database.close()
+    }
   }
 
-  async save(state: OperationalAgendaState): Promise<void> {
+  async mutate(
+    userId: string,
+    workspaceId: string,
+    academicYearId: string,
+    mutation: (current: OperationalAgendaState) => OperationalAgendaState,
+  ): Promise<OperationalAgendaState> {
     const database = await openDatabase()
     const transaction = database.transaction(STORE_NAME, 'readwrite')
-    transaction.objectStore(STORE_NAME).put(state, contextKey(state.userId, state.workspaceId, state.academicYearId))
-    await transactionDone(transaction)
-    database.close()
+    try {
+      const store = transaction.objectStore(STORE_NAME)
+      const key = contextKey(userId, workspaceId, academicYearId)
+      const stored = await request<unknown>(store.get(key))
+      const current = stored === undefined
+        ? createOperationalAgendaState(userId, workspaceId, academicYearId)
+        : validateOperationalAgendaState(stored, userId, workspaceId, academicYearId)
+      const next = validateOperationalAgendaState(mutation(current), userId, workspaceId, academicYearId)
+      store.put(next, key)
+      await transactionDone(transaction)
+      return next
+    } catch (error) {
+      try {
+        transaction.abort()
+      } catch {
+        // The transaction may already have completed or aborted.
+      }
+      throw error
+    } finally {
+      database.close()
+    }
   }
 
   async replace(userId: string, workspaceId: string, academicYearId: string, state: OperationalAgendaState): Promise<void> {
-    if (state.userId !== userId || state.workspaceId !== workspaceId || state.academicYearId !== academicYearId) {
-      throw new Error('Contesto agenda non coerente')
+    const validated = validateOperationalAgendaState(state, userId, workspaceId, academicYearId)
+    const database = await openDatabase()
+    try {
+      const transaction = database.transaction(STORE_NAME, 'readwrite')
+      transaction.objectStore(STORE_NAME).put(validated, contextKey(userId, workspaceId, academicYearId))
+      await transactionDone(transaction)
+    } finally {
+      database.close()
     }
-    await this.save(state)
   }
 }
 
