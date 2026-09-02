@@ -45,9 +45,11 @@ L'archivio locale contiene esclusivamente preparazioni, checklist, decisioni loc
 
 Ogni workspace evento locale conserva obbligatoriamente uno snapshot minimo dell'impegno (`id`, titolo, tipo, date, orari, nota e riferimento fonte). Lo snapshot non acquisisce autorità sul Calendario: serve soltanto a rendere nuovamente leggibili appunti e decisioni locali quando l'evento è concluso o non è più presente nel Calendario canonico. Uno stato o backup con workspace privo di snapshot viene rifiutato fail-closed.
 
-Le modifiche ordinarie non sostituiscono più ciecamente l'intero record a partire dallo stato React. Ogni mutazione usa una transazione IndexedDB `readwrite`, rilegge lo stato più recente nello stesso object store, applica la modifica e scrive il risultato nella stessa transazione. Le transazioni sullo store serializzano anche modifiche provenienti da schede browser differenti e riducono il rischio di lost update.
+Le modifiche ordinarie non sostituiscono più ciecamente l'intero record a partire dallo stato React. Ogni mutazione usa una transazione IndexedDB `readwrite`, rilegge lo stato più recente nello stesso object store, applica la modifica e scrive il risultato nella stessa transazione. Le transazioni sullo store serializzano le scritture e riducono il rischio di lost update.
 
-L'interfaccia mantiene inoltre un conteggio sincrono delle mutazioni locali ancora in-flight. Questo contatore non sostituisce la serializzazione IndexedDB: serve a impedire che importazione o esportazione inizino mentre una mutazione avviata dalla UI deve ancora completarsi.
+Il repository coordina inoltre tutte le istanze della stessa origine tramite **Web Locks API**, con un nome di lock deterministico derivato da `userId:workspaceId:academicYearId`. Le mutazioni ordinarie richiedono un lock `shared` con `ifAvailable: true`: possono convivere tra loro e restano serializzate da IndexedDB, ma vengono rifiutate immediatamente quando un import/export esclusivo del medesimo contesto è già in corso o in attesa. Import ed export richiedono invece un lock `exclusive`, che attende la conclusione delle mutazioni condivise già attive e impedisce a una seconda scheda o a una nuova istanza del pannello di accodare una modifica stale sopra il backup.
+
+L'interfaccia mantiene anche un conteggio sincrono delle mutazioni locali ancora in-flight nella singola istanza. Questo contatore non sostituisce il Web Lock cross-tab: serve a dare feedback immediato e a disabilitare localmente i controlli di portabilità mentre una mutazione avviata dalla stessa UI deve ancora completarsi.
 
 ## 4. Backup e ripristino
 
@@ -69,9 +71,9 @@ L'importazione fallisce prima di sostituire IndexedDB se:
 
 La validazione è fail-closed e riguarda l'intero albero importato, non soltanto i campi esterni. Questo evita che un backup sintatticamente valido ma strutturalmente corrotto renda inaccessibile l'agenda locale dopo il ripristino.
 
-Importazione ed esportazione possono iniziare soltanto quando il contatore delle mutazioni locali è a zero. Durante il `replace` del backup l'applicazione entra in stato di importazione: un guard sincrono impedisce nuove mutazioni locali e i controlli di modifica, salvataggio, export e secondo import vengono disabilitati. In questo modo un valore catturato dalla UI precedente non può essere accodato dopo il ripristino e sovrascrivere lo stato appena importato.
+Importazione ed esportazione possono iniziare soltanto quando il contatore della singola istanza è a zero e quando il repository ha acquisito il **lock esclusivo cross-document** del contesto. L'intera finestra critica dell'import — lettura del file, parsing, validazione e `replace` — resta dentro quel lock. Le mutazioni già iniziate in qualunque scheda terminano prima del ripristino; nuove mutazioni dello stesso contesto non vengono accodate dietro l'import ma falliscono con un messaggio esplicito. Se il browser non espone Web Locks, import ed export falliscono chiusi invece di simulare una sicurezza multi-scheda non garantita; le normali mutazioni IndexedDB continuano a funzionare.
 
-L'esportazione entra a sua volta in uno stato esclusivo che impedisce nuove mutazioni dalla stessa superficie durante la lettura. Il JSON non viene costruito dallo snapshot React: viene prima riletto il record persistito corrente tramite il repository IndexedDB e il backup viene serializzato da quello stato. Questo evita che un salvataggio appena concluso o una modifica proveniente da un'altra scheda già persistita restino fuori dal file di recovery soltanto perché la UI locale non è ancora aggiornata.
+L'esportazione acquisisce lo stesso lock esclusivo, rilegge il record persistito corrente tramite il repository IndexedDB e costruisce il JSON dentro la finestra protetta. Il file non viene quindi prodotto dallo snapshot React e non può essere intercalato con una mutazione concorrente di un'altra istanza dello stesso contesto.
 
 Dopo l'importazione, l'editor degli appunti viene rimontato sulla revisione importata prima di consentire un nuovo salvataggio.
 
@@ -125,10 +127,13 @@ V1 è accettabile quando:
 6. ogni workspace locale possiede uno snapshot evento valido e resta quindi ricostruibile nello storico;
 7. gli identificatori di checklist e decisioni sono univoci nelle rispettive collezioni;
 8. le mutazioni ordinarie sono serializzate su IndexedDB e derivano dallo stato più recente disponibile;
-9. importazione ed esportazione non possono iniziare finché esiste una mutazione locale in-flight;
-10. durante il ripristino nessuna mutazione locale può essere accodata sopra lo stato importato;
-11. l'esportazione rilegge il record persistito corrente e non serializza uno snapshot React potenzialmente stale;
-12. l'assenza o la corruzione di IndexedDB viene mostrata come errore esplicito, senza fallback silenzioso a memoria volatile;
-13. esportazione e importazione restano accessibili anche senza eventi futuri;
-14. gli eventi conclusi con lavoro locale e gli snapshot di eventi rimossi restano raggiungibili come storico locale;
-15. l'importazione aggiorna gli editor locali senza consentire che uno stato React precedente sovrascriva il contenuto ripristinato.
+9. ogni contesto agenda usa un lock cross-document stabile e condiviso tra le schede della stessa origine;
+10. importazione ed esportazione acquisiscono un lock esclusivo e attendono le mutazioni già attive prima di operare;
+11. una mutazione ordinaria non può essere accodata dietro un backup esclusivo per applicare successivamente un valore stale;
+12. l'importazione mantiene sotto lock esclusivo lettura, parsing, validazione e sostituzione dello stato;
+13. l'esportazione rilegge e serializza sotto lock esclusivo il record persistito corrente, non uno snapshot React potenzialmente stale;
+14. in assenza di Web Locks import/export falliscono chiusi con errore esplicito;
+15. l'assenza o la corruzione di IndexedDB viene mostrata come errore esplicito, senza fallback silenzioso a memoria volatile;
+16. esportazione e importazione restano accessibili anche senza eventi futuri;
+17. gli eventi conclusi con lavoro locale e gli snapshot di eventi rimossi restano raggiungibili come storico locale;
+18. l'importazione aggiorna gli editor locali senza consentire che uno stato React precedente sovrascriva il contenuto ripristinato.
