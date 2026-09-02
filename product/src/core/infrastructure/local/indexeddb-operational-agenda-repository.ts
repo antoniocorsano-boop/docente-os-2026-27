@@ -5,12 +5,21 @@ import {
   validateOperationalAgendaState,
   type OperationalAgendaState,
 } from '@/core/domain/operational-agenda'
+import {
+  browserOperationalAgendaLockManager,
+  operationalAgendaContextLockName,
+  withExclusiveOperationalAgendaBackupLock,
+  withSharedOperationalAgendaMutationLock,
+  type OperationalAgendaLockManager,
+} from './operational-agenda-context-lock'
 
 const DATABASE_NAME = 'docente-os-local'
 const DATABASE_VERSION = 1
 const STORE_NAME = 'operational-agenda'
 
 export class IndexedDbOperationalAgendaRepository {
+  constructor(private readonly lockManager: OperationalAgendaLockManager | null = browserOperationalAgendaLockManager()) {}
+
   async get(userId: string, workspaceId: string, academicYearId: string): Promise<OperationalAgendaState> {
     const database = await openDatabase()
     try {
@@ -29,29 +38,32 @@ export class IndexedDbOperationalAgendaRepository {
     academicYearId: string,
     mutation: (current: OperationalAgendaState) => OperationalAgendaState,
   ): Promise<OperationalAgendaState> {
-    const database = await openDatabase()
-    const transaction = database.transaction(STORE_NAME, 'readwrite')
-    try {
-      const store = transaction.objectStore(STORE_NAME)
-      const key = contextKey(userId, workspaceId, academicYearId)
-      const stored = await request<unknown>(store.get(key))
-      const current = stored === undefined
-        ? createOperationalAgendaState(userId, workspaceId, academicYearId)
-        : validateOperationalAgendaState(stored, userId, workspaceId, academicYearId)
-      const next = validateOperationalAgendaState(mutation(current), userId, workspaceId, academicYearId)
-      store.put(next, key)
-      await transactionDone(transaction)
-      return next
-    } catch (error) {
+    const lockName = operationalAgendaContextLockName(userId, workspaceId, academicYearId)
+    return withSharedOperationalAgendaMutationLock(this.lockManager, lockName, async () => {
+      const database = await openDatabase()
+      const transaction = database.transaction(STORE_NAME, 'readwrite')
       try {
-        transaction.abort()
-      } catch {
-        // The transaction may already have completed or aborted.
+        const store = transaction.objectStore(STORE_NAME)
+        const key = contextKey(userId, workspaceId, academicYearId)
+        const stored = await request<unknown>(store.get(key))
+        const current = stored === undefined
+          ? createOperationalAgendaState(userId, workspaceId, academicYearId)
+          : validateOperationalAgendaState(stored, userId, workspaceId, academicYearId)
+        const next = validateOperationalAgendaState(mutation(current), userId, workspaceId, academicYearId)
+        store.put(next, key)
+        await transactionDone(transaction)
+        return next
+      } catch (error) {
+        try {
+          transaction.abort()
+        } catch {
+          // The transaction may already have completed or aborted.
+        }
+        throw error
+      } finally {
+        database.close()
       }
-      throw error
-    } finally {
-      database.close()
-    }
+    })
   }
 
   async replace(userId: string, workspaceId: string, academicYearId: string, state: OperationalAgendaState): Promise<void> {
@@ -64,6 +76,19 @@ export class IndexedDbOperationalAgendaRepository {
     } finally {
       database.close()
     }
+  }
+
+  async withExclusiveContextLock<T>(
+    userId: string,
+    workspaceId: string,
+    academicYearId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    return withExclusiveOperationalAgendaBackupLock(
+      this.lockManager,
+      operationalAgendaContextLockName(userId, workspaceId, academicYearId),
+      operation,
+    )
   }
 }
 
