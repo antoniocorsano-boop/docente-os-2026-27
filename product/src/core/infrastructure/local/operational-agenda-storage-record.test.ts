@@ -7,6 +7,7 @@ import {
   makeOperationalAgendaMutationStorageRecord,
   makeOperationalAgendaRestoreStorageRecord,
   readOperationalAgendaStorageRecord,
+  shouldRefreshOperationalAgendaEditors,
 } from './operational-agenda-storage-record'
 
 const context = {
@@ -76,4 +77,9 @@ test('una scheda stale non può trasformare il nuovo stato ripristinato', () => 
     /ripristinato da un’altra scheda/,
   )
   assert.equal(restored.snapshot.state.standaloneDecisions[0].title, 'backup ripristinato')
+})
+
+test('gli editor vanno rimontati quando una lettura osserva una generazione diversa', () => {
+  assert.equal(shouldRefreshOperationalAgendaEditors(5, 5), false)
+  assert.equal(shouldRefreshOperationalAgendaEditors(5, 6), true)
 })
