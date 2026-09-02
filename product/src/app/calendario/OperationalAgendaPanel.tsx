@@ -6,8 +6,10 @@ import {
   createEventWorkspace,
   makeOperationalAgendaBackup,
   parseOperationalAgendaBackup,
+  snapshotOperationalAgendaEvent,
   suggestOperationalPreparation,
   type OperationalAgendaDecisionStatus,
+  type OperationalAgendaEventSnapshot,
   type OperationalAgendaState,
 } from '@/core/domain/operational-agenda'
 import { IndexedDbOperationalAgendaRepository } from '@/core/infrastructure/local/indexeddb-operational-agenda-repository'
@@ -20,15 +22,24 @@ type Props = {
   events: CalendarEvent[]
 }
 
+type EventChoice = {
+  event: OperationalAgendaEventSnapshot
+  historical: boolean
+  detached: boolean
+}
+
 const repository = new IndexedDbOperationalAgendaRepository()
 
 export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, today, events }: Props) {
-  const upcomingEvents = useMemo(
-    () => events.filter((event) => event.endsOn >= today).sort((a, b) => `${a.startsOn}${a.startTime ?? ''}`.localeCompare(`${b.startsOn}${b.startTime ?? ''}`)),
+  const activeEvents = useMemo(
+    () => events
+      .filter((event) => event.endsOn >= today)
+      .sort((a, b) => `${a.startsOn}${a.startTime ?? ''}`.localeCompare(`${b.startsOn}${b.startTime ?? ''}`))
+      .map((event) => snapshotOperationalAgendaEvent(event)),
     [events, today],
   )
   const [state, setState] = useState<OperationalAgendaState | null>(null)
-  const [selectedEventId, setSelectedEventId] = useState(upcomingEvents[0]?.id ?? '')
+  const [selectedEventId, setSelectedEventId] = useState(activeEvents[0]?.id ?? '')
   const [decisionTitle, setDecisionTitle] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -37,19 +48,48 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
   useEffect(() => {
     let cancelled = false
     repository.get(userId, workspaceId, academicYearId)
-      .then((value) => { if (!cancelled) setState(value) })
+      .then((value) => {
+        if (!cancelled) {
+          setState(value)
+          setError(null)
+        }
+      })
       .catch((reason: unknown) => { if (!cancelled) setError(humanError(reason)) })
     return () => { cancelled = true }
   }, [userId, workspaceId, academicYearId])
 
-  const selectedEvent = upcomingEvents.find((event) => event.id === selectedEventId) ?? upcomingEvents[0] ?? null
-  const eventWorkspace = selectedEvent && state ? state.eventWorkspaces[selectedEvent.id] ?? createEventWorkspace(selectedEvent.id) : null
+  const eventChoices = useMemo<EventChoice[]>(() => {
+    const activeIds = new Set(activeEvents.map((event) => event.id))
+    const canonicalById = new Map(events.map((event) => [event.id, event]))
+    const active = activeEvents.map((event) => ({ event, historical: false, detached: false }))
+    if (!state) return active
+
+    const history = Object.values(state.eventWorkspaces)
+      .filter((workspace) => !activeIds.has(workspace.eventId))
+      .map((workspace): EventChoice | null => {
+        const canonical = canonicalById.get(workspace.eventId)
+        const event = canonical ? snapshotOperationalAgendaEvent(canonical) : workspace.eventSnapshot
+        if (!event) return null
+        return { event, historical: true, detached: !canonical }
+      })
+      .filter((choice): choice is EventChoice => choice !== null)
+      .sort((a, b) => `${b.event.startsOn}${b.event.startTime ?? ''}`.localeCompare(`${a.event.startsOn}${a.event.startTime ?? ''}`))
+
+    return [...active, ...history]
+  }, [activeEvents, events, state])
+
+  const selectedChoice = eventChoices.find((choice) => choice.event.id === selectedEventId) ?? eventChoices[0] ?? null
+  const selectedEvent = selectedChoice?.event ?? null
+  const eventWorkspace = selectedEvent && state ? state.eventWorkspaces[selectedEvent.id] ?? null : null
   const suggestions = selectedEvent ? suggestOperationalPreparation(selectedEvent) : []
 
-  const persist = async (next: OperationalAgendaState, successMessage?: string) => {
+  const persistMutation = async (
+    mutation: (current: OperationalAgendaState) => OperationalAgendaState,
+    successMessage?: string,
+  ) => {
     try {
       setError(null)
-      await repository.save(next)
+      const next = await repository.mutate(userId, workspaceId, academicYearId, mutation)
       setState(next)
       if (successMessage) setMessage(successMessage)
     } catch (reason) {
@@ -58,91 +98,129 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
   }
 
   const addSuggestion = async (suggestionId: string) => {
-    if (!state || !selectedEvent) return
+    if (!selectedEvent) return
     const suggestion = suggestions.find((item) => item.id === suggestionId)
     if (!suggestion) return
-    const now = new Date().toISOString()
-    const current = state.eventWorkspaces[selectedEvent.id] ?? createEventWorkspace(selectedEvent.id, now)
-    if (current.checklist.some((item) => item.suggestionId === suggestion.id)) {
-      setMessage('Questa proposta è già nelle attività locali.')
-      return
-    }
-    const next = {
-      ...state,
-      eventWorkspaces: {
-        ...state.eventWorkspaces,
-        [selectedEvent.id]: {
-          ...current,
-          checklist: [...current.checklist, { id: localId('task'), eventId: selectedEvent.id, suggestionId: suggestion.id, title: suggestion.title, done: false, createdAt: now, updatedAt: now }],
-          updatedAt: now,
+    const event = selectedEvent
+    await persistMutation((current) => {
+      const now = new Date().toISOString()
+      const workspace = ensureEventWorkspace(current, event, now)
+      if (workspace.checklist.some((item) => item.suggestionId === suggestion.id)) return current
+      return {
+        ...current,
+        eventWorkspaces: {
+          ...current.eventWorkspaces,
+          [event.id]: {
+            ...workspace,
+            checklist: [
+              ...workspace.checklist,
+              {
+                id: localId('task'),
+                eventId: event.id,
+                suggestionId: suggestion.id,
+                title: suggestion.title,
+                done: false,
+                createdAt: now,
+                updatedAt: now,
+              },
+            ],
+            updatedAt: now,
+          },
         },
-      },
-      updatedAt: now,
-    }
-    await persist(next, 'Attività aggiunta alla preparazione locale.')
+        updatedAt: now,
+      }
+    }, 'Attività aggiunta alla preparazione locale.')
   }
 
   const toggleChecklist = async (itemId: string, done: boolean) => {
-    if (!state || !selectedEvent || !eventWorkspace) return
-    const now = new Date().toISOString()
-    const next = {
-      ...state,
-      eventWorkspaces: {
-        ...state.eventWorkspaces,
-        [selectedEvent.id]: {
-          ...eventWorkspace,
-          checklist: eventWorkspace.checklist.map((item) => item.id === itemId ? { ...item, done, updatedAt: now } : item),
-          updatedAt: now,
+    if (!selectedEvent) return
+    const event = selectedEvent
+    await persistMutation((current) => {
+      const currentWorkspace = current.eventWorkspaces[event.id]
+      if (!currentWorkspace) return current
+      const now = new Date().toISOString()
+      return {
+        ...current,
+        eventWorkspaces: {
+          ...current.eventWorkspaces,
+          [event.id]: {
+            ...currentWorkspace,
+            eventSnapshot: currentWorkspace.eventSnapshot ?? snapshotOperationalAgendaEvent(event),
+            checklist: currentWorkspace.checklist.map((item) => item.id === itemId ? { ...item, done, updatedAt: now } : item),
+            updatedAt: now,
+          },
         },
-      },
-      updatedAt: now,
-    }
-    await persist(next)
+        updatedAt: now,
+      }
+    })
   }
 
   const saveNote = async (note: string) => {
-    if (!state || !selectedEvent) return
-    const now = new Date().toISOString()
-    const current = state.eventWorkspaces[selectedEvent.id] ?? createEventWorkspace(selectedEvent.id, now)
-    const next = {
-      ...state,
-      eventWorkspaces: { ...state.eventWorkspaces, [selectedEvent.id]: { ...current, note, updatedAt: now } },
-      updatedAt: now,
-    }
-    await persist(next, 'Appunti salvati nel browser.')
+    if (!selectedEvent) return
+    const event = selectedEvent
+    await persistMutation((current) => {
+      const now = new Date().toISOString()
+      const workspace = ensureEventWorkspace(current, event, now)
+      return {
+        ...current,
+        eventWorkspaces: {
+          ...current.eventWorkspaces,
+          [event.id]: { ...workspace, note, updatedAt: now },
+        },
+        updatedAt: now,
+      }
+    }, 'Appunti salvati nel browser.')
   }
 
   const addDecision = async () => {
     const title = decisionTitle.trim()
-    if (!title || !state || !selectedEvent) return
-    const now = new Date().toISOString()
-    const current = state.eventWorkspaces[selectedEvent.id] ?? createEventWorkspace(selectedEvent.id, now)
-    const decision = { id: localId('decision'), eventId: selectedEvent.id, title, status: 'TO_ACQUIRE' as const, note: null, createdAt: now, updatedAt: now }
-    const next = {
-      ...state,
-      eventWorkspaces: { ...state.eventWorkspaces, [selectedEvent.id]: { ...current, decisions: [...current.decisions, decision], updatedAt: now } },
-      updatedAt: now,
-    }
+    if (!title || !selectedEvent) return
+    const event = selectedEvent
     setDecisionTitle('')
-    await persist(next, 'Decisione registrata come da acquisire.')
+    await persistMutation((current) => {
+      const now = new Date().toISOString()
+      const workspace = ensureEventWorkspace(current, event, now)
+      const decision = {
+        id: localId('decision'),
+        eventId: event.id,
+        title,
+        status: 'TO_ACQUIRE' as const,
+        note: null,
+        createdAt: now,
+        updatedAt: now,
+      }
+      return {
+        ...current,
+        eventWorkspaces: {
+          ...current.eventWorkspaces,
+          [event.id]: { ...workspace, decisions: [...workspace.decisions, decision], updatedAt: now },
+        },
+        updatedAt: now,
+      }
+    }, 'Decisione registrata come da acquisire.')
   }
 
   const setDecisionStatus = async (decisionId: string, status: OperationalAgendaDecisionStatus) => {
-    if (!state || !selectedEvent || !eventWorkspace) return
-    const now = new Date().toISOString()
-    const next = {
-      ...state,
-      eventWorkspaces: {
-        ...state.eventWorkspaces,
-        [selectedEvent.id]: {
-          ...eventWorkspace,
-          decisions: eventWorkspace.decisions.map((decision) => decision.id === decisionId ? { ...decision, status, updatedAt: now } : decision),
-          updatedAt: now,
+    if (!selectedEvent) return
+    const event = selectedEvent
+    await persistMutation((current) => {
+      const currentWorkspace = current.eventWorkspaces[event.id]
+      if (!currentWorkspace) return current
+      const now = new Date().toISOString()
+      return {
+        ...current,
+        eventWorkspaces: {
+          ...current.eventWorkspaces,
+          [event.id]: {
+            ...currentWorkspace,
+            eventSnapshot: currentWorkspace.eventSnapshot ?? snapshotOperationalAgendaEvent(event),
+            decisions: currentWorkspace.decisions.map((decision) => decision.id === decisionId ? { ...decision, status, updatedAt: now } : decision),
+            updatedAt: now,
+          },
         },
-      },
-      updatedAt: now,
-    }
-    await persist(next)
+        updatedAt: now,
+      }
+    })
   }
 
   const exportBackup = () => {
@@ -187,17 +265,29 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
       {message ? <div className="operationalMessage" role="status">{message}</div> : null}
 
       {!state ? (
-        <div className="calendarEmpty"><strong>Preparazione dell’archivio locale…</strong><span>DOCENTE OS sta aprendo IndexedDB nel browser.</span></div>
+        <div className="calendarEmpty"><strong>Archivio locale non disponibile</strong><span>{error ? 'Puoi comunque importare un backup valido per ripristinare questo contesto.' : 'DOCENTE OS sta aprendo IndexedDB nel browser.'}</span></div>
       ) : !selectedEvent ? (
-        <div className="calendarEmpty"><strong>Nessun impegno futuro da preparare</strong><span>Registra prima l’impegno nel Calendario; la preparazione locale non inventa date o riunioni.</span></div>
+        <div className="calendarEmpty"><strong>Nessun impegno da aprire</strong><span>Puoi comunque esportare o importare il backup locale. Gli impegni futuri compariranno qui quando saranno registrati nel Calendario.</span></div>
       ) : (
         <>
           <label className="operationalEventPicker">
             <span>Impegno</span>
             <select value={selectedEvent.id} onChange={(event) => { setSelectedEventId(event.target.value); setMessage(null) }}>
-              {upcomingEvents.map((event) => <option value={event.id} key={event.id}>{formatEventOption(event)}</option>)}
+              {eventChoices.map((choice) => (
+                <option value={choice.event.id} key={choice.event.id}>
+                  {formatEventOption(choice.event, choice.historical, choice.detached)}
+                </option>
+              ))}
             </select>
           </label>
+
+          {selectedChoice?.historical ? (
+            <div className="operationalMessage" role="status">
+              {selectedChoice.detached
+                ? 'Storico locale: l’impegno non è più presente nel Calendario, ma il lavoro preparatorio resta accessibile dal suo snapshot locale.'
+                : 'Storico locale: questo impegno è concluso, ma appunti, attività e decisioni restano disponibili.'}
+            </div>
+          ) : null}
 
           <div className="operationalGrid">
             <article className="operationalCard">
@@ -242,23 +332,35 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
 
             <article className="operationalCard">
               <div className="operationalCardTitle"><span>04</span><div><h3>Appunti della riunione</h3><p>Bozza privata locale; non modifica Calendario, Planner o progettazione.</p></div></div>
-              <LocalNote key={selectedEvent.id} initialValue={eventWorkspace?.note ?? ''} onSave={saveNote} />
+              <LocalNote initialValue={eventWorkspace?.note ?? ''} onSave={saveNote} />
             </article>
-          </div>
-
-          <div className="operationalBackup">
-            <div><strong>Portabilità locale</strong><span>Esporta periodicamente un backup JSON. L’importazione è accettata solo per lo stesso utente, spazio e anno scolastico.</span></div>
-            <div><button type="button" onClick={exportBackup}>Esporta backup</button><button type="button" onClick={() => importRef.current?.click()}>Importa backup</button><input ref={importRef} hidden type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importBackup(file) }} /></div>
           </div>
         </>
       )}
+
+      <div className="operationalBackup">
+        <div><strong>Backup sempre accessibile</strong><span>Esporta periodicamente il lavoro locale o importa un backup valido. I controlli restano disponibili anche senza eventi futuri.</span></div>
+        <div>
+          <button type="button" onClick={exportBackup} disabled={!state}>Esporta backup</button>
+          <button type="button" onClick={() => importRef.current?.click()}>Importa backup</button>
+          <input ref={importRef} hidden type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importBackup(file) }} />
+        </div>
+      </div>
     </section>
   )
 }
 
 function LocalNote({ initialValue, onSave }: { initialValue: string; onSave: (value: string) => Promise<void> }) {
   const [value, setValue] = useState(initialValue)
+  useEffect(() => setValue(initialValue), [initialValue])
   return <div className="operationalNote"><textarea value={value} onChange={(event) => setValue(event.target.value)} maxLength={8000} rows={7} placeholder="Annota decisioni, modifiche richieste, responsabilità, scadenze e punti da verificare…" /><button type="button" onClick={() => onSave(value)}>Salva appunti</button></div>
+}
+
+function ensureEventWorkspace(current: OperationalAgendaState, event: OperationalAgendaEventSnapshot, now: string) {
+  const existing = current.eventWorkspaces[event.id]
+  if (!existing) return createEventWorkspace(event.id, now, event)
+  if (existing.eventSnapshot) return existing
+  return { ...existing, eventSnapshot: snapshotOperationalAgendaEvent(event) }
 }
 
 function localId(prefix: string) {
@@ -266,10 +368,11 @@ function localId(prefix: string) {
   return `${prefix}:${value}`
 }
 
-function formatEventOption(event: CalendarEvent) {
+function formatEventOption(event: OperationalAgendaEventSnapshot, historical: boolean, detached: boolean) {
   const date = formatShortDate(event.startsOn)
   const time = event.allDay || !event.startTime ? '' : ` · ${event.startTime}`
-  return `${date}${time} · ${event.title}`
+  const prefix = historical ? (detached ? 'Storico locale · ' : 'Concluso · ') : ''
+  return `${prefix}${date}${time} · ${event.title}`
 }
 
 function formatShortDate(value: string) {
