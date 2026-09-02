@@ -13,6 +13,10 @@ import {
   type OperationalAgendaState,
 } from '@/core/domain/operational-agenda'
 import { IndexedDbOperationalAgendaRepository } from '@/core/infrastructure/local/indexeddb-operational-agenda-repository'
+import {
+  canStartDecisionSubmission,
+  shouldClearPersistedDecisionDraft,
+} from './operational-agenda-decision-guard'
 
 type Props = {
   userId: string
@@ -181,10 +185,15 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
   }
 
   const addDecision = async () => {
-    if (importInProgressRef.current || decisionSaveInProgressRef.current) return
-    const title = decisionTitle.trim()
-    if (!title || !selectedEvent) return
     const event = selectedEvent
+    if (!canStartDecisionSubmission({
+      importing: importInProgressRef.current,
+      saving: decisionSaveInProgressRef.current,
+      title: decisionTitle,
+      hasSelectedEvent: Boolean(event),
+    }) || !event) return
+
+    const title = decisionTitle.trim()
     decisionSaveInProgressRef.current = true
     setIsDecisionSaving(true)
     try {
@@ -210,7 +219,7 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
         }
       }, 'Decisione registrata come da acquisire.')
       if (persisted) {
-        setDecisionTitle((current) => current.trim() === title ? '' : current)
+        setDecisionTitle((current) => shouldClearPersistedDecisionDraft(current, title) ? '' : current)
       }
     } finally {
       decisionSaveInProgressRef.current = false
