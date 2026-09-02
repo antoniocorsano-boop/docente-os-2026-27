@@ -15,13 +15,13 @@ import { IndexedDbOperationalAgendaRepository } from '@/core/infrastructure/loca
 type Props = {
   workspaceId: string
   academicYearId: string
+  today: string
   events: CalendarEvent[]
 }
 
 const repository = new IndexedDbOperationalAgendaRepository()
 
-export function OperationalAgendaPanel({ workspaceId, academicYearId, events }: Props) {
-  const today = currentRomeDate()
+export function OperationalAgendaPanel({ workspaceId, academicYearId, today, events }: Props) {
   const upcomingEvents = useMemo(
     () => events.filter((event) => event.endsOn >= today).sort((a, b) => `${a.startsOn}${a.startTime ?? ''}`.localeCompare(`${b.startsOn}${b.startTime ?? ''}`)),
     [events, today],
@@ -40,10 +40,6 @@ export function OperationalAgendaPanel({ workspaceId, academicYearId, events }: 
       .catch((reason: unknown) => { if (!cancelled) setError(humanError(reason)) })
     return () => { cancelled = true }
   }, [workspaceId, academicYearId])
-
-  useEffect(() => {
-    if (!selectedEventId && upcomingEvents[0]) setSelectedEventId(upcomingEvents[0].id)
-  }, [selectedEventId, upcomingEvents])
 
   const selectedEvent = upcomingEvents.find((event) => event.id === selectedEventId) ?? upcomingEvents[0] ?? null
   const eventWorkspace = selectedEvent && state ? state.eventWorkspaces[selectedEvent.id] ?? createEventWorkspace(selectedEvent.id) : null
@@ -267,12 +263,6 @@ function LocalNote({ initialValue, onSave }: { initialValue: string; onSave: (va
 function localId(prefix: string) {
   const value = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`
   return `${prefix}:${value}`
-}
-
-function currentRomeDate() {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
-  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  return `${value.year}-${value.month}-${value.day}`
 }
 
 function formatEventOption(event: CalendarEvent) {
