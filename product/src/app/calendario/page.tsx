@@ -9,12 +9,14 @@ import {
 import { SupabaseCalendarRepository } from '@/core/infrastructure/supabase/supabase-calendar-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { createClient } from '@/lib/supabase/server'
 import {
   createCalendarEvent,
   deleteCalendarDay,
   deleteCalendarEvent,
   saveCalendarDay,
 } from './actions'
+import { OperationalAgendaPanel } from './OperationalAgendaPanel'
 import './calendar.css'
 
 export const dynamic = 'force-dynamic'
@@ -31,6 +33,11 @@ export default async function CalendarPage() {
   const context = await new SupabaseWorkspaceRepository().getCurrentContext()
   if (!context) redirect('/login')
   if (!context.academicYear) redirect('/')
+
+  const supabase = await createClient()
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+  const userId = claimsData?.claims?.sub
+  if (claimsError || !userId) redirect('/login')
 
   const [settings, snapshot] = await Promise.all([
     new SupabaseTeacherSettingsRepository().getOrCreate(context.workspace.id, context.academicYear.id),
@@ -74,6 +81,14 @@ export default async function CalendarPage() {
           <p>DOCENTE OS non presume festività, sospensioni o giorni di lezione. Registra una data quando hai una fonte o una decisione concreta; ciò che manca resta esplicitamente non determinato.</p>
         </section>
       )}
+
+      <OperationalAgendaPanel
+        userId={userId}
+        workspaceId={context.workspace.id}
+        academicYearId={context.academicYear.id}
+        today={today}
+        events={snapshot.events}
+      />
 
       <section className="calendarGrid" aria-label="Calendario operativo">
         <article className="calendarCard">
