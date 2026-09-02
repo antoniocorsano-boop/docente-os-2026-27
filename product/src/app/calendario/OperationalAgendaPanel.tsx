@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CalendarEvent } from '@/core/domain/calendar'
 import {
   createEventWorkspace,
-  makeOperationalAgendaBackup,
   parseOperationalAgendaBackup,
   snapshotOperationalAgendaEvent,
   suggestOperationalPreparation,
@@ -17,6 +16,7 @@ import {
   canStartDecisionSubmission,
   canStartOperationalAgendaExport,
   canStartOperationalAgendaImport,
+  readPersistedOperationalAgendaBackup,
   shouldClearPersistedDecisionDraft,
 } from './operational-agenda-decision-guard'
 
@@ -279,9 +279,10 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
     setIsExporting(true)
     setError(null)
     try {
-      const persistedState = await repository.get(userId, workspaceId, academicYearId)
+      const { persistedState, backup } = await readPersistedOperationalAgendaBackup(
+        () => repository.get(userId, workspaceId, academicYearId),
+      )
       setState(persistedState)
-      const backup = makeOperationalAgendaBackup(persistedState)
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const anchor = document.createElement('a')
