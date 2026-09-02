@@ -12,6 +12,7 @@ import {
   type OperationalAgendaState,
 } from '@/core/domain/operational-agenda'
 import { IndexedDbOperationalAgendaRepository } from '@/core/infrastructure/local/indexeddb-operational-agenda-repository'
+import { OperationalAgendaStaleRestoreGenerationError } from '@/core/infrastructure/local/operational-agenda-storage-record'
 import {
   canStartDecisionSubmission,
   canStartOperationalAgendaExport,
@@ -58,14 +59,16 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
   const exportInProgressRef = useRef(false)
   const pendingMutationCountRef = useRef(0)
   const decisionSaveInProgressRef = useRef(false)
+  const restoreGenerationRef = useRef(0)
   const importRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let cancelled = false
-    repository.get(userId, workspaceId, academicYearId)
-      .then((value) => {
+    repository.getSnapshot(userId, workspaceId, academicYearId)
+      .then((snapshot) => {
         if (!cancelled) {
-          setState(value)
+          restoreGenerationRef.current = snapshot.restoreGeneration
+          setState(snapshot.state)
           setError(null)
         }
       })
@@ -110,11 +113,30 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
     setPendingMutationCount(pendingMutationCountRef.current)
     try {
       setError(null)
-      const next = await repository.mutate(userId, workspaceId, academicYearId, mutation)
+      const next = await repository.mutate(
+        userId,
+        workspaceId,
+        academicYearId,
+        restoreGenerationRef.current,
+        mutation,
+      )
       setState(next)
       if (successMessage) setMessage(successMessage)
       return true
     } catch (reason) {
+      if (reason instanceof OperationalAgendaStaleRestoreGenerationError) {
+        try {
+          const latest = await repository.getSnapshot(userId, workspaceId, academicYearId)
+          restoreGenerationRef.current = latest.restoreGeneration
+          setState(latest.state)
+          setImportRevision((revision) => revision + 1)
+          setError(null)
+          setMessage('Il lavoro locale è stato ripristinato in un’altra scheda. Ho ricaricato lo stato corrente: ripeti la modifica se è ancora necessaria.')
+        } catch (reloadReason) {
+          setError(humanError(reloadReason))
+        }
+        return false
+      }
       setError(humanError(reason))
       return false
     } finally {
@@ -279,18 +301,18 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
     setIsExporting(true)
     setError(null)
     try {
-      const { persistedState, serializedBackup } = await repository.withExclusiveContextLock(
+      const { persistedSnapshot, serializedBackup } = await repository.withExclusiveContextLock(
         userId,
         workspaceId,
         academicYearId,
         async () => {
-          const { persistedState, backup } = await readPersistedOperationalAgendaBackup(
-            () => repository.get(userId, workspaceId, academicYearId),
-          )
-          return { persistedState, serializedBackup: JSON.stringify(backup, null, 2) }
+          const persistedSnapshot = await repository.getSnapshot(userId, workspaceId, academicYearId)
+          const { backup } = await readPersistedOperationalAgendaBackup(async () => persistedSnapshot.state)
+          return { persistedSnapshot, serializedBackup: JSON.stringify(backup, null, 2) }
         },
       )
-      setState(persistedState)
+      restoreGenerationRef.current = persistedSnapshot.restoreGeneration
+      setState(persistedSnapshot.state)
       const blob = new Blob([serializedBackup], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const anchor = document.createElement('a')
@@ -323,18 +345,18 @@ export function OperationalAgendaPanel({ userId, workspaceId, academicYearId, to
     setError(null)
     setMessage('Ripristino backup locale in corso…')
     try {
-      const imported = await repository.withExclusiveContextLock(
+      const restored = await repository.withExclusiveContextLock(
         userId,
         workspaceId,
         academicYearId,
         async () => {
           const raw = JSON.parse(await file.text()) as unknown
           const parsed = parseOperationalAgendaBackup(raw, userId, workspaceId, academicYearId)
-          await repository.replace(userId, workspaceId, academicYearId, parsed)
-          return parsed
+          return repository.replace(userId, workspaceId, academicYearId, parsed)
         },
       )
-      setState(imported)
+      restoreGenerationRef.current = restored.restoreGeneration
+      setState(restored.state)
       setImportRevision((revision) => revision + 1)
       setMessage('Backup locale importato.')
     } catch (reason) {
