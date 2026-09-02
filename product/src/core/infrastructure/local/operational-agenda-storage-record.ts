@@ -59,6 +59,10 @@ export function assertOperationalAgendaRestoreGeneration(actual: number, expecte
   if (actual !== expected) throw new OperationalAgendaStaleRestoreGenerationError()
 }
 
+export function shouldRefreshOperationalAgendaEditors(previousGeneration: number, nextGeneration: number) {
+  return previousGeneration !== nextGeneration
+}
+
 export function makeOperationalAgendaMutationStorageRecord(
   snapshot: OperationalAgendaRepositorySnapshot,
   nextState: OperationalAgendaState,
