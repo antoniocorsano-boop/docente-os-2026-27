@@ -1,3 +1,8 @@
+import {
+  makeOperationalAgendaBackup,
+  type OperationalAgendaState,
+} from '@/core/domain/operational-agenda'
+
 export function canStartDecisionSubmission(input: {
   importing: boolean
   exporting: boolean
@@ -28,4 +33,14 @@ export function canStartOperationalAgendaImport(input: BackupOperationGuardInput
 
 export function canStartOperationalAgendaExport(input: BackupOperationGuardInput & { stateReady: boolean }) {
   return input.stateReady && canStartOperationalAgendaImport(input)
+}
+
+export async function readPersistedOperationalAgendaBackup(
+  readPersistedState: () => Promise<OperationalAgendaState>,
+) {
+  const persistedState = await readPersistedState()
+  return {
+    persistedState,
+    backup: makeOperationalAgendaBackup(persistedState),
+  }
 }
