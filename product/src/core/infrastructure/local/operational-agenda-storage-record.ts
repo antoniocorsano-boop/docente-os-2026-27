@@ -59,19 +59,23 @@ export function readOperationalAgendaRestoreGenerationForReplacement(stored: unk
   if (stored === undefined) return 0
 
   // Il recovery deve poter sostituire uno stato corrotto senza doverlo
-  // validare. Se il record usa già l'envelope versionato, però, la
-  // restoreGeneration è metadata di concorrenza e deve restare valida:
-  // conservarla evita collisioni con schede aperte sulla generazione
-  // precedente. Un payload legacy non versionato appartiene invece alla
-  // generazione zero per contratto.
-  if (hasStorageRecordVersionMarker(stored)) {
-    const restoreGeneration = (stored as { restoreGeneration?: unknown }).restoreGeneration
+  // validare. Se il record porta già un marker di versione, però, quel
+  // marker e la restoreGeneration sono metadata di concorrenza: versioni
+  // sconosciute o metadata corrotti devono fallire chiusi, mai essere
+  // reinterpretati come payload legacy di generazione zero.
+  if (hasStorageRecordVersionProperty(stored)) {
+    if (stored.storageRecordVersion !== STORAGE_RECORD_VERSION) {
+      throw new Error('Versione record agenda locale non supportata')
+    }
+    const restoreGeneration = stored.restoreGeneration
     if (!isRestoreGeneration(restoreGeneration)) {
       throw new Error('Generazione di ripristino agenda locale non valida')
     }
     return restoreGeneration
   }
 
+  // Solo i payload senza alcun marker di storage appartengono al formato
+  // legacy precedente all'envelope e quindi alla generazione zero.
   return 0
 }
 
@@ -112,15 +116,25 @@ export function makeOperationalAgendaRestoreStorageRecord(
   }
 }
 
-function hasStorageRecordVersionMarker(value: unknown): value is Record<string, unknown> & {
-  storageRecordVersion: typeof STORAGE_RECORD_VERSION
+function hasStorageRecordVersionProperty(value: unknown): value is Record<string, unknown> & {
+  storageRecordVersion: unknown
+  restoreGeneration?: unknown
 } {
   return Boolean(
     value &&
     typeof value === 'object' &&
     !Array.isArray(value) &&
     Object.getPrototypeOf(value) === Object.prototype &&
-    (value as { storageRecordVersion?: unknown }).storageRecordVersion === STORAGE_RECORD_VERSION,
+    Object.prototype.hasOwnProperty.call(value, 'storageRecordVersion'),
+  )
+}
+
+function hasCurrentStorageRecordVersion(value: unknown): value is Record<string, unknown> & {
+  storageRecordVersion: typeof STORAGE_RECORD_VERSION
+} {
+  return Boolean(
+    hasStorageRecordVersionProperty(value) &&
+    value.storageRecordVersion === STORAGE_RECORD_VERSION,
   )
 }
 
@@ -130,7 +144,7 @@ function isStorageRecordCandidate(value: unknown): value is Record<string, unkno
   state: unknown
 } {
   return Boolean(
-    hasStorageRecordVersionMarker(value) &&
+    hasCurrentStorageRecordVersion(value) &&
     Object.prototype.hasOwnProperty.call(value, 'restoreGeneration') &&
     Object.prototype.hasOwnProperty.call(value, 'state'),
   )
