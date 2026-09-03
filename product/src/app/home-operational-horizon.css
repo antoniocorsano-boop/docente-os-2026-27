@@ -1,0 +1,20 @@
+.homeOperationalHorizon{margin-top:14px;padding:20px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface)}
+.homeOperationalHeading{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.homeOperationalEyebrow{margin:0 0 6px;color:var(--brand);font-size:9px;font-weight:900;letter-spacing:.12em}
+.homeOperationalHeading h2,.homeOperationalHorizonEmpty h2{margin:0;font-size:22px;letter-spacing:-.025em}
+.homeOperationalHeading>div>p:last-child,.homeOperationalHorizonEmpty p{margin:6px 0 0;color:var(--ink-soft);font-size:12px;line-height:1.5}
+.homeOperationalHeading>span{flex:0 0 auto;padding:6px 9px;border-radius:999px;background:var(--surface-soft);color:var(--ink-soft);font-size:10px;font-weight:800}
+.homeOperationalHeading>span.isStarted{background:#ecfdf5;color:#047857}
+.homeOperationalGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:16px}
+.homeOperationalGrid article{display:flex;min-height:118px;flex-direction:column;padding:13px;border-radius:12px;background:var(--surface-soft)}
+.homeOperationalGrid article>span{color:var(--ink-faint);font-size:9px;font-weight:900;letter-spacing:.1em}
+.homeOperationalGrid article>strong{margin-top:8px;font-size:13px;line-height:1.4}
+.homeOperationalGrid article>small{margin-top:auto;padding-top:9px;color:var(--ink-soft);font-size:10px;line-height:1.4}
+.homeOperationalActions{display:flex;align-items:center;gap:12px;margin-top:15px}
+.homeOperationalActions a,.homeOperationalHorizonEmpty>a{display:inline-flex;min-height:40px;align-items:center;border-radius:10px;padding:0 13px;font-size:11px;font-weight:800}
+.homeOperationalActions a.primary{background:var(--brand);color:#fff}
+.homeOperationalActions>span{color:var(--ink-faint);font-size:10px;line-height:1.4}
+.homeOperationalHorizonEmpty{display:flex;align-items:center;justify-content:space-between;gap:18px}
+.homeOperationalHorizonEmpty>a{border:1px solid var(--line);color:var(--brand)}
+@media(max-width:900px){.homeOperationalGrid{grid-template-columns:1fr}}
+@media(max-width:719px){.homeOperationalHeading,.homeOperationalHorizonEmpty,.homeOperationalActions{align-items:stretch;flex-direction:column}.homeOperationalHeading>span{align-self:flex-start}.homeOperationalActions a,.homeOperationalHorizonEmpty>a{justify-content:center}}
