@@ -6,6 +6,7 @@ import {
   assertOperationalAgendaRestoreGeneration,
   makeOperationalAgendaMutationStorageRecord,
   makeOperationalAgendaRestoreStorageRecord,
+  readOperationalAgendaRestoreGenerationForReplacement,
   readOperationalAgendaStorageRecord,
   shouldRefreshOperationalAgendaEditors,
 } from './operational-agenda-storage-record'
@@ -77,6 +78,70 @@ test('una scheda stale non può trasformare il nuovo stato ripristinato', () => 
     /ripristinato da un’altra scheda/,
   )
   assert.equal(restored.snapshot.state.standaloneDecisions[0].title, 'backup ripristinato')
+})
+
+test('un backup valido può sostituire un record versionato con stato corrotto', () => {
+  const corruptStored = {
+    storageRecordVersion: 1,
+    restoreGeneration: 12,
+    state: { broken: true },
+  }
+
+  assert.throws(
+    () => readOperationalAgendaStorageRecord(corruptStored, context.userId, context.workspaceId, context.academicYearId),
+  )
+
+  const currentRestoreGeneration = readOperationalAgendaRestoreGenerationForReplacement(corruptStored)
+  const restored = makeOperationalAgendaRestoreStorageRecord(
+    { state: state('placeholder'), restoreGeneration: currentRestoreGeneration },
+    state('backup valido'),
+  )
+
+  assert.equal(currentRestoreGeneration, 12)
+  assert.equal(restored.snapshot.restoreGeneration, 13)
+  assert.equal(restored.snapshot.state.standaloneDecisions[0].title, 'backup valido')
+})
+
+test('un payload legacy corrotto può essere sostituito partendo dalla generazione zero', () => {
+  const corruptLegacy = { broken: true }
+
+  assert.throws(
+    () => readOperationalAgendaStorageRecord(corruptLegacy, context.userId, context.workspaceId, context.academicYearId),
+  )
+  assert.equal(readOperationalAgendaRestoreGenerationForReplacement(corruptLegacy), 0)
+})
+
+test('il recovery resta fail-closed se la generazione del record versionato è corrotta', () => {
+  assert.throws(
+    () => readOperationalAgendaRestoreGenerationForReplacement({
+      storageRecordVersion: 1,
+      restoreGeneration: -1,
+      state: { broken: true },
+    }),
+    /Generazione di ripristino agenda locale non valida/,
+  )
+})
+
+test('il recovery resta fail-closed su una versione storage sconosciuta', () => {
+  assert.throws(
+    () => readOperationalAgendaRestoreGenerationForReplacement({
+      storageRecordVersion: 2,
+      restoreGeneration: 1,
+      state: { broken: true },
+    }),
+    /Versione record agenda locale non supportata/,
+  )
+})
+
+test('il recovery resta fail-closed su un marker storage corrotto', () => {
+  assert.throws(
+    () => readOperationalAgendaRestoreGenerationForReplacement({
+      storageRecordVersion: 'corrupt',
+      restoreGeneration: 1,
+      state: { broken: true },
+    }),
+    /Versione record agenda locale non supportata/,
+  )
 })
 
 test('gli editor vanno rimontati quando una lettura osserva una generazione diversa', () => {
