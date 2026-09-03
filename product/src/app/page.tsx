@@ -4,11 +4,14 @@ import { AppShell } from '@/components/app-shell/app-shell'
 import type { PlannerTask } from '@/core/domain/planner-task'
 import { timeToMinutes } from '@/core/domain/timetable'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseCalendarRepository } from '@/core/infrastructure/supabase/supabase-calendar-repository'
 import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTimetableLifecycleRepository } from '@/core/infrastructure/supabase/supabase-timetable-lifecycle-repository'
 import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { createClient } from '@/lib/supabase/server'
+import { HomeOperationalHorizon } from './HomeOperationalHorizon'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,8 +28,13 @@ export default async function HomePage() {
   const context = await new SupabaseWorkspaceRepository().getCurrentContext()
   if (!context) redirect('/login')
 
+  const supabase = await createClient()
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+  const userId = claimsData?.claims?.sub
+  if (claimsError || !userId) redirect('/login')
+
   const year = context.academicYear
-  const [teacherSettings, tasks, timetable, timetableLifecycle, annualSnapshot] = await Promise.all([
+  const [teacherSettings, tasks, timetable, timetableLifecycle, annualSnapshot, calendarSnapshot] = await Promise.all([
     year
       ? new SupabaseTeacherSettingsRepository().getOrCreate(context.workspace.id, year.id)
       : Promise.resolve(null),
@@ -39,6 +47,9 @@ export default async function HomePage() {
       : Promise.resolve(null),
     year
       ? new SupabaseAnnualPlanExecutionRepository().list(context.workspace.id, year.id)
+      : Promise.resolve(null),
+    year
+      ? new SupabaseCalendarRepository().list(context.workspace.id, year.id)
       : Promise.resolve(null),
   ])
 
@@ -102,6 +113,16 @@ export default async function HomePage() {
           {primary.href !== '/planner' ? <Link href="/planner">Vedi le attività</Link> : <Link href="/orario">Vedi l’orario</Link>}
         </div>
       </section>
+
+      {year && calendarSnapshot ? (
+        <HomeOperationalHorizon
+          userId={userId}
+          workspaceId={context.workspace.id}
+          academicYearId={year.id}
+          today={moment.date}
+          events={calendarSnapshot.events}
+        />
+      ) : null}
 
       <details className="humanTaskSecondary">
         <summary>Esplora tutto lo spazio docente</summary>
