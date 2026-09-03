@@ -21,7 +21,7 @@ test('Calendario: CRUD autenticato con rilettura e cleanup', async ({ page }, te
   await expect(choices).toHaveCount(2)
 
   const dayForm = choices.nth(0).locator('form')
-  const dateInput = dayForm.getByLabel('Data')
+  const dateInput = dayForm.locator('input[name="localDate"]')
   const startsOn = await dateInput.getAttribute('min')
   const endsOn = await dateInput.getAttribute('max')
   expect(startsOn, 'Il form Calendario deve esporre il limite iniziale dell’anno scolastico.').toBeTruthy()
@@ -32,8 +32,8 @@ test('Calendario: CRUD autenticato con rilettura e cleanup', async ({ page }, te
   try {
     await openChoice(choices.nth(0))
     await dateInput.fill(localDate)
-    await dayForm.getByLabel('Titolo umano').fill(dayLabel)
-    await dayForm.getByLabel('Riferimento').fill(`HVA:${runToken}:${projectToken}:${retryToken}`)
+    await dayForm.locator('input[name="label"]').fill(dayLabel)
+    await dayForm.locator('input[name="sourceRef"]').fill(`HVA:${runToken}:${projectToken}:${retryToken}`)
     await dayForm.getByRole('button', { name: 'Registra il giorno' }).click()
 
     await expect(calendarRow(page, dayLabel), 'Il giorno appena registrato deve essere rileggibile dal Calendario.').toBeVisible()
@@ -41,11 +41,11 @@ test('Calendario: CRUD autenticato con rilettura e cleanup', async ({ page }, te
     await ensureOpen(add)
     await openChoice(choices.nth(1))
     const eventForm = choices.nth(1).locator('form')
-    await eventForm.getByLabel('Titolo').fill(eventTitle)
-    await eventForm.getByLabel('Durata').selectOption('ALL_DAY')
-    await eventForm.getByLabel('Dal').fill(localDate)
-    await eventForm.getByLabel('Al').fill(localDate)
-    await eventForm.getByLabel('Riferimento').fill(`HVA:${runToken}:${projectToken}:${retryToken}`)
+    await eventForm.locator('input[name="title"]').fill(eventTitle)
+    await eventForm.locator('select[name="timing"]').selectOption('ALL_DAY')
+    await eventForm.locator('input[name="startsOn"]').fill(localDate)
+    await eventForm.locator('input[name="endsOn"]').fill(localDate)
+    await eventForm.locator('input[name="sourceRef"]').fill(`HVA:${runToken}:${projectToken}:${retryToken}`)
     await eventForm.getByRole('button', { name: "Registra l’impegno" }).click()
 
     await expect(calendarRow(page, eventTitle), 'L’impegno appena registrato deve essere rileggibile dal Calendario.').toBeVisible()
