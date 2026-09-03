@@ -113,7 +113,7 @@ jobs:
       - name: Install Playwright runner without changing the lockfile
         if: steps.credentials.outputs.ready == 'true'
         working-directory: product
-        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0 electron-to-chromium@1.5.413
 
       - name: Build tested application
         if: steps.credentials.outputs.ready == 'true'
@@ -281,7 +281,7 @@ jobs:
       - name: Install Playwright runner without changing the lockfile
         if: steps.credentials.outputs.ready == 'true'
         working-directory: product
-        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0 electron-to-chromium@1.5.413
 
       - name: Install Chromium
         if: steps.credentials.outputs.ready == 'true'
