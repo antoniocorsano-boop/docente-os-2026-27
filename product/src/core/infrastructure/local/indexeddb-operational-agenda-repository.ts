@@ -15,6 +15,7 @@ import {
   assertOperationalAgendaRestoreGeneration,
   makeOperationalAgendaMutationStorageRecord,
   makeOperationalAgendaRestoreStorageRecord,
+  readOperationalAgendaRestoreGenerationForReplacement,
   readOperationalAgendaStorageRecord,
   type OperationalAgendaRepositorySnapshot,
 } from './operational-agenda-storage-record'
@@ -88,8 +89,11 @@ export class IndexedDbOperationalAgendaRepository {
       const store = transaction.objectStore(STORE_NAME)
       const key = contextKey(userId, workspaceId, academicYearId)
       const stored = await request<unknown>(store.get(key))
-      const current = readOperationalAgendaStorageRecord(stored, userId, workspaceId, academicYearId)
-      const restored = makeOperationalAgendaRestoreStorageRecord(current, validated)
+      const currentRestoreGeneration = readOperationalAgendaRestoreGenerationForReplacement(stored)
+      const restored = makeOperationalAgendaRestoreStorageRecord(
+        { state: validated, restoreGeneration: currentRestoreGeneration },
+        validated,
+      )
       store.put(restored.record, key)
       await transactionDone(transaction)
       return restored.snapshot
