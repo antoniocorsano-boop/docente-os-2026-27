@@ -122,6 +122,28 @@ test('il recovery resta fail-closed se la generazione del record versionato è c
   )
 })
 
+test('il recovery resta fail-closed su una versione storage sconosciuta', () => {
+  assert.throws(
+    () => readOperationalAgendaRestoreGenerationForReplacement({
+      storageRecordVersion: 2,
+      restoreGeneration: 1,
+      state: { broken: true },
+    }),
+    /Versione record agenda locale non supportata/,
+  )
+})
+
+test('il recovery resta fail-closed su un marker storage corrotto', () => {
+  assert.throws(
+    () => readOperationalAgendaRestoreGenerationForReplacement({
+      storageRecordVersion: 'corrupt',
+      restoreGeneration: 1,
+      state: { broken: true },
+    }),
+    /Versione record agenda locale non supportata/,
+  )
+})
+
 test('gli editor vanno rimontati quando una lettura osserva una generazione diversa', () => {
   assert.equal(shouldRefreshOperationalAgendaEditors(5, 5), false)
   assert.equal(shouldRefreshOperationalAgendaEditors(5, 6), true)
