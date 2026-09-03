@@ -7,6 +7,7 @@ import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supa
 import {
   assertCalendarDayWithinAcademicYear,
   assertCalendarEventWithinAcademicYear,
+  calendarEventIsAllDay,
 } from './calendar-command-guard'
 
 export async function saveCalendarDay(formData: FormData) {
@@ -46,8 +47,7 @@ export async function deleteCalendarDay(formData: FormData) {
 export async function createCalendarEvent(formData: FormData) {
   const context = await requireContext()
   const repository = new SupabaseCalendarRepository()
-  const timing = text(formData, 'timing')
-  const allDay = timing !== 'TIMED'
+  const allDay = calendarEventIsAllDay(text(formData, 'timing'))
   const startsOn = text(formData, 'startsOn')
   const endsOn = text(formData, 'endsOn')
   const startTime = allDay ? null : nullableText(formData, 'startTime')
