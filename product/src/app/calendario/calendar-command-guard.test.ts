@@ -3,12 +3,19 @@ import test from 'node:test'
 import {
   assertCalendarDayWithinAcademicYear,
   assertCalendarEventWithinAcademicYear,
+  calendarEventIsAllDay,
 } from './calendar-command-guard'
 
 const academicYear = {
   startsOn: '2026-09-01',
   endsOn: '2027-08-31',
 }
+
+test('riconosce solo i due timing supportati', () => {
+  assert.equal(calendarEventIsAllDay('ALL_DAY'), true)
+  assert.equal(calendarEventIsAllDay('TIMED'), false)
+  assert.throws(() => calendarEventIsAllDay('UNKNOWN'), /Unsupported calendar event timing/)
+})
 
 test('accetta un giorno interno ai limiti dell anno scolastico', () => {
   assert.doesNotThrow(() => assertCalendarDayWithinAcademicYear('2026-09-03', academicYear))
