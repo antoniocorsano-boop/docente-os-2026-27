@@ -4,14 +4,25 @@ import { revalidatePath } from 'next/cache'
 import type { CalendarDayKind, CalendarEventKind, CalendarSourceKind } from '@/core/domain/calendar'
 import { SupabaseCalendarRepository } from '@/core/infrastructure/supabase/supabase-calendar-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import {
+  assertCalendarDayWithinAcademicYear,
+  assertCalendarEventWithinAcademicYear,
+} from './calendar-command-guard'
 
 export async function saveCalendarDay(formData: FormData) {
   const context = await requireContext()
   const repository = new SupabaseCalendarRepository()
+  const localDate = text(formData, 'localDate')
+
+  assertCalendarDayWithinAcademicYear(localDate, {
+    startsOn: context.academicYear.startsOn,
+    endsOn: context.academicYear.endsOn,
+  })
+
   await repository.saveDay({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
-    localDate: text(formData, 'localDate'),
+    localDate,
     dayKind: dayKind(text(formData, 'dayKind')),
     label: text(formData, 'label'),
     note: nullableText(formData, 'note'),
@@ -22,9 +33,13 @@ export async function saveCalendarDay(formData: FormData) {
 }
 
 export async function deleteCalendarDay(formData: FormData) {
-  await requireContext()
+  const context = await requireContext()
   const repository = new SupabaseCalendarRepository()
-  await repository.deleteDay(text(formData, 'dayId'))
+  await repository.deleteDay({
+    dayId: text(formData, 'dayId'),
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+  })
   revalidatePath('/calendario')
 }
 
@@ -34,11 +49,14 @@ export async function createCalendarEvent(formData: FormData) {
   const timing = text(formData, 'timing')
   const allDay = timing !== 'TIMED'
   const startsOn = text(formData, 'startsOn')
-  const endsOn = allDay ? text(formData, 'endsOn') || startsOn : startsOn
+  const endsOn = text(formData, 'endsOn')
   const startTime = allDay ? null : nullableText(formData, 'startTime')
   const endTime = allDay ? null : nullableText(formData, 'endTime')
 
-  if (!allDay && (!startTime || !endTime)) throw new Error('Start and end time are required for a timed event')
+  assertCalendarEventWithinAcademicYear(
+    { startsOn, endsOn, allDay, startTime, endTime },
+    { startsOn: context.academicYear.startsOn, endsOn: context.academicYear.endsOn },
+  )
 
   await repository.createEvent({
     workspaceId: context.workspace.id,
@@ -58,9 +76,13 @@ export async function createCalendarEvent(formData: FormData) {
 }
 
 export async function deleteCalendarEvent(formData: FormData) {
-  await requireContext()
+  const context = await requireContext()
   const repository = new SupabaseCalendarRepository()
-  await repository.deleteEvent(text(formData, 'eventId'))
+  await repository.deleteEvent({
+    eventId: text(formData, 'eventId'),
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+  })
   revalidatePath('/calendario')
 }
 
