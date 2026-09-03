@@ -11,6 +11,12 @@ type CalendarEventTimingInput = {
   endTime: string | null
 }
 
+export function calendarEventIsAllDay(value: string) {
+  if (value === 'ALL_DAY') return true
+  if (value === 'TIMED') return false
+  throw new Error('Unsupported calendar event timing')
+}
+
 export function assertCalendarDayWithinAcademicYear(localDate: string, bounds: AcademicYearDateBounds) {
   assertDateWithinAcademicYear(localDate, bounds, 'localDate')
 }
