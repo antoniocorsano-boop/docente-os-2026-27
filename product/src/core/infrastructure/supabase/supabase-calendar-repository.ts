@@ -86,9 +86,14 @@ export class SupabaseCalendarRepository {
     return toDay(data)
   }
 
-  async deleteDay(dayId: string) {
+  async deleteDay(input: { dayId: string; workspaceId: string; academicYearId: string }) {
     const supabase = await createClient()
-    const { error } = await supabase.from('calendar_days').delete().eq('id', dayId)
+    const { error } = await supabase
+      .from('calendar_days')
+      .delete()
+      .eq('id', input.dayId)
+      .eq('workspace_id', input.workspaceId)
+      .eq('academic_year_id', input.academicYearId)
     if (error) throw new Error(error.message)
   }
 
@@ -132,9 +137,14 @@ export class SupabaseCalendarRepository {
     return toEvent(data)
   }
 
-  async deleteEvent(eventId: string) {
+  async deleteEvent(input: { eventId: string; workspaceId: string; academicYearId: string }) {
     const supabase = await createClient()
-    const { error } = await supabase.from('calendar_events').delete().eq('id', eventId)
+    const { error } = await supabase
+      .from('calendar_events')
+      .delete()
+      .eq('id', input.eventId)
+      .eq('workspace_id', input.workspaceId)
+      .eq('academic_year_id', input.academicYearId)
     if (error) throw new Error(error.message)
   }
 }
