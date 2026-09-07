@@ -1,5 +1,6 @@
 import type { KnowledgeEnrichmentPort } from '@/core/application/ports/knowledge-base'
 import type { NormalizedKnowledge } from '@/core/domain/knowledge'
+import { profileSchoolDocument } from './school-document-profile'
 
 const actionPatterns = [
   /\b(si invitano|si invita|è necessario|e necessario|dovranno|dovrà|dovra|devono|deve)\b/i,
@@ -22,6 +23,7 @@ export class SchoolCommunicationEnrichment implements KnowledgeEnrichmentPort {
     const documentType = inferDocumentType(text, input.documentType)
     const semanticUnits: NormalizedKnowledge['units'] = []
     const seen = new Set<string>()
+    const schoolDocumentProfile = profileSchoolDocument({ title: input.title, text })
 
     for (const sentence of splitSentences(text)) {
       const dates = extractItalianDates(sentence)
@@ -70,10 +72,11 @@ export class SchoolCommunicationEnrichment implements KnowledgeEnrichmentPort {
         ...(input.extractedData ?? {}),
         enrichment: 'school-communication-v1',
         candidateCount: semanticUnits.length,
+        schoolDocumentProfile,
       },
       units: [...input.units, ...semanticUnits],
       processor: `${input.processor}+school-communication`,
-      processorVersion: `${input.processorVersion}+1.0.0`,
+      processorVersion: `${input.processorVersion}+1.1.0`,
     }
   }
 }
