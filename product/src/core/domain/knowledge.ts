@@ -5,7 +5,7 @@ export type KnowledgeDocumentType = 'CIRCULAR' | 'TEMPLATE' | 'ATTESTATION' | 'T
 export type KnowledgeUnitType = 'CHUNK' | 'ENTITY' | 'DATE' | 'DEADLINE' | 'ACTION' | 'PERSON' | 'CLASS' | 'TOPIC' | 'RULE'
 export type KnowledgeValidationStatus = 'AUTO' | 'REVIEWED' | 'REJECTED'
 export type KnowledgeGenerationStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED'
-export type KnowledgeContentCategory = 'CIRCULAR' | 'MODEL' | 'PROGRAMMING' | 'UDA' | 'ASSESSMENT' | 'TEACHING_RESOURCE' | 'COMMUNICATION' | 'OTHER'
+export type KnowledgeContentCategory = 'CIRCULAR' | 'MODEL' | 'PROGRAMMING' | 'UDA' | 'ASSESSMENT' | 'TEACHING_RESOURCE' | 'COMMUNICATION' | 'CURRICULUM' | 'REPORT' | 'OTHER'
 export type KnowledgeContextStatus = 'UNCLASSIFIED' | 'REVIEWED' | 'NEEDS_REVIEW'
 export type KnowledgeReliability = 'AUTO' | 'VERIFIED' | 'TO_VERIFY'
 
