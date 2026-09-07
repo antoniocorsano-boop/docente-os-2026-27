@@ -12,13 +12,15 @@ Il canone descrive ciò che deve essere progettato; il registro per sezione cons
 
 ## Cornice temporale
 
-Il piano è ancorato al calendario scolastico della Regione Campania 2026/2027:
+Il piano assume come riferimento generale il calendario scolastico della Regione Campania 2026/2027 e, per l'attuazione, il calendario dell'**Istituto Comprensivo Statale “don Lorenzo Milani” — Calvario–Covotta**:
 
-- inizio delle lezioni: **15 settembre 2026**;
+- riferimento regionale per l'inizio delle lezioni: **15 settembre 2026**;
+- avvio effettivo delle lezioni deliberato dall'Istituto: **11 settembre 2026**;
+- dal **11 al 18 settembre 2026**: orario iniziale ridotto **8:00–13:00**, con chiusura il sabato;
 - termine delle lezioni per la scuola secondaria: **8 giugno 2027**;
-- calendario regionale teorico: **204 giorni di lezione**, prima degli eventuali adattamenti per il Santo Patrono e delle ulteriori decisioni d'istituto.
+- calendario regionale teorico: **204 giorni di lezione**, prima degli adattamenti d'istituto e dell'eventuale incidenza della festività del Santo Patrono.
 
-Le date dei singoli incontri non vengono congelate finché non è disponibile l'orario definitivo delle sezioni.
+L'avvio anticipato non modifica il monte ore disciplinare di **66 ore**. Le date dei singoli incontri vengono materializzate soltanto dopo l'acquisizione dell'orario effettivo delle sezioni; sospensioni, riduzioni e variazioni sono registrate nel livello di attuazione, senza alterare retroattivamente il canone.
 
 ## Unità di esecuzione
 
