@@ -321,7 +321,7 @@ function stringValue(value: FormDataEntryValue | null) {
   return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
-const CONTENT_CATEGORIES = ['CIRCULAR', 'MODEL', 'PROGRAMMING', 'UDA', 'ASSESSMENT', 'TEACHING_RESOURCE', 'COMMUNICATION', 'OTHER'] as const
+const CONTENT_CATEGORIES = ['CIRCULAR', 'MODEL', 'PROGRAMMING', 'UDA', 'ASSESSMENT', 'TEACHING_RESOURCE', 'COMMUNICATION', 'CURRICULUM', 'REPORT', 'OTHER'] as const
 const CONTEXT_STATUSES = ['UNCLASSIFIED', 'REVIEWED', 'NEEDS_REVIEW'] as const
 const RELIABILITIES = ['AUTO', 'VERIFIED', 'TO_VERIFY'] as const
 const PLANNER_PRIORITIES = ['LOW', 'NORMAL', 'HIGH', 'URGENT'] as const satisfies readonly PlannerTaskPriority[]
@@ -346,7 +346,7 @@ function isoDateValue(value: FormDataEntryValue | null) {
 
 function sourceKindFor(category: string): PlannerTaskSourceKind {
   if (category === 'CIRCULAR' || category === 'COMMUNICATION') return 'COMMUNICATION'
-  if (category === 'PROGRAMMING' || category === 'UDA' || category === 'TEACHING_RESOURCE' || category === 'ASSESSMENT') return 'TEACHING'
+  if (category === 'PROGRAMMING' || category === 'UDA' || category === 'TEACHING_RESOURCE' || category === 'ASSESSMENT' || category === 'CURRICULUM') return 'TEACHING'
   return 'DOCUMENT'
 }
 
