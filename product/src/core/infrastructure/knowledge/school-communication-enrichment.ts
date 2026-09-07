@@ -65,20 +65,43 @@ export class SchoolCommunicationEnrichment implements KnowledgeEnrichmentPort {
       }
     }
 
+    for (const flag of schoolDocumentProfile.qualityFlags) {
+      const observation = qualityObservation(flag)
+      if (observation) semanticUnits.push(observation)
+    }
+
     return {
       ...input,
       documentType,
       extractedData: {
         ...(input.extractedData ?? {}),
         enrichment: 'school-communication-v1',
-        candidateCount: semanticUnits.length,
+        candidateCount: semanticUnits.filter((unit) => unit.type === 'ACTION' || unit.type === 'DEADLINE').length,
         schoolDocumentProfile,
       },
       units: [...input.units, ...semanticUnits],
       processor: `${input.processor}+school-communication`,
-      processorVersion: `${input.processorVersion}+1.1.0`,
+      processorVersion: `${input.processorVersion}+1.2.0`,
     }
   }
+}
+
+function qualityObservation(flag: string): NormalizedKnowledge['units'][number] | null {
+  if (flag === 'INSTITUTION_NAME_CANONICALIZATION_REQUIRED') {
+    return {
+      type: 'RULE',
+      title: 'Denominazione dell’Istituto da verificare',
+      content: 'Il documento usa “Lorenzo Milani” senza “don”. Verificare la denominazione istituzionale prima dell’uso ufficiale.',
+      structuredData: {
+        qualityFlag: flag,
+        expectedForm: 'Istituto Comprensivo Statale “don Lorenzo Milani” — Calvario–Covotta',
+        requiresHumanReview: true,
+        extractionRule: 'school-document-profile-v1',
+      },
+      confidence: 0.99,
+    }
+  }
+  return null
 }
 
 function inferDocumentType(text: string, current: NormalizedKnowledge['documentType']) {
