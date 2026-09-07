@@ -9,6 +9,10 @@ import type {
 } from '@/core/application/ports/knowledge-base'
 import type { CapturedAssetInput, KnowledgeAsset, NormalizedKnowledge } from '@/core/domain/knowledge'
 
+const PROFILE_CATEGORIES = new Set([
+  'CIRCULAR', 'MODEL', 'PROGRAMMING', 'UDA', 'ASSESSMENT', 'TEACHING_RESOURCE', 'COMMUNICATION', 'CURRICULUM', 'REPORT', 'OTHER',
+])
+
 export class KnowledgeIngestionService {
   constructor(
     private readonly assets: KnowledgeAssetRepository,
@@ -107,6 +111,7 @@ export class KnowledgeIngestionService {
 
       await this.generations.succeedGeneration(generation.id, processorLabel)
       await this.assets.setCurrentGeneration(asset.id, generation.id)
+      await this.applySuggestedContext(asset, normalized)
       return (await this.assets.getById(asset.id)) ?? asset
     } catch (error) {
       await this.generations.failGeneration(generation.id, error)
@@ -114,4 +119,39 @@ export class KnowledgeIngestionService {
       throw error
     }
   }
+
+  private async applySuggestedContext(asset: KnowledgeAsset, normalized: NormalizedKnowledge) {
+    if (asset.contextStatus !== 'UNCLASSIFIED') return
+    const rawProfile = normalized.extractedData?.schoolDocumentProfile
+    if (!isRecord(rawProfile)) return
+
+    const rawCategory = typeof rawProfile.suggestedCategory === 'string' ? rawProfile.suggestedCategory : 'OTHER'
+    const contentCategory = PROFILE_CATEGORIES.has(rawCategory)
+      ? rawCategory as KnowledgeAsset['contentCategory']
+      : 'OTHER'
+    const disciplines = stringArray(rawProfile.disciplines)
+    const classLabels = stringArray(rawProfile.classLabels)
+    const qualityFlags = stringArray(rawProfile.qualityFlags)
+    const meaningful = contentCategory !== 'OTHER' || disciplines.length > 0 || classLabels.length > 0 || qualityFlags.length > 0
+    if (!meaningful) return
+
+    await this.assets.updateContext(asset.id, {
+      academicYearId: asset.academicYearId,
+      contentCategory,
+      disciplines,
+      classLabels,
+      contextStatus: 'NEEDS_REVIEW',
+      reliability: 'TO_VERIFY',
+    })
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function stringArray(value: unknown) {
+  return Array.isArray(value)
+    ? [...new Set(value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean))].slice(0, 20)
+    : []
 }
