@@ -77,6 +77,8 @@ export function contentCategoryLabel(category: KnowledgeContentCategory) {
     ASSESSMENT: 'Verifica o valutazione',
     TEACHING_RESOURCE: 'Risorsa didattica',
     COMMUNICATION: 'Comunicazione',
+    CURRICULUM: 'Curricolo',
+    REPORT: 'Relazione',
     OTHER: 'Altro',
   }
   return labels[category]
@@ -139,5 +141,7 @@ export const CONTENT_CATEGORIES: ReadonlyArray<readonly [KnowledgeContentCategor
   ['ASSESSMENT', 'Verifica o valutazione'],
   ['TEACHING_RESOURCE', 'Risorsa didattica'],
   ['COMMUNICATION', 'Comunicazione'],
+  ['CURRICULUM', 'Curricolo'],
+  ['REPORT', 'Relazione'],
   ['OTHER', 'Altro'],
 ]
