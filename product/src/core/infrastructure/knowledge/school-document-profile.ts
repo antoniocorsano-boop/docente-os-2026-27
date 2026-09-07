@@ -46,9 +46,11 @@ function inferCategory(text: string): KnowledgeContentCategory {
 function inferClasses(text: string) {
   const labels = new Set<string>()
   const allThree = /classi?\s+prima\s*[,/]?\s*seconda\s+(?:e|,)\s*terza/.test(text)
+  const secondAndThird = /classi?\s+seconda\s+(?:e|,)\s*terza/.test(text)
+
   if (allThree || /class(?:e|i)\s+prima|classi?\s+i\b|secondaria\s+[-—]\s+i\b/.test(text)) labels.add('Classe prima')
-  if (allThree || /class(?:e|i)\s+seconda|classi?\s+ii\b|secondaria\s+[-—]\s+ii\b/.test(text)) labels.add('Classe seconda')
-  if (allThree || /class(?:e|i)\s+terza|classi?\s+iii\b|secondaria\s+[-—]\s+iii\b/.test(text)) labels.add('Classe terza')
+  if (allThree || secondAndThird || /class(?:e|i)\s+seconda|classi?\s+ii\b|secondaria\s+[-—]\s+ii\b/.test(text)) labels.add('Classe seconda')
+  if (allThree || secondAndThird || /class(?:e|i)\s+terza|classi?\s+iii\b|secondaria\s+[-—]\s+iii\b/.test(text)) labels.add('Classe terza')
   if (/infanzia/.test(text)) labels.add('Infanzia')
   if (/primaria/.test(text)) labels.add('Primaria')
   if (/secondaria di primo grado|secondaria\s+di\s+i\s+grado/.test(text)) labels.add('Secondaria di I grado')
