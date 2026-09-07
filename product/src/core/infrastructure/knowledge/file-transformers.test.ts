@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import './school-document-profile.test'
 import { VisualExtractionUnavailableError } from '@/core/application/ports/knowledge-base'
 import type { PdfNativeTextExtractionPort, VisualExtractionPage, VisualExtractionPort } from '@/core/application/ports/knowledge-base'
 import type { KnowledgeAsset } from '@/core/domain/knowledge'
