@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { SchoolCommunicationEnrichment } from './school-communication-enrichment'
 import { profileSchoolDocument } from './school-document-profile'
 
 const instituteLine = 'ISTITUTO COMPRENSIVO STATALE “LORENZO MILANI” — CALVARIO–COVOTTA'
@@ -68,4 +69,22 @@ test('la denominazione canonica con don non genera il flag di qualità', () => {
     text: 'Istituto Comprensivo Statale “don Lorenzo Milani” — Calvario–Covotta. Curricolo verticale di Tecnologia.',
   })
   assert.equal(profile.qualityFlags.includes('INSTITUTION_NAME_CANONICALIZATION_REQUIRED'), false)
+})
+
+test('la KB trasforma l’anomalia della denominazione in una osservazione tracciabile da verificare', async () => {
+  const enrichment = new SchoolCommunicationEnrichment()
+  const result = await enrichment.enrich({
+    title: 'Allegato A — Curricolo verticale di Tecnologia',
+    documentType: 'GENERAL',
+    language: 'it',
+    text: corpus[0].text,
+    units: [],
+    processor: 'fixture',
+    processorVersion: '1',
+  })
+
+  const qualityUnit = result.units.find((unit) => unit.type === 'RULE' && unit.structuredData?.qualityFlag === 'INSTITUTION_NAME_CANONICALIZATION_REQUIRED')
+  assert.ok(qualityUnit)
+  assert.equal(qualityUnit?.structuredData?.requiresHumanReview, true)
+  assert.equal(qualityUnit?.structuredData?.expectedForm, 'Istituto Comprensivo Statale “don Lorenzo Milani” — Calvario–Covotta')
 })
