@@ -197,7 +197,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
         <form action={updateKnowledgeContext} className="contextForm">
           <input type="hidden" name="assetId" value={asset.id} />
           <input type="hidden" name="contextStatus" value="REVIEWED" />
-          <input type="hidden" name="reliability" value="VERIFIED" />
+          <input type="hidden" name="reliability" value={asset.reliability} />
           <label><span>Anno scolastico</span><select name="academicYearId" defaultValue={asset.academicYearId ?? ''}><option value="">Non associato</option>{context.academicYear ? <option value={context.academicYear.id}>{context.academicYear.label}</option> : null}</select></label>
           <label><span>Tipologia</span><select name="contentCategory" defaultValue={asset.contentCategory}>{CONTENT_CATEGORIES.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
           <label><span>Discipline</span><input name="disciplines" defaultValue={asset.disciplines.join(', ')} placeholder="Tecnologia, Educazione civica" /></label>
