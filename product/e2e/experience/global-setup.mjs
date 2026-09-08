@@ -51,7 +51,8 @@ export default async function globalSetup() {
     await contextForm.locator('input[name="disciplines"]').fill('Tecnologia')
     await contextForm.locator('input[name="classLabels"]').fill('1A')
     await expect(contextForm.locator('input[name="contextStatus"]')).toHaveValue('REVIEWED')
-    await expect(contextForm.locator('input[name="reliability"]')).toHaveValue('VERIFIED')
+    // Correcting professional context must not imply that the source itself was verified.
+    await expect(contextForm.locator('input[name="reliability"]')).toHaveValue('AUTO')
     await Promise.all([
       page.waitForURL(new RegExp(`/knowledge/${escapeRegExp(assetId)}\\?context=updated$`), { timeout: 30_000 }),
       contextForm.getByRole('button', { name: 'Salva correzione' }).click(),
