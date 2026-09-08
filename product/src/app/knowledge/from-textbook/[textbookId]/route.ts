@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { publicRequestUrl } from '../../request-public-url'
 import {
   resolveConfirmedTextbookMaterialContext,
   TEXTBOOK_MATERIAL_CONTEXT_COOKIE,
@@ -12,10 +13,10 @@ export async function GET(
   const context = await resolveConfirmedTextbookMaterialContext(textbookId)
 
   if (!context) {
-    return NextResponse.redirect(new URL('/impostazioni/libri-di-testo', request.url))
+    return NextResponse.redirect(publicRequestUrl('/impostazioni/libri-di-testo', request))
   }
 
-  const destination = new URL('/knowledge', request.url)
+  const destination = publicRequestUrl('/knowledge', request)
   destination.searchParams.set('capture', 'file')
   destination.searchParams.set('source', 'textbook')
   destination.searchParams.set('textbookId', context.textbook.id)
@@ -24,7 +25,7 @@ export async function GET(
   response.cookies.set(TEXTBOOK_MATERIAL_CONTEXT_COOKIE, context.textbook.id, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: new URL(request.url).protocol === 'https:',
+    secure: destination.protocol === 'https:',
     maxAge: 15 * 60,
     path: '/knowledge',
   })
