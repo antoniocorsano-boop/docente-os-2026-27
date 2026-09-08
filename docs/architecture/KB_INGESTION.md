@@ -75,7 +75,7 @@ Tracks each transformation stage, version, status and failure. Stages include `C
 - DOCX: preserve original; extract raw textual semantics using `mammoth`; never render unsanitized source HTML.
 - TXT/Markdown: preserve uploaded original; extract UTF-8 text and index immediately.
 - XLSX/CSV: preserve original; produce schema-aware structured JSON/table summaries rather than flattening blindly to prose.
-- Images/scans: preserve original; extract only useful textual/document semantics through the provider-neutral visual extraction port; retain image as evidence and mark derivatives for human review.
+- Images/scans: preserve original; extract only useful textual/document semantics through the provider-neutral visual extraction port; retain image as evidence and mark uncertain derivatives for human review.
 - Gmail: retain provider IDs and minimal message metadata; normalize body/attachments without duplicating the whole mailbox.
 - Calendar: normalize event facts and links; do not treat Calendar as task storage.
 - User notes: native text asset, immediately normalized.
@@ -109,23 +109,27 @@ Search, recent-asset summaries and asset detail operate on the current generatio
 
 Context belongs to the immutable asset identity, not to a single derivative generation. It includes the referenced academic year, a professional content category, discipline labels, class/section labels, classification workflow status and reliability assessment.
 
-Initial categories are `CIRCULAR`, `MODEL`, `PROGRAMMING`, `UDA`, `ASSESSMENT`, `TEACHING_RESOURCE`, `COMMUNICATION`, `OTHER`. Discipline and class labels remain explicit multi-value labels until the canonical teaching registry is introduced; they can later be migrated to references without changing derivative history.
+Initial categories are `CIRCULAR`, `MODEL`, `PROGRAMMING`, `UDA`, `ASSESSMENT`, `TEACHING_RESOURCE`, `COMMUNICATION`, `CURRICULUM`, `REPORT`, `OTHER`. Discipline and class labels remain explicit multi-value labels until the canonical teaching registry is introduced; they can later be migrated to references without changing derivative history.
 
-Classification status is distinct from extraction validation:
-- `UNCLASSIFIED`: context has not been reviewed;
-- `NEEDS_REVIEW`: context is present but requires human control;
-- `REVIEWED`: context has been checked by the user.
+Classification status is distinct from extraction validation and from authority to perform operational writes:
+- `UNCLASSIFIED`: no useful professional context has yet been inferred or supplied;
+- `NEEDS_REVIEW`: legacy internal state for machine-organized context that remains editable by automation and by the teacher. It does **not** block ordinary use and does **not** create a routine validation task;
+- `REVIEWED`: the teacher has explicitly corrected or confirmed the professional context; automation must not overwrite it.
 
-Reliability is independently recorded as `AUTO`, `TO_VERIFY` or `VERIFIED`. Updating context never mutates the original, creates a processing generation or invalidates historical links.
+Reliability is independently recorded as `AUTO`, `TO_VERIFY` or `VERIFIED`. The normal machine-organized state is `AUTO`. `TO_VERIFY` is reserved for a concrete uncertainty that deserves attention; it must not be used merely because a human has not clicked a confirmation control. `VERIFIED` means the context has been explicitly checked by the teacher.
+
+Reprocessing may improve `UNCLASSIFIED` or machine-organized context as classifiers improve. It must preserve `REVIEWED` / `VERIFIED` context. Updating context never mutates the original, creates a processing generation or invalidates historical links.
 
 ## Human validation
 
+Human attention is exception-based, not a mandatory approval layer over routine machine organization.
+
 The KB distinguishes extraction from validation:
-- `AUTO`: machine-derived and not yet confirmed;
-- `REVIEWED`: human-validated;
+- `AUTO`: machine-derived and usable according to its scope and provenance;
+- `REVIEWED`: explicitly human-validated;
 - `REJECTED`: explicitly rejected.
 
-Institutional decisions, ambiguous deadlines and document-generation actions remain subject to human validation.
+The teacher is asked to intervene when there is a material ambiguity, an institutional-quality issue, or an operation would create or modify another application object. Institutional decisions, ambiguous deadlines, task/calendar creation and other consequential writes remain subject to human validation. Titles, low-risk classification, indexing and ordinary organization do not require a confirmation click merely to become useful.
 
 ## Search strategy V1
 
@@ -150,8 +154,9 @@ Provider-neutral boundaries include `KnowledgeAssetRepository`, `KnowledgeGenera
 - `0012_knowledge_asset_context.sql`: professional category, disciplines, classes/sections, context workflow and reliability.
 - PDF transformer: `unpdf`, page-aware extraction.
 - DOCX transformer: `mammoth.extractRawText`.
-- deterministic school communication enrichment: ACTION/DEADLINE candidates requiring human validation.
-- `Rielabora`: generation-safe reprocessing with rollback-by-pointer semantics.
+- deterministic school communication enrichment: ACTION/DEADLINE candidates requiring human validation only for operational promotion.
+- teaching-material semantic mode: assessments/resources remain content and do not become ACTION/DEADLINE merely because instructional language contains imperative verbs or dates.
+- `Rielabora`: generation-safe reprocessing with rollback-by-pointer semantics and automatic improvement of non-human-reviewed context.
 - visual extraction adapter: OpenAI Responses file/image input behind `VisualExtractionPort`; configured only server-side.
 - mixed PDF extraction: native text retained page-by-page, visual OCR limited to pages without useful text.
 
@@ -167,4 +172,6 @@ Provider-neutral boundaries include `KnowledgeAssetRepository`, `KnowledgeGenera
 8. Search works without requiring embeddings and uses only the current generation.
 9. Planner and future modules link to exact KB units rather than copying source identity.
 10. Historical generations and validated links are retained for audit.
-11. Professional context is workspace-scoped, filterable and independently human-reviewable.
+11. Professional context is workspace-scoped, filterable and independently correctable by the teacher without requiring routine confirmation.
+12. Reprocessing may improve machine-organized context but must never overwrite explicitly reviewed/verified context.
+13. Human confirmation is mandatory for consequential promotion/writes, not for ordinary low-risk organization.
