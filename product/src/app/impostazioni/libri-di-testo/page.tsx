@@ -10,6 +10,7 @@ import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supa
 import { confirmTextbookAdoption, removeTextbookAdoption } from './actions'
 import { IsbnLookupForm } from './isbn-lookup-form'
 import { MimDiscoveryForm } from './mim-discovery-form'
+import { PublisherResources } from './publisher-resources'
 import '../settings.css'
 import './textbooks.css'
 import './manage.css'
@@ -145,6 +146,7 @@ export default async function TextbookSettingsPage() {
                             {adoption.textbook.editionLabel ? `${adoption.textbook.editionLabel} · ` : ''}
                             {sourceLabel(adoption.sourceKind)}
                           </small>
+                          <PublisherResources adoption={adoption} />
                         </div>
                         <div className="textbookRowActions">
                           {adoption.textbook.officialUrl && (
