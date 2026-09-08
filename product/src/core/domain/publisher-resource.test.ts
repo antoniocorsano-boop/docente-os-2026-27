@@ -8,30 +8,45 @@ const zanichelliTextbook = {
   publisher: 'Zanichelli',
 }
 
-test('confirmed Zanichelli textbook exposes only bounded official resource pointers', () => {
+test('confirmed Tecnologia.verde textbook exposes bounded course and account resources', () => {
   const resources = publisherResourcesForAdoption({
     status: 'CONFIRMED',
     textbook: zanichelliTextbook,
   })
 
-  assert.deepEqual(resources.map((resource) => resource.kind), ['LIBRARY', 'EXERCISES'])
-  assert.deepEqual(resources.map((resource) => resource.audience), ['ACCOUNT_HOLDER', 'TEACHER'])
+  assert.deepEqual(resources.map((resource) => resource.kind), [
+    'BOOK_SITE',
+    'CURRICULUM_ALIGNMENT',
+    'LIBRARY',
+    'EXERCISES',
+  ])
+  assert.deepEqual(resources.map((resource) => resource.audience), ['TEACHER', 'PUBLIC', 'ACCOUNT_HOLDER', 'TEACHER'])
   assert.ok(resources.every((resource) => resource.provider === 'ZANICHELLI'))
-  assert.ok(resources.every((resource) => resource.accessModel === 'EXTERNAL_ACCOUNT'))
   assert.ok(resources.every((resource) => {
     const url = new URL(resource.url)
     return url.protocol === 'https:' && (url.hostname === 'zanichelli.it' || url.hostname.endsWith('.zanichelli.it'))
   }))
 })
 
-test('publisher resource pointers use the documented Zanichelli entry points', () => {
+test('course-specific pointers use official Tecnologia.verde entry points', () => {
   const resources = publisherResourcesForAdoption({
     status: 'CONFIRMED',
     textbook: zanichelliTextbook,
   })
 
-  assert.equal(resources.find((resource) => resource.kind === 'LIBRARY')?.url, 'https://my.zanichelli.it/home')
-  assert.equal(resources.find((resource) => resource.kind === 'EXERCISES')?.url, 'https://esercizi.zanichelli.it/insegnante')
+  assert.equal(resources.find((resource) => resource.kind === 'BOOK_SITE')?.url, 'https://online.scuola.zanichelli.it/tecnologiaverde2ed/')
+  assert.equal(resources.find((resource) => resource.kind === 'CURRICULUM_ALIGNMENT')?.url, 'https://staticmy.zanichelli.it/catalogo/assets/aC7.9788808264572.pdf')
+  assert.equal(resources.find((resource) => resource.kind === 'CURRICULUM_ALIGNMENT')?.accessModel, 'PUBLIC_WEB')
+})
+
+test('generic Zanichelli textbook keeps only generic account resources', () => {
+  const resources = publisherResourcesForAdoption({
+    status: 'CONFIRMED',
+    textbook: { ...zanichelliTextbook, isbn13: '9788808123456', title: 'Altro corso Zanichelli' },
+  })
+
+  assert.deepEqual(resources.map((resource) => resource.kind), ['LIBRARY', 'EXERCISES'])
+  assert.ok(resources.every((resource) => resource.accessModel === 'EXTERNAL_ACCOUNT'))
 })
 
 test('proposed textbook does not expose publisher resources', () => {
@@ -58,7 +73,7 @@ test('publisher matching accepts a legal publisher suffix but not a partial-name
       ...zanichelliTextbook,
       publisher: 'Zanichelli Editore S.p.A.',
     },
-  }).length, 2)
+  }).length, 4)
 
   assert.deepEqual(publisherResourcesForAdoption({
     status: 'CONFIRMED',
