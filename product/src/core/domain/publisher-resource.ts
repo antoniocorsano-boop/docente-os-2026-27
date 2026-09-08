@@ -1,17 +1,9 @@
 import type { TextbookAdoptionWithBook } from './textbook-adoption'
 
 export type PublisherProviderCode = 'ZANICHELLI'
-
-export type PublisherResourceAccessLevel =
-  | 'PUBLIC'
-  | 'STUDENT'
-  | 'TEACHER_RESERVED'
-
-export type PublisherResourceKind =
-  | 'EBOOK'
-  | 'EXERCISES'
-  | 'VIRTUAL_CLASS'
-  | 'TEACHER_RESOURCES'
+export type PublisherResourceAccessModel = 'EXTERNAL_ACCOUNT'
+export type PublisherResourceAudience = 'ACCOUNT_HOLDER' | 'TEACHER'
+export type PublisherResourceKind = 'LIBRARY' | 'EXERCISES'
 
 export type PublisherResourcePointer = {
   provider: PublisherProviderCode
@@ -19,8 +11,8 @@ export type PublisherResourcePointer = {
   title: string
   description: string
   url: string
-  accessLevel: PublisherResourceAccessLevel
-  requiresExternalLogin: boolean
+  audience: PublisherResourceAudience
+  accessModel: PublisherResourceAccessModel
 }
 
 type PublisherTextbookContext = Pick<TextbookAdoptionWithBook, 'status'> & {
@@ -35,43 +27,27 @@ type PublisherResourceProvider = {
 
 const ZANICHELLI_RESOURCES: ReadonlyArray<Omit<PublisherResourcePointer, 'provider'>> = [
   {
-    kind: 'EBOOK',
-    title: 'Apri ebook e risorse del libro',
-    description: 'Entra nella tua libreria myZanichelli e apri laZ Ebook per il testo che hai attivato.',
-    url: 'https://my.zanichelli.it/',
-    accessLevel: 'TEACHER_RESERVED',
-    requiresExternalLogin: true,
+    kind: 'LIBRARY',
+    title: 'Apri libreria e risorse del libro',
+    description: 'Accedi a myZanichelli per consultare la tua libreria e le risorse disponibili per i libri attivati sul tuo account.',
+    url: 'https://my.zanichelli.it/home',
+    audience: 'ACCOUNT_HOLDER',
+    accessModel: 'EXTERNAL_ACCOUNT',
   },
   {
     kind: 'EXERCISES',
     title: 'Cerca esercizi e prove',
-    description: 'Apri laZ Esercizi per cercare attività e prove collegate ai libri e alla materia.',
-    url: 'https://esercizi.zanichelli.it/',
-    accessLevel: 'TEACHER_RESERVED',
-    requiresExternalLogin: true,
-  },
-  {
-    kind: 'VIRTUAL_CLASS',
-    title: 'Apri Classi Virtuali',
-    description: 'Gestisci attività, assegnazioni e risultati nell’ambiente Zanichelli.',
-    url: 'https://classivirtuali.zanichelli.it/',
-    accessLevel: 'TEACHER_RESERVED',
-    requiresExternalLogin: true,
-  },
-  {
-    kind: 'TEACHER_RESOURCES',
-    title: 'Risorse riservate all’insegnante',
-    description: 'Accedi da myZanichelli ai contenuti disponibili in base alla tua abilitazione docente.',
-    url: 'https://my.zanichelli.it/',
-    accessLevel: 'TEACHER_RESERVED',
-    requiresExternalLogin: true,
+    description: 'Apri laZ Esercizi in modalità insegnante per cercare attività e prove per libro, capitolo e materia.',
+    url: 'https://esercizi.zanichelli.it/insegnante',
+    audience: 'TEACHER',
+    accessModel: 'EXTERNAL_ACCOUNT',
   },
 ]
 
 const ZANICHELLI_PROVIDER: PublisherResourceProvider = {
   code: 'ZANICHELLI',
   matchesPublisher(publisher) {
-    return normalizePublisherName(publisher).includes('ZANICHELLI')
+    return normalizePublisherName(publisher).split(' ').includes('ZANICHELLI')
   },
   resourcesFor() {
     return ZANICHELLI_RESOURCES.map((resource) => ({
