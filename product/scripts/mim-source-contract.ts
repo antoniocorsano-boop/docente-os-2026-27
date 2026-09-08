@@ -6,10 +6,15 @@ import {
 
 const SCHOOL_CODE = 'AVIC849003'
 const DATA_GOV_PACKAGE_SEARCH = 'https://www.dati.gov.it/opendata/api/3/action/package_search'
+const MIM_DISTRIBUTION_BASE = 'https://dati.istruzione.it/opendata/opendata/catalogo/elements1/'
 
 async function main() {
   await logFederatedDataset('SCUANAGRAFESTAT')
   await logFederatedDataset('ALTCAMPANIA')
+  await probeMimDistribution('ALTCAMPANIA000020260622.csv')
+  await probeMimDistribution(
+    `ALTCAMPANIA0000${MIM_ADOPTION_SNAPSHOT.publishedOn.replaceAll('-', '')}.csv`,
+  )
 
   const client = new MimTextbookAdoptionClient()
   const result = await client.discoverBySchoolCode(
@@ -52,6 +57,41 @@ async function main() {
     adoptionCount: result.records.length,
     technologyAdoptionCount: technologyRecords.length,
   }, null, 2))
+}
+
+async function probeMimDistribution(filename: string) {
+  const url = new URL(filename, MIM_DISTRIBUTION_BASE)
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      headers: {
+        accept: 'text/csv,application/octet-stream;q=0.9,*/*;q=0.5',
+        range: 'bytes=0-1023',
+        'user-agent': 'DocenteOS-MIM-Source-Contract/2026.27',
+      },
+      signal: AbortSignal.timeout(20_000),
+    })
+    const sample = response.ok || response.status === 206
+      ? (await response.text()).slice(0, 180).replace(/[\r\n]+/g, ' ')
+      : ''
+    console.log(JSON.stringify({
+      status: 'MIM_DISTRIBUTION_PROBE',
+      filename,
+      httpStatus: response.status,
+      finalUrl: response.url,
+      contentType: response.headers.get('content-type'),
+      contentLength: response.headers.get('content-length'),
+      contentRange: response.headers.get('content-range'),
+      sample,
+    }, null, 2))
+  } catch (error) {
+    console.log(JSON.stringify({
+      status: 'MIM_DISTRIBUTION_PROBE_ERROR',
+      filename,
+      message: error instanceof Error ? error.message : String(error),
+    }, null, 2))
+  }
 }
 
 async function logFederatedDataset(datasetCode: string) {
