@@ -113,7 +113,7 @@ export default async function TextbookSettingsPage() {
           <Link className="settingsPrimaryButton" href="/impostazioni#cattedra">Configura la Cattedra</Link>
         </section>
       ) : (
-        <section className="textbookAssignmentGrid" aria-label="Libri per classe e disciplina">
+        <section id="libri-per-classe" className="textbookAssignmentGrid" aria-label="Libri per classe e disciplina">
           {relevantAssignments.map((assignment) => {
             const section = sectionById.get(assignment.sectionId)
             const discipline = disciplineById.get(assignment.disciplineId)
@@ -175,8 +175,8 @@ export default async function TextbookSettingsPage() {
                   </div>
                 )}
 
-                <details className="textbookAddDisclosure">
-                  <summary>Trova un libro non ancora proposto</summary>
+                <details className="textbookAddDisclosure" open={!books.length}>
+                  <summary>{books.length ? 'Trova un altro libro tramite ISBN' : 'Aggiungi il libro tramite ISBN'}</summary>
                   <div className="textbookLookupPanel">
                     <div>
                       <strong>Niente catalogazione manuale</strong>
