@@ -9,6 +9,7 @@ import {
   removeLessonDesignExtension,
 } from './design-actions'
 import type { LessonKnowledgeSuggestion } from './lesson-material-suggestions'
+export type { LessonKnowledgeSuggestion } from './lesson-material-suggestions'
 
 const ACTIVATION_QUESTION_TOOL_ID = 'LESSON_ACTIVATION_QUESTION_V1'
 
