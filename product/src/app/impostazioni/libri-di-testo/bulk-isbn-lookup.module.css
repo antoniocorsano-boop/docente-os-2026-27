@@ -1,0 +1,202 @@
+.card {
+  display: grid;
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+  padding: 1.1rem;
+  border: 1px solid var(--line, #d9dee7);
+  border-radius: 18px;
+  background: var(--surface, #fff);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.header > div {
+  display: grid;
+  gap: .3rem;
+}
+
+.header span {
+  font-size: .75rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  opacity: .72;
+}
+
+.header h2,
+.header p {
+  margin: 0;
+}
+
+.header h2 {
+  font-size: 1.18rem;
+}
+
+.header p {
+  max-width: 70ch;
+  line-height: 1.5;
+  opacity: .82;
+}
+
+.header > strong {
+  white-space: nowrap;
+  font-size: .84rem;
+}
+
+.form {
+  display: grid;
+  gap: 1rem;
+}
+
+.lookupRow {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto minmax(10rem, .55fr);
+  gap: .75rem;
+  align-items: end;
+}
+
+.isbnField,
+.usageField {
+  display: grid;
+  gap: .35rem;
+  font-size: .85rem;
+  font-weight: 700;
+}
+
+.isbnField input,
+.usageField select {
+  min-height: 2.75rem;
+  padding: .65rem .75rem;
+  border: 1px solid var(--line, #d9dee7);
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.photoButton {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: .65rem .9rem;
+  border: 1px solid var(--line, #d9dee7);
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 800;
+  text-align: center;
+}
+
+.hiddenFile {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.scanMessage,
+.result {
+  margin: 0;
+  padding: .7rem .8rem;
+  border-radius: 12px;
+  font-size: .9rem;
+  line-height: 1.45;
+}
+
+.scanMessage {
+  background: color-mix(in srgb, currentColor 6%, transparent);
+}
+
+.assignmentHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1rem;
+}
+
+.assignmentHeader > div {
+  display: grid;
+  gap: .2rem;
+}
+
+.assignmentHeader span {
+  font-size: .86rem;
+  opacity: .76;
+}
+
+.selectAll {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+
+.assignmentGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: .55rem;
+}
+
+.assignmentOption {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  min-height: 2.8rem;
+  padding: .65rem .75rem;
+  border: 1px solid var(--line, #d9dee7);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.assignmentOption input {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.assignmentOption span {
+  font-weight: 700;
+}
+
+.success {
+  background: color-mix(in srgb, #168247 12%, transparent);
+}
+
+.error {
+  background: color-mix(in srgb, #b42318 12%, transparent);
+}
+
+@media (max-width: 760px) {
+  .header,
+  .assignmentHeader {
+    display: grid;
+  }
+
+  .header > strong {
+    white-space: normal;
+  }
+
+  .lookupRow {
+    grid-template-columns: 1fr;
+  }
+
+  .photoButton {
+    width: 100%;
+  }
+
+  .assignmentGrid {
+    grid-template-columns: 1fr;
+  }
+}
