@@ -55,9 +55,12 @@ jobs:
         working-directory: product
         run: npm ci --no-audit --no-fund
 
-      - name: Validate deterministic MIM CSV parsing
+      - name: Validate deterministic MIM contracts
         working-directory: product
-        run: npx tsx --test src/core/infrastructure/mim/mim-textbook-adoption-client.test.ts
+        run: >-
+          npx tsx --test
+          src/core/infrastructure/mim/mim-textbook-adoption-client.test.ts
+          src/core/infrastructure/mim/mim-targeted-adoption-client.test.ts
 
       - name: Validate live official MIM source
         working-directory: product
