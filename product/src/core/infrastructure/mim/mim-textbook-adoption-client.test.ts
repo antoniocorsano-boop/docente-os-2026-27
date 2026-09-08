@@ -28,9 +28,16 @@ test('MIM registry CSV resolves an institute code to its school/plesso codes', (
   assert.ok(records.every((record) => record.academicYearCode === '202627'))
 })
 
-test('MIM discovery fails closed when an institute code is not resolved to a plesso', () => {
+test('MIM discovery fails closed when a comprehensive-institute code is not resolved to a plesso', () => {
   assert.throws(
     () => fallbackAdoptionSchoolCodesWhenRegistryHasNoMatch('AVIC849003'),
+    /non è stato risolto in alcun plesso/,
+  )
+})
+
+test('MIM discovery fails closed when an upper-secondary institute code is not resolved to a plesso', () => {
+  assert.throws(
+    () => fallbackAdoptionSchoolCodesWhenRegistryHasNoMatch('AVIS849001'),
     /non è stato risolto in alcun plesso/,
   )
 })
@@ -137,6 +144,20 @@ test('MIM dataset catalogue selects an exact school-year registry distribution',
       '202627',
     ),
     'https://dati.istruzione.it/opendata/opendata/catalog/SCUANAGRAFESTAT/SCUANAGRAFESTAT20262720260901.csv',
+  )
+})
+
+test('MIM dataset catalogue fails closed when only a stale school year is published', () => {
+  const html = '<a href="/opendata/opendata/catalog/SCUANAGRAFESTAT/SCUANAGRAFESTAT20252620250901.csv">old</a>'
+
+  assert.equal(
+    resolveMimCsvUrlFromCatalogHtml(
+      html,
+      'https://dati.istruzione.it/opendata/opendata/catalog/SCUANAGRAFESTAT',
+      'SCUANAGRAFESTAT',
+      '202627',
+    ),
+    null,
   )
 })
 
