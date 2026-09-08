@@ -13,9 +13,12 @@ import {
   SupabaseLessonDesignRepository,
   type LessonDesignContext,
 } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
+import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
+import { SupabaseTextbookRepository } from '@/core/infrastructure/supabase/supabase-textbook-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { humanizeKnowledgeTitle } from '@/core/presentation/product-language'
 import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
+import { textbookMaterialId } from './lesson-material-suggestions'
 
 export async function acceptLessonDesignExtension(formData: FormData) {
   const lesson = await requireLessonContext(formData)
@@ -62,7 +65,15 @@ export async function attachKnowledgeResourceToLesson(formData: FormData) {
     [{ asset: bundle.asset, document: bundle.document }],
     { blockId: lesson.blockId, uda: lesson.uda, pack: lesson.pack },
   )
-  if (!focused.length) throw new Error('Knowledge resource is not explicitly linked to this lesson focus')
+  const focusLinked = focused.length > 0
+  const editorialTextbookId = textbookMaterialId(bundle.asset.sourceMetadata)
+  const editorialAllowed = editorialTextbookId
+    ? await isConfirmedTextbookForSection(lesson.designContext, lesson.sectionId, editorialTextbookId)
+    : false
+
+  if (!focusLinked && !editorialAllowed) {
+    throw new Error('Knowledge resource is neither linked to this lesson focus nor to a confirmed textbook for this class')
+  }
 
   const title = humanizeKnowledgeTitle(bundle.document?.title ?? bundle.asset.originalName)
   const repository = new SupabaseLessonDesignRepository()
@@ -76,24 +87,50 @@ export async function attachKnowledgeResourceToLesson(formData: FormData) {
     insertionPosition: 'START',
     anchorStepId: null,
     title,
-    body: bundle.document?.summary?.trim() || 'Materiale della Conoscenza collegato esplicitamente a questa fase.',
+    body: bundle.document?.summary?.trim() || (
+      editorialAllowed
+        ? 'Materiale editoriale del libro confermato per questa classe, proposto come supporto alla lezione.'
+        : 'Materiale della Conoscenza collegato esplicitamente a questa fase.'
+    ),
     cue: null,
     minutes: null,
-    sourceKind: 'KNOWLEDGE',
+    sourceKind: editorialAllowed ? 'EDITORIAL_KNOWLEDGE' : 'KNOWLEDGE',
     sourceRef: `knowledge:${bundle.asset.id}`,
-    sourceLabel: title,
+    sourceLabel: editorialAllowed ? `Dal libro · ${title}` : title,
     payload: {
       assetId: bundle.asset.id,
       documentId: bundle.document?.id ?? null,
       contentCategory: bundle.asset.contentCategory,
+      linkage: focusLinked ? 'LESSON_FOCUS' : 'CONFIRMED_TEXTBOOK',
+      textbookId: editorialAllowed ? editorialTextbookId : null,
+      materialRole: editorialAllowed ? 'TEXTBOOK_TEACHER_MATERIAL' : null,
     },
   })
 
-  // The button is an explicit teacher action (“Aggiungi alla lezione”), so the
-  // same human action may promote the newly-created proposal through the
-  // acceptance boundary. AI/tool-generated proposals never call this path.
+  // Il bottone è una scelta esplicita del docente (“Usa in questa lezione”):
+  // questa stessa azione può attraversare il confine PROPOSED → ACCEPTED.
+  // Le proposte generate autonomamente da strumenti o AI non usano questo percorso.
   await repository.accept(lesson.designContext, proposal.id)
   revalidateLesson(lesson.sectionId, lesson.blockId)
+}
+
+async function isConfirmedTextbookForSection(
+  context: LessonDesignContext,
+  sectionId: string,
+  textbookId: string,
+) {
+  const [assignments, adoptions] = await Promise.all([
+    new SupabaseTeachingAssignmentReader().list(context.workspaceId, context.academicYearId),
+    new SupabaseTextbookRepository().list(context.workspaceId, context.academicYearId),
+  ])
+  const sectionAssignmentIds = new Set(
+    assignments.filter((assignment) => assignment.sectionId === sectionId).map((assignment) => assignment.id),
+  )
+  return adoptions.some((adoption) =>
+    adoption.status === 'CONFIRMED'
+    && adoption.textbook.id === textbookId
+    && sectionAssignmentIds.has(adoption.teachingAssignmentId),
+  )
 }
 
 async function requireLessonContext(formData: FormData) {
