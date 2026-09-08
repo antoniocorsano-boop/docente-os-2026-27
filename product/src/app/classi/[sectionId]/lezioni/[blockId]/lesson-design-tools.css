@@ -22,6 +22,10 @@
 .lessonDesignAvailableTools button:disabled{cursor:default;background:#f3f5f8;color:var(--ink-soft,#667085)}
 .lessonDesignProposal button.primary{border-color:var(--brand,#2864e8);background:var(--brand,#2864e8);color:#fff}
 .lessonKnowledgeLead,.lessonDesignEmpty{margin:0;color:var(--ink-soft,#667085);font-size:12px;line-height:1.5}
+.lessonSuggestionReason{display:block;margin-top:3px;color:var(--ink-soft,#667085);font-size:11px;line-height:1.45}
+.lessonSuggestionTip{display:grid;grid-template-columns:auto 1fr;align-items:start;gap:8px;margin-top:6px;padding:9px 10px;border-radius:11px;background:#f7f9fc}
+.lessonSuggestionTip b{display:inline-flex;padding:3px 6px;border-radius:999px;background:#eaf0ff;color:var(--brand,#2864e8);font-size:9px;font-weight:950;letter-spacing:.08em}
+.lessonSuggestionTip p{color:var(--ink,#172033)!important;font-size:11px!important;line-height:1.5!important}
 .lessonDesignWarning{padding:13px 15px;border:1px solid #f0d8a6;border-radius:14px;background:#fffaf0}
 .lessonDesignWarning strong{font-size:13px}
 .lessonDesignWarning p{margin:4px 0 0;color:#7a5a1b;font-size:12px;line-height:1.45}
@@ -40,4 +44,4 @@
 .lessonAttachedResources article strong{font-size:13px}
 .lessonAttachedResources article p{margin:0;color:var(--ink-soft,#667085);font-size:11px;line-height:1.45}
 .lessonAttachedResources article a{align-self:center;color:var(--brand,#2864e8);font-size:11px;font-weight:850;text-decoration:none;white-space:nowrap}
-@media(max-width:719px){.lessonDesignTools{padding:15px;border-radius:16px}.lessonDesignAvailableTools article,.lessonDesignProposal,.lessonKnowledgeSuggestions article,.lessonDesignAcceptedItem,.lessonAttachedResources article{display:grid;gap:10px}.lessonDesignAvailableTools form,.lessonDesignProposalActions,.lessonKnowledgeSuggestions article>div:last-child,.lessonDesignAcceptedItem>div:last-child{justify-content:flex-start}.lessonDesignAvailableTools button,.lessonDesignProposal button,.lessonKnowledgeSuggestions button,.lessonDesignAcceptedItem button,.lessonKnowledgeSuggestions a,.lessonDesignAcceptedItem a{min-height:40px}.lessonAttachedResources article a{justify-self:start}.lessonDesignContract>div{gap:5px}}
+@media(max-width:719px){.lessonDesignTools{padding:15px;border-radius:16px}.lessonDesignAvailableTools article,.lessonDesignProposal,.lessonKnowledgeSuggestions article,.lessonDesignAcceptedItem,.lessonAttachedResources article{display:grid;gap:10px}.lessonDesignAvailableTools form,.lessonDesignProposalActions,.lessonKnowledgeSuggestions article>div:last-child,.lessonDesignAcceptedItem>div:last-child{justify-content:flex-start}.lessonDesignAvailableTools button,.lessonDesignProposal button,.lessonKnowledgeSuggestions button,.lessonDesignAcceptedItem button,.lessonKnowledgeSuggestions a,.lessonDesignAcceptedItem a{min-height:40px}.lessonAttachedResources article a{justify-self:start}.lessonDesignContract>div{gap:5px}.lessonSuggestionTip{grid-template-columns:1fr}}
