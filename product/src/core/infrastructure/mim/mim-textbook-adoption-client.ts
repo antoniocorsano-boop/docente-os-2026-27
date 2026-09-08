@@ -1,18 +1,28 @@
 import type { MimTextbookRecord } from '@/core/domain/mim-textbook-discovery'
 
 const MIM_SPARQL_SERVICE = 'https://dati.istruzione.it/opendata/opendata/sparql/endpoint/query/service/'
-const MIM_TOTAL_DISCOVERY_TIMEOUT_MS = 12_000
+const MIM_SCHOOL_CATALOG = 'https://dati.istruzione.it/opendata/opendata/catalogo/elements1/?area=Scuole'
+const MIM_ADOPTION_CATALOG = 'https://dati.istruzione.it/opendata/opendata/catalogo/elements1/?area=Adozioni+libri+di+testo'
+const MIM_SPARQL_TIMEOUT_MS = 10_000
+const MIM_CATALOG_TIMEOUT_MS = 15_000
+const MIM_CSV_TIMEOUT_MS = 60_000
+
+const MIM_HTTP_HEADERS = {
+  accept: 'text/html,application/xhtml+xml,application/json,text/csv;q=0.9,*/*;q=0.8',
+  'accept-language': 'it-IT,it;q=0.9,en;q=0.7',
+  'user-agent': 'DocenteOS/2026.27 (+https://github.com/antoniocorsano-boop/docente-os-2026-27)',
+} as const
 
 /**
  * Versioned adapter metadata.
- * The current MIM adoption datasets were published on 2026-07-29 with
- * temporal coverage "Anno scolastico" and are the 2026/2027 adoption snapshot.
- * Discovery fails closed for a different active academic year until this
- * adapter metadata is deliberately advanced and re-verified.
+ * The MIM adoption catalogue is updated weekly during the adoption period.
+ * The current Campania snapshot was verified on 2026-09-07 and belongs to
+ * academic year 2026/2027. Discovery fails closed for a different active
+ * academic year until this metadata is deliberately advanced and re-verified.
  */
 export const MIM_ADOPTION_SNAPSHOT = {
   academicYearCode: '202627',
-  publishedOn: '2026-07-29',
+  publishedOn: '2026-09-07',
 } as const
 
 const DATASETS = [
@@ -71,6 +81,11 @@ type MimSchoolRegistryRecord = {
   province: string | null
 }
 
+type CsvLookupResult<T> = {
+  available: boolean
+  records: T[]
+}
+
 const PROVINCE_DATASET = buildProvinceDatasetMap()
 
 export class MimTextbookAdoptionClient {
@@ -85,38 +100,52 @@ export class MimTextbookAdoptionClient {
     const normalizedSchoolCode = normalizeSchoolCode(schoolCode)
     assertSupportedMimAcademicYear(academicYearCode)
 
-    const signal = AbortSignal.timeout(MIM_TOTAL_DISCOVERY_TIMEOUT_MS)
     const resolvedSchoolCodes = await resolveAdoptionSchoolCodes(
       normalizedSchoolCode,
       academicYearCode,
-      signal,
     )
 
     const datasets = adoptionDatasetsForSchoolCodes(resolvedSchoolCodes)
     const queryTargets = datasets.length ? datasets : [...DATASETS]
-    const queries = queryTargets.map(async (datasetCode) => {
+    const targetCodes = new Set(resolvedSchoolCodes)
+    const records: MimTextbookRecord[] = []
+    const availableDatasets = new Set<string>()
+
+    for (const datasetCode of queryTargets) {
       const codesForDataset = datasets.length
         ? resolvedSchoolCodes.filter((code) => datasetForSchoolCode(code) === datasetCode)
         : resolvedSchoolCodes
-      const result = await querySparql(datasetCode, buildSchoolsQuery(codesForDataset), signal)
-      return { datasetCode, result }
-    })
-    const results = await Promise.all(queries)
-    const availableResults = results.filter(({ result }) => result.available)
+      if (!codesForDataset.length) continue
 
-    if (!availableResults.length) {
-      throw new Error('Il servizio Open Data MIM per le adozioni non è disponibile in questo momento.')
+      const sparql = await querySparql(
+        datasetCode,
+        buildSchoolsQuery(codesForDataset),
+        AbortSignal.timeout(MIM_SPARQL_TIMEOUT_MS),
+      )
+
+      if (sparql.available) {
+        availableDatasets.add(datasetCode)
+        records.push(
+          ...parseMimSparqlBindings(sparql.payload?.results?.bindings ?? [], datasetCode)
+            .filter((record) => targetCodes.has(normalizeSchoolCode(record.schoolCode))),
+        )
+        continue
+      }
+
+      const csv = await lookupAdoptionsFromOfficialCsv(datasetCode, targetCodes)
+      if (csv.available) {
+        availableDatasets.add(datasetCode)
+        records.push(...csv.records)
+      }
     }
 
-    const targetCodes = new Set(resolvedSchoolCodes)
-    const records = availableResults.flatMap(({ datasetCode, result }) =>
-      parseMimSparqlBindings(result.payload?.results?.bindings ?? [], datasetCode)
-        .filter((record) => targetCodes.has(normalizeSchoolCode(record.schoolCode))),
-    )
+    if (!availableDatasets.size) {
+      throw new Error('Le fonti Open Data MIM per le adozioni non sono raggiungibili in questo momento.')
+    }
 
     return {
-      datasetCodes: availableResults.map(({ datasetCode }) => datasetCode),
-      records,
+      datasetCodes: [...availableDatasets],
+      records: dedupeTextbookRecords(records),
       resolvedSchoolCodes,
     }
   }
@@ -158,37 +187,75 @@ export function parseMimSparqlBindings(bindings: SparqlBinding[], sourceDataset:
   const records: MimTextbookRecord[] = []
 
   for (const [subject, fields] of subjects) {
-    const schoolCode = field(fields, 'codicescuola')
-    const gradeNumber = Number.parseInt(field(fields, 'annocorso'), 10)
-    const sectionCode = field(fields, 'sezioneanno')
-    const discipline = field(fields, 'disciplina')
-    const isbn13 = field(fields, 'codiceisbn')
-    const title = field(fields, 'titolo')
-    const publisher = field(fields, 'editore')
+    const record = textbookRecordFromFields(fields, sourceDataset, subject)
+    if (record) records.push(record)
+  }
 
-    if (!schoolCode || !Number.isFinite(gradeNumber) || !sectionCode || !discipline || !isbn13 || !title || !publisher) continue
+  return records
+}
+
+export function parseMimSchoolRegistryCsv(
+  csv: string,
+  schoolCode: string,
+  academicYearCode: string,
+): MimSchoolRegistryRecord[] {
+  const target = normalizeSchoolCode(schoolCode)
+  const records: MimSchoolRegistryRecord[] = []
+  let headers: string[] | null = null
+
+  forEachCsvRow(csv, (row) => {
+    if (!headers) {
+      headers = row.map(normalizeFieldKey)
+      return
+    }
+    const fields = csvFields(headers, row)
+    const year = field(fields, 'annoscolastico')
+    const rowSchoolCode = nullableNormalizedSchoolCode(field(fields, 'codicescuola'))
+    const instituteReferenceCode = normalizeNullableSchoolCode(
+      nullableField(fields, 'codiceistitutoriferimento')
+        ?? nullableField(fields, 'codiceistitutodiriferimento'),
+    )
+    if (!rowSchoolCode || year !== academicYearCode) return
+    if (rowSchoolCode !== target && instituteReferenceCode !== target) return
 
     records.push({
-      schoolCode,
-      gradeNumber,
-      sectionCode,
-      schoolGradeType: nullableField(fields, 'tipogradoscuola'),
-      combination: nullableField(fields, 'combinazione'),
-      discipline,
-      isbn13,
-      authors: nullableField(fields, 'autori'),
-      title,
-      subtitle: nullableField(fields, 'sottotitolo'),
-      volume: nullableField(fields, 'volume'),
-      publisher,
-      price: nullableField(fields, 'prezzo'),
-      newAdoption: nullableField(fields, 'nuovaadoz'),
-      toPurchase: nullableField(fields, 'daacquist'),
-      recommended: nullableField(fields, 'consigliato'),
-      sourceDataset,
-      sourceSubject: subject,
+      academicYearCode: year,
+      schoolCode: rowSchoolCode,
+      instituteReferenceCode,
+      province: nullableField(fields, 'provincia'),
     })
-  }
+  })
+
+  return records
+}
+
+export function parseMimAdoptionCsv(
+  csv: string,
+  sourceDataset: string,
+  schoolCodes: ReadonlySet<string>,
+): MimTextbookRecord[] {
+  const normalizedTargets = new Set([...schoolCodes].map(normalizeSchoolCode))
+  const records: MimTextbookRecord[] = []
+  let headers: string[] | null = null
+  let rowNumber = 0
+
+  forEachCsvRow(csv, (row) => {
+    rowNumber += 1
+    if (!headers) {
+      headers = row.map(normalizeFieldKey)
+      return
+    }
+    const fields = csvFields(headers, row)
+    const rowSchoolCode = nullableNormalizedSchoolCode(field(fields, 'codicescuola'))
+    if (!rowSchoolCode || !normalizedTargets.has(rowSchoolCode)) return
+
+    const record = textbookRecordFromFields(
+      fields,
+      sourceDataset,
+      `csv:${sourceDataset}:${rowSchoolCode}:${rowNumber}`,
+    )
+    if (record) records.push(record)
+  })
 
   return records
 }
@@ -196,31 +263,129 @@ export function parseMimSparqlBindings(bindings: SparqlBinding[], sourceDataset:
 async function resolveAdoptionSchoolCodes(
   schoolCode: string,
   academicYearCode: string,
-  signal: AbortSignal,
 ) {
   const query = buildSchoolRegistryQuery(schoolCode, academicYearCode)
   const results = await Promise.all(
     SCHOOL_REGISTRY_DATASETS.map(async (datasetCode) => ({
       datasetCode,
-      result: await querySparql(datasetCode, query, signal),
+      result: await querySparql(
+        datasetCode,
+        query,
+        AbortSignal.timeout(MIM_SPARQL_TIMEOUT_MS),
+      ),
     })),
   )
   const availableResults = results.filter(({ result }) => result.available)
-  if (!availableResults.length) {
-    throw new Error('L’anagrafe scuole MIM non è disponibile in questo momento.')
-  }
-
-  const registryRecords = availableResults.flatMap(({ result }) =>
+  const sparqlRecords = availableResults.flatMap(({ result }) =>
     parseMimSchoolRegistryBindings(result.payload?.results?.bindings ?? []),
   )
-  const resolved = registryRecords
-    .filter((record) => record.academicYearCode === academicYearCode)
-    .filter((record) => record.schoolCode === schoolCode || record.instituteReferenceCode === schoolCode)
-    .map((record) => record.schoolCode)
+  const resolvedFromSparql = resolveSchoolCodesFromRecords(sparqlRecords, schoolCode, academicYearCode)
+  if (resolvedFromSparql.length) return resolvedFromSparql
 
-  // If Settings already contains the adoption-specific plesso code, keep it as
-  // a valid direct candidate even when the registry endpoint has no matching row.
-  return unique(resolved.length ? resolved : [schoolCode])
+  const csvResult = await lookupSchoolRegistryFromOfficialCsv(schoolCode, academicYearCode)
+  const resolvedFromCsv = resolveSchoolCodesFromRecords(csvResult.records, schoolCode, academicYearCode)
+  if (resolvedFromCsv.length) return resolvedFromCsv
+
+  if (availableResults.length || csvResult.available) {
+    // Settings can already contain an adoption-specific plesso code. Preserve it
+    // as a direct candidate when the registry has no matching institute relation.
+    return [schoolCode]
+  }
+
+  throw new Error('L’anagrafe scuole MIM non è raggiungibile né via SPARQL né via CSV ufficiale.')
+}
+
+function resolveSchoolCodesFromRecords(
+  records: MimSchoolRegistryRecord[],
+  schoolCode: string,
+  academicYearCode: string,
+) {
+  return unique(
+    records
+      .filter((record) => record.academicYearCode === academicYearCode)
+      .filter((record) => record.schoolCode === schoolCode || record.instituteReferenceCode === schoolCode)
+      .map((record) => record.schoolCode),
+  )
+}
+
+async function lookupSchoolRegistryFromOfficialCsv(
+  schoolCode: string,
+  academicYearCode: string,
+): Promise<CsvLookupResult<MimSchoolRegistryRecord>> {
+  let anyAvailable = false
+  const records: MimSchoolRegistryRecord[] = []
+
+  for (const datasetCode of SCHOOL_REGISTRY_DATASETS) {
+    const csv = await fetchOfficialCsv(MIM_SCHOOL_CATALOG, datasetCode, academicYearCode)
+    if (!csv.available) continue
+    anyAvailable = true
+    records.push(...parseMimSchoolRegistryCsv(csv.text, schoolCode, academicYearCode))
+    if (records.length) break
+  }
+
+  return { available: anyAvailable, records }
+}
+
+async function lookupAdoptionsFromOfficialCsv(
+  datasetCode: MimDatasetCode,
+  schoolCodes: ReadonlySet<string>,
+): Promise<CsvLookupResult<MimTextbookRecord>> {
+  const csv = await fetchOfficialCsv(MIM_ADOPTION_CATALOG, datasetCode)
+  if (!csv.available) return { available: false, records: [] }
+  return {
+    available: true,
+    records: parseMimAdoptionCsv(csv.text, datasetCode, schoolCodes),
+  }
+}
+
+async function fetchOfficialCsv(
+  catalogUrl: string,
+  datasetCode: string,
+  academicYearCode?: string,
+): Promise<{ available: boolean; text: string }> {
+  const csvUrl = await resolveOfficialCsvUrl(catalogUrl, datasetCode, academicYearCode)
+  if (!csvUrl) return { available: false, text: '' }
+
+  try {
+    const response = await fetch(csvUrl, {
+      cache: 'no-store',
+      headers: {
+        ...MIM_HTTP_HEADERS,
+        accept: 'text/csv,application/csv,application/octet-stream;q=0.9,*/*;q=0.5',
+        referer: catalogUrl,
+      },
+      signal: AbortSignal.timeout(MIM_CSV_TIMEOUT_MS),
+    })
+    if (!response.ok) return { available: false, text: '' }
+    return { available: true, text: await response.text() }
+  } catch {
+    return { available: false, text: '' }
+  }
+}
+
+async function resolveOfficialCsvUrl(
+  catalogUrl: string,
+  datasetCode: string,
+  academicYearCode?: string,
+) {
+  try {
+    const response = await fetch(catalogUrl, {
+      cache: 'no-store',
+      headers: MIM_HTTP_HEADERS,
+      signal: AbortSignal.timeout(MIM_CATALOG_TIMEOUT_MS),
+    })
+    if (!response.ok) return null
+    const html = await response.text()
+    const hrefs = [...html.matchAll(/href\s*=\s*["']([^"']+\.csv(?:\?[^"']*)?)["']/gi)]
+      .map((match) => decodeHtmlAttribute(match[1]))
+      .filter((href) => href.toUpperCase().includes(datasetCode.toUpperCase()))
+    const selected = academicYearCode
+      ? hrefs.find((href) => href.includes(academicYearCode))
+      : hrefs[0]
+    return selected ? new URL(selected, catalogUrl).toString() : null
+  } catch {
+    return null
+  }
 }
 
 function adoptionDatasetsForSchoolCodes(schoolCodes: string[]) {
@@ -269,8 +434,10 @@ async function querySparql(
       method: 'POST',
       cache: 'no-store',
       headers: {
+        ...MIM_HTTP_HEADERS,
         accept: 'application/sparql-results+json, application/json;q=0.9',
         'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        referer: `https://dati.istruzione.it/opendata/opendata/sparql/endpoint/query/?dataset=${encodeURIComponent(datasetCode)}`,
       },
       body,
       signal,
@@ -279,7 +446,6 @@ async function querySparql(
     if (response.status !== 405 && response.status !== 404) return { available: false, payload: null }
   } catch {
     if (signal.aborted) return { available: false, payload: null }
-    // Fall through to GET because the public endpoint has changed method handling across releases.
   }
 
   try {
@@ -289,13 +455,53 @@ async function querySparql(
     const response = await fetch(url, {
       method: 'GET',
       cache: 'no-store',
-      headers: { accept: 'application/sparql-results+json, application/json;q=0.9' },
-      signal,
+      headers: {
+        ...MIM_HTTP_HEADERS,
+        accept: 'application/sparql-results+json, application/json;q=0.9',
+      },
+      signal: AbortSignal.timeout(MIM_SPARQL_TIMEOUT_MS),
     })
     if (!response.ok) return { available: false, payload: null }
     return { available: true, payload: await response.json() as SparqlResponse }
   } catch {
     return { available: false, payload: null }
+  }
+}
+
+function textbookRecordFromFields(
+  fields: Map<string, string>,
+  sourceDataset: string,
+  sourceSubject: string,
+): MimTextbookRecord | null {
+  const schoolCode = field(fields, 'codicescuola')
+  const gradeNumber = Number.parseInt(field(fields, 'annocorso'), 10)
+  const sectionCode = field(fields, 'sezioneanno')
+  const discipline = field(fields, 'disciplina')
+  const isbn13 = field(fields, 'codiceisbn')
+  const title = field(fields, 'titolo')
+  const publisher = field(fields, 'editore')
+
+  if (!schoolCode || !Number.isFinite(gradeNumber) || !sectionCode || !discipline || !isbn13 || !title || !publisher) return null
+
+  return {
+    schoolCode,
+    gradeNumber,
+    sectionCode,
+    schoolGradeType: nullableField(fields, 'tipogradoscuola'),
+    combination: nullableField(fields, 'combinazione'),
+    discipline,
+    isbn13,
+    authors: nullableField(fields, 'autori'),
+    title,
+    subtitle: nullableField(fields, 'sottotitolo'),
+    volume: nullableField(fields, 'volume'),
+    publisher,
+    price: nullableField(fields, 'prezzo'),
+    newAdoption: nullableField(fields, 'nuovaadoz'),
+    toPurchase: nullableField(fields, 'daacquist'),
+    recommended: nullableField(fields, 'consigliato'),
+    sourceDataset,
+    sourceSubject,
   }
 }
 
@@ -315,6 +521,55 @@ function groupBindingsBySubject(bindings: SparqlBinding[]) {
   }
 
   return subjects
+}
+
+function csvFields(headers: string[], row: string[]) {
+  const fields = new Map<string, string>()
+  for (let index = 0; index < headers.length; index += 1) {
+    fields.set(headers[index], row[index]?.trim() ?? '')
+  }
+  return fields
+}
+
+function forEachCsvRow(csv: string, visit: (row: string[]) => void) {
+  let row: string[] = []
+  let value = ''
+  let quoted = false
+
+  const finishValue = () => {
+    row.push(value)
+    value = ''
+  }
+  const finishRow = () => {
+    finishValue()
+    if (row.some((item) => item.length > 0)) visit(row)
+    row = []
+  }
+
+  for (let index = 0; index < csv.length; index += 1) {
+    const character = csv[index]
+    if (character === '"') {
+      if (quoted && csv[index + 1] === '"') {
+        value += '"'
+        index += 1
+      } else {
+        quoted = !quoted
+      }
+      continue
+    }
+    if (character === ',' && !quoted) {
+      finishValue()
+      continue
+    }
+    if ((character === '\n' || character === '\r') && !quoted) {
+      if (character === '\r' && csv[index + 1] === '\n') index += 1
+      finishRow()
+      continue
+    }
+    value += character
+  }
+
+  if (value.length || row.length) finishRow()
 }
 
 function predicateLocalName(value: string) {
@@ -337,6 +592,11 @@ function nullableField(fields: Map<string, string>, key: string) {
 
 function normalizeNullableSchoolCode(value: string | null) {
   if (!value) return null
+  return nullableNormalizedSchoolCode(value)
+}
+
+function nullableNormalizedSchoolCode(value: string) {
+  if (!value) return null
   try {
     return normalizeSchoolCode(value)
   } catch {
@@ -357,6 +617,29 @@ function formatAcademicYearCode(value: string) {
 
 function unique<T>(values: T[]) {
   return [...new Set(values)]
+}
+
+function dedupeTextbookRecords(records: MimTextbookRecord[]) {
+  const seen = new Set<string>()
+  return records.filter((record) => {
+    const key = [
+      normalizeSchoolCode(record.schoolCode),
+      record.gradeNumber,
+      record.sectionCode.trim().toUpperCase(),
+      record.isbn13.replace(/[^0-9X]/gi, ''),
+      record.discipline.trim().toUpperCase(),
+    ].join(':')
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function decodeHtmlAttribute(value: string) {
+  return value
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
 }
 
 function buildProvinceDatasetMap() {
@@ -383,6 +666,9 @@ function buildProvinceDatasetMap() {
     ['ALTVALLEDAOSTA', ['AO']],
     ['ALTVENETO', ['BL', 'PD', 'RO', 'TV', 'VE', 'VI', 'VR']],
   ]
-  for (const [dataset, provinces] of groups) for (const province of provinces) map.set(province, dataset)
+
+  for (const [dataset, provinceCodes] of groups) {
+    for (const code of provinceCodes) map.set(code, dataset)
+  }
   return map
 }
