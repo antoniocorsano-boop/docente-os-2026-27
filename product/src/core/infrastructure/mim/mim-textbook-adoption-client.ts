@@ -352,16 +352,11 @@ export function resolveMimCsvUrlFromCatalogHtml(
   return selected ? normalizeMimDistributionUrl(new URL(selected, pageUrl).toString()) : null
 }
 
-export function fallbackAdoptionSchoolCodesWhenRegistryHasNoMatch(schoolCode: string) {
+export function fallbackAdoptionSchoolCodesWhenRegistryHasNoMatch(schoolCode: string): never {
   const normalizedSchoolCode = normalizeSchoolCode(schoolCode)
-
-  if (/^[A-Z]{2}(?:IC|IS)[A-Z0-9]{6}$/.test(normalizedSchoolCode)) {
-    throw new Error(
-      `Il codice di istituto MIM ${normalizedSchoolCode} non è stato risolto in alcun plesso. Nessuna proposta è stata importata.`,
-    )
-  }
-
-  return [normalizedSchoolCode]
+  throw new Error(
+    `Il codice MIM ${normalizedSchoolCode} non è stato risolto in alcun plesso dall’anagrafe MIM. Nessuna proposta è stata importata.`,
+  )
 }
 
 async function resolveAdoptionSchoolCodes(
