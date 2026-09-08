@@ -111,7 +111,7 @@ export class KnowledgeIngestionService {
 
       await this.generations.succeedGeneration(generation.id, processorLabel)
       await this.assets.setCurrentGeneration(asset.id, generation.id)
-      await this.applySuggestedContext(asset, normalized)
+      await this.applySuggestedContext(asset.id, normalized)
       return (await this.assets.getById(asset.id)) ?? asset
     } catch (error) {
       await this.generations.failGeneration(generation.id, error)
@@ -120,8 +120,7 @@ export class KnowledgeIngestionService {
     }
   }
 
-  private async applySuggestedContext(asset: KnowledgeAsset, normalized: NormalizedKnowledge) {
-    if (asset.contextStatus !== 'UNCLASSIFIED') return
+  private async applySuggestedContext(assetId: string, normalized: NormalizedKnowledge) {
     const rawProfile = normalized.extractedData?.schoolDocumentProfile
     if (!isRecord(rawProfile)) return
 
@@ -135,13 +134,18 @@ export class KnowledgeIngestionService {
     const meaningful = contentCategory !== 'OTHER' || disciplines.length > 0 || classLabels.length > 0 || qualityFlags.length > 0
     if (!meaningful) return
 
-    await this.assets.updateContext(asset.id, {
-      academicYearId: asset.academicYearId,
+    // Re-read immediately before applying automatic suggestions. Reprocessing can be long:
+    // if the teacher corrected the context while it was running, that newer human state wins.
+    const currentAsset = await this.assets.getById(assetId)
+    if (!currentAsset || currentAsset.contextStatus === 'REVIEWED' || currentAsset.reliability === 'VERIFIED') return
+
+    await this.assets.updateContext(assetId, {
+      academicYearId: currentAsset.academicYearId,
       contentCategory,
       disciplines,
       classLabels,
       contextStatus: 'NEEDS_REVIEW',
-      reliability: 'TO_VERIFY',
+      reliability: 'AUTO',
     })
   }
 }

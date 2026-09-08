@@ -92,7 +92,7 @@ test('K1 Knowledge: scelta file, conferma privacy, errore recuperabile, retry re
   }
 })
 
-test('K1 Knowledge: i cinque documenti scolastici attraversano davvero DOCX → KB → contesto da verificare', async ({ page }) => {
+test('K1 Knowledge: i cinque documenti scolastici attraversano davvero DOCX → KB → contesto auto-organizzato', async ({ page }) => {
   await login(page)
   const fixtureNames = schoolDocxCorpus.map((fixture) => fixture.filename)
   const createdAssetIds = []
@@ -124,11 +124,17 @@ test('K1 Knowledge: i cinque documenti scolastici attraversano davvero DOCX → 
       await expect(provenance).toContainText(fixture.categoryLabel)
       await expect(provenance).toContainText('Pronto')
 
-      const contextForm = page.locator('#professional-context .contextForm')
+      const contextPanel = page.locator('#professional-context')
+      const contextForm = contextPanel.locator('form.contextForm')
       await expect(contextForm.locator('select[name="contentCategory"]')).toHaveValue(fixture.category)
       await expect(contextForm.locator('input[name="disciplines"]')).toHaveValue(/Tecnologia/)
-      await expect(contextForm.locator('select[name="contextStatus"]')).toHaveValue('NEEDS_REVIEW')
-      await expect(contextForm.locator('select[name="reliability"]')).toHaveValue('TO_VERIFY')
+      await expect(contextPanel).toContainText('Organizzato automaticamente')
+      await expect(contextPanel).toContainText('Non devi confermare ciò che è già corretto')
+      await expect(contextForm.locator('select[name="contextStatus"]')).toHaveCount(0)
+      await expect(contextForm.locator('select[name="reliability"]')).toHaveCount(0)
+      // A context correction would become REVIEWED, but it must preserve the source's AUTO reliability.
+      await expect(contextForm.locator('input[name="contextStatus"]')).toHaveValue('REVIEWED')
+      await expect(contextForm.locator('input[name="reliability"]')).toHaveValue('AUTO')
 
       const classes = await contextForm.locator('input[name="classLabels"]').inputValue()
       for (const expectedClass of fixture.expectedClasses) expect(classes).toContain(expectedClass)
@@ -138,7 +144,7 @@ test('K1 Knowledge: i cinque documenti scolastici attraversano davvero DOCX → 
       expect(snapshot.asset.content_category).toBe(fixture.category)
       expect(snapshot.asset.disciplines).toContain('Tecnologia')
       expect(snapshot.asset.context_status).toBe('NEEDS_REVIEW')
-      expect(snapshot.asset.reliability).toBe('TO_VERIFY')
+      expect(snapshot.asset.reliability).toBe('AUTO')
       expect(snapshot.asset.processing_status).toBe('INDEXED')
       for (const expectedClass of fixture.expectedClasses) expect(snapshot.asset.class_labels).toContain(expectedClass)
 
