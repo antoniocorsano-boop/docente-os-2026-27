@@ -45,6 +45,7 @@ export function matchMimTextbookAdoptions(
   records: MimTextbookRecord[],
   contexts: MimTeachingContext[],
 ): MimTextbookMatch[] {
+  const scopedRecords = resolveMimSchoolScope(records, contexts)
   const matches: MimTextbookMatch[] = []
   const seen = new Set<string>()
 
@@ -52,13 +53,10 @@ export function matchMimTextbookAdoptions(
     const expectedGrade = GRADE_NUMBER[context.grade]
     const expectedSection = normalizeSectionCode(context.sectionCode)
 
-    for (const record of records) {
-      if (record.gradeNumber !== expectedGrade) continue
-      if (normalizeSectionCode(record.sectionCode) !== expectedSection) continue
+    for (const record of scopedRecords) {
+      if (!recordMatchesContext(record, context, expectedGrade, expectedSection)) continue
 
       const disciplineScore = scoreDiscipline(context.disciplineName, record.discipline)
-      if (disciplineScore < 0.75) continue
-
       let isbn13: string
       try {
         isbn13 = normalizeIsbn13(record.isbn13)
@@ -85,6 +83,47 @@ export function matchMimTextbookAdoptions(
     }
     return b.disciplineScore - a.disciplineScore || a.record.title.localeCompare(b.record.title, 'it')
   })
+}
+
+/**
+ * The MIM school registry can resolve an institute code to several plessi. Teacher settings currently
+ * carry the institute code, not a separate plesso code. We therefore accept a plesso implicitly only
+ * when one school code has strictly better coverage of the confirmed Cattedra than every other code.
+ * A tie is intentionally fail-closed: no cross-plesso proposal is emitted.
+ */
+export function resolveMimSchoolScope(
+  records: MimTextbookRecord[],
+  contexts: MimTeachingContext[],
+): MimTextbookRecord[] {
+  if (!records.length || !contexts.length) return []
+
+  const recordsBySchool = new Map<string, MimTextbookRecord[]>()
+  for (const record of records) {
+    const schoolCode = record.schoolCode.trim().toUpperCase()
+    if (!schoolCode) continue
+    const bucket = recordsBySchool.get(schoolCode) ?? []
+    bucket.push(record)
+    recordsBySchool.set(schoolCode, bucket)
+  }
+
+  if (recordsBySchool.size <= 1) return [...records]
+
+  const ranked = [...recordsBySchool.entries()]
+    .map(([schoolCode, schoolRecords]) => ({
+      schoolCode,
+      schoolRecords,
+      coverage: contexts.reduce((count, context) => (
+        schoolRecords.some((record) => recordMatchesContext(record, context)) ? count + 1 : count
+      ), 0),
+    }))
+    .sort((a, b) => b.coverage - a.coverage || a.schoolCode.localeCompare(b.schoolCode))
+
+  const best = ranked[0]
+  const second = ranked[1]
+  if (!best || best.coverage === 0) return []
+  if (second && best.coverage === second.coverage) return []
+
+  return best.schoolRecords
 }
 
 export function usageKindFromMim(record: Pick<MimTextbookRecord, 'recommended'>): TextbookUsageKind {
@@ -116,6 +155,23 @@ export function normalizeComparable(value: string) {
     .replace(/[^A-Z0-9]+/g, ' ')
     .trim()
     .replace(/\s+/g, ' ')
+}
+
+function recordMatchesContext(
+  record: MimTextbookRecord,
+  context: MimTeachingContext,
+  expectedGrade = GRADE_NUMBER[context.grade],
+  expectedSection = normalizeSectionCode(context.sectionCode),
+) {
+  if (record.gradeNumber !== expectedGrade) return false
+  if (normalizeSectionCode(record.sectionCode) !== expectedSection) return false
+  if (scoreDiscipline(context.disciplineName, record.discipline) < 0.75) return false
+  try {
+    normalizeIsbn13(record.isbn13)
+  } catch {
+    return false
+  }
+  return true
 }
 
 function normalizeSectionCode(value: string) {

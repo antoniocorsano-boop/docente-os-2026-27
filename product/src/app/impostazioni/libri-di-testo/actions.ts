@@ -3,8 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { matchMimTextbookAdoptions, type MimTeachingContext } from '@/core/domain/mim-textbook-discovery'
 import { normalizeIsbn13, type TextbookUsageKind } from '@/core/domain/textbook-adoption'
-import { MimTextbookAdoptionClient } from '@/core/infrastructure/mim/mim-textbook-adoption-client'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseMimTextbookCacheRepository } from '@/core/infrastructure/supabase/supabase-mim-textbook-cache-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseTextbookRepository } from '@/core/infrastructure/supabase/supabase-textbook-repository'
@@ -33,6 +33,15 @@ type GoogleBooksResponse = {
   }>
 }
 
+type GoogleBookCandidate = {
+  id: string
+  title: string
+  subtitle: string | null
+  authors: string | null
+  publisher: string
+  infoLink: string | null
+}
+
 export async function discoverMimTextbookAdoptions(
   _previousState: MimDiscoveryState,
   _formData: FormData,
@@ -56,32 +65,34 @@ export async function discoverMimTextbookAdoptions(
 
     const sectionById = new Map(annualSnapshot.sections.map((section) => [section.id, section]))
     const disciplineById = new Map(disciplines.filter((discipline) => discipline.isActive).map((discipline) => [discipline.id, discipline]))
-    const teachingContexts: MimTeachingContext[] = assignments.flatMap((assignment) => {
-      const section = sectionById.get(assignment.sectionId)
-      const discipline = disciplineById.get(assignment.disciplineId)
-      if (!section || !discipline) return []
-      return [{
-        teachingAssignmentId: assignment.id,
-        grade: section.grade,
-        sectionCode: section.sectionCode,
-        disciplineName: discipline.name,
-      }]
-    })
+    const teachingContexts: MimTeachingContext[] = assignments
+      .filter((assignment) => assignment.status === 'CONFIRMED')
+      .flatMap((assignment) => {
+        const section = sectionById.get(assignment.sectionId)
+        const discipline = disciplineById.get(assignment.disciplineId)
+        if (!section || !discipline) return []
+        return [{
+          teachingAssignmentId: assignment.id,
+          grade: section.grade,
+          sectionCode: section.sectionCode,
+          disciplineName: discipline.name,
+        }]
+      })
 
     if (!teachingContexts.length) {
-      return { status: 'error', message: 'Completa prima la Cattedra: servono almeno una classe e una disciplina attiva.' }
+      return { status: 'error', message: 'Completa prima la Cattedra: serve almeno un insegnamento confermato con classe e disciplina attiva.' }
     }
 
     const academicYearCode = toMimAcademicYearCode(
       context.academicYear.startsOn,
       context.academicYear.endsOn,
     )
-    const mimClient = new MimTextbookAdoptionClient()
-    const discovery = await mimClient.discoverBySchoolCode(settings.schoolCode, academicYearCode)
+    const mimCache = new SupabaseMimTextbookCacheRepository()
+    const discovery = await mimCache.discoverBySchoolCode(settings.schoolCode, academicYearCode)
     if (!discovery.records.length) {
       return {
         status: 'success',
-        message: `Nessuna adozione MIM trovata nei ${discovery.resolvedSchoolCodes.length} plessi/codici verificati per ${context.academicYear.label}. Non è stato creato alcun dato manuale.`,
+        message: `La cache MIM attiva non contiene adozioni pertinenti nei ${discovery.resolvedSchoolCodes.length} plessi/codici verificati per ${context.academicYear.label}. Non è stato creato alcun dato manuale.`,
       }
     }
 
@@ -89,7 +100,7 @@ export async function discoverMimTextbookAdoptions(
     if (!matches.length) {
       return {
         status: 'success',
-        message: `Il MIM contiene dati per i plessi collegati a ${settings.schoolCode}, ma nessuna riga coincide in modo sufficientemente affidabile con classe, sezione e disciplina della tua Cattedra.`,
+        message: `La cache MIM contiene dati per i plessi collegati a ${settings.schoolCode}, ma nessuna riga coincide in modo sufficientemente affidabile con classe, sezione e disciplina della tua Cattedra confermata.`,
       }
     }
 
@@ -121,12 +132,12 @@ export async function discoverMimTextbookAdoptions(
     const assignmentCount = new Set(matches.map((match) => match.teachingAssignmentId)).size
     return {
       status: 'success',
-      message: `Trovate ${matches.length} ${matches.length === 1 ? 'adozione' : 'adozioni'} MIM coerenti con ${assignmentCount} ${assignmentCount === 1 ? 'Cattedra' : 'Cattedre'}. Sono proposte da controllare: nessun libro è stato confermato automaticamente.`,
+      message: `Trovate ${matches.length} ${matches.length === 1 ? 'adozione' : 'adozioni'} MIM coerenti con ${assignmentCount} ${assignmentCount === 1 ? 'insegnamento' : 'insegnamenti'} della Cattedra. Sono proposte da controllare: nessun libro è stato confermato automaticamente.`,
     }
   } catch (error) {
     return {
       status: 'error',
-      message: error instanceof Error ? humanMimError(error.message) : 'Impossibile interrogare le adozioni MIM.',
+      message: error instanceof Error ? humanMimError(error.message) : 'Impossibile leggere la cache delle adozioni MIM.',
     }
   }
 }
@@ -140,45 +151,54 @@ export async function lookupTextbookByIsbn(
     const teachingAssignmentId = text(formData, 'teachingAssignmentId').trim()
     const isbn13 = normalizeIsbn13(text(formData, 'isbn13'))
     const usage = usageKind(text(formData, 'usageKind'))
-    const sourceUrl = `https://www.googleapis.com/books/v1/volumes?q=isbn:${encodeURIComponent(isbn13)}&maxResults=1&projection=lite`
-
-    const response = await fetch(sourceUrl, {
-      method: 'GET',
-      cache: 'no-store',
-      headers: { accept: 'application/json' },
-      signal: AbortSignal.timeout(8_000),
-    })
-    if (!response.ok) throw new Error('Il servizio di ricerca ISBN non è disponibile in questo momento.')
-
-    const payload = await response.json() as GoogleBooksResponse
-    const candidate = payload.items?.[0]
-    const info = candidate?.volumeInfo
-    if (!candidate || !info?.title || !info.publisher) {
-      throw new Error('Non ho trovato metadati sufficienti per questo ISBN. Non verranno richiesti dati manuali del libro.')
-    }
+    const candidate = await lookupGoogleBook(isbn13)
 
     const repository = new SupabaseTextbookRepository()
-    await repository.addProposal({
-      workspaceId: context.workspace.id,
-      academicYearId: context.academicYear.id,
-      draft: {
-        teachingAssignmentId,
-        isbn13,
-        title: info.title,
-        subtitle: info.subtitle ?? null,
-        authors: info.authors?.join(', ') ?? null,
-        publisher: info.publisher,
-        editionLabel: null,
-        volumeLabel: null,
-        officialUrl: info.infoLink ?? null,
-        publisherProductRef: candidate.id,
-        usageKind: usage,
-        sourceKind: 'ISBN_LOOKUP',
-        sourceRef: `google-books:${candidate.id}`,
-      },
-    })
+    await addIsbnProposal(repository, context, teachingAssignmentId, isbn13, usage, candidate)
     revalidateTextbooks()
     return { status: 'success', message: 'Libro recuperato automaticamente. Controlla i dati e conferma la proposta.' }
+  } catch (error) {
+    return {
+      status: 'error',
+      message: error instanceof Error ? humanLookupError(error.message) : 'Impossibile recuperare il libro.',
+    }
+  }
+}
+
+export async function lookupTextbookByIsbnForAssignments(
+  _previousState: IsbnLookupState,
+  formData: FormData,
+): Promise<IsbnLookupState> {
+  try {
+    const context = await requireContext()
+    const teachingAssignmentIds = uniqueStrings(formData.getAll('teachingAssignmentIds'))
+    if (!teachingAssignmentIds.length) {
+      throw new Error('Seleziona almeno una classe e disciplina a cui collegare il libro.')
+    }
+
+    const assignmentReader = new SupabaseTeachingAssignmentReader()
+    const assignments = await assignmentReader.list(context.workspace.id, context.academicYear.id)
+    const confirmedAssignmentIds = new Set(
+      assignments.filter((assignment) => assignment.status === 'CONFIRMED').map((assignment) => assignment.id),
+    )
+    if (teachingAssignmentIds.some((assignmentId) => !confirmedAssignmentIds.has(assignmentId))) {
+      throw new Error('Puoi collegare il libro in blocco solo a Cattedre confermate dell’anno scolastico attivo.')
+    }
+
+    const isbn13 = normalizeIsbn13(text(formData, 'isbn13'))
+    const usage = usageKind(text(formData, 'usageKind'))
+    const candidate = await lookupGoogleBook(isbn13)
+    const repository = new SupabaseTextbookRepository()
+
+    for (const teachingAssignmentId of teachingAssignmentIds) {
+      await addIsbnProposal(repository, context, teachingAssignmentId, isbn13, usage, candidate)
+    }
+
+    revalidateTextbooks()
+    return {
+      status: 'success',
+      message: `Libro recuperato una sola volta e disponibile come proposta in ${teachingAssignmentIds.length} ${teachingAssignmentIds.length === 1 ? 'Cattedra' : 'Cattedre'}. Controlla ogni collegamento prima di confermarlo.`,
+    }
   } catch (error) {
     return {
       status: 'error',
@@ -209,6 +229,62 @@ export async function removeTextbookAdoption(formData: FormData) {
   revalidateTextbooks()
 }
 
+async function lookupGoogleBook(isbn13: string): Promise<GoogleBookCandidate> {
+  const sourceUrl = `https://www.googleapis.com/books/v1/volumes?q=isbn:${encodeURIComponent(isbn13)}&maxResults=1&projection=lite`
+  const response = await fetch(sourceUrl, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: { accept: 'application/json' },
+    signal: AbortSignal.timeout(8_000),
+  })
+  if (!response.ok) throw new Error('Il servizio di ricerca ISBN non è disponibile in questo momento.')
+
+  const payload = await response.json() as GoogleBooksResponse
+  const candidate = payload.items?.[0]
+  const info = candidate?.volumeInfo
+  if (!candidate || !info?.title || !info.publisher) {
+    throw new Error('Non ho trovato metadati sufficienti per questo ISBN. Non verranno richiesti dati manuali del libro.')
+  }
+
+  return {
+    id: candidate.id,
+    title: info.title,
+    subtitle: info.subtitle ?? null,
+    authors: info.authors?.join(', ') ?? null,
+    publisher: info.publisher,
+    infoLink: info.infoLink ?? null,
+  }
+}
+
+async function addIsbnProposal(
+  repository: SupabaseTextbookRepository,
+  context: Awaited<ReturnType<typeof requireContext>>,
+  teachingAssignmentId: string,
+  isbn13: string,
+  usage: TextbookUsageKind,
+  candidate: GoogleBookCandidate,
+) {
+  await repository.addProposal({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    draft: {
+      teachingAssignmentId,
+      isbn13,
+      title: candidate.title,
+      subtitle: candidate.subtitle,
+      authors: candidate.authors,
+      publisher: candidate.publisher,
+      editionLabel: null,
+      volumeLabel: null,
+      officialUrl: candidate.infoLink,
+      publisherProductRef: candidate.id,
+      usageKind: usage,
+      sourceKind: 'ISBN_LOOKUP',
+      sourceRef: `google-books:${candidate.id}`,
+    },
+  })
+}
+
 async function requireContext() {
   const repository = new SupabaseWorkspaceRepository()
   const context = await repository.getCurrentContext()
@@ -229,6 +305,10 @@ function text(formData: FormData, key: string) {
   return value
 }
 
+function uniqueStrings(values: FormDataEntryValue[]) {
+  return [...new Set(values.flatMap((value) => typeof value === 'string' && value.trim() ? [value.trim()] : []))]
+}
+
 function usageKind(value: string): TextbookUsageKind {
   if (value === 'ADOPTED' || value === 'RECOMMENDED' || value === 'OTHER') return value
   throw new Error('Invalid textbook usage kind')
@@ -243,7 +323,7 @@ function toMimAcademicYearCode(startsOn: string, endsOn: string) {
   const startYear = Number.parseInt(startsOn.slice(0, 4), 10)
   const endYear = Number.parseInt(endsOn.slice(0, 4), 10)
   if (!Number.isInteger(startYear) || !Number.isInteger(endYear) || endYear !== startYear + 1) {
-    throw new Error('L’anno scolastico attivo non ha un intervallo compatibile con la discovery MIM.')
+    throw new Error('L’anno scolastico attivo non ha un intervallo compatibile con la cache MIM.')
   }
   return `${startYear}${String(endYear).slice(-2)}`
 }
@@ -263,6 +343,7 @@ function humanLookupError(message: string) {
 
 function humanMimError(message: string) {
   if (message.includes('Codice meccanografico')) return message
-  if (message.includes('discovery MIM è verificata')) return message
+  if (message.includes('cache Open Data MIM')) return message
+  if (message.includes('cache MIM attiva')) return message
   return `Ricerca MIM non completata: ${message}`
 }

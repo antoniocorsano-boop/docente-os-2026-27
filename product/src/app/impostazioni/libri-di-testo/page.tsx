@@ -8,6 +8,7 @@ import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase
 import { SupabaseTextbookRepository } from '@/core/infrastructure/supabase/supabase-textbook-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { confirmTextbookAdoption, removeTextbookAdoption } from './actions'
+import { BulkIsbnLookupForm } from './bulk-isbn-lookup-form'
 import { IsbnLookupForm } from './isbn-lookup-form'
 import { MimDiscoveryForm } from './mim-discovery-form'
 import { PublisherResources } from './publisher-resources'
@@ -45,6 +46,17 @@ export default async function TextbookSettingsPage() {
   })
   const sectionById = new Map(annualSnapshot.sections.map((section) => [section.id, section]))
   const disciplineById = new Map(disciplines.map((discipline) => [discipline.id, discipline]))
+  const bulkAssignmentOptions = relevantAssignments
+    .filter((assignment) => assignment.status === 'CONFIRMED')
+    .flatMap((assignment) => {
+      const section = sectionById.get(assignment.sectionId)
+      const discipline = disciplineById.get(assignment.disciplineId)
+      if (!section || !discipline) return []
+      return [{
+        id: assignment.id,
+        label: `${GRADE_NUMBER[section.grade]}ª ${section.sectionCode} · ${discipline.name}`,
+      }]
+    })
   const adoptionsByAssignment = new Map<string, typeof adoptions>()
   for (const adoption of adoptions) {
     const current = adoptionsByAssignment.get(adoption.teachingAssignmentId) ?? []
@@ -106,6 +118,8 @@ export default async function TextbookSettingsPage() {
           <Link href="/impostazioni#contesto">Completa il contesto</Link>
         </section>
       )}
+
+      {bulkAssignmentOptions.length ? <BulkIsbnLookupForm assignments={bulkAssignmentOptions} /> : null}
 
       {!relevantAssignments.length ? (
         <section className="textbookEmptyState">
