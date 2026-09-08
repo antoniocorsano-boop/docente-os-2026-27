@@ -8,7 +8,8 @@ import {
   resolveHumanTaskResourcesForSurface,
   type HumanTaskLessonProjection,
 } from '@/core/presentation/human-task-content'
-import { LessonDesignTools, type LessonKnowledgeSuggestion } from './lesson-design-tools'
+import { LessonDesignTools } from './lesson-design-tools'
+import type { LessonKnowledgeSuggestion } from './lesson-material-suggestions'
 import styles from './lesson-live.module.css'
 
 type Block = {
