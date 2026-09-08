@@ -353,7 +353,18 @@ export function resolveMimCsvUrlFromCatalogHtml(
   const hrefs = [...html.matchAll(/href\s*=\s*["']([^"']+\.csv(?:\?[^"']*)?)["']/gi)]
     .map((match) => decodeHtmlAttribute(match[1]))
     .filter((href) => href.toUpperCase().includes(datasetCode.toUpperCase()))
-  const selected = selectAcademicYearDistribution(hrefs, academicYearCode)
+
+  let selected = selectAcademicYearDistribution(hrefs, academicYearCode)
+  if (
+    !selected
+    && academicYearCode
+    && adoptionCatalogMatchesPinnedSnapshot(html, datasetCode, academicYearCode)
+  ) {
+    selected = hrefs.find((href) =>
+      !extractAcademicYearCodes(href).some((code) => code !== academicYearCode),
+    ) ?? null
+  }
+
   return selected ? normalizeMimDistributionUrl(new URL(selected, pageUrl).toString()) : null
 }
 
@@ -610,6 +621,23 @@ function publicationDateMatchesAcademicYearCycle(value: string, academicYearCode
   if (!dateStamps.length) return true
   const cycleStartYear = academicYearCode.slice(0, 4)
   return dateStamps.some((dateStamp) => dateStamp.startsWith(cycleStartYear))
+}
+
+function adoptionCatalogMatchesPinnedSnapshot(
+  html: string,
+  datasetCode: string,
+  academicYearCode: string,
+) {
+  if (!DATASETS.includes(datasetCode.toUpperCase() as MimDatasetCode)) return false
+  if (academicYearCode !== MIM_ADOPTION_SNAPSHOT.academicYearCode) return false
+
+  const [year, month, day] = MIM_ADOPTION_SNAPSHOT.publishedOn.split('-')
+  const variants = [
+    MIM_ADOPTION_SNAPSHOT.publishedOn,
+    `${day}/${month}/${year}`,
+    `${day}-${month}-${year}`,
+  ]
+  return variants.some((variant) => html.includes(variant))
 }
 
 function ckanPackageMatchesDataset(item: CkanPackage, datasetCode: string) {
