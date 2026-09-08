@@ -10,8 +10,8 @@ export function PublisherResources({ adoption }: { adoption: TextbookAdoptionWit
     <section className="textbookPublisherResources" aria-label={`Risorse digitali per ${adoption.textbook.title}`}>
       <div className="textbookPublisherResourcesHeader">
         <div>
-          <span>RISORSE DIGITALI · ZANICHELLI</span>
-          <strong>Usa i servizi collegati al libro</strong>
+          <span>RISORSE DIGITALI DELL’EDITORE · ZANICHELLI</span>
+          <strong>Apri i servizi disponibili dall’editore</strong>
         </div>
         <small>ISBN {formatIsbn(adoption.textbook.isbn13)}</small>
       </div>
@@ -30,7 +30,7 @@ export function PublisherResources({ adoption }: { adoption: TextbookAdoptionWit
         ))}
       </div>
       <p>
-        L’accesso e le autorizzazioni restano gestiti da Zanichelli. DOCENTE OS non acquisisce né conserva password, token o sessioni e non importa automaticamente i contenuti protetti.
+        La disponibilità delle risorse per questo libro dipende dal tuo account Zanichelli. L’accesso e le autorizzazioni restano gestiti dall’editore: DOCENTE OS non acquisisce né conserva password, token o sessioni e non importa automaticamente contenuti protetti.
       </p>
     </section>
   )
