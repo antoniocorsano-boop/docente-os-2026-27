@@ -9,6 +9,7 @@ const MIM_SPARQL_TIMEOUT_MS = 10_000
 const MIM_CATALOG_TIMEOUT_MS = 15_000
 const DATA_GOV_TIMEOUT_MS = 15_000
 const MIM_CSV_TIMEOUT_MS = 120_000
+const MIM_CSV_ATTEMPT_TIMEOUT_MS = 30_000
 
 const MIM_HTTP_HEADERS = {
   accept: 'text/html,application/xhtml+xml,application/json,text/csv;q=0.9,*/*;q=0.8',
@@ -330,13 +331,17 @@ export function resolveDatiGovMimCsvUrl(
   if (!candidates.length) return null
   if (!academicYearCode) return candidates[0].url
 
-  const exactYear = candidates.find((candidate) => candidate.evidence.includes(academicYearCode))
+  const exactYear = candidates.find((candidate) =>
+    extractAcademicYearCodes(candidate.evidence).includes(academicYearCode)
+      && publicationDateMatchesAcademicYearCycle(candidate.evidence, academicYearCode),
+  )
   if (exactYear) return exactYear.url
 
-  const mentionsOtherAcademicYear = candidates.some((candidate) =>
-    extractAcademicYearCodes(candidate.evidence).some((code) => code !== academicYearCode),
-  )
-  return mentionsOtherAcademicYear ? null : candidates[0].url
+  const compatibleYearNeutral = candidates.find((candidate) => {
+    if (extractAcademicYearCodes(candidate.evidence).length) return false
+    return publicationDateMatchesAcademicYearCycle(candidate.evidence, academicYearCode)
+  })
+  return compatibleYearNeutral?.url ?? null
 }
 
 export function resolveMimCsvUrlFromCatalogHtml(
@@ -468,7 +473,7 @@ async function fetchOfficialCsv(
           accept: 'text/csv,application/csv,application/octet-stream;q=0.9,*/*;q=0.5',
           referer: catalogUrl,
         },
-        signal: deadline,
+        signal: boundedSignal(MIM_CSV_ATTEMPT_TIMEOUT_MS, deadline),
       })
       if (!response.ok) continue
       return { available: true, text: await response.text() }
@@ -561,12 +566,17 @@ function boundedSignal(timeoutMs: number, deadline?: AbortSignal) {
 function selectAcademicYearDistribution(hrefs: string[], academicYearCode?: string) {
   if (!hrefs.length) return null
   if (!academicYearCode) return hrefs[0]
-  const exact = hrefs.find((href) => href.includes(academicYearCode))
-  if (exact) return exact
-  const mentionsOtherAcademicYear = hrefs.some((href) =>
-    extractAcademicYearCodes(href).some((code) => code !== academicYearCode),
+
+  const exact = hrefs.find((href) =>
+    extractAcademicYearCodes(href).includes(academicYearCode)
+      && publicationDateMatchesAcademicYearCycle(href, academicYearCode),
   )
-  return mentionsOtherAcademicYear ? null : hrefs[0]
+  if (exact) return exact
+
+  return hrefs.find((href) => {
+    if (extractAcademicYearCodes(href).length) return false
+    return publicationDateMatchesAcademicYearCycle(href, academicYearCode)
+  }) ?? null
 }
 
 function extractAcademicYearCodes(value: string) {
@@ -575,11 +585,31 @@ function extractAcademicYearCodes(value: string) {
     .filter(isPlausibleAcademicYearCode)
 }
 
+function extractDateStamps(value: string) {
+  return [...value.matchAll(/(?=(20\d{6}))/g)]
+    .map((match) => match[1])
+    .filter(isPlausibleDateStamp)
+}
+
 function isPlausibleAcademicYearCode(value: string) {
   if (!/^20\d{4}$/.test(value)) return false
   const startYear = Number.parseInt(value.slice(0, 4), 10)
   const endYear = Number.parseInt(value.slice(4), 10)
   return endYear === (startYear + 1) % 100
+}
+
+function isPlausibleDateStamp(value: string) {
+  if (!/^20\d{6}$/.test(value)) return false
+  const month = Number.parseInt(value.slice(4, 6), 10)
+  const day = Number.parseInt(value.slice(6, 8), 10)
+  return month >= 1 && month <= 12 && day >= 1 && day <= 31
+}
+
+function publicationDateMatchesAcademicYearCycle(value: string, academicYearCode: string) {
+  const dateStamps = extractDateStamps(value)
+  if (!dateStamps.length) return true
+  const cycleStartYear = academicYearCode.slice(0, 4)
+  return dateStamps.some((dateStamp) => dateStamp.startsWith(cycleStartYear))
 }
 
 function ckanPackageMatchesDataset(item: CkanPackage, datasetCode: string) {
