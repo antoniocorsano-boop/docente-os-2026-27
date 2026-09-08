@@ -32,11 +32,13 @@ export function profileSchoolDocument(input: { filename?: string | null; title?:
 }
 
 function inferCategory(text: string): KnowledgeContentCategory {
-  if (/curricolo verticale/.test(text)) return 'CURRICULUM'
+  // Document identity outranks subjects merely cited inside the document.
+  // A departmental report can discuss the vertical curriculum without becoming a curriculum itself.
   if (/relazione conclusiva del gruppo disciplinare|relazione istruttoria/.test(text)) return 'REPORT'
   if (/prove iniziali|prova iniziale|griglia analitica comune/.test(text)) return 'ASSESSMENT'
   if (/modello comune di unita di apprendimento|modello comune di uda/.test(text)) return 'MODEL'
   if (/piano di accoglienza|accoglienza alla tecnologia/.test(text)) return 'PROGRAMMING'
+  if (/curricolo verticale/.test(text)) return 'CURRICULUM'
   if (/unita di apprendimento|\buda\b/.test(text)) return 'UDA'
   if (/circolare/.test(text)) return 'CIRCULAR'
   if (/comunicazione|collegio dei docenti/.test(text)) return 'COMMUNICATION'
@@ -46,7 +48,7 @@ function inferCategory(text: string): KnowledgeContentCategory {
 function inferClasses(text: string) {
   const labels = new Set<string>()
   const allThree = /classi?\s+prima\s*[,/]?\s*seconda\s+(?:e|,)\s*terza/.test(text)
-  const secondAndThird = /classi?\s+seconda\s+(?:e|,)\s*terza/.test(text)
+  const secondAndThird = /(?:classi?\s+)?seconda\s+(?:e|,)\s*terza\b/.test(text)
 
   if (allThree || /class(?:e|i)\s+prima|classi?\s+i\b|secondaria\s+[-—]\s+i\b/.test(text)) labels.add('Classe prima')
   if (allThree || secondAndThird || /class(?:e|i)\s+seconda|classi?\s+ii\b|secondaria\s+[-—]\s+ii\b/.test(text)) labels.add('Classe seconda')
