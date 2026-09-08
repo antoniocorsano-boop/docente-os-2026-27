@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { publisherResourcesForAdoption } from './publisher-resource'
+import {
+  classifyTeachingMaterial,
+  textbookTeachingKitForAdoption,
+} from './textbook-teaching-kit'
 
 const zanichelliTextbook = {
   isbn13: '9788808950758',
@@ -93,4 +97,86 @@ test('publisher resource pointers never contain credentials or session material'
   for (const forbidden of ['password', 'credential', 'token', 'cookie', 'session']) {
     assert.equal(serialized.includes(forbidden), false)
   }
+})
+
+test('confirmed Tecnologia.verde exposes one bounded pilot kit shared by the course', () => {
+  const kit = textbookTeachingKitForAdoption({
+    status: 'CONFIRMED',
+    textbook: zanichelliTextbook,
+  })
+
+  assert.ok(kit)
+  assert.equal(kit.id, 'KIT-TV2ED-01')
+  assert.equal(kit.guide.title, 'Idee per insegnare')
+  assert.equal(kit.guide.isbn13, '9788808667861')
+  assert.equal(kit.guide.pages, 144)
+  assert.equal(kit.slots.length, 4)
+  assert.ok(kit.slots.every((slot) => slot.requiredForPilot))
+  assert.deepEqual(kit.slots.map((slot) => slot.id), [
+    'PROGRAMMING_COMPETENCIES',
+    'LESSON_POWERPOINT',
+    'ASSESSMENT',
+    'ACCESSIBLE_ASSESSMENT',
+  ])
+  assert.equal(kit.publicAlignment.role, 'EDITORIAL_ALIGNMENT')
+})
+
+test('pilot kit is unavailable for an unconfirmed or unrelated textbook', () => {
+  assert.equal(textbookTeachingKitForAdoption({
+    status: 'PROPOSED',
+    textbook: zanichelliTextbook,
+  }), null)
+  assert.equal(textbookTeachingKitForAdoption({
+    status: 'CONFIRMED',
+    textbook: { ...zanichelliTextbook, isbn13: '9788808123456' },
+  }), null)
+})
+
+test('pedagogical classifier distinguishes accessible assessment from ordinary assessment', () => {
+  const accessible = classifyTeachingMaterial({
+    title: 'Prova di verifica ad alta leggibilità',
+    summary: 'Verifica semplificata sui materiali.',
+    category: 'ASSESSMENT',
+    sourceMetadata: { materialRole: 'TEXTBOOK_TEACHER_MATERIAL' },
+  })
+  const ordinary = classifyTeachingMaterial({
+    title: 'Prova di verifica sui materiali',
+    category: 'ASSESSMENT',
+    sourceMetadata: { materialRole: 'TEXTBOOK_TEACHER_MATERIAL' },
+  })
+
+  assert.deepEqual(accessible.roles.slice(0, 2), ['INCLUSION', 'ASSESSMENT'])
+  assert.equal(accessible.primaryRole, 'INCLUSION')
+  assert.equal(accessible.confidence, 'HIGH')
+  assert.deepEqual(ordinary.roles, ['ASSESSMENT'])
+  assert.equal(ordinary.primaryRole, 'ASSESSMENT')
+})
+
+test('pedagogical classifier distinguishes presentation and planning support', () => {
+  const presentation = classifyTeachingMaterial({
+    title: 'Lezione PowerPoint sui materiali',
+    category: 'TEACHING_RESOURCE',
+  })
+  const planning = classifyTeachingMaterial({
+    title: 'Programmazione per competenze',
+    category: 'PROGRAMMING',
+  })
+
+  assert.deepEqual(presentation.roles, ['EXPLANATION', 'VISUAL_SUPPORT'])
+  assert.equal(presentation.primaryRole, 'EXPLANATION')
+  assert.deepEqual(planning.roles, ['PLANNING_SUPPORT'])
+  assert.equal(planning.primaryRole, 'PLANNING_SUPPORT')
+})
+
+test('pedagogical classifier does not invent a role for a generic editorial file', () => {
+  const classification = classifyTeachingMaterial({
+    title: 'Materiale docente',
+    summary: 'Contenuto del libro.',
+    category: 'TEACHING_RESOURCE',
+    sourceMetadata: { materialRole: 'TEXTBOOK_TEACHER_MATERIAL' },
+  })
+
+  assert.deepEqual(classification.roles, [])
+  assert.equal(classification.primaryRole, null)
+  assert.equal(classification.confidence, 'LOW')
 })
