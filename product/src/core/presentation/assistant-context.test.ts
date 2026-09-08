@@ -27,7 +27,7 @@ function build(overrides: Partial<Parameters<typeof buildKnowledgeAssistantConte
       'Attività laboratoriale con prodotto finale osservabile.',
       'Riflessione conclusiva e autovalutazione degli studenti.',
     ],
-    contextReviewed: true,
+    contextReady: true,
     hasOrganizedDocument: true,
     actionProposalCount: 2,
     deadlineProposalCount: 1,
@@ -46,10 +46,10 @@ test('Knowledge AssistantContext exposes only the X3 allowlist and explicit forb
   assert.equal(context.availableCapabilities.some((item) => item.includes('WRITE')), false)
 })
 
-test('Knowledge AssistantContext records missing professional information', () => {
+test('Knowledge AssistantContext records genuinely missing professional information', () => {
   const context = build({
     academicYearId: null,
-    contextReviewed: false,
+    contextReady: false,
     hasOrganizedDocument: false,
     disciplines: [],
     classLabels: [],
@@ -59,9 +59,18 @@ test('Knowledge AssistantContext records missing professional information', () =
     'Anno scolastico non associato',
     'Disciplina non associata',
     'Classe o sezione non associata',
-    'Contesto professionale da controllare',
+    'Contesto professionale da completare o chiarire',
     'Versione organizzata non disponibile',
   ])
+})
+
+test('an auto-organized ready context does not create routine validation pressure', () => {
+  const context = build({ contextReady: true })
+  const response = respondToKnowledgeAssistant(context, 'Qual è il prossimo passo?')
+
+  assert.deepEqual(context.missingInformation, [])
+  assert.doesNotMatch(response.text, /Completa prima|contesto professionale da completare o chiarire/i)
+  assert.match(response.text, /3 proposte individuate/)
 })
 
 test('Knowledge AssistantContext minimizes long text and distributed highlights sent to the client runtime', () => {
@@ -130,12 +139,12 @@ test('generic write request still gives substantive information before the manua
   assert.doesNotMatch(response.text, /^Usa /)
 })
 
-test('next-step proposal prioritizes missing context over operational suggestions but still carries evidence', () => {
-  const context = build({ contextReviewed: false })
+test('next-step proposal prioritizes genuinely missing context over operational suggestions but still carries evidence', () => {
+  const context = build({ contextReady: false })
   const response = respondToKnowledgeAssistant(context, 'Qual è il prossimo passo?')
 
   assert.equal(response.actionKind, 'PROPOSE')
-  assert.match(response.text, /Contesto professionale da controllare/)
+  assert.match(response.text, /Contesto professionale da completare o chiarire/)
   assert.match(response.text, /Uso critico delle fonti digitali/)
   assert.match(response.text, /non esegue l’azione/i)
 })
