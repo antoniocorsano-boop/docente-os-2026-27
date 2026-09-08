@@ -1,5 +1,6 @@
 import type { TextbookAdoptionWithBook } from '@/core/domain/textbook-adoption'
 import { publisherResourcesForAdoption } from '@/core/domain/publisher-resource'
+import './publisher-resources.css'
 
 export function PublisherResources({ adoption }: { adoption: TextbookAdoptionWithBook }) {
   const resources = publisherResourcesForAdoption(adoption)
