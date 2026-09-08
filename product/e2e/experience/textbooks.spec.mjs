@@ -13,7 +13,8 @@ test('Libri di testo: un ISBN può essere preparato per più Cattedre senza invi
 
   await expect(page.getByRole('heading', { name: 'Controlla i libri associati alle tue classi' })).toBeVisible()
 
-  const bulk = page.getByRole('heading', { name: 'Un libro, più classi in un solo passaggio' }).locator('..').locator('..')
+  const bulkHeading = page.getByRole('heading', { name: 'Un libro, più classi in un solo passaggio' })
+  const bulk = page.locator('section').filter({ has: bulkHeading }).first()
   await expect(bulk, 'Il fallback ad alta efficienza deve essere disponibile quando esiste almeno una Cattedra confermata.').toBeVisible()
 
   const isbn = bulk.locator('input[name="isbn13"]')
