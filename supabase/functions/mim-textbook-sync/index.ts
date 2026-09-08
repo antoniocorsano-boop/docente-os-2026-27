@@ -1,10 +1,25 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.0'
+import { createRemoteJWKSet, jwtVerify } from 'npm:jose@6.2.12'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 const TOKEN_HEADER = 'x-docente-os-sync-token'
 const MAX_SCHOOL_BATCH = 500
 const MAX_ADOPTION_BATCH = 250
+
+const GITHUB_OIDC_ISSUER = 'https://token.actions.githubusercontent.com'
+const GITHUB_OIDC_JWKS = createRemoteJWKSet(new URL('https://token.actions.githubusercontent.com/.well-known/jwks'))
+const GITHUB_OIDC_AUDIENCE = 'docente-os-mim-textbook-annual-sync'
+const GITHUB_REPOSITORY = 'antoniocorsano-boop/docente-os-2026-27'
+const GITHUB_REPOSITORY_ID = '1341201345'
+const GITHUB_WORKFLOW_NAME = 'MIM Textbook Annual Sync'
+const GITHUB_WORKFLOW_PATH = '.github/workflows/mim-textbook-annual-sync.yml'
+const GITHUB_ALLOWED_REFS = new Set([
+  'refs/heads/feat/mim-textbook-cache',
+  'refs/heads/develop',
+  'refs/heads/main',
+])
+const GITHUB_ALLOWED_EVENTS = new Set(['push', 'workflow_dispatch'])
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   throw new Error('Supabase Edge runtime credentials are unavailable')
@@ -63,8 +78,42 @@ Deno.serve(async (request: Request) => {
 
 async function authorized(request: Request) {
   const token = request.headers.get(TOKEN_HEADER)?.trim() ?? ''
-  if (token.length < 32 || token.length > 256) return false
+  if (token.length < 32 || token.length > 8_192) return false
 
+  if (token.split('.').length === 3 && await authorizedGitHubOidc(token)) return true
+  return await authorizedLegacyToken(token)
+}
+
+async function authorizedGitHubOidc(token: string) {
+  try {
+    const { payload } = await jwtVerify(token, GITHUB_OIDC_JWKS, {
+      issuer: GITHUB_OIDC_ISSUER,
+      audience: GITHUB_OIDC_AUDIENCE,
+      algorithms: ['RS256'],
+      clockTolerance: 10,
+    })
+
+    const ref = typeof payload.ref === 'string' ? payload.ref : ''
+    const workflowRef = typeof payload.workflow_ref === 'string' ? payload.workflow_ref : ''
+    const eventName = typeof payload.event_name === 'string' ? payload.event_name : ''
+
+    if (payload.repository !== GITHUB_REPOSITORY) return false
+    if (String(payload.repository_id ?? '') !== GITHUB_REPOSITORY_ID) return false
+    if (!GITHUB_ALLOWED_REFS.has(ref)) return false
+    if (!GITHUB_ALLOWED_EVENTS.has(eventName)) return false
+    if (payload.workflow !== GITHUB_WORKFLOW_NAME) return false
+    if (workflowRef !== `${GITHUB_REPOSITORY}/${GITHUB_WORKFLOW_PATH}@${ref}`) return false
+    if (payload.ref_type !== 'branch') return false
+    if (payload.runner_environment !== 'github-hosted') return false
+
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function authorizedLegacyToken(token: string) {
+  if (token.length > 256) return false
   const digest = await sha256(token)
   const { data, error } = await supabase
     .from('mim_textbook_sync_credentials')
