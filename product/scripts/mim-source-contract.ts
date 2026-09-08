@@ -31,6 +31,12 @@ const technologyRecords = result.records.filter((record) =>
   record.discipline.toLocaleUpperCase('it').includes('TECNOLOG'),
 )
 
+assert.ok(
+  technologyRecords.length > 0,
+  `No Tecnologia adoption was returned for ${SCHOOL_CODE}; ` +
+    `available disciplines: ${[...new Set(result.records.map((record) => record.discipline))].join(', ')}`,
+)
+
 console.log(JSON.stringify({
   status: 'MIM_SOURCE_CONTRACT_PASS',
   schoolCode: SCHOOL_CODE,
