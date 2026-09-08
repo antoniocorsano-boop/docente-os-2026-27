@@ -57,7 +57,7 @@ test('Drive: la stessa identità sorgente non crea un secondo asset', async () =
   assert.equal(transformed, false)
 })
 
-test('Il profilo scolastico precompila il contesto come suggerimento da verificare', async () => {
+test('Il profilo scolastico organizza automaticamente il contesto senza richiedere validazione preventiva', async () => {
   const assets = new MemoryAssets()
   assets.asset = {
     ...assets.asset,
@@ -76,7 +76,31 @@ test('Il profilo scolastico precompila il contesto come suggerimento da verifica
     disciplines: ['Tecnologia'],
     classLabels: ['Classe prima'],
     contextStatus: 'NEEDS_REVIEW',
+    reliability: 'AUTO',
+  })
+})
+
+test('Una nuova analisi può correggere un contesto precedente generato automaticamente', async () => {
+  const assets = new MemoryAssets()
+  assets.asset = {
+    ...assets.asset,
+    currentGenerationId: 'generation-stable',
+    contentCategory: 'OTHER',
+    disciplines: ['Tecnologia'],
+    contextStatus: 'NEEDS_REVIEW',
     reliability: 'TO_VERIFY',
+  }
+  const service = successfulService(assets)
+
+  await service.reprocess(assets.asset.id)
+
+  assert.deepEqual(assets.lastContext, {
+    academicYearId: null,
+    contentCategory: 'CURRICULUM',
+    disciplines: ['Tecnologia'],
+    classLabels: ['Classe prima'],
+    contextStatus: 'NEEDS_REVIEW',
+    reliability: 'AUTO',
   })
 })
 
@@ -121,6 +145,7 @@ class MemoryAssets implements KnowledgeAssetRepository {
   }
   async updateContext(_assetId: string, input: KnowledgeAssetContextInput) {
     this.lastContext = input
+    this.asset = { ...this.asset, ...input }
   }
 }
 
