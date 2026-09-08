@@ -30,17 +30,18 @@ test('Libri di testo: il percorso resta semplice e ISBN/foto è un fallback loca
 
     await page.goto('/impostazioni/libri-di-testo')
     await expect(page.getByRole('heading', { name: 'Libri di testo', exact: true })).toBeVisible()
-    await expect(page.getByText('Trova', { exact: true })).toBeVisible()
-    await expect(page.getByText('Controlla', { exact: true })).toBeVisible()
-    await expect(page.getByText('Conferma', { exact: true })).toBeVisible()
+    const workflow = page.getByLabel('Procedura libri di testo')
+    await expect(workflow.getByText('Trova', { exact: true })).toBeVisible()
+    await expect(workflow.getByText('Controlla', { exact: true })).toBeVisible()
+    await expect(workflow.getByText('Conferma', { exact: true })).toBeVisible()
 
     const fallback = page.locator('details#aggiungi-isbn')
     await expect(fallback, 'ISBN/foto deve restare disponibile ma secondario rispetto alla ricerca automatica.').toBeVisible()
     await expect(fallback).not.toHaveAttribute('open', '')
     await fallback.locator(':scope > summary').click()
 
-    const bulkHeading = page.getByRole('heading', { name: 'Aggiungi con ISBN' })
-    const bulk = page.locator('div').filter({ has: bulkHeading }).first()
+    const bulk = page.locator('[aria-labelledby="bulk-isbn-title"]')
+    await expect(bulk.getByRole('heading', { name: 'Aggiungi con ISBN' })).toBeVisible()
     await expect(bulk, 'Il fallback ISBN deve essere disponibile quando esiste almeno una Cattedra confermata.').toBeVisible()
 
     const isbn = bulk.locator('input[name="isbn13"]')
