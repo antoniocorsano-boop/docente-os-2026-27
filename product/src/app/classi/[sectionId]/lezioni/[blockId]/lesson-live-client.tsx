@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   acceptedLessonDesignResources,
   composeLessonSequence,
-  type ComposedLessonSequenceStep,
   type LessonDesignExtension,
 } from '@/core/domain/lesson-design-extension'
 import {
