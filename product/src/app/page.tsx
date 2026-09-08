@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
+import { buildClassWorkspaceLearningFocus } from '@/app/classi/class-workspace-model'
+import { buildBlocks, GRADE_UI } from '@/app/piano-annuale/model'
 import type { PlannerTask } from '@/core/domain/planner-task'
 import { timeToMinutes } from '@/core/domain/timetable'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
@@ -9,6 +11,7 @@ import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabas
 import { SupabaseTimetableLifecycleRepository } from '@/core/infrastructure/supabase/supabase-timetable-lifecycle-repository'
 import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { buildLessonWorkspaceHref, resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,17 +46,31 @@ export default async function HomePage() {
   ])
 
   const moment = currentRomeMoment()
-  let currentLesson: { sectionId: string | null; label: string; time: string } | null = null
+  let currentLesson: { sectionId: string | null; label: string; time: string; lessonHref: string | null } | null = null
   const operationalSlots = timetableLifecycle?.activeVersion ? timetableLifecycle.activeSlots : timetable?.slots ?? []
 
   if (timetable && annualSnapshot) {
     const slot = operationalSlots.find((item) => item.weekday === moment.weekday && timeToMinutes(item.startTime) <= moment.minutes && timeToMinutes(item.endTime) > moment.minutes)
     if (slot) {
       const section = slot.sectionId ? annualSnapshot.sections.find((item) => item.id === slot.sectionId) ?? null : null
+      let lessonHref: string | null = null
+
+      if (section) {
+        const learningFocus = buildClassWorkspaceLearningFocus(section, annualSnapshot.progress, [])
+        const grade = GRADE_UI[section.grade]
+        const nextBlock = learningFocus.nextBlock
+          ? buildBlocks(grade).find((item) => item.id === learningFocus.nextBlock?.id) ?? null
+          : null
+        if (nextBlock && resolveRuntimeHumanTaskLessonProjection(grade, nextBlock)) {
+          lessonHref = buildLessonWorkspaceHref(section.id, nextBlock.id, 'teach')
+        }
+      }
+
       currentLesson = {
         sectionId: section?.id ?? null,
         label: section ? `${gradeNumber(section.grade)}ª ${section.sectionCode}` : slot.manualClassLabel || presenceLabel(slot.slotKind),
         time: `${slot.startTime.slice(0, 5)}–${slot.endTime.slice(0, 5)}`,
+        lessonHref,
       }
     }
   }
@@ -63,10 +80,12 @@ export default async function HomePage() {
     ? {
         eyebrow: 'ADESSO · LEZIONE',
         title: currentLesson.label,
-        description: `Sei nella fascia ${currentLesson.time}. DOCENTE OS mantiene il contesto della lezione senza chiederti di scegliere di nuovo classe e percorso.`,
-        href: currentLesson.sectionId ? `/classi/${encodeURIComponent(currentLesson.sectionId)}` : '/orario',
-        action: currentLesson.sectionId ? 'Apri la classe' : 'Apri l’orario',
-        meta: [currentLesson.time, currentLesson.sectionId ? 'Contesto canonico' : 'Presenza in orario'],
+        description: currentLesson.lessonHref
+          ? `Sei nella fascia ${currentLesson.time}. La classe e il prossimo blocco sono già determinati: apri direttamente la guida della lezione.`
+          : `Sei nella fascia ${currentLesson.time}. DOCENTE OS mantiene il contesto della lezione senza chiederti di scegliere di nuovo classe e percorso.`,
+        href: currentLesson.lessonHref ?? (currentLesson.sectionId ? `/classi/${encodeURIComponent(currentLesson.sectionId)}` : '/orario'),
+        action: currentLesson.lessonHref ? 'Apri la lezione' : currentLesson.sectionId ? 'Apri la classe' : 'Apri l’orario',
+        meta: [currentLesson.time, currentLesson.lessonHref ? 'Modalità lezione' : currentLesson.sectionId ? 'Contesto canonico' : 'Presenza in orario'],
       }
     : priorityTask
       ? {
