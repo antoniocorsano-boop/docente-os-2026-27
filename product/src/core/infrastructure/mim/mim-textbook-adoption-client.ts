@@ -355,7 +355,7 @@ export function resolveMimCsvUrlFromCatalogHtml(
 export function fallbackAdoptionSchoolCodesWhenRegistryHasNoMatch(schoolCode: string) {
   const normalizedSchoolCode = normalizeSchoolCode(schoolCode)
 
-  if (/^[A-Z]{2}IC[A-Z0-9]{6}$/.test(normalizedSchoolCode)) {
+  if (/^[A-Z]{2}(?:IC|IS)[A-Z0-9]{6}$/.test(normalizedSchoolCode)) {
     throw new Error(
       `Il codice di istituto MIM ${normalizedSchoolCode} non è stato risolto in alcun plesso. Nessuna proposta è stata importata.`,
     )
@@ -451,16 +451,18 @@ async function fetchOfficialCsv(
   datasetCode: string,
   academicYearCode?: string,
 ): Promise<{ available: boolean; text: string }> {
+  const deadline = AbortSignal.timeout(MIM_CSV_TIMEOUT_MS)
   const resolvers = [
-    () => resolveFederatedCsvUrl(datasetCode, academicYearCode),
-    () => resolveMimDatasetCatalogCsvUrl(datasetCode, academicYearCode),
-    () => resolveMimCatalogCsvUrl(catalogUrl, datasetCode, academicYearCode),
+    () => resolveFederatedCsvUrl(datasetCode, academicYearCode, deadline),
+    () => resolveMimDatasetCatalogCsvUrl(datasetCode, academicYearCode, deadline),
+    () => resolveMimCatalogCsvUrl(catalogUrl, datasetCode, academicYearCode, deadline),
   ]
   const attemptedUrls = new Set<string>()
 
   for (const resolve of resolvers) {
+    if (deadline.aborted) break
     const csvUrl = await resolve()
-    if (!csvUrl || attemptedUrls.has(csvUrl)) continue
+    if (!csvUrl || attemptedUrls.has(csvUrl) || deadline.aborted) continue
     attemptedUrls.add(csvUrl)
 
     try {
@@ -471,7 +473,7 @@ async function fetchOfficialCsv(
           accept: 'text/csv,application/csv,application/octet-stream;q=0.9,*/*;q=0.5',
           referer: catalogUrl,
         },
-        signal: AbortSignal.timeout(MIM_CSV_TIMEOUT_MS),
+        signal: deadline,
       })
       if (!response.ok) continue
       return { available: true, text: await response.text() }
@@ -486,13 +488,14 @@ async function fetchOfficialCsv(
 async function resolveMimDatasetCatalogCsvUrl(
   datasetCode: string,
   academicYearCode?: string,
+  deadline?: AbortSignal,
 ) {
   const datasetUrl = new URL(encodeURIComponent(datasetCode), MIM_DATASET_CATALOG_BASE).toString()
   try {
     const response = await fetch(datasetUrl, {
       cache: 'no-store',
       headers: MIM_HTTP_HEADERS,
-      signal: AbortSignal.timeout(MIM_CATALOG_TIMEOUT_MS),
+      signal: boundedSignal(MIM_CATALOG_TIMEOUT_MS, deadline),
     })
     if (!response.ok) return null
     return resolveMimCsvUrlFromCatalogHtml(
@@ -510,12 +513,13 @@ async function resolveMimCatalogCsvUrl(
   catalogUrl: string,
   datasetCode: string,
   academicYearCode?: string,
+  deadline?: AbortSignal,
 ) {
   try {
     const response = await fetch(catalogUrl, {
       cache: 'no-store',
       headers: MIM_HTTP_HEADERS,
-      signal: AbortSignal.timeout(MIM_CATALOG_TIMEOUT_MS),
+      signal: boundedSignal(MIM_CATALOG_TIMEOUT_MS, deadline),
     })
     if (!response.ok) return null
     return resolveMimCsvUrlFromCatalogHtml(
@@ -529,7 +533,11 @@ async function resolveMimCatalogCsvUrl(
   }
 }
 
-async function resolveFederatedCsvUrl(datasetCode: string, academicYearCode?: string) {
+async function resolveFederatedCsvUrl(
+  datasetCode: string,
+  academicYearCode?: string,
+  deadline?: AbortSignal,
+) {
   try {
     const url = new URL(DATA_GOV_PACKAGE_SEARCH)
     url.searchParams.set('q', datasetCode)
@@ -540,7 +548,7 @@ async function resolveFederatedCsvUrl(datasetCode: string, academicYearCode?: st
         ...MIM_HTTP_HEADERS,
         accept: 'application/json',
       },
-      signal: AbortSignal.timeout(DATA_GOV_TIMEOUT_MS),
+      signal: boundedSignal(DATA_GOV_TIMEOUT_MS, deadline),
     })
     if (!response.ok) return null
     const payload = await response.json() as DatiGovPackageSearchResponse
@@ -548,6 +556,11 @@ async function resolveFederatedCsvUrl(datasetCode: string, academicYearCode?: st
   } catch {
     return null
   }
+}
+
+function boundedSignal(timeoutMs: number, deadline?: AbortSignal) {
+  const attempt = AbortSignal.timeout(timeoutMs)
+  return deadline ? AbortSignal.any([deadline, attempt]) : attempt
 }
 
 function selectAcademicYearDistribution(hrefs: string[], academicYearCode?: string) {
