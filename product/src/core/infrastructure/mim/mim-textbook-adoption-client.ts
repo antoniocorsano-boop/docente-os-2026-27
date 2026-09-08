@@ -3,7 +3,8 @@ import type { MimTextbookRecord } from '@/core/domain/mim-textbook-discovery'
 const MIM_SPARQL_SERVICE = 'https://dati.istruzione.it/opendata/opendata/sparql/endpoint/query/service/'
 const MIM_SCHOOL_CATALOG = 'https://dati.istruzione.it/opendata/opendata/catalogo/elements1/?area=Scuole'
 const MIM_ADOPTION_CATALOG = 'https://dati.istruzione.it/opendata/opendata/catalogo/elements1/?area=Adozioni+libri+di+testo'
-const DATA_GOV_PACKAGE_SEARCH = 'https://dati.gov.it/opendata/api/3/action/package_search'
+const MIM_DATASET_CATALOG_BASE = 'https://dati.istruzione.it/opendata/opendata/catalog/'
+const DATA_GOV_PACKAGE_SEARCH = 'https://www.dati.gov.it/opendata/api/3/action/package_search'
 const MIM_SPARQL_TIMEOUT_MS = 10_000
 const MIM_CATALOG_TIMEOUT_MS = 15_000
 const DATA_GOV_TIMEOUT_MS = 15_000
@@ -333,9 +334,34 @@ export function resolveDatiGovMimCsvUrl(
   if (exactYear) return exactYear.url
 
   const mentionsOtherAcademicYear = candidates.some((candidate) =>
-    [...candidate.evidence.matchAll(/20\d{4}/g)].some((match) => match[0] !== academicYearCode),
+    extractAcademicYearCodes(candidate.evidence).some((code) => code !== academicYearCode),
   )
   return mentionsOtherAcademicYear ? null : candidates[0].url
+}
+
+export function resolveMimCsvUrlFromCatalogHtml(
+  html: string,
+  pageUrl: string,
+  datasetCode: string,
+  academicYearCode?: string,
+) {
+  const hrefs = [...html.matchAll(/href\s*=\s*["']([^"']+\.csv(?:\?[^"']*)?)["']/gi)]
+    .map((match) => decodeHtmlAttribute(match[1]))
+    .filter((href) => href.toUpperCase().includes(datasetCode.toUpperCase()))
+  const selected = selectAcademicYearDistribution(hrefs, academicYearCode)
+  return selected ? normalizeMimDistributionUrl(new URL(selected, pageUrl).toString()) : null
+}
+
+export function fallbackAdoptionSchoolCodesWhenRegistryHasNoMatch(schoolCode: string) {
+  const normalizedSchoolCode = normalizeSchoolCode(schoolCode)
+
+  if (/^[A-Z]{2}IC[A-Z0-9]{6}$/.test(normalizedSchoolCode)) {
+    throw new Error(
+      `Il codice di istituto MIM ${normalizedSchoolCode} non è stato risolto in alcun plesso. Nessuna proposta è stata importata.`,
+    )
+  }
+
+  return [normalizedSchoolCode]
 }
 
 async function resolveAdoptionSchoolCodes(
@@ -365,7 +391,7 @@ async function resolveAdoptionSchoolCodes(
   if (resolvedFromCsv.length) return resolvedFromCsv
 
   if (availableResults.length || csvResult.available) {
-    return [schoolCode]
+    return fallbackAdoptionSchoolCodesWhenRegistryHasNoMatch(schoolCode)
   }
 
   throw new Error(
@@ -451,6 +477,7 @@ async function resolveOfficialCsvUrl(
   academicYearCode?: string,
 ) {
   const candidates = [
+    resolveMimDatasetCatalogCsvUrl(datasetCode, academicYearCode),
     resolveMimCatalogCsvUrl(catalogUrl, datasetCode, academicYearCode),
     resolveFederatedCsvUrl(datasetCode, academicYearCode),
   ].map((candidate) => candidate.then((value) => {
@@ -460,6 +487,29 @@ async function resolveOfficialCsvUrl(
 
   try {
     return await Promise.any(candidates)
+  } catch {
+    return null
+  }
+}
+
+async function resolveMimDatasetCatalogCsvUrl(
+  datasetCode: string,
+  academicYearCode?: string,
+) {
+  const datasetUrl = new URL(encodeURIComponent(datasetCode), MIM_DATASET_CATALOG_BASE).toString()
+  try {
+    const response = await fetch(datasetUrl, {
+      cache: 'no-store',
+      headers: MIM_HTTP_HEADERS,
+      signal: AbortSignal.timeout(MIM_CATALOG_TIMEOUT_MS),
+    })
+    if (!response.ok) return null
+    return resolveMimCsvUrlFromCatalogHtml(
+      await response.text(),
+      datasetUrl,
+      datasetCode,
+      academicYearCode,
+    )
   } catch {
     return null
   }
@@ -477,12 +527,12 @@ async function resolveMimCatalogCsvUrl(
       signal: AbortSignal.timeout(MIM_CATALOG_TIMEOUT_MS),
     })
     if (!response.ok) return null
-    const html = await response.text()
-    const hrefs = [...html.matchAll(/href\s*=\s*["']([^"']+\.csv(?:\?[^"']*)?)["']/gi)]
-      .map((match) => decodeHtmlAttribute(match[1]))
-      .filter((href) => href.toUpperCase().includes(datasetCode.toUpperCase()))
-    const selected = selectAcademicYearDistribution(hrefs, academicYearCode)
-    return selected ? normalizeMimDistributionUrl(new URL(selected, catalogUrl).toString()) : null
+    return resolveMimCsvUrlFromCatalogHtml(
+      await response.text(),
+      catalogUrl,
+      datasetCode,
+      academicYearCode,
+    )
   } catch {
     return null
   }
@@ -515,9 +565,22 @@ function selectAcademicYearDistribution(hrefs: string[], academicYearCode?: stri
   const exact = hrefs.find((href) => href.includes(academicYearCode))
   if (exact) return exact
   const mentionsOtherAcademicYear = hrefs.some((href) =>
-    [...href.matchAll(/20\d{4}/g)].some((match) => match[0] !== academicYearCode),
+    extractAcademicYearCodes(href).some((code) => code !== academicYearCode),
   )
   return mentionsOtherAcademicYear ? null : hrefs[0]
+}
+
+function extractAcademicYearCodes(value: string) {
+  return [...value.matchAll(/20\d{4}/g)]
+    .map((match) => match[0])
+    .filter(isPlausibleAcademicYearCode)
+}
+
+function isPlausibleAcademicYearCode(value: string) {
+  if (!/^20\d{4}$/.test(value)) return false
+  const startYear = Number.parseInt(value.slice(0, 4), 10)
+  const endYear = Number.parseInt(value.slice(4), 10)
+  return endYear === (startYear + 1) % 100
 }
 
 function ckanPackageMatchesDataset(item: CkanPackage, datasetCode: string) {
