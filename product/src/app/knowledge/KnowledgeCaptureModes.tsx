@@ -6,11 +6,24 @@ import { KnowledgeFileUploader } from './KnowledgeFileUploader'
 
 type CaptureMode = 'text' | 'file'
 
-export function KnowledgeCaptureModes() {
-  const [mode, setMode] = useState<CaptureMode>('text')
+export function KnowledgeCaptureModes({
+  initialMode = 'text',
+  sourceHint = null,
+}: {
+  initialMode?: CaptureMode
+  sourceHint?: string | null
+}) {
+  const [mode, setMode] = useState<CaptureMode>(initialMode)
 
   return (
     <>
+      {sourceHint ? (
+        <div className="knowledgeCaptureAssurance" role="note">
+          <span className="statusPill">Libro di testo</span>
+          <p>{sourceHint}</p>
+        </div>
+      ) : null}
+
       <div className="knowledgeCaptureModeSwitch" role="group" aria-label="Scegli come aggiungere un contenuto">
         <button type="button" aria-pressed={mode === 'text'} onClick={() => setMode('text')}>
           <strong>Incolla un testo</strong><span>Appunti e contenuti già scritti</span>
