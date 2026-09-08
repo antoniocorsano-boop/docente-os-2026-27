@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
+import { teachingMaterialRoleLabel } from '@/core/domain/textbook-teaching-kit'
 import {
   acceptLessonDesignExtension,
   attachKnowledgeResourceToLesson,
@@ -128,6 +129,9 @@ export function LessonDesignTools({
                 <span>{item.sourceKind === 'EDITORIAL_KNOWLEDGE' ? 'DAL LIBRO' : 'DALLA CONOSCENZA'} · {knowledgeCategoryLabel(item.category)}</span>
                 <strong>{item.title}</strong>
                 <p>{item.summary}</p>
+                {item.pedagogicalRoles.length ? (
+                  <small className="lessonSuggestionRoles">Uso suggerito: {item.pedagogicalRoles.slice(0, 3).map(teachingMaterialRoleLabel).join(' · ')}</small>
+                ) : null}
                 <small className="lessonSuggestionReason">Perché qui: {item.reason}</small>
                 <div className="lessonSuggestionTip">
                   <b>TIP</b>
