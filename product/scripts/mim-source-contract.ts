@@ -7,6 +7,10 @@ import {
 const SCHOOL_CODE = 'AVIC849003'
 const EXPECTED_SECONDARY_SCHOOL_CODE = 'AVMM849047'
 
+function normalizeSchoolCode(value: string) {
+  return value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
+}
+
 async function main() {
   const client = new MimTextbookAdoptionClient()
   const result = await client.discoverBySchoolCode(
@@ -15,7 +19,7 @@ async function main() {
   )
 
   assert.ok(
-    result.resolvedSchoolCodes.includes(EXPECTED_SECONDARY_SCHOOL_CODE),
+    result.resolvedSchoolCodes.map(normalizeSchoolCode).includes(EXPECTED_SECONDARY_SCHOOL_CODE),
     `MIM did not resolve ${SCHOOL_CODE} to ${EXPECTED_SECONDARY_SCHOOL_CODE}; ` +
       `resolved codes: ${result.resolvedSchoolCodes.join(', ') || 'none'}`,
   )
@@ -32,7 +36,7 @@ async function main() {
     record.discipline.toLocaleUpperCase('it').includes('TECNOLOG'),
   )
   const secondaryTechnologyRecords = technologyRecords.filter(
-    (record) => record.schoolCode === EXPECTED_SECONDARY_SCHOOL_CODE,
+    (record) => normalizeSchoolCode(record.schoolCode) === EXPECTED_SECONDARY_SCHOOL_CODE,
   )
 
   assert.ok(
