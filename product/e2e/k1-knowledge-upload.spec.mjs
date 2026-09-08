@@ -132,8 +132,9 @@ test('K1 Knowledge: i cinque documenti scolastici attraversano davvero DOCX → 
       await expect(contextPanel).toContainText('Non devi confermare ciò che è già corretto')
       await expect(contextForm.locator('select[name="contextStatus"]')).toHaveCount(0)
       await expect(contextForm.locator('select[name="reliability"]')).toHaveCount(0)
+      // A context correction would become REVIEWED, but it must preserve the source's AUTO reliability.
       await expect(contextForm.locator('input[name="contextStatus"]')).toHaveValue('REVIEWED')
-      await expect(contextForm.locator('input[name="reliability"]')).toHaveValue('VERIFIED')
+      await expect(contextForm.locator('input[name="reliability"]')).toHaveValue('AUTO')
 
       const classes = await contextForm.locator('input[name="classLabels"]').inputValue()
       for (const expectedClass of fixture.expectedClasses) expect(classes).toContain(expectedClass)
