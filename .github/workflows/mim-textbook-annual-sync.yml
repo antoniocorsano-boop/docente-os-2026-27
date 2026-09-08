@@ -7,12 +7,6 @@ on:
         description: Codice anno scolastico MIM da sincronizzare
         required: true
         default: '202627'
-  push:
-    branches:
-      - develop
-      - feat/mim-textbook-cache
-    paths:
-      - product/config/mim-textbook-annual-sync.request.json
 
 permissions:
   contents: read
@@ -39,16 +33,12 @@ jobs:
           cache: npm
           cache-dependency-path: product/package-lock.json
 
-      - name: Resolve annual request
+      - name: Validate annual request
         id: request
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            requested_year='${{ inputs.academic_year_code }}'
-          else
-            requested_year="$(node -e "const r=require('./product/config/mim-textbook-annual-sync.request.json'); process.stdout.write(String(r.academicYearCode || ''))")"
-          fi
+          requested_year='${{ inputs.academic_year_code }}'
           if [[ ! "$requested_year" =~ ^20[0-9]{4}$ ]]; then
             echo "::error::Invalid MIM academic year code"
             exit 1
