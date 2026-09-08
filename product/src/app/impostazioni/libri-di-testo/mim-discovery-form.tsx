@@ -16,7 +16,7 @@ export function MimDiscoveryForm({ schoolCode }: { schoolCode: string }) {
         <span>OPEN DATA MIM</span>
         <strong>Cerca le adozioni già pubblicate per {schoolCode}</strong>
         <p>
-          DOCENTE OS usa automaticamente anno scolastico, classi, sezioni, discipline e Cattedra già presenti nelle Impostazioni. Le corrispondenze vengono aggiunte solo come proposte da controllare.
+          DOCENTE OS consulta una cache MIM sincronizzata separatamente e usa anno scolastico, classi, sezioni, discipline e Cattedra già confermati nelle Impostazioni. Durante il clic non viene scaricato il dataset regionale completo; le corrispondenze entrano solo come proposte da controllare.
         </p>
       </div>
       <div className="mimDiscoveryAction">
@@ -42,7 +42,7 @@ function DiscoveryButton() {
   const { pending } = useFormStatus()
   return (
     <button className="settingsPrimaryButton" type="submit" disabled={pending}>
-      {pending ? 'Cerco nelle adozioni MIM…' : 'Cerca adozioni ufficiali MIM'}
+      {pending ? 'Cerco nella cache MIM…' : 'Cerca adozioni ufficiali MIM'}
     </button>
   )
 }
