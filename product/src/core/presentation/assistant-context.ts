@@ -39,7 +39,7 @@ export type KnowledgeAssistantContext = AssistantContext & {
     summary?: string
     excerpt?: string
     contentHighlights: string[]
-    contextReviewed: boolean
+    contextReady: boolean
     hasOrganizedDocument: boolean
     actionProposalCount: number
     deadlineProposalCount: number
@@ -61,7 +61,7 @@ export type KnowledgeAssistantContextInput = {
   summary?: string | null
   excerpt?: string | null
   contentHighlights?: string[]
-  contextReviewed: boolean
+  contextReady: boolean
   hasOrganizedDocument: boolean
   actionProposalCount: number
   deadlineProposalCount: number
@@ -114,7 +114,7 @@ export function buildKnowledgeAssistantContext(input: KnowledgeAssistantContextI
   if (!input.academicYearId) missingInformation.push('Anno scolastico non associato')
   if (input.disciplines.length === 0) missingInformation.push('Disciplina non associata')
   if (input.classLabels.length === 0) missingInformation.push('Classe o sezione non associata')
-  if (!input.contextReviewed) missingInformation.push('Contesto professionale da controllare')
+  if (!input.contextReady) missingInformation.push('Contesto professionale da completare o chiarire')
   if (!input.hasOrganizedDocument) missingInformation.push('Versione organizzata non disponibile')
 
   return {
@@ -147,7 +147,7 @@ export function buildKnowledgeAssistantContext(input: KnowledgeAssistantContextI
       summary: cleanOptionalText(input.summary, 900),
       excerpt: cleanOptionalText(input.excerpt, 700),
       contentHighlights: cleanHighlights(input.contentHighlights),
-      contextReviewed: input.contextReviewed,
+      contextReady: input.contextReady,
       hasOrganizedDocument: input.hasOrganizedDocument,
       actionProposalCount: Math.max(0, input.actionProposalCount),
       deadlineProposalCount: Math.max(0, input.deadlineProposalCount),
@@ -208,7 +208,7 @@ export function respondToKnowledgeAssistant(context: KnowledgeAssistantContext, 
       '**Ho trovato**',
       context.missingInformation.length
         ? `Ci sono ${context.missingInformation.length} elementi da completare o controllare: ${context.missingInformation.join('; ')}.`
-        : `Il contesto minimo risulta completo e controllato per ${professionalContextLabel(context)}.`,
+        : `Il contesto minimo risulta completo e utilizzabile per ${professionalContextLabel(context)}.`,
       ...evidenceBlock(context, 3),
       '',
       '**Indicazione operativa**',
@@ -217,7 +217,7 @@ export function respondToKnowledgeAssistant(context: KnowledgeAssistantContext, 
         : contextualReviewSuggestion(context),
       '',
       '**Limite operativo**',
-      'La verifica resta manuale; l’assistente non cambia classificazioni o stati.',
+      'L’assistente non cambia classificazioni o stati; se individui una correzione necessaria, resta una scelta esplicita del docente.',
     ].join('\n')
     return makeResponse('READ_ONLY', 'SUPPORTED', text, Math.max(1, availableEvidenceCount(context)))
   }
@@ -437,9 +437,9 @@ function scoreEvidence(text: string, tokens: string[]) {
 
 function contextualReviewSuggestion(context: KnowledgeAssistantContext) {
   if (context.knowledge.contentHighlights.length === 0) {
-    return `Il contesto è completo: puoi lavorare sulla sintesi disponibile per ${professionalContextLabel(context)}.`
+    return `Il contesto è già utilizzabile: puoi lavorare sulla sintesi disponibile per ${professionalContextLabel(context)}.`
   }
-  return `Il contesto è completo: verifica ora se i nuclei emersi dal documento sono pertinenti a ${professionalContextLabel(context)}.`
+  return `Il contesto è già utilizzabile: puoi passare ai nuclei emersi dal documento per ${professionalContextLabel(context)}.`
 }
 
 function evidenceBlock(context: KnowledgeAssistantContext, limit: number) {
@@ -475,7 +475,7 @@ function manualPath(context: KnowledgeAssistantContext, normalizedPrompt: string
     return 'Usa “Crea attività” nella pagina del documento solo dopo aver controllato l’anteprima.'
   }
   if (containsAny(normalizedPrompt, ['contesto', 'classe', 'disciplina', 'classific'])) {
-    return 'Usa “Contesto professionale” per correggere classe, disciplina o stato del controllo.'
+    return 'Usa “Contesto professionale” solo se devi correggere tipologia, classe o disciplina.'
   }
   if (containsAny(normalizedPrompt, ['drive', 'originale', 'fonte'])) {
     return `Apri la fonte originale${context.knowledge.sourceLabel ? ` su ${context.knowledge.sourceLabel}` : ''} e modifica la fonte nel suo sistema di origine.`
