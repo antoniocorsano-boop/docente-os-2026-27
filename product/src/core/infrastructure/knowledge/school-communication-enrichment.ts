@@ -1,5 +1,5 @@
 import type { KnowledgeEnrichmentPort } from '@/core/application/ports/knowledge-base'
-import type { NormalizedKnowledge } from '@/core/domain/knowledge'
+import type { KnowledgeContentCategory, KnowledgeDocumentType, NormalizedKnowledge } from '@/core/domain/knowledge'
 import { profileSchoolDocument } from './school-document-profile'
 
 const actionPatterns = [
@@ -15,52 +15,64 @@ const communicationPatterns = [
   /\bistituto\b/i,
 ]
 
+const teachingCategories = new Set<KnowledgeContentCategory>([
+  'ASSESSMENT',
+  'TEACHING_RESOURCE',
+  'PROGRAMMING',
+  'UDA',
+  'CURRICULUM',
+])
+
 export class SchoolCommunicationEnrichment implements KnowledgeEnrichmentPort {
   async enrich(input: NormalizedKnowledge): Promise<NormalizedKnowledge> {
     const text = input.text?.trim()
     if (!text) return input
 
-    const documentType = inferDocumentType(text, input.documentType)
+    const schoolDocumentProfile = profileSchoolDocument({ title: input.title, text })
+    const documentType = inferDocumentType(text, input.documentType, schoolDocumentProfile.suggestedCategory)
+    const semanticMode = inferSemanticMode(documentType, schoolDocumentProfile.suggestedCategory)
     const semanticUnits: NormalizedKnowledge['units'] = []
     const seen = new Set<string>()
-    const schoolDocumentProfile = profileSchoolDocument({ title: input.title, text })
 
-    for (const sentence of splitSentences(text)) {
-      const dates = extractItalianDates(sentence)
+    if (semanticMode === 'OPERATIONAL_COMMUNICATION') {
+      for (const sentence of splitSentences(text)) {
+        const dates = extractItalianDates(sentence)
 
-      for (const date of dates) {
-        const key = `DEADLINE:${date.iso}:${sentence}`
-        if (!seen.has(key)) {
-          semanticUnits.push({
-            type: 'DEADLINE',
-            title: `Data ${formatItalianIso(date.iso)}`,
-            content: sentence,
-            structuredData: {
-              date: date.iso,
-              dueAt: `${date.iso}T23:59:00+02:00`,
-              matchedText: date.matchedText,
-            },
-            confidence: date.confidence,
-          })
-          seen.add(key)
+        for (const date of dates) {
+          const key = `DEADLINE:${date.iso}:${sentence}`
+          if (!seen.has(key)) {
+            semanticUnits.push({
+              type: 'DEADLINE',
+              title: `Data ${formatItalianIso(date.iso)}`,
+              content: sentence,
+              structuredData: {
+                date: date.iso,
+                dueAt: `${date.iso}T23:59:00+02:00`,
+                matchedText: date.matchedText,
+                extractionRule: 'school-communication-v2',
+              },
+              confidence: date.confidence,
+            })
+            seen.add(key)
+          }
         }
-      }
 
-      if (isActionSentence(sentence)) {
-        const due = dates[0]
-        const key = `ACTION:${sentence}`
-        if (!seen.has(key)) {
-          semanticUnits.push({
-            type: 'ACTION',
-            title: actionTitle(sentence),
-            content: sentence,
-            structuredData: {
-              ...(due ? { dueDate: due.iso, dueAt: `${due.iso}T23:59:00+02:00` } : {}),
-              extractionRule: 'school-communication-v1',
-            },
-            confidence: actionConfidence(sentence, Boolean(due)),
-          })
-          seen.add(key)
+        if (isActionSentence(sentence)) {
+          const due = dates[0]
+          const key = `ACTION:${sentence}`
+          if (!seen.has(key)) {
+            semanticUnits.push({
+              type: 'ACTION',
+              title: actionTitle(sentence),
+              content: sentence,
+              structuredData: {
+                ...(due ? { dueDate: due.iso, dueAt: `${due.iso}T23:59:00+02:00` } : {}),
+                extractionRule: 'school-communication-v2',
+              },
+              confidence: actionConfidence(sentence, Boolean(due)),
+            })
+            seen.add(key)
+          }
         }
       }
     }
@@ -72,16 +84,18 @@ export class SchoolCommunicationEnrichment implements KnowledgeEnrichmentPort {
 
     return {
       ...input,
+      title: semanticTitle(input.title, text),
       documentType,
       extractedData: {
         ...(input.extractedData ?? {}),
-        enrichment: 'school-communication-v1',
+        enrichment: 'school-communication-v2',
+        semanticMode,
         candidateCount: semanticUnits.filter((unit) => unit.type === 'ACTION' || unit.type === 'DEADLINE').length,
         schoolDocumentProfile,
       },
       units: [...input.units, ...semanticUnits],
       processor: `${input.processor}+school-communication`,
-      processorVersion: `${input.processorVersion}+1.2.0`,
+      processorVersion: `${input.processorVersion}+2.0.0`,
     }
   }
 }
@@ -104,10 +118,44 @@ function qualityObservation(flag: string): NormalizedKnowledge['units'][number] 
   return null
 }
 
-function inferDocumentType(text: string, current: NormalizedKnowledge['documentType']) {
-  if (/\bcircolare\b/i.test(text)) return 'CIRCULAR' as const
+function inferDocumentType(
+  text: string,
+  current: KnowledgeDocumentType,
+  category: KnowledgeContentCategory,
+): KnowledgeDocumentType {
+  if (teachingCategories.has(category)) return 'TEACHING'
+  if (/\bcircolare\b/i.test(text)) return 'CIRCULAR'
   const hits = communicationPatterns.filter((pattern) => pattern.test(text)).length
-  return hits >= 2 ? 'COMMUNICATION' as const : current
+  return hits >= 2 ? 'COMMUNICATION' : current
+}
+
+function inferSemanticMode(documentType: KnowledgeDocumentType, category: KnowledgeContentCategory) {
+  if (teachingCategories.has(category) || documentType === 'TEACHING') return 'TEACHING_CONTENT' as const
+  if (documentType === 'CIRCULAR' || documentType === 'COMMUNICATION') return 'OPERATIONAL_COMMUNICATION' as const
+  return 'GENERAL_CONTENT' as const
+}
+
+function semanticTitle(current: string | null | undefined, text: string) {
+  const title = current?.trim() ?? ''
+  if (title && !isTechnicalDerivativeTitle(title)) return title
+
+  const heading = text
+    .replace(/\r/g, '')
+    .split(/\n+/)
+    .map((value) => value.trim().replace(/\s+/g, ' '))
+    .find((value) => value.length >= 3 && value.length <= 180)
+
+  return heading || title || 'Documento'
+}
+
+function isTechnicalDerivativeTitle(value: string) {
+  const normalized = value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\.[a-z0-9]{1,8}$/i, '')
+    .replace(/[_\s]+/g, '-')
+  return /^(?:documento|scansione)(?:-semantico)?-anonim[oa]$/.test(normalized) || normalized === 'asset'
 }
 
 function isActionSentence(sentence: string) {
