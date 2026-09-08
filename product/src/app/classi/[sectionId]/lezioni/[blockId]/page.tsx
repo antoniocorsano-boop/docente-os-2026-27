@@ -13,6 +13,8 @@ import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supa
 import { humanizeKnowledgeTitle } from '@/core/presentation/product-language'
 import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 import LessonWorkspaceClient, { type LessonKnowledgeSuggestion, type LessonWorkspaceMode } from './lesson-workspace-client'
+import LessonLiveClient from './lesson-live-client'
+import LessonCloseClient from './lesson-close-client'
 import './lesson-workspace.css'
 import './lesson-workspace-maturity.css'
 import './lesson-design-tools.css'
@@ -97,6 +99,12 @@ export default async function LessonWorkspacePage({
 
   const mode = asMode((await searchParams).mode)
   const sectionLabel = `${GRADE_NUMBER[section.grade]}ª ${section.sectionCode}`
+  const progressView = {
+    status: progress?.status ?? 'PIANIFICATO',
+    executedOn: progress?.executedOn ?? null,
+    evidenceNote: progress?.evidenceNote ?? null,
+  }
+  const udaProgressView = { completed: udaProgress, total: udaBlocks.length }
 
   return (
     <AppShell
@@ -106,21 +114,37 @@ export default async function LessonWorkspacePage({
       role={context.role}
       contentClassName="lessonWorkspaceSurface"
     >
-      <LessonWorkspaceClient
-        sectionId={section.id}
-        sectionLabel={sectionLabel}
-        block={block}
-        projection={projection}
-        initialMode={mode}
-        extensions={extensions}
-        knowledgeSuggestions={knowledgeSuggestions}
-        progress={{
-          status: progress?.status ?? 'PIANIFICATO',
-          executedOn: progress?.executedOn ?? null,
-          evidenceNote: progress?.evidenceNote ?? null,
-        }}
-        udaProgress={{ completed: udaProgress, total: udaBlocks.length }}
-      />
+      {mode === 'teach' ? (
+        <LessonLiveClient
+          sectionId={section.id}
+          sectionLabel={sectionLabel}
+          block={block}
+          projection={projection}
+          extensions={extensions}
+          progress={progressView}
+          udaProgress={udaProgressView}
+        />
+      ) : mode === 'record' ? (
+        <LessonCloseClient
+          sectionId={section.id}
+          sectionLabel={sectionLabel}
+          block={block}
+          projection={projection}
+          progress={progressView}
+        />
+      ) : (
+        <LessonWorkspaceClient
+          sectionId={section.id}
+          sectionLabel={sectionLabel}
+          block={block}
+          projection={projection}
+          initialMode={mode}
+          extensions={extensions}
+          knowledgeSuggestions={knowledgeSuggestions}
+          progress={progressView}
+          udaProgress={udaProgressView}
+        />
+      )}
     </AppShell>
   )
 }
