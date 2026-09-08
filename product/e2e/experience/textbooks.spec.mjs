@@ -10,7 +10,7 @@ const FIXTURE_DISCIPLINE = 'Tecnologia HVA Libri'
 const FIXTURE_NOTE = 'HVA · Libri di testo · Cattedra tecnica'
 const TEST_ISBN = '9788808950758'
 
-test('Libri di testo: un ISBN può essere preparato per più Cattedre senza inviare la foto', async ({ page }, testInfo) => {
+test('Libri di testo: il percorso resta semplice e ISBN/foto è un fallback locale per più classi', async ({ page }, testInfo) => {
   await loginE2E(page)
   const fixture = await ensureConfirmedTeachingAssignment(page)
 
@@ -29,11 +29,20 @@ test('Libri di testo: un ISBN può essere preparato per più Cattedre senza invi
     }, { isbn: TEST_ISBN })
 
     await page.goto('/impostazioni/libri-di-testo')
-    await expect(page.getByRole('heading', { name: 'Controlla i libri associati alle tue classi' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Libri di testo', exact: true })).toBeVisible()
+    const workflow = page.getByLabel('Procedura libri di testo')
+    await expect(workflow.getByText('Trova', { exact: true })).toBeVisible()
+    await expect(workflow.getByText('Controlla', { exact: true })).toBeVisible()
+    await expect(workflow.getByText('Conferma', { exact: true })).toBeVisible()
 
-    const bulkHeading = page.getByRole('heading', { name: 'Un libro, più classi in un solo passaggio' })
-    const bulk = page.locator('section').filter({ has: bulkHeading }).first()
-    await expect(bulk, 'Il fallback ad alta efficienza deve essere disponibile quando esiste almeno una Cattedra confermata.').toBeVisible()
+    const fallback = page.locator('details#aggiungi-isbn')
+    await expect(fallback, 'ISBN/foto deve restare disponibile ma secondario rispetto alla ricerca automatica.').toBeVisible()
+    await expect(fallback).not.toHaveAttribute('open', '')
+    await fallback.locator(':scope > summary').click()
+
+    const bulk = page.locator('[aria-labelledby="bulk-isbn-title"]')
+    await expect(bulk.getByRole('heading', { name: 'Aggiungi con ISBN' })).toBeVisible()
+    await expect(bulk, 'Il fallback ISBN deve essere disponibile quando esiste almeno una Cattedra confermata.').toBeVisible()
 
     const isbn = bulk.locator('input[name="isbn13"]')
     await expect(isbn).toBeVisible()
@@ -51,7 +60,7 @@ test('Libri di testo: un ISBN può essere preparato per più Cattedre senza invi
       buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47]),
     })
     await expect(isbn, 'La lettura locale della foto deve trasferire soltanto l’ISBN nel campo testuale.').toHaveValue(TEST_ISBN)
-    await expect(bulk.getByRole('status')).toContainText(`ISBN ${TEST_ISBN} riconosciuto dalla foto`)
+    await expect(bulk.getByRole('status')).toContainText(`ISBN ${TEST_ISBN} riconosciuto`)
 
     const assignments = bulk.locator('input[type="checkbox"][name="teachingAssignmentIds"]')
     const assignmentCount = await assignments.count()
@@ -60,12 +69,13 @@ test('Libri di testo: un ISBN può essere preparato per più Cattedre senza invi
     const selectionCount = Math.min(2, assignmentCount)
     for (let index = 0; index < selectionCount; index += 1) await assignments.nth(index).check()
 
-    await expect(bulk.getByText(new RegExp(`${selectionCount} Cattedr`))).toBeVisible()
+    const selectionLabel = selectionCount === 1 ? '1 classe selezionata' : `${selectionCount} classi selezionate`
+    await expect(bulk.locator('header > strong')).toHaveText(selectionLabel)
 
-    const submit = bulk.getByRole('button', { name: new RegExp(`Recupera una volta e proponi in ${selectionCount}`) })
-    await expect(submit, 'La stessa ricerca ISBN deve poter essere applicata in un solo gesto alle Cattedre selezionate.').toBeEnabled()
+    const submit = bulk.getByRole('button', { name: new RegExp(`Prepara la proposta per ${selectionCount}`) })
+    await expect(submit, 'La stessa ricerca ISBN deve poter essere applicata in un solo gesto alle classi selezionate.').toBeEnabled()
 
-    await screenshot(page, testInfo, 'textbooks-bulk-isbn')
+    await screenshot(page, testInfo, 'textbooks-simplified-flow')
   } finally {
     await fixture.restore()
   }

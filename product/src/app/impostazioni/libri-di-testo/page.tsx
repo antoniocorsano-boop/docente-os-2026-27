@@ -9,7 +9,6 @@ import { SupabaseTextbookRepository } from '@/core/infrastructure/supabase/supab
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { confirmTextbookAdoption, removeTextbookAdoption } from './actions'
 import { BulkIsbnLookupForm } from './bulk-isbn-lookup-form'
-import { IsbnLookupForm } from './isbn-lookup-form'
 import { MimDiscoveryForm } from './mim-discovery-form'
 import { PublisherResources } from './publisher-resources'
 import '../settings.css'
@@ -79,132 +78,146 @@ export default async function TextbookSettingsPage() {
       <header className="textbookHero">
         <div>
           <p>LIBRI DI TESTO · {context.academicYear.label}</p>
-          <h1>Controlla i libri associati alle tue classi</h1>
-          <span>DOCENTE OS recupera i dati del libro da fonti esterne e ti chiede solo di verificarli. Il libro resta una risorsa didattica, distinta dal curricolo.</span>
+          <h1>Libri di testo</h1>
+          <span>Trova i libri della scuola, controlla le proposte e conferma soltanto quelli che usi davvero nelle tue classi.</span>
         </div>
         <div className="textbookHeroStats" aria-label="Stato libri di testo">
           <strong>{coverage.confirmedBookCount}</strong>
-          <span>libri confermati</span>
-          {coverage.proposedBookCount > 0 && <small>{coverage.proposedBookCount} da controllare</small>}
+          <span>confermati</span>
+          <small>{coverage.proposedBookCount} da controllare</small>
         </div>
       </header>
 
-      <section className="textbookPrinciples" aria-label="Come vengono usati i libri">
-        <div><strong>Serve a</strong><span>ricordare quale testo usi in ogni classe e disciplina.</span></div>
-        <div><strong>Usato in</strong><span>Piano annuale, UDA, lezioni e suggerimenti di materiali.</span></div>
-        <div><strong>Non modifica</strong><span>curricolo, copertura curricolare, Orario o attività già create.</span></div>
-        <div><strong>Accesso editore</strong><span>DOCENTE OS non salva password o credenziali dei siti editoriali.</span></div>
+      <section className="textbookWorkflow" aria-label="Procedura libri di testo">
+        <div><strong>1</strong><span>Trova</span><small>Parti dalle adozioni ufficiali già disponibili.</small></div>
+        <div><strong>2</strong><span>Controlla</span><small>Verifica libro, classe e tipo di utilizzo.</small></div>
+        <div><strong>3</strong><span>Conferma</span><small>Solo la tua conferma rende il collegamento definitivo.</small></div>
       </section>
-
-      {settings.schoolCode ? (
-        <>
-          <section className="textbookSourceCallout">
-            <div>
-              <span>DISCOVERY MIM · CONTESTO PRONTO</span>
-              <strong>Codice scuola {settings.schoolCode}</strong>
-              <p>Il codice meccanografico è il binding per proporre automaticamente le adozioni dai dataset Open Data MIM. Nessuna proposta diventa confermata senza una tua decisione.</p>
-            </div>
-            <Link href="/impostazioni#contesto">Modifica codice scuola</Link>
-          </section>
-          {relevantAssignments.length ? <MimDiscoveryForm schoolCode={settings.schoolCode} /> : null}
-        </>
-      ) : (
-        <section className="textbookSourceCallout needsContext">
-          <div>
-            <span>PER LE PROPOSTE AUTOMATICHE MIM</span>
-            <strong>Aggiungi il codice meccanografico della scuola</strong>
-            <p>Serve a riconoscere le adozioni ufficiali senza riscrivere titolo, autori, editore o altri dati bibliografici.</p>
-          </div>
-          <Link href="/impostazioni#contesto">Completa il contesto</Link>
-        </section>
-      )}
-
-      {bulkAssignmentOptions.length ? <BulkIsbnLookupForm assignments={bulkAssignmentOptions} /> : null}
 
       {!relevantAssignments.length ? (
         <section className="textbookEmptyState">
-          <strong>Prima serve la Cattedra.</strong>
-          <p>I libri vengono collegati alla relazione reale classe + disciplina. Configura almeno una Cattedra per evitare duplicazioni e associazioni ambigue.</p>
+          <strong>Prima configura almeno una classe con la sua disciplina.</strong>
+          <p>I libri vengono collegati alla Cattedra reale, così ogni proposta arriva già nella classe corretta.</p>
           <Link className="settingsPrimaryButton" href="/impostazioni#cattedra">Configura la Cattedra</Link>
         </section>
       ) : (
-        <section id="libri-per-classe" className="textbookAssignmentGrid" aria-label="Libri per classe e disciplina">
-          {relevantAssignments.map((assignment) => {
-            const section = sectionById.get(assignment.sectionId)
-            const discipline = disciplineById.get(assignment.disciplineId)
-            const books = adoptionsByAssignment.get(assignment.id) ?? []
-            const confirmedAdopted = books.filter((item) => item.status === 'CONFIRMED' && item.usageKind === 'ADOPTED').length
-            return (
-              <article className="textbookAssignmentCard" key={assignment.id}>
-                <header>
-                  <div>
-                    <span>{assignment.status === 'CONFIRMED' ? 'CATTEDRA CONFERMATA' : 'CATTEDRA DA CONTROLLARE'}</span>
-                    <h2>{section ? `${GRADE_NUMBER[section.grade]}ª ${section.sectionCode}` : 'Classe'} · {discipline?.name ?? 'Disciplina'}</h2>
-                  </div>
-                  <span className={`textbookCoverageBadge ${confirmedAdopted ? 'complete' : 'optional'}`}>
-                    {confirmedAdopted ? `${confirmedAdopted} ${confirmedAdopted === 1 ? 'testo adottato' : 'testi adottati'}` : 'Nessun testo adottato confermato'}
-                  </span>
-                </header>
+        <>
+          <section className="textbookFindSection" aria-labelledby="textbook-find-title">
+            <header>
+              <div>
+                <span>1 · TROVA</span>
+                <h2 id="textbook-find-title">Trova i libri delle tue classi</h2>
+                <p>La prima scelta è automatica: DOCENTE OS usa il contesto della tua Cattedra e prepara soltanto proposte da verificare.</p>
+              </div>
+            </header>
 
-                {books.length ? (
-                  <div className="textbookList">
-                    {books.map((adoption) => (
-                      <div className={`textbookRow ${adoption.status === 'PROPOSED' ? 'proposed' : 'confirmed'}`} key={adoption.id}>
-                        <div className="textbookIdentity">
-                          <div className="textbookTitleLine">
-                            <strong>{adoption.textbook.title}</strong>
-                            <span>{usageLabel(adoption.usageKind)}</span>
-                          </div>
-                          <span>{adoption.textbook.publisher} · ISBN {formatIsbn(adoption.textbook.isbn13)}</span>
-                          <small>
-                            {adoption.textbook.editionLabel ? `${adoption.textbook.editionLabel} · ` : ''}
-                            {sourceLabel(adoption.sourceKind)}
-                          </small>
-                          <PublisherResources adoption={adoption} />
-                        </div>
-                        <div className="textbookRowActions">
-                          {adoption.textbook.officialUrl && (
-                            <a href={adoption.textbook.officialUrl} target="_blank" rel="noreferrer">Apri riferimento fonte</a>
-                          )}
-                          {adoption.status === 'PROPOSED' ? (
-                            <form action={confirmTextbookAdoption}>
-                              <input type="hidden" name="adoptionId" value={adoption.id} />
-                              <button className="settingsPrimaryButton" type="submit">Conferma questo libro</button>
-                            </form>
-                          ) : <span className="textbookConfirmedLabel">✓ Confermato</span>}
-                          <details className="textbookRowManage">
-                            <summary>Gestisci</summary>
-                            <form action={removeTextbookAdoption}>
-                              <input type="hidden" name="adoptionId" value={adoption.id} />
-                              <span>Rimuove solo il collegamento a questa Cattedra. Non modifica classe, disciplina o Piano annuale.</span>
-                              <button className="textButton" type="submit">Rimuovi collegamento</button>
-                            </form>
-                          </details>
-                        </div>
+            {settings.schoolCode ? (
+              <MimDiscoveryForm schoolCode={settings.schoolCode} />
+            ) : (
+              <div className="textbookContextPrompt">
+                <div>
+                  <strong>Manca il codice della scuola.</strong>
+                  <span>Serve una sola volta per riconoscere le adozioni ufficiali associate all’Istituto.</span>
+                </div>
+                <Link className="settingsPrimaryButton" href="/impostazioni#contesto">Aggiungi il codice scuola</Link>
+              </div>
+            )}
+
+            {bulkAssignmentOptions.length ? (
+              <details className="textbookFallbackDisclosure" id="aggiungi-isbn">
+                <summary>
+                  <span>Non trovi un libro?</span>
+                  <strong>Aggiungilo con ISBN o foto</strong>
+                </summary>
+                <BulkIsbnLookupForm assignments={bulkAssignmentOptions} />
+              </details>
+            ) : null}
+          </section>
+
+          <section id="libri-per-classe" className="textbookReviewSection" aria-labelledby="textbook-review-title">
+            <header className="textbookReviewHeader">
+              <div>
+                <span>2 · CONTROLLA &nbsp; 3 · CONFERMA</span>
+                <h2 id="textbook-review-title">Controlla ciò che è stato trovato</h2>
+                <p>Ogni proposta resta separata per classe e disciplina. Nulla viene confermato automaticamente.</p>
+              </div>
+              {coverage.proposedBookCount > 0 ? <strong>{coverage.proposedBookCount} da controllare</strong> : null}
+            </header>
+
+            <div className="textbookAssignmentGrid" aria-label="Libri per classe e disciplina">
+              {relevantAssignments.map((assignment) => {
+                const section = sectionById.get(assignment.sectionId)
+                const discipline = disciplineById.get(assignment.disciplineId)
+                const books = adoptionsByAssignment.get(assignment.id) ?? []
+                const orderedBooks = [...books].sort((left, right) => Number(left.status === 'CONFIRMED') - Number(right.status === 'CONFIRMED'))
+                const proposedCount = books.filter((item) => item.status === 'PROPOSED').length
+                const confirmedAdopted = books.filter((item) => item.status === 'CONFIRMED' && item.usageKind === 'ADOPTED').length
+                return (
+                  <article className="textbookAssignmentCard" key={assignment.id}>
+                    <header>
+                      <div>
+                        <span>{assignment.status === 'CONFIRMED' ? 'CATTEDRA CONFERMATA' : 'CATTEDRA DA CONTROLLARE'}</span>
+                        <h3>{section ? `${GRADE_NUMBER[section.grade]}ª ${section.sectionCode}` : 'Classe'} · {discipline?.name ?? 'Disciplina'}</h3>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="textbookNoBooks">
-                    <strong>Nessun libro ancora proposto.</strong>
-                    <span>Puoi lasciare la Cattedra senza testo. Se devi aggiungere un libro non ancora trovato dal sistema, basta il suo ISBN.</span>
-                  </div>
-                )}
+                      <span className={`textbookCoverageBadge ${proposedCount ? 'attention' : confirmedAdopted ? 'complete' : 'optional'}`}>
+                        {proposedCount
+                          ? `${proposedCount} ${proposedCount === 1 ? 'da controllare' : 'da controllare'}`
+                          : confirmedAdopted
+                            ? `${confirmedAdopted} ${confirmedAdopted === 1 ? 'testo confermato' : 'testi confermati'}`
+                            : 'Nessun libro confermato'}
+                      </span>
+                    </header>
 
-                <details className="textbookAddDisclosure" open={!books.length}>
-                  <summary>{books.length ? 'Trova un altro libro tramite ISBN' : 'Aggiungi il libro tramite ISBN'}</summary>
-                  <div className="textbookLookupPanel">
-                    <div>
-                      <strong>Niente catalogazione manuale</strong>
-                      <span>Inserisci o scansiona soltanto l’ISBN. DOCENTE OS recupera automaticamente i metadati e crea una proposta da controllare.</span>
-                    </div>
-                    <IsbnLookupForm teachingAssignmentId={assignment.id} />
-                  </div>
-                </details>
-              </article>
-            )
-          })}
-        </section>
+                    {orderedBooks.length ? (
+                      <div className="textbookList">
+                        {orderedBooks.map((adoption) => (
+                          <div className={`textbookRow ${adoption.status === 'PROPOSED' ? 'proposed' : 'confirmed'}`} key={adoption.id}>
+                            <div className="textbookIdentity">
+                              <div className="textbookTitleLine">
+                                <strong>{adoption.textbook.title}</strong>
+                                <span>{usageLabel(adoption.usageKind)}</span>
+                              </div>
+                              <span>{adoption.textbook.publisher} · ISBN {formatIsbn(adoption.textbook.isbn13)}</span>
+                              {adoption.textbook.editionLabel ? <small>{adoption.textbook.editionLabel}</small> : null}
+                            </div>
+                            <div className="textbookRowActions">
+                              {adoption.status === 'PROPOSED' ? (
+                                <form action={confirmTextbookAdoption}>
+                                  <input type="hidden" name="adoptionId" value={adoption.id} />
+                                  <button className="settingsPrimaryButton" type="submit">Conferma</button>
+                                </form>
+                              ) : <span className="textbookConfirmedLabel">✓ Confermato</span>}
+                              <details className="textbookRowManage">
+                                <summary>Dettagli</summary>
+                                <div className="textbookRowDetails">
+                                  <span>{sourceLabel(adoption.sourceKind)}</span>
+                                  {adoption.textbook.officialUrl ? (
+                                    <a href={adoption.textbook.officialUrl} target="_blank" rel="noreferrer">Apri la fonte</a>
+                                  ) : null}
+                                  <PublisherResources adoption={adoption} />
+                                  <form action={removeTextbookAdoption}>
+                                    <input type="hidden" name="adoptionId" value={adoption.id} />
+                                    <small>Rimuove soltanto il collegamento a questa classe.</small>
+                                    <button className="textButton" type="submit">Rimuovi collegamento</button>
+                                  </form>
+                                </div>
+                              </details>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="textbookNoBooks">
+                        <strong>Nessun libro associato.</strong>
+                        <span>Puoi lasciare la classe senza testo oppure usare <a href="#aggiungi-isbn">ISBN o foto</a> se il libro non compare tra le proposte.</span>
+                      </div>
+                    )}
+                  </article>
+                )
+              })}
+            </div>
+          </section>
+        </>
       )}
     </AppShell>
   )
@@ -217,9 +230,9 @@ function usageLabel(kind: 'ADOPTED' | 'RECOMMENDED' | 'OTHER') {
 }
 
 function sourceLabel(kind: 'MANUAL' | 'MIM_OPEN_DATA' | 'ISBN_LOOKUP') {
-  if (kind === 'MIM_OPEN_DATA') return 'Proposto da Open Data MIM'
-  if (kind === 'ISBN_LOOKUP') return 'Metadati recuperati da ISBN'
-  return 'Dato storico inserito manualmente'
+  if (kind === 'MIM_OPEN_DATA') return 'Fonte: adozioni ufficiali MIM'
+  if (kind === 'ISBN_LOOKUP') return 'Fonte: metadati recuperati tramite ISBN'
+  return 'Fonte: dato storico inserito manualmente'
 }
 
 function formatIsbn(value: string) {
