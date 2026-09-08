@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useRef, useState, type ChangeEvent } from 'react'
+import { useActionState, useState, type ChangeEvent } from 'react'
 import { useFormStatus } from 'react-dom'
 import { lookupTextbookByIsbnForAssignments, type IsbnLookupState } from './actions'
 import styles from './bulk-isbn-lookup.module.css'
@@ -21,7 +21,6 @@ export function BulkIsbnLookupForm({ assignments }: { assignments: AssignmentOpt
   const [isbn, setIsbn] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [scanMessage, setScanMessage] = useState('')
-  const photoInputRef = useRef<HTMLInputElement>(null)
 
   function toggleAssignment(id: string) {
     setSelected((current) => {
@@ -44,7 +43,7 @@ export function BulkIsbnLookupForm({ assignments }: { assignments: AssignmentOpt
 
     const Detector = (globalThis as typeof globalThis & { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector
     if (!Detector || typeof createImageBitmap !== 'function') {
-      setScanMessage('La lettura automatica dalla foto non è disponibile su questo browser. Puoi inserire o incollare l’ISBN nello stesso campo.')
+      setScanMessage('La lettura dalla foto non è disponibile su questo browser. Inserisci o incolla l’ISBN.')
       event.target.value = ''
       return
     }
@@ -60,27 +59,26 @@ export function BulkIsbnLookupForm({ assignments }: { assignments: AssignmentOpt
         .find((value) => /^[0-9]{13}$/.test(value))
 
       if (!detected) {
-        setScanMessage('Non ho riconosciuto un ISBN-13 nella foto. Prova a inquadrare soltanto il codice a barre oppure inserisci il numero.')
+        setScanMessage('Non ho riconosciuto il codice. Prova a inquadrare soltanto il codice a barre oppure inserisci l’ISBN.')
       } else {
         setIsbn(detected)
-        setScanMessage(`ISBN ${detected} riconosciuto dalla foto. La foto resta sul dispositivo e non viene caricata.`)
+        setScanMessage(`ISBN ${detected} riconosciuto. La foto resta sul dispositivo e non viene caricata.`)
       }
     } catch {
-      setScanMessage('Non sono riuscito a leggere il codice dalla foto. Puoi riprovare o inserire l’ISBN manualmente.')
+      setScanMessage('Non sono riuscito a leggere il codice. Puoi riprovare o inserire l’ISBN.')
     } finally {
       event.target.value = ''
     }
   }
 
   return (
-    <section className={styles.card} aria-labelledby="bulk-isbn-title">
+    <div className={styles.card} aria-labelledby="bulk-isbn-title">
       <header className={styles.header}>
         <div>
-          <span>AGGIUNTA RAPIDA · ALTERNATIVA AL MIM</span>
-          <h2 id="bulk-isbn-title">Un libro, più classi in un solo passaggio</h2>
-          <p>Inserisci l’ISBN una sola volta oppure fotografa il codice a barre. Poi scegli tutte le Cattedre a cui collegare lo stesso testo.</p>
+          <h3 id="bulk-isbn-title">Aggiungi con ISBN</h3>
+          <p>Inserisci il codice oppure fotografalo, poi scegli le classi in cui usi lo stesso libro.</p>
         </div>
-        <strong>{selected.size} {selected.size === 1 ? 'Cattedra selezionata' : 'Cattedre selezionate'}</strong>
+        <strong>{selected.size} {selected.size === 1 ? 'classe selezionata' : 'classi selezionate'}</strong>
       </header>
 
       <form action={action} className={styles.form}>
@@ -100,18 +98,17 @@ export function BulkIsbnLookupForm({ assignments }: { assignments: AssignmentOpt
 
           <label className={styles.photoButton}>
             <input
-              ref={photoInputRef}
               className={styles.hiddenFile}
               type="file"
               accept="image/*"
               capture="environment"
               onChange={scanPhoto}
             />
-            Fotografa il codice ISBN
+            Usa la fotocamera
           </label>
 
           <label className={styles.usageField}>
-            <span>Uso</span>
+            <span>Come lo usi?</span>
             <select name="usageKind" defaultValue="ADOPTED">
               <option value="ADOPTED">Adottato</option>
               <option value="RECOMMENDED">Consigliato</option>
@@ -124,8 +121,8 @@ export function BulkIsbnLookupForm({ assignments }: { assignments: AssignmentOpt
 
         <div className={styles.assignmentHeader}>
           <div>
-            <strong>Scegli classi e discipline</strong>
-            <span>Il recupero bibliografico avviene una sola volta; ogni collegamento resta una proposta indipendente da confermare.</span>
+            <strong>In quali classi?</strong>
+            <span>Il libro viene cercato una sola volta. Ogni classe riceve una proposta separata da confermare.</span>
           </div>
           <button className={styles.selectAll} type="button" onClick={toggleAll}>
             {selected.size === assignments.length ? 'Deseleziona tutte' : 'Seleziona tutte'}
@@ -155,7 +152,7 @@ export function BulkIsbnLookupForm({ assignments }: { assignments: AssignmentOpt
 
         <SubmitButton selectedCount={selected.size} />
       </form>
-    </section>
+    </div>
   )
 }
 
@@ -164,10 +161,10 @@ function SubmitButton({ selectedCount }: { selectedCount: number }) {
   return (
     <button className="settingsPrimaryButton" type="submit" disabled={pending || selectedCount === 0}>
       {pending
-        ? 'Recupero il libro…'
+        ? 'Cerco il libro…'
         : selectedCount === 0
-          ? 'Seleziona almeno una Cattedra'
-          : `Recupera una volta e proponi in ${selectedCount}`}
+          ? 'Scegli almeno una classe'
+          : `Prepara la proposta per ${selectedCount} ${selectedCount === 1 ? 'classe' : 'classi'}`}
     </button>
   )
 }
