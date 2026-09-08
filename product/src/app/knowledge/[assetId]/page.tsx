@@ -53,7 +53,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
   const processing = knowledgeProcessingStatus(asset.processingStatus)
   const sourceLabel = sourceProviderLabel(asset.sourceProvider)
   const category = contentCategoryLabel(asset.contentCategory)
-  const contextReference = [...asset.disciplines, ...asset.classLabels].join(' · ') || 'Da completare'
+  const contextReference = [...asset.disciplines, ...asset.classLabels].join(' · ') || 'Non specificato'
   const taskMode = asKnowledgeTaskMode(query.mode)
 
   if (taskMode) {
@@ -131,8 +131,8 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
   const candidateSummary = candidates.length
     ? `Ho trovato ${candidates.length} ${candidates.length === 1 ? 'possibile azione o scadenza' : 'possibili azioni o scadenze'}. Restano proposte finché non le confermi.`
     : asset.contextStatus === 'REVIEWED'
-      ? 'Il contenuto è organizzato e il contesto professionale è stato controllato. Puoi usarlo nel lavoro o trasformarlo in una attività concreta.'
-      : 'Il contenuto è organizzato. Ti consiglio di controllare il contesto professionale prima di usarlo nel lavoro.'
+      ? 'Il contenuto è organizzato e il contesto professionale è stato controllato da te. Puoi usarlo nel lavoro o trasformarlo in una attività concreta.'
+      : 'Il contenuto è organizzato automaticamente e può essere usato subito. Correggi il contesto solo se noti qualcosa che non torna.'
 
   return (
     <AppShell
@@ -149,7 +149,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
 
       {query.reprocess === 'ok' ? <div className="knowledgeFeedback success" role="status">Analisi aggiornata. L’originale è rimasto invariato e questa è ora la versione di lavoro corrente.</div> : null}
       {query.reprocess === 'failed' ? <div className="knowledgeFeedback error" role="status">Non sono riuscito ad aggiornare l’analisi. La versione precedente resta disponibile e l’originale non è stato modificato.</div> : null}
-      {query.context === 'updated' ? <div className="knowledgeFeedback success" role="status">Contesto professionale aggiornato. Da ora questo contenuto sarà più facile da ritrovare e collegare al lavoro.</div> : null}
+      {query.context === 'updated' ? <div className="knowledgeFeedback success" role="status">Correzione salvata. Da ora DOCENTE OS considera questo contesto controllato da te e non lo sostituisce automaticamente.</div> : null}
       {query.task === 'unavailable' ? <div className="knowledgeFeedback error" role="status">Non posso ancora creare l’attività perché manca una versione di analisi completata. Il contenuto resta comunque disponibile.</div> : null}
 
       <section className="plannerHeader knowledgeHeader humanKnowledgeHeader">
@@ -180,7 +180,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
           <p>{candidateSummary}</p>
         </div>
         <div className="guidanceActions">
-          <a href="#professional-context">Controlla il contesto</a>
+          <a href="#professional-context">Correggi contesto se serve</a>
           <a href="#planner-action">Crea attività</a>
           <a href="#content-view">Leggi il contenuto</a>
           <form action={reprocessKnowledgeAsset}>
@@ -193,18 +193,18 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
 
       <section className="knowledgePanel contextPanel" id="professional-context">
         <div className="knowledgePanelHeading"><div><span className="panelEyebrow">CONTESTO PROFESSIONALE</span><h2>Dove userai questo contenuto</h2></div><span className={`validationPill ${asset.contextStatus === 'REVIEWED' ? 'reviewed' : ''}`}>{contextStatusLabel(asset.contextStatus)}</span></div>
-        <p className="panelIntro">Classe, disciplina e tipologia aiutano DOCENTE OS a proporti questo contenuto nel momento giusto. La fonte originale non viene modificata.</p>
+        <p className="panelIntro">DOCENTE OS organizza automaticamente tipologia, disciplina e classi quando riesce a riconoscerle. Intervieni qui solo se vuoi correggere qualcosa; una correzione salvata diventa il contesto controllato da te.</p>
         <form action={updateKnowledgeContext} className="contextForm">
           <input type="hidden" name="assetId" value={asset.id} />
+          <input type="hidden" name="contextStatus" value="REVIEWED" />
+          <input type="hidden" name="reliability" value="VERIFIED" />
           <label><span>Anno scolastico</span><select name="academicYearId" defaultValue={asset.academicYearId ?? ''}><option value="">Non associato</option>{context.academicYear ? <option value={context.academicYear.id}>{context.academicYear.label}</option> : null}</select></label>
           <label><span>Tipologia</span><select name="contentCategory" defaultValue={asset.contentCategory}>{CONTENT_CATEGORIES.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
           <label><span>Discipline</span><input name="disciplines" defaultValue={asset.disciplines.join(', ')} placeholder="Tecnologia, Educazione civica" /></label>
           <label><span>Classi e sezioni</span><input name="classLabels" defaultValue={asset.classLabels.join(', ')} placeholder="1A, 2C, 3E" /></label>
-          <label><span>Stato del controllo</span><select name="contextStatus" defaultValue={asset.contextStatus}><option value="UNCLASSIFIED">Da classificare</option><option value="NEEDS_REVIEW">Da controllare</option><option value="REVIEWED">Controllato</option></select></label>
-          <label><span>Attendibilità</span><select name="reliability" defaultValue={asset.reliability}><option value="AUTO">Automatica</option><option value="TO_VERIFY">Da verificare</option><option value="VERIFIED">Verificata</option></select></label>
-          <button type="submit">Salva contesto</button>
+          <button type="submit">Salva correzione</button>
         </form>
-        <p className="contextHint">Separa più discipline o classi con una virgola. Puoi correggere questo contesto in qualsiasi momento.</p>
+        <p className="contextHint">Non devi confermare ciò che è già corretto. Salva solo se hai modificato il contesto.</p>
       </section>
 
       <section className="knowledgePanel taskCreatorPanel" id="planner-action">
@@ -214,7 +214,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
           <input type="hidden" name="assetId" value={asset.id} />
           <label><span>Attività</span><input name="title" maxLength={240} defaultValue={`Esamina: ${displayTitle}`} required /></label>
           <label><span>Quando farla</span><input name="plannedFor" type="date" /></label>
-          <label><span>Priorità</span><select name="priority" defaultValue={asset.contextStatus === 'NEEDS_REVIEW' ? 'HIGH' : 'NORMAL'}><option value="NORMAL">Normale</option><option value="HIGH">Alta</option><option value="URGENT">Urgente</option><option value="LOW">Bassa</option></select></label>
+          <label><span>Priorità</span><select name="priority" defaultValue="NORMAL"><option value="NORMAL">Normale</option><option value="HIGH">Alta</option><option value="URGENT">Urgente</option><option value="LOW">Bassa</option></select></label>
           <button type="submit" disabled={!currentGeneration}>Aggiungi alle attività</button>
         </form>
       </section>
