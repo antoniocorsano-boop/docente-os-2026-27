@@ -1,0 +1,42 @@
+name: MIM Textbook Source Contract
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'product/src/core/infrastructure/mim/**'
+      - 'product/src/core/domain/mim-textbook-discovery.ts'
+      - 'product/scripts/mim-source-contract.ts'
+      - '.github/workflows/mim-source-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  mim-source-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: product/package-lock.json
+
+      - name: Install locked dependencies
+        working-directory: product
+        run: npm ci --no-audit --no-fund
+
+      - name: Validate deterministic MIM CSV parsing
+        working-directory: product
+        run: npx tsx --test src/core/infrastructure/mim/mim-textbook-adoption-client.test.ts
+
+      - name: Validate live official MIM source
+        working-directory: product
+        run: npx tsx scripts/mim-source-contract.ts
