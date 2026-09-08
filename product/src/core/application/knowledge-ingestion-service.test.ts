@@ -110,7 +110,7 @@ test('Una rielaborazione non sovrascrive il contesto già controllato dall’ute
     ...assets.asset,
     currentGenerationId: 'generation-stable',
     contextStatus: 'REVIEWED',
-    reliability: 'VERIFIED',
+    reliability: 'AUTO',
     contentCategory: 'CURRICULUM',
     disciplines: ['Tecnologia'],
   }
@@ -121,10 +121,43 @@ test('Una rielaborazione non sovrascrive il contesto già controllato dall’ute
   assert.equal(assets.lastContext, null)
 })
 
+test('Una correzione salvata mentre la rielaborazione è in corso prevale sui suggerimenti automatici', async () => {
+  const assets = new MemoryAssets()
+  assets.asset = {
+    ...assets.asset,
+    currentGenerationId: 'generation-stable',
+    contentCategory: 'OTHER',
+    disciplines: ['Tecnologia'],
+    classLabels: [],
+    contextStatus: 'NEEDS_REVIEW',
+    reliability: 'AUTO',
+  }
+  assets.afterCurrentGeneration = () => {
+    assets.asset = {
+      ...assets.asset,
+      contentCategory: 'ASSESSMENT',
+      disciplines: ['Tecnologia'],
+      classLabels: ['2C'],
+      contextStatus: 'REVIEWED',
+      reliability: 'AUTO',
+    }
+  }
+  const service = successfulService(assets)
+
+  await service.reprocess(assets.asset.id)
+
+  assert.equal(assets.lastContext, null)
+  assert.equal(assets.asset.contentCategory, 'ASSESSMENT')
+  assert.deepEqual(assets.asset.classLabels, ['2C'])
+  assert.equal(assets.asset.contextStatus, 'REVIEWED')
+  assert.equal(assets.asset.reliability, 'AUTO')
+})
+
 class MemoryAssets implements KnowledgeAssetRepository {
   currentGenerationUpdates = 0
   statusUpdates = 0
   lastContext: KnowledgeAssetContextInput | null = null
+  afterCurrentGeneration: (() => void) | null = null
   asset: KnowledgeAsset = {
     id: 'asset-1', workspaceId: 'workspace-1', academicYearId: null, assetKind: 'FILE', sourceProvider: 'UPLOAD',
     sourceLocator: 'storage:test', originalName: 'scansione.pdf', originalText: null, mimeType: 'application/pdf', byteSize: 3,
@@ -138,6 +171,7 @@ class MemoryAssets implements KnowledgeAssetRepository {
   async setCurrentGeneration(_assetId: string, generationId: string) {
     this.currentGenerationUpdates += 1
     this.asset = { ...this.asset, currentGenerationId: generationId, processingStatus: 'INDEXED' }
+    this.afterCurrentGeneration?.()
   }
   async getById() { return this.asset }
   async findBySource(_workspaceId: string, _sourceProvider: KnowledgeAsset['sourceProvider'], sourceLocator: string) {
