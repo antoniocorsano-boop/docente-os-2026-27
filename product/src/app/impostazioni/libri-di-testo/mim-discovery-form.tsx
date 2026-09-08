@@ -13,11 +13,10 @@ export function MimDiscoveryForm({ schoolCode }: { schoolCode: string }) {
   return (
     <form action={action} className="mimDiscoveryPanel">
       <div>
-        <span>OPEN DATA MIM</span>
-        <strong>Cerca le adozioni già pubblicate per {schoolCode}</strong>
-        <p>
-          DOCENTE OS consulta una cache MIM sincronizzata separatamente e usa anno scolastico, classi, sezioni, discipline e Cattedra già confermati nelle Impostazioni. Durante il clic non viene scaricato il dataset regionale completo; le corrispondenze entrano solo come proposte da controllare.
-        </p>
+        <span>AUTOMATICO · DATI UFFICIALI</span>
+        <strong>Parti dai libri già pubblicati per la tua scuola</strong>
+        <p>Uso le classi e le discipline che hai già confermato. I risultati vengono soltanto proposti: sarai tu a decidere quali confermare.</p>
+        <small>Scuola riconosciuta: {schoolCode}</small>
       </div>
       <div className="mimDiscoveryAction">
         <DiscoveryButton />
@@ -27,8 +26,8 @@ export function MimDiscoveryForm({ schoolCode }: { schoolCode: string }) {
               {state.message}
             </p>
             {state.status === 'error' ? (
-              <a className="settingsSecondaryButton mimFallbackButton" href="#libri-per-classe">
-                Continua con ISBN
+              <a className="settingsSecondaryButton mimFallbackButton" href="#aggiungi-isbn">
+                Usa ISBN o foto
               </a>
             ) : null}
           </>
@@ -42,7 +41,7 @@ function DiscoveryButton() {
   const { pending } = useFormStatus()
   return (
     <button className="settingsPrimaryButton" type="submit" disabled={pending}>
-      {pending ? 'Cerco nella cache MIM…' : 'Cerca adozioni ufficiali MIM'}
+      {pending ? 'Cerco i libri…' : 'Trova i libri della mia scuola'}
     </button>
   )
 }
