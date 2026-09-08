@@ -3,8 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { matchMimTextbookAdoptions, type MimTeachingContext } from '@/core/domain/mim-textbook-discovery'
 import { normalizeIsbn13, type TextbookUsageKind } from '@/core/domain/textbook-adoption'
-import { MimTextbookAdoptionClient } from '@/core/infrastructure/mim/mim-textbook-adoption-client'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseMimTextbookCacheRepository } from '@/core/infrastructure/supabase/supabase-mim-textbook-cache-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseTextbookRepository } from '@/core/infrastructure/supabase/supabase-textbook-repository'
@@ -56,32 +56,34 @@ export async function discoverMimTextbookAdoptions(
 
     const sectionById = new Map(annualSnapshot.sections.map((section) => [section.id, section]))
     const disciplineById = new Map(disciplines.filter((discipline) => discipline.isActive).map((discipline) => [discipline.id, discipline]))
-    const teachingContexts: MimTeachingContext[] = assignments.flatMap((assignment) => {
-      const section = sectionById.get(assignment.sectionId)
-      const discipline = disciplineById.get(assignment.disciplineId)
-      if (!section || !discipline) return []
-      return [{
-        teachingAssignmentId: assignment.id,
-        grade: section.grade,
-        sectionCode: section.sectionCode,
-        disciplineName: discipline.name,
-      }]
-    })
+    const teachingContexts: MimTeachingContext[] = assignments
+      .filter((assignment) => assignment.status === 'CONFIRMED')
+      .flatMap((assignment) => {
+        const section = sectionById.get(assignment.sectionId)
+        const discipline = disciplineById.get(assignment.disciplineId)
+        if (!section || !discipline) return []
+        return [{
+          teachingAssignmentId: assignment.id,
+          grade: section.grade,
+          sectionCode: section.sectionCode,
+          disciplineName: discipline.name,
+        }]
+      })
 
     if (!teachingContexts.length) {
-      return { status: 'error', message: 'Completa prima la Cattedra: servono almeno una classe e una disciplina attiva.' }
+      return { status: 'error', message: 'Completa prima la Cattedra: serve almeno un insegnamento confermato con classe e disciplina attiva.' }
     }
 
     const academicYearCode = toMimAcademicYearCode(
       context.academicYear.startsOn,
       context.academicYear.endsOn,
     )
-    const mimClient = new MimTextbookAdoptionClient()
-    const discovery = await mimClient.discoverBySchoolCode(settings.schoolCode, academicYearCode)
+    const mimCache = new SupabaseMimTextbookCacheRepository()
+    const discovery = await mimCache.discoverBySchoolCode(settings.schoolCode, academicYearCode)
     if (!discovery.records.length) {
       return {
         status: 'success',
-        message: `Nessuna adozione MIM trovata nei ${discovery.resolvedSchoolCodes.length} plessi/codici verificati per ${context.academicYear.label}. Non è stato creato alcun dato manuale.`,
+        message: `La cache MIM attiva non contiene adozioni pertinenti nei ${discovery.resolvedSchoolCodes.length} plessi/codici verificati per ${context.academicYear.label}. Non è stato creato alcun dato manuale.`,
       }
     }
 
@@ -89,7 +91,7 @@ export async function discoverMimTextbookAdoptions(
     if (!matches.length) {
       return {
         status: 'success',
-        message: `Il MIM contiene dati per i plessi collegati a ${settings.schoolCode}, ma nessuna riga coincide in modo sufficientemente affidabile con classe, sezione e disciplina della tua Cattedra.`,
+        message: `La cache MIM contiene dati per i plessi collegati a ${settings.schoolCode}, ma nessuna riga coincide in modo sufficientemente affidabile con classe, sezione e disciplina della tua Cattedra confermata.`,
       }
     }
 
@@ -121,12 +123,12 @@ export async function discoverMimTextbookAdoptions(
     const assignmentCount = new Set(matches.map((match) => match.teachingAssignmentId)).size
     return {
       status: 'success',
-      message: `Trovate ${matches.length} ${matches.length === 1 ? 'adozione' : 'adozioni'} MIM coerenti con ${assignmentCount} ${assignmentCount === 1 ? 'Cattedra' : 'Cattedre'}. Sono proposte da controllare: nessun libro è stato confermato automaticamente.`,
+      message: `Trovate ${matches.length} ${matches.length === 1 ? 'adozione' : 'adozioni'} MIM coerenti con ${assignmentCount} ${assignmentCount === 1 ? 'insegnamento' : 'insegnamenti'} della Cattedra. Sono proposte da controllare: nessun libro è stato confermato automaticamente.`,
     }
   } catch (error) {
     return {
       status: 'error',
-      message: error instanceof Error ? humanMimError(error.message) : 'Impossibile interrogare le adozioni MIM.',
+      message: error instanceof Error ? humanMimError(error.message) : 'Impossibile leggere la cache delle adozioni MIM.',
     }
   }
 }
@@ -243,7 +245,7 @@ function toMimAcademicYearCode(startsOn: string, endsOn: string) {
   const startYear = Number.parseInt(startsOn.slice(0, 4), 10)
   const endYear = Number.parseInt(endsOn.slice(0, 4), 10)
   if (!Number.isInteger(startYear) || !Number.isInteger(endYear) || endYear !== startYear + 1) {
-    throw new Error('L’anno scolastico attivo non ha un intervallo compatibile con la discovery MIM.')
+    throw new Error('L’anno scolastico attivo non ha un intervallo compatibile con la cache MIM.')
   }
   return `${startYear}${String(endYear).slice(-2)}`
 }
@@ -263,6 +265,7 @@ function humanLookupError(message: string) {
 
 function humanMimError(message: string) {
   if (message.includes('Codice meccanografico')) return message
-  if (message.includes('discovery MIM è verificata')) return message
+  if (message.includes('cache Open Data MIM')) return message
+  if (message.includes('cache MIM attiva')) return message
   return `Ricerca MIM non completata: ${message}`
 }
