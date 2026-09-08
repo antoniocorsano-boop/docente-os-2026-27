@@ -89,6 +89,52 @@ test('propone un materiale editoriale del libro confermato anche senza tag B/UDA
   assert.equal(result[0]?.textbookId, 'book-1')
   assert.match(result[0]?.reason ?? '', /libro confermato/i)
   assert.match(result[0]?.usageTip ?? '', /verifica rapida/i)
+  assert.deepEqual(result[0]?.pedagogicalRoles, ['ASSESSMENT'])
+  assert.equal(result[0]?.classificationConfidence, 'HIGH')
+})
+
+test('distingue la verifica ad alta leggibilità come verifica inclusiva', () => {
+  const accessible = item({
+    id: 'accessible',
+    title: 'Prova di verifica ad alta leggibilità',
+    summary: 'Prova sui materiali con impaginazione facilitata.',
+    category: 'ASSESSMENT',
+    sourceMetadata: {
+      materialRole: 'TEXTBOOK_TEACHER_MATERIAL',
+      textbook: { id: 'book-1', title: 'Tecnologia.verde 2ed' },
+    },
+  })
+
+  const result = buildLessonMaterialSuggestions({
+    ...base,
+    items: [accessible],
+    confirmedTextbooks: [{ id: 'book-1', title: 'Tecnologia.verde 2ed' }],
+  })
+
+  assert.deepEqual(result[0]?.pedagogicalRoles.slice(0, 2), ['INCLUSION', 'ASSESSMENT'])
+  assert.match(result[0]?.usageTip ?? '', /alta leggibilità/i)
+})
+
+test('riconosce una lezione PowerPoint come spiegazione e supporto visivo', () => {
+  const slides = item({
+    id: 'slides',
+    title: 'Lezione PowerPoint sui materiali',
+    summary: 'Presentazione visuale sulle proprietà dei materiali.',
+    category: 'TEACHING_RESOURCE',
+    sourceMetadata: {
+      materialRole: 'TEXTBOOK_TEACHER_MATERIAL',
+      textbook: { id: 'book-1', title: 'Tecnologia.verde 2ed' },
+    },
+  })
+
+  const result = buildLessonMaterialSuggestions({
+    ...base,
+    items: [slides],
+    confirmedTextbooks: [{ id: 'book-1', title: 'Tecnologia.verde 2ed' }],
+  })
+
+  assert.deepEqual(result[0]?.pedagogicalRoles, ['EXPLANATION', 'VISUAL_SUPPORT'])
+  assert.match(result[0]?.usageTip ?? '', /supporto visivo/i)
 })
 
 test('non propone materiale editoriale di un libro non confermato per la classe', () => {

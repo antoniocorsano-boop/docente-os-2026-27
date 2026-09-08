@@ -5,6 +5,10 @@ import {
   type ProgettaItem,
   type ProgettaGrade,
 } from '@/app/progetta/progetta-model'
+import {
+  classifyTeachingMaterial,
+  type TeachingMaterialPedagogicalRole,
+} from '@/core/domain/textbook-teaching-kit'
 import { humanizeKnowledgeTitle } from '@/core/presentation/product-language'
 
 export type ConfirmedLessonTextbook = {
@@ -20,6 +24,8 @@ export type LessonKnowledgeSuggestion = {
   sourceKind: 'EDITORIAL_KNOWLEDGE' | 'KNOWLEDGE'
   reason: string
   usageTip: string
+  pedagogicalRoles: TeachingMaterialPedagogicalRole[]
+  classificationConfidence: 'HIGH' | 'MEDIUM' | 'LOW'
   textbookId: string | null
   textbookTitle: string | null
 }
@@ -45,6 +51,7 @@ export function buildLessonMaterialSuggestions(input: {
   })
   const focusedIds = new Set(focusedItems.map(({ asset }) => asset.id))
   const confirmedBookById = new Map(input.confirmedTextbooks.map((book) => [book.id, book]))
+  const lessonContext = `${input.lessonTitle} ${input.objective}`
 
   return scopedItems
     .filter(({ asset }) => !input.excludedAssetIds.has(asset.id))
@@ -58,13 +65,18 @@ export function buildLessonMaterialSuggestions(input: {
       const title = humanizeKnowledgeTitle(item.document?.title ?? item.asset.originalName)
       const summary = item.document?.summary?.trim() || 'Contenuto già presente nella Conoscenza.'
       const sourceKind = editorialMatch ? 'EDITORIAL_KNOWLEDGE' as const : 'KNOWLEDGE' as const
-      const relevance = lexicalOverlapScore(
-        `${title} ${summary}`,
-        `${input.lessonTitle} ${input.objective}`,
-      )
+      const relevance = lexicalOverlapScore(`${title} ${summary}`, lessonContext)
+      const classification = classifyTeachingMaterial({
+        title,
+        summary,
+        category: item.asset.contentCategory,
+        sourceMetadata: item.asset.sourceMetadata,
+      })
+      const pedagogicalFit = pedagogicalFitScore(classification.roles, lessonContext)
       const score = (explicitFocus ? 60 : 0)
         + (editorialMatch ? 35 : 0)
         + relevance * 6
+        + pedagogicalFit
         + categoryRank(item.asset.contentCategory)
 
       return [{
@@ -82,13 +94,14 @@ export function buildLessonMaterialSuggestions(input: {
             uda: input.uda,
             textbookTitle: textbook?.title ?? null,
             relevance,
+            pedagogicalFit,
           }),
           usageTip: usageTip({
-            title,
-            summary,
-            category: item.asset.contentCategory,
+            roles: classification.roles,
             editorial: editorialMatch,
           }),
+          pedagogicalRoles: classification.roles,
+          classificationConfidence: classification.confidence,
           textbookId: textbook?.id ?? null,
           textbookTitle: textbook?.title ?? null,
         },
@@ -113,11 +126,15 @@ function suggestionReason(input: {
   uda: string
   textbookTitle: string | null
   relevance: number
+  pedagogicalFit: number
 }) {
   if (input.explicitFocus && input.textbookTitle) {
     return `È già collegato a ${input.blockId} / UDA ${input.uda} e proviene dai materiali di “${input.textbookTitle}”, libro confermato per questa classe.`
   }
   if (input.explicitFocus) return `È già collegato esplicitamente a ${input.blockId} / UDA ${input.uda}.`
+  if (input.textbookTitle && input.relevance > 0 && input.pedagogicalFit > 0) {
+    return `Proviene dai materiali di “${input.textbookTitle}”, libro confermato per questa classe; contenuto e funzione didattica sono coerenti con l’obiettivo della lezione.`
+  }
   if (input.textbookTitle && input.relevance > 0) {
     return `Proviene dai materiali di “${input.textbookTitle}”, libro confermato per questa classe, e presenta elementi coerenti con l’obiettivo della lezione.`
   }
@@ -125,18 +142,29 @@ function suggestionReason(input: {
   return 'È pertinente al contesto corrente della lezione.'
 }
 
-function usageTip(input: { title: string; summary: string; category: string; editorial: boolean }) {
-  const haystack = `${input.title} ${input.summary}`.toLowerCase()
-  if (/\b(verific|prova|quiz|test|eserciz)/.test(haystack) || input.category === 'ASSESSMENT') {
+function usageTip(input: { roles: TeachingMaterialPedagogicalRole[]; editorial: boolean }) {
+  if (input.roles.includes('INCLUSION') && input.roles.includes('ASSESSMENT')) {
+    return 'Qui potresti affiancarlo alla prova ordinaria come variante ad alta leggibilità o supporto inclusivo, mantenendo invariato l’obiettivo della verifica.'
+  }
+  if (input.roles.includes('ASSESSMENT')) {
     return 'Qui potresti usarlo come esercitazione guidata, verifica rapida o controllo finale, scegliendo solo le parti coerenti con l’obiettivo della lezione.'
   }
-  if (/\b(powerpoint|slide|presentaz)/.test(haystack)) {
+  if (input.roles.includes('LABORATORY')) {
+    return 'Qui potresti usarlo per trasformare la spiegazione in un’attività pratica o laboratoriale, controllando prima materiali, tempi e consegna.'
+  }
+  if (input.roles.includes('RECOVERY')) {
+    return 'Qui potresti usarlo come recupero mirato dopo un controllo degli apprendimenti, senza rallentare l’intero percorso della classe.'
+  }
+  if (input.roles.includes('EXPLANATION') || input.roles.includes('VISUAL_SUPPORT')) {
     return 'Qui potresti usarlo come supporto visivo durante la spiegazione, mantenendo la sequenza della lezione come struttura principale.'
   }
-  if (/\b(bes|inclus|semplificat|facilitat)/.test(haystack)) {
-    return 'Qui potresti usarlo come variante inclusiva o supporto differenziato, senza duplicare l’UDA comune.'
+  if (input.roles.includes('PRACTICE')) {
+    return 'Qui potresti usarlo per far applicare subito ciò che è stato spiegato, prima di passare alla fase successiva.'
   }
-  if (/\b(programmaz|competenz|indicazioni|curricol)/.test(haystack)) {
+  if (input.roles.includes('ENRICHMENT')) {
+    return 'Qui potresti proporlo come approfondimento o potenziamento, senza renderlo necessario per completare il nucleo comune.'
+  }
+  if (input.roles.includes('PLANNING_SUPPORT')) {
     return 'Qui può servirti per controllare il raccordo tra percorso editoriale e obiettivo didattico; resta però una risorsa di supporto, non la programmazione canonica.'
   }
   if (input.editorial) {
@@ -151,6 +179,17 @@ function lexicalOverlapScore(left: string, right: string) {
   let overlap = 0
   for (const term of leftTerms) if (rightTerms.has(term)) overlap += 1
   return Math.min(overlap, 4)
+}
+
+function pedagogicalFitScore(roles: TeachingMaterialPedagogicalRole[], lessonContext: string) {
+  const context = lessonContext.toLowerCase()
+  let score = 0
+  if (roles.includes('ASSESSMENT') && /verific|valut|controll|accert/.test(context)) score += 10
+  if (roles.includes('LABORATORY') && /laborator|costru|realizz|progett|operativ/.test(context)) score += 10
+  if ((roles.includes('EXPLANATION') || roles.includes('VISUAL_SUPPORT')) && /conosc|comprend|descriv|spieg|riconosc/.test(context)) score += 8
+  if (roles.includes('PRACTICE') && /applic|esercit|usare|utilizz|calcol/.test(context)) score += 8
+  if (roles.includes('PLANNING_SUPPORT') && /competenz|obiettiv|curricol/.test(context)) score += 4
+  return score
 }
 
 function terms(value: string) {
