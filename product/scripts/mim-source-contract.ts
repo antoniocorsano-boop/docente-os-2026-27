@@ -1,21 +1,37 @@
 import assert from 'node:assert/strict'
+import type { MimTeachingContext } from '../src/core/domain/mim-textbook-discovery'
 import {
-  MIM_ADOPTION_SNAPSHOT,
-  MimTextbookAdoptionClient,
-} from '../src/core/infrastructure/mim/mim-textbook-adoption-client'
+  MIM_TARGETED_ADOPTION_SNAPSHOT,
+  MimTargetedAdoptionClient,
+} from '../src/core/infrastructure/mim/mim-targeted-adoption-client'
 
 const SCHOOL_CODE = 'AVIC849003'
 const EXPECTED_SECONDARY_SCHOOL_CODE = 'AVMM849047'
+const PILOT_CONTEXTS: MimTeachingContext[] = [
+  {
+    teachingAssignmentId: 'contract-1b-tecnologia',
+    grade: 'PRIMA',
+    sectionCode: 'B',
+    disciplineName: 'Tecnologia',
+  },
+  {
+    teachingAssignmentId: 'contract-2a-tecnologia',
+    grade: 'SECONDA',
+    sectionCode: 'A',
+    disciplineName: 'Tecnologia',
+  },
+]
 
 function normalizeSchoolCode(value: string) {
   return value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
 }
 
 async function main() {
-  const client = new MimTextbookAdoptionClient()
+  const client = new MimTargetedAdoptionClient()
   const result = await client.discoverBySchoolCode(
     SCHOOL_CODE,
-    MIM_ADOPTION_SNAPSHOT.academicYearCode,
+    MIM_TARGETED_ADOPTION_SNAPSHOT.academicYearCode,
+    PILOT_CONTEXTS,
   )
 
   assert.ok(
@@ -29,37 +45,39 @@ async function main() {
   )
   assert.ok(
     result.records.length > 0,
-    `No 2026/2027 textbook adoption was returned for ${SCHOOL_CODE}`,
+    `No targeted 2026/2027 textbook adoption was returned for ${SCHOOL_CODE}`,
   )
 
-  const technologyRecords = result.records.filter((record) =>
-    record.discipline.toLocaleUpperCase('it').includes('TECNOLOG'),
-  )
-  const secondaryTechnologyRecords = technologyRecords.filter(
+  const secondaryTechnologyRecords = result.records.filter(
     (record) => normalizeSchoolCode(record.schoolCode) === EXPECTED_SECONDARY_SCHOOL_CODE,
-  )
-
-  assert.ok(
-    technologyRecords.length > 0,
-    `No Tecnologia adoption was returned for ${SCHOOL_CODE}; ` +
-      `available disciplines: ${[...new Set(result.records.map((record) => record.discipline))].join(', ')}`,
   )
   assert.ok(
     secondaryTechnologyRecords.length > 0,
-    `No Tecnologia adoption was returned for ${EXPECTED_SECONDARY_SCHOOL_CODE}`,
+    `No targeted Tecnologia adoption was returned for ${EXPECTED_SECONDARY_SCHOOL_CODE}`,
+  )
+
+  const allowedClassSections = new Set(['1:B', '2:A'])
+  assert.ok(
+    result.records.every((record) => allowedClassSections.has(`${record.gradeNumber}:${record.sectionCode.trim().toUpperCase()}`)),
+    `Targeted discovery returned an out-of-scope class: ${result.records.map((record) => `${record.gradeNumber}${record.sectionCode}`).join(', ')}`,
+  )
+  assert.ok(
+    result.records.every((record) => record.discipline.toLocaleUpperCase('it').includes('TECNOLOG')),
+    `Targeted discovery returned a non-Tecnologia discipline: ${[...new Set(result.records.map((record) => record.discipline))].join(', ')}`,
   )
 
   console.log(JSON.stringify({
-    status: 'MIM_SOURCE_CONTRACT_PASS',
+    status: 'MIM_TARGETED_SOURCE_CONTRACT_PASS',
     schoolCode: SCHOOL_CODE,
     secondarySchoolCode: EXPECTED_SECONDARY_SCHOOL_CODE,
-    academicYearCode: MIM_ADOPTION_SNAPSHOT.academicYearCode,
-    snapshotPublishedOn: MIM_ADOPTION_SNAPSHOT.publishedOn,
+    academicYearCode: MIM_TARGETED_ADOPTION_SNAPSHOT.academicYearCode,
+    snapshotPublishedOn: MIM_TARGETED_ADOPTION_SNAPSHOT.publishedOn,
+    requestedClasses: PILOT_CONTEXTS.map((context) => `${context.grade}:${context.sectionCode}`),
     resolvedSchoolCodeCount: result.resolvedSchoolCodes.length,
     datasetCodes: result.datasetCodes,
-    adoptionCount: result.records.length,
-    technologyAdoptionCount: technologyRecords.length,
-    secondaryTechnologyAdoptionCount: secondaryTechnologyRecords.length,
+    scopedAdoptionCount: result.records.length,
+    secondaryScopedAdoptionCount: secondaryTechnologyRecords.length,
+    transport: 'SPARQL_TARGETED_NO_REGIONAL_ADOPTION_CSV',
   }, null, 2))
 }
 
