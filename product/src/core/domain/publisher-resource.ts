@@ -1,9 +1,9 @@
 import type { TextbookAdoptionWithBook } from './textbook-adoption'
 
 export type PublisherProviderCode = 'ZANICHELLI'
-export type PublisherResourceAccessModel = 'EXTERNAL_ACCOUNT'
-export type PublisherResourceAudience = 'ACCOUNT_HOLDER' | 'TEACHER'
-export type PublisherResourceKind = 'LIBRARY' | 'EXERCISES'
+export type PublisherResourceAccessModel = 'EXTERNAL_ACCOUNT' | 'PUBLIC_WEB'
+export type PublisherResourceAudience = 'ACCOUNT_HOLDER' | 'TEACHER' | 'PUBLIC'
+export type PublisherResourceKind = 'BOOK_SITE' | 'CURRICULUM_ALIGNMENT' | 'LIBRARY' | 'EXERCISES'
 
 export type PublisherResourcePointer = {
   provider: PublisherProviderCode
@@ -25,7 +25,7 @@ type PublisherResourceProvider = {
   resourcesFor(textbook: PublisherTextbookContext['textbook']): PublisherResourcePointer[]
 }
 
-const ZANICHELLI_RESOURCES: ReadonlyArray<Omit<PublisherResourcePointer, 'provider'>> = [
+const ZANICHELLI_GENERIC_RESOURCES: ReadonlyArray<Omit<PublisherResourcePointer, 'provider'>> = [
   {
     kind: 'LIBRARY',
     title: 'Apri libreria e risorse del libro',
@@ -44,13 +44,44 @@ const ZANICHELLI_RESOURCES: ReadonlyArray<Omit<PublisherResourcePointer, 'provid
   },
 ]
 
+const TECNOLOGIA_VERDE_2ED_ISBNS = new Set([
+  '9788808950758',
+  '9788808899798',
+  '9788808804013',
+  '9788808861689',
+  '9788808264572',
+])
+
+const TECNOLOGIA_VERDE_2ED_RESOURCES: ReadonlyArray<Omit<PublisherResourcePointer, 'provider'>> = [
+  {
+    kind: 'BOOK_SITE',
+    title: 'Sito del libro e materiali docente',
+    description: 'Programmazione per competenze, prove modificabili, prove BES, PowerPoint e materiali per la didattica orientativa sono indicati dall’editore per questa opera. La disponibilità effettiva dipende dal tuo account.',
+    url: 'https://online.scuola.zanichelli.it/tecnologiaverde2ed/',
+    audience: 'TEACHER',
+    accessModel: 'EXTERNAL_ACCOUNT',
+  },
+  {
+    kind: 'CURRICULUM_ALIGNMENT',
+    title: 'Raccordo con le Indicazioni Nazionali 2025',
+    description: 'Documento editoriale pubblico che descrive come Tecnologia.verde 2ed dichiara di raccordarsi alle Indicazioni Nazionali 2025. È una risorsa editoriale di supporto, non una fonte normativa.',
+    url: 'https://staticmy.zanichelli.it/catalogo/assets/aC7.9788808264572.pdf',
+    audience: 'PUBLIC',
+    accessModel: 'PUBLIC_WEB',
+  },
+]
+
 const ZANICHELLI_PROVIDER: PublisherResourceProvider = {
   code: 'ZANICHELLI',
   matchesPublisher(publisher) {
     return normalizePublisherName(publisher).split(' ').includes('ZANICHELLI')
   },
-  resourcesFor() {
-    return ZANICHELLI_RESOURCES.map((resource) => ({
+  resourcesFor(textbook) {
+    const courseResources = TECNOLOGIA_VERDE_2ED_ISBNS.has(textbook.isbn13)
+      ? TECNOLOGIA_VERDE_2ED_RESOURCES
+      : []
+
+    return [...courseResources, ...ZANICHELLI_GENERIC_RESOURCES].map((resource) => ({
       ...resource,
       provider: 'ZANICHELLI',
     }))
