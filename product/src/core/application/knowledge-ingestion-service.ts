@@ -121,7 +121,9 @@ export class KnowledgeIngestionService {
   }
 
   private async applySuggestedContext(asset: KnowledgeAsset, normalized: NormalizedKnowledge) {
-    if (asset.contextStatus !== 'UNCLASSIFIED') return
+    // Automatic context is allowed to improve on every analysis. Only context that a
+    // teacher has explicitly reviewed/verified becomes authoritative and immutable to automation.
+    if (asset.contextStatus === 'REVIEWED' || asset.reliability === 'VERIFIED') return
     const rawProfile = normalized.extractedData?.schoolDocumentProfile
     if (!isRecord(rawProfile)) return
 
@@ -141,7 +143,7 @@ export class KnowledgeIngestionService {
       disciplines,
       classLabels,
       contextStatus: 'NEEDS_REVIEW',
-      reliability: 'TO_VERIFY',
+      reliability: 'AUTO',
     })
   }
 }
