@@ -1,5 +1,5 @@
+import { SupabaseTextbookRepository } from '@/core/infrastructure/supabase/supabase-textbook-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { createClient } from '@/lib/supabase/server'
 
 export const TEXTBOOK_MATERIAL_CONTEXT_COOKIE = 'docente_os_textbook_material'
 
@@ -24,36 +24,21 @@ export async function resolveConfirmedTextbookMaterialContext(
   const context = await workspaceRepository.getCurrentContext()
   if (!context?.academicYear) return null
 
-  const supabase = await createClient()
-  const { data: adoptions, error: adoptionError } = await supabase
-    .from('textbook_adoptions')
-    .select('textbook_id')
-    .eq('workspace_id', context.workspace.id)
-    .eq('academic_year_id', context.academicYear.id)
-    .eq('textbook_id', normalizedId)
-    .eq('status', 'CONFIRMED')
-    .limit(1)
-
-  if (adoptionError || !adoptions?.length) return null
-
-  const { data: textbook, error: textbookError } = await supabase
-    .from('textbooks')
-    .select('id,isbn13,title,publisher')
-    .eq('workspace_id', context.workspace.id)
-    .eq('academic_year_id', context.academicYear.id)
-    .eq('id', normalizedId)
-    .maybeSingle()
-
-  if (textbookError || !textbook) return null
+  const textbookRepository = new SupabaseTextbookRepository()
+  const adoptions = await textbookRepository.list(context.workspace.id, context.academicYear.id)
+  const confirmed = adoptions.find((adoption) => (
+    adoption.status === 'CONFIRMED' && adoption.textbook.id === normalizedId
+  ))
+  if (!confirmed) return null
 
   return {
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
     textbook: {
-      id: textbook.id,
-      isbn13: textbook.isbn13,
-      title: textbook.title,
-      publisher: textbook.publisher,
+      id: confirmed.textbook.id,
+      isbn13: confirmed.textbook.isbn13,
+      title: confirmed.textbook.title,
+      publisher: confirmed.textbook.publisher,
     },
   }
 }
