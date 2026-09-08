@@ -10,7 +10,7 @@ test('Materiale del libro: un URL copiato senza handoff valido non promette il c
   await page.goto(`/knowledge?capture=file&source=textbook&textbookId=${copiedTextbookId}`)
 
   await expect(page.getByRole('heading', { name: 'Conoscenza', exact: true })).toBeVisible()
-  await expect(page.getByRole('alert')).toContainText('Il collegamento al libro è scaduto o non è più valido')
+  await expect(page.locator('.knowledgeFeedback[role="alert"]')).toContainText('Il collegamento al libro è scaduto o non è più valido')
   await expect(
     page.getByText('DOCENTE OS conserverà il collegamento al libro confermato', { exact: false }),
     'Senza cookie e adozione confermata la UI non deve promettere un MATERIAL_FOR che il server non può garantire.',
