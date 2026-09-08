@@ -11,28 +11,38 @@
   list-style-position: inside;
 }
 
-.textbookRowManage > form {
+.textbookRowDetails {
   display: grid;
   gap: 8px;
   margin-top: 8px;
   padding: 10px 12px;
-  max-width: 300px;
+  min-width: 240px;
+  max-width: 320px;
   border: 1px solid var(--border, #d8dde6);
   border-radius: 12px;
   background: var(--surface, #fff);
 }
 
-.textbookRowManage > form > span {
+.textbookRowDetails > span,
+.textbookRowDetails form > small {
   line-height: 1.4;
   opacity: 0.72;
 }
 
-.textbookRowManage .textButton {
+.textbookRowDetails form {
+  display: grid;
+  gap: 5px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border, #d8dde6);
+}
+
+.textbookRowDetails .textButton {
   justify-self: start;
 }
 
 @media (max-width: 860px) {
-  .textbookRowManage > form {
+  .textbookRowDetails {
+    min-width: 0;
     max-width: none;
   }
 }
