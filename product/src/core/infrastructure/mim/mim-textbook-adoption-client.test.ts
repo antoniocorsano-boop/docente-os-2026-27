@@ -142,6 +142,24 @@ test('dati.gov.it federation accepts a dated MIM distribution when the date is n
   )
 })
 
+test('dati.gov.it federation rejects a dated adoption distribution from the prior cycle', () => {
+  const url = resolveDatiGovMimCsvUrl({
+    success: true,
+    result: {
+      results: [{
+        identifier: 'http://dati.istruzione.it/opendata/opendata/catalog/ALTCAMPANIA',
+        resources: [{
+          format: 'CSV',
+          name: 'Adozioni Campania archivio',
+          url: 'https://dati.istruzione.it/opendata/opendata/catalog/ALTCAMPANIA/ALTCAMPANIA000020250622.csv',
+        }],
+      }],
+    },
+  }, 'ALTCAMPANIA', '202627')
+
+  assert.equal(url, null)
+})
+
 test('MIM dataset catalogue selects an exact school-year registry distribution', () => {
   const html = [
     '<a href="/opendata/opendata/catalog/SCUANAGRAFESTAT/SCUANAGRAFESTAT20252620250901.csv">old</a>',
@@ -184,6 +202,20 @@ test('MIM dataset catalogue does not reject a dated adoption distribution as a s
       '202627',
     ),
     'https://dati.istruzione.it/opendata/opendata/catalog/ALTCAMPANIA/ALTCAMPANIA000020260622.csv',
+  )
+})
+
+test('MIM dataset catalogue rejects a dated adoption distribution from the prior cycle', () => {
+  const html = '<a href="/opendata/opendata/catalog/ALTCAMPANIA/ALTCAMPANIA000020250622.csv">old</a>'
+
+  assert.equal(
+    resolveMimCsvUrlFromCatalogHtml(
+      html,
+      'https://dati.istruzione.it/opendata/opendata/catalog/ALTCAMPANIA',
+      'ALTCAMPANIA',
+      '202627',
+    ),
+    null,
   )
 })
 
