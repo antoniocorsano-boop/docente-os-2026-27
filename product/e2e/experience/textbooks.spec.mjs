@@ -6,6 +6,7 @@ import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
 requireE2ECredentials()
 
 const outputRoot = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience'
+const FIXTURE_DISCIPLINE = 'Tecnologia HVA Libri'
 const FIXTURE_NOTE = 'HVA · Libri di testo · Cattedra tecnica'
 const TEST_ISBN = '9788808950758'
 
@@ -71,46 +72,103 @@ test('Libri di testo: un ISBN può essere preparato per più Cattedre senza invi
 })
 
 async function ensureConfirmedTeachingAssignment(page) {
-  await page.goto('/impostazioni#cattedra')
-  await expect(page.locator('#cattedra')).toBeVisible()
+  const disciplineFixture = await ensureFixtureDisciplineActive(page)
+  let assignmentId = null
 
-  const alreadyConfirmed = page.locator('#cattedra .humanAssignmentRow.isConfirmed').first()
-  if (await alreadyConfirmed.count()) return { restore: async () => {} }
+  try {
+    await page.goto('/impostazioni#cattedra')
+    await expect(page.locator('#cattedra')).toBeVisible()
 
-  let row = page.locator('#cattedra .humanAssignmentRow.needsConfirmation').filter({ hasText: FIXTURE_NOTE }).first()
-  if (!(await row.count())) row = page.locator('#cattedra .humanAssignmentRow.needsConfirmation').first()
+    let row = page.locator('#cattedra .humanAssignmentRow').filter({ hasText: FIXTURE_NOTE }).first()
 
+    if (!(await row.count())) {
+      const form = page.locator('#cattedra form.settingsAssignmentForm')
+      await expect(
+        form,
+        'La disciplina HVA attiva deve rendere disponibile almeno una coppia classe-disciplina per la Cattedra fixture.',
+      ).toBeVisible()
+
+      const pairSelect = form.locator('select[name="assignmentPair"]')
+      const fixtureOption = pairSelect.locator('option').filter({ hasText: FIXTURE_DISCIPLINE }).first()
+      await expect(fixtureOption, 'La Cattedra fixture deve usare la disciplina tecnica HVA, non una disciplina reale.').toBeAttached()
+      const pairValue = await fixtureOption.getAttribute('value')
+      if (!pairValue) throw new Error('Valore della coppia HVA non disponibile')
+
+      await pairSelect.selectOption(pairValue)
+      await form.locator('input[name="sourceNote"]').fill(FIXTURE_NOTE)
+      await form.getByRole('button', { name: 'Aggiungi alla cattedra' }).click()
+      row = page.locator('#cattedra .humanAssignmentRow').filter({ hasText: FIXTURE_NOTE }).first()
+      await expect(row, 'La Cattedra fixture deve essere creata tramite il normale flusso Impostazioni.').toBeVisible()
+    }
+
+    assignmentId = await row.locator('input[name="assignmentId"]').first().inputValue()
+    const current = assignmentRow(page, assignmentId)
+    if (await current.evaluate((element) => element.classList.contains('needsConfirmation'))) {
+      await current.getByRole('button', { name: 'Conferma', exact: true }).click()
+    }
+
+    await expect(assignmentRow(page, assignmentId), 'La Cattedra fixture deve diventare confermata prima del test libri.').toHaveClass(/isConfirmed/)
+
+    return {
+      restore: async () => {
+        await restoreAssignmentToProvisional(page, assignmentId)
+        await disciplineFixture.restore()
+      },
+    }
+  } catch (error) {
+    if (assignmentId) await restoreAssignmentToProvisional(page, assignmentId).catch(() => {})
+    await disciplineFixture.restore().catch(() => {})
+    throw error
+  }
+}
+
+async function ensureFixtureDisciplineActive(page) {
+  await page.goto('/impostazioni#discipline')
+  const section = page.locator('#discipline')
+  await expect(section).toBeVisible()
+
+  let row = section.locator('.settingsListRow').filter({ hasText: FIXTURE_DISCIPLINE }).first()
   if (!(await row.count())) {
-    const form = page.locator('#cattedra form.settingsAssignmentForm')
-    await expect(
-      form,
-      'L’account E2E deve avere almeno una coppia classe-disciplina disponibile per costruire una Cattedra fixture.',
-    ).toBeVisible()
-    await form.locator('input[name="sourceNote"]').fill(FIXTURE_NOTE)
-    await form.getByRole('button', { name: 'Aggiungi alla cattedra' }).click()
-    row = page.locator('#cattedra .humanAssignmentRow.needsConfirmation').filter({ hasText: FIXTURE_NOTE }).first()
-    await expect(row, 'La Cattedra fixture deve essere creata tramite il normale flusso Impostazioni.').toBeVisible()
+    const form = section.locator('form.inlineSettingsForm')
+    await expect(form, 'Deve essere possibile creare la disciplina tecnica HVA dal normale flusso Impostazioni.').toBeVisible()
+    await form.locator('input[name="disciplineName"]').fill(FIXTURE_DISCIPLINE)
+    await form.getByRole('button', { name: 'Aggiungi disciplina' }).click()
+    row = section.locator('.settingsListRow').filter({ hasText: FIXTURE_DISCIPLINE }).first()
+    await expect(row, 'La disciplina HVA deve essere visibile dopo la creazione.').toBeVisible()
   }
 
-  const assignmentId = await row.locator('input[name="assignmentId"]').first().inputValue()
-  await row.getByRole('button', { name: 'Conferma', exact: true }).click()
-
-  const confirmedRow = assignmentRow(page, assignmentId)
-  await expect(confirmedRow, 'La Cattedra fixture deve diventare confermata prima del test libri.').toHaveClass(/isConfirmed/)
+  const reactivate = row.getByRole('button', { name: 'Riattiva' })
+  if (await reactivate.count()) {
+    await reactivate.click()
+    row = section.locator('.settingsListRow').filter({ hasText: FIXTURE_DISCIPLINE }).first()
+  }
+  await expect(row.getByRole('button', { name: 'Disattiva' }), 'La disciplina HVA deve essere attiva durante il test libri.').toBeVisible()
 
   return {
     restore: async () => {
-      await page.goto('/impostazioni#cattedra')
-      const current = assignmentRow(page, assignmentId)
+      await page.goto('/impostazioni#discipline')
+      const current = page.locator('#discipline .settingsListRow').filter({ hasText: FIXTURE_DISCIPLINE }).first()
       if (!(await current.count())) return
-      if (!(await current.evaluate((element) => element.classList.contains('isConfirmed')))) return
-
-      const details = current.locator('details.humanAssignmentDetails')
-      if (await details.getAttribute('open') === null) await details.locator(':scope > summary').click()
-      await current.getByRole('button', { name: 'Rimetti da controllare' }).click()
-      await expect(assignmentRow(page, assignmentId), 'La fixture E2E deve essere riportata allo stato provvisorio dopo il test.').toHaveClass(/needsConfirmation/)
+      const deactivate = current.getByRole('button', { name: 'Disattiva' })
+      if (await deactivate.count()) await deactivate.click()
+      await expect(
+        page.locator('#discipline .settingsListRow').filter({ hasText: FIXTURE_DISCIPLINE }).first().getByRole('button', { name: 'Riattiva' }),
+        'La disciplina HVA deve tornare inattiva a fine test.',
+      ).toBeVisible()
     },
   }
+}
+
+async function restoreAssignmentToProvisional(page, assignmentId) {
+  await page.goto('/impostazioni#cattedra')
+  const current = assignmentRow(page, assignmentId)
+  if (!(await current.count())) return
+  if (!(await current.evaluate((element) => element.classList.contains('isConfirmed')))) return
+
+  const details = current.locator('details.humanAssignmentDetails')
+  if (await details.getAttribute('open') === null) await details.locator(':scope > summary').click()
+  await current.getByRole('button', { name: 'Rimetti da controllare' }).click()
+  await expect(assignmentRow(page, assignmentId), 'La Cattedra fixture deve essere riportata allo stato provvisorio dopo il test.').toHaveClass(/needsConfirmation/)
 }
 
 function assignmentRow(page, assignmentId) {
