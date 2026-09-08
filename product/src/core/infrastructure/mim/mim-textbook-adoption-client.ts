@@ -451,38 +451,36 @@ async function fetchOfficialCsv(
   datasetCode: string,
   academicYearCode?: string,
 ): Promise<{ available: boolean; text: string }> {
-  const csvUrl = await resolveOfficialCsvUrl(catalogUrl, datasetCode, academicYearCode)
-  if (!csvUrl) return { available: false, text: '' }
+  const resolvers = [
+    () => resolveFederatedCsvUrl(datasetCode, academicYearCode),
+    () => resolveMimDatasetCatalogCsvUrl(datasetCode, academicYearCode),
+    () => resolveMimCatalogCsvUrl(catalogUrl, datasetCode, academicYearCode),
+  ]
+  const attemptedUrls = new Set<string>()
 
-  try {
-    const response = await fetch(csvUrl, {
-      cache: 'no-store',
-      headers: {
-        ...MIM_HTTP_HEADERS,
-        accept: 'text/csv,application/csv,application/octet-stream;q=0.9,*/*;q=0.5',
-        referer: catalogUrl,
-      },
-      signal: AbortSignal.timeout(MIM_CSV_TIMEOUT_MS),
-    })
-    if (!response.ok) return { available: false, text: '' }
-    return { available: true, text: await response.text() }
-  } catch {
-    return { available: false, text: '' }
+  for (const resolve of resolvers) {
+    const csvUrl = await resolve()
+    if (!csvUrl || attemptedUrls.has(csvUrl)) continue
+    attemptedUrls.add(csvUrl)
+
+    try {
+      const response = await fetch(csvUrl, {
+        cache: 'no-store',
+        headers: {
+          ...MIM_HTTP_HEADERS,
+          accept: 'text/csv,application/csv,application/octet-stream;q=0.9,*/*;q=0.5',
+          referer: catalogUrl,
+        },
+        signal: AbortSignal.timeout(MIM_CSV_TIMEOUT_MS),
+      })
+      if (!response.ok) continue
+      return { available: true, text: await response.text() }
+    } catch {
+      continue
+    }
   }
-}
 
-async function resolveOfficialCsvUrl(
-  catalogUrl: string,
-  datasetCode: string,
-  academicYearCode?: string,
-) {
-  const federated = await resolveFederatedCsvUrl(datasetCode, academicYearCode)
-  if (federated) return federated
-
-  const datasetCatalog = await resolveMimDatasetCatalogCsvUrl(datasetCode, academicYearCode)
-  if (datasetCatalog) return datasetCatalog
-
-  return resolveMimCatalogCsvUrl(catalogUrl, datasetCode, academicYearCode)
+  return { available: false, text: '' }
 }
 
 async function resolveMimDatasetCatalogCsvUrl(
@@ -869,7 +867,6 @@ function buildProvinceDatasetMap() {
     ['ALTABRUZZO', ['AQ', 'CH', 'PE', 'TE']],
     ['ALTBASILICATA', ['MT', 'PZ']],
     ['ALTCALABRIA', ['CS', 'CZ', 'KR', 'RC', 'VV']],
-    ['ALTCAMPANIA', ['AV', 'BN', 'CE', 'NA', 'SA']],
     ['ALTEMILIAROMAGNA', ['BO', 'FC', 'FE', 'MO', 'PR', 'PC', 'RA', 'RE', 'RN']],
     ['ALTFRIULIVENEZIAGIULIA', ['GO', 'PN', 'TS', 'UD']],
     ['ALTLAZIO', ['FR', 'LT', 'RI', 'RM', 'VT']],
