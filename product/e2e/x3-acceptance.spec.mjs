@@ -33,14 +33,18 @@ test('X3 mobile gate: grounded answers, useful proposals, write preview and no a
     await expect(contentContext.getByText('Pronto', { exact: true })).toBeVisible()
   })
 
-  await test.step('Salva il contesto professionale e verifica il feedback', async () => {
-    await page.locator('select[name="contentCategory"]').selectOption('TEACHING_RESOURCE')
-    await page.locator('input[name="disciplines"]').fill('Tecnologia, educazione civica')
-    await page.locator('input[name="classLabels"]').fill('3A, 3C')
-    await page.locator('select[name="contextStatus"]').selectOption('REVIEWED')
-    await page.locator('select[name="reliability"]').selectOption('AUTO')
-    await page.getByRole('button', { name: 'Salva contesto' }).click()
-    await expect(page.getByRole('status').filter({ hasText: 'Contesto professionale aggiornato' })).toBeVisible()
+  await test.step('Salva una correzione di contesto preservando l’attendibilità della fonte', async () => {
+    const contextForm = page.locator('form.contextForm')
+    await contextForm.locator('select[name="contentCategory"]').selectOption('TEACHING_RESOURCE')
+    await contextForm.locator('input[name="disciplines"]').fill('Tecnologia, educazione civica')
+    await contextForm.locator('input[name="classLabels"]').fill('3A, 3C')
+    await expect(contextForm.locator('input[name="contextStatus"]')).toHaveValue('REVIEWED')
+    await expect(contextForm.locator('input[name="reliability"]')).toHaveValue('AUTO')
+    await Promise.all([
+      page.waitForURL(/\/knowledge\/[^/?#]+\?context=updated$/, { timeout: 30_000 }),
+      contextForm.getByRole('button', { name: 'Salva correzione' }).click(),
+    ])
+    await expect(page.getByRole('status').filter({ hasText: 'Correzione salvata' })).toBeVisible()
   })
 
   await test.step('Apre l’assistente e verifica contesto completo e ingombro mobile', async () => {
