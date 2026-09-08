@@ -3,9 +3,11 @@ import type { MimTextbookRecord } from '@/core/domain/mim-textbook-discovery'
 const MIM_SPARQL_SERVICE = 'https://dati.istruzione.it/opendata/opendata/sparql/endpoint/query/service/'
 const MIM_SCHOOL_CATALOG = 'https://dati.istruzione.it/opendata/opendata/catalogo/elements1/?area=Scuole'
 const MIM_ADOPTION_CATALOG = 'https://dati.istruzione.it/opendata/opendata/catalogo/elements1/?area=Adozioni+libri+di+testo'
+const DATA_GOV_PACKAGE_SEARCH = 'https://dati.gov.it/opendata/api/3/action/package_search'
 const MIM_SPARQL_TIMEOUT_MS = 10_000
 const MIM_CATALOG_TIMEOUT_MS = 15_000
-const MIM_CSV_TIMEOUT_MS = 60_000
+const DATA_GOV_TIMEOUT_MS = 15_000
+const MIM_CSV_TIMEOUT_MS = 120_000
 
 const MIM_HTTP_HEADERS = {
   accept: 'text/html,application/xhtml+xml,application/json,text/csv;q=0.9,*/*;q=0.8',
@@ -86,6 +88,32 @@ type CsvLookupResult<T> = {
   records: T[]
 }
 
+type CkanResource = {
+  format?: string | null
+  mimetype?: string | null
+  name?: string | null
+  description?: string | null
+  url?: string | null
+}
+
+type CkanPackage = {
+  id?: string | null
+  name?: string | null
+  title?: string | null
+  identifier?: string | null
+  url?: string | null
+  notes?: string | null
+  resources?: CkanResource[] | null
+  extras?: Array<{ key?: string | null; value?: string | null }> | null
+}
+
+export type DatiGovPackageSearchResponse = {
+  success?: boolean
+  result?: {
+    results?: CkanPackage[]
+  }
+}
+
 const PROVINCE_DATASET = buildProvinceDatasetMap()
 
 export class MimTextbookAdoptionClient {
@@ -124,23 +152,31 @@ export class MimTextbookAdoptionClient {
       )
 
       if (sparql.available) {
-        availableDatasets.add(datasetCode)
-        records.push(
-          ...parseMimSparqlBindings(sparql.payload?.results?.bindings ?? [], datasetCode)
-            .filter((record) => targetCodes.has(normalizeSchoolCode(record.schoolCode))),
-        )
-        continue
+        const sparqlRecords = parseMimSparqlBindings(
+          sparql.payload?.results?.bindings ?? [],
+          datasetCode,
+        ).filter((record) => targetCodes.has(normalizeSchoolCode(record.schoolCode)))
+        if (sparqlRecords.length) {
+          availableDatasets.add(datasetCode)
+          records.push(...sparqlRecords)
+          continue
+        }
       }
 
       const csv = await lookupAdoptionsFromOfficialCsv(datasetCode, targetCodes)
       if (csv.available) {
         availableDatasets.add(datasetCode)
         records.push(...csv.records)
+        continue
       }
+
+      if (sparql.available) availableDatasets.add(datasetCode)
     }
 
     if (!availableDatasets.size) {
-      throw new Error('Le fonti Open Data MIM per le adozioni non sono raggiungibili in questo momento.')
+      throw new Error(
+        'Le fonti Open Data MIM per le adozioni non sono raggiungibili via SPARQL, catalogo MIM o catalogo nazionale dati.gov.it.',
+      )
     }
 
     return {
@@ -260,6 +296,48 @@ export function parseMimAdoptionCsv(
   return records
 }
 
+/**
+ * Resolve a CSV distribution from the federated national catalogue while
+ * preserving MIM as the authoritative source. Only distributions hosted by
+ * dati.istruzione.it are accepted.
+ */
+export function resolveDatiGovMimCsvUrl(
+  payload: DatiGovPackageSearchResponse,
+  datasetCode: string,
+  academicYearCode?: string,
+) {
+  if (!payload.success) return null
+  const packages = payload.result?.results ?? []
+  const normalizedDatasetCode = datasetCode.toUpperCase()
+  const candidates: Array<{ url: string; evidence: string }> = []
+
+  for (const item of packages) {
+    if (!ckanPackageMatchesDataset(item, normalizedDatasetCode)) continue
+    for (const resource of item.resources ?? []) {
+      if (!resourceLooksLikeCsv(resource)) continue
+      const url = normalizeMimDistributionUrl(resource.url)
+      if (!url) continue
+      candidates.push({
+        url,
+        evidence: [resource.name, resource.description, resource.format, resource.mimetype, resource.url]
+          .filter(Boolean)
+          .join(' '),
+      })
+    }
+  }
+
+  if (!candidates.length) return null
+  if (!academicYearCode) return candidates[0].url
+
+  const exactYear = candidates.find((candidate) => candidate.evidence.includes(academicYearCode))
+  if (exactYear) return exactYear.url
+
+  const mentionsOtherAcademicYear = candidates.some((candidate) =>
+    [...candidate.evidence.matchAll(/20\d{4}/g)].some((match) => match[0] !== academicYearCode),
+  )
+  return mentionsOtherAcademicYear ? null : candidates[0].url
+}
+
 async function resolveAdoptionSchoolCodes(
   schoolCode: string,
   academicYearCode: string,
@@ -287,12 +365,12 @@ async function resolveAdoptionSchoolCodes(
   if (resolvedFromCsv.length) return resolvedFromCsv
 
   if (availableResults.length || csvResult.available) {
-    // Settings can already contain an adoption-specific plesso code. Preserve it
-    // as a direct candidate when the registry has no matching institute relation.
     return [schoolCode]
   }
 
-  throw new Error('L’anagrafe scuole MIM non è raggiungibile né via SPARQL né via CSV ufficiale.')
+  throw new Error(
+    'L’anagrafe scuole MIM non è raggiungibile via SPARQL, catalogo MIM o catalogo nazionale dati.gov.it.',
+  )
 }
 
 function resolveSchoolCodesFromRecords(
@@ -330,7 +408,11 @@ async function lookupAdoptionsFromOfficialCsv(
   datasetCode: MimDatasetCode,
   schoolCodes: ReadonlySet<string>,
 ): Promise<CsvLookupResult<MimTextbookRecord>> {
-  const csv = await fetchOfficialCsv(MIM_ADOPTION_CATALOG, datasetCode)
+  const csv = await fetchOfficialCsv(
+    MIM_ADOPTION_CATALOG,
+    datasetCode,
+    MIM_ADOPTION_SNAPSHOT.academicYearCode,
+  )
   if (!csv.available) return { available: false, records: [] }
   return {
     available: true,
@@ -368,6 +450,26 @@ async function resolveOfficialCsvUrl(
   datasetCode: string,
   academicYearCode?: string,
 ) {
+  const candidates = [
+    resolveMimCatalogCsvUrl(catalogUrl, datasetCode, academicYearCode),
+    resolveFederatedCsvUrl(datasetCode, academicYearCode),
+  ].map((candidate) => candidate.then((value) => {
+    if (!value) throw new Error('CSV distribution not resolved')
+    return value
+  }))
+
+  try {
+    return await Promise.any(candidates)
+  } catch {
+    return null
+  }
+}
+
+async function resolveMimCatalogCsvUrl(
+  catalogUrl: string,
+  datasetCode: string,
+  academicYearCode?: string,
+) {
   try {
     const response = await fetch(catalogUrl, {
       cache: 'no-store',
@@ -379,10 +481,73 @@ async function resolveOfficialCsvUrl(
     const hrefs = [...html.matchAll(/href\s*=\s*["']([^"']+\.csv(?:\?[^"']*)?)["']/gi)]
       .map((match) => decodeHtmlAttribute(match[1]))
       .filter((href) => href.toUpperCase().includes(datasetCode.toUpperCase()))
-    const selected = academicYearCode
-      ? hrefs.find((href) => href.includes(academicYearCode))
-      : hrefs[0]
-    return selected ? new URL(selected, catalogUrl).toString() : null
+    const selected = selectAcademicYearDistribution(hrefs, academicYearCode)
+    return selected ? normalizeMimDistributionUrl(new URL(selected, catalogUrl).toString()) : null
+  } catch {
+    return null
+  }
+}
+
+async function resolveFederatedCsvUrl(datasetCode: string, academicYearCode?: string) {
+  try {
+    const url = new URL(DATA_GOV_PACKAGE_SEARCH)
+    url.searchParams.set('q', datasetCode)
+    url.searchParams.set('rows', '20')
+    const response = await fetch(url, {
+      cache: 'no-store',
+      headers: {
+        ...MIM_HTTP_HEADERS,
+        accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(DATA_GOV_TIMEOUT_MS),
+    })
+    if (!response.ok) return null
+    const payload = await response.json() as DatiGovPackageSearchResponse
+    return resolveDatiGovMimCsvUrl(payload, datasetCode, academicYearCode)
+  } catch {
+    return null
+  }
+}
+
+function selectAcademicYearDistribution(hrefs: string[], academicYearCode?: string) {
+  if (!hrefs.length) return null
+  if (!academicYearCode) return hrefs[0]
+  const exact = hrefs.find((href) => href.includes(academicYearCode))
+  if (exact) return exact
+  const mentionsOtherAcademicYear = hrefs.some((href) =>
+    [...href.matchAll(/20\d{4}/g)].some((match) => match[0] !== academicYearCode),
+  )
+  return mentionsOtherAcademicYear ? null : hrefs[0]
+}
+
+function ckanPackageMatchesDataset(item: CkanPackage, datasetCode: string) {
+  const evidence = [
+    item.id,
+    item.name,
+    item.title,
+    item.identifier,
+    item.url,
+    item.notes,
+    ...(item.extras ?? []).flatMap((extra) => [extra.key, extra.value]),
+    ...(item.resources ?? []).map((resource) => resource.url),
+  ].filter(Boolean).join(' ').toUpperCase()
+  return evidence.includes(datasetCode)
+}
+
+function resourceLooksLikeCsv(resource: CkanResource) {
+  const format = `${resource.format ?? ''} ${resource.mimetype ?? ''}`.toUpperCase()
+  const url = resource.url ?? ''
+  return format.includes('CSV') || /\.csv(?:$|[?#])/i.test(url)
+}
+
+function normalizeMimDistributionUrl(value: string | null | undefined) {
+  if (!value) return null
+  try {
+    const url = new URL(value)
+    if (!/(^|\.)dati\.istruzione\.it$/i.test(url.hostname)) return null
+    if (url.protocol === 'http:') url.protocol = 'https:'
+    if (url.protocol !== 'https:') return null
+    return url.toString()
   } catch {
     return null
   }
