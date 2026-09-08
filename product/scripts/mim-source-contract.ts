@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import {
   MIM_ADOPTION_SNAPSHOT,
   MimTextbookAdoptionClient,
+  parseMimSchoolRegistryCsv,
 } from '../src/core/infrastructure/mim/mim-textbook-adoption-client'
 
 const SCHOOL_CODE = 'AVIC849003'
@@ -186,7 +187,14 @@ async function probeCurrentRegistryDistribution(resourceUrl: string) {
         signal: AbortSignal.timeout(60_000),
       })
       const text = response.ok ? await response.text() : ''
-      const firstLine = text.split(/\r?\n/, 1)[0] ?? ''
+      const lines = text.split(/\r?\n/)
+      const firstLine = lines[0] ?? ''
+      const instituteLine = lines.find((line) => line.includes(SCHOOL_CODE)) ?? ''
+      const secondaryLine = lines.find((line) => line.includes(EXPECTED_SECONDARY_SCHOOL_CODE)) ?? ''
+      const parsedRecords = text
+        ? parseMimSchoolRegistryCsv(text, SCHOOL_CODE, MIM_ADOPTION_SNAPSHOT.academicYearCode)
+        : []
+
       console.log(JSON.stringify({
         status: 'MIM_CURRENT_REGISTRY_DISTRIBUTION_PROBE',
         requestedUrl: candidate,
@@ -198,6 +206,10 @@ async function probeCurrentRegistryDistribution(resourceUrl: string) {
         delimiterGuess: firstLine.includes(';') && !firstLine.includes(',') ? 'SEMICOLON' : firstLine.includes(',') ? 'COMMA' : 'UNKNOWN',
         containsInstituteCode: text.includes(SCHOOL_CODE),
         containsExpectedSecondarySchoolCode: text.includes(EXPECTED_SECONDARY_SCHOOL_CODE),
+        instituteLine: instituteLine.slice(0, 2000),
+        secondaryLine: secondaryLine.slice(0, 2000),
+        parsedRecordCount: parsedRecords.length,
+        parsedRecords: parsedRecords.slice(0, 20),
       }, null, 2))
     } catch (error) {
       console.log(JSON.stringify({
