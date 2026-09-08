@@ -25,6 +25,8 @@ export async function GET(request: Request) {
 
   const { asset, document, units } = bundle
   const processing = knowledgeProcessingStatus(asset.processingStatus)
+  const contextReady = asset.contextStatus === 'REVIEWED'
+    || (asset.contextStatus === 'NEEDS_REVIEW' && asset.reliability !== 'TO_VERIFY')
   const assistantContext = buildKnowledgeAssistantContext({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear?.id ?? asset.academicYearId,
@@ -37,7 +39,7 @@ export async function GET(request: Request) {
     summary: document?.summary,
     excerpt: document?.normalizedText ?? asset.originalText,
     contentHighlights: buildAssistantHighlights(units),
-    contextReviewed: asset.contextStatus === 'REVIEWED',
+    contextReady,
     hasOrganizedDocument: Boolean(document),
     actionProposalCount: units.filter((unit) => unit.unitType === 'ACTION').length,
     deadlineProposalCount: units.filter((unit) => unit.unitType === 'DEADLINE').length,
