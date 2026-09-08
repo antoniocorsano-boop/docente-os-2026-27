@@ -35,15 +35,26 @@ export async function knowledgeFixtureSnapshot(titleFragment) {
   if (assetError) throw new Error(`Knowledge fixture snapshot failed: ${assetError.message}`)
   const asset = assets?.[0] ?? null
   if (!asset) return null
+  if (!asset.current_generation_id) return { asset, document: null, units: [] }
+
+  const { data: document, error: documentError } = await supabase
+    .from('knowledge_documents')
+    .select('id, asset_id, generation_id, document_type, extracted_data, processing_version')
+    .eq('asset_id', asset.id)
+    .eq('generation_id', asset.current_generation_id)
+    .maybeSingle()
+
+  if (documentError) throw new Error(`Knowledge fixture document snapshot failed: ${documentError.message}`)
+  if (!document) return { asset, document: null, units: [] }
 
   const { data: units, error: unitError } = await supabase
     .from('knowledge_units')
-    .select('id, unit_type, title, content, structured_data, validation_status, confidence')
-    .eq('asset_id', asset.id)
+    .select('id, unit_type, title, content, structured_data, validation_status, confidence, ordinal')
+    .eq('document_id', document.id)
     .order('ordinal', { ascending: true })
 
   if (unitError) throw new Error(`Knowledge fixture unit snapshot failed: ${unitError.message}`)
-  return { asset, units: units ?? [] }
+  return { asset, document, units: units ?? [] }
 }
 
 export async function deleteKnowledgeAsset(page, assetId, { tolerateMissing = true } = {}) {
