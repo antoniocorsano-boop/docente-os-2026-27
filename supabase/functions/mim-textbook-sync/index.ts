@@ -41,7 +41,7 @@ type SyncPayload = {
 
 Deno.serve(async (request: Request) => {
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
-  if (!(await authorized(request))) return json({ error: 'unauthorized' }, 401)
+  if (!(await authorizedGitHubOidc(request))) return json({ error: 'unauthorized' }, 401)
 
   let payload: SyncPayload
   try {
@@ -76,15 +76,10 @@ Deno.serve(async (request: Request) => {
   }
 })
 
-async function authorized(request: Request) {
+async function authorizedGitHubOidc(request: Request) {
   const token = request.headers.get(TOKEN_HEADER)?.trim() ?? ''
-  if (token.length < 32 || token.length > 8_192) return false
+  if (token.length < 32 || token.length > 8_192 || token.split('.').length !== 3) return false
 
-  if (token.split('.').length === 3 && await authorizedGitHubOidc(token)) return true
-  return await authorizedLegacyToken(token)
-}
-
-async function authorizedGitHubOidc(token: string) {
   try {
     const { payload } = await jwtVerify(token, GITHUB_OIDC_JWKS, {
       issuer: GITHUB_OIDC_ISSUER,
@@ -110,19 +105,6 @@ async function authorizedGitHubOidc(token: string) {
   } catch {
     return false
   }
-}
-
-async function authorizedLegacyToken(token: string) {
-  if (token.length > 256) return false
-  const digest = await sha256(token)
-  const { data, error } = await supabase
-    .from('mim_textbook_sync_credentials')
-    .select('token_sha256')
-    .eq('singleton', true)
-    .maybeSingle()
-
-  if (error || !data?.token_sha256) return false
-  return constantTimeEqual(digest, data.token_sha256)
 }
 
 async function scope() {
@@ -329,20 +311,6 @@ function isbn13(value: unknown) {
   const digits = String(value ?? '').replace(/[^0-9]/g, '')
   if (!/^[0-9]{13}$/.test(digits)) throw new Error('invalid ISBN-13')
   return digits
-}
-
-async function sha256(value: string) {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
-}
-
-function constantTimeEqual(left: string, right: string) {
-  if (left.length !== right.length) return false
-  let difference = 0
-  for (let index = 0; index < left.length; index += 1) {
-    difference |= left.charCodeAt(index) ^ right.charCodeAt(index)
-  }
-  return difference === 0
 }
 
 function json(body: JsonObject, status = 200) {
