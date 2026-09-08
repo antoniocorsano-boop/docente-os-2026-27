@@ -57,7 +57,12 @@ export async function finalizeKnowledgeFileUpload(
     ? await resolveConfirmedTextbookMaterialContext(contextualTextbookId)
     : null
 
-  if (cookieTextbookId && (!contextualTextbookId || !textbookContext)) {
+  if (handoffTextbookId && (!contextualTextbookId || !textbookContext)) {
+    if (cookieTextbookId) clearTextbookMaterialContext(cookieStore)
+    return { ok: false, code: 'invalid_path' }
+  }
+
+  if (cookieTextbookId && !handoffTextbookId) {
     clearTextbookMaterialContext(cookieStore)
   }
 
