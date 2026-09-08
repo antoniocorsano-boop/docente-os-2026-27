@@ -13,7 +13,17 @@ import { KnowledgeCaptureModes } from './KnowledgeCaptureModes'
 
 export const dynamic = 'force-dynamic'
 
-type PageProps = { searchParams: Promise<{ q?: string; upload?: string; category?: string; discipline?: string; classLabel?: string }> }
+type PageProps = {
+  searchParams: Promise<{
+    q?: string
+    upload?: string
+    category?: string
+    discipline?: string
+    classLabel?: string
+    capture?: string
+    source?: string
+  }>
+}
 
 const RECENT_VISIBLE_COUNT = 8
 
@@ -22,6 +32,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
   const query = params.q?.trim() ?? ''
   const uploadMessage = uploadFeedback(params.upload)
   const filters = { category: params.category?.trim(), discipline: params.discipline?.trim(), classLabel: params.classLabel?.trim() }
+  const textbookMaterialCapture = params.capture === 'file' && params.source === 'textbook'
 
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
@@ -34,7 +45,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
   ])
   const recentVisible = recent.slice(0, RECENT_VISIBLE_COUNT)
   const recentMore = recent.slice(RECENT_VISIBLE_COUNT)
-  const captureOpen = recent.length === 0 || Boolean(uploadMessage)
+  const captureOpen = recent.length === 0 || Boolean(uploadMessage) || textbookMaterialCapture
 
   const renderRecentRows = (items: typeof recent) => items.map(({ asset, document }) => {
     const status = knowledgeProcessingStatus(asset.processingStatus)
@@ -104,7 +115,12 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
           </summary>
           <div className="knowledgeCaptureBody">
             <div className="knowledgeCaptureAssurance"><span className="statusPill">Originale preservato</span><p>Il contenuto entra nella Conoscenza solo quando scegli di aggiungerlo.</p></div>
-            <KnowledgeCaptureModes />
+            <KnowledgeCaptureModes
+              initialMode={textbookMaterialCapture ? 'file' : 'text'}
+              sourceHint={textbookMaterialCapture
+                ? 'Carica solo una guida, verifica o altro materiale che hai ottenuto legittimamente. DOCENTE OS conserverà il collegamento al libro confermato, ma non acquisisce contenuti protetti direttamente dall’editore.'
+                : null}
+            />
           </div>
         </details>
       </div>
