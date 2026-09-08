@@ -8,13 +8,7 @@ import {
   proposeLessonActivationQuestion,
   removeLessonDesignExtension,
 } from './design-actions'
-
-export type LessonKnowledgeSuggestion = {
-  assetId: string
-  title: string
-  summary: string
-  category: string
-}
+import type { LessonKnowledgeSuggestion } from './lesson-material-suggestions'
 
 const ACTIVATION_QUESTION_TOOL_ID = 'LESSON_ACTIVATION_QUESTION_V1'
 
@@ -124,29 +118,34 @@ export function LessonDesignTools({
       ) : null}
 
       {knowledgeSuggestions.length ? (
-        <div className="lessonKnowledgeSuggestions" aria-label="Materiali pertinenti dalla Conoscenza">
-          <div className="lessonDesignSubheading"><strong>Dalla Conoscenza</strong><small>{knowledgeSuggestions.length} pertinenti</small></div>
-          <p className="lessonKnowledgeLead">Sono già collegati a questa fase del piano. Aggiungili solo se vuoi averli a portata di mano mentre prepari o insegni.</p>
+        <div className="lessonKnowledgeSuggestions" aria-label="Suggerimenti contestuali per questa lezione">
+          <div className="lessonDesignSubheading"><strong>Potrebbe servirti qui</strong><small>{knowledgeSuggestions.length}</small></div>
+          <p className="lessonKnowledgeLead">DOCENTE OS incrocia questa fase con i materiali già presenti nella tua Conoscenza e con i libri confermati per la classe. È sempre un suggerimento: nulla entra nella lezione senza una tua scelta.</p>
           {knowledgeSuggestions.map((item) => (
             <article key={item.assetId}>
               <div>
-                <span>{knowledgeCategoryLabel(item.category)}</span>
+                <span>{item.sourceKind === 'EDITORIAL_KNOWLEDGE' ? 'DAL LIBRO' : 'DALLA CONOSCENZA'} · {knowledgeCategoryLabel(item.category)}</span>
                 <strong>{item.title}</strong>
                 <p>{item.summary}</p>
+                <small className="lessonSuggestionReason">Perché qui: {item.reason}</small>
+                <div className="lessonSuggestionTip">
+                  <b>TIP</b>
+                  <p>{item.usageTip}</p>
+                </div>
               </div>
               <div>
                 <Link href={`/knowledge/${encodeURIComponent(item.assetId)}`}>Controlla</Link>
                 <form action={attachKnowledgeResourceToLesson}>
                   <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
                   <input type="hidden" name="assetId" value={item.assetId} />
-                  <button type="submit">Aggiungi alla lezione</button>
+                  <button type="submit">Usa in questa lezione</button>
                 </form>
               </div>
             </article>
           ))}
         </div>
       ) : (
-        <p className="lessonDesignEmpty">Nessun altro materiale della Conoscenza è collegato esplicitamente a questa fase.</p>
+        <p className="lessonDesignEmpty">Non ci sono ancora materiali abbastanza pertinenti da suggerire per questa fase. La lezione canonica resta comunque utilizzabile così com’è.</p>
       )}
     </section>
   )
