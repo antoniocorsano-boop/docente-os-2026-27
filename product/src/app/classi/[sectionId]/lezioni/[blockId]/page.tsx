@@ -12,14 +12,17 @@ import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/s
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { humanizeKnowledgeTitle } from '@/core/presentation/product-language'
 import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
-import LessonWorkspaceClient, { type LessonKnowledgeSuggestion, type LessonWorkspaceMode } from './lesson-workspace-client'
+import LessonPrepareClient from './lesson-prepare-client'
 import LessonLiveClient from './lesson-live-client'
+import LessonObserveClient from './lesson-observe-client'
 import LessonCloseClient from './lesson-close-client'
+import type { LessonKnowledgeSuggestion } from './lesson-design-tools'
 import './lesson-workspace.css'
-import './lesson-workspace-maturity.css'
 import './lesson-design-tools.css'
 
 export const dynamic = 'force-dynamic'
+
+type LessonWorkspaceMode = 'prepare' | 'teach' | 'observe' | 'record'
 
 const GRADE_NUMBER = { PRIMA: '1', SECONDA: '2', TERZA: '3' } as const
 const GRADE_QUERY = { PRIMA: 'prima', SECONDA: 'seconda', TERZA: 'terza' } as const
@@ -124,6 +127,13 @@ export default async function LessonWorkspacePage({
           progress={progressView}
           udaProgress={udaProgressView}
         />
+      ) : mode === 'observe' ? (
+        <LessonObserveClient
+          sectionId={section.id}
+          sectionLabel={sectionLabel}
+          block={block}
+          projection={projection}
+        />
       ) : mode === 'record' ? (
         <LessonCloseClient
           sectionId={section.id}
@@ -133,12 +143,11 @@ export default async function LessonWorkspacePage({
           progress={progressView}
         />
       ) : (
-        <LessonWorkspaceClient
+        <LessonPrepareClient
           sectionId={section.id}
           sectionLabel={sectionLabel}
           block={block}
           projection={projection}
-          initialMode={mode}
           extensions={extensions}
           knowledgeSuggestions={knowledgeSuggestions}
           progress={progressView}
