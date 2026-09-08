@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   acceptedLessonDesignResources,
   composeLessonSequence,
@@ -49,33 +49,7 @@ export default function LessonLiveClient({
 }) {
   const composed = useMemo(() => composeLessonSequence(projection.steps, extensions), [projection.steps, extensions])
   const steps = composed.steps
-  const storageKey = `docente-os:lesson-live:${sectionId}:${block.id}`
   const [activeStep, setActiveStep] = useState(0)
-  const [restored, setRestored] = useState(false)
-
-  useEffect(() => {
-    try {
-      const raw = window.sessionStorage.getItem(storageKey)
-      const parsed = raw ? Number.parseInt(raw, 10) : 0
-      if (Number.isFinite(parsed) && steps.length) {
-        setActiveStep(Math.max(0, Math.min(parsed, steps.length - 1)))
-      }
-    } catch {
-      // Session persistence is a convenience only; the lesson must remain usable without it.
-    } finally {
-      setRestored(true)
-    }
-  }, [storageKey, steps.length])
-
-  useEffect(() => {
-    if (!restored) return
-    try {
-      window.sessionStorage.setItem(storageKey, String(activeStep))
-    } catch {
-      // Fail open: live guidance does not depend on browser storage.
-    }
-  }, [activeStep, restored, storageKey])
-
   const currentStep = steps[activeStep] ?? steps[0]
   const canonicalStep = currentStep?.origin === 'CANONICAL'
     ? projection.steps.find((step) => step.id === currentStep.id) ?? null
