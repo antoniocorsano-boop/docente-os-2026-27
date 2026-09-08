@@ -1,5 +1,6 @@
 'use server'
 
+import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { KnowledgeIngestionService } from '@/core/application/knowledge-ingestion-service'
 import { VisualExtractionUnavailableError } from '@/core/application/ports/knowledge-base'
@@ -16,6 +17,10 @@ import {
   validateKnowledgeUploadReference,
   type KnowledgeUploadReference,
 } from './upload-policy'
+import {
+  resolveConfirmedTextbookMaterialContext,
+  TEXTBOOK_MATERIAL_CONTEXT_COOKIE,
+} from './textbook-material-context'
 
 export type FinalizeKnowledgeUploadResult =
   | { ok: true; assetId: string }
@@ -41,6 +46,16 @@ export async function finalizeKnowledgeFileUpload(
   const validation = validateKnowledgeUploadReference(reference)
   if (!validation.valid) return { ok: false, code: validation.code }
 
+  const cookieStore = await cookies()
+  const contextualTextbookId = cookieStore.get(TEXTBOOK_MATERIAL_CONTEXT_COOKIE)?.value?.trim() ?? ''
+  const textbookContext = contextualTextbookId
+    ? await resolveConfirmedTextbookMaterialContext(contextualTextbookId)
+    : null
+
+  if (contextualTextbookId && !textbookContext) {
+    cookieStore.delete(TEXTBOOK_MATERIAL_CONTEXT_COOKIE)
+  }
+
   const repository = new SupabaseKnowledgeRepository()
   const ingestion = buildFileIngestion(repository)
 
@@ -61,10 +76,39 @@ export async function finalizeKnowledgeFileUpload(
         storageOwnerUserId: userId,
         originalFilename: input.originalName,
         transferPath: 'browser-to-docente-os-to-supabase-storage',
+        ...(textbookContext ? {
+          materialRole: 'TEXTBOOK_TEACHER_MATERIAL',
+          acquisitionMode: 'USER_PROVIDED_LEGITIMATE_COPY',
+          textbook: {
+            id: textbookContext.textbook.id,
+            isbn13: textbookContext.textbook.isbn13,
+            title: textbookContext.textbook.title,
+            publisher: textbookContext.textbook.publisher,
+          },
+        } : {}),
       },
     })
 
+    if (textbookContext) {
+      await repository.link({
+        workspaceId: context.workspace.id,
+        assetId: asset.id,
+        relationType: 'MATERIAL_FOR',
+        targetType: 'TEXTBOOK',
+        targetRef: textbookContext.textbook.id,
+        metadata: {
+          isbn13: textbookContext.textbook.isbn13,
+          title: textbookContext.textbook.title,
+          publisher: textbookContext.textbook.publisher,
+          materialRole: 'TEXTBOOK_TEACHER_MATERIAL',
+          acquisitionMode: 'USER_PROVIDED_LEGITIMATE_COPY',
+        },
+      })
+      cookieStore.delete(TEXTBOOK_MATERIAL_CONTEXT_COOKIE)
+    }
+
     revalidatePath('/knowledge')
+    revalidatePath('/impostazioni/libri-di-testo')
     return { ok: true, assetId: asset.id }
   } catch (error) {
     console.error('Knowledge same-origin ingestion failed', error)
