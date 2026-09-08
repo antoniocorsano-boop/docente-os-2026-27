@@ -5,6 +5,7 @@ import {
 } from '../src/core/infrastructure/mim/mim-textbook-adoption-client'
 
 const SCHOOL_CODE = 'AVIC849003'
+const EXPECTED_SECONDARY_SCHOOL_CODE = 'AVMM849047'
 const DATA_GOV_BASE = 'https://www.dati.gov.it/opendata/api/3/action/'
 
 async function main() {
@@ -141,6 +142,20 @@ async function logFederatedDataset(datasetCode: string) {
         (`${resource.format ?? ''} ${resource.mimetype ?? ''}`.toUpperCase().includes('CSV') || /\.csv(?:$|[?#])/i.test(resource.url ?? '')),
       )
 
+    if (datasetCode === 'SCUANAGRAFESTAT') {
+      const currentRegistry = resources.find((resource) =>
+        resource.url?.includes(`SCUANAGRAFESTAT${MIM_ADOPTION_SNAPSHOT.academicYearCode}`),
+      )
+      if (currentRegistry?.url) {
+        await probeCurrentRegistryDistribution(currentRegistry.url)
+      } else {
+        console.log(JSON.stringify({
+          status: 'MIM_CURRENT_REGISTRY_DISTRIBUTION_NOT_FOUND',
+          academicYearCode: MIM_ADOPTION_SNAPSHOT.academicYearCode,
+        }, null, 2))
+      }
+    }
+
     for (const resource of resources.slice(0, 3)) {
       if (!resource.id) continue
       await probeDataStore(datasetCode, resource.id, resource.datastore_active ?? false)
@@ -151,6 +166,46 @@ async function logFederatedDataset(datasetCode: string) {
       datasetCode,
       message: error instanceof Error ? error.message : String(error),
     }, null, 2))
+  }
+}
+
+async function probeCurrentRegistryDistribution(resourceUrl: string) {
+  const candidates = [...new Set([
+    resourceUrl,
+    resourceUrl.replace(/^http:/i, 'https:'),
+  ])]
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetch(candidate, {
+        redirect: 'follow',
+        headers: {
+          accept: 'text/csv,application/csv,application/octet-stream;q=0.9,*/*;q=0.5',
+          'user-agent': 'DocenteOS-MIM-Source-Contract/2026.27',
+        },
+        signal: AbortSignal.timeout(60_000),
+      })
+      const text = response.ok ? await response.text() : ''
+      const firstLine = text.split(/\r?\n/, 1)[0] ?? ''
+      console.log(JSON.stringify({
+        status: 'MIM_CURRENT_REGISTRY_DISTRIBUTION_PROBE',
+        requestedUrl: candidate,
+        finalUrl: response.url,
+        httpStatus: response.status,
+        contentType: response.headers.get('content-type'),
+        byteLength: Buffer.byteLength(text),
+        firstLine: firstLine.slice(0, 1000),
+        delimiterGuess: firstLine.includes(';') && !firstLine.includes(',') ? 'SEMICOLON' : firstLine.includes(',') ? 'COMMA' : 'UNKNOWN',
+        containsInstituteCode: text.includes(SCHOOL_CODE),
+        containsExpectedSecondarySchoolCode: text.includes(EXPECTED_SECONDARY_SCHOOL_CODE),
+      }, null, 2))
+    } catch (error) {
+      console.log(JSON.stringify({
+        status: 'MIM_CURRENT_REGISTRY_DISTRIBUTION_PROBE_ERROR',
+        requestedUrl: candidate,
+        message: error instanceof Error ? error.message : String(error),
+      }, null, 2))
+    }
   }
 }
 
