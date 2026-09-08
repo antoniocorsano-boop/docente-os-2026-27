@@ -50,11 +50,11 @@ export default async function globalSetup() {
     await contextForm.locator('select[name="contentCategory"]').selectOption('UDA')
     await contextForm.locator('input[name="disciplines"]').fill('Tecnologia')
     await contextForm.locator('input[name="classLabels"]').fill('1A')
-    await contextForm.locator('select[name="contextStatus"]').selectOption('REVIEWED')
-    await contextForm.locator('select[name="reliability"]').selectOption('VERIFIED')
+    await expect(contextForm.locator('input[name="contextStatus"]')).toHaveValue('REVIEWED')
+    await expect(contextForm.locator('input[name="reliability"]')).toHaveValue('VERIFIED')
     await Promise.all([
       page.waitForURL(new RegExp(`/knowledge/${escapeRegExp(assetId)}\\?context=updated$`), { timeout: 30_000 }),
-      contextForm.getByRole('button', { name: 'Salva contesto' }).click(),
+      contextForm.getByRole('button', { name: 'Salva correzione' }).click(),
     ])
 
     await page.goto('/progetta?grade=prima')
