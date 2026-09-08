@@ -867,6 +867,7 @@ function buildProvinceDatasetMap() {
     ['ALTABRUZZO', ['AQ', 'CH', 'PE', 'TE']],
     ['ALTBASILICATA', ['MT', 'PZ']],
     ['ALTCALABRIA', ['CS', 'CZ', 'KR', 'RC', 'VV']],
+    ['ALTCAMPANIA', ['AV', 'BN', 'CE', 'NA', 'SA']],
     ['ALTEMILIAROMAGNA', ['BO', 'FC', 'FE', 'MO', 'PR', 'PC', 'RA', 'RE', 'RN']],
     ['ALTFRIULIVENEZIAGIULIA', ['GO', 'PN', 'TS', 'UD']],
     ['ALTLAZIO', ['FR', 'LT', 'RI', 'RM', 'VT']],
