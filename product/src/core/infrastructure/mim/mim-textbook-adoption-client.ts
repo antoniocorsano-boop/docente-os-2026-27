@@ -476,20 +476,13 @@ async function resolveOfficialCsvUrl(
   datasetCode: string,
   academicYearCode?: string,
 ) {
-  const candidates = [
-    resolveMimDatasetCatalogCsvUrl(datasetCode, academicYearCode),
-    resolveMimCatalogCsvUrl(catalogUrl, datasetCode, academicYearCode),
-    resolveFederatedCsvUrl(datasetCode, academicYearCode),
-  ].map((candidate) => candidate.then((value) => {
-    if (!value) throw new Error('CSV distribution not resolved')
-    return value
-  }))
+  const federated = await resolveFederatedCsvUrl(datasetCode, academicYearCode)
+  if (federated) return federated
 
-  try {
-    return await Promise.any(candidates)
-  } catch {
-    return null
-  }
+  const datasetCatalog = await resolveMimDatasetCatalogCsvUrl(datasetCode, academicYearCode)
+  if (datasetCatalog) return datasetCatalog
+
+  return resolveMimCatalogCsvUrl(catalogUrl, datasetCode, academicYearCode)
 }
 
 async function resolveMimDatasetCatalogCsvUrl(
