@@ -22,9 +22,16 @@ export function MimDiscoveryForm({ schoolCode }: { schoolCode: string }) {
       <div className="mimDiscoveryAction">
         <DiscoveryButton />
         {state.message ? (
-          <p className={`mimDiscoveryMessage ${state.status}`} role={state.status === 'error' ? 'alert' : 'status'}>
-            {state.message}
-          </p>
+          <>
+            <p className={`mimDiscoveryMessage ${state.status}`} role={state.status === 'error' ? 'alert' : 'status'}>
+              {state.message}
+            </p>
+            {state.status === 'error' ? (
+              <a className="settingsSecondaryButton mimFallbackButton" href="#libri-per-classe">
+                Continua con ISBN
+              </a>
+            ) : null}
+          </>
         ) : null}
       </div>
     </form>
