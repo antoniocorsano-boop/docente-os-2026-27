@@ -32,7 +32,7 @@ const corpus = [
   },
   {
     filename: '00_Relazione_gruppo_Tecnologia.docx',
-    text: `${instituteLine}\nRelazione conclusiva del gruppo disciplinare di Tecnologia. Relazione istruttoria destinata al Collegio dei Docenti. Le proposte acquistano efficacia istituzionale esclusivamente dopo i passaggi di competenza. Classe prima, seconda e terza. Formula proposta.`,
+    text: `${instituteLine}\nRelazione conclusiva del gruppo disciplinare di Tecnologia. Relazione istruttoria destinata al Collegio dei Docenti. Le proposte acquistano efficacia istituzionale esclusivamente dopo i passaggi di competenza. Oggetto dei lavori: revisione del Curricolo verticale di Tecnologia; definizione di una struttura comune per le Unità di Apprendimento; prove iniziali differenziate per le tre classi. Classe prima: Indicazioni nazionali 2025. Seconda e terza: continuità delle coorti nel regime transitorio. Formula proposta.`,
     category: 'REPORT',
     institutionalStatus: 'PROPOSAL',
   },
@@ -62,6 +62,14 @@ test('prove iniziali e accoglienza riconoscono le tre classi della secondaria', 
     assert.ok(profile.classLabels.includes('Classe seconda'))
     assert.ok(profile.classLabels.includes('Classe terza'))
   }
+})
+
+test('la relazione mantiene la propria identità anche quando cita il curricolo e la coppia seconda-terza', () => {
+  const profile = profileSchoolDocument({ filename: corpus[4].filename, text: corpus[4].text })
+  assert.equal(profile.suggestedCategory, 'REPORT')
+  assert.ok(profile.classLabels.includes('Classe prima'))
+  assert.ok(profile.classLabels.includes('Classe seconda'))
+  assert.ok(profile.classLabels.includes('Classe terza'))
 })
 
 test('la denominazione canonica con don non genera il flag di qualità', () => {
