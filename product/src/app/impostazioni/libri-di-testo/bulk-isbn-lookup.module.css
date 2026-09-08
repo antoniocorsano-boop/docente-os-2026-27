@@ -1,11 +1,10 @@
 .card {
   display: grid;
   gap: 1rem;
-  margin: 1rem 0 1.5rem;
-  padding: 1.1rem;
+  padding: 1rem;
   border: 1px solid var(--line, #d9dee7);
-  border-radius: 18px;
-  background: var(--surface, #fff);
+  border-radius: 16px;
+  background: color-mix(in srgb, currentColor 2%, transparent);
 }
 
 .header {
@@ -17,45 +16,39 @@
 
 .header > div {
   display: grid;
-  gap: .3rem;
+  gap: .25rem;
 }
 
-.header span {
-  font-size: .75rem;
-  font-weight: 800;
-  letter-spacing: .06em;
-  opacity: .72;
-}
-
-.header h2,
+.header h3,
 .header p {
   margin: 0;
 }
 
-.header h2 {
-  font-size: 1.18rem;
+.header h3 {
+  font-size: 1.05rem;
 }
 
 .header p {
-  max-width: 70ch;
-  line-height: 1.5;
-  opacity: .82;
+  max-width: 68ch;
+  line-height: 1.45;
+  opacity: .76;
 }
 
 .header > strong {
   white-space: nowrap;
-  font-size: .84rem;
+  font-size: .82rem;
+  opacity: .78;
 }
 
 .form {
   display: grid;
-  gap: 1rem;
+  gap: .9rem;
 }
 
 .lookupRow {
   display: grid;
   grid-template-columns: minmax(12rem, 1fr) auto minmax(10rem, .55fr);
-  gap: .75rem;
+  gap: .7rem;
   align-items: end;
 }
 
@@ -63,7 +56,7 @@
 .usageField {
   display: grid;
   gap: .35rem;
-  font-size: .85rem;
+  font-size: .84rem;
   font-weight: 700;
 }
 
@@ -72,8 +65,8 @@
   min-height: 2.75rem;
   padding: .65rem .75rem;
   border: 1px solid var(--line, #d9dee7);
-  border-radius: 12px;
-  background: transparent;
+  border-radius: 11px;
+  background: var(--surface, #fff);
   color: inherit;
   font: inherit;
 }
@@ -85,9 +78,10 @@
   justify-content: center;
   padding: .65rem .9rem;
   border: 1px solid var(--line, #d9dee7);
-  border-radius: 12px;
+  border-radius: 11px;
+  background: var(--surface, #fff);
   cursor: pointer;
-  font-weight: 800;
+  font-weight: 760;
   text-align: center;
 }
 
@@ -106,10 +100,10 @@
 .scanMessage,
 .result {
   margin: 0;
-  padding: .7rem .8rem;
-  border-radius: 12px;
-  font-size: .9rem;
-  line-height: 1.45;
+  padding: .65rem .75rem;
+  border-radius: 11px;
+  font-size: .88rem;
+  line-height: 1.4;
 }
 
 .scanMessage {
@@ -129,8 +123,8 @@
 }
 
 .assignmentHeader span {
-  font-size: .86rem;
-  opacity: .76;
+  font-size: .84rem;
+  opacity: .72;
 }
 
 .selectAll {
@@ -139,25 +133,26 @@
   color: inherit;
   cursor: pointer;
   font: inherit;
-  font-weight: 800;
+  font-weight: 760;
   text-decoration: underline;
   text-underline-offset: .18em;
 }
 
 .assignmentGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: .55rem;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: .5rem;
 }
 
 .assignmentOption {
   display: flex;
   align-items: center;
   gap: .55rem;
-  min-height: 2.8rem;
-  padding: .65rem .75rem;
+  min-height: 2.65rem;
+  padding: .6rem .7rem;
   border: 1px solid var(--line, #d9dee7);
-  border-radius: 12px;
+  border-radius: 11px;
+  background: var(--surface, #fff);
   cursor: pointer;
 }
 
@@ -188,15 +183,12 @@
     white-space: normal;
   }
 
-  .lookupRow {
+  .lookupRow,
+  .assignmentGrid {
     grid-template-columns: 1fr;
   }
 
   .photoButton {
     width: 100%;
-  }
-
-  .assignmentGrid {
-    grid-template-columns: 1fr;
   }
 }
