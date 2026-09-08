@@ -28,6 +28,18 @@ test('MIM registry CSV resolves an institute code to its school/plesso codes', (
   assert.ok(records.every((record) => record.academicYearCode === '202627'))
 })
 
+test('MIM registry CSV resolves a direct plesso code only when the registry contains it', () => {
+  const csv = [
+    'ANNOSCOLASTICO,CODICEISTITUTORIFERIMENTO,CODICESCUOLA,PROVINCIA',
+    '202627,AVIC849003,AVMM849047,AVELLINO',
+    '202627,AVIC849003,AVEE849015,AVELLINO',
+  ].join('\r\n')
+
+  const records = parseMimSchoolRegistryCsv(csv, 'AVMM849047', '202627')
+
+  assert.deepEqual(records.map((record) => record.schoolCode), ['AVMM849047'])
+})
+
 test('MIM discovery fails closed when a comprehensive-institute code is not resolved to a plesso', () => {
   assert.throws(
     () => fallbackAdoptionSchoolCodesWhenRegistryHasNoMatch('AVIC849003'),
@@ -42,10 +54,10 @@ test('MIM discovery fails closed when an upper-secondary institute code is not r
   )
 })
 
-test('MIM discovery may fall back to the same code only when it is already a plesso', () => {
-  assert.deepEqual(
-    fallbackAdoptionSchoolCodesWhenRegistryHasNoMatch('AVMM849047'),
-    ['AVMM849047'],
+test('MIM discovery fails closed when the registry does not resolve a code shaped like a plesso', () => {
+  assert.throws(
+    () => fallbackAdoptionSchoolCodesWhenRegistryHasNoMatch('AVMM849047'),
+    /non è stato risolto in alcun plesso/,
   )
 })
 
