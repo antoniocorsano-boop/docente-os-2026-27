@@ -69,7 +69,8 @@ test('Libri di testo: il percorso resta semplice e ISBN/foto è un fallback loca
     const selectionCount = Math.min(2, assignmentCount)
     for (let index = 0; index < selectionCount; index += 1) await assignments.nth(index).check()
 
-    await expect(bulk.getByText(new RegExp(`${selectionCount} class`))).toBeVisible()
+    const selectionLabel = selectionCount === 1 ? '1 classe selezionata' : `${selectionCount} classi selezionate`
+    await expect(bulk.locator('header > strong')).toHaveText(selectionLabel)
 
     const submit = bulk.getByRole('button', { name: new RegExp(`Prepara la proposta per ${selectionCount}`) })
     await expect(submit, 'La stessa ricerca ISBN deve poter essere applicata in un solo gesto alle classi selezionate.').toBeEnabled()
