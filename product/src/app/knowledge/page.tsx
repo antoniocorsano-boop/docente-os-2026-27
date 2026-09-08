@@ -22,6 +22,7 @@ type PageProps = {
     classLabel?: string
     capture?: string
     source?: string
+    textbookId?: string
   }>
 }
 
@@ -32,7 +33,9 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
   const query = params.q?.trim() ?? ''
   const uploadMessage = uploadFeedback(params.upload)
   const filters = { category: params.category?.trim(), discipline: params.discipline?.trim(), classLabel: params.classLabel?.trim() }
-  const textbookMaterialCapture = params.capture === 'file' && params.source === 'textbook'
+  const textbookMaterialCapture = params.capture === 'file'
+    && params.source === 'textbook'
+    && Boolean(params.textbookId?.trim())
 
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
