@@ -9,7 +9,7 @@ const MIM_SPARQL_TIMEOUT_MS = 10_000
 const MIM_CATALOG_TIMEOUT_MS = 15_000
 const DATA_GOV_TIMEOUT_MS = 15_000
 const MIM_CSV_TIMEOUT_MS = 120_000
-const MIM_CSV_ATTEMPT_TIMEOUT_MS = 30_000
+const MIM_CSV_ATTEMPT_TIMEOUT_MS = 60_000
 
 const MIM_HTTP_HEADERS = {
   accept: 'text/html,application/xhtml+xml,application/json,text/csv;q=0.9,*/*;q=0.8',
