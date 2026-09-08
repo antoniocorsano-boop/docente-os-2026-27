@@ -35,7 +35,7 @@ function inferCategory(text: string): KnowledgeContentCategory {
   // Document identity outranks subjects merely cited inside the document.
   // A departmental report can discuss the vertical curriculum without becoming a curriculum itself.
   if (/relazione conclusiva del gruppo disciplinare|relazione istruttoria/.test(text)) return 'REPORT'
-  if (/prove iniziali|prova iniziale|griglia analitica comune/.test(text)) return 'ASSESSMENT'
+  if (isAssessment(text)) return 'ASSESSMENT'
   if (/modello comune di unita di apprendimento|modello comune di uda/.test(text)) return 'MODEL'
   if (/piano di accoglienza|accoglienza alla tecnologia/.test(text)) return 'PROGRAMMING'
   if (/curricolo verticale/.test(text)) return 'CURRICULUM'
@@ -43,6 +43,19 @@ function inferCategory(text: string): KnowledgeContentCategory {
   if (/circolare/.test(text)) return 'CIRCULAR'
   if (/comunicazione|collegio dei docenti/.test(text)) return 'COMMUNICATION'
   return 'OTHER'
+}
+
+function isAssessment(text: string) {
+  if (/prove iniziali|prova iniziale|griglia analitica comune/.test(text)) return true
+
+  const markers = [
+    /\bprova\s+\d+\s*[-–—]?\s*fila\s+[a-z]\b/,
+    /\bverificare le conoscenze\b/,
+    /\bindica con una x la risposta giusta\b/,
+    /\bfai gli abbinamenti giusti\b/,
+    /\brispondere alle domande\b/,
+  ]
+  return markers.filter((pattern) => pattern.test(text)).length >= 2
 }
 
 function inferClasses(text: string) {
