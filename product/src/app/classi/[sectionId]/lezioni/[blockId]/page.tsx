@@ -1,22 +1,18 @@
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
-import {
-  filterProgettaItemsByFocus,
-  filterProgettaItemsByGrade,
-  filterProgettaItemsBySectionContext,
-} from '@/app/progetta/progetta-model'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
+import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
+import { SupabaseTextbookRepository } from '@/core/infrastructure/supabase/supabase-textbook-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { humanizeKnowledgeTitle } from '@/core/presentation/product-language'
 import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 import LessonPrepareClient from './lesson-prepare-client'
 import LessonLiveClient from './lesson-live-client'
 import LessonObserveClient from './lesson-observe-client'
 import LessonCloseClient from './lesson-close-client'
-import type { LessonKnowledgeSuggestion } from './lesson-design-tools'
+import { buildLessonMaterialSuggestions } from './lesson-material-suggestions'
 import './lesson-workspace.css'
 import './lesson-design-tools.css'
 
@@ -67,9 +63,11 @@ export default async function LessonWorkspacePage({
     blockId: block.id,
     projectionId: projection.projectionId,
   }
-  const [extensions, knowledgeItems] = await Promise.all([
+  const [extensions, knowledgeItems, assignments, textbookAdoptions] = await Promise.all([
     new SupabaseLessonDesignRepository().list(designContext),
     new SupabaseKnowledgeRepository().listRecent(context.workspace.id, 100),
+    new SupabaseTeachingAssignmentReader().list(context.workspace.id, context.academicYear.id),
+    new SupabaseTextbookRepository().list(context.workspace.id, context.academicYear.id),
   ])
 
   const progress = snapshot.progress.find((entry) =>
@@ -85,14 +83,26 @@ export default async function LessonWorkspacePage({
     COMPLETE_STATUSES.has(entry.status),
   ).length
 
+  const sectionAssignmentIds = new Set(
+    assignments.filter((assignment) => assignment.sectionId === section.id).map((assignment) => assignment.id),
+  )
+  const confirmedTextbooks = Array.from(new Map(
+    textbookAdoptions
+      .filter((adoption) => adoption.status === 'CONFIRMED' && sectionAssignmentIds.has(adoption.teachingAssignmentId))
+      .map((adoption) => [adoption.textbook.id, { id: adoption.textbook.id, title: adoption.textbook.title }]),
+  ).values())
+
   const compactSectionLabel = `${GRADE_NUMBER[section.grade]}${section.sectionCode}`
-  const knowledgeSuggestions = buildKnowledgeSuggestions({
+  const knowledgeSuggestions = buildLessonMaterialSuggestions({
     items: knowledgeItems,
     grade: GRADE_QUERY[section.grade],
     compactSectionLabel,
     blockId: block.id,
     uda: block.uda,
     pack: block.pack,
+    lessonTitle: projection.title,
+    objective: projection.objective,
+    confirmedTextbooks,
     excludedAssetIds: new Set(
       extensions.flatMap((extension) => extension.sourceRef?.startsWith('knowledge:')
         ? [extension.sourceRef.slice('knowledge:'.length)]
@@ -156,43 +166,6 @@ export default async function LessonWorkspacePage({
       )}
     </AppShell>
   )
-}
-
-function buildKnowledgeSuggestions(input: {
-  items: Awaited<ReturnType<SupabaseKnowledgeRepository['listRecent']>>
-  grade: 'prima' | 'seconda' | 'terza'
-  compactSectionLabel: string
-  blockId: string
-  uda: string
-  pack: string
-  excludedAssetIds: Set<string>
-}): LessonKnowledgeSuggestion[] {
-  const gradeItems = filterProgettaItemsByGrade(input.items, input.grade)
-  const scopedItems = filterProgettaItemsBySectionContext(gradeItems, input.compactSectionLabel)
-  const focused = filterProgettaItemsByFocus(scopedItems, {
-    blockId: input.blockId,
-    uda: input.uda,
-    pack: input.pack,
-  })
-
-  const rank: Record<string, number> = {
-    TEACHING_RESOURCE: 0,
-    ASSESSMENT: 1,
-    UDA: 2,
-    MODEL: 3,
-    PROGRAMMING: 4,
-  }
-
-  return focused
-    .filter(({ asset }) => !input.excludedAssetIds.has(asset.id))
-    .sort((a, b) => (rank[a.asset.contentCategory] ?? 9) - (rank[b.asset.contentCategory] ?? 9) || b.asset.capturedAt.localeCompare(a.asset.capturedAt))
-    .slice(0, 4)
-    .map(({ asset, document }) => ({
-      assetId: asset.id,
-      title: humanizeKnowledgeTitle(document?.title ?? asset.originalName),
-      summary: document?.summary ?? 'Contenuto già presente nella Conoscenza e collegato a questa fase.',
-      category: asset.contentCategory,
-    }))
 }
 
 function asMode(value: string | undefined): LessonWorkspaceMode {
