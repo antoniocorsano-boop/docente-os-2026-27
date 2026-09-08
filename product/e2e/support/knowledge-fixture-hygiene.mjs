@@ -21,6 +21,31 @@ export async function knowledgeFixtureAssetIds(_page, titleFragment) {
   return [...new Set((data ?? []).map((asset) => asset.id))]
 }
 
+export async function knowledgeFixtureSnapshot(titleFragment) {
+  const { supabase, userId } = await fixtureIdentity()
+  const { data: assets, error: assetError } = await supabase
+    .from('knowledge_assets')
+    .select('id, original_name, content_category, disciplines, class_labels, context_status, reliability, processing_status, current_generation_id, captured_at')
+    .eq('created_by', userId)
+    .ilike('original_name', `%${titleFragment}%`)
+    .order('captured_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(1)
+
+  if (assetError) throw new Error(`Knowledge fixture snapshot failed: ${assetError.message}`)
+  const asset = assets?.[0] ?? null
+  if (!asset) return null
+
+  const { data: units, error: unitError } = await supabase
+    .from('knowledge_units')
+    .select('id, unit_type, title, content, structured_data, validation_status, confidence')
+    .eq('asset_id', asset.id)
+    .order('ordinal', { ascending: true })
+
+  if (unitError) throw new Error(`Knowledge fixture unit snapshot failed: ${unitError.message}`)
+  return { asset, units: units ?? [] }
+}
+
 export async function deleteKnowledgeAsset(page, assetId, { tolerateMissing = true } = {}) {
   const response = await page.request.delete(`/api/knowledge/${encodeURIComponent(assetId)}`)
   if (response.status() === 204) return true
