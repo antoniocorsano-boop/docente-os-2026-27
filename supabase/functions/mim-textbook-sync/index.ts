@@ -15,11 +15,10 @@ const GITHUB_REPOSITORY_ID = '1341201345'
 const GITHUB_WORKFLOW_NAME = 'MIM Textbook Annual Sync'
 const GITHUB_WORKFLOW_PATH = '.github/workflows/mim-textbook-annual-sync.yml'
 const GITHUB_ALLOWED_REFS = new Set([
-  'refs/heads/feat/mim-textbook-cache',
   'refs/heads/develop',
   'refs/heads/main',
 ])
-const GITHUB_ALLOWED_EVENTS = new Set(['push', 'workflow_dispatch'])
+const GITHUB_ALLOWED_EVENTS = new Set(['workflow_dispatch'])
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   throw new Error('Supabase Edge runtime credentials are unavailable')
