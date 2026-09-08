@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
@@ -10,6 +11,10 @@ import {
   knowledgeProcessingStatus,
 } from '@/core/presentation/product-language'
 import { KnowledgeCaptureModes } from './KnowledgeCaptureModes'
+import {
+  resolveConfirmedTextbookMaterialContext,
+  TEXTBOOK_MATERIAL_CONTEXT_COOKIE,
+} from './textbook-material-context'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,13 +38,24 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
   const query = params.q?.trim() ?? ''
   const uploadMessage = uploadFeedback(params.upload)
   const filters = { category: params.category?.trim(), discipline: params.discipline?.trim(), classLabel: params.classLabel?.trim() }
-  const textbookMaterialCapture = params.capture === 'file'
+  const requestedTextbookId = params.textbookId?.trim() ?? ''
+  const textbookMaterialRequested = params.capture === 'file'
     && params.source === 'textbook'
-    && Boolean(params.textbookId?.trim())
+    && Boolean(requestedTextbookId)
 
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
   if (!context) redirect('/login')
+
+  const cookieStore = textbookMaterialRequested ? await cookies() : null
+  const cookieTextbookId = cookieStore?.get(TEXTBOOK_MATERIAL_CONTEXT_COOKIE)?.value?.trim() ?? ''
+  const textbookMaterialContext = textbookMaterialRequested && cookieTextbookId === requestedTextbookId
+    ? await resolveConfirmedTextbookMaterialContext(requestedTextbookId)
+    : null
+  const textbookMaterialCapture = Boolean(textbookMaterialContext)
+  const textbookMaterialMessage = textbookMaterialRequested && !textbookMaterialCapture
+    ? 'Il collegamento al libro è scaduto o non è più valido. Torna a Libri di testo e scegli di nuovo “Aggiungi alla Conoscenza”: nessun file verrà associato al libro senza un contesto confermato.'
+    : null
 
   const repository = new SupabaseKnowledgeRepository()
   const [recent, results] = await Promise.all([
@@ -78,6 +94,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
       </section>
 
       {uploadMessage ? <div className="knowledgeFeedback" role="status">{uploadMessage}</div> : null}
+      {textbookMaterialMessage ? <div className="knowledgeFeedback" role="alert">{textbookMaterialMessage}</div> : null}
 
       <div className="knowledgeGrid">
         <section className="knowledgePanel searchPanel">
