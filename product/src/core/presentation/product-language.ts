@@ -85,8 +85,8 @@ export function contentCategoryLabel(category: KnowledgeContentCategory) {
 }
 
 export function contextStatusLabel(status: KnowledgeContextStatus) {
-  if (status === 'REVIEWED') return 'Controllato'
-  if (status === 'NEEDS_REVIEW') return 'Da controllare'
+  if (status === 'REVIEWED') return 'Controllato da te'
+  if (status === 'NEEDS_REVIEW') return 'Organizzato automaticamente'
   return 'Da classificare'
 }
 
