@@ -8,28 +8,33 @@ const zanichelliTextbook = {
   publisher: 'Zanichelli',
 }
 
-test('confirmed Zanichelli textbook exposes only official external resource pointers', () => {
+test('confirmed Zanichelli textbook exposes only bounded official resource pointers', () => {
   const resources = publisherResourcesForAdoption({
     status: 'CONFIRMED',
     textbook: zanichelliTextbook,
   })
 
-  assert.deepEqual(resources.map((resource) => resource.kind), [
-    'EBOOK',
-    'EXERCISES',
-    'VIRTUAL_CLASS',
-    'TEACHER_RESOURCES',
-  ])
+  assert.deepEqual(resources.map((resource) => resource.kind), ['LIBRARY', 'EXERCISES'])
+  assert.deepEqual(resources.map((resource) => resource.audience), ['ACCOUNT_HOLDER', 'TEACHER'])
   assert.ok(resources.every((resource) => resource.provider === 'ZANICHELLI'))
-  assert.ok(resources.every((resource) => resource.accessLevel === 'TEACHER_RESERVED'))
-  assert.ok(resources.every((resource) => resource.requiresExternalLogin))
+  assert.ok(resources.every((resource) => resource.accessModel === 'EXTERNAL_ACCOUNT'))
   assert.ok(resources.every((resource) => {
-    const hostname = new URL(resource.url).hostname
-    return hostname === 'zanichelli.it' || hostname.endsWith('.zanichelli.it')
+    const url = new URL(resource.url)
+    return url.protocol === 'https:' && (url.hostname === 'zanichelli.it' || url.hostname.endsWith('.zanichelli.it'))
   }))
 })
 
-test('proposed textbook does not activate publisher entitlements', () => {
+test('publisher resource pointers use the documented Zanichelli entry points', () => {
+  const resources = publisherResourcesForAdoption({
+    status: 'CONFIRMED',
+    textbook: zanichelliTextbook,
+  })
+
+  assert.equal(resources.find((resource) => resource.kind === 'LIBRARY')?.url, 'https://my.zanichelli.it/home')
+  assert.equal(resources.find((resource) => resource.kind === 'EXERCISES')?.url, 'https://esercizi.zanichelli.it/insegnante')
+})
+
+test('proposed textbook does not expose publisher resources', () => {
   assert.deepEqual(publisherResourcesForAdoption({
     status: 'PROPOSED',
     textbook: zanichelliTextbook,
@@ -46,13 +51,28 @@ test('confirmed textbook from another publisher does not receive Zanichelli reso
   }), [])
 })
 
-test('publisher resource pointers never contain credentials or session material', () => {
-  const serialized = JSON.stringify(publisherResourcesForAdoption({
+test('publisher matching accepts a legal publisher suffix but not a partial-name collision', () => {
+  assert.equal(publisherResourcesForAdoption({
     status: 'CONFIRMED',
     textbook: {
       ...zanichelliTextbook,
       publisher: 'Zanichelli Editore S.p.A.',
     },
+  }).length, 2)
+
+  assert.deepEqual(publisherResourcesForAdoption({
+    status: 'CONFIRMED',
+    textbook: {
+      ...zanichelliTextbook,
+      publisher: 'NotZanichelli',
+    },
+  }), [])
+})
+
+test('publisher resource pointers never contain credentials or session material', () => {
+  const serialized = JSON.stringify(publisherResourcesForAdoption({
+    status: 'CONFIRMED',
+    textbook: zanichelliTextbook,
   })).toLowerCase()
 
   for (const forbidden of ['password', 'credential', 'token', 'cookie', 'session']) {
