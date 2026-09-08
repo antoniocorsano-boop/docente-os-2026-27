@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { matchMimTextbookAdoptions, type MimTeachingContext } from '@/core/domain/mim-textbook-discovery'
 import { normalizeIsbn13, type TextbookUsageKind } from '@/core/domain/textbook-adoption'
-import { MimTextbookAdoptionClient } from '@/core/infrastructure/mim/mim-textbook-adoption-client'
+import { MimTargetedAdoptionClient } from '@/core/infrastructure/mim/mim-targeted-adoption-client'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
@@ -76,8 +76,12 @@ export async function discoverMimTextbookAdoptions(
       context.academicYear.startsOn,
       context.academicYear.endsOn,
     )
-    const mimClient = new MimTextbookAdoptionClient()
-    const discovery = await mimClient.discoverBySchoolCode(settings.schoolCode, academicYearCode)
+    const mimClient = new MimTargetedAdoptionClient()
+    const discovery = await mimClient.discoverBySchoolCode(
+      settings.schoolCode,
+      academicYearCode,
+      teachingContexts,
+    )
     if (!discovery.records.length) {
       return {
         status: 'success',
