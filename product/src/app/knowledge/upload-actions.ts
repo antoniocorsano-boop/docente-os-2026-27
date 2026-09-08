@@ -1,6 +1,6 @@
 'use server'
 
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { KnowledgeIngestionService } from '@/core/application/knowledge-ingestion-service'
 import { VisualExtractionUnavailableError } from '@/core/application/ports/knowledge-base'
@@ -47,13 +47,18 @@ export async function finalizeKnowledgeFileUpload(
   if (!validation.valid) return { ok: false, code: validation.code }
 
   const cookieStore = await cookies()
-  const contextualTextbookId = cookieStore.get(TEXTBOOK_MATERIAL_CONTEXT_COOKIE)?.value?.trim() ?? ''
+  const requestHeaders = await headers()
+  const cookieTextbookId = cookieStore.get(TEXTBOOK_MATERIAL_CONTEXT_COOKIE)?.value?.trim() ?? ''
+  const handoffTextbookId = textbookIdFromKnowledgeReferer(requestHeaders.get('referer'))
+  const contextualTextbookId = cookieTextbookId && cookieTextbookId === handoffTextbookId
+    ? cookieTextbookId
+    : ''
   const textbookContext = contextualTextbookId
     ? await resolveConfirmedTextbookMaterialContext(contextualTextbookId)
     : null
 
-  if (contextualTextbookId && !textbookContext) {
-    cookieStore.delete(TEXTBOOK_MATERIAL_CONTEXT_COOKIE)
+  if (cookieTextbookId && (!contextualTextbookId || !textbookContext)) {
+    clearTextbookMaterialContext(cookieStore)
   }
 
   const repository = new SupabaseKnowledgeRepository()
@@ -104,7 +109,7 @@ export async function finalizeKnowledgeFileUpload(
           acquisitionMode: 'USER_PROVIDED_LEGITIMATE_COPY',
         },
       })
-      cookieStore.delete(TEXTBOOK_MATERIAL_CONTEXT_COOKIE)
+      clearTextbookMaterialContext(cookieStore)
     }
 
     revalidatePath('/knowledge')
@@ -116,6 +121,26 @@ export async function finalizeKnowledgeFileUpload(
     if (error instanceof VisualExtractionUnavailableError) return { ok: false, code: 'visual_unavailable' }
     return { ok: false, code: 'parse_failed' }
   }
+}
+
+function textbookIdFromKnowledgeReferer(referer: string | null) {
+  if (!referer) return ''
+  try {
+    const url = new URL(referer)
+    if (url.pathname !== '/knowledge') return ''
+    if (url.searchParams.get('capture') !== 'file') return ''
+    if (url.searchParams.get('source') !== 'textbook') return ''
+    return url.searchParams.get('textbookId')?.trim() ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function clearTextbookMaterialContext(cookieStore: Awaited<ReturnType<typeof cookies>>) {
+  cookieStore.set(TEXTBOOK_MATERIAL_CONTEXT_COOKIE, '', {
+    maxAge: 0,
+    path: '/knowledge',
+  })
 }
 
 function buildFileIngestion(repository: SupabaseKnowledgeRepository) {
