@@ -4,20 +4,30 @@ import { useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import './knowledge-upload-comfort.css'
-import { finalizeKnowledgeFileUpload } from './upload-actions'
+import {
+  finalizeKnowledgeFileUpload,
+  requestResumableKnowledgeUploadGrant,
+  type KnowledgeTransferMode,
+} from './upload-actions'
 import { LocalImagePrivacyWorkbench } from './LocalImagePrivacyWorkbench'
-import { LocalSinglePagePdfPrivacyWorkbench } from './LocalSinglePagePdfPrivacyWorkbench'
+import {
+  LocalSinglePagePdfPrivacyWorkbench,
+  type NativeTextPdfPreflightState,
+} from './LocalSinglePagePdfPrivacyWorkbench'
 import { LocalDocxSemanticMediaPrivacyWorkbench, type SemanticDocxMode } from './LocalDocxSemanticMediaPrivacyWorkbench'
+import { uploadKnowledgeBlobResumable } from './resumable-storage-upload'
 import {
   isAllowedKnowledgeUploadMime,
+  KNOWLEDGE_BUCKET,
   MAX_KNOWLEDGE_UPLOAD_BYTES,
   normalizeKnowledgeUploadMime,
+  RESUMABLE_KNOWLEDGE_UPLOAD_THRESHOLD_BYTES,
 } from './upload-policy'
 import { inspectFilenameForPilot, inspectFreeTextForPilot, pilotPrivacyErrorMessage } from '@/core/privacy/anonymization-guard'
 
 type UploadPhase = 'IDLE' | 'READY' | 'UPLOADING' | 'ORGANIZING' | 'ERROR'
 type FailedAt = 'SELECT' | 'UPLOAD' | 'ORGANIZE' | null
-type StoredUploadReference = { objectPath: string; mimeType: string; byteSize: number }
+type StoredUploadReference = { objectPath: string; mimeType: string; byteSize: number; transferMode: KnowledgeTransferMode }
 
 type SameOriginUploadResult =
   | { ok: true; objectPath: string; mimeType: string; byteSize: number }
@@ -33,6 +43,7 @@ export function KnowledgeFileUploader() {
   const [preparedImageFile, setPreparedImageFile] = useState<File | null>(null)
   const [preparedPdfFile, setPreparedPdfFile] = useState<File | null>(null)
   const [preparedDocxFile, setPreparedDocxFile] = useState<File | null>(null)
+  const [nativeTextPdfPreflight, setNativeTextPdfPreflight] = useState<NativeTextPdfPreflightState>('NOT_APPLICABLE')
   const [docxMode, setDocxMode] = useState<SemanticDocxMode>('TEXT_ONLY')
   const [privacyConfirmed, setPrivacyConfirmed] = useState(false)
   const [phase, setPhase] = useState<UploadPhase>('IDLE')
@@ -48,10 +59,12 @@ export function KnowledgeFileUploader() {
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0] ?? null
+    const mimeType = file ? normalizeKnowledgeUploadMime(file.type, file.name) : null
     setSelectedFile(file)
     setPreparedImageFile(null)
     setPreparedPdfFile(null)
     setPreparedDocxFile(null)
+    setNativeTextPdfPreflight(mimeType === PDF_MIME ? 'PENDING' : 'NOT_APPLICABLE')
     setDocxMode(file ? 'ANALYZING' : 'TEXT_ONLY')
     setPrivacyConfirmed(false)
     setPhase(file ? 'READY' : 'IDLE')
@@ -67,6 +80,7 @@ export function KnowledgeFileUploader() {
     setPreparedImageFile(null)
     setPreparedPdfFile(null)
     setPreparedDocxFile(null)
+    setNativeTextPdfPreflight('NOT_APPLICABLE')
     setDocxMode('TEXT_ONLY')
     setPrivacyConfirmed(false)
     setPhase('IDLE')
@@ -100,9 +114,19 @@ export function KnowledgeFileUploader() {
     }
 
     const imageUpload = originalMimeType.startsWith('image/')
+    const pdfUpload = originalMimeType === PDF_MIME
     const docxUpload = originalMimeType === DOCX_MIME
     if (imageUpload && !preparedImageFile) {
       return fail('Prima prepara la copia anonima nell’anteprima locale. L’immagine originale non verrà inviata.', 'SELECT')
+    }
+    if (pdfUpload && nativeTextPdfPreflight === 'PENDING') {
+      return fail('Attendi il controllo locale del PDF prima di procedere.', 'SELECT')
+    }
+    if (pdfUpload && nativeTextPdfPreflight === 'BLOCKED') {
+      return fail('Il controllo locale del PDF ha rilevato dati non ammessi nel pilot anonimo. Il file non viene inviato.', 'SELECT')
+    }
+    if (pdfUpload && originalFile.size > RESUMABLE_KNOWLEDGE_UPLOAD_THRESHOLD_BYTES && nativeTextPdfPreflight !== 'PASSED' && !preparedPdfFile) {
+      return fail('Questo PDF oltre 6 MB deve superare il preflight testuale locale oppure produrre una copia visuale revisionata prima del trasferimento.', 'SELECT')
     }
     if (docxUpload && docxMode === 'ANALYZING') {
       return fail('Attendi il controllo locale del DOCX prima di procedere.', 'SELECT')
@@ -121,6 +145,10 @@ export function KnowledgeFileUploader() {
     const docxSemanticPng = preparedDocxFile?.type === 'image/png'
     const localVisualUpload = imageUpload || Boolean(preparedPdfFile) || docxSemanticPng
     const localDocxTextDerivative = preparedDocxFile?.type === 'text/plain'
+    const resumableNativePdf = pdfUpload
+      && !preparedPdfFile
+      && nativeTextPdfPreflight === 'PASSED'
+      && originalFile.size > RESUMABLE_KNOWLEDGE_UPLOAD_THRESHOLD_BYTES
 
     if (failedAt === 'ORGANIZE' && storedUpload) {
       setFailedAt(null)
@@ -131,6 +159,47 @@ export function KnowledgeFileUploader() {
     setFailedAt(null)
     setStoredUpload(null)
     setPhase('UPLOADING')
+
+    if (resumableNativePdf) {
+      setMessage('Preflight locale superato. Trasferisco il PDF a blocchi nello spazio privato, con ripresa automatica se la rete si interrompe.')
+      const grant = await requestResumableKnowledgeUploadGrant({
+        originalName: originalFile.name,
+        rawMimeType: originalMimeType,
+        byteSize: originalFile.size,
+        privacyConfirmed: true,
+        preflightMode: 'PDF_NATIVE_TEXT_LOCAL',
+      })
+      if (!grant.ok) return fail(resumableGrantMessage(grant.code), 'UPLOAD')
+
+      try {
+        await uploadKnowledgeBlobResumable({
+          endpoint: grant.resumableEndpoint,
+          token: grant.token,
+          bucketName: KNOWLEDGE_BUCKET,
+          objectPath: grant.objectPath,
+          mimeType: grant.mimeType,
+          file: originalFile,
+          onProgress: (uploadedBytes, totalBytes) => {
+            const percent = Math.min(100, Math.round(uploadedBytes * 100 / totalBytes))
+            setMessage(`Trasferimento stabile in corso: ${percent}%. Il PDF viene inviato a blocchi senza passare dal processo Render.`)
+          },
+        })
+      } catch (error) {
+        console.error('Knowledge resumable upload failed', error)
+        return fail('Il trasferimento a blocchi non è riuscito. Il PDF è ancora sul dispositivo: puoi riprovare senza modificarlo.', 'UPLOAD')
+      }
+
+      const reference: StoredUploadReference = {
+        objectPath: grant.objectPath,
+        mimeType: grant.mimeType,
+        byteSize: originalFile.size,
+        transferMode: 'RESUMABLE_DIRECT',
+      }
+      setStoredUpload(reference)
+      await organizeStoredFile(originalFile, reference)
+      return
+    }
+
     setMessage(localDocxTextDerivative
       ? 'Revisione locale completata. Invio solo il TXT derivato: DOCX originale e media restano sul dispositivo.'
       : docxSemanticPng
@@ -167,6 +236,7 @@ export function KnowledgeFileUploader() {
       objectPath: uploadResult.objectPath,
       mimeType: uploadResult.mimeType,
       byteSize: uploadResult.byteSize,
+      transferMode: 'SAME_ORIGIN',
     }
     setStoredUpload(reference)
     await organizeStoredFile(uploadFile, reference)
@@ -181,6 +251,7 @@ export function KnowledgeFileUploader() {
       originalName: file.name,
       mimeType: reference.mimeType,
       byteSize: reference.byteSize,
+      transferMode: reference.transferMode,
     })
 
     if (!result.ok) return fail(finalizeMessage(result.code), 'ORGANIZE')
@@ -206,22 +277,27 @@ export function KnowledgeFileUploader() {
         : null
 
   const imageReady = !selectedIsImage || Boolean(preparedImageFile)
+  const pdfReady = !selectedIsPdf || (nativeTextPdfPreflight !== 'PENDING' && nativeTextPdfPreflight !== 'BLOCKED')
   const docxReady = !selectedIsDocx || docxMode === 'TEXT_ONLY' || Boolean(preparedDocxFile)
   const selectionStatus = storedUpload
     ? 'Copia ammessa già al sicuro'
     : preparedPdfFile || preparedDocxFile
       ? 'Copia anonima pronta'
-      : selectedIsImage && preparedImageFile
-        ? 'Copia anonima pronta'
-        : selectedIsImage
-          ? 'Pronto per la revisione locale'
-          : selectedIsDocx && docxMode === 'ANALYZING'
-            ? 'Controllo locale in corso'
-            : selectedIsDocx && docxMode === 'MEDIA_REVIEWABLE'
-              ? 'Pronto per la revisione locale'
-              : selectedIsDocx && docxMode === 'FAILED'
-                ? 'Controllo non disponibile'
-                : 'Pronto a caricare'
+      : selectedIsPdf && nativeTextPdfPreflight === 'PASSED'
+        ? 'Preflight locale superato'
+        : selectedIsImage && preparedImageFile
+          ? 'Copia anonima pronta'
+          : selectedIsImage
+            ? 'Pronto per la revisione locale'
+            : selectedIsDocx && docxMode === 'ANALYZING'
+              ? 'Controllo locale in corso'
+              : selectedIsDocx && docxMode === 'MEDIA_REVIEWABLE'
+                ? 'Pronto per la revisione locale'
+                : selectedIsDocx && docxMode === 'FAILED'
+                  ? 'Controllo non disponibile'
+                  : selectedIsPdf && nativeTextPdfPreflight === 'PENDING'
+                    ? 'Controllo locale in corso'
+                    : 'Pronto a caricare'
 
   const submitLabel = phase === 'UPLOADING'
     ? 'Caricamento…'
@@ -231,17 +307,21 @@ export function KnowledgeFileUploader() {
         ? 'Riprova organizzazione'
         : selectedIsImage && !preparedImageFile
           ? 'Prepara prima la copia anonima'
-          : selectedIsDocx && docxMode === 'ANALYZING'
-            ? 'Controllo DOCX…'
-            : selectedIsDocx && docxMode === 'MEDIA_REVIEWABLE' && !preparedDocxFile
-              ? 'Prepara prima il derivato anonimo'
-              : selectedIsDocx && docxMode === 'FAILED'
-                ? 'DOCX non ammesso'
-                : phase === 'ERROR' && selectedFile
-                  ? 'Riprova'
-                  : selectedFile
-                    ? 'Carica e organizza'
-                    : 'Seleziona prima un file'
+          : selectedIsPdf && nativeTextPdfPreflight === 'PENDING'
+            ? 'Controllo PDF…'
+            : selectedIsPdf && nativeTextPdfPreflight === 'BLOCKED'
+              ? 'PDF non ammesso'
+              : selectedIsDocx && docxMode === 'ANALYZING'
+                ? 'Controllo DOCX…'
+                : selectedIsDocx && docxMode === 'MEDIA_REVIEWABLE' && !preparedDocxFile
+                  ? 'Prepara prima il derivato anonimo'
+                  : selectedIsDocx && docxMode === 'FAILED'
+                    ? 'DOCX non ammesso'
+                    : phase === 'ERROR' && selectedFile
+                      ? 'Riprova'
+                      : selectedFile
+                        ? 'Carica e organizza'
+                        : 'Seleziona prima un file'
 
   return (
     <form className="knowledgeUploadForm knowledgeUploadComfort" onSubmit={handleSubmit}>
@@ -292,6 +372,14 @@ export function KnowledgeFileUploader() {
         <LocalSinglePagePdfPrivacyWorkbench
           file={selectedFile}
           disabled={busy}
+          onNativeTextPreflight={(state) => {
+            setNativeTextPdfPreflight(state)
+            if (state === 'PASSED') {
+              setFailedAt(null)
+              setPhase('READY')
+              setMessage(null)
+            }
+          }}
           onPrepared={(safeFile) => {
             setPreparedPdfFile(safeFile)
             setFailedAt(null)
@@ -343,10 +431,10 @@ export function KnowledgeFileUploader() {
         </div>
       ) : null}
 
-      <button type="submit" disabled={busy || !selectedFile || !imageReady || !docxReady}>{submitLabel}</button>
+      <button type="submit" disabled={busy || !selectedFile || !imageReady || !pdfReady || !docxReady}>{submitLabel}</button>
       {selectedFile && !busy ? (
         <p className="knowledgeUploadTrust">
-          TXT/Markdown, PDF testuali e DOCX senza media vengono controllati prima della persistenza. Immagini e PDF visuali fino a cinque pagine passano solo tramite PNG revisionati. Un DOCX con media può produrre un TXT anonimo oppure, entro i limiti locali, un PNG semantico con testo e media revisionati. PDF visuali oltre cinque pagine e media DOCX non coperti restano bloccati.
+          TXT/Markdown, PDF testuali e DOCX senza media vengono controllati prima della persistenza. I PDF testuali oltre 6 MB, dopo il preflight locale, vengono trasferiti a blocchi con protocollo resumable senza attraversare il processo Render. Immagini e PDF visuali fino a cinque pagine passano solo tramite PNG revisionati. Un DOCX con media può produrre un TXT anonimo oppure, entro i limiti locali, un PNG semantico con testo e media revisionati. PDF visuali oltre cinque pagine e media DOCX non coperti restano bloccati.
         </p>
       ) : null}
     </form>
@@ -376,6 +464,15 @@ function uploadSteps(input: { phase: UploadPhase; failedAt: FailedAt; hasFile: b
 
 async function readUploadResult(response: Response): Promise<SameOriginUploadResult | null> {
   try { return await response.json() as SameOriginUploadResult } catch { return null }
+}
+
+function resumableGrantMessage(code: 'missing' | 'too_large' | 'unsupported' | 'privacy_confirmation_required' | 'privacy_blocked' | 'authorization_failed') {
+  if (code === 'too_large') return 'Il file supera il limite di 20 MB.'
+  if (code === 'privacy_confirmation_required') return 'Conferma esplicitamente che il contenuto destinato al pilot è privo di dati personali.'
+  if (code === 'privacy_blocked') return 'Il nome del file contiene dati non ammessi nel pilot anonimo.'
+  if (code === 'authorization_failed') return 'Non sono riuscito ad autorizzare il trasferimento a blocchi. Ricarica la pagina e riprova.'
+  if (code === 'unsupported') return 'Il trasferimento resumable è disponibile solo per PDF testuali oltre 6 MB già verificati localmente.'
+  return 'Non sono riuscito a preparare il trasferimento a blocchi. Riprova.'
 }
 
 function uploadFailureMessage(status: number, code?: string) {

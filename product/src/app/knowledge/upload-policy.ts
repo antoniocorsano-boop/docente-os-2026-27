@@ -1,5 +1,6 @@
 export const KNOWLEDGE_BUCKET = 'knowledge-assets'
 export const MAX_KNOWLEDGE_UPLOAD_BYTES = 20 * 1024 * 1024
+export const RESUMABLE_KNOWLEDGE_UPLOAD_THRESHOLD_BYTES = 6 * 1024 * 1024
 export const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
 export const ALLOWED_KNOWLEDGE_UPLOAD_MIMES = [

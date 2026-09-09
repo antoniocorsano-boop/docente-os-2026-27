@@ -1,9 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 import { E2E_EMAIL, E2E_PASSWORD, requireE2ECredentials } from './e2e-auth.mjs'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://gnshgapmwyjamhmlikeg.supabase.co'
-const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L'
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 const KNOWLEDGE_BUCKET = 'knowledge-assets'
+
+if (!supabaseUrl || !supabasePublishableKey) {
+  throw new Error('NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY are required for Knowledge fixture hygiene')
+}
 
 let fixtureIdentityPromise = null
 
@@ -25,7 +29,7 @@ export async function knowledgeFixtureSnapshot(titleFragment) {
   const { supabase, userId } = await fixtureIdentity()
   const { data: assets, error: assetError } = await supabase
     .from('knowledge_assets')
-    .select('id, original_name, content_category, disciplines, class_labels, context_status, reliability, processing_status, current_generation_id, captured_at')
+    .select('id, original_name, content_category, disciplines, class_labels, context_status, reliability, processing_status, current_generation_id, captured_at, source_metadata')
     .eq('created_by', userId)
     .ilike('original_name', `%${titleFragment}%`)
     .order('captured_at', { ascending: false })

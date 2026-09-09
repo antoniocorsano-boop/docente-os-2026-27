@@ -10,7 +10,13 @@ import {
 } from '@/core/privacy/local-pdf-visual-preflight'
 
 type Point = { x: number; y: number }
-type Props = { file: File; disabled: boolean; onPrepared: (file: File | null) => void }
+export type NativeTextPdfPreflightState = 'PENDING' | 'PASSED' | 'BLOCKED' | 'NOT_APPLICABLE'
+type Props = {
+  file: File
+  disabled: boolean
+  onPrepared: (file: File | null) => void
+  onNativeTextPreflight: (state: NativeTextPdfPreflightState) => void
+}
 const GAP = 24
 const MAX_PAGE_DIMENSION = 1800
 const MAX_COMPOSITE_HEIGHT = 12000
@@ -19,11 +25,12 @@ export function LocalSinglePagePdfPrivacyWorkbench(props: Props) {
   return <Session key={`${props.file.name}:${props.file.size}:${props.file.lastModified}`} {...props} />
 }
 
-function Session({ file, disabled, onPrepared }: Props) {
+function Session({ file, disabled, onPrepared, onNativeTextPreflight }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sourceRef = useRef<HTMLCanvasElement | null>(null)
   const startRef = useRef<Point | null>(null)
   const onPreparedRef = useRef(onPrepared)
+  const onNativeTextPreflightRef = useRef(onNativeTextPreflight)
   const [state, setState] = useState<LocalPdfVisualPreflightState | 'ANALYZING'>('ANALYZING')
   const [pages, setPages] = useState(0)
   const [ready, setReady] = useState(false)
@@ -32,21 +39,31 @@ function Session({ file, disabled, onPrepared }: Props) {
   const [message, setMessage] = useState('Analizzo il PDF localmente. Nessun byte viene inviato.')
 
   useEffect(() => { onPreparedRef.current = onPrepared }, [onPrepared])
+  useEffect(() => { onNativeTextPreflightRef.current = onNativeTextPreflight }, [onNativeTextPreflight])
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
       onPreparedRef.current(null)
+      onNativeTextPreflightRef.current('PENDING')
       try {
         const bytes = new Uint8Array(await file.arrayBuffer())
         const classification = await classifyLocalPdfForVisualPreflight(bytes)
         if (cancelled) return
         setState(classification.state)
         setPages(classification.totalPages ?? 0)
-        if (classification.state === 'NATIVE_TEXT_ONLY') {
-          setMessage('PDF testuale: continua nel preflight testuale ordinario.')
+        if (classification.state === 'NATIVE_TEXT_ONLY' && classification.nativeTextPrivacy === 'PASSED') {
+          onNativeTextPreflightRef.current('PASSED')
+          setMessage('PDF testuale controllato localmente: preflight privacy superato. Nessun byte è stato inviato.')
           return
         }
+        if (classification.state === 'NATIVE_TEXT_PRIVACY_BLOCKED') {
+          onNativeTextPreflightRef.current('BLOCKED')
+          setMessage('Il controllo locale ha rilevato dati non ammessi nel pilot anonimo. Il PDF resta sul dispositivo e non viene inviato.')
+          return
+        }
+
+        onNativeTextPreflightRef.current('NOT_APPLICABLE')
         if (classification.state === 'MULTI_PAGE_VISUAL_BLOCKED') {
           setMessage(`Il PDF supera il limite locale di ${MAX_LOCAL_VISUAL_PDF_PAGES} pagine. Resta bloccato e nessun originale viene inviato.`)
           return
@@ -65,6 +82,7 @@ function Session({ file, disabled, onPrepared }: Props) {
         console.error('Local PDF privacy workbench failed', error)
         if (!cancelled) {
           setState('FAILED')
+          onNativeTextPreflightRef.current('NOT_APPLICABLE')
           setMessage('Non riesco ad aprire questo PDF localmente. Nessun byte è stato inviato.')
         }
       }
@@ -156,7 +174,7 @@ function Session({ file, disabled, onPrepared }: Props) {
     setMessage(`Copia anonima pronta: verrà inviato solo il PNG ricodificato delle ${pages === 1 ? 'pagina' : `${pages} pagine`}.`)
   }
 
-  if (state === 'NATIVE_TEXT_ONLY' || state === 'MULTI_PAGE_VISUAL_BLOCKED' || state === 'FAILED' || state === 'ANALYZING') {
+  if (state === 'NATIVE_TEXT_ONLY' || state === 'NATIVE_TEXT_PRIVACY_BLOCKED' || state === 'MULTI_PAGE_VISUAL_BLOCKED' || state === 'FAILED' || state === 'ANALYZING') {
     return <p role="status" aria-live="polite" className="knowledgeUploadTrust">{message}</p>
   }
 

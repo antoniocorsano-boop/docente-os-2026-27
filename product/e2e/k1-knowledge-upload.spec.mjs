@@ -12,6 +12,7 @@ import { buildSchoolDocxFixture, schoolDocxCorpus } from './support/school-docx-
 const email = process.env.E2E_EMAIL ?? 'docente-os-e2e-2dbf49e1@example.invalid'
 const password = process.env.E2E_PASSWORD
 const fixtureName = 'k1-upload-recovery.txt'
+const largePdfFixtureName = 'k1-resumable-large.pdf'
 
 if (!password) {
   throw new Error('E2E_PASSWORD is required for the authenticated K1 acceptance test')
@@ -100,6 +101,49 @@ test('K1 Knowledge: scelta file, conferma privacy, errore recuperabile, retry re
   }
 })
 
+test('K1 Knowledge: PDF testuale oltre 6 MB usa preflight locale e trasferimento resumable', async ({ page }) => {
+  await login(page)
+  await deleteAllKnowledgeFixtures(page, largePdfFixtureName)
+  await deleteOrphanedKnowledgeFixtureObjects([largePdfFixtureName])
+  let createdAssetId = null
+
+  try {
+    await openFileCapture(page)
+    const buffer = buildLargeTextPdfFixture()
+    expect(buffer.byteLength).toBeGreaterThan(6 * 1024 * 1024)
+    expect(buffer.byteLength).toBeLessThan(20 * 1024 * 1024)
+
+    await page.locator('input[type="file"][name="file"]').setInputFiles({
+      name: largePdfFixtureName,
+      mimeType: 'application/pdf',
+      buffer,
+    })
+
+    await expect(page.getByText('Preflight locale superato')).toBeVisible({ timeout: 45_000 })
+    await expect(page.getByText(/preflight privacy superato/i)).toBeVisible()
+    const privacyConfirmation = page.getByRole('checkbox')
+    await privacyConfirmation.check()
+
+    await page.getByRole('button', { name: 'Carica e organizza' }).click()
+    await page.waitForURL(/\/knowledge\/[^/?#]+$/, { timeout: 120_000 })
+    createdAssetId = page.url().match(/\/knowledge\/([^/?#]+)/)?.[1] ?? null
+    expect(createdAssetId).toBeTruthy()
+
+    const snapshot = await knowledgeFixtureSnapshot(largePdfFixtureName)
+    expect(snapshot).toBeTruthy()
+    expect(snapshot.asset.processing_status).toBe('INDEXED')
+    expect(snapshot.asset.source_metadata?.captureMode).toBe('resumable-storage-upload')
+    expect(snapshot.asset.source_metadata?.transferPath).toBe('browser-to-supabase-storage-tus-after-local-pdf-preflight')
+    expect(snapshot.asset.source_metadata?.privacyPreflight).toBe('PDF_NATIVE_TEXT_LOCAL_BEFORE_STORAGE')
+    await page.screenshot({ path: 'test-results/k1-02c-resumable-large-pdf.png' })
+  } finally {
+    if (createdAssetId) await deleteKnowledgeAsset(page, createdAssetId).catch(() => {})
+    await deleteAllKnowledgeFixtures(page, largePdfFixtureName).catch(() => {})
+    await deleteOrphanedKnowledgeFixtureObjects([largePdfFixtureName]).catch(() => {})
+    expect(await knowledgeFixtureAssetIds(page, largePdfFixtureName)).toHaveLength(0)
+  }
+})
+
 test('K1 Knowledge: i cinque documenti scolastici attraversano davvero DOCX → KB → contesto auto-organizzato', async ({ page }) => {
   await login(page)
   const fixtureNames = schoolDocxCorpus.map((fixture) => fixture.filename)
@@ -170,6 +214,38 @@ test('K1 Knowledge: i cinque documenti scolastici attraversano davvero DOCX → 
     for (const fixtureName of fixtureNames) expect(await knowledgeFixtureAssetIds(page, fixtureName)).toHaveLength(0)
   }
 })
+
+function buildLargeTextPdfFixture(targetBytes = 7 * 1024 * 1024) {
+  const baseContent = 'BT /F1 12 Tf 72 720 Td (K1 resumable acceptance Tecnologia) Tj ET\n'
+  const paddingLine = `%${'A'.repeat(98)}\n`
+  const paddingLength = Math.max(0, targetBytes - 1000 - Buffer.byteLength(baseContent))
+  const padding = paddingLine.repeat(Math.ceil(paddingLength / paddingLine.length) + 1).slice(0, paddingLength)
+  const content = `${baseContent}${padding}`
+
+  const objects = [
+    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+    '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n',
+    `4 0 obj\n<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}endstream\nendobj\n`,
+    '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+  ]
+
+  const prefix = '%PDF-1.4\n'
+  const offsets = [0]
+  let cursor = Buffer.byteLength(prefix)
+  for (const object of objects) {
+    offsets.push(cursor)
+    cursor += Buffer.byteLength(object)
+  }
+  const xrefOffset = cursor
+  const xref = [
+    'xref\n0 6\n',
+    '0000000000 65535 f \n',
+    ...offsets.slice(1).map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`),
+  ].join('')
+  const trailer = `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`
+  return Buffer.from(`${prefix}${objects.join('')}${xref}${trailer}`, 'latin1')
+}
 
 async function openFileCapture(page) {
   await page.goto('/knowledge')
