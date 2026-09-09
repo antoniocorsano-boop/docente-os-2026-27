@@ -13,6 +13,26 @@ test('allows generic pedagogical references without an identified person', () =>
   assert.equal(result.allowed, true)
 })
 
+test('allows a teacher guide to discuss students, families and inclusion without identifying anyone', () => {
+  const result = inspectFreeTextForPilot([
+    'Idee per insegnare: strategie per lo studente con DSA e per gli studenti con BES.',
+    'Il docente può usare PDP e PEI come riferimenti professionali e dialogare con la famiglia.',
+    'Le attività inclusive vanno adattate ai bisogni della classe senza associare informazioni a una persona identificata.',
+  ].join('\n'))
+  assert.equal(result.allowed, true)
+  assert.deepEqual(result.findings, [])
+})
+
+test('does not create D4-D5 findings from unrelated words in different parts of a long document', () => {
+  const result = inspectFreeTextForPilot([
+    'La guida descrive lo studente come protagonista del processo di apprendimento.',
+    'Capitolo successivo: collaborazione con le famiglie e comunicazione scuola territorio.',
+    'Appendice metodologica: DSA, BES, PDP, PEI e legge 104 come riferimenti generali per la progettazione inclusiva.',
+  ].join('\n\n'))
+  assert.equal(result.allowed, true)
+  assert.deepEqual(result.findings, [])
+})
+
 test('allows technical numeric identifiers that are not presented as contacts', () => {
   const result = inspectFreeTextForPilot('UDA tecnica HVA classe prima — 32936721990')
   assert.equal(result.allowed, true)
@@ -34,6 +54,20 @@ test('blocks named student plus special-category context', () => {
   const result = inspectFreeTextForPilot('Studente Mario Rossi: predisporre PDP per DSA.')
   assert.equal(result.allowed, false)
   assert.ok(result.findings.some((finding) => finding.riskClass === 'D3' && finding.code === 'NAMED_STUDENT'))
+  assert.ok(result.findings.some((finding) => finding.riskClass === 'D5'))
+})
+
+test('blocks a named student when the role follows the name', () => {
+  const result = inspectFreeTextForPilot('Mario Rossi, studente della classe seconda, con diagnosi DSA.')
+  assert.equal(result.allowed, false)
+  assert.ok(result.findings.some((finding) => finding.code === 'NAMED_STUDENT'))
+  assert.ok(result.findings.some((finding) => finding.riskClass === 'D5'))
+})
+
+test('blocks a numbered individual student reference with special-category context', () => {
+  const result = inspectFreeTextForPilot('Studente n. 17 con PDP per DSA.')
+  assert.equal(result.allowed, false)
+  assert.ok(result.findings.some((finding) => finding.code === 'INDIVIDUAL_STUDENT_REFERENCE'))
   assert.ok(result.findings.some((finding) => finding.riskClass === 'D5'))
 })
 
