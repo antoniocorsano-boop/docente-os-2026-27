@@ -42,12 +42,16 @@ export function normalizeKnowledgeWorkingText(
   let legalBlockWindow = 0
 
   for (let index = 0; index < lines.length; index += 1) {
-    const stripped = stripInlineTeacherCopyFooter(lines[index])
+    const originalLine = lines[index]
+    const stripped = stripInlineTeacherCopyFooter(originalLine)
     if (stripped.removed) removedBoilerplateLines += 1
 
     const line = stripped.text
     const compact = collapse(line)
-    if (!compact) continue
+    if (!compact) {
+      if (!stripped.removed && originalLine.trim() === '') kept.push('')
+      continue
+    }
 
     const nextCompact = collapse(stripInlineTeacherCopyFooter(lines[index + 1] ?? '').text)
     const isCopyrightLine = COPYRIGHT_LINE.test(compact)

@@ -38,14 +38,14 @@ export class PlainTextKnowledgeTransformer implements AssetTransformerPort {
             },
           }
         : {},
-      units: chunkText(text).map((content, ordinal) => ({
+      units: chunkKnowledgeText(text).map((content, ordinal) => ({
         type: 'CHUNK',
         title: ordinal === 0 ? title : null,
         content,
         confidence: 1,
       })),
       processor: 'plain-text',
-      processorVersion: '1.1.2',
+      processorVersion: '1.1.3',
     }
   }
 }
@@ -56,24 +56,61 @@ function inferTitle(text: string, originalName: string | null) {
   return firstLine ? firstLine.slice(0, 120) : 'Nota'
 }
 
-function chunkText(text: string, maxLength = 1200) {
-  const paragraphs = text.split(/\n\s*\n/).map((value) => value.trim()).filter(Boolean)
+export function chunkKnowledgeText(text: string, maxLength = 1200) {
+  const normalized = text.replace(/\r\n?/g, '\n').trim()
+  if (!normalized) return []
+
   const chunks: string[] = []
   let current = ''
 
-  for (const paragraph of paragraphs.length ? paragraphs : [text]) {
-    if (!current) {
-      current = paragraph
+  const flush = () => {
+    if (!current) return
+    chunks.push(current)
+    current = ''
+  }
+
+  for (const rawLine of normalized.split('\n')) {
+    const line = rawLine.trim()
+    if (!line) {
+      flush()
       continue
     }
-    if (`${current}\n\n${paragraph}`.length <= maxLength) {
-      current = `${current}\n\n${paragraph}`
-    } else {
-      chunks.push(current)
-      current = paragraph
+
+    for (const piece of splitLongLine(line, maxLength)) {
+      if (!current) {
+        current = piece
+        continue
+      }
+
+      const candidate = `${current}\n${piece}`
+      if (candidate.length <= maxLength) {
+        current = candidate
+      } else {
+        flush()
+        current = piece
+      }
     }
   }
 
-  if (current) chunks.push(current)
+  flush()
   return chunks
+}
+
+function splitLongLine(line: string, maxLength: number) {
+  const pieces: string[] = []
+  let remaining = line.trim()
+  const minimumNaturalBoundary = Math.floor(maxLength * 0.6)
+
+  while (remaining.length > maxLength) {
+    const window = remaining.slice(0, maxLength + 1)
+    const naturalBoundary = window.lastIndexOf(' ')
+    const cut = naturalBoundary >= minimumNaturalBoundary ? naturalBoundary : maxLength
+    const piece = remaining.slice(0, cut).trim()
+
+    if (piece) pieces.push(piece)
+    remaining = remaining.slice(cut).trimStart()
+  }
+
+  if (remaining) pieces.push(remaining)
+  return pieces
 }
