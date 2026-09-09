@@ -46,8 +46,6 @@ function Session({ file, disabled, onPrepared, onNativeTextPreflight }: Props) {
 
   useEffect(() => {
     let cancelled = false
-    setSanitizedNativeText(null)
-    setSanitizedLabels([])
     void (async () => {
       onPreparedRef.current(null)
       onNativeTextPreflightRef.current('PENDING')
