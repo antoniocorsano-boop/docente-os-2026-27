@@ -122,6 +122,8 @@ jobs:
     timeout-minutes: 40
     env:
       E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
+      NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
 
     steps:
       - name: Check E2E credential configuration
