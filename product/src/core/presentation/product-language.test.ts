@@ -15,6 +15,7 @@ test('technical knowledge statuses become teacher-facing statuses', () => {
 })
 
 test('providers and asset kinds use professional language', () => {
+  assert.equal(sourceProviderLabel('UPLOAD'), 'File acquisito')
   assert.equal(sourceProviderLabel('DRIVE'), 'Google Drive')
   assert.equal(sourceProviderLabel('MANUAL'), 'Inserito da te')
   assert.equal(assetKindLabel('GENERATED'), 'Creato in DOCENTE OS')
@@ -27,5 +28,6 @@ test('canonical and file-system titles are humanized without altering stored dat
     'Piano annuale operativo Tecnologia Classe 1 2026-2027',
   )
   assert.equal(humanizeKnowledgeTitle('programmazione_annuale.docx'), 'programmazione annuale')
+  assert.equal(humanizeKnowledgeTitle('Idee per insegnare-anonimizzato.txt'), 'Idee per insegnare')
   assert.equal(humanizeKnowledgeTitle(null), 'Contenuto senza titolo')
 })
