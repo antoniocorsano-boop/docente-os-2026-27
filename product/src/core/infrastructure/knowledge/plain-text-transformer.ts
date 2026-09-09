@@ -45,7 +45,7 @@ export class PlainTextKnowledgeTransformer implements AssetTransformerPort {
         confidence: 1,
       })),
       processor: 'plain-text',
-      processorVersion: '1.1.0',
+      processorVersion: '1.1.1',
     }
   }
 }
