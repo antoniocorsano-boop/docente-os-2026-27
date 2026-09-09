@@ -31,7 +31,7 @@ import {
 export type KnowledgeTransferMode = 'SAME_ORIGIN' | 'RESUMABLE_DIRECT'
 
 export type KnowledgeUploadGrantResult =
-  | { ok: true; objectPath: string; token: string; mimeType: string; resumableEndpoint: string }
+  | { ok: true; objectPath: string; accessToken: string; mimeType: string; resumableEndpoint: string }
   | { ok: false; code: 'missing' | 'too_large' | 'unsupported' | 'privacy_confirmation_required' | 'privacy_blocked' | 'authorization_failed' }
 
 export type FinalizeKnowledgeUploadResult =
@@ -85,7 +85,7 @@ export async function requestResumableKnowledgeUploadGrant(input: {
     return { ok: false, code: 'authorization_failed' }
   }
 
-  return { ok: true, objectPath, token: accessToken, mimeType, resumableEndpoint }
+  return { ok: true, objectPath, accessToken, mimeType, resumableEndpoint }
 }
 
 export async function finalizeKnowledgeFileUpload(
