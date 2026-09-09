@@ -4,8 +4,9 @@ export type KnowledgeWorkingTextQuality = {
 }
 
 const LOCAL_PDF_TEXT_DERIVATIVE = /-anonimizzato\.txt$/i
-const COPYRIGHT_LINE = /©.*\b(?:19|20)\d{2}\b/i
+const COPYRIGHT_LINE = /(?:(?:copyright\s*)?©|\bcopyright\b).*\b(?:19|20)\d{2}\b/i
 const SUMMARY_NAVIGATION = /^(?:per scaricare i contenuti online|vai su|lezione|compiti|verifiche|orientamento|idee per insegnare)$/i
+const STANDALONE_URL = /^www\.[^\s]+$/i
 
 const BOILERPLATE_PATTERNS = [
   /^questa pagina è riservata a chi insegna\b/i,
@@ -13,6 +14,12 @@ const BOILERPLATE_PATTERNS = [
   /^fini esclusivi di attività didattica\.?$/i,
   /^copia riservata all['’]insegnante\b/i,
   /^(?:prima|seconda|terza|quarta|quinta)?\s*edizione\b.*©.*\b(?:19|20)\d{2}\b/i,
+  /^questo libro è stampato su carta\b/i,
+  /^stampa:\s*\S+/i,
+  /^per conto di .*\b(?:editore|edizioni)\b/i,
+  /^\[dato di contatto rimosso\],?\s*\d{5}\b/i,
+  /^diritti riservati\b/i,
+  /^i diritti di (?:pubblicazione|riproduzione)\b/i,
 ]
 
 export function isLocalPdfTextDerivativeFilename(value: string | null | undefined) {
@@ -31,21 +38,28 @@ export function normalizeKnowledgeWorkingText(
   const lines = normalized.split('\n')
   const kept: string[] = []
   let removedBoilerplateLines = 0
+  let legalBlockWindow = 0
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index]
     const compact = collapse(line)
     const nextCompact = collapse(lines[index + 1] ?? '')
+    const isCopyrightLine = COPYRIGHT_LINE.test(compact)
+    const isLegalContinuation = legalBlockWindow > 0 && isLegalBlockContinuation(compact)
 
     if (
-      isKnowledgeBoilerplateLine(compact)
+      isCopyrightLine
+      || isKnowledgeBoilerplateLine(compact)
       || isTeacherFormTemplateLine(compact)
       || looksLikeCreditLineBeforeCopyright(compact, nextCompact)
+      || isLegalContinuation
     ) {
       removedBoilerplateLines += 1
+      legalBlockWindow = isCopyrightLine ? 8 : Math.max(0, legalBlockWindow - 1)
       continue
     }
 
+    if (legalBlockWindow > 0) legalBlockWindow -= 1
     kept.push(line.trimEnd())
   }
 
@@ -59,6 +73,7 @@ export function isKnowledgeBoilerplateLine(value: string) {
   const line = collapse(value)
   if (!line) return false
   if (/^\d{1,4}$/.test(line)) return true
+  if (COPYRIGHT_LINE.test(line)) return true
   return BOILERPLATE_PATTERNS.some((pattern) => pattern.test(line))
 }
 
@@ -91,21 +106,31 @@ export function isKnowledgeHighlightNoise(value: string) {
   const line = collapse(value)
   if (!line) return true
   if (isKnowledgeBoilerplateLine(line) || isTeacherFormTemplateLine(line)) return true
-  if (COPYRIGHT_LINE.test(line)) return true
   if (/^(?:nome|cognome|classe|data)\b/i.test(line) && /\.{4,}/.test(line)) return true
   return false
 }
 
 function isTeacherFormTemplateLine(line: string) {
   const normalized = line.toLocaleLowerCase('it-IT')
-  return ['nome', 'cognome', 'classe', 'data'].every((token) => normalized.includes(token))
+  const completeTemplate = ['nome', 'cognome', 'classe', 'data'].every((token) => normalized.includes(token))
     && /\.{4,}/.test(line)
+  const standaloneEmptyField = /^(?:nome|cognome|classe|data)\s*[:._-]*$/i.test(line)
+  return completeTemplate || standaloneEmptyField
 }
 
 function looksLikeCreditLineBeforeCopyright(line: string, nextLine: string) {
   if (!line || !COPYRIGHT_LINE.test(nextLine)) return false
   const commaCount = (line.match(/,/g) ?? []).length
   return commaCount >= 2 && line.length <= 180
+}
+
+function isLegalBlockContinuation(line: string) {
+  if (!line) return false
+  if (STANDALONE_URL.test(line)) return true
+  if (/^diritti riservati\b/i.test(line)) return true
+  if (/^i diritti di (?:pubblicazione|riproduzione)\b/i.test(line)) return true
+  if (/^(?:noleggio|prestito|esecuzione)\b.*\b(?:distribuzione|comunicazione|traduzione|trascrizione)\b/i.test(line)) return true
+  return false
 }
 
 function collapse(value: string) {
