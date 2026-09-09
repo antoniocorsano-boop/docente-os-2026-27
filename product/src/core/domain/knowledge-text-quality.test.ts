@@ -66,6 +66,20 @@ test('removes publisher legal block and standalone empty form labels found in re
   assert.match(result.text, /Indica con una X/i)
 })
 
+test('removes an inline teacher-copy footer without deleting the teaching sentence before it', () => {
+  const source = [
+    'C Rispondere alle domande',
+    "4. Nel rischio sismico, che cos’è la vulnerabilità?Copia riservata all'insegnante [dato di contatto rimosso]",
+    '5. Descrivi una struttura reticolare.',
+  ].join('\n')
+
+  const result = normalizeKnowledgeWorkingText(source, { localPdfTextDerivative: true })
+
+  assert.doesNotMatch(result.text, /Copia riservata all['’]insegnante/i)
+  assert.match(result.text, /Nel rischio sismico, che cos’è la vulnerabilità\?/) 
+  assert.match(result.text, /Descrivi una struttura reticolare/)
+})
+
 test('keeps ordinary TXT unchanged', () => {
   const source = 'Nota di dipartimento\n\nPreparare il laboratorio di Tecnologia.'
   const result = normalizeKnowledgeWorkingText(source)
