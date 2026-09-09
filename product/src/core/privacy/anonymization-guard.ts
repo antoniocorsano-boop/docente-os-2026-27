@@ -63,7 +63,7 @@ export function pilotPrivacyErrorMessage(result: PrivacyGuardResult) {
 
 function privacySegments(text: string) {
   return text
-    .split(/(?:\r?\n)+|[.!?;]+\s+/u)
+    .split(/(?:\r?\n)+|;+\s*/u)
     .map((segment) => segment.trim())
     .filter(Boolean)
 }
