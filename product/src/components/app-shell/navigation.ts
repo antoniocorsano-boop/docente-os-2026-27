@@ -27,20 +27,12 @@ export type NavigationGroup = {
 
 export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
   {
-    key: 'home',
-    href: '/',
-    label: 'Home',
-    shortLabel: 'Home',
-    description: 'Riprendi dal prossimo passo utile.',
-    keywords: ['inizio', 'riprendi', 'prossimo passo', 'home'],
-  },
-  {
     key: 'today',
     href: '/planner',
     label: 'Oggi',
     shortLabel: 'Oggi',
-    description: 'Attività, priorità e cose da fare adesso.',
-    keywords: ['attività', 'da fare', 'priorità', 'scadenze', 'oggi'],
+    description: 'Vedi impegni, lezioni e attività nel momento giusto della giornata.',
+    keywords: ['attività', 'da fare', 'priorità', 'scadenze', 'oggi', 'lezioni', 'impegni'],
   },
   {
     key: 'design',
@@ -71,7 +63,7 @@ export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
     href: '/orario',
     label: 'Orario',
     shortLabel: 'Orario',
-    description: 'Vedi dove sei nella settimana e apri la lezione pertinente.',
+    description: 'Vedi lo schema ricorrente della settimana e le lezioni previste.',
     keywords: ['orario', 'lezioni', 'settimana', 'adesso', 'ore'],
   },
   {
@@ -79,7 +71,7 @@ export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
     href: '/calendario',
     label: 'Calendario',
     shortLabel: 'Calendario',
-    description: 'Registra giorni reali, sospensioni, impegni e scadenze dell’anno scolastico.',
+    description: 'Gestisci date reali, sospensioni, impegni e scadenze dell’anno scolastico.',
     keywords: ['calendario', 'date', 'sospensioni', 'festività', 'riunioni', 'scadenze', 'eventi'],
   },
   {
@@ -104,8 +96,8 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
   {
     key: 'work',
     label: 'Adesso',
-    description: 'Riprendi il lavoro o affronta ciò che richiede attenzione.',
-    items: ['home', 'today'],
+    description: 'Parti dalla giornata reale e dal prossimo impegno.',
+    items: ['today'],
   },
   {
     key: 'teaching',
