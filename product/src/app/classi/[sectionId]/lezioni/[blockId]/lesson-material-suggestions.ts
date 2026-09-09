@@ -30,6 +30,11 @@ export type LessonKnowledgeSuggestion = {
   textbookTitle: string | null
 }
 
+type IndexedContentEvidence = {
+  relevance: number
+  matchedConcepts: number
+}
+
 export function buildLessonMaterialSuggestions(input: {
   items: ProgettaItem[]
   grade: ProgettaGrade
@@ -66,18 +71,28 @@ export function buildLessonMaterialSuggestions(input: {
       const summary = item.document?.summary?.trim() || 'Contenuto già presente nella Conoscenza.'
       const sourceKind = editorialMatch ? 'EDITORIAL_KNOWLEDGE' as const : 'KNOWLEDGE' as const
       const relevance = lexicalOverlapScore(`${title} ${summary}`, lessonContext)
+      const indexedEvidence = indexedContentEvidence(item.document?.normalizedText, lessonContext)
+      const contextualEvidence = relevance > 0 || indexedEvidence.relevance >= 2
+
+      // Un libro confermato rende il materiale ammissibile, non automaticamente pertinente.
+      // I collegamenti espliciti B/UDA/PACK restano invece autoritativi per il contesto della lezione.
+      if (!explicitFocus && editorialMatch && !contextualEvidence) return []
+
       const classification = classifyTeachingMaterial({
         title,
         summary,
         category: item.asset.contentCategory,
         sourceMetadata: item.asset.sourceMetadata,
       })
-      const pedagogicalFit = pedagogicalFitScore(classification.roles, lessonContext)
+      const contentOnlyEvidence = relevance === 0 && indexedEvidence.relevance >= 2
+      const pedagogicalFit = contentOnlyEvidence ? 0 : pedagogicalFitScore(classification.roles, lessonContext)
       const score = (explicitFocus ? 60 : 0)
-        + (editorialMatch ? 35 : 0)
-        + relevance * 6
+        + (editorialMatch ? 25 : 0)
+        + relevance * 8
+        + indexedEvidence.relevance * 10
         + pedagogicalFit
         + categoryRank(item.asset.contentCategory)
+      const suggestionRoles = contentOnlyEvidence ? [] : classification.roles
 
       return [{
         item,
@@ -94,14 +109,16 @@ export function buildLessonMaterialSuggestions(input: {
             uda: input.uda,
             textbookTitle: textbook?.title ?? null,
             relevance,
+            indexedEvidence,
             pedagogicalFit,
           }),
           usageTip: usageTip({
-            roles: classification.roles,
+            roles: suggestionRoles,
             editorial: editorialMatch,
+            indexedContentMatch: contentOnlyEvidence,
           }),
-          pedagogicalRoles: classification.roles,
-          classificationConfidence: classification.confidence,
+          pedagogicalRoles: suggestionRoles,
+          classificationConfidence: contentOnlyEvidence ? 'MEDIUM' : classification.confidence,
           textbookId: textbook?.id ?? null,
           textbookTitle: textbook?.title ?? null,
         },
@@ -126,23 +143,36 @@ function suggestionReason(input: {
   uda: string
   textbookTitle: string | null
   relevance: number
+  indexedEvidence: IndexedContentEvidence
   pedagogicalFit: number
 }) {
   if (input.explicitFocus && input.textbookTitle) {
     return `È già collegato a ${input.blockId} / UDA ${input.uda} e proviene dai materiali di “${input.textbookTitle}”, libro confermato per questa classe.`
   }
   if (input.explicitFocus) return `È già collegato esplicitamente a ${input.blockId} / UDA ${input.uda}.`
+  if (input.textbookTitle && input.relevance === 0 && input.indexedEvidence.relevance >= 2) {
+    return `Proviene dai materiali di “${input.textbookTitle}”, libro confermato per questa classe; la ricerca nel contenuto indicizzato trova nello stesso passaggio più concetti chiave coerenti con l’obiettivo della lezione.`
+  }
+  if (input.textbookTitle && input.relevance > 0 && input.indexedEvidence.relevance >= 2) {
+    return `Proviene dai materiali di “${input.textbookTitle}”, libro confermato per questa classe; titolo o sintesi e un passaggio del contenuto indicizzato sono coerenti con l’obiettivo della lezione.`
+  }
   if (input.textbookTitle && input.relevance > 0 && input.pedagogicalFit > 0) {
-    return `Proviene dai materiali di “${input.textbookTitle}”, libro confermato per questa classe; contenuto e funzione didattica sono coerenti con l’obiettivo della lezione.`
+    return `Proviene dai materiali di “${input.textbookTitle}”, libro confermato per questa classe; contenuto dichiarato e funzione didattica sono coerenti con l’obiettivo della lezione.`
   }
   if (input.textbookTitle && input.relevance > 0) {
-    return `Proviene dai materiali di “${input.textbookTitle}”, libro confermato per questa classe, e presenta elementi coerenti con l’obiettivo della lezione.`
+    return `Proviene dai materiali di “${input.textbookTitle}”, libro confermato per questa classe, e titolo o sintesi presentano elementi coerenti con l’obiettivo della lezione.`
   }
-  if (input.textbookTitle) return `Proviene dai materiali di “${input.textbookTitle}”, libro confermato per questa classe.`
   return 'È pertinente al contesto corrente della lezione.'
 }
 
-function usageTip(input: { roles: TeachingMaterialPedagogicalRole[]; editorial: boolean }) {
+function usageTip(input: {
+  roles: TeachingMaterialPedagogicalRole[]
+  editorial: boolean
+  indexedContentMatch: boolean
+}) {
+  if (input.indexedContentMatch) {
+    return 'Apri il materiale e usa solo la parte pertinente all’obiettivo corrente: la corrispondenza viene da un passaggio locale del contenuto indicizzato, non dal titolo, e resta da controllare prima di allegarla alla lezione.'
+  }
   if (input.roles.includes('INCLUSION') && input.roles.includes('ASSESSMENT')) {
     return 'Qui potresti affiancarlo alla prova ordinaria come variante ad alta leggibilità o supporto inclusivo, mantenendo invariato l’obiettivo della verifica.'
   }
@@ -171,6 +201,83 @@ function usageTip(input: { roles: TeachingMaterialPedagogicalRole[]; editorial: 
     return 'Qui potresti agganciarti al testo usando questo materiale come supporto operativo alla spiegazione o all’attività, senza trasformarlo automaticamente nella tua progettazione.'
   }
   return 'Qui potresti usarlo come materiale operativo della lezione; aprilo prima per verificare quale parte è davvero pertinente.'
+}
+
+function indexedContentEvidence(content: string | null | undefined, lessonContext: string): IndexedContentEvidence {
+  if (!content?.trim()) return { relevance: 0, matchedConcepts: 0 }
+  const lessonTerms = Array.from(new Set(
+    terms(lessonContext).filter((term) => !LESSON_EVIDENCE_STOP_TERMS.has(term)),
+  )).slice(0, 8)
+  if (!lessonTerms.length) return { relevance: 0, matchedConcepts: 0 }
+
+  let bestLocalMatch = 0
+  for (const passage of localEvidencePassages(content)) {
+    const normalizedPassage = normalizeSearchText(passage)
+    let matchedConcepts = 0
+    for (const term of lessonTerms) {
+      if (containsConcept(normalizedPassage, term)) matchedConcepts += 1
+    }
+    if (matchedConcepts > bestLocalMatch) bestLocalMatch = matchedConcepts
+    if (bestLocalMatch >= 4) break
+  }
+
+  return {
+    relevance: Math.min(bestLocalMatch, 4),
+    matchedConcepts: bestLocalMatch,
+  }
+}
+
+function localEvidencePassages(content: string, maxLength = 1200) {
+  const paragraphs = content
+    .replace(/\r/g, '')
+    .split(/\n\s*\n/)
+    .map((value) => value.trim())
+    .filter(Boolean)
+  const source = paragraphs.length ? paragraphs : [content.trim()]
+  return source.flatMap((paragraph) => splitEvidencePassage(paragraph, maxLength))
+}
+
+function splitEvidencePassage(value: string, maxLength: number) {
+  if (value.length <= maxLength) return [value]
+  const words = value.split(/\s+/).filter(Boolean)
+  const passages: string[] = []
+  let current = ''
+
+  for (const word of words) {
+    if (!current) {
+      current = word
+      continue
+    }
+    const candidate = `${current} ${word}`
+    if (candidate.length <= maxLength) {
+      current = candidate
+      continue
+    }
+    passages.push(current)
+    current = word
+  }
+  if (current) passages.push(current)
+  return passages
+}
+
+function containsConcept(normalizedContent: string, term: string) {
+  const root = conceptRoot(term)
+  if (!root) return false
+  const escaped = root.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`\\b${escaped}[a-z0-9]*\\b`).test(normalizedContent)
+}
+
+function conceptRoot(term: string) {
+  if (term.length >= 8) return term.slice(0, 7)
+  return term
+}
+
+function normalizeSearchText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
 }
 
 function lexicalOverlapScore(left: string, right: string) {
@@ -212,4 +319,19 @@ function categoryRank(category: string) {
 
 const STOP_TERMS = new Set([
   'della', 'delle', 'degli', 'dello', 'dalla', 'dalle', 'nella', 'nelle', 'questo', 'questa', 'lezione', 'classe', 'materiale', 'attivita',
+])
+
+const LESSON_EVIDENCE_STOP_TERMS = new Set([
+  'tecnologia',
+  'riconoscere',
+  'comprendere',
+  'descrivere',
+  'spiegare',
+  'individuare',
+  'confrontare',
+  'utilizzare',
+  'applicare',
+  'sapere',
+  'essere',
+  'avere',
 ])
