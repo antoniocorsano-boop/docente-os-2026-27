@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import assert from 'node:assert/strict'
+import { describe, it } from 'node:test'
 import type { AnnualPlanCurriculumRevalidationReview } from '@/core/domain/cml-curriculum-revalidation'
 import type { PlanBlockCurriculumBindingV1 } from '@/core/domain/cml-plan-block-curriculum-binding-v1'
 import type { UdaCurriculumBindingV1 } from './cml-uda-curriculum-binding-v1'
@@ -206,41 +207,38 @@ describe('C2P-09 curriculum migration impact manifest', () => {
     const manifest = build([
       { targetType: 'PLAN_BLOCK_BINDING', targetId: binding.bindingId, temporalScope: 'HISTORICAL', binding },
     ], review({ changed: ['REQ-A'] }))
+    const entry = manifest.entries[0]
 
-    expect(manifest.entries[0]).toMatchObject({
-      disposition: 'HISTORICAL_PRESERVE',
-      preservedHistory: true,
-      automaticMutationAllowed: false,
-      teacherRevalidationRequired: false,
-      rebindingRequired: false,
-    })
-    expect(manifest.policy.historicalRewriteAllowed).toBe(false)
+    assert.equal(entry.disposition, 'HISTORICAL_PRESERVE')
+    assert.equal(entry.preservedHistory, true)
+    assert.equal(entry.automaticMutationAllowed, false)
+    assert.equal(entry.teacherRevalidationRequired, false)
+    assert.equal(entry.rebindingRequired, false)
+    assert.equal(manifest.policy.historicalRewriteAllowed, false)
   })
 
   it('requires future rebinding when a requirement already used by a plan block changes', () => {
     const binding = planBinding({ requirementIds: ['REQ-A', 'REQ-B'] })
-    const manifest = build([
+    const entry = build([
       { targetType: 'PLAN_BLOCK_BINDING', targetId: binding.bindingId, temporalScope: 'FUTURE', binding },
-    ], review({ changed: ['REQ-A'] }))
+    ], review({ changed: ['REQ-A'] })).entries[0]
 
-    expect(manifest.entries[0]).toMatchObject({
-      disposition: 'FUTURE_REBIND_REQUIRED',
-      reasonCode: 'BOUND_REQUIREMENT_CHANGED_OR_REMOVED',
-      affectedRequirementIds: ['REQ-A'],
-      teacherRevalidationRequired: true,
-      rebindingRequired: true,
-      automaticMutationAllowed: false,
-    })
+    assert.equal(entry.disposition, 'FUTURE_REBIND_REQUIRED')
+    assert.equal(entry.reasonCode, 'BOUND_REQUIREMENT_CHANGED_OR_REMOVED')
+    assert.deepEqual(entry.affectedRequirementIds, ['REQ-A'])
+    assert.equal(entry.teacherRevalidationRequired, true)
+    assert.equal(entry.rebindingRequired, true)
+    assert.equal(entry.automaticMutationAllowed, false)
   })
 
   it('requires future rebinding when a requirement already used by a UDA is removed', () => {
     const binding = udaBinding({ requirementIds: ['REQ-A'] })
-    const manifest = build([
+    const entry = build([
       { targetType: 'UDA_BINDING', targetId: binding.bindingId, temporalScope: 'FUTURE', binding },
-    ], review({ removed: ['REQ-A'] }))
+    ], review({ removed: ['REQ-A'] })).entries[0]
 
-    expect(manifest.entries[0].disposition).toBe('FUTURE_REBIND_REQUIRED')
-    expect(manifest.entries[0].affectedRequirementIds).toEqual(['REQ-A'])
+    assert.equal(entry.disposition, 'FUTURE_REBIND_REQUIRED')
+    assert.deepEqual(entry.affectedRequirementIds, ['REQ-A'])
   })
 
   it('requires teacher revalidation for a new mandatory requirement even if current bindings remain semantically intact', () => {
@@ -248,93 +246,86 @@ describe('C2P-09 curriculum migration impact manifest', () => {
     const manifest = build([
       { targetType: 'PLAN_BLOCK_BINDING', targetId: binding.bindingId, temporalScope: 'FUTURE', binding },
     ], review({ added: [{ id: 'REQ-NEW', mandatory: true }] }))
+    const entry = manifest.entries[0]
 
-    expect(manifest.entries[0]).toMatchObject({
-      disposition: 'FUTURE_REVALIDATION_REQUIRED',
-      reasonCode: 'NEW_MANDATORY_REQUIREMENT_REQUIRES_REVALIDATION',
-      affectedRequirementIds: ['REQ-NEW'],
-      rebindingRequired: false,
-    })
-    expect(manifest.requirementDelta.addedMandatoryRequirementIds).toEqual(['REQ-NEW'])
+    assert.equal(entry.disposition, 'FUTURE_REVALIDATION_REQUIRED')
+    assert.equal(entry.reasonCode, 'NEW_MANDATORY_REQUIREMENT_REQUIRES_REVALIDATION')
+    assert.deepEqual(entry.affectedRequirementIds, ['REQ-NEW'])
+    assert.equal(entry.rebindingRequired, false)
+    assert.deepEqual(manifest.requirementDelta.addedMandatoryRequirementIds, ['REQ-NEW'])
   })
 
   it('requires revalidation for an authority or structural-footprint change without rewriting the binding', () => {
     const binding = planBinding({ hash: 'old-hash', requirementIds: ['REQ-A'] })
-    const manifest = build([
+    const entry = build([
       { targetType: 'PLAN_BLOCK_BINDING', targetId: binding.bindingId, temporalScope: 'FUTURE', binding },
-    ], review({ incomingHash: 'approved-hash' }))
+    ], review({ incomingHash: 'approved-hash' })).entries[0]
 
-    expect(manifest.entries[0]).toMatchObject({
-      disposition: 'FUTURE_REVALIDATION_REQUIRED',
-      reasonCode: 'CURRICULUM_FOOTPRINT_CHANGED_REQUIRES_REVALIDATION',
-      automaticMutationAllowed: false,
-    })
-    expect(binding.curriculum.sourceHandoffFingerprintHash).toBe('old-hash')
+    assert.equal(entry.disposition, 'FUTURE_REVALIDATION_REQUIRED')
+    assert.equal(entry.reasonCode, 'CURRICULUM_FOOTPRINT_CHANGED_REQUIRES_REVALIDATION')
+    assert.equal(entry.automaticMutationAllowed, false)
+    assert.equal(binding.curriculum.sourceHandoffFingerprintHash, 'old-hash')
   })
 
   it('classifies an already aligned future binding as unchanged-compatible', () => {
     const binding = planBinding({ hash: 'same-hash', requirementIds: ['REQ-A'] })
-    const manifest = build([
+    const entry = build([
       { targetType: 'PLAN_BLOCK_BINDING', targetId: binding.bindingId, temporalScope: 'FUTURE', binding },
-    ], review({ incomingHash: 'same-hash' }))
+    ], review({ incomingHash: 'same-hash' })).entries[0]
 
-    expect(manifest.entries[0]).toMatchObject({
-      disposition: 'UNCHANGED_COMPATIBLE',
-      reasonCode: 'CURRENT_BINDING_COMPATIBLE',
-      teacherRevalidationRequired: false,
-      automaticMutationAllowed: false,
-    })
+    assert.equal(entry.disposition, 'UNCHANGED_COMPATIBLE')
+    assert.equal(entry.reasonCode, 'CURRENT_BINDING_COMPATIBLE')
+    assert.equal(entry.teacherRevalidationRequired, false)
+    assert.equal(entry.automaticMutationAllowed, false)
   })
 
   it('routes a changed curriculum scope to manual review instead of rebinding silently', () => {
     const binding = planBinding({ cohortRef: 'cohort-grade-1-2026' })
-    const manifest = build([
+    const entry = build([
       { targetType: 'PLAN_BLOCK_BINDING', targetId: binding.bindingId, temporalScope: 'FUTURE', binding },
-    ], review({ cohortRef: 'different-cohort' }))
+    ], review({ cohortRef: 'different-cohort' })).entries[0]
 
-    expect(manifest.entries[0]).toMatchObject({
-      disposition: 'MANUAL_REVIEW_REQUIRED',
-      reasonCode: 'SCOPE_CHANGED_REQUIRES_MANUAL_REVIEW',
-      teacherRevalidationRequired: true,
-      rebindingRequired: false,
-    })
+    assert.equal(entry.disposition, 'MANUAL_REVIEW_REQUIRED')
+    assert.equal(entry.reasonCode, 'SCOPE_CHANGED_REQUIRES_MANUAL_REVIEW')
+    assert.equal(entry.teacherRevalidationRequired, true)
+    assert.equal(entry.rebindingRequired, false)
   })
 
   it('preserves classroom history without carrying raw classroom data into the transition manifest', () => {
-    const manifest = build([{
+    const entry = build([{
       targetType: 'CLASSROOM_HISTORY',
       targetId: 'teaching-session-001',
       temporalScope: 'HISTORICAL',
       recordKind: 'TEACHING_SESSION',
       sourceBindingIds: ['plan-binding-B01', 'uda-binding-1-01'],
-    }])
+    }]).entries[0]
 
-    expect(manifest.entries[0].disposition).toBe('HISTORICAL_PRESERVE')
-    expect(manifest.entries[0].affectedRequirementIds).toEqual([])
-    expect('studentRef' in manifest.entries[0]).toBe(false)
-    expect('evidence' in manifest.entries[0]).toBe(false)
+    assert.equal(entry.disposition, 'HISTORICAL_PRESERVE')
+    assert.deepEqual(entry.affectedRequirementIds, [])
+    assert.equal('studentRef' in entry, false)
+    assert.equal('evidence' in entry, false)
   })
 
   it('fails closed on duplicate target identities', () => {
     const binding = planBinding()
-    expect(() => build([
+    assert.throws(() => build([
       { targetType: 'PLAN_BLOCK_BINDING', targetId: binding.bindingId, temporalScope: 'FUTURE', binding },
       { targetType: 'PLAN_BLOCK_BINDING', targetId: binding.bindingId, temporalScope: 'HISTORICAL', binding },
-    ])).toThrow(/duplicate curriculum migration target/)
+    ]), /duplicate curriculum migration target/)
   })
 
   it('fails closed when the migration target identity does not match its binding', () => {
     const binding = planBinding()
-    expect(() => build([
+    assert.throws(() => build([
       { targetType: 'PLAN_BLOCK_BINDING', targetId: 'forged-id', temporalScope: 'FUTURE', binding },
-    ])).toThrow(/must match the binding identity/)
+    ]), /must match the binding identity/)
   })
 
   it('refuses any review that already authorizes persistence', () => {
     const binding = planBinding()
-    expect(() => build([
+    assert.throws(() => build([
       { targetType: 'PLAN_BLOCK_BINDING', targetId: binding.bindingId, temporalScope: 'FUTURE', binding },
-    ], review({ persistenceAllowed: true }))).toThrow(/requires a non-persisting teacher revalidation review/)
+    ], review({ persistenceAllowed: true })), /requires a non-persisting teacher revalidation review/)
   })
 
   it('never confers institutional authority or silent migration power', () => {
@@ -343,7 +334,7 @@ describe('C2P-09 curriculum migration impact manifest', () => {
       { targetType: 'UDA_BINDING', targetId: binding.bindingId, temporalScope: 'FUTURE', binding },
     ])
 
-    expect(manifest.policy).toEqual({
+    assert.deepEqual(manifest.policy, {
       historicalRewriteAllowed: false,
       silentRebindAllowed: false,
       automaticPersistenceAllowed: false,
