@@ -173,7 +173,7 @@ test('K1 Knowledge: i cinque documenti scolastici attraversano davvero DOCX → 
       createdAssetIds.push(assetId)
 
       const provenance = page.getByRole('region', { name: 'Contesto del contenuto' })
-      await expect(provenance).toContainText('File caricato')
+      await expect(provenance).toContainText('File acquisito')
       await expect(provenance).toContainText(fixture.categoryLabel)
       await expect(provenance).toContainText('Pronto')
 
