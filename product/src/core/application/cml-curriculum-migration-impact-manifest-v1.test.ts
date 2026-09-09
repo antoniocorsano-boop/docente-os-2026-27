@@ -127,7 +127,7 @@ function planBinding(input: {
     professionalDecisionRef: 'bind-plan-decision',
     boundAt: '2026-09-01T09:00:00.000Z',
     sectionExecutionEffect: 'NONE',
-  } as PlanBlockCurriculumBindingV1
+  } as unknown as PlanBlockCurriculumBindingV1
 }
 
 function udaBinding(input: {
@@ -189,7 +189,7 @@ function udaBinding(input: {
         'TEACHER_NOTES_AND_REVISIONS',
       ],
     },
-  } as UdaCurriculumBindingV1
+  } as unknown as UdaCurriculumBindingV1
 }
 
 function build(targets: CurriculumMigrationTargetV1[], revalidation = review()) {
