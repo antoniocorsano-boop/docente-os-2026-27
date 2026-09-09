@@ -32,7 +32,7 @@ export async function uploadKnowledgeBlobResumable(
 }
 
 async function createUpload(input: ResumableUploadInput, fetcher: FetchLike) {
-  const headers = signedTusHeaders(input.token)
+  const headers = authorizedTusHeaders(input.token)
   headers.set('Upload-Length', String(input.file.size))
   headers.set('Upload-Metadata', [
     metadata('bucketName', input.bucketName),
@@ -73,7 +73,7 @@ async function patchChunk(
   for (const delayMs of RETRY_DELAYS_MS) {
     if (delayMs) await delay(delayMs)
     try {
-      const headers = signedTusHeaders(input.token)
+      const headers = authorizedTusHeaders(input.token)
       headers.set('Upload-Offset', String(expectedOffset))
       headers.set('Content-Type', 'application/offset+octet-stream')
       const response = await fetcher(input.uploadUrl, {
@@ -108,7 +108,7 @@ async function patchChunk(
 
 async function recoverOffset(uploadUrl: string, token: string, fetcher: FetchLike) {
   try {
-    const response = await fetcher(uploadUrl, { method: 'HEAD', headers: signedTusHeaders(token) })
+    const response = await fetcher(uploadUrl, { method: 'HEAD', headers: authorizedTusHeaders(token) })
     if (!response.ok) return null
     return parseOffset(response.headers.get('upload-offset'))
   } catch {
@@ -116,10 +116,10 @@ async function recoverOffset(uploadUrl: string, token: string, fetcher: FetchLik
   }
 }
 
-function signedTusHeaders(token: string) {
+function authorizedTusHeaders(token: string) {
   const headers = new Headers()
   headers.set('Tus-Resumable', TUS_VERSION)
-  headers.set('x-signature', token)
+  headers.set('Authorization', `Bearer ${token}`)
   return headers
 }
 
