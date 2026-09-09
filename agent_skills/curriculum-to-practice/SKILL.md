@@ -86,6 +86,8 @@ Automation may prepare evidence. It must not manufacture human validation, team 
 
 ## Working prompt for Codex/Astra
 
+Use this orientation when starting a C2P task:
+
 > Work on the integrated CurManLight Arena + Docente OS Curriculum-to-Practice programme. Read AGENTS, integrated governed memory and all four C2P specification documents first. Re-check live repository/gate state. Execute only the explicitly authorized tranche. Preserve product ownership and authority boundaries. Reuse or extend existing capabilities before creating anything. Keep curriculum references as bindings rather than semantic copies. Preserve historical execution. Do not export pupil-level data to Arena. Add contract and negative tests, validate the exact head, record a receipt and stop at the tranche gate.
 
 ## C2P-00 special rule
