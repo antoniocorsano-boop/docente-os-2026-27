@@ -112,14 +112,15 @@ export async function reprocessKnowledgeAsset(formData: FormData) {
   const ingestion = asset.sourceProvider === 'UPLOAD' ? buildFileIngestion(repository) : buildTextIngestion(repository)
   try {
     await ingestion.reprocess(assetId)
-    revalidatePath('/knowledge')
-    revalidatePath(`/knowledge/${assetId}`)
-    redirect(`/knowledge/${assetId}?reprocess=ok`)
   } catch (error) {
     console.error('Knowledge reprocessing failed', error)
     revalidatePath(`/knowledge/${assetId}`)
     redirect(`/knowledge/${assetId}?reprocess=failed`)
   }
+
+  revalidatePath('/knowledge')
+  revalidatePath(`/knowledge/${assetId}`)
+  redirect(`/knowledge/${assetId}?reprocess=ok`)
 }
 
 export async function updateKnowledgeContext(formData: FormData) {
