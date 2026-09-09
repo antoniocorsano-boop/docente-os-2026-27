@@ -93,6 +93,40 @@ test('propone un materiale editoriale del libro confermato anche senza tag B/UDA
   assert.equal(result[0]?.classificationConfidence, 'HIGH')
 })
 
+test('propone Idee per insegnare alla 2C quando il riferimento è generale alla secondaria e il libro è confermato', () => {
+  const guide = item({
+    id: 'idee-per-insegnare',
+    title: 'Idee per insegnare',
+    summary: 'Programmazione per competenze, obiettivi minimi e prove di verifica di Tecnologia.',
+    classLabels: ['Secondaria di primo grado'],
+    sourceMetadata: {
+      materialRole: 'TEXTBOOK_TEACHER_MATERIAL',
+      textbook: { id: 'book-1', title: 'Tecnologia.verde 2ed' },
+    },
+  })
+  const otherSection = item({
+    id: 'solo-2a',
+    title: 'Adattamento 2A',
+    classLabels: ['2A'],
+    sourceMetadata: {
+      materialRole: 'TEXTBOOK_TEACHER_MATERIAL',
+      textbook: { id: 'book-1', title: 'Tecnologia.verde 2ed' },
+    },
+  })
+
+  const result = buildLessonMaterialSuggestions({
+    ...base,
+    items: [guide, otherSection],
+    confirmedTextbooks: [{ id: 'book-1', title: 'Tecnologia.verde 2ed' }],
+  })
+
+  assert.deepEqual(result.map((suggestion) => suggestion.assetId), ['idee-per-insegnare'])
+  assert.equal(result[0]?.sourceKind, 'EDITORIAL_KNOWLEDGE')
+  assert.match(result[0]?.reason ?? '', /libro confermato/i)
+  assert.ok(result[0]?.pedagogicalRoles.includes('PLANNING_SUPPORT'))
+  assert.ok(result[0]?.pedagogicalRoles.includes('ASSESSMENT'))
+})
+
 test('distingue la verifica ad alta leggibilità come verifica inclusiva', () => {
   const accessible = item({
     id: 'accessible',

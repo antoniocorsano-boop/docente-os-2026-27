@@ -50,8 +50,10 @@ export function filterProgettaItemsBySectionContext(items: ProgettaItem[], compa
   if (!compactSectionLabel) return items
   const target = normalizeClassLabel(compactSectionLabel)
   return items.filter(({ asset }) => {
-    const labels = asset.classLabels ?? []
-    return !labels.length || labels.some((label) => normalizeClassLabel(label) === target)
+    const sectionLabels = (asset.classLabels ?? [])
+      .map(normalizeClassLabel)
+      .filter(isSectionSpecificClassLabel)
+    return !sectionLabels.length || sectionLabels.includes(target)
   })
 }
 
@@ -147,7 +149,16 @@ function searchableText({ asset, document }: ProgettaItem) {
 }
 
 function normalizeClassLabel(value: string) {
-  return value.trim().replace(/\s+/g, '').toUpperCase()
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(/^CLASSE\s*/i, '')
+    .replace(/[ªº°]/g, '')
+    .replace(/\s+/g, '')
+}
+
+function isSectionSpecificClassLabel(value: string) {
+  return /^[1-3][A-Z]$/.test(value)
 }
 
 function safeMetadataText(value: Record<string, unknown>) {
