@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { inspectFilenameForPilot, inspectFreeTextForPilot, pilotPrivacyErrorMessage } from './anonymization-guard'
+import {
+  inspectFilenameForPilot,
+  inspectFreeTextForPilot,
+  pilotPrivacyErrorMessage,
+  sanitizeContactIdentifiersForPilot,
+} from './anonymization-guard'
 
 test('allows ordinary D0-D1 teaching text', () => {
   const result = inspectFreeTextForPilot('UDA energia: 8 studenti su 20 hanno completato la consegna.')
@@ -48,6 +53,31 @@ test('blocks direct identifiers', () => {
   const result = inspectFreeTextForPilot('Contattare mario.rossi@example.it per il recupero.')
   assert.equal(result.allowed, false)
   assert.ok(result.findings.some((finding) => finding.riskClass === 'D3' && finding.code === 'EMAIL'))
+})
+
+test('creates a safe local derivative when a teaching guide only contains contact details', () => {
+  const source = [
+    'Idee per insegnare: strategie inclusive per DSA, BES, PDP e PEI.',
+    'Informazioni editoriali: redazione@example.it.',
+    'Sede: Via Roma 25.',
+    'Telefono: 08251234567.',
+  ].join('\n')
+  const result = sanitizeContactIdentifiersForPilot(source)
+  assert.equal(result.allowed, true)
+  assert.deepEqual(new Set(result.removedLabels), new Set(['indirizzo email', 'indirizzo postale', 'numero di telefono']))
+  assert.doesNotMatch(result.sanitizedText, /redazione@example\.it/)
+  assert.doesNotMatch(result.sanitizedText, /Via Roma 25/)
+  assert.doesNotMatch(result.sanitizedText, /08251234567/)
+  assert.equal(inspectFreeTextForPilot(result.sanitizedText).allowed, true)
+})
+
+test('does not auto-sanitize a named student or D4-D5 context', () => {
+  const source = 'Studente Mario Rossi: predisporre PDP per DSA. Email mario.rossi@example.it.'
+  const result = sanitizeContactIdentifiersForPilot(source)
+  assert.equal(result.allowed, false)
+  assert.equal(result.sanitizedText, source)
+  assert.ok(result.residualFindings.some((finding) => finding.code === 'NAMED_STUDENT'))
+  assert.ok(result.residualFindings.some((finding) => finding.riskClass === 'D5'))
 })
 
 test('blocks named student plus special-category context', () => {
