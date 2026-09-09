@@ -283,21 +283,23 @@ export function KnowledgeFileUploader() {
     ? 'Copia ammessa già al sicuro'
     : preparedPdfFile || preparedDocxFile
       ? 'Copia anonima pronta'
-      : selectedIsPdf && nativeTextPdfPreflight === 'PASSED'
-        ? 'Preflight locale superato'
-        : selectedIsImage && preparedImageFile
-          ? 'Copia anonima pronta'
-          : selectedIsImage
-            ? 'Pronto per la revisione locale'
-            : selectedIsDocx && docxMode === 'ANALYZING'
-              ? 'Controllo locale in corso'
-              : selectedIsDocx && docxMode === 'MEDIA_REVIEWABLE'
-                ? 'Pronto per la revisione locale'
-                : selectedIsDocx && docxMode === 'FAILED'
-                  ? 'Controllo non disponibile'
-                  : selectedIsPdf && nativeTextPdfPreflight === 'PENDING'
-                    ? 'Controllo locale in corso'
-                    : 'Pronto a caricare'
+      : selectedIsPdf && nativeTextPdfPreflight === 'BLOCKED'
+        ? 'Bloccato dal controllo privacy'
+        : selectedIsPdf && nativeTextPdfPreflight === 'PASSED'
+          ? 'Preflight locale superato'
+          : selectedIsImage && preparedImageFile
+            ? 'Copia anonima pronta'
+            : selectedIsImage
+              ? 'Pronto per la revisione locale'
+              : selectedIsDocx && docxMode === 'ANALYZING'
+                ? 'Controllo locale in corso'
+                : selectedIsDocx && docxMode === 'MEDIA_REVIEWABLE'
+                  ? 'Pronto per la revisione locale'
+                  : selectedIsDocx && docxMode === 'FAILED'
+                    ? 'Controllo non disponibile'
+                    : selectedIsPdf && nativeTextPdfPreflight === 'PENDING'
+                      ? 'Controllo locale in corso'
+                      : 'Pronto a caricare'
 
   const submitLabel = phase === 'UPLOADING'
     ? 'Caricamento…'
@@ -374,6 +376,7 @@ export function KnowledgeFileUploader() {
           disabled={busy}
           onNativeTextPreflight={(state) => {
             setNativeTextPdfPreflight(state)
+            if (state === 'BLOCKED') setPrivacyConfirmed(false)
             if (state === 'PASSED') {
               setFailedAt(null)
               setPhase('READY')
@@ -408,7 +411,12 @@ export function KnowledgeFileUploader() {
 
       {selectedFile ? (
         <label className="knowledgeUploadTrust">
-          <input type="checkbox" checked={privacyConfirmed} onChange={(event) => setPrivacyConfirmed(event.currentTarget.checked)} disabled={busy} />{' '}
+          <input
+            type="checkbox"
+            checked={privacyConfirmed}
+            onChange={(event) => setPrivacyConfirmed(event.currentTarget.checked)}
+            disabled={busy || (selectedIsPdf && nativeTextPdfPreflight === 'BLOCKED')}
+          />{' '}
           Confermo che il contenuto che verrà salvato è destinato al pilot anonimo e non contiene nomi, recapiti, dati familiari, sanitari o altri dati personali di studenti o terzi.
         </label>
       ) : null}
