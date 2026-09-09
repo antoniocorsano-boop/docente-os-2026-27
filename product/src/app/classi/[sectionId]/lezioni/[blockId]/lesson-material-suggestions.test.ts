@@ -7,6 +7,7 @@ function item(input: {
   id: string
   title: string
   summary?: string
+  content?: string
   category?: KnowledgeAsset['contentCategory']
   sourceMetadata?: Record<string, unknown>
   classLabels?: string[]
@@ -44,7 +45,7 @@ function item(input: {
     title: input.title,
     documentType: 'TEACHING',
     language: 'it',
-    normalizedText: null,
+    normalizedText: input.content ?? null,
     normalizedMarkdown: null,
     summary: input.summary ?? null,
     extractedData: {},
@@ -66,7 +67,7 @@ const base = {
   excludedAssetIds: new Set<string>(),
 }
 
-test('propone un materiale editoriale del libro confermato anche senza tag B/UDA/PACK', () => {
+test('propone un materiale editoriale del libro confermato quando titolo e sintesi sono pertinenti', () => {
   const editorial = item({
     id: 'editorial',
     title: 'Verifiche sui materiali',
@@ -93,11 +94,15 @@ test('propone un materiale editoriale del libro confermato anche senza tag B/UDA
   assert.equal(result[0]?.classificationConfidence, 'HIGH')
 })
 
-test('propone Idee per insegnare alla 2C quando il riferimento è generale alla secondaria e il libro è confermato', () => {
+test('propone Idee per insegnare alla 2C grazie al contenuto indicizzato pertinente, non al solo libro confermato', () => {
   const guide = item({
     id: 'idee-per-insegnare',
     title: 'Idee per insegnare',
     summary: 'Programmazione per competenze, obiettivi minimi e prove di verifica di Tecnologia.',
+    content: [
+      'Osservare diversi materiali e confrontarne le proprietà fisiche e tecnologiche.',
+      'Mettere in relazione gli impieghi dei materiali con le proprietà richieste.',
+    ].join('\n'),
     classLabels: ['Secondaria di primo grado'],
     sourceMetadata: {
       materialRole: 'TEXTBOOK_TEACHER_MATERIAL',
@@ -106,7 +111,8 @@ test('propone Idee per insegnare alla 2C quando il riferimento è generale alla 
   })
   const otherSection = item({
     id: 'solo-2a',
-    title: 'Adattamento 2A',
+    title: 'Adattamento 2A sui materiali',
+    content: 'Confrontare le proprietà dei materiali e i loro impieghi.',
     classLabels: ['2A'],
     sourceMetadata: {
       materialRole: 'TEXTBOOK_TEACHER_MATERIAL',
@@ -122,9 +128,32 @@ test('propone Idee per insegnare alla 2C quando il riferimento è generale alla 
 
   assert.deepEqual(result.map((suggestion) => suggestion.assetId), ['idee-per-insegnare'])
   assert.equal(result[0]?.sourceKind, 'EDITORIAL_KNOWLEDGE')
-  assert.match(result[0]?.reason ?? '', /libro confermato/i)
-  assert.ok(result[0]?.pedagogicalRoles.includes('PLANNING_SUPPORT'))
-  assert.ok(result[0]?.pedagogicalRoles.includes('ASSESSMENT'))
+  assert.match(result[0]?.reason ?? '', /contenuto indicizzato/i)
+  assert.match(result[0]?.usageTip ?? '', /corrispondenza viene dal contenuto indicizzato/i)
+  assert.deepEqual(result[0]?.pedagogicalRoles, [])
+  assert.equal(result[0]?.classificationConfidence, 'MEDIUM')
+})
+
+test('non propone la guida del libro confermato quando manca pertinenza con la lezione', () => {
+  const unrelatedGuide = item({
+    id: 'unrelated-guide',
+    title: 'Idee per insegnare',
+    summary: 'Programmazione per competenze e prove di verifica di Tecnologia.',
+    content: 'Energia, fonti rinnovabili, trasformazioni energetiche e consumi responsabili.',
+    classLabels: ['Secondaria di primo grado'],
+    sourceMetadata: {
+      materialRole: 'TEXTBOOK_TEACHER_MATERIAL',
+      textbook: { id: 'book-1', title: 'Tecnologia.verde 2ed' },
+    },
+  })
+
+  const result = buildLessonMaterialSuggestions({
+    ...base,
+    items: [unrelatedGuide],
+    confirmedTextbooks: [{ id: 'book-1', title: 'Tecnologia.verde 2ed' }],
+  })
+
+  assert.deepEqual(result, [])
 })
 
 test('distingue la verifica ad alta leggibilità come verifica inclusiva', () => {
@@ -174,7 +203,8 @@ test('riconosce una lezione PowerPoint come spiegazione e supporto visivo', () =
 test('non propone materiale editoriale di un libro non confermato per la classe', () => {
   const editorial = item({
     id: 'other-book',
-    title: 'Guida docente',
+    title: 'Verifiche sui materiali',
+    summary: 'Prove sulle proprietà dei materiali.',
     sourceMetadata: {
       materialRole: 'TEXTBOOK_TEACHER_MATERIAL',
       textbook: { id: 'book-2', title: 'Altro libro' },
@@ -190,7 +220,7 @@ test('non propone materiale editoriale di un libro non confermato per la classe'
   assert.deepEqual(result, [])
 })
 
-test('mantiene i materiali già collegati esplicitamente al focus anche se non editoriali', () => {
+test('mantiene i materiali già collegati esplicitamente al focus anche senza pertinenza lessicale', () => {
   const focused = item({
     id: 'focused',
     title: 'Scheda B12',
