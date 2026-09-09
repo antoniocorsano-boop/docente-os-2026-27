@@ -7,6 +7,7 @@ const LOCAL_PDF_TEXT_DERIVATIVE = /-anonimizzato\.txt$/i
 const COPYRIGHT_LINE = /(?:(?:copyright\s*)?©|\bcopyright\b).*\b(?:19|20)\d{2}\b/i
 const SUMMARY_NAVIGATION = /^(?:per scaricare i contenuti online|vai su|lezione|compiti|verifiche|orientamento|idee per insegnare)$/i
 const STANDALONE_URL = /^www\.[^\s]+$/i
+const INLINE_TEACHER_COPY_FOOTER = /\s*copia riservata all['’]insegnante(?:\s+\[dato di contatto rimosso\])?\s*$/i
 
 const BOILERPLATE_PATTERNS = [
   /^questa pagina è riservata a chi insegna\b/i,
@@ -41,9 +42,14 @@ export function normalizeKnowledgeWorkingText(
   let legalBlockWindow = 0
 
   for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index]
+    const stripped = stripInlineTeacherCopyFooter(lines[index])
+    if (stripped.removed) removedBoilerplateLines += 1
+
+    const line = stripped.text
     const compact = collapse(line)
-    const nextCompact = collapse(lines[index + 1] ?? '')
+    if (!compact) continue
+
+    const nextCompact = collapse(stripInlineTeacherCopyFooter(lines[index + 1] ?? '').text)
     const isCopyrightLine = COPYRIGHT_LINE.test(compact)
     const isLegalContinuation = legalBlockWindow > 0 && isLegalBlockContinuation(compact)
 
@@ -116,6 +122,11 @@ function isTeacherFormTemplateLine(line: string) {
     && /\.{4,}/.test(line)
   const standaloneEmptyField = /^(?:nome|cognome|classe|data)\s*[:._-]*$/i.test(line)
   return completeTemplate || standaloneEmptyField
+}
+
+function stripInlineTeacherCopyFooter(line: string) {
+  const text = line.replace(INLINE_TEACHER_COPY_FOOTER, '').trimEnd()
+  return { text, removed: text !== line.trimEnd() }
 }
 
 function looksLikeCreditLineBeforeCopyright(line: string, nextLine: string) {
