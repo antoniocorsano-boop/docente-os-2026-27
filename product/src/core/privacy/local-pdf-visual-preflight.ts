@@ -1,5 +1,5 @@
 import { extractText, getDocumentProxy } from 'unpdf'
-import { inspectFreeTextForPilot } from './anonymization-guard'
+import { inspectFreeTextForPilot, pilotPrivacyErrorMessage } from './anonymization-guard'
 
 export const MAX_LOCAL_VISUAL_PDF_PAGES = 5
 
@@ -16,6 +16,7 @@ export type LocalPdfVisualPreflightResult = {
   totalPages: number | null
   missingNativeTextPages: number[]
   nativeTextPrivacy?: 'PASSED' | 'BLOCKED'
+  privacyMessage?: string
 }
 
 export async function classifyLocalPdfForVisualPreflight(bytes: Uint8Array): Promise<LocalPdfVisualPreflightResult> {
@@ -34,6 +35,7 @@ export async function classifyLocalPdfForVisualPreflight(bytes: Uint8Array): Pro
         ...classification,
         state: 'NATIVE_TEXT_PRIVACY_BLOCKED',
         nativeTextPrivacy: 'BLOCKED',
+        privacyMessage: pilotPrivacyErrorMessage(privacy) ?? 'Il PDF contiene dati non ammessi nel pilot anonimo.',
       }
     }
 
