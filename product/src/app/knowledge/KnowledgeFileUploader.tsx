@@ -126,7 +126,7 @@ export function KnowledgeFileUploader() {
       return fail('Il controllo locale del PDF ha rilevato dati non ammessi nel pilot anonimo. Il file non viene inviato.', 'SELECT')
     }
     if (pdfUpload && originalFile.size > RESUMABLE_KNOWLEDGE_UPLOAD_THRESHOLD_BYTES && nativeTextPdfPreflight !== 'PASSED' && !preparedPdfFile) {
-      return fail('Questo PDF oltre 6 MB deve superare il preflight testuale locale oppure produrre una copia visuale revisionata prima del trasferimento.', 'SELECT')
+      return fail('Questo PDF oltre 6 MB deve superare il preflight testuale locale oppure produrre una copia revisionata prima del trasferimento.', 'SELECT')
     }
     if (docxUpload && docxMode === 'ANALYZING') {
       return fail('Attendi il controllo locale del DOCX prima di procedere.', 'SELECT')
@@ -142,8 +142,9 @@ export function KnowledgeFileUploader() {
 
     const uploadFile = imageUpload ? preparedImageFile! : preparedPdfFile ?? preparedDocxFile ?? originalFile
     const uploadMimeType = normalizeKnowledgeUploadMime(uploadFile.type, uploadFile.name)
+    const localPdfTextDerivative = preparedPdfFile?.type === 'text/plain'
     const docxSemanticPng = preparedDocxFile?.type === 'image/png'
-    const localVisualUpload = imageUpload || Boolean(preparedPdfFile) || docxSemanticPng
+    const localVisualUpload = imageUpload || (Boolean(preparedPdfFile) && !localPdfTextDerivative) || docxSemanticPng
     const localDocxTextDerivative = preparedDocxFile?.type === 'text/plain'
     const resumableNativePdf = pdfUpload
       && !preparedPdfFile
@@ -200,13 +201,15 @@ export function KnowledgeFileUploader() {
       return
     }
 
-    setMessage(localDocxTextDerivative
-      ? 'Revisione locale completata. Invio solo il TXT derivato: DOCX originale e media restano sul dispositivo.'
-      : docxSemanticPng
-        ? 'Revisione locale completata. Invio solo il PNG semantico ricodificato: DOCX originale e media originali restano sul dispositivo.'
-        : localVisualUpload
-          ? 'Revisione locale completata. Invio solo la copia PNG ricodificata: il file originale resta sul dispositivo.'
-          : 'Controllo privacy superato. Il file resta qui mentre completo il preflight prima della persistenza.')
+    setMessage(localPdfTextDerivative
+      ? 'Revisione locale completata. Invio solo il TXT anonimizzato: il PDF originale, il layout e le immagini restano sul dispositivo.'
+      : localDocxTextDerivative
+        ? 'Revisione locale completata. Invio solo il TXT derivato: DOCX originale e media restano sul dispositivo.'
+        : docxSemanticPng
+          ? 'Revisione locale completata. Invio solo il PNG semantico ricodificato: DOCX originale e media originali restano sul dispositivo.'
+          : localVisualUpload
+            ? 'Revisione locale completata. Invio solo la copia PNG ricodificata: il file originale resta sul dispositivo.'
+            : 'Controllo privacy superato. Il file resta qui mentre completo il preflight prima della persistenza.')
 
     let uploadResponse: Response
     try {
@@ -442,7 +445,7 @@ export function KnowledgeFileUploader() {
       <button type="submit" disabled={busy || !selectedFile || !imageReady || !pdfReady || !docxReady}>{submitLabel}</button>
       {selectedFile && !busy ? (
         <p className="knowledgeUploadTrust">
-          TXT/Markdown, PDF testuali e DOCX senza media vengono controllati prima della persistenza. I PDF testuali oltre 6 MB, dopo il preflight locale, vengono trasferiti a blocchi con protocollo resumable senza attraversare il processo Render. Immagini e PDF visuali fino a cinque pagine passano solo tramite PNG revisionati. Un DOCX con media può produrre un TXT anonimo oppure, entro i limiti locali, un PNG semantico con testo e media revisionati. PDF visuali oltre cinque pagine e media DOCX non coperti restano bloccati.
+          TXT/Markdown, PDF testuali e DOCX senza media vengono controllati prima della persistenza. I PDF testuali oltre 6 MB, dopo il preflight locale, vengono trasferiti a blocchi con protocollo resumable senza attraversare il processo Render. Se un PDF testuale contiene soltanto email, telefoni o indirizzi postali rimovibili, può produrre localmente un TXT anonimizzato e ricontrollato; l’originale resta sul dispositivo. Immagini e PDF visuali fino a cinque pagine passano solo tramite PNG revisionati. Un DOCX con media può produrre un TXT anonimo oppure, entro i limiti locali, un PNG semantico con testo e media revisionati. PDF visuali oltre cinque pagine e media DOCX non coperti restano bloccati.
         </p>
       ) : null}
     </form>
