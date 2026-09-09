@@ -1,9 +1,11 @@
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
+import { resolveLessonPreparationState } from '@/core/domain/lesson-preparation'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
+import { SupabaseLessonPreparationRepository } from '@/core/infrastructure/supabase/supabase-lesson-preparation-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseTextbookRepository } from '@/core/infrastructure/supabase/supabase-textbook-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
@@ -63,12 +65,20 @@ export default async function LessonWorkspacePage({
     blockId: block.id,
     projectionId: projection.projectionId,
   }
-  const [extensions, knowledgeItems, assignments, textbookAdoptions] = await Promise.all([
+  const [extensions, preparationReceipt, knowledgeItems, assignments, textbookAdoptions] = await Promise.all([
     new SupabaseLessonDesignRepository().list(designContext),
+    new SupabaseLessonPreparationRepository().get(designContext),
     new SupabaseKnowledgeRepository().listRecent(context.workspace.id, 100),
     new SupabaseTeachingAssignmentReader().list(context.workspace.id, context.academicYear.id),
     new SupabaseTextbookRepository().list(context.workspace.id, context.academicYear.id),
   ])
+
+  const preparationState = resolveLessonPreparationState({
+    projectionId: projection.projectionId,
+    preparation: projection.preparation,
+    extensions,
+    receipt: preparationReceipt,
+  })
 
   const progress = snapshot.progress.find((entry) =>
     entry.sectionId === section.id &&
@@ -162,6 +172,8 @@ export default async function LessonWorkspacePage({
           knowledgeSuggestions={knowledgeSuggestions}
           progress={progressView}
           udaProgress={udaProgressView}
+          preparationState={preparationState}
+          preparationConfirmedAt={preparationReceipt?.confirmedAt ?? null}
         />
       )}
     </AppShell>
