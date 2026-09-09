@@ -197,6 +197,7 @@ function Session({ file, disabled, onPrepared, onNativeTextPreflight }: Props) {
       { type: 'text/plain', lastModified: Date.now() },
     )
     onPreparedRef.current(safeFile)
+    onNativeTextPreflightRef.current('NOT_APPLICABLE')
     setMessage('Copia testuale anonimizzata pronta. Verrà inviato solo il TXT; PDF originale, layout e immagini restano sul dispositivo.')
   }
 
