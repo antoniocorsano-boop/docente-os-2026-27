@@ -1,9 +1,11 @@
 import { extractText, getDocumentProxy } from 'unpdf'
+import { inspectFreeTextForPilot } from './anonymization-guard'
 
 export const MAX_LOCAL_VISUAL_PDF_PAGES = 5
 
 export type LocalPdfVisualPreflightState =
   | 'NATIVE_TEXT_ONLY'
+  | 'NATIVE_TEXT_PRIVACY_BLOCKED'
   | 'SINGLE_PAGE_VISUAL_REVIEWABLE'
   | 'MULTI_PAGE_VISUAL_REVIEWABLE'
   | 'MULTI_PAGE_VISUAL_BLOCKED'
@@ -13,6 +15,7 @@ export type LocalPdfVisualPreflightResult = {
   state: LocalPdfVisualPreflightState
   totalPages: number | null
   missingNativeTextPages: number[]
+  nativeTextPrivacy?: 'PASSED' | 'BLOCKED'
 }
 
 export async function classifyLocalPdfForVisualPreflight(bytes: Uint8Array): Promise<LocalPdfVisualPreflightResult> {
@@ -22,7 +25,19 @@ export async function classifyLocalPdfForVisualPreflight(bytes: Uint8Array): Pro
     const pdf = await getDocumentProxy(bytes)
     const { totalPages, text } = await extractText(pdf, { mergePages: false })
     const pages = Array.isArray(text) ? text.map((page) => normalizeText(String(page ?? ''))) : []
-    return classifyPdfPages(totalPages, pages)
+    const classification = classifyPdfPages(totalPages, pages)
+    if (classification.state !== 'NATIVE_TEXT_ONLY') return classification
+
+    const privacy = inspectFreeTextForPilot(pages.join('\n\n'))
+    if (!privacy.allowed) {
+      return {
+        ...classification,
+        state: 'NATIVE_TEXT_PRIVACY_BLOCKED',
+        nativeTextPrivacy: 'BLOCKED',
+      }
+    }
+
+    return { ...classification, nativeTextPrivacy: 'PASSED' }
   } catch {
     return failed()
   }
