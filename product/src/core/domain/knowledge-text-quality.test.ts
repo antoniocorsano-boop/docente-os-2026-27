@@ -40,6 +40,32 @@ test('removes repeated teacher-guide boilerplate while preserving didactic conte
   assert.match(result.text, /peso specifico/i)
 })
 
+test('removes publisher legal block and standalone empty form labels found in real teacher guides', () => {
+  const source = [
+    'Questo libro è stampato su carta certificata',
+    'Stampa: Tipografia Demo',
+    '[dato di contatto rimosso], 40100 Bologna',
+    'per conto di Demo Editore S.p.A.',
+    'Copyright © 2024 Demo Editore S.p.A.',
+    'www.demo-editore.example',
+    'Diritti riservati',
+    'I diritti di pubblicazione, riproduzione, comunicazione e distribuzione sono riservati.',
+    'nome:',
+    'PROVA C2 – FILA A',
+    'Indica con una X la risposta giusta.',
+  ].join('\n')
+
+  const result = normalizeKnowledgeWorkingText(source, { localPdfTextDerivative: true })
+
+  assert.doesNotMatch(result.text, /Copyright/i)
+  assert.doesNotMatch(result.text, /Diritti riservati/i)
+  assert.doesNotMatch(result.text, /www\.demo-editore\.example/i)
+  assert.doesNotMatch(result.text, /^nome:\s*$/im)
+  assert.doesNotMatch(result.text, /Stampa: Tipografia Demo/i)
+  assert.match(result.text, /PROVA C2 – FILA A/)
+  assert.match(result.text, /Indica con una X/i)
+})
+
 test('keeps ordinary TXT unchanged', () => {
   const source = 'Nota di dipartimento\n\nPreparare il laboratorio di Tecnologia.'
   const result = normalizeKnowledgeWorkingText(source)
@@ -70,6 +96,8 @@ test('builds a useful summary instead of navigation boilerplate', () => {
 
 test('marks legal and form-template lines as highlight noise but preserves teaching prompts', () => {
   assert.equal(isKnowledgeHighlightNoise('Seconda edizione © Editore 2024'), true)
+  assert.equal(isKnowledgeHighlightNoise('Copyright © 2024 Demo Editore'), true)
   assert.equal(isKnowledgeHighlightNoise('NOME ........ COGNOME ........ CLASSE .... DATA ....'), true)
+  assert.equal(isKnowledgeHighlightNoise('nome:'), true)
   assert.equal(isKnowledgeHighlightNoise('Quali vantaggi offre l’uso dei mezzi pubblici?'), false)
 })
