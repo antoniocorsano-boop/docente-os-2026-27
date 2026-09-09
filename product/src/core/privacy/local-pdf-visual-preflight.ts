@@ -1,5 +1,9 @@
 import { extractText, getDocumentProxy } from 'unpdf'
-import { inspectFreeTextForPilot, pilotPrivacyErrorMessage } from './anonymization-guard'
+import {
+  inspectFreeTextForPilot,
+  pilotPrivacyErrorMessage,
+  sanitizeContactIdentifiersForPilot,
+} from './anonymization-guard'
 
 export const MAX_LOCAL_VISUAL_PDF_PAGES = 5
 
@@ -17,6 +21,8 @@ export type LocalPdfVisualPreflightResult = {
   missingNativeTextPages: number[]
   nativeTextPrivacy?: 'PASSED' | 'BLOCKED'
   privacyMessage?: string
+  sanitizedNativeText?: string
+  sanitizedLabels?: string[]
 }
 
 export async function classifyLocalPdfForVisualPreflight(bytes: Uint8Array): Promise<LocalPdfVisualPreflightResult> {
@@ -29,13 +35,19 @@ export async function classifyLocalPdfForVisualPreflight(bytes: Uint8Array): Pro
     const classification = classifyPdfPages(totalPages, pages)
     if (classification.state !== 'NATIVE_TEXT_ONLY') return classification
 
-    const privacy = inspectFreeTextForPilot(pages.join('\n\n'))
+    const nativeText = pages.join('\n\n')
+    const privacy = inspectFreeTextForPilot(nativeText)
     if (!privacy.allowed) {
+      const sanitization = sanitizeContactIdentifiersForPilot(nativeText)
       return {
         ...classification,
         state: 'NATIVE_TEXT_PRIVACY_BLOCKED',
         nativeTextPrivacy: 'BLOCKED',
         privacyMessage: pilotPrivacyErrorMessage(privacy) ?? 'Il PDF contiene dati non ammessi nel pilot anonimo.',
+        ...(sanitization.allowed ? {
+          sanitizedNativeText: sanitization.sanitizedText,
+          sanitizedLabels: sanitization.removedLabels,
+        } : {}),
       }
     }
 
