@@ -1,13 +1,14 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
-import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
+import { TemporalProjectionService, type ProjectedDay, type ProjectedOccurrence } from '@/core/application/temporal-projection-service'
 import type { PlannerTask } from '@/core/domain/planner-task'
 import { parseKnowledgeTaskSourceRef } from '@/core/domain/knowledge-task-source'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
 import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { buildDailyTeacherBrief, type TeacherDayPhase } from '@/core/presentation/daily-teacher-brief'
 import {
   completePlannerTask,
   createPlannerTask,
@@ -40,6 +41,7 @@ export default async function PlannerPage() {
 
   const plannerRepository = new SupabasePlannerRepository()
   const today = currentRomeDate()
+  const nowMinutes = currentRomeMinutes()
   const temporalProjection = context.academicYear
     ? new TemporalProjectionService(
         new SupabaseTimetableProjectionReadRepository(),
@@ -62,55 +64,83 @@ export default async function PlannerPage() {
   const openTasks = tasks.filter((task) => task.status === 'OPEN')
   const overdueCount = openTasks.filter((task) => task.dueAt && task.dueAt.slice(0, 10) < today).length
   const todayCount = sections.now.length + sections.today.length
-  const focusTask = sections.now[0] ?? sections.today[0] ?? null
+  const dailyBrief = buildDailyTeacherBrief({
+    day: temporalDay,
+    tasks,
+    localDate: today,
+    nowMinutes,
+  })
+  const focusTask = dailyBrief.focus?.kind === 'TASK'
+    ? dailyBrief.attentionTasks[0] ?? dailyBrief.todayTasks[0] ?? null
+    : null
   const humanDate = new Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Rome', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())
   const remaining = removeFocusedTask(sections, focusTask?.id ?? null)
 
   return (
     <AppShell active="today" academicYearLabel={context.academicYear?.label} workspaceName={context.workspace.name} role={context.role} contentClassName="plannerSurface">
       <section className="plannerHeader plannerHeaderClarified">
-        <div><p className="contextLine">{capitalize(humanDate)}</p><h1>Oggi</h1><p className="plannerPurpose">Prima ciò che richiede attenzione. Il resto della settimana rimane disponibile senza competere con il compito corrente.</p></div>
+        <div>
+          <p className="contextLine">{capitalize(humanDate)}</p>
+          <h1>Oggi</h1>
+          <p className="plannerPurpose">Prima la giornata reale: lezioni e impegni con un orario preciso. Attività e scadenze restano visibili senza nascondere ciò che devi fare adesso.</p>
+        </div>
       </section>
 
-      {focusTask ? (
+      {dailyBrief.focus ? (
         <section className="humanTaskFocus" aria-labelledby="today-focus-title">
-          <p className="humanTaskFocusEyebrow">DA FARE ADESSO</p>
-          <h2 id="today-focus-title">{focusTask.title}</h2>
-          <p>{taskFocusReason(focusTask, today)}</p>
+          <p className="humanTaskFocusEyebrow">{dailyBrief.focus.eyebrow}</p>
+          <h2 id="today-focus-title">{dailyBrief.focus.title}</h2>
+          <p>{dailyBrief.focus.description}</p>
           <div className="humanTaskMeta">
-            <span>{sourceLabels[focusTask.sourceKind]}</span>
-            {focusTask.dueAt ? <span>Scade {formatShortDate(focusTask.dueAt)}</span> : null}
-            <span>{priorityLabel(focusTask.priority)}</span>
+            {dailyBrief.focus.meta.map((item) => <span key={item}>{item}</span>)}
           </div>
           <div className="humanTaskActions">
-            <form action={completePlannerTask}>
-              <input type="hidden" name="taskId" value={focusTask.id} />
-              <button className="primary" type="submit">Segna completata</button>
-            </form>
-            {parseKnowledgeTaskSourceRef(focusTask.sourceRef) ? <Link href={`/knowledge/${parseKnowledgeTaskSourceRef(focusTask.sourceRef)!.assetId}`}>Apri la fonte</Link> : null}
+            {dailyBrief.focus.kind === 'TEMPORAL' ? (
+              <Link className="primary" href={dailyBrief.focus.href}>{dailyBrief.focus.actionLabel}</Link>
+            ) : focusTask ? (
+              <form action={completePlannerTask}>
+                <input type="hidden" name="taskId" value={focusTask.id} />
+                <button className="primary" type="submit">Segna completata</button>
+              </form>
+            ) : null}
+            {dailyBrief.focus.kind === 'TASK' && focusTask && parseKnowledgeTaskSourceRef(focusTask.sourceRef) ? (
+              <Link href={`/knowledge/${parseKnowledgeTaskSourceRef(focusTask.sourceRef)!.assetId}`}>Apri la fonte</Link>
+            ) : dailyBrief.attentionTasks.length ? (
+              <a href="#attivita-di-oggi">{dailyBrief.attentionTasks.length} {dailyBrief.attentionTasks.length === 1 ? 'attività richiede' : 'attività richiedono'} attenzione</a>
+            ) : (
+              <Link href="/orario">Vedi l’orario completo</Link>
+            )}
           </div>
         </section>
       ) : (
         <section className="humanTaskFocus">
           <p className="humanTaskFocusEyebrow">OGGI</p>
-          <h2>Non hai attività che richiedono attenzione immediata</h2>
-          <p>Puoi anticipare qualcosa dalla settimana oppure passare alla preparazione didattica senza dover gestire prima una lista vuota.</p>
+          <h2>Non risultano impegni o attività che richiedono attenzione immediata</h2>
+          <p>Puoi controllare l’Orario, preparare una classe o anticipare un’attività senza dover attraversare più viste.</p>
           <div className="humanTaskActions"><Link className="primary" href="/orario">Guarda l’orario</Link><Link href="/classi">Apri le classi</Link></div>
         </section>
       )}
 
-      {temporalDay ? <TemporalTodayPanel day={temporalDay} nowMinutes={currentRomeMinutes()} /> : null}
+      {temporalDay?.calendarState === 'SCHOOL_DAY' ? (
+        <DailyTimeline day={temporalDay} phase={dailyBrief.phase} nowMinutes={nowMinutes} />
+      ) : temporalDay ? (
+        <TemporalTodayPanel day={temporalDay} nowMinutes={nowMinutes} />
+      ) : null}
 
-      <div className="humanTaskCompactStats" aria-label="Riepilogo attività"><span><strong>{openTasks.length}</strong> aperte</span><span><strong>{overdueCount}</strong> scadute</span><span><strong>{todayCount}</strong> per oggi</span></div>
+      <div className="humanTaskCompactStats" aria-label="Riepilogo attività">
+        <span><strong>{openTasks.length}</strong> aperte</span>
+        <span><strong>{overdueCount}</strong> scadute</span>
+        <span><strong>{todayCount}</strong> per oggi</span>
+      </div>
 
-      <details className="humanTaskSecondary">
-        <summary>Il resto della giornata e della settimana</summary>
+      <details className="humanTaskSecondary" id="attivita-di-oggi">
+        <summary>Attività e scadenze</summary>
         <div className="humanTaskSecondaryBody taskSections">
           <TaskSection title="Oggi" tasks={remaining.today} today={today} />
           <TaskSection title="Questa settimana" tasks={remaining.week} today={today} />
           <TaskSection title="In attesa" tone="waiting" tasks={remaining.waiting} today={today} />
           <TaskSection title="Senza data" tone="muted" tasks={remaining.undated} today={today} />
-          {remaining.now.length ? <TaskSection title="Altre urgenze" tone="critical" tasks={remaining.now} today={today} /> : null}
+          {remaining.now.length ? <TaskSection title="Richiede attenzione" tone="critical" tasks={remaining.now} today={today} /> : null}
         </div>
       </details>
 
@@ -127,6 +157,34 @@ export default async function PlannerPage() {
         </div>
       </details>
     </AppShell>
+  )
+}
+
+function DailyTimeline({ day, phase, nowMinutes }: { day: ProjectedDay; phase: TeacherDayPhase; nowMinutes: number }) {
+  const entries = [...day.occurrences, ...day.events].sort(compareTimeline)
+  const shouldOpen = phase === 'BEFORE_SCHOOL' || phase === 'BETWEEN_ACTIVITIES'
+
+  return (
+    <details className="humanTaskSecondary" open={shouldOpen}>
+      <summary>Programma di oggi · {entries.length} {entries.length === 1 ? 'impegno' : 'impegni'}</summary>
+      <div className="humanTaskSecondaryBody">
+        {entries.length ? (
+          entries.map((item) => {
+            const current = isTimelineCurrent(item, nowMinutes)
+            return (
+              <p key={item.logicalId}>
+                <strong>{itemTimeLabel(item)} · {item.title}</strong>
+                {current ? ' — Adesso' : ''}
+                {' · '}{timelineSourceLabel(item)}
+              </p>
+            )
+          })
+        ) : (
+          <p>Il Calendario indica un giorno di lezione, ma non risultano impegni temporali materializzati per oggi.</p>
+        )}
+        <div className="humanTaskActions"><Link href="/orario">Apri l’Orario</Link><Link href="/calendario">Apri il Calendario</Link></div>
+      </div>
+    </details>
   )
 }
 
@@ -193,11 +251,31 @@ function compareTasks(a: PlannerTask, b: PlannerTask) {
   return a.createdAt.localeCompare(b.createdAt)
 }
 
-function taskFocusReason(task: PlannerTask, today: string) {
-  const due = task.dueAt?.slice(0, 10) ?? null
-  if (due && due < today) return 'È scaduta: viene prima delle attività non urgenti.'
-  if (due === today) return 'Scade oggi: è il prossimo elemento da chiudere o ripianificare.'
-  return 'È la prima attività pianificata per oggi secondo priorità e scadenza.'
+function compareTimeline(a: ProjectedOccurrence, b: ProjectedOccurrence) {
+  const aKey = a.startAt ?? `${a.localDate}T00:00:00`
+  const bKey = b.startAt ?? `${b.localDate}T00:00:00`
+  return aKey.localeCompare(bKey) || a.logicalId.localeCompare(b.logicalId)
+}
+
+function isTimelineCurrent(item: ProjectedOccurrence, nowMinutes: number) {
+  if (!item.startAt || !item.endAt) return false
+  const start = timeMinutes(item.startAt)
+  const end = timeMinutes(item.endAt)
+  return start <= nowMinutes && end > nowMinutes
+}
+
+function itemTimeLabel(item: ProjectedOccurrence) {
+  if (!item.startAt || !item.endAt) return 'Tutto il giorno'
+  return `${item.startAt.slice(11, 16)}–${item.endAt.slice(11, 16)}`
+}
+
+function timelineSourceLabel(item: ProjectedOccurrence) {
+  return item.kind === 'CALENDAR_EVENT' ? 'Calendario' : 'Orario'
+}
+
+function timeMinutes(value: string) {
+  const [hours, minutes] = value.slice(11, 16).split(':').map(Number)
+  return hours * 60 + minutes
 }
 
 function priorityLabel(priority: PlannerTask['priority']) {
