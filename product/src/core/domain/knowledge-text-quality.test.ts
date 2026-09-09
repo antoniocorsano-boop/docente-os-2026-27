@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { chunkKnowledgeText } from '@/core/infrastructure/knowledge/plain-text-transformer'
 import {
   isKnowledgeHighlightNoise,
   isLocalPdfTextDerivativeFilename,
@@ -76,8 +77,45 @@ test('removes an inline teacher-copy footer without deleting the teaching senten
   const result = normalizeKnowledgeWorkingText(source, { localPdfTextDerivative: true })
 
   assert.doesNotMatch(result.text, /Copia riservata all['’]insegnante/i)
-  assert.match(result.text, /Nel rischio sismico, che cos’è la vulnerabilità\?/) 
+  assert.match(result.text, /Nel rischio sismico, che cos’è la vulnerabilità\?/)
   assert.match(result.text, /Descrivi una struttura reticolare/)
+})
+
+test('preserves paragraph separators while removing inline footer noise', () => {
+  const source = [
+    'Prima sezione didattica.',
+    '',
+    "Seconda sezione utile.Copia riservata all'insegnante [dato di contatto rimosso]",
+    '',
+    'Terza sezione didattica.',
+  ].join('\n')
+
+  const result = normalizeKnowledgeWorkingText(source, { localPdfTextDerivative: true })
+
+  assert.equal(result.text, 'Prima sezione didattica.\n\nSeconda sezione utile.\n\nTerza sezione didattica.')
+})
+
+test('chunks a long guide into bounded searchable units even without blank paragraphs', () => {
+  const source = Array.from(
+    { length: 180 },
+    (_, index) => `Riga didattica ${index + 1}: descrizione operativa di Tecnologia con contenuto utile alla ricerca e alla progettazione.`,
+  ).join('\n')
+
+  const chunks = chunkKnowledgeText(source, 1200)
+
+  assert.ok(chunks.length > 1)
+  assert.ok(chunks.every((chunk) => chunk.length <= 1200))
+  assert.match(chunks[0] ?? '', /Riga didattica 1:/)
+  assert.match(chunks.at(-1) ?? '', /Riga didattica 180:/)
+})
+
+test('splits a single oversized line without exceeding the chunk budget', () => {
+  const source = Array.from({ length: 500 }, (_, index) => `termine${index}`).join(' ')
+  const chunks = chunkKnowledgeText(source, 1200)
+
+  assert.ok(chunks.length > 1)
+  assert.ok(chunks.every((chunk) => chunk.length <= 1200))
+  assert.equal(chunks.join(' ').replace(/\s+/g, ' ').trim(), source)
 })
 
 test('keeps ordinary TXT unchanged', () => {
