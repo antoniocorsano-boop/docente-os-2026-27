@@ -203,6 +203,9 @@ jobs:
     name: hva-runtime
     runs-on: ubuntu-latest
     timeout-minutes: 50
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
 
     steps:
       - name: Resolve target
