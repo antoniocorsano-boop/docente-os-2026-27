@@ -20,28 +20,30 @@ type ReceiptRow = {
   updated_at: string
 }
 
+type ReceiptInsert = {
+  id?: string
+  workspace_id: string
+  academic_year_id: string
+  section_id: string
+  canonical_plan_asset_id: string
+  canonical_generation_id: string
+  block_id: string
+  projection_id: string
+  checklist_snapshot: string[]
+  design_fingerprint: string
+  confirmed_by: string
+  confirmed_at?: string
+  created_at?: string
+  updated_at?: string
+}
+
 type PreparationDatabase = {
   public: {
     Tables: {
       lesson_preparation_receipts: {
         Row: ReceiptRow
-        Insert: {
-          id?: string
-          workspace_id: string
-          academic_year_id: string
-          section_id: string
-          canonical_plan_asset_id: string
-          canonical_generation_id: string
-          block_id: string
-          projection_id: string
-          checklist_snapshot: string[]
-          design_fingerprint: string
-          confirmed_by: string
-          confirmed_at?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: Partial<PreparationDatabase['public']['Tables']['lesson_preparation_receipts']['Insert']>
+        Insert: ReceiptInsert
+        Update: Partial<ReceiptInsert>
         Relationships: []
       }
     }
