@@ -34,7 +34,7 @@ export function knowledgeProcessingStatus(status: KnowledgeProcessingStatus): Hu
 
 export function sourceProviderLabel(provider: KnowledgeSourceProvider) {
   const labels: Record<KnowledgeSourceProvider, string> = {
-    UPLOAD: 'File caricato',
+    UPLOAD: 'File acquisito',
     DRIVE: 'Google Drive',
     GMAIL: 'Gmail',
     CALENDAR: 'Google Calendar',
@@ -128,9 +128,10 @@ export function humanizeKnowledgeTitle(value: string | null | undefined) {
 
   const withoutExtension = value.trim().replace(/\.(pdf|docx|txt|md|png|jpe?g|webp)$/i, '')
   const normalized = withoutExtension.replace(/_+/g, ' ').replace(/\s+/g, ' ').trim()
-  const withoutCanonicalPrefix = normalized.replace(/^CAN-[A-Z]+-[A-Z0-9]+(?:\s*[-:]?\s*)?/i, '').trim()
+  const withoutDerivativeSuffix = normalized.replace(/(?:\s*-\s*|\s+)anonimizzato$/i, '').trim()
+  const withoutCanonicalPrefix = withoutDerivativeSuffix.replace(/^CAN-[A-Z]+-[A-Z0-9]+(?:\s*[-:]?\s*)?/i, '').trim()
 
-  return withoutCanonicalPrefix || normalized
+  return withoutCanonicalPrefix || withoutDerivativeSuffix || normalized
 }
 
 export const CONTENT_CATEGORIES: ReadonlyArray<readonly [KnowledgeContentCategory, string]> = [

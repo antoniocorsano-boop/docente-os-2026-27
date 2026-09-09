@@ -1,5 +1,10 @@
 import type { AssetTransformerPort } from '@/core/application/ports/knowledge-base'
 import type { NormalizedKnowledge, TransformableAsset } from '@/core/domain/knowledge'
+import {
+  isLocalPdfTextDerivativeFilename,
+  meaningfulKnowledgeSummary,
+  normalizeKnowledgeWorkingText,
+} from '@/core/domain/knowledge-text-quality'
 
 export class PlainTextKnowledgeTransformer implements AssetTransformerPort {
   supports(asset: TransformableAsset['asset']): boolean {
@@ -7,8 +12,13 @@ export class PlainTextKnowledgeTransformer implements AssetTransformerPort {
   }
 
   async transform(input: TransformableAsset): Promise<NormalizedKnowledge> {
-    const text = input.text?.trim()
-    if (!text) throw new Error('Plain text transformer requires non-empty text')
+    const sourceText = input.text?.trim()
+    if (!sourceText) throw new Error('Plain text transformer requires non-empty text')
+
+    const localPdfTextDerivative = isLocalPdfTextDerivativeFilename(input.asset.originalName)
+    const quality = normalizeKnowledgeWorkingText(sourceText, { localPdfTextDerivative })
+    const text = quality.text
+    if (!text) throw new Error('Plain text transformer produced an empty working copy')
 
     const title = inferTitle(text, input.asset.originalName)
 
@@ -18,8 +28,16 @@ export class PlainTextKnowledgeTransformer implements AssetTransformerPort {
       language: 'it',
       text,
       markdown: text,
-      summary: firstSentence(text),
-      extractedData: {},
+      summary: meaningfulKnowledgeSummary(text),
+      extractedData: localPdfTextDerivative
+        ? {
+            workingCopy: {
+              mode: 'LOCAL_PDF_TEXT_DERIVATIVE',
+              removedBoilerplateLines: quality.removedBoilerplateLines,
+              sourcePreserved: true,
+            },
+          }
+        : {},
       units: chunkText(text).map((content, ordinal) => ({
         type: 'CHUNK',
         title: ordinal === 0 ? title : null,
@@ -27,7 +45,7 @@ export class PlainTextKnowledgeTransformer implements AssetTransformerPort {
         confidence: 1,
       })),
       processor: 'plain-text',
-      processorVersion: '1.0.0',
+      processorVersion: '1.1.0',
     }
   }
 }
@@ -36,11 +54,6 @@ function inferTitle(text: string, originalName: string | null) {
   if (originalName) return originalName.replace(/\.[^.]+$/, '')
   const firstLine = text.split(/\r?\n/, 1)[0]?.trim()
   return firstLine ? firstLine.slice(0, 120) : 'Nota'
-}
-
-function firstSentence(text: string) {
-  const match = text.match(/^(.{1,300}?[.!?])(?:\s|$)/s)
-  return (match?.[1] ?? text.slice(0, 300)).trim()
 }
 
 function chunkText(text: string, maxLength = 1200) {

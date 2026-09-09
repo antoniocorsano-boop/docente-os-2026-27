@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { isKnowledgeHighlightNoise } from '@/core/domain/knowledge-text-quality'
 import { buildKnowledgeAssistantContext } from '@/core/presentation/assistant-context'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
@@ -87,16 +88,16 @@ function buildAssistantHighlights(units: AssistantUnit[], maxItems = 10) {
 
 function highlightFromUnit(unit: AssistantUnit) {
   const title = collapse(unit.title ?? '')
-  const usefulTitle = title && !/^(?:pagina|page)\s+\d+$/i.test(title) ? title : ''
+  const usefulTitle = title && !/^(?:pagina|page)\s+\d+$/i.test(title) && !isKnowledgeHighlightNoise(title) ? title : ''
   const lines = unit.content
     .split(/\r?\n/)
     .map(collapse)
-    .filter((line) => line && !/^\d+$/.test(line))
+    .filter((line) => line && !/^\d+$/.test(line) && !isKnowledgeHighlightNoise(line))
 
   const lead = lines
-    .slice(0, 10)
+    .slice(0, 16)
     .map((line, index) => ({ line, index, score: salience(line, index) }))
-    .sort((a, b) => b.score - a.score || a.index - b.index)[0]?.line ?? collapse(unit.content)
+    .sort((a, b) => b.score - a.score || a.index - b.index)[0]?.line ?? ''
 
   const combined = usefulTitle && lead && !lead.toLocaleLowerCase('it-IT').startsWith(usefulTitle.toLocaleLowerCase('it-IT'))
     ? `${usefulTitle}: ${lead}`
@@ -106,9 +107,10 @@ function highlightFromUnit(unit: AssistantUnit) {
 }
 
 function salience(line: string, index: number) {
-  let score = Math.max(0, 10 - index) * 0.05
+  let score = Math.max(0, 16 - index) * 0.05
   if (line.includes(':')) score += 3
   if (/[.!?]$/.test(line)) score += 1
+  if (/^(?:prova|attività|obiettiv|competenz|educazione|agenda|soluzioni?|verific)/i.test(line)) score += 2
   if (line.length >= 20 && line.length <= 140) score += 2
   if (line.length >= 12 && line.length <= 90) score += 1
   if (line.length < 10) score -= 2
