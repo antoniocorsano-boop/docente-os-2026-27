@@ -11,6 +11,13 @@ export type PrivacyGuardResult = {
   findings: PrivacyFinding[]
 }
 
+export type PrivacyContactSanitizationResult = {
+  allowed: boolean
+  sanitizedText: string
+  removedLabels: string[]
+  residualFindings: PrivacyFinding[]
+}
+
 const NAME_TOKEN = String.raw`[A-ZÀ-Ü][a-zà-ÿ'’-]+`
 const FULL_NAME = String.raw`${NAME_TOKEN}(?:\s+${NAME_TOKEN})+`
 const STUDENT_ROLE = String.raw`(?:[Aa]lunno|[Aa]lunna|[Ss]tudente|[Ss]tudentessa|[Rr]agazzo|[Rr]agazza)`
@@ -27,6 +34,8 @@ const DIRECT_IDENTIFIER_PATTERNS: Array<[string, RegExp, string]> = [
   ['INDIVIDUAL_STUDENT_REFERENCE', INDIVIDUAL_STUDENT_REFERENCE, 'riferimento individuale a studente'],
 ]
 
+const AUTO_REDACTABLE_CONTACT_CODES = new Set(['EMAIL', 'PHONE', 'ADDRESS'])
+const CONTACT_REDACTION_PLACEHOLDER = '[dato di contatto rimosso]'
 const HIGH_RISK_CONTEXT = /\b(?:nota\s+disciplinare|sanzione\s+disciplinare|sospensione|madre|padre|genitore|famiglia|affidamento|tutore)\b/i
 const SPECIAL_CATEGORY = /\b(?:diagnosi|patologia|certificato\s+medico|salute|terapia|farmaco|disabilit[aà]|legge\s*104|104\/92|DSA|BES|PDP|PEI|religione|confessione\s+religiosa)\b/i
 
@@ -48,6 +57,42 @@ export function inspectFreeTextForPilot(value: string): PrivacyGuardResult {
   }
 
   return { allowed: findings.length === 0, findings: dedupe(findings) }
+}
+
+export function sanitizeContactIdentifiersForPilot(value: string): PrivacyContactSanitizationResult {
+  const initial = inspectFreeTextForPilot(value)
+  if (initial.allowed) {
+    return { allowed: true, sanitizedText: value, removedLabels: [], residualFindings: [] }
+  }
+
+  const initialCodes = new Set(initial.findings.map((finding) => finding.code))
+  if ([...initialCodes].some((code) => !AUTO_REDACTABLE_CONTACT_CODES.has(code))) {
+    return {
+      allowed: false,
+      sanitizedText: value,
+      removedLabels: [],
+      residualFindings: initial.findings,
+    }
+  }
+
+  let sanitizedText = value
+  const removedLabels: string[] = []
+  for (const [code, pattern, label] of DIRECT_IDENTIFIER_PATTERNS) {
+    if (!AUTO_REDACTABLE_CONTACT_CODES.has(code)) continue
+    pattern.lastIndex = 0
+    if (!pattern.test(sanitizedText)) continue
+    removedLabels.push(label)
+    const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`
+    sanitizedText = sanitizedText.replace(new RegExp(pattern.source, flags), CONTACT_REDACTION_PLACEHOLDER)
+  }
+
+  const residual = inspectFreeTextForPilot(sanitizedText)
+  return {
+    allowed: removedLabels.length > 0 && residual.allowed,
+    sanitizedText,
+    removedLabels: [...new Set(removedLabels)],
+    residualFindings: residual.findings,
+  }
 }
 
 export function inspectFilenameForPilot(filename: string): PrivacyGuardResult {
