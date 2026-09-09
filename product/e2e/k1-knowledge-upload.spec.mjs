@@ -101,7 +101,7 @@ test('K1 Knowledge: scelta file, conferma privacy, errore recuperabile, retry re
   }
 })
 
-test('K1 Knowledge: PDF testuale oltre 6 MB usa preflight locale e trasferimento resumable', async ({ page }) => {
+test('K1 Knowledge: guida docente PDF oltre 6 MB passa il preflight contestuale e usa il trasferimento resumable', async ({ page }) => {
   await login(page)
   await deleteAllKnowledgeFixtures(page, largePdfFixtureName)
   await deleteOrphanedKnowledgeFixtureObjects([largePdfFixtureName])
@@ -121,6 +121,7 @@ test('K1 Knowledge: PDF testuale oltre 6 MB usa preflight locale e trasferimento
 
     await expect(page.getByText('Preflight locale superato')).toBeVisible({ timeout: 45_000 })
     await expect(page.getByText(/preflight privacy superato/i)).toBeVisible()
+    await expect(page.getByRole('button', { name: 'PDF non ammesso' })).toHaveCount(0)
     const privacyConfirmation = page.getByRole('checkbox')
     await privacyConfirmation.check()
 
@@ -216,7 +217,7 @@ test('K1 Knowledge: i cinque documenti scolastici attraversano davvero DOCX → 
 })
 
 function buildLargeTextPdfFixture(targetBytes = 7 * 1024 * 1024) {
-  const baseContent = 'BT /F1 12 Tf 72 720 Td (K1 resumable acceptance Tecnologia) Tj ET\n'
+  const baseContent = 'BT /F1 12 Tf 72 720 Td (Idee per insegnare: strategie per lo studente con DSA e BES, uso di PDP e PEI, collaborazione con la famiglia.) Tj ET\n'
   const paddingLine = `%${'A'.repeat(98)}\n`
   const paddingLength = Math.max(0, targetBytes - 1000 - Buffer.byteLength(baseContent))
   const padding = paddingLine.repeat(Math.ceil(paddingLength / paddingLine.length) + 1).slice(0, paddingLength)

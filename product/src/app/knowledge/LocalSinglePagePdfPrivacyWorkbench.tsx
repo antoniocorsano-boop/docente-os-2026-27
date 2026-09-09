@@ -59,7 +59,7 @@ function Session({ file, disabled, onPrepared, onNativeTextPreflight }: Props) {
         }
         if (classification.state === 'NATIVE_TEXT_PRIVACY_BLOCKED') {
           onNativeTextPreflightRef.current('BLOCKED')
-          setMessage('Il controllo locale ha rilevato dati non ammessi nel pilot anonimo. Il PDF resta sul dispositivo e non viene inviato.')
+          setMessage(`${classification.privacyMessage ?? 'Il controllo locale ha rilevato dati non ammessi nel pilot anonimo.'} Il PDF resta sul dispositivo e non viene inviato.`)
           return
         }
 
