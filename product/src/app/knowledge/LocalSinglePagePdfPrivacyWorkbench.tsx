@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { getDocumentProxy } from 'unpdf'
+import { inspectFreeTextForPilot } from '@/core/privacy/anonymization-guard'
 import {
   classifyLocalPdfForVisualPreflight,
   MAX_LOCAL_VISUAL_PDF_PAGES,
@@ -36,6 +37,8 @@ function Session({ file, disabled, onPrepared, onNativeTextPreflight }: Props) {
   const [ready, setReady] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
   const [redactions, setRedactions] = useState(0)
+  const [sanitizedNativeText, setSanitizedNativeText] = useState<string | null>(null)
+  const [sanitizedLabels, setSanitizedLabels] = useState<string[]>([])
   const [message, setMessage] = useState('Analizzo il PDF localmente. Nessun byte viene inviato.')
 
   useEffect(() => { onPreparedRef.current = onPrepared }, [onPrepared])
@@ -43,6 +46,8 @@ function Session({ file, disabled, onPrepared, onNativeTextPreflight }: Props) {
 
   useEffect(() => {
     let cancelled = false
+    setSanitizedNativeText(null)
+    setSanitizedLabels([])
     void (async () => {
       onPreparedRef.current(null)
       onNativeTextPreflightRef.current('PENDING')
@@ -59,7 +64,11 @@ function Session({ file, disabled, onPrepared, onNativeTextPreflight }: Props) {
         }
         if (classification.state === 'NATIVE_TEXT_PRIVACY_BLOCKED') {
           onNativeTextPreflightRef.current('BLOCKED')
-          setMessage(`${classification.privacyMessage ?? 'Il controllo locale ha rilevato dati non ammessi nel pilot anonimo.'} Il PDF resta sul dispositivo e non viene inviato.`)
+          setSanitizedNativeText(classification.sanitizedNativeText ?? null)
+          setSanitizedLabels(classification.sanitizedLabels ?? [])
+          setMessage(classification.sanitizedNativeText
+            ? `${classification.privacyMessage ?? 'Il controllo locale ha rilevato dati non ammessi.'} Posso rimuovere localmente i soli contatti rilevati e preparare un TXT anonimo; il PDF originale non verrà inviato.`
+            : `${classification.privacyMessage ?? 'Il controllo locale ha rilevato dati non ammessi nel pilot anonimo.'} Il PDF resta sul dispositivo e non viene inviato.`)
           return
         }
 
@@ -174,6 +183,39 @@ function Session({ file, disabled, onPrepared, onNativeTextPreflight }: Props) {
     setMessage(`Copia anonima pronta: verrà inviato solo il PNG ricodificato delle ${pages === 1 ? 'pagina' : `${pages} pagine`}.`)
   }
 
+  function prepareSanitizedText() {
+    if (!sanitizedNativeText || disabled) return
+    const validation = inspectFreeTextForPilot(sanitizedNativeText)
+    if (!validation.allowed) {
+      onPreparedRef.current(null)
+      setMessage('La copia testuale non supera il ricontrollo privacy e resta bloccata. Nessun byte è stato inviato.')
+      return
+    }
+    const safeFile = new File(
+      [`${sanitizedNativeText.trim()}\n`],
+      sanitizedTextFilename(file.name),
+      { type: 'text/plain', lastModified: Date.now() },
+    )
+    onPreparedRef.current(safeFile)
+    setMessage('Copia testuale anonimizzata pronta. Verrà inviato solo il TXT; PDF originale, layout e immagini restano sul dispositivo.')
+  }
+
+  if (state === 'NATIVE_TEXT_PRIVACY_BLOCKED' && sanitizedNativeText) {
+    return (
+      <section aria-label="Recupero privacy locale del PDF" style={{ border: '1px solid var(--border, #d7d7d7)', borderRadius: 12, padding: 12, display: 'grid', gap: 10 }}>
+        <div>
+          <strong>Il PDF originale resta bloccato</strong>
+          <p style={{ margin: '4px 0 0' }}>{message}</p>
+        </div>
+        <p className="knowledgeUploadTrust" style={{ margin: 0 }}>
+          Posso rimuovere automaticamente dal testo: {sanitizedLabels.join(', ')}. Non modifico nominativi di studenti, riferimenti individuali o informazioni D4/D5.
+        </p>
+        <button type="button" onClick={prepareSanitizedText} disabled={disabled}>Prepara copia testuale anonimizzata</button>
+        <small>La copia conserva il testo utile alla Conoscenza, ma non il layout e le immagini del PDF.</small>
+      </section>
+    )
+  }
+
   if (state === 'NATIVE_TEXT_ONLY' || state === 'NATIVE_TEXT_PRIVACY_BLOCKED' || state === 'MULTI_PAGE_VISUAL_BLOCKED' || state === 'FAILED' || state === 'ANALYZING') {
     return <p role="status" aria-live="polite" className="knowledgeUploadTrust">{message}</p>
   }
@@ -188,4 +230,9 @@ function Session({ file, disabled, onPrepared, onNativeTextPreflight }: Props) {
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}><button type="button" onClick={() => void prepare()} disabled={!ready || !confirmed || disabled}>Prepara copia anonima</button><button type="button" onClick={reset} disabled={!ready || disabled}>Ripristina copia locale</button></div>
     <p role="status" aria-live="polite" style={{ margin: 0 }}>{message}</p>
   </section>
+}
+
+function sanitizedTextFilename(filename: string) {
+  const base = filename.replace(/\.pdf$/i, '').trim() || 'documento'
+  return `${base}-anonimizzato.txt`
 }
