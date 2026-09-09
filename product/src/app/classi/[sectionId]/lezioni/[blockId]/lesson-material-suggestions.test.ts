@@ -156,6 +156,32 @@ test('non propone la guida del libro confermato quando manca pertinenza con la l
   assert.deepEqual(result, [])
 })
 
+test('non unisce concetti pertinenti presenti soltanto in passaggi lontani dello stesso documento', () => {
+  const distantGuide = item({
+    id: 'distant-guide',
+    title: 'Idee per insegnare',
+    summary: 'Programmazione per competenze e prove di verifica di Tecnologia.',
+    content: [
+      'I materiali vengono richiamati in un passaggio introduttivo senza descriverne altre caratteristiche.',
+      'contenuto-separatore '.repeat(180),
+      'Le proprietà vengono richiamate molto più avanti, in un passaggio distinto e non collegato al precedente.',
+    ].join('\n\n'),
+    classLabels: ['Secondaria di primo grado'],
+    sourceMetadata: {
+      materialRole: 'TEXTBOOK_TEACHER_MATERIAL',
+      textbook: { id: 'book-1', title: 'Tecnologia.verde 2ed' },
+    },
+  })
+
+  const result = buildLessonMaterialSuggestions({
+    ...base,
+    items: [distantGuide],
+    confirmedTextbooks: [{ id: 'book-1', title: 'Tecnologia.verde 2ed' }],
+  })
+
+  assert.deepEqual(result, [])
+})
+
 test('distingue la verifica ad alta leggibilità come verifica inclusiva', () => {
   const accessible = item({
     id: 'accessible',
