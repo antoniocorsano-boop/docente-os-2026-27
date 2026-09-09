@@ -151,10 +151,10 @@ function suggestionReason(input: {
   }
   if (input.explicitFocus) return `È già collegato esplicitamente a ${input.blockId} / UDA ${input.uda}.`
   if (input.textbookTitle && input.relevance === 0 && input.indexedEvidence.relevance >= 2) {
-    return `Proviene dai materiali di “${input.textbookTitle}”, libro confermato per questa classe; la ricerca nel contenuto indicizzato trova più concetti chiave coerenti con l’obiettivo della lezione.`
+    return `Proviene dai materiali di “${input.textbookTitle}”, libro confermato per questa classe; la ricerca nel contenuto indicizzato trova nello stesso passaggio più concetti chiave coerenti con l’obiettivo della lezione.`
   }
   if (input.textbookTitle && input.relevance > 0 && input.indexedEvidence.relevance >= 2) {
-    return `Proviene dai materiali di “${input.textbookTitle}”, libro confermato per questa classe; titolo o sintesi e contenuto indicizzato sono coerenti con l’obiettivo della lezione.`
+    return `Proviene dai materiali di “${input.textbookTitle}”, libro confermato per questa classe; titolo o sintesi e un passaggio del contenuto indicizzato sono coerenti con l’obiettivo della lezione.`
   }
   if (input.textbookTitle && input.relevance > 0 && input.pedagogicalFit > 0) {
     return `Proviene dai materiali di “${input.textbookTitle}”, libro confermato per questa classe; contenuto dichiarato e funzione didattica sono coerenti con l’obiettivo della lezione.`
@@ -171,7 +171,7 @@ function usageTip(input: {
   indexedContentMatch: boolean
 }) {
   if (input.indexedContentMatch) {
-    return 'Apri il materiale e usa solo la parte pertinente all’obiettivo corrente: la corrispondenza viene dal contenuto indicizzato, non dal titolo, e resta da controllare prima di allegarla alla lezione.'
+    return 'Apri il materiale e usa solo la parte pertinente all’obiettivo corrente: la corrispondenza viene da un passaggio locale del contenuto indicizzato, non dal titolo, e resta da controllare prima di allegarla alla lezione.'
   }
   if (input.roles.includes('INCLUSION') && input.roles.includes('ASSESSMENT')) {
     return 'Qui potresti affiancarlo alla prova ordinaria come variante ad alta leggibilità o supporto inclusivo, mantenendo invariato l’obiettivo della verifica.'
@@ -210,15 +210,54 @@ function indexedContentEvidence(content: string | null | undefined, lessonContex
   )).slice(0, 8)
   if (!lessonTerms.length) return { relevance: 0, matchedConcepts: 0 }
 
-  const normalizedContent = normalizeSearchText(content)
-  let matchedConcepts = 0
-  for (const term of lessonTerms) {
-    if (containsConcept(normalizedContent, term)) matchedConcepts += 1
+  let bestLocalMatch = 0
+  for (const passage of localEvidencePassages(content)) {
+    const normalizedPassage = normalizeSearchText(passage)
+    let matchedConcepts = 0
+    for (const term of lessonTerms) {
+      if (containsConcept(normalizedPassage, term)) matchedConcepts += 1
+    }
+    if (matchedConcepts > bestLocalMatch) bestLocalMatch = matchedConcepts
+    if (bestLocalMatch >= 4) break
   }
+
   return {
-    relevance: Math.min(matchedConcepts, 4),
-    matchedConcepts,
+    relevance: Math.min(bestLocalMatch, 4),
+    matchedConcepts: bestLocalMatch,
   }
+}
+
+function localEvidencePassages(content: string, maxLength = 1200) {
+  const paragraphs = content
+    .replace(/\r/g, '')
+    .split(/\n\s*\n/)
+    .map((value) => value.trim())
+    .filter(Boolean)
+  const source = paragraphs.length ? paragraphs : [content.trim()]
+  return source.flatMap((paragraph) => splitEvidencePassage(paragraph, maxLength))
+}
+
+function splitEvidencePassage(value: string, maxLength: number) {
+  if (value.length <= maxLength) return [value]
+  const words = value.split(/\s+/).filter(Boolean)
+  const passages: string[] = []
+  let current = ''
+
+  for (const word of words) {
+    if (!current) {
+      current = word
+      continue
+    }
+    const candidate = `${current} ${word}`
+    if (candidate.length <= maxLength) {
+      current = candidate
+      continue
+    }
+    passages.push(current)
+    current = word
+  }
+  if (current) passages.push(current)
+  return passages
 }
 
 function containsConcept(normalizedContent: string, term: string) {
