@@ -70,11 +70,12 @@ test('before school the first timed commitment outranks an urgent planner task',
   assert.equal(brief.phase, 'BEFORE_SCHOOL')
   assert.equal(brief.focus?.kind, 'TEMPORAL')
   assert.equal(brief.focus?.title, '1ª A · Tecnologia')
-  assert.equal(brief.focus?.actionLabel, 'Apri la classe')
+  assert.equal(brief.focus?.eyebrow, 'A SEGUIRE')
+  assert.equal(brief.focus?.actionLabel, 'Apri attività')
   assert.equal(brief.attentionTasks.length, 1)
 })
 
-test('during a lesson the current lesson is the primary focus', () => {
+test('during a lesson the current lesson is exposed as the operative activity', () => {
   const brief = buildDailyTeacherBrief({
     day: day([occurrence()]),
     tasks: [],
@@ -83,11 +84,13 @@ test('during a lesson the current lesson is the primary focus', () => {
   })
 
   assert.equal(brief.phase, 'ACTIVE_DAY')
-  assert.equal(brief.focus?.eyebrow, 'ADESSO')
+  assert.equal(brief.focus?.eyebrow, 'IN CORSO')
   assert.equal(brief.focus?.title, '1ª A · Tecnologia')
+  assert.equal(brief.focus?.description, 'Attività didattica in corso.')
+  assert.equal(brief.focus?.actionLabel, 'Apri attività')
 })
 
-test('between activities the next timed commitment becomes primary', () => {
+test('between activities the next timed commitment is exposed without didactic guidance', () => {
   const second = occurrence({
     logicalId: 'cal:event-1:2026-09-09',
     kind: 'CALENDAR_EVENT',
@@ -110,10 +113,11 @@ test('between activities the next timed commitment becomes primary', () => {
 
   assert.equal(brief.phase, 'BETWEEN_ACTIVITIES')
   assert.equal(brief.focus?.title, 'Collegio docenti')
-  assert.equal(brief.focus?.actionLabel, 'Apri il Calendario')
+  assert.equal(brief.focus?.actionLabel, 'Apri impegno')
+  assert.equal(brief.focus?.description, 'Prossimo impegno previsto.')
 })
 
-test('after the last timed commitment an attention task can become the focus', () => {
+test('after the last timed commitment an overdue task is exposed as a scadenza', () => {
   const brief = buildDailyTeacherBrief({
     day: day([occurrence()]),
     tasks: [task({ dueAt: '2026-09-08T18:00:00+02:00', plannedFor: null })],
@@ -123,7 +127,9 @@ test('after the last timed commitment an attention task can become the focus', (
 
   assert.equal(brief.phase, 'AFTER_SCHOOL')
   assert.equal(brief.focus?.kind, 'TASK')
+  assert.equal(brief.focus?.eyebrow, 'SCADENZA')
   assert.equal(brief.focus?.title, 'Preparare il verbale')
+  assert.equal(brief.focus?.description, 'Scadenza superata.')
 })
 
 test('day phase is deterministic from timed commitments', () => {
