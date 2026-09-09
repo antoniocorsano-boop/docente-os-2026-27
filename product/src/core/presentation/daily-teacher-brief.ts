@@ -75,13 +75,13 @@ function temporalFocusToFocus(item: ProjectedOccurrence, nowMinutes: number): Da
 
   return {
     kind: 'TEMPORAL',
-    eyebrow: current ? 'ADESSO' : 'PROSSIMO IMPEGNO',
+    eyebrow: current ? 'IN CORSO' : 'A SEGUIRE',
     title: item.title,
-    description: current
-      ? 'È l’impegno in corso secondo Orario e Calendario. Le altre attività restano disponibili senza competere con ciò che devi fare adesso.'
-      : 'È il prossimo impegno della giornata. Controllalo prima delle attività non legate a un orario preciso.',
+    description: isLesson
+      ? current ? 'Attività didattica in corso.' : 'Prossima attività didattica prevista.'
+      : current ? 'Impegno in corso.' : 'Prossimo impegno previsto.',
     href,
-    actionLabel: isLesson ? 'Apri la classe' : item.kind === 'CALENDAR_EVENT' ? 'Apri il Calendario' : 'Apri l’orario',
+    actionLabel: isLesson ? 'Apri attività' : item.kind === 'CALENDAR_EVENT' ? 'Apri impegno' : 'Apri orario',
     meta: [timeRange(item), item.kind === 'CALENDAR_EVENT' ? 'Calendario' : 'Orario'].filter(Boolean),
   }
 }
@@ -90,12 +90,12 @@ function taskToFocus(task: PlannerTask | null, localDate: string): DailyTeacherF
   if (!task) return null
   return {
     kind: 'TASK',
-    eyebrow: 'ATTENZIONE',
+    eyebrow: 'SCADENZA',
     title: task.title,
     description: taskReason(task, localDate),
     href: '/planner',
-    actionLabel: 'Apri l’attività',
-    meta: [priorityLabel(task.priority), task.dueAt ? `Scade ${task.dueAt.slice(0, 10)}` : 'Attività pianificata'],
+    actionLabel: 'Apri',
+    meta: [priorityLabel(task.priority), task.dueAt ? `Scade ${task.dueAt.slice(0, 10)}` : 'Prevista oggi'],
   }
 }
 
@@ -145,9 +145,9 @@ function compareTasks(a: PlannerTask, b: PlannerTask) {
 
 function taskReason(task: PlannerTask, today: string) {
   const due = task.dueAt?.slice(0, 10) ?? null
-  if (due && due < today) return 'È scaduta e richiede attenzione, ma non deve nascondere una lezione o un impegno temporale imminente.'
-  if (due === today) return 'Scade oggi. Rimane in evidenza senza sostituire il contesto temporale della giornata.'
-  return 'È la prima attività pianificata per oggi secondo priorità e scadenza.'
+  if (due && due < today) return 'Scadenza superata.'
+  if (due === today) return 'Scadenza oggi.'
+  return 'Attività prevista oggi.'
 }
 
 function priorityLabel(priority: PlannerTask['priority']) {
