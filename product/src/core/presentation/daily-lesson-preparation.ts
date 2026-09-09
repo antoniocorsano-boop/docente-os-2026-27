@@ -11,7 +11,7 @@ export type DailyLessonPreparationView = {
   statusReason: string
   materials: string[]
   href: string
-  actionLabel: 'Prepara la lezione' | 'Rivedi e conferma' | 'Apri la lezione'
+  actionLabel: 'Apri preparazione' | 'Controlla modifiche' | 'Apri attività'
 }
 
 export function buildDailyLessonPreparationView(input: {
@@ -32,9 +32,9 @@ export function buildDailyLessonPreparationView(input: {
     materials: input.projection.preparation,
     href: buildLessonWorkspaceHref(input.sectionId, input.blockId, mode),
     actionLabel: input.preparationState.status === 'READY'
-      ? 'Apri la lezione'
+      ? 'Apri attività'
       : input.preparationState.status === 'NEEDS_CONFIRMATION'
-        ? 'Rivedi e conferma'
-        : 'Prepara la lezione',
+        ? 'Controlla modifiche'
+        : 'Apri preparazione',
   }
 }
