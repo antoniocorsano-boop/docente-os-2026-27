@@ -1,0 +1,177 @@
+{
+  "auditId": "CML-DOS-C2P-CONTRACT-AUDIT-V1",
+  "date": "2026-09-09",
+  "status": "C2P-01_CONTRACT_AUDIT_CANDIDATE",
+  "governedMemoryId": "CML-DOS-INTEGRATED-GOVERNANCE-V1",
+  "classificationVocabulary": [
+    "EXISTS_REUSE",
+    "EXISTS_EXTEND",
+    "MISSING_REQUIRED",
+    "DUPLICATE_REMOVE_OR_AVOID",
+    "FORBIDDEN_BY_GOVERNANCE"
+  ],
+  "contracts": {
+    "C1": {
+      "name": "CurriculumReleaseContract",
+      "overall": ["EXISTS_REUSE", "EXISTS_EXTEND"],
+      "reuse": [
+        "Arena CML_LOCAL_HANDOFF_V2 producer contract",
+        "Docente OS CML_LOCAL_HANDOFF_V2 receiver validation",
+        "curriculum authority/applicability/provenance",
+        "structural footprint",
+        "teacher acceptance and same-version revalidation"
+      ],
+      "extend": [
+        "profile existing handoff as C2P CurriculumReleaseContract",
+        "expose stable references needed by C2/C3 where required"
+      ],
+      "avoid": [
+        "second curriculum release channel or store",
+        "document export as canonical synchronization"
+      ],
+      "forbidden": [
+        "automatic downstream canonical write without teacher acceptance/revalidation"
+      ]
+    },
+    "C2": {
+      "name": "AnnualPlanBindingContract",
+      "overall": ["EXISTS_REUSE", "MISSING_REQUIRED"],
+      "reuse": [
+        "Annual Plan execution engine",
+        "canonical block/UDA/pack sequence",
+        "section progress separation",
+        "TeachingSession block allocation",
+        "persisted accepted curriculum context and coverage"
+      ],
+      "missing": [
+        "explicit PlanBlockCurriculumBinding with accepted curriculum context, outcome/node refs and criterion refs"
+      ],
+      "avoid": [
+        "second Annual Plan engine",
+        "editable semantic copies of curriculum requirements in blocks"
+      ],
+      "forbidden": [
+        "section execution mutating the common canonical plan"
+      ]
+    },
+    "C3": {
+      "name": "UdaInstanceContract",
+      "overall": ["EXISTS_REUSE", "MISSING_REQUIRED"],
+      "reuse": [
+        "AuthoredDocument UDA identity/version history",
+        "Progetta UDA/block/phase/resource projection",
+        "Knowledge source references",
+        "focused planning",
+        "common nucleus vs section adaptation rule"
+      ],
+      "missing": [
+        "explicit UdaCurriculumBinding with Annual Plan, accepted curriculum context, outcome/node refs and criterion refs"
+      ],
+      "avoid": [
+        "parallel UDA archive created only for C2P"
+      ],
+      "forbidden": [
+        "automatic common-UDA copy per section",
+        "independently editable canonical curriculum semantics inside UDA documents"
+      ]
+    },
+    "C4": {
+      "name": "ExecutionEvidenceFeedbackContract",
+      "overall": ["EXISTS_REUSE", "MISSING_REQUIRED"],
+      "reuse": [
+        "TeachingSessionRecord as execution root",
+        "canonical block allocation and actual minutes",
+        "session supersession/history",
+        "lesson design FORMATIVE_CHECK as a separate planning checkpoint concept"
+      ],
+      "missing": [
+        "EvidenceRecord bound to session/UDA/criteria",
+        "FeedbackRecord bound to evidence/criterion with next action",
+        "StudentResponse",
+        "RevisedEvidence lineage",
+        "AssessmentObservation"
+      ],
+      "avoid": [
+        "second classroom execution registry",
+        "semantic conflation of lesson-design feedback or curriculum feedback with learner feedback"
+      ],
+      "forbidden": [
+        "export pupil-level evidence, feedback, grades, attendance or raw classroom events to Arena",
+        "automatic individual attainment inferred from group evidence alone"
+      ]
+    },
+    "C5": {
+      "name": "ProfessionalCurriculumObservationContract",
+      "overall": ["EXISTS_REUSE", "EXISTS_EXTEND"],
+      "reuse": [
+        "CurriculumFeedbackDraft/EnvelopeV1",
+        "aligned curriculum node refs",
+        "professional evidence refs",
+        "teacher confirmation",
+        "PROFESSIONAL_NON_PERSONAL privacy boundary",
+        "Arena governed review intake boundary"
+      ],
+      "extend": [
+        "coverage signal",
+        "recurring difficulty",
+        "prerequisite issue",
+        "time adequacy",
+        "evidence quality",
+        "proposed adjustment"
+      ],
+      "avoid": [
+        "parallel ProfessionalCurriculumObservation transport beside current curriculum feedback channel"
+      ],
+      "forbidden": [
+        "automatic promotion to team outcome, vertical review or institutional decision"
+      ]
+    },
+    "C6": {
+      "name": "CurriculumVersionMigrationContract",
+      "overall": ["EXISTS_REUSE", "EXISTS_EXTEND", "MISSING_REQUIRED"],
+      "reuse": [
+        "structural footprint comparison",
+        "same-version meaningful-change detection",
+        "teacher-reviewed framework preservation",
+        "carry-forward of unchanged requirement coverage",
+        "blocking of new mandatory requirements until teacher alignment",
+        "teacher revalidation decision"
+      ],
+      "extend": [
+        "existing revalidation engine to emit explicit future impact analysis"
+      ],
+      "missing": [
+        "CurriculumMigrationImpactManifest with per-plan/block/UDA disposition"
+      ],
+      "dispositions": [
+        "UNCHANGED_COMPATIBLE",
+        "FUTURE_REVALIDATION_REQUIRED",
+        "FUTURE_REBIND_REQUIRED",
+        "HISTORICAL_PRESERVE",
+        "MANUAL_REVIEW_REQUIRED"
+      ],
+      "avoid": [
+        "second migration/revalidation engine"
+      ],
+      "forbidden": [
+        "retrospective rewrite of completed historical execution",
+        "silent rebinding of future teacher work"
+      ]
+    }
+  },
+  "minimumNewSemanticSurface": [
+    "PlanBlockCurriculumBinding",
+    "UdaCurriculumBinding",
+    "C4 learner evidence-feedback-revision-assessment lineage rooted in TeachingSession",
+    "CurriculumMigrationImpactManifest"
+  ],
+  "reuseInsteadOfCreate": [
+    "C1 evolve/profile existing CML handoff v2",
+    "C5 evolve/profile existing curriculum feedback contract"
+  ],
+  "gate": {
+    "id": "C2P_CONTRACT_AUDIT_PASS",
+    "result": "PASS_CANDIDATE",
+    "runtimeAuthorizationGranted": false
+  }
+}

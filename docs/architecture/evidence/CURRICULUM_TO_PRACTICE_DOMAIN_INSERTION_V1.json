@@ -1,0 +1,227 @@
+{
+  "schema_version": "1.0",
+  "design_id": "CML-DOS-C2P-DOMAIN-INSERTION-V1",
+  "date": "2026-09-09",
+  "status": "C2P-01_PURE_DOMAIN_DESIGN_CANDIDATE",
+  "scope": "DOCENTE_OS_DOMAIN_INSERTION_WITH_ARENA_AUTHORITY_BOUNDARIES",
+  "canonical_tranche_naming": {
+    "preserved": true,
+    "C2P-02": "Arena Curriculum Release Boundary (C1)",
+    "note": "This artifact extends C2P-01 and does not consume, rename, or authorize C2P-02."
+  },
+  "authorization": {
+    "runtime_changes": false,
+    "database_schema_changes": false,
+    "migrations": false,
+    "api_changes": false,
+    "ui_changes": false,
+    "deployment_changes": false,
+    "authority_transitions": false
+  },
+  "ownership": {
+    "arena": [
+      "institutional curriculum authority",
+      "governed curriculum release semantics",
+      "institutional review chain"
+    ],
+    "docente_os": [
+      "teacher professional planning",
+      "section execution",
+      "UDA authoring and adaptation",
+      "classroom evidence-feedback-revision-assessment lineage",
+      "teacher curriculum acceptance and revalidation decisions"
+    ],
+    "teacher": [
+      "classroom adaptation",
+      "interpretation of evidence",
+      "feedback",
+      "assessment judgment"
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "PLAN_BLOCK_CURRICULUM_BINDING",
+      "contract": "C2",
+      "future_tranche": "C2P-04",
+      "owner": "DOCENTE_OS",
+      "authoritative_reference_owner": "ARENA",
+      "existing_root": [
+        "Annual Plan execution engine",
+        "AnnualPlanSection",
+        "AnnualPlanBlockProgress",
+        "canonical block identity",
+        "accepted curriculum context"
+      ],
+      "semantic_identity": [
+        "bindingId",
+        "canonicalPlanAssetId",
+        "canonicalGenerationId",
+        "blockId",
+        "acceptedCurriculumContextOrReleaseId",
+        "curriculumNodeOrOutcomeRefs",
+        "criterionRefs",
+        "acceptedHandoffFootprintRef"
+      ],
+      "history_rule": "Later curriculum releases do not mutate historical bindings in place; future work may be preserved, superseded, rebound, or sent to manual review through governed revalidation.",
+      "forbidden": [
+        "new Annual Plan engine",
+        "editable copied curriculum master per block",
+        "section execution mutating the common canonical sequence",
+        "silent rebinding after curriculum update"
+      ]
+    },
+    {
+      "id": "UDA_CURRICULUM_BINDING",
+      "contract": "C3",
+      "future_tranche": "C2P-05",
+      "owner": "DOCENTE_OS",
+      "authoritative_reference_owner": "ARENA",
+      "existing_root": [
+        "existing UDA professional work",
+        "Progetta",
+        "authored-document identity and version history",
+        "Annual Plan block/UDA projections"
+      ],
+      "semantic_identity": [
+        "bindingId",
+        "udaDocumentOrInstanceId",
+        "udaDocumentVersion",
+        "annualPlanBindingOrBlockRefs",
+        "acceptedCurriculumContextOrReleaseId",
+        "curriculumNodeOrOutcomeRefs",
+        "criterionRefs",
+        "optionalSectionAdaptationRef"
+      ],
+      "teacher_owned_local_content": [
+        "problem situation",
+        "phases and sequencing",
+        "duration",
+        "resources",
+        "methods",
+        "section adaptations",
+        "classroom evidence design",
+        "teacher notes and revisions"
+      ],
+      "history_rule": "Each materially relevant UDA version remains traceable to the accepted curriculum context used at that time; later releases may trigger future revalidation but never retrospective rewriting.",
+      "forbidden": [
+        "parallel C2P UDA repository",
+        "automatic common-UDA clone per section",
+        "independently editable curriculum source of truth inside UDA",
+        "automatic propagation of future curriculum release into historical UDA versions"
+      ]
+    },
+    {
+      "id": "EVIDENCE_FEEDBACK_REVISION_ASSESSMENT_LINEAGE",
+      "contract": "C4",
+      "future_tranche": "C2P-06",
+      "owner": "DOCENTE_OS",
+      "existing_root": [
+        "TeachingSessionRecord / TeachingSession",
+        "canonical block allocation",
+        "section execution history"
+      ],
+      "lineage": [
+        "TeachingSessionOrSectionExecution",
+        "EvidenceRecord",
+        "FeedbackRecord",
+        "NextAction",
+        "StudentResponse",
+        "RevisedEvidenceLink",
+        "AssessmentObservation"
+      ],
+      "privacy": {
+        "pupil_level_data_residency": "DOCENTE_OS_ONLY",
+        "forbidden_to_arena": [
+          "pupil identity",
+          "raw pupil work",
+          "pupil feedback text or history",
+          "grades",
+          "attendance",
+          "private classroom notes",
+          "raw classroom event streams"
+        ]
+      },
+      "assessment_rule": "AssessmentObservation supports teacher professional judgment; it is not an automatic grade or attainment decision, and group evidence must not automatically become individual attainment.",
+      "c5_separation": "Raw C4 classroom lineage cannot be reused as an Arena observation payload; only a teacher-confirmed professional non-personal abstraction may cross the existing C5 channel.",
+      "forbidden": [
+        "second classroom-execution registry",
+        "raw pupil export to Arena",
+        "automatic conversion of group evidence into individual attainment",
+        "semantic conflation of learner feedback with professional curriculum feedback"
+      ]
+    },
+    {
+      "id": "CURRICULUM_MIGRATION_IMPACT_MANIFEST",
+      "contract": "C6",
+      "future_tranche": "C2P-09",
+      "owner": "DOCENTE_OS",
+      "trigger_authority_owner": "ARENA",
+      "existing_root": [
+        "accepted curriculum revalidation",
+        "structural-footprint comparison",
+        "teacher acceptance boundary"
+      ],
+      "semantic_identity": [
+        "manifestId",
+        "previousAcceptedCurriculumContextAndFootprint",
+        "incomingAcceptedCurriculumContextAndFootprint",
+        "affectedTargetTypeAndId",
+        "changedRequirementOrNodeRefs",
+        "reason",
+        "temporalScope",
+        "disposition",
+        "teacherDecisionStatusWhenRequired"
+      ],
+      "dispositions": [
+        "UNCHANGED_COMPATIBLE",
+        "FUTURE_REVALIDATION_REQUIRED",
+        "FUTURE_REBIND_REQUIRED",
+        "HISTORICAL_PRESERVE",
+        "MANUAL_REVIEW_REQUIRED"
+      ],
+      "history_rule": "Completed sessions, evidence, feedback, assessment observations, and explanatory bindings remain attached to the curriculum context under which they were created.",
+      "forbidden": [
+        "second migration engine",
+        "automatic rewriting of plan/UDA/session/evidence history",
+        "silent future rebinding",
+        "manifest status conferring institutional curriculum approval"
+      ]
+    }
+  ],
+  "reused_channels": {
+    "C1": {
+      "existing_channel": "CML_LOCAL_HANDOFF_V2 plus Docente OS acceptance/revalidation",
+      "rule": "EVOLVE_NOT_DUPLICATE"
+    },
+    "C5": {
+      "existing_channel": "CurriculumFeedbackDraft/EnvelopeV1",
+      "rule": "EVOLVE_NOT_DUPLICATE"
+    }
+  },
+  "global_invariants": [
+    "Arena remains the institutional curriculum authority.",
+    "Docente OS stores stable references, bindings, provenance and teacher-owned professional work, not an independently editable curriculum master.",
+    "Historical bindings and classroom work are preserved and not silently rewritten.",
+    "Common plan/UDA nucleus and section execution/adaptation remain distinct.",
+    "Teacher professional judgment remains human.",
+    "Pupil-level data remains in Docente OS.",
+    "C1 remains the unique release/intake/revalidation boundary.",
+    "C5 remains the unique professional curriculum-feedback boundary.",
+    "The C6 impact manifest does not confer institutional approval.",
+    "Every materially relevant binding identifies the accepted curriculum context/footprint that justified it."
+  ],
+  "acceptance": {
+    "owner_assigned_to_every_surface": true,
+    "reuse_root_assigned_to_every_surface": true,
+    "shared_canonical_database_implied": false,
+    "duplicate_annual_plan_engine": false,
+    "duplicate_uda_archive": false,
+    "duplicate_c1_channel": false,
+    "duplicate_c5_channel": false,
+    "duplicate_migration_engine": false,
+    "pupil_data_crosses_to_arena": false,
+    "teacher_authority_preserved": true,
+    "historical_rewrite_allowed": false,
+    "canonical_tranche_numbering_preserved": true
+  }
+}
