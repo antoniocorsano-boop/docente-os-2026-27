@@ -66,13 +66,17 @@ export async function requestResumableKnowledgeUploadGrant(input: {
   const userId = claimsData?.claims?.sub
   if (claimsError || !userId) return { ok: false, code: 'authorization_failed' }
 
+  // getClaims above remains the authorization decision. Here getSession is used only
+  // to forward the raw access token to Supabase Storage, which validates it again
+  // and applies the existing storage.objects RLS policies.
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+  const accessToken = sessionData.session?.access_token?.trim() ?? ''
   const objectPath = buildKnowledgeObjectPath(context.workspace.id, userId, originalName, crypto.randomUUID())
-  const { data, error } = await supabase.storage.from(KNOWLEDGE_BUCKET).createSignedUploadUrl(objectPath, { upsert: false })
   const resumableEndpoint = resumableEndpointFromProjectUrl(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '')
 
-  if (error || !data?.token || !resumableEndpoint) {
+  if (sessionError || !accessToken || !resumableEndpoint) {
     console.error('Knowledge resumable upload grant failed', {
-      message: error?.message ?? (!data?.token ? 'Missing signed upload token' : 'Missing resumable endpoint'),
+      message: sessionError?.message ?? (!accessToken ? 'Missing authenticated access token' : 'Missing resumable endpoint'),
       workspaceId: context.workspace.id,
       userId,
       bucket: KNOWLEDGE_BUCKET,
@@ -81,7 +85,7 @@ export async function requestResumableKnowledgeUploadGrant(input: {
     return { ok: false, code: 'authorization_failed' }
   }
 
-  return { ok: true, objectPath, token: data.token, mimeType, resumableEndpoint }
+  return { ok: true, objectPath, token: accessToken, mimeType, resumableEndpoint }
 }
 
 export async function finalizeKnowledgeFileUpload(
