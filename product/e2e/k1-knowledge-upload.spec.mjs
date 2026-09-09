@@ -84,6 +84,14 @@ test('K1 Knowledge: scelta file, conferma privacy, errore recuperabile, retry re
     await expect(contentContext).toBeVisible()
     await expect(contentContext.getByText('Pronto', { exact: true })).toBeVisible()
     await page.screenshot({ path: 'test-results/k1-02-complete.png' })
+
+    await Promise.all([
+      page.waitForURL(new RegExp(`/knowledge/${createdAssetId}\\?reprocess=ok$`), { timeout: 60_000 }),
+      page.getByRole('button', { name: 'Aggiorna analisi' }).click(),
+    ])
+    await expect(page.getByRole('status').filter({ hasText: 'Analisi aggiornata.' })).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: 'Non sono riuscito ad aggiornare l’analisi.' })).toHaveCount(0)
+    await page.screenshot({ path: 'test-results/k1-02b-reprocess-success.png' })
   } finally {
     await page.unroute('**/api/knowledge/upload').catch(() => {})
     if (createdAssetId) await deleteKnowledgeAsset(page, createdAssetId)
