@@ -89,6 +89,26 @@ test('mantiene il nucleo comune e la sola variante della sezione corrente', () =
   )
 })
 
+test('un riferimento generale alla secondaria resta disponibile in ogni sezione ma una sezione esplicita restringe', () => {
+  const schoolWide = {
+    asset: { ...item('school-wide', 'TEACHING_RESOURCE').asset, classLabels: ['Secondaria di primo grado'] },
+    document: null,
+  }
+  const formatted2C = {
+    asset: { ...item('formatted-2c', 'TEACHING_RESOURCE').asset, classLabels: ['Classe 2ª C'] },
+    document: null,
+  }
+  const specific2A = {
+    asset: { ...item('specific-2a', 'TEACHING_RESOURCE').asset, classLabels: ['2A'] },
+    document: null,
+  }
+
+  assert.deepEqual(
+    filterProgettaItemsBySectionContext([schoolWide, formatted2C, specific2A], '2C').map(({ asset }) => asset.id),
+    ['school-wide', 'formatted-2c'],
+  )
+})
+
 test('riconosce il focus blocco UDA pacchetto e separa nucleo comune da adattamento di sezione', () => {
   const focus = asProgettaFocus({ block: 'b22', uda: '2-07', pack: 'can-pack-2g' })
   assert.deepEqual(focus, { blockId: 'B22', uda: '2-07', pack: 'CAN-PACK-2G' })
