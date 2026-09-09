@@ -28,50 +28,83 @@ Define the single end-to-end professional journey that the integrated Arena + Do
 
 ## 3. Positive acceptance scenarios
 
-- `GP-01 Release to annual plan`: a valid release can be accepted/revalidated and bound without creating a second institutional curriculum record.
-- `GP-02 Focused planning`: valid section/block/UDA opens exact focused context with pertinent resources.
-- `GP-03 Common nucleus vs section adaptation`: only the adaptation delta is stored; no automatic common-UDA copy.
-- `GP-04 Evidence to feedback`: feedback retains evidence/criterion lineage and an actionable next step.
-- `GP-05 Feedback to revision`: revised evidence links to original evidence/feedback instead of silently replacing history.
-- `GP-06 Teacher review to professional observation`: only professional aggregate/contextual information is produced and remains non-authoritative.
-- `GP-07 Version transition`: completed V1 work remains on V1 while affected future work receives an explicit C6 disposition.
+### GP-01 — Release to annual plan
+
+Given a valid Arena curriculum release, when the teacher accepts/revalidates it in Docente OS, then the annual plan can bind to stable curriculum references without creating a second institutional curriculum record.
+
+### GP-02 — Focused planning
+
+Given a valid section, plan block and UDA binding, when the teacher chooses the next phase, then Docente OS opens the exact focused planning context and shows only pertinent resources by default.
+
+### GP-03 — Common nucleus vs section adaptation
+
+Given a common UDA, when a specific section needs an adaptation, then only the delta is stored; opening another section must not create another common-UDA copy.
+
+### GP-04 — Evidence to feedback
+
+Given evidence linked to a criterion, when the teacher gives feedback, then the feedback retains evidence/criterion lineage and identifies a next action.
+
+### GP-05 — Feedback to revision
+
+Given actionable feedback, when the learner revises, then the revised evidence is linked to the original evidence and feedback instead of replacing history silently.
+
+### GP-06 — Teacher review to professional observation
+
+Given recurring curriculum-relevant difficulty, when the teacher creates a professional observation, then the payload contains only professional aggregate/contextual information and remains a non-authoritative review input.
+
+### GP-07 — Version transition
+
+Given historical completed work on release V1 and a new release V2, when migration analysis runs, then completed work remains on V1 while affected future work receives an explicit C6 disposition.
 
 ## 4. Negative acceptance scenarios
 
-Fail closed if:
+The integrated system must fail closed if any of the following occurs:
 
-- Docente OS treats a proposal as approved curriculum without governed authority;
-- same-version authority/structural change is ignored because only version ref is compared;
-- opening a section automatically clones a common UDA;
-- an UDA stores independently editable canonical outcome semantics as a second authority source;
-- feedback has no resolvable evidence/criterion context where required;
-- group work alone is treated as automatic individual attainment evidence;
-- pupil identity, pupil feedback or pupil assessment history is exported into Arena professional observation intake;
-- a professional observation automatically becomes team consensus, vertical review or institutional decision;
-- later curriculum release rewrites completed historical execution;
-- document export becomes primary cross-system synchronization;
+- Docente OS receives a proposal and treats it as approved curriculum without governed authority.
+- A same-version authority/structural change is ignored because only `curriculumVersionRef` was compared.
+- Opening a section automatically clones a common UDA.
+- An UDA stores independently editable canonical outcome semantics as a second authority source.
+- Feedback exists with no resolvable evidence/criterion context where such context is required by the task.
+- Group work alone is treated as automatic individual attainment evidence.
+- Pupil identity, pupil feedback text or pupil assessment history is exported into Arena professional observation intake.
+- A professional observation automatically becomes team consensus, vertical review or institutional decision.
+- A later curriculum release rewrites completed historical execution.
+- A document export becomes the primary cross-system synchronization mechanism.
 - Arena and Docente OS share a new canonical database table to avoid a contract boundary.
 
 ## 5. Human acceptance checkpoints
 
-Where governed validation requires humans, automation may collect screenshots, logs, receipts and exact-head evidence but may not issue the final verdict.
+Where the governed project requires human validation, automation may collect screenshots, logs, contract receipts and exact-head evidence but may not issue the final human verdict.
 
-Minimum eventual human checks:
+Minimum human checks for the eventual C2P-10 golden path:
 
-- teacher understands active curriculum and authority context;
-- next professional action is clear without reconstructing module architecture;
-- focused planning avoids unnecessary broad catalogue;
-- curriculum references are available without repetitive transcription;
-- feedback supports a clear next action/revision;
-- teacher review can produce curriculum-relevant observations without pupil-level data;
-- institutional reviewer can distinguish observation, proposal, team outcome, vertical review and decision.
+- the teacher understands which curriculum is active and why;
+- the next professional action is understandable without reconstructing module architecture;
+- focused planning does not expose an unnecessary broad catalogue;
+- curriculum references are visible when needed but do not force repetitive transcription;
+- feedback clearly supports a next action/revision;
+- teacher review can produce curriculum-relevant observations without exposing pupil-level data;
+- the institutional reviewer can distinguish observation, proposal, team outcome, vertical review and decision.
 
 ## 6. Exact-head evidence rule
 
-For runtime acceptance record exact commit SHA, bind automated gates and deployed candidate identity to that SHA, and bind human acceptance to the same immutable candidate where required.
+For any runtime acceptance:
+
+- record exact commit SHA;
+- bind automated gates to that SHA;
+- bind deployed candidate identity to that SHA;
+- bind human acceptance receipt to the same immutable candidate where governed memory requires it.
+
+No previous green state can substitute for current exact-head validation.
 
 ## 7. C2P-00 acceptance
 
-C2P-00 passes only if the four C2P specification documents are semantically mirrored in both repositories; both repositories point agents to the specification; the Codex/Astra skill enforces governance/ownership/gate/minimum-delta/validation/stop; no runtime or database change is included; and governed memory remains unchanged.
+C2P-00 itself passes only if:
+
+- the four C2P specification documents are semantically mirrored in both repositories;
+- both repositories point agents to the specification;
+- the Codex/Astra skill enforces read-governance/classify-owner/check-gate/minimum-delta/validate/stop;
+- no runtime or database change is included;
+- the shared governed memory remains unchanged.
 
 Gate: `C2P_SPEC_FREEZE_PASS`.
