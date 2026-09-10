@@ -50,7 +50,7 @@ export default async function ClassroomSessionPage({
       <nav aria-label="Contesto della classe">
         <Link href={`/classi/${encodeURIComponent(sectionId)}`}>← Torna alla classe</Link>
       </nav>
-      <ClassroomSessionClient view={view} />
+      <ClassroomSessionClient view={view} sectionId={sectionId} />
     </AppShell>
   )
 }
