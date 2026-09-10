@@ -155,7 +155,7 @@ export function selectPreparedClassMaterials(
     return [{
       assetId: asset.id,
       title: humanMaterialTitle(rawTitle),
-      href: asset.sourceLocator,
+      href: `/classi/${encodeURIComponent(section.id)}/in-classe/${encodeURIComponent(asset.id)}`,
       providerLabel: provider === 'CANVA' ? 'Canva' : provider || 'Fonte esterna',
       resourceKindLabel: resourceKind === 'PRESENTATION' ? 'Presentazione' : resourceKind === 'STUDENT_SHEET' ? 'Scheda alunni' : 'Materiale',
       audienceLabel: audience === 'TEACHER' ? 'Solo docente' : 'Per la classe',
