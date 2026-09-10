@@ -79,7 +79,7 @@ test('prepared class material is selected by exact class and nearest teaching da
 
   assert.equal(prepared.length, 1)
   assert.equal(prepared[0]?.assetId, 'next')
-  assert.equal(prepared[0]?.href, 'https://www.canva.com/d/next')
+  assert.equal(prepared[0]?.href, '/classi/section-2c/in-classe/next')
   assert.equal(prepared[0]?.providerLabel, 'Canva')
   assert.equal(prepared[0]?.resourceKindLabel, 'Presentazione')
   assert.equal(prepared[0]?.audienceLabel, 'Per la classe')
