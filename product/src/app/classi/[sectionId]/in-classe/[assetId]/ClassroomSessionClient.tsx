@@ -29,7 +29,7 @@ type AiProposal =
   | { type: 'TEXT'; value: TextProposal }
   | { type: 'IMAGE'; value: ImageProposal }
 
-export function ClassroomSessionClient({ view }: { view: ClassroomSessionView }) {
+export function ClassroomSessionClient({ view, sectionId }: { view: ClassroomSessionView; sectionId: string }) {
   const [activeStep, setActiveStep] = useState(0)
   const [supportKind, setSupportKind] = useState<SupportKind | null>(null)
   const [aiBusy, setAiBusy] = useState(false)
@@ -65,7 +65,7 @@ export function ClassroomSessionClient({ view }: { view: ClassroomSessionView })
     try {
       const result = await requestAi<TextProposal>({
         mode: 'TEXT',
-        sectionId: view.sectionId,
+        sectionId,
         assetId: view.assetId,
         stepIndex: activeStep,
         supportKind: kind,
@@ -85,7 +85,7 @@ export function ClassroomSessionClient({ view }: { view: ClassroomSessionView })
     try {
       const result = await requestAi<ImageProposal>({
         mode: 'IMAGE',
-        sectionId: view.sectionId,
+        sectionId,
         assetId: view.assetId,
         stepIndex: activeStep,
       })
@@ -182,8 +182,9 @@ export function ClassroomSessionClient({ view }: { view: ClassroomSessionView })
 
             {aiProposal?.type === 'IMAGE' ? (
               <div className="classroomAiProposal classroomImageProposal" aria-label="Anteprima AI visuale">
-                <span>ANTEPRIMA AI · DA VALUTARE</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={`data:${aiProposal.value.mimeType};base64,${aiProposal.value.base64}`} alt={aiProposal.value.altText} />
+                <span>ANTEPRIMA AI · DA VALUTARE</span>
                 <small>{aiProposal.value.provider} · {aiProposal.value.model} · anteprima effimera, non salvata nel Piano o in Drive</small>
                 <div>
                   <a href={`data:${aiProposal.value.mimeType};base64,${aiProposal.value.base64}`} target="_blank" rel="noreferrer">Apri visuale ↗</a>
