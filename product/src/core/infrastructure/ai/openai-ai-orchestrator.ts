@@ -30,10 +30,10 @@ export class OpenAiAiOrchestrator implements AiOrchestratorPort {
     kind: ClassroomTextSupportKind
     context: ClassroomAiContext
   }): Promise<ClassroomTextProposal> {
-    this.requireApiKey()
+    const apiKey = this.requireApiKey()
     const response = await this.fetcher('https://api.openai.com/v1/responses', {
       method: 'POST',
-      headers: this.headers(),
+      headers: headers(apiKey),
       body: JSON.stringify({
         model: this.textModel,
         input: [{
@@ -44,7 +44,7 @@ export class OpenAiAiOrchestrator implements AiOrchestratorPort {
       }),
     })
 
-    if (!response.ok) throw await providerError('Classroom text generation', response)
+    if (!response.ok) throw providerError('Classroom text generation', response)
     const payload = await response.json() as ResponsesPayload
     const text = payload.output_text
       ?? payload.output?.flatMap((item) => item.content ?? []).find((item) => item.type === 'output_text')?.text
@@ -60,12 +60,12 @@ export class OpenAiAiOrchestrator implements AiOrchestratorPort {
   }
 
   async proposeClassroomImage(input: { context: ClassroomAiContext }): Promise<ClassroomImageProposal> {
-    this.requireApiKey()
+    const apiKey = this.requireApiKey()
     if (!input.context.visualBrief) throw new Error('visualBrief is required')
 
     const response = await this.fetcher('https://api.openai.com/v1/images/generations', {
       method: 'POST',
-      headers: this.headers(),
+      headers: headers(apiKey),
       body: JSON.stringify({
         model: this.imageModel,
         prompt: classroomImagePrompt(input.context),
@@ -76,7 +76,7 @@ export class OpenAiAiOrchestrator implements AiOrchestratorPort {
       }),
     })
 
-    if (!response.ok) throw await providerError('Classroom image generation', response)
+    if (!response.ok) throw providerError('Classroom image generation', response)
     const payload = await response.json() as ImagePayload
     const base64 = payload.data?.[0]?.b64_json
     if (!base64) throw new Error('Classroom image generation returned no image')
@@ -92,12 +92,9 @@ export class OpenAiAiOrchestrator implements AiOrchestratorPort {
     }
   }
 
-  private requireApiKey(): asserts this is this & { apiKey: string } {
+  private requireApiKey() {
     if (!this.apiKey) throw new AiProviderUnavailableError('OPENAI_API_KEY is required for classroom generative support')
-  }
-
-  private headers() {
-    return { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' }
+    return this.apiKey
   }
 }
 
@@ -134,9 +131,12 @@ export function classroomImagePrompt(context: ClassroomAiContext) {
   ].join('\n')
 }
 
-async function providerError(label: string, response: Response) {
+function headers(apiKey: string) {
+  return { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }
+}
+
+function providerError(label: string, response: Response) {
   const requestId = response.headers.get('x-request-id')
-  const raw = (await response.text()).slice(0, 500)
   const suffix = requestId ? ` request=${requestId}` : ''
-  return new Error(`${label} failed (${response.status})${suffix}: ${raw}`)
+  return new Error(`${label} failed (${response.status})${suffix}`)
 }
