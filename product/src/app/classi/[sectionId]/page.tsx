@@ -15,7 +15,7 @@ import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supa
 import { buildLessonWorkspaceHref, resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 import { buildTaskAwareKnowledgeHref } from '@/core/presentation/task-continuity'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
-import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes } from '../class-workspace-model'
+import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes, selectPreparedClassMaterials } from '../class-workspace-model'
 import { confirmTeachingBlockCompletion } from './actions'
 import { TeachingSessionRecorder } from './TeachingSessionRecorder'
 import '../classi.css'
@@ -67,6 +67,7 @@ export default async function ClassWorkspacePage({
   const source = CANONICAL_PLAN_SOURCES[grade]
   const summary = buildClassWorkspaceSummary(section, assignments, disciplines, snapshot.progress)
   const learningFocus = buildClassWorkspaceLearningFocus(section, snapshot.progress, knowledgeItems)
+  const preparedMaterials = selectPreparedClassMaterials(section, knowledgeItems, today)
   const currentSessions = currentTeachingSessions(teachingSnapshot)
   const allocationTotals = allocatedMinutesByBlock(teachingSnapshot, source.generationId)
 
@@ -150,6 +151,27 @@ export default async function ClassWorkspacePage({
           <span>{recordedProjection?.title ?? recordedBlock.focus}. Il prossimo passo qui sotto è stato ricalcolato dal Piano annuale reale della classe.</span>
           {recordedProjection ? <LessonExperienceFeedback sectionId={summary.sectionId} blockId={recordedBlock.id} /> : null}
         </section>
+      ) : null}
+
+      {preparedMaterials.length ? (
+        <article className="classWorkspaceCard classMaterialsCard" aria-label="Materiale predisposto per la classe">
+          <div>
+            <h2>Materiale predisposto</h2>
+            <p>Risorse già preparate per il prossimo incontro. Restano separate dal Piano annuale finché il loro legame didattico non è confermato.</p>
+          </div>
+          <div className="classMaterialList">
+            {preparedMaterials.map((material) => (
+              <a href={material.href} target="_blank" rel="noreferrer" key={material.assetId}>
+                <div>
+                  <strong>{material.title}</strong>
+                  <span>{material.resourceKindLabel} · {material.providerLabel}{material.targetDate ? ` · ${formatDate(material.targetDate)}` : ''}</span>
+                  {material.canonicalBindingLabel ? <span>{material.canonicalBindingLabel}</span> : null}
+                </div>
+                <small>{material.stateLabel} · {material.audienceLabel}</small>
+              </a>
+            ))}
+          </div>
+        </article>
       ) : null}
 
       <section className="classLessonFocus" aria-label="Prossima lezione nel Piano annuale">
