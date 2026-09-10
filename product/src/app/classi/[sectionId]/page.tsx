@@ -161,7 +161,7 @@ export default async function ClassWorkspacePage({
           </div>
           <div className="classMaterialList">
             {preparedMaterials.map((material) => (
-              <a href={material.href} target="_blank" rel="noreferrer" key={material.assetId}>
+              <a href={material.href} key={material.assetId}>
                 <div>
                   <strong>{material.title}</strong>
                   <span>{material.resourceKindLabel} · {material.providerLabel}{material.targetDate ? ` · ${formatDate(material.targetDate)}` : ''}</span>
