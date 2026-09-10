@@ -30,7 +30,13 @@ export default async function ClassroomSessionPage({
 
   const section = snapshot.sections.find((item) => item.id === sectionId)
   if (!section || !bundle) notFound()
-  const view = buildClassroomSessionView(section, bundle.asset)
+  if (bundle.asset.academicYearId && bundle.asset.academicYearId !== context.academicYear.id) notFound()
+
+  const providerConfigured = Boolean(process.env.OPENAI_API_KEY)
+  const view = buildClassroomSessionView(section, bundle.asset, {
+    textGenerationAvailable: providerConfigured,
+    imageGenerationAvailable: providerConfigured,
+  })
   if (!view) notFound()
 
   return (
