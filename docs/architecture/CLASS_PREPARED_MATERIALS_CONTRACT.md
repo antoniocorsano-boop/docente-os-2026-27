@@ -115,7 +115,7 @@ Tutti partono con `approvalState = PENDING_HUMAN`.
 - URL non HTTPS o non validi non vengono resi come materiale predisposto.
 - Il riquadro Piano annuale resta separato e invariato.
 - `PENDING_HUMAN` viene mostrato come `Predisposto`, non come pubblicato o approvato.
-- La scheda Conoscenza conserva l'accesso verificabile alla fonte esterna.
+- Conoscenza conserva `source_locator`, identità e provenienza dell'artefatto; la superficie Classe usa quel riferimento per aprire la fonte esterna.
 
 ## 9. Slice successive, non incluse
 
