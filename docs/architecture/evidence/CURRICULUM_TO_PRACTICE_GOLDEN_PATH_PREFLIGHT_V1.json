@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "acceptance_id": "CML-DOS-C2P-GOLDEN-PATH-PREFLIGHT-V1",
+  "date": "2026-09-10",
+  "status": "C2P-10_PREDEPLOY_CONTRACT_JOURNEY_CANDIDATE",
+  "parent_heads": {
+    "arena_c2p_08": "53d9cbfa0f31b88ce84995a4ccf6d1d4675993c1",
+    "docente_os_c2p_09": "dcea97f7ee44250bb3753bb2b29ef61ecc38f0ba"
+  },
+  "canonical_gate": {
+    "id": "C2P_GOLDEN_PATH_PASS",
+    "state": "BLOCKED_PENDING_DEPLOYED_HVA",
+    "replacement_gate_created": false
+  },
+  "predeploy_evidence_state": "C2P_GOLDEN_PATH_PREDEPLOY_READY_CANDIDATE",
+  "journey": [
+    "ARENA_RELEASE_C1",
+    "DOCENTE_OS_INTAKE_C1",
+    "TEACHER_ACCEPTED_CONTEXT",
+    "ANNUAL_PLAN_BINDING_C2",
+    "UDA_BINDING_C3",
+    "TEACHING_SESSION_EXECUTION",
+    "CLASSROOM_EVIDENCE_C4",
+    "FORMATIVE_FEEDBACK_C4",
+    "LEARNER_REVISION_C4",
+    "ASSESSMENT_OBSERVATION_C4",
+    "TEACHER_CURRICULUM_REVIEW",
+    "PROFESSIONAL_OBSERVATION_C5",
+    "ARENA_REVIEW_INPUT_C2P_08",
+    "CURRICULUM_VERSION_TRANSITION_C6"
+  ],
+  "machine_proofs": {
+    "c1_preview_only": true,
+    "teacher_acceptance_separate_human_checkpoint": true,
+    "plan_binding_has_no_section_execution_effect": true,
+    "uda_section_copy_required": false,
+    "uda_section_adaptation_mode": "DELTA_ONLY",
+    "classroom_evidence_external_transport_allowed": false,
+    "feedback_automatic_grade_allowed": false,
+    "assessment_requires_teacher_judgment": true,
+    "group_evidence_auto_individual_attainment": false,
+    "professional_observation_contains_pupil_data": false,
+    "professional_observation_effect": "REVIEW_INPUT_ONLY",
+    "arena_team_outcome_effect": "NONE",
+    "arena_vertical_review_effect": "NONE",
+    "arena_institutional_decision_effect": "NONE",
+    "historical_rewrite_allowed": false,
+    "silent_rebind_allowed": false,
+    "automatic_persistence_allowed": false,
+    "shared_canonical_database_introduced": false
+  },
+  "pending_for_canonical_pass": [
+    "IMMUTABLE_DEPLOYED_ARENA_CANDIDATE",
+    "IMMUTABLE_DEPLOYED_DOCENTE_OS_CANDIDATE",
+    "EXACT_HEAD_PRODUCT_CI_ON_DEPLOYED_CANDIDATES",
+    "BROWSER_GOLDEN_PATH_ON_DEPLOYED_PAIR",
+    "TEACHER_HUMAN_ACCEPTANCE_RECEIPT",
+    "INSTITUTIONAL_REVIEWER_HUMAN_ACCEPTANCE_RECEIPT",
+    "ARENA_R2_A_HUMAN_VISUAL_ACCEPTANCE_CLOSURE",
+    "ARENA_GOVERNED_R2_B_H3_REVIEW_BOUNDARY"
+  ],
+  "authorization": {
+    "merge": false,
+    "deploy": false,
+    "institutional_promotion": false,
+    "human_verdict_by_automation": false
+  }
+}
