@@ -8,6 +8,7 @@ const GRADE_NUMBER = { PRIMA: '1', SECONDA: '2', TERZA: '3' } as const
 const GRADE_WORD = { PRIMA: 'prima', SECONDA: 'seconda', TERZA: 'terza' } as const
 const COMPLETE_STATUSES = new Set(['SVOLTO', 'RECUPERATO', 'RIMODULATO'])
 const MATERIAL_CATEGORIES = new Set<KnowledgeAsset['contentCategory']>(['UDA', 'ASSESSMENT', 'TEACHING_RESOURCE'])
+const PREPARED_CLASS_RESOURCE = 'CLASS_LESSON_MATERIAL'
 
 export type ClassWorkspaceAssignment = {
   id: string
@@ -42,6 +43,18 @@ export type ClassWorkspaceMaterial = {
   title: string
   categoryLabel: string
   relevanceLabel: 'Fase corrente' | 'Classe' | 'Grado'
+}
+
+export type PreparedClassMaterial = {
+  assetId: string
+  title: string
+  href: string
+  providerLabel: string
+  resourceKindLabel: string
+  audienceLabel: string
+  targetDate: string | null
+  stateLabel: 'Predisposto' | 'Confermato'
+  canonicalBindingLabel: string | null
 }
 
 export type ClassWorkspaceLearningFocus = {
@@ -118,6 +131,65 @@ export function buildClassWorkspaceLearningFocus(
   }
 }
 
+export function selectPreparedClassMaterials(
+  section: AnnualPlanSection,
+  items: KnowledgeItem[],
+  referenceDate: string,
+): PreparedClassMaterial[] {
+  const compactLabel = `${GRADE_NUMBER[section.grade]}${section.sectionCode}`.toUpperCase()
+  const prepared = items.flatMap(({ asset, document }) => {
+    if (asset.contentCategory !== 'TEACHING_RESOURCE') return []
+    if (!asset.classLabels.some((label) => normalizeClassLabel(label) === compactLabel)) return []
+    if (asset.sourceMetadata.docenteOsResource !== PREPARED_CLASS_RESOURCE) return []
+    if (!isSafeExternalHref(asset.sourceLocator)) return []
+
+    const targetDate = metadataString(asset.sourceMetadata, 'targetDate')
+    const provider = metadataString(asset.sourceMetadata, 'provider')
+    const resourceKind = metadataString(asset.sourceMetadata, 'resourceKind')
+    const audience = metadataString(asset.sourceMetadata, 'audience')
+    const approvalState = metadataString(asset.sourceMetadata, 'approvalState')
+    const canonicalBinding = metadataString(asset.sourceMetadata, 'canonicalBinding')
+    const canonicalBlockId = metadataString(asset.sourceMetadata, 'canonicalBlockId')
+    const rawTitle = document?.title?.trim() || asset.originalName?.trim() || 'Materiale predisposto'
+
+    return [{
+      assetId: asset.id,
+      title: humanMaterialTitle(rawTitle),
+      href: asset.sourceLocator,
+      providerLabel: provider === 'CANVA' ? 'Canva' : provider || 'Fonte esterna',
+      resourceKindLabel: resourceKind === 'PRESENTATION' ? 'Presentazione' : resourceKind === 'STUDENT_SHEET' ? 'Scheda alunni' : 'Materiale',
+      audienceLabel: audience === 'TEACHER' ? 'Solo docente' : 'Per la classe',
+      targetDate,
+      stateLabel: approvalState === 'APPROVED' ? 'Confermato' as const : 'Predisposto' as const,
+      canonicalBindingLabel: canonicalBinding === 'ALIGNED' && canonicalBlockId
+        ? `Allineato a ${canonicalBlockId}`
+        : canonicalBinding === 'PRE_CANONICAL_DIAGNOSTIC'
+          ? 'Diagnostica di accoglienza · non imputata al Piano'
+          : null,
+      capturedAt: asset.capturedAt,
+    }]
+  })
+
+  if (!prepared.length) return []
+  const upcomingDates = prepared
+    .flatMap((item) => item.targetDate && item.targetDate >= referenceDate ? [item.targetDate] : [])
+    .sort()
+  const nearestUpcoming = upcomingDates[0] ?? null
+  const latestPast = prepared
+    .flatMap((item) => item.targetDate && item.targetDate < referenceDate ? [item.targetDate] : [])
+    .sort()
+    .at(-1) ?? null
+  const focusDate = nearestUpcoming ?? latestPast
+
+  return prepared
+    .filter((item) => !focusDate || item.targetDate === focusDate || item.targetDate === null)
+    .sort((a, b) => {
+      if (a.audienceLabel !== b.audienceLabel) return a.audienceLabel === 'Per la classe' ? -1 : 1
+      return b.capturedAt.localeCompare(a.capturedAt)
+    })
+    .map(({ capturedAt: _capturedAt, ...material }) => material)
+}
+
 function selectPertinentMaterials(section: AnnualPlanSection, pack: string | null, items: KnowledgeItem[]) {
   const compactLabel = `${GRADE_NUMBER[section.grade]}${section.sectionCode}`.toUpperCase()
   const grade = GRADE_WORD[section.grade]
@@ -135,7 +207,8 @@ function selectPertinentMaterials(section: AnnualPlanSection, pack: string | nul
     const packMatch = Boolean(normalizedPack && searchable.includes(normalizedPack))
     if (!packMatch && !classMatch && !gradeMatch) return []
 
-    const score = (packMatch ? 300 : 0) + (classMatch ? 200 : 0) + (gradeMatch ? 100 : 0)
+    const preparedBoost = asset.sourceMetadata.docenteOsResource === PREPARED_CLASS_RESOURCE ? 1000 : 0
+    const score = preparedBoost + (packMatch ? 300 : 0) + (classMatch ? 200 : 0) + (gradeMatch ? 100 : 0)
     const relevanceLabel: ClassWorkspaceMaterial['relevanceLabel'] = packMatch ? 'Fase corrente' : classMatch ? 'Classe' : 'Grado'
     const rawTitle = document?.title?.trim() || asset.originalName?.trim() || 'Materiale didattico'
     return [{
@@ -173,6 +246,20 @@ function safeMetadataText(value: Record<string, unknown>) {
     return JSON.stringify(value)
   } catch {
     return ''
+  }
+}
+
+function metadataString(value: Record<string, unknown>, key: string) {
+  const candidate = value[key]
+  return typeof candidate === 'string' && candidate.trim() ? candidate.trim() : null
+}
+
+function isSafeExternalHref(value: string | null): value is string {
+  if (!value) return false
+  try {
+    return new URL(value).protocol === 'https:'
+  } catch {
+    return false
   }
 }
 
