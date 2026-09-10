@@ -5,19 +5,96 @@ import type { ClassroomSessionView } from './classroom-session-model'
 import { classroomSupportText } from './classroom-session-model'
 
 type SupportKind = 'SIMPLER' | 'EXAMPLE' | 'CHECK' | 'VISUAL'
+type TextSupportKind = Exclude<SupportKind, 'VISUAL'>
 
-export function ClassroomSessionClient({ view }: { view: ClassroomSessionView }) {
+type TextProposal = {
+  capability: 'CLASSROOM_TEXT_PROPOSE'
+  status: 'PROPOSED'
+  text: string
+  provider: string
+  model: string
+}
+
+type ImageProposal = {
+  capability: 'CLASSROOM_IMAGE_GENERATE'
+  status: 'PROPOSED'
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp'
+  base64: string
+  altText: string
+  provider: string
+  model: string
+}
+
+type AiProposal =
+  | { type: 'TEXT'; value: TextProposal }
+  | { type: 'IMAGE'; value: ImageProposal }
+
+export function ClassroomSessionClient({ view, sectionId }: { view: ClassroomSessionView; sectionId: string }) {
   const [activeStep, setActiveStep] = useState(0)
   const [supportKind, setSupportKind] = useState<SupportKind | null>(null)
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [aiProposal, setAiProposal] = useState<AiProposal | null>(null)
   const current = view.steps[activeStep] ?? view.steps[0] ?? null
   const support = useMemo(
     () => supportKind ? classroomSupportText(view, activeStep, supportKind) : null,
     [view, activeStep, supportKind],
   )
 
+  function resetAi() {
+    setAiBusy(false)
+    setAiError(null)
+    setAiProposal(null)
+  }
+
   function move(delta: number) {
     setSupportKind(null)
+    resetAi()
     setActiveStep((value) => Math.max(0, Math.min(view.steps.length - 1, value + delta)))
+  }
+
+  function chooseSupport(kind: SupportKind) {
+    resetAi()
+    setSupportKind(kind)
+  }
+
+  async function requestTextProposal(kind: TextSupportKind) {
+    setAiBusy(true)
+    setAiError(null)
+    setAiProposal(null)
+    try {
+      const result = await requestAi<TextProposal>({
+        mode: 'TEXT',
+        sectionId,
+        assetId: view.assetId,
+        stepIndex: activeStep,
+        supportKind: kind,
+      })
+      setAiProposal({ type: 'TEXT', value: result })
+    } catch (error) {
+      setAiError(error instanceof Error ? error.message : 'Il supporto generativo non è disponibile.')
+    } finally {
+      setAiBusy(false)
+    }
+  }
+
+  async function requestImageProposal() {
+    setAiBusy(true)
+    setAiError(null)
+    setAiProposal(null)
+    try {
+      const result = await requestAi<ImageProposal>({
+        mode: 'IMAGE',
+        sectionId,
+        assetId: view.assetId,
+        stepIndex: activeStep,
+      })
+      setAiProposal({ type: 'IMAGE', value: result })
+    } catch (error) {
+      setAiError(error instanceof Error ? error.message : 'La generazione del visuale non è disponibile.')
+    } finally {
+      setAiBusy(false)
+    }
   }
 
   return (
@@ -37,8 +114,8 @@ export function ClassroomSessionClient({ view }: { view: ClassroomSessionView })
       <section className="classroomReadiness" aria-label="Stato della sessione">
         <div><span>Presentazione</span><strong>Pronta</strong></div>
         <div><span>Sequenza</span><strong>{view.steps.length ? `${view.steps.length} passaggi` : 'Non disponibile'}</strong></div>
-        <div><span>Assistente</span><strong>Supporto locale attivo</strong></div>
-        <div><span>Generazione immagini</span><strong>{view.imageGenerationAvailable ? 'Disponibile' : 'Da collegare'}</strong></div>
+        <div><span>Assistente</span><strong>{view.textGenerationAvailable ? 'Locale + AI disponibile' : 'Supporto locale attivo'}</strong></div>
+        <div><span>Generazione immagini</span><strong>{view.imageGenerationAvailable ? 'Disponibile su richiesta' : 'Non configurata'}</strong></div>
       </section>
 
       {current ? (
@@ -63,22 +140,58 @@ export function ClassroomSessionClient({ view }: { view: ClassroomSessionView })
               <p>Il supporto usa soltanto il contesto della lezione. Non registra dati degli alunni e non modifica il Piano annuale.</p>
             </header>
             <div className="classroomAssistantTools">
-              <button type="button" className={supportKind === 'SIMPLER' ? 'active' : ''} onClick={() => setSupportKind('SIMPLER')}>Spiega più semplice</button>
-              <button type="button" className={supportKind === 'EXAMPLE' ? 'active' : ''} onClick={() => setSupportKind('EXAMPLE')}>Dammi un esempio</button>
-              <button type="button" className={supportKind === 'CHECK' ? 'active' : ''} onClick={() => setSupportKind('CHECK')}>Domanda flash</button>
-              <button type="button" className={supportKind === 'VISUAL' ? 'active' : ''} onClick={() => setSupportKind('VISUAL')}>Idea visuale</button>
+              <button type="button" className={supportKind === 'SIMPLER' ? 'active' : ''} onClick={() => chooseSupport('SIMPLER')}>Spiega più semplice</button>
+              <button type="button" className={supportKind === 'EXAMPLE' ? 'active' : ''} onClick={() => chooseSupport('EXAMPLE')}>Dammi un esempio</button>
+              <button type="button" className={supportKind === 'CHECK' ? 'active' : ''} onClick={() => chooseSupport('CHECK')}>Domanda flash</button>
+              <button type="button" className={supportKind === 'VISUAL' ? 'active' : ''} onClick={() => chooseSupport('VISUAL')}>Idea visuale</button>
             </div>
             {support ? (
               <div className="classroomAssistantAnswer" role="status">
                 <strong>{support.title}</strong>
                 <p>{support.text}</p>
-                {supportKind === 'VISUAL' && !view.imageGenerationAvailable ? (
-                  <small>Questo è un brief visuale verificabile. La generazione dell’immagine non viene simulata: sarà attivata solo quando un provider AI sarà collegato tramite il boundary applicativo di Docente OS.</small>
-                ) : null}
+                {supportKind === 'VISUAL' ? (
+                  view.imageGenerationAvailable ? (
+                    <button className="classroomGenerateButton" type="button" onClick={requestImageProposal} disabled={aiBusy}>
+                      {aiBusy ? 'Preparo l’anteprima…' : 'Genera visuale da questo brief'}
+                    </button>
+                  ) : (
+                    <small>Questo brief resta utilizzabile anche senza AI. La generazione sarà disponibile quando il provider sarà configurato sul server.</small>
+                  )
+                ) : view.textGenerationAvailable && supportKind ? (
+                  <button className="classroomGenerateButton" type="button" onClick={() => requestTextProposal(supportKind)} disabled={aiBusy}>
+                    {aiBusy ? 'Preparo la proposta…' : 'Proponi una variante AI'}
+                  </button>
+                ) : (
+                  <small>Il supporto locale è già pronto e resta disponibile anche senza provider AI.</small>
+                )}
               </div>
             ) : (
               <p className="classroomAssistantEmpty">Scegli uno strumento solo quando ti serve durante la spiegazione.</p>
             )}
+
+            {aiError ? <div className="classroomAiError" role="alert"><strong>AI non disponibile</strong><span>{aiError}</span><small>Puoi continuare immediatamente con il supporto locale qui sopra.</small></div> : null}
+
+            {aiProposal?.type === 'TEXT' ? (
+              <div className="classroomAiProposal" aria-label="Proposta AI testuale">
+                <span>PROPOSTA AI · DA VALUTARE</span>
+                <p>{aiProposal.value.text}</p>
+                <small>{aiProposal.value.provider} · {aiProposal.value.model} · non applicata e non salvata</small>
+                <button type="button" onClick={() => setAiProposal(null)}>Scarta proposta</button>
+              </div>
+            ) : null}
+
+            {aiProposal?.type === 'IMAGE' ? (
+              <div className="classroomAiProposal classroomImageProposal" aria-label="Anteprima AI visuale">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`data:${aiProposal.value.mimeType};base64,${aiProposal.value.base64}`} alt={aiProposal.value.altText} />
+                <span>ANTEPRIMA AI · DA VALUTARE</span>
+                <small>{aiProposal.value.provider} · {aiProposal.value.model} · anteprima effimera, non salvata nel Piano o in Drive</small>
+                <div>
+                  <a href={`data:${aiProposal.value.mimeType};base64,${aiProposal.value.base64}`} target="_blank" rel="noreferrer">Apri visuale ↗</a>
+                  <button type="button" onClick={() => setAiProposal(null)}>Scarta anteprima</button>
+                </div>
+              </div>
+            ) : null}
           </aside>
         </main>
       ) : (
@@ -92,7 +205,7 @@ export function ClassroomSessionClient({ view }: { view: ClassroomSessionView })
         <summary>Vedi tutta la sequenza</summary>
         <div>
           {view.steps.map((step, index) => (
-            <button type="button" onClick={() => { setActiveStep(index); setSupportKind(null) }} key={`${index}-${step.title}`}>
+            <button type="button" onClick={() => { setActiveStep(index); setSupportKind(null); resetAi() }} key={`${index}-${step.title}`}>
               <span>{index + 1}</span><div><strong>{step.title}</strong><small>{step.instruction}</small></div>
             </button>
           ))}
@@ -100,6 +213,17 @@ export function ClassroomSessionClient({ view }: { view: ClassroomSessionView })
       </details>
     </>
   )
+}
+
+async function requestAi<T>(payload: Record<string, unknown>): Promise<T> {
+  const response = await fetch('/api/classroom-assistant', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const body = await response.json().catch(() => ({})) as { message?: string } & T
+  if (!response.ok) throw new Error(body.message || 'Il provider generativo non ha completato la richiesta.')
+  return body
 }
 
 function formatDate(value: string) {

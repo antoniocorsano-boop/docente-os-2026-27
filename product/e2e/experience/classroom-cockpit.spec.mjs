@@ -43,10 +43,12 @@ for (const classMatcher of [/2ª\s*A/i]) {
       await expect(readiness).toContainText('Presentazione')
       await expect(readiness).toContainText('Pronta')
       await expect(readiness).toContainText('Generazione immagini')
-      await expect(readiness).toContainText('Da collegare')
+      await expect(readiness).toContainText('Non configurata')
+      await expect(readiness).toContainText('Supporto locale attivo')
 
       await page.getByRole('button', { name: 'Spiega più semplice' }).click()
       await expect(page.locator('.classroomAssistantAnswer')).toContainText('Un sistema riceve qualcosa')
+      await expect(page.locator('.classroomAssistantAnswer')).toContainText('supporto locale', { ignoreCase: true })
 
       await page.getByRole('button', { name: 'Dammi un esempio' }).click()
       await expect(page.locator('.classroomAssistantAnswer')).toContainText('energia elettrica')
@@ -56,7 +58,8 @@ for (const classMatcher of [/2ª\s*A/i]) {
 
       await page.getByRole('button', { name: 'Idea visuale' }).click()
       await expect(page.locator('.classroomAssistantAnswer')).toContainText('ingresso → processo → uscita')
-      await expect(page.locator('.classroomAssistantAnswer')).toContainText('non viene simulata')
+      await expect(page.locator('.classroomAssistantAnswer')).toContainText('senza AI')
+      await expect(page.getByRole('button', { name: /Genera visuale/i })).toHaveCount(0)
 
       await page.getByRole('button', { name: 'Passo successivo' }).click()
       await expect(page.locator('.classroomStepCard')).toContainText('PASSO 2 DI 2')
@@ -74,7 +77,7 @@ for (const classMatcher of [/2ª\s*A/i]) {
       await screenshot(page, testInfo, 'classroom-cockpit')
       await recordJourney(testInfo.project.name, {
         status: 'PASS',
-        note: `${fixture.classLabel} · 2 passaggi · 4 strumenti rapidi verificati`,
+        note: `${fixture.classLabel} · fallback locale · 2 passaggi · 4 strumenti rapidi verificati`,
       })
     } finally {
       await deleteKnowledgeAsset(page, fixture.assetId).catch(() => {})

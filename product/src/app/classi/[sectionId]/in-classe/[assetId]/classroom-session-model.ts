@@ -28,10 +28,20 @@ export type ClassroomSessionView = {
   canonicalBindingLabel: string | null
   steps: ClassroomStep[]
   supportHints: ClassroomSupportHints
-  imageGenerationAvailable: false
+  textGenerationAvailable: boolean
+  imageGenerationAvailable: boolean
 }
 
-export function buildClassroomSessionView(section: AnnualPlanSection, asset: KnowledgeAsset): ClassroomSessionView | null {
+export type ClassroomGenerativeAvailability = {
+  textGenerationAvailable?: boolean
+  imageGenerationAvailable?: boolean
+}
+
+export function buildClassroomSessionView(
+  section: AnnualPlanSection,
+  asset: KnowledgeAsset,
+  availability: ClassroomGenerativeAvailability = {},
+): ClassroomSessionView | null {
   const classLabel = `${GRADE_NUMBER[section.grade]}${section.sectionCode}`.toUpperCase()
   if (asset.contentCategory !== 'TEACHING_RESOURCE') return null
   if (asset.sourceMetadata.docenteOsResource !== CLASS_RESOURCE_MARKER) return null
@@ -59,7 +69,8 @@ export function buildClassroomSessionView(section: AnnualPlanSection, asset: Kno
         : null,
     steps,
     supportHints,
-    imageGenerationAvailable: false,
+    textGenerationAvailable: availability.textGenerationAvailable === true,
+    imageGenerationAvailable: availability.imageGenerationAvailable === true,
   }
 }
 
