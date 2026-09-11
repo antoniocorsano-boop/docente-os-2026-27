@@ -93,7 +93,9 @@ Le review datate sono append-only come evidenza storica: una review successiva p
 - `docs/design/DESIGN_SYSTEM_V2_CANONICAL.md` — design system attuale per ogni nuovo lavoro.
 - `docs/design/BRAND_IDENTITY_CANONICAL.md` — **identità canonica: “Mantieni il filo.”, significati, simbolo, palette, tipografia, loading, motion e protocollo di evoluzione**.
 - `docs/design/DESIGN_GOVERNANCE_CANONICAL.md` — **20 regole vincolanti di design trasversale; fissa invarianti, mobile-first, una sola azione primaria, accessibilità, coerenza cross-surface e fedeltà del simbolo al riferimento approvato**.
-- `docs/design/DESIGN_POLICY_GATE_DPG1.md` — **contratto di enforcement: distingue regole staticamente bloccanti da criteri HVA e definisce le ricevute DPG-1**.
+- `docs/design/DESIGN_POLICY_GATE_DPG1.md` — **gate sul diff: impedisce nuove violazioni deterministiche e definisce la ripartizione con HVA**.
+- `docs/design/DESIGN_CONFORMANCE_DPG2.md` — **ratchet full-runtime: misura il debito visuale storico e impedisce l'aumento di colori raw, token locali, brand legacy, effetti decorativi, raggi e ombre locali**.
+- `product/design/DESIGN_DEBT_BASELINE.json` — **baseline macchina DPG-2; è un tetto monotono decrescente e non può essere rialzata per normalizzare regressioni**.
 - `docs/design/DESIGN_SYSTEM_V1.md` — riferimento storico; non governa nuove implementazioni quando confligge con V2.
 
 ### Regola Brand e Design
@@ -103,14 +105,15 @@ Per ogni lavoro che modifica logo, palette globale, loading, shell, navigazione,
 1. `DESIGN_SYSTEM_V2_CANONICAL.md` governa semantica dei token, anatomia, accessibilità e responsive behavior;
 2. `BRAND_IDENTITY_CANONICAL.md` governa significato, identità, promessa, simbolo e applicazione del brand;
 3. `DESIGN_GOVERNANCE_CANONICAL.md` governa le 20 regole trasversali e stabilisce cosa è invariante e cosa può essere migliorato con evidenza;
-4. `DESIGN_POLICY_GATE_DPG1.md` governa l'enforcement automatico e la ripartizione con HVA;
-5. `DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` governa il linguaggio.
+4. `DESIGN_POLICY_GATE_DPG1.md` governa l'enforcement automatico sul diff;
+5. `DESIGN_CONFORMANCE_DPG2.md` governa il ratchet sull'intero runtime e la riduzione del debito storico;
+6. `DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` governa il linguaggio.
 
 Il brand non può cambiare il significato professionale di uno stato, nascondere provenienza o attenuare il controllo umano.
 
 **La geometria del simbolo rispetto al riferimento visuale approvato il 2026-09-11 è un invariante canonico.** Non può essere modificata o reinterpretata da una singola feature. Un cambiamento del segno richiede revisione `SUPERSEDING` o `BREAKING` e nuova accettazione visuale esplicita.
 
-Una PR visuale deve dichiarare `COMPATIBLE`, `SUPERSEDING` o `BREAKING`, deve superare DPG-1 per le regole deterministiche e, quando tocca una superficie utente, deve essere valutata dalla checklist Design Governance della HVA.
+Una PR visuale deve dichiarare `COMPATIBLE`, `SUPERSEDING` o `BREAKING`, deve superare DPG-1 e DPG-2 per le regole deterministiche e, quando tocca una superficie utente, deve essere valutata dalla checklist Design Governance della HVA.
 
 ## Regola di aggiornamento
 
@@ -136,10 +139,11 @@ Prima di implementare una slice, leggere almeno:
 7. Brand Identity Canonical per ogni lavoro visuale o trasversale;
 8. Design Governance Canonical per ogni UI, nuovo componente o modifica cross-surface;
 9. Design Policy Gate DPG-1 per ogni lavoro visuale;
-10. la specifica verticale della slice;
-11. il relativo contratto di esperienza, se presente;
-12. per T3/T4, sempre anche Work/Time Mental Model e Temporal Composition Canonical Spec.
+10. Design Conformance DPG-2 quando si modifica CSS, token, primitive o componenti visuali esistenti;
+11. la specifica verticale della slice;
+12. il relativo contratto di esperienza, se presente;
+13. per T3/T4, sempre anche Work/Time Mental Model e Temporal Composition Canonical Spec.
 
 Nessun agente deve inferire una nuova architettura da un singolo file runtime quando esiste una decisione canonica esplicita; nessun agente deve inferire lo stato corrente da un checkpoint datato quando esiste `PROJECT_STATUS_CURRENT.md`.
 
-Nessun agente può introdurre una nuova variante locale del logo, una palette parallela o una nuova gerarchia di CTA soltanto perché una singola pagina la rende conveniente: deve rispettare la governance canonica o proporre formalmente una revisione.
+Nessun agente può introdurre una nuova variante locale del logo, una palette parallela o una nuova gerarchia di CTA soltanto perché una singola pagina la rende conveniente: deve rispettare la governance canonica o proporre formalmente una revisione. La baseline DPG-2 non è un budget da spendere: è debito da ridurre.

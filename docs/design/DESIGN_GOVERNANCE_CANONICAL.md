@@ -77,9 +77,10 @@ Per ogni lavoro di interfaccia:
 3. `DESIGN_SYSTEM_V2_CANONICAL.md`;
 4. `BRAND_IDENTITY_CANONICAL.md`;
 5. questo `DESIGN_GOVERNANCE_CANONICAL.md` per le regole trasversali;
-6. `DESIGN_POLICY_GATE_DPG1.md` per l'enforcement;
-7. Language & Collaboration System;
-8. evidenza HVA/pilot più recente.
+6. `DESIGN_POLICY_GATE_DPG1.md` per il gate sul diff;
+7. `DESIGN_CONFORMANCE_DPG2.md` per il ratchet sul debito visuale storico;
+8. Language & Collaboration System;
+9. evidenza HVA/pilot più recente.
 
 In caso di conflitto tra una soluzione locale e questo documento, prevale la regola canonica finché non viene formalmente aggiornata.
 
@@ -87,7 +88,7 @@ In caso di conflitto tra una soluzione locale e questo documento, prevale la reg
 
 Le 20 regole non sono considerate “reali” soltanto perché documentate. Devono essere sostenute da enforcement statico, componenti canonici, browser checks, HVA esplicita o invarianti di dominio.
 
-`DESIGN_POLICY_GATE_DPG1.md` definisce il primo livello automatico bloccante. DPG-1 controlla sul diff almeno:
+`DESIGN_POLICY_GATE_DPG1.md` definisce il primo livello automatico bloccante sul diff. DPG-1 controlla almeno:
 
 - duplicazione/ridefinizione locale del marchio (`DPG-01`);
 - nuovi colori raw fuori dai token/brand (`DPG-04`);
@@ -96,15 +97,17 @@ Le 20 regole non sono considerate “reali” soltanto perché documentate. Devo
 - nuovi token visuali locali (`DPG-19`);
 - assenza della classificazione `COMPATIBLE` / `SUPERSEDING` / `BREAKING` nella PR (`DPG-20`).
 
+`DESIGN_CONFORMANCE_DPG2.md` aggiunge un secondo livello sull'intero runtime. DPG-2 misura il debito storico e applica una baseline monotona decrescente per colori raw, token locali, riferimenti brand legacy, effetti decorativi, raggi raw e shadow raw. **Una feature non può aumentare una metrica esistente né rialzare la baseline per normalizzare una regressione.**
+
 Le regole qualitative `DPG-05/06/07/08/09/10/11/12/15/16/17/18` sono criteri obbligatori e strutturati della Human + Visual Acceptance. Devono comparire nella ricevuta come `REVIEW_REQUIRED` finché non vengono osservate: **non possono essere auto-dichiarate PASS**.
 
-La strategia è incrementale: il gate impedisce nuovo debito sul diff senza dichiarare improvvisamente invalido tutto il debito visuale storico.
+La strategia resta incrementale: DPG-1 impedisce nuovo debito nel diff, DPG-2 impedisce l'espansione del debito storico e le tranche di cleanup abbassano progressivamente la baseline senza riscritture massive.
 
 ## 8. Gate minimi per modifiche trasversali
 
 Ogni intervento su logo, palette, shell, navigazione, loading, tipografia globale o primitive condivise deve passare:
 
-- **Design Policy Gate DPG-1**;
+- **Design Policy Gate DPG-1 + DPG-2**;
 - Product CI + typecheck + build;
 - Human Interaction Model;
 - Human + Visual Acceptance desktop/mobile con checklist Design Governance;
@@ -114,10 +117,10 @@ Ogni intervento su logo, palette, shell, navigazione, loading, tipografia global
 - `prefers-reduced-motion` quando c'è motion;
 - smoke login + Home + almeno una classe/superficie operativa.
 
-Un gate tecnico verde non sostituisce il giudizio HVA sulle regole qualitative, e un giudizio HVA positivo non può derogare a una violazione DPG-1 bloccante.
+Un gate tecnico verde non sostituisce il giudizio HVA sulle regole qualitative, e un giudizio HVA positivo non può derogare a una violazione DPG-1 o DPG-2 bloccante.
 
 ## 9. Regola per agenti e contributori
 
 Prima di introdurre CSS, token, icone, card, CTA o varianti del marchio, verificare se esiste già un componente o token canonico. È vietato dedurre una nuova estetica da una singola pagina o da un mockup isolato.
 
-Ogni PR visuale deve dichiarare la classificazione canonica e deve essere valutata sia dal DPG-1 sia dall'HVA quando il perimetro tocca una superficie utente.
+Ogni PR visuale deve dichiarare la classificazione canonica e deve essere valutata da DPG-1, DPG-2 e HVA quando il perimetro tocca una superficie utente. Le tranche di cleanup devono ridurre o mantenere tutte le metriche DPG-2 e abbassare la baseline quando una riduzione è stata validata.

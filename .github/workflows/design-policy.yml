@@ -33,7 +33,7 @@ concurrency:
 
 jobs:
   design-policy:
-    name: dpg-1
+    name: dpg-1+dpg-2
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -51,14 +51,17 @@ jobs:
       - name: Test Design Policy scanner
         run: node --test product/scripts/design/design-policy.test.mjs
 
-      - name: Enforce DPG-1
+      - name: Enforce DPG-1 diff policy
         env:
           DESIGN_POLICY_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           DESIGN_POLICY_PR_BODY: ${{ github.event.pull_request.body || '' }}
           DESIGN_POLICY_EVENT_NAME: ${{ github.event_name }}
         run: node product/scripts/design/design-policy.mjs
 
-      - name: Publish DPG-1 receipt
+      - name: Enforce DPG-2 full-runtime ratchet
+        run: node product/scripts/design/design-conformance.mjs
+
+      - name: Publish design policy receipts
         if: always()
         uses: actions/upload-artifact@v4
         with:
