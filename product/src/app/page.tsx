@@ -4,6 +4,7 @@ import { AppShell } from '@/components/app-shell/app-shell'
 import { buildClassWorkspaceLearningFocus } from '@/app/classi/class-workspace-model'
 import { buildBlocks, GRADE_UI } from '@/app/piano-annuale/model'
 import { projectTemporalDay } from '@/core/application/temporal-projection-service'
+import type { CalendarDayReadModel } from '@/core/application/ports/temporal-projection'
 import type { PlannerTask } from '@/core/domain/planner-task'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
@@ -97,10 +98,12 @@ export default async function HomePage() {
             kind: 'FALLBACK' as const,
             eyebrow: 'RIPARTI DA QUI',
             title: 'Organizza il prossimo passo',
-            description: 'Non c’è una lezione operativa da gestire né un’attività urgente. Parti da Oggi oppure apri l’Orario per orientarti.',
+            description: projectedDay.calendarState === 'NO_LESSONS'
+              ? 'Oggi non risultano lezioni. Puoi usare questo spazio per attività, progettazione o preparazione del lavoro successivo.'
+              : 'Non c’è una lezione operativa da gestire né un’attività urgente. Parti da Oggi oppure apri l’Orario per orientarti.',
             href: '/planner',
             action: 'Apri Oggi',
-            meta: ['Nessuna urgenza rilevata'],
+            meta: [projectedDay.calendarState === 'NO_LESSONS' ? 'Nessuna lezione prevista' : 'Nessuna urgenza rilevata'],
           })
 
   const provisional = dailyContext.authority === 'PROVISIONAL_DRAFT'
@@ -117,7 +120,7 @@ export default async function HomePage() {
           <span>{[teacherSettings?.teacherDisplayName || null, context.academicYear?.label ?? null].filter(Boolean).join(' · ')}</span>
         </div>
         <div className="homeDailySummary" aria-label="Sintesi della giornata">
-          <strong>{dailySummary(dailyContext)}</strong>
+          <strong>{dailySummary(dailyContext, projectedDay.calendarState)}</strong>
           {provisional ? <span>Orario provvisorio, non ancora attivato</span> : null}
         </div>
       </section>
@@ -178,7 +181,7 @@ function resolveDailyPrimary(
     ? annualSnapshot.sections.find((item) => item.id === lesson.sectionId) ?? null
     : null
   const classLabel = section ? `${gradeNumber(section.grade)}ª ${section.sectionCode}` : lesson.title
-  const lessonHref = section ? resolveLessonHref(section, annualSnapshot) : null
+  const lessonHref = section && annualSnapshot ? resolveLessonHref(section, annualSnapshot) : null
   const classHref = section ? `/classi/${encodeURIComponent(section.id)}` : '/orario'
   const time = lessonTime(lesson)
   const authorityMeta = lesson.authority === 'PROVISIONAL_DRAFT' ? 'Orario provvisorio' : 'Orario in vigore'
@@ -243,8 +246,9 @@ function lessonTime(lesson: HomeDailyLesson) {
   return `${lesson.startAt.slice(11, 16)}–${lesson.endAt.slice(11, 16)}`
 }
 
-function dailySummary(context: HomeDailyContext) {
+function dailySummary(context: HomeDailyContext, calendarState: CalendarDayReadModel['state']) {
   if (context.authority === 'AMBIGUOUS') return 'Orario da verificare'
+  if (calendarState === 'NO_LESSONS') return 'Nessuna lezione prevista oggi'
   if (context.authority === 'NONE') return 'Contesto orario non disponibile'
   if (context.lessonCount === 0) return 'Nessuna lezione prevista oggi'
   const lessons = context.lessonCount === 1 ? '1 lezione' : `${context.lessonCount} lezioni`
