@@ -12,6 +12,8 @@
   --ink:#10233f;
   --ink-soft:#5d6f88;
   --ink-faint:#8795a8;
+  --ink-on-dark:#ffffff;
+  --ink-on-dark-soft:#c7d4e8;
   --line:#e4e9f1;
   --line-strong:#ccd6e4;
   --brand:var(--brand-blue);
@@ -19,10 +21,17 @@
   --nav:var(--brand-navy);
   --success:var(--brand-green);
   --success-soft:#ecf9f0;
+  --warning:#a65f00;
+  --warning-soft:#fff6df;
+  --danger:#c93838;
+  --danger-soft:#fff0f0;
   --focus-ring:rgba(47,109,246,.24);
+  --radius-none:0;
   --radius-sm:12px;
   --radius-md:18px;
   --radius-lg:24px;
+  --radius-pill:999px;
+  --shadow-none:none;
   --shadow-soft:0 10px 30px rgba(11,45,91,.07);
   --shadow-float:0 24px 70px rgba(11,45,91,.18);
 }
