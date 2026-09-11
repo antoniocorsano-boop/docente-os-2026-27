@@ -5,12 +5,14 @@ import { buildClassWorkspaceLearningFocus } from '@/app/classi/class-workspace-m
 import { buildBlocks, GRADE_UI } from '@/app/piano-annuale/model'
 import { projectTemporalDay, type ProjectedCalendarState } from '@/core/application/temporal-projection-service'
 import type { PlannerTask } from '@/core/domain/planner-task'
+import { WORKSPACE_PINNED_RESOURCE_SLOTS } from '@/core/domain/workspace-pinned-resource'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
 import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
+import { SupabaseWorkspacePinnedResourceRepository } from '@/core/infrastructure/supabase/supabase-workspace-pinned-resource-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { resolveHomeDailyContext, type HomeDailyContext, type HomeDailyLesson } from '@/core/presentation/home-daily-context'
 import { buildLessonWorkspaceHref, resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
@@ -35,7 +37,7 @@ export default async function HomePage() {
   const timetableReader = new SupabaseTimetableProjectionReadRepository()
   const calendarReader = new SupabaseCalendarProjectionReadRepository()
 
-  const [teacherSettings, tasks, timetableProjection, calendarProjection, annualSnapshot, sessions] = await Promise.all([
+  const [teacherSettings, tasks, timetableProjection, calendarProjection, annualSnapshot, sessions, pinnedResources] = await Promise.all([
     year
       ? new SupabaseTeacherSettingsRepository().getOrCreate(context.workspace.id, year.id)
       : Promise.resolve(null),
@@ -51,6 +53,9 @@ export default async function HomePage() {
       : Promise.resolve(null),
     year
       ? new SupabaseTeachingSessionRepository().listByDay(context.workspace.id, year.id, moment.date)
+      : Promise.resolve([]),
+    year
+      ? new SupabaseWorkspacePinnedResourceRepository().list(context.workspace.id, year.id)
       : Promise.resolve([]),
   ])
 
@@ -109,6 +114,7 @@ export default async function HomePage() {
   const showPendingReminder = primary.kind === 'LESSON'
     && primary.dailyKind === 'UPCOMING_LESSON'
     && dailyContext.pendingRegistrationCount > 0
+  const pinnedByKind = new Map(pinnedResources.map((resource) => [resource.kind, resource]))
 
   return (
     <AppShell active="home" academicYearLabel={context.academicYear?.label} workspaceName={teacherSettings?.schoolName || context.workspace.name} role={context.role} contentClassName="homeSurface">
@@ -143,6 +149,32 @@ export default async function HomePage() {
           </div>
           <Link href="/classi">Apri classi</Link>
         </aside>
+      ) : null}
+
+      {pinnedResources.length > 0 ? (
+        <section aria-labelledby="home-workspace-resources">
+          <div className="homeSectionHeading">
+            <span>IL TUO SPAZIO</span>
+            <h2 id="home-workspace-resources">Accessi rapidi</h2>
+          </div>
+          <div className="entranceGrid">
+            {WORKSPACE_PINNED_RESOURCE_SLOTS.map((slot) => {
+              const resource = pinnedByKind.get(slot.kind)
+              if (!resource) return null
+              const content = (
+                <>
+                  <h3>{slot.label}</h3>
+                  <p>{resource.note ?? slot.description}</p>
+                  <strong>Apri <i aria-hidden>→</i></strong>
+                </>
+              )
+
+              return resource.targetUrl.startsWith('/')
+                ? <Link className="entranceCard" href={resource.targetUrl} key={slot.kind}>{content}</Link>
+                : <a className="entranceCard" href={resource.targetUrl} target="_blank" rel="noreferrer" key={slot.kind}>{content}</a>
+            })}
+          </div>
+        </section>
       ) : null}
 
       <details className="humanTaskSecondary">
