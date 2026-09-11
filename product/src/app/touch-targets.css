@@ -1,0 +1,13 @@
+@media (max-width: 719px) {
+  body button,
+  body [role='button'] {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  body input:not([type='hidden']):not([type='checkbox']):not([type='radio']):not([type='range']),
+  body select,
+  body textarea {
+    min-height: 44px !important;
+  }
+}

@@ -1,0 +1,68 @@
+name: Design Policy Gate
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/design-policy.yml'
+      - 'docs/design/**'
+      - 'product/design/**'
+      - 'product/scripts/design/**'
+      - 'product/src/app/**'
+      - 'product/src/components/**'
+      - 'icon.svg'
+  push:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/design-policy.yml'
+      - 'docs/design/**'
+      - 'product/design/**'
+      - 'product/scripts/design/**'
+      - 'product/src/app/**'
+      - 'product/src/components/**'
+      - 'icon.svg'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: design-policy-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  design-policy:
+    name: dpg-1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact tested commit with history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Test Design Policy scanner
+        run: node --test product/scripts/design/design-policy.test.mjs
+
+      - name: Enforce DPG-1
+        env:
+          DESIGN_POLICY_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          DESIGN_POLICY_PR_BODY: ${{ github.event.pull_request.body || '' }}
+          DESIGN_POLICY_EVENT_NAME: ${{ github.event_name }}
+        run: node product/scripts/design/design-policy.mjs
+
+      - name: Publish DPG-1 receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-policy-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 90
+          path: product/test-results/design-policy/
