@@ -61,7 +61,7 @@ async function patchExistingDiaryRow(input: {
     cell(input.sheetName, 'Q', input.rowNumber, reflection.ideas ? 'Lezione / osservazione docente' : ''),
     cell(input.sheetName, 'S', input.rowNumber, reflection.nextActivity),
     cell(input.sheetName, 'W', input.rowNumber, 'COMPILATA'),
-    cell(input.sheetName, 'X', input.rowNumber, reflection.difficulties || reflection.nextActivity ? 'SÌ' : 'NO'),
+    cell(input.sheetName, 'X', input.rowNumber, reflection.difficulties ? 'SÌ' : 'NO'),
   ]
   if (reflection.udaChangeProposal) {
     data.push(cell(input.sheetName, 'V', input.rowNumber, `Proposta UDA: ${reflection.udaChangeProposal}`))
@@ -109,7 +109,7 @@ async function appendDiaryRow(input: {
     p.assessmentLabel ?? '',
     r.udaChangeProposal ? `Proposta UDA: ${r.udaChangeProposal}` : '',
     'COMPILATA',
-    r.difficulties || r.nextActivity ? 'SÌ' : 'NO',
+    r.difficulties ? 'SÌ' : 'NO',
     p.curriculumLink ?? '',
     p.recordId,
   ]]
