@@ -119,3 +119,16 @@ test('incomplete professional context is always the first guided step', () => {
   assert.equal(model.nextArea?.key, 'context')
   assert.equal(model.readyCount, 3)
 })
+
+test('optional Home links never interrupt the guided configuration sequence', () => {
+  const model = buildSettingsExperienceModel({
+    settings: { ...baseSettings, teacherDisplayName: '' },
+    disciplines: [],
+    sections: [],
+    assignments: [],
+  })
+
+  assert.equal(model.areas.find((area) => area.key === 'homeLinks')?.status, 'OPTIONAL')
+  assert.notEqual(model.nextArea?.key, 'homeLinks')
+  assert.equal(model.nextArea?.key, 'context')
+})
