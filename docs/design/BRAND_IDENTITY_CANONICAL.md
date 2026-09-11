@@ -10,6 +10,8 @@ Docente OS non è un registro, un calendario o un contenitore di moduli. È il s
 
 La marca deve rendere percepibile questa promessa prima ancora che l'utente legga una funzione.
 
+Le regole trasversali di applicazione sono vincolate anche da `DESIGN_GOVERNANCE_CANONICAL.md`.
+
 ## 2. Promessa
 
 ### Lockup breve
@@ -31,26 +33,42 @@ La marca deve rendere percepibile questa promessa prima ancora che l'utente legg
 4. **Traccia** — ciò che accade diventa memoria professionale recuperabile.
 5. **Autonomia** — il sistema suggerisce e prepara; la decisione professionale resta umana.
 
-Questi significati sono invarianti. Le loro espressioni visuali e microcopy possono evolvere se l'evidenza d'uso mostra una soluzione migliore.
+Questi significati sono invarianti. Le loro espressioni visuali e microcopy possono evolvere soltanto senza alterarne il significato.
 
-## 4. Simbolo
+## 4. Simbolo canonico
 
 Il marchio è un segno astratto costruito su tre elementi:
 
 - una **D aperta**, che richiama `Docente` senza diventare un semplice lettermark;
 - un **punto centrale**, che rappresenta il docente come centro decisionale;
-- una **traccia aperta** che entra nel segno e continua, simbolo del filo tra contesto, azione e lavoro successivo.
+- una **traccia aperta diagonale** che entra nel segno e continua, simbolo del filo tra contesto, azione e lavoro successivo.
+
+### Riferimento visuale approvato
+
+Il riferimento visuale approvato il **2026-09-11** è autoritativo per la geometria del simbolo. La versione runtime deve riprodurre fedelmente:
+
+- struttura e proporzioni complessive della `D`;
+- grado e posizione dell'apertura;
+- rapporto tra arco esterno e tratto verticale;
+- posizione, dimensione e respiro del punto centrale;
+- traiettoria, angolo, spessore e terminazione della curva diagonale;
+- equilibrio percettivo del passaggio cromatico blu → turchese.
+
+Il simbolo implementato non può essere una “reinterpretazione coerente”: deve essere una **ricostruzione fedele del riferimento approvato**. Qualunque differenza percettibile deve essere trattata come finding visuale da correggere, non come variante autorizzata.
 
 Il simbolo non deve incorporare icone didascaliche di libro, calendario, persone, lampadina, cappello da laurea, robot o check. Questi elementi possono esistere nell'interfaccia come icone funzionali, ma non costituiscono l'identità primaria.
 
 ### Varianti autorizzate
 
-- chiara: navy + blue su fondo chiaro;
-- inversa: bianco + azzurro/teal su navy;
-- monocromatica: un solo colore quando richiesto dal supporto;
-- app icon: simbolo isolato in contenitore arrotondato.
+Sono autorizzate soltanto tre famiglie:
 
-Le proporzioni del segno devono restare riconoscibili anche a 24–32 px.
+- **chiara**: simbolo canonico su fondo chiaro;
+- **inversa/scura**: stessa geometria su navy/scuro, con valori cromatici adeguati al contrasto;
+- **ridotta/monocromatica**: stessa geometria in un solo colore quando il supporto lo richiede.
+
+L'**app icon** usa il simbolo canonico isolato in un contenitore arrotondato. Il contenitore può cambiare per contrasto/supporto; la geometria interna no.
+
+Le proporzioni del segno devono restare riconoscibili anche a 24–32 px. Le semplificazioni necessarie per dimensioni molto piccole richiedono verifica visuale esplicita e non possono alterare il gesto fondamentale del simbolo.
 
 ## 5. Colore
 
@@ -69,8 +87,9 @@ La palette concreta estende i token semantici del Design System V2; il markup di
 - il verde non è un secondo colore di marca dominante: resta segnale di conferma/successo;
 - il blu attivo identifica azione e orientamento;
 - il navy governa identità e struttura;
+- il teal è riservato alla traccia/continuità e non deve diventare colore casuale di decorazione;
 - nessuno stato professionale dipende unicamente dal colore;
-- contrasto e accessibilità prevalgono sulla fedeltà cromatica nominale.
+- contrasto e accessibilità prevalgono sulla fedeltà cromatica nominale, senza cambiare il ruolo semantico.
 
 ## 6. Tipografia
 
@@ -97,6 +116,8 @@ Il linguaggio visuale usa:
 
 La sidebar desktop è il principale carrier del navy. Il contenuto operativo rimane chiaro per ridurre affaticamento e preservare leggibilità prolungata.
 
+Sono vietati come linguaggio globale gradienti puramente decorativi, glow, neon, glassmorphism invasivo o effetti generici associati all'“AI”. I gradienti sono ammessi quando esprimono il brand o una transizione funzionale precisa.
+
 ## 8. Loading e motion
 
 Il caricamento non comunica genericamente “attesa”: comunica **ricomposizione del contesto**.
@@ -107,11 +128,11 @@ Messaggio baseline per attese percepibili:
 
 Sequenza semantica, quando la durata o il contesto giustificano più stati:
 
-`Ritrovo il contesto → Ricompongo la giornata → Pronto`
+`Ritrovo il contesto → Ricompongo la giornata → Quasi pronto → Pronto`
 
 Motion:
 
-- tratto/orbita che si ricompone attorno al simbolo;
+- tratto/orbita che si ricompone attorno al simbolo canonico;
 - durata locale 120–220 ms per feedback UI ordinario;
 - animazione di loading sobria, non ludica;
 - `prefers-reduced-motion` obbligatorio;
@@ -150,20 +171,31 @@ Il brand non modifica:
 - stato canonico di TeachingSession, Planner, Orario, Calendario o UDA;
 - RLS, autenticazione o autorizzazioni.
 
-Un restyling non può cambiare il significato di uno stato o nascondere una distinzione professionale necessaria.
+Un restyling non può cambiare il significato di uno stato, nascondere una distinzione professionale necessaria o trasformare una proposta in decisione.
 
 ## 12. Protocollo di evoluzione
 
-Gli **invarianti** sono: promessa, cinque significati, centro decisionale umano, distinzione semantica dei colori, assenza di iconografia scolastica didascalica nel marchio.
+Gli **invarianti** sono:
+
+- promessa `Mantieni il filo.`;
+- cinque significati;
+- docente come centro decisionale;
+- geometria canonica del simbolo rispetto al riferimento approvato;
+- famiglie di variante autorizzate;
+- distinzione semantica dei colori;
+- assenza di iconografia scolastica didascalica nel marchio;
+- coerenza cross-surface.
 
 Sono **migliorabili con evidenza**:
 
-- geometria fine del simbolo;
-- rapporto tra navy/blue/teal;
-- densità delle superfici;
-- microcopy di loading;
-- tempi e curve di motion;
-- dimensione e posizionamento del lockup nei diversi breakpoint.
+- densità e spaziature delle superfici;
+- dimensione e posizionamento responsive del lockup;
+- microcopy secondaria di loading;
+- tempi e curve di motion entro i limiti canonici;
+- intensità di ombre/bordi entro i token;
+- quantità di metadata esposti per default.
+
+**La geometria del simbolo non è migliorabile localmente.** Qualunque modifica richiede una revisione canonica `SUPERSEDING` o `BREAKING`, confronto con il riferimento approvato e nuova accettazione visuale esplicita.
 
 Ogni revisione deve dichiarare:
 
@@ -181,7 +213,12 @@ Una release che modifica il brand o i token globali deve superare almeno:
 - Product CI + typecheck + build;
 - Human Interaction Model;
 - Human + Visual Acceptance desktop e mobile;
+- verifica esplicita del simbolo rispetto al riferimento approvato quando il logo cambia;
 - controllo assenza overflow orizzontale mobile;
 - controllo contrasto/focus sulle superfici toccate;
 - verifica `prefers-reduced-motion` per loading/motion;
 - smoke di login, Home, navigazione e almeno una superficie operativa di classe.
+
+## 14. Relazione con la Design Governance
+
+`DESIGN_GOVERNANCE_CANONICAL.md` fissa le regole trasversali che rendono questa identità coerente nell'intero prodotto. Una feature non può introdurre eccezioni locali al brand, ai token o alle gerarchie senza una revisione canonica esplicita.
