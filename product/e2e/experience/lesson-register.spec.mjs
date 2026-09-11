@@ -28,7 +28,10 @@ test('Journey: In classe → Registra la lezione', async ({ page }, testInfo) =>
     await registerLink.click()
 
     await expect(page).toHaveURL(new RegExp(`/classi/${escapeRegExp(sectionId)}/in-classe/${escapeRegExp(fixture.assetId)}/registra$`))
-    await expect(page.getByRole('heading', { name: new RegExp(fixture.classLabel) })).toBeVisible()
+    const heading = page.getByRole('heading', { name: new RegExp(fixture.classLabel) })
+    await expect(heading).toBeVisible()
+    await expect(heading).toContainText('08:00')
+    await expect(page.getByText(/orario provvisorio, non ancora attivato/i)).toBeVisible()
     await expect(page.getByText('Attività prevista')).toBeVisible()
     await expect(page.getByRole('link', { name: /Apri materiale Canva/i })).toHaveAttribute('href', /^https:\/\//)
 
