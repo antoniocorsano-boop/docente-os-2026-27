@@ -13,7 +13,11 @@ test('Journey: Classe → Diario → In classe → Registra la lezione', async (
   await loginE2E(page)
   await page.goto('/classi')
 
-  const classCard = page.locator('a.canonicalClassCard').filter({ hasText: /2ª\s*A/i }).first()
+  const classCard = page
+    .locator('a.canonicalClassCard')
+    .filter({ hasText: /2ª\s*A/i })
+    .filter({ hasText: /Confermata/i })
+    .first()
   await expect(classCard).toBeVisible()
   const sectionId = sectionIdFromHref(await classCard.getAttribute('href'))
   const fixture = await createClassroomMaterialFixture({
