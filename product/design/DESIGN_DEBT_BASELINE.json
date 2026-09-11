@@ -1,14 +1,14 @@
 {
   "schema": "docente-os.design-debt-baseline.v1",
   "capturedAt": "2026-09-11",
-  "source": "DPG-2H classi cleanup",
+  "source": "DPG-2I textbook and publisher resources cleanup",
   "rule": "Every metric is a non-increasing ceiling. Lower values may replace this baseline; higher values must fail the Design Policy Gate.",
   "metrics": {
-    "rawColors": 208,
+    "rawColors": 170,
     "localTokens": 13,
     "legacyBrand": 0,
     "decorativeEffects": 0,
-    "rawRadii": 133,
+    "rawRadii": 108,
     "rawShadows": 11
   }
 }
