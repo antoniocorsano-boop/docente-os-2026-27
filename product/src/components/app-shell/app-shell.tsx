@@ -22,6 +22,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { type ReactNode, useEffect, useState } from 'react'
 import { ContextualAssistantBoundary } from '@/components/assistant/contextual-assistant-boundary'
+import { DocenteOsLockup, DocenteOsMark } from '@/components/brand/docente-os-brand'
 import { cn } from '@/lib/utils'
 import {
   NAVIGATION_GROUPS,
@@ -87,12 +88,8 @@ export function AppShell({
   return (
     <div className="dosShell">
       <aside className="dosSidebar" aria-label="Navigazione principale">
-        <Link href="/" className="dosBrand" aria-label="DOCENTE OS — Home">
-          <span className="dosBrandMark" aria-hidden>D</span>
-          <span className="dosBrandText">
-            <strong>DOCENTE OS</strong>
-            <small>{academicYearLabel ?? 'Anno da configurare'}</small>
-          </span>
+        <Link href="/" className="dosBrand" aria-label="Docente OS — Home">
+          <DocenteOsLockup compact inverse academicYearLabel={academicYearLabel ?? 'Mantieni il filo.'} />
         </Link>
 
         <button className="dosCommandTrigger" type="button" onClick={() => setCommandOpen(true)}>
@@ -138,6 +135,7 @@ export function AppShell({
       <div className="dosMainColumn">
         <header className="dosMobileHeader">
           <div className="dosMobileContext">
+            <DocenteOsMark size={30} className="dosMobileBrandMark" />
             <span>{activeItem.label}</span>
             <strong>{workspaceName}</strong>
           </div>
@@ -194,7 +192,7 @@ function CommandPalette({
         <Dialog.Content className="dosCommandDialog" aria-describedby="command-description">
           <Dialog.Title className="srOnly">Cerca o vai a una sezione</Dialog.Title>
           <p id="command-description" className="srOnly">Scrivi ciò che vuoi fare e apri la funzione pertinente.</p>
-          <Command className="dosCommand" label="Cerca nelle funzioni di DOCENTE OS">
+          <Command className="dosCommand" label="Cerca nelle funzioni di Docente OS">
             <div className="dosCommandInputRow">
               <Search size={19} aria-hidden />
               <Command.Input autoFocus placeholder="Cosa vuoi fare adesso?" />
@@ -227,7 +225,7 @@ function CommandPalette({
             </Command.List>
             <div className="dosCommandFooter">
               <span><CommandIcon size={14} aria-hidden /> Cerca per intenzione</span>
-              <span>DOCENTE OS apre il contesto; le modifiche restano nella superficie corretta.</span>
+              <span>Docente OS apre il contesto; le modifiche restano nella superficie corretta.</span>
             </div>
           </Command>
         </Dialog.Content>
@@ -255,10 +253,7 @@ function MobileMenu({
         <Dialog.Overlay className="dosDialogOverlay" />
         <Dialog.Content className="dosMobileSheet">
           <div className="dosMobileSheetHeader">
-            <div>
-              <span>DOCENTE OS</span>
-              <strong>{academicYearLabel ?? 'Anno da configurare'}</strong>
-            </div>
+            <DocenteOsLockup compact academicYearLabel={academicYearLabel ?? 'Mantieni il filo.'} />
             <Dialog.Close className="dosSheetClose" aria-label="Chiudi menu"><X size={20} aria-hidden /></Dialog.Close>
           </div>
           <Dialog.Title>Cosa vuoi fare?</Dialog.Title>

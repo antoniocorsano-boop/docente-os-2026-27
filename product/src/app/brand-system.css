@@ -1,0 +1,173 @@
+:root{
+  --brand-navy:#0b2d5b;
+  --brand-navy-2:#123f79;
+  --brand-blue:#2f6df6;
+  --brand-blue-2:#4c83ff;
+  --brand-thread:#35bdd0;
+  --brand-green:#16a34a;
+  --brand-neutral:#e5e7eb;
+  --canvas:#f5f8fd;
+  --surface:#ffffff;
+  --surface-soft:#f1f5fb;
+  --ink:#10233f;
+  --ink-soft:#5d6f88;
+  --ink-faint:#8795a8;
+  --line:#e4e9f1;
+  --line-strong:#ccd6e4;
+  --brand:var(--brand-blue);
+  --brand-soft:#edf3ff;
+  --nav:var(--brand-navy);
+  --success:var(--brand-green);
+  --success-soft:#ecf9f0;
+  --focus-ring:rgba(47,109,246,.24);
+  --radius-sm:12px;
+  --radius-md:18px;
+  --radius-lg:24px;
+  --shadow-soft:0 10px 30px rgba(11,45,91,.07);
+  --shadow-float:0 24px 70px rgba(11,45,91,.18);
+}
+
+html{background:var(--canvas)}
+body{
+  background:var(--canvas);
+  color:var(--ink);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  letter-spacing:-.006em;
+}
+::selection{background:rgba(47,109,246,.18);color:var(--brand-navy)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible{
+  outline:3px solid var(--focus-ring);
+  outline-offset:2px;
+}
+a,button{-webkit-tap-highlight-color:rgba(47,109,246,.12)}
+
+/* Canonical mark */
+.dosLogoMark{width:var(--dos-mark-size,42px);height:var(--dos-mark-size,42px);display:block;overflow:visible;flex:0 0 auto}
+.dosLogoFrame,.dosLogoStem,.dosLogoThread{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.dosLogoFrame,.dosLogoStem{stroke:var(--logo-frame,var(--brand-navy));stroke-width:8}
+.dosLogoDot{fill:var(--logo-dot,var(--brand-blue))}
+.dosLogoThread{stroke:var(--logo-thread,var(--brand-blue));stroke-width:8}
+.dosLogoLockup{display:inline-flex;align-items:center;gap:12px;min-width:0;--logo-frame:var(--brand-navy);--logo-dot:var(--brand-blue);--logo-thread:var(--brand-blue)}
+.dosLogoLockup.inverse{--logo-frame:#fff;--logo-dot:#9ed9ff;--logo-thread:#48c6d5;color:#fff}
+.dosLogoWords{display:grid;gap:1px;min-width:0;line-height:1.05}
+.dosLogoWords strong{font-size:20px;letter-spacing:-.035em;font-weight:800;white-space:nowrap}
+.dosLogoWords small{font-size:11px;line-height:1.3;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dosLogoLockup.inverse .dosLogoWords small{color:#a9bdd7}
+.dosLogoLockup.compact{gap:9px}.dosLogoLockup.compact .dosLogoWords strong{font-size:15px}.dosLogoLockup.compact .dosLogoWords small{font-size:10px}
+
+/* Shell becomes the primary brand carrier */
+.dosShell{background:linear-gradient(180deg,#f8fbff 0%,var(--canvas) 100%)}
+.dosSidebar{
+  background:linear-gradient(180deg,#0b2d5b 0%,#09264d 62%,#071f40 100%);
+  border-right:1px solid rgba(255,255,255,.08);
+  box-shadow:12px 0 35px rgba(11,45,91,.08);
+}
+.dosBrand{padding:4px 7px 18px;border-bottom:1px solid rgba(255,255,255,.1)}
+.dosBrand .dosLogoWords strong{font-size:15px;letter-spacing:-.02em}
+.dosBrand .dosLogoWords small{color:#a9bdd7}
+.dosCommandTrigger{border-color:rgba(255,255,255,.13);background:rgba(255,255,255,.065);border-radius:13px}
+.dosCommandTrigger:hover{background:rgba(255,255,255,.11)}
+.dosNavGroupLabel{color:#7f97b5}
+.dosNavItem{border-radius:12px;color:#bfd0e3;transition:background-color .16s ease,color .16s ease,transform .16s ease}
+.dosNavItem:hover{background:rgba(255,255,255,.075);color:#fff}
+.dosNavItem.active{background:linear-gradient(135deg,#fff,#f4f8ff);color:var(--brand-navy);box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.dosNavItem.active svg{color:var(--brand-blue)}
+.dosSidebarFooter{border-top-color:rgba(255,255,255,.1)}
+.workspaceDot{background:var(--brand-green);box-shadow:0 0 0 4px rgba(22,163,74,.16)}
+
+.dosMobileHeader{
+  background:rgba(248,251,255,.92);
+  border-bottom-color:rgba(204,214,228,.78);
+  box-shadow:0 8px 24px rgba(11,45,91,.04);
+}
+.dosMobileContext{grid-template-columns:auto minmax(0,1fr);column-gap:9px;align-items:center}
+.dosMobileBrandMark{grid-row:1/3;--logo-frame:var(--brand-navy);--logo-dot:var(--brand-blue);--logo-thread:var(--brand-blue)}
+.dosMobileContext span,.dosMobileContext strong{grid-column:2}
+.dosMobileContext span{color:var(--brand-blue)}
+.dosMobileActions button{border-color:var(--line);background:rgba(255,255,255,.9);border-radius:14px;box-shadow:0 4px 14px rgba(11,45,91,.04)}
+.dosBottomNav{border-top-color:var(--line);box-shadow:0 -10px 30px rgba(11,45,91,.07)}
+.dosBottomNav a,.dosBottomNav button{border-radius:14px;color:#76869a}
+.dosBottomNav .active{color:var(--brand-blue);background:var(--brand-soft)}
+
+/* Shared surfaces: one visual language across old and new pages */
+.card,.panel,.taskList,.workloadStrip,.humanTaskFocus,.humanTaskSecondary,.homePendingReminder,
+.dosCommandDialog,.dosMobileSheet{
+  border-color:var(--line);
+  box-shadow:var(--shadow-soft);
+}
+.card,.panel{border-radius:var(--radius-md)}
+.secondaryButton,.iconButton,.dosSheetClose{border-radius:14px}
+.stack input,.quickCapture,input[type="email"],input[type="password"],input[type="text"],textarea,select{border-color:var(--line-strong)}
+.quickCapture:focus-within{border-color:#9bb9ff;box-shadow:0 0 0 4px rgba(47,109,246,.09)}
+.quickCapture button,.stack button,.panel button{background:var(--brand-blue)}
+.badge,.sourceChip,.dateChip,.priorityChip,.waitingChip{border-radius:999px}
+
+/* Primary action signature */
+.humanTaskActions .primary,.primaryButton,[data-brand-primary="true"]{
+  background:linear-gradient(135deg,var(--brand-blue),#245ad4);
+  color:#fff;
+  border-color:transparent;
+  box-shadow:0 10px 22px rgba(47,109,246,.20);
+}
+.humanTaskActions .primary:hover,.primaryButton:hover,[data-brand-primary="true"]:hover{filter:brightness(1.025);transform:translateY(-1px)}
+
+/* Home / professional hierarchy */
+.homeDailyHeader{position:relative}
+.homeDailyHeader::after{content:"";position:absolute;right:0;top:-14px;width:110px;height:110px;border-radius:999px;background:radial-gradient(circle,rgba(47,109,246,.10),rgba(47,109,246,0) 68%);pointer-events:none}
+.homeDailyHeader h1,.plannerHeader h1{color:var(--brand-navy);letter-spacing:-.045em}
+.humanTaskFocus{background:linear-gradient(145deg,#fff 0%,#f8fbff 100%)}
+.humanTaskFocusEyebrow{color:var(--brand-blue)}
+
+/* Dialogs and command palette */
+.dosDialogOverlay{background:rgba(7,28,57,.56)}
+.dosCommandDialog,.dosMobileSheet{border-radius:22px}
+.dosCommandItem[data-selected=true]{background:var(--brand-soft)}
+.dosCommandIcon{background:#f1f5ff;color:var(--brand-blue)}
+
+/* Branded authentication */
+.brandAuthSurface{min-height:100svh;background:
+  radial-gradient(circle at 0 0,rgba(47,109,246,.10),transparent 30%),
+  radial-gradient(circle at 100% 100%,rgba(53,189,208,.09),transparent 28%),
+  linear-gradient(180deg,#fbfdff 0%,#f4f8fd 100%)}
+.brandAuthHero{display:grid;gap:16px;padding:8px 4px 2px}
+.brandAuthHero h1{color:var(--brand-navy)}
+.brandPromise{margin:0;color:var(--brand-blue);font-size:14px;font-weight:700}
+
+/* Route loading = recompose context, not generic waiting */
+.routeLoading{
+  min-height:100svh;
+  display:grid;
+  place-items:center;
+  padding:28px;
+  background:
+    radial-gradient(circle at 2% 3%,rgba(47,109,246,.10),transparent 27%),
+    radial-gradient(circle at 96% 92%,rgba(53,189,208,.09),transparent 28%),
+    #fbfdff;
+  color:var(--ink);
+}
+.routeLoadingTop{display:none}
+.brandLoadingStage{width:min(420px,92vw);display:grid;justify-items:center;text-align:center;gap:18px}
+.brandLoadingMarkWrap{position:relative;width:108px;height:108px;display:grid;place-items:center}
+.brandLoadingOrbit{position:absolute;inset:4px;border-radius:999px;border:4px solid #dfe8f7;border-top-color:var(--brand-blue);border-right-color:var(--brand-thread);animation:brandOrbit 1.35s cubic-bezier(.65,.05,.36,1) infinite}
+.brandLoadingMarkWrap .dosLogoMark{--logo-frame:var(--brand-navy);--logo-dot:var(--brand-blue);--logo-thread:var(--brand-blue)}
+.brandLoadingTitle{display:grid;gap:4px}
+.brandLoadingTitle strong{font-size:29px;line-height:1;letter-spacing:-.045em;color:var(--brand-navy)}
+.brandLoadingTitle span{font-size:14px;color:var(--brand-blue);font-weight:650}
+.brandLoadingMessage{margin:6px 0 0;color:var(--ink-soft);font-size:13px}
+.brandLoadingThread{width:154px;height:3px;border-radius:999px;background:#dfe7f2;overflow:hidden;position:relative}
+.brandLoadingThread::after{content:"";position:absolute;inset:0 auto 0 0;width:44%;border-radius:inherit;background:linear-gradient(90deg,var(--brand-blue),var(--brand-thread));animation:brandThread 1.5s ease-in-out infinite alternate}
+@keyframes brandOrbit{to{transform:rotate(360deg)}}
+@keyframes brandThread{from{width:24%;transform:translateX(0)}to{width:62%;transform:translateX(60%)}}
+
+@media(max-width:719px){
+  body{background:#f7faff}
+  .dosContent.workSurface{padding-top:20px}
+  .brandLoadingStage{gap:16px}
+  .brandLoadingMarkWrap{width:96px;height:96px}
+  .brandLoadingTitle strong{font-size:26px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .brandLoadingOrbit,.brandLoadingThread::after{animation:none}
+  .humanTaskActions .primary:hover,.primaryButton:hover,[data-brand-primary="true"]:hover{transform:none}
+}
