@@ -42,7 +42,7 @@ const ICONS: Record<NavigationKey, LucideIcon> = {
   settings: Settings2,
 }
 
-const MOBILE_PRIMARY: NavigationKey[] = ['home', 'today', 'timetable', 'classes']
+const MOBILE_PRIMARY: NavigationKey[] = ['today', 'timetable', 'classes', 'calendar']
 
 export type AppShellProps = {
   active: NavigationKey
@@ -87,7 +87,7 @@ export function AppShell({
   return (
     <div className="dosShell">
       <aside className="dosSidebar" aria-label="Navigazione principale">
-        <Link href="/" className="dosBrand" aria-label="DOCENTE OS — Home">
+        <Link href="/" className="dosBrand" aria-label="DOCENTE OS — Oggi">
           <span className="dosBrandMark" aria-hidden>D</span>
           <span className="dosBrandText">
             <strong>DOCENTE OS</strong>
