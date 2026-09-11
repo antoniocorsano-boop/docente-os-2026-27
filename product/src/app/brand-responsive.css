@@ -1,0 +1,5 @@
+@media(max-width:1023px) and (min-width:720px){
+  .dosBrand{justify-content:center;padding-inline:0}
+  .dosBrand .dosLogoWords{display:none}
+  .dosBrand .dosLogoLockup.compact{gap:0}
+}
