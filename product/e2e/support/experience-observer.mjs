@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 const OUTPUT_ROOT = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience'
+const CANONICAL_MIN_TARGET_PX = 44
 
 export function createExperienceObserver(page) {
   const consoleErrors = []
@@ -34,7 +35,7 @@ export function createExperienceObserver(page) {
 
   return {
     async capture({ surface, label, project }) {
-      const layout = await page.evaluate(() => {
+      const layout = await page.evaluate((minimumTargetPx) => {
         const viewportWidth = window.innerWidth
         const viewportHeight = window.innerHeight
         const documentWidth = Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth ?? 0)
@@ -62,12 +63,13 @@ export function createExperienceObserver(page) {
           documentHeight,
           horizontalOverflow: Math.max(0, documentWidth - viewportWidth),
           h1,
-          smallInteractiveTargets: interactive.filter((item) => item.width < 36 || item.height < 36),
+          minimumInteractiveTargetPx: minimumTargetPx,
+          smallInteractiveTargets: interactive.filter((item) => item.width < minimumTargetPx || item.height < minimumTargetPx),
         }
-      })
+      }, CANONICAL_MIN_TARGET_PX)
 
       const observation = {
-        schemaVersion: 1,
+        schemaVersion: 2,
         surface,
         label,
         project,
