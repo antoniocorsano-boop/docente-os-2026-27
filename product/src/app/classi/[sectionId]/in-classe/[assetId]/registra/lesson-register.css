@@ -1,0 +1,179 @@
+.lessonRegisterSurface {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 980px;
+  margin: 0 auto;
+  padding-bottom: 5rem;
+}
+
+.lessonRegisterNav {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.lessonRegisterNav a,
+.lessonRegisterMaterial a {
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.lessonRegisterHero,
+.lessonRegisterContext,
+.lessonRegisterForm,
+.lessonRegisterReceipt {
+  border: 1px solid var(--border, #d8d8d8);
+  border-radius: 1rem;
+  background: var(--surface, #fff);
+}
+
+.lessonRegisterHero {
+  padding: 1.5rem;
+}
+
+.lessonRegisterHero p {
+  margin: 0 0 .45rem;
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.lessonRegisterHero h1 {
+  margin: 0;
+  font-size: clamp(1.55rem, 4vw, 2.45rem);
+  line-height: 1.08;
+}
+
+.lessonRegisterHero span {
+  display: block;
+  margin-top: .65rem;
+  opacity: .72;
+}
+
+.lessonRegisterReceipt {
+  padding: 1rem 1.2rem;
+}
+
+.lessonRegisterReceipt p {
+  margin: .35rem 0 0;
+}
+
+.lessonRegisterContext {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+}
+
+.lessonRegisterContext > div {
+  display: grid;
+  gap: .35rem;
+  padding: 1rem 1.2rem;
+  border-right: 1px solid var(--border, #d8d8d8);
+}
+
+.lessonRegisterContext > div:last-child {
+  border-right: 0;
+}
+
+.lessonRegisterContext span,
+.lessonRegisterDuration > label,
+.lessonRegisterForm label > span {
+  font-size: .8rem;
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+
+.lessonRegisterForm {
+  display: grid;
+  gap: 1.15rem;
+  padding: 1.35rem;
+}
+
+.lessonRegisterForm label {
+  display: grid;
+  gap: .45rem;
+}
+
+.lessonRegisterForm textarea,
+.lessonRegisterDuration input {
+  width: 100%;
+  border: 1px solid var(--border, #cfcfcf);
+  border-radius: .7rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.lessonRegisterForm textarea {
+  min-height: 6.5rem;
+  padding: .8rem .9rem;
+  resize: vertical;
+}
+
+.lessonRegisterDuration {
+  display: grid;
+  gap: .45rem;
+  max-width: 250px;
+}
+
+.lessonRegisterDuration div {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+
+.lessonRegisterDuration input {
+  padding: .65rem .75rem;
+  max-width: 110px;
+}
+
+.lessonRegisterPrivacy {
+  padding: .9rem 1rem;
+  border-radius: .8rem;
+  background: color-mix(in srgb, currentColor 5%, transparent);
+}
+
+.lessonRegisterPrivacy p {
+  margin: .3rem 0 0;
+  line-height: 1.5;
+}
+
+.lessonRegisterSubmit {
+  min-height: 3.25rem;
+  border: 0;
+  border-radius: .8rem;
+  padding: .8rem 1.15rem;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  .lessonRegisterSurface {
+    gap: 1rem;
+    padding-bottom: 4rem;
+  }
+
+  .lessonRegisterContext {
+    grid-template-columns: 1fr;
+  }
+
+  .lessonRegisterContext > div {
+    border-right: 0;
+    border-bottom: 1px solid var(--border, #d8d8d8);
+  }
+
+  .lessonRegisterContext > div:last-child {
+    border-bottom: 0;
+  }
+
+  .lessonRegisterForm {
+    padding: 1rem;
+  }
+
+  .lessonRegisterSubmit {
+    position: sticky;
+    bottom: .75rem;
+  }
+}
