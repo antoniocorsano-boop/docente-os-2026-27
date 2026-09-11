@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { resolveUniqueDraftSlot } from '@/core/application/lesson-register-timing'
 import { teachingSessionCandidateFromOccurrence } from '@/core/application/teaching-session-candidate'
 import type { ProjectedOccurrence } from '@/core/application/temporal-projection-service'
 import {
@@ -7,6 +8,12 @@ import {
   validateTeachingSessionAllocations,
   type TeachingSessionDraft,
 } from './teaching-session'
+import {
+  buildDriveDiaryProjection,
+  buildDriveDiaryRecordId,
+  buildTeachingSessionEvidenceNote,
+  parseTeachingSessionEvidenceNote,
+} from './teaching-session-reflection'
 
 const occurrence: ProjectedOccurrence = {
   logicalId: 'tt:version-1:slot-1:2026-09-07',
@@ -125,4 +132,120 @@ test('quantitative threshold may suggest completion but can never auto-complete 
   })
 
   assert.equal(completionProposal({ allocatedMinutes: 90, plannedBlockMinutes: 120 }).maySuggestCompletion, false)
+})
+
+test('Drive diary identity is deterministic and matches the established register convention', () => {
+  assert.equal(buildDriveDiaryRecordId({
+    localDate: '2026-09-11',
+    classLabel: '2A',
+    plannedStartAt: '2026-09-11T08:00:00',
+  }), '2026-09-11_2A_0800')
+})
+
+test('post-lesson reflection round-trips inside immutable teaching evidence', () => {
+  const reflection = {
+    activityDone: 'Misurazione e rappresentazione di un oggetto tecnico.',
+    observations: 'La classe ha individuato correttamente le misure principali.',
+    difficulties: 'Alcuni passaggi grafici richiedono ripresa.',
+    ideas: 'Usare un secondo oggetto per il confronto.',
+    udaChangeProposal: 'Proporre più tempo alla fase grafica.',
+    nextActivity: 'Riprendere la rappresentazione e confrontare due soluzioni.',
+  }
+  const note = buildTeachingSessionEvidenceNote({
+    reflection,
+    materialAssetId: 'asset-canva-2a',
+    driveRecordId: '2026-09-11_2A_0800',
+  })
+  const parsed = parseTeachingSessionEvidenceNote(note)
+
+  assert.equal(parsed?.materialAssetId, 'asset-canva-2a')
+  assert.equal(parsed?.driveRecordId, '2026-09-11_2A_0800')
+  assert.deepEqual(parsed?.reflection, reflection)
+})
+
+test('Drive projection marks the diary complete without turning an UDA proposal into an automatic mutation', () => {
+  const reflection = {
+    activityDone: 'Attività svolta',
+    observations: 'Osservazione di classe',
+    difficulties: '',
+    ideas: 'Idea emersa',
+    udaChangeProposal: 'Proposta da valutare',
+    nextActivity: 'Prossimo passo',
+  }
+  const projection = buildDriveDiaryProjection({
+    localDate: '2026-09-11',
+    plannedStartAt: '2026-09-11T08:00:00',
+    startTime: null,
+    classLabel: '2A',
+    disciplineLabel: 'Tecnologia',
+    actualMinutes: 60,
+    udaLabel: 'UDA di avvio',
+    udaPhase: 'Ingresso diagnostico',
+    plannedActivity: 'Attività prevista',
+    reflection,
+    materialHref: null,
+    assessmentLabel: 'Diagnostica, senza voto',
+    curriculumLink: null,
+  })
+
+  assert.equal(projection.recordId, '2026-09-11_2A_0800')
+  assert.equal(projection.status, 'COMPILATA')
+  assert.equal(projection.reflection.udaChangeProposal, 'Proposta da valutare')
+  assert.equal('studentName' in projection, false)
+})
+
+test('a unique draft timetable slot may supply documentary time without becoming canonical', () => {
+  const versions = [{ id: 'draft-1', status: 'DRAFT' as const, effectiveFrom: '2026-09-11', effectiveTo: null }]
+  const slots = [{
+    id: 'slot-2a',
+    timetableVersionId: 'draft-1',
+    weekday: 5,
+    startTime: '08:00',
+    endTime: '09:00',
+    kind: 'LESSON' as const,
+    sectionId: 'section-2a',
+    sectionLabel: '2ª A',
+    disciplineId: 'technology',
+    disciplineLabel: 'Tecnologia',
+    manualClassLabel: null,
+    room: null,
+  }]
+
+  const result = resolveUniqueDraftSlot({
+    localDate: '2026-09-11',
+    sectionId: 'section-2a',
+    versions,
+    slots,
+  })
+
+  assert.equal(result?.version.status, 'DRAFT')
+  assert.equal(result?.slot.startTime, '08:00')
+})
+
+test('draft timetable fallback refuses to guess when more than one class period matches', () => {
+  const versions = [{ id: 'draft-1', status: 'DRAFT' as const, effectiveFrom: '2026-09-11', effectiveTo: null }]
+  const baseSlot = {
+    timetableVersionId: 'draft-1',
+    weekday: 5,
+    kind: 'LESSON' as const,
+    sectionId: 'section-2a',
+    sectionLabel: '2ª A',
+    disciplineId: 'technology',
+    disciplineLabel: 'Tecnologia',
+    manualClassLabel: null,
+    room: null,
+  }
+  const slots = [
+    { ...baseSlot, id: 'slot-a', startTime: '08:00', endTime: '09:00' },
+    { ...baseSlot, id: 'slot-b', startTime: '12:00', endTime: '13:00' },
+  ]
+
+  const result = resolveUniqueDraftSlot({
+    localDate: '2026-09-11',
+    sectionId: 'section-2a',
+    versions,
+    slots,
+  })
+
+  assert.equal(result, null)
 })

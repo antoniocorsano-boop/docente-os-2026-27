@@ -1,0 +1,6 @@
+@media(max-width:719px){
+  .dosAssistantFloatingTrigger,
+  .dosAssistantFloatingStatus{
+    margin-bottom:20px;
+  }
+}
