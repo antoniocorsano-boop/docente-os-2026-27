@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
+import { googleOAuthConfigured } from '@/core/infrastructure/google/google-oauth'
+import { GoogleOAuthConnectionRepository } from '@/core/infrastructure/google/google-oauth-connection-repository'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
@@ -19,7 +21,7 @@ export default async function LessonRegisterPage({
   searchParams,
 }: {
   params: Promise<{ sectionId: string; assetId: string }>
-  searchParams: Promise<{ saved?: string; drive?: string }>
+  searchParams: Promise<{ saved?: string; drive?: string; google?: string; driveSynced?: string }>
 }) {
   const { sectionId, assetId } = await params
   const query = await searchParams
@@ -52,6 +54,17 @@ export default async function LessonRegisterPage({
     ?? metadataString(bundle.asset.sourceMetadata, 'udaTitle')
     ?? 'Percorso didattico in corso'
   const plannedActivity = metadataString(bundle.asset.sourceMetadata, 'plannedActivity') ?? view.title
+  const registerPath = `/classi/${encodeURIComponent(sectionId)}/in-classe/${encodeURIComponent(assetId)}/registra`
+  const driveConnectHref = `/api/google/drive/connect?returnTo=${encodeURIComponent(registerPath)}`
+  const oauthConfigured = googleOAuthConfigured()
+  let googleConnected = false
+  if (oauthConfigured) {
+    try {
+      googleConnected = Boolean(await new GoogleOAuthConnectionRepository().getActive(context.workspace.id))
+    } catch {
+      googleConnected = false
+    }
+  }
 
   return (
     <AppShell
@@ -72,17 +85,53 @@ export default async function LessonRegisterPage({
         <span>{formatDate(localDate)}</span>
       </header>
 
+      {query.google === 'connected' ? (
+        <section className="lessonRegisterReceipt" role="status">
+          <strong>Google Drive collegato</strong>
+          <p>
+            La memoria documentale è autorizzata per questo docente.
+            {Number(query.driveSynced) > 0 ? ` Registrazioni sincronizzate: ${Number(query.driveSynced)}.` : ''}
+          </p>
+        </section>
+      ) : null}
+
+      {query.google && query.google !== 'connected' ? (
+        <section className="lessonRegisterReceipt" role="status">
+          <strong>Collegamento Drive non completato</strong>
+          <p>La registrazione in Docente OS resta disponibile. Puoi ripetere il collegamento senza perdere il diario.</p>
+        </section>
+      ) : null}
+
       {query.saved ? (
         <section className="lessonRegisterReceipt" role="status">
           <strong>Lezione registrata</strong>
           <p>La registrazione è stata acquisita nella memoria di Docente OS.</p>
-          {query.drive === 'queued' ? (
-            <p>La copia documentale per Drive è stata accodata con il suo identificativo stabile.</p>
-          ) : (
-            <p>La copia documentale per Drive è recuperabile dalla registrazione; nessuna evidenza della lezione è andata persa.</p>
-          )}
+          {query.drive === 'synced' ? <p>Il Diario su Drive è stato aggiornato.</p> : null}
+          {query.drive === 'connect' ? (
+            <>
+              <p>La copia documentale è in attesa dell’autorizzazione Google Drive.</p>
+              <Link className="lessonRegisterDriveAction" href={driveConnectHref}>Collega Google Drive</Link>
+            </>
+          ) : null}
+          {query.drive === 'not-configured' ? <p>La copia Drive è in coda: il collegamento Google dell’app deve essere configurato prima della sincronizzazione.</p> : null}
+          {query.drive === 'recoverable' ? <p>La copia Drive resta recuperabile dalla registrazione; nessuna evidenza della lezione è andata persa.</p> : null}
         </section>
       ) : null}
+
+      <section className="lessonRegisterDrive" aria-label="Memoria documentale">
+        <div>
+          <span>MEMORIA DOCUMENTALE</span>
+          <strong>{googleConnected ? 'Google Drive collegato' : oauthConfigured ? 'Google Drive da collegare' : 'Google Drive in attesa di configurazione'}</strong>
+          <p>
+            {googleConnected
+              ? 'Dopo la registrazione, Docente OS aggiorna automaticamente il Diario persistente.'
+              : oauthConfigured
+                ? 'Docente OS conserva comunque la lezione; il collegamento abilita la copia automatica nel Diario Drive.'
+                : 'La registrazione resta sicura in Docente OS e verrà sincronizzata quando il collegamento Google sarà attivo.'}
+          </p>
+        </div>
+        {!googleConnected && oauthConfigured ? <Link href={driveConnectHref}>Collega Drive</Link> : null}
+      </section>
 
       <section className="lessonRegisterContext" aria-label="Contesto didattico">
         <div>
