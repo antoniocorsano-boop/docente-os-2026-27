@@ -1,14 +1,13 @@
 @media (max-width: 719px) {
-  :where(button, [role='button']) {
-    min-width: 44px;
-    min-height: 44px;
+  body button,
+  body [role='button'] {
+    min-width: 44px !important;
+    min-height: 44px !important;
   }
 
-  :where(
-    input:not([type='hidden']):not([type='checkbox']):not([type='radio']):not([type='range']),
-    select,
-    textarea
-  ) {
-    min-height: 44px;
+  body input:not([type='hidden']):not([type='checkbox']):not([type='radio']):not([type='range']),
+  body select,
+  body textarea {
+    min-height: 44px !important;
   }
 }
