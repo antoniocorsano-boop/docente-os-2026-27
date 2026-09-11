@@ -3,8 +3,7 @@ import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { buildClassWorkspaceLearningFocus } from '@/app/classi/class-workspace-model'
 import { buildBlocks, GRADE_UI } from '@/app/piano-annuale/model'
-import { projectTemporalDay } from '@/core/application/temporal-projection-service'
-import type { CalendarDayReadModel } from '@/core/application/ports/temporal-projection'
+import { projectTemporalDay, type ProjectedCalendarState } from '@/core/application/temporal-projection-service'
 import type { PlannerTask } from '@/core/domain/planner-task'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
@@ -246,7 +245,7 @@ function lessonTime(lesson: HomeDailyLesson) {
   return `${lesson.startAt.slice(11, 16)}–${lesson.endAt.slice(11, 16)}`
 }
 
-function dailySummary(context: HomeDailyContext, calendarState: CalendarDayReadModel['state']) {
+function dailySummary(context: HomeDailyContext, calendarState: ProjectedCalendarState) {
   if (context.authority === 'AMBIGUOUS') return 'Orario da verificare'
   if (calendarState === 'NO_LESSONS') return 'Nessuna lezione prevista oggi'
   if (context.authority === 'NONE') return 'Contesto orario non disponibile'
