@@ -1,17 +1,16 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
-import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
+import { resolveLessonRegisterTiming } from '@/core/application/lesson-register-timing'
 import { googleOAuthConfigured } from '@/core/infrastructure/google/google-oauth'
 import { GoogleOAuthConnectionRepository } from '@/core/infrastructure/google/google-oauth-connection-repository'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
-import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
-import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { buildClassroomSessionView } from '../classroom-session-model'
 import { recordClassroomLesson } from './actions'
+import { retryPendingDriveDiary } from './drive-actions'
 import './lesson-register.css'
 
 export const dynamic = 'force-dynamic'
@@ -21,7 +20,7 @@ export default async function LessonRegisterPage({
   searchParams,
 }: {
   params: Promise<{ sectionId: string; assetId: string }>
-  searchParams: Promise<{ saved?: string; drive?: string; google?: string; driveSynced?: string }>
+  searchParams: Promise<{ saved?: string; drive?: string; google?: string; driveSynced?: string; driveRetry?: string }>
 }) {
   const { sectionId, assetId } = await params
   const query = await searchParams
@@ -41,15 +40,15 @@ export default async function LessonRegisterPage({
   if (!view) notFound()
 
   const localDate = view.targetDate ?? currentRomeDate()
-  const occurrence = await findOccurrence({
+  const timing = await resolveLessonRegisterTiming({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
     sectionId,
     localDate,
   })
-  const timeLabel = occurrence?.startAt?.match(/T(\d{2}:\d{2})/)?.[1] ?? null
-  const actualMinutes = plannedMinutes(occurrence?.startAt ?? null, occurrence?.endAt ?? null) ?? 60
-  const discipline = disciplineLabel(occurrence?.title, bundle.asset.disciplines)
+  const timeLabel = timing.startAt?.match(/T(\d{2}:\d{2})/)?.[1] ?? null
+  const actualMinutes = timing.plannedMinutes ?? 60
+  const discipline = disciplineLabel(timing.title ?? undefined, bundle.asset.disciplines)
   const udaLabel = metadataString(bundle.asset.sourceMetadata, 'udaLabel')
     ?? metadataString(bundle.asset.sourceMetadata, 'udaTitle')
     ?? 'Percorso didattico in corso'
@@ -82,7 +81,10 @@ export default async function LessonRegisterPage({
       <header className="lessonRegisterHero">
         <p>DIARIO DEL DOCENTE</p>
         <h1>{view.classLabel} — {discipline}{timeLabel ? ` — ${timeLabel}` : ''}</h1>
-        <span>{formatDate(localDate)}</span>
+        <span>
+          {formatDate(localDate)}
+          {timing.authority === 'PROVISIONAL_DRAFT' ? ' · orario provvisorio, non ancora attivato' : ''}
+        </span>
       </header>
 
       {query.google === 'connected' ? (
@@ -99,6 +101,17 @@ export default async function LessonRegisterPage({
         <section className="lessonRegisterReceipt" role="status">
           <strong>Collegamento Drive non completato</strong>
           <p>La registrazione in Docente OS resta disponibile. Puoi ripetere il collegamento senza perdere il diario.</p>
+        </section>
+      ) : null}
+
+      {query.driveRetry ? (
+        <section className="lessonRegisterReceipt" role="status">
+          <strong>{query.driveRetry === 'synced' ? 'Sincronizzazione Drive completata' : 'Sincronizzazione Drive da riprendere'}</strong>
+          <p>
+            {query.driveRetry === 'synced'
+              ? `Registrazioni aggiornate sul Diario: ${Number(query.driveSynced) || 0}.`
+              : 'Le registrazioni restano conservate in Docente OS e possono essere sincronizzate di nuovo.'}
+          </p>
         </section>
       ) : null}
 
@@ -131,6 +144,13 @@ export default async function LessonRegisterPage({
           </p>
         </div>
         {!googleConnected && oauthConfigured ? <Link href={driveConnectHref}>Collega Drive</Link> : null}
+        {googleConnected ? (
+          <form action={retryPendingDriveDiary}>
+            <input type="hidden" name="sectionId" value={sectionId} />
+            <input type="hidden" name="assetId" value={assetId} />
+            <button type="submit">Sincronizza registrazioni in attesa</button>
+          </form>
+        ) : null}
       </section>
 
       <section className="lessonRegisterContext" aria-label="Contesto didattico">
@@ -191,28 +211,6 @@ export default async function LessonRegisterPage({
       </form>
     </AppShell>
   )
-}
-
-async function findOccurrence(input: { workspaceId: string; academicYearId: string; sectionId: string; localDate: string }) {
-  try {
-    const day = await new TemporalProjectionService(
-      new SupabaseTimetableProjectionReadRepository(),
-      new SupabaseCalendarProjectionReadRepository(),
-    ).projectDay(input)
-    return day.occurrences.find((item) =>
-      item.sectionId === input.sectionId && (item.kind === 'LESSON' || item.kind === 'CLASS_PRESENCE'),
-    ) ?? null
-  } catch {
-    return null
-  }
-}
-
-function plannedMinutes(startAt: string | null, endAt: string | null) {
-  if (!startAt || !endAt) return null
-  const start = Date.parse(`${startAt}+02:00`)
-  const end = Date.parse(`${endAt}+02:00`)
-  const minutes = Math.round((end - start) / 60000)
-  return Number.isInteger(minutes) && minutes > 0 ? minutes : null
 }
 
 function metadataString(metadata: Record<string, unknown>, key: string) {
