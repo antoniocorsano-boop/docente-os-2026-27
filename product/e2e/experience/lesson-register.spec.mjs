@@ -59,7 +59,8 @@ test('Journey: Classe → Diario → In classe → Registra la lezione', async (
     }
     await expect(page.getByRole('button', { name: 'Registra la lezione' })).toBeVisible()
     await expect(page.getByText(/Non inserire nomi degli alunni/i)).toBeVisible()
-    await expect(page.getByText(/non modifica automaticamente l’UDA/i)).toBeVisible()
+    await expect(page.getByText(/modifiche all’UDA restano proposte finché non vengono confermate dal docente/i)).toBeVisible()
+    await expect(page.locator('textarea[name="udaChangeProposal"]')).toHaveAttribute('placeholder', /Non modifica automaticamente l’UDA/i)
 
     const geometry = await page.evaluate(() => ({
       viewport: window.innerWidth,
