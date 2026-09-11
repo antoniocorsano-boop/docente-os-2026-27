@@ -2,14 +2,15 @@
 
 import { useMemo, useState } from 'react'
 import type { ClassroomSessionView } from './classroom-session-model'
-import { classroomSupportText } from './classroom-session-model'
+import { classroomOpeningGuide, classroomSupportText } from './classroom-session-model'
 
-type SupportKind = 'SIMPLER' | 'EXAMPLE' | 'CHECK' | 'VISUAL'
+type SupportKind = 'HOOK' | 'SIMPLER' | 'EXAMPLE' | 'CHECK' | 'VISUAL'
 
 export function ClassroomSessionClient({ view }: { view: ClassroomSessionView }) {
   const [activeStep, setActiveStep] = useState(0)
   const [supportKind, setSupportKind] = useState<SupportKind | null>(null)
   const current = view.steps[activeStep] ?? view.steps[0] ?? null
+  const opening = useMemo(() => classroomOpeningGuide(view), [view])
   const support = useMemo(
     () => supportKind ? classroomSupportText(view, activeStep, supportKind) : null,
     [view, activeStep, supportKind],
@@ -41,6 +42,19 @@ export function ClassroomSessionClient({ view }: { view: ClassroomSessionView })
         <div><span>Generazione immagini</span><strong>{view.imageGenerationAvailable ? 'Disponibile' : 'Da collegare'}</strong></div>
       </section>
 
+      <section className="classroomOpeningGuide" aria-labelledby="classroom-opening-title">
+        <header>
+          <span>AVVIO · 2–3 MINUTI</span>
+          <h2 id="classroom-opening-title">Non partire dal concetto: parti da qui</h2>
+          <p>Una traccia breve per creare attenzione prima della spiegazione, senza dover improvvisare.</p>
+        </header>
+        <div className="classroomOpeningGrid">
+          <div><strong>Aggancio concreto</strong><p>{opening.hook}</p></div>
+          <div><strong>Ponte verso il concetto</strong><p>{opening.bridge}</p></div>
+          <div><strong>Domanda da lanciare</strong><p>{opening.question}</p></div>
+        </div>
+      </section>
+
       {current ? (
         <main className="classroomGrid">
           <section className="classroomStepCard" aria-labelledby="current-step-title">
@@ -63,6 +77,7 @@ export function ClassroomSessionClient({ view }: { view: ClassroomSessionView })
               <p>Il supporto usa soltanto il contesto della lezione. Non registra dati degli alunni e non modifica il Piano annuale.</p>
             </header>
             <div className="classroomAssistantTools">
+              <button type="button" className={supportKind === 'HOOK' ? 'active' : ''} onClick={() => setSupportKind('HOOK')}>Come la apro?</button>
               <button type="button" className={supportKind === 'SIMPLER' ? 'active' : ''} onClick={() => setSupportKind('SIMPLER')}>Spiega più semplice</button>
               <button type="button" className={supportKind === 'EXAMPLE' ? 'active' : ''} onClick={() => setSupportKind('EXAMPLE')}>Dammi un esempio</button>
               <button type="button" className={supportKind === 'CHECK' ? 'active' : ''} onClick={() => setSupportKind('CHECK')}>Domanda flash</button>
@@ -89,11 +104,11 @@ export function ClassroomSessionClient({ view }: { view: ClassroomSessionView })
       )}
 
       <details className="classroomSequenceDisclosure">
-        <summary>Vedi tutta la sequenza</summary>
+        <summary>Scaletta parlata · vedi tutta la sequenza</summary>
         <div>
           {view.steps.map((step, index) => (
             <button type="button" onClick={() => { setActiveStep(index); setSupportKind(null) }} key={`${index}-${step.title}`}>
-              <span>{index + 1}</span><div><strong>{step.title}</strong><small>{step.instruction}</small></div>
+              <span>{index + 1}</span><div><strong>{step.title}</strong><small>{step.cue ? `${step.instruction} · ${step.cue}` : step.instruction}</small></div>
             </button>
           ))}
         </div>

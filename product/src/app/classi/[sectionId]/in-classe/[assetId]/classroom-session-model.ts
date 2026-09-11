@@ -17,6 +17,12 @@ export type ClassroomSupportHints = {
   visuals: string[]
 }
 
+export type ClassroomOpeningGuide = {
+  hook: string
+  bridge: string
+  question: string
+}
+
 export type ClassroomSessionView = {
   assetId: string
   classLabel: string
@@ -63,15 +69,36 @@ export function buildClassroomSessionView(section: AnnualPlanSection, asset: Kno
   }
 }
 
+export function classroomOpeningGuide(view: ClassroomSessionView): ClassroomOpeningGuide {
+  const firstStep = view.steps[0] ?? null
+  const example = view.supportHints.examples[0]
+  const simpler = view.supportHints.simpler[0]
+  const check = view.supportHints.checks[0]
+
+  return {
+    hook: example || firstStep?.cue || firstStep?.instruction || `Parti da una situazione concreta collegata a ${view.title}.`,
+    bridge: firstStep?.cue || simpler || firstStep?.instruction || `Porta gradualmente la classe al nucleo della lezione: ${view.title}.`,
+    question: check || `Chiedi: «Che cosa notate, e perché potrebbe essere importante?»`,
+  }
+}
+
 export function classroomSupportText(
   view: ClassroomSessionView,
   stepIndex: number,
-  kind: 'SIMPLER' | 'EXAMPLE' | 'CHECK' | 'VISUAL',
+  kind: 'HOOK' | 'SIMPLER' | 'EXAMPLE' | 'CHECK' | 'VISUAL',
 ): { title: string; text: string; generated: false } {
   const step = view.steps[stepIndex] ?? view.steps[0] ?? null
   const fallback = step?.instruction ?? view.title
   const hintIndex = Math.max(0, Math.min(stepIndex, Math.max(0, view.steps.length - 1)))
 
+  if (kind === 'HOOK') {
+    const opening = classroomOpeningGuide(view)
+    return {
+      title: 'Come aprire la lezione',
+      text: `Parti da qui: ${opening.hook} Poi collega l’esperienza al concetto: ${opening.bridge} Chiudi l’aggancio con questa domanda: ${opening.question}`,
+      generated: false,
+    }
+  }
   if (kind === 'SIMPLER') {
     return {
       title: 'Spiegazione più semplice',
