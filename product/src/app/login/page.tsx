@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { DocenteOsLockup } from '@/components/brand/docente-os-brand'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,20 +37,21 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const alertVariant = params.error ? 'warning' : 'info'
 
   return (
-    <main className="min-h-screen bg-background px-4 py-10 text-foreground sm:px-6 sm:py-16">
+    <main className="brandAuthSurface min-h-screen bg-background px-4 py-10 text-foreground sm:px-6 sm:py-16">
       <div className="mx-auto grid w-full max-w-3xl gap-6">
-        <header className="grid gap-2 px-1">
-          <p className="m-0 text-xs font-bold tracking-[0.14em] text-primary">DOCENTE OS · 2026/27</p>
+        <header className="brandAuthHero">
+          <DocenteOsLockup />
+          <p className="brandPromise">Mantieni il filo.</p>
           <h1 className="m-0 max-w-2xl text-3xl font-bold tracking-[-0.03em] sm:text-4xl">Il tuo spazio docente, pronto quando serve.</h1>
           <p className="m-0 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
             Accedi con la password. Configurazione iniziale e recupero credenziali restano percorsi distinti e intenzionali.
           </p>
         </header>
 
-        <Card className="overflow-hidden shadow-[0_18px_55px_rgba(15,23,42,0.08)]">
+        <Card className="overflow-hidden shadow-[0_18px_55px_rgba(11,45,91,0.08)]">
           <CardHeader className="border-b border-border bg-card">
             <p className="m-0 text-xs font-semibold text-primary">ACCESSO ORDINARIO</p>
-            <CardTitle>Accedi a DOCENTE OS</CardTitle>
+            <CardTitle>Accedi a Docente OS</CardTitle>
             <CardDescription>Usa le credenziali del tuo spazio personale. Nessun messaggio viene inviato durante l’accesso con password.</CardDescription>
           </CardHeader>
 
@@ -65,7 +67,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 Password
                 <input className="min-h-12 rounded-[var(--radius-sm)] border border-input bg-card px-3.5 text-base outline-none transition-shadow focus:border-primary focus:ring-3 focus:ring-primary/15" id="password" name="password" type="password" autoComplete="current-password" minLength={8} required />
               </label>
-              <Button className="mt-1 w-full" type="submit" size="lg">Entra nel tuo spazio docente</Button>
+              <Button className="mt-1 w-full" data-brand-primary="true" type="submit" size="lg">Entra nel tuo spazio docente</Button>
             </form>
 
             <Separator />
@@ -108,7 +110,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </Card>
 
         <p className="m-0 px-1 text-xs leading-5 text-muted-foreground">
-          DOCENTE OS mantiene separati autenticazione, dati del tuo workspace e integrazioni esterne. Le autorizzazioni applicative restano governate da Supabase e RLS.
+          Docente OS mantiene separati autenticazione, dati del tuo workspace e integrazioni esterne. Le autorizzazioni applicative restano governate da Supabase e RLS.
         </p>
       </div>
     </main>
