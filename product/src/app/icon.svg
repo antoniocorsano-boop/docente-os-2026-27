@@ -1,7 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="15" fill="#ffffff"/>
-  <path d="M15 10h18c12 0 21 9.4 21 22S45 54 33 54H20" fill="none" stroke="#0b2d5b" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M15 10v27" fill="none" stroke="#0b2d5b" stroke-width="8" stroke-linecap="round"/>
-  <circle cx="31.5" cy="31.5" r="5.2" fill="#2f6df6"/>
-  <path d="M10.5 51.5c7.8-10 16.1-15.5 26.8-15.5" fill="none" stroke="#2f6df6" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <defs>
+    <linearGradient id="body" x1="18" y1="14" x2="51" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2F6DF6"/>
+      <stop offset="0.58" stop-color="#2F6DF6"/>
+      <stop offset="1" stop-color="#245AD4"/>
+    </linearGradient>
+    <linearGradient id="thread" x1="13" y1="49" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2789F3"/>
+      <stop offset="1" stop-color="#35BDD0"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="#FFFFFF"/>
+  <path d="M18 14H32.5C44.6 14 52 21.4 52 32.1C52 43.4 44.2 50 33 50C27.6 50 22.8 48.3 19 45.2" fill="none" stroke="url(#body)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M18 14V35.5" fill="none" stroke="url(#body)" stroke-width="8" stroke-linecap="butt"/>
+  <path d="M13 49L27.4 34.6C28.8 33.2 30.2 32.5 31.9 32.4" fill="none" stroke="url(#thread)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="31.5" cy="31.2" r="5.1" fill="#2F6DF6"/>
 </svg>
