@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { AnnualPlanSection } from '@/core/domain/annual-plan-execution'
 import type { KnowledgeAsset } from '@/core/domain/knowledge'
-import { buildClassroomSessionView, classroomSupportText } from './classroom-session-model'
+import { buildClassroomSessionView, classroomOpeningGuide, classroomSupportText } from './classroom-session-model'
 
 const section: AnnualPlanSection = {
   id: 'section-3c',
@@ -84,6 +84,21 @@ test('rejects a material explicitly bound to another canonical section', () => {
     sourceMetadata: { ...asset().sourceMetadata, sectionId: 'section-3a' },
   })
   assert.equal(buildClassroomSessionView(section, mismatched), null)
+})
+
+test('opening guide turns prepared hints into a short spoken start without inventing pupil data', () => {
+  const view = buildClassroomSessionView(section, asset())
+  assert.ok(view)
+
+  const opening = classroomOpeningGuide(view)
+  const hook = classroomSupportText(view, 0, 'HOOK')
+
+  assert.match(opening.hook, /interruttore/)
+  assert.match(opening.bridge, /illuminazione/)
+  assert.match(opening.question, /ingresso/)
+  assert.match(hook.text, /Parti da qui/)
+  assert.match(hook.text, /interruttore/)
+  assert.equal(hook.generated, false)
 })
 
 test('quick support is grounded in prepared lesson hints and never claims image generation', () => {
