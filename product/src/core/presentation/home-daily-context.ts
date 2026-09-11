@@ -140,6 +140,10 @@ function resolveLessonSource(input: {
     }
   }
 
+  if (input.projectedDay.calendarState === 'NO_LESSONS' || input.projectedDay.timetableState === 'NOT_APPLICABLE') {
+    return { authority: 'NONE', lessons: [] }
+  }
+
   const draft = resolveProvisionalDraftDay(input.localDate, input.timetableVersions, input.timetableSlots)
   if (draft.ambiguous) return { authority: 'AMBIGUOUS', lessons: [] }
   if (!draft.version) return { authority: 'NONE', lessons: [] }
