@@ -1,6 +1,31 @@
 import type { DriveDiaryProjection } from '@/core/domain/teaching-session-reflection'
 import { createClient } from '@/lib/supabase/server'
 
+type DbError = { message: string }
+type InsertResult = Promise<{ data: { id: string } | null; error: DbError | null }>
+
+interface OutboxInsertBuilder {
+  select(columns: 'id'): { single(): InsertResult }
+}
+
+interface OutboxTable {
+  insert(value: {
+    session_id: string
+    workspace_id: string
+    academic_year_id: string
+    section_id: string
+    record_id: string
+    projection: DriveDiaryProjection
+    status: 'PENDING'
+    attempts: number
+    created_by: string
+  }): OutboxInsertBuilder
+}
+
+interface OutboxClient {
+  from(table: 'teaching_session_drive_outbox'): OutboxTable
+}
+
 export class SupabaseTeachingSessionDriveOutboxRepository {
   async queue(input: {
     sessionId: string
@@ -15,7 +40,8 @@ export class SupabaseTeachingSessionDriveOutboxRepository {
     if (userError) throw new Error(userError.message)
     if (!userResult.user) throw new Error('Authenticated user required')
 
-    const { data, error } = await supabase
+    const outbox = supabase as unknown as OutboxClient
+    const { data, error } = await outbox
       .from('teaching_session_drive_outbox')
       .insert({
         session_id: input.sessionId,
@@ -33,6 +59,6 @@ export class SupabaseTeachingSessionDriveOutboxRepository {
 
     if (error) throw new Error(error.message)
     if (!data?.id) throw new Error('Drive diary outbox receipt missing')
-    return data.id as string
+    return data.id
   }
 }
