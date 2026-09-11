@@ -7,6 +7,12 @@ import {
   validateTeachingSessionAllocations,
   type TeachingSessionDraft,
 } from './teaching-session'
+import {
+  buildDriveDiaryProjection,
+  buildDriveDiaryRecordId,
+  buildTeachingSessionEvidenceNote,
+  parseTeachingSessionEvidenceNote,
+} from './teaching-session-reflection'
 
 const occurrence: ProjectedOccurrence = {
   logicalId: 'tt:version-1:slot-1:2026-09-07',
@@ -125,4 +131,64 @@ test('quantitative threshold may suggest completion but can never auto-complete 
   })
 
   assert.equal(completionProposal({ allocatedMinutes: 90, plannedBlockMinutes: 120 }).maySuggestCompletion, false)
+})
+
+test('Drive diary identity is deterministic and matches the established register convention', () => {
+  assert.equal(buildDriveDiaryRecordId({
+    localDate: '2026-09-11',
+    classLabel: '2A',
+    plannedStartAt: '2026-09-11T08:00:00',
+  }), '2026-09-11_2A_0800')
+})
+
+test('post-lesson reflection round-trips inside immutable teaching evidence', () => {
+  const reflection = {
+    activityDone: 'Misurazione e rappresentazione di un oggetto tecnico.',
+    observations: 'La classe ha individuato correttamente le misure principali.',
+    difficulties: 'Alcuni passaggi grafici richiedono ripresa.',
+    ideas: 'Usare un secondo oggetto per il confronto.',
+    udaChangeProposal: 'Proporre più tempo alla fase grafica.',
+    nextActivity: 'Riprendere la rappresentazione e confrontare due soluzioni.',
+  }
+  const note = buildTeachingSessionEvidenceNote({
+    reflection,
+    materialAssetId: 'asset-canva-2a',
+    driveRecordId: '2026-09-11_2A_0800',
+  })
+  const parsed = parseTeachingSessionEvidenceNote(note)
+
+  assert.equal(parsed?.materialAssetId, 'asset-canva-2a')
+  assert.equal(parsed?.driveRecordId, '2026-09-11_2A_0800')
+  assert.deepEqual(parsed?.reflection, reflection)
+})
+
+test('Drive projection marks the diary complete without turning an UDA proposal into an automatic mutation', () => {
+  const reflection = {
+    activityDone: 'Attività svolta',
+    observations: 'Osservazione di classe',
+    difficulties: '',
+    ideas: 'Idea emersa',
+    udaChangeProposal: 'Proposta da valutare',
+    nextActivity: 'Prossimo passo',
+  }
+  const projection = buildDriveDiaryProjection({
+    localDate: '2026-09-11',
+    plannedStartAt: '2026-09-11T08:00:00',
+    startTime: null,
+    classLabel: '2A',
+    disciplineLabel: 'Tecnologia',
+    actualMinutes: 60,
+    udaLabel: 'UDA di avvio',
+    udaPhase: 'Ingresso diagnostico',
+    plannedActivity: 'Attività prevista',
+    reflection,
+    materialHref: null,
+    assessmentLabel: 'Diagnostica, senza voto',
+    curriculumLink: null,
+  })
+
+  assert.equal(projection.recordId, '2026-09-11_2A_0800')
+  assert.equal(projection.status, 'COMPILATA')
+  assert.equal(projection.reflection.udaChangeProposal, 'Proposta da valutare')
+  assert.equal('studentName' in projection, false)
 })
