@@ -8,8 +8,25 @@ type RpcResult = Promise<{ data: null; error: DbError | null }>
 
 type OutboxRow = {
   id: string
+  session_id: string
+  record_id: string
   projection: DriveDiaryProjection
   status: 'PENDING' | 'SYNCED' | 'FAILED'
+  attempts: number
+  last_error: string | null
+  synced_at: string | null
+  created_at: string
+}
+
+export type TeachingSessionDriveReceipt = {
+  id: string
+  sessionId: string
+  recordId: string
+  status: 'PENDING' | 'SYNCED' | 'FAILED'
+  attempts: number
+  lastError: string | null
+  syncedAt: string | null
+  createdAt: string
 }
 
 interface OutboxInsertBuilder {
@@ -46,6 +63,8 @@ interface OutboxClient {
     target_error: string | null
   }): RpcResult
 }
+
+const RECEIPT_COLUMNS = 'id,session_id,record_id,projection,status,attempts,last_error,synced_at,created_at'
 
 export class SupabaseTeachingSessionDriveOutboxRepository {
   async queue(input: {
@@ -84,7 +103,7 @@ export class SupabaseTeachingSessionDriveOutboxRepository {
     const outbox = supabase as unknown as OutboxClient
     const { data, error } = await outbox
       .from('teaching_session_drive_outbox')
-      .select('id,projection,status')
+      .select(RECEIPT_COLUMNS)
       .eq('workspace_id', workspaceId)
       .eq('created_by', userId)
       .in('status', ['PENDING', 'FAILED'])
@@ -93,6 +112,22 @@ export class SupabaseTeachingSessionDriveOutboxRepository {
 
     if (error) throw new Error(error.message)
     return data ?? []
+  }
+
+  async listBySection(workspaceId: string, sectionId: string, limit = 100): Promise<TeachingSessionDriveReceipt[]> {
+    const { supabase, userId } = await authenticatedClient()
+    const outbox = supabase as unknown as OutboxClient
+    const { data, error } = await outbox
+      .from('teaching_session_drive_outbox')
+      .select(RECEIPT_COLUMNS)
+      .eq('workspace_id', workspaceId)
+      .eq('section_id', sectionId)
+      .eq('created_by', userId)
+      .order('created_at', { ascending: false })
+      .limit(Math.max(1, Math.min(250, limit)))
+
+    if (error) throw new Error(error.message)
+    return (data ?? []).map(toReceipt)
   }
 
   async finish(outboxId: string, status: 'SYNCED' | 'FAILED', errorMessage: string | null = null) {
@@ -104,6 +139,19 @@ export class SupabaseTeachingSessionDriveOutboxRepository {
       target_error: errorMessage,
     })
     if (error) throw new Error(error.message)
+  }
+}
+
+function toReceipt(row: OutboxRow): TeachingSessionDriveReceipt {
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    recordId: row.record_id,
+    status: row.status,
+    attempts: row.attempts,
+    lastError: row.last_error,
+    syncedAt: row.synced_at,
+    createdAt: row.created_at,
   }
 }
 
