@@ -3,7 +3,7 @@ import { buildTextbookSettingsCoverage, type TextbookAdoption } from '@/core/dom
 import type { TeachingAssignment } from '@/core/domain/timetable'
 import type { TeacherWorkspaceSettings, TeachingDiscipline } from '@/core/domain/teacher-settings'
 
-export type SettingsAreaKey = 'context' | 'disciplines' | 'classes' | 'assignments' | 'textbooks' | 'organization'
+export type SettingsAreaKey = 'context' | 'disciplines' | 'classes' | 'assignments' | 'textbooks' | 'organization' | 'homeLinks'
 export type SettingsAreaStatus = 'COMPLETE' | 'INCOMPLETE' | 'REVIEW' | 'OPTIONAL'
 
 export type SettingsArea = {
@@ -146,6 +146,16 @@ export function buildSettingsExperienceModel(input: {
         : 'Controlla giorni, orario di inizio e durata abituale dei periodi.',
       href: '#organizzazione',
       nextAction: organizationComplete ? 'Rivedi l’organizzazione' : 'Completa l’organizzazione',
+    },
+    {
+      key: 'homeLinks',
+      number: 7,
+      label: 'Accessi Home',
+      question: 'Quali risorse vuoi trovare subito nella tua Home?',
+      status: 'OPTIONAL',
+      summary: 'Configura Oggi, Sezione, Progettazione, Diario e Anno di prova nel tuo workspace.',
+      href: '/impostazioni/collegamenti',
+      nextAction: 'Configura gli accessi Home',
     },
   ]
 
