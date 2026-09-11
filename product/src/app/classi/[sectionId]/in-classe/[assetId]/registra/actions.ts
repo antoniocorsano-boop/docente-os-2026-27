@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
+import { resolveLessonRegisterTiming, type LessonRegisterTiming } from '@/core/application/lesson-register-timing'
 import { teachingSessionCandidateFromOccurrence } from '@/core/application/teaching-session-candidate'
 import {
   buildDriveDiaryProjection,
@@ -13,11 +13,9 @@ import {
 import type { TeachingSessionDraft } from '@/core/domain/teaching-session'
 import { synchronizeDriveDiaryReceipt } from '@/core/infrastructure/google/google-drive-diary-sync'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
-import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseTeachingSessionDriveOutboxRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-drive-outbox-repository'
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
-import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { buildClassroomSessionView } from '../classroom-session-model'
 
@@ -48,16 +46,16 @@ export async function recordClassroomLesson(formData: FormData) {
   if (!view) throw new Error('Classroom material is not a valid lesson resource for this class')
 
   const localDate = view.targetDate ?? currentRomeDate()
-  const occurrence = await projectedTeachingOccurrence({
+  const timing = await resolveLessonRegisterTiming({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
     sectionId,
     localDate,
   })
 
-  const candidate = occurrence
-    ? teachingSessionCandidateFromOccurrence(occurrence)
-    : manualCandidate(sectionId, localDate)
+  const candidate = timing.authority === 'IN_FORCE' && timing.occurrence
+    ? teachingSessionCandidateFromOccurrence(timing.occurrence)
+    : manualCandidate(sectionId, localDate, timing)
   const recordId = buildDriveDiaryRecordId({
     localDate,
     classLabel: view.classLabel,
@@ -90,13 +88,13 @@ export async function recordClassroomLesson(formData: FormData) {
     plannedStartAt: candidate.plannedStartAt,
     startTime: null,
     classLabel: view.classLabel,
-    disciplineLabel: disciplineLabel(occurrence?.title, bundle.asset.disciplines),
+    disciplineLabel: disciplineLabel(timing.title ?? undefined, bundle.asset.disciplines),
     actualMinutes,
     udaLabel: metadataString(bundle.asset.sourceMetadata, 'udaLabel') ?? metadataString(bundle.asset.sourceMetadata, 'udaTitle'),
     udaPhase: metadataString(bundle.asset.sourceMetadata, 'udaPhase'),
     plannedActivity: metadataString(bundle.asset.sourceMetadata, 'plannedActivity') ?? view.title,
     reflection,
-    materialHref: null,
+    materialHref: view.sourceHref,
     assessmentLabel: metadataString(bundle.asset.sourceMetadata, 'assessmentLabel'),
     curriculumLink: metadataString(bundle.asset.sourceMetadata, 'curriculumLink'),
   })
@@ -138,40 +136,25 @@ export async function recordClassroomLesson(formData: FormData) {
   )
 }
 
-async function projectedTeachingOccurrence(input: {
-  workspaceId: string
-  academicYearId: string
-  sectionId: string
-  localDate: string
-}) {
-  try {
-    const day = await new TemporalProjectionService(
-      new SupabaseTimetableProjectionReadRepository(),
-      new SupabaseCalendarProjectionReadRepository(),
-    ).projectDay(input)
-    return day.occurrences.find((item) =>
-      item.sectionId === input.sectionId && (item.kind === 'LESSON' || item.kind === 'CLASS_PRESENCE'),
-    ) ?? null
-  } catch {
-    return null
-  }
-}
-
-function manualCandidate(sectionId: string, localDate: string): Omit<TeachingSessionDraft, 'actualMinutes' | 'evidenceNote'> {
+function manualCandidate(
+  sectionId: string,
+  localDate: string,
+  timing: LessonRegisterTiming,
+): Omit<TeachingSessionDraft, 'actualMinutes' | 'evidenceNote'> {
   return {
     sectionId,
-    disciplineId: null,
+    disciplineId: timing.disciplineId,
     localDate,
-    plannedStartAt: null,
-    plannedEndAt: null,
-    plannedMinutes: null,
+    plannedStartAt: timing.startAt,
+    plannedEndAt: timing.endAt,
+    plannedMinutes: timing.plannedMinutes,
     source: {
       sourceKind: 'MANUAL',
       projectedOccurrenceLogicalId: null,
-      timetableVersionId: null,
-      timetableSlotId: null,
+      timetableVersionId: timing.timetableVersionId,
+      timetableSlotId: timing.timetableSlotId,
       calendarState: null,
-      provenance: ['classroom_register:fallback_manual'],
+      provenance: [...timing.provenance],
     },
   }
 }
