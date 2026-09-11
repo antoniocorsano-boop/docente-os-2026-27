@@ -56,7 +56,7 @@ export default async function HomeLinksSettingsPage() {
         const anchor = slot.kind.toLowerCase()
         return (
           <section className="settingsCard" id={anchor} aria-labelledby={`${anchor}-title`} key={slot.kind}>
-            <div className="settingsSectionHeading">
+            <div className="settingsCardHeading">
               <span>{String(index + 1).padStart(2, '0')}</span>
               <div>
                 <h2 id={`${anchor}-title`}>{slot.label}</h2>
