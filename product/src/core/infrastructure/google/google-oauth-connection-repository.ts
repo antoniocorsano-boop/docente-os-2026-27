@@ -17,6 +17,7 @@ type ConnectionRow = {
 type SingleResult<T> = Promise<{ data: T | null; error: DbError | null }>
 interface Filter<T> {
   eq(column: string, value: string): Filter<T>
+  select(columns: string): { single(): SingleResult<T> }
   maybeSingle(): SingleResult<T>
   single(): SingleResult<T>
 }
