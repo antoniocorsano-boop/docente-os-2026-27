@@ -128,6 +128,21 @@ export class SupabaseTeachingSessionRepository {
     return data
   }
 
+  async listByDay(workspaceId: string, academicYearId: string, localDate: string): Promise<TeachingSessionRecord[]> {
+    const supabase = await createClient()
+    const read = supabase as unknown as TeachingSessionReadClient
+    const { data, error } = await read
+      .from('teaching_sessions')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .eq('academic_year_id', academicYearId)
+      .eq('local_date', localDate)
+      .order('recorded_at', { ascending: false })
+
+    if (error) throw new Error(error.message)
+    return (data ?? []).map(toSession)
+  }
+
   async listBySection(workspaceId: string, academicYearId: string, sectionId: string): Promise<TeachingSessionSnapshot> {
     const supabase = await createClient()
     const read = supabase as unknown as TeachingSessionReadClient
