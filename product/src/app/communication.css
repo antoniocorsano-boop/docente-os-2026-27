@@ -43,7 +43,7 @@
 .technicalDetails>summary strong{font-size:13px}
 .technicalDetails>summary small{font-size:10px;color:var(--ink-faint)}
 .technicalDetails>summary b{font-size:20px;color:var(--ink-faint)}
-.technicalDetails[open]>summary b{transform:rotate(45deg)}
+.technicalDetails[open]>summary b{color:var(--brand)}
 .technicalDetailsBody{padding:14px;border-top:1px solid var(--line)}
 .technicalProvenance{margin-bottom:12px}
 .technicalMetaLine{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
