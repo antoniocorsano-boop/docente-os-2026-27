@@ -3,9 +3,24 @@ import { createClient } from '@/lib/supabase/server'
 
 type DbError = { message: string }
 type InsertResult = Promise<{ data: { id: string } | null; error: DbError | null }>
+type ListResult = { data: OutboxRow[] | null; error: DbError | null }
+type RpcResult = Promise<{ data: null; error: DbError | null }>
+
+type OutboxRow = {
+  id: string
+  projection: DriveDiaryProjection
+  status: 'PENDING' | 'SYNCED' | 'FAILED'
+}
 
 interface OutboxInsertBuilder {
   select(columns: 'id'): { single(): InsertResult }
+}
+
+interface OutboxFilterBuilder extends PromiseLike<ListResult> {
+  eq(column: string, value: string): OutboxFilterBuilder
+  in(column: string, values: string[]): OutboxFilterBuilder
+  order(column: string, options?: { ascending?: boolean }): OutboxFilterBuilder
+  limit(value: number): OutboxFilterBuilder
 }
 
 interface OutboxTable {
@@ -20,10 +35,16 @@ interface OutboxTable {
     attempts: number
     created_by: string
   }): OutboxInsertBuilder
+  select(columns: string): OutboxFilterBuilder
 }
 
 interface OutboxClient {
   from(table: 'teaching_session_drive_outbox'): OutboxTable
+  rpc(name: 'finish_teaching_session_drive_outbox', args: {
+    target_outbox_id: string
+    target_status: 'SYNCED' | 'FAILED'
+    target_error: string | null
+  }): RpcResult
 }
 
 export class SupabaseTeachingSessionDriveOutboxRepository {
@@ -35,11 +56,7 @@ export class SupabaseTeachingSessionDriveOutboxRepository {
     recordId: string
     projection: DriveDiaryProjection
   }) {
-    const supabase = await createClient()
-    const { data: userResult, error: userError } = await supabase.auth.getUser()
-    if (userError) throw new Error(userError.message)
-    if (!userResult.user) throw new Error('Authenticated user required')
-
+    const { supabase, userId } = await authenticatedClient()
     const outbox = supabase as unknown as OutboxClient
     const { data, error } = await outbox
       .from('teaching_session_drive_outbox')
@@ -52,7 +69,7 @@ export class SupabaseTeachingSessionDriveOutboxRepository {
         projection: input.projection,
         status: 'PENDING',
         attempts: 0,
-        created_by: userResult.user.id,
+        created_by: userId,
       })
       .select('id')
       .single()
@@ -61,4 +78,39 @@ export class SupabaseTeachingSessionDriveOutboxRepository {
     if (!data?.id) throw new Error('Drive diary outbox receipt missing')
     return data.id
   }
+
+  async listPending(workspaceId: string, limit = 20) {
+    const { supabase, userId } = await authenticatedClient()
+    const outbox = supabase as unknown as OutboxClient
+    const { data, error } = await outbox
+      .from('teaching_session_drive_outbox')
+      .select('id,projection,status')
+      .eq('workspace_id', workspaceId)
+      .eq('created_by', userId)
+      .in('status', ['PENDING', 'FAILED'])
+      .order('created_at', { ascending: true })
+      .limit(Math.max(1, Math.min(50, limit)))
+
+    if (error) throw new Error(error.message)
+    return data ?? []
+  }
+
+  async finish(outboxId: string, status: 'SYNCED' | 'FAILED', errorMessage: string | null = null) {
+    const { supabase } = await authenticatedClient()
+    const outbox = supabase as unknown as OutboxClient
+    const { error } = await outbox.rpc('finish_teaching_session_drive_outbox', {
+      target_outbox_id: outboxId,
+      target_status: status,
+      target_error: errorMessage,
+    })
+    if (error) throw new Error(error.message)
+  }
+}
+
+async function authenticatedClient() {
+  const supabase = await createClient()
+  const { data: userResult, error: userError } = await supabase.auth.getUser()
+  if (userError) throw new Error(userError.message)
+  if (!userResult.user) throw new Error('Authenticated user required')
+  return { supabase, userId: userResult.user.id }
 }
