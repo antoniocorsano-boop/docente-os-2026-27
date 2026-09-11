@@ -1,11 +1,13 @@
 # DOCENTE OS — Design System V2 Canonical
 
-Data: 2026-08-22  
+Data: 2026-09-11  
 Stato: CANONICAL / SUPERSEDES V1 FOR NEW WORK
 
 ## 1. Tesi
 
 Il design system V2 traduce la “calma operativa” del V1 in una piattaforma componentizzata e collaborativa. Non cambia la logica di dominio: cambia il modo in cui il docente percepisce, comprende e governa il sistema.
+
+Il V2 opera insieme a `BRAND_IDENTITY_CANONICAL.md` e `DESIGN_GOVERNANCE_CANONICAL.md`: il primo governa identità e significato del brand; il secondo rende vincolanti le regole trasversali di applicazione.
 
 ## 2. Principi
 
@@ -19,6 +21,8 @@ Il design system V2 traduce la “calma operativa” del V1 in una piattaforma c
 8. **Stati umani, codici tecnici nei dettagli**.
 9. **Feedback immediato per ogni write**.
 10. **Nessuna dipendenza dal colore come unico segnale**.
+11. **Coerenza cross-surface**: il prodotto deve apparire come un unico sistema anche quando cambia funzione.
+12. **Mobile-first reale**: le superfici primarie devono essere progettate e validate anche nel range 360–430 px.
 
 ## 3. Component foundation
 
@@ -92,7 +96,8 @@ I Tier E appartengono al prodotto e non devono essere importati da template este
 
 - sidebar collapsible;
 - inspector in Sheet;
-- azioni principali preservate.
+- azioni principali preservate;
+- il lockup può ridursi al solo simbolo canonico senza cambiare geometria.
 
 ### Mobile
 
@@ -100,7 +105,9 @@ I Tier E appartengono al prodotto e non devono essere importati da template este
 - bottom navigation soltanto per destinazioni ad alta frequenza;
 - Sheet full-height per inspector/assistant;
 - target interattivi >= 44 px;
-- nessun flusso primario dipende da hover.
+- nessun flusso primario dipende da hover;
+- nessun horizontal scroll nel percorso primario;
+- validazione almeno nel range 360–430 px.
 
 ## 5. Page anatomy
 
@@ -134,9 +141,11 @@ Mappa baseline:
 
 Le specifiche verticali possono estendere la mappa ma non introdurre gergo non necessario.
 
+La prominenza visuale non modifica l'autorità dello stato: un `DRAFT` resta Bozza anche se una superficie lo mette in primo piano.
+
 ## 7. Tipografia
 
-Baseline iniziale: system UI stack; eventuale font custom richiede decisione separata.
+Baseline iniziale: Inter/system UI stack; eventuale font custom richiede decisione separata.
 
 - Display: clamp responsive, 30–44 px.
 - Page title: 28–36 px.
@@ -165,7 +174,7 @@ I token devono esprimere ruolo, non colore concreto:
 - `--info`
 - `--focus-ring`
 
-La palette concreta può cambiare senza cambiare il markup di dominio.
+La palette concreta è governata anche dalla Brand Identity Canonical. Una feature non può introdurre una palette locale parallela senza una revisione canonica.
 
 ## 9. Motion
 
@@ -173,7 +182,8 @@ La palette concreta può cambiare senza cambiare il markup di dominio.
 - evitare animazioni decorative continue;
 - rispettare `prefers-reduced-motion`;
 - skeleton solo quando migliora comprensione del caricamento;
-- nessun layout shift evitabile.
+- nessun layout shift evitabile;
+- il loading brandizzato comunica ricomposizione del contesto, non attesa generica.
 
 ## 10. Command palette
 
@@ -241,7 +251,7 @@ Sempre:
 - zoom 200%;
 - reduced motion;
 - screen reader names per icon-only control;
-- table complesse con alternative/scroll semantics appropriate.
+- tabelle complesse con alternative/scroll semantics appropriate.
 
 ## 15. Migrazione dal V1
 
@@ -271,5 +281,19 @@ Un componente canonico è done se:
 - non incorpora logica provider;
 - non usa stringhe tecniche raw come default;
 - non duplica componenti già presenti;
+- usa token e primitive canonici invece di palette/ombre/raggi locali arbitrari;
 - passa lint/typecheck/build;
 - ha almeno test logico per mapping/comportamenti non banali.
+
+## 17. Design governance vincolante
+
+`DESIGN_GOVERNANCE_CANONICAL.md` è vincolante per ogni lavoro visuale trasversale. In particolare:
+
+- il simbolo del brand deve mantenere la geometria del riferimento approvato;
+- una sola azione primaria governa ogni contesto;
+- il design non modifica l'autorità dei dati;
+- nuove feature non possono introdurre varianti locali arbitrarie di logo, palette, raggi, ombre o iconografia;
+- ogni modifica globale deve essere classificata `COMPATIBLE`, `SUPERSEDING` o `BREAKING`;
+- logo, palette, shell, loading, navigazione, tipografia globale e primitive condivise richiedono HVA desktop/mobile prima della promozione.
+
+La geometria del marchio non è un parametro di tuning della singola feature: qualsiasi modifica richiede una revisione canonica esplicita.
