@@ -1,6 +1,6 @@
 # DOCENTE OS — Canonical Documentation Index
 
-Data: 2026-08-24  
+Data: 2026-09-11  
 Stato: CANONICAL
 
 ## Ordine di autorità
@@ -48,9 +48,22 @@ Sono vietati import/repository dependency `Timetable -> Calendar` e `Calendar ->
 - `docs/product/X4A_CERTIFICATION_2026-08-24.md` — **ricevuta canonica di certificazione Beta della prima write assistita `PLANNER_CREATE_TASK`, inclusi gate, exact commit, undo e igiene fixture**.
 - `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — north star e programma X0–X6.
 - `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` — tono, microcopy e grammatica collaborativa.
+- `docs/product/HOME_DAILY_COCKPIT_CANONICAL_SPEC.md` — **Home come cabina di regia giornaliera: composizione del contesto, Next Best Action, timeline, stati umani, Diario, materiali e protocollo di miglioramento basato su evidenza**.
 - `docs/product/SETTINGS_EXPERIENCE_CONTRACT.md` — **contratto vincolante per configurazione guidata e gestione del contesto docente**.
 - `docs/product/SETTINGS_CONTEXT_DISCLOSURE_NOTE.md` — **regola canonica “contesto completo, esposizione minima” per le Impostazioni**.
 - `docs/product/PROJECT_STATUS_2026-08-22.md` — checkpoint storico del 22 agosto; non descrive più da solo il runtime/capability correnti.
+
+### Regola Home giornaliera
+
+Per ogni lavoro sulla Home `/`:
+
+1. `HOME_DAILY_COCKPIT_CANONICAL_SPEC.md` governa responsabilità della Home, composizione del contesto, priorità operativa, stati umani e protocollo di evoluzione;
+2. `WORK_TIME_MENTAL_MODEL.md` governa il significato di Oggi, Orario, Calendario, Piano annuale e Attività;
+3. `TEMPORAL_COMPOSITION_CANONICAL_SPEC.md` governa la composizione temporale e vieta dipendenze dirette tra Orario e Calendario;
+4. `DESIGN_SYSTEM_V2_CANONICAL.md` governa anatomia, progressive disclosure, responsive behavior e accessibilità;
+5. `DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` governa tono e microcopy.
+
+La Home **non introduce una nuova fonte di verità** e non deve persistere un proprio stato parallelo a TeachingSession, Planner, Orario, UDA o materiali. Gli invarianti della Home sono canonici; soglie, densità, ordinamenti secondari e preview sono parametri migliorabili con evidenza HVA/pilot secondo la classificazione `COMPATIBLE` / `SUPERSEDING` / `BREAKING`.
 
 ### Regola Impostazioni
 
