@@ -12,6 +12,20 @@ const commit = process.env.EXPECTED_COMMIT ?? process.env.GITHUB_SHA ?? 'local-w
 const testExitCode = Number(process.env.EXPERIENCE_TEST_EXIT_CODE ?? 0)
 const expectedProjects = ['mobile-412x915', 'desktop-1440x1000']
 const expectedJourneyIds = ['class-next-task', 'uda-reading', 'knowledge-document', 'calendar-controls']
+const designGovernanceCriteria = [
+  ['DPG-05', 'Una sola azione primaria realmente dominante.'],
+  ['DPG-06', 'Gerarchia: titolo → contesto → stato → azione → contenuto.'],
+  ['DPG-07', 'Superficie calma e professionale; effetti subordinati al compito.'],
+  ['DPG-08', 'Tipografia editoriale/operativa coerente.'],
+  ['DPG-09', 'Fruibilità mobile reale nel range 360–430 px.'],
+  ['DPG-10', 'Navigazione che preserva il contesto.'],
+  ['DPG-11', 'Stati espressi con parole umane; colore non esclusivo.'],
+  ['DPG-12', 'Loading coerente con ricomposizione del contesto e brand.'],
+  ['DPG-15', 'Copy professionale; AI propone senza simulare autorità.'],
+  ['DPG-16', 'Home centrata sulla realtà della giornata.'],
+  ['DPG-17', 'Prominenza visuale non altera autorità di dati/stati.'],
+  ['DPG-18', 'Accessibilità percepibile: focus, contrasto, target, leggibilità.'],
+].map(([code, criterion]) => ({ code, criterion, status: 'REVIEW_REQUIRED' }))
 
 const observations = await readJsonDirectory(observationsDir)
 const journeys = await readJsonDirectory(journeysDir)
@@ -33,6 +47,7 @@ const smallTargetObservations = observations.filter((item) => item.project.start
 
 const gates = {
   productCi: 'EXTERNAL',
+  designPolicy: 'EXTERNAL',
   deployment: target === 'beta' ? (deployment?.status ?? 'FAIL') : 'NOT_APPLICABLE',
   browser: testExitCode === 0 && missingObservationCount === 0 ? 'PASS' : 'FAIL',
   journeys: missingJourneyCount === 0 && failedJourneys.length === 0 ? 'PASS' : 'FAIL',
@@ -41,6 +56,7 @@ const gates = {
   layout: overflowCount === 0 ? 'PASS' : 'FAIL',
   mobileTargets: smallTargetObservations.length === 0 ? 'PASS' : 'WATCH',
   visual: 'REVIEW_REQUIRED',
+  designGovernance: 'REVIEW_REQUIRED',
 }
 
 const findings = []
@@ -57,7 +73,7 @@ const automaticFailure = Object.values(gates).includes('FAIL')
 const overall = automaticFailure ? 'FAIL' : findings.some((item) => item.severity === 'WATCH') ? 'WATCH' : 'REVIEW_REQUIRED'
 
 const receipt = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   system: 'DOCENTE_OS_HUMAN_VISUAL_ACCEPTANCE',
   generatedAt: new Date().toISOString(),
   commit,
@@ -90,6 +106,12 @@ const receipt = {
     status: 'REVIEW_REQUIRED',
     instruction: 'Osservare gli screenshot e classificare gerarchia, densità, stato, azioni e comportamento mobile secondo product/design/VISUAL-ACCEPTANCE.md.',
   },
+  designGovernanceReview: {
+    status: 'REVIEW_REQUIRED',
+    contract: 'docs/design/DESIGN_GOVERNANCE_CANONICAL.md',
+    policyGate: 'docs/design/DESIGN_POLICY_GATE_DPG1.md',
+    criteria: designGovernanceCriteria,
+  },
 }
 
 await fs.mkdir(receiptDir, { recursive: true })
@@ -118,8 +140,10 @@ function markdown(value) {
   const journeyRows = value.journeys.length
     ? value.journeys.map((item) => `| ${item.project} | ${item.label} | **${item.status}** | ${item.note ?? ''} |`).join('\n')
     : '| — | — | **MISSING** | Nessuna ricevuta journey. |'
+  const governanceRows = value.designGovernanceReview.criteria
+    .map((item) => `| ${item.code} | ${item.criterion} | **${item.status}** |`).join('\n')
   const frameworkNote = value.metrics.ignoredFrameworkAbortCount
     ? `\n- **Abort di framework registrati e ignorati:** ${value.metrics.ignoredFrameworkAbortCount} (solo pattern Next.js esplicitamente ammessi).`
     : ''
-  return `# Human + Visual Acceptance Receipt\n\n- **Commit:** \`${value.commit}\`\n- **Target:** ${value.target}\n- **Base URL:** ${value.baseUrl}\n- **Esito automatico complessivo:** **${value.overall}**\n- **Evidenze:** ${value.coverage.actualObservations}/${value.coverage.expectedObservations} osservazioni · ${value.coverage.actualJourneys}/${value.coverage.expectedJourneys} journey${frameworkNote}\n\n| Gate | Stato |\n| --- | --- |\n${gateRows}\n\n## Journey Human\n\n| Viewport | Percorso | Stato | Evidenza |\n| --- | --- | --- | --- |\n${journeyRows}\n\n## Finding automatici\n\n${findingRows}\n\n## Giudizio visuale\n\n**REVIEW_REQUIRED** — gli screenshot devono essere osservati secondo \`product/design/VISUAL-ACCEPTANCE.md\`.\n`
+  return `# Human + Visual Acceptance Receipt\n\n- **Commit:** \`${value.commit}\`\n- **Target:** ${value.target}\n- **Base URL:** ${value.baseUrl}\n- **Esito automatico complessivo:** **${value.overall}**\n- **Evidenze:** ${value.coverage.actualObservations}/${value.coverage.expectedObservations} osservazioni · ${value.coverage.actualJourneys}/${value.coverage.expectedJourneys} journey${frameworkNote}\n\n| Gate | Stato |\n| --- | --- |\n${gateRows}\n\n## Journey Human\n\n| Viewport | Percorso | Stato | Evidenza |\n| --- | --- | --- | --- |\n${journeyRows}\n\n## Finding automatici\n\n${findingRows}\n\n## Giudizio visuale\n\n**REVIEW_REQUIRED** — gli screenshot devono essere osservati secondo \`product/design/VISUAL-ACCEPTANCE.md\`.\n\n## Design Governance Review\n\n| Regola | Criterio | Stato |\n| --- | --- | --- |\n${governanceRows}\n\nLa checklist non viene auto-promossa a PASS: richiede osservazione degli artefatti e del percorso reale.\n`
 }
