@@ -24,7 +24,7 @@ const confirmedAssignment = {
   weeklyMinutes: 120,
 }
 
-test('complete essential context enters maintenance mode while textbooks remain optional', () => {
+test('complete essential context enters maintenance mode while optional areas remain ready', () => {
   const model = buildSettingsExperienceModel({
     settings: baseSettings,
     disciplines: [discipline],
@@ -33,10 +33,12 @@ test('complete essential context enters maintenance mode while textbooks remain 
   })
 
   assert.equal(model.mode, 'MAINTENANCE')
-  assert.equal(model.readyCount, 6)
-  assert.equal(model.totalCount, 6)
+  assert.equal(model.readyCount, 7)
+  assert.equal(model.totalCount, 7)
   assert.equal(model.nextArea, null)
   assert.equal(model.areas.find((area) => area.key === 'textbooks')?.status, 'OPTIONAL')
+  assert.equal(model.areas.find((area) => area.key === 'homeLinks')?.status, 'OPTIONAL')
+  assert.equal(model.areas.find((area) => area.key === 'homeLinks')?.href, '/impostazioni/collegamenti')
 })
 
 test('missing disciplines block cattedra and guide to disciplines first', () => {
@@ -115,5 +117,18 @@ test('incomplete professional context is always the first guided step', () => {
   })
 
   assert.equal(model.nextArea?.key, 'context')
-  assert.equal(model.readyCount, 2)
+  assert.equal(model.readyCount, 3)
+})
+
+test('optional Home links never interrupt the guided configuration sequence', () => {
+  const model = buildSettingsExperienceModel({
+    settings: { ...baseSettings, teacherDisplayName: '' },
+    disciplines: [],
+    sections: [],
+    assignments: [],
+  })
+
+  assert.equal(model.areas.find((area) => area.key === 'homeLinks')?.status, 'OPTIONAL')
+  assert.notEqual(model.nextArea?.key, 'homeLinks')
+  assert.equal(model.nextArea?.key, 'context')
 })
