@@ -45,6 +45,15 @@ export default async function ClassroomSessionPage({
         <Link href={`/classi/${encodeURIComponent(sectionId)}`}>← Torna alla classe</Link>
       </nav>
       <ClassroomSessionClient view={view} />
+      <section className="classroomRecordBar" aria-label="Chiusura della lezione">
+        <div>
+          <span>DOPO LA LEZIONE</span>
+          <strong>Registra ciò che è realmente successo in classe.</strong>
+        </div>
+        <Link href={`/classi/${encodeURIComponent(sectionId)}/in-classe/${encodeURIComponent(assetId)}/registra`}>
+          Registra la lezione
+        </Link>
+      </section>
     </AppShell>
   )
 }
