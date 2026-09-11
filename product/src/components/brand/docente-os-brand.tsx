@@ -45,34 +45,34 @@ export function DocenteOsMark({ size = 42, className, title, variant = 'light' }
         className="dosLogoFrame"
         d={DOCENTE_OS_MARK_GEOMETRY.loopPath}
         fill="none"
-        stroke={`url(#${bodyGradientId})`}
         strokeWidth={DOCENTE_OS_MARK_GEOMETRY.strokeWidth}
         strokeLinecap="round"
         strokeLinejoin="round"
+        style={{ stroke: `url(#${bodyGradientId})` }}
       />
       <path
         className="dosLogoStem"
         d={DOCENTE_OS_MARK_GEOMETRY.stemPath}
         fill="none"
-        stroke={`url(#${bodyGradientId})`}
         strokeWidth={DOCENTE_OS_MARK_GEOMETRY.strokeWidth}
         strokeLinecap="butt"
+        style={{ stroke: `url(#${bodyGradientId})` }}
       />
       <path
         className="dosLogoThread"
         d={DOCENTE_OS_MARK_GEOMETRY.threadPath}
         fill="none"
-        stroke={`url(#${threadGradientId})`}
         strokeWidth={DOCENTE_OS_MARK_GEOMETRY.strokeWidth}
         strokeLinecap="round"
         strokeLinejoin="round"
+        style={{ stroke: `url(#${threadGradientId})` }}
       />
       <circle
         className="dosLogoDot"
         cx={DOCENTE_OS_MARK_GEOMETRY.dot.cx}
         cy={DOCENTE_OS_MARK_GEOMETRY.dot.cy}
         r={DOCENTE_OS_MARK_GEOMETRY.dot.r}
-        fill={colors.dot}
+        style={{ fill: colors.dot }}
       />
     </svg>
   )
