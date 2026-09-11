@@ -22,6 +22,7 @@ export type TeachingSessionDriveReceipt = {
   id: string
   sessionId: string
   recordId: string
+  projection: DriveDiaryProjection
   status: 'PENDING' | 'SYNCED' | 'FAILED'
   attempts: number
   lastError: string | null
@@ -147,6 +148,7 @@ function toReceipt(row: OutboxRow): TeachingSessionDriveReceipt {
     id: row.id,
     sessionId: row.session_id,
     recordId: row.record_id,
+    projection: row.projection,
     status: row.status,
     attempts: row.attempts,
     lastError: row.last_error,
