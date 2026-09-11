@@ -9,7 +9,7 @@ requireE2ECredentials()
 
 const outputRoot = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience'
 
-test('Journey: In classe → Registra la lezione', async ({ page }, testInfo) => {
+test('Journey: Classe → Diario → In classe → Registra la lezione', async ({ page }, testInfo) => {
   await loginE2E(page)
   await page.goto('/classi')
 
@@ -22,6 +22,16 @@ test('Journey: In classe → Registra la lezione', async ({ page }, testInfo) =>
   })
 
   try {
+    await page.goto(`/classi/${encodeURIComponent(sectionId)}/in-classe/${fixture.assetId}`)
+
+    const diaryLink = page.getByRole('link', { name: 'Apri Diario' })
+    await expect(diaryLink).toBeVisible()
+    await diaryLink.click()
+    await expect(page).toHaveURL(new RegExp(`/classi/${escapeRegExp(sectionId)}/diario$`))
+    await expect(page.getByText('DIARIO DEL DOCENTE', { exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /2ª\s*A/i })).toBeVisible()
+    await expect(page.getByText(/Una sola memoria didattica/i)).toBeVisible()
+
     await page.goto(`/classi/${encodeURIComponent(sectionId)}/in-classe/${fixture.assetId}`)
     const registerLink = page.getByRole('link', { name: 'Registra la lezione' })
     await expect(registerLink).toBeVisible()
