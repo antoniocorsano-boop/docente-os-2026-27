@@ -48,8 +48,10 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Test Design Policy scanner
-        run: node --test product/scripts/design/design-policy.test.mjs
+      - name: Test Design Policy scanners
+        run: |
+          node --test product/scripts/design/design-policy.test.mjs
+          node --test product/scripts/design/design-conformance.test.mjs
 
       - name: Enforce DPG-1 diff policy
         env:

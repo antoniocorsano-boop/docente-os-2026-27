@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { RAW_RADIUS_RE, RAW_SHADOW_RE } from './design-conformance-patterns.mjs'
 
 const scriptPath = fileURLToPath(import.meta.url)
 const repoRoot = path.resolve(path.dirname(scriptPath), '../../..')
@@ -16,8 +17,6 @@ const RAW_COLOR_RE = /#[0-9a-fA-F]{3,8}\b|(?:rgb|rgba|hsl|hsla)\s*\(/g
 const TOKEN_RE = /--(?:color|brand|primary|success|warning|danger|info|radius|shadow)[\w-]*\s*:/gi
 const LEGACY_BRAND_RE = /(?:\.brandMark\b|\.brandLockup\b|\bbrandMark\b|\bbrandLockup\b)/g
 const DECORATIVE_RE = /(?:backdrop-filter\s*:|filter\s*:\s*(?:blur|drop-shadow)|text-shadow\s*:)/g
-const RAW_RADIUS_RE = /border-radius\s*:\s*(?!var\()[^;]+;/g
-const RAW_SHADOW_RE = /box-shadow\s*:\s*(?!var\()[^;]+;/g
 
 const RAW_COLOR_EXEMPT = new Set([
   'product/src/app/brand-system.css',
