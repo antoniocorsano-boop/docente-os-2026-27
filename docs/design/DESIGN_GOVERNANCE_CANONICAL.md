@@ -19,43 +19,24 @@ Il design deve mantenere il filo tra contesto, azione, evidenza e prossimo passo
 ## 3. Regole canoniche
 
 1. **Il simbolo è invariabile.** La geometria del marchio deve riprodurre fedelmente il riferimento visuale approvato il 2026-09-11: stessa struttura della `D`, stessa apertura, stesso rapporto tra arco e tratto, stessa posizione e proporzione del punto centrale, stessa curva diagonale e stesso rapporto percettivo blu→turchese. Non sono ammesse reinterpretazioni locali o automatiche.
-
 2. **Sono autorizzate soltanto tre famiglie di variante del marchio.** Icona chiara, icona inversa/scura e simbolo ridotto/monocromatico. Ogni variante conserva la stessa geometria di base. Il lockup usa `Docente OS`; la firma autorizzata è `Mantieni il filo.`
-
 3. **Il significato guida la grafica.** Il brand rappresenta continuità, contesto, orientamento, traccia e autonomia professionale. È vietato usare come identità primaria libri, cappelli da laurea, lavagne, lampadine, robot, persone stilizzate o altre metafore scolastiche didascaliche.
-
 4. **La palette è semantica, non ornamentale.** Navy = identità/struttura; blue = azione/orientamento; teal = continuità/traccia; green = conferma/completamento; red = errore/rischio; amber = attenzione. Il verde non è un secondo colore di marca dominante.
-
 5. **Una sola azione primaria per contesto.** Le altre azioni sono secondarie, progressive o contestuali. Non devono competere più CTA primarie nella stessa gerarchia.
-
 6. **Gerarchia prima della densità.** Titolo, contesto, stato, azione primaria e contenuto devono essere leggibili in quest'ordine. Metadati tecnici e dettagli di provenienza restano recuperabili ma non dominano la superficie.
-
 7. **Le superfici sono calme e professionali.** Canvas chiaro, superfici bianche, bordi leggeri, ombre contenute. Vietati gradienti puramente decorativi, glow, neon, glassmorphism invasivo e codici visivi “AI” non funzionali.
-
 8. **La tipografia è editoriale e operativa.** Titoli netti ma non teatrali; corpo leggibile; metadata discreti; uppercase limitato a label brevi. Inter/system UI resta baseline finché un cambio font non viene approvato esplicitamente.
-
 9. **Mobile-first reale.** Ogni nuova superficie deve essere progettata e validata almeno nel range 360–430 px. Target interattivi >= 44 px, nessun horizontal scroll nel percorso primario, nessuna dipendenza da hover, nessun elemento flottante che copra azioni o navigazione.
-
 10. **La navigazione mantiene il contesto.** Header mobile compatto con simbolo, sezione corrente e workspace/istituto; sidebar desktop con lockup completo. Il brand orienta senza sottrarre spazio al lavoro.
-
 11. **Gli stati usano parole umane.** `Pronto`, `Da registrare`, `Registrata`, `Provvisorio`, `Da riprovare`, `Confermato` e analoghi. Il colore rafforza lo stato ma non lo sostituisce.
-
 12. **Loading = ricomposizione del contesto.** Per attese percepibili, il loading usa il marchio e il concetto di filo. Baseline: `Ritrovo il filo della tua giornata.` Lo spinner generico non è l'identità primaria di caricamento.
-
 13. **Motion funzionale.** Transizioni ordinarie 120–220 ms. Motion solo per orientamento, stato, feedback e continuità; nessuna animazione decorativa continua. `prefers-reduced-motion` obbligatorio.
-
 14. **Iconografia coerente.** Lucide o set funzionale canonico per le azioni dell'interfaccia. Il simbolo Docente OS è riservato al brand e non sostituisce icone operative.
-
 15. **Copy coerente con il brand.** Breve, professionale, contestuale, non trionfalistico. Il sistema propone e ricompone; non presenta decisioni AI come decisioni del docente.
-
 16. **La Home mostra la realtà, non spiega il prodotto.** La marca vive nella struttura della Home; slogan e messaggi identitari non devono occupare lo spazio necessario alla giornata operativa.
-
 17. **Il design non modifica l'autorità dei dati.** Evidenza visuale, prominenza o colore non possono trasformare un DRAFT in canonico, una sincronizzazione Drive in TeachingSession o una proposta AI in decisione umana.
-
 18. **Accessibilità obbligatoria.** Contrasto WCAG AA target, focus visibile, nomi accessibili per icon-only controls, niente informazione solo cromatica, zoom 200%, testo ingrandito, tastiera desktop e reduced motion.
-
 19. **Nessuna variante locale arbitraria.** Nuove feature usano token, componenti, raggi, ombre, icone e marchio condivisi. Nuove palette locali o duplicazioni visuali richiedono motivazione e revisione canonica.
-
 20. **Evoluzione governata.** Ogni modifica visuale trasversale va classificata `COMPATIBLE`, `SUPERSEDING` o `BREAKING`, con problema osservato, evidenza, impatto sugli invarianti e gate di validazione.
 
 ## 4. Invarianti non derogabili
@@ -96,24 +77,47 @@ Per ogni lavoro di interfaccia:
 3. `DESIGN_SYSTEM_V2_CANONICAL.md`;
 4. `BRAND_IDENTITY_CANONICAL.md`;
 5. questo `DESIGN_GOVERNANCE_CANONICAL.md` per le regole trasversali;
-6. Language & Collaboration System;
-7. evidenza HVA/pilot più recente.
+6. `DESIGN_POLICY_GATE_DPG1.md` per l'enforcement;
+7. Language & Collaboration System;
+8. evidenza HVA/pilot più recente.
 
 In caso di conflitto tra una soluzione locale e questo documento, prevale la regola canonica finché non viene formalmente aggiornata.
 
-## 7. Gate minimi per modifiche trasversali
+## 7. Enforcement reale delle 20 regole
+
+Le 20 regole non sono considerate “reali” soltanto perché documentate. Devono essere sostenute da enforcement statico, componenti canonici, browser checks, HVA esplicita o invarianti di dominio.
+
+`DESIGN_POLICY_GATE_DPG1.md` definisce il primo livello automatico bloccante. DPG-1 controlla sul diff almeno:
+
+- duplicazione/ridefinizione locale del marchio (`DPG-01`);
+- nuovi colori raw fuori dai token/brand (`DPG-04`);
+- motion senza `prefers-reduced-motion` (`DPG-13`);
+- librerie di icone alternative (`DPG-14`);
+- nuovi token visuali locali (`DPG-19`);
+- assenza della classificazione `COMPATIBLE` / `SUPERSEDING` / `BREAKING` nella PR (`DPG-20`).
+
+Le regole qualitative `DPG-05/06/07/08/09/10/11/12/15/16/17/18` sono criteri obbligatori e strutturati della Human + Visual Acceptance. Devono comparire nella ricevuta come `REVIEW_REQUIRED` finché non vengono osservate: **non possono essere auto-dichiarate PASS**.
+
+La strategia è incrementale: il gate impedisce nuovo debito sul diff senza dichiarare improvvisamente invalido tutto il debito visuale storico.
+
+## 8. Gate minimi per modifiche trasversali
 
 Ogni intervento su logo, palette, shell, navigazione, loading, tipografia globale o primitive condivise deve passare:
 
+- **Design Policy Gate DPG-1**;
 - Product CI + typecheck + build;
 - Human Interaction Model;
-- Human + Visual Acceptance desktop/mobile;
+- Human + Visual Acceptance desktop/mobile con checklist Design Governance;
 - verifica 360–430 px;
 - assenza horizontal overflow sul percorso primario;
 - contrasto/focus/accessibility smoke;
 - `prefers-reduced-motion` quando c'è motion;
 - smoke login + Home + almeno una classe/superficie operativa.
 
-## 8. Regola per agenti e contributori
+Un gate tecnico verde non sostituisce il giudizio HVA sulle regole qualitative, e un giudizio HVA positivo non può derogare a una violazione DPG-1 bloccante.
+
+## 9. Regola per agenti e contributori
 
 Prima di introdurre CSS, token, icone, card, CTA o varianti del marchio, verificare se esiste già un componente o token canonico. È vietato dedurre una nuova estetica da una singola pagina o da un mockup isolato.
+
+Ogni PR visuale deve dichiarare la classificazione canonica e deve essere valutata sia dal DPG-1 sia dall'HVA quando il perimetro tocca una superficie utente.
