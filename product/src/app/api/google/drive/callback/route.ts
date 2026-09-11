@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import { synchronizePendingDriveDiary } from '@/core/infrastructure/google/google-drive-diary-sync'
 import {
   exchangeGoogleAuthorizationCode,
   googleAccountEmail,
@@ -40,7 +41,8 @@ export async function GET(request: NextRequest) {
       refreshToken: tokens.refreshToken,
       expiresAt: tokens.expiresAt,
     })
-    return redirectWithGoogleState(request.url, returnTo, 'connected')
+    const sync = await synchronizePendingDriveDiary(context.workspace.id)
+    return redirectWithGoogleState(request.url, returnTo, 'connected', sync.synced)
   } catch {
     return redirectWithGoogleState(request.url, returnTo, 'failed')
   }
@@ -57,9 +59,10 @@ function clearOAuthCookies(jar: Awaited<ReturnType<typeof cookies>>) {
   }
 }
 
-function redirectWithGoogleState(baseUrl: string, returnTo: string, state: string) {
+function redirectWithGoogleState(baseUrl: string, returnTo: string, state: string, synced = 0) {
   const target = new URL(returnTo, baseUrl)
   target.searchParams.set('google', state)
+  if (synced > 0) target.searchParams.set('driveSynced', String(synced))
   return NextResponse.redirect(target)
 }
 
