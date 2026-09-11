@@ -41,8 +41,9 @@ export default async function ClassroomSessionPage({
       role={context.role}
       contentClassName="classroomSessionSurface"
     >
-      <nav aria-label="Contesto della classe">
+      <nav className="classroomContextNav" aria-label="Contesto della classe">
         <Link href={`/classi/${encodeURIComponent(sectionId)}`}>← Torna alla classe</Link>
+        <Link href={`/classi/${encodeURIComponent(sectionId)}/diario`}>Apri Diario</Link>
       </nav>
       <ClassroomSessionClient view={view} />
       <section className="classroomRecordBar" aria-label="Chiusura della lezione">
