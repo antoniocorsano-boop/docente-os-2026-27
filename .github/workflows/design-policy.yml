@@ -37,10 +37,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout tested commit with history
+      - name: Checkout exact tested commit with history
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Node 22
         uses: actions/setup-node@v4
