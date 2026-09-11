@@ -3,14 +3,16 @@ import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { buildClassWorkspaceLearningFocus } from '@/app/classi/class-workspace-model'
 import { buildBlocks, GRADE_UI } from '@/app/piano-annuale/model'
+import { projectTemporalDay, type ProjectedCalendarState } from '@/core/application/temporal-projection-service'
 import type { PlannerTask } from '@/core/domain/planner-task'
-import { timeToMinutes } from '@/core/domain/timetable'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
-import { SupabaseTimetableLifecycleRepository } from '@/core/infrastructure/supabase/supabase-timetable-lifecycle-repository'
-import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
+import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
+import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { resolveHomeDailyContext, type HomeDailyContext, type HomeDailyLesson } from '@/core/presentation/home-daily-context'
 import { buildLessonWorkspaceHref, resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 
 export const dynamic = 'force-dynamic'
@@ -29,66 +31,51 @@ export default async function HomePage() {
   if (!context) redirect('/login')
 
   const year = context.academicYear
-  const [teacherSettings, tasks, timetable, timetableLifecycle, annualSnapshot] = await Promise.all([
+  const moment = currentRomeMoment()
+  const timetableReader = new SupabaseTimetableProjectionReadRepository()
+  const calendarReader = new SupabaseCalendarProjectionReadRepository()
+
+  const [teacherSettings, tasks, timetableProjection, calendarProjection, annualSnapshot, sessions] = await Promise.all([
     year
       ? new SupabaseTeacherSettingsRepository().getOrCreate(context.workspace.id, year.id)
       : Promise.resolve(null),
     new SupabasePlannerRepository().listByWorkspace(context.workspace.id),
     year
-      ? new SupabaseTimetableRepository().list(context.workspace.id, year.id, year.startsOn)
-      : Promise.resolve(null),
+      ? timetableReader.read(context.workspace.id, year.id)
+      : Promise.resolve({ versions: [], slots: [] }),
     year
-      ? new SupabaseTimetableLifecycleRepository().read(context.workspace.id, year.id)
-      : Promise.resolve(null),
+      ? calendarReader.read(context.workspace.id, year.id)
+      : Promise.resolve({ days: [], events: [] }),
     year
       ? new SupabaseAnnualPlanExecutionRepository().list(context.workspace.id, year.id)
       : Promise.resolve(null),
+    year
+      ? new SupabaseTeachingSessionRepository().listByDay(context.workspace.id, year.id, moment.date)
+      : Promise.resolve([]),
   ])
 
-  const moment = currentRomeMoment()
-  let currentLesson: { sectionId: string | null; label: string; time: string; lessonHref: string | null } | null = null
-  const operationalSlots = timetableLifecycle?.activeVersion ? timetableLifecycle.activeSlots : timetable?.slots ?? []
-
-  if (timetable && annualSnapshot) {
-    const slot = operationalSlots.find((item) => item.weekday === moment.weekday && timeToMinutes(item.startTime) <= moment.minutes && timeToMinutes(item.endTime) > moment.minutes)
-    if (slot) {
-      const section = slot.sectionId ? annualSnapshot.sections.find((item) => item.id === slot.sectionId) ?? null : null
-      let lessonHref: string | null = null
-
-      if (section) {
-        const learningFocus = buildClassWorkspaceLearningFocus(section, annualSnapshot.progress, [])
-        const grade = GRADE_UI[section.grade]
-        const nextBlock = learningFocus.nextBlock
-          ? buildBlocks(grade).find((item) => item.id === learningFocus.nextBlock?.id) ?? null
-          : null
-        if (nextBlock && resolveRuntimeHumanTaskLessonProjection(grade, nextBlock)) {
-          lessonHref = buildLessonWorkspaceHref(section.id, nextBlock.id, 'teach')
-        }
-      }
-
-      currentLesson = {
-        sectionId: section?.id ?? null,
-        label: section ? `${gradeNumber(section.grade)}ª ${section.sectionCode}` : slot.manualClassLabel || presenceLabel(slot.slotKind),
-        time: `${slot.startTime.slice(0, 5)}–${slot.endTime.slice(0, 5)}`,
-        lessonHref,
-      }
-    }
-  }
+  const projectedDay = projectTemporalDay({
+    localDate: moment.date,
+    timetableVersions: timetableProjection.versions,
+    timetableSlots: timetableProjection.slots,
+    calendarDays: calendarProjection.days,
+    calendarEvents: calendarProjection.events,
+  })
+  const dailyContext = resolveHomeDailyContext({
+    localDate: moment.date,
+    minuteOfDay: moment.minutes,
+    projectedDay,
+    timetableVersions: timetableProjection.versions,
+    timetableSlots: timetableProjection.slots,
+    sessions,
+  })
 
   const priorityTask = selectPriorityTask(tasks, moment.date)
-  const primary = currentLesson
-    ? {
-        eyebrow: 'ADESSO · LEZIONE',
-        title: currentLesson.label,
-        description: currentLesson.lessonHref
-          ? `Sei nella fascia ${currentLesson.time}. La classe e il prossimo blocco sono già determinati: apri direttamente la guida della lezione.`
-          : `Sei nella fascia ${currentLesson.time}. DOCENTE OS mantiene il contesto della lezione senza chiederti di scegliere di nuovo classe e percorso.`,
-        href: currentLesson.lessonHref ?? (currentLesson.sectionId ? `/classi/${encodeURIComponent(currentLesson.sectionId)}` : '/orario'),
-        action: currentLesson.lessonHref ? 'Apri la lezione' : currentLesson.sectionId ? 'Apri la classe' : 'Apri l’orario',
-        meta: [currentLesson.time, currentLesson.lessonHref ? 'Modalità lezione' : currentLesson.sectionId ? 'Contesto canonico' : 'Presenza in orario'],
-      }
-    : priorityTask
+  const dailyPrimary = resolveDailyPrimary(dailyContext, annualSnapshot)
+  const primary = dailyPrimary
+    ?? (priorityTask
       ? {
+          kind: 'PLANNER' as const,
           eyebrow: 'ADESSO · ATTIVITÀ',
           title: priorityTask.title,
           description: taskReason(priorityTask, moment.date),
@@ -96,19 +83,45 @@ export default async function HomePage() {
           action: 'Apri Oggi',
           meta: [priorityLabel(priorityTask.priority), priorityTask.dueAt ? `Scade ${formatShortDate(priorityTask.dueAt)}` : 'Attività pianificata'],
         }
-      : {
-          eyebrow: 'RIPARTI DA QUI',
-          title: 'Organizza il prossimo passo',
-          description: 'Non c’è un compito urgente né una lezione in corso. Parti da Oggi per decidere cosa affrontare oppure apri l’Orario per orientarti nella settimana.',
-          href: '/planner',
-          action: 'Apri Oggi',
-          meta: ['Nessuna urgenza rilevata'],
-        }
+      : dailyContext.lessonCount > 0
+        ? {
+            kind: 'DAY_CLOSED' as const,
+            eyebrow: 'GIORNATA DIDATTICA',
+            title: 'Le lezioni di oggi sono registrate',
+            description: 'Non risultano lezioni da chiudere. Puoi passare alle altre attività della giornata oppure preparare il lavoro successivo.',
+            href: '/planner',
+            action: 'Apri Oggi',
+            meta: ['Registrazioni in ordine'],
+          }
+        : {
+            kind: 'FALLBACK' as const,
+            eyebrow: 'RIPARTI DA QUI',
+            title: 'Organizza il prossimo passo',
+            description: projectedDay.calendarState === 'NO_LESSONS'
+              ? 'Oggi non risultano lezioni. Puoi usare questo spazio per attività, progettazione o preparazione del lavoro successivo.'
+              : 'Non c’è una lezione operativa da gestire né un’attività urgente. Parti da Oggi oppure apri l’Orario per orientarti.',
+            href: '/planner',
+            action: 'Apri Oggi',
+            meta: [projectedDay.calendarState === 'NO_LESSONS' ? 'Nessuna lezione prevista' : 'Nessuna urgenza rilevata'],
+          })
+
+  const provisional = dailyContext.authority === 'PROVISIONAL_DRAFT'
+  const showPendingReminder = primary.kind === 'LESSON'
+    && primary.dailyKind === 'UPCOMING_LESSON'
+    && dailyContext.pendingRegistrationCount > 0
 
   return (
     <AppShell active="home" academicYearLabel={context.academicYear?.label} workspaceName={teacherSettings?.schoolName || context.workspace.name} role={context.role} contentClassName="homeSurface">
-      <section className="homeHero">
-        <div><p>{[teacherSettings?.teacherDisplayName || null, context.academicYear?.label ?? null].filter(Boolean).join(' · ')}</p><h1>Il prossimo passo, non tutto il sistema.</h1><span>DOCENTE OS restringe la vista quando conosce il tuo contesto. Puoi sempre tornare all’esplorazione completa.</span></div>
+      <section className="homeDailyHeader" aria-labelledby="home-day-title">
+        <div>
+          <p>{formatLongDate(moment.date)}</p>
+          <h1 id="home-day-title">La tua giornata</h1>
+          <span>{[teacherSettings?.teacherDisplayName || null, context.academicYear?.label ?? null].filter(Boolean).join(' · ')}</span>
+        </div>
+        <div className="homeDailySummary" aria-label="Sintesi della giornata">
+          <strong>{dailySummary(dailyContext, projectedDay.calendarState)}</strong>
+          {provisional ? <span>Orario provvisorio, non ancora attivato</span> : null}
+        </div>
       </section>
 
       <section className="humanTaskFocus" aria-labelledby="home-next-action">
@@ -122,6 +135,16 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {showPendingReminder ? (
+        <aside className="homePendingReminder" aria-label="Lezioni da registrare">
+          <div>
+            <strong>{dailyContext.pendingRegistrationCount === 1 ? '1 lezione da registrare' : `${dailyContext.pendingRegistrationCount} lezioni da registrare`}</strong>
+            <span>La prossima lezione resta prioritaria perché è vicina; la registrazione precedente non viene persa.</span>
+          </div>
+          <Link href="/classi">Apri classi</Link>
+        </aside>
+      ) : null}
+
       <details className="humanTaskSecondary">
         <summary>Esplora tutto lo spazio docente</summary>
         <div className="humanTaskSecondaryBody">
@@ -130,6 +153,107 @@ export default async function HomePage() {
       </details>
     </AppShell>
   )
+}
+
+function resolveDailyPrimary(
+  dailyContext: HomeDailyContext,
+  annualSnapshot: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>> | null,
+) {
+  const primary = dailyContext.primary
+  if (!primary) return null
+  if (primary.kind === 'AMBIGUOUS') {
+    return {
+      kind: 'LESSON' as const,
+      dailyKind: primary.kind,
+      eyebrow: 'CONTESTO DA VERIFICARE',
+      title: 'Controlla l’orario di oggi',
+      description: 'Più impegni risultano compatibili nello stesso momento. DOCENTE OS non sceglie una classe al posto tuo.',
+      href: '/orario',
+      action: 'Controlla l’orario',
+      meta: ['Nessuna classe indovinata'],
+    }
+  }
+
+  const lesson = primary.lesson
+  if (!lesson) return null
+  const section = lesson.sectionId && annualSnapshot
+    ? annualSnapshot.sections.find((item) => item.id === lesson.sectionId) ?? null
+    : null
+  const classLabel = section ? `${gradeNumber(section.grade)}ª ${section.sectionCode}` : lesson.title
+  const lessonHref = section && annualSnapshot ? resolveLessonHref(section, annualSnapshot) : null
+  const classHref = section ? `/classi/${encodeURIComponent(section.id)}` : '/orario'
+  const time = lessonTime(lesson)
+  const authorityMeta = lesson.authority === 'PROVISIONAL_DRAFT' ? 'Orario provvisorio' : 'Orario in vigore'
+
+  if (primary.kind === 'CURRENT_LESSON') {
+    return {
+      kind: 'LESSON' as const,
+      dailyKind: primary.kind,
+      eyebrow: 'ADESSO · IN CORSO',
+      title: classLabel,
+      description: lessonHref
+        ? `Sei nella fascia ${time}. Classe e percorso sono già contestualizzati: puoi continuare direttamente la lezione.`
+        : `Sei nella fascia ${time}. Apri la classe senza ricostruire il contesto della giornata.`,
+      href: lessonHref ?? classHref,
+      action: lessonHref ? 'Continua la lezione' : section ? 'Apri la classe' : 'Apri l’orario',
+      meta: [time, authorityMeta],
+    }
+  }
+
+  if (primary.kind === 'PENDING_REGISTRATION') {
+    return {
+      kind: 'LESSON' as const,
+      dailyKind: primary.kind,
+      eyebrow: 'DA CHIUDERE',
+      title: classLabel,
+      description: `La fascia ${time} è terminata e non risulta ancora registrata. Apri la classe per chiudere la lezione senza perdere il contesto.`,
+      href: classHref,
+      action: section ? 'Apri la classe' : 'Controlla l’orario',
+      meta: [time, 'Da registrare', authorityMeta],
+    }
+  }
+
+  const imminent = primary.minutesUntilStart !== null && primary.minutesUntilStart <= 15
+  return {
+    kind: 'LESSON' as const,
+    dailyKind: primary.kind,
+    eyebrow: imminent ? 'ADESSO · PROSSIMA' : 'PROSSIMA LEZIONE',
+    title: classLabel,
+    description: imminent
+      ? `Inizia tra ${primary.minutesUntilStart} min, nella fascia ${time}. Il contesto è pronto per entrare in classe.`
+      : `È la prossima lezione di oggi, nella fascia ${time}. Puoi aprire ora il contesto oppure continuare con le altre attività.`,
+    href: lessonHref ?? classHref,
+    action: lessonHref ? 'Apri la lezione' : section ? 'Apri la classe' : 'Apri l’orario',
+    meta: [time, authorityMeta],
+  }
+}
+
+function resolveLessonHref(
+  section: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>>['sections'][number],
+  annualSnapshot: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>>,
+) {
+  const learningFocus = buildClassWorkspaceLearningFocus(section, annualSnapshot.progress, [])
+  const grade = GRADE_UI[section.grade]
+  const nextBlock = learningFocus.nextBlock
+    ? buildBlocks(grade).find((item) => item.id === learningFocus.nextBlock?.id) ?? null
+    : null
+  if (!nextBlock || !resolveRuntimeHumanTaskLessonProjection(grade, nextBlock)) return null
+  return buildLessonWorkspaceHref(section.id, nextBlock.id, 'teach')
+}
+
+function lessonTime(lesson: HomeDailyLesson) {
+  return `${lesson.startAt.slice(11, 16)}–${lesson.endAt.slice(11, 16)}`
+}
+
+function dailySummary(context: HomeDailyContext, calendarState: ProjectedCalendarState) {
+  if (context.authority === 'AMBIGUOUS') return 'Orario da verificare'
+  if (calendarState === 'NO_LESSONS') return 'Nessuna lezione prevista oggi'
+  if (context.authority === 'NONE') return 'Contesto orario non disponibile'
+  if (context.lessonCount === 0) return 'Nessuna lezione prevista oggi'
+  const lessons = context.lessonCount === 1 ? '1 lezione' : `${context.lessonCount} lezioni`
+  if (context.pendingRegistrationCount === 0) return `${lessons} oggi`
+  const pending = context.pendingRegistrationCount === 1 ? '1 da registrare' : `${context.pendingRegistrationCount} da registrare`
+  return `${lessons} · ${pending}`
 }
 
 function selectPriorityTask(tasks: PlannerTask[], today: string) {
@@ -150,19 +274,11 @@ function currentRomeMoment() {
   const now = new Date()
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now)
   const value = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  const weekday = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 }[value.weekday] ?? 7
-  return { date: `${value.year}-${value.month}-${value.day}`, weekday, minutes: Number(value.hour) * 60 + Number(value.minute) }
+  return { date: `${value.year}-${value.month}-${value.day}`, minutes: Number(value.hour) * 60 + Number(value.minute) }
 }
 
 function gradeNumber(grade: 'PRIMA' | 'SECONDA' | 'TERZA') {
   return grade === 'PRIMA' ? '1' : grade === 'SECONDA' ? '2' : '3'
-}
-
-function presenceLabel(kind: string) {
-  if (kind === 'DISPOSITION') return 'Disposizione'
-  if (kind === 'RECEPTION') return 'Ricevimento'
-  if (kind === 'CLASS_PRESENCE') return 'Presenza in classe'
-  return 'Impegno in orario'
 }
 
 function taskReason(task: PlannerTask, today: string) {
@@ -182,4 +298,14 @@ function priorityLabel(priority: PlannerTask['priority']) {
 
 function formatShortDate(value: string) {
   return new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', timeZone: 'Europe/Rome' }).format(new Date(value))
+}
+
+function formatLongDate(localDate: string) {
+  const formatted = new Intl.DateTimeFormat('it-IT', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'Europe/Rome',
+  }).format(new Date(`${localDate}T12:00:00Z`))
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1)
 }
