@@ -12,7 +12,7 @@ Quando due documenti sembrano divergere, applicare questo ordine:
 3. **Product Experience Masterplan**
 4. **Specifiche canoniche di prodotto e di composizione dominio**
 5. **Contratti di esperienza verticali**
-6. **Design System V2 + Brand Identity Canonical**
+6. **Design System V2 + Brand Identity Canonical + Design Governance Canonical**
 7. **Specifiche verticali di modulo**
 8. documenti storici / implementation notes
 
@@ -62,7 +62,8 @@ Per ogni lavoro sulla Home `/`:
 3. `TEMPORAL_COMPOSITION_CANONICAL_SPEC.md` governa la composizione temporale e vieta dipendenze dirette tra Orario e Calendario;
 4. `DESIGN_SYSTEM_V2_CANONICAL.md` governa anatomia, progressive disclosure, responsive behavior e accessibilità;
 5. `BRAND_IDENTITY_CANONICAL.md` governa identità visiva, promessa, simbolo, palette e loading;
-6. `DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` governa tono e microcopy.
+6. `DESIGN_GOVERNANCE_CANONICAL.md` governa le regole visuali trasversali non derogabili e distingue invarianti da parametri migliorabili;
+7. `DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` governa tono e microcopy.
 
 La Home **non introduce una nuova fonte di verità** e non deve persistere un proprio stato parallelo a TeachingSession, Planner, Orario, UDA o materiali. Gli invarianti della Home sono canonici; soglie, densità, ordinamenti secondari e preview sono parametri migliorabili con evidenza HVA/pilot secondo la classificazione `COMPATIBLE` / `SUPERSEDING` / `BREAKING`.
 
@@ -91,17 +92,21 @@ Le review datate sono append-only come evidenza storica: una review successiva p
 
 - `docs/design/DESIGN_SYSTEM_V2_CANONICAL.md` — design system attuale per ogni nuovo lavoro.
 - `docs/design/BRAND_IDENTITY_CANONICAL.md` — **identità canonica: “Mantieni il filo.”, significati, simbolo, palette, tipografia, loading, motion e protocollo di evoluzione**.
+- `docs/design/DESIGN_GOVERNANCE_CANONICAL.md` — **20 regole vincolanti di design trasversale; fissa invarianti, mobile-first, una sola azione primaria, accessibilità, coerenza cross-surface e fedeltà del simbolo al riferimento approvato**.
 - `docs/design/DESIGN_SYSTEM_V1.md` — riferimento storico; non governa nuove implementazioni quando confligge con V2.
 
-### Regola Brand
+### Regola Brand e Design
 
-Per ogni lavoro che modifica logo, palette globale, loading, shell, metadata o primitive visuali condivise:
+Per ogni lavoro che modifica logo, palette globale, loading, shell, navigazione, metadata, tipografia globale o primitive visuali condivise:
 
 1. `DESIGN_SYSTEM_V2_CANONICAL.md` governa semantica dei token, anatomia, accessibilità e responsive behavior;
-2. `BRAND_IDENTITY_CANONICAL.md` governa significato, identità, promessa e applicazione del brand;
-3. `DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` governa il linguaggio.
+2. `BRAND_IDENTITY_CANONICAL.md` governa significato, identità, promessa, simbolo e applicazione del brand;
+3. `DESIGN_GOVERNANCE_CANONICAL.md` governa le regole trasversali e stabilisce cosa è invariante e cosa può essere migliorato con evidenza;
+4. `DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` governa il linguaggio.
 
 Il brand non può cambiare il significato professionale di uno stato, nascondere provenienza o attenuare il controllo umano.
+
+**La geometria del simbolo rispetto al riferimento visuale approvato il 2026-09-11 è un invariante canonico.** Non può essere modificata o reinterpretata da una singola feature. Un cambiamento del segno richiede revisione `SUPERSEDING` o `BREAKING` e nuova accettazione visuale esplicita.
 
 ## Regola di aggiornamento
 
@@ -125,8 +130,11 @@ Prima di implementare una slice, leggere almeno:
 5. Language & Collaboration System;
 6. Design System V2;
 7. Brand Identity Canonical per ogni lavoro visuale o trasversale;
-8. la specifica verticale della slice;
-9. il relativo contratto di esperienza, se presente;
-10. per T3/T4, sempre anche Work/Time Mental Model e Temporal Composition Canonical Spec.
+8. Design Governance Canonical per ogni UI, nuovo componente o modifica cross-surface;
+9. la specifica verticale della slice;
+10. il relativo contratto di esperienza, se presente;
+11. per T3/T4, sempre anche Work/Time Mental Model e Temporal Composition Canonical Spec.
 
 Nessun agente deve inferire una nuova architettura da un singolo file runtime quando esiste una decisione canonica esplicita; nessun agente deve inferire lo stato corrente da un checkpoint datato quando esiste `PROJECT_STATUS_CURRENT.md`.
+
+Nessun agente può introdurre una nuova variante locale del logo, una palette parallela o una nuova gerarchia di CTA soltanto perché una singola pagina la rende conveniente: deve rispettare la governance canonica o proporre formalmente una revisione.
