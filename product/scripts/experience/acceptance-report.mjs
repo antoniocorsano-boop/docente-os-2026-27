@@ -12,6 +12,7 @@ const commit = process.env.EXPECTED_COMMIT ?? process.env.GITHUB_SHA ?? 'local-w
 const testExitCode = Number(process.env.EXPERIENCE_TEST_EXIT_CODE ?? 0)
 const expectedProjects = ['mobile-412x915', 'desktop-1440x1000']
 const expectedJourneyIds = ['class-next-task', 'uda-reading', 'knowledge-document', 'calendar-controls']
+const canonicalMinimumTargetPx = 44
 const designGovernanceCriteria = [
   ['DPG-05', 'Una sola azione primaria realmente dominante.'],
   ['DPG-06', 'Gerarchia: titolo → contesto → stato → azione → contenuto.'],
@@ -54,7 +55,7 @@ const gates = {
   console: consoleIssueCount === 0 ? 'PASS' : 'FAIL',
   network: requestFailureCount === 0 && serverErrorCount === 0 ? 'PASS' : 'FAIL',
   layout: overflowCount === 0 ? 'PASS' : 'FAIL',
-  mobileTargets: smallTargetObservations.length === 0 ? 'PASS' : 'WATCH',
+  mobileTargets: smallTargetObservations.length === 0 ? 'PASS' : 'FAIL',
   visual: 'REVIEW_REQUIRED',
   designGovernance: 'REVIEW_REQUIRED',
 }
@@ -67,7 +68,7 @@ if (consoleIssueCount) findings.push({ severity: 'FAIL', code: 'HVA-CONSOLE', me
 if (requestFailureCount || serverErrorCount) findings.push({ severity: 'FAIL', code: 'HVA-NETWORK', message: `${requestFailureCount} richieste fallite e ${serverErrorCount} risposte 5xx.` })
 if (overflowCount) findings.push({ severity: 'FAIL', code: 'HVA-OVERFLOW', message: `${overflowCount} superfici producono overflow orizzontale della pagina.` })
 if (clientHttpIssueCount) findings.push({ severity: 'WATCH', code: 'HVA-HTTP-4XX', message: `${clientHttpIssueCount} risposte HTTP 4xx da ispezionare.` })
-if (smallTargetObservations.length) findings.push({ severity: 'WATCH', code: 'HVA-MOBILE-TARGET', message: `${smallTargetObservations.length} superfici mobili contengono controlli visibili inferiori a 36 px in almeno una dimensione.` })
+if (smallTargetObservations.length) findings.push({ severity: 'FAIL', code: 'HVA-MOBILE-TARGET', message: `${smallTargetObservations.length} superfici mobili contengono controlli visibili inferiori alla soglia canonica di ${canonicalMinimumTargetPx} px in almeno una dimensione.` })
 
 const automaticFailure = Object.values(gates).includes('FAIL')
 const overall = automaticFailure ? 'FAIL' : findings.some((item) => item.severity === 'WATCH') ? 'WATCH' : 'REVIEW_REQUIRED'
@@ -97,6 +98,7 @@ const receipt = {
     serverErrorCount,
     clientHttpIssueCount,
     overflowCount,
+    canonicalMinimumTargetPx,
     mobileSmallTargetSurfaceCount: smallTargetObservations.length,
     journeyNotApplicableCount: notApplicableJourneys.length,
   },
@@ -145,5 +147,5 @@ function markdown(value) {
   const frameworkNote = value.metrics.ignoredFrameworkAbortCount
     ? `\n- **Abort di framework registrati e ignorati:** ${value.metrics.ignoredFrameworkAbortCount} (solo pattern Next.js esplicitamente ammessi).`
     : ''
-  return `# Human + Visual Acceptance Receipt\n\n- **Commit:** \`${value.commit}\`\n- **Target:** ${value.target}\n- **Base URL:** ${value.baseUrl}\n- **Esito automatico complessivo:** **${value.overall}**\n- **Evidenze:** ${value.coverage.actualObservations}/${value.coverage.expectedObservations} osservazioni · ${value.coverage.actualJourneys}/${value.coverage.expectedJourneys} journey${frameworkNote}\n\n| Gate | Stato |\n| --- | --- |\n${gateRows}\n\n## Journey Human\n\n| Viewport | Percorso | Stato | Evidenza |\n| --- | --- | --- | --- |\n${journeyRows}\n\n## Finding automatici\n\n${findingRows}\n\n## Giudizio visuale\n\n**REVIEW_REQUIRED** — gli screenshot devono essere osservati secondo \`product/design/VISUAL-ACCEPTANCE.md\`.\n\n## Design Governance Review\n\n| Regola | Criterio | Stato |\n| --- | --- | --- |\n${governanceRows}\n\nLa checklist non viene auto-promossa a PASS: richiede osservazione degli artefatti e del percorso reale.\n`
+  return `# Human + Visual Acceptance Receipt\n\n- **Commit:** \`${value.commit}\`\n- **Target:** ${value.target}\n- **Base URL:** ${value.baseUrl}\n- **Esito automatico complessivo:** **${value.overall}**\n- **Evidenze:** ${value.coverage.actualObservations}/${value.coverage.expectedObservations} osservazioni · ${value.coverage.actualJourneys}/${value.coverage.expectedJourneys} journey${frameworkNote}\n- **Target mobile minimo canonico:** ${value.metrics.canonicalMinimumTargetPx} px\n\n| Gate | Stato |\n| --- | --- |\n${gateRows}\n\n## Journey Human\n\n| Viewport | Percorso | Stato | Evidenza |\n| --- | --- | --- | --- |\n${journeyRows}\n\n## Finding automatici\n\n${findingRows}\n\n## Giudizio visuale\n\n**REVIEW_REQUIRED** — gli screenshot devono essere osservati secondo \`product/design/VISUAL-ACCEPTANCE.md\`.\n\n## Design Governance Review\n\n| Regola | Criterio | Stato |\n| --- | --- | --- |\n${governanceRows}\n\nLa checklist non viene auto-promossa a PASS: richiede osservazione degli artefatti e del percorso reale.\n`
 }
