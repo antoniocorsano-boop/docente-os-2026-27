@@ -15,6 +15,7 @@ import './knowledge/knowledge-capture-modes.css'
 import './knowledge/knowledge-disclosure.css'
 import './communication.css'
 import './brand-system.css'
+import './brand-responsive.css'
 
 export const metadata: Metadata = {
   applicationName: 'Docente OS',
