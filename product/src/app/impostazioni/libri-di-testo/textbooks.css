@@ -21,9 +21,9 @@
   gap: 24px;
   align-items: end;
   padding: 26px;
-  border: 1px solid var(--border, #d8dde6);
-  border-radius: 22px;
-  background: var(--surface, #fff);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
 }
 
 .textbookHero p,
@@ -54,7 +54,7 @@
 .textbookHeroStats {
   min-width: 145px;
   padding: 16px 18px;
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, currentColor 5%, transparent);
   text-align: right;
 }
@@ -87,8 +87,8 @@
   column-gap: 10px;
   align-items: center;
   padding: 13px 14px;
-  border: 1px solid var(--border, #d8dde6);
-  border-radius: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
   background: color-mix(in srgb, currentColor 2%, transparent);
 }
 
@@ -98,7 +98,7 @@
   place-items: center;
   width: 28px;
   height: 28px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: color-mix(in srgb, currentColor 7%, transparent);
   font-size: 0.8rem;
 }
@@ -121,9 +121,9 @@
 .textbookFindSection {
   margin-bottom: 28px;
   padding: 22px;
-  border: 1px solid var(--border, #d8dde6);
-  border-radius: 22px;
-  background: var(--surface, #fff);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
 }
 
 .textbookFindSection > header h2,
@@ -152,8 +152,8 @@
   justify-content: space-between;
   gap: 18px;
   padding: 16px;
-  border: 1px dashed var(--border, #cbd2dc);
-  border-radius: 16px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
 }
 
 .textbookContextPrompt > div {
@@ -167,14 +167,15 @@
 }
 
 .textbookFallbackDisclosure {
-  border-top: 1px solid var(--border, #d8dde6);
+  border-top: 1px solid var(--line);
   padding-top: 14px;
 }
 
 .textbookFallbackDisclosure > summary {
   display: flex;
+  min-height: 44px;
   gap: 8px;
-  align-items: baseline;
+  align-items: center;
   cursor: pointer;
   list-style-position: inside;
 }
@@ -201,7 +202,7 @@
 .textbookReviewHeader > strong {
   flex: 0 0 auto;
   padding: 7px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: color-mix(in srgb, currentColor 7%, transparent);
   font-size: 0.8rem;
 }
@@ -213,9 +214,9 @@
 
 .textbookAssignmentCard {
   overflow: hidden;
-  border: 1px solid var(--border, #d8dde6);
-  border-radius: 18px;
-  background: var(--surface, #fff);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
 }
 
 .textbookAssignmentCard > header {
@@ -224,7 +225,7 @@
   justify-content: space-between;
   gap: 18px;
   padding: 17px 19px;
-  border-bottom: 1px solid var(--border, #d8dde6);
+  border-bottom: 1px solid var(--line);
 }
 
 .textbookAssignmentCard h3 {
@@ -235,7 +236,7 @@
 .textbookCoverageBadge {
   flex: 0 0 auto;
   padding: 6px 9px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 0.76rem;
   font-weight: 760;
   background: color-mix(in srgb, currentColor 7%, transparent);
@@ -246,7 +247,7 @@
 }
 
 .textbookCoverageBadge.attention {
-  background: color-mix(in srgb, #b06a00 12%, transparent);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
 }
 
 .textbookList {
@@ -258,7 +259,7 @@
   justify-content: space-between;
   gap: 18px;
   padding: 16px 19px;
-  border-bottom: 1px solid var(--border, #d8dde6);
+  border-bottom: 1px solid var(--line);
 }
 
 .textbookRow:last-child {
@@ -266,7 +267,7 @@
 }
 
 .textbookRow.proposed {
-  background: color-mix(in srgb, #b06a00 4%, transparent);
+  background: color-mix(in srgb, var(--warning) 4%, transparent);
 }
 
 .textbookIdentity {
@@ -289,7 +290,7 @@
 
 .textbookTitleLine > span {
   padding: 3px 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: color-mix(in srgb, currentColor 7%, transparent);
   font-size: 0.72rem;
 }
@@ -319,8 +320,8 @@
 
 .textbookEmptyState {
   padding: 28px;
-  border: 1px dashed var(--border, #cbd2dc);
-  border-radius: 20px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
   text-align: center;
 }
 
