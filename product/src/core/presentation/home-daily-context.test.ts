@@ -224,3 +224,37 @@ test('overlapping draft slots fail closed instead of guessing a class', () => {
   assert.equal(context.primary?.kind, 'AMBIGUOUS')
   assert.equal(context.primary?.lesson, null)
 })
+
+test('a no-lessons calendar day never falls back to a draft timetable', () => {
+  const versions: TimetableVersionReadModel[] = [
+    { id: 'draft-1', status: 'DRAFT', effectiveFrom: '2026-09-01', effectiveTo: null },
+  ]
+  const slots: TimetableSlotReadModel[] = [
+    {
+      id: 'draft-slot', timetableVersionId: 'draft-1', weekday: 5, startTime: '08:00', endTime: '09:00', kind: 'LESSON',
+      sectionId: '2A', sectionLabel: '2ª A', disciplineId: 'technology', disciplineLabel: 'Tecnologia', manualClassLabel: null, room: null,
+    },
+  ]
+  const noLessons: ProjectedDay = {
+    localDate: date,
+    calendarState: 'NO_LESSONS',
+    calendarLabel: 'Sospensione lezioni',
+    timetableState: 'NOT_APPLICABLE',
+    timetableVersionId: null,
+    occurrences: [],
+    events: [],
+  }
+
+  const context = resolveHomeDailyContext({
+    localDate: date,
+    minuteOfDay: 8 * 60 + 15,
+    projectedDay: noLessons,
+    timetableVersions: versions,
+    timetableSlots: slots,
+    sessions: [],
+  })
+
+  assert.equal(context.authority, 'NONE')
+  assert.equal(context.lessonCount, 0)
+  assert.equal(context.primary, null)
+})
