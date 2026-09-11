@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { resolveUniqueDraftSlot } from '@/core/application/lesson-register-timing'
 import { teachingSessionCandidateFromOccurrence } from '@/core/application/teaching-session-candidate'
 import type { ProjectedOccurrence } from '@/core/application/temporal-projection-service'
 import {
@@ -191,4 +192,60 @@ test('Drive projection marks the diary complete without turning an UDA proposal 
   assert.equal(projection.status, 'COMPILATA')
   assert.equal(projection.reflection.udaChangeProposal, 'Proposta da valutare')
   assert.equal('studentName' in projection, false)
+})
+
+test('a unique draft timetable slot may supply documentary time without becoming canonical', () => {
+  const versions = [{ id: 'draft-1', status: 'DRAFT' as const, effectiveFrom: '2026-09-11', effectiveTo: null }]
+  const slots = [{
+    id: 'slot-2a',
+    timetableVersionId: 'draft-1',
+    weekday: 5,
+    startTime: '08:00',
+    endTime: '09:00',
+    kind: 'LESSON' as const,
+    sectionId: 'section-2a',
+    sectionLabel: '2ª A',
+    disciplineId: 'technology',
+    disciplineLabel: 'Tecnologia',
+    manualClassLabel: null,
+    room: null,
+  }]
+
+  const result = resolveUniqueDraftSlot({
+    localDate: '2026-09-11',
+    sectionId: 'section-2a',
+    versions,
+    slots,
+  })
+
+  assert.equal(result?.version.status, 'DRAFT')
+  assert.equal(result?.slot.startTime, '08:00')
+})
+
+test('draft timetable fallback refuses to guess when more than one class period matches', () => {
+  const versions = [{ id: 'draft-1', status: 'DRAFT' as const, effectiveFrom: '2026-09-11', effectiveTo: null }]
+  const baseSlot = {
+    timetableVersionId: 'draft-1',
+    weekday: 5,
+    kind: 'LESSON' as const,
+    sectionId: 'section-2a',
+    sectionLabel: '2ª A',
+    disciplineId: 'technology',
+    disciplineLabel: 'Tecnologia',
+    manualClassLabel: null,
+    room: null,
+  }
+  const slots = [
+    { ...baseSlot, id: 'slot-a', startTime: '08:00', endTime: '09:00' },
+    { ...baseSlot, id: 'slot-b', startTime: '12:00', endTime: '13:00' },
+  ]
+
+  const result = resolveUniqueDraftSlot({
+    localDate: '2026-09-11',
+    sectionId: 'section-2a',
+    versions,
+    slots,
+  })
+
+  assert.equal(result, null)
 })
