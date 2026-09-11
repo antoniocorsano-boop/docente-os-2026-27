@@ -3,6 +3,7 @@ import path from 'node:path'
 import { expect, test } from '@playwright/test'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
 import { createClassroomMaterialFixture } from '../support/classroom-material-fixture.mjs'
+import { createDraftLessonTimingFixture, deleteDraftLessonTimingFixture } from '../support/lesson-register-timing-fixture.mjs'
 import { deleteKnowledgeAsset } from '../support/knowledge-fixture-hygiene.mjs'
 
 requireE2ECredentials()
@@ -13,17 +14,14 @@ test('Journey: Classe → Diario → In classe → Registra la lezione', async (
   await loginE2E(page)
   await page.goto('/classi')
 
-  const classCard = page
-    .locator('a.canonicalClassCard')
-    .filter({ hasText: /2ª\s*A/i })
-    .filter({ hasText: /Confermata/i })
-    .first()
-  await expect(classCard).toBeVisible()
+  const classCard = page.locator('a.canonicalClassCard').filter({ hasText: /2ª\s*A/i }).first()
+  await expect(classCard, 'La fixture HVA deve avere una 2ª A utilizzabile per il registro lezione.').toBeVisible()
   const sectionId = sectionIdFromHref(await classCard.getAttribute('href'))
   const fixture = await createClassroomMaterialFixture({
     sectionId,
     suffix: `lesson-register-${process.env.GITHUB_RUN_ID ?? 'local'}-${testInfo.project.name}-${Date.now()}`,
   })
+  const timing = await createDraftLessonTimingFixture({ sectionId, targetDate: fixture.targetDate })
 
   try {
     await page.goto(`/classi/${encodeURIComponent(sectionId)}/in-classe/${fixture.assetId}`)
@@ -44,7 +42,7 @@ test('Journey: Classe → Diario → In classe → Registra la lezione', async (
     await expect(page).toHaveURL(new RegExp(`/classi/${escapeRegExp(sectionId)}/in-classe/${escapeRegExp(fixture.assetId)}/registra$`))
     const heading = page.getByRole('heading', { name: new RegExp(fixture.classLabel) })
     await expect(heading).toBeVisible()
-    await expect(heading).toContainText('08:00')
+    await expect(heading).toContainText(timing.startLabel)
     await expect(page.getByText(/orario provvisorio, non ancora attivato/i)).toBeVisible()
     await expect(page.getByText('Attività prevista')).toBeVisible()
     await expect(page.getByRole('link', { name: /Apri materiale Canva/i })).toHaveAttribute('href', /^https:\/\//)
@@ -71,6 +69,7 @@ test('Journey: Classe → Diario → In classe → Registra la lezione', async (
 
     await screenshot(page, testInfo, 'lesson-register')
   } finally {
+    await deleteDraftLessonTimingFixture(timing.slotId).catch(() => {})
     await deleteKnowledgeAsset(page, fixture.assetId).catch(() => {})
   }
 })
