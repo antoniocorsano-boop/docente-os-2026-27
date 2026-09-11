@@ -11,6 +11,7 @@ import {
   normalizeTeachingSessionReflection,
 } from '@/core/domain/teaching-session-reflection'
 import type { TeachingSessionDraft } from '@/core/domain/teaching-session'
+import { synchronizeDriveDiaryReceipt } from '@/core/infrastructure/google/google-drive-diary-sync'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
@@ -100,9 +101,9 @@ export async function recordClassroomLesson(formData: FormData) {
     curriculumLink: metadataString(bundle.asset.sourceMetadata, 'curriculumLink'),
   })
 
-  let driveState = 'queued'
+  let driveState: 'synced' | 'connect' | 'not-configured' | 'recoverable' = 'recoverable'
   try {
-    await new SupabaseTeachingSessionDriveOutboxRepository().queue({
+    const outboxId = await new SupabaseTeachingSessionDriveOutboxRepository().queue({
       sessionId,
       workspaceId: context.workspace.id,
       academicYearId: context.academicYear.id,
@@ -110,6 +111,18 @@ export async function recordClassroomLesson(formData: FormData) {
       recordId,
       projection,
     })
+    const syncState = await synchronizeDriveDiaryReceipt({
+      outboxId,
+      workspaceId: context.workspace.id,
+      projection,
+    })
+    driveState = syncState === 'SYNCED'
+      ? 'synced'
+      : syncState === 'NOT_CONNECTED'
+        ? 'connect'
+        : syncState === 'NOT_CONFIGURED'
+          ? 'not-configured'
+          : 'recoverable'
   } catch {
     // The canonical TeachingSession already contains the recoverable reflection
     // and deterministic Drive record id. Never roll back classroom evidence
