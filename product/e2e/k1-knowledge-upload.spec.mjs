@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { loginE2E, requireE2ECredentials } from './support/e2e-auth.mjs'
 import {
   deleteAllKnowledgeFixtures,
   deleteKnowledgeAsset,
@@ -9,17 +10,13 @@ import {
 } from './support/knowledge-fixture-hygiene.mjs'
 import { buildSchoolDocxFixture, schoolDocxCorpus } from './support/school-docx-corpus.mjs'
 
-const email = process.env.E2E_EMAIL ?? 'docente-os-e2e-2dbf49e1@example.invalid'
-const password = process.env.E2E_PASSWORD
 const fixtureName = 'k1-upload-recovery.txt'
 const largePdfFixtureName = 'k1-resumable-large.pdf'
 
-if (!password) {
-  throw new Error('E2E_PASSWORD is required for the authenticated K1 acceptance test')
-}
+requireE2ECredentials()
 
 test('K1 Knowledge: scelta file, conferma privacy, errore recuperabile, retry reale e cleanup', async ({ page }) => {
-  await login(page)
+  await loginE2E(page)
 
   await retainNewestKnowledgeFixture(page, 'x3-responsible-ai')
   expect(await knowledgeFixtureAssetIds(page, 'x3-responsible-ai')).toHaveLength(1)
@@ -102,7 +99,7 @@ test('K1 Knowledge: scelta file, conferma privacy, errore recuperabile, retry re
 })
 
 test('K1 Knowledge: guida docente PDF oltre 6 MB passa il preflight contestuale e usa il trasferimento resumable', async ({ page }) => {
-  await login(page)
+  await loginE2E(page)
   await deleteAllKnowledgeFixtures(page, largePdfFixtureName)
   await deleteOrphanedKnowledgeFixtureObjects([largePdfFixtureName])
   let createdAssetId = null
@@ -146,7 +143,7 @@ test('K1 Knowledge: guida docente PDF oltre 6 MB passa il preflight contestuale 
 })
 
 test('K1 Knowledge: i cinque documenti scolastici attraversano davvero DOCX → KB → contesto auto-organizzato', async ({ page }) => {
-  await login(page)
+  await loginE2E(page)
   const fixtureNames = schoolDocxCorpus.map((fixture) => fixture.filename)
   const createdAssetIds = []
 
@@ -259,14 +256,4 @@ async function openFileCapture(page) {
   await fileMode.click()
   await expect(page.locator('[data-capture-mode-panel="file"]')).toBeVisible()
   await expect(page.locator('[data-capture-mode-panel="text"]')).not.toBeVisible()
-}
-
-async function login(page) {
-  await page.goto('/login')
-  await page.locator('#email').fill(email)
-  await page.locator('#password').fill(password)
-  await Promise.all([
-    page.waitForURL(/\/planner(?:$|\?)/, { timeout: 30_000 }),
-    page.getByRole('button', { name: 'Entra nel tuo spazio docente' }).click(),
-  ])
 }
