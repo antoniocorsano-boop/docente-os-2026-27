@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { hasAal2 } from '@/core/security/mfa-access-policy'
@@ -49,7 +49,7 @@ export default async function AccountMfaPage() {
           </CardContent>
         </Card>
 
-        <Button asChild variant="ghost"><Link href="/account">Torna ad Account e sicurezza</Link></Button>
+        <Link className={buttonVariants({ variant: 'ghost' })} href="/account">Torna ad Account e sicurezza</Link>
       </div>
     </AppShell>
   )
