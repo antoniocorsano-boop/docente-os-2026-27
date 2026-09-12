@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { createClient } from '@/lib/supabase/server'
@@ -89,7 +89,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                     : 'Nessun autenticatore TOTP verificato.'}
                 </span>
               </div>
-              <Button asChild variant="secondary"><Link href="/account/mfa">Gestisci MFA</Link></Button>
+              <Link className={buttonVariants({ variant: 'secondary' })} href="/account/mfa">Gestisci MFA</Link>
             </CardContent>
           </Card>
 
@@ -100,7 +100,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
             </CardHeader>
             <CardContent className="grid gap-4">
               <p className="m-0 text-sm leading-6 text-muted-foreground">Il cambio password richiede una sessione MFA valida e non espone mai la credenziale corrente.</p>
-              <Button asChild><Link href="/imposta-password?source=account">Cambia password</Link></Button>
+              <Link className={buttonVariants()} href="/imposta-password?source=account">Cambia password</Link>
             </CardContent>
           </Card>
 
@@ -122,7 +122,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <Button asChild variant="ghost"><Link href="/impostazioni">Impostazioni professionali</Link></Button>
+          <Link className={buttonVariants({ variant: 'ghost' })} href="/impostazioni">Impostazioni professionali</Link>
         </div>
       </div>
     </AppShell>
