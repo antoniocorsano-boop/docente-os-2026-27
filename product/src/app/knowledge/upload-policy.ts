@@ -46,7 +46,7 @@ export function knowledgeUploadMimeFromExtension(filename: string) {
 
 export function normalizeKnowledgeUploadMime(rawMime: string, filename: string) {
   if (rawMime && isAllowedKnowledgeUploadMime(rawMime)) return rawMime
-  return knowledgeUploadMimeFromExtension(filename) ?? rawMime || 'application/octet-stream'
+  return knowledgeUploadMimeFromExtension(filename) ?? (rawMime || 'application/octet-stream')
 }
 
 export function sanitizeKnowledgeFilename(filename: string) {
