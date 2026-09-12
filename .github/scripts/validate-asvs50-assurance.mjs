@@ -57,10 +57,16 @@ for (const finding of data.priorityFindings) {
   }
 }
 
-for (const requirement of ['V3.4.3', 'V6.3.3']) {
-  if (!data.priorityFindings.some((finding) => finding.requirement === requirement && finding.status === 'OPEN_GAP')) {
-    fail(`known open gap ${requirement} must remain explicit until closed with receipts`)
-  }
+const v343 = data.priorityFindings.find((finding) => finding.requirement === 'V3.4.3')
+if (!v343) fail('V3.4.3 finding history must remain present')
+if (v343.status !== 'CLOSED_VERIFIED') fail('V3.4.3 must be CLOSED_VERIFIED only after exact-head receipts are recorded')
+const v343ReceiptTypes = new Set((v343.closureReceipts ?? []).map((receipt) => receipt.type))
+for (const requiredType of ['PRODUCT_CI', 'HUMAN_VISUAL_ACCEPTANCE', 'P6_PERFORMANCE_BASELINE', 'DESIGN_POLICY_GATE']) {
+  if (!v343ReceiptTypes.has(requiredType)) fail(`V3.4.3 closure needs ${requiredType} receipt`)
+}
+
+if (!data.priorityFindings.some((finding) => finding.requirement === 'V6.3.3' && finding.status === 'OPEN_GAP')) {
+  fail('known open gap V6.3.3 must remain explicit until closed with receipts')
 }
 
 const v522 = data.priorityFindings.find((finding) => finding.requirement === 'V5.2.2')
