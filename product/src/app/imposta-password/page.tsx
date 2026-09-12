@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { hasAal2, mfaRedirectPath } from '@/core/security/mfa-access-policy'
 import { createClient } from '@/lib/supabase/server'
 import { setPassword } from './actions'
 
@@ -12,11 +13,17 @@ type PasswordSetupPageProps = {
 export default async function PasswordSetupPage({ searchParams }: PasswordSetupPageProps) {
   const supabase = await createClient()
   const { data } = await supabase.auth.getClaims()
+  const claims = data?.claims ?? null
 
-  if (!data?.claims) redirect('/login?error=session_required')
+  if (!claims) redirect('/login?error=session_required')
 
   const params = await searchParams
   const isRecovery = params.source === 'recovery'
+
+  if (isRecovery && !hasAal2(claims)) {
+    redirect(mfaRedirectPath('/imposta-password', '?source=recovery'))
+  }
+
   const message = params.error === 'weak_password'
     ? 'La password deve contenere almeno 10 caratteri.'
     : params.error === 'password_mismatch'
@@ -28,6 +35,8 @@ export default async function PasswordSetupPage({ searchParams }: PasswordSetupP
           : params.source === 'email'
             ? 'Accesso verificato. Imposta ora una password: da questo momento gli accessi ordinari non richiederanno più email.'
             : null
+
+  const formSource = isRecovery ? 'recovery' : params.source === 'email' ? 'email' : ''
 
   return (
     <main className="shell">
@@ -41,6 +50,7 @@ export default async function PasswordSetupPage({ searchParams }: PasswordSetupP
         {message ? <p role="status" className="notice">{message}</p> : null}
 
         <form action={setPassword} className="stack">
+          <input type="hidden" name="source" value={formSource} />
           <label htmlFor="password">Nuova password</label>
           <input id="password" name="password" type="password" autoComplete="new-password" minLength={10} required />
           <label htmlFor="confirm_password">Conferma password</label>
