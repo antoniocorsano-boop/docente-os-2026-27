@@ -59,10 +59,11 @@ La policy di produzione:
 - imposta `script-src-attr 'none'`;
 - imposta `object-src 'none'` e `base-uri 'none'`;
 - imposta `frame-ancestors 'none'` e `form-action 'self'`;
-- limita `connect-src` e `img-src` all'origin Supabase configurato quando applicabile;
+- limita `connect-src` all'origin Supabase configurato, al corrispondente WebSocket e all'origin TUS esatto `https://<project>.storage.supabase.co` derivato dal medesimo project ref, senza wildcard;
+- limita `img-src` all'origin Supabase configurato quando applicabile;
 - genera un nonce nuovo per ogni document request.
 
-La suite Human + Visual Acceptance verifica nel browser l'header CSP, il nonce framework, la rotazione del nonce e l'assenza di violazioni CSP su desktop e mobile. Il requisito **V3.4.3 / ASVS-001 è `CLOSED_VERIFIED`** sull'implementation SHA `14f60b09944e59531ca3ce2504839fdf11629784`.
+La suite Human + Visual Acceptance verifica nel browser l'header CSP, il nonce framework, la rotazione del nonce e l'assenza di violazioni CSP su desktop e mobile. K1 verifica inoltre che il percorso PDF >6 MiB attraversi il trasferimento resumable Supabase Storage sotto la stessa policy di produzione. Il requisito **V3.4.3 / ASVS-001 è `CLOSED_VERIFIED`** sull'implementation SHA `1498b675d7d8d9d897867317df3bf07193240833`.
 
 ### Autenticazione e sessioni
 
@@ -106,19 +107,20 @@ Sono presenti rehearsal e contratti per Auth recovery, database restore, storage
 
 **Livello:** L2  
 **Stato:** `CLOSED_VERIFIED`  
-**Implementation SHA:** `14f60b09944e59531ca3ce2504839fdf11629784`
+**Implementation SHA:** `1498b675d7d8d9d897867317df3bf07193240833`
 
-La closure è fondata su CSP request-scoped con nonce, registrazione effettiva del Proxy Next.js, policy di produzione senza `unsafe-inline`/`unsafe-eval` per gli script e prova browser permanente dell'header e dei nonce.
+La closure è fondata su CSP request-scoped con nonce, registrazione effettiva del Proxy Next.js, policy di produzione senza `unsafe-inline`/`unsafe-eval` per gli script, allowlist `connect-src` senza wildcard che include l'origin TUS esatto derivato dal project ref Supabase, prova browser permanente dell'header e dei nonce, e prova K1 del percorso resumable >6 MiB.
 
 Receipt registrate in `ops/asvs50-assurance.json`:
 
-- Product CI — run `34676660373`;
-- Human + Visual Acceptance — run `34676660375`;
-- P6 Performance Baseline — run `34676660345`;
-- Design Policy Gate — run `34676660380`;
-- WCAG 2.2 AA Assurance — run `34676660382`;
-- Human Interaction Model — run `34676660414`;
-- ASVS 5.0 Assurance pre-closure — run `34676660394`.
+- Product CI — run `34678320805`;
+- Human + Visual Acceptance — run `34678320813`;
+- P6 Performance Baseline — run `34678320851`;
+- Design Policy Gate — run `34678320842`;
+- WCAG 2.2 AA Assurance — run `34678320806`;
+- Human Interaction Model — run `34678320833`;
+- K1 Knowledge Upload Gate — run `34678320870`;
+- ASVS 5.0 Assurance pre-closure — run `34678320823`.
 
 La chiusura di V3.4.3 **non** trasforma V3 in `VERIFIED_PASS`, non completa M5-04A e non costituisce una dichiarazione di verifica ASVS L2.
 
