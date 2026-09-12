@@ -3,6 +3,13 @@ export type AuthClaimsLike = {
   aal?: unknown
 } | null | undefined
 
+type ExternalOriginInput = {
+  configuredOrigin?: string | null
+  forwardedHost?: string | null
+  forwardedProto?: string | null
+  requestOrigin?: string | null
+}
+
 const DEFAULT_AUTHENTICATED_DESTINATION = '/planner'
 const MFA_EXEMPT_EXACT_PATHS = new Set(['/login', '/mfa', '/imposta-password'])
 
@@ -44,4 +51,53 @@ export function normalizeMfaNextPath(value: string | null | undefined) {
 export function mfaRedirectPath(pathname: string, search: string) {
   const next = normalizeMfaNextPath(`${pathname}${search}`)
   return `/mfa?next=${encodeURIComponent(next)}`
+}
+
+export function resolveExternalOrigin({
+  configuredOrigin,
+  forwardedHost,
+  forwardedProto,
+  requestOrigin,
+}: ExternalOriginInput) {
+  const configured = normalizeHttpOrigin(configuredOrigin)
+  if (configured) return configured
+
+  const host = firstProxyHeaderValue(forwardedHost)
+  if (host) {
+    const protocol = normalizeProxyProtocol(forwardedProto) ?? protocolFromOrigin(requestOrigin) ?? 'https'
+    const forwarded = normalizeHttpOrigin(`${protocol}://${host}`)
+    if (forwarded) return forwarded
+  }
+
+  const request = normalizeHttpOrigin(requestOrigin)
+  if (request) return request
+
+  throw new Error('A public application origin is required for auth redirects')
+}
+
+function normalizeHttpOrigin(value: string | null | undefined) {
+  if (!value) return null
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null
+    return url.origin
+  } catch {
+    return null
+  }
+}
+
+function firstProxyHeaderValue(value: string | null | undefined) {
+  const first = value?.split(',')[0]?.trim()
+  return first || null
+}
+
+function normalizeProxyProtocol(value: string | null | undefined) {
+  const protocol = firstProxyHeaderValue(value)?.toLowerCase()
+  return protocol === 'http' || protocol === 'https' ? protocol : null
+}
+
+function protocolFromOrigin(value: string | null | undefined) {
+  const origin = normalizeHttpOrigin(value)
+  if (!origin) return null
+  return origin.startsWith('http://') ? 'http' : 'https'
 }
