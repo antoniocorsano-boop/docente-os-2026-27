@@ -5,9 +5,9 @@ Stato documento: **CURRENT / CANONICAL STATUS**
 
 Questo documento è la sintesi autorevole dello stato operativo. I checkpoint precedenti e gli audit datati restano storici e non devono essere usati per dedurre lo stato corrente quando divergono da questo file.
 
-Baseline di sviluppo integrata prima dell'apertura di M5-03:
+Baseline di sviluppo integrata prima dell'apertura di M5-04:
 
-`develop` @ `adf52f5e6da02841a45248417a442a01abaa7beb`
+`develop` @ `0e815f0aaf596b2430924424eeb63714de1efa3f`
 
 ## 1. Classificazione
 
@@ -144,11 +144,14 @@ Il prodotto dispone di:
 - recovery/storage/incident gates P7;
 - **Release Engineering Policy** — M5-01;
 - **Pilot Evidence Policy** — M5-02;
-- **WCAG 2.2 AA Assurance** — M5-03, con matrice completa, validator e browser automation Playwright/axe.
+- **WCAG 2.2 AA Assurance** — M5-03, con matrice completa, validator e browser automation Playwright/axe;
+- **OWASP ASVS 5.0 Assurance** — M5-04, con baseline v5.0.0, target L2, matrice capitoli, finding prioritari e validator anti-waiver.
 
 La chiusura DPG-2 è stata certificata sull'exact head `f9953382e8ee8ef6307fa3859066bfb8d3e063a4` prima del merge #336.
 
 Per M5-03, il baseline automatizzato sul commit `20eb47b7e35faf3114dcbfe32ee320c1cfcc9557` ha superato WCAG automated assurance run `34672053257`, HVA run `34672053242`, HIM, DPG, Product CI e P6. Questo è **automation evidence**, non una dichiarazione di conformità WCAG 2.2 AA.
+
+Per M5-04, la foundation usa OWASP ASVS **5.0.0 stabile**, target **L2**, con `verificationClaim=false` e `requirementLevelMappingComplete=false`. Il gate machine-readable impedisce di marcare capitoli `VERIFIED_PASS` prima della mappatura requisito-per-requisito e mantiene espliciti i gap L1/L2 noti.
 
 ## 7. Maturity program M5
 
@@ -167,7 +170,8 @@ Stato gate:
 - **M5-03A — WCAG 2.2 AA Matrix & Automated Assurance** — **PARTIAL**, baseline automatizzata PASS ma manual receipts ancora incomplete;
 - **M5-03B — Keyboard / Focus / Reflow** — **PARTIAL**;
 - **M5-03C — Assistive Technology Evidence** — **OPEN**;
-- **M5-04 — ASVS 5.0 Security Mapping** — OPEN/PARTIAL;
+- **M5-04A — OWASP ASVS 5.0 Mapping** — **PARTIAL**, foundation attiva e requirement-level mapping incompleta;
+- **M5-04B — Dependency/Security Cadence** — **PARTIAL**;
 - **M5-05 — SLO/SLI & Operational Observability** — OPEN/PARTIAL;
 - **M5-06 — Runtime Integration Maturity (Drive/Canva; Arena conditional)** — PARTIAL;
 - **M5-07 — Institutional / Tier 2 Readiness** — CONDITIONAL / NOT AUTHORIZED.
@@ -231,7 +235,28 @@ Stato verificato:
 
 Pertanto **M5-03 non è COMPLETE e non esiste alcuna dichiarazione di conformità WCAG 2.2 AA**.
 
-## 11. Finding correnti
+## 11. M5-04 OWASP ASVS 5.0 Assurance
+
+Fonti canoniche:
+
+- `docs/product/ASVS_5_0_ASSURANCE_CANONICAL.md`;
+- `ops/asvs50-assurance.json`;
+- `.github/scripts/validate-asvs50-assurance.mjs`;
+- `.github/workflows/asvs50-assurance.yml`.
+
+Stato corrente:
+
+- standard stabile **ASVS 5.0.0**;
+- target **L2**;
+- `verificationClaim=false`;
+- 17 capitoli censiti;
+- requirement-level mapping ancora incompleta;
+- controlli positivi significativi: RLS, auth server-side via claims verificate, recovery rehearsal, dependency-security e incident escalation;
+- finding bloccanti iniziali: **V3.4.3 CSP**, **V5.2.2 file content/type validation**, **V6.3.3 MFA**.
+
+Pertanto **M5-04A è PARTIAL e non esiste alcuna dichiarazione di verifica ASVS L2**.
+
+## 12. Finding correnti
 
 ### A — Repository hygiene
 
@@ -251,7 +276,7 @@ La matrice WCAG 2.2 AA e il gate automatizzato esistono e il baseline browser è
 
 ### E — Security assurance
 
-I controlli applicativi sono forti ma non esiste ancora un mapping formale OWASP ASVS 5.0.
+La foundation OWASP ASVS 5.0.0 è attiva con target L2 e gate anti-waiver. Restano aperti almeno tre blocker L1/L2 già verificati nel baseline: CSP (`V3.4.3`), validazione contenuto/tipo degli upload (`V5.2.2`) e MFA (`V6.3.3`). La mappatura requirement-level e le receipt provider/runtime restano incomplete.
 
 ### F — SLO/SLI
 
@@ -261,18 +286,18 @@ Smoke, performance e recovery sono presenti, ma le soglie devono essere derivate
 
 Il prossimo valore reale è la continuità **Docente OS ↔ Drive ↔ Canva** nel flusso didattico. Arena runtime resta requisito condizionale.
 
-## 12. Priorità operative
+## 13. Priorità operative
 
 1. continuare la classificazione individuale delle PR aperte senza chiudere lavoro vivo;
 2. raccogliere M5-02 durante il normale lavoro docente;
 3. registrare anche friction, workaround e failure;
 4. completare le prove manuali M5-03 e la baseline screen reader, mantenendo axe/HVA verdi;
-5. aprire il mapping **M5-04 OWASP ASVS 5.0**;
+5. chiudere M5-04 iniziando dal gap L1 **V5.2.2**, quindi CSP e progettazione MFA, mentre procede la mappatura requirement-level;
 6. definire SLI/SLO soltanto dopo la prima baseline osservata M5-02;
 7. maturare Drive/Canva sulle journey reali;
 8. mantenere Tier 2 e multi-user separati finché non esiste una decisione istituzionale esplicita.
 
-## 13. Regola anti-feature-creep
+## 14. Regola anti-feature-creep
 
 Durante il programma M5 ogni nuova feature deve essere classificata come:
 
