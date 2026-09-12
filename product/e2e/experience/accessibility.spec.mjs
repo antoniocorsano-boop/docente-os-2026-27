@@ -1,11 +1,12 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
 import { EXPERIENCE_SURFACES } from './surfaces.mjs'
 
-requireE2ECredentials()
+const WCAG_ASSURANCE_ENABLED = process.env.WCAG_ASSURANCE === '1'
+
+if (WCAG_ASSURANCE_ENABLED) requireE2ECredentials()
 
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const OUTPUT_DIR = path.join('test-results', 'accessibility')
@@ -40,6 +41,7 @@ function violationSummary(violations) {
 }
 
 async function analyzePage(page, testInfo, id) {
+  const { default: AxeBuilder } = await import('@axe-core/playwright')
   const results = await new AxeBuilder({ page })
     .withTags(WCAG_TAGS)
     .analyze()
@@ -50,6 +52,8 @@ async function analyzePage(page, testInfo, id) {
 }
 
 test.describe('M5-03 — WCAG 2.2 AA automated assurance', () => {
+  test.skip(!WCAG_ASSURANCE_ENABLED, 'WCAG assurance runs only in the dedicated M5-03 gate')
+
   test('login: automated WCAG A/AA baseline', async ({ page }, testInfo) => {
     const response = await page.goto('/login')
     if (!response) throw new Error('No navigation response for /login')
