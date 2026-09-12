@@ -17,7 +17,7 @@
   --color-border: var(--line);
   --color-input: var(--line-strong);
   --color-primary: var(--brand);
-  --color-primary-foreground: var(--ink-on-dark);
+  --color-primary-foreground: #ffffff;
   --color-destructive: var(--danger);
   --color-success: var(--success);
   --color-warning: var(--warning);
