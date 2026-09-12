@@ -18,7 +18,7 @@ test('canonical navigation has unique keys and routes', () => {
 test('canonical navigation exposes every primary teacher destination', () => {
   assert.deepEqual(
     PRIMARY_NAVIGATION.map((item) => item.key),
-    ['home', 'today', 'design', 'knowledge', 'classes', 'timetable', 'calendar', 'annual-plan', 'settings'],
+    ['home', 'today', 'design', 'knowledge', 'classes', 'timetable', 'calendar', 'annual-plan', 'settings', 'account'],
   )
 })
 
@@ -36,8 +36,16 @@ test('navigation groups follow human tasks rather than technical containers', ()
   assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[1]).map((item) => item.key), ['classes', 'design', 'annual-plan'])
   assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[2]).map((item) => item.key), ['timetable', 'calendar'])
   assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[3]).map((item) => item.key), ['knowledge'])
+  assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[4]).map((item) => item.key), ['settings', 'account'])
   assert.equal(NAVIGATION_GROUPS[1].label, 'Prepara e insegna')
   assert.equal(NAVIGATION_GROUPS[2].label, 'Tempo')
+})
+
+test('account and professional settings stay distinct', () => {
+  assert.equal(navigationItem('settings').href, '/impostazioni')
+  assert.match(navigationItem('settings').description, /contesto professionale|istituto|cattedra/i)
+  assert.equal(navigationItem('account').href, '/account')
+  assert.match(navigationItem('account').description, /password|MFA|sessioni/i)
 })
 
 test('Orario and Calendario stay distinct in labels and intent', () => {
