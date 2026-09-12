@@ -56,9 +56,10 @@ test('MFA browser boundary: AAL1 denied, valid TOTP promotes to AAL2', async ({ 
     expect(response.body).toMatchObject({ ok: false, code: 'mfa_required' })
   })
 
-  await test.step('Auth/recovery surface remains reachable at AAL1 but does not bypass MFA', async () => {
+  await test.step('Recovery password mutation is gated by MFA while the session is AAL1', async () => {
     await page.goto('/imposta-password?source=recovery')
-    await expect(page.getByRole('heading', { name: 'Scegli una nuova password' })).toBeVisible()
+    await expect(page).toHaveURL(/\/mfa\?next=%2Fimposta-password%3Fsource%3Drecovery(?:&|$)/)
+    await expect(page.getByRole('heading', { name: 'Conferma il secondo fattore.' })).toBeVisible()
 
     await page.goto('/planner')
     await expect(page).toHaveURL(/\/mfa\?next=%2Fplanner(?:&|$)/)
