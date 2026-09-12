@@ -1,0 +1,114 @@
+name: WCAG 2.2 AA Assurance
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/wcag22-aa-assurance.yml'
+      - '.github/scripts/validate-wcag22-aa-assurance.mjs'
+      - 'ops/wcag22-aa-assurance.json'
+      - 'docs/product/WCAG_2_2_AA_ASSURANCE_CANONICAL.md'
+      - 'product/e2e/experience/accessibility.spec.mjs'
+      - 'product/e2e/experience/surfaces.mjs'
+      - 'product/e2e/support/**'
+      - 'product/playwright.experience.config.mjs'
+      - 'product/src/app/**'
+      - 'product/src/components/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wcag22-aa-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  E2E_BASE_URL: http://127.0.0.1:3000
+  NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+  NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+
+jobs:
+  wcag22-aa-assurance:
+    name: wcag22-aa-assurance
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Check E2E credential configuration
+        id: credentials
+        shell: bash
+        run: |
+          if [ -n "${E2E_PASSWORD:-}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo 'Repository secret DOCENTE_OS_E2E_PASSWORD is required.' >&2
+            exit 1
+          fi
+
+      - name: Checkout exact tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate WCAG assurance matrix
+        run: node .github/scripts/validate-wcag22-aa-assurance.mjs
+
+      - name: Install product dependencies
+        working-directory: product
+        run: npm install --no-audit --no-fund
+
+      - name: Install pinned browser assurance dependencies without changing the lockfile
+        working-directory: product
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0 @axe-core/playwright@4.13.0
+
+      - name: Build tested application
+        working-directory: product
+        run: npm run build
+
+      - name: Start tested application
+        working-directory: product
+        shell: bash
+        run: |
+          npm start > /tmp/docente-os-wcag-server.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 5 "$E2E_BASE_URL/login" >/dev/null; then
+              echo 'Local DOCENTE OS runtime is ready.'
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/docente-os-wcag-server.log >&2 || true
+          exit 1
+
+      - name: Install Chromium
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run WCAG 2.2 AA automated assurance
+        working-directory: product
+        run: npx playwright test e2e/experience/accessibility.spec.mjs --config=playwright.experience.config.mjs
+
+      - name: Publish accessibility evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wcag22-aa-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 90
+          path: |
+            product/test-results/accessibility/
+            product/test-results/experience/
+            product/playwright-report/experience/
+            /tmp/docente-os-wcag-server.log
