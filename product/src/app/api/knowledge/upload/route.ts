@@ -4,6 +4,7 @@ import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supa
 import { createClient } from '@/lib/supabase/server'
 import { inspectFilenameForPilot, inspectFreeTextForPilot } from '@/core/privacy/anonymization-guard'
 import { inspectBinaryForAnonymousPilot } from '@/core/privacy/binary-anonymization-preflight'
+import { validateKnowledgeUploadContent } from '@/app/knowledge/upload-content-validation'
 import {
   buildKnowledgeObjectPath,
   isAllowedKnowledgeUploadMime,
@@ -19,6 +20,7 @@ type UploadFailureCode =
   | 'missing'
   | 'too_large'
   | 'unsupported'
+  | 'invalid_content'
   | 'unauthorized'
   | 'size_mismatch'
   | 'storage_failed'
@@ -80,8 +82,18 @@ export async function POST(request: Request) {
   }
 
   const uploadBytes = new Uint8Array(bytes)
+  const contentValidation = await validateKnowledgeUploadContent({ filename: originalName, mimeType, bytes: uploadBytes })
+  if (!contentValidation.valid) {
+    console.warn('Knowledge same-origin upload content/type mismatch', {
+      code: contentValidation.code,
+      mimeType,
+      originalName,
+    })
+    return json({ ok: false, code: 'invalid_content' }, 422)
+  }
+
   if (mimeType === 'text/plain' || mimeType === 'text/markdown') {
-    const text = new TextDecoder('utf-8', { fatal: false }).decode(uploadBytes)
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(uploadBytes)
     if (!inspectFreeTextForPilot(text).allowed) return json({ ok: false, code: 'privacy_blocked' }, 422)
   } else {
     const preflight = await inspectBinaryForAnonymousPilot({ bytes: uploadBytes, mimeType, localVisualReview })
