@@ -47,6 +47,20 @@ test('MFA return paths stay same-origin and outside auth/API surfaces', () => {
   assert.equal(mfaRedirectPath('/planner', '?day=1'), '/mfa?next=%2Fplanner%3Fday%3D1')
 })
 
+test('MFA permits only the exact recovery password continuation among exempt paths', () => {
+  assert.equal(
+    normalizeMfaNextPath('/imposta-password?source=recovery'),
+    '/imposta-password?source=recovery',
+  )
+  assert.equal(
+    mfaRedirectPath('/imposta-password', '?source=recovery'),
+    '/mfa?next=%2Fimposta-password%3Fsource%3Drecovery',
+  )
+  assert.equal(normalizeMfaNextPath('/imposta-password'), '/planner')
+  assert.equal(normalizeMfaNextPath('/imposta-password?source=email'), '/planner')
+  assert.equal(normalizeMfaNextPath('/imposta-password?source=recovery&next=/planner'), '/planner')
+})
+
 test('application API classification is explicit', () => {
   assert.equal(isApplicationApiPath('/api'), true)
   assert.equal(isApplicationApiPath('/api/knowledge/upload'), true)
