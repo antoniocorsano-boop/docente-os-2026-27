@@ -20,6 +20,13 @@ function toWebSocketOrigin(origin: string) {
   return url.origin;
 }
 
+function toSupabaseStorageOrigin(origin: string) {
+  const url = new URL(origin);
+  const match = url.hostname.match(/^([a-z0-9-]+)\.supabase\.co$/i);
+  if (!match || url.protocol !== 'https:') return null;
+  return `https://${match[1]}.storage.supabase.co`;
+}
+
 export function createContentSecurityPolicyNonce() {
   return crypto.randomUUID().replaceAll('-', '');
 }
@@ -39,6 +46,12 @@ export function buildContentSecurityPolicy({
   if (supabaseOrigin) {
     connectSources.push(supabaseOrigin, toWebSocketOrigin(supabaseOrigin));
     imageSources.push(supabaseOrigin);
+
+    // Large Knowledge PDFs use Supabase's TUS endpoint on the dedicated
+    // <project>.storage.supabase.co origin. Keep this exact and derived from
+    // the configured project URL: never widen connect-src with a wildcard.
+    const storageOrigin = toSupabaseStorageOrigin(supabaseOrigin);
+    if (storageOrigin) connectSources.push(storageOrigin);
   }
 
   return [
