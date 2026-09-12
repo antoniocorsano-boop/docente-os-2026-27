@@ -16,6 +16,11 @@ test('normalizes supported mime types from extension when the browser omits them
   assert.equal(normalizeKnowledgeUploadMime('', 'foto.JPEG'), 'image/jpeg')
 })
 
+test('canonicalizes browser text/plain for markdown without relaxing other type mismatches', () => {
+  assert.equal(normalizeKnowledgeUploadMime('text/plain', 'appunti.md'), 'text/markdown')
+  assert.equal(normalizeKnowledgeUploadMime('image/jpeg', 'documento.pdf'), 'image/jpeg')
+})
+
 test('sanitizes filenames before building workspace-and-user-scoped storage paths', () => {
   assert.equal(sanitizeKnowledgeFilename('Presa di servizio — à.s. 2026.pdf'), 'Presa_di_servizio_a.s._2026.pdf')
   assert.equal(
