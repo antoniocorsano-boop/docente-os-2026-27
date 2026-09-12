@@ -69,6 +69,12 @@ La chiusura MFA del 12 settembre aggiunge inoltre una journey security verificat
 
 `recovery email → AAL1 → MFA → AAL2 → nuova password → logout → login nuova password → MFA → Oggi`.
 
+La slice **Account e sicurezza** #348 aggiunge una journey di gestione che diventerà candidata a evidence dopo l'integrazione, senza modificare retroattivamente la closure V6.3.3:
+
+`login AAL2 → Account → verifica identità/stato MFA → gestione fattore o password/sessioni → feedback → ritorno al lavoro`.
+
+Finché #348 non è integrata, questa journey è **PENDING IMPLEMENTATION INTEGRATION**, non `HUMAN_USE` M5-02.
+
 ## KPI minimi da derivare in M5-02/M5-05
 
 La baseline non fissa ancora soglie arbitrarie. Deve misurare almeno:
@@ -86,6 +92,17 @@ La baseline non fissa ancora soglie arbitrarie. Deve misurare almeno:
 Le soglie saranno congelate solo dopo una finestra di pilot reale sufficiente a non inventare numeri privi di evidenza.
 
 ## Ordine operativo
+
+### Punto di ripresa transitorio — security/account
+
+Prima di tornare alle fasi M5 già congelate, chiudere esclusivamente lo stack aperto dal lavoro corrente:
+
+0.1. stabilizzare **PR #346** sul final head, distinguendo regressioni reali da failure della fixture MFA governata e senza bypass dei gate;
+0.2. integrare #346 solo con tracciabilità exact-head coerente;
+0.3. retargettare **PR #348** sulla nuova `develop`, rieseguire i gate applicabili e integrare Account e sicurezza soltanto se verdi;
+0.4. dopo il merge, promuovere nei documenti lo stato Account da `IMPLEMENTED / NOT INTEGRATED` a capability consolidata e chiudere #347 con evidenza.
+
+Questa sequenza è un **intermezzo di closure**, non una nuova fase del programma M5. Completato 0.4, il piano riprende esattamente dalla Fase A seguente.
 
 ### Fase A — governance residua
 
