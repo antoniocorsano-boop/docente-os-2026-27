@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -20,8 +19,11 @@ type Enrollment = {
   secret: string
 }
 
+function continueThroughServerBoundary(nextPath: string) {
+  window.location.assign(`/mfa?next=${encodeURIComponent(nextPath)}`)
+}
+
 export function MfaGate({ nextPath }: { nextPath: string }) {
-  const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
   const [phase, setPhase] = useState<Phase>('loading')
   const [factors, setFactors] = useState<TotpFactor[]>([])
@@ -44,8 +46,7 @@ export function MfaGate({ nextPath }: { nextPath: string }) {
       }
 
       if (assurance.data.currentLevel === 'aal2') {
-        router.replace(nextPath)
-        router.refresh()
+        continueThroughServerBoundary(nextPath)
         return
       }
 
@@ -75,7 +76,7 @@ export function MfaGate({ nextPath }: { nextPath: string }) {
     return () => {
       active = false
     }
-  }, [nextPath, router, supabase])
+  }, [nextPath, supabase])
 
   async function startEnrollment() {
     setBusy(true)
@@ -155,8 +156,7 @@ export function MfaGate({ nextPath }: { nextPath: string }) {
       return
     }
 
-    router.replace(nextPath)
-    router.refresh()
+    continueThroughServerBoundary(nextPath)
   }
 
   if (phase === 'loading') {
