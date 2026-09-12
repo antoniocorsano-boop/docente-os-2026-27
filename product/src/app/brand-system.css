@@ -1,17 +1,17 @@
 :root{
   --brand-navy:#0b2d5b;
   --brand-navy-2:#123f79;
-  --brand-blue:#2f6df6;
+  --brand-blue:#245ad4;
   --brand-blue-2:#4c83ff;
   --brand-thread:#35bdd0;
-  --brand-green:#16a34a;
+  --brand-green:#0f7f3c;
   --brand-neutral:#e5e7eb;
   --canvas:#f5f8fd;
   --surface:#ffffff;
   --surface-soft:#f1f5fb;
   --ink:#10233f;
   --ink-soft:#5d6f88;
-  --ink-faint:#8795a8;
+  --ink-faint:#607188;
   --ink-on-dark:#ffffff;
   --ink-on-dark-soft:#c7d4e8;
   --line:#e4e9f1;
@@ -95,7 +95,7 @@ a,button{-webkit-tap-highlight-color:rgba(47,109,246,.12)}
 .dosMobileContext span{color:var(--brand-blue)}
 .dosMobileActions button{border-color:var(--line);background:rgba(255,255,255,.9);border-radius:14px;box-shadow:0 4px 14px rgba(11,45,91,.04)}
 .dosBottomNav{border-top-color:var(--line);box-shadow:0 -10px 30px rgba(11,45,91,.07)}
-.dosBottomNav a,.dosBottomNav button{border-radius:14px;color:#76869a}
+.dosBottomNav a,.dosBottomNav button{border-radius:14px;color:var(--ink-faint)}
 .dosBottomNav .active{color:var(--brand-blue);background:var(--brand-soft)}
 
 /* Shared surfaces: one visual language across old and new pages */
@@ -110,6 +110,7 @@ a,button{-webkit-tap-highlight-color:rgba(47,109,246,.12)}
 .quickCapture:focus-within{border-color:#9bb9ff;box-shadow:0 0 0 4px rgba(47,109,246,.09)}
 .quickCapture button,.stack button,.panel button{background:var(--brand-blue)}
 .badge,.sourceChip,.dateChip,.priorityChip,.waitingChip{border-radius:999px}
+.settingsListRow.mutedRow{opacity:1;background:var(--surface-soft)}
 
 /* Primary action signature */
 .humanTaskActions .primary,.primaryButton,[data-brand-primary="true"]{
