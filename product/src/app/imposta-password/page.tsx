@@ -10,6 +10,8 @@ type PasswordSetupPageProps = {
   searchParams: Promise<{ error?: string; source?: string }>
 }
 
+type PasswordSetupSource = 'email' | 'recovery' | 'account'
+
 export default async function PasswordSetupPage({ searchParams }: PasswordSetupPageProps) {
   const supabase = await createClient()
   const { data } = await supabase.auth.getClaims()
@@ -18,11 +20,16 @@ export default async function PasswordSetupPage({ searchParams }: PasswordSetupP
   if (!claims) redirect('/login?error=session_required')
 
   const params = await searchParams
-  const isRecovery = params.source === 'recovery'
+  const source = normalizeSetupSource(params.source)
+  if (!source) redirect('/account')
 
-  if (isRecovery && !hasAal2(claims)) {
-    redirect(mfaRedirectPath('/imposta-password', '?source=recovery'))
+  if (!hasAal2(claims)) {
+    redirect(mfaRedirectPath('/imposta-password', `?source=${source}`))
   }
+
+  const isRecovery = source === 'recovery'
+  const isAccountChange = source === 'account'
+  const isEmailSetup = source === 'email'
 
   const message = params.error === 'weak_password'
     ? 'La password deve contenere almeno 10 caratteri.'
@@ -31,35 +38,44 @@ export default async function PasswordSetupPage({ searchParams }: PasswordSetupP
       : params.error === 'password_update_failed'
         ? 'Non è stato possibile salvare la password. Riprova.'
         : isRecovery
-          ? 'Identità verificata. Scegli una nuova password per completare il recupero dell’account.'
-          : params.source === 'email'
-            ? 'Accesso verificato. Imposta ora una password: da questo momento gli accessi ordinari non richiederanno più email.'
-            : null
+          ? 'Identità e secondo fattore verificati. Scegli una nuova password per completare il recupero dell’account.'
+          : isAccountChange
+            ? 'Sessione MFA verificata. Scegli una nuova password per il tuo account.'
+            : 'Email e secondo fattore verificati. Imposta ora una password: da questo momento gli accessi ordinari non richiederanno più email.'
 
-  const formSource = isRecovery ? 'recovery' : params.source === 'email' ? 'email' : ''
+  const title = isRecovery ? 'Scegli una nuova password' : isAccountChange ? 'Cambia password' : 'Imposta la password'
+  const submitLabel = isRecovery ? 'Salva la nuova password' : isAccountChange ? 'Aggiorna password' : 'Salva password e continua'
 
   return (
     <main className="shell">
       <section className="panel auth-card">
         <p className="eyebrow">DOCENTE OS 2026/27</p>
-        <h1>{isRecovery ? 'Scegli una nuova password' : 'Imposta la password'}</h1>
+        <h1>{title}</h1>
         <p className="muted">
-          Questa password resta gestita da Supabase Auth. Docente OS non la salva in chiaro e gli accessi successivi non richiederanno l’invio di email.
+          Questa password resta gestita da Supabase Auth. Docente OS non la salva in chiaro e ogni modifica richiede una sessione MFA verificata.
         </p>
 
-        {message ? <p role="status" className="notice">{message}</p> : null}
+        <p role="status" className="notice">{message}</p>
 
         <form action={setPassword} className="stack">
-          <input type="hidden" name="source" value={formSource} />
+          <input type="hidden" name="source" value={source} />
           <label htmlFor="password">Nuova password</label>
           <input id="password" name="password" type="password" autoComplete="new-password" minLength={10} required />
           <label htmlFor="confirm_password">Conferma password</label>
           <input id="confirm_password" name="confirm_password" type="password" autoComplete="new-password" minLength={10} required />
-          <button type="submit">{isRecovery ? 'Salva la nuova password' : 'Salva password e continua'}</button>
+          <button type="submit">{submitLabel}</button>
         </form>
 
-        {!isRecovery ? <Link href="/workspace">Continua senza modificare la password</Link> : null}
+        {isAccountChange
+          ? <Link href="/account">Torna ad Account e sicurezza</Link>
+          : isEmailSetup
+            ? <Link href="/workspace">Continua senza impostare la password</Link>
+            : null}
       </section>
     </main>
   )
+}
+
+function normalizeSetupSource(value: string | undefined): PasswordSetupSource | null {
+  return value === 'recovery' || value === 'email' || value === 'account' ? value : null
 }

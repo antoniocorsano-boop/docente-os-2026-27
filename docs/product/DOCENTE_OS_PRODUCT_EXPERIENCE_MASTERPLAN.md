@@ -1,6 +1,7 @@
 # DOCENTE OS — Product Experience Masterplan
 
 Data: 2026-08-22  
+Ultimo consolidamento: 2026-09-12  
 Stato: CANONICAL / APPROVED  
 Ambito: esperienza prodotto, assistenza contestuale, component platform, accessibilità, adozione progressiva
 
@@ -101,6 +102,12 @@ Deve rispondere a: **quale materiale e quale progettazione è associata a una cl
 
 Deve rispondere a: **quale contesto professionale alimenta il sistema**.
 
+### Account e sicurezza
+
+Deve rispondere a: **con quale identità sono autenticato, quanto è protetta la sessione e dove gestisco password, secondo fattore e sessioni**.
+
+Account e sicurezza resta deliberatamente distinta da Impostazioni: l'identità digitale non è contesto professionale. Il contratto verticale è `docs/product/ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md`; l'implementazione è governata da `docs/architecture/ACCOUNT_SECURITY_CANONICAL_SPEC.md` e dalle invarianti di sicurezza/ASVS.
+
 ## 6. Assistente DOCENTE OS
 
 Nome funzionale interno: `ContextualTeacherAssistant`.
@@ -186,6 +193,8 @@ Non richiedono conferma separata:
 - navigazione;
 - calcolo non persistente.
 
+Le operazioni di sicurezza dell'account non sono azioni dell'assistente: restano sotto controllo diretto dell'utente e sotto i guard di autenticazione previsti dal contratto Account.
+
 ## 10. Roadmap di implementazione
 
 ### X0 — Canonical freeze
@@ -253,6 +262,8 @@ Ogni slice passa solo se:
 - provider AI sostituibile;
 - dati canonici non degradati.
 
+Le slice che modificano autenticazione, account, password, MFA o sessioni devono inoltre rispettare il contratto ASVS corrente e `ACCOUNT_SECURITY_CANONICAL_SPEC.md`.
+
 ## 12. Metriche di successo prodotto
 
 Target qualitativi:
@@ -263,6 +274,8 @@ Target qualitativi:
 - una nuova attività comune richiede massimo 1–2 decisioni esplicite;
 - riduzione dei controlli morti/dead-end a zero;
 - nessuna schermata primaria richiede la comprensione di ID o status tecnici.
+
+Per Account e sicurezza, l'utente deve distinguere senza ambiguità **identità di accesso**, **MFA**, **password**, **sessioni** e **Impostazioni professionali**.
 
 ## 13. Principio di migrazione
 
@@ -279,3 +292,5 @@ Questo documento governa l'evoluzione dell'esperienza prodotto. In caso di confl
 3. Language & Collaboration System;
 4. Design System V2;
 5. specifiche verticali di modulo.
+
+Per Account e sicurezza, la specifica verticale di sviluppo e il contratto di esperienza sono rispettivamente `docs/architecture/ACCOUNT_SECURITY_CANONICAL_SPEC.md` e `docs/product/ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md`; nessuno dei due può indebolire le invarianti di sicurezza superiori.

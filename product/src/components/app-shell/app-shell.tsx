@@ -13,6 +13,7 @@ import {
   Menu,
   Search,
   Settings2,
+  ShieldCheck,
   Sparkles,
   UsersRound,
   X,
@@ -41,6 +42,7 @@ const ICONS: Record<NavigationKey, LucideIcon> = {
   calendar: CalendarDays,
   'annual-plan': BookOpenCheck,
   settings: Settings2,
+  account: ShieldCheck,
 }
 
 const MOBILE_PRIMARY: NavigationKey[] = ['home', 'today', 'timetable', 'classes']

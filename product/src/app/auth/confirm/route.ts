@@ -38,16 +38,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(redirectTo)
   }
 
-  // Email verification/recovery establishes an authenticated AAL1 session but does
-  // not authorize application access. Recovery must complete MFA before password
-  // mutation; workspace bootstrap remains deferred until AAL2.
-  if (isRecovery) {
-    redirectTo.pathname = '/mfa'
-    redirectTo.searchParams.set('next', '/imposta-password?source=recovery')
-    return NextResponse.redirect(redirectTo)
-  }
-
-  redirectTo.pathname = '/imposta-password'
-  redirectTo.searchParams.set('source', 'email')
+  // Email verification and recovery establish only an authenticated AAL1 session.
+  // Every password mutation must cross the same MFA boundary before it is allowed,
+  // including first-time password setup. Workspace bootstrap remains deferred until AAL2.
+  redirectTo.pathname = '/mfa'
+  redirectTo.searchParams.set(
+    'next',
+    isRecovery ? '/imposta-password?source=recovery' : '/imposta-password?source=email',
+  )
   return NextResponse.redirect(redirectTo)
 }

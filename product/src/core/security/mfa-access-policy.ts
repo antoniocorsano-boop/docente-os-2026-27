@@ -40,7 +40,7 @@ export function normalizeMfaNextPath(value: string | null | undefined) {
   try {
     const url = new URL(value, 'https://docente-os.local')
     if (url.origin !== 'https://docente-os.local') return DEFAULT_AUTHENTICATED_DESTINATION
-    if (isMfaExemptPath(url.pathname) && !isRecoveryPasswordDestination(url)) {
+    if (isMfaExemptPath(url.pathname) && !isAllowedPasswordDestination(url)) {
       return DEFAULT_AUTHENTICATED_DESTINATION
     }
     if (isApplicationApiPath(url.pathname)) return DEFAULT_AUTHENTICATED_DESTINATION
@@ -77,12 +77,10 @@ export function resolveExternalOrigin({
   throw new Error('A public application origin is required for auth redirects')
 }
 
-function isRecoveryPasswordDestination(url: URL) {
+function isAllowedPasswordDestination(url: URL) {
   const entries = Array.from(url.searchParams.entries())
-  return url.pathname === '/imposta-password'
-    && entries.length === 1
-    && entries[0]?.[0] === 'source'
-    && entries[0]?.[1] === 'recovery'
+  if (url.pathname !== '/imposta-password' || entries.length !== 1 || entries[0]?.[0] !== 'source') return false
+  return entries[0]?.[1] === 'recovery' || entries[0]?.[1] === 'account' || entries[0]?.[1] === 'email'
 }
 
 function normalizeHttpOrigin(value: string | null | undefined) {
