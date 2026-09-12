@@ -20,9 +20,10 @@ export async function signInWithPassword(formData: FormData) {
     redirect('/login?error=invalid_credentials')
   }
 
-  // The first factor establishes AAL1 only. Workspace bootstrap is deliberately
-  // deferred until the MFA boundary confirms AAL2.
-  redirect('/workspace')
+  // Password sign-in is the first factor. Route explicitly through the MFA
+  // boundary instead of relying on a follow-up proxy interception of the
+  // Server Action redirect. Workspace bootstrap remains deferred until AAL2.
+  redirect('/mfa?next=%2Fworkspace')
 }
 
 export async function requestMagicLink(formData: FormData) {
