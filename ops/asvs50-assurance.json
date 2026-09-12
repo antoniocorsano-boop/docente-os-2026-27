@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "standard": "OWASP ASVS",
+  "standardVersion": "5.0.0",
+  "sourceTag": "v5.0.0",
+  "targetVerificationLevel": "L2",
+  "verificationClaim": false,
+  "requirementLevelMappingComplete": false,
+  "scope": "SINGLE_OWNER_TIER_1_PROFESSIONAL_NON_PERSONAL",
+  "statusVocabulary": ["PARTIAL", "GAP", "NOT_APPLICABLE_CURRENT_SCOPE", "VERIFIED_PASS"],
+  "rules": {
+    "verifiedPassRequiresRequirementLevelReceipts": true,
+    "notApplicableRequiresScopeReason": true,
+    "knownGapsMayNotBeWaived": true,
+    "chapterPassForbiddenUntilRequirementMappingComplete": true,
+    "externalProviderControlsRequireRuntimeOrProviderEvidence": true
+  },
+  "chapters": [
+    {"id":"V1","name":"Encoding and Sanitization","status":"PARTIAL","evidence":["Next.js/React rendering baseline","server actions use explicit normalization/allowlists in critical flows"],"note":"Requirement-level injection/sanitization review not complete."},
+    {"id":"V2","name":"Validation and Business Logic","status":"PARTIAL","evidence":["server-side validation patterns","human-confirmation boundaries","domain invariants and gate suite"],"note":"Requirement-level business-logic and anti-automation mapping not complete."},
+    {"id":"V3","name":"Web Frontend Security","status":"GAP","evidence":["product/next.config.ts sets poweredByHeader=false","repository search found no Content-Security-Policy configuration"],"note":"Priority finding ASVS-001: V3.4.3 L2 lacks a repository/runtime receipt for CSP."},
+    {"id":"V4","name":"API and Web Service","status":"PARTIAL","evidence":["Next.js server actions/routes","Supabase service boundaries"],"note":"HTTP method/message/header controls require requirement-level verification."},
+    {"id":"V5","name":"File Handling","status":"GAP","evidence":["20 MiB upload limit","MIME allowlist","sanitized filenames","randomized storage object path"],"note":"Priority finding ASVS-002: V5.2.2 content/type validation is not implemented; MIME may be inferred from client metadata or extension."},
+    {"id":"V6","name":"Authentication","status":"GAP","evidence":["Supabase password authentication","magic-link flow","password recovery rehearsal","non-enumerating recovery response"],"note":"Priority finding ASVS-003: V6.3.3 L2 requires MFA or equivalent factor combination; no MFA enrollment/challenge implementation found."},
+    {"id":"V7","name":"Session Management","status":"PARTIAL","evidence":["server request boundary uses supabase.auth.getClaims()","logout route","auth recovery rehearsal includes refresh/logout/session invalidation"],"note":"Timeout, concurrent-session and full termination semantics still require provider/runtime receipts."},
+    {"id":"V8","name":"Authorization","status":"PARTIAL","evidence":["Row Level Security across identity/workspace/planner/knowledge/annual-plan/settings/timetable domains","server repositories derive authenticated subject from trusted Supabase claims"],"note":"Strong baseline; field-level and full operation-level requirement mapping remains open."},
+    {"id":"V9","name":"Self-contained Tokens","status":"PARTIAL","evidence":["Supabase Auth JWT claims are validated at server boundary"],"note":"Signature/algorithm/audience/expiry behavior is provider-managed and needs explicit provider/runtime evidence."},
+    {"id":"V10","name":"OAuth and OIDC","status":"NOT_APPLICABLE_CURRENT_SCOPE","evidence":["current product exposes password and email magic-link flows; no OAuth/OIDC client/provider integration found"],"note":"Re-open immediately if social login, external IdP, OAuth client or OIDC federation is introduced."},
+    {"id":"V11","name":"Cryptography","status":"PARTIAL","evidence":["cryptographic authentication/storage largely delegated to Supabase/managed infrastructure"],"note":"No canonical crypto inventory/key-lifecycle assurance exists yet."},
+    {"id":"V12","name":"Secure Communication","status":"PARTIAL","evidence":["Production/Beta use managed HTTPS surfaces"],"note":"TLS versions/ciphers/certificate behavior require deployment/runtime receipts."},
+    {"id":"V13","name":"Configuration","status":"PARTIAL","evidence":["environment-based configuration","production promotion/readiness contracts","no service-role key found in repository search"],"note":"Secrets lifecycle, outbound allowlists and runtime hardening need explicit mapping."},
+    {"id":"V14","name":"Data Protection","status":"PARTIAL","evidence":["Tier-1-only admission boundary","P7 anonymization guard","Tier-2 not admitted","RLS baseline"],"note":"Retention/cache/client-storage controls require requirement-level review."},
+    {"id":"V15","name":"Secure Coding and Architecture","status":"PARTIAL","evidence":["daily dependency-security workflow","npm audit HIGH/CRITICAL production dependency gate","TypeScript strict/Product CI","release exact-SHA governance"],"note":"SBOM/remediation-timeframe and risky-component documentation are not yet complete."},
+    {"id":"V16","name":"Security Logging and Error Handling","status":"PARTIAL","evidence":["P7 incident escalation contract","SEV-1..SEV-4 issue workflow","no-secrets/no-school-personal-data incident rule"],"note":"ASVS logging inventory, event coverage, retention, protection and correlation receipts are incomplete."},
+    {"id":"V17","name":"WebRTC","status":"NOT_APPLICABLE_CURRENT_SCOPE","evidence":["no WebRTC/TURN/media-server capability in current product baseline"],"note":"Re-open if any WebRTC capability is introduced."}
+  ],
+  "priorityFindings": [
+    {
+      "id": "ASVS-001",
+      "requirement": "V3.4.3",
+      "level": "L2",
+      "status": "OPEN_GAP",
+      "title": "Content Security Policy baseline absent",
+      "evidence": ["product/next.config.ts contains no security headers configuration", "repository search returned no Content-Security-Policy occurrence"],
+      "closure": "Add and test a production-compatible CSP meeting ASVS 5.0 V3.4.3, then attach repository and runtime header receipts."
+    },
+    {
+      "id": "ASVS-002",
+      "requirement": "V5.2.2",
+      "level": "L1",
+      "status": "OPEN_GAP",
+      "title": "Uploaded file content is not validated against declared type",
+      "evidence": ["uploadKnowledgeFile allowlists normalized MIME", "normalizeMime may infer type from filename extension", "no magic-byte/content-signature validation before storage/processing"],
+      "closure": "Validate accepted file content/signature against the allowed type before persistence/processing and add negative tests."
+    },
+    {
+      "id": "ASVS-003",
+      "requirement": "V6.3.3",
+      "level": "L2",
+      "status": "OPEN_GAP",
+      "title": "L2 multi-factor authentication requirement not met",
+      "evidence": ["password and email magic-link are current login pathways", "repository search found no MFA/TOTP/AAL2 enrollment or challenge implementation"],
+      "closure": "Implement and require an L2-compatible factor combination for the protected application scope, with recovery/session tests and human validation."
+    }
+  ]
+}
