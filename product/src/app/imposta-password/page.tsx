@@ -26,7 +26,7 @@ export default async function PasswordSetupPage({ searchParams }: PasswordSetupP
   }
 
   if (isAccountChange && !hasAal2(claims)) {
-    redirect('/mfa?next=%2Faccount')
+    redirect(mfaRedirectPath('/imposta-password', '?source=account'))
   }
 
   const message = params.error === 'weak_password'
