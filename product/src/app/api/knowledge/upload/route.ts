@@ -20,7 +20,6 @@ type UploadFailureCode =
   | 'missing'
   | 'too_large'
   | 'unsupported'
-  | 'invalid_content'
   | 'unauthorized'
   | 'size_mismatch'
   | 'storage_failed'
@@ -89,7 +88,7 @@ export async function POST(request: Request) {
       mimeType,
       originalName,
     })
-    return json({ ok: false, code: 'invalid_content' }, 422)
+    return json({ ok: false, code: 'unsupported' }, 415)
   }
 
   if (mimeType === 'text/plain' || mimeType === 'text/markdown') {
