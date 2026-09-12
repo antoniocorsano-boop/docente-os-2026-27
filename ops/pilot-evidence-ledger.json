@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "program": "M5_SUSTAINED_PILOT_EVIDENCE",
+  "state": "COLLECTING",
+  "startedAt": "2026-09-12",
+  "scope": "SINGLE_OWNER_TIER_1_PROFESSIONAL_NON_PERSONAL",
+  "thresholdsFrozen": false,
+  "humanUseEvidenceSufficient": false,
+  "humanUseWindow": {
+    "status": "NOT_YET_SUFFICIENT",
+    "firstObservedAt": null,
+    "lastObservedAt": null,
+    "observedOperationalDays": 0,
+    "note": "La ledger contiene inizialmente solo baseline tecnica verificata. Le prove macchina non chiudono M5-02."
+  },
+  "entries": [
+    {
+      "id": "EV-20260825-PRODUCTION-SMOKE",
+      "observedAt": "2026-08-25",
+      "evidenceType": "RUNTIME_SMOKE",
+      "journeyId": null,
+      "outcome": "SUCCESS",
+      "environment": "PRODUCTION",
+      "sourceRef": "ops/production-release-receipt.json; Production Runtime Smoke run 32903982577",
+      "exactSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+      "summary": "Pilot Production storico servito sullo SHA candidato immutabile verificato dalla receipt canonica.",
+      "containsSchoolPersonalData": false,
+      "requiresFollowUp": false,
+      "relatedFindingId": null
+    },
+    {
+      "id": "EV-20260912-DPG2-CLOSURE",
+      "observedAt": "2026-09-12",
+      "evidenceType": "MACHINE_GATE",
+      "journeyId": null,
+      "outcome": "SUCCESS",
+      "environment": "CI",
+      "sourceRef": "PR #336 exact head f9953382e8ee8ef6307fa3859066bfb8d3e063a4; runs DPG 34669356545, Product CI 34669356508, HIM 34669356486, HVA 34669356502, P6 34669356485, X4 34669356481, X5 34669356512, X5B 34669356506, K1 34669356501, P7 34669356492",
+      "exactSha": "f9953382e8ee8ef6307fa3859066bfb8d3e063a4",
+      "summary": "Chiusura DPG-2 verificata con tutti i dieci gate previsti PASS sul medesimo exact head prima del merge #336.",
+      "containsSchoolPersonalData": false,
+      "requiresFollowUp": false,
+      "relatedFindingId": null
+    },
+    {
+      "id": "EV-20260912-RELEASE-POLICY",
+      "observedAt": "2026-09-12",
+      "evidenceType": "MACHINE_GATE",
+      "journeyId": null,
+      "outcome": "SUCCESS",
+      "environment": "CI",
+      "sourceRef": "PR #339 exact head 00d81941b408f62cd2a9455c7da4a5edbeaa07a2; Release Engineering Policy run 34670315598; Human Interaction Model run 34670315613",
+      "exactSha": "00d81941b408f62cd2a9455c7da4a5edbeaa07a2",
+      "summary": "Versioning e contratto RC M5-01 verificati dal gate release-engineering/policy e da HIM prima del merge #339.",
+      "containsSchoolPersonalData": false,
+      "requiresFollowUp": false,
+      "relatedFindingId": null
+    }
+  ],
+  "openFindings": [],
+  "rollup": {
+    "machineGateEntries": 2,
+    "runtimeSmokeEntries": 1,
+    "humanUseEntries": 0,
+    "frictionEntries": 0,
+    "incidentEntries": 0,
+    "workaroundEntries": 0,
+    "recoveryEntries": 0,
+    "accessibilityFindingEntries": 0,
+    "m502ClosureAuthorized": false
+  }
+}
