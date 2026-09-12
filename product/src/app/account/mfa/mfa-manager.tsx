@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -24,11 +24,7 @@ export function MfaManager() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
-  useEffect(() => {
-    void refreshFactors()
-  }, [])
-
-  async function refreshFactors() {
+  const refreshFactors = useCallback(async () => {
     const listed = await supabase.auth.mfa.listFactors()
     if (listed.error) {
       setMessage('Non è stato possibile leggere i fattori di autenticazione.')
@@ -39,7 +35,11 @@ export function MfaManager() {
       id: factor.id,
       friendlyName: factor.friendly_name?.trim() || 'Autenticatore',
     })))
-  }
+  }, [supabase])
+
+  useEffect(() => {
+    void refreshFactors()
+  }, [refreshFactors])
 
   async function startEnrollment() {
     setBusy(true)
