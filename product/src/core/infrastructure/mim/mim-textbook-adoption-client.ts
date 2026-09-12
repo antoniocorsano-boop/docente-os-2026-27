@@ -338,6 +338,18 @@ export function resolveDatiGovMimCsvUrl(
   return mentionsOtherAcademicYear ? null : candidates[0].url
 }
 
+export function fallbackAdoptionSchoolCodesWhenRegistryHasNoMatch(schoolCode: string) {
+  const normalizedSchoolCode = normalizeSchoolCode(schoolCode)
+
+  if (/^[A-Z]{2}IC[A-Z0-9]{6}$/.test(normalizedSchoolCode)) {
+    throw new Error(
+      `Il codice di istituto MIM ${normalizedSchoolCode} non è stato risolto in alcun plesso. Nessuna proposta è stata importata.`,
+    )
+  }
+
+  return [normalizedSchoolCode]
+}
+
 async function resolveAdoptionSchoolCodes(
   schoolCode: string,
   academicYearCode: string,
@@ -365,7 +377,7 @@ async function resolveAdoptionSchoolCodes(
   if (resolvedFromCsv.length) return resolvedFromCsv
 
   if (availableResults.length || csvResult.available) {
-    return [schoolCode]
+    return fallbackAdoptionSchoolCodesWhenRegistryHasNoMatch(schoolCode)
   }
 
   throw new Error(
