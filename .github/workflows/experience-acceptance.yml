@@ -53,8 +53,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
-  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
+  E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
   EXPERIENCE_OUTPUT_DIR: test-results/experience
 
 jobs:
@@ -71,15 +72,21 @@ jobs:
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
 
     steps:
-      - name: Check E2E credential configuration
+      - name: Check governed AAL2 E2E credential configuration
         id: credentials
         shell: bash
         run: |
-          if [ -n "${E2E_PASSWORD:-}" ]; then
+          missing=0
+          for name in E2E_EMAIL E2E_PASSWORD E2E_TOTP_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is required for HVA authenticated acceptance."
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 0 ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo 'Repository secret DOCENTE_OS_E2E_PASSWORD is required.' >&2
           fi
 
       - name: Publish pending application status
@@ -201,7 +208,7 @@ jobs:
               sha: testedSha,
               state: !ready ? 'error' : ok ? 'success' : 'failure',
               context: 'hva/application',
-              description: !ready ? 'HVA non eseguito: credenziale mancante' : ok ? 'Gate automatico HVA locale superato' : 'Gate automatico HVA locale non superato',
+              description: !ready ? 'HVA non eseguito: credenziale AAL2 mancante' : ok ? 'Gate automatico HVA locale superato' : 'Gate automatico HVA locale non superato',
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
 
@@ -238,15 +245,21 @@ jobs:
           echo "EXPERIENCE_TARGET=$target" >> "$GITHUB_ENV"
           echo "E2E_BASE_URL=$base_url" >> "$GITHUB_ENV"
 
-      - name: Check E2E credential configuration
+      - name: Check governed AAL2 E2E credential configuration
         id: credentials
         shell: bash
         run: |
-          if [ -n "${E2E_PASSWORD:-}" ]; then
+          missing=0
+          for name in E2E_EMAIL E2E_PASSWORD E2E_TOTP_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is required for HVA authenticated acceptance."
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 0 ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo 'Repository secret DOCENTE_OS_E2E_PASSWORD is required.' >&2
           fi
 
       - name: Publish pending runtime status
@@ -351,6 +364,6 @@ jobs:
               sha: context.sha,
               state: !ready ? 'error' : ok ? 'success' : 'failure',
               context: 'hva/runtime',
-              description: !ready ? 'HVA non eseguito: credenziale mancante' : ok ? `Gate automatico HVA ${process.env.TARGET} superato` : `Gate automatico HVA ${process.env.TARGET || 'runtime'} non superato`,
+              description: !ready ? 'HVA non eseguito: credenziale AAL2 mancante' : ok ? `Gate automatico HVA ${process.env.TARGET} superato` : `Gate automatico HVA ${process.env.TARGET || 'runtime'} non superato`,
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
