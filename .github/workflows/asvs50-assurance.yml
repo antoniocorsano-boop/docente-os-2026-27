@@ -1,0 +1,49 @@
+name: ASVS 5.0 Assurance
+
+on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - 'ops/asvs50-assurance.json'
+      - 'docs/product/ASVS_5_0_ASSURANCE_CANONICAL.md'
+      - 'docs/product/M5_READINESS_MATRIX_2026-09-12.md'
+      - 'docs/product/PROJECT_STATUS_CURRENT.md'
+      - 'docs/product/CANONICAL_DOC_INDEX.md'
+      - '.github/scripts/validate-asvs50-assurance.mjs'
+      - '.github/workflows/asvs50-assurance.yml'
+      - '.github/workflows/dependency-security.yml'
+      - '.github/scripts/dependency-security.mjs'
+      - 'product/src/**'
+      - 'product/supabase/**'
+      - 'product/next.config.*'
+  push:
+    branches: [develop]
+    paths:
+      - 'ops/asvs50-assurance.json'
+      - 'docs/product/ASVS_5_0_ASSURANCE_CANONICAL.md'
+      - '.github/scripts/validate-asvs50-assurance.mjs'
+      - '.github/workflows/asvs50-assurance.yml'
+      - 'product/src/**'
+      - 'product/supabase/**'
+      - 'product/next.config.*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  asvs50-assurance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate ASVS 5.0 assurance contract
+        run: node .github/scripts/validate-asvs50-assurance.mjs
