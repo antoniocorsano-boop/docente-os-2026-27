@@ -14,4 +14,8 @@ export const DOCENTE_OS_MARK_COLORS = {
   teal: '#35BDD0',
   white: '#FFFFFF',
   inverseSoft: '#DCEBFF',
+  reducedThreadEnd: '#71D7E5',
+  darkThreadStart: '#2A7CF4',
+  darkThreadEnd: '#42CBD7',
+  lightThreadStart: '#2789F3',
 } as const
