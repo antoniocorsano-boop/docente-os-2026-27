@@ -31,7 +31,7 @@ export async function setPassword(formData: FormData) {
   }
 
   if (source === 'account' && !hasAal2(data.claims)) {
-    redirect('/mfa?next=%2Faccount')
+    redirect(mfaRedirectPath('/imposta-password', '?source=account'))
   }
 
   const { error } = await supabase.auth.updateUser({ password })
