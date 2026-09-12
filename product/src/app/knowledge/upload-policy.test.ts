@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import './upload-content-validation.test'
+import './upload-content-validation-contract.test'
 import {
   buildKnowledgeObjectPath,
   DOCX_MIME,
@@ -13,6 +15,11 @@ test('normalizes supported mime types from extension when the browser omits them
   assert.equal(normalizeKnowledgeUploadMime('', 'circolare.pdf'), 'application/pdf')
   assert.equal(normalizeKnowledgeUploadMime('', 'modello.docx'), DOCX_MIME)
   assert.equal(normalizeKnowledgeUploadMime('', 'foto.JPEG'), 'image/jpeg')
+})
+
+test('canonicalizes browser text/plain for markdown without relaxing other type mismatches', () => {
+  assert.equal(normalizeKnowledgeUploadMime('text/plain', 'appunti.md'), 'text/markdown')
+  assert.equal(normalizeKnowledgeUploadMime('image/jpeg', 'documento.pdf'), 'image/jpeg')
 })
 
 test('sanitizes filenames before building workspace-and-user-scoped storage paths', () => {

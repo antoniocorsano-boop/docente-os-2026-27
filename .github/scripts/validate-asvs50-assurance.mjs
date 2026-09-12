@@ -4,6 +4,7 @@ const path = 'ops/asvs50-assurance.json'
 const data = JSON.parse(fs.readFileSync(path, 'utf8'))
 const expectedChapters = Array.from({ length: 17 }, (_, index) => `V${index + 1}`)
 const allowedStatuses = new Set(['PARTIAL', 'GAP', 'NOT_APPLICABLE_CURRENT_SCOPE', 'VERIFIED_PASS'])
+const allowedFindingStatuses = new Set(['OPEN_GAP', 'CLOSED_VERIFIED'])
 
 function fail(message) {
   console.error(`ASVS50_ASSURANCE_FAIL ${message}`)
@@ -29,31 +30,53 @@ for (const chapter of data.chapters) {
   if (!Array.isArray(chapter.evidence) || chapter.evidence.length === 0) fail(`chapter ${chapter.id} needs evidence`)
 }
 
-if (!Array.isArray(data.priorityFindings) || data.priorityFindings.length === 0) fail('priority findings are required while known gaps exist')
+if (!Array.isArray(data.priorityFindings) || data.priorityFindings.length === 0) fail('priority finding history is required')
 const findingIds = new Set()
 for (const finding of data.priorityFindings) {
   if (!finding.id || findingIds.has(finding.id)) fail(`invalid/duplicate finding id ${finding.id}`)
   findingIds.add(finding.id)
   if (!/^V\d+\.\d+\.\d+$/.test(finding.requirement)) fail(`finding ${finding.id} must reference a versioned ASVS requirement`)
-  if (!['L1', 'L2'].includes(finding.level)) fail(`finding ${finding.id} must be an L1/L2 blocker for the target`)
-  if (finding.status !== 'OPEN_GAP') fail(`known finding ${finding.id} may not be waived`)
+  if (!['L1', 'L2'].includes(finding.level)) fail(`finding ${finding.id} must be an L1/L2 requirement for the target`)
+  if (!allowedFindingStatuses.has(finding.status)) fail(`invalid finding status for ${finding.id}`)
   if (!Array.isArray(finding.evidence) || finding.evidence.length === 0) fail(`finding ${finding.id} needs evidence`)
   if (!String(finding.closure ?? '').trim()) fail(`finding ${finding.id} needs an explicit closure criterion`)
-}
 
-const requiredGapRequirements = new Set(['V3.4.3', 'V5.2.2', 'V6.3.3'])
-for (const requirement of requiredGapRequirements) {
-  if (!data.priorityFindings.some((finding) => finding.requirement === requirement && finding.status === 'OPEN_GAP')) {
-    fail(`known gap ${requirement} must remain explicit until closed with receipts`)
+  if (finding.status === 'CLOSED_VERIFIED') {
+    if (!/^[0-9a-f]{40}$/i.test(String(finding.implementationSha ?? ''))) {
+      fail(`closed finding ${finding.id} needs an exact 40-character implementation SHA`)
+    }
+    if (!Array.isArray(finding.closureReceipts) || finding.closureReceipts.length < 3) {
+      fail(`closed finding ${finding.id} needs at least three closure receipts`)
+    }
+    for (const receipt of finding.closureReceipts) {
+      if (!String(receipt?.type ?? '').trim()) fail(`closed finding ${finding.id} has a receipt without type`)
+      const hasRun = Number.isInteger(receipt?.runId) && receipt.runId > 0
+      const hasReference = String(receipt?.reference ?? '').trim().length > 0
+      if (!hasRun && !hasReference) fail(`closed finding ${finding.id} receipt needs runId or reference`)
+    }
   }
 }
+
+for (const requirement of ['V3.4.3', 'V6.3.3']) {
+  if (!data.priorityFindings.some((finding) => finding.requirement === requirement && finding.status === 'OPEN_GAP')) {
+    fail(`known open gap ${requirement} must remain explicit until closed with receipts`)
+  }
+}
+
+const v522 = data.priorityFindings.find((finding) => finding.requirement === 'V5.2.2')
+if (!v522) fail('V5.2.2 finding history must remain present')
+if (v522.status !== 'CLOSED_VERIFIED') fail('V5.2.2 must be CLOSED_VERIFIED only after exact-head receipts are recorded')
+
+const openPriorityFindings = data.priorityFindings.filter((finding) => finding.status === 'OPEN_GAP').length
+const closedVerifiedFindings = data.priorityFindings.filter((finding) => finding.status === 'CLOSED_VERIFIED').length
 
 console.log(JSON.stringify({
   result: 'PASS',
   standard: `${data.standard} ${data.standardVersion}`,
   target: data.targetVerificationLevel,
   chapters: data.chapters.length,
-  openPriorityFindings: data.priorityFindings.length,
+  openPriorityFindings,
+  closedVerifiedFindings,
   verificationClaim: data.verificationClaim,
   requirementLevelMappingComplete: data.requirementLevelMappingComplete,
 }))

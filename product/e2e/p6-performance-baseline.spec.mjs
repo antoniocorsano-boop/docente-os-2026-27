@@ -31,9 +31,11 @@ test('P6 baseline: superfici principali restano entro il budget dopo warm-up', a
   await page.locator('#email').fill(email)
   await page.getByLabel('Password').fill(password)
   await Promise.all([
-    page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 30_000 }),
+    page.waitForURL((url) => url.pathname === '/workspace', { timeout: 30_000 }),
     page.getByRole('button', { name: /Entra nel tuo spazio docente/i }).click(),
   ])
+  await page.waitForLoadState('domcontentloaded')
+  await expect(page.locator('main')).toBeVisible()
 
   // Warm-up: Render Free può avere cold start. Il gate misura il comportamento
   // operativo dopo che l'istanza ha risposto, non il tempo di risveglio del piano.

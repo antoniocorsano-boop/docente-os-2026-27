@@ -15,11 +15,14 @@ import { createClient } from '@/lib/supabase/server'
 import type { KnowledgeAssetContextInput } from '@/core/domain/knowledge'
 import { buildKnowledgeTaskSourceRef } from '@/core/domain/knowledge-task-source'
 import type { PlannerTaskPriority, PlannerTaskSourceKind } from '@/core/domain/planner-task'
-
-const KNOWLEDGE_BUCKET = 'knowledge-assets'
-const MAX_UPLOAD_BYTES = 20 * 1024 * 1024
-const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-const ALLOWED_UPLOAD_MIMES = new Set(['application/pdf', DOCX_MIME, 'text/plain', 'text/markdown', 'image/png', 'image/jpeg', 'image/webp'])
+import { validateKnowledgeUploadContent } from './upload-content-validation'
+import {
+  isAllowedKnowledgeUploadMime,
+  KNOWLEDGE_BUCKET,
+  MAX_KNOWLEDGE_UPLOAD_BYTES,
+  normalizeKnowledgeUploadMime,
+  sanitizeKnowledgeFilename,
+} from './upload-policy'
 
 export async function captureKnowledgeNote(formData: FormData) {
   const titleValue = formData.get('title')
@@ -51,14 +54,20 @@ export async function captureKnowledgeNote(formData: FormData) {
 export async function uploadKnowledgeFile(formData: FormData) {
   const value = formData.get('file')
   if (!(value instanceof File) || value.size === 0) redirect('/knowledge?upload=missing')
-  if (value.size > MAX_UPLOAD_BYTES) redirect('/knowledge?upload=too_large')
+  if (value.size > MAX_KNOWLEDGE_UPLOAD_BYTES) redirect('/knowledge?upload=too_large')
 
-  const mimeType = normalizeMime(value.type, value.name)
-  if (!ALLOWED_UPLOAD_MIMES.has(mimeType)) redirect('/knowledge?upload=unsupported')
+  const mimeType = normalizeKnowledgeUploadMime(value.type, value.name)
+  if (!isAllowedKnowledgeUploadMime(mimeType)) redirect('/knowledge?upload=unsupported')
+
+  const bytes = new Uint8Array(await value.arrayBuffer())
+  const contentValidation = await validateKnowledgeUploadContent({ filename: value.name, mimeType, bytes })
+  if (!contentValidation.valid) {
+    const code = contentValidation.code === 'extension_mismatch' ? 'unsupported' : 'invalid_content'
+    redirect(`/knowledge?upload=${code}`)
+  }
 
   const context = await requireWorkspaceContext()
-  const bytes = new Uint8Array(await value.arrayBuffer())
-  const safeName = sanitizeFilename(value.name || 'asset')
+  const safeName = sanitizeKnowledgeFilename(value.name || 'asset')
   const objectPath = `${context.workspace.id}/${crypto.randomUUID()}-${safeName}`
   const supabase = await createClient()
 
@@ -297,25 +306,6 @@ async function requireWorkspaceContext() {
   const context = await workspaceRepository.getCurrentContext()
   if (!context) redirect('/login')
   return context
-}
-
-function normalizeMime(rawMime: string, filename: string) {
-  if (rawMime && ALLOWED_UPLOAD_MIMES.has(rawMime)) return rawMime
-  const extension = filename.toLowerCase().split('.').pop()
-  if (extension === 'pdf') return 'application/pdf'
-  if (extension === 'docx') return DOCX_MIME
-  if (extension === 'md' || extension === 'markdown') return 'text/markdown'
-  if (extension === 'txt') return 'text/plain'
-  if (extension === 'png') return 'image/png'
-  if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg'
-  if (extension === 'webp') return 'image/webp'
-  return rawMime || 'application/octet-stream'
-}
-
-function sanitizeFilename(filename: string) {
-  const normalized = filename.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
-  const safe = normalized.replace(/[^A-Za-z0-9_.-]+/g, '_').replace(/^_+|_+$/g, '')
-  return (safe || 'asset').slice(-160)
 }
 
 function stringValue(value: FormDataEntryValue | null) {

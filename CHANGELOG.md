@@ -17,6 +17,7 @@ DOCENTE OS adotta Semantic Versioning per le release formalmente emesse dal prog
 - Corretto sistemicamente il baseline di contrasto emerso dal primo run axe mediante token canonici di brand/testo/successo e bottom navigation; il run WCAG `34672053257` è PASS sull'exact head `20eb47b7e35faf3114dcbfe32ee320c1cfcc9557`.
 - Avviato **M5-04 — OWASP ASVS 5.0 Assurance** sulla baseline stabile `v5.0.0`, con target L2, matrice machine-readable dei 17 capitoli, validator anti-waiver/anti-false-PASS e gate dedicato sull'exact head; M5-04A resta `PARTIAL`.
 - Congelati come finding prioritari ASVS i gap **V3.4.3 CSP**, **V5.2.2 file content/type validation** e **V6.3.3 MFA**, senza attribuire una verifica L2 non ancora dimostrata.
+- Chiuso con evidenza strutturata **ASVS-002 / V5.2.2**: validazione fail-closed di estensione/MIME/contenuto sui tre ingressi di upload, parser reali per PDF/DOCX, firme per immagini, UTF-8 strict per testo, test negativi e rilettura server-side dei blob resumable prima dell'ammissione nella KB. La closure è legata all'implementation SHA `f0c5ee3b4b4995dec78836571584bc9f72e78890` e alle receipt Product CI `34674333510`, K1 `34674333522`, P6 `34674333530`, P7 `34674333531`, ASVS `34674333504`, Design Policy `34674333521` e Human Interaction Model `34674333487`. **CSP V3.4.3 e MFA V6.3.3 restano `OPEN_GAP`; M5-04A resta `PARTIAL` e `verificationClaim=false`.**
 
 ### Governance
 

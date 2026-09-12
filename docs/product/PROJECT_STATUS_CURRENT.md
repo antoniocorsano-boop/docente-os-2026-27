@@ -151,7 +151,7 @@ La chiusura DPG-2 è stata certificata sull'exact head `f9953382e8ee8ef6307fa385
 
 Per M5-03, il baseline automatizzato sul commit `20eb47b7e35faf3114dcbfe32ee320c1cfcc9557` ha superato WCAG automated assurance run `34672053257`, HVA run `34672053242`, HIM, DPG, Product CI e P6. Questo è **automation evidence**, non una dichiarazione di conformità WCAG 2.2 AA.
 
-Per M5-04, la foundation usa OWASP ASVS **5.0.0 stabile**, target **L2**, con `verificationClaim=false` e `requirementLevelMappingComplete=false`. Il gate machine-readable impedisce di marcare capitoli `VERIFIED_PASS` prima della mappatura requisito-per-requisito e mantiene espliciti i gap L1/L2 noti.
+Per M5-04, la foundation usa OWASP ASVS **5.0.0 stabile**, target **L2**, con `verificationClaim=false` e `requirementLevelMappingComplete=false`. Il gate machine-readable impedisce di marcare capitoli `VERIFIED_PASS` prima della mappatura requisito-per-requisito e mantiene espliciti i gap L1/L2 noti. **ASVS-002 / V5.2.2 è ora registrato `CLOSED_VERIFIED`** sull'implementation SHA `f0c5ee3b4b4995dec78836571584bc9f72e78890` con receipt strutturate CI/K1/P6/P7/ASVS/DPG/HIM; CSP V3.4.3 e MFA V6.3.3 restano aperti.
 
 ## 7. Maturity program M5
 
@@ -170,7 +170,7 @@ Stato gate:
 - **M5-03A — WCAG 2.2 AA Matrix & Automated Assurance** — **PARTIAL**, baseline automatizzata PASS ma manual receipts ancora incomplete;
 - **M5-03B — Keyboard / Focus / Reflow** — **PARTIAL**;
 - **M5-03C — Assistive Technology Evidence** — **OPEN**;
-- **M5-04A — OWASP ASVS 5.0 Mapping** — **PARTIAL**, foundation attiva e requirement-level mapping incompleta;
+- **M5-04A — OWASP ASVS 5.0 Mapping** — **PARTIAL**, V5.2.2 chiuso con receipt ma requirement-level mapping incompleta e gap CSP/MFA ancora aperti;
 - **M5-04B — Dependency/Security Cadence** — **PARTIAL**;
 - **M5-05 — SLO/SLI & Operational Observability** — OPEN/PARTIAL;
 - **M5-06 — Runtime Integration Maturity (Drive/Canva; Arena conditional)** — PARTIAL;
@@ -252,7 +252,8 @@ Stato corrente:
 - 17 capitoli censiti;
 - requirement-level mapping ancora incompleta;
 - controlli positivi significativi: RLS, auth server-side via claims verificate, recovery rehearsal, dependency-security e incident escalation;
-- finding bloccanti iniziali: **V3.4.3 CSP**, **V5.2.2 file content/type validation**, **V6.3.3 MFA**.
+- **ASVS-002 / V5.2.2 — `CLOSED_VERIFIED`** sull'implementation SHA `f0c5ee3b4b4995dec78836571584bc9f72e78890`, con sette receipt strutturate;
+- gap prioritari ancora aperti: **V3.4.3 CSP** e **V6.3.3 MFA**.
 
 Pertanto **M5-04A è PARTIAL e non esiste alcuna dichiarazione di verifica ASVS L2**.
 
@@ -276,7 +277,7 @@ La matrice WCAG 2.2 AA e il gate automatizzato esistono e il baseline browser è
 
 ### E — Security assurance
 
-La foundation OWASP ASVS 5.0.0 è attiva con target L2 e gate anti-waiver. Restano aperti almeno tre blocker L1/L2 già verificati nel baseline: CSP (`V3.4.3`), validazione contenuto/tipo degli upload (`V5.2.2`) e MFA (`V6.3.3`). La mappatura requirement-level e le receipt provider/runtime restano incomplete.
+La foundation OWASP ASVS 5.0.0 è attiva con target L2 e gate anti-waiver. Il blocker L1 **V5.2.2** è `CLOSED_VERIFIED` con implementazione e receipt strutturate. Restano aperti **CSP (`V3.4.3`)** e **MFA (`V6.3.3`)**; la mappatura requirement-level e le receipt provider/runtime restano incomplete.
 
 ### F — SLO/SLI
 
@@ -292,7 +293,7 @@ Il prossimo valore reale è la continuità **Docente OS ↔ Drive ↔ Canva** ne
 2. raccogliere M5-02 durante il normale lavoro docente;
 3. registrare anche friction, workaround e failure;
 4. completare le prove manuali M5-03 e la baseline screen reader, mantenendo axe/HVA verdi;
-5. chiudere M5-04 iniziando dal gap L1 **V5.2.2**, quindi CSP e progettazione MFA, mentre procede la mappatura requirement-level;
+5. preservare la closure di **V5.2.2**, quindi chiudere CSP V3.4.3 e progettare MFA V6.3.3 mentre procede la mappatura requirement-level M5-04;
 6. definire SLI/SLO soltanto dopo la prima baseline osservata M5-02;
 7. maturare Drive/Canva sulle journey reali;
 8. mantenere Tier 2 e multi-user separati finché non esiste una decisione istituzionale esplicita.
