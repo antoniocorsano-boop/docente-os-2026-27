@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "program": "M5_SUSTAINED_PILOT_EVIDENCE",
+  "scope": "SINGLE_OWNER_TIER_1_PROFESSIONAL_NON_PERSONAL",
+  "ledgerPath": "ops/pilot-evidence-ledger.json",
+  "evidenceTypes": [
+    "MACHINE_GATE",
+    "RUNTIME_SMOKE",
+    "HUMAN_USE",
+    "FRICTION",
+    "INCIDENT",
+    "WORKAROUND",
+    "RECOVERY",
+    "ACCESSIBILITY_FINDING"
+  ],
+  "outcomes": [
+    "SUCCESS",
+    "SUCCESS_WITH_FRICTION",
+    "WORKAROUND_REQUIRED",
+    "FAILED_RECOVERABLE",
+    "FAILED_BLOCKING",
+    "NOT_APPLICABLE"
+  ],
+  "journeys": {
+    "J1": "login -> Home/Oggi",
+    "J2": "Home/Oggi -> classe -> attività/lezione corrente",
+    "J3": "lezione -> materiale -> svolgimento -> Registra la lezione",
+    "J4": "registrazione -> Diario/TeachingSession/avanzamento Piano",
+    "J5": "Progetta -> UDA -> versione -> export professionale",
+    "J6": "Conoscenza -> fonte -> trasformazione -> provenienza -> riuso",
+    "J7": "Orario + Calendario -> proiezione giornaliera",
+    "J8": "Planner -> proposta assistita -> conferma umana -> undo/recupero",
+    "J9": "Impostazioni -> contesto docente -> riuso coerente"
+  },
+  "privacy": {
+    "schoolPersonalDataAllowed": false,
+    "thirdPartyPersonalDataAllowed": false,
+    "credentialsOrSecretsAllowed": false,
+    "rawSchoolContentAllowed": false,
+    "keystrokeLoggingAllowed": false,
+    "automaticScreenRecordingAllowed": false,
+    "continuousSessionSurveillanceAllowed": false,
+    "pupilBehaviorInferenceAllowed": false
+  },
+  "governance": {
+    "appendOnlyEvidence": true,
+    "machineGateMayCountAsHumanUse": false,
+    "thresholdsMayBeFrozenBeforeObservedBaseline": false,
+    "closureRequiresNewEvidenceEntry": true,
+    "selectiveSuccessOnlyReportingAllowed": false,
+    "humanUseEvidenceRequiredForM502Closure": true
+  },
+  "requiredEntryFields": [
+    "id",
+    "observedAt",
+    "evidenceType",
+    "journeyId",
+    "outcome",
+    "environment",
+    "sourceRef",
+    "summary",
+    "containsSchoolPersonalData",
+    "requiresFollowUp",
+    "relatedFindingId"
+  ],
+  "maturityRules": {
+    "M5-02A": "LONGITUDINAL_HUMAN_USE_REQUIRED",
+    "M5-02B": "REPEATED_CRITICAL_JOURNEY_EVIDENCE_REQUIRED",
+    "M5-02C": "APPEND_ONLY_FRICTION_FAILURE_AND_CLOSURE_LOG_REQUIRED",
+    "M5-05": "DEFINE_THRESHOLDS_ONLY_AFTER_M5-02_BASELINE"
+  }
+}
