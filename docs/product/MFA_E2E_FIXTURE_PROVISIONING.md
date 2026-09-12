@@ -26,6 +26,7 @@ Nel repository, sul branch MFA, installare le dipendenze del prodotto e lanciare
 
 ```bash
 cd product
+npm ci
 export NEXT_PUBLIC_SUPABASE_URL='https://gnshgapmwyjamhmlikeg.supabase.co'
 export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY='<publishable-key del progetto>'
 export MFA_E2E_EMAIL='<email tecnica dedicata>'
@@ -81,7 +82,7 @@ V6.3.3 può passare a `CLOSED_VERIFIED` solo quando, sullo stesso implementation
 
 - Product CI = PASS;
 - MFA AAL2 Data Plane Contract = PASS;
-- runtime Supabase isolato = PASS;
+- runtime Supabase isolato = PASS sulla stessa migrazione candidata;
 - MFA Browser AAL2 Gate = PASS con fixture dedicata;
 - recovery non produce bypass;
 - nessun test usa scorciatoie o fattori condivisi non governati.
