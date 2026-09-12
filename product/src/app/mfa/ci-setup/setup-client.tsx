@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { createClient } from '@/lib/supabase/client'
 
@@ -185,9 +185,7 @@ export function MfaCiFactorSetup() {
                 <p className="m-0"><strong className="text-foreground">DOCENTE_OS_MFA_E2E_TOTP_SECRET</strong> → chiave mostrata sopra.</p>
               </div>
               <Button type="button" variant="secondary" onClick={() => void copySecret()}>Copia chiave TOTP CI</Button>
-              <Button asChild size="lg">
-                <a href={GITHUB_SECRETS_URL} target="_blank" rel="noreferrer">Apri GitHub Secrets</a>
-              </Button>
+              <a className={buttonVariants({ size: 'lg' })} href={GITHUB_SECRETS_URL} target="_blank" rel="noreferrer">Apri GitHub Secrets</a>
             </section>
           ) : null}
 
