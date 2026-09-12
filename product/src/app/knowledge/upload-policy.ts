@@ -32,9 +32,7 @@ export function isAllowedKnowledgeUploadMime(mimeType: string) {
   return ALLOWED_MIMES.has(mimeType)
 }
 
-export function normalizeKnowledgeUploadMime(rawMime: string, filename: string) {
-  if (rawMime && isAllowedKnowledgeUploadMime(rawMime)) return rawMime
-
+export function knowledgeUploadMimeFromExtension(filename: string) {
   const extension = filename.toLowerCase().split('.').pop()
   if (extension === 'pdf') return 'application/pdf'
   if (extension === 'docx') return DOCX_MIME
@@ -43,7 +41,12 @@ export function normalizeKnowledgeUploadMime(rawMime: string, filename: string) 
   if (extension === 'png') return 'image/png'
   if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg'
   if (extension === 'webp') return 'image/webp'
-  return rawMime || 'application/octet-stream'
+  return null
+}
+
+export function normalizeKnowledgeUploadMime(rawMime: string, filename: string) {
+  if (rawMime && isAllowedKnowledgeUploadMime(rawMime)) return rawMime
+  return knowledgeUploadMimeFromExtension(filename) ?? rawMime || 'application/octet-stream'
 }
 
 export function sanitizeKnowledgeFilename(filename: string) {
