@@ -25,6 +25,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  WCAG_ASSURANCE: '1'
   E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
   E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
   E2E_BASE_URL: http://127.0.0.1:3000
