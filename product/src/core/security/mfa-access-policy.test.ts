@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { canRemoveVerifiedMfaFactor } from './account-security-policy'
 import {
   hasAal2,
   isApplicationApiPath,
@@ -68,6 +69,14 @@ test('MFA permits only exact high-assurance password continuations among exempt 
   assert.equal(normalizeMfaNextPath('/imposta-password?source=email'), '/planner')
   assert.equal(normalizeMfaNextPath('/imposta-password?source=recovery&next=/planner'), '/planner')
   assert.equal(normalizeMfaNextPath('/imposta-password?source=account&next=/planner'), '/planner')
+})
+
+test('account MFA management preserves at least one verified factor', () => {
+  assert.equal(canRemoveVerifiedMfaFactor(0), false)
+  assert.equal(canRemoveVerifiedMfaFactor(1), false)
+  assert.equal(canRemoveVerifiedMfaFactor(2), true)
+  assert.equal(canRemoveVerifiedMfaFactor(3), true)
+  assert.equal(canRemoveVerifiedMfaFactor(1.5), false)
 })
 
 test('application API classification is explicit', () => {
