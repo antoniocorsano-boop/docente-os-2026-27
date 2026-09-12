@@ -1,0 +1,62 @@
+name: Release Engineering Policy
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - 'ops/release-engineering-policy.json'
+      - 'docs/product/RELEASE_ENGINEERING_CANONICAL.md'
+      - 'CHANGELOG.md'
+      - '.github/scripts/validate-release-engineering-policy.mjs'
+      - '.github/workflows/release-engineering-policy.yml'
+      - 'product/package.json'
+      - 'ops/production-promotion-contract.json'
+      - 'ops/production-release-receipt.json'
+  push:
+    branches:
+      - develop
+    paths:
+      - 'ops/release-engineering-policy.json'
+      - 'docs/product/RELEASE_ENGINEERING_CANONICAL.md'
+      - 'CHANGELOG.md'
+      - '.github/scripts/validate-release-engineering-policy.mjs'
+      - '.github/workflows/release-engineering-policy.yml'
+      - 'product/package.json'
+      - 'ops/production-promotion-contract.json'
+      - 'ops/production-release-receipt.json'
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  validate-release-engineering-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact tested commit
+        uses: actions/checkout@v6
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate release engineering policy
+        run: node .github/scripts/validate-release-engineering-policy.mjs
+      - name: Publish release engineering status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'release-engineering/policy',
+              description: ok ? 'Release engineering policy valida' : 'Release engineering policy non valida',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })

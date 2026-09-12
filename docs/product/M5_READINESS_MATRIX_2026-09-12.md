@@ -1,8 +1,8 @@
 # DOCENTE OS — M5 Readiness Matrix
 
 Data: **2026-09-12**  
-Baseline: `develop` @ `3767d4d5cf20b54808526a73bcbc800a1c5e6503`  
-Stato: **M5-00 / ACTIVE MATURATION BASELINE**
+Baseline: `develop` @ `401eaf0d93de908b0fb2b93eda366014d8123a25`  
+Stato: **M5-01 / ACTIVE MATURATION BASELINE**
 
 ## Regola
 
@@ -26,13 +26,13 @@ Uno stato `COMPLETE` richiede evidenza verificabile nel repository o nel runtime
 
 | ID | Area | Stato | Evidenza corrente | Gap | Criterio di chiusura |
 | --- | --- | --- | --- | --- | --- |
-| M5-00A | Stato canonico | **PARTIAL** | `PROJECT_STATUS_CURRENT.md`, audit 2026-09-12 | status drift dopo X4/X5/DPG-2 | `PROJECT_STATUS_CURRENT`, README e indice canonico riallineati allo stesso exact state |
+| M5-00A | Stato canonico | **PARTIAL** | `PROJECT_STATUS_CURRENT.md`, README e audit 2026-09-12 riallineati | indice canonico/health storico da riallineare | indice canonico e documenti sintetici non devono presentare fotografie obsolete come stato corrente |
 | M5-00B | Maturity baseline | **COMPLETE** | `SYSTEM_MATURITY_AUDIT_2026-09-12.md` | — | audit salvato, benchmark esplicito, classificazione M4 e gate M5 definiti |
 | M5-00C | Design convergence | **COMPLETE** | DPG-2 baseline 27/13/0/0/1/5 + residual register | — | DPG-1/2 permanenti e baseline monotona |
-| M5-01A | Repository hygiene | **OPEN** | audit storico segnala PR superseded | PR storiche ancora aperte | tutte le PR obsolete chiuse `SUPERSEDED`; `open` = lavoro candidato reale |
-| M5-01B | Versioning | **OPEN** | nessuna disciplina canonica trovata | manca versione prodotto/release train | schema versioning approvato e applicato |
-| M5-01C | Release candidate | **OPEN** | immutable SHA promotion già presente | manca contratto RC formalizzato | `RC → gates → promoted release` riproducibile |
-| M5-01D | GitHub Releases / changelog | **OPEN** | nessuna release pubblicata | manca ricevuta leggibile di versione | prima release pilot con changelog, exact SHA, rollback target |
+| M5-01A | Repository hygiene | **PARTIAL** | #328/#329/#330/#331/#332/#334 chiuse `SUPERSEDED` da #336 | restano PR aperte da classificare individualmente; C2P non è automaticamente superseded | ogni PR aperta deve essere lavoro candidato reale, non ricevuta storica superata |
+| M5-01B | Versioning | **COMPLETE** | `RELEASE_ENGINEERING_CANONICAL.md` + `ops/release-engineering-policy.json` + gate `release-engineering/policy` PASS | — | SemVer pre-M5, major 1 gated da M5, policy machine-verifiable |
+| M5-01C | Release candidate | **COMPLETE** | contratto RC machine-readable + validator PASS | — | `RC → gates → certified → promoted` definito; exact SHA/tag immutabile e nuova RC dopo code change |
+| M5-01D | GitHub Releases / changelog | **PARTIAL** | `CHANGELOG.md` canonico presente | nessuna nuova release formale emessa sotto M5-01 | prima release reale con tag, GitHub Release, changelog, exact SHA e rollback target; vietata release fittizia |
 | M5-02A | Pilot longitudinal evidence | **OPEN** | gate puntuali e uso reale, ma non dataset temporale formalizzato | manca finestra sostenuta | periodo minimo definito con evidence pack di uso normale |
 | M5-02B | Critical journey success | **PARTIAL** | HVA + gate verticali | manca KPI aggregato nel tempo | misurati login → Oggi → classe → lezione → registra → Diario/Planner |
 | M5-02C | User friction / failure log | **OPEN** | feedback episodico | manca registro longitudinalmente confrontabile | finding reali classificati, trend e closure evidence |
@@ -85,9 +85,9 @@ Le soglie saranno congelate solo dopo una finestra di pilot reale sufficiente a 
 
 ### Fase A — immediata
 
-1. chiudere **M5-00A Stato canonico**;
-2. chiudere **M5-01A Repository hygiene**;
-3. definire **M5-01B/C/D Release Engineering**.
+1. chiudere il residuo **M5-00A Stato canonico**;
+2. completare **M5-01A Repository hygiene** mediante classificazione individuale delle PR aperte;
+3. emettere la prima release formale solo quando esisterà una reale candidata da congelare — **M5-01D resta PARTIAL**.
 
 ### Fase B — mentre il docente usa normalmente il prodotto
 

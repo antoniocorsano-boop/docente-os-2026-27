@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "program": "M5_RELEASE_ENGINEERING",
+  "versioning": {
+    "scheme": "SEMVER",
+    "packageVersionSource": "product/package.json",
+    "preM5Major": 0,
+    "m5GeneralDistributionVersion": "1.0.0",
+    "m5RequiredForMajorOne": true,
+    "releaseTagPrefix": "v",
+    "releaseCandidateSuffix": "-rc.N"
+  },
+  "releaseStates": [
+    "DRAFT",
+    "RC",
+    "CERTIFIED",
+    "PROMOTED",
+    "SUPERSEDED",
+    "ROLLED_BACK"
+  ],
+  "candidate": {
+    "sourceBranch": "develop",
+    "exactShaRequired": true,
+    "immutableAfterFreeze": true,
+    "releaseNotesRequired": true,
+    "changelogRequired": true,
+    "applicableGateMatrixRequired": true,
+    "humanPromotionDecisionRequired": true,
+    "automaticProductionPromotionAllowed": false
+  },
+  "releaseCandidate": {
+    "manifestPathPattern": "ops/releases/<version>/release-candidate.json",
+    "tagRequired": true,
+    "tagMustResolveToCandidateSha": true,
+    "multipleRcAllowed": true,
+    "newCodeRequiresNewRc": true,
+    "gateFailureRequiresHold": true,
+    "requiredFields": [
+      "schemaVersion",
+      "product",
+      "releaseVersion",
+      "releaseState",
+      "candidateSha",
+      "sourceBranch",
+      "scope",
+      "changedCapabilities",
+      "gateMatrix",
+      "migrations",
+      "previousCertifiedSha",
+      "rollbackTargetSha",
+      "knownResiduals",
+      "humanDecision"
+    ]
+  },
+  "promotion": {
+    "usesExistingProductionPromotionContract": true,
+    "contractPath": "ops/production-promotion-contract.json",
+    "readinessPath": "ops/production-readiness-review.json",
+    "productionReceiptPath": "ops/production-release-receipt.json",
+    "postDeploySmokeRequired": true,
+    "productionMustServeExactPromotedSha": true
+  },
+  "rollback": {
+    "previousCertifiedShaRequired": true,
+    "applicationRollbackModel": "REDEPLOY_PREVIOUS_CERTIFIED_SHA",
+    "databasePolicy": "FORWARD_RECOVERY_UNLESS_PROVEN_RESTORE_PATH",
+    "storageDestructiveRollbackAllowed": false,
+    "rollbackReceiptRequired": true
+  },
+  "releaseEvidence": {
+    "releaseVersionRequired": true,
+    "candidateShaRequired": true,
+    "previousCertifiedShaRequired": true,
+    "scopeRequired": true,
+    "gateEvidenceRequired": true,
+    "migrationInventoryRequired": true,
+    "humanDecisionRequired": true,
+    "postDeploySmokeRequiredWhenPromoted": true,
+    "knownResidualsRequired": true
+  },
+  "historicalPilot": {
+    "productionPromotionDate": "2026-08-25",
+    "productionReceiptPath": "ops/production-release-receipt.json",
+    "semverRetroactivelyAssigned": false,
+    "classification": "LEGACY_UNVERSIONED_CERTIFIED_PILOT"
+  }
+}
