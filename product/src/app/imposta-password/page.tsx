@@ -19,9 +19,14 @@ export default async function PasswordSetupPage({ searchParams }: PasswordSetupP
 
   const params = await searchParams
   const isRecovery = params.source === 'recovery'
+  const isAccountChange = params.source === 'account'
 
   if (isRecovery && !hasAal2(claims)) {
     redirect(mfaRedirectPath('/imposta-password', '?source=recovery'))
+  }
+
+  if (isAccountChange && !hasAal2(claims)) {
+    redirect('/mfa?next=%2Faccount')
   }
 
   const message = params.error === 'weak_password'
@@ -32,17 +37,21 @@ export default async function PasswordSetupPage({ searchParams }: PasswordSetupP
         ? 'Non è stato possibile salvare la password. Riprova.'
         : isRecovery
           ? 'Identità verificata. Scegli una nuova password per completare il recupero dell’account.'
-          : params.source === 'email'
-            ? 'Accesso verificato. Imposta ora una password: da questo momento gli accessi ordinari non richiederanno più email.'
-            : null
+          : isAccountChange
+            ? 'Sessione MFA verificata. Scegli una nuova password per il tuo account.'
+            : params.source === 'email'
+              ? 'Accesso verificato. Imposta ora una password: da questo momento gli accessi ordinari non richiederanno più email.'
+              : null
 
-  const formSource = isRecovery ? 'recovery' : params.source === 'email' ? 'email' : ''
+  const formSource = isRecovery ? 'recovery' : isAccountChange ? 'account' : params.source === 'email' ? 'email' : ''
+  const title = isRecovery ? 'Scegli una nuova password' : isAccountChange ? 'Cambia password' : 'Imposta la password'
+  const submitLabel = isRecovery ? 'Salva la nuova password' : isAccountChange ? 'Aggiorna password' : 'Salva password e continua'
 
   return (
     <main className="shell">
       <section className="panel auth-card">
         <p className="eyebrow">DOCENTE OS 2026/27</p>
-        <h1>{isRecovery ? 'Scegli una nuova password' : 'Imposta la password'}</h1>
+        <h1>{title}</h1>
         <p className="muted">
           Questa password resta gestita da Supabase Auth. Docente OS non la salva in chiaro e gli accessi successivi non richiederanno l’invio di email.
         </p>
@@ -55,10 +64,14 @@ export default async function PasswordSetupPage({ searchParams }: PasswordSetupP
           <input id="password" name="password" type="password" autoComplete="new-password" minLength={10} required />
           <label htmlFor="confirm_password">Conferma password</label>
           <input id="confirm_password" name="confirm_password" type="password" autoComplete="new-password" minLength={10} required />
-          <button type="submit">{isRecovery ? 'Salva la nuova password' : 'Salva password e continua'}</button>
+          <button type="submit">{submitLabel}</button>
         </form>
 
-        {!isRecovery ? <Link href="/workspace">Continua senza modificare la password</Link> : null}
+        {isAccountChange
+          ? <Link href="/account">Torna ad Account e sicurezza</Link>
+          : !isRecovery
+            ? <Link href="/workspace">Continua senza modificare la password</Link>
+            : null}
       </section>
     </main>
   )
