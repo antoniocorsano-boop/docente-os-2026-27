@@ -38,9 +38,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(redirectTo)
   }
 
-  // Email verification/recovery establishes an authenticated session but does not
-  // authorize application access. Workspace bootstrap is deferred until AAL2.
+  // Email verification/recovery establishes an authenticated AAL1 session but does
+  // not authorize application access. Recovery must complete MFA before password
+  // mutation; workspace bootstrap remains deferred until AAL2.
+  if (isRecovery) {
+    redirectTo.pathname = '/mfa'
+    redirectTo.searchParams.set('next', '/imposta-password?source=recovery')
+    return NextResponse.redirect(redirectTo)
+  }
+
   redirectTo.pathname = '/imposta-password'
-  redirectTo.searchParams.set('source', isRecovery ? 'recovery' : 'email')
+  redirectTo.searchParams.set('source', 'email')
   return NextResponse.redirect(redirectTo)
 }
