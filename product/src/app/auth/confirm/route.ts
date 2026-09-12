@@ -1,6 +1,5 @@
 import type { EmailOtpType } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
-import { ensurePersonalWorkspace } from '@/app/auth/bootstrap-personal-workspace'
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
@@ -33,13 +32,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(redirectTo)
   }
 
-  const bootstrap = await ensurePersonalWorkspace(supabase)
-  if (!bootstrap.ok) {
-    redirectTo.pathname = '/login'
-    redirectTo.searchParams.set('error', bootstrap.error)
-    return NextResponse.redirect(redirectTo)
-  }
-
+  // Email verification/recovery establishes an authenticated session but does not
+  // authorize application access. Workspace bootstrap is deferred until AAL2.
   redirectTo.pathname = '/imposta-password'
   redirectTo.searchParams.set('source', isRecovery ? 'recovery' : 'email')
   return NextResponse.redirect(redirectTo)
