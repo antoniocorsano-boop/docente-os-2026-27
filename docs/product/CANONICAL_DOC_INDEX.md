@@ -30,6 +30,16 @@ Per la **sustained pilot evidence** le fonti autorevoli sono:
 - `ops/pilot-evidence-policy.json`;
 - `ops/pilot-evidence-ledger.json`.
 
+Per la **WCAG 2.2 AA accessibility assurance** le fonti autorevoli sono:
+
+- `docs/product/WCAG_2_2_AA_ASSURANCE_CANONICAL.md`;
+- `ops/wcag22-aa-assurance.json`;
+- `.github/scripts/validate-wcag22-aa-assurance.mjs`;
+- `.github/workflows/wcag22-aa-assurance.yml`;
+- `product/e2e/experience/accessibility.spec.mjs`.
+
+Un run automatico verde non costituisce da solo dichiarazione di conformità WCAG 2.2 AA; prevalgono i criteri di chiusura e le receipt definiti nel contratto canonico M5-03.
+
 Per **versioning, release candidate e promozione** le fonti autorevoli sono:
 
 - `docs/product/RELEASE_ENGINEERING_CANONICAL.md`;
@@ -71,6 +81,7 @@ Sono vietate dipendenze dirette `Timetable -> Calendar` e `Calendar -> Timetable
 - `docs/product/SYSTEM_MATURITY_AUDIT_2026-09-12.md` — **audit canonico M4 avanzato e benchmark verso M5**.
 - `docs/product/M5_READINESS_MATRIX_2026-09-12.md` — **requisito → evidenza → stato → gap → criterio di chiusura**.
 - `docs/product/SUSTAINED_PILOT_EVIDENCE_CANONICAL.md` — **regole M5-02 per evidence longitudinale, journey critiche, privacy e anti-selection-bias**.
+- `docs/product/WCAG_2_2_AA_ASSURANCE_CANONICAL.md` — **contratto M5-03 per matrice WCAG 2.2 AA, automazione, receipt manuali e assistive technology**.
 - `docs/product/RELEASE_ENGINEERING_CANONICAL.md` — **SemVer, RC immutabili, certificazione, promozione e rollback**.
 - `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — north star e programma X0–X6.
 - `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` — tono, microcopy e grammatica collaborativa.
@@ -93,6 +104,8 @@ Il default senza evidenza è `DEFERRED`.
 La sustained pilot evidence deve essere append-only, non selettiva e Tier-1-safe. Un gate macchina non equivale a `HUMAN_USE`; nessuna soglia SLO può essere congelata prima di una baseline osservata sufficiente.
 
 Una release candidate non equivale a una promozione Production. `develop` non è Production. Le release formali seguono `RELEASE_ENGINEERING_CANONICAL.md` e il contratto Production esistente.
+
+M5-03 mantiene `conformanceClaim=false` finché tutti i criteri A/AA applicabili non dispongono dell'evidenza richiesta; axe/HVA sono controlli di assurance e non certificatori.
 
 ### Regola Home
 
@@ -126,6 +139,8 @@ Per ogni lavoro su `/impostazioni`:
 - `product/design/reviews/` — decisioni visuali datate e closure evidence.
 
 Le review datate sono append-only. Lo stato sintetico corrente dei finding deve essere riportato in `PROJECT_STATUS_CURRENT.md` e, quando riguarda M5, nella readiness matrix. I finding osservati durante il pilot devono inoltre produrre evidence nella ledger M5-02 quando rientrano nel perimetro.
+
+La matrice WCAG e il suo gate non sostituiscono HVA: HVA governa l'accettazione dell'esperienza, M5-03 governa la tracciabilità requisito-evidenza WCAG e le prove manuali/assistive technology.
 
 ## Design
 
@@ -184,6 +199,21 @@ Vincoli:
 - una correzione non cancella l'evidenza originaria;
 - M5-05 può proporre SLI/SLO soltanto dopo una baseline M5-02 osservata sufficiente.
 
+## Accessibility assurance
+
+Ordine canonico:
+
+`criterio WCAG → classificazione → evidence → eventuale finding → correzione → receipt → stato`.
+
+Vincoli:
+
+- 55 criteri A/AA presenti una sola volta nella matrice;
+- `VERIFIED_PASS` solo con receipt specifica;
+- N/A sempre motivato e rivalutato quando cambia il runtime;
+- axe non sostituisce audit manuale né assistive technology;
+- keyboard/focus/reflow e screen reader restano gate separati;
+- `conformanceClaim=false` finché non esiste chiusura completa e deliberata.
+
 ## Regola di aggiornamento
 
 Ogni slice che modifica una decisione canonica deve:
@@ -205,15 +235,16 @@ Prima di implementare una slice, leggere almeno:
 1. `PROJECT_STATUS_CURRENT.md`;
 2. `M5_READINESS_MATRIX_2026-09-12.md` durante il programma M5;
 3. `SUSTAINED_PILOT_EVIDENCE_CANONICAL.md` quando il lavoro riguarda evidenza d'uso, incidenti, friction o KPI;
-4. ADR-001 e ADR-002;
-5. Product Experience Masterplan;
-6. Language & Collaboration System;
-7. Design System V2;
-8. Brand Identity e Design Governance per lavoro visuale;
-9. DPG-1/DPG-2 per lavoro visuale;
-10. la specifica verticale della slice e il relativo contratto di esperienza;
-11. per T3/T4, Work/Time Mental Model e Temporal Composition;
-12. `RELEASE_ENGINEERING_CANONICAL.md` quando il lavoro coinvolge versioni, RC, promozioni o rollback.
+4. `WCAG_2_2_AA_ASSURANCE_CANONICAL.md` quando il lavoro modifica UI, accessibilità, navigazione, form o interazioni;
+5. ADR-001 e ADR-002;
+6. Product Experience Masterplan;
+7. Language & Collaboration System;
+8. Design System V2;
+9. Brand Identity e Design Governance per lavoro visuale;
+10. DPG-1/DPG-2 per lavoro visuale;
+11. la specifica verticale della slice e il relativo contratto di esperienza;
+12. per T3/T4, Work/Time Mental Model e Temporal Composition;
+13. `RELEASE_ENGINEERING_CANONICAL.md` quando il lavoro coinvolge versioni, RC, promozioni o rollback.
 
 Nessun agente deve inferire una nuova architettura da un singolo file runtime quando esiste una decisione canonica esplicita; nessun agente deve inferire lo stato corrente da un checkpoint datato quando esiste `PROJECT_STATUS_CURRENT.md`.
 
