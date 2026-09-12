@@ -1,8 +1,8 @@
 # DOCENTE OS — M5 Readiness Matrix
 
 Data: **2026-09-12**  
-Baseline: `develop` @ `adf52f5e6da02841a45248417a442a01abaa7beb`  
-Stato: **M5-03 / ACTIVE ACCESSIBILITY ASSURANCE**
+Baseline: `develop` @ `0e815f0aaf596b2430924424eeb63714de1efa3f`  
+Stato: **M5-04 / ACTIVE SECURITY ASSURANCE**
 
 ## Regola
 
@@ -39,8 +39,8 @@ Uno stato `COMPLETE` richiede evidenza verificabile nel repository o nel runtime
 | M5-03A | WCAG 2.2 AA matrix | **PARTIAL** | matrice completa 55 criteri + validator + Playwright/axe; run `34672053257` PASS su exact head `20eb47b7…`; 2.4.1 `VERIFIED_PASS` | restano criteri `MANUAL_REQUIRED` senza receipt e verifiche contestuali/assistive-tech | tutti i criteri A/AA applicabili chiusi con receipt; N/A ancora validi; zero GAP; nessuna variante responsive rilevante esclusa |
 | M5-03B | Keyboard/focus/reflow | **PARTIAL** | focus/target governance + skip-link `Salta al contenuto` con test tastiera e receipt PASS | manca evidence pack manuale completo per tab order, focus obscured, no trap, zoom/reflow e text spacing | audit desktop/mobile a tastiera, zoom/reflow e focus order con receipt |
 | M5-03C | Assistive technology evidence | **OPEN** | baseline da definire sulle journey critiche | screen reader non ancora verificato sistematicamente | baseline screen-reader ripetibile su login, Home/Oggi, classe/lezione, registrazione, Progetta/UDA, Conoscenza e Planner |
-| M5-04A | ASVS 5.0 mapping | **OPEN** | RLS/security/recovery gate forti | nessun mapping formale | matrice ASVS con PASS/PARTIAL/N/A/GAP e link alle evidenze |
-| M5-04B | Dependency/security cadence | **PARTIAL** | workflow security esistenti | manca assurance roll-up M5 | receipt periodica unica con esito e finding aperti |
+| M5-04A | ASVS 5.0 mapping | **PARTIAL** | `ASVS_5_0_ASSURANCE_CANONICAL.md` + `ops/asvs50-assurance.json` + validator/gate; 17 capitoli censiti, target L2, `verificationClaim=false` | requirement-level L1/L2 non completa; gap aperti `V3.4.3` CSP, `V5.2.2` file content/type, `V6.3.3` MFA | tutti i requisiti L1/L2 applicabili mappati con receipt, N/A motivati, zero `OPEN_GAP`, controlli provider-managed verificati |
+| M5-04B | Dependency/security cadence | **PARTIAL** | dependency-security giornaliera/manuale con blocco HIGH/CRITICAL; incident/recovery gate esistenti; ASVS assurance gate attivo | manca roll-up security periodico unico e closure evidence dei finding ASVS | receipt periodica unica con dipendenze, ASVS finding, incident/recovery evidence e finding runtime |
 | M5-05A | SLI | **OPEN** | smoke/performance puntuali + M5-02 collection avviata | nessun set SLI canonico | metriche definite dopo una prima baseline osservata, non per ipotesi |
 | M5-05B | SLO / error budget | **OPEN** | nessuna policy numerica congelata | manca target operativo basato su dati | SLO approvati dopo baseline M5-02 e criterio di escalation/release freeze |
 | M5-05C | Incident/support runbook | **PARTIAL** | recovery e incident minimum presenti | manca operational loop sostenuto | runbook unico, owner, severità, evidenze rehearsal periodiche |
@@ -97,7 +97,7 @@ Le soglie saranno congelate solo dopo una finestra di pilot reale sufficiente a 
 ### Fase C — assurance
 
 6. completare **M5-03 WCAG 2.2 AA** con evidence manuale e assistive technology, mantenendo il gate automatizzato verde;
-7. aprire e chiudere **M5-04 ASVS 5.0**.
+7. completare **M5-04 ASVS 5.0** chiudendo i gap L1/L2 e la mappatura requirement-level senza false claim.
 
 ### Fase D — integrazioni
 
