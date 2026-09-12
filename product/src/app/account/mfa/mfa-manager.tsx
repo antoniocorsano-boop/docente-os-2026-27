@@ -1,12 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { canRemoveVerifiedMfaFactor } from '@/core/security/account-security-policy'
 import { createClient } from '@/lib/supabase/client'
 
-type TotpFactor = {
+export type TotpFactor = {
   id: string
   friendlyName: string
 }
@@ -17,15 +17,19 @@ type Enrollment = {
   secret: string
 }
 
-export function MfaManager() {
+type MfaManagerProps = {
+  initialFactors: TotpFactor[]
+}
+
+export function MfaManager({ initialFactors }: MfaManagerProps) {
   const supabase = useMemo(() => createClient(), [])
-  const [factors, setFactors] = useState<TotpFactor[]>([])
+  const [factors, setFactors] = useState<TotpFactor[]>(initialFactors)
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null)
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
-  const refreshFactors = useCallback(async () => {
+  async function refreshFactors() {
     const listed = await supabase.auth.mfa.listFactors()
     if (listed.error) {
       setMessage('Non è stato possibile leggere i fattori di autenticazione.')
@@ -36,11 +40,7 @@ export function MfaManager() {
       id: factor.id,
       friendlyName: factor.friendly_name?.trim() || 'Autenticatore',
     })))
-  }, [supabase])
-
-  useEffect(() => {
-    void refreshFactors()
-  }, [refreshFactors])
+  }
 
   async function startEnrollment() {
     setBusy(true)
