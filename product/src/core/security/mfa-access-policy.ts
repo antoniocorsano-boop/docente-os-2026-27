@@ -80,7 +80,7 @@ export function resolveExternalOrigin({
 function isAllowedPasswordDestination(url: URL) {
   const entries = Array.from(url.searchParams.entries())
   if (url.pathname !== '/imposta-password' || entries.length !== 1 || entries[0]?.[0] !== 'source') return false
-  return entries[0]?.[1] === 'recovery' || entries[0]?.[1] === 'account'
+  return entries[0]?.[1] === 'recovery' || entries[0]?.[1] === 'account' || entries[0]?.[1] === 'email'
 }
 
 function normalizeHttpOrigin(value: string | null | undefined) {
