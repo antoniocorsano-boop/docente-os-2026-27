@@ -2,7 +2,6 @@
 
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { ensurePersonalWorkspace } from '@/app/auth/bootstrap-personal-workspace'
 import { createClient } from '@/lib/supabase/server'
 
 export async function signInWithPassword(formData: FormData) {
@@ -21,12 +20,8 @@ export async function signInWithPassword(formData: FormData) {
     redirect('/login?error=invalid_credentials')
   }
 
-  const bootstrap = await ensurePersonalWorkspace(supabase)
-  if (!bootstrap.ok) {
-    await supabase.auth.signOut()
-    redirect(`/login?error=${bootstrap.error}`)
-  }
-
+  // The first factor establishes AAL1 only. Workspace bootstrap is deliberately
+  // deferred until the MFA boundary confirms AAL2.
   redirect('/workspace')
 }
 
