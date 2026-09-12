@@ -30,6 +30,11 @@ test('MFA browser boundary: AAL1 denied, valid TOTP promotes to AAL2', async ({ 
     await expect(page.getByRole('heading', { name: 'Conferma il secondo fattore.' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Inserisci il codice temporaneo' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Configura il secondo fattore' })).toHaveCount(0)
+
+    const factorSelect = page.locator('#mfa-factor')
+    await expect(factorSelect).toBeVisible()
+    await factorSelect.selectOption({ label: 'Docente OS CI' })
+    await expect(factorSelect.locator('option:checked')).toHaveText('Docente OS CI')
   })
 
   await test.step('AAL1 cannot enter an operational page or protected application API', async () => {
