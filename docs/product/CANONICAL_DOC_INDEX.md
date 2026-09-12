@@ -24,6 +24,12 @@ Per la **maturità M4→M5** le fonti autorevoli sono:
 - `docs/product/SYSTEM_MATURITY_AUDIT_2026-09-12.md`;
 - `docs/product/M5_READINESS_MATRIX_2026-09-12.md`.
 
+Per la **sustained pilot evidence** le fonti autorevoli sono:
+
+- `docs/product/SUSTAINED_PILOT_EVIDENCE_CANONICAL.md`;
+- `ops/pilot-evidence-policy.json`;
+- `ops/pilot-evidence-ledger.json`.
+
 Per **versioning, release candidate e promozione** le fonti autorevoli sono:
 
 - `docs/product/RELEASE_ENGINEERING_CANONICAL.md`;
@@ -64,6 +70,7 @@ Sono vietate dipendenze dirette `Timetable -> Calendar` e `Calendar -> Timetable
 - `docs/product/PROJECT_STATUS_CURRENT.md` — **stato sintetico corrente: runtime, capability, gate, maturità e residui**.
 - `docs/product/SYSTEM_MATURITY_AUDIT_2026-09-12.md` — **audit canonico M4 avanzato e benchmark verso M5**.
 - `docs/product/M5_READINESS_MATRIX_2026-09-12.md` — **requisito → evidenza → stato → gap → criterio di chiusura**.
+- `docs/product/SUSTAINED_PILOT_EVIDENCE_CANONICAL.md` — **regole M5-02 per evidence longitudinale, journey critiche, privacy e anti-selection-bias**.
 - `docs/product/RELEASE_ENGINEERING_CANONICAL.md` — **SemVer, RC immutabili, certificazione, promozione e rollback**.
 - `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — north star e programma X0–X6.
 - `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` — tono, microcopy e grammatica collaborativa.
@@ -82,6 +89,8 @@ Durante il programma M5 una nuova feature deve essere classificata come:
 - `DEFERRED`.
 
 Il default senza evidenza è `DEFERRED`.
+
+La sustained pilot evidence deve essere append-only, non selettiva e Tier-1-safe. Un gate macchina non equivale a `HUMAN_USE`; nessuna soglia SLO può essere congelata prima di una baseline osservata sufficiente.
 
 Una release candidate non equivale a una promozione Production. `develop` non è Production. Le release formali seguono `RELEASE_ENGINEERING_CANONICAL.md` e il contratto Production esistente.
 
@@ -116,7 +125,7 @@ Per ogni lavoro su `/impostazioni`:
 - `product/design/ACCESSIBILITY-RULES.md` — regole di accessibilità correnti.
 - `product/design/reviews/` — decisioni visuali datate e closure evidence.
 
-Le review datate sono append-only. Lo stato sintetico corrente dei finding deve essere riportato in `PROJECT_STATUS_CURRENT.md` e, quando riguarda M5, nella readiness matrix.
+Le review datate sono append-only. Lo stato sintetico corrente dei finding deve essere riportato in `PROJECT_STATUS_CURRENT.md` e, quando riguarda M5, nella readiness matrix. I finding osservati durante il pilot devono inoltre produrre evidence nella ledger M5-02 quando rientrano nel perimetro.
 
 ## Design
 
@@ -160,6 +169,21 @@ Vincoli:
 - rollback applicativo verso SHA precedentemente certificato;
 - nessun rollback distruttivo automatico di database o Storage.
 
+## Sustained pilot evidence
+
+Ordine canonico:
+
+`evento verificabile → evidence entry append-only → eventuale finding → follow-up → closure evidence → roll-up longitudinale`.
+
+Vincoli:
+
+- nessun dato personale scolastico o di terzi;
+- nessuna telemetria invasiva;
+- nessuna conversione di un machine gate in human-use evidence;
+- successi, attriti, workaround e fallimenti devono essere registrabili con la stessa grammatica;
+- una correzione non cancella l'evidenza originaria;
+- M5-05 può proporre SLI/SLO soltanto dopo una baseline M5-02 osservata sufficiente.
+
 ## Regola di aggiornamento
 
 Ogni slice che modifica una decisione canonica deve:
@@ -169,7 +193,8 @@ Ogni slice che modifica una decisione canonica deve:
 3. non lasciare istruzioni operative incompatibili nel repository;
 4. aggiornare `PROJECT_STATUS_CURRENT.md` quando cambia una macro-capability, il runtime, un gate maggiore o un rischio di maturità;
 5. aggiornare `M5_READINESS_MATRIX_2026-09-12.md` quando cambia lo stato di un gate M5;
-6. aggiornare `CHANGELOG.md` quando il cambiamento è rilevante per release, maturità, sicurezza o operatività.
+6. aggiornare `CHANGELOG.md` quando il cambiamento è rilevante per release, maturità, sicurezza o operatività;
+7. aggiungere evidence alla ledger M5-02 quando un evento reale rientra nel suo perimetro, senza riscrivere eventi precedenti.
 
 I checkpoint datati preservano la storia e non devono essere riscritti come se fossero stato corrente.
 
@@ -179,15 +204,16 @@ Prima di implementare una slice, leggere almeno:
 
 1. `PROJECT_STATUS_CURRENT.md`;
 2. `M5_READINESS_MATRIX_2026-09-12.md` durante il programma M5;
-3. ADR-001 e ADR-002;
-4. Product Experience Masterplan;
-5. Language & Collaboration System;
-6. Design System V2;
-7. Brand Identity e Design Governance per lavoro visuale;
-8. DPG-1/DPG-2 per lavoro visuale;
-9. la specifica verticale della slice e il relativo contratto di esperienza;
-10. per T3/T4, Work/Time Mental Model e Temporal Composition;
-11. `RELEASE_ENGINEERING_CANONICAL.md` quando il lavoro coinvolge versioni, RC, promozioni o rollback.
+3. `SUSTAINED_PILOT_EVIDENCE_CANONICAL.md` quando il lavoro riguarda evidenza d'uso, incidenti, friction o KPI;
+4. ADR-001 e ADR-002;
+5. Product Experience Masterplan;
+6. Language & Collaboration System;
+7. Design System V2;
+8. Brand Identity e Design Governance per lavoro visuale;
+9. DPG-1/DPG-2 per lavoro visuale;
+10. la specifica verticale della slice e il relativo contratto di esperienza;
+11. per T3/T4, Work/Time Mental Model e Temporal Composition;
+12. `RELEASE_ENGINEERING_CANONICAL.md` quando il lavoro coinvolge versioni, RC, promozioni o rollback.
 
 Nessun agente deve inferire una nuova architettura da un singolo file runtime quando esiste una decisione canonica esplicita; nessun agente deve inferire lo stato corrente da un checkpoint datato quando esiste `PROJECT_STATUS_CURRENT.md`.
 
