@@ -87,6 +87,7 @@ export function AppShell({
 
   return (
     <div className="dosShell">
+      <a className="dosSkipLink" href="#dos-main-content">Salta al contenuto</a>
       <aside className="dosSidebar" aria-label="Navigazione principale">
         <Link href="/" className="dosBrand" aria-label="Docente OS — Home">
           <DocenteOsLockup compact inverse academicYearLabel={academicYearLabel ?? 'Mantieni il filo.'} />
@@ -149,7 +150,7 @@ export function AppShell({
           </div>
         </header>
 
-        <main className={cn('workSurface', 'dosContent', contentClassName)}>{children}</main>
+        <main id="dos-main-content" tabIndex={-1} className={cn('workSurface', 'dosContent', contentClassName)}>{children}</main>
 
         <nav className="dosBottomNav" aria-label="Navigazione mobile">
           {MOBILE_PRIMARY.map((key) => {
