@@ -9,6 +9,7 @@ on:
       - 'docs/product/M5_READINESS_MATRIX_2026-09-12.md'
       - 'docs/product/PROJECT_STATUS_CURRENT.md'
       - 'docs/product/CANONICAL_DOC_INDEX.md'
+      - 'CHANGELOG.md'
       - '.github/scripts/validate-asvs50-assurance.mjs'
       - '.github/workflows/asvs50-assurance.yml'
       - '.github/workflows/dependency-security.yml'
@@ -21,6 +22,10 @@ on:
     paths:
       - 'ops/asvs50-assurance.json'
       - 'docs/product/ASVS_5_0_ASSURANCE_CANONICAL.md'
+      - 'docs/product/M5_READINESS_MATRIX_2026-09-12.md'
+      - 'docs/product/PROJECT_STATUS_CURRENT.md'
+      - 'docs/product/CANONICAL_DOC_INDEX.md'
+      - 'CHANGELOG.md'
       - '.github/scripts/validate-asvs50-assurance.mjs'
       - '.github/workflows/asvs50-assurance.yml'
       - 'product/src/**'
