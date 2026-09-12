@@ -149,9 +149,9 @@ Il prodotto dispone di:
 
 La chiusura DPG-2 è stata certificata sull'exact head `f9953382e8ee8ef6307fa3859066bfb8d3e063a4` prima del merge #336.
 
-Per M5-03, il baseline automatizzato sul commit `20eb47b7e35faf3114dcbfe32ee320c1cfcc9557` ha superato WCAG automated assurance run `34672053257`, HVA run `34672053242`, HIM, DPG, Product CI e P6. Questo è **automation evidence**, non una dichiarazione di conformità WCAG 2.2 AA.
+Per M5-03, il baseline automatizzato sul commit `20eb47b7e35faf3114dcbfe32ee320c1cfcc9557` ha superato WCAG automated assurance run `34672053257`, HVA run `34672053242`, HIM, DPG, Product CI e P6. Il regression gate WCAG `34678320806` è inoltre PASS sul CSP implementation head corretto `1498b675d7d8d9d897867317df3bf07193240833`. Questa è **automation evidence**, non una dichiarazione di conformità WCAG 2.2 AA.
 
-Per M5-04, la foundation usa OWASP ASVS **5.0.0 stabile**, target **L2**, con `verificationClaim=false` e `requirementLevelMappingComplete=false`. Il gate machine-readable impedisce di marcare capitoli `VERIFIED_PASS` prima della mappatura requisito-per-requisito e mantiene espliciti i gap L1/L2 noti. **ASVS-001 / V3.4.3 è `CLOSED_VERIFIED`** sull'implementation SHA `14f60b09944e59531ca3ce2504839fdf11629784` con receipt Product CI/HVA/P6/DPG/WCAG/HIM/ASVS; **ASVS-002 / V5.2.2 è `CLOSED_VERIFIED`** sull'implementation SHA `f0c5ee3b4b4995dec78836571584bc9f72e78890` con receipt CI/K1/P6/P7/ASVS/DPG/HIM. **MFA V6.3.3 resta `OPEN_GAP`**.
+Per M5-04, la foundation usa OWASP ASVS **5.0.0 stabile**, target **L2**, con `verificationClaim=false` e `requirementLevelMappingComplete=false`. Il gate machine-readable impedisce di marcare capitoli `VERIFIED_PASS` prima della mappatura requisito-per-requisito e mantiene espliciti i gap L1/L2 noti. **ASVS-001 / V3.4.3 è `CLOSED_VERIFIED`** sull'implementation SHA `1498b675d7d8d9d897867317df3bf07193240833` con receipt Product CI/HVA/P6/DPG/WCAG/HIM/K1/ASVS e prova del percorso TUS Supabase Storage esatto senza wildcard; **ASVS-002 / V5.2.2 è `CLOSED_VERIFIED`** sull'implementation SHA `f0c5ee3b4b4995dec78836571584bc9f72e78890` con receipt CI/K1/P6/P7/ASVS/DPG/HIM. **MFA V6.3.3 resta `OPEN_GAP`**.
 
 ## 7. Maturity program M5
 
@@ -231,6 +231,7 @@ Stato verificato:
 - 2.4.1 Bypass Blocks è `VERIFIED_PASS` con skip-link e receipt browser;
 - il primo finding automatizzato di contrasto è stato corretto sistemicamente nei token canonici;
 - la suite axe mobile+desktop è PASS sul run `34672053257`;
+- il regression gate WCAG `34678320806` è PASS dopo la stabilizzazione della precondizione di focus del test first-Tab;
 - restano criteri `MANUAL_REQUIRED`, audit keyboard/reflow completo e baseline screen reader.
 
 Pertanto **M5-03 non è COMPLETE e non esiste alcuna dichiarazione di conformità WCAG 2.2 AA**.
@@ -252,7 +253,7 @@ Stato corrente:
 - 17 capitoli censiti;
 - requirement-level mapping ancora incompleta;
 - controlli positivi significativi: RLS, auth server-side via claims verificate, recovery rehearsal, dependency-security e incident escalation;
-- **ASVS-001 / V3.4.3 — `CLOSED_VERIFIED`** sull'implementation SHA `14f60b09944e59531ca3ce2504839fdf11629784`, con sette receipt strutturate;
+- **ASVS-001 / V3.4.3 — `CLOSED_VERIFIED`** sull'implementation SHA `1498b675d7d8d9d897867317df3bf07193240833`, con otto receipt strutturate inclusa K1 sul percorso resumable >6 MiB;
 - **ASVS-002 / V5.2.2 — `CLOSED_VERIFIED`** sull'implementation SHA `f0c5ee3b4b4995dec78836571584bc9f72e78890`, con sette receipt strutturate;
 - gap prioritario ancora aperto: **V6.3.3 MFA**.
 
@@ -278,7 +279,7 @@ La matrice WCAG 2.2 AA e il gate automatizzato esistono e il baseline browser è
 
 ### E — Security assurance
 
-La foundation OWASP ASVS 5.0.0 è attiva con target L2 e gate anti-waiver. **V3.4.3 CSP** e **V5.2.2 file content/type validation** sono `CLOSED_VERIFIED` con implementation SHA e receipt strutturate. Resta aperto **MFA (`V6.3.3`)**; la mappatura requirement-level e le receipt provider/runtime restano incomplete.
+La foundation OWASP ASVS 5.0.0 è attiva con target L2 e gate anti-waiver. **V3.4.3 CSP** e **V5.2.2 file content/type validation** sono `CLOSED_VERIFIED` con implementation SHA e receipt strutturate. La closure CSP include la prova K1 che l'allowlist `connect-src` ammette l'origin TUS Supabase Storage esatto richiesto dal percorso resumable, senza wildcard. Resta aperto **MFA (`V6.3.3`)**; la mappatura requirement-level e le receipt provider/runtime restano incomplete.
 
 ### F — SLO/SLI
 
