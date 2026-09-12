@@ -47,6 +47,23 @@ Tier 2 scolastico/personale, multi-user istituzionale e nuove integrazioni di id
 
 ## 4. Evidenze forti già presenti
 
+### Web frontend security
+
+Il runtime usa ora una **Content Security Policy request-scoped con nonce crittografico** attraverso `product/src/proxy.ts`, registrato da Next.js 16 come Proxy/Middleware.
+
+La policy di produzione:
+
+- propaga il nonce a Next.js e lo applica agli script framework;
+- esclude `unsafe-inline` e `unsafe-eval` da `script-src`;
+- usa `self`, nonce e `strict-dynamic` per il trust degli script;
+- imposta `script-src-attr 'none'`;
+- imposta `object-src 'none'` e `base-uri 'none'`;
+- imposta `frame-ancestors 'none'` e `form-action 'self'`;
+- limita `connect-src` e `img-src` all'origin Supabase configurato quando applicabile;
+- genera un nonce nuovo per ogni document request.
+
+La suite Human + Visual Acceptance verifica nel browser l'header CSP, il nonce framework, la rotazione del nonce e l'assenza di violazioni CSP su desktop e mobile. Il requisito **V3.4.3 / ASVS-001 è `CLOSED_VERIFIED`** sull'implementation SHA `14f60b09944e59531ca3ce2504839fdf11629784`.
+
 ### Autenticazione e sessioni
 
 Il runtime usa Supabase Auth. Le decisioni server-side si basano su `supabase.auth.getClaims()` e non su una sessione client non verificata. Esistono flussi password, magic link, recovery, logout e rehearsal locale di refresh, invalidazione sessione e reset password.
@@ -88,18 +105,22 @@ Sono presenti rehearsal e contratti per Auth recovery, database restore, storage
 ### ASVS-001 — V3.4.3 — CSP
 
 **Livello:** L2  
-**Stato:** `OPEN_GAP`
+**Stato:** `CLOSED_VERIFIED`  
+**Implementation SHA:** `14f60b09944e59531ca3ce2504839fdf11629784`
 
-`product/next.config.ts` disabilita `poweredByHeader`, ma non configura una Content Security Policy. La ricerca repository non ha trovato altre occorrenze di `Content-Security-Policy`.
+La closure è fondata su CSP request-scoped con nonce, registrazione effettiva del Proxy Next.js, policy di produzione senza `unsafe-inline`/`unsafe-eval` per gli script e prova browser permanente dell'header e dei nonce.
 
-Criterio di chiusura:
+Receipt registrate in `ops/asvs50-assurance.json`:
 
-1. CSP production-compatible;
-2. almeno `object-src 'none'` e `base-uri 'none'`, più una strategia esplicita per script/resource trust coerente con ASVS 5.0 V3.4.3;
-3. test automatico sulle response headers;
-4. receipt runtime sull'ambiente candidato.
+- Product CI — run `34676660373`;
+- Human + Visual Acceptance — run `34676660375`;
+- P6 Performance Baseline — run `34676660345`;
+- Design Policy Gate — run `34676660380`;
+- WCAG 2.2 AA Assurance — run `34676660382`;
+- Human Interaction Model — run `34676660414`;
+- ASVS 5.0 Assurance pre-closure — run `34676660394`.
 
-Finché manca la receipt runtime, il finding non può essere chiuso soltanto da configurazione statica.
+La chiusura di V3.4.3 **non** trasforma V3 in `VERIFIED_PASS`, non completa M5-04A e non costituisce una dichiarazione di verifica ASVS L2.
 
 ### ASVS-002 — V5.2.2 — file content/type validation
 
@@ -179,7 +200,7 @@ M5-04A può diventare `COMPLETE` solo quando:
 
 Stato corrente: **PARTIAL**.
 
-La closure verificata di V5.2.2 riduce i finding prioritari aperti da tre a due, ma non modifica questo stato complessivo.
+Le closure verificate di **V3.4.3** e **V5.2.2** riducono i finding prioritari aperti da tre a uno. **V6.3.3 / MFA resta aperto**, insieme alla mappatura requirement-level e alle receipt provider-managed ancora incomplete.
 
 ## 9. M5-04B — dependency/security cadence
 
@@ -195,12 +216,11 @@ Stato corrente: **PARTIAL**.
 
 ## 10. Ordine di chiusura raccomandato
 
-1. **ASVS-002 / V5.2.2 — CLOSED_VERIFIED**: preservare le receipt e il controllo di regressione;
-2. chiudere **ASVS-001** con CSP + runtime header receipt;
-3. progettare **ASVS-003 MFA** come slice separata perché modifica il percorso di autenticazione e recovery;
-4. completare la mappatura requirement-level L1/L2;
-5. produrre provider/runtime receipts per sessioni, token, TLS, crypto e configuration hardening;
-6. rivalutare soltanto allora una possibile verification claim L2.
+1. preservare le closure **ASVS-001 / V3.4.3** e **ASVS-002 / V5.2.2** con i rispettivi regression gate;
+2. progettare **ASVS-003 / V6.3.3 MFA** come slice separata perché modifica il percorso di autenticazione e recovery;
+3. completare la mappatura requirement-level L1/L2;
+4. produrre provider/runtime receipts per sessioni, token, TLS, crypto e configuration hardening;
+5. rivalutare soltanto allora una possibile verification claim L2.
 
 ## 11. Regola anti-certification
 
