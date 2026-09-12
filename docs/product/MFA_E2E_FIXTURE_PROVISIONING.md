@@ -30,7 +30,7 @@ export NEXT_PUBLIC_SUPABASE_URL='https://gnshgapmwyjamhmlikeg.supabase.co'
 export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY='<publishable-key del progetto>'
 export MFA_E2E_EMAIL='<email tecnica dedicata>'
 export MFA_E2E_PASSWORD='<password tecnica dedicata>'
-npm run mfa:e2e:provision
+node scripts/provision-mfa-e2e-factor.mjs
 ```
 
 Il comando:
