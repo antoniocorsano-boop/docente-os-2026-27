@@ -201,7 +201,7 @@ function Session({ file, disabled, onPrepared, onNativeTextPreflight }: Props) {
 
   if (state === 'NATIVE_TEXT_PRIVACY_BLOCKED' && sanitizedNativeText) {
     return (
-      <section aria-label="Recupero privacy locale del PDF" style={{ border: '1px solid var(--border, #d7d7d7)', borderRadius: 12, padding: 12, display: 'grid', gap: 10 }}>
+      <section aria-label="Recupero privacy locale del PDF" style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', padding: 12, display: 'grid', gap: 10 }}>
         <div>
           <strong>Il PDF originale resta bloccato</strong>
           <p style={{ margin: '4px 0 0' }}>{message}</p>
@@ -219,9 +219,9 @@ function Session({ file, disabled, onPrepared, onNativeTextPreflight }: Props) {
     return <p role="status" aria-live="polite" className="knowledgeUploadTrust">{message}</p>
   }
 
-  return <section aria-label="Revisione privacy locale del PDF" style={{ border: '1px solid var(--border, #d7d7d7)', borderRadius: 12, padding: 12, display: 'grid', gap: 10 }}>
+  return <section aria-label="Revisione privacy locale del PDF" style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', padding: 12, display: 'grid', gap: 10 }}>
     <div><strong>Revisione locale del PDF</strong><p style={{ margin: '4px 0 0' }}>Il PDF resta nel browser. Controlla {pages === 1 ? 'la pagina' : `tutte le ${pages} pagine`} e oscura eventuali dettagli personali.</p></div>
-    <div style={{ maxHeight: 620, overflow: 'auto', borderRadius: 8, background: '#f4f4f4' }}>
+    <div style={{ maxHeight: 620, overflow: 'auto', borderRadius: 'var(--radius-sm)', background: 'var(--surface-soft)' }}>
       <canvas ref={canvasRef} onPointerDown={pointerDown} onPointerUp={pointerUp} onPointerCancel={() => { startRef.current = null }} style={{ width: '100%', height: 'auto', display: 'block', touchAction: 'none', cursor: ready && !disabled ? 'crosshair' : 'default' }} aria-label="Anteprima locale del PDF: trascina per oscurare un’area" />
     </div>
     <small>{redactions ? `${redactions} aree oscurate nella copia locale.` : 'Se il documento è già anonimo, controlla comunque tutte le pagine.'}</small>
