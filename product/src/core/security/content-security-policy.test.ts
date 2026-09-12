@@ -15,9 +15,21 @@ test('production CSP satisfies the V3.4.3 baseline without unsafe script executi
   assert.match(policy, /script-src-attr 'none'/)
   assert.doesNotMatch(policy, /script-src [^;]*'unsafe-inline'/)
   assert.doesNotMatch(policy, /script-src [^;]*'unsafe-eval'/)
-  assert.match(policy, /connect-src 'self' https:\/\/example\.supabase\.co wss:\/\/example\.supabase\.co/)
+  assert.match(policy, /connect-src 'self' https:\/\/example\.supabase\.co wss:\/\/example\.supabase\.co https:\/\/example\.storage\.supabase\.co/)
+  assert.doesNotMatch(policy, /connect-src [^;]*\*\.supabase\.co/)
   assert.match(policy, /img-src 'self' data: blob: https:\/\/example\.supabase\.co/)
   assert.match(policy, /frame-ancestors 'none'/)
+})
+
+test('custom Supabase origins do not infer an unrelated storage hostname', () => {
+  const policy = buildContentSecurityPolicy({
+    nonce: 'abc123',
+    isDevelopment: false,
+    supabaseUrl: 'https://supabase.internal.example/path',
+  })
+
+  assert.match(policy, /connect-src 'self' https:\/\/supabase\.internal\.example wss:\/\/supabase\.internal\.example/)
+  assert.doesNotMatch(policy, /storage\.supabase\.co/)
 })
 
 test('development CSP permits eval only for the local framework runtime', () => {
