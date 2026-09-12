@@ -45,8 +45,10 @@ export function knowledgeUploadMimeFromExtension(filename: string) {
 }
 
 export function normalizeKnowledgeUploadMime(rawMime: string, filename: string) {
+  const extensionMime = knowledgeUploadMimeFromExtension(filename)
+  if (extensionMime === 'text/markdown' && rawMime === 'text/plain') return 'text/markdown'
   if (rawMime && isAllowedKnowledgeUploadMime(rawMime)) return rawMime
-  return knowledgeUploadMimeFromExtension(filename) ?? (rawMime || 'application/octet-stream')
+  return extensionMime ?? (rawMime || 'application/octet-stream')
 }
 
 export function sanitizeKnowledgeFilename(filename: string) {
