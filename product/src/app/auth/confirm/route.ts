@@ -1,5 +1,6 @@
 import type { EmailOtpType } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
+import { resolveExternalOrigin } from '@/core/security/mfa-access-policy'
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
@@ -7,8 +8,13 @@ export async function GET(request: NextRequest) {
   const tokenHash = request.nextUrl.searchParams.get('token_hash')
   const type = request.nextUrl.searchParams.get('type') as EmailOtpType | null
   const isRecovery = request.nextUrl.searchParams.get('recovery') === '1' || type === 'recovery'
-  const redirectTo = request.nextUrl.clone()
-  redirectTo.search = ''
+  const origin = resolveExternalOrigin({
+    configuredOrigin: process.env.NEXT_PUBLIC_APP_URL,
+    forwardedHost: request.headers.get('x-forwarded-host'),
+    forwardedProto: request.headers.get('x-forwarded-proto'),
+    requestOrigin: request.nextUrl.origin,
+  })
+  const redirectTo = new URL('/auth/confirm', origin)
 
   const supabase = await createClient()
 
