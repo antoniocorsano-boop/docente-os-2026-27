@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { canRemoveVerifiedMfaFactor } from '@/core/security/account-security-policy'
 import { createClient } from '@/lib/supabase/client'
 
 type TotpFactor = {
@@ -131,7 +132,7 @@ export function MfaManager() {
   }
 
   async function removeFactor(factorId: string) {
-    if (factors.length <= 1) {
+    if (!canRemoveVerifiedMfaFactor(factors.length)) {
       setMessage('Per mantenere obbligatoria la protezione MFA non puoi rimuovere l’ultimo autenticatore verificato.')
       return
     }
@@ -149,6 +150,8 @@ export function MfaManager() {
     await refreshFactors()
   }
 
+  const canRemoveFactor = canRemoveVerifiedMfaFactor(factors.length)
+
   return (
     <div className="grid gap-5">
       {message ? <Alert><AlertDescription>{message}</AlertDescription></Alert> : null}
@@ -156,17 +159,17 @@ export function MfaManager() {
       <section className="grid gap-3" aria-labelledby="verified-factors-title">
         <div className="grid gap-1">
           <h2 id="verified-factors-title" className="m-0 text-lg font-semibold">Autenticatori verificati</h2>
-          <p className="m-0 text-sm leading-6 text-muted-foreground">Mantieni almeno un fattore TOTP attivo. Puoi aggiungerne un secondo prima di sostituire quello principale.</p>
+          <p className="m-0 text-sm leading-6 text-muted-foreground">Mantieni almeno un fattore TOTP attivo. Puoi aggiungerne un secondo prima di sostituire quello in uso.</p>
         </div>
 
         <div className="grid gap-2">
-          {factors.length ? factors.map((factor, index) => (
+          {factors.length ? factors.map((factor) => (
             <div className="flex flex-col gap-3 rounded-[var(--radius-sm)] border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between" key={factor.id}>
               <div className="grid gap-1">
                 <strong>{factor.friendlyName}</strong>
-                <span className="text-xs text-muted-foreground">Fattore TOTP verificato {index === 0 ? '· principale' : ''}</span>
+                <span className="text-xs text-muted-foreground">Fattore TOTP verificato</span>
               </div>
-              <Button type="button" variant="ghost" disabled={busy || factors.length <= 1} onClick={() => void removeFactor(factor.id)}>
+              <Button type="button" variant="ghost" disabled={busy || !canRemoveFactor} onClick={() => void removeFactor(factor.id)}>
                 Rimuovi
               </Button>
             </div>
