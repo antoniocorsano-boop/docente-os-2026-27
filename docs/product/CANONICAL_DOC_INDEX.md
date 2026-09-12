@@ -266,10 +266,18 @@ Prima di implementare una slice, leggere almeno:
 1. `PROJECT_STATUS_CURRENT.md`;
 2. `M5_READINESS_MATRIX_2026-09-12.md` durante il programma M5;
 3. `SUSTAINED_PILOT_EVIDENCE_CANONICAL.md` quando il lavoro riguarda evidenza d'uso, incidenti, friction o KPI;
-4. `WCAG_2_2_AA_ASSURANCE_CANONICAL.md` quando il lavoro riguarda accessibilità, keyboard/focus/reflow, assistive technology o finding WCAG;
-5. `ASVS_5_0_ASSURANCE_CANONICAL.md` quando il lavoro riguarda autenticazione, autorizzazione, sessioni, file handling, sicurezza web, token, crypto, comunicazioni o logging;
-6. il documento canonico del dominio modificato;
-7. Design System V2 + Brand Identity + Design Governance per qualunque superficie UI;
-8. Human + Visual Acceptance per qualunque modifica visuale/interattiva.
+4. `WCAG_2_2_AA_ASSURANCE_CANONICAL.md` quando il lavoro modifica UI, accessibilità, navigazione, form o interazioni;
+5. `ASVS_5_0_ASSURANCE_CANONICAL.md` quando il lavoro modifica autenticazione, sessioni, autorizzazione, upload, API, configurazione, dati, logging, dipendenze o security controls;
+6. ADR-001 e ADR-002;
+7. Product Experience Masterplan;
+8. Language & Collaboration System;
+9. Design System V2;
+10. Brand Identity e Design Governance per lavoro visuale;
+11. DPG-1/DPG-2 per lavoro visuale;
+12. la specifica verticale della slice e il relativo contratto di esperienza;
+13. per T3/T4, Work/Time Mental Model e Temporal Composition;
+14. `RELEASE_ENGINEERING_CANONICAL.md` quando il lavoro coinvolge versioni, RC, promozioni o rollback.
 
-Una slice non può abbassare silenziosamente un gate già chiuso né riaprire un finding senza renderlo esplicito nello stato canonico.
+Nessun agente deve inferire una nuova architettura da un singolo file runtime quando esiste una decisione canonica esplicita; nessun agente deve inferire lo stato corrente da un checkpoint datato quando esiste `PROJECT_STATUS_CURRENT.md`.
+
+La baseline DPG-2 non è un budget da spendere: è debito da ridurre. La readiness M5 non è un pretesto per feature expansion: è un programma di maturazione verificabile.
