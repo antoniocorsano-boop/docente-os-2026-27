@@ -49,26 +49,22 @@ test('MFA return paths stay same-origin and outside auth/API surfaces', () => {
 })
 
 test('MFA permits only exact high-assurance password continuations among exempt paths', () => {
-  assert.equal(
-    normalizeMfaNextPath('/imposta-password?source=recovery'),
-    '/imposta-password?source=recovery',
-  )
-  assert.equal(
-    mfaRedirectPath('/imposta-password', '?source=recovery'),
-    '/mfa?next=%2Fimposta-password%3Fsource%3Drecovery',
-  )
-  assert.equal(
-    normalizeMfaNextPath('/imposta-password?source=account'),
-    '/imposta-password?source=account',
-  )
-  assert.equal(
-    mfaRedirectPath('/imposta-password', '?source=account'),
-    '/mfa?next=%2Fimposta-password%3Fsource%3Daccount',
-  )
+  for (const source of ['recovery', 'account', 'email']) {
+    assert.equal(
+      normalizeMfaNextPath(`/imposta-password?source=${source}`),
+      `/imposta-password?source=${source}`,
+    )
+    assert.equal(
+      mfaRedirectPath('/imposta-password', `?source=${source}`),
+      `/mfa?next=${encodeURIComponent(`/imposta-password?source=${source}`)}`,
+    )
+  }
+
   assert.equal(normalizeMfaNextPath('/imposta-password'), '/planner')
-  assert.equal(normalizeMfaNextPath('/imposta-password?source=email'), '/planner')
+  assert.equal(normalizeMfaNextPath('/imposta-password?source=unknown'), '/planner')
   assert.equal(normalizeMfaNextPath('/imposta-password?source=recovery&next=/planner'), '/planner')
   assert.equal(normalizeMfaNextPath('/imposta-password?source=account&next=/planner'), '/planner')
+  assert.equal(normalizeMfaNextPath('/imposta-password?source=email&next=/planner'), '/planner')
 })
 
 test('account MFA management preserves at least one verified factor', () => {
