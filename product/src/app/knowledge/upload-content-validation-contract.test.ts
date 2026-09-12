@@ -28,7 +28,7 @@ test('same-origin API validates content before privacy processing and Storage up
   const text = source('../api/knowledge/upload/route.ts')
   expectOrdered(text, [
     'const contentValidation = await validateKnowledgeUploadContent',
-    'inspectBinaryForAnonymousPilot',
+    'const preflight = await inspectBinaryForAnonymousPilot',
     'supabase.storage.from(KNOWLEDGE_BUCKET).upload',
   ], 'same-origin API')
 })
