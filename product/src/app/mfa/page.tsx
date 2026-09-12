@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { ensurePersonalWorkspace } from '@/app/auth/bootstrap-personal-workspace'
 import { DocenteOsLockup } from '@/components/brand/docente-os-brand'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { hasAal2, normalizeMfaNextPath } from '@/core/security/mfa-access-policy'
@@ -20,7 +21,15 @@ export default async function MfaPage({ searchParams }: MfaPageProps) {
 
   const params = await searchParams
   const nextPath = normalizeMfaNextPath(params.next)
-  if (hasAal2(claims)) redirect(nextPath)
+
+  if (hasAal2(claims)) {
+    const bootstrap = await ensurePersonalWorkspace(supabase)
+    if (!bootstrap.ok) {
+      await supabase.auth.signOut()
+      redirect(`/login?error=${bootstrap.error}`)
+    }
+    redirect(nextPath)
+  }
 
   return (
     <main className="brandAuthSurface min-h-screen bg-background px-4 py-10 text-foreground sm:px-6 sm:py-16">
