@@ -17,8 +17,10 @@ test('CSP globale usa nonce request-scoped senza unsafe script execution', async
 
   const policy = response.headers()['content-security-policy']
   expect(policy).toBeTruthy()
+  expect(policy).toContain("default-src 'self'")
   expect(policy).toContain("object-src 'none'")
   expect(policy).toContain("base-uri 'none'")
+  expect(policy).toContain("form-action 'self'")
   expect(policy).toContain("script-src-attr 'none'")
   expect(policy).toContain("frame-ancestors 'none'")
 
