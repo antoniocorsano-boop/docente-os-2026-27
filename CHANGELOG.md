@@ -15,6 +15,8 @@ DOCENTE OS adotta Semantic Versioning per le release formalmente emesse dal prog
 - Avviato **M5-02 — Sustained Pilot Evidence** con journey J1–J9, ledger append-only, privacy Tier-1 e gate machine-readable; la raccolta parte intenzionalmente con `HUMAN_USE=0` e non autorizza ancora la chiusura del gate.
 - Avviato **M5-03 — WCAG 2.2 AA Assurance** con matrice completa dei 55 criteri A/AA, validator machine-readable, Playwright/axe su viewport desktop+mobile e bypass `Salta al contenuto` verificato da tastiera.
 - Corretto sistemicamente il baseline di contrasto emerso dal primo run axe mediante token canonici di brand/testo/successo e bottom navigation; il run WCAG `34672053257` è PASS sull'exact head `20eb47b7e35faf3114dcbfe32ee320c1cfcc9557`.
+- Avviato **M5-04 — OWASP ASVS 5.0 Assurance** sulla baseline stabile `v5.0.0`, con target L2, matrice machine-readable dei 17 capitoli, validator anti-waiver/anti-false-PASS e gate dedicato sull'exact head; M5-04A resta `PARTIAL`.
+- Congelati come finding prioritari ASVS i gap **V3.4.3 CSP**, **V5.2.2 file content/type validation** e **V6.3.3 MFA**, senza attribuire una verifica L2 non ancora dimostrata.
 
 ### Governance
 
@@ -23,6 +25,7 @@ DOCENTE OS adotta Semantic Versioning per le release formalmente emesse dal prog
 - Le PR DPG-2 #328, #329, #330, #331, #332 e #334 sono state chiuse come `SUPERSEDED` dalla #336 integrata.
 - Un machine gate non può essere conteggiato come `HUMAN_USE`; SLI/SLO numerici non possono essere congelati prima di una baseline osservata M5-02 sufficiente.
 - Un PASS automatizzato axe/HVA non costituisce dichiarazione di conformità WCAG 2.2 AA: M5-03 resta `PARTIAL` finché criteri manuali, keyboard/focus/reflow e assistive technology non hanno receipt sufficienti.
+- Un PASS del gate `ASVS 5.0 Assurance` valida la coerenza del contratto e della matrice, ma non costituisce una dichiarazione di verifica ASVS L2; `verificationClaim=false` resta vincolante finché la mappatura requisito-per-requisito non è completa e i gap L1/L2 non sono chiusi con receipt.
 
 ## Legacy certified pilot — 2026-08-25
 
