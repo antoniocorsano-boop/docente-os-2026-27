@@ -1,8 +1,8 @@
 # DOCENTE OS — M5 Readiness Matrix
 
 Data: **2026-09-12**  
-Baseline: `develop` @ `b1953126fd4e7214304db309addaa59d1f38f9ee`  
-Stato: **M5-02 / ACTIVE MATURATION BASELINE**
+Baseline: `develop` @ `adf52f5e6da02841a45248417a442a01abaa7beb`  
+Stato: **M5-03 / ACTIVE ACCESSIBILITY ASSURANCE**
 
 ## Regola
 
@@ -36,9 +36,9 @@ Uno stato `COMPLETE` richiede evidenza verificabile nel repository o nel runtime
 | M5-02A | Pilot longitudinal evidence | **PARTIAL** | `SUSTAINED_PILOT_EVIDENCE_CANONICAL.md`, policy e ledger machine-readable avviati | ledger contiene solo baseline tecnica; `HUMAN_USE=0` e finestra longitudinale non ancora sufficiente | evidence pack di uso normale su più giornate, non selettivo e Tier-1-safe |
 | M5-02B | Critical journey success | **PARTIAL** | journey J1–J9 congelate; HVA + gate verticali come baseline tecnica | manca evidenza HUMAN_USE ripetuta e roll-up per journey | journey obbligatorie osservate ripetutamente con esiti/attriti aggregabili |
 | M5-02C | User friction / failure log | **PARTIAL** | ledger append-only e tipi `FRICTION/INCIDENT/WORKAROUND/RECOVERY` definiti | nessuna serie longitudinale di finding reali ancora raccolta | finding reali registrati, trend leggibile e closure evidence senza riscrivere la storia |
-| M5-03A | WCAG 2.2 AA matrix | **OPEN** | DPG/HVA/accessibility rules | nessuna matrice requisito-evidenza | tutti i criteri AA applicabili classificati PASS/PARTIAL/N/A/GAP |
-| M5-03B | Keyboard/focus/reflow | **PARTIAL** | focus e target governance esistenti | copertura manuale incompleta | audit desktop/mobile a tastiera, zoom/reflow e focus order |
-| M5-03C | Assistive technology evidence | **OPEN** | non rilevata evidenza sistematica | screen reader non certificato | almeno una baseline screen-reader ripetibile sulle journey critiche |
+| M5-03A | WCAG 2.2 AA matrix | **PARTIAL** | matrice completa 55 criteri + validator + Playwright/axe; run `34672053257` PASS su exact head `20eb47b7…`; 2.4.1 `VERIFIED_PASS` | restano criteri `MANUAL_REQUIRED` senza receipt e verifiche contestuali/assistive-tech | tutti i criteri A/AA applicabili chiusi con receipt; N/A ancora validi; zero GAP; nessuna variante responsive rilevante esclusa |
+| M5-03B | Keyboard/focus/reflow | **PARTIAL** | focus/target governance + skip-link `Salta al contenuto` con test tastiera e receipt PASS | manca evidence pack manuale completo per tab order, focus obscured, no trap, zoom/reflow e text spacing | audit desktop/mobile a tastiera, zoom/reflow e focus order con receipt |
+| M5-03C | Assistive technology evidence | **OPEN** | baseline da definire sulle journey critiche | screen reader non ancora verificato sistematicamente | baseline screen-reader ripetibile su login, Home/Oggi, classe/lezione, registrazione, Progetta/UDA, Conoscenza e Planner |
 | M5-04A | ASVS 5.0 mapping | **OPEN** | RLS/security/recovery gate forti | nessun mapping formale | matrice ASVS con PASS/PARTIAL/N/A/GAP e link alle evidenze |
 | M5-04B | Dependency/security cadence | **PARTIAL** | workflow security esistenti | manca assurance roll-up M5 | receipt periodica unica con esito e finding aperti |
 | M5-05A | SLI | **OPEN** | smoke/performance puntuali + M5-02 collection avviata | nessun set SLI canonico | metriche definite dopo una prima baseline osservata, non per ipotesi |
@@ -96,8 +96,8 @@ Le soglie saranno congelate solo dopo una finestra di pilot reale sufficiente a 
 
 ### Fase C — assurance
 
-6. chiudere **M5-03 WCAG 2.2 AA**;
-7. chiudere **M5-04 ASVS 5.0**.
+6. completare **M5-03 WCAG 2.2 AA** con evidence manuale e assistive technology, mantenendo il gate automatizzato verde;
+7. aprire e chiudere **M5-04 ASVS 5.0**.
 
 ### Fase D — integrazioni
 

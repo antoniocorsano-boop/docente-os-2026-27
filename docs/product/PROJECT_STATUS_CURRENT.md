@@ -5,9 +5,9 @@ Stato documento: **CURRENT / CANONICAL STATUS**
 
 Questo documento è la sintesi autorevole dello stato operativo. I checkpoint precedenti e gli audit datati restano storici e non devono essere usati per dedurre lo stato corrente quando divergono da questo file.
 
-Baseline di sviluppo corrente all'apertura di M5-02:
+Baseline di sviluppo integrata prima dell'apertura di M5-03:
 
-`develop` @ `b1953126fd4e7214304db309addaa59d1f38f9ee`
+`develop` @ `adf52f5e6da02841a45248417a442a01abaa7beb`
 
 ## 1. Classificazione
 
@@ -28,7 +28,7 @@ Indicatori interni di audit, non certificazioni:
 - maturità ingegneristica: **≈4,10/5**;
 - readiness M5/general distribution: **≈68–72%**.
 
-Questi indicatori non vengono aumentati perché è stata aperta M5-02: la maturazione deve essere sostenuta da evidenza osservata.
+Questi indicatori non vengono aumentati automaticamente dall'apertura o dal superamento di un singolo gate M5: la maturazione deve essere sostenuta da evidenza osservata e copertura completa dei requisiti pertinenti.
 
 ## 2. Production e dati reali
 
@@ -143,9 +143,12 @@ Il prodotto dispone di:
 - operational security e dependency security;
 - recovery/storage/incident gates P7;
 - **Release Engineering Policy** — M5-01;
-- **Pilot Evidence Policy** — M5-02, in introduzione sulla tranche corrente.
+- **Pilot Evidence Policy** — M5-02;
+- **WCAG 2.2 AA Assurance** — M5-03, con matrice completa, validator e browser automation Playwright/axe.
 
 La chiusura DPG-2 è stata certificata sull'exact head `f9953382e8ee8ef6307fa3859066bfb8d3e063a4` prima del merge #336.
+
+Per M5-03, il baseline automatizzato sul commit `20eb47b7e35faf3114dcbfe32ee320c1cfcc9557` ha superato WCAG automated assurance run `34672053257`, HVA run `34672053242`, HIM, DPG, Product CI e P6. Questo è **automation evidence**, non una dichiarazione di conformità WCAG 2.2 AA.
 
 ## 7. Maturity program M5
 
@@ -161,7 +164,9 @@ Stato gate:
 - **M5-01C — Release Candidate Contract** — **COMPLETE**;
 - **M5-01D — GitHub Release / changelog** — **PARTIAL**, in attesa della prima release reale;
 - **M5-02 — Sustained Pilot Evidence** — **COLLECTING / PARTIAL**;
-- **M5-03 — WCAG 2.2 AA Assurance** — OPEN/PARTIAL secondo la sottodimensione;
+- **M5-03A — WCAG 2.2 AA Matrix & Automated Assurance** — **PARTIAL**, baseline automatizzata PASS ma manual receipts ancora incomplete;
+- **M5-03B — Keyboard / Focus / Reflow** — **PARTIAL**;
+- **M5-03C — Assistive Technology Evidence** — **OPEN**;
 - **M5-04 — ASVS 5.0 Security Mapping** — OPEN/PARTIAL;
 - **M5-05 — SLO/SLI & Operational Observability** — OPEN/PARTIAL;
 - **M5-06 — Runtime Integration Maturity (Drive/Canva; Arena conditional)** — PARTIAL;
@@ -169,7 +174,7 @@ Stato gate:
 
 ## 8. M5-01 Release Engineering
 
-Sono ora canonici:
+Sono canonici:
 
 - `docs/product/RELEASE_ENGINEERING_CANONICAL.md`;
 - `ops/release-engineering-policy.json`;
@@ -205,7 +210,28 @@ Stato iniziale deliberato:
 
 Un machine gate non può contare come uso umano. Successi, attriti, workaround, incidenti e recovery devono poter essere registrati con la stessa grammatica append-only e senza dati personali scolastici.
 
-## 10. Finding correnti
+## 10. M5-03 WCAG 2.2 AA Assurance
+
+Fonti canoniche:
+
+- `docs/product/WCAG_2_2_AA_ASSURANCE_CANONICAL.md`;
+- `ops/wcag22-aa-assurance.json`;
+- `.github/scripts/validate-wcag22-aa-assurance.mjs`;
+- `.github/workflows/wcag22-aa-assurance.yml`;
+- `product/e2e/experience/accessibility.spec.mjs`.
+
+Stato verificato:
+
+- tutti i 55 criteri A/AA sono presenti nella matrice;
+- `conformanceClaim=false`;
+- 2.4.1 Bypass Blocks è `VERIFIED_PASS` con skip-link e receipt browser;
+- il primo finding automatizzato di contrasto è stato corretto sistemicamente nei token canonici;
+- la suite axe mobile+desktop è PASS sul run `34672053257`;
+- restano criteri `MANUAL_REQUIRED`, audit keyboard/reflow completo e baseline screen reader.
+
+Pertanto **M5-03 non è COMPLETE e non esiste alcuna dichiarazione di conformità WCAG 2.2 AA**.
+
+## 11. Finding correnti
 
 ### A — Repository hygiene
 
@@ -221,7 +247,7 @@ L'infrastruttura di evidence è attiva, ma manca ancora la finestra di `HUMAN_US
 
 ### D — Accessibility assurance
 
-DPG/HVA contengono regole di accessibilità ma manca una matrice WCAG 2.2 AA requisito → evidenza → esito.
+La matrice WCAG 2.2 AA e il gate automatizzato esistono e il baseline browser è verde. Restano da chiudere le receipt dei criteri manuali, la traversata completa keyboard/focus/reflow e la baseline assistive technology. Nessun PASS automatico può essere trasformato in dichiarazione di conformità generale.
 
 ### E — Security assurance
 
@@ -235,17 +261,18 @@ Smoke, performance e recovery sono presenti, ma le soglie devono essere derivate
 
 Il prossimo valore reale è la continuità **Docente OS ↔ Drive ↔ Canva** nel flusso didattico. Arena runtime resta requisito condizionale.
 
-## 11. Priorità operative
+## 12. Priorità operative
 
 1. continuare la classificazione individuale delle PR aperte senza chiudere lavoro vivo;
 2. raccogliere M5-02 durante il normale lavoro docente;
 3. registrare anche friction, workaround e failure;
-4. costruire WCAG 2.2 AA matrix e ASVS 5.0 mapping;
-5. definire SLI/SLO soltanto dopo la prima baseline osservata M5-02;
-6. maturare Drive/Canva sulle journey reali;
-7. mantenere Tier 2 e multi-user separati finché non esiste una decisione istituzionale esplicita.
+4. completare le prove manuali M5-03 e la baseline screen reader, mantenendo axe/HVA verdi;
+5. aprire il mapping **M5-04 OWASP ASVS 5.0**;
+6. definire SLI/SLO soltanto dopo la prima baseline osservata M5-02;
+7. maturare Drive/Canva sulle journey reali;
+8. mantenere Tier 2 e multi-user separati finché non esiste una decisione istituzionale esplicita.
 
-## 12. Regola anti-feature-creep
+## 13. Regola anti-feature-creep
 
 Durante il programma M5 ogni nuova feature deve essere classificata come:
 
