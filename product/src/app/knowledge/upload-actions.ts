@@ -37,7 +37,7 @@ export type KnowledgeUploadGrantResult =
 
 export type FinalizeKnowledgeUploadResult =
   | { ok: true; assetId: string }
-  | { ok: false; code: 'missing' | 'too_large' | 'unsupported' | 'invalid_path' | 'invalid_content' | 'invalid_pdf' | 'visual_unavailable' | 'parse_failed' }
+  | { ok: false; code: 'missing' | 'too_large' | 'unsupported' | 'invalid_path' | 'invalid_pdf' | 'visual_unavailable' | 'parse_failed' }
 
 export async function requestResumableKnowledgeUploadGrant(input: {
   originalName: string
@@ -151,7 +151,7 @@ export async function finalizeKnowledgeFileUpload(
       declaredSize: input.byteSize,
       actualSize: storedBytes.byteLength,
     })
-    return { ok: false, code: 'invalid_content' }
+    return { ok: false, code: 'unsupported' }
   }
 
   const transferMode = input.transferMode ?? 'SAME_ORIGIN'
