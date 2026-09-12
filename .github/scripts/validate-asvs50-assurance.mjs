@@ -59,19 +59,29 @@ for (const finding of data.priorityFindings) {
 
 const v343 = data.priorityFindings.find((finding) => finding.requirement === 'V3.4.3')
 if (!v343) fail('V3.4.3 finding history must remain present')
-if (v343.status !== 'CLOSED_VERIFIED') fail('V3.4.3 must be CLOSED_VERIFIED only after exact-head receipts are recorded')
+if (v343.status !== 'CLOSED_VERIFIED') fail('V3.4.3 must remain CLOSED_VERIFIED with exact-head receipts')
 const v343ReceiptTypes = new Set((v343.closureReceipts ?? []).map((receipt) => receipt.type))
 for (const requiredType of ['PRODUCT_CI', 'HUMAN_VISUAL_ACCEPTANCE', 'P6_PERFORMANCE_BASELINE', 'DESIGN_POLICY_GATE']) {
   if (!v343ReceiptTypes.has(requiredType)) fail(`V3.4.3 closure needs ${requiredType} receipt`)
 }
 
-if (!data.priorityFindings.some((finding) => finding.requirement === 'V6.3.3' && finding.status === 'OPEN_GAP')) {
-  fail('known open gap V6.3.3 must remain explicit until closed with receipts')
-}
-
 const v522 = data.priorityFindings.find((finding) => finding.requirement === 'V5.2.2')
 if (!v522) fail('V5.2.2 finding history must remain present')
-if (v522.status !== 'CLOSED_VERIFIED') fail('V5.2.2 must be CLOSED_VERIFIED only after exact-head receipts are recorded')
+if (v522.status !== 'CLOSED_VERIFIED') fail('V5.2.2 must remain CLOSED_VERIFIED with exact-head receipts')
+
+const v633 = data.priorityFindings.find((finding) => finding.requirement === 'V6.3.3')
+if (!v633) fail('V6.3.3 finding history must remain present')
+if (v633.status !== 'CLOSED_VERIFIED') fail('V6.3.3 must be CLOSED_VERIFIED only after machine, provider-runtime and human recovery/re-login receipts are recorded')
+const v633ReceiptTypes = new Set((v633.closureReceipts ?? []).map((receipt) => receipt.type))
+for (const requiredType of ['PRODUCT_CI', 'MFA_AAL2_DATA_PLANE_CONTRACT', 'MFA_BROWSER_AAL2_GATE', 'HUMAN_MFA_RECOVERY_AND_RELOGIN']) {
+  if (!v633ReceiptTypes.has(requiredType)) fail(`V6.3.3 closure needs ${requiredType} receipt`)
+}
+if (!fs.existsSync('ops/mfa-v6-3-3-closure-receipt.json')) fail('V6.3.3 closure receipt file is required')
+const v633Closure = JSON.parse(fs.readFileSync('ops/mfa-v6-3-3-closure-receipt.json', 'utf8'))
+if (v633Closure.decision !== 'CLOSED_VERIFIED') fail('V6.3.3 closure receipt must record CLOSED_VERIFIED')
+if (v633Closure.implementationSha !== v633.implementationSha) fail('V6.3.3 closure receipt implementation SHA must match assurance matrix')
+if (v633Closure?.humanValidation?.result !== 'PASS') fail('V6.3.3 human recovery/re-login validation must be PASS')
+if (v633Closure?.humanValidation?.sensitiveValuesRecorded !== false) fail('V6.3.3 receipt must not record password or TOTP values')
 
 const openPriorityFindings = data.priorityFindings.filter((finding) => finding.status === 'OPEN_GAP').length
 const closedVerifiedFindings = data.priorityFindings.filter((finding) => finding.status === 'CLOSED_VERIFIED').length
