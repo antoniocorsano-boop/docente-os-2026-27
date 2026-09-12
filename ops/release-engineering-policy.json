@@ -30,11 +30,28 @@
     "automaticProductionPromotionAllowed": false
   },
   "releaseCandidate": {
+    "manifestPathPattern": "ops/releases/<version>/release-candidate.json",
     "tagRequired": true,
     "tagMustResolveToCandidateSha": true,
     "multipleRcAllowed": true,
     "newCodeRequiresNewRc": true,
-    "gateFailureRequiresHold": true
+    "gateFailureRequiresHold": true,
+    "requiredFields": [
+      "schemaVersion",
+      "product",
+      "releaseVersion",
+      "releaseState",
+      "candidateSha",
+      "sourceBranch",
+      "scope",
+      "changedCapabilities",
+      "gateMatrix",
+      "migrations",
+      "previousCertifiedSha",
+      "rollbackTargetSha",
+      "knownResiduals",
+      "humanDecision"
+    ]
   },
   "promotion": {
     "usesExistingProductionPromotionContract": true,
