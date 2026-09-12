@@ -34,6 +34,7 @@ test('P6 baseline: superfici principali restano entro il budget dopo warm-up', a
     page.getByRole('button', { name: /Entra nel tuo spazio docente/i }).click(),
   ])
   await page.waitForLoadState('domcontentloaded')
+  expect(new URL(page.url()).pathname).toBe('/planner')
   await expect(page.locator('main')).toBeVisible()
 
   // /workspace è un endpoint di transizione che reindirizza sempre a /planner:
