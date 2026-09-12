@@ -1,6 +1,17 @@
 import { expect, test } from '@playwright/test'
 
 test('CSP globale usa nonce request-scoped senza unsafe script execution', async ({ page, context }) => {
+  await page.addInitScript(() => {
+    window.__docenteOsCspViolations = []
+    document.addEventListener('securitypolicyviolation', (event) => {
+      window.__docenteOsCspViolations.push({
+        blockedURI: event.blockedURI,
+        effectiveDirective: event.effectiveDirective,
+        violatedDirective: event.violatedDirective,
+      })
+    })
+  })
+
   const response = await page.goto('/login', { waitUntil: 'domcontentloaded' })
   expect(response).not.toBeNull()
 
@@ -27,6 +38,7 @@ test('CSP globale usa nonce request-scoped senza unsafe script execution', async
   expect(scriptDirective).not.toContain("'unsafe-eval'")
 
   await expect(page.getByRole('main')).toBeVisible()
+  expect(await page.evaluate(() => window.__docenteOsCspViolations)).toEqual([])
 
   const secondPage = await context.newPage()
   const secondResponse = await secondPage.goto('/login', { waitUntil: 'domcontentloaded' })
