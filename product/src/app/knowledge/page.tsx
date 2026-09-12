@@ -177,6 +177,7 @@ function uploadFeedback(code?: string) {
     missing: 'Seleziona un file da caricare.',
     too_large: 'Il file supera il limite di 20 MB. Scegline uno più piccolo.',
     unsupported: 'Questo formato non è supportato. Usa PDF, immagini, DOCX, TXT o Markdown.',
+    invalid_content: 'Il file non è valido o non corrisponde al formato indicato. Controlla il file e riprova.',
     failed: 'Il caricamento non è riuscito. Nessun contenuto è stato sostituito: puoi riprovare.',
     empty_text: 'Il file non contiene testo utilizzabile per la ricerca.',
     parse_failed: 'L’originale è stato conservato, ma non sono riuscito a organizzarlo automaticamente. Puoi riprovare più tardi.',
