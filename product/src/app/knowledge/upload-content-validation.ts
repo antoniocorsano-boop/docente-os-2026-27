@@ -54,14 +54,10 @@ async function validatePdf(bytes: Uint8Array): Promise<KnowledgeUploadContentVal
     return { valid: false, code: 'content_mismatch' }
   }
   const document = await getDocumentProxy(bytes)
-  try {
-    if (!Number.isInteger(document.numPages) || document.numPages < 1) {
-      return { valid: false, code: 'content_mismatch' }
-    }
-    return { valid: true }
-  } finally {
-    await document.destroy()
+  if (!Number.isInteger(document.numPages) || document.numPages < 1) {
+    return { valid: false, code: 'content_mismatch' }
   }
+  return { valid: true }
 }
 
 async function validateDocx(bytes: Uint8Array): Promise<KnowledgeUploadContentValidation> {
