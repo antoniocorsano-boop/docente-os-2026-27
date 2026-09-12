@@ -1,7 +1,7 @@
 # DOCENTE OS — M5 Readiness Matrix
 
 Data: **2026-09-12**  
-Baseline: `develop` @ `401eaf0d93de908b0fb2b93eda366014d8123a25`  
+Baseline: `develop` @ `9d803e313325a5e14ba4cd574b9c9731f61d1b98`  
 Stato: **M5-01 / ACTIVE MATURATION BASELINE**
 
 ## Regola
@@ -26,7 +26,7 @@ Uno stato `COMPLETE` richiede evidenza verificabile nel repository o nel runtime
 
 | ID | Area | Stato | Evidenza corrente | Gap | Criterio di chiusura |
 | --- | --- | --- | --- | --- | --- |
-| M5-00A | Stato canonico | **PARTIAL** | `PROJECT_STATUS_CURRENT.md`, README e audit 2026-09-12 riallineati | indice canonico/health storico da riallineare | indice canonico e documenti sintetici non devono presentare fotografie obsolete come stato corrente |
+| M5-00A | Stato canonico | **COMPLETE** | `PROJECT_STATUS_CURRENT.md`, README, `CANONICAL_DOC_INDEX.md` e `PROJECT_HEALTH.md` riallineati | — | una sola fonte CURRENT; health storico non compete con lo stato canonico |
 | M5-00B | Maturity baseline | **COMPLETE** | `SYSTEM_MATURITY_AUDIT_2026-09-12.md` | — | audit salvato, benchmark esplicito, classificazione M4 e gate M5 definiti |
 | M5-00C | Design convergence | **COMPLETE** | DPG-2 baseline 27/13/0/0/1/5 + residual register | — | DPG-1/2 permanenti e baseline monotona |
 | M5-01A | Repository hygiene | **PARTIAL** | #328/#329/#330/#331/#332/#334 chiuse `SUPERSEDED` da #336 | restano PR aperte da classificare individualmente; C2P non è automaticamente superseded | ogni PR aperta deve essere lavoro candidato reale, non ricevuta storica superata |
@@ -85,25 +85,24 @@ Le soglie saranno congelate solo dopo una finestra di pilot reale sufficiente a 
 
 ### Fase A — immediata
 
-1. chiudere il residuo **M5-00A Stato canonico**;
-2. completare **M5-01A Repository hygiene** mediante classificazione individuale delle PR aperte;
-3. emettere la prima release formale solo quando esisterà una reale candidata da congelare — **M5-01D resta PARTIAL**.
+1. completare **M5-01A Repository hygiene** mediante classificazione individuale delle PR aperte;
+2. emettere la prima release formale solo quando esisterà una reale candidata da congelare — **M5-01D resta PARTIAL**.
 
 ### Fase B — mentre il docente usa normalmente il prodotto
 
-4. raccogliere **M5-02 Pilot Evidence**;
-5. definire e misurare **M5-05 SLI/SLO**.
+3. raccogliere **M5-02 Pilot Evidence**;
+4. definire e misurare **M5-05 SLI/SLO**.
 
 ### Fase C — assurance
 
-6. chiudere **M5-03 WCAG 2.2 AA**;
-7. chiudere **M5-04 ASVS 5.0**.
+5. chiudere **M5-03 WCAG 2.2 AA**;
+6. chiudere **M5-04 ASVS 5.0**.
 
 ### Fase D — integrazioni
 
-8. maturare **Drive/Canva** solo sulle journey didattiche reali;
-9. decidere Arena runtime da evidenza del pilot;
-10. mantenere Tier 2/multi-user separati finché non esiste un'esplicita decisione istituzionale di prodotto.
+7. maturare **Drive/Canva** solo sulle journey didattiche reali;
+8. decidere Arena runtime da evidenza del pilot;
+9. mantenere Tier 2/multi-user separati finché non esiste un'esplicita decisione istituzionale di prodotto.
 
 ## Regola anti-feature-creep
 
