@@ -185,7 +185,6 @@ test('K1 Knowledge: i cinque documenti scolastici attraversano davvero DOCX → 
       await expect(contextPanel).toContainText('Non devi confermare ciò che è già corretto')
       await expect(contextForm.locator('select[name="contextStatus"]')).toHaveCount(0)
       await expect(contextForm.locator('select[name="reliability"]')).toHaveCount(0)
-      // A context correction would become REVIEWED, but it must preserve the source's AUTO reliability.
       await expect(contextForm.locator('input[name="contextStatus"]')).toHaveValue('REVIEWED')
       await expect(contextForm.locator('input[name="reliability"]')).toHaveValue('AUTO')
 
@@ -267,7 +266,7 @@ async function login(page) {
   await page.locator('#email').fill(email)
   await page.locator('#password').fill(password)
   await Promise.all([
-    page.waitForURL(/\/workspace(?:$|\?)/, { timeout: 30_000 }),
+    page.waitForURL(/\/planner(?:$|\?)/, { timeout: 30_000 }),
     page.getByRole('button', { name: 'Entra nel tuo spazio docente' }).click(),
   ])
 }

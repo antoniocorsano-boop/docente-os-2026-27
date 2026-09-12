@@ -4,7 +4,6 @@ import fs from 'node:fs/promises'
 const email = process.env.E2E_EMAIL
 const password = process.env.E2E_PASSWORD
 const routes = [
-  '/workspace',
   '/planner',
   '/knowledge',
   '/classi',
@@ -31,12 +30,16 @@ test('P6 baseline: superfici principali restano entro il budget dopo warm-up', a
   await page.locator('#email').fill(email)
   await page.getByLabel('Password').fill(password)
   await Promise.all([
-    page.waitForURL((url) => url.pathname === '/workspace', { timeout: 30_000 }),
+    page.waitForURL((url) => url.pathname === '/planner', { timeout: 30_000 }),
     page.getByRole('button', { name: /Entra nel tuo spazio docente/i }).click(),
   ])
   await page.waitForLoadState('domcontentloaded')
+  expect(new URL(page.url()).pathname).toBe('/planner')
   await expect(page.locator('main')).toBeVisible()
 
+  // /workspace è un endpoint di transizione che reindirizza sempre a /planner:
+  // non è una superficie da cronometrare. Il gate misura soltanto destinazioni
+  // operative stabili, mantenendo invariati i budget di latenza.
   // Warm-up: Render Free può avere cold start. Il gate misura il comportamento
   // operativo dopo che l'istanza ha risposto, non il tempo di risveglio del piano.
   for (const route of routes) {

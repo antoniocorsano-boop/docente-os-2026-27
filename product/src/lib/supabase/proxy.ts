@@ -2,8 +2,21 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from './database.types'
 
-export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({ request })
+function createResponse(request: NextRequest, requestHeaderOverrides?: Headers) {
+  if (!requestHeaderOverrides) return NextResponse.next({ request })
+
+  const headers = new Headers(request.headers)
+  requestHeaderOverrides.forEach((value, key) => headers.set(key, value))
+
+  return NextResponse.next({
+    request: {
+      headers,
+    },
+  })
+}
+
+export async function updateSession(request: NextRequest, requestHeaderOverrides?: Headers) {
+  let response = createResponse(request, requestHeaderOverrides)
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +28,7 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          response = NextResponse.next({ request })
+          response = createResponse(request, requestHeaderOverrides)
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options),
           )

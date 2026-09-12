@@ -19,7 +19,7 @@
   "chapters": [
     {"id":"V1","name":"Encoding and Sanitization","status":"PARTIAL","evidence":["Next.js/React rendering baseline","server actions use explicit normalization/allowlists in critical flows"],"note":"Requirement-level injection/sanitization review not complete."},
     {"id":"V2","name":"Validation and Business Logic","status":"PARTIAL","evidence":["server-side validation patterns","human-confirmation boundaries","domain invariants and gate suite"],"note":"Requirement-level business-logic and anti-automation mapping not complete."},
-    {"id":"V3","name":"Web Frontend Security","status":"GAP","evidence":["product/next.config.ts sets poweredByHeader=false","repository search found no Content-Security-Policy configuration"],"note":"Priority finding ASVS-001: V3.4.3 L2 lacks a repository/runtime receipt for CSP."},
+    {"id":"V3","name":"Web Frontend Security","status":"PARTIAL","evidence":["request-scoped CSP nonce emitted by product/src/proxy.ts","production script policy excludes unsafe-inline and unsafe-eval","object-src 'none', base-uri 'none', frame-ancestors 'none' and bounded Supabase project/WebSocket origins plus the exact derived Storage TUS origin","browser HVA verifies response header, framework nonce use and nonce rotation on implementation SHA 1498b675d7d8d9d897867317df3bf07193240833","K1 verifies that the CSP permits the exact Supabase Storage resumable-upload origin without wildcarding connect-src"],"note":"Priority finding ASVS-001 / V3.4.3 is CLOSED_VERIFIED with structured receipts; the V3 chapter remains PARTIAL until requirement-level mapping is complete."},
     {"id":"V4","name":"API and Web Service","status":"PARTIAL","evidence":["Next.js server actions/routes","Supabase service boundaries"],"note":"HTTP method/message/header controls require requirement-level verification."},
     {"id":"V5","name":"File Handling","status":"PARTIAL","evidence":["20 MiB upload limit","MIME allowlist","sanitized filenames","randomized storage object path","V5.2.2 content/type validation verified on implementation SHA f0c5ee3b4b4995dec78836571584bc9f72e78890 with parser/signature checks and negative tests","resumable Storage ingress is re-read server-side before KB admission and rejected blobs are removed"],"note":"Priority finding ASVS-002 / V5.2.2 is CLOSED_VERIFIED with structured receipts; the V5 chapter remains PARTIAL until requirement-level mapping is complete."},
     {"id":"V6","name":"Authentication","status":"GAP","evidence":["Supabase password authentication","magic-link flow","password recovery rehearsal","non-enumerating recovery response"],"note":"Priority finding ASVS-003: V6.3.3 L2 requires MFA or equivalent factor combination; no MFA enrollment/challenge implementation found."},
@@ -40,10 +40,30 @@
       "id": "ASVS-001",
       "requirement": "V3.4.3",
       "level": "L2",
-      "status": "OPEN_GAP",
-      "title": "Content Security Policy baseline absent",
-      "evidence": ["product/next.config.ts contains no security headers configuration", "repository search returned no Content-Security-Policy occurrence"],
-      "closure": "Add and test a production-compatible CSP meeting ASVS 5.0 V3.4.3, then attach repository and runtime header receipts."
+      "status": "CLOSED_VERIFIED",
+      "title": "Content Security Policy is enforced globally with request-scoped nonces",
+      "evidence": [
+        "product/src/proxy.ts is registered by Next.js 16 as Proxy (Middleware) and emits CSP on protected document responses",
+        "a fresh cryptographic nonce is propagated to Next.js request headers and to the response CSP for each document request",
+        "production script-src excludes unsafe-inline and unsafe-eval and uses self + nonce + strict-dynamic",
+        "object-src 'none', base-uri 'none', frame-ancestors 'none', form-action 'self' and bounded resource origins are explicit",
+        "connect-src permits only the configured Supabase project origin, its WebSocket origin and the exact derived <project>.storage.supabase.co TUS origin required by large resumable Knowledge uploads; no wildcard is used",
+        "Human + Visual Acceptance verifies the CSP response header, framework nonce use, absence of CSP violations and nonce rotation on desktop/mobile",
+        "K1 verifies the >6 MiB resumable PDF journey through Supabase Storage under the production CSP",
+        "P6 confirms the dynamic request-scoped policy remains inside performance budgets"
+      ],
+      "closure": "Add and test a production-compatible CSP meeting ASVS 5.0 V3.4.3, then attach repository and runtime header receipts.",
+      "implementationSha": "1498b675d7d8d9d897867317df3bf07193240833",
+      "closureReceipts": [
+        {"type":"PRODUCT_CI","runId":34678320805},
+        {"type":"HUMAN_VISUAL_ACCEPTANCE","runId":34678320813},
+        {"type":"P6_PERFORMANCE_BASELINE","runId":34678320851},
+        {"type":"DESIGN_POLICY_GATE","runId":34678320842},
+        {"type":"WCAG_2_2_AA_ASSURANCE","runId":34678320806},
+        {"type":"HUMAN_INTERACTION_MODEL","runId":34678320833},
+        {"type":"K1_KNOWLEDGE_UPLOAD_GATE","runId":34678320870},
+        {"type":"ASVS_5_0_ASSURANCE_PRE_CLOSURE","runId":34678320823}
+      ]
     },
     {
       "id": "ASVS-002",

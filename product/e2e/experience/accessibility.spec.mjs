@@ -51,6 +51,14 @@ async function analyzePage(page, testInfo, id) {
   expect(violations, `${id} has automated WCAG A/AA violations`).toEqual([])
 }
 
+async function resetDocumentFocus(page) {
+  await page.evaluate(() => {
+    const active = document.activeElement
+    if (active instanceof HTMLElement && active !== document.body) active.blur()
+  })
+  await expect.poll(() => page.evaluate(() => document.activeElement === document.body)).toBe(true)
+}
+
 test.describe('M5-03 — WCAG 2.2 AA automated assurance', () => {
   test.skip(!WCAG_ASSURANCE_ENABLED, 'WCAG assurance runs only in the dedicated M5-03 gate')
 
@@ -64,10 +72,12 @@ test.describe('M5-03 — WCAG 2.2 AA automated assurance', () => {
 
   test('AppShell: il primo Tab espone il bypass e porta il focus al main', async ({ page }) => {
     await loginE2E(page)
-    const response = await page.goto('/planner')
-    if (!response) throw new Error('No navigation response for /planner')
-    expect(response.status()).toBeLessThan(400)
+    await expect(page).toHaveURL(/\/planner(?:$|\?)/)
+    await expect(page.locator('.workSurface')).toBeVisible({ timeout: 30_000 })
+
     const skip = page.getByRole('link', { name: 'Salta al contenuto' })
+    await expect(skip).toBeAttached()
+    await resetDocumentFocus(page)
     await page.keyboard.press('Tab')
     await expect(skip).toBeFocused()
     await expect(skip).toBeVisible()

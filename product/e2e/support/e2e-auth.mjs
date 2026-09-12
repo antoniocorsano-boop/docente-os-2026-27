@@ -13,8 +13,12 @@ export async function loginE2E(page) {
   await page.locator('#email').fill(E2E_EMAIL)
   await page.locator('#password').fill(E2E_PASSWORD)
   await Promise.all([
-    page.waitForURL(/\/(?:workspace|planner)(?:$|\?)/, { timeout: 30_000 }),
+    // /workspace è soltanto una transizione server-side: con contesto valido
+    // reindirizza sempre a /planner e non deve essere considerato login concluso.
+    page.waitForURL(/\/planner(?:$|\?)/, { timeout: 30_000 }),
     page.getByRole('button', { name: 'Entra nel tuo spazio docente' }).click(),
   ])
-  await expect(page).not.toHaveURL(/\/login(?:$|\?)/)
+  await page.waitForLoadState('domcontentloaded')
+  await expect(page).toHaveURL(/\/planner(?:$|\?)/)
+  await expect(page.locator('main')).toBeVisible()
 }
