@@ -13,6 +13,7 @@ import { SupabaseStorageKnowledgeContentPort } from '@/core/infrastructure/supab
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { inspectFilenameForPilot } from '@/core/privacy/anonymization-guard'
 import { createClient } from '@/lib/supabase/server'
+import { validateKnowledgeUploadContent } from './upload-content-validation'
 import {
   buildKnowledgeObjectPath,
   isAllowedKnowledgeUploadMime,
@@ -36,7 +37,7 @@ export type KnowledgeUploadGrantResult =
 
 export type FinalizeKnowledgeUploadResult =
   | { ok: true; assetId: string }
-  | { ok: false; code: 'missing' | 'too_large' | 'unsupported' | 'invalid_path' | 'invalid_pdf' | 'visual_unavailable' | 'parse_failed' }
+  | { ok: false; code: 'missing' | 'too_large' | 'unsupported' | 'invalid_path' | 'invalid_content' | 'invalid_pdf' | 'visual_unavailable' | 'parse_failed' }
 
 export async function requestResumableKnowledgeUploadGrant(input: {
   originalName: string
@@ -111,6 +112,48 @@ export async function finalizeKnowledgeFileUpload(
   const validation = validateKnowledgeUploadReference(reference)
   if (!validation.valid) return { ok: false, code: validation.code }
 
+  // The browser is never the authority for ASVS V5.2.2. Even same-origin uploads
+  // are re-read from the private bucket before they become a canonical KB asset.
+  // This is especially important for RESUMABLE_DIRECT, which reaches Storage
+  // without traversing the application process.
+  const { data: storedBlob, error: storedDownloadError } = await supabase.storage.from(KNOWLEDGE_BUCKET).download(input.objectPath)
+  if (storedDownloadError || !storedBlob) {
+    console.error('Knowledge stored upload verification could not read object', {
+      message: storedDownloadError?.message ?? 'Missing stored blob',
+      workspaceId: context.workspace.id,
+      userId,
+      objectPath: input.objectPath,
+    })
+    return { ok: false, code: 'parse_failed' }
+  }
+
+  const storedBytes = new Uint8Array(await storedBlob.arrayBuffer())
+  const contentValidation = storedBytes.byteLength === input.byteSize
+    ? await validateKnowledgeUploadContent({ filename: input.originalName, mimeType: input.mimeType, bytes: storedBytes })
+    : { valid: false as const, code: 'content_mismatch' as const }
+
+  if (!contentValidation.valid) {
+    const { error: cleanupError } = await supabase.storage.from(KNOWLEDGE_BUCKET).remove([input.objectPath])
+    if (cleanupError) {
+      console.error('Knowledge rejected upload cleanup failed', {
+        message: cleanupError.message,
+        workspaceId: context.workspace.id,
+        userId,
+        objectPath: input.objectPath,
+      })
+    }
+    console.warn('Knowledge stored upload rejected before KB ingestion', {
+      code: contentValidation.code,
+      workspaceId: context.workspace.id,
+      userId,
+      objectPath: input.objectPath,
+      mimeType: input.mimeType,
+      declaredSize: input.byteSize,
+      actualSize: storedBytes.byteLength,
+    })
+    return { ok: false, code: 'invalid_content' }
+  }
+
   const transferMode = input.transferMode ?? 'SAME_ORIGIN'
   const cookieStore = await cookies()
   const requestHeaders = await headers()
@@ -151,6 +194,7 @@ export async function finalizeKnowledgeFileUpload(
         storagePath: input.objectPath,
         storageOwnerUserId: userId,
         originalFilename: input.originalName,
+        contentTypeValidation: 'SERVER_VERIFIED_BEFORE_KB_INGESTION',
         transferPath: transferMode === 'RESUMABLE_DIRECT'
           ? 'browser-to-supabase-storage-tus-after-local-pdf-preflight'
           : 'browser-to-docente-os-to-supabase-storage',
