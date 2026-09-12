@@ -8,7 +8,6 @@ import { createClient } from '@/lib/supabase/client'
 
 type Enrollment = {
   factorId: string
-  qrCode: string
   secret: string
 }
 
@@ -42,22 +41,13 @@ export function MfaCiFactorSetup() {
       return
     }
 
-    const existingVerifiedCi = listed.data.totp.find(
-      (factor) => factor.status === 'verified' && factor.friendly_name?.trim() === 'Docente OS CI',
-    )
-    if (existingVerifiedCi) {
-      setBusy(false)
-      setMessage('Esiste già un fattore verificato “Docente OS CI”. Non ne creo un duplicato. Se non possiedi più la chiave, va rimosso esplicitamente prima di ricrearlo.')
-      return
-    }
-
     for (const factor of listed.data.all) {
-      if (factor.factor_type !== 'totp' || factor.status !== 'unverified') continue
+      if (factor.factor_type !== 'totp') continue
       if (factor.friendly_name?.trim() !== 'Docente OS CI') continue
       const cleanup = await supabase.auth.mfa.unenroll({ factorId: factor.id })
       if (cleanup.error) {
         setBusy(false)
-        setMessage('Esiste una configurazione CI incompleta che non può essere rimossa automaticamente. Riprova più tardi.')
+        setMessage('Non è stato possibile ruotare il fattore CI esistente. Riprova dopo aver confermato il fattore MFA ordinario.')
         return
       }
     }
@@ -69,17 +59,17 @@ export function MfaCiFactorSetup() {
 
     setBusy(false)
     if (enrolled.error) {
-      setMessage('Non è stato possibile creare il fattore CI. Riprova.')
+      setMessage('Non è stato possibile creare il nuovo fattore CI. Riprova.')
       return
     }
 
     setEnrollment({
       factorId: enrolled.data.id,
-      qrCode: enrolled.data.totp.qr_code,
       secret: enrolled.data.totp.secret,
     })
     setCode('')
     setPhase('enrollment')
+    setMessage('Nuovo fattore CI creato. La vecchia chiave è stata revocata.')
   }
 
   async function verify() {
@@ -114,13 +104,17 @@ export function MfaCiFactorSetup() {
     }
 
     setPhase('verified')
-    setMessage('Fattore “Docente OS CI” verificato. Ora salva la chiave nei GitHub Actions secrets.')
+    setMessage('Fattore “Docente OS CI” verificato. Ora puoi salvare la chiave nei GitHub Actions secrets.')
   }
 
-  async function copySecret() {
+  async function copySecret(destination: 'authenticator' | 'github') {
     if (!enrollment?.secret) return
     await navigator.clipboard.writeText(enrollment.secret)
-    setMessage('Chiave TOTP copiata negli appunti. Incollala soltanto nel secret GitHub DOCENTE_OS_MFA_E2E_TOTP_SECRET.')
+    if (destination === 'authenticator') {
+      setMessage('Chiave copiata. Apri l’app autenticatore, aggiungi un account con chiave manuale, incolla, poi torna qui e inserisci il codice a 6 cifre.')
+      return
+    }
+    setMessage('Chiave CI copiata. Incollala soltanto nel secret GitHub DOCENTE_OS_MFA_E2E_TOTP_SECRET.')
   }
 
   return (
@@ -130,10 +124,10 @@ export function MfaCiFactorSetup() {
       {phase === 'intro' ? (
         <div className="grid gap-4">
           <p className="m-0 text-sm leading-6 text-muted-foreground">
-            Premi il pulsante: verrà creato un secondo fattore TOTP chiamato “Docente OS CI”. Il fattore personale già configurato resta invariato.
+            Rigenera il fattore tecnico “Docente OS CI”. L’eventuale fattore CI precedente verrà revocato; il fattore MFA ordinario resta invariato. Nessuna chiave verrà mostrata sullo schermo.
           </p>
           <Button type="button" size="lg" disabled={busy} onClick={() => void begin()}>
-            {busy ? 'Preparazione…' : 'Crea fattore CI'}
+            {busy ? 'Rotazione…' : 'Rigenera fattore CI'}
           </Button>
         </div>
       ) : null}
@@ -143,15 +137,13 @@ export function MfaCiFactorSetup() {
           <section className="grid gap-4" aria-labelledby="ci-factor-title">
             <div className="grid gap-2">
               <h2 id="ci-factor-title" className="m-0 text-lg font-semibold">1. Collega “Docente OS CI” all’autenticatore</h2>
-              <p className="m-0 text-sm leading-6 text-muted-foreground">Scansiona il QR oppure usa la chiave manuale. Non inviare questa chiave in chat.</p>
+              <p className="m-0 text-sm leading-6 text-muted-foreground">
+                Per evitare esposizioni accidentali, QR e chiave non vengono visualizzati. Copia la chiave e incollala manualmente nell’app autenticatore. Non inviarla in chat e non fare screenshot.
+              </p>
             </div>
-            <div className="grid justify-items-center gap-3 rounded-[var(--radius-sm)] border border-border bg-muted/35 p-4">
-              <img src={enrollment.qrCode} alt="QR del fattore Docente OS CI" width={220} height={220} />
-              <div className="grid w-full gap-1 text-center">
-                <span className="text-xs font-semibold text-muted-foreground">CHIAVE TOTP CI</span>
-                <code className="break-all rounded-[var(--radius-sm)] bg-card px-3 py-2 text-sm">{enrollment.secret}</code>
-              </div>
-            </div>
+            <Button type="button" size="lg" variant="secondary" onClick={() => void copySecret('authenticator')}>
+              Copia chiave per autenticatore
+            </Button>
           </section>
 
           {phase === 'enrollment' ? (
@@ -182,9 +174,9 @@ export function MfaCiFactorSetup() {
               <div className="grid gap-2 text-sm leading-6 text-muted-foreground">
                 <p className="m-0"><strong className="text-foreground">DOCENTE_OS_MFA_E2E_EMAIL</strong> → email dell’utente tecnico.</p>
                 <p className="m-0"><strong className="text-foreground">DOCENTE_OS_MFA_E2E_PASSWORD</strong> → password dell’utente tecnico.</p>
-                <p className="m-0"><strong className="text-foreground">DOCENTE_OS_MFA_E2E_TOTP_SECRET</strong> → chiave mostrata sopra.</p>
+                <p className="m-0"><strong className="text-foreground">DOCENTE_OS_MFA_E2E_TOTP_SECRET</strong> → usa il pulsante di copia qui sotto.</p>
               </div>
-              <Button type="button" variant="secondary" onClick={() => void copySecret()}>Copia chiave TOTP CI</Button>
+              <Button type="button" variant="secondary" onClick={() => void copySecret('github')}>Copia chiave TOTP CI per GitHub</Button>
               <a className={buttonVariants({ size: 'lg' })} href={GITHUB_SECRETS_URL} target="_blank" rel="noreferrer">Apri GitHub Secrets</a>
             </section>
           ) : null}
