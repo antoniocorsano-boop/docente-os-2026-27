@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { hasAal2 } from '@/core/security/mfa-access-policy'
 import { createClient } from '@/lib/supabase/server'
-import { MfaManager } from './mfa-manager'
+import { MfaManager, type TotpFactor } from './mfa-manager'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,9 +18,17 @@ export default async function AccountMfaPage() {
   if (!claims?.sub) redirect('/login?error=session_required')
   if (!hasAal2(claims)) redirect('/mfa?next=%2Faccount%2Fmfa')
 
-  const workspaceRepository = new SupabaseWorkspaceRepository()
-  const context = await workspaceRepository.getCurrentContext()
+  const [factorsResult, context] = await Promise.all([
+    supabase.auth.mfa.listFactors(),
+    new SupabaseWorkspaceRepository().getCurrentContext(),
+  ])
+
   if (!context) redirect('/login')
+
+  const initialFactors: TotpFactor[] = (factorsResult.data?.totp ?? []).map((factor) => ({
+    id: factor.id,
+    friendlyName: factor.friendly_name?.trim() || 'Autenticatore',
+  }))
 
   return (
     <AppShell
@@ -45,7 +53,7 @@ export default async function AccountMfaPage() {
             <CardDescription>La gestione è disponibile soltanto da una sessione già verificata ad AAL2.</CardDescription>
           </CardHeader>
           <CardContent>
-            <MfaManager />
+            <MfaManager initialFactors={initialFactors} />
           </CardContent>
         </Card>
 
