@@ -1,0 +1,118 @@
+name: MFA Browser AAL2 Gate
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mfa-browser-e2e.yml'
+      - 'product/e2e/mfa-aal2-browser.spec.mjs'
+      - 'product/e2e/support/totp.mjs'
+      - 'product/src/app/mfa/**'
+      - 'product/src/app/login/**'
+      - 'product/src/app/auth/**'
+      - 'product/src/app/imposta-password/**'
+      - 'product/src/core/security/mfa-access-policy.ts'
+      - 'product/src/lib/supabase/proxy.ts'
+      - 'product/src/proxy.ts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mfa-browser-aal2-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MFA_E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
+  MFA_E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
+  MFA_E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
+  E2E_BASE_URL: http://127.0.0.1:3000
+  NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+  NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+
+jobs:
+  mfa-browser-aal2:
+    name: mfa-browser-aal2
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Require dedicated governed MFA fixture
+        shell: bash
+        run: |
+          missing=0
+          for name in MFA_E2E_EMAIL MFA_E2E_PASSWORD MFA_E2E_TOTP_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is not configured. The MFA browser gate cannot run."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            {
+              echo "## MFA browser gate not executed"
+              echo "A dedicated MFA account and persistent TOTP seed are required."
+              echo "No shared E2E account, enrollment bypass, or ephemeral factor was used."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "Dedicated MFA fixture is configured." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: product/package-lock.json
+
+      - name: Install product dependencies
+        working-directory: product
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Playwright runner without changing the lockfile
+        working-directory: product
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Build tested application
+        working-directory: product
+        run: npm run build
+
+      - name: Start tested application
+        working-directory: product
+        shell: bash
+        run: |
+          npm start > /tmp/docente-os-mfa-e2e-server.log 2>&1 &
+          echo $! > /tmp/docente-os-mfa-e2e-server.pid
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 5 "$E2E_BASE_URL/login" >/dev/null; then
+              echo "Local DOCENTE OS runtime is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Local DOCENTE OS runtime did not become ready." >&2
+          cat /tmp/docente-os-mfa-e2e-server.log >&2 || true
+          exit 1
+
+      - name: Install Chromium
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run governed MFA browser gate
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/mfa-aal2-browser.spec.mjs
+
+      - name: Publish MFA browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mfa-browser-aal2-evidence-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            product/playwright-report/
+            product/test-results/
+            /tmp/docente-os-mfa-e2e-server.log

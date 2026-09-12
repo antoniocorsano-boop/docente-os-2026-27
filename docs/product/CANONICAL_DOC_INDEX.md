@@ -44,11 +44,12 @@ Per la **OWASP ASVS 5.0 security assurance** le fonti autorevoli sono:
 
 - `docs/product/ASVS_5_0_ASSURANCE_CANONICAL.md`;
 - `ops/asvs50-assurance.json`;
+- `ops/mfa-v6-3-3-closure-receipt.json` per la receipt provider/runtime e umana di V6.3.3;
 - `.github/scripts/validate-asvs50-assurance.mjs`;
 - `.github/workflows/asvs50-assurance.yml`;
 - `.github/workflows/dependency-security.yml` per la cadence delle dipendenze.
 
-M5-04 usa la baseline stabile **ASVS 5.0.0**, target L2, ma mantiene `verificationClaim=false` finché la mappatura requisito-per-requisito non è completa e tutti i gap L1/L2 applicabili non sono chiusi con receipt.
+M5-04 usa la baseline stabile **ASVS 5.0.0**, target L2, ma mantiene `verificationClaim=false` finché la mappatura requisito-per-requisito non è completa e tutti i gap L1/L2 applicabili non sono chiusi con receipt. La chiusura verificata dei finding prioritari V3.4.3, V5.2.2 e V6.3.3 non equivale a una verifica complessiva ASVS L2.
 
 Per **versioning, release candidate e promozione** le fonti autorevoli sono:
 
@@ -142,6 +143,8 @@ Per ogni lavoro su `/impostazioni`:
 4. il Language & Collaboration System governa tono e microcopy.
 
 È vietato introdurre una seconda Cattedra: Impostazioni e Orario devono usare gli stessi `teaching_assignments`.
+
+La futura superficie **Account e sicurezza** resta distinta da `/impostazioni`: identità, credenziali e fattori MFA non devono essere confusi con il contesto professionale del docente.
 
 ## Human + Visual Acceptance
 

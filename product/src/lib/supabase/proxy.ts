@@ -39,7 +39,10 @@ export async function updateSession(request: NextRequest, requestHeaderOverrides
 
   // Validate/refresh the JWT at the request boundary. Do not use getSession()
   // for authorization decisions on the server.
-  await supabase.auth.getClaims()
+  const { data, error } = await supabase.auth.getClaims()
 
-  return response
+  return {
+    response,
+    claims: error ? null : data?.claims ?? null,
+  }
 }

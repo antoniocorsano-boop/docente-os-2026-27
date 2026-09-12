@@ -1,0 +1,58 @@
+name: MFA AAL2 Data Plane Contract
+
+on:
+  push:
+    branches:
+      - security/m5-04-v6-3-3-mfa
+    paths:
+      - '.github/workflows/mfa-data-plane-contract.yml'
+      - 'product/supabase/migrations/0051_mfa_aal2_enforcement.sql'
+      - 'product/supabase/tests/mfa_aal2_ci_bootstrap.sql'
+      - 'product/supabase/tests/run_mfa_aal2_contract.sh'
+  pull_request:
+    paths:
+      - '.github/workflows/mfa-data-plane-contract.yml'
+      - 'product/supabase/migrations/0051_mfa_aal2_enforcement.sql'
+      - 'product/supabase/tests/mfa_aal2_ci_bootstrap.sql'
+      - 'product/supabase/tests/run_mfa_aal2_contract.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-contract:
+    name: postgres-aal2-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+
+    steps:
+      - name: Checkout exact tested state
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Run isolated MFA AAL2 data-plane contract
+        working-directory: product
+        run: bash supabase/tests/run_mfa_aal2_contract.sh

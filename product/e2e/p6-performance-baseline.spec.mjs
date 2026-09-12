@@ -1,8 +1,7 @@
 import { expect, test } from '@playwright/test'
 import fs from 'node:fs/promises'
+import { loginE2E, requireE2ECredentials } from './support/e2e-auth.mjs'
 
-const email = process.env.E2E_EMAIL
-const password = process.env.E2E_PASSWORD
 const routes = [
   '/planner',
   '/knowledge',
@@ -24,18 +23,12 @@ function percentile(values, ratio) {
 }
 
 test('P6 baseline: superfici principali restano entro il budget dopo warm-up', async ({ page }) => {
-  if (!email || !password) throw new Error('E2E_EMAIL and E2E_PASSWORD are required')
+  requireE2ECredentials()
 
-  await page.goto('/login')
-  await page.locator('#email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await Promise.all([
-    page.waitForURL((url) => url.pathname === '/planner', { timeout: 30_000 }),
-    page.getByRole('button', { name: /Entra nel tuo spazio docente/i }).click(),
-  ])
-  await page.waitForLoadState('domcontentloaded')
-  expect(new URL(page.url()).pathname).toBe('/planner')
-  await expect(page.locator('main')).toBeVisible()
+  // Authentication is a precondition, not part of the performance sample.
+  // Use the same governed AAL2 path as the other authenticated acceptance gates
+  // so P6 never bypasses MFA and never measures an AAL1-only session.
+  await loginE2E(page)
 
   // /workspace è un endpoint di transizione che reindirizza sempre a /planner:
   // non è una superficie da cronometrare. Il gate misura soltanto destinazioni

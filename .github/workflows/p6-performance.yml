@@ -26,8 +26,9 @@ permissions:
   statuses: write
 
 env:
-  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
-  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
+  E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
   NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
 
@@ -42,8 +43,8 @@ jobs:
       P6_ROUTE_BUDGET_MS: 2500
       P6_P95_BUDGET_MS: 1800
     steps:
-      - name: Require E2E credential
-        run: test -n "${E2E_PASSWORD:-}"
+      - name: Require governed AAL2 E2E credential
+        run: test -n "${E2E_EMAIL:-}" && test -n "${E2E_PASSWORD:-}" && test -n "${E2E_TOTP_SECRET:-}"
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
@@ -112,8 +113,8 @@ jobs:
       P6_ROUTE_BUDGET_MS: 3000
       P6_P95_BUDGET_MS: 2200
     steps:
-      - name: Require E2E credential
-        run: test -n "${E2E_PASSWORD:-}"
+      - name: Require governed AAL2 E2E credential
+        run: test -n "${E2E_EMAIL:-}" && test -n "${E2E_PASSWORD:-}" && test -n "${E2E_TOTP_SECRET:-}"
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0

@@ -49,7 +49,7 @@ Tier 2 scolastico/personale, multi-user istituzionale e nuove integrazioni di id
 
 ### Web frontend security
 
-Il runtime usa ora una **Content Security Policy request-scoped con nonce crittografico** attraverso `product/src/proxy.ts`, registrato da Next.js 16 come Proxy/Middleware.
+Il runtime usa una **Content Security Policy request-scoped con nonce crittografico** attraverso `product/src/proxy.ts`, registrato da Next.js 16 come Proxy/Middleware.
 
 La policy di produzione:
 
@@ -67,11 +67,23 @@ La suite Human + Visual Acceptance verifica nel browser l'header CSP, il nonce f
 
 ### Autenticazione e sessioni
 
-Il runtime usa Supabase Auth. Le decisioni server-side si basano su `supabase.auth.getClaims()` e non su una sessione client non verificata. Esistono flussi password, magic link, recovery, logout e rehearsal locale di refresh, invalidazione sessione e reset password.
+Il runtime usa Supabase Auth. Le decisioni server-side si basano su `supabase.auth.getClaims()` e non su una sessione client non verificata.
+
+Il percorso protetto usa ora **MFA TOTP reale e AAL2**:
+
+- password, magic link e recovery stabiliscono il primo fattore;
+- una sessione AAL1 non può entrare nelle superfici operative protette;
+- challenge/verify TOTP promuove la stessa sessione ad AAL2;
+- API applicative, database/RLS, Storage e RPC governate restano fail-closed senza AAL2;
+- `0051_mfa_aal2_enforcement.sql` applica policy `RESTRICTIVE` e un ratchet anche sulle future tabelle applicative;
+- il recovery non consente la mutazione della password prima di AAL2;
+- dopo il reset reale, il nuovo accesso con la nuova password richiede nuovamente MFA prima di raggiungere la superficie operativa.
+
+La prova provider-native è stata eseguita su un progetto Supabase isolato e su un deploy Render legato all'exact implementation SHA. La receipt canonica è `ops/mfa-v6-3-3-closure-receipt.json`. Il requisito **V6.3.3 / ASVS-003 è `CLOSED_VERIFIED`** sull'implementation SHA `1f04f2799f9993c53d0578f8caafbe9e9842e60f`.
 
 ### Autorizzazione
 
-RLS è attiva nei domini persistenti principali, tra cui identità/workspace, Planner, Conoscenza, Piano annuale, Impostazioni e Orario. I repository server ricavano il subject autenticato dalle claims Supabase.
+RLS è attiva nei domini persistenti principali, tra cui identità/workspace, Planner, Conoscenza, Piano annuale, Impostazioni e Orario. I repository server ricavano il subject autenticato dalle claims Supabase. Per il perimetro MFA, le policy AAL2 aggiungono un ulteriore vincolo `RESTRICTIVE`.
 
 Questa è una base forte per V8, ma non equivale ancora alla verifica completa di tutte le regole function-level, data-level e field-level.
 
@@ -99,7 +111,7 @@ Il repository ha un workflow periodico e manuale di dependency security. La poli
 
 ### Recovery e incident management
 
-Sono presenti rehearsal e contratti per Auth recovery, database restore, storage recovery e incident escalation. Il contratto incidente distingue SEV-1..SEV-4 e vieta di inserire segreti o dati personali scolastici reali nelle receipt.
+Sono presenti rehearsal e contratti per Auth recovery, database restore, storage recovery e incident escalation. Il contratto incidente distingue SEV-1..SEV-4 e vieta di inserire segreti o dati personali scolastici reali nelle receipt. La receipt MFA registra esiti e riferimenti tecnici, ma non password o codici TOTP.
 
 ## 5. Finding prioritari
 
@@ -148,18 +160,29 @@ La chiusura di V5.2.2 **non** trasforma V5 in `VERIFIED_PASS`, non completa M5-0
 ### ASVS-003 — V6.3.3 — MFA
 
 **Livello:** L2  
-**Stato:** `OPEN_GAP`
+**Stato:** `CLOSED_VERIFIED`  
+**Implementation SHA:** `1f04f2799f9993c53d0578f8caafbe9e9842e60f`
 
-I flussi correnti sono password e magic link email. Non è stata trovata implementazione di enrollment/challenge MFA, TOTP o AAL2.
+La closure è fondata su:
 
-Criterio di chiusura:
+- TOTP provider-native Supabase, senza bypass di test;
+- passaggio esplicito AAL1 → challenge MFA → AAL2;
+- negazione AAL1 su superfici operative e data plane;
+- enforcement database/Storage/RPC tramite migrazione `0051_mfa_aal2_enforcement.sql`;
+- Browser Gate reale con TOTP errato rifiutato e TOTP valido accettato;
+- recovery reale via email con password mutation consentita solo dopo AAL2;
+- uscita e nuovo accesso con la password appena impostata, seguito da MFA e raggiungimento della superficie operativa `Oggi`;
+- prova provider-runtime isolata e receipt umana priva di segreti.
 
-1. introdurre un fattore aggiuntivo o una combinazione conforme al requisito L2 per il perimetro protetto;
-2. definire enrollment, challenge, recovery e revoca;
-3. testare sessione e recovery senza introdurre bypass più deboli;
-4. validazione umana del percorso di accesso e recupero.
+Receipt registrate in `ops/asvs50-assurance.json` e `ops/mfa-v6-3-3-closure-receipt.json`:
 
-MFA resta una slice separata perché modifica il percorso di autenticazione e recovery.
+- Product CI — run `34708557467`;
+- MFA AAL2 Data Plane Contract — run `34708557509`;
+- MFA Browser AAL2 Gate — run `34708557565`;
+- Render exact-head deploy — `dep-daioqrgae00c73fck5d0`;
+- provider runtime e human recovery/re-login — `ops/mfa-v6-3-3-closure-receipt.json`.
+
+La chiusura di V6.3.3 **non** trasforma V6 in `VERIFIED_PASS`, non completa M5-04A e non costituisce una dichiarazione di verifica ASVS L2.
 
 ## 6. Capitoli inizialmente N/A
 
@@ -189,6 +212,8 @@ Per chiudere un requisito serve una delle seguenti evidenze:
 - receipt di configurazione/deploy;
 - combinazione delle precedenti quando il requisito lo richiede.
 
+V6.3.3 dispone ora di evidenza provider/runtime specifica; questo non estende automaticamente la verifica agli altri requisiti provider-managed dei capitoli V6, V7, V9, V11 e V12.
+
 ## 8. M5-04A — ASVS mapping
 
 M5-04A può diventare `COMPLETE` solo quando:
@@ -197,16 +222,16 @@ M5-04A può diventare `COMPLETE` solo quando:
 2. ciascuno ha stato ed evidenza;
 3. tutti gli N/A hanno motivazione ancora valida;
 4. non esistono `OPEN_GAP` L1/L2;
-5. i controlli provider-managed hanno receipt appropriata;
+5. i controlli provider-managed hanno receipt appropriate;
 6. il gate machine-readable è verde sull'exact head candidato.
 
 Stato corrente: **PARTIAL**.
 
-Le closure verificate di **V3.4.3** e **V5.2.2** riducono i finding prioritari aperti da tre a uno. **V6.3.3 / MFA resta aperto**, insieme alla mappatura requirement-level e alle receipt provider-managed ancora incomplete.
+I tre finding prioritari iniziali — **V3.4.3**, **V5.2.2** e **V6.3.3** — sono ora `CLOSED_VERIFIED`. M5-04A resta `PARTIAL` perché la mappatura requirement-level L1/L2 e le receipt degli altri controlli provider-managed non sono ancora complete.
 
 ## 9. M5-04B — dependency/security cadence
 
-La dependency-security cadence è già operativa e forte, ma la readiness M5 richiede ancora un roll-up security unico con:
+La dependency-security cadence è operativa e forte, ma la readiness M5 richiede ancora un roll-up security periodico unico con:
 
 - dipendenze;
 - finding ASVS;
@@ -218,10 +243,10 @@ Stato corrente: **PARTIAL**.
 
 ## 10. Ordine di chiusura raccomandato
 
-1. preservare le closure **ASVS-001 / V3.4.3** e **ASVS-002 / V5.2.2** con i rispettivi regression gate;
-2. progettare **ASVS-003 / V6.3.3 MFA** come slice separata perché modifica il percorso di autenticazione e recovery;
-3. completare la mappatura requirement-level L1/L2;
-4. produrre provider/runtime receipts per sessioni, token, TLS, crypto e configuration hardening;
+1. preservare le closure **ASVS-001 / V3.4.3**, **ASVS-002 / V5.2.2** e **ASVS-003 / V6.3.3** con i rispettivi regression gate;
+2. completare la mappatura requirement-level L1/L2;
+3. produrre provider/runtime receipts per sessioni, token, TLS, crypto e configuration hardening ancora non coperti;
+4. introdurre la superficie separata **Account e sicurezza** come gap professionale/UI senza alterare retroattivamente la closure V6.3.3;
 5. rivalutare soltanto allora una possibile verification claim L2.
 
 ## 11. Regola anti-certification

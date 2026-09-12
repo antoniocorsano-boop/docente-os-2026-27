@@ -2,7 +2,6 @@
 
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { ensurePersonalWorkspace } from '@/app/auth/bootstrap-personal-workspace'
 import { createClient } from '@/lib/supabase/server'
 
 export async function signInWithPassword(formData: FormData) {
@@ -21,13 +20,10 @@ export async function signInWithPassword(formData: FormData) {
     redirect('/login?error=invalid_credentials')
   }
 
-  const bootstrap = await ensurePersonalWorkspace(supabase)
-  if (!bootstrap.ok) {
-    await supabase.auth.signOut()
-    redirect(`/login?error=${bootstrap.error}`)
-  }
-
-  redirect('/workspace')
+  // Password sign-in is the first factor. Route explicitly through the MFA
+  // boundary instead of relying on a follow-up proxy interception of the
+  // Server Action redirect. Workspace bootstrap remains deferred until AAL2.
+  redirect('/mfa?next=%2Fworkspace')
 }
 
 export async function requestMagicLink(formData: FormData) {

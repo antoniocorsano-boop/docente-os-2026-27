@@ -26,8 +26,9 @@ concurrency:
 
 env:
   WCAG_ASSURANCE: '1'
-  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
-  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
+  E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
   E2E_BASE_URL: http://127.0.0.1:3000
   NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
@@ -40,15 +41,21 @@ jobs:
     timeout-minutes: 35
 
     steps:
-      - name: Check E2E credential configuration
+      - name: Check governed AAL2 E2E credential configuration
         id: credentials
         shell: bash
         run: |
-          if [ -n "${E2E_PASSWORD:-}" ]; then
+          missing=0
+          for name in E2E_EMAIL E2E_PASSWORD E2E_TOTP_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is required for WCAG authenticated acceptance."
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 0 ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo 'Repository secret DOCENTE_OS_E2E_PASSWORD is required.' >&2
             exit 1
           fi
 

@@ -1,15 +1,12 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, test } from '@playwright/test'
+import { loginE2E, requireE2ECredentials } from './support/e2e-auth.mjs'
 import { retainNewestKnowledgeFixture } from './support/knowledge-fixture-hygiene.mjs'
 
-const email = process.env.E2E_EMAIL ?? 'docente-os-e2e-2dbf49e1@example.invalid'
-const password = process.env.E2E_PASSWORD
 const fixturePath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'x3-responsible-ai.txt')
 
-if (!password) {
-  throw new Error('E2E_PASSWORD is required for the authenticated X3 acceptance test')
-}
+requireE2ECredentials()
 
 test('X3 mobile gate: grounded answers, useful proposals, write preview and no automatic write', async ({ page }) => {
   await login(page)
@@ -155,14 +152,8 @@ test('X3 Planner gate: real counts, useful answer and no automatic mutation', as
 })
 
 async function login(page) {
-  await test.step('Accede con l’account tecnico isolato', async () => {
-    await page.goto('/login')
-    await page.locator('#email').fill(email)
-    await page.locator('#password').fill(password)
-    await Promise.all([
-      page.waitForURL(/\/workspace(?:$|\?)/, { timeout: 30_000 }),
-      page.getByRole('button', { name: 'Entra nel tuo spazio docente' }).click(),
-    ])
+  await test.step('Accede con l’account tecnico isolato in AAL2', async () => {
+    await loginE2E(page)
   })
 }
 

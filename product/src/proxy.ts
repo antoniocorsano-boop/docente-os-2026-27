@@ -1,8 +1,13 @@
-import type { NextRequest } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import {
   buildContentSecurityPolicy,
   createContentSecurityPolicyNonce,
 } from './core/security/content-security-policy'
+import {
+  isApplicationApiPath,
+  mfaRedirectPath,
+  requiresMfa,
+} from './core/security/mfa-access-policy'
 import { updateSession } from './lib/supabase/proxy'
 
 export async function proxy(request: NextRequest) {
@@ -16,9 +21,22 @@ export async function proxy(request: NextRequest) {
   requestHeaders.set('Content-Security-Policy', contentSecurityPolicy)
   requestHeaders.set('x-nonce', nonce)
 
-  const response = await updateSession(request, requestHeaders)
-  response.headers.set('Content-Security-Policy', contentSecurityPolicy)
+  const session = await updateSession(request, requestHeaders)
+  let response = session.response
 
+  if (requiresMfa(request.nextUrl.pathname, session.claims)) {
+    if (isApplicationApiPath(request.nextUrl.pathname)) {
+      response = NextResponse.json({ ok: false, code: 'mfa_required' }, { status: 403 })
+    } else {
+      response = NextResponse.redirect(
+        new URL(mfaRedirectPath(request.nextUrl.pathname, request.nextUrl.search), request.url),
+      )
+    }
+
+    for (const cookie of session.response.cookies.getAll()) response.cookies.set(cookie)
+  }
+
+  response.headers.set('Content-Security-Policy', contentSecurityPolicy)
   return response
 }
 

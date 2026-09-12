@@ -1,6 +1,6 @@
 import type { EmailOtpType } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
-import { ensurePersonalWorkspace } from '@/app/auth/bootstrap-personal-workspace'
+import { resolveExternalOrigin } from '@/core/security/mfa-access-policy'
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
@@ -8,8 +8,13 @@ export async function GET(request: NextRequest) {
   const tokenHash = request.nextUrl.searchParams.get('token_hash')
   const type = request.nextUrl.searchParams.get('type') as EmailOtpType | null
   const isRecovery = request.nextUrl.searchParams.get('recovery') === '1' || type === 'recovery'
-  const redirectTo = request.nextUrl.clone()
-  redirectTo.search = ''
+  const origin = resolveExternalOrigin({
+    configuredOrigin: process.env.NEXT_PUBLIC_APP_URL,
+    forwardedHost: request.headers.get('x-forwarded-host'),
+    forwardedProto: request.headers.get('x-forwarded-proto'),
+    requestOrigin: request.nextUrl.origin,
+  })
+  const redirectTo = new URL('/auth/confirm', origin)
 
   const supabase = await createClient()
 
@@ -33,14 +38,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(redirectTo)
   }
 
-  const bootstrap = await ensurePersonalWorkspace(supabase)
-  if (!bootstrap.ok) {
-    redirectTo.pathname = '/login'
-    redirectTo.searchParams.set('error', bootstrap.error)
-    return NextResponse.redirect(redirectTo)
-  }
-
-  redirectTo.pathname = '/imposta-password'
-  redirectTo.searchParams.set('source', isRecovery ? 'recovery' : 'email')
+  // Email verification/recovery establishes only an authenticated AAL1 session.
+  // Every password mutation must complete MFA before reaching the password form;
+  // workspace bootstrap remains deferred until AAL2.
+  redirectTo.pathname = '/mfa'
+  redirectTo.searchParams.set(
+    'next',
+    `/imposta-password?source=${isRecovery ? 'recovery' : 'email'}`,
+  )
   return NextResponse.redirect(redirectTo)
 }
