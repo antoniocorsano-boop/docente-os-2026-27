@@ -58,6 +58,19 @@ test.describe('M5-03 — WCAG 2.2 AA automated assurance', () => {
     await analyzePage(page, testInfo, 'login')
   })
 
+  test('AppShell: il primo Tab espone il bypass e porta il focus al main', async ({ page }) => {
+    await loginE2E(page)
+    const response = await page.goto('/planner')
+    if (!response) throw new Error('No navigation response for /planner')
+    expect(response.status()).toBeLessThan(400)
+    const skip = page.getByRole('link', { name: 'Salta al contenuto' })
+    await page.keyboard.press('Tab')
+    await expect(skip).toBeFocused()
+    await expect(skip).toBeVisible()
+    await page.keyboard.press('Enter')
+    await expect(page.locator('#dos-main-content')).toBeFocused()
+  })
+
   for (const surface of EXPERIENCE_SURFACES) {
     test(`${surface.id}: automated WCAG A/AA baseline`, async ({ page }, testInfo) => {
       await loginE2E(page)
