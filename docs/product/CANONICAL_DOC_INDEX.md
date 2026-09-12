@@ -40,6 +40,16 @@ Per la **WCAG 2.2 AA accessibility assurance** le fonti autorevoli sono:
 
 Un run automatico verde non costituisce da solo dichiarazione di conformità WCAG 2.2 AA; prevalgono i criteri di chiusura e le receipt definiti nel contratto canonico M5-03.
 
+Per la **OWASP ASVS 5.0 security assurance** le fonti autorevoli sono:
+
+- `docs/product/ASVS_5_0_ASSURANCE_CANONICAL.md`;
+- `ops/asvs50-assurance.json`;
+- `.github/scripts/validate-asvs50-assurance.mjs`;
+- `.github/workflows/asvs50-assurance.yml`;
+- `.github/workflows/dependency-security.yml` per la cadence delle dipendenze.
+
+M5-04 usa la baseline stabile **ASVS 5.0.0**, target L2, ma mantiene `verificationClaim=false` finché la mappatura requisito-per-requisito non è completa e tutti i gap L1/L2 applicabili non sono chiusi con receipt.
+
 Per **versioning, release candidate e promozione** le fonti autorevoli sono:
 
 - `docs/product/RELEASE_ENGINEERING_CANONICAL.md`;
@@ -82,6 +92,7 @@ Sono vietate dipendenze dirette `Timetable -> Calendar` e `Calendar -> Timetable
 - `docs/product/M5_READINESS_MATRIX_2026-09-12.md` — **requisito → evidenza → stato → gap → criterio di chiusura**.
 - `docs/product/SUSTAINED_PILOT_EVIDENCE_CANONICAL.md` — **regole M5-02 per evidence longitudinale, journey critiche, privacy e anti-selection-bias**.
 - `docs/product/WCAG_2_2_AA_ASSURANCE_CANONICAL.md` — **contratto M5-03 per matrice WCAG 2.2 AA, automazione, receipt manuali e assistive technology**.
+- `docs/product/ASVS_5_0_ASSURANCE_CANONICAL.md` — **contratto M5-04 per target L2, mapping requisito-evidenza, gap security e provider/runtime receipts**.
 - `docs/product/RELEASE_ENGINEERING_CANONICAL.md` — **SemVer, RC immutabili, certificazione, promozione e rollback**.
 - `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — north star e programma X0–X6.
 - `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` — tono, microcopy e grammatica collaborativa.
@@ -106,6 +117,8 @@ La sustained pilot evidence deve essere append-only, non selettiva e Tier-1-safe
 Una release candidate non equivale a una promozione Production. `develop` non è Production. Le release formali seguono `RELEASE_ENGINEERING_CANONICAL.md` e il contratto Production esistente.
 
 M5-03 mantiene `conformanceClaim=false` finché tutti i criteri A/AA applicabili non dispongono dell'evidenza richiesta; axe/HVA sono controlli di assurance e non certificatori.
+
+M5-04 mantiene `verificationClaim=false` finché la mappatura L1/L2 applicabile non è completa; framework, provider gestiti, RLS o HTTPS non costituiscono da soli una verifica ASVS.
 
 ### Regola Home
 
@@ -214,6 +227,21 @@ Vincoli:
 - keyboard/focus/reflow e screen reader restano gate separati;
 - `conformanceClaim=false` finché non esiste chiusura completa e deliberata.
 
+## Security assurance
+
+Ordine canonico:
+
+`requisito ASVS 5.0.0 → applicabilità → evidence → finding → hardening → receipt → stato`.
+
+Vincoli:
+
+- target M5-04 = L2;
+- `VERIFIED_PASS` solo con receipt specifiche e requirement-level mapping completa;
+- N/A sempre motivato e riaperto quando cambia il perimetro;
+- controlli Supabase/hosting/provider-managed richiedono evidenza provider/runtime;
+- i finding L1/L2 noti restano espliciti fino alla closure;
+- `verificationClaim=false` finché non esiste una chiusura completa e deliberata.
+
 ## Regola di aggiornamento
 
 Ogni slice che modifica una decisione canonica deve:
@@ -236,15 +264,16 @@ Prima di implementare una slice, leggere almeno:
 2. `M5_READINESS_MATRIX_2026-09-12.md` durante il programma M5;
 3. `SUSTAINED_PILOT_EVIDENCE_CANONICAL.md` quando il lavoro riguarda evidenza d'uso, incidenti, friction o KPI;
 4. `WCAG_2_2_AA_ASSURANCE_CANONICAL.md` quando il lavoro modifica UI, accessibilità, navigazione, form o interazioni;
-5. ADR-001 e ADR-002;
-6. Product Experience Masterplan;
-7. Language & Collaboration System;
-8. Design System V2;
-9. Brand Identity e Design Governance per lavoro visuale;
-10. DPG-1/DPG-2 per lavoro visuale;
-11. la specifica verticale della slice e il relativo contratto di esperienza;
-12. per T3/T4, Work/Time Mental Model e Temporal Composition;
-13. `RELEASE_ENGINEERING_CANONICAL.md` quando il lavoro coinvolge versioni, RC, promozioni o rollback.
+5. `ASVS_5_0_ASSURANCE_CANONICAL.md` quando il lavoro modifica autenticazione, sessioni, autorizzazione, upload, API, configurazione, dati, logging, dipendenze o security controls;
+6. ADR-001 e ADR-002;
+7. Product Experience Masterplan;
+8. Language & Collaboration System;
+9. Design System V2;
+10. Brand Identity e Design Governance per lavoro visuale;
+11. DPG-1/DPG-2 per lavoro visuale;
+12. la specifica verticale della slice e il relativo contratto di esperienza;
+13. per T3/T4, Work/Time Mental Model e Temporal Composition;
+14. `RELEASE_ENGINEERING_CANONICAL.md` quando il lavoro coinvolge versioni, RC, promozioni o rollback.
 
 Nessun agente deve inferire una nuova architettura da un singolo file runtime quando esiste una decisione canonica esplicita; nessun agente deve inferire lo stato corrente da un checkpoint datato quando esiste `PROJECT_STATUS_CURRENT.md`.
 
