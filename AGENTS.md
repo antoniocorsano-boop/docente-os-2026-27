@@ -10,6 +10,18 @@ Memory ID: `CML-DOS-INTEGRATED-GOVERNANCE-V1`.
 
 This is the canonical shared logical memory for CurManLight Arena + Docente OS. It overrides stale conversation summaries, old PR descriptions and local assumptions on cross-system boundaries.
 
+## Mandatory Curriculum-to-Practice specification
+
+Before any task that affects curriculum-to-planning binding, annual planning, UDA, class/lesson execution, evidence, feedback, assessment, teacher review or Arena curricular feedback, also read:
+
+- `docs/architecture/CURRICULUM_TO_PRACTICE_OPERATING_MODEL_V1.md`
+- `docs/architecture/CURRICULUM_TO_PRACTICE_CONTRACTS_V1.md`
+- `docs/architecture/CURRICULUM_TO_PRACTICE_EXECUTION_PLAN_V1.md`
+- `docs/architecture/CURRICULUM_TO_PRACTICE_ACCEPTANCE_V1.md`
+- `agent_skills/curriculum-to-practice/SKILL.md`
+
+C2P documents are subordinate to the integrated governed memory. They refine execution; they do not authorize bypassing the current stabilization order. Execute only the explicitly authorized C2P tranche and stop at its gate.
+
 ## Mandatory rules
 
 1. Docente OS owns teacher operational work; it does not own institutional curriculum authority.
