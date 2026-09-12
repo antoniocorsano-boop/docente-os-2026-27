@@ -100,7 +100,7 @@ function LocalDocxMediaPrivacyWorkbenchSession({ file, disabled, onPrepared, onM
   }
 
   return (
-    <section aria-label="Revisione privacy locale del DOCX con media" style={{ border: '1px solid var(--border, #d7d7d7)', borderRadius: 12, padding: 12, display: 'grid', gap: 10 }}>
+    <section aria-label="Revisione privacy locale del DOCX con media" style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', padding: 12, display: 'grid', gap: 10 }}>
       <div>
         <strong>DOCX con immagini o media</strong>
         <p style={{ margin: '4px 0 0' }}>Per il pilot anonimo il DOCX originale non viene caricato. Puoi conservare soltanto il testo estratto localmente, dopo averlo revisionato. Le immagini incorporate vengono escluse dal derivato.</p>
