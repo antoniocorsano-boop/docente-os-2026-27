@@ -7,9 +7,14 @@ import { createClient } from '@/lib/supabase/server'
 type PasswordSetupSource = 'email' | 'recovery' | 'account' | ''
 
 export async function setPassword(formData: FormData) {
+  const source = normalizeSetupSource(readString(formData.get('source')))
+
+  if (!source) {
+    redirect('/account')
+  }
+
   const password = readString(formData.get('password'))
   const confirmPassword = readString(formData.get('confirm_password'))
-  const source = normalizeSetupSource(readString(formData.get('source')))
 
   if (password.length < 10) {
     redirect(passwordSetupErrorPath(source, 'weak_password'))
@@ -26,12 +31,8 @@ export async function setPassword(formData: FormData) {
     redirect('/login?error=session_required')
   }
 
-  if (source === 'recovery' && !hasAal2(data.claims)) {
-    redirect(mfaRedirectPath('/imposta-password', '?source=recovery'))
-  }
-
-  if (source === 'account' && !hasAal2(data.claims)) {
-    redirect(mfaRedirectPath('/imposta-password', '?source=account'))
+  if (!hasAal2(data.claims)) {
+    redirect(mfaRedirectPath('/imposta-password', `?source=${source}`))
   }
 
   const { error } = await supabase.auth.updateUser({ password })
@@ -52,8 +53,7 @@ function normalizeSetupSource(value: string): PasswordSetupSource {
   return value === 'recovery' || value === 'email' || value === 'account' ? value : ''
 }
 
-function passwordSetupErrorPath(source: PasswordSetupSource, error: string) {
-  const params = new URLSearchParams({ error })
-  if (source) params.set('source', source)
+function passwordSetupErrorPath(source: Exclude<PasswordSetupSource, ''>, error: string) {
+  const params = new URLSearchParams({ error, source })
   return `/imposta-password?${params.toString()}`
 }
