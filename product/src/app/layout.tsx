@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { DOCENTE_OS_MARK_COLORS } from '@/components/brand/brand-mark-geometry'
 import './tailwind.css'
 import './globals.css'
 import './app-shell.css'
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#0b2d5b',
+  themeColor: DOCENTE_OS_MARK_COLORS.navy,
   colorScheme: 'light',
 }
 

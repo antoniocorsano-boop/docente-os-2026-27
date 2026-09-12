@@ -1,14 +1,15 @@
 {
   "schema": "docente-os.design-debt-baseline.v1",
-  "capturedAt": "2026-09-11",
-  "source": "DPG-2F knowledge cleanup",
+  "capturedAt": "2026-09-12",
+  "source": "DPG-2 closure on exact head f0d62f9b4efc73af0eebee18ba67295211847df1 (Design Policy Gate run #79 PASS)",
   "rule": "Every metric is a non-increasing ceiling. Lower values may replace this baseline; higher values must fail the Design Policy Gate.",
+  "residualRegister": "product/design/DESIGN_DEBT_RESIDUALS.md",
   "metrics": {
-    "rawColors": 232,
+    "rawColors": 27,
     "localTokens": 13,
     "legacyBrand": 0,
     "decorativeEffects": 0,
-    "rawRadii": 194,
-    "rawShadows": 15
+    "rawRadii": 1,
+    "rawShadows": 5
   }
 }

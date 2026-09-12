@@ -107,7 +107,7 @@ function markColors(variant: BrandMarkVariant) {
       bodyMiddle: DOCENTE_OS_MARK_COLORS.white,
       bodyEnd: DOCENTE_OS_MARK_COLORS.inverseSoft,
       threadStart: DOCENTE_OS_MARK_COLORS.teal,
-      threadEnd: '#71D7E5',
+      threadEnd: DOCENTE_OS_MARK_COLORS.reducedThreadEnd,
       dot: DOCENTE_OS_MARK_COLORS.white,
     }
   }
@@ -117,8 +117,8 @@ function markColors(variant: BrandMarkVariant) {
       bodyStart: DOCENTE_OS_MARK_COLORS.blue,
       bodyMiddle: DOCENTE_OS_MARK_COLORS.teal,
       bodyEnd: DOCENTE_OS_MARK_COLORS.navy,
-      threadStart: '#2A7CF4',
-      threadEnd: '#42CBD7',
+      threadStart: DOCENTE_OS_MARK_COLORS.darkThreadStart,
+      threadEnd: DOCENTE_OS_MARK_COLORS.darkThreadEnd,
       dot: DOCENTE_OS_MARK_COLORS.white,
     }
   }
@@ -127,7 +127,7 @@ function markColors(variant: BrandMarkVariant) {
     bodyStart: DOCENTE_OS_MARK_COLORS.blue,
     bodyMiddle: DOCENTE_OS_MARK_COLORS.blue,
     bodyEnd: DOCENTE_OS_MARK_COLORS.blueDeep,
-    threadStart: '#2789F3',
+    threadStart: DOCENTE_OS_MARK_COLORS.lightThreadStart,
     threadEnd: DOCENTE_OS_MARK_COLORS.teal,
     dot: DOCENTE_OS_MARK_COLORS.blue,
   }

@@ -48,7 +48,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </p>
         </header>
 
-        <Card className="overflow-hidden shadow-[0_18px_55px_rgba(11,45,91,0.08)]">
+        <Card className="overflow-hidden shadow-[var(--shadow-float)]">
           <CardHeader className="border-b border-border bg-card">
             <p className="m-0 text-xs font-semibold text-primary">ACCESSO ORDINARIO</p>
             <CardTitle>Accedi a Docente OS</CardTitle>

@@ -4,6 +4,9 @@
 }
 
 .textbookRowManage > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
   cursor: pointer;
   font-weight: 700;
   text-decoration: underline;
@@ -18,9 +21,9 @@
   padding: 10px 12px;
   min-width: 240px;
   max-width: 320px;
-  border: 1px solid var(--border, #d8dde6);
-  border-radius: 12px;
-  background: var(--surface, #fff);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
 }
 
 .textbookRowDetails > span,
@@ -33,7 +36,7 @@
   display: grid;
   gap: 5px;
   padding-top: 4px;
-  border-top: 1px solid var(--border, #d8dde6);
+  border-top: 1px solid var(--line);
 }
 
 .textbookRowDetails .textButton {

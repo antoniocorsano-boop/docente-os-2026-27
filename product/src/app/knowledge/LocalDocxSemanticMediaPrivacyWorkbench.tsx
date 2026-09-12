@@ -162,7 +162,7 @@ function LocalDocxSemanticMediaPrivacyWorkbenchSession({ file, disabled, onPrepa
   }
 
   return (
-    <section aria-label="Revisione locale del DOCX con media" style={{ border: '1px solid var(--border, #d7d7d7)', borderRadius: 12, padding: 12, display: 'grid', gap: 12 }}>
+    <section aria-label="Revisione locale del DOCX con media" style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', padding: 12, display: 'grid', gap: 12 }}>
       <div>
         <strong>DOCX con immagini o media</strong>
         <p style={{ margin: '4px 0 0' }}>L’originale resta sul dispositivo. Puoi conservare solo il testo oppure creare un derivato semantico con testo e immagini revisionati.</p>

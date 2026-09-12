@@ -135,7 +135,7 @@ function LocalImagePrivacyWorkbenchSession({ file, disabled, onPrepared }: Workb
   }
 
   return (
-    <section aria-label="Revisione privacy locale dell’immagine" style={{ border: '1px solid var(--border, #d7d7d7)', borderRadius: 12, padding: 12, display: 'grid', gap: 10 }}>
+    <section aria-label="Revisione privacy locale dell’immagine" style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', padding: 12, display: 'grid', gap: 10 }}>
       <div>
         <strong>Revisione locale prima del caricamento</strong>
         <p style={{ margin: '4px 0 0' }}>L’immagine resta nel browser. Trascina sull’anteprima per oscurare nomi, volti, recapiti o altri dettagli personali. Nessun originale viene inviato.</p>
@@ -146,7 +146,7 @@ function LocalImagePrivacyWorkbenchSession({ file, disabled, onPrepared }: Workb
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerCancel={() => { dragStartRef.current = null }}
-        style={{ width: '100%', maxHeight: 520, objectFit: 'contain', borderRadius: 8, background: '#f4f4f4', touchAction: 'none', cursor: ready && !disabled ? 'crosshair' : 'default' }}
+        style={{ width: '100%', maxHeight: 520, objectFit: 'contain', borderRadius: 'var(--radius-sm)', background: 'var(--surface-soft)', touchAction: 'none', cursor: ready && !disabled ? 'crosshair' : 'default' }}
         aria-label="Anteprima locale: trascina per oscurare un’area"
       />
 
