@@ -7,6 +7,7 @@ import {
   mfaRedirectPath,
   normalizeMfaNextPath,
   requiresMfa,
+  resolveExternalOrigin,
 } from './mfa-access-policy'
 
 test('authenticated aal1 sessions are blocked from application surfaces', () => {
@@ -50,4 +51,41 @@ test('application API classification is explicit', () => {
   assert.equal(isApplicationApiPath('/api'), true)
   assert.equal(isApplicationApiPath('/api/knowledge/upload'), true)
   assert.equal(isApplicationApiPath('/planner'), false)
+})
+
+test('auth redirects prefer the configured public application origin', () => {
+  assert.equal(
+    resolveExternalOrigin({
+      configuredOrigin: 'https://docente-os-mfa-test.onrender.com/',
+      forwardedHost: 'internal.example:10000',
+      forwardedProto: 'http',
+      requestOrigin: 'http://0.0.0.0:10000',
+    }),
+    'https://docente-os-mfa-test.onrender.com',
+  )
+})
+
+test('auth redirects fall back to trusted reverse-proxy headers instead of an internal bind address', () => {
+  assert.equal(
+    resolveExternalOrigin({
+      forwardedHost: 'docente-os-mfa-test.onrender.com',
+      forwardedProto: 'https',
+      requestOrigin: 'http://0.0.0.0:10000',
+    }),
+    'https://docente-os-mfa-test.onrender.com',
+  )
+})
+
+test('auth redirect origin rejects unsupported schemes and requires a usable fallback', () => {
+  assert.equal(
+    resolveExternalOrigin({
+      configuredOrigin: 'javascript:alert(1)',
+      requestOrigin: 'http://127.0.0.1:3000',
+    }),
+    'http://127.0.0.1:3000',
+  )
+  assert.throws(
+    () => resolveExternalOrigin({ configuredOrigin: 'javascript:alert(1)' }),
+    /public application origin/i,
+  )
 })
