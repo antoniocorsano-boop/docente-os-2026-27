@@ -32,12 +32,12 @@ test('MFA browser boundary: AAL1 denied, valid TOTP promotes to AAL2', async ({ 
     await expect(page.getByRole('button', { name: 'Configura il secondo fattore' })).toHaveCount(0)
   })
 
-  await test.step('AAL1 cannot enter an operational page or application API', async () => {
+  await test.step('AAL1 cannot enter an operational page or protected application API', async () => {
     await page.goto('/planner')
     await expect(page).toHaveURL(/\/mfa\?next=%2Fplanner(?:&|$)/)
 
     const response = await page.evaluate(async () => {
-      const result = await fetch('/api/build-info', { headers: { accept: 'application/json' } })
+      const result = await fetch('/api/account/export-manifest', { headers: { accept: 'application/json' } })
       let body = null
       try {
         body = await result.json()
@@ -82,14 +82,20 @@ test('MFA browser boundary: AAL1 denied, valid TOTP promotes to AAL2', async ({ 
     await expect(page).toHaveURL(/\/planner(?:\?|$)/)
   })
 
-  await test.step('AAL2 can use the operational page and application API', async () => {
+  await test.step('AAL2 can use the operational page and protected application API', async () => {
     const response = await page.evaluate(async () => {
-      const result = await fetch('/api/build-info', { headers: { accept: 'application/json' } })
-      return { status: result.status, body: await result.json() }
+      const result = await fetch('/api/account/export-manifest', { headers: { accept: 'application/json' } })
+      let body = null
+      try {
+        body = await result.json()
+      } catch {
+        body = null
+      }
+      return { status: result.status, body }
     })
 
     expect(response.status).toBe(200)
-    expect(response.body).toHaveProperty('commit')
+    expect(response.body).toMatchObject({ exportKind: 'DOCENTE_OS_WORKSPACE_EXPORT' })
 
     await page.goto('/mfa?next=%2Fplanner')
     await expect(page).toHaveURL(/\/planner(?:\?|$)/)
