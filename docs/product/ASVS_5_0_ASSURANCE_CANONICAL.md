@@ -65,7 +65,15 @@ L'upload Knowledge applica:
 - allowlist di MIME ammessi;
 - sanitizzazione del filename;
 - object path interno randomizzato;
-- bucket separato e controllo di workspace.
+- bucket separato e controllo di workspace;
+- validazione fail-closed di **estensione + MIME + contenuto reale**;
+- parsing effettivo per PDF e DOCX;
+- firme binarie per PNG/JPEG/WebP;
+- UTF-8 strict e rifiuto NUL/binary disguise per testo e Markdown;
+- test negativi per mismatch e file camuffati;
+- rilettura server-side dei blob caricati tramite percorso resumable prima dell'ammissione nella KB, con rimozione del blob incoerente.
+
+Il controllo copre i tre ingressi esistenti — server action, API same-origin e percorso resumable verso Storage — e il client non costituisce l'autorità di sicurezza. Il requisito **V5.2.2 / ASVS-002 è `CLOSED_VERIFIED`** sull'implementation SHA `f0c5ee3b4b4995dec78836571584bc9f72e78890`; il capitolo V5 resta `PARTIAL` perché la mappatura requirement-level non è ancora completa.
 
 ### Dependency security
 
@@ -96,16 +104,23 @@ Finché manca la receipt runtime, il finding non può essere chiuso soltanto da 
 ### ASVS-002 — V5.2.2 — file content/type validation
 
 **Livello:** L1  
-**Stato:** `OPEN_GAP`
+**Stato:** `CLOSED_VERIFIED`
 
-L'upload verifica dimensione e MIME allowlist, ma `normalizeMime()` può inferire il tipo dall'estensione. Prima di storage/processing non risulta una validazione del contenuto reale mediante signature/magic bytes o parser-specific verification.
+**Implementation SHA:** `f0c5ee3b4b4995dec78836571584bc9f72e78890`
 
-Criterio di chiusura:
+La closure è fondata su validazione server-side del contenuto reale per tutti gli ingressi di upload, parser/signature coerenti con i tipi ammessi, test negativi e rilettura fail-closed dei blob resumable prima dell'ammissione nella KB.
 
-1. validare il contenuto rispetto al tipo accettato;
-2. rifiutare mismatch extension/MIME/content;
-3. test negativi per file camuffati;
-4. mantenere limite, allowlist e filename sanitization già esistenti.
+Receipt registrate in `ops/asvs50-assurance.json`:
+
+- Product CI — run `34674333510`;
+- K1 Knowledge Upload Gate — run `34674333522`;
+- P6 Performance Baseline — run `34674333530`;
+- P7 Anonymization Input Guard — run `34674333531`;
+- ASVS 5.0 Assurance — run `34674333504`;
+- Design Policy Gate — run `34674333521`;
+- Human Interaction Model — run `34674333487`.
+
+La chiusura di V5.2.2 **non** trasforma V5 in `VERIFIED_PASS`, non completa M5-04A e non costituisce una dichiarazione di verifica ASVS L2.
 
 ### ASVS-003 — V6.3.3 — MFA
 
@@ -121,7 +136,7 @@ Criterio di chiusura:
 3. testare sessione e recovery senza introdurre bypass più deboli;
 4. validazione umana del percorso di accesso e recupero.
 
-MFA non viene implementata automaticamente in questa foundation PR: il finding resta visibile e bloccante per una futura dichiarazione L2.
+MFA resta una slice separata perché modifica il percorso di autenticazione e recovery.
 
 ## 6. Capitoli inizialmente N/A
 
@@ -164,6 +179,8 @@ M5-04A può diventare `COMPLETE` solo quando:
 
 Stato corrente: **PARTIAL**.
 
+La closure verificata di V5.2.2 riduce i finding prioritari aperti da tre a due, ma non modifica questo stato complessivo.
+
 ## 9. M5-04B — dependency/security cadence
 
 La dependency-security cadence è già operativa e forte, ma la readiness M5 richiede ancora un roll-up security unico con:
@@ -178,7 +195,7 @@ Stato corrente: **PARTIAL**.
 
 ## 10. Ordine di chiusura raccomandato
 
-1. chiudere **ASVS-002** perché è L1 e circoscritto alla pipeline upload;
+1. **ASVS-002 / V5.2.2 — CLOSED_VERIFIED**: preservare le receipt e il controllo di regressione;
 2. chiudere **ASVS-001** con CSP + runtime header receipt;
 3. progettare **ASVS-003 MFA** come slice separata perché modifica il percorso di autenticazione e recovery;
 4. completare la mappatura requirement-level L1/L2;
