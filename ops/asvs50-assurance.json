@@ -21,7 +21,7 @@
     {"id":"V2","name":"Validation and Business Logic","status":"PARTIAL","evidence":["server-side validation patterns","human-confirmation boundaries","domain invariants and gate suite"],"note":"Requirement-level business-logic and anti-automation mapping not complete."},
     {"id":"V3","name":"Web Frontend Security","status":"GAP","evidence":["product/next.config.ts sets poweredByHeader=false","repository search found no Content-Security-Policy configuration"],"note":"Priority finding ASVS-001: V3.4.3 L2 lacks a repository/runtime receipt for CSP."},
     {"id":"V4","name":"API and Web Service","status":"PARTIAL","evidence":["Next.js server actions/routes","Supabase service boundaries"],"note":"HTTP method/message/header controls require requirement-level verification."},
-    {"id":"V5","name":"File Handling","status":"GAP","evidence":["20 MiB upload limit","MIME allowlist","sanitized filenames","randomized storage object path"],"note":"Priority finding ASVS-002: V5.2.2 content/type validation is not implemented; MIME may be inferred from client metadata or extension."},
+    {"id":"V5","name":"File Handling","status":"PARTIAL","evidence":["20 MiB upload limit","MIME allowlist","sanitized filenames","randomized storage object path","V5.2.2 content/type validation verified on implementation SHA f0c5ee3b4b4995dec78836571584bc9f72e78890 with parser/signature checks and negative tests","resumable Storage ingress is re-read server-side before KB admission and rejected blobs are removed"],"note":"Priority finding ASVS-002 / V5.2.2 is CLOSED_VERIFIED with structured receipts; the V5 chapter remains PARTIAL until requirement-level mapping is complete."},
     {"id":"V6","name":"Authentication","status":"GAP","evidence":["Supabase password authentication","magic-link flow","password recovery rehearsal","non-enumerating recovery response"],"note":"Priority finding ASVS-003: V6.3.3 L2 requires MFA or equivalent factor combination; no MFA enrollment/challenge implementation found."},
     {"id":"V7","name":"Session Management","status":"PARTIAL","evidence":["server request boundary uses supabase.auth.getClaims()","logout route","auth recovery rehearsal includes refresh/logout/session invalidation"],"note":"Timeout, concurrent-session and full termination semantics still require provider/runtime receipts."},
     {"id":"V8","name":"Authorization","status":"PARTIAL","evidence":["Row Level Security across identity/workspace/planner/knowledge/annual-plan/settings/timetable domains","server repositories derive authenticated subject from trusted Supabase claims"],"note":"Strong baseline; field-level and full operation-level requirement mapping remains open."},
@@ -49,10 +49,26 @@
       "id": "ASVS-002",
       "requirement": "V5.2.2",
       "level": "L1",
-      "status": "OPEN_GAP",
-      "title": "Uploaded file content is not validated against declared type",
-      "evidence": ["uploadKnowledgeFile allowlists normalized MIME", "normalizeMime may infer type from filename extension", "no magic-byte/content-signature validation before storage/processing"],
-      "closure": "Validate accepted file content/signature against the allowed type before persistence/processing and add negative tests."
+      "status": "CLOSED_VERIFIED",
+      "title": "Uploaded file content is validated against declared type before KB admission",
+      "evidence": [
+        "all three upload ingress paths are governed: server action, same-origin API and resumable Storage flow",
+        "PDF and DOCX are validated with real parsers; PNG/JPEG/WebP with binary signatures; text with strict UTF-8 and NUL/binary rejection",
+        "extension/MIME/content mismatches and disguised files are covered by negative tests",
+        "resumable blobs are re-read server-side before KB admission; inconsistent blobs are rejected and removed",
+        "the client is not a security authority"
+      ],
+      "closure": "Validate accepted file content/signature against the allowed type before persistence/processing and add negative tests.",
+      "implementationSha": "f0c5ee3b4b4995dec78836571584bc9f72e78890",
+      "closureReceipts": [
+        {"type":"PRODUCT_CI","runId":34674333510},
+        {"type":"K1_KNOWLEDGE_UPLOAD_GATE","runId":34674333522},
+        {"type":"P6_PERFORMANCE_BASELINE","runId":34674333530},
+        {"type":"P7_ANONYMIZATION_INPUT_GUARD","runId":34674333531},
+        {"type":"ASVS_5_0_ASSURANCE","runId":34674333504},
+        {"type":"DESIGN_POLICY_GATE","runId":34674333521},
+        {"type":"HUMAN_INTERACTION_MODEL","runId":34674333487}
+      ]
     },
     {
       "id": "ASVS-003",
