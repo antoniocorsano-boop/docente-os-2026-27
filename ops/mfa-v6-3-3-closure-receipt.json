@@ -8,6 +8,7 @@
   "decisionDate": "2026-09-12",
   "implementationSha": "1f04f2799f9993c53d0578f8caafbe9e9842e60f",
   "scope": "SINGLE_OWNER_TIER_1_PROFESSIONAL_NON_PERSONAL",
+  "designClassification": "COMPATIBLE",
   "machineEvidence": [
     {"type":"PRODUCT_CI","runId":34708557467,"result":"PASS"},
     {"type":"MFA_AAL2_DATA_PLANE_CONTRACT","runId":34708557509,"result":"PASS"},
