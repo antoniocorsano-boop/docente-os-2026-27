@@ -9,6 +9,7 @@ import {
   EXPERIENCE_UDA_FIXTURE_TEXT,
   experienceUdaFixtureTitle,
 } from '../support/experience-uda-fixture.mjs'
+import { writeExperienceFixtureState } from './surfaces.mjs'
 
 const baseURL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000'
 
@@ -71,7 +72,7 @@ export default async function globalSetup() {
       'Progetta deve già esporre la UDA tecnica nel contesto di preparazione.',
     ).toHaveAttribute('href', /[?&]mode=prepare(?:&|$)/)
 
-    process.env.EXPERIENCE_UDA_ASSET_ID = assetId
+    await writeExperienceFixtureState({ udaAssetId: assetId })
     process.stdout.write(`HVA UDA fixture ready: ${assetId}\n`)
   } catch (error) {
     await deleteAllKnowledgeFixtures(page, title).catch(() => {})
