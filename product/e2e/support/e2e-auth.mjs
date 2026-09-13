@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test'
-import { generateTotp, millisecondsUntilNextTotpStep } from './totp.mjs'
+import { generateTotp, governedMfaRetryJitterMs, millisecondsUntilNextTotpStep } from './totp.mjs'
 
 export const E2E_EMAIL = process.env.E2E_EMAIL
 export const E2E_PASSWORD = process.env.E2E_PASSWORD
@@ -45,12 +45,15 @@ export async function loginE2E(page) {
 }
 
 async function completeMfaChallenge(page) {
+  const runJitter = governedMfaRetryJitterMs()
+
   for (let attempt = 1; attempt <= 4; attempt += 1) {
     await waitForMfaChallengeReady(page)
     await selectGovernedCiFactor(page)
 
     const remaining = millisecondsUntilNextTotpStep()
-    if (remaining < 6_000) await page.waitForTimeout(remaining + 750)
+    if (remaining < 6_000 + runJitter) await page.waitForTimeout(remaining + 750 + runJitter)
+    else if (runJitter) await page.waitForTimeout(runJitter)
 
     const code = generateTotp(E2E_TOTP_SECRET)
     await page.locator('#mfa-code').fill(code)
@@ -68,7 +71,7 @@ async function completeMfaChallenge(page) {
     }
 
     const untilNextStep = millisecondsUntilNextTotpStep()
-    await page.waitForTimeout(untilNextStep + 750)
+    await page.waitForTimeout(untilNextStep + 750 + runJitter)
   }
 }
 
@@ -104,7 +107,7 @@ async function waitForMfaChallengeReady(page) {
 
     const reloadButton = page.getByRole('button', { name: 'Ricarica' })
     if (await reloadButton.isVisible().catch(() => false)) {
-      await page.waitForTimeout(Math.min(1_000 * attempt, 4_000))
+      await page.waitForTimeout(Math.min(1_000 * attempt, 4_000) + governedMfaRetryJitterMs())
       await Promise.all([
         page.waitForLoadState('domcontentloaded').catch(() => {}),
         reloadButton.click(),
@@ -143,7 +146,7 @@ async function waitForMfaVerificationOutcome(page) {
 
     const reloadButton = page.getByRole('button', { name: 'Ricarica' })
     if (await reloadButton.isVisible().catch(() => false)) {
-      await page.waitForTimeout(1_500)
+      await page.waitForTimeout(1_500 + governedMfaRetryJitterMs())
       await reloadButton.click()
       await page.waitForLoadState('domcontentloaded').catch(() => {})
       return 'factor-read-transient'
