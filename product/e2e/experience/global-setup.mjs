@@ -71,6 +71,7 @@ export default async function globalSetup() {
       'Progetta deve già esporre la UDA tecnica nel contesto di preparazione.',
     ).toHaveAttribute('href', /[?&]mode=prepare(?:&|$)/)
 
+    process.env.EXPERIENCE_UDA_ASSET_ID = assetId
     process.stdout.write(`HVA UDA fixture ready: ${assetId}\n`)
   } catch (error) {
     await deleteAllKnowledgeFixtures(page, title).catch(() => {})
