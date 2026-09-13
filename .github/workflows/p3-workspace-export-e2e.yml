@@ -27,6 +27,10 @@ permissions:
   contents: read
   statuses: write
 
+concurrency:
+  group: docente-os-governed-mfa-e2e
+  queue: max
+
 env:
   E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
   E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
