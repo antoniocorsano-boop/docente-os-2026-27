@@ -236,7 +236,14 @@ export function MfaManager({ initialFactors }: MfaManagerProps) {
           </div>
         </section>
       ) : (
-        <Button type="button" disabled={busy} onClick={() => void startEnrollment()}>{busy ? 'Preparazione…' : 'Aggiungi autenticatore'}</Button>
+        <Button
+          type="button"
+          className="max-[719px]:sticky max-[719px]:bottom-[calc(68px+env(safe-area-inset-bottom)+8px)] max-[719px]:z-20"
+          disabled={busy}
+          onClick={() => void startEnrollment()}
+        >
+          {busy ? 'Preparazione…' : 'Aggiungi autenticatore'}
+        </Button>
       )}
     </div>
   )
