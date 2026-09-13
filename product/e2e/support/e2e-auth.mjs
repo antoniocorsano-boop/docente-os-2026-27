@@ -32,7 +32,7 @@ export async function loginE2E(page) {
     await page.locator('#password').fill(E2E_PASSWORD)
 
     await Promise.all([
-      page.waitForURL(/\/(?:mfa|planner|workspace|login)(?:$|\?)/, { timeout: 30_000 }),
+      page.waitForURL(/(?:\/(?:mfa|planner|workspace)(?:$|\?)|\/login\?error=)/, { timeout: 30_000 }),
       page.getByRole('button', { name: 'Entra nel tuo spazio docente' }).click(),
     ])
 
