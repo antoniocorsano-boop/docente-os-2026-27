@@ -19,9 +19,9 @@ export async function signInWithPassword(formData: FormData) {
   if (error) {
     const kind = classifyPasswordAuthError(error)
     console.error('Password sign-in failed', error.code ?? 'provider_error')
-    redirect(kind === 'INVALID_CREDENTIALS'
-      ? '/login?error=invalid_credentials'
-      : '/login?error=auth_request_failed')
+    if (kind === 'INVALID_CREDENTIALS') redirect('/login?error=invalid_credentials')
+    if (kind === 'TRANSIENT_OR_PROVIDER') redirect('/login?error=auth_request_failed')
+    redirect('/login?error=auth_access_denied')
   }
 
   // Password sign-in is the first factor. Route explicitly through the MFA
