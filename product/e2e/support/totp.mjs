@@ -39,6 +39,13 @@ export function millisecondsUntilNextTotpStep(nowMs = Date.now()) {
   return stepMs - (nowMs % stepMs)
 }
 
+export function governedMfaRetryJitterMs(runId = process.env.GITHUB_RUN_ID ?? '') {
+  if (!runId) return 0
+  let hash = 0
+  for (const character of runId) hash = (hash * 31 + character.charCodeAt(0)) >>> 0
+  return 250 + (hash % 3_500)
+}
+
 function decodeBase32(value) {
   const normalized = value.toUpperCase().replace(/[\s=-]/g, '')
   if (!normalized) throw new Error('TOTP secret is empty')
