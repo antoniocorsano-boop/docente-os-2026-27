@@ -54,7 +54,7 @@ export async function loginE2E(page) {
 
   await reachPlannerBoundary(page)
   await expect(page).toHaveURL(/\/planner(?:$|\?)/)
-  await expect(page.locator('main')).toBeVisible()
+  await expect(page.locator('#dos-main-content')).toBeVisible()
 }
 
 async function completeMfaChallenge(page) {
