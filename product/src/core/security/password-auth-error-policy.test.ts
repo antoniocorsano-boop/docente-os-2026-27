@@ -1,20 +1,28 @@
-import { describe, expect, it } from 'vitest'
+import assert from 'node:assert/strict'
+import test from 'node:test'
 import { classifyPasswordAuthError } from './password-auth-error-policy'
 
-describe('classifyPasswordAuthError', () => {
-  it('classifies only explicit invalid credentials as a credential failure', () => {
-    expect(classifyPasswordAuthError({ code: 'invalid_credentials', status: 400 })).toBe('INVALID_CREDENTIALS')
-  })
+test('classifies only explicit invalid credentials as a credential failure', () => {
+  assert.equal(
+    classifyPasswordAuthError({ code: 'invalid_credentials', status: 400 }),
+    'INVALID_CREDENTIALS',
+  )
+})
 
-  it('classifies missing-code, rate-limit, and 5xx failures as transient/provider', () => {
-    expect(classifyPasswordAuthError({})).toBe('TRANSIENT_OR_PROVIDER')
-    expect(classifyPasswordAuthError({ code: null })).toBe('TRANSIENT_OR_PROVIDER')
-    expect(classifyPasswordAuthError({ code: 'over_request_rate_limit', status: 429 })).toBe('TRANSIENT_OR_PROVIDER')
-    expect(classifyPasswordAuthError({ code: 'unexpected_failure', status: 500 })).toBe('TRANSIENT_OR_PROVIDER')
-  })
+test('classifies missing-code, rate-limit, and 5xx failures as transient/provider', () => {
+  assert.equal(classifyPasswordAuthError({}), 'TRANSIENT_OR_PROVIDER')
+  assert.equal(classifyPasswordAuthError({ code: null }), 'TRANSIENT_OR_PROVIDER')
+  assert.equal(
+    classifyPasswordAuthError({ code: 'over_request_rate_limit', status: 429 }),
+    'TRANSIENT_OR_PROVIDER',
+  )
+  assert.equal(
+    classifyPasswordAuthError({ code: 'unexpected_failure', status: 500 }),
+    'TRANSIENT_OR_PROVIDER',
+  )
+})
 
-  it('does not retry defined permanent auth rejections', () => {
-    expect(classifyPasswordAuthError({ code: 'email_not_confirmed', status: 400 })).toBe('AUTH_REJECTED')
-    expect(classifyPasswordAuthError({ code: 'user_banned', status: 403 })).toBe('AUTH_REJECTED')
-  })
+test('does not retry defined permanent auth rejections', () => {
+  assert.equal(classifyPasswordAuthError({ code: 'email_not_confirmed', status: 400 }), 'AUTH_REJECTED')
+  assert.equal(classifyPasswordAuthError({ code: 'user_banned', status: 403 }), 'AUTH_REJECTED')
 })
