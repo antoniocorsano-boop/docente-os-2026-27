@@ -7,24 +7,30 @@ on:
       - develop
     paths:
       - 'product/e2e/x5-uda-authoring.spec.mjs'
+      - 'product/e2e/support/e2e-auth.mjs'
+      - 'product/e2e/support/totp.mjs'
       - 'product/playwright.config.mjs'
       - 'product/src/app/progetta/**'
       - 'product/src/core/domain/authored-document.ts'
       - 'product/src/core/infrastructure/supabase/supabase-authored-document-repository.ts'
       - 'product/supabase/migrations/0030_versioned_uda_authoring.sql'
       - 'product/supabase/migrations/0031_authored_document_discard.sql'
+      - 'product/supabase/migrations/0051_mfa_aal2_enforcement.sql'
       - '.github/workflows/x5-authoring-e2e.yml'
   push:
     branches:
       - develop
     paths:
       - 'product/e2e/x5-uda-authoring.spec.mjs'
+      - 'product/e2e/support/e2e-auth.mjs'
+      - 'product/e2e/support/totp.mjs'
       - 'product/playwright.config.mjs'
       - 'product/src/app/progetta/**'
       - 'product/src/core/domain/authored-document.ts'
       - 'product/src/core/infrastructure/supabase/supabase-authored-document-repository.ts'
       - 'product/supabase/migrations/0030_versioned_uda_authoring.sql'
       - 'product/supabase/migrations/0031_authored_document_discard.sql'
+      - 'product/supabase/migrations/0051_mfa_aal2_enforcement.sql'
       - '.github/workflows/x5-authoring-e2e.yml'
 
 permissions:
@@ -32,8 +38,9 @@ permissions:
   statuses: write
 
 env:
-  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
-  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
+  E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
   NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
 
@@ -48,13 +55,17 @@ jobs:
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
 
     steps:
-      - name: Check E2E credential configuration
+      - name: Check governed AAL2 E2E credential configuration
         shell: bash
         run: |
-          if [ -z "${E2E_PASSWORD:-}" ]; then
-            echo 'Repository secret DOCENTE_OS_E2E_PASSWORD is required.' >&2
-            exit 1
-          fi
+          missing=0
+          for name in E2E_EMAIL E2E_PASSWORD E2E_TOTP_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is required for X5 authenticated AAL2 acceptance."
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
 
       - name: Publish pending X5 application status
         uses: actions/github-script@v7
@@ -66,7 +77,7 @@ jobs:
               sha: context.sha,
               state: 'pending',
               context: 'x5-authoring/application',
-              description: 'Gate X5 authoring UDA in esecuzione',
+              description: 'Gate X5 authoring UDA AAL2 in esecuzione',
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
 
@@ -139,7 +150,7 @@ jobs:
               sha: context.sha,
               state: ok ? 'success' : 'failure',
               context: 'x5-authoring/application',
-              description: ok ? 'X5 UDA authoring superato' : 'Gate X5 UDA authoring non superato',
+              description: ok ? 'X5 UDA authoring AAL2 superato' : 'Gate X5 UDA authoring AAL2 non superato',
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
 
@@ -152,13 +163,17 @@ jobs:
       E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
 
     steps:
-      - name: Check E2E credential configuration
+      - name: Check governed AAL2 E2E credential configuration
         shell: bash
         run: |
-          if [ -z "${E2E_PASSWORD:-}" ]; then
-            echo 'Repository secret DOCENTE_OS_E2E_PASSWORD is required.' >&2
-            exit 1
-          fi
+          missing=0
+          for name in E2E_EMAIL E2E_PASSWORD E2E_TOTP_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is required for X5 authenticated AAL2 acceptance."
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
 
       - name: Publish pending X5 Beta status
         uses: actions/github-script@v7
@@ -170,7 +185,7 @@ jobs:
               sha: context.sha,
               state: 'pending',
               context: 'x5-authoring/render-beta',
-              description: 'Gate X5 authoring UDA sul Beta in esecuzione',
+              description: 'Gate X5 authoring UDA AAL2 sul Beta in esecuzione',
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
 
@@ -248,6 +263,6 @@ jobs:
               sha: context.sha,
               state: ok ? 'success' : 'failure',
               context: 'x5-authoring/render-beta',
-              description: ok ? 'X5 UDA authoring superato sul Beta' : 'Gate X5 UDA authoring Beta non superato',
+              description: ok ? 'X5 UDA authoring AAL2 superato sul Beta' : 'Gate X5 UDA authoring AAL2 Beta non superato',
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
