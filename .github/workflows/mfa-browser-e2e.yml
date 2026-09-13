@@ -19,8 +19,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: mfa-browser-aal2-${{ github.ref }}
-  cancel-in-progress: true
+  group: docente-os-governed-mfa-e2e
+  queue: max
 
 env:
   MFA_E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
