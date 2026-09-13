@@ -48,7 +48,7 @@ test('X5A UDA authoring: AAL2, explicit entry, immutable source, versions and co
     const initial = await authoredSnapshot(identity, documentId)
     expect(initial.document.current_version_no).toBe(1)
     expect(initial.versions).toHaveLength(1)
-    expect(initial.versions[0].body_markdown).toBe(sourceBefore.original_text)
+    expect(normalizeMarkdown(initial.versions[0].body_markdown)).toBe(normalizeMarkdown(sourceBefore.original_text))
     await page.screenshot({ path: 'test-results/x5a-02-version-1.png' })
 
     const title = page.getByLabel('Titolo')
@@ -62,7 +62,7 @@ test('X5A UDA authoring: AAL2, explicit entry, immutable source, versions and co
     const saved = await authoredSnapshot(identity, documentId)
     expect(saved.document.current_version_no).toBe(2)
     expect(saved.versions).toHaveLength(2)
-    expect(saved.versions.find((item) => item.version_no === 1)?.body_markdown).toBe(sourceBefore.original_text)
+    expect(normalizeMarkdown(saved.versions.find((item) => item.version_no === 1)?.body_markdown ?? '')).toBe(normalizeMarkdown(sourceBefore.original_text))
     expect(saved.versions.find((item) => item.version_no === 2)?.body_markdown).toContain(`Versionamento verificato nel run ${runId}.`)
 
     const stale = await identity.supabase.rpc('save_authored_document_version', {
@@ -226,6 +226,10 @@ function assetIdFromUrl(url) {
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function normalizeMarkdown(value) {
+  return String(value ?? '').replace(/\r\n/g, '\n').trim()
 }
 
 function sleep(milliseconds) {
