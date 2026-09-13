@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import type { HumanTaskLessonProjection } from '@/core/presentation/human-task-content'
-import { recordLessonExecution } from '../actions'
+import { recordLessonTeachingSession } from '../actions'
 import styles from './lesson-live.module.css'
 
 type Block = {
@@ -34,16 +34,17 @@ export default function LessonCloseClient({
   projection: HumanTaskLessonProjection
   progress: Progress
 }) {
-  const [status, setStatus] = useState(recordableDefault(progress.status))
+  const suggestedMinutes = Math.max(1, Math.round(projection.durationMinutes || 60))
+  const [actualMinutes, setActualMinutes] = useState(suggestedMinutes)
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
   const teachHref = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(block.id)}?mode=teach`
   const observeHref = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(block.id)}?mode=observe`
-  const recorded = progress.status === 'SVOLTO' || progress.status === 'RECUPERATO' || progress.status === 'RIMODULATO'
+  const planAlreadyClosed = progress.status === 'SVOLTO' || progress.status === 'RECUPERATO' || progress.status === 'RIMODULATO'
 
   return (
     <main className={styles.closeSurface}>
       <form
-        action={recordLessonExecution}
+        action={recordLessonTeachingSession}
         className={styles.closeCard}
         onSubmit={() => {
           try {
@@ -55,33 +56,32 @@ export default function LessonCloseClient({
       >
         <div>
           <Link className={styles.back} href={classHref}>← {sectionLabel}</Link>
-          <p className={styles.eyebrow}>CHIUSURA RAPIDA · {sectionLabel}</p>
-          <h1>{recorded ? 'Aggiorna la registrazione' : 'Chiudi in meno di un minuto'}</h1>
-          <p className={styles.closeLead}>Scegli soltanto ciò che descrive davvero la lezione. La nota è facoltativa: non devi ricopiare obiettivi, sequenza o materiali già presenti nel sistema.</p>
+          <p className={styles.eyebrow}>REGISTRA LA LEZIONE · {sectionLabel}</p>
+          <h1>Registra ciò che è realmente accaduto</h1>
+          <p className={styles.closeLead}>Conferma soltanto la durata effettiva e, se serve, una nota. DOCENTE OS registra una TeachingSession reale e attribuisce questi minuti a {block.id}; il Piano annuale non viene segnato automaticamente come concluso.</p>
+          {planAlreadyClosed ? <p className={styles.closeLead}>Il Piano riporta già {block.id} come concluso. Questa registrazione aggiunge evidenza dell’attività reale senza modificarne automaticamente lo stato.</p> : null}
         </div>
 
         <input type="hidden" name="sectionId" value={sectionId} />
         <input type="hidden" name="blockId" value={block.id} />
-        <input type="hidden" name="status" value={status} />
 
-        <div className={styles.choiceGroup} role="radiogroup" aria-label="Esito della lezione">
-          <label className={styles.choice}>
-            <input type="radio" checked={status === 'SVOLTO'} onChange={() => setStatus('SVOLTO')} />
-            <span><strong>Svolta come prevista</strong><small>Il blocco può essere considerato concluso.</small></span>
-          </label>
-          <label className={styles.choice}>
-            <input type="radio" checked={status === 'RIMODULATO'} onChange={() => setStatus('RIMODULATO')} />
-            <span><strong>Ho rimodulato</strong><small>La lezione è stata svolta, ma tempi, attività o percorso sono cambiati.</small></span>
-          </label>
-          <label className={styles.choice}>
-            <input type="radio" checked={status === 'RECUPERATO'} onChange={() => setStatus('RECUPERATO')} />
-            <span><strong>Era una lezione di recupero</strong><small>Usa questa voce solo quando il blocco è stato effettivamente svolto come recupero.</small></span>
-          </label>
-        </div>
+        <label className={styles.note}>
+          <span>Minuti realmente svolti</span>
+          <input
+            name="actualMinutes"
+            type="number"
+            min="1"
+            max="1440"
+            required
+            value={actualMinutes}
+            onChange={(event) => setActualMinutes(Number(event.target.value))}
+          />
+          <small>Durata prevista dalla lezione: {projection.durationMinutes} min. Puoi correggerla prima di registrare.</small>
+        </label>
 
         <label className={styles.note}>
           <span>Una nota, solo se serve</span>
-          <textarea name="evidenceNote" maxLength={2000} defaultValue={progress.evidenceNote ?? ''} placeholder="Per esempio: funzione e materiali compresi; tecnica/tecnologia da riprendere." />
+          <textarea name="evidenceNote" maxLength={4000} placeholder="Per esempio: attività rimodulata; concetto da riprendere; prodotto completato." />
         </label>
 
         <details className={styles.evidence}>
@@ -90,16 +90,11 @@ export default function LessonCloseClient({
         </details>
 
         <div className={styles.closeActions}>
-          <button className={styles.primary} type="submit">{recorded ? 'Aggiorna e torna alla classe' : 'Salva e prepara il prossimo passo'}</button>
+          <button className={styles.primary} type="submit">Registra la lezione</button>
           <Link href={observeHref}>Voglio prima rivedere le evidenze</Link>
           <Link href={teachHref}>Torna alla guida della lezione</Link>
         </div>
       </form>
     </main>
   )
-}
-
-function recordableDefault(status: string): 'SVOLTO' | 'RIMODULATO' | 'RECUPERATO' {
-  if (status === 'RIMODULATO' || status === 'RECUPERATO' || status === 'SVOLTO') return status
-  return 'SVOLTO'
 }
