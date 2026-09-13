@@ -1,18 +1,13 @@
 import { test, expect } from '@playwright/test'
+import { loginE2E, requireE2ECredentials } from './support/e2e-auth.mjs'
 import { deleteOrphanedKnowledgeFixtureObjects } from './support/knowledge-fixture-hygiene.mjs'
 
-const email = process.env.E2E_EMAIL
-const password = process.env.E2E_PASSWORD
 const historicalFixtureFragments = ['x3-responsible-ai', 'k1-upload-recovery']
 
-test('P3/P5 workspace export: owner riceve dati DB, inventario Storage e integrità senza mutazioni', async ({ page, baseURL }) => {
-  if (!email || !password) throw new Error('E2E_EMAIL and E2E_PASSWORD are required')
+requireE2ECredentials()
 
-  await page.goto('/login')
-  await page.locator('#email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: /Entra nel tuo spazio docente/i }).click()
-  await page.waitForURL((url) => !url.pathname.startsWith('/login'))
+test('P3/P5 workspace export: owner riceve dati DB, inventario Storage e integrità senza mutazioni', async ({ page, baseURL }) => {
+  await loginE2E(page)
 
   const removedOrphans = await deleteOrphanedKnowledgeFixtureObjects(historicalFixtureFragments)
   console.log(`P5 fixture storage cleanup removed ${removedOrphans.length} historical orphan object(s).`)

@@ -39,8 +39,8 @@ Uno stato `COMPLETE` richiede evidenza verificabile nel repository o nel runtime
 | M5-03A | WCAG 2.2 AA matrix | **PARTIAL** | matrice completa 55 criteri + validator + Playwright/axe; run `34672053257` PASS su exact head `20eb47b7…`; 2.4.1 `VERIFIED_PASS` | restano criteri `MANUAL_REQUIRED` senza receipt e verifiche contestuali/assistive-tech | tutti i criteri A/AA applicabili chiusi con receipt; N/A ancora validi; zero GAP; nessuna variante responsive rilevante esclusa |
 | M5-03B | Keyboard/focus/reflow | **PARTIAL** | focus/target governance + skip-link `Salta al contenuto` con test tastiera e receipt PASS; regression gate WCAG `34678320806` PASS sul CSP head corretto | manca evidence pack manuale completo per tab order, focus obscured, no trap, zoom/reflow e text spacing | audit desktop/mobile a tastiera, zoom/reflow e focus order con receipt |
 | M5-03C | Assistive technology evidence | **OPEN** | baseline da definire sulle journey critiche | screen reader non ancora verificato sistematicamente | baseline screen-reader ripetibile su login, Home/Oggi, classe/lezione, registrazione, Progetta/UDA, Conoscenza e Planner |
-| M5-04A | ASVS 5.0 mapping | **PARTIAL** | `ASVS_5_0_ASSURANCE_CANONICAL.md` + `ops/asvs50-assurance.json` + validator/gate; 17 capitoli censiti, target L2, `verificationClaim=false`; **V3.4.3 / ASVS-001 `CLOSED_VERIFIED`** su implementation SHA `1498b675d7d8d9d897867317df3bf07193240833`, con Product CI/HVA/P6/DPG/WCAG/HIM/K1/ASVS PASS e origin TUS Supabase Storage esatto senza wildcard; **V5.2.2 / ASVS-002 `CLOSED_VERIFIED`** su implementation SHA `f0c5ee3b…` | requirement-level L1/L2 non completa; resta aperto `V6.3.3` MFA, oltre alle receipt requirement-level/provider-managed ancora mancanti | tutti i requisiti L1/L2 applicabili mappati con receipt, N/A motivati, zero `OPEN_GAP`, controlli provider-managed verificati |
-| M5-04B | Dependency/security cadence | **PARTIAL** | dependency-security giornaliera/manuale con blocco HIGH/CRITICAL; incident/recovery gate esistenti; ASVS assurance gate attivo; closure strutturate registrate per V3.4.3 e V5.2.2 | manca roll-up security periodico unico e closure evidence del finding MFA residuo | receipt periodica unica con dipendenze, ASVS finding, incident/recovery evidence e finding runtime |
+| M5-04A | ASVS 5.0 mapping | **PARTIAL** | `ASVS_5_0_ASSURANCE_CANONICAL.md` + `ops/asvs50-assurance.json` + validator/gate; 17 capitoli censiti, target L2, `verificationClaim=false`; **V3.4.3 / ASVS-001 `CLOSED_VERIFIED`** su `1498b675…`; **V5.2.2 / ASVS-002 `CLOSED_VERIFIED`** su `f0c5ee3b…`; **V6.3.3 / ASVS-003 `CLOSED_VERIFIED`** su `1f04f279…` con Product CI, Data Plane, Browser Gate, provider-runtime isolato e recovery/re-login umano | i tre finding prioritari iniziali sono chiusi; resta incompleta la mappatura requirement-level L1/L2 e mancano receipt provider-managed per altri requisiti | tutti i requisiti L1/L2 applicabili mappati con receipt, N/A motivati, zero `OPEN_GAP`, controlli provider-managed verificati |
+| M5-04B | Dependency/security cadence | **PARTIAL** | dependency-security giornaliera/manuale con blocco HIGH/CRITICAL; incident/recovery gate esistenti; ASVS assurance gate attivo; closure strutturate registrate per V3.4.3, V5.2.2 e V6.3.3 | manca un roll-up security periodico unico che componga dipendenze, finding, recovery/incident e runtime | receipt periodica unica con dipendenze, ASVS finding, incident/recovery evidence e finding runtime |
 | M5-05A | SLI | **OPEN** | smoke/performance puntuali + M5-02 collection avviata | nessun set SLI canonico | metriche definite dopo una prima baseline osservata, non per ipotesi |
 | M5-05B | SLO / error budget | **OPEN** | nessuna policy numerica congelata | manca target operativo basato su dati | SLO approvati dopo baseline M5-02 e criterio di escalation/release freeze |
 | M5-05C | Incident/support runbook | **PARTIAL** | recovery e incident minimum presenti | manca operational loop sostenuto | runbook unico, owner, severità, evidenze rehearsal periodiche |
@@ -64,6 +64,10 @@ Le prove longitudinali devono almeno coprire:
 7. `Orario + Calendario → proiezione giornaliera`;
 8. `Planner → proposta assistita → conferma umana → undo`;
 9. `Impostazioni → contesto docente → utilizzo coerente nelle altre superfici`.
+
+La chiusura MFA del 12 settembre aggiunge inoltre una journey security verificata fuori dal conteggio M5-02 di uso longitudinale:
+
+`recovery email → AAL1 → MFA → AAL2 → nuova password → logout → login nuova password → MFA → Oggi`.
 
 ## KPI minimi da derivare in M5-02/M5-05
 
@@ -97,7 +101,7 @@ Le soglie saranno congelate solo dopo una finestra di pilot reale sufficiente a 
 ### Fase C — assurance
 
 6. completare **M5-03 WCAG 2.2 AA** con evidence manuale e assistive technology, mantenendo il gate automatizzato verde;
-7. preservare le closure verificate **V3.4.3** e **V5.2.2** e completare **M5-04 ASVS 5.0** chiudendo il gap MFA residuo e la mappatura requirement-level senza false claim.
+7. preservare le closure verificate **V3.4.3**, **V5.2.2** e **V6.3.3** e completare **M5-04 ASVS 5.0** con la mappatura requirement-level e le receipt provider-managed residue, senza false claim.
 
 ### Fase D — integrazioni
 

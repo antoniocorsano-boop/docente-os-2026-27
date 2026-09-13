@@ -1,23 +1,25 @@
 import { createClient } from '@supabase/supabase-js'
 import { expect, test } from '@playwright/test'
+import { E2E_EMAIL, E2E_PASSWORD, loginE2E, requireE2ECredentials } from './support/e2e-auth.mjs'
 
-const email = process.env.E2E_EMAIL ?? 'docente-os-e2e-2dbf49e1@example.invalid'
-const password = process.env.E2E_PASSWORD
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://gnshgapmwyjamhmlikeg.supabase.co'
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L'
 const runId = process.env.GITHUB_RUN_ID ?? 'local'
-const confirmedTitle = `X4A attività confermata ${runId}`
-const rejectedTitle = `X4A attività rifiutata ${runId}`
+const runAttempt = process.env.GITHUB_RUN_ATTEMPT ?? '1'
+const fixtureScope = `${runId}-${runAttempt}`
+const confirmedTitle = `X4A attività confermata ${fixtureScope}`
+const rejectedTitle = `X4A attività rifiutata ${fixtureScope}`
 
-if (!password) throw new Error('E2E_PASSWORD is required for the authenticated X4 acceptance test')
+requireE2ECredentials()
 
 test('X4A Planner gate: preview, explicit confirmation, receipt and undo', async ({ page }) => {
   const identity = await authenticatedSupabase()
   await cleanup(identity, confirmedTitle)
-  await login(page)
+  await loginE2E(page)
 
   try {
-    await page.goto('/planner')
+    await expect(page).toHaveURL(/\/planner(?:$|\?)/)
+    await expect(page.locator('#dos-main-content')).toBeVisible()
     await expect(page.getByText(confirmedTitle, { exact: true })).toHaveCount(0)
 
     await page.getByRole('button', { name: /Chiedi a DOCENTE OS/ }).click()
@@ -86,10 +88,11 @@ test('X4A Planner gate: preview, explicit confirmation, receipt and undo', async
 test('X4A Planner gate: rejection leaves no task', async ({ page }) => {
   const identity = await authenticatedSupabase()
   await cleanup(identity, rejectedTitle)
-  await login(page)
+  await loginE2E(page)
 
   try {
-    await page.goto('/planner')
+    await expect(page).toHaveURL(/\/planner(?:$|\?)/)
+    await expect(page.locator('#dos-main-content')).toBeVisible()
     await page.getByRole('button', { name: /Chiedi a DOCENTE OS/ }).click()
     const write = page.locator('.dosAssistantWrite')
     await write.getByLabel('Attività').fill(rejectedTitle)
@@ -107,21 +110,11 @@ test('X4A Planner gate: rejection leaves no task', async ({ page }) => {
   }
 })
 
-async function login(page) {
-  await page.goto('/login')
-  await page.locator('#email').fill(email)
-  await page.locator('#password').fill(password)
-  await Promise.all([
-    page.waitForURL(/\/workspace(?:$|\?)/, { timeout: 30_000 }),
-    page.getByRole('button', { name: 'Entra nel tuo spazio docente' }).click(),
-  ])
-}
-
 async function authenticatedSupabase() {
   const supabase = createClient(supabaseUrl, supabasePublishableKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   })
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({ email: E2E_EMAIL, password: E2E_PASSWORD })
   if (error || !data.user) throw new Error(`X4 fixture identity failed: ${error?.message ?? 'missing user'}`)
   return { supabase, userId: data.user.id }
 }

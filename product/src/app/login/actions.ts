@@ -2,7 +2,7 @@
 
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { ensurePersonalWorkspace } from '@/app/auth/bootstrap-personal-workspace'
+import { classifyPasswordAuthError } from '@/core/security/password-auth-error-policy'
 import { createClient } from '@/lib/supabase/server'
 
 export async function signInWithPassword(formData: FormData) {
@@ -17,17 +17,17 @@ export async function signInWithPassword(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
-    console.error('Password sign-in failed', error.code)
-    redirect('/login?error=invalid_credentials')
+    const kind = classifyPasswordAuthError(error)
+    console.error('Password sign-in failed', error.code ?? 'provider_error')
+    if (kind === 'INVALID_CREDENTIALS') redirect('/login?error=invalid_credentials')
+    if (kind === 'TRANSIENT_OR_PROVIDER') redirect('/login?error=auth_request_failed')
+    redirect('/login?error=auth_access_denied')
   }
 
-  const bootstrap = await ensurePersonalWorkspace(supabase)
-  if (!bootstrap.ok) {
-    await supabase.auth.signOut()
-    redirect(`/login?error=${bootstrap.error}`)
-  }
-
-  redirect('/workspace')
+  // Password sign-in is the first factor. Route explicitly through the MFA
+  // boundary instead of relying on a follow-up proxy interception of the
+  // Server Action redirect. Workspace bootstrap remains deferred until AAL2.
+  redirect('/mfa?next=%2Fworkspace')
 }
 
 export async function requestMagicLink(formData: FormData) {

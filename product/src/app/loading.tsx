@@ -2,7 +2,7 @@ import { DocenteOsMark } from '@/components/brand/docente-os-brand'
 
 export default function AppLoading() {
   return (
-    <main className="routeLoading" aria-live="polite" aria-busy="true">
+    <div className="routeLoading" role="status" aria-live="polite" aria-busy="true">
       <section className="brandLoadingStage">
         <div className="brandLoadingMarkWrap" aria-hidden>
           <span className="brandLoadingOrbit" />
@@ -16,6 +16,6 @@ export default function AppLoading() {
         <p className="brandLoadingMessage">Ritrovo il filo della tua giornata.</p>
         <span className="srOnly">Sto ricomponendo il contesto della tua giornata didattica.</span>
       </section>
-    </main>
+    </div>
   )
 }

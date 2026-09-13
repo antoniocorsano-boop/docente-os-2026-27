@@ -17,8 +17,10 @@ test('Journey: Classe → Diario → In classe → Registra la lezione', async (
   const classCard = page.locator('a.canonicalClassCard').filter({ hasText: /2ª\s*A/i }).first()
   await expect(classCard, 'La fixture HVA deve avere una 2ª A utilizzabile per il registro lezione.').toBeVisible()
   const sectionId = sectionIdFromHref(await classCard.getAttribute('href'))
+  const targetDate = canonicalSchoolDate()
   const fixture = await createClassroomMaterialFixture({
     sectionId,
+    targetDate,
     suffix: `lesson-register-${process.env.GITHUB_RUN_ID ?? 'local'}-${testInfo.project.name}-${Date.now()}`,
   })
   const timing = await createDraftLessonTimingFixture({ sectionId, targetDate: fixture.targetDate })
@@ -79,6 +81,20 @@ async function screenshot(page, testInfo, name) {
   const dir = path.join(outputRoot, 'screenshots')
   await fs.mkdir(dir, { recursive: true })
   await page.screenshot({ path: path.join(dir, `${safe(testInfo.project.name)}--journey-${safe(name)}.png`), fullPage: true })
+}
+
+function canonicalSchoolDate() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Rome',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  const localDate = `${value.year}-${value.month}-${value.day}`
+  const date = new Date(`${localDate}T12:00:00Z`)
+  if (date.getUTCDay() === 0) date.setUTCDate(date.getUTCDate() + 1)
+  return date.toISOString().slice(0, 10)
 }
 
 function sectionIdFromHref(value) {

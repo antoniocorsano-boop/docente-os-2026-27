@@ -104,6 +104,10 @@ function isExpectedFrameworkAbort(failure) {
     const url = new URL(failure.url)
     if (failure.method === 'GET' && url.searchParams.has('_rsc')) return true
     if (failure.method === 'POST' && url.pathname === '/login') return true
+    if (
+      failure.method === 'GET'
+      && (url.pathname === '/api/assistant/planner-context' || url.pathname === '/api/assistant/knowledge-context')
+    ) return true
   } catch {
     return false
   }

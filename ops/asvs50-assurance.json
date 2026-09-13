@@ -22,17 +22,17 @@
     {"id":"V3","name":"Web Frontend Security","status":"PARTIAL","evidence":["request-scoped CSP nonce emitted by product/src/proxy.ts","production script policy excludes unsafe-inline and unsafe-eval","object-src 'none', base-uri 'none', frame-ancestors 'none' and bounded Supabase project/WebSocket origins plus the exact derived Storage TUS origin","browser HVA verifies response header, framework nonce use and nonce rotation on implementation SHA 1498b675d7d8d9d897867317df3bf07193240833","K1 verifies that the CSP permits the exact Supabase Storage resumable-upload origin without wildcarding connect-src"],"note":"Priority finding ASVS-001 / V3.4.3 is CLOSED_VERIFIED with structured receipts; the V3 chapter remains PARTIAL until requirement-level mapping is complete."},
     {"id":"V4","name":"API and Web Service","status":"PARTIAL","evidence":["Next.js server actions/routes","Supabase service boundaries"],"note":"HTTP method/message/header controls require requirement-level verification."},
     {"id":"V5","name":"File Handling","status":"PARTIAL","evidence":["20 MiB upload limit","MIME allowlist","sanitized filenames","randomized storage object path","V5.2.2 content/type validation verified on implementation SHA f0c5ee3b4b4995dec78836571584bc9f72e78890 with parser/signature checks and negative tests","resumable Storage ingress is re-read server-side before KB admission and rejected blobs are removed"],"note":"Priority finding ASVS-002 / V5.2.2 is CLOSED_VERIFIED with structured receipts; the V5 chapter remains PARTIAL until requirement-level mapping is complete."},
-    {"id":"V6","name":"Authentication","status":"GAP","evidence":["Supabase password authentication","magic-link flow","password recovery rehearsal","non-enumerating recovery response"],"note":"Priority finding ASVS-003: V6.3.3 L2 requires MFA or equivalent factor combination; no MFA enrollment/challenge implementation found."},
-    {"id":"V7","name":"Session Management","status":"PARTIAL","evidence":["server request boundary uses supabase.auth.getClaims()","logout route","auth recovery rehearsal includes refresh/logout/session invalidation"],"note":"Timeout, concurrent-session and full termination semantics still require provider/runtime receipts."},
-    {"id":"V8","name":"Authorization","status":"PARTIAL","evidence":["Row Level Security across identity/workspace/planner/knowledge/annual-plan/settings/timetable domains","server repositories derive authenticated subject from trusted Supabase claims"],"note":"Strong baseline; field-level and full operation-level requirement mapping remains open."},
-    {"id":"V9","name":"Self-contained Tokens","status":"PARTIAL","evidence":["Supabase Auth JWT claims are validated at server boundary"],"note":"Signature/algorithm/audience/expiry behavior is provider-managed and needs explicit provider/runtime evidence."},
+    {"id":"V6","name":"Authentication","status":"PARTIAL","evidence":["Supabase password authentication","email magic-link and recovery flows","TOTP MFA enrollment/challenge/verify with application and data-plane AAL2 enforcement","AAL1 denied on protected application/API/database/storage paths","real recovery rehearsal requires MFA before password mutation","post-recovery sign-in with the new password requires MFA again","V6.3.3 closed on implementation SHA 1f04f2799f9993c53d0578f8caafbe9e9842e60f with machine, isolated provider-runtime and human receipts"],"note":"Priority finding ASVS-003 / V6.3.3 is CLOSED_VERIFIED. The V6 chapter remains PARTIAL because requirement-level mapping for the rest of Authentication is not complete."},
+    {"id":"V7","name":"Session Management","status":"PARTIAL","evidence":["server request boundary uses supabase.auth.getClaims()","logout route","auth recovery rehearsal includes refresh/logout/session invalidation","AAL2 boundary is re-established on subsequent sign-in after password recovery"],"note":"Timeout, concurrent-session and full termination semantics still require provider/runtime receipts."},
+    {"id":"V8","name":"Authorization","status":"PARTIAL","evidence":["Row Level Security across identity/workspace/planner/knowledge/annual-plan/settings/timetable domains","server repositories derive authenticated subject from trusted Supabase claims","restrictive AAL2 policies protect application data-plane access for MFA-governed sessions"],"note":"Strong baseline; field-level and full operation-level requirement mapping remains open."},
+    {"id":"V9","name":"Self-contained Tokens","status":"PARTIAL","evidence":["Supabase Auth JWT claims are validated at server boundary","aal claim is enforced for MFA-governed authorization decisions"],"note":"Signature/algorithm/audience/expiry behavior is provider-managed and needs explicit provider/runtime evidence."},
     {"id":"V10","name":"OAuth and OIDC","status":"NOT_APPLICABLE_CURRENT_SCOPE","evidence":["current product exposes password and email magic-link flows; no OAuth/OIDC client/provider integration found"],"note":"Re-open immediately if social login, external IdP, OAuth client or OIDC federation is introduced."},
     {"id":"V11","name":"Cryptography","status":"PARTIAL","evidence":["cryptographic authentication/storage largely delegated to Supabase/managed infrastructure"],"note":"No canonical crypto inventory/key-lifecycle assurance exists yet."},
     {"id":"V12","name":"Secure Communication","status":"PARTIAL","evidence":["Production/Beta use managed HTTPS surfaces"],"note":"TLS versions/ciphers/certificate behavior require deployment/runtime receipts."},
-    {"id":"V13","name":"Configuration","status":"PARTIAL","evidence":["environment-based configuration","production promotion/readiness contracts","no service-role key found in repository search"],"note":"Secrets lifecycle, outbound allowlists and runtime hardening need explicit mapping."},
+    {"id":"V13","name":"Configuration","status":"PARTIAL","evidence":["environment-based configuration","production promotion/readiness contracts","no service-role key found in repository search","isolated MFA test runtime used for provider-native validation without altering the main Docente OS project"],"note":"Secrets lifecycle, outbound allowlists and runtime hardening need explicit mapping."},
     {"id":"V14","name":"Data Protection","status":"PARTIAL","evidence":["Tier-1-only admission boundary","P7 anonymization guard","Tier-2 not admitted","RLS baseline"],"note":"Retention/cache/client-storage controls require requirement-level review."},
     {"id":"V15","name":"Secure Coding and Architecture","status":"PARTIAL","evidence":["daily dependency-security workflow","npm audit HIGH/CRITICAL production dependency gate","TypeScript strict/Product CI","release exact-SHA governance"],"note":"SBOM/remediation-timeframe and risky-component documentation are not yet complete."},
-    {"id":"V16","name":"Security Logging and Error Handling","status":"PARTIAL","evidence":["P7 incident escalation contract","SEV-1..SEV-4 issue workflow","no-secrets/no-school-personal-data incident rule"],"note":"ASVS logging inventory, event coverage, retention, protection and correlation receipts are incomplete."},
+    {"id":"V16","name":"Security Logging and Error Handling","status":"PARTIAL","evidence":["P7 incident escalation contract","SEV-1..SEV-4 issue workflow","no-secrets/no-school-personal-data incident rule","MFA recovery debugging recorded error codes without storing passwords or TOTP values"],"note":"ASVS logging inventory, event coverage, retention, protection and correlation receipts are incomplete."},
     {"id":"V17","name":"WebRTC","status":"NOT_APPLICABLE_CURRENT_SCOPE","evidence":["no WebRTC/TURN/media-server capability in current product baseline"],"note":"Re-open if any WebRTC capability is introduced."}
   ],
   "priorityFindings": [
@@ -94,10 +94,28 @@
       "id": "ASVS-003",
       "requirement": "V6.3.3",
       "level": "L2",
-      "status": "OPEN_GAP",
-      "title": "L2 multi-factor authentication requirement not met",
-      "evidence": ["password and email magic-link are current login pathways", "repository search found no MFA/TOTP/AAL2 enrollment or challenge implementation"],
-      "closure": "Implement and require an L2-compatible factor combination for the protected application scope, with recovery/session tests and human validation."
+      "status": "CLOSED_VERIFIED",
+      "title": "MFA TOTP and AAL2 are required for protected application scope",
+      "evidence": [
+        "password and recovery/magic-link establish only the first-factor session and protected application surfaces require MFA",
+        "Supabase TOTP enrollment/challenge/verify is implemented without a test bypass",
+        "AAL1 is denied on protected pages, application APIs, RLS-governed database access, Storage and guarded RPC paths",
+        "0051_mfa_aal2_enforcement.sql applies restrictive AAL2 policies and a future-table ratchet",
+        "recovery password mutation is denied before AAL2 and permitted only after a valid MFA challenge",
+        "real human recovery via email completed AAL1 -> MFA -> AAL2 -> new password save",
+        "subsequent sign-in using the new password required MFA again and reached the operational Oggi surface",
+        "isolated provider-native Supabase and Render runtime evidence is recorded in ops/mfa-v6-3-3-closure-receipt.json"
+      ],
+      "closure": "Implement and require an L2-compatible factor combination for the protected application scope, with recovery/session tests, provider-runtime evidence and human validation of recovery plus subsequent sign-in.",
+      "implementationSha": "1f04f2799f9993c53d0578f8caafbe9e9842e60f",
+      "closureReceipts": [
+        {"type":"PRODUCT_CI","runId":34708557467},
+        {"type":"MFA_AAL2_DATA_PLANE_CONTRACT","runId":34708557509},
+        {"type":"MFA_BROWSER_AAL2_GATE","runId":34708557565},
+        {"type":"PROVIDER_RUNTIME_RECEIPT","reference":"ops/mfa-v6-3-3-closure-receipt.json"},
+        {"type":"HUMAN_MFA_RECOVERY_AND_RELOGIN","reference":"ops/mfa-v6-3-3-closure-receipt.json#humanValidation"},
+        {"type":"RENDER_EXACT_HEAD_DEPLOY","reference":"dep-daioqrgae00c73fck5d0"}
+      ]
     }
   ]
 }

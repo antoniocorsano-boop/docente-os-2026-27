@@ -1,18 +1,27 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { hasAal2, mfaRedirectPath } from '@/core/security/mfa-access-policy'
 import { createClient } from '@/lib/supabase/server'
 
+type PasswordSetupSource = 'email' | 'recovery' | ''
+
 export async function setPassword(formData: FormData) {
+  const source = normalizeSetupSource(readString(formData.get('source')))
+
+  if (!source) {
+    redirect('/login?error=invalid_password_setup_source')
+  }
+
   const password = readString(formData.get('password'))
   const confirmPassword = readString(formData.get('confirm_password'))
 
   if (password.length < 10) {
-    redirect('/imposta-password?error=weak_password')
+    redirect(passwordSetupErrorPath(source, 'weak_password'))
   }
 
   if (password !== confirmPassword) {
-    redirect('/imposta-password?error=password_mismatch')
+    redirect(passwordSetupErrorPath(source, 'password_mismatch'))
   }
 
   const supabase = await createClient()
@@ -22,11 +31,15 @@ export async function setPassword(formData: FormData) {
     redirect('/login?error=session_required')
   }
 
+  if (!hasAal2(data.claims)) {
+    redirect(mfaRedirectPath('/imposta-password', `?source=${source}`))
+  }
+
   const { error } = await supabase.auth.updateUser({ password })
 
   if (error) {
     console.error('Password update failed', error.code)
-    redirect('/imposta-password?error=password_update_failed')
+    redirect(passwordSetupErrorPath(source, 'password_update_failed'))
   }
 
   redirect('/workspace')
@@ -34,4 +47,13 @@ export async function setPassword(formData: FormData) {
 
 function readString(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value : ''
+}
+
+function normalizeSetupSource(value: string): PasswordSetupSource {
+  return value === 'recovery' || value === 'email' ? value : ''
+}
+
+function passwordSetupErrorPath(source: Exclude<PasswordSetupSource, ''>, error: string) {
+  const params = new URLSearchParams({ error, source })
+  return `/imposta-password?${params.toString()}`
 }

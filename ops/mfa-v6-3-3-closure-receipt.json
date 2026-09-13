@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "finding": "ASVS-003",
+  "requirement": "V6.3.3",
+  "level": "L2",
+  "decision": "CLOSED_VERIFIED",
+  "decisionDate": "2026-09-12",
+  "implementationSha": "1f04f2799f9993c53d0578f8caafbe9e9842e60f",
+  "scope": "SINGLE_OWNER_TIER_1_PROFESSIONAL_NON_PERSONAL",
+  "designClassification": "COMPATIBLE",
+  "machineEvidence": [
+    {"type":"PRODUCT_CI","runId":34708557467,"result":"PASS"},
+    {"type":"MFA_AAL2_DATA_PLANE_CONTRACT","runId":34708557509,"result":"PASS"},
+    {"type":"MFA_BROWSER_AAL2_GATE","runId":34708557565,"result":"PASS"}
+  ],
+  "runtimeEvidence": {
+    "renderDeployId": "dep-daioqrgae00c73fck5d0",
+    "renderUrl": "https://docente-os-mfa-test.onrender.com",
+    "supabaseProjectRef": "xyowtnivxnzgwewvvmyz",
+    "isolatedProviderRuntime": true,
+    "migration": "0051_mfa_aal2_enforcement.sql",
+    "observedProperties": [
+      "AAL1 denied on protected application and data-plane surfaces",
+      "valid TOTP promotes the authenticated session to AAL2",
+      "recovery does not authorize password mutation before AAL2",
+      "password mutation succeeds after AAL2",
+      "new password is accepted on a subsequent sign-in and MFA is required again"
+    ]
+  },
+  "humanValidation": {
+    "result": "PASS",
+    "date": "2026-09-12",
+    "journey": [
+      "request real password recovery email",
+      "open recovery link and establish AAL1 session",
+      "mandatory redirect to MFA challenge",
+      "verify enrolled TOTP factor and obtain AAL2",
+      "open password reset surface only after AAL2",
+      "save a new password successfully",
+      "sign out",
+      "sign in with the new password",
+      "complete MFA again",
+      "reach the operational Oggi surface"
+    ],
+    "sensitiveValuesRecorded": false,
+    "reference": "PR #346 human recovery and re-login verification"
+  },
+  "integrationContext": {
+    "pr": 346,
+    "base": "develop",
+    "prerequisites": [
+      {"pr":344,"finding":"ASVS-002 / V5.2.2","mergeSha":"15553e24d840672ac83342748a8fb9f627312c0b"},
+      {"pr":345,"finding":"ASVS-001 / V3.4.3","mergeSha":"ae9136ca507ecb3a3cafe00e56cf9cb86e0e2270"}
+    ],
+    "accountSecurityUiFinding": 347
+  },
+  "notes": [
+    "The closure applies to V6.3.3 only and does not constitute an OWASP ASVS L2 verification claim.",
+    "The V6 chapter remains PARTIAL until requirement-level mapping is complete.",
+    "The isolated MFA test backend was returned to INACTIVE after validation and CurManLight Arena Beta was restored to ACTIVE_HEALTHY.",
+    "The account-management UI gap is tracked separately and does not weaken the verified AAL2 enforcement boundary."
+  ]
+}

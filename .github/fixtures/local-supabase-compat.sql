@@ -39,6 +39,17 @@ AS $$
   SELECT coalesce(nullif(current_setting('request.jwt.claim.role', true), ''), 'anon');
 $$;
 
+-- Supabase exposes auth.jwt() to RLS and SQL helpers. The restore rehearsal only
+-- needs the catalog-compatible function so canonical migrations can be replayed;
+-- claims are injected through PostgreSQL request.jwt.claims when a test needs them.
+CREATE OR REPLACE FUNCTION auth.jwt()
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb);
+$$;
+
 CREATE TABLE IF NOT EXISTS storage.buckets (
   id text PRIMARY KEY,
   name text NOT NULL UNIQUE,

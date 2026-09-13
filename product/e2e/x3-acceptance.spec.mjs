@@ -1,15 +1,12 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, test } from '@playwright/test'
+import { loginE2E, requireE2ECredentials } from './support/e2e-auth.mjs'
 import { retainNewestKnowledgeFixture } from './support/knowledge-fixture-hygiene.mjs'
 
-const email = process.env.E2E_EMAIL ?? 'docente-os-e2e-2dbf49e1@example.invalid'
-const password = process.env.E2E_PASSWORD
 const fixturePath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'x3-responsible-ai.txt')
 
-if (!password) {
-  throw new Error('E2E_PASSWORD is required for the authenticated X3 acceptance test')
-}
+requireE2ECredentials()
 
 test('X3 mobile gate: grounded answers, useful proposals, write preview and no automatic write', async ({ page }) => {
   await login(page)
@@ -20,10 +17,14 @@ test('X3 mobile gate: grounded answers, useful proposals, write preview and no a
     if (existingAssetId) {
       await page.goto(`/knowledge/${encodeURIComponent(existingAssetId)}`)
     } else {
-      await page.goto('/knowledge')
+      await openFileCapture(page)
       const upload = page.locator('input[type="file"][name="file"]')
       await upload.setInputFiles(fixturePath)
-      await expect(page.getByText('x3-responsible-ai.txt')).toBeVisible()
+      await expect(page.getByText('Pronto a caricare')).toBeVisible()
+      const privacyConfirmation = page.getByRole('checkbox', { name: /Confermo che il contenuto.*pilot anonimo/i })
+      await expect(privacyConfirmation).toBeVisible()
+      await privacyConfirmation.check()
+      await expect(privacyConfirmation).toBeChecked()
       await page.getByRole('button', { name: 'Carica e organizza' }).click()
       await page.waitForURL(/\/knowledge\/[^/?#]+$/, { timeout: 60_000 })
     }
@@ -70,7 +71,8 @@ test('X3 mobile gate: grounded answers, useful proposals, write preview and no a
     await expect(response).toContainText('Punti principali rilevati nel contenuto')
     await expect(response).toContainText(/verific|rispost|informaz/i)
     await expect(response).toContainText(/dati personali|riserv/i)
-    await expect(response).toContainText(/attività conclusiva|piano di uso responsabile/i)
+    await expect(response).toContainText(/intelligenza artificiale|IA generativa/i)
+    await expect(response).toContainText(/uso responsabile|integrità scolastica|distorsioni/i)
     await expect(response).toContainText('Tecnologia')
     await expect(response).toContainText('3A')
     await expect(response).toContainText('3C')
@@ -108,17 +110,14 @@ test('X3 mobile gate: grounded answers, useful proposals, write preview and no a
   })
 
   await test.step('Verifica che la richiesta X3 non abbia scritto nel Planner', async () => {
-    await page.goto('/planner')
+    await openPlannerReady(page)
     await expect(page.getByText(previewTitle, { exact: false })).toHaveCount(0)
   })
 })
 
 test('X3 Planner gate: real counts, useful answer and no automatic mutation', async ({ page }) => {
   await login(page)
-  await page.goto('/planner')
-
-  const stats = page.locator('.humanTaskCompactStats')
-  await expect(stats).toBeVisible()
+  const stats = await openPlannerReady(page)
   const beforeText = await stats.innerText()
   const openCount = plannerOpenCount(beforeText)
 
@@ -149,21 +148,47 @@ test('X3 Planner gate: real counts, useful answer and no automatic mutation', as
     await page.screenshot({ path: 'test-results/x3-06-planner-write-boundary.png' })
   })
 
-  await page.goto('/planner')
-  const afterText = await page.locator('.humanTaskCompactStats').innerText()
+  const afterStats = await openPlannerReady(page)
+  const afterText = await afterStats.innerText()
   expect(plannerOpenCount(afterText)).toBe(openCount)
 })
 
 async function login(page) {
-  await test.step('Accede con l’account tecnico isolato', async () => {
-    await page.goto('/login')
-    await page.locator('#email').fill(email)
-    await page.locator('#password').fill(password)
-    await Promise.all([
-      page.waitForURL(/\/workspace(?:$|\?)/, { timeout: 30_000 }),
-      page.getByRole('button', { name: 'Entra nel tuo spazio docente' }).click(),
-    ])
+  await test.step('Accede con l’account tecnico isolato in AAL2', async () => {
+    await loginE2E(page)
   })
+}
+
+async function openPlannerReady(page) {
+  let lastError = null
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      await page.goto('/planner', { waitUntil: 'domcontentloaded', timeout: 30_000 })
+      await expect(page).toHaveURL(/\/planner(?:$|\?)/, { timeout: 15_000 })
+      await expect(page.locator('#dos-main-content')).toBeVisible({ timeout: 30_000 })
+      const stats = page.locator('.humanTaskCompactStats')
+      await expect(stats).toBeVisible({ timeout: 30_000 })
+      return stats
+    } catch (error) {
+      lastError = error
+      if (attempt === 2) break
+      await page.waitForTimeout(500)
+    }
+  }
+  throw lastError ?? new Error('Planner did not become ready')
+}
+
+async function openFileCapture(page) {
+  await page.goto('/knowledge')
+  const capture = page.locator('details.knowledgeCaptureDisclosure')
+  await expect(capture).toBeVisible()
+  if (await capture.getAttribute('open') === null) await capture.locator(':scope > summary').click()
+  await expect(capture).toHaveAttribute('open', '')
+
+  const fileMode = page.getByRole('button', { name: /Carica un file/ })
+  await expect(fileMode).toBeVisible()
+  await fileMode.click()
+  await expect(page.locator('[data-capture-mode-panel="file"]')).toBeVisible()
 }
 
 async function askAndCheck(page, prompt, expectedAssistantMessages, assertion) {

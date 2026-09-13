@@ -10,7 +10,7 @@ if (!supabaseUrl || !supabasePublishableKey) {
 
 const GRADE_NUMBER = { PRIMA: '1', SECONDA: '2', TERZA: '3' }
 
-export async function createClassroomMaterialFixture({ sectionId, suffix }) {
+export async function createClassroomMaterialFixture({ sectionId, suffix, targetDate = romeDate() }) {
   requireE2ECredentials()
   const supabase = createClient(supabaseUrl, supabasePublishableKey, {
     auth: {
@@ -41,7 +41,6 @@ export async function createClassroomMaterialFixture({ sectionId, suffix }) {
   const classLabel = `${GRADE_NUMBER[section.grade] ?? ''}${section.section_code}`.toUpperCase()
   if (!GRADE_NUMBER[section.grade] || !section.section_code) throw new Error(`Unsupported classroom fixture section: ${section.grade}/${section.section_code}`)
 
-  const targetDate = romeDate()
   const title = `HVA cockpit ${classLabel} ${suffix}`
   const { data: asset, error: insertError } = await supabase
     .from('knowledge_assets')

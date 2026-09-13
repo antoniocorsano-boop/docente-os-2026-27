@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { EXPERIENCE_SURFACES } from '../../e2e/experience/surfaces.mjs'
+import { EXPERIENCE_SURFACES, resolveExperienceSurfacePath } from '../../e2e/experience/surfaces.mjs'
 
 const outputDir = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience'
 const observationsDir = path.join(outputDir, 'observations')
@@ -83,7 +83,11 @@ const receipt = {
   overall,
   gates,
   coverage: {
-    surfaces: EXPERIENCE_SURFACES.map(({ id, label, path: route }) => ({ id, label, route })),
+    surfaces: EXPERIENCE_SURFACES.map((surface) => ({
+      id: surface.id,
+      label: surface.label,
+      route: receiptSurfacePath(surface),
+    })),
     projects: expectedProjects,
     expectedObservations: expectedObservationCount,
     actualObservations: observations.length,
@@ -120,6 +124,14 @@ await fs.mkdir(receiptDir, { recursive: true })
 await fs.writeFile(path.join(receiptDir, 'acceptance.json'), `${JSON.stringify(receipt, null, 2)}\n`)
 await fs.writeFile(path.join(receiptDir, 'acceptance.md'), markdown(receipt))
 process.stdout.write(`${markdown(receipt)}\n`)
+
+function receiptSurfacePath(surface) {
+  try {
+    return resolveExperienceSurfacePath(surface)
+  } catch {
+    return surface.path
+  }
+}
 
 async function readJsonDirectory(dir) {
   try {

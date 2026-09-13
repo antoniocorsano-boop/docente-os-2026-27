@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
-import { EXPERIENCE_SURFACES } from './surfaces.mjs'
+import { EXPERIENCE_SURFACES, resolveExperienceSurfacePath } from './surfaces.mjs'
 
 const WCAG_ASSURANCE_ENABLED = process.env.WCAG_ASSURANCE === '1'
 
@@ -73,7 +73,7 @@ test.describe('M5-03 — WCAG 2.2 AA automated assurance', () => {
   test('AppShell: il primo Tab espone il bypass e porta il focus al main', async ({ page }) => {
     await loginE2E(page)
     await expect(page).toHaveURL(/\/planner(?:$|\?)/)
-    await expect(page.locator('.workSurface')).toBeVisible({ timeout: 30_000 })
+    await expect(page.locator('#dos-main-content')).toBeVisible({ timeout: 30_000 })
 
     const skip = page.getByRole('link', { name: 'Salta al contenuto' })
     await expect(skip).toBeAttached()
@@ -88,10 +88,11 @@ test.describe('M5-03 — WCAG 2.2 AA automated assurance', () => {
   for (const surface of EXPERIENCE_SURFACES) {
     test(`${surface.id}: automated WCAG A/AA baseline`, async ({ page }, testInfo) => {
       await loginE2E(page)
-      const response = await page.goto(surface.path)
-      if (!response) throw new Error(`No navigation response for ${surface.path}`)
+      const surfacePath = resolveExperienceSurfacePath(surface)
+      const response = await page.goto(surfacePath)
+      if (!response) throw new Error(`No navigation response for ${surfacePath}`)
       expect(response.status(), `${surface.id} returned HTTP ${response.status()}`).toBeLessThan(400)
-      await expect(page.locator('.workSurface')).toBeVisible({ timeout: 30_000 })
+      await expect(page.locator('#dos-main-content')).toBeVisible({ timeout: 30_000 })
       await expect(page.locator('h1').first()).toBeVisible()
       await analyzePage(page, testInfo, surface.id)
     })
