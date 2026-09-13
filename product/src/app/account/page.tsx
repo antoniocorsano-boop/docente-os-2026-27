@@ -110,7 +110,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
             </CardHeader>
             <CardContent className="grid gap-4">
               <p className="m-0 text-sm leading-6 text-muted-foreground">Il cambio password richiede una sessione MFA valida e non espone mai la credenziale corrente.</p>
-              <Link className={buttonVariants()} href="/imposta-password?source=account">Cambia password</Link>
+              <Link className={buttonVariants({ variant: 'secondary' })} href="/imposta-password?source=account">Cambia password</Link>
             </CardContent>
           </Card>
 
