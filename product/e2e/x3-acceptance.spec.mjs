@@ -17,7 +17,7 @@ test('X3 mobile gate: grounded answers, useful proposals, write preview and no a
     if (existingAssetId) {
       await page.goto(`/knowledge/${encodeURIComponent(existingAssetId)}`)
     } else {
-      await page.goto('/knowledge')
+      await openFileCapture(page)
       const upload = page.locator('input[type="file"][name="file"]')
       await upload.setInputFiles(fixturePath)
       await expect(page.getByText('Pronto a caricare')).toBeVisible()
@@ -155,6 +155,19 @@ async function login(page) {
   await test.step('Accede con l’account tecnico isolato in AAL2', async () => {
     await loginE2E(page)
   })
+}
+
+async function openFileCapture(page) {
+  await page.goto('/knowledge')
+  const capture = page.locator('details.knowledgeCaptureDisclosure')
+  await expect(capture).toBeVisible()
+  if (await capture.getAttribute('open') === null) await capture.locator(':scope > summary').click()
+  await expect(capture).toHaveAttribute('open', '')
+
+  const fileMode = page.getByRole('button', { name: /Carica un file/ })
+  await expect(fileMode).toBeVisible()
+  await fileMode.click()
+  await expect(page.locator('[data-capture-mode-panel="file"]')).toBeVisible()
 }
 
 async function askAndCheck(page, prompt, expectedAssistantMessages, assertion) {
