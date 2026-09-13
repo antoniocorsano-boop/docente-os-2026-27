@@ -138,7 +138,19 @@ Regole:
 3. il legame a Bxx, quando esiste, è letto dalle allocazioni della sessione;
 4. `NOT_OBSERVED` non è un esito negativo;
 5. nessuna osservazione modifica `AnnualPlanBlockProgress`;
-6. una correzione della lezione segue il modello di supersessione già canonico.
+6. una correzione della lezione segue il modello di supersessione già canonico;
+7. `recorded_by` è parte della provenienza professionale e non può essere omesso nel record canonico.
+
+### Draft durante `Osserva`
+
+Prima di `Registra` non esiste ancora necessariamente l'id canonico della TeachingSession. Le micro-rilevazioni restano quindi `TeachingObservationDraft` effimere con un `draftKey` locale usato soltanto per correlare input nella stessa interazione.
+
+`draftKey`:
+
+- non è un identificatore canonico;
+- non viene usato per analisi longitudinali;
+- non autorizza autosalvataggio persistente;
+- viene risolto nel record `Observation.id` soltanto nel boundary di registrazione autorevole.
 
 ### Semantica di supersessione
 
@@ -151,10 +163,12 @@ Le osservazioni di una sessione superseded restano evidenza storica. Le letture 
 ```text
 id
 teaching_session_id
+observation_ids[]
 kind: WORK_PRODUCT | QUICK_CHECK | ORAL_RESPONSE | CLASS_ACTIVITY | DOCUMENT_REFERENCE | OTHER
 description
 knowledge_asset_id?
 external_reference?
+recorded_by
 created_at
 ```
 
@@ -164,7 +178,11 @@ Regole:
 - un asset già presente in Conoscenza/Drive viene referenziato, non ricopiato;
 - nel Tier 1 corrente il riferimento non introduce dati personali degli alunni;
 - l'assenza dell'evidenza non viene colmata con inferenze;
-- `evidence_note` della TeachingSession resta compatibile e non viene reinterpretato come tabella di osservazioni strutturate.
+- `evidence_note` della TeachingSession resta compatibile e non viene reinterpretato come tabella di osservazioni strutturate;
+- la copertura di una Observation è riconosciuta soltanto tramite un collegamento esplicito in `observation_ids[]`, non perché l'evidenza appartiene genericamente alla stessa TeachingSession;
+- un riferimento di evidenza può restare a livello di sessione con `observation_ids[]` vuoto, ma in quel caso non viene contato come supporto di una specifica Observation.
+
+Durante `Osserva`, un `TeachingEvidenceReferenceDraft` usa `observationDraftKeys[]`; il boundary di registrazione risolve tali chiavi negli `observation_ids[]` canonici nella stessa receipt coerente della lezione.
 
 ## 8. Dimensioni osservative
 
@@ -306,7 +324,7 @@ Conservano gli asset e le proiezioni documentali; `EvidenceReference` mantiene i
 2. Nessuna seconda tabella o tipo canonico parallelo di TeachingSession.
 3. `TeachingSessionAllocation` resta l'unico binding dell'esecuzione ai B01-B33.
 4. `Observation` non modifica `AnnualPlanBlockProgress`.
-5. `EvidenceReference` non crea o duplica asset canonici.
+5. `EvidenceReference` non crea o duplica asset canonici e supporta una specifica Observation solo tramite binding esplicito.
 6. `TeachingSessionReflection` resta distinta dalle micro-osservazioni.
 7. Le correzioni rispettano `supersedes_session_id` e preservano la storia.
 8. Le sintesi sono derivate e devono mantenere i riferimenti alle fonti.
@@ -314,22 +332,27 @@ Conservano gli asset e le proiezioni documentali; `EvidenceReference` mantiene i
 10. Nessuna tassonomia locale introdotta dalla UI.
 11. Nessuna proposta viene applicata senza decisione umana.
 12. La capability usa i componenti/token canonici e resta soggetta ai gate WCAG, Design Policy e Human Interaction Model.
+13. I draft pre-sessione sono effimeri: nessuna Observation persistente può esistere senza TeachingSession autorevole.
 
 ## 16. Incrementi autorizzabili
 
 ### TE-0 — Foundation
 - contratto canonico;
 - tipi dell'estensione Observation/Evidence/Proposal;
+- tipi draft effimeri per la fase `Osserva`;
+- binding esplicito EvidenceReference → Observation;
 - invarianti e test puri;
 - riuso esplicito di TeachingSession e TeachingSessionReflection;
 - nessuna migrazione;
 - nessuna nuova UI.
 
 ### TE-1 — Observation persistence readiness + additive storage
+- chiudere prima la convergenza semantica di `Registra la lezione`;
 - definire il boundary di scrittura delle osservazioni ancorate a `teaching_sessions.id`;
 - migrazione **additive-only**, senza modificare l'identità della TeachingSession;
 - RLS/AAL2 coerenti col runtime corrente;
 - comportamento esplicito su sessioni superseded;
+- receipt coerente che risolva `draftKey` / `observationDraftKeys` nei rispettivi id canonici;
 - nessuna nuova persistenza della lezione.
 
 ### TE-2 — Structured observation UX
@@ -340,7 +363,7 @@ Conservano gli asset e le proiezioni documentali; `EvidenceReference` mantiene i
 
 ### TE-3 — Evidence binding
 - `EvidenceReference` verso evidenze documentali ammesse;
-- provenance verificabile;
+- provenance verificabile e binding esplicito alle Observation sostenute;
 - nessun dato personale degli alunni.
 
 ### TE-4 — Reflection enrichment
@@ -362,6 +385,7 @@ Conservano gli asset e le proiezioni documentali; `EvidenceReference` mantiene i
 
 Verificare:
 
+- convergenza di ogni comando «Registra la lezione» sulla TeachingSession autorevole;
 - contratto `TeachingSession` e catena di supersessione;
 - `TeachingSessionReflection` / Diario Drive;
 - `TEMPORAL_COMPOSITION_CANONICAL_SPEC`;
@@ -382,7 +406,7 @@ La capability è matura quando il docente può:
 1. entrare nella lezione dal contesto corretto;
 2. registrare 0–4 micro-osservazioni senza interrompere il flusso didattico;
 3. registrare/correggere la TeachingSession senza ricopiare le osservazioni;
-4. ritrovare ex post cosa è accaduto e su quali evidenze;
+4. ritrovare ex post cosa è accaduto e su quali evidenze, con legami espliciti;
 5. distinguere episodio e tendenza fra sessioni correnti comparabili;
 6. comprendere perché DOCENTE OS propone un intervento;
 7. accettare, modificare o rifiutare tale proposta;
