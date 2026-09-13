@@ -14,6 +14,7 @@ function observation(overrides: Partial<TeachingObservation> = {}): TeachingObse
   return {
     id: 'o1',
     teachingSessionId: 's1',
+    recordedBy: 'teacher-1',
     scope: 'CLASS',
     anonymousGroupKey: null,
     dimensionKey: 'AUTONOMY',
@@ -29,6 +30,8 @@ function evidence(overrides: Partial<TeachingEvidenceReference> = {}): TeachingE
   return {
     id: 'e1',
     teachingSessionId: 's1',
+    observationIds: ['o1'],
+    recordedBy: 'teacher-1',
     kind: 'QUICK_CHECK',
     description: 'Verifica rapida di fine lezione',
     knowledgeAssetId: null,
@@ -56,6 +59,12 @@ test('class observations cannot carry anonymous-group identifiers', () => {
     validateTeachingObservation(observation({ anonymousGroupKey: 'g1' })).includes(
       'CLASS observations cannot carry anonymousGroupKey',
     ),
+  )
+})
+
+test('observations require explicit recorder provenance', () => {
+  assert.ok(
+    validateTeachingObservation(observation({ recordedBy: '' })).includes('recordedBy is required'),
   )
 })
 
@@ -106,11 +115,15 @@ test('longitudinal analysis requires at least two comparable observed sessions',
   )
 })
 
-test('evidence coverage is descriptive and never becomes a score', () => {
+test('evidence coverage requires explicit links to observations and never becomes a score', () => {
   assert.equal(deriveEvidenceCoverage({ observations: [observation()], evidence: [] }), 'NONE')
   assert.equal(
     deriveEvidenceCoverage({ observations: [observation()], evidence: [evidence()] }),
     'PRESENT',
+  )
+  assert.equal(
+    deriveEvidenceCoverage({ observations: [observation()], evidence: [evidence({ observationIds: [] })] }),
+    'NONE',
   )
   assert.equal(
     deriveEvidenceCoverage({
@@ -118,6 +131,16 @@ test('evidence coverage is descriptive and never becomes a score', () => {
       evidence: [evidence()],
     }),
     'PARTIAL',
+  )
+})
+
+test('an evidence link cannot cover an observation from another teaching session', () => {
+  assert.equal(
+    deriveEvidenceCoverage({
+      observations: [observation({ id: 'o2', teachingSessionId: 's2' })],
+      evidence: [evidence({ teachingSessionId: 's1', observationIds: ['o2'] })],
+    }),
+    'NONE',
   )
 })
 
