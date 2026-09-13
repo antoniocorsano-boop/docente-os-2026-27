@@ -93,7 +93,7 @@ async function reachPlannerBoundary(page) {
 async function waitForMfaChallengeReady(page) {
   await expect(page.getByRole('heading', { name: 'Conferma il secondo fattore.' })).toBeVisible()
 
-  for (let attempt = 1; attempt <= 4; attempt += 1) {
+  for (let attempt = 1; attempt <= 8; attempt += 1) {
     const codeHeading = page.getByRole('heading', { name: 'Inserisci il codice temporaneo' })
     if (await codeHeading.isVisible().catch(() => false)) return
 
@@ -104,14 +104,18 @@ async function waitForMfaChallengeReady(page) {
 
     const reloadButton = page.getByRole('button', { name: 'Ricarica' })
     if (await reloadButton.isVisible().catch(() => false)) {
-      await reloadButton.click()
-      await page.waitForLoadState('domcontentloaded')
+      await page.waitForTimeout(Math.min(1_000 * attempt, 4_000))
+      await Promise.all([
+        page.waitForLoadState('domcontentloaded').catch(() => {}),
+        reloadButton.click(),
+      ])
+      await page.waitForTimeout(Math.min(750 * attempt, 3_000))
     } else {
-      await page.waitForTimeout(750)
+      await page.waitForTimeout(Math.min(1_000 * attempt, 4_000))
     }
 
-    if (attempt === 4) {
-      throw new Error('Governed MFA fixture did not expose a usable verified TOTP factor after reload retries')
+    if (attempt === 8) {
+      throw new Error('Governed MFA fixture did not expose a usable verified TOTP factor after bounded backoff retries')
     }
   }
 }
@@ -139,8 +143,9 @@ async function waitForMfaVerificationOutcome(page) {
 
     const reloadButton = page.getByRole('button', { name: 'Ricarica' })
     if (await reloadButton.isVisible().catch(() => false)) {
+      await page.waitForTimeout(1_500)
       await reloadButton.click()
-      await page.waitForLoadState('domcontentloaded')
+      await page.waitForLoadState('domcontentloaded').catch(() => {})
       return 'factor-read-transient'
     }
 
