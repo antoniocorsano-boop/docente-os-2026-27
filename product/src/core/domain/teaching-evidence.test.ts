@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import assert from 'node:assert/strict'
+import test from 'node:test'
 import {
   canApplyTeachingProposal,
   canInferLongitudinalSignal,
@@ -50,71 +51,79 @@ function proposal(overrides: Partial<TeachingProposal> = {}): TeachingProposal {
   }
 }
 
-describe('teaching evidence domain', () => {
-  it('keeps class observations free of anonymous-group identifiers', () => {
-    expect(validateTeachingObservation(observation({ anonymousGroupKey: 'g1' }))).toContain(
+test('class observations cannot carry anonymous-group identifiers', () => {
+  assert.ok(
+    validateTeachingObservation(observation({ anonymousGroupKey: 'g1' })).includes(
       'CLASS observations cannot carry anonymousGroupKey',
-    )
-  })
+    ),
+  )
+})
 
-  it('requires a non-identifying group key only for anonymous group observations', () => {
-    expect(validateTeachingObservation(observation({ scope: 'ANONYMOUS_GROUP' }))).toContain(
+test('anonymous group observations require a non-identifying group key', () => {
+  assert.ok(
+    validateTeachingObservation(observation({ scope: 'ANONYMOUS_GROUP' })).includes(
       'ANONYMOUS_GROUP observations require anonymousGroupKey',
-    )
-    expect(
-      validateTeachingObservation(
-        observation({ scope: 'ANONYMOUS_GROUP', anonymousGroupKey: 'table-a' }),
-      ),
-    ).toEqual([])
-  })
+    ),
+  )
+  assert.deepEqual(
+    validateTeachingObservation(
+      observation({ scope: 'ANONYMOUS_GROUP', anonymousGroupKey: 'table-a' }),
+    ),
+    [],
+  )
+})
 
-  it('does not infer a longitudinal signal from one observed session', () => {
-    expect(
-      canInferLongitudinalSignal({
-        observations: [observation()],
-        comparableSessionIds: ['s1'],
-      }),
-    ).toBe(false)
-  })
+test('a longitudinal signal cannot be inferred from one observed session', () => {
+  assert.equal(
+    canInferLongitudinalSignal({
+      observations: [observation()],
+      comparableSessionIds: ['s1'],
+    }),
+    false,
+  )
+})
 
-  it('does not count NOT_OBSERVED as evidence for a trend', () => {
-    expect(
-      canInferLongitudinalSignal({
-        observations: [
-          observation(),
-          observation({ id: 'o2', teachingSessionId: 's2', state: 'NOT_OBSERVED' }),
-        ],
-        comparableSessionIds: ['s1', 's2'],
-      }),
-    ).toBe(false)
-  })
+test('NOT_OBSERVED never counts as evidence for a trend', () => {
+  assert.equal(
+    canInferLongitudinalSignal({
+      observations: [
+        observation(),
+        observation({ id: 'o2', teachingSessionId: 's2', state: 'NOT_OBSERVED' }),
+      ],
+      comparableSessionIds: ['s1', 's2'],
+    }),
+    false,
+  )
+})
 
-  it('allows longitudinal analysis only across at least two comparable observed sessions', () => {
-    expect(
-      canInferLongitudinalSignal({
-        observations: [observation(), observation({ id: 'o2', teachingSessionId: 's2' })],
-        comparableSessionIds: ['s1', 's2'],
-      }),
-    ).toBe(true)
-  })
+test('longitudinal analysis requires at least two comparable observed sessions', () => {
+  assert.equal(
+    canInferLongitudinalSignal({
+      observations: [observation(), observation({ id: 'o2', teachingSessionId: 's2' })],
+      comparableSessionIds: ['s1', 's2'],
+    }),
+    true,
+  )
+})
 
-  it('reports whether observed sessions have supporting evidence without inventing a score', () => {
-    expect(deriveEvidenceCoverage({ observations: [observation()], evidence: [] })).toBe('NONE')
-    expect(deriveEvidenceCoverage({ observations: [observation()], evidence: [evidence()] })).toBe(
-      'PRESENT',
-    )
-    expect(
-      deriveEvidenceCoverage({
-        observations: [observation(), observation({ id: 'o2', teachingSessionId: 's2' })],
-        evidence: [evidence()],
-      }),
-    ).toBe('PARTIAL')
-  })
+test('evidence coverage is descriptive and never becomes a score', () => {
+  assert.equal(deriveEvidenceCoverage({ observations: [observation()], evidence: [] }), 'NONE')
+  assert.equal(
+    deriveEvidenceCoverage({ observations: [observation()], evidence: [evidence()] }),
+    'PRESENT',
+  )
+  assert.equal(
+    deriveEvidenceCoverage({
+      observations: [observation(), observation({ id: 'o2', teachingSessionId: 's2' })],
+      evidence: [evidence()],
+    }),
+    'PARTIAL',
+  )
+})
 
-  it('requires an explicit human decision before a teaching proposal can be applied', () => {
-    expect(canApplyTeachingProposal(proposal())).toBe(false)
-    expect(canApplyTeachingProposal(proposal({ status: 'DISMISSED' }))).toBe(false)
-    expect(canApplyTeachingProposal(proposal({ status: 'ACCEPTED' }))).toBe(true)
-    expect(canApplyTeachingProposal(proposal({ status: 'MODIFIED' }))).toBe(true)
-  })
+test('teaching proposals require an explicit human decision before apply', () => {
+  assert.equal(canApplyTeachingProposal(proposal()), false)
+  assert.equal(canApplyTeachingProposal(proposal({ status: 'DISMISSED' })), false)
+  assert.equal(canApplyTeachingProposal(proposal({ status: 'ACCEPTED' })), true)
+  assert.equal(canApplyTeachingProposal(proposal({ status: 'MODIFIED' })), true)
 })
