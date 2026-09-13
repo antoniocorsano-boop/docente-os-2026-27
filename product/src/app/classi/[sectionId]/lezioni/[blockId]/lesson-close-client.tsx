@@ -27,6 +27,7 @@ export default function LessonCloseClient({
   projection,
   progress,
   defaultLocalDate,
+  registrationKey,
 }: {
   sectionId: string
   sectionLabel: string
@@ -34,6 +35,7 @@ export default function LessonCloseClient({
   projection: HumanTaskLessonProjection
   progress: Progress
   defaultLocalDate: string
+  registrationKey: string
 }) {
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
   const teachHref = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(block.id)}?mode=teach`
@@ -61,6 +63,7 @@ export default function LessonCloseClient({
 
         <input type="hidden" name="sectionId" value={sectionId} />
         <input type="hidden" name="blockId" value={block.id} />
+        <input type="hidden" name="registrationKey" value={registrationKey} />
 
         <div className={styles.sessionFacts}>
           <label className={styles.sessionField}>
