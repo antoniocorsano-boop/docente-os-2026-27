@@ -6,12 +6,10 @@ describe('classifyPasswordAuthError', () => {
     expect(classifyPasswordAuthError({ code: 'invalid_credentials', status: 400 })).toBe('INVALID_CREDENTIALS')
   })
 
-  it.each([
-    [{ code: undefined }, 'missing code'],
-    [{ code: null }, 'null code'],
-    [{ code: 'unexpected_failure', status: 500 }, 'provider failure'],
-    [{ code: 'over_request_rate_limit', status: 429 }, 'rate limit'],
-  ])('classifies %s as transient/provider instead of blaming the credentials', (error) => {
-    expect(classifyPasswordAuthError(error)).toBe('TRANSIENT_OR_PROVIDER')
+  it('keeps provider and transport failures distinct from invalid credentials', () => {
+    expect(classifyPasswordAuthError({})).toBe('TRANSIENT_OR_PROVIDER')
+    expect(classifyPasswordAuthError({ code: null })).toBe('TRANSIENT_OR_PROVIDER')
+    expect(classifyPasswordAuthError({ code: 'unexpected_failure', status: 500 })).toBe('TRANSIENT_OR_PROVIDER')
+    expect(classifyPasswordAuthError({ code: 'over_request_rate_limit', status: 429 })).toBe('TRANSIENT_OR_PROVIDER')
   })
 })
