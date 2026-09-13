@@ -39,10 +39,7 @@ export async function loginE2E(page) {
     await completeMfaChallenge(page)
   }
 
-  // Always verify the final AAL2 boundary against an operational surface instead
-  // of trusting whichever continuation happened to be requested by the login flow.
-  await page.goto('/planner')
-  await page.waitForLoadState('domcontentloaded')
+  await reachPlannerBoundary(page)
   await expect(page).toHaveURL(/\/planner(?:$|\?)/)
   await expect(page.locator('main')).toBeVisible()
 }
@@ -60,16 +57,36 @@ async function completeMfaChallenge(page) {
     await page.getByRole('button', { name: 'Verifica e continua' }).click()
 
     const outcome = await waitForMfaVerificationOutcome(page)
-    if (outcome === 'success') return
+    if (outcome === 'success') {
+      await page.waitForLoadState('domcontentloaded').catch(() => {})
+      await page.waitForTimeout(250)
+      return
+    }
 
     if (attempt === 4) {
       throw new Error(`Governed MFA verification did not reach AAL2 after ${attempt} attempts (${outcome})`)
     }
 
-    // Supabase rejects stale/replayed TOTP values. When several governed browser
-    // gates share the same fixture, retry only after the next 30-second step.
     const untilNextStep = millisecondsUntilNextTotpStep()
     await page.waitForTimeout(untilNextStep + 750)
+  }
+}
+
+async function reachPlannerBoundary(page) {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    if (new URL(page.url()).pathname === '/planner') {
+      await page.waitForLoadState('domcontentloaded').catch(() => {})
+      return
+    }
+
+    try {
+      await page.goto('/planner', { waitUntil: 'domcontentloaded' })
+      return
+    } catch (error) {
+      if (!String(error).includes('interrupted by another navigation') || attempt === 3) throw error
+      await page.waitForTimeout(300)
+      await page.waitForLoadState('domcontentloaded').catch(() => {})
+    }
   }
 }
 
