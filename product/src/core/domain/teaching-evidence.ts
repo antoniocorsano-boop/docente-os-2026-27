@@ -61,25 +61,44 @@ export type TeachingEvidenceSessionContext = Pick<
   | 'recordedAt'
 >
 
-export type TeachingObservation = {
-  id: string
-  teachingSessionId: string
+/**
+ * Ephemeral in-class observation. `draftKey` only correlates local inputs in
+ * the same registration transaction; it is not a canonical identifier.
+ */
+export type TeachingObservationDraft = {
+  draftKey: string
   scope: ObservationScope
   anonymousGroupKey: string | null
   dimensionKey: TeachingEvidenceDimensionKey | string
   state: ObservationState
   note: string | null
   source: ObservationSource
+}
+
+export type TeachingObservation = Omit<TeachingObservationDraft, 'draftKey'> & {
+  id: string
+  teachingSessionId: string
+  recordedBy: string
   createdAt: string
 }
 
-export type TeachingEvidenceReference = {
-  id: string
-  teachingSessionId: string
+/**
+ * Ephemeral evidence reference. Links use observation draft keys until the
+ * authoritative TeachingSession transaction resolves canonical observation ids.
+ */
+export type TeachingEvidenceReferenceDraft = {
   kind: EvidenceKind
   description: string
+  observationDraftKeys: string[]
   knowledgeAssetId: string | null
   externalReference: string | null
+}
+
+export type TeachingEvidenceReference = Omit<TeachingEvidenceReferenceDraft, 'observationDraftKeys'> & {
+  id: string
+  teachingSessionId: string
+  observationIds: string[]
+  recordedBy: string
   createdAt: string
 }
 
@@ -110,6 +129,7 @@ export function validateTeachingObservation(observation: TeachingObservation): s
   const errors: string[] = []
 
   if (!observation.teachingSessionId.trim()) errors.push('teachingSessionId is required')
+  if (!observation.recordedBy.trim()) errors.push('recordedBy is required')
   if (!observation.dimensionKey.trim()) errors.push('dimensionKey is required')
 
   if (observation.scope === 'CLASS' && observation.anonymousGroupKey !== null) {
@@ -143,6 +163,10 @@ export function canInferLongitudinalSignal(input: {
   return sessions.size >= 2
 }
 
+/**
+ * Coverage is based on explicit observation links, never merely on evidence
+ * existing in the same session. This keeps `Insight -> Perché?` explainable.
+ */
 export function deriveEvidenceCoverage(input: {
   observations: TeachingObservation[]
   evidence: TeachingEvidenceReference[]
@@ -150,8 +174,14 @@ export function deriveEvidenceCoverage(input: {
   const observed = input.observations.filter((item) => item.state !== 'NOT_OBSERVED')
   if (observed.length === 0 || input.evidence.length === 0) return 'NONE'
 
-  const sessionIds = new Set(input.evidence.map((item) => item.teachingSessionId))
-  const covered = observed.filter((item) => sessionIds.has(item.teachingSessionId)).length
+  const supportedObservationKeys = new Set(
+    input.evidence.flatMap((reference) =>
+      reference.observationIds.map((observationId) => `${reference.teachingSessionId}:${observationId}`),
+    ),
+  )
+  const covered = observed.filter((item) =>
+    supportedObservationKeys.has(`${item.teachingSessionId}:${item.id}`),
+  ).length
 
   if (covered === 0) return 'NONE'
   if (covered < observed.length) return 'PARTIAL'
