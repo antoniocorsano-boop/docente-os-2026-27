@@ -105,13 +105,24 @@ test('NOT_OBSERVED never counts as evidence for a trend', () => {
   )
 })
 
-test('longitudinal analysis requires at least two comparable observed class sessions', () => {
+test('longitudinal analysis requires at least two comparable observations of the same dimension', () => {
   assert.equal(
     canInferLongitudinalSignal({
       observations: [observation(), observation({ id: 'o2', teachingSessionId: 's2' })],
       comparableSessionIds: ['s1', 's2'],
     }),
     true,
+  )
+
+  assert.equal(
+    canInferLongitudinalSignal({
+      observations: [
+        observation(),
+        observation({ id: 'o2', teachingSessionId: 's2', dimensionKey: 'TECHNICAL_LANGUAGE' }),
+      ],
+      comparableSessionIds: ['s1', 's2'],
+    }),
+    false,
   )
 })
 
