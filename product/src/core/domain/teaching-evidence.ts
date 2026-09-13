@@ -146,23 +146,28 @@ export function validateTeachingObservation(observation: TeachingObservation): s
 /**
  * Tier 1 longitudinal analysis is class-level only. Anonymous groups are
  * deliberately session-local so a temporary grouping cannot become a hidden
- * persistent profile. The caller still owns session-currentness and context
- * comparability.
+ * persistent profile. At least two comparable sessions must observe the same
+ * dimension; unrelated dimensions can never combine into a trend.
+ * The caller still owns session-currentness and broader context comparability.
  */
 export function canInferLongitudinalSignal(input: {
   observations: TeachingObservation[]
   comparableSessionIds: string[]
 }): boolean {
   const comparable = new Set(input.comparableSessionIds)
-  const sessions = new Set(
-    input.observations
-      .filter((item) => item.scope === 'CLASS')
-      .filter((item) => item.state !== 'NOT_OBSERVED')
-      .filter((item) => comparable.has(item.teachingSessionId))
-      .map((item) => item.teachingSessionId),
-  )
+  const sessionsByDimension = new Map<string, Set<string>>()
 
-  return sessions.size >= 2
+  for (const item of input.observations) {
+    if (item.scope !== 'CLASS') continue
+    if (item.state === 'NOT_OBSERVED') continue
+    if (!comparable.has(item.teachingSessionId)) continue
+
+    const sessions = sessionsByDimension.get(item.dimensionKey) ?? new Set<string>()
+    sessions.add(item.teachingSessionId)
+    sessionsByDimension.set(item.dimensionKey, sessions)
+  }
+
+  return [...sessionsByDimension.values()].some((sessions) => sessions.size >= 2)
 }
 
 /**
