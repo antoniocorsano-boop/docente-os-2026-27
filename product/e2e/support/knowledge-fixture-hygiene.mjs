@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { E2E_EMAIL, E2E_PASSWORD, E2E_TOTP_SECRET, requireE2ECredentials } from './e2e-auth.mjs'
-import { generateTotp, millisecondsUntilNextTotpStep } from './totp.mjs'
+import { generateTotp, governedMfaRetryJitterMs, millisecondsUntilNextTotpStep } from './totp.mjs'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
@@ -171,22 +171,18 @@ async function authenticateFixtureIdentity() {
 }
 
 async function promoteFixtureIdentityToAal2(supabase) {
-  const listed = await supabase.auth.mfa.listFactors()
-  if (listed.error) throw new Error(`Knowledge fixture MFA factor lookup failed: ${listed.error.message}`)
-
-  const verified = listed.data.totp.filter((factor) => factor.status === 'verified')
-  const factor = verified.find((candidate) => candidate.friendly_name === 'Docente OS CI')
-    ?? (verified.length === 1 ? verified[0] : null)
-  if (!factor) throw new Error('Knowledge fixture MFA requires the verified Docente OS CI factor')
+  const factor = await findGovernedVerifiedFactor(supabase)
+  const runJitter = governedMfaRetryJitterMs()
 
   for (let attempt = 1; attempt <= 4; attempt += 1) {
     const remaining = millisecondsUntilNextTotpStep()
-    if (remaining < 6_000) await sleep(remaining + 750)
+    if (remaining < 6_000 + runJitter) await sleep(remaining + 750 + runJitter)
+    else if (runJitter) await sleep(runJitter)
 
     const challenge = await supabase.auth.mfa.challenge({ factorId: factor.id })
     if (challenge.error) {
       if (attempt === 4) throw new Error(`Knowledge fixture MFA challenge failed: ${challenge.error.message}`)
-      await sleep(millisecondsUntilNextTotpStep() + 750)
+      await sleep(millisecondsUntilNextTotpStep() + 750 + runJitter)
       continue
     }
 
@@ -204,8 +200,26 @@ async function promoteFixtureIdentityToAal2(supabase) {
     if (attempt === 4) {
       throw new Error(`Knowledge fixture MFA verification failed: ${verifiedResult.error?.message ?? 'session did not reach aal2'}`)
     }
-    await sleep(millisecondsUntilNextTotpStep() + 750)
+    await sleep(millisecondsUntilNextTotpStep() + 750 + runJitter)
   }
+}
+
+async function findGovernedVerifiedFactor(supabase) {
+  let lastError = null
+  for (let attempt = 1; attempt <= 8; attempt += 1) {
+    const listed = await supabase.auth.mfa.listFactors()
+    if (!listed.error) {
+      const verified = listed.data.totp.filter((factor) => factor.status === 'verified')
+      const factor = verified.find((candidate) => candidate.friendly_name === 'Docente OS CI')
+        ?? (verified.length === 1 ? verified[0] : null)
+      if (factor) return factor
+      lastError = new Error('verified Docente OS CI factor unavailable')
+    } else {
+      lastError = listed.error
+    }
+    await sleep(Math.min(1_000 * attempt, 4_000) + governedMfaRetryJitterMs())
+  }
+  throw new Error(`Knowledge fixture MFA factor lookup failed: ${lastError?.message ?? 'unknown error'}`)
 }
 
 function sleep(milliseconds) {
