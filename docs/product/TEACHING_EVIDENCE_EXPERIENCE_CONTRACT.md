@@ -15,7 +15,8 @@ Durante la lezione l'interazione deve essere più leggera della lettura ex post.
 
 ```text
 IN AULA: pochi tocchi, nessun obbligo, nessuna analisi
-DOPO: sintesi, confronto, provenance, proposta
+REGISTRA: un solo commit professionale della lezione reale
+DOPO: sintesi, confronto, provenienza, proposta
 ```
 
 ## In aula
@@ -31,6 +32,18 @@ La fase `Osserva` deve:
 - non chiedere di scegliere alunni individuali;
 - non interrompere la sequenza `In classe → Osserva → Registra`.
 
+### Lifecycle durante l'ora
+
+Finché il docente non sceglie **Registra la lezione**, le micro-rilevazioni sono **draft effimeri della superficie**. Non devono creare una seconda “sessione in corso” persistente né Observation prive di TeachingSession autorevole.
+
+Questo significa:
+
+- navigare fra i passaggi della lezione non produce write canonici;
+- le selezioni possono essere modificate liberamente prima della chiusura;
+- `Registra` invia sessione + micro-osservazioni allo stesso boundary applicativo;
+- il server rivalida tutto prima della persistenza;
+- una futura funzione di autosalvataggio richiede un contratto `LessonDraft` separato e non è implicita in questa capability.
+
 ## Stati mostrati all'utente
 
 Etichette umane consigliate:
@@ -44,14 +57,20 @@ Le etichette non mostrano numeri, percentuali o equivalenze con voti.
 
 ## Registra
 
-La chiusura della lezione deve separare:
+**Registra la lezione deve avere un solo significato in tutto Docente OS:** creare/correggere la `TeachingSession` che rappresenta ciò che è realmente accaduto.
 
-1. **esito della lezione** — svolta / rimodulata / recupero;
-2. **osservazioni già raccolte** — richiamate, non ricopiate;
-3. **evidenza o nota finale** — facoltativa;
-4. **decisione immediata** — soltanto se il docente vuole registrarla.
+La chiusura deve separare:
+
+1. **lezione reale** — durata, contesto e provenienza;
+2. **allocazione al Piano** — solo quando pertinente, senza completamento automatico del Bxx;
+3. **osservazioni già raccolte** — richiamate, non ricopiate;
+4. **evidenze/riferimenti** — facoltativi;
+5. **riflessione professionale** — facoltativa e modificabile;
+6. **decisione sul Piano** — separata dalla semplice registrazione della lezione.
 
 Il salvataggio non deve essere bloccato dall'assenza di osservazioni strutturate.
+
+Il workspace `/lezioni/<Bxx>` e il cockpit `/in-classe/<assetId>` non devono avere semantiche diverse di “Registra”: entrambi devono convergere sulla TeachingSession autorevole. Il Bxx noto può precompilare/proporre un'allocazione, non sostituire la sessione con un aggiornamento diretto dello stato del Piano.
 
 ## Classe — lettura ex post
 
@@ -74,6 +93,8 @@ Una sintesi deve distinguere chiaramente:
 - evidenza insufficiente;
 - cambiamento di contesto.
 
+Le letture correnti usano per default le TeachingSession non superseded; la storia delle correzioni resta ispezionabile.
+
 ## Perché?
 
 Ogni insight assistito deve offrire un percorso breve:
@@ -92,13 +113,14 @@ L'utente non deve dover aprire documenti tecnici per comprendere l'origine della
 
 ## Diario
 
-DOCENTE OS può proporre una sintesi della giornata o della classe basata sulle TeachingSession registrate.
+DOCENTE OS possiede già `TeachingSessionReflection` e la proiezione documentale su Drive. La capability non introduce un secondo Diario.
 
-La sintesi:
+Le micro-osservazioni possono preparare una **bozza di riflessione**, ma la sintesi:
 
 - è modificabile;
 - distingue fatti e interpretazioni;
 - non inventa osservazioni mancanti;
+- non sovrascrive silenziosamente una reflection già salvata;
 - può includere una decisione didattica soltanto dopo conferma del docente.
 
 ## Progetta
@@ -113,6 +135,15 @@ Quando esiste una proposta pertinente, Progetta può mostrare:
 - azioni: `Accetta`, `Modifica`, `Ignora`.
 
 Solo `Accetta` o `Modifica` può autorizzare una successiva mutazione della progettazione tramite il normale boundary umano.
+
+## Assistenza intelligente
+
+I ruoli cooperativi non vengono mostrati come agenti separati. Usano l'`AiOrchestratorPort` già canonico e mantengono una sola esperienza Docente OS.
+
+- riconoscere ricorrenze = lettura assistita;
+- proporre una prossima azione = `PROPOSE`;
+- applicare una modifica = solo attraverso il boundary umano previsto;
+- assenza del provider AI = nessun blocco di Osserva, Registra, Diario o consultazione delle evidenze.
 
 ## Mobile
 
@@ -145,8 +176,10 @@ La superficie in aula è mobile-first:
 - profili permanenti individuali;
 - compilazione obbligatoria a fine ora;
 - chatbot separato per l'analisi didattica;
-- duplicazione del Diario.
+- duplicazione del Diario;
+- una seconda persistenza della TeachingSession;
+- Observation persistenti prima che esista la sessione canonica, salvo futura capability LessonDraft esplicita.
 
 ## Criterio di maturità UX
 
-L'esperienza è accettabile quando, durante una lezione reale, il docente può effettuare una micro-rilevazione significativa in pochi secondi e, giorni dopo, ricostruire **che cosa ha osservato, perché il sistema evidenzia un pattern e quale decisione professionale ne è derivata** senza consultare archivi paralleli.
+L'esperienza è accettabile quando, durante una lezione reale, il docente può effettuare una micro-rilevazione significativa in pochi secondi, chiudere la lezione con **un solo gesto semantico di registrazione**, e giorni dopo ricostruire **che cosa ha osservato, perché il sistema evidenzia un pattern e quale decisione professionale ne è derivata** senza consultare archivi paralleli.
