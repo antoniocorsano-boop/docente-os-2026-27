@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 
 const STORAGE_BUCKET = 'knowledge-assets'
+const STORAGE_PAGE_SIZE = 1000
 
 type ExportRpcClient = {
   rpc: (name: 'workspace_export_manifest') => Promise<{
@@ -30,6 +31,18 @@ type StorageSourceMetadata = {
   storagePath?: unknown
 }
 
+type StorageInventoryObject = {
+  bucket: string
+  path: string
+  name: string
+  id: string | null
+  createdAt: string | null
+  updatedAt: string | null
+  metadata: unknown
+}
+
+type SupabaseClient = Awaited<ReturnType<typeof createClient>>
+
 export async function GET() {
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
@@ -50,26 +63,14 @@ export async function GET() {
   }
 
   const manifest = data as ExportManifest
-  const { data: storageObjects, error: storageError } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .list(context.workspace.id, {
-      limit: 1000,
-      sortBy: { column: 'name', order: 'asc' },
-    })
+  let storage: StorageInventoryObject[]
 
-  if (storageError) {
-    return NextResponse.json({ error: `Storage inventory failed: ${storageError.message}` }, { status: 500 })
+  try {
+    storage = await listWorkspaceStorageObjects(supabase, context.workspace.id)
+  } catch (storageError) {
+    const message = storageError instanceof Error ? storageError.message : 'Unknown Storage inventory error'
+    return NextResponse.json({ error: `Storage inventory failed: ${message}` }, { status: 500 })
   }
-
-  const storage = (storageObjects ?? []).map((item) => ({
-    bucket: STORAGE_BUCKET,
-    path: `${context.workspace.id}/${item.name}`,
-    name: item.name,
-    id: item.id,
-    createdAt: item.created_at,
-    updatedAt: item.updated_at,
-    metadata: item.metadata,
-  }))
 
   const tables = manifest.data ?? {}
   const counts = Object.fromEntries(Object.entries(tables).map(([table, rows]) => [table, rows.length]))
@@ -127,6 +128,53 @@ export async function GET() {
       'cache-control': 'no-store',
     },
   })
+}
+
+async function listWorkspaceStorageObjects(supabase: SupabaseClient, rootPrefix: string) {
+  const objects: StorageInventoryObject[] = []
+  const pendingPrefixes = [rootPrefix]
+
+  while (pendingPrefixes.length > 0) {
+    const prefix = pendingPrefixes.shift()
+    if (!prefix) continue
+
+    let offset = 0
+    while (true) {
+      const { data, error } = await supabase.storage.from(STORAGE_BUCKET).list(prefix, {
+        limit: STORAGE_PAGE_SIZE,
+        offset,
+        sortBy: { column: 'name', order: 'asc' },
+      })
+
+      if (error) {
+        throw new Error(`${prefix}: ${error.message}`)
+      }
+
+      const entries = data ?? []
+      for (const item of entries) {
+        const path = `${prefix}/${item.name}`
+
+        if (item.id) {
+          objects.push({
+            bucket: STORAGE_BUCKET,
+            path,
+            name: item.name,
+            id: item.id,
+            createdAt: item.created_at,
+            updatedAt: item.updated_at,
+            metadata: item.metadata,
+          })
+        } else {
+          pendingPrefixes.push(path)
+        }
+      }
+
+      if (entries.length < STORAGE_PAGE_SIZE) break
+      offset += entries.length
+    }
+  }
+
+  return objects.sort((left, right) => left.path.localeCompare(right.path))
 }
 
 function storagePathForAsset(asset: KnowledgeAssetExportRow) {
