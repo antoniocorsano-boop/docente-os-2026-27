@@ -2,6 +2,7 @@
 
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { classifyPasswordAuthError } from '@/core/security/password-auth-error-policy'
 import { createClient } from '@/lib/supabase/server'
 
 export async function signInWithPassword(formData: FormData) {
@@ -16,8 +17,11 @@ export async function signInWithPassword(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
-    console.error('Password sign-in failed', error.code)
-    redirect('/login?error=invalid_credentials')
+    const kind = classifyPasswordAuthError(error)
+    console.error('Password sign-in failed', error.code ?? 'provider_error')
+    redirect(kind === 'INVALID_CREDENTIALS'
+      ? '/login?error=invalid_credentials'
+      : '/login?error=auth_request_failed')
   }
 
   // Password sign-in is the first factor. Route explicitly through the MFA
