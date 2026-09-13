@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
@@ -152,6 +153,7 @@ export default async function LessonWorkspacePage({
           projection={projection}
           progress={progressView}
           defaultLocalDate={currentRomeDate()}
+          registrationKey={randomUUID()}
         />
       ) : (
         <LessonPrepareClient
