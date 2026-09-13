@@ -6,7 +6,6 @@ import {
   deleteOrphanedKnowledgeFixtureObjects,
   knowledgeFixtureAssetIds,
   knowledgeFixtureSnapshot,
-  retainNewestKnowledgeFixture,
 } from './support/knowledge-fixture-hygiene.mjs'
 import { buildSchoolDocxFixture, schoolDocxCorpus } from './support/school-docx-corpus.mjs'
 
@@ -18,8 +17,6 @@ requireE2ECredentials()
 test('K1 Knowledge: scelta file, conferma privacy, errore recuperabile, retry reale e cleanup', async ({ page }) => {
   await loginE2E(page)
 
-  await retainNewestKnowledgeFixture(page, 'x3-responsible-ai')
-  expect(await knowledgeFixtureAssetIds(page, 'x3-responsible-ai')).toHaveLength(1)
   await deleteAllKnowledgeFixtures(page, fixtureName)
   expect(await knowledgeFixtureAssetIds(page, fixtureName)).toHaveLength(0)
   let createdAssetId = null
