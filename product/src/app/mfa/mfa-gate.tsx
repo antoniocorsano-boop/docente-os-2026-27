@@ -58,10 +58,12 @@ export function MfaGate({ nextPath }: { nextPath: string }) {
         return
       }
 
-      const verified = listed.data.totp.map((factor) => ({
-        id: factor.id,
-        friendlyName: factor.friendly_name?.trim() || 'Autenticatore',
-      }))
+      const verified = listed.data.totp
+        .filter((factor) => factor.status === 'verified')
+        .map((factor) => ({
+          id: factor.id,
+          friendlyName: factor.friendly_name?.trim() || 'Autenticatore',
+        }))
       setFactors(verified)
 
       if (verified.length > 0) {
