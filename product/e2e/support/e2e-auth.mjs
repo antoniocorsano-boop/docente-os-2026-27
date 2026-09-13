@@ -26,14 +26,27 @@ export function requireE2ECredentials() {
 export async function loginE2E(page) {
   requireE2ECredentials()
 
-  await page.goto('/login')
-  await page.locator('#email').fill(E2E_EMAIL)
-  await page.locator('#password').fill(E2E_PASSWORD)
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    await page.goto('/login')
+    await page.locator('#email').fill(E2E_EMAIL)
+    await page.locator('#password').fill(E2E_PASSWORD)
 
-  await Promise.all([
-    page.waitForURL(/\/(?:mfa|planner|workspace)(?:$|\?)/, { timeout: 30_000 }),
-    page.getByRole('button', { name: 'Entra nel tuo spazio docente' }).click(),
-  ])
+    await Promise.all([
+      page.waitForURL(/\/(?:mfa|planner|workspace|login)(?:$|\?)/, { timeout: 30_000 }),
+      page.getByRole('button', { name: 'Entra nel tuo spazio docente' }).click(),
+    ])
+
+    const url = new URL(page.url())
+    if (url.pathname === '/login') {
+      if (url.searchParams.get('error') !== 'auth_request_failed' || attempt === 2) {
+        throw new Error(`Governed login failed at ${url.pathname}${url.search}`)
+      }
+      await page.waitForTimeout(750 + governedMfaRetryJitterMs())
+      continue
+    }
+
+    break
+  }
 
   if (/\/mfa(?:$|\?)/.test(new URL(page.url()).pathname + new URL(page.url()).search)) {
     await completeMfaChallenge(page)
