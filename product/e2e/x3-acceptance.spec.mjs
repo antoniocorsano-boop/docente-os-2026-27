@@ -21,6 +21,10 @@ test('X3 mobile gate: grounded answers, useful proposals, write preview and no a
       const upload = page.locator('input[type="file"][name="file"]')
       await upload.setInputFiles(fixturePath)
       await expect(page.getByText('Pronto a caricare')).toBeVisible()
+      const privacyConfirmation = page.getByRole('checkbox', { name: /Confermo che il contenuto.*pilot anonimo/i })
+      await expect(privacyConfirmation).toBeVisible()
+      await privacyConfirmation.check()
+      await expect(privacyConfirmation).toBeChecked()
       await page.getByRole('button', { name: 'Carica e organizza' }).click()
       await page.waitForURL(/\/knowledge\/[^/?#]+$/, { timeout: 60_000 })
     }
