@@ -51,6 +51,13 @@ Per la **OWASP ASVS 5.0 security assurance** le fonti autorevoli sono:
 
 M5-04 usa la baseline stabile **ASVS 5.0.0**, target L2, ma mantiene `verificationClaim=false` finché la mappatura requisito-per-requisito non è completa e tutti i gap L1/L2 applicabili non sono chiusi con receipt. La chiusura verificata dei finding prioritari V3.4.3, V5.2.2 e V6.3.3 non equivale a una verifica complessiva ASVS L2.
 
+Per **Account e sicurezza** le fonti canoniche verticali sono:
+
+- `docs/architecture/ACCOUNT_SECURITY_CANONICAL_SPEC.md` — boundary di sviluppo, rotte, AAL2, redirect, password, MFA, sessioni e test;
+- `docs/product/ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md` — significato utente, gerarchia delle azioni, stati e confine con Impostazioni;
+- `docs/product/ASVS_5_0_ASSURANCE_CANONICAL.md` — requisiti di assurance superiori;
+- `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — collocazione della superficie nel prodotto.
+
 Per **versioning, release candidate e promozione** le fonti autorevoli sono:
 
 - `docs/product/RELEASE_ENGINEERING_CANONICAL.md`;
@@ -71,6 +78,7 @@ Per **versioning, release candidate e promozione** le fonti autorevoli sono:
 - `docs/architecture/P2_PLANNER.md` — Attività/Oggi e `PlannerTask`.
 - `docs/architecture/KB_INGESTION.md` — ingestione Conoscenza.
 - `docs/architecture/SETTINGS_CANONICAL_SPEC.md` — master data e invarianti delle Impostazioni.
+- `docs/architecture/ACCOUNT_SECURITY_CANONICAL_SPEC.md` — identità di accesso, MFA, password e sessioni; separato dal dominio professionale.
 - `docs/architecture/TIMETABLE_CANONICAL_SPEC.md` — Orario e sue entità verticali.
 - `docs/architecture/WORK_TIME_MENTAL_MODEL.md` — distinzione fra Attività, Piano annuale, Orario, Calendario e Oggi.
 - `docs/architecture/TEMPORAL_COMPOSITION_CANONICAL_SPEC.md` — Orario e Calendario indipendenti; Temporal Projection come unico livello di composizione autorizzato.
@@ -95,8 +103,9 @@ Sono vietate dipendenze dirette `Timetable -> Calendar` e `Calendar -> Timetable
 - `docs/product/WCAG_2_2_AA_ASSURANCE_CANONICAL.md` — **contratto M5-03 per matrice WCAG 2.2 AA, automazione, receipt manuali e assistive technology**.
 - `docs/product/ASVS_5_0_ASSURANCE_CANONICAL.md` — **contratto M5-04 per target L2, mapping requisito-evidenza, gap security e provider/runtime receipts**.
 - `docs/product/RELEASE_ENGINEERING_CANONICAL.md` — **SemVer, RC immutabili, certificazione, promozione e rollback**.
-- `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — north star e programma X0–X6.
+- `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — north star e programma X0–X6; include Account e sicurezza fra le superfici canoniche.
 - `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` — tono, microcopy e grammatica collaborativa.
+- `docs/product/ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md` — **contratto utente per Account, password, MFA e sessioni**.
 - `docs/product/X4A_CERTIFICATION_2026-08-24.md` — certificazione Beta della prima write assistita `PLANNER_CREATE_TASK`.
 - `docs/product/HOME_DAILY_COCKPIT_CANONICAL_SPEC.md` — Home come cabina di regia giornaliera.
 - `docs/product/SETTINGS_EXPERIENCE_CONTRACT.md` — contratto di configurazione guidata.
@@ -144,7 +153,20 @@ Per ogni lavoro su `/impostazioni`:
 
 È vietato introdurre una seconda Cattedra: Impostazioni e Orario devono usare gli stessi `teaching_assignments`.
 
-La futura superficie **Account e sicurezza** resta distinta da `/impostazioni`: identità, credenziali e fattori MFA non devono essere confusi con il contesto professionale del docente.
+**Account e sicurezza è una superficie distinta da `/impostazioni`**: identità, credenziali, fattori MFA e sessioni non devono essere confusi con il contesto professionale del docente.
+
+### Regola Account e sicurezza
+
+Per ogni lavoro su `/account`, `/account/mfa`, `/mfa`, `/imposta-password` o sui relativi boundary auth:
+
+1. Security / RLS / domain invariants prevalgono sempre;
+2. `ASVS_5_0_ASSURANCE_CANONICAL.md` governa assurance e receipt;
+3. `ACCOUNT_SECURITY_CANONICAL_SPEC.md` governa rotte, AAL2, redirect, password, fattori e sessioni;
+4. `ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md` governa significato e comportamento percepito;
+5. Product Experience Masterplan governa il rapporto con le altre superfici;
+6. Human Interaction Model, Design System e Language & Collaboration governano l'interazione.
+
+Ogni mutazione password richiede AAL2; i parametri URL non sono autorità; l'ultimo fattore verificato non può essere rimosso dalla UI; i segreti non entrano in repository, log, receipt o documentazione.
 
 ## Human + Visual Acceptance
 
@@ -268,15 +290,16 @@ Prima di implementare una slice, leggere almeno:
 3. `SUSTAINED_PILOT_EVIDENCE_CANONICAL.md` quando il lavoro riguarda evidenza d'uso, incidenti, friction o KPI;
 4. `WCAG_2_2_AA_ASSURANCE_CANONICAL.md` quando il lavoro modifica UI, accessibilità, navigazione, form o interazioni;
 5. `ASVS_5_0_ASSURANCE_CANONICAL.md` quando il lavoro modifica autenticazione, sessioni, autorizzazione, upload, API, configurazione, dati, logging, dipendenze o security controls;
-6. ADR-001 e ADR-002;
-7. Product Experience Masterplan;
-8. Language & Collaboration System;
-9. Design System V2;
-10. Brand Identity e Design Governance per lavoro visuale;
-11. DPG-1/DPG-2 per lavoro visuale;
-12. la specifica verticale della slice e il relativo contratto di esperienza;
-13. per T3/T4, Work/Time Mental Model e Temporal Composition;
-14. `RELEASE_ENGINEERING_CANONICAL.md` quando il lavoro coinvolge versioni, RC, promozioni o rollback.
+6. `ACCOUNT_SECURITY_CANONICAL_SPEC.md` e `ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md` quando il lavoro modifica account, login, MFA, password o sessioni;
+7. ADR-001 e ADR-002;
+8. Product Experience Masterplan;
+9. Language & Collaboration System;
+10. Design System V2;
+11. Brand Identity e Design Governance per lavoro visuale;
+12. DPG-1/DPG-2 per lavoro visuale;
+13. la specifica verticale della slice e il relativo contratto di esperienza;
+14. per T3/T4, Work/Time Mental Model e Temporal Composition;
+15. `RELEASE_ENGINEERING_CANONICAL.md` quando il lavoro coinvolge versioni, RC, promozioni o rollback.
 
 Nessun agente deve inferire una nuova architettura da un singolo file runtime quando esiste una decisione canonica esplicita; nessun agente deve inferire lo stato corrente da un checkpoint datato quando esiste `PROJECT_STATUS_CURRENT.md`.
 

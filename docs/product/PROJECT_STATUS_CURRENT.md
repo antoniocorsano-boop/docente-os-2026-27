@@ -101,7 +101,7 @@ Sono consolidate nel prodotto corrente:
 - libri di testo / risorse editoriali;
 - assistente contestuale human-in-the-loop.
 
-La prova MFA reale ha fatto emergere un gap UI distinto dalla sicurezza del boundary: manca ancora una superficie esplicita **Account e sicurezza** per gestione credenziali, fattori MFA e logout. Il finding è registrato nell'issue **#347** e non viene confuso con le Impostazioni professionali.
+La prova MFA reale ha fatto emergere un gap UI distinto dalla sicurezza del boundary: **Account e sicurezza**. Il gap è stato classificato `PROFESSIONAL_GAP_CONFIRMED` nell'issue **#347** ed è ora implementato nella **PR #348**, impilata sulla foundation MFA **#346**. La slice introduce `/account`, `/account/mfa`, gestione password AAL2 e sessioni, e dispone di documentazione canonica dedicata. **Non è ancora una capability integrata in `develop` o Production**: fino al merge final-head deve restare distinta dall'elenco delle superfici consolidate.
 
 ### Interoperabilità
 
@@ -154,6 +154,8 @@ La chiusura DPG-2 è stata certificata sull'exact head `f9953382e8ee8ef6307fa385
 Per M5-03, il baseline automatizzato sul commit `20eb47b7e35faf3114dcbfe32ee320c1cfcc9557` ha superato WCAG automated assurance run `34672053257`, HVA run `34672053242`, HIM, DPG, Product CI e P6. Il regression gate WCAG `34678320806` è inoltre PASS sul CSP implementation head corretto `1498b675d7d8d9d897867317df3bf07193240833`. Questa è **automation evidence**, non una dichiarazione di conformità WCAG 2.2 AA.
 
 Per M5-04, la foundation usa OWASP ASVS **5.0.0 stabile**, target **L2**, con `verificationClaim=false` e `requirementLevelMappingComplete=false`. Il gate machine-readable impedisce di marcare capitoli `VERIFIED_PASS` prima della mappatura requisito-per-requisito e mantiene espliciti i gap L1/L2 noti. **ASVS-001 / V3.4.3 è `CLOSED_VERIFIED`** sull'implementation SHA `1498b675d7d8d9d897867317df3bf07193240833`; **ASVS-002 / V5.2.2 è `CLOSED_VERIFIED`** sull'implementation SHA `f0c5ee3b4b4995dec78836571584bc9f72e78890`; **ASVS-003 / V6.3.3 è `CLOSED_VERIFIED`** sull'implementation SHA `1f04f2799f9993c53d0578f8caafbe9e9842e60f`, con Product CI, AAL2 Data Plane, Browser Gate, runtime provider isolato e prova umana completa recovery → nuova password → nuovo login → MFA → `Oggi`.
+
+L'implementazione Account #348 **non riapre né amplia retroattivamente** la closure V6.3.3. Ogni modifica ai boundary di autenticazione deve comunque mantenere verdi le policy AAL2 e i gate applicabili sul proprio exact head.
 
 ## 7. Maturity program M5
 
@@ -290,7 +292,16 @@ Smoke, performance e recovery sono presenti, ma le soglie devono essere derivate
 
 ### G — Account e sicurezza UI
 
-La sicurezza MFA è implementata e verificata, ma la prova mobile reale ha evidenziato l'assenza di una superficie utente dedicata per account, password, fattori MFA e logout. Il gap è registrato nell'issue **#347** come `PROFESSIONAL_GAP_CONFIRMED` e va chiuso in una slice separata, senza alterare retroattivamente la receipt V6.3.3.
+Il gap osservato durante la prova MFA è stato trasformato in slice dedicata e documentata:
+
+- issue **#347** — `PROFESSIONAL_GAP_CONFIRMED`;
+- PR **#348** — `feat/account-security-settings`, impilata su #346;
+- contratto prodotto: `docs/product/ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md`;
+- specifica sviluppo: `docs/architecture/ACCOUNT_SECURITY_CANONICAL_SPEC.md`.
+
+La slice comprende identità account, MFA management, cambio password AAL2, revoca delle altre sessioni e logout corrente. Durante l'hardening è stata eliminata anche la possibilità che `source=email` costituisse da solo un'autorizzazione alla mutazione password: primo accesso, recovery e cambio account richiedono ora tutti AAL2.
+
+**Stato: IMPLEMENTED / NOT INTEGRATED.** Non può essere promossa a capability consolidata finché #346 non è stabilizzata e integrata e #348 non supera i propri gate final-head.
 
 ### H — Runtime integrations
 
@@ -298,14 +309,14 @@ Il prossimo valore reale è la continuità **Docente OS ↔ Drive ↔ Canva** ne
 
 ## 13. Priorità operative
 
-1. completare e integrare in ordine lo stack security M5-04, preservando le receipt exact-head;
-2. aprire la slice separata **Account e sicurezza** dall'issue #347;
+1. stabilizzare e integrare **#346**, distinguendo i difetti di prodotto dai fallimenti di fixture E2E e riallineando la credenziale governata senza esporla;
+2. completare i gate final-head di **#348**, retargettare dopo il merge della base e integrare Account e sicurezza soltanto con tracciabilità exact-head;
 3. continuare la classificazione individuale delle PR aperte senza chiudere lavoro vivo;
 4. raccogliere M5-02 durante il normale lavoro docente, registrando anche friction, workaround e failure;
 5. completare le prove manuali M5-03 e la baseline screen reader, mantenendo axe/HVA verdi;
 6. preservare le closure di **V3.4.3**, **V5.2.2** e **V6.3.3** e proseguire la mappatura requirement-level M5-04;
 7. definire SLI/SLO soltanto dopo la prima baseline osservata M5-02;
-8. maturare Drive/Canva sulle journey reali;
+8. maturare **Drive/Canva** sulle journey reali;
 9. mantenere Tier 2 e multi-user separati finché non esiste una decisione istituzionale esplicita.
 
 ## 14. Regola anti-feature-creep

@@ -8,6 +8,7 @@ export type NavigationKey =
   | 'calendar'
   | 'annual-plan'
   | 'settings'
+  | 'account'
 
 export type NavigationItem = {
   key: NavigationKey
@@ -95,8 +96,16 @@ export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
     href: '/impostazioni',
     label: 'Impostazioni',
     shortLabel: 'Impostazioni',
-    description: 'Configura profilo, istituto, cattedra e organizzazione.',
-    keywords: ['impostazioni', 'profilo', 'istituto', 'discipline', 'configurazione'],
+    description: 'Configura contesto professionale, istituto, cattedra e organizzazione.',
+    keywords: ['impostazioni', 'istituto', 'discipline', 'cattedra', 'configurazione'],
+  },
+  {
+    key: 'account',
+    href: '/account',
+    label: 'Account e sicurezza',
+    shortLabel: 'Account',
+    description: 'Gestisci identità di accesso, password, MFA e sessioni.',
+    keywords: ['account', 'sicurezza', 'password', 'mfa', 'sessioni', 'accesso'],
   },
 ] as const
 
@@ -128,8 +137,8 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
   {
     key: 'system',
     label: 'Configura',
-    description: 'Modifica il contesto professionale e l’organizzazione.',
-    items: ['settings'],
+    description: 'Modifica il contesto professionale e la sicurezza dell’account.',
+    items: ['settings', 'account'],
   },
 ] as const
 

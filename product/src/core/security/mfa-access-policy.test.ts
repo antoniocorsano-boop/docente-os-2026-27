@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  canRemoveVerifiedMfaFactor,
+  decideVerifiedMfaRemoval,
+  isVerifiedMfaFactor,
+} from './account-security-policy'
+import {
   hasAal2,
   isApplicationApiPath,
   isMfaExemptPath,
@@ -47,27 +52,52 @@ test('MFA return paths stay same-origin and outside auth/API surfaces', () => {
   assert.equal(mfaRedirectPath('/planner', '?day=1'), '/mfa?next=%2Fplanner%3Fday%3D1')
 })
 
-test('MFA permits only exact password continuations among exempt paths', () => {
-  assert.equal(
-    normalizeMfaNextPath('/imposta-password?source=recovery'),
-    '/imposta-password?source=recovery',
-  )
-  assert.equal(
-    mfaRedirectPath('/imposta-password', '?source=recovery'),
-    '/mfa?next=%2Fimposta-password%3Fsource%3Drecovery',
-  )
-  assert.equal(
-    normalizeMfaNextPath('/imposta-password?source=email'),
-    '/imposta-password?source=email',
-  )
-  assert.equal(
-    mfaRedirectPath('/imposta-password', '?source=email'),
-    '/mfa?next=%2Fimposta-password%3Fsource%3Demail',
-  )
+test('MFA permits only exact high-assurance password continuations among exempt paths', () => {
+  for (const source of ['recovery', 'account', 'email']) {
+    assert.equal(
+      normalizeMfaNextPath(`/imposta-password?source=${source}`),
+      `/imposta-password?source=${source}`,
+    )
+    assert.equal(
+      mfaRedirectPath('/imposta-password', `?source=${source}`),
+      `/mfa?next=${encodeURIComponent(`/imposta-password?source=${source}`)}`,
+    )
+  }
+
   assert.equal(normalizeMfaNextPath('/imposta-password'), '/planner')
   assert.equal(normalizeMfaNextPath('/imposta-password?source=unknown'), '/planner')
   assert.equal(normalizeMfaNextPath('/imposta-password?source=recovery&next=/planner'), '/planner')
+  assert.equal(normalizeMfaNextPath('/imposta-password?source=account&next=/planner'), '/planner')
   assert.equal(normalizeMfaNextPath('/imposta-password?source=email&next=/planner'), '/planner')
+})
+
+test('account MFA management acts only on verified factors and preserves the last one', () => {
+  assert.equal(isVerifiedMfaFactor({ status: 'verified' }), true)
+  assert.equal(isVerifiedMfaFactor({ status: 'unverified' }), false)
+  assert.equal(isVerifiedMfaFactor({ status: null }), false)
+  assert.equal(isVerifiedMfaFactor({}), false)
+
+  assert.equal(canRemoveVerifiedMfaFactor(0), false)
+  assert.equal(canRemoveVerifiedMfaFactor(1), false)
+  assert.equal(canRemoveVerifiedMfaFactor(2), true)
+  assert.equal(canRemoveVerifiedMfaFactor(3), true)
+  assert.equal(canRemoveVerifiedMfaFactor(1.5), false)
+
+  assert.deepEqual(decideVerifiedMfaRemoval(['factor-a'], 'factor-a'), {
+    allowed: false,
+    reason: 'last_factor',
+  })
+  assert.deepEqual(decideVerifiedMfaRemoval(['factor-a', 'factor-b'], 'factor-c'), {
+    allowed: false,
+    reason: 'factor_not_verified',
+  })
+  assert.deepEqual(decideVerifiedMfaRemoval(['factor-a', 'factor-b'], 'factor-a'), {
+    allowed: true,
+  })
+  assert.deepEqual(decideVerifiedMfaRemoval(['factor-a', 'factor-a'], 'factor-a'), {
+    allowed: false,
+    reason: 'last_factor',
+  })
 })
 
 test('application API classification is explicit', () => {
