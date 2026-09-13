@@ -4,7 +4,7 @@ import {
   canInferLongitudinalSignal,
   deriveEvidenceCoverage,
   validateTeachingObservation,
-  type TeachingEvidence,
+  type TeachingEvidenceReference,
   type TeachingObservation,
   type TeachingProposal,
 } from './teaching-evidence'
@@ -24,7 +24,7 @@ function observation(overrides: Partial<TeachingObservation> = {}): TeachingObse
   }
 }
 
-function evidence(overrides: Partial<TeachingEvidence> = {}): TeachingEvidence {
+function evidence(overrides: Partial<TeachingEvidenceReference> = {}): TeachingEvidenceReference {
   return {
     id: 'e1',
     teachingSessionId: 's1',
