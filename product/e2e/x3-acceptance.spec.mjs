@@ -20,7 +20,7 @@ test('X3 mobile gate: grounded answers, useful proposals, write preview and no a
       await page.goto('/knowledge')
       const upload = page.locator('input[type="file"][name="file"]')
       await upload.setInputFiles(fixturePath)
-      await expect(page.getByText('x3-responsible-ai.txt')).toBeVisible()
+      await expect(page.getByText('Pronto a caricare')).toBeVisible()
       await page.getByRole('button', { name: 'Carica e organizza' }).click()
       await page.waitForURL(/\/knowledge\/[^/?#]+$/, { timeout: 60_000 })
     }
