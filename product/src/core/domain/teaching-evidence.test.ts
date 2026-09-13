@@ -105,13 +105,31 @@ test('NOT_OBSERVED never counts as evidence for a trend', () => {
   )
 })
 
-test('longitudinal analysis requires at least two comparable observed sessions', () => {
+test('longitudinal analysis requires at least two comparable observed class sessions', () => {
   assert.equal(
     canInferLongitudinalSignal({
       observations: [observation(), observation({ id: 'o2', teachingSessionId: 's2' })],
       comparableSessionIds: ['s1', 's2'],
     }),
     true,
+  )
+})
+
+test('anonymous temporary groups never become longitudinal Tier 1 profiles', () => {
+  assert.equal(
+    canInferLongitudinalSignal({
+      observations: [
+        observation({ scope: 'ANONYMOUS_GROUP', anonymousGroupKey: 'table-a' }),
+        observation({
+          id: 'o2',
+          teachingSessionId: 's2',
+          scope: 'ANONYMOUS_GROUP',
+          anonymousGroupKey: 'table-a',
+        }),
+      ],
+      comparableSessionIds: ['s1', 's2'],
+    }),
+    false,
   )
 })
 
