@@ -1,42 +1,82 @@
 # DOCENTE OS — Teaching Evidence Canonical Spec
 
 Data: 2026-09-13  
-Stato: FOUNDATION / RUNTIME NOT YET AUTHORIZED
+Stato: FOUNDATION / STRUCTURED OBSERVATION RUNTIME NOT YET AUTHORIZED
 
 ## 1. Decisione
 
 DOCENTE OS introduce una capability canonica denominata **Osservazioni ed evidenze**.
 
-Non è una nuova applicazione, non è una griglia valutativa e non è un sistema di profiling degli alunni. È il livello professionale che collega l'esperienza reale della lezione alla memoria didattica e alla successiva decisione del docente.
+Non è una nuova applicazione, non è una griglia valutativa e non è un sistema di profiling degli alunni. È un'estensione del dominio di esperienza didattica già esistente, destinata a collegare poche rilevazioni professionali alla memoria della lezione e alle decisioni successive del docente.
 
-La capability estende il ciclo già esistente:
+La capability estende il ciclo già presente:
 
 ```text
 Prepara → In classe → Osserva → Registra
 ```
 
-in una catena persistente e spiegabile:
+senza creare una seconda rappresentazione della lezione:
 
 ```text
-CAN-PLAN / Bxx
-      +
-ProjectedOccurrence / contesto reale
-      ↓
-TeachingSession
-      ↓
-Observation[] ──────┐
-Evidence[] ─────────┤
-      ↓              │
-Reflection/Synthesis │
-      ↓              │
-TeachingProposal     │
-      ↓              │
-HumanDecision ◀──────┘
+ProjectedOccurrence / MANUAL
+            ↓
+TeachingSession ESISTENTE
+      ├── TeachingSessionAllocation[] → B01-B33 opzionali
+      ├── TeachingSessionReflection ESISTENTE → Diario / Drive
+      ├── Observation[] NUOVE
+      └── EvidenceReference[] NUOVE
+                    ↓
+          Reflection / Synthesis
+                    ↓
+             TeachingProposal
+                    ↓
+              HumanDecision
 ```
 
-La `TeachingSession` è l'unità temporale e professionale di riferimento. Le osservazioni non vivono come tag isolati della classe.
+## 2. Baseline autorevole già presente
 
-## 2. Obiettivo professionale
+`TeachingSession` **esiste già** nel runtime e nel database ed è la fonte autorevole di ciò che il docente registra come realmente accaduto.
+
+Sono già canonici:
+
+- `product/src/core/domain/teaching-session.ts`;
+- `public.teaching_sessions`;
+- `public.teaching_session_allocations`;
+- `public.record_teaching_session(...)`;
+- la provenienza da `PROJECTED_OCCURRENCE | MANUAL`;
+- la catena di correzione tramite `supersedes_session_id`;
+- l'allocazione opzionale dei minuti ai blocchi B01-B33;
+- la regola che una sessione diagnostica, di accoglienza, recupero o trasversale può esistere senza inventare un binding al Piano annuale;
+- la regola che la registrazione della sessione **non completa automaticamente** un blocco del Piano annuale.
+
+Questa capability **non crea una nuova tabella TeachingSession e non ridefinisce il suo schema**.
+
+Il collegamento a Bxx deriva da `TeachingSessionAllocation`; non vengono introdotti `block_id`, `uda_id` o `pack_id` duplicati nella sessione.
+
+## 3. Reflection e Diario già presenti
+
+Esiste già `TeachingSessionReflection` con:
+
+```text
+activityDone
+observations
+difficulties
+ideas
+udaChangeProposal
+nextActivity
+```
+
+ed esiste già la proiezione verso il Diario Drive mediante il contratto `DOCENTE_OS_LESSON_REPORT_V1`.
+
+Le nuove osservazioni strutturate:
+
+- **non sostituiscono** `TeachingSessionReflection`;
+- non duplicano il Diario;
+- possono alimentare una bozza di riflessione ex post;
+- non riscrivono automaticamente la riflessione salvata dal docente;
+- preservano la distinzione fra micro-rilevazione, sintesi e decisione professionale.
+
+## 4. Obiettivo professionale
 
 Ridurre il carico di registrazione durante la lezione e aumentare la qualità della lettura ex post.
 
@@ -45,14 +85,14 @@ Il docente deve poter registrare poche osservazioni significative in pochi tocch
 - ciò che è stato osservato;
 - su quale evidenza si basa;
 - se il segnale è episodico, ricorrente o in evoluzione;
-- quale parte della progettazione è coinvolta;
+- a quale sessione e, quando presente, a quale allocazione didattica si riferisce;
 - quale possibile azione didattica merita valutazione.
 
 Il sistema non deve chiedere di compilare una griglia completa per ogni lezione.
 
-## 3. Confine corrente
+## 5. Confine corrente
 
-Il perimetro iniziale resta:
+Il perimetro resta:
 
 `SINGLE_OWNER_TIER_1_PROFESSIONAL_NON_PERSONAL`
 
@@ -60,7 +100,7 @@ Sono ammessi:
 
 - osservazioni riferite alla **classe intera**;
 - osservazioni riferite a **gruppi anonimi e temporanei** definiti nel contesto della lezione;
-- evidenze didattiche prive di dati personali di alunni/terzi;
+- riferimenti a evidenze didattiche prive di dati personali di alunni/terzi;
 - sintesi professionali del docente.
 
 Non sono ammessi in questa fase:
@@ -72,41 +112,9 @@ Non sono ammessi in questa fase:
 - dati sensibili o categorie particolari;
 - qualunque estensione Tier 2 non autorizzata da un gate separato.
 
-## 4. Concetti canonici
+## 6. Observation
 
-### TeachingSession
-
-Rappresenta una lezione realmente svolta o registrata nel contesto di una sezione.
-
-Campi concettuali minimi:
-
-```text
-id
-workspace_id
-academic_year_id
-section_id
-discipline_id?
-canonical_plan_asset_id?
-canonical_generation_id?
-block_id?
-uda_id?
-pack_id?
-projected_occurrence_id?
-local_date
-started_at?
-ended_at?
-outcome_status
-teacher_note?
-provenance[]
-created_at
-updated_at
-```
-
-Una nuova versione dell'orario, del calendario o del piano non riscrive retroattivamente una `TeachingSession` già registrata.
-
-### Observation
-
-È un fatto professionale registrato dal docente nel contesto di una `TeachingSession`.
+`Observation` è un fatto professionale registrato dal docente e ancorato a una **TeachingSession esistente**.
 
 Campi concettuali minimi:
 
@@ -119,14 +127,26 @@ dimension_key
 state: NOT_OBSERVED | NEEDS_SUPPORT | DEVELOPING | CONSOLIDATED
 note?
 source: TEACHER_QUICK_MARK | TEACHER_NOTE | EVIDENCE_REVIEW
+recorded_by
 created_at
 ```
 
-`NOT_OBSERVED` non è un giudizio negativo: significa esclusivamente che non esiste evidenza sufficiente per quella dimensione nella sessione.
+Regole:
 
-### Evidence
+1. `teaching_session_id` è obbligatorio e punta a `public.teaching_sessions.id`;
+2. workspace, anno scolastico, sezione, disciplina e provenienza temporale si ereditano dalla sessione e non vengono duplicati;
+3. il legame a Bxx, quando esiste, è letto dalle allocazioni della sessione;
+4. `NOT_OBSERVED` non è un esito negativo;
+5. nessuna osservazione modifica `AnnualPlanBlockProgress`;
+6. una correzione della lezione segue il modello di supersessione già canonico.
 
-È il riferimento a ciò che sostiene una o più osservazioni.
+### Semantica di supersessione
+
+Le osservazioni di una sessione superseded restano evidenza storica. Le letture correnti e longitudinali usano per default soltanto le sessioni correnti secondo `currentTeachingSessions(...)`. La storia resta ispezionabile per audit e provenienza.
+
+## 7. EvidenceReference
+
+`EvidenceReference` collega una `TeachingSession` a ciò che sostiene una o più osservazioni senza duplicare il contenuto documentale.
 
 ```text
 id
@@ -138,42 +158,19 @@ external_reference?
 created_at
 ```
 
-Nel perimetro corrente l'evidenza non deve introdurre dati personali degli alunni.
+Regole:
 
-### Reflection / Synthesis
+- l'evidenza non crea classi, UDA o blocchi;
+- un asset già presente in Conoscenza/Drive viene referenziato, non ricopiato;
+- nel Tier 1 corrente il riferimento non introduce dati personali degli alunni;
+- l'assenza dell'evidenza non viene colmata con inferenze;
+- `evidence_note` della TeachingSession resta compatibile e non viene reinterpretato come tabella di osservazioni strutturate.
 
-È una lettura ex post derivata da una o più `TeachingSession`.
-
-Deve distinguere sempre:
-
-- `OBSERVED_FACT`: ciò che è stato registrato;
-- `INTERPRETATION`: lettura professionale o assistita;
-- `TREND`: confronto longitudinale;
-- `UNCERTAINTY`: insufficienza o ambiguità dei dati.
-
-Una sintesi non modifica né sostituisce le osservazioni originarie.
-
-### TeachingProposal
-
-È una proposta di azione didattica conseguente alle evidenze.
-
-```text
-id
-scope
-rationale
-proposed_action
-evidence_refs[]
-status: PROPOSED | ACCEPTED | MODIFIED | DISMISSED
-human_decision_at?
-```
-
-Una proposta non modifica automaticamente UDA, Piano annuale, materiali o stato di avanzamento.
-
-## 5. Dimensioni osservative
+## 8. Dimensioni osservative
 
 Le dimensioni non costituiscono una rubrica valutativa universale. Sono chiavi professionali riusabili e contestualizzabili.
 
-Baseline iniziale consigliata:
+Baseline iniziale:
 
 ```text
 UNDERSTANDING_INSTRUCTION   comprensione della consegna
@@ -185,13 +182,11 @@ EVIDENCE_QUALITY            qualità dell'evidenza prodotta
 TIME_MANAGEMENT             gestione del tempo
 ```
 
-Una lezione può esporre soltanto il sottoinsieme pertinente. Nessuna dimensione è obbligatoria.
+Una lezione espone soltanto il sottoinsieme pertinente. Nessuna dimensione è obbligatoria.
 
-Le dimensioni specifiche di una lezione possono essere derivate dalla `HumanTaskLessonProjection`, ma devono risolversi su chiavi canoniche o rimanere descrittori contestuali senza creare automaticamente nuove tassonomie permanenti.
+Le dimensioni specifiche della `HumanTaskLessonProjection` possono essere mappate su chiavi canoniche oppure restare descrittori contestuali; non generano automaticamente nuove tassonomie permanenti.
 
-## 6. Semantica degli stati
-
-La scala canonica iniziale è volutamente corta:
+## 9. Semantica degli stati
 
 ```text
 NOT_OBSERVED
@@ -200,20 +195,31 @@ DEVELOPING
 CONSOLIDATED
 ```
 
-Regole:
+Invarianti:
 
 1. nessuno stato equivale a voto;
-2. nessuno stato ha un valore numerico implicito;
+2. nessuno stato possiede un valore numerico implicito;
 3. gli stati non vengono mediati aritmeticamente;
-4. una dimensione può cambiare stato fra sessioni senza che il sistema la interpreti come regressione/progresso se il contesto non è confrontabile;
+4. contesti non comparabili non producono automaticamente progressione/regressione;
 5. `NOT_OBSERVED` è sempre ammesso;
-6. il docente può lasciare una lezione senza alcuna osservazione strutturata.
+6. una TeachingSession può essere registrata con zero osservazioni strutturate.
 
-## 7. Analisi longitudinale
+## 10. Reflection / Synthesis
 
-DOCENTE OS può produrre letture longitudinali soltanto quando esistono osservazioni comparabili e provenienza sufficiente.
+La reflection canonica già esistente resta la superficie professionale della singola sessione.
 
-Le categorie canoniche di sintesi sono:
+La nuova sintesi assistita può derivare da una o più TeachingSession, ma deve distinguere:
+
+- `OBSERVED_FACT` — dati registrati dal docente;
+- `INTERPRETATION` — lettura professionale o assistita;
+- `TREND` — confronto longitudinale;
+- `UNCERTAINTY` — insufficienza o non comparabilità dei dati.
+
+Una sintesi non modifica osservazioni, evidenze o reflection originarie.
+
+## 11. Analisi longitudinale
+
+Le categorie canoniche sono:
 
 ```text
 SINGLE_EPISODE
@@ -224,67 +230,54 @@ INSUFFICIENT_EVIDENCE
 CONTEXT_CHANGED
 ```
 
-Non è ammesso produrre un trend da una singola osservazione.
+Non è ammesso produrre un trend da una singola TeachingSession osservata.
 
-Il sistema deve mostrare il percorso:
+La comparabilità deve considerare almeno:
+
+- stessa sezione;
+- stessa dimensione;
+- sessioni correnti, non superseded;
+- contesto didattico sufficientemente compatibile;
+- provenienza disponibile.
+
+Percorso obbligatorio:
 
 ```text
-Insight → Perché? → TeachingSession → Observation/Evidence originarie
+Insight → Perché? → TeachingSession → Observation / EvidenceReference originarie
 ```
 
-## 8. Ruolo dell'assistenza intelligente
+## 12. TeachingProposal
 
-L'assistenza può:
+Una proposta didattica conseguente alle evidenze usa gli stati:
 
-- sintetizzare osservazioni già registrate;
-- individuare ricorrenze;
-- confrontare sessioni pertinenti;
-- segnalare incoerenze o dati insufficienti;
-- proporre una prossima azione didattica;
-- preparare una bozza di riflessione per il Diario;
-- suggerire quali dimensioni osservare nella prossima lezione.
+```text
+PROPOSED → ACCEPTED | MODIFIED | DISMISSED
+```
 
-L'assistenza non può:
+Una proposta contiene almeno rationale, azione proposta e riferimenti alle evidenze.
 
-- generare osservazioni come se fossero state effettuate dal docente;
-- assegnare voti;
-- produrre profili individuali;
-- confermare una proposta al posto del docente;
-- aggiornare automaticamente UDA o Piano annuale;
-- trasformare assenza di dati in esito negativo;
-- nascondere la provenienza dell'insight.
+`PROPOSED` non modifica UDA, Piano annuale, materiali, Reflection o stato di avanzamento. Solo una decisione umana esplicita può autorizzare una successiva azione tramite i boundary canonici già esistenti.
 
-## 9. Agenti cooperativi — modello logico
+## 13. Assistenza intelligente e agenti cooperativi
 
-DOCENTE OS espone una sola esperienza utente. La cooperazione avviene internamente tramite ruoli logici separati:
+DOCENTE OS mantiene **una sola esperienza utente**. I ruoli cooperativi sono interni:
 
-### Context Agent
-Risoluzione di sezione, Bxx, UDA, pacchetto, lezione, materiali e occorrenza reale.
+- **Context Agent** — risolve TeachingSession, sezione, allocazioni, Bxx/UDA quando presenti, materiali e provenienza;
+- **Observation Agent** — normalizza soltanto micro-rilevazioni realmente effettuate dal docente;
+- **Evidence Agent** — collega riferimenti esistenti senza inventare evidenze;
+- **Pattern Agent** — confronta TeachingSession correnti e comparabili;
+- **Planning Agent** — produce una proposta motivata, non una mutazione;
+- **Governance Agent** — applica Tier 1, provenance, human validation e divieti di scoring/profiling.
 
-### Observation Agent
-Normalizzazione delle micro-rilevazioni del docente nel modello canonico.
+Nessun agente acquisisce autorità di scrittura implicita su Piano annuale, Progetta, Diario o altri domini canonici.
 
-### Evidence Agent
-Collegamento fra osservazioni ed evidenze pertinenti, senza inventare evidenze mancanti.
-
-### Pattern Agent
-Confronto longitudinale fra TeachingSession comparabili e classificazione del segnale.
-
-### Planning Agent
-Generazione di una proposta didattica motivata e tracciabile.
-
-### Governance Agent
-Applicazione di privacy, scope, provenienza, human validation e divieti di scoring/profiling.
-
-L'orchestrazione deve essere deterministica sui boundary di autorità: nessun agente può ampliare il proprio potere scrivendo direttamente in un dominio canonico non autorizzato.
-
-## 10. Integrazione nelle superfici esistenti
+## 14. Integrazione nelle superfici esistenti
 
 ### Orario / Oggi
-Apre il contesto della lezione e della sezione corretta.
+Risolvono la lezione reale o il percorso manuale già supportato.
 
 ### Classe
-Mostra quadro corrente, segnali recenti, ciò che merita osservazione e accesso alla provenienza. Non diventa una tabella permanente di livelli.
+Mostra segnali recenti, aspetti stabili, aspetti da osservare, evidenze recenti e accesso `Perché?`. Non diventa una tabella permanente di livelli.
 
 ### Lezione
 Resta la superficie primaria:
@@ -293,66 +286,70 @@ Resta la superficie primaria:
 Prepara → In classe → Osserva → Registra
 ```
 
-`Osserva` evolve da checklist effimera a micro-rilevazione strutturata, ma resta facoltativa e leggera.
+`Osserva` evolve dalla checklist effimera verso una micro-rilevazione facoltativa.
 
 ### Registra
-Conferma ciò che è realmente accaduto e chiude/aggiorna la `TeachingSession`. Non richiede di ricopiare le osservazioni.
+Continua a creare/correggere la TeachingSession autorevole. Le osservazioni non devono essere ricopiate nella nota finale.
 
 ### Diario
-Riceve una sintesi proposta della sessione e delle decisioni professionali, sempre modificabile dal docente.
+Continua a usare `TeachingSessionReflection` e la proiezione Drive esistenti. Le osservazioni strutturate possono preparare una bozza, mai sovrascrivere silenziosamente la reflection.
 
 ### Progetta
-Riceve soltanto proposte validate dal docente o segnali esplicitamente aperti per revisione. Non viene modificata automaticamente.
+Riceve soltanto proposte esplicitamente accettate/modificate dal docente attraverso i normali boundary umani.
 
 ### Conoscenza / Drive
-Conservano materiali ed evidenze documentali pertinenti, con provenance e senza diventare fonte di verità della classe.
+Conservano gli asset e le proiezioni documentali; `EvidenceReference` mantiene il collegamento e la provenienza.
 
-## 11. Invarianti architetturali
+## 15. Invarianti architetturali
 
-1. `TeachingSession` è append-oriented: correzioni e aggiornamenti preservano la provenienza.
-2. `Observation` non modifica `AnnualPlanBlockProgress`.
-3. `AnnualPlanBlockProgress` non rappresenta osservazioni formative.
-4. `Evidence` non crea classi, UDA o blocchi.
-5. `Reflection/Synthesis` è derivata e rigenerabile dalle fonti disponibili.
-6. `TeachingProposal` richiede decisione umana prima di produrre qualunque mutazione in Progetta/Piano.
-7. Nessun componente UI locale introduce una seconda tassonomia di livelli.
-8. Nessuna sintesi può perdere i riferimenti alle osservazioni che la sostengono.
+1. `TeachingSession` esistente resta l'autorità dell'esecuzione reale.
+2. Nessuna seconda tabella o tipo canonico parallelo di TeachingSession.
+3. `TeachingSessionAllocation` resta l'unico binding dell'esecuzione ai B01-B33.
+4. `Observation` non modifica `AnnualPlanBlockProgress`.
+5. `EvidenceReference` non crea o duplica asset canonici.
+6. `TeachingSessionReflection` resta distinta dalle micro-osservazioni.
+7. Le correzioni rispettano `supersedes_session_id` e preservano la storia.
+8. Le sintesi sono derivate e devono mantenere i riferimenti alle fonti.
 9. Nessun dato individuale degli alunni entra nel modello Tier 1.
-10. La capability deve usare i token/componenti canonici del Design System e rispettare il Design Policy Gate.
+10. Nessuna tassonomia locale introdotta dalla UI.
+11. Nessuna proposta viene applicata senza decisione umana.
+12. La capability usa i componenti/token canonici e resta soggetta ai gate WCAG, Design Policy e Human Interaction Model.
 
-## 12. Incrementi autorizzabili
+## 16. Incrementi autorizzabili
 
 ### TE-0 — Foundation
 - contratto canonico;
-- tipi di dominio;
+- tipi dell'estensione Observation/Evidence/Proposal;
 - invarianti e test puri;
-- nessuna persistenza;
+- riuso esplicito di TeachingSession e TeachingSessionReflection;
+- nessuna migrazione;
 - nessuna nuova UI.
 
-### TE-1 — Session persistence
-- `TeachingSession` persistente;
-- migrazione additive-only;
+### TE-1 — Observation persistence readiness + additive storage
+- definire il boundary di scrittura delle osservazioni ancorate a `teaching_sessions.id`;
+- migrazione **additive-only**, senza modificare l'identità della TeachingSession;
 - RLS/AAL2 coerenti col runtime corrente;
-- binding a sezione/Bxx/occorrenza.
+- comportamento esplicito su sessioni superseded;
+- nessuna nuova persistenza della lezione.
 
-### TE-2 — Structured observation
-- persistenza `Observation` classe/gruppo anonimo;
+### TE-2 — Structured observation UX
 - evoluzione della fase `Osserva`;
-- micro-interazione mobile;
-- nessun obbligo di completamento.
+- 0–4 micro-rilevazioni tipiche;
+- classe/gruppo anonimo;
+- mobile-first e facoltativa.
 
 ### TE-3 — Evidence binding
-- collegamenti a evidenze documentali ammesse;
+- `EvidenceReference` verso evidenze documentali ammesse;
 - provenance verificabile;
 - nessun dato personale degli alunni.
 
-### TE-4 — Reflection
-- sintesi della sessione;
-- distinzione fatto / interpretazione / trend;
-- Diario come superficie di riflessione.
+### TE-4 — Reflection enrichment
+- bozza di `TeachingSessionReflection` derivata dalle osservazioni;
+- fatto e interpretazione separati;
+- nessuna sovrascrittura automatica del Diario.
 
 ### TE-5 — Longitudinal insight
-- confronto multi-sessione;
+- confronto multi-sessione corrente;
 - segnali ricorrenti/evolutivi;
 - `Perché?` con drill-down completo.
 
@@ -361,30 +358,32 @@ Conservano materiali ed evidenze documentali pertinenti, con provenance e senza 
 - `PROPOSED → ACCEPTED | MODIFIED | DISMISSED`;
 - nessuna mutazione autonoma della progettazione.
 
-## 13. Gate prima del runtime
+## 17. Gate prima di TE-1
 
-Prima di TE-1 devono essere verificati:
+Verificare:
 
-- coerenza con `TEMPORAL_COMPOSITION_CANONICAL_SPEC`;
-- coerenza con `CLASS_WORKSPACE_CONTRACT`;
-- confine con `AnnualPlanBlockProgress`;
-- modello privacy Tier 1;
-- policy RLS/AAL2;
-- strategia di audit/provenienza;
-- impatto WCAG/mobile;
-- assenza di nuova tassonomia visuale o funzionale parallela.
+- contratto `TeachingSession` e catena di supersessione;
+- `TeachingSessionReflection` / Diario Drive;
+- `TEMPORAL_COMPOSITION_CANONICAL_SPEC`;
+- `CLASS_WORKSPACE_CONTRACT`;
+- separazione da `AnnualPlanBlockProgress`;
+- privacy Tier 1;
+- RLS/AAL2 e audit/provenance;
+- comportamento di EvidenceReference su asset non più disponibili;
+- WCAG/mobile/Human Interaction Model;
+- assenza di nuova tassonomia o dominio parallelo.
 
-Solo dopo questi gate è autorizzata una migrazione dati.
+Solo dopo questi gate è autorizzata la persistenza delle **osservazioni**, non una nuova persistenza della sessione.
 
-## 14. Criterio di successo
+## 18. Criterio di successo
 
 La capability è matura quando il docente può:
 
 1. entrare nella lezione dal contesto corretto;
 2. registrare 0–4 micro-osservazioni senza interrompere il flusso didattico;
-3. chiudere la lezione senza ricopiare informazioni;
+3. registrare/correggere la TeachingSession senza ricopiare le osservazioni;
 4. ritrovare ex post cosa è accaduto e su quali evidenze;
-5. distinguere episodio e tendenza;
+5. distinguere episodio e tendenza fra sessioni correnti comparabili;
 6. comprendere perché DOCENTE OS propone un intervento;
 7. accettare, modificare o rifiutare tale proposta;
-8. mantenere sempre il controllo professionale sulla progettazione.
+8. mantenere sempre il controllo professionale sulla progettazione e sul Diario.
