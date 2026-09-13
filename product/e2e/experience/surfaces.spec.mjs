@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
 import { createExperienceObserver, screenshotPath } from '../support/experience-observer.mjs'
-import { EXPERIENCE_SURFACES } from './surfaces.mjs'
+import { EXPERIENCE_SURFACES, resolveExperienceSurfacePath } from './surfaces.mjs'
 
 requireE2ECredentials()
 
@@ -10,11 +10,12 @@ test.describe('Human + Visual Acceptance — superfici principali', () => {
     test(`${surface.id}: struttura, runtime ed evidenza visuale`, async ({ page }, testInfo) => {
       await loginE2E(page)
       const observer = createExperienceObserver(page)
-      const response = await page.goto(surface.path)
-      if (!response) throw new Error(`No navigation response for ${surface.path}`)
+      const surfacePath = resolveExperienceSurfacePath(surface)
+      const response = await page.goto(surfacePath)
+      if (!response) throw new Error(`No navigation response for ${surfacePath}`)
       expect(response.status(), `${surface.id} returned HTTP ${response.status()}`).toBeLessThan(400)
 
-      await expect(page.locator('.workSurface')).toBeVisible({ timeout: 30_000 })
+      await expect(page.locator('#dos-main-content')).toBeVisible({ timeout: 30_000 })
       const heading = page.locator('h1').first()
       await expect(heading, `${surface.id} must expose one visible primary heading`).toBeVisible()
       await page.waitForTimeout(600)
