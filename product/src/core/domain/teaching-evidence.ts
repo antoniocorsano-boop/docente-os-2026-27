@@ -1,3 +1,5 @@
+import type { TeachingSessionRecord } from './teaching-session'
+
 export type ObservationScope = 'CLASS' | 'ANONYMOUS_GROUP'
 
 export type ObservationState =
@@ -42,15 +44,22 @@ export type TeachingEvidenceDimensionKey =
   | 'EVIDENCE_QUALITY'
   | 'TIME_MANAGEMENT'
 
-export type TeachingSessionRef = {
-  id: string
-  workspaceId: string
-  academicYearId: string
-  sectionId: string
-  blockId: string | null
-  udaId: string | null
-  localDate: string
-}
+/**
+ * Read-only context projected from the canonical TeachingSession domain.
+ * Bxx/UDA context is intentionally not duplicated here: when present it is
+ * resolved through TeachingSessionAllocation records.
+ */
+export type TeachingEvidenceSessionContext = Pick<
+  TeachingSessionRecord,
+  | 'id'
+  | 'workspaceId'
+  | 'academicYearId'
+  | 'sectionId'
+  | 'disciplineId'
+  | 'localDate'
+  | 'supersedesSessionId'
+  | 'recordedAt'
+>
 
 export type TeachingObservation = {
   id: string
@@ -64,7 +73,7 @@ export type TeachingObservation = {
   createdAt: string
 }
 
-export type TeachingEvidence = {
+export type TeachingEvidenceReference = {
   id: string
   teachingSessionId: string
   kind: EvidenceKind
@@ -73,6 +82,9 @@ export type TeachingEvidence = {
   externalReference: string | null
   createdAt: string
 }
+
+/** @deprecated Use TeachingEvidenceReference. Kept as a source-compatible alias during TE-0. */
+export type TeachingEvidence = TeachingEvidenceReference
 
 export type TeachingProposal = {
   id: string
@@ -111,6 +123,11 @@ export function validateTeachingObservation(observation: TeachingObservation): s
   return errors
 }
 
+/**
+ * A longitudinal signal needs at least two distinct current/comparable session
+ * ids containing an actual observation. The caller owns session-currentness
+ * and context comparability; this helper deliberately does not infer either.
+ */
 export function canInferLongitudinalSignal(input: {
   observations: TeachingObservation[]
   comparableSessionIds: string[]
@@ -128,7 +145,7 @@ export function canInferLongitudinalSignal(input: {
 
 export function deriveEvidenceCoverage(input: {
   observations: TeachingObservation[]
-  evidence: TeachingEvidence[]
+  evidence: TeachingEvidenceReference[]
 }): 'NONE' | 'PARTIAL' | 'PRESENT' {
   const observed = input.observations.filter((item) => item.state !== 'NOT_OBSERVED')
   if (observed.length === 0 || input.evidence.length === 0) return 'NONE'
