@@ -15,6 +15,7 @@ export async function recordLessonExecution(formData: FormData) {
   const blockId = requiredText(formData, 'blockId').toUpperCase()
   const localDate = requiredDate(formData, 'localDate')
   const actualMinutes = positiveInt(formData, 'actualMinutes')
+  const registrationKey = requiredUuid(formData, 'registrationKey')
   const evidenceNote = optionalNote(formData.get('evidenceNote'))
 
   const context = await new SupabaseWorkspaceRepository().getCurrentContext()
@@ -52,6 +53,7 @@ export async function recordLessonExecution(formData: FormData) {
         `section:${sectionId}`,
         `lesson_workspace:${sectionId}:${blockId}`,
         `canonical_generation:${source.generationId}`,
+        `registration_key:${registrationKey}`,
       ],
     },
   }
@@ -89,6 +91,14 @@ function requiredText(formData: FormData, name: string) {
 function requiredDate(formData: FormData, name: string) {
   const value = requiredText(formData, name)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error(`${name} invalid`)
+  return value
+}
+
+function requiredUuid(formData: FormData, name: string) {
+  const value = requiredText(formData, name).toLowerCase()
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)) {
+    throw new Error(`${name} invalid`)
+  }
   return value
 }
 
