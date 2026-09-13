@@ -99,7 +99,7 @@ Il perimetro resta:
 Sono ammessi:
 
 - osservazioni riferite alla **classe intera**;
-- osservazioni riferite a **gruppi anonimi e temporanei** definiti nel contesto della lezione;
+- osservazioni riferite a **gruppi anonimi e temporanei** definiti nel contesto della singola lezione;
 - riferimenti a evidenze didattiche prive di dati personali di alunni/terzi;
 - sintesi professionali del docente.
 
@@ -107,6 +107,7 @@ Non sono ammessi in questa fase:
 
 - profili persistenti individuali degli alunni;
 - identificatori personali degli alunni;
+- correlazione longitudinale di gruppi anonimi fra sessioni;
 - inferenze psicologiche o comportamentali individuali;
 - scoring individuale automatico;
 - dati sensibili o categorie particolari;
@@ -139,7 +140,8 @@ Regole:
 4. `NOT_OBSERVED` non è un esito negativo;
 5. nessuna osservazione modifica `AnnualPlanBlockProgress`;
 6. una correzione della lezione segue il modello di supersessione già canonico;
-7. `recorded_by` è parte della provenienza professionale e non può essere omesso nel record canonico.
+7. `recorded_by` è parte della provenienza professionale e non può essere omesso nel record canonico;
+8. `anonymous_group_key` ha significato esclusivamente dentro la TeachingSession di origine e non crea identità di gruppo persistenti.
 
 ### Draft durante `Osserva`
 
@@ -250,10 +252,13 @@ CONTEXT_CHANGED
 
 Non è ammesso produrre un trend da una singola TeachingSession osservata.
 
+Nel Tier 1 corrente l'analisi longitudinale è **solo a livello CLASS**. Le osservazioni `ANONYMOUS_GROUP` sono session-local e non vengono correlate fra lezioni, anche se una stessa etichetta di gruppo viene riutilizzata.
+
 La comparabilità deve considerare almeno:
 
 - stessa sezione;
 - stessa dimensione;
+- `scope = CLASS` nel Tier 1 corrente;
 - sessioni correnti, non superseded;
 - contesto didattico sufficientemente compatibile;
 - provenienza disponibile.
@@ -283,7 +288,7 @@ DOCENTE OS mantiene **una sola esperienza utente**. I ruoli cooperativi sono int
 - **Context Agent** — risolve TeachingSession, sezione, allocazioni, Bxx/UDA quando presenti, materiali e provenienza;
 - **Observation Agent** — normalizza soltanto micro-rilevazioni realmente effettuate dal docente;
 - **Evidence Agent** — collega riferimenti esistenti senza inventare evidenze;
-- **Pattern Agent** — confronta TeachingSession correnti e comparabili;
+- **Pattern Agent** — confronta TeachingSession correnti e comparabili, esclusivamente a livello classe nel Tier 1;
 - **Planning Agent** — produce una proposta motivata, non una mutazione;
 - **Governance Agent** — applica Tier 1, provenance, human validation e divieti di scoring/profiling.
 
@@ -333,6 +338,7 @@ Conservano gli asset e le proiezioni documentali; `EvidenceReference` mantiene i
 11. Nessuna proposta viene applicata senza decisione umana.
 12. La capability usa i componenti/token canonici e resta soggetta ai gate WCAG, Design Policy e Human Interaction Model.
 13. I draft pre-sessione sono effimeri: nessuna Observation persistente può esistere senza TeachingSession autorevole.
+14. Un gruppo anonimo non acquisisce identità longitudinale nel Tier 1.
 
 ## 16. Incrementi autorizzabili
 
@@ -372,7 +378,7 @@ Conservano gli asset e le proiezioni documentali; `EvidenceReference` mantiene i
 - nessuna sovrascrittura automatica del Diario.
 
 ### TE-5 — Longitudinal insight
-- confronto multi-sessione corrente;
+- confronto multi-sessione corrente a livello classe;
 - segnali ricorrenti/evolutivi;
 - `Perché?` con drill-down completo.
 
@@ -407,7 +413,7 @@ La capability è matura quando il docente può:
 2. registrare 0–4 micro-osservazioni senza interrompere il flusso didattico;
 3. registrare/correggere la TeachingSession senza ricopiare le osservazioni;
 4. ritrovare ex post cosa è accaduto e su quali evidenze, con legami espliciti;
-5. distinguere episodio e tendenza fra sessioni correnti comparabili;
+5. distinguere episodio e tendenza fra sessioni correnti comparabili a livello classe;
 6. comprendere perché DOCENTE OS propone un intervento;
 7. accettare, modificare o rifiutare tale proposta;
 8. mantenere sempre il controllo professionale sulla progettazione e sul Diario.
