@@ -21,8 +21,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: wcag22-aa-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: docente-os-governed-mfa-e2e
+  queue: max
 
 env:
   WCAG_ASSURANCE: '1'
