@@ -7,6 +7,7 @@ on:
       - develop
     paths:
       - 'product/e2e/p3-workspace-export.spec.mjs'
+      - 'product/e2e/support/e2e-auth.mjs'
       - 'product/e2e/support/knowledge-fixture-hygiene.mjs'
       - 'product/src/app/api/account/export-manifest/**'
       - 'product/supabase/migrations/0033_workspace_export_manifest.sql'
@@ -16,6 +17,7 @@ on:
       - develop
     paths:
       - 'product/e2e/p3-workspace-export.spec.mjs'
+      - 'product/e2e/support/e2e-auth.mjs'
       - 'product/e2e/support/knowledge-fixture-hygiene.mjs'
       - 'product/src/app/api/account/export-manifest/**'
       - 'product/supabase/migrations/0033_workspace_export_manifest.sql'
@@ -26,8 +28,9 @@ permissions:
   statuses: write
 
 env:
-  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
-  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
+  E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
   NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
 
@@ -41,10 +44,17 @@ jobs:
       E2E_BASE_URL: http://127.0.0.1:3000
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
     steps:
-      - name: Check E2E credential configuration
+      - name: Check governed AAL2 E2E credential configuration
         shell: bash
         run: |
-          test -n "${E2E_PASSWORD:-}" || { echo 'DOCENTE_OS_E2E_PASSWORD is required.' >&2; exit 1; }
+          missing=0
+          for name in E2E_EMAIL E2E_PASSWORD E2E_TOTP_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is required for P3/P5 authenticated acceptance."
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
 
       - name: Checkout tested commit
         uses: actions/checkout@v6
@@ -129,10 +139,17 @@ jobs:
     env:
       E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
     steps:
-      - name: Check E2E credential configuration
+      - name: Check governed AAL2 E2E credential configuration
         shell: bash
         run: |
-          test -n "${E2E_PASSWORD:-}" || { echo 'DOCENTE_OS_E2E_PASSWORD is required.' >&2; exit 1; }
+          missing=0
+          for name in E2E_EMAIL E2E_PASSWORD E2E_TOTP_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is required for P3/P5 runtime acceptance."
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
 
       - name: Checkout tested commit
         uses: actions/checkout@v6
