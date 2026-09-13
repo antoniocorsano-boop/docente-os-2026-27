@@ -49,8 +49,8 @@ permissions:
   statuses: write
 
 concurrency:
-  group: hva-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: docente-os-governed-mfa-e2e
+  queue: max
 
 env:
   E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
