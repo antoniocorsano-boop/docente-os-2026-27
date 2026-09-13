@@ -144,9 +144,10 @@ export function validateTeachingObservation(observation: TeachingObservation): s
 }
 
 /**
- * A longitudinal signal needs at least two distinct current/comparable session
- * ids containing an actual observation. The caller owns session-currentness
- * and context comparability; this helper deliberately does not infer either.
+ * Tier 1 longitudinal analysis is class-level only. Anonymous groups are
+ * deliberately session-local so a temporary grouping cannot become a hidden
+ * persistent profile. The caller still owns session-currentness and context
+ * comparability.
  */
 export function canInferLongitudinalSignal(input: {
   observations: TeachingObservation[]
@@ -155,6 +156,7 @@ export function canInferLongitudinalSignal(input: {
   const comparable = new Set(input.comparableSessionIds)
   const sessions = new Set(
     input.observations
+      .filter((item) => item.scope === 'CLASS')
       .filter((item) => item.state !== 'NOT_OBSERVED')
       .filter((item) => comparable.has(item.teachingSessionId))
       .map((item) => item.teachingSessionId),
