@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import {
   generateDefinitelyInvalidTotp,
   generateTotp,
+  governedMfaRetryJitterMs,
   millisecondsUntilNextTotpStep,
 } from './support/totp.mjs'
 
@@ -75,8 +76,10 @@ test('MFA browser boundary: AAL1 denied, valid TOTP promotes to AAL2', async ({ 
   })
 
   await test.step('Valid TOTP promotes the same session to AAL2', async () => {
+    const runJitter = governedMfaRetryJitterMs()
     const remaining = millisecondsUntilNextTotpStep()
-    if (remaining < 5_000) await page.waitForTimeout(remaining + 500)
+    if (remaining < 5_000 + runJitter) await page.waitForTimeout(remaining + 500 + runJitter)
+    else if (runJitter) await page.waitForTimeout(runJitter)
 
     const code = generateTotp(totpSecret)
     await page.locator('#mfa-code').fill(code)
