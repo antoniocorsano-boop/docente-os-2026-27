@@ -110,17 +110,14 @@ test('X3 mobile gate: grounded answers, useful proposals, write preview and no a
   })
 
   await test.step('Verifica che la richiesta X3 non abbia scritto nel Planner', async () => {
-    await page.goto('/planner')
+    await openPlannerReady(page)
     await expect(page.getByText(previewTitle, { exact: false })).toHaveCount(0)
   })
 })
 
 test('X3 Planner gate: real counts, useful answer and no automatic mutation', async ({ page }) => {
   await login(page)
-  await page.goto('/planner')
-
-  const stats = page.locator('.humanTaskCompactStats')
-  await expect(stats).toBeVisible()
+  const stats = await openPlannerReady(page)
   const beforeText = await stats.innerText()
   const openCount = plannerOpenCount(beforeText)
 
@@ -151,8 +148,8 @@ test('X3 Planner gate: real counts, useful answer and no automatic mutation', as
     await page.screenshot({ path: 'test-results/x3-06-planner-write-boundary.png' })
   })
 
-  await page.goto('/planner')
-  const afterText = await page.locator('.humanTaskCompactStats').innerText()
+  const afterStats = await openPlannerReady(page)
+  const afterText = await afterStats.innerText()
   expect(plannerOpenCount(afterText)).toBe(openCount)
 })
 
@@ -160,6 +157,25 @@ async function login(page) {
   await test.step('Accede con l’account tecnico isolato in AAL2', async () => {
     await loginE2E(page)
   })
+}
+
+async function openPlannerReady(page) {
+  let lastError = null
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      await page.goto('/planner', { waitUntil: 'domcontentloaded', timeout: 30_000 })
+      await expect(page).toHaveURL(/\/planner(?:$|\?)/, { timeout: 15_000 })
+      await expect(page.locator('#dos-main-content')).toBeVisible({ timeout: 30_000 })
+      const stats = page.locator('.humanTaskCompactStats')
+      await expect(stats).toBeVisible({ timeout: 30_000 })
+      return stats
+    } catch (error) {
+      lastError = error
+      if (attempt === 2) break
+      await page.waitForTimeout(500)
+    }
+  }
+  throw lastError ?? new Error('Planner did not become ready')
 }
 
 async function openFileCapture(page) {
