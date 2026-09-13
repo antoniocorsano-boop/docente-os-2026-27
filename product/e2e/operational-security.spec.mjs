@@ -6,6 +6,7 @@ const email = process.env.E2E_EMAIL ?? 'docente-os-e2e-2dbf49e1@example.invalid'
 const password = process.env.E2E_PASSWORD
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://gnshgapmwyjamhmlikeg.supabase.co'
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L'
+const sourceLocator = 'x5-e2e-uda-source'
 
 if (!password) throw new Error('E2E_PASSWORD is required for the operational security gate')
 
@@ -34,41 +35,45 @@ await expectAnonymousDenied('open_uda_authoring', {
   initial_body_markdown: '',
 })
 
-// This legacy fixture intentionally authenticates with password only. Since M5-04,
-// it is an AAL1 negative-control identity: application RLS/RPC boundaries must fail
-// closed instead of silently retaining the pre-MFA authenticated behavior.
-const aal1 = createClient(supabaseUrl, publishableKey, {
+// The hosted Beta still represents the pre-0051 data-plane until the candidate
+// migration is promoted. Keep this gate read-only: it verifies the existing
+// authenticated ACL/RLS fixture without creating state that an AAL1 session may
+// no longer be allowed to clean up after promotion. AAL1→AAL2 enforcement itself
+// is certified separately by the isolated MFA data-plane contract and AAL2 gates.
+const authenticated = createClient(supabaseUrl, publishableKey, {
   auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
 })
-const { data: session, error: signInError } = await aal1.auth.signInWithPassword({ email, password })
-assert.equal(signInError, null, `E2E AAL1 sign-in failed: ${signInError?.message ?? ''}`)
-assert.ok(session.user, 'E2E AAL1 user is required')
+const { data: session, error: signInError } = await authenticated.auth.signInWithPassword({ email, password })
+assert.equal(signInError, null, `E2E sign-in failed: ${signInError?.message ?? ''}`)
+assert.ok(session.user, 'E2E authenticated user is required')
 
-const assurance = await aal1.auth.mfa.getAuthenticatorAssuranceLevel()
+const assurance = await authenticated.auth.mfa.getAuthenticatorAssuranceLevel()
 assert.equal(assurance.error, null, `AAL lookup failed: ${assurance.error?.message ?? ''}`)
-assert.equal(assurance.data.currentLevel, 'aal1', 'Password-only operational fixture must remain AAL1')
+assert.equal(assurance.data.currentLevel, 'aal1', 'Legacy hosted operational fixture must remain password-only AAL1')
 
-const { data: knowledgeRows, error: knowledgeReadError } = await aal1
+const { data: source, error: sourceError } = await authenticated
   .from('knowledge_assets')
-  .select('id')
-  .limit(1)
-assert.equal(knowledgeReadError, null, `AAL1 knowledge read should be filtered by RLS, not fail transport: ${knowledgeReadError?.message ?? ''}`)
-assert.deepEqual(knowledgeRows, [], 'AAL1 must not read application Knowledge rows')
+  .select('id,workspace_id,academic_year_id,created_by')
+  .eq('source_locator', sourceLocator)
+  .eq('content_category', 'UDA')
+  .single()
+assert.equal(sourceError, null, `Hosted X5 security fixture lookup failed: ${sourceError?.message ?? ''}`)
+assert.ok(source, 'Hosted X5 UDA fixture is required')
+assert.equal(source.created_by, session.user.id, 'Hosted X5 fixture must belong to the authenticated technical identity')
 
-const { data: proposalRows, error: proposalReadError } = await aal1
+const { error: receiptReadError } = await authenticated
   .from('assistant_write_proposals')
   .select('id,status')
   .limit(1)
-assert.equal(proposalReadError, null, `AAL1 X4 read should be filtered by RLS, not fail transport: ${proposalReadError?.message ?? ''}`)
-assert.deepEqual(proposalRows, [], 'AAL1 must not read X4 proposal rows')
+assert.equal(receiptReadError, null, `Hosted X4 receipt RLS read must remain valid: ${receiptReadError?.message ?? ''}`)
 
-const { data: discarded, error: discardError } = await aal1.rpc('discard_authored_document', {
+const { data: missingSnapshot, error: missingSnapshotError } = await authenticated.rpc('authored_document_snapshot', {
   target_document_id: unavailableDocument,
 })
-assert.equal(discardError, null, `AAL1 guarded discard should fail closed without an RPC transport error: ${discardError?.message ?? ''}`)
-assert.equal(discarded, false, 'AAL1 must not cross the guarded X5 discard boundary')
+assert.equal(missingSnapshotError, null, `Authenticated snapshot probe failed: ${missingSnapshotError?.message ?? ''}`)
+assert.equal(missingSnapshot, null, 'Authenticated snapshot probe must not expose an unavailable document')
 
-console.log('Operational security gate PASS: anonymous X5 RPC denied; password-only AAL1 cannot cross application RLS/RPC boundaries.')
+console.log('Operational security gate PASS: anonymous X5 RPC denied; hosted authenticated ACL/RLS fixture verified read-only.')
 
 async function expectAnonymousDenied(name, args) {
   const { error } = await anonymous.rpc(name, args)
