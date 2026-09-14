@@ -10,6 +10,11 @@ import {
   humanizeKnowledgeTitle,
   knowledgeProcessingStatus,
 } from '@/core/presentation/product-language'
+import {
+  asKnowledgeTaskMode,
+  buildTaskAwareKnowledgeHref,
+  sanitizeInternalReturnTo,
+} from '@/core/presentation/task-continuity'
 import { KnowledgeCaptureModes } from './KnowledgeCaptureModes'
 import {
   resolveConfirmedTextbookMaterialContext,
@@ -28,6 +33,10 @@ type PageProps = {
     capture?: string
     source?: string
     textbookId?: string
+    mode?: string
+    returnTo?: string
+    section?: string
+    block?: string
   }>
 }
 
@@ -42,6 +51,15 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
   const textbookMaterialRequested = params.capture === 'file'
     && params.source === 'textbook'
     && Boolean(requestedTextbookId)
+  const taskMode = asKnowledgeTaskMode(params.mode)
+  const taskSectionId = params.section?.trim() || null
+  const taskBlockId = params.block?.trim() || null
+  const taskFallback = taskMode === 'class' && taskSectionId
+    ? `/classi/${encodeURIComponent(taskSectionId)}`
+    : taskMode === 'prepare'
+      ? '/progetta'
+      : '/knowledge'
+  const taskReturnTo = taskMode ? sanitizeInternalReturnTo(params.returnTo, taskFallback) : null
 
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
@@ -65,11 +83,25 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
   const recentVisible = recent.slice(0, RECENT_VISIBLE_COUNT)
   const recentMore = recent.slice(RECENT_VISIBLE_COUNT)
   const captureOpen = recent.length === 0 || Boolean(uploadMessage) || textbookMaterialCapture
+  const assetHref = (assetId: string) => taskMode && taskReturnTo
+    ? buildTaskAwareKnowledgeHref(assetId, {
+        mode: taskMode,
+        returnTo: taskReturnTo,
+        sectionId: taskSectionId,
+        blockId: taskBlockId,
+      })
+    : `/knowledge/${assetId}`
+  const taskHiddenInputs = () => taskMode && taskReturnTo ? <>
+    <input type="hidden" name="mode" value={taskMode} />
+    <input type="hidden" name="returnTo" value={taskReturnTo} />
+    {taskSectionId ? <input type="hidden" name="section" value={taskSectionId} /> : null}
+    {taskBlockId ? <input type="hidden" name="block" value={taskBlockId} /> : null}
+  </> : null
 
   const renderRecentRows = (items: typeof recent) => items.map(({ asset, document }) => {
     const status = knowledgeProcessingStatus(asset.processingStatus)
     return (
-      <Link key={asset.id} className="knowledgeAssetRow" href={`/knowledge/${asset.id}`}>
+      <Link key={asset.id} className="knowledgeAssetRow" href={assetHref(asset.id)}>
         <div className="assetIcon">{asset.assetKind === 'NOTE' ? 'N' : fileIcon(asset.mimeType)}</div>
         <div className="assetMain"><strong>{humanizeKnowledgeTitle(document?.title ?? asset.originalName)}</strong><span>{document?.summary ?? asset.originalText?.slice(0, 150) ?? status.description}</span><div className="assetContext"><small>{contentCategoryLabel(asset.contentCategory)}</small>{asset.disciplines.map((item) => <small key={item}>{item}</small>)}{asset.classLabels.map((item) => <small key={item}>{item}</small>)}</div></div>
         <div className="assetMeta"><span className={`processingPill ${status.tone}`}>{status.label}</span><small>{formatDate(asset.capturedAt)}</small></div>
@@ -93,6 +125,12 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
         </div>
       </section>
 
+      {taskMode && taskReturnTo ? (
+        <div className="knowledgeFeedback" data-testid="knowledge-task-context" role="status">
+          <span>{taskMode === 'class' ? 'Stai cercando un materiale per la classe corrente.' : 'Stai cercando un materiale per la preparazione corrente.'}</span>{' '}
+          <Link href={taskReturnTo}>{taskMode === 'class' ? 'Torna alla classe' : 'Torna alla preparazione'}</Link>
+        </div>
+      ) : null}
       {uploadMessage ? <div className="knowledgeFeedback" role="status">{uploadMessage}</div> : null}
       {textbookMaterialMessage ? <div className="knowledgeFeedback" role="alert">{textbookMaterialMessage}</div> : null}
 
@@ -100,6 +138,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
         <section className="knowledgePanel searchPanel">
           <div className="knowledgePanelHeading"><div><span className="panelEyebrow">RITROVA</span><h2>Cerca nella Conoscenza</h2></div></div>
           <form className="knowledgeSearch" action="/knowledge" method="get">
+            {taskHiddenInputs()}
             <input name="q" defaultValue={query} placeholder="Cerca un argomento, una scadenza, una classe…" />
             <button type="submit">Cerca</button>
           </form>
@@ -107,7 +146,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
             <div className="knowledgeResults">
               <p className="resultsLabel">{results.length} risultati per “{query}”</p>
               {results.length ? results.map(({ document, unit }) => (
-                <Link className="knowledgeResult" key={unit?.id ?? document.id} href={`/knowledge/${document.assetId}`}>
+                <Link className="knowledgeResult" key={unit?.id ?? document.id} href={assetHref(document.assetId)}>
                   <strong>{humanizeKnowledgeTitle(document.title)}</strong>
                   <span>{unit?.content ?? document.summary ?? 'Apri il contenuto per vedere i dettagli.'}</span>
                   <small>{unit ? 'Risultato nel contenuto' : 'Documento'}</small>
@@ -148,6 +187,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
       <section className="recentKnowledge">
         <div className="sectionHeading"><h2>Contenuti recenti</h2><span>{recent.length}</span></div>
         <form className="knowledgeFilters" action="/knowledge" method="get">
+          {taskHiddenInputs()}
           <select name="category" defaultValue={filters.category ?? ''} aria-label="Filtra per tipologia"><option value="">Tutte le tipologie</option>{CONTENT_CATEGORIES.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>
           <input name="discipline" defaultValue={filters.discipline ?? ''} placeholder="Disciplina" aria-label="Filtra per disciplina" />
           <input name="classLabel" defaultValue={filters.classLabel ?? ''} placeholder="Classe, es. 2C" aria-label="Filtra per classe" />
