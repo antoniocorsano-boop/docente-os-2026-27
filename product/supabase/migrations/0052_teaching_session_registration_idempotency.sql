@@ -81,7 +81,7 @@ begin
   select count(*), min(split_part(item, ':', 2))
     into registration_marker_count, registration_key_text
   from unnest(coalesce(target_source_provenance, '{}'::text[])) as item
-  where item like 'registration_key:%';
+  where left(item, 17) = 'registration_key:';
 
   if registration_marker_count > 1 then
     raise exception 'multiple teaching session registration keys are not allowed';
