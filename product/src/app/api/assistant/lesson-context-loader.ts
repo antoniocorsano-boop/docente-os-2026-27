@@ -1,8 +1,10 @@
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
+import { SupabaseAnnualPlanCurriculumRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-curriculum-repository'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
+import { curriculumDisciplineRefForCanonicalPlan } from '@/core/presentation/curriculum-source-binding'
 import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 import { buildLessonBrief } from '@/core/presentation/lesson-brief'
 import { buildLessonCopilotContext } from '@/core/presentation/teacher-copilot-context'
@@ -41,10 +43,22 @@ export async function loadAuthoritativeLessonCopilotContext(input: {
 
   const settingsRepository = new SupabaseTeacherSettingsRepository()
   const assignmentReader = new SupabaseTeachingAssignmentReader()
-  const [extensions, disciplines, assignments] = await Promise.all([
+  const curriculumRepository = new SupabaseAnnualPlanCurriculumRepository()
+  const curriculumDisciplineRef = curriculumDisciplineRefForCanonicalPlan(source.code)
+  const curriculumAuthorityPromise = curriculumDisciplineRef
+    ? curriculumRepository.current({
+        workspaceId: input.workspaceId,
+        academicYearId: input.academicYearId,
+        sectionId: section.id,
+        disciplineRef: curriculumDisciplineRef,
+      })
+    : Promise.resolve(null)
+
+  const [extensions, disciplines, assignments, curriculumAdoption] = await Promise.all([
     new SupabaseLessonDesignRepository().list(designContext),
     settingsRepository.listDisciplines(input.workspaceId, input.academicYearId),
     assignmentReader.list(input.workspaceId, input.academicYearId),
+    curriculumAuthorityPromise,
   ])
 
   const progress = snapshot.progress.find((entry) =>
@@ -64,6 +78,23 @@ export async function loadAuthoritativeLessonCopilotContext(input: {
 
   const brief = buildLessonBrief({ projection, extensions })
   const sectionLabel = `${GRADE_NUMBER[section.grade]}ª ${section.sectionCode}`
+  const curriculumAuthority = curriculumAdoption
+    ? {
+        curriculumState: curriculumAdoption.curriculumState,
+        alignmentAuthority: curriculumAdoption.alignmentAuthority,
+        requiresRevalidationOnApproval: curriculumAdoption.requiresRevalidationOnApproval,
+        applicabilityStatus: curriculumAdoption.applicabilityStatus,
+        transitionRemodulationState: curriculumAdoption.transitionRemodulationState,
+      }
+    : null
+  const curriculumAuthorityEvidence = curriculumAdoption
+    ? {
+        ref: curriculumAdoption.sourceFrameworkMessageId,
+        label: curriculumAdoption.alignmentAuthority === 'APPROVED_INSTITUTIONAL'
+          ? 'Curricolo istituzionale approvato'
+          : 'Base curricolare provvisoria',
+      }
+    : null
 
   return buildLessonCopilotContext({
     workspaceId: input.workspaceId,
@@ -75,6 +106,8 @@ export async function loadAuthoritativeLessonCopilotContext(input: {
     projection,
     brief,
     progressStatus: progress?.status ?? 'PIANIFICATO',
+    curriculumAuthority,
+    curriculumAuthorityEvidence,
   })
 }
 
