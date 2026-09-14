@@ -22,21 +22,26 @@ test('prepara quando non esiste una lezione di oggi da svolgere', () => {
 })
 
 test('continua la lezione quando l occorrenza e iniziata ma non conclusa', () => {
-  assert.equal(resolveClassTaskDecision({
-    ...base,
-    hasEligibleOccurrence: true,
-  }).state, 'TEACH')
+  assert.equal(resolveClassTaskDecision({ ...base, hasEligibleOccurrence: true }).state, 'TEACH')
 })
 
 test('porta alla registrazione quando la lezione e terminata', () => {
-  const decision = resolveClassTaskDecision({
-    ...base,
-    hasEligibleOccurrence: true,
-    occurrenceEnded: true,
-  })
+  const decision = resolveClassTaskDecision({ ...base, hasEligibleOccurrence: true, occurrenceEnded: true })
   assert.equal(decision.state, 'RECORD')
   assert.equal(decision.lessonMode, 'record')
   assert.equal(decision.useInlineRecorder, false)
+})
+
+test('una nuova occurrence prevale su una receipt rimasta nella URL', () => {
+  const decision = resolveClassTaskDecision({
+    ...base,
+    hasSessionReceipt: true,
+    hasEligibleOccurrence: true,
+    occurrenceEnded: false,
+    maySuggestCompletion: true,
+  })
+  assert.equal(decision.state, 'TEACH')
+  assert.equal(decision.label, 'Continua la lezione')
 })
 
 test('usa il recorder inline soltanto come fallback se manca il Lesson Workspace modellato', () => {
@@ -55,8 +60,6 @@ test('dopo una receipt non propone di registrare di nuovo la stessa attivita', (
   const decision = resolveClassTaskDecision({
     ...base,
     hasSessionReceipt: true,
-    hasEligibleOccurrence: true,
-    occurrenceEnded: true,
   })
   assert.equal(decision.state, 'AFTER_RECORD')
   assert.equal(decision.label, 'Prepara il prossimo incontro')
@@ -64,7 +67,7 @@ test('dopo una receipt non propone di registrare di nuovo la stessa attivita', (
   assert.equal(decision.useAnnualPlan, false)
 })
 
-test('dopo la receipt porta al Piano soltanto quando la decisione di completamento e pertinente', () => {
+test('dopo la receipt mantiene la decisione di completamento sulla superficie session-aware', () => {
   const decision = resolveClassTaskDecision({
     ...base,
     hasSessionReceipt: true,
@@ -73,7 +76,8 @@ test('dopo la receipt porta al Piano soltanto quando la decisione di completamen
   assert.equal(decision.state, 'AFTER_RECORD')
   assert.equal(decision.label, 'Valuta il completamento')
   assert.equal(decision.lessonMode, null)
-  assert.equal(decision.useAnnualPlan, true)
+  assert.equal(decision.useInlineRecorder, true)
+  assert.equal(decision.useAnnualPlan, false)
 })
 
 test('non espone una CTA quando il percorso annuale e completo', () => {
