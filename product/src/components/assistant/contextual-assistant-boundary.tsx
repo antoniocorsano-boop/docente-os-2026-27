@@ -3,19 +3,24 @@
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { KnowledgeAssistant } from './knowledge-assistant'
+import { LessonAssistant } from './lesson-assistant'
 import { PlannerAssistant } from './planner-assistant'
 import type { KnowledgeAssistantContext } from '@/core/presentation/assistant-context'
 import type { PlannerAssistantContext } from '@/core/presentation/planner-assistant-context'
+import type { LessonCopilotContext } from '@/core/presentation/teacher-copilot-context'
 
 type LoadedAssistantContext =
   | { kind: 'knowledge'; context: KnowledgeAssistantContext }
   | { kind: 'planner'; context: PlannerAssistantContext }
+  | { kind: 'lesson'; context: LessonCopilotContext }
 
 type AssistantTarget = {
   kind: LoadedAssistantContext['kind']
   key: string
   url: string
 }
+
+type AssistantContextPayload = KnowledgeAssistantContext | PlannerAssistantContext | LessonCopilotContext
 
 export function ContextualAssistantBoundary({ active }: { active: string }) {
   const pathname = usePathname()
@@ -39,7 +44,7 @@ export function ContextualAssistantBoundary({ active }: { active: string }) {
       })
         .then(async (response) => {
           if (!response.ok) throw new Error(`assistant-context-${response.status}`)
-          return response.json() as Promise<KnowledgeAssistantContext | PlannerAssistantContext>
+          return response.json() as Promise<AssistantContextPayload>
         })
         .then((payload) => {
           if (target.kind === 'knowledge' && payload.surface === 'KNOWLEDGE') {
@@ -49,6 +54,11 @@ export function ContextualAssistantBoundary({ active }: { active: string }) {
           }
           if (target.kind === 'planner' && payload.surface === 'PLANNER') {
             setLoaded({ kind: 'planner', context: payload as PlannerAssistantContext })
+            setState('ready')
+            return
+          }
+          if (target.kind === 'lesson' && payload.surface === 'LESSON') {
+            setLoaded({ kind: 'lesson', context: payload as LessonCopilotContext })
             setState('ready')
             return
           }
@@ -84,6 +94,7 @@ export function ContextualAssistantBoundary({ active }: { active: string }) {
 
   if (!loaded) return null
   if (loaded.kind === 'knowledge') return <KnowledgeAssistant context={loaded.context} presentation="floating" />
+  if (loaded.kind === 'lesson') return <LessonAssistant context={loaded.context} presentation="floating" />
   return <PlannerAssistant context={loaded.context} presentation="floating" />
 }
 
@@ -95,6 +106,17 @@ function assistantTarget(active: string, pathname: string): AssistantTarget | nu
       kind: 'knowledge',
       key: `knowledge:${assetId}`,
       url: `/api/assistant/knowledge-context?assetId=${encodeURIComponent(assetId)}`,
+    }
+  }
+
+  if (active === 'classes') {
+    const lesson = lessonPathContext(pathname)
+    if (lesson) {
+      return {
+        kind: 'lesson',
+        key: `lesson:${lesson.sectionId}:${lesson.blockId}`,
+        url: `/api/assistant/lesson-context?sectionId=${encodeURIComponent(lesson.sectionId)}&blockId=${encodeURIComponent(lesson.blockId)}`,
+      }
     }
   }
 
@@ -112,4 +134,13 @@ function assistantTarget(active: string, pathname: string): AssistantTarget | nu
 function knowledgeAssetId(pathname: string) {
   const match = pathname.match(/^\/knowledge\/([^/?#]+)\/?$/)
   return match?.[1] ? decodeURIComponent(match[1]) : null
+}
+
+function lessonPathContext(pathname: string) {
+  const match = pathname.match(/^\/classi\/([^/?#]+)\/lezioni\/([^/?#]+)\/?$/)
+  if (!match?.[1] || !match[2]) return null
+  return {
+    sectionId: decodeURIComponent(match[1]),
+    blockId: decodeURIComponent(match[2]),
+  }
 }
