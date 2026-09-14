@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { resolveUniqueDraftSlot } from '@/core/application/lesson-register-timing'
+import type { TimetableSlotReadModel, TimetableVersionReadModel } from '@/core/application/ports/temporal-projection'
 import type { ProjectedOccurrence } from '@/core/application/temporal-projection-service'
 import type { TeachingSessionRecord, TeachingSessionSnapshot } from '@/core/domain/teaching-session'
 import { hasCurrentBlockSessionOnDate, selectEligibleLessonOccurrence } from './lesson-registration-model'
@@ -95,4 +97,55 @@ test('manual duplicate guard considers only current sessions allocated to the sa
 
   assert.equal(hasCurrentBlockSessionOnDate({ teaching, canonicalGenerationId: 'gen', blockId: 'B01', localDate: '2026-09-14' }), false)
   assert.equal(hasCurrentBlockSessionOnDate({ teaching, canonicalGenerationId: 'gen', blockId: 'B02', localDate: '2026-09-14' }), true)
+})
+
+const draftVersions: TimetableVersionReadModel[] = [{
+  id: 'draft-2026-27',
+  status: 'DRAFT',
+  effectiveFrom: '2026-09-01',
+  effectiveTo: null,
+}]
+
+function draftSlot(id: string, sectionId: string, startTime: string, endTime: string): TimetableSlotReadModel {
+  return {
+    id,
+    timetableVersionId: 'draft-2026-27',
+    weekday: 1,
+    startTime,
+    endTime,
+    kind: 'LESSON',
+    sectionId,
+    sectionLabel: sectionId === 'section-2a' ? '2A' : '2C',
+    disciplineId: 'technology',
+    disciplineLabel: 'Tecnologia',
+    manualClassLabel: null,
+    room: null,
+  }
+}
+
+test('lesson register accepts one unique provisional draft period for the section and date', () => {
+  const expected = draftSlot('slot-09', 'section-2a', '09:00', '10:00')
+  const resolved = resolveUniqueDraftSlot({
+    localDate: '2026-09-14',
+    sectionId: 'section-2a',
+    versions: draftVersions,
+    slots: [expected, draftSlot('other-section', 'section-2c', '10:00', '11:00')],
+  })
+
+  assert.equal(resolved?.version.id, 'draft-2026-27')
+  assert.deepEqual(resolved?.slot, expected)
+})
+
+test('lesson register fails closed when more than one provisional period matches the section and date', () => {
+  const resolved = resolveUniqueDraftSlot({
+    localDate: '2026-09-14',
+    sectionId: 'section-2a',
+    versions: draftVersions,
+    slots: [
+      draftSlot('slot-09', 'section-2a', '09:00', '10:00'),
+      draftSlot('slot-11', 'section-2a', '11:00', '12:00'),
+    ],
+  })
+
+  assert.equal(resolved, null)
 })
