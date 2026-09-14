@@ -10,10 +10,13 @@ type ResponsesPayload = {
   output?: Array<{ content?: Array<{ type?: string; text?: string }> }>
 }
 
+type Fetcher = typeof fetch
+
 export class OpenAiLessonCopilot {
   constructor(
     private readonly apiKey = process.env.OPENAI_API_KEY,
-    private readonly model = process.env.OPENAI_COPILOT_MODEL ?? 'gpt-5.6-terra',
+    private readonly model = process.env.OPENAI_COPILOT_MODEL ?? process.env.OPENAI_VISION_MODEL ?? 'gpt-5.6',
+    private readonly fetcher: Fetcher = fetch,
   ) {}
 
   get available() {
@@ -28,7 +31,7 @@ export class OpenAiLessonCopilot {
     const prompt = normalizePrompt(input.prompt)
     const providerContext = lessonCopilotProviderContext(input.context)
 
-    const response = await fetch('https://api.openai.com/v1/responses', {
+    const response = await this.fetcher('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
@@ -36,19 +39,14 @@ export class OpenAiLessonCopilot {
       },
       body: JSON.stringify({
         model: this.model,
-        input: [
-          {
-            role: 'system',
-            content: [{ type: 'input_text', text: COPILOT_INSTRUCTIONS }],
-          },
-          {
-            role: 'user',
-            content: [{
-              type: 'input_text',
-              text: JSON.stringify({ question: prompt, context: providerContext }),
-            }],
-          },
-        ],
+        instructions: COPILOT_INSTRUCTIONS,
+        input: [{
+          role: 'user',
+          content: [{
+            type: 'input_text',
+            text: JSON.stringify({ question: prompt, context: providerContext }),
+          }],
+        }],
         text: {
           format: {
             type: 'json_schema',
@@ -74,9 +72,7 @@ export class OpenAiLessonCopilot {
       }),
     })
 
-    if (!response.ok) {
-      throw new Error(`Copilot provider failed with status ${response.status}`)
-    }
+    if (!response.ok) throw new Error(`Copilot provider failed with status ${response.status}`)
 
     const payload = await response.json() as ResponsesPayload
     const outputText = payload.output_text
