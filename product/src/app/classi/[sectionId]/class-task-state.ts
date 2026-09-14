@@ -5,7 +5,7 @@ export type ClassTaskDecision = {
   label: string | null
   lessonMode: 'prepare' | 'teach' | 'record' | null
   useInlineRecorder: boolean
-  useAnnualPlan: boolean
+  focusCompletion: boolean
 }
 
 export function resolveClassTaskDecision(input: {
@@ -22,7 +22,7 @@ export function resolveClassTaskDecision(input: {
       label: null,
       lessonMode: null,
       useInlineRecorder: false,
-      useAnnualPlan: false,
+      focusCompletion: false,
     }
   }
 
@@ -34,7 +34,7 @@ export function resolveClassTaskDecision(input: {
       label: 'Registra la lezione',
       lessonMode: input.hasModeledLesson ? 'record' : null,
       useInlineRecorder: !input.hasModeledLesson,
-      useAnnualPlan: false,
+      focusCompletion: false,
     }
   }
 
@@ -44,7 +44,7 @@ export function resolveClassTaskDecision(input: {
       label: input.hasModeledLesson ? 'Continua la lezione' : 'Apri il lavoro di classe',
       lessonMode: input.hasModeledLesson ? 'teach' : null,
       useInlineRecorder: false,
-      useAnnualPlan: false,
+      focusCompletion: false,
     }
   }
 
@@ -53,10 +53,10 @@ export function resolveClassTaskDecision(input: {
       state: 'AFTER_RECORD',
       label: 'Valuta il completamento',
       lessonMode: null,
+      useInlineRecorder: false,
       // Keep the decision on the session-aware class surface: its confirmation
       // derives executedOn and provenance from the recorded TeachingSession.
-      useInlineRecorder: true,
-      useAnnualPlan: false,
+      focusCompletion: true,
     }
   }
 
@@ -66,7 +66,7 @@ export function resolveClassTaskDecision(input: {
       label: 'Prepara il prossimo incontro',
       lessonMode: input.hasModeledLesson ? 'prepare' : null,
       useInlineRecorder: false,
-      useAnnualPlan: false,
+      focusCompletion: false,
     }
   }
 
@@ -75,6 +75,6 @@ export function resolveClassTaskDecision(input: {
     label: input.hasModeledLesson ? 'Prepara la lezione' : 'Prepara questa fase',
     lessonMode: input.hasModeledLesson ? 'prepare' : null,
     useInlineRecorder: false,
-    useAnnualPlan: false,
+    focusCompletion: false,
   }
 }
