@@ -23,7 +23,7 @@ export type ContextualAssistantPanelProps = {
   safetyLabel?: string
   footerLabel?: string
   placeholder?: string
-  respond: (prompt: string) => string
+  respond: (prompt: string) => string | Promise<string>
   actionSlot?: ReactNode
 }
 
@@ -45,8 +45,9 @@ export function ContextualAssistantPanel({
   const adapter = useMemo<ChatModelAdapter>(() => ({
     async run({ messages }) {
       const prompt = extractLastUserText(messages)
+      const text = await respond(prompt)
       return {
-        content: [{ type: 'text', text: respond(prompt) }],
+        content: [{ type: 'text', text }],
       }
     },
   }), [respond])
