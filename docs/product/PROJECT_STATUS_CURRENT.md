@@ -3,11 +3,11 @@
 Data: **2026-09-14**  
 Stato documento: **CURRENT / CANONICAL STATUS**
 
-Questo documento è la sintesi autorevole dello stato operativo. I checkpoint precedenti e gli audit datati restano storici e non devono essere usati per dedurre lo stato corrente quando divergono da questo file.
+Questo documento è la sintesi autorevole dello stato operativo corrente. Checkpoint, audit datati e PR storiche preservano la provenienza ma non devono essere usati per dedurre lo stato corrente quando divergono da questo file.
 
-Baseline integrata corrente:
+Baseline integrata corrente prima della PR UX-0 governance:
 
-`develop` @ `77455d5f50bcccf2fed2cf5607dba3067fd81f97`
+`develop` @ `c553feae62e70b23aa932077ec43ed76ce3b075b`
 
 ## 1. Classificazione
 
@@ -15,272 +15,170 @@ DOCENTE OS resta classificato:
 
 **M4 — ADVANCED CONTROLLED PRODUCTION PILOT**
 
-Il single-owner professional core è sostanzialmente completo; il programma attivo resta **maintenance & maturation** verso M5. La chiusura di Account e sicurezza e di M5-01A non costituisce da sola promozione a M5.
+Il single-owner professional core è avanzato e governato; il programma attivo resta **maintenance & maturation** verso M5. Nessuna closure locale, incluso Account, TE-1 o un gate automatico verde, costituisce da sola promozione a M5 o Production.
 
-Fonti di maturità:
-
-- `docs/product/SYSTEM_MATURITY_AUDIT_2026-09-12.md`;
-- `docs/product/M5_READINESS_MATRIX_2026-09-12.md`;
-- `docs/product/M5_01A_REPOSITORY_HYGIENE_RECEIPT_2026-09-14.md`.
-
-Gli indicatori percentuali degli audit precedenti restano indicatori interni e non certificazioni. Non vengono aumentati automaticamente da un singolo gate.
-
-## 2. Production e dati reali
-
-Production resta separata da `develop` e governata come **SINGLE_OWNER_PILOT** tramite SHA immutabile certificato.
-
-Un merge in `develop` non equivale a promozione in Production. Una nuova promozione richiede release candidate, gate applicabili, decisione umana e smoke post-deploy secondo il contratto M5-01.
-
-### Ambito dati ammesso
-
-È ammesso esclusivamente:
+Ambito dati ammesso:
 
 `TIER_1_OWNER_PROFESSIONAL_NON_PERSONAL`.
 
-Restano non ammessi senza gate separato:
+Restano non autorizzati senza gate separato: Tier 2 scolastico/personale, signup pubblico, multi-tenant, uso istituzionale multiutente e migrazione automatica Beta → Production.
 
-- `TIER_2_SCHOOL_PERSONAL_DATA`;
-- signup pubblico;
-- onboarding multi-tenant;
-- uso istituzionale multiutente;
-- migrazione automatica Beta → Production.
+## 2. Invarianti correnti
 
-## 3. Runtime e invarianti di prodotto
+- `TeachingSession` è la ricevuta autorevole di ciò che è realmente accaduto nella lezione.
+- `AnnualPlanBlockProgress` resta una decisione professionale distinta; nessun automatismo marca un blocco `SVOLTO`.
+- Observation/Evidence TE-1 restano additive, Tier-1-safe e governate.
+- Orario e Calendario restano domini distinti, composti solo tramite Temporal Projection.
+- Arena mantiene l'autorità curricolare/istituzionale; Docente OS mantiene il lavoro operativo del docente.
+- Nessuna semplificazione UX può indebolire sicurezza, AAL2, privacy, provenance, idempotenza o controllo umano.
 
-- codice applicativo: `product/`;
-- Next.js 16 / React 19 / TypeScript strict;
-- Supabase Auth + PostgreSQL + Storage + RLS;
-- branch canonico di sviluppo: `develop`;
-- promozione Production: `IMMUTABLE_CERTIFIED_SHA`;
-- Vercel non è gate canonico;
-- Netlify e la vecchia app statica root restano legacy/reference.
+## 3. Capability consolidate
 
-Invarianti permanenti:
+### Account e sicurezza — COMPLETE / INTEGRATED
 
-- il docente conserva l'autorità sulle decisioni professionali;
-- `TeachingSession` è la ricevuta autorevole dell'accaduto didattico;
-- nessun automatismo può promuovere un blocco del Piano a `SVOLTO` senza autorità umana;
-- Orario e Calendario restano domini distinti, composti tramite Temporal Projection;
-- nessun dato Tier 2 viene ammesso implicitamente da nuove feature o integrazioni.
+- MFA/AAL2 foundation: #346 → `b07596f7c2142becd32eb66ed195ecbf5ac6b24a`.
+- Account UI/security: #348, exact head `41bb3c55c866c31c6b906382165f3c18821ec81e`, merge `77455d5f50bcccf2fed2cf5607dba3067fd81f97`.
+- Account, password, MFA e sessioni restano separati dalle Impostazioni professionali.
 
-## 4. Capability consolidate
+Questa closure non equivale a dichiarazione complessiva WCAG 2.2 AA, ASVS L2 o promozione Production.
 
-### Product experience
+### Teaching Core / TE-1 — COMPLETE / INTEGRATED
 
-- **X0 — COMPLETE**: fondazioni canoniche;
-- **X1 — COMPLETE**: component foundation;
-- **X2 — COMPLETE**: Professional AppShell;
-- **X3 — COMPLETE** nel confine `READ_ONLY / PROPOSE`;
-- **X4-A — COMPLETE / BETA-PROVEN**: Planner write assistita con conferma umana e undo;
-- **X5-A — COMPLETE / BETA-PROVEN**: authoring UDA versionato;
-- **X5-B — COMPLETE / BETA-PROVEN**: export professionale UDA;
-- **X6 — FUTURE / NOT BASELINE**.
+Convergenza `Registra la lezione`:
 
-### Superfici professionali consolidate in `develop`
+- #361 → merge `e87b8bb0a367fa78b6de4bdbca871e094dc65dd1`.
 
-- Home/Oggi;
-- Planner/Attività;
-- Classi e workspace di classe;
-- Piano annuale;
-- Progetta e UDA;
-- Conoscenza con ingestione, trasformazione, provenienza e generations;
-- Orario;
-- Calendario;
-- registrazione lezione e Diario;
-- Impostazioni professionali;
-- **Account e sicurezza**;
-- libri di testo / risorse editoriali;
-- assistente contestuale human-in-the-loop.
+TE-1A — persistenza atomica Observation/Evidence:
 
-### Account e sicurezza — CLOSED / CONSOLIDATED
+- #365 exact head `2bae1043607c385870a93a85acd8f5484a36dce1`;
+- merge `0716482c337eb8c11395ba49f7491e12a6205555`.
 
-La foundation MFA/AAL2 **#346** è integrata in `develop` come:
+TE-1B — binding `Osserva → Registra`:
 
-`b07596f7c2142becd32eb66ed195ecbf5ac6b24a`
+- #366 exact head `0371ce253dd7be63b80b518aa2e3834e0cc16174`;
+- merge prodotto `8180aee707eeeb15e9863127f2df739746663e7d`;
+- P6 post-merge PASS;
+- HVA post-merge PASS con journey browser, receipt, evidence ed enforcement.
 
-La superficie Account **#348** è stata certificata sull'exact head:
+Follow-up infrastrutturale X3:
 
-`41bb3c55c866c31c6b906382165f3c18821ec81e`
+- #367 exact head `2bb1a478716e8182a3cf6e1c09a453f6447f6f34`;
+- merge `c553feae62e70b23aa932077ec43ed76ce3b075b`;
+- X3 application acceptance PASS;
+- X3 Render acceptance PASS;
+- correzione limitata al workflow AAL2/MFA, nessuna modifica `product/**`.
 
-ed è stata integrata in `develop` come:
+L'issue TE-1 #351 è `completed`.
 
-`77455d5f50bcccf2fed2cf5607dba3067fd81f97`
+## 4. Design, Human e assurance
 
-L'issue prodotto **#347** è chiusa con evidence. La capability comprende `/account`, `/account/mfa`, identità account, gestione fattori TOTP, cambio password protetto da AAL2, revoca delle altre sessioni e logout corrente, mantenendo separati Account e Impostazioni professionali.
+Sono permanenti:
 
-Sul final head di #348 risultano PASS Product CI, MFA Browser AAL2, WCAG 2.2 AA Assurance, P6, ASVS 5.0 Assurance, Design Policy, Human Interaction Model, Production Readiness, Release Engineering, Pilot Evidence e Human + Visual Acceptance. La receipt HVA registra **24/24 osservazioni e 10 journey**, incluse le superfici Account mobile/desktop e la verifica finale del CTA MFA libero dalla navigazione inferiore.
-
-Questa chiusura non equivale a promozione Production né a dichiarazione complessiva WCAG 2.2 AA o ASVS L2.
-
-### Interoperabilità
-
-Restano consolidati o governati:
-
-- curriculum interoperability v2: applicability, coverage, persistence e revalidation;
-- textbook adoption: foundation + MIM discovery;
-- Lesson Workspace nel confine `PROPOSED → ACCEPTED`;
-- feedback curricolare inverso Docente OS → Arena con privacy `PROFESSIONAL_NON_PERSONAL`;
-- transport runtime cross-product con Arena fuori baseline finché il pilot non lo renda requisito dimostrato.
-
-## 5. Design e Human Interaction
-
-DPG-2 è **CLOSED / INTEGRATED** sul merge #336.
-
-Baseline permanente:
-
-- raw colors: **27**;
-- local tokens: **13**;
-- legacy brand references: **0**;
-- decorative effects: **0**;
-- raw radii: **1**;
-- raw shadows: **5**.
-
-I residui sono descritti in `product/design/DESIGN_DEBT_RESIDUALS.md`; la baseline può soltanto diminuire. Human Interaction Model, HVA, mobile rules e Design Policy Gate restano gate permanenti.
-
-## 6. Assurance e gate
-
-Il prodotto dispone di:
-
-- Product CI: test + typecheck + lint + build;
+- Product CI;
 - Human Interaction Model;
 - Human + Visual Acceptance;
-- DPG-1 / DPG-2;
+- Design Policy / DPG-2 ratchet;
 - P6 Performance Baseline;
-- X4 Planner Confirmed Write;
-- X5 UDA Versioned Authoring;
-- X5B Professional UDA Export;
-- K1 Knowledge Upload;
 - P7 Anonymization Input Guard;
-- operational security e dependency security;
-- recovery/storage/incident gates;
-- Release Engineering Policy — M5-01;
-- Pilot Evidence Policy — M5-02;
-- WCAG 2.2 AA Assurance — M5-03;
-- OWASP ASVS 5.0 Assurance — M5-04.
+- dependency/operational security;
+- Release Engineering Policy;
+- Pilot Evidence Policy;
+- WCAG 2.2 AA Assurance;
+- OWASP ASVS 5.0 Assurance.
 
-### M5-03 WCAG
+### WCAG
 
-La matrice A/AA e l'automazione esistono e i regression gate applicabili restano verdi. Restano criteri `MANUAL_REQUIRED`, audit keyboard/focus/reflow completo e baseline assistive technology.
+M5-03 resta **PARTIAL**: automazione e regressioni sono presenti, ma conformità complessiva non è dichiarata finché non sono completati i criteri manuali, keyboard/focus/reflow e assistive technology.
 
-**M5-03 non è COMPLETE e non esiste una dichiarazione complessiva di conformità WCAG 2.2 AA.**
+### ASVS
 
-### M5-04 ASVS
+M5-04 resta **PARTIAL**, target ASVS 5.0.0 L2 con `verificationClaim=false`. Closure di finding prioritari non equivale a verifica complessiva L2.
 
-La foundation usa OWASP ASVS **5.0.0**, target **L2**, con `verificationClaim=false` e requirement-level mapping ancora incompleta.
+## 5. Finding corrente prioritario — UX-0 Product Simplification
 
-Sono `CLOSED_VERIFIED`:
+La Beta reale evidenzia un finding trasversale di maturità:
 
-- **ASVS-001 / V3.4.3** — implementation SHA `1498b675d7d8d9d897867317df3bf07193240833`;
-- **ASVS-002 / V5.2.2** — implementation SHA `f0c5ee3b4b4995dec78836571584bc9f72e78890`;
-- **ASVS-003 / V6.3.3** — implementation SHA `1f04f2799f9993c53d0578f8caafbe9e9842e60f`.
+**UX-0 / TASK COMPLEXITY — REWORK_REQUIRED**.
 
-La closure Account #348 preserva i boundary AAL2 ma non trasforma queste closure in una verifica ASVS L2 complessiva.
+La correttezza locale delle slice, i gate HVA/WCAG/DPG/HIM e la separazione rigorosa del dominio non producono ancora sufficiente semplicità globale. In particolare il docente può incontrare troppe scelte concorrenti e parte del Product Model viene ancora esposta come tassonomia dell'interfaccia.
 
-## 7. Maturity program M5
+Evidence e governance:
 
-Il programma attivo è:
+- issue #370 — `UX-0 — Product Simplification`;
+- `product/design/PRODUCT-SIMPLIFICATION.md`;
+- `product/design/reviews/UX-0A-BASELINE.md`;
+- `product/design/HUMAN-EXPERIENCE-CONTRACT.md` aggiornato con Task Cost.
 
-**FEATURE DEVELOPMENT → MAINTENANCE & MATURATION PROGRAM**
+Principio corrente:
 
-Stato gate:
+**Product Model ≠ User Model**.
 
-- **M5-00 — Canonical State & Maturity Baseline** — **COMPLETE**;
-- **M5-01A — Repository Hygiene** — **COMPLETE**;
-- **M5-01B — Versioning** — **COMPLETE**;
-- **M5-01C — Release Candidate Contract** — **COMPLETE**;
-- **M5-01D — GitHub Release / changelog** — **PARTIAL**, in attesa della prima release reale;
-- **M5-02 — Sustained Pilot Evidence** — **COLLECTING / PARTIAL**;
-- **M5-03A — WCAG 2.2 AA Matrix & Automated Assurance** — **PARTIAL**;
-- **M5-03B — Keyboard / Focus / Reflow** — **PARTIAL**;
-- **M5-03C — Assistive Technology Evidence** — **OPEN**;
-- **M5-04A — OWASP ASVS 5.0 Mapping** — **PARTIAL**;
-- **M5-04B — Dependency/Security Cadence** — **PARTIAL**;
-- **M5-05 — SLO/SLI & Operational Observability** — **OPEN/PARTIAL**;
-- **M5-06 — Runtime Integration Maturity (Drive/Canva; Arena conditional)** — **PARTIAL**;
-- **M5-07 — Institutional / Tier 2 Readiness** — **CONDITIONAL / NOT AUTHORIZED**.
+Target percepito:
 
-## 8. M5-01A Repository Hygiene — COMPLETE
+`Oggi → Classe → Lezione → Fatto`.
 
-La closure è registrata in:
+### Impatto M5
 
-`docs/product/M5_01A_REPOSITORY_HYGIENE_RECEIPT_2026-09-14.md`
+UX-0 è un finding su journey critiche M5 e deve essere chiuso prima di poter sostenere una maturità distributiva generale delle superfici interessate. Un HVA verde non chiude automaticamente questo finding: HVA e Task Cost misurano proprietà differenti.
 
-Esito:
+Durante UX-0 nuove feature surface sono `DEFERRED`, salvo regressioni, sicurezza/privacy, accessibilità, obblighi normativi o prerequisiti indispensabili alla semplificazione.
 
-- chiuse senza merge le PR superate **#360, #254, #286, #255, #251**;
-- preservato lo stack C2P **#298–#307** come `STACKED_LIVE`;
-- preservata **#350** come Teaching Evidence foundation `STACKED_LIVE / BLOCKED`;
-- classificati come candidati di maturazione **#361, #262, #259, #234, #170**, con **#261** candidato da ribasare/verificare;
-- classificati come rinviati **#311, #260, #252, #86** con motivazione esplicita.
+## 6. UX-0A — prossimo slice autorizzato
 
-Nessuna PR aperta resta priva di una classificazione intenzionale. La hygiene chiude l'ambiguità della coda, non autorizza i merge dei candidati attivi.
+Journey:
 
-## 9. M5-02 Sustained Pilot Evidence
+`Home/Oggi → Classe → Lezione → Osserva → Registra → prossimo passo`.
 
-La raccolta M5-02 usa:
+Obiettivi:
 
-- `docs/product/SUSTAINED_PILOT_EVIDENCE_CANONICAL.md`;
-- `ops/pilot-evidence-policy.json`;
-- `ops/pilot-evidence-ledger.json`;
-- gate `m5/pilot-evidence`.
+- una sola CTA primaria per stato;
+- Classe come launcher del task, non dashboard del Product Model;
+- non imporre al docente la distinzione TeachingSession vs AnnualPlanBlockProgress prima che serva una decisione professionale;
+- completamento Piano solo come decisione successiva pertinente;
+- fallback Calendario/Orario contestuali, non concorrenti nel percorso normale;
+- materiali nel momento d'uso;
+- nessuna nuova feature;
+- invarianti TE-1, Tier 1, AAL2, provenance e idempotenza invariati.
 
-L'evidenza automatizzata non conta come `HUMAN_USE`. Successi, attriti, workaround, incidenti e recovery devono essere registrati durante normali giornate di utilizzo, senza dati personali scolastici.
+La navigazione ridotta `Oggi · Classi · Orario · Materiali · Altro` resta un'ipotesi da validare e **non è ancora baseline autorizzata**.
 
-La journey Account ora può entrare nella futura evidence longitudinale:
+## 7. Roadmap integrata
 
-`login AAL2 → Account → verifica identità/stato MFA → gestione fattore o password/sessioni → feedback → ritorno al lavoro`
+La memoria condivisa `CML-DOS-INTEGRATED-GOVERNANCE-V1` è stata emendata per autorizzare UX-0 come **Docente-only maturation slice** indipendente da Arena S3/S4.
 
-La certificazione di #348 resta evidence tecnica e non viene conteggiata retroattivamente come uso umano M5-02.
+Questo non anticipa Arena S4 e non autorizza DOS-S2 cross-boundary. Arena continua la propria stabilizzazione in parallelo; UX-0 può modificare solo presentazione/orchestrazione di workflow già appartenenti a Docente OS.
 
-## 10. Finding correnti
+## 8. Maturity program M5
 
-### A — Candidati di maturazione
+Stato sintetico:
 
-- **#361**: convergenza `Registra la lezione` su TeachingSession; candidato attivo, nessun merge prima dei final-head gate;
-- **#262**: fail-closed risoluzione plesso MIM; rebase e ricertificazione;
-- **#259**: hardening server-side Calendario; rebase e ricertificazione;
-- **#234**: promozione governance DOCX con media non ancora assorbita dal contratto P7 corrente; riconciliazione richiesta;
-- **#170**: bounded Knowledge search/P6; verificare il delta utile sulla baseline corrente prima del rebase;
-- **#261**: canone temporale A.S. 2026/27; verificare riferimenti correnti e ribasare.
+- M5-00 Canonical State & Maturity Baseline — **COMPLETE**, con UX-0 registrato come finding corrente;
+- M5-01A Repository Hygiene — **COMPLETE**;
+- M5-01B Versioning — **COMPLETE**;
+- M5-01C Release Candidate Contract — **COMPLETE**;
+- M5-01D GitHub Release / changelog — **PARTIAL**;
+- M5-02 Sustained Pilot Evidence — **COLLECTING / PARTIAL**;
+- M5-03 WCAG 2.2 AA — **PARTIAL**;
+- M5-04 ASVS 5.0 — **PARTIAL**;
+- M5-05 SLI/SLO & Operational Observability — **OPEN/PARTIAL**;
+- M5-06 Drive/Canva runtime maturity; Arena conditional — **PARTIAL**;
+- M5-07 Tier 2 / institutional / multi-user — **CONDITIONAL / NOT AUTHORIZED**;
+- UX-0 critical journey simplification — **REWORK_REQUIRED / MATURITY_REQUIRED**.
 
-### B — Stack deliberatamente non promosso
+## 9. Priorità operative correnti
 
-- Teaching Evidence **#350** resta bloccata da #361;
-- C2P **#298–#307** resta lavoro stacked vivo, senza merge/deploy isolato.
+1. chiudere la governance UX-0 con exact-head certification e memoria condivisa coerente nei due repository;
+2. eseguire UX-0A sul journey lezione, misurando Task Cost `before → after`;
+3. non ampliare le superfici interessate finché UX-0A non dimostra una riduzione reale della complessità;
+4. continuare M5-02 Pilot Evidence durante il normale lavoro docente, includendo friction e workaround;
+5. completare M5-03 manual/assistive evidence e M5-04 requirement-level mapping senza false claim;
+6. definire SLI/SLO soltanto da baseline osservata;
+7. maturare Drive/Canva solo sulle journey reali;
+8. mantenere Tier 2, multiutente e trasporto Arena automatico separati finché non esiste una decisione esplicita supportata da evidenza.
 
-### C — Lavoro rinviato
+## 10. Regola anti-feature-creep
 
-- **#311** e **#260** richiedono evidenza M5-02 prima di riattivare nuove capacità di prodotto;
-- **#252** resta riferimento esterno rinviato;
-- **#86** resta checkpoint professionale in attesa di decisione umana.
-
-### D — Release engineering residuo
-
-Versioning e RC contract sono chiusi. M5-01D resta PARTIAL fino alla prima release reale; non verrà emessa una release fittizia per chiudere il gate.
-
-### E — P7 governance
-
-La `develop` corrente conserva `ops/anonymization-input-guard.json` a `schemaVersion: 6` e mantiene il DOCX media-preserving path non ammesso. La PR #234 va quindi riconciliata, non considerata assorbita né mergiata sul vecchio head.
-
-### F — SLO/SLI
-
-Smoke, performance e recovery esistono, ma soglie e budget devono derivare dalla baseline M5-02, non essere inventati anticipatamente.
-
-## 11. Priorità operative
-
-1. portare **#361** a final-head certification e integrare soltanto se tutti i gate applicabili restano verdi;
-2. mantenere **#350** bloccata finché la semantica TeachingSession non è consolidata;
-3. affrontare **uno alla volta** i candidati di maturazione #262, #259, #234, #170 e #261 mediante rebase/reconciliation sulla baseline corrente;
-4. raccogliere **M5-02 Pilot Evidence** durante il normale lavoro docente, registrando successi, friction, workaround e failure;
-5. completare le prove manuali **M5-03** e la baseline assistive technology mantenendo verdi i gate automatizzati;
-6. completare la mappatura requirement-level **M5-04** senza false claim;
-7. definire SLI/SLO soltanto dopo una baseline osservata M5-02;
-8. maturare **Drive/Canva** sulle journey didattiche reali;
-9. mantenere C2P runtime, Tier 2 e multi-user separati finché non esiste una decisione esplicita supportata da evidenza.
-
-## 12. Regola anti-feature-creep
-
-Durante il programma M5 ogni nuova feature deve essere classificata come:
+Durante M5 ogni nuova feature deve essere classificata come:
 
 - `MATURITY_REQUIRED`;
 - `PILOT_REQUIRED`;
@@ -288,3 +186,7 @@ Durante il programma M5 ogni nuova feature deve essere classificata come:
 - `DEFERRED`.
 
 Il default in assenza di evidenza è **DEFERRED**.
+
+Durante UX-0 vale inoltre la regola più restrittiva:
+
+> Una nuova funzione non è un miglioramento se introduce una nuova scelta visibile al docente. Deve essere assorbita da un task esistente, salvo prova che costituisca un nuovo compito umano reale.
