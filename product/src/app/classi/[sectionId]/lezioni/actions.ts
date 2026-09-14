@@ -3,12 +3,17 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { recordTeachingSession } from '@/core/application/record-teaching-session'
+import { teachingSessionCandidateFromOccurrence } from '@/core/application/teaching-session-candidate'
+import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
 import type { TeachingSessionDraft } from '@/core/domain/teaching-session'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
+import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { resolveHumanTaskLessonProjection } from '@/core/presentation/human-task-content'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
+import { hasCurrentBlockSessionOnDate, selectEligibleLessonOccurrence } from './lesson-registration-model'
 
 export async function recordLessonExecution(formData: FormData) {
   const sectionId = requiredText(formData, 'sectionId')
@@ -17,6 +22,9 @@ export async function recordLessonExecution(formData: FormData) {
   const actualMinutes = positiveInt(formData, 'actualMinutes')
   const registrationKey = requiredUuid(formData, 'registrationKey')
   const evidenceNote = optionalNote(formData.get('evidenceNote'))
+  const today = currentRomeDate()
+
+  if (localDate > today) throw new Error('Teaching session date cannot be in the future')
 
   const context = await new SupabaseWorkspaceRepository().getCurrentContext()
   if (!context?.academicYear) throw new Error('Active academic year required')
@@ -33,29 +41,78 @@ export async function recordLessonExecution(formData: FormData) {
   if (!projection) throw new Error('Human-task lesson projection is not available for this block')
 
   const source = CANONICAL_PLAN_SOURCES[grade]
-  const session: TeachingSessionDraft = {
+  const teachingRepository = new SupabaseTeachingSessionRepository()
+  const temporalProjection = new TemporalProjectionService(
+    new SupabaseTimetableProjectionReadRepository(),
+    new SupabaseCalendarProjectionReadRepository(),
+  )
+  const [teaching, day] = await Promise.all([
+    teachingRepository.listBySection(context.workspace.id, context.academicYear.id, sectionId),
+    temporalProjection.projectDay({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      localDate,
+    }),
+  ])
+
+  const occurrence = selectEligibleLessonOccurrence({
+    occurrences: day.occurrences,
+    teaching,
     sectionId,
-    disciplineId: null,
+    nowMinutes: localDate === today ? currentRomeMinutes() : 24 * 60,
+  })
+
+  if (!occurrence && hasCurrentBlockSessionOnDate({
+    teaching,
+    canonicalGenerationId: source.generationId,
+    blockId,
     localDate,
-    plannedStartAt: null,
-    plannedEndAt: null,
-    plannedMinutes: projection.durationMinutes,
-    actualMinutes,
-    evidenceNote,
-    source: {
-      sourceKind: 'MANUAL',
-      projectedOccurrenceLogicalId: null,
-      timetableVersionId: null,
-      timetableSlotId: null,
-      calendarState: null,
-      provenance: [
-        `manual_session:${localDate}`,
-        `section:${sectionId}`,
-        `lesson_workspace:${sectionId}:${blockId}`,
-        `canonical_generation:${source.generationId}`,
-        `registration_key:${registrationKey}`,
-      ],
-    },
+  })) {
+    throw new Error('Questa lezione risulta già registrata per la data indicata. Apri la classe per correggere o aggiungere una sessione distinta.')
+  }
+
+  let session: TeachingSessionDraft
+  if (occurrence) {
+    const candidate = teachingSessionCandidateFromOccurrence(occurrence)
+    session = {
+      ...candidate,
+      actualMinutes,
+      evidenceNote,
+      source: {
+        ...candidate.source,
+        provenance: [
+          ...candidate.source.provenance,
+          `lesson_workspace:${sectionId}:${blockId}`,
+          `canonical_generation:${source.generationId}`,
+          `registration_key:${registrationKey}`,
+        ],
+      },
+    }
+  } else {
+    session = {
+      sectionId,
+      disciplineId: null,
+      localDate,
+      plannedStartAt: null,
+      plannedEndAt: null,
+      plannedMinutes: projection.durationMinutes,
+      actualMinutes,
+      evidenceNote,
+      source: {
+        sourceKind: 'MANUAL',
+        projectedOccurrenceLogicalId: null,
+        timetableVersionId: null,
+        timetableSlotId: null,
+        calendarState: null,
+        provenance: [
+          `manual_session:${localDate}`,
+          `section:${sectionId}`,
+          `lesson_workspace:${sectionId}:${blockId}`,
+          `canonical_generation:${source.generationId}`,
+          `registration_key:${registrationKey}`,
+        ],
+      },
+    }
   }
 
   const receipt = await recordTeachingSession({
@@ -73,7 +130,7 @@ export async function recordLessonExecution(formData: FormData) {
       canonicalPlanAssetId: source.assetId,
       canonicalGenerationId: source.generationId,
     },
-  }, new SupabaseTeachingSessionRepository())
+  }, teachingRepository)
 
   revalidatePath('/planner')
   revalidatePath('/piano-annuale')
@@ -114,4 +171,26 @@ function optionalNote(value: FormDataEntryValue | null) {
   if (!note) return null
   if (note.length > 4000) throw new Error('Evidence note exceeds 4000 characters')
   return note
+}
+
+function currentRomeDate() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Rome',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return `${values.year}-${values.month}-${values.day}`
+}
+
+function currentRomeMinutes() {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Rome',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date())
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return Number(values.hour) * 60 + Number(values.minute)
 }
