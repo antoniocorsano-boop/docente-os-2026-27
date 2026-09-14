@@ -1,7 +1,7 @@
 # DOCENTE OS — Product Experience Masterplan
 
 Data: 2026-08-22  
-Ultimo consolidamento: 2026-09-12  
+Ultimo consolidamento: 2026-09-14  
 Stato: CANONICAL / APPROVED  
 Ambito: esperienza prodotto, assistenza contestuale, component platform, accessibilità, adozione progressiva
 
@@ -19,15 +19,27 @@ DOCENTE OS evolve da applicazione funzionale composta da viste verticali a **amb
 
 Il prodotto non deve diventare una chat generalista né un gestionale amministrativo. L'AI è un **collaboratore contestuale incorporato nelle superfici di lavoro**.
 
+Dal consolidamento UX-0 del 2026-09-14 viene aggiunta una distinzione vincolante:
+
+> **Product Model ≠ User Model.**
+
+Il dominio può restare ricco, separato e rigoroso; il docente non deve impararne le entità per compiere un task ordinario. Le separazioni tecniche governano gli effetti, non diventano automaticamente nuove superfici, nuove voci di navigazione o nuove decisioni visibili.
+
 ## 2. North star
 
 Formula canonica dell'esperienza:
 
 **Contesto → Comprensione → Proposta → Effetto → Conferma → Azione → Traccia**
 
+Per il ciclo didattico quotidiano il modello mentale preferito è:
+
+**Oggi → Classe → Lezione → Fatto**
+
 Ogni vista deve privilegiare significato e decisione rispetto a dettagli tecnici.
 
 Carattere del prodotto: **calma operativa + assistenza competente**.
+
+Obiettivo UX-0: **semplice nonostante la sofisticazione**.
 
 ## 3. Stack di esperienza approvato
 
@@ -70,6 +82,8 @@ Carattere del prodotto: **calma operativa + assistenza competente**.
 
 ## 5. Superfici canoniche
 
+Le superfici canoniche restano capability del prodotto; non devono avere tutte lo stesso rango nella navigazione ordinaria.
+
 ### Home
 
 Deve rispondere a: **cosa richiede attenzione e da dove conviene iniziare**.
@@ -96,7 +110,9 @@ Deve rispondere a: **come è organizzata la settimana e quali scostamenti richie
 
 ### Classi
 
-Deve rispondere a: **quale materiale e quale progettazione è associata a una classe/sezione**.
+Deve rispondere a: **qual è la prossima azione utile per questa classe, quale lezione è corrente/prossima e quali materiali servono adesso**.
+
+La Classe non deve esporre come azioni concorrenti le distinzioni fra TeachingSession, Piano, materiali e provenance quando queste non corrispondono a decisioni professionali separate.
 
 ### Impostazioni
 
@@ -108,7 +124,27 @@ Deve rispondere a: **con quale identità sono autenticato, quanto è protetta la
 
 Account e sicurezza resta deliberatamente distinta da Impostazioni: l'identità digitale non è contesto professionale. Il contratto verticale è `docs/product/ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md`; l'implementazione è governata da `docs/architecture/ACCOUNT_SECURITY_CANONICAL_SPEC.md` e dalle invarianti di sicurezza/ASVS.
 
-## 6. Assistente DOCENTE OS
+## 6. Gerarchia dell'esperienza
+
+Il prodotto distingue tre livelli:
+
+### Livello primario — task quotidiano
+
+Il docente deve poter iniziare da un numero ridotto di ingressi coerenti con il lavoro reale. UX-0 valida l'ipotesi:
+
+**Oggi · Classi · Orario · Materiali**
+
+### Livello contestuale — capability necessarie al task
+
+Progetta, Conoscenza, Piano annuale, Calendario, Drive/Canva e altri strumenti possono aprirsi dal contesto corrente e devono preservarne il ritorno.
+
+### Livello di sistema
+
+Impostazioni, Account e sicurezza, diagnostica, versioni e dettagli tecnici restano accessibili ma non competono con il lavoro ordinario.
+
+Questa gerarchia non elimina capability e non autorizza da sola una modifica della navigazione. Le variazioni runtime devono passare dalle slice UX-0.
+
+## 7. Assistente DOCENTE OS
 
 Nome funzionale interno: `ContextualTeacherAssistant`.
 
@@ -134,9 +170,11 @@ Non è una chat globale separata dal lavoro. Deve ricevere un `AssistantContext`
 3. **Ecco l'effetto** — cosa cambierà e cosa resterà invariato.
 4. **Confermi tu** — per ogni effetto persistente, esterno o istituzionalmente significativo.
 
-## 7. Command center
+L'assistente non deve compensare un'information architecture confusa. Se il task può essere reso diretto dalla UI, la UI viene semplificata prima di aggiungere spiegazioni conversazionali.
 
-Viene introdotta una command palette globale, inizialmente con ricerca e navigazione, successivamente con azioni.
+## 8. Command center
+
+La command palette globale resta disponibile come accesso universale e come progressive disclosure, non come sostituto di una navigazione primaria comprensibile.
 
 Scorciatoia desktop: `Ctrl/Cmd + K`.
 
@@ -151,7 +189,7 @@ Categorie minime:
 
 Le azioni distruttive o esterne non si eseguono direttamente dalla palette senza conferma.
 
-## 8. Progressive disclosure
+## 9. Progressive disclosure
 
 Tre livelli di informazione:
 
@@ -169,7 +207,9 @@ ID, processor, generation id, raw status, provider metadata, debug information.
 
 Il livello 3 non deve comparire nel flusso ordinario salvo richiesta esplicita.
 
-## 9. Human-in-the-loop
+Una capability secondaria non deve diventare automaticamente una seconda azione primaria nella stessa vista.
+
+## 10. Human-in-the-loop
 
 Richiedono sempre conferma:
 
@@ -195,7 +235,9 @@ Non richiedono conferma separata:
 
 Le operazioni di sicurezza dell'account non sono azioni dell'assistente: restano sotto controllo diretto dell'utente e sotto i guard di autenticazione previsti dal contratto Account.
 
-## 10. Roadmap di implementazione
+Le conferme professionali necessarie non vengono eliminate per ridurre il task-cost; vengono separate dalle scelte di navigazione e comprensione del sistema.
+
+## 11. Roadmap di implementazione
 
 ### X0 — Canonical freeze
 
@@ -241,12 +283,27 @@ Le operazioni di sicurezza dell'account non sono azioni dell'assistente: restano
 - versionamento e provenienza;
 - export DOCX/PDF quando richiesto.
 
+### UX-0 — Product Simplification — ACTIVE
+
+UX-0 ha precedenza sull'espansione funzionale ordinaria e viene governata da `docs/product/UX0_PRODUCT_SIMPLIFICATION_CANONICAL.md`.
+
+Sequenza:
+
+- **UX-0A** baseline task-cost e governance;
+- **UX-0B** information architecture / navigazione;
+- **UX-0C** Classe task-first;
+- **UX-0D** chiusura lezione / Registra semplificata;
+- **UX-0E** materiali e progettazione contestuali;
+- **UX-0F** HUMAN_USE validation.
+
+Durante UX-0 il default per nuova feature è `DEFERRED`, salvo security/privacy/data-integrity fix, critical defect, requisito normativo urgente o `PROFESSIONAL_GAP_CONFIRMED`.
+
 ### X6 — Agentic evaluation
 
-- spike CopilotKit/AG-UI solo dopo validazione X3-X4;
+- spike CopilotKit/AG-UI solo dopo validazione delle capacità precedenti e dopo che UX-0 ha ridotto la complessità del core quotidiano;
 - decisione ADR separata.
 
-## 11. Gate di qualità
+## 12. Gate di qualità
 
 Ogni slice passa solo se:
 
@@ -260,37 +317,50 @@ Ogni slice passa solo se:
 - nessun gergo tecnico non necessario nella superficie primaria;
 - nessuna azione AI persistente senza conferma;
 - provider AI sostituibile;
-- dati canonici non degradati.
+- dati canonici non degradati;
+- task-cost dichiarato quando la slice modifica una journey ordinaria;
+- nessuna nuova conoscenza del Product Model richiesta al docente senza necessità professionale.
 
 Le slice che modificano autenticazione, account, password, MFA o sessioni devono inoltre rispettare il contratto ASVS corrente e `ACCOUNT_SECURITY_CANONICAL_SPEC.md`.
 
-## 12. Metriche di successo prodotto
+## 13. Metriche di successo prodotto
 
 Target qualitativi:
 
 - utente identifica il prossimo passo entro 5 secondi;
 - una funzione principale è raggiungibile senza conoscere la struttura interna del sistema;
 - ogni proposta AI chiarisce fonte e conseguenza;
-- una nuova attività comune richiede massimo 1–2 decisioni esplicite;
+- una nuova attività comune richiede massimo 1–2 decisioni esplicite, escluse conferme professionali obbligatorie;
+- una sola azione primaria per stato operativo;
+- zero concetti interni obbligatori nelle journey ordinarie;
+- riduzione dei cambi di superficie non necessari;
 - riduzione dei controlli morti/dead-end a zero;
-- nessuna schermata primaria richiede la comprensione di ID o status tecnici.
+- nessuna schermata primaria richiede la comprensione di ID o status tecnici;
+- le capability secondarie restano raggiungibili senza competere con il task corrente.
 
 Per Account e sicurezza, l'utente deve distinguere senza ambiguità **identità di accesso**, **MFA**, **password**, **sessioni** e **Impostazioni professionali**.
 
-## 13. Principio di migrazione
+La semplicità non può essere dichiarata soltanto da HVA/DPG/WCAG: richiede HUMAN_USE e confronto task-cost secondo UX-0/M5-02.
+
+## 14. Principio di migrazione
 
 **Nessuna riscrittura totale.**
 
-Il runtime corrente resta funzionante mentre i componenti vengono sostituiti per strati. Ogni nuovo componente deve poter convivere con CSS esistente fino alla migrazione della superficie interessata.
+Il runtime corrente resta funzionante mentre componenti, gerarchie e percorsi vengono sostituiti per strati. Ogni nuovo componente deve poter convivere con CSS esistente fino alla migrazione della superficie interessata.
 
-## 14. Source of truth
+Le capability non vengono cancellate per ottenere semplicità: vengono ricollocate nel punto in cui il docente ne ha bisogno.
+
+## 15. Source of truth
 
 Questo documento governa l'evoluzione dell'esperienza prodotto. In caso di conflitto:
 
 1. sicurezza/RLS/domain invariants;
-2. questo Masterplan;
-3. Language & Collaboration System;
-4. Design System V2;
-5. specifiche verticali di modulo.
+2. stato corrente e programma di maturità;
+3. questo Masterplan;
+4. `UX0_PRODUCT_SIMPLIFICATION_CANONICAL.md` per costo cognitivo, Product Model ≠ User Model e programma UX-0;
+5. Human Experience Contract;
+6. Language & Collaboration System;
+7. Design System V2;
+8. specifiche verticali di modulo.
 
 Per Account e sicurezza, la specifica verticale di sviluppo e il contratto di esperienza sono rispettivamente `docs/architecture/ACCOUNT_SECURITY_CANONICAL_SPEC.md` e `docs/product/ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md`; nessuno dei due può indebolire le invarianti di sicurezza superiori.
