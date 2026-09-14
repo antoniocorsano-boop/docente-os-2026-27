@@ -27,8 +27,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
-  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
+  E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
 
 jobs:
   x3-application-acceptance:
@@ -42,18 +43,25 @@ jobs:
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
 
     steps:
-      - name: Check E2E credential configuration
+      - name: Check governed AAL2 E2E credential configuration
         id: credentials
         shell: bash
         run: |
-          if [ -n "${E2E_PASSWORD:-}" ]; then
+          missing=0
+          for name in E2E_EMAIL E2E_PASSWORD E2E_TOTP_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is not configured"
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 0 ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
-            echo "Authenticated X3 application gate is configured." >> "$GITHUB_STEP_SUMMARY"
+            echo "Governed AAL2 X3 application gate is configured." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
             {
               echo "## X3 application gate not executed"
-              echo "Repository secret \`DOCENTE_OS_E2E_PASSWORD\` is not configured."
+              echo "Governed MFA E2E credentials are incomplete."
               echo "No application check was bypassed or reported as passed."
             } >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -150,7 +158,7 @@ jobs:
             const jobStatus = process.env.JOB_STATUS
             const state = !ready ? 'error' : jobStatus === 'success' ? 'success' : 'failure'
             const description = !ready
-              ? 'Gate X3 applicativo non eseguito: credenziale mancante'
+              ? 'Gate X3 applicativo non eseguito: credenziali AAL2 mancanti'
               : state === 'success'
                 ? 'Gate X3 applicativo superato'
                 : 'Gate X3 applicativo non superato'
@@ -174,18 +182,25 @@ jobs:
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
 
     steps:
-      - name: Check E2E credential configuration
+      - name: Check governed AAL2 E2E credential configuration
         id: credentials
         shell: bash
         run: |
-          if [ -n "${E2E_PASSWORD:-}" ]; then
+          missing=0
+          for name in E2E_EMAIL E2E_PASSWORD E2E_TOTP_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is not configured"
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 0 ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
-            echo "Authenticated X3 Render gate is configured." >> "$GITHUB_STEP_SUMMARY"
+            echo "Governed AAL2 X3 Render gate is configured." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
             {
               echo "## X3 Render gate not executed"
-              echo "Repository secret \`DOCENTE_OS_E2E_PASSWORD\` is not configured."
+              echo "Governed MFA E2E credentials are incomplete."
               echo "No runtime check was bypassed or reported as passed."
             } >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -294,7 +309,7 @@ jobs:
             const deployStale = fs.existsSync('/tmp/render-gate-reason')
             const state = !ready || deployStale ? 'error' : jobStatus === 'success' ? 'success' : 'failure'
             const description = !ready
-              ? 'Gate X3 Render non eseguito: credenziale mancante'
+              ? 'Gate X3 Render non eseguito: credenziali AAL2 mancanti'
               : deployStale
                 ? 'Render non allineato allo stato product: browser non eseguito'
                 : state === 'success'
