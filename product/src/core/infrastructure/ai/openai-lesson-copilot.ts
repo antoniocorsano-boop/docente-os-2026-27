@@ -1,3 +1,4 @@
+import { sanitizeContactIdentifiersForPilot } from '@/core/privacy/anonymization-guard'
 import {
   lessonCopilotProviderContext,
   validateTeacherCopilotResponse,
@@ -28,7 +29,7 @@ export class OpenAiLessonCopilot {
     prompt: string
   }): Promise<TeacherCopilotResponse> {
     if (!this.apiKey) throw new Error('Copilot model provider is not configured')
-    const prompt = normalizePrompt(input.prompt)
+    const prompt = privacySafePrompt(normalizePrompt(input.prompt))
     const providerContext = lessonCopilotProviderContext(input.context)
 
     const response = await this.fetcher('https://api.openai.com/v1/responses', {
@@ -103,4 +104,14 @@ function normalizePrompt(value: string) {
   if (!normalized) throw new Error('Copilot prompt is required')
   if (normalized.length > 4000) throw new Error('Copilot prompt exceeds 4000 characters')
   return normalized
+}
+
+function privacySafePrompt(value: string) {
+  const result = sanitizeContactIdentifiersForPilot(value)
+  if (!result.allowed) {
+    const error = new Error('Copilot prompt blocked by privacy boundary')
+    error.name = 'CopilotPrivacyBoundaryError'
+    throw error
+  }
+  return result.sanitizedText
 }
