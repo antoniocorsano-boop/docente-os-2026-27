@@ -17,7 +17,7 @@ test('V1-C1: Classe → Lezione → copilota contestuale → fallback senza prov
   if (!classHref) throw new Error('Missing class href')
 
   await page.goto(classHref)
-  const lessonLink = page.locator('a[href*="/lezioni/"]').filter({ visible: true }).first()
+  const lessonLink = page.locator('a[href*="/lezioni/"]').first()
   await expect(lessonLink, 'La Classe deve offrire almeno un entry point Lezione per il copilota.').toBeVisible()
   const lessonHref = await lessonLink.getAttribute('href')
   if (!lessonHref) throw new Error('Missing lesson href')
