@@ -18,6 +18,7 @@ export class OpenAiLessonCopilot {
     private readonly apiKey = process.env.OPENAI_API_KEY,
     private readonly model = process.env.OPENAI_COPILOT_MODEL ?? process.env.OPENAI_VISION_MODEL ?? 'gpt-5.6',
     private readonly fetcher: Fetcher = fetch,
+    private readonly timeoutMs = resolveCopilotTimeoutMs(process.env.OPENAI_COPILOT_TIMEOUT_MS),
   ) {}
 
   get available() {
@@ -38,6 +39,7 @@ export class OpenAiLessonCopilot {
         Authorization: `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
       },
+      signal: AbortSignal.timeout(this.timeoutMs),
       body: JSON.stringify({
         model: this.model,
         instructions: COPILOT_INSTRUCTIONS,
@@ -92,9 +94,11 @@ export class OpenAiLessonCopilot {
 
 const COPILOT_INSTRUCTIONS = `Sei il copilota contestuale di DOCENTE OS per un docente di scuola secondaria di primo grado.
 Usa esclusivamente il contesto fornito. Non inventare fonti, materiali, stati, risultati della lezione o dati sugli studenti.
-Il contesto contiene un Lesson Brief minimizzato e riferimenti di provenienza. Se un dato non è presente, dichiaralo come mancante o da verificare.
+Il contesto contiene un Lesson Brief minimizzato, riferimenti di provenienza e lo stato di autorità curricolare disponibile. Se un dato non è presente, dichiaralo come mancante o da verificare.
 Puoi soltanto READ_ONLY o PROPOSE. Non dichiarare mai di avere salvato, registrato, modificato, creato o inviato qualcosa.
 Quando proponi, limita le opzioni a massimo tre e mantieni il controllo professionale al docente.
+Se curriculumAuthority manca, è PROVISIONAL_COMPLETE, non è APPROVED_INSTITUTIONAL, richiede rivalidazione oppure la rimodulazione è ancora HYPOTHESIS, usa answerStatus PARTIAL e non presentare la base curricolare come definitiva.
+Usa answerStatus SUPPORTED soltanto se puoi citare almeno un evidenceRef presente in context.provenance.
 Per risposte operative usa, quando utile, la sequenza: **Ho trovato** → **Ti propongo** → **Se scegli questa opzione**. Non aggiungere la sezione di conferma se non esiste una write capability autorizzata.
 Gli evidenceRefs devono essere scelti soltanto tra i ref presenti in context.provenance.
 Rispondi in italiano, con tono professionale, concreto e conciso.`
@@ -114,4 +118,10 @@ function privacySafePrompt(value: string) {
     throw error
   }
   return result.sanitizedText
+}
+
+function resolveCopilotTimeoutMs(value: string | undefined) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return 12_000
+  return Math.min(30_000, Math.max(1_000, Math.round(parsed)))
 }
