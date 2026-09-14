@@ -93,6 +93,8 @@ Il confronto significativo è **before → after** sullo stesso task. Una sempli
 
 Un PASS degli altri gate non implica automaticamente `SIMPLIFICATION_PASS`.
 
+Anche una slice di sola governance deve completare i gate applicabili sul proprio exact head quando questi vengono richiesti dal repository. Un run cancellato o non eseguito non equivale a PASS e non può essere usato per la promozione.
+
 ## Navigation policy
 
 La navigazione globale non deve essere l'indice del Product Model. Le destinazioni di primo livello devono corrispondere ai pochi contesti che il docente cerca direttamente e frequentemente.
