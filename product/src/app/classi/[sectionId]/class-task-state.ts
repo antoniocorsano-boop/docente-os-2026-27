@@ -26,26 +26,8 @@ export function resolveClassTaskDecision(input: {
     }
   }
 
-  if (input.hasSessionReceipt && input.maySuggestCompletion) {
-    return {
-      state: 'AFTER_RECORD',
-      label: 'Valuta il completamento',
-      lessonMode: null,
-      useInlineRecorder: false,
-      useAnnualPlan: true,
-    }
-  }
-
-  if (input.hasSessionReceipt) {
-    return {
-      state: 'AFTER_RECORD',
-      label: 'Prepara il prossimo incontro',
-      lessonMode: input.hasModeledLesson ? 'prepare' : null,
-      useInlineRecorder: false,
-      useAnnualPlan: false,
-    }
-  }
-
+  // A new unrecorded timetable occurrence is always the current task, even when
+  // the URL still carries a valid receipt from an earlier session.
   if (input.hasEligibleOccurrence && input.occurrenceEnded) {
     return {
       state: 'RECORD',
@@ -61,6 +43,28 @@ export function resolveClassTaskDecision(input: {
       state: 'TEACH',
       label: input.hasModeledLesson ? 'Continua la lezione' : 'Apri il lavoro di classe',
       lessonMode: input.hasModeledLesson ? 'teach' : null,
+      useInlineRecorder: false,
+      useAnnualPlan: false,
+    }
+  }
+
+  if (input.hasSessionReceipt && input.maySuggestCompletion) {
+    return {
+      state: 'AFTER_RECORD',
+      label: 'Valuta il completamento',
+      lessonMode: null,
+      // Keep the decision on the session-aware class surface: its confirmation
+      // derives executedOn and provenance from the recorded TeachingSession.
+      useInlineRecorder: true,
+      useAnnualPlan: false,
+    }
+  }
+
+  if (input.hasSessionReceipt) {
+    return {
+      state: 'AFTER_RECORD',
+      label: 'Prepara il prossimo incontro',
+      lessonMode: input.hasModeledLesson ? 'prepare' : null,
       useInlineRecorder: false,
       useAnnualPlan: false,
     }
