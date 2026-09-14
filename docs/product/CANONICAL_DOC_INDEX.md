@@ -1,6 +1,6 @@
 # DOCENTE OS — Canonical Documentation Index
 
-Data: **2026-09-12**  
+Data: **2026-09-14**  
 Stato: **CANONICAL**
 
 ## Ordine di autorità
@@ -23,6 +23,15 @@ Per la **maturità M4→M5** le fonti autorevoli sono:
 
 - `docs/product/SYSTEM_MATURITY_AUDIT_2026-09-12.md`;
 - `docs/product/M5_READINESS_MATRIX_2026-09-12.md`.
+
+Per la **semplificazione del prodotto e il costo cognitivo dei task** le fonti autorevoli sono:
+
+- `docs/product/UX0_PRODUCT_SIMPLIFICATION_CANONICAL.md` — Product Model ≠ User Model, Task Cost Model e programma UX-0;
+- `product/design/HUMAN-EXPERIENCE-CONTRACT.md` — sequenza cognitiva, azione primaria e gate Human;
+- `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — north star, gerarchia delle superfici e roadmap;
+- issue `#368` — programma operativo UX-0 e tranche di lavoro.
+
+DPG, HVA e WCAG restano fonti complementari ma **non certificano da sole la semplicità percepita**. La chiusura di M5-02D richiede HUMAN_USE e confronto task-cost prima/dopo.
 
 Per la **sustained pilot evidence** le fonti autorevoli sono:
 
@@ -49,7 +58,7 @@ Per la **OWASP ASVS 5.0 security assurance** le fonti autorevoli sono:
 - `.github/workflows/asvs50-assurance.yml`;
 - `.github/workflows/dependency-security.yml` per la cadence delle dipendenze.
 
-M5-04 usa la baseline stabile **ASVS 5.0.0**, target L2, ma mantiene `verificationClaim=false` finché la mappatura requisito-per-requisito non è completa e tutti i gap L1/L2 applicabili non sono chiusi con receipt. La chiusura verificata dei finding prioritari V3.4.3, V5.2.2 e V6.3.3 non equivale a una verifica complessiva ASVS L2.
+M5-04 usa la baseline stabile **ASVS 5.0.0**, target L2, ma mantiene `verificationClaim=false` finché la mappatura requisito-per-requisito non è completa e tutti i gap L1/L2 applicabili non sono chiusi con receipt. La chiusura verificata dei finding prioritari non equivale a una verifica complessiva ASVS L2.
 
 Per **Account e sicurezza** le fonti canoniche verticali sono:
 
@@ -99,11 +108,12 @@ Sono vietate dipendenze dirette `Timetable -> Calendar` e `Calendar -> Timetable
 - `docs/product/PROJECT_STATUS_CURRENT.md` — **stato sintetico corrente: runtime, capability, gate, maturità e residui**.
 - `docs/product/SYSTEM_MATURITY_AUDIT_2026-09-12.md` — **audit canonico M4 avanzato e benchmark verso M5**.
 - `docs/product/M5_READINESS_MATRIX_2026-09-12.md` — **requisito → evidenza → stato → gap → criterio di chiusura**.
+- `docs/product/UX0_PRODUCT_SIMPLIFICATION_CANONICAL.md` — **programma UX-0, Product Model ≠ User Model, Task Cost Model e gate M5-02D**.
 - `docs/product/SUSTAINED_PILOT_EVIDENCE_CANONICAL.md` — **regole M5-02 per evidence longitudinale, journey critiche, privacy e anti-selection-bias**.
 - `docs/product/WCAG_2_2_AA_ASSURANCE_CANONICAL.md` — **contratto M5-03 per matrice WCAG 2.2 AA, automazione, receipt manuali e assistive technology**.
 - `docs/product/ASVS_5_0_ASSURANCE_CANONICAL.md` — **contratto M5-04 per target L2, mapping requisito-evidenza, gap security e provider/runtime receipts**.
 - `docs/product/RELEASE_ENGINEERING_CANONICAL.md` — **SemVer, RC immutabili, certificazione, promozione e rollback**.
-- `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — north star e programma X0–X6; include Account e sicurezza fra le superfici canoniche.
+- `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — north star e programma esperienza; UX-0 è la priorità attiva prima di ulteriore espansione ordinaria.
 - `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` — tono, microcopy e grammatica collaborativa.
 - `docs/product/ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md` — **contratto utente per Account, password, MFA e sessioni**.
 - `docs/product/X4A_CERTIFICATION_2026-08-24.md` — certificazione Beta della prima write assistita `PLANNER_CREATE_TASK`.
@@ -122,6 +132,8 @@ Durante il programma M5 una nuova feature deve essere classificata come:
 
 Il default senza evidenza è `DEFERRED`.
 
+Durante UX-0 anche una capability giustificata non deve introdurre una nuova scelta primaria quando può essere assorbita da un task esistente.
+
 La sustained pilot evidence deve essere append-only, non selettiva e Tier-1-safe. Un gate macchina non equivale a `HUMAN_USE`; nessuna soglia SLO può essere congelata prima di una baseline osservata sufficiente.
 
 Una release candidate non equivale a una promozione Production. `develop` non è Production. Le release formali seguono `RELEASE_ENGINEERING_CANONICAL.md` e il contratto Production esistente.
@@ -130,6 +142,18 @@ M5-03 mantiene `conformanceClaim=false` finché tutti i criteri A/AA applicabili
 
 M5-04 mantiene `verificationClaim=false` finché la mappatura L1/L2 applicabile non è completa; framework, provider gestiti, RLS o HTTPS non costituiscono da soli una verifica ASVS.
 
+### Regola UX-0
+
+Per ogni lavoro che modifica Home/Oggi, Classi, Lezione, Registra, Materiali, Conoscenza, Progetta o navigazione primaria:
+
+1. `UX0_PRODUCT_SIMPLIFICATION_CANONICAL.md` governa Product Model ≠ User Model e Task Cost Model;
+2. `HUMAN-EXPERIENCE-CONTRACT.md` governa sequenza cognitiva e azione primaria;
+3. il Masterplan governa la gerarchia delle superfici;
+4. la specifica verticale governa gli invarianti di dominio;
+5. Design System/HVA/WCAG/DPG restano gate complementari.
+
+La semplificazione non autorizza fusione delle entità dominio, perdita di provenance, riduzione di RLS/AAL2 o auto-mutazioni professionali.
+
 ### Regola Home
 
 Per ogni lavoro sulla Home `/`:
@@ -137,8 +161,9 @@ Per ogni lavoro sulla Home `/`:
 1. `HOME_DAILY_COCKPIT_CANONICAL_SPEC.md` governa responsabilità e composizione del contesto;
 2. `WORK_TIME_MENTAL_MODEL.md` governa il significato di Oggi, Orario, Calendario, Piano annuale e Attività;
 3. `TEMPORAL_COMPOSITION_CANONICAL_SPEC.md` governa la composizione temporale;
-4. Design System V2, Brand Identity e Design Governance governano anatomia, responsive behavior e identità;
-5. `DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` governa tono e microcopy.
+4. UX-0 governa il costo del task e impedisce che la Home diventi un indice di moduli;
+5. Design System V2, Brand Identity e Design Governance governano anatomia, responsive behavior e identità;
+6. `DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` governa tono e microcopy.
 
 La Home non introduce una fonte di verità parallela a TeachingSession, Planner, Orario, UDA o materiali.
 
@@ -178,7 +203,7 @@ Ogni mutazione password richiede AAL2; i parametri URL non sono autorità; l'ult
 
 Le review datate sono append-only. Lo stato sintetico corrente dei finding deve essere riportato in `PROJECT_STATUS_CURRENT.md` e, quando riguarda M5, nella readiness matrix. I finding osservati durante il pilot devono inoltre produrre evidence nella ledger M5-02 quando rientrano nel perimetro.
 
-La matrice WCAG e il suo gate non sostituiscono HVA: HVA governa l'accettazione dell'esperienza, M5-03 governa la tracciabilità requisito-evidenza WCAG e le prove manuali/assistive technology.
+La matrice WCAG e il suo gate non sostituiscono HVA. HVA e DPG non sostituiscono UX-0: una journey tecnicamente funzionante e visualmente conforme può comunque avere un costo cognitivo eccessivo.
 
 ## Design
 
@@ -200,7 +225,8 @@ Per ogni lavoro visuale o cross-surface:
 3. Design Governance governa le regole trasversali;
 4. DPG-1 governa il diff;
 5. DPG-2 governa il ratchet sull'intero runtime;
-6. Language & Collaboration governa il linguaggio.
+6. Language & Collaboration governa il linguaggio;
+7. UX-0 governa il costo cognitivo quando il cambiamento modifica journey o gerarchia delle azioni.
 
 La geometria del simbolo rispetto al riferimento approvato il 2026-09-11 è un invariante canonico. Una PR visuale deve dichiarare `COMPATIBLE`, `SUPERSEDING` o `BREAKING` e superare i gate pertinenti.
 
@@ -235,7 +261,8 @@ Vincoli:
 - nessuna conversione di un machine gate in human-use evidence;
 - successi, attriti, workaround e fallimenti devono essere registrabili con la stessa grammatica;
 - una correzione non cancella l'evidenza originaria;
-- M5-05 può proporre SLI/SLO soltanto dopo una baseline M5-02 osservata sufficiente.
+- M5-05 può proporre SLI/SLO soltanto dopo una baseline M5-02 osservata sufficiente;
+- M5-02D/UX-0 richiede task-cost prima/dopo sulle journey quotidiane.
 
 ## Accessibility assurance
 
@@ -276,8 +303,9 @@ Ogni slice che modifica una decisione canonica deve:
 3. non lasciare istruzioni operative incompatibili nel repository;
 4. aggiornare `PROJECT_STATUS_CURRENT.md` quando cambia una macro-capability, il runtime, un gate maggiore o un rischio di maturità;
 5. aggiornare `M5_READINESS_MATRIX_2026-09-12.md` quando cambia lo stato di un gate M5;
-6. aggiornare `CHANGELOG.md` quando il cambiamento è rilevante per release, maturità, sicurezza o operatività;
-7. aggiungere evidence alla ledger M5-02 quando un evento reale rientra nel suo perimetro, senza riscrivere eventi precedenti.
+6. aggiornare `UX0_PRODUCT_SIMPLIFICATION_CANONICAL.md` quando cambia il modello mentale primario, il Task Cost Model o la sequenza UX-0;
+7. aggiornare `CHANGELOG.md` quando il cambiamento è rilevante per release, maturità, sicurezza o operatività;
+8. aggiungere evidence alla ledger M5-02 quando un evento reale rientra nel suo perimetro, senza riscrivere eventi precedenti.
 
 I checkpoint datati preservano la storia e non devono essere riscritti come se fossero stato corrente.
 
@@ -287,20 +315,22 @@ Prima di implementare una slice, leggere almeno:
 
 1. `PROJECT_STATUS_CURRENT.md`;
 2. `M5_READINESS_MATRIX_2026-09-12.md` durante il programma M5;
-3. `SUSTAINED_PILOT_EVIDENCE_CANONICAL.md` quando il lavoro riguarda evidenza d'uso, incidenti, friction o KPI;
-4. `WCAG_2_2_AA_ASSURANCE_CANONICAL.md` quando il lavoro modifica UI, accessibilità, navigazione, form o interazioni;
-5. `ASVS_5_0_ASSURANCE_CANONICAL.md` quando il lavoro modifica autenticazione, sessioni, autorizzazione, upload, API, configurazione, dati, logging, dipendenze o security controls;
-6. `ACCOUNT_SECURITY_CANONICAL_SPEC.md` e `ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md` quando il lavoro modifica account, login, MFA, password o sessioni;
-7. ADR-001 e ADR-002;
-8. Product Experience Masterplan;
-9. Language & Collaboration System;
-10. Design System V2;
-11. Brand Identity e Design Governance per lavoro visuale;
-12. DPG-1/DPG-2 per lavoro visuale;
-13. la specifica verticale della slice e il relativo contratto di esperienza;
-14. per T3/T4, Work/Time Mental Model e Temporal Composition;
-15. `RELEASE_ENGINEERING_CANONICAL.md` quando il lavoro coinvolge versioni, RC, promozioni o rollback.
+3. `UX0_PRODUCT_SIMPLIFICATION_CANONICAL.md` quando il lavoro modifica journey quotidiane, navigazione, Classi, Lezione, Registra, Materiali, Conoscenza o Progetta;
+4. `SUSTAINED_PILOT_EVIDENCE_CANONICAL.md` quando il lavoro riguarda evidenza d'uso, incidenti, friction o KPI;
+5. `WCAG_2_2_AA_ASSURANCE_CANONICAL.md` quando il lavoro modifica UI, accessibilità, navigazione, form o interazioni;
+6. `ASVS_5_0_ASSURANCE_CANONICAL.md` quando il lavoro modifica autenticazione, sessioni, autorizzazione, upload, API, configurazione, dati, logging, dipendenze o security controls;
+7. `ACCOUNT_SECURITY_CANONICAL_SPEC.md` e `ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md` quando il lavoro modifica account, login, MFA, password o sessioni;
+8. ADR-001 e ADR-002;
+9. Product Experience Masterplan;
+10. Human Experience Contract;
+11. Language & Collaboration System;
+12. Design System V2;
+13. Brand Identity e Design Governance per lavoro visuale;
+14. DPG-1/DPG-2 per lavoro visuale;
+15. la specifica verticale della slice e il relativo contratto di esperienza;
+16. per T3/T4, Work/Time Mental Model e Temporal Composition;
+17. `RELEASE_ENGINEERING_CANONICAL.md` quando il lavoro coinvolge versioni, RC, promozioni o rollback.
 
 Nessun agente deve inferire una nuova architettura da un singolo file runtime quando esiste una decisione canonica esplicita; nessun agente deve inferire lo stato corrente da un checkpoint datato quando esiste `PROJECT_STATUS_CURRENT.md`.
 
-La baseline DPG-2 non è un budget da spendere: è debito da ridurre. La readiness M5 non è un pretesto per feature expansion: è un programma di maturazione verificabile.
+La baseline DPG-2 non è un budget da spendere: è debito da ridurre. La readiness M5 non è un pretesto per feature expansion. Durante UX-0, la complessità appartiene al sistema e non deve essere trasferita al docente.
