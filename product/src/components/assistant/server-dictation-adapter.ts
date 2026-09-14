@@ -79,25 +79,26 @@ export class ServerDictationAdapter implements DictationAdapter {
           return
         }
 
-        mediaRecorder = new MediaRecorder(stream)
-        mediaRecorder.ondataavailable = (event) => {
+        const recorder = new MediaRecorder(stream)
+        mediaRecorder = recorder
+        recorder.ondataavailable = (event) => {
           if (event.data.size > 0) chunks.push(event.data)
         }
-        mediaRecorder.onstart = () => {
+        recorder.onstart = () => {
           session.status = { type: 'running' }
           for (const callback of speechStart) callback()
           timer = setTimeout(() => {
-            if (mediaRecorder?.state !== 'inactive') mediaRecorder?.stop()
+            if (recorder.state !== 'inactive') recorder.stop()
           }, Math.max(1_000, Math.min(this.maxCaptureMs, DEFAULT_MAX_CAPTURE_MS)))
-          if (stopRequested && mediaRecorder.state !== 'inactive') mediaRecorder.stop()
+          if (stopRequested && recorder.state !== 'inactive') recorder.stop()
         }
-        mediaRecorder.onstop = async () => {
+        recorder.onstop = async () => {
           clearCaptureTimer()
           stopTracks()
           if (cancelled) return
 
           try {
-            const mimeType = mediaRecorder?.mimeType || 'audio/webm'
+            const mimeType = recorder.mimeType || 'audio/webm'
             const audio = new Blob(chunks, { type: mimeType })
             if (audio.size === 0) throw new Error('voice-capture-empty')
 
@@ -124,7 +125,7 @@ export class ServerDictationAdapter implements DictationAdapter {
           }
         }
 
-        mediaRecorder.start()
+        recorder.start()
       } catch {
         clearCaptureTimer()
         stopTracks()
