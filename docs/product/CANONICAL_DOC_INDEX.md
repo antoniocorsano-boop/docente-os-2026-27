@@ -1,6 +1,6 @@
 # DOCENTE OS — Canonical Documentation Index
 
-Data: **2026-09-12**  
+Data: **2026-09-14**  
 Stato: **CANONICAL**
 
 ## Ordine di autorità
@@ -12,10 +12,12 @@ Quando due documenti sembrano divergere, applicare questo ordine:
 3. **stato corrente e programma di maturità**;
 4. **Product Experience Masterplan**;
 5. **specifiche canoniche di prodotto e di composizione dominio**;
-6. **contratti di esperienza verticali**;
+6. **Human Experience Contract + Product Simplification + contratti di esperienza verticali**;
 7. **Design System V2 + Brand Identity + Design Governance**;
 8. **specifiche verticali di modulo**;
 9. documenti storici / implementation notes.
+
+`product/design/PRODUCT-SIMPLIFICATION.md` governa il costo cognitivo e operativo dei journey utente, ma non può prevalere su sicurezza, invarianti di dominio, ADR, stato/maturità, Masterplan o specifiche canoniche di prodotto. All'interno dell'esperienza utente prevale sulle scelte puramente estetiche o sulle specifiche di modulo quando queste introducono complessità non necessaria al task.
 
 Per il solo **stato operativo corrente** la fonte sintetica autorevole è `docs/product/PROJECT_STATUS_CURRENT.md`.
 
@@ -138,7 +140,8 @@ Per ogni lavoro sulla Home `/`:
 2. `WORK_TIME_MENTAL_MODEL.md` governa il significato di Oggi, Orario, Calendario, Piano annuale e Attività;
 3. `TEMPORAL_COMPOSITION_CANONICAL_SPEC.md` governa la composizione temporale;
 4. Design System V2, Brand Identity e Design Governance governano anatomia, responsive behavior e identità;
-5. `DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` governa tono e microcopy.
+5. `DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` governa tono e microcopy;
+6. `product/design/PRODUCT-SIMPLIFICATION.md` governa il costo del task e impedisce che la Home diventi un indice del Product Model.
 
 La Home non introduce una fonte di verità parallela a TeachingSession, Planner, Orario, UDA o materiali.
 
@@ -171,14 +174,15 @@ Ogni mutazione password richiede AAL2; i parametri URL non sono autorità; l'ult
 ## Human + Visual Acceptance
 
 - `product/design/HUMAN-EXPERIENCE-CONTRACT.md` — contratto Human.
+- `product/design/PRODUCT-SIMPLIFICATION.md` — **contratto cross-surface per Product Model ≠ User Model, WHY NOW?, una CTA primaria per stato e Task Cost before→after**.
 - `product/design/VISUAL-ACCEPTANCE.md` — procedura di accettazione visuale.
 - `product/design/MOBILE-RULES.md` — regole mobile.
 - `product/design/ACCESSIBILITY-RULES.md` — regole di accessibilità correnti.
-- `product/design/reviews/` — decisioni visuali datate e closure evidence.
+- `product/design/reviews/` — decisioni visuali/UX datate e closure evidence.
 
 Le review datate sono append-only. Lo stato sintetico corrente dei finding deve essere riportato in `PROJECT_STATUS_CURRENT.md` e, quando riguarda M5, nella readiness matrix. I finding osservati durante il pilot devono inoltre produrre evidence nella ledger M5-02 quando rientrano nel perimetro.
 
-La matrice WCAG e il suo gate non sostituiscono HVA: HVA governa l'accettazione dell'esperienza, M5-03 governa la tracciabilità requisito-evidenza WCAG e le prove manuali/assistive technology.
+La matrice WCAG e il suo gate non sostituiscono HVA: HVA governa l'accettazione dell'esperienza, M5-03 governa la tracciabilità requisito-evidenza WCAG e le prove manuali/assistive technology. Analogamente, un HVA verde non sostituisce il `Task Cost` di Product Simplification: misurano proprietà diverse.
 
 ## Design
 
@@ -200,7 +204,8 @@ Per ogni lavoro visuale o cross-surface:
 3. Design Governance governa le regole trasversali;
 4. DPG-1 governa il diff;
 5. DPG-2 governa il ratchet sull'intero runtime;
-6. Language & Collaboration governa il linguaggio.
+6. Language & Collaboration governa il linguaggio;
+7. Product Simplification governa la riduzione del costo del task, subordinatamente alle autorità superiori definite in questo indice.
 
 La geometria del simbolo rispetto al riferimento approvato il 2026-09-11 è un invariante canonico. Una PR visuale deve dichiarare `COMPATIBLE`, `SUPERSEDING` o `BREAKING` e superare i gate pertinenti.
 
@@ -287,19 +292,20 @@ Prima di implementare una slice, leggere almeno:
 
 1. `PROJECT_STATUS_CURRENT.md`;
 2. `M5_READINESS_MATRIX_2026-09-12.md` durante il programma M5;
-3. `SUSTAINED_PILOT_EVIDENCE_CANONICAL.md` quando il lavoro riguarda evidenza d'uso, incidenti, friction o KPI;
-4. `WCAG_2_2_AA_ASSURANCE_CANONICAL.md` quando il lavoro modifica UI, accessibilità, navigazione, form o interazioni;
-5. `ASVS_5_0_ASSURANCE_CANONICAL.md` quando il lavoro modifica autenticazione, sessioni, autorizzazione, upload, API, configurazione, dati, logging, dipendenze o security controls;
-6. `ACCOUNT_SECURITY_CANONICAL_SPEC.md` e `ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md` quando il lavoro modifica account, login, MFA, password o sessioni;
-7. ADR-001 e ADR-002;
-8. Product Experience Masterplan;
-9. Language & Collaboration System;
-10. Design System V2;
-11. Brand Identity e Design Governance per lavoro visuale;
-12. DPG-1/DPG-2 per lavoro visuale;
-13. la specifica verticale della slice e il relativo contratto di esperienza;
-14. per T3/T4, Work/Time Mental Model e Temporal Composition;
-15. `RELEASE_ENGINEERING_CANONICAL.md` quando il lavoro coinvolge versioni, RC, promozioni o rollback.
+3. `product/design/HUMAN-EXPERIENCE-CONTRACT.md` e `product/design/PRODUCT-SIMPLIFICATION.md` quando il lavoro modifica un journey, una CTA, la navigazione, la progressive disclosure o una superficie utente;
+4. `SUSTAINED_PILOT_EVIDENCE_CANONICAL.md` quando il lavoro riguarda evidenza d'uso, incidenti, friction o KPI;
+5. `WCAG_2_2_AA_ASSURANCE_CANONICAL.md` quando il lavoro modifica UI, accessibilità, navigazione, form o interazioni;
+6. `ASVS_5_0_ASSURANCE_CANONICAL.md` quando il lavoro modifica autenticazione, sessioni, autorizzazione, upload, API, configurazione, dati, logging, dipendenze o security controls;
+7. `ACCOUNT_SECURITY_CANONICAL_SPEC.md` e `ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md` quando il lavoro modifica account, login, MFA, password o sessioni;
+8. ADR-001 e ADR-002;
+9. Product Experience Masterplan;
+10. Language & Collaboration System;
+11. Design System V2;
+12. Brand Identity e Design Governance per lavoro visuale;
+13. DPG-1/DPG-2 per lavoro visuale;
+14. la specifica verticale della slice e il relativo contratto di esperienza;
+15. per T3/T4, Work/Time Mental Model e Temporal Composition;
+16. `RELEASE_ENGINEERING_CANONICAL.md` quando il lavoro coinvolge versioni, RC, promozioni o rollback.
 
 Nessun agente deve inferire una nuova architettura da un singolo file runtime quando esiste una decisione canonica esplicita; nessun agente deve inferire lo stato corrente da un checkpoint datato quando esiste `PROJECT_STATUS_CURRENT.md`.
 

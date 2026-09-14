@@ -3,6 +3,7 @@
 Status: CANONICAL_SHARED_MEMORY
 Scope: CurManLight Arena + Docente OS
 Date: 2026-08-29
+Amended: 2026-09-14
 Memory ID: CML-DOS-INTEGRATED-GOVERNANCE-V1
 
 ## 1. Purpose
@@ -145,7 +146,7 @@ Human acceptance must be bound to the same immutable deployed `releaseSha` used 
 
 ## 9. Current governed execution order
 
-The integrated project must advance in this order unless this memory is explicitly amended:
+The integrated project must advance in this order unless this memory is explicitly amended.
 
 ### Arena stabilization
 
@@ -162,9 +163,13 @@ The integrated project must advance in this order unless this memory is explicit
 
 - DOS-S0 provisional/approved receiver and same-version revalidation — implementation validated; promotion must still follow current branch/gate governance.
 - DOS-S1 Knowledge Base consolidation — audit PASS_WITH_FOLLOW_UPS.
-- DOS-S2 Piano annuale / Progetta / UDA / Classi coherence — next product slice after Arena S4 boundary is stable, unless an isolated Docente-only change is explicitly authorized.
+- **DOS-UX0 Product Simplification — AUTHORIZED DOCENTE-ONLY MATURATION SLICE.** It may proceed independently of Arena S3/S4 because it changes only the presentation/orchestration of already-owned teacher workflows. It must not change Arena ownership, curriculum authority, handoff semantics, cross-product runtime, Tier 2 boundaries or canonical curricular state. Its purpose is to reduce task/cognitive cost while preserving existing domain and security contracts. During UX-0, new Docente OS feature surfaces are deferred unless required for regression, security/privacy, accessibility, regulation or the simplification itself.
+- UX-0 must be executed before further expansion of the affected teacher-facing surfaces. It does **not** authorize broad DOS-S2 curricular/planning coherence work across the Arena boundary.
+- DOS-S2 Piano annuale / Progetta / UDA / Classi coherence — remains governed by the Arena S4 boundary for cross-system or curricular-authority implications; isolated Docente-only changes still require explicit authorization.
 - DOS-S3 assistant authority closure — subsequent.
-- DOS-S4 browser/mobile/HVA closure — subsequent.
+- DOS-S4 browser/mobile/HVA closure — subsequent, with existing HVA/mobile gates remaining mandatory during UX-0.
+
+This amendment explicitly authorizes UX-0 as the isolated Docente-only exception already contemplated by the DOS-S2 rule. Arena stabilization continues independently and is neither blocked by nor subordinated to UX-0.
 
 ### AILit
 
@@ -188,7 +193,7 @@ Current active S3B candidate at freeze:
 ### Docente OS
 
 Repository: `antoniocorsano-boop/docente-os-2026-27`
-Canonical active product baseline: `develop@ebdb2aa77ad68f1d65264671b4f61185b0ba2205`
+Canonical active product baseline at memory freeze: `develop@ebdb2aa77ad68f1d65264671b4f61185b0ba2205`
 
 Important stabilization checkpoints already established:
 - plan branch: `stabilization/product-plan-develop-2026-08-29`;
