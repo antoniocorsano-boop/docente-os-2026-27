@@ -130,7 +130,7 @@ export default function LessonObserveClient({
     <main className={styles.closeSurface}>
       <section className={styles.closeCard}>
         <div>
-          <Link className={styles.back} href={classHref}>← {sectionLabel}</Link>
+          <Link className={styles.back} href={classHref} onClick={persistBeforeNavigation}>← {sectionLabel}</Link>
           <p className={styles.eyebrow}>DOPO / DURANTE · OSSERVAZIONE</p>
           <h1>Guarda poche evidenze utili</h1>
           <p className={styles.closeLead}>Non devi compilare tutto. Usa questi indicatori solo per richiamare l’attenzione su ciò che ti serve per decidere il passo successivo.</p>
