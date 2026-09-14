@@ -16,6 +16,7 @@ import { buildLessonWorkspaceHref, resolveRuntimeHumanTaskLessonProjection } fro
 import { buildTaskAwareKnowledgeHref } from '@/core/presentation/task-continuity'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes, selectPreparedClassMaterials } from '../class-workspace-model'
+import { resolveClassTaskDecision } from './class-task-state'
 import { confirmTeachingBlockCompletion } from './actions'
 import { TeachingSessionRecorder } from './TeachingSessionRecorder'
 import '../classi.css'
@@ -82,10 +83,6 @@ export default async function ClassWorkspacePage({
   const focusPlanningHref = learningFocus.nextBlock
     ? `${planningHref}&block=${encodeURIComponent(learningFocus.nextBlock.id)}&uda=${encodeURIComponent(learningFocus.nextBlock.uda)}&pack=${encodeURIComponent(learningFocus.nextBlock.pack)}#focus-operativo`
     : planningHref
-  const modeledLessonHref = nextProjection && learningFocus.nextBlock
-    ? buildLessonWorkspaceHref(summary.sectionId, learningFocus.nextBlock.id)
-    : null
-  const prepareHref = modeledLessonHref ?? focusPlanningHref
   const annualPlanHref = `/piano-annuale?section=${encodeURIComponent(summary.sectionId)}`
   const knowledgeHref = `/knowledge?classLabel=${encodeURIComponent(summary.compactLabel)}`
   const classHref = `/classi/${encodeURIComponent(summary.sectionId)}`
@@ -131,11 +128,27 @@ export default async function ClassWorkspacePage({
   const nextCompletion = nextCanonicalBlock
     ? completionProposal({ allocatedMinutes: nextAllocatedMinutes, plannedBlockMinutes: nextCanonicalBlock.hours * 60 })
     : null
+  const occurrenceEnded = eligibleOccurrence?.endAt ? timeMinutes(eligibleOccurrence.endAt) <= nowMinutes : false
+  const taskDecision = resolveClassTaskDecision({
+    hasNextBlock: Boolean(nextCanonicalBlock),
+    hasModeledLesson: Boolean(nextProjection && learningFocus.nextBlock),
+    hasSessionReceipt: Boolean(sessionReceipt),
+    hasEligibleOccurrence: Boolean(eligibleOccurrence),
+    occurrenceEnded,
+    maySuggestCompletion: Boolean(nextCompletion?.maySuggestCompletion),
+  })
+  const taskHref = taskDecision.useAnnualPlan
+    ? annualPlanHref
+    : taskDecision.useInlineRecorder
+      ? '#registrazione-avanzata'
+      : taskDecision.lessonMode && nextProjection && learningFocus.nextBlock
+        ? buildLessonWorkspaceHref(summary.sectionId, learningFocus.nextBlock.id, taskDecision.lessonMode)
+        : focusPlanningHref
 
   return (
     <AppShell active="classes" academicYearLabel={context.academicYear.label} workspaceName={settings.schoolName || context.workspace.name} role={context.role} contentClassName="classesWorkspaceSurface">
       <section className="classWorkspaceHeader">
-        <div><p>CLASSE · {summary.sectionStatusLabel.toUpperCase()}</p><h1>{summary.displayLabel}</h1><span>La prossima lezione, ciò che hai realmente svolto e i materiali utili, senza ricostruire il piano dai documenti.</span></div>
+        <div><p>CLASSE · {summary.sectionStatusLabel.toUpperCase()}</p><h1>{summary.displayLabel}</h1><span>Qui trovi il prossimo passo della classe. Piano, materiali e dettagli restano disponibili quando servono.</span></div>
       </section>
 
       {sessionReceipt ? (
@@ -153,77 +166,87 @@ export default async function ClassWorkspacePage({
         </section>
       ) : null}
 
-      {preparedMaterials.length ? (
-        <article className="classWorkspaceCard classMaterialsCard" aria-label="Materiale predisposto per la classe">
-          <div>
-            <h2>Materiale predisposto</h2>
-            <p>Risorse già preparate per il prossimo incontro. Restano separate dal Piano annuale finché il loro legame didattico non è confermato.</p>
-          </div>
-          <div className="classMaterialList">
-            {preparedMaterials.map((material) => (
-              <a href={material.href} key={material.assetId}>
-                <div>
-                  <strong>{material.title}</strong>
-                  <span>{material.resourceKindLabel} · {material.providerLabel}{material.targetDate ? ` · ${formatDate(material.targetDate)}` : ''}</span>
-                  {material.canonicalBindingLabel ? <span>{material.canonicalBindingLabel}</span> : null}
-                </div>
-                <small>{material.stateLabel} · {material.audienceLabel}</small>
-              </a>
-            ))}
-          </div>
-        </article>
-      ) : null}
-
-      <section className="classLessonFocus" aria-label="Prossima lezione nel Piano annuale">
+      <section className="classLessonFocus" aria-label="Prossimo passo della classe">
         {learningFocus.nextBlock && nextTitle ? (
           <div className="classLessonFocusMain">
-            <p>PROSSIMA LEZIONE · {learningFocus.nextBlock.statusLabel.toUpperCase()}</p>
+            <p>{taskEyebrow(taskDecision.state)} · {learningFocus.nextBlock.statusLabel.toUpperCase()}</p>
             <div className="classLessonFocusIdentity"><span aria-hidden>→</span><div><strong>{nextTitle}</strong><small>{nextContext}</small></div></div>
-            <p className="classLessonFocusHint">È la prima lezione non ancora conclusa. DOCENTE OS distingue il tempo registrato dalla decisione professionale di considerarla svolta.</p>
+            <p className="classLessonFocusHint">{taskHint(taskDecision.state)}</p>
           </div>
         ) : (
           <div className="classLessonFocusMain complete"><p>PIANO ANNUALE</p><div className="classLessonFocusIdentity"><span>✓</span><div><strong>Percorso annuale completato</strong><small>Tutte le lezioni attive risultano concluse o escluse.</small></div></div></div>
         )}
         <div className="classLessonFocusAside">
           <div className="classLessonProgress"><strong>{learningFocus.completedBlocks}/33</strong><span>lezioni concluse</span></div>
-          <div className="classLessonFocusActions">{learningFocus.nextBlock ? <Link className="primary" href={prepareHref}>{modeledLessonHref ? 'Prepara la lezione' : 'Prepara questa fase'}</Link> : null}<Link href={annualPlanHref}>Registra / rivedi</Link></div>
+          <div className="classLessonFocusActions">{taskDecision.label ? <Link className="primary" href={taskHref}>{taskDecision.label}</Link> : null}</div>
         </div>
       </section>
 
-      {nextCanonicalBlock ? (
-        <section className="teachingSessionCard" aria-labelledby="teaching-session-title">
-          <div className="teachingSessionHeading">
-            <div><p>ATTUAZIONE REALE</p><h2 id="teaching-session-title">Registra ciò che hai svolto</h2></div>
-            <span>{nextCanonicalBlock.id}: <strong>{nextAllocatedMinutes}/{nextCanonicalBlock.hours * 60} min</strong></span>
+      {preparedMaterials.length ? (
+        <details className="humanTaskSecondary">
+          <summary>Materiale già predisposto</summary>
+          <div className="humanTaskSecondaryBody">
+            <article className="classWorkspaceCard classMaterialsCard" aria-label="Materiale predisposto per la classe">
+              <div>
+                <h2>Materiale predisposto</h2>
+                <p>Risorse già preparate per il prossimo incontro. Restano separate dal Piano annuale finché il loro legame didattico non è confermato.</p>
+              </div>
+              <div className="classMaterialList">
+                {preparedMaterials.map((material) => (
+                  <a href={material.href} key={material.assetId}>
+                    <div>
+                      <strong>{material.title}</strong>
+                      <span>{material.resourceKindLabel} · {material.providerLabel}{material.targetDate ? ` · ${formatDate(material.targetDate)}` : ''}</span>
+                      {material.canonicalBindingLabel ? <span>{material.canonicalBindingLabel}</span> : null}
+                    </div>
+                    <small>{material.stateLabel} · {material.audienceLabel}</small>
+                  </a>
+                ))}
+              </div>
+            </article>
           </div>
-          {eligibleOccurrence ? (
-            <TeachingSessionRecorder
-              sectionId={sectionId}
-              localDate={eligibleOccurrence.localDate}
-              occurrenceLogicalId={eligibleOccurrence.logicalId}
-              plannedMinutes={eligibleOccurrence.startAt && eligibleOccurrence.endAt ? timeMinutes(eligibleOccurrence.endAt) - timeMinutes(eligibleOccurrence.startAt) : null}
-              blocks={recorderBlocks}
-            />
-          ) : (
-            <div className="teachingSessionEmpty">
-              <strong>Nessuna lezione di oggi da registrare automaticamente.</strong>
-              <span>{temporalDay.calendarState === 'UNDETERMINED' ? 'Il Calendario non ha ancora definito la giornata: DOCENTE OS non inventa una sessione.' : temporalDay.calendarState === 'NO_LESSONS' ? 'Il Calendario indica che oggi non si materializzano lezioni.' : 'Le lezioni già trascorse risultano registrate oppure non c’è un’occorrenza della classe in questa fascia.'}</span>
-              <div><Link href="/calendario">Apri Calendario</Link><Link href="/orario">Apri Orario</Link></div>
-            </div>
-          )}
+        </details>
+      ) : null}
 
-          {nextCompletion?.maySuggestCompletion ? (
-            <div className="teachingCompletionProposal">
-              <div><strong>Il monte minuti previsto è stato raggiunto.</strong><span>{nextAllocatedMinutes} minuti effettivi registrati su {nextCanonicalBlock.id}. Questo dato non certifica da solo il completamento didattico.</span></div>
-              <form action={confirmTeachingBlockCompletion}>
-                <input type="hidden" name="sectionId" value={sectionId} />
-                <input type="hidden" name="blockId" value={nextCanonicalBlock.id} />
-                <input type="hidden" name="note" value={`Completamento confermato dal docente dopo ${nextAllocatedMinutes} minuti effettivi registrati.`} />
-                <button type="submit">Conferma come svolto</button>
-              </form>
-            </div>
-          ) : null}
-        </section>
+      {nextCanonicalBlock ? (
+        <details id="registrazione-avanzata" className="humanTaskSecondary" open={taskDecision.useInlineRecorder}>
+          <summary>{taskDecision.useInlineRecorder ? 'Registra questa lezione' : 'Registrazione avanzata e decisioni sul Piano'}</summary>
+          <div className="humanTaskSecondaryBody">
+            <section className="teachingSessionCard" aria-labelledby="teaching-session-title">
+              <div className="teachingSessionHeading">
+                <div><p>ATTUAZIONE REALE</p><h2 id="teaching-session-title">Registra ciò che hai svolto</h2></div>
+                <span>{nextCanonicalBlock.id}: <strong>{nextAllocatedMinutes}/{nextCanonicalBlock.hours * 60} min</strong></span>
+              </div>
+              {eligibleOccurrence ? (
+                <TeachingSessionRecorder
+                  sectionId={sectionId}
+                  localDate={eligibleOccurrence.localDate}
+                  occurrenceLogicalId={eligibleOccurrence.logicalId}
+                  plannedMinutes={eligibleOccurrence.startAt && eligibleOccurrence.endAt ? timeMinutes(eligibleOccurrence.endAt) - timeMinutes(eligibleOccurrence.startAt) : null}
+                  blocks={recorderBlocks}
+                />
+              ) : (
+                <div className="teachingSessionEmpty">
+                  <strong>Nessuna lezione di oggi da registrare automaticamente.</strong>
+                  <span>{temporalDay.calendarState === 'UNDETERMINED' ? 'Il Calendario non ha ancora definito la giornata: DOCENTE OS non inventa una sessione.' : temporalDay.calendarState === 'NO_LESSONS' ? 'Il Calendario indica che oggi non si materializzano lezioni.' : 'Le lezioni già trascorse risultano registrate oppure non c’è un’occorrenza della classe in questa fascia.'}</span>
+                  <div><Link href="/calendario">Apri Calendario</Link><Link href="/orario">Apri Orario</Link></div>
+                </div>
+              )}
+
+              {nextCompletion?.maySuggestCompletion ? (
+                <div className="teachingCompletionProposal">
+                  <div><strong>Il monte minuti previsto è stato raggiunto.</strong><span>{nextAllocatedMinutes} minuti effettivi registrati su {nextCanonicalBlock.id}. Questo dato non certifica da solo il completamento didattico.</span></div>
+                  <form action={confirmTeachingBlockCompletion}>
+                    <input type="hidden" name="sectionId" value={sectionId} />
+                    <input type="hidden" name="blockId" value={nextCanonicalBlock.id} />
+                    <input type="hidden" name="note" value={`Completamento confermato dal docente dopo ${nextAllocatedMinutes} minuti effettivi registrati.`} />
+                    <button type="submit">Conferma come svolto</button>
+                  </form>
+                </div>
+              ) : null}
+            </section>
+          </div>
+        </details>
       ) : null}
 
       <article className="classWorkspaceCard classMaterialsCard">
@@ -236,7 +259,7 @@ export default async function ClassWorkspacePage({
         <div className="humanTaskSecondaryBody">
           <section className="classWorkspaceGrid">
             <article className="classWorkspaceCard"><div><h2>Cattedra</h2><p>Disciplina e carico settimanale previsto.</p></div>{summary.assignments.length ? <div className="classAssignmentList">{summary.assignments.map((assignment) => <div className="classAssignmentItem" key={assignment.id}><div><strong>{assignment.discipline}</strong><span>{assignment.status === 'CONFIRMED' ? 'Confermata' : 'Da confermare'}</span></div><small>{formatWeeklyMinutes(assignment.weeklyMinutes)}</small></div>)}</div> : <div className="classesEmpty"><strong>Questa classe non è ancora nella tua cattedra.</strong><Link href="/impostazioni#cattedra">Gestisci cattedra</Link></div>}</article>
-            <article className="classWorkspaceCard"><div><h2>Altri percorsi</h2><p>Usali quando devi uscire dal compito corrente.</p></div><div className="classQuickLinks"><Link href={annualPlanHref}><strong>Piano annuale</strong><span>Avanzamento e registrazione.</span></Link><Link href={planningHref}><strong>Progetta</strong><span>Esplora il nucleo del grado.</span></Link><Link href={knowledgeHref}><strong>Conoscenza</strong><span>Fonti e materiali della classe.</span></Link><Link href="/orario"><strong>Orario</strong><span>Torna alla settimana.</span></Link></div></article>
+            <article className="classWorkspaceCard"><div><h2>Altri percorsi</h2><p>Usali quando devi uscire dal compito corrente.</p></div><div className="classQuickLinks"><Link href={annualPlanHref}><strong>Piano annuale</strong><span>Avanzamento e decisioni professionali.</span></Link><Link href={planningHref}><strong>Progetta</strong><span>Esplora il nucleo del grado.</span></Link><Link href={knowledgeHref}><strong>Conoscenza</strong><span>Fonti e materiali della classe.</span></Link><Link href="/orario"><strong>Orario</strong><span>Torna alla settimana.</span></Link></div></article>
           </section>
         </div>
       </details>
@@ -244,6 +267,20 @@ export default async function ClassWorkspacePage({
       <details className="technicalDetails"><summary><span><strong>Dettagli tecnici</strong><small>Provenienza e riferimenti canonici</small></span><b aria-hidden>＋</b></summary><div className="technicalDetailsBody"><p>Identificatore sezione: <strong>{summary.sectionId}</strong></p>{learningFocus.nextBlock ? <p>Prossimo riferimento: <strong>{learningFocus.nextBlock.id}</strong> · UDA {learningFocus.nextBlock.uda} · {learningFocus.nextBlock.pack}</p> : null}<p>Fonte sezione: {section.sourceNote ?? 'Registro delle classi dell’anno scolastico corrente.'}</p><p>Sessioni effettive correnti: <strong>{currentSessions.length}</strong>. Le sessioni sostituite restano nella storia e non contribuiscono ai totali correnti.</p></div></details>
     </AppShell>
   )
+}
+
+function taskEyebrow(state: ReturnType<typeof resolveClassTaskDecision>['state']) {
+  if (state === 'TEACH') return 'LEZIONE IN CORSO'
+  if (state === 'RECORD') return 'DA REGISTRARE'
+  if (state === 'AFTER_RECORD') return 'PROSSIMO PASSO'
+  return 'PROSSIMA LEZIONE'
+}
+
+function taskHint(state: ReturnType<typeof resolveClassTaskDecision>['state']) {
+  if (state === 'TEACH') return 'La lezione è già iniziata: continua dal punto di lavoro previsto per questa classe.'
+  if (state === 'RECORD') return 'La lezione è terminata: registra ciò che è successo prima di passare ad altro.'
+  if (state === 'AFTER_RECORD') return 'La registrazione è acquisita. DOCENTE OS ti propone soltanto il passo professionale successivo.'
+  return 'È il prossimo tratto didattico utile per questa classe. Le altre funzioni restano disponibili senza competere con il compito corrente.'
 }
 
 function currentRomeDate() { const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()); const value = Object.fromEntries(parts.map((part) => [part.type, part.value])); return `${value.year}-${value.month}-${value.day}` }
