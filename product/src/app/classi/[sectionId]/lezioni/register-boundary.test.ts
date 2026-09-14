@@ -4,6 +4,7 @@ import test from 'node:test'
 
 const actionsSource = readFileSync(new URL('./actions.ts', import.meta.url), 'utf8')
 const closeSource = readFileSync(new URL('./[blockId]/lesson-close-client.tsx', import.meta.url), 'utf8')
+const observeSource = readFileSync(new URL('./[blockId]/lesson-observe-client.tsx', import.meta.url), 'utf8')
 
 test('Bxx Registra routes through TeachingSession and never writes AnnualPlanBlockProgress directly', () => {
   assert.match(actionsSource, /recordTeachingSession/)
@@ -26,4 +27,27 @@ test('lesson close no longer asks the teacher to decide plan status as part of r
 test('a TeachingSession cannot be registered with a future lesson date', () => {
   assert.match(actionsSource, /Teaching session date cannot be in the future/)
   assert.match(closeSource, /max=\{defaultLocalDate\}/)
+})
+
+test('TE-1B observation uses the atomic evidence boundary without inventing EvidenceReferences', () => {
+  assert.match(actionsSource, /recordTeachingSessionWithEvidence/)
+  assert.match(actionsSource, /observations:\s*\[toTeachingObservationDraft\(observationDraft, blockId\)\]/)
+  assert.match(actionsSource, /evidenceReferences:\s*\[\]/)
+  assert.doesNotMatch(actionsSource, /AnnualPlanBlockProgress/)
+})
+
+test('TE-1B client carries only the explicit local observation draft into Registra', () => {
+  assert.match(observeSource, /normalizeLessonObservationDraft/)
+  assert.match(observeSource, /sessionStorage\.setItem\(storageKey, serializeLessonObservationDraft\(draft\)\)/)
+  assert.match(closeSource, /name=["']observationDimension["']/)
+  assert.match(closeSource, /name=["']observationState["']/)
+  assert.match(closeSource, /name=["']observationNote["']/)
+})
+
+test('TE-1B clears the local observation draft only after a successful canonical receipt', () => {
+  const receiptIndex = closeSource.indexOf('const receipt = await recordLessonExecution(formData)')
+  const clearIndex = closeSource.indexOf('window.sessionStorage.removeItem(observationStorageKey)')
+  assert.ok(receiptIndex >= 0, 'canonical receipt await must remain explicit')
+  assert.ok(clearIndex > receiptIndex, 'observation draft must be cleared only after the canonical receipt')
+  assert.match(closeSource, /catch \(error\)[\s\S]*setSaveError/)
 })
