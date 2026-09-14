@@ -49,15 +49,18 @@ export default function LessonObserveClient({
   const storageKey = lessonObservationStorageKey(sectionId, block.id)
 
   useEffect(() => {
-    try {
-      const stored = parseStoredLessonObservationDraft(window.sessionStorage.getItem(storageKey))
-      if (!stored) return
-      setDimensionKey(stored.dimensionKey)
-      setObservationState(stored.state)
-      setObservationNote(stored.note ?? '')
-    } catch {
-      window.sessionStorage.removeItem(storageKey)
-    }
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        const stored = parseStoredLessonObservationDraft(window.sessionStorage.getItem(storageKey))
+        if (!stored) return
+        setDimensionKey(stored.dimensionKey)
+        setObservationState(stored.state)
+        setObservationNote(stored.note ?? '')
+      } catch {
+        window.sessionStorage.removeItem(storageKey)
+      }
+    })
+    return () => window.cancelAnimationFrame(frame)
   }, [storageKey])
 
   function carryObservationToRecord(event: MouseEvent<HTMLAnchorElement>) {

@@ -57,14 +57,17 @@ export default function LessonCloseClient({
   const liveStorageKey = `docente-os:lesson-live:${sectionId}:${block.id}`
 
   useEffect(() => {
-    try {
-      setObservationDraft(parseStoredLessonObservationDraft(window.sessionStorage.getItem(observationStorageKey)))
-    } catch {
-      window.sessionStorage.removeItem(observationStorageKey)
-      setObservationDraft(null)
-    } finally {
-      setDraftLoaded(true)
-    }
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        setObservationDraft(parseStoredLessonObservationDraft(window.sessionStorage.getItem(observationStorageKey)))
+      } catch {
+        window.sessionStorage.removeItem(observationStorageKey)
+        setObservationDraft(null)
+      } finally {
+        setDraftLoaded(true)
+      }
+    })
+    return () => window.cancelAnimationFrame(frame)
   }, [observationStorageKey])
 
   async function submitLesson(formData: FormData) {
