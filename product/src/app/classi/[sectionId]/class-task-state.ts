@@ -5,6 +5,7 @@ export type ClassTaskDecision = {
   label: string | null
   lessonMode: 'prepare' | 'teach' | 'record' | null
   useInlineRecorder: boolean
+  useAnnualPlan: boolean
 }
 
 export function resolveClassTaskDecision(input: {
@@ -13,6 +14,7 @@ export function resolveClassTaskDecision(input: {
   hasSessionReceipt: boolean
   hasEligibleOccurrence: boolean
   occurrenceEnded: boolean
+  maySuggestCompletion: boolean
 }): ClassTaskDecision {
   if (!input.hasNextBlock) {
     return {
@@ -20,6 +22,17 @@ export function resolveClassTaskDecision(input: {
       label: null,
       lessonMode: null,
       useInlineRecorder: false,
+      useAnnualPlan: false,
+    }
+  }
+
+  if (input.hasSessionReceipt && input.maySuggestCompletion) {
+    return {
+      state: 'AFTER_RECORD',
+      label: 'Valuta il completamento',
+      lessonMode: null,
+      useInlineRecorder: false,
+      useAnnualPlan: true,
     }
   }
 
@@ -29,6 +42,7 @@ export function resolveClassTaskDecision(input: {
       label: 'Prepara il prossimo incontro',
       lessonMode: input.hasModeledLesson ? 'prepare' : null,
       useInlineRecorder: false,
+      useAnnualPlan: false,
     }
   }
 
@@ -38,6 +52,7 @@ export function resolveClassTaskDecision(input: {
       label: 'Registra la lezione',
       lessonMode: input.hasModeledLesson ? 'record' : null,
       useInlineRecorder: !input.hasModeledLesson,
+      useAnnualPlan: false,
     }
   }
 
@@ -47,6 +62,7 @@ export function resolveClassTaskDecision(input: {
       label: input.hasModeledLesson ? 'Continua la lezione' : 'Apri il lavoro di classe',
       lessonMode: input.hasModeledLesson ? 'teach' : null,
       useInlineRecorder: false,
+      useAnnualPlan: false,
     }
   }
 
@@ -55,5 +71,6 @@ export function resolveClassTaskDecision(input: {
     label: input.hasModeledLesson ? 'Prepara la lezione' : 'Prepara questa fase',
     lessonMode: input.hasModeledLesson ? 'prepare' : null,
     useInlineRecorder: false,
+    useAnnualPlan: false,
   }
 }
