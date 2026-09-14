@@ -137,13 +137,14 @@ export default async function ClassWorkspacePage({
     occurrenceEnded,
     maySuggestCompletion: Boolean(nextCompletion?.maySuggestCompletion),
   })
-  const taskHref = taskDecision.useAnnualPlan
-    ? annualPlanHref
+  const taskHref = taskDecision.focusCompletion
+    ? '#decisione-completamento'
     : taskDecision.useInlineRecorder
       ? '#registrazione-avanzata'
       : taskDecision.lessonMode && nextProjection && learningFocus.nextBlock
         ? buildLessonWorkspaceHref(summary.sectionId, learningFocus.nextBlock.id, taskDecision.lessonMode)
         : focusPlanningHref
+  const advancedPanelId = taskDecision.focusCompletion ? 'decisione-completamento' : 'registrazione-avanzata'
 
   return (
     <AppShell active="classes" academicYearLabel={context.academicYear.label} workspaceName={settings.schoolName || context.workspace.name} role={context.role} contentClassName="classesWorkspaceSurface">
@@ -209,29 +210,31 @@ export default async function ClassWorkspacePage({
       ) : null}
 
       {nextCanonicalBlock ? (
-        <details id="registrazione-avanzata" className="humanTaskSecondary" open={taskDecision.useInlineRecorder}>
-          <summary>{taskDecision.useInlineRecorder ? 'Registra questa lezione' : 'Registrazione avanzata e decisioni sul Piano'}</summary>
+        <details id={advancedPanelId} className="humanTaskSecondary" open={taskDecision.useInlineRecorder || taskDecision.focusCompletion}>
+          <summary>{taskDecision.focusCompletion ? 'Valuta il completamento' : taskDecision.useInlineRecorder ? 'Registra questa lezione' : 'Registrazione avanzata e decisioni sul Piano'}</summary>
           <div className="humanTaskSecondaryBody">
             <section className="teachingSessionCard" aria-labelledby="teaching-session-title">
               <div className="teachingSessionHeading">
-                <div><p>ATTUAZIONE REALE</p><h2 id="teaching-session-title">Registra ciò che hai svolto</h2></div>
+                <div><p>{taskDecision.focusCompletion ? 'DECISIONE PROFESSIONALE' : 'ATTUAZIONE REALE'}</p><h2 id="teaching-session-title">{taskDecision.focusCompletion ? 'Valuta se il blocco è davvero concluso' : 'Registra ciò che hai svolto'}</h2></div>
                 <span>{nextCanonicalBlock.id}: <strong>{nextAllocatedMinutes}/{nextCanonicalBlock.hours * 60} min</strong></span>
               </div>
-              {eligibleOccurrence ? (
-                <TeachingSessionRecorder
-                  sectionId={sectionId}
-                  localDate={eligibleOccurrence.localDate}
-                  occurrenceLogicalId={eligibleOccurrence.logicalId}
-                  plannedMinutes={eligibleOccurrence.startAt && eligibleOccurrence.endAt ? timeMinutes(eligibleOccurrence.endAt) - timeMinutes(eligibleOccurrence.startAt) : null}
-                  blocks={recorderBlocks}
-                />
-              ) : (
-                <div className="teachingSessionEmpty">
-                  <strong>Nessuna lezione di oggi da registrare automaticamente.</strong>
-                  <span>{temporalDay.calendarState === 'UNDETERMINED' ? 'Il Calendario non ha ancora definito la giornata: DOCENTE OS non inventa una sessione.' : temporalDay.calendarState === 'NO_LESSONS' ? 'Il Calendario indica che oggi non si materializzano lezioni.' : 'Le lezioni già trascorse risultano registrate oppure non c’è un’occorrenza della classe in questa fascia.'}</span>
-                  <div><Link href="/calendario">Apri Calendario</Link><Link href="/orario">Apri Orario</Link></div>
-                </div>
-              )}
+              {!taskDecision.focusCompletion ? (
+                eligibleOccurrence ? (
+                  <TeachingSessionRecorder
+                    sectionId={sectionId}
+                    localDate={eligibleOccurrence.localDate}
+                    occurrenceLogicalId={eligibleOccurrence.logicalId}
+                    plannedMinutes={eligibleOccurrence.startAt && eligibleOccurrence.endAt ? timeMinutes(eligibleOccurrence.endAt) - timeMinutes(eligibleOccurrence.startAt) : null}
+                    blocks={recorderBlocks}
+                  />
+                ) : (
+                  <div className="teachingSessionEmpty">
+                    <strong>Nessuna lezione di oggi da registrare automaticamente.</strong>
+                    <span>{temporalDay.calendarState === 'UNDETERMINED' ? 'Il Calendario non ha ancora definito la giornata: DOCENTE OS non inventa una sessione.' : temporalDay.calendarState === 'NO_LESSONS' ? 'Il Calendario indica che oggi non si materializzano lezioni.' : 'Le lezioni già trascorse risultano registrate oppure non c’è un’occorrenza della classe in questa fascia.'}</span>
+                    <div><Link href="/calendario">Apri Calendario</Link><Link href="/orario">Apri Orario</Link></div>
+                  </div>
+                )
+              ) : null}
 
               {nextCompletion?.maySuggestCompletion ? (
                 <div className="teachingCompletionProposal">
