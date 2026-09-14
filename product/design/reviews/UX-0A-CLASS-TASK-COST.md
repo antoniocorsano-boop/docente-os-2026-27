@@ -2,7 +2,12 @@
 
 Status: IMPLEMENTATION_CANDIDATE  
 Issue: #373  
-Governance baseline: `develop@d70c8f45b217fc317ca6b7ba6904afd1734b0c53`
+Governance baseline: `develop@d70c8f45b217fc317ca6b7ba6904afd1734b0c53`  
+Design classification: **COMPATIBLE**
+
+## Design classification rationale
+
+UX-0A changes hierarchy, orchestration and progressive disclosure inside the existing Design System V2 and Human Interaction grammar. It introduces no new visual tokens, brand geometry, decorative effects or global-navigation baseline and does not supersede the canonical design system.
 
 ## Scope
 
