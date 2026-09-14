@@ -18,10 +18,18 @@ const context: LessonCopilotContext = {
   provenance: [
     { kind: 'PLAN', ref: 'CAN-PLAN-2', label: 'Piano annuale classe seconda' },
     { kind: 'UDA', ref: 'CAN-UDA-2-01', label: 'UDA agricoltura' },
+    { kind: 'CURRICULUM_AUTHORITY', ref: 'framework-message-1', label: 'Curricolo istituzionale approvato' },
   ],
   availableCapabilities: ['LESSON_EXPLAIN_CONTEXT', 'LESSON_SUGGEST_PREPARATION'],
   forbiddenCapabilities: ['PLAN_COMPLETE_BLOCK', 'DRIVE_WRITE'],
   missingInformation: [],
+  curriculumAuthority: {
+    curriculumState: 'APPROVED',
+    alignmentAuthority: 'APPROVED_INSTITUTIONAL',
+    requiresRevalidationOnApproval: false,
+    applicabilityStatus: 'APPLICABLE',
+    transitionRemodulationState: 'NOT_REQUIRED',
+  },
   lesson: {
     sectionId: 'section-secret-id',
     sectionLabel: '2ª C',
@@ -64,6 +72,7 @@ test('provider request sends only minimized lesson context and no internal or fr
   assert.equal(response.actionKind, 'PROPOSE')
   assert.match(requestBody, /2ª C/)
   assert.match(requestBody, /CAN-PLAN-2/)
+  assert.match(requestBody, /APPROVED_INSTITUTIONAL/)
   assert.doesNotMatch(requestBody, /workspace-secret-id/)
   assert.doesNotMatch(requestBody, /year-secret-id/)
   assert.doesNotMatch(requestBody, /section-secret-id/)
@@ -121,6 +130,23 @@ test('provider response cannot cite evidence outside the authoritative context',
   )
 })
 
+test('provider response cannot claim SUPPORTED without evidence', async () => {
+  const fetcher: typeof fetch = async () => new Response(JSON.stringify({
+    output_text: JSON.stringify({
+      actionKind: 'READ_ONLY',
+      answerStatus: 'SUPPORTED',
+      text: 'Questa risposta dichiara supporto pieno ma non collega alcuna evidenza autorevole disponibile nel contesto.',
+      evidenceRefs: [],
+    }),
+  }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+
+  const copilot = new OpenAiLessonCopilot('test-key', 'test-model', fetcher)
+  await assert.rejects(
+    () => copilot.respond({ context, prompt: 'Spiegami la lezione' }),
+    /SUPPORTED richiede almeno una evidenza autorevole/,
+  )
+})
+
 test('provider transport failure exposes only status and never echoes provider body', async () => {
   const fetcher: typeof fetch = async () => new Response('provider secret diagnostic payload', { status: 503 })
   const copilot = new OpenAiLessonCopilot('test-key', 'test-model', fetcher)
@@ -133,6 +159,24 @@ test('provider transport failure exposes only status and never echoes provider b
       return true
     },
   )
+})
+
+test('provider call is bounded by an abort signal', async () => {
+  let signalObserved = false
+  const fetcher: typeof fetch = async (_input, init) => new Promise<Response>((_resolve, reject) => {
+    const signal = init?.signal
+    assert.ok(signal)
+    signalObserved = true
+    if (signal.aborted) {
+      reject(signal.reason)
+      return
+    }
+    signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+  })
+  const copilot = new OpenAiLessonCopilot('test-key', 'test-model', fetcher, 20)
+
+  await assert.rejects(() => copilot.respond({ context, prompt: 'Cosa devo preparare?' }))
+  assert.equal(signalObserved, true)
 })
 
 test('missing provider configuration fails closed before network access', async () => {
