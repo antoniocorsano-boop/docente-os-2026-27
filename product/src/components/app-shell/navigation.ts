@@ -142,7 +142,7 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
   },
 ] as const
 
-export const WORK_NAVIGATION_KEYS: readonly NavigationKey[] = ['today', 'classes', 'timetable', 'knowledge']
+export const WORK_NAVIGATION_KEYS: readonly NavigationKey[] = ['today', 'classes', 'timetable']
 
 const WORK_NAVIGATION_SET = new Set<NavigationKey>(WORK_NAVIGATION_KEYS)
 
