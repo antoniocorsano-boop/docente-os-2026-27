@@ -150,6 +150,11 @@ const nullBoundarySql = readFileSync(
   'utf8',
 )
 
+const atomicAuthorizationSql = readFileSync(
+  new URL('../../../supabase/migrations/0057_teaching_evidence_atomic_authorization.sql', import.meta.url),
+  'utf8',
+)
+
 test('TE-1A replay validates the complete TeachingSession payload before evidence replay', () => {
   const lockIndex = replayHardeningSql.indexOf('pg_advisory_xact_lock')
   const baseBoundaryIndex = replayHardeningSql.indexOf('session_id := public.record_teaching_session')
@@ -185,4 +190,25 @@ test('public TE-1A RPC rejects SQL NULL JSON payloads before private delegation'
   assert.ok(privateDelegate > evidenceGuard)
   assert.match(nullBoundarySql, /set schema private/)
   assert.match(nullBoundarySql, /revoke all on function private\.record_teaching_session_with_evidence/)
+})
+
+test('reserved atomic provenance cannot be forged through the public TeachingSession RPC', () => {
+  const baseWrapper = atomicAuthorizationSql.indexOf('create or replace function public.record_teaching_session(')
+  const authorizationCheck = atomicAuthorizationSql.indexOf('from private.teaching_evidence_atomic_authorizations', baseWrapper)
+  const privateBaseDelegate = atomicAuthorizationSql.indexOf('return private.record_teaching_session(', baseWrapper)
+  const evidenceWrapper = atomicAuthorizationSql.indexOf('create or replace function public.record_teaching_session_with_evidence(')
+  const authorizationInsert = atomicAuthorizationSql.indexOf('insert into private.teaching_evidence_atomic_authorizations', evidenceWrapper)
+  const evidenceDelegate = atomicAuthorizationSql.indexOf('receipt := private.record_teaching_session_with_evidence', evidenceWrapper)
+  const authorizationDelete = atomicAuthorizationSql.indexOf('delete from private.teaching_evidence_atomic_authorizations', evidenceDelegate)
+
+  assert.match(atomicAuthorizationSql, /alter function public\.record_teaching_session[\s\S]*set schema private/)
+  assert.match(atomicAuthorizationSql, /revoke all on private\.teaching_evidence_atomic_authorizations from public, anon, authenticated/)
+  assert.match(atomicAuthorizationSql, /revoke all on function private\.record_teaching_session/)
+  assert.match(atomicAuthorizationSql, /teaching evidence atomic provenance marker is reserved/)
+  assert.ok(baseWrapper >= 0)
+  assert.ok(authorizationCheck > baseWrapper, 'public base RPC must verify private transaction authority')
+  assert.ok(privateBaseDelegate > authorizationCheck, 'public base RPC may delegate only after authorization check')
+  assert.ok(authorizationInsert > evidenceWrapper, 'TE-1A wrapper must create private transaction authority')
+  assert.ok(evidenceDelegate > authorizationInsert, 'private TE-1A implementation must run only after authorization')
+  assert.ok(authorizationDelete > evidenceDelegate, 'transaction authority must be removed before the wrapper returns')
 })
