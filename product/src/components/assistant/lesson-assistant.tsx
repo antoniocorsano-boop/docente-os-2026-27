@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { ContextualAssistantPanel } from './contextual-assistant-panel'
+import { ServerDictationAdapter } from './server-dictation-adapter'
 import {
   fallbackLessonCopilotResponse,
   type LessonCopilotContext,
@@ -21,6 +22,7 @@ export function LessonAssistant({
   context: LessonCopilotContext
   presentation?: 'inline' | 'floating'
 }) {
+  const dictationAdapter = useMemo(() => new ServerDictationAdapter('/api/assistant/transcribe'), [])
   const respond = useCallback(async (prompt: string) => {
     try {
       const response = await fetch('/api/assistant/lesson-respond', {
@@ -48,7 +50,7 @@ export function LessonAssistant({
       presentation={presentation}
       eyebrow="COPILOTA DELLA LEZIONE"
       title="Come posso aiutarti qui?"
-      lead="Conosco il brief di questa lezione, le fonti che lo sostengono e ciò che risulta già pronto. Posso spiegare e proporre; non registro né modifico il Piano automaticamente."
+      lead="Conosco il brief di questa lezione, le fonti che lo sostengono e ciò che risulta già pronto. Puoi scrivere o dettare una domanda; non registro né modifico il Piano automaticamente."
       contextChips={[
         context.lesson.sectionLabel,
         context.discipline ?? 'Disciplina da verificare',
@@ -57,10 +59,11 @@ export function LessonAssistant({
       ]}
       suggestedPrompts={SUGGESTED_PROMPTS}
       conversationTitle={`Copilota · ${context.lesson.sectionLabel}`}
-      placeholder="Es. Aiutami a preparare questa lezione"
+      placeholder="Scrivi o detta una domanda"
       safetyLabel="Propone, non modifica"
-      footerLabel="Il contesto viene ricostruito lato server. Nessuna modifica persistente avviene in questa fase."
+      footerLabel="Voce push-to-talk, massimo 30 s. DOCENTE OS non conserva audio o trascrizione intermedia. Non dettare nomi o dati personali degli alunni; il testo resta nel campo finché non scegli Invio."
       respond={respond}
+      dictationAdapter={dictationAdapter}
     />
   )
 }

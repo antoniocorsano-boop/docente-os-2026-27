@@ -2,14 +2,16 @@
 
 import {
   AssistantRuntimeProvider,
+  AuiIf,
   ComposerPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
   useAuiState,
   useLocalRuntime,
   type ChatModelAdapter,
+  type DictationAdapter,
 } from '@assistant-ui/react'
-import { SendHorizontal, ShieldCheck, Sparkles } from 'lucide-react'
+import { Mic, SendHorizontal, ShieldCheck, Sparkles, Square } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 
 export type ContextualAssistantPanelProps = {
@@ -25,6 +27,7 @@ export type ContextualAssistantPanelProps = {
   placeholder?: string
   respond: (prompt: string) => string | Promise<string>
   actionSlot?: ReactNode
+  dictationAdapter?: DictationAdapter
 }
 
 export function ContextualAssistantPanel({
@@ -40,6 +43,7 @@ export function ContextualAssistantPanel({
   placeholder = 'Scrivi una domanda sul contesto corrente',
   respond,
   actionSlot,
+  dictationAdapter,
 }: ContextualAssistantPanelProps) {
   const [expanded, setExpanded] = useState(false)
   const adapter = useMemo<ChatModelAdapter>(() => ({
@@ -51,7 +55,9 @@ export function ContextualAssistantPanel({
       }
     },
   }), [respond])
-  const runtime = useLocalRuntime(adapter)
+  const runtime = useLocalRuntime(adapter, {
+    adapters: { dictation: dictationAdapter },
+  })
 
   if (presentation === 'floating' && !expanded) {
     return (
@@ -150,6 +156,24 @@ function ContextualAssistantThread({
                 aria-label="Domanda per l’assistente contestuale"
                 rows={2}
               />
+              <AuiIf condition={(state) => state.composer.dictation == null}>
+                <ComposerPrimitive.Dictate
+                  className="dosAssistantSend voice"
+                  aria-label="Detta al copilota"
+                  title="Detta al copilota"
+                >
+                  <Mic size={18} aria-hidden />
+                </ComposerPrimitive.Dictate>
+              </AuiIf>
+              <AuiIf condition={(state) => state.composer.dictation != null}>
+                <ComposerPrimitive.StopDictation
+                  className="dosAssistantSend voice recording"
+                  aria-label="Ferma dettatura"
+                  title="Ferma dettatura"
+                >
+                  <Square size={16} aria-hidden />
+                </ComposerPrimitive.StopDictation>
+              </AuiIf>
               <ComposerPrimitive.Send asChild>
                 <button className="dosAssistantSend" type="button" aria-label="Invia domanda">
                   <SendHorizontal size={18} aria-hidden />
