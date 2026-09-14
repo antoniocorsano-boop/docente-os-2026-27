@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { recordTeachingSessionWithEvidence, type TeachingSessionEvidenceWriter } from './record-teaching-session-with-evidence'
 import type { TeachingSessionDraft } from '@/core/domain/teaching-session'
@@ -137,4 +138,33 @@ test('receipt cardinality mismatch fails closed', async () => {
     }, writer),
     /inconsistent observation receipt/,
   )
+})
+
+const replayHardeningSql = readFileSync(
+  new URL('../../../supabase/migrations/0055_teaching_evidence_replay_hardening.sql', import.meta.url),
+  'utf8',
+)
+
+test('TE-1A replay validates the complete TeachingSession payload before evidence replay', () => {
+  const lockIndex = replayHardeningSql.indexOf('pg_advisory_xact_lock')
+  const baseBoundaryIndex = replayHardeningSql.indexOf('session_id := public.record_teaching_session')
+  const evidenceReceiptIndex = replayHardeningSql.indexOf('from public.teaching_session_evidence_receipts')
+
+  assert.ok(lockIndex >= 0, 'same registration key retries must be transaction-serialized')
+  assert.ok(baseBoundaryIndex > lockIndex, 'base session boundary must run after the retry lock')
+  assert.ok(
+    evidenceReceiptIndex > baseBoundaryIndex,
+    'evidence receipt replay must happen only after the base session signature is validated',
+  )
+  assert.equal(replayHardeningSql.includes('existing_session_id'), false, 'no pre-base replay bypass may exist')
+})
+
+test('TE-1A keeps atomic and legacy registration paths signature-distinct', () => {
+  assert.match(replayHardeningSql, /teaching_evidence_atomic:v1/)
+  assert.match(replayHardeningSql, /teaching evidence atomic provenance marker is reserved/)
+})
+
+test('evidence links decode JSON string draft keys before lookup', () => {
+  assert.match(replayHardeningSql, /jsonb_array_elements_text/)
+  assert.equal(replayHardeningSql.includes("trim(both '\"' from linked_draft_key::text)"), false)
 })
