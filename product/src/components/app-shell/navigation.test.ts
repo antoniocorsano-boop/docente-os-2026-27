@@ -34,10 +34,11 @@ test('canonical navigation groups cover every destination exactly once', () => {
   assert.deepEqual([...groupedKeys].sort(), [...primaryKeys].sort())
 })
 
-test('ordinary work navigation exposes four teacher tasks and not Home', () => {
-  assert.deepEqual(WORK_NAVIGATION_KEYS, ['today', 'classes', 'timetable', 'knowledge'])
-  assert.deepEqual(workNavigationItems().map((item) => item.shortLabel), ['Oggi', 'Classi', 'Orario', 'Materiali'])
+test('ordinary work navigation exposes three teacher tasks and not Home or Conoscenza', () => {
+  assert.deepEqual(WORK_NAVIGATION_KEYS, ['today', 'classes', 'timetable'])
+  assert.deepEqual(workNavigationItems().map((item) => item.shortLabel), ['Oggi', 'Classi', 'Orario'])
   assert.equal(WORK_NAVIGATION_KEYS.includes('home'), false)
+  assert.equal(WORK_NAVIGATION_KEYS.includes('knowledge'), false)
 })
 
 test('secondary navigation preserves all non-primary capabilities without overlap', () => {
@@ -50,6 +51,7 @@ test('secondary navigation preserves all non-primary capabilities without overla
   assert.equal(new Set(secondaryKeys).size, secondaryKeys.length)
   assert.equal(secondaryKeys.some((key) => WORK_NAVIGATION_KEYS.includes(key)), false)
   assert.ok(secondaryKeys.includes('home'))
+  assert.ok(secondaryKeys.includes('knowledge'))
   assert.ok(secondaryKeys.includes('settings'))
   assert.ok(secondaryKeys.includes('account'))
 })

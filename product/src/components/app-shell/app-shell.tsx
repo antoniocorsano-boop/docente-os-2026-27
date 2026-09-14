@@ -239,7 +239,7 @@ function SecondaryMenu({
       description="Cerca tra le funzioni secondarie senza duplicare i percorsi di lavoro già visibili."
       placeholder="Cerca tra le altre funzioni…"
       empty="Nessuna funzione secondaria trovata."
-      footer="Le funzioni principali restano Oggi, Classi, Orario e Materiali."
+      footer="Le funzioni principali restano Oggi, Classi e Orario. Materiali e progettazione si aprono dal compito quando servono."
       icon="menu"
       active={active}
     />
