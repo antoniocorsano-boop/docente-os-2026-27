@@ -151,7 +151,6 @@ export default async function LessonWorkspacePage({
           sectionLabel={sectionLabel}
           block={block}
           projection={projection}
-          progress={progressView}
           defaultLocalDate={currentRomeDate()}
           registrationKey={randomUUID()}
         />
