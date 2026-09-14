@@ -1,10 +1,21 @@
+import type { AnnualPlanCurriculumPersistencePayload } from '@/core/domain/cml-annual-plan-curriculum-persistence'
 import type { HumanTaskLessonProjection } from './human-task-content'
 import type { LessonBrief } from './lesson-brief'
 import type { TeacherMoment } from './teacher-moment'
 import type { AssistantContext, AssistantAnswerStatus, AssistantActionKind } from './assistant-context'
 
+export type LessonCurriculumAuthority = Pick<
+  AnnualPlanCurriculumPersistencePayload,
+  | 'curriculumState'
+  | 'alignmentAuthority'
+  | 'requiresRevalidationOnApproval'
+  | 'applicabilityStatus'
+  | 'transitionRemodulationState'
+>
+
 export type LessonCopilotContext = AssistantContext & {
   surface: 'LESSON'
+  curriculumAuthority: LessonCurriculumAuthority | null
   lesson: {
     sectionId: string
     sectionLabel: string
@@ -91,11 +102,27 @@ export function buildLessonCopilotContext(input: {
   projection: HumanTaskLessonProjection
   brief: LessonBrief
   progressStatus: string
+  curriculumAuthority?: LessonCurriculumAuthority | null
+  curriculumAuthorityEvidence?: { ref: string; label: string } | null
 }): LessonCopilotContext {
   const missingInformation: string[] = []
+  const curriculumAuthority = input.curriculumAuthority ?? null
   if (!input.academicYearId) missingInformation.push('Anno scolastico non associato')
   if (!input.discipline?.trim()) missingInformation.push('Disciplina non associata')
   if (input.projection.sources.length === 0) missingInformation.push('Fonti della lezione non disponibili')
+  if (!curriculumAuthority) {
+    missingInformation.push('Autorità curricolare non disponibile per questa lezione')
+  } else if (!curriculumAuthorityAllowsSupported(curriculumAuthority)) {
+    missingInformation.push(curriculumAuthorityMessage(curriculumAuthority))
+  }
+
+  const authorityEvidence = input.curriculumAuthorityEvidence?.ref
+    ? [{
+        kind: 'CURRICULUM_AUTHORITY',
+        ref: input.curriculumAuthorityEvidence.ref,
+        label: input.curriculumAuthorityEvidence.label,
+      }]
+    : []
 
   return {
     surface: 'LESSON',
@@ -109,14 +136,18 @@ export function buildLessonCopilotContext(input: {
       title: input.projection.title,
       state: input.progressStatus,
     },
-    provenance: input.projection.sources.map((source) => ({
-      kind: source.role,
-      ref: source.code,
-      label: source.label,
-    })),
+    provenance: [
+      ...input.projection.sources.map((source) => ({
+        kind: source.role,
+        ref: source.code,
+        label: source.label,
+      })),
+      ...authorityEvidence,
+    ],
     availableCapabilities: [...LESSON_COPILOT_CAPABILITIES],
     forbiddenCapabilities: [...LESSON_COPILOT_FORBIDDEN_CAPABILITIES],
     missingInformation,
+    curriculumAuthority,
     lesson: {
       sectionId: input.sectionId,
       sectionLabel: cleanRequired(input.sectionLabel),
@@ -197,6 +228,15 @@ export function lessonCopilotProviderContext(context: LessonCopilotContext) {
     surface: context.surface,
     discipline: context.discipline ?? null,
     classLabel: context.classLabel ?? null,
+    curriculumAuthority: context.curriculumAuthority
+      ? {
+          curriculumState: context.curriculumAuthority.curriculumState,
+          alignmentAuthority: context.curriculumAuthority.alignmentAuthority,
+          requiresRevalidationOnApproval: context.curriculumAuthority.requiresRevalidationOnApproval,
+          applicabilityStatus: context.curriculumAuthority.applicabilityStatus,
+          transitionRemodulationState: context.curriculumAuthority.transitionRemodulationState,
+        }
+      : null,
     lesson: {
       title: context.lesson.title,
       objective: context.lesson.objective,
@@ -233,6 +273,12 @@ export function validateTeacherCopilotResponse(
     problems.push('Stato risposta non riconosciuto.')
   }
   if (response.text.trim().length < 30) problems.push('Risposta troppo breve per essere utile.')
+  if (response.answerStatus === 'SUPPORTED' && response.evidenceRefs.length === 0) {
+    problems.push('Una risposta SUPPORTED richiede almeno una evidenza autorevole.')
+  }
+  if (response.answerStatus === 'SUPPORTED' && !curriculumAuthorityAllowsSupported(context.curriculumAuthority)) {
+    problems.push('Una base curricolare non approvata o non risolta richiede answerStatus PARTIAL.')
+  }
   for (const ref of response.evidenceRefs) {
     if (!knownRefs.has(ref)) problems.push(`Riferimento di evidenza non disponibile: ${ref}`)
   }
@@ -247,6 +293,11 @@ export function fallbackLessonCopilotResponse(
   const normalized = prompt.toLocaleLowerCase('it-IT')
   const asksPreparation = /(prepar|serve|material|pronto|manca)/.test(normalized)
   const asksReflection = /(andat|success|riflett|osserv|riprend|prossima)/.test(normalized)
+  const evidenceRefs = context.provenance
+    .map((item) => item.ref)
+    .filter((value): value is string => Boolean(value))
+    .slice(0, 3)
+  const answerStatus = fallbackAnswerStatus(context, evidenceRefs)
 
   if (asksPreparation) {
     const preparation = context.lesson.preparationPreview.length
@@ -257,8 +308,8 @@ export function fallbackLessonCopilotResponse(
       : '• Non risultano materiali già marcati come pronti nel brief corrente.'
     return {
       actionKind: 'PROPOSE',
-      answerStatus: 'SUPPORTED',
-      evidenceRefs: context.provenance.map((item) => item.ref).filter((value): value is string => Boolean(value)).slice(0, 3),
+      answerStatus,
+      evidenceRefs,
       text: `**Per preparare questa lezione**\n${preparation}\n\n**Già pronto**\n${ready}\n\n**Indicazione**\nL’obiettivo è: ${context.lesson.objective}. Posso aiutarti a ridurre o adattare la preparazione, ma non modifico la progettazione senza una conferma separata.`,
     }
   }
@@ -266,18 +317,46 @@ export function fallbackLessonCopilotResponse(
   if (asksReflection) {
     return {
       actionKind: 'PROPOSE',
-      answerStatus: 'SUPPORTED',
-      evidenceRefs: context.provenance.map((item) => item.ref).filter((value): value is string => Boolean(value)).slice(0, 3),
+      answerStatus,
+      evidenceRefs,
       text: `**Contesto della lezione**\n${context.lesson.title} · ${context.lesson.sectionLabel}.\n\n**Per riflettere**\nPuoi raccontarmi cosa è stato realmente svolto, cosa è rimasto incerto e cosa vuoi riprendere. In V1-C1 organizzo la risposta come proposta, senza salvare o completare automaticamente il Piano.`,
     }
   }
 
   return {
     actionKind: 'READ_ONLY',
-    answerStatus: 'SUPPORTED',
-    evidenceRefs: context.provenance.map((item) => item.ref).filter((value): value is string => Boolean(value)).slice(0, 3),
+    answerStatus,
+    evidenceRefs,
     text: `**Questa lezione**\n${context.lesson.title} · ${context.lesson.sectionLabel} · ${formatMinutes(context.lesson.durationMinutes)}.\n\n**Obiettivo**\n${context.lesson.objective}\n\n**Stato**\n${context.lesson.readyCount > 0 ? `${context.lesson.readyCount} risorse risultano già pronte.` : 'Il brief non segnala ancora risorse pronte.'} Posso spiegare, proporre una preparazione o aiutarti a riflettere senza modificare dati automaticamente.`,
   }
+}
+
+export function curriculumAuthorityAllowsSupported(authority: LessonCurriculumAuthority | null | undefined) {
+  return Boolean(
+    authority
+    && authority.curriculumState === 'APPROVED'
+    && authority.alignmentAuthority === 'APPROVED_INSTITUTIONAL'
+    && authority.requiresRevalidationOnApproval === false
+    && authority.transitionRemodulationState !== 'HYPOTHESIS',
+  )
+}
+
+function fallbackAnswerStatus(context: LessonCopilotContext, evidenceRefs: string[]): AssistantAnswerStatus {
+  if (evidenceRefs.length === 0) return 'PARTIAL'
+  return curriculumAuthorityAllowsSupported(context.curriculumAuthority) ? 'SUPPORTED' : 'PARTIAL'
+}
+
+function curriculumAuthorityMessage(authority: LessonCurriculumAuthority) {
+  if (authority.curriculumState === 'PROVISIONAL_COMPLETE' || authority.alignmentAuthority === 'PROVISIONAL_BASELINE') {
+    return 'Base curricolare provvisoria: richiede rivalidazione quando sarà disponibile l’autorità approvata'
+  }
+  if (authority.requiresRevalidationOnApproval) {
+    return 'Contesto curricolare da rivalidare prima di considerarlo pienamente approvato'
+  }
+  if (authority.transitionRemodulationState === 'HYPOTHESIS') {
+    return 'Rimodulazione transitoria ancora in ipotesi e non approvata'
+  }
+  return 'Autorità curricolare non pienamente confermata'
 }
 
 function authorityLabel(authority: TeacherMoment['authority']) {
