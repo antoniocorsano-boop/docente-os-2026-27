@@ -69,6 +69,21 @@ test('an undefined calendar still allows planning from the active timetable with
   assert.equal(result?.lessons[0].sectionId, '3A')
 })
 
+test('lessons inside the next Teacher Moment are ordered chronologically', () => {
+  const result = resolveNextTeacherMoment({
+    fromDate: '2026-09-14',
+    timetableVersions: [active],
+    timetableSlots: [
+      lesson({ id: 'late', weekday: 2, start: '11:00', end: '12:00', section: '3A' }),
+      lesson({ id: 'early', weekday: 2, start: '08:00', end: '09:00', section: '2C' }),
+      lesson({ id: 'middle', weekday: 2, start: '10:00', end: '11:00', section: '1A' }),
+    ],
+    calendarDays: [day('2026-09-15', 'SCHOOL_DAY', 'Lezioni')],
+  })
+
+  assert.deepEqual(result?.lessons.map((item) => item.sectionId), ['2C', '1A', '3A'])
+})
+
 test('an explicit suspension skips that day and resolves the following teaching day', () => {
   const result = resolveNextTeacherMoment({
     fromDate: '2026-09-14',
