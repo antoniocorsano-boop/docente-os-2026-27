@@ -4,6 +4,8 @@ Stato: **CANONICAL / NORMATIVE**
 
 Questo contratto governa tutte le superfici interattive di DOCENTE OS e viene applicato prima di qualunque linea guida estetica esterna. Il documento storico `../../docs/DOCENTE_OS_HUMAN_TASK_EXPERIENCE_v1.md` resta la fonte di provenienza del modello; questo file ne definisce l'uso operativo nel prodotto.
 
+Per la riduzione della complessità percepita e la distinzione tra Product Model e User Model si applica inoltre `PRODUCT-SIMPLIFICATION.md`. I due contratti sono complementari: la semplificazione non può indebolire controllo umano, sicurezza, privacy, provenance o recuperabilità.
+
 ## Sequenza cognitiva obbligatoria
 
 Ogni flusso significativo deve rendere percepibili, nell'ordine utile al compito:
@@ -23,6 +25,7 @@ Ogni flusso significativo deve rendere percepibili, nell'ordine utile al compito
 - **Controllo umano.** Decisioni professionali, istituzionali o scritture significative non vengono simulate come già eseguite.
 - **Progressiva esposizione.** Gestione, versioni, diagnostica e dettagli secondari non competono con l'azione corrente.
 - **Mobile come vincolo reale.** Non è ammessa una semplice compressione della vista desktop quando il compito richiede una rappresentazione diversa.
+- **Semplificazione del task.** La ricchezza del modello interno non costituisce una ragione per esporre più scelte. Ogni controllo primario deve rispondere a un bisogno del compito corrente.
 
 ## Pattern transazionale
 
@@ -47,7 +50,10 @@ Una slice non è `UX_COMPLETE` se manca uno dei controlli seguenti:
 - comportamento mobile verificato;
 - accessibilità semantica di stato, errore e controllo;
 - acceptance test del percorso umano critico;
-- evidenza visuale osservabile su almeno un target reale quando la slice modifica l'interfaccia.
+- evidenza visuale osservabile su almeno un target reale quando la slice modifica l'interfaccia;
+- **Task Cost verificato sul journey modificato**: decisioni richieste, concetti interni esposti, azioni concorrenti e cambi di superficie non devono aumentare senza una giustificazione esplicita legata a un nuovo compito umano reale.
+
+Un PASS tecnico, visuale o di accessibilità non implica da solo che il task sia semplice. Quando una slice modifica un journey canonico, la review deve registrare il confronto `before → after` secondo `PRODUCT-SIMPLIFICATION.md`.
 
 ## Autorità esterne
 
