@@ -3,7 +3,7 @@
 Status: CANONICAL_SHARED_MEMORY
 Scope: CurManLight Arena + Docente OS
 Date: 2026-08-29
-Amended: 2026-09-14
+Amended: 2026-09-14 — Teacher OS V1 convergence
 Memory ID: CML-DOS-INTEGRATED-GOVERNANCE-V1
 
 ## 1. Purpose
@@ -159,17 +159,27 @@ The integrated project must advance in this order unless this memory is explicit
   - S3C immutable Beta deploy + actual HVA — pending.
 - ARENA-S4 bidirectional interoperability stabilization — blocked until S3 closes.
 
-### Docente OS stabilization
+### Docente OS stabilization and Teacher OS V1
 
 - DOS-S0 provisional/approved receiver and same-version revalidation — implementation validated; promotion must still follow current branch/gate governance.
 - DOS-S1 Knowledge Base consolidation — audit PASS_WITH_FOLLOW_UPS.
-- **DOS-UX0 Product Simplification — AUTHORIZED DOCENTE-ONLY MATURATION SLICE.** It may proceed independently of Arena S3/S4 because it changes only the presentation/orchestration of already-owned teacher workflows. It must not change Arena ownership, curriculum authority, handoff semantics, cross-product runtime, Tier 2 boundaries or canonical curricular state. Its purpose is to reduce task/cognitive cost while preserving existing domain and security contracts. During UX-0, new Docente OS feature surfaces are deferred unless required for regression, security/privacy, accessibility, regulation or the simplification itself.
-- UX-0 must be executed before further expansion of the affected teacher-facing surfaces. It does **not** authorize broad DOS-S2 curricular/planning coherence work across the Arena boundary.
-- DOS-S2 Piano annuale / Progetta / UDA / Classi coherence — remains governed by the Arena S4 boundary for cross-system or curricular-authority implications; isolated Docente-only changes still require explicit authorization.
-- DOS-S3 assistant authority closure — subsequent.
-- DOS-S4 browser/mobile/HVA closure — subsequent, with existing HVA/mobile gates remaining mandatory during UX-0.
+- DOS-UX0 Product Simplification produced binding HUMAN_USE evidence, including `FRICTION / REWORK_REQUIRED`. That evidence remains authoritative and must not be rewritten as PASS. Its open human-use/document closure remains a separate evidence stream, but after the explicit Teacher OS V1 convergence decision it no longer acts as a blanket freeze on all subsequent Docente-only product maturation.
+- **DOS-V1 Teacher Operating System — AUTHORIZED DOCENTE-ONLY CONVERGENCE PROGRAM.** The convergence decision already integrated in Docente OS is now part of this shared memory. V1 may proceed independently of Arena S3/S4 only inside capabilities already owned by Docente OS and only while preserving Arena ownership, curriculum authority, handoff semantics, cross-product runtime boundaries, Tier 2 boundaries and canonical curricular state.
+  - V1-A `Teacher Moment + Today/Next` — integrated.
+  - V1-B `Lesson Brief` — integrated.
+  - **V1-C `Contextual Copilot + Voice Capture` — AUTHORIZED as the concrete DOS-S3 assistant-authority closure path**, staged so that authority grows only after the previous stage is certified:
+    1. **C1 Context Bridge / READ_ONLY + PROPOSE** — server-reconstructed authoritative context, minimized provider payload, explicit provenance, privacy preflight, no model tools and no writes;
+    2. **C2 Contextual Voice Capture** — voice is only an input mode, raw audio ephemeral by default, context resolved before persistence, fallback manual always available;
+    3. **C3 Governed reversible writes** — only teacher-owned reversible effects, through application/domain boundaries, with preview and explicit human confirmation; no direct model writes.
+  - V1-C does **not** authorize automatic student evaluation, pupil-level profiling, automatic Plan completion, institutional decisions, silent curriculum promotion, external writes without confirmation or any Arena canonical mutation.
+  - Later V1 increments remain Docente-only unless a separate amendment authorizes a cross-system or curricular-authority change.
+- DOS-S2 Piano annuale / Progetta / UDA / Classi coherence remains governed by the Arena S4 boundary for cross-system or curricular-authority implications. Isolated Docente-only orchestration may proceed only when it does not reinterpret or promote curricular authority.
+- DOS-S3 is no longer a separate future blocker: its assistant-authority closure is implemented through the staged V1-C contract above.
+- DOS-S4 browser/mobile/HVA remains mandatory evidence for every applicable slice and for promotion, but it is an assurance layer rather than a blanket prohibition on starting an otherwise authorized Docente-only slice.
 
-This amendment explicitly authorizes UX-0 as the isolated Docente-only exception already contemplated by the DOS-S2 rule. Arena stabilization continues independently and is neither blocked by nor subordinated to UX-0.
+This amendment supersedes only the earlier local ordering that treated UX-0 and DOS-S3 as a blanket sequential feature freeze. It does not weaken the Arena/Docente authority boundary, the requirement for same-version revalidation, exact-head certification, privacy/security gates or human confirmation.
+
+Arena stabilization continues independently and is neither blocked by nor subordinated to Teacher OS V1.
 
 ### AILit
 
@@ -185,9 +195,9 @@ Repository: `antoniocorsano-boop/CurManLight_arena`
 Canonical integrated baseline at freeze: `main@cb65f9c6dbd3cd1b0143dfa7e793cb9f4f4a3464`
 
 Current active S3B candidate at freeze:
-- branch: `stabilization/arena-s3b-critical-journey-browser`
-- PR: `#101`
-- head: `1ad7cc8c75b5ec895f8cc5836274d9434be1d3bd`
+- branch: `stabilization/arena-s3b-critical-journey-browser`;
+- PR: `#101`;
+- head: `1ad7cc8c75b5ec895f8cc5836274d9434be1d3bd`;
 - state: validation in progress; not merged at memory freeze.
 
 ### Docente OS
