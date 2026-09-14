@@ -22,18 +22,11 @@ type Block = {
   hours: number
 }
 
-type Progress = {
-  status: string
-  executedOn: string | null
-  evidenceNote: string | null
-}
-
 export default function LessonCloseClient({
   sectionId,
   sectionLabel,
   block,
   projection,
-  progress,
   defaultLocalDate,
   registrationKey,
 }: {
@@ -41,7 +34,6 @@ export default function LessonCloseClient({
   sectionLabel: string
   block: Block
   projection: HumanTaskLessonProjection
-  progress: Progress
   defaultLocalDate: string
   registrationKey: string
 }) {
@@ -103,8 +95,8 @@ export default function LessonCloseClient({
         <div>
           <Link className={styles.back} href={classHref}>← {sectionLabel}</Link>
           <p className={styles.eyebrow}>REGISTRA LA LEZIONE · {sectionLabel}</p>
-          <h1>Registra ciò che è realmente accaduto</h1>
-          <p className={styles.closeLead}>Conferma data e durata effettiva. La nota è facoltativa: non devi ricopiare obiettivi, sequenza o materiali già presenti nel sistema.</p>
+          <h1>Conferma ciò che hai svolto</h1>
+          <p className={styles.closeLead}>Controlla data e durata effettiva. Nota e osservazione sono facoltative: non devi ricopiare obiettivi, sequenza o materiali già presenti.</p>
         </div>
 
         <input type="hidden" name="sectionId" value={sectionId} />
@@ -126,8 +118,8 @@ export default function LessonCloseClient({
         </div>
 
         <p className={styles.planBoundary}>
-          <strong>Piano annuale: {progress.status}</strong>
-          <span>Questa registrazione documenta la lezione e attribuisce i minuti a {block.id}; non conclude automaticamente il blocco. L’eventuale completamento resta una decisione separata nella Classe.</span>
+          <strong>Cosa succede quando registri</strong>
+          <span>Salvi ciò che è stato svolto in questa lezione. Il percorso annuale non viene segnato automaticamente come completato: potrai decidere dopo, dalla Classe.</span>
         </p>
 
         {observationDraft ? (
@@ -135,7 +127,7 @@ export default function LessonCloseClient({
             <span>OSSERVAZIONE DA REGISTRARE</span>
             <strong>{observationDimensionLabel} · {observationStateLabel}</strong>
             {observationDraft.note ? <p className={styles.detailText}>{observationDraft.note}</p> : null}
-            <p className={styles.privacyNote}>Sarà salvata come osservazione di classe insieme alla TeachingSession. Nessun dato individuale viene aggiunto.</p>
+            <p className={styles.privacyNote}>Sarà salvata come osservazione della classe insieme alla registrazione. Nessun dato individuale viene aggiunto.</p>
           </section>
         ) : (
           <p className={styles.privacyNote}>Nessuna osservazione professionale sarà registrata. Puoi comunque salvare normalmente la lezione.</p>
@@ -147,19 +139,24 @@ export default function LessonCloseClient({
         </label>
 
         <details className={styles.evidence}>
-          <summary>Evidenza prevista</summary>
+          <summary>Promemoria didattico</summary>
           <strong>{projection.evidence}</strong>
-          <p className={styles.detailText}>Questa descrizione resta un riferimento didattico: non viene trasformata automaticamente in un’EvidenceReference.</p>
+          <p className={styles.detailText}>Resta un riferimento per il docente e non viene trasformato automaticamente in una prova registrata.</p>
         </details>
 
         {saveError ? <p className={styles.privacyNote} role="alert">{saveError}</p> : null}
 
         <div className={styles.closeActions}>
           <button className={styles.primary} type="submit" disabled={saving || !draftLoaded}>
-            {saving ? 'Registrazione…' : 'Registra la lezione e torna alla classe'}
+            {saving ? 'Registrazione…' : 'Registra e torna alla classe'}
           </button>
-          <Link href={observeHref}>Voglio prima rivedere le evidenze</Link>
-          <Link href={teachHref}>Torna alla guida della lezione</Link>
+          <details className={styles.evidence}>
+            <summary>Prima di registrare</summary>
+            <div className={styles.detailStack}>
+              <Link href={observeHref}>Rivedi le osservazioni</Link>
+              <Link href={teachHref}>Torna alla guida della lezione</Link>
+            </div>
+          </details>
         </div>
       </form>
     </main>
