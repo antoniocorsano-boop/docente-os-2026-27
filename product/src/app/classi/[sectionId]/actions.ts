@@ -2,12 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { recordTeachingSession as recordTeachingSessionCommand } from '@/core/application/record-teaching-session'
 import { teachingSessionCandidateFromOccurrence } from '@/core/application/teaching-session-candidate'
 import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
 import {
   allocatedMinutesByBlock,
   currentTeachingSessions,
-  validateTeachingSessionAllocations,
   type TeachingSessionDraft,
 } from '@/core/domain/teaching-session'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
@@ -82,29 +82,22 @@ export async function recordTeachingSession(formData: FormData) {
     }
   }
 
-  const validation = validateTeachingSessionAllocations({
-    session,
-    allocations,
-    context: {
-      sectionId,
-      canonicalPlanAssetId: source.assetId,
-      canonicalGenerationId: source.generationId,
-    },
-  })
-  if (!validation.valid) throw new Error(`Registrazione non valida: ${validation.codes.join(', ')}`)
-
-  const repository = new SupabaseTeachingSessionRepository()
-  const receipt = await repository.record({
+  const receipt = await recordTeachingSessionCommand({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
     session,
     allocations,
-  })
+    allocationContext: {
+      sectionId,
+      canonicalPlanAssetId: source.assetId,
+      canonicalGenerationId: source.generationId,
+    },
+  }, new SupabaseTeachingSessionRepository())
 
   revalidatePath('/planner')
   revalidatePath('/piano-annuale')
   revalidatePath(`/classi/${sectionId}`)
-  redirect(`/classi/${encodeURIComponent(sectionId)}?session=${encodeURIComponent(receipt)}`)
+  redirect(`/classi/${encodeURIComponent(sectionId)}?session=${encodeURIComponent(receipt.teachingSessionId)}`)
 }
 
 export async function confirmTeachingBlockCompletion(formData: FormData) {

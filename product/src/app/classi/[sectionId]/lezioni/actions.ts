@@ -2,58 +2,141 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { recordTeachingSession } from '@/core/application/record-teaching-session'
+import { teachingSessionCandidateFromOccurrence } from '@/core/application/teaching-session-candidate'
+import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
+import type { TeachingSessionDraft } from '@/core/domain/teaching-session'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
+import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
+import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { resolveHumanTaskLessonProjection } from '@/core/presentation/human-task-content'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
-
-const RECORDABLE_STATUSES = new Set(['SVOLTO', 'RECUPERATO', 'RIMODULATO'])
+import { hasCurrentBlockSessionOnDate, selectEligibleLessonOccurrence } from './lesson-registration-model'
 
 export async function recordLessonExecution(formData: FormData) {
   const sectionId = requiredText(formData, 'sectionId')
   const blockId = requiredText(formData, 'blockId').toUpperCase()
-  const status = requiredText(formData, 'status').toUpperCase()
+  const localDate = requiredDate(formData, 'localDate')
+  const actualMinutes = positiveInt(formData, 'actualMinutes')
+  const registrationKey = requiredUuid(formData, 'registrationKey')
   const evidenceNote = optionalNote(formData.get('evidenceNote'))
+  const today = currentRomeDate()
 
-  if (!RECORDABLE_STATUSES.has(status)) throw new Error('Unsupported lesson outcome')
+  if (localDate > today) throw new Error('Teaching session date cannot be in the future')
 
-  const workspaceRepository = new SupabaseWorkspaceRepository()
-  const context = await workspaceRepository.getCurrentContext()
+  const context = await new SupabaseWorkspaceRepository().getCurrentContext()
   if (!context?.academicYear) throw new Error('Active academic year required')
 
-  const repository = new SupabaseAnnualPlanExecutionRepository()
-  const snapshot = await repository.list(context.workspace.id, context.academicYear.id)
+  const annual = new SupabaseAnnualPlanExecutionRepository()
+  const snapshot = await annual.list(context.workspace.id, context.academicYear.id)
   const section = snapshot.sections.find((item) => item.id === sectionId)
   if (!section) throw new Error('Section is outside the active annual plan')
 
   const grade = GRADE_UI[section.grade]
   const block = buildBlocks(grade).find((item) => item.id === blockId)
   if (!block) throw new Error('Block is outside the canonical annual plan')
-  if (!resolveHumanTaskLessonProjection(grade, block)) throw new Error('Human-task lesson projection is not available for this block')
+  const projection = resolveHumanTaskLessonProjection(grade, block)
+  if (!projection) throw new Error('Human-task lesson projection is not available for this block')
 
   const source = CANONICAL_PLAN_SOURCES[grade]
-  const existingProgress = snapshot.progress.find((entry) =>
-    entry.sectionId === section.id &&
-    entry.canonicalGenerationId === source.generationId &&
-    entry.blockId === block.id,
+  const teachingRepository = new SupabaseTeachingSessionRepository()
+  const temporalProjection = new TemporalProjectionService(
+    new SupabaseTimetableProjectionReadRepository(),
+    new SupabaseCalendarProjectionReadRepository(),
   )
+  const [teaching, day] = await Promise.all([
+    teachingRepository.listBySection(context.workspace.id, context.academicYear.id, sectionId),
+    temporalProjection.projectDay({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      localDate,
+    }),
+  ])
 
-  await repository.saveProgress({
-    workspaceId: context.workspace.id,
-    academicYearId: context.academicYear.id,
+  const occurrence = selectEligibleLessonOccurrence({
+    occurrences: day.occurrences,
+    teaching,
     sectionId,
-    canonicalPlanAssetId: source.assetId,
-    canonicalGenerationId: source.generationId,
-    blockId,
-    status: status as 'SVOLTO' | 'RECUPERATO' | 'RIMODULATO',
-    executedOn: existingProgress?.executedOn ?? currentRomeDate(),
-    evidenceNote,
+    nowMinutes: localDate === today ? currentRomeMinutes() : 24 * 60,
   })
 
+  if (!occurrence && hasCurrentBlockSessionOnDate({
+    teaching,
+    canonicalGenerationId: source.generationId,
+    blockId,
+    localDate,
+  })) {
+    throw new Error('Questa lezione risulta già registrata per la data indicata. Apri la classe per correggere o aggiungere una sessione distinta.')
+  }
+
+  let session: TeachingSessionDraft
+  if (occurrence) {
+    const candidate = teachingSessionCandidateFromOccurrence(occurrence)
+    session = {
+      ...candidate,
+      actualMinutes,
+      evidenceNote,
+      source: {
+        ...candidate.source,
+        provenance: [
+          ...candidate.source.provenance,
+          `lesson_workspace:${sectionId}:${blockId}`,
+          `canonical_generation:${source.generationId}`,
+          `registration_key:${registrationKey}`,
+        ],
+      },
+    }
+  } else {
+    session = {
+      sectionId,
+      disciplineId: null,
+      localDate,
+      plannedStartAt: null,
+      plannedEndAt: null,
+      plannedMinutes: projection.durationMinutes,
+      actualMinutes,
+      evidenceNote,
+      source: {
+        sourceKind: 'MANUAL',
+        projectedOccurrenceLogicalId: null,
+        timetableVersionId: null,
+        timetableSlotId: null,
+        calendarState: null,
+        provenance: [
+          `manual_session:${localDate}`,
+          `section:${sectionId}`,
+          `lesson_workspace:${sectionId}:${blockId}`,
+          `canonical_generation:${source.generationId}`,
+          `registration_key:${registrationKey}`,
+        ],
+      },
+    }
+  }
+
+  const receipt = await recordTeachingSession({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    session,
+    allocations: [{
+      blockId,
+      minutes: actualMinutes,
+      canonicalPlanAssetId: source.assetId,
+      canonicalGenerationId: source.generationId,
+    }],
+    allocationContext: {
+      sectionId,
+      canonicalPlanAssetId: source.assetId,
+      canonicalGenerationId: source.generationId,
+    },
+  }, teachingRepository)
+
+  revalidatePath('/planner')
+  revalidatePath('/piano-annuale')
   revalidatePath(`/classi/${sectionId}`)
   revalidatePath(`/classi/${sectionId}/lezioni/${blockId}`)
-  revalidatePath('/piano-annuale')
-  redirect(`/classi/${encodeURIComponent(sectionId)}?recorded=${encodeURIComponent(blockId)}`)
+  redirect(`/classi/${encodeURIComponent(sectionId)}?session=${encodeURIComponent(receipt.teachingSessionId)}`)
 }
 
 function requiredText(formData: FormData, name: string) {
@@ -62,11 +145,31 @@ function requiredText(formData: FormData, name: string) {
   return value.trim()
 }
 
+function requiredDate(formData: FormData, name: string) {
+  const value = requiredText(formData, name)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error(`${name} invalid`)
+  return value
+}
+
+function requiredUuid(formData: FormData, name: string) {
+  const value = requiredText(formData, name).toLowerCase()
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)) {
+    throw new Error(`${name} invalid`)
+  }
+  return value
+}
+
+function positiveInt(formData: FormData, name: string) {
+  const value = Number(requiredText(formData, name))
+  if (!Number.isInteger(value) || value <= 0 || value > 1440) throw new Error(`${name} invalid`)
+  return value
+}
+
 function optionalNote(value: FormDataEntryValue | null) {
   if (typeof value !== 'string') return null
   const note = value.trim()
   if (!note) return null
-  if (note.length > 2000) throw new Error('Evidence note exceeds 2000 characters')
+  if (note.length > 4000) throw new Error('Evidence note exceeds 4000 characters')
   return note
 }
 
@@ -79,4 +182,15 @@ function currentRomeDate() {
   }).formatToParts(new Date())
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
   return `${values.year}-${values.month}-${values.day}`
+}
+
+function currentRomeMinutes() {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Rome',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date())
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return Number(values.hour) * 60 + Number(values.minute)
 }

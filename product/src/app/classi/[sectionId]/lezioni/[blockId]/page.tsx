@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
@@ -151,6 +152,8 @@ export default async function LessonWorkspacePage({
           block={block}
           projection={projection}
           progress={progressView}
+          defaultLocalDate={currentRomeDate()}
+          registrationKey={randomUUID()}
         />
       ) : (
         <LessonPrepareClient
@@ -171,4 +174,15 @@ export default async function LessonWorkspacePage({
 function asMode(value: string | undefined): LessonWorkspaceMode {
   if (value === 'teach' || value === 'observe' || value === 'record') return value
   return 'prepare'
+}
+
+function currentRomeDate() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Rome',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return `${values.year}-${values.month}-${values.day}`
 }
