@@ -27,9 +27,9 @@ test('Journey: Lezione → Registra → Fatto senza modello interno', async ({ p
 
   await expect(closeCard, 'Il presenter docente non deve esporre il Product Model.').not.toContainText(/TeachingSession|AnnualPlanBlockProgress|EvidenceReference|Piano annuale:\s|attribuisce i minuti a B01/)
 
-  const primaryActions = closeCard.locator('button.primary')
-  await expect(primaryActions, 'UX-0D richiede una sola CTA primaria visibile.').toHaveCount(1)
-  await expect(primaryActions).toHaveText(/Registra e torna alla classe/)
+  const primaryAction = closeCard.getByRole('button', { name: 'Registra e torna alla classe' })
+  await expect(primaryAction, 'UX-0D richiede una sola CTA primaria visibile.').toHaveCount(1)
+  await expect(primaryAction).toBeVisible()
 
   const beforeRegister = closeCard.locator('details').filter({ hasText: 'Prima di registrare' }).first()
   await expect(beforeRegister).toBeVisible()
