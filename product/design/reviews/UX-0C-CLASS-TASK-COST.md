@@ -4,6 +4,10 @@ Parent: #368
 Slice: #376  
 Baseline: `develop@333526c02ac3209f743a13db8b0746baa22457f1`
 
+## Design classification
+
+**COMPATIBLE** — UX-0C semplifica la gerarchia cognitiva della superficie Classe riusando AppShell, `classLessonFocus`, `humanTaskSecondary`, card e disclosure già canoniche. Non introduce nuovi token, nuove route, un nuovo linguaggio visuale o nuove autorità di dominio.
+
 ## Obiettivo umano
 
 Quando il docente entra in una Classe deve poter rispondere senza conoscere il modello interno:
