@@ -46,10 +46,18 @@ jobs:
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
       P6_ROUTE_BUDGET_MS: 2500
       P6_P95_BUDGET_MS: 1800
+      P6_TESTED_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - name: Require governed AAL2 E2E credential
         run: test -n "${E2E_EMAIL:-}" && test -n "${E2E_PASSWORD:-}" && test -n "${E2E_TOTP_SECRET:-}"
-      - uses: actions/checkout@v6
+      - name: Checkout exact tested PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Verify exact tested PR head
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$P6_TESTED_SHA"
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -98,10 +106,11 @@ jobs:
         with:
           script: |
             const ok = process.env.JOB_STATUS === 'success'
+            const testedSha = context.payload.pull_request?.head?.sha || context.sha
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: context.sha,
+              sha: testedSha,
               state: ok ? 'success' : 'failure',
               context: 'p6-performance/application',
               description: ok ? 'Baseline performance applicativa entro budget' : 'Baseline performance applicativa fuori budget',
