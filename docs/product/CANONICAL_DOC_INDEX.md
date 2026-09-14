@@ -1,312 +1,154 @@
 # DOCENTE OS — Canonical Documentation Index
 
 Data: **2026-09-14**  
-Stato: **CANONICAL**
+Stato: **CANONICAL CANDIDATE / V1 CONVERGENCE**
 
 ## Ordine di autorità
 
-Quando due documenti sembrano divergere, applicare questo ordine:
+Quando due documenti divergono, applicare questo ordine:
 
 1. **Security / RLS / domain invariants**;
 2. **ADR accettate**;
-3. **stato corrente e programma di maturità**;
-4. **Product Experience Masterplan**;
-5. **specifiche canoniche di prodotto e di composizione dominio**;
-6. **Human Experience Contract + Product Simplification + contratti di esperienza verticali**;
-7. **Design System V2 + Brand Identity + Design Governance**;
-8. **specifiche verticali di modulo**;
-9. documenti storici / implementation notes.
+3. **`docs/product/PROJECT_STATUS_CURRENT.md`** — stato operativo corrente;
+4. **`docs/product/TEACHER_OS_V1_PRODUCT_CONVERGENCE_CANONICAL.md`** — direzione V1;
+5. **`docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md`** — esperienza e programma prodotto;
+6. **specifiche canoniche di architettura e composizione dominio**;
+7. **Human Experience / Product Simplification / contratti verticali**;
+8. **Design System / Brand / Design Governance**;
+9. documenti storici e implementation notes.
 
-`product/design/PRODUCT-SIMPLIFICATION.md` governa il costo cognitivo e operativo dei journey utente, ma non può prevalere su sicurezza, invarianti di dominio, ADR, stato/maturità, Masterplan o specifiche canoniche di prodotto. All'interno dell'esperienza utente prevale sulle scelte puramente estetiche o sulle specifiche di modulo quando queste introducono complessità non necessaria al task.
+La storia non viene cancellata. I documenti precedenti restano evidence, ma non prevalgono sullo stato CURRENT e sulla convergenza V1 quando descrivono una roadmap ormai superata.
 
-Per il solo **stato operativo corrente** la fonte sintetica autorevole è `docs/product/PROJECT_STATUS_CURRENT.md`.
+## V1 — Teacher Operating System
 
-Per la **maturità M4→M5** le fonti autorevoli sono:
+Fonti primarie:
 
-- `docs/product/SYSTEM_MATURITY_AUDIT_2026-09-12.md`;
-- `docs/product/M5_READINESS_MATRIX_2026-09-12.md`.
+- `docs/product/TEACHER_OS_V1_PRODUCT_CONVERGENCE_CANONICAL.md` — identità del prodotto, Teacher Moment, Today+Next, Lesson Brief, copilota, TAR e programma V1-A→V1-E;
+- `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — masterplan esperienza aggiornato alla convergenza V1;
+- `docs/product/TEACHER_AI_COPILOT_PRODUCT_DIRECTION.md` — tesi del copilota e bisogni del docente nell'era AI;
+- `docs/architecture/CONTEXTUAL_VOICE_CAPTURE_SPEC.md` — voce come input contestuale del copilota;
+- `docs/architecture/INSTITUTIONAL_INTEGRATION_CONFIGURATOR_CANONICAL.md` — Google Workspace / Microsoft 365 / local-first / hybrid governati da policy istituzionale;
+- `docs/engineering/FAST_FEEDBACK_TEST_STRATEGY_V1.md` — FAST / MERGE / NIGHTLY / RELEASE;
+- issue `#387` — programma di convergenza;
+- issue `#383` — HUMAN_USE che ha prodotto `FRICTION / REWORK_REQUIRED`;
+- issue `#385` — Contextual Voice Capture / professional gap confirmed.
 
-Per la **sustained pilot evidence** le fonti autorevoli sono:
+Formula V1:
 
-- `docs/product/SUSTAINED_PILOT_EVIDENCE_CANONICAL.md`;
-- `ops/pilot-evidence-policy.json`;
-- `ops/pilot-evidence-ledger.json`.
+**Teacher Moment → contesto → prossimo passo → copilota → conferma → traccia**
 
-Per la **WCAG 2.2 AA accessibility assurance** le fonti autorevoli sono:
+Principio:
 
-- `docs/product/WCAG_2_2_AA_ASSURANCE_CANONICAL.md`;
-- `ops/wcag22-aa-assurance.json`;
-- `.github/scripts/validate-wcag22-aa-assurance.mjs`;
-- `.github/workflows/wcag22-aa-assurance.yml`;
-- `product/e2e/experience/accessibility.spec.mjs`.
-
-Un run automatico verde non costituisce da solo dichiarazione di conformità WCAG 2.2 AA; prevalgono i criteri di chiusura e le receipt definiti nel contratto canonico M5-03.
-
-Per la **OWASP ASVS 5.0 security assurance** le fonti autorevoli sono:
-
-- `docs/product/ASVS_5_0_ASSURANCE_CANONICAL.md`;
-- `ops/asvs50-assurance.json`;
-- `ops/mfa-v6-3-3-closure-receipt.json` per la receipt provider/runtime e umana di V6.3.3;
-- `.github/scripts/validate-asvs50-assurance.mjs`;
-- `.github/workflows/asvs50-assurance.yml`;
-- `.github/workflows/dependency-security.yml` per la cadence delle dipendenze.
-
-M5-04 usa la baseline stabile **ASVS 5.0.0**, target L2, ma mantiene `verificationClaim=false` finché la mappatura requisito-per-requisito non è completa e tutti i gap L1/L2 applicabili non sono chiusi con receipt. La chiusura verificata dei finding prioritari V3.4.3, V5.2.2 e V6.3.3 non equivale a una verifica complessiva ASVS L2.
-
-Per **Account e sicurezza** le fonti canoniche verticali sono:
-
-- `docs/architecture/ACCOUNT_SECURITY_CANONICAL_SPEC.md` — boundary di sviluppo, rotte, AAL2, redirect, password, MFA, sessioni e test;
-- `docs/product/ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md` — significato utente, gerarchia delle azioni, stati e confine con Impostazioni;
-- `docs/product/ASVS_5_0_ASSURANCE_CANONICAL.md` — requisiti di assurance superiori;
-- `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — collocazione della superficie nel prodotto.
-
-Per **versioning, release candidate e promozione** le fonti autorevoli sono:
-
-- `docs/product/RELEASE_ENGINEERING_CANONICAL.md`;
-- `ops/release-engineering-policy.json`;
-- `ops/production-promotion-contract.json`;
-- `ops/production-readiness-review.json`;
-- `ops/production-release-receipt.json`;
-- `CHANGELOG.md`.
-
-`PROJECT_HEALTH.md` è soltanto un historical pointer. I file `PROJECT_STATUS_YYYY-MM-DD.md` e gli audit datati precedenti preservano la storia e non prevalgono sullo stato CURRENT.
+> **La complessità appartiene al sistema; l'attenzione deve restare al docente e agli studenti.**
 
 ## Core architecture
 
-- `docs/architecture/ADR-001-product-stack.md` — stack e confini fondamentali.
-- `docs/architecture/ADR-002-experience-platform.md` — component platform, assistant layer e hosting operativo.
-- `docs/architecture/STRUCTURE.md` — struttura generale repository/prodotto.
-- `docs/architecture/P1_PERSISTENCE_IDENTITY.md` — persistenza/identità.
-- `docs/architecture/P2_PLANNER.md` — Attività/Oggi e `PlannerTask`.
-- `docs/architecture/KB_INGESTION.md` — ingestione Conoscenza.
-- `docs/architecture/SETTINGS_CANONICAL_SPEC.md` — master data e invarianti delle Impostazioni.
-- `docs/architecture/ACCOUNT_SECURITY_CANONICAL_SPEC.md` — identità di accesso, MFA, password e sessioni; separato dal dominio professionale.
-- `docs/architecture/TIMETABLE_CANONICAL_SPEC.md` — Orario e sue entità verticali.
-- `docs/architecture/WORK_TIME_MENTAL_MODEL.md` — distinzione fra Attività, Piano annuale, Orario, Calendario e Oggi.
-- `docs/architecture/TEMPORAL_COMPOSITION_CANONICAL_SPEC.md` — Orario e Calendario indipendenti; Temporal Projection come unico livello di composizione autorizzato.
-- `docs/architecture/AI_COLLABORATION_CANONICAL_SPEC.md` — collaborazione AI e human-in-the-loop.
-
-### Regola temporale
-
-Per ogni lavoro T3/T4:
-
-1. `WORK_TIME_MENTAL_MODEL.md` governa il significato per l'utente;
-2. `TEMPORAL_COMPOSITION_CANONICAL_SPEC.md` governa le dipendenze tra Orario e Calendario;
-3. `TIMETABLE_CANONICAL_SPEC.md` governa le entità interne dell'Orario.
-
-Sono vietate dipendenze dirette `Timetable -> Calendar` e `Calendar -> Timetable`; la composizione resta confinata al servizio di Temporal Projection.
+- `docs/architecture/ADR-001-product-stack.md` — stack e confini fondamentali;
+- `docs/architecture/ADR-002-experience-platform.md` — experience platform e assistant layer;
+- `docs/architecture/STRUCTURE.md` — struttura repository/prodotto;
+- `docs/architecture/P1_PERSISTENCE_IDENTITY.md` — persistenza/identità;
+- `docs/architecture/P2_PLANNER.md` — Planner/Oggi;
+- `docs/architecture/KB_INGESTION.md` — Knowledge ingestion;
+- `docs/architecture/SETTINGS_CANONICAL_SPEC.md` — contesto professionale personale;
+- `docs/architecture/ACCOUNT_SECURITY_CANONICAL_SPEC.md` — account, password, MFA e sessioni;
+- `docs/architecture/TIMETABLE_CANONICAL_SPEC.md` — Orario;
+- `docs/architecture/WORK_TIME_MENTAL_MODEL.md` — significato di Attività, Piano, Orario, Calendario e Oggi;
+- `docs/architecture/TEMPORAL_COMPOSITION_CANONICAL_SPEC.md` — composizione temporale;
+- `docs/architecture/AI_COLLABORATION_CANONICAL_SPEC.md` — AI collaboration e human-in-the-loop;
+- `docs/architecture/CONTEXTUAL_VOICE_CAPTURE_SPEC.md` — voice capture;
+- `docs/architecture/INSTITUTIONAL_INTEGRATION_CONFIGURATOR_CANONICAL.md` — policy/provider istituzionali.
 
 ## Product e maturità
 
-- `docs/product/PROJECT_STATUS_CURRENT.md` — **stato sintetico corrente: runtime, capability, gate, maturità e residui**.
-- `docs/product/SYSTEM_MATURITY_AUDIT_2026-09-12.md` — **audit canonico M4 avanzato e benchmark verso M5**.
-- `docs/product/M5_READINESS_MATRIX_2026-09-12.md` — **requisito → evidenza → stato → gap → criterio di chiusura**.
-- `docs/product/SUSTAINED_PILOT_EVIDENCE_CANONICAL.md` — **regole M5-02 per evidence longitudinale, journey critiche, privacy e anti-selection-bias**.
-- `docs/product/WCAG_2_2_AA_ASSURANCE_CANONICAL.md` — **contratto M5-03 per matrice WCAG 2.2 AA, automazione, receipt manuali e assistive technology**.
-- `docs/product/ASVS_5_0_ASSURANCE_CANONICAL.md` — **contratto M5-04 per target L2, mapping requisito-evidenza, gap security e provider/runtime receipts**.
-- `docs/product/RELEASE_ENGINEERING_CANONICAL.md` — **SemVer, RC immutabili, certificazione, promozione e rollback**.
-- `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — north star e programma X0–X6; include Account e sicurezza fra le superfici canoniche.
-- `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` — tono, microcopy e grammatica collaborativa.
-- `docs/product/ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md` — **contratto utente per Account, password, MFA e sessioni**.
-- `docs/product/X4A_CERTIFICATION_2026-08-24.md` — certificazione Beta della prima write assistita `PLANNER_CREATE_TASK`.
-- `docs/product/HOME_DAILY_COCKPIT_CANONICAL_SPEC.md` — Home come cabina di regia giornaliera.
-- `docs/product/SETTINGS_EXPERIENCE_CONTRACT.md` — contratto di configurazione guidata.
-- `docs/product/SETTINGS_CONTEXT_DISCLOSURE_NOTE.md` — regola “contesto completo, esposizione minima”.
+- `docs/product/PROJECT_STATUS_CURRENT.md` — stato sintetico autorevole;
+- `docs/product/TEACHER_OS_V1_PRODUCT_CONVERGENCE_CANONICAL.md` — programma di prodotto corrente;
+- `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — masterplan;
+- `docs/product/TEACHER_AI_COPILOT_PRODUCT_DIRECTION.md` — direzione AI/copilota;
+- `docs/product/SYSTEM_MATURITY_AUDIT_2026-09-12.md` — audit storico M4→M5;
+- `docs/product/M5_READINESS_MATRIX_2026-09-12.md` — readiness/evidence;
+- `docs/product/SUSTAINED_PILOT_EVIDENCE_CANONICAL.md` — sustained pilot;
+- `docs/product/WCAG_2_2_AA_ASSURANCE_CANONICAL.md` — accessibility assurance;
+- `docs/product/ASVS_5_0_ASSURANCE_CANONICAL.md` — security assurance;
+- `docs/product/RELEASE_ENGINEERING_CANONICAL.md` — versioning/release/promotion;
+- `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` — tono e microcopy;
+- `docs/product/HOME_DAILY_COCKPIT_CANONICAL_SPEC.md` — riferimento storico/verticale Home, subordinato a Today+Next;
+- `docs/product/SETTINGS_EXPERIENCE_CONTRACT.md` — esperienza Impostazioni;
+- `docs/product/ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md` — esperienza Account.
 
-### Regola M5
+## Human experience e semplificazione
 
-Durante il programma M5 una nuova feature deve essere classificata come:
+- `product/design/HUMAN-EXPERIENCE-CONTRACT.md`;
+- `product/design/PRODUCT-SIMPLIFICATION.md`;
+- `docs/product/UX0_PRODUCT_SIMPLIFICATION_CANONICAL.md` quando integrato dalla relativa branch governance;
+- `product/design/VISUAL-ACCEPTANCE.md`;
+- `product/design/MOBILE-RULES.md`;
+- `product/design/ACCESSIBILITY-RULES.md`;
+- `product/design/reviews/` — evidence append-only.
 
-- `MATURITY_REQUIRED`;
-- `PILOT_REQUIRED`;
-- `PROFESSIONAL_GAP_CONFIRMED`;
-- `DEFERRED`.
+Regola:
 
-Il default senza evidenza è `DEFERRED`.
-
-La sustained pilot evidence deve essere append-only, non selettiva e Tier-1-safe. Un gate macchina non equivale a `HUMAN_USE`; nessuna soglia SLO può essere congelata prima di una baseline osservata sufficiente.
-
-Una release candidate non equivale a una promozione Production. `develop` non è Production. Le release formali seguono `RELEASE_ENGINEERING_CANONICAL.md` e il contratto Production esistente.
-
-M5-03 mantiene `conformanceClaim=false` finché tutti i criteri A/AA applicabili non dispongono dell'evidenza richiesta; axe/HVA sono controlli di assurance e non certificatori.
-
-M5-04 mantiene `verificationClaim=false` finché la mappatura L1/L2 applicabile non è completa; framework, provider gestiti, RLS o HTTPS non costituiscono da soli una verifica ASVS.
-
-### Regola Home
-
-Per ogni lavoro sulla Home `/`:
-
-1. `HOME_DAILY_COCKPIT_CANONICAL_SPEC.md` governa responsabilità e composizione del contesto;
-2. `WORK_TIME_MENTAL_MODEL.md` governa il significato di Oggi, Orario, Calendario, Piano annuale e Attività;
-3. `TEMPORAL_COMPOSITION_CANONICAL_SPEC.md` governa la composizione temporale;
-4. Design System V2, Brand Identity e Design Governance governano anatomia, responsive behavior e identità;
-5. `DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` governa tono e microcopy;
-6. `product/design/PRODUCT-SIMPLIFICATION.md` governa il costo del task e impedisce che la Home diventi un indice del Product Model.
-
-La Home non introduce una fonte di verità parallela a TeachingSession, Planner, Orario, UDA o materiali.
-
-### Regola Impostazioni
-
-Per ogni lavoro su `/impostazioni`:
-
-1. `SETTINGS_CANONICAL_SPEC.md` governa persistenza, sorgenti dati e invarianti;
-2. `SETTINGS_EXPERIENCE_CONTRACT.md` governa ordine, stati e feedback;
-3. `SETTINGS_CONTEXT_DISCLOSURE_NOTE.md` governa la progressive disclosure;
-4. il Language & Collaboration System governa tono e microcopy.
-
-È vietato introdurre una seconda Cattedra: Impostazioni e Orario devono usare gli stessi `teaching_assignments`.
-
-**Account e sicurezza è una superficie distinta da `/impostazioni`**: identità, credenziali, fattori MFA e sessioni non devono essere confusi con il contesto professionale del docente.
-
-### Regola Account e sicurezza
-
-Per ogni lavoro su `/account`, `/account/mfa`, `/mfa`, `/imposta-password` o sui relativi boundary auth:
-
-1. Security / RLS / domain invariants prevalgono sempre;
-2. `ASVS_5_0_ASSURANCE_CANONICAL.md` governa assurance e receipt;
-3. `ACCOUNT_SECURITY_CANONICAL_SPEC.md` governa rotte, AAL2, redirect, password, fattori e sessioni;
-4. `ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md` governa significato e comportamento percepito;
-5. Product Experience Masterplan governa il rapporto con le altre superfici;
-6. Human Interaction Model, Design System e Language & Collaboration governano l'interazione.
-
-Ogni mutazione password richiede AAL2; i parametri URL non sono autorità; l'ultimo fattore verificato non può essere rimosso dalla UI; i segreti non entrano in repository, log, receipt o documentazione.
-
-## Human + Visual Acceptance
-
-- `product/design/HUMAN-EXPERIENCE-CONTRACT.md` — contratto Human.
-- `product/design/PRODUCT-SIMPLIFICATION.md` — **contratto cross-surface per Product Model ≠ User Model, WHY NOW?, una CTA primaria per stato e Task Cost before→after**.
-- `product/design/VISUAL-ACCEPTANCE.md` — procedura di accettazione visuale.
-- `product/design/MOBILE-RULES.md` — regole mobile.
-- `product/design/ACCESSIBILITY-RULES.md` — regole di accessibilità correnti.
-- `product/design/reviews/` — decisioni visuali/UX datate e closure evidence.
-
-Le review datate sono append-only. Lo stato sintetico corrente dei finding deve essere riportato in `PROJECT_STATUS_CURRENT.md` e, quando riguarda M5, nella readiness matrix. I finding osservati durante il pilot devono inoltre produrre evidence nella ledger M5-02 quando rientrano nel perimetro.
-
-La matrice WCAG e il suo gate non sostituiscono HVA: HVA governa l'accettazione dell'esperienza, M5-03 governa la tracciabilità requisito-evidenza WCAG e le prove manuali/assistive technology. Analogamente, un HVA verde non sostituisce il `Task Cost` di Product Simplification: misurano proprietà diverse.
+**Product Model ≠ User Model.** Il Product Model resta rigoroso; l'esperienza ordinaria è organizzata per Teacher Moment e Next Step.
 
 ## Design
 
-- `docs/design/DESIGN_SYSTEM_V2_CANONICAL.md` — design system corrente.
-- `docs/design/BRAND_IDENTITY_CANONICAL.md` — identità, simbolo, palette, tipografia e motion.
-- `docs/design/DESIGN_GOVERNANCE_CANONICAL.md` — regole trasversali vincolanti.
-- `docs/design/DESIGN_POLICY_GATE_DPG1.md` — gate deterministico sul diff.
-- `docs/design/DESIGN_CONFORMANCE_DPG2.md` — ratchet full-runtime.
-- `product/design/DESIGN_DEBT_BASELINE.json` — baseline macchina DPG-2 monotona.
-- `product/design/DESIGN_DEBT_RESIDUALS.md` — residui intenzionali; non è una allowlist.
-- `docs/design/DESIGN_SYSTEM_V1.md` — riferimento storico.
+- `docs/design/DESIGN_SYSTEM_V2_CANONICAL.md`;
+- `docs/design/BRAND_IDENTITY_CANONICAL.md`;
+- `docs/design/DESIGN_GOVERNANCE_CANONICAL.md`;
+- `docs/design/DESIGN_POLICY_GATE_DPG1.md`;
+- `docs/design/DESIGN_CONFORMANCE_DPG2.md`;
+- `product/design/DESIGN_DEBT_BASELINE.json`;
+- `product/design/DESIGN_DEBT_RESIDUALS.md`.
 
-### Regola Brand e Design
+Design e brand non possono reintrodurre complessità che compete con il task.
 
-Per ogni lavoro visuale o cross-surface:
+## Institutional integration
 
-1. Design System V2 governa token, anatomia, accessibilità e responsive behavior;
-2. Brand Identity governa significato, simbolo e applicazione del brand;
-3. Design Governance governa le regole trasversali;
-4. DPG-1 governa il diff;
-5. DPG-2 governa il ratchet sull'intero runtime;
-6. Language & Collaboration governa il linguaggio;
-7. Product Simplification governa la riduzione del costo del task, subordinatamente alle autorità superiori definite in questo indice.
+`SETTINGS_CANONICAL_SPEC.md` governa il **contesto professionale personale** del docente.
 
-La geometria del simbolo rispetto al riferimento approvato il 2026-09-11 è un invariante canonico. Una PR visuale deve dichiarare `COMPATIBLE`, `SUPERSEDING` o `BREAKING` e superare i gate pertinenti.
+`INSTITUTIONAL_INTEGRATION_CONFIGURATOR_CANONICAL.md` governa il livello superiore:
+
+`istituto → policy digitale → provider/scopes/data boundary → capability disponibili`
+
+Google Workspace e Microsoft 365 sono provider di capability. Nessun provider diventa il modello mentale del prodotto.
+
+## AI e voce
+
+Ordine:
+
+1. `AI_COLLABORATION_CANONICAL_SPEC.md` — boundary AI generale;
+2. `TEACHER_AI_COPILOT_PRODUCT_DIRECTION.md` — ruolo professionale del copilota;
+3. `CONTEXTUAL_VOICE_CAPTURE_SPEC.md` — input voce;
+4. specifiche verticali delle capability.
+
+Una proposta AI non diventa record canonico senza il boundary e la conferma richiesti.
+
+## Test e assurance
+
+La strategia corrente è `Fast by default, deep by risk`:
+
+- **FAST** — feedback locale mirato;
+- **MERGE** — critical path e invarianti pertinenti;
+- **NIGHTLY** — full regression/assurance;
+- **RELEASE** — exact SHA, evidence completa applicabile e HUMAN_USE.
+
+Documento: `docs/engineering/FAST_FEEDBACK_TEST_STRATEGY_V1.md`.
+
+Questo cambia **quando** i gate girano, non ciò che proteggono.
 
 ## Release e Production
 
-La disciplina di release è separata dalla semplice integrazione in `develop`.
+Ordine:
 
-Ordine canonico:
+`develop → release candidate exact SHA → gate applicabili → CERTIFIED → decisione umana → Production promotion → runtime smoke → receipt`
 
-`develop → release candidate exact SHA → gate applicabili → CERTIFIED → decisione umana → Production promotion → runtime smoke → release receipt`.
+Una PR verde o una Beta funzionante non equivalgono a Production.
 
-Vincoli:
+## Regola finale
 
-- SemVer per le release formalmente emesse;
-- major `0` durante M4;
-- `1.0.0` riservata alla decisione M5;
-- tag RC/stable immutabile;
-- nuova modifica dopo freeze = nuova RC;
-- rollback applicativo verso SHA precedentemente certificato;
-- nessun rollback distruttivo automatico di database o Storage.
+La fonte sintetica da consultare per prima è sempre:
 
-## Sustained pilot evidence
+`docs/product/PROJECT_STATUS_CURRENT.md`
 
-Ordine canonico:
+Per decidere cosa costruire dopo, la fonte corrente è:
 
-`evento verificabile → evidence entry append-only → eventuale finding → follow-up → closure evidence → roll-up longitudinale`.
-
-Vincoli:
-
-- nessun dato personale scolastico o di terzi;
-- nessuna telemetria invasiva;
-- nessuna conversione di un machine gate in human-use evidence;
-- successi, attriti, workaround e fallimenti devono essere registrabili con la stessa grammatica;
-- una correzione non cancella l'evidenza originaria;
-- M5-05 può proporre SLI/SLO soltanto dopo una baseline M5-02 osservata sufficiente.
-
-## Accessibility assurance
-
-Ordine canonico:
-
-`criterio WCAG → classificazione → evidence → eventuale finding → correzione → receipt → stato`.
-
-Vincoli:
-
-- 55 criteri A/AA presenti una sola volta nella matrice;
-- `VERIFIED_PASS` solo con receipt specifica;
-- N/A sempre motivato e rivalutato quando cambia il runtime;
-- axe non sostituisce audit manuale né assistive technology;
-- keyboard/focus/reflow e screen reader restano gate separati;
-- `conformanceClaim=false` finché non esiste chiusura completa e deliberata.
-
-## Security assurance
-
-Ordine canonico:
-
-`requisito ASVS 5.0.0 → applicabilità → evidence → finding → hardening → receipt → stato`.
-
-Vincoli:
-
-- target M5-04 = L2;
-- `VERIFIED_PASS` solo con receipt specifiche e requirement-level mapping completa;
-- N/A sempre motivato e riaperto quando cambia il perimetro;
-- controlli Supabase/hosting/provider-managed richiedono evidenza provider/runtime;
-- i finding L1/L2 noti restano espliciti fino alla closure;
-- `verificationClaim=false` finché non esiste una chiusura completa e deliberata.
-
-## Regola di aggiornamento
-
-Ogni slice che modifica una decisione canonica deve:
-
-1. aggiornare prima o insieme il documento pertinente;
-2. dichiarare se la modifica è `COMPATIBLE`, `SUPERSEDING` o `BREAKING` quando applicabile;
-3. non lasciare istruzioni operative incompatibili nel repository;
-4. aggiornare `PROJECT_STATUS_CURRENT.md` quando cambia una macro-capability, il runtime, un gate maggiore o un rischio di maturità;
-5. aggiornare `M5_READINESS_MATRIX_2026-09-12.md` quando cambia lo stato di un gate M5;
-6. aggiornare `CHANGELOG.md` quando il cambiamento è rilevante per release, maturità, sicurezza o operatività;
-7. aggiungere evidence alla ledger M5-02 quando un evento reale rientra nel suo perimetro, senza riscrivere eventi precedenti.
-
-I checkpoint datati preservano la storia e non devono essere riscritti come se fossero stato corrente.
-
-## Regola per agenti di sviluppo
-
-Prima di implementare una slice, leggere almeno:
-
-1. `PROJECT_STATUS_CURRENT.md`;
-2. `M5_READINESS_MATRIX_2026-09-12.md` durante il programma M5;
-3. `product/design/HUMAN-EXPERIENCE-CONTRACT.md` e `product/design/PRODUCT-SIMPLIFICATION.md` quando il lavoro modifica un journey, una CTA, la navigazione, la progressive disclosure o una superficie utente;
-4. `SUSTAINED_PILOT_EVIDENCE_CANONICAL.md` quando il lavoro riguarda evidenza d'uso, incidenti, friction o KPI;
-5. `WCAG_2_2_AA_ASSURANCE_CANONICAL.md` quando il lavoro modifica UI, accessibilità, navigazione, form o interazioni;
-6. `ASVS_5_0_ASSURANCE_CANONICAL.md` quando il lavoro modifica autenticazione, sessioni, autorizzazione, upload, API, configurazione, dati, logging, dipendenze o security controls;
-7. `ACCOUNT_SECURITY_CANONICAL_SPEC.md` e `ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md` quando il lavoro modifica account, login, MFA, password o sessioni;
-8. ADR-001 e ADR-002;
-9. Product Experience Masterplan;
-10. Language & Collaboration System;
-11. Design System V2;
-12. Brand Identity e Design Governance per lavoro visuale;
-13. DPG-1/DPG-2 per lavoro visuale;
-14. la specifica verticale della slice e il relativo contratto di esperienza;
-15. per T3/T4, Work/Time Mental Model e Temporal Composition;
-16. `RELEASE_ENGINEERING_CANONICAL.md` quando il lavoro coinvolge versioni, RC, promozioni o rollback.
-
-Nessun agente deve inferire una nuova architettura da un singolo file runtime quando esiste una decisione canonica esplicita; nessun agente deve inferire lo stato corrente da un checkpoint datato quando esiste `PROJECT_STATUS_CURRENT.md`.
-
-La baseline DPG-2 non è un budget da spendere: è debito da ridurre. La readiness M5 non è un pretesto per feature expansion: è un programma di maturazione verificabile.
+`docs/product/TEACHER_OS_V1_PRODUCT_CONVERGENCE_CANONICAL.md`
