@@ -4,6 +4,7 @@ import {
   type TeachingEvidenceDimensionKey,
   type TeachingObservationDraft,
 } from '@/core/domain/teaching-evidence'
+import { inspectFreeTextForPilot, pilotPrivacyErrorMessage } from '@/core/privacy/anonymization-guard'
 
 export type LessonObservationState = Exclude<ObservationState, 'NOT_OBSERVED'>
 
@@ -11,6 +12,11 @@ export type LessonObservationDraftTransport = {
   dimensionKey: TeachingEvidenceDimensionKey
   state: LessonObservationState
   note: string | null
+}
+
+type LessonObservationStorage = {
+  setItem(key: string, value: string): void
+  removeItem(key: string): void
 }
 
 export const LESSON_OBSERVATION_DIMENSION_OPTIONS: ReadonlyArray<{
@@ -57,6 +63,12 @@ export function normalizeLessonObservationDraft(input: {
     throw new Error('Observation state invalid')
   }
   if (rawNote.length > 1000) throw new Error('Observation note exceeds 1000 characters')
+  if (rawNote) {
+    const privacyResult = inspectFreeTextForPilot(rawNote)
+    if (!privacyResult.allowed) {
+      throw new Error(pilotPrivacyErrorMessage(privacyResult) ?? 'Observation note contains personal data')
+    }
+  }
 
   return {
     dimensionKey: rawDimension as TeachingEvidenceDimensionKey,
@@ -81,6 +93,25 @@ export function parseStoredLessonObservationDraft(raw: string | null): LessonObs
 
 export function serializeLessonObservationDraft(draft: LessonObservationDraftTransport) {
   return JSON.stringify(draft)
+}
+
+export function persistLessonObservationDraft(
+  storage: LessonObservationStorage,
+  storageKey: string,
+  input: { dimensionKey?: unknown; state?: unknown; note?: unknown },
+): LessonObservationDraftTransport | null {
+  const draft = normalizeLessonObservationDraft(input)
+  if (!draft) {
+    try {
+      storage.removeItem(storageKey)
+    } catch {
+      // No observation exists: unavailable browser storage must never block navigation.
+    }
+    return null
+  }
+
+  storage.setItem(storageKey, serializeLessonObservationDraft(draft))
+  return draft
 }
 
 export function toTeachingObservationDraft(

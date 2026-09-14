@@ -5,6 +5,7 @@ import test from 'node:test'
 const actionsSource = readFileSync(new URL('./actions.ts', import.meta.url), 'utf8')
 const closeSource = readFileSync(new URL('./[blockId]/lesson-close-client.tsx', import.meta.url), 'utf8')
 const observeSource = readFileSync(new URL('./[blockId]/lesson-observe-client.tsx', import.meta.url), 'utf8')
+const observationModelSource = readFileSync(new URL('./lesson-observation-model.ts', import.meta.url), 'utf8')
 
 test('Bxx Registra routes through TeachingSession and never writes AnnualPlanBlockProgress directly', () => {
   assert.match(actionsSource, /recordTeachingSession/)
@@ -38,10 +39,22 @@ test('TE-1B observation uses the atomic evidence boundary without inventing Evid
 
 test('TE-1B client carries only the explicit local observation draft into Registra', () => {
   assert.match(observeSource, /normalizeLessonObservationDraft/)
-  assert.match(observeSource, /sessionStorage\.setItem\(storageKey, serializeLessonObservationDraft\(draft\)\)/)
+  assert.match(observeSource, /persistLessonObservationDraft\(window\.sessionStorage/)
   assert.match(closeSource, /name=["']observationDimension["']/)
   assert.match(closeSource, /name=["']observationState["']/)
   assert.match(closeSource, /name=["']observationNote["']/)
+})
+
+test('TE-1B persists authored observation before every supported outbound navigation', () => {
+  const navigationGuards = observeSource.match(/onClick=\{persistBeforeNavigation\}/g) ?? []
+  assert.equal(navigationGuards.length, 3)
+  assert.match(observeSource, /useEffect\(\(\) => \{[\s\S]*persistLessonObservationDraft\(window\.sessionStorage/)
+})
+
+test('TE-1B enforces the existing pilot privacy guard before server-side canonicalization', () => {
+  assert.match(actionsSource, /normalizeLessonObservationDraft/)
+  assert.match(observationModelSource, /inspectFreeTextForPilot/)
+  assert.match(observationModelSource, /pilotPrivacyErrorMessage/)
 })
 
 test('TE-1B clears the local observation draft only after a successful canonical receipt', () => {

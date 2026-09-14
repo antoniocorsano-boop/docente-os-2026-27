@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   normalizeLessonObservationDraft,
   parseStoredLessonObservationDraft,
+  persistLessonObservationDraft,
   serializeLessonObservationDraft,
   toTeachingObservationDraft,
 } from './lesson-observation-model'
@@ -67,5 +68,50 @@ test('observation note is bounded before it reaches the atomic writer', () => {
       note: 'x'.repeat(1001),
     }),
     /Observation note exceeds 1000 characters/,
+  )
+})
+
+test('class-level observation rejects individual student identifiers before canonical persistence', () => {
+  assert.throws(
+    () => normalizeLessonObservationDraft({
+      dimensionKey: 'AUTONOMY',
+      state: 'DEVELOPING',
+      note: 'Studente Mario Rossi richiede una guida iniziale.',
+    }),
+    /nominativo di studente/i,
+  )
+})
+
+test('observation-free navigation is not blocked when browser storage is unavailable', () => {
+  const storage = {
+    setItem() {
+      throw new Error('storage unavailable')
+    },
+    removeItem() {
+      throw new Error('storage unavailable')
+    },
+  }
+
+  assert.equal(
+    persistLessonObservationDraft(storage, 'lesson', { dimensionKey: '', state: '', note: '' }),
+    null,
+  )
+})
+
+test('authored observation fails closed when browser storage cannot preserve it', () => {
+  const storage = {
+    setItem() {
+      throw new Error('storage unavailable')
+    },
+    removeItem() {},
+  }
+
+  assert.throws(
+    () => persistLessonObservationDraft(storage, 'lesson', {
+      dimensionKey: 'WORK_METHOD',
+      state: 'CONSOLIDATED',
+      note: 'La classe conclude la verifica con maggiore autonomia.',
+    }),
+    /storage unavailable/,
   )
 })

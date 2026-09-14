@@ -11,7 +11,7 @@ import {
   LESSON_OBSERVATION_STATE_OPTIONS,
   normalizeLessonObservationDraft,
   parseStoredLessonObservationDraft,
-  serializeLessonObservationDraft,
+  persistLessonObservationDraft,
   type LessonObservationState,
 } from '../lesson-observation-model'
 import type { TeachingEvidenceDimensionKey } from '@/core/domain/teaching-evidence'
@@ -41,6 +41,7 @@ export default function LessonObserveClient({
   const [dimensionKey, setDimensionKey] = useState<'' | TeachingEvidenceDimensionKey>('')
   const [observationState, setObservationState] = useState<'' | LessonObservationState>('')
   const [observationNote, setObservationNote] = useState('')
+  const [draftLoaded, setDraftLoaded] = useState(false)
   const [draftError, setDraftError] = useState<string | null>(null)
   const observedCount = Object.values(observed).filter(Boolean).length
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
@@ -52,30 +53,76 @@ export default function LessonObserveClient({
     const frame = window.requestAnimationFrame(() => {
       try {
         const stored = parseStoredLessonObservationDraft(window.sessionStorage.getItem(storageKey))
-        if (!stored) return
-        setDimensionKey(stored.dimensionKey)
-        setObservationState(stored.state)
-        setObservationNote(stored.note ?? '')
+        if (stored) {
+          setDimensionKey(stored.dimensionKey)
+          setObservationState(stored.state)
+          setObservationNote(stored.note ?? '')
+        }
       } catch {
-        window.sessionStorage.removeItem(storageKey)
+        try {
+          window.sessionStorage.removeItem(storageKey)
+        } catch {
+          // Storage may be unavailable; loading the page must still remain possible.
+        }
+      } finally {
+        setDraftLoaded(true)
       }
     })
     return () => window.cancelAnimationFrame(frame)
   }, [storageKey])
 
-  function carryObservationToRecord(event: MouseEvent<HTMLAnchorElement>) {
+  useEffect(() => {
+    if (!draftLoaded) return
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        persistLessonObservationDraft(window.sessionStorage, storageKey, {
+          dimensionKey,
+          state: observationState,
+          note: observationNote,
+        })
+      } catch {
+        // Keep the authored values in React state. Navigation enforces persistence when needed.
+      }
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [dimensionKey, draftLoaded, observationNote, observationState, storageKey])
+
+  function persistBeforeNavigation(event: MouseEvent<HTMLAnchorElement>) {
+    if (!draftLoaded) {
+      event.preventDefault()
+      setDraftError('Il promemoria locale è ancora in caricamento. Riprova.')
+      return
+    }
+
+    let draft
     try {
-      const draft = normalizeLessonObservationDraft({
+      draft = normalizeLessonObservationDraft({
         dimensionKey,
         state: observationState,
         note: observationNote,
       })
-      if (draft) window.sessionStorage.setItem(storageKey, serializeLessonObservationDraft(draft))
-      else window.sessionStorage.removeItem(storageKey)
-      setDraftError(null)
     } catch (error) {
       event.preventDefault()
       setDraftError(error instanceof Error ? error.message : 'Completa oppure rimuovi l’osservazione prima di continuare.')
+      return
+    }
+
+    if (!draft) {
+      try {
+        window.sessionStorage.removeItem(storageKey)
+      } catch {
+        // Observation-free navigation must not depend on browser storage availability.
+      }
+      setDraftError(null)
+      return
+    }
+
+    try {
+      persistLessonObservationDraft(window.sessionStorage, storageKey, draft)
+      setDraftError(null)
+    } catch {
+      event.preventDefault()
+      setDraftError('Non è possibile conservare l’osservazione nel browser. Riprova senza perdere questa pagina.')
     }
   }
 
@@ -150,9 +197,9 @@ export default function LessonObserveClient({
         </details>
 
         <div className={styles.closeActions}>
-          <Link className={styles.primary} href={recordHref} onClick={carryObservationToRecord}>Chiudi la lezione</Link>
-          <Link href={teachHref}>Torna alla guida</Link>
-          <Link href={classHref}>Esci senza registrare</Link>
+          <Link className={styles.primary} href={recordHref} onClick={persistBeforeNavigation}>Chiudi la lezione</Link>
+          <Link href={teachHref} onClick={persistBeforeNavigation}>Torna alla guida</Link>
+          <Link href={classHref} onClick={persistBeforeNavigation}>Esci senza registrare</Link>
         </div>
       </section>
     </main>
