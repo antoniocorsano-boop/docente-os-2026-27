@@ -94,7 +94,7 @@ test('named student data is blocked before any provider network call', async () 
   const copilot = new OpenAiLessonCopilot('test-key', 'test-model', fetcher)
 
   await assert.rejects(
-    () => copilot.respond({ context, prompt: 'L’alunno Mario Rossi non ha capito la lezione: cosa faccio?' }),
+    () => copilot.respond({ context, prompt: 'Alunno Mario Rossi non ha capito la lezione: cosa faccio?' }),
     (error: Error) => {
       assert.equal(error.name, 'CopilotPrivacyBoundaryError')
       assert.match(error.message, /privacy boundary/)
