@@ -34,24 +34,28 @@ const context: LessonCopilotContext = {
     progressStatus: 'PIANIFICATO',
     preparationPreview: ['Immagine di un paesaggio agricolo.', 'Lavagna o LIM.'],
     remainingPreparationCount: 1,
-    readyTitles: ['Schema input-processo-output'],
+    readyTitles: ['EXTENSION-FREE-TEXT-SECRET'],
     readyCount: 1,
     statusLabel: 'READY_BASE',
   },
 }
 
-test('provider request sends only minimized lesson context and no internal identifiers', async () => {
+function providerResponse() {
+  return new Response(JSON.stringify({
+    output_text: JSON.stringify({
+      actionKind: 'PROPOSE',
+      answerStatus: 'SUPPORTED',
+      text: '**Ho trovato**\nLa lezione riguarda un sistema agricolo.\n\n**Ti propongo**\nPrepara l’immagine e usa il brief disponibile.',
+      evidenceRefs: ['CAN-PLAN-2'],
+    }),
+  }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+}
+
+test('provider request sends only minimized lesson context and no internal or free-form identifiers', async () => {
   let requestBody = ''
   const fetcher: typeof fetch = async (_input, init) => {
     requestBody = String(init?.body ?? '')
-    return new Response(JSON.stringify({
-      output_text: JSON.stringify({
-        actionKind: 'PROPOSE',
-        answerStatus: 'SUPPORTED',
-        text: '**Ho trovato**\nLa lezione riguarda un sistema agricolo.\n\n**Ti propongo**\nPrepara l’immagine e lo schema già disponibile.',
-        evidenceRefs: ['CAN-PLAN-2'],
-      }),
-    }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    return providerResponse()
   }
 
   const copilot = new OpenAiLessonCopilot('test-key', 'test-model', fetcher)
@@ -64,6 +68,40 @@ test('provider request sends only minimized lesson context and no internal ident
   assert.doesNotMatch(requestBody, /year-secret-id/)
   assert.doesNotMatch(requestBody, /section-secret-id/)
   assert.doesNotMatch(requestBody, /projection-secret-id/)
+  assert.doesNotMatch(requestBody, /EXTENSION-FREE-TEXT-SECRET/)
+})
+
+test('contact identifiers in a prompt are redacted before provider transport', async () => {
+  let requestBody = ''
+  const fetcher: typeof fetch = async (_input, init) => {
+    requestBody = String(init?.body ?? '')
+    return providerResponse()
+  }
+  const copilot = new OpenAiLessonCopilot('test-key', 'test-model', fetcher)
+
+  await copilot.respond({ context, prompt: 'Fammi un riepilogo e mandalo a docente@example.com' })
+
+  assert.doesNotMatch(requestBody, /docente@example\.com/)
+  assert.match(requestBody, /dato di contatto rimosso/)
+})
+
+test('named student data is blocked before any provider network call', async () => {
+  let called = false
+  const fetcher: typeof fetch = async () => {
+    called = true
+    return providerResponse()
+  }
+  const copilot = new OpenAiLessonCopilot('test-key', 'test-model', fetcher)
+
+  await assert.rejects(
+    () => copilot.respond({ context, prompt: 'L’alunno Mario Rossi non ha capito la lezione: cosa faccio?' }),
+    (error: Error) => {
+      assert.equal(error.name, 'CopilotPrivacyBoundaryError')
+      assert.match(error.message, /privacy boundary/)
+      return true
+    },
+  )
+  assert.equal(called, false)
 })
 
 test('provider response cannot cite evidence outside the authoritative context', async () => {
