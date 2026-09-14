@@ -124,7 +124,7 @@ export function AppShell({
               })}
               <button
                 type="button"
-                className={cn('dosNavItem', secondaryActive && 'active')}
+                className={cn('dosNavItem', 'rowAction', secondaryActive && 'active')}
                 aria-expanded={mobileMenuOpen}
                 aria-label="Apri altre funzioni"
                 title="Altre funzioni"
