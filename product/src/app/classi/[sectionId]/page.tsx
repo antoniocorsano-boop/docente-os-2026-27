@@ -13,7 +13,7 @@ import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabas
 import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { buildLessonWorkspaceHref, resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
-import { buildTaskAwareKnowledgeHref } from '@/core/presentation/task-continuity'
+import { buildTaskAwareKnowledgeHref, buildTaskAwareKnowledgeListHref } from '@/core/presentation/task-continuity'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes, selectPreparedClassMaterials } from '../class-workspace-model'
 import { presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
@@ -84,8 +84,14 @@ export default async function ClassWorkspacePage({
     ? `${planningHref}&block=${encodeURIComponent(learningFocus.nextBlock.id)}&uda=${encodeURIComponent(learningFocus.nextBlock.uda)}&pack=${encodeURIComponent(learningFocus.nextBlock.pack)}#focus-operativo`
     : planningHref
   const annualPlanHref = `/piano-annuale?section=${encodeURIComponent(summary.sectionId)}`
-  const knowledgeHref = `/knowledge?classLabel=${encodeURIComponent(summary.compactLabel)}`
   const classHref = `/classi/${encodeURIComponent(summary.sectionId)}`
+  const knowledgeHref = buildTaskAwareKnowledgeListHref({
+    mode: 'class',
+    returnTo: classHref,
+    sectionId: summary.sectionId,
+    blockId: learningFocus.nextBlock?.id,
+    classLabel: summary.compactLabel,
+  })
 
   const requestedRecordedId = query.recorded?.trim().toUpperCase() ?? null
   const recordedBlock = requestedRecordedId
