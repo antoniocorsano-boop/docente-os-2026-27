@@ -16,6 +16,7 @@ import { SupabaseWorkspacePinnedResourceRepository } from '@/core/infrastructure
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { resolveHomeDailyContext, type HomeDailyContext, type HomeDailyLesson } from '@/core/presentation/home-daily-context'
 import { buildLessonWorkspaceHref, resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
+import { resolveNextTeacherMoment, type TeacherMoment } from '@/core/presentation/teacher-moment'
 
 export const dynamic = 'force-dynamic'
 
@@ -74,41 +75,50 @@ export default async function HomePage() {
     timetableSlots: timetableProjection.slots,
     sessions,
   })
+  const nextTeacherMoment = resolveNextTeacherMoment({
+    fromDate: moment.date,
+    timetableVersions: timetableProjection.versions,
+    timetableSlots: timetableProjection.slots,
+    calendarDays: calendarProjection.days,
+  })
 
   const priorityTask = selectPriorityTask(tasks, moment.date)
+  const immediateTask = priorityTask && taskNeedsAttentionNow(priorityTask, moment.date) ? priorityTask : null
   const dailyPrimary = resolveDailyPrimary(dailyContext, annualSnapshot)
+  const nextMomentPrimary = resolveNextMomentPrimary(nextTeacherMoment, annualSnapshot)
   const primary = dailyPrimary
-    ?? (priorityTask
+    ?? (immediateTask
       ? {
           kind: 'PLANNER' as const,
           eyebrow: 'ADESSO · ATTIVITÀ',
-          title: priorityTask.title,
-          description: taskReason(priorityTask, moment.date),
+          title: immediateTask.title,
+          description: taskReason(immediateTask, moment.date),
           href: '/planner',
           action: 'Apri Oggi',
-          meta: [priorityLabel(priorityTask.priority), priorityTask.dueAt ? `Scade ${formatShortDate(priorityTask.dueAt)}` : 'Attività pianificata'],
+          meta: [priorityLabel(immediateTask.priority), immediateTask.dueAt ? `Scade ${formatShortDate(immediateTask.dueAt)}` : 'Attività pianificata'],
         }
-      : dailyContext.lessonCount > 0
-        ? {
-            kind: 'DAY_CLOSED' as const,
-            eyebrow: 'GIORNATA DIDATTICA',
-            title: 'Le lezioni di oggi sono registrate',
-            description: 'Non risultano lezioni da chiudere. Puoi passare alle altre attività della giornata oppure preparare il lavoro successivo.',
-            href: '/planner',
-            action: 'Apri Oggi',
-            meta: ['Registrazioni in ordine'],
-          }
-        : {
-            kind: 'FALLBACK' as const,
-            eyebrow: 'RIPARTI DA QUI',
-            title: 'Organizza il prossimo passo',
-            description: projectedDay.calendarState === 'NO_LESSONS'
-              ? 'Oggi non risultano lezioni. Puoi usare questo spazio per attività, progettazione o preparazione del lavoro successivo.'
-              : 'Non c’è una lezione operativa da gestire né un’attività urgente. Parti da Oggi oppure apri l’Orario per orientarti.',
-            href: '/planner',
-            action: 'Apri Oggi',
-            meta: [projectedDay.calendarState === 'NO_LESSONS' ? 'Nessuna lezione prevista' : 'Nessuna urgenza rilevata'],
-          })
+      : nextMomentPrimary
+        ?? (dailyContext.lessonCount > 0
+          ? {
+              kind: 'DAY_CLOSED' as const,
+              eyebrow: 'GIORNATA DIDATTICA',
+              title: 'Le lezioni di oggi sono registrate',
+              description: 'Non risultano lezioni da chiudere. Puoi passare alle altre attività della giornata oppure preparare il lavoro successivo.',
+              href: '/planner',
+              action: 'Apri Oggi',
+              meta: ['Registrazioni in ordine'],
+            }
+          : {
+              kind: 'FALLBACK' as const,
+              eyebrow: 'RIPARTI DA QUI',
+              title: 'Organizza il prossimo passo',
+              description: projectedDay.calendarState === 'NO_LESSONS'
+                ? 'Oggi non risultano lezioni. Puoi usare questo spazio per attività, progettazione o preparazione del lavoro successivo.'
+                : 'Non c’è una lezione operativa da gestire né un’attività urgente. Parti da Oggi oppure apri l’Orario per orientarti.',
+              href: '/planner',
+              action: 'Apri Oggi',
+              meta: [projectedDay.calendarState === 'NO_LESSONS' ? 'Nessuna lezione prevista' : 'Nessuna urgenza rilevata'],
+            }))
 
   const provisional = dailyContext.authority === 'PROVISIONAL_DRAFT'
   const showPendingReminder = primary.kind === 'LESSON'
@@ -121,7 +131,7 @@ export default async function HomePage() {
       <section className="homeDailyHeader" aria-labelledby="home-day-title">
         <div>
           <p>{formatLongDate(moment.date)}</p>
-          <h1 id="home-day-title">La tua giornata</h1>
+          <h1 id="home-day-title">Adesso e dopo</h1>
           <span>{[teacherSettings?.teacherDisplayName || null, context.academicYear?.label ?? null].filter(Boolean).join(' · ')}</span>
         </div>
         <div className="homeDailySummary" aria-label="Sintesi della giornata">
@@ -212,7 +222,7 @@ function resolveDailyPrimary(
     ? annualSnapshot.sections.find((item) => item.id === lesson.sectionId) ?? null
     : null
   const classLabel = section ? `${gradeNumber(section.grade)}ª ${section.sectionCode}` : lesson.title
-  const lessonHref = section && annualSnapshot ? resolveLessonHref(section, annualSnapshot) : null
+  const lessonHref = section && annualSnapshot ? resolveLessonHref(section, annualSnapshot, 'teach') : null
   const classHref = section ? `/classi/${encodeURIComponent(section.id)}` : '/orario'
   const time = lessonTime(lesson)
   const authorityMeta = lesson.authority === 'PROVISIONAL_DRAFT' ? 'Orario provvisorio' : 'Orario in vigore'
@@ -260,9 +270,70 @@ function resolveDailyPrimary(
   }
 }
 
+function resolveNextMomentPrimary(
+  moment: TeacherMoment | null,
+  annualSnapshot: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>> | null,
+) {
+  if (!moment || moment.lessons.length === 0) return null
+
+  const first = moment.lessons[0]
+  const firstSection = first.sectionId && annualSnapshot
+    ? annualSnapshot.sections.find((item) => item.id === first.sectionId) ?? null
+    : null
+  const firstHref = firstSection && annualSnapshot
+    ? resolveLessonHref(firstSection, annualSnapshot, 'prepare') ?? `/classi/${encodeURIComponent(firstSection.id)}`
+    : first.sectionId
+      ? `/classi/${encodeURIComponent(first.sectionId)}`
+      : '/orario'
+  const labels = moment.lessons.map((lesson) => teacherMomentClassLabel(lesson, annualSnapshot))
+  const uniqueLabels = [...new Set(labels)]
+  const dayLabel = moment.daysAhead === 1 ? 'Domani' : formatLongDate(moment.localDate)
+  const title = uniqueLabels.length === 1
+    ? `${dayLabel}: ${uniqueLabels[0]}`
+    : `${dayLabel}: ${uniqueLabels.slice(0, 3).join(', ')}${uniqueLabels.length > 3 ? ` +${uniqueLabels.length - 3}` : ''}`
+  const lessonCount = moment.lessons.length === 1 ? '1 lezione prevista' : `${moment.lessons.length} lezioni previste`
+  const scheduleMeta = moment.lessons.slice(0, 3).map((lesson) => `${lesson.startTime} · ${teacherMomentClassLabel(lesson, annualSnapshot)}`)
+  if (moment.lessons.length > 3) scheduleMeta.push(`+${moment.lessons.length - 3} altre`)
+
+  if (moment.authority === 'CALENDAR_CONFIRMED') {
+    return {
+      kind: 'NEXT_MOMENT' as const,
+      eyebrow: 'DOPO · PREPARA IL PROSSIMO MOMENTO',
+      title,
+      description: `${lessonCount}. Il giorno è confermato dal Calendario: puoi aprire direttamente la prima classe e preparare ciò che serve.`,
+      href: firstHref,
+      action: 'Prepara la prima lezione',
+      meta: [...scheduleMeta, 'Calendario confermato'],
+    }
+  }
+
+  if (moment.authority === 'PROVISIONAL_DRAFT') {
+    return {
+      kind: 'NEXT_MOMENT' as const,
+      eyebrow: 'DOPO · PREPARAZIONE PROVVISORIA',
+      title,
+      description: `${lessonCount} nella bozza d’orario. Puoi prepararti, ma DOCENTE OS non le considera ancora lezioni confermate.`,
+      href: firstHref,
+      action: 'Prepara con la bozza',
+      meta: [...scheduleMeta, 'Orario provvisorio'],
+    }
+  }
+
+  return {
+    kind: 'NEXT_MOMENT' as const,
+    eyebrow: 'DOPO · GUARDA AVANTI',
+    title,
+    description: `${lessonCount} dall’Orario. Il Calendario non ha ancora confermato il giorno: puoi prepararti senza trasformarlo in una lezione reale.`,
+    href: firstHref,
+    action: 'Prepara la prima lezione',
+    meta: [...scheduleMeta, 'Calendario da confermare'],
+  }
+}
+
 function resolveLessonHref(
   section: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>>['sections'][number],
   annualSnapshot: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>>,
+  mode: 'prepare' | 'teach' = 'teach',
 ) {
   const learningFocus = buildClassWorkspaceLearningFocus(section, annualSnapshot.progress, [])
   const grade = GRADE_UI[section.grade]
@@ -270,7 +341,18 @@ function resolveLessonHref(
     ? buildBlocks(grade).find((item) => item.id === learningFocus.nextBlock?.id) ?? null
     : null
   if (!nextBlock || !resolveRuntimeHumanTaskLessonProjection(grade, nextBlock)) return null
-  return buildLessonWorkspaceHref(section.id, nextBlock.id, 'teach')
+  return buildLessonWorkspaceHref(section.id, nextBlock.id, mode)
+}
+
+function teacherMomentClassLabel(
+  lesson: TeacherMoment['lessons'][number],
+  annualSnapshot: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>> | null,
+) {
+  const section = lesson.sectionId && annualSnapshot
+    ? annualSnapshot.sections.find((item) => item.id === lesson.sectionId) ?? null
+    : null
+  if (section) return `${gradeNumber(section.grade)}ª ${section.sectionCode}`
+  return lesson.sectionLabel || lesson.disciplineLabel || 'Lezione'
 }
 
 function lessonTime(lesson: HomeDailyLesson) {
@@ -300,6 +382,15 @@ function selectPriorityTask(tasks: PlannerTask[], today: string) {
     return 5
   }
   return candidates.sort((a, b) => rank(a) - rank(b) || a.createdAt.localeCompare(b.createdAt))[0] ?? null
+}
+
+function taskNeedsAttentionNow(task: PlannerTask, today: string) {
+  const due = task.dueAt?.slice(0, 10) ?? null
+  return Boolean(
+    (due && due <= today)
+    || task.plannedFor === today
+    || task.priority === 'URGENT',
+  )
 }
 
 function currentRomeMoment() {
