@@ -1,296 +1,299 @@
 # DOCENTE OS — Product Experience Masterplan
 
-Data: 2026-08-22  
-Ultimo consolidamento: 2026-09-12  
-Stato: CANONICAL / APPROVED  
-Ambito: esperienza prodotto, assistenza contestuale, component platform, accessibilità, adozione progressiva
+Data: **2026-09-14**  
+Stato: **CANONICAL CANDIDATE / V1 CONVERGENCE**  
+Autorità programma: **#387 — Teacher Operating System V1**
 
 ## 1. Decisione di prodotto
 
-DOCENTE OS evolve da applicazione funzionale composta da viste verticali a **ambiente operativo professionale assistito**, nel quale il docente deve poter capire immediatamente:
+DOCENTE OS evolve da applicazione composta da viste verticali a **Teacher Operating System**: memoria operativa e riflessiva del docente, orchestratore del lavoro professionale e copilota AI contestuale.
 
-1. dove si trova;
-2. che cosa sta guardando;
-3. da dove proviene l'informazione;
-4. che stato ha;
-5. che cosa conviene fare adesso;
-6. quale effetto avrà l'azione proposta;
-7. quando è richiesta una conferma umana.
+Il prodotto non deve chiedere al docente di amministrare il software. Deve capire il momento professionale, recuperare il contesto, presentare ciò che conta, preparare ciò che manca e poi lasciare spazio all'attività didattica.
 
-Il prodotto non deve diventare una chat generalista né un gestionale amministrativo. L'AI è un **collaboratore contestuale incorporato nelle superfici di lavoro**.
+Formula canonica:
 
-## 2. North star
+**Teacher Moment → contesto → prossimo passo → copilota → conferma umana → traccia**
 
-Formula canonica dell'esperienza:
+Principio guida:
 
-**Contesto → Comprensione → Proposta → Effetto → Conferma → Azione → Traccia**
+> **La complessità appartiene al sistema; l'attenzione deve restare al docente e agli studenti.**
 
-Ogni vista deve privilegiare significato e decisione rispetto a dettagli tecnici.
+## 2. Unità fondamentale: Teacher Moment
 
-Carattere del prodotto: **calma operativa + assistenza competente**.
+Il prodotto ragiona prima per momenti professionali e poi per moduli:
 
-## 3. Stack di esperienza approvato
+- prima della scuola;
+- prima della lezione;
+- durante la lezione;
+- subito dopo;
+- tra due lezioni;
+- fine giornata;
+- preparazione del giorno successivo;
+- revisione periodica del percorso.
 
-### Fondazione UI
+`TeacherMoment` è un read model di orchestrazione, non una nuova fonte di verità. Compone Orario, Calendario/Temporal Projection, Classe, Piano, TeachingSession, osservazioni, materiali e capability disponibili.
 
-- **shadcn/ui** come sorgente di componenti open-code e personalizzabili;
-- Tailwind CSS come layer di token/utilità quando introdotto nel runtime;
-- componenti copiati nel repository, non dipendenza visiva opaca;
-- accessibilità e responsive behavior come gate, non rifinitura finale.
+## 3. Output fondamentale: Next Step
 
-### Assistente contestuale
+Ogni stato operativo deve poter rispondere rapidamente a:
 
-- **assistant-ui** come prima scelta per primitive conversazionali e agentic UX;
-- integrazione tramite runtime/adattatore DOCENTE OS, senza rendere il dominio dipendente dalla libreria;
-- nessun obbligo di assistant-cloud;
-- nessun obbligo di Vercel AI SDK: il runtime può restare custom/provider-neutral;
-- approvazioni umane inline obbligatorie per azioni con effetto persistente o esterno.
+1. cosa conta adesso;
+2. perché conta;
+3. cosa è già pronto;
+4. cosa manca;
+5. cosa propone il copilota;
+6. qual è l'unica azione primaria;
+7. dove si torna dopo l'azione.
 
-### Evoluzione agentica
+La UI primaria mostra il **Next Step**, non il Product Model.
 
-- **CopilotKit** resta tecnologia candidata per una fase successiva, quando serviranno shared state, generative UI e workflow agentici cross-surface;
-- non entra nella baseline finché l'assistente contestuale non è validato con utenti reali.
+## 4. Today + Next
 
-### Produzione documentale
+Home/Oggi non è una lista statica di attività.
 
-- **BlockNote** è il candidato preferito per editor a blocchi di UDA, programmazioni, verbali, relazioni e materiali;
-- usare soltanto pacchetti con licenza compatibile con il prodotto; le estensioni XL non sono baseline.
+Prima della giornata mostra prima classe, readiness e note pertinenti. Durante la giornata mostra lezione corrente/prossima e scostamenti. A fine giornata mostra ciò che serve per domani.
 
-### Modelli AI
+Se non esiste nulla per oggi, il sistema deve passare al **prossimo Teacher Moment rilevante** invece di fermarsi a una lista vuota.
 
-- provider AI dietro `AiOrchestratorPort`;
-- sviluppo possibile con provider remoto o **Ollama** locale;
-- nessun provider AI deve diventare requisito del dominio o della persistenza.
+## 5. Lesson Brief
 
-## 4. Tecnologie esplicitamente non adottate come fondazione
+La progettazione completa resta ricca ma non è l'entry point operativo.
 
-- **Refine**: non adottato perché DOCENTE OS possiede già dominio, routing, persistenza, RLS e workflow; introdurlo come meta-framework aumenterebbe la superficie di migrazione.
-- **Mantine**: ottimo ecosistema ma non adottato come seconda component library parallela; shadcn consente migrazione più graduale e controllo completo del codice.
-- template dashboard completi: possono essere studiati come benchmark, non copiati come architettura.
+Il Lesson Brief deve mostrare, quando possibile in una singola viewport mobile:
 
-## 5. Superfici canoniche
+- classe e quando;
+- obiettivo umano della lezione;
+- cosa serve;
+- cosa è già pronto;
+- cosa manca;
+- nota utile dalla volta precedente;
+- proposta del copilota;
+- una sola CTA primaria.
 
-### Home
+Il resto vive dietro `Vedi progettazione completa` o progressive disclosure.
 
-Deve rispondere a: **cosa richiede attenzione e da dove conviene iniziare**.
+## 6. Copilota contestuale
 
-### Oggi
+Nome funzionale: `ContextualTeacherAssistant`.
 
-Deve rispondere a: **cosa devo fare oggi e cosa posso rinviare senza perdere il controllo**.
+Non è una chat globale separata dal lavoro. Riceve `TeacherMoment` trasformato in `AssistantContext` e può:
 
-### Conoscenza
+- recuperare il contesto;
+- sintetizzare ciò che conta;
+- trovare fonti e materiali;
+- produrre contenuti;
+- adattare e migliorare contenuti;
+- confrontare fonte e obiettivo;
+- evidenziare ciò che manca;
+- proporre il prossimo passo;
+- ricevere input vocale;
+- preparare write governate.
 
-Deve rispondere a: **che cosa contiene questa fonte, quanto è affidabile e come posso usarla**.
+Regola permanente:
 
-### Piano annuale
+**AI propone e prepara; il docente decide gli effetti persistenti o professionalmente significativi.**
 
-Deve rispondere a: **dove sono rispetto al percorso annuale e quale blocco viene dopo**.
+Ogni informazione utile mantiene stato epistemico: `DOCUMENTED`, `USER_REPORTED`, `INFERRED`, `TO_VERIFY`.
 
-### Progetta
+## 7. Contextual Voice Capture
 
-Deve rispondere a: **quali fonti, UDA e materiali sono già disponibili e cosa manca**.
+La voce è un canale del copilota, non un modulo autonomo.
 
-### Orario
+Flusso canonico:
 
-Deve rispondere a: **come è organizzata la settimana e quali scostamenti richiedono attenzione**.
+`parla → trascrizione effimera → context binding → interpretazione proposta → conferma → write governata`
 
-### Classi
+Una singola cattura può proporre nota di esecuzione, osservazione professionale, focus successivo, bisogno di preparazione o promemoria.
 
-Deve rispondere a: **quale materiale e quale progettazione è associata a una classe/sezione**.
+Raw audio effimero per default. Binding ambiguo sempre confermato. Nessuna auto-valutazione e nessun auto-completamento Piano.
 
-### Impostazioni
+Specifica: `docs/architecture/CONTEXTUAL_VOICE_CAPTURE_SPEC.md`.
 
-Deve rispondere a: **quale contesto professionale alimenta il sistema**.
+## 8. Memoria operativa e riflessiva
 
-### Account e sicurezza
+DOCENTE OS deve consentire al docente di riprendere il filo senza ricostruirlo mentalmente.
 
-Deve rispondere a: **con quale identità sono autenticato, quanto è protetta la sessione e dove gestisco password, secondo fattore e sessioni**.
+La memoria professionale conserva e collega:
 
-Account e sicurezza resta deliberatamente distinta da Impostazioni: l'identità digitale non è contesto professionale. Il contratto verticale è `docs/product/ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md`; l'implementazione è governata da `docs/architecture/ACCOUNT_SECURITY_CANONICAL_SPEC.md` e dalle invarianti di sicurezza/ASVS.
+- previsto;
+- realmente svolto;
+- osservato;
+- lasciato aperto;
+- prossimo focus;
+- materiali/preparazioni necessarie.
 
-## 6. Assistente DOCENTE OS
+La chat non è il registro delle decisioni. I record confermati restano strutturati, tracciabili e governati.
 
-Nome funzionale interno: `ContextualTeacherAssistant`.
+## 9. Orchestrazione degli strumenti
 
-Non è una chat globale separata dal lavoro. Deve ricevere un `AssistantContext` composto almeno da:
+Conoscenza, Planner, Piano, Drive, SharePoint/OneDrive, Calendar/Outlook, Teams, Canva e altri strumenti sono **capability del Teacher Moment**, non destinazioni cognitive obbligatorie.
 
-- route/surface;
-- workspace;
-- anno scolastico;
-- disciplina;
-- classe/sezione quando disponibile;
-- oggetto corrente;
-- provenienza;
-- stato;
-- capability disponibili;
-- capability vietate;
-- dati mancanti;
-- eventuali azioni proposte ancora non confermate.
+Esempi:
 
-### Formato canonico delle risposte operative
+- `preparami una scheda per questa lezione`;
+- `trova il materiale usato con la 1C`;
+- `adatta questa presentazione alla 2C`;
+- `metti questa scadenza nel calendario`;
+- `salva il documento nello spazio autorizzato dalla scuola`.
 
-1. **Ho trovato** — fatti e stato.
-2. **Ti propongo** — una o più opzioni ordinate.
-3. **Ecco l'effetto** — cosa cambierà e cosa resterà invariato.
-4. **Confermi tu** — per ogni effetto persistente, esterno o istituzionalmente significativo.
+Il provider viene risolto secondo la policy istituzionale.
 
-## 7. Command center
+## 10. Institutional Configurator
 
-Viene introdotta una command palette globale, inizialmente con ricerca e navigazione, successivamente con azioni.
+DOCENTE OS deve funzionare in modalità:
 
-Scorciatoia desktop: `Ctrl/Cmd + K`.
+- `PERSONAL_LOCAL_FIRST`;
+- `GOOGLE_WORKSPACE_EDU`;
+- `MICROSOFT_365_EDU`;
+- `HYBRID` soltanto con data boundary esplicito.
 
-Categorie minime:
+La scuola governa provider, identity, scopes, data tier, AI policy, voice policy, retention e capability disponibili. Nessun connector ottiene privilegi impliciti.
 
-- Vai a…
-- Cerca nella Conoscenza…
-- Apri classe…
-- Apri piano annuale…
-- Nuova attività…
-- Chiedi a DOCENTE OS…
+Specifica: `docs/architecture/INSTITUTIONAL_INTEGRATION_CONFIGURATOR_CANONICAL.md`.
 
-Le azioni distruttive o esterne non si eseguono direttamente dalla palette senza conferma.
+## 11. Experience platform
 
-## 8. Progressive disclosure
+### UI foundation
 
-Tre livelli di informazione:
+- shadcn/ui come sorgente open-code;
+- Tailwind/token layer dove appropriato;
+- accessibilità e responsive behavior strutturali;
+- niente template dashboard che impongano una tassonomia estranea al lavoro docente.
 
-### Livello 1 — lavoro
+### Assistant layer
 
-Titolo umano, stato, sintesi, prossima azione.
+- assistant-ui o primitive equivalenti dietro adapter DOCENTE OS;
+- provider-neutral `AiOrchestratorPort`;
+- nessun vendor AI come requisito del dominio;
+- local/provider runtime possibile secondo policy.
 
-### Livello 2 — provenienza
+### Authoring
 
-Fonte, versione, data acquisizione, validazione.
+- editor a blocchi per UDA, programmazioni, verbali, relazioni e materiali;
+- versionamento/provenance;
+- export DOCX/PDF dove richiesto;
+- produzione contenuti accessibile dal task e dal copilota.
 
-### Livello 3 — dettagli tecnici
+## 12. Human-in-the-loop
 
-ID, processor, generation id, raw status, provider metadata, debug information.
+Richiedono conferma esplicita almeno:
 
-Il livello 3 non deve comparire nel flusso ordinario salvo richiesta esplicita.
-
-## 9. Human-in-the-loop
-
-Richiedono sempre conferma:
-
+- write esterne;
 - invio messaggi/e-mail;
-- creazione o modifica di eventi esterni;
+- modifica eventi esterni;
 - modifica significativa di documenti canonici;
-- conferma istituzionale o curricolare;
+- conferme istituzionali/curricolari;
 - cancellazioni irreversibili;
-- promozione di una proposta AI a dato canonico;
+- promozione di proposta AI a dato canonico;
 - attivazione di una versione di orario;
-- operazioni che coinvolgono dati personali o destinatari esterni.
+- operazioni su dati personali o destinatari esterni.
 
-Non richiedono conferma separata:
+Ricerca, lettura, sintesi, confronto, proposta e anteprima non richiedono conferma separata.
 
-- ricerca;
-- lettura;
-- sintesi;
-- confronto;
-- proposta;
-- anteprima;
-- navigazione;
-- calcolo non persistente.
+## 13. Progressive disclosure
 
-Le operazioni di sicurezza dell'account non sono azioni dell'assistente: restano sotto controllo diretto dell'utente e sotto i guard di autenticazione previsti dal contratto Account.
+Tre livelli:
 
-## 10. Roadmap di implementazione
+1. **Lavoro** — significato, stato, sintesi, prossima azione.
+2. **Provenienza** — fonte, versione, data, validazione.
+3. **Dettagli tecnici** — ID, generation, provider metadata, debug.
 
-### X0 — Canonical freeze
+Il livello tecnico non compete con il task ordinario.
 
-- masterplan;
-- ADR esperienza;
-- specifica assistente;
-- design system v2;
-- stato generale aggiornato.
+## 14. Product KPI
 
-### X1 — Component foundation
+### Teacher Attention Returned — TAR
 
-- Tailwind + shadcn foundation;
-- token canonici;
-- Button, Card, Badge, Alert, Dialog, Sheet, Tooltip, Dropdown, Tabs, Command, Skeleton, Toast;
-- nessuna riscrittura big-bang.
+Domanda centrale:
 
-### X2 — AppShell professionale
+> Quanto lavoro di ricostruzione, ricerca, ricopiatura e navigazione evita il sistema prima che il docente possa concentrarsi sull'azione professionale?
 
-- sidebar responsive;
-- mobile drawer/bottom nav coerenti;
-- page header canonico;
-- command palette globale;
-- feedback di navigazione/caricamento.
+Metriche correlate:
 
-### X3 — Contextual Assistant shell
+- tempo per identificare il prossimo passo;
+- decision count;
+- surface transitions;
+- competing actions;
+- re-entry burden il giorno successivo;
+- percentuale di contesto precompilato correttamente;
+- tap/click → interactive;
+- P50/P95;
+- friction/workaround HUMAN_USE.
 
-- assistant-ui integrato senza provider obbligatorio;
-- `AssistantContext` reale da Conoscenza;
-- suggerimenti contestuali;
-- nessuna scrittura automatica.
+## 15. Programma V1
 
-### X4 — Assistant actions
+### V1-A — Teacher Moment + Today/Next
 
-- Planner: crea/proponi attività;
-- Conoscenza: confronta, trova lacune, aggiorna analisi;
-- Piano annuale: prossimo passo, copertura, scostamenti;
-- Orario: anomalie e capacità settimanale;
-- ogni write passa da preview + conferma.
+Quattro momenti prioritari: sera→domani, prima lezione→readiness, dopo lezione→reflection/capture, tra due lezioni→next context.
 
-### X5 — Authoring
+### V1-B — Lesson Brief
 
-- BlockNote per documenti didattici editabili;
-- versionamento e provenienza;
-- export DOCX/PDF quando richiesto.
+Entry point compatto task-first con dettaglio progressivo.
 
-### X6 — Agentic evaluation
+### V1-C — Copilota operativo + Voice
 
-- spike CopilotKit/AG-UI solo dopo validazione X3-X4;
-- decisione ADR separata.
+`TeacherMoment → AssistantContext`, produzione/adattamento contenuti, Contextual Voice Capture, preview + conferma.
 
-## 11. Gate di qualità
+### V1-D — Institutional Configurator
 
-Ogni slice passa solo se:
+Provider, identity, scopes, data boundary, AI/voice policy e capability resolver.
 
-- TypeScript strict PASS;
-- lint PASS;
-- test PASS;
-- build PASS;
-- nessuna regressione RLS/sessione;
-- navigazione da tastiera verificabile;
-- mobile 320–430 px utilizzabile;
-- nessun gergo tecnico non necessario nella superficie primaria;
-- nessuna azione AI persistente senza conferma;
-- provider AI sostituibile;
-- dati canonici non degradati.
+### V1-E — Runtime
 
-Le slice che modificano autenticazione, account, password, MFA o sessioni devono inoltre rispettare il contratto ASVS corrente e `ACCOUNT_SECURITY_CANONICAL_SPEC.md`.
+Benchmark Render vs Firebase App Hosting / Cloud Run mantenendo inizialmente Supabase, con cold/warm, TTFB, tap→interactive e P50/P95.
 
-## 12. Metriche di successo prodotto
+## 16. Test e assurance
 
-Target qualitativi:
+La strategia non è `meno test` ma `fast by default, deep by risk`.
 
-- utente identifica il prossimo passo entro 5 secondi;
-- una funzione principale è raggiungibile senza conoscere la struttura interna del sistema;
-- ogni proposta AI chiarisce fonte e conseguenza;
-- una nuova attività comune richiede massimo 1–2 decisioni esplicite;
-- riduzione dei controlli morti/dead-end a zero;
-- nessuna schermata primaria richiede la comprensione di ID o status tecnici.
+- **FAST** — unit/type/lint/contract mirati;
+- **MERGE** — build, invarianti e critical path pertinenti;
+- **NIGHTLY** — full HVA/WCAG/DPG/performance/security/cross-surface;
+- **RELEASE** — exact SHA, full assurance applicabile, HUMAN_USE, visual acceptance, runtime receipt e rollback.
 
-Per Account e sicurezza, l'utente deve distinguere senza ambiguità **identità di accesso**, **MFA**, **password**, **sessioni** e **Impostazioni professionali**.
+Security, privacy, RLS, AAL2, provenance e human authority non vengono indeboliti.
 
-## 13. Principio di migrazione
+Specifica: `docs/engineering/FAST_FEEDBACK_TEST_STRATEGY_V1.md`.
 
-**Nessuna riscrittura totale.**
+## 17. Product Model ≠ User Model
 
-Il runtime corrente resta funzionante mentre i componenti vengono sostituiti per strati. Ogni nuovo componente deve poter convivere con CSS esistente fino alla migrazione della superficie interessata.
+Entità come `TeachingSession`, `AnnualPlanBlockProgress`, `KnowledgeAsset`, UDA, versioni, provenance e policy restano rigorose internamente.
 
-## 14. Source of truth
+Il docente non deve impararle per completare un task ordinario.
 
-Questo documento governa l'evoluzione dell'esperienza prodotto. In caso di conflitto:
+Il modello percepito è:
 
-1. sicurezza/RLS/domain invariants;
-2. questo Masterplan;
-3. Language & Collaboration System;
-4. Design System V2;
-5. specifiche verticali di modulo.
+**adesso → cosa serve → agisco/parlo → confermo se necessario → il sistema ricorda → prossimo passo**
 
-Per Account e sicurezza, la specifica verticale di sviluppo e il contratto di esperienza sono rispettivamente `docs/architecture/ACCOUNT_SECURITY_CANONICAL_SPEC.md` e `docs/product/ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md`; nessuno dei due può indebolire le invarianti di sicurezza superiori.
+## 18. Relazione con UX-0 e M5
+
+La HUMAN_USE #383 ha prodotto `FRICTION / REWORK_REQUIRED`. Non viene forzata a PASS: diventa evidence vincolante del V1.
+
+M5 resta assurance di prodotto ma non detta il ritmo quotidiano di implementazione. Un gate macchina verde non sostituisce HUMAN_USE.
+
+## 19. Non obiettivi
+
+- sostituire il registro elettronico/SIS;
+- replicare Google Workspace o Microsoft 365;
+- acquisire indiscriminatamente dati personali;
+- registrazione continua dell'aula;
+- auto-valutazione degli studenti;
+- decisioni professionali automatiche;
+- nuova tassonomia di moduli;
+- migrazione big-bang.
+
+## 20. Source of truth
+
+Ordine specifico per la convergenza V1:
+
+1. security/RLS/domain invariants;
+2. ADR accettate;
+3. `PROJECT_STATUS_CURRENT.md`;
+4. `TEACHER_OS_V1_PRODUCT_CONVERGENCE_CANONICAL.md`;
+5. questo Masterplan;
+6. `INSTITUTIONAL_INTEGRATION_CONFIGURATOR_CANONICAL.md`;
+7. `TEACHER_AI_COPILOT_PRODUCT_DIRECTION.md`;
+8. `CONTEXTUAL_VOICE_CAPTURE_SPEC.md`;
+9. Product Simplification / Human Experience / Design System / specifiche verticali.
+
+Le specifiche verticali non possono reintrodurre una UI per moduli in contrasto con il Teacher Moment né indebolire invarianti superiori.

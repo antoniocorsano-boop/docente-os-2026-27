@@ -1,192 +1,228 @@
 # DOCENTE OS — Stato corrente canonico
 
 Data: **2026-09-14**  
-Stato documento: **CURRENT / CANONICAL STATUS**
+Stato documento: **CURRENT / CANONICAL CANDIDATE — V1 CONVERGENCE**
 
-Questo documento è la sintesi autorevole dello stato operativo corrente. Checkpoint, audit datati e PR storiche preservano la provenienza ma non devono essere usati per dedurre lo stato corrente quando divergono da questo file.
+## 1. Baseline runtime integrata
 
-Baseline integrata corrente prima della PR UX-0 governance:
+`develop@3605912f764468b547aeb344c29f548734eca123`
 
-`develop` @ `c553feae62e70b23aa932077ec43ed76ce3b075b`
+La Beta corrente ha completato UX-0E ma la successiva HUMAN_USE reale (#383) ha prodotto **FRICTION / REWORK_REQUIRED**. Il prodotto non viene dichiarato UX-complete: l'evidenza umana ha mostrato che la complessità di orchestrazione resta troppo elevata.
 
-## 1. Classificazione
+## 2. Decisione corrente
 
-DOCENTE OS resta classificato:
+DOCENTE OS entra nel programma **V1 — Teacher Operating System** (#387).
 
-**M4 — ADVANCED CONTROLLED PRODUCTION PILOT**
+Formula:
 
-Il single-owner professional core è avanzato e governato; il programma attivo resta **maintenance & maturation** verso M5. Nessuna closure locale, incluso Account, TE-1 o un gate automatico verde, costituisce da sola promozione a M5 o Production.
+`Teacher Moment → contesto → prossimo passo → copilota → conferma → traccia`
 
-Ambito dati ammesso:
+Documento autorevole di programma:
 
-`TIER_1_OWNER_PROFESSIONAL_NON_PERSONAL`.
+`docs/product/TEACHER_OS_V1_PRODUCT_CONVERGENCE_CANONICAL.md`
 
-Restano non autorizzati senza gate separato: Tier 2 scolastico/personale, signup pubblico, multi-tenant, uso istituzionale multiutente e migrazione automatica Beta → Production.
+Il valore prioritario non è aggiungere nuovi moduli, ma comporre correttamente capability già costruite attorno al momento professionale del docente.
 
-## 2. Invarianti correnti
+## 3. Invarianti permanenti
 
-- `TeachingSession` è la ricevuta autorevole di ciò che è realmente accaduto nella lezione.
-- `AnnualPlanBlockProgress` resta una decisione professionale distinta; nessun automatismo marca un blocco `SVOLTO`.
-- Observation/Evidence TE-1 restano additive, Tier-1-safe e governate.
-- Orario e Calendario restano domini distinti, composti solo tramite Temporal Projection.
-- Arena mantiene l'autorità curricolare/istituzionale; Docente OS mantiene il lavoro operativo del docente.
-- Nessuna semplificazione UX può indebolire sicurezza, AAL2, privacy, provenance, idempotenza o controllo umano.
+- `TeachingSession` resta la ricevuta autorevole di ciò che è realmente accaduto;
+- `AnnualPlanBlockProgress` resta una decisione professionale distinta;
+- Orario e Calendario restano domini distinti, composti tramite Temporal Projection;
+- Arena mantiene l'autorità curricolare/istituzionale; DOCENTE OS il lavoro operativo del docente;
+- AI non scrive direttamente nel dominio;
+- sicurezza, RLS, AAL2, privacy, provenance, idempotenza e human authority restano non negoziabili;
+- nessuna semplificazione UI può degradare gli invarianti di dominio.
 
-## 3. Capability consolidate
+## 4. Capability già disponibili da riusare
 
-### Account e sicurezza — COMPLETE / INTEGRATED
+Sono già presenti fondazioni significative per:
 
-- MFA/AAL2 foundation: #346 → `b07596f7c2142becd32eb66ed195ecbf5ac6b24a`.
-- Account UI/security: #348, exact head `41bb3c55c866c31c6b906382165f3c18821ec81e`, merge `77455d5f50bcccf2fed2cf5607dba3067fd81f97`.
-- Account, password, MFA e sessioni restano separati dalle Impostazioni professionali.
+- account e MFA/AAL2;
+- classi/cattedra;
+- Orario;
+- Piano annuale/UDA;
+- TeachingSession e registrazione lezione;
+- Observation/Evidence;
+- Planner/Oggi;
+- Conoscenza/KB;
+- materiali contestuali;
+- assistant runtime e prime write assistite;
+- provenance, RLS e governance;
+- design system e mobile shell;
+- release/security/accessibility assurance.
 
-Questa closure non equivale a dichiarazione complessiva WCAG 2.2 AA, ASVS L2 o promozione Production.
+Il V1 deve **orchestrare** queste capability, non riscriverle da zero.
 
-### Teaching Core / TE-1 — COMPLETE / INTEGRATED
+## 5. HUMAN_USE corrente
 
-Convergenza `Registra la lezione`:
+Issue: **#383**.
 
-- #361 → merge `e87b8bb0a367fa78b6de4bdbca871e094dc65dd1`.
+Evidence principale:
 
-TE-1A — persistenza atomica Observation/Evidence:
+- Home/Oggi troppo legata al concetto di attività e non al prossimo momento professionale;
+- sera: manca `domani / cosa devo preparare`;
+- preparazione lezione troppo lunga e densa;
+- troppe informazioni simultaneamente visibili;
+- eccesso di navigazione/scorrimento manuale;
+- coprogettazione ancora percepita come gestione di moduli;
+- copilota non ancora abbastanza operativo;
+- latenza percepita non accettabile in alcuni passaggi;
+- defect runtime React #441 osservato nella registrazione;
+- incoerenza di navigation state/bundle da verificare.
 
-- #365 exact head `2bae1043607c385870a93a85acd8f5484a36dce1`;
-- merge `0716482c337eb8c11395ba49f7491e12a6205555`.
+Esito: **FRICTION / REWORK_REQUIRED**.
 
-TE-1B — binding `Osserva → Registra`:
+Questa evidence non viene cancellata né forzata a PASS: alimenta direttamente il V1.
 
-- #366 exact head `0371ce253dd7be63b80b518aa2e3834e0cc16174`;
-- merge prodotto `8180aee707eeeb15e9863127f2df739746663e7d`;
-- P6 post-merge PASS;
-- HVA post-merge PASS con journey browser, receipt, evidence ed enforcement.
+## 6. Teacher Moment
 
-Follow-up infrastrutturale X3:
+Il sistema deve comporre il lavoro in base al momento professionale:
 
-- #367 exact head `2bb1a478716e8182a3cf6e1c09a453f6447f6f34`;
-- merge `c553feae62e70b23aa932077ec43ed76ce3b075b`;
-- X3 application acceptance PASS;
-- X3 Render acceptance PASS;
-- correzione limitata al workflow AAL2/MFA, nessuna modifica `product/**`.
+- prima della scuola;
+- prima della lezione;
+- durante;
+- subito dopo;
+- tra due lezioni;
+- fine giornata;
+- preparazione del giorno successivo.
 
-L'issue TE-1 #351 è `completed`.
+Home/Oggi diventa **Today + Next**.
 
-## 4. Design, Human e assurance
+Se il giorno corrente non richiede attenzione, il sistema deve mostrare il prossimo momento pertinente invece di fermarsi a una lista vuota.
 
-Sono permanenti:
+## 7. Lesson Brief
 
-- Product CI;
-- Human Interaction Model;
-- Human + Visual Acceptance;
-- Design Policy / DPG-2 ratchet;
-- P6 Performance Baseline;
-- P7 Anonymization Input Guard;
-- dependency/operational security;
-- Release Engineering Policy;
-- Pilot Evidence Policy;
-- WCAG 2.2 AA Assurance;
-- OWASP ASVS 5.0 Assurance.
+La progettazione completa resta nel Product Model, ma l'entry point operativo deve diventare un brief compatto:
 
-### WCAG
+- classe/quando;
+- obiettivo;
+- cosa serve;
+- cosa è già pronto;
+- cosa manca;
+- nota utile precedente;
+- proposta del copilota;
+- una CTA primaria;
+- dettaglio completo solo su richiesta.
 
-M5-03 resta **PARTIAL**: automazione e regressioni sono presenti, ma conformità complessiva non è dichiarata finché non sono completati i criteri manuali, keyboard/focus/reflow e assistive technology.
+## 8. Copilota reale
 
-### ASVS
+Il copilota diventa componente operativo del Teacher Moment.
 
-M5-04 resta **PARTIAL**, target ASVS 5.0.0 L2 con `verificationClaim=false`. Closure di finding prioritari non equivale a verifica complessiva L2.
+Deve poter:
 
-## 5. Finding corrente prioritario — UX-0 Product Simplification
+- recuperare il contesto;
+- cercare e sintetizzare;
+- produrre, adattare e migliorare contenuti;
+- recuperare memoria professionale;
+- proporre prossimo passo;
+- ricevere input vocale;
+- preparare write governate.
 
-La Beta reale evidenzia un finding trasversale di maturità:
+Direzione prodotto:
 
-**UX-0 / TASK COMPLEXITY — REWORK_REQUIRED**.
+`docs/product/TEACHER_AI_COPILOT_PRODUCT_DIRECTION.md`
 
-La correttezza locale delle slice, i gate HVA/WCAG/DPG/HIM e la separazione rigorosa del dominio non producono ancora sufficiente semplicità globale. In particolare il docente può incontrare troppe scelte concorrenti e parte del Product Model viene ancora esposta come tassonomia dell'interfaccia.
+## 9. Contextual Voice Capture
 
-Evidence e governance:
+La voce è input del copilota, non una nuova applicazione.
 
-- issue #370 — `UX-0 — Product Simplification`;
-- `product/design/PRODUCT-SIMPLIFICATION.md`;
-- `product/design/reviews/UX-0A-BASELINE.md`;
-- `product/design/HUMAN-EXPERIENCE-CONTRACT.md` aggiornato con Task Cost.
+Flusso:
 
-Principio corrente:
+`voce → trascrizione effimera → binding contestuale → proposta strutturata → conferma → write governata`
 
-**Product Model ≠ User Model**.
+Specifica:
 
-Target percepito:
+`docs/architecture/CONTEXTUAL_VOICE_CAPTURE_SPEC.md`
 
-`Oggi → Classe → Lezione → Fatto`.
+Issue: **#385**.
 
-### Impatto M5
+## 10. Institutional Configurator
 
-UX-0 è un finding su journey critiche M5 e deve essere chiuso prima di poter sostenere una maturità distributiva generale delle superfici interessate. Un HVA verde non chiude automaticamente questo finding: HVA e Task Cost misurano proprietà differenti.
+DOCENTE OS deve adattarsi alla policy dell'istituto, non imporre un ecosistema.
 
-Durante UX-0 nuove feature surface sono `DEFERRED`, salvo regressioni, sicurezza/privacy, accessibilità, obblighi normativi o prerequisiti indispensabili alla semplificazione.
+Profili iniziali:
 
-## 6. UX-0A — prossimo slice autorizzato
+- `PERSONAL_LOCAL_FIRST`;
+- `GOOGLE_WORKSPACE_EDU`;
+- `MICROSOFT_365_EDU`;
+- `HYBRID` solo con confini espliciti.
 
-Journey:
+La scuola governa provider, identity, scopes, data tier, AI policy, voice policy, retention e capability disponibili.
 
-`Home/Oggi → Classe → Lezione → Osserva → Registra → prossimo passo`.
+Google Workspace e Microsoft 365 sono provider di capability, non il modello mentale del docente.
 
-Obiettivi:
+Specifica:
 
-- una sola CTA primaria per stato;
-- Classe come launcher del task, non dashboard del Product Model;
-- non imporre al docente la distinzione TeachingSession vs AnnualPlanBlockProgress prima che serva una decisione professionale;
-- completamento Piano solo come decisione successiva pertinente;
-- fallback Calendario/Orario contestuali, non concorrenti nel percorso normale;
-- materiali nel momento d'uso;
-- nessuna nuova feature;
-- invarianti TE-1, Tier 1, AAL2, provenance e idempotenza invariati.
+`docs/architecture/INSTITUTIONAL_INTEGRATION_CONFIGURATOR_CANONICAL.md`
 
-La navigazione ridotta `Oggi · Classi · Orario · Materiali · Altro` resta un'ipotesi da validare e **non è ancora baseline autorizzata**.
+## 11. Infrastruttura
 
-## 7. Roadmap integrata
+Render resta il runtime corrente fino a evidence contraria.
 
-La memoria condivisa `CML-DOS-INTEGRATED-GOVERNANCE-V1` è stata emendata per autorizzare UX-0 come **Docente-only maturation slice** indipendente da Arena S3/S4.
+Programma V1-E:
 
-Questo non anticipa Arena S4 e non autorizza DOS-S2 cross-boundary. Arena continua la propria stabilizzazione in parallelo; UX-0 può modificare solo presentazione/orchestrazione di workflow già appartenenti a Docente OS.
+- benchmark Render;
+- confronto con Firebase App Hosting / Cloud Run;
+- Supabase mantenuto inizialmente per isolare la variabile runtime;
+- misure cold/warm, TTFB, tap→interactive, P50/P95;
+- scelta hosting su evidence.
 
-## 8. Maturity program M5
+## 12. Test strategy
 
-Stato sintetico:
+I gate profondi non vengono eliminati.
 
-- M5-00 Canonical State & Maturity Baseline — **COMPLETE**, con UX-0 registrato come finding corrente;
-- M5-01A Repository Hygiene — **COMPLETE**;
-- M5-01B Versioning — **COMPLETE**;
-- M5-01C Release Candidate Contract — **COMPLETE**;
-- M5-01D GitHub Release / changelog — **PARTIAL**;
-- M5-02 Sustained Pilot Evidence — **COLLECTING / PARTIAL**;
-- M5-03 WCAG 2.2 AA — **PARTIAL**;
-- M5-04 ASVS 5.0 — **PARTIAL**;
-- M5-05 SLI/SLO & Operational Observability — **OPEN/PARTIAL**;
-- M5-06 Drive/Canva runtime maturity; Arena conditional — **PARTIAL**;
-- M5-07 Tier 2 / institutional / multi-user — **CONDITIONAL / NOT AUTHORIZED**;
-- UX-0 critical journey simplification — **REWORK_REQUIRED / MATURITY_REQUIRED**.
+Nuovo modello:
 
-## 9. Priorità operative correnti
+- **FAST** — unit/type/lint/contract mirati;
+- **MERGE** — build + critical path + invarianti pertinenti;
+- **NIGHTLY** — HVA completa, WCAG regression, DPG full-runtime, performance/security/cross-surface;
+- **RELEASE** — exact SHA, full assurance applicabile, HUMAN_USE, visual acceptance e runtime receipt.
 
-1. chiudere la governance UX-0 con exact-head certification e memoria condivisa coerente nei due repository;
-2. eseguire UX-0A sul journey lezione, misurando Task Cost `before → after`;
-3. non ampliare le superfici interessate finché UX-0A non dimostra una riduzione reale della complessità;
-4. continuare M5-02 Pilot Evidence durante il normale lavoro docente, includendo friction e workaround;
-5. completare M5-03 manual/assistive evidence e M5-04 requirement-level mapping senza false claim;
-6. definire SLI/SLO soltanto da baseline osservata;
-7. maturare Drive/Canva solo sulle journey reali;
-8. mantenere Tier 2, multiutente e trasporto Arena automatico separati finché non esiste una decisione esplicita supportata da evidenza.
+Documento:
 
-## 10. Regola anti-feature-creep
+`docs/engineering/FAST_FEEDBACK_TEST_STRATEGY_V1.md`
 
-Durante M5 ogni nuova feature deve essere classificata come:
+## 13. Programma V1 corrente
 
-- `MATURITY_REQUIRED`;
-- `PILOT_REQUIRED`;
-- `PROFESSIONAL_GAP_CONFIRMED`;
-- `DEFERRED`.
+1. **V1-A — Teacher Moment + Today/Next**;
+2. **V1-B — Lesson Brief**;
+3. **V1-C — Copilot reale + Contextual Voice Capture**;
+4. **V1-D — Institutional Configurator**;
+5. **V1-E — Runtime benchmark e hosting decision**.
 
-Il default in assenza di evidenza è **DEFERRED**.
+Questi assi hanno precedenza su nuove superfici autonome.
 
-Durante UX-0 vale inoltre la regola più restrittiva:
+## 14. Maturity e assurance
 
-> Una nuova funzione non è un miglioramento se introduce una nuova scelta visibile al docente. Deve essere assorbita da un task esistente, salvo prova che costituisca un nuovo compito umano reale.
+M5 continua come assurance di prodotto ma non detta più il ritmo quotidiano di implementazione.
+
+Stato dove non esiste nuova evidence:
+
+- release engineering: foundation avanzata;
+- sustained pilot evidence: collecting;
+- WCAG: partial;
+- ASVS: partial;
+- observability/SLI/SLO: open/partial;
+- external runtime continuity: da convergere nel configuratore;
+- institutional/multi-user: conditional e da autorizzare separatamente.
+
+## 15. Priorità operative immediate
+
+1. consolidare e integrare la baseline documentale V1;
+2. aprire/implementare V1-A Teacher Moment + Today/Next;
+3. correggere defect runtime bloccanti osservati dalla HUMAN_USE;
+4. implementare V1-B Lesson Brief;
+5. rendere operativo il copilota e la voce in V1-C;
+6. realizzare Institutional Configurator in V1-D;
+7. benchmarkare runtime Google in V1-E;
+8. applicare la fast-feedback test strategy.
+
+## 16. KPI principale
+
+**Teacher Attention Returned (TAR)**
+
+Misura quanto lavoro di ricostruzione, ricerca, ricopiatura, navigazione e attesa viene rimosso prima che il docente possa concentrarsi sull'azione professionale.
+
+## 17. Regola finale
+
+> **Il docente non deve andare a cercare DOCENTE OS. DOCENTE OS deve presentarsi con la cosa giusta nel momento giusto e poi togliersi di mezzo.**
