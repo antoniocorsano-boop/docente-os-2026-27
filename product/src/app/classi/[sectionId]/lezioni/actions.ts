@@ -1,18 +1,20 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { recordTeachingSession } from '@/core/application/record-teaching-session'
+import { recordTeachingSessionWithEvidence } from '@/core/application/record-teaching-session-with-evidence'
 import { teachingSessionCandidateFromOccurrence } from '@/core/application/teaching-session-candidate'
 import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
 import type { TeachingSessionDraft } from '@/core/domain/teaching-session'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
+import { SupabaseTeachingEvidenceRepository } from '@/core/infrastructure/supabase/supabase-teaching-evidence-repository'
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
 import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { resolveHumanTaskLessonProjection } from '@/core/presentation/human-task-content'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
+import { normalizeLessonObservationDraft, toTeachingObservationDraft } from './lesson-observation-model'
 import { hasCurrentBlockSessionOnDate, selectEligibleLessonOccurrence } from './lesson-registration-model'
 
 export async function recordLessonExecution(formData: FormData) {
@@ -22,6 +24,11 @@ export async function recordLessonExecution(formData: FormData) {
   const actualMinutes = positiveInt(formData, 'actualMinutes')
   const registrationKey = requiredUuid(formData, 'registrationKey')
   const evidenceNote = optionalNote(formData.get('evidenceNote'))
+  const observationDraft = normalizeLessonObservationDraft({
+    dimensionKey: formData.get('observationDimension'),
+    state: formData.get('observationState'),
+    note: formData.get('observationNote'),
+  })
   const today = currentRomeDate()
 
   if (localDate > today) throw new Error('Teaching session date cannot be in the future')
@@ -115,28 +122,45 @@ export async function recordLessonExecution(formData: FormData) {
     }
   }
 
-  const receipt = await recordTeachingSession({
-    workspaceId: context.workspace.id,
-    academicYearId: context.academicYear.id,
-    session,
-    allocations: [{
-      blockId,
-      minutes: actualMinutes,
-      canonicalPlanAssetId: source.assetId,
-      canonicalGenerationId: source.generationId,
-    }],
-    allocationContext: {
-      sectionId,
-      canonicalPlanAssetId: source.assetId,
-      canonicalGenerationId: source.generationId,
-    },
-  }, teachingRepository)
+  const allocations = [{
+    blockId,
+    minutes: actualMinutes,
+    canonicalPlanAssetId: source.assetId,
+    canonicalGenerationId: source.generationId,
+  }]
+  const allocationContext = {
+    sectionId,
+    canonicalPlanAssetId: source.assetId,
+    canonicalGenerationId: source.generationId,
+  }
+
+  const receipt = observationDraft
+    ? await recordTeachingSessionWithEvidence({
+        workspaceId: context.workspace.id,
+        academicYearId: context.academicYear.id,
+        session,
+        allocations,
+        allocationContext,
+        observations: [toTeachingObservationDraft(observationDraft, blockId)],
+        evidenceReferences: [],
+      }, new SupabaseTeachingEvidenceRepository())
+    : await recordTeachingSession({
+        workspaceId: context.workspace.id,
+        academicYearId: context.academicYear.id,
+        session,
+        allocations,
+        allocationContext,
+      }, teachingRepository)
 
   revalidatePath('/planner')
   revalidatePath('/piano-annuale')
   revalidatePath(`/classi/${sectionId}`)
   revalidatePath(`/classi/${sectionId}/lezioni/${blockId}`)
-  redirect(`/classi/${encodeURIComponent(sectionId)}?session=${encodeURIComponent(receipt.teachingSessionId)}`)
+
+  return {
+    teachingSessionId: receipt.teachingSessionId,
+    observationCount: observationDraft ? 1 : 0,
+  }
 }
 
 function requiredText(formData: FormData, name: string) {
