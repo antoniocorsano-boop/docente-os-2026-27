@@ -61,7 +61,7 @@ export function LessonAssistant({
       conversationTitle={`Copilota · ${context.lesson.sectionLabel}`}
       placeholder="Scrivi o detta una domanda"
       safetyLabel="Propone, non modifica"
-      footerLabel="Voce effimera: DOCENTE OS non conserva l’audio né la trascrizione intermedia. Nessuna modifica persistente avviene in questa fase."
+      footerLabel="Voce push-to-talk, massimo 30 s. DOCENTE OS non conserva audio o trascrizione intermedia. Non dettare nomi o dati personali degli alunni; il testo resta nel campo finché non scegli Invio."
       respond={respond}
       dictationAdapter={dictationAdapter}
     />
