@@ -8,6 +8,12 @@ export type ClassTaskDecision = {
   focusCompletion: boolean
 }
 
+export type ClassTaskPresentation = {
+  eyebrow: string
+  hint: string
+  nextStep: string
+}
+
 export function resolveClassTaskDecision(input: {
   hasNextBlock: boolean
   hasModeledLesson: boolean
@@ -76,5 +82,45 @@ export function resolveClassTaskDecision(input: {
     lessonMode: input.hasModeledLesson ? 'prepare' : null,
     useInlineRecorder: false,
     focusCompletion: false,
+  }
+}
+
+export function presentClassTaskState(state: ClassTaskState): ClassTaskPresentation {
+  if (state === 'TEACH') {
+    return {
+      eyebrow: 'ADESSO · LEZIONE IN CORSO',
+      hint: 'Continua dal punto di lavoro previsto per questa classe.',
+      nextStep: 'Dopo la lezione, registra solo ciò che è realmente successo.',
+    }
+  }
+
+  if (state === 'RECORD') {
+    return {
+      eyebrow: 'ADESSO · DA REGISTRARE',
+      hint: 'La lezione è terminata: chiudi il lavoro prima di passare ad altro.',
+      nextStep: 'Dopo la registrazione, DOCENTE OS ti mostrerà soltanto il prossimo passo utile.',
+    }
+  }
+
+  if (state === 'AFTER_RECORD') {
+    return {
+      eyebrow: 'ADESSO · PROSSIMO PASSO',
+      hint: 'La registrazione è acquisita. Rimane una sola decisione professionale alla volta.',
+      nextStep: 'Dopo questa decisione, tornerai alla preparazione del prossimo incontro.',
+    }
+  }
+
+  if (state === 'COMPLETE') {
+    return {
+      eyebrow: 'PERCORSO COMPLETATO',
+      hint: 'Non ci sono altre lezioni attive da svolgere per questa classe.',
+      nextStep: 'Consulta Piano e documentazione solo se devi verificare il percorso svolto.',
+    }
+  }
+
+  return {
+    eyebrow: 'ADESSO · PROSSIMA LEZIONE',
+    hint: 'Prepara il prossimo tratto didattico utile per questa classe.',
+    nextStep: 'Dopo la preparazione, entrerai nella lezione senza scegliere un altro modulo.',
   }
 }
