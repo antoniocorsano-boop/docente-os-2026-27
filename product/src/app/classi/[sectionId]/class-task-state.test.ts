@@ -17,7 +17,7 @@ test('prepara quando non esiste una lezione di oggi da svolgere', () => {
     label: 'Prepara la lezione',
     lessonMode: 'prepare',
     useInlineRecorder: false,
-    useAnnualPlan: false,
+    focusCompletion: false,
   })
 })
 
@@ -30,6 +30,7 @@ test('porta alla registrazione quando la lezione e terminata', () => {
   assert.equal(decision.state, 'RECORD')
   assert.equal(decision.lessonMode, 'record')
   assert.equal(decision.useInlineRecorder, false)
+  assert.equal(decision.focusCompletion, false)
 })
 
 test('una nuova occurrence prevale su una receipt rimasta nella URL', () => {
@@ -42,6 +43,7 @@ test('una nuova occurrence prevale su una receipt rimasta nella URL', () => {
   })
   assert.equal(decision.state, 'TEACH')
   assert.equal(decision.label, 'Continua la lezione')
+  assert.equal(decision.focusCompletion, false)
 })
 
 test('usa il recorder inline soltanto come fallback se manca il Lesson Workspace modellato', () => {
@@ -54,6 +56,7 @@ test('usa il recorder inline soltanto come fallback se manca il Lesson Workspace
   assert.equal(decision.state, 'RECORD')
   assert.equal(decision.lessonMode, null)
   assert.equal(decision.useInlineRecorder, true)
+  assert.equal(decision.focusCompletion, false)
 })
 
 test('dopo una receipt non propone di registrare di nuovo la stessa attivita', () => {
@@ -64,10 +67,11 @@ test('dopo una receipt non propone di registrare di nuovo la stessa attivita', (
   assert.equal(decision.state, 'AFTER_RECORD')
   assert.equal(decision.label, 'Prepara il prossimo incontro')
   assert.equal(decision.lessonMode, 'prepare')
-  assert.equal(decision.useAnnualPlan, false)
+  assert.equal(decision.useInlineRecorder, false)
+  assert.equal(decision.focusCompletion, false)
 })
 
-test('dopo la receipt mantiene la decisione di completamento sulla superficie session-aware', () => {
+test('dopo la receipt focalizza il completamento session-aware senza riaprire il recorder', () => {
   const decision = resolveClassTaskDecision({
     ...base,
     hasSessionReceipt: true,
@@ -76,8 +80,8 @@ test('dopo la receipt mantiene la decisione di completamento sulla superficie se
   assert.equal(decision.state, 'AFTER_RECORD')
   assert.equal(decision.label, 'Valuta il completamento')
   assert.equal(decision.lessonMode, null)
-  assert.equal(decision.useInlineRecorder, true)
-  assert.equal(decision.useAnnualPlan, false)
+  assert.equal(decision.useInlineRecorder, false)
+  assert.equal(decision.focusCompletion, true)
 })
 
 test('non espone una CTA quando il percorso annuale e completo', () => {
@@ -90,6 +94,6 @@ test('non espone una CTA quando il percorso annuale e completo', () => {
     label: null,
     lessonMode: null,
     useInlineRecorder: false,
-    useAnnualPlan: false,
+    focusCompletion: false,
   })
 })
