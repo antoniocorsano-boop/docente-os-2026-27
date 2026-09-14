@@ -3,7 +3,7 @@
 **Issue:** #381  
 **Baseline:** `develop@df2720103849043e9a888184b7357e1f55715e2d`  
 **Slice:** UX-0E  
-**Stato:** IMPLEMENTATION IN PROGRESS
+**Stato:** IMPLEMENTED — CERTIFICATION PENDING
 
 ## Intento umano
 
@@ -23,28 +23,28 @@ Costo osservabile:
 - possibile perdita di `returnTo`, sezione e blocco entrando nella lista Conoscenza;
 - cambio di superficie percepito come cambio di compito.
 
-## Dopo — target UX-0E
+## Dopo — UX-0E implementato
 
 Percorso:
 
-`Classe/Lezione → prepara o trova ciò che serve → usa → torna al compito`
+`Classe/Lezione → trova ciò che serve → usa la risorsa → torna al compito`
 
-Target di costo:
+Costo risultante:
 
 - 3 percorsi primari: `Oggi`, `Classi`, `Orario`;
-- `Conoscenza` disponibile in `Altro` e nella ricerca globale, ma non concorrente con il task corrente;
-- URL task-aware esplicito e sanitizzato per lista e dettaglio Conoscenza;
-- sezione, blocco e percorso di ritorno conservati senza stato nascosto;
-- Progetta richiamato dalla fase didattica pertinente.
+- `Conoscenza` e `Progetta` restano raggiungibili da `Altro` e dalla ricerca globale, ma non competono con il task corrente;
+- dalla Classe, Conoscenza viene aperta con URL task-aware esplicito e sanitizzato;
+- `mode`, `returnTo`, `section` e `block` sopravvivono alla lista, ai form di ricerca/filtri e all’apertura della risorsa;
+- il dettaglio della risorsa mantiene il ritorno diretto alla Classe o alla preparazione;
+- nessuno stato client nascosto è necessario per ricostruire il contesto;
+- la shell spiega coerentemente che materiali e progettazione si aprono dal compito quando servono.
 
-## Primo incremento
+## Evidenza automatizzata
 
-Questo commit stabilisce due invarianti:
-
-1. la shell non considera più `knowledge` una destinazione primaria di lavoro;
-2. esiste un builder canonico per aprire anche la **lista** Conoscenza con `mode`, `returnTo`, `section`, `block` e filtri pertinenti.
-
-La continuità completa nella UI `/knowledge` viene implementata nel commit successivo dello stesso slice e #381 resta aperta fino alla certificazione runtime.
+- test unitari sul builder della lista task-aware e sulla sanitizzazione di `returnTo`;
+- test della navigazione canonica: tre task primari e Conoscenza secondaria;
+- IA desktop/mobile aggiornata;
+- journey HVA dedicato `Classe → Conoscenza contestuale → risorsa → Classe`, con fixture temporanea governata e cleanup in `finally`.
 
 ## Invarianti non modificate
 
@@ -52,9 +52,14 @@ La continuità completa nella UI `/knowledge` viene implementata nel commit succ
 - nessun cambiamento a persistenza, provenance, RLS o AAL2;
 - nessuna auto-mutazione del Piano;
 - nessun nuovo stato di sessione client per conservare il contesto;
-- `sanitizeInternalReturnTo` continua a impedire ritorni esterni.
+- `sanitizeInternalReturnTo` continua a impedire ritorni esterni;
+- nessuna capability rimossa: cambia soltanto il punto in cui viene richiamata.
 
-## Gate
+## Classificazione design
+
+**COMPATIBLE** — semplificazione della gerarchia e continuità del compito senza rimozione di capability, modifica dei contratti dominio o introduzione di un nuovo interaction model.
+
+## Gate di chiusura
 
 Prima del merge finale di UX-0E:
 
@@ -64,5 +69,5 @@ Prima del merge finale di UX-0E:
 - WCAG 2.2 AA;
 - HVA desktop/mobile;
 - P6;
-- ogni gate applicabile sullo stesso exact head;
+- K1/P7 e ogni altro gate applicabile sullo stesso exact head;
 - certificazione Beta sul merge commit prima della chiusura di #381.
