@@ -205,7 +205,6 @@ export function lessonCopilotProviderContext(context: LessonCopilotContext) {
       progressStatus: context.lesson.progressStatus,
       preparationPreview: context.lesson.preparationPreview,
       remainingPreparationCount: context.lesson.remainingPreparationCount,
-      readyTitles: context.lesson.readyTitles,
       readyCount: context.lesson.readyCount,
       statusLabel: context.lesson.statusLabel,
     },
