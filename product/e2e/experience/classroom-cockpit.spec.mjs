@@ -10,7 +10,7 @@ requireE2ECredentials()
 const outputRoot = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience'
 
 for (const classMatcher of [/2ª\s*A/i]) {
-  test('Journey: Classe → In classe → strumenti rapidi', async ({ page }, testInfo) => {
+  test('Journey: Classe → task corrente → supporti su richiesta', async ({ page }, testInfo) => {
     await loginE2E(page)
     await page.goto('/classi')
 
@@ -27,16 +27,18 @@ for (const classMatcher of [/2ª\s*A/i]) {
     try {
       await page.goto(`/classi/${encodeURIComponent(sectionId)}`)
 
-      const primaryActions = page.locator('.classLessonFocusActions a.primary')
-      await expect(primaryActions, 'UX-0A richiede una sola CTA primaria nella Classe.').toHaveCount(1)
-      await expect(page.locator('.classLessonFocusActions a:not(.primary)'), 'Il Piano non deve competere con il prossimo passo nel focus primario.').toHaveCount(0)
+      await expect(page.locator('.classWorkspaceHeader')).toContainText('Qui trovi il lavoro da fare adesso')
+      await expect(page.locator('.classLessonFocus')).toContainText(/ADESSO|PERCORSO COMPLETATO/)
+      await expect(page.locator('.classLessonFocus')).toContainText(/Dopo |Consulta Piano/)
 
-      const preparedDisclosure = page.getByRole('group').filter({ has: page.getByText('Materiale già predisposto', { exact: true }) }).first()
-      if (await preparedDisclosure.count()) {
-        await preparedDisclosure.locator('summary').click()
-      } else {
-        await page.getByText('Materiale già predisposto', { exact: true }).click()
-      }
+      const primaryActions = page.locator('.classLessonFocusActions a.primary')
+      await expect(primaryActions, 'UX-0C richiede una sola CTA primaria nella Classe.').toHaveCount(1)
+      await expect(page.locator('.classLessonFocusActions a:not(.primary)'), 'Azioni secondarie non devono competere con il task corrente.').toHaveCount(0)
+
+      const supports = page.getByTestId('class-lesson-supports')
+      await expect(supports).toBeVisible()
+      await expect(supports).not.toHaveAttribute('open', '')
+      await supports.locator('summary').click()
 
       const prepared = page.locator(`a[href="/classi/${sectionId}/in-classe/${fixture.assetId}"]`)
       await expect(prepared, 'Il materiale predisposto deve restare raggiungibile nella classe corretta.').toBeVisible()
@@ -85,7 +87,7 @@ for (const classMatcher of [/2ª\s*A/i]) {
       await screenshot(page, testInfo, 'classroom-cockpit')
       await recordJourney(testInfo.project.name, {
         status: 'PASS',
-        note: `${fixture.classLabel} · CTA primaria unica · materiale predisposto raggiungibile · 2 passaggi · 4 strumenti rapidi verificati`,
+        note: `${fixture.classLabel} · gerarchia Adesso→Dopo · CTA primaria unica · supporti chiusi per default e materiale predisposto raggiungibile`,
       })
     } finally {
       await deleteKnowledgeAsset(page, fixture.assetId).catch(() => {})
@@ -105,7 +107,7 @@ async function recordJourney(project, result) {
   const payload = {
     schemaVersion: 1,
     id: 'classroom-cockpit',
-    label: 'Classe → In classe → strumenti rapidi',
+    label: 'Classe → task corrente → supporti su richiesta',
     project,
     status: result.status,
     note: result.note,
