@@ -57,7 +57,7 @@ const brief: LessonBrief = {
   statusLabel: 'READY_BASE',
 }
 
-test('lesson context keeps internal authority while provider view removes workspace and object identifiers', () => {
+test('lesson context keeps internal authority while provider view removes workspace, object and free-form readiness identifiers', () => {
   const context = buildLessonCopilotContext({
     workspaceId: 'workspace-secret-id',
     academicYearId: 'year-2026',
@@ -66,7 +66,7 @@ test('lesson context keeps internal authority while provider view removes worksp
     sectionLabel: '2ª C',
     blockId: 'B01',
     projection,
-    brief,
+    brief: { ...brief, readyTitles: ['FREE-FORM-LOCAL-ONLY'] },
     progressStatus: 'PIANIFICATO',
   })
 
@@ -74,6 +74,7 @@ test('lesson context keeps internal authority while provider view removes worksp
   assert.equal(context.object?.id, 'section-2c-id:B01:projection-2c-b01')
   assert.deepEqual(context.provenance.map((item) => item.ref), ['CAN-PLAN-2', 'CAN-UDA-2-01'])
   assert.ok(context.forbiddenCapabilities.includes('PLAN_COMPLETE_BLOCK'))
+  assert.deepEqual(context.lesson.readyTitles, ['FREE-FORM-LOCAL-ONLY'])
 
   const provider = lessonCopilotProviderContext(context)
   assert.equal('workspaceId' in provider, false)
@@ -81,6 +82,7 @@ test('lesson context keeps internal authority while provider view removes worksp
   assert.equal('sectionId' in provider.lesson, false)
   assert.equal('blockId' in provider.lesson, false)
   assert.equal('projectionId' in provider.lesson, false)
+  assert.equal('readyTitles' in provider.lesson, false)
   assert.equal(provider.classLabel, '2ª C')
 })
 
