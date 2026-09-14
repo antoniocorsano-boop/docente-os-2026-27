@@ -27,8 +27,11 @@ import { DocenteOsLockup, DocenteOsMark } from '@/components/brand/docente-os-br
 import { cn } from '@/lib/utils'
 import {
   NAVIGATION_GROUPS,
+  SECONDARY_NAVIGATION_GROUPS,
+  WORK_NAVIGATION_KEYS,
   navigationGroupItems,
   navigationItem,
+  workNavigationItems,
   type NavigationKey,
 } from './navigation'
 
@@ -44,8 +47,6 @@ const ICONS: Record<NavigationKey, LucideIcon> = {
   settings: Settings2,
   account: ShieldCheck,
 }
-
-const MOBILE_PRIMARY: NavigationKey[] = ['home', 'today', 'timetable', 'classes']
 
 export type AppShellProps = {
   active: NavigationKey
@@ -68,6 +69,7 @@ export function AppShell({
   const [commandOpen, setCommandOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const activeItem = navigationItem(active)
+  const secondaryActive = !WORK_NAVIGATION_KEYS.includes(active)
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -102,28 +104,37 @@ export function AppShell({
         </button>
 
         <nav className="dosNavList">
-          {NAVIGATION_GROUPS.map((group) => (
-            <div className="dosNavGroup" key={group.key}>
-              <span className="dosNavGroupLabel">{group.label}</span>
-              <div className="dosNavGroupItems">
-                {navigationGroupItems(group).map((item) => {
-                  const Icon = ICONS[item.key]
-                  return (
-                    <Link
-                      key={item.key}
-                      href={item.href}
-                      className={cn('dosNavItem', item.key === active && 'active')}
-                      aria-current={item.key === active ? 'page' : undefined}
-                      title={`${item.label} — ${item.description}`}
-                    >
-                      <Icon size={18} strokeWidth={1.9} aria-hidden />
-                      <span>{item.label}</span>
-                    </Link>
-                  )
-                })}
-              </div>
+          <div className="dosNavGroup">
+            <span className="dosNavGroupLabel">Lavora</span>
+            <div className="dosNavGroupItems">
+              {workNavigationItems().map((item) => {
+                const Icon = ICONS[item.key]
+                return (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    className={cn('dosNavItem', item.key === active && 'active')}
+                    aria-current={item.key === active ? 'page' : undefined}
+                    title={`${item.shortLabel} — ${item.description}`}
+                  >
+                    <Icon size={18} strokeWidth={1.9} aria-hidden />
+                    <span>{item.shortLabel}</span>
+                  </Link>
+                )
+              })}
+              <button
+                type="button"
+                className={cn('dosNavItem', secondaryActive && 'active')}
+                aria-expanded={mobileMenuOpen}
+                aria-label="Apri altre funzioni"
+                title="Altre funzioni"
+                onClick={() => setMobileMenuOpen(true)}
+              >
+                <Menu size={18} strokeWidth={1.9} aria-hidden />
+                <span>Altro</span>
+              </button>
             </div>
-          ))}
+          </div>
         </nav>
 
         <div className="dosSidebarFooter">
@@ -138,7 +149,9 @@ export function AppShell({
       <div className="dosMainColumn">
         <header className="dosMobileHeader">
           <div className="dosMobileContext">
-            <DocenteOsMark size={30} className="dosMobileBrandMark" />
+            <Link href="/" aria-label="Docente OS — Home">
+              <DocenteOsMark size={30} className="dosMobileBrandMark" />
+            </Link>
             <span>{activeItem.label}</span>
             <strong>{workspaceName}</strong>
           </div>
@@ -146,7 +159,7 @@ export function AppShell({
             <button type="button" onClick={() => setCommandOpen(true)} aria-label="Cerca o vai a una funzione">
               <Search size={19} aria-hidden />
             </button>
-            <button type="button" onClick={() => setMobileMenuOpen(true)} aria-label="Apri tutte le sezioni">
+            <button type="button" onClick={() => setMobileMenuOpen(true)} aria-label="Apri altre funzioni">
               <Menu size={20} aria-hidden />
             </button>
           </div>
@@ -155,7 +168,7 @@ export function AppShell({
         <main id="dos-main-content" tabIndex={-1} className={cn('workSurface', 'dosContent', contentClassName)}>{children}</main>
 
         <nav className="dosBottomNav" aria-label="Navigazione mobile">
-          {MOBILE_PRIMARY.map((key) => {
+          {WORK_NAVIGATION_KEYS.map((key) => {
             const item = navigationItem(key)
             const Icon = ICONS[key]
             return (
@@ -165,7 +178,7 @@ export function AppShell({
               </Link>
             )
           })}
-          <button type="button" onClick={() => setMobileMenuOpen(true)} className={cn(!MOBILE_PRIMARY.includes(active) && 'active')}>
+          <button type="button" onClick={() => setMobileMenuOpen(true)} className={cn(secondaryActive && 'active')}>
             <Menu size={20} aria-hidden />
             <small>Altro</small>
           </button>
@@ -259,10 +272,10 @@ function MobileMenu({
             <DocenteOsLockup compact academicYearLabel={academicYearLabel ?? 'Mantieni il filo.'} />
             <Dialog.Close className="dosSheetClose" aria-label="Chiudi menu"><X size={20} aria-hidden /></Dialog.Close>
           </div>
-          <Dialog.Title>Cosa vuoi fare?</Dialog.Title>
-          <p className="dosMobileSheetLead">Scegli il tipo di lavoro; il sistema ti porta nella superficie pertinente.</p>
+          <Dialog.Title>Altre funzioni</Dialog.Title>
+          <p className="dosMobileSheetLead">Apri qui le funzioni che non servono nel flusso ordinario della lezione.</p>
           <div className="dosMobileMenuGroups">
-            {NAVIGATION_GROUPS.map((group) => (
+            {SECONDARY_NAVIGATION_GROUPS.map((group) => (
               <section className="dosMobileMenuGroup" key={group.key}>
                 <div className="dosMobileMenuGroupHeading">
                   <strong>{group.label}</strong>
