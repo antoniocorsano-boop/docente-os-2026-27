@@ -145,6 +145,11 @@ const replayHardeningSql = readFileSync(
   'utf8',
 )
 
+const nullBoundarySql = readFileSync(
+  new URL('../../../supabase/migrations/0056_teaching_evidence_null_boundary.sql', import.meta.url),
+  'utf8',
+)
+
 test('TE-1A replay validates the complete TeachingSession payload before evidence replay', () => {
   const lockIndex = replayHardeningSql.indexOf('pg_advisory_xact_lock')
   const baseBoundaryIndex = replayHardeningSql.indexOf('session_id := public.record_teaching_session')
@@ -167,4 +172,17 @@ test('TE-1A keeps atomic and legacy registration paths signature-distinct', () =
 test('evidence links decode JSON string draft keys before lookup', () => {
   assert.match(replayHardeningSql, /jsonb_array_elements_text/)
   assert.equal(replayHardeningSql.includes("trim(both '\"' from linked_draft_key::text)"), false)
+})
+
+test('public TE-1A RPC rejects SQL NULL JSON payloads before private delegation', () => {
+  const observationsGuard = nullBoundarySql.indexOf('target_observations is null')
+  const evidenceGuard = nullBoundarySql.indexOf('target_evidence_references is null')
+  const privateDelegate = nullBoundarySql.indexOf('return private.record_teaching_session_with_evidence')
+
+  assert.ok(observationsGuard >= 0)
+  assert.ok(evidenceGuard >= 0)
+  assert.ok(privateDelegate > observationsGuard)
+  assert.ok(privateDelegate > evidenceGuard)
+  assert.match(nullBoundarySql, /set schema private/)
+  assert.match(nullBoundarySql, /revoke all on function private\.record_teaching_session_with_evidence/)
 })

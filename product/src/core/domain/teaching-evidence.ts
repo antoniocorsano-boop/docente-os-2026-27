@@ -122,12 +122,20 @@ export function validateTeachingEvidenceDrafts(input: {
 }): TeachingEvidenceDraftValidation {
   const codes: string[] = []
   const observationKeys = new Set<string>()
+  const observationTargets = new Set<string>()
 
   for (const observation of input.observations) {
     const draftKey = observation.draftKey.trim()
     if (!draftKey) codes.push('OBSERVATION_DRAFT_KEY_REQUIRED')
     if (draftKey && observationKeys.has(draftKey)) codes.push('DUPLICATE_OBSERVATION_DRAFT_KEY')
     if (draftKey) observationKeys.add(draftKey)
+
+    const normalizedGroupKey = observation.scope === 'ANONYMOUS_GROUP'
+      ? observation.anonymousGroupKey?.trim() ?? ''
+      : ''
+    const normalizedTarget = `${observation.scope.trim()}\u001f${normalizedGroupKey}\u001f${observation.dimensionKey.trim()}`
+    if (observationTargets.has(normalizedTarget)) codes.push('DUPLICATE_OBSERVATION_TARGET')
+    observationTargets.add(normalizedTarget)
 
     if (!BASELINE_TEACHING_EVIDENCE_DIMENSIONS.includes(observation.dimensionKey)) {
       codes.push('INVALID_OBSERVATION_DIMENSION')

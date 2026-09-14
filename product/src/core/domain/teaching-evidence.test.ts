@@ -78,6 +78,36 @@ test('draft validation rejects taxonomy drift and unresolved evidence links', ()
   assert.ok(result.codes.includes('UNKNOWN_OBSERVATION_DRAFT_KEY'))
 })
 
+test('draft validation rejects duplicate normalized observation targets before persistence', () => {
+  const result = validateTeachingEvidenceDrafts({
+    observations: [
+      {
+        draftKey: 'first',
+        scope: 'ANONYMOUS_GROUP',
+        anonymousGroupKey: ' table-a ',
+        dimensionKey: 'AUTONOMY',
+        state: 'DEVELOPING',
+        note: null,
+        source: 'TEACHER_QUICK_MARK',
+      },
+      {
+        draftKey: 'second',
+        scope: 'ANONYMOUS_GROUP',
+        anonymousGroupKey: 'table-a',
+        dimensionKey: 'AUTONOMY',
+        state: 'CONSOLIDATED',
+        note: null,
+        source: 'TEACHER_NOTE',
+      },
+    ],
+    evidenceReferences: [],
+  })
+
+  assert.equal(result.valid, false)
+  assert.ok(result.codes.includes('DUPLICATE_OBSERVATION_TARGET'))
+  assert.equal(result.codes.includes('DUPLICATE_OBSERVATION_DRAFT_KEY'), false)
+})
+
 test('draft validation accepts class and session-local anonymous-group observations', () => {
   assert.deepEqual(
     validateTeachingEvidenceDrafts({
