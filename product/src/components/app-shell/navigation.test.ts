@@ -3,8 +3,11 @@ import test from 'node:test'
 import {
   NAVIGATION_GROUPS,
   PRIMARY_NAVIGATION,
+  SECONDARY_NAVIGATION_GROUPS,
+  WORK_NAVIGATION_KEYS,
   navigationGroupItems,
   navigationItem,
+  workNavigationItems,
 } from './navigation'
 
 test('canonical navigation has unique keys and routes', () => {
@@ -15,14 +18,14 @@ test('canonical navigation has unique keys and routes', () => {
   assert.equal(new Set(hrefs).size, hrefs.length)
 })
 
-test('canonical navigation exposes every primary teacher destination', () => {
+test('canonical navigation preserves every teacher capability', () => {
   assert.deepEqual(
     PRIMARY_NAVIGATION.map((item) => item.key),
     ['home', 'today', 'design', 'knowledge', 'classes', 'timetable', 'calendar', 'annual-plan', 'settings', 'account'],
   )
 })
 
-test('navigation groups cover every destination exactly once', () => {
+test('canonical navigation groups cover every destination exactly once', () => {
   const groupedKeys = NAVIGATION_GROUPS.flatMap((group) => group.items)
   const primaryKeys = PRIMARY_NAVIGATION.map((item) => item.key)
 
@@ -31,7 +34,27 @@ test('navigation groups cover every destination exactly once', () => {
   assert.deepEqual([...groupedKeys].sort(), [...primaryKeys].sort())
 })
 
-test('navigation groups follow human tasks rather than technical containers', () => {
+test('ordinary work navigation exposes four teacher tasks and not Home', () => {
+  assert.deepEqual(WORK_NAVIGATION_KEYS, ['today', 'classes', 'timetable', 'knowledge'])
+  assert.deepEqual(workNavigationItems().map((item) => item.shortLabel), ['Oggi', 'Classi', 'Orario', 'Materiali'])
+  assert.equal(WORK_NAVIGATION_KEYS.includes('home'), false)
+})
+
+test('secondary navigation preserves all non-primary capabilities without overlap', () => {
+  const secondaryKeys = SECONDARY_NAVIGATION_GROUPS.flatMap((group) => group.items)
+  const expectedSecondary = PRIMARY_NAVIGATION
+    .map((item) => item.key)
+    .filter((key) => !WORK_NAVIGATION_KEYS.includes(key))
+
+  assert.deepEqual([...secondaryKeys].sort(), [...expectedSecondary].sort())
+  assert.equal(new Set(secondaryKeys).size, secondaryKeys.length)
+  assert.equal(secondaryKeys.some((key) => WORK_NAVIGATION_KEYS.includes(key)), false)
+  assert.ok(secondaryKeys.includes('home'))
+  assert.ok(secondaryKeys.includes('settings'))
+  assert.ok(secondaryKeys.includes('account'))
+})
+
+test('canonical navigation groups follow human tasks rather than technical containers', () => {
   assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[0]).map((item) => item.key), ['home', 'today'])
   assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[1]).map((item) => item.key), ['classes', 'design', 'annual-plan'])
   assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[2]).map((item) => item.key), ['timetable', 'calendar'])
@@ -41,11 +64,13 @@ test('navigation groups follow human tasks rather than technical containers', ()
   assert.equal(NAVIGATION_GROUPS[2].label, 'Tempo')
 })
 
-test('account and professional settings stay distinct', () => {
+test('account and professional settings stay distinct and secondary', () => {
   assert.equal(navigationItem('settings').href, '/impostazioni')
   assert.match(navigationItem('settings').description, /contesto professionale|istituto|cattedra/i)
   assert.equal(navigationItem('account').href, '/account')
   assert.match(navigationItem('account').description, /password|MFA|sessioni/i)
+  assert.equal(WORK_NAVIGATION_KEYS.includes('settings'), false)
+  assert.equal(WORK_NAVIGATION_KEYS.includes('account'), false)
 })
 
 test('Orario and Calendario stay distinct in labels and intent', () => {
