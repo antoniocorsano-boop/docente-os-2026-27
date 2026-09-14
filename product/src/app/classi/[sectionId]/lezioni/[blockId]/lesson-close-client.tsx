@@ -68,7 +68,7 @@ export default function LessonCloseClient({
         <div className={styles.sessionFacts}>
           <label className={styles.sessionField}>
             <span>Data della lezione</span>
-            <input type="date" name="localDate" required defaultValue={defaultLocalDate} />
+            <input type="date" name="localDate" required defaultValue={defaultLocalDate} max={defaultLocalDate} />
           </label>
           <label className={styles.sessionField}>
             <span>Minuti effettivi</span>
