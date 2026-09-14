@@ -51,6 +51,12 @@ export async function loadAuthoritativeLessonCopilotContext(input: {
         academicYearId: input.academicYearId,
         sectionId: section.id,
         disciplineRef: curriculumDisciplineRef,
+      }).catch(() => {
+        // Curriculum authority enriches confidence but is not required to expose
+        // the read-only copilot. Missing/unavailable authority must degrade the
+        // answer contract to PARTIAL, never take the entire lesson assistant down.
+        console.warn('[DOCENTE OS] Curriculum authority unavailable; lesson copilot degraded to PARTIAL.')
+        return null
       })
     : Promise.resolve(null)
 
