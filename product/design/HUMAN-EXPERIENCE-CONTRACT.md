@@ -4,7 +4,7 @@ Stato: **CANONICAL / NORMATIVE**
 
 Questo contratto governa tutte le superfici interattive di DOCENTE OS e viene applicato prima di qualunque linea guida estetica esterna. Il documento storico `../../docs/DOCENTE_OS_HUMAN_TASK_EXPERIENCE_v1.md` resta la fonte di provenienza del modello; questo file ne definisce l'uso operativo nel prodotto.
 
-La specifica `../../docs/product/UX0_PRODUCT_SIMPLIFICATION_CANONICAL.md` governa inoltre la separazione fra Product Model e User Model e il costo cognitivo dei task ordinari.
+`PRODUCT-SIMPLIFICATION.md` definisce la regola normativa di riduzione della complessità percepita (`WHY NOW?`, Product Model ≠ User Model, una CTA primaria, Task Cost). `../../docs/product/UX0_PRODUCT_SIMPLIFICATION_CANONICAL.md` governa il programma UX-0, le slice e la closure M5-02D. I tre documenti sono complementari e nessuno può indebolire controllo umano, sicurezza, privacy, provenance o recuperabilità.
 
 ## Sequenza cognitiva obbligatoria
 
