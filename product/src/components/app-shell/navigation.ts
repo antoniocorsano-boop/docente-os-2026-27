@@ -55,7 +55,7 @@ export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
     key: 'knowledge',
     href: '/knowledge',
     label: 'Conoscenza',
-    shortLabel: 'Conoscenza',
+    shortLabel: 'Materiali',
     description: 'Trova documenti, fonti e materiali quando ti servono.',
     keywords: ['documenti', 'fonti', 'ricerca', 'materiali', 'conoscenza'],
   },
@@ -142,10 +142,25 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
   },
 ] as const
 
+export const WORK_NAVIGATION_KEYS: readonly NavigationKey[] = ['today', 'classes', 'timetable', 'knowledge']
+
+const WORK_NAVIGATION_SET = new Set<NavigationKey>(WORK_NAVIGATION_KEYS)
+
+export const SECONDARY_NAVIGATION_GROUPS: readonly NavigationGroup[] = NAVIGATION_GROUPS
+  .map((group) => ({
+    ...group,
+    items: group.items.filter((key) => !WORK_NAVIGATION_SET.has(key)),
+  }))
+  .filter((group) => group.items.length > 0)
+
 export function navigationItem(key: NavigationKey) {
   return PRIMARY_NAVIGATION.find((item) => item.key === key) ?? PRIMARY_NAVIGATION[0]
 }
 
 export function navigationGroupItems(group: NavigationGroup) {
   return group.items.map(navigationItem)
+}
+
+export function workNavigationItems() {
+  return WORK_NAVIGATION_KEYS.map(navigationItem)
 }

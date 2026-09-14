@@ -27,8 +27,12 @@ import { DocenteOsLockup, DocenteOsMark } from '@/components/brand/docente-os-br
 import { cn } from '@/lib/utils'
 import {
   NAVIGATION_GROUPS,
+  SECONDARY_NAVIGATION_GROUPS,
+  WORK_NAVIGATION_KEYS,
   navigationGroupItems,
   navigationItem,
+  workNavigationItems,
+  type NavigationGroup,
   type NavigationKey,
 } from './navigation'
 
@@ -44,8 +48,6 @@ const ICONS: Record<NavigationKey, LucideIcon> = {
   settings: Settings2,
   account: ShieldCheck,
 }
-
-const MOBILE_PRIMARY: NavigationKey[] = ['home', 'today', 'timetable', 'classes']
 
 export type AppShellProps = {
   active: NavigationKey
@@ -66,8 +68,9 @@ export function AppShell({
 }: AppShellProps) {
   const router = useRouter()
   const [commandOpen, setCommandOpen] = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [secondaryOpen, setSecondaryOpen] = useState(false)
   const activeItem = navigationItem(active)
+  const secondaryActive = !WORK_NAVIGATION_KEYS.includes(active)
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -83,7 +86,7 @@ export function AppShell({
 
   const navigate = (href: string) => {
     setCommandOpen(false)
-    setMobileMenuOpen(false)
+    setSecondaryOpen(false)
     router.push(href)
   }
 
@@ -102,28 +105,37 @@ export function AppShell({
         </button>
 
         <nav className="dosNavList">
-          {NAVIGATION_GROUPS.map((group) => (
-            <div className="dosNavGroup" key={group.key}>
-              <span className="dosNavGroupLabel">{group.label}</span>
-              <div className="dosNavGroupItems">
-                {navigationGroupItems(group).map((item) => {
-                  const Icon = ICONS[item.key]
-                  return (
-                    <Link
-                      key={item.key}
-                      href={item.href}
-                      className={cn('dosNavItem', item.key === active && 'active')}
-                      aria-current={item.key === active ? 'page' : undefined}
-                      title={`${item.label} — ${item.description}`}
-                    >
-                      <Icon size={18} strokeWidth={1.9} aria-hidden />
-                      <span>{item.label}</span>
-                    </Link>
-                  )
-                })}
-              </div>
+          <div className="dosNavGroup">
+            <span className="dosNavGroupLabel">Lavora</span>
+            <div className="dosNavGroupItems">
+              {workNavigationItems().map((item) => {
+                const Icon = ICONS[item.key]
+                return (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    className={cn('dosNavItem', item.key === active && 'active')}
+                    aria-current={item.key === active ? 'page' : undefined}
+                    title={`${item.shortLabel} — ${item.description}`}
+                  >
+                    <Icon size={18} strokeWidth={1.9} aria-hidden />
+                    <span>{item.shortLabel}</span>
+                  </Link>
+                )
+              })}
+              <button
+                type="button"
+                className={cn('dosNavItem', 'rowAction', secondaryActive && 'active')}
+                aria-expanded={secondaryOpen}
+                aria-label="Apri altre funzioni"
+                title="Altre funzioni"
+                onClick={() => setSecondaryOpen(true)}
+              >
+                <Menu size={18} strokeWidth={1.9} aria-hidden />
+                <span>Altro</span>
+              </button>
             </div>
-          ))}
+          </div>
         </nav>
 
         <div className="dosSidebarFooter">
@@ -138,7 +150,9 @@ export function AppShell({
       <div className="dosMainColumn">
         <header className="dosMobileHeader">
           <div className="dosMobileContext">
-            <DocenteOsMark size={30} className="dosMobileBrandMark" />
+            <Link href="/" aria-label="Docente OS — Home">
+              <DocenteOsMark size={30} className="dosMobileBrandMark" />
+            </Link>
             <span>{activeItem.label}</span>
             <strong>{workspaceName}</strong>
           </div>
@@ -146,7 +160,7 @@ export function AppShell({
             <button type="button" onClick={() => setCommandOpen(true)} aria-label="Cerca o vai a una funzione">
               <Search size={19} aria-hidden />
             </button>
-            <button type="button" onClick={() => setMobileMenuOpen(true)} aria-label="Apri tutte le sezioni">
+            <button type="button" onClick={() => setSecondaryOpen(true)} aria-label="Apri altre funzioni">
               <Menu size={20} aria-hidden />
             </button>
           </div>
@@ -155,7 +169,7 @@ export function AppShell({
         <main id="dos-main-content" tabIndex={-1} className={cn('workSurface', 'dosContent', contentClassName)}>{children}</main>
 
         <nav className="dosBottomNav" aria-label="Navigazione mobile">
-          {MOBILE_PRIMARY.map((key) => {
+          {WORK_NAVIGATION_KEYS.map((key) => {
             const item = navigationItem(key)
             const Icon = ICONS[key]
             return (
@@ -165,7 +179,7 @@ export function AppShell({
               </Link>
             )
           })}
-          <button type="button" onClick={() => setMobileMenuOpen(true)} className={cn(!MOBILE_PRIMARY.includes(active) && 'active')}>
+          <button type="button" onClick={() => setSecondaryOpen(true)} className={cn(secondaryActive && 'active')} aria-expanded={secondaryOpen}>
             <Menu size={20} aria-hidden />
             <small>Altro</small>
           </button>
@@ -174,7 +188,7 @@ export function AppShell({
 
       <ContextualAssistantBoundary active={active} />
       <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} onNavigate={navigate} />
-      <MobileMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen} active={active} onNavigate={navigate} academicYearLabel={academicYearLabel} />
+      <SecondaryMenu open={secondaryOpen} onOpenChange={setSecondaryOpen} active={active} onNavigate={navigate} />
     </div>
   )
 }
@@ -189,21 +203,96 @@ function CommandPalette({
   onNavigate: (href: string) => void
 }) {
   return (
+    <NavigationCommandDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      onNavigate={onNavigate}
+      groups={NAVIGATION_GROUPS}
+      title="Cerca o vai a una sezione"
+      description="Scrivi ciò che vuoi fare e apri la funzione pertinente."
+      placeholder="Cosa vuoi fare adesso?"
+      empty="Nessun percorso trovato. Prova con un verbo: prepara, registra, cerca, organizza."
+      footer="Docente OS apre il contesto; le modifiche restano nella superficie corretta."
+      icon="search"
+    />
+  )
+}
+
+function SecondaryMenu({
+  open,
+  onOpenChange,
+  active,
+  onNavigate,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  active: NavigationKey
+  onNavigate: (href: string) => void
+}) {
+  return (
+    <NavigationCommandDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      onNavigate={onNavigate}
+      groups={SECONDARY_NAVIGATION_GROUPS}
+      title="Altre funzioni"
+      description="Cerca tra le funzioni secondarie senza duplicare i percorsi di lavoro già visibili."
+      placeholder="Cerca tra le altre funzioni…"
+      empty="Nessuna funzione secondaria trovata."
+      footer="Le funzioni principali restano Oggi, Classi, Orario e Materiali."
+      icon="menu"
+      active={active}
+    />
+  )
+}
+
+function NavigationCommandDialog({
+  open,
+  onOpenChange,
+  onNavigate,
+  groups,
+  title,
+  description,
+  placeholder,
+  empty,
+  footer,
+  icon,
+  active,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onNavigate: (href: string) => void
+  groups: readonly NavigationGroup[]
+  title: string
+  description: string
+  placeholder: string
+  empty: string
+  footer: string
+  icon: 'search' | 'menu'
+  active?: NavigationKey
+}) {
+  const LeadingIcon = icon === 'search' ? Search : Menu
+
+  return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="dosDialogOverlay" />
-        <Dialog.Content className="dosCommandDialog" aria-describedby="command-description">
-          <Dialog.Title className="srOnly">Cerca o vai a una sezione</Dialog.Title>
-          <p id="command-description" className="srOnly">Scrivi ciò che vuoi fare e apri la funzione pertinente.</p>
-          <Command className="dosCommand" label="Cerca nelle funzioni di Docente OS">
+        <Dialog.Content className="dosCommandDialog" aria-describedby={`${icon}-navigation-description`}>
+          <Dialog.Title className="srOnly">{title}</Dialog.Title>
+          <p id={`${icon}-navigation-description`} className="srOnly">{description}</p>
+          <Command className="dosCommand" label={title}>
             <div className="dosCommandInputRow">
-              <Search size={19} aria-hidden />
-              <Command.Input autoFocus placeholder="Cosa vuoi fare adesso?" />
-              <span className="dosCommandShortcut">Esc</span>
+              <LeadingIcon size={19} aria-hidden />
+              <Command.Input autoFocus placeholder={placeholder} />
+              {icon === 'menu' ? (
+                <Dialog.Close className="dosSheetClose" aria-label="Chiudi altre funzioni"><X size={18} aria-hidden /></Dialog.Close>
+              ) : (
+                <span className="dosCommandShortcut">Esc</span>
+              )}
             </div>
             <Command.List className="dosCommandList">
-              <Command.Empty className="dosCommandEmpty">Nessun percorso trovato. Prova con un verbo: prepara, registra, cerca, organizza.</Command.Empty>
-              {NAVIGATION_GROUPS.map((group) => (
+              <Command.Empty className="dosCommandEmpty">{empty}</Command.Empty>
+              {groups.map((group) => (
                 <Command.Group heading={group.label} key={group.key}>
                   {navigationGroupItems(group).map((item) => {
                     const Icon = ICONS[item.key]
@@ -213,6 +302,7 @@ function CommandPalette({
                         value={`${item.label} ${item.description} ${item.keywords.join(' ')}`}
                         onSelect={() => onNavigate(item.href)}
                         className="dosCommandItem"
+                        aria-current={item.key === active ? 'page' : undefined}
                       >
                         <span className="dosCommandIcon"><Icon size={18} aria-hidden /></span>
                         <span>
@@ -228,60 +318,9 @@ function CommandPalette({
             </Command.List>
             <div className="dosCommandFooter">
               <span><CommandIcon size={14} aria-hidden /> Cerca per intenzione</span>
-              <span>Docente OS apre il contesto; le modifiche restano nella superficie corretta.</span>
+              <span>{footer}</span>
             </div>
           </Command>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
-  )
-}
-
-function MobileMenu({
-  open,
-  onOpenChange,
-  active,
-  onNavigate,
-  academicYearLabel,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  active: NavigationKey
-  onNavigate: (href: string) => void
-  academicYearLabel?: string | null
-}) {
-  return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="dosDialogOverlay" />
-        <Dialog.Content className="dosMobileSheet">
-          <div className="dosMobileSheetHeader">
-            <DocenteOsLockup compact academicYearLabel={academicYearLabel ?? 'Mantieni il filo.'} />
-            <Dialog.Close className="dosSheetClose" aria-label="Chiudi menu"><X size={20} aria-hidden /></Dialog.Close>
-          </div>
-          <Dialog.Title>Cosa vuoi fare?</Dialog.Title>
-          <p className="dosMobileSheetLead">Scegli il tipo di lavoro; il sistema ti porta nella superficie pertinente.</p>
-          <div className="dosMobileMenuGroups">
-            {NAVIGATION_GROUPS.map((group) => (
-              <section className="dosMobileMenuGroup" key={group.key}>
-                <div className="dosMobileMenuGroupHeading">
-                  <strong>{group.label}</strong>
-                  <span>{group.description}</span>
-                </div>
-                <div className="dosMobileMenuGrid">
-                  {navigationGroupItems(group).map((item) => {
-                    const Icon = ICONS[item.key]
-                    return (
-                      <button key={item.key} type="button" className={cn('dosMobileMenuItem', item.key === active && 'active')} onClick={() => onNavigate(item.href)}>
-                        <Icon size={21} aria-hidden />
-                        <span><strong>{item.label}</strong><small>{item.description}</small></span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
-            ))}
-          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
