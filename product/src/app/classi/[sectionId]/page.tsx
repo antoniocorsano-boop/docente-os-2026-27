@@ -16,7 +16,7 @@ import { buildLessonWorkspaceHref, resolveRuntimeHumanTaskLessonProjection } fro
 import { buildTaskAwareKnowledgeHref } from '@/core/presentation/task-continuity'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes, selectPreparedClassMaterials } from '../class-workspace-model'
-import { resolveClassTaskDecision } from './class-task-state'
+import { presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
 import { confirmTeachingBlockCompletion } from './actions'
 import { TeachingSessionRecorder } from './TeachingSessionRecorder'
 import '../classi.css'
@@ -137,6 +137,7 @@ export default async function ClassWorkspacePage({
     occurrenceEnded,
     maySuggestCompletion: Boolean(nextCompletion?.maySuggestCompletion),
   })
+  const taskPresentation = presentClassTaskState(taskDecision.state)
   const taskHref = taskDecision.focusCompletion
     ? '#decisione-completamento'
     : taskDecision.useInlineRecorder
@@ -149,33 +150,23 @@ export default async function ClassWorkspacePage({
   return (
     <AppShell active="classes" academicYearLabel={context.academicYear.label} workspaceName={settings.schoolName || context.workspace.name} role={context.role} contentClassName="classesWorkspaceSurface">
       <section className="classWorkspaceHeader">
-        <div><p>CLASSE · {summary.sectionStatusLabel.toUpperCase()}</p><h1>{summary.displayLabel}</h1><span>Qui trovi il prossimo passo della classe. Piano, materiali e dettagli restano disponibili quando servono.</span></div>
+        <div><p>CLASSE · {summary.sectionStatusLabel.toUpperCase()}</p><h1>{summary.displayLabel}</h1><span>Qui trovi il lavoro da fare adesso. Il resto si apre solo quando serve.</span></div>
       </section>
 
-      {sessionReceipt ? (
-        <section className="classRecordFeedback" aria-label="Sessione registrata">
-          <strong>Attività registrata.</strong>
-          <span>{sessionReceipt.actualMinutes} minuti effettivi del {formatDate(sessionReceipt.localDate)} sono entrati nel registro di attuazione. Il Piano non viene segnato automaticamente come svolto.</span>
-        </section>
-      ) : null}
-
-      {recordedBlock && recordedProgress ? (
-        <section className="classRecordFeedback" aria-label="Lezione registrata">
-          <strong>Lezione registrata come svolta.</strong>
-          <span>{recordedProjection?.title ?? recordedBlock.focus}. Il prossimo passo qui sotto è stato ricalcolato dal Piano annuale reale della classe.</span>
-          {recordedProjection ? <LessonExperienceFeedback sectionId={summary.sectionId} blockId={recordedBlock.id} /> : null}
-        </section>
-      ) : null}
-
-      <section className="classLessonFocus" aria-label="Prossimo passo della classe">
+      <section className="classLessonFocus" aria-label="Lavoro della classe adesso">
         {learningFocus.nextBlock && nextTitle ? (
           <div className="classLessonFocusMain">
-            <p>{taskEyebrow(taskDecision.state)} · {learningFocus.nextBlock.statusLabel.toUpperCase()}</p>
+            <p>{taskPresentation.eyebrow}</p>
             <div className="classLessonFocusIdentity"><span aria-hidden>→</span><div><strong>{nextTitle}</strong><small>{nextContext}</small></div></div>
-            <p className="classLessonFocusHint">{taskHint(taskDecision.state)}</p>
+            <p className="classLessonFocusHint">{taskPresentation.hint}</p>
+            <p className="classLessonFocusHint">{taskPresentation.nextStep}</p>
           </div>
         ) : (
-          <div className="classLessonFocusMain complete"><p>PIANO ANNUALE</p><div className="classLessonFocusIdentity"><span>✓</span><div><strong>Percorso annuale completato</strong><small>Tutte le lezioni attive risultano concluse o escluse.</small></div></div></div>
+          <div className="classLessonFocusMain complete">
+            <p>{taskPresentation.eyebrow}</p>
+            <div className="classLessonFocusIdentity"><span>✓</span><div><strong>Percorso annuale completato</strong><small>{taskPresentation.hint}</small></div></div>
+            <p className="classLessonFocusHint">{taskPresentation.nextStep}</p>
+          </div>
         )}
         <div className="classLessonFocusAside">
           <div className="classLessonProgress"><strong>{learningFocus.completedBlocks}/33</strong><span>lezioni concluse</span></div>
@@ -183,35 +174,22 @@ export default async function ClassWorkspacePage({
         </div>
       </section>
 
-      {preparedMaterials.length ? (
-        <details className="humanTaskSecondary">
-          <summary>Materiale già predisposto</summary>
-          <div className="humanTaskSecondaryBody">
-            <article className="classWorkspaceCard classMaterialsCard" aria-label="Materiale predisposto per la classe">
-              <div>
-                <h2>Materiale predisposto</h2>
-                <p>Risorse già preparate per il prossimo incontro. Restano separate dal Piano annuale finché il loro legame didattico non è confermato.</p>
-              </div>
-              <div className="classMaterialList">
-                {preparedMaterials.map((material) => (
-                  <a href={material.href} key={material.assetId}>
-                    <div>
-                      <strong>{material.title}</strong>
-                      <span>{material.resourceKindLabel} · {material.providerLabel}{material.targetDate ? ` · ${formatDate(material.targetDate)}` : ''}</span>
-                      {material.canonicalBindingLabel ? <span>{material.canonicalBindingLabel}</span> : null}
-                    </div>
-                    <small>{material.stateLabel} · {material.audienceLabel}</small>
-                  </a>
-                ))}
-              </div>
-            </article>
-          </div>
-        </details>
+      {recordedBlock && recordedProgress ? (
+        <section className="classRecordFeedback" aria-label="Ultimo aggiornamento">
+          <strong>Lezione registrata come svolta.</strong>
+          <span>{recordedProjection?.title ?? recordedBlock.focus}. Il prossimo passo sopra è stato ricalcolato dal Piano annuale reale della classe.</span>
+          {recordedProjection ? <LessonExperienceFeedback sectionId={summary.sectionId} blockId={recordedBlock.id} /> : null}
+        </section>
+      ) : sessionReceipt ? (
+        <section className="classRecordFeedback" aria-label="Ultimo aggiornamento">
+          <strong>Attività registrata.</strong>
+          <span>{sessionReceipt.actualMinutes} minuti effettivi del {formatDate(sessionReceipt.localDate)} sono entrati nel registro di attuazione. Il Piano non viene segnato automaticamente come svolto.</span>
+        </section>
       ) : null}
 
       {nextCanonicalBlock ? (
         <details id={advancedPanelId} className="humanTaskSecondary" open={taskDecision.useInlineRecorder || taskDecision.focusCompletion}>
-          <summary>{taskDecision.focusCompletion ? 'Valuta il completamento' : taskDecision.useInlineRecorder ? 'Registra questa lezione' : 'Registrazione avanzata e decisioni sul Piano'}</summary>
+          <summary>{taskDecision.focusCompletion ? 'Valuta il completamento' : taskDecision.useInlineRecorder ? 'Registra questa lezione' : 'Decisioni e registrazione avanzata'}</summary>
           <div className="humanTaskSecondaryBody">
             <section className="teachingSessionCard" aria-labelledby="teaching-session-title">
               <div className="teachingSessionHeading">
@@ -252,10 +230,33 @@ export default async function ClassWorkspacePage({
         </details>
       ) : null}
 
-      <article className="classWorkspaceCard classMaterialsCard">
-        <div><h2>Materiali utili adesso</h2><p>Solo contenuti collegati alla prossima lezione, al grado o a questa sezione.</p></div>
-        {learningFocus.materials.length ? <div className="classMaterialList">{learningFocus.materials.map((material) => <Link href={buildTaskAwareKnowledgeHref(material.assetId, { mode: 'class', returnTo: classHref, sectionId: summary.sectionId, blockId: learningFocus.nextBlock?.id })} key={material.assetId}><div><strong>{material.title}</strong><span>{material.categoryLabel}</span></div><small>{material.relevanceLabel}</small></Link>)}</div> : <div className="classMaterialsEmpty"><span>Nessun materiale esplicitamente collegato alla prossima lezione.</span><Link href={knowledgeHref}>Cerca nei materiali</Link></div>}
-      </article>
+      <details className="humanTaskSecondary" data-testid="class-lesson-supports">
+        <summary>Supporti per questa lezione</summary>
+        <div className="humanTaskSecondaryBody">
+          {preparedMaterials.length ? (
+            <article className="classWorkspaceCard classMaterialsCard" aria-label="Materiale predisposto per la classe">
+              <div><h2>Già predisposto</h2><p>Risorse pronte per il prossimo incontro, senza alterare automaticamente il Piano.</p></div>
+              <div className="classMaterialList">
+                {preparedMaterials.map((material) => (
+                  <a href={material.href} key={material.assetId}>
+                    <div>
+                      <strong>{material.title}</strong>
+                      <span>{material.resourceKindLabel} · {material.providerLabel}{material.targetDate ? ` · ${formatDate(material.targetDate)}` : ''}</span>
+                      {material.canonicalBindingLabel ? <span>{material.canonicalBindingLabel}</span> : null}
+                    </div>
+                    <small>{material.stateLabel} · {material.audienceLabel}</small>
+                  </a>
+                ))}
+              </div>
+            </article>
+          ) : null}
+
+          <article className="classWorkspaceCard classMaterialsCard">
+            <div><h2>Materiali collegati</h2><p>Contenuti pertinenti alla prossima lezione, al grado o a questa sezione.</p></div>
+            {learningFocus.materials.length ? <div className="classMaterialList">{learningFocus.materials.map((material) => <Link href={buildTaskAwareKnowledgeHref(material.assetId, { mode: 'class', returnTo: classHref, sectionId: summary.sectionId, blockId: learningFocus.nextBlock?.id })} key={material.assetId}><div><strong>{material.title}</strong><span>{material.categoryLabel}</span></div><small>{material.relevanceLabel}</small></Link>)}</div> : <div className="classMaterialsEmpty"><span>Nessun materiale esplicitamente collegato alla prossima lezione.</span><Link href={knowledgeHref}>Cerca nei materiali</Link></div>}
+          </article>
+        </div>
+      </details>
 
       <details className="humanTaskSecondary">
         <summary>Contesto della classe e altri percorsi</summary>
@@ -270,20 +271,6 @@ export default async function ClassWorkspacePage({
       <details className="technicalDetails"><summary><span><strong>Dettagli tecnici</strong><small>Provenienza e riferimenti canonici</small></span><b aria-hidden>＋</b></summary><div className="technicalDetailsBody"><p>Identificatore sezione: <strong>{summary.sectionId}</strong></p>{learningFocus.nextBlock ? <p>Prossimo riferimento: <strong>{learningFocus.nextBlock.id}</strong> · UDA {learningFocus.nextBlock.uda} · {learningFocus.nextBlock.pack}</p> : null}<p>Fonte sezione: {section.sourceNote ?? 'Registro delle classi dell’anno scolastico corrente.'}</p><p>Sessioni effettive correnti: <strong>{currentSessions.length}</strong>. Le sessioni sostituite restano nella storia e non contribuiscono ai totali correnti.</p></div></details>
     </AppShell>
   )
-}
-
-function taskEyebrow(state: ReturnType<typeof resolveClassTaskDecision>['state']) {
-  if (state === 'TEACH') return 'LEZIONE IN CORSO'
-  if (state === 'RECORD') return 'DA REGISTRARE'
-  if (state === 'AFTER_RECORD') return 'PROSSIMO PASSO'
-  return 'PROSSIMA LEZIONE'
-}
-
-function taskHint(state: ReturnType<typeof resolveClassTaskDecision>['state']) {
-  if (state === 'TEACH') return 'La lezione è già iniziata: continua dal punto di lavoro previsto per questa classe.'
-  if (state === 'RECORD') return 'La lezione è terminata: registra ciò che è successo prima di passare ad altro.'
-  if (state === 'AFTER_RECORD') return 'La registrazione è acquisita. DOCENTE OS ti propone soltanto il passo professionale successivo.'
-  return 'È il prossimo tratto didattico utile per questa classe. Le altre funzioni restano disponibili senza competere con il compito corrente.'
 }
 
 function currentRomeDate() { const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()); const value = Object.fromEntries(parts.map((part) => [part.type, part.value])); return `${value.year}-${value.month}-${value.day}` }

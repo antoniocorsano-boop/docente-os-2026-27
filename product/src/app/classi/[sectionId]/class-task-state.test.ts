@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { resolveClassTaskDecision } from './class-task-state'
+import { presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
 
 const base = {
   hasNextBlock: true,
@@ -96,4 +96,19 @@ test('non espone una CTA quando il percorso annuale e completo', () => {
     useInlineRecorder: false,
     focusCompletion: false,
   })
+})
+
+test('la presentazione task-first espone sempre Adesso e un solo Dopo comprensibile', () => {
+  for (const state of ['PREPARE', 'TEACH', 'RECORD', 'AFTER_RECORD'] as const) {
+    const presentation = presentClassTaskState(state)
+    assert.match(presentation.eyebrow, /ADESSO/)
+    assert.ok(presentation.hint.length > 0)
+    assert.match(presentation.nextStep, /^Dopo /)
+  }
+})
+
+test('il percorso completo non simula un nuovo compito operativo', () => {
+  const presentation = presentClassTaskState('COMPLETE')
+  assert.equal(presentation.eyebrow, 'PERCORSO COMPLETATO')
+  assert.match(presentation.nextStep, /Consulta Piano/)
 })
