@@ -27,8 +27,19 @@ for (const classMatcher of [/2ª\s*A/i]) {
     try {
       await page.goto(`/classi/${encodeURIComponent(sectionId)}`)
 
+      const primaryActions = page.locator('.classLessonFocusActions a.primary')
+      await expect(primaryActions, 'UX-0A richiede una sola CTA primaria nella Classe.').toHaveCount(1)
+      await expect(page.locator('.classLessonFocusActions a:not(.primary)'), 'Il Piano non deve competere con il prossimo passo nel focus primario.').toHaveCount(0)
+
+      const preparedDisclosure = page.getByRole('group').filter({ has: page.getByText('Materiale già predisposto', { exact: true }) }).first()
+      if (await preparedDisclosure.count()) {
+        await preparedDisclosure.locator('summary').click()
+      } else {
+        await page.getByText('Materiale già predisposto', { exact: true }).click()
+      }
+
       const prepared = page.locator(`a[href="/classi/${sectionId}/in-classe/${fixture.assetId}"]`)
-      await expect(prepared, 'Il materiale predisposto deve comparire nella classe corretta.').toBeVisible()
+      await expect(prepared, 'Il materiale predisposto deve restare raggiungibile nella classe corretta.').toBeVisible()
       await expect(prepared).toContainText('Predisposto')
       await expect(prepared).toContainText('Per la classe')
 
@@ -74,7 +85,7 @@ for (const classMatcher of [/2ª\s*A/i]) {
       await screenshot(page, testInfo, 'classroom-cockpit')
       await recordJourney(testInfo.project.name, {
         status: 'PASS',
-        note: `${fixture.classLabel} · 2 passaggi · 4 strumenti rapidi verificati`,
+        note: `${fixture.classLabel} · CTA primaria unica · materiale predisposto raggiungibile · 2 passaggi · 4 strumenti rapidi verificati`,
       })
     } finally {
       await deleteKnowledgeAsset(page, fixture.assetId).catch(() => {})
