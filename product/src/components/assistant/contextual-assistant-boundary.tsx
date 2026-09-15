@@ -5,14 +5,17 @@ import { useEffect, useState } from 'react'
 import { KnowledgeAssistant } from './knowledge-assistant'
 import { LessonAssistant } from './lesson-assistant'
 import { PlannerAssistant } from './planner-assistant'
+import { TodayAssistant } from './today-assistant'
 import type { KnowledgeAssistantContext } from '@/core/presentation/assistant-context'
 import type { PlannerAssistantContext } from '@/core/presentation/planner-assistant-context'
 import type { LessonCopilotContext } from '@/core/presentation/teacher-copilot-context'
+import type { TodayCopilotContext } from '@/core/presentation/today-copilot-context'
 
 type LoadedAssistantContext =
   | { kind: 'knowledge'; context: KnowledgeAssistantContext }
   | { kind: 'planner'; context: PlannerAssistantContext }
   | { kind: 'lesson'; context: LessonCopilotContext }
+  | { kind: 'today'; context: TodayCopilotContext }
 
 type AssistantTarget = {
   kind: LoadedAssistantContext['kind']
@@ -20,7 +23,7 @@ type AssistantTarget = {
   url: string
 }
 
-type AssistantContextPayload = KnowledgeAssistantContext | PlannerAssistantContext | LessonCopilotContext
+type AssistantContextPayload = KnowledgeAssistantContext | PlannerAssistantContext | LessonCopilotContext | TodayCopilotContext
 
 export function ContextualAssistantBoundary({ active }: { active: string }) {
   const pathname = usePathname()
@@ -62,6 +65,11 @@ export function ContextualAssistantBoundary({ active }: { active: string }) {
             setState('ready')
             return
           }
+          if (target.kind === 'today' && payload.surface === 'TODAY' && 'today' in payload && 'planner' in payload) {
+            setLoaded({ kind: 'today', context: payload as TodayCopilotContext })
+            setState('ready')
+            return
+          }
           throw new Error('assistant-context-surface-mismatch')
         })
         .catch((error: unknown) => {
@@ -95,6 +103,7 @@ export function ContextualAssistantBoundary({ active }: { active: string }) {
   if (!loaded) return null
   if (loaded.kind === 'knowledge') return <KnowledgeAssistant context={loaded.context} presentation="floating" />
   if (loaded.kind === 'lesson') return <LessonAssistant context={loaded.context} presentation="floating" />
+  if (loaded.kind === 'today') return <TodayAssistant context={loaded.context} presentation="floating" />
   return <PlannerAssistant context={loaded.context} presentation="floating" />
 }
 
@@ -122,9 +131,9 @@ function assistantTarget(active: string, pathname: string): AssistantTarget | nu
 
   if (active === 'today' && /^\/planner\/?$/.test(pathname)) {
     return {
-      kind: 'planner',
-      key: 'planner:today',
-      url: '/api/assistant/planner-context',
+      kind: 'today',
+      key: 'today:daily-context',
+      url: '/api/assistant/today-context',
     }
   }
 
