@@ -7,6 +7,7 @@ import type {
   LessonPreparationManifestResult,
 } from '@/core/presentation/lesson-preparation-manifest'
 import type { NextLessonPreparation } from '@/core/presentation/next-lesson-preparation'
+import { buildLessonPreparationRoleView } from '@/core/presentation/roleview-governance'
 
 export type NextLessonPreparationActionResult = {
   skillId: 'NEXT_LESSON_PREPARATION'
@@ -56,14 +57,24 @@ export function handleNextLessonPreparation(input: {
     return blocked(preparation, reasons, input.context)
   }
 
-  if (!input.manifest || input.manifest.resolution === 'BLOCKED' || !input.manifest.manifest) {
+  if (!input.manifest) {
+    return blocked(
+      preparation,
+      unique([...input.context.missing, 'Manifesto di preparazione non disponibile']),
+      input.context,
+    )
+  }
+
+  const roleView = buildLessonPreparationRoleView(input.manifest, 'TEACHER')
+  if (roleView.status === 'BLOCKED' || input.manifest.resolution === 'BLOCKED' || !input.manifest.manifest) {
     return blocked(
       preparation,
       unique([
         ...input.context.missing,
-        ...(input.manifest?.reasons ?? ['Manifesto di preparazione non disponibile']),
+        ...roleView.blockers.map((item) => item.label),
       ]),
       input.context,
+      roleView.nextActions[0]?.label,
     )
   }
 
@@ -88,21 +99,17 @@ export function handleNextLessonPreparation(input: {
     ...manifest.proposedExtensionRefs.map(() => 'È presente una proposta didattica non ancora accettata'),
   ])
 
-  const status = manifest.readiness === 'READY' && input.manifest.resolution === 'SUPPORTED'
-    ? 'SUPPORTED'
-    : 'PARTIAL'
-
   return {
     skillId: 'NEXT_LESSON_PREPARATION',
     actionKind: 'PROPOSE',
-    status,
+    status: roleView.status === 'READY' ? 'SUPPORTED' : 'PARTIAL',
     readiness: manifest.readiness,
-    headline: `Prepara ${preparation.lesson.title}`,
+    headline: `${roleView.headline} · ${preparation.lesson.title}`,
     whyNow: whyNow(preparation),
     ready,
     missing,
     proposals,
-    nextAction: nextAction(manifest.readiness, missing.length, proposals.length),
+    nextAction: roleView.nextActions[0]?.label ?? 'Rivedi la preparazione prima della lezione.',
     persistentEffect: 'NONE',
     confirmationRequiredForPersistence: true,
     provenance: input.context.provenance.map((item) => ({ ...item })),
@@ -113,6 +120,7 @@ function blocked(
   preparation: NextLessonPreparation | null,
   reasons: string[],
   context: CopilotRunContext,
+  nextAction?: string,
 ): NextLessonPreparationActionResult {
   return {
     skillId: 'NEXT_LESSON_PREPARATION',
@@ -126,7 +134,7 @@ function blocked(
     ready: [],
     missing: reasons.length ? reasons : ['Contesto necessario non disponibile'],
     proposals: [],
-    nextAction: 'Verifica il contesto mancante prima di preparare o modificare materiali.',
+    nextAction: nextAction ?? 'Verifica il contesto mancante prima di preparare o modificare materiali.',
     persistentEffect: 'NONE',
     confirmationRequiredForPersistence: true,
     provenance: context.provenance.map((item) => ({ ...item })),
@@ -136,13 +144,6 @@ function blocked(
 function whyNow(preparation: NextLessonPreparation) {
   const start = preparation.lesson.startAt.slice(11, 16)
   return `È la prossima lezione risolta dal contesto temporale corrente, prevista alle ${start}.`
-}
-
-function nextAction(readiness: 'DRAFT' | 'REVIEW_REQUIRED' | 'READY' | 'USED' | 'NEEDS_REVISION', missingCount: number, proposalCount: number) {
-  if (readiness === 'READY') return 'La preparazione necessaria risulta pronta: puoi aprire il Lesson Brief e usare i materiali disponibili.'
-  if (proposalCount > 0) return 'Rivedi le proposte prima di accettarle o trasformarle in materiale persistente.'
-  if (missingCount > 0) return 'Completa soltanto gli elementi indicati come mancanti; il resto viene riusato.'
-  return 'Rivedi la preparazione prima della lezione.'
 }
 
 function roleLabel(role: LessonMaterialRole) {
