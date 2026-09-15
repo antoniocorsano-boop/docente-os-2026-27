@@ -3,6 +3,23 @@
 import type { DictationAdapter } from '@assistant-ui/react'
 
 const DEFAULT_MAX_CAPTURE_MS = 90_000
+const DIAGNOSTIC_ENDPOINT = '/api/assistant/voice-diagnostic'
+
+type VoiceDiagnosticEvent =
+  | 'listen-called'
+  | 'stream-ready'
+  | 'track-mute'
+  | 'track-unmute'
+  | 'track-ended'
+  | 'recorder-start'
+  | 'recorder-stop'
+  | 'recorder-error'
+  | 'session-stop-called'
+  | 'session-cancel-called'
+  | 'page-hidden'
+  | 'page-visible'
+  | 'transcribe-start'
+  | 'transcribe-response'
 
 export class ServerDictationAdapter implements DictationAdapter {
   readonly disableInputDuringDictation = true
@@ -17,6 +34,7 @@ export class ServerDictationAdapter implements DictationAdapter {
     const speechEnd = new Set<(result: DictationAdapter.Result) => void>()
     const speech = new Set<(result: DictationAdapter.Result) => void>()
     const chunks: BlobPart[] = []
+    const startedAt = performance.now()
 
     let recorder: MediaRecorder | null = null
     let stream: MediaStream | null = null
@@ -25,6 +43,21 @@ export class ServerDictationAdapter implements DictationAdapter {
     let timer: ReturnType<typeof setTimeout> | null = null
     let settled = false
     let resolveStopped: (() => void) | null = null
+    let intentionalTrackStop = false
+    let visibilityListenerAttached = false
+
+    const diagnostic = (event: VoiceDiagnosticEvent, statusCode?: number) => {
+      reportVoiceDiagnostic({
+        event,
+        elapsedMs: performance.now() - startedAt,
+        recorderState: recorder?.state ?? null,
+        trackState: stream?.getAudioTracks()[0]?.readyState ?? null,
+        visibility: document.visibilityState,
+        statusCode,
+      })
+    }
+
+    diagnostic('listen-called')
 
     const stopped = new Promise<void>((resolve) => {
       resolveStopped = resolve
@@ -35,7 +68,18 @@ export class ServerDictationAdapter implements DictationAdapter {
       timer = null
     }
 
+    const onVisibilityChange = () => {
+      diagnostic(document.visibilityState === 'hidden' ? 'page-hidden' : 'page-visible')
+    }
+
+    const detachVisibilityListener = () => {
+      if (!visibilityListenerAttached) return
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      visibilityListenerAttached = false
+    }
+
     const stopTracks = () => {
+      intentionalTrackStop = true
       stream?.getTracks().forEach((track) => track.stop())
       stream = null
     }
@@ -43,6 +87,7 @@ export class ServerDictationAdapter implements DictationAdapter {
     const settle = () => {
       if (settled) return
       settled = true
+      detachVisibilityListener()
       resolveStopped?.()
     }
 
@@ -50,12 +95,14 @@ export class ServerDictationAdapter implements DictationAdapter {
       status: { type: 'starting' },
 
       stop: async () => {
+        diagnostic('session-stop-called')
         stopRequested = true
         if (recorder && recorder.state !== 'inactive') recorder.stop()
         await stopped
       },
 
       cancel: () => {
+        diagnostic('session-cancel-called')
         cancelled = true
         clearTimer()
         if (recorder && recorder.state !== 'inactive') recorder.stop()
@@ -78,6 +125,9 @@ export class ServerDictationAdapter implements DictationAdapter {
       },
     }
 
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    visibilityListenerAttached = true
+
     void (async () => {
       try {
         if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
@@ -93,6 +143,17 @@ export class ServerDictationAdapter implements DictationAdapter {
           },
         })
 
+        diagnostic('stream-ready')
+
+        const track = stream.getAudioTracks()[0]
+        if (track) {
+          track.addEventListener('mute', () => diagnostic('track-mute'))
+          track.addEventListener('unmute', () => diagnostic('track-unmute'))
+          track.addEventListener('ended', () => {
+            if (!intentionalTrackStop) diagnostic('track-ended')
+          })
+        }
+
         if (cancelled) {
           stopTracks()
           settle()
@@ -106,6 +167,7 @@ export class ServerDictationAdapter implements DictationAdapter {
         }
 
         recorder.onstart = () => {
+          diagnostic('recorder-start')
           session.status = { type: 'running' }
           for (const callback of speechStart) callback()
 
@@ -115,6 +177,7 @@ export class ServerDictationAdapter implements DictationAdapter {
         }
 
         recorder.onerror = () => {
+          diagnostic('recorder-error')
           clearTimer()
           stopTracks()
           session.status = { type: 'ended', reason: 'error' }
@@ -122,6 +185,7 @@ export class ServerDictationAdapter implements DictationAdapter {
         }
 
         recorder.onstop = async () => {
+          diagnostic('recorder-stop')
           clearTimer()
           stopTracks()
 
@@ -137,12 +201,14 @@ export class ServerDictationAdapter implements DictationAdapter {
 
             const body = new FormData()
             body.append('audio', audio, `dictation.${extensionForMimeType(mimeType)}`)
+            diagnostic('transcribe-start')
 
             const response = await fetch(this.endpoint, {
               method: 'POST',
               cache: 'no-store',
               body,
             })
+            diagnostic('transcribe-response', response.status)
             if (!response.ok) throw new Error(`voice-transcription-${response.status}`)
 
             const payload = await response.json() as { text?: unknown }
@@ -172,6 +238,38 @@ export class ServerDictationAdapter implements DictationAdapter {
 
     return session
   }
+}
+
+function reportVoiceDiagnostic(input: {
+  event: VoiceDiagnosticEvent
+  elapsedMs: number
+  recorderState: RecordingState | null
+  trackState: MediaStreamTrackState | null
+  visibility: DocumentVisibilityState
+  statusCode?: number
+}) {
+  const payload = JSON.stringify({
+    event: input.event,
+    elapsedMs: Math.round(input.elapsedMs),
+    recorderState: input.recorderState,
+    trackState: input.trackState,
+    visibility: input.visibility,
+    statusCode: input.statusCode,
+  })
+
+  try {
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(DIAGNOSTIC_ENDPOINT, new Blob([payload], { type: 'application/json' }))
+      return
+    }
+  } catch {}
+
+  void fetch(DIAGNOSTIC_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: payload,
+    keepalive: true,
+  }).catch(() => {})
 }
 
 function extensionForMimeType(mimeType: string) {
