@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { LessonMaterialsQuickAction } from '@/components/app-shell/lesson-materials-quick-action'
 import { KnowledgeAssistant } from './knowledge-assistant'
 import { LessonAssistant } from './lesson-assistant'
 import { PlannerAssistant } from './planner-assistant'
@@ -31,6 +32,10 @@ export function ContextualAssistantBoundary({ active }: { active: string }) {
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'unavailable'>('idle')
   const assistantEnabled = process.env.NEXT_PUBLIC_DOCENTE_OS_ASSISTANT !== 'off'
   const target = assistantTarget(active, pathname)
+  const materialsContext = assistantEnabled && target?.kind === 'today'
+    ? loaded?.kind === 'today' ? loaded.context : null
+    : undefined
+  const materialsQuickAction = <LessonMaterialsQuickAction active={active} context={materialsContext} />
 
   useEffect(() => {
     if (!assistantEnabled || !target) return
@@ -86,25 +91,33 @@ export function ContextualAssistantBoundary({ active }: { active: string }) {
     }
   }, [assistantEnabled, target?.key])
 
-  if (!assistantEnabled || !target) return null
+  if (!assistantEnabled || !target) return materialsQuickAction
 
   if (state === 'loading') {
-    return <div className="dosAssistantFloatingStatus" role="status">Sto preparando l’aiuto contestuale…</div>
+    return (
+      <>
+        {materialsQuickAction}
+        <div className="dosAssistantFloatingStatus" role="status">Sto preparando l’aiuto contestuale…</div>
+      </>
+    )
   }
 
   if (state === 'unavailable') {
     return (
-      <div className="dosAssistantFloatingStatus unavailable" role="status">
-        Assistente temporaneamente non disponibile. La pagina e tutte le azioni manuali restano utilizzabili.
-      </div>
+      <>
+        {materialsQuickAction}
+        <div className="dosAssistantFloatingStatus unavailable" role="status">
+          Assistente temporaneamente non disponibile. La pagina e tutte le azioni manuali restano utilizzabili.
+        </div>
+      </>
     )
   }
 
-  if (!loaded) return null
-  if (loaded.kind === 'knowledge') return <KnowledgeAssistant context={loaded.context} presentation="floating" />
-  if (loaded.kind === 'lesson') return <LessonAssistant context={loaded.context} presentation="floating" />
-  if (loaded.kind === 'today') return <TodayAssistant context={loaded.context} presentation="floating" />
-  return <PlannerAssistant context={loaded.context} presentation="floating" />
+  if (!loaded) return materialsQuickAction
+  if (loaded.kind === 'knowledge') return <>{materialsQuickAction}<KnowledgeAssistant context={loaded.context} presentation="floating" /></>
+  if (loaded.kind === 'lesson') return <>{materialsQuickAction}<LessonAssistant context={loaded.context} presentation="floating" /></>
+  if (loaded.kind === 'today') return <>{materialsQuickAction}<TodayAssistant context={loaded.context} presentation="floating" /></>
+  return <>{materialsQuickAction}<PlannerAssistant context={loaded.context} presentation="floating" /></>
 }
 
 function assistantTarget(active: string, pathname: string): AssistantTarget | null {
