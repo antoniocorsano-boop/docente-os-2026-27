@@ -3,6 +3,12 @@
 import type { DictationAdapter } from '@assistant-ui/react'
 
 const DEFAULT_MAX_CAPTURE_MS = 90_000
+const RECORDER_TIMESLICE_MS = 250
+const RECORDER_MIME_CANDIDATES = [
+  'audio/webm;codecs=opus',
+  'audio/webm',
+  'audio/mp4',
+] as const
 const DIAGNOSTIC_ENDPOINT = '/api/assistant/voice-diagnostic'
 
 type VoiceDiagnosticEvent =
@@ -13,13 +19,17 @@ type VoiceDiagnosticEvent =
   | 'track-ended'
   | 'recorder-start'
   | 'recorder-stop'
+  | 'recorder-autostop'
   | 'recorder-error'
   | 'session-stop-called'
   | 'session-cancel-called'
+  | 'safety-timeout'
   | 'page-hidden'
   | 'page-visible'
   | 'transcribe-start'
   | 'transcribe-response'
+
+type StopCause = 'user' | 'cancel' | 'safety' | null
 
 export class ServerDictationAdapter implements DictationAdapter {
   readonly disableInputDuringDictation = true
@@ -33,13 +43,14 @@ export class ServerDictationAdapter implements DictationAdapter {
     const speechStart = new Set<() => void>()
     const speechEnd = new Set<(result: DictationAdapter.Result) => void>()
     const speech = new Set<(result: DictationAdapter.Result) => void>()
-    const chunks: BlobPart[] = []
+    const chunks: Blob[] = []
     const startedAt = performance.now()
 
     let recorder: MediaRecorder | null = null
     let stream: MediaStream | null = null
     let cancelled = false
     let stopRequested = false
+    let stopCause: StopCause = null
     let timer: ReturnType<typeof setTimeout> | null = null
     let settled = false
     let resolveStopped: (() => void) | null = null
@@ -78,6 +89,16 @@ export class ServerDictationAdapter implements DictationAdapter {
       visibilityListenerAttached = false
     }
 
+    const stopRecorder = () => {
+      if (!recorder || recorder.state === 'inactive') return
+      try {
+        recorder.requestData()
+      } catch {
+        // Some mobile browsers reject requestData during a pending state change.
+      }
+      recorder.stop()
+    }
+
     const stopTracks = () => {
       intentionalTrackStop = true
       stream?.getTracks().forEach((track) => track.stop())
@@ -97,15 +118,18 @@ export class ServerDictationAdapter implements DictationAdapter {
       stop: async () => {
         diagnostic('session-stop-called')
         stopRequested = true
-        if (recorder && recorder.state !== 'inactive') recorder.stop()
+        stopCause = stopCause ?? 'user'
+        clearTimer()
+        stopRecorder()
         await stopped
       },
 
       cancel: () => {
         diagnostic('session-cancel-called')
         cancelled = true
+        stopCause = 'cancel'
         clearTimer()
-        if (recorder && recorder.state !== 'inactive') recorder.stop()
+        stopRecorder()
         stopTracks()
         session.status = { type: 'ended', reason: 'cancelled' }
         settle()
@@ -139,7 +163,6 @@ export class ServerDictationAdapter implements DictationAdapter {
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true,
-            channelCount: 1,
           },
         })
 
@@ -160,7 +183,10 @@ export class ServerDictationAdapter implements DictationAdapter {
           return
         }
 
-        recorder = new MediaRecorder(stream)
+        const preferredMimeType = preferredRecorderMimeType()
+        recorder = preferredMimeType
+          ? new MediaRecorder(stream, { mimeType: preferredMimeType })
+          : new MediaRecorder(stream)
 
         recorder.ondataavailable = (event) => {
           if (event.data.size > 0) chunks.push(event.data)
@@ -172,8 +198,12 @@ export class ServerDictationAdapter implements DictationAdapter {
           for (const callback of speechStart) callback()
 
           timer = setTimeout(() => {
-            if (recorder && recorder.state !== 'inactive') recorder.stop()
+            stopCause = 'safety'
+            diagnostic('safety-timeout')
+            stopRecorder()
           }, Math.max(1_000, Math.min(this.maxCaptureMs, DEFAULT_MAX_CAPTURE_MS)))
+
+          if (stopRequested) stopRecorder()
         }
 
         recorder.onerror = () => {
@@ -185,6 +215,7 @@ export class ServerDictationAdapter implements DictationAdapter {
         }
 
         recorder.onstop = async () => {
+          if (!cancelled && stopCause === null) diagnostic('recorder-autostop')
           diagnostic('recorder-stop')
           clearTimer()
           stopTracks()
@@ -195,7 +226,7 @@ export class ServerDictationAdapter implements DictationAdapter {
           }
 
           try {
-            const mimeType = recorder?.mimeType || 'audio/webm'
+            const mimeType = recorder?.mimeType || preferredMimeType || 'audio/webm'
             const audio = new Blob(chunks, { type: mimeType })
             if (audio.size === 0) throw new Error('voice-capture-empty')
 
@@ -226,8 +257,8 @@ export class ServerDictationAdapter implements DictationAdapter {
           }
         }
 
-        recorder.start()
-        if (stopRequested && recorder.state !== 'inactive') recorder.stop()
+        recorder.start(RECORDER_TIMESLICE_MS)
+        if (stopRequested && recorder.state !== 'inactive') stopRecorder()
       } catch {
         clearTimer()
         stopTracks()
@@ -238,6 +269,11 @@ export class ServerDictationAdapter implements DictationAdapter {
 
     return session
   }
+}
+
+function preferredRecorderMimeType() {
+  if (typeof MediaRecorder.isTypeSupported !== 'function') return undefined
+  return RECORDER_MIME_CANDIDATES.find((candidate) => MediaRecorder.isTypeSupported(candidate))
 }
 
 function reportVoiceDiagnostic(input: {
