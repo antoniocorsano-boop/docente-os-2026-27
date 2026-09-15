@@ -9,6 +9,7 @@ import {
 
 test('K3C: computes retrieval quality and operational metrics deterministically', () => {
   const metrics = evaluateKnowledgeSemanticRun({
+    evaluationSetId: 'k3c-it-v1',
     queries: [
       {
         id: 'q1',
@@ -45,8 +46,10 @@ test('K3C: computes retrieval quality and operational metrics deterministically'
     ],
   })
 
+  assert.equal(metrics.evaluationSetId, 'k3c-it-v1')
   assert.equal(metrics.queryCount, 2)
   assert.equal(metrics.humanVerifiedQueryCount, 2)
+  assert.equal(metrics.verifiedQueryCount, 1)
   assert.equal(metrics.recallAt5, 1)
   assert.equal(metrics.mrrAt10, 0.75)
   assert.equal(metrics.verifiedRecallAt5, 1)
@@ -58,9 +61,19 @@ test('K3C: computes retrieval quality and operational metrics deterministically'
   assert.equal(metrics.ndcgAt10 > 0.8, true)
 })
 
-test('K3C: missing observations and empty relevance sets are rejected', () => {
+test('K3C: malformed or incomparable eval inputs are rejected', () => {
   assert.throws(
     () => evaluateKnowledgeSemanticRun({
+      evaluationSetId: '',
+      queries: [],
+      observations: [],
+    }),
+    /eval set id is required/,
+  )
+
+  assert.throws(
+    () => evaluateKnowledgeSemanticRun({
+      evaluationSetId: 'k3c-it-v1',
       queries: [{
         id: 'q1',
         relevantUnitIds: ['u1'],
@@ -75,6 +88,7 @@ test('K3C: missing observations and empty relevance sets are rejected', () => {
 
   assert.throws(
     () => evaluateKnowledgeSemanticRun({
+      evaluationSetId: 'k3c-it-v1',
       queries: [{
         id: 'q1',
         relevantUnitIds: [],
@@ -92,6 +106,30 @@ test('K3C: missing observations and empty relevance sets are rejected', () => {
       }],
     }),
     /has no relevant units/,
+  )
+
+  assert.throws(
+    () => evaluateKnowledgeSemanticRun({
+      evaluationSetId: 'k3c-it-v1',
+      queries: [
+        {
+          id: 'q1',
+          relevantUnitIds: ['u1'],
+          reliability: 'VERIFIED',
+          humanVerified: true,
+          dataClass: 'SANITIZED_NON_PERSONAL',
+        },
+        {
+          id: 'q1',
+          relevantUnitIds: ['u2'],
+          reliability: 'AUTO',
+          humanVerified: true,
+          dataClass: 'SANITIZED_NON_PERSONAL',
+        },
+      ],
+      observations: [],
+    }),
+    /duplicate semantic eval query/,
   )
 })
 
@@ -122,8 +160,10 @@ test('K3C: external payload transfer is fail-closed for real corpus', () => {
 })
 
 const baseline: KnowledgeSemanticEvalMetrics = {
+  evaluationSetId: 'k3c-it-v1',
   queryCount: 30,
   humanVerifiedQueryCount: 30,
+  verifiedQueryCount: 10,
   recallAt5: 0.7,
   mrrAt10: 0.72,
   ndcgAt10: 0.68,
@@ -135,7 +175,7 @@ const baseline: KnowledgeSemanticEvalMetrics = {
   filterViolationCount: 0,
 }
 
-test('K3C: activation passes only after measurable quality gain, full coverage and policy pass', () => {
+test('K3C: activation passes only after comparable evals, measurable quality gain, full coverage and policy pass', () => {
   const hybrid: KnowledgeSemanticEvalMetrics = {
     ...baseline,
     recallAt5: 0.76,
@@ -158,14 +198,16 @@ test('K3C: activation passes only after measurable quality gain, full coverage a
   assert.equal(gate.verifiedRecallAt5Regression, 0.01)
 })
 
-test('K3C: activation fails closed on privacy, coverage, quality, latency or leakage', () => {
+test('K3C: activation fails closed on mismatch, privacy, coverage, quality, latency or leakage', () => {
   const hybrid: KnowledgeSemanticEvalMetrics = {
     ...baseline,
+    evaluationSetId: 'different-eval-set',
     queryCount: 29,
     humanVerifiedQueryCount: 28,
+    verifiedQueryCount: 0,
     recallAt5: 0.72,
     ndcgAt10: 0.69,
-    verifiedRecallAt5: 0.85,
+    verifiedRecallAt5: null,
     p95LatencyMs: 700,
     workspaceLeakageCount: 1,
     staleGenerationLeakageCount: 1,
@@ -183,13 +225,34 @@ test('K3C: activation fails closed on privacy, coverage, quality, latency or lea
   assert.deepEqual(gate.reasons, [
     'PROVIDER_POLICY_NOT_PASS',
     'CURRENT_CORPUS_COVERAGE_INCOMPLETE',
+    'EVAL_SET_MISMATCH',
     'INSUFFICIENT_HUMAN_VERIFIED_QUERIES',
+    'VERIFIED_QUERY_COVERAGE_MISSING',
     'RECALL_GAIN_BELOW_THRESHOLD',
     'NDCG_GAIN_BELOW_THRESHOLD',
-    'VERIFIED_RECALL_REGRESSION',
     'P95_LATENCY_ABOVE_THRESHOLD',
     'WORKSPACE_LEAKAGE',
     'STALE_GENERATION_LEAKAGE',
     'FILTER_VIOLATION',
   ])
+})
+
+test('K3C: verified-source regression is a dedicated activation failure', () => {
+  const hybrid: KnowledgeSemanticEvalMetrics = {
+    ...baseline,
+    recallAt5: 0.76,
+    ndcgAt10: 0.72,
+    verifiedRecallAt5: 0.87,
+    p95LatencyMs: 320,
+  }
+
+  const gate = evaluateKnowledgeSemanticActivationGate({
+    providerPolicyStatus: 'PASS',
+    currentCorpusCoverageRatio: 1,
+    baseline,
+    hybrid,
+  })
+
+  assert.equal(gate.allowed, false)
+  assert.equal(gate.reasons.includes('VERIFIED_RECALL_REGRESSION'), true)
 })
