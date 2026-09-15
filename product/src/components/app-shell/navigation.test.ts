@@ -9,6 +9,10 @@ import {
   navigationItem,
   workNavigationItems,
 } from './navigation'
+import {
+  resolveLessonMaterialsEntrypoint,
+  type LessonMaterialsContext,
+} from './lesson-materials-entrypoint'
 
 test('canonical navigation has unique keys and routes', () => {
   const keys = PRIMARY_NAVIGATION.map((item) => item.key)
@@ -81,3 +85,61 @@ test('Orario and Calendario stay distinct in labels and intent', () => {
   assert.equal(navigationItem('calendar').href, '/calendario')
   assert.match(navigationItem('calendar').description, /date|sospensioni|scadenze/i)
 })
+
+test('LP-4: Home e Oggi aprono la superficie canonica dei materiali', () => {
+  const context = lessonMaterialsContext()
+
+  assert.equal(resolveLessonMaterialsEntrypoint({ active: 'home', pathname: '/', context })?.href, '/materiali/prossima')
+  assert.equal(resolveLessonMaterialsEntrypoint({ active: 'today', pathname: '/planner', context })?.href, '/materiali/prossima')
+})
+
+test('LP-4: Classe mostra i materiali solo per la sezione autorevole', () => {
+  const context = lessonMaterialsContext()
+  const matching = resolveLessonMaterialsEntrypoint({ active: 'classes', pathname: '/classi/section-2c', context })
+
+  assert.equal(matching?.sectionLabel, '2ª C')
+  assert.equal(matching?.timeLabel, '15:00–16:00')
+  assert.equal(resolveLessonMaterialsEntrypoint({ active: 'classes', pathname: '/classi/section-1a', context }), null)
+  assert.equal(resolveLessonMaterialsEntrypoint({ active: 'classes', pathname: '/classi', context }), null)
+  assert.equal(resolveLessonMaterialsEntrypoint({ active: 'classes', pathname: '/classi/section-2c/lezioni/B03', context }), null)
+})
+
+test('LP-4: un contesto non risolto non espone un collegamento ai materiali', () => {
+  assert.equal(resolveLessonMaterialsEntrypoint({
+    active: 'today',
+    pathname: '/planner',
+    context: { nextLessonPreparation: null },
+  }), null)
+
+  const context = lessonMaterialsContext()
+  context.nextLessonPreparation!.canonicalLesson = null
+  assert.equal(resolveLessonMaterialsEntrypoint({ active: 'home', pathname: '/', context }), null)
+})
+
+test('LP-4: l’orario provvisorio resta dichiarato come provvisorio', () => {
+  const result = resolveLessonMaterialsEntrypoint({
+    active: 'today',
+    pathname: '/planner',
+    context: lessonMaterialsContext('PROVISIONAL_DRAFT'),
+  })
+
+  assert.equal(result?.authorityLabel, 'ORARIO PROVVISORIO')
+})
+
+function lessonMaterialsContext(authority: 'IN_FORCE' | 'PROVISIONAL_DRAFT' = 'IN_FORCE'): LessonMaterialsContext {
+  return {
+    nextLessonPreparation: {
+      lesson: {
+        sectionId: 'section-2c',
+        disciplineId: 'technology',
+        startAt: '2026-09-15T15:00:00',
+        endAt: '2026-09-15T16:00:00',
+        authority,
+      },
+      canonicalLesson: {
+        sectionLabel: '2ª C',
+        title: 'Misurare con precisione',
+      },
+    },
+  }
+}
