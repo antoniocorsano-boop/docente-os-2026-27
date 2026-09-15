@@ -13,7 +13,7 @@ import {
 } from '@assistant-ui/react'
 import { Mic, SendHorizontal, ShieldCheck, Sparkles, Square } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { ServerDictationAdapter } from './server-dictation-adapter'
+import { ServerDictationAdapter, type VoiceCaptureDiagnostic } from './server-dictation-adapter'
 
 export type ContextualAssistantPanelProps = {
   presentation?: 'inline' | 'floating'
@@ -179,13 +179,14 @@ function ContextualAssistantThread({
   )
 }
 
-type VoicePhase = 'idle' | 'recording' | 'transcribing' | 'error'
+type VoicePhase = 'idle' | 'starting' | 'recording' | 'transcribing' | 'error'
 
 function DirectVoiceCapture({ adapter }: { adapter: DictationAdapter }) {
   const aui = useAui()
   const [phase, setPhase] = useState<VoicePhase>('idle')
   const sessionRef = useRef<DictationAdapter.Session | null>(null)
   const unsubscribersRef = useRef<Array<() => void>>([])
+  const diagnosticUnsubscribeRef = useRef<(() => void) | null>(null)
   const safetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const clearSafetyTimer = () => {
@@ -195,6 +196,8 @@ function DirectVoiceCapture({ adapter }: { adapter: DictationAdapter }) {
 
   const clearSubscriptions = () => {
     for (const unsubscribe of unsubscribersRef.current.splice(0)) unsubscribe()
+    diagnosticUnsubscribeRef.current?.()
+    diagnosticUnsubscribeRef.current = null
   }
 
   const releaseSession = () => {
@@ -209,13 +212,39 @@ function DirectVoiceCapture({ adapter }: { adapter: DictationAdapter }) {
     clearSubscriptions()
   }, [])
 
+  const handleDiagnostic = (event: VoiceCaptureDiagnostic) => {
+    if (event.stage === 'starting' || event.stage === 'microphone-ready' || event.stage === 'worklet-ready') {
+      setPhase('starting')
+      return
+    }
+    if (event.stage === 'capturing') {
+      setPhase('recording')
+      return
+    }
+    if (event.stage === 'uploading') {
+      setPhase('transcribing')
+      return
+    }
+    if (event.stage === 'done') {
+      setPhase('idle')
+      return
+    }
+
+    setPhase('error')
+    releaseSession()
+  }
+
   const start = () => {
     if (sessionRef.current) return
 
+    setPhase('starting')
     try {
+      if (adapter instanceof ServerDictationAdapter) {
+        diagnosticUnsubscribeRef.current = adapter.subscribeDiagnostic(handleDiagnostic)
+      }
+
       const session = adapter.listen()
       sessionRef.current = session
-      setPhase('recording')
 
       unsubscribersRef.current.push(
         session.onSpeechStart(() => setPhase('recording')),
@@ -264,14 +293,16 @@ function DirectVoiceCapture({ adapter }: { adapter: DictationAdapter }) {
   }
 
   const recording = phase === 'recording'
-  const transcribing = phase === 'transcribing'
+  const busy = phase === 'starting' || phase === 'transcribing'
   const label = recording
     ? 'Ferma e trascrivi'
-    : transcribing
-      ? 'Trascrizione in corso'
-      : phase === 'error'
-        ? 'Riprova dettatura'
-        : 'Detta al copilota'
+    : phase === 'starting'
+      ? 'Avvio del microfono'
+      : phase === 'transcribing'
+        ? 'Trascrizione in corso'
+        : phase === 'error'
+          ? 'Riprova dettatura'
+          : 'Detta al copilota'
 
   return (
     <button
@@ -280,7 +311,7 @@ function DirectVoiceCapture({ adapter }: { adapter: DictationAdapter }) {
       aria-label={label}
       title={label}
       aria-pressed={recording}
-      disabled={transcribing}
+      disabled={busy}
       onClick={() => recording ? void stop() : start()}
     >
       {recording ? <Square size={16} aria-hidden /> : <Mic size={18} aria-hidden />}
