@@ -2,6 +2,7 @@ import {
   resourceDescriptor,
   type CopilotEvidenceRef,
   type CopilotResourceDescriptor,
+  type CopilotResourceScope,
   type CopilotRunContext,
 } from './copilot-kernel'
 import type { LessonPreparationManifestResult } from '@/core/presentation/lesson-preparation-manifest'
@@ -12,14 +13,16 @@ export function assembleNextLessonPreparationCopilotContext(input: {
   today: TodayCopilotK2Context
   manifest: LessonPreparationManifestResult | null
 }): CopilotRunContext {
-  const scope = {
-    workspaceId: input.today.workspaceId,
-    academicYearId: input.today.academicYearId,
-    sectionId: input.today.nextLessonPreparation?.lesson.sectionId ?? undefined,
-    disciplineId: input.today.nextLessonPreparation?.lesson.disciplineId ?? undefined,
-    localDate: input.today.today.localDate,
-  }
   const preparation = input.today.nextLessonPreparation
+  const sectionId = preparation?.lesson.sectionId ?? null
+  const disciplineId = preparation?.lesson.disciplineId ?? null
+  const scope: CopilotResourceScope = {
+    workspaceId: input.today.workspaceId,
+    localDate: input.today.today.localDate,
+    ...(input.today.academicYearId ? { academicYearId: input.today.academicYearId } : {}),
+    ...(sectionId ? { sectionId } : {}),
+    ...(disciplineId ? { disciplineId } : {}),
+  }
   const canonical = preparation?.canonicalLesson ?? null
   const manifest = input.manifest?.manifest ?? null
   const temporalAmbiguous = input.today.today.authority === 'AMBIGUOUS'
@@ -88,16 +91,18 @@ export function assembleNextLessonPreparationCopilotContext(input: {
     },
     identity: {
       workspaceId: input.today.workspaceId,
-      academicYearId: input.today.academicYearId,
+      ...(input.today.academicYearId ? { academicYearId: input.today.academicYearId } : {}),
       role: 'TEACHER',
     },
-    focus: preparation
+    ...(preparation
       ? {
-          type: 'NEXT_LESSON',
-          id: preparation.lesson.logicalId,
-          title: preparation.lesson.title,
+          focus: {
+            type: 'NEXT_LESSON',
+            id: preparation.lesson.logicalId,
+            title: preparation.lesson.title,
+          },
         }
-      : undefined,
+      : {}),
     resources,
     capabilities: {
       available: [...input.today.availableCapabilities],
@@ -126,7 +131,11 @@ function evidence(items: Array<{ kind: string; ref?: string; label?: string }>):
     const key = `${item.kind}:${item.ref}:${item.label ?? ''}`
     if (seen.has(key)) return []
     seen.add(key)
-    return [{ kind: item.kind, ref: item.ref, label: item.label }]
+    return [{
+      kind: item.kind,
+      ref: item.ref,
+      ...(item.label ? { label: item.label } : {}),
+    }]
   })
 }
 
