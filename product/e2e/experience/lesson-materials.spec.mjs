@@ -63,6 +63,67 @@ test('LP-3B — Materiali prossima lezione: viste operative o fail-closed esplic
   }
 })
 
+test('LP-4 — Oggi, Home e Classe espongono lo stesso accesso contestuale ai materiali', async ({ page }, testInfo) => {
+  await loginE2E(page)
+
+  let response = await page.goto('/planner')
+  if (!response) throw new Error('No navigation response for /planner')
+  expect(response.status()).toBeLessThan(400)
+  await expect(page.getByRole('heading', { name: 'Oggi', level: 1 })).toBeVisible({ timeout: 30_000 })
+
+  const preparation = await materialPreparation(page)
+  const entrypoint = page.getByTestId('lesson-materials-entrypoint')
+
+  if (!preparation) {
+    await expect(entrypoint, 'Senza prossima lezione canonica non deve comparire una scorciatoia inventata.').toHaveCount(0)
+    await screenshot(page, testInfo, 'lesson-materials-entrypoint-fail-closed')
+    return
+  }
+
+  await expect(entrypoint).toBeVisible({ timeout: 30_000 })
+  await expect(entrypoint.getByRole('link', { name: 'Apri materiali' })).toHaveAttribute('href', '/materiali/prossima')
+  if (preparation.authority === 'PROVISIONAL_DRAFT') {
+    await expect(entrypoint.getByText('ORARIO PROVVISORIO')).toBeVisible()
+  }
+  await screenshot(page, testInfo, 'lesson-materials-entrypoint-today')
+
+  response = await page.goto('/')
+  if (!response) throw new Error('No navigation response for /')
+  expect(response.status()).toBeLessThan(400)
+  await expect(page.getByRole('heading', { name: 'Adesso e dopo', level: 1 })).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByTestId('lesson-materials-entrypoint')).toBeVisible({ timeout: 30_000 })
+  await screenshot(page, testInfo, 'lesson-materials-entrypoint-home')
+
+  response = await page.goto(`/classi/${encodeURIComponent(preparation.sectionId)}`)
+  if (!response) throw new Error('No navigation response for authoritative class')
+  expect(response.status()).toBeLessThan(400)
+  await expect(page.getByTestId('lesson-materials-entrypoint')).toBeVisible({ timeout: 30_000 })
+  await screenshot(page, testInfo, 'lesson-materials-entrypoint-class')
+
+  response = await page.goto('/classi')
+  if (!response) throw new Error('No navigation response for /classi')
+  expect(response.status()).toBeLessThan(400)
+  await expect(page.getByTestId('lesson-materials-entrypoint')).toHaveCount(0)
+})
+
+async function materialPreparation(page) {
+  return page.evaluate(async () => {
+    const response = await fetch('/api/assistant/today-context', { cache: 'no-store' })
+    if (!response.ok) return null
+    const payload = await response.json()
+    const preparation = payload?.nextLessonPreparation
+    const lesson = preparation?.lesson
+    const canonical = preparation?.canonicalLesson
+    if (!lesson?.sectionId || !lesson?.disciplineId || !canonical) return null
+    return {
+      sectionId: lesson.sectionId,
+      authority: lesson.authority,
+      sectionLabel: canonical.sectionLabel,
+      title: canonical.title,
+    }
+  })
+}
+
 async function screenshot(page, testInfo, name) {
   const dir = path.join(outputRoot, 'screenshots')
   await fs.mkdir(dir, { recursive: true })
