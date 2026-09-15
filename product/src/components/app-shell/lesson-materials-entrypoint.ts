@@ -55,12 +55,12 @@ export function isLessonMaterialsSurface(active: string, pathname: string) {
 function isSupportedSurface(active: string, pathname: string) {
   if (active === 'home') return /^\/$/.test(pathname)
   if (active === 'today') return /^\/planner\/?$/.test(pathname)
-  if (active === 'classes') return /^\/classi\/[^/?#]+(?:\/|$)/.test(pathname)
+  if (active === 'classes') return /^\/classi\/[^/?#]+\/?$/.test(pathname)
   return false
 }
 
 function classSectionId(pathname: string) {
-  const match = pathname.match(/^\/classi\/([^/?#]+)(?:\/|$)/)
+  const match = pathname.match(/^\/classi\/([^/?#]+)\/?$/)
   if (!match?.[1]) return null
   try {
     return decodeURIComponent(match[1])
