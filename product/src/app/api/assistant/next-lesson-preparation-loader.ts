@@ -3,7 +3,11 @@ import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/sup
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import type { HomeDailyContext } from '@/core/presentation/home-daily-context'
-import { INTERNAL_LESSON_RENDERING_CAPABILITIES } from '@/core/presentation/lesson-material-renderer'
+import {
+  buildInternalLessonMaterialRenderBundle,
+  INTERNAL_LESSON_RENDERING_CAPABILITIES,
+  type LessonMaterialRenderResult,
+} from '@/core/presentation/lesson-material-renderer'
 import {
   buildLessonPreparationManifest,
   type LessonPreparationManifestResult,
@@ -18,6 +22,7 @@ import { loadAuthoritativeLessonCopilotBundle } from './lesson-context-loader'
 export type LoadedNextLessonPreparation = {
   preparation: NextLessonPreparation
   manifest: LessonPreparationManifestResult
+  rendering: LessonMaterialRenderResult
 }
 
 export async function loadNextLessonPreparation(input: {
@@ -123,24 +128,37 @@ export async function loadNextLessonPreparationBundle(input: {
 
   if (!lessonBundle) return blockedPreparation(preparation)
 
+  const manifest = buildLessonPreparationManifest({
+    preparation,
+    lessonContext: lessonBundle.context,
+    projection: lessonBundle.projection,
+    extensions: lessonBundle.extensions,
+    renderingCapabilities: [...INTERNAL_LESSON_RENDERING_CAPABILITIES],
+  })
+
   return {
     preparation,
-    manifest: buildLessonPreparationManifest({
-      preparation,
-      lessonContext: lessonBundle.context,
+    manifest,
+    rendering: buildInternalLessonMaterialRenderBundle({
+      manifestResult: manifest,
       projection: lessonBundle.projection,
       extensions: lessonBundle.extensions,
-      renderingCapabilities: [...INTERNAL_LESSON_RENDERING_CAPABILITIES],
     }),
   }
 }
 
 function blockedPreparation(preparation: NextLessonPreparation): LoadedNextLessonPreparation {
+  const manifest = buildLessonPreparationManifest({
+    preparation,
+    lessonContext: null,
+    projection: null,
+  })
+
   return {
     preparation,
-    manifest: buildLessonPreparationManifest({
-      preparation,
-      lessonContext: null,
+    manifest,
+    rendering: buildInternalLessonMaterialRenderBundle({
+      manifestResult: manifest,
       projection: null,
     }),
   }
