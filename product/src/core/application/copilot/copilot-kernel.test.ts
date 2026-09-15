@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import './knowledge-retrieval.test'
+import './semantic-retrieval.test'
 import {
   discoverCopilotSkills,
   modelVisibleCopilotSkills,
