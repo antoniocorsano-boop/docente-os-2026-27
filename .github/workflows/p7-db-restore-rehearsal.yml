@@ -19,7 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        # Keep the restore rehearsal capable of applying canonical migrations that
+        # depend on pgvector. The version is pinned to the pgvector version
+        # currently available on the Beta Supabase project.
+        image: pgvector/pgvector:0.8.2-pg16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
