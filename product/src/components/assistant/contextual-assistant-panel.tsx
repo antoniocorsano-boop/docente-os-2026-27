@@ -5,15 +5,14 @@ import {
   ComposerPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
-  useAui,
+  WebSpeechDictationAdapter,
   useAuiState,
   useLocalRuntime,
   type ChatModelAdapter,
   type DictationAdapter,
 } from '@assistant-ui/react'
 import { Mic, SendHorizontal, ShieldCheck, Sparkles, Square } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { ServerDictationAdapter, type VoiceCaptureDiagnostic } from './server-dictation-adapter'
+import { useMemo, useState, type ReactNode } from 'react'
 
 export type ContextualAssistantPanelProps = {
   presentation?: 'inline' | 'floating'
@@ -47,8 +46,17 @@ export function ContextualAssistantPanel({
   dictationAdapter,
 }: ContextualAssistantPanelProps) {
   const [expanded, setExpanded] = useState(false)
-  const sharedDictationAdapter = useMemo(() => new ServerDictationAdapter('/api/assistant/transcribe'), [])
-  const resolvedDictationAdapter = dictationAdapter === null ? undefined : dictationAdapter ?? sharedDictationAdapter
+  const browserDictationAdapter = useMemo<DictationAdapter | undefined>(() => {
+    if (typeof window === 'undefined' || !WebSpeechDictationAdapter.isSupported()) return undefined
+    return new WebSpeechDictationAdapter({
+      language: 'it-IT',
+      continuous: true,
+      interimResults: true,
+    })
+  }, [])
+  const resolvedDictationAdapter = dictationAdapter === null
+    ? undefined
+    : dictationAdapter ?? browserDictationAdapter
   const adapter = useMemo<ChatModelAdapter>(() => ({
     async run({ messages }) {
       const prompt = extractLastUserText(messages)
@@ -58,7 +66,11 @@ export function ContextualAssistantPanel({
       }
     },
   }), [respond])
-  const runtime = useLocalRuntime(adapter)
+  const runtime = useLocalRuntime(adapter, {
+    adapters: {
+      dictation: resolvedDictationAdapter,
+    },
+  })
 
   if (presentation === 'floating' && !expanded) {
     return (
@@ -112,7 +124,7 @@ export function ContextualAssistantPanel({
               footerLabel={footerLabel}
               placeholder={placeholder}
               onClose={() => setExpanded(false)}
-              dictationAdapter={resolvedDictationAdapter}
+              dictationEnabled={Boolean(resolvedDictationAdapter)}
             />
           </AssistantRuntimeProvider>
           {actionSlot ? <div className="dosAssistantActionSlot">{actionSlot}</div> : null}
@@ -127,13 +139,13 @@ function ContextualAssistantThread({
   footerLabel,
   placeholder,
   onClose,
-  dictationAdapter,
+  dictationEnabled,
 }: {
   conversationTitle: string
   footerLabel: string
   placeholder: string
   onClose: () => void
-  dictationAdapter?: DictationAdapter
+  dictationEnabled: boolean
 }) {
   return (
     <div className="dosAssistantConversation">
@@ -153,14 +165,14 @@ function ContextualAssistantThread({
             </ThreadPrimitive.Messages>
           </div>
           <ThreadPrimitive.ViewportFooter className="dosAssistantComposerDock">
-            <ComposerPrimitive.Root className="dosAssistantComposer">
+            <ComposerPrimitive.Root className={`dosAssistantComposer${dictationEnabled ? ' voiceEnabled' : ''}`}>
               <ComposerPrimitive.Input
                 className="dosAssistantInput"
                 placeholder={placeholder}
                 aria-label="Domanda per l’assistente contestuale"
                 rows={2}
               />
-              {dictationAdapter ? <DirectVoiceCapture adapter={dictationAdapter} /> : null}
+              {dictationEnabled ? <DictationControls /> : null}
               <ComposerPrimitive.Send asChild>
                 <button className="dosAssistantSend" type="button" aria-label="Invia domanda">
                   <SendHorizontal size={18} aria-hidden />
@@ -179,143 +191,25 @@ function ContextualAssistantThread({
   )
 }
 
-type VoicePhase = 'idle' | 'starting' | 'recording' | 'transcribing' | 'error'
+function DictationControls() {
+  const active = useAuiState((state) => state.composer.dictation != null)
 
-function DirectVoiceCapture({ adapter }: { adapter: DictationAdapter }) {
-  const aui = useAui()
-  const [phase, setPhase] = useState<VoicePhase>('idle')
-  const sessionRef = useRef<DictationAdapter.Session | null>(null)
-  const unsubscribersRef = useRef<Array<() => void>>([])
-  const diagnosticUnsubscribeRef = useRef<(() => void) | null>(null)
-  const safetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const clearSafetyTimer = () => {
-    if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current)
-    safetyTimerRef.current = null
+  if (active) {
+    return (
+      <ComposerPrimitive.StopDictation asChild>
+        <button className="dosAssistantSend voice recording" type="button" aria-label="Ferma dettatura" title="Ferma dettatura" aria-pressed="true">
+          <Square size={16} aria-hidden />
+        </button>
+      </ComposerPrimitive.StopDictation>
+    )
   }
-
-  const clearSubscriptions = () => {
-    for (const unsubscribe of unsubscribersRef.current.splice(0)) unsubscribe()
-    diagnosticUnsubscribeRef.current?.()
-    diagnosticUnsubscribeRef.current = null
-  }
-
-  const releaseSession = () => {
-    clearSafetyTimer()
-    clearSubscriptions()
-    sessionRef.current = null
-  }
-
-  useEffect(() => () => {
-    sessionRef.current?.cancel()
-    clearSafetyTimer()
-    clearSubscriptions()
-  }, [])
-
-  const handleDiagnostic = (event: VoiceCaptureDiagnostic) => {
-    if (event.stage === 'starting' || event.stage === 'microphone-ready' || event.stage === 'worklet-ready') {
-      setPhase('starting')
-      return
-    }
-    if (event.stage === 'capturing') {
-      setPhase('recording')
-      return
-    }
-    if (event.stage === 'uploading') {
-      setPhase('transcribing')
-      return
-    }
-    if (event.stage === 'done') {
-      setPhase('idle')
-      return
-    }
-
-    setPhase('error')
-    releaseSession()
-  }
-
-  const start = () => {
-    if (sessionRef.current) return
-
-    setPhase('starting')
-    try {
-      if (adapter instanceof ServerDictationAdapter) {
-        diagnosticUnsubscribeRef.current = adapter.subscribeDiagnostic(handleDiagnostic)
-      }
-
-      const session = adapter.listen()
-      sessionRef.current = session
-
-      unsubscribersRef.current.push(
-        session.onSpeechStart(() => setPhase('recording')),
-        session.onSpeechEnd((result) => {
-          const transcript = result.transcript.replace(/\s+/g, ' ').trim()
-          if (!transcript) {
-            setPhase('error')
-            releaseSession()
-            return
-          }
-
-          const currentText = aui.composer().getState().text.trim()
-          aui.composer().setText(currentText ? `${currentText} ${transcript}` : transcript)
-          setPhase('idle')
-          releaseSession()
-        }),
-      )
-
-      safetyTimerRef.current = setTimeout(() => {
-        if (sessionRef.current !== session) return
-        session.cancel()
-        setPhase('error')
-        releaseSession()
-      }, 95_000)
-    } catch {
-      setPhase('error')
-      releaseSession()
-    }
-  }
-
-  const stop = async () => {
-    const session = sessionRef.current
-    if (!session) return
-
-    setPhase('transcribing')
-    try {
-      await session.stop()
-      if (sessionRef.current === session) {
-        setPhase('error')
-        releaseSession()
-      }
-    } catch {
-      setPhase('error')
-      releaseSession()
-    }
-  }
-
-  const recording = phase === 'recording'
-  const busy = phase === 'starting' || phase === 'transcribing'
-  const label = recording
-    ? 'Ferma e trascrivi'
-    : phase === 'starting'
-      ? 'Avvio del microfono'
-      : phase === 'transcribing'
-        ? 'Trascrizione in corso'
-        : phase === 'error'
-          ? 'Riprova dettatura'
-          : 'Detta al copilota'
 
   return (
-    <button
-      className={`dosAssistantSend voice${recording ? ' recording' : ''}`}
-      type="button"
-      aria-label={label}
-      title={label}
-      aria-pressed={recording}
-      disabled={busy}
-      onClick={() => recording ? void stop() : start()}
-    >
-      {recording ? <Square size={16} aria-hidden /> : <Mic size={18} aria-hidden />}
-    </button>
+    <ComposerPrimitive.Dictate asChild>
+      <button className="dosAssistantSend voice" type="button" aria-label="Detta al copilota" title="Detta al copilota" aria-pressed="false">
+        <Mic size={18} aria-hidden />
+      </button>
+    </ComposerPrimitive.Dictate>
   )
 }
 
