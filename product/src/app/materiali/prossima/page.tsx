@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { loadCurrentTodayCopilotContext } from '@/app/api/assistant/today-context-loader'
 import { AppShell } from '@/components/app-shell/app-shell'
@@ -52,7 +53,7 @@ export default async function NextLessonMaterialsPage({
           {rendering?.reasons.length ? (
             <ul>{rendering.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
           ) : null}
-          <a className={styles.primaryLink} href="/planner">Torna a Oggi</a>
+          <Link className={styles.primaryLink} href="/planner">Torna a Oggi</Link>
         </main>
       )}
     </AppShell>
