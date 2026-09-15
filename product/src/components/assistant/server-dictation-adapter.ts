@@ -3,12 +3,8 @@
 import type { DictationAdapter } from '@assistant-ui/react'
 
 const DEFAULT_MAX_CAPTURE_MS = 90_000
-const RECORDER_TIMESLICE_MS = 250
-const RECORDER_MIME_CANDIDATES = [
-  'audio/webm;codecs=opus',
-  'audio/webm',
-  'audio/mp4',
-] as const
+const SCRIPT_PROCESSOR_BUFFER_SIZE = 4096
+const TRANSCRIPTION_SAMPLE_RATE = 16_000
 const DIAGNOSTIC_ENDPOINT = '/api/assistant/voice-diagnostic'
 
 type VoiceDiagnosticEvent =
@@ -29,8 +25,6 @@ type VoiceDiagnosticEvent =
   | 'transcribe-start'
   | 'transcribe-response'
 
-type StopCause = 'user' | 'cancel' | 'safety' | null
-
 export class ServerDictationAdapter implements DictationAdapter {
   readonly disableInputDuringDictation = true
 
@@ -43,16 +37,21 @@ export class ServerDictationAdapter implements DictationAdapter {
     const speechStart = new Set<() => void>()
     const speechEnd = new Set<(result: DictationAdapter.Result) => void>()
     const speech = new Set<(result: DictationAdapter.Result) => void>()
-    const chunks: Blob[] = []
+    const pcmChunks: Float32Array[] = []
+    const abortController = new AbortController()
     const startedAt = performance.now()
 
-    let recorder: MediaRecorder | null = null
+    let audioContext: AudioContext | null = null
+    let sourceNode: MediaStreamAudioSourceNode | null = null
+    let processorNode: ScriptProcessorNode | null = null
+    let silenceGain: GainNode | null = null
     let stream: MediaStream | null = null
+    let sampleRate = 48_000
     let cancelled = false
     let stopRequested = false
-    let stopCause: StopCause = null
-    let timer: ReturnType<typeof setTimeout> | null = null
+    let finishing = false
     let settled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
     let resolveStopped: (() => void) | null = null
     let intentionalTrackStop = false
     let visibilityListenerAttached = false
@@ -61,7 +60,7 @@ export class ServerDictationAdapter implements DictationAdapter {
       reportVoiceDiagnostic({
         event,
         elapsedMs: performance.now() - startedAt,
-        recorderState: recorder?.state ?? null,
+        recorderState: null,
         trackState: stream?.getAudioTracks()[0]?.readyState ?? null,
         visibility: document.visibilityState,
         statusCode,
@@ -79,26 +78,6 @@ export class ServerDictationAdapter implements DictationAdapter {
       timer = null
     }
 
-    const onVisibilityChange = () => {
-      diagnostic(document.visibilityState === 'hidden' ? 'page-hidden' : 'page-visible')
-    }
-
-    const detachVisibilityListener = () => {
-      if (!visibilityListenerAttached) return
-      document.removeEventListener('visibilitychange', onVisibilityChange)
-      visibilityListenerAttached = false
-    }
-
-    const stopRecorder = () => {
-      if (!recorder || recorder.state === 'inactive') return
-      try {
-        recorder.requestData()
-      } catch {
-        // Some mobile browsers reject requestData during a pending state change.
-      }
-      recorder.stop()
-    }
-
     const stopTracks = () => {
       intentionalTrackStop = true
       stream?.getTracks().forEach((track) => track.stop())
@@ -112,27 +91,119 @@ export class ServerDictationAdapter implements DictationAdapter {
       resolveStopped?.()
     }
 
+    const cleanupAudioGraph = async () => {
+      if (processorNode) {
+        processorNode.onaudioprocess = null
+        try { processorNode.disconnect() } catch {}
+        processorNode = null
+      }
+      if (sourceNode) {
+        try { sourceNode.disconnect() } catch {}
+        sourceNode = null
+      }
+      if (silenceGain) {
+        try { silenceGain.disconnect() } catch {}
+        silenceGain = null
+      }
+      stopTracks()
+      if (audioContext) {
+        const current = audioContext
+        audioContext = null
+        try {
+          if (current.state !== 'closed') await current.close()
+        } catch {}
+      }
+    }
+
+    const finishCapture = async (sendForTranscription: boolean) => {
+      if (finishing) {
+        await stopped
+        return
+      }
+      finishing = true
+      clearTimer()
+      diagnostic('recorder-stop')
+
+      const pcm = mergeFloat32Chunks(pcmChunks)
+      await cleanupAudioGraph()
+
+      if (cancelled || !sendForTranscription) {
+        settle()
+        return
+      }
+
+      try {
+        if (pcm.length === 0) throw new Error('voice-capture-empty')
+
+        const normalized = downsamplePcm(pcm, sampleRate, TRANSCRIPTION_SAMPLE_RATE)
+        const audio = encodeMonoPcmWav(normalized, TRANSCRIPTION_SAMPLE_RATE)
+        const body = new FormData()
+        body.append('audio', audio, 'dictation.wav')
+        diagnostic('transcribe-start')
+
+        const response = await fetch(this.endpoint, {
+          method: 'POST',
+          cache: 'no-store',
+          body,
+          signal: abortController.signal,
+        })
+        diagnostic('transcribe-response', response.status)
+        if (!response.ok) throw new Error(`voice-transcription-${response.status}`)
+
+        const payload = await response.json() as { text?: unknown }
+        const transcript = typeof payload.text === 'string' ? payload.text.replace(/\s+/g, ' ').trim() : ''
+        if (!transcript) throw new Error('voice-transcription-empty')
+
+        const result: DictationAdapter.Result = { transcript, isFinal: true }
+        for (const callback of speech) callback(result)
+        for (const callback of speechEnd) callback(result)
+        session.status = { type: 'ended', reason: 'stopped' }
+      } catch {
+        session.status = { type: 'ended', reason: 'error' }
+      } finally {
+        settle()
+      }
+    }
+
+    const resumeAudioContext = async () => {
+      const context = audioContext
+      if (!context || context.state !== 'suspended' || cancelled || finishing) return
+      try {
+        await context.resume()
+      } catch {
+        diagnostic('recorder-error')
+      }
+    }
+
+    const onVisibilityChange = () => {
+      const visible = document.visibilityState === 'visible'
+      diagnostic(visible ? 'page-visible' : 'page-hidden')
+      if (visible) void resumeAudioContext()
+    }
+
+    const detachVisibilityListener = () => {
+      if (!visibilityListenerAttached) return
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      visibilityListenerAttached = false
+    }
+
     const session: DictationAdapter.Session = {
       status: { type: 'starting' },
 
       stop: async () => {
         diagnostic('session-stop-called')
         stopRequested = true
-        stopCause = stopCause ?? 'user'
-        clearTimer()
-        stopRecorder()
+        await finishCapture(true)
         await stopped
       },
 
       cancel: () => {
         diagnostic('session-cancel-called')
         cancelled = true
-        stopCause = 'cancel'
+        abortController.abort()
         clearTimer()
-        stopRecorder()
-        stopTracks()
         session.status = { type: 'ended', reason: 'cancelled' }
-        settle()
+        void cleanupAudioGraph().finally(settle)
       },
 
       onSpeechStart: (callback) => {
@@ -154,9 +225,14 @@ export class ServerDictationAdapter implements DictationAdapter {
 
     void (async () => {
       try {
-        if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-          throw new Error('voice-capture-not-supported')
-        }
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error('voice-capture-not-supported')
+
+        const AudioContextCtor = audioContextConstructor()
+        if (!AudioContextCtor) throw new Error('voice-audio-context-unavailable')
+
+        const context = new AudioContextCtor()
+        audioContext = context
+        if (context.state === 'suspended') await context.resume()
 
         stream = await navigator.mediaDevices.getUserMedia({
           audio: {
@@ -165,7 +241,6 @@ export class ServerDictationAdapter implements DictationAdapter {
             autoGainControl: true,
           },
         })
-
         diagnostic('stream-ready')
 
         const track = stream.getAudioTracks()[0]
@@ -178,90 +253,46 @@ export class ServerDictationAdapter implements DictationAdapter {
         }
 
         if (cancelled) {
-          stopTracks()
+          await cleanupAudioGraph()
           settle()
           return
         }
 
-        const preferredMimeType = preferredRecorderMimeType()
-        recorder = preferredMimeType
-          ? new MediaRecorder(stream, { mimeType: preferredMimeType })
-          : new MediaRecorder(stream)
+        sampleRate = context.sampleRate
+        sourceNode = context.createMediaStreamSource(stream)
+        processorNode = context.createScriptProcessor(SCRIPT_PROCESSOR_BUFFER_SIZE, 1, 1)
+        silenceGain = context.createGain()
+        silenceGain.gain.value = 0
 
-        recorder.ondataavailable = (event) => {
-          if (event.data.size > 0) chunks.push(event.data)
+        processorNode.onaudioprocess = (event) => {
+          if (cancelled || finishing || event.inputBuffer.numberOfChannels === 0) return
+          pcmChunks.push(new Float32Array(event.inputBuffer.getChannelData(0)))
         }
 
-        recorder.onstart = () => {
-          diagnostic('recorder-start')
-          session.status = { type: 'running' }
-          for (const callback of speechStart) callback()
+        sourceNode.connect(processorNode)
+        processorNode.connect(silenceGain)
+        silenceGain.connect(context.destination)
 
-          timer = setTimeout(() => {
-            stopCause = 'safety'
-            diagnostic('safety-timeout')
-            stopRecorder()
-          }, Math.max(1_000, Math.min(this.maxCaptureMs, DEFAULT_MAX_CAPTURE_MS)))
-
-          if (stopRequested) stopRecorder()
-        }
-
-        recorder.onerror = () => {
-          diagnostic('recorder-error')
-          clearTimer()
-          stopTracks()
-          session.status = { type: 'ended', reason: 'error' }
-          settle()
-        }
-
-        recorder.onstop = async () => {
-          if (!cancelled && stopCause === null) diagnostic('recorder-autostop')
-          diagnostic('recorder-stop')
-          clearTimer()
-          stopTracks()
-
-          if (cancelled) {
-            settle()
-            return
+        if (context.state === 'suspended') await context.resume()
+        context.addEventListener('statechange', () => {
+          if (context.state === 'suspended' && document.visibilityState === 'visible') {
+            void resumeAudioContext()
           }
+        })
 
-          try {
-            const mimeType = recorder?.mimeType || preferredMimeType || 'audio/webm'
-            const audio = new Blob(chunks, { type: mimeType })
-            if (audio.size === 0) throw new Error('voice-capture-empty')
+        diagnostic('recorder-start')
+        session.status = { type: 'running' }
+        for (const callback of speechStart) callback()
 
-            const body = new FormData()
-            body.append('audio', audio, `dictation.${extensionForMimeType(mimeType)}`)
-            diagnostic('transcribe-start')
+        timer = setTimeout(() => {
+          diagnostic('safety-timeout')
+          void finishCapture(true)
+        }, Math.max(1_000, Math.min(this.maxCaptureMs, DEFAULT_MAX_CAPTURE_MS)))
 
-            const response = await fetch(this.endpoint, {
-              method: 'POST',
-              cache: 'no-store',
-              body,
-            })
-            diagnostic('transcribe-response', response.status)
-            if (!response.ok) throw new Error(`voice-transcription-${response.status}`)
-
-            const payload = await response.json() as { text?: unknown }
-            const transcript = typeof payload.text === 'string' ? payload.text.replace(/\s+/g, ' ').trim() : ''
-            if (!transcript) throw new Error('voice-transcription-empty')
-
-            const result: DictationAdapter.Result = { transcript, isFinal: true }
-            for (const callback of speech) callback(result)
-            for (const callback of speechEnd) callback(result)
-            session.status = { type: 'ended', reason: 'stopped' }
-          } catch {
-            session.status = { type: 'ended', reason: 'error' }
-          } finally {
-            settle()
-          }
-        }
-
-        recorder.start(RECORDER_TIMESLICE_MS)
-        if (stopRequested && recorder.state !== 'inactive') stopRecorder()
+        if (stopRequested) await finishCapture(true)
       } catch {
         clearTimer()
-        stopTracks()
+        await cleanupAudioGraph()
         session.status = { type: 'ended', reason: 'error' }
         settle()
       }
@@ -271,9 +302,79 @@ export class ServerDictationAdapter implements DictationAdapter {
   }
 }
 
-function preferredRecorderMimeType() {
-  if (typeof MediaRecorder.isTypeSupported !== 'function') return undefined
-  return RECORDER_MIME_CANDIDATES.find((candidate) => MediaRecorder.isTypeSupported(candidate))
+function audioContextConstructor() {
+  if (typeof window === 'undefined') return undefined
+  if (typeof AudioContext !== 'undefined') return AudioContext
+  return (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+}
+
+function mergeFloat32Chunks(chunks: readonly Float32Array[]) {
+  const length = chunks.reduce((total, chunk) => total + chunk.length, 0)
+  const merged = new Float32Array(length)
+  let offset = 0
+  for (const chunk of chunks) {
+    merged.set(chunk, offset)
+    offset += chunk.length
+  }
+  return merged
+}
+
+function downsamplePcm(samples: Float32Array, sourceRate: number, targetRate: number) {
+  if (sourceRate <= targetRate) return samples
+
+  const ratio = sourceRate / targetRate
+  const outputLength = Math.max(1, Math.floor(samples.length / ratio))
+  const output = new Float32Array(outputLength)
+
+  for (let outputIndex = 0; outputIndex < outputLength; outputIndex += 1) {
+    const start = Math.floor(outputIndex * ratio)
+    const end = Math.min(samples.length, Math.floor((outputIndex + 1) * ratio))
+    let sum = 0
+    let count = 0
+    for (let inputIndex = start; inputIndex < end; inputIndex += 1) {
+      sum += samples[inputIndex] ?? 0
+      count += 1
+    }
+    output[outputIndex] = count > 0 ? sum / count : samples[start] ?? 0
+  }
+
+  return output
+}
+
+function encodeMonoPcmWav(samples: Float32Array, sampleRate: number) {
+  const bytesPerSample = 2
+  const dataLength = samples.length * bytesPerSample
+  const buffer = new ArrayBuffer(44 + dataLength)
+  const view = new DataView(buffer)
+
+  writeAscii(view, 0, 'RIFF')
+  view.setUint32(4, 36 + dataLength, true)
+  writeAscii(view, 8, 'WAVE')
+  writeAscii(view, 12, 'fmt ')
+  view.setUint32(16, 16, true)
+  view.setUint16(20, 1, true)
+  view.setUint16(22, 1, true)
+  view.setUint32(24, sampleRate, true)
+  view.setUint32(28, sampleRate * bytesPerSample, true)
+  view.setUint16(32, bytesPerSample, true)
+  view.setUint16(34, 16, true)
+  writeAscii(view, 36, 'data')
+  view.setUint32(40, dataLength, true)
+
+  let offset = 44
+  for (let index = 0; index < samples.length; index += 1) {
+    const sample = Math.max(-1, Math.min(1, samples[index] ?? 0))
+    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true)
+    offset += bytesPerSample
+  }
+
+  return new Blob([buffer], { type: 'audio/wav' })
+}
+
+function writeAscii(view: DataView, offset: number, value: string) {
+  for (let index = 0; index < value.length; index += 1) {
+    view.setUint8(offset + index, value.charCodeAt(index))
+  }
 }
 
 function reportVoiceDiagnostic(input: {
@@ -305,11 +406,4 @@ function reportVoiceDiagnostic(input: {
       navigator.sendBeacon?.(DIAGNOSTIC_ENDPOINT, new Blob([payload], { type: 'application/json' }))
     } catch {}
   })
-}
-
-function extensionForMimeType(mimeType: string) {
-  if (mimeType.includes('mp4')) return 'm4a'
-  if (mimeType.includes('ogg')) return 'ogg'
-  if (mimeType.includes('wav')) return 'wav'
-  return 'webm'
 }
