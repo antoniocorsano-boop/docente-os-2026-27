@@ -5,13 +5,28 @@ import type { DictationAdapter } from '@assistant-ui/react'
 const DEFAULT_MAX_CAPTURE_MS = 30_000
 const SCRIPT_PROCESSOR_BUFFER_SIZE = 4096
 
+export type VoiceCaptureDiagnostic = {
+  stage: 'starting' | 'microphone-ready' | 'capturing' | 'uploading' | 'done' | 'error'
+  code?: string
+}
+
 export class ServerDictationAdapter implements DictationAdapter {
   readonly disableInputDuringDictation = true
+  private readonly diagnosticListeners = new Set<(event: VoiceCaptureDiagnostic) => void>()
 
   constructor(
     private readonly endpoint = '/api/assistant/transcribe',
     private readonly maxCaptureMs = DEFAULT_MAX_CAPTURE_MS,
   ) {}
+
+  subscribeDiagnostic(listener: (event: VoiceCaptureDiagnostic) => void) {
+    this.diagnosticListeners.add(listener)
+    return () => this.diagnosticListeners.delete(listener)
+  }
+
+  private emitDiagnostic(event: VoiceCaptureDiagnostic) {
+    for (const listener of this.diagnosticListeners) listener(event)
+  }
 
   listen(): DictationAdapter.Session {
     const speechStart = new Set<() => void>()
@@ -31,6 +46,7 @@ export class ServerDictationAdapter implements DictationAdapter {
     let stopRequested = false
     let finishing = false
     let stopSettled = false
+    let captureReported = false
     let resolveStop: (() => void) | null = null
 
     const stopCompleted = new Promise<void>((resolve) => {
@@ -77,6 +93,12 @@ export class ServerDictationAdapter implements DictationAdapter {
       }
     }
 
+    const fail = (error: unknown) => {
+      const code = error instanceof Error && error.message ? error.message : 'voice-capture-unknown'
+      this.emitDiagnostic({ stage: 'error', code })
+      session.status = { type: 'ended', reason: 'error' }
+    }
+
     const finishCapture = async (sendForTranscription: boolean) => {
       if (finishing) {
         await stopCompleted
@@ -99,6 +121,7 @@ export class ServerDictationAdapter implements DictationAdapter {
         const audio = encodeMonoPcmWav(pcm, sampleRate)
         const body = new FormData()
         body.append('audio', audio, 'dictation.wav')
+        this.emitDiagnostic({ stage: 'uploading' })
 
         const response = await fetch(this.endpoint, {
           method: 'POST',
@@ -116,8 +139,9 @@ export class ServerDictationAdapter implements DictationAdapter {
         for (const callback of speech) callback(result)
         for (const callback of speechEnd) callback(result)
         session.status = { type: 'ended', reason: 'stopped' }
-      } catch {
-        session.status = { type: 'ended', reason: 'error' }
+        this.emitDiagnostic({ stage: 'done' })
+      } catch (error) {
+        fail(error)
       } finally {
         settleStop()
       }
@@ -155,12 +179,14 @@ export class ServerDictationAdapter implements DictationAdapter {
       },
     }
 
+    this.emitDiagnostic({ stage: 'starting' })
+
     void (async () => {
       try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error('voice-capture-not-supported')
 
         const AudioContextCtor = audioContextConstructor()
-        if (!AudioContextCtor) throw new Error('voice-capture-not-supported')
+        if (!AudioContextCtor) throw new Error('voice-audio-context-unavailable')
 
         const context = new AudioContextCtor()
         audioContext = context
@@ -179,6 +205,7 @@ export class ServerDictationAdapter implements DictationAdapter {
           settleStop()
           return
         }
+        this.emitDiagnostic({ stage: 'microphone-ready' })
 
         sampleRate = context.sampleRate
         sourceNode = context.createMediaStreamSource(stream)
@@ -189,6 +216,10 @@ export class ServerDictationAdapter implements DictationAdapter {
         processorNode.onaudioprocess = (event) => {
           if (cancelled || finishing || event.inputBuffer.numberOfChannels === 0) return
           pcmChunks.push(new Float32Array(event.inputBuffer.getChannelData(0)))
+          if (!captureReported) {
+            captureReported = true
+            this.emitDiagnostic({ stage: 'capturing' })
+          }
         }
 
         sourceNode.connect(processorNode)
@@ -205,10 +236,10 @@ export class ServerDictationAdapter implements DictationAdapter {
         }, Math.max(1_000, Math.min(this.maxCaptureMs, DEFAULT_MAX_CAPTURE_MS)))
 
         if (stopRequested) await finishCapture(true)
-      } catch {
+      } catch (error) {
         clearCaptureTimer()
         await cleanupAudioGraph()
-        session.status = { type: 'ended', reason: 'error' }
+        fail(error)
         settleStop()
       }
     })()
