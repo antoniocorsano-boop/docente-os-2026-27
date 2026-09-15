@@ -13,7 +13,7 @@ import {
 } from '@assistant-ui/react'
 import { Mic, SendHorizontal, ShieldCheck, Sparkles, Square } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { ServerDictationAdapter } from './server-dictation-adapter'
+import { ServerDictationAdapter, type VoiceCaptureDiagnostic } from './server-dictation-adapter'
 
 export type ContextualAssistantPanelProps = {
   presentation?: 'inline' | 'floating'
@@ -179,13 +179,15 @@ function ContextualAssistantThread({
   )
 }
 
-type VoicePhase = 'idle' | 'recording' | 'transcribing' | 'error'
+type VoicePhase = 'idle' | 'starting' | 'recording' | 'transcribing' | 'error'
 
 function DirectVoiceCapture({ adapter }: { adapter: DictationAdapter }) {
   const aui = useAui()
   const [phase, setPhase] = useState<VoicePhase>('idle')
+  const [voiceStatus, setVoiceStatus] = useState<string | null>(null)
   const sessionRef = useRef<DictationAdapter.Session | null>(null)
   const unsubscribersRef = useRef<Array<() => void>>([])
+  const diagnosticUnsubscribeRef = useRef<(() => void) | null>(null)
   const safetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const clearSafetyTimer = () => {
@@ -195,6 +197,8 @@ function DirectVoiceCapture({ adapter }: { adapter: DictationAdapter }) {
 
   const clearSubscriptions = () => {
     for (const unsubscribe of unsubscribersRef.current.splice(0)) unsubscribe()
+    diagnosticUnsubscribeRef.current?.()
+    diagnosticUnsubscribeRef.current = null
   }
 
   const releaseSession = () => {
@@ -209,20 +213,60 @@ function DirectVoiceCapture({ adapter }: { adapter: DictationAdapter }) {
     clearSubscriptions()
   }, [])
 
+  const handleDiagnostic = (event: VoiceCaptureDiagnostic) => {
+    if (event.stage === 'starting') {
+      setPhase('starting')
+      setVoiceStatus('Avvio del microfono…')
+      return
+    }
+    if (event.stage === 'microphone-ready') {
+      setPhase('starting')
+      setVoiceStatus('Microfono disponibile. Avvio della cattura audio…')
+      return
+    }
+    if (event.stage === 'capturing') {
+      setPhase('recording')
+      setVoiceStatus('Sto ascoltando…')
+      return
+    }
+    if (event.stage === 'uploading') {
+      setPhase('transcribing')
+      setVoiceStatus('Trascrizione in corso…')
+      return
+    }
+    if (event.stage === 'done') {
+      setVoiceStatus(null)
+      return
+    }
+    setPhase('error')
+    setVoiceStatus(voiceErrorMessage(event.code))
+    releaseSession()
+  }
+
   const start = () => {
     if (sessionRef.current) return
 
+    setPhase('starting')
+    setVoiceStatus('Avvio del microfono…')
+
     try {
+      if (adapter instanceof ServerDictationAdapter) {
+        diagnosticUnsubscribeRef.current = adapter.subscribeDiagnostic(handleDiagnostic)
+      }
+
       const session = adapter.listen()
       sessionRef.current = session
-      setPhase('recording')
 
       unsubscribersRef.current.push(
-        session.onSpeechStart(() => setPhase('recording')),
+        session.onSpeechStart(() => {
+          setPhase('recording')
+          setVoiceStatus('Sto ascoltando…')
+        }),
         session.onSpeechEnd((result) => {
           const transcript = result.transcript.replace(/\s+/g, ' ').trim()
           if (!transcript) {
             setPhase('error')
+            setVoiceStatus('La voce è arrivata, ma non è stato riconosciuto testo.')
             releaseSession()
             return
           }
@@ -230,18 +274,21 @@ function DirectVoiceCapture({ adapter }: { adapter: DictationAdapter }) {
           const currentText = aui.composer().getState().text.trim()
           aui.composer().setText(currentText ? `${currentText} ${transcript}` : transcript)
           setPhase('idle')
+          setVoiceStatus(null)
           releaseSession()
         }),
       )
 
       safetyTimerRef.current = setTimeout(() => {
-        if (sessionRef.current !== session) return
+        if (sessionRef.current !== session || phase === 'recording') return
         session.cancel()
         setPhase('error')
+        setVoiceStatus('Il microfono non ha iniziato a catturare audio.')
         releaseSession()
-      }, 55_000)
+      }, 12_000)
     } catch {
       setPhase('error')
+      setVoiceStatus('Non riesco ad avviare il microfono in questo browser.')
       releaseSession()
     }
   }
@@ -251,41 +298,76 @@ function DirectVoiceCapture({ adapter }: { adapter: DictationAdapter }) {
     if (!session) return
 
     setPhase('transcribing')
+    setVoiceStatus('Trascrizione in corso…')
     try {
       await session.stop()
       if (sessionRef.current === session) {
         setPhase('error')
+        setVoiceStatus('La cattura si è fermata senza produrre una trascrizione.')
         releaseSession()
       }
     } catch {
       setPhase('error')
+      setVoiceStatus('La trascrizione non è riuscita. Riprova.')
       releaseSession()
     }
   }
 
   const recording = phase === 'recording'
-  const transcribing = phase === 'transcribing'
+  const busy = phase === 'starting' || phase === 'transcribing'
   const label = recording
     ? 'Ferma e trascrivi'
-    : transcribing
-      ? 'Trascrizione in corso'
-      : phase === 'error'
-        ? 'Riprova dettatura'
-        : 'Detta al copilota'
+    : phase === 'starting'
+      ? 'Avvio microfono'
+      : phase === 'transcribing'
+        ? 'Trascrizione in corso'
+        : phase === 'error'
+          ? 'Riprova dettatura'
+          : 'Detta al copilota'
 
   return (
-    <button
-      className={`dosAssistantSend voice${recording ? ' recording' : ''}`}
-      type="button"
-      aria-label={label}
-      title={label}
-      aria-pressed={recording}
-      disabled={transcribing}
-      onClick={() => recording ? void stop() : start()}
-    >
-      {recording ? <Square size={16} aria-hidden /> : <Mic size={18} aria-hidden />}
-    </button>
+    <>
+      <button
+        className={`dosAssistantSend voice${recording ? ' recording' : ''}`}
+        type="button"
+        aria-label={label}
+        title={label}
+        aria-pressed={recording}
+        disabled={busy}
+        onClick={() => recording ? void stop() : start()}
+      >
+        {recording ? <Square size={16} aria-hidden /> : <Mic size={18} aria-hidden />}
+      </button>
+      {voiceStatus ? (
+        <span
+          role="status"
+          aria-live="polite"
+          style={{
+            gridColumn: '1 / -1',
+            flexBasis: '100%',
+            width: '100%',
+            padding: '2px 4px 0',
+            fontSize: 12,
+            lineHeight: 1.35,
+            color: phase === 'error' ? 'var(--danger)' : 'var(--ink-soft)',
+          }}
+        >
+          {voiceStatus}
+        </span>
+      ) : null}
+    </>
   )
+}
+
+function voiceErrorMessage(code?: string) {
+  if (code === 'voice-capture-not-supported') return 'Questo browser non rende disponibile la cattura vocale.'
+  if (code === 'voice-audio-context-unavailable') return 'Il motore audio del browser non è disponibile.'
+  if (code === 'voice-capture-empty') return 'Il microfono si è aperto, ma non sono arrivati campioni audio.'
+  if (code === 'voice-transcription-401') return 'La sessione è scaduta. Ricarica la pagina e riprova.'
+  if (code === 'voice-transcription-503') return 'Il servizio di trascrizione non è disponibile in questo ambiente.'
+  if (code === 'voice-transcription-502' || code === 'voice-transcription-504') return 'Il servizio di trascrizione non ha risposto. Riprova tra poco.'
+  if (code === 'voice-transcription-empty') return 'L’audio è arrivato, ma non è stato riconosciuto testo.'
+  return 'La cattura vocale si è interrotta prima della trascrizione.'
 }
 
 function AssistantThreadMessage() {
