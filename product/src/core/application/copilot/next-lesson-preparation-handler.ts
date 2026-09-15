@@ -1,5 +1,6 @@
 import {
   discoverCopilotSkills,
+  type CopilotEvidenceRef,
   type CopilotRunContext,
 } from './copilot-kernel'
 import type {
@@ -22,7 +23,7 @@ export type NextLessonPreparationActionResult = {
   nextAction: string
   persistentEffect: 'NONE'
   confirmationRequiredForPersistence: true
-  provenance: Array<{ kind: string; ref: string; label?: string }>
+  provenance: CopilotEvidenceRef[]
 }
 
 export function matchesNextLessonPreparationIntent(prompt: string) {
@@ -112,7 +113,7 @@ export function handleNextLessonPreparation(input: {
     nextAction: roleView.nextActions[0]?.label ?? 'Rivedi la preparazione prima della lezione.',
     persistentEffect: 'NONE',
     confirmationRequiredForPersistence: true,
-    provenance: input.context.provenance.map((item) => ({ ...item })),
+    provenance: [...input.context.provenance],
   }
 }
 
@@ -137,7 +138,7 @@ function blocked(
     nextAction: nextAction ?? 'Verifica il contesto mancante prima di preparare o modificare materiali.',
     persistentEffect: 'NONE',
     confirmationRequiredForPersistence: true,
-    provenance: context.provenance.map((item) => ({ ...item })),
+    provenance: [...context.provenance],
   }
 }
 
