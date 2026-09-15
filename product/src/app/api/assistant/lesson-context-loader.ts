@@ -17,6 +17,16 @@ export async function loadAuthoritativeLessonCopilotContext(input: {
   sectionId: string
   blockId: string
 }) {
+  const bundle = await loadAuthoritativeLessonCopilotBundle(input)
+  return bundle?.context ?? null
+}
+
+export async function loadAuthoritativeLessonCopilotBundle(input: {
+  workspaceId: string
+  academicYearId: string
+  sectionId: string
+  blockId: string
+}) {
   const blockId = input.blockId.toUpperCase()
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
   const snapshot = await annualRepository.list(input.workspaceId, input.academicYearId)
@@ -102,7 +112,7 @@ export async function loadAuthoritativeLessonCopilotContext(input: {
       }
     : null
 
-  return buildLessonCopilotContext({
+  const context = buildLessonCopilotContext({
     workspaceId: input.workspaceId,
     academicYearId: input.academicYearId,
     discipline,
@@ -115,6 +125,12 @@ export async function loadAuthoritativeLessonCopilotContext(input: {
     curriculumAuthority,
     curriculumAuthorityEvidence,
   })
+
+  return {
+    context,
+    projection,
+    extensions,
+  }
 }
 
 function unique(values: string[]) {
