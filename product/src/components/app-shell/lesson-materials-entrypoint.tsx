@@ -10,14 +10,21 @@ import {
 } from './lesson-materials-entrypoint'
 import styles from './lesson-materials-entrypoint.module.css'
 
-export function LessonMaterialsQuickAction({ active }: { active: string }) {
+export function LessonMaterialsQuickAction({
+  active,
+  context: providedContext,
+}: {
+  active: string
+  context?: TodayCopilotK2Context | null
+}) {
   const pathname = usePathname()
-  const [context, setContext] = useState<TodayCopilotK2Context | null>(null)
+  const [fetchedContext, setFetchedContext] = useState<TodayCopilotK2Context | null>(null)
   const supportedSurface = isLessonMaterialsSurface(active, pathname)
+  const contextProvided = providedContext !== undefined
 
   useEffect(() => {
-    if (!supportedSurface) {
-      setContext(null)
+    if (!supportedSurface || contextProvided) {
+      setFetchedContext(null)
       return
     }
 
@@ -34,13 +41,13 @@ export function LessonMaterialsQuickAction({ active }: { active: string }) {
         })
         .then((payload) => {
           if (!payload || payload.surface !== 'TODAY' || !('nextLessonPreparation' in payload)) {
-            setContext(null)
+            setFetchedContext(null)
             return
           }
-          setContext(payload)
+          setFetchedContext(payload)
         })
         .catch(() => {
-          if (!controller.signal.aborted) setContext(null)
+          if (!controller.signal.aborted) setFetchedContext(null)
         })
     })
 
@@ -48,8 +55,9 @@ export function LessonMaterialsQuickAction({ active }: { active: string }) {
       window.cancelAnimationFrame(frame)
       controller.abort()
     }
-  }, [pathname, supportedSurface])
+  }, [contextProvided, pathname, supportedSurface])
 
+  const context = contextProvided ? providedContext : fetchedContext
   const entrypoint = context
     ? resolveLessonMaterialsEntrypoint({ active, pathname, context })
     : null
