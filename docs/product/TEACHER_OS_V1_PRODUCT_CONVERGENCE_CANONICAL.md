@@ -1,6 +1,6 @@
 # DOCENTE OS — Teacher Operating System V1 Product Convergence
 
-Data: **2026-09-14**  
+Data: **2026-09-15**  
 Stato: **CANONICAL CANDIDATE / PRODUCT CONVERGENCE**  
 Issue: **#387**
 
@@ -217,6 +217,10 @@ Il docente deve poter chiedere, per esempio:
 
 L'orchestratore risolve provider e percorso secondo il configuratore istituzionale.
 
+Per **preparazione della prossima lezione, materiali pronti, ciclo Diario→domani, resa LIM/stampa e uso opzionale di Canva/Drive**, la fondazione canonica è `docs/architecture/LESSON_PREPARATION_ORCHESTRATION_CANONICAL.md` e il programma esecutivo è #431.
+
+La regola è vincolante: il sistema compone gli oggetti esistenti tramite un `Lesson Preparation Manifest`; non crea un nuovo archivio, non duplica CAN-PACK/asset e non rende Canva o Drive fonte di verità. La baseline LIM/stampa deve funzionare con renderer interni provider-independent; i provider esterni migliorano authoring/esportazione ma restano sostituibili.
+
 ## 12. Product KPI
 
 ### Teacher Attention Returned — TAR
@@ -236,6 +240,8 @@ Metriche correlate:
 - percentuale di contesto precompilato correttamente;
 - friction/workaround osservati in HUMAN_USE.
 
+Per il ciclo di preparazione, una misura specifica è la quota di lezioni per cui il docente raggiunge **Materiali pronti** senza cercare nuovamente la chat, ricopiare informazioni o ricostruire manualmente il contesto.
+
 ## 13. Programma V1
 
 ### V1-A — Teacher Moment + Next
@@ -254,6 +260,8 @@ Sostituire la pagina-operazione lunga come entry point con brief task-first + de
 ### V1-C — Copilot operativo
 
 Collegare TeacherMoment ad AssistantContext, produzione/adattamento contenuti e Contextual Voice Capture.
+
+Il verticale preparazione/materiali segue #431 nell'ordine `LP-1 manifesto → LP-2 azione Copilot → LP-3 renderer interni → LP-4 Home/Oggi/Classe → LP-5 adapter opzionali → LP-6 Diario→domani`. Non anticipare provider o nuovi formati persistenti prima della baseline interna.
 
 ### V1-D — Institutional Configurator
 
@@ -280,4 +288,7 @@ UX-0 resta chiudibile soltanto quando il prodotto convergente dimostra che il do
 - replica del registro elettronico;
 - replica delle UI Google/Microsoft;
 - nuova tassonomia di moduli;
+- nuovo archivio o secondo modello dei materiali della lezione;
+- Canva/Drive come dipendenza obbligatoria o fonte di verità;
+- apprendimento silenzioso che generalizza osservazioni tra classi;
 - migrazione big-bang.
