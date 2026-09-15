@@ -175,7 +175,14 @@ test('provider call is bounded by an abort signal', async () => {
   })
   const copilot = new OpenAiLessonCopilot('test-key', 'test-model', fetcher, 20)
 
-  await assert.rejects(() => copilot.respond({ context, prompt: 'Cosa devo preparare?' }))
+  // AbortSignal.timeout() usa un timer non referenziato in Node. Manteniamo vivo
+  // il test con un timer ordinario e lo cancelliamo appena il segnale scatta.
+  const keepAlive = setTimeout(() => {}, 1_000)
+  try {
+    await assert.rejects(() => copilot.respond({ context, prompt: 'Cosa devo preparare?' }))
+  } finally {
+    clearTimeout(keepAlive)
+  }
   assert.equal(signalObserved, true)
 })
 
