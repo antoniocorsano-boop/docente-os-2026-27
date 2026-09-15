@@ -23,10 +23,7 @@ export function LessonMaterialsQuickAction({
   const contextProvided = providedContext !== undefined
 
   useEffect(() => {
-    if (!supportedSurface || contextProvided) {
-      setFetchedContext(null)
-      return
-    }
+    if (!supportedSurface || contextProvided) return
 
     const controller = new AbortController()
     const frame = window.requestAnimationFrame(() => {
@@ -57,7 +54,11 @@ export function LessonMaterialsQuickAction({
     }
   }, [contextProvided, pathname, supportedSurface])
 
-  const context = contextProvided ? providedContext : fetchedContext
+  const context = !supportedSurface
+    ? null
+    : contextProvided
+      ? providedContext
+      : fetchedContext
   const entrypoint = context
     ? resolveLessonMaterialsEntrypoint({ active, pathname, context })
     : null
