@@ -1,6 +1,6 @@
 # DOCENTE OS — Product Experience Masterplan
 
-Data: **2026-09-14**  
+Data: **2026-09-15**  
 Stato: **CANONICAL CANDIDATE / V1 CONVERGENCE**  
 Autorità programma: **#387 — Teacher Operating System V1**
 
@@ -53,6 +53,8 @@ Home/Oggi non è una lista statica di attività.
 
 Prima della giornata mostra prima classe, readiness e note pertinenti. Durante la giornata mostra lezione corrente/prossima e scostamenti. A fine giornata mostra ciò che serve per domani.
 
+Il resoconto di fine giornata deve poter alimentare una proposta strutturata per le lezioni successive: ciò che è stato svolto, ciò che resta aperto, il prossimo focus e i materiali necessari. Il giorno seguente, quando il docente riapre DOCENTE OS, quanto è stato validato deve essere visibile nel contesto della lezione senza dover recuperare la conversazione originaria.
+
 Se non esiste nulla per oggi, il sistema deve passare al **prossimo Teacher Moment rilevante** invece di fermarsi a una lista vuota.
 
 ## 5. Lesson Brief
@@ -69,6 +71,8 @@ Il Lesson Brief deve mostrare, quando possibile in una singola viewport mobile:
 - nota utile dalla volta precedente;
 - proposta del copilota;
 - una sola CTA primaria.
+
+Quando la preparazione è validata, il Lesson Brief deve poter esporre direttamente **Materiali pronti** e le azioni pertinenti come `Avvia lezione`, `Proietta alla LIM`, `Scheda studenti` e `Guida docente`, mantenendo modifica e provenienza a livello secondario.
 
 Il resto vive dietro `Vedi progettazione completa` o progressive disclosure.
 
@@ -94,6 +98,8 @@ Regola permanente:
 **AI propone e prepara; il docente decide gli effetti persistenti o professionalmente significativi.**
 
 Ogni informazione utile mantiene stato epistemico: `DOCUMENTED`, `USER_REPORTED`, `INFERRED`, `TO_VERIFY`.
+
+Per preparazione lezione/materiali il copilota deve usare la frontdoor canonica e comporre gli oggetti esistenti. La chat è un canale di interazione e riflessione, non il luogo in cui resta confinato il risultato.
 
 ## 7. Contextual Voice Capture
 
@@ -124,6 +130,8 @@ La memoria professionale conserva e collega:
 
 La chat non è il registro delle decisioni. I record confermati restano strutturati, tracciabili e governati.
 
+Il sistema non apprende modificando silenziosamente le proprie regole. Un pattern ricorrente può diventare proposta di preferenza; la promozione a regola riusabile richiede validazione del docente e mantiene il proprio ambito.
+
 ## 9. Orchestrazione degli strumenti
 
 Conoscenza, Planner, Piano, Drive, SharePoint/OneDrive, Calendar/Outlook, Teams, Canva e altri strumenti sono **capability del Teacher Moment**, non destinazioni cognitive obbligatorie.
@@ -137,6 +145,10 @@ Esempi:
 - `salva il documento nello spazio autorizzato dalla scuola`.
 
 Il provider viene risolto secondo la policy istituzionale.
+
+La fondazione verticale è `docs/architecture/LESSON_PREPARATION_ORCHESTRATION_CANONICAL.md` (#431). Il sistema usa un **Lesson Preparation Manifest** come read model di composizione, riusa `NextLessonPreparation`, `LessonDesignExtension`, CAN-PACK e asset esistenti, e genera soltanto ciò che manca davvero per la lezione.
+
+Baseline obbligatoria: resa interna HTML/CSS/SVG + stampa/PDF tramite percorso web/print. Canva può migliorare authoring e grafica, Drive può conservare/esportare, ma nessuno dei due possiede lo stato canonico della lezione o deve essere necessario per `Avvia lezione`.
 
 ## 10. Institutional Configurator
 
@@ -172,7 +184,9 @@ Specifica: `docs/architecture/INSTITUTIONAL_INTEGRATION_CONFIGURATOR_CANONICAL.m
 - editor a blocchi per UDA, programmazioni, verbali, relazioni e materiali;
 - versionamento/provenance;
 - export DOCX/PDF dove richiesto;
-- produzione contenuti accessibile dal task e dal copilota.
+- produzione contenuti accessibile dal task e dal copilota;
+- profili grafico-didattici canonici per LIM, scheda studente, guida docente, supporto visuale e mini-presentazione;
+- dipendenze open/free aggiunte solo quando la baseline interna non copre bene una capability necessaria e sempre dietro adapter sostituibile.
 
 ## 12. Human-in-the-loop
 
@@ -185,6 +199,7 @@ Richiedono conferma esplicita almeno:
 - conferme istituzionali/curricolari;
 - cancellazioni irreversibili;
 - promozione di proposta AI a dato canonico;
+- promozione di una preferenza inferita a regola riusabile;
 - attivazione di una versione di orario;
 - operazioni su dati personali o destinatari esterni.
 
@@ -216,6 +231,7 @@ Metriche correlate:
 - competing actions;
 - re-entry burden il giorno successivo;
 - percentuale di contesto precompilato correttamente;
+- percentuale di lezioni con materiale necessario pronto senza recupero manuale della chat;
 - tap/click → interactive;
 - P50/P95;
 - friction/workaround HUMAN_USE.
@@ -233,6 +249,8 @@ Entry point compatto task-first con dettaglio progressivo.
 ### V1-C — Copilota operativo + Voice
 
 `TeacherMoment → AssistantContext`, produzione/adattamento contenuti, Contextual Voice Capture, preview + conferma.
+
+Il verticale preparazione/materiali viene realizzato tramite #431: manifesto/composizione, azione Copilot, renderer interni, integrazione Home/Oggi/Classe, adapter opzionali e chiusura Diario→domani.
 
 ### V1-D — Institutional Configurator
 
@@ -252,6 +270,8 @@ La strategia non è `meno test` ma `fast by default, deep by risk`.
 - **RELEASE** — exact SHA, full assurance applicabile, HUMAN_USE, visual acceptance, runtime receipt e rollback.
 
 Security, privacy, RLS, AAL2, provenance e human authority non vengono indeboliti.
+
+Per il verticale #431 i test devono includere isolamento di sezione/finalità, fail-closed dell'autorità temporale, riuso prima della generazione, provenance e funzionamento LIM/print senza provider esterni.
 
 Specifica: `docs/engineering/FAST_FEEDBACK_TEST_STRATEGY_V1.md`.
 
@@ -280,6 +300,9 @@ M5 resta assurance di prodotto ma non detta il ritmo quotidiano di implementazio
 - auto-valutazione degli studenti;
 - decisioni professionali automatiche;
 - nuova tassonomia di moduli;
+- nuovo archivio/material model parallelo per la singola lezione;
+- dipendenza obbligatoria da Canva o Drive;
+- generalizzazione automatica delle osservazioni da una classe a un'altra;
 - migrazione big-bang.
 
 ## 20. Source of truth
@@ -293,7 +316,8 @@ Ordine specifico per la convergenza V1:
 5. questo Masterplan;
 6. `INSTITUTIONAL_INTEGRATION_CONFIGURATOR_CANONICAL.md`;
 7. `TEACHER_AI_COPILOT_PRODUCT_DIRECTION.md`;
-8. `CONTEXTUAL_VOICE_CAPTURE_SPEC.md`;
-9. Product Simplification / Human Experience / Design System / specifiche verticali.
+8. `LESSON_PREPARATION_ORCHESTRATION_CANONICAL.md` per preparazione/materiali/readiness;
+9. `CONTEXTUAL_VOICE_CAPTURE_SPEC.md`;
+10. Product Simplification / Human Experience / Design System / specifiche verticali.
 
-Le specifiche verticali non possono reintrodurre una UI per moduli in contrasto con il Teacher Moment né indebolire invarianti superiori.
+Le specifiche verticali non possono reintrodurre una UI per moduli in contrasto con il Teacher Moment né indebolire invarianti superiori. Il verticale preparazione/materiali deve referenziare `LESSON_PREPARATION_ORCHESTRATION_CANONICAL.md` anziché riscriverne la visione.

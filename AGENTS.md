@@ -10,6 +10,16 @@ Memory ID: `CML-DOS-INTEGRATED-GOVERNANCE-V1`.
 
 This is the canonical shared logical memory for CurManLight Arena + Docente OS. It overrides stale conversation summaries, old PR descriptions and local assumptions on cross-system boundaries.
 
+## Mandatory lesson-preparation and material foundation
+
+Before any work that affects Copilot-driven lesson preparation, end-of-day reflection, next-day readiness, lesson materials, LIM/student/teacher outputs, Canva/Drive rendering/export or reuse of teaching content, read:
+
+`docs/architecture/LESSON_PREPARATION_ORCHESTRATION_CANONICAL.md`
+
+This specification is the canonical foundation for **resoconto → prossima lezione → materiali pronti → uso → Diario**.
+
+Future slices must reference it rather than restating the vision. They must reuse `NextLessonPreparation`, `LessonDesignExtension`, CAN-PACK, Knowledge/Material assets and the canonical Copilot frontdoor before proposing any new store, semantic layer, provider-specific path or rendering dependency.
+
 ## Mandatory rules
 
 1. Docente OS owns teacher operational work; it does not own institutional curriculum authority.
@@ -22,6 +32,8 @@ This is the canonical shared logical memory for CurManLight Arena + Docente OS. 
 8. AILit remains architecture-only until the integrated governed memory explicitly authorizes implementation.
 9. Before merge/promotion/deploy, re-check exact head SHA, mergeability and all required gates on that same SHA.
 10. If a task conflicts with the integrated execution order, stop promotion and classify the conflict instead of improvising a new architecture.
+11. Do not create a second lesson-material model, Copilot frontdoor or provider-owned source of truth when the canonical lesson-preparation composition can express the requirement.
+12. Prefer reuse and an internal provider-independent fallback before adding an external service or open/free dependency.
 
 ## Canonical development branch
 
