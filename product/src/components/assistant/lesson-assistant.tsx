@@ -1,8 +1,7 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
+import { useCallback } from 'react'
 import { ContextualAssistantPanel } from './contextual-assistant-panel'
-import { ServerDictationAdapter } from './server-dictation-adapter'
 import {
   fallbackLessonCopilotResponse,
   type LessonCopilotContext,
@@ -22,7 +21,6 @@ export function LessonAssistant({
   context: LessonCopilotContext
   presentation?: 'inline' | 'floating'
 }) {
-  const dictationAdapter = useMemo(() => new ServerDictationAdapter('/api/assistant/transcribe'), [])
   const respond = useCallback(async (prompt: string) => {
     try {
       const response = await fetch('/api/assistant/lesson-respond', {
@@ -61,9 +59,8 @@ export function LessonAssistant({
       conversationTitle={`Copilota · ${context.lesson.sectionLabel}`}
       placeholder="Scrivi o detta una domanda"
       safetyLabel="Propone, non modifica"
-      footerLabel="Voce push-to-talk, massimo 30 s. DOCENTE OS non conserva audio o trascrizione intermedia. Non dettare nomi o dati personali degli alunni; il testo resta nel campo finché non scegli Invio."
+      footerLabel="La dettatura usa il riconoscimento vocale del browser. DOCENTE OS non archivia l’audio; evita nomi o dati personali degli alunni. Il testo resta nel campo finché non scegli Invio."
       respond={respond}
-      dictationAdapter={dictationAdapter}
     />
   )
 }
