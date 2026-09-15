@@ -6,6 +6,7 @@ import {
 import type {
   LessonMaterialRole,
   LessonPreparationManifestResult,
+  LessonPreparationReadiness,
 } from '@/core/presentation/lesson-preparation-manifest'
 import type { NextLessonPreparation } from '@/core/presentation/next-lesson-preparation'
 import { buildLessonPreparationRoleView } from '@/core/presentation/roleview-governance'
@@ -14,7 +15,7 @@ export type NextLessonPreparationActionResult = {
   skillId: 'NEXT_LESSON_PREPARATION'
   actionKind: 'PROPOSE'
   status: 'SUPPORTED' | 'PARTIAL' | 'BLOCKED'
-  readiness: 'DRAFT' | 'REVIEW_REQUIRED' | 'READY' | null
+  readiness: LessonPreparationReadiness | null
   headline: string
   whyNow: string
   ready: string[]
