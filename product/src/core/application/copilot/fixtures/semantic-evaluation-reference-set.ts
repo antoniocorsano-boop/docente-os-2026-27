@@ -66,6 +66,7 @@ export const SYNTHETIC_K3C_REFERENCE_GOLD_SET: KnowledgeSemanticGoldSet = {
 export const SYNTHETIC_K3C_REFERENCE_RUNS: readonly KnowledgeRetrievalBenchmarkRun[] = [
   {
     channel: 'FULL_TEXT',
+    implementationRef: 'synthetic:full-text:v1',
     observations: [
       observation('q-object-function', ['unit-object-function', 'noise-1'], 80),
       observation('q-measurement', ['noise-2', 'unit-measurement'], 90),
@@ -77,6 +78,7 @@ export const SYNTHETIC_K3C_REFERENCE_RUNS: readonly KnowledgeRetrievalBenchmarkR
   },
   {
     channel: 'SEMANTIC',
+    implementationRef: 'synthetic:semantic:v1',
     observations: [
       observation('q-object-function', ['unit-object-function'], 120),
       observation('q-measurement', ['unit-measurement'], 130),
@@ -88,6 +90,7 @@ export const SYNTHETIC_K3C_REFERENCE_RUNS: readonly KnowledgeRetrievalBenchmarkR
   },
   {
     channel: 'HYBRID',
+    implementationRef: 'synthetic:rrf:v1',
     observations: [
       observation('q-object-function', ['unit-object-function'], 150),
       observation('q-measurement', ['unit-measurement'], 160),
