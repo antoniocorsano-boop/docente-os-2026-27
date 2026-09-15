@@ -59,7 +59,7 @@ export function buildKnowledgeSemanticBenchmarkReceipt(input: {
       })
     : null
 
-  if (activationGate && !readiness.readyForActivationEvidence && activationGate.allowed) {
+  if (activationGate && !readiness.readyForActivationEvidence) {
     return {
       evaluationSetId: input.goldSet.id,
       goldSetVersion: input.goldSet.version,
@@ -68,9 +68,9 @@ export function buildKnowledgeSemanticBenchmarkReceipt(input: {
       activationGate: {
         ...activationGate,
         allowed: false,
-        reasons: activationGate.reasons.includes('INSUFFICIENT_HUMAN_VERIFIED_QUERIES')
+        reasons: activationGate.reasons.includes('GOLD_SET_NOT_READY')
           ? activationGate.reasons
-          : [...activationGate.reasons, 'INSUFFICIENT_HUMAN_VERIFIED_QUERIES'],
+          : [...activationGate.reasons, 'GOLD_SET_NOT_READY'],
       },
     }
   }
