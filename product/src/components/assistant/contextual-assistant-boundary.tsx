@@ -7,15 +7,15 @@ import { LessonAssistant } from './lesson-assistant'
 import { PlannerAssistant } from './planner-assistant'
 import { TodayAssistant } from './today-assistant'
 import type { KnowledgeAssistantContext } from '@/core/presentation/assistant-context'
+import type { TodayCopilotK2Context } from '@/core/presentation/next-lesson-preparation'
 import type { PlannerAssistantContext } from '@/core/presentation/planner-assistant-context'
 import type { LessonCopilotContext } from '@/core/presentation/teacher-copilot-context'
-import type { TodayCopilotContext } from '@/core/presentation/today-copilot-context'
 
 type LoadedAssistantContext =
   | { kind: 'knowledge'; context: KnowledgeAssistantContext }
   | { kind: 'planner'; context: PlannerAssistantContext }
   | { kind: 'lesson'; context: LessonCopilotContext }
-  | { kind: 'today'; context: TodayCopilotContext }
+  | { kind: 'today'; context: TodayCopilotK2Context }
 
 type AssistantTarget = {
   kind: LoadedAssistantContext['kind']
@@ -23,7 +23,7 @@ type AssistantTarget = {
   url: string
 }
 
-type AssistantContextPayload = KnowledgeAssistantContext | PlannerAssistantContext | LessonCopilotContext | TodayCopilotContext
+type AssistantContextPayload = KnowledgeAssistantContext | PlannerAssistantContext | LessonCopilotContext | TodayCopilotK2Context
 
 export function ContextualAssistantBoundary({ active }: { active: string }) {
   const pathname = usePathname()
@@ -65,8 +65,8 @@ export function ContextualAssistantBoundary({ active }: { active: string }) {
             setState('ready')
             return
           }
-          if (target.kind === 'today' && payload.surface === 'TODAY' && 'today' in payload && 'planner' in payload) {
-            setLoaded({ kind: 'today', context: payload as TodayCopilotContext })
+          if (target.kind === 'today' && payload.surface === 'TODAY' && 'today' in payload && 'planner' in payload && 'nextLessonPreparation' in payload) {
+            setLoaded({ kind: 'today', context: payload as TodayCopilotK2Context })
             setState('ready')
             return
           }
