@@ -37,6 +37,7 @@ export type TeacherBriefRenderArtifact = {
   title: string
   objective: string
   readiness: LessonPreparationReadiness
+  preparation: string[]
   sequence: LessonRenderSequenceItem[]
   readyMaterials: string[]
   attention: string[]
@@ -167,6 +168,7 @@ export function buildInternalLessonMaterialRenderBundle(input: {
       title: projection.title,
       objective: manifest.objective,
       readiness: manifest.readiness,
+      preparation: [...projection.preparation],
       sequence,
       readyMaterials: readyMaterialTitles(manifest),
       attention,
@@ -175,7 +177,7 @@ export function buildInternalLessonMaterialRenderBundle(input: {
       kind: 'LIM_VIEW',
       target: 'SCREEN',
       title: projection.title,
-      screens: renderLimScreens(manifest, projection.title, sequence),
+      screens: renderLimScreens(manifest, projection.title, projection.continuation, sequence),
     },
     studentHandouts,
     visualAid: {
@@ -257,7 +259,7 @@ function renderStudentHandouts(
       ref: `lesson-extension:${extension.id}`,
       title: extension.title,
       instruction: extension.body,
-      prompts: extension.cue ? [extension.cue] : [],
+      prompts: [],
       source: 'ACCEPTED_EXTENSION',
     }))
 
@@ -268,6 +270,7 @@ function renderStudentHandouts(
 function renderLimScreens(
   manifest: LessonPreparationManifest,
   title: string,
+  continuation: string,
   sequence: LessonRenderSequenceItem[],
 ): LimScreen[] {
   const screens: LimScreen[] = [{
@@ -290,16 +293,16 @@ function renderLimScreens(
     })
   }
 
-  screens.push({
-    id: 'closing',
-    kind: 'CLOSING',
-    title: 'Chiusura',
-    body: manifest.missingInformation.length
-      ? ['Verifica gli elementi ancora mancanti prima dell’uso in classe.']
-      : ['Riprendi le evidenze emerse e collega la lezione al passo successivo.'],
-    cue: null,
-    minutes: null,
-  })
+  if (continuation.trim()) {
+    screens.push({
+      id: 'closing',
+      kind: 'CLOSING',
+      title: 'Passo successivo',
+      body: [continuation],
+      cue: null,
+      minutes: null,
+    })
+  }
 
   return screens
 }
