@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { LessonMaterialsQuickAction } from '@/components/app-shell/lesson-materials-entrypoint'
+import { LessonMaterialsQuickAction } from '@/components/app-shell/lesson-materials-quick-action'
 import { KnowledgeAssistant } from './knowledge-assistant'
 import { LessonAssistant } from './lesson-assistant'
 import { PlannerAssistant } from './planner-assistant'
