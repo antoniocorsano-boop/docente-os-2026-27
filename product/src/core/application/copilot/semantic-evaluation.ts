@@ -20,8 +20,10 @@ export type KnowledgeSemanticEvalObservation = {
 }
 
 export type KnowledgeSemanticEvalMetrics = {
+  evaluationSetId: string
   queryCount: number
   humanVerifiedQueryCount: number
+  verifiedQueryCount: number
   recallAt5: number
   mrrAt10: number
   ndcgAt10: number
@@ -52,7 +54,9 @@ export type KnowledgeSemanticActivationGateInput = {
 export type KnowledgeSemanticActivationGateReason =
   | 'PROVIDER_POLICY_NOT_PASS'
   | 'CURRENT_CORPUS_COVERAGE_INCOMPLETE'
+  | 'EVAL_SET_MISMATCH'
   | 'INSUFFICIENT_HUMAN_VERIFIED_QUERIES'
+  | 'VERIFIED_QUERY_COVERAGE_MISSING'
   | 'RECALL_GAIN_BELOW_THRESHOLD'
   | 'NDCG_GAIN_BELOW_THRESHOLD'
   | 'VERIFIED_RECALL_REGRESSION'
@@ -89,10 +93,31 @@ export function canSendEmbeddingPayloadToExternalProvider(input: {
 }
 
 export function evaluateKnowledgeSemanticRun(input: {
+  evaluationSetId: string
   queries: readonly KnowledgeSemanticEvalQuery[]
   observations: readonly KnowledgeSemanticEvalObservation[]
 }): KnowledgeSemanticEvalMetrics {
-  const observationByQueryId = new Map(input.observations.map((observation) => [observation.queryId, observation]))
+  const evaluationSetId = input.evaluationSetId.trim()
+  if (!evaluationSetId) throw new Error('semantic eval set id is required')
+
+  const queryIds = new Set<string>()
+  for (const query of input.queries) {
+    if (!query.id.trim()) throw new Error('semantic eval query id is required')
+    if (queryIds.has(query.id)) throw new Error(`duplicate semantic eval query ${query.id}`)
+    queryIds.add(query.id)
+  }
+
+  const observationByQueryId = new Map<string, KnowledgeSemanticEvalObservation>()
+  for (const observation of input.observations) {
+    if (observationByQueryId.has(observation.queryId)) {
+      throw new Error(`duplicate semantic eval observation for query ${observation.queryId}`)
+    }
+    if (!queryIds.has(observation.queryId)) {
+      throw new Error(`semantic eval observation references unknown query ${observation.queryId}`)
+    }
+    observationByQueryId.set(observation.queryId, observation)
+  }
+
   const rows = input.queries.map((query) => {
     const observation = observationByQueryId.get(query.id)
     if (!observation) throw new Error(`missing semantic eval observation for query ${query.id}`)
@@ -112,8 +137,10 @@ export function evaluateKnowledgeSemanticRun(input: {
   const latencies = rows.map((row) => safeNonNegative(row.observation.latencyMs)).sort((a, b) => a - b)
 
   return {
+    evaluationSetId,
     queryCount: rows.length,
     humanVerifiedQueryCount: rows.filter((row) => row.query.humanVerified).length,
+    verifiedQueryCount: verifiedRows.length,
     recallAt5: round(metricMean(rows.map((row) => row.recallAt5))),
     mrrAt10: round(metricMean(rows.map((row) => row.mrrAt10))),
     ndcgAt10: round(metricMean(rows.map((row) => row.ndcgAt10))),
@@ -143,14 +170,35 @@ export function evaluateKnowledgeSemanticActivationGate(
     : round(input.baseline.verifiedRecallAt5 - input.hybrid.verifiedRecallAt5)
 
   if (input.providerPolicyStatus !== 'PASS') reasons.push('PROVIDER_POLICY_NOT_PASS')
-  if (!Number.isFinite(input.currentCorpusCoverageRatio) || input.currentCorpusCoverageRatio < 1) {
+  if (
+    !Number.isFinite(input.currentCorpusCoverageRatio)
+    || Math.abs(input.currentCorpusCoverageRatio - 1) > 1e-9
+  ) {
     reasons.push('CURRENT_CORPUS_COVERAGE_INCOMPLETE')
   }
   if (
-    input.hybrid.queryCount < thresholds.minimumQueryCount
-    || input.hybrid.humanVerifiedQueryCount < input.hybrid.queryCount
+    !input.baseline.evaluationSetId
+    || input.baseline.evaluationSetId !== input.hybrid.evaluationSetId
+    || input.baseline.queryCount !== input.hybrid.queryCount
+  ) {
+    reasons.push('EVAL_SET_MISMATCH')
+  }
+  if (
+    input.baseline.queryCount < thresholds.minimumQueryCount
+    || input.hybrid.queryCount < thresholds.minimumQueryCount
+    || input.baseline.humanVerifiedQueryCount !== input.baseline.queryCount
+    || input.hybrid.humanVerifiedQueryCount !== input.hybrid.queryCount
   ) {
     reasons.push('INSUFFICIENT_HUMAN_VERIFIED_QUERIES')
+  }
+  if (
+    input.baseline.verifiedQueryCount <= 0
+    || input.hybrid.verifiedQueryCount <= 0
+    || input.baseline.verifiedQueryCount !== input.hybrid.verifiedQueryCount
+    || input.baseline.verifiedRecallAt5 === null
+    || input.hybrid.verifiedRecallAt5 === null
+  ) {
+    reasons.push('VERIFIED_QUERY_COVERAGE_MISSING')
   }
   if (recallAt5Gain < thresholds.minimumRecallAt5Gain) reasons.push('RECALL_GAIN_BELOW_THRESHOLD')
   if (ndcgAt10Gain < thresholds.minimumNdcgAt10Gain) reasons.push('NDCG_GAIN_BELOW_THRESHOLD')
