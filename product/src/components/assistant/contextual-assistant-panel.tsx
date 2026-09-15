@@ -2,17 +2,17 @@
 
 import {
   AssistantRuntimeProvider,
-  AuiIf,
   ComposerPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
+  useAui,
   useAuiState,
   useLocalRuntime,
   type ChatModelAdapter,
   type DictationAdapter,
 } from '@assistant-ui/react'
 import { Mic, SendHorizontal, ShieldCheck, Sparkles, Square } from 'lucide-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ServerDictationAdapter } from './server-dictation-adapter'
 
 export type ContextualAssistantPanelProps = {
@@ -58,9 +58,7 @@ export function ContextualAssistantPanel({
       }
     },
   }), [respond])
-  const runtime = useLocalRuntime(adapter, {
-    adapters: { dictation: resolvedDictationAdapter },
-  })
+  const runtime = useLocalRuntime(adapter)
 
   if (presentation === 'floating' && !expanded) {
     return (
@@ -114,6 +112,7 @@ export function ContextualAssistantPanel({
               footerLabel={footerLabel}
               placeholder={placeholder}
               onClose={() => setExpanded(false)}
+              dictationAdapter={resolvedDictationAdapter}
             />
           </AssistantRuntimeProvider>
           {actionSlot ? <div className="dosAssistantActionSlot">{actionSlot}</div> : null}
@@ -128,11 +127,13 @@ function ContextualAssistantThread({
   footerLabel,
   placeholder,
   onClose,
+  dictationAdapter,
 }: {
   conversationTitle: string
   footerLabel: string
   placeholder: string
   onClose: () => void
+  dictationAdapter?: DictationAdapter
 }) {
   return (
     <div className="dosAssistantConversation">
@@ -159,26 +160,7 @@ function ContextualAssistantThread({
                 aria-label="Domanda per l’assistente contestuale"
                 rows={2}
               />
-              <AuiIf condition={(state) => state.thread.capabilities.dictation}>
-                <AuiIf condition={(state) => state.composer.dictation == null}>
-                  <ComposerPrimitive.Dictate
-                    className="dosAssistantSend voice"
-                    aria-label="Detta al copilota"
-                    title="Detta al copilota"
-                  >
-                    <Mic size={18} aria-hidden />
-                  </ComposerPrimitive.Dictate>
-                </AuiIf>
-                <AuiIf condition={(state) => state.composer.dictation != null}>
-                  <ComposerPrimitive.StopDictation
-                    className="dosAssistantSend voice recording"
-                    aria-label="Ferma dettatura"
-                    title="Ferma dettatura"
-                  >
-                    <Square size={16} aria-hidden />
-                  </ComposerPrimitive.StopDictation>
-                </AuiIf>
-              </AuiIf>
+              {dictationAdapter ? <DirectVoiceCapture adapter={dictationAdapter} /> : null}
               <ComposerPrimitive.Send asChild>
                 <button className="dosAssistantSend" type="button" aria-label="Invia domanda">
                   <SendHorizontal size={18} aria-hidden />
@@ -194,6 +176,115 @@ function ContextualAssistantThread({
         <span>{footerLabel}</span>
       </div>
     </div>
+  )
+}
+
+type VoicePhase = 'idle' | 'recording' | 'transcribing' | 'error'
+
+function DirectVoiceCapture({ adapter }: { adapter: DictationAdapter }) {
+  const aui = useAui()
+  const [phase, setPhase] = useState<VoicePhase>('idle')
+  const sessionRef = useRef<DictationAdapter.Session | null>(null)
+  const unsubscribersRef = useRef<Array<() => void>>([])
+  const safetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearSafetyTimer = () => {
+    if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current)
+    safetyTimerRef.current = null
+  }
+
+  const clearSubscriptions = () => {
+    for (const unsubscribe of unsubscribersRef.current.splice(0)) unsubscribe()
+  }
+
+  const releaseSession = () => {
+    clearSafetyTimer()
+    clearSubscriptions()
+    sessionRef.current = null
+  }
+
+  useEffect(() => () => {
+    sessionRef.current?.cancel()
+    clearSafetyTimer()
+    clearSubscriptions()
+  }, [])
+
+  const start = () => {
+    if (sessionRef.current) return
+
+    try {
+      const session = adapter.listen()
+      sessionRef.current = session
+      setPhase('recording')
+
+      unsubscribersRef.current.push(
+        session.onSpeechStart(() => setPhase('recording')),
+        session.onSpeechEnd((result) => {
+          const transcript = result.transcript.replace(/\s+/g, ' ').trim()
+          if (!transcript) {
+            setPhase('error')
+            releaseSession()
+            return
+          }
+
+          const currentText = aui.composer().getState().text.trim()
+          aui.composer().setText(currentText ? `${currentText} ${transcript}` : transcript)
+          setPhase('idle')
+          releaseSession()
+        }),
+      )
+
+      safetyTimerRef.current = setTimeout(() => {
+        if (sessionRef.current !== session) return
+        session.cancel()
+        setPhase('error')
+        releaseSession()
+      }, 55_000)
+    } catch {
+      setPhase('error')
+      releaseSession()
+    }
+  }
+
+  const stop = async () => {
+    const session = sessionRef.current
+    if (!session) return
+
+    setPhase('transcribing')
+    try {
+      await session.stop()
+      if (sessionRef.current === session) {
+        setPhase('error')
+        releaseSession()
+      }
+    } catch {
+      setPhase('error')
+      releaseSession()
+    }
+  }
+
+  const recording = phase === 'recording'
+  const transcribing = phase === 'transcribing'
+  const label = recording
+    ? 'Ferma e trascrivi'
+    : transcribing
+      ? 'Trascrizione in corso'
+      : phase === 'error'
+        ? 'Riprova dettatura'
+        : 'Detta al copilota'
+
+  return (
+    <button
+      className={`dosAssistantSend voice${recording ? ' recording' : ''}`}
+      type="button"
+      aria-label={label}
+      title={label}
+      aria-pressed={recording}
+      disabled={transcribing}
+      onClick={() => recording ? void stop() : start()}
+    >
+      {recording ? <Square size={16} aria-hidden /> : <Mic size={18} aria-hidden />}
+    </button>
   )
 }
 
