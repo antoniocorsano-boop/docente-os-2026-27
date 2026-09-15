@@ -2,15 +2,6 @@ name: P6 Performance Baseline Gate
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-      - develop
-    paths:
-      - 'product/src/**'
-      - 'product/e2e/p6-performance-baseline.spec.mjs'
-      - 'product/playwright.config.mjs'
-      - 'product/package-lock.json'
-      - '.github/workflows/p6-performance.yml'
   push:
     branches:
       - develop
