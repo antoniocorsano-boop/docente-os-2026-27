@@ -225,6 +225,7 @@ function DirectVoiceCapture({ adapter }: { adapter: DictationAdapter }) {
       return
     }
     if (event.stage === 'capturing') {
+      clearSafetyTimer()
       setPhase('recording')
       setVoiceStatus('Sto ascoltando…')
       return
@@ -259,6 +260,7 @@ function DirectVoiceCapture({ adapter }: { adapter: DictationAdapter }) {
 
       unsubscribersRef.current.push(
         session.onSpeechStart(() => {
+          clearSafetyTimer()
           setPhase('recording')
           setVoiceStatus('Sto ascoltando…')
         }),
@@ -280,7 +282,7 @@ function DirectVoiceCapture({ adapter }: { adapter: DictationAdapter }) {
       )
 
       safetyTimerRef.current = setTimeout(() => {
-        if (sessionRef.current !== session || phase === 'recording') return
+        if (sessionRef.current !== session) return
         session.cancel()
         setPhase('error')
         setVoiceStatus('Il microfono non ha iniziato a catturare audio.')
