@@ -293,19 +293,18 @@ function reportVoiceDiagnostic(input: {
     statusCode: input.statusCode,
   })
 
-  try {
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(DIAGNOSTIC_ENDPOINT, new Blob([payload], { type: 'application/json' }))
-      return
-    }
-  } catch {}
-
   void fetch(DIAGNOSTIC_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    cache: 'no-store',
     body: payload,
     keepalive: true,
-  }).catch(() => {})
+  }).catch(() => {
+    try {
+      navigator.sendBeacon?.(DIAGNOSTIC_ENDPOINT, new Blob([payload], { type: 'application/json' }))
+    } catch {}
+  })
 }
 
 function extensionForMimeType(mimeType: string) {
