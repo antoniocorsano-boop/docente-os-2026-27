@@ -51,7 +51,9 @@ export function ContextualAssistantPanel({
     return new WebSpeechDictationAdapter({
       language: 'it-IT',
       continuous: true,
-      interimResults: true,
+      // Chrome Android revises interim hypotheses for the same utterance. Keeping
+      // only final results prevents those revisions from being appended as duplicates.
+      interimResults: false,
     })
   }, [])
   const resolvedDictationAdapter = dictationAdapter === null
