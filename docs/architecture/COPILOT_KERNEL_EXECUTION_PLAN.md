@@ -35,7 +35,7 @@ Già disponibili nel prodotto:
 - curriculum authority;
 - human-in-the-loop per write Planner.
 
-Il Kernel è ora fondato e le slice K1/K2 sono integrate; il lavoro corrente è completare K3 senza anticipare provider o write non governate.
+Il Kernel è fondato; K1/K2/K3A/K3B sono integrate. Il lavoro corrente è K3C: costruire un benchmark italiano human-verified, confrontare retrieval lessicale/semantico/hybrid e autorizzare un provider solo dopo quality + privacy gate.
 
 ## Programma incrementale
 
@@ -115,9 +115,9 @@ Acceptance acquisita:
 
 ### K3 — Knowledge Retrieval
 
-**Stato:** IN PROGRESS.
+**Stato:** IN PROGRESS — K3A/K3B complete, K3C in corso.
 
-Obiettivo: rendere la KB interrogabile dal Kernel senza trasformare tutto in embedding.
+Obiettivo: rendere la KB interrogabile dal Kernel con retrieval governato, senza trasformare indiscriminatamente tutto in embedding e senza delegare autorità al provider.
 
 Baseline:
 
@@ -144,33 +144,49 @@ Acquisiti:
 
 #### K3B — Semantic storage/search foundation
 
-**Stato:** IN PROGRESS — issue #423.
+**Stato:** COMPLETE — issue #423 CLOSED/COMPLETED; PR #424 + hardening #425.
 
 Decisione canonica: `COPILOT_KERNEL_K3B_SEMANTIC_DECISION.md`.
 
-Obiettivi:
+Acquisiti e verificati:
 
-- pgvector nella boundary Supabase;
+- pgvector 0.8.2 nella boundary Supabase;
 - profili embedding versionati e provider-neutral;
 - embedding separati dalla KB canonica;
 - exact cosine search come prima strategia;
 - workspace/current-generation/filter enforcement prima del ranking;
 - vettori non esposti direttamente ai client;
 - readiness semantica fail-closed;
-- nessun provider esterno attivato.
+- RLS/ACL e indici FK verificati dopo DDL;
+- restore rehearsal compatibile con pgvector;
+- nessun provider esterno attivato e nessun profilo `ACTIVE` creato.
 
 #### K3C — Provider + corpus eval + hybrid activation
 
-**Stato:** NOT STARTED / NOT AUTHORIZED UNTIL K3B PASS.
+**Stato:** IN PROGRESS — issue #426; contratto eval/privacy integrato con PR #427.
 
-Prima dell'attivazione richiede:
+Decisione canonica: `COPILOT_KERNEL_K3C_EVAL_DECISION.md`.
 
-- provider multilingual/Italian selezionato tramite eval;
-- provider-policy privacy verificata;
-- 100% coverage della current generation, oppure stato esplicito PARTIAL senza dichiarare piena disponibilità;
-- benchmark FULL_TEXT vs SEMANTIC vs HYBRID su query italiane;
-- zero workspace/stale-generation leakage;
-- performance e costo misurati.
+Fondazione già acquisita:
+
+- metriche provider-neutral Recall@5, MRR@10, nDCG@10 e subset `VERIFIED`;
+- p50/p95 latency;
+- `evaluationSetId` obbligatorio per confronti realmente comparabili;
+- almeno 30 query human-verified prima dell'attivazione;
+- current-generation coverage = 100%;
+- workspace/stale-generation/filter violations = 0 come hard gate;
+- provider-policy = `PASS` come gate indipendente dalla qualità;
+- corpus reale non trasferibile a provider esterni senza approvazione specifica;
+- nessun ANN e nessun provider `ACTIVE` in questa fase.
+
+Passi ancora richiesti:
+
+- costruire e validare il gold set italiano senza dati personali nel repository;
+- misurare baseline `FULL_TEXT` sullo stesso evaluation set;
+- misurare almeno il baseline locale e un candidato API su contenuti sanitizzati/non personali;
+- confrontare `FULL_TEXT` vs `SEMANTIC` vs `HYBRID`;
+- registrare qualità, latenza, costo/compute, dimensione storage e provider-policy receipt;
+- attivare un profilo solo se tutte le soglie K3C sono soddisfatte.
 
 Acceptance K3 complessiva:
 
@@ -347,16 +363,16 @@ Il Resource Registry deve poter descrivere, senza necessariamente caricare il pa
 | K1 Today Context | COMPLETE | PR #418 |
 | K2 Next Lesson | COMPLETE | PR #420 |
 | K3A Governed full-text | COMPLETE | PR #422 |
-| K3B Semantic foundation | IN PROGRESS | issue #423 + `COPILOT_KERNEL_K3B_SEMANTIC_DECISION.md` |
-| K3C Provider + hybrid eval | NOT STARTED | dipende da K3B PASS |
+| K3B Semantic foundation | COMPLETE | issue #423 + PR #424/#425 + runtime evidence |
+| K3C Provider + hybrid eval | IN PROGRESS | issue #426 + PR #427 + `COPILOT_KERNEL_K3C_EVAL_DECISION.md` |
 | K4 Unified Copilot | NOT STARTED | dipende da K3 |
 | K5 Governed Writes | NOT STARTED | dipende da K4 |
 | K6 Interoperability | NOT AUTHORIZED | richiede evidenza di necessità |
 
 ## Prossimo gate
 
-Chiudere K3B soltanto dopo:
+Costruire il **gold set italiano K3C** e renderlo verificabile senza pubblicare contenuti personali:
 
-`migration 0058 applicata → advisor security/performance verificati → Product CI verde → evidence runtime pgvector/schema/RPC`
+`query set human-verified → baseline FULL_TEXT → baseline LOCAL → almeno un candidato API su contenuti sanitizzati → SEMANTIC/HYBRID eval sullo stesso evaluationSetId → privacy/provider receipt → activation gate`
 
-Solo allora autorizzare K3C. Non attivare un provider embedding nella stessa slice.
+Finché questa catena non è PASS, `semanticAvailable` resta false e non viene creato alcun profilo `ACTIVE`.
