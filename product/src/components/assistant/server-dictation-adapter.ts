@@ -5,10 +5,6 @@ import type { DictationAdapter } from '@assistant-ui/react'
 const DEFAULT_MAX_CAPTURE_MS = 30_000
 const SCRIPT_PROCESSOR_BUFFER_SIZE = 4096
 
-type AudioContextWindow = Window & {
-  webkitAudioContext?: typeof AudioContext
-}
-
 export class ServerDictationAdapter implements DictationAdapter {
   readonly disableInputDuringDictation = true
 
@@ -166,9 +162,9 @@ export class ServerDictationAdapter implements DictationAdapter {
         const AudioContextCtor = audioContextConstructor()
         if (!AudioContextCtor) throw new Error('voice-capture-not-supported')
 
-        // Create/resume the context inside the user gesture path before awaiting getUserMedia.
-        audioContext = new AudioContextCtor()
-        if (audioContext.state === 'suspended') await audioContext.resume()
+        const context = new AudioContextCtor()
+        audioContext = context
+        if (context.state === 'suspended') await context.resume()
 
         stream = await navigator.mediaDevices.getUserMedia({
           audio: {
@@ -184,10 +180,10 @@ export class ServerDictationAdapter implements DictationAdapter {
           return
         }
 
-        sampleRate = audioContext.sampleRate
-        sourceNode = audioContext.createMediaStreamSource(stream)
-        processorNode = audioContext.createScriptProcessor(SCRIPT_PROCESSOR_BUFFER_SIZE, 1, 1)
-        silenceGain = audioContext.createGain()
+        sampleRate = context.sampleRate
+        sourceNode = context.createMediaStreamSource(stream)
+        processorNode = context.createScriptProcessor(SCRIPT_PROCESSOR_BUFFER_SIZE, 1, 1)
+        silenceGain = context.createGain()
         silenceGain.gain.value = 0
 
         processorNode.onaudioprocess = (event) => {
@@ -197,9 +193,9 @@ export class ServerDictationAdapter implements DictationAdapter {
 
         sourceNode.connect(processorNode)
         processorNode.connect(silenceGain)
-        silenceGain.connect(audioContext.destination)
+        silenceGain.connect(context.destination)
 
-        if (audioContext.state === 'suspended') await audioContext.resume()
+        if (context.state === 'suspended') await context.resume()
 
         session.status = { type: 'running' }
         for (const callback of speechStart) callback()
@@ -223,8 +219,8 @@ export class ServerDictationAdapter implements DictationAdapter {
 
 function audioContextConstructor() {
   if (typeof window === 'undefined') return undefined
-  const candidate = window as AudioContextWindow
-  return candidate.AudioContext ?? candidate.webkitAudioContext
+  if (typeof AudioContext !== 'undefined') return AudioContext
+  return (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
 }
 
 function mergeFloat32Chunks(chunks: readonly Float32Array[]) {
