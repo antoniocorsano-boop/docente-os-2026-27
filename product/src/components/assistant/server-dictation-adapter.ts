@@ -24,6 +24,11 @@ export class ServerDictationAdapter implements DictationAdapter {
     let timer: ReturnType<typeof setTimeout> | null = null
     let cancelled = false
     let stopRequested = false
+    let stopSettled = false
+    let resolveStop: (() => void) | null = null
+    const stopCompleted = new Promise<void>((resolve) => {
+      resolveStop = resolve
+    })
 
     const clearCaptureTimer = () => {
       if (timer) clearTimeout(timer)
@@ -35,6 +40,12 @@ export class ServerDictationAdapter implements DictationAdapter {
       stream = null
     }
 
+    const settleStop = () => {
+      if (stopSettled) return
+      stopSettled = true
+      resolveStop?.()
+    }
+
     const session: DictationAdapter.Session = {
       status: { type: 'starting' },
 
@@ -42,6 +53,7 @@ export class ServerDictationAdapter implements DictationAdapter {
         stopRequested = true
         clearCaptureTimer()
         if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop()
+        await stopCompleted
       },
 
       cancel: () => {
@@ -51,6 +63,7 @@ export class ServerDictationAdapter implements DictationAdapter {
         if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop()
         stopTracks()
         session.status = { type: 'ended', reason: 'cancelled' }
+        settleStop()
       },
 
       onSpeechStart: (callback) => {
@@ -76,6 +89,7 @@ export class ServerDictationAdapter implements DictationAdapter {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true })
         if (cancelled) {
           stopTracks()
+          settleStop()
           return
         }
 
@@ -95,7 +109,10 @@ export class ServerDictationAdapter implements DictationAdapter {
         recorder.onstop = async () => {
           clearCaptureTimer()
           stopTracks()
-          if (cancelled) return
+          if (cancelled) {
+            settleStop()
+            return
+          }
 
           try {
             const mimeType = recorder.mimeType || 'audio/webm'
@@ -122,6 +139,8 @@ export class ServerDictationAdapter implements DictationAdapter {
             session.status = { type: 'ended', reason: 'stopped' }
           } catch {
             session.status = { type: 'ended', reason: 'error' }
+          } finally {
+            settleStop()
           }
         }
 
@@ -130,6 +149,7 @@ export class ServerDictationAdapter implements DictationAdapter {
         clearCaptureTimer()
         stopTracks()
         session.status = { type: 'ended', reason: 'error' }
+        settleStop()
       }
     })()
 
