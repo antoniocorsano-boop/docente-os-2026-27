@@ -4,11 +4,20 @@ import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supa
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import type { HomeDailyContext } from '@/core/presentation/home-daily-context'
 import {
+  buildLessonPreparationManifest,
+  type LessonPreparationManifestResult,
+} from '@/core/presentation/lesson-preparation-manifest'
+import {
   buildNextLessonPreparation,
   selectNextLessonForPreparation,
   type NextLessonPreparation,
 } from '@/core/presentation/next-lesson-preparation'
-import { loadAuthoritativeLessonCopilotContext } from './lesson-context-loader'
+import { loadAuthoritativeLessonCopilotBundle } from './lesson-context-loader'
+
+export type LoadedNextLessonPreparation = {
+  preparation: NextLessonPreparation
+  manifest: LessonPreparationManifestResult
+}
 
 export async function loadNextLessonPreparation(input: {
   workspaceId: string
@@ -16,23 +25,33 @@ export async function loadNextLessonPreparation(input: {
   homeDaily: HomeDailyContext
   minuteOfDay: number
 }): Promise<NextLessonPreparation | null> {
+  const loaded = await loadNextLessonPreparationBundle(input)
+  return loaded?.preparation ?? null
+}
+
+export async function loadNextLessonPreparationBundle(input: {
+  workspaceId: string
+  academicYearId: string
+  homeDaily: HomeDailyContext
+  minuteOfDay: number
+}): Promise<LoadedNextLessonPreparation | null> {
   const lesson = selectNextLessonForPreparation(input.homeDaily, input.minuteOfDay)
   if (!lesson) return null
 
   if (!lesson.sectionId) {
-    return buildNextLessonPreparation({
+    return blockedPreparation(buildNextLessonPreparation({
       lesson,
       lessonContext: null,
       missingInformation: ['La prossima lezione non è associata a una sezione canonica'],
-    })
+    }))
   }
 
   if (!lesson.disciplineId) {
-    return buildNextLessonPreparation({
+    return blockedPreparation(buildNextLessonPreparation({
       lesson,
       lessonContext: null,
       missingInformation: ['La prossima lezione non è associata a una disciplina canonica'],
-    })
+    }))
   }
 
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
@@ -52,11 +71,11 @@ export async function loadNextLessonPreparation(input: {
 
   const section = snapshot.sections.find((item) => item.id === lesson.sectionId)
   if (!section) {
-    return buildNextLessonPreparation({
+    return blockedPreparation(buildNextLessonPreparation({
       lesson,
       lessonContext: null,
       missingInformation: ['La sezione della prossima lezione non è presente nel registro canonico delle classi'],
-    })
+    }))
   }
 
   const confirmedAssignment = assignments.some((assignment) =>
@@ -65,39 +84,62 @@ export async function loadNextLessonPreparation(input: {
     && assignment.status === 'CONFIRMED',
   )
   if (!confirmedAssignment) {
-    return buildNextLessonPreparation({
+    return blockedPreparation(buildNextLessonPreparation({
       lesson,
       lessonContext: null,
       missingInformation: ['La cattedra non conferma il collegamento tra questa sezione e la disciplina della prossima lezione'],
-    })
+    }))
   }
 
   const focus = buildClassWorkspaceLearningFocus(section, snapshot.progress, knowledgeItems)
   if (!focus.nextBlock) {
-    return buildNextLessonPreparation({
+    return blockedPreparation(buildNextLessonPreparation({
       lesson,
       lessonContext: null,
       missingInformation: [
         'Non risulta un prossimo blocco del Piano annuale da collegare alla lezione',
         ...(knowledgeUnavailable ? ['Indice della Conoscenza temporaneamente non disponibile'] : []),
       ],
-    })
+    }))
   }
 
-  const lessonContext = await loadAuthoritativeLessonCopilotContext({
+  const lessonBundle = await loadAuthoritativeLessonCopilotBundle({
     workspaceId: input.workspaceId,
     academicYearId: input.academicYearId,
     sectionId: lesson.sectionId,
     blockId: focus.nextBlock.id,
   })
 
-  return buildNextLessonPreparation({
+  const preparation = buildNextLessonPreparation({
     lesson,
-    lessonContext,
+    lessonContext: lessonBundle?.context ?? null,
     knowledgeResources: focus.materials,
     missingInformation: [
-      ...(!lessonContext ? ['Il Lesson Brief canonico del prossimo blocco non è disponibile'] : []),
+      ...(!lessonBundle ? ['Il Lesson Brief canonico del prossimo blocco non è disponibile'] : []),
       ...(knowledgeUnavailable ? ['Indice della Conoscenza temporaneamente non disponibile'] : []),
     ],
   })
+
+  if (!lessonBundle) return blockedPreparation(preparation)
+
+  return {
+    preparation,
+    manifest: buildLessonPreparationManifest({
+      preparation,
+      lessonContext: lessonBundle.context,
+      projection: lessonBundle.projection,
+      extensions: lessonBundle.extensions,
+    }),
+  }
+}
+
+function blockedPreparation(preparation: NextLessonPreparation): LoadedNextLessonPreparation {
+  return {
+    preparation,
+    manifest: buildLessonPreparationManifest({
+      preparation,
+      lessonContext: null,
+      projection: null,
+    }),
+  }
 }
