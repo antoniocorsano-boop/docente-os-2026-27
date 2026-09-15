@@ -2,21 +2,6 @@ name: X4 Planner Confirmed Write Gate
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-      - develop
-    paths:
-      - 'product/e2e/x4-planner-write.spec.mjs'
-      - 'product/e2e/x3-acceptance.spec.mjs'
-      - 'product/e2e/support/e2e-auth.mjs'
-      - 'product/playwright.config.mjs'
-      - 'product/src/app/api/assistant/planner-write/**'
-      - 'product/src/components/assistant/**'
-      - 'product/src/core/application/assistant-write-contract.ts'
-      - 'product/src/core/presentation/planner-assistant-context.ts'
-      - 'product/src/core/infrastructure/supabase/supabase-planner-repository.ts'
-      - 'product/supabase/migrations/**'
-      - '.github/workflows/x4-planner-e2e.yml'
   push:
     branches:
       - develop
