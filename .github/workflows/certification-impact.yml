@@ -1,0 +1,77 @@
+name: Certification Impact Classifier
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  classify:
+    name: certification-impact-v1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate classifier and rebinding contracts
+        run: node --test .github/scripts/certification/*.test.mjs
+
+      - name: Generate certification impact receipt
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          CERTIFICATION_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CERTIFICATION_TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+          CERTIFICATION_IMPACT_OUTPUT: test-results/certification/certification-impact.json
+        run: |
+          git diff --name-only "$CERTIFICATION_BASE_SHA" "$CERTIFICATION_TESTED_SHA" \
+            | node .github/scripts/certification/generate-impact-receipt.mjs
+
+      - name: Publish impact receipt
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: certification-impact-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 90
+          path: test-results/certification/certification-impact.json
+
+      - name: Publish classifier status
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            const testedSha = context.payload.pull_request.head.sha
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: testedSha,
+              state: ok ? 'success' : 'failure',
+              context: 'certification-impact/v1',
+              description: ok
+                ? 'Impact receipt prodotta; advisory only, nessun bypass dei gate'
+                : 'Impact classifier non valido: mantenere full certification',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
