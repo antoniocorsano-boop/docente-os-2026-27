@@ -35,7 +35,7 @@ test('LP-3B — Materiali prossima lezione: viste operative o fail-closed esplic
   const teacher = page.getByRole('button', { name: 'Guida docente' })
 
   await expect(lim).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByRole('region', { name: 'Controlli proiezione' })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Controlli proiezione' })).toBeVisible()
   await screenshot(page, testInfo, 'lesson-materials-lim')
 
   await student.click()
@@ -52,7 +52,7 @@ test('LP-3B — Materiali prossima lezione: viste operative o fail-closed esplic
 
   await lim.click()
   await expect(lim).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByRole('region', { name: 'Controlli proiezione' })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Controlli proiezione' })).toBeVisible()
 
   const next = page.getByRole('button', { name: 'Avanti' })
   if (await next.isEnabled()) {
