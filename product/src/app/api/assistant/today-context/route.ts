@@ -6,8 +6,10 @@ import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabas
 import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { resolveHomeDailyContext, type HomeDailyContext } from '@/core/presentation/home-daily-context'
+import { enrichTodayCopilotContext } from '@/core/presentation/next-lesson-preparation'
 import { buildPlannerAssistantContext } from '@/core/presentation/planner-assistant-context'
 import { buildTodayCopilotContext } from '@/core/presentation/today-copilot-context'
+import { loadNextLessonPreparation } from '../next-lesson-preparation-loader'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +29,7 @@ export async function GET() {
   }).planner
 
   if (!workspaceContext.academicYear) {
-    return privateJson(buildTodayCopilotContext({
+    const base = buildTodayCopilotContext({
       workspaceId: workspaceContext.workspace.id,
       academicYearId: null,
       homeDaily: emptyDailyContext(clock.localDate),
@@ -35,7 +37,8 @@ export async function GET() {
       calendarLabel: null,
       timetableState: 'UNAVAILABLE',
       planner,
-    }))
+    })
+    return privateJson(enrichTodayCopilotContext(base, null))
   }
 
   const academicYearId = workspaceContext.academicYear.id
@@ -66,7 +69,7 @@ export async function GET() {
     sessions,
   })
 
-  return privateJson(buildTodayCopilotContext({
+  const base = buildTodayCopilotContext({
     workspaceId: workspaceContext.workspace.id,
     academicYearId,
     homeDaily,
@@ -74,7 +77,16 @@ export async function GET() {
     calendarLabel: projectedDay.calendarLabel,
     timetableState: projectedDay.timetableState,
     planner,
-  }))
+  })
+
+  const preparation = await loadNextLessonPreparation({
+    workspaceId: workspaceContext.workspace.id,
+    academicYearId,
+    homeDaily,
+    minuteOfDay: clock.minuteOfDay,
+  })
+
+  return privateJson(enrichTodayCopilotContext(base, preparation))
 }
 
 function privateJson(payload: unknown) {
