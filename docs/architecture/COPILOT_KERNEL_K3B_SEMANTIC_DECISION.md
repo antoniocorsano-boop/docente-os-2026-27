@@ -1,8 +1,9 @@
 # DOCENTE OS — K3B Semantic Retrieval Decision
 
 Data: 2026-09-15  
-Stato: **APPROVED_FOR_IMPLEMENTATION / PROVIDER_NOT_ACTIVATED**  
-Issue: #423
+Stato: **COMPLETE / PROVIDER_NOT_ACTIVATED**  
+Issue: #423 — CLOSED/COMPLETED  
+Implementazione: PR #424 + hardening PR #425
 
 ## 1. Decisione
 
@@ -25,10 +26,21 @@ Sulla Beta Supabase di DOCENTE OS, al momento della decisione:
 - PostgreSQL: 17;
 - pgvector disponibile: 0.8.2;
 - pgvector installato prima di K3B: **no**;
-- `knowledge_units`: **1.094**;
+- `knowledge_units`: **1.094** complessive al momento della decisione;
 - asset `INDEXED`: **119**;
 - RLS su asset/documenti/unità: attiva e basata su membership del workspace;
 - current generation: già modellata e usata da K3A.
+
+Dopo l'implementazione K3B è stato verificato inoltre che:
+
+- pgvector **0.8.2** è installato nello schema `extensions`;
+- `knowledge_embedding_profiles` e `knowledge_unit_embeddings` hanno RLS attiva;
+- la tabella dei vettori non concede accesso diretto ad `anon` o `authenticated`;
+- esiste una policy deny-all esplicita per `authenticated` sulla tabella dei vettori;
+- gli indici FK `generation_id` e `profile_id` richiesti dagli advisor sono presenti;
+- le RPC semantiche sono accessibili solo ad utenti autenticati, verificano membership workspace e non restituiscono vettori memorizzati;
+- profili `ACTIVE`: **0**;
+- embedding persistiti al momento della chiusura K3B: **0**.
 
 Con questo volume, un indice ANN aggiungerebbe complessità senza un beneficio dimostrato. L'exact search mantiene recall perfetto e rende più semplice verificare workspace, generazione e filtri prima dell'ordinamento vettoriale.
 
@@ -96,16 +108,7 @@ Riferimenti Supabase:
 - https://supabase.com/docs/guides/ai/semantic-search
 - https://supabase.com/docs/guides/database/extensions/pgvector
 
-OpenAI `text-embedding-3-small` resta un candidato per K3C, non una dipendenza K3B. Prima dell'attivazione dovranno essere verificati almeno data policy, retention applicabile, eventuale Zero Data Retention, regione di trattamento e compatibilità con la classificazione privacy del payload.
-
-Riferimenti OpenAI:
-
-- https://platform.openai.com/docs/guides/embeddings
-- https://platform.openai.com/docs/pricing
-- https://platform.openai.com/docs/models/how-we-use-your-data
-- https://platform.openai.com/docs/guides/your-data
-
-Un modello locale/multilingue resta un'alternativa valida e dovrà competere sulle stesse eval, non per preferenza architetturale.
+La selezione dei candidati provider/modello è ora governata da K3C e documentata in `COPILOT_KERNEL_K3C_EVAL_DECISION.md`. Nessun candidato diventa una dipendenza o un profilo `ACTIVE` per sola preferenza architetturale o benchmark pubblico.
 
 ## 7. Boundary di sicurezza
 
@@ -127,37 +130,47 @@ La ricerca passa da `search_knowledge_semantic_exact`:
 - applica anno/categoria/disciplina/classe/affidabilità **prima** del ranking;
 - restituisce soltanto identificativi, generation e distanza/rank, mai il vettore.
 
+Le due RPC semantiche restano intenzionalmente `SECURITY DEFINER`: questo evita di concedere accesso diretto ai raw embeddings al ruolo autenticato. La scelta è documentata nello schema ed è subordinata ai controlli `auth.uid()` + membership workspace.
+
 ## 8. Semantic availability
 
 L'esistenza di pgvector o di alcuni embedding non equivale a `semanticAvailable=true`.
 
-Per attivare il canale semantico in K3C saranno obbligatori tutti i gate seguenti:
+Per attivare il canale semantico in K3C sono obbligatori tutti i gate seguenti:
 
 - esiste un profilo `ACTIVE`;
 - query provider configurato per esattamente quel profilo/revisione/dimensione;
 - provider-policy approvata per la classificazione privacy corrente;
-- copertura del corpus corrente = **100% delle unità eleggibili** per il workspace, oppure risposta esplicitamente `PARTIAL` e canale non dichiarato pienamente disponibile;
+- copertura del corpus corrente = **100% delle unità eleggibili** per il workspace;
 - stale-generation leakage = 0;
 - workspace leakage = 0;
-- benchmark italiano hybrid supera o eguaglia le soglie di qualità definite sotto;
+- filter violations = 0;
+- benchmark italiano hybrid supera le soglie versionate di K3C;
 - performance p95 entro la baseline.
+
+Una copertura parziale può essere osservata e dichiarata come `PARTIAL`, ma non autorizza il profilo come pienamente disponibile.
 
 ## 9. Eval K3C obbligatorie
 
-Prima del primo `ACTIVE` profile:
+Il contratto K3C richiede prima del primo profilo `ACTIVE`:
 
-- almeno 30 query reali/curate in italiano, distribuite tra classi, didattica, circolari e documenti operativi;
+- almeno 30 query curate in italiano e human-verified;
+- lo stesso `evaluationSetId` per baseline e candidato;
 - oracle umano con unità rilevanti attese;
 - confronto `FULL_TEXT` vs `SEMANTIC` vs `HYBRID`;
 - metriche minime: Recall@5, MRR@10, nDCG@10;
-- regressioni exact-term separate dalle query concettuali;
-- test avversari per workspace e generazioni obsolete;
-- tracciamento del costo per 1.000 unità e per 100 query senza loggare contenuto grezzo.
+- sottoinsieme `VERIFIED` misurato separatamente;
+- test avversari per workspace, generazioni obsolete e filtri professionali;
+- p50/p95 latency e costo/compute tracciati senza loggare contenuto grezzo;
+- privacy gate separato dalla qualità del ranking.
 
-L'hybrid diventa canonico solo se migliora la qualità complessiva senza peggiorare materialmente le query esatte.
+L'hybrid diventa canonico soltanto se supera le soglie di K3C senza violare alcun hard gate di isolamento o privacy.
+
+Decisione K3C: `COPILOT_KERNEL_K3C_EVAL_DECISION.md`.
 
 ## 10. Stato dopo K3B
 
 K3A: full-text governato e RRF provider-neutral — **COMPLETE**.  
-K3B: semantic storage/search foundation — **IN PROGRESS fino a migrazione ed evidence runtime**.  
-K3C: provider selection + real corpus embeddings + hybrid eval — **NOT STARTED / NOT AUTHORIZED UNTIL K3B PASS**.
+K3B: semantic storage/search foundation — **COMPLETE**, issue #423 chiusa; PR #424 + #425; evidence runtime acquisita.  
+K3C: provider selection + corpus eval + hybrid activation — **IN PROGRESS**, issue #426; contratto eval/privacy integrato con PR #427.  
+Provider `ACTIVE` — **NONE**.
