@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,8 +23,6 @@ const ALLOWED_EVENTS = new Set([
 
 export async function POST(request: Request) {
   if (!sameOriginRequest(request)) return new NextResponse(null, { status: 403 })
-  const current = await new SupabaseWorkspaceRepository().getCurrentContext()
-  if (!current) return new NextResponse(null, { status: 401 })
 
   let payload: unknown
   try {
