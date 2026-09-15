@@ -3,6 +3,7 @@ import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/sup
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import type { HomeDailyContext } from '@/core/presentation/home-daily-context'
+import { INTERNAL_LESSON_RENDERING_CAPABILITIES } from '@/core/presentation/lesson-material-renderer'
 import {
   buildLessonPreparationManifest,
   type LessonPreparationManifestResult,
@@ -129,6 +130,7 @@ export async function loadNextLessonPreparationBundle(input: {
       lessonContext: lessonBundle.context,
       projection: lessonBundle.projection,
       extensions: lessonBundle.extensions,
+      renderingCapabilities: [...INTERNAL_LESSON_RENDERING_CAPABILITIES],
     }),
   }
 }
