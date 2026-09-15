@@ -4,11 +4,7 @@
 
 Certification Pipeline V2 reduces duplicated certification work without weakening exact-head assurance. The invariant remains: a product state is promoted only with evidence bound to the exact state being promoted, or with a deterministic equivalence proof plus the required runtime smoke.
 
-## CV2-0 scope
-
-CV2-0 is advisory infrastructure only. It does not remove, skip, downgrade, or replace any existing gate.
-
-### `certification-impact.v1`
+## `certification-impact.v1`
 
 The impact classifier receives the changed file set for an exact PR head and produces a deterministic machine-readable receipt.
 
@@ -24,14 +20,49 @@ Dimensions:
 
 Every positive dimension includes file-level reasons. A relevant file that cannot be classified forces `conservative=true` and the full heavy-gate set. The classifier is therefore fail-closed.
 
-The receipt is advisory in CV2-0:
+From CV2-1 the receipt is authorized to select browser certification work:
 
-- `advisoryOnly=true`
+- `orchestrationAuthorized=true`
+- `advisoryOnly=false`
 - `mergeAuthorized=false`
 
-No consumer may interpret a reduced `requiredGates` set as permission to bypass the current workflows until a later CV2 slice explicitly promotes the classifier into the orchestration authority.
+This authority is deliberately narrow: the receipt may decide whether a browser gate is `RUN` or `NOT_APPLICABLE` for the exact PR head. It can never authorize merge, promotion, persistence, or evidence rebinding.
 
-### `certification-rebinding.v1`
+A central certification-policy change (`.github/scripts/certification/**`, browser orchestrator, Product CI certification contract, queue-governance contract, classifier workflow, canonical CV2 contract) requires a one-time full heavy certification. A change to one heavy-gate workflow requires at least that gate. Unknown relevant files require all heavy gates.
+
+## `certification-gate-decision.v1`
+
+A gate may be skipped only when all of these conditions are true:
+
+1. the receipt schema is exactly `certification-impact.v1`;
+2. `orchestrationAuthorized=true` and `advisoryOnly=false`;
+3. `mergeAuthorized=false`;
+4. `requiredGates` is valid;
+5. receipt `baseSha` equals the PR base SHA;
+6. receipt `testedSha` equals the exact PR head SHA;
+7. `conservative=false`;
+8. the gate is absent from `requiredGates`.
+
+Any missing receipt, parser failure, checkout failure, SHA mismatch, unknown gate, malformed field, conservative classification, or execution error produces `RUN` with `failClosed=true`.
+
+`NOT_APPLICABLE` is evidence that the gate was not required by the exact-head impact contract. It must never be described as a browser test having passed.
+
+## CV2-1 browser certification orchestrator
+
+For pull requests, HVA, WCAG 2.2 AA, P6 and X4 share a two-stage workflow:
+
+1. **preflight** — lightweight, outside the governed MFA concurrency group; creates the exact-head impact receipt and gate decisions;
+2. **selected browser certification** — enters the governed MFA queue only if at least one browser gate is required.
+
+When browser work is required, the selected gates share one trusted preparation chain:
+
+`checkout exact head → Node 22 → npm ci → pinned Playwright/axe → build once → start once → Chromium once → selected gates`
+
+The orchestrator publishes per-gate commit statuses. A non-required gate is published as `CV2 NOT_APPLICABLE`; a required gate receives success/failure only from its real selected test. Consolidated evidence is retained for 90 days.
+
+The legacy HVA/WCAG/P6/X4 workflows remain authoritative for push/runtime and explicit manual execution until their PR triggers are retired after the orchestrator itself has passed full certification. This staged cutover prevents a new orchestrator from disabling the controls that are validating it.
+
+## `certification-rebinding.v1`
 
 Evidence rebinding is allowed to become *eligible* only when all of these facts are explicitly proven true:
 
@@ -53,7 +84,8 @@ Therefore rebinding eligibility is not a release decision.
 
 ## Planned migration
 
-- **CV2-1**: browser certification orchestrator; build once and reuse artifacts/caches where trust boundaries permit it.
+- **CV2-1A**: certify the shared browser orchestrator while legacy PR gates remain active.
+- **CV2-1B**: retire duplicate legacy PR triggers after exact-head certification of CV2-1A; preserve runtime/manual workflows.
 - **CV2-2**: operational exact-head evidence rebinding with deterministic Git/tree checks and a new receipt bound to the target SHA.
 - **CV2-3**: replace redundant post-merge full suites with runtime smoke when equivalence is proven; full assurance remains mandatory when impact or equivalence requires it.
 
