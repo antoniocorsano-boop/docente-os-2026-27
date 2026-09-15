@@ -27,6 +27,7 @@ jobs:
         with:
           script: |
             const governedPaths = new Set([
+              '.github/workflows/browser-certification-orchestrator.yml',
               '.github/workflows/experience-acceptance.yml',
               '.github/workflows/x4-planner-e2e.yml',
               '.github/workflows/wcag22-aa-assurance.yml',
