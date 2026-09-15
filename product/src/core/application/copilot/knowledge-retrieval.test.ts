@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   buildKnowledgeRetrievalResponse,
   isKnowledgeRetrievalHitEligible,
+  type KnowledgeRetrievalFilters,
   type KnowledgeRetrievalQuery,
   type KnowledgeRetrievalRawHit,
 } from './knowledge-retrieval'
@@ -61,7 +62,7 @@ test('K3A: professional filters are fail-closed and normalized only for human la
 })
 
 test('K3A: an explicit reliability allowlist is respected', () => {
-  const filters = { ...QUERY.filters, allowedReliability: ['VERIFIED'] as const }
+  const filters: KnowledgeRetrievalFilters = { ...QUERY.filters, allowedReliability: ['VERIFIED'] }
   assert.equal(isKnowledgeRetrievalHitEligible(hit({ reliability: 'AUTO' }), QUERY.workspaceId, filters), false)
   assert.equal(isKnowledgeRetrievalHitEligible(hit({ reliability: 'VERIFIED' }), QUERY.workspaceId, filters), true)
 })
