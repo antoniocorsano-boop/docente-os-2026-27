@@ -3,8 +3,9 @@
 import type { DictationAdapter } from '@assistant-ui/react'
 
 const DEFAULT_MAX_CAPTURE_MS = 90_000
-const SCRIPT_PROCESSOR_BUFFER_SIZE = 4096
 const TRANSCRIPTION_SAMPLE_RATE = 16_000
+const WORKLET_ENDPOINT = '/api/assistant/voice-worklet'
+const WORKLET_PROCESSOR = 'docente-os-voice-capture'
 const DIAGNOSTIC_ENDPOINT = '/api/assistant/voice-diagnostic'
 
 type VoiceDiagnosticEvent =
@@ -25,13 +26,28 @@ type VoiceDiagnosticEvent =
   | 'transcribe-start'
   | 'transcribe-response'
 
+export type VoiceCaptureDiagnostic = {
+  stage: 'starting' | 'microphone-ready' | 'worklet-ready' | 'capturing' | 'uploading' | 'done' | 'error'
+  code?: string
+}
+
 export class ServerDictationAdapter implements DictationAdapter {
   readonly disableInputDuringDictation = true
+  private readonly diagnosticListeners = new Set<(event: VoiceCaptureDiagnostic) => void>()
 
   constructor(
     private readonly endpoint = '/api/assistant/transcribe',
     private readonly maxCaptureMs = DEFAULT_MAX_CAPTURE_MS,
   ) {}
+
+  subscribeDiagnostic(listener: (event: VoiceCaptureDiagnostic) => void) {
+    this.diagnosticListeners.add(listener)
+    return () => this.diagnosticListeners.delete(listener)
+  }
+
+  private emitDiagnostic(event: VoiceCaptureDiagnostic) {
+    for (const listener of this.diagnosticListeners) listener(event)
+  }
 
   listen(): DictationAdapter.Session {
     const speechStart = new Set<() => void>()
@@ -43,7 +59,7 @@ export class ServerDictationAdapter implements DictationAdapter {
 
     let audioContext: AudioContext | null = null
     let sourceNode: MediaStreamAudioSourceNode | null = null
-    let processorNode: ScriptProcessorNode | null = null
+    let workletNode: AudioWorkletNode | null = null
     let silenceGain: GainNode | null = null
     let stream: MediaStream | null = null
     let sampleRate = 48_000
@@ -55,8 +71,9 @@ export class ServerDictationAdapter implements DictationAdapter {
     let resolveStopped: (() => void) | null = null
     let intentionalTrackStop = false
     let visibilityListenerAttached = false
+    let flushResolver: (() => void) | null = null
 
-    const diagnostic = (event: VoiceDiagnosticEvent, statusCode?: number) => {
+    const diagnostic = (event: VoiceDiagnosticEvent, statusCode?: number, code?: string) => {
       reportVoiceDiagnostic({
         event,
         elapsedMs: performance.now() - startedAt,
@@ -64,10 +81,16 @@ export class ServerDictationAdapter implements DictationAdapter {
         trackState: stream?.getAudioTracks()[0]?.readyState ?? null,
         visibility: document.visibilityState,
         statusCode,
+        code,
       })
     }
 
+    const emitStage = (stage: VoiceCaptureDiagnostic['stage'], code?: string) => {
+      this.emitDiagnostic({ stage, code })
+    }
+
     diagnostic('listen-called')
+    emitStage('starting')
 
     const stopped = new Promise<void>((resolve) => {
       resolveStopped = resolve
@@ -91,11 +114,26 @@ export class ServerDictationAdapter implements DictationAdapter {
       resolveStopped?.()
     }
 
+    const flushWorklet = async () => {
+      const node = workletNode
+      if (!node) return
+
+      await new Promise<void>((resolve) => {
+        flushResolver = resolve
+        node.port.postMessage({ type: 'flush' })
+        setTimeout(() => {
+          if (flushResolver !== resolve) return
+          flushResolver = null
+          resolve()
+        }, 500)
+      })
+    }
+
     const cleanupAudioGraph = async () => {
-      if (processorNode) {
-        processorNode.onaudioprocess = null
-        try { processorNode.disconnect() } catch {}
-        processorNode = null
+      if (workletNode) {
+        try { workletNode.disconnect() } catch {}
+        try { workletNode.port.close() } catch {}
+        workletNode = null
       }
       if (sourceNode) {
         try { sourceNode.disconnect() } catch {}
@@ -115,6 +153,16 @@ export class ServerDictationAdapter implements DictationAdapter {
       }
     }
 
+    const fail = async (error: unknown) => {
+      const code = normalizeVoiceError(error)
+      diagnostic('recorder-error', undefined, code)
+      emitStage('error', code)
+      clearTimer()
+      await cleanupAudioGraph()
+      session.status = { type: 'ended', reason: 'error' }
+      settle()
+    }
+
     const finishCapture = async (sendForTranscription: boolean) => {
       if (finishing) {
         await stopped
@@ -124,6 +172,7 @@ export class ServerDictationAdapter implements DictationAdapter {
       clearTimer()
       diagnostic('recorder-stop')
 
+      await flushWorklet()
       const pcm = mergeFloat32Chunks(pcmChunks)
       await cleanupAudioGraph()
 
@@ -140,6 +189,7 @@ export class ServerDictationAdapter implements DictationAdapter {
         const body = new FormData()
         body.append('audio', audio, 'dictation.wav')
         diagnostic('transcribe-start')
+        emitStage('uploading')
 
         const response = await fetch(this.endpoint, {
           method: 'POST',
@@ -158,7 +208,11 @@ export class ServerDictationAdapter implements DictationAdapter {
         for (const callback of speech) callback(result)
         for (const callback of speechEnd) callback(result)
         session.status = { type: 'ended', reason: 'stopped' }
-      } catch {
+        emitStage('done')
+      } catch (error) {
+        const code = normalizeVoiceError(error)
+        diagnostic('recorder-error', undefined, code)
+        emitStage('error', code)
         session.status = { type: 'ended', reason: 'error' }
       } finally {
         settle()
@@ -170,8 +224,10 @@ export class ServerDictationAdapter implements DictationAdapter {
       if (!context || context.state !== 'suspended' || cancelled || finishing) return
       try {
         await context.resume()
-      } catch {
-        diagnostic('recorder-error')
+      } catch (error) {
+        const code = normalizeVoiceError(error)
+        diagnostic('recorder-error', undefined, code)
+        emitStage('error', code)
       }
     }
 
@@ -232,6 +288,7 @@ export class ServerDictationAdapter implements DictationAdapter {
 
         const context = new AudioContextCtor()
         audioContext = context
+        if (!context.audioWorklet) throw new Error('voice-audio-worklet-unavailable')
         if (context.state === 'suspended') await context.resume()
 
         stream = await navigator.mediaDevices.getUserMedia({
@@ -242,15 +299,15 @@ export class ServerDictationAdapter implements DictationAdapter {
           },
         })
         diagnostic('stream-ready')
+        emitStage('microphone-ready')
 
         const track = stream.getAudioTracks()[0]
-        if (track) {
-          track.addEventListener('mute', () => diagnostic('track-mute'))
-          track.addEventListener('unmute', () => diagnostic('track-unmute'))
-          track.addEventListener('ended', () => {
-            if (!intentionalTrackStop) diagnostic('track-ended')
-          })
-        }
+        if (!track) throw new Error('voice-audio-track-missing')
+        track.addEventListener('mute', () => diagnostic('track-mute'))
+        track.addEventListener('unmute', () => diagnostic('track-unmute'))
+        track.addEventListener('ended', () => {
+          if (!intentionalTrackStop) diagnostic('track-ended')
+        })
 
         if (cancelled) {
           await cleanupAudioGraph()
@@ -259,18 +316,37 @@ export class ServerDictationAdapter implements DictationAdapter {
         }
 
         sampleRate = context.sampleRate
+        try {
+          await context.audioWorklet.addModule(WORKLET_ENDPOINT)
+        } catch {
+          throw new Error('voice-audio-worklet-load-failed')
+        }
+        emitStage('worklet-ready')
+
         sourceNode = context.createMediaStreamSource(stream)
-        processorNode = context.createScriptProcessor(SCRIPT_PROCESSOR_BUFFER_SIZE, 1, 1)
+        workletNode = new AudioWorkletNode(context, WORKLET_PROCESSOR, {
+          numberOfInputs: 1,
+          numberOfOutputs: 1,
+          outputChannelCount: [1],
+        })
         silenceGain = context.createGain()
         silenceGain.gain.value = 0
 
-        processorNode.onaudioprocess = (event) => {
-          if (cancelled || finishing || event.inputBuffer.numberOfChannels === 0) return
-          pcmChunks.push(new Float32Array(event.inputBuffer.getChannelData(0)))
+        workletNode.port.onmessage = (event: MessageEvent<unknown>) => {
+          const data = event.data as { type?: unknown; buffer?: unknown }
+          if (data.type === 'chunk' && data.buffer instanceof ArrayBuffer) {
+            pcmChunks.push(new Float32Array(data.buffer))
+            return
+          }
+          if (data.type === 'flushed') {
+            const resolve = flushResolver
+            flushResolver = null
+            resolve?.()
+          }
         }
 
-        sourceNode.connect(processorNode)
-        processorNode.connect(silenceGain)
+        sourceNode.connect(workletNode)
+        workletNode.connect(silenceGain)
         silenceGain.connect(context.destination)
 
         if (context.state === 'suspended') await context.resume()
@@ -281,6 +357,7 @@ export class ServerDictationAdapter implements DictationAdapter {
         })
 
         diagnostic('recorder-start')
+        emitStage('capturing')
         session.status = { type: 'running' }
         for (const callback of speechStart) callback()
 
@@ -290,11 +367,8 @@ export class ServerDictationAdapter implements DictationAdapter {
         }, Math.max(1_000, Math.min(this.maxCaptureMs, DEFAULT_MAX_CAPTURE_MS)))
 
         if (stopRequested) await finishCapture(true)
-      } catch {
-        clearTimer()
-        await cleanupAudioGraph()
-        session.status = { type: 'ended', reason: 'error' }
-        settle()
+      } catch (error) {
+        await fail(error)
       }
     })()
 
@@ -306,6 +380,12 @@ function audioContextConstructor() {
   if (typeof window === 'undefined') return undefined
   if (typeof AudioContext !== 'undefined') return AudioContext
   return (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+}
+
+function normalizeVoiceError(error: unknown) {
+  if (error instanceof DOMException && error.name) return `voice-dom-${error.name}`
+  if (error instanceof Error && error.message) return error.message.slice(0, 96)
+  return 'voice-capture-unknown'
 }
 
 function mergeFloat32Chunks(chunks: readonly Float32Array[]) {
@@ -384,6 +464,7 @@ function reportVoiceDiagnostic(input: {
   trackState: MediaStreamTrackState | null
   visibility: DocumentVisibilityState
   statusCode?: number
+  code?: string
 }) {
   const payload = JSON.stringify({
     event: input.event,
@@ -392,6 +473,7 @@ function reportVoiceDiagnostic(input: {
     trackState: input.trackState,
     visibility: input.visibility,
     statusCode: input.statusCode,
+    code: input.code,
   })
 
   void fetch(DIAGNOSTIC_ENDPOINT, {
