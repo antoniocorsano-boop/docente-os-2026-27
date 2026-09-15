@@ -35,13 +35,13 @@ Già disponibili nel prodotto:
 - curriculum authority;
 - human-in-the-loop per write Planner.
 
-Gap principale: questi asset non confluiscono ancora in un unico Kernel di contesto/skill/capability.
+Il Kernel è ora fondato e le slice K1/K2 sono integrate; il lavoro corrente è completare K3 senza anticipare provider o write non governate.
 
 ## Programma incrementale
 
 ### K0 — Kernel foundation
 
-**Stato:** IN PROGRESS in `feat/copilot-kernel-k0`.
+**Stato:** COMPLETE — PR #416.
 
 Deliverable:
 
@@ -63,6 +63,8 @@ Gate:
 
 ### K1 — Today Context
 
+**Stato:** COMPLETE — PR #418.
+
 Obiettivo: la superficie `Oggi` deve conoscere la giornata reale, non soltanto il Planner.
 
 Input:
@@ -81,14 +83,7 @@ Output minimo:
 - authority temporale esplicita;
 - missing/ambiguity espliciti.
 
-Modifiche previste:
-
-- builder reale di `CopilotRunContext` per `TODAY`;
-- endpoint read-only del Kernel;
-- adapter temporaneo verso `ContextualAssistantPanel`;
-- `PlannerAssistant` non più autorità della superficie Oggi.
-
-Acceptance:
+Acceptance acquisita:
 
 - Planner vuoto + lezioni presenti non produce `giornata vuota`;
 - orario ambiguo non viene risolto per inferenza;
@@ -96,6 +91,8 @@ Acceptance:
 - nessuna write.
 
 ### K2 — Next Lesson Preparation
+
+**Stato:** COMPLETE — PR #420.
 
 Obiettivo: rispondere in modo completo a `cosa preparo per la prossima lezione?`.
 
@@ -109,7 +106,7 @@ Input:
 - curriculum authority;
 - KB solo quando serve.
 
-Acceptance:
+Acceptance acquisita:
 
 - nessuna invenzione se il brief manca;
 - materiali già pronti distinti da suggerimenti;
@@ -117,6 +114,8 @@ Acceptance:
 - evidence refs disponibili.
 
 ### K3 — Knowledge Retrieval
+
+**Stato:** IN PROGRESS.
 
 Obiettivo: rendere la KB interrogabile dal Kernel senza trasformare tutto in embedding.
 
@@ -129,12 +128,57 @@ Baseline:
 - current generation obbligatoria;
 - authority/freshness/privacy filter.
 
-Acceptance:
+#### K3A — Governed full-text retrieval
+
+**Stato:** COMPLETE — PR #422.
+
+Acquisiti:
+
+- contratto provider-neutral `KnowledgeRetrievalPort`;
+- filtri workspace/anno/categoria/disciplina/classe/affidabilità;
+- current generation fail-closed;
+- provenance fino a fonte originale;
+- full-text italiano;
+- RRF deterministico e contratto multi-canale;
+- `SEMANTIC` esplicitamente non disponibile in assenza di un canale reale.
+
+#### K3B — Semantic storage/search foundation
+
+**Stato:** IN PROGRESS — issue #423.
+
+Decisione canonica: `COPILOT_KERNEL_K3B_SEMANTIC_DECISION.md`.
+
+Obiettivi:
+
+- pgvector nella boundary Supabase;
+- profili embedding versionati e provider-neutral;
+- embedding separati dalla KB canonica;
+- exact cosine search come prima strategia;
+- workspace/current-generation/filter enforcement prima del ranking;
+- vettori non esposti direttamente ai client;
+- readiness semantica fail-closed;
+- nessun provider esterno attivato.
+
+#### K3C — Provider + corpus eval + hybrid activation
+
+**Stato:** NOT STARTED / NOT AUTHORIZED UNTIL K3B PASS.
+
+Prima dell'attivazione richiede:
+
+- provider multilingual/Italian selezionato tramite eval;
+- provider-policy privacy verificata;
+- 100% coverage della current generation, oppure stato esplicito PARTIAL senza dichiarare piena disponibilità;
+- benchmark FULL_TEXT vs SEMANTIC vs HYBRID su query italiane;
+- zero workspace/stale-generation leakage;
+- performance e costo misurati.
+
+Acceptance K3 complessiva:
 
 - nessun chunk da generazioni obsolete quando esiste current generation;
 - workspace/anno/classe/discipline rispettati;
 - fonte originale sempre raggiungibile;
-- risultati con provenance.
+- risultati con provenance;
+- semantic/hybrid dichiarati disponibili solo dopo gate reali.
 
 ### K4 — Unified Copilot
 
@@ -299,20 +343,20 @@ Il Resource Registry deve poter descrivere, senza necessariamente caricare il pa
 
 | Incremento | Stato | Evidenza |
 |---|---|---|
-| K0 Spec | IN PROGRESS | `COPILOT_KERNEL_CANONICAL_SPEC.md` |
-| K0 Contracts | IN PROGRESS | `product/src/core/application/copilot/copilot-kernel.ts` |
-| K0 Tests | IN PROGRESS | `copilot-kernel.test.ts` |
-| K1 Today Context | NOT STARTED | dipende da K0 PASS |
-| K2 Next Lesson | NOT STARTED | dipende da K1 |
-| K3 Hybrid Retrieval | NOT STARTED | dipende da K1/K2 |
-| K4 Unified Copilot | NOT STARTED | dipende da K1-K3 |
+| K0 Kernel foundation | COMPLETE | PR #416 |
+| K1 Today Context | COMPLETE | PR #418 |
+| K2 Next Lesson | COMPLETE | PR #420 |
+| K3A Governed full-text | COMPLETE | PR #422 |
+| K3B Semantic foundation | IN PROGRESS | issue #423 + `COPILOT_KERNEL_K3B_SEMANTIC_DECISION.md` |
+| K3C Provider + hybrid eval | NOT STARTED | dipende da K3B PASS |
+| K4 Unified Copilot | NOT STARTED | dipende da K3 |
 | K5 Governed Writes | NOT STARTED | dipende da K4 |
 | K6 Interoperability | NOT AUTHORIZED | richiede evidenza di necessità |
 
-## Prossimo commit dopo K0
+## Prossimo gate
 
-Solo dopo CI verde:
+Chiudere K3B soltanto dopo:
 
-`K1 Today Context: aggrega HomeDailyContext + Planner nel CopilotRunContext`
+`migration 0058 applicata → advisor security/performance verificati → Product CI verde → evidence runtime pgvector/schema/RPC`
 
-Non anticipare KB retrieval o write nello stesso incremento.
+Solo allora autorizzare K3C. Non attivare un provider embedding nella stessa slice.
