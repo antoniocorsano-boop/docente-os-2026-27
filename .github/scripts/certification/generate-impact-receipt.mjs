@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import path from 'node:path'
 import { classifyCertificationImpact } from './classifier.mjs'
 
 const input = fs.readFileSync(0, 'utf8')
@@ -12,6 +13,6 @@ const enriched = {
 }
 
 const output = process.env.CERTIFICATION_IMPACT_OUTPUT || 'certification-impact.json'
-fs.mkdirSync(new URL('.', `file://${process.cwd()}/${output}`).pathname, { recursive: true })
+fs.mkdirSync(path.dirname(output), { recursive: true })
 fs.writeFileSync(output, `${JSON.stringify(enriched, null, 2)}\n`, 'utf8')
 process.stdout.write(`${JSON.stringify(enriched, null, 2)}\n`)
