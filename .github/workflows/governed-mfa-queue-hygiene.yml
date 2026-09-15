@@ -33,7 +33,12 @@ jobs:
               '.github/workflows/k1-knowledge-e2e.yml',
               '.github/workflows/p6-performance.yml',
             ])
-            const hvaPath = '.github/workflows/experience-acceptance.yml'
+            const runtimePaths = new Set([
+              '.github/workflows/experience-acceptance.yml',
+              '.github/workflows/x4-planner-e2e.yml',
+              '.github/workflows/k1-knowledge-e2e.yml',
+              '.github/workflows/p6-performance.yml',
+            ])
             const activeStatuses = ['queued', 'pending', 'in_progress', 'waiting', 'requested']
 
             const openPulls = await github.paginate(
@@ -96,7 +101,7 @@ jobs:
                 },
               )
               for (const run of runs) {
-                if (run.path === hvaPath && run.head_branch === 'develop') {
+                if (runtimePaths.has(run.path) && run.head_branch === 'develop') {
                   activePushRunsById.set(run.id, run)
                 }
               }
@@ -126,21 +131,21 @@ jobs:
                 if (productChanged) {
                   obsoleteRuntimeRuns.push(run)
                   core.info(
-                    `Stale HVA runtime classified obsolete: ${run.id} ${run.head_sha} -> ` +
-                    `${currentDevelopSha}; product changes detected.`,
+                    `Stale governed runtime classified obsolete: ${run.name} #${run.run_number} ` +
+                    `(${run.id}) ${run.head_sha} -> ${currentDevelopSha}; product changes detected.`,
                   )
                 } else {
                   preservedRuntimeRuns += 1
                   core.info(
-                    `HVA runtime preserved as potentially product-equivalent: ${run.id} ` +
-                    `${run.head_sha} -> ${currentDevelopSha}.`,
+                    `Governed runtime preserved as potentially product-equivalent: ${run.name} ` +
+                    `#${run.run_number} (${run.id}) ${run.head_sha} -> ${currentDevelopSha}.`,
                   )
                 }
               } catch (error) {
                 unclassifiedRuntimeRuns += 1
                 core.warning(
-                  `Could not classify HVA runtime ${run.id} (${run.head_sha}); preserving it. ` +
-                  `${error.message ?? error}`,
+                  `Could not classify governed runtime ${run.name} #${run.run_number} (${run.id}) ` +
+                  `${run.head_sha}; preserving it. ${error.message ?? error}`,
                 )
               }
             }
@@ -150,10 +155,10 @@ jobs:
             core.info(`Current-head governed PR runs preserved: ${preservedPullRuns}.`)
             core.info(`Obsolete governed PR runs selected: ${obsoletePullRuns.length}.`)
             core.info(`Current develop SHA: ${currentDevelopSha}.`)
-            core.info(`Active HVA develop push runs inspected: ${activePushRuns.length}.`)
-            core.info(`HVA runtime runs preserved: ${preservedRuntimeRuns}.`)
-            core.info(`HVA runtime runs unclassified/preserved: ${unclassifiedRuntimeRuns}.`)
-            core.info(`Obsolete HVA runtime runs selected: ${obsoleteRuntimeRuns.length}.`)
+            core.info(`Active governed develop push runs inspected: ${activePushRuns.length}.`)
+            core.info(`Governed runtime runs preserved: ${preservedRuntimeRuns}.`)
+            core.info(`Governed runtime runs unclassified/preserved: ${unclassifiedRuntimeRuns}.`)
+            core.info(`Obsolete governed runtime runs selected: ${obsoleteRuntimeRuns.length}.`)
 
             async function cancelRuns(runs, kind) {
               let cancelled = 0
