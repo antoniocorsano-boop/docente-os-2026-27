@@ -1,0 +1,85 @@
+import {
+  evaluateKnowledgeSemanticActivationGate,
+  evaluateKnowledgeSemanticRun,
+  type KnowledgeProviderPolicyStatus,
+  type KnowledgeSemanticActivationGate,
+  type KnowledgeSemanticEvalMetrics,
+  type KnowledgeSemanticEvalObservation,
+} from './semantic-evaluation'
+import {
+  evaluateKnowledgeSemanticGoldSetReadiness,
+  toKnowledgeSemanticEvalQueries,
+  type KnowledgeSemanticGoldSet,
+} from './semantic-gold-set'
+
+export type KnowledgeRetrievalBenchmarkChannel = 'FULL_TEXT' | 'SEMANTIC' | 'HYBRID'
+
+export type KnowledgeRetrievalBenchmarkRun = {
+  channel: KnowledgeRetrievalBenchmarkChannel
+  observations: readonly KnowledgeSemanticEvalObservation[]
+}
+
+export type KnowledgeSemanticBenchmarkReceipt = {
+  evaluationSetId: string
+  goldSetVersion: number
+  goldSetReadyForActivationEvidence: boolean
+  channels: Partial<Record<KnowledgeRetrievalBenchmarkChannel, KnowledgeSemanticEvalMetrics>>
+  activationGate: KnowledgeSemanticActivationGate | null
+}
+
+export function buildKnowledgeSemanticBenchmarkReceipt(input: {
+  goldSet: KnowledgeSemanticGoldSet
+  runs: readonly KnowledgeRetrievalBenchmarkRun[]
+  providerPolicyStatus: KnowledgeProviderPolicyStatus
+  currentCorpusCoverageRatio: number
+}): KnowledgeSemanticBenchmarkReceipt {
+  const readiness = evaluateKnowledgeSemanticGoldSetReadiness(input.goldSet)
+  const evalQueries = toKnowledgeSemanticEvalQueries(input.goldSet)
+  const channels: Partial<Record<KnowledgeRetrievalBenchmarkChannel, KnowledgeSemanticEvalMetrics>> = {}
+  const seen = new Set<KnowledgeRetrievalBenchmarkChannel>()
+
+  for (const run of input.runs) {
+    if (seen.has(run.channel)) throw new Error(`duplicate benchmark channel ${run.channel}`)
+    seen.add(run.channel)
+    channels[run.channel] = evaluateKnowledgeSemanticRun({
+      evaluationSetId: input.goldSet.id,
+      queries: evalQueries,
+      observations: run.observations,
+    })
+  }
+
+  const baseline = channels.FULL_TEXT
+  const hybrid = channels.HYBRID
+  const activationGate = baseline && hybrid
+    ? evaluateKnowledgeSemanticActivationGate({
+        providerPolicyStatus: input.providerPolicyStatus,
+        currentCorpusCoverageRatio: input.currentCorpusCoverageRatio,
+        baseline,
+        hybrid,
+      })
+    : null
+
+  if (activationGate && !readiness.readyForActivationEvidence && activationGate.allowed) {
+    return {
+      evaluationSetId: input.goldSet.id,
+      goldSetVersion: input.goldSet.version,
+      goldSetReadyForActivationEvidence: false,
+      channels,
+      activationGate: {
+        ...activationGate,
+        allowed: false,
+        reasons: activationGate.reasons.includes('INSUFFICIENT_HUMAN_VERIFIED_QUERIES')
+          ? activationGate.reasons
+          : [...activationGate.reasons, 'INSUFFICIENT_HUMAN_VERIFIED_QUERIES'],
+      },
+    }
+  }
+
+  return {
+    evaluationSetId: input.goldSet.id,
+    goldSetVersion: input.goldSet.version,
+    goldSetReadyForActivationEvidence: readiness.readyForActivationEvidence,
+    channels,
+    activationGate,
+  }
+}
