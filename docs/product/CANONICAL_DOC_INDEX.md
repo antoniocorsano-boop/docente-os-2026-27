@@ -1,6 +1,6 @@
 # DOCENTE OS — Canonical Documentation Index
 
-Data: **2026-09-14**  
+Data: **2026-09-15**  
 Stato: **CANONICAL CANDIDATE / V1 CONVERGENCE**
 
 ## Ordine di autorità
@@ -26,10 +26,12 @@ Fonti primarie:
 - `docs/product/TEACHER_OS_V1_PRODUCT_CONVERGENCE_CANONICAL.md` — identità del prodotto, Teacher Moment, Today+Next, Lesson Brief, copilota, TAR e programma V1-A→V1-E;
 - `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — masterplan esperienza aggiornato alla convergenza V1;
 - `docs/product/TEACHER_AI_COPILOT_PRODUCT_DIRECTION.md` — tesi del copilota e bisogni del docente nell'era AI;
+- `docs/architecture/LESSON_PREPARATION_ORCHESTRATION_CANONICAL.md` — fondazione unica per resoconto→prossima lezione→materiali pronti, riuso, renderer, Canva/Drive opzionali, privacy contestuale e apprendimento governato;
 - `docs/architecture/CONTEXTUAL_VOICE_CAPTURE_SPEC.md` — voce come input contestuale del copilota;
 - `docs/architecture/INSTITUTIONAL_INTEGRATION_CONFIGURATOR_CANONICAL.md` — Google Workspace / Microsoft 365 / local-first / hybrid governati da policy istituzionale;
 - `docs/engineering/FAST_FEEDBACK_TEST_STRATEGY_V1.md` — FAST / MERGE / NIGHTLY / RELEASE;
 - issue `#387` — programma di convergenza;
+- issue `#431` — implementazione incrementale preparazione lezione/materiali pronti;
 - issue `#383` — HUMAN_USE che ha prodotto `FRICTION / REWORK_REQUIRED`;
 - issue `#385` — Contextual Voice Capture / professional gap confirmed.
 
@@ -55,6 +57,7 @@ Principio:
 - `docs/architecture/WORK_TIME_MENTAL_MODEL.md` — significato di Attività, Piano, Orario, Calendario e Oggi;
 - `docs/architecture/TEMPORAL_COMPOSITION_CANONICAL_SPEC.md` — composizione temporale;
 - `docs/architecture/AI_COLLABORATION_CANONICAL_SPEC.md` — AI collaboration e human-in-the-loop;
+- `docs/architecture/LESSON_PREPARATION_ORCHESTRATION_CANONICAL.md` — composizione della readiness della lezione senza nuovo store o semantica parallela;
 - `docs/architecture/CONTEXTUAL_VOICE_CAPTURE_SPEC.md` — voice capture;
 - `docs/architecture/INSTITUTIONAL_INTEGRATION_CONFIGURATOR_CANONICAL.md` — policy/provider istituzionali.
 
@@ -111,16 +114,17 @@ Design e brand non possono reintrodurre complessità che compete con il task.
 
 Google Workspace e Microsoft 365 sono provider di capability. Nessun provider diventa il modello mentale del prodotto.
 
-## AI e voce
+## AI, voce e preparazione della lezione
 
 Ordine:
 
 1. `AI_COLLABORATION_CANONICAL_SPEC.md` — boundary AI generale;
 2. `TEACHER_AI_COPILOT_PRODUCT_DIRECTION.md` — ruolo professionale del copilota;
-3. `CONTEXTUAL_VOICE_CAPTURE_SPEC.md` — input voce;
-4. specifiche verticali delle capability.
+3. `LESSON_PREPARATION_ORCHESTRATION_CANONICAL.md` — preparazione, materiali, renderer e ciclo Diario→domani;
+4. `CONTEXTUAL_VOICE_CAPTURE_SPEC.md` — input voce;
+5. specifiche verticali delle capability.
 
-Una proposta AI non diventa record canonico senza il boundary e la conferma richiesti.
+Una proposta AI non diventa record canonico senza il boundary e la conferma richiesti. Un materiale o una osservazione non acquisiscono scope più ampio soltanto perché sono stati prodotti o discussi dal copilota.
 
 ## Test e assurance
 
@@ -152,3 +156,7 @@ La fonte sintetica da consultare per prima è sempre:
 Per decidere cosa costruire dopo, la fonte corrente è:
 
 `docs/product/TEACHER_OS_V1_PRODUCT_CONVERGENCE_CANONICAL.md`
+
+Per qualsiasi lavoro che tocchi preparazione della lezione, materiali pronti, resa LIM/stampa, Canva/Drive o ciclo Diario→domani, la specifica verticale da riusare senza riscrivere la visione è:
+
+`docs/architecture/LESSON_PREPARATION_ORCHESTRATION_CANONICAL.md`
