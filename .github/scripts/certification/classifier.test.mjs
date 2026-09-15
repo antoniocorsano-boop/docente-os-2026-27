@@ -19,7 +19,7 @@ test('UI-only change requests HVA and WCAG but not Planner write or P6', () => {
   assert.equal(receipt.mergeAuthorized, false)
 })
 
-test('Planner write change requests X4 and ASVS', () => {
+test('Planner write implementation change requests X4 and ASVS', () => {
   const receipt = classifyCertificationImpact([
     'product/src/core/application/assistant-write-contract.ts',
   ])
@@ -27,6 +27,16 @@ test('Planner write change requests X4 and ASVS', () => {
   assert.equal(receipt.impacts.security, true)
   assert.equal(receipt.requiredGates.includes('X4_PLANNER_WRITE'), true)
   assert.equal(receipt.requiredGates.includes('ASVS_5_0'), true)
+})
+
+test('X4 workflow change requires X4 without inferring product security impact', () => {
+  const receipt = classifyCertificationImpact([
+    '.github/workflows/x4-planner-e2e.yml',
+  ])
+  assert.equal(receipt.impacts.planner_write, true)
+  assert.equal(receipt.impacts.security, false)
+  assert.equal(receipt.requiredGates.includes('X4_PLANNER_WRITE'), true)
+  assert.equal(receipt.requiredGates.includes('ASVS_5_0'), false)
 })
 
 test('migration is security-sensitive and runtime-impacting', () => {
