@@ -15,20 +15,6 @@ on:
         description: URL pubblico richiesto solo per target preview
         required: false
         type: string
-  pull_request:
-    branches:
-      - develop
-    paths:
-      - '.github/workflows/experience-acceptance.yml'
-      - 'product/design/**'
-      - 'product/experience/**'
-      - 'product/e2e/experience/**'
-      - 'product/e2e/support/**'
-      - 'product/playwright.experience.config.mjs'
-      - 'product/scripts/experience/**'
-      - 'product/src/app/**'
-      - 'product/src/components/**'
-      - 'product/src/core/presentation/**'
   push:
     branches:
       - develop
