@@ -3,12 +3,11 @@
 import type { DictationAdapter } from '@assistant-ui/react'
 
 const DEFAULT_MAX_CAPTURE_MS = 30_000
-const RECORDER_TIMESLICE_MS = 250
-const RECORDER_MIME_CANDIDATES = [
-  'audio/webm;codecs=opus',
-  'audio/webm',
-  'audio/mp4',
-] as const
+const SCRIPT_PROCESSOR_BUFFER_SIZE = 4096
+
+type AudioContextWindow = Window & {
+  webkitAudioContext?: typeof AudioContext
+}
 
 export class ServerDictationAdapter implements DictationAdapter {
   readonly disableInputDuringDictation = true
@@ -23,15 +22,21 @@ export class ServerDictationAdapter implements DictationAdapter {
     const speechEnd = new Set<(result: DictationAdapter.Result) => void>()
     const speech = new Set<(result: DictationAdapter.Result) => void>()
     const abortController = new AbortController()
-    const chunks: Blob[] = []
+    const pcmChunks: Float32Array[] = []
 
-    let mediaRecorder: MediaRecorder | null = null
+    let audioContext: AudioContext | null = null
+    let sourceNode: MediaStreamAudioSourceNode | null = null
+    let processorNode: ScriptProcessorNode | null = null
+    let silenceGain: GainNode | null = null
     let stream: MediaStream | null = null
+    let sampleRate = 48_000
     let timer: ReturnType<typeof setTimeout> | null = null
     let cancelled = false
     let stopRequested = false
+    let finishing = false
     let stopSettled = false
     let resolveStop: (() => void) | null = null
+
     const stopCompleted = new Promise<void>((resolve) => {
       resolveStop = resolve
     })
@@ -52,14 +57,74 @@ export class ServerDictationAdapter implements DictationAdapter {
       resolveStop?.()
     }
 
-    const stopRecorder = () => {
-      if (!mediaRecorder || mediaRecorder.state === 'inactive') return
-      try {
-        mediaRecorder.requestData()
-      } catch {
-        // Some browsers do not allow requestData() during a pending state change.
+    const cleanupAudioGraph = async () => {
+      if (processorNode) {
+        processorNode.onaudioprocess = null
+        try { processorNode.disconnect() } catch {}
+        processorNode = null
       }
-      mediaRecorder.stop()
+      if (sourceNode) {
+        try { sourceNode.disconnect() } catch {}
+        sourceNode = null
+      }
+      if (silenceGain) {
+        try { silenceGain.disconnect() } catch {}
+        silenceGain = null
+      }
+      stopTracks()
+      if (audioContext) {
+        const current = audioContext
+        audioContext = null
+        try {
+          if (current.state !== 'closed') await current.close()
+        } catch {}
+      }
+    }
+
+    const finishCapture = async (sendForTranscription: boolean) => {
+      if (finishing) {
+        await stopCompleted
+        return
+      }
+      finishing = true
+      clearCaptureTimer()
+
+      const pcm = mergeFloat32Chunks(pcmChunks)
+      await cleanupAudioGraph()
+
+      if (cancelled || !sendForTranscription) {
+        settleStop()
+        return
+      }
+
+      try {
+        if (pcm.length === 0) throw new Error('voice-capture-empty')
+
+        const audio = encodeMonoPcmWav(pcm, sampleRate)
+        const body = new FormData()
+        body.append('audio', audio, 'dictation.wav')
+
+        const response = await fetch(this.endpoint, {
+          method: 'POST',
+          cache: 'no-store',
+          body,
+          signal: abortController.signal,
+        })
+        if (!response.ok) throw new Error(`voice-transcription-${response.status}`)
+
+        const payload = await response.json() as { text?: unknown }
+        const transcript = typeof payload.text === 'string' ? payload.text.replace(/\s+/g, ' ').trim() : ''
+        if (!transcript) throw new Error('voice-transcription-empty')
+
+        const result: DictationAdapter.Result = { transcript, isFinal: true }
+        for (const callback of speech) callback(result)
+        for (const callback of speechEnd) callback(result)
+        session.status = { type: 'ended', reason: 'stopped' }
+      } catch {
+        session.status = { type: 'ended', reason: 'error' }
+      } finally {
+        settleStop()
+      }
     }
 
     const session: DictationAdapter.Session = {
@@ -67,8 +132,7 @@ export class ServerDictationAdapter implements DictationAdapter {
 
       stop: async () => {
         stopRequested = true
-        clearCaptureTimer()
-        stopRecorder()
+        await finishCapture(true)
         await stopCompleted
       },
 
@@ -76,9 +140,8 @@ export class ServerDictationAdapter implements DictationAdapter {
         cancelled = true
         abortController.abort()
         clearCaptureTimer()
-        stopRecorder()
-        stopTracks()
         session.status = { type: 'ended', reason: 'cancelled' }
+        void cleanupAudioGraph()
         settleStop()
       },
 
@@ -98,82 +161,57 @@ export class ServerDictationAdapter implements DictationAdapter {
 
     void (async () => {
       try {
-        if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-          throw new Error('voice-capture-not-supported')
-        }
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error('voice-capture-not-supported')
+
+        const AudioContextCtor = audioContextConstructor()
+        if (!AudioContextCtor) throw new Error('voice-capture-not-supported')
+
+        // Create/resume the context inside the user gesture path before awaiting getUserMedia.
+        audioContext = new AudioContextCtor()
+        if (audioContext.state === 'suspended') await audioContext.resume()
 
         stream = await navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true,
+            channelCount: 1,
           },
         })
         if (cancelled) {
-          stopTracks()
+          await cleanupAudioGraph()
           settleStop()
           return
         }
 
-        const mimeType = preferredRecorderMimeType()
-        const recorder = mimeType
-          ? new MediaRecorder(stream, { mimeType })
-          : new MediaRecorder(stream)
-        mediaRecorder = recorder
+        sampleRate = audioContext.sampleRate
+        sourceNode = audioContext.createMediaStreamSource(stream)
+        processorNode = audioContext.createScriptProcessor(SCRIPT_PROCESSOR_BUFFER_SIZE, 1, 1)
+        silenceGain = audioContext.createGain()
+        silenceGain.gain.value = 0
 
-        recorder.ondataavailable = (event) => {
-          if (event.data.size > 0) chunks.push(event.data)
-        }
-        recorder.onstart = () => {
-          session.status = { type: 'running' }
-          for (const callback of speechStart) callback()
-          timer = setTimeout(() => {
-            stopRecorder()
-          }, Math.max(1_000, Math.min(this.maxCaptureMs, DEFAULT_MAX_CAPTURE_MS)))
-          if (stopRequested) stopRecorder()
-        }
-        recorder.onstop = async () => {
-          clearCaptureTimer()
-          stopTracks()
-          if (cancelled) {
-            settleStop()
-            return
-          }
-
-          try {
-            const recordedMimeType = recorder.mimeType || mimeType || 'audio/webm'
-            const audio = new Blob(chunks, { type: recordedMimeType })
-            if (audio.size === 0) throw new Error('voice-capture-empty')
-
-            const body = new FormData()
-            body.append('audio', audio, dictationFilename(recordedMimeType))
-            const response = await fetch(this.endpoint, {
-              method: 'POST',
-              cache: 'no-store',
-              body,
-              signal: abortController.signal,
-            })
-            if (!response.ok) throw new Error(`voice-transcription-${response.status}`)
-
-            const payload = await response.json() as { text?: unknown }
-            const transcript = typeof payload.text === 'string' ? payload.text.replace(/\s+/g, ' ').trim() : ''
-            if (!transcript) throw new Error('voice-transcription-empty')
-
-            const result: DictationAdapter.Result = { transcript, isFinal: true }
-            for (const callback of speech) callback(result)
-            for (const callback of speechEnd) callback(result)
-            session.status = { type: 'ended', reason: 'stopped' }
-          } catch {
-            session.status = { type: 'ended', reason: 'error' }
-          } finally {
-            settleStop()
-          }
+        processorNode.onaudioprocess = (event) => {
+          if (cancelled || finishing || event.inputBuffer.numberOfChannels === 0) return
+          pcmChunks.push(new Float32Array(event.inputBuffer.getChannelData(0)))
         }
 
-        recorder.start(RECORDER_TIMESLICE_MS)
+        sourceNode.connect(processorNode)
+        processorNode.connect(silenceGain)
+        silenceGain.connect(audioContext.destination)
+
+        if (audioContext.state === 'suspended') await audioContext.resume()
+
+        session.status = { type: 'running' }
+        for (const callback of speechStart) callback()
+
+        timer = setTimeout(() => {
+          void finishCapture(true)
+        }, Math.max(1_000, Math.min(this.maxCaptureMs, DEFAULT_MAX_CAPTURE_MS)))
+
+        if (stopRequested) await finishCapture(true)
       } catch {
         clearCaptureTimer()
-        stopTracks()
+        await cleanupAudioGraph()
         session.status = { type: 'ended', reason: 'error' }
         settleStop()
       }
@@ -183,13 +221,55 @@ export class ServerDictationAdapter implements DictationAdapter {
   }
 }
 
-function preferredRecorderMimeType() {
-  if (typeof MediaRecorder.isTypeSupported !== 'function') return undefined
-  return RECORDER_MIME_CANDIDATES.find((candidate) => MediaRecorder.isTypeSupported(candidate))
+function audioContextConstructor() {
+  if (typeof window === 'undefined') return undefined
+  const candidate = window as AudioContextWindow
+  return candidate.AudioContext ?? candidate.webkitAudioContext
 }
 
-function dictationFilename(mimeType: string) {
-  if (mimeType.includes('mp4') || mimeType.includes('m4a')) return 'dictation.m4a'
-  if (mimeType.includes('ogg')) return 'dictation.ogg'
-  return 'dictation.webm'
+function mergeFloat32Chunks(chunks: readonly Float32Array[]) {
+  const length = chunks.reduce((total, chunk) => total + chunk.length, 0)
+  const merged = new Float32Array(length)
+  let offset = 0
+  for (const chunk of chunks) {
+    merged.set(chunk, offset)
+    offset += chunk.length
+  }
+  return merged
+}
+
+function encodeMonoPcmWav(samples: Float32Array, sampleRate: number) {
+  const bytesPerSample = 2
+  const dataLength = samples.length * bytesPerSample
+  const buffer = new ArrayBuffer(44 + dataLength)
+  const view = new DataView(buffer)
+
+  writeAscii(view, 0, 'RIFF')
+  view.setUint32(4, 36 + dataLength, true)
+  writeAscii(view, 8, 'WAVE')
+  writeAscii(view, 12, 'fmt ')
+  view.setUint32(16, 16, true)
+  view.setUint16(20, 1, true)
+  view.setUint16(22, 1, true)
+  view.setUint32(24, sampleRate, true)
+  view.setUint32(28, sampleRate * bytesPerSample, true)
+  view.setUint16(32, bytesPerSample, true)
+  view.setUint16(34, 16, true)
+  writeAscii(view, 36, 'data')
+  view.setUint32(40, dataLength, true)
+
+  let offset = 44
+  for (let index = 0; index < samples.length; index += 1) {
+    const sample = Math.max(-1, Math.min(1, samples[index] ?? 0))
+    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true)
+    offset += bytesPerSample
+  }
+
+  return new Blob([buffer], { type: 'audio/wav' })
+}
+
+function writeAscii(view: DataView, offset: number, value: string) {
+  for (let index = 0; index < value.length; index += 1) {
+    view.setUint8(offset + index, value.charCodeAt(index))
+  }
 }
