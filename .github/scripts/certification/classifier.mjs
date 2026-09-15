@@ -16,6 +16,22 @@ const ALL_HEAVY_GATES = [
   'ASVS_5_0',
 ]
 
+const CENTRAL_ORCHESTRATION_PATHS = new Set([
+  '.github/workflows/product-ci.yml',
+  '.github/workflows/certification-impact.yml',
+  '.github/workflows/browser-certification-orchestrator.yml',
+  '.github/workflows/governed-mfa-queue-hygiene.yml',
+  'docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md',
+])
+
+const GATE_WORKFLOW_PATHS = new Map([
+  ['.github/workflows/experience-acceptance.yml', ['HVA']],
+  ['.github/workflows/wcag22-aa-assurance.yml', ['WCAG_2_2_AA']],
+  ['.github/workflows/p6-performance.yml', ['P6_PERFORMANCE']],
+  ['.github/workflows/x4-planner-e2e.yml', ['X4_PLANNER_WRITE']],
+  ['.github/workflows/asvs50-assurance.yml', ['ASVS_5_0']],
+])
+
 function normalizePath(path) {
   return String(path ?? '').trim().replaceAll('\\', '/').replace(/^\.\//, '')
 }
@@ -23,6 +39,15 @@ function normalizePath(path) {
 function addImpact(state, dimension, path, reason) {
   state.impacts[dimension] = true
   state.reasons[dimension].push({ path, reason })
+}
+
+function requireGate(state, gate, path, reason) {
+  state.forcedGates.add(gate)
+  state.gateReasons[gate].push({ path, reason })
+}
+
+function requireAllHeavyGates(state, path, reason) {
+  for (const gate of ALL_HEAVY_GATES) requireGate(state, gate, path, reason)
 }
 
 function isTestFile(path) {
@@ -33,20 +58,21 @@ function classifyKnownPath(path, state) {
   let known = false
 
   const certificationContract =
-    path === '.github/workflows/product-ci.yml' ||
-    path === '.github/workflows/experience-acceptance.yml' ||
-    path === '.github/workflows/wcag22-aa-assurance.yml' ||
-    path === '.github/workflows/p6-performance.yml' ||
-    path === '.github/workflows/x4-planner-e2e.yml' ||
-    path === '.github/workflows/asvs50-assurance.yml' ||
-    path === '.github/workflows/governed-mfa-queue-hygiene.yml' ||
-    path === '.github/workflows/certification-impact.yml' ||
-    path.startsWith('.github/scripts/certification/') ||
-    path === 'docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md'
+    CENTRAL_ORCHESTRATION_PATHS.has(path) ||
+    GATE_WORKFLOW_PATHS.has(path) ||
+    path.startsWith('.github/scripts/certification/')
 
   if (certificationContract) {
     known = true
     addImpact(state, 'certification_contract', path, 'certification policy or implementation changed')
+
+    if (CENTRAL_ORCHESTRATION_PATHS.has(path) || path.startsWith('.github/scripts/certification/')) {
+      requireAllHeavyGates(state, path, 'central certification orchestration changed: one-time full assurance required')
+    }
+
+    for (const gate of GATE_WORKFLOW_PATHS.get(path) ?? []) {
+      requireGate(state, gate, path, 'gate workflow contract changed')
+    }
   }
 
   const ui =
@@ -135,10 +161,10 @@ function classifyKnownPath(path, state) {
   return known
 }
 
-function deriveRequiredGates(impacts, conservative) {
+function deriveRequiredGates(impacts, conservative, forcedGates) {
   if (conservative) return [...ALL_HEAVY_GATES]
 
-  const gates = new Set()
+  const gates = new Set(forcedGates)
   if (impacts.ui || impacts.runtime) gates.add('HVA')
   if (impacts.accessibility) gates.add('WCAG_2_2_AA')
   if (impacts.performance) gates.add('P6_PERFORMANCE')
@@ -153,6 +179,8 @@ export function classifyCertificationImpact(paths) {
     impacts: Object.fromEntries(ALL_DIMENSIONS.map((dimension) => [dimension, false])),
     reasons: Object.fromEntries(ALL_DIMENSIONS.map((dimension) => [dimension, []])),
     unknownRelevantFiles: [],
+    forcedGates: new Set(),
+    gateReasons: Object.fromEntries(ALL_HEAVY_GATES.map((gate) => [gate, []])),
   }
 
   for (const path of changedFiles) {
@@ -167,6 +195,7 @@ export function classifyCertificationImpact(paths) {
       for (const dimension of ALL_DIMENSIONS) {
         addImpact(state, dimension, path, 'unknown relevant file: fail-closed full certification')
       }
+      requireAllHeavyGates(state, path, 'unknown relevant file: fail-closed full certification')
     }
   }
 
@@ -177,8 +206,10 @@ export function classifyCertificationImpact(paths) {
     reasons: state.reasons,
     unknownRelevantFiles: state.unknownRelevantFiles,
     conservative,
-    requiredGates: deriveRequiredGates(state.impacts, conservative),
-    advisoryOnly: true,
+    requiredGates: deriveRequiredGates(state.impacts, conservative, state.forcedGates),
+    gateReasons: state.gateReasons,
+    orchestrationAuthorized: true,
+    advisoryOnly: false,
     mergeAuthorized: false,
   }
 }

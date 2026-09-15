@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { classifyCertificationImpact } from './classifier.mjs'
 
-test('UI-only change requests HVA and WCAG but not Planner write', () => {
+test('UI-only change requests HVA and WCAG but not Planner write or P6', () => {
   const receipt = classifyCertificationImpact([
     'product/src/components/app-shell/materials-quick-action.tsx',
   ])
@@ -12,7 +12,11 @@ test('UI-only change requests HVA and WCAG but not Planner write', () => {
   assert.equal(receipt.requiredGates.includes('HVA'), true)
   assert.equal(receipt.requiredGates.includes('WCAG_2_2_AA'), true)
   assert.equal(receipt.requiredGates.includes('X4_PLANNER_WRITE'), false)
+  assert.equal(receipt.requiredGates.includes('P6_PERFORMANCE'), false)
   assert.equal(receipt.conservative, false)
+  assert.equal(receipt.orchestrationAuthorized, true)
+  assert.equal(receipt.advisoryOnly, false)
+  assert.equal(receipt.mergeAuthorized, false)
 })
 
 test('Planner write change requests X4 and ASVS', () => {
@@ -40,11 +44,32 @@ test('ordinary docs are inert', () => {
   assert.equal(Object.values(receipt.impacts).some(Boolean), false)
 })
 
-test('certification workflow change invalidates certification contract equivalence', () => {
+test('single heavy workflow change requires its gate', () => {
+  const wcag = classifyCertificationImpact(['.github/workflows/wcag22-aa-assurance.yml'])
+  assert.equal(wcag.impacts.certification_contract, true)
+  assert.equal(wcag.requiredGates.includes('WCAG_2_2_AA'), true)
+  assert.equal(wcag.requiredGates.includes('HVA'), false)
+
+  const hva = classifyCertificationImpact(['.github/workflows/experience-acceptance.yml'])
+  assert.equal(hva.requiredGates.includes('HVA'), true)
+})
+
+test('central orchestration change requires one-time full heavy certification', () => {
   const receipt = classifyCertificationImpact([
-    '.github/workflows/experience-acceptance.yml',
+    '.github/scripts/certification/gate-decision.mjs',
   ])
-  assert.equal(receipt.impacts.certification_contract, true)
+  for (const gate of ['HVA', 'WCAG_2_2_AA', 'P6_PERFORMANCE', 'X4_PLANNER_WRITE', 'ASVS_5_0']) {
+    assert.equal(receipt.requiredGates.includes(gate), true)
+  }
+})
+
+test('browser orchestrator workflow change requires one-time full heavy certification', () => {
+  const receipt = classifyCertificationImpact([
+    '.github/workflows/browser-certification-orchestrator.yml',
+  ])
+  for (const gate of ['HVA', 'WCAG_2_2_AA', 'P6_PERFORMANCE', 'X4_PLANNER_WRITE', 'ASVS_5_0']) {
+    assert.equal(receipt.requiredGates.includes(gate), true)
+  }
 })
 
 test('unknown relevant file fails closed to full certification', () => {

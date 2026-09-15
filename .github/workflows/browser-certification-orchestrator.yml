@@ -1,0 +1,384 @@
+name: Browser Certification Orchestrator
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - 'product/**'
+      - 'render.yaml'
+      - '.github/scripts/certification/**'
+      - '.github/workflows/browser-certification-orchestrator.yml'
+      - '.github/workflows/experience-acceptance.yml'
+      - '.github/workflows/wcag22-aa-assurance.yml'
+      - '.github/workflows/p6-performance.yml'
+      - '.github/workflows/x4-planner-e2e.yml'
+      - '.github/workflows/asvs50-assurance.yml'
+      - '.github/workflows/product-ci.yml'
+      - '.github/workflows/certification-impact.yml'
+      - '.github/workflows/governed-mfa-queue-hygiene.yml'
+      - 'docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md'
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  preflight:
+    name: browser-certification-preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      hva: ${{ steps.impact.outputs.hva }}
+      wcag: ${{ steps.impact.outputs.wcag }}
+      p6: ${{ steps.impact.outputs.p6 }}
+      x4: ${{ steps.impact.outputs.x4 }}
+      any_required: ${{ steps.impact.outputs.any_required }}
+      fail_closed: ${{ steps.impact.outputs.fail_closed }}
+    steps:
+      - name: Checkout exact tested PR head for impact classification
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Set up Node 22 for impact classification
+        id: node
+        continue-on-error: true
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Evaluate exact-head certification impact
+        id: impact
+        if: always()
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          NODE_OUTCOME: ${{ steps.node.outcome }}
+        run: |
+          set -u
+          mkdir -p test-results/certification
+          receipt='test-results/certification/certification-impact.json'
+
+          fail_closed() {
+            echo "hva=true" >> "$GITHUB_OUTPUT"
+            echo "wcag=true" >> "$GITHUB_OUTPUT"
+            echo "p6=true" >> "$GITHUB_OUTPUT"
+            echo "x4=true" >> "$GITHUB_OUTPUT"
+            echo "any_required=true" >> "$GITHUB_OUTPUT"
+            echo "fail_closed=true" >> "$GITHUB_OUTPUT"
+            echo "CV2 preflight fail-closed: $1"
+          }
+
+          if [ "$CHECKOUT_OUTCOME" != 'success' ] || [ "$NODE_OUTCOME" != 'success' ]; then
+            fail_closed 'checkout or Node setup unavailable'
+            exit 0
+          fi
+
+          set +e
+          git diff --name-only "$BASE_SHA" "$TESTED_SHA" \
+            | env CERTIFICATION_BASE_SHA="$BASE_SHA" \
+                  CERTIFICATION_TESTED_SHA="$TESTED_SHA" \
+                  CERTIFICATION_IMPACT_OUTPUT="$receipt" \
+                  node .github/scripts/certification/generate-impact-receipt.mjs
+          receipt_code=$?
+          set -e
+
+          if [ "$receipt_code" -ne 0 ] || [ ! -s "$receipt" ]; then
+            fail_closed 'impact receipt generation failed'
+            exit 0
+          fi
+
+          decide_gate() {
+            gate="$1"
+            output_name="$2"
+            set +e
+            decision="$(node .github/scripts/certification/gate-decision.mjs "$gate" "$receipt" "$BASE_SHA" "$TESTED_SHA" 2>/tmp/cv2-gate-decision.err)"
+            decision_code=$?
+            set -e
+            if [ "$decision_code" -ne 0 ] || [ -z "$decision" ]; then
+              echo "$output_name=true" >> "$GITHUB_OUTPUT"
+              echo "Gate $gate: RUN fail-closed because decision execution failed."
+              return
+            fi
+            run="$(printf '%s' "$decision" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const v=JSON.parse(s).run;process.stdout.write(v===true?'true':v===false?'false':'invalid')}catch{process.stdout.write('invalid')}})")"
+            if [ "$run" != 'true' ] && [ "$run" != 'false' ]; then
+              run='true'
+            fi
+            echo "$output_name=$run" >> "$GITHUB_OUTPUT"
+            echo "Gate $gate decision: $decision"
+          }
+
+          decide_gate HVA hva
+          decide_gate WCAG_2_2_AA wcag
+          decide_gate P6_PERFORMANCE p6
+          decide_gate X4_PLANNER_WRITE x4
+
+          hva="$(grep '^hva=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2)"
+          wcag="$(grep '^wcag=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2)"
+          p6="$(grep '^p6=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2)"
+          x4="$(grep '^x4=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2)"
+          if [ "$hva" = 'true' ] || [ "$wcag" = 'true' ] || [ "$p6" = 'true' ] || [ "$x4" = 'true' ]; then
+            echo 'any_required=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'any_required=false' >> "$GITHUB_OUTPUT"
+          fi
+          echo 'fail_closed=false' >> "$GITHUB_OUTPUT"
+
+      - name: Publish impact evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-certification-impact-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 90
+          path: test-results/certification/
+
+      - name: Publish selective gate status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          HVA: ${{ steps.impact.outputs.hva }}
+          WCAG: ${{ steps.impact.outputs.wcag }}
+          P6: ${{ steps.impact.outputs.p6 }}
+          X4: ${{ steps.impact.outputs.x4 }}
+          FAIL_CLOSED: ${{ steps.impact.outputs.fail_closed }}
+        with:
+          script: |
+            const sha = context.payload.pull_request.head.sha
+            const gates = [
+              ['HVA', process.env.HVA, 'hva/application'],
+              ['WCAG 2.2 AA', process.env.WCAG, 'wcag22-aa/application'],
+              ['P6 Performance', process.env.P6, 'p6-performance/application'],
+              ['X4 Planner', process.env.X4, 'x4-planner/application'],
+            ]
+            for (const [label, required, statusContext] of gates) {
+              if (required === 'false') {
+                await github.rest.repos.createCommitStatus({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  sha,
+                  state: 'success',
+                  context: statusContext,
+                  description: `CV2 NOT_APPLICABLE: ${label} non richiesto dalla receipt exact-head`,
+                  target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                })
+              } else {
+                await github.rest.repos.createCommitStatus({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  sha,
+                  state: 'pending',
+                  context: statusContext,
+                  description: process.env.FAIL_CLOSED === 'true'
+                    ? `CV2 fail-closed: ${label} obbligatorio`
+                    : `CV2: ${label} richiesto dalla receipt exact-head`,
+                  target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                })
+              }
+            }
+
+  browser-certification:
+    name: browser-certification-selected-gates
+    needs: preflight
+    if: needs.preflight.outputs.any_required == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    concurrency:
+      group: docente-os-governed-mfa-e2e
+      queue: max
+    env:
+      E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
+      E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
+      E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
+      E2E_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      EXPERIENCE_TARGET: local
+      EXPERIENCE_OUTPUT_DIR: test-results/experience
+      P6_ROUTE_BUDGET_MS: 2500
+      P6_P95_BUDGET_MS: 1800
+      P6_TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+
+    steps:
+      - name: Require governed AAL2 E2E credential
+        run: test -n "${E2E_EMAIL:-}" && test -n "${E2E_PASSWORD:-}" && test -n "${E2E_TOTP_SECRET:-}"
+
+      - name: Checkout exact tested PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact tested PR head
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$P6_TESTED_SHA"
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install locked product dependencies once
+        working-directory: product
+        run: npm ci --no-audit --no-fund
+
+      - name: Install shared browser assurance dependencies without changing lockfile
+        working-directory: product
+        run: npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund @playwright/test@1.55.0 @axe-core/playwright@4.13.0
+
+      - name: Build tested application once
+        working-directory: product
+        run: npm run build
+
+      - name: Start shared tested application
+        working-directory: product
+        shell: bash
+        run: |
+          npm start > /tmp/docente-os-browser-certification.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 5 "$E2E_BASE_URL/login" >/dev/null; then
+              echo 'Local DOCENTE OS runtime is ready.'
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/docente-os-browser-certification.log >&2 || true
+          exit 1
+
+      - name: Install Chromium once
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Human + Visual Acceptance
+        id: hva_browser
+        if: needs.preflight.outputs.hva == 'true'
+        working-directory: product
+        shell: bash
+        run: |
+          set +e
+          npx playwright test --config=playwright.experience.config.mjs
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Generate HVA acceptance receipt
+        id: hva_receipt
+        if: always() && needs.preflight.outputs.hva == 'true'
+        continue-on-error: true
+        working-directory: product
+        env:
+          EXPERIENCE_TEST_EXIT_CODE: ${{ steps.hva_browser.outputs.exit_code || '99' }}
+          EXPECTED_COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/experience/acceptance-report.mjs
+
+      - name: Enforce HVA receipt
+        id: hva_gate
+        if: always() && needs.preflight.outputs.hva == 'true'
+        continue-on-error: true
+        working-directory: product
+        run: node -e "const r=require('./test-results/experience/receipt/acceptance.json'); if(Object.values(r.gates).includes('FAIL')) process.exit(1)"
+
+      - name: Run WCAG 2.2 AA automated assurance
+        id: wcag_gate
+        if: needs.preflight.outputs.wcag == 'true'
+        continue-on-error: true
+        working-directory: product
+        env:
+          WCAG_ASSURANCE: '1'
+        run: npx playwright test e2e/experience/accessibility.spec.mjs --config=playwright.experience.config.mjs
+
+      - name: Run P6 performance baseline
+        id: p6_gate
+        if: needs.preflight.outputs.p6 == 'true'
+        continue-on-error: true
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/p6-performance-baseline.spec.mjs
+
+      - name: Run X3 no-implicit-write regression
+        id: x3_gate
+        if: needs.preflight.outputs.x4 == 'true'
+        continue-on-error: true
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/x3-acceptance.spec.mjs
+
+      - name: Run X4 Planner acceptance gate
+        id: x4_gate
+        if: needs.preflight.outputs.x4 == 'true' && steps.x3_gate.outcome == 'success'
+        continue-on-error: true
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/x4-planner-write.spec.mjs
+
+      - name: Publish consolidated browser certification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-certification-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 90
+          path: |
+            product/test-results/
+            product/playwright-report/
+            /tmp/docente-os-browser-certification.log
+
+      - name: Publish selected gate final statuses
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          HVA_REQUIRED: ${{ needs.preflight.outputs.hva }}
+          WCAG_REQUIRED: ${{ needs.preflight.outputs.wcag }}
+          P6_REQUIRED: ${{ needs.preflight.outputs.p6 }}
+          X4_REQUIRED: ${{ needs.preflight.outputs.x4 }}
+          HVA_OUTCOME: ${{ steps.hva_gate.outcome }}
+          WCAG_OUTCOME: ${{ steps.wcag_gate.outcome }}
+          P6_OUTCOME: ${{ steps.p6_gate.outcome }}
+          X3_OUTCOME: ${{ steps.x3_gate.outcome }}
+          X4_OUTCOME: ${{ steps.x4_gate.outcome }}
+        with:
+          script: |
+            const sha = context.payload.pull_request.head.sha
+            const checks = [
+              ['HVA', process.env.HVA_REQUIRED, process.env.HVA_OUTCOME === 'success', 'hva/application'],
+              ['WCAG 2.2 AA', process.env.WCAG_REQUIRED, process.env.WCAG_OUTCOME === 'success', 'wcag22-aa/application'],
+              ['P6 Performance', process.env.P6_REQUIRED, process.env.P6_OUTCOME === 'success', 'p6-performance/application'],
+              ['X4 Planner', process.env.X4_REQUIRED, process.env.X3_OUTCOME === 'success' && process.env.X4_OUTCOME === 'success', 'x4-planner/application'],
+            ]
+            for (const [label, required, ok, statusContext] of checks) {
+              if (required !== 'true') continue
+              await github.rest.repos.createCommitStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha,
+                state: ok ? 'success' : 'failure',
+                context: statusContext,
+                description: ok ? `${label} superato nell'orchestratore CV2` : `${label} non superato nell'orchestratore CV2`,
+                target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              })
+            }
+
+      - name: Enforce selected browser gates
+        if: always()
+        shell: bash
+        env:
+          HVA_REQUIRED: ${{ needs.preflight.outputs.hva }}
+          WCAG_REQUIRED: ${{ needs.preflight.outputs.wcag }}
+          P6_REQUIRED: ${{ needs.preflight.outputs.p6 }}
+          X4_REQUIRED: ${{ needs.preflight.outputs.x4 }}
+          HVA_OUTCOME: ${{ steps.hva_gate.outcome }}
+          WCAG_OUTCOME: ${{ steps.wcag_gate.outcome }}
+          P6_OUTCOME: ${{ steps.p6_gate.outcome }}
+          X3_OUTCOME: ${{ steps.x3_gate.outcome }}
+          X4_OUTCOME: ${{ steps.x4_gate.outcome }}
+        run: |
+          failed=0
+          if [ "$HVA_REQUIRED" = 'true' ] && [ "$HVA_OUTCOME" != 'success' ]; then failed=1; fi
+          if [ "$WCAG_REQUIRED" = 'true' ] && [ "$WCAG_OUTCOME" != 'success' ]; then failed=1; fi
+          if [ "$P6_REQUIRED" = 'true' ] && [ "$P6_OUTCOME" != 'success' ]; then failed=1; fi
+          if [ "$X4_REQUIRED" = 'true' ] && { [ "$X3_OUTCOME" != 'success' ] || [ "$X4_OUTCOME" != 'success' ]; }; then failed=1; fi
+          exit "$failed"
