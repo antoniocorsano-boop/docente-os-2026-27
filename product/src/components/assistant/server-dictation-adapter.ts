@@ -2,7 +2,7 @@
 
 import type { DictationAdapter } from '@assistant-ui/react'
 
-const DEFAULT_MAX_CAPTURE_MS = 30_000
+const DEFAULT_MAX_CAPTURE_MS = 90_000
 
 export class ServerDictationAdapter implements DictationAdapter {
   readonly disableInputDuringDictation = true
