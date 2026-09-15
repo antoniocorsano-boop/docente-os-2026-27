@@ -46,6 +46,9 @@ export async function POST(request: Request) {
   const statusCode = typeof input.statusCode === 'number' && Number.isInteger(input.statusCode)
     ? Math.max(100, Math.min(599, input.statusCode))
     : null
+  const code = typeof input.code === 'string'
+    ? input.code.replace(/[^a-zA-Z0-9._:-]/g, '').slice(0, 96) || null
+    : null
 
   console.info('[DOCENTE OS][voice-diagnostic]', JSON.stringify({
     event,
@@ -54,6 +57,7 @@ export async function POST(request: Request) {
     trackState,
     visibility,
     statusCode,
+    code,
   }))
 
   return new NextResponse(null, {
