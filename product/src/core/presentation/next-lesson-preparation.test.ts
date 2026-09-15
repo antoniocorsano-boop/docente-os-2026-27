@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
 import type { HomeDailyContext, HomeDailyLesson } from './home-daily-context'
+import type { HumanTaskLessonProjection } from './human-task-content'
+import { buildLessonPreparationManifest } from './lesson-preparation-manifest'
 import {
   buildNextLessonPreparation,
   enrichTodayCopilotContext,
@@ -94,6 +97,79 @@ function lessonContext(overrides: Partial<LessonCopilotContext> = {}): LessonCop
       readyCount: 1,
       statusLabel: 'ENRICHED',
     },
+    ...overrides,
+  }
+}
+
+function projection(overrides: Partial<HumanTaskLessonProjection> = {}): HumanTaskLessonProjection {
+  return {
+    projectionId: 'projection-3',
+    grade: 'Seconda',
+    blockId: 'B03',
+    udaCode: '2-03',
+    udaTitle: 'Misurare e rappresentare',
+    packCode: 'CAN-PACK-2C',
+    period: 'Ottobre',
+    title: 'Misurare con precisione',
+    durationMinutes: 60,
+    why: 'Usare misure controllabili per descrivere un oggetto.',
+    objective: 'Misurare e rappresentare un oggetto con procedure controllabili.',
+    outcomes: ['Misurare in modo controllabile.'],
+    preparation: ['Righelli', 'Oggetto semplice da misurare'],
+    steps: [
+      { id: 'S01', minutes: 10, title: 'Avvio', instruction: 'Richiama unità e strumenti.' },
+      { id: 'S02', minutes: 40, title: 'Misura', instruction: 'Misura e rappresenta un oggetto.' },
+      { id: 'S03', minutes: 10, title: 'Controllo', instruction: 'Confronta i risultati.' },
+    ],
+    resources: [{
+      id: 'STUDENT-MEASURE',
+      kind: 'STUDENT_SHEET',
+      title: 'Scheda studente – Misurare e rappresentare',
+      instruction: 'Guida la misura e la rappresentazione.',
+      prompts: ['Misura tre dimensioni.', 'Disegna uno schizzo quotato.'],
+      surfaces: ['PREPARE'],
+    }],
+    evidence: 'Scheda di misura compilata.',
+    observation: ['Usa correttamente il righello.'],
+    assessmentNote: 'Controllo formativo.',
+    continuation: 'Riprendere gli errori di misura nella lezione successiva.',
+    sourceAlignment: { level: 'DIRECT' },
+    sources: [
+      { code: 'CAN-PLAN-2', label: 'Piano annuale seconda', role: 'PLAN', url: 'https://example.invalid/plan' },
+      { code: 'CAN-UDA-2-03', label: 'Misurare e rappresentare', role: 'UDA', url: 'https://example.invalid/uda' },
+      { code: 'CAN-PACK-2C', label: 'Pacchetto misure', role: 'PACK', url: 'https://example.invalid/pack' },
+    ],
+    ...overrides,
+  }
+}
+
+function extension(overrides: Partial<LessonDesignExtension> = {}): LessonDesignExtension {
+  return {
+    id: 'ext-hook',
+    workspaceId: 'workspace-1',
+    academicYearId: 'year-1',
+    sectionId: 'section-2c',
+    canonicalPlanAssetId: 'plan-asset-2',
+    canonicalGenerationId: 'generation-2',
+    blockId: 'B03',
+    projectionId: 'projection-3',
+    kind: 'HOOK_QUESTION',
+    status: 'ACCEPTED',
+    insertionPosition: 'START',
+    anchorStepId: null,
+    title: 'Quanto è precisa una misura?',
+    body: 'Confronta due misure dello stesso oggetto.',
+    cue: 'Fai emergere l’idea di errore di misura.',
+    minutes: 5,
+    sourceKind: 'TEACHER',
+    sourceRef: 'teacher:note-1',
+    sourceLabel: 'Nota docente',
+    payload: {},
+    acceptedBy: 'teacher-1',
+    acceptedAt: '2026-09-15T14:00:00Z',
+    createdBy: 'teacher-1',
+    createdAt: '2026-09-15T13:00:00Z',
+    updatedAt: '2026-09-15T14:00:00Z',
     ...overrides,
   }
 }
@@ -207,4 +283,123 @@ test('K2: un contesto ambiguo non seleziona arbitrariamente una preparazione', (
   const result = respondToTodayCopilotK2(enrichTodayCopilotContext(base, null), 'Qual è la prossima lezione?')
   assert.equal(result.answerStatus, 'PARTIAL')
   assert.match(result.text, /ambigu/i)
+})
+
+test('LP-1: compone un manifest READY riusando sequenza, risorse canoniche, estensioni e Conoscenza', () => {
+  const next = lesson('next', '15:00', '16:00', '2C · Tecnologia')
+  const context = lessonContext()
+  const preparation = buildNextLessonPreparation({
+    lesson: next,
+    lessonContext: context,
+    knowledgeResources: [{
+      assetId: 'asset-1',
+      title: 'Approfondimento sulle misure',
+      categoryLabel: 'Materiale',
+      relevanceLabel: 'Fase corrente',
+    }],
+  })
+
+  const result = buildLessonPreparationManifest({
+    preparation,
+    lessonContext: context,
+    projection: projection(),
+    extensions: [
+      extension(),
+      extension({
+        id: 'teacher-brief',
+        kind: 'TEACHER_RESOURCE',
+        title: 'Guida docente rapida',
+        insertionPosition: 'END',
+        sourceRef: 'knowledge:teacher-guide',
+        sourceLabel: 'Guida docente',
+        createdAt: '2026-09-15T13:01:00Z',
+      }),
+    ],
+  })
+
+  assert.equal(result.resolution, 'SUPPORTED')
+  assert.ok(result.manifest)
+  assert.equal(result.manifest.readiness, 'READY')
+  assert.deepEqual(result.manifest.sequenceRefs, ['EXT-ext-hook', 'S01', 'S02', 'S03'])
+  assert.deepEqual(result.manifest.acceptedExtensionRefs, ['ext-hook', 'teacher-brief'])
+  assert.equal(result.manifest.materialSlots.find((slot) => slot.role === 'STUDENT_HANDOUT')?.status, 'READY')
+  assert.equal(result.manifest.materialSlots.find((slot) => slot.role === 'TEACHER_BRIEF')?.status, 'READY')
+  assert.deepEqual(result.manifest.supportingMaterials.map((item) => item.assetId), ['asset-1'])
+  assert.equal(result.manifest.provenance.some((item) => item.ref === 'lesson-extension:ext-hook'), true)
+  assert.equal(new Set(result.manifest.provenance.map((item) => `${item.kind}:${item.ref ?? ''}:${item.label ?? ''}`)).size, result.manifest.provenance.length)
+})
+
+test('LP-1: una proposta pertinente non entra nella sequenza e mantiene REVIEW_REQUIRED', () => {
+  const next = lesson('next', '15:00', '16:00', '2C · Tecnologia')
+  const context = lessonContext()
+  const preparation = buildNextLessonPreparation({ lesson: next, lessonContext: context })
+  const result = buildLessonPreparationManifest({
+    preparation,
+    lessonContext: context,
+    projection: projection(),
+    extensions: [
+      extension({
+        id: 'proposal',
+        kind: 'STUDENT_RESOURCE',
+        status: 'PROPOSED',
+        title: 'Scheda alternativa',
+        acceptedBy: null,
+        acceptedAt: null,
+      }),
+    ],
+  })
+
+  assert.equal(result.resolution, 'PARTIAL')
+  assert.ok(result.manifest)
+  assert.equal(result.manifest.readiness, 'REVIEW_REQUIRED')
+  assert.deepEqual(result.manifest.sequenceRefs, ['S01', 'S02', 'S03'])
+  assert.deepEqual(result.manifest.proposedExtensionRefs, ['proposal'])
+})
+
+test('LP-1: estensioni di un’altra sezione restano fuori dal manifest senza contaminare la readiness', () => {
+  const next = lesson('next', '15:00', '16:00', '2C · Tecnologia')
+  const context = lessonContext()
+  const preparation = buildNextLessonPreparation({ lesson: next, lessonContext: context })
+  const result = buildLessonPreparationManifest({
+    preparation,
+    lessonContext: context,
+    projection: projection(),
+    extensions: [extension({ id: 'foreign', sectionId: 'section-1a', workspaceId: 'workspace-other' })],
+  })
+
+  assert.equal(result.resolution, 'SUPPORTED')
+  assert.ok(result.manifest)
+  assert.equal(result.manifest.readiness, 'READY')
+  assert.equal(result.manifest.provenance.some((item) => item.ref === 'lesson-extension:foreign'), false)
+})
+
+test('LP-1: mismatch di workspace sulla stessa lezione fallisce chiuso', () => {
+  const next = lesson('next', '15:00', '16:00', '2C · Tecnologia')
+  const context = lessonContext()
+  const preparation = buildNextLessonPreparation({ lesson: next, lessonContext: context })
+  const result = buildLessonPreparationManifest({
+    preparation,
+    lessonContext: context,
+    projection: projection(),
+    extensions: [extension({ id: 'wrong-workspace', workspaceId: 'workspace-other' })],
+  })
+
+  assert.equal(result.resolution, 'BLOCKED')
+  assert.equal(result.manifest, null)
+  assert.equal(result.reasons.includes('EXTENSION_WORKSPACE_MISMATCH:wrong-workspace'), true)
+})
+
+test('LP-1: una proiezione incoerente con il Lesson Context fallisce chiusa', () => {
+  const next = lesson('next', '15:00', '16:00', '2C · Tecnologia')
+  const context = lessonContext()
+  const preparation = buildNextLessonPreparation({ lesson: next, lessonContext: context })
+  const result = buildLessonPreparationManifest({
+    preparation,
+    lessonContext: context,
+    projection: projection({ projectionId: 'stale-projection' }),
+  })
+
+  assert.equal(result.resolution, 'BLOCKED')
+  assert.equal(result.manifest, null)
+  assert.equal(result.reasons.includes('PROJECTION_ID_MISMATCH'), true)
 })
