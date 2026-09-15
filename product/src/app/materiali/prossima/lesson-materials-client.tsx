@@ -95,7 +95,7 @@ export default function LessonMaterialsClient({
             <p className={styles.emptyMessage}>Nessuna schermata disponibile.</p>
           )}
 
-          <div className={styles.screenControls} aria-label="Controlli proiezione">
+          <div className={styles.screenControls} role="group" aria-label="Controlli proiezione">
             <button type="button" disabled={isFirst} onClick={() => setActiveScreen((value) => Math.max(0, value - 1))}>Indietro</button>
             <div className={styles.screenDots} aria-hidden>
               {screens.map((screen, index) => <span key={screen.id} data-active={index === activeScreen ? 'true' : 'false'} />)}
