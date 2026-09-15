@@ -8,12 +8,18 @@ on:
       - "render.yaml"
       - ".github/workflows/product-ci.yml"
       - ".github/workflows/experience-acceptance.yml"
+      - ".github/workflows/certification-impact.yml"
+      - ".github/scripts/certification/**"
+      - "docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md"
   pull_request:
     paths:
       - "product/**"
       - "render.yaml"
       - ".github/workflows/product-ci.yml"
       - ".github/workflows/experience-acceptance.yml"
+      - ".github/workflows/certification-impact.yml"
+      - ".github/scripts/certification/**"
+      - "docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md"
 
 jobs:
   validate:
@@ -56,6 +62,9 @@ jobs:
           grep -Fq "context: 'hva/runtime'" .github/workflows/experience-acceptance.yml
           grep -Fq 'retention-days: 90' .github/workflows/experience-acceptance.yml
           grep -Fq "visual: 'REVIEW_REQUIRED'" product/scripts/experience/acceptance-report.mjs
+      - name: Validate Certification Pipeline V2 foundation
+        working-directory: ${{ github.workspace }}
+        run: node --test .github/scripts/certification/*.test.mjs
       - uses: actions/setup-node@v4
         with:
           node-version: 22
