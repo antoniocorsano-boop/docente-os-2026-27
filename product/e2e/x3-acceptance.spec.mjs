@@ -115,7 +115,7 @@ test('X3 mobile gate: grounded answers, useful proposals, write preview and no a
   })
 })
 
-test('X3 Planner gate: real counts, useful answer and no automatic mutation', async ({ page }) => {
+test('X3 Today/Planner gate: day context, useful answer and no automatic mutation', async ({ page }) => {
   await login(page)
   const stats = await openPlannerReady(page)
   const beforeText = await stats.innerText()
@@ -127,22 +127,19 @@ test('X3 Planner gate: real counts, useful answer and no automatic mutation', as
 
   const panel = page.locator('.dosAssistantPanel.floating.expanded')
   await expect(panel).toBeVisible()
-  await expect(panel.locator('.dosAssistantContextStrip')).toContainText(`${openCount} aperte`)
+  const contextStrip = panel.locator('.dosAssistantContextStrip')
+  await expect(contextStrip).toContainText(/attività oggi/i)
+  await expect(contextStrip).toContainText(/da registrare/i)
 
   await askAndCheck(page, 'Cosa devo fare?', 1, async (response) => {
-    await expect(response).toContainText('Situazione Planner')
-    if (openCount === 0) {
-      await expect(response).toContainText(/Non risultano attività attive/i)
-    } else {
-      await expect(response).toContainText(new RegExp(`${openCount} aperte`, 'i'))
-      await expect(response).toContainText(/Da tenere davanti/)
-    }
-    await expect(response).toContainText(/Non completo, sposto o creo attività automaticamente/i)
+    await expect(response).toContainText('Attività Planner')
+    await expect(response).toContainText('Lettura corretta')
     await page.screenshot({ path: 'test-results/x3-05-planner-summary.png' })
   })
 
   await askAndCheck(page, 'Completa tutte le attività urgenti.', 2, async (response) => {
     await expect(response).toContainText(/implica una modifica del Planner/i)
+    await expect(response).toContainText(/azione separata e confermata/i)
     await expect(response).toContainText(/Nessuna attività è stata creata, completata, riaperta, spostata o eliminata/i)
     await expect(response).not.toContainText(/ho completato|attività completate/i)
     await page.screenshot({ path: 'test-results/x3-06-planner-write-boundary.png' })
@@ -194,7 +191,7 @@ async function openFileCapture(page) {
 async function askAndCheck(page, prompt, expectedAssistantMessages, assertion) {
   const input = page.locator('.dosAssistantInput')
   await input.fill(prompt)
-  await page.locator('.dosAssistantSend').click()
+  await page.getByRole('button', { name: 'Invia domanda', exact: true }).click()
 
   const responses = page.locator('.dosAssistantBubble.assistant')
   await expect(responses).toHaveCount(expectedAssistantMessages)

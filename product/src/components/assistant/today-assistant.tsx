@@ -3,10 +3,8 @@
 import { useCallback } from 'react'
 import { ContextualAssistantPanel } from './contextual-assistant-panel'
 import { PlannerCreateTaskAction } from './planner-create-task-action'
-import {
-  respondToTodayCopilotK2,
-  type TodayCopilotK2Context,
-} from '@/core/presentation/next-lesson-preparation'
+import type { TodayCopilotK2Context } from '@/core/presentation/next-lesson-preparation'
+import { respondToGovernedTodayCopilot } from '@/core/presentation/today-copilot-write-boundary'
 
 const SUGGESTED_PROMPTS = [
   'Che lezioni ho oggi?',
@@ -22,7 +20,7 @@ export function TodayAssistant({
   context: TodayCopilotK2Context
   presentation?: 'inline' | 'floating'
 }) {
-  const respond = useCallback((prompt: string) => respondToTodayCopilotK2(context, prompt).text, [context])
+  const respond = useCallback((prompt: string) => respondToGovernedTodayCopilot(context, prompt).text, [context])
   const t = context.today
   const p = context.planner
   const preparation = context.nextLessonPreparation
