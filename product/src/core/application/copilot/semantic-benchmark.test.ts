@@ -17,6 +17,12 @@ test('K3C benchmark: synthetic evaluator fixture produces metrics but cannot aut
 
   assert.equal(receipt.evaluationSetId, 'k3c-synthetic-reference-v1')
   assert.equal(receipt.goldSetReadyForActivationEvidence, false)
+  assert.equal(receipt.goldSetReadinessReasons.includes('QUERY_COUNT_BELOW_MINIMUM'), true)
+  assert.equal(receipt.providerPolicyStatus, 'PASS')
+  assert.equal(receipt.currentCorpusCoverageRatio, 1)
+  assert.equal(receipt.implementationRefs.FULL_TEXT, 'synthetic:full-text:v1')
+  assert.equal(receipt.implementationRefs.SEMANTIC, 'synthetic:semantic:v1')
+  assert.equal(receipt.implementationRefs.HYBRID, 'synthetic:rrf:v1')
   assert.ok(receipt.channels.FULL_TEXT)
   assert.ok(receipt.channels.SEMANTIC)
   assert.ok(receipt.channels.HYBRID)
@@ -49,14 +55,25 @@ test('K3C benchmark: comparable verified gold set can pass the activation gate',
   const receipt = buildKnowledgeSemanticBenchmarkReceipt({
     goldSet,
     runs: [
-      { channel: 'FULL_TEXT', observations: fullTextObservations },
-      { channel: 'HYBRID', observations: hybridObservations },
+      {
+        channel: 'FULL_TEXT',
+        implementationRef: 'k3a:full-text:develop',
+        observations: fullTextObservations,
+      },
+      {
+        channel: 'HYBRID',
+        implementationRef: 'k3c:hybrid:candidate-1',
+        observations: hybridObservations,
+      },
     ],
     providerPolicyStatus: 'PASS',
     currentCorpusCoverageRatio: 1,
   })
 
   assert.equal(receipt.goldSetReadyForActivationEvidence, true)
+  assert.deepEqual(receipt.goldSetReadinessReasons, [])
+  assert.equal(receipt.implementationRefs.FULL_TEXT, 'k3a:full-text:develop')
+  assert.equal(receipt.implementationRefs.HYBRID, 'k3c:hybrid:candidate-1')
   assert.ok(receipt.activationGate)
   assert.equal(receipt.activationGate.allowed, true)
   assert.deepEqual(receipt.activationGate.reasons, [])
@@ -64,7 +81,7 @@ test('K3C benchmark: comparable verified gold set can pass the activation gate',
   assert.equal(receipt.activationGate.ndcgAt10Gain > 0.3, true)
 })
 
-test('K3C benchmark: duplicate channel is rejected to preserve one comparable run per channel', () => {
+test('K3C benchmark: duplicate channel or missing implementation identity is rejected', () => {
   assert.throws(
     () => buildKnowledgeSemanticBenchmarkReceipt({
       goldSet: SYNTHETIC_K3C_REFERENCE_GOLD_SET,
@@ -76,6 +93,20 @@ test('K3C benchmark: duplicate channel is rejected to preserve one comparable ru
       currentCorpusCoverageRatio: 1,
     }),
     /duplicate benchmark channel FULL_TEXT/,
+  )
+
+  assert.throws(
+    () => buildKnowledgeSemanticBenchmarkReceipt({
+      goldSet: SYNTHETIC_K3C_REFERENCE_GOLD_SET,
+      runs: [{
+        channel: 'FULL_TEXT',
+        implementationRef: ' ',
+        observations: SYNTHETIC_K3C_REFERENCE_RUNS[0]!.observations,
+      }],
+      providerPolicyStatus: 'PASS',
+      currentCorpusCoverageRatio: 1,
+    }),
+    /benchmark implementation ref is required for FULL_TEXT/,
   )
 })
 
