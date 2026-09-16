@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
+import { presentClassRecorderEmptyState, presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
 
 const base = {
   hasNextBlock: true,
@@ -111,4 +111,48 @@ test('il percorso completo non simula un nuovo compito operativo', () => {
   const presentation = presentClassTaskState('COMPLETE')
   assert.equal(presentation.eyebrow, 'PERCORSO COMPLETATO')
   assert.match(presentation.nextStep, /Consulta Piano/)
+})
+
+test('dopo una TeachingSession la superficie non ricade nel falso stato Calendario', () => {
+  assert.deepEqual(presentClassRecorderEmptyState({
+    calendarState: 'UNDETERMINED',
+    hasSessionReceipt: true,
+    hasFutureOccurrence: false,
+  }), {
+    title: 'Lezione di oggi registrata.',
+    detail: 'La registrazione è acquisita. Non ci sono altre lezioni di questa classe da registrare per oggi.',
+    showScheduleLinks: false,
+  })
+})
+
+test('dopo una TeachingSession distingue una occurrence futura senza proporre una nuova registrazione', () => {
+  const presentation = presentClassRecorderEmptyState({
+    calendarState: 'UNDETERMINED',
+    hasSessionReceipt: true,
+    hasFutureOccurrence: true,
+  })
+  assert.equal(presentation.title, 'Lezione registrata.')
+  assert.match(presentation.detail, /prevista più tardi/)
+  assert.equal(presentation.showScheduleLinks, false)
+})
+
+test('NO_LESSONS esplicito resta override forte anche con una receipt nella URL', () => {
+  const presentation = presentClassRecorderEmptyState({
+    calendarState: 'NO_LESSONS',
+    hasSessionReceipt: true,
+    hasFutureOccurrence: false,
+  })
+  assert.equal(presentation.title, 'Nessuna lezione di oggi da registrare automaticamente.')
+  assert.match(presentation.detail, /non si materializzano lezioni/)
+  assert.equal(presentation.showScheduleLinks, true)
+})
+
+test('senza receipt UNDETERMINED conserva il fail-closed del Calendario', () => {
+  const presentation = presentClassRecorderEmptyState({
+    calendarState: 'UNDETERMINED',
+    hasSessionReceipt: false,
+    hasFutureOccurrence: false,
+  })
+  assert.match(presentation.detail, /non ha ancora definito la giornata/)
+  assert.equal(presentation.showScheduleLinks, true)
 })
