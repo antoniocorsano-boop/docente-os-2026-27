@@ -16,7 +16,7 @@ import { buildLessonWorkspaceHref, resolveRuntimeHumanTaskLessonProjection } fro
 import { buildTaskAwareKnowledgeHref, buildTaskAwareKnowledgeListHref } from '@/core/presentation/task-continuity'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes, selectPreparedClassMaterials } from '../class-workspace-model'
-import { presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
+import { isCurrentDaySessionReceipt, presentClassRecorderEmptyState, presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
 import { confirmTeachingBlockCompletion } from './actions'
 import { TeachingSessionRecorder } from './TeachingSessionRecorder'
 import '../classi.css'
@@ -109,6 +109,7 @@ export default async function ClassWorkspacePage({
     ? resolveRuntimeHumanTaskLessonProjection(grade, recordedBlock)
     : null
   const sessionReceipt = query.session ? currentSessions.find((session) => session.id === query.session) ?? null : null
+  const hasTodaySessionReceipt = isCurrentDaySessionReceipt(sessionReceipt?.localDate, today)
 
   const nextTitle = nextProjection?.title ?? learningFocus.nextBlock?.focus ?? null
   const nextContext = nextProjection
@@ -117,11 +118,13 @@ export default async function ClassWorkspacePage({
 
   const nowMinutes = currentRomeMinutes()
   const recordedOccurrenceIds = new Set(currentSessions.map((session) => session.source.projectedOccurrenceLogicalId).filter((id): id is string => Boolean(id)))
-  const eligibleOccurrence = temporalDay.occurrences
+  const unrecordedOccurrences = temporalDay.occurrences
     .filter((occurrence) => occurrence.sectionId === sectionId && (occurrence.kind === 'LESSON' || occurrence.kind === 'CLASS_PRESENCE'))
     .filter((occurrence) => !recordedOccurrenceIds.has(occurrence.logicalId))
+  const eligibleOccurrence = unrecordedOccurrences
     .filter((occurrence) => occurrence.startAt ? timeMinutes(occurrence.startAt) <= nowMinutes : true)
     .sort((a, b) => (b.startAt ?? '').localeCompare(a.startAt ?? ''))[0] ?? null
+  const hasFutureOccurrence = unrecordedOccurrences.some((occurrence) => occurrence.startAt ? timeMinutes(occurrence.startAt) > nowMinutes : false)
 
   const startIndex = nextCanonicalBlock ? Math.max(0, blocks.findIndex((block) => block.id === nextCanonicalBlock.id)) : 0
   const recorderBlocks = blocks.slice(startIndex, Math.min(blocks.length, startIndex + 5)).map((block) => ({
@@ -138,12 +141,17 @@ export default async function ClassWorkspacePage({
   const taskDecision = resolveClassTaskDecision({
     hasNextBlock: Boolean(nextCanonicalBlock),
     hasModeledLesson: Boolean(nextProjection && learningFocus.nextBlock),
-    hasSessionReceipt: Boolean(sessionReceipt),
+    hasSessionReceipt: hasTodaySessionReceipt,
     hasEligibleOccurrence: Boolean(eligibleOccurrence),
     occurrenceEnded,
     maySuggestCompletion: Boolean(nextCompletion?.maySuggestCompletion),
   })
   const taskPresentation = presentClassTaskState(taskDecision.state)
+  const recorderEmptyPresentation = presentClassRecorderEmptyState({
+    calendarState: temporalDay.calendarState,
+    hasSessionReceipt: hasTodaySessionReceipt,
+    hasFutureOccurrence,
+  })
   const taskHref = taskDecision.focusCompletion
     ? '#decisione-completamento'
     : taskDecision.useInlineRecorder
@@ -213,9 +221,9 @@ export default async function ClassWorkspacePage({
                   />
                 ) : (
                   <div className="teachingSessionEmpty">
-                    <strong>Nessuna lezione di oggi da registrare automaticamente.</strong>
-                    <span>{temporalDay.calendarState === 'UNDETERMINED' ? 'Il Calendario non ha ancora definito la giornata: DOCENTE OS non inventa una sessione.' : temporalDay.calendarState === 'NO_LESSONS' ? 'Il Calendario indica che oggi non si materializzano lezioni.' : 'Le lezioni già trascorse risultano registrate oppure non c’è un’occorrenza della classe in questa fascia.'}</span>
-                    <div><Link href="/calendario">Apri Calendario</Link><Link href="/orario">Apri Orario</Link></div>
+                    <strong>{recorderEmptyPresentation.title}</strong>
+                    <span>{recorderEmptyPresentation.detail}</span>
+                    {recorderEmptyPresentation.showScheduleLinks ? <div><Link href="/calendario">Apri Calendario</Link><Link href="/orario">Apri Orario</Link></div> : null}
                   </div>
                 )
               ) : null}

@@ -14,6 +14,16 @@ export type ClassTaskPresentation = {
   nextStep: string
 }
 
+export type ClassRecorderEmptyPresentation = {
+  title: string
+  detail: string
+  showScheduleLinks: boolean
+}
+
+export function isCurrentDaySessionReceipt(sessionLocalDate: string | null | undefined, today: string): boolean {
+  return Boolean(sessionLocalDate && sessionLocalDate === today)
+}
+
 export function resolveClassTaskDecision(input: {
   hasNextBlock: boolean
   hasModeledLesson: boolean
@@ -122,5 +132,47 @@ export function presentClassTaskState(state: ClassTaskState): ClassTaskPresentat
     eyebrow: 'ADESSO · PROSSIMA LEZIONE',
     hint: 'Prepara il prossimo tratto didattico utile per questa classe.',
     nextStep: 'Dopo la preparazione, entrerai nella lezione senza scegliere un altro modulo.',
+  }
+}
+
+export function presentClassRecorderEmptyState(input: {
+  calendarState: string
+  hasSessionReceipt: boolean
+  hasFutureOccurrence: boolean
+}): ClassRecorderEmptyPresentation {
+  if (input.calendarState === 'NO_LESSONS') {
+    return {
+      title: 'Nessuna lezione di oggi da registrare automaticamente.',
+      detail: 'Il Calendario indica che oggi non si materializzano lezioni.',
+      showScheduleLinks: true,
+    }
+  }
+
+  if (input.hasSessionReceipt) {
+    return input.hasFutureOccurrence
+      ? {
+          title: 'Lezione registrata.',
+          detail: 'La registrazione è acquisita. La prossima lezione di questa classe è prevista più tardi: non c’è altro da registrare adesso.',
+          showScheduleLinks: false,
+        }
+      : {
+          title: 'Lezione di oggi registrata.',
+          detail: 'La registrazione è acquisita. Non ci sono altre lezioni di questa classe da registrare per oggi.',
+          showScheduleLinks: false,
+        }
+  }
+
+  if (input.calendarState === 'UNDETERMINED') {
+    return {
+      title: 'Nessuna lezione di oggi da registrare automaticamente.',
+      detail: 'Il Calendario non ha ancora definito la giornata: DOCENTE OS non inventa una sessione.',
+      showScheduleLinks: true,
+    }
+  }
+
+  return {
+    title: 'Nessuna lezione di oggi da registrare automaticamente.',
+    detail: 'Le lezioni già trascorse risultano registrate oppure non c’è un’occorrenza della classe in questa fascia.',
+    showScheduleLinks: true,
   }
 }
