@@ -127,6 +127,8 @@ export default function LessonCloseClient({
       const response = await fetch('/api/copilot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        referrer: window.location.href,
+        referrerPolicy: 'same-origin',
         body: JSON.stringify({ prompt: buildLessonReflectionCapturePrompt(note) }),
       })
       const payload = await response.json().catch(() => null) as LessonReflectionCaptureActionResult | { message?: string } | null
