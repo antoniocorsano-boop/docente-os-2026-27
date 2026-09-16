@@ -6,6 +6,7 @@ import type { LessonMaterialRenderBundle } from '@/core/presentation/lesson-mate
 import type { RoleViewSnapshot } from '@/core/presentation/roleview-governance'
 import { RoleViewTeacherPanel } from './roleview-teacher-panel'
 import styles from './lesson-materials.module.css'
+import visualStyles from './lesson-materials-visual.module.css'
 
 type MaterialView = 'lim' | 'visuale' | 'scheda' | 'docente'
 
@@ -117,17 +118,17 @@ export default function LessonMaterialsClient({
       ) : null}
 
       {view === 'visuale' ? (
-        <section className={styles.visualView} aria-label="Mappa visuale della lezione">
-          <article className={styles.visualMap}>
+        <section className={visualStyles.visualView} aria-label="Mappa visuale della lezione">
+          <article className={visualStyles.visualMap}>
             <header>
               <p className={styles.eyebrow}>PERCORSO DELLA LEZIONE</p>
               <h2>{bundle.visualAid.title}</h2>
               <p>Una vista d’insieme pronta da proiettare per orientare la classe prima di iniziare.</p>
             </header>
-            <ol className={styles.visualSteps}>
+            <ol className={visualStyles.visualSteps}>
               {bundle.visualAid.items.map((item) => (
-                <li className={styles.visualStep} key={`${item.ordinal}-${item.label}`}>
-                  <span className={styles.visualOrdinal} aria-hidden>{item.ordinal}</span>
+                <li className={visualStyles.visualStep} key={`${item.ordinal}-${item.label}`}>
+                  <span className={visualStyles.visualOrdinal} aria-hidden>{item.ordinal}</span>
                   <div>
                     <strong>{item.label}</strong>
                     <span>{item.minutes === null ? 'Tempo adattabile' : `${item.minutes} min`}</span>
