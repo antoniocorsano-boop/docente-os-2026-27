@@ -3,18 +3,22 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import type { LessonMaterialRenderBundle } from '@/core/presentation/lesson-material-renderer'
+import type { RoleViewSnapshot } from '@/core/presentation/roleview-governance'
+import { RoleViewTeacherPanel } from './roleview-teacher-panel'
 import styles from './lesson-materials.module.css'
 
 type MaterialView = 'lim' | 'scheda' | 'docente'
 
 export default function LessonMaterialsClient({
   bundle,
+  roleView,
   sectionLabel,
   timeLabel,
   authority,
   initialView,
 }: {
   bundle: LessonMaterialRenderBundle
+  roleView: RoleViewSnapshot
   sectionLabel: string
   timeLabel: string
   authority: 'IN_FORCE' | 'PROVISIONAL_DRAFT'
@@ -61,10 +65,9 @@ export default function LessonMaterialsClient({
             {authority === 'PROVISIONAL_DRAFT' ? ' · Orario provvisorio' : ''}
           </p>
         </div>
-        <p className={styles.status} data-status={bundle.status === 'READY' ? 'ready' : 'partial'}>
-          {bundle.status === 'READY' ? 'Materiali pronti' : 'Da rivedere'}
-        </p>
       </header>
+
+      <RoleViewTeacherPanel roleView={roleView} />
 
       <nav className={styles.viewNav} aria-label="Scegli la vista dei materiali">
         <button type="button" aria-pressed={view === 'lim'} onClick={() => setView('lim')}>Proietta</button>
