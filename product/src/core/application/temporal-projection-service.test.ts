@@ -50,8 +50,22 @@ function project(input: {
   })
 }
 
-test('projection fails closed when Calendar has not classified the local date', () => {
+test('an active timetable remains in force when Calendar has not classified the local date', () => {
   const result = project({})
+  assert.equal(result.calendarState, 'UNDETERMINED')
+  assert.equal(result.timetableState, 'IN_FORCE')
+  assert.equal(result.timetableVersionId, 'tt-active')
+  assert.equal(result.occurrences.length, 1)
+  assert.equal(result.occurrences[0].title, '1ª A · Tecnologia')
+  assert.deepEqual(result.occurrences[0].provenance, [
+    'timetable_version:tt-active',
+    'timetable_slot:slot-1',
+    'calendar_state:undetermined:2026-09-07',
+  ])
+})
+
+test('projection still fails closed when Calendar is unclassified and no timetable version applies', () => {
+  const result = project({ versions: [] })
   assert.equal(result.calendarState, 'UNDETERMINED')
   assert.equal(result.timetableState, 'UNAVAILABLE')
   assert.deepEqual(result.occurrences, [])
