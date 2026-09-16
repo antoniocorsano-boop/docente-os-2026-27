@@ -88,19 +88,24 @@ function classifyKnownPath(path, state) {
     addImpact(state, 'accessibility', path, 'user-facing surface may change accessible behavior')
   }
 
-  const plannerWrite =
+  const plannerWriteBoundary =
     path.startsWith('product/src/app/api/assistant/planner-write/') ||
     path === 'product/src/core/application/assistant-write-contract.ts' ||
+    path === 'product/src/core/infrastructure/supabase/supabase-planner-repository.ts'
+
+  const plannerWriteEvidence =
     path === 'product/src/core/application/assistant-write-contract.test.ts' ||
-    path === 'product/src/core/infrastructure/supabase/supabase-planner-repository.ts' ||
     path === 'product/e2e/x3-acceptance.spec.mjs' ||
     path === 'product/e2e/x4-planner-write.spec.mjs' ||
     path === '.github/workflows/x4-planner-e2e.yml'
 
-  if (plannerWrite) {
+  if (plannerWriteBoundary || plannerWriteEvidence) {
     known = true
     addImpact(state, 'planner_write', path, 'Planner mutation boundary or its acceptance evidence changed')
-    addImpact(state, 'security', path, 'confirmed write boundary is security-sensitive')
+  }
+
+  if (plannerWriteBoundary) {
+    addImpact(state, 'security', path, 'confirmed write boundary implementation is security-sensitive')
   }
 
   const performance =
