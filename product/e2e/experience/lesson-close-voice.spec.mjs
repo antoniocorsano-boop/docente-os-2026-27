@@ -70,17 +70,6 @@ test('Journey: Lezione → Registra → dettatura effimera → transcript modifi
     })
   })
 
-  page.on('request', (request) => {
-    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method())) return
-    const url = new URL(request.url())
-    if (request.method() === 'POST' && url.pathname === '/api/voice/transcribe') return
-    if (request.method() === 'POST' && url.pathname === '/api/copilot') {
-      copilotRequests.push(request)
-      return
-    }
-    unexpectedMutationRequests.push(`${request.method()} ${url.pathname}`)
-  })
-
   await loginE2E(page)
   await page.goto('/classi')
 
@@ -93,6 +82,17 @@ test('Journey: Lezione → Registra → dettatura effimera → transcript modifi
 
   const closeCard = page.locator('form').filter({ hasText: 'Conferma ciò che hai svolto' }).first()
   await expect(closeCard).toBeVisible()
+
+  page.on('request', (request) => {
+    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method())) return
+    const url = new URL(request.url())
+    if (request.method() === 'POST' && url.pathname === '/api/voice/transcribe') return
+    if (request.method() === 'POST' && url.pathname === '/api/copilot') {
+      copilotRequests.push(request)
+      return
+    }
+    unexpectedMutationRequests.push(`${request.method()} ${url.pathname}`)
+  })
 
   const evidenceNote = closeCard.locator('textarea[name="evidenceNote"]')
   const primaryAction = closeCard.getByRole('button', { name: 'Registra e torna alla classe' })
