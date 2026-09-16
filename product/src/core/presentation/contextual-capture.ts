@@ -48,10 +48,17 @@ export type ContextualCaptureInput = {
   sourceKind: ContextualCaptureSourceKind
   text: string
   explicitLessonContext?: LessonCopilotContext | null
+  explicitTarget?: ContextualCaptureTarget | null
   currentSessionTargets?: ContextualCaptureTarget[]
   temporalTargets?: ContextualCaptureTarget[]
   weakLastOpenedTarget?: ContextualCaptureTarget | null
 }
+
+const NEXT_ACTIVITY_KINDS = new Set<ContextualCaptureProposalKind>([
+  'NEXT_LESSON_FOCUS',
+  'PREPARATION_NEED',
+  'REMINDER_CANDIDATE',
+])
 
 export function buildContextualCapture(input: ContextualCaptureInput): ContextualCaptureResult {
   if (contextualCaptureContainsRawAudio(input)) {
@@ -66,10 +73,17 @@ export function buildContextualCapture(input: ContextualCaptureInput): Contextua
 
   const explicitTarget = input.explicitLessonContext
     ? targetFromLessonContext(input.explicitLessonContext)
-    : null
+    : input.explicitTarget
+      ? cloneTarget(input.explicitTarget)
+      : null
 
   if (explicitTarget) {
-    return resolved(input.sourceKind, text, explicitTarget, 'EXPLICIT_LESSON_CONTEXT')
+    return resolved(
+      input.sourceKind,
+      text,
+      explicitTarget,
+      input.explicitLessonContext ? 'EXPLICIT_LESSON_CONTEXT' : 'EXPLICIT_TARGET',
+    )
   }
 
   const currentSessionTargets = uniqueTargets(input.currentSessionTargets ?? [])
@@ -98,6 +112,23 @@ export function buildContextualCapture(input: ContextualCaptureInput): Contextua
   }
 
   return blocked(input.sourceKind, 'NO_SUFFICIENT_CONTEXT')
+}
+
+export function buildContextualCaptureNextActivity(
+  result: ContextualCaptureResult,
+  maxLength = 450,
+): string | null {
+  if (result.binding.status !== 'RESOLVED') return null
+
+  const summaries = uniqueStrings(
+    result.proposedEffects
+      .filter((effect) => NEXT_ACTIVITY_KINDS.has(effect.kind))
+      .map((effect) => normalizeText(effect.summary))
+      .filter(Boolean),
+  )
+
+  if (summaries.length === 0) return null
+  return shortenText(summaries.slice(0, 2).join(' '), maxLength)
 }
 
 export function contextualCaptureContainsRawAudio(value: unknown): boolean {
@@ -192,24 +223,24 @@ function targetFromLessonContext(context: LessonCopilotContext): ContextualCaptu
 }
 
 function classifyCapture(text: string): ContextualCaptureEffectProposal[] {
-  const normalized = normalizeForMatch(text)
+  const clauses = splitCaptureClauses(text)
   const effects: ContextualCaptureEffectProposal[] = []
 
-  addIf(effects, 'LESSON_EXECUTION_NOTE', normalized, [
+  addIf(effects, 'LESSON_EXECUTION_NOTE', clauses, [
     'abbiamo fatto', 'ho fatto', 'abbiamo svolto', 'ho svolto', 'abbiamo spiegato', 'ho spiegato',
     'siamo arrivati', 'abbiamo completato', 'ho completato',
   ])
-  addIf(effects, 'PROFESSIONAL_OBSERVATION', normalized, [
+  addIf(effects, 'PROFESSIONAL_OBSERVATION', clauses, [
     'difficolta', 'non hanno capito', 'non ha capito', 'hanno capito', 'ha capito', 'confus', 'interesse',
     'partecip', 'fatica', 'incert',
   ])
-  addIf(effects, 'NEXT_LESSON_FOCUS', normalized, [
+  addIf(effects, 'NEXT_LESSON_FOCUS', clauses, [
     'prossima lezione', 'la prossima', 'riprendere', 'riprendiamo', 'continuare', 'continuiamo', 'tornare su',
   ])
-  addIf(effects, 'PREPARATION_NEED', normalized, [
+  addIf(effects, 'PREPARATION_NEED', clauses, [
     'preparare', 'preparo', 'materiale', 'scheda', 'esempio', 'immagine', 'presentazione', 'stampare',
   ])
-  addIf(effects, 'REMINDER_CANDIDATE', normalized, [
+  addIf(effects, 'REMINDER_CANDIDATE', clauses, [
     'ricordami', 'ricordare', 'promemoria', 'devo fare', 'non dimenticare',
   ])
 
@@ -220,18 +251,27 @@ function classifyCapture(text: string): ContextualCaptureEffectProposal[] {
     })
   }
 
-  return effects.slice(0, 3).map((effect) => ({ ...effect, summary: text }))
+  return effects.slice(0, 3)
 }
 
 function addIf(
   effects: ContextualCaptureEffectProposal[],
   kind: ContextualCaptureProposalKind,
-  normalized: string,
+  clauses: Array<{ original: string; normalized: string }>,
   signals: string[],
 ) {
-  if (signals.some((signal) => normalized.includes(signal))) {
-    effects.push({ kind, summary: normalized })
+  const match = clauses.find((clause) => signals.some((signal) => clause.normalized.includes(signal)))
+  if (match) {
+    effects.push({ kind, summary: match.original })
   }
+}
+
+function splitCaptureClauses(text: string) {
+  const matches = text.match(/[^.!?;]+[.!?;]?/g) ?? [text]
+  return matches
+    .map((value) => normalizeText(value))
+    .filter(Boolean)
+    .map((original) => ({ original, normalized: normalizeForMatch(original) }))
 }
 
 function uniqueTargets(targets: ContextualCaptureTarget[]) {
@@ -242,13 +282,27 @@ function uniqueTargets(targets: ContextualCaptureTarget[]) {
     const key = [target.sectionId, target.blockId ?? '', target.projectionId ?? '', target.lessonRef ?? '', target.localDate ?? ''].join('|')
     if (seen.has(key)) continue
     seen.add(key)
-    result.push({
-      ...target,
-      provenance: target.provenance.map((item) => ({ ...item })),
-    })
+    result.push(cloneTarget(target))
   }
 
   return result
+}
+
+function cloneTarget(target: ContextualCaptureTarget): ContextualCaptureTarget {
+  return {
+    ...target,
+    provenance: target.provenance.map((item) => ({ ...item })),
+  }
+}
+
+function uniqueStrings(values: string[]) {
+  return [...new Set(values)]
+}
+
+function shortenText(value: string, maxLength: number) {
+  if (value.length <= maxLength) return value
+  if (maxLength <= 1) return value.slice(0, Math.max(0, maxLength))
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`
 }
 
 function normalizeText(value: string) {
