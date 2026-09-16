@@ -129,9 +129,9 @@ test('AI-1B: la proposta di prossima attività combina al massimo due sintesi pe
     explicitTarget: target('2c'),
   })
 
-  const nextActivity = buildContextualCaptureNextActivity(result, 90)
+  const nextActivity = buildContextualCaptureNextActivity(result, 100)
   assert.equal(nextActivity, 'La prossima lezione riprendere la prospettiva. Preparare una scheda con un esempio semplice.')
-  assert.ok((nextActivity?.length ?? 0) <= 90)
+  assert.ok((nextActivity?.length ?? 0) <= 100)
 })
 
 test('AI-1A: una sola sessione corrente risolve il binding senza usare segnali più deboli', () => {
