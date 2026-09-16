@@ -52,6 +52,7 @@ export type RoleViewAction = {
   label: string
   priority: 'PRIMARY' | 'SECONDARY'
   source: string
+  href?: string
 }
 
 export type RoleViewEvidence = {
@@ -240,7 +241,7 @@ function snapshotFromManifest(manifest: LessonPreparationManifest, role: RoleVie
       },
     ],
     blockers,
-    nextActions: nextActionsForManifest(manifest.readiness, role),
+    nextActions: nextActionsForManifest(manifest, role),
     evidence,
     provenance: evidence.map((item) => ({ ...item })),
   }
@@ -288,8 +289,8 @@ function blockersForManifest(
   return blockers
 }
 
-function nextActionsForManifest(readiness: LessonPreparationReadiness, role: RoleViewRole): RoleViewAction[] {
-  if (readiness === 'READY' || readiness === 'USED') {
+function nextActionsForManifest(manifest: LessonPreparationManifest, role: RoleViewRole): RoleViewAction[] {
+  if (manifest.readiness === 'READY' || manifest.readiness === 'USED') {
     return [{
       id: 'OPEN_LESSON',
       label: role === 'TEACHER' ? 'Apri la lezione' : 'Verifica la preparazione pronta',
@@ -298,12 +299,18 @@ function nextActionsForManifest(readiness: LessonPreparationReadiness, role: Rol
     }]
   }
 
-  if (readiness === 'REVIEW_REQUIRED' || readiness === 'NEEDS_REVISION') {
+  if (manifest.readiness === 'REVIEW_REQUIRED' || manifest.readiness === 'NEEDS_REVISION') {
+    const canReviewProposals = role === 'TEACHER' && manifest.proposedExtensionRefs.length > 0
     return [{
       id: 'REVIEW_LESSON_PREPARATION',
-      label: role === 'TEACHER' ? 'Rivedi e valida la preparazione' : 'Verifica gli elementi da validare',
+      label: canReviewProposals
+        ? 'Controlla proposte'
+        : role === 'TEACHER'
+          ? 'Rivedi e valida la preparazione'
+          : 'Verifica gli elementi da validare',
       priority: 'PRIMARY',
       source: 'LessonPreparationManifest.readiness',
+      href: canReviewProposals ? lessonDesignReviewHref(manifest) : undefined,
     }]
   }
 
@@ -313,6 +320,10 @@ function nextActionsForManifest(readiness: LessonPreparationReadiness, role: Rol
     priority: 'PRIMARY',
     source: 'LessonPreparationManifest.readiness',
   }]
+}
+
+function lessonDesignReviewHref(manifest: LessonPreparationManifest) {
+  return `/classi/${encodeURIComponent(manifest.sectionId)}/lezioni/${encodeURIComponent(manifest.blockId)}?mode=prepare#lesson-design-tools-title`
 }
 
 function statusForReadiness(readiness: LessonPreparationReadiness): RoleViewStatus {
