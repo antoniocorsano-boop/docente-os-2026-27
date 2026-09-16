@@ -36,8 +36,6 @@ export async function loadLessonReflectionCopilotContext(
   if (!block) return { status: 'BLOCKED', message: 'La lezione non appartiene al Piano annuale attivo.' }
 
   const projection = resolveRuntimeHumanTaskLessonProjection(grade, block)
-  if (!projection) return { status: 'BLOCKED', message: 'La proiezione canonica della lezione non è disponibile.' }
-
   const source = CANONICAL_PLAN_SOURCES[grade]
   const assembled = assembleLessonReflectionCopilotContext({
     runId: randomUUID(),
@@ -47,8 +45,8 @@ export async function loadLessonReflectionCopilotContext(
     sectionId: section.id,
     sectionLabel: `${GRADE_NUMBER[section.grade]}ª ${section.sectionCode}`,
     blockId: block.id,
-    projectionId: projection.projectionId,
-    lessonTitle: projection.title,
+    projectionId: projection?.projectionId ?? null,
+    lessonTitle: projection?.title ?? block.focus ?? block.title,
     canonicalPlanRef: source.assetId,
     canonicalPlanLabel: `Piano annuale ${GRADE_NUMBER[section.grade]}ª ${section.sectionCode}`,
   })
