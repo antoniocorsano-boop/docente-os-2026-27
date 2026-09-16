@@ -76,7 +76,7 @@ export default function LessonMaterialsClient({
 
       <RoleViewTeacherPanel roleView={roleView} />
 
-      <nav className={styles.viewNav} aria-label="Scegli la vista dei materiali">
+      <nav className={`${styles.viewNav} ${visualStyles.fourViews}`} aria-label="Scegli la vista dei materiali">
         <button type="button" aria-pressed={view === 'lim'} onClick={() => setView('lim')}>Proietta</button>
         <button type="button" aria-pressed={view === 'visuale'} onClick={() => setView('visuale')}>Mappa visuale</button>
         <button type="button" aria-pressed={view === 'scheda'} onClick={() => setView('scheda')}>Scheda studenti</button>
