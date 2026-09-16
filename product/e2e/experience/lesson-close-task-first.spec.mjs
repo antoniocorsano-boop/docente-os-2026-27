@@ -7,7 +7,57 @@ requireE2ECredentials()
 
 const outputRoot = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience'
 
-test('Journey: Lezione → Registra → preview Copilota → Fatto senza modello interno', async ({ page }, testInfo) => {
+test('Journey: Lezione → detta → preview Copilota → Fatto senza modello interno', async ({ page }, testInfo) => {
+  await page.addInitScript(() => {
+    const stream = {
+      getTracks() {
+        return [{ stop() {} }]
+      },
+    }
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        async getUserMedia() {
+          return stream
+        },
+      },
+    })
+
+    class FakeMediaRecorder {
+      static isTypeSupported(value) {
+        return String(value).startsWith('audio/webm')
+      }
+
+      constructor(inputStream, options = {}) {
+        this.stream = inputStream
+        this.mimeType = options.mimeType || 'audio/webm'
+        this.state = 'inactive'
+        this.ondataavailable = null
+        this.onstart = null
+        this.onstop = null
+      }
+
+      start() {
+        this.state = 'recording'
+        this.onstart?.({ timeStamp: 1000 })
+      }
+
+      stop() {
+        this.state = 'inactive'
+        const data = new Blob(['voice-bytes'], { type: this.mimeType })
+        queueMicrotask(() => {
+          this.ondataavailable?.({ data })
+          this.onstop?.({ timeStamp: 2500 })
+        })
+      }
+    }
+
+    Object.defineProperty(window, 'MediaRecorder', {
+      configurable: true,
+      value: FakeMediaRecorder,
+    })
+  })
+
   await loginE2E(page)
   await page.goto('/classi')
 
@@ -31,11 +81,16 @@ test('Journey: Lezione → Registra → preview Copilota → Fatto senza modello
   await expect(primaryAction, 'UX-0D richiede una sola CTA primaria visibile.').toHaveCount(1)
   await expect(primaryAction).toBeVisible()
 
+  const voiceRequests = []
   const copilotRequests = []
   const unexpectedMutationRequests = []
   page.on('request', (request) => {
     if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method())) return
     const url = new URL(request.url())
+    if (request.method() === 'POST' && url.pathname === '/api/voice/transcribe') {
+      voiceRequests.push(request)
+      return
+    }
     if (request.method() === 'POST' && url.pathname === '/api/copilot') {
       copilotRequests.push(request)
       return
@@ -43,10 +98,45 @@ test('Journey: Lezione → Registra → preview Copilota → Fatto senza modello
     unexpectedMutationRequests.push(`${request.method()} ${url.pathname}`)
   })
 
+  await page.route('**/api/voice/transcribe', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        text: 'Abbiamo svolto la misura. La prossima lezione riprendere gli errori. Preparare una scheda guidata.',
+        ephemeral: true,
+      }),
+    })
+  })
+
   const evidenceNote = closeCard.locator('textarea[name="evidenceNote"]')
   const nextActivity = closeCard.locator('textarea[name="nextActivity"]')
-  await evidenceNote.fill('Abbiamo svolto la misura. La prossima lezione riprendere gli errori. Preparare una scheda guidata.')
+  await expect(evidenceNote).toHaveValue('')
   await expect(nextActivity).toHaveValue('')
+
+  const dictate = closeCard.getByRole('button', { name: 'Detta la lezione' })
+  await expect(dictate).toBeVisible()
+  await dictate.click()
+  const stopDictation = closeCard.getByRole('button', { name: 'Termina dettatura' })
+  await expect(stopDictation).toBeVisible()
+  await expect(primaryAction, 'Durante la cattura non deve essere possibile registrare un testo incompleto.').toBeDisabled()
+  await stopDictation.click()
+
+  await expect(evidenceNote).toHaveValue('Abbiamo svolto la misura. La prossima lezione riprendere gli errori. Preparare una scheda guidata.')
+  await expect(closeCard.getByRole('status')).toContainText('Trascrizione pronta')
+  await expect(primaryAction).toBeEnabled()
+  expect(voiceRequests, 'La dettatura deve produrre una sola richiesta effimera STT.').toHaveLength(1)
+  const voiceRequest = voiceRequests[0]
+  expect(voiceRequest.headers()['content-type']).toMatch(/^multipart\/form-data; boundary=/)
+  expect(voiceRequest.headers()['x-docente-surface-path']).toContain('?mode=record')
+  const voiceBody = voiceRequest.postData() ?? ''
+  expect(voiceBody).toContain('name="audio"')
+  expect(voiceBody).toContain('name="durationMs"')
+  expect(voiceBody).toContain('1500')
+  expect(voiceBody).not.toContain('NaN')
+  expect(voiceBody).not.toContain(sectionId)
+  expect(voiceBody).not.toContain('B01')
+  expect(unexpectedMutationRequests, 'La dettatura non deve produrre write persistenti.').toEqual([])
 
   const organize = closeCard.getByRole('button', { name: 'Organizza con il Copilota' })
   await expect(organize).toBeVisible()
@@ -87,7 +177,7 @@ test('Journey: Lezione → Registra → preview Copilota → Fatto senza modello
   expect(copilotBody.prompt).not.toContain(sectionId)
   expect(copilotBody.prompt).not.toContain('B01')
   expect(copilotBody.prompt).not.toContain('projection')
-  expect(unexpectedMutationRequests, 'Il Copilota non deve produrre write prima della conferma docente.').toEqual([])
+  expect(unexpectedMutationRequests, 'Voce e Copilota non devono produrre write prima della conferma docente.').toEqual([])
 
   await preview.getByRole('button', { name: 'Usa come prossima attività' }).click()
   await expect(nextActivity).toHaveValue(/La prossima lezione riprendere gli errori\./)
@@ -113,10 +203,10 @@ test('Journey: Lezione → Registra → preview Copilota → Fatto senza modello
   }))
   expect(geometry.document, 'Registra non deve produrre overflow orizzontale.').toBeLessThanOrEqual(geometry.viewport)
 
-  await screenshot(page, testInfo, 'lesson-close-contextual-preview')
+  await screenshot(page, testInfo, 'lesson-close-contextual-voice-preview')
   await recordJourney(testInfo.project.name, {
     status: 'PASS',
-    note: 'Registra mantiene una sola CTA primaria; la nota passa dalla frontdoor Copilot canonica, viene organizzata come proposta e resta senza write fino alla conferma docente.',
+    note: 'La dettatura resta un input effimero della stessa nota; il transcript è modificabile, il Copilota propone senza write e la sola CTA persistente resta Registra e torna alla classe.',
   })
 })
 
@@ -131,14 +221,14 @@ async function recordJourney(project, result) {
   await fs.mkdir(dir, { recursive: true })
   const payload = {
     schemaVersion: 1,
-    id: 'lesson-close-contextual-preview',
-    label: 'Lezione → Registra → preview Copilota → Fatto senza modello interno',
+    id: 'lesson-close-contextual-voice-preview',
+    label: 'Lezione → detta → preview Copilota → Fatto senza modello interno',
     project,
     status: result.status,
     note: result.note,
     capturedAt: new Date().toISOString(),
   }
-  await fs.writeFile(path.join(dir, `${safe(project)}--lesson-close-contextual-preview.json`), `${JSON.stringify(payload, null, 2)}\n`)
+  await fs.writeFile(path.join(dir, `${safe(project)}--lesson-close-contextual-voice-preview.json`), `${JSON.stringify(payload, null, 2)}\n`)
 }
 
 function parseJson(value) {

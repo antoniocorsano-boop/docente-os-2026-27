@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
+import { isVoiceCaptureEnabled } from '@/core/application/voice/voice-capture-policy'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
@@ -121,6 +122,7 @@ export default async function LessonWorkspacePage({
     evidenceNote: progress?.evidenceNote ?? null,
   }
   const udaProgressView = { completed: udaProgress, total: udaBlocks.length }
+  const voiceCaptureEnabled = isVoiceCaptureEnabled(process.env.DOCENTE_OS_VOICE_CAPTURE)
 
   return (
     <AppShell
@@ -156,6 +158,7 @@ export default async function LessonWorkspacePage({
           projection={projection}
           defaultLocalDate={currentRomeDate()}
           registrationKey={randomUUID()}
+          voiceCaptureEnabled={voiceCaptureEnabled}
         />
       ) : (
         <LessonPrepareClient
