@@ -64,10 +64,12 @@ test('projected registration accepts an unclassified Calendar day only with iden
   assert.doesNotMatch(timetableFallbackMigrationSource, /source_calendar_state\s*=\s*'NO_LESSONS'/)
 })
 
-test('Today surfaces the in-force timetable when Calendar is unclassified instead of hiding it', () => {
+test('Today surfaces the in-force timetable when Calendar is unclassified and preserves explicit no-lessons override', () => {
   assert.match(todayPanelSource, /day\.calendarState === 'UNDETERMINED' && day\.timetableState === 'IN_FORCE'/)
   assert.match(todayPanelSource, /day\.calendarState === 'UNDETERMINED' && !timetableFallback/)
   assert.match(todayPanelSource, /Orario in vigore · Calendario non classificato/)
+  assert.match(todayPanelSource, /day\.calendarState === 'NO_LESSONS'/)
+  assert.match(todayPanelSource, /Lezioni non materializzate/)
 })
 
 test('lesson close no longer asks the teacher to decide plan status as part of registration', () => {
