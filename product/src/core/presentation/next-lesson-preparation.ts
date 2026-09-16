@@ -35,7 +35,7 @@ export type NextLessonPreparation = {
     readyCount: number
     statusLabel: LessonCopilotContext['lesson']['statusLabel']
   } | null
-  continuity: TeachingSessionContinuity | null
+  continuity?: TeachingSessionContinuity | null
   knowledgeResources: NextLessonKnowledgeResource[]
   missingInformation: string[]
   provenance: Array<{ kind: string; ref?: string; label?: string }>
