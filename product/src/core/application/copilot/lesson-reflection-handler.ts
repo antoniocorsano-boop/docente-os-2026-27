@@ -3,17 +3,19 @@ import {
   buildContextualCapture,
   buildContextualCaptureNextActivity,
   type ContextualCaptureEffectProposal,
+  type ContextualCaptureSourceKind,
   type ContextualCaptureTarget,
 } from '@/core/presentation/contextual-capture'
 import {
   matchesLessonReflectionCaptureIntent,
-  parseLessonReflectionCapturePrompt,
+  parseLessonReflectionCaptureRequest,
 } from '@/core/presentation/contextual-capture-frontdoor'
 
 export type LessonReflectionCaptureActionResult = {
   skillId: 'LESSON_REFLECTION'
   actionKind: 'PROPOSE'
   status: 'SUPPORTED' | 'BLOCKED'
+  sourceKind: ContextualCaptureSourceKind
   effects: ContextualCaptureEffectProposal[]
   nextActivity: string | null
   persistentEffect: 'NONE'
@@ -29,11 +31,11 @@ export function handleLessonReflectionCapture(input: {
   target: ContextualCaptureTarget
   prompt: string
 }): LessonReflectionCaptureActionResult {
-  const text = parseLessonReflectionCapturePrompt(input.prompt)
-  if (!text) return blocked(input.context, 'Richiesta di riflessione non valida.')
+  const request = parseLessonReflectionCaptureRequest(input.prompt)
+  if (!request) return blocked(input.context, 'Richiesta di riflessione non valida.')
 
   if (input.context.privacy.classification !== 'PROFESSIONAL' || input.context.privacy.providerPolicy !== 'NO_MODEL') {
-    return blocked(input.context, 'Il contesto privacy non autorizza questa elaborazione locale.')
+    return blocked(input.context, 'Il contesto privacy non autorizza questa elaborazione locale.', request.sourceKind)
   }
 
   const candidate = discoverCopilotSkills({
@@ -49,23 +51,24 @@ export function handleLessonReflectionCapture(input: {
       ...(candidate?.missingCapabilities.map((item) => `Capacità non disponibile: ${item}`) ?? []),
       ...input.context.missing,
     ]
-    return blocked(input.context, reasons[0] ?? 'Contesto della lezione non sufficiente.')
+    return blocked(input.context, reasons[0] ?? 'Contesto della lezione non sufficiente.', request.sourceKind)
   }
 
   const capture = buildContextualCapture({
-    sourceKind: 'MANUAL_TEXT',
-    text,
+    sourceKind: request.sourceKind,
+    text: request.text,
     explicitTarget: input.target,
   })
 
   if (capture.binding.status !== 'RESOLVED') {
-    return blocked(input.context, 'La nota non può essere collegata con certezza alla lezione corrente.')
+    return blocked(input.context, 'La nota non può essere collegata con certezza alla lezione corrente.', request.sourceKind)
   }
 
   return {
     skillId: 'LESSON_REFLECTION',
     actionKind: 'PROPOSE',
     status: 'SUPPORTED',
+    sourceKind: capture.sourceKind,
     effects: capture.proposedEffects,
     nextActivity: buildContextualCaptureNextActivity(capture),
     persistentEffect: 'NONE',
@@ -74,11 +77,16 @@ export function handleLessonReflectionCapture(input: {
   }
 }
 
-function blocked(context: CopilotRunContext, message: string): LessonReflectionCaptureActionResult {
+function blocked(
+  context: CopilotRunContext,
+  message: string,
+  sourceKind: ContextualCaptureSourceKind = 'MANUAL_TEXT',
+): LessonReflectionCaptureActionResult {
   return {
     skillId: 'LESSON_REFLECTION',
     actionKind: 'PROPOSE',
     status: 'BLOCKED',
+    sourceKind,
     effects: [],
     nextActivity: null,
     persistentEffect: 'NONE',
