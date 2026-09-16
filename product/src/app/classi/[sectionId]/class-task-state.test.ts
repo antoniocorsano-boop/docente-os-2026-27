@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { presentClassRecorderEmptyState, presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
+import { isCurrentDaySessionReceipt, presentClassRecorderEmptyState, presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
 
 const base = {
   hasNextBlock: true,
@@ -111,6 +111,12 @@ test('il percorso completo non simula un nuovo compito operativo', () => {
   const presentation = presentClassTaskState('COMPLETE')
   assert.equal(presentation.eyebrow, 'PERCORSO COMPLETATO')
   assert.match(presentation.nextStep, /Consulta Piano/)
+})
+
+test('una receipt guida lo stato corrente soltanto nella stessa data locale', () => {
+  assert.equal(isCurrentDaySessionReceipt('2026-09-16', '2026-09-16'), true)
+  assert.equal(isCurrentDaySessionReceipt('2026-09-15', '2026-09-16'), false)
+  assert.equal(isCurrentDaySessionReceipt(null, '2026-09-16'), false)
 })
 
 test('dopo una TeachingSession la superficie non ricade nel falso stato Calendario', () => {
