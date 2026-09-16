@@ -6,6 +6,7 @@ import {
   buildLessonReflectionCapturePrompt,
   CONTEXTUAL_CAPTURE_MAX_TEXT_LENGTH,
   parseLessonReflectionCapturePrompt,
+  parseLessonReflectionCaptureRequest,
 } from '@/core/presentation/contextual-capture-frontdoor'
 
 function lessonContext() {
@@ -51,6 +52,7 @@ test('AI-1B handler: LESSON_REFLECTION usa contesto server-side, propone e non p
   assert.equal(result.skillId, 'LESSON_REFLECTION')
   assert.equal(result.actionKind, 'PROPOSE')
   assert.equal(result.status, 'SUPPORTED')
+  assert.equal(result.sourceKind, 'MANUAL_TEXT')
   assert.equal(result.persistentEffect, 'NONE')
   assert.equal(result.confirmationRequiredForPersistence, true)
   assert.deepEqual(result.effects.map((effect) => effect.kind), [
@@ -64,6 +66,29 @@ test('AI-1B handler: LESSON_REFLECTION usa contesto server-side, propone e non p
   )
   assert.ok(result.provenance.some((item) => item.kind === 'CANONICAL_PLAN'))
   assert.ok(result.provenance.some((item) => item.kind === 'LESSON_PROJECTION'))
+})
+
+test('AI-1C handler: la trascrizione effimera conserva la propria provenance senza persistere audio', () => {
+  const assembled = lessonContext()
+  const prompt = buildLessonReflectionCapturePrompt(
+    'Abbiamo svolto il sistema tecnologico. La prossima lezione riprendere gli impatti.',
+    'EPHEMERAL_TRANSCRIPT',
+  )
+  const parsed = parseLessonReflectionCaptureRequest(prompt)
+
+  assert.equal(parsed?.sourceKind, 'EPHEMERAL_TRANSCRIPT')
+  assert.equal(prompt.includes('audio'), false)
+
+  const result = handleLessonReflectionCapture({
+    context: assembled.context,
+    target: assembled.target,
+    prompt,
+  })
+
+  assert.equal(result.status, 'SUPPORTED')
+  assert.equal(result.sourceKind, 'EPHEMERAL_TRANSCRIPT')
+  assert.equal(result.persistentEffect, 'NONE')
+  assert.equal(result.confirmationRequiredForPersistence, true)
 })
 
 test('AI-1B handler: capability mancante fallisce chiusa', () => {
