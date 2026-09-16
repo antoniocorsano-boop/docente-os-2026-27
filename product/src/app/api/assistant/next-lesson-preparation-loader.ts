@@ -1,7 +1,9 @@
 import { buildClassWorkspaceLearningFocus } from '@/app/classi/class-workspace-model'
+import { selectLatestTeachingSessionContinuity } from '@/core/domain/teaching-session-reflection'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
+import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
 import type { HomeDailyContext } from '@/core/presentation/home-daily-context'
 import {
   buildInternalLessonMaterialRenderBundle,
@@ -109,16 +111,30 @@ export async function loadNextLessonPreparationBundle(input: {
     }))
   }
 
-  const lessonBundle = await loadAuthoritativeLessonCopilotBundle({
-    workspaceId: input.workspaceId,
-    academicYearId: input.academicYearId,
+  const sessionRepository = new SupabaseTeachingSessionRepository()
+  const [lessonBundle, teachingSessions] = await Promise.all([
+    loadAuthoritativeLessonCopilotBundle({
+      workspaceId: input.workspaceId,
+      academicYearId: input.academicYearId,
+      sectionId: lesson.sectionId,
+      blockId: focus.nextBlock.id,
+    }),
+    sessionRepository.listBySection(input.workspaceId, input.academicYearId, lesson.sectionId).catch(() => {
+      console.warn('[DOCENTE OS] Teaching-session continuity unavailable; next lesson preparation continues without Diary context.')
+      return { sessions: [], allocations: [] }
+    }),
+  ])
+
+  const continuity = selectLatestTeachingSessionContinuity({
+    snapshot: teachingSessions,
     sectionId: lesson.sectionId,
-    blockId: focus.nextBlock.id,
+    lessonStartAt: lesson.startAt,
   })
 
   const preparation = buildNextLessonPreparation({
     lesson,
     lessonContext: lessonBundle?.context ?? null,
+    continuity,
     knowledgeResources: focus.materials,
     missingInformation: [
       ...(!lessonBundle ? ['Il Lesson Brief canonico del prossimo blocco non è disponibile'] : []),

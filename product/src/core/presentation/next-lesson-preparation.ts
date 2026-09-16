@@ -1,3 +1,4 @@
+import type { TeachingSessionContinuity } from '@/core/domain/teaching-session-reflection'
 import type { AssistantResponse } from './assistant-context'
 import type { HomeDailyContext, HomeDailyLesson } from './home-daily-context'
 import type { LessonCopilotContext } from './teacher-copilot-context'
@@ -34,6 +35,7 @@ export type NextLessonPreparation = {
     readyCount: number
     statusLabel: LessonCopilotContext['lesson']['statusLabel']
   } | null
+  continuity?: TeachingSessionContinuity | null
   knowledgeResources: NextLessonKnowledgeResource[]
   missingInformation: string[]
   provenance: Array<{ kind: string; ref?: string; label?: string }>
@@ -70,6 +72,7 @@ export function selectNextLessonForPreparation(
 export function buildNextLessonPreparation(input: {
   lesson: HomeDailyLesson
   lessonContext: LessonCopilotContext | null
+  continuity?: TeachingSessionContinuity | null
   knowledgeResources?: NextLessonKnowledgeResource[]
   missingInformation?: string[]
 }): NextLessonPreparation {
@@ -95,6 +98,7 @@ export function buildNextLessonPreparation(input: {
         statusLabel: input.lessonContext.lesson.statusLabel,
       }
     : null
+  const continuity = input.continuity ? { ...input.continuity } : null
 
   return {
     lesson: {
@@ -107,6 +111,7 @@ export function buildNextLessonPreparation(input: {
       authority: input.lesson.authority,
     },
     canonicalLesson,
+    continuity,
     knowledgeResources: (input.knowledgeResources ?? []).slice(0, 4).map((resource) => ({ ...resource })),
     missingInformation,
     provenance: [
@@ -116,6 +121,11 @@ export function buildNextLessonPreparation(input: {
         label: input.lesson.title,
       },
       ...(input.lessonContext?.provenance.map((item) => ({ ...item })) ?? []),
+      ...(continuity ? [{
+        kind: 'TEACHING_SESSION_REFLECTION',
+        ref: `teaching-session:${continuity.sourceSessionId}`,
+        label: `Diario ${continuity.sourceLocalDate}`,
+      }] : []),
       ...(input.knowledgeResources ?? []).slice(0, 4).map((resource) => ({
         kind: 'KNOWLEDGE_ASSET',
         ref: `knowledge:${resource.assetId}`,
@@ -196,6 +206,14 @@ export function respondToTodayCopilotK2(context: TodayCopilotK2Context, prompt: 
       '',
       '**Preparazione didattica**',
       'La lezione temporale è identificata, ma non posso collegarla con sufficiente certezza a un blocco canonico del Piano annuale. Non invento il collegamento.',
+    )
+  }
+
+  if (preparation.continuity) {
+    lines.push(
+      '',
+      '**Continuità dal Diario**',
+      `• ${preparation.continuity.nextActivity}`,
     )
   }
 
