@@ -57,6 +57,30 @@ test('Drive: la stessa identità sorgente non crea un secondo asset', async () =
   assert.equal(transformed, false)
 })
 
+test('Upload già catturato ma non processato riprende il processing senza creare un secondo asset', async () => {
+  const assets = new MemoryAssets()
+  assets.asset = {
+    ...assets.asset,
+    sourceProvider: 'UPLOAD',
+    sourceLocator: 'storage:knowledge-assets/workspace-1/user-1/file.txt',
+    currentGenerationId: null,
+    processingStatus: 'CAPTURED',
+  }
+  const service = successfulService(assets)
+
+  const result = await service.ingest({
+    workspaceId: assets.asset.workspaceId,
+    assetKind: 'FILE',
+    sourceProvider: 'UPLOAD',
+    sourceLocator: assets.asset.sourceLocator,
+  })
+
+  assert.equal(result.id, assets.asset.id)
+  assert.equal(result.currentGenerationId, 'generation-new')
+  assert.equal(result.processingStatus, 'INDEXED')
+  assert.equal(assets.currentGenerationUpdates, 1)
+})
+
 test('Il profilo scolastico organizza automaticamente il contesto senza richiedere validazione preventiva', async () => {
   const assets = new MemoryAssets()
   assets.asset = {
