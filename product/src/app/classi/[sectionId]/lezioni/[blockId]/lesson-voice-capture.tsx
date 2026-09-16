@@ -35,25 +35,30 @@ export default function LessonVoiceCapture({
   const chunksRef = useRef<Blob[]>([])
   const startedAtRef = useRef(0)
   const autoStopRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const mountedRef = useRef(true)
+  const captureEpochRef = useRef(0)
 
   useEffect(() => {
-    mountedRef.current = true
     return () => {
-      mountedRef.current = false
-      clearAutoStop()
+      captureEpochRef.current += 1
+      if (autoStopRef.current) clearTimeout(autoStopRef.current)
+      autoStopRef.current = null
+
       const recorder = recorderRef.current
+      recorderRef.current = null
       if (recorder?.state === 'recording') {
         recorder.ondataavailable = null
         recorder.onstop = null
         recorder.stop()
       }
-      releaseStream()
+
+      const stream = streamRef.current
+      streamRef.current = null
+      stream?.getTracks().forEach((track) => track.stop())
+      chunksRef.current = []
     }
   }, [])
 
-  function setState(next: VoiceState) {
-    if (!mountedRef.current) return
+  function transition(next: VoiceState) {
     setVoiceState(next)
     onBusyChange?.(next !== 'IDLE')
   }
@@ -67,6 +72,9 @@ export default function LessonVoiceCapture({
       return
     }
 
+    const epoch = captureEpochRef.current + 1
+    captureEpochRef.current = epoch
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -75,7 +83,7 @@ export default function LessonVoiceCapture({
           autoGainControl: true,
         },
       })
-      if (!mountedRef.current) {
+      if (captureEpochRef.current !== epoch) {
         stream.getTracks().forEach((track) => track.stop())
         return
       }
@@ -92,19 +100,20 @@ export default function LessonVoiceCapture({
         if (event.data.size > 0) chunksRef.current.push(event.data)
       }
       recorder.onstop = () => {
-        void finalizeCapture(recorder.mimeType || mimeType || 'audio/webm')
+        void finalizeCapture(recorder.mimeType || mimeType || 'audio/webm', epoch)
       }
 
       startedAtRef.current = Date.now()
       recorder.start(500)
-      setState('RECORDING')
+      transition('RECORDING')
       autoStopRef.current = setTimeout(() => {
         const current = recorderRef.current
         if (current?.state === 'recording') current.stop()
       }, VOICE_CAPTURE_MAX_DURATION_MS)
     } catch {
       releaseStream()
-      setState('IDLE')
+      if (captureEpochRef.current !== epoch) return
+      transition('IDLE')
       setVoiceError('Non posso usare il microfono. Consenti l’accesso oppure continua con la tastiera.')
     }
   }
@@ -114,16 +123,17 @@ export default function LessonVoiceCapture({
     if (recorder?.state === 'recording') recorder.stop()
   }
 
-  async function finalizeCapture(rawMimeType: string) {
+  async function finalizeCapture(rawMimeType: string, epoch: number) {
     clearAutoStop()
     releaseStream()
     recorderRef.current = null
+    if (captureEpochRef.current !== epoch) return
 
     const durationMs = Math.max(1, Math.min(VOICE_CAPTURE_MAX_DURATION_MS, Date.now() - startedAtRef.current))
     const mimeType = normalizeVoiceMimeType(rawMimeType)
     if (!isAllowedVoiceMimeType(mimeType)) {
       chunksRef.current = []
-      setState('IDLE')
+      transition('IDLE')
       setVoiceError('Il formato audio prodotto dal browser non è supportato. Puoi continuare con la tastiera.')
       return
     }
@@ -131,12 +141,12 @@ export default function LessonVoiceCapture({
     const audio = new Blob(chunksRef.current, { type: mimeType })
     chunksRef.current = []
     if (audio.size <= 0 || audio.size > VOICE_CAPTURE_MAX_BYTES) {
-      setState('IDLE')
+      transition('IDLE')
       setVoiceError('La registrazione audio non è utilizzabile. Puoi riprovare o scrivere la nota.')
       return
     }
 
-    setState('TRANSCRIBING')
+    transition('TRANSCRIBING')
     setVoiceInfo('Trascrizione in corso…')
     try {
       const form = new FormData()
@@ -151,6 +161,7 @@ export default function LessonVoiceCapture({
         body: form,
       })
       const payload = await response.json().catch(() => null) as VoiceResponse | null
+      if (captureEpochRef.current !== epoch) return
       if (!response.ok || !payload?.text) {
         setVoiceError(payload?.message ?? 'Non sono riuscito a trascrivere. Puoi riprovare o scrivere la nota.')
         setVoiceInfo(null)
@@ -160,10 +171,11 @@ export default function LessonVoiceCapture({
       onTranscript(payload.text)
       setVoiceInfo('Trascrizione pronta. Controllala e correggila prima di registrare.')
     } catch {
+      if (captureEpochRef.current !== epoch) return
       setVoiceError('La trascrizione non è disponibile. La nota scritta resta invariata e puoi continuare manualmente.')
       setVoiceInfo(null)
     } finally {
-      setState('IDLE')
+      if (captureEpochRef.current === epoch) transition('IDLE')
     }
   }
 
