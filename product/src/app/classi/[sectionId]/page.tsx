@@ -16,7 +16,7 @@ import { buildLessonWorkspaceHref, resolveRuntimeHumanTaskLessonProjection } fro
 import { buildTaskAwareKnowledgeHref, buildTaskAwareKnowledgeListHref } from '@/core/presentation/task-continuity'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes, selectPreparedClassMaterials } from '../class-workspace-model'
-import { presentClassRecorderEmptyState, presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
+import { isCurrentDaySessionReceipt, presentClassRecorderEmptyState, presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
 import { confirmTeachingBlockCompletion } from './actions'
 import { TeachingSessionRecorder } from './TeachingSessionRecorder'
 import '../classi.css'
@@ -109,6 +109,7 @@ export default async function ClassWorkspacePage({
     ? resolveRuntimeHumanTaskLessonProjection(grade, recordedBlock)
     : null
   const sessionReceipt = query.session ? currentSessions.find((session) => session.id === query.session) ?? null : null
+  const hasTodaySessionReceipt = isCurrentDaySessionReceipt(sessionReceipt?.localDate, today)
 
   const nextTitle = nextProjection?.title ?? learningFocus.nextBlock?.focus ?? null
   const nextContext = nextProjection
@@ -140,7 +141,7 @@ export default async function ClassWorkspacePage({
   const taskDecision = resolveClassTaskDecision({
     hasNextBlock: Boolean(nextCanonicalBlock),
     hasModeledLesson: Boolean(nextProjection && learningFocus.nextBlock),
-    hasSessionReceipt: Boolean(sessionReceipt),
+    hasSessionReceipt: hasTodaySessionReceipt,
     hasEligibleOccurrence: Boolean(eligibleOccurrence),
     occurrenceEnded,
     maySuggestCompletion: Boolean(nextCompletion?.maySuggestCompletion),
@@ -148,7 +149,7 @@ export default async function ClassWorkspacePage({
   const taskPresentation = presentClassTaskState(taskDecision.state)
   const recorderEmptyPresentation = presentClassRecorderEmptyState({
     calendarState: temporalDay.calendarState,
-    hasSessionReceipt: Boolean(sessionReceipt),
+    hasSessionReceipt: hasTodaySessionReceipt,
     hasFutureOccurrence,
   })
   const taskHref = taskDecision.focusCompletion
