@@ -1,7 +1,15 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import type { LessonReflectionCaptureActionResult } from '@/core/application/copilot/lesson-reflection-handler'
+import type { ContextualCaptureProposalKind } from '@/core/presentation/contextual-capture'
+import {
+  buildLessonReflectionCapturePrompt,
+  CONTEXTUAL_CAPTURE_MAX_TEXT_LENGTH,
+} from '@/core/presentation/contextual-capture-frontdoor'
 import { recordTeachingSession } from './actions'
+import LessonVoiceCapture from './lezioni/[blockId]/lesson-voice-capture'
+import lessonStyles from './lezioni/[blockId]/lesson-live.module.css'
 
 type BlockOption = {
   id: string
@@ -29,9 +37,17 @@ export function TeachingSessionRecorder({
   const [minutes1, setMinutes1] = useState(suggestedActual)
   const [blockId2, setBlockId2] = useState('')
   const [minutes2, setMinutes2] = useState(0)
+  const [evidenceNote, setEvidenceNote] = useState('')
+  const [capturePreview, setCapturePreview] = useState<LessonReflectionCaptureActionResult | null>(null)
+  const [captureError, setCaptureError] = useState<string | null>(null)
+  const [organizing, setOrganizing] = useState(false)
+  const [voiceBusy, setVoiceBusy] = useState(false)
 
   const total = minutes1 + (blockId2 ? minutes2 : 0)
   const invalid = total > actualMinutes || !blockId1 || minutes1 <= 0 || (blockId2 ? minutes2 <= 0 || blockId2 === blockId1 : false)
+  const lessonSurfacePath = blockId1
+    ? `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(blockId1)}?mode=record`
+    : null
   const effect = useMemo(() => {
     return blocks
       .filter((block) => block.id === blockId1 || block.id === blockId2)
@@ -46,6 +62,78 @@ export function TeachingSessionRecorder({
         }
       })
   }, [blockId1, blockId2, blocks, minutes1, minutes2])
+
+  function selectPrimaryBlock(value: string) {
+    setBlockId1(value)
+    setCapturePreview(null)
+    setCaptureError(null)
+  }
+
+  function updateEvidenceNote(value: string) {
+    setEvidenceNote(value)
+    setCapturePreview(null)
+    setCaptureError(null)
+  }
+
+  function appendVoiceTranscript(transcript: string) {
+    setEvidenceNote((current) => {
+      const existing = current.trim()
+      const spoken = transcript.trim()
+      if (!spoken || existing.length >= 4000) return current
+
+      const separator = existing ? '\n' : ''
+      const remaining = 4000 - existing.length
+      if (remaining <= separator.length) return existing
+
+      return `${existing}${separator}${spoken.slice(0, remaining - separator.length)}`
+    })
+    setCapturePreview(null)
+    setCaptureError(null)
+  }
+
+  async function organizeEvidenceNote() {
+    const note = evidenceNote.trim()
+    if (!note || !lessonSurfacePath) {
+      setCapturePreview(null)
+      setCaptureError('Scrivi o detta prima una breve nota sulla lezione.')
+      return
+    }
+    if (note.length > CONTEXTUAL_CAPTURE_MAX_TEXT_LENGTH) {
+      setCapturePreview(null)
+      setCaptureError(`Per organizzarla con il Copilota, riduci la nota a ${CONTEXTUAL_CAPTURE_MAX_TEXT_LENGTH} caratteri. Puoi comunque registrarla così com’è.`)
+      return
+    }
+
+    setOrganizing(true)
+    setCaptureError(null)
+    try {
+      const response = await fetch('/api/copilot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Docente-Surface-Path': lessonSurfacePath,
+        },
+        body: JSON.stringify({ prompt: buildLessonReflectionCapturePrompt(note) }),
+      })
+      const payload = await response.json().catch(() => null) as LessonReflectionCaptureActionResult | { message?: string } | null
+
+      if (!response.ok || !payload || !('skillId' in payload) || payload.skillId !== 'LESSON_REFLECTION' || payload.status !== 'SUPPORTED') {
+        const message = payload && 'message' in payload && typeof payload.message === 'string'
+          ? payload.message
+          : 'Il Copilota non riesce a organizzare questa nota nel contesto corrente.'
+        setCapturePreview(null)
+        setCaptureError(message)
+        return
+      }
+
+      setCapturePreview(payload)
+    } catch {
+      setCapturePreview(null)
+      setCaptureError('Il Copilota non è disponibile. La nota resta qui e puoi registrare normalmente la lezione.')
+    } finally {
+      setOrganizing(false)
+    }
+  }
 
   return (
     <form action={recordTeachingSession} className="teachingSessionForm">
@@ -65,7 +153,7 @@ export function TeachingSessionRecorder({
         </label>
         <label>
           <span>Attribuisci a</span>
-          <select name="blockId1" value={blockId1} onChange={(event) => setBlockId1(event.target.value)} required>
+          <select name="blockId1" value={blockId1} onChange={(event) => selectPrimaryBlock(event.target.value)} required>
             {blocks.map((block) => <option value={block.id} key={block.id}>{block.id} · {block.title}</option>)}
           </select>
         </label>
@@ -94,8 +182,60 @@ export function TeachingSessionRecorder({
 
       <label className="teachingSessionEvidence">
         <span>Evidenza o nota breve <small>facoltativa</small></span>
-        <textarea name="evidenceNote" maxLength={4000} rows={3} placeholder="Es. attività completata, prodotto realizzato, adattamento effettuato…" />
+        <textarea
+          name="evidenceNote"
+          maxLength={4000}
+          rows={3}
+          value={evidenceNote}
+          onChange={(event) => updateEvidenceNote(event.target.value)}
+          placeholder="Es. attività completata, prodotto realizzato, adattamento effettuato…"
+        />
       </label>
+
+      {lessonSurfacePath ? (
+        <LessonVoiceCapture
+          surfacePath={lessonSurfacePath}
+          disabled={organizing}
+          onBusyChange={setVoiceBusy}
+          onTranscript={appendVoiceTranscript}
+        />
+      ) : null}
+
+      <div className={lessonStyles.assistantTools}>
+        <button
+          className={lessonStyles.assistantAction}
+          type="button"
+          onClick={organizeEvidenceNote}
+          disabled={!evidenceNote.trim() || organizing || voiceBusy || !lessonSurfacePath}
+        >
+          {organizing ? 'Organizzazione…' : 'Organizza con il Copilota'}
+        </button>
+        <span>Il Copilota propone soltanto: nulla viene registrato finché non confermi la lezione.</span>
+      </div>
+
+      {captureError ? <p className={lessonStyles.privacyNote} role="alert">{captureError}</p> : null}
+
+      {capturePreview ? (
+        <section className={lessonStyles.assistantPreview} aria-label="Proposta del Copilota" aria-live="polite">
+          <span>PROPOSTA DEL COPILOTA · NON SALVATA</span>
+          <strong>Ho organizzato la nota in {capturePreview.effects.length} {capturePreview.effects.length === 1 ? 'punto' : 'punti'}.</strong>
+          <ul>
+            {capturePreview.effects.map((item) => (
+              <li key={`${item.kind}:${item.summary}`}>
+                <b>{captureLabel(item.kind)}</b>
+                <p>{item.summary}</p>
+              </li>
+            ))}
+          </ul>
+          {capturePreview.nextActivity ? (
+            <div className={lessonStyles.assistantSuggestion}>
+              <span>PROSSIMA ATTIVITÀ PROPOSTA</span>
+              <p>{capturePreview.nextActivity}</p>
+            </div>
+          ) : null}
+          <p className={lessonStyles.privacyNote}>La proposta resta locale alla schermata. La registrazione avviene solo con “Registra ciò che ho svolto”.</p>
+        </section>
+      ) : null}
 
       <div className={`teachingSessionEffect ${invalid ? 'invalid' : ''}`} aria-live="polite">
         <strong>Effetto prima di registrare</strong>
@@ -105,9 +245,17 @@ export function TeachingSessionRecorder({
         <small>{total}/{actualMinutes} minuti allocati. {actualMinutes - total >= 0 ? `${actualMinutes - total} min restano non attribuiti.` : 'Hai attribuito più minuti di quelli realmente svolti.'}</small>
       </div>
 
-      <button type="submit" disabled={invalid}>Registra ciò che ho svolto</button>
+      <button type="submit" disabled={invalid || organizing || voiceBusy}>Registra ciò che ho svolto</button>
     </form>
   )
+}
+
+function captureLabel(kind: ContextualCaptureProposalKind) {
+  if (kind === 'LESSON_EXECUTION_NOTE') return 'Ciò che è stato svolto'
+  if (kind === 'PROFESSIONAL_OBSERVATION') return 'Osservazione professionale'
+  if (kind === 'NEXT_LESSON_FOCUS') return 'Da riprendere'
+  if (kind === 'PREPARATION_NEED') return 'Da preparare'
+  return 'Promemoria'
 }
 
 function formatDate(value: string) {
