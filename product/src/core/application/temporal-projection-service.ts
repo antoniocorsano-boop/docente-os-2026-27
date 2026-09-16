@@ -75,18 +75,6 @@ export function projectTemporalDay(input: {
     .map((event) => projectCalendarEvent(event, input.localDate, calendarState))
     .sort(compareOccurrence)
 
-  if (calendarState === 'UNDETERMINED') {
-    return {
-      localDate: input.localDate,
-      calendarState,
-      calendarLabel,
-      timetableState: 'UNAVAILABLE',
-      timetableVersionId: null,
-      occurrences: [],
-      events,
-    }
-  }
-
   if (calendarState === 'NO_LESSONS') {
     return {
       localDate: input.localDate,
@@ -162,7 +150,11 @@ function projectTimetableSlot(
     calendarEventId: null,
     calendarState,
     exceptionState: 'NONE',
-    provenance: [`timetable_version:${version.id}`, `timetable_slot:${slot.id}`, `calendar_day:${localDate}`],
+    provenance: [
+      `timetable_version:${version.id}`,
+      `timetable_slot:${slot.id}`,
+      calendarState === 'UNDETERMINED' ? `calendar_state:undetermined:${localDate}` : `calendar_day:${localDate}`,
+    ],
   }
 }
 
