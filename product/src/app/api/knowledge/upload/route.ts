@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer'
 import { NextResponse } from 'next/server'
+import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { createClient } from '@/lib/supabase/server'
 import { inspectFilenameForPilot, inspectFreeTextForPilot } from '@/core/privacy/anonymization-guard'
@@ -23,6 +24,7 @@ type UploadFailureCode =
   | 'unauthorized'
   | 'size_mismatch'
   | 'storage_failed'
+  | 'registration_failed'
   | 'privacy_confirmation_required'
   | 'privacy_blocked'
   | 'privacy_preflight_unavailable'
@@ -124,6 +126,42 @@ export async function POST(request: Request) {
       mimeType,
     })
     return json({ ok: false, code: 'storage_failed' }, 502)
+  }
+
+  const repository = new SupabaseKnowledgeRepository()
+  try {
+    await repository.capture({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear?.id ?? null,
+      assetKind: 'FILE',
+      sourceProvider: 'UPLOAD',
+      sourceLocator: `storage:${KNOWLEDGE_BUCKET}/${objectPath}`,
+      originalName,
+      mimeType,
+      byteSize: actualSize,
+      sourceMetadata: {
+        captureMode: 'same-origin-storage-upload',
+        storageBucket: KNOWLEDGE_BUCKET,
+        storagePath: objectPath,
+        storageOwnerUserId: userId,
+        originalFilename: originalName,
+        contentTypeValidation: 'SERVER_VERIFIED_BEFORE_KB_INGESTION',
+        transferPath: 'browser-to-docente-os-to-supabase-storage',
+        privacyPreflight: 'SERVER_BEFORE_STORAGE',
+        uploadLifecycle: 'CAPTURED_PENDING_PROCESSING',
+      },
+    })
+  } catch (registrationError) {
+    const { error: cleanupError } = await supabase.storage.from(KNOWLEDGE_BUCKET).remove([objectPath])
+    console.error('Knowledge same-origin canonical registration failed', {
+      message: registrationError instanceof Error ? registrationError.message : 'Unknown registration error',
+      cleanup: cleanupError?.message ?? 'removed',
+      workspaceId: context.workspace.id,
+      userId,
+      bucket: KNOWLEDGE_BUCKET,
+      objectPath,
+    })
+    return json({ ok: false, code: 'registration_failed' }, 500)
   }
 
   return json({ ok: true, objectPath, mimeType, byteSize: actualSize }, 201)

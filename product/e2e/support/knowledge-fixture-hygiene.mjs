@@ -113,7 +113,7 @@ export async function deleteOrphanedKnowledgeFixtureObjects(titleFragments) {
     const workspaceId = membership.workspace_id
     const before = await listWorkspaceObjects(supabase, workspaceId)
     const stalePaths = before
-      .map((item) => `${workspaceId}/${item.name}`)
+      .map((item) => item.path)
       .filter((path) => fragments.some((fragment) => path.includes(fragment)))
       .filter((path) => !referencedPaths.has(path))
 
@@ -126,7 +126,7 @@ export async function deleteOrphanedKnowledgeFixtureObjects(titleFragments) {
     if (removeError) throw new Error(`Fixture storage cleanup failed: ${removeError.message}`)
 
     const remainingPaths = new Set(
-      (await listWorkspaceObjects(supabase, workspaceId)).map((item) => `${workspaceId}/${item.name}`),
+      (await listWorkspaceObjects(supabase, workspaceId)).map((item) => item.path),
     )
     const notRemoved = stalePaths.filter((path) => remainingPaths.has(path))
     if (notRemoved.length) {
@@ -139,11 +139,34 @@ export async function deleteOrphanedKnowledgeFixtureObjects(titleFragments) {
 }
 
 async function listWorkspaceObjects(supabase, workspaceId) {
-  const { data, error } = await supabase.storage
-    .from(KNOWLEDGE_BUCKET)
-    .list(workspaceId, { limit: 1000, sortBy: { column: 'name', order: 'asc' } })
-  if (error) throw new Error(`Fixture storage listing failed for ${workspaceId}: ${error.message}`)
-  return data ?? []
+  const objects = []
+  const pendingPrefixes = [workspaceId]
+
+  while (pendingPrefixes.length > 0) {
+    const prefix = pendingPrefixes.shift()
+    if (!prefix) continue
+
+    let offset = 0
+    while (true) {
+      const { data, error } = await supabase.storage
+        .from(KNOWLEDGE_BUCKET)
+        .list(prefix, { limit: 1000, offset, sortBy: { column: 'name', order: 'asc' } })
+
+      if (error) throw new Error(`Fixture storage listing failed for ${prefix}: ${error.message}`)
+
+      const entries = data ?? []
+      for (const item of entries) {
+        const path = `${prefix}/${item.name}`
+        if (item.id) objects.push({ ...item, path })
+        else pendingPrefixes.push(path)
+      }
+
+      if (entries.length < 1000) break
+      offset += entries.length
+    }
+  }
+
+  return objects
 }
 
 async function fixtureIdentity() {
