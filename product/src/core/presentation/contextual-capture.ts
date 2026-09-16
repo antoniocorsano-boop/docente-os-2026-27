@@ -54,6 +54,10 @@ export type ContextualCaptureInput = {
 }
 
 export function buildContextualCapture(input: ContextualCaptureInput): ContextualCaptureResult {
+  if (contextualCaptureContainsRawAudio(input)) {
+    return blocked(input.sourceKind, 'RAW_AUDIO_NOT_ALLOWED')
+  }
+
   const text = normalizeText(input.text)
 
   if (!text) {
