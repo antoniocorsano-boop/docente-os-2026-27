@@ -17,6 +17,9 @@ export default function LessonMaterialsClient({
   timeLabel,
   authority,
   initialView,
+  eyebrow = 'MATERIALI DELLA PROSSIMA LEZIONE',
+  backHref = '/planner',
+  backLabel = '← Oggi',
 }: {
   bundle: LessonMaterialRenderBundle
   roleView: RoleViewSnapshot
@@ -24,6 +27,9 @@ export default function LessonMaterialsClient({
   timeLabel: string
   authority: 'IN_FORCE' | 'PROVISIONAL_DRAFT'
   initialView: Exclude<MaterialView, 'visuale'>
+  eyebrow?: string
+  backHref?: string
+  backLabel?: string
 }) {
   const [view, setView] = useState<MaterialView>(initialView)
   const [activeScreen, setActiveScreen] = useState(0)
@@ -64,8 +70,8 @@ export default function LessonMaterialsClient({
     <main className={styles.surface}>
       <header className={styles.header}>
         <div>
-          <Link className={styles.back} href="/planner">← Oggi</Link>
-          <p className={styles.eyebrow}>MATERIALI DELLA PROSSIMA LEZIONE</p>
+          <Link className={styles.back} href={backHref}>{backLabel}</Link>
+          <p className={styles.eyebrow}>{eyebrow}</p>
           <h1>{bundle.teacherBrief.title}</h1>
           <p className={styles.contextLine}>
             <strong>{sectionLabel}</strong>{timeLabel ? ` · ${timeLabel}` : ''}
