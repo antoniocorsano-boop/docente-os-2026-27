@@ -183,6 +183,36 @@ test('LP-3: READY produce guida docente, sequenza LIM, scheda stampa e schema vi
   assert.deepEqual(rendered.bundle.provenance, manifest().provenance)
 })
 
+test('MDS-3: la continuità del Diario predispone guida docente e apertura LIM senza cambiare il contratto canonico', () => {
+  const rendered = buildInternalLessonMaterialRenderBundle({
+    manifestResult: result(),
+    projection: projection(),
+    continuity: {
+      nextActivity: 'Riprendere la lettura delle quote prima del nuovo esercizio.',
+      sourceSessionId: 'session-previous',
+      sourceLocalDate: '2026-09-15',
+    },
+  })
+
+  assert.equal(rendered.status, 'READY')
+  assert.ok(rendered.bundle)
+  assert.equal(rendered.bundle.readiness, 'READY')
+  assert.deepEqual(rendered.bundle.missing, [])
+  assert.equal(rendered.bundle.persistentEffect, 'NONE')
+  assert.deepEqual(rendered.bundle.teacherBrief.preparation, [
+    'Righello',
+    'Oggetto semplice da misurare',
+    'Ripresa dal Diario: Riprendere la lettura delle quote prima del nuovo esercizio.',
+  ])
+  assert.deepEqual(rendered.bundle.limView.screens[0]?.body, [
+    'Misurare e rappresentare un oggetto con procedure controllabili.',
+    'Ripresa dal Diario: Riprendere la lettura delle quote prima del nuovo esercizio.',
+  ])
+  assert.deepEqual(rendered.bundle.visualAid.items.map((item) => item.label), ['Avvio', 'Misura'])
+  assert.deepEqual(rendered.bundle.studentHandouts[0]?.prompts, ['Misura tre dimensioni.', 'Disegna uno schizzo quotato.'])
+  assert.deepEqual(rendered.bundle.provenance, manifest().provenance)
+})
+
 test('LP-3: una risorsa studente accettata viene resa solo se è già referenziata dal manifest e nello stesso scope', () => {
   const accepted = extension()
   const scopedManifest = manifest({

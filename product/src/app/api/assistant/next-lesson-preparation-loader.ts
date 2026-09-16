@@ -159,6 +159,7 @@ export async function loadNextLessonPreparationBundle(input: {
       manifestResult: manifest,
       projection: lessonBundle.projection,
       extensions: lessonBundle.extensions,
+      continuity: preparation.continuity,
     }),
   }
 }

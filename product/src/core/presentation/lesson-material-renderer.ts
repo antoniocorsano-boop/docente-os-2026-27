@@ -1,4 +1,5 @@
 import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
+import type { TeachingSessionContinuity } from '@/core/domain/teaching-session-reflection'
 import {
   resolveHumanTaskResourcesForSurface,
   type HumanTaskLessonProjection,
@@ -114,6 +115,7 @@ export function buildInternalLessonMaterialRenderBundle(input: {
   manifestResult: LessonPreparationManifestResult
   projection: HumanTaskLessonProjection | null
   extensions?: LessonDesignExtension[]
+  continuity?: TeachingSessionContinuity | null
 }): LessonMaterialRenderResult {
   if (input.manifestResult.resolution === 'BLOCKED' || !input.manifestResult.manifest) {
     return blocked(input.manifestResult.reasons.length
@@ -137,6 +139,7 @@ export function buildInternalLessonMaterialRenderBundle(input: {
     origin: step.origin,
     sourceLabel: step.sourceLabel,
   }))
+  const continuityLine = renderContinuityLine(input.continuity)
 
   const studentHandouts = renderStudentHandouts(manifest, projection, extensions)
   const missing = unique([
@@ -168,7 +171,10 @@ export function buildInternalLessonMaterialRenderBundle(input: {
       title: projection.title,
       objective: manifest.objective,
       readiness: manifest.readiness,
-      preparation: [...projection.preparation],
+      preparation: [
+        ...projection.preparation,
+        ...(continuityLine ? [continuityLine] : []),
+      ],
       sequence,
       readyMaterials: readyMaterialTitles(manifest),
       attention,
@@ -177,7 +183,7 @@ export function buildInternalLessonMaterialRenderBundle(input: {
       kind: 'LIM_VIEW',
       target: 'SCREEN',
       title: projection.title,
-      screens: renderLimScreens(manifest, projection.title, projection.continuation, sequence),
+      screens: renderLimScreens(manifest, projection.title, projection.continuation, sequence, continuityLine),
     },
     studentHandouts,
     visualAid: {
@@ -272,12 +278,16 @@ function renderLimScreens(
   title: string,
   continuation: string,
   sequence: LessonRenderSequenceItem[],
+  continuityLine: string | null,
 ): LimScreen[] {
   const screens: LimScreen[] = [{
     id: 'opening',
     kind: 'OPENING',
     title,
-    body: [manifest.objective],
+    body: [
+      manifest.objective,
+      ...(continuityLine ? [continuityLine] : []),
+    ],
     cue: null,
     minutes: null,
   }]
@@ -305,6 +315,11 @@ function renderLimScreens(
   }
 
   return screens
+}
+
+function renderContinuityLine(continuity: TeachingSessionContinuity | null | undefined) {
+  const nextActivity = continuity?.nextActivity.trim() ?? ''
+  return nextActivity ? `Ripresa dal Diario: ${nextActivity}` : null
 }
 
 function readyMaterialTitles(manifest: LessonPreparationManifest) {
