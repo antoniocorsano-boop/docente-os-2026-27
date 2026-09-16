@@ -20,10 +20,12 @@ type VoiceResponse = {
 
 export default function LessonVoiceCapture({
   disabled = false,
+  surfacePath,
   onTranscript,
   onBusyChange,
 }: {
   disabled?: boolean
+  surfacePath?: string
   onTranscript: (text: string) => void
   onBusyChange?: (busy: boolean) => void
 }) {
@@ -162,7 +164,7 @@ export default function LessonVoiceCapture({
       const response = await fetch('/api/voice/transcribe', {
         method: 'POST',
         headers: {
-          'X-Docente-Surface-Path': `${window.location.pathname}${window.location.search}`,
+          'X-Docente-Surface-Path': surfacePath ?? `${window.location.pathname}${window.location.search}`,
         },
         body: form,
       })
