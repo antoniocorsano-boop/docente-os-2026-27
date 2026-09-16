@@ -50,7 +50,25 @@ test('Journey: Lezione → Registra → preview Copilota → Fatto senza modello
 
   const organize = closeCard.getByRole('button', { name: 'Organizza con il Copilota' })
   await expect(organize).toBeVisible()
+  const copilotResponsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url())
+    return response.request().method() === 'POST' && url.pathname === '/api/copilot'
+  })
   await organize.click()
+  const copilotResponse = await copilotResponsePromise
+  const copilotResponseText = await copilotResponse.text()
+  expect(
+    copilotResponse.status(),
+    `La frontdoor Copilot deve accettare la nota dalla superficie Registra. Risposta: ${copilotResponseText}`,
+  ).toBe(200)
+  const copilotPayload = parseJson(copilotResponseText)
+  expect(copilotPayload, `La frontdoor Copilot deve restituire JSON valido. Risposta: ${copilotResponseText}`).toMatchObject({
+    skillId: 'LESSON_REFLECTION',
+    status: 'SUPPORTED',
+    actionKind: 'PROPOSE',
+    persistentEffect: 'NONE',
+    confirmationRequiredForPersistence: true,
+  })
 
   const preview = closeCard.getByRole('region', { name: 'Proposta del Copilota' })
   await expect(preview).toBeVisible()
@@ -121,6 +139,14 @@ async function recordJourney(project, result) {
     capturedAt: new Date().toISOString(),
   }
   await fs.writeFile(path.join(dir, `${safe(project)}--lesson-close-contextual-preview.json`), `${JSON.stringify(payload, null, 2)}\n`)
+}
+
+function parseJson(value) {
+  try {
+    return JSON.parse(value)
+  } catch {
+    return null
+  }
 }
 
 function sectionIdFromHref(value) {
