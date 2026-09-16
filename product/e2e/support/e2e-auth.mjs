@@ -5,6 +5,8 @@ export const E2E_EMAIL = process.env.E2E_EMAIL
 export const E2E_PASSWORD = process.env.E2E_PASSWORD
 export const E2E_TOTP_SECRET = process.env.E2E_TOTP_SECRET
 
+let cachedAal2Cookies = null
+
 const MFA_TRANSIENT_MESSAGES = [
   'Non è stato possibile avviare la verifica del secondo fattore. Riprova.',
   'Il codice non è valido o non è più attivo. Attendi il codice successivo e riprova.',
@@ -25,6 +27,8 @@ export function requireE2ECredentials() {
 
 export async function loginE2E(page) {
   requireE2ECredentials()
+
+  if (await tryReuseCachedAal2Session(page)) return
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     await page.goto('/login')
@@ -55,6 +59,26 @@ export async function loginE2E(page) {
   await reachPlannerBoundary(page)
   await expect(page).toHaveURL(/\/planner(?:$|\?)/)
   await expect(page.locator('#dos-main-content')).toBeVisible()
+  cachedAal2Cookies = await page.context().cookies()
+  process.stdout.write('Governed AAL2 full login completed; in-memory worker session cached.\n')
+}
+
+async function tryReuseCachedAal2Session(page) {
+  if (!Array.isArray(cachedAal2Cookies) || cachedAal2Cookies.length === 0) return false
+
+  try {
+    await page.context().addCookies(cachedAal2Cookies)
+    await reachPlannerBoundary(page)
+    await expect(page).toHaveURL(/\/planner(?:$|\?)/, { timeout: 10_000 })
+    await expect(page.locator('#dos-main-content')).toBeVisible({ timeout: 10_000 })
+    process.stdout.write('Governed AAL2 in-memory worker session reused.\n')
+    return true
+  } catch {
+    cachedAal2Cookies = null
+    await page.context().clearCookies()
+    process.stdout.write('Governed AAL2 cached session rejected; full login required.\n')
+    return false
+  }
 }
 
 async function completeMfaChallenge(page) {
