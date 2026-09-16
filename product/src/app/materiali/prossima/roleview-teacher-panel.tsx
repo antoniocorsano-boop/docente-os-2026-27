@@ -34,7 +34,7 @@ const KPI_IDS = [
 ]
 
 export function RoleViewTeacherPanel({ roleView }: { roleView: RoleViewSnapshot }) {
-  const primary = primaryAction(roleView.status)
+  const primary = primaryAction(roleView)
   const kpis = KPI_IDS
     .map((id) => roleView.kpis.find((item) => item.id === id))
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
@@ -92,9 +92,11 @@ function teacherSummary(status: RoleViewSnapshot['status']) {
   return 'DOCENTE OS non considera pronta una preparazione che non riesce a collegare in modo affidabile alla lezione reale.'
 }
 
-function primaryAction(status: RoleViewSnapshot['status']) {
-  if (status === 'READY') return { label: 'Proietta alla LIM', href: '?vista=lim' }
-  if (status === 'ATTENTION') return { label: 'Apri guida docente', href: '?vista=docente' }
+function primaryAction(roleView: RoleViewSnapshot) {
+  const governedAction = roleView.nextActions.find((action) => action.priority === 'PRIMARY' && action.href)
+  if (governedAction?.href) return { label: governedAction.label, href: governedAction.href }
+  if (roleView.status === 'READY') return { label: 'Proietta alla LIM', href: '?vista=lim' }
+  if (roleView.status === 'ATTENTION') return { label: 'Apri guida docente', href: '?vista=docente' }
   return { label: 'Torna a Oggi', href: '/planner' }
 }
 

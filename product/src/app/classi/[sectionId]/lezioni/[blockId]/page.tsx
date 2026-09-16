@@ -14,6 +14,7 @@ import LessonLiveClient from './lesson-live-client'
 import LessonObserveClient from './lesson-observe-client'
 import LessonCloseClient from './lesson-close-client'
 import { buildLessonMaterialSuggestions } from './lesson-material-suggestions'
+import { OpenDesignReview } from './open-design-review'
 import './lesson-workspace.css'
 import './lesson-design-tools.css'
 
@@ -30,7 +31,7 @@ export default async function LessonWorkspacePage({
   searchParams,
 }: {
   params: Promise<{ sectionId: string; blockId: string }>
-  searchParams: Promise<{ mode?: string }>
+  searchParams: Promise<{ mode?: string; review?: string }>
 }) {
   const { sectionId, blockId: rawBlockId } = await params
   const blockId = rawBlockId.toUpperCase()
@@ -111,7 +112,8 @@ export default async function LessonWorkspacePage({
     ),
   })
 
-  const mode = asMode((await searchParams).mode)
+  const query = await searchParams
+  const mode = asMode(query.mode)
   const sectionLabel = `${GRADE_NUMBER[section.grade]}ª ${section.sectionCode}`
   const progressView = {
     status: progress?.status ?? 'PIANIFICATO',
@@ -128,6 +130,7 @@ export default async function LessonWorkspacePage({
       role={context.role}
       contentClassName="lessonWorkspaceSurface"
     >
+      <OpenDesignReview active={mode === 'prepare' && query.review === 'design'} />
       {mode === 'teach' ? (
         <LessonLiveClient
           sectionId={section.id}

@@ -96,12 +96,31 @@ test('RoleView REVIEW_REQUIRED non promuove la preparazione a READY', () => {
   assert.equal(snapshot.role, 'REVIEWER')
   assert.match(snapshot.focus, /Gate/)
   assert.equal(snapshot.nextActions[0]?.id, 'REVIEW_LESSON_PREPARATION')
+  assert.equal(snapshot.nextActions[0]?.href, undefined)
 
   const reviewKpi = snapshot.kpis.find((kpi) => kpi.id === 'materials_requiring_review')
   assert.equal(reviewKpi?.value, 1)
 
   const validation = snapshot.maturity.find((item) => item.id === 'HUMAN_VALIDATION')
   assert.equal(validation?.state, 'IN_PROGRESS')
+})
+
+test('LP-6: il docente passa dalla proposta da validare al writer canonico e poi a READY', () => {
+  const review = buildLessonPreparationRoleView(supported('REVIEW_REQUIRED'), 'TEACHER')
+
+  assert.equal(review.status, 'ATTENTION')
+  assert.equal(review.nextActions[0]?.id, 'REVIEW_LESSON_PREPARATION')
+  assert.equal(review.nextActions[0]?.label, 'Controlla proposte')
+  assert.equal(
+    review.nextActions[0]?.href,
+    '/classi/section-2c/lezioni/B03?mode=prepare&review=design#lesson-design-tools-title',
+  )
+
+  const ready = buildLessonPreparationRoleView(supported('READY'), 'TEACHER')
+  assert.equal(ready.status, 'READY')
+  assert.equal(ready.gates[0]?.status, 'PASS')
+  assert.equal(ready.nextActions[0]?.id, 'OPEN_LESSON')
+  assert.equal(ready.nextActions[0]?.href, undefined)
 })
 
 test('RoleView DRAFT rende visibili i materiali mancanti senza inventare percentuali', () => {
