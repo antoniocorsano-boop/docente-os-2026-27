@@ -68,13 +68,23 @@ export function buildEngineeringRoleView(
       ref: `${input.repository}#${input.prNumber}`,
       label: `PR #${input.prNumber}`,
     },
+    {
+      kind: 'GITHUB_BASE_REF',
+      ref: input.baseRef,
+      label: `Base: ${input.baseRef}`,
+    },
+    {
+      kind: 'GITHUB_HEAD_REF',
+      ref: input.headRef,
+      label: `Head: ${input.headRef}`,
+    },
   ]
 
   if (!exactHeadMissing) {
     baseEvidence.push({
       kind: 'GITHUB_EXACT_HEAD',
       ref: exactHeadSha,
-      label: 'Exact head certificato',
+      label: 'Exact head di riferimento',
     })
   }
 
@@ -132,7 +142,7 @@ export function buildEngineeringRoleView(
       maturity(
         'EVIDENCE_PROVENANCE',
         'Evidenze e provenienza',
-        evidence.length > 1 ? 'READY' : 'IN_PROGRESS',
+        exactHeadMissing ? 'BLOCKED' : 'READY',
         'EngineeringRoleViewInput + CI check refs',
       ),
     ],
@@ -144,6 +154,14 @@ export function buildEngineeringRoleView(
       source: check.source ?? 'EngineeringRoleViewInput.checks',
     })),
     kpis: [
+      {
+        id: 'exact_head_present',
+        label: 'Exact head disponibile',
+        value: exactHeadMissing ? 0 : 1,
+        unit: 'boolean',
+        target: 1,
+        source: 'EngineeringRoleViewInput.exactHeadSha',
+      },
       {
         id: 'required_gate_count',
         label: 'Gate richiesti',
@@ -170,10 +188,10 @@ export function buildEngineeringRoleView(
       {
         id: 'blocked_required_gates',
         label: 'Gate richiesti bloccanti',
-        value: requiredBlocked.length + (exactHeadMissing ? 1 : 0),
+        value: requiredBlocked.length,
         unit: 'count',
         target: 0,
-        source: 'EngineeringRoleViewInput.exactHeadSha + checks[required=true]',
+        source: 'EngineeringRoleViewInput.checks[required=true,blocked]',
       },
       {
         id: 'engineering_evidence_items',
