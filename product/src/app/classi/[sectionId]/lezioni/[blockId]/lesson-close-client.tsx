@@ -44,6 +44,7 @@ export default function LessonCloseClient({
   projection,
   defaultLocalDate,
   registrationKey,
+  voiceCaptureEnabled,
 }: {
   sectionId: string
   sectionLabel: string
@@ -51,6 +52,7 @@ export default function LessonCloseClient({
   projection: HumanTaskLessonProjection
   defaultLocalDate: string
   registrationKey: string
+  voiceCaptureEnabled: boolean
 }) {
   const router = useRouter()
   const [observationDraft, setObservationDraft] = useState<LessonObservationDraftTransport | null>(null)
@@ -114,10 +116,13 @@ export default function LessonCloseClient({
     setEvidenceNote((current) => {
       const existing = current.trim()
       const spoken = transcript.trim()
-      if (!spoken) return current
+      if (!spoken || existing.length >= 4000) return current
+
       const separator = existing ? '\n' : ''
-      const available = Math.max(0, 4000 - existing.length - separator.length)
-      return `${existing}${separator}${spoken.slice(0, available)}`
+      const remaining = 4000 - existing.length
+      if (remaining <= separator.length) return existing
+
+      return `${existing}${separator}${spoken.slice(0, remaining - separator.length)}`
     })
     setCapturePreview(null)
     setCaptureError(null)
@@ -229,11 +234,13 @@ export default function LessonCloseClient({
           />
         </label>
 
-        <LessonVoiceCapture
-          disabled={saving || organizing}
-          onBusyChange={setVoiceBusy}
-          onTranscript={appendVoiceTranscript}
-        />
+        {voiceCaptureEnabled ? (
+          <LessonVoiceCapture
+            disabled={saving || organizing}
+            onBusyChange={setVoiceBusy}
+            onTranscript={appendVoiceTranscript}
+          />
+        ) : null}
 
         <div className={styles.assistantTools}>
           <button className={styles.assistantAction} type="button" onClick={organizeEvidenceNote} disabled={!evidenceNote.trim() || organizing || voiceBusy}>
