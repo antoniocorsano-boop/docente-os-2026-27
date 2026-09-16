@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import { projectTemporalDay } from '../../../../core/application/temporal-projection-service'
 
 const actionsSource = readFileSync(new URL('./actions.ts', import.meta.url), 'utf8')
 const closeSource = readFileSync(new URL('./[blockId]/lesson-close-client.tsx', import.meta.url), 'utf8')
 const observeSource = readFileSync(new URL('./[blockId]/lesson-observe-client.tsx', import.meta.url), 'utf8')
 const observationModelSource = readFileSync(new URL('./lesson-observation-model.ts', import.meta.url), 'utf8')
+const todayPanelSource = readFileSync(new URL('../../../planner/TemporalTodayPanel.tsx', import.meta.url), 'utf8')
 const timetableFallbackMigrationSource = readFileSync(
   new URL('../../../../../supabase/migrations/0060_teaching_session_timetable_fallback.sql', import.meta.url),
   'utf8',
@@ -22,12 +24,50 @@ test('Bxx Registra preserves a resolved timetable occurrence before using manual
   assert.match(actionsSource, /sourceKind:\s*'MANUAL'/)
 })
 
+test('an active timetable remains a recordable candidate when Calendar has no row for the date', () => {
+  const result = projectTemporalDay({
+    localDate: '2026-09-16',
+    timetableVersions: [{ id: 'tt-active', status: 'ACTIVE', effectiveFrom: '2026-09-11', effectiveTo: null }],
+    timetableSlots: [{
+      id: 'slot-3e',
+      timetableVersionId: 'tt-active',
+      weekday: 3,
+      startTime: '11:00',
+      endTime: '12:00',
+      kind: 'LESSON',
+      sectionId: 'section-3e',
+      sectionLabel: '3ª E',
+      disciplineId: 'technology',
+      disciplineLabel: 'Tecnologia',
+      manualClassLabel: null,
+      room: null,
+    }],
+    calendarDays: [],
+    calendarEvents: [],
+  })
+
+  assert.equal(result.calendarState, 'UNDETERMINED')
+  assert.equal(result.timetableState, 'IN_FORCE')
+  assert.equal(result.occurrences.length, 1)
+  assert.deepEqual(result.occurrences[0].provenance, [
+    'timetable_version:tt-active',
+    'timetable_slot:slot-3e',
+    'calendar_state:undetermined:2026-09-16',
+  ])
+})
+
 test('projected registration accepts an unclassified Calendar day only with identified timetable provenance', () => {
   assert.match(timetableFallbackMigrationSource, /source_calendar_state = 'SCHOOL_DAY'/)
   assert.match(timetableFallbackMigrationSource, /source_calendar_state = 'UNDETERMINED'/)
   assert.match(timetableFallbackMigrationSource, /source_timetable_version_id is not null/)
   assert.match(timetableFallbackMigrationSource, /source_timetable_slot_id is not null/)
   assert.doesNotMatch(timetableFallbackMigrationSource, /source_calendar_state\s*=\s*'NO_LESSONS'/)
+})
+
+test('Today surfaces the in-force timetable when Calendar is unclassified instead of hiding it', () => {
+  assert.match(todayPanelSource, /day\.calendarState === 'UNDETERMINED' && day\.timetableState === 'IN_FORCE'/)
+  assert.match(todayPanelSource, /day\.calendarState === 'UNDETERMINED' && !timetableFallback/)
+  assert.match(todayPanelSource, /Orario in vigore · Calendario non classificato/)
 })
 
 test('lesson close no longer asks the teacher to decide plan status as part of registration', () => {
