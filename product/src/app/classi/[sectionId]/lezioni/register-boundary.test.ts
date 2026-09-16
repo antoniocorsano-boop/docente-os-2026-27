@@ -95,6 +95,23 @@ test('AI-1C voice capture is an ephemeral input channel and never a persistence 
   assert.doesNotMatch(voiceRouteSource, /storage\./)
 })
 
+test('AI-1C voice capture preserves current teacher text and cancels abandoned audio', () => {
+  assert.match(closeSource, /evidenceNoteRef\.current/)
+  assert.match(closeSource, /voiceCancelledRef\.current = true/)
+  assert.match(closeSource, /voiceRequestAbortRef\.current\?\.abort\(\)/)
+  assert.match(closeSource, /if \(voiceCancelledRef\.current\) return/)
+  assert.match(closeSource, /combined\.length > LESSON_NOTE_MAX_CHARS/)
+  assert.match(closeSource, /La nota che avevi scritto è rimasta invariata/)
+})
+
+test('AI-1C voice route rejects oversized multipart before parsing and rechecks the audio file size', () => {
+  const contentLengthIndex = voiceRouteSource.indexOf("request.headers.get('content-length')")
+  const formDataIndex = voiceRouteSource.indexOf('request.formData()')
+  assert.ok(contentLengthIndex >= 0, 'voice route must inspect Content-Length')
+  assert.ok(formDataIndex > contentLengthIndex, 'oversized multipart must be rejected before formData parsing')
+  assert.match(voiceRouteSource, /audio\.size > SPEECH_TO_TEXT_MAX_BYTES/)
+})
+
 test('a TeachingSession cannot be registered with a future lesson date', () => {
   assert.match(actionsSource, /Teaching session date cannot be in the future/)
   assert.match(closeSource, /max=\{defaultLocalDate\}/)
