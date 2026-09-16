@@ -9,6 +9,8 @@ import { OpenAiSpeechToText } from '@/core/infrastructure/ai/openai-speech-to-te
 
 export const dynamic = 'force-dynamic'
 
+const MULTIPART_OVERHEAD_BUDGET_BYTES = 128 * 1024
+
 export async function POST(request: Request) {
   const surface = lessonRecordSurfaceFromRequest(request)
   if (!surface) {
@@ -22,6 +24,14 @@ export async function POST(request: Request) {
   if (loaded.status === 'UNAUTHORIZED') return privateJson({ error: 'unauthorized' }, 401)
   if (loaded.status === 'BLOCKED') {
     return privateJson({ error: 'lesson_context_blocked', message: loaded.message }, 409)
+  }
+
+  const contentLength = Number(request.headers.get('content-length'))
+  if (Number.isFinite(contentLength) && contentLength > SPEECH_TO_TEXT_MAX_BYTES + MULTIPART_OVERHEAD_BUDGET_BYTES) {
+    return privateJson({
+      error: 'audio_too_large',
+      message: 'La dettatura è troppo lunga. Interrompi prima e riprova con una nota più breve.',
+    }, 413)
   }
 
   const form = await request.formData().catch(() => null)
