@@ -53,7 +53,10 @@ export default async function NextLessonMaterialsPage({
         <main className={styles.emptySurface}>
           <p className={styles.eyebrow}>MATERIALI DELLA PROSSIMA LEZIONE</p>
           {roleView?.status === 'BLOCKED' ? (
-            <RoleViewTeacherPanel roleView={roleView} />
+            <>
+              <h1>Preparazione della prossima lezione</h1>
+              <RoleViewTeacherPanel roleView={roleView} />
+            </>
           ) : (
             <>
               <h1>La preparazione non è disponibile con sufficiente certezza.</h1>
