@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   buildContextualCapture,
+  buildContextualCaptureNextActivity,
   contextualCaptureContainsRawAudio,
   type ContextualCaptureTarget,
 } from './contextual-capture'
@@ -80,6 +81,57 @@ test('AI-1A: il contesto lezione esplicito prevale e produce solo una proposta d
     'NEXT_LESSON_FOCUS',
     'PREPARATION_NEED',
   ])
+  assert.deepEqual(result.proposedEffects.map((item) => item.summary), [
+    'Abbiamo svolto la misura.',
+    'La prossima lezione dobbiamo riprendere gli errori e preparare una scheda.',
+    'La prossima lezione dobbiamo riprendere gli errori e preparare una scheda.',
+  ])
+})
+
+test('AI-1B: il target esplicito leggero risolve la stessa lezione senza costruire un LessonCopilotContext completo', () => {
+  const result = buildContextualCapture({
+    sourceKind: 'MANUAL_TEXT',
+    text: 'Hanno capito il procedimento. La prossima lezione riprendere gli errori di misura.',
+    explicitTarget: target('2c', { blockId: 'B03', projectionId: 'projection-3' }),
+    temporalTargets: [target('3e')],
+  })
+
+  assert.equal(result.binding.status, 'RESOLVED')
+  assert.equal(result.binding.reason, 'EXPLICIT_TARGET')
+  assert.equal(result.binding.target?.sectionId, 'section-2c')
+  assert.equal(result.binding.target?.blockId, 'B03')
+  assert.deepEqual(result.proposedEffects.map((item) => item.kind), [
+    'PROFESSIONAL_OBSERVATION',
+    'NEXT_LESSON_FOCUS',
+  ])
+})
+
+test('AI-1B: la prossima attività usa solo le frasi pertinenti e non duplica il racconto intero', () => {
+  const result = buildContextualCapture({
+    sourceKind: 'MANUAL_TEXT',
+    text: 'Abbiamo svolto la misura. Alcuni passaggi restano incerti. La prossima lezione riprendere gli errori. Preparare una scheda guidata.',
+    explicitTarget: target('2c'),
+  })
+
+  assert.equal(result.binding.status, 'RESOLVED')
+  assert.deepEqual(result.proposedEffects.map((item) => item.summary), [
+    'Abbiamo svolto la misura.',
+    'Alcuni passaggi restano incerti.',
+    'La prossima lezione riprendere gli errori.',
+  ])
+  assert.equal(buildContextualCaptureNextActivity(result), 'La prossima lezione riprendere gli errori.')
+})
+
+test('AI-1B: la proposta di prossima attività combina al massimo due sintesi pertinenti e rispetta il limite', () => {
+  const result = buildContextualCapture({
+    sourceKind: 'MANUAL_TEXT',
+    text: 'La prossima lezione riprendere la prospettiva. Preparare una scheda con un esempio semplice. Ricordami di stampare le copie.',
+    explicitTarget: target('2c'),
+  })
+
+  const nextActivity = buildContextualCaptureNextActivity(result, 100)
+  assert.equal(nextActivity, 'La prossima lezione riprendere la prospettiva. Preparare una scheda con un esempio semplice.')
+  assert.ok((nextActivity?.length ?? 0) <= 100)
 })
 
 test('AI-1A: una sola sessione corrente risolve il binding senza usare segnali più deboli', () => {
@@ -109,6 +161,7 @@ test('AI-1A: più target temporali autorevoli richiedono conferma e non scelgono
   assert.equal(result.binding.target, null)
   assert.equal(result.binding.candidates.length, 2)
   assert.equal(result.persistenceEligible, false)
+  assert.equal(buildContextualCaptureNextActivity(result), null)
 })
 
 test('AI-1A: l’ultima classe aperta resta un segnale debole e richiede sempre conferma', () => {
