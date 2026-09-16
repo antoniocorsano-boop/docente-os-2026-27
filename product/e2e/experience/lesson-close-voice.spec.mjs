@@ -105,8 +105,11 @@ test('Journey: Lezione → Registra → dettatura effimera → transcript modifi
   await expect(closeCard).toContainText('Sto ascoltando. Interrompi quando hai finito.')
   await expect(primaryAction).toBeDisabled()
 
+  await evidenceNote.fill('Nota scritta dal docente mentre il microfono è attivo.')
   await closeCard.getByRole('button', { name: 'Interrompi dettatura' }).click()
-  await expect(evidenceNote).toHaveValue('Abbiamo svolto la misura. La prossima lezione riprendere gli errori. Preparare una scheda guidata.')
+  await expect(evidenceNote).toHaveValue(
+    'Nota scritta dal docente mentre il microfono è attivo.\nAbbiamo svolto la misura. La prossima lezione riprendere gli errori. Preparare una scheda guidata.',
+  )
   await expect(primaryAction).toBeEnabled()
 
   expect(voiceRequests, 'La dettatura deve usare una sola chiamata al boundary voce effimero.').toHaveLength(1)
@@ -127,6 +130,7 @@ test('Journey: Lezione → Registra → dettatura effimera → transcript modifi
   const copilotBody = copilotRequests[0].postDataJSON()
   expect(Object.keys(copilotBody)).toEqual(['prompt'])
   expect(copilotBody.prompt).toContain('Organizza questa trascrizione di fine lezione:')
+  expect(copilotBody.prompt).toContain('Nota scritta dal docente mentre il microfono è attivo.')
   expect(copilotBody.prompt).not.toContain(sectionId)
   expect(copilotBody.prompt).not.toContain('B01')
   expect(unexpectedMutationRequests, 'Voce + preview devono restare senza write fino alla CTA primaria.').toEqual([])
@@ -144,7 +148,7 @@ test('Journey: Lezione → Registra → dettatura effimera → transcript modifi
   await screenshot(page, testInfo, 'lesson-close-contextual-voice')
   await recordJourney(testInfo.project.name, {
     status: 'PASS',
-    note: 'Il microfono è un input secondario: audio effimero, transcript modificabile, preview senza write e CTA primaria invariata.',
+    note: 'Il microfono è un input secondario: audio effimero, transcript aggiunto alla nota più recente e modificabile, preview senza write e CTA primaria invariata.',
   })
 })
 
