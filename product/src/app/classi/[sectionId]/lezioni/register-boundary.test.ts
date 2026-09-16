@@ -8,6 +8,7 @@ const closeSource = readFileSync(new URL('./[blockId]/lesson-close-client.tsx', 
 const observeSource = readFileSync(new URL('./[blockId]/lesson-observe-client.tsx', import.meta.url), 'utf8')
 const observationModelSource = readFileSync(new URL('./lesson-observation-model.ts', import.meta.url), 'utf8')
 const todayPanelSource = readFileSync(new URL('../../../planner/TemporalTodayPanel.tsx', import.meta.url), 'utf8')
+const voiceRouteSource = readFileSync(new URL('../../../api/voice/transcribe/route.ts', import.meta.url), 'utf8')
 const timetableFallbackMigrationSource = readFileSync(
   new URL('../../../../../supabase/migrations/0060_teaching_session_timetable_fallback.sql', import.meta.url),
   'utf8',
@@ -77,6 +78,21 @@ test('lesson close no longer asks the teacher to decide plan status as part of r
   assert.doesNotMatch(closeSource, /Svolta come prevista/)
   assert.match(closeSource, /name=["']localDate["']/)
   assert.match(closeSource, /name=["']actualMinutes["']/)
+})
+
+test('AI-1C voice capture is an ephemeral input channel and never a persistence boundary', () => {
+  assert.match(closeSource, /navigator\.mediaDevices\.getUserMedia/)
+  assert.match(closeSource, /new MediaRecorder/)
+  assert.match(closeSource, /fetch\('\/api\/voice\/transcribe'/)
+  assert.match(closeSource, /sourceKind: ContextualCaptureSourceKind/)
+  assert.match(closeSource, /recordLessonExecution\(formData\)/)
+
+  assert.match(voiceRouteSource, /loadLessonReflectionCopilotContext/)
+  assert.match(voiceRouteSource, /SPEECH_TO_TEXT_MAX_BYTES/)
+  assert.match(voiceRouteSource, /sourceKind: 'EPHEMERAL_TRANSCRIPT'/)
+  assert.match(voiceRouteSource, /'Cache-Control': 'private, no-store'/)
+  assert.doesNotMatch(voiceRouteSource, /\.insert\s*\(/)
+  assert.doesNotMatch(voiceRouteSource, /storage\./)
 })
 
 test('a TeachingSession cannot be registered with a future lesson date', () => {
