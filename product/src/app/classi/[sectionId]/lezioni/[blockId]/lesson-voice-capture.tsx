@@ -47,6 +47,7 @@ export default function LessonVoiceCapture({
       recorderRef.current = null
       if (recorder?.state === 'recording') {
         recorder.ondataavailable = null
+        recorder.onstart = null
         recorder.onstop = null
         recorder.stop()
       }
@@ -99,11 +100,13 @@ export default function LessonVoiceCapture({
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data)
       }
-      recorder.onstop = () => {
-        void finalizeCapture(recorder.mimeType || mimeType || 'audio/webm', epoch)
+      recorder.onstart = (event) => {
+        startedAtRef.current = event.timeStamp
+      }
+      recorder.onstop = (event) => {
+        void finalizeCapture(recorder.mimeType || mimeType || 'audio/webm', epoch, event.timeStamp)
       }
 
-      startedAtRef.current = Date.now()
       recorder.start(500)
       transition('RECORDING')
       autoStopRef.current = setTimeout(() => {
@@ -123,13 +126,16 @@ export default function LessonVoiceCapture({
     if (recorder?.state === 'recording') recorder.stop()
   }
 
-  async function finalizeCapture(rawMimeType: string, epoch: number) {
+  async function finalizeCapture(rawMimeType: string, epoch: number, stoppedAtMs: number) {
     clearAutoStop()
     releaseStream()
     recorderRef.current = null
     if (captureEpochRef.current !== epoch) return
 
-    const durationMs = Math.max(1, Math.min(VOICE_CAPTURE_MAX_DURATION_MS, Date.now() - startedAtRef.current))
+    const durationMs = Math.max(
+      1,
+      Math.min(VOICE_CAPTURE_MAX_DURATION_MS, stoppedAtMs - startedAtRef.current),
+    )
     const mimeType = normalizeVoiceMimeType(rawMimeType)
     if (!isAllowedVoiceMimeType(mimeType)) {
       chunksRef.current = []
