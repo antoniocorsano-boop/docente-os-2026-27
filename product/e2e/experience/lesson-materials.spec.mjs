@@ -7,7 +7,7 @@ requireE2ECredentials()
 
 const outputRoot = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience'
 
-test('LP-3B — Materiali prossima lezione: viste operative o fail-closed esplicito', async ({ page }, testInfo) => {
+test('RV-1 / LP-3B — Materiali prossima lezione: RoleView operativa o fail-closed esplicito', async ({ page }, testInfo) => {
   await loginE2E(page)
 
   const response = await page.goto('/materiali/prossima')
@@ -19,6 +19,15 @@ test('LP-3B — Materiali prossima lezione: viste operative o fail-closed esplic
   const hasMaterialWorkspace = await viewNav.count()
 
   if (!hasMaterialWorkspace) {
+    const blockedRoleView = page.locator('[data-roleview-status="blocked"]')
+    if (await blockedRoleView.count()) {
+      await expect(blockedRoleView).toBeVisible()
+      await expect(blockedRoleView.getByRole('heading', { name: 'Preparazione della lezione bloccata' })).toBeVisible()
+      await expect(blockedRoleView.getByRole('link', { name: 'Torna a Oggi' })).toBeVisible()
+      await screenshot(page, testInfo, 'lesson-materials-roleview-blocked')
+      return
+    }
+
     await expect(
       page.getByRole('heading', { name: 'La preparazione non è disponibile con sufficiente certezza.' }),
       'Se la preparazione non è risolvibile, la superficie deve fallire chiusa in modo esplicito.',
@@ -28,7 +37,12 @@ test('LP-3B — Materiali prossima lezione: viste operative o fail-closed esplic
     return
   }
 
-  await expect(page.getByText(/Materiali pronti|Da rivedere/).first()).toBeVisible()
+  const roleView = page.locator('[data-roleview-status]')
+  await expect(roleView, 'La superficie materiali deve mostrare la RoleView docente derivata dal manifesto.').toBeVisible()
+  await expect(roleView.getByText(/PREPARAZIONE · (PRONTA|DA COMPLETARE)/)).toBeVisible()
+  await expect(roleView.getByRole('definition')).toHaveCount(4)
+  await expect(roleView.getByRole('link').first()).toBeVisible()
+  await screenshot(page, testInfo, 'lesson-materials-roleview')
 
   const lim = page.getByRole('button', { name: 'Proietta' })
   const student = page.getByRole('button', { name: 'Scheda studenti' })
