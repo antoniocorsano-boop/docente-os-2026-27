@@ -3,6 +3,7 @@ import {
   loadLessonReflectionCopilotContext,
   type LessonReflectionSurface,
 } from '@/app/api/copilot/lesson-reflection-context-loader'
+import { isVoiceCaptureEnabled } from '@/core/application/voice/voice-capture-policy'
 import { OpenAiSpeechToText } from '@/core/infrastructure/ai/openai-speech-to-text'
 import { inspectFreeTextForPilot, pilotPrivacyErrorMessage } from '@/core/privacy/anonymization-guard'
 import {
@@ -19,6 +20,13 @@ const LESSON_SURFACE_HEADER = 'x-docente-surface-path'
 const provider = new OpenAiSpeechToText()
 
 export async function POST(request: Request) {
+  if (!isVoiceCaptureEnabled(process.env.DOCENTE_OS_VOICE_CAPTURE)) {
+    return privateJson({
+      error: 'voice_capture_disabled',
+      message: 'La dettatura è disattivata. Puoi continuare a scrivere la nota.',
+    }, 503)
+  }
+
   const surface = lessonRecordSurfaceFromRequest(request)
   if (!surface) {
     return privateJson({
