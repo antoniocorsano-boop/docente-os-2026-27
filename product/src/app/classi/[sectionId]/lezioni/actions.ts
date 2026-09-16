@@ -5,6 +5,7 @@ import { recordTeachingSession } from '@/core/application/record-teaching-sessio
 import { recordTeachingSessionWithEvidence } from '@/core/application/record-teaching-session-with-evidence'
 import { teachingSessionCandidateFromOccurrence } from '@/core/application/teaching-session-candidate'
 import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
+import { buildTeachingSessionEvidenceNote } from '@/core/domain/teaching-session-reflection'
 import type { TeachingSessionDraft } from '@/core/domain/teaching-session'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
@@ -23,7 +24,8 @@ export async function recordLessonExecution(formData: FormData) {
   const localDate = requiredDate(formData, 'localDate')
   const actualMinutes = positiveInt(formData, 'actualMinutes')
   const registrationKey = requiredUuid(formData, 'registrationKey')
-  const evidenceNote = optionalNote(formData.get('evidenceNote'))
+  const freeEvidenceNote = optionalNote(formData.get('evidenceNote'))
+  const nextActivity = optionalReflectionField(formData.get('nextActivity'))
   const observationDraft = normalizeLessonObservationDraft({
     dimensionKey: formData.get('observationDimension'),
     state: formData.get('observationState'),
@@ -46,6 +48,19 @@ export async function recordLessonExecution(formData: FormData) {
   if (!block) throw new Error('Block is outside the canonical annual plan')
   const projection = resolveHumanTaskLessonProjection(grade, block)
   if (!projection) throw new Error('Human-task lesson projection is not available for this block')
+
+  const evidenceNote = nextActivity
+    ? buildTeachingSessionEvidenceNote({
+        reflection: {
+          activityDone: projection.title,
+          observations: freeEvidenceNote ?? '',
+          difficulties: '',
+          ideas: '',
+          udaChangeProposal: '',
+          nextActivity,
+        },
+      })
+    : freeEvidenceNote
 
   const source = CANONICAL_PLAN_SOURCES[grade]
   const teachingRepository = new SupabaseTeachingSessionRepository()
@@ -155,6 +170,7 @@ export async function recordLessonExecution(formData: FormData) {
   revalidatePath('/planner')
   revalidatePath('/piano-annuale')
   revalidatePath(`/classi/${sectionId}`)
+  revalidatePath(`/classi/${sectionId}/diario`)
   revalidatePath(`/classi/${sectionId}/lezioni/${blockId}`)
 
   return {
@@ -195,6 +211,14 @@ function optionalNote(value: FormDataEntryValue | null) {
   if (!note) return null
   if (note.length > 4000) throw new Error('Evidence note exceeds 4000 characters')
   return note
+}
+
+function optionalReflectionField(value: FormDataEntryValue | null) {
+  if (typeof value !== 'string') return null
+  const text = value.trim()
+  if (!text) return null
+  if (text.length > 450) throw new Error('Next activity exceeds 450 characters')
+  return text
 }
 
 function currentRomeDate() {

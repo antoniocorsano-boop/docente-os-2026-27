@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import {
+  buildTeachingSessionEvidenceNote,
+  parseTeachingSessionEvidenceNote,
+} from './teaching-session-reflection'
 import { allocatedMinutesByBlock, currentTeachingSessions, type TeachingSessionSnapshot } from './teaching-session'
 
 function session(id: string, supersedesSessionId: string | null, actualMinutes: number) {
@@ -52,4 +56,46 @@ test('allocations from another canonical generation never leak into current tota
   }
 
   assert.equal(allocatedMinutesByBlock(snapshot, 'gen-current').get('B01'), 30)
+})
+
+test('lesson report V2 preserves next activity without material or Drive identifiers', () => {
+  const note = buildTeachingSessionEvidenceNote({
+    reflection: {
+      activityDone: 'Prospettiva centrale',
+      observations: 'Impostazione compresa dalla maggior parte della classe.',
+      difficulties: '',
+      ideas: '',
+      udaChangeProposal: '',
+      nextActivity: 'Riprendere la prospettiva centrale e completare l’esercizio 2.',
+    },
+  })
+
+  assert.match(note, /^DOCENTE_OS_LESSON_REPORT_V2\n/)
+  const parsed = parseTeachingSessionEvidenceNote(note)
+  assert.equal(parsed?.contract, 'DOCENTE_OS_LESSON_REPORT_V2')
+  assert.equal(parsed?.materialAssetId, null)
+  assert.equal(parsed?.driveRecordId, null)
+  assert.equal(parsed?.reflection.nextActivity, 'Riprendere la prospettiva centrale e completare l’esercizio 2.')
+  assert.equal(parsed?.reflection.activityDone, 'Prospettiva centrale')
+})
+
+test('historical lesson report V1 remains readable with its material and Drive identifiers', () => {
+  const contract = 'DOCENTE_OS_LESSON_REPORT_V1'
+  const note = `${contract}\n${JSON.stringify({
+    contract,
+    materialAssetId: 'asset-legacy',
+    driveRecordId: 'drive-legacy',
+    activityDone: 'Osservazione di un oggetto tecnico',
+    observations: 'Consegna completata.',
+    difficulties: '',
+    ideas: '',
+    udaChangeProposal: '',
+    nextActivity: 'Confrontare materiali e funzioni.',
+  })}`
+
+  const parsed = parseTeachingSessionEvidenceNote(note)
+  assert.equal(parsed?.contract, contract)
+  assert.equal(parsed?.materialAssetId, 'asset-legacy')
+  assert.equal(parsed?.driveRecordId, 'drive-legacy')
+  assert.equal(parsed?.reflection.nextActivity, 'Confrontare materiali e funzioni.')
 })
