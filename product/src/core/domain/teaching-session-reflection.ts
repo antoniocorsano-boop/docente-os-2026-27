@@ -25,7 +25,10 @@ export type DriveDiaryProjection = {
 }
 
 const FIELD_LIMIT = 450
-const EVIDENCE_CONTRACT = 'DOCENTE_OS_LESSON_REPORT_V1'
+const EVIDENCE_CONTRACT_V1 = 'DOCENTE_OS_LESSON_REPORT_V1'
+const EVIDENCE_CONTRACT_V2 = 'DOCENTE_OS_LESSON_REPORT_V2'
+
+type TeachingSessionEvidenceContract = typeof EVIDENCE_CONTRACT_V1 | typeof EVIDENCE_CONTRACT_V2
 
 export function normalizeTeachingSessionReflection(input: Partial<TeachingSessionReflection>): TeachingSessionReflection {
   return {
@@ -45,30 +48,34 @@ export function buildDriveDiaryRecordId(input: { localDate: string; classLabel: 
 
 export function buildTeachingSessionEvidenceNote(input: {
   reflection: TeachingSessionReflection
-  materialAssetId: string
-  driveRecordId: string
+  materialAssetId?: string | null
+  driveRecordId?: string | null
 }) {
   const payload = {
-    contract: EVIDENCE_CONTRACT,
-    materialAssetId: input.materialAssetId,
-    driveRecordId: input.driveRecordId,
+    contract: EVIDENCE_CONTRACT_V2,
+    ...(input.materialAssetId ? { materialAssetId: input.materialAssetId } : {}),
+    ...(input.driveRecordId ? { driveRecordId: input.driveRecordId } : {}),
     ...normalizeTeachingSessionReflection(input.reflection),
   }
-  const note = `${EVIDENCE_CONTRACT}\n${JSON.stringify(payload)}`
+  const note = `${EVIDENCE_CONTRACT_V2}\n${JSON.stringify(payload)}`
   if (note.length > 4000) throw new Error('Teaching session reflection exceeds evidence-note capacity')
   return note
 }
 
 export function parseTeachingSessionEvidenceNote(note: string | null) {
-  if (!note?.startsWith(`${EVIDENCE_CONTRACT}\n`)) return null
+  const contract = evidenceContract(note)
+  if (!note || !contract) return null
+
   try {
-    const raw = JSON.parse(note.slice(EVIDENCE_CONTRACT.length + 1)) as Record<string, unknown>
-    if (raw.contract !== EVIDENCE_CONTRACT) return null
-    const materialAssetId = typeof raw.materialAssetId === 'string' ? raw.materialAssetId : null
-    const driveRecordId = typeof raw.driveRecordId === 'string' ? raw.driveRecordId : null
-    if (!materialAssetId || !driveRecordId) return null
+    const raw = JSON.parse(note.slice(contract.length + 1)) as Record<string, unknown>
+    if (raw.contract !== contract) return null
+
+    const materialAssetId = optionalString(raw.materialAssetId)
+    const driveRecordId = optionalString(raw.driveRecordId)
+    if (contract === EVIDENCE_CONTRACT_V1 && (!materialAssetId || !driveRecordId)) return null
+
     return {
-      contract: EVIDENCE_CONTRACT,
+      contract,
       materialAssetId,
       driveRecordId,
       reflection: normalizeTeachingSessionReflection({
@@ -108,12 +115,22 @@ export function buildDriveDiaryProjection(input: Omit<DriveDiaryProjection, 'rec
   }
 }
 
+function evidenceContract(note: string | null): TeachingSessionEvidenceContract | null {
+  if (note?.startsWith(`${EVIDENCE_CONTRACT_V2}\n`)) return EVIDENCE_CONTRACT_V2
+  if (note?.startsWith(`${EVIDENCE_CONTRACT_V1}\n`)) return EVIDENCE_CONTRACT_V1
+  return null
+}
+
 function clean(value: string | undefined) {
   return (value ?? '').trim().replace(/\s+/g, ' ').slice(0, FIELD_LIMIT)
 }
 
 function asString(value: unknown) {
   return typeof value === 'string' ? value : ''
+}
+
+function optionalString(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value : null
 }
 
 function normalizeClassLabel(value: string) {

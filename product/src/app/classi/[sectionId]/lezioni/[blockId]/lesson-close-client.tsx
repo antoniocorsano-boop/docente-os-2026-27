@@ -96,7 +96,7 @@ export default function LessonCloseClient({
           <Link className={styles.back} href={classHref}>← {sectionLabel}</Link>
           <p className={styles.eyebrow}>REGISTRA LA LEZIONE · {sectionLabel}</p>
           <h1>Conferma ciò che hai svolto</h1>
-          <p className={styles.closeLead}>Controlla data e durata effettiva. Nota e osservazione sono facoltative: non devi ricopiare obiettivi, sequenza o materiali già presenti.</p>
+          <p className={styles.closeLead}>Controlla data e durata effettiva. Nota, osservazione e prossima attività sono facoltative: non devi ricopiare obiettivi, sequenza o materiali già presenti.</p>
         </div>
 
         <input type="hidden" name="sectionId" value={sectionId} />
@@ -137,6 +137,12 @@ export default function LessonCloseClient({
           <span>Una nota sulla lezione, solo se serve</span>
           <textarea name="evidenceNote" maxLength={4000} placeholder="Per esempio: funzione e materiali compresi; tecnica/tecnologia da riprendere." />
         </label>
+
+        <label className={styles.note}>
+          <span>Prossima attività</span>
+          <textarea name="nextActivity" maxLength={450} placeholder="Per esempio: riprendere la prospettiva centrale e completare l’esercizio 2." />
+        </label>
+        <p className={styles.privacyNote}>Se la indichi, resterà nel Diario come continuità didattica per la prossima lezione, anche senza un materiale o un collegamento Drive.</p>
 
         <details className={styles.evidence}>
           <summary>Promemoria didattico</summary>
