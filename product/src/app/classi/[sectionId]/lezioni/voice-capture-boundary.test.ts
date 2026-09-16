@@ -6,6 +6,8 @@ import { isVoiceCaptureEnabled } from '@/core/application/voice/voice-capture-po
 const routeSource = readFileSync(new URL('../../../api/voice/transcribe/route.ts', import.meta.url), 'utf8')
 const voiceClientSource = readFileSync(new URL('./[blockId]/lesson-voice-capture.tsx', import.meta.url), 'utf8')
 const closeClientSource = readFileSync(new URL('./[blockId]/lesson-close-client.tsx', import.meta.url), 'utf8')
+const inlineRecorderWrapperSource = readFileSync(new URL('../TeachingSessionRecorder.tsx', import.meta.url), 'utf8')
+const inlineRecorderSource = readFileSync(new URL('../TeachingSessionRecorderClient.tsx', import.meta.url), 'utf8')
 const pageSource = readFileSync(new URL('./[blockId]/page.tsx', import.meta.url), 'utf8')
 const adapterSource = readFileSync(new URL('../../../../core/infrastructure/ai/openai-speech-to-text.ts', import.meta.url), 'utf8')
 
@@ -21,7 +23,7 @@ test('AI-1C voice endpoint reconstructs lesson authority server-side and never p
   assert.doesNotMatch(routeSource, /storage\.from|\.insert\(|\.upsert\(|recordLessonExecution|TeachingSession/)
 })
 
-test('AI-1C rollout switch disables both server endpoint and visible voice control', () => {
+test('AI-1C rollout switch disables server endpoint and both modeled and inline voice controls', () => {
   assert.equal(isVoiceCaptureEnabled('off'), false)
   assert.equal(isVoiceCaptureEnabled(' OFF '), false)
   assert.equal(isVoiceCaptureEnabled('on'), true)
@@ -29,6 +31,9 @@ test('AI-1C rollout switch disables both server endpoint and visible voice contr
   assert.match(routeSource, /isVoiceCaptureEnabled\(process\.env\.DOCENTE_OS_VOICE_CAPTURE\)/)
   assert.match(pageSource, /isVoiceCaptureEnabled\(process\.env\.DOCENTE_OS_VOICE_CAPTURE\)/)
   assert.match(closeClientSource, /voiceCaptureEnabled \? \(/)
+  assert.match(inlineRecorderWrapperSource, /isVoiceCaptureEnabled\(process\.env\.DOCENTE_OS_VOICE_CAPTURE\)/)
+  assert.match(inlineRecorderWrapperSource, /voiceCaptureEnabled=/)
+  assert.match(inlineRecorderSource, /voiceCaptureEnabled && lessonSurfacePath/)
 })
 
 test('AI-1C uses the documented transcription model runtime variable', () => {
@@ -57,4 +62,29 @@ test('AI-1C transcription returns to the existing note and keeps recordLessonExe
   assert.match(closeClientSource, /onTranscript=\{appendVoiceTranscript\}/)
   assert.match(closeClientSource, /recordLessonExecution\(formData\)/)
   assert.doesNotMatch(closeClientSource, /saveVoice|persistTranscript|uploadAudio/)
+})
+
+test('AI-1D inline recorder reuses Voice and Copilot without changing its persistent boundary', () => {
+  assert.match(inlineRecorderSource, /LessonVoiceCapture/)
+  assert.match(inlineRecorderSource, /surfacePath=\{lessonSurfacePath\}/)
+  assert.match(inlineRecorderSource, /fetch\('\/api\/copilot'/)
+  assert.match(inlineRecorderSource, /body: JSON\.stringify\(\{ prompt: buildLessonReflectionCapturePrompt\(note\) \}\)/)
+  assert.match(inlineRecorderSource, /action=\{recordTeachingSession\}/)
+  assert.doesNotMatch(inlineRecorderSource, /recordLessonExecution|saveVoice|persistTranscript|uploadAudio/)
+})
+
+test('AI-1D inline recorder keeps professional context out of Copilot JSON and uses only the untrusted surface locator', () => {
+  assert.match(inlineRecorderSource, /X-Docente-Surface-Path': surfacePath/)
+  assert.doesNotMatch(inlineRecorderSource, /JSON\.stringify\(\{[^}]*sectionId|JSON\.stringify\(\{[^}]*blockId|JSON\.stringify\(\{[^}]*projection/)
+  assert.match(inlineRecorderSource, /existing\.length >= 4000/)
+  assert.match(inlineRecorderSource, /spoken\.slice\(0, remaining - separator\.length\)/)
+})
+
+test('AI-1D discards stale Copilot responses after note or primary-block changes', () => {
+  assert.match(inlineRecorderSource, /captureGenerationRef/)
+  assert.match(inlineRecorderSource, /invalidateCapturePreview/)
+  assert.match(inlineRecorderSource, /const requestGeneration = captureGenerationRef\.current \+ 1/)
+  assert.match(inlineRecorderSource, /captureGenerationRef\.current !== requestGeneration/)
+  assert.match(inlineRecorderSource, /selectPrimaryBlock\(event\.target\.value\)/)
+  assert.match(inlineRecorderSource, /updateEvidenceNote\(event\.target\.value\)/)
 })

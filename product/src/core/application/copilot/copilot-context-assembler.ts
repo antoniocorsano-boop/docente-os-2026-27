@@ -133,7 +133,7 @@ export function assembleLessonReflectionCopilotContext(input: {
   sectionId: string
   sectionLabel: string
   blockId: string
-  projectionId: string
+  projectionId: string | null
   lessonTitle: string
   canonicalPlanRef: string
   canonicalPlanLabel: string
@@ -144,21 +144,26 @@ export function assembleLessonReflectionCopilotContext(input: {
     sectionId: input.sectionId,
     localDate: input.localDate,
   }
-  const provenance: CopilotEvidenceRef[] = [
-    {
-      kind: 'CANONICAL_PLAN',
-      ref: input.canonicalPlanRef,
-      label: input.canonicalPlanLabel,
-      authority: 'AUTHORITATIVE',
-    },
-    {
-      kind: 'LESSON_PROJECTION',
-      ref: input.projectionId,
-      label: input.lessonTitle,
-      authority: 'AUTHORITATIVE',
-    },
-  ]
-  const lessonRef = `${input.sectionId}:${input.blockId}:${input.projectionId}`
+  const canonicalPlanEvidence: CopilotEvidenceRef = {
+    kind: 'CANONICAL_PLAN',
+    ref: input.canonicalPlanRef,
+    label: input.canonicalPlanLabel,
+    authority: 'AUTHORITATIVE',
+  }
+  const projectionEvidence: CopilotEvidenceRef | null = input.projectionId
+    ? {
+        kind: 'LESSON_PROJECTION',
+        ref: input.projectionId,
+        label: input.lessonTitle,
+        authority: 'AUTHORITATIVE',
+      }
+    : null
+  const provenance: CopilotEvidenceRef[] = projectionEvidence
+    ? [canonicalPlanEvidence, projectionEvidence]
+    : [canonicalPlanEvidence]
+  const lessonRef = input.projectionId
+    ? `${input.sectionId}:${input.blockId}:${input.projectionId}`
+    : `${input.sectionId}:${input.blockId}:annual-plan`
 
   return {
     context: {
@@ -179,7 +184,9 @@ export function assembleLessonReflectionCopilotContext(input: {
       },
       resources: [
         resourceDescriptor({
-          id: `lesson-brief:${input.projectionId}`,
+          id: input.projectionId
+            ? `lesson-brief:${input.projectionId}`
+            : `lesson-brief:annual-plan:${input.blockId}`,
           kind: 'LESSON_BRIEF',
           state: 'AVAILABLE',
           authority: 'AUTHORITATIVE',
@@ -192,7 +199,7 @@ export function assembleLessonReflectionCopilotContext(input: {
           state: 'AVAILABLE',
           authority: 'AUTHORITATIVE',
           scope,
-          provenance: provenance.filter((item) => item.kind === 'CANONICAL_PLAN'),
+          provenance: [canonicalPlanEvidence],
         }),
       ],
       capabilities: {
@@ -207,7 +214,7 @@ export function assembleLessonReflectionCopilotContext(input: {
           'GMAIL_SEND',
         ],
       },
-      missing: [],
+      missing: input.projectionId ? [] : ['HumanTask lesson projection unavailable; using canonical annual plan context.'],
       privacy: {
         classification: 'PROFESSIONAL',
         providerPolicy: 'NO_MODEL',
@@ -218,7 +225,7 @@ export function assembleLessonReflectionCopilotContext(input: {
       sectionId: input.sectionId,
       sectionLabel: input.sectionLabel,
       blockId: input.blockId,
-      projectionId: input.projectionId,
+      ...(input.projectionId ? { projectionId: input.projectionId } : {}),
       lessonRef,
       provenance: provenance.map((item) => ({
         kind: item.kind,

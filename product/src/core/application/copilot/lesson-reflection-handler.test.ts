@@ -24,6 +24,22 @@ function lessonContext() {
   })
 }
 
+function annualPlanOnlyContext() {
+  return assembleLessonReflectionCopilotContext({
+    runId: 'run-plan-only',
+    localDate: '2026-09-16',
+    workspaceId: 'workspace-1',
+    academicYearId: 'year-2026',
+    sectionId: 'section-3e',
+    sectionLabel: '3ª E',
+    blockId: 'B01',
+    projectionId: null,
+    lessonTitle: 'Energia: forme, trasformazioni e uso consapevole',
+    canonicalPlanRef: 'CAN-PLAN-3',
+    canonicalPlanLabel: 'Piano annuale 3ª E',
+  })
+}
+
 test('AI-1B frontdoor: la richiesta di riflessione resta un prompt senza contesto tecnico client', () => {
   const prompt = buildLessonReflectionCapturePrompt(
     'Abbiamo svolto la misura. La prossima lezione riprendere gli errori. Preparare una scheda guidata.',
@@ -64,6 +80,24 @@ test('AI-1B handler: LESSON_REFLECTION usa contesto server-side, propone e non p
   )
   assert.ok(result.provenance.some((item) => item.kind === 'CANONICAL_PLAN'))
   assert.ok(result.provenance.some((item) => item.kind === 'LESSON_PROJECTION'))
+})
+
+test('AI-1D handler: il Piano annuale autorevole basta quando HumanTask non è materializzata', () => {
+  const assembled = annualPlanOnlyContext()
+  const result = handleLessonReflectionCapture({
+    context: assembled.context,
+    target: assembled.target,
+    prompt: buildLessonReflectionCapturePrompt(
+      'Abbiamo distinto le principali forme di energia. La prossima lezione riprendere le trasformazioni.',
+    ),
+  })
+
+  assert.equal(result.status, 'SUPPORTED')
+  assert.equal(result.persistentEffect, 'NONE')
+  assert.equal(assembled.target.projectionId, undefined)
+  assert.equal(assembled.context.resources.find((item) => item.kind === 'LESSON_BRIEF')?.state, 'AVAILABLE')
+  assert.ok(result.provenance.some((item) => item.kind === 'CANONICAL_PLAN'))
+  assert.equal(result.provenance.some((item) => item.kind === 'LESSON_PROJECTION'), false)
 })
 
 test('AI-1B handler: capability mancante fallisce chiusa', () => {
