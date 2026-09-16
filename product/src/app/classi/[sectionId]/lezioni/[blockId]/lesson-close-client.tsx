@@ -3,12 +3,12 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import type { LessonReflectionCaptureActionResult } from '@/core/application/copilot/lesson-reflection-handler'
+import type { ContextualCaptureProposalKind } from '@/core/presentation/contextual-capture'
 import {
-  buildContextualCapture,
-  buildContextualCaptureNextActivity,
-  type ContextualCaptureProposalKind,
-  type ContextualCaptureResult,
-} from '@/core/presentation/contextual-capture'
+  buildLessonReflectionCapturePrompt,
+  CONTEXTUAL_CAPTURE_MAX_TEXT_LENGTH,
+} from '@/core/presentation/contextual-capture-frontdoor'
 import type { HumanTaskLessonProjection } from '@/core/presentation/human-task-content'
 import {
   LESSON_OBSERVATION_DIMENSION_OPTIONS,
@@ -58,14 +58,15 @@ export default function LessonCloseClient({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [evidenceNote, setEvidenceNote] = useState('')
   const [nextActivity, setNextActivity] = useState('')
-  const [capturePreview, setCapturePreview] = useState<ContextualCaptureResult | null>(null)
+  const [capturePreview, setCapturePreview] = useState<LessonReflectionCaptureActionResult | null>(null)
   const [captureError, setCaptureError] = useState<string | null>(null)
+  const [organizing, setOrganizing] = useState(false)
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
   const teachHref = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(block.id)}?mode=teach`
   const observeHref = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(block.id)}?mode=observe`
   const observationStorageKey = lessonObservationStorageKey(sectionId, block.id)
   const liveStorageKey = `docente-os:lesson-live:${sectionId}:${block.id}`
-  const suggestedNextActivity = capturePreview ? buildContextualCaptureNextActivity(capturePreview) : null
+  const suggestedNextActivity = capturePreview?.nextActivity ?? null
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -107,39 +108,45 @@ export default function LessonCloseClient({
     setCaptureError(null)
   }
 
-  function organizeEvidenceNote() {
-    if (!evidenceNote.trim()) {
+  async function organizeEvidenceNote() {
+    const note = evidenceNote.trim()
+    if (!note) {
       setCapturePreview(null)
       setCaptureError('Scrivi prima una breve nota sulla lezione.')
       return
     }
-
-    const result = buildContextualCapture({
-      sourceKind: 'MANUAL_TEXT',
-      text: evidenceNote,
-      explicitTarget: {
-        sectionId,
-        sectionLabel,
-        blockId: block.id,
-        projectionId: projection.projectionId,
-        lessonRef: `${sectionId}:${block.id}:${projection.projectionId}`,
-        localDate: defaultLocalDate,
-        provenance: [{
-          kind: 'LESSON_PROJECTION',
-          ref: projection.projectionId,
-          label: projection.title,
-        }],
-      },
-    })
-
-    if (result.binding.status !== 'RESOLVED') {
+    if (note.length > CONTEXTUAL_CAPTURE_MAX_TEXT_LENGTH) {
       setCapturePreview(null)
-      setCaptureError('Il Copilota non riesce a collegare con certezza questa nota alla lezione aperta.')
+      setCaptureError(`Per organizzarla con il Copilota, riduci la nota a ${CONTEXTUAL_CAPTURE_MAX_TEXT_LENGTH} caratteri. Puoi comunque registrarla così com’è.`)
       return
     }
 
-    setCapturePreview(result)
+    setOrganizing(true)
     setCaptureError(null)
+    try {
+      const response = await fetch('/api/copilot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: buildLessonReflectionCapturePrompt(note) }),
+      })
+      const payload = await response.json().catch(() => null) as LessonReflectionCaptureActionResult | { message?: string } | null
+
+      if (!response.ok || !payload || !('skillId' in payload) || payload.skillId !== 'LESSON_REFLECTION' || payload.status !== 'SUPPORTED') {
+        const message = payload && 'message' in payload && typeof payload.message === 'string'
+          ? payload.message
+          : 'Il Copilota non riesce a organizzare questa nota nel contesto corrente.'
+        setCapturePreview(null)
+        setCaptureError(message)
+        return
+      }
+
+      setCapturePreview(payload)
+    } catch {
+      setCapturePreview(null)
+      setCaptureError('Il Copilota non è disponibile. La nota resta qui e puoi registrare normalmente la lezione.')
+    } finally {
+      setOrganizing(false)
+    }
   }
 
   const observationDimensionLabel = observationDraft
@@ -205,19 +212,19 @@ export default function LessonCloseClient({
         </label>
 
         <div className={styles.assistantTools}>
-          <button className={styles.assistantAction} type="button" onClick={organizeEvidenceNote} disabled={!evidenceNote.trim()}>
-            Organizza con il Copilota
+          <button className={styles.assistantAction} type="button" onClick={organizeEvidenceNote} disabled={!evidenceNote.trim() || organizing}>
+            {organizing ? 'Organizzazione…' : 'Organizza con il Copilota'}
           </button>
-          <span>Anteprima locale: non registra e non modifica nulla da sola.</span>
+          <span>Il Copilota propone soltanto: nulla viene registrato finché non confermi la lezione.</span>
         </div>
         {captureError ? <p className={styles.privacyNote} role="alert">{captureError}</p> : null}
 
         {capturePreview ? (
           <section className={styles.assistantPreview} aria-label="Proposta del Copilota" aria-live="polite">
             <span>PROPOSTA DEL COPILOTA · NON SALVATA</span>
-            <strong>Ho organizzato la nota in {capturePreview.proposedEffects.length} {capturePreview.proposedEffects.length === 1 ? 'punto' : 'punti'}.</strong>
+            <strong>Ho organizzato la nota in {capturePreview.effects.length} {capturePreview.effects.length === 1 ? 'punto' : 'punti'}.</strong>
             <ul>
-              {capturePreview.proposedEffects.map((effect) => (
+              {capturePreview.effects.map((effect) => (
                 <li key={`${effect.kind}:${effect.summary}`}>
                   <b>{CAPTURE_LABELS[effect.kind]}</b>
                   <p>{effect.summary}</p>
