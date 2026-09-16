@@ -47,6 +47,15 @@ jobs:
             echo 'Render auto-deploy must remain On Commit: checksPass/off would break the exact-commit runtime gate.' >&2
             exit 1
           fi
+          grep -A1 -F 'key: OPENAI_STT_API_KEY' render.yaml | grep -Fq 'sync: false'
+          if grep -Fq 'key: OPENAI_API_KEY' render.yaml; then
+            echo 'Beta Voice must not declare the shared OPENAI_API_KEY: STT uses an isolated credential.' >&2
+            exit 1
+          fi
+          grep -Fq 'key: OPENAI_TRANSCRIPTION_MODEL' render.yaml
+          grep -Fq 'value: gpt-4o-mini-transcribe' render.yaml
+          grep -Fq 'key: DOCENTE_OS_VOICE_CAPTURE' render.yaml
+          grep -Fq 'value: on' render.yaml
       - name: Validate Human + Visual Acceptance contract
         working-directory: ${{ github.workspace }}
         shell: bash

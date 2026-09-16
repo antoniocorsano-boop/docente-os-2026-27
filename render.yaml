@@ -26,5 +26,11 @@ projects:
                 value: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
               - key: NEXT_PUBLIC_APP_URL
                 value: https://docente-os-2026-27-beta.onrender.com
+              - key: OPENAI_STT_API_KEY
+                sync: false
               - key: OPENAI_VISION_MODEL
                 value: gpt-5.6
+              - key: OPENAI_TRANSCRIPTION_MODEL
+                value: gpt-4o-mini-transcribe
+              - key: DOCENTE_OS_VOICE_CAPTURE
+                value: on

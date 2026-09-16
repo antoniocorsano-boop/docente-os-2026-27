@@ -12,7 +12,7 @@ type Fetcher = typeof fetch
 
 export class OpenAiSpeechToText implements SpeechToTextPort {
   constructor(
-    private readonly apiKey = process.env.OPENAI_API_KEY,
+    private readonly apiKey = process.env.OPENAI_STT_API_KEY,
     private readonly model = process.env.OPENAI_TRANSCRIPTION_MODEL ?? 'gpt-4o-mini-transcribe',
     private readonly fetcher: Fetcher = fetch,
     private readonly timeoutMs = resolveTimeoutMs(process.env.OPENAI_STT_TIMEOUT_MS),

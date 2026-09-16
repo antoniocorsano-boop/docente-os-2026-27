@@ -37,6 +37,25 @@ test('OpenAiSpeechToText sends only ephemeral audio + model + language to the tr
   })
 })
 
+test('OpenAiSpeechToText ignores the shared OpenAI credential without an STT-specific key', () => {
+  const previousShared = process.env.OPENAI_API_KEY
+  const previousStt = process.env.OPENAI_STT_API_KEY
+
+  try {
+    process.env.OPENAI_API_KEY = 'shared-provider-key'
+    delete process.env.OPENAI_STT_API_KEY
+
+    const isolated = new OpenAiSpeechToText()
+    assert.equal(isolated.available, false)
+  } finally {
+    if (previousShared === undefined) delete process.env.OPENAI_API_KEY
+    else process.env.OPENAI_API_KEY = previousShared
+
+    if (previousStt === undefined) delete process.env.OPENAI_STT_API_KEY
+    else process.env.OPENAI_STT_API_KEY = previousStt
+  }
+})
+
 test('OpenAiSpeechToText fails closed when provider is unavailable or returns no transcript', async () => {
   const unavailable = new OpenAiSpeechToText(undefined, 'gpt-4o-mini-transcribe', fetch)
   assert.equal(unavailable.available, false)
