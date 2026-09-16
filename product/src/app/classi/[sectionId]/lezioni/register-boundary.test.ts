@@ -6,6 +6,10 @@ const actionsSource = readFileSync(new URL('./actions.ts', import.meta.url), 'ut
 const closeSource = readFileSync(new URL('./[blockId]/lesson-close-client.tsx', import.meta.url), 'utf8')
 const observeSource = readFileSync(new URL('./[blockId]/lesson-observe-client.tsx', import.meta.url), 'utf8')
 const observationModelSource = readFileSync(new URL('./lesson-observation-model.ts', import.meta.url), 'utf8')
+const timetableFallbackMigrationSource = readFileSync(
+  new URL('../../../../../supabase/migrations/0060_teaching_session_timetable_fallback.sql', import.meta.url),
+  'utf8',
+)
 
 test('Bxx Registra routes through TeachingSession and never writes AnnualPlanBlockProgress directly', () => {
   assert.match(actionsSource, /recordTeachingSession/)
@@ -16,6 +20,14 @@ test('Bxx Registra preserves a resolved timetable occurrence before using manual
   assert.match(actionsSource, /selectEligibleLessonOccurrence/)
   assert.match(actionsSource, /teachingSessionCandidateFromOccurrence/)
   assert.match(actionsSource, /sourceKind:\s*'MANUAL'/)
+})
+
+test('projected registration accepts an unclassified Calendar day only with identified timetable provenance', () => {
+  assert.match(timetableFallbackMigrationSource, /source_calendar_state = 'SCHOOL_DAY'/)
+  assert.match(timetableFallbackMigrationSource, /source_calendar_state = 'UNDETERMINED'/)
+  assert.match(timetableFallbackMigrationSource, /source_timetable_version_id is not null/)
+  assert.match(timetableFallbackMigrationSource, /source_timetable_slot_id is not null/)
+  assert.doesNotMatch(timetableFallbackMigrationSource, /source_calendar_state\s*=\s*'NO_LESSONS'/)
 })
 
 test('lesson close no longer asks the teacher to decide plan status as part of registration', () => {
