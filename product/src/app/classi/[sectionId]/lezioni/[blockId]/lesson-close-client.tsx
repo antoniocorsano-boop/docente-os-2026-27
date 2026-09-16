@@ -35,6 +35,7 @@ type VoiceTranscriptionPayload =
   | { message?: string }
 
 const VOICE_CAPTURE_MAX_MS = 90_000
+const LESSON_NOTE_MAX_CHARS = 4000
 
 const CAPTURE_LABELS: Record<ContextualCaptureProposalKind, string> = {
   LESSON_EXECUTION_NOTE: 'Ciò che è stato svolto',
@@ -72,10 +73,13 @@ export default function LessonCloseClient({
   const [organizing, setOrganizing] = useState(false)
   const [voiceState, setVoiceState] = useState<VoiceState>('IDLE')
   const [voiceError, setVoiceError] = useState<string | null>(null)
+  const evidenceNoteRef = useRef('')
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const mediaStreamRef = useRef<MediaStream | null>(null)
   const voiceChunksRef = useRef<Blob[]>([])
   const voiceTimeoutRef = useRef<number | null>(null)
+  const voiceCancelledRef = useRef(false)
+  const voiceRequestAbortRef = useRef<AbortController | null>(null)
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
   const teachHref = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(block.id)}?mode=teach`
   const observeHref = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(block.id)}?mode=observe`
@@ -98,9 +102,13 @@ export default function LessonCloseClient({
   }, [observationStorageKey])
 
   useEffect(() => () => {
+    voiceCancelledRef.current = true
+    voiceRequestAbortRef.current?.abort()
+    voiceRequestAbortRef.current = null
     if (voiceTimeoutRef.current !== null) window.clearTimeout(voiceTimeoutRef.current)
     const recorder = mediaRecorderRef.current
     if (recorder && recorder.state !== 'inactive') recorder.stop()
+    voiceChunksRef.current = []
     stopMediaStream()
   }, [])
 
@@ -125,6 +133,7 @@ export default function LessonCloseClient({
   }
 
   function updateEvidenceNote(value: string, sourceKind: ContextualCaptureSourceKind = 'MANUAL_TEXT') {
+    evidenceNoteRef.current = value
     setEvidenceNote(value)
     setEvidenceSourceKind(sourceKind)
     setCapturePreview(null)
@@ -134,6 +143,9 @@ export default function LessonCloseClient({
   async function startVoiceCapture() {
     setVoiceError(null)
     setCaptureError(null)
+    voiceCancelledRef.current = false
+    voiceRequestAbortRef.current?.abort()
+    voiceRequestAbortRef.current = null
 
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       setVoiceError('Il browser non supporta la dettatura audio. Puoi continuare a scrivere la nota manualmente.')
@@ -153,12 +165,19 @@ export default function LessonCloseClient({
         if (event.data.size > 0) voiceChunksRef.current.push(event.data)
       })
       recorder.addEventListener('stop', () => {
+        if (voiceCancelledRef.current) {
+          voiceChunksRef.current = []
+          mediaRecorderRef.current = null
+          stopMediaStream()
+          return
+        }
         void transcribeVoiceCapture(recorder.mimeType || mimeType || 'audio/webm')
       }, { once: true })
       recorder.addEventListener('error', () => {
         clearVoiceTimeout()
         stopMediaStream()
         mediaRecorderRef.current = null
+        if (voiceCancelledRef.current) return
         setVoiceState('IDLE')
         setVoiceError('La registrazione audio si è interrotta. Puoi continuare a scrivere la nota manualmente.')
       }, { once: true })
@@ -168,6 +187,7 @@ export default function LessonCloseClient({
       voiceTimeoutRef.current = window.setTimeout(() => stopVoiceCapture(), VOICE_CAPTURE_MAX_MS)
     } catch {
       stopMediaStream()
+      if (voiceCancelledRef.current) return
       setVoiceState('IDLE')
       setVoiceError('Non posso usare il microfono. Controlla il permesso del browser oppure continua con la nota manuale.')
     }
@@ -188,6 +208,8 @@ export default function LessonCloseClient({
     mediaRecorderRef.current = null
     stopMediaStream()
 
+    if (voiceCancelledRef.current) return
+
     if (chunks.length === 0) {
       setVoiceState('IDLE')
       setVoiceError('Non ho ricevuto audio da trascrivere. Puoi riprovare o scrivere la nota manualmente.')
@@ -195,6 +217,9 @@ export default function LessonCloseClient({
     }
 
     setVoiceState('TRANSCRIBING')
+    const abortController = new AbortController()
+    voiceRequestAbortRef.current = abortController
+
     try {
       const audio = new Blob(chunks, { type: mimeType })
       const form = new FormData()
@@ -206,8 +231,12 @@ export default function LessonCloseClient({
           'X-Docente-Surface-Path': `${window.location.pathname}${window.location.search}`,
         },
         body: form,
+        signal: abortController.signal,
       })
+      if (voiceCancelledRef.current) return
+
       const payload = await response.json().catch(() => null) as VoiceTranscriptionPayload | null
+      if (voiceCancelledRef.current) return
 
       if (!response.ok || !payload || !('transcript' in payload)) {
         const message = payload && 'message' in payload && typeof payload.message === 'string'
@@ -223,15 +252,21 @@ export default function LessonCloseClient({
         return
       }
 
-      const combined = evidenceNote.trim()
-        ? `${evidenceNote.trim()}\n${transcript}`
-        : transcript
+      const currentNote = evidenceNoteRef.current.trim()
+      const combined = currentNote ? `${currentNote}\n${transcript}` : transcript
+      if (combined.length > LESSON_NOTE_MAX_CHARS) {
+        setVoiceError(`La nota e la trascrizione insieme superano ${LESSON_NOTE_MAX_CHARS} caratteri. La nota che avevi scritto è rimasta invariata: riducila e riprova.`)
+        return
+      }
+
       updateEvidenceNote(combined, payload.sourceKind)
       setVoiceError(null)
-    } catch {
+    } catch (error) {
+      if (voiceCancelledRef.current || (error instanceof DOMException && error.name === 'AbortError')) return
       setVoiceError('La dettatura non è disponibile. La nota manuale resta utilizzabile senza perdere nulla.')
     } finally {
-      setVoiceState('IDLE')
+      if (voiceRequestAbortRef.current === abortController) voiceRequestAbortRef.current = null
+      if (!voiceCancelledRef.current) setVoiceState('IDLE')
     }
   }
 
@@ -345,7 +380,7 @@ export default function LessonCloseClient({
           <span>Una nota sulla lezione, solo se serve</span>
           <textarea
             name="evidenceNote"
-            maxLength={4000}
+            maxLength={LESSON_NOTE_MAX_CHARS}
             value={evidenceNote}
             onChange={(event) => updateEvidenceNote(event.target.value)}
             placeholder="Per esempio: funzione e materiali compresi; tecnica/tecnologia da riprendere."
