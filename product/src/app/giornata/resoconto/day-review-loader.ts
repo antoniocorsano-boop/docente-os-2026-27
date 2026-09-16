@@ -1,4 +1,7 @@
-import { loadCurrentTodayCopilotContext } from '@/app/api/assistant/today-context-loader'
+import {
+  loadCurrentTodayCopilotContext,
+  type LoadedTodayCopilotContext,
+} from '@/app/api/assistant/today-context-loader'
 import { loadTomorrowPreparationBundle } from '@/app/materiali/domani/tomorrow-preparation-loader'
 import { currentTeachingSessions } from '@/core/domain/teaching-session'
 import { parseTeachingSessionEvidenceNote, type TeachingSessionReflection } from '@/core/domain/teaching-session-reflection'
@@ -61,13 +64,21 @@ export type DayReviewBundle = {
   decisions: DayReviewDecision[]
 }
 
-export async function loadDayReviewBundle(input: {
-  workspaceId: string
-  academicYearId: string
-}): Promise<DayReviewBundle> {
+export async function loadDayReviewBundle(
+  input: {
+    workspaceId: string
+    academicYearId: string
+  },
+  options: {
+    todayLoaded?: LoadedTodayCopilotContext | null
+  } = {},
+): Promise<DayReviewBundle> {
   const clock = currentRomeClock()
+  const todayPromise = options.todayLoaded === undefined
+    ? loadCurrentTodayCopilotContext()
+    : Promise.resolve(options.todayLoaded)
   const [todayLoaded, tomorrow, rawSessions] = await Promise.all([
-    loadCurrentTodayCopilotContext(),
+    todayPromise,
     loadTomorrowPreparationBundle(input),
     new SupabaseTeachingSessionRepository().listByDay(input.workspaceId, input.academicYearId, clock.localDate),
   ])
