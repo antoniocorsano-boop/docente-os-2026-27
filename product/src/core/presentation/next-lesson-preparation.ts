@@ -41,8 +41,32 @@ export type NextLessonPreparation = {
   provenance: Array<{ kind: string; ref?: string; label?: string }>
 }
 
+export type TodayDayReviewDecision = {
+  id: string
+  kind: 'RECORD_LESSON' | 'VERIFY_TOMORROW' | 'COMPLETE_TOMORROW' | 'REVIEW_UDA_PROPOSAL'
+  title: string
+  detail: string
+  actionLabel: string
+  href: string
+}
+
+export type TodayDayReviewContext = {
+  localDate: string
+  tomorrowLocalDate: string
+  concludedCount: number
+  recordedCount: number
+  pendingCount: number
+  remainingCount: number
+  tomorrowLessonCount: number
+  tomorrowReadyCount: number
+  tomorrowAttentionCount: number
+  tomorrowBlockedCount: number
+  decisions: TodayDayReviewDecision[]
+}
+
 export type TodayCopilotK2Context = TodayCopilotContext & {
   nextLessonPreparation: NextLessonPreparation | null
+  dayReview?: TodayDayReviewContext | null
 }
 
 export function selectNextLessonForPreparation(
@@ -156,6 +180,11 @@ export function enrichTodayCopilotContext(
 
 export function respondToTodayCopilotK2(context: TodayCopilotK2Context, prompt: string): AssistantResponse {
   const normalized = normalize(prompt)
+
+  if (isDayReviewIntent(normalized)) {
+    return dayReviewResponse(context)
+  }
+
   if (!containsAny(normalized, ['prossima lezione', 'prossimo lezione', 'preparare la prossima', 'preparo la prossima', 'cosa preparo'])) {
     return respondToTodayCopilot(context, prompt)
   }
@@ -240,6 +269,69 @@ export function respondToTodayCopilotK2(context: TodayCopilotK2Context, prompt: 
     },
     text: lines.join('\n'),
   }
+}
+
+function dayReviewResponse(context: TodayCopilotK2Context): AssistantResponse {
+  const review = context.dayReview
+  if (!review) {
+    return {
+      actionKind: 'READ_ONLY',
+      answerStatus: 'PARTIAL',
+      grounding: {
+        kind: 'PAGE_CONTEXT',
+        evidenceCount: Math.max(1, context.provenance.length),
+      },
+      text: [
+        '**Prima di domani**',
+        'Il contesto della giornata è disponibile, ma la coda governata di chiusura non è stata caricata in questa superficie. Non ricostruisco priorità per deduzione.',
+      ].join('\n'),
+    }
+  }
+
+  const lines = [
+    '**Prima di domani**',
+    `Oggi risultano ${review.concludedCount} lezioni concluse: ${review.recordedCount} registrate e ${review.pendingCount} ancora da registrare.`,
+    `Per domani risultano ${review.tomorrowLessonCount} pacchetti: ${review.tomorrowReadyCount} pronti, ${review.tomorrowAttentionCount} da completare e ${review.tomorrowBlockedCount} bloccati.`,
+    '',
+  ]
+
+  if (review.decisions.length === 0) {
+    lines.push('Non risultano decisioni aperte nella coda di chiusura della giornata.')
+  } else {
+    lines.push(
+      '**Da sistemare, in ordine**',
+      ...review.decisions.map((decision, index) => `${index + 1}. **${decision.title}** — ${decision.detail} (${decision.actionLabel})`),
+    )
+  }
+
+  lines.push(
+    '',
+    '**Confine operativo**',
+    'Questa coda è in sola lettura: non registro lezioni, non completo materiali e non applico proposte UDA automaticamente. Ogni modifica richiede il relativo percorso e una conferma esplicita.',
+  )
+
+  return {
+    actionKind: 'READ_ONLY',
+    answerStatus: 'SUPPORTED',
+    grounding: {
+      kind: 'PAGE_CONTEXT',
+      evidenceCount: Math.max(1, context.provenance.length + review.decisions.length),
+    },
+    text: lines.join('\n'),
+  }
+}
+
+function isDayReviewIntent(value: string) {
+  return containsAny(value, [
+    'prima di domani',
+    'cosa manca per domani',
+    'cosa devo sistemare',
+    'chiudi la giornata',
+    'chiudere la giornata',
+    'fine giornata',
+    'resoconto della giornata',
+    'resoconto giornata',
+  ])
 }
 
 function lessonMinute(value: string) {

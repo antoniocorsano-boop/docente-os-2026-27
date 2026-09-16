@@ -9,8 +9,8 @@ import { respondToGovernedTodayCopilot } from '@/core/presentation/today-copilot
 const SUGGESTED_PROMPTS = [
   'Che lezioni ho oggi?',
   'Qual è la prossima lezione?',
-  'Cosa devo fare oggi?',
   'Cosa devo ancora registrare?',
+  'Cosa devo sistemare prima di domani?',
 ] as const
 
 export function TodayAssistant({

@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { HomeDailyContext, HomeDailyLesson } from './home-daily-context'
+import {
+  enrichTodayCopilotContext,
+  respondToTodayCopilotK2,
+  type TodayDayReviewContext,
+} from './next-lesson-preparation'
 import type { PlannerAssistantContext } from './planner-assistant-context'
 import { buildTodayCopilotContext, respondToTodayCopilot } from './today-copilot-context'
 
@@ -73,6 +78,56 @@ function context(input: {
     timetableState: input.timetableState ?? 'IN_FORCE',
     planner: input.planner ?? planner(),
   })
+}
+
+function dayReview(overrides: Partial<TodayDayReviewContext> = {}): TodayDayReviewContext {
+  return {
+    localDate: DATE,
+    tomorrowLocalDate: '2026-09-16',
+    concludedCount: 2,
+    recordedCount: 1,
+    pendingCount: 1,
+    remainingCount: 0,
+    tomorrowLessonCount: 2,
+    tomorrowReadyCount: 0,
+    tomorrowAttentionCount: 1,
+    tomorrowBlockedCount: 1,
+    decisions: [
+      {
+        id: 'record:1',
+        kind: 'RECORD_LESSON',
+        title: 'Registra 2C · Tecnologia',
+        detail: 'La lezione è conclusa ma non risulta ancora registrata nel Diario.',
+        actionLabel: 'Apri la classe',
+        href: '/classi/section-1',
+      },
+      {
+        id: 'blocked:2',
+        kind: 'VERIFY_TOMORROW',
+        title: '1A: preparazione bloccata',
+        detail: 'Il pacchetto non è ancora utilizzabile con sufficiente certezza.',
+        actionLabel: 'Apri il pacchetto',
+        href: '/materiali/domani/lesson-2',
+      },
+      {
+        id: 'attention:3',
+        kind: 'COMPLETE_TOMORROW',
+        title: '2C: completa la preparazione',
+        detail: 'Il pacchetto richiede ancora una verifica o un materiale.',
+        actionLabel: 'Apri il pacchetto',
+        href: '/materiali/domani/lesson-3',
+      },
+      {
+        id: 'uda:session-1',
+        kind: 'REVIEW_UDA_PROPOSAL',
+        title: '2C · Tecnologia: valuta la proposta per l’UDA',
+        detail: 'Rallentare la fase operativa e aggiungere un esempio guidato.',
+        actionLabel: 'Apri il Diario',
+        href: '/classi/section-1/diario',
+      },
+    ],
+    ...overrides,
+  }
 }
 
 test('K1: lezioni presenti non vengono annullate da un Planner vuoto', () => {
@@ -181,4 +236,53 @@ test('K1: giornata senza lezioni può comunque contenere attività Planner', () 
 
   assert.match(result.text, /calendario non prevede lezioni/i)
   assert.match(result.text, /Rivedere UDA/)
+})
+
+test('MDS-6: il Copilota usa la coda MDS-5 nello stesso ordine governato', () => {
+  const governed = {
+    ...enrichTodayCopilotContext(context(), null),
+    dayReview: dayReview(),
+  }
+  const result = respondToTodayCopilotK2(governed, 'Cosa devo sistemare prima di domani?')
+
+  assert.equal(result.actionKind, 'READ_ONLY')
+  assert.equal(result.answerStatus, 'SUPPORTED')
+  assert.match(result.text, /\*\*Prima di domani\*\*/)
+  const recordAt = result.text.indexOf('Registra 2C · Tecnologia')
+  const blockedAt = result.text.indexOf('1A: preparazione bloccata')
+  const attentionAt = result.text.indexOf('2C: completa la preparazione')
+  const udaAt = result.text.indexOf('valuta la proposta per l’UDA')
+  assert.ok(recordAt >= 0 && blockedAt > recordAt && attentionAt > blockedAt && udaAt > attentionAt)
+  assert.match(result.text, /non applico proposte UDA automaticamente/i)
+})
+
+test('MDS-6: una coda vuota non inventa attività prima di domani', () => {
+  const governed = {
+    ...enrichTodayCopilotContext(context(), null),
+    dayReview: dayReview({
+      concludedCount: 2,
+      recordedCount: 2,
+      pendingCount: 0,
+      tomorrowReadyCount: 2,
+      tomorrowAttentionCount: 0,
+      tomorrowBlockedCount: 0,
+      decisions: [],
+    }),
+  }
+  const result = respondToTodayCopilotK2(governed, 'Chiudi la giornata')
+
+  assert.equal(result.actionKind, 'READ_ONLY')
+  assert.equal(result.answerStatus, 'SUPPORTED')
+  assert.match(result.text, /Non risultano decisioni aperte/i)
+  assert.doesNotMatch(result.text, /Registra 2C|preparazione bloccata|completa la preparazione/)
+})
+
+test('MDS-6: senza coda caricata il Copilota non ricostruisce priorità per deduzione', () => {
+  const governed = enrichTodayCopilotContext(context(), null)
+  const result = respondToTodayCopilotK2(governed, 'Cosa manca per domani?')
+
+  assert.equal(result.actionKind, 'READ_ONLY')
+  assert.equal(result.answerStatus, 'PARTIAL')
+  assert.match(result.text, /non è stata caricata/i)
+  assert.match(result.text, /Non ricostruisco priorità per deduzione/i)
 })
