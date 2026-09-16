@@ -7,7 +7,7 @@ import type { RoleViewSnapshot } from '@/core/presentation/roleview-governance'
 import { RoleViewTeacherPanel } from './roleview-teacher-panel'
 import styles from './lesson-materials.module.css'
 
-type MaterialView = 'lim' | 'scheda' | 'docente'
+type MaterialView = 'lim' | 'visuale' | 'scheda' | 'docente'
 
 export default function LessonMaterialsClient({
   bundle,
@@ -22,7 +22,7 @@ export default function LessonMaterialsClient({
   sectionLabel: string
   timeLabel: string
   authority: 'IN_FORCE' | 'PROVISIONAL_DRAFT'
-  initialView: MaterialView
+  initialView: Exclude<MaterialView, 'visuale'>
 }) {
   const [view, setView] = useState<MaterialView>(initialView)
   const [activeScreen, setActiveScreen] = useState(0)
@@ -30,7 +30,13 @@ export default function LessonMaterialsClient({
   const currentScreen = screens[activeScreen] ?? screens[0]
   const isFirst = activeScreen === 0
   const isLast = activeScreen >= screens.length - 1
-  const viewTitle = view === 'lim' ? 'Proietta' : view === 'scheda' ? 'Scheda studenti' : 'Guida docente'
+  const viewTitle = view === 'lim'
+    ? 'Proietta'
+    : view === 'visuale'
+      ? 'Mappa visuale'
+      : view === 'scheda'
+        ? 'Scheda studenti'
+        : 'Guida docente'
 
   useEffect(() => {
     if (view !== 'lim') return
@@ -71,6 +77,7 @@ export default function LessonMaterialsClient({
 
       <nav className={styles.viewNav} aria-label="Scegli la vista dei materiali">
         <button type="button" aria-pressed={view === 'lim'} onClick={() => setView('lim')}>Proietta</button>
+        <button type="button" aria-pressed={view === 'visuale'} onClick={() => setView('visuale')}>Mappa visuale</button>
         <button type="button" aria-pressed={view === 'scheda'} onClick={() => setView('scheda')}>Scheda studenti</button>
         <button type="button" aria-pressed={view === 'docente'} onClick={() => setView('docente')}>Guida docente</button>
       </nav>
@@ -106,6 +113,29 @@ export default function LessonMaterialsClient({
             <button type="button" disabled={isLast} onClick={() => setActiveScreen((value) => Math.min(screens.length - 1, value + 1))}>Avanti</button>
           </div>
           <p className={styles.keyboardHint}>Puoi usare anche i tasti freccia sinistra e destra.</p>
+        </section>
+      ) : null}
+
+      {view === 'visuale' ? (
+        <section className={styles.visualView} aria-label="Mappa visuale della lezione">
+          <article className={styles.visualMap}>
+            <header>
+              <p className={styles.eyebrow}>PERCORSO DELLA LEZIONE</p>
+              <h2>{bundle.visualAid.title}</h2>
+              <p>Una vista d’insieme pronta da proiettare per orientare la classe prima di iniziare.</p>
+            </header>
+            <ol className={styles.visualSteps}>
+              {bundle.visualAid.items.map((item) => (
+                <li className={styles.visualStep} key={`${item.ordinal}-${item.label}`}>
+                  <span className={styles.visualOrdinal} aria-hidden>{item.ordinal}</span>
+                  <div>
+                    <strong>{item.label}</strong>
+                    <span>{item.minutes === null ? 'Tempo adattabile' : `${item.minutes} min`}</span>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </article>
         </section>
       ) : null}
 
