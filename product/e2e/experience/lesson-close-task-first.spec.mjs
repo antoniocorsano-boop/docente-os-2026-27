@@ -31,11 +31,16 @@ test('Journey: Lezione → Registra → preview Copilota → Fatto senza modello
   await expect(primaryAction, 'UX-0D richiede una sola CTA primaria visibile.').toHaveCount(1)
   await expect(primaryAction).toBeVisible()
 
-  const writeRequests = []
+  const copilotRequests = []
+  const unexpectedMutationRequests = []
   page.on('request', (request) => {
-    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method())) {
-      writeRequests.push(`${request.method()} ${request.url()}`)
+    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method())) return
+    const url = new URL(request.url())
+    if (request.method() === 'POST' && url.pathname === '/api/copilot') {
+      copilotRequests.push(request)
+      return
     }
+    unexpectedMutationRequests.push(`${request.method()} ${url.pathname}`)
   })
 
   const evidenceNote = closeCard.locator('textarea[name="evidenceNote"]')
@@ -57,11 +62,21 @@ test('Journey: Lezione → Registra → preview Copilota → Fatto senza modello
   await expect(preview).not.toContainText(/EXPLICIT_TARGET|LESSON_PROJECTION|section-|projection-/)
   await expect(nextActivity, 'La preview non deve applicarsi automaticamente ai campi.').toHaveValue('')
 
+  expect(copilotRequests, 'L’organizzazione deve usare esattamente una chiamata alla frontdoor canonica.').toHaveLength(1)
+  const copilotBody = copilotRequests[0].postDataJSON()
+  expect(Object.keys(copilotBody)).toEqual(['prompt'])
+  expect(copilotBody.prompt).toContain('Organizza questa nota di fine lezione:')
+  expect(copilotBody.prompt).not.toContain(sectionId)
+  expect(copilotBody.prompt).not.toContain('B01')
+  expect(copilotBody.prompt).not.toContain('projection')
+  expect(unexpectedMutationRequests, 'Il Copilota non deve produrre write prima della conferma docente.').toEqual([])
+
   await preview.getByRole('button', { name: 'Usa come prossima attività' }).click()
   await expect(nextActivity).toHaveValue(/La prossima lezione riprendere gli errori\./)
   await expect(nextActivity).toHaveValue(/Preparare una scheda guidata\./)
   await expect(page).toHaveURL(new RegExp(`/classi/${escapeRegExp(encodeURIComponent(sectionId))}/lezioni/B01\\?mode=record`))
-  expect(writeRequests, 'Organizzare/applicare la preview non deve eseguire alcuna write prima della CTA primaria.').toEqual([])
+  expect(copilotRequests).toHaveLength(1)
+  expect(unexpectedMutationRequests, 'Applicare la proposta deve restare uno stato locale fino alla CTA primaria.').toEqual([])
   await expect(primaryAction).toBeVisible()
 
   const beforeRegister = closeCard.locator('details').filter({ hasText: 'Prima di registrare' }).first()
@@ -83,7 +98,7 @@ test('Journey: Lezione → Registra → preview Copilota → Fatto senza modello
   await screenshot(page, testInfo, 'lesson-close-contextual-preview')
   await recordJourney(testInfo.project.name, {
     status: 'PASS',
-    note: 'Registra mantiene una sola CTA primaria; la nota può essere organizzata e applicata localmente senza write o navigazione prima della conferma docente.',
+    note: 'Registra mantiene una sola CTA primaria; la nota passa dalla frontdoor Copilot canonica, viene organizzata come proposta e resta senza write fino alla conferma docente.',
   })
 })
 
