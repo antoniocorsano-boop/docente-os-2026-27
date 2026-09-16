@@ -30,7 +30,7 @@ export default async function LessonWorkspacePage({
   searchParams,
 }: {
   params: Promise<{ sectionId: string; blockId: string }>
-  searchParams: Promise<{ mode?: string }>
+  searchParams: Promise<{ mode?: string; review?: string }>
 }) {
   const { sectionId, blockId: rawBlockId } = await params
   const blockId = rawBlockId.toUpperCase()
@@ -111,7 +111,8 @@ export default async function LessonWorkspacePage({
     ),
   })
 
-  const mode = asMode((await searchParams).mode)
+  const query = await searchParams
+  const mode = asMode(query.mode)
   const sectionLabel = `${GRADE_NUMBER[section.grade]}ª ${section.sectionCode}`
   const progressView = {
     status: progress?.status ?? 'PIANIFICATO',
@@ -164,6 +165,7 @@ export default async function LessonWorkspacePage({
           knowledgeSuggestions={knowledgeSuggestions}
           progress={progressView}
           udaProgress={udaProgressView}
+          openDesignReview={query.review === 'design'}
         />
       )}
     </AppShell>
