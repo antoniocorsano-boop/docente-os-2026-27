@@ -160,3 +160,18 @@ test('AI-1A: il contratto effimero non trasporta raw audio', () => {
     'REMINDER_CANDIDATE',
   ].includes(item.kind)))
 })
+
+test('AI-1A: un payload runtime con raw audio viene rifiutato prima del binding', () => {
+  const result = buildContextualCapture({
+    sourceKind: 'EPHEMERAL_TRANSCRIPT',
+    text: 'La classe ha lavorato bene.',
+    currentSessionTargets: [target('2c')],
+    rawAudio: new Uint8Array([1, 2, 3]),
+  } as Parameters<typeof buildContextualCapture>[0] & { rawAudio: Uint8Array })
+
+  assert.equal(result.binding.status, 'BLOCKED')
+  assert.equal(result.binding.reason, 'RAW_AUDIO_NOT_ALLOWED')
+  assert.equal(result.binding.target, null)
+  assert.deepEqual(result.proposedEffects, [])
+  assert.equal(result.persistenceEligible, false)
+})
