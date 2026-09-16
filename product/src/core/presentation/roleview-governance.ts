@@ -323,7 +323,7 @@ function nextActionsForManifest(manifest: LessonPreparationManifest, role: RoleV
 }
 
 function lessonDesignReviewHref(manifest: LessonPreparationManifest) {
-  return `/classi/${encodeURIComponent(manifest.sectionId)}/lezioni/${encodeURIComponent(manifest.blockId)}?mode=prepare#lesson-design-tools-title`
+  return `/classi/${encodeURIComponent(manifest.sectionId)}/lezioni/${encodeURIComponent(manifest.blockId)}?mode=prepare&review=design#lesson-design-tools-title`
 }
 
 function statusForReadiness(readiness: LessonPreparationReadiness): RoleViewStatus {
