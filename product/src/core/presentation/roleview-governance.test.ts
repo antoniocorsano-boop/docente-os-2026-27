@@ -113,7 +113,7 @@ test('LP-6: il docente passa dalla proposta da validare al writer canonico e poi
   assert.equal(review.nextActions[0]?.label, 'Controlla proposte')
   assert.equal(
     review.nextActions[0]?.href,
-    '/classi/section-2c/lezioni/B03?mode=prepare#lesson-design-tools-title',
+    '/classi/section-2c/lezioni/B03?mode=prepare&review=design#lesson-design-tools-title',
   )
 
   const ready = buildLessonPreparationRoleView(supported('READY'), 'TEACHER')
