@@ -17,6 +17,7 @@ import {
   type LessonObservationDraftTransport,
 } from '../lesson-observation-model'
 import { recordLessonExecution } from '../actions'
+import LessonVoiceCapture from './lesson-voice-capture'
 import styles from './lesson-live.module.css'
 
 type Block = {
@@ -61,6 +62,7 @@ export default function LessonCloseClient({
   const [capturePreview, setCapturePreview] = useState<LessonReflectionCaptureActionResult | null>(null)
   const [captureError, setCaptureError] = useState<string | null>(null)
   const [organizing, setOrganizing] = useState(false)
+  const [voiceBusy, setVoiceBusy] = useState(false)
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
   const teachHref = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(block.id)}?mode=teach`
   const observeHref = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(block.id)}?mode=observe`
@@ -104,6 +106,19 @@ export default function LessonCloseClient({
 
   function updateEvidenceNote(value: string) {
     setEvidenceNote(value)
+    setCapturePreview(null)
+    setCaptureError(null)
+  }
+
+  function appendVoiceTranscript(transcript: string) {
+    setEvidenceNote((current) => {
+      const existing = current.trim()
+      const spoken = transcript.trim()
+      if (!spoken) return current
+      const separator = existing ? '\n' : ''
+      const available = Math.max(0, 4000 - existing.length - separator.length)
+      return `${existing}${separator}${spoken.slice(0, available)}`
+    })
     setCapturePreview(null)
     setCaptureError(null)
   }
@@ -214,8 +229,14 @@ export default function LessonCloseClient({
           />
         </label>
 
+        <LessonVoiceCapture
+          disabled={saving || organizing}
+          onBusyChange={setVoiceBusy}
+          onTranscript={appendVoiceTranscript}
+        />
+
         <div className={styles.assistantTools}>
-          <button className={styles.assistantAction} type="button" onClick={organizeEvidenceNote} disabled={!evidenceNote.trim() || organizing}>
+          <button className={styles.assistantAction} type="button" onClick={organizeEvidenceNote} disabled={!evidenceNote.trim() || organizing || voiceBusy}>
             {organizing ? 'Organizzazione…' : 'Organizza con il Copilota'}
           </button>
           <span>Il Copilota propone soltanto: nulla viene registrato finché non confermi la lezione.</span>
@@ -268,7 +289,7 @@ export default function LessonCloseClient({
         {saveError ? <p className={styles.privacyNote} role="alert">{saveError}</p> : null}
 
         <div className={styles.closeActions}>
-          <button className={styles.primary} type="submit" disabled={saving || !draftLoaded}>
+          <button className={styles.primary} type="submit" disabled={saving || !draftLoaded || voiceBusy}>
             {saving ? 'Registrazione…' : 'Registra e torna alla classe'}
           </button>
           <details className={styles.evidence}>
