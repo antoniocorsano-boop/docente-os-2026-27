@@ -26,8 +26,9 @@ export class OpenAiSpeechToText implements SpeechToTextPort {
   async transcribe(input: SpeechToTextInput): Promise<SpeechToTextResult> {
     if (!this.apiKey) throw new Error('Speech transcription provider is not configured')
 
+    const ownedBytes = Uint8Array.from(input.bytes)
     const form = new FormData()
-    form.append('file', new File([input.bytes], input.filename, { type: input.mimeType }))
+    form.append('file', new Blob([ownedBytes.buffer], { type: input.mimeType }), input.filename)
     form.append('model', this.model)
     form.append('language', input.language)
     form.append('response_format', 'json')
