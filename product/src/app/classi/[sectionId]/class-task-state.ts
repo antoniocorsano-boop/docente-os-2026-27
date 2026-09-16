@@ -20,6 +20,10 @@ export type ClassRecorderEmptyPresentation = {
   showScheduleLinks: boolean
 }
 
+export function isCurrentDaySessionReceipt(sessionLocalDate: string | null | undefined, today: string): boolean {
+  return Boolean(sessionLocalDate && sessionLocalDate === today)
+}
+
 export function resolveClassTaskDecision(input: {
   hasNextBlock: boolean
   hasModeledLesson: boolean
