@@ -14,6 +14,7 @@ import LessonLiveClient from './lesson-live-client'
 import LessonObserveClient from './lesson-observe-client'
 import LessonCloseClient from './lesson-close-client'
 import { buildLessonMaterialSuggestions } from './lesson-material-suggestions'
+import { OpenDesignReview } from './open-design-review'
 import './lesson-workspace.css'
 import './lesson-design-tools.css'
 
@@ -129,6 +130,7 @@ export default async function LessonWorkspacePage({
       role={context.role}
       contentClassName="lessonWorkspaceSurface"
     >
+      <OpenDesignReview active={mode === 'prepare' && query.review === 'design'} />
       {mode === 'teach' ? (
         <LessonLiveClient
           sectionId={section.id}
@@ -165,7 +167,6 @@ export default async function LessonWorkspacePage({
           knowledgeSuggestions={knowledgeSuggestions}
           progress={progressView}
           udaProgress={udaProgressView}
-          openDesignReview={query.review === 'design'}
         />
       )}
     </AppShell>
