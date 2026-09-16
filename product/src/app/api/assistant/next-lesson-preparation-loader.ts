@@ -4,7 +4,7 @@ import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/sup
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
-import type { HomeDailyContext } from '@/core/presentation/home-daily-context'
+import type { HomeDailyContext, HomeDailyLesson } from '@/core/presentation/home-daily-context'
 import {
   buildInternalLessonMaterialRenderBundle,
   INTERNAL_LESSON_RENDERING_CAPABILITIES,
@@ -27,6 +27,14 @@ export type LoadedNextLessonPreparation = {
   rendering: LessonMaterialRenderResult
 }
 
+type SharedPreparationData = {
+  snapshot: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>>
+  assignments: Awaited<ReturnType<SupabaseTeachingAssignmentReader['list']>>
+  knowledgeItems: Awaited<ReturnType<SupabaseKnowledgeRepository['listRecent']>>
+  knowledgeUnavailable: boolean
+  sessionRepository: SupabaseTeachingSessionRepository
+}
+
 export async function loadNextLessonPreparation(input: {
   workspaceId: string
   academicYearId: string
@@ -46,11 +54,74 @@ export async function loadNextLessonPreparationBundle(input: {
   const lesson = selectNextLessonForPreparation(input.homeDaily, input.minuteOfDay)
   if (!lesson) return null
 
+  const shared = await loadSharedPreparationData(input.workspaceId, input.academicYearId)
+  return loadLessonPreparationBundleWithShared({
+    workspaceId: input.workspaceId,
+    academicYearId: input.academicYearId,
+    lesson,
+    shared,
+  })
+}
+
+export async function loadLessonPreparationBundlesForLessons(input: {
+  workspaceId: string
+  academicYearId: string
+  lessons: HomeDailyLesson[]
+}): Promise<Array<{ lesson: HomeDailyLesson; loaded: LoadedNextLessonPreparation }>> {
+  if (!input.lessons.length) return []
+
+  const shared = await loadSharedPreparationData(input.workspaceId, input.academicYearId)
+  const loaded = await Promise.all(input.lessons.map(async (lesson) => ({
+    lesson,
+    loaded: await loadLessonPreparationBundleWithShared({
+      workspaceId: input.workspaceId,
+      academicYearId: input.academicYearId,
+      lesson,
+      shared,
+    }),
+  })))
+
+  return loaded
+}
+
+async function loadSharedPreparationData(workspaceId: string, academicYearId: string): Promise<SharedPreparationData> {
+  const annualRepository = new SupabaseAnnualPlanExecutionRepository()
+  const assignmentReader = new SupabaseTeachingAssignmentReader()
+  const knowledgeRepository = new SupabaseKnowledgeRepository()
+  let knowledgeUnavailable = false
+
+  const [snapshot, assignments, knowledgeItems] = await Promise.all([
+    annualRepository.list(workspaceId, academicYearId),
+    assignmentReader.list(workspaceId, academicYearId),
+    knowledgeRepository.listRecent(workspaceId, 100).catch(() => {
+      knowledgeUnavailable = true
+      console.warn('[DOCENTE OS] Knowledge index unavailable; lesson preparation degraded to PARTIAL.')
+      return []
+    }),
+  ])
+
+  return {
+    snapshot,
+    assignments,
+    knowledgeItems,
+    knowledgeUnavailable,
+    sessionRepository: new SupabaseTeachingSessionRepository(),
+  }
+}
+
+async function loadLessonPreparationBundleWithShared(input: {
+  workspaceId: string
+  academicYearId: string
+  lesson: HomeDailyLesson
+  shared: SharedPreparationData
+}): Promise<LoadedNextLessonPreparation> {
+  const { lesson, shared } = input
+
   if (!lesson.sectionId) {
     return blockedPreparation(buildNextLessonPreparation({
       lesson,
       lessonContext: null,
-      missingInformation: ['La prossima lezione non è associata a una sezione canonica'],
+      missingInformation: ['La lezione non è associata a una sezione canonica'],
     }))
   }
 
@@ -58,35 +129,20 @@ export async function loadNextLessonPreparationBundle(input: {
     return blockedPreparation(buildNextLessonPreparation({
       lesson,
       lessonContext: null,
-      missingInformation: ['La prossima lezione non è associata a una disciplina canonica'],
+      missingInformation: ['La lezione non è associata a una disciplina canonica'],
     }))
   }
 
-  const annualRepository = new SupabaseAnnualPlanExecutionRepository()
-  const assignmentReader = new SupabaseTeachingAssignmentReader()
-  const knowledgeRepository = new SupabaseKnowledgeRepository()
-  let knowledgeUnavailable = false
-
-  const [snapshot, assignments, knowledgeItems] = await Promise.all([
-    annualRepository.list(input.workspaceId, input.academicYearId),
-    assignmentReader.list(input.workspaceId, input.academicYearId),
-    knowledgeRepository.listRecent(input.workspaceId, 100).catch(() => {
-      knowledgeUnavailable = true
-      console.warn('[DOCENTE OS] Knowledge index unavailable; next lesson preparation degraded to PARTIAL.')
-      return []
-    }),
-  ])
-
-  const section = snapshot.sections.find((item) => item.id === lesson.sectionId)
+  const section = shared.snapshot.sections.find((item) => item.id === lesson.sectionId)
   if (!section) {
     return blockedPreparation(buildNextLessonPreparation({
       lesson,
       lessonContext: null,
-      missingInformation: ['La sezione della prossima lezione non è presente nel registro canonico delle classi'],
+      missingInformation: ['La sezione della lezione non è presente nel registro canonico delle classi'],
     }))
   }
 
-  const confirmedAssignment = assignments.some((assignment) =>
+  const confirmedAssignment = shared.assignments.some((assignment) =>
     assignment.sectionId === lesson.sectionId
     && assignment.disciplineId === lesson.disciplineId
     && assignment.status === 'CONFIRMED',
@@ -95,23 +151,22 @@ export async function loadNextLessonPreparationBundle(input: {
     return blockedPreparation(buildNextLessonPreparation({
       lesson,
       lessonContext: null,
-      missingInformation: ['La cattedra non conferma il collegamento tra questa sezione e la disciplina della prossima lezione'],
+      missingInformation: ['La cattedra non conferma il collegamento tra questa sezione e la disciplina della lezione'],
     }))
   }
 
-  const focus = buildClassWorkspaceLearningFocus(section, snapshot.progress, knowledgeItems)
+  const focus = buildClassWorkspaceLearningFocus(section, shared.snapshot.progress, shared.knowledgeItems)
   if (!focus.nextBlock) {
     return blockedPreparation(buildNextLessonPreparation({
       lesson,
       lessonContext: null,
       missingInformation: [
         'Non risulta un prossimo blocco del Piano annuale da collegare alla lezione',
-        ...(knowledgeUnavailable ? ['Indice della Conoscenza temporaneamente non disponibile'] : []),
+        ...(shared.knowledgeUnavailable ? ['Indice della Conoscenza temporaneamente non disponibile'] : []),
       ],
     }))
   }
 
-  const sessionRepository = new SupabaseTeachingSessionRepository()
   const [lessonBundle, teachingSessions] = await Promise.all([
     loadAuthoritativeLessonCopilotBundle({
       workspaceId: input.workspaceId,
@@ -119,8 +174,8 @@ export async function loadNextLessonPreparationBundle(input: {
       sectionId: lesson.sectionId,
       blockId: focus.nextBlock.id,
     }),
-    sessionRepository.listBySection(input.workspaceId, input.academicYearId, lesson.sectionId).catch(() => {
-      console.warn('[DOCENTE OS] Teaching-session continuity unavailable; next lesson preparation continues without Diary context.')
+    shared.sessionRepository.listBySection(input.workspaceId, input.academicYearId, lesson.sectionId).catch(() => {
+      console.warn('[DOCENTE OS] Teaching-session continuity unavailable; lesson preparation continues without Diary context.')
       return { sessions: [], allocations: [] }
     }),
   ])
@@ -138,7 +193,7 @@ export async function loadNextLessonPreparationBundle(input: {
     knowledgeResources: focus.materials,
     missingInformation: [
       ...(!lessonBundle ? ['Il Lesson Brief canonico del prossimo blocco non è disponibile'] : []),
-      ...(knowledgeUnavailable ? ['Indice della Conoscenza temporaneamente non disponibile'] : []),
+      ...(shared.knowledgeUnavailable ? ['Indice della Conoscenza temporaneamente non disponibile'] : []),
     ],
   })
 

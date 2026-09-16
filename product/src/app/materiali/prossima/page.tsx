@@ -38,17 +38,23 @@ export default async function NextLessonMaterialsPage({
       contentClassName={styles.shellContent}
     >
       {rendering?.bundle && roleView ? (
-        <LessonMaterialsClient
-          bundle={rendering.bundle}
-          roleView={roleView}
-          sectionLabel={preparation?.preparation.canonicalLesson?.sectionLabel ?? 'Classe'}
-          timeLabel={formatTimeRange(
-            preparation?.preparation.lesson.startAt ?? '',
-            preparation?.preparation.lesson.endAt ?? '',
-          )}
-          authority={preparation?.preparation.lesson.authority ?? 'IN_FORCE'}
-          initialView={requestedView}
-        />
+        <>
+          <div className={styles.viewHeading}>
+            <span />
+            <Link className={styles.primaryLink} href="/materiali/domani">Materiali di domani</Link>
+          </div>
+          <LessonMaterialsClient
+            bundle={rendering.bundle}
+            roleView={roleView}
+            sectionLabel={preparation?.preparation.canonicalLesson?.sectionLabel ?? 'Classe'}
+            timeLabel={formatTimeRange(
+              preparation?.preparation.lesson.startAt ?? '',
+              preparation?.preparation.lesson.endAt ?? '',
+            )}
+            authority={preparation?.preparation.lesson.authority ?? 'IN_FORCE'}
+            initialView={requestedView}
+          />
+        </>
       ) : (
         <main className={styles.emptySurface}>
           <p className={styles.eyebrow}>MATERIALI DELLA PROSSIMA LEZIONE</p>
@@ -69,6 +75,7 @@ export default async function NextLessonMaterialsPage({
               <Link className={styles.primaryLink} href="/planner">Torna a Oggi</Link>
             </>
           )}
+          <Link className={styles.back} href="/materiali/domani">Guarda i materiali di domani</Link>
         </main>
       )}
     </AppShell>
