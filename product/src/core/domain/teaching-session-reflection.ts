@@ -1,3 +1,5 @@
+import { currentTeachingSessions, type TeachingSessionRecord, type TeachingSessionSnapshot } from './teaching-session'
+
 export type TeachingSessionReflection = {
   activityDone: string
   observations: string
@@ -5,6 +7,12 @@ export type TeachingSessionReflection = {
   ideas: string
   udaChangeProposal: string
   nextActivity: string
+}
+
+export type TeachingSessionContinuity = {
+  nextActivity: string
+  sourceSessionId: string
+  sourceLocalDate: string
 }
 
 export type DriveDiaryProjection = {
@@ -92,6 +100,36 @@ export function parseTeachingSessionEvidenceNote(note: string | null) {
   }
 }
 
+export function selectLatestTeachingSessionContinuity(input: {
+  snapshot: TeachingSessionSnapshot
+  sectionId: string
+  lessonStartAt: string
+}): TeachingSessionContinuity | null {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(input.lessonStartAt)) return null
+
+  const candidates = currentTeachingSessions(input.snapshot)
+    .filter((session) => session.sectionId === input.sectionId)
+    .filter((session) => sessionPrecedesLesson(session, input.lessonStartAt))
+    .map((session) => ({ session, parsed: parseTeachingSessionEvidenceNote(session.evidenceNote) }))
+    .filter((candidate) => (
+      candidate.parsed?.contract === EVIDENCE_CONTRACT_V2
+      && Boolean(candidate.parsed.reflection.nextActivity)
+    ))
+    .sort((left, right) => {
+      const temporal = sessionRecencyKey(right.session).localeCompare(sessionRecencyKey(left.session))
+      return temporal || right.session.recordedAt.localeCompare(left.session.recordedAt)
+    })
+
+  const selected = candidates[0]
+  if (!selected?.parsed) return null
+
+  return {
+    nextActivity: selected.parsed.reflection.nextActivity,
+    sourceSessionId: selected.session.id,
+    sourceLocalDate: selected.session.localDate,
+  }
+}
+
 export function buildDriveDiaryProjection(input: Omit<DriveDiaryProjection, 'recordId' | 'status'> & { plannedStartAt: string | null }) : DriveDiaryProjection {
   return {
     recordId: buildDriveDiaryRecordId({
@@ -119,6 +157,19 @@ function evidenceContract(note: string | null): TeachingSessionEvidenceContract 
   if (note?.startsWith(`${EVIDENCE_CONTRACT_V2}\n`)) return EVIDENCE_CONTRACT_V2
   if (note?.startsWith(`${EVIDENCE_CONTRACT_V1}\n`)) return EVIDENCE_CONTRACT_V1
   return null
+}
+
+function sessionPrecedesLesson(session: TeachingSessionRecord, lessonStartAt: string) {
+  const lessonDate = lessonStartAt.slice(0, 10)
+  if (session.localDate < lessonDate) return true
+  if (session.localDate > lessonDate) return false
+
+  const sessionBoundary = session.plannedEndAt ?? session.plannedStartAt
+  return Boolean(sessionBoundary && sessionBoundary <= lessonStartAt)
+}
+
+function sessionRecencyKey(session: TeachingSessionRecord) {
+  return session.plannedEndAt ?? session.plannedStartAt ?? `${session.localDate}T23:59:59`
 }
 
 function clean(value: string | undefined) {
