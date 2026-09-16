@@ -5,6 +5,7 @@ import {
   type CopilotResourceScope,
   type CopilotRunContext,
 } from './copilot-kernel'
+import type { ContextualCaptureTarget } from '@/core/presentation/contextual-capture'
 import type { LessonPreparationManifestResult } from '@/core/presentation/lesson-preparation-manifest'
 import type { TodayCopilotK2Context } from '@/core/presentation/next-lesson-preparation'
 
@@ -121,6 +122,110 @@ export function assembleNextLessonPreparationCopilotContext(input: {
       ...input.today.provenance,
       ...(manifest?.provenance ?? []),
     ]),
+  }
+}
+
+export function assembleLessonReflectionCopilotContext(input: {
+  runId: string
+  localDate: string
+  workspaceId: string
+  academicYearId: string
+  sectionId: string
+  sectionLabel: string
+  blockId: string
+  projectionId: string
+  lessonTitle: string
+  canonicalPlanRef: string
+  canonicalPlanLabel: string
+}): { context: CopilotRunContext; target: ContextualCaptureTarget } {
+  const scope: CopilotResourceScope = {
+    workspaceId: input.workspaceId,
+    academicYearId: input.academicYearId,
+    sectionId: input.sectionId,
+    localDate: input.localDate,
+  }
+  const provenance: CopilotEvidenceRef[] = [
+    {
+      kind: 'CANONICAL_PLAN',
+      ref: input.canonicalPlanRef,
+      label: input.canonicalPlanLabel,
+      authority: 'AUTHORITATIVE',
+    },
+    {
+      kind: 'LESSON_PROJECTION',
+      ref: input.projectionId,
+      label: input.lessonTitle,
+      authority: 'AUTHORITATIVE',
+    },
+  ]
+  const lessonRef = `${input.sectionId}:${input.blockId}:${input.projectionId}`
+
+  return {
+    context: {
+      run: {
+        id: input.runId,
+        localDate: input.localDate,
+        surface: 'LESSON',
+      },
+      identity: {
+        workspaceId: input.workspaceId,
+        academicYearId: input.academicYearId,
+        role: 'TEACHER',
+      },
+      focus: {
+        type: 'LESSON',
+        id: lessonRef,
+        title: input.lessonTitle,
+      },
+      resources: [
+        resourceDescriptor({
+          id: `lesson-brief:${input.projectionId}`,
+          kind: 'LESSON_BRIEF',
+          state: 'AVAILABLE',
+          authority: 'AUTHORITATIVE',
+          scope,
+          provenance,
+        }),
+        resourceDescriptor({
+          id: `annual-plan:${input.blockId}`,
+          kind: 'ANNUAL_PLAN_CONTEXT',
+          state: 'AVAILABLE',
+          authority: 'AUTHORITATIVE',
+          scope,
+          provenance: provenance.filter((item) => item.kind === 'CANONICAL_PLAN'),
+        }),
+      ],
+      capabilities: {
+        available: ['LESSON_READ'],
+        forbidden: [
+          'LESSON_RECORD_EXECUTION',
+          'LESSON_SAVE_OBSERVATION',
+          'PLAN_COMPLETE_BLOCK',
+          'PLAN_UPDATE_PROGRESS',
+          'CALENDAR_WRITE',
+          'DRIVE_WRITE',
+          'GMAIL_SEND',
+        ],
+      },
+      missing: [],
+      privacy: {
+        classification: 'PROFESSIONAL',
+        providerPolicy: 'NO_MODEL',
+      },
+      provenance,
+    },
+    target: {
+      sectionId: input.sectionId,
+      sectionLabel: input.sectionLabel,
+      blockId: input.blockId,
+      projectionId: input.projectionId,
+      lessonRef,
+      provenance: provenance.map((item) => ({
+        kind: item.kind,
+        ref: item.ref,
+        label: item.label,
+      })),
+    },
   }
 }
 
