@@ -101,6 +101,16 @@ export default async function PlannerPage() {
 
       {temporalDay ? <TemporalTodayPanel day={temporalDay} nowMinutes={currentRomeMinutes()} /> : null}
 
+      {context.academicYear ? (
+        <details className="humanTaskSecondary">
+          <summary>Chiudi la giornata e prepara domani</summary>
+          <div className="humanTaskSecondaryBody">
+            <p>Controlla in un solo punto le lezioni concluse, le registrazioni nel Diario, le continuità emerse e lo stato dei pacchetti di domani.</p>
+            <div className="humanTaskActions"><Link className="primary" href="/giornata/resoconto">Apri il resoconto</Link><Link href="/materiali/domani">Materiali di domani</Link></div>
+          </div>
+        </details>
+      ) : null}
+
       <div className="humanTaskCompactStats" aria-label="Riepilogo attività"><span><strong>{openTasks.length}</strong> aperte</span><span><strong>{overdueCount}</strong> scadute</span><span><strong>{todayCount}</strong> per oggi</span></div>
 
       <details className="humanTaskSecondary">
