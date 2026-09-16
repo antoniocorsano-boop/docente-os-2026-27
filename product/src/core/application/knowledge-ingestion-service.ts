@@ -27,7 +27,12 @@ export class KnowledgeIngestionService {
   async ingest(input: CapturedAssetInput): Promise<KnowledgeAsset> {
     if (input.sourceLocator) {
       const existing = await this.assets.findBySource(input.workspaceId, input.sourceProvider, input.sourceLocator)
-      if (existing) return existing
+      if (existing) {
+        if (!existing.currentGenerationId && (existing.processingStatus === 'CAPTURED' || existing.processingStatus === 'FAILED')) {
+          return this.process(existing)
+        }
+        return existing
+      }
     }
     const asset = await this.assets.capture(input)
     return this.process(asset)
