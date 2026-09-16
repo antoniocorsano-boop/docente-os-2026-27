@@ -14,7 +14,7 @@ type TranscriptionPayload = {
 export class OpenAiSpeechToText implements SpeechToTextPort {
   constructor(
     private readonly apiKey = process.env.OPENAI_API_KEY,
-    private readonly model = process.env.OPENAI_TRANSCRIPTION_MODEL ?? 'gpt-transcribe',
+    private readonly model = process.env.OPENAI_TRANSCRIPTION_MODEL ?? 'gpt-4o-mini-transcribe',
     private readonly fetcher: Fetcher = fetch,
     private readonly timeoutMs = resolveSpeechTimeoutMs(process.env.OPENAI_TRANSCRIPTION_TIMEOUT_MS),
   ) {}
