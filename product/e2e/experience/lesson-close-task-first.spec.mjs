@@ -33,11 +33,13 @@ test('Journey: Lezione → detta → preview Copilota → Fatto senza modello in
         this.mimeType = options.mimeType || 'audio/webm'
         this.state = 'inactive'
         this.ondataavailable = null
+        this.onstart = null
         this.onstop = null
       }
 
       start() {
         this.state = 'recording'
+        this.onstart?.({ timeStamp: 1000 })
       }
 
       stop() {
@@ -45,7 +47,7 @@ test('Journey: Lezione → detta → preview Copilota → Fatto senza modello in
         const data = new Blob(['voice-bytes'], { type: this.mimeType })
         queueMicrotask(() => {
           this.ondataavailable?.({ data })
-          this.onstop?.()
+          this.onstop?.({ timeStamp: 2500 })
         })
       }
     }
@@ -130,6 +132,8 @@ test('Journey: Lezione → detta → preview Copilota → Fatto senza modello in
   const voiceBody = voiceRequest.postData() ?? ''
   expect(voiceBody).toContain('name="audio"')
   expect(voiceBody).toContain('name="durationMs"')
+  expect(voiceBody).toContain('1500')
+  expect(voiceBody).not.toContain('NaN')
   expect(voiceBody).not.toContain(sectionId)
   expect(voiceBody).not.toContain('B01')
   expect(unexpectedMutationRequests, 'La dettatura non deve produrre write persistenti.').toEqual([])
