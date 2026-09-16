@@ -3,7 +3,9 @@ import { redirect } from 'next/navigation'
 import { loadCurrentTodayCopilotContext } from '@/app/api/assistant/today-context-loader'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { buildLessonPreparationRoleView } from '@/core/presentation/roleview-governance'
 import LessonMaterialsClient from './lesson-materials-client'
+import { RoleViewTeacherPanel } from './roleview-teacher-panel'
 import styles from './lesson-materials.module.css'
 
 export const dynamic = 'force-dynamic'
@@ -22,6 +24,9 @@ export default async function NextLessonMaterialsPage({
   const loaded = await loadCurrentTodayCopilotContext()
   const preparation = loaded?.preparation ?? null
   const rendering = preparation?.rendering ?? null
+  const roleView = preparation
+    ? buildLessonPreparationRoleView(preparation.manifest, 'TEACHER')
+    : null
   const requestedView = asView((await searchParams).vista)
 
   return (
@@ -32,9 +37,10 @@ export default async function NextLessonMaterialsPage({
       role={workspaceContext.role}
       contentClassName={styles.shellContent}
     >
-      {rendering?.bundle ? (
+      {rendering?.bundle && roleView ? (
         <LessonMaterialsClient
           bundle={rendering.bundle}
+          roleView={roleView}
           sectionLabel={preparation?.preparation.canonicalLesson?.sectionLabel ?? 'Classe'}
           timeLabel={formatTimeRange(
             preparation?.preparation.lesson.startAt ?? '',
@@ -46,14 +52,20 @@ export default async function NextLessonMaterialsPage({
       ) : (
         <main className={styles.emptySurface}>
           <p className={styles.eyebrow}>MATERIALI DELLA PROSSIMA LEZIONE</p>
-          <h1>La preparazione non è disponibile con sufficiente certezza.</h1>
-          <p>
-            DOCENTE OS non genera una vista LIM o una scheda se la prossima lezione, il Piano o il Lesson Brief non sono risolti in modo coerente.
-          </p>
-          {rendering?.reasons.length ? (
-            <ul>{rendering.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
-          ) : null}
-          <Link className={styles.primaryLink} href="/planner">Torna a Oggi</Link>
+          {roleView?.status === 'BLOCKED' ? (
+            <RoleViewTeacherPanel roleView={roleView} />
+          ) : (
+            <>
+              <h1>La preparazione non è disponibile con sufficiente certezza.</h1>
+              <p>
+                DOCENTE OS non genera una vista LIM o una scheda se la prossima lezione, il Piano o il Lesson Brief non sono risolti in modo coerente.
+              </p>
+              {rendering?.reasons.length ? (
+                <ul>{rendering.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+              ) : null}
+              <Link className={styles.primaryLink} href="/planner">Torna a Oggi</Link>
+            </>
+          )}
         </main>
       )}
     </AppShell>
