@@ -16,6 +16,13 @@ const ALL_HEAVY_GATES = [
   'ASVS_5_0',
 ]
 
+const BROWSER_GATES = [
+  'HVA',
+  'WCAG_2_2_AA',
+  'P6_PERFORMANCE',
+  'X4_PLANNER_WRITE',
+]
+
 const CENTRAL_ORCHESTRATION_PATHS = new Set([
   '.github/workflows/product-ci.yml',
   '.github/workflows/certification-impact.yml',
@@ -31,6 +38,8 @@ const GATE_WORKFLOW_PATHS = new Map([
   ['.github/workflows/x4-planner-e2e.yml', ['X4_PLANNER_WRITE']],
   ['.github/workflows/asvs50-assurance.yml', ['ASVS_5_0']],
 ])
+
+const BROWSER_SHARED_SUPPORT_PREFIX = 'product/e2e/support/'
 
 function normalizePath(path) {
   return String(path ?? '').trim().replaceAll('\\', '/').replace(/^\.\//, '')
@@ -72,6 +81,14 @@ function classifyKnownPath(path, state) {
 
     for (const gate of GATE_WORKFLOW_PATHS.get(path) ?? []) {
       requireGate(state, gate, path, 'gate workflow contract changed')
+    }
+  }
+
+  if (path.startsWith(BROWSER_SHARED_SUPPORT_PREFIX)) {
+    known = true
+    addImpact(state, 'certification_contract', path, 'shared browser acceptance support changed')
+    for (const gate of BROWSER_GATES) {
+      requireGate(state, gate, path, 'shared browser acceptance support is consumed by all browser gates')
     }
   }
 

@@ -39,6 +39,19 @@ test('X4 workflow change requires X4 without inferring product security impact',
   assert.equal(receipt.requiredGates.includes('ASVS_5_0'), false)
 })
 
+test('shared browser support change requires all browser gates without inferring ASVS', () => {
+  const receipt = classifyCertificationImpact([
+    'product/e2e/support/e2e-auth.mjs',
+  ])
+  assert.equal(receipt.impacts.certification_contract, true)
+  assert.equal(receipt.impacts.security, false)
+  for (const gate of ['HVA', 'WCAG_2_2_AA', 'P6_PERFORMANCE', 'X4_PLANNER_WRITE']) {
+    assert.equal(receipt.requiredGates.includes(gate), true)
+  }
+  assert.equal(receipt.requiredGates.includes('ASVS_5_0'), false)
+  assert.equal(receipt.conservative, false)
+})
+
 test('migration is security-sensitive and runtime-impacting', () => {
   const receipt = classifyCertificationImpact([
     'product/supabase/migrations/9999_example.sql',
