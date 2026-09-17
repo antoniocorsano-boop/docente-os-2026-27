@@ -362,6 +362,72 @@ test('LP-1: una proposta pertinente non entra nella sequenza e mantiene REVIEW_R
   assert.deepEqual(result.manifest.proposedExtensionRefs, ['proposal'])
 })
 
+test('LP-1: teaching adjustment proposto resta tracciabile ma non altera readiness o manifest operativo', () => {
+  const next = lesson('next', '15:00', '16:00', '2C · Tecnologia')
+  const context = lessonContext()
+  const preparation = buildNextLessonPreparation({ lesson: next, lessonContext: context })
+  const result = buildLessonPreparationManifest({
+    preparation,
+    lessonContext: context,
+    projection: projection(),
+    extensions: [
+      extension({
+        id: 'adjustment-proposed',
+        kind: 'TEACHING_ADJUSTMENT',
+        status: 'PROPOSED',
+        title: 'Riprendere la misura con un esempio concreto',
+        sourceRef: 'session-previous',
+        sourceLabel: 'Riflessione post-lezione',
+        acceptedBy: null,
+        acceptedAt: null,
+        decisionHistory: [],
+      }),
+    ],
+  })
+
+  assert.equal(result.resolution, 'SUPPORTED')
+  assert.ok(result.manifest)
+  assert.equal(result.manifest.readiness, 'READY')
+  assert.deepEqual(result.manifest.proposedExtensionRefs, [])
+  assert.deepEqual(result.manifest.acceptedExtensionRefs, [])
+  assert.deepEqual(result.manifest.sequenceRefs, ['S01', 'S02', 'S03'])
+  assert.equal(
+    result.manifest.provenance.some((item) => item.ref === 'lesson-extension:adjustment-proposed'),
+    true,
+  )
+})
+
+test('LP-1: teaching adjustment accettato resta fuori dai generic accepted refs e dalla sequenza', () => {
+  const next = lesson('next', '15:00', '16:00', '2C · Tecnologia')
+  const context = lessonContext()
+  const preparation = buildNextLessonPreparation({ lesson: next, lessonContext: context })
+  const result = buildLessonPreparationManifest({
+    preparation,
+    lessonContext: context,
+    projection: projection(),
+    extensions: [
+      extension({
+        id: 'adjustment-accepted',
+        kind: 'TEACHING_ADJUSTMENT',
+        title: 'Usare un esempio concreto nella riprogettazione',
+        sourceRef: 'session-previous',
+        sourceLabel: 'Riflessione post-lezione',
+      }),
+    ],
+  })
+
+  assert.equal(result.resolution, 'SUPPORTED')
+  assert.ok(result.manifest)
+  assert.equal(result.manifest.readiness, 'READY')
+  assert.deepEqual(result.manifest.acceptedExtensionRefs, [])
+  assert.deepEqual(result.manifest.proposedExtensionRefs, [])
+  assert.deepEqual(result.manifest.sequenceRefs, ['S01', 'S02', 'S03'])
+  assert.equal(
+    result.manifest.provenance.some((item) => item.ref === 'lesson-extension:adjustment-accepted'),
+    true,
+  )
+})
+
 test('LP-1: estensioni di un’altra sezione restano fuori dal manifest senza contaminare la readiness', () => {
   const next = lesson('next', '15:00', '16:00', '2C · Tecnologia')
   const context = lessonContext()
