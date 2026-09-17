@@ -208,3 +208,9 @@ test('una occurrence proiettata gia registrata non puo essere duplicata dal boun
   assert.match(actionsSource, /projectedOccurrenceLogicalId === occurrenceLogicalId/)
   assert.match(actionsSource, /La lezione prevista risulta già registrata/)
 })
+
+test('il fallback retroattivo resta esplicitamente manuale e conserva la data nella provenance', () => {
+  assert.match(actionsSource, /sourceKind: 'MANUAL'/)
+  assert.match(actionsSource, /projectedOccurrenceLogicalId: null/)
+  assert.match(actionsSource, /manual_session:\$\{localDate\}/)
+})
