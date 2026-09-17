@@ -74,13 +74,19 @@ jobs:
           test -f product/design/VISUAL-ACCEPTANCE.md
           test -f product/playwright.experience.config.mjs
           test -f product/e2e/experience/surfaces.spec.mjs
+          test -f product/e2e/experience/accessibility.spec.mjs
           test -f product/scripts/experience/wait-for-target.mjs
           test -f product/scripts/experience/acceptance-report.mjs
           test -f .github/workflows/experience-acceptance.yml
+          test -f .github/workflows/browser-certification-orchestrator.yml
           grep -Fq "context: 'hva/application'" .github/workflows/experience-acceptance.yml
           grep -Fq "context: 'hva/runtime'" .github/workflows/experience-acceptance.yml
           grep -Fq 'retention-days: 90' .github/workflows/experience-acceptance.yml
           grep -Fq "visual: 'REVIEW_REQUIRED'" product/scripts/experience/acceptance-report.mjs
+          grep -Fq "const wcagAssurance = process.env.WCAG_ASSURANCE === '1'" product/playwright.experience.config.mjs
+          grep -Fq "testIgnore: wcagAssurance ? [] : '**/accessibility.spec.mjs'" product/playwright.experience.config.mjs
+          grep -Fq "WCAG_ASSURANCE: '1'" .github/workflows/browser-certification-orchestrator.yml
+          grep -Fq 'e2e/experience/accessibility.spec.mjs' .github/workflows/browser-certification-orchestrator.yml
       - uses: actions/setup-node@v4
         with:
           node-version: 22
