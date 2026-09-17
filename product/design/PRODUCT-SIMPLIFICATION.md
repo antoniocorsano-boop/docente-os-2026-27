@@ -1,7 +1,7 @@
 # DOCENTE OS — Product Simplification
 
 Stato: **CANONICAL / NORMATIVE**  
-Issue: **#370 — UX-0 Product Simplification**
+Autorità corrente: **#368 — UX-0 Product Simplification**
 
 ## Perché esiste
 
