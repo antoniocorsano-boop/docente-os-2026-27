@@ -22,7 +22,7 @@ export async function recordTeachingSession(formData: FormData) {
   const sectionId = requiredText(formData, 'sectionId')
   const localDate = validTeachingLocalDate(formData, 'localDate')
   const occurrenceLogicalId = nullableText(formData, 'occurrenceLogicalId')
-  const registrationIntentKey = validRegistrationIntentKey(formData, 'registrationIntentKey')
+  const registrationKey = validRegistrationKey(formData, 'registrationKey')
   const actualMinutes = positiveInt(formData, 'actualMinutes')
   const evidenceNote = boundedNote(formData, 'evidenceNote', 4000)
 
@@ -51,12 +51,7 @@ export async function recordTeachingSession(formData: FormData) {
     sectionId,
   )
   const currentSessions = currentTeachingSessions(teaching)
-  const registrationIntentProvenance = `registration_intent:${registrationIntentKey}`
-  const replaySession = currentSessions.find((item) => item.source.provenance.includes(registrationIntentProvenance))
-  if (replaySession) {
-    redirect(`/classi/${encodeURIComponent(sectionId)}?session=${encodeURIComponent(replaySession.id)}`)
-  }
-
+  const registrationKeyProvenance = `registration_key:${registrationKey}`
   const recordedOccurrenceIds = new Set(
     currentSessions
       .map((item) => item.source.projectedOccurrenceLogicalId)
@@ -100,7 +95,7 @@ export async function recordTeachingSession(formData: FormData) {
       evidenceNote,
       source: {
         ...projectedCandidate.source,
-        provenance: [...projectedCandidate.source.provenance, registrationIntentProvenance],
+        provenance: [...projectedCandidate.source.provenance, registrationKeyProvenance],
       },
     }
   } else {
@@ -119,11 +114,14 @@ export async function recordTeachingSession(formData: FormData) {
         timetableVersionId: null,
         timetableSlotId: null,
         calendarState: null,
-        provenance: [`manual_session:${localDate}`, `section:${sectionId}`, registrationIntentProvenance],
+        provenance: [`manual_session:${localDate}`, `section:${sectionId}`, registrationKeyProvenance],
       },
     }
   }
 
+  // Always cross the authoritative RPC boundary, including retries. Migration 0052
+  // validates the complete payload signature and resolves the registration key
+  // atomically, so concurrent submissions cannot create duplicate sessions.
   const receipt = await recordTeachingSessionCommand({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
@@ -265,9 +263,11 @@ function validTeachingLocalDate(formData: FormData, key: string) {
   return value
 }
 
-function validRegistrationIntentKey(formData: FormData, key: string) {
+function validRegistrationKey(formData: FormData, key: string) {
   const value = requiredText(formData, key)
-  if (!/^[A-Za-z0-9_-]{16,128}$/.test(value)) throw new Error(`${key} non valido`)
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    throw new Error(`${key} non valido`)
+  }
   return value
 }
 
