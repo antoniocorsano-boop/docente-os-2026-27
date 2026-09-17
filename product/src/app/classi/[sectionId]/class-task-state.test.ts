@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { isCurrentDaySessionReceipt, presentClassRecorderEmptyState, presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
+
+const classPageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+const recorderSource = readFileSync(new URL('./TeachingSessionRecorderClient.tsx', import.meta.url), 'utf8')
+const actionsSource = readFileSync(new URL('./actions.ts', import.meta.url), 'utf8')
 
 const base = {
   hasNextBlock: true,
@@ -180,4 +185,26 @@ test('senza receipt UNDETERMINED conserva il fail-closed del Calendario ma conse
   assert.match(presentation.detail, /non ha ancora definito la giornata/)
   assert.match(presentation.detail, /data manualmente/)
   assert.equal(presentation.showScheduleLinks, true)
+})
+
+test('la Classe cerca ieri prima di degradare al recorder manuale', () => {
+  assert.match(classPageSource, /const previousDate = shiftLocalDate\(today, -1\)/)
+  assert.match(classPageSource, /previousTemporalDay\.occurrences/)
+  assert.match(classPageSource, /hasPendingPastOccurrence: Boolean\(pendingPastOccurrence\)/)
+  assert.match(classPageSource, /const recordingOccurrence = eligibleOccurrence \?\? pendingPastOccurrence/)
+})
+
+test('il fallback retroattivo richiede una data esplicita non futura', () => {
+  assert.match(classPageSource, /allowDateSelection/)
+  assert.match(classPageSource, /maxLocalDate=\{today\}/)
+  assert.match(recorderSource, /type="date"/)
+  assert.match(recorderSource, /max=\{maxLocalDate\}/)
+  assert.match(actionsSource, /validTeachingLocalDate/)
+  assert.match(actionsSource, /Non puoi registrare una lezione futura/)
+})
+
+test('una occurrence proiettata gia registrata non puo essere duplicata dal boundary server', () => {
+  assert.match(actionsSource, /currentTeachingSessions\(teaching\)\.some/)
+  assert.match(actionsSource, /projectedOccurrenceLogicalId === occurrenceLogicalId/)
+  assert.match(actionsSource, /La lezione prevista risulta già registrata/)
 })
