@@ -27,10 +27,29 @@ export async function acceptLessonDesignExtension(formData: FormData) {
   revalidateLesson(lesson.sectionId, lesson.blockId)
 }
 
-export async function removeLessonDesignExtension(formData: FormData) {
+export async function reviseLessonDesignExtension(formData: FormData) {
   const lesson = await requireLessonContext(formData)
   const extensionId = requiredText(formData, 'extensionId')
-  await new SupabaseLessonDesignRepository().remove(lesson.designContext, extensionId)
+  const insertionPosition = requiredText(formData, 'insertionPosition')
+  if (!['START', 'BEFORE_STEP', 'AFTER_STEP', 'END'].includes(insertionPosition)) {
+    throw new Error('Unsupported lesson design insertion position')
+  }
+
+  await new SupabaseLessonDesignRepository().revise(lesson.designContext, extensionId, {
+    insertionPosition: insertionPosition as 'START' | 'BEFORE_STEP' | 'AFTER_STEP' | 'END',
+    anchorStepId: optionalText(formData, 'anchorStepId'),
+    title: requiredText(formData, 'title'),
+    body: requiredText(formData, 'body'),
+    cue: optionalText(formData, 'cue'),
+    minutes: optionalInteger(formData, 'minutes'),
+  })
+  revalidateLesson(lesson.sectionId, lesson.blockId)
+}
+
+export async function dismissLessonDesignExtension(formData: FormData) {
+  const lesson = await requireLessonContext(formData)
+  const extensionId = requiredText(formData, 'extensionId')
+  await new SupabaseLessonDesignRepository().dismiss(lesson.designContext, extensionId)
   revalidateLesson(lesson.sectionId, lesson.blockId)
 }
 
@@ -179,6 +198,21 @@ function requiredText(formData: FormData, name: string) {
   const value = formData.get(name)
   if (typeof value !== 'string' || !value.trim()) throw new Error(`${name} required`)
   return value.trim()
+}
+
+function optionalText(formData: FormData, name: string) {
+  const value = formData.get(name)
+  if (typeof value !== 'string') return null
+  const normalized = value.trim()
+  return normalized || null
+}
+
+function optionalInteger(formData: FormData, name: string) {
+  const value = optionalText(formData, name)
+  if (value === null) return null
+  const parsed = Number(value)
+  if (!Number.isInteger(parsed)) throw new Error(`${name} must be an integer`)
+  return parsed
 }
 
 function revalidateLesson(sectionId: string, blockId: string) {
