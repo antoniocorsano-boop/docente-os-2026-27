@@ -32,6 +32,7 @@ Nessuna nuova persistenza è autorizzata per risolvere una sovrapposizione di in
 | Conoscenza / KB | `KnowledgeAsset` + generazione corrente | Knowledge ingestion/reprocessing boundary | retrieval FULL_TEXT / SEMANTIC / HYBRID | Conoscenza, Copilota, Lesson Preparation | **CONSERVA**; il bounded retrieval #514 deve estendere questo unico motore |
 | Copilota | **nessun dato di dominio posseduto** | nessuna write implicita; azioni persistenti passano da boundary dedicati e conferma | ContextAssembler + Copilot Kernel + handler dedicati | Oggi, Classe, Lezione, Conoscenza | **CONSOLIDA**: orchestratore, non database né seconda memoria |
 | Voice/STT | audio/transcript effimeri fino a conferma | nessun writer autonomo STT | input della stessa azione Copilota/registrazione | Registra lezione | **CONSERVA COME INPUT MODE** |
+| Notifiche / riepiloghi / automazioni | fatti e priorità restano nei rispettivi owner: Oggi/TemporalProjection, Planner, TeachingSession, Lesson Preparation | nessun writer didattico nel canale di consegna; ammessa solo persistenza tecnica di consenso/deduplica/consegna quando necessaria | `DailyTeacherBrief`/read model Today e query canoniche | in-app, eventuale browser notification o consegna schedulata | **CONSOLIDA COME DELIVERY PROJECTION**: mai nuova source of truth |
 | RoleView | **nessun dato posseduto** | nessun writer RoleView | `RoleViewSnapshot` derivato dal Manifest e dalle evidenze | viste TEACHER/COORDINATOR/REVIEWER/DEVELOPER | **CONSERVA COME PROIEZIONE**: mai fonte di maturità autonoma |
 | Drive | file/artefatti esportati o documenti con propria provenance | adapter Drive governato | link/export/proiezione | Materiali, Diario, Knowledge | **CONSERVA COME DESTINAZIONE/ASSET PROVIDER**, non semantica del dominio |
 | Canva | output/editing esterno opzionale | adapter esplicito dopo azione docente | renderer/editor | Materiali | **BLOCCA COME OWNER**: non può possedere readiness o stato didattico |
@@ -55,7 +56,7 @@ MDS-4/5/6 ha il ruolo di derivare la coda di chiusura e continuità verso il gio
 
 ### 3.4 Lesson Preparation non è un database
 
-`NextLessonPreparation` e `LessonPreparationManifest` compongono dati esistenti. Il Manifest può essere ricostruito deterministically dagli owner sottostanti; non giustifica un secondo storage di materiali, UDA o preparazioni.
+`NextLessonPreparation` e `LessonPreparationManifest` compongono dati esistenti. Il Manifest può essere ricostruito deterministicamente dagli owner sottostanti; non giustifica un secondo storage di materiali, UDA o preparazioni.
 
 ### 3.5 Materiali è una capability, non una nuova autorità
 
@@ -64,6 +65,10 @@ MDS-4/5/6 ha il ruolo di derivare la coda di chiusura e continuità verso il gio
 ### 3.6 Copilota e RoleView sono proiezioni/orchestratori
 
 Il Copilota può leggere, spiegare e proporre. Una write richiede un application boundary distinto e conferma umana. RoleView traduce lo stato del Manifest in una vista orientata al ruolo; non conserva un secondo stato di readiness, maturità o blocco.
+
+### 3.7 Notifiche e automazioni consegnano contesto, non lo possiedono
+
+Il riepilogo mattutino e le eventuali notifiche devono derivare da `DailyTeacherBrief`/Oggi e dagli owner canonici. È ammesso conservare soltanto lo stato tecnico necessario alla consegna (consenso, preferenza, deduplica, esito), senza copiare Planner, lezioni, readiness o Diario in un nuovo dominio. Un'eventuale azione di modifica aperta da una notifica torna sempre al writer canonico competente.
 
 ## 4. Writer boundary che non devono essere bypassati
 
@@ -74,7 +79,7 @@ Il Copilota può leggere, spiegare e proporre. Una write richiede un application
 - Knowledge → ingestion/reprocessing/retrieval canonici.
 - Curricolo istituzionale → autorità CurManLight/Arena e processo di validazione previsto.
 
-Copilota, MDS, RoleView, Home/Oggi e Manifest non diventano writer per comodità di implementazione.
+Copilota, MDS, RoleView, Home/Oggi, Manifest, notifiche e automazioni non diventano writer per comodità di implementazione.
 
 ## 5. Consolidazioni autorizzate per la Fase 3
 
@@ -94,6 +99,7 @@ Non sono autorizzati nella Fase 3:
 - secondo assistant runtime;
 - writer autonomi MDS/RoleView/Copilota;
 - generalizzazione automatica delle osservazioni tra classi;
+- nuovi provider/canali di notifica prima della convergenza Oggi/Home, salvo sola configurazione di delivery già prevista;
 - supporto generativo #519 finché lifecycle e promozione degli output non vengono verificati contro questa mappa.
 
 ## 6. Evidenza tecnica verificata
@@ -106,7 +112,8 @@ La baseline `develop@b8037da8…` mostra coerentemente che:
 - `NextLessonPreparation` aggrega temporal authority, Lesson context, continuità da TeachingSession e Knowledge;
 - `LessonPreparationManifest` compone sequenza, material slots, Knowledge ed estensioni senza creare un nuovo content store;
 - `handleNextLessonPreparation()` dichiara `persistentEffect: NONE` e richiede conferma per qualunque effetto persistente;
-- `RoleViewSnapshot` è costruito dal `LessonPreparationManifestResult` e mantiene source/provenance.
+- `RoleViewSnapshot` è costruito dal `LessonPreparationManifestResult` e mantiene source/provenance;
+- le decisioni già tracciate per riepilogo/notifiche richiedono contenuto derivato da Oggi/DailyTeacherBrief, non un flusso autonomo.
 
 ## 7. Gate Fase 2
 
