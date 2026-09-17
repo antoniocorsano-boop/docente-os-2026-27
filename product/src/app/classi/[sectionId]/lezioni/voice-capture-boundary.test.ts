@@ -9,7 +9,7 @@ const closeClientSource = readFileSync(new URL('./[blockId]/lesson-close-client.
 const inlineRecorderWrapperSource = readFileSync(new URL('../TeachingSessionRecorder.tsx', import.meta.url), 'utf8')
 const inlineRecorderSource = readFileSync(new URL('../TeachingSessionRecorderClient.tsx', import.meta.url), 'utf8')
 const pageSource = readFileSync(new URL('./[blockId]/page.tsx', import.meta.url), 'utf8')
-const adapterSource = readFileSync(new URL('../../../../core/infrastructure/ai/openai-speech-to-text.ts', import.meta.url), 'utf8')
+const adapterSource = readFileSync(new URL('../../../../core/infrastructure/ai/groq-speech-to-text.ts', import.meta.url), 'utf8')
 
 test('AI-1C voice endpoint reconstructs lesson authority server-side and never persists raw audio', () => {
   assert.match(routeSource, /loadLessonReflectionCopilotContext/)
@@ -36,9 +36,10 @@ test('AI-1C rollout switch disables server endpoint and both modeled and inline 
   assert.match(inlineRecorderSource, /voiceCaptureEnabled && lessonSurfacePath/)
 })
 
-test('AI-1C uses the documented transcription model runtime variable', () => {
-  assert.match(adapterSource, /process\.env\.OPENAI_TRANSCRIPTION_MODEL/)
-  assert.doesNotMatch(adapterSource, /OPENAI_STT_MODEL/)
+test('AI-1F uses only the documented Groq transcription runtime variables', () => {
+  assert.match(adapterSource, /process\.env\.GROQ_STT_API_KEY/)
+  assert.match(adapterSource, /process\.env\.GROQ_TRANSCRIPTION_MODEL/)
+  assert.doesNotMatch(adapterSource, /OPENAI_STT_API_KEY|OPENAI_TRANSCRIPTION_MODEL|GROQ_API_KEY/)
 })
 
 test('AI-1C client sends only ephemeral audio metadata and an untrusted same-origin surface locator', () => {
