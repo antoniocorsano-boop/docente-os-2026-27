@@ -20,12 +20,13 @@ import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annua
 export async function recordTeachingSession(formData: FormData) {
   const context = await requireContext()
   const sectionId = requiredText(formData, 'sectionId')
-  const localDate = requiredText(formData, 'localDate')
+  const localDate = validTeachingLocalDate(formData, 'localDate')
   const occurrenceLogicalId = nullableText(formData, 'occurrenceLogicalId')
   const actualMinutes = positiveInt(formData, 'actualMinutes')
   const evidenceNote = boundedNote(formData, 'evidenceNote', 4000)
 
   const annual = new SupabaseAnnualPlanExecutionRepository()
+  const teachingRepository = new SupabaseTeachingSessionRepository()
   const snapshot = await annual.list(context.workspace.id, context.academicYear.id)
   const section = snapshot.sections.find((item) => item.id === sectionId)
   if (!section) throw new Error('Classe fuori dal contesto attivo')
@@ -45,6 +46,16 @@ export async function recordTeachingSession(formData: FormData) {
 
   let session: TeachingSessionDraft
   if (occurrenceLogicalId) {
+    const teaching = await teachingRepository.listBySection(
+      context.workspace.id,
+      context.academicYear.id,
+      sectionId,
+    )
+    const duplicate = currentTeachingSessions(teaching).some(
+      (item) => item.source.projectedOccurrenceLogicalId === occurrenceLogicalId,
+    )
+    if (duplicate) throw new Error('La lezione prevista risulta già registrata')
+
     const projection = new TemporalProjectionService(
       new SupabaseTimetableProjectionReadRepository(),
       new SupabaseCalendarProjectionReadRepository(),
@@ -92,7 +103,7 @@ export async function recordTeachingSession(formData: FormData) {
       canonicalPlanAssetId: source.assetId,
       canonicalGenerationId: source.generationId,
     },
-  }, new SupabaseTeachingSessionRepository())
+  }, teachingRepository)
 
   revalidatePath('/planner')
   revalidatePath('/piano-annuale')
@@ -205,4 +216,31 @@ function boundedNote(formData: FormData, key: string, max: number) {
   const value = nullableText(formData, key)
   if (value && value.length > max) throw new Error(`${key} troppo lungo`)
   return value
+}
+
+function validTeachingLocalDate(formData: FormData, key: string) {
+  const value = requiredText(formData, key)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error(`${key} non valido`)
+  const [year, month, day] = value.split('-').map(Number)
+  const parsed = new Date(Date.UTC(year, month - 1, day))
+  if (
+    parsed.getUTCFullYear() !== year
+    || parsed.getUTCMonth() !== month - 1
+    || parsed.getUTCDate() !== day
+  ) {
+    throw new Error(`${key} non valido`)
+  }
+  if (value > currentRomeDate()) throw new Error('Non puoi registrare una lezione futura')
+  return value
+}
+
+function currentRomeDate() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Rome',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return `${values.year}-${values.month}-${values.day}`
 }
