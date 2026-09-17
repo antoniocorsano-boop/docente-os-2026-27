@@ -1,7 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
+import {
+  isTeachingAdjustment,
+  type LessonDesignExtension,
+} from '@/core/domain/lesson-design-extension'
 import { teachingMaterialRoleLabel } from '@/core/domain/textbook-teaching-kit'
 import {
   acceptLessonDesignExtension,
@@ -27,17 +30,26 @@ export function LessonDesignTools({
   extensions: LessonDesignExtension[]
   knowledgeSuggestions: LessonKnowledgeSuggestion[]
 }) {
-  const proposals = extensions.filter((extension) => extension.status === 'PROPOSED')
+  const proposals = extensions.filter(
+    (extension) => extension.status === 'PROPOSED' && !isTeachingAdjustment(extension),
+  )
+  const replanningReview = extensions.filter(
+    (extension) =>
+      isTeachingAdjustment(extension)
+      && (extension.status === 'PROPOSED' || extension.status === 'MODIFIED'),
+  )
   const accepted = extensions.filter((extension) => extension.status === 'ACCEPTED')
-  const acceptedSequence = accepted.filter((extension) => !isResource(extension.kind))
-  const acceptedResources = accepted.filter((extension) => isResource(extension.kind))
+  const acceptedLessonAdditions = accepted.filter((extension) => !isTeachingAdjustment(extension))
+  const acceptedSequence = acceptedLessonAdditions.filter((extension) => !isResource(extension.kind))
+  const acceptedResources = acceptedLessonAdditions.filter((extension) => isResource(extension.kind))
+  const acceptedReplanning = accepted.filter((extension) => isTeachingAdjustment(extension))
   const activationQuestionPresent = extensions.some((extension) => extension.payload.toolId === ACTIVATION_QUESTION_TOOL_ID)
 
   return (
     <section className="lessonDesignTools" aria-labelledby="lesson-design-tools-title">
       <header className="lessonSectionHeading">
         <div><span>STRUMENTI DI PROGETTAZIONE</span><h3 id="lesson-design-tools-title">Arricchisci solo se serve</h3></div>
-        <small>{accepted.length} aggiunte attive</small>
+        <small>{acceptedLessonAdditions.length} aggiunte attive</small>
       </header>
 
       <div className="lessonDesignContract">
@@ -89,6 +101,35 @@ export function LessonDesignTools({
         </div>
       ) : null}
 
+      {replanningReview.length ? (
+        <div className="lessonDesignProposalList" aria-label="Proposte di riprogettazione da riesaminare">
+          <div className="lessonDesignSubheading"><strong>Riprogettazione da riesaminare</strong><small>{replanningReview.length}</small></div>
+          <p className="lessonKnowledgeLead">Queste riflessioni restano separate dalla lezione. Confermarle registra una decisione di riprogettazione, senza modificare automaticamente Piano annuale o UDA.</p>
+          {replanningReview.map((extension) => (
+            <article className="lessonDesignProposal" key={extension.id}>
+              <div>
+                <span>RIPROGETTAZIONE</span>
+                <strong>{extension.title}</strong>
+                <p>{extension.body}</p>
+                <small>{sourceLabel(extension)}</small>
+              </div>
+              <div className="lessonDesignProposalActions">
+                <form action={acceptLessonDesignExtension}>
+                  <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
+                  <input type="hidden" name="extensionId" value={extension.id} />
+                  <button className="primary" type="submit">Conferma riprogettazione</button>
+                </form>
+                <form action={removeLessonDesignExtension}>
+                  <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
+                  <input type="hidden" name="extensionId" value={extension.id} />
+                  <button type="submit">Scarta</button>
+                </form>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
       {acceptedSequence.length ? (
         <div className="lessonDesignAccepted" aria-label="Aggiunte alla sequenza">
           <div className="lessonDesignSubheading"><strong>Nella sequenza</strong><small>{acceptedSequence.length}</small></div>
@@ -115,6 +156,29 @@ export function LessonDesignTools({
               projectionId={projectionId}
               key={extension.id}
             />
+          ))}
+        </div>
+      ) : null}
+
+      {acceptedReplanning.length ? (
+        <div className="lessonDesignAccepted" aria-label="Decisioni di riprogettazione accettate">
+          <div className="lessonDesignSubheading"><strong>Riprogettazione</strong><small>{acceptedReplanning.length}</small></div>
+          <p className="lessonKnowledgeLead">Decisioni accettate da tenere presenti nella riprogettazione. Non sono aggiunte alla sequenza e non modificano automaticamente Piano annuale o UDA.</p>
+          {acceptedReplanning.map((extension) => (
+            <article className="lessonDesignAcceptedItem" key={extension.id}>
+              <div>
+                <span>RIPROGETTAZIONE</span>
+                <strong>{extension.title}</strong>
+                <small>Decisione accettata · {sourceLabel(extension)}</small>
+              </div>
+              <div>
+                <form action={removeLessonDesignExtension}>
+                  <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
+                  <input type="hidden" name="extensionId" value={extension.id} />
+                  <button type="submit">Rimuovi</button>
+                </form>
+              </div>
+            </article>
           ))}
         </div>
       ) : null}
@@ -211,6 +275,7 @@ function extensionKindLabel(kind: LessonDesignExtension['kind']) {
   if (kind === 'HOOK_QUESTION') return 'DOMANDA'
   if (kind === 'FORMATIVE_CHECK') return 'VERIFICA RAPIDA'
   if (kind === 'STUDENT_RESOURCE') return 'MATERIALE STUDENTI'
+  if (kind === 'TEACHING_ADJUSTMENT') return 'RIPROGETTAZIONE'
   return 'MATERIALE DOCENTE'
 }
 
