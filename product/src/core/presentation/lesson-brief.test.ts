@@ -132,3 +132,24 @@ test('only accepted decisions enter the next preparation', () => {
   assert.equal(result.acceptedExtensionCount, 1)
   assert.equal(result.statusLabel, 'ENRICHED')
 })
+
+test('accepted teaching adjustments stay outside the operational preparation brief', () => {
+  const result = buildLessonBrief({
+    projection,
+    extensions: [
+      extension({
+        id: 'adjustment',
+        kind: 'TEACHING_ADJUSTMENT',
+        title: 'Riflessione da riesaminare',
+        body: 'Riprendere il concetto con un esempio concreto.',
+        sourceRef: 'session-1',
+        sourceLabel: 'Riflessione post-lezione',
+      }),
+    ],
+  })
+
+  assert.deepEqual(result.readyTitles, ['Scheda alunno'])
+  assert.equal(result.readyCount, 1)
+  assert.equal(result.acceptedExtensionCount, 0)
+  assert.equal(result.statusLabel, 'READY_BASE')
+})
