@@ -10,12 +10,14 @@ type TranscriptionPayload = {
 
 type Fetcher = typeof fetch
 
-export class OpenAiSpeechToText implements SpeechToTextPort {
+const GROQ_TRANSCRIPTION_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'
+
+export class GroqSpeechToText implements SpeechToTextPort {
   constructor(
-    private readonly apiKey = process.env.OPENAI_STT_API_KEY,
-    private readonly model = process.env.OPENAI_TRANSCRIPTION_MODEL ?? 'gpt-4o-mini-transcribe',
+    private readonly apiKey = process.env.GROQ_STT_API_KEY,
+    private readonly model = process.env.GROQ_TRANSCRIPTION_MODEL ?? 'whisper-large-v3-turbo',
     private readonly fetcher: Fetcher = fetch,
-    private readonly timeoutMs = resolveTimeoutMs(process.env.OPENAI_STT_TIMEOUT_MS),
+    private readonly timeoutMs = resolveTimeoutMs(process.env.GROQ_STT_TIMEOUT_MS),
   ) {}
 
   get available() {
@@ -30,7 +32,7 @@ export class OpenAiSpeechToText implements SpeechToTextPort {
     form.append('model', this.model)
     form.append('language', input.language)
 
-    const response = await this.fetcher('https://api.openai.com/v1/audio/transcriptions', {
+    const response = await this.fetcher(GROQ_TRANSCRIPTION_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
@@ -47,7 +49,7 @@ export class OpenAiSpeechToText implements SpeechToTextPort {
 
     return {
       text,
-      provider: 'OPENAI',
+      provider: 'GROQ',
       model: this.model,
     }
   }
