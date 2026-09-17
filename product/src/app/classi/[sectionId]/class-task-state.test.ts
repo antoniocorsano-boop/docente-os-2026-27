@@ -229,11 +229,12 @@ test('la data scelta viene ri-proiettata e conserva la provenance reale quando e
   assert.match(actionsSource, /manual_session:\$\{localDate\}/)
 })
 
-test('il form usa una chiave di intento stabile e il server riconosce i replay ordinari', () => {
-  assert.match(recorderServerSource, /registrationIntentKey=\{randomUUID\(\)\}/)
-  assert.match(recorderSource, /name="registrationIntentKey"/)
-  assert.match(actionsSource, /validRegistrationIntentKey/)
-  assert.match(actionsSource, /registration_intent:\$\{registrationIntentKey\}/)
-  assert.match(actionsSource, /const replaySession = currentSessions\.find/)
-  assert.match(actionsSource, /replaySession\.id/)
+test('il form usa la registration key canonica e ogni retry attraversa il boundary atomico', () => {
+  assert.match(recorderServerSource, /registrationKey=\{randomUUID\(\)\}/)
+  assert.match(recorderSource, /name="registrationKey"/)
+  assert.match(actionsSource, /validRegistrationKey/)
+  assert.match(actionsSource, /registration_key:\$\{registrationKey\}/)
+  assert.doesNotMatch(actionsSource, /registration_intent:/)
+  assert.doesNotMatch(actionsSource, /replaySession/)
+  assert.match(actionsSource, /recordTeachingSessionCommand/)
 })
