@@ -30,7 +30,7 @@ export async function acceptLessonDesignExtension(formData: FormData) {
 export async function removeLessonDesignExtension(formData: FormData) {
   const lesson = await requireLessonContext(formData)
   const extensionId = requiredText(formData, 'extensionId')
-  await new SupabaseLessonDesignRepository().remove(lesson.designContext, extensionId)
+  await new SupabaseLessonDesignRepository().dismiss(lesson.designContext, extensionId)
   revalidateLesson(lesson.sectionId, lesson.blockId)
 }
 
