@@ -1,10 +1,15 @@
 import { defineConfig } from '@playwright/test'
 
 const baseURL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000'
+const wcagAssurance = process.env.WCAG_ASSURANCE === '1'
 
 export default defineConfig({
   testDir: './e2e/experience',
   testMatch: '**/*.spec.mjs',
+  // HVA and WCAG are separate governed gates. The orchestrator runs
+  // accessibility.spec.mjs explicitly with WCAG_ASSURANCE=1, so the general
+  // Human + Visual suite must not execute the same Axe assurance a second time.
+  testIgnore: wcagAssurance ? [] : '**/accessibility.spec.mjs',
   globalSetup: './e2e/experience/global-setup.mjs',
   timeout: 120_000,
   expect: { timeout: 20_000 },
