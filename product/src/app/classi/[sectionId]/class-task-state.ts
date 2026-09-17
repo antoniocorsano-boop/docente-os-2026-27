@@ -43,21 +43,9 @@ export function resolveClassTaskDecision(input: {
     }
   }
 
-  // A previous projected occurrence that is still unrecorded is a real pending
-  // professional task. Keep it on the class surface so its timetable/calendar
-  // provenance is preserved instead of silently falling back to PREPARE.
-  if (input.hasPendingPastOccurrence) {
-    return {
-      state: 'CATCH_UP',
-      label: 'Registra la lezione precedente',
-      lessonMode: null,
-      useInlineRecorder: true,
-      focusCompletion: false,
-    }
-  }
-
-  // A new unrecorded timetable occurrence is always the current task, even when
-  // the URL still carries a valid receipt from an earlier session.
+  // Current-day work always outranks catch-up. The recorder uses the same
+  // precedence, so the task label can never say "previous lesson" while the
+  // submitted occurrence belongs to today.
   if (input.hasEligibleOccurrence && input.occurrenceEnded) {
     return {
       state: 'RECORD',
@@ -74,6 +62,19 @@ export function resolveClassTaskDecision(input: {
       label: input.hasModeledLesson ? 'Continua la lezione' : 'Apri il lavoro di classe',
       lessonMode: input.hasModeledLesson ? 'teach' : null,
       useInlineRecorder: false,
+      focusCompletion: false,
+    }
+  }
+
+  // A previous projected occurrence that is still unrecorded is a real pending
+  // professional task once there is no eligible current-day occurrence. Keep it
+  // on the class surface so timetable/calendar provenance is preserved.
+  if (input.hasPendingPastOccurrence) {
+    return {
+      state: 'CATCH_UP',
+      label: 'Registra la lezione precedente',
+      lessonMode: null,
+      useInlineRecorder: true,
       focusCompletion: false,
     }
   }
