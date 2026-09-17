@@ -20,12 +20,14 @@ import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annua
 export async function recordTeachingSession(formData: FormData) {
   const context = await requireContext()
   const sectionId = requiredText(formData, 'sectionId')
-  const localDate = requiredText(formData, 'localDate')
+  const localDate = validTeachingLocalDate(formData, 'localDate')
   const occurrenceLogicalId = nullableText(formData, 'occurrenceLogicalId')
+  const registrationKey = validRegistrationKey(formData, 'registrationKey')
   const actualMinutes = positiveInt(formData, 'actualMinutes')
   const evidenceNote = boundedNote(formData, 'evidenceNote', 4000)
 
   const annual = new SupabaseAnnualPlanExecutionRepository()
+  const teachingRepository = new SupabaseTeachingSessionRepository()
   const snapshot = await annual.list(context.workspace.id, context.academicYear.id)
   const section = snapshot.sections.find((item) => item.id === sectionId)
   if (!section) throw new Error('Classe fuori dal contesto attivo')
@@ -43,23 +45,58 @@ export async function recordTeachingSession(formData: FormData) {
     }
   })
 
-  let session: TeachingSessionDraft
+  const teaching = await teachingRepository.listBySection(
+    context.workspace.id,
+    context.academicYear.id,
+    sectionId,
+  )
+  const currentSessions = currentTeachingSessions(teaching)
+  const registrationKeyProvenance = `registration_key:${registrationKey}`
+  const recordedOccurrenceIds = new Set(
+    currentSessions
+      .map((item) => item.source.projectedOccurrenceLogicalId)
+      .filter((value): value is string => Boolean(value)),
+  )
+
+  const projection = new TemporalProjectionService(
+    new SupabaseTimetableProjectionReadRepository(),
+    new SupabaseCalendarProjectionReadRepository(),
+  )
+  const day = await projection.projectDay({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    localDate,
+  })
+  const classOccurrences = day.occurrences.filter(
+    (item) => item.sectionId === sectionId && (item.kind === 'LESSON' || item.kind === 'CLASS_PRESENCE'),
+  )
+
+  let resolvedOccurrence = null
   if (occurrenceLogicalId) {
-    const projection = new TemporalProjectionService(
-      new SupabaseTimetableProjectionReadRepository(),
-      new SupabaseCalendarProjectionReadRepository(),
-    )
-    const day = await projection.projectDay({
-      workspaceId: context.workspace.id,
-      academicYearId: context.academicYear.id,
-      localDate,
-    })
-    const occurrence = day.occurrences.find((item) => item.logicalId === occurrenceLogicalId && item.sectionId === sectionId)
-    if (!occurrence) throw new Error('La lezione prevista non è più valida per questa data')
+    if (recordedOccurrenceIds.has(occurrenceLogicalId)) {
+      throw new Error('La lezione prevista risulta già registrata')
+    }
+    resolvedOccurrence = classOccurrences.find((item) => item.logicalId === occurrenceLogicalId) ?? null
+    if (!resolvedOccurrence) throw new Error('La lezione prevista non è più valida per questa data')
+  } else {
+    const unrecordedOccurrences = classOccurrences.filter((item) => !recordedOccurrenceIds.has(item.logicalId))
+    if (unrecordedOccurrences.length > 1) {
+      throw new Error('Più lezioni trovate per questa data: apri la lezione dall’Orario o dal Calendario per scegliere quella corretta')
+    }
+    resolvedOccurrence = unrecordedOccurrences[0] ?? null
+  }
+
+  let session: TeachingSessionDraft
+  if (resolvedOccurrence) {
+    const projectedCandidate = teachingSessionCandidateFromOccurrence(resolvedOccurrence)
     session = {
-      ...teachingSessionCandidateFromOccurrence(occurrence),
+      ...projectedCandidate,
       actualMinutes,
       evidenceNote,
+      source: {
+        ...projectedCandidate.source,
+        provenance: [...projectedCandidate.source.provenance, registrationKeyProvenance],
+      },
     }
   } else {
     session = {
@@ -77,11 +114,14 @@ export async function recordTeachingSession(formData: FormData) {
         timetableVersionId: null,
         timetableSlotId: null,
         calendarState: null,
-        provenance: [`manual_session:${localDate}`, `section:${sectionId}`],
+        provenance: [`manual_session:${localDate}`, `section:${sectionId}`, registrationKeyProvenance],
       },
     }
   }
 
+  // Always cross the authoritative RPC boundary, including retries. Migration 0052
+  // validates the complete payload signature and resolves the registration key
+  // atomically, so concurrent submissions cannot create duplicate sessions.
   const receipt = await recordTeachingSessionCommand({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
@@ -92,7 +132,7 @@ export async function recordTeachingSession(formData: FormData) {
       canonicalPlanAssetId: source.assetId,
       canonicalGenerationId: source.generationId,
     },
-  }, new SupabaseTeachingSessionRepository())
+  }, teachingRepository)
 
   revalidatePath('/planner')
   revalidatePath('/piano-annuale')
@@ -205,4 +245,39 @@ function boundedNote(formData: FormData, key: string, max: number) {
   const value = nullableText(formData, key)
   if (value && value.length > max) throw new Error(`${key} troppo lungo`)
   return value
+}
+
+function validTeachingLocalDate(formData: FormData, key: string) {
+  const value = requiredText(formData, key)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error(`${key} non valido`)
+  const [year, month, day] = value.split('-').map(Number)
+  const parsed = new Date(Date.UTC(year, month - 1, day))
+  if (
+    parsed.getUTCFullYear() !== year
+    || parsed.getUTCMonth() !== month - 1
+    || parsed.getUTCDate() !== day
+  ) {
+    throw new Error(`${key} non valido`)
+  }
+  if (value > currentRomeDate()) throw new Error('Non puoi registrare una lezione futura')
+  return value
+}
+
+function validRegistrationKey(formData: FormData, key: string) {
+  const value = requiredText(formData, key)
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    throw new Error(`${key} non valido`)
+  }
+  return value
+}
+
+function currentRomeDate() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Rome',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return `${values.year}-${values.month}-${values.day}`
 }

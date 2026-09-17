@@ -1,12 +1,19 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { isCurrentDaySessionReceipt, presentClassRecorderEmptyState, presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
+
+const classPageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+const recorderSource = readFileSync(new URL('./TeachingSessionRecorderClient.tsx', import.meta.url), 'utf8')
+const recorderServerSource = readFileSync(new URL('./TeachingSessionRecorder.tsx', import.meta.url), 'utf8')
+const actionsSource = readFileSync(new URL('./actions.ts', import.meta.url), 'utf8')
 
 const base = {
   hasNextBlock: true,
   hasModeledLesson: true,
   hasSessionReceipt: false,
   hasEligibleOccurrence: false,
+  hasPendingPastOccurrence: false,
   occurrenceEnded: false,
   maySuggestCompletion: false,
 }
@@ -19,6 +26,27 @@ test('prepara quando non esiste una lezione di oggi da svolgere', () => {
     useInlineRecorder: false,
     focusCompletion: false,
   })
+})
+
+test('una occurrence precedente non registrata prevale sulla preparazione e resta inline', () => {
+  assert.deepEqual(resolveClassTaskDecision({ ...base, hasPendingPastOccurrence: true }), {
+    state: 'CATCH_UP',
+    label: 'Registra la lezione precedente',
+    lessonMode: null,
+    useInlineRecorder: true,
+    focusCompletion: false,
+  })
+})
+
+test('una occurrence odierna prevale sul recupero precedente anche se entrambi sono pendenti', () => {
+  const decision = resolveClassTaskDecision({
+    ...base,
+    hasEligibleOccurrence: true,
+    hasPendingPastOccurrence: true,
+    occurrenceEnded: true,
+  })
+  assert.equal(decision.state, 'RECORD')
+  assert.equal(decision.label, 'Registra la lezione')
 })
 
 test('continua la lezione quando l occorrenza e iniziata ma non conclusa', () => {
@@ -99,12 +127,18 @@ test('non espone una CTA quando il percorso annuale e completo', () => {
 })
 
 test('la presentazione task-first espone sempre Adesso e un solo Dopo comprensibile', () => {
-  for (const state of ['PREPARE', 'TEACH', 'RECORD', 'AFTER_RECORD'] as const) {
+  for (const state of ['PREPARE', 'TEACH', 'RECORD', 'CATCH_UP', 'AFTER_RECORD'] as const) {
     const presentation = presentClassTaskState(state)
     assert.match(presentation.eyebrow, /ADESSO/)
     assert.ok(presentation.hint.length > 0)
     assert.match(presentation.nextStep, /^Dopo /)
   }
+})
+
+test('il recupero di una lezione precedente usa un messaggio distinto dalla lezione odierna', () => {
+  const presentation = presentClassTaskState('CATCH_UP')
+  assert.equal(presentation.eyebrow, 'ADESSO · DA RECUPERARE')
+  assert.match(presentation.hint, /precedente non ancora registrata/)
 })
 
 test('il percorso completo non simula un nuovo compito operativo', () => {
@@ -150,15 +184,57 @@ test('NO_LESSONS esplicito resta override forte anche con una receipt nella URL'
   })
   assert.equal(presentation.title, 'Nessuna lezione di oggi da registrare automaticamente.')
   assert.match(presentation.detail, /non si materializzano lezioni/)
+  assert.match(presentation.detail, /data manualmente/)
   assert.equal(presentation.showScheduleLinks, true)
 })
 
-test('senza receipt UNDETERMINED conserva il fail-closed del Calendario', () => {
+test('senza receipt UNDETERMINED conserva il fail-closed del Calendario ma consente recupero manuale esplicito', () => {
   const presentation = presentClassRecorderEmptyState({
     calendarState: 'UNDETERMINED',
     hasSessionReceipt: false,
     hasFutureOccurrence: false,
   })
   assert.match(presentation.detail, /non ha ancora definito la giornata/)
+  assert.match(presentation.detail, /data manualmente/)
   assert.equal(presentation.showScheduleLinks, true)
+})
+
+test('la Classe cerca ieri prima di degradare al recorder manuale', () => {
+  assert.match(classPageSource, /const previousDate = shiftLocalDate\(today, -1\)/)
+  assert.match(classPageSource, /previousTemporalDay\.occurrences/)
+  assert.match(classPageSource, /hasPendingPastOccurrence: Boolean\(pendingPastOccurrence\)/)
+  assert.match(classPageSource, /const recordingOccurrence = eligibleOccurrence \?\? pendingPastOccurrence/)
+})
+
+test('il fallback retroattivo richiede una data esplicita non futura', () => {
+  assert.match(classPageSource, /allowDateSelection/)
+  assert.match(classPageSource, /maxLocalDate=\{today\}/)
+  assert.match(recorderSource, /type="date"/)
+  assert.match(recorderSource, /max=\{maxLocalDate\}/)
+  assert.match(actionsSource, /validTeachingLocalDate/)
+  assert.match(actionsSource, /Non puoi registrare una lezione futura/)
+})
+
+test('una occurrence proiettata gia registrata non puo essere duplicata dal boundary server', () => {
+  assert.match(actionsSource, /recordedOccurrenceIds\.has\(occurrenceLogicalId\)/)
+  assert.match(actionsSource, /La lezione prevista risulta già registrata/)
+})
+
+test('la data scelta viene ri-proiettata e conserva la provenance reale quando esiste una sola occurrence', () => {
+  assert.match(actionsSource, /projection\.projectDay/)
+  assert.match(actionsSource, /const classOccurrences = day\.occurrences\.filter/)
+  assert.match(actionsSource, /unrecordedOccurrences\.length > 1/)
+  assert.match(actionsSource, /teachingSessionCandidateFromOccurrence\(resolvedOccurrence\)/)
+  assert.match(actionsSource, /sourceKind: 'MANUAL'/)
+  assert.match(actionsSource, /manual_session:\$\{localDate\}/)
+})
+
+test('il form usa la registration key canonica e ogni retry attraversa il boundary atomico', () => {
+  assert.match(recorderServerSource, /registrationKey=\{randomUUID\(\)\}/)
+  assert.match(recorderSource, /name="registrationKey"/)
+  assert.match(actionsSource, /validRegistrationKey/)
+  assert.match(actionsSource, /registration_key:\$\{registrationKey\}/)
+  assert.doesNotMatch(actionsSource, /registration_intent:/)
+  assert.doesNotMatch(actionsSource, /replaySession/)
+  assert.match(actionsSource, /recordTeachingSessionCommand/)
 })

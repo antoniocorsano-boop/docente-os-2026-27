@@ -16,6 +16,8 @@ export type TeachingSessionRecorderProps = {
   localDate: string
   occurrenceLogicalId: string | null
   plannedMinutes: number | null
+  allowDateSelection?: boolean
+  maxLocalDate?: string
   blocks: Array<{
     id: string
     title: string
@@ -29,10 +31,14 @@ export function TeachingSessionRecorderClient({
   localDate,
   occurrenceLogicalId,
   plannedMinutes,
+  allowDateSelection = false,
+  maxLocalDate,
   blocks,
+  registrationKey,
   voiceCaptureEnabled,
-}: TeachingSessionRecorderProps & { voiceCaptureEnabled: boolean }) {
+}: TeachingSessionRecorderProps & { registrationKey: string; voiceCaptureEnabled: boolean }) {
   const suggestedActual = plannedMinutes ?? 60
+  const [recordLocalDate, setRecordLocalDate] = useState(localDate)
   const [actualMinutes, setActualMinutes] = useState(suggestedActual)
   const [blockId1, setBlockId1] = useState(blocks[0]?.id ?? '')
   const [minutes1, setMinutes1] = useState(suggestedActual)
@@ -45,8 +51,9 @@ export function TeachingSessionRecorderClient({
   const [voiceBusy, setVoiceBusy] = useState(false)
   const captureGenerationRef = useRef(0)
 
+  const editableDate = allowDateSelection && !occurrenceLogicalId
   const total = minutes1 + (blockId2 ? minutes2 : 0)
-  const invalid = total > actualMinutes || !blockId1 || minutes1 <= 0 || (blockId2 ? minutes2 <= 0 || blockId2 === blockId1 : false)
+  const invalid = total > actualMinutes || !blockId1 || minutes1 <= 0 || !recordLocalDate || (blockId2 ? minutes2 <= 0 || blockId2 === blockId1 : false)
   const lessonSurfacePath = blockId1
     ? `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(blockId1)}?mode=record`
     : null
@@ -148,12 +155,27 @@ export function TeachingSessionRecorderClient({
   return (
     <form action={recordTeachingSession} className="teachingSessionForm">
       <input type="hidden" name="sectionId" value={sectionId} />
-      <input type="hidden" name="localDate" value={localDate} />
+      <input type="hidden" name="registrationKey" value={registrationKey} />
+      {editableDate ? (
+        <label className="teachingSessionEvidence">
+          <span>Data della lezione</span>
+          <input
+            name="localDate"
+            type="date"
+            value={recordLocalDate}
+            max={maxLocalDate}
+            onChange={(event) => setRecordLocalDate(event.target.value)}
+            required
+          />
+        </label>
+      ) : (
+        <input type="hidden" name="localDate" value={recordLocalDate} />
+      )}
       <input type="hidden" name="occurrenceLogicalId" value={occurrenceLogicalId ?? ''} />
 
       <div className="teachingSessionContext">
-        <strong>{occurrenceLogicalId ? 'Lezione riconosciuta da Orario + Calendario' : 'Registrazione manuale'}</strong>
-        <span>{formatDate(localDate)}{plannedMinutes ? ` · ${plannedMinutes} min previsti` : ' · durata prevista non disponibile'}</span>
+        <strong>{occurrenceLogicalId ? 'Lezione riconosciuta da Orario + Calendario' : editableDate ? 'Registrazione retroattiva manuale' : 'Registrazione manuale'}</strong>
+        <span>{formatDate(recordLocalDate)}{plannedMinutes ? ` · ${plannedMinutes} min previsti` : ' · durata prevista non disponibile'}</span>
       </div>
 
       <div className="teachingSessionFields">
@@ -270,5 +292,6 @@ function captureLabel(kind: ContextualCaptureProposalKind) {
 
 function formatDate(value: string) {
   const [year, month, day] = value.split('-').map(Number)
+  if (!year || !month || !day) return value
   return new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(year, month - 1, day)))
 }

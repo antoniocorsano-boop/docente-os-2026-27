@@ -1,4 +1,4 @@
-export type ClassTaskState = 'COMPLETE' | 'PREPARE' | 'TEACH' | 'RECORD' | 'AFTER_RECORD'
+export type ClassTaskState = 'COMPLETE' | 'PREPARE' | 'TEACH' | 'RECORD' | 'CATCH_UP' | 'AFTER_RECORD'
 
 export type ClassTaskDecision = {
   state: ClassTaskState
@@ -29,6 +29,7 @@ export function resolveClassTaskDecision(input: {
   hasModeledLesson: boolean
   hasSessionReceipt: boolean
   hasEligibleOccurrence: boolean
+  hasPendingPastOccurrence: boolean
   occurrenceEnded: boolean
   maySuggestCompletion: boolean
 }): ClassTaskDecision {
@@ -42,8 +43,9 @@ export function resolveClassTaskDecision(input: {
     }
   }
 
-  // A new unrecorded timetable occurrence is always the current task, even when
-  // the URL still carries a valid receipt from an earlier session.
+  // Current-day work always outranks catch-up. The recorder uses the same
+  // precedence, so the task label can never say "previous lesson" while the
+  // submitted occurrence belongs to today.
   if (input.hasEligibleOccurrence && input.occurrenceEnded) {
     return {
       state: 'RECORD',
@@ -60,6 +62,19 @@ export function resolveClassTaskDecision(input: {
       label: input.hasModeledLesson ? 'Continua la lezione' : 'Apri il lavoro di classe',
       lessonMode: input.hasModeledLesson ? 'teach' : null,
       useInlineRecorder: false,
+      focusCompletion: false,
+    }
+  }
+
+  // A previous projected occurrence that is still unrecorded is a real pending
+  // professional task once there is no eligible current-day occurrence. Keep it
+  // on the class surface so timetable/calendar provenance is preserved.
+  if (input.hasPendingPastOccurrence) {
+    return {
+      state: 'CATCH_UP',
+      label: 'Registra la lezione precedente',
+      lessonMode: null,
+      useInlineRecorder: true,
       focusCompletion: false,
     }
   }
@@ -112,6 +127,14 @@ export function presentClassTaskState(state: ClassTaskState): ClassTaskPresentat
     }
   }
 
+  if (state === 'CATCH_UP') {
+    return {
+      eyebrow: 'ADESSO · DA RECUPERARE',
+      hint: 'C’è una lezione precedente non ancora registrata.',
+      nextStep: 'Dopo la registrazione, DOCENTE OS ricalcolerà il lavoro corrente della classe.',
+    }
+  }
+
   if (state === 'AFTER_RECORD') {
     return {
       eyebrow: 'ADESSO · PROSSIMO PASSO',
@@ -143,7 +166,7 @@ export function presentClassRecorderEmptyState(input: {
   if (input.calendarState === 'NO_LESSONS') {
     return {
       title: 'Nessuna lezione di oggi da registrare automaticamente.',
-      detail: 'Il Calendario indica che oggi non si materializzano lezioni.',
+      detail: 'Il Calendario indica che oggi non si materializzano lezioni. Se devi recuperare una registrazione precedente, puoi indicare la data manualmente qui sotto.',
       showScheduleLinks: true,
     }
   }
@@ -165,14 +188,14 @@ export function presentClassRecorderEmptyState(input: {
   if (input.calendarState === 'UNDETERMINED') {
     return {
       title: 'Nessuna lezione di oggi da registrare automaticamente.',
-      detail: 'Il Calendario non ha ancora definito la giornata: DOCENTE OS non inventa una sessione.',
+      detail: 'Il Calendario non ha ancora definito la giornata: DOCENTE OS non inventa una sessione. Se devi registrare una lezione precedente, puoi indicare la data manualmente qui sotto.',
       showScheduleLinks: true,
     }
   }
 
   return {
     title: 'Nessuna lezione di oggi da registrare automaticamente.',
-    detail: 'Le lezioni già trascorse risultano registrate oppure non c’è un’occorrenza della classe in questa fascia.',
+    detail: 'Le lezioni già trascorse risultano registrate oppure non c’è un’occorrenza della classe in questa fascia. Puoi comunque registrare esplicitamente una lezione precedente.',
     showScheduleLinks: true,
   }
 }
