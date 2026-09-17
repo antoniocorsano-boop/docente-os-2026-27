@@ -4,6 +4,7 @@ import {
   acceptedLessonDesignResources,
   composeLessonSequence,
   validateLessonDesignExtensionDraft,
+  validateLessonDesignExtensionRevision,
   type LessonDesignExtension,
 } from './lesson-design-extension'
 
@@ -34,8 +35,14 @@ function extension(overrides: Partial<LessonDesignExtension> = {}): LessonDesign
     sourceRef: 'knowledge:unit-1',
     sourceLabel: 'Guida docente',
     payload: {},
+    revision: 1,
+    decisionHistory: [{ action: 'ACCEPTED', actorId: 'teacher-1', at: '2026-08-26T18:00:00Z', revision: 1 }],
+    modifiedBy: null,
+    modifiedAt: null,
     acceptedBy: 'teacher-1',
     acceptedAt: '2026-08-26T18:00:00Z',
+    dismissedBy: null,
+    dismissedAt: null,
     createdBy: 'teacher-1',
     createdAt: '2026-08-26T17:00:00Z',
     updatedAt: '2026-08-26T18:00:00Z',
@@ -47,6 +54,8 @@ test('only accepted sequence extensions enter the teaching sequence', () => {
   const result = composeLessonSequence(BASE, [
     extension(),
     extension({ id: 'proposal-only', status: 'PROPOSED', title: 'Non ancora accettata' }),
+    extension({ id: 'modified-only', status: 'MODIFIED', title: 'Modificata ma non riaccettata' }),
+    extension({ id: 'dismissed', status: 'DISMISSED', title: 'Scartata' }),
     extension({ id: 'resource', kind: 'TEACHER_RESOURCE', title: 'Guida docente' }),
   ])
 
@@ -56,12 +65,14 @@ test('only accepted sequence extensions enter the teaching sequence', () => {
   assert.deepEqual(result.steps.slice(1).map((step) => step.id), ['S01', 'S02'])
 })
 
-test('accepted resource extensions remain attached resources rather than fake lesson steps', () => {
+test('only accepted resource extensions remain attached resources', () => {
   const resources = acceptedLessonDesignResources([
     extension({ id: 'teacher-resource', kind: 'TEACHER_RESOURCE', title: 'Guida docente' }),
     extension({ id: 'student-resource', kind: 'STUDENT_RESOURCE', title: 'Scheda alunni', createdAt: '2026-08-26T17:01:00Z' }),
     extension({ id: 'hook', kind: 'HOOK_EVENT' }),
     extension({ id: 'proposal', kind: 'STUDENT_RESOURCE', status: 'PROPOSED' }),
+    extension({ id: 'modified', kind: 'STUDENT_RESOURCE', status: 'MODIFIED' }),
+    extension({ id: 'dismissed', kind: 'STUDENT_RESOURCE', status: 'DISMISSED' }),
   ])
 
   assert.deepEqual(resources.map((item) => item.id), ['teacher-resource', 'student-resource'])
@@ -105,4 +116,19 @@ test('proposal validation requires an explicit anchor only for anchored insertio
     sourceLabel: null,
     payload: {},
   }), /requires a step id/)
+})
+
+test('revision validation normalizes editable content without touching provenance', () => {
+  const revision = validateLessonDesignExtensionRevision({
+    insertionPosition: 'END',
+    anchorStepId: null,
+    title: '  Chiusura   rapida  ',
+    body: '  Domanda finale.  ',
+    cue: '  Un minuto  ',
+    minutes: 2,
+  })
+
+  assert.equal(revision.title, 'Chiusura rapida')
+  assert.equal(revision.body, 'Domanda finale.')
+  assert.equal(revision.cue, 'Un minuto')
 })
