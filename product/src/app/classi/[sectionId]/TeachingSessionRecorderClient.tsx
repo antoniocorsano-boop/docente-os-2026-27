@@ -34,8 +34,9 @@ export function TeachingSessionRecorderClient({
   allowDateSelection = false,
   maxLocalDate,
   blocks,
+  registrationIntentKey,
   voiceCaptureEnabled,
-}: TeachingSessionRecorderProps & { voiceCaptureEnabled: boolean }) {
+}: TeachingSessionRecorderProps & { registrationIntentKey: string; voiceCaptureEnabled: boolean }) {
   const suggestedActual = plannedMinutes ?? 60
   const [recordLocalDate, setRecordLocalDate] = useState(localDate)
   const [actualMinutes, setActualMinutes] = useState(suggestedActual)
@@ -154,6 +155,7 @@ export function TeachingSessionRecorderClient({
   return (
     <form action={recordTeachingSession} className="teachingSessionForm">
       <input type="hidden" name="sectionId" value={sectionId} />
+      <input type="hidden" name="registrationIntentKey" value={registrationIntentKey} />
       {editableDate ? (
         <label className="teachingSessionEvidence">
           <span>Data della lezione</span>
