@@ -5,6 +5,7 @@ import { isCurrentDaySessionReceipt, presentClassRecorderEmptyState, presentClas
 
 const classPageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
 const recorderSource = readFileSync(new URL('./TeachingSessionRecorderClient.tsx', import.meta.url), 'utf8')
+const recorderServerSource = readFileSync(new URL('./TeachingSessionRecorder.tsx', import.meta.url), 'utf8')
 const actionsSource = readFileSync(new URL('./actions.ts', import.meta.url), 'utf8')
 
 const base = {
@@ -35,6 +36,17 @@ test('una occurrence precedente non registrata prevale sulla preparazione e rest
     useInlineRecorder: true,
     focusCompletion: false,
   })
+})
+
+test('una occurrence odierna prevale sul recupero precedente anche se entrambi sono pendenti', () => {
+  const decision = resolveClassTaskDecision({
+    ...base,
+    hasEligibleOccurrence: true,
+    hasPendingPastOccurrence: true,
+    occurrenceEnded: true,
+  })
+  assert.equal(decision.state, 'RECORD')
+  assert.equal(decision.label, 'Registra la lezione')
 })
 
 test('continua la lezione quando l occorrenza e iniziata ma non conclusa', () => {
@@ -204,13 +216,24 @@ test('il fallback retroattivo richiede una data esplicita non futura', () => {
 })
 
 test('una occurrence proiettata gia registrata non puo essere duplicata dal boundary server', () => {
-  assert.match(actionsSource, /currentTeachingSessions\(teaching\)\.some/)
-  assert.match(actionsSource, /projectedOccurrenceLogicalId === occurrenceLogicalId/)
+  assert.match(actionsSource, /recordedOccurrenceIds\.has\(occurrenceLogicalId\)/)
   assert.match(actionsSource, /La lezione prevista risulta già registrata/)
 })
 
-test('il fallback retroattivo resta esplicitamente manuale e conserva la data nella provenance', () => {
+test('la data scelta viene ri-proiettata e conserva la provenance reale quando esiste una sola occurrence', () => {
+  assert.match(actionsSource, /projection\.projectDay/)
+  assert.match(actionsSource, /const classOccurrences = day\.occurrences\.filter/)
+  assert.match(actionsSource, /unrecordedOccurrences\.length > 1/)
+  assert.match(actionsSource, /teachingSessionCandidateFromOccurrence\(resolvedOccurrence\)/)
   assert.match(actionsSource, /sourceKind: 'MANUAL'/)
-  assert.match(actionsSource, /projectedOccurrenceLogicalId: null/)
   assert.match(actionsSource, /manual_session:\$\{localDate\}/)
+})
+
+test('il form usa una chiave di intento stabile e il server riconosce i replay ordinari', () => {
+  assert.match(recorderServerSource, /registrationIntentKey=\{randomUUID\(\)\}/)
+  assert.match(recorderSource, /name="registrationIntentKey"/)
+  assert.match(actionsSource, /validRegistrationIntentKey/)
+  assert.match(actionsSource, /registration_intent:\$\{registrationIntentKey\}/)
+  assert.match(actionsSource, /const replaySession = currentSessions\.find/)
+  assert.match(actionsSource, /replaySession\.id/)
 })
