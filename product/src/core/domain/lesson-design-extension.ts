@@ -6,6 +6,7 @@ export type LessonDesignExtensionKind =
   | 'TEACHER_RESOURCE'
   | 'STUDENT_RESOURCE'
   | 'FORMATIVE_CHECK'
+  | 'TEACHING_ADJUSTMENT'
 
 export type LessonDesignExtensionStatus = 'PROPOSED' | 'MODIFIED' | 'ACCEPTED' | 'DISMISSED'
 export type LessonDesignExtensionSourceKind = 'EDITORIAL_KNOWLEDGE' | 'KNOWLEDGE' | 'WEB' | 'AI_TOOL' | 'TEACHER'
@@ -121,9 +122,24 @@ export function isLessonSequenceExtension(extension: Pick<LessonDesignExtension,
   return SEQUENCE_KINDS.has(extension.kind)
 }
 
+export function isTeachingAdjustment(extension: Pick<LessonDesignExtension, 'kind'>) {
+  return extension.kind === 'TEACHING_ADJUSTMENT'
+}
+
 export function acceptedLessonDesignResources(extensions: LessonDesignExtension[]) {
   return extensions
-    .filter((extension) => extension.status === 'ACCEPTED' && !isLessonSequenceExtension(extension))
+    .filter(
+      (extension) =>
+        extension.status === 'ACCEPTED' &&
+        !isLessonSequenceExtension(extension) &&
+        !isTeachingAdjustment(extension),
+    )
+    .sort(compareExtensions)
+}
+
+export function acceptedTeachingAdjustments(extensions: LessonDesignExtension[]) {
+  return extensions
+    .filter((extension) => extension.status === 'ACCEPTED' && isTeachingAdjustment(extension))
     .sort(compareExtensions)
 }
 
@@ -131,6 +147,11 @@ export function validateLessonDesignExtensionDraft(draft: LessonDesignExtensionD
   if (!/^B(0[1-9]|[12][0-9]|3[0-3])$/.test(draft.blockId)) throw new Error('Invalid canonical block id')
   if (!draft.projectionId.trim()) throw new Error('Projection id is required')
   const revision = validateLessonDesignExtensionRevision(draft)
+
+  if (draft.kind === 'TEACHING_ADJUSTMENT') {
+    if (draft.sourceKind !== 'TEACHER') throw new Error('Teaching adjustment source must be TEACHER')
+    if (!draft.sourceRef?.trim()) throw new Error('Teaching adjustment requires a teaching session source ref')
+  }
 
   return {
     ...draft,
