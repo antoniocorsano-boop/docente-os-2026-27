@@ -18,6 +18,7 @@ import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annua
 import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes, selectPreparedClassMaterials } from '../class-workspace-model'
 import { isCurrentDaySessionReceipt, presentClassRecorderEmptyState, presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
 import { confirmTeachingBlockCompletion } from './actions'
+import { SessionReplanningReceipt } from './session-replanning-receipt'
 import { TeachingSessionRecorder } from './TeachingSessionRecorder'
 import '../classi.css'
 import '../class-workspace-operational.css'
@@ -31,7 +32,7 @@ export default async function ClassWorkspacePage({
   searchParams,
 }: {
   params: Promise<{ sectionId: string }>
-  searchParams: Promise<{ recorded?: string; session?: string }>
+  searchParams: Promise<{ recorded?: string; session?: string; replanning?: string }>
 }) {
   const { sectionId } = await params
   const query = await searchParams
@@ -204,8 +205,12 @@ export default async function ClassWorkspacePage({
         </section>
       ) : sessionReceipt ? (
         <section className="classRecordFeedback" aria-label="Ultimo aggiornamento">
-          <strong>Attività registrata.</strong>
-          <span>{sessionReceipt.actualMinutes} minuti effettivi del {formatDate(sessionReceipt.localDate)} sono entrati nel registro di attuazione. Il Piano non viene segnato automaticamente come svolto.</span>
+          <SessionReplanningReceipt
+            sectionId={sectionId}
+            session={sessionReceipt}
+            allocations={teachingSnapshot.allocations}
+            promoted={Boolean(query.replanning)}
+          />
         </section>
       ) : null}
 
