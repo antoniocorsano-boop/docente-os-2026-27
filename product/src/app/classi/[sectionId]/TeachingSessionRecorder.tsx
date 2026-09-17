@@ -9,7 +9,7 @@ export function TeachingSessionRecorder(props: TeachingSessionRecorderProps) {
   return (
     <TeachingSessionRecorderClient
       {...props}
-      registrationIntentKey={randomUUID()}
+      registrationKey={randomUUID()}
       voiceCaptureEnabled={isVoiceCaptureEnabled(process.env.DOCENTE_OS_VOICE_CAPTURE)}
     />
   )
