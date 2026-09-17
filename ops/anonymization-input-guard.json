@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "product": "DOCENTE OS",
   "gate": "P7_ANONYMIZATION_INPUT_GUARD",
-  "state": "IMPLEMENTED_WITH_LONG_PDF_AND_DOCX_MEDIA_PRESERVATION_RESIDUAL",
+  "state": "IMPLEMENTED_WITH_LONG_PDF_AND_UNSUPPORTED_DOCX_MEDIA_RESIDUAL",
   "pilotDataBoundary": {
     "allowed": ["D0_NON_PERSONAL", "D1_ANONYMOUS_AGGREGATE"],
     "deferred": ["D2_PSEUDONYMOUS_INDIVIDUAL"],
@@ -33,7 +33,7 @@
       "storageWriteOccursOnlyAfterPreflightPass": true,
       "externalAiUsedForPrivacyPreflight": false,
       "pdfPolicy": "ALLOW_NATIVE_TEXT_OR_LOCAL_HUMAN_REVIEWED_PNG_DERIVATIVE_UP_TO_5_PAGES; DENY_VISUAL_PDF_OVER_5_PAGES",
-      "docxPolicy": "ALLOW_TEXT_ONLY_DOCX_OR_LOCAL_REVIEWED_TEXT_DERIVATIVE_WHEN_EMBEDDED_MEDIA_NOT_REQUIRED; ORIGINAL_DOCX_WITH_MEDIA_DENIED",
+      "docxPolicy": "ALLOW_TEXT_ONLY_DOCX_OR_LOCAL_REVIEWED_TEXT_DERIVATIVE_OR_BOUNDED_LOCAL_HUMAN_REVIEWED_SEMANTIC_PNG; ORIGINAL_DOCX_WITH_MEDIA_DENIED",
       "imagePolicy": "ALLOW_ONLY_LOCAL_HUMAN_REVIEWED_REDACTABLE_METADATA_STRIPPED_PNG"
     },
     "ANON_IMAGE_LOCAL_VISUAL_GUARD": {
@@ -80,13 +80,38 @@
       "mediaPreservationAllowed": false,
       "serverUsesExistingTextGuard": true,
       "externalAiUsed": false
+    },
+    "ANON_DOCX_BOUNDED_SEMANTIC_MEDIA_GUARD": {
+      "state": "SATISFIED_WITH_HUMAN_REVIEW",
+      "classificationRunsBeforeUpload": true,
+      "semanticExtractionLocal": true,
+      "mammothHtmlRendered": false,
+      "allowedEmbeddedMediaTypes": ["image/png", "image/jpeg", "image/webp"],
+      "maxMediaItems": 8,
+      "maxMediaItemBytes": 4194304,
+      "maxMediaBytes": 8388608,
+      "textEditableBeforeDerivative": true,
+      "textD0D1GuardRequired": true,
+      "perMediaHumanReviewRequired": true,
+      "allMediaReviewedBeforeComposition": true,
+      "localImagePrivacyWorkbenchReused": true,
+      "wholeDocumentHumanReviewRequired": true,
+      "originalDocxBytesLeaveDeviceOnDerivativePath": false,
+      "originalEmbeddedMediaLeaveDevice": false,
+      "derivedFormat": "image/png",
+      "derivedFilename": "documento-semantico-anonimo.png",
+      "serverUsesExistingReviewedPngGuard": true,
+      "wordLayoutPreservationClaimed": false,
+      "unsupportedOrOverBudgetMediaFailClosed": true,
+      "automatedVisualPiiDetection": false,
+      "externalAiUsed": false
     }
   },
   "residuals": [
     {
-      "id": "ANON_LONG_PDF_AND_DOCX_MEDIA_PRESERVATION_PREFLIGHT",
+      "id": "ANON_LONG_PDF_AND_UNSUPPORTED_DOCX_MEDIA_PREFLIGHT",
       "state": "NOT_SATISFIED",
-      "description": "PDF con residui visuali oltre 5 pagine e DOCX nei quali immagini/grafici/media devono essere preservati restano bloccati finché non esiste un preflight locale equivalente prima della persistenza.",
+      "description": "PDF con residui visuali oltre 5 pagine e DOCX con media non supportati, oltre i limiti locali certificati o che richiedono preservazione fedele del layout Word restano bloccati.",
       "blocksClaim": "FULL_VISUAL_ANONYMIZATION_INPUT_ENFORCEMENT",
       "doesNotAuthorizeTier2": true
     }
@@ -99,7 +124,8 @@
     "binaryPreflightFailsClosed": true,
     "humanReviewRemainsRequired": true,
     "localHumanVisualReviewDoesNotEqualAutomatedPiiDetection": true,
-    "textOnlyDerivativeMustNotBeRepresentedAsMediaPreservingSanitization": true
+    "textOnlyDerivativeMustNotBeRepresentedAsMediaPreservingSanitization": true,
+    "semanticDocxDerivativeMustNotBeRepresentedAsWordLayoutPreservation": true
   },
   "result": {
     "freeTextGuard": "PASS",
@@ -110,8 +136,10 @@
     "pdfVisualAdmission": "PARTIAL_UP_TO_5_PAGES",
     "longPdfVisualAdmission": "DENIED_OVER_5_PAGES",
     "docxMediaTextOnlyDerivative": "PASS_WITH_HUMAN_REVIEW",
-    "docxEmbeddedMediaAdmission": "TEXT_ONLY_DERIVATIVE_WHEN_MEDIA_NOT_REQUIRED",
-    "docxMediaPreservationAdmission": "DENIED_PENDING_LOCAL_PREFLIGHT",
+    "docxSemanticMediaDerivative": "PASS_WITH_HUMAN_REVIEW",
+    "docxEmbeddedMediaAdmission": "BOUNDED_TEXT_OR_SEMANTIC_PNG_DERIVATIVE",
+    "docxMediaPreservationAdmission": "BOUNDED_SEMANTIC_DERIVATIVE_ONLY",
+    "docxOriginalLayoutPreservationAdmission": "DENIED",
     "fullVisualAnonymizationInputEnforcement": "NOT_YET_CLAIMED",
     "tier2AdmissionEffect": "NONE"
   }
