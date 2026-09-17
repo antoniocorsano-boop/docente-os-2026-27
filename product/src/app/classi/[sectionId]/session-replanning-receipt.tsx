@@ -1,5 +1,5 @@
 import { parseTeachingSessionEvidenceNote } from '@/core/domain/teaching-session-reflection'
-import type { TeachingSessionAllocation, TeachingSessionRecord } from '@/core/domain/teaching-session'
+import type { TeachingSessionAllocationRecord, TeachingSessionRecord } from '@/core/domain/teaching-session'
 import { ReplanningReceiptAction } from './ReplanningReceiptAction'
 
 export function SessionReplanningReceipt({
@@ -10,7 +10,7 @@ export function SessionReplanningReceipt({
 }: {
   sectionId: string
   session: TeachingSessionRecord
-  allocations: TeachingSessionAllocation[]
+  allocations: TeachingSessionAllocationRecord[]
   promoted: boolean
 }) {
   const reflection = parseTeachingSessionEvidenceNote(session.evidenceNote)?.reflection ?? null
