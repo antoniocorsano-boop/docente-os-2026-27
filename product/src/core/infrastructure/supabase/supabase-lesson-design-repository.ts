@@ -1,8 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   validateLessonDesignExtensionDraft,
+  validateLessonDesignExtensionRevision,
+  type LessonDesignDecision,
   type LessonDesignExtension,
   type LessonDesignExtensionDraft,
+  type LessonDesignExtensionRevision,
 } from '@/core/domain/lesson-design-extension'
 import { createClient } from '@/lib/supabase/server'
 
@@ -27,8 +30,14 @@ type LessonDesignExtensionRow = {
   source_ref: string | null
   source_label: string | null
   payload: Record<string, unknown>
+  revision: number
+  decision_history: unknown
+  modified_by: string | null
+  modified_at: string | null
   accepted_by: string | null
   accepted_at: string | null
+  dismissed_by: string | null
+  dismissed_at: string | null
   created_by: string
   created_at: string
   updated_at: string
@@ -39,10 +48,29 @@ type LessonDesignDatabase = {
     Tables: {
       lesson_design_extensions: {
         Row: LessonDesignExtensionRow
-        Insert: Omit<LessonDesignExtensionRow, 'id' | 'accepted_by' | 'accepted_at' | 'created_at' | 'updated_at'> & {
+        Insert: Omit<
+          LessonDesignExtensionRow,
+          | 'id'
+          | 'revision'
+          | 'decision_history'
+          | 'modified_by'
+          | 'modified_at'
+          | 'accepted_by'
+          | 'accepted_at'
+          | 'dismissed_by'
+          | 'dismissed_at'
+          | 'created_at'
+          | 'updated_at'
+        > & {
           id?: string
+          revision?: number
+          decision_history?: unknown
+          modified_by?: string | null
+          modified_at?: string | null
           accepted_by?: string | null
           accepted_at?: string | null
+          dismissed_by?: string | null
+          dismissed_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -53,6 +81,22 @@ type LessonDesignDatabase = {
     Views: Record<string, never>
     Functions: {
       accept_lesson_design_extension: {
+        Args: { target_extension_id: string }
+        Returns: undefined
+      }
+      revise_lesson_design_extension: {
+        Args: {
+          target_extension_id: string
+          new_insertion_position: string
+          new_anchor_step_id: string | null
+          new_title: string
+          new_body: string
+          new_cue: string | null
+          new_minutes: number | null
+        }
+        Returns: undefined
+      }
+      dismiss_lesson_design_extension: {
         Args: { target_extension_id: string }
         Returns: undefined
       }
@@ -164,21 +208,36 @@ export class SupabaseLessonDesignRepository {
     if (error) throw new Error(error.message)
   }
 
-  async remove(context: LessonDesignContext, extensionId: string): Promise<void> {
+  async revise(
+    context: LessonDesignContext,
+    extensionId: string,
+    input: LessonDesignExtensionRevision,
+  ): Promise<void> {
+    const revision = validateLessonDesignExtensionRevision(input)
     const supabase = await lessonDesignClient()
     await authenticatedUserId(supabase)
+    await requireExtensionInContext(supabase, context, extensionId)
 
-    const { error } = await supabase
-      .from('lesson_design_extensions')
-      .delete()
-      .eq('id', extensionId)
-      .eq('workspace_id', context.workspaceId)
-      .eq('academic_year_id', context.academicYearId)
-      .eq('section_id', context.sectionId)
-      .eq('canonical_generation_id', context.canonicalGenerationId)
-      .eq('block_id', context.blockId)
-      .eq('projection_id', context.projectionId)
+    const { error } = await supabase.rpc('revise_lesson_design_extension', {
+      target_extension_id: extensionId,
+      new_insertion_position: revision.insertionPosition,
+      new_anchor_step_id: revision.anchorStepId,
+      new_title: revision.title,
+      new_body: revision.body,
+      new_cue: revision.cue,
+      new_minutes: revision.minutes,
+    })
+    if (error) throw new Error(error.message)
+  }
 
+  async dismiss(context: LessonDesignContext, extensionId: string): Promise<void> {
+    const supabase = await lessonDesignClient()
+    await authenticatedUserId(supabase)
+    await requireExtensionInContext(supabase, context, extensionId)
+
+    const { error } = await supabase.rpc('dismiss_lesson_design_extension', {
+      target_extension_id: extensionId,
+    })
     if (error) throw new Error(error.message)
   }
 }
@@ -236,6 +295,7 @@ async function requireExtensionInContext(
     .eq('workspace_id', context.workspaceId)
     .eq('academic_year_id', context.academicYearId)
     .eq('section_id', context.sectionId)
+    .eq('canonical_plan_asset_id', context.canonicalPlanAssetId)
     .eq('canonical_generation_id', context.canonicalGenerationId)
     .eq('block_id', context.blockId)
     .eq('projection_id', context.projectionId)
@@ -260,12 +320,17 @@ function toExtension(row: LessonDesignExtensionRow): LessonDesignExtension {
   if (!['HOOK_QUOTE', 'HOOK_EVENT', 'HOOK_VIDEO', 'HOOK_QUESTION', 'TEACHER_RESOURCE', 'STUDENT_RESOURCE', 'FORMATIVE_CHECK'].includes(row.kind)) {
     throw new Error('Unsupported lesson design extension kind in storage')
   }
-  if (!['PROPOSED', 'ACCEPTED'].includes(row.status)) throw new Error('Unsupported lesson design extension status in storage')
+  if (!['PROPOSED', 'MODIFIED', 'ACCEPTED', 'DISMISSED'].includes(row.status)) {
+    throw new Error('Unsupported lesson design extension status in storage')
+  }
   if (!['START', 'BEFORE_STEP', 'AFTER_STEP', 'END'].includes(row.insertion_position)) {
     throw new Error('Unsupported lesson design insertion position in storage')
   }
   if (!['EDITORIAL_KNOWLEDGE', 'KNOWLEDGE', 'WEB', 'AI_TOOL', 'TEACHER'].includes(row.source_kind)) {
     throw new Error('Unsupported lesson design source kind in storage')
+  }
+  if (!Number.isInteger(row.revision) || row.revision < 1) {
+    throw new Error('Unsupported lesson design revision in storage')
   }
 
   return {
@@ -289,10 +354,42 @@ function toExtension(row: LessonDesignExtensionRow): LessonDesignExtension {
     sourceRef: row.source_ref,
     sourceLabel: row.source_label,
     payload: row.payload ?? {},
+    revision: row.revision,
+    decisionHistory: toDecisionHistory(row.decision_history),
+    modifiedBy: row.modified_by,
+    modifiedAt: row.modified_at,
     acceptedBy: row.accepted_by,
     acceptedAt: row.accepted_at,
+    dismissedBy: row.dismissed_by,
+    dismissedAt: row.dismissed_at,
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
+}
+
+function toDecisionHistory(value: unknown): LessonDesignDecision[] {
+  if (!Array.isArray(value)) throw new Error('Unsupported lesson design decision history in storage')
+  return value.map((entry) => {
+    if (!entry || typeof entry !== 'object') throw new Error('Invalid lesson design decision in storage')
+    const candidate = entry as Record<string, unknown>
+    if (!['MODIFIED', 'ACCEPTED', 'DISMISSED'].includes(String(candidate.action))) {
+      throw new Error('Invalid lesson design decision action in storage')
+    }
+    if (typeof candidate.actorId !== 'string' || !candidate.actorId) {
+      throw new Error('Invalid lesson design decision actor in storage')
+    }
+    if (typeof candidate.at !== 'string' || !candidate.at) {
+      throw new Error('Invalid lesson design decision timestamp in storage')
+    }
+    if (!Number.isInteger(candidate.revision) || Number(candidate.revision) < 1) {
+      throw new Error('Invalid lesson design decision revision in storage')
+    }
+    return {
+      action: candidate.action as LessonDesignDecision['action'],
+      actorId: candidate.actorId,
+      at: candidate.at,
+      revision: Number(candidate.revision),
+    }
+  })
 }
