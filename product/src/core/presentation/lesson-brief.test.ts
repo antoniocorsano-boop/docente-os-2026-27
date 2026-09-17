@@ -66,8 +66,14 @@ function extension(overrides: Partial<LessonDesignExtension> = {}): LessonDesign
     sourceRef: null,
     sourceLabel: null,
     payload: {},
+    revision: 1,
+    decisionHistory: [{ action: 'ACCEPTED', actorId: 'teacher', at: '2026-09-14T18:00:00Z', revision: 1 }],
+    modifiedBy: null,
+    modifiedAt: null,
     acceptedBy: 'teacher',
     acceptedAt: '2026-09-14T18:00:00Z',
+    dismissedBy: null,
+    dismissedAt: null,
     createdBy: 'teacher',
     createdAt: '2026-09-14T18:00:00Z',
     updatedAt: '2026-09-14T18:00:00Z',
@@ -94,10 +100,35 @@ test('accepted lesson extensions are summarized as already available', () => {
   assert.equal(result.statusLabel, 'ENRICHED')
 })
 
-test('proposed extensions do not appear as ready', () => {
-  const result = buildLessonBrief({ projection, extensions: [extension({ status: 'PROPOSED' })] })
+test('only accepted decisions enter the next preparation', () => {
+  const result = buildLessonBrief({
+    projection,
+    extensions: [
+      extension({ id: 'proposed', status: 'PROPOSED', acceptedBy: null, acceptedAt: null, decisionHistory: [] }),
+      extension({
+        id: 'modified',
+        status: 'MODIFIED',
+        revision: 2,
+        title: 'Modificata da riconfermare',
+        modifiedBy: 'teacher',
+        modifiedAt: '2026-09-14T18:05:00Z',
+        acceptedBy: null,
+        acceptedAt: null,
+        decisionHistory: [{ action: 'MODIFIED', actorId: 'teacher', at: '2026-09-14T18:05:00Z', revision: 2 }],
+      }),
+      extension({
+        id: 'dismissed',
+        status: 'DISMISSED',
+        title: 'Scartata',
+        dismissedBy: 'teacher',
+        dismissedAt: '2026-09-14T18:10:00Z',
+        decisionHistory: [{ action: 'DISMISSED', actorId: 'teacher', at: '2026-09-14T18:10:00Z', revision: 1 }],
+      }),
+      extension({ id: 'accepted', title: 'Accettata' }),
+    ],
+  })
 
-  assert.deepEqual(result.readyTitles, ['Scheda alunno'])
-  assert.equal(result.acceptedExtensionCount, 0)
-  assert.equal(result.statusLabel, 'READY_BASE')
+  assert.deepEqual(result.readyTitles, ['Scheda alunno', 'Accettata'])
+  assert.equal(result.acceptedExtensionCount, 1)
+  assert.equal(result.statusLabel, 'ENRICHED')
 })

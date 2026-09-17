@@ -7,9 +7,16 @@ export type LessonDesignExtensionKind =
   | 'STUDENT_RESOURCE'
   | 'FORMATIVE_CHECK'
 
-export type LessonDesignExtensionStatus = 'PROPOSED' | 'ACCEPTED'
+export type LessonDesignExtensionStatus = 'PROPOSED' | 'MODIFIED' | 'ACCEPTED' | 'DISMISSED'
 export type LessonDesignExtensionSourceKind = 'EDITORIAL_KNOWLEDGE' | 'KNOWLEDGE' | 'WEB' | 'AI_TOOL' | 'TEACHER'
 export type LessonDesignInsertionPosition = 'START' | 'BEFORE_STEP' | 'AFTER_STEP' | 'END'
+
+export type LessonDesignDecision = {
+  action: 'MODIFIED' | 'ACCEPTED' | 'DISMISSED'
+  actorId: string
+  at: string
+  revision: number
+}
 
 export type LessonDesignExtension = {
   id: string
@@ -32,8 +39,14 @@ export type LessonDesignExtension = {
   sourceRef: string | null
   sourceLabel: string | null
   payload: Record<string, unknown>
+  revision: number
+  decisionHistory: LessonDesignDecision[]
+  modifiedBy: string | null
+  modifiedAt: string | null
   acceptedBy: string | null
   acceptedAt: string | null
+  dismissedBy: string | null
+  dismissedAt: string | null
   createdBy: string
   createdAt: string
   updatedAt: string
@@ -57,6 +70,16 @@ export type LessonDesignExtensionDraft = Pick<
   | 'sourceRef'
   | 'sourceLabel'
   | 'payload'
+>
+
+export type LessonDesignExtensionRevision = Pick<
+  LessonDesignExtension,
+  | 'insertionPosition'
+  | 'anchorStepId'
+  | 'title'
+  | 'body'
+  | 'cue'
+  | 'minutes'
 >
 
 export type LessonSequenceBaseStep = {
@@ -107,26 +130,35 @@ export function acceptedLessonDesignResources(extensions: LessonDesignExtension[
 export function validateLessonDesignExtensionDraft(draft: LessonDesignExtensionDraft) {
   if (!/^B(0[1-9]|[12][0-9]|3[0-3])$/.test(draft.blockId)) throw new Error('Invalid canonical block id')
   if (!draft.projectionId.trim()) throw new Error('Projection id is required')
-  if (!draft.title.trim()) throw new Error('Extension title is required')
-  if (!draft.body.trim()) throw new Error('Extension body is required')
-  if (draft.title.length > 240) throw new Error('Extension title exceeds 240 characters')
-  if (draft.body.length > 5000) throw new Error('Extension body exceeds 5000 characters')
-  if (draft.cue && draft.cue.length > 1000) throw new Error('Extension cue exceeds 1000 characters')
-  if (draft.minutes !== null && (!Number.isInteger(draft.minutes) || draft.minutes <= 0 || draft.minutes > 120)) {
-    throw new Error('Extension minutes must be between 1 and 120')
-  }
-
-  const anchored = draft.insertionPosition === 'BEFORE_STEP' || draft.insertionPosition === 'AFTER_STEP'
-  if (anchored && !draft.anchorStepId) throw new Error('Anchored extension requires a step id')
-  if (!anchored && draft.anchorStepId) throw new Error('START/END extension cannot carry an anchor step id')
+  const revision = validateLessonDesignExtensionRevision(draft)
 
   return {
     ...draft,
-    title: collapse(draft.title),
-    body: draft.body.trim(),
-    cue: nullable(draft.cue),
+    ...revision,
     sourceRef: nullable(draft.sourceRef),
     sourceLabel: nullable(draft.sourceLabel),
+  }
+}
+
+export function validateLessonDesignExtensionRevision(revision: LessonDesignExtensionRevision): LessonDesignExtensionRevision {
+  if (!revision.title.trim()) throw new Error('Extension title is required')
+  if (!revision.body.trim()) throw new Error('Extension body is required')
+  if (revision.title.length > 240) throw new Error('Extension title exceeds 240 characters')
+  if (revision.body.length > 5000) throw new Error('Extension body exceeds 5000 characters')
+  if (revision.cue && revision.cue.length > 1000) throw new Error('Extension cue exceeds 1000 characters')
+  if (revision.minutes !== null && (!Number.isInteger(revision.minutes) || revision.minutes <= 0 || revision.minutes > 120)) {
+    throw new Error('Extension minutes must be between 1 and 120')
+  }
+
+  const anchored = revision.insertionPosition === 'BEFORE_STEP' || revision.insertionPosition === 'AFTER_STEP'
+  if (anchored && !revision.anchorStepId) throw new Error('Anchored extension requires a step id')
+  if (!anchored && revision.anchorStepId) throw new Error('START/END extension cannot carry an anchor step id')
+
+  return {
+    ...revision,
+    title: collapse(revision.title),
+    body: revision.body.trim(),
+    cue: nullable(revision.cue),
   }
 }
 
