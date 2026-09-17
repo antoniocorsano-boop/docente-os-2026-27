@@ -7,6 +7,7 @@ const base = {
   hasModeledLesson: true,
   hasSessionReceipt: false,
   hasEligibleOccurrence: false,
+  hasPendingPastOccurrence: false,
   occurrenceEnded: false,
   maySuggestCompletion: false,
 }
@@ -17,6 +18,16 @@ test('prepara quando non esiste una lezione di oggi da svolgere', () => {
     label: 'Prepara la lezione',
     lessonMode: 'prepare',
     useInlineRecorder: false,
+    focusCompletion: false,
+  })
+})
+
+test('una occurrence precedente non registrata prevale sulla preparazione e resta inline', () => {
+  assert.deepEqual(resolveClassTaskDecision({ ...base, hasPendingPastOccurrence: true }), {
+    state: 'CATCH_UP',
+    label: 'Registra la lezione precedente',
+    lessonMode: null,
+    useInlineRecorder: true,
     focusCompletion: false,
   })
 })
@@ -99,12 +110,18 @@ test('non espone una CTA quando il percorso annuale e completo', () => {
 })
 
 test('la presentazione task-first espone sempre Adesso e un solo Dopo comprensibile', () => {
-  for (const state of ['PREPARE', 'TEACH', 'RECORD', 'AFTER_RECORD'] as const) {
+  for (const state of ['PREPARE', 'TEACH', 'RECORD', 'CATCH_UP', 'AFTER_RECORD'] as const) {
     const presentation = presentClassTaskState(state)
     assert.match(presentation.eyebrow, /ADESSO/)
     assert.ok(presentation.hint.length > 0)
     assert.match(presentation.nextStep, /^Dopo /)
   }
+})
+
+test('il recupero di una lezione precedente usa un messaggio distinto dalla lezione odierna', () => {
+  const presentation = presentClassTaskState('CATCH_UP')
+  assert.equal(presentation.eyebrow, 'ADESSO · DA RECUPERARE')
+  assert.match(presentation.hint, /precedente non ancora registrata/)
 })
 
 test('il percorso completo non simula un nuovo compito operativo', () => {
@@ -150,15 +167,17 @@ test('NO_LESSONS esplicito resta override forte anche con una receipt nella URL'
   })
   assert.equal(presentation.title, 'Nessuna lezione di oggi da registrare automaticamente.')
   assert.match(presentation.detail, /non si materializzano lezioni/)
+  assert.match(presentation.detail, /data manualmente/)
   assert.equal(presentation.showScheduleLinks, true)
 })
 
-test('senza receipt UNDETERMINED conserva il fail-closed del Calendario', () => {
+test('senza receipt UNDETERMINED conserva il fail-closed del Calendario ma consente recupero manuale esplicito', () => {
   const presentation = presentClassRecorderEmptyState({
     calendarState: 'UNDETERMINED',
     hasSessionReceipt: false,
     hasFutureOccurrence: false,
   })
   assert.match(presentation.detail, /non ha ancora definito la giornata/)
+  assert.match(presentation.detail, /data manualmente/)
   assert.equal(presentation.showScheduleLinks, true)
 })
