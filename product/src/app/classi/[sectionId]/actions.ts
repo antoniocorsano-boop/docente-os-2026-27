@@ -22,6 +22,7 @@ export async function recordTeachingSession(formData: FormData) {
   const sectionId = requiredText(formData, 'sectionId')
   const localDate = validTeachingLocalDate(formData, 'localDate')
   const occurrenceLogicalId = nullableText(formData, 'occurrenceLogicalId')
+  const registrationIntentKey = validRegistrationIntentKey(formData, 'registrationIntentKey')
   const actualMinutes = positiveInt(formData, 'actualMinutes')
   const evidenceNote = boundedNote(formData, 'evidenceNote', 4000)
 
@@ -44,33 +45,63 @@ export async function recordTeachingSession(formData: FormData) {
     }
   })
 
-  let session: TeachingSessionDraft
-  if (occurrenceLogicalId) {
-    const teaching = await teachingRepository.listBySection(
-      context.workspace.id,
-      context.academicYear.id,
-      sectionId,
-    )
-    const duplicate = currentTeachingSessions(teaching).some(
-      (item) => item.source.projectedOccurrenceLogicalId === occurrenceLogicalId,
-    )
-    if (duplicate) throw new Error('La lezione prevista risulta già registrata')
+  const teaching = await teachingRepository.listBySection(
+    context.workspace.id,
+    context.academicYear.id,
+    sectionId,
+  )
+  const currentSessions = currentTeachingSessions(teaching)
+  const registrationIntentProvenance = `registration_intent:${registrationIntentKey}`
+  const replaySession = currentSessions.find((item) => item.source.provenance.includes(registrationIntentProvenance))
+  if (replaySession) {
+    redirect(`/classi/${encodeURIComponent(sectionId)}?session=${encodeURIComponent(replaySession.id)}`)
+  }
 
-    const projection = new TemporalProjectionService(
-      new SupabaseTimetableProjectionReadRepository(),
-      new SupabaseCalendarProjectionReadRepository(),
-    )
-    const day = await projection.projectDay({
-      workspaceId: context.workspace.id,
-      academicYearId: context.academicYear.id,
-      localDate,
-    })
-    const occurrence = day.occurrences.find((item) => item.logicalId === occurrenceLogicalId && item.sectionId === sectionId)
-    if (!occurrence) throw new Error('La lezione prevista non è più valida per questa data')
+  const recordedOccurrenceIds = new Set(
+    currentSessions
+      .map((item) => item.source.projectedOccurrenceLogicalId)
+      .filter((value): value is string => Boolean(value)),
+  )
+
+  const projection = new TemporalProjectionService(
+    new SupabaseTimetableProjectionReadRepository(),
+    new SupabaseCalendarProjectionReadRepository(),
+  )
+  const day = await projection.projectDay({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    localDate,
+  })
+  const classOccurrences = day.occurrences.filter(
+    (item) => item.sectionId === sectionId && (item.kind === 'LESSON' || item.kind === 'CLASS_PRESENCE'),
+  )
+
+  let resolvedOccurrence = null
+  if (occurrenceLogicalId) {
+    if (recordedOccurrenceIds.has(occurrenceLogicalId)) {
+      throw new Error('La lezione prevista risulta già registrata')
+    }
+    resolvedOccurrence = classOccurrences.find((item) => item.logicalId === occurrenceLogicalId) ?? null
+    if (!resolvedOccurrence) throw new Error('La lezione prevista non è più valida per questa data')
+  } else {
+    const unrecordedOccurrences = classOccurrences.filter((item) => !recordedOccurrenceIds.has(item.logicalId))
+    if (unrecordedOccurrences.length > 1) {
+      throw new Error('Più lezioni trovate per questa data: apri la lezione dall’Orario o dal Calendario per scegliere quella corretta')
+    }
+    resolvedOccurrence = unrecordedOccurrences[0] ?? null
+  }
+
+  let session: TeachingSessionDraft
+  if (resolvedOccurrence) {
+    const projectedCandidate = teachingSessionCandidateFromOccurrence(resolvedOccurrence)
     session = {
-      ...teachingSessionCandidateFromOccurrence(occurrence),
+      ...projectedCandidate,
       actualMinutes,
       evidenceNote,
+      source: {
+        ...projectedCandidate.source,
+        provenance: [...projectedCandidate.source.provenance, registrationIntentProvenance],
+      },
     }
   } else {
     session = {
@@ -88,7 +119,7 @@ export async function recordTeachingSession(formData: FormData) {
         timetableVersionId: null,
         timetableSlotId: null,
         calendarState: null,
-        provenance: [`manual_session:${localDate}`, `section:${sectionId}`],
+        provenance: [`manual_session:${localDate}`, `section:${sectionId}`, registrationIntentProvenance],
       },
     }
   }
@@ -231,6 +262,12 @@ function validTeachingLocalDate(formData: FormData, key: string) {
     throw new Error(`${key} non valido`)
   }
   if (value > currentRomeDate()) throw new Error('Non puoi registrare una lezione futura')
+  return value
+}
+
+function validRegistrationIntentKey(formData: FormData, key: string) {
+  const value = requiredText(formData, key)
+  if (!/^[A-Za-z0-9_-]{16,128}$/.test(value)) throw new Error(`${key} non valido`)
   return value
 }
 
