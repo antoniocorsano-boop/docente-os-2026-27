@@ -1,6 +1,7 @@
 import {
   acceptedLessonDesignResources,
   composeLessonSequence,
+  isTeachingAdjustment,
   type ComposedLessonSequenceStep,
   type LessonDesignExtension,
 } from '@/core/domain/lesson-design-extension'
@@ -109,8 +110,12 @@ export function buildLessonPreparationManifest(input: {
   const scopeBlockers = validateExtensionScope(lessonExtensions, context.workspaceId, academicYearId)
   if (scopeBlockers.length) return { resolution: 'BLOCKED', manifest: null, reasons: scopeBlockers }
 
-  const acceptedExtensions = lessonExtensions.filter((extension) => extension.status === 'ACCEPTED')
-  const proposedExtensions = lessonExtensions.filter((extension) => extension.status === 'PROPOSED')
+  const acceptedExtensions = lessonExtensions.filter(
+    (extension) => extension.status === 'ACCEPTED' && !isTeachingAdjustment(extension),
+  )
+  const proposedExtensions = lessonExtensions.filter(
+    (extension) => extension.status === 'PROPOSED' && !isTeachingAdjustment(extension),
+  )
   const composed = composeLessonSequence(projection.steps, lessonExtensions)
   const acceptedResources = acceptedLessonDesignResources(lessonExtensions)
   const projectionResources = resolveHumanTaskResourcesForSurface(projection, 'PREPARE')
