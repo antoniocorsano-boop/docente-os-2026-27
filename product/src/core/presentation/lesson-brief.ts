@@ -1,4 +1,7 @@
-import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
+import {
+  isTeachingAdjustment,
+  type LessonDesignExtension,
+} from '@/core/domain/lesson-design-extension'
 import {
   resolveHumanTaskResourcesForSurface,
   type HumanTaskLessonProjection,
@@ -23,7 +26,9 @@ export function buildLessonBrief(input: {
   const preparation = input.projection.preparation
   const preparationPreview = preparation.slice(0, 3)
   const preparationResources = resolveHumanTaskResourcesForSurface(input.projection, 'PREPARE')
-  const acceptedExtensions = input.extensions.filter((extension) => extension.status === 'ACCEPTED')
+  const acceptedExtensions = input.extensions.filter(
+    (extension) => extension.status === 'ACCEPTED' && !isTeachingAdjustment(extension),
+  )
   const readyTitles = unique([
     ...preparationResources.map((resource) => resource.title),
     ...acceptedExtensions.map((extension) => extension.title),
