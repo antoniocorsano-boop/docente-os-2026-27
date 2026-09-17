@@ -50,7 +50,8 @@ export default async function ClassWorkspacePage({
     new SupabaseCalendarProjectionReadRepository(),
   )
   const today = currentRomeDate()
-  const [snapshot, disciplines, assignments, settings, knowledgeItems, teachingSnapshot, temporalDay] = await Promise.all([
+  const previousDate = shiftLocalDate(today, -1)
+  const [snapshot, disciplines, assignments, settings, knowledgeItems, teachingSnapshot, temporalDay, previousTemporalDay] = await Promise.all([
     annualRepository.list(context.workspace.id, context.academicYear.id),
     settingsRepository.listDisciplines(context.workspace.id, context.academicYear.id),
     assignmentReader.list(context.workspace.id, context.academicYear.id),
@@ -58,6 +59,7 @@ export default async function ClassWorkspacePage({
     knowledgeRepository.listRecent(context.workspace.id, 100),
     teachingSessionRepository.listBySection(context.workspace.id, context.academicYear.id, sectionId),
     temporalProjection.projectDay({ workspaceId: context.workspace.id, academicYearId: context.academicYear.id, localDate: today }),
+    temporalProjection.projectDay({ workspaceId: context.workspace.id, academicYearId: context.academicYear.id, localDate: previousDate }),
   ])
 
   const section = snapshot.sections.find((item) => item.id === sectionId)
@@ -125,6 +127,11 @@ export default async function ClassWorkspacePage({
     .filter((occurrence) => occurrence.startAt ? timeMinutes(occurrence.startAt) <= nowMinutes : true)
     .sort((a, b) => (b.startAt ?? '').localeCompare(a.startAt ?? ''))[0] ?? null
   const hasFutureOccurrence = unrecordedOccurrences.some((occurrence) => occurrence.startAt ? timeMinutes(occurrence.startAt) > nowMinutes : false)
+  const pendingPastOccurrence = previousTemporalDay.occurrences
+    .filter((occurrence) => occurrence.sectionId === sectionId && (occurrence.kind === 'LESSON' || occurrence.kind === 'CLASS_PRESENCE'))
+    .filter((occurrence) => !recordedOccurrenceIds.has(occurrence.logicalId))
+    .sort((a, b) => (b.startAt ?? '').localeCompare(a.startAt ?? ''))[0] ?? null
+  const recordingOccurrence = eligibleOccurrence ?? pendingPastOccurrence
 
   const startIndex = nextCanonicalBlock ? Math.max(0, blocks.findIndex((block) => block.id === nextCanonicalBlock.id)) : 0
   const recorderBlocks = blocks.slice(startIndex, Math.min(blocks.length, startIndex + 5)).map((block) => ({
@@ -143,6 +150,7 @@ export default async function ClassWorkspacePage({
     hasModeledLesson: Boolean(nextProjection && learningFocus.nextBlock),
     hasSessionReceipt: hasTodaySessionReceipt,
     hasEligibleOccurrence: Boolean(eligibleOccurrence),
+    hasPendingPastOccurrence: Boolean(pendingPastOccurrence),
     occurrenceEnded,
     maySuggestCompletion: Boolean(nextCompletion?.maySuggestCompletion),
   })
@@ -203,7 +211,7 @@ export default async function ClassWorkspacePage({
 
       {nextCanonicalBlock ? (
         <details id={advancedPanelId} className="humanTaskSecondary" open={taskDecision.useInlineRecorder || taskDecision.focusCompletion}>
-          <summary>{taskDecision.focusCompletion ? 'Valuta il completamento' : taskDecision.useInlineRecorder ? 'Registra questa lezione' : 'Decisioni e registrazione avanzata'}</summary>
+          <summary>{taskDecision.focusCompletion ? 'Valuta il completamento' : taskDecision.state === 'CATCH_UP' ? 'Registra la lezione precedente' : taskDecision.useInlineRecorder ? 'Registra questa lezione' : 'Decisioni e registrazione avanzata'}</summary>
           <div className="humanTaskSecondaryBody">
             <section className="teachingSessionCard" aria-labelledby="teaching-session-title">
               <div className="teachingSessionHeading">
@@ -211,20 +219,34 @@ export default async function ClassWorkspacePage({
                 <span>{nextCanonicalBlock.id}: <strong>{nextAllocatedMinutes}/{nextCanonicalBlock.hours * 60} min</strong></span>
               </div>
               {!taskDecision.focusCompletion ? (
-                eligibleOccurrence ? (
+                recordingOccurrence ? (
                   <TeachingSessionRecorder
                     sectionId={sectionId}
-                    localDate={eligibleOccurrence.localDate}
-                    occurrenceLogicalId={eligibleOccurrence.logicalId}
-                    plannedMinutes={eligibleOccurrence.startAt && eligibleOccurrence.endAt ? timeMinutes(eligibleOccurrence.endAt) - timeMinutes(eligibleOccurrence.startAt) : null}
+                    localDate={recordingOccurrence.localDate}
+                    occurrenceLogicalId={recordingOccurrence.logicalId}
+                    plannedMinutes={recordingOccurrence.startAt && recordingOccurrence.endAt ? timeMinutes(recordingOccurrence.endAt) - timeMinutes(recordingOccurrence.startAt) : null}
                     blocks={recorderBlocks}
                   />
                 ) : (
-                  <div className="teachingSessionEmpty">
-                    <strong>{recorderEmptyPresentation.title}</strong>
-                    <span>{recorderEmptyPresentation.detail}</span>
-                    {recorderEmptyPresentation.showScheduleLinks ? <div><Link href="/calendario">Apri Calendario</Link><Link href="/orario">Apri Orario</Link></div> : null}
-                  </div>
+                  <>
+                    <div className="teachingSessionEmpty">
+                      <strong>{recorderEmptyPresentation.title}</strong>
+                      <span>{recorderEmptyPresentation.detail}</span>
+                      {recorderEmptyPresentation.showScheduleLinks ? <div><Link href="/calendario">Apri Calendario</Link><Link href="/orario">Apri Orario</Link></div> : null}
+                    </div>
+                    <details className="teachingSessionSplit" id="registrazione-retroattiva">
+                      <summary>Registra una lezione precedente</summary>
+                      <TeachingSessionRecorder
+                        sectionId={sectionId}
+                        localDate={previousDate}
+                        occurrenceLogicalId={null}
+                        plannedMinutes={null}
+                        allowDateSelection
+                        maxLocalDate={today}
+                        blocks={recorderBlocks}
+                      />
+                    </details>
+                  </>
                 )
               ) : null}
 
@@ -288,6 +310,7 @@ export default async function ClassWorkspacePage({
 }
 
 function currentRomeDate() { const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()); const value = Object.fromEntries(parts.map((part) => [part.type, part.value])); return `${value.year}-${value.month}-${value.day}` }
+function shiftLocalDate(value: string, days: number) { const [year, month, day] = value.split('-').map(Number); const date = new Date(Date.UTC(year, month - 1, day)); date.setUTCDate(date.getUTCDate() + days); return date.toISOString().slice(0, 10) }
 function currentRomeMinutes() { const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()); const value = Object.fromEntries(parts.map((part) => [part.type, part.value])); return Number(value.hour) * 60 + Number(value.minute) }
 function timeMinutes(value: string) { const hhmm = value.includes('T') ? value.slice(11, 16) : value.slice(0, 5); const [hours, minutes] = hhmm.split(':').map(Number); return hours * 60 + minutes }
 function formatDate(value: string) { const [year, month, day] = value.split('-').map(Number); return new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(year, month - 1, day))) }
