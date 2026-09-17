@@ -25,7 +25,8 @@ export async function recordLessonExecution(formData: FormData) {
   const actualMinutes = positiveInt(formData, 'actualMinutes')
   const registrationKey = requiredUuid(formData, 'registrationKey')
   const freeEvidenceNote = optionalNote(formData.get('evidenceNote'))
-  const nextActivity = optionalReflectionField(formData.get('nextActivity'))
+  const nextActivity = optionalReflectionField(formData.get('nextActivity'), 'Next activity')
+  const udaChangeProposal = optionalReflectionField(formData.get('udaChangeProposal'), 'UDA change proposal')
   const observationDraft = normalizeLessonObservationDraft({
     dimensionKey: formData.get('observationDimension'),
     state: formData.get('observationState'),
@@ -49,15 +50,15 @@ export async function recordLessonExecution(formData: FormData) {
   const projection = resolveHumanTaskLessonProjection(grade, block)
   if (!projection) throw new Error('Human-task lesson projection is not available for this block')
 
-  const evidenceNote = nextActivity
+  const evidenceNote = nextActivity || udaChangeProposal
     ? buildTeachingSessionEvidenceNote({
         reflection: {
           activityDone: projection.title,
           observations: freeEvidenceNote ?? '',
           difficulties: '',
           ideas: '',
-          udaChangeProposal: '',
-          nextActivity,
+          udaChangeProposal: udaChangeProposal ?? '',
+          nextActivity: nextActivity ?? '',
         },
       })
     : freeEvidenceNote
@@ -213,11 +214,11 @@ function optionalNote(value: FormDataEntryValue | null) {
   return note
 }
 
-function optionalReflectionField(value: FormDataEntryValue | null) {
+function optionalReflectionField(value: FormDataEntryValue | null, label: string) {
   if (typeof value !== 'string') return null
   const text = value.trim()
   if (!text) return null
-  if (text.length > 450) throw new Error('Next activity exceeds 450 characters')
+  if (text.length > 450) throw new Error(`${label} exceeds 450 characters`)
   return text
 }
 

@@ -61,6 +61,7 @@ export default function LessonCloseClient({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [evidenceNote, setEvidenceNote] = useState('')
   const [nextActivity, setNextActivity] = useState('')
+  const [udaChangeProposal, setUdaChangeProposal] = useState('')
   const [capturePreview, setCapturePreview] = useState<LessonReflectionCaptureActionResult | null>(null)
   const [captureError, setCaptureError] = useState<string | null>(null)
   const [organizing, setOrganizing] = useState(false)
@@ -286,6 +287,18 @@ export default function LessonCloseClient({
           />
         </label>
         <p className={styles.privacyNote}>Se la indichi, resterà nel Diario come continuità didattica per la prossima lezione, anche senza un materiale o un collegamento Drive.</p>
+
+        <label className={styles.note}>
+          <span>Cosa cambieresti nel percorso?</span>
+          <textarea
+            name="udaChangeProposal"
+            maxLength={450}
+            value={udaChangeProposal}
+            onChange={(event) => setUdaChangeProposal(event.target.value)}
+            placeholder="Per esempio: anticipare l’attività pratica e ridurre la spiegazione iniziale."
+          />
+        </label>
+        <p className={styles.privacyNote}>È una riflessione facoltativa. Resterà nel Diario: non modifica il Piano o l’UDA e non crea da sola una proposta di riprogettazione.</p>
 
         <details className={styles.evidence}>
           <summary>Promemoria didattico</summary>

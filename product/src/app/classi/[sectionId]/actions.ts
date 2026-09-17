@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { recordTeachingSession as recordTeachingSessionCommand } from '@/core/application/record-teaching-session'
+import { buildTeachingSessionAdjustmentProposal } from '@/core/application/teaching-session-adjustment'
 import { teachingSessionCandidateFromOccurrence } from '@/core/application/teaching-session-candidate'
 import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
 import {
@@ -10,11 +11,14 @@ import {
   currentTeachingSessions,
   type TeachingSessionDraft,
 } from '@/core/domain/teaching-session'
+import { parseTeachingSessionEvidenceNote } from '@/core/domain/teaching-session-reflection'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
+import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
 import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 
 export async function recordTeachingSession(formData: FormData) {
@@ -119,9 +123,6 @@ export async function recordTeachingSession(formData: FormData) {
     }
   }
 
-  // Always cross the authoritative RPC boundary, including retries. Migration 0052
-  // validates the complete payload signature and resolves the registration key
-  // atomically, so concurrent submissions cannot create duplicate sessions.
   const receipt = await recordTeachingSessionCommand({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
@@ -138,6 +139,52 @@ export async function recordTeachingSession(formData: FormData) {
   revalidatePath('/piano-annuale')
   revalidatePath(`/classi/${sectionId}`)
   redirect(`/classi/${encodeURIComponent(sectionId)}?session=${encodeURIComponent(receipt.teachingSessionId)}`)
+}
+
+export async function promoteTeachingSessionAdjustment(formData: FormData) {
+  const context = await requireContext()
+  const sectionId = requiredText(formData, 'sectionId')
+  const teachingSessionId = requiredText(formData, 'teachingSessionId')
+  const blockId = requiredText(formData, 'blockId').toUpperCase()
+
+  const annual = new SupabaseAnnualPlanExecutionRepository()
+  const teachingRepository = new SupabaseTeachingSessionRepository()
+  const [annualSnapshot, teachingSnapshot] = await Promise.all([
+    annual.list(context.workspace.id, context.academicYear.id),
+    teachingRepository.listBySection(context.workspace.id, context.academicYear.id, sectionId),
+  ])
+  const section = annualSnapshot.sections.find((item) => item.id === sectionId)
+  if (!section) throw new Error('Classe fuori dal contesto attivo')
+
+  const session = currentTeachingSessions(teachingSnapshot).find((item) => item.id === teachingSessionId) ?? null
+  if (!session || session.sectionId !== sectionId) throw new Error('Registrazione fuori dal contesto attivo')
+
+  const parsed = parseTeachingSessionEvidenceNote(session.evidenceNote)
+  const proposalBody = parsed?.reflection.udaChangeProposal.trim() ?? ''
+  if (!proposalBody) throw new Error('Nessuna proposta di riprogettazione registrata')
+
+  const grade = GRADE_UI[section.grade]
+  const block = buildBlocks(grade).find((item) => item.id === blockId)
+  if (!block) throw new Error('Blocco fuori dal Piano annuale della classe')
+  const projection = resolveRuntimeHumanTaskLessonProjection(grade, block)
+  if (!projection) throw new Error('Proiezione didattica non disponibile per il blocco')
+
+  const built = buildTeachingSessionAdjustmentProposal({
+    session,
+    allocations: teachingSnapshot.allocations,
+    blockId,
+    projection,
+    body: proposalBody,
+  })
+  const extension = await new SupabaseLessonDesignRepository().addToolProposalOnce(
+    built.context,
+    built.draft,
+    built.dedupeKey,
+  )
+
+  revalidatePath(`/classi/${sectionId}`)
+  revalidatePath(`/classi/${sectionId}/lezioni/${blockId}`)
+  redirect(`/classi/${encodeURIComponent(sectionId)}?session=${encodeURIComponent(teachingSessionId)}&replanning=${encodeURIComponent(extension.id)}`)
 }
 
 export async function confirmTeachingBlockCompletion(formData: FormData) {
