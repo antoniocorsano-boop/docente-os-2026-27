@@ -3,6 +3,8 @@ import type { HumanTaskLessonProjection } from './human-task-content'
 import type { LessonBrief } from './lesson-brief'
 import {
   emptyLessonReplanningProjection,
+  toLessonReplanningDisplayProjection,
+  type LessonReplanningDisplayProjection,
   type LessonReplanningProjection,
 } from './lesson-replanning-decision'
 import type { TeacherMoment } from './teacher-moment'
@@ -35,7 +37,7 @@ export type LessonCopilotContext = AssistantContext & {
     readyTitles: string[]
     readyCount: number
     statusLabel: LessonBrief['statusLabel']
-    replanning?: LessonReplanningProjection
+    replanning?: LessonReplanningDisplayProjection
   }
 }
 
@@ -113,7 +115,9 @@ export function buildLessonCopilotContext(input: {
 }): LessonCopilotContext {
   const missingInformation: string[] = []
   const curriculumAuthority = input.curriculumAuthority ?? null
-  const replanning = cloneReplanning(input.replanning ?? emptyLessonReplanningProjection())
+  const replanning = cloneDisplayReplanning(
+    toLessonReplanningDisplayProjection(input.replanning ?? emptyLessonReplanningProjection()),
+  )
   if (!input.academicYearId) missingInformation.push('Anno scolastico non associato')
   if (!input.discipline?.trim()) missingInformation.push('Disciplina non associata')
   if (input.projection.sources.length === 0) missingInformation.push('Fonti della lezione non disponibili')
@@ -235,7 +239,8 @@ export function buildTeacherMomentCopilotContext(input: {
 }
 
 export function lessonCopilotProviderContext(context: LessonCopilotContext) {
-  const replanning = context.lesson.replanning ?? emptyLessonReplanningProjection()
+  const replanning = context.lesson.replanning
+    ?? toLessonReplanningDisplayProjection(emptyLessonReplanningProjection())
   return {
     surface: context.surface,
     discipline: context.discipline ?? null,
@@ -322,7 +327,8 @@ export function fallbackLessonCopilotResponse(
     const ready = context.lesson.readyTitles.length
       ? context.lesson.readyTitles.map((item) => `• ${item}`).join('\n')
       : '• Non risultano materiali già marcati come pronti nel brief corrente.'
-    const replanning = replanningSummary(context.lesson.replanning ?? emptyLessonReplanningProjection())
+    const replanning = replanningSummary(context.lesson.replanning
+    ?? toLessonReplanningDisplayProjection(emptyLessonReplanningProjection()))
     return {
       actionKind: 'PROPOSE',
       answerStatus,
@@ -353,7 +359,8 @@ export function appendLocalReplanningDecisions(
   response: TeacherCopilotResponse,
   prompt: string,
 ): TeacherCopilotResponse {
-  const replanning = context.lesson.replanning ?? emptyLessonReplanningProjection()
+  const replanning = context.lesson.replanning
+    ?? toLessonReplanningDisplayProjection(emptyLessonReplanningProjection())
   const normalized = prompt.toLocaleLowerCase('it-IT')
   const relevant = /(prepar|material|pronto|manca|adatt|riprogett|occhio|attenzion|riprend)/.test(normalized)
   if (!relevant || replanning.resolution !== 'SUPPORTED' || replanning.decisions.length === 0) return response
@@ -398,7 +405,7 @@ function curriculumAuthorityMessage(authority: LessonCurriculumAuthority) {
   return 'Autorità curricolare non pienamente confermata'
 }
 
-function replanningSummary(replanning: LessonReplanningProjection) {
+function replanningSummary(replanning: LessonReplanningDisplayProjection) {
   if (replanning.resolution === 'BLOCKED') {
     return '• Le decisioni accettate non sono disponibili perché il contesto canonico non coincide.'
   }
@@ -411,14 +418,12 @@ function replanningSummary(replanning: LessonReplanningProjection) {
     .join('\n')
 }
 
-function cloneReplanning(replanning: LessonReplanningProjection): LessonReplanningProjection {
+function cloneDisplayReplanning(
+  replanning: LessonReplanningDisplayProjection,
+): LessonReplanningDisplayProjection {
   return {
     resolution: replanning.resolution,
-    reasons: [...replanning.reasons],
-    decisions: replanning.decisions.map((decision) => ({
-      ...decision,
-      decisionHistory: decision.decisionHistory.map((item) => ({ ...item })),
-    })),
+    decisions: replanning.decisions.map((decision) => ({ ...decision })),
   }
 }
 
