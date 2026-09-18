@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { loadCurrentTodayCopilotContext } from '@/app/api/assistant/today-context-loader'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { toLessonReplanningDisplayProjection } from '@/core/presentation/lesson-replanning-decision'
 import { buildLessonPreparationRoleView } from '@/core/presentation/roleview-governance'
 import LessonMaterialsClient from './lesson-materials-client'
 import { RoleViewTeacherPanel } from './roleview-teacher-panel'
@@ -53,9 +54,9 @@ export default async function NextLessonMaterialsPage({
             )}
             authority={preparation?.preparation.lesson.authority ?? 'IN_FORCE'}
             initialView={requestedView}
-            replanning={preparation?.manifest.resolution === 'BLOCKED'
+            replanning={preparation?.manifest.resolution === 'BLOCKED' || !preparation?.manifest.manifest.replanning
               ? undefined
-              : preparation?.manifest.manifest.replanning}
+              : toLessonReplanningDisplayProjection(preparation.manifest.manifest.replanning)}
           />
         </>
       ) : (
