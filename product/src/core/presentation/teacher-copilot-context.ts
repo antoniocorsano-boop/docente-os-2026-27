@@ -35,7 +35,7 @@ export type LessonCopilotContext = AssistantContext & {
     readyTitles: string[]
     readyCount: number
     statusLabel: LessonBrief['statusLabel']
-    replanning: LessonReplanningProjection
+    replanning?: LessonReplanningProjection
   }
 }
 
@@ -235,6 +235,7 @@ export function buildTeacherMomentCopilotContext(input: {
 }
 
 export function lessonCopilotProviderContext(context: LessonCopilotContext) {
+  const replanning = context.lesson.replanning ?? emptyLessonReplanningProjection()
   return {
     surface: context.surface,
     discipline: context.discipline ?? null,
@@ -259,8 +260,8 @@ export function lessonCopilotProviderContext(context: LessonCopilotContext) {
       readyCount: context.lesson.readyCount,
       statusLabel: context.lesson.statusLabel,
       replanning: {
-        resolution: context.lesson.replanning.resolution,
-        acceptedDecisionCount: context.lesson.replanning.decisions.length,
+        resolution: replanning.resolution,
+        acceptedDecisionCount: replanning.decisions.length,
       },
     },
     provenance: context.provenance.map((item) => ({
@@ -321,7 +322,7 @@ export function fallbackLessonCopilotResponse(
     const ready = context.lesson.readyTitles.length
       ? context.lesson.readyTitles.map((item) => `• ${item}`).join('\n')
       : '• Non risultano materiali già marcati come pronti nel brief corrente.'
-    const replanning = replanningSummary(context.lesson.replanning)
+    const replanning = replanningSummary(context.lesson.replanning ?? emptyLessonReplanningProjection())
     return {
       actionKind: 'PROPOSE',
       answerStatus,
