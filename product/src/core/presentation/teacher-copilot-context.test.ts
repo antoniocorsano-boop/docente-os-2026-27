@@ -77,6 +77,16 @@ const provisionalAuthority: LessonCurriculumAuthority = {
   transitionRemodulationState: 'HYPOTHESIS',
 }
 
+const replanningScope = {
+  workspaceId: 'workspace-secret-id',
+  academicYearId: 'year-2026',
+  sectionId: 'section-2c-id',
+  canonicalPlanAssetId: 'plan-2',
+  canonicalGenerationId: 'generation-2',
+  blockId: 'B01',
+  projectionId: 'projection-2c-b01',
+}
+
 function lessonContext(
   authority: LessonCurriculumAuthority | null = approvedAuthority,
   replanning = projectAcceptedTeachingAdjustments({ extensions: [], scope: replanningScope }),
@@ -95,16 +105,6 @@ function lessonContext(
     curriculumAuthorityEvidence: authority ? { ref: 'framework-message-1', label: 'Autorità curricolare' } : null,
     replanning,
   })
-}
-
-const replanningScope = {
-  workspaceId: 'workspace-secret-id',
-  academicYearId: 'year-2026',
-  sectionId: 'section-2c-id',
-  canonicalPlanAssetId: 'plan-2',
-  canonicalGenerationId: 'generation-2',
-  blockId: 'B01',
-  projectionId: 'projection-2c-b01',
 }
 
 function replanningExtension(overrides: Partial<LessonDesignExtension> = {}): LessonDesignExtension {
