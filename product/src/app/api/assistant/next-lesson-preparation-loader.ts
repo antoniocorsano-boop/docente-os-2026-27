@@ -204,6 +204,7 @@ async function loadLessonPreparationBundleWithShared(input: {
     lessonContext: lessonBundle.context,
     projection: lessonBundle.projection,
     extensions: lessonBundle.extensions,
+    replanning: lessonBundle.replanning,
     renderingCapabilities: [...INTERNAL_LESSON_RENDERING_CAPABILITIES],
   })
 
