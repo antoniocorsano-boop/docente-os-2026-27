@@ -41,7 +41,7 @@ export function TodayAssistant({
         `${t.pendingRegistrationCount} da registrare`,
         ...(preparation?.canonicalLesson ? [`${preparation.canonicalLesson.blockId} · prossimo blocco`] : []),
         ...(preparation?.replanning?.resolution === 'SUPPORTED' && preparation.replanning.decisions.length
-          ? [`${preparation.replanning.decisions.length} decisioni di riprogettazione`]
+          ? [`${preparation.replanning.decisions.length} ${preparation.replanning.decisions.length === 1 ? 'decisione' : 'decisioni'} di riprogettazione`]
           : []),
         ...(authorityChip ? [authorityChip] : []),
       ]}
