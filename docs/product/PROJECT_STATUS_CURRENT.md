@@ -1,11 +1,11 @@
 # DOCENTE OS — Stato corrente canonico
 
-Data: **2026-09-14**  
+Data: **2026-09-18**  
 Stato documento: **CURRENT / CANONICAL CANDIDATE — V1 CONVERGENCE**
 
 ## 1. Baseline runtime integrata
 
-`develop@3605912f764468b547aeb344c29f548734eca123`
+`develop@7f714e6ac6f4264af86f15f8a6f5b99121a52a41`
 
 La Beta corrente ha completato UX-0E ma la successiva HUMAN_USE reale (#383) ha prodotto **FRICTION / REWORK_REQUIRED**. Il prodotto non viene dichiarato UX-complete: l'evidenza umana ha mostrato che la complessità di orchestrazione resta troppo elevata.
 
@@ -21,7 +21,11 @@ Documento autorevole di programma:
 
 `docs/product/TEACHER_OS_V1_PRODUCT_CONVERGENCE_CANONICAL.md`
 
-Il valore prioritario non è aggiungere nuovi moduli, ma comporre correttamente capability già costruite attorno al momento professionale del docente.
+Checkpoint integrato di completamento:
+
+`docs/architecture/DUAL_SYSTEM_CANONICAL_RESET_2026-09-18.md`
+
+Il valore prioritario non è aggiungere nuovi moduli, ma comporre correttamente capability già costruite attorno al momento professionale del docente. Dal 18 settembre 2026 il prodotto è esplicitamente in **completion and maturation mode**: release candidate, pilot sostenuto e chiusura dei finding hanno precedenza su un nuovo feature train.
 
 ## 3. Invarianti permanenti
 
@@ -184,11 +188,15 @@ Documento:
 
 ## 13. Programma V1 corrente
 
-1. **V1-A — Teacher Moment + Today/Next**;
-2. **V1-B — Lesson Brief**;
-3. **V1-C — Copilot reale + Contextual Voice Capture**;
-4. **V1-D — Institutional Configurator**;
-5. **V1-E — Runtime benchmark e hosting decision**.
+1. **V1-A — Teacher Moment + Today/Next** — integrato;
+2. **V1-B — Lesson Brief** — integrato;
+3. **V1-C — Copilot reale + Contextual Voice Capture** — Copilot/context governance avanzati; Voice/STT resta da chiudere operativamente o deferire esplicitamente dalla release;
+4. **V1-D — Institutional Configurator** — da completare secondo necessità di pilot;
+5. **V1-E — Runtime benchmark e hosting decision** — da chiudere su evidence.
+
+Completamenti successivi già acquisiti:
+- **H8 — lifecycle governato riflessione → proposta → decisione docente** — COMPLETE;
+- **H9-A — consumo governato di TEACHING_ADJUSTMENT(ACCEPTED) nella preparazione** — COMPLETE e post-merge certificato.
 
 Questi assi hanno precedenza su nuove superfici autonome.
 
@@ -208,14 +216,14 @@ Stato dove non esiste nuova evidence:
 
 ## 15. Priorità operative immediate
 
-1. consolidare e integrare la baseline documentale V1;
-2. aprire/implementare V1-A Teacher Moment + Today/Next;
-3. correggere defect runtime bloccanti osservati dalla HUMAN_USE;
-4. implementare V1-B Lesson Brief;
-5. rendere operativo il copilota e la voce in V1-C;
-6. realizzare Institutional Configurator in V1-D;
-7. benchmarkare runtime Google in V1-E;
-8. applicare la fast-feedback test strategy.
+1. congelare una **vera RC Docente OS** dalla linea `develop` corrente;
+2. emettere versione/tag/GitHub Release/changelog e receipt sullo SHA esatto;
+3. raccogliere evidence HUMAN_USE longitudinale su più giornate reali;
+4. chiudere i soli finding UX/pilot realmente osservati;
+5. chiudere Voice/STT oppure deferirlo esplicitamente dalla release;
+6. completare WCAG manuale/assistive, ASVS requirement-level e SLI/SLO;
+7. maturare Drive runtime continuity e decidere Canva da evidence;
+8. mantenere Arena runtime transport condizionale fino alla chiusura Arena S3/S4.
 
 ## 16. KPI principale
 
