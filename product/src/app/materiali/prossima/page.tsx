@@ -53,6 +53,9 @@ export default async function NextLessonMaterialsPage({
             )}
             authority={preparation?.preparation.lesson.authority ?? 'IN_FORCE'}
             initialView={requestedView}
+            replanning={preparation?.manifest.resolution === 'BLOCKED'
+              ? undefined
+              : preparation?.manifest.manifest.replanning}
           />
         </>
       ) : (
