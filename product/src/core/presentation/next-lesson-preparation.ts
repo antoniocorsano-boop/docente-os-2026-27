@@ -1,6 +1,7 @@
 import type { TeachingSessionContinuity } from '@/core/domain/teaching-session-reflection'
 import type { AssistantResponse } from './assistant-context'
 import type { HomeDailyContext, HomeDailyLesson } from './home-daily-context'
+import type { LessonReplanningDisplayProjection } from './lesson-replanning-decision'
 import type { LessonCopilotContext } from './teacher-copilot-context'
 import { respondToTodayCopilot, type TodayCopilotContext } from './today-copilot-context'
 
@@ -36,6 +37,7 @@ export type NextLessonPreparation = {
     statusLabel: LessonCopilotContext['lesson']['statusLabel']
   } | null
   continuity?: TeachingSessionContinuity | null
+  replanning?: LessonReplanningDisplayProjection | null
   knowledgeResources: NextLessonKnowledgeResource[]
   missingInformation: string[]
   provenance: Array<{ kind: string; ref?: string; label?: string }>
@@ -123,6 +125,12 @@ export function buildNextLessonPreparation(input: {
       }
     : null
   const continuity = input.continuity ? { ...input.continuity } : null
+  const replanning = input.lessonContext?.lesson.replanning
+    ? {
+        resolution: input.lessonContext.lesson.replanning.resolution,
+        decisions: input.lessonContext.lesson.replanning.decisions.map((decision) => ({ ...decision })),
+      }
+    : null
 
   return {
     lesson: {
@@ -136,6 +144,7 @@ export function buildNextLessonPreparation(input: {
     },
     canonicalLesson,
     continuity,
+    replanning,
     knowledgeResources: (input.knowledgeResources ?? []).slice(0, 4).map((resource) => ({ ...resource })),
     missingInformation,
     provenance: [
@@ -230,6 +239,15 @@ export function respondToTodayCopilotK2(context: TodayCopilotK2Context, prompt: 
         ? preparation.knowledgeResources.map((resource) => `• ${resource.title} · ${resource.relevanceLabel}`)
         : ['• Non risultano risorse della Conoscenza pertinenti già indicizzate per questa fase.']),
     )
+
+    if (preparation.replanning?.resolution === 'SUPPORTED' && preparation.replanning.decisions.length) {
+      lines.push(
+        '',
+        '**Decisioni di riprogettazione accettate**',
+        ...preparation.replanning.decisions.map((decision) => `• ${decision.title}: ${decision.body}`),
+        'Sono indicazioni confermate per questo stesso blocco; non modificano automaticamente Piano, UDA, sequenza o materiali.',
+      )
+    }
   } else {
     lines.push(
       '',
