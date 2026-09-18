@@ -49,6 +49,9 @@ export default async function TomorrowLessonMaterialsPage({
           timeLabel={formatTimeRange(preparation.lesson.startAt, preparation.lesson.endAt)}
           authority={preparation.lesson.authority}
           initialView={asView(query.vista)}
+          replanning={entry?.loaded.manifest.resolution === 'BLOCKED'
+            ? undefined
+            : entry?.loaded.manifest.manifest.replanning}
           eyebrow="MATERIALI DI DOMANI"
           backHref="/materiali/domani"
           backLabel="← Tutte le lezioni di domani"
