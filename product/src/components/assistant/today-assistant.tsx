@@ -40,6 +40,9 @@ export function TodayAssistant({
         `${p.todayCount} ${p.todayCount === 1 ? 'attività oggi' : 'attività oggi'}`,
         `${t.pendingRegistrationCount} da registrare`,
         ...(preparation?.canonicalLesson ? [`${preparation.canonicalLesson.blockId} · prossimo blocco`] : []),
+        ...(preparation?.replanning?.resolution === 'SUPPORTED' && preparation.replanning.decisions.length
+          ? [`${preparation.replanning.decisions.length} ${preparation.replanning.decisions.length === 1 ? 'decisione' : 'decisioni'} di riprogettazione`]
+          : []),
         ...(authorityChip ? [authorityChip] : []),
       ]}
       suggestedPrompts={SUGGESTED_PROMPTS}

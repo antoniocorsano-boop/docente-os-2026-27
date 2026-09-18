@@ -54,6 +54,9 @@ export function LessonAssistant({
         context.discipline ?? 'Disciplina da verificare',
         context.lesson.udaTitle,
         context.lesson.readyCount > 0 ? `${context.lesson.readyCount} risorse pronte` : 'Preparazione base',
+        ...(context.lesson.replanning?.resolution === 'SUPPORTED' && context.lesson.replanning.decisions.length
+          ? [`${context.lesson.replanning.decisions.length} ${context.lesson.replanning.decisions.length === 1 ? 'decisione' : 'decisioni'} di riprogettazione`]
+          : []),
       ]}
       suggestedPrompts={SUGGESTED_PROMPTS}
       conversationTitle={`Copilota · ${context.lesson.sectionLabel}`}

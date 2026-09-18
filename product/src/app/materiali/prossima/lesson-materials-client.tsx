@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import type { LessonMaterialRenderBundle } from '@/core/presentation/lesson-material-renderer'
+import type { LessonReplanningDisplayProjection } from '@/core/presentation/lesson-replanning-decision'
 import type { RoleViewSnapshot } from '@/core/presentation/roleview-governance'
 import { RoleViewTeacherPanel } from './roleview-teacher-panel'
 import styles from './lesson-materials.module.css'
@@ -17,6 +18,7 @@ export default function LessonMaterialsClient({
   timeLabel,
   authority,
   initialView,
+  replanning,
   eyebrow = 'MATERIALI DELLA PROSSIMA LEZIONE',
   backHref = '/planner',
   backLabel = '← Oggi',
@@ -27,6 +29,7 @@ export default function LessonMaterialsClient({
   timeLabel: string
   authority: 'IN_FORCE' | 'PROVISIONAL_DRAFT'
   initialView: Exclude<MaterialView, 'visuale'>
+  replanning?: LessonReplanningDisplayProjection
   eyebrow?: string
   backHref?: string
   backLabel?: string
@@ -186,6 +189,22 @@ export default function LessonMaterialsClient({
             <h2>{bundle.teacherBrief.objective}</h2>
           </article>
 
+          {replanning?.resolution === 'SUPPORTED' && replanning.decisions.length ? (
+            <section className={styles.attentionCard} aria-labelledby="replanning-decisions-title">
+              <p className={styles.eyebrow}>RIPROGETTAZIONE CONFERMATA</p>
+              <h3 id="replanning-decisions-title">Da tenere presente</h3>
+              <p>Queste decisioni sono state accettate dal docente per questo stesso blocco. Non modificano automaticamente Piano, UDA, sequenza o materiali.</p>
+              <ul>
+                {replanning.decisions.map((decision) => (
+                  <li key={`${decision.acceptedAt}:${decision.title}`}>
+                    <strong>{decision.title}</strong> — {decision.body}
+                    <small> · {decision.sourceLabel} · accettata {formatDecisionDate(decision.acceptedAt)}</small>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
           <div className={styles.teacherGrid}>
             <section className={styles.teacherCard}>
               <h3>Da predisporre</h3>
@@ -227,4 +246,15 @@ export default function LessonMaterialsClient({
       ) : null}
     </main>
   )
+}
+
+function formatDecisionDate(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'in data non disponibile'
+  return new Intl.DateTimeFormat('it-IT', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Europe/Rome',
+  }).format(date)
 }

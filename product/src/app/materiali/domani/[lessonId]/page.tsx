@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { toLessonReplanningDisplayProjection } from '@/core/presentation/lesson-replanning-decision'
 import { buildLessonPreparationRoleView } from '@/core/presentation/roleview-governance'
 import LessonMaterialsClient from '../../prossima/lesson-materials-client'
 import { RoleViewTeacherPanel } from '../../prossima/roleview-teacher-panel'
@@ -49,6 +50,9 @@ export default async function TomorrowLessonMaterialsPage({
           timeLabel={formatTimeRange(preparation.lesson.startAt, preparation.lesson.endAt)}
           authority={preparation.lesson.authority}
           initialView={asView(query.vista)}
+          replanning={entry?.loaded.manifest.resolution === 'BLOCKED' || !entry?.loaded.manifest.manifest.replanning
+            ? undefined
+            : toLessonReplanningDisplayProjection(entry.loaded.manifest.manifest.replanning)}
           eyebrow="MATERIALI DI DOMANI"
           backHref="/materiali/domani"
           backLabel="← Tutte le lezioni di domani"

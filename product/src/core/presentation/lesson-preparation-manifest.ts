@@ -11,6 +11,10 @@ import {
   type HumanTaskResourceKind,
 } from './human-task-content'
 import type { NextLessonKnowledgeResource, NextLessonPreparation } from './next-lesson-preparation'
+import {
+  emptyLessonReplanningProjection,
+  type LessonReplanningProjection,
+} from './lesson-replanning-decision'
 import type { LessonCopilotContext } from './teacher-copilot-context'
 
 export type LessonMaterialRole =
@@ -65,6 +69,7 @@ export type LessonPreparationManifest = {
   acceptedExtensionRefs: string[]
   proposedExtensionRefs: string[]
   ignoredAcceptedExtensionRefs: string[]
+  replanning?: LessonReplanningProjection
   readiness: LessonPreparationReadiness
   missingInformation: string[]
   provenance: LessonPreparationProvenance[]
@@ -88,6 +93,7 @@ export function buildLessonPreparationManifest(input: {
   lessonContext: LessonCopilotContext | null
   projection: HumanTaskLessonProjection | null
   extensions?: LessonDesignExtension[]
+  replanning?: LessonReplanningProjection
   requiredMaterialRoles?: LessonMaterialRole[]
   renderingCapabilities?: string[]
 }): LessonPreparationManifestResult {
@@ -100,6 +106,7 @@ export function buildLessonPreparationManifest(input: {
   const academicYearId = context.academicYearId as string
   const temporalAuthority = input.preparation.lesson.authority as 'IN_FORCE' | 'PROVISIONAL_DRAFT'
   const extensions = input.extensions ?? []
+  const replanning = cloneReplanning(input.replanning ?? emptyLessonReplanningProjection())
 
   const lessonExtensions = extensions.filter((extension) => (
     extension.sectionId === sectionId
@@ -195,6 +202,7 @@ export function buildLessonPreparationManifest(input: {
     acceptedExtensionRefs: acceptedExtensions.map((extension) => extension.id),
     proposedExtensionRefs: proposedExtensions.map((extension) => extension.id),
     ignoredAcceptedExtensionRefs: [...composed.ignoredExtensionIds],
+    replanning,
     readiness,
     missingInformation,
     provenance,
@@ -374,6 +382,17 @@ function pushRoleItem<T>(map: Map<LessonMaterialRole, T[]>, role: LessonMaterial
   const items = map.get(role) ?? []
   items.push(item)
   map.set(role, items)
+}
+
+function cloneReplanning(replanning: LessonReplanningProjection): LessonReplanningProjection {
+  return {
+    resolution: replanning.resolution,
+    reasons: [...replanning.reasons],
+    decisions: replanning.decisions.map((decision) => ({
+      ...decision,
+      decisionHistory: decision.decisionHistory.map((item) => ({ ...item })),
+    })),
+  }
 }
 
 function mergeProvenance(items: LessonPreparationProvenance[]) {

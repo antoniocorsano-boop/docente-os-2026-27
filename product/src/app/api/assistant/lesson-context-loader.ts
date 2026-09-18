@@ -7,6 +7,7 @@ import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase
 import { curriculumDisciplineRefForCanonicalPlan } from '@/core/presentation/curriculum-source-binding'
 import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 import { buildLessonBrief } from '@/core/presentation/lesson-brief'
+import { projectAcceptedTeachingAdjustments } from '@/core/presentation/lesson-replanning-decision'
 import { buildLessonCopilotContext } from '@/core/presentation/teacher-copilot-context'
 
 const GRADE_NUMBER = { PRIMA: '1', SECONDA: '2', TERZA: '3' } as const
@@ -77,6 +78,11 @@ export async function loadAuthoritativeLessonCopilotBundle(input: {
     curriculumAuthorityPromise,
   ])
 
+  const replanning = projectAcceptedTeachingAdjustments({
+    extensions,
+    scope: designContext,
+  })
+
   const progress = snapshot.progress.find((entry) =>
     entry.sectionId === section.id
     && entry.canonicalGenerationId === source.generationId
@@ -124,12 +130,14 @@ export async function loadAuthoritativeLessonCopilotBundle(input: {
     progressStatus: progress?.status ?? 'PIANIFICATO',
     curriculumAuthority,
     curriculumAuthorityEvidence,
+    replanning,
   })
 
   return {
     context,
     projection,
     extensions,
+    replanning,
   }
 }
 

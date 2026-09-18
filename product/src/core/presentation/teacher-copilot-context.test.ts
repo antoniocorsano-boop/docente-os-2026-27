@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
 import type { HumanTaskLessonProjection } from './human-task-content'
 import type { LessonBrief } from './lesson-brief'
+import { projectAcceptedTeachingAdjustments } from './lesson-replanning-decision'
 import type { TeacherMoment } from './teacher-moment'
 import {
+  appendLocalReplanningDecisions,
   buildLessonCopilotContext,
   buildTeacherMomentCopilotContext,
   fallbackLessonCopilotResponse,
@@ -74,7 +77,20 @@ const provisionalAuthority: LessonCurriculumAuthority = {
   transitionRemodulationState: 'HYPOTHESIS',
 }
 
-function lessonContext(authority: LessonCurriculumAuthority | null = approvedAuthority) {
+const replanningScope = {
+  workspaceId: 'workspace-secret-id',
+  academicYearId: 'year-2026',
+  sectionId: 'section-2c-id',
+  canonicalPlanAssetId: 'plan-2',
+  canonicalGenerationId: 'generation-2',
+  blockId: 'B01',
+  projectionId: 'projection-2c-b01',
+}
+
+function lessonContext(
+  authority: LessonCurriculumAuthority | null = approvedAuthority,
+  replanning = projectAcceptedTeachingAdjustments({ extensions: [], scope: replanningScope }),
+) {
   return buildLessonCopilotContext({
     workspaceId: 'workspace-secret-id',
     academicYearId: 'year-2026',
@@ -87,8 +103,132 @@ function lessonContext(authority: LessonCurriculumAuthority | null = approvedAut
     progressStatus: 'PIANIFICATO',
     curriculumAuthority: authority,
     curriculumAuthorityEvidence: authority ? { ref: 'framework-message-1', label: 'Autorità curricolare' } : null,
+    replanning,
   })
 }
+
+function replanningExtension(overrides: Partial<LessonDesignExtension> = {}): LessonDesignExtension {
+  return {
+    id: 'adjustment-accepted',
+    workspaceId: replanningScope.workspaceId,
+    academicYearId: replanningScope.academicYearId,
+    sectionId: replanningScope.sectionId,
+    canonicalPlanAssetId: replanningScope.canonicalPlanAssetId,
+    canonicalGenerationId: replanningScope.canonicalGenerationId,
+    blockId: replanningScope.blockId,
+    projectionId: replanningScope.projectionId,
+    kind: 'TEACHING_ADJUSTMENT',
+    status: 'ACCEPTED',
+    insertionPosition: 'END',
+    anchorStepId: null,
+    title: 'Riprendere la misura con un esempio concreto',
+    body: 'Usare prima un oggetto reale e poi tornare alla rappresentazione grafica.',
+    cue: null,
+    minutes: null,
+    sourceKind: 'TEACHER',
+    sourceRef: 'session-previous',
+    sourceLabel: 'Riflessione post-lezione',
+    payload: {},
+    revision: 1,
+    decisionHistory: [{
+      action: 'ACCEPTED',
+      actorId: 'teacher-1',
+      at: '2026-09-17T18:00:00Z',
+      revision: 1,
+    }],
+    modifiedBy: null,
+    modifiedAt: null,
+    acceptedBy: 'teacher-1',
+    acceptedAt: '2026-09-17T18:00:00Z',
+    dismissedBy: null,
+    dismissedAt: null,
+    createdBy: 'teacher-1',
+    createdAt: '2026-09-17T17:50:00Z',
+    updatedAt: '2026-09-17T18:00:00Z',
+    ...overrides,
+  }
+}
+
+test('H9-A projects only accepted teaching adjustments inside the exact canonical scope', () => {
+  const result = projectAcceptedTeachingAdjustments({
+    scope: replanningScope,
+    extensions: [
+      replanningExtension({
+        id: 'proposed',
+        status: 'PROPOSED',
+        acceptedBy: null,
+        acceptedAt: null,
+        decisionHistory: [],
+      }),
+      replanningExtension({ id: 'accepted' }),
+      replanningExtension({
+        id: 'dismissed',
+        status: 'DISMISSED',
+        acceptedBy: null,
+        acceptedAt: null,
+        dismissedBy: 'teacher-1',
+        dismissedAt: '2026-09-17T18:05:00Z',
+        decisionHistory: [{
+          action: 'DISMISSED',
+          actorId: 'teacher-1',
+          at: '2026-09-17T18:05:00Z',
+          revision: 1,
+        }],
+      }),
+    ],
+  })
+
+  assert.equal(result.resolution, 'SUPPORTED')
+  assert.deepEqual(result.decisions.map((decision) => decision.extensionId), ['accepted'])
+  assert.equal(result.decisions[0]?.sourceRef, 'session-previous')
+  assert.equal(result.decisions[0]?.decisionHistory[0]?.action, 'ACCEPTED')
+})
+
+test('H9-A fails closed when an accepted teaching adjustment does not match the canonical projection', () => {
+  const result = projectAcceptedTeachingAdjustments({
+    scope: replanningScope,
+    extensions: [replanningExtension({ projectionId: 'projection-other' })],
+  })
+
+  assert.equal(result.resolution, 'BLOCKED')
+  assert.deepEqual(result.decisions, [])
+  assert.ok(result.reasons.includes('REPLANNING_SCOPE_MISMATCH:adjustment-accepted:projectionId'))
+})
+
+test('lesson copilot keeps accepted replanning text local while provider context receives only decision count', () => {
+  const replanning = projectAcceptedTeachingAdjustments({
+    scope: replanningScope,
+    extensions: [replanningExtension()],
+  })
+  const context = lessonContext(approvedAuthority, replanning)
+  const provider = lessonCopilotProviderContext(context)
+  const serializedProvider = JSON.stringify(provider)
+  const fallback = fallbackLessonCopilotResponse(context, 'Cosa devo preparare e cosa devo tenere d’occhio?')
+
+  assert.equal(provider.lesson.replanning.acceptedDecisionCount, 1)
+  assert.doesNotMatch(serializedProvider, /Riprendere la misura con un esempio concreto/)
+  assert.doesNotMatch(serializedProvider, /session-previous/)
+  assert.match(fallback.text, /Decisioni di riprogettazione accettate/)
+  assert.match(fallback.text, /Riprendere la misura con un esempio concreto/)
+})
+
+test('H9-A appends accepted replanning decisions locally after a model response without changing evidence refs', () => {
+  const replanning = projectAcceptedTeachingAdjustments({
+    scope: replanningScope,
+    extensions: [replanningExtension()],
+  })
+  const context = lessonContext(approvedAuthority, replanning)
+  const response = appendLocalReplanningDecisions(context, {
+    actionKind: 'PROPOSE',
+    answerStatus: 'SUPPORTED',
+    text: '**Ho trovato**\nLa preparazione di base è disponibile.',
+    evidenceRefs: ['CAN-PLAN-2'],
+  }, 'Cosa devo tenere d’occhio nella preparazione?')
+
+  assert.match(response.text, /Decisioni di riprogettazione accettate/)
+  assert.match(response.text, /Riprendere la misura con un esempio concreto/)
+  assert.deepEqual(response.evidenceRefs, ['CAN-PLAN-2'])
+})
 
 test('lesson context keeps internal authority while provider view removes workspace, object and free-form readiness identifiers', () => {
   const context = buildLessonCopilotContext({
