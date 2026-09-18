@@ -4,6 +4,7 @@ import type { LessonDesignExtension } from '@/core/domain/lesson-design-extensio
 import type { HomeDailyContext, HomeDailyLesson } from './home-daily-context'
 import type { HumanTaskLessonProjection } from './human-task-content'
 import { buildLessonPreparationManifest } from './lesson-preparation-manifest'
+import { projectAcceptedTeachingAdjustments } from './lesson-replanning-decision'
 import {
   buildNextLessonPreparation,
   enrichTodayCopilotContext,
@@ -426,6 +427,48 @@ test('LP-1: teaching adjustment accettato resta fuori dai generic accepted refs 
     result.manifest.provenance.some((item) => item.ref === 'lesson-extension:adjustment-accepted'),
     true,
   )
+})
+
+test('H9-A: accepted replanning decision is exposed separately without changing operational preparation', () => {
+  const next = lesson('next', '15:00', '16:00', '2C · Tecnologia')
+  const context = lessonContext()
+  const preparation = buildNextLessonPreparation({ lesson: next, lessonContext: context })
+  const adjustment = extension({
+    id: 'adjustment-h9',
+    kind: 'TEACHING_ADJUSTMENT',
+    title: 'Riprendere la misura con un esempio concreto',
+    body: 'Usare un oggetto reale prima della rappresentazione grafica.',
+    sourceRef: 'session-previous',
+    sourceLabel: 'Riflessione post-lezione',
+  })
+  const replanning = projectAcceptedTeachingAdjustments({
+    extensions: [adjustment],
+    scope: {
+      workspaceId: 'workspace-1',
+      academicYearId: 'year-1',
+      sectionId: 'section-2c',
+      canonicalPlanAssetId: 'plan-asset-2',
+      canonicalGenerationId: 'generation-2',
+      blockId: 'B03',
+      projectionId: 'projection-3',
+    },
+  })
+  const result = buildLessonPreparationManifest({
+    preparation,
+    lessonContext: context,
+    projection: projection(),
+    extensions: [adjustment],
+    replanning,
+  })
+
+  assert.equal(result.resolution, 'SUPPORTED')
+  assert.ok(result.manifest)
+  assert.equal(result.manifest.readiness, 'READY')
+  assert.deepEqual(result.manifest.acceptedExtensionRefs, [])
+  assert.deepEqual(result.manifest.proposedExtensionRefs, [])
+  assert.deepEqual(result.manifest.sequenceRefs, ['S01', 'S02', 'S03'])
+  assert.deepEqual(result.manifest.replanning.decisions.map((decision) => decision.extensionId), ['adjustment-h9'])
+  assert.equal(result.manifest.replanning.decisions[0]?.sourceRef, 'session-previous')
 })
 
 test('LP-1: estensioni di un’altra sezione restano fuori dal manifest senza contaminare la readiness', () => {
