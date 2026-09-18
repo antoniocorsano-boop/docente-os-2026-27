@@ -3,7 +3,7 @@
 Status: CANONICAL_SHARED_MEMORY
 Scope: CurManLight Arena + Docente OS
 Date: 2026-08-29
-Amended: 2026-09-14 — Teacher OS V1 convergence
+Amended: 2026-09-18 — Dual-system completion and maturation reset
 Memory ID: CML-DOS-INTEGRATED-GOVERNANCE-V1
 
 ## 1. Purpose
@@ -153,10 +153,10 @@ The integrated project must advance in this order unless this memory is explicit
 - ARENA-S0 authority/baseline audit — completed with follow-ups.
 - ARENA-S1 curriculum runtime consolidation — complete.
 - ARENA-S2 product-surface rationalization — complete.
-- ARENA-S3 human validation closure — in progress.
+- ARENA-S3 human validation closure — **still the active Arena gate**.
   - S3A validation contract/release binding — complete and integrated.
-  - S3B critical desktop/mobile browser evidence — in validation.
-  - S3C immutable Beta deploy + actual HVA — pending.
+  - S3B critical desktop/mobile browser evidence — automated evidence is complete on the evolved candidate `a64560202567f67eac5fd6ecaad30c6062199c0f` in PR #222.
+  - S3C immutable Beta deploy + actual human acceptance — **pending for the evolved candidate**. The candidate is not promoted merely because its automatic gates are green.
 - ARENA-S4 bidirectional interoperability stabilization — blocked until S3 closes.
 
 ### Docente OS stabilization and Teacher OS V1
@@ -181,6 +181,17 @@ This amendment supersedes only the earlier local ordering that treated UX-0 and 
 
 Arena stabilization continues independently and is neither blocked by nor subordinated to Teacher OS V1.
 
+### 2026-09-18 completion reset
+
+The integrated project is now explicitly in **completion and maturation mode**.
+
+- Docente OS H8 lifecycle governance and H9-A governed replanning consumption are complete.
+- Docente OS must prefer release-candidate freeze, sustained teacher pilot evidence and maturity closure over another broad feature train.
+- Arena must prefer S3 immutable deploy + actual human acceptance and G5/G6 closure over further product expansion.
+- New capabilities in either product default to `DEFERRED` unless classified `MATURITY_REQUIRED`, `PILOT_REQUIRED` or `PROFESSIONAL_GAP_CONFIRMED`.
+- The canonical completion checkpoint is `docs/architecture/DUAL_SYSTEM_CANONICAL_RESET_2026-09-18.md`.
+- This reset does not authorize Arena S4 early, does not weaken exact-head certification and does not change the product ownership or authority boundary.
+
 ### AILit
 
 AILit remains `EXTERNAL_REFERENCE / ARCHITECTURE_ONLY`.
@@ -191,25 +202,26 @@ No AILit runtime, UI, database, dedicated store or authority implementation is a
 
 ### CurManLight Arena
 
-Repository: `antoniocorsano-boop/CurManLight_arena`
-Canonical integrated baseline at freeze: `main@cb65f9c6dbd3cd1b0143dfa7e793cb9f4f4a3464`
+Repository: `antoniocorsano-boop/CurManLight_arena`  
+Canonical integrated baseline at this amendment: `main@dd46122cc0038c3e5de3fe8714e14e25b895bc18`
 
-Current active S3B candidate at freeze:
-- branch: `stabilization/arena-s3b-critical-journey-browser`;
-- PR: `#101`;
-- head: `1ad7cc8c75b5ec895f8cc5836274d9434be1d3bd`;
-- state: validation in progress; not merged at memory freeze.
+Current evolved S3 candidate:
+- PR: `#222`;
+- head: `a64560202567f67eac5fd6ecaad30c6062199c0f`;
+- automatic exact-head gates: PASS;
+- immutable deploy + actual human G5/G6 acceptance for this exact evolved candidate: pending;
+- status: candidate evidence, not yet a promoted Arena M4 baseline.
 
 ### Docente OS
 
-Repository: `antoniocorsano-boop/docente-os-2026-27`
-Canonical active product baseline at memory freeze: `develop@ebdb2aa77ad68f1d65264671b4f61185b0ba2205`
+Repository: `antoniocorsano-boop/docente-os-2026-27`  
+Canonical active product baseline at this amendment: `develop@7f714e6ac6f4264af86f15f8a6f5b99121a52a41`
 
-Important stabilization checkpoints already established:
-- plan branch: `stabilization/product-plan-develop-2026-08-29`;
-- plan PR: `#254`;
-- DOS-S0 implementation PR: `#255`;
-- validated DOS-S0 candidate previously recorded: `455cef5f7c2df01cbab6aa6f1adfa4f4025885ec`.
+Current completion state:
+- Teacher OS V1 convergence is the active product program;
+- H8 governed reflection/replanning lifecycle: complete;
+- H9-A accepted replanning read model: complete and post-merge certified;
+- next maturity move: freeze a real release candidate and collect sustained teacher-pilot evidence rather than continue indefinite feature accumulation.
 
 Agents must re-check live PR/gate state before promotion or merge; this memory records governance and point-in-time state, not permission to merge stale candidates.
 
