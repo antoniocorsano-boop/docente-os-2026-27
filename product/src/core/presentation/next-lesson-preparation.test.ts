@@ -467,8 +467,10 @@ test('H9-A: accepted replanning decision is exposed separately without changing 
   assert.deepEqual(result.manifest.acceptedExtensionRefs, [])
   assert.deepEqual(result.manifest.proposedExtensionRefs, [])
   assert.deepEqual(result.manifest.sequenceRefs, ['S01', 'S02', 'S03'])
-  assert.deepEqual(result.manifest.replanning.decisions.map((decision) => decision.extensionId), ['adjustment-h9'])
-  assert.equal(result.manifest.replanning.decisions[0]?.sourceRef, 'session-previous')
+  const replanningDecision = result.manifest.replanning
+  assert.ok(replanningDecision)
+  assert.deepEqual(replanningDecision.decisions.map((decision) => decision.extensionId), ['adjustment-h9'])
+  assert.equal(replanningDecision.decisions[0]?.sourceRef, 'session-previous')
 })
 
 test('LP-1: estensioni di un’altra sezione restano fuori dal manifest senza contaminare la readiness', () => {
