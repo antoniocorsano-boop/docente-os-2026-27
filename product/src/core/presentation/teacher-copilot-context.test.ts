@@ -6,6 +6,7 @@ import type { LessonBrief } from './lesson-brief'
 import { projectAcceptedTeachingAdjustments } from './lesson-replanning-decision'
 import type { TeacherMoment } from './teacher-moment'
 import {
+  appendLocalReplanningDecisions,
   buildLessonCopilotContext,
   buildTeacherMomentCopilotContext,
   fallbackLessonCopilotResponse,
@@ -209,6 +210,24 @@ test('lesson copilot keeps accepted replanning text local while provider context
   assert.doesNotMatch(serializedProvider, /session-previous/)
   assert.match(fallback.text, /Decisioni di riprogettazione accettate/)
   assert.match(fallback.text, /Riprendere la misura con un esempio concreto/)
+})
+
+test('H9-A appends accepted replanning decisions locally after a model response without changing evidence refs', () => {
+  const replanning = projectAcceptedTeachingAdjustments({
+    scope: replanningScope,
+    extensions: [replanningExtension()],
+  })
+  const context = lessonContext(approvedAuthority, replanning)
+  const response = appendLocalReplanningDecisions(context, {
+    actionKind: 'PROPOSE',
+    answerStatus: 'SUPPORTED',
+    text: '**Ho trovato**\nLa preparazione di base è disponibile.',
+    evidenceRefs: ['CAN-PLAN-2'],
+  }, 'Cosa devo tenere d’occhio nella preparazione?')
+
+  assert.match(response.text, /Decisioni di riprogettazione accettate/)
+  assert.match(response.text, /Riprendere la misura con un esempio concreto/)
+  assert.deepEqual(response.evidenceRefs, ['CAN-PLAN-2'])
 })
 
 test('lesson context keeps internal authority while provider view removes workspace, object and free-form readiness identifiers', () => {
