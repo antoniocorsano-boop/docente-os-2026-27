@@ -32,11 +32,37 @@ export type LessonReplanningProjection = {
   reasons: string[]
 }
 
+export type LessonReplanningDisplayDecision = Pick<
+  LessonReplanningDecision,
+  'title' | 'body' | 'sourceLabel' | 'acceptedAt'
+>
+
+export type LessonReplanningDisplayProjection = {
+  resolution: LessonReplanningProjection['resolution']
+  decisions: LessonReplanningDisplayDecision[]
+}
+
 export function emptyLessonReplanningProjection(): LessonReplanningProjection {
   return {
     resolution: 'SUPPORTED',
     decisions: [],
     reasons: [],
+  }
+}
+
+export function toLessonReplanningDisplayProjection(
+  replanning: LessonReplanningProjection,
+): LessonReplanningDisplayProjection {
+  return {
+    resolution: replanning.resolution,
+    decisions: replanning.resolution === 'SUPPORTED'
+      ? replanning.decisions.map((decision) => ({
+          title: decision.title,
+          body: decision.body,
+          sourceLabel: decision.sourceLabel,
+          acceptedAt: decision.acceptedAt,
+        }))
+      : [],
   }
 }
 
