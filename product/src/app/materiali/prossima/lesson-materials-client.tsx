@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import type { LessonMaterialRenderBundle } from '@/core/presentation/lesson-material-renderer'
-import type { LessonReplanningProjection } from '@/core/presentation/lesson-replanning-decision'
+import type { LessonReplanningDisplayProjection } from '@/core/presentation/lesson-replanning-decision'
 import type { RoleViewSnapshot } from '@/core/presentation/roleview-governance'
 import { RoleViewTeacherPanel } from './roleview-teacher-panel'
 import styles from './lesson-materials.module.css'
@@ -29,7 +29,7 @@ export default function LessonMaterialsClient({
   timeLabel: string
   authority: 'IN_FORCE' | 'PROVISIONAL_DRAFT'
   initialView: Exclude<MaterialView, 'visuale'>
-  replanning?: LessonReplanningProjection
+  replanning?: LessonReplanningDisplayProjection
   eyebrow?: string
   backHref?: string
   backLabel?: string
@@ -196,7 +196,7 @@ export default function LessonMaterialsClient({
               <p>Queste decisioni sono state accettate dal docente per questo stesso blocco. Non modificano automaticamente Piano, UDA, sequenza o materiali.</p>
               <ul>
                 {replanning.decisions.map((decision) => (
-                  <li key={decision.extensionId}>
+                  <li key={`${decision.acceptedAt}:${decision.title}`}>
                     <strong>{decision.title}</strong> — {decision.body}
                     <small> · {decision.sourceLabel} · accettata {formatDecisionDate(decision.acceptedAt)}</small>
                   </li>
