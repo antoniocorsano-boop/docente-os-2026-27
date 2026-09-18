@@ -232,6 +232,36 @@ test('K2: la prossima lezione collega Piano, Lesson Brief, materiali pronti e Co
   assert.match(result.text, /Scheda sulle misure · Fase corrente/)
 })
 
+test('H9-A: il Copilota della prossima lezione espone le decisioni accettate senza identificativi interni', () => {
+  const next = lesson('next', '15:00', '16:00', '2C · Tecnologia')
+  const home = daily([next], {
+    primary: { kind: 'UPCOMING_LESSON', lesson: next, minutesUntilStart: 30 },
+  })
+  const context = lessonContext()
+  context.lesson.replanning = {
+    resolution: 'SUPPORTED',
+    decisions: [{
+      title: 'Riprendere la misura con un esempio concreto',
+      body: 'Usare un oggetto reale prima della rappresentazione grafica.',
+      sourceLabel: 'Riflessione post-lezione',
+      acceptedAt: '2026-09-17T18:00:00Z',
+    }],
+  }
+  const preparation = buildNextLessonPreparation({
+    lesson: next,
+    lessonContext: context,
+  })
+
+  const result = respondToTodayCopilotK2(today(home, preparation), 'Come preparo la prossima lezione?')
+  const serialized = JSON.stringify(preparation)
+
+  assert.equal(result.answerStatus, 'SUPPORTED')
+  assert.match(result.text, /Decisioni di riprogettazione accettate/)
+  assert.match(result.text, /Riprendere la misura con un esempio concreto/)
+  assert.match(result.text, /non modificano automaticamente Piano, UDA, sequenza o materiali/)
+  assert.doesNotMatch(serialized, /session-previous|teacher-1|decisionHistory|sourceRef/)
+})
+
 test('K2: se il Piano non è risolvibile non inventa blocco, obiettivo o materiali', () => {
   const next = lesson('next', '15:00', '16:00', '2C · Tecnologia')
   const home = daily([next], {
