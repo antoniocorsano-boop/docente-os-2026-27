@@ -69,7 +69,7 @@ export type LessonPreparationManifest = {
   acceptedExtensionRefs: string[]
   proposedExtensionRefs: string[]
   ignoredAcceptedExtensionRefs: string[]
-  replanning: LessonReplanningProjection
+  replanning?: LessonReplanningProjection
   readiness: LessonPreparationReadiness
   missingInformation: string[]
   provenance: LessonPreparationProvenance[]
