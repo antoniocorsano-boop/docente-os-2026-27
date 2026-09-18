@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { OpenAiLessonCopilot } from '@/core/infrastructure/ai/openai-lesson-copilot'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { fallbackLessonCopilotResponse } from '@/core/presentation/teacher-copilot-context'
+import {
+  appendLocalReplanningDecisions,
+  fallbackLessonCopilotResponse,
+} from '@/core/presentation/teacher-copilot-context'
 import { loadAuthoritativeLessonCopilotContext } from '../lesson-context-loader'
 
 export const dynamic = 'force-dynamic'
@@ -38,7 +41,7 @@ export async function POST(request: Request) {
 
   try {
     const response = await copilot.respond({ context, prompt })
-    return responseJson(response, 'model')
+    return responseJson(appendLocalReplanningDecisions(context, response, prompt), 'model')
   } catch (error: unknown) {
     // Do not log prompt, transcript or provider response bodies.
     console.warn('[DOCENTE OS] Lesson copilot provider unavailable', safeErrorClass(error))
