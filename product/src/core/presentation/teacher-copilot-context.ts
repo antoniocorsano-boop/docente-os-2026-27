@@ -1,6 +1,10 @@
 import type { AnnualPlanCurriculumPersistencePayload } from '@/core/domain/cml-annual-plan-curriculum-persistence'
 import type { HumanTaskLessonProjection } from './human-task-content'
 import type { LessonBrief } from './lesson-brief'
+import {
+  emptyLessonReplanningProjection,
+  type LessonReplanningProjection,
+} from './lesson-replanning-decision'
 import type { TeacherMoment } from './teacher-moment'
 import type { AssistantContext, AssistantAnswerStatus, AssistantActionKind } from './assistant-context'
 
@@ -31,6 +35,7 @@ export type LessonCopilotContext = AssistantContext & {
     readyTitles: string[]
     readyCount: number
     statusLabel: LessonBrief['statusLabel']
+    replanning: LessonReplanningProjection
   }
 }
 
@@ -104,9 +109,11 @@ export function buildLessonCopilotContext(input: {
   progressStatus: string
   curriculumAuthority?: LessonCurriculumAuthority | null
   curriculumAuthorityEvidence?: { ref: string; label: string } | null
+  replanning?: LessonReplanningProjection
 }): LessonCopilotContext {
   const missingInformation: string[] = []
   const curriculumAuthority = input.curriculumAuthority ?? null
+  const replanning = cloneReplanning(input.replanning ?? emptyLessonReplanningProjection())
   if (!input.academicYearId) missingInformation.push('Anno scolastico non associato')
   if (!input.discipline?.trim()) missingInformation.push('Disciplina non associata')
   if (input.projection.sources.length === 0) missingInformation.push('Fonti della lezione non disponibili')
@@ -114,6 +121,9 @@ export function buildLessonCopilotContext(input: {
     missingInformation.push('Autorità curricolare non disponibile per questa lezione')
   } else if (!curriculumAuthorityAllowsSupported(curriculumAuthority)) {
     missingInformation.push(curriculumAuthorityMessage(curriculumAuthority))
+  }
+  if (replanning.resolution === 'BLOCKED') {
+    missingInformation.push('Decisioni di riprogettazione non disponibili per incoerenza del contesto canonico')
   }
 
   const authorityEvidence = input.curriculumAuthorityEvidence?.ref
@@ -163,6 +173,7 @@ export function buildLessonCopilotContext(input: {
       readyTitles: [...input.brief.readyTitles],
       readyCount: input.brief.readyCount,
       statusLabel: input.brief.statusLabel,
+      replanning,
     },
   }
 }
@@ -247,6 +258,10 @@ export function lessonCopilotProviderContext(context: LessonCopilotContext) {
       remainingPreparationCount: context.lesson.remainingPreparationCount,
       readyCount: context.lesson.readyCount,
       statusLabel: context.lesson.statusLabel,
+      replanning: {
+        resolution: context.lesson.replanning.resolution,
+        acceptedDecisionCount: context.lesson.replanning.decisions.length,
+      },
     },
     provenance: context.provenance.map((item) => ({
       ref: item.ref ?? null,
@@ -306,11 +321,12 @@ export function fallbackLessonCopilotResponse(
     const ready = context.lesson.readyTitles.length
       ? context.lesson.readyTitles.map((item) => `• ${item}`).join('\n')
       : '• Non risultano materiali già marcati come pronti nel brief corrente.'
+    const replanning = replanningSummary(context.lesson.replanning)
     return {
       actionKind: 'PROPOSE',
       answerStatus,
       evidenceRefs,
-      text: `**Per preparare questa lezione**\n${preparation}\n\n**Già pronto**\n${ready}\n\n**Indicazione**\nL’obiettivo è: ${context.lesson.objective}. Posso aiutarti a ridurre o adattare la preparazione, ma non modifico la progettazione senza una conferma separata.`,
+      text: `**Per preparare questa lezione**\n${preparation}\n\n**Già pronto**\n${ready}\n\n**Decisioni di riprogettazione accettate**\n${replanning}\n\n**Indicazione**\nL’obiettivo è: ${context.lesson.objective}. Posso aiutarti a ridurre o adattare la preparazione, ma non modifico la progettazione senza una conferma separata.`,
     }
   }
 
@@ -357,6 +373,35 @@ function curriculumAuthorityMessage(authority: LessonCurriculumAuthority) {
     return 'Rimodulazione transitoria ancora in ipotesi e non approvata'
   }
   return 'Autorità curricolare non pienamente confermata'
+}
+
+function replanningSummary(replanning: LessonReplanningProjection) {
+  if (replanning.resolution === 'BLOCKED') {
+    return '• Le decisioni accettate non sono disponibili perché il contesto canonico non coincide.'
+  }
+  if (!replanning.decisions.length) {
+    return '• Nessuna decisione di riprogettazione accettata per questo blocco.'
+  }
+  return replanning.decisions
+    .slice(0, 3)
+    .map((decision) => `• ${decision.title}: ${compact(decision.body, 280)}`)
+    .join('\n')
+}
+
+function cloneReplanning(replanning: LessonReplanningProjection): LessonReplanningProjection {
+  return {
+    resolution: replanning.resolution,
+    reasons: [...replanning.reasons],
+    decisions: replanning.decisions.map((decision) => ({
+      ...decision,
+      decisionHistory: decision.decisionHistory.map((item) => ({ ...item })),
+    })),
+  }
+}
+
+function compact(value: string, maxLength: number) {
+  const normalized = value.replace(/\s+/g, ' ').trim()
+  return normalized.length <= maxLength ? normalized : `${normalized.slice(0, maxLength - 1).trimEnd()}…`
 }
 
 function authorityLabel(authority: TeacherMoment['authority']) {
