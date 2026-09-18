@@ -246,6 +246,7 @@ export default function LessonMaterialsClient({
       ) : null}
     </main>
   )
+}
 
 function formatDecisionDate(value: string) {
   const date = new Date(value)
@@ -256,6 +257,4 @@ function formatDecisionDate(value: string) {
     year: 'numeric',
     timeZone: 'Europe/Rome',
   }).format(date)
-}
-
 }
