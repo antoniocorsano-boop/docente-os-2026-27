@@ -307,7 +307,7 @@ export function fallbackLessonCopilotResponse(
   prompt: string,
 ): TeacherCopilotResponse {
   const normalized = prompt.toLocaleLowerCase('it-IT')
-  const asksPreparation = /(prepar|serve|material|pronto|manca)/.test(normalized)
+  const asksPreparation = /(prepar|serve|material|pronto|manca|adatt|riprogett|occhio|attenzion)/.test(normalized)
   const asksReflection = /(andat|success|riflett|osserv|riprend|prossima)/.test(normalized)
   const evidenceRefs = context.provenance
     .map((item) => item.ref)
@@ -345,6 +345,28 @@ export function fallbackLessonCopilotResponse(
     answerStatus,
     evidenceRefs,
     text: `**Questa lezione**\n${context.lesson.title} · ${context.lesson.sectionLabel} · ${formatMinutes(context.lesson.durationMinutes)}.\n\n**Obiettivo**\n${context.lesson.objective}\n\n**Stato**\n${context.lesson.readyCount > 0 ? `${context.lesson.readyCount} risorse risultano già pronte.` : 'Il brief non segnala ancora risorse pronte.'} Posso spiegare, proporre una preparazione o aiutarti a riflettere senza modificare dati automaticamente.`,
+  }
+}
+
+export function appendLocalReplanningDecisions(
+  context: LessonCopilotContext,
+  response: TeacherCopilotResponse,
+  prompt: string,
+): TeacherCopilotResponse {
+  const replanning = context.lesson.replanning ?? emptyLessonReplanningProjection()
+  const normalized = prompt.toLocaleLowerCase('it-IT')
+  const relevant = /(prepar|material|pronto|manca|adatt|riprogett|occhio|attenzion|riprend)/.test(normalized)
+  if (!relevant || replanning.resolution !== 'SUPPORTED' || replanning.decisions.length === 0) return response
+  if (response.text.includes('**Decisioni di riprogettazione accettate**')) return response
+
+  const decisions = replanning.decisions
+    .slice(0, 3)
+    .map((decision) => `• ${decision.title}: ${compact(decision.body, 220)}`)
+    .join('\n')
+
+  return {
+    ...response,
+    text: `${response.text}\n\n**Decisioni di riprogettazione accettate**\n${decisions}\n\nQueste decisioni restano indicazioni governate: non modificano automaticamente Piano, UDA, sequenza o materiali.`,
   }
 }
 
