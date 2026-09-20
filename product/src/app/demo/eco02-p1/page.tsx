@@ -93,7 +93,7 @@ export default function Eco02P1DemoPage() {
                 <p className={styles.eyebrow}>Sequenza didattica</p>
                 <h2>Lezione da 60 minuti</h2>
               </div>
-              <Source>Arena</Source>
+              <Source source="Arena" />
             </div>
 
             <div className={styles.curriculumBox}>
@@ -162,14 +162,14 @@ export default function Eco02P1DemoPage() {
 
           <div className={styles.materialGrid}>
             <article>
-              <Source>Docente OS</Source>
+              <Source source="Docente OS" />
               <h3>Sintesi docente</h3>
               <p>Traccia per introdurre il sistema agricolo, guidare l’osservazione e accompagnare lo schema sul quaderno.</p>
               <small>Riferimento: CAN-PACK-2A</small>
             </article>
 
             <article>
-              <Source>Docente OS</Source>
+              <Source source="Docente OS" />
               <h3>Scheda alunno</h3>
               <p>Struttura guidata per riconoscere input, processo e output senza introdurre dati personali.</p>
               <small>Riferimento: Scheda 2A-1</small>
@@ -177,7 +177,7 @@ export default function Eco02P1DemoPage() {
 
             <article className={styles.atlasMaterial}>
               <div className={styles.cardHead}>
-                <Source>Atlas</Source>
+                <Source source="Atlas" />
                 <small>Proposta, non selezione automatica</small>
               </div>
               <h3>Supporto visuale: paesaggio agricolo</h3>
@@ -203,7 +203,7 @@ export default function Eco02P1DemoPage() {
             </article>
 
             <article className={styles.fullWidth}>
-              <Source>Docente OS</Source>
+              <Source source="Docente OS" />
               <h3>Verifica finale</h3>
               <p>Mappa input → processo → output e frase conclusiva: “Un sistema agricolo funziona perché…”.</p>
             </article>
