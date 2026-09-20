@@ -91,11 +91,11 @@ Public return-context rule:
 - class, section, lesson, UDA and full private task context remain in Docente OS and are restored locally.
 
 Drive pin used for this review:
-- ECO-00 Masterplan v0.2 — revision 5;
-- ECO-00 Product & Assurance Process v0.2 — revision 4;
+- ECO-00 Masterplan v0.2 — revision 6;
+- ECO-00 Product & Assurance Process v0.2 — revision 5;
 - verified 2026-09-20.
 
-The pinned Drive canonical documents prevail on semantic conflict until a coordinated explicit revision updates repository documents.
+For ownership, authority, cross-system handoff and execution order, `CML-DOS-INTEGRATED-GOVERNANCE-V1` remains authoritative. Semantic divergence is a blocker pending an explicit mirrored governance amendment.
 
 
 ## Interoperability authorization rule
