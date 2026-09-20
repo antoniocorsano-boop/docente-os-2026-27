@@ -3,7 +3,7 @@
 Status: CANONICAL_SHARED_MEMORY
 Scope: CurManLight Arena + Docente OS
 Date: 2026-08-29
-Amended: 2026-09-18 — Dual-system completion and maturation reset
+Amended: 2026-09-20 — Arena M4 promotion-candidate reconciliation
 Memory ID: CML-DOS-INTEGRATED-GOVERNANCE-V1
 
 ## 1. Purpose
@@ -153,11 +153,11 @@ The integrated project must advance in this order unless this memory is explicit
 - ARENA-S0 authority/baseline audit — completed with follow-ups.
 - ARENA-S1 curriculum runtime consolidation — complete.
 - ARENA-S2 product-surface rationalization — complete.
-- ARENA-S3 human validation closure — **still the active Arena gate**.
-  - S3A validation contract/release binding — complete and integrated.
-  - S3B critical desktop/mobile browser evidence — automated evidence is complete on the evolved candidate `a64560202567f67eac5fd6ecaad30c6062199c0f` in PR #222.
-  - S3C immutable Beta deploy + actual human acceptance — **pending for the evolved candidate**. The candidate is not promoted merely because its automatic gates are green.
-- ARENA-S4 bidirectional interoperability stabilization — blocked until S3 closes.
+- ARENA-S3 human validation closure — **complete for the governed S3 release chain**.
+- Arena M4 closure sequence M4-S1 through M4-S7 — implementation and exact-head automation complete.
+- Final M4 promotion candidate: `a315aa72ce68a52da7d4d960996b6470774104b0`, published immutably with public smoke identity PASS and mobile human review PASS.
+- **Final M4 promotion remains pending same-candidate desktop human review required by `BETA_G5_HUMAN_ACCEPTANCE_PROTOCOL_v2.md`.** Until that desktop review is completed and recorded, the effective formal classification remains M3.3 / M4 promotion candidate; `ARENA_M4_CONTROLLED_PRODUCTION_PILOT` is not yet effective.
+- ARENA-S4 or any new cross-system feature phase is not automatically authorized by the M4 candidate. Controlled-pilot stabilization/maintenance is the intended next state only after final M4 promotion; cross-system expansion still requires an explicit governance decision.
 
 ### Docente OS stabilization and Teacher OS V1
 
@@ -187,7 +187,7 @@ The integrated project is now explicitly in **completion and maturation mode**.
 
 - Docente OS H8 lifecycle governance and H9-A governed replanning consumption are complete.
 - Docente OS must prefer release-candidate freeze, sustained teacher pilot evidence and maturity closure over another broad feature train.
-- Arena must prefer S3 immutable deploy + actual human acceptance and G5/G6 closure over further product expansion.
+- Arena must complete the same-candidate desktop human acceptance for the final M4 candidate before formal controlled-production-pilot promotion; further product expansion remains deferred.
 - New capabilities in either product default to `DEFERRED` unless classified `MATURITY_REQUIRED`, `PILOT_REQUIRED` or `PROFESSIONAL_GAP_CONFIRMED`.
 - The canonical completion checkpoint is `docs/architecture/DUAL_SYSTEM_CANONICAL_RESET_2026-09-18.md`.
 - This reset does not authorize Arena S4 early, does not weaken exact-head certification and does not change the product ownership or authority boundary.
@@ -203,14 +203,16 @@ No AILit runtime, UI, database, dedicated store or authority implementation is a
 ### CurManLight Arena
 
 Repository: `antoniocorsano-boop/CurManLight_arena`  
-Canonical integrated baseline at this amendment: `main@dd46122cc0038c3e5de3fe8714e14e25b895bc18`
+Canonical integrated baseline at this amendment: `main@9bc3bb3f57b4c6bc17453fce044d478a0994976a`
 
-Current evolved S3 candidate:
-- PR: `#222`;
-- head: `a64560202567f67eac5fd6ecaad30c6062199c0f`;
+Current M4 promotion candidate:
+- source candidate: `a315aa72ce68a52da7d4d960996b6470774104b0`;
+- M4-S7 merged to main in PR #290 as `9bc3bb3f57b4c6bc17453fce044d478a0994976a`;
 - automatic exact-head gates: PASS;
-- immutable deploy + actual human G5/G6 acceptance for this exact evolved candidate: pending;
-- status: candidate evidence, not yet a promoted Arena M4 baseline.
+- immutable Beta deployment and public smoke identity: PASS;
+- mobile human review: PASS;
+- same-candidate desktop human review: PENDING;
+- effective formal status: M3.3 / M4 promotion candidate until desktop HVA is completed.
 
 ### Docente OS
 
