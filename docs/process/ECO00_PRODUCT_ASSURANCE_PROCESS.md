@@ -91,7 +91,7 @@ Public return-context rule:
 - class, section, lesson, UDA and full private task context remain in Docente OS and are restored locally.
 
 Drive pin used for this review:
-- ECO-00 Masterplan v0.2 — revision 4;
+- ECO-00 Masterplan v0.2 — revision 5;
 - ECO-00 Product & Assurance Process v0.2 — revision 4;
 - verified 2026-09-20.
 
