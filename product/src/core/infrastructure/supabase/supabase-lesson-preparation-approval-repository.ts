@@ -1,8 +1,17 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
-import type {
-  LessonPreparationApprovalSnapshot,
-  LessonPreparationContext,
+import 'server-only'
+
+import type { AnnualPlanCurriculumBaselineSnapshot } from '@/core/domain/cml-curriculum-revalidation'
+import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
+import type { HumanTaskLessonProjection } from '@/core/presentation/human-task-content'
+import {
+  buildLessonPreparationApprovalSnapshot,
+  curriculumBaselineFingerprint,
+  isCurriculumBaselineReadyForLessonApproval,
+  lessonPreparationFingerprint,
+  type LessonPreparationApprovalSnapshot,
+  type LessonPreparationContext,
 } from '@/core/application/lesson-preparation-approval'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
 export type LessonPreparationApprovalReceipt = {
@@ -39,44 +48,12 @@ type Row = {
   approved_at: string
 }
 
-type Database = {
-  public: {
-    Tables: {
-      lesson_preparation_approvals: {
-        Row: Row
-        Insert: never
-        Update: never
-        Relationships: []
-      }
-    }
-    Views: Record<string, never>
-    Functions: {
-      approve_lesson_preparation: {
-        Args: {
-          target_workspace_id: string
-          target_academic_year_id: string
-          target_section_id: string
-          target_canonical_plan_asset_id: string
-          target_canonical_generation_id: string
-          target_block_id: string
-          target_projection_id: string
-          target_curriculum_source_handoff_footprint_hash: string
-          target_curriculum_baseline_fingerprint: string
-          target_preparation_fingerprint: string
-          target_snapshot: LessonPreparationApprovalSnapshot
-        }
-        Returns: unknown
-      }
-    }
-    Enums: Record<string, never>
-    CompositeTypes: Record<string, never>
-  }
-}
-
 export class SupabaseLessonPreparationApprovalRepository {
   async latest(context: LessonPreparationContext): Promise<LessonPreparationApprovalReceipt | null> {
-    const supabase = await client()
-    await requireAuthenticated(supabase)
+    const supabase = await createClient()
+    const { data: claims, error: claimsError } = await supabase.auth.getClaims()
+    if (claimsError || !claims?.claims?.sub) throw new Error('Authenticated user required')
+
     const { data, error } = await supabase
       .from('lesson_preparation_approvals')
       .select('*')
@@ -92,48 +69,152 @@ export class SupabaseLessonPreparationApprovalRepository {
       .maybeSingle()
 
     if (error) throw new Error(error.message)
-    return data ? toReceipt(data) : null
+    return data ? toReceipt(data as unknown as Row) : null
   }
 
   async approve(input: {
     context: LessonPreparationContext
-    curriculumSourceHandoffFootprintHash: string
-    curriculumBaselineFingerprint: string
-    preparationFingerprint: string
-    snapshot: LessonPreparationApprovalSnapshot
+    curriculumBaseline: AnnualPlanCurriculumBaselineSnapshot
+    projection: HumanTaskLessonProjection
+    extensions: LessonDesignExtension[]
+    approvedBy: string
   }): Promise<LessonPreparationApprovalReceipt> {
-    const supabase = await client()
-    await requireAuthenticated(supabase)
-    const { data, error } = await supabase.rpc('approve_lesson_preparation', {
-      target_workspace_id: input.context.workspaceId,
-      target_academic_year_id: input.context.academicYearId,
-      target_section_id: input.context.sectionId,
-      target_canonical_plan_asset_id: input.context.canonicalPlanAssetId,
-      target_canonical_generation_id: input.context.canonicalGenerationId,
-      target_block_id: input.context.blockId,
-      target_projection_id: input.context.projectionId,
-      target_curriculum_source_handoff_footprint_hash: input.curriculumSourceHandoffFootprintHash,
-      target_curriculum_baseline_fingerprint: input.curriculumBaselineFingerprint,
-      target_preparation_fingerprint: input.preparationFingerprint,
-      target_snapshot: input.snapshot,
+    if (!isCurriculumBaselineReadyForLessonApproval(input.curriculumBaseline)) {
+      throw new Error('Current Arena curriculum baseline is not ready for lesson approval')
+    }
+
+    const snapshot = buildLessonPreparationApprovalSnapshot({
+      context: input.context,
+      curriculumBaseline: input.curriculumBaseline,
+      projection: input.projection,
+      extensions: input.extensions,
     })
-    if (error) throw new Error(error.message)
-    return toReceipt(data)
+    const baselineFingerprint = curriculumBaselineFingerprint(input.curriculumBaseline)
+    const preparationFingerprint = lessonPreparationFingerprint(snapshot)
+    const admin = createAdminClient()
+
+    const { data: membership, error: membershipError } = await admin
+      .from('workspace_memberships')
+      .select('workspace_id,user_id')
+      .eq('workspace_id', input.context.workspaceId)
+      .eq('user_id', input.approvedBy)
+      .maybeSingle()
+    if (membershipError) throw new Error(membershipError.message)
+    if (!membership) throw new Error('Approving teacher is not a member of the active workspace')
+
+    const { data: section, error: sectionError } = await admin
+      .from('annual_plan_sections')
+      .select('id')
+      .eq('id', input.context.sectionId)
+      .eq('workspace_id', input.context.workspaceId)
+      .eq('academic_year_id', input.context.academicYearId)
+      .maybeSingle()
+    if (sectionError) throw new Error(sectionError.message)
+    if (!section) throw new Error('Lesson preparation section is outside the active workspace/year')
+
+    const { data: asset, error: assetError } = await admin
+      .from('knowledge_assets')
+      .select('id,workspace_id,academic_year_id')
+      .eq('id', input.context.canonicalPlanAssetId)
+      .maybeSingle()
+    if (assetError) throw new Error(assetError.message)
+    if (!asset
+      || asset.workspace_id !== input.context.workspaceId
+      || (asset.academic_year_id && asset.academic_year_id !== input.context.academicYearId)) {
+      throw new Error('Lesson preparation canonical plan asset is outside context')
+    }
+
+    const { data: generation, error: generationError } = await admin
+      .from('knowledge_processing_generations')
+      .select('id,asset_id,workspace_id,status')
+      .eq('id', input.context.canonicalGenerationId)
+      .maybeSingle()
+    if (generationError) throw new Error(generationError.message)
+    if (!generation
+      || generation.status !== 'SUCCEEDED'
+      || generation.asset_id !== input.context.canonicalPlanAssetId
+      || generation.workspace_id !== input.context.workspaceId) {
+      throw new Error('Lesson preparation canonical generation is not current and successful')
+    }
+
+    const { data: currentCurriculum, error: curriculumError } = await admin
+      .from('annual_plan_curriculum_adoptions')
+      .select('source_handoff_footprint_hash,curriculum_state,alignment_authority,requires_revalidation_on_approval,curriculum_coverage,curricular_context')
+      .eq('section_id', input.context.sectionId)
+      .eq('discipline_ref', 'technology')
+      .order('accepted_at', { ascending: false })
+      .order('applied_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (curriculumError) throw new Error(curriculumError.message)
+    if (!currentCurriculum) throw new Error('Current Arena curriculum baseline is required before lesson approval')
+    if (currentCurriculum.source_handoff_footprint_hash !== input.curriculumBaseline.sourceHandoffFootprintHash) {
+      throw new Error('Arena curriculum baseline changed; reload and revalidate before approval')
+    }
+    if (currentCurriculum.curriculum_state !== 'APPROVED'
+      || currentCurriculum.alignment_authority !== 'APPROVED_INSTITUTIONAL'
+      || currentCurriculum.requires_revalidation_on_approval !== false
+      || !isPlanningComplete(currentCurriculum.curricular_context)
+      || !isCoverageSatisfied(currentCurriculum.curriculum_coverage)) {
+      throw new Error('Current Arena curriculum baseline requires approval or teacher revalidation before lesson approval')
+    }
+
+    const row = {
+      workspace_id: input.context.workspaceId,
+      academic_year_id: input.context.academicYearId,
+      section_id: input.context.sectionId,
+      canonical_plan_asset_id: input.context.canonicalPlanAssetId,
+      canonical_generation_id: input.context.canonicalGenerationId,
+      block_id: input.context.blockId,
+      projection_id: input.context.projectionId,
+      curriculum_source_handoff_footprint_hash: input.curriculumBaseline.sourceHandoffFootprintHash,
+      curriculum_baseline_fingerprint: baselineFingerprint,
+      preparation_fingerprint: preparationFingerprint,
+      snapshot,
+      approved_by: input.approvedBy,
+    }
+
+    const { data: inserted, error: insertError } = await admin
+      .from('lesson_preparation_approvals')
+      .insert(row)
+      .select('*')
+      .maybeSingle()
+
+    if (!insertError && inserted) return toReceipt(inserted as unknown as Row)
+    if (insertError && insertError.code !== '23505') throw new Error(insertError.message)
+
+    const { data: existing, error: existingError } = await admin
+      .from('lesson_preparation_approvals')
+      .select('*')
+      .eq('workspace_id', input.context.workspaceId)
+      .eq('academic_year_id', input.context.academicYearId)
+      .eq('section_id', input.context.sectionId)
+      .eq('canonical_generation_id', input.context.canonicalGenerationId)
+      .eq('block_id', input.context.blockId)
+      .eq('projection_id', input.context.projectionId)
+      .eq('preparation_fingerprint', preparationFingerprint)
+      .maybeSingle()
+    if (existingError) throw new Error(existingError.message)
+    if (!existing) throw new Error('Lesson preparation approval receipt was not persisted')
+
+    const receipt = toReceipt(existing as unknown as Row)
+    if (receipt.curriculumBaselineFingerprint !== baselineFingerprint
+      || receipt.curriculumSourceHandoffFootprintHash !== input.curriculumBaseline.sourceHandoffFootprintHash) {
+      throw new Error('Idempotency conflict for lesson preparation approval')
+    }
+    return receipt
   }
 }
 
-async function client() {
-  return (await createClient()) as unknown as SupabaseClient<Database>
+function isPlanningComplete(value: unknown) {
+  return Boolean(value && typeof value === 'object' && (value as { completeForPlanning?: unknown }).completeForPlanning === true)
 }
 
-async function requireAuthenticated(supabase: SupabaseClient<Database>) {
-  const { data, error } = await supabase.auth.getClaims()
-  if (error || !data?.claims?.sub) throw new Error('Authenticated user required')
+function isCoverageSatisfied(value: unknown) {
+  return Boolean(value && typeof value === 'object' && (value as { status?: unknown }).status === 'SATISFIED')
 }
 
-function toReceipt(value: unknown): LessonPreparationApprovalReceipt {
-  if (!value || typeof value !== 'object') throw new Error('Invalid lesson preparation approval receipt')
-  const row = value as Row
+function toReceipt(row: Row): LessonPreparationApprovalReceipt {
   if (!row.id || !row.preparation_fingerprint || !row.approved_by || !row.approved_at) {
     throw new Error('Invalid lesson preparation approval receipt')
   }
