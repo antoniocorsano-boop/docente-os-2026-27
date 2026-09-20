@@ -1,24 +1,48 @@
 {
   "program": "ECO-02",
   "pilot": "P1",
-  "status": "PREPARED_FOR_HUMAN_REVIEW",
+  "status": "PREPARATION_TRIAL_PARTIAL_EVIDENCE",
+  "recordedAt": "2026-09-20",
   "dosA1": "RUNTIME_DEFERRED",
   "lesson": {
     "discipline": "Tecnologia",
     "classRef": "2C",
     "title": "Agricoltura come sistema tecnologico",
-    "plannedMinutes": 120,
+    "originalPlannedMinutes": 120,
+    "teacherConfirmedMinutes": 60,
     "date": null,
     "timetableRef": null
   },
   "nextLessonPreparation": {
-    "state": "AWAITING_TEACHER_DECISION",
+    "state": "AWAITING_RESOURCE_SELECTION_AND_REVALIDATION",
     "teacherMay": [
       "MODIFY",
       "EXCLUDE",
       "REPLACE",
       "ADAPT",
       "PUBLISH_OR_WITHHOLD"
+    ],
+    "adaptedSequence": [
+      {
+        "label": "Osservazione di un paesaggio agricolo",
+        "minutes": 10
+      },
+      {
+        "label": "Riconoscimento delle componenti del sistema",
+        "minutes": 15
+      },
+      {
+        "label": "Schema input → processo → output sul quaderno",
+        "minutes": 20
+      },
+      {
+        "label": "Confronto tra elaborati",
+        "minutes": 10
+      },
+      {
+        "label": "Verifica finale: Un sistema agricolo funziona perché…",
+        "minutes": 5
+      }
     ]
   },
   "curriculum": {
@@ -48,26 +72,55 @@
       "source": "CURRICULUM_ATLAS",
       "ref": null,
       "status": "PROPOSED_SELECTION_REQUIRED",
-      "teacherDecision": null
+      "teacherDecision": "USE_AFTER_TEACHER_SELECTION",
+      "selectionCriteria": [
+        "campi",
+        "acqua o irrigazione",
+        "viabilità",
+        "edifici",
+        "mezzi tecnici"
+      ]
     },
     {
       "role": "ASSESSMENT_PROMPT",
       "source": "DOCENTE_OS",
-      "ref": "Mappa input-processo-output e restituzione orale",
-      "status": "DRAFT",
+      "ref": "Mappa input-processo-output e frase finale",
+      "status": "ADAPTED_PROPOSAL",
       "teacherDecision": null
     }
   ],
+  "teacherDecisions": [
+    {
+      "decision": "ADAPT_DURATION",
+      "fromMinutes": 120,
+      "toMinutes": 60
+    },
+    {
+      "decision": "KEEP_ATLAS_VISUAL_AS_PROPOSAL",
+      "finalResourceSelected": false
+    }
+  ],
   "evidence": {
-    "preparationMinutesBefore": null,
-    "preparationMinutesAfter": null,
-    "flowComprehensibility1to5": null,
+    "trialType": "TEACHER_PREPARATION_SIMULATION",
+    "classroomExecution": false,
+    "preparationTimeSaving": {
+      "range": ">15_MINUTES",
+      "exactMinutes": null
+    },
+    "flowComprehensibility1to5": 5,
     "provenanceVisible": null,
-    "teacherOverrideCount": null,
-    "pedagogicalControl1to5": null,
+    "teacherOverrideCount": 2,
+    "pedagogicalControl1to5": 5,
     "revalidationResult": null,
-    "teacherVerdict": null
+    "teacherVerdict": "POSITIVE_PARTIAL"
   },
+  "pending": [
+    "SELECT_ATLAS_VISUAL_RESOURCE",
+    "MATERIALIZE_CURRICULUM_FINGERPRINT",
+    "RUN_CONTROLLED_REVALIDATION_TEST",
+    "BIND_REAL_DATE_AND_TIMETABLE",
+    "CONFIRM_CLASSROOM_EXECUTION"
+  ],
   "privacy": {
     "pupilPersonalData": false
   },
