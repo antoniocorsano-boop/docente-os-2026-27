@@ -126,13 +126,16 @@ State mapping:
 - generated/unreviewed asset → `PROPOSED` or `NEEDS_REVIEW`;
 - required but unavailable → `MISSING`.
 
-Every Atlas-backed slot must keep:
+Every Atlas-backed slot must keep, through canonical slot provenance and resource refs:
 
 - LO id/version;
 - asset id/version;
 - source URL/ref;
-- lifecycle/assurance state;
+- lifecycle state;
+- assurance state;
 - provenance.
+
+The slot status (`READY | PROPOSED | NEEDS_REVIEW | MISSING`) is not a replacement for Atlas lifecycle or assurance; those remain separately represented in provenance.
 
 There is no Atlas-only materials list outside the canonical manifest.
 
@@ -148,11 +151,17 @@ There is no Atlas-only materials list outside the canonical manifest.
 - snapshot source cannot be distinguished from Atlas;
 - an Atlas resource attempts to supply curriculum authority.
 
+### DRAFT
+
+- at least one required material slot is `MISSING`;
+- required lesson preparation information is absent.
+
+This matches the current canonical `LessonPreparationManifest` builder, which treats missing required material as incomplete rather than merely awaiting review.
+
 ### PARTIAL / REVIEW_REQUIRED
 
 - fingerprint changed at same curriculum version;
 - provisional curriculum is usable for planning but requires revalidation;
-- required material is missing;
 - Atlas resource exists but is not human-reviewed/accepted;
 - existing teacher objective differs from incoming authoritative requirement and needs explicit reconciliation.
 
