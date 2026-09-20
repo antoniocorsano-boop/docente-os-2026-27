@@ -1,6 +1,7 @@
 import type { AnnualPlanGrade } from './annual-plan-execution'
 import type { CmlCanonicalRef } from './cml-local-handoff'
 import type { TransitionAwareAnnualPlanApplyCommand } from './cml-curriculum-applicability'
+import { bindArenaDisciplineRefToDocenteOs } from './cml-discipline-binding'
 
 export type AnnualPlanCurriculumPersistenceSection = {
   sectionId: string
@@ -114,7 +115,7 @@ export function prepareAnnualPlanCurriculumPersistence(input: {
     sectionId: section.sectionId,
     curricularContextId: command.curricularContext.contextId,
     schoolYearRef: command.curricularContext.schoolYearRef,
-    disciplineRef: command.curricularContext.disciplineRef,
+    disciplineRef: bindArenaDisciplineRefToDocenteOs(command.curricularContext.disciplineRef),
     gradeRef: command.curricularContext.gradeRef,
     sectionRef: command.curricularContext.sectionRef ?? null,
     cohortRef: command.curricularContext.cohortRef ?? null,
