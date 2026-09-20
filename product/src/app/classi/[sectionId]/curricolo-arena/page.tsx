@@ -5,6 +5,7 @@ import { SupabaseAnnualPlanCurriculumRepository } from '@/core/infrastructure/su
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
+import { eco02PilotIdentityFromEnv } from '@/core/server/eco02-pilot-config'
 import { CurriculumArenaIntakeClient } from './curriculum-arena-intake-client'
 import '../../classi.css'
 import '../../class-workspace-operational.css'
@@ -30,7 +31,13 @@ export default async function CurriculumArenaPage({
   )
   const section = snapshot.sections.find((candidate) => candidate.id === sectionId)
   if (!section) notFound()
-  if (!isEco02PilotClass({ grade: section.grade, sectionCode: section.sectionCode })) notFound()
+  if (!isEco02PilotClass({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    sectionId: section.id,
+    grade: section.grade,
+    sectionCode: section.sectionCode,
+  }, eco02PilotIdentityFromEnv())) notFound()
 
   const curriculumRepository = new SupabaseAnnualPlanCurriculumRepository()
   const baseline = await curriculumRepository.currentBaseline({
