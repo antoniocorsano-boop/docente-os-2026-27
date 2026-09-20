@@ -56,7 +56,7 @@ export type LessonPreparationApprovalSnapshot = {
 
 export function isCurriculumBaselineReadyForLessonApproval(
   baseline: AnnualPlanCurriculumBaselineSnapshot | null,
-) {
+): baseline is AnnualPlanCurriculumBaselineSnapshot {
   return Boolean(
     baseline
     && baseline.curriculumState === 'APPROVED'
