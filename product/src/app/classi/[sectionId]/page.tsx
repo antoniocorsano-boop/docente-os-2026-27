@@ -4,7 +4,7 @@ import { AppShell } from '@/components/app-shell/app-shell'
 import { LessonExperienceFeedback } from '@/components/experience-feedback/experience-feedback'
 import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
 import { allocatedMinutesByBlock, completionProposal, currentTeachingSessions } from '@/core/domain/teaching-session'
-import { isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
+import { bindArenaDisciplineRefToDocenteOs, isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
@@ -67,15 +67,16 @@ export default async function ClassWorkspacePage({
   const section = snapshot.sections.find((item) => item.id === sectionId)
   if (!section) notFound()
 
-  const showArenaPilotIntake = isEco02PilotClass({
-    grade: section.grade,
-    sectionCode: section.sectionCode,
-  })
-
   const grade = GRADE_UI[section.grade]
   const blocks = buildBlocks(grade)
   const source = CANONICAL_PLAN_SOURCES[grade]
   const summary = buildClassWorkspaceSummary(section, assignments, disciplines, snapshot.progress)
+  const showArenaPilotIntake = isEco02PilotClass({
+    grade: section.grade,
+    sectionCode: section.sectionCode,
+  }) && summary.assignments.some(
+    (assignment) => bindArenaDisciplineRefToDocenteOs(assignment.discipline) === 'technology',
+  )
   const learningFocus = buildClassWorkspaceLearningFocus(section, snapshot.progress, knowledgeItems)
   const preparedMaterials = selectPreparedClassMaterials(section, knowledgeItems, today)
   const currentSessions = currentTeachingSessions(teachingSnapshot)
