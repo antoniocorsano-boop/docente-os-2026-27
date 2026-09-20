@@ -70,6 +70,8 @@ export function isCurriculumBaselineReadyForLessonApproval(
     && baseline.alignmentAuthority === 'APPROVED_INSTITUTIONAL'
     && baseline.requiresRevalidationOnApproval === false
 
+  // Teacher authority is limited to the lesson preparation: this does not promote
+  // a provisional Arena curriculum to institutional approval.
   const provisionalPlanningBaseline = baseline.curriculumState === 'PROVISIONAL_COMPLETE'
     && baseline.alignmentAuthority === 'PROVISIONAL_BASELINE'
     && baseline.requiresRevalidationOnApproval === true
