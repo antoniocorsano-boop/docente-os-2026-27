@@ -170,7 +170,7 @@ When an Atlas LO is relevant to the selected grade/focus:
 - retain `LO_ID` and `APP_ID`;
 - expose primary pattern as provenance/structure metadata, not competing content;
 - open the canonical asset;
-- preserve grade/section/block/UDA return context.
+- preserve grade/section/block/UDA context locally; public navigation carries only necessary publishable ids and/or an opaque return token.
 
 No UDA or material clone is required unless a genuine local adaptation is created.
 
@@ -308,7 +308,7 @@ Closure evidence:
 
 ## Canonical Drive pin
 
-- ECO-00 Masterplan **v0.2**, Drive revision **4**, verified 2026-09-20.
+- ECO-00 Masterplan **v0.2**, Drive revision **5**, verified 2026-09-20.
 - ECO-00 Product & Assurance Process **v0.2**, Drive revision **4**, verified 2026-09-20.
 - On semantic divergence, the pinned Drive canonical documents prevail until an explicit coordinated revision.
 
