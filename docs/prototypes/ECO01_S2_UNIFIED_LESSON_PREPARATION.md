@@ -25,6 +25,8 @@ La lezione è coerente con il curricolo di **Tecnologia — classe prima** e con
 **Fonte curricolare:** CurManLight Arena  
 **Riferimento:** Indicazioni 2025 / N4
 
+> Il curricolo è autorevole in Arena. In questo prototipo non viene acquisito o confermato automaticamente in Docente OS.
+
 ---
 
 ## Come posso svolgere la lezione
@@ -130,7 +132,8 @@ Questa sezione serve solo se voglio controllare la provenienza tecnica dei mater
 **Impronta di controllo:** `616de781`  
 **Contratto curricolare:** `CurriculumSnapshot v1`  
 **Revisione umana del curricolo:** `HUMAN_REVIEWED`  
-**Evidenza decisionale:** `decision-tech-grade1-2026-27`
+**Evidenza decisionale:** `decision-tech-grade1-2026-27`  
+**Stato di acquisizione in Docente OS:** `AWAITING_TEACHER_DECISION` — da confermare nel contesto Docente OS
 
 **Risorsa Atlas:** `TEC-SYS-001@0.2`  
 **Asset:** `visual-system-map@1`  
