@@ -6,10 +6,12 @@ import { redirect } from 'next/navigation'
 import { SupabaseAnnualPlanCurriculumRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-curriculum-repository'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { bindCurriculumContextAndCoverage } from '@/core/domain/cml-curriculum-applicability'
 import {
-  bindCurriculumContextAndCoverage,
-  type AnnualPlanTargetScope,
-} from '@/core/domain/cml-curriculum-applicability'
+  assertEco02PilotCurriculumIntakeScope,
+  buildArenaCurriculumTargetScope,
+  ECO02_PILOT_UPLOAD_MAX_BYTES,
+} from '@/core/domain/cml-discipline-binding'
 import {
   buildAnnualPlanFrameworkReviewDraftV2,
   prepareAnnualPlanFrameworkApplyV2,
@@ -36,6 +38,9 @@ export async function acceptArenaCurriculumHandoff(
   if (!sectionId || !handoffJson) {
     return { status: 'error', message: 'Seleziona un passaggio Arena valido prima di confermare.' }
   }
+  if (Buffer.byteLength(handoffJson, 'utf8') > ECO02_PILOT_UPLOAD_MAX_BYTES) {
+    return { status: 'error', message: 'Il passaggio Arena supera il limite del pilota. Esporta di nuovo il file da Arena.' }
+  }
 
   let destination: string | null = null
 
@@ -52,6 +57,19 @@ export async function acceptArenaCurriculumHandoff(
     const section = snapshot.sections.find((candidate) => candidate.id === sectionId)
     if (!section) return { status: 'error', message: 'La classe non appartiene al workspace/anno scolastico corrente.' }
 
+    assertEco02PilotCurriculumIntakeScope({
+      grade: section.grade,
+      sectionCode: section.sectionCode,
+      disciplineRef: handoff.curricularContext.disciplineRef,
+    })
+
+    if (handoff.curricularContext.curriculumState === 'APPROVED') {
+      return {
+        status: 'error',
+        message: 'Un file locale non può attestare un’approvazione istituzionale. La rivalidazione definitiva richiede un segnale Arena verificabile lato server.',
+      }
+    }
+
     const expectedYear = normalizeSchoolYear(context.academicYear.label)
     if (handoff.curricularContext.schoolYearRef !== expectedYear) {
       return {
@@ -60,11 +78,13 @@ export async function acceptArenaCurriculumHandoff(
       }
     }
 
-    const targetScope: AnnualPlanTargetScope = {
-      schoolYearRef: handoff.curricularContext.schoolYearRef,
-      disciplineRef: handoff.curricularContext.disciplineRef,
-      gradeRef: gradeRef(section.grade),
-      sectionRef: compactSectionRef(section.grade, section.sectionCode),
+    const localSectionRef = compactSectionRef(section.grade, section.sectionCode)
+    const targetScope = buildArenaCurriculumTargetScope({
+      context: handoff.curricularContext,
+      localSectionRef,
+    })
+    if (targetScope.gradeRef !== gradeRef(section.grade)) {
+      return { status: 'error', message: 'Il passaggio Arena non corrisponde al grado di questa classe.' }
     }
 
     const repository = new SupabaseAnnualPlanCurriculumRepository()
@@ -81,7 +101,7 @@ export async function acceptArenaCurriculumHandoff(
     } else if (current) {
       return {
         status: 'error',
-        message: 'Questa classe ha già una baseline Arena diversa. Il nuovo passaggio richiede la rivalidazione curricolare, non un nuovo import iniziale.',
+        message: 'Questa classe ha già una baseline Arena diversa. Questo caricamento locale non sostituisce la baseline corrente: serve il percorso di rivalidazione governata.',
       }
     }
 
@@ -152,6 +172,8 @@ function curriculumIntakeMessage(error: unknown) {
   if (/structural footprint mismatch/i.test(message)) return 'Il file Arena è stato modificato dopo l’esportazione: scaricalo di nuovo da Arena.'
   if (/does not match annual-plan target scope|sectionRef mismatch|grade does not match/i.test(message)) return 'Il passaggio Arena non corrisponde a questa classe.'
   if (/does not satisfy mandatory curricular requirements/i.test(message)) return 'La baseline non copre ancora tutti i requisiti curricolari obbligatori: rivedila prima di accettarla.'
+  if (/ECO-02 curriculum intake is limited/i.test(message)) return 'Il collegamento Arena è attivo soltanto per il pilota Tecnologia 2C.'
+  if (/ECO-02 curriculum intake accepts only Technology/i.test(message)) return 'Il pilota accetta esclusivamente il passaggio di Tecnologia.'
   if (/workspace membership required|authenticated user required/i.test(message)) return 'La conferma richiede un docente autenticato nel workspace corrente.'
   return message
 }
