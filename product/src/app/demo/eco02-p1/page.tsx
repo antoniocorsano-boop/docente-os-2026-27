@@ -20,8 +20,8 @@ const sourceClass = {
   "Docente OS": styles.dos,
 } as const
 
-function Source({ children }: { children: keyof typeof sourceClass }) {
-  return <span className={`${styles.source} ${sourceClass[children]}`}>Origine: {children}</span>
+function Source({ source }: { source: keyof typeof sourceClass }) {
+  return <span className={`${styles.source} ${sourceClass[source]}`}>Origine: {source}</span>
 }
 
 export default function Eco02P1DemoPage() {
