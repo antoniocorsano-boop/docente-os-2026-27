@@ -5,6 +5,7 @@ import { LessonExperienceFeedback } from '@/components/experience-feedback/exper
 import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
 import { allocatedMinutesByBlock, completionProposal, currentTeachingSessions } from '@/core/domain/teaching-session'
 import { bindArenaDisciplineRefToDocenteOs, isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
+import { eco02PilotIdentityFromEnv } from '@/core/server/eco02-pilot-config'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
@@ -72,9 +73,12 @@ export default async function ClassWorkspacePage({
   const source = CANONICAL_PLAN_SOURCES[grade]
   const summary = buildClassWorkspaceSummary(section, assignments, disciplines, snapshot.progress)
   const showArenaPilotIntake = isEco02PilotClass({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    sectionId: section.id,
     grade: section.grade,
     sectionCode: section.sectionCode,
-  }) && summary.assignments.some(
+  }, eco02PilotIdentityFromEnv()) && summary.assignments.some(
     (assignment) => bindArenaDisciplineRefToDocenteOs(assignment.discipline) === 'technology',
   )
   const learningFocus = buildClassWorkspaceLearningFocus(section, snapshot.progress, knowledgeItems)
