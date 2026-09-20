@@ -1,7 +1,7 @@
 # DOS-A1 — Atlas Learning Object runtime experience contract
 
 Status: PRODUCT_CONTRACT_DRAFT  
-Date: 2026-09-19  
+Date: 2026-09-20  
 Supersedes: ATLAS-04 contract PR #542 after consolidation  
 Cross-product program: ECO-00
 
@@ -17,11 +17,14 @@ A teacher can consume Curriculum Atlas Learning Objects from the current Docente
 | --- | --- |
 | Curriculum baseline, applicability, institutional decision | CurManLight Arena |
 | Curriculum semantic projection and public navigation | Curriculum Atlas |
-| Learning Object identity/lifecycle | Curriculum Atlas Visual Library |
+| Learning Object identity/lifecycle | Curriculum Atlas |
+| LearningObjectManifest v1 + asset references | Curriculum Atlas |
 | Visual pattern identity/application | Curriculum Atlas Pattern Library / ATLAS-04C |
-| Canonical material files | Atlas Visual Library / declared Drive source |
+| Canonical material bytes | Source declared by the Atlas manifest, including Drive when declared |
+| Temporary print/projection derivative | Docente OS, disposable |
+| Stable teacher adaptation | Docente OS local data; not a new Atlas source |
 | Lesson context, class adaptation and actual use | Docente OS |
-| Classroom validation evidence | Teacher via Docente OS, exported only as minimized TeachingUseReceipt |
+| Classroom validation evidence | Teacher via Docente OS; future export only as minimized TeachingUseReceipt v1 |
 
 Docente OS MUST NOT silently copy an Atlas Learning Object into a new canonical record and MUST NOT promote Atlas lifecycle state.
 
@@ -35,6 +38,14 @@ Docente OS MUST NOT silently copy an Atlas Learning Object into a new canonical 
 - `ART_ID`: generated/delivered artifact.
 
 Pattern metadata never replaces curriculum meaning or LO provenance.
+
+## Canonical contract and local projection
+
+Cross-product contract: `LearningObjectManifest v1`.
+
+`AtlasLearningObjectRef` is the Docente OS presentation/domain DTO projected from `LearningObjectManifest v1`. It is not a separate cross-product contract and does not redefine Atlas lifecycle or authority.
+
+`MaterialAssetManifest v1` is the subordinate asset contract referenced by the LO manifest.
 
 ## Runtime reference shape
 
@@ -94,6 +105,17 @@ Do not lead with LO/PAT/APP/ART technical ids.
 - Valutazione
 
 Each action opens the declared canonical asset or a clearly marked disposable delivery derivative.
+
+## State model
+
+Keep these dimensions separate:
+
+- `loLifecycle`: DRAFT | GENERATED | REVIEWED | CANONICAL | RETIRED;
+- `assuranceState`: UNVERIFIED | AUTOMATED_PASS | HUMAN_REVIEWED;
+- `curriculumDecisionState`: PROPOSED | APPROVED | REJECTED | SUPERSEDED, where applicable;
+- display badges are derived projections only.
+
+`REVIEWED` lifecycle does not imply `HUMAN_REVIEWED` assurance or institutional approval. Docente OS must never infer one dimension from another.
 
 ## Lifecycle behavior
 
@@ -177,27 +199,35 @@ Locally generated print/projection copies are derivative and disposable.
 
 ## Return context
 
-Moving to Atlas or an asset must preserve:
-- class;
-- lesson/block;
-- UDA;
-- originating task.
+Moving to public Atlas or a public asset must preserve user continuity **without exporting private class context**.
 
-The destination revalidates its own authority and private workspace context.
+Public handoff may contain only necessary publishable identifiers such as:
+- LO id/version;
+- curriculum node id;
+- asset id/version;
+- opaque return token when needed.
 
-## Classroom validation and TeachingUseReceipt
+Class, section, lesson/block, UDA and originating task remain in Docente OS local/private state and are restored locally on return.
+
+The destination revalidates its own authority. Atlas must not receive unnecessary class or workspace data.
+
+## Classroom validation and future TeachingUseReceipt v1
 
 After the lesson the teacher sees a very small validation prompt.
 
 Detailed context remains private in Docente OS.
 
-A minimized `TeachingUseReceipt` may later contain:
+TeachingUseReceipt runtime emission is **out of scope for DOS-A1**. DOS-A1 preserves only the identifiers/versions needed for a future governed implementation.
+
+A future minimized `TeachingUseReceipt v1` may contain:
 - LO id/version;
 - material version(s);
 - actual duration;
 - validation outcome;
-- usability findings;
+- structured usability outcome/findings;
 - non-personal context only where necessary.
+
+The v1 contract must additionally define receiptId, contractVersion, issuer/recipient, correction/revocation behavior and incompatible-version handling. Free text is excluded from the public boundary by default.
 
 The receipt is evidence. It never promotes Atlas lifecycle automatically.
 
@@ -232,7 +262,7 @@ DOS-A1 MUST NOT add:
 9. Existing Knowledge provenance/reliability behavior is not weakened.
 10. Automated tests cover lifecycle gating and task-continuity links.
 11. Human classroom validation remains a separate process.
-12. A future TeachingUseReceipt is minimized and cannot mutate upstream authority.
+12. DOS-A1 preserves the prerequisites for a future TeachingUseReceipt v1; no receipt is emitted by this slice and no upstream authority can be mutated.
 
 ## Implementation sequence
 
@@ -242,7 +272,7 @@ DOS-A1 MUST NOT add:
 4. Add asset actions in resource detail / class context.
 5. Preserve LO/app/pattern/version/lifecycle.
 6. Add lifecycle gating and return-context tests.
-7. Add minimized TeachingUseReceipt contract.
+7. Preserve the identifiers/version data required by future TeachingUseReceipt v1 without implementing receipt emission.
 8. Only after fixture evidence, decide whether resolution belongs in Knowledge or a dedicated read-only provider.
 
 ## Acceptance journey
@@ -250,6 +280,37 @@ DOS-A1 MUST NOT add:
 `Oggi/Classi → Lezione → Materiali → Proietta → torna alla lezione → validazione breve`.
 
 No manual Drive-folder navigation.
+
+## Compatibility and rollback
+
+Compatibility target:
+- producer: Curriculum Atlas `LearningObjectManifest v1`;
+- consumer: Docente OS DOS-A1;
+- assets: `MaterialAssetManifest v1`;
+- local projection: `AtlasLearningObjectRef`.
+
+Compatible minor changes require fixture + validator + consumer tests. Breaking changes require a new major and explicit migration/parallel-support plan.
+
+Rollback for DOS-A1 removes/disables the read-only Atlas integration and returns to existing local Docente OS material behavior. No Atlas or Arena state is mutated, so rollback does not require upstream data repair.
+
+Known limitations:
+- asset availability depends on the source declared by Atlas;
+- DOS-A1 does not emit TeachingUseReceipt v1;
+- no bidirectional synchronization is introduced.
+
+Closure evidence:
+- exact PR head;
+- fixture/consumer compatibility evidence;
+- privacy return-context test;
+- lifecycle/assurance separation test;
+- human cross-product review;
+- pinned Drive revisions.
+
+## Canonical Drive pin
+
+- ECO-00 Masterplan **v0.2**, Drive revision **4**, verified 2026-09-20.
+- ECO-00 Product & Assurance Process **v0.2**, Drive revision **4**, verified 2026-09-20.
+- On semantic divergence, the pinned Drive canonical documents prevail until an explicit coordinated revision.
 
 ## References
 
