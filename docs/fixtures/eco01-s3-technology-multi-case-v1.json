@@ -1,0 +1,247 @@
+{
+  "program": "ECO-01",
+  "slice": "S3",
+  "contract": "ECO01_S3_TEACHER_FIRST_MULTI_CASE_V1",
+  "mode": "NON_OPERATIONAL_VALIDATION",
+  "dosA1": "RUNTIME_DEFERRED",
+  "shapeVersion": "teacher-first-v1",
+  "commonKeys": [
+    "caseId",
+    "grade",
+    "title",
+    "curriculumRegime",
+    "duration",
+    "sectionBinding",
+    "teacherView",
+    "materialSlots",
+    "traceability",
+    "readiness",
+    "nonOperational"
+  ],
+  "cases": [
+    {
+      "caseId": "TEC-I-SYSTEMS",
+      "grade": "I",
+      "title": "Bisogni, risorse e sistemi",
+      "curriculumRegime": "DM221_FIRST_APPLICATION",
+      "duration": {
+        "plannedMinutes": 60,
+        "actualMinutes": null
+      },
+      "sectionBinding": "UNBOUND_DEMO",
+      "teacherView": {
+        "inThisLesson": "Osservare un oggetto tecnico e riconoscere bisogno, funzione, risorse, input e output.",
+        "objective": "Riconoscere in un oggetto tecnico bisogno, funzione, risorse, input e output.",
+        "curriculumConnection": "Cultura tecnica e sistemi — Legge oggetti e sistemi semplici in rapporto a bisogni e funzioni.",
+        "sequence": [
+          {
+            "label": "Osservazione iniziale",
+            "minutes": 15
+          },
+          {
+            "label": "Attività degli alunni — Mappa di sistema",
+            "minutes": 30
+          },
+          {
+            "label": "Confronto finale",
+            "minutes": 15
+          }
+        ],
+        "beforeClass": {
+          "ready": [
+            "Guida docente",
+            "Scheda studenti — Mappa di sistema"
+          ],
+          "decide": [
+            "Usare oppure no lo schema visuale Atlas alla LIM"
+          ]
+        }
+      },
+      "materialSlots": [
+        {
+          "role": "TEACHER_BRIEF",
+          "status": "READY",
+          "source": "DOCENTE_OS"
+        },
+        {
+          "role": "STUDENT_HANDOUT",
+          "status": "READY",
+          "source": "DOCENTE_OS"
+        },
+        {
+          "role": "VISUAL_AID",
+          "status": "PROPOSED",
+          "source": "CURRICULUM_ATLAS"
+        }
+      ],
+      "traceability": {
+        "curriculumSource": "CURMANLIGHT_ARENA",
+        "curriculumSourceRef": "departmentCurriculumV31.section-09.json",
+        "teachingDesignSource": "ECO01_S2_BASELINE",
+        "snapshotStatus": "MATERIALIZED_IN_S1_S2",
+        "fingerprint": "616de781",
+        "downstreamState": "AWAITING_TEACHER_DECISION"
+      },
+      "readiness": "REVIEW_REQUIRED",
+      "nonOperational": true
+    },
+    {
+      "caseId": "TEC-II-AGRICULTURE",
+      "grade": "II",
+      "title": "Agricoltura come sistema tecnologico",
+      "curriculumRegime": "TRANSITION_2012",
+      "duration": {
+        "plannedMinutes": 120,
+        "actualMinutes": null
+      },
+      "sectionBinding": "PREPARED_NOT_SECTION_BOUND",
+      "teacherView": {
+        "inThisLesson": "Leggere il territorio agricolo come sistema tecnico-produttivo, collegando risorse, mezzi tecnici, lavoro, energia, input e output.",
+        "objective": "Riconoscere componenti e relazioni di un sistema agricolo e rappresentarne input, processo e output.",
+        "curriculumConnection": "Cultura tecnica e sistemi — Analizza sistemi, servizi e filiere con più componenti.",
+        "sequence": [
+          {
+            "label": "Lettura guidata di immagini/casi di territorio agricolo",
+            "minutes": null
+          },
+          {
+            "label": "Individuazione delle componenti del sistema",
+            "minutes": null
+          },
+          {
+            "label": "Ricostruzione di input e output",
+            "minutes": null
+          },
+          {
+            "label": "Scheda 2A-1 — Leggo un paesaggio agricolo",
+            "minutes": null
+          },
+          {
+            "label": "Restituzione e mappa condivisa",
+            "minutes": null
+          }
+        ],
+        "beforeClass": {
+          "ready": [
+            "Guida/pacchetto CAN-PACK-2A",
+            "Scheda 2A-1 incorporata nel pacchetto"
+          ],
+          "decide": [
+            "Selezionare immagini o casi di paesaggio agricolo da mostrare alla LIM"
+          ]
+        }
+      },
+      "materialSlots": [
+        {
+          "role": "TEACHER_BRIEF",
+          "status": "READY",
+          "source": "CAN_PACK_2A"
+        },
+        {
+          "role": "STUDENT_HANDOUT",
+          "status": "READY",
+          "source": "CAN_PACK_2A"
+        },
+        {
+          "role": "VISUAL_AID",
+          "status": "MISSING",
+          "source": "LOCAL_TEACHER_SELECTION"
+        }
+      ],
+      "traceability": {
+        "curriculumSource": "CURMANLIGHT_ARENA",
+        "curriculumSourceRef": "departmentCurriculumV31.section-09.json",
+        "teachingDesignSource": "ACT-B01-2 / CAN-PACK-2A",
+        "snapshotStatus": "NOT_MATERIALIZED_IN_S3_STATIC_CASE",
+        "fingerprint": null,
+        "downstreamState": "NOT_BOUND_STATIC_VALIDATION"
+      },
+      "readiness": "DRAFT",
+      "nonOperational": true
+    },
+    {
+      "caseId": "TEC-III-ENERGY",
+      "grade": "III",
+      "title": "Forme e trasformazioni dell’energia",
+      "curriculumRegime": "TRANSITION_2012_FINAL",
+      "duration": {
+        "plannedMinutes": 120,
+        "actualMinutes": null
+      },
+      "sectionBinding": "PREPARED_NOT_SECTION_BOUND",
+      "teacherView": {
+        "inThisLesson": "Riconoscere forme di energia in oggetti e sistemi quotidiani e distinguere energia, dispositivo e servizio ottenuto.",
+        "objective": "Riconoscere le principali forme di energia e collegarle a oggetti, sistemi e servizi quotidiani.",
+        "curriculumConnection": "Energia, elettricità e sostenibilità — Valuta fonti, trasformazioni, reti e transizione energetica.",
+        "sequence": [
+          {
+            "label": "Brainstorming su oggetti e sistemi quotidiani",
+            "minutes": null
+          },
+          {
+            "label": "Classificazione guidata delle forme di energia",
+            "minutes": null
+          },
+          {
+            "label": "Distinzione energia / oggetto / servizio",
+            "minutes": null
+          },
+          {
+            "label": "Mappa collettiva",
+            "minutes": null
+          },
+          {
+            "label": "Scheda 3A-1 e restituzione finale",
+            "minutes": null
+          }
+        ],
+        "beforeClass": {
+          "ready": [
+            "Guida/pacchetto CAN-PACK-3A",
+            "Scheda 3A-1 incorporata nel pacchetto"
+          ],
+          "decide": [
+            "Selezionare immagini, oggetti spenti o schemi tecnici da usare come esempi"
+          ]
+        }
+      },
+      "materialSlots": [
+        {
+          "role": "TEACHER_BRIEF",
+          "status": "READY",
+          "source": "CAN_PACK_3A"
+        },
+        {
+          "role": "STUDENT_HANDOUT",
+          "status": "READY",
+          "source": "CAN_PACK_3A"
+        },
+        {
+          "role": "VISUAL_AID",
+          "status": "MISSING",
+          "source": "LOCAL_TEACHER_SELECTION"
+        }
+      ],
+      "traceability": {
+        "curriculumSource": "CURMANLIGHT_ARENA",
+        "curriculumSourceRef": "departmentCurriculumV31.section-09.json",
+        "teachingDesignSource": "ACT-B01-3 / CAN-PACK-3A",
+        "snapshotStatus": "NOT_MATERIALIZED_IN_S3_STATIC_CASE",
+        "fingerprint": null,
+        "downstreamState": "NOT_BOUND_STATIC_VALIDATION"
+      },
+      "readiness": "DRAFT",
+      "nonOperational": true
+    }
+  ],
+  "validationAssertions": {
+    "identicalTopLevelKeys": true,
+    "identicalTeacherViewKeys": true,
+    "identicalMaterialRoleVocabulary": true,
+    "noGradeSpecificAuthorityField": true,
+    "transitionRegimePreserved": true,
+    "noSectionDateInference": true,
+    "noParallelAtlasPath": true,
+    "noRuntimeActivation": true
+  }
+}
