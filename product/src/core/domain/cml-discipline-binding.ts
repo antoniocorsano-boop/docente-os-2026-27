@@ -32,6 +32,15 @@ export function assertEco02PilotCurriculumIntakeScope(input: {
   }
 }
 
+
+export function assertUploadedArenaAuthorityStateAllowed(
+  curriculumState: CurriculumContextForClassV1['curriculumState'],
+): void {
+  if (curriculumState === 'APPROVED') {
+    throw new Error('local Arena upload cannot establish institutional approval authority')
+  }
+}
+
 export function buildArenaCurriculumTargetScope(input: {
   context: CurriculumContextForClassV1
   localSectionRef: string
