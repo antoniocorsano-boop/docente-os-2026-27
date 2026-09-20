@@ -65,6 +65,8 @@ function baseline(requirementDescription = 'Analizzare sistemi tecnologici.'): A
       constraints: [],
     },
     curriculumCoverage: {
+      contextId: 'ctx-2c',
+      curriculumVersionRef: { namespace: 'cml', entityType: 'CurriculumVersion', entityId: 'technology-transition', versionId: '2026-27' },
       status: 'SATISFIED',
       authority: 'APPROVED_INSTITUTIONAL',
       requiresRevalidationOnApproval: false,
@@ -103,7 +105,7 @@ function baseline(requirementDescription = 'Analizzare sistemi tecnologici.'): A
         sourceRefs: [{ namespace: 'cml', entityType: 'CurriculumTransitionRule', entityId: 'dm221-progression' }],
         affectedRequirementIds: [],
         usableForPlanning: true,
-        institutionallyApproved: true,
+        institutionallyApproved: false,
       },
       sourceRefs: [{ namespace: 'cml', entityType: 'CurriculumVersion', entityId: 'technology-transition', versionId: '2026-27' }],
     },
