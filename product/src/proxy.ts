@@ -21,6 +21,18 @@ export async function proxy(request: NextRequest) {
   requestHeaders.set('Content-Security-Policy', contentSecurityPolicy)
   requestHeaders.set('x-nonce', nonce)
 
+  const isPublicEco02Demo =
+    request.nextUrl.pathname === '/demo/eco02-p1' ||
+    request.nextUrl.pathname.startsWith('/demo/eco02-p1/')
+
+  if (isPublicEco02Demo) {
+    const headers = new Headers(request.headers)
+    requestHeaders.forEach((value, key) => headers.set(key, value))
+    const response = NextResponse.next({ request: { headers } })
+    response.headers.set('Content-Security-Policy', contentSecurityPolicy)
+    return response
+  }
+
   const session = await updateSession(request, requestHeaders)
   let response = session.response
 
