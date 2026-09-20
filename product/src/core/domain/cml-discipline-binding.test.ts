@@ -2,8 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   assertEco02PilotCurriculumIntakeScope,
+  assertUploadedArenaAuthorityStateAllowed,
   bindArenaDisciplineRefToDocenteOs,
   buildArenaCurriculumTargetScope,
+  ECO02_PILOT_UPLOAD_MAX_BYTES,
   isEco02PilotClass,
 } from './cml-discipline-binding'
 import type { CurriculumContextForClassV1 } from './cml-local-handoff-v2'
@@ -117,4 +119,18 @@ test('preserves the incoming section/cohort scope dimensions', () => {
       cohortRef: 'cohort-2026-grade-2',
     },
   )
+})
+
+
+test('rejects institutional authority claims from local uploaded JSON', () => {
+  assert.doesNotThrow(() => assertUploadedArenaAuthorityStateAllowed('PROVISIONAL_COMPLETE'))
+  assert.throws(
+    () => assertUploadedArenaAuthorityStateAllowed('APPROVED'),
+    /cannot establish institutional approval authority/,
+  )
+})
+
+test('keeps the pilot upload ceiling below the default Server Action request limit', () => {
+  assert.equal(ECO02_PILOT_UPLOAD_MAX_BYTES, 500_000)
+  assert.ok(ECO02_PILOT_UPLOAD_MAX_BYTES < 1_000_000)
 })
