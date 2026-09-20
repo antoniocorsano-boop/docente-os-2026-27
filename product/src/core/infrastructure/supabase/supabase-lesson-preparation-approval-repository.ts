@@ -164,6 +164,7 @@ export class SupabaseLessonPreparationApprovalRepository {
       .select('source_handoff_footprint_hash,curriculum_state,alignment_authority,requires_revalidation_on_approval,curriculum_coverage,curricular_context')
       .eq('section_id', input.context.sectionId)
       .eq('discipline_ref', 'technology')
+      .is('authority_quarantined_at', null)
       .order('accepted_at', { ascending: false })
       .order('applied_at', { ascending: false })
       .limit(1)
