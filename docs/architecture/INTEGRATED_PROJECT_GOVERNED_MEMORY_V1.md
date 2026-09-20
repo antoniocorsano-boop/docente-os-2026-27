@@ -3,7 +3,7 @@
 Status: CANONICAL_SHARED_MEMORY
 Scope: CurManLight Arena + Docente OS
 Date: 2026-08-29
-Amended: 2026-09-20 — ECO-02/P1 controlled teacher-first pilot authorization
+Amended: 2026-09-20 — ECO-02 verifiable authority-channel constraint
 Memory ID: CML-DOS-INTEGRATED-GOVERNANCE-V1
 
 ## 1. Purpose
@@ -258,6 +258,21 @@ Explicit exclusions:
 - pilot evidence is not an implicit approval of runtime operation.
 
 P1 must stop at human review of the prepared pilot packet. Classroom execution, result classification and any later activation require an explicit teacher decision and separately bound evidence.
+
+### ECO-02 local-file authority transport rule
+
+For ECO-02, a user-selected local `CML_LOCAL_HANDOFF_V2` JSON file is an **untrusted transport envelope** for preview and provisional teacher intake. Its structural footprint can detect meaningful mutation but is not an authenticity proof and cannot establish institutional authority.
+
+Therefore:
+
+- the local-file intake surface may persist only a governed `PROVISIONAL_COMPLETE` context with no top-level or nested approval-bearing claim;
+- it must fail closed when the uploaded context claims `curriculumState = APPROVED`, a curriculum `approvalDecisionRef`, `transitionRemodulation.state = APPROVED`, `transitionRemodulation.institutionallyApproved = true`, or a remodulation `approvalDecisionRef`;
+- a provisional → approved authority transition, including a same-`curriculumVersionRef` transition, may be persisted in Docente OS only after a **server-verifiable Arena authority signal** bound to the relevant institutional/curricular decision and followed by the required teacher revalidation;
+- this rule does not itself authorize or implement that future server-verifiable channel;
+- the controlled ECO-02 local intake must be bound to the explicitly configured real pilot workspace/year/section identity and fail closed when that identity is absent or different; a class label such as “2C” alone is not sufficient authority or scope evidence;
+- `DOS-A1` remains `RUNTIME_DEFERRED`.
+
+This refines the transport and authority-evidence semantics of the existing `Arena -> versioned handoff -> Docente OS teacher intake/revalidation` contract. It does not move curriculum authority away from Arena and does not create a shared runtime or database.
 
 Authorization bases:
 - Arena: `main@65ad4a8ff2f74f7f9b9ea763b1a344686cf0dedc`;
