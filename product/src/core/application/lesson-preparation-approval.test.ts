@@ -184,9 +184,7 @@ test('curriculum baseline must be complete and satisfied before lesson approval'
   provisional.requiresRevalidationOnApproval = true
   assert.equal(isCurriculumBaselineReadyForLessonApproval(provisional), false)
 
-  const incomplete = baseline()
-  incomplete.curricularContext.completeForPlanning = false
-  assert.equal(isCurriculumBaselineReadyForLessonApproval(incomplete), false)
+  assert.equal(isCurriculumBaselineReadyForLessonApproval(null), false)
   const blocked = baseline()
   blocked.curriculumCoverage.status = 'NOT_SATISFIED'
   blocked.curriculumCoverage.blockingRequirementIds = ['req-1']
