@@ -2,13 +2,27 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   assertEco02PilotCurriculumIntakeScope,
-  assertUploadedArenaAuthorityStateAllowed,
+  assertUploadedArenaAuthorityContextAllowed,
   bindArenaDisciplineRefToDocenteOs,
   buildArenaCurriculumTargetScope,
   ECO02_PILOT_UPLOAD_MAX_BYTES,
   isEco02PilotClass,
+  type Eco02PilotIdentity,
 } from './cml-discipline-binding'
 import type { CurriculumContextForClassV1 } from './cml-local-handoff-v2'
+
+const AUTHORIZED_PILOT: Eco02PilotIdentity = {
+  workspaceId: 'workspace-pilot',
+  academicYearId: 'year-2026-2027',
+  sectionId: 'section-2c-pilot',
+  grade: 'SECONDA',
+  sectionCode: 'C',
+}
+
+const pilotInput = {
+  ...AUTHORIZED_PILOT,
+  disciplineRef: 'tecnologia',
+}
 
 test('binds Arena Tecnologia to the canonical Docente OS technology key', () => {
   assert.equal(bindArenaDisciplineRefToDocenteOs('tecnologia'), 'technology')
@@ -21,30 +35,26 @@ test('preserves unknown non-empty discipline refs until a canonical alias is def
   assert.throws(() => bindArenaDisciplineRefToDocenteOs('   '), /disciplineRef is required/)
 })
 
-test('limits ECO-02 curriculum intake to Technology 2C', () => {
-  assert.equal(isEco02PilotClass({ grade: 'SECONDA', sectionCode: 'c' }), true)
-  assert.equal(isEco02PilotClass({ grade: 'SECONDA', sectionCode: 'A' }), false)
-  assert.equal(isEco02PilotClass({ grade: 'PRIMA', sectionCode: 'C' }), false)
+test('binds ECO-02 intake to the exact configured pilot identity', () => {
+  assert.equal(isEco02PilotClass(AUTHORIZED_PILOT, AUTHORIZED_PILOT), true)
+  assert.equal(isEco02PilotClass({ ...AUTHORIZED_PILOT, workspaceId: 'other-workspace' }, AUTHORIZED_PILOT), false)
+  assert.equal(isEco02PilotClass({ ...AUTHORIZED_PILOT, academicYearId: 'other-year' }, AUTHORIZED_PILOT), false)
+  assert.equal(isEco02PilotClass({ ...AUTHORIZED_PILOT, sectionId: 'other-2c' }, AUTHORIZED_PILOT), false)
+  assert.equal(isEco02PilotClass(AUTHORIZED_PILOT, null), false)
 
-  assert.doesNotThrow(() => assertEco02PilotCurriculumIntakeScope({
-    grade: 'SECONDA',
-    sectionCode: 'C',
-    disciplineRef: 'tecnologia',
-  }))
+  assert.doesNotThrow(() => assertEco02PilotCurriculumIntakeScope(pilotInput, AUTHORIZED_PILOT))
   assert.throws(
-    () => assertEco02PilotCurriculumIntakeScope({
-      grade: 'SECONDA',
-      sectionCode: 'A',
-      disciplineRef: 'tecnologia',
-    }),
-    /authorized Technology 2C pilot/,
+    () => assertEco02PilotCurriculumIntakeScope(
+      { ...pilotInput, workspaceId: 'other-workspace' },
+      AUTHORIZED_PILOT,
+    ),
+    /explicitly authorized Technology 2C pilot identity/,
   )
   assert.throws(
-    () => assertEco02PilotCurriculumIntakeScope({
-      grade: 'SECONDA',
-      sectionCode: 'C',
-      disciplineRef: 'matematica',
-    }),
+    () => assertEco02PilotCurriculumIntakeScope(
+      { ...pilotInput, disciplineRef: 'matematica' },
+      AUTHORIZED_PILOT,
+    ),
     /accepts only Technology handoffs/,
   )
 })
@@ -121,11 +131,40 @@ test('preserves the incoming section/cohort scope dimensions', () => {
   )
 })
 
+test('rejects every institutional approval-bearing claim from local uploaded JSON', () => {
+  const provisional = context({ sectionRef: '2C' })
+  assert.doesNotThrow(() => assertUploadedArenaAuthorityContextAllowed(provisional))
 
-test('rejects institutional authority claims from local uploaded JSON', () => {
-  assert.doesNotThrow(() => assertUploadedArenaAuthorityStateAllowed('PROVISIONAL_COMPLETE'))
   assert.throws(
-    () => assertUploadedArenaAuthorityStateAllowed('APPROVED'),
+    () => assertUploadedArenaAuthorityContextAllowed({
+      ...provisional,
+      curriculumState: 'APPROVED',
+      approvalDecisionRef: { namespace: 'curmanlight.arena', entityType: 'Decision', entityId: 'decision-1' },
+    }),
+    /cannot establish institutional approval authority/,
+  )
+
+  assert.throws(
+    () => assertUploadedArenaAuthorityContextAllowed({
+      ...provisional,
+      transitionRemodulation: {
+        ...provisional.transitionRemodulation,
+        state: 'APPROVED',
+        institutionallyApproved: true,
+        approvalDecisionRef: { namespace: 'curmanlight.arena', entityType: 'Decision', entityId: 'decision-2' },
+      },
+    }),
+    /cannot establish institutional approval authority/,
+  )
+
+  assert.throws(
+    () => assertUploadedArenaAuthorityContextAllowed({
+      ...provisional,
+      transitionRemodulation: {
+        ...provisional.transitionRemodulation,
+        institutionallyApproved: true,
+      },
+    }),
     /cannot establish institutional approval authority/,
   )
 })
