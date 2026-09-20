@@ -176,17 +176,48 @@ test('unaccepted proposals are outside the approved effective preparation', () =
   assert.equal(lessonPreparationFingerprint(withoutProposal), lessonPreparationFingerprint(withProposal))
 })
 
-test('curriculum baseline must be complete and satisfied before lesson approval', () => {
+test('approved institutional curriculum remains ready for lesson approval', () => {
   assert.equal(isCurriculumBaselineReadyForLessonApproval(baseline()), true)
+})
+
+test('complete provisional curriculum is ready only with explicit future revalidation obligation', () => {
   const provisional = baseline()
   provisional.curriculumState = 'PROVISIONAL_COMPLETE'
   provisional.alignmentAuthority = 'PROVISIONAL_BASELINE'
   provisional.requiresRevalidationOnApproval = true
-  assert.equal(isCurriculumBaselineReadyForLessonApproval(provisional), false)
+  provisional.curriculumCoverage.authority = 'PROVISIONAL_BASELINE'
+  provisional.curriculumCoverage.requiresRevalidationOnApproval = true
+  provisional.curricularContext.curriculumState = 'PROVISIONAL_COMPLETE'
+  delete provisional.curricularContext.approvalDecisionRef
+  provisional.curricularContext.transitionRemodulation = {
+    ...provisional.curricularContext.transitionRemodulation,
+    state: 'HYPOTHESIS',
+    rationale: 'Baseline transitoria completa e utilizzabile per la progettazione del docente.',
+    usableForPlanning: true,
+    institutionallyApproved: false,
+    proposalRef: { namespace: 'cml', entityType: 'TransitionRemodulationProposal', entityId: 'transition-2c' },
+  }
 
+  assert.equal(isCurriculumBaselineReadyForLessonApproval(provisional), true)
+
+  const missingRevalidation = structuredClone(provisional)
+  missingRevalidation.requiresRevalidationOnApproval = false
+  assert.equal(isCurriculumBaselineReadyForLessonApproval(missingRevalidation), false)
+
+  const unusableTransition = structuredClone(provisional)
+  unusableTransition.curricularContext.transitionRemodulation.usableForPlanning = false
+  assert.equal(isCurriculumBaselineReadyForLessonApproval(unusableTransition), false)
+})
+
+test('incomplete or internally inconsistent curriculum remains blocked', () => {
   assert.equal(isCurriculumBaselineReadyForLessonApproval(null), false)
+
   const blocked = baseline()
   blocked.curriculumCoverage.status = 'NOT_SATISFIED'
   blocked.curriculumCoverage.blockingRequirementIds = ['req-1']
   assert.equal(isCurriculumBaselineReadyForLessonApproval(blocked), false)
+
+  const inconsistent = baseline()
+  inconsistent.curriculumCoverage.authority = 'PROVISIONAL_BASELINE'
+  assert.equal(isCurriculumBaselineReadyForLessonApproval(inconsistent), false)
 })

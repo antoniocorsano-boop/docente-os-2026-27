@@ -57,14 +57,26 @@ export type LessonPreparationApprovalSnapshot = {
 export function isCurriculumBaselineReadyForLessonApproval(
   baseline: AnnualPlanCurriculumBaselineSnapshot | null,
 ): baseline is AnnualPlanCurriculumBaselineSnapshot {
-  return Boolean(
-    baseline
-    && baseline.curriculumState === 'APPROVED'
+  if (!baseline
+    || baseline.curricularContext.completeForPlanning !== true
+    || baseline.curricularContext.transitionRemodulation.usableForPlanning !== true
+    || baseline.curriculumCoverage.status !== 'SATISFIED'
+    || baseline.curriculumCoverage.authority !== baseline.alignmentAuthority
+    || baseline.curriculumCoverage.requiresRevalidationOnApproval !== baseline.requiresRevalidationOnApproval) {
+    return false
+  }
+
+  const approvedInstitutional = baseline.curriculumState === 'APPROVED'
     && baseline.alignmentAuthority === 'APPROVED_INSTITUTIONAL'
     && baseline.requiresRevalidationOnApproval === false
-    && baseline.curricularContext.completeForPlanning
-    && baseline.curriculumCoverage.status === 'SATISFIED',
-  )
+
+  // Teacher authority is limited to the lesson preparation: this does not promote
+  // a provisional Arena curriculum to institutional approval.
+  const provisionalPlanningBaseline = baseline.curriculumState === 'PROVISIONAL_COMPLETE'
+    && baseline.alignmentAuthority === 'PROVISIONAL_BASELINE'
+    && baseline.requiresRevalidationOnApproval === true
+
+  return approvedInstitutional || provisionalPlanningBaseline
 }
 
 export function buildLessonPreparationApprovalSnapshot(input: {
