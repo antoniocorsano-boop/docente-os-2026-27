@@ -57,6 +57,9 @@ export function isCurriculumBaselineReadyForLessonApproval(
 ) {
   return Boolean(
     baseline
+    && baseline.curriculumState === 'APPROVED'
+    && baseline.alignmentAuthority === 'APPROVED_INSTITUTIONAL'
+    && baseline.requiresRevalidationOnApproval === false
     && baseline.curricularContext.completeForPlanning
     && baseline.curriculumCoverage.status === 'SATISFIED',
   )
