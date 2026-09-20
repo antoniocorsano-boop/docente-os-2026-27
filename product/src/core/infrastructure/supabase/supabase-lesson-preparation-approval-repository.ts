@@ -41,18 +41,22 @@ type Row = {
   canonical_generation_id: string
   block_id: string
   projection_id: string
-  curriculum_source_handoff_footprint_hash: string
-  curriculum_baseline_fingerprint: string
-  preparation_fingerprint: string
-  snapshot: unknown
-  approved_by: string
-  approved_at: string
+  checklist_snapshot: unknown
+  design_fingerprint: string
+  curriculum_source_handoff_footprint_hash?: string | null
+  curriculum_baseline_fingerprint?: string | null
+  preparation_fingerprint?: string | null
+  approval_snapshot?: unknown
+  confirmed_by: string
+  confirmed_at: string
+  created_at: string
+  updated_at: string
 }
 
 type ReadDatabase = {
   public: {
     Tables: {
-      lesson_preparation_approvals: {
+      lesson_preparation_receipts: {
         Row: Row
         Insert: never
         Update: never
@@ -73,7 +77,7 @@ export class SupabaseLessonPreparationApprovalRepository {
     if (claimsError || !claims?.claims?.sub) throw new Error('Authenticated user required')
 
     const { data, error } = await supabase
-      .from('lesson_preparation_approvals')
+      .from('lesson_preparation_receipts')
       .select('*')
       .eq('workspace_id', context.workspaceId)
       .eq('academic_year_id', context.academicYearId)
@@ -82,12 +86,12 @@ export class SupabaseLessonPreparationApprovalRepository {
       .eq('canonical_generation_id', context.canonicalGenerationId)
       .eq('block_id', context.blockId)
       .eq('projection_id', context.projectionId)
-      .order('approved_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+      .order('confirmed_at', { ascending: false })
+      .limit(20)
 
     if (error) throw new Error(error.message)
-    return data ? toReceipt(data as unknown as Row) : null
+    const current = (data ?? []).find(isExactStateRow)
+    return current ? toReceipt(current) : null
   }
 
   async approve(input: {
@@ -185,15 +189,25 @@ export class SupabaseLessonPreparationApprovalRepository {
       canonical_generation_id: input.context.canonicalGenerationId,
       block_id: input.context.blockId,
       projection_id: input.context.projectionId,
+      checklist_snapshot: [
+        { key: 'curriculum', status: 'CONFIRMED', fingerprint: baselineFingerprint },
+        { key: 'projection', status: 'CONFIRMED', projectionId: input.context.projectionId },
+        {
+          key: 'accepted-design',
+          status: 'CONFIRMED',
+          acceptedExtensionCount: snapshot.lesson.acceptedExtensions.length,
+        },
+      ],
+      design_fingerprint: preparationFingerprint,
       curriculum_source_handoff_footprint_hash: input.curriculumBaseline.sourceHandoffFootprintHash,
       curriculum_baseline_fingerprint: baselineFingerprint,
       preparation_fingerprint: preparationFingerprint,
-      snapshot,
-      approved_by: input.approvedBy,
+      approval_snapshot: snapshot,
+      confirmed_by: input.approvedBy,
     }
 
     const { data: inserted, error: insertError } = await admin
-      .from('lesson_preparation_approvals')
+      .from('lesson_preparation_receipts')
       .insert(row)
       .select('*')
       .maybeSingle()
@@ -202,7 +216,7 @@ export class SupabaseLessonPreparationApprovalRepository {
     if (insertError && insertError.code !== '23505') throw new Error(insertError.message)
 
     const { data: existing, error: existingError } = await admin
-      .from('lesson_preparation_approvals')
+      .from('lesson_preparation_receipts')
       .select('*')
       .eq('workspace_id', input.context.workspaceId)
       .eq('academic_year_id', input.context.academicYearId)
@@ -224,6 +238,18 @@ export class SupabaseLessonPreparationApprovalRepository {
   }
 }
 
+function isExactStateRow(row: Row): row is Row & {
+  curriculum_source_handoff_footprint_hash: string
+  curriculum_baseline_fingerprint: string
+  preparation_fingerprint: string
+  approval_snapshot: LessonPreparationApprovalSnapshot
+} {
+  return typeof row.curriculum_source_handoff_footprint_hash === 'string'
+    && typeof row.curriculum_baseline_fingerprint === 'string'
+    && typeof row.preparation_fingerprint === 'string'
+    && Boolean(row.approval_snapshot && typeof row.approval_snapshot === 'object')
+}
+
 function isPlanningComplete(value: unknown) {
   return Boolean(value && typeof value === 'object' && (value as { completeForPlanning?: unknown }).completeForPlanning === true)
 }
@@ -233,11 +259,8 @@ function isCoverageSatisfied(value: unknown) {
 }
 
 function toReceipt(row: Row): LessonPreparationApprovalReceipt {
-  if (!row.id || !row.preparation_fingerprint || !row.approved_by || !row.approved_at) {
+  if (!isExactStateRow(row) || !row.id || !row.confirmed_by || !row.confirmed_at) {
     throw new Error('Invalid lesson preparation approval receipt')
-  }
-  if (!row.snapshot || typeof row.snapshot !== 'object') {
-    throw new Error('Invalid lesson preparation approval snapshot')
   }
   return {
     id: row.id,
@@ -251,8 +274,8 @@ function toReceipt(row: Row): LessonPreparationApprovalReceipt {
     curriculumSourceHandoffFootprintHash: row.curriculum_source_handoff_footprint_hash,
     curriculumBaselineFingerprint: row.curriculum_baseline_fingerprint,
     preparationFingerprint: row.preparation_fingerprint,
-    snapshot: row.snapshot as LessonPreparationApprovalSnapshot,
-    approvedBy: row.approved_by,
-    approvedAt: row.approved_at,
+    snapshot: row.approval_snapshot,
+    approvedBy: row.confirmed_by,
+    approvedAt: row.confirmed_at,
   }
 }
