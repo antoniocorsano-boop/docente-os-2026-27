@@ -161,7 +161,7 @@ REVIEWED lifecycle does not equal HUMAN_REVIEWED assurance and does not imply in
 
 ## Canonical Drive pin
 
-- Masterplan: **ECO-00 v0.2**, Drive revision **4**, verified 2026-09-20.
+- Masterplan: **ECO-00 v0.2**, Drive revision **5**, verified 2026-09-20.
 - Product & Assurance Process: **v0.2**, Drive revision **4**, verified 2026-09-20.
 - The pinned Drive documents prevail on semantic conflict until an explicit coordinated revision updates both sides.
 
