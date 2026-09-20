@@ -223,7 +223,7 @@ Closed S3 invariants:
 - one teacher-first preparation shape is generalizable across Technology I/II/III;
 - Grade I remains bound to the 2025 regime, while Grades II/III remain correctly bound to their 2012 transition regimes;
 - the same canonical material-role vocabulary is used across all three annualities;
-- section/date/orario are never inferred; unbound cases remain `PREPARED_NOT_SECTION_BOUND`;
+- section/date/orario are never inferred; Grade I retains its evidenced `STATIC_BASELINE` state, while unbound Grades II/III remain `PREPARED_NOT_SECTION_BOUND`;
 - teaching plans/UDA/activation sheets remain implementation/design evidence, not curriculum authority;
 - the direct `Arena -> Docente OS` curriculum authority path remains canonical;
 - Atlas remains subordinate for publication/navigation/LO/material resources and does not intermediate curriculum authority;
