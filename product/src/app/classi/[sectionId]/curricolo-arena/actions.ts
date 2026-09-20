@@ -9,6 +9,7 @@ import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supa
 import { bindCurriculumContextAndCoverage } from '@/core/domain/cml-curriculum-applicability'
 import {
   assertEco02PilotCurriculumIntakeScope,
+  assertUploadedArenaAuthorityStateAllowed,
   buildArenaCurriculumTargetScope,
   ECO02_PILOT_UPLOAD_MAX_BYTES,
 } from '@/core/domain/cml-discipline-binding'
@@ -63,7 +64,9 @@ export async function acceptArenaCurriculumHandoff(
       disciplineRef: handoff.curricularContext.disciplineRef,
     })
 
-    if (handoff.curricularContext.curriculumState === 'APPROVED') {
+    try {
+      assertUploadedArenaAuthorityStateAllowed(handoff.curricularContext.curriculumState)
+    } catch {
       return {
         status: 'error',
         message: 'Un file locale non può attestare un’approvazione istituzionale. La rivalidazione definitiva richiede un segnale Arena verificabile lato server.',
