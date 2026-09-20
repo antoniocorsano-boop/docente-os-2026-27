@@ -75,6 +75,9 @@ Implemented on `fix/eco02-p4-intake-boundaries`:
 - shared 500 KB client/server upload ceiling below the default Server Action body limit;
 - focused domain tests for exact pilot identity, authority guard, upload ceiling and cohort/section scope preservation;
 - the guard suite is included in the normal `npm test` Product CI command;
+- historical `APPROVED` receipts created before a verifiable Arena authority channel are quarantined by migration `0064`; they remain audit evidence but are excluded from current-authority reads;
+- the existing authenticated persistence boundary and table insert policy are provisional-only, preventing direct client bypass of the UI/action guard;
+- a read-only audit of the connected Docente OS data context before merge found **0** existing curriculum-adoption rows, so no current row requires destructive cleanup; the quarantine remains as a fail-safe for any other deployed database carrying a pre-fix approved receipt;
 - the shared governed-memory amendment is mirrored in CurManLight Arena PR #317.
 
 The real Beta pilot identifiers were resolved from the active Docente OS data context but are **not stored in the public repository**. They will be injected into the Beta service only after a human-approved merge. Production remains untouched.
@@ -92,7 +95,9 @@ The first DPG-1 attempt failed only because the required PR-body classification 
 
 State: **REVIEW FINDINGS APPLIED / FRESH REVIEW REQUIRED ON FINAL EXACT HEAD**
 
-Codex review on the superseded head `7a72104db3b0dfba4ccdf95d3708d5c0443f924c` identified four valid findings: exact tenant/year/section pilot binding, nested authority claims, mirrored governed memory, and CI inclusion of the guard suite. All four are addressed in the current branch.
+Codex review on the superseded head `7a72104db3b0dfba4ccdf95d3708d5c0443f924c` identified four valid findings: exact tenant/year/section pilot binding, nested authority claims, mirrored governed memory, and CI inclusion of the guard suite. All four are addressed.
+
+Fresh Codex review on superseded head `49df592d141e35cd338b927d0c730aea2dd4ce5d` found one additional valid P1: pre-fix approved receipts could remain consumable. Migration `0064_quarantine_unverified_curriculum_approvals.sql` now quarantines such receipts, excludes them from `annual_plan_curriculum_current`, and makes the authenticated local persistence path provisional-only.
 
 Required focus:
 
