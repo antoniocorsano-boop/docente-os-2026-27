@@ -59,6 +59,21 @@ This ordering is for human readability only. It does not change authority or per
 - Missing required material: **preparazione incompleta** corresponding to canonical manifest `DRAFT`.
 - Revalidation/fingerprint conflict: **rivalidazione richiesta**.
 
+## Curriculum approval vs Docente OS intake
+
+The prototype keeps two states distinct:
+
+- **Arena curriculum authority / approval** — supplied by the governed Arena snapshot;
+- **Docente OS intake/revalidation state** — supplied by the downstream acceptance model.
+
+For S2, because no runtime intake occurs, the prototype uses the explicit non-operational downstream state:
+
+`AWAITING_TEACHER_DECISION`
+
+Teacher-facing wording: **Da confermare nel contesto Docente OS**.
+
+This means the curriculum can be previewed for lesson preparation, but the card must not imply that Docente OS has already persisted or adopted the handoff.
+
 ## Atlas provenance rule
 
 The readable prototype must keep visible, without turning them into lesson authority:
