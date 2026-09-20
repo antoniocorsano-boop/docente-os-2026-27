@@ -53,6 +53,8 @@ export default function LessonPrepareClient({
     status: LessonPreparationApprovalStatus
     approvedAt: string | null
     notice: string | null
+    alignmentAuthority: 'PROVISIONAL_BASELINE' | 'APPROVED_INSTITUTIONAL' | null
+    requiresRevalidationOnApproval: boolean | null
   }
 }) {
   const [prepared, setPrepared] = useState<Record<number, boolean>>({})
@@ -112,7 +114,13 @@ export default function LessonPrepareClient({
 
         <div className={styles.planBoundary} role="status" aria-live="polite">
           <strong>{approvalTitle(approval.status)}</strong>
-          <span>{approvalMessage(approval.status, approval.approvedAt, approval.notice)}</span>
+          <span>{approvalMessage(
+            approval.status,
+            approval.approvedAt,
+            approval.notice,
+            approval.alignmentAuthority,
+            approval.requiresRevalidationOnApproval,
+          )}</span>
         </div>
 
         <div className={styles.closeActions}>
@@ -192,8 +200,16 @@ function approvalMessage(
   status: LessonPreparationApprovalStatus,
   approvedAt: string | null,
   notice: string | null,
+  alignmentAuthority: 'PROVISIONAL_BASELINE' | 'APPROVED_INSTITUTIONAL' | null,
+  requiresRevalidationOnApproval: boolean | null,
 ) {
+  const provisional = alignmentAuthority === 'PROVISIONAL_BASELINE' && requiresRevalidationOnApproval === true
   if (status === 'APPROVED') {
+    if (provisional) {
+      return approvedAt
+        ? `Hai approvato questa lezione il ${formatApprovalDate(approvedAt)} sulla baseline Arena provvisoria ma completa. Puoi procedere; quando Arena registrerà l’adozione istituzionale, Docente OS richiederà una nuova rivalidazione.`
+        : 'Hai approvato questa lezione sulla baseline Arena provvisoria ma completa. Puoi procedere; l’adozione istituzionale futura richiederà una nuova rivalidazione.'
+    }
     return approvedAt
       ? `Hai approvato questa versione il ${formatApprovalDate(approvedAt)}. Puoi procedere alla lezione.`
       : 'Questa versione è approvata. Puoi procedere alla lezione.'
@@ -202,7 +218,10 @@ function approvalMessage(
     return 'Dopo l’ultima approvazione sono cambiati curricolo, proiezione o elementi didattici accettati. Controlla e approva di nuovo.'
   }
   if (status === 'CURRICULUM_REQUIRED') {
-    return 'Prima di procedere serve una baseline Arena approvata, completa e già rivalidata per questa classe.'
+    return 'Prima di procedere serve una baseline Arena completa per la progettazione, coerente con questa classe e con copertura curricolare soddisfatta.'
+  }
+  if (provisional) {
+    return 'La baseline Arena è provvisoria ma completa per la progettazione. “Approva e procedi” conferma solo questa preparazione didattica; non approva il curricolo d’istituto e resterà soggetta a rivalidazione quando Arena registrerà l’adozione definitiva.'
   }
   if (notice === 'required') {
     return 'Per avviare una lezione futura devi prima confermare esplicitamente la preparazione mostrata qui.'
