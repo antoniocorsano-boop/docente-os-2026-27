@@ -147,7 +147,7 @@ export default async function LessonWorkspacePage({
   const query = await searchParams
   const mode = asMode(query.mode)
   const recorded = Boolean(progress && COMPLETE_STATUSES.has(progress.status))
-  if (mode === 'teach' && !recorded && approvalStatus !== 'APPROVED') {
+  if (mode !== 'prepare' && !recorded && approvalStatus !== 'APPROVED') {
     redirect(`/classi/${encodeURIComponent(section.id)}/lezioni/${encodeURIComponent(block.id)}?mode=prepare&approval=required`)
   }
 
