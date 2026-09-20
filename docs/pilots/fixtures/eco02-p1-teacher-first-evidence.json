@@ -1,0 +1,79 @@
+{
+  "program": "ECO-02",
+  "pilot": "P1",
+  "status": "PREPARED_FOR_HUMAN_REVIEW",
+  "dosA1": "RUNTIME_DEFERRED",
+  "lesson": {
+    "discipline": "Tecnologia",
+    "classRef": "2C",
+    "title": "Agricoltura come sistema tecnologico",
+    "plannedMinutes": 120,
+    "date": null,
+    "timetableRef": null
+  },
+  "nextLessonPreparation": {
+    "state": "AWAITING_TEACHER_DECISION",
+    "teacherMay": [
+      "MODIFY",
+      "EXCLUDE",
+      "REPLACE",
+      "ADAPT",
+      "PUBLISH_OR_WITHHOLD"
+    ]
+  },
+  "curriculum": {
+    "authority": "CURMANLIGHT_ARENA",
+    "regime": "TRANSITION_2012",
+    "sourceRef": "departmentCurriculumV31.section-09.json",
+    "fingerprint": null,
+    "requiresMaterializedFingerprintBeforeExecution": true
+  },
+  "materialSlots": [
+    {
+      "role": "TEACHER_BRIEF",
+      "source": "DOCENTE_OS",
+      "ref": "CAN-PACK-2A",
+      "status": "READY",
+      "teacherDecision": null
+    },
+    {
+      "role": "STUDENT_HANDOUT",
+      "source": "DOCENTE_OS",
+      "ref": "Scheda 2A-1",
+      "status": "READY",
+      "teacherDecision": null
+    },
+    {
+      "role": "VISUAL_AID",
+      "source": "CURRICULUM_ATLAS",
+      "ref": null,
+      "status": "PROPOSED_SELECTION_REQUIRED",
+      "teacherDecision": null
+    },
+    {
+      "role": "ASSESSMENT_PROMPT",
+      "source": "DOCENTE_OS",
+      "ref": "Mappa input-processo-output e restituzione orale",
+      "status": "DRAFT",
+      "teacherDecision": null
+    }
+  ],
+  "evidence": {
+    "preparationMinutesBefore": null,
+    "preparationMinutesAfter": null,
+    "flowComprehensibility1to5": null,
+    "provenanceVisible": null,
+    "teacherOverrideCount": null,
+    "pedagogicalControl1to5": null,
+    "revalidationResult": null,
+    "teacherVerdict": null
+  },
+  "privacy": {
+    "pupilPersonalData": false
+  },
+  "runtime": {
+    "autonomousActions": false,
+    "autonomousPublication": false
+  },
+  "opensEco01S4": false
+}

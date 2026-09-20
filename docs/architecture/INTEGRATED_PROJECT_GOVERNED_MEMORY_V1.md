@@ -3,7 +3,7 @@
 Status: CANONICAL_SHARED_MEMORY
 Scope: CurManLight Arena + Docente OS
 Date: 2026-08-29
-Amended: 2026-09-20 — ECO-01/S3 closure receipt
+Amended: 2026-09-20 — ECO-02/P1 controlled teacher-first pilot authorization
 Memory ID: CML-DOS-INTEGRATED-GOVERNANCE-V1
 
 ## 1. Purpose
@@ -235,6 +235,33 @@ No ECO-01/S4 or later slice is authorized by this closure. Any runtime activatio
 Canonical plan:
 - Drive document: `ECO-01 — Preparazione curricolare della lezione — Contratto e prototipo non operativo`;
 - plan version at S3 authorization: v0.5 / 2026-09-20.
+
+### ECO-02/P1 — controlled teacher-first pilot
+
+ECO-02/P1 is **AUTHORIZED / PILOT_REQUIRED / TEACHER_CONTROLLED / DOS-A1 RUNTIME_DEFERRED**.
+
+Authorized scope:
+- one real Technology sequence only: **“Agricoltura come sistema tecnologico”**;
+- one real class only: **2C**, with date and timetable bound by the teacher before use;
+- Arena remains the sole curriculum authority and supplies the governed curriculum snapshot/provenance;
+- Atlas may supply learning objects and resources only through canonical `LessonPreparationManifest.materialSlots`;
+- Docente OS organizes `NextLessonPreparation` and the lesson manifest for teacher review;
+- the teacher retains final authority to modify, exclude, replace, adapt and publish every proposal;
+- the pilot records preparation time, comprehensibility, provenance visibility, teacher overrides and revalidation behaviour as evidence.
+
+Explicit exclusions:
+- `DOS-A1` remains **RUNTIME_DEFERRED**;
+- no autonomous operational action, definitive automatic generation or autonomous publication;
+- no parallel curriculum-authority path and no Atlas mediation of curriculum authority;
+- no pupil personal data;
+- no automatic opening of ECO-01/S4 or any later slice;
+- pilot evidence is not an implicit approval of runtime operation.
+
+P1 must stop at human review of the prepared pilot packet. Classroom execution, result classification and any later activation require an explicit teacher decision and separately bound evidence.
+
+Authorization bases:
+- Arena: `main@65ad4a8ff2f74f7f9b9ea763b1a344686cf0dedc`;
+- Docente OS: `develop@9811d2756b59da54e09ed9c2d83210507e8cc6a7`.
 
 ### AILit
 
