@@ -1,4 +1,5 @@
 import { asAnnualPlanGrade } from '@/core/domain/annual-plan-execution'
+import { bindArenaDisciplineRefToDocenteOs } from '@/core/domain/cml-discipline-binding'
 import type { TransitionAwareAnnualPlanApplyCommand } from '@/core/domain/cml-curriculum-applicability'
 import {
   prepareAnnualPlanCurriculumPersistence,
@@ -246,7 +247,7 @@ export class SupabaseAnnualPlanCurriculumRepository {
       target_workspace_id: input.workspaceId,
       target_academic_year_id: input.academicYearId,
       target_section_id: input.sectionId,
-      target_discipline_ref: input.disciplineRef,
+      target_discipline_ref: bindArenaDisciplineRefToDocenteOs(input.disciplineRef),
     })
     if (error) throw new Error(error.message)
     return data === null ? null : toReceipt(data)
@@ -264,7 +265,7 @@ export class SupabaseAnnualPlanCurriculumRepository {
       target_workspace_id: input.workspaceId,
       target_academic_year_id: input.academicYearId,
       target_section_id: input.sectionId,
-      target_discipline_ref: input.disciplineRef,
+      target_discipline_ref: bindArenaDisciplineRefToDocenteOs(input.disciplineRef),
     })
     if (error) throw new Error(error.message)
     return data === null ? null : toBaselineSnapshot(data)

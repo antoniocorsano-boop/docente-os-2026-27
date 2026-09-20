@@ -104,6 +104,15 @@ describe('annual plan curriculum persistence contract', () => {
     assert.equal(payload.sectionRef, '1A')
   })
 
+  it('binds Arena tecnologia to the canonical Docente OS technology key without changing source context', () => {
+    const candidate = command()
+    candidate.context.disciplineRef = 'tecnologia'
+    candidate.curricularContext.disciplineRef = 'tecnologia'
+    const payload = prepareAnnualPlanCurriculumPersistence({ command: candidate, section })
+    assert.equal(payload.disciplineRef, 'technology')
+    assert.equal(payload.curricularContext.disciplineRef, 'tecnologia')
+  })
+
   it('persists an approved institutional baseline distinctly', () => {
     const payload = prepareAnnualPlanCurriculumPersistence({ command: command('APPROVED'), section })
     assert.equal(payload.curriculumState, 'APPROVED')
