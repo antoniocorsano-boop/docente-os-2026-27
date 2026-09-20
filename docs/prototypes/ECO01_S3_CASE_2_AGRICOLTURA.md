@@ -69,6 +69,13 @@ Chiede agli alunni di individuare risorse naturali, elementi tecnici, energia, a
 
 Servono esempi chiari da mostrare alla LIM o alla classe.
 
+### Materiali per la rappresentazione grafica
+**Da predisporre**
+
+- matita;
+- righello;
+- materiali per una semplice rappresentazione grafica.
+
 ---
 
 ## Prima di entrare in classe
@@ -78,7 +85,9 @@ Servono esempi chiari da mostrare alla LIM o alla classe.
 - Scheda 2A-1.
 
 **Da preparare**
-- immagini o casi di paesaggio agricolo.
+- immagini o casi di paesaggio agricolo;
+- matita e righello;
+- materiali per una semplice rappresentazione grafica.
 
 **Da associare quando disponibile**
 - sezione reale;
