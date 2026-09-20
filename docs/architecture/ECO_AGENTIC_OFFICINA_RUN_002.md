@@ -75,7 +75,7 @@ Implemented on `fix/eco02-p4-intake-boundaries`:
 - shared 500 KB client/server upload ceiling below the default Server Action body limit;
 - focused domain tests for exact pilot identity, authority guard, upload ceiling and cohort/section scope preservation;
 - the guard suite is included in the normal `npm test` Product CI command;
-- historical `APPROVED` receipts created before a verifiable Arena authority channel are quarantined by migration `0064`; they remain audit evidence but are excluded from current-authority reads;
+- historical approval-bearing receipts created before a verifiable Arena authority channel are quarantined by migration `0064`; they remain audit evidence but are excluded from current-authority reads;
 - authenticated clients no longer have direct INSERT permission on curriculum-adoption rows and no longer have EXECUTE permission on the legacy persistence RPC;
 - the active ECO-02 curriculum write path is a server-only repository boundary that reconstructs the authenticated actor, verifies workspace membership, enforces the exact configured pilot identity and provisional-only authority, then performs the insert with the server secret;
 - the quarantine-aware invariant permits a valid provisional recovery when an older approved receipt has been quarantined;
@@ -102,7 +102,7 @@ Codex review on the superseded head `7a72104db3b0dfba4ccdf95d3708d5c0443f924c` i
 
 Fresh Codex review on superseded head `49df592d141e35cd338b927d0c730aea2dd4ce5d` found one additional valid P1: pre-fix approved receipts could remain consumable. Migration `0064_quarantine_unverified_curriculum_approvals.sql` now quarantines such receipts and excludes them from current-authority reads.
 
-Fresh Codex review on superseded head `0d04d1c8ba671bcb9b7d6369e4a8b309db052adc` then identified three valid follow-ups: client-side database bypass of the pilot scope, quarantine recovery blocked by the legacy downgrade trigger, and a direct lesson-approval query that could still read quarantined authority. The current branch revokes client write grants, moves persistence behind the exact-scope server-only boundary, makes the trigger quarantine-aware, and filters quarantine in lesson approval validation.
+Fresh Codex review on superseded head `0d04d1c8ba671bcb9b7d6369e4a8b309db052adc` then identified three valid follow-ups: client-side database bypass of the pilot scope, quarantine recovery blocked by the legacy downgrade trigger, and a direct lesson-approval query that could still read quarantined authority. The current branch revokes client write grants, moves persistence behind the exact-scope server-only boundary, makes the trigger quarantine-aware, and filters quarantine in lesson approval validation. A later review then found that historically inconsistent nested approval-bearing rows also needed quarantine; migration `0064` now backfills every top-level or nested approval-bearing representation.
 
 Required focus:
 
