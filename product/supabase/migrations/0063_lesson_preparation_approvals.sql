@@ -144,9 +144,12 @@ begin
     raise exception 'Arena curriculum baseline changed; reload and revalidate before approval';
   end if;
 
-  if coalesce(current_curriculum.curricular_context->>'completeForPlanning', 'false') <> 'true'
+  if current_curriculum.curriculum_state <> 'APPROVED'
+    or current_curriculum.alignment_authority <> 'APPROVED_INSTITUTIONAL'
+    or current_curriculum.requires_revalidation_on_approval <> false
+    or coalesce(current_curriculum.curricular_context->>'completeForPlanning', 'false') <> 'true'
     or coalesce(current_curriculum.curriculum_coverage->>'status', '') <> 'SATISFIED' then
-    raise exception 'current Arena curriculum baseline is not ready for lesson approval';
+    raise exception 'current Arena curriculum baseline requires approval or teacher revalidation before lesson approval';
   end if;
 
   if target_projection_id is null or char_length(trim(target_projection_id)) = 0 then
