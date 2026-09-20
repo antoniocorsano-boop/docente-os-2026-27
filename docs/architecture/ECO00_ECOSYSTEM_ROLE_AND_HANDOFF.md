@@ -25,6 +25,8 @@ It does not become a second curriculum/LO canonical archive.
 
 **Arena governs → Atlas makes intelligible/navigable → Docente OS makes operational.**
 
+This does not replace the governed direct Arena → Docente OS curriculum intake/revalidation boundary. Atlas supplies public/navigation/LO context only and never intermediates curriculum authority.
+
 ## Canonical contracts and versions
 
 | Boundary | Canonical contract | Rule |
@@ -121,7 +123,11 @@ It must not invent or locally upgrade an Atlas/Arena assurance.
 
 ### DOS-A1 — Atlas Learning Object runtime consumption
 
-Implement the architecture contract already tracked by ATLAS-04 without duplicating canonical materials.
+**Authorization state: ARCHITECTURE CONTRACT / RUNTIME DEFERRED.**
+
+This document may define contracts, fixtures, adapters and acceptance rules, but runtime implementation is not authorized until the capability is explicitly classified/authorized under the current maturity program (for example `MATURITY_REQUIRED`, `PILOT_REQUIRED` or `PROFESSIONAL_GAP_CONFIRMED`).
+
+When authorized, implement the architecture contract already tracked by ATLAS-04 without duplicating canonical materials.
 
 Acceptance:
 - fixture LO visible in Progetta/Classi/Lezione;
@@ -161,9 +167,10 @@ REVIEWED lifecycle does not equal HUMAN_REVIEWED assurance and does not imply in
 
 ## Canonical Drive pin
 
-- Masterplan: **ECO-00 v0.2**, Drive revision **5**, verified 2026-09-20.
-- Product & Assurance Process: **v0.2**, Drive revision **4**, verified 2026-09-20.
-- The pinned Drive documents prevail on semantic conflict until an explicit coordinated revision updates both sides.
+- Masterplan: **ECO-00 v0.2**, Drive revision **6**, verified 2026-09-20.
+- Product & Assurance Process: **v0.2**, Drive revision **5**, verified 2026-09-20.
+- `CML-DOS-INTEGRATED-GOVERNANCE-V1` remains authoritative for ownership, authority, handoff and execution order.
+- Any semantic conflict is a blocker pending an explicit governed-memory amendment; Drive cannot override governed memory implicitly.
 
 ## References
 
