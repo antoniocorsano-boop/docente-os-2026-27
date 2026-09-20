@@ -1,119 +1,149 @@
 # Preparazione lezione — Tecnologia
 
-> **Prototipo ECO-01/S2 — non operativo**  
-> Classe prima · A.S. 2026/27 · 60 minuti  
-> **DOS-A1: RUNTIME_DEFERRED** · nessuna sincronizzazione attiva
+> **Classe prima · A.S. 2026/27 · 60 minuti**  
+> Scheda di preparazione docente · prototipo non operativo
 
 ## Bisogni, risorse e sistemi
 
-**Obiettivo della lezione**  
-Riconoscere in un oggetto tecnico il bisogno a cui risponde, la sua funzione, le risorse impiegate, gli input e gli output.
+### In questa lezione
 
-**Traguardo curricolare**  
-Leggere oggetti e sistemi semplici in rapporto a bisogni e funzioni.
+Gli alunni osservano un oggetto tecnico e imparano a riconoscere:
 
-### Curricolo di riferimento
+- il **bisogno** a cui risponde;
+- la **funzione** che svolge;
+- le **risorse** che utilizza;
+- gli **input** e gli **output** del sistema.
 
-**Fonte autorevole:** CurManLight Arena  
-**Stato:** APPROVED · evidenza decisionale presente  
-**Riferimento:** Indicazioni 2025 / N4  
-**Versione:** `technology-grade-1@2026-27`  
-**Fingerprint strutturale/authority:** `616de781`
+### Obiettivo
 
-> Atlas non determina il curricolo di questa lezione. Le eventuali risorse Atlas compaiono solo nella sezione Materiali.
+**Riconoscere in un oggetto tecnico bisogno, funzione, risorse, input e output.**
 
-## Sequenza della lezione
+### Collegamento al curricolo
 
-| Fase | Tempo | Attività |
-| --- | ---: | --- |
-| Osserva un oggetto tecnico | 15 min | Individua bisogno, funzione, risorse, input e output. |
-| Costruisci la mappa di sistema | 30 min | Completa la scheda studente e confronta le relazioni tra le parti. |
-| Confronto e verifica | 15 min | Confronta la mappa con un secondo oggetto e verifica coerenza. |
+La lezione è coerente con il curricolo di **Tecnologia — classe prima** e con il riferimento previsto per il 2026/27.
 
-## Materiali
+**Fonte curricolare:** CurManLight Arena  
+**Riferimento:** Indicazioni 2025 / N4
 
-### 1. Guida docente — pronta
+---
 
-**Slot canonico:** `TEACHER_BRIEF` · **READY**
+## Come posso svolgere la lezione
+
+### 1. Osservazione iniziale — 15 minuti
+
+Mostro un oggetto tecnico semplice e chiedo:
+
+- A quale bisogno risponde?
+- Qual è la sua funzione?
+- Di quali risorse ha bisogno?
+- Cosa entra nel sistema?
+- Cosa esce dal sistema?
+
+### 2. Attività degli alunni — 30 minuti
+
+Gli alunni completano la **scheda “Mappa di sistema”**.
+
+Devono individuare:
+
+- bisogno;
+- funzione;
+- componenti principali;
+- risorse;
+- input;
+- output;
+- un possibile rischio d’uso.
+
+### 3. Confronto finale — 15 minuti
+
+Confrontiamo insieme le risposte e applichiamo lo stesso schema a un secondo oggetto tecnico.
+
+---
+
+# Materiali pronti
+
+## Per me — docente
+
+### Guida docente
+**Pronta**
 
 Contiene:
 - obiettivo;
 - scansione dei 60 minuti;
 - domande guida;
 - punti da osservare;
-- chiusura/verifica.
+- proposta di chiusura.
 
-**Provenienza:** Docente OS · materiale locale dimostrativo.
+## Per gli alunni
 
-### 2. Scheda studenti — pronta
+### Scheda “Mappa di sistema”
+**Pronta**
 
-**Slot canonico:** `STUDENT_HANDOUT` · **READY**
+È il materiale principale dell’attività.
 
-La scheda chiede agli studenti di individuare:
-- bisogno;
-- funzione;
-- componenti;
-- risorse;
-- input;
-- output;
-- possibile rischio d'uso.
+---
 
-**Provenienza:** Docente OS · materiale locale dimostrativo.
+# Materiale facoltativo
 
-### 3. Schema visuale Atlas — opzionale
+## Schema visuale da mostrare alla LIM
+**Da decidere**
 
-**Slot canonico:** `VISUAL_AID` · **PROPOSED**
+Può essere utile per introdurre o chiarire il concetto di sistema tecnico.
 
-Può essere usato alla LIM per mostrare un esempio di sistema tecnico.
+La risorsa proviene da **Curriculum Atlas** ed è già revisionata come risorsa, ma **la scelta di usarla in questa lezione resta al docente**.
 
-**Fonte Atlas:** `TEC-SYS-001@0.2`  
-**Asset:** `visual-system-map@1`  
-**Lifecycle Atlas:** REVIEWED  
-**Assurance Atlas:** HUMAN_REVIEWED  
-**Decisione per questa lezione:** ancora da scegliere.
+### Mia decisione
 
-> La revisione della risorsa in Atlas non la rende automaticamente materiale accettato per questa lezione.
+- [ ] La uso alla LIM
+- [ ] Non mi serve per questa lezione
 
-## Stato della preparazione
+---
 
-**REVIEW_REQUIRED**
+## Prima di entrare in classe
 
-La lezione dispone già dei due materiali necessari:
+**Già pronto**
 - guida docente;
 - scheda studenti.
 
-Resta solo una decisione opzionale:
-- usare o non usare lo schema visuale Atlas.
+**Da decidere**
+- usare oppure no lo schema visuale alla LIM.
 
-## Provenienza e tracciabilità
+**Tempo previsto**
+- 60 minuti.
 
-| Elemento | Fonte |
-| --- | --- |
-| Curricolo e authority | CurManLight Arena |
-| Obiettivo operativo della lezione | Docente OS |
+**Nessun altro materiale obbligatorio risulta mancante.**
+
+---
+
+## Dettagli e tracciabilità
+
+Questa sezione serve solo se voglio controllare la provenienza tecnica dei materiali.
+
+| Elemento | Provenienza |
+|---|---|
+| Curricolo | CurManLight Arena |
+| Obiettivo operativo | Docente OS |
 | Guida docente | Docente OS |
 | Scheda studenti | Docente OS |
-| Schema visuale opzionale | Curriculum Atlas |
-| Versione curricolo | `technology-grade-1@2026-27` |
-| Fingerprint | `616de781` |
-| Contratto | `CurriculumSnapshot v1` |
+| Schema visuale facoltativo | Curriculum Atlas |
 
-## Cosa non fa questo prototipo
+**Versione curricolo:** `technology-grade-1@2026-27`  
+**Impronta di controllo:** `616de781`  
+**Contratto curricolare:** `CurriculumSnapshot v1`
 
-- non interroga Arena;
-- non interroga Atlas;
+**Risorsa Atlas:** `TEC-SYS-001@0.2`  
+**Asset:** `visual-system-map@1`
+
+Tutti i materiali della lezione confluiscono nello stesso modello di preparazione; non esiste un percorso separato per Atlas.
+
+---
+
+### Nota di sicurezza del prototipo
+
+Questa scheda è solo dimostrativa:
+
+- non interroga automaticamente Arena o Atlas;
 - non sincronizza dati;
 - non modifica Piano, UDA o lezione;
 - non salva decisioni;
 - non tratta dati personali degli studenti;
 - non attiva `DOS-A1`.
-
----
-
-### Domande per la revisione umana
-
-1. Capisco subito cosa devo fare in questa lezione?
-2. Vedo chiaramente cosa è già pronto?
-3. Distinguo senza ambiguità il curricolo Arena dai materiali Atlas?
-4. La provenienza è sufficiente senza appesantire la scheda?
-5. La risorsa Atlas opzionale è presentata correttamente come scelta, non come obbligo?
