@@ -4,10 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import {
-  buildLessonPreparationApprovalSnapshot,
-  curriculumBaselineFingerprint,
   isCurriculumBaselineReadyForLessonApproval,
-  lessonPreparationFingerprint,
   type LessonPreparationContext,
 } from '@/core/application/lesson-preparation-approval'
 import { SupabaseAnnualPlanCurriculumRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-curriculum-repository'
@@ -16,6 +13,7 @@ import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/s
 import { SupabaseLessonPreparationApprovalRepository } from '@/core/infrastructure/supabase/supabase-lesson-preparation-approval-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
+import { createClient } from '@/lib/supabase/server'
 
 const TECHNOLOGY_DISCIPLINE_REF = 'technology'
 
@@ -69,21 +67,17 @@ export async function approveLessonPreparationAndProceed(formData: FormData) {
     redirect(prepareHref(sectionId, blockId, 'curriculum-required'))
   }
 
-  const snapshot = buildLessonPreparationApprovalSnapshot({
+  const supabase = await createClient()
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+  const approvedBy = claimsData?.claims?.sub
+  if (claimsError || !approvedBy) redirect('/login')
+
+  await new SupabaseLessonPreparationApprovalRepository().approve({
     context,
     curriculumBaseline,
     projection,
     extensions,
-  })
-  const baselineFingerprint = curriculumBaselineFingerprint(curriculumBaseline)
-  const preparationFingerprint = lessonPreparationFingerprint(snapshot)
-
-  await new SupabaseLessonPreparationApprovalRepository().approve({
-    context,
-    curriculumSourceHandoffFootprintHash: curriculumBaseline.sourceHandoffFootprintHash,
-    curriculumBaselineFingerprint: baselineFingerprint,
-    preparationFingerprint,
-    snapshot,
+    approvedBy,
   })
 
   revalidatePath(`/classi/${sectionId}`)
