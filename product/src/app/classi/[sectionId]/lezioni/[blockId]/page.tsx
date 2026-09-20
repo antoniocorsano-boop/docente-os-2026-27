@@ -3,9 +3,17 @@ import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { isVoiceCaptureEnabled } from '@/core/application/voice/voice-capture-policy'
+import {
+  buildLessonPreparationApprovalSnapshot,
+  isCurriculumBaselineReadyForLessonApproval,
+  lessonPreparationFingerprint,
+  type LessonPreparationApprovalStatus,
+} from '@/core/application/lesson-preparation-approval'
+import { SupabaseAnnualPlanCurriculumRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-curriculum-repository'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
+import { SupabaseLessonPreparationApprovalRepository } from '@/core/infrastructure/supabase/supabase-lesson-preparation-approval-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseTextbookRepository } from '@/core/infrastructure/supabase/supabase-textbook-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
@@ -32,7 +40,7 @@ export default async function LessonWorkspacePage({
   searchParams,
 }: {
   params: Promise<{ sectionId: string; blockId: string }>
-  searchParams: Promise<{ mode?: string; review?: string }>
+  searchParams: Promise<{ mode?: string; review?: string; approval?: string }>
 }) {
   const { sectionId, blockId: rawBlockId } = await params
   const blockId = rawBlockId.toUpperCase()
@@ -66,12 +74,35 @@ export default async function LessonWorkspacePage({
     blockId: block.id,
     projectionId: projection.projectionId,
   }
-  const [extensions, knowledgeItems, assignments, textbookAdoptions] = await Promise.all([
+  const [extensions, knowledgeItems, assignments, textbookAdoptions, curriculumBaseline, latestApproval] = await Promise.all([
     new SupabaseLessonDesignRepository().list(designContext),
     new SupabaseKnowledgeRepository().listRecent(context.workspace.id, 100),
     new SupabaseTeachingAssignmentReader().list(context.workspace.id, context.academicYear.id),
     new SupabaseTextbookRepository().list(context.workspace.id, context.academicYear.id),
+    new SupabaseAnnualPlanCurriculumRepository().currentBaseline({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      sectionId: section.id,
+      disciplineRef: 'technology',
+    }),
+    new SupabaseLessonPreparationApprovalRepository().latest(designContext),
   ])
+
+  let approvalStatus: LessonPreparationApprovalStatus = 'CURRICULUM_REQUIRED'
+  if (curriculumBaseline && isCurriculumBaselineReadyForLessonApproval(curriculumBaseline)) {
+    const preparationSnapshot = buildLessonPreparationApprovalSnapshot({
+      context: designContext,
+      curriculumBaseline,
+      projection,
+      extensions,
+    })
+    const currentPreparationFingerprint = lessonPreparationFingerprint(preparationSnapshot)
+    approvalStatus = latestApproval
+      ? latestApproval.preparationFingerprint === currentPreparationFingerprint
+        ? 'APPROVED'
+        : 'STALE'
+      : 'NEEDS_APPROVAL'
+  }
 
   const progress = snapshot.progress.find((entry) =>
     entry.sectionId === section.id &&
@@ -115,6 +146,11 @@ export default async function LessonWorkspacePage({
 
   const query = await searchParams
   const mode = asMode(query.mode)
+  const recorded = Boolean(progress && COMPLETE_STATUSES.has(progress.status))
+  if (mode === 'teach' && !recorded && approvalStatus !== 'APPROVED') {
+    redirect(`/classi/${encodeURIComponent(section.id)}/lezioni/${encodeURIComponent(block.id)}?mode=prepare&approval=required`)
+  }
+
   const sectionLabel = `${GRADE_NUMBER[section.grade]}ª ${section.sectionCode}`
   const progressView = {
     status: progress?.status ?? 'PIANIFICATO',
@@ -142,6 +178,11 @@ export default async function LessonWorkspacePage({
           extensions={extensions}
           progress={progressView}
           udaProgress={udaProgressView}
+          approval={{
+            status: approvalStatus,
+            approvedAt: latestApproval?.approvedAt ?? null,
+            notice: query.approval ?? null,
+          }}
         />
       ) : mode === 'observe' ? (
         <LessonObserveClient
