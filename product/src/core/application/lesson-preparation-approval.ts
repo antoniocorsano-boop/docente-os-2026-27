@@ -2,11 +2,20 @@ import { createHash } from 'node:crypto'
 import type { AnnualPlanCurriculumBaselineSnapshot } from '@/core/domain/cml-curriculum-revalidation'
 import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
 import type { HumanTaskLessonProjection } from '@/core/presentation/human-task-content'
-import type { LessonDesignContext } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
+
+export type LessonPreparationContext = {
+  workspaceId: string
+  academicYearId: string
+  sectionId: string
+  canonicalPlanAssetId: string
+  canonicalGenerationId: string
+  blockId: string
+  projectionId: string
+}
 
 export type LessonPreparationApprovalSnapshot = {
   schemaVersion: 1
-  context: LessonDesignContext
+  context: LessonPreparationContext
   canonicalPlan: {
     assetId: string
     generationId: string
@@ -54,7 +63,7 @@ export function isCurriculumBaselineReadyForLessonApproval(
 }
 
 export function buildLessonPreparationApprovalSnapshot(input: {
-  context: LessonDesignContext
+  context: LessonPreparationContext
   curriculumBaseline: AnnualPlanCurriculumBaselineSnapshot
   projection: HumanTaskLessonProjection
   extensions: LessonDesignExtension[]
