@@ -33,6 +33,19 @@ alter table public.annual_plan_curriculum_adoptions
     (authority_quarantined_at is not null and authority_quarantine_reason is not null)
   );
 
+alter table public.annual_plan_curriculum_adoptions
+  drop constraint if exists annual_plan_curriculum_adoptions_idempotency_uq;
+
+drop index if exists public.annual_plan_curriculum_adoptions_active_idempotency_uq;
+
+create unique index annual_plan_curriculum_adoptions_active_idempotency_uq
+  on public.annual_plan_curriculum_adoptions(
+    section_id,
+    discipline_ref,
+    source_handoff_footprint_hash
+  )
+  where authority_quarantined_at is null;
+
 create or replace function private.enforce_annual_plan_curriculum_adoption_invariants()
 returns trigger
 language plpgsql
