@@ -76,7 +76,14 @@ Implemented on `fix/eco02-p4-intake-boundaries`:
 
 No Production action has been taken.
 
+## DESIGN CLASSIFICATION
+
+**COMPATIBLE** — this corrective delta reuses the existing ECO-02/class workspace components, tokens and interaction patterns. It narrows visibility, clarifies authority copy and adds fail-closed states without introducing or superseding the visual system.
+
+The first DPG-1 attempt failed only because the required PR-body classification was absent. The PR body has been updated; this checkpoint creates a new exact head so the design-policy workflow can evaluate the current metadata on a fresh pull-request synchronization event.
+
 ## INDEPENDENT REVIEW
+
 
 State: **PENDING FINAL EXACT HEAD**
 
