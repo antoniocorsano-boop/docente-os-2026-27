@@ -3,6 +3,8 @@ import type { AnnualPlanCurriculumBaselineSnapshot } from '@/core/domain/cml-cur
 import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
 import type { HumanTaskLessonProjection } from '@/core/presentation/human-task-content'
 
+export type LessonPreparationApprovalStatus = 'CURRICULUM_REQUIRED' | 'NEEDS_APPROVAL' | 'STALE' | 'APPROVED'
+
 export type LessonPreparationContext = {
   workspaceId: string
   academicYearId: string
