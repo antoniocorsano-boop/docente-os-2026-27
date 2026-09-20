@@ -74,12 +74,13 @@ export default async function LessonWorkspacePage({
     blockId: block.id,
     projectionId: projection.projectionId,
   }
+  const curriculumRepository = new SupabaseAnnualPlanCurriculumRepository()
   const [extensions, knowledgeItems, assignments, textbookAdoptions, curriculumBaseline, latestApproval] = await Promise.all([
     new SupabaseLessonDesignRepository().list(designContext),
     new SupabaseKnowledgeRepository().listRecent(context.workspace.id, 100),
     new SupabaseTeachingAssignmentReader().list(context.workspace.id, context.academicYear.id),
     new SupabaseTextbookRepository().list(context.workspace.id, context.academicYear.id),
-    new SupabaseAnnualPlanCurriculumRepository().currentBaseline({
+    lessonCurriculumBaselineOrNull(curriculumRepository, {
       workspaceId: context.workspace.id,
       academicYearId: context.academicYear.id,
       sectionId: section.id,
@@ -231,4 +232,23 @@ function currentRomeDate() {
   }).formatToParts(new Date())
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
   return `${values.year}-${values.month}-${values.day}`
+}
+
+
+async function lessonCurriculumBaselineOrNull(
+  repository: SupabaseAnnualPlanCurriculumRepository,
+  input: {
+    workspaceId: string
+    academicYearId: string
+    sectionId: string
+    disciplineRef: string
+  },
+) {
+  try {
+    return await repository.currentBaseline(input)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (/annual_plan_curriculum_current|PGRST202|schema cache/i.test(message)) return null
+    throw error
+  }
 }
