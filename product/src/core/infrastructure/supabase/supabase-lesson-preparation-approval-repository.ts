@@ -1,5 +1,6 @@
 import 'server-only'
 
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AnnualPlanCurriculumBaselineSnapshot } from '@/core/domain/cml-curriculum-revalidation'
 import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
 import type { HumanTaskLessonProjection } from '@/core/presentation/human-task-content'
@@ -48,9 +49,26 @@ type Row = {
   approved_at: string
 }
 
+type ReadDatabase = {
+  public: {
+    Tables: {
+      lesson_preparation_approvals: {
+        Row: Row
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+    }
+    Views: Record<string, never>
+    Functions: Record<string, never>
+    Enums: Record<string, never>
+    CompositeTypes: Record<string, never>
+  }
+}
+
 export class SupabaseLessonPreparationApprovalRepository {
   async latest(context: LessonPreparationContext): Promise<LessonPreparationApprovalReceipt | null> {
-    const supabase = await createClient()
+    const supabase = (await createClient()) as unknown as SupabaseClient<ReadDatabase>
     const { data: claims, error: claimsError } = await supabase.auth.getClaims()
     if (claimsError || !claims?.claims?.sub) throw new Error('Authenticated user required')
 
