@@ -20,6 +20,22 @@ The prototype represents one view assembled from the already-governed concepts:
 
 No parallel model is created.
 
+## Teacher-first presentation rule
+
+The primary surface must use teacher language first.
+
+Technical contract terms such as `fingerprint`, `materialSlots`, lifecycle, assurance, contract ids and source refs must not dominate the lesson card. They belong in a secondary **Dettagli e tracciabilità** area.
+
+Primary wording should answer, in this order:
+- cosa devo fare;
+- cosa è già pronto;
+- cosa devo decidere;
+- cosa useranno gli studenti;
+- cosa proietterò o mostrerò;
+- da dove arriva il curricolo.
+
+The teacher should be able to use the card without knowing ECO-01, Atlas contract names or internal read-model terminology.
+
 ## Information hierarchy
 
 The readable card is intentionally organized in this order:
