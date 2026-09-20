@@ -1,0 +1,236 @@
+{
+  "program": "ECO-01",
+  "slice": "S1",
+  "mode": "NON_OPERATIONAL_PROTOTYPE",
+  "runtimeEffects": "NONE",
+  "dosA1": "RUNTIME_DEFERRED",
+  "demoOnly": true,
+  "curriculumContext": {
+    "sourceProduct": "CURMANLIGHT_ARENA",
+    "contract": "CurriculumSnapshot v1",
+    "producerProfile": "CML_CURRICULUM_RELEASE_CONTRACT_V1",
+    "curriculumVersionRef": "curmanlight.arena:CurriculumVersion:technology-grade-1@2026-27",
+    "structuralAuthorityFingerprint": {
+      "algorithm": "fnv1a",
+      "version": 1,
+      "hash": "616de781"
+    },
+    "authorityState": "APPROVED",
+    "disciplineId": "technology",
+    "disciplineLabel": "Tecnologia",
+    "gradeRef": "grade-1",
+    "gradeLabel": "Classe prima",
+    "academicYear": "2026-2027",
+    "achievementTargets": [
+      "Legge oggetti e sistemi semplici in rapporto a bisogni e funzioni."
+    ],
+    "learningObjectives": [
+      "Analizzare struttura e funzione; riconoscere risorse, input/output e rischi d'uso."
+    ],
+    "curriculumNodeRefs": [
+      "curmanlight.arena:CurriculumNode:technology-grade1-systems",
+      "curmanlight.arena:CurriculumNode:technology-grade1-system-map"
+    ],
+    "sourceFramework": "Indicazioni 2025 / N4",
+    "humanValidation": "HUMAN_REVIEWED",
+    "authorityReceiptRef": "curmanlight.arena:InstitutionalDecision:decision-tech-grade1-2026-27",
+    "approvalProcessRef": "curmanlight.arena:RevisionProcess:curriculum-2025-transition"
+  },
+  "nextLessonPreparation": {
+    "lesson": {
+      "logicalId": "demo-technology-grade1-systems",
+      "startAt": "2026-09-21T09:00:00",
+      "endAt": "2026-09-21T10:00:00",
+      "title": "Bisogni, risorse e sistemi",
+      "sectionId": "demo-1A",
+      "disciplineId": "technology",
+      "authority": "IN_FORCE"
+    },
+    "canonicalLesson": {
+      "sectionLabel": "1A — demo",
+      "blockId": "B01-DEMO",
+      "title": "Bisogni, risorse e sistemi",
+      "objective": "Riconoscere in un oggetto tecnico bisogno, funzione, risorse, input e output.",
+      "durationMinutes": 60,
+      "udaTitle": "Tecnologia come sistema",
+      "progressStatus": "DEMO",
+      "preparationPreview": [
+        "Preparare guida docente",
+        "Preparare scheda studenti",
+        "Valutare uso della risorsa Atlas opzionale"
+      ],
+      "remainingPreparationCount": 0,
+      "readyTitles": [
+        "Guida docente — Bisogni, risorse e sistemi",
+        "Scheda studenti — Mappa di sistema"
+      ],
+      "readyCount": 2,
+      "statusLabel": "READY_BASE"
+    },
+    "knowledgeResources": [],
+    "missingInformation": [],
+    "provenance": [
+      {
+        "kind": "ARENA_CURRICULUM_SNAPSHOT",
+        "ref": "CurriculumSnapshot:v1:technology-grade1@2026-27#616de781",
+        "label": "Curricolo Tecnologia classe prima — Arena"
+      }
+    ]
+  },
+  "lessonPreparationManifest": {
+    "lessonRef": "demo-technology-grade1-systems",
+    "workspaceId": "demo-workspace",
+    "academicYearId": "2026-2027",
+    "sectionId": "demo-1A",
+    "disciplineId": "technology",
+    "temporalAuthority": "IN_FORCE",
+    "blockId": "B01-DEMO",
+    "projectionId": "ECO01-DEMO-PROJECTION",
+    "udaRef": "ECO01-DEMO-UDA",
+    "packRef": "ECO01-DEMO-PACK",
+    "objective": "Riconoscere in un oggetto tecnico bisogno, funzione, risorse, input e output.",
+    "materialSlots": [
+      {
+        "role": "TEACHER_BRIEF",
+        "required": true,
+        "status": "READY",
+        "resourceRefs": [
+          "demo:teacher-brief:systems"
+        ],
+        "titles": [
+          "Guida docente — Bisogni, risorse e sistemi"
+        ],
+        "reason": "Materiale docente locale già predisposto.",
+        "provenance": [
+          {
+            "kind": "DOCENTE_OS_LOCAL_MATERIAL",
+            "ref": "demo:teacher-brief:systems"
+          }
+        ]
+      },
+      {
+        "role": "STUDENT_HANDOUT",
+        "required": true,
+        "status": "READY",
+        "resourceRefs": [
+          "demo:student-handout:system-map"
+        ],
+        "titles": [
+          "Scheda studenti — Mappa di sistema"
+        ],
+        "reason": "Scheda studente locale già predisposta.",
+        "provenance": [
+          {
+            "kind": "DOCENTE_OS_LOCAL_MATERIAL",
+            "ref": "demo:student-handout:system-map"
+          }
+        ]
+      },
+      {
+        "role": "VISUAL_AID",
+        "required": false,
+        "status": "PROPOSED",
+        "resourceRefs": [
+          "atlas:lo:TEC-SYS-001@0.2",
+          "atlas:asset:visual-system-map@1"
+        ],
+        "titles": [
+          "Atlas — Schema visuale di un sistema tecnico"
+        ],
+        "reason": "Risorsa Atlas opzionale pubblicata; richiede scelta/validazione docente prima dell'uso.",
+        "provenance": [
+          {
+            "kind": "ATLAS_LEARNING_OBJECT",
+            "ref": "TEC-SYS-001@0.2",
+            "label": "Lifecycle: REVIEWED · Assurance: HUMAN_REVIEWED"
+          },
+          {
+            "kind": "ATLAS_MATERIAL_ASSET",
+            "ref": "visual-system-map@1",
+            "label": "Asset version 1"
+          },
+          {
+            "kind": "ATLAS_SOURCE",
+            "ref": "atlas://TEC-SYS-001/visual-system-map@1",
+            "label": "Risorsa Atlas subordinata; non fonte curricolare"
+          }
+        ]
+      }
+    ],
+    "readiness": "REVIEW_REQUIRED",
+    "missingInformation": [],
+    "provenance": [
+      {
+        "kind": "ARENA_CURRICULUM_SNAPSHOT",
+        "ref": "CurriculumSnapshot:v1:technology-grade1@2026-27#616de781"
+      },
+      {
+        "kind": "DOCENTE_OS_LESSON_CONTEXT",
+        "ref": "demo-technology-grade1-systems"
+      }
+    ],
+    "renderingCapabilities": [
+      "TEACHER_BRIEF",
+      "STUDENT_HANDOUT",
+      "VISUAL_AID"
+    ],
+    "sequence": [
+      {
+        "id": "demo-step-1",
+        "origin": "CANONICAL",
+        "extensionId": null,
+        "kind": null,
+        "minutes": 15,
+        "title": "Osserva un oggetto tecnico",
+        "instruction": "Individua bisogno, funzione, risorse, input e output.",
+        "cue": null,
+        "sourceKind": null,
+        "sourceLabel": null,
+        "sourceRef": null
+      },
+      {
+        "id": "demo-step-2",
+        "origin": "CANONICAL",
+        "extensionId": null,
+        "kind": null,
+        "minutes": 30,
+        "title": "Costruisci la mappa di sistema",
+        "instruction": "Completa la scheda studente e confronta le relazioni tra le parti.",
+        "cue": null,
+        "sourceKind": null,
+        "sourceLabel": null,
+        "sourceRef": null
+      },
+      {
+        "id": "demo-step-3",
+        "origin": "CANONICAL",
+        "extensionId": null,
+        "kind": null,
+        "minutes": 15,
+        "title": "Confronto e verifica",
+        "instruction": "Confronta la mappa con un secondo oggetto e verifica coerenza.",
+        "cue": null,
+        "sourceKind": null,
+        "sourceLabel": null,
+        "sourceRef": null
+      }
+    ],
+    "sequenceRefs": [
+      "demo-step-1",
+      "demo-step-2",
+      "demo-step-3"
+    ],
+    "supportingMaterials": [],
+    "acceptedExtensionRefs": [],
+    "proposedExtensionRefs": [],
+    "ignoredAcceptedExtensionRefs": []
+  },
+  "prototypeAssertions": {
+    "arenaRemainsCurriculumAuthority": true,
+    "atlasIsSubordinateMaterialSource": true,
+    "allAtlasResourcesUseMaterialSlots": true,
+    "parallelAtlasMaterialPath": false,
+    "automaticSynchronization": false,
+    "userDataMutation": false
+  }
+}

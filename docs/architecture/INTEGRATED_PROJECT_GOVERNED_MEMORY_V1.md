@@ -3,7 +3,7 @@
 Status: CANONICAL_SHARED_MEMORY
 Scope: CurManLight Arena + Docente OS
 Date: 2026-08-29
-Amended: 2026-09-20 — Arena M4 promotion-candidate reconciliation
+Amended: 2026-09-20 — ECO-01 architecture-only maturity bridge authorization
 Memory ID: CML-DOS-INTEGRATED-GOVERNANCE-V1
 
 ## 1. Purpose
@@ -192,6 +192,30 @@ The integrated project is now explicitly in **completion and maturation mode**.
 - The canonical completion checkpoint is `docs/architecture/DUAL_SYSTEM_CANONICAL_RESET_2026-09-18.md`.
 - This reset does not authorize Arena S4 early, does not weaken exact-head certification and does not change the product ownership or authority boundary.
 
+### ECO-01 — curricular lesson-preparation maturity bridge
+
+ECO-01 is explicitly classified **MATURITY_REQUIRED / ARCHITECTURE_ONLY**.
+
+Authorized now:
+- **ECO-01/S1 — CurriculumSnapshot v1 contract + mapping into the canonical lesson-preparation model**;
+- documentation, schemas, fixtures, validators and non-operational read-model prototypes only;
+- a real Technology lesson fixture may be used as evidence;
+- `CurriculumSnapshot v1` must carry a deterministic structural/authority fingerprint;
+- Docente OS mapping must converge on `NextLessonPreparation` and `LessonPreparationManifest.materialSlots`.
+
+Invariants:
+- the direct `Arena -> Docente OS` curriculum intake/revalidation boundary remains canonical for authority;
+- Atlas is subordinate for publication/navigation/LO/material resources and does not intermediate curriculum authority;
+- Atlas resources must enter the canonical lesson manifest; no parallel material path is authorized;
+- `DOS-A1` remains **RUNTIME_DEFERRED**;
+- no automatic sync, new shared persistence, runtime API coupling, user-data mutation or institutional-approval change is authorized by ECO-01/S1.
+
+Later ECO-01 slices require their own governed evidence and do not become authorized merely because S1 closes.
+
+Canonical plan:
+- Drive document: `ECO-01 — Preparazione curricolare della lezione — Contratto e prototipo non operativo`;
+- plan version at authorization: v0.1 / 2026-09-20.
+
 ### AILit
 
 AILit remains `EXTERNAL_REFERENCE / ARCHITECTURE_ONLY`.
@@ -203,7 +227,7 @@ No AILit runtime, UI, database, dedicated store or authority implementation is a
 ### CurManLight Arena
 
 Repository: `antoniocorsano-boop/CurManLight_arena`  
-Canonical integrated baseline at this amendment: `main@9bc3bb3f57b4c6bc17453fce044d478a0994976a`
+Canonical integrated baseline at this amendment: `main@5438514c71fe75e4e2781d896aff949c685a2acf`
 
 Current M4 promotion candidate:
 - source candidate: `a315aa72ce68a52da7d4d960996b6470774104b0`;
@@ -217,13 +241,15 @@ Current M4 promotion candidate:
 ### Docente OS
 
 Repository: `antoniocorsano-boop/docente-os-2026-27`  
-Canonical active product baseline at this amendment: `develop@7f714e6ac6f4264af86f15f8a6f5b99121a52a41`
+Canonical active product baseline at this amendment: `develop@d190d028ae37109a2893b974ffec05bd6ce9180c`
 
 Current completion state:
 - Teacher OS V1 convergence is the active product program;
 - H8 governed reflection/replanning lifecycle: complete;
 - H9-A accepted replanning read model: complete and post-merge certified;
 - next maturity move: freeze a real release candidate and collect sustained teacher-pilot evidence rather than continue indefinite feature accumulation.
+
+ECO-00 cross-product governance documentation is integrated in both current baselines. ECO-01/S1 is the next authorized architecture-only maturity slice.
 
 Agents must re-check live PR/gate state before promotion or merge; this memory records governance and point-in-time state, not permission to merge stale candidates.
 
