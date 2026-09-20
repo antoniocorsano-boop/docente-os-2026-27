@@ -37,6 +37,8 @@ export async function acceptArenaCurriculumHandoff(
     return { status: 'error', message: 'Seleziona un passaggio Arena valido prima di confermare.' }
   }
 
+  let destination: string | null = null
+
   try {
     const handoff = parseCmlLocalHandoffV2Json(handoffJson)
     const context = await new SupabaseWorkspaceRepository().getCurrentContext()
@@ -75,49 +77,53 @@ export async function acceptArenaCurriculumHandoff(
 
     if (current?.sourceHandoffFootprintHash === handoff.structuralFootprint.hash) {
       revalidateCurriculumPaths(sectionId)
-      redirect(`/classi/${encodeURIComponent(sectionId)}/curricolo-arena?accepted=known`)
-    }
-    if (current) {
+      destination = `/classi/${encodeURIComponent(sectionId)}/curricolo-arena?accepted=known`
+    } else if (current) {
       return {
         status: 'error',
         message: 'Questa classe ha già una baseline Arena diversa. Il nuovo passaggio richiede la rivalidazione curricolare, non un nuovo import iniziale.',
       }
     }
 
-    const draft = buildAnnualPlanFrameworkReviewDraftV2(handoff)
-    const confirmedAt = new Date().toISOString()
-    const decision: TeacherFrameworkDecisionV2 = {
-      contract: 'CML_HANDOFF_ACCEPTANCE_V2',
-      decisionId: randomUUID(),
-      actorRole: 'TEACHER',
-      decision: 'ACCEPTED',
-      confirmedAt,
-      handoffFootprintHash: draft.source.handoffFootprintHash,
-      curricularContextId: draft.source.curricularContextId,
-      frameworkMessageId: draft.source.frameworkMessageId,
+    if (!destination) {
+      const draft = buildAnnualPlanFrameworkReviewDraftV2(handoff)
+      const confirmedAt = new Date().toISOString()
+      const decision: TeacherFrameworkDecisionV2 = {
+        contract: 'CML_HANDOFF_ACCEPTANCE_V2',
+        decisionId: randomUUID(),
+        actorRole: 'TEACHER',
+        decision: 'ACCEPTED',
+        confirmedAt,
+        handoffFootprintHash: draft.source.handoffFootprintHash,
+        curricularContextId: draft.source.curricularContextId,
+        frameworkMessageId: draft.source.frameworkMessageId,
+      }
+      const accepted = prepareAnnualPlanFrameworkApplyV2({ draft, decision })
+      const command = bindCurriculumContextAndCoverage({
+        command: accepted,
+        curricularContext: handoff.curricularContext,
+        targetScope,
+      })
+
+      await repository.persist({
+        workspaceId: context.workspace.id,
+        academicYearId: context.academicYear.id,
+        sectionId,
+        command,
+      })
+
+      revalidateCurriculumPaths(sectionId)
+      destination = `/classi/${encodeURIComponent(sectionId)}/curricolo-arena?accepted=1`
     }
-    const accepted = prepareAnnualPlanFrameworkApplyV2({ draft, decision })
-    const command = bindCurriculumContextAndCoverage({
-      command: accepted,
-      curricularContext: handoff.curricularContext,
-      targetScope,
-    })
-
-    await repository.persist({
-      workspaceId: context.workspace.id,
-      academicYearId: context.academicYear.id,
-      sectionId,
-      command,
-    })
-
-    revalidateCurriculumPaths(sectionId)
-    redirect(`/classi/${encodeURIComponent(sectionId)}/curricolo-arena?accepted=1`)
   } catch (error) {
     return {
       status: 'error',
       message: curriculumIntakeMessage(error),
     }
   }
+
+  if (destination) redirect(destination)
+  return { status: 'error', message: 'Il passaggio Arena non è stato acquisito.' }
 }
 
 function revalidateCurriculumPaths(sectionId: string) {
