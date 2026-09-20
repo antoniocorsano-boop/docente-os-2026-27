@@ -9,8 +9,19 @@ set
     authority_quarantine_reason,
     'PRE_VERIFIABLE_ARENA_AUTHORITY_CHANNEL'
   )
-where curriculum_state = 'APPROVED'
-  and authority_quarantined_at is null;
+where authority_quarantined_at is null
+  and (
+    curriculum_state = 'APPROVED'
+    or alignment_authority = 'APPROVED_INSTITUTIONAL'
+    or transition_remodulation_state = 'APPROVED'
+    or curricular_context->>'curriculumState' = 'APPROVED'
+    or curricular_context ? 'approvalDecisionRef'
+    or coalesce(curricular_context #>> '{transitionRemodulation,state}', '') = 'APPROVED'
+    or coalesce(curricular_context #>> '{transitionRemodulation,institutionallyApproved}', 'false') = 'true'
+    or (curricular_context #>> '{transitionRemodulation,approvalDecisionRef}') is not null
+    or curriculum_coverage->>'authority' = 'APPROVED_INSTITUTIONAL'
+    or coalesce(curriculum_coverage->>'requiresRevalidationOnApproval', 'true') = 'false'
+  );
 
 alter table public.annual_plan_curriculum_adoptions
   drop constraint if exists annual_plan_curriculum_adoptions_quarantine_ck;
@@ -19,9 +30,7 @@ alter table public.annual_plan_curriculum_adoptions
   add constraint annual_plan_curriculum_adoptions_quarantine_ck check (
     (authority_quarantined_at is null and authority_quarantine_reason is null)
     or
-    (authority_quarantined_at is not null
-      and authority_quarantine_reason is not null
-      and curriculum_state = 'APPROVED')
+    (authority_quarantined_at is not null and authority_quarantine_reason is not null)
   );
 
 create or replace function private.enforce_annual_plan_curriculum_adoption_invariants()
