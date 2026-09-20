@@ -4,7 +4,7 @@ Run ID: `ECO-OFFICINA-RUN-002`
 Contract: `ECO-AGENTIC-OFFICINA-V1`  
 Target: **ECO-02/P4 post-merge intake boundary correction**  
 Date: 2026-09-20  
-Status: **EXECUTED / VERIFICATION_PENDING**
+Status: **EXECUTED / CORRECTIVE_REVIEW_APPLIED / VERIFICATION_PENDING**
 
 ## INTENT
 
@@ -61,18 +61,23 @@ The run passes only if all of the following are true:
 
 Expected changed paths are limited to the ECO-02 intake surface, its small domain guards/tests, and this Run 002 record.
 
-No integrated governed-memory amendment is part of this run.
+The cross-system authority-transport clarification requires a mirrored governed-memory amendment. Docente OS carries the amendment in this PR and CurManLight Arena carries the identical amendment in companion PR #317.
 
 ## EXECUTION
 
 Implemented on `fix/eco02-p4-intake-boundaries`:
 
-- pilot-only discovery and server-side enforcement for Technology 2C;
-- local-file authority guard: `APPROVED` claims are preview-only and cannot persist institutional authority;
+- pilot-only discovery and server-side enforcement bound to an explicit workspace/year/section identity configuration, not to the “2C” label alone;
+- fail-closed behavior when the pilot identity configuration is missing;
+- local-file authority guard: all top-level and nested approval-bearing claims are preview-only and cannot persist institutional authority;
 - teacher-facing wording aligned to the verified-authority boundary;
 - target-scope construction preserves section/cohort dimensions;
 - shared 500 KB client/server upload ceiling below the default Server Action body limit;
-- focused domain tests for pilot scope, authority guard, upload ceiling and cohort/section scope preservation.
+- focused domain tests for exact pilot identity, authority guard, upload ceiling and cohort/section scope preservation;
+- the guard suite is included in the normal `npm test` Product CI command;
+- the shared governed-memory amendment is mirrored in CurManLight Arena PR #317.
+
+The real Beta pilot identifiers were resolved from the active Docente OS data context but are **not stored in the public repository**. They will be injected into the Beta service only after a human-approved merge. Production remains untouched.
 
 No Production action has been taken.
 
@@ -85,7 +90,9 @@ The first DPG-1 attempt failed only because the required PR-body classification 
 ## INDEPENDENT REVIEW
 
 
-State: **PENDING FINAL EXACT HEAD**
+State: **REVIEW FINDINGS APPLIED / FRESH REVIEW REQUIRED ON FINAL EXACT HEAD**
+
+Codex review on the superseded head `7a72104db3b0dfba4ccdf95d3708d5c0443f924c` identified four valid findings: exact tenant/year/section pilot binding, nested authority claims, mirrored governed memory, and CI inclusion of the guard suite. All four are addressed in the current branch.
 
 Required focus:
 
@@ -116,7 +123,7 @@ State: **NOT YET REQUESTED**
 
 State: **NOT AUTHORIZED**
 
-This is a corrective implementation run, not a shared-memory amendment.
+The transport/authority clarification is a shared-memory amendment and must merge consistently in Docente OS and CurManLight Arena. Runtime correction and shared governance remain separately human-gated.
 
 ## NEXT AUTHORIZED ACTION
 
