@@ -32,7 +32,9 @@
       "curmanlight.arena:CurriculumNode:technology-grade1-system-map"
     ],
     "sourceFramework": "Indicazioni 2025 / N4",
-    "humanValidation": "HUMAN_REVIEWED"
+    "humanValidation": "HUMAN_REVIEWED",
+    "authorityReceiptRef": "curmanlight.arena:InstitutionalDecision:decision-tech-grade1-2026-27",
+    "approvalProcessRef": "curmanlight.arena:RevisionProcess:curriculum-2025-transition"
   },
   "nextLessonPreparation": {
     "lesson": {
@@ -63,7 +65,7 @@
         "Scheda studenti — Mappa di sistema"
       ],
       "readyCount": 2,
-      "statusLabel": "Da preparare"
+      "statusLabel": "READY_BASE"
     },
     "knowledgeResources": [],
     "missingInformation": [],
@@ -129,7 +131,8 @@
         "required": false,
         "status": "PROPOSED",
         "resourceRefs": [
-          "atlas:lo:TEC-SYS-001:asset:visual-system-map"
+          "atlas:lo:TEC-SYS-001@0.2",
+          "atlas:asset:visual-system-map@1"
         ],
         "titles": [
           "Atlas — Schema visuale di un sistema tecnico"
@@ -137,8 +140,18 @@
         "reason": "Risorsa Atlas opzionale pubblicata; richiede scelta/validazione docente prima dell'uso.",
         "provenance": [
           {
-            "kind": "ATLAS_LEARNING_OBJECT_ASSET",
-            "ref": "TEC-SYS-001@0.2/visual-system-map",
+            "kind": "ATLAS_LEARNING_OBJECT",
+            "ref": "TEC-SYS-001@0.2",
+            "label": "Lifecycle: REVIEWED · Assurance: HUMAN_REVIEWED"
+          },
+          {
+            "kind": "ATLAS_MATERIAL_ASSET",
+            "ref": "visual-system-map@1",
+            "label": "Asset version 1"
+          },
+          {
+            "kind": "ATLAS_SOURCE",
+            "ref": "atlas://TEC-SYS-001/visual-system-map@1",
             "label": "Risorsa Atlas subordinata; non fonte curricolare"
           }
         ]
@@ -160,7 +173,57 @@
       "TEACHER_BRIEF",
       "STUDENT_HANDOUT",
       "VISUAL_AID"
-    ]
+    ],
+    "sequence": [
+      {
+        "id": "demo-step-1",
+        "origin": "CANONICAL",
+        "extensionId": null,
+        "kind": null,
+        "minutes": 15,
+        "title": "Osserva un oggetto tecnico",
+        "instruction": "Individua bisogno, funzione, risorse, input e output.",
+        "cue": null,
+        "sourceKind": null,
+        "sourceLabel": null,
+        "sourceRef": null
+      },
+      {
+        "id": "demo-step-2",
+        "origin": "CANONICAL",
+        "extensionId": null,
+        "kind": null,
+        "minutes": 30,
+        "title": "Costruisci la mappa di sistema",
+        "instruction": "Completa la scheda studente e confronta le relazioni tra le parti.",
+        "cue": null,
+        "sourceKind": null,
+        "sourceLabel": null,
+        "sourceRef": null
+      },
+      {
+        "id": "demo-step-3",
+        "origin": "CANONICAL",
+        "extensionId": null,
+        "kind": null,
+        "minutes": 15,
+        "title": "Confronto e verifica",
+        "instruction": "Confronta la mappa con un secondo oggetto e verifica coerenza.",
+        "cue": null,
+        "sourceKind": null,
+        "sourceLabel": null,
+        "sourceRef": null
+      }
+    ],
+    "sequenceRefs": [
+      "demo-step-1",
+      "demo-step-2",
+      "demo-step-3"
+    ],
+    "supportingMaterials": [],
+    "acceptedExtensionRefs": [],
+    "proposedExtensionRefs": [],
+    "ignoredAcceptedExtensionRefs": []
   },
   "prototypeAssertions": {
     "arenaRemainsCurriculumAuthority": true,
