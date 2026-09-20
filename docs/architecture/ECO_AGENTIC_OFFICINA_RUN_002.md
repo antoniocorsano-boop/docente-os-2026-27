@@ -4,7 +4,7 @@ Run ID: `ECO-OFFICINA-RUN-002`
 Contract: `ECO-AGENTIC-OFFICINA-V1`  
 Target: **ECO-02/P4 post-merge intake boundary correction**  
 Date: 2026-09-20  
-Status: **TEST_CONTRACT_READY**
+Status: **EXECUTED / VERIFICATION_PENDING**
 
 ## INTENT
 
@@ -62,6 +62,19 @@ The run passes only if all of the following are true:
 Expected changed paths are limited to the ECO-02 intake surface, its small domain guards/tests, and this Run 002 record.
 
 No integrated governed-memory amendment is part of this run.
+
+## EXECUTION
+
+Implemented on `fix/eco02-p4-intake-boundaries`:
+
+- pilot-only discovery and server-side enforcement for Technology 2C;
+- local-file authority guard: `APPROVED` claims are preview-only and cannot persist institutional authority;
+- teacher-facing wording aligned to the verified-authority boundary;
+- target-scope construction preserves section/cohort dimensions;
+- shared 500 KB client/server upload ceiling below the default Server Action body limit;
+- focused domain tests for pilot scope, authority guard, upload ceiling and cohort/section scope preservation.
+
+No Production action has been taken.
 
 ## INDEPENDENT REVIEW
 
