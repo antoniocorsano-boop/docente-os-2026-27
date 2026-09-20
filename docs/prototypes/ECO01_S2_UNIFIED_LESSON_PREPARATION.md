@@ -128,10 +128,13 @@ Questa sezione serve solo se voglio controllare la provenienza tecnica dei mater
 
 **Versione curricolo:** `technology-grade-1@2026-27`  
 **Impronta di controllo:** `616de781`  
-**Contratto curricolare:** `CurriculumSnapshot v1`
+**Contratto curricolare:** `CurriculumSnapshot v1`  
+**Revisione umana del curricolo:** `HUMAN_REVIEWED`  
+**Evidenza decisionale:** `decision-tech-grade1-2026-27`
 
 **Risorsa Atlas:** `TEC-SYS-001@0.2`  
-**Asset:** `visual-system-map@1`
+**Asset:** `visual-system-map@1`  
+**Riferimento sorgente Atlas:** `atlas://TEC-SYS-001/visual-system-map@1`
 
 Tutti i materiali della lezione confluiscono nello stesso modello di preparazione; non esiste un percorso separato per Atlas.
 
