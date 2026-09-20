@@ -6,10 +6,11 @@ import { redirect } from 'next/navigation'
 import { SupabaseAnnualPlanCurriculumRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-curriculum-repository'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { eco02PilotIdentityFromEnv } from '@/core/server/eco02-pilot-config'
 import { bindCurriculumContextAndCoverage } from '@/core/domain/cml-curriculum-applicability'
 import {
   assertEco02PilotCurriculumIntakeScope,
-  assertUploadedArenaAuthorityStateAllowed,
+  assertUploadedArenaAuthorityContextAllowed,
   buildArenaCurriculumTargetScope,
   ECO02_PILOT_UPLOAD_MAX_BYTES,
 } from '@/core/domain/cml-discipline-binding'
@@ -59,13 +60,16 @@ export async function acceptArenaCurriculumHandoff(
     if (!section) return { status: 'error', message: 'La classe non appartiene al workspace/anno scolastico corrente.' }
 
     assertEco02PilotCurriculumIntakeScope({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      sectionId: section.id,
       grade: section.grade,
       sectionCode: section.sectionCode,
       disciplineRef: handoff.curricularContext.disciplineRef,
-    })
+    }, eco02PilotIdentityFromEnv())
 
     try {
-      assertUploadedArenaAuthorityStateAllowed(handoff.curricularContext.curriculumState)
+      assertUploadedArenaAuthorityContextAllowed(handoff.curricularContext)
     } catch {
       return {
         status: 'error',
