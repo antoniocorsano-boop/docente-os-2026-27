@@ -178,11 +178,6 @@ export default async function LessonWorkspacePage({
           extensions={extensions}
           progress={progressView}
           udaProgress={udaProgressView}
-          approval={{
-            status: approvalStatus,
-            approvedAt: latestApproval?.approvedAt ?? null,
-            notice: query.approval ?? null,
-          }}
         />
       ) : mode === 'observe' ? (
         <LessonObserveClient
@@ -211,6 +206,11 @@ export default async function LessonWorkspacePage({
           knowledgeSuggestions={knowledgeSuggestions}
           progress={progressView}
           udaProgress={udaProgressView}
+          approval={{
+            status: approvalStatus,
+            approvedAt: latestApproval?.approvedAt ?? null,
+            notice: query.approval ?? null,
+          }}
         />
       )}
     </AppShell>
