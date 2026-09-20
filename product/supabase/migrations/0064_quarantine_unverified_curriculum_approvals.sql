@@ -24,33 +24,64 @@ alter table public.annual_plan_curriculum_adoptions
       and curriculum_state = 'APPROVED')
   );
 
+create or replace function private.enforce_annual_plan_curriculum_adoption_invariants()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  section_workspace_id uuid;
+  section_academic_year_id uuid;
+  year_label text;
+begin
+  select s.workspace_id, s.academic_year_id
+    into section_workspace_id, section_academic_year_id
+  from public.annual_plan_sections s
+  where s.id = new.section_id;
+
+  if section_workspace_id is null then
+    raise exception 'annual plan curriculum adoption references missing section';
+  end if;
+
+  select ay.label
+    into year_label
+  from public.academic_years ay
+  where ay.id = section_academic_year_id
+    and ay.workspace_id = section_workspace_id;
+
+  if year_label is null then
+    raise exception 'annual plan curriculum adoption references missing academic year';
+  end if;
+
+  if replace(year_label, '/', '-') <> replace(new.school_year_ref, '/', '-') then
+    raise exception 'annual plan curriculum adoption school year does not match section';
+  end if;
+
+  if new.curriculum_state = 'PROVISIONAL_COMPLETE'
+    and exists (
+      select 1
+      from public.annual_plan_curriculum_adoptions existing
+      where existing.section_id = new.section_id
+        and existing.discipline_ref = new.discipline_ref
+        and existing.school_year_ref = new.school_year_ref
+        and existing.alignment_authority = 'APPROVED_INSTITUTIONAL'
+        and existing.authority_quarantined_at is null
+    ) then
+    raise exception 'approved curriculum baseline cannot be downgraded to provisional';
+  end if;
+
+  new.applied_by := coalesce(auth.uid(), new.applied_by);
+  new.applied_at := coalesce(new.applied_at, now());
+  new.created_at := coalesce(new.created_at, now());
+  return new;
+end;
+$$;
+
 drop policy if exists annual_plan_curriculum_adoptions_insert_member
   on public.annual_plan_curriculum_adoptions;
 
-create policy annual_plan_curriculum_adoptions_insert_member
-  on public.annual_plan_curriculum_adoptions
-  for insert
-  to authenticated
-  with check (
-    applied_by = (select auth.uid())
-    and exists (
-      select 1
-      from public.annual_plan_sections s
-      where s.id = section_id
-        and private.is_workspace_member(s.workspace_id)
-    )
-    and curriculum_state = 'PROVISIONAL_COMPLETE'
-    and alignment_authority = 'PROVISIONAL_BASELINE'
-    and requires_revalidation_on_approval = true
-    and transition_remodulation_state <> 'APPROVED'
-    and authority_quarantined_at is null
-    and authority_quarantine_reason is null
-    and curricular_context->>'curriculumState' = 'PROVISIONAL_COMPLETE'
-    and not (curricular_context ? 'approvalDecisionRef')
-    and coalesce(curricular_context #>> '{transitionRemodulation,state}', '') <> 'APPROVED'
-    and coalesce(curricular_context #>> '{transitionRemodulation,institutionallyApproved}', 'false') <> 'true'
-    and (curricular_context #>> '{transitionRemodulation,approvalDecisionRef}') is null
-  );
+revoke insert on public.annual_plan_curriculum_adoptions from authenticated;
 
 create or replace function public.persist_annual_plan_curriculum_adoption(
   target_workspace_id uuid,
@@ -81,106 +112,8 @@ language plpgsql
 security invoker
 set search_path = ''
 as $$
-declare
-  actor_id uuid := auth.uid();
-  receipt jsonb;
 begin
-  if actor_id is null then
-    raise exception 'authenticated user required';
-  end if;
-
-  if not private.is_workspace_member(target_workspace_id) then
-    raise exception 'workspace membership required';
-  end if;
-
-  if not exists (
-    select 1
-    from public.annual_plan_sections s
-    where s.id = target_section_id
-      and s.workspace_id = target_workspace_id
-      and s.academic_year_id = target_academic_year_id
-  ) then
-    raise exception 'annual plan section is outside the active workspace/year';
-  end if;
-
-  if target_curriculum_state <> 'PROVISIONAL_COMPLETE'
-    or target_alignment_authority <> 'PROVISIONAL_BASELINE'
-    or target_requires_revalidation_on_approval <> true
-    or target_transition_remodulation_state = 'APPROVED'
-    or target_curricular_context->>'curriculumState' <> 'PROVISIONAL_COMPLETE'
-    or target_curricular_context ? 'approvalDecisionRef'
-    or coalesce(target_curricular_context #>> '{transitionRemodulation,state}', '') = 'APPROVED'
-    or coalesce(target_curricular_context #>> '{transitionRemodulation,institutionallyApproved}', 'false') = 'true'
-    or (target_curricular_context #>> '{transitionRemodulation,approvalDecisionRef}') is not null then
-    raise exception 'local curriculum intake cannot establish institutional approval authority';
-  end if;
-
-  insert into public.annual_plan_curriculum_adoptions (
-    section_id,
-    curricular_context_id,
-    school_year_ref,
-    discipline_ref,
-    grade_ref,
-    section_ref,
-    cohort_ref,
-    curriculum_version_ref,
-    curriculum_state,
-    alignment_authority,
-    requires_revalidation_on_approval,
-    applicability_status,
-    transition_remodulation_state,
-    source_handoff_footprint_hash,
-    source_framework_message_id,
-    acceptance_decision_id,
-    accepted_at,
-    reviewed_framework,
-    curriculum_coverage,
-    curricular_context,
-    applied_by
-  ) values (
-    target_section_id,
-    target_curricular_context_id,
-    target_school_year_ref,
-    target_discipline_ref,
-    target_grade_ref,
-    target_section_ref,
-    target_cohort_ref,
-    target_curriculum_version_ref,
-    target_curriculum_state,
-    target_alignment_authority,
-    target_requires_revalidation_on_approval,
-    target_applicability_status,
-    target_transition_remodulation_state,
-    target_source_handoff_footprint_hash,
-    target_source_framework_message_id,
-    target_acceptance_decision_id,
-    target_accepted_at,
-    target_reviewed_framework,
-    target_curriculum_coverage,
-    target_curricular_context,
-    actor_id
-  )
-  on conflict (section_id, discipline_ref, source_handoff_footprint_hash) do nothing;
-
-  select to_jsonb(a)
-    into receipt
-  from public.annual_plan_curriculum_adoptions a
-  where a.section_id = target_section_id
-    and a.discipline_ref = target_discipline_ref
-    and a.source_handoff_footprint_hash = target_source_handoff_footprint_hash
-    and a.authority_quarantined_at is null;
-
-  if receipt is null then
-    raise exception 'annual plan curriculum adoption receipt was not persisted';
-  end if;
-
-  if receipt->>'curricular_context_id' <> target_curricular_context_id
-    or receipt->>'acceptance_decision_id' <> target_acceptance_decision_id
-    or receipt->>'source_framework_message_id' <> target_source_framework_message_id then
-    raise exception 'idempotency conflict for curriculum adoption fingerprint';
-  end if;
-
-  return receipt;
+  raise exception 'client-facing curriculum persistence is disabled; use the governed server-only ECO-02 boundary';
 end;
 $$;
 
@@ -209,6 +142,16 @@ as $$
   limit 1
 $$;
 
+revoke all on function public.persist_annual_plan_curriculum_adoption(
+  uuid, uuid, uuid, text, text, text, text, text, text, jsonb, text, text, boolean,
+  text, text, text, text, text, timestamptz, jsonb, jsonb, jsonb
+) from public, anon, authenticated;
+
+grant execute on function public.persist_annual_plan_curriculum_adoption(
+  uuid, uuid, uuid, text, text, text, text, text, text, jsonb, text, text, boolean,
+  text, text, text, text, text, timestamptz, jsonb, jsonb, jsonb
+) to service_role;
+
 comment on column public.annual_plan_curriculum_adoptions.authority_quarantined_at is
   'Set for pre-verifiable-channel APPROVED rows so they remain audit evidence but cannot act as current institutional authority.';
 
@@ -216,7 +159,7 @@ comment on column public.annual_plan_curriculum_adoptions.authority_quarantine_r
   'Reason an APPROVED adoption receipt is excluded from current authority reads.';
 
 comment on function public.persist_annual_plan_curriculum_adoption is
-  'Authenticated local intake boundary. Until a separately governed server-verifiable Arena channel exists, this boundary accepts provisional curriculum only.';
+  'Legacy client-facing boundary disabled. ECO-02 writes now pass through a server-only repository that enforces the exact configured pilot identity and provisional-only authority.';
 
 comment on function public.annual_plan_curriculum_current is
   'Returns the latest non-quarantined curriculum/framework adoption receipt for one annual-plan section and discipline.';
