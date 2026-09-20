@@ -1,13 +1,19 @@
 # DOS-A1 — Atlas Learning Object runtime experience contract
 
-Status: PRODUCT_CONTRACT_DRAFT  
+Status: PRODUCT_CONTRACT_DRAFT / RUNTIME_DEFERRED  
 Date: 2026-09-20  
 Supersedes: ATLAS-04 contract PR #542 after consolidation  
 Cross-product program: ECO-00
 
+## Authorization status
+
+This contract is **architecture-ready but runtime-deferred**. It does not authorize implementation until the capability is explicitly classified/approved by the current maturity governance.
+
+The governed direct Arena → Docente OS curriculum intake/revalidation path remains canonical for curriculum authority. Atlas consumption is a separate read-only LO/material input and cannot replace that path.
+
 ## Goal
 
-A teacher can consume Curriculum Atlas Learning Objects from the current Docente OS task without creating a second source of truth.
+When separately authorized, a teacher can consume Curriculum Atlas Learning Objects from the current Docente OS task without creating a second source of truth.
 
 **Arena governs → Atlas makes the curriculum intelligible/navigable → Docente OS makes it operational.**
 
@@ -162,9 +168,15 @@ Docente OS cannot promote lifecycle.
 
 All three remain non-canonical until real classroom evidence authorizes a later lifecycle decision.
 
+## Canonical lesson-composition adapter
+
+A future authorized implementation MUST adapt `LearningObjectManifest v1` / `MaterialAssetManifest v1` into the canonical Docente OS lesson-composition read model, including `NextLessonPreparation` and `LessonPreparationManifest.materialSlots` (or their governed successor).
+
+There must be no parallel Atlas-only material path. Readiness, provenance, accepted extensions, Materiali and contextual Copilot must consume the same canonical lesson manifest.
+
 ## Progetta behavior
 
-When an Atlas LO is relevant to the selected grade/focus:
+Only after that adapter exists, when an Atlas LO is relevant to the selected grade/focus:
 - show it in the operational materials group;
 - show lifecycle and version;
 - retain `LO_ID` and `APP_ID`;
@@ -266,14 +278,16 @@ DOS-A1 MUST NOT add:
 
 ## Implementation sequence
 
-1. Add typed Atlas reference model at presentation/domain boundary.
-2. Add fixture adapter for TEC-MAT-001, TEC-SYS-001 and TEC-DES-001.
-3. Render references in Progetta using the existing guided-resource pattern.
-4. Add asset actions in resource detail / class context.
-5. Preserve LO/app/pattern/version/lifecycle.
-6. Add lifecycle gating and return-context tests.
-7. Preserve the identifiers/version data required by future TeachingUseReceipt v1 without implementing receipt emission.
-8. Only after fixture evidence, decide whether resolution belongs in Knowledge or a dedicated read-only provider.
+1. Keep runtime implementation deferred until the capability is explicitly authorized.
+2. Add typed `LearningObjectManifest v1` / local `AtlasLearningObjectRef` adapter at the presentation/domain boundary.
+3. Adapt Atlas LO/assets into `NextLessonPreparation` and `LessonPreparationManifest.materialSlots` (or governed successor).
+4. Add fixture adapters for TEC-MAT-001, TEC-SYS-001 and TEC-DES-001.
+5. Render Atlas-backed material slots through the existing canonical lesson/material surfaces; do not add a parallel resource path.
+6. Add asset actions in resource detail / class context from the canonical manifest.
+7. Preserve LO/app/pattern/version/lifecycle and provenance.
+8. Add lifecycle gating, material-slot parity and return-context tests.
+9. Preserve identifiers/version data required by future TeachingUseReceipt v1 without implementing receipt emission.
+10. Only after fixture evidence and governance authorization, decide whether resolution belongs in Knowledge or a dedicated read-only provider.
 
 ## Acceptance journey
 
@@ -308,9 +322,10 @@ Closure evidence:
 
 ## Canonical Drive pin
 
-- ECO-00 Masterplan **v0.2**, Drive revision **5**, verified 2026-09-20.
-- ECO-00 Product & Assurance Process **v0.2**, Drive revision **4**, verified 2026-09-20.
-- On semantic divergence, the pinned Drive canonical documents prevail until an explicit coordinated revision.
+- ECO-00 Masterplan **v0.2**, Drive revision **6**, verified 2026-09-20.
+- ECO-00 Product & Assurance Process **v0.2**, Drive revision **5**, verified 2026-09-20.
+- `CML-DOS-INTEGRATED-GOVERNANCE-V1` remains authoritative for ownership, authority, handoff and execution order.
+- Semantic divergence blocks implementation until an explicit governed-memory amendment; Drive cannot override that memory implicitly.
 
 ## References
 
