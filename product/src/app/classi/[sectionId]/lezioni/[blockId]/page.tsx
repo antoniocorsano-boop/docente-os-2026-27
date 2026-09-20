@@ -211,6 +211,8 @@ export default async function LessonWorkspacePage({
             status: approvalStatus,
             approvedAt: latestApproval?.approvedAt ?? null,
             notice: query.approval ?? null,
+            alignmentAuthority: curriculumBaseline?.alignmentAuthority ?? null,
+            requiresRevalidationOnApproval: curriculumBaseline?.requiresRevalidationOnApproval ?? null,
           }}
         />
       )}
