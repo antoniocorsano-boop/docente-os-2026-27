@@ -176,6 +176,12 @@ test('unaccepted proposals are outside the approved effective preparation', () =
 
 test('curriculum baseline must be complete and satisfied before lesson approval', () => {
   assert.equal(isCurriculumBaselineReadyForLessonApproval(baseline()), true)
+  const provisional = baseline()
+  provisional.curriculumState = 'PROVISIONAL_COMPLETE'
+  provisional.alignmentAuthority = 'PROVISIONAL_BASELINE'
+  provisional.requiresRevalidationOnApproval = true
+  assert.equal(isCurriculumBaselineReadyForLessonApproval(provisional), false)
+
   const incomplete = baseline()
   incomplete.curricularContext.completeForPlanning = false
   assert.equal(isCurriculumBaselineReadyForLessonApproval(incomplete), false)
