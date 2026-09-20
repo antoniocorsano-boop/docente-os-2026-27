@@ -96,3 +96,12 @@ Drive pin used for this review:
 - verified 2026-09-20.
 
 The pinned Drive canonical documents prevail on semantic conflict until a coordinated explicit revision updates repository documents.
+
+
+## Interoperability authorization rule
+
+DOS-A1 is a documentation/architecture target only until separately classified and authorized by the current maturity governance. ECO-00 documentation does not authorize runtime cross-product implementation by itself.
+
+The direct governed Arena → Docente OS curriculum intake/revalidation boundary remains in force. Atlas LO/material consumption is a separate read-only operational input and cannot replace curriculum authority or teacher revalidation.
+
+Any future Atlas material integration must adapt into the canonical Docente OS lesson-composition read model rather than creating a parallel materials path.
