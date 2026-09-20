@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
+import type { LessonPreparationApprovalStatus } from '@/core/application/lesson-preparation-approval'
 import {
   buildLessonWorkspaceHref,
   resolveHumanTaskResourcesForSurface,
@@ -11,6 +12,7 @@ import {
 import { buildLessonBrief } from '@/core/presentation/lesson-brief'
 import { LessonDesignTools } from './lesson-design-tools'
 import type { LessonKnowledgeSuggestion } from './lesson-material-suggestions'
+import { approveLessonPreparationAndProceed } from './preparation-approval-actions'
 import styles from './lesson-live.module.css'
 
 type Block = {
@@ -37,6 +39,7 @@ export default function LessonPrepareClient({
   knowledgeSuggestions,
   progress,
   udaProgress,
+  approval,
 }: {
   sectionId: string
   sectionLabel: string
@@ -46,6 +49,11 @@ export default function LessonPrepareClient({
   knowledgeSuggestions: LessonKnowledgeSuggestion[]
   progress: Progress
   udaProgress: { completed: number; total: number }
+  approval: {
+    status: LessonPreparationApprovalStatus
+    approvedAt: string | null
+    notice: string | null
+  }
 }) {
   const [prepared, setPrepared] = useState<Record<number, boolean>>({})
   const preparationResources = useMemo(() => resolveHumanTaskResourcesForSurface(projection, 'PREPARE'), [projection])
@@ -102,8 +110,24 @@ export default function LessonPrepareClient({
           </section>
         </div>
 
+        <div className={styles.planBoundary} role="status" aria-live="polite">
+          <strong>{approvalTitle(approval.status)}</strong>
+          <span>{approvalMessage(approval.status, approval.approvedAt, approval.notice)}</span>
+        </div>
+
         <div className={styles.closeActions}>
-          <Link className={styles.primary} href={teachHref}>{recorded ? 'Apri la guida della lezione' : 'Avvia la lezione'}</Link>
+          {recorded ? (
+            <Link className={styles.primary} href={teachHref}>Apri la guida della lezione</Link>
+          ) : approval.status === 'APPROVED' ? (
+            <Link className={styles.primary} href={teachHref}>Procedi alla lezione</Link>
+          ) : approval.status === 'CURRICULUM_REQUIRED' ? null : (
+            <form action={approveLessonPreparationAndProceed}>
+              <input type="hidden" name="sectionId" value={sectionId} />
+              <input type="hidden" name="blockId" value={block.id} />
+              <input type="hidden" name="projectionId" value={projection.projectionId} />
+              <button className={styles.primary} type="submit">Approva e procedi</button>
+            </form>
+          )}
         </div>
 
         <details className={styles.lessonPlanDetails}>
@@ -155,4 +179,46 @@ function formatDuration(minutes: number) {
   if (minutes === 120) return '2 ore'
   if (minutes % 60 === 0) return `${minutes / 60} ore`
   return `${minutes} min`
+}
+
+function approvalTitle(status: LessonPreparationApprovalStatus) {
+  if (status === 'APPROVED') return 'Preparazione approvata'
+  if (status === 'STALE') return 'La preparazione è cambiata'
+  if (status === 'CURRICULUM_REQUIRED') return 'Curricolo da rivalidare'
+  return 'Conferma del docente richiesta'
+}
+
+function approvalMessage(
+  status: LessonPreparationApprovalStatus,
+  approvedAt: string | null,
+  notice: string | null,
+) {
+  if (status === 'APPROVED') {
+    return approvedAt
+      ? `Hai approvato questa versione il ${formatApprovalDate(approvedAt)}. Puoi procedere alla lezione.`
+      : 'Questa versione è approvata. Puoi procedere alla lezione.'
+  }
+  if (status === 'STALE') {
+    return 'Dopo l’ultima approvazione sono cambiati curricolo, proiezione o elementi didattici accettati. Controlla e approva di nuovo.'
+  }
+  if (status === 'CURRICULUM_REQUIRED') {
+    return 'Prima di procedere serve una baseline Arena approvata, completa e già rivalidata per questa classe.'
+  }
+  if (notice === 'required') {
+    return 'Per avviare una lezione futura devi prima confermare esplicitamente la preparazione mostrata qui.'
+  }
+  if (notice === 'changed') {
+    return 'La proiezione della lezione è cambiata. Controlla la versione corrente prima di confermare.'
+  }
+  return 'Controlla obiettivo, attività e materiali. “Approva e procedi” conferma esattamente la preparazione corrente.'
+}
+
+function formatApprovalDate(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat('it-IT', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'Europe/Rome',
+  }).format(date)
 }
