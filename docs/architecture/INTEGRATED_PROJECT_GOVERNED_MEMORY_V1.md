@@ -3,7 +3,7 @@
 Status: CANONICAL_SHARED_MEMORY
 Scope: CurManLight Arena + Docente OS
 Date: 2026-08-29
-Amended: 2026-09-20 — ECO-01 architecture-only maturity bridge authorization
+Amended: 2026-09-20 — ECO-01/S2 readable prototype authorization
 Memory ID: CML-DOS-INTEGRATED-GOVERNANCE-V1
 
 ## 1. Purpose
@@ -194,27 +194,32 @@ The integrated project is now explicitly in **completion and maturation mode**.
 
 ### ECO-01 — curricular lesson-preparation maturity bridge
 
-ECO-01 is explicitly classified **MATURITY_REQUIRED / ARCHITECTURE_ONLY**.
+ECO-01 remains **MATURITY_REQUIRED / ARCHITECTURE_ONLY**.
+
+Closed:
+- **ECO-01/S1 — CurriculumSnapshot v1 contract + mapping into the canonical lesson-preparation model**;
+- final Arena integration: `main@989d86ef0724dde3fa1362b0fbf3b8c70c9e3498`;
+- final Docente OS integration: `develop@3f18eb43d6de026011fff340cc2a52bb4a218e27`.
 
 Authorized now:
-- **ECO-01/S1 — CurriculumSnapshot v1 contract + mapping into the canonical lesson-preparation model**;
-- documentation, schemas, fixtures, validators and non-operational read-model prototypes only;
-- a real Technology lesson fixture may be used as evidence;
-- `CurriculumSnapshot v1` must carry a deterministic structural/authority fingerprint;
-- Docente OS mapping must converge on `NextLessonPreparation` and `LessonPreparationManifest.materialSlots`.
+- **ECO-01/S2 — readable unified lesson-preparation prototype**;
+- static/standalone, teacher-readable evidence only;
+- data remains demonstrative/local and derives from the S1 contract/fixture semantics;
+- the readable prototype must represent the same canonical lesson composition: `NextLessonPreparation`, `LessonPreparationManifest`, and `LessonPreparationManifest.materialSlots`.
 
-Invariants:
+S2 invariants:
 - the direct `Arena -> Docente OS` curriculum intake/revalidation boundary remains canonical for authority;
 - Atlas is subordinate for publication/navigation/LO/material resources and does not intermediate curriculum authority;
-- Atlas resources must enter the canonical lesson manifest; no parallel material path is authorized;
+- every Atlas-backed resource must appear inside canonical `materialSlots`; no parallel Atlas material path is authorized;
+- the prototype must expose source/version/fingerprint and human-review state clearly enough for a teacher to distinguish curriculum authority from optional materials;
 - `DOS-A1` remains **RUNTIME_DEFERRED**;
-- no automatic sync, new shared persistence, runtime API coupling, user-data mutation or institutional-approval change is authorized by ECO-01/S1.
+- no route, API, automatic sync, new persistence, shared database, user-data mutation, institutional-approval change or runtime cross-product integration is authorized by S2.
 
-Later ECO-01 slices require their own governed evidence and do not become authorized merely because S1 closes.
+Later ECO-01 slices require their own governed decision. S2 closure does not authorize runtime implementation.
 
 Canonical plan:
 - Drive document: `ECO-01 — Preparazione curricolare della lezione — Contratto e prototipo non operativo`;
-- plan version at authorization: v0.1 / 2026-09-20.
+- plan version at S2 authorization: v0.3 / 2026-09-20.
 
 ### AILit
 
@@ -227,7 +232,7 @@ No AILit runtime, UI, database, dedicated store or authority implementation is a
 ### CurManLight Arena
 
 Repository: `antoniocorsano-boop/CurManLight_arena`  
-Canonical integrated baseline at this amendment: `main@5438514c71fe75e4e2781d896aff949c685a2acf`
+Canonical integrated baseline at this amendment: `main@989d86ef0724dde3fa1362b0fbf3b8c70c9e3498`
 
 Current M4 promotion candidate:
 - source candidate: `a315aa72ce68a52da7d4d960996b6470774104b0`;
@@ -241,7 +246,7 @@ Current M4 promotion candidate:
 ### Docente OS
 
 Repository: `antoniocorsano-boop/docente-os-2026-27`  
-Canonical active product baseline at this amendment: `develop@d190d028ae37109a2893b974ffec05bd6ce9180c`
+Canonical active product baseline at this amendment: `develop@3f18eb43d6de026011fff340cc2a52bb4a218e27`
 
 Current completion state:
 - Teacher OS V1 convergence is the active product program;
@@ -249,7 +254,7 @@ Current completion state:
 - H9-A accepted replanning read model: complete and post-merge certified;
 - next maturity move: freeze a real release candidate and collect sustained teacher-pilot evidence rather than continue indefinite feature accumulation.
 
-ECO-00 cross-product governance documentation is integrated in both current baselines. ECO-01/S1 is the next authorized architecture-only maturity slice.
+ECO-00 cross-product governance documentation is integrated in both current baselines. ECO-01/S1 is closed; ECO-01/S2 is the current authorized non-operational maturity slice.
 
 Agents must re-check live PR/gate state before promotion or merge; this memory records governance and point-in-time state, not permission to merge stale candidates.
 
