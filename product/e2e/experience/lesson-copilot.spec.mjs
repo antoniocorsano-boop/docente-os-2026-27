@@ -7,7 +7,7 @@ requireE2ECredentials()
 
 const outputRoot = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience'
 
-test('V1-C1: Classe → Lezione → copilota contestuale → fallback senza provider', async ({ page }, testInfo) => {
+test('V1-C1: accesso diretto a Teach → gate docente prima del copilota', async ({ page }, testInfo) => {
   await loginE2E(page)
   await page.goto('/classi')
 
@@ -18,43 +18,33 @@ test('V1-C1: Classe → Lezione → copilota contestuale → fallback senza prov
 
   await page.goto(classHref)
   const lessonLink = page.locator('a[href*="/lezioni/"]').first()
-  await expect(lessonLink, 'La Classe deve offrire almeno un entry point Lezione per il copilota.').toBeVisible()
+  await expect(lessonLink, 'La Classe deve offrire almeno un entry point Lezione.').toBeVisible()
   const lessonHref = await lessonLink.getAttribute('href')
   if (!lessonHref) throw new Error('Missing lesson href')
 
-  await page.goto(lessonHref)
-  await expect(page.getByRole('button', { name: /Chiedi a DOCENTE OS/i })).toBeVisible()
-  await page.getByRole('button', { name: /Chiedi a DOCENTE OS/i }).click()
+  const lessonPath = lessonHref.split('?')[0]
+  await page.goto(`${lessonPath}?mode=teach`)
 
-  const panel = page.locator('.dosAssistantPanel')
-  await expect(panel).toContainText('COPILOTA DELLA LEZIONE')
-  await expect(panel).toContainText('Propone, non modifica')
-  await expect(panel).toContainText(/2ª\s*A/i)
-
-  // Failure injection: the product must remain useful even if the model/provider path fails.
-  await page.route('**/api/assistant/lesson-respond', async (route) => {
-    await route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"simulated_provider_failure"}' })
-  })
-
-  const input = page.getByRole('textbox', { name: 'Domanda per l’assistente contestuale' })
-  await input.fill('Cosa devo preparare e cosa è già pronto?')
-  await page.getByRole('button', { name: 'Invia domanda' }).click()
-
-  const assistantBubble = page.locator('.dosAssistantBubble.assistant').last()
-  await expect(assistantBubble).toContainText('Per preparare questa lezione')
-  await expect(assistantBubble).toContainText('Già pronto')
-  await expect(assistantBubble).toContainText(/non modifico|non modifica/i)
+  await expect(page).toHaveURL(/mode=prepare&approval=required/)
+  await expect(
+    page.getByText(/Curricolo da rivalidare|Conferma del docente richiesta|La preparazione è cambiata/).first(),
+    'Teach deve restare dietro il confine di approvazione docente.',
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: /Chiedi a DOCENTE OS/i }),
+    'Il copilota operativo della lezione non deve aprirsi prima dell’approvazione.',
+  ).toHaveCount(0)
 
   const geometry = await page.evaluate(() => ({
     viewport: window.innerWidth,
     document: document.documentElement.scrollWidth,
   }))
-  expect(geometry.document, 'Il copilota non deve introdurre overflow orizzontale.').toBeLessThanOrEqual(geometry.viewport)
+  expect(geometry.document, 'Il gate docente non deve introdurre overflow orizzontale.').toBeLessThanOrEqual(geometry.viewport)
 
-  await screenshot(page, testInfo, 'lesson-copilot-fallback')
+  await screenshot(page, testInfo, 'lesson-teach-approval-gate')
   await recordJourney(testInfo.project.name, {
     status: 'PASS',
-    note: 'Lezione reale → context-bound copilot → provider failure → fallback utile senza perdita del task manuale',
+    note: 'Teach e copilota restano inaccessibili finché la preparazione corrente non è stata esplicitamente approvata dal docente.',
   })
 })
 
@@ -69,14 +59,14 @@ async function recordJourney(project, result) {
   await fs.mkdir(dir, { recursive: true })
   const payload = {
     schemaVersion: 1,
-    id: 'lesson-copilot-fallback',
-    label: 'Classe → Lezione → copilota contestuale → fallback senza provider',
+    id: 'lesson-teach-approval-gate',
+    label: 'Accesso diretto a Teach → gate docente prima del copilota',
     project,
     status: result.status,
     note: result.note,
     capturedAt: new Date().toISOString(),
   }
-  await fs.writeFile(path.join(dir, `${safe(project)}--lesson-copilot-fallback.json`), `${JSON.stringify(payload, null, 2)}\n`)
+  await fs.writeFile(path.join(dir, `${safe(project)}--lesson-teach-approval-gate.json`), `${JSON.stringify(payload, null, 2)}\n`)
 }
 
 function safe(value) {
