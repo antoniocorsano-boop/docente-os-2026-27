@@ -3,7 +3,7 @@
 Status: CANONICAL_SHARED_MEMORY
 Scope: CurManLight Arena + Docente OS
 Date: 2026-08-29
-Amended: 2026-09-20 — ECO-01/S2 closure
+Amended: 2026-09-20 — ECO-01/S3 multi-case validation authorization
 Memory ID: CML-DOS-INTEGRATED-GOVERNANCE-V1
 
 ## 1. Purpose
@@ -215,11 +215,24 @@ S2 closure invariants:
 - `DOS-A1` remains **RUNTIME_DEFERRED**;
 - no route, API, automatic sync, new persistence, shared database, user-data mutation, institutional-approval change or runtime cross-product integration was activated by S2.
 
-No later ECO-01 slice is currently authorized. Any S3 or runtime/pilot step requires a separate governed decision and its own evidence.
+Authorized now:
+- **ECO-01/S3 — teacher-first multi-case validation across Technology I/II/III**;
+- non-operational validation only;
+- Grade I reuses the S2 baseline;
+- Grade II uses the real B01 / UDA 2-01 teaching-design case “Agricoltura come sistema tecnologico”;
+- Grade III uses the real B01 / UDA 3-01 teaching-design case “Forme e trasformazioni dell’energia”;
+- Grades II and III remain in their 2012 transition regimes; no retroactive 2025 rebinding is authorized;
+- the three cases must use one shared teacher-first shape and the same canonical material roles;
+- section/date/orario must not be inferred: II/III remain `PREPARED_NOT_SECTION_BOUND` until real local binding exists;
+- teaching plans/UDA/activation sheets are implementation/design evidence, not curriculum authority;
+- `DOS-A1` remains **RUNTIME_DEFERRED**;
+- no route, API, automatic sync, shared persistence, user-data mutation or runtime cross-product integration is authorized.
+
+S3 closure requires comparative I/II/III evidence and a human verdict on generalizability. S3 closure will not authorize S4 or runtime.
 
 Canonical plan:
 - Drive document: `ECO-01 — Preparazione curricolare della lezione — Contratto e prototipo non operativo`;
-- plan version at S2 closure: v0.4 / 2026-09-20.
+- plan version at S3 authorization: v0.5 / 2026-09-20.
 
 ### AILit
 
@@ -232,7 +245,7 @@ No AILit runtime, UI, database, dedicated store or authority implementation is a
 ### CurManLight Arena
 
 Repository: `antoniocorsano-boop/CurManLight_arena`  
-Canonical integrated baseline at this amendment: `main@ad4ef8bba25577e2ac23fc58bf7ffa5ca7fb4e17`
+Canonical integrated baseline at this amendment: `main@b8b67d2c97deb89fd53651cecc878d8d455ca67f`
 
 Current M4 promotion candidate:
 - source candidate: `a315aa72ce68a52da7d4d960996b6470774104b0`;
@@ -246,7 +259,7 @@ Current M4 promotion candidate:
 ### Docente OS
 
 Repository: `antoniocorsano-boop/docente-os-2026-27`  
-Canonical active product baseline at this amendment: `develop@71f69ee6ac9030c7436c81159f007e9d28986d51`
+Canonical active product baseline at this amendment: `develop@49ed706b580be952047b8620d32d57f6f3fc7268`
 
 Current completion state:
 - Teacher OS V1 convergence is the active product program;
@@ -254,7 +267,7 @@ Current completion state:
 - H9-A accepted replanning read model: complete and post-merge certified;
 - next maturity move: freeze a real release candidate and collect sustained teacher-pilot evidence rather than continue indefinite feature accumulation.
 
-ECO-00 cross-product governance documentation is integrated in both current baselines. ECO-01/S1 and ECO-01/S2 are closed; ECO-01 remains open with no later slice currently authorized.
+ECO-00 cross-product governance documentation is integrated in both current baselines. ECO-01/S1 and ECO-01/S2 are closed; ECO-01/S3 is the current authorized non-operational validation slice.
 
 Agents must re-check live PR/gate state before promotion or merge; this memory records governance and point-in-time state, not permission to merge stale candidates.
 
