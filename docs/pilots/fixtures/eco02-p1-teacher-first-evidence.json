@@ -108,7 +108,7 @@
       "exactMinutes": null
     },
     "flowComprehensibility1to5": 5,
-    "provenanceVisible": null,
+    "provenanceVisible": true,
     "teacherOverrideCount": 2,
     "pedagogicalControl1to5": 5,
     "revalidationResult": null,
@@ -118,7 +118,6 @@
     "SELECT_ATLAS_VISUAL_RESOURCE",
     "MATERIALIZE_CURRICULUM_FINGERPRINT",
     "RUN_CONTROLLED_REVALIDATION_TEST",
-    "CHECK_PROVENANCE_VISIBILITY",
     "BIND_REAL_DATE_AND_TIMETABLE",
     "CONFIRM_CLASSROOM_EXECUTION"
   ],
