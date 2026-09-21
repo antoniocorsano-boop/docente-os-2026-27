@@ -11,7 +11,11 @@ on:
       - ".github/workflows/browser-certification-orchestrator.yml"
       - ".github/workflows/certification-impact.yml"
       - ".github/scripts/certification/**"
+      - ".github/scripts/runtime-release-contract.mjs"
+      - ".github/scripts/runtime-release-contract.test.mjs"
+      - "ops/runtime-release-contract.json"
       - "docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md"
+      - "docs/architecture/RUNTIME_RELEASE_CONTRACT_V1.md"
   pull_request:
     paths:
       - "product/**"
@@ -21,7 +25,11 @@ on:
       - ".github/workflows/browser-certification-orchestrator.yml"
       - ".github/workflows/certification-impact.yml"
       - ".github/scripts/certification/**"
+      - ".github/scripts/runtime-release-contract.mjs"
+      - ".github/scripts/runtime-release-contract.test.mjs"
+      - "ops/runtime-release-contract.json"
       - "docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md"
+      - "docs/architecture/RUNTIME_RELEASE_CONTRACT_V1.md"
 
 jobs:
   validate:
@@ -31,6 +39,9 @@ jobs:
         working-directory: product
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
       - name: Validate Render deployment contract
         working-directory: ${{ github.workspace }}
         shell: bash
@@ -64,6 +75,7 @@ jobs:
           grep -Fq 'value: whisper-large-v3-turbo' render.yaml
           grep -Fq 'key: DOCENTE_OS_VOICE_CAPTURE' render.yaml
           grep -Fq 'value: on' render.yaml
+          grep -A1 -F 'key: DOCENTE_OS_RUNTIME_SCHEMA_PREFLIGHT' render.yaml | grep -Fq 'value: on'
       - name: Validate Human + Visual Acceptance contract
         working-directory: ${{ github.workspace }}
         shell: bash
@@ -96,6 +108,10 @@ jobs:
         run: |
           set -euo pipefail
           node --test .github/scripts/certification/*.test.mjs
+          node --test .github/scripts/runtime-release-contract.test.mjs
+          test -f ops/runtime-release-contract.json
+          test -f product/supabase/migrations/0074_runtime_schema_contract.sql
+          test -f product/supabase/tests/runtime-release-contract.sql
           test -f .github/workflows/browser-certification-orchestrator.yml
           grep -Fq 'browser-certification-preflight' .github/workflows/browser-certification-orchestrator.yml
           grep -Fq 'browser-certification-selected-gates' .github/workflows/browser-certification-orchestrator.yml
@@ -103,6 +119,85 @@ jobs:
           grep -Fq "context: statusContext" .github/workflows/browser-certification-orchestrator.yml
           grep -Fq 'orchestrationAuthorized: true' .github/scripts/certification/classifier.mjs
           grep -Fq 'mergeAuthorized: false' .github/scripts/certification/classifier.mjs
+      - name: Evaluate selective runtime release impact
+        id: runtime_impact
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        env:
+          RUNTIME_CONTRACT_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          RUNTIME_CONTRACT_TESTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          RUNTIME_RELEASE_CONTRACT_OUTPUT: test-results/release-runtime-contract/impact.json
+        run: |
+          set -euo pipefail
+          node .github/scripts/runtime-release-contract.mjs
+          node - <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require('node:fs')
+          const r = JSON.parse(fs.readFileSync('test-results/release-runtime-contract/impact.json', 'utf8'))
+          console.log('database_deep=' + String(r.databaseDeep))
+          console.log('critical_write=' + String(r.criticalWrite))
+          console.log('capability_runtime=' + String(r.capabilityRuntime))
+          console.log('latest_migration=' + r.latestMigrationId)
+          NODE
+
+      - name: Set up Supabase CLI for deep DB replay
+        if: steps.runtime_impact.outputs.database_deep == 'true'
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: latest
+
+      - name: Replay complete migration chain on ephemeral Supabase
+        if: steps.runtime_impact.outputs.database_deep == 'true'
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/docente-os-runtime-db"
+          rm -rf "$work"
+          mkdir -p "$work"
+          cd "$work"
+          supabase init
+          rm -rf supabase/migrations
+          mkdir -p supabase/migrations
+
+          # Historical repository migrations contain duplicated numeric prefixes
+          # (0023, 0024, 0029). Supabase CLI requires unique migration versions.
+          # For the ephemeral replay only, preserve lexical SQL order while assigning
+          # synthetic unique versions. Canonical filenames and live history are untouched.
+          i=1
+          while IFS= read -r src; do
+            version="$(printf '%014d' "$i")"
+            stem="$(basename "$src" .sql)"
+            cp "$src" "supabase/migrations/${version}_${stem}.sql"
+            i=$((i + 1))
+          done < <(find "$GITHUB_WORKSPACE/product/supabase/migrations" -maxdepth 1 -type f -name '*.sql' | sort)
+
+          supabase db start
+          trap 'supabase stop --no-backup >/dev/null 2>&1 || true' EXIT
+          supabase db reset --local --no-seed
+
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+
+          db_url="$(supabase status | awk -F': ' '/DB URL/ {print $2; exit}')"
+          test -n "$db_url"
+          psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/runtime-release-contract.sql"
+
+          actual="$(psql "$db_url" -Atc "select migration_id from public.runtime_schema_contract_state where singleton")"
+          expected="${{ steps.runtime_impact.outputs.latest_migration }}"
+          echo "runtime schema watermark: actual=$actual expected=$expected"
+          test "$actual" = "$expected"
+
+      - name: Publish runtime release preflight receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-release-contract-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 90
+          path: test-results/release-runtime-contract/impact.json
+
       - name: Validate HVA script syntax
         run: |
           node --check scripts/experience/wait-for-target.mjs

@@ -178,3 +178,26 @@ La prima release prodotta sotto M5-01 sarà la prima release formalmente version
 - modificare codice dopo certificazione mantenendo la stessa versione/RC;
 - trattare GitHub Release come prova sufficiente di Production;
 - usare `1.0.0` prima della decisione M5.
+
+
+## 14. Runtime Release Contract
+
+Da ECO-02/P9 post-pilot, la release engineering include il contratto `DOCENTE OS — Runtime Release Contract V1`.
+
+Rapporto con i gate esistenti:
+
+- Certification Pipeline V2 determina gli assurance gate applicabili al diff;
+- Runtime Release Contract determina se servono replay DB, runtime reconciliation e, quando disponibile una fixture isolata, write E2E reale;
+- Product CI resta il gate di build/test generale;
+- Runtime Health verifica il Beta dopo il merge;
+- nessuno di questi autorizza da solo la promozione Production.
+
+Regola operativa:
+
+`commit applicativo -> preflight rapido -> replay DB se necessario -> merge -> schema watermark coerente -> startup Beta -> runtime health`.
+
+Se il database espone un watermark diverso da quello richiesto dal commit, la nuova istanza applicativa deve fallire prima di essere servita.
+
+Il replay DB usa esclusivamente uno stack Supabase locale effimero e non richiede credenziali Beta/Production.
+
+Il write E2E reale è ammesso soltanto su fixture E2E isolata, reversibile e priva di dati didattici reali. Fino a tale fixture il contratto registra `browserWriteAutomated=false` e non trasferisce questo onere al docente.

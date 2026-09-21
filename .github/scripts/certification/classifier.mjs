@@ -28,7 +28,10 @@ const CENTRAL_ORCHESTRATION_PATHS = new Set([
   '.github/workflows/certification-impact.yml',
   '.github/workflows/browser-certification-orchestrator.yml',
   '.github/workflows/governed-mfa-queue-hygiene.yml',
+  '.github/scripts/runtime-release-contract.mjs',
+  'ops/runtime-release-contract.json',
   'docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md',
+  'docs/architecture/RUNTIME_RELEASE_CONTRACT_V1.md',
 ])
 
 const GATE_WORKFLOW_PATHS = new Map([

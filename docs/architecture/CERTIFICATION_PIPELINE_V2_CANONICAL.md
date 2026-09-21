@@ -92,3 +92,20 @@ Therefore rebinding eligibility is not a release decision.
 ## Non-goals
 
 CV2 must not make security, write-boundary, accessibility, performance, or human/visual assurance optional merely to reduce execution time. Optimization is permitted only by removing duplicated setup, narrowing gates through explicit impact classification, and reusing evidence through verifiable equivalence.
+
+
+## Runtime Release Contract companion
+
+Il Runtime Release Contract V1 è complementare a CV2 e non ne modifica il significato dei gate.
+
+CV2 risponde a: **quali assurance gate sono richiesti da questo diff?**
+
+Il Runtime Release Contract risponde a: **quali verifiche di coerenza applicazione/schema/capability devono essere eseguite e quando?**
+
+La classificazione centrale considera quindi modifiche al Runtime Release Contract come modifiche di orchestrazione e richiede una one-time full assurance del contratto stesso.
+
+Il costo resta selettivo:
+- preflight statico su ogni diff rilevante;
+- replay Supabase locale solo su impatto DB/persistenza;
+- runtime reconciliation sul Beta dopo merge;
+- write E2E reale solo su percorsi critici e solo con fixture isolata.
