@@ -1,0 +1,79 @@
+.calendarFeedback {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--brand) 35%, var(--line));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--brand) 8%, var(--surface));
+}
+
+.calendarFeedback span {
+  color: var(--ink-soft);
+}
+
+.calendarCircularIntake {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.calendarCircularIntake > div {
+  display: grid;
+  gap: 5px;
+}
+
+.calendarCircularIntake span {
+  color: var(--ink-soft);
+  font-size: .72rem;
+  font-weight: 850;
+  letter-spacing: .1em;
+}
+
+.calendarCircularIntake h2,
+.calendarCircularIntake p {
+  margin: 0;
+}
+
+.calendarCircularIntake p {
+  max-width: 720px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.calendarCircularIntake > a {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 15px;
+  border-radius: var(--radius-sm);
+  background: var(--brand);
+  color: var(--ink-on-dark);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.calendarRow a {
+  color: var(--brand);
+  font-size: .84rem;
+  font-weight: 750;
+}
+
+@media (max-width: 640px) {
+  .calendarCircularIntake {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .calendarCircularIntake > a {
+    box-sizing: border-box;
+    width: 100%;
+  }
+}

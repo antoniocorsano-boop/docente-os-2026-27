@@ -28,9 +28,9 @@ export type Database = {
         Relationships: []
       }
       calendar_events: {
-        Row: { id: string; workspace_id: string; academic_year_id: string; title: string; event_kind: string; starts_on: string; ends_on: string; all_day: boolean; start_time: string | null; end_time: string | null; note: string | null; source_kind: string; source_ref: string | null; created_by: string; created_at: string; updated_at: string }
-        Insert: { id?: string; workspace_id: string; academic_year_id: string; title: string; event_kind?: string; starts_on: string; ends_on: string; all_day?: boolean; start_time?: string | null; end_time?: string | null; note?: string | null; source_kind?: string; source_ref?: string | null; created_by: string; created_at?: string; updated_at?: string }
-        Update: { title?: string; event_kind?: string; starts_on?: string; ends_on?: string; all_day?: boolean; start_time?: string | null; end_time?: string | null; note?: string | null; source_kind?: string; source_ref?: string | null; updated_at?: string }
+        Row: { id: string; workspace_id: string; academic_year_id: string; title: string; event_kind: string; starts_on: string; ends_on: string; all_day: boolean; start_time: string | null; end_time: string | null; location: string | null; note: string | null; source_kind: string; source_ref: string | null; source_knowledge_unit_id: string | null; created_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; workspace_id: string; academic_year_id: string; title: string; event_kind?: string; starts_on: string; ends_on: string; all_day?: boolean; start_time?: string | null; end_time?: string | null; location?: string | null; note?: string | null; source_kind?: string; source_ref?: string | null; source_knowledge_unit_id?: string | null; created_by: string; created_at?: string; updated_at?: string }
+        Update: { title?: string; event_kind?: string; starts_on?: string; ends_on?: string; all_day?: boolean; start_time?: string | null; end_time?: string | null; location?: string | null; note?: string | null; source_kind?: string; source_ref?: string | null; updated_at?: string }
         Relationships: []
       }
       experience_feedback: {

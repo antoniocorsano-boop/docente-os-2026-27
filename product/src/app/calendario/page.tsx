@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import {
@@ -18,6 +19,7 @@ import {
 } from './actions'
 import { OperationalAgendaPanel } from './OperationalAgendaPanel'
 import './calendar.css'
+import './calendar-circular-intake.css'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,7 +31,12 @@ type CalendarFocus = {
   meta: string[]
 }
 
-export default async function CalendarPage() {
+type CalendarPageProps = {
+  searchParams: Promise<{ created?: string }>
+}
+
+export default async function CalendarPage({ searchParams }: CalendarPageProps) {
+  const query = await searchParams
   const context = await new SupabaseWorkspaceRepository().getCurrentContext()
   if (!context) redirect('/login')
   if (!context.academicYear) redirect('/')
@@ -65,6 +72,14 @@ export default async function CalendarPage() {
           <h1>Le date reali dell’anno scolastico</h1>
           <span>Qui registri ciò che accade in una data precisa. L’Orario resta lo schema ricorrente della settimana: i due domini non si sovrascrivono.</span>
         </div>
+      </section>
+
+      {query.created === 'new' ? <div className="calendarFeedback" role="status"><strong>Impegno registrato nel calendario.</strong><span>La circolare originale resta collegata all’evento.</span></div> : null}
+      {query.created === 'known' ? <div className="calendarFeedback" role="status"><strong>Impegno già presente.</strong><span>Non è stato creato alcun duplicato.</span></div> : null}
+
+      <section className="calendarCircularIntake" aria-labelledby="calendar-circular-title">
+        <div><span>DA UNA CIRCOLARE</span><h2 id="calendar-circular-title">Carica e verifica un impegno</h2><p>DOCENTE OS legge il documento e prepara una scheda modificabile. Il Calendario viene aggiornato soltanto dopo la tua conferma.</p></div>
+        <Link href="/knowledge?capture=file&intent=calendar&returnTo=%2Fcalendario">Carica una circolare</Link>
       </section>
 
       {focus ? (
@@ -149,6 +164,7 @@ export default async function CalendarPage() {
                 <label><span>Al</span><input name="endsOn" type="date" min={context.academicYear.startsOn} max={context.academicYear.endsOn} required /></label>
                 <label><span>Ora inizio</span><input name="startTime" type="time" defaultValue="08:00" /></label>
                 <label><span>Ora fine</span><input name="endTime" type="time" defaultValue="09:00" /></label>
+                <label className="wide"><span>Luogo o collegamento</span><input name="location" maxLength={500} placeholder="Es. Plesso Covotta" /></label>
                 <label><span>Fonte</span><select name="sourceKind" defaultValue="MANUAL"><option value="MANUAL">Inserimento manuale</option><option value="INSTITUTION_DOCUMENT">Documento istituzionale</option><option value="IMPORT">Importazione</option></select></label>
                 <label><span>Riferimento</span><input name="sourceRef" maxLength={1000} placeholder="Circolare, email, file…" /></label>
                 <label className="wide"><span>Nota</span><textarea name="note" maxLength={2000} rows={3} /></label>
@@ -181,7 +197,7 @@ function CalendarEventRow({ event }: { event: CalendarEvent }) {
   return (
     <div className="calendarRow">
       <time dateTime={event.startsOn}>{formatEventDate(event)}</time>
-      <div><strong>{event.title}</strong><span>{calendarEventKindLabel(event.eventKind)} · {event.allDay ? 'Senza orario' : `${event.startTime}–${event.endTime}`}{event.sourceRef ? ` · ${event.sourceRef}` : ''}</span>{event.note ? <small>{event.note}</small> : null}</div>
+      <div><strong>{event.title}</strong><span>{calendarEventKindLabel(event.eventKind)} · {event.allDay ? 'Senza orario' : `${event.startTime}–${event.endTime}`}{event.location ? ` · ${event.location}` : ''}</span>{event.sourceRef?.startsWith('/knowledge/') ? <Link href={event.sourceRef}>Apri la circolare originale</Link> : event.sourceRef ? <small>{event.sourceRef}</small> : null}{event.note ? <small>{event.note}</small> : null}</div>
       <details><summary>Gestisci</summary><form action={deleteCalendarEvent}><input type="hidden" name="eventId" value={event.id} /><button type="submit">Rimuovi</button></form></details>
     </div>
   )

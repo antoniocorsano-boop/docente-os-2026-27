@@ -27,9 +27,11 @@ export type CalendarEvent = {
   allDay: boolean
   startTime: string | null
   endTime: string | null
+  location: string | null
   note: string | null
   sourceKind: CalendarSourceKind
   sourceRef: string | null
+  sourceKnowledgeUnitId: string | null
   createdAt: string
   updatedAt: string
 }

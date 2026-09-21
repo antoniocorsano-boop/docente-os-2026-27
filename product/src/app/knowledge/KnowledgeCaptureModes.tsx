@@ -9,9 +9,11 @@ type CaptureMode = 'text' | 'file'
 export function KnowledgeCaptureModes({
   initialMode = 'text',
   sourceHint = null,
+  postUploadQuery = null,
 }: {
   initialMode?: CaptureMode
   sourceHint?: string | null
+  postUploadQuery?: string | null
 }) {
   const [mode, setMode] = useState<CaptureMode>(initialMode)
 
@@ -47,7 +49,7 @@ export function KnowledgeCaptureModes({
 
       <div className={`captureModeBlock captureModeFile ${mode === 'file' ? 'isActive' : ''}`} data-capture-mode-panel="file">
         <div className="captureModeHeading"><strong>Carica un file</strong><span>Privato · massimo 20 MB</span></div>
-        <KnowledgeFileUploader />
+        <KnowledgeFileUploader postUploadQuery={postUploadQuery} />
       </div>
     </>
   )
