@@ -9,10 +9,10 @@
   "humanUseEvidenceSufficient": false,
   "humanUseWindow": {
     "status": "NOT_YET_SUFFICIENT",
-    "firstObservedAt": null,
-    "lastObservedAt": null,
-    "observedOperationalDays": 0,
-    "note": "La ledger contiene inizialmente solo baseline tecnica verificata. Le prove macchina non chiudono M5-02."
+    "firstObservedAt": "2026-09-21T10:37:23+02:00",
+    "lastObservedAt": "2026-09-21T10:37:23+02:00",
+    "observedOperationalDays": 1,
+    "note": "Una giornata di uso umano Beta è ora documentata. L'evidenza è reale ma non è sufficiente per chiudere M5-02 o congelare soglie longitudinali."
   },
   "entries": [
     {
@@ -56,14 +56,54 @@
       "containsSchoolPersonalData": false,
       "requiresFollowUp": false,
       "relatedFindingId": null
+    },
+    {
+      "id": "EV-20260921-ECO02-P7-HUMAN-USE",
+      "observedAt": "2026-09-21T10:37:23+02:00",
+      "evidenceType": "HUMAN_USE",
+      "journeyId": "J2",
+      "outcome": "SUCCESS_WITH_FRICTION",
+      "environment": "BETA",
+      "sourceRef": "PR #566 exact head 934f827a58ecfac05fdb29c47f45a1dadaa8dc5a; merge 9520abc35af621e188abba3bf88f1b586a44460e; Beta deploy dep-daoei7u8bjmc73b9s6ag; lesson approval receipt 1fe4769d-16a8-4cf1-bf1b-af6f12177b24",
+      "exactSha": "9520abc35af621e188abba3bf88f1b586a44460e",
+      "summary": "Uso umano reale in Beta: il docente ha acquisito la baseline Arena 2C, approvato esplicitamente la preparazione B01 ed è entrato nella modalità lezione. La receipt exact-state append-only è stata verificata nel database. Sono emerse due frizioni UX poi consolidate in ECO-02/P8.",
+      "containsSchoolPersonalData": false,
+      "requiresFollowUp": false,
+      "relatedFindingId": null
+    },
+    {
+      "id": "EV-20260921-ECO02-P7-FRICTION-DISCOVERABILITY",
+      "observedAt": "2026-09-21T10:34:00+02:00",
+      "evidenceType": "FRICTION",
+      "journeyId": "J2",
+      "outcome": "SUCCESS_WITH_FRICTION",
+      "environment": "BETA",
+      "sourceRef": "ECO-02/P7 Beta human acceptance; docs/pilots/ECO02_P7_BETA_END_TO_END_ACCEPTANCE.md",
+      "summary": "La schermata Prima della lezione non aveva un accesso stabile dalla classe: l'etichetta della CTA variava con lo stato temporale e il docente non l'ha trovata senza collegamento diretto. ECO-02/P8 aggiunge un accesso stabile.",
+      "containsSchoolPersonalData": false,
+      "requiresFollowUp": false,
+      "relatedFindingId": null
+    },
+    {
+      "id": "EV-20260921-ECO02-P7-FRICTION-ADDITION-COUNT",
+      "observedAt": "2026-09-21T10:34:00+02:00",
+      "evidenceType": "FRICTION",
+      "journeyId": "J2",
+      "outcome": "SUCCESS_WITH_FRICTION",
+      "environment": "BETA",
+      "sourceRef": "ECO-02/P7 Beta human acceptance; docs/pilots/ECO02_P7_BETA_END_TO_END_ACCEPTANCE.md",
+      "summary": "La preparazione mostrava tre aggiunte attive, mentre la modalità lezione mostrava due materiali senza spiegare che la terza aggiunta era inserita nella sequenza. ECO-02/P8 espone totale e ripartizione semantica.",
+      "containsSchoolPersonalData": false,
+      "requiresFollowUp": false,
+      "relatedFindingId": null
     }
   ],
   "openFindings": [],
   "rollup": {
     "machineGateEntries": 2,
     "runtimeSmokeEntries": 1,
-    "humanUseEntries": 0,
-    "frictionEntries": 0,
+    "humanUseEntries": 1,
+    "frictionEntries": 2,
     "incidentEntries": 0,
     "workaroundEntries": 0,
     "recoveryEntries": 0,
