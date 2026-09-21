@@ -19,3 +19,20 @@ test('accepted teaching adjustments stay separate from lesson sequence and resou
   assert.ok(source.includes('Non sono aggiunte alla sequenza'))
   assert.ok(source.includes("if (kind === 'TEACHING_ADJUSTMENT') return 'RIPROGETTAZIONE'"))
 })
+
+
+test('teacher can revise proposals and accepted sequence additions before classroom use', () => {
+  assert.ok(source.includes("extension.status === 'PROPOSED' || extension.status === 'MODIFIED'"))
+  assert.ok(source.includes('reviseLessonDesignExtensionText'))
+  assert.ok(source.includes('Salva modifica'))
+  assert.ok(source.includes('Usa in questa lezione'))
+  assert.ok(source.includes('esce temporaneamente dalla sequenza'))
+  assert.ok(source.includes('torna “Da controllare”'))
+})
+
+test('activation question tool is not duplicated once an active proposal exists', () => {
+  assert.ok(source.includes('activationQuestionActive'))
+  assert.ok(source.includes('!activationQuestionActive ?'))
+  assert.ok(source.includes('DOMANDA GUIDA · LOCALE'))
+  assert.ok(source.includes('puoi modificarla o scartarla prima di inserirla nella sequenza'))
+})
