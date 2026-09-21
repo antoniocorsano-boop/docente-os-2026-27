@@ -81,7 +81,7 @@ export async function acceptArenaCurriculumHandoff(
       }
     }
 
-    const localSectionRef = compactSectionRef(section.grade, section.sectionCode)
+    const localSectionRef = section.sectionCode.trim().toUpperCase()
     const targetScope = buildArenaCurriculumTargetScope({
       context: handoff.curricularContext,
       localSectionRef,
@@ -165,10 +165,6 @@ function gradeRef(grade: 'PRIMA' | 'SECONDA' | 'TERZA') {
   return 'grade-3'
 }
 
-function compactSectionRef(grade: 'PRIMA' | 'SECONDA' | 'TERZA', sectionCode: string) {
-  const number = grade === 'PRIMA' ? '1' : grade === 'SECONDA' ? '2' : '3'
-  return `${number}${sectionCode.trim().toUpperCase()}`
-}
 
 function curriculumIntakeMessage(error: unknown) {
   const message = error instanceof Error ? error.message : String(error)
