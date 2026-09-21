@@ -1,0 +1,57 @@
+{
+  "program": "ECO-02",
+  "pilot": "P7",
+  "status": "BETA_END_TO_END_ACCEPTANCE_COMPLETED",
+  "observedAt": "2026-09-21T10:37:23+02:00",
+  "environment": "BETA",
+  "dosA1": "RUNTIME_DEFERRED",
+  "classroomExecution": false,
+  "lesson": {
+    "discipline": "Tecnologia",
+    "classRef": "2C",
+    "blockId": "B01",
+    "projectionId": "HTC-SECONDA-B01-v1",
+    "title": "Il territorio agricolo come sistema"
+  },
+  "curriculum": {
+    "authority": "CURMANLIGHT_ARENA",
+    "state": "PROVISIONAL_COMPLETE",
+    "alignmentAuthority": "PROVISIONAL_BASELINE",
+    "curricularContextId": "ctx-db202412",
+    "sourceHandoffFootprintHash": "7bb48175",
+    "adoptionReceiptId": "d1af6eb0-c2a8-4f89-9797-e837a85c4c3e"
+  },
+  "preparationApproval": {
+    "receiptId": "1fe4769d-16a8-4cf1-bf1b-af6f12177b24",
+    "curriculumBaselineFingerprint": "35530861c3e553026b1631c388a2e12c726b79e53fa52a5c4586550a48171d9b",
+    "preparationFingerprint": "311770ecff1401c4d9c7db855f4eeb3be983c6ece2ff39a1143889dd4782667e",
+    "acceptedExtensionCount": 3,
+    "result": "LESSON_MODE_ENTERED"
+  },
+  "release": {
+    "pr": 566,
+    "approvedExactHead": "934f827a58ecfac05fdb29c47f45a1dadaa8dc5a",
+    "mergeCommit": "9520abc35af621e188abba3bf88f1b586a44460e",
+    "betaDeployId": "dep-daoei7u8bjmc73b9s6ag",
+    "betaDeployStatus": "LIVE"
+  },
+  "observedFriction": [
+    {
+      "id": "ECO02-P7-UX-01",
+      "type": "DISCOVERABILITY",
+      "finding": "Prima della lezione non era raggiungibile tramite una voce stabile e il docente ha dovuto usare un collegamento diretto.",
+      "remediation": "ECO-02/P8 aggiunge un accesso stabile dalla superficie della classe."
+    },
+    {
+      "id": "ECO02-P7-UX-02",
+      "type": "SEMANTIC_COUNT",
+      "finding": "La preparazione mostrava 3 aggiunte attive mentre la modalità lezione mostrava 2 materiali, senza esplicitare che la terza aggiunta era nella sequenza.",
+      "remediation": "ECO-02/P8 espone il totale e la ripartizione per categoria."
+    }
+  ],
+  "privacy": {
+    "pupilPersonalData": false,
+    "schoolPersonalData": false,
+    "credentialsOrSecrets": false
+  }
+}
