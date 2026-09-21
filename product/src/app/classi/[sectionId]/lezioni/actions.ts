@@ -13,7 +13,7 @@ import { SupabaseTeachingEvidenceRepository } from '@/core/infrastructure/supaba
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
 import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { resolveHumanTaskLessonProjection } from '@/core/presentation/human-task-content'
+import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { normalizeLessonObservationDraft, toTeachingObservationDraft } from './lesson-observation-model'
 import { hasCurrentBlockSessionOnDate, selectEligibleLessonOccurrence } from './lesson-registration-model'
@@ -47,7 +47,7 @@ export async function recordLessonExecution(formData: FormData) {
   const grade = GRADE_UI[section.grade]
   const block = buildBlocks(grade).find((item) => item.id === blockId)
   if (!block) throw new Error('Block is outside the canonical annual plan')
-  const projection = resolveHumanTaskLessonProjection(grade, block)
+  const projection = resolveRuntimeHumanTaskLessonProjection(grade, block)
   if (!projection) throw new Error('Human-task lesson projection is not available for this block')
 
   const evidenceNote = nextActivity || udaChangeProposal
