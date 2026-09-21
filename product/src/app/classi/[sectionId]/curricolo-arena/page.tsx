@@ -67,9 +67,11 @@ export default async function CurriculumArenaPage({
       </section>
 
       {query.accepted ? (
-        <section className="classRecordFeedback" aria-label="Esito acquisizione curricolo">
-          <strong>{query.accepted === 'known' ? 'Baseline già acquisita.' : 'Baseline Arena acquisita.'}</strong>
-          <span>La provenienza e l’impronta strutturale restano associate alla classe.</span>
+        <section className="classRecordFeedback" aria-label="Esito acquisizione curricolo" role="status" aria-live="polite">
+          <strong>{query.accepted === 'known' ? 'Baseline già acquisita.' : 'Acquisizione completata: baseline Arena salvata.'}</strong>
+          <span>{query.accepted === 'known'
+            ? 'La stessa impronta strutturale è già associata alla classe.'
+            : 'La baseline provvisoria è ora associata alla 2C. Puoi tornare alla preparazione della lezione.'}</span>
         </section>
       ) : null}
 
