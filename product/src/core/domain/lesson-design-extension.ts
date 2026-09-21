@@ -143,6 +143,19 @@ export function acceptedTeachingAdjustments(extensions: LessonDesignExtension[])
     .sort(compareExtensions)
 }
 
+export function summarizeAcceptedLessonDesignExtensions(extensions: LessonDesignExtension[]) {
+  const accepted = extensions.filter((extension) => extension.status === 'ACCEPTED')
+  const sequence = accepted.filter(isLessonSequenceExtension).length
+  const adjustments = accepted.filter(isTeachingAdjustment).length
+  const resources = accepted.length - sequence - adjustments
+  return {
+    total: accepted.length,
+    sequence,
+    resources,
+    adjustments,
+  }
+}
+
 export function validateLessonDesignExtensionDraft(draft: LessonDesignExtensionDraft) {
   if (!/^B(0[1-9]|[12][0-9]|3[0-3])$/.test(draft.blockId)) throw new Error('Invalid canonical block id')
   if (!draft.projectionId.trim()) throw new Error('Projection id is required')
