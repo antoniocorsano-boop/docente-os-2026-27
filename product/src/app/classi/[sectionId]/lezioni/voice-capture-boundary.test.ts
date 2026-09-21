@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { isVoiceCaptureEnabled } from '@/core/application/voice/voice-capture-policy'
+import { isVoiceCaptureEnabled, isVoiceCaptureReady } from '@/core/application/voice/voice-capture-policy'
 
 const routeSource = readFileSync(new URL('../../../api/voice/transcribe/route.ts', import.meta.url), 'utf8')
 const voiceClientSource = readFileSync(new URL('./[blockId]/lesson-voice-capture.tsx', import.meta.url), 'utf8')
@@ -28,10 +28,13 @@ test('AI-1C rollout switch disables server endpoint and both modeled and inline 
   assert.equal(isVoiceCaptureEnabled(' OFF '), false)
   assert.equal(isVoiceCaptureEnabled('on'), true)
   assert.equal(isVoiceCaptureEnabled(undefined), true)
+  assert.equal(isVoiceCaptureReady('on', 'server-secret'), true)
+  assert.equal(isVoiceCaptureReady('on', ''), false)
+  assert.equal(isVoiceCaptureReady('off', 'server-secret'), false)
   assert.match(routeSource, /isVoiceCaptureEnabled\(process\.env\.DOCENTE_OS_VOICE_CAPTURE\)/)
-  assert.match(pageSource, /isVoiceCaptureEnabled\(process\.env\.DOCENTE_OS_VOICE_CAPTURE\)/)
+  assert.match(pageSource, /isVoiceCaptureReady\(process\.env\.DOCENTE_OS_VOICE_CAPTURE, process\.env\.GROQ_STT_API_KEY\)/)
   assert.match(closeClientSource, /voiceCaptureEnabled \? \(/)
-  assert.match(inlineRecorderWrapperSource, /isVoiceCaptureEnabled\(process\.env\.DOCENTE_OS_VOICE_CAPTURE\)/)
+  assert.match(inlineRecorderWrapperSource, /isVoiceCaptureReady\(process\.env\.DOCENTE_OS_VOICE_CAPTURE, process\.env\.GROQ_STT_API_KEY\)/)
   assert.match(inlineRecorderWrapperSource, /voiceCaptureEnabled=/)
   assert.match(inlineRecorderSource, /voiceCaptureEnabled && lessonSurfacePath/)
 })
