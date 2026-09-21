@@ -55,3 +55,8 @@ La domanda deve stimolare osservazione, relazioni, ipotesi ed evidenze, restando
 - testo proposto più significativo e non banalmente mnemonico;
 - funzionamento leggibile e utilizzabile su mobile;
 - test automatici sul lifecycle e sul contratto UI.
+
+
+## Design classification
+
+`COMPATIBLE` — la soluzione riusa card, `details`, form, pulsanti e token già presenti in **Prima della lezione**. Non introduce una nuova primitiva visiva, non cambia la navigazione primaria e non sostituisce il sistema di design esistente. La modifica rende esplicito nel pattern corrente il lifecycle proposta → modifica → conferma.
