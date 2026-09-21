@@ -104,24 +104,24 @@ function context(scope: { sectionRef?: string; cohortRef?: string }): Curriculum
   }
 }
 
-test('preserves the incoming section/cohort scope dimensions', () => {
+test('binds Arena section code separately from the already explicit grade dimension', () => {
   assert.deepEqual(
     buildArenaCurriculumTargetScope({
-      context: context({ sectionRef: '2C' }),
-      localSectionRef: '2C',
+      context: context({ sectionRef: 'C' }),
+      localSectionRef: 'C',
     }),
     {
       schoolYearRef: '2026-2027',
       disciplineRef: 'tecnologia',
       gradeRef: 'grade-2',
-      sectionRef: '2C',
+      sectionRef: 'C',
     },
   )
 
   assert.deepEqual(
     buildArenaCurriculumTargetScope({
       context: context({ cohortRef: 'cohort-2026-grade-2' }),
-      localSectionRef: '2C',
+      localSectionRef: 'C',
     }),
     {
       schoolYearRef: '2026-2027',
@@ -133,7 +133,7 @@ test('preserves the incoming section/cohort scope dimensions', () => {
 })
 
 test('classifies and rejects every institutional approval-bearing claim from local uploaded JSON', () => {
-  const provisional = context({ sectionRef: '2C' })
+  const provisional = context({ sectionRef: 'C' })
   assert.equal(hasUploadedArenaAuthorityClaim(provisional), false)
   assert.doesNotThrow(() => assertUploadedArenaAuthorityContextAllowed(provisional))
 

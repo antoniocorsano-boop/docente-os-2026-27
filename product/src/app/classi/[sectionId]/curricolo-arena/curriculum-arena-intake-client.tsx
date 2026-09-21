@@ -84,8 +84,10 @@ export function CurriculumArenaIntakeClient({
         />
       </label>
 
-      {localError ? <p role="alert">{localError}</p> : null}
-      {state.status === 'error' && state.message ? <p role="alert">{state.message}</p> : null}
+      {localError ? <p role="alert"><strong>File non utilizzabile.</strong> {localError}</p> : null}
+      {state.status === 'error' && state.message ? (
+        <p role="alert"><strong>Acquisizione non eseguita.</strong> {state.message}</p>
+      ) : null}
 
       {preview ? (
         <div className="classAssignmentList">
@@ -94,8 +96,8 @@ export function CurriculumArenaIntakeClient({
             <small>{preview.handoff.format}</small>
           </div>
           <div className="classAssignmentItem">
-            <div><strong>Classe</strong><span>{preview.handoff.curricularContext.sectionRef ?? preview.handoff.curricularContext.cohortRef}</span></div>
-            <small>{preview.handoff.curricularContext.schoolYearRef}</small>
+            <div><strong>Classe</strong><span>{curriculumClassLabel(preview.handoff.curricularContext)}</span></div>
+            <small>{disciplineLabel(preview.handoff.curricularContext.disciplineRef)} · {preview.handoff.curricularContext.schoolYearRef}</small>
           </div>
           <div className="classAssignmentItem">
             <div><strong>Curricolo</strong><span>{curriculumStateLabel(preview.handoff.curricularContext.curriculumState)}</span></div>
@@ -133,17 +135,32 @@ export function CurriculumArenaIntakeClient({
         ) : unverifiedApprovedClaim ? (
           <p><strong>Anteprima soltanto.</strong> Nessuna autorità istituzionale verrà salvata da questo caricamento.</p>
         ) : (
-          <form action={formAction}>
+          <form action={formAction} aria-busy={pending}>
             <input type="hidden" name="sectionId" value={sectionId} />
             <input type="hidden" name="handoffJson" value={preview.json} />
             <button type="submit" disabled={pending}>
               {pending ? 'Conferma in corso…' : 'Accetta baseline provvisoria per questa classe'}
             </button>
+            {pending ? (
+              <p role="status" aria-live="polite">
+                <strong>Verifica in corso.</strong> Controllo classe, disciplina e coerenza del passaggio prima di salvare.
+              </p>
+            ) : null}
           </form>
         )
       ) : null}
     </article>
   )
+}
+
+function curriculumClassLabel(context: CmlLocalHandoffV2['curricularContext']) {
+  const grade = context.gradeRef === 'grade-1' ? '1ª' : context.gradeRef === 'grade-2' ? '2ª' : context.gradeRef === 'grade-3' ? '3ª' : context.gradeRef
+  const scope = context.sectionRef ?? context.cohortRef ?? '—'
+  return `${grade} ${scope}`.trim()
+}
+
+function disciplineLabel(value: string) {
+  return value.trim().toLocaleLowerCase('it') === 'tecnologia' ? 'Tecnologia' : value
 }
 
 function curriculumStateLabel(value: CmlLocalHandoffV2['curricularContext']['curriculumState']) {
