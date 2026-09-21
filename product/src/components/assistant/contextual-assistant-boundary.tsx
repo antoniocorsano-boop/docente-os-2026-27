@@ -26,11 +26,17 @@ type AssistantTarget = {
 
 type AssistantContextPayload = KnowledgeAssistantContext | PlannerAssistantContext | LessonCopilotContext | TodayCopilotK2Context
 
-export function ContextualAssistantBoundary({ active }: { active: string }) {
+export function ContextualAssistantBoundary({
+  active,
+  enabled = true,
+}: {
+  active: string
+  enabled?: boolean
+}) {
   const pathname = usePathname()
   const [loaded, setLoaded] = useState<LoadedAssistantContext | null>(null)
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'unavailable'>('idle')
-  const assistantEnabled = process.env.NEXT_PUBLIC_DOCENTE_OS_ASSISTANT !== 'off'
+  const assistantEnabled = enabled && process.env.NEXT_PUBLIC_DOCENTE_OS_ASSISTANT !== 'off'
   const target = assistantTarget(active, pathname)
   const materialsContext = assistantEnabled && target?.kind === 'today'
     ? loaded?.kind === 'today' ? loaded.context : null
