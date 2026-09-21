@@ -106,7 +106,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $$
+as $cleanup$
 begin
   if old.source_knowledge_unit_id is null then
     return old;
@@ -127,7 +127,7 @@ begin
 
   return old;
 end;
-$;
+$cleanup$;
 
 revoke all on function private.cleanup_calendar_event_knowledge_source() from public;
 revoke all on function private.cleanup_calendar_event_knowledge_source() from anon;
@@ -143,7 +143,7 @@ returns trigger
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $asset$
 begin
   if tg_op = 'UPDATE' then
     if new.workspace_id <> old.workspace_id then raise exception 'knowledge asset workspace_id is immutable'; end if;
@@ -174,7 +174,7 @@ begin
   new.updated_at := now();
   return new;
 end;
-$;
+$asset$;
 
 comment on index public.uq_knowledge_links_calendar_event_unit is
   'At most one CREATED_CALENDAR_EVENT link may exist for a Knowledge unit in a workspace.';
