@@ -46,3 +46,14 @@
 .lessonAttachedResources article p{margin:0;color:var(--ink-soft);font-size:11px;line-height:1.45}
 .lessonAttachedResources article a{align-self:center;min-height:44px;display:inline-flex;align-items:center;color:var(--brand);font-size:11px;font-weight:850;text-decoration:none;white-space:nowrap}
 @media(max-width:719px){.lessonDesignTools{padding:15px;border-radius:var(--radius-md)}.lessonDesignAvailableTools article,.lessonDesignProposal,.lessonKnowledgeSuggestions article,.lessonDesignAcceptedItem,.lessonAttachedResources article{display:grid;gap:10px}.lessonDesignAvailableTools form,.lessonDesignProposalActions,.lessonKnowledgeSuggestions article>div:last-child,.lessonDesignAcceptedItem>div:last-child{justify-content:flex-start}.lessonAttachedResources article a{justify-self:start}.lessonDesignContract>div{gap:5px}.lessonSuggestionTip{grid-template-columns:1fr}}
+
+.lessonDesignQuestionEditor{display:grid;gap:8px;margin-top:7px}
+.lessonDesignQuestionEditor label{display:grid;gap:5px}
+.lessonDesignQuestionEditor label>span{color:var(--ink-soft);font-size:10px;font-weight:850;letter-spacing:.03em}
+.lessonDesignQuestionEditor textarea{width:100%;min-height:88px;resize:vertical;padding:10px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:13px;line-height:1.5}
+.lessonDesignQuestionEditor textarea:focus{outline:2px solid var(--brand-soft);border-color:var(--brand)}
+.lessonDesignQuestionEditor>small{color:var(--ink-soft);font-size:10px;line-height:1.45}
+.lessonDesignQuestionEditor>button{justify-self:start}
+.lessonDesignQuestionEditDisclosure{margin-top:7px}
+.lessonDesignQuestionEditDisclosure>summary{cursor:pointer;color:var(--brand);font-size:11px;font-weight:850}
+.lessonDesignAcceptedBody{margin:2px 0!important;color:var(--ink)!important;font-size:12px!important;line-height:1.5!important}
