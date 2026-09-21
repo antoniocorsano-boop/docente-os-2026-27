@@ -58,7 +58,8 @@ function buildGroundedQuestion(lessonTitle: string, objective: string) {
   const title = shorten(lessonTitle, 120)
 
   if (/\bsistem[ai]\b/.test(context)) {
-    return `Quali elementi rendono “${title}” un sistema e quali relazioni tra questi elementi dovremmo osservare per dimostrarlo?`
+    const subject = shorten(lessonTitle.replace(/\s+come\s+sistema\b/i, '').trim() || lessonTitle, 120)
+    return `Quali elementi di “${subject}” sono collegati tra loro e in che modo queste relazioni ci permettono di considerarlo un sistema?`
   }
   if (/\b(filiera|processo|processi|fasi)\b/.test(context)) {
     return `Quali passaggi sono indispensabili in “${title}” e come sono collegati tra loro?`
