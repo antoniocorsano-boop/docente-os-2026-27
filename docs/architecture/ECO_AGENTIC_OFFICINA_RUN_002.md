@@ -81,6 +81,7 @@ Implemented on `fix/eco02-p4-intake-boundaries`:
 - the quarantine-aware invariant permits a valid provisional recovery when an older approved receipt has been quarantined;
 - lesson-preparation approval validation ignores quarantined curriculum rows, matching the canonical current-baseline read;
 - a read-only audit of the connected Docente OS data context before merge found **0** existing curriculum-adoption rows, so no current row requires destructive cleanup; the quarantine remains as a fail-safe for any other deployed database carrying a pre-fix approved receipt;
+- preview and server now share the same approval-bearing classifier, so nested approval claims are shown as preview-only before submission;
 - the shared governed-memory amendment is mirrored in CurManLight Arena PR #317.
 
 The real Beta pilot identifiers were resolved from the active Docente OS data context but are **not stored in the public repository**. They will be injected into the Beta service only after a human-approved merge. Production remains untouched.
@@ -103,6 +104,8 @@ Codex review on the superseded head `7a72104db3b0dfba4ccdf95d3708d5c0443f924c` i
 Fresh Codex review on superseded head `49df592d141e35cd338b927d0c730aea2dd4ce5d` found one additional valid P1: pre-fix approved receipts could remain consumable. Migration `0064_quarantine_unverified_curriculum_approvals.sql` now quarantines such receipts and excludes them from current-authority reads.
 
 Fresh Codex review on superseded head `0d04d1c8ba671bcb9b7d6369e4a8b309db052adc` then identified three valid follow-ups: client-side database bypass of the pilot scope, quarantine recovery blocked by the legacy downgrade trigger, and a direct lesson-approval query that could still read quarantined authority. The current branch revokes client write grants, moves persistence behind the exact-scope server-only boundary, makes the trigger quarantine-aware, and filters quarantine in lesson approval validation. A later review then found that historically inconsistent nested approval-bearing rows also needed quarantine; migration `0064` now backfills every top-level or nested approval-bearing representation.
+
+Fresh Codex review on superseded head `6c9a245bc3cc82948a57d635d63d4af346f47812` found one final P2 UX inconsistency: nested approval-bearing files were rejected by the server but still presented as provisional/acceptable in preview. The client now uses the same `hasUploadedArenaAuthorityClaim()` classifier as the server guard and renders those files as preview-only.
 
 Required focus:
 
