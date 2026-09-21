@@ -11,6 +11,7 @@ import {
   attachKnowledgeResourceToLesson,
   proposeLessonActivationQuestion,
   removeLessonDesignExtension,
+  reviseLessonDesignExtensionText,
 } from './design-actions'
 import type { LessonKnowledgeSuggestion } from './lesson-material-suggestions'
 export type { LessonKnowledgeSuggestion } from './lesson-material-suggestions'
@@ -31,7 +32,9 @@ export function LessonDesignTools({
   knowledgeSuggestions: LessonKnowledgeSuggestion[]
 }) {
   const proposals = extensions.filter(
-    (extension) => extension.status === 'PROPOSED' && !isTeachingAdjustment(extension),
+    (extension) =>
+      (extension.status === 'PROPOSED' || extension.status === 'MODIFIED')
+      && !isTeachingAdjustment(extension),
   )
   const replanningReview = extensions.filter(
     (extension) =>
@@ -43,7 +46,11 @@ export function LessonDesignTools({
   const acceptedSequence = acceptedLessonAdditions.filter((extension) => !isResource(extension.kind))
   const acceptedResources = acceptedLessonAdditions.filter((extension) => isResource(extension.kind))
   const acceptedReplanning = accepted.filter((extension) => isTeachingAdjustment(extension))
-  const activationQuestionPresent = extensions.some((extension) => extension.payload.toolId === ACTIVATION_QUESTION_TOOL_ID)
+  const activationQuestionActive = extensions.some(
+    (extension) =>
+      extension.payload.toolId === ACTIVATION_QUESTION_TOOL_ID
+      && extension.status !== 'DISMISSED',
+  )
 
   return (
     <section className="lessonDesignTools" aria-labelledby="lesson-design-tools-title">
@@ -58,20 +65,22 @@ export function LessonDesignTools({
         <div aria-label="Tipi di attivazione previsti"><span>Frase</span><span>Evento</span><span>Micro-video</span><span>Domanda</span><span>Verifica rapida</span></div>
       </div>
 
-      <div className="lessonDesignAvailableTools" aria-label="Strumenti disponibili">
-        <div className="lessonDesignSubheading"><strong>Prova uno strumento</strong><small>1 disponibile</small></div>
-        <article>
-          <div>
-            <span>DOMANDA · LOCALE</span>
-            <strong>Domanda di attivazione</strong>
-            <p>Parte dal titolo e dall’obiettivo della lezione canonica. Non usa servizi esterni e crea soltanto una proposta da controllare.</p>
-          </div>
-          <form action={proposeLessonActivationQuestion}>
-            <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
-            <button type="submit" disabled={activationQuestionPresent}>{activationQuestionPresent ? 'Già proposta' : 'Proponi domanda'}</button>
-          </form>
-        </article>
-      </div>
+      {!activationQuestionActive ? (
+        <div className="lessonDesignAvailableTools" aria-label="Strumenti disponibili">
+          <div className="lessonDesignSubheading"><strong>Prova uno strumento</strong><small>1 disponibile</small></div>
+          <article>
+            <div>
+              <span>DOMANDA GUIDA · LOCALE</span>
+              <strong>Proponi una domanda guida</strong>
+              <p>Parte dal titolo e dall’obiettivo della lezione canonica. Resta una proposta: puoi modificarla o scartarla prima di inserirla nella sequenza.</p>
+            </div>
+            <form action={proposeLessonActivationQuestion}>
+              <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
+              <button type="submit">Crea proposta</button>
+            </form>
+          </article>
+        </div>
+      ) : null}
 
       {proposals.length ? (
         <div className="lessonDesignProposalList" aria-label="Proposte da controllare">
@@ -85,10 +94,16 @@ export function LessonDesignTools({
                 <small>{sourceLabel(extension)}</small>
               </div>
               <div className="lessonDesignProposalActions">
+                <EditExtensionForm
+                  extension={extension}
+                  sectionId={sectionId}
+                  blockId={blockId}
+                  projectionId={projectionId}
+                />
                 <form action={acceptLessonDesignExtension}>
                   <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
                   <input type="hidden" name="extensionId" value={extension.id} />
-                  <button className="primary" type="submit">Aggiungi alla lezione</button>
+                  <button className="primary" type="submit">Usa in questa lezione</button>
                 </form>
                 <form action={removeLessonDesignExtension}>
                   <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
@@ -244,6 +259,15 @@ function AcceptedItem({
       </div>
       <div>
         {knowledgeHref ? <Link href={knowledgeHref}>Apri</Link> : null}
+        {!isResource(extension.kind) ? (
+          <EditExtensionForm
+            extension={extension}
+            sectionId={sectionId}
+            blockId={blockId}
+            projectionId={projectionId}
+            accepted
+          />
+        ) : null}
         <form action={removeLessonDesignExtension}>
           <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
           <input type="hidden" name="extensionId" value={extension.id} />
@@ -251,6 +275,44 @@ function AcceptedItem({
         </form>
       </div>
     </article>
+  )
+}
+
+function EditExtensionForm({
+  extension,
+  sectionId,
+  blockId,
+  projectionId,
+  accepted = false,
+}: {
+  extension: LessonDesignExtension
+  sectionId: string
+  blockId: string
+  projectionId: string
+  accepted?: boolean
+}) {
+  return (
+    <details className="lessonDesignEdit">
+      <summary>Modifica</summary>
+      <form action={reviseLessonDesignExtensionText}>
+        <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
+        <input type="hidden" name="extensionId" value={extension.id} />
+        <label>
+          <span>Nome</span>
+          <input name="title" defaultValue={extension.title} maxLength={240} required />
+        </label>
+        <label>
+          <span>Testo</span>
+          <textarea name="body" defaultValue={extension.body} maxLength={5000} rows={4} required />
+        </label>
+        {accepted ? (
+          <p>Salvando la modifica, l’elemento esce temporaneamente dalla sequenza e torna “Da controllare”. Rientra solo dopo una nuova conferma.</p>
+        ) : (
+          <p>La modifica resta una proposta e non entra nella lezione finché non scegli “Usa in questa lezione”.</p>
+        )}
+        <button type="submit">Salva modifica</button>
+      </form>
+    </details>
   )
 }
 
