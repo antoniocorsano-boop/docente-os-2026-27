@@ -82,6 +82,7 @@ Implemented on `fix/eco02-p4-intake-boundaries`:
 - lesson-preparation approval validation ignores quarantined curriculum rows, matching the canonical current-baseline read;
 - a read-only audit of the connected Docente OS data context before merge found **0** existing curriculum-adoption rows, so no current row requires destructive cleanup; the quarantine remains as a fail-safe for any other deployed database carrying a pre-fix approved receipt;
 - preview and server now share the same approval-bearing classifier, so nested approval claims are shown as preview-only before submission;
+- lesson copilot UI and API are unavailable until the current lesson-preparation fingerprint has an exact teacher approval receipt;
 - the shared governed-memory amendment is mirrored in CurManLight Arena PR #317.
 
 The real Beta pilot identifiers were resolved from the active Docente OS data context but are **not stored in the public repository**. They will be injected into the Beta service only after a human-approved merge. Production remains untouched.
@@ -106,6 +107,8 @@ Fresh Codex review on superseded head `49df592d141e35cd338b927d0c730aea2dd4ce5d`
 Fresh Codex review on superseded head `0d04d1c8ba671bcb9b7d6369e4a8b309db052adc` then identified three valid follow-ups: client-side database bypass of the pilot scope, quarantine recovery blocked by the legacy downgrade trigger, and a direct lesson-approval query that could still read quarantined authority. The current branch revokes client write grants, moves persistence behind the exact-scope server-only boundary, makes the trigger quarantine-aware, and filters quarantine in lesson approval validation. A later review then found that historically inconsistent nested approval-bearing rows also needed quarantine; migration `0064` now backfills every top-level or nested approval-bearing representation.
 
 Fresh Codex review on superseded head `6c9a245bc3cc82948a57d635d63d4af346f47812` found one final P2 UX inconsistency: nested approval-bearing files were rejected by the server but still presented as provisional/acceptable in preview. The client now uses the same `hasUploadedArenaAuthorityClaim()` classifier as the server guard and renders those files as preview-only.
+
+Browser Certification on superseded head `fd8b61457df866425bf26eeb453e461323eb3425` then found that the lesson page correctly redirected an unapproved Teach request back to Prepare, but the global contextual lesson copilot was still mounted. The correction binds contextual-assistant visibility to the exact server-derived lesson-preparation approval status and also applies the same approval check in the lesson-copilot API loader, so direct API access cannot bypass the teacher gate.
 
 CodeRabbit review on superseded head `da28d8598958c3ea04ff9ce000a67ab31fa07812` identified three additional valid corrections: measure the raw upload before trimming, avoid comparing the request-generated acceptance decision ID during idempotent recovery, and update this execution record so its next action reflects completed implementation. All three are addressed on the current branch.
 
