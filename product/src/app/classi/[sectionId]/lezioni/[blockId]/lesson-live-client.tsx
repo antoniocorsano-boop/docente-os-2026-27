@@ -110,7 +110,11 @@ export default function LessonLiveClient({
 
       {attachedResources.length ? (
         <details className={styles.attached}>
-          <summary>Materiali aggiunti dal docente · {attachedResources.length}</summary>
+          <summary>Materiali allegati dal docente · {attachedResources.length}</summary>
+          <p>
+            Sono i materiali allegati alla lezione. Le altre aggiunte accettate, come domande o attività,
+            compaiono direttamente nella sequenza.
+          </p>
           <div>{attachedResources.map((resource) => <article key={resource.id}><strong>{resource.title}</strong><small>{resource.body}</small></article>)}</div>
         </details>
       ) : null}

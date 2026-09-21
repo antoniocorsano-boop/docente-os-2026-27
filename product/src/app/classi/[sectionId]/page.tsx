@@ -204,7 +204,14 @@ export default async function ClassWorkspacePage({
         )}
         <div className="classLessonFocusAside">
           <div className="classLessonProgress"><strong>{learningFocus.completedBlocks}/33</strong><span>lezioni concluse</span></div>
-          <div className="classLessonFocusActions">{taskDecision.label ? <Link className="primary" href={taskHref}>{taskDecision.label}</Link> : null}</div>
+          <div className="classLessonFocusActions">
+            {nextProjection && learningFocus.nextBlock ? (
+              <Link href={buildLessonWorkspaceHref(summary.sectionId, learningFocus.nextBlock.id, 'prepare')}>
+                Prima della lezione
+              </Link>
+            ) : null}
+            {taskDecision.label ? <Link className="primary" href={taskHref}>{taskDecision.label}</Link> : null}
+          </div>
         </div>
       </section>
 

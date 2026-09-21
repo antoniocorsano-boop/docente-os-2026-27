@@ -33,7 +33,9 @@ for (const classMatcher of [/2ª\s*A/i]) {
 
       const primaryActions = page.locator('.classLessonFocusActions a.primary')
       await expect(primaryActions, 'UX-0C richiede una sola CTA primaria nella Classe.').toHaveCount(1)
-      await expect(page.locator('.classLessonFocusActions a:not(.primary)'), 'Azioni secondarie non devono competere con il task corrente.').toHaveCount(0)
+      const secondaryActions = page.locator('.classLessonFocusActions a:not(.primary)')
+      await expect(secondaryActions, 'La Classe può esporre una sola azione secondaria stabile: Prima della lezione.').toHaveCount(1)
+      await expect(secondaryActions.first()).toHaveText('Prima della lezione')
 
       const supports = page.getByTestId('class-lesson-supports')
       await expect(supports).toBeVisible()
@@ -87,7 +89,7 @@ for (const classMatcher of [/2ª\s*A/i]) {
       await screenshot(page, testInfo, 'classroom-cockpit')
       await recordJourney(testInfo.project.name, {
         status: 'PASS',
-        note: `${fixture.classLabel} · gerarchia Adesso→Dopo · CTA primaria unica · supporti chiusi per default e materiale predisposto raggiungibile`,
+        note: `${fixture.classLabel} · gerarchia Adesso→Dopo · CTA primaria unica · accesso secondario Prima della lezione · supporti chiusi per default e materiale predisposto raggiungibile`,
       })
     } finally {
       await deleteKnowledgeAsset(page, fixture.assetId).catch(() => {})
