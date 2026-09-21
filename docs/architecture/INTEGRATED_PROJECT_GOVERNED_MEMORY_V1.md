@@ -3,7 +3,7 @@
 Status: CANONICAL_SHARED_MEMORY
 Scope: CurManLight Arena + Docente OS
 Date: 2026-08-29
-Amended: 2026-09-21 — professional guided transport and persistent class baseline
+Amended: 2026-09-21 — professional guided transport, persistent class baseline, Atlas integral and Material Studio boundary
 Memory ID: CML-DOS-INTEGRATED-GOVERNANCE-V1
 
 ## 1. Purpose
@@ -61,6 +61,23 @@ Docente OS must not:
 - promote provisional curriculum to approved authority on its own;
 - mutate Arena canonical curriculum state;
 - introduce a second institutional curriculum source of truth.
+
+## 2A. Atlas integrale e Officina materiali
+
+The ecosystem boundary is clarified as follows:
+
+- **Curriculum Atlas** is the integral curriculum visualization and intelligent-navigation product: curriculum map, vertical/horizontal progressions, prerequisites, semantic paths, public/student learning surfaces, Learning Objects and educational resources. Its library/resource role is one dimension of Atlas, not the whole product.
+- **Docente OS** remains the teacher operational workspace and professional orchestrator. It owns the lesson context, builds the production brief, presents alternatives and records the teacher decision; it is not required to be a general-purpose graphics/editorial rendering engine.
+- **Officina materiali / Material Studio** is a specialist production capability governed by TRAMA. It may use specialized providers plus Atlas patterns, Learning Objects and design profiles to produce editable proposals. It owns no curriculum authority, no teacher decision and no Atlas publication state.
+- Before new production, the professional flow follows **reuse before generation**: Atlas is queried first and the teacher chooses among reuse, adapt or create new.
+- A lesson material remains distinct from a published Atlas resource. Publication requires explicit teacher intent and remains governed by the Atlas publication boundary; generation or lesson attachment does not imply publication.
+- The direct Arena -> Docente OS curriculum intake/revalidation path remains canonical for authority. Atlas and Material Studio do not intermediate curriculum authority.
+
+Target professional flow:
+
+`Arena curriculum context -> Docente OS -> Atlas reuse search -> structured brief -> Material Studio -> teacher review -> lesson use -> optional Atlas publication`.
+
+This clarification does not authorize a Material Studio runtime, autonomous publication, a shared database, student personal-data transfer or DOS-A1 activation.
 
 ## 3. Authority model
 
