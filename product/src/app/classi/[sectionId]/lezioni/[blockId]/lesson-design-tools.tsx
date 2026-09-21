@@ -10,6 +10,7 @@ import {
   acceptLessonDesignExtension,
   attachKnowledgeResourceToLesson,
   proposeLessonActivationQuestion,
+  reviseLessonDesignExtension,
   removeLessonDesignExtension,
 } from './design-actions'
 import type { LessonKnowledgeSuggestion } from './lesson-material-suggestions'
@@ -31,7 +32,9 @@ export function LessonDesignTools({
   knowledgeSuggestions: LessonKnowledgeSuggestion[]
 }) {
   const proposals = extensions.filter(
-    (extension) => extension.status === 'PROPOSED' && !isTeachingAdjustment(extension),
+    (extension) =>
+      (extension.status === 'PROPOSED' || extension.status === 'MODIFIED')
+      && !isTeachingAdjustment(extension),
   )
   const replanningReview = extensions.filter(
     (extension) =>
@@ -58,20 +61,22 @@ export function LessonDesignTools({
         <div aria-label="Tipi di attivazione previsti"><span>Frase</span><span>Evento</span><span>Micro-video</span><span>Domanda</span><span>Verifica rapida</span></div>
       </div>
 
-      <div className="lessonDesignAvailableTools" aria-label="Strumenti disponibili">
-        <div className="lessonDesignSubheading"><strong>Prova uno strumento</strong><small>1 disponibile</small></div>
-        <article>
-          <div>
-            <span>DOMANDA · LOCALE</span>
-            <strong>Domanda di attivazione</strong>
-            <p>Parte dal titolo e dall’obiettivo della lezione canonica. Non usa servizi esterni e crea soltanto una proposta da controllare.</p>
-          </div>
-          <form action={proposeLessonActivationQuestion}>
-            <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
-            <button type="submit" disabled={activationQuestionPresent}>{activationQuestionPresent ? 'Già proposta' : 'Proponi domanda'}</button>
-          </form>
-        </article>
-      </div>
+      {!activationQuestionPresent ? (
+        <div className="lessonDesignAvailableTools" aria-label="Strumenti disponibili">
+          <div className="lessonDesignSubheading"><strong>Prova uno strumento</strong><small>1 disponibile</small></div>
+          <article>
+            <div>
+              <span>DOMANDA · LOCALE</span>
+              <strong>Domanda guida</strong>
+              <p>Prepara una bozza legata al contenuto e all’obiettivo della lezione. Prima di entrare nella sequenza resta modificabile e richiede una tua conferma esplicita.</p>
+            </div>
+            <form action={proposeLessonActivationQuestion}>
+              <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
+              <button type="submit">Proponi domanda guida</button>
+            </form>
+          </article>
+        </div>
+      ) : null}
 
       {proposals.length ? (
         <div className="lessonDesignProposalList" aria-label="Proposte da controllare">
@@ -81,14 +86,22 @@ export function LessonDesignTools({
               <div>
                 <span>{extensionKindLabel(extension.kind)}</span>
                 <strong>{extension.title}</strong>
-                <p>{extension.body}</p>
-                <small>{sourceLabel(extension)}</small>
+                {extension.kind === 'HOOK_QUESTION' ? (
+                  <QuestionEditForm
+                    extension={extension}
+                    sectionId={sectionId}
+                    blockId={blockId}
+                    projectionId={projectionId}
+                    alwaysOpen
+                  />
+                ) : <p>{extension.body}</p>}
+                <small>{extension.status === 'MODIFIED' ? 'Modificata dal docente · da riconfermare' : sourceLabel(extension)}</small>
               </div>
               <div className="lessonDesignProposalActions">
                 <form action={acceptLessonDesignExtension}>
                   <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
                   <input type="hidden" name="extensionId" value={extension.id} />
-                  <button className="primary" type="submit">Aggiungi alla lezione</button>
+                  <button className="primary" type="submit">{extension.status === 'MODIFIED' ? 'Conferma e usa' : 'Aggiungi alla lezione'}</button>
                 </form>
                 <form action={removeLessonDesignExtension}>
                   <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
@@ -240,6 +253,17 @@ function AcceptedItem({
       <div>
         <span>{extensionKindLabel(extension.kind)}</span>
         <strong>{extension.title}</strong>
+        {extension.kind === 'HOOK_QUESTION' ? (
+          <>
+            <p className="lessonDesignAcceptedBody">{extension.body}</p>
+            <QuestionEditForm
+              extension={extension}
+              sectionId={sectionId}
+              blockId={blockId}
+              projectionId={projectionId}
+            />
+          </>
+        ) : null}
         <small>{placementLabel(extension)} · {sourceLabel(extension)}</small>
       </div>
       <div>
@@ -251,6 +275,41 @@ function AcceptedItem({
         </form>
       </div>
     </article>
+  )
+}
+
+function QuestionEditForm({
+  extension,
+  sectionId,
+  blockId,
+  projectionId,
+  alwaysOpen = false,
+}: {
+  extension: LessonDesignExtension
+  sectionId: string
+  blockId: string
+  projectionId: string
+  alwaysOpen?: boolean
+}) {
+  const form = (
+    <form className="lessonDesignQuestionEditor" action={reviseLessonDesignExtension}>
+      <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
+      <input type="hidden" name="extensionId" value={extension.id} />
+      <label>
+        <span>Testo della domanda</span>
+        <textarea name="body" defaultValue={extension.body} rows={3} maxLength={1000} required />
+      </label>
+      <small>Salvando la modifica, la domanda torna “da controllare” e non rientra nella sequenza finché non la confermi di nuovo.</small>
+      <button type="submit">Salva modifica</button>
+    </form>
+  )
+
+  if (alwaysOpen) return form
+  return (
+    <details className="lessonDesignQuestionEditDisclosure">
+      <summary>Modifica domanda</summary>
+      {form}
+    </details>
   )
 }
 
