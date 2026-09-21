@@ -143,7 +143,7 @@ export function CurriculumArenaIntakeClient({
             </button>
             {pending ? (
               <p role="status" aria-live="polite">
-                <strong>Verifica in corso.</strong> Controllo classe, disciplina e provenienza prima di salvare.
+                <strong>Verifica in corso.</strong> Controllo classe, disciplina e coerenza del passaggio prima di salvare.
               </p>
             ) : null}
           </form>
