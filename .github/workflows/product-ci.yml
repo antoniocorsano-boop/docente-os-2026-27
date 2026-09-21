@@ -180,7 +180,7 @@ jobs:
             sudo apt-get install -y -qq postgresql-client
           fi
 
-          db_url="$(supabase status | awk -F': ' '/DB URL/ {print $2; exit}')"
+          db_url="$(supabase status -o env | sed -n 's/^DB_URL=//p' | tr -d '"' | head -n 1)"
           test -n "$db_url"
           psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/runtime-release-contract.sql"
 
