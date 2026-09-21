@@ -4,6 +4,7 @@ import {
   acceptedLessonDesignResources,
   acceptedTeachingAdjustments,
   composeLessonSequence,
+  summarizeAcceptedLessonDesignExtensions,
   validateLessonDesignExtensionDraft,
   validateLessonDesignExtensionRevision,
   type LessonDesignExtension,
@@ -45,6 +46,17 @@ test('resources exclude teaching adjustments even after acceptance', () => {
     extension({ id: 'adjustment', kind: 'TEACHING_ADJUSTMENT', sourceKind: 'TEACHER', sourceRef: 'session-1' }),
   ])
   assert.deepEqual(resources.map((item) => item.id), ['teacher-resource', 'student-resource'])
+})
+
+test('accepted extension summary distinguishes sequence, resources and teaching adjustments', () => {
+  const summary = summarizeAcceptedLessonDesignExtensions([
+    extension({ id: 'question', kind: 'HOOK_QUESTION' }),
+    extension({ id: 'teacher-resource', kind: 'TEACHER_RESOURCE', createdAt: '2026-08-26T17:01:00Z' }),
+    extension({ id: 'student-resource', kind: 'STUDENT_RESOURCE', createdAt: '2026-08-26T17:02:00Z' }),
+    extension({ id: 'adjustment', kind: 'TEACHING_ADJUSTMENT', sourceKind: 'TEACHER', sourceRef: 'session-1', createdAt: '2026-08-26T17:03:00Z' }),
+    extension({ id: 'proposal', kind: 'HOOK_EVENT', status: 'PROPOSED' }),
+  ])
+  assert.deepEqual(summary, { total: 4, sequence: 1, resources: 2, adjustments: 1 })
 })
 
 test('teaching adjustments have their own accepted consumer boundary', () => {
