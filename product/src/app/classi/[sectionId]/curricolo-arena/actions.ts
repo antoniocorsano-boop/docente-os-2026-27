@@ -174,5 +174,9 @@ function curriculumIntakeMessage(error: unknown) {
   if (/ECO-02 curriculum intake is limited/i.test(message)) return 'Il collegamento Arena è attivo soltanto per il pilota Tecnologia 2C.'
   if (/ECO-02 curriculum intake accepts only Technology/i.test(message)) return 'Il pilota accetta esclusivamente il passaggio di Tecnologia.'
   if (/workspace membership required|authenticated user required/i.test(message)) return 'La conferma richiede un docente autenticato nel workspace corrente.'
+  if (/provisional curriculum intake scope is not enabled/i.test(message)) return 'Il pilota 2C non è ancora abilitato nel database Beta. Non ripetere il clic: serve completare la configurazione del servizio.'
+  if (/Arena handoff does not match the configured ECO-02 pilot payload/i.test(message)) return 'Il file non coincide con il passaggio Arena autorizzato per il pilota 2C. Scarica nuovamente il passaggio da Arena.'
+  if (/governed revalidation is required/i.test(message)) return 'Esiste già una baseline diversa: questo passaggio richiede la rivalidazione governata, non un nuovo import.'
+  if (/SUPABASE_SECRET_KEY/i.test(message)) return 'La persistenza Beta sta usando un confine server obsoleto. Non ripetere il clic: è necessaria una correzione applicativa.'
   return message
 }
