@@ -25,7 +25,9 @@ test('builds a local deterministic proposed activation question draft', () => {
   assert.equal(proposal.sourceKind, 'EDITORIAL_KNOWLEDGE')
   assert.equal(proposal.sourceRef, 'projection:projection-1')
   assert.equal(proposal.sourceLabel, 'Proiezione didattica canonica')
-  assert.match(proposal.body, /Materiali e proprietà/)
+  assert.equal(proposal.title, 'Domanda guida')
+  assert.match(proposal.body, /proprietà/i)
+  assert.match(proposal.body, /possibili usi/i)
   assert.equal(proposal.payload.toolId, LESSON_ACTIVATION_QUESTION_TOOL_ID)
   assert.equal(proposal.payload.dedupeKey, LESSON_ACTIVATION_QUESTION_TOOL_ID)
   assert.equal(proposal.payload.executionKind, 'LOCAL_DETERMINISTIC')
@@ -58,4 +60,17 @@ test('fails closed when canonical lesson grounding is incomplete', () => {
     () => buildLessonActivationQuestionProposal({ ...input, objective: ' ' }),
     /Lesson objective is required/,
   )
+})
+
+test('builds a relational guiding question for system lessons', () => {
+  const proposal = buildLessonActivationQuestionProposal({
+    ...input,
+    lessonTitle: 'Il territorio agricolo come sistema',
+    objective: 'Analizzare il paesaggio come sistema e rappresentarne le relazioni',
+  })
+
+  assert.match(proposal.body, /quali elementi rendono/i)
+  assert.match(proposal.body, /un sistema/i)
+  assert.match(proposal.body, /relazioni/i)
+  assert.doesNotMatch(proposal.body, /che cosa sai già/i)
 })
