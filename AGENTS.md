@@ -11,6 +11,16 @@ Memory ID: `CML-DOS-INTEGRATED-GOVERNANCE-V1`.
 This is the canonical shared logical memory for CurManLight Arena + Docente OS. It overrides stale conversation summaries, old PR descriptions and local assumptions on cross-system boundaries.
 
 
+## Mandatory professional guided Arena ↔ Docente OS workflow
+
+Before any work that affects curriculum transport, intake, class baseline persistence, revalidation, Arena → Docente OS routing, lesson consumption of curricular context, or user feedback around cross-system transfer, read:
+
+`docs/architecture/CML_DOS_PROFESSIONAL_GUIDED_WORKFLOW_V1.md`
+
+Contract ID: `CML-DOS-PROFESSIONAL-GUIDED-WORKFLOW-V1`.
+
+The target professional model is **assisted/automatic transport + visible provenance + explicit teacher acceptance + persistent class baseline**. Manual handoff files are a pilot/interoperability fallback, not the target routine workflow. Do not re-import curriculum per lesson, do not silently replace an accepted baseline, and do not confuse automated transport with authority or persistence.
+
 ## Mandatory ECO Agentic Officina
 
 Before any significant agent-assisted task involving cross-system behavior, authority/provenance, Human Task/HIM, persistence, security/privacy, external dependencies, release/deploy, governed memory or material product behavior, read:
