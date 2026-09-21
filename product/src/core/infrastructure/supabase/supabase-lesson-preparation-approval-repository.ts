@@ -141,7 +141,6 @@ export class SupabaseLessonPreparationApprovalRepository {
     })
     if (error) throw new Error(error.message)
     return toReceipt(data as Row)
-
   }
 }
 
@@ -155,62 +154,6 @@ function isExactStateRow(row: Row): row is Row & {
     && typeof row.curriculum_baseline_fingerprint === 'string'
     && typeof row.preparation_fingerprint === 'string'
     && Boolean(row.approval_snapshot && typeof row.approval_snapshot === 'object')
-}
-
-function isPlanningComplete(value: unknown) {
-  return Boolean(value && typeof value === 'object' && (value as { completeForPlanning?: unknown }).completeForPlanning === true)
-}
-
-function isCoverageSatisfied(value: unknown) {
-  return Boolean(value && typeof value === 'object' && (value as { status?: unknown }).status === 'SATISFIED')
-}
-
-function isPersistedCurriculumReadyForLessonApproval(value: {
-  curriculum_state: unknown
-  alignment_authority: unknown
-  requires_revalidation_on_approval: unknown
-  curriculum_coverage: unknown
-  curricular_context: unknown
-}) {
-  if (!isPlanningComplete(value.curricular_context)
-    || !isTransitionUsableForPlanning(value.curricular_context)
-    || !isCoverageSatisfied(value.curriculum_coverage)
-    || coverageAuthority(value.curriculum_coverage) !== value.alignment_authority
-    || coverageRequiresRevalidation(value.curriculum_coverage) !== value.requires_revalidation_on_approval) {
-    return false
-  }
-
-  const approvedInstitutional = value.curriculum_state === 'APPROVED'
-    && value.alignment_authority === 'APPROVED_INSTITUTIONAL'
-    && value.requires_revalidation_on_approval === false
-
-  const provisionalPlanningBaseline = value.curriculum_state === 'PROVISIONAL_COMPLETE'
-    && value.alignment_authority === 'PROVISIONAL_BASELINE'
-    && value.requires_revalidation_on_approval === true
-
-  return approvedInstitutional || provisionalPlanningBaseline
-}
-
-function isTransitionUsableForPlanning(value: unknown) {
-  if (!value || typeof value !== 'object') return false
-  const transition = (value as { transitionRemodulation?: unknown }).transitionRemodulation
-  return Boolean(
-    transition
-    && typeof transition === 'object'
-    && (transition as { usableForPlanning?: unknown }).usableForPlanning === true,
-  )
-}
-
-function coverageAuthority(value: unknown) {
-  return value && typeof value === 'object'
-    ? (value as { authority?: unknown }).authority
-    : undefined
-}
-
-function coverageRequiresRevalidation(value: unknown) {
-  return value && typeof value === 'object'
-    ? (value as { requiresRevalidationOnApproval?: unknown }).requiresRevalidationOnApproval
-    : undefined
 }
 
 function toReceipt(row: Row): LessonPreparationApprovalReceipt {
