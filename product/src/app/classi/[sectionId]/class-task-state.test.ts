@@ -238,3 +238,10 @@ test('il form usa la registration key canonica e ogni retry attraversa il bounda
   assert.doesNotMatch(actionsSource, /replaySession/)
   assert.match(actionsSource, /recordTeachingSessionCommand/)
 })
+
+
+test('la classe espone un accesso stabile a Prima della lezione indipendente dalla CTA temporale', () => {
+  assert.match(classPageSource, /const preparationHref = nextProjection && learningFocus\.nextBlock/)
+  assert.match(classPageSource, />Prima della lezione<\/Link>/)
+  assert.match(classPageSource, /Controlla obiettivo, materiali e stato di approvazione della prossima lezione/)
+})
