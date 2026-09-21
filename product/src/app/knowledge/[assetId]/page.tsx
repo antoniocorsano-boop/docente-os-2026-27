@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
+import { knowledgeCalendarEventProposal } from '@/core/domain/knowledge-calendar-event'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import {
   CONTENT_CATEGORIES,
@@ -18,7 +19,8 @@ import {
   validationStatusLabel,
 } from '@/core/presentation/product-language'
 import { asKnowledgeTaskMode, sanitizeInternalReturnTo } from '@/core/presentation/task-continuity'
-import { confirmKnowledgeAction, confirmKnowledgeCandidate, createPlannerTaskFromKnowledgeAsset, rejectKnowledgeCandidate, reprocessKnowledgeAsset, updateKnowledgeContext } from '../actions'
+import { confirmKnowledgeAction, confirmKnowledgeCalendarEvent, confirmKnowledgeCandidate, createPlannerTaskFromKnowledgeAsset, rejectKnowledgeCandidate, reprocessKnowledgeAsset, updateKnowledgeContext } from '../actions'
+import '../calendar-candidate.css'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,6 +34,8 @@ type PageProps = {
     returnTo?: string
     section?: string
     block?: string
+    intent?: string
+    calendar?: string
   }>
 }
 
@@ -117,16 +121,18 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
   const candidates = units.filter((unit) => unit.unitType === 'ACTION' || unit.unitType === 'DEADLINE')
   const chunks = units.filter((unit) => unit.unitType !== 'ACTION' && unit.unitType !== 'DEADLINE')
   const taskLinks = new Map<string, string>()
+  const calendarLinks = new Map<string, string>()
 
-  await Promise.all(candidates.filter((unit) => unit.unitType === 'ACTION').map(async (unit) => {
-    const target = await repository.findTargetRef({
-      workspaceId: context.workspace.id,
-      unitId: unit.id,
-      relationType: 'CREATED_TASK',
-      targetType: 'PLANNER_TASK',
-    })
-    if (target) taskLinks.set(unit.id, target)
-  }))
+  await Promise.all([
+    ...candidates.filter((unit) => unit.unitType === 'ACTION').map(async (unit) => {
+      const target = await repository.findTargetRef({ workspaceId: context.workspace.id, unitId: unit.id, relationType: 'CREATED_TASK', targetType: 'PLANNER_TASK' })
+      if (target) taskLinks.set(unit.id, target)
+    }),
+    ...candidates.filter((unit) => knowledgeCalendarEventProposal(unit.structuredData)).map(async (unit) => {
+      const target = await repository.findTargetRef({ workspaceId: context.workspace.id, unitId: unit.id, relationType: 'CREATED_CALENDAR_EVENT', targetType: 'CALENDAR_EVENT' })
+      if (target) calendarLinks.set(unit.id, target)
+    }),
+  ])
 
   const candidateSummary = candidates.length
     ? `Ho trovato ${candidates.length} ${candidates.length === 1 ? 'possibile azione o scadenza' : 'possibili azioni o scadenze'}. Restano proposte finché non le confermi.`
@@ -151,6 +157,8 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
       {query.reprocess === 'failed' ? <div className="knowledgeFeedback error" role="status">Non sono riuscito ad aggiornare l’analisi. La versione precedente resta disponibile e l’originale non è stato modificato.</div> : null}
       {query.context === 'updated' ? <div className="knowledgeFeedback success" role="status">Correzione salvata. Da ora DOCENTE OS considera questo contesto controllato da te e non lo sostituisce automaticamente.</div> : null}
       {query.task === 'unavailable' ? <div className="knowledgeFeedback error" role="status">Non posso ancora creare l’attività perché manca una versione di analisi completata. Il contenuto resta comunque disponibile.</div> : null}
+      {query.calendar === 'academic_year_mismatch' ? <div className="knowledgeFeedback error" role="status">Questa circolare appartiene a un anno scolastico diverso da quello attivo. Prima di registrare l’impegno, verifica e correggi l’anno scolastico della fonte.</div> : null}
+      {query.intent === 'calendar' ? <div className="knowledgeFeedback" role="status">Controlla la proposta qui sotto. Data, orario, luogo e titolo restano modificabili; il Calendario non cambia finché non confermi.</div> : null}
 
       <section className="plannerHeader knowledgeHeader humanKnowledgeHeader">
         <div>
@@ -240,10 +248,12 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
         {candidates.length ? <div className="candidateGrid">
           {candidates.map((unit) => {
             const linkedTask = taskLinks.get(unit.id)
+            const calendarProposal = knowledgeCalendarEventProposal(unit.structuredData)
+            const linkedCalendarEvent = calendarLinks.get(unit.id)
             return (
               <article className={`knowledgeCandidate ${unit.validationStatus.toLowerCase()}`} key={unit.id}>
                 <div className="candidateHeader">
-                  <div><span className={`candidateType ${unit.unitType.toLowerCase()}`}>{unit.unitType === 'ACTION' ? 'Azione proposta' : 'Scadenza proposta'}</span>{unit.confidence !== null ? <small>Stima automatica {Math.round(unit.confidence * 100)}%</small> : null}</div>
+                  <div><span className={`candidateType ${unit.unitType.toLowerCase()}`}>{calendarProposal ? 'Impegno proposto' : unit.unitType === 'ACTION' ? 'Azione proposta' : 'Scadenza proposta'}</span>{unit.confidence !== null ? <small>Stima automatica {Math.round(unit.confidence * 100)}%</small> : null}</div>
                   <span className={`validationPill ${unit.validationStatus.toLowerCase()}`}>{validationStatusLabel(unit.validationStatus)}</span>
                 </div>
                 {unit.title ? <h3>{unit.title}</h3> : null}
@@ -251,8 +261,21 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
                 {typeof unit.structuredData.dueDate === 'string' ? <p className="candidateDate">Data associata: <strong>{formatIsoDate(unit.structuredData.dueDate)}</strong></p> : null}
                 {typeof unit.structuredData.date === 'string' ? <p className="candidateDate">Data rilevata: <strong>{formatIsoDate(unit.structuredData.date)}</strong></p> : null}
                 {linkedTask ? <div className="candidateOutcome"><span>✓</span><div><strong>Attività già creata</strong><Link href="/planner">Vai a Oggi</Link></div></div> : null}
+                {linkedCalendarEvent ? <div className="candidateOutcome"><span>✓</span><div><strong>Impegno già registrato</strong><Link href="/calendario">Vai al Calendario</Link></div></div> : null}
                 {unit.validationStatus === 'AUTO' ? <div className="candidateActions">
-                  {unit.unitType === 'ACTION' ? (
+                  {calendarProposal ? (
+                    <form action={confirmKnowledgeCalendarEvent} className="calendarCandidateForm">
+                      <input type="hidden" name="unitId" value={unit.id} />
+                      <label className="wide"><span>Titolo</span><input name="title" defaultValue={calendarProposal.title} maxLength={200} required /></label>
+                      <label><span>Data</span><input name="date" type="date" defaultValue={calendarProposal.date} required /></label>
+                      <label><span>Tipo</span><select name="eventKind" defaultValue={calendarProposal.eventKind}><option value="INSTITUTION">Istituto</option><option value="MEETING">Riunione</option><option value="DEADLINE">Scadenza</option><option value="TRAINING">Formazione</option><option value="OTHER">Altro</option></select></label>
+                      <label><span>Ora inizio</span><input name="startTime" type="time" defaultValue={calendarProposal.startTime} required /></label>
+                      <label><span>Ora fine</span><input name="endTime" type="time" defaultValue={calendarProposal.endTime} required /></label>
+                      <label className="wide"><span>Luogo o collegamento</span><input name="location" defaultValue={calendarProposal.location ?? ''} maxLength={500} /></label>
+                      <label className="wide"><span>Nota</span><textarea name="note" defaultValue={calendarProposalNote(calendarProposal)} maxLength={2000} rows={3} /></label>
+                      <button className="primaryCandidateAction" type="submit">Registra nel calendario</button>
+                    </form>
+                  ) : unit.unitType === 'ACTION' ? (
                     <form action={confirmKnowledgeAction}><input type="hidden" name="unitId" value={unit.id} /><button className="primaryCandidateAction" type="submit">Conferma e crea attività</button></form>
                   ) : (
                     <form action={confirmKnowledgeCandidate}><input type="hidden" name="unitId" value={unit.id} /><button className="primaryCandidateAction" type="submit">Conferma scadenza</button></form>
@@ -307,6 +330,11 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('it-IT', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Rome' }).format(new Date(value))
+}
+
+function calendarProposalNote(proposal: NonNullable<ReturnType<typeof knowledgeCalendarEventProposal>>) {
+  const attendance = proposal.attendanceMode === 'IN_PERSON' ? 'In presenza' : proposal.attendanceMode === 'REMOTE' ? 'A distanza' : null
+  return [proposal.mandatory ? 'Partecipazione obbligatoria' : null, attendance].filter(Boolean).join(' · ')
 }
 
 function formatIsoDate(value: string) {

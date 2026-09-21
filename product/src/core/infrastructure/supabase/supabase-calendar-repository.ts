@@ -107,9 +107,11 @@ export class SupabaseCalendarRepository {
     allDay: boolean
     startTime: string | null
     endTime: string | null
+    location?: string | null
     note: string | null
     sourceKind: CalendarSourceKind
     sourceRef: string | null
+    sourceKnowledgeUnitId?: string | null
   }): Promise<CalendarEvent> {
     const supabase = await createClient()
     const userId = await authenticatedUserId(supabase)
@@ -125,16 +127,42 @@ export class SupabaseCalendarRepository {
         all_day: input.allDay,
         start_time: input.allDay ? null : input.startTime,
         end_time: input.allDay ? null : input.endTime,
+        location: input.location ?? null,
         note: input.note,
         source_kind: input.sourceKind,
         source_ref: input.sourceRef,
+        source_knowledge_unit_id: input.sourceKnowledgeUnitId ?? null,
         created_by: userId,
       })
       .select('*')
       .single()
 
+    if (error && error.code === '23505' && input.sourceKnowledgeUnitId) {
+      const { data: existing, error: existingError } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('workspace_id', input.workspaceId)
+        .eq('academic_year_id', input.academicYearId)
+        .eq('source_knowledge_unit_id', input.sourceKnowledgeUnitId)
+        .maybeSingle()
+      if (existingError) throw new Error(existingError.message)
+      if (existing) return toEvent(existing)
+    }
     if (error) throw new Error(error.message)
     return toEvent(data)
+  }
+
+  async findEventById(input: { eventId: string; workspaceId: string; academicYearId: string }): Promise<CalendarEvent | null> {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('id', input.eventId)
+      .eq('workspace_id', input.workspaceId)
+      .eq('academic_year_id', input.academicYearId)
+      .maybeSingle()
+    if (error) throw new Error(error.message)
+    return data ? toEvent(data) : null
   }
 
   async deleteEvent(input: { eventId: string; workspaceId: string; academicYearId: string }) {
@@ -177,9 +205,11 @@ function toEvent(row: CalendarEventRow): CalendarEvent {
     allDay: row.all_day,
     startTime: row.start_time?.slice(0, 5) ?? null,
     endTime: row.end_time?.slice(0, 5) ?? null,
+    location: row.location,
     note: row.note,
     sourceKind: asCalendarSourceKind(row.source_kind),
     sourceRef: row.source_ref,
+    sourceKnowledgeUnitId: row.source_knowledge_unit_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

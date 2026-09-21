@@ -7,12 +7,15 @@ import { DocxKnowledgeTransformer, ImageKnowledgeTransformer, PdfKnowledgeTransf
 import { OpenAiVisualExtraction } from '@/core/infrastructure/knowledge/openai-visual-extraction'
 import { PlainTextKnowledgeTransformer } from '@/core/infrastructure/knowledge/plain-text-transformer'
 import { SchoolCommunicationEnrichment } from '@/core/infrastructure/knowledge/school-communication-enrichment'
+import { SupabaseCalendarRepository } from '@/core/infrastructure/supabase/supabase-calendar-repository'
 import { NativeKnowledgeContentPort, SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
 import { SupabaseStorageKnowledgeContentPort } from '@/core/infrastructure/supabase/supabase-storage-knowledge-content-port'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { createClient } from '@/lib/supabase/server'
 import type { KnowledgeAssetContextInput } from '@/core/domain/knowledge'
+import { knowledgeCalendarEventProposal } from '@/core/domain/knowledge-calendar-event'
+import type { CalendarEventKind } from '@/core/domain/calendar'
 import { buildKnowledgeTaskSourceRef } from '@/core/domain/knowledge-task-source'
 import type { PlannerTaskPriority, PlannerTaskSourceKind } from '@/core/domain/planner-task'
 import { validateKnowledgeUploadContent } from './upload-content-validation'
@@ -23,6 +26,7 @@ import {
   normalizeKnowledgeUploadMime,
   sanitizeKnowledgeFilename,
 } from './upload-policy'
+import { assertCalendarEventWithinAcademicYear } from '../calendario/calendar-command-guard'
 
 export async function captureKnowledgeNote(formData: FormData) {
   const titleValue = formData.get('title')
@@ -253,6 +257,112 @@ export async function confirmKnowledgeAction(formData: FormData) {
   redirect('/planner')
 }
 
+export async function confirmKnowledgeCalendarEvent(formData: FormData) {
+  const unitId = stringValue(formData.get('unitId'))
+  if (!unitId) return
+  const context = await requireWorkspaceContext()
+  if (!context.academicYear) throw new Error('Active academic year required')
+
+  const knowledge = new SupabaseKnowledgeRepository()
+  const unitContext = await knowledge.getUnitContext(unitId)
+  if (!unitContext || unitContext.unit.workspaceId !== context.workspace.id || unitContext.unit.unitType !== 'DEADLINE') return
+  if (!knowledgeCalendarEventProposal(unitContext.unit.structuredData)) return
+  if (unitContext.asset.academicYearId !== context.academicYear.id) {
+    redirect(`/knowledge/${unitContext.asset.id}?intent=calendar&calendar=academic_year_mismatch`)
+  }
+
+  const calendar = new SupabaseCalendarRepository()
+  const existingEventId = await knowledge.findTargetRef({
+    workspaceId: context.workspace.id,
+    unitId,
+    relationType: 'CREATED_CALENDAR_EVENT',
+    targetType: 'CALENDAR_EVENT',
+  })
+  if (existingEventId) {
+    const existingEvent = await calendar.findEventById({
+      eventId: existingEventId,
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+    })
+    if (existingEvent?.sourceKnowledgeUnitId === unitId) {
+      await knowledge.setUnitValidationStatus(unitId, 'REVIEWED')
+      revalidatePath('/calendario')
+      redirect('/calendario?created=known')
+    }
+    await knowledge.setUnitValidationStatus(unitId, 'AUTO')
+  }
+
+  const title = stringValue(formData.get('title'))
+  const startsOn = isoDateValue(formData.get('date'))
+  const startTime = stringValue(formData.get('startTime'))
+  const endTime = stringValue(formData.get('endTime'))
+  if (!title || !startsOn || !startTime || !endTime) throw new Error('Calendar event fields required')
+
+  assertCalendarEventWithinAcademicYear(
+    { startsOn, endsOn: startsOn, allDay: false, startTime, endTime },
+    { startsOn: context.academicYear.startsOn, endsOn: context.academicYear.endsOn },
+  )
+
+  const event = await calendar.createEvent({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    title,
+    eventKind: enumValue(formData.get('eventKind'), CALENDAR_EVENT_KINDS, 'OTHER'),
+    startsOn,
+    endsOn: startsOn,
+    allDay: false,
+    startTime,
+    endTime,
+    location: nullableString(formData.get('location')),
+    note: nullableString(formData.get('note')),
+    sourceKind: 'INSTITUTION_DOCUMENT',
+    sourceRef: `/knowledge/${unitContext.asset.id}`,
+    sourceKnowledgeUnitId: unitId,
+  })
+
+  const linkedEventId = await knowledge.findTargetRef({
+    workspaceId: context.workspace.id,
+    unitId,
+    relationType: 'CREATED_CALENDAR_EVENT',
+    targetType: 'CALENDAR_EVENT',
+  })
+  if (linkedEventId && linkedEventId !== event.id) {
+    await knowledge.replaceTargetRef({
+      workspaceId: context.workspace.id,
+      unitId,
+      relationType: 'CREATED_CALENDAR_EVENT',
+      targetType: 'CALENDAR_EVENT',
+      previousTargetRef: linkedEventId,
+      targetRef: event.id,
+    })
+    const repairedEventId = await knowledge.findTargetRef({
+      workspaceId: context.workspace.id,
+      unitId,
+      relationType: 'CREATED_CALENDAR_EVENT',
+      targetType: 'CALENDAR_EVENT',
+    })
+    if (repairedEventId !== event.id) throw new Error('Knowledge calendar link repair failed')
+  } else if (!linkedEventId) {
+    await knowledge.link({
+      workspaceId: context.workspace.id,
+      unitId,
+      relationType: 'CREATED_CALENDAR_EVENT',
+      targetType: 'CALENDAR_EVENT',
+      targetRef: event.id,
+      metadata: {
+        sourceAssetId: unitContext.asset.id,
+        generationId: unitContext.document.generationId,
+        teacherConfirmed: true,
+      },
+    })
+  }
+  await knowledge.setUnitValidationStatus(unitId, 'REVIEWED')
+  revalidatePath('/calendario')
+  revalidatePath('/knowledge')
+  revalidatePath(`/knowledge/${unitContext.asset.id}`)
+  redirect('/calendario?created=new')
+}
+
 export async function rejectKnowledgeCandidate(formData: FormData) {
   const unitId = stringValue(formData.get('unitId'))
   if (!unitId) return
@@ -316,6 +426,7 @@ const CONTENT_CATEGORIES = ['CIRCULAR', 'MODEL', 'PROGRAMMING', 'UDA', 'ASSESSME
 const CONTEXT_STATUSES = ['UNCLASSIFIED', 'REVIEWED', 'NEEDS_REVIEW'] as const
 const RELIABILITIES = ['AUTO', 'VERIFIED', 'TO_VERIFY'] as const
 const PLANNER_PRIORITIES = ['LOW', 'NORMAL', 'HIGH', 'URGENT'] as const satisfies readonly PlannerTaskPriority[]
+const CALENDAR_EVENT_KINDS = ['INSTITUTION', 'MEETING', 'DEADLINE', 'TRAINING', 'OTHER'] as const satisfies readonly CalendarEventKind[]
 
 function nullableString(value: FormDataEntryValue | null) {
   return typeof value === 'string' && value.trim() ? value.trim() : null

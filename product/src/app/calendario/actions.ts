@@ -69,6 +69,7 @@ export async function createCalendarEvent(formData: FormData) {
     allDay,
     startTime,
     endTime,
+    location: nullableText(formData, 'location'),
     note: nullableText(formData, 'note'),
     sourceKind: sourceKind(text(formData, 'sourceKind')),
     sourceRef: nullableText(formData, 'sourceRef'),

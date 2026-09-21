@@ -37,6 +37,7 @@ type PageProps = {
     returnTo?: string
     section?: string
     block?: string
+    intent?: string
   }>
 }
 
@@ -52,6 +53,8 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
     && params.source === 'textbook'
     && Boolean(requestedTextbookId)
   const taskMode = asKnowledgeTaskMode(params.mode)
+  const calendarIntent = params.intent === 'calendar'
+  const calendarReturnTo = calendarIntent ? sanitizeInternalReturnTo(params.returnTo, '/calendario') : null
   const taskSectionId = params.section?.trim() || null
   const taskBlockId = params.block?.trim() || null
   const taskFallback = taskMode === 'class' && taskSectionId
@@ -82,7 +85,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
   ])
   const recentVisible = recent.slice(0, RECENT_VISIBLE_COUNT)
   const recentMore = recent.slice(RECENT_VISIBLE_COUNT)
-  const captureOpen = recent.length === 0 || Boolean(uploadMessage) || textbookMaterialCapture
+  const captureOpen = recent.length === 0 || Boolean(uploadMessage) || textbookMaterialCapture || calendarIntent
   const assetHref = (assetId: string) => taskMode && taskReturnTo
     ? buildTaskAwareKnowledgeHref(assetId, {
         mode: taskMode,
@@ -132,6 +135,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
         </div>
       ) : null}
       {uploadMessage ? <div className="knowledgeFeedback" role="status">{uploadMessage}</div> : null}
+      {calendarIntent && calendarReturnTo ? <div className="knowledgeFeedback" role="status"><span>Carica la circolare: dopo l’analisi potrai verificare l’impegno e registrarlo nel Calendario.</span>{' '}<Link href={calendarReturnTo}>Torna al Calendario</Link></div> : null}
       {textbookMaterialMessage ? <div className="knowledgeFeedback" role="alert">{textbookMaterialMessage}</div> : null}
 
       <div className="knowledgeGrid">
@@ -175,9 +179,14 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
           <div className="knowledgeCaptureBody">
             <div className="knowledgeCaptureAssurance"><span className="statusPill">Originale preservato</span><p>Il contenuto entra nella Conoscenza solo quando scegli di aggiungerlo.</p></div>
             <KnowledgeCaptureModes
-              initialMode={textbookMaterialCapture ? 'file' : 'text'}
-              sourceHint={textbookMaterialCapture
+              initialMode={textbookMaterialCapture || calendarIntent ? 'file' : 'text'}
+              sourceHint={calendarIntent
+                ? 'Il documento originale resta nella Conoscenza. Date e orari diventano soltanto proposte da controllare: nessun impegno viene registrato senza la tua conferma.'
+                : textbookMaterialCapture
                 ? 'Carica solo una guida, verifica o altro materiale che hai ottenuto legittimamente. DOCENTE OS conserverà il collegamento al libro confermato, ma non acquisisce contenuti protetti direttamente dall’editore.'
+                : null}
+              postUploadQuery={calendarIntent && calendarReturnTo
+                ? `intent=calendar&returnTo=${encodeURIComponent(calendarReturnTo)}`
                 : null}
             />
           </div>

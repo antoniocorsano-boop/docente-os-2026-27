@@ -375,6 +375,23 @@ export class SupabaseKnowledgeRepository implements
       metadata: (input.metadata ?? {}) as Json,
       created_by: userId,
     })
+    if (error && error.code === '23505' && input.unitId && input.relationType === 'CREATED_CALENDAR_EVENT' && input.targetType === 'CALENDAR_EVENT') {
+      const { data: existing, error: existingError } = await supabase.from('knowledge_links').select('target_ref')
+        .eq('workspace_id', input.workspaceId).eq('unit_id', input.unitId)
+        .eq('relation_type', input.relationType).eq('target_type', input.targetType).maybeSingle()
+      if (existingError) throw new Error(existingError.message)
+      if (existing?.target_ref === input.targetRef) return
+      throw new Error('Knowledge calendar link conflict')
+    }
+    if (error) throw new Error(error.message)
+  }
+
+  async replaceTargetRef(input: { workspaceId: string; unitId: string; relationType: string; targetType: string; previousTargetRef: string; targetRef: string }): Promise<void> {
+    const supabase = await createClient()
+    const { error } = await supabase.from('knowledge_links').update({ target_ref: input.targetRef })
+      .eq('workspace_id', input.workspaceId).eq('unit_id', input.unitId)
+      .eq('relation_type', input.relationType).eq('target_type', input.targetType)
+      .eq('target_ref', input.previousTargetRef)
     if (error) throw new Error(error.message)
   }
 

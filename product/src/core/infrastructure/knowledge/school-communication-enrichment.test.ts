@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import '@/core/domain/knowledge-calendar-event.test'
 import type { NormalizedKnowledge } from '@/core/domain/knowledge'
 import { SchoolCommunicationEnrichment } from './school-communication-enrichment'
 
@@ -64,4 +65,27 @@ test('una vera circolare continua a proporre azioni e scadenze operative', async
   assert.equal(result.units.filter((unit) => unit.type === 'ACTION').length, 1)
   assert.equal(result.units.filter((unit) => unit.type === 'DEADLINE').length, 1)
   assert.equal(result.extractedData?.candidateCount, 2)
+})
+
+test('la circolare reale sulla sicurezza propone un solo impegno completo senza registrarlo', async () => {
+  const text = [
+    'Ariano Irpino, 18 settembre 2026',
+    'OGGETTO: Informazione/formazione ai sensi del D. lgs. 81/08: incontro con Responsabile SPP e Medico Competente – 28 settembre 2026.',
+    'La frequenza ai corsi in materia di sicurezza sul lavoro è obbligatoria per tutti i lavoratori dipendenti.',
+    'Le SS.LL., pertanto, sono convocate in presenza presso il Plesso Covotta, lunedì 28 settembre dalle ore 17:00 alle ore 19:00, per l’incontro di informazione/formazione ai sensi del D. Lgs. 81/08.',
+  ].join('\n')
+
+  const result = await new SchoolCommunicationEnrichment().enrich(normalized('circolare-sicurezza.pdf', text))
+  const events = result.units.filter((unit) => unit.type === 'DEADLINE' && unit.structuredData?.calendarEvent)
+  const proposal = events[0]?.structuredData?.calendarEvent as Record<string, unknown> | undefined
+
+  assert.equal(events.length, 1)
+  assert.equal(proposal?.date, '2026-09-28')
+  assert.equal(proposal?.startTime, '17:00')
+  assert.equal(proposal?.endTime, '19:00')
+  assert.equal(proposal?.location, 'Plesso Covotta')
+  assert.equal(proposal?.eventKind, 'TRAINING')
+  assert.equal(proposal?.mandatory, true)
+  assert.equal(proposal?.attendanceMode, 'IN_PERSON')
+  assert.match(String(proposal?.title), /Informazione\/formazione/i)
 })
