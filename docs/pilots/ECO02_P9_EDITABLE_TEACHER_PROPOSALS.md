@@ -46,6 +46,14 @@ La domanda deve stimolare osservazione, relazioni, ipotesi ed evidenze, restando
 - nessuna attivazione di `DOS-A1`;
 - nessun dato personale degli alunni.
 
+## Riproposizione dopo scarto
+
+Lo scarto resta una decisione auditabile e la riga `DISMISSED` non viene riattivata o riscritta.
+
+Dopo uno scarto, il docente può però creare una nuova proposta per la stessa lezione. Il vincolo di deduplicazione si applica soltanto alle proposte attive; le righe scartate restano nello storico ma non occupano più il `dedupeKey` operativo.
+
+In caso di concorrenza, il recupero della proposta vincente esclude esplicitamente lo stato `DISMISSED`, evitando no-op silenziosi.
+
 ## Criteri di accettazione
 
 - nessun doppione percettivo tra strumento/proposta/sequenza;
