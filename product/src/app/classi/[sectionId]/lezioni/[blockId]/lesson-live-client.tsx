@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react'
 import {
   acceptedLessonDesignResources,
   composeLessonSequence,
+  summarizeAcceptedLessonDesignExtensions,
   type LessonDesignExtension,
 } from '@/core/domain/lesson-design-extension'
 import {
@@ -56,6 +57,7 @@ export default function LessonLiveClient({
     : null
   const resources = canonicalStep ? resolveHumanTaskStepResources(projection, canonicalStep) : []
   const attachedResources = acceptedLessonDesignResources(extensions)
+  const activeAdditions = summarizeAcceptedLessonDesignExtensions(extensions)
   const isLast = activeStep >= steps.length - 1
   const progressPercent = steps.length ? Math.round(((activeStep + 1) / steps.length) * 100) : 0
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
@@ -108,10 +110,20 @@ export default function LessonLiveClient({
 
       {resources.map((resource) => <LiveResource resource={resource} key={resource.id} />)}
 
-      {attachedResources.length ? (
+      {activeAdditions.total ? (
         <details className={styles.attached}>
-          <summary>Materiali aggiunti dal docente · {attachedResources.length}</summary>
-          <div>{attachedResources.map((resource) => <article key={resource.id}><strong>{resource.title}</strong><small>{resource.body}</small></article>)}</div>
+          <summary>Aggiunte didattiche attive · {activeAdditions.total}</summary>
+          <div>
+            <p className={styles.cue}>
+              {additionSummary(activeAdditions)}
+            </p>
+            {attachedResources.length ? (
+              <>
+                <strong>{attachedResources.length} {attachedResources.length === 1 ? 'materiale allegato' : 'materiali allegati'}</strong>
+                {attachedResources.map((resource) => <article key={resource.id}><strong>{resource.title}</strong><small>{resource.body}</small></article>)}
+              </>
+            ) : null}
+          </div>
         </details>
       ) : null}
 
@@ -166,4 +178,13 @@ function formatDuration(minutes: number) {
   if (minutes === 120) return '2 ore'
   if (minutes % 60 === 0) return `${minutes / 60} ore`
   return `${minutes} min`
+}
+
+
+function additionSummary(summary: { total: number; sequence: number; resources: number; adjustments: number }) {
+  const parts: string[] = []
+  if (summary.sequence) parts.push(`${summary.sequence} ${summary.sequence === 1 ? 'aggiunta nella sequenza' : 'aggiunte nella sequenza'}`)
+  if (summary.resources) parts.push(`${summary.resources} ${summary.resources === 1 ? 'materiale allegato' : 'materiali allegati'}`)
+  if (summary.adjustments) parts.push(`${summary.adjustments} ${summary.adjustments === 1 ? 'adattamento didattico' : 'adattamenti didattici'}`)
+  return parts.join(' · ')
 }
