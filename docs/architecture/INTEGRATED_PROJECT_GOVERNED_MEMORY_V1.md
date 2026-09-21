@@ -3,7 +3,7 @@
 Status: CANONICAL_SHARED_MEMORY
 Scope: CurManLight Arena + Docente OS
 Date: 2026-08-29
-Amended: 2026-09-20 — ECO-02 verifiable authority-channel constraint
+Amended: 2026-09-21 — professional guided transport and persistent class baseline
 Memory ID: CML-DOS-INTEGRATED-GOVERNANCE-V1
 
 ## 1. Purpose
@@ -94,6 +94,41 @@ Required properties:
 6. explicit downstream teacher acceptance/revalidation when required;
 7. no silent mutation of teacher-authored framework or existing UDA work;
 8. no canonical write-back to Arena from Docente OS without a separately governed proposal/review boundary.
+
+## 4A. Professional guided workflow contract
+
+The canonical professional interaction model is additionally governed by:
+
+`docs/architecture/CML_DOS_PROFESSIONAL_GUIDED_WORKFLOW_V1.md`
+
+Contract ID: `CML-DOS-PROFESSIONAL-GUIDED-WORKFLOW-V1`.
+
+This contract refines the handoff model without weakening any authority boundary.
+
+The durable rule is:
+
+`assisted/automatic transport -> visible provenance -> server-side validation -> explicit teacher decision -> persistent class baseline -> lesson reuse`
+
+The transport layer may become automatic or application-to-application. The persistence decision may not become silent.
+
+Therefore:
+
+- a curriculum baseline is acquired per class/discipline/year/version context, not once per lesson;
+- lessons consume the already accepted class baseline and do not re-import curriculum;
+- manual `.cml-handoff.json` handling is an interoperability, diagnostic and pilot/fallback mode, not the target professional workflow;
+- Arena may prepare and transport a versioned handoff without directly writing Docente OS canonical state;
+- Docente OS must validate workspace, year, discipline, grade, section/cohort, provenance, structural footprint and authority before persistence;
+- a meaningful new or changed baseline requires explicit teacher acceptance/revalidation;
+- an uploaded/local/browser-controlled payload cannot establish institutional `APPROVED` authority;
+- institutional authority still requires a server-verifiable Arena authority signal plus explicit downstream teacher revalidation;
+- no shared database or cross-system silent canonical write is authorized;
+- user-visible feedback is mandatory for transfer, validation, acceptance, rejection and update availability.
+
+The distinction is invariant:
+
+`automatic transport != automatic persistence != institutional authority`
+
+This amendment supersedes any interpretation of “no automatic downstream writes” that would prohibit automation of transport itself. The prohibition applies to silent canonical persistence and authority mutation, not to safe transport, routing, preview or validation.
 
 ## 5. Same-version authority transition rule
 
