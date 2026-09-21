@@ -72,13 +72,17 @@ export async function approveLessonPreparationAndProceed(formData: FormData) {
   const approvedBy = claimsData?.claims?.sub
   if (claimsError || !approvedBy) redirect('/login')
 
-  await new SupabaseLessonPreparationApprovalRepository().approve({
-    context,
-    curriculumBaseline,
-    projection,
-    extensions,
-    approvedBy,
-  })
+  try {
+    await new SupabaseLessonPreparationApprovalRepository().approve({
+      context,
+      curriculumBaseline,
+      projection,
+      extensions,
+      approvedBy,
+    })
+  } catch {
+    redirect(prepareHref(sectionId, blockId, 'failed'))
+  }
 
   revalidatePath(`/classi/${sectionId}`)
   revalidatePath(`/classi/${sectionId}/lezioni/${blockId}`)

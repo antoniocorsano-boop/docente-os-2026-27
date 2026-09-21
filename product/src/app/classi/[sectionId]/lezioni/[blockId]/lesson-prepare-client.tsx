@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
+import { useFormStatus } from 'react-dom'
 import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
 import type { LessonPreparationApprovalStatus } from '@/core/application/lesson-preparation-approval'
 import {
@@ -133,7 +134,7 @@ export default function LessonPrepareClient({
               <input type="hidden" name="sectionId" value={sectionId} />
               <input type="hidden" name="blockId" value={block.id} />
               <input type="hidden" name="projectionId" value={projection.projectionId} />
-              <button className={styles.primary} type="submit">Approva e procedi</button>
+              <LessonApprovalSubmit />
             </form>
           )}
         </div>
@@ -220,8 +221,8 @@ function approvalMessage(
   if (status === 'CURRICULUM_REQUIRED') {
     return 'Prima di procedere serve una baseline Arena completa per la progettazione, coerente con questa classe e con copertura curricolare soddisfatta.'
   }
-  if (provisional) {
-    return 'La baseline Arena è provvisoria ma completa per la progettazione. “Approva e procedi” conferma solo questa preparazione didattica; non approva il curricolo d’istituto e resterà soggetta a rivalidazione quando Arena registrerà l’adozione definitiva.'
+  if (notice === 'failed') {
+    return 'Approvazione non completata. La preparazione non è stata resa operativa: non ripetere il clic finché il problema non è stato verificato.'
   }
   if (notice === 'required') {
     return 'Per avviare una lezione futura devi prima confermare esplicitamente la preparazione mostrata qui.'
@@ -229,7 +230,26 @@ function approvalMessage(
   if (notice === 'changed') {
     return 'La proiezione della lezione è cambiata. Controlla la versione corrente prima di confermare.'
   }
+  if (provisional) {
+    return 'La baseline Arena è provvisoria ma completa per la progettazione. “Approva e procedi” conferma solo questa preparazione didattica; non approva il curricolo d’istituto e resterà soggetta a rivalidazione quando Arena registrerà l’adozione definitiva.'
+  }
   return 'Controlla obiettivo, attività e materiali. “Approva e procedi” conferma esattamente la preparazione corrente.'
+}
+
+function LessonApprovalSubmit() {
+  const { pending } = useFormStatus()
+  return (
+    <>
+      <button className={styles.primary} type="submit" disabled={pending}>
+        {pending ? 'Approvazione in corso…' : 'Approva e procedi'}
+      </button>
+      {pending ? (
+        <p className={styles.lessonBriefMore} role="status" aria-live="polite">
+          Controllo curricolo, proiezione e materiali accettati prima di salvare la ricevuta.
+        </p>
+      ) : null}
+    </>
+  )
 }
 
 function formatApprovalDate(value: string) {
