@@ -8,6 +8,7 @@ on:
       - 'product/**'
       - 'render.yaml'
       - '.github/scripts/certification/**'
+      - '.github/scripts/runtime-health.mjs'
       - '.github/workflows/browser-certification-orchestrator.yml'
       - '.github/workflows/experience-acceptance.yml'
       - '.github/workflows/wcag22-aa-assurance.yml'
