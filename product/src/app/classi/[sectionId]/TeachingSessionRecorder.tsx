@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { isVoiceCaptureEnabled } from '@/core/application/voice/voice-capture-policy'
+import { isVoiceCaptureReady } from '@/core/application/voice/voice-capture-policy'
 import {
   TeachingSessionRecorderClient,
   type TeachingSessionRecorderProps,
@@ -10,7 +10,7 @@ export function TeachingSessionRecorder(props: TeachingSessionRecorderProps) {
     <TeachingSessionRecorderClient
       {...props}
       registrationKey={randomUUID()}
-      voiceCaptureEnabled={isVoiceCaptureEnabled(process.env.DOCENTE_OS_VOICE_CAPTURE)}
+      voiceCaptureEnabled={isVoiceCaptureReady(process.env.DOCENTE_OS_VOICE_CAPTURE, process.env.GROQ_STT_API_KEY)}
     />
   )
 }

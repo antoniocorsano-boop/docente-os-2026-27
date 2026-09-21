@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
-import { isVoiceCaptureEnabled } from '@/core/application/voice/voice-capture-policy'
+import { isVoiceCaptureReady } from '@/core/application/voice/voice-capture-policy'
 import {
   buildLessonPreparationApprovalSnapshot,
   isCurriculumBaselineReadyForLessonApproval,
@@ -159,7 +159,7 @@ export default async function LessonWorkspacePage({
     evidenceNote: progress?.evidenceNote ?? null,
   }
   const udaProgressView = { completed: udaProgress, total: udaBlocks.length }
-  const voiceCaptureEnabled = isVoiceCaptureEnabled(process.env.DOCENTE_OS_VOICE_CAPTURE)
+  const voiceCaptureEnabled = isVoiceCaptureReady(process.env.DOCENTE_OS_VOICE_CAPTURE, process.env.GROQ_STT_API_KEY)
 
   return (
     <AppShell
