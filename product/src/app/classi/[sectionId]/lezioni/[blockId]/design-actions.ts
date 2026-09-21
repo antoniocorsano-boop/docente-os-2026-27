@@ -34,6 +34,27 @@ export async function removeLessonDesignExtension(formData: FormData) {
   revalidateLesson(lesson.sectionId, lesson.blockId)
 }
 
+export async function reviseLessonDesignExtensionText(formData: FormData) {
+  const lesson = await requireLessonContext(formData)
+  const extensionId = requiredText(formData, 'extensionId')
+  const title = requiredText(formData, 'title')
+  const body = requiredText(formData, 'body')
+  const repository = new SupabaseLessonDesignRepository()
+  const extensions = await repository.list(lesson.designContext)
+  const current = extensions.find((extension) => extension.id === extensionId)
+  if (!current) throw new Error('Lesson design extension is outside the active lesson context')
+
+  await repository.revise(lesson.designContext, extensionId, {
+    insertionPosition: current.insertionPosition,
+    anchorStepId: current.anchorStepId,
+    title,
+    body,
+    cue: current.cue,
+    minutes: current.minutes,
+  })
+  revalidateLesson(lesson.sectionId, lesson.blockId)
+}
+
 export async function proposeLessonActivationQuestion(formData: FormData) {
   const lesson = await requireLessonContext(formData)
   const repository = new SupabaseLessonDesignRepository()
