@@ -280,7 +280,6 @@ export class SupabaseAnnualPlanCurriculumRepository {
 
     const receipt = toReceipt(existing)
     if (receipt.curricularContextId !== payload.curricularContextId
-      || receipt.acceptanceDecisionId !== payload.acceptanceDecisionId
       || receipt.sourceFrameworkMessageId !== payload.sourceFrameworkMessageId) {
       throw new Error('idempotency conflict for curriculum adoption fingerprint')
     }
