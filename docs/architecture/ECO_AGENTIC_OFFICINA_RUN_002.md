@@ -107,6 +107,8 @@ Fresh Codex review on superseded head `0d04d1c8ba671bcb9b7d6369e4a8b309db052adc`
 
 Fresh Codex review on superseded head `6c9a245bc3cc82948a57d635d63d4af346f47812` found one final P2 UX inconsistency: nested approval-bearing files were rejected by the server but still presented as provisional/acceptable in preview. The client now uses the same `hasUploadedArenaAuthorityClaim()` classifier as the server guard and renders those files as preview-only.
 
+CodeRabbit review on superseded head `da28d8598958c3ea04ff9ce000a67ab31fa07812` identified three additional valid corrections: measure the raw upload before trimming, avoid comparing the request-generated acceptance decision ID during idempotent recovery, and update this execution record so its next action reflects completed implementation. All three are addressed on the current branch.
+
 Required focus:
 
 - pilot-scope enforcement cannot be bypassed server-side;
@@ -140,4 +142,4 @@ The transport/authority clarification is a shared-memory amendment and must merg
 
 ## NEXT AUTHORIZED ACTION
 
-Implement the bounded corrections on this branch, verify the final exact head, then request human review.
+Verify the final exact head, then request human review.
