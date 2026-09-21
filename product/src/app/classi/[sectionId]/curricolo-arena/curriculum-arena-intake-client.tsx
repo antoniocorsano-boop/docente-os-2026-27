@@ -15,8 +15,13 @@ import {
 } from '@/core/domain/cml-discipline-binding'
 import {
   acceptArenaCurriculumHandoff,
-  CURRICULUM_ARENA_INTAKE_INITIAL_STATE,
+  type CurriculumArenaIntakeActionState,
 } from './actions'
+
+const CURRICULUM_ARENA_INTAKE_INITIAL_STATE: CurriculumArenaIntakeActionState = {
+  status: 'idle',
+  message: null,
+}
 
 type Preview = {
   handoff: CmlLocalHandoffV2
