@@ -48,17 +48,21 @@ export function assertEco02PilotCurriculumIntakeScope(input: {
   }
 }
 
-export function assertUploadedArenaAuthorityContextAllowed(
+export function hasUploadedArenaAuthorityClaim(
   context: CurriculumContextForClassV1,
-): void {
+): boolean {
   const remodulation = context.transitionRemodulation
-  if (
-    context.curriculumState === 'APPROVED'
+  return context.curriculumState === 'APPROVED'
     || context.approvalDecisionRef !== undefined
     || remodulation.state === 'APPROVED'
     || remodulation.institutionallyApproved
     || remodulation.approvalDecisionRef !== undefined
-  ) {
+}
+
+export function assertUploadedArenaAuthorityContextAllowed(
+  context: CurriculumContextForClassV1,
+): void {
+  if (hasUploadedArenaAuthorityClaim(context)) {
     throw new Error('local Arena upload cannot establish institutional approval authority')
   }
 }
