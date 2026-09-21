@@ -117,7 +117,7 @@ export class SupabaseLessonDesignRepository {
     const { data, error } = await supabase.from('lesson_design_extensions').insert(toProposalInsert(context, draft, userId)).select('*').single()
     if (!error) return toExtension(data)
     if (error.code !== '23505') throw new Error(error.message)
-    const { data: existing, error: existingError } = await supabase.from('lesson_design_extensions').select('*').eq('workspace_id', context.workspaceId).eq('academic_year_id', context.academicYearId).eq('section_id', context.sectionId).eq('canonical_plan_asset_id', context.canonicalPlanAssetId).eq('canonical_generation_id', context.canonicalGenerationId).eq('block_id', context.blockId).eq('projection_id', context.projectionId).contains('payload', { dedupeKey: normalizedDedupeKey }).limit(1).maybeSingle()
+    const { data: existing, error: existingError } = await supabase.from('lesson_design_extensions').select('*').eq('workspace_id', context.workspaceId).eq('academic_year_id', context.academicYearId).eq('section_id', context.sectionId).eq('canonical_plan_asset_id', context.canonicalPlanAssetId).eq('canonical_generation_id', context.canonicalGenerationId).eq('block_id', context.blockId).eq('projection_id', context.projectionId).contains('payload', { dedupeKey: normalizedDedupeKey }).neq('status', 'DISMISSED').limit(1).maybeSingle()
     if (existingError) throw new Error(existingError.message)
     if (!existing) throw new Error('Lesson design proposal uniqueness conflict could not be resolved')
     return toExtension(existing)
