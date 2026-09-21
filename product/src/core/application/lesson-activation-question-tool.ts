@@ -21,7 +21,7 @@ export function buildLessonActivationQuestionProposal(
   if (!objective) throw new Error('Lesson objective is required')
   if (!input.projectionId.trim()) throw new Error('Projection id is required')
 
-  const question = `Che cosa sai già su “${shorten(lessonTitle, 150)}” e quale domanda vorresti riuscire a chiarire entro la fine della lezione?`
+  const question = `Quali elementi o relazioni ritieni decisivi per comprendere “${shorten(lessonTitle, 150)}”? Formula un’ipotesi e indica quale osservazione o evidenza potrebbe confermarla.`
 
   return {
     sectionId: input.sectionId,
@@ -32,9 +32,9 @@ export function buildLessonActivationQuestionProposal(
     kind: 'HOOK_QUESTION',
     insertionPosition: 'START',
     anchorStepId: null,
-    title: 'Domanda di attivazione',
+    title: 'Domanda guida',
     body: question,
-    cue: 'Raccogli poche risposte senza correggerle subito; riprendile alla fine per rendere visibile che cosa è cambiato.',
+    cue: `Usa l’obiettivo come riferimento: “${shorten(objective, 220)}”. Raccogli poche ipotesi senza correggerle subito e riprendile alla fine per rendere visibile che cosa è cambiato.`,
     minutes: 3,
     sourceKind: 'EDITORIAL_KNOWLEDGE',
     sourceRef: `projection:${input.projectionId}`,
