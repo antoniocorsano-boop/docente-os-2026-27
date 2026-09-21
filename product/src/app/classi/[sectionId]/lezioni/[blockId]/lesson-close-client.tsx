@@ -101,7 +101,12 @@ export default function LessonCloseClient({
       router.push(`${classHref}?session=${encodeURIComponent(receipt.teachingSessionId)}`)
       router.refresh()
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Non è stato possibile registrare la lezione. I dati locali restano disponibili per un nuovo tentativo.')
+      const message = error instanceof Error ? error.message : ''
+      setSaveError(
+        /Minified React error|react\.dev\/errors|Server Components render/i.test(message)
+          ? 'La registrazione non è stata confermata. I dati inseriti restano disponibili: puoi riprovare senza ricominciare.'
+          : message || 'Non è stato possibile registrare la lezione. I dati inseriti restano disponibili per un nuovo tentativo.',
+      )
     } finally {
       setSaving(false)
     }
