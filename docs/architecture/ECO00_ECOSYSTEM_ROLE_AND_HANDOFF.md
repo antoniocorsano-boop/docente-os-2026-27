@@ -19,13 +19,33 @@ It owns:
 - teacher reflection;
 - contextual Copilot.
 
-It does not become a second curriculum/LO canonical archive.
+It does not become a second curriculum/LO canonical archive and it does not become the general-purpose graphics/editorial rendering engine for final teaching assets.
 
 ## Ecosystem principle
 
 **Arena governs → Atlas makes intelligible/navigable → Docente OS makes operational.**
 
 This does not replace the governed direct Arena → Docente OS curriculum intake/revalidation boundary. Atlas supplies public/navigation/LO context only and never intermediates curriculum authority.
+
+
+## Material production orchestration
+
+Docente OS owns the **teacher-facing orchestration** of material preparation, not the specialist rendering capability itself.
+
+Professional sequence:
+
+`lesson context → Atlas reuse search → teacher choice (Riutilizza | Adatta | Crea nuova) → structured production brief → specialist Material Studio → preview/review → lesson attachment → optional Atlas publication`.
+
+Docente OS must:
+- derive the brief from the accepted curriculum baseline, lesson purpose, class/grade context and teacher choices;
+- search Atlas before requesting new production;
+- keep generated proposals editable, replaceable and excludable;
+- require an explicit teacher decision before attaching a proposal as the selected lesson material;
+- keep publication to Atlas as a later, separate and explicit action.
+
+The Material Studio may use Atlas patterns, Learning Objects and design profiles, and may route different artifact types to different specialist providers. It does not gain curriculum authority, lesson authority or publication authority.
+
+A generated artifact is not an Atlas resource merely because it was produced from Atlas context. Publication remains governed by the Atlas publication contract and its provenance, rights/licensing, accessibility and human-review gates.
 
 ## Canonical contracts and versions
 
@@ -57,10 +77,10 @@ Learning Object identity, lifecycle and manifest are owned by Atlas. Canonical m
 ## Operational journey
 
 Atlas:
-`TEC-SYS-001 → Prepara questa lezione`
+`curriculum node / LO / resource → Usa nella lezione`
 
 Docente OS:
-`Progetta/Classi/Lezione → LO context → material actions → TeachingSession`.
+`Progetta/Classi/Lezione → accepted curriculum context → Atlas reuse search → brief → teacher-reviewed material → TeachingSession`.
 
 Actions:
 - Proietta;
