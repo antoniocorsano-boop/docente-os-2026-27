@@ -3,9 +3,10 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 const source = readFileSync(new URL('./lesson-design-tools.tsx', import.meta.url), 'utf8')
+const actions = readFileSync(new URL('./design-actions.ts', import.meta.url), 'utf8')
 
 test('teaching adjustments use a dedicated replanning review boundary', () => {
-  assert.ok(source.includes("extension.status === 'PROPOSED' && !isTeachingAdjustment(extension)"))
+  assert.ok(source.includes("extension.status === 'PROPOSED' || extension.status === 'MODIFIED'"))
   assert.ok(source.includes("extension.status === 'PROPOSED' || extension.status === 'MODIFIED'"))
   assert.ok(source.includes('Riprogettazione da riesaminare'))
   assert.ok(source.includes('Conferma riprogettazione'))
@@ -18,4 +19,15 @@ test('accepted teaching adjustments stay separate from lesson sequence and resou
   assert.ok(source.includes('Decisioni di riprogettazione accettate'))
   assert.ok(source.includes('Non sono aggiunte alla sequenza'))
   assert.ok(source.includes("if (kind === 'TEACHING_ADJUSTMENT') return 'RIPROGETTAZIONE'"))
+})
+
+test('teacher can revise a guiding question and must explicitly reconfirm it', () => {
+  assert.ok(source.includes('Testo della domanda'))
+  assert.ok(source.includes('Salva modifica'))
+  assert.ok(source.includes('Modificata dal docente · da riconfermare'))
+  assert.ok(source.includes('Conferma e usa'))
+  assert.ok(source.includes('!activationQuestionPresent ?'))
+  assert.ok(actions.includes('export async function reviseLessonDesignExtension'))
+  assert.ok(actions.includes("extension.kind !== 'HOOK_QUESTION'"))
+  assert.ok(actions.includes('repository.revise'))
 })
