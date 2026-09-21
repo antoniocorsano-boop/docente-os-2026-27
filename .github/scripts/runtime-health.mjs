@@ -17,12 +17,18 @@ const receipt = {
   checks: {},
 }
 
-const build = await timedFetch(`${appUrl}/api/build-info`)
+const build = await timedFetchWithRetry(`${appUrl}/api/build-info`, undefined, {
+  attempts: 3,
+  timeoutMs: 20_000,
+  delayMs: 2_000,
+})
 assert.equal(build.response.status, 200, `build-info returned ${build.response.status}`)
 const buildInfo = await build.response.json()
 assert.match(buildInfo.commit ?? '', /^[0-9a-f]{40}$/i, 'build-info must expose a 40-char commit SHA')
 receipt.deployedCommit = buildInfo.commit
 receipt.checks.buildInfoMs = build.elapsedMs
+receipt.checks.buildInfoAttempts = build.attempts
+receipt.checks.buildInfoColdStartRecovered = build.attempts > 1 ? 'YES' : 'NO'
 
 const loginPage = await timedFetch(`${appUrl}/login`)
 assert.equal(loginPage.response.status, 200, `login page returned ${loginPage.response.status}`)
@@ -99,6 +105,46 @@ async function timedFetch(url, init) {
   return { response, elapsedMs: Math.round(performance.now() - started) }
 }
 
+async function timedFetchWithRetry(url, init, options = {}) {
+  const attempts = options.attempts ?? 3
+  const timeoutMs = options.timeoutMs ?? 20_000
+  const delayMs = options.delayMs ?? 2_000
+  const retryableStatuses = new Set([502, 503, 504])
+  const started = performance.now()
+  let lastError
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const response = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) })
+      const retryableStatus = retryableStatuses.has(response.status)
+
+      if (!retryableStatus || attempt === attempts) {
+        return {
+          response,
+          elapsedMs: Math.round(performance.now() - started),
+          attempts: attempt,
+        }
+      }
+    } catch (error) {
+      lastError = error
+      if (!isTransientFetchError(error) || attempt === attempts) throw error
+    }
+
+    await sleep(delayMs)
+  }
+
+  throw lastError ?? new Error('Runtime health retry exhausted without a response')
+}
+
+function isTransientFetchError(error) {
+  return error?.name === 'TimeoutError'
+    || error?.name === 'AbortError'
+    || error instanceof TypeError
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 function latestMigrationId() {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
