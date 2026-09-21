@@ -21,7 +21,7 @@ export function buildLessonActivationQuestionProposal(
   if (!objective) throw new Error('Lesson objective is required')
   if (!input.projectionId.trim()) throw new Error('Projection id is required')
 
-  const question = `Che cosa sai già su “${shorten(lessonTitle, 150)}” e quale domanda vorresti riuscire a chiarire entro la fine della lezione?`
+  const question = buildGroundedQuestion(lessonTitle, objective)
 
   return {
     sectionId: input.sectionId,
@@ -32,7 +32,7 @@ export function buildLessonActivationQuestionProposal(
     kind: 'HOOK_QUESTION',
     insertionPosition: 'START',
     anchorStepId: null,
-    title: 'Domanda di attivazione',
+    title: 'Domanda guida',
     body: question,
     cue: 'Raccogli poche risposte senza correggerle subito; riprendile alla fine per rendere visibile che cosa è cambiato.',
     minutes: 3,
@@ -51,6 +51,23 @@ export function buildLessonActivationQuestionProposal(
       },
     },
   }
+}
+
+function buildGroundedQuestion(lessonTitle: string, objective: string) {
+  const context = `${lessonTitle} ${objective}`.toLocaleLowerCase('it-IT')
+  const title = shorten(lessonTitle, 120)
+
+  if (/\bsistem[ai]\b/.test(context)) {
+    return `Quali elementi rendono “${title}” un sistema e quali relazioni tra questi elementi dovremmo osservare per dimostrarlo?`
+  }
+  if (/\b(filiera|processo|processi|fasi)\b/.test(context)) {
+    return `Quali passaggi sono indispensabili in “${title}” e come sono collegati tra loro?`
+  }
+  if (/\b(materiale|materiali|proprietà|proprieta)\b/.test(context)) {
+    return `Quali proprietà permettono di distinguere i materiali coinvolti in “${title}” e di collegarli ai loro possibili usi?`
+  }
+
+  return `Osservando “${title}”, quali elementi o relazioni pensi siano decisivi? Motiva la risposta tenendo presente l’obiettivo della lezione.`
 }
 
 function collapse(value: string) {
