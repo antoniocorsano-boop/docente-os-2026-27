@@ -35,6 +35,7 @@ type PageProps = {
     section?: string
     block?: string
     intent?: string
+    calendar?: string
   }>
 }
 
@@ -156,6 +157,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
       {query.reprocess === 'failed' ? <div className="knowledgeFeedback error" role="status">Non sono riuscito ad aggiornare l’analisi. La versione precedente resta disponibile e l’originale non è stato modificato.</div> : null}
       {query.context === 'updated' ? <div className="knowledgeFeedback success" role="status">Correzione salvata. Da ora DOCENTE OS considera questo contesto controllato da te e non lo sostituisce automaticamente.</div> : null}
       {query.task === 'unavailable' ? <div className="knowledgeFeedback error" role="status">Non posso ancora creare l’attività perché manca una versione di analisi completata. Il contenuto resta comunque disponibile.</div> : null}
+      {query.calendar === 'academic_year_mismatch' ? <div className="knowledgeFeedback error" role="status">Questa circolare appartiene a un anno scolastico diverso da quello attivo. Prima di registrare l’impegno, verifica e correggi l’anno scolastico della fonte.</div> : null}
       {query.intent === 'calendar' ? <div className="knowledgeFeedback" role="status">Controlla la proposta qui sotto. Data, orario, luogo e titolo restano modificabili; il Calendario non cambia finché non confermi.</div> : null}
 
       <section className="plannerHeader knowledgeHeader humanKnowledgeHeader">

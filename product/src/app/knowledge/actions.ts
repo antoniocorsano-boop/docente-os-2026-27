@@ -267,7 +267,11 @@ export async function confirmKnowledgeCalendarEvent(formData: FormData) {
   const unitContext = await knowledge.getUnitContext(unitId)
   if (!unitContext || unitContext.unit.workspaceId !== context.workspace.id || unitContext.unit.unitType !== 'DEADLINE') return
   if (!knowledgeCalendarEventProposal(unitContext.unit.structuredData)) return
+  if (unitContext.asset.academicYearId !== context.academicYear.id) {
+    redirect(`/knowledge/${unitContext.asset.id}?intent=calendar&calendar=academic_year_mismatch`)
+  }
 
+  const calendar = new SupabaseCalendarRepository()
   const existingEventId = await knowledge.findTargetRef({
     workspaceId: context.workspace.id,
     unitId,
@@ -275,9 +279,24 @@ export async function confirmKnowledgeCalendarEvent(formData: FormData) {
     targetType: 'CALENDAR_EVENT',
   })
   if (existingEventId) {
-    await knowledge.setUnitValidationStatus(unitId, 'REVIEWED')
-    revalidatePath('/calendario')
-    redirect('/calendario?created=known')
+    const existingEvent = await calendar.findEventById({
+      eventId: existingEventId,
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+    })
+    if (existingEvent?.sourceKnowledgeUnitId === unitId) {
+      await knowledge.setUnitValidationStatus(unitId, 'REVIEWED')
+      revalidatePath('/calendario')
+      redirect('/calendario?created=known')
+    }
+    await knowledge.unlink({
+      workspaceId: context.workspace.id,
+      unitId,
+      relationType: 'CREATED_CALENDAR_EVENT',
+      targetType: 'CALENDAR_EVENT',
+      targetRef: existingEventId,
+    })
+    await knowledge.setUnitValidationStatus(unitId, 'AUTO')
   }
 
   const title = stringValue(formData.get('title'))
@@ -291,7 +310,7 @@ export async function confirmKnowledgeCalendarEvent(formData: FormData) {
     { startsOn: context.academicYear.startsOn, endsOn: context.academicYear.endsOn },
   )
 
-  const event = await new SupabaseCalendarRepository().createEvent({
+  const event = await calendar.createEvent({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
     title,

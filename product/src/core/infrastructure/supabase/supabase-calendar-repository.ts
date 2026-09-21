@@ -152,6 +152,19 @@ export class SupabaseCalendarRepository {
     return toEvent(data)
   }
 
+  async findEventById(input: { eventId: string; workspaceId: string; academicYearId: string }): Promise<CalendarEvent | null> {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('id', input.eventId)
+      .eq('workspace_id', input.workspaceId)
+      .eq('academic_year_id', input.academicYearId)
+      .maybeSingle()
+    if (error) throw new Error(error.message)
+    return data ? toEvent(data) : null
+  }
+
   async deleteEvent(input: { eventId: string; workspaceId: string; academicYearId: string }) {
     const supabase = await createClient()
     const { error } = await supabase
