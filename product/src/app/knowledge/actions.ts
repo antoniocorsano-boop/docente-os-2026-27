@@ -289,13 +289,6 @@ export async function confirmKnowledgeCalendarEvent(formData: FormData) {
       revalidatePath('/calendario')
       redirect('/calendario?created=known')
     }
-    await knowledge.unlink({
-      workspaceId: context.workspace.id,
-      unitId,
-      relationType: 'CREATED_CALENDAR_EVENT',
-      targetType: 'CALENDAR_EVENT',
-      targetRef: existingEventId,
-    })
     await knowledge.setUnitValidationStatus(unitId, 'AUTO')
   }
 
@@ -333,7 +326,23 @@ export async function confirmKnowledgeCalendarEvent(formData: FormData) {
     relationType: 'CREATED_CALENDAR_EVENT',
     targetType: 'CALENDAR_EVENT',
   })
-  if (!linkedEventId) {
+  if (linkedEventId && linkedEventId !== event.id) {
+    await knowledge.replaceTargetRef({
+      workspaceId: context.workspace.id,
+      unitId,
+      relationType: 'CREATED_CALENDAR_EVENT',
+      targetType: 'CALENDAR_EVENT',
+      previousTargetRef: linkedEventId,
+      targetRef: event.id,
+    })
+    const repairedEventId = await knowledge.findTargetRef({
+      workspaceId: context.workspace.id,
+      unitId,
+      relationType: 'CREATED_CALENDAR_EVENT',
+      targetType: 'CALENDAR_EVENT',
+    })
+    if (repairedEventId !== event.id) throw new Error('Knowledge calendar link repair failed')
+  } else if (!linkedEventId) {
     await knowledge.link({
       workspaceId: context.workspace.id,
       unitId,

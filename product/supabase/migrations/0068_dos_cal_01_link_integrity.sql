@@ -104,7 +104,7 @@ $$;
 create or replace function private.cleanup_calendar_event_knowledge_source()
 returns trigger
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
 begin
@@ -127,14 +127,59 @@ begin
 
   return old;
 end;
-$$;
+$;
+
+revoke all on function private.cleanup_calendar_event_knowledge_source() from public;
+revoke all on function private.cleanup_calendar_event_knowledge_source() from anon;
+revoke all on function private.cleanup_calendar_event_knowledge_source() from authenticated;
 
 drop trigger if exists calendar_events_cleanup_knowledge_source on public.calendar_events;
 create trigger calendar_events_cleanup_knowledge_source
 after delete on public.calendar_events
 for each row execute function private.cleanup_calendar_event_knowledge_source();
 
+create or replace function private.enforce_knowledge_asset_invariants()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $
+begin
+  if tg_op = 'UPDATE' then
+    if new.workspace_id <> old.workspace_id then raise exception 'knowledge asset workspace_id is immutable'; end if;
+    if new.created_by <> old.created_by then raise exception 'knowledge asset created_by is immutable'; end if;
+    if new.asset_kind <> old.asset_kind then raise exception 'knowledge asset kind is immutable'; end if;
+    if new.source_provider <> old.source_provider then raise exception 'knowledge asset source_provider is immutable'; end if;
+    if new.source_locator is distinct from old.source_locator then raise exception 'knowledge asset source_locator is immutable'; end if;
+    if new.sha256 is distinct from old.sha256 then raise exception 'knowledge asset sha256 is immutable'; end if;
+
+    if new.academic_year_id is distinct from old.academic_year_id
+      and exists (
+        select 1
+        from public.knowledge_documents as kd
+        join public.knowledge_units as ku
+          on ku.document_id = kd.id
+          and ku.workspace_id = new.workspace_id
+        join public.calendar_events as ce
+          on ce.workspace_id = new.workspace_id
+          and ce.source_knowledge_unit_id = ku.id
+        where kd.workspace_id = new.workspace_id
+          and kd.asset_id = new.id
+      ) then
+      raise exception 'knowledge asset academic year is immutable while a calendar event is linked';
+    end if;
+
+    new.created_at := old.created_at;
+  end if;
+  new.updated_at := now();
+  return new;
+end;
+$;
+
 comment on index public.uq_knowledge_links_calendar_event_unit is
   'At most one CREATED_CALENDAR_EVENT link may exist for a Knowledge unit in a workspace.';
+
+comment on function private.cleanup_calendar_event_knowledge_source() is
+  'Trigger-only SECURITY DEFINER cleanup for calendar-derived Knowledge provenance; direct execution is revoked.';
 
 commit;

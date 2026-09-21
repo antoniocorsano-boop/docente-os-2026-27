@@ -386,12 +386,12 @@ export class SupabaseKnowledgeRepository implements
     if (error) throw new Error(error.message)
   }
 
-  async unlink(input: { workspaceId: string; unitId: string; relationType: string; targetType: string; targetRef: string }): Promise<void> {
+  async replaceTargetRef(input: { workspaceId: string; unitId: string; relationType: string; targetType: string; previousTargetRef: string; targetRef: string }): Promise<void> {
     const supabase = await createClient()
-    const { error } = await supabase.from('knowledge_links').delete()
+    const { error } = await supabase.from('knowledge_links').update({ target_ref: input.targetRef })
       .eq('workspace_id', input.workspaceId).eq('unit_id', input.unitId)
       .eq('relation_type', input.relationType).eq('target_type', input.targetType)
-      .eq('target_ref', input.targetRef)
+      .eq('target_ref', input.previousTargetRef)
     if (error) throw new Error(error.message)
   }
 
