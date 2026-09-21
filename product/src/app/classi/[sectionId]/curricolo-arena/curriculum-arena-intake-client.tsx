@@ -9,7 +9,10 @@ import {
   parseCmlLocalHandoffV2Json,
   type CmlLocalHandoffV2,
 } from '@/core/domain/cml-local-handoff-v2'
-import { ECO02_PILOT_UPLOAD_MAX_BYTES } from '@/core/domain/cml-discipline-binding'
+import {
+  ECO02_PILOT_UPLOAD_MAX_BYTES,
+  hasUploadedArenaAuthorityClaim,
+} from '@/core/domain/cml-discipline-binding'
 import {
   acceptArenaCurriculumHandoff,
   CURRICULUM_ARENA_INTAKE_INITIAL_STATE,
@@ -56,7 +59,9 @@ export function CurriculumArenaIntakeClient({
   const alreadyKnown = Boolean(
     preview && currentFootprint && preview.handoff.structuralFootprint.hash === currentFootprint,
   )
-  const unverifiedApprovedClaim = preview?.handoff.curricularContext.curriculumState === 'APPROVED'
+  const unverifiedApprovedClaim = Boolean(
+    preview && hasUploadedArenaAuthorityClaim(preview.handoff.curricularContext),
+  )
 
   return (
     <article className="classWorkspaceCard" aria-labelledby="arena-intake-title">
@@ -102,7 +107,7 @@ export function CurriculumArenaIntakeClient({
         </div>
       ) : null}
 
-      {preview?.handoff.curricularContext.curriculumState === 'PROVISIONAL_COMPLETE' ? (
+      {preview?.handoff.curricularContext.curriculumState === 'PROVISIONAL_COMPLETE' && !unverifiedApprovedClaim ? (
         <p>
           Questa baseline è completa per progettare ma non è un’approvazione istituzionale del curricolo.
           Docente OS la conserverà come <strong>provvisoria</strong>. Un’eventuale approvazione definitiva dovrà arrivare
