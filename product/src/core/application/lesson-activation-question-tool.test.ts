@@ -69,7 +69,8 @@ test('builds a relational guiding question for system lessons', () => {
     objective: 'Analizzare il paesaggio come sistema e rappresentarne le relazioni',
   })
 
-  assert.match(proposal.body, /quali elementi rendono/i)
+  assert.match(proposal.body, /quali elementi di/i)
+  assert.match(proposal.body, /territorio agricolo/i)
   assert.match(proposal.body, /un sistema/i)
   assert.match(proposal.body, /relazioni/i)
   assert.doesNotMatch(proposal.body, /che cosa sai già/i)
