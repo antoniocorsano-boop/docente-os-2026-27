@@ -1,7 +1,13 @@
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
+import {
+  buildLessonPreparationApprovalSnapshot,
+  isCurriculumBaselineReadyForLessonApproval,
+  lessonPreparationFingerprint,
+} from '@/core/application/lesson-preparation-approval'
 import { SupabaseAnnualPlanCurriculumRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-curriculum-repository'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
+import { SupabaseLessonPreparationApprovalRepository } from '@/core/infrastructure/supabase/supabase-lesson-preparation-approval-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { curriculumDisciplineRefForCanonicalPlan } from '@/core/presentation/curriculum-source-binding'
@@ -19,7 +25,7 @@ export async function loadAuthoritativeLessonCopilotContext(input: {
   blockId: string
 }) {
   const bundle = await loadAuthoritativeLessonCopilotBundle(input)
-  return bundle?.context ?? null
+  return bundle?.approvalStatus === 'APPROVED' ? bundle.context : null
 }
 
 export async function loadAuthoritativeLessonCopilotBundle(input: {
@@ -62,21 +68,41 @@ export async function loadAuthoritativeLessonCopilotBundle(input: {
         academicYearId: input.academicYearId,
         sectionId: section.id,
         disciplineRef: curriculumDisciplineRef,
-      }).catch(() => {
-        // Curriculum authority enriches confidence but is not required to expose
-        // the read-only copilot. Missing/unavailable authority must degrade the
-        // answer contract to PARTIAL, never take the entire lesson assistant down.
-        console.warn('[DOCENTE OS] Curriculum authority unavailable; lesson copilot degraded to PARTIAL.')
-        return null
-      })
+      }).catch(() => null)
+    : Promise.resolve(null)
+  const curriculumBaselinePromise = curriculumDisciplineRef
+    ? curriculumRepository.currentBaseline({
+        workspaceId: input.workspaceId,
+        academicYearId: input.academicYearId,
+        sectionId: section.id,
+        disciplineRef: curriculumDisciplineRef,
+      }).catch(() => null)
     : Promise.resolve(null)
 
-  const [extensions, disciplines, assignments, curriculumAdoption] = await Promise.all([
+  const [extensions, disciplines, assignments, curriculumAdoption, curriculumBaseline, latestApproval] = await Promise.all([
     new SupabaseLessonDesignRepository().list(designContext),
     settingsRepository.listDisciplines(input.workspaceId, input.academicYearId),
     assignmentReader.list(input.workspaceId, input.academicYearId),
     curriculumAuthorityPromise,
+    curriculumBaselinePromise,
+    new SupabaseLessonPreparationApprovalRepository().latest(designContext),
   ])
+
+  let approvalStatus: 'CURRICULUM_REQUIRED' | 'NEEDS_APPROVAL' | 'STALE' | 'APPROVED' = 'CURRICULUM_REQUIRED'
+  if (curriculumBaseline && isCurriculumBaselineReadyForLessonApproval(curriculumBaseline)) {
+    const preparationSnapshot = buildLessonPreparationApprovalSnapshot({
+      context: designContext,
+      curriculumBaseline,
+      projection,
+      extensions,
+    })
+    const currentPreparationFingerprint = lessonPreparationFingerprint(preparationSnapshot)
+    approvalStatus = latestApproval
+      ? latestApproval.preparationFingerprint === currentPreparationFingerprint
+        ? 'APPROVED'
+        : 'STALE'
+      : 'NEEDS_APPROVAL'
+  }
 
   const replanning = projectAcceptedTeachingAdjustments({
     extensions,
@@ -138,6 +164,7 @@ export async function loadAuthoritativeLessonCopilotBundle(input: {
     projection,
     extensions,
     replanning,
+    approvalStatus,
   }
 }
 

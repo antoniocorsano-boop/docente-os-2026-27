@@ -10,6 +10,10 @@ import {
   type CmlLocalHandoffV2,
 } from '@/core/domain/cml-local-handoff-v2'
 import {
+  ECO02_PILOT_UPLOAD_MAX_BYTES,
+  hasUploadedArenaAuthorityClaim,
+} from '@/core/domain/cml-discipline-binding'
+import {
   acceptArenaCurriculumHandoff,
   CURRICULUM_ARENA_INTAKE_INITIAL_STATE,
 } from './actions'
@@ -38,8 +42,8 @@ export function CurriculumArenaIntakeClient({
     setPreview(null)
     setLocalError(null)
     if (!file) return
-    if (file.size > 2_000_000) {
-      setLocalError('Il file supera 2 MB: usa il passaggio JSON generato direttamente da Arena.')
+    if (file.size > ECO02_PILOT_UPLOAD_MAX_BYTES) {
+      setLocalError('Il file supera 500 KB: esporta di nuovo il passaggio direttamente da Arena.')
       return
     }
     try {
@@ -54,6 +58,9 @@ export function CurriculumArenaIntakeClient({
 
   const alreadyKnown = Boolean(
     preview && currentFootprint && preview.handoff.structuralFootprint.hash === currentFootprint,
+  )
+  const unverifiedApprovedClaim = Boolean(
+    preview && hasUploadedArenaAuthorityClaim(preview.handoff.curricularContext),
   )
 
   return (
@@ -100,22 +107,32 @@ export function CurriculumArenaIntakeClient({
         </div>
       ) : null}
 
-      {preview?.handoff.curricularContext.curriculumState === 'PROVISIONAL_COMPLETE' ? (
+      {preview?.handoff.curricularContext.curriculumState === 'PROVISIONAL_COMPLETE' && !unverifiedApprovedClaim ? (
         <p>
           Questa baseline è completa per progettare ma non è un’approvazione istituzionale del curricolo.
-          Docente OS la conserverà come <strong>provvisoria</strong> e richiederà rivalidazione quando Arena pubblicherà l’adozione definitiva.
+          Docente OS la conserverà come <strong>provvisoria</strong>. Un’eventuale approvazione definitiva dovrà arrivare
+          tramite un segnale Arena verificabile lato server e sarà sottoposta a rivalidazione del docente.
+        </p>
+      ) : null}
+
+      {unverifiedApprovedClaim ? (
+        <p role="alert">
+          <strong>Approvazione non acquisibile da questo file.</strong> Il caricamento locale permette anteprima e controllo,
+          ma non può attestare autorità istituzionale. Serve un passaggio Arena verificabile lato server.
         </p>
       ) : null}
 
       {preview ? (
         alreadyKnown ? (
           <p><strong>Questa stessa baseline è già acquisita per la classe.</strong></p>
+        ) : unverifiedApprovedClaim ? (
+          <p><strong>Anteprima soltanto.</strong> Nessuna autorità istituzionale verrà salvata da questo caricamento.</p>
         ) : (
           <form action={formAction}>
             <input type="hidden" name="sectionId" value={sectionId} />
             <input type="hidden" name="handoffJson" value={preview.json} />
             <button type="submit" disabled={pending}>
-              {pending ? 'Conferma in corso…' : 'Accetta baseline per questa classe'}
+              {pending ? 'Conferma in corso…' : 'Accetta baseline provvisoria per questa classe'}
             </button>
           </form>
         )
@@ -126,6 +143,6 @@ export function CurriculumArenaIntakeClient({
 
 function curriculumStateLabel(value: CmlLocalHandoffV2['curricularContext']['curriculumState']) {
   return value === 'APPROVED'
-    ? 'Approvato in Arena'
+    ? 'Approvazione dichiarata nel file · da verificare'
     : 'Completo per progettare · provvisorio'
 }

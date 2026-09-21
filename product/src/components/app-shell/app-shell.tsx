@@ -56,6 +56,7 @@ export type AppShellProps = {
   role?: string | null
   children: ReactNode
   contentClassName?: string
+  contextualAssistantEnabled?: boolean
 }
 
 export function AppShell({
@@ -65,6 +66,7 @@ export function AppShell({
   role,
   children,
   contentClassName,
+  contextualAssistantEnabled = true,
 }: AppShellProps) {
   const router = useRouter()
   const [commandOpen, setCommandOpen] = useState(false)
@@ -186,7 +188,7 @@ export function AppShell({
         </nav>
       </div>
 
-      <ContextualAssistantBoundary active={active} />
+      <ContextualAssistantBoundary active={active} enabled={contextualAssistantEnabled} />
       <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} onNavigate={navigate} />
       <SecondaryMenu open={secondaryOpen} onOpenChange={setSecondaryOpen} active={active} onNavigate={navigate} />
     </div>

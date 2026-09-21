@@ -4,6 +4,8 @@ import { AppShell } from '@/components/app-shell/app-shell'
 import { SupabaseAnnualPlanCurriculumRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-curriculum-repository'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
+import { eco02PilotIdentityFromEnv } from '@/core/server/eco02-pilot-config'
 import { CurriculumArenaIntakeClient } from './curriculum-arena-intake-client'
 import '../../classi.css'
 import '../../class-workspace-operational.css'
@@ -29,6 +31,13 @@ export default async function CurriculumArenaPage({
   )
   const section = snapshot.sections.find((candidate) => candidate.id === sectionId)
   if (!section) notFound()
+  if (!isEco02PilotClass({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    sectionId: section.id,
+    grade: section.grade,
+    sectionCode: section.sectionCode,
+  }, eco02PilotIdentityFromEnv())) notFound()
 
   const curriculumRepository = new SupabaseAnnualPlanCurriculumRepository()
   const baseline = await curriculumRepository.currentBaseline({
@@ -53,7 +62,7 @@ export default async function CurriculumArenaPage({
         <div>
           <p>CLASSE · CURRICOLO ARENA</p>
           <h1>{sectionLabel}</h1>
-          <span>Acquisisci il contesto curricolare da Arena senza sincronizzazioni automatiche.</span>
+          <span>Pilota Tecnologia 2C: acquisisci una baseline provvisoria da Arena senza sincronizzazioni automatiche.</span>
         </div>
       </section>
 
@@ -104,7 +113,8 @@ export default async function CurriculumArenaPage({
         <div className="technicalDetailsBody">
           <p>Arena resta la fonte del contesto curricolare e della sua impronta strutturale.</p>
           <p>Docente OS salva la baseline solo dopo una decisione esplicita del docente autenticato.</p>
-          <p>Una baseline provvisoria non diventa approvazione istituzionale e resta soggetta a rivalidazione.</p>
+          <p>Una baseline provvisoria non diventa approvazione istituzionale. Un futuro passaggio approvato richiederà un segnale Arena verificabile lato server e una rivalidazione esplicita del docente.</p>
+          <p>Questo caricamento locale non può promuovere autorità istituzionale.</p>
         </div>
       </details>
 

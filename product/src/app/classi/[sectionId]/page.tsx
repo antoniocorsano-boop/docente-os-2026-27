@@ -4,6 +4,8 @@ import { AppShell } from '@/components/app-shell/app-shell'
 import { LessonExperienceFeedback } from '@/components/experience-feedback/experience-feedback'
 import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
 import { allocatedMinutesByBlock, completionProposal, currentTeachingSessions } from '@/core/domain/teaching-session'
+import { bindArenaDisciplineRefToDocenteOs, isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
+import { eco02PilotIdentityFromEnv } from '@/core/server/eco02-pilot-config'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
@@ -70,6 +72,15 @@ export default async function ClassWorkspacePage({
   const blocks = buildBlocks(grade)
   const source = CANONICAL_PLAN_SOURCES[grade]
   const summary = buildClassWorkspaceSummary(section, assignments, disciplines, snapshot.progress)
+  const showArenaPilotIntake = isEco02PilotClass({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    sectionId: section.id,
+    grade: section.grade,
+    sectionCode: section.sectionCode,
+  }, eco02PilotIdentityFromEnv()) && summary.assignments.some(
+    (assignment) => bindArenaDisciplineRefToDocenteOs(assignment.discipline) === 'technology',
+  )
   const learningFocus = buildClassWorkspaceLearningFocus(section, snapshot.progress, knowledgeItems)
   const preparedMaterials = selectPreparedClassMaterials(section, knowledgeItems, today)
   const currentSessions = currentTeachingSessions(teachingSnapshot)
@@ -304,7 +315,7 @@ export default async function ClassWorkspacePage({
         <div className="humanTaskSecondaryBody">
           <section className="classWorkspaceGrid">
             <article className="classWorkspaceCard"><div><h2>Cattedra</h2><p>Disciplina e carico settimanale previsto.</p></div>{summary.assignments.length ? <div className="classAssignmentList">{summary.assignments.map((assignment) => <div className="classAssignmentItem" key={assignment.id}><div><strong>{assignment.discipline}</strong><span>{assignment.status === 'CONFIRMED' ? 'Confermata' : 'Da confermare'}</span></div><small>{formatWeeklyMinutes(assignment.weeklyMinutes)}</small></div>)}</div> : <div className="classesEmpty"><strong>Questa classe non è ancora nella tua cattedra.</strong><Link href="/impostazioni#cattedra">Gestisci cattedra</Link></div>}</article>
-            <article className="classWorkspaceCard"><div><h2>Altri percorsi</h2><p>Usali quando devi uscire dal compito corrente.</p></div><div className="classQuickLinks"><Link href={annualPlanHref}><strong>Piano annuale</strong><span>Avanzamento e decisioni professionali.</span></Link><Link href={planningHref}><strong>Progetta</strong><span>Esplora il nucleo del grado.</span></Link><Link href={knowledgeHref}><strong>Conoscenza</strong><span>Fonti e materiali della classe.</span></Link><Link href={`/classi/${encodeURIComponent(summary.sectionId)}/curricolo-arena`}><strong>Curricolo Arena</strong><span>Acquisisci o controlla la baseline curricolare della classe.</span></Link><Link href="/orario"><strong>Orario</strong><span>Torna alla settimana.</span></Link></div></article>
+            <article className="classWorkspaceCard"><div><h2>Altri percorsi</h2><p>Usali quando devi uscire dal compito corrente.</p></div><div className="classQuickLinks"><Link href={annualPlanHref}><strong>Piano annuale</strong><span>Avanzamento e decisioni professionali.</span></Link><Link href={planningHref}><strong>Progetta</strong><span>Esplora il nucleo del grado.</span></Link><Link href={knowledgeHref}><strong>Conoscenza</strong><span>Fonti e materiali della classe.</span></Link>{showArenaPilotIntake ? <Link href={`/classi/${encodeURIComponent(summary.sectionId)}/curricolo-arena`}><strong>Curricolo Arena</strong><span>Pilota Tecnologia 2C: acquisisci o controlla la baseline provvisoria.</span></Link> : null}<Link href="/orario"><strong>Orario</strong><span>Torna alla settimana.</span></Link></div></article>
           </section>
         </div>
       </details>
