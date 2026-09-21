@@ -172,6 +172,9 @@ export default async function ClassWorkspacePage({
     hasSessionReceipt: hasTodaySessionReceipt,
     hasFutureOccurrence,
   })
+  const preparationHref = nextProjection && learningFocus.nextBlock
+    ? buildLessonWorkspaceHref(summary.sectionId, learningFocus.nextBlock.id, 'prepare')
+    : null
   const taskHref = taskDecision.focusCompletion
     ? '#decisione-completamento'
     : taskDecision.useInlineRecorder
@@ -204,7 +207,10 @@ export default async function ClassWorkspacePage({
         )}
         <div className="classLessonFocusAside">
           <div className="classLessonProgress"><strong>{learningFocus.completedBlocks}/33</strong><span>lezioni concluse</span></div>
-          <div className="classLessonFocusActions">{taskDecision.label ? <Link className="primary" href={taskHref}>{taskDecision.label}</Link> : null}</div>
+          <div className="classLessonFocusActions">
+            {taskDecision.label ? <Link className="primary" href={taskHref}>{taskDecision.label}</Link> : null}
+            {preparationHref && taskHref !== preparationHref ? <Link href={preparationHref}>Prima della lezione</Link> : null}
+          </div>
         </div>
       </section>
 
@@ -315,7 +321,7 @@ export default async function ClassWorkspacePage({
         <div className="humanTaskSecondaryBody">
           <section className="classWorkspaceGrid">
             <article className="classWorkspaceCard"><div><h2>Cattedra</h2><p>Disciplina e carico settimanale previsto.</p></div>{summary.assignments.length ? <div className="classAssignmentList">{summary.assignments.map((assignment) => <div className="classAssignmentItem" key={assignment.id}><div><strong>{assignment.discipline}</strong><span>{assignment.status === 'CONFIRMED' ? 'Confermata' : 'Da confermare'}</span></div><small>{formatWeeklyMinutes(assignment.weeklyMinutes)}</small></div>)}</div> : <div className="classesEmpty"><strong>Questa classe non è ancora nella tua cattedra.</strong><Link href="/impostazioni#cattedra">Gestisci cattedra</Link></div>}</article>
-            <article className="classWorkspaceCard"><div><h2>Altri percorsi</h2><p>Usali quando devi uscire dal compito corrente.</p></div><div className="classQuickLinks"><Link href={annualPlanHref}><strong>Piano annuale</strong><span>Avanzamento e decisioni professionali.</span></Link><Link href={planningHref}><strong>Progetta</strong><span>Esplora il nucleo del grado.</span></Link><Link href={knowledgeHref}><strong>Conoscenza</strong><span>Fonti e materiali della classe.</span></Link>{showArenaPilotIntake ? <Link href={`/classi/${encodeURIComponent(summary.sectionId)}/curricolo-arena`}><strong>Curricolo Arena</strong><span>Pilota Tecnologia 2C: acquisisci o controlla la baseline provvisoria.</span></Link> : null}<Link href="/orario"><strong>Orario</strong><span>Torna alla settimana.</span></Link></div></article>
+            <article className="classWorkspaceCard"><div><h2>Altri percorsi</h2><p>Usali quando devi uscire dal compito corrente.</p></div><div className="classQuickLinks"><Link href={annualPlanHref}><strong>Piano annuale</strong><span>Avanzamento e decisioni professionali.</span></Link><Link href={planningHref}><strong>Progetta</strong><span>Esplora il nucleo del grado.</span></Link>{preparationHref ? <Link href={preparationHref}><strong>Prima della lezione</strong><span>Controlla obiettivo, materiali e stato di approvazione della prossima lezione.</span></Link> : null}<Link href={knowledgeHref}><strong>Conoscenza</strong><span>Fonti e materiali della classe.</span></Link>{showArenaPilotIntake ? <Link href={`/classi/${encodeURIComponent(summary.sectionId)}/curricolo-arena`}><strong>Curricolo Arena</strong><span>Pilota Tecnologia 2C: acquisisci o controlla la baseline provvisoria.</span></Link> : null}<Link href="/orario"><strong>Orario</strong><span>Torna alla settimana.</span></Link></div></article>
           </section>
         </div>
       </details>
