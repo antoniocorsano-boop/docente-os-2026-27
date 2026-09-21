@@ -34,6 +34,27 @@ export async function removeLessonDesignExtension(formData: FormData) {
   revalidateLesson(lesson.sectionId, lesson.blockId)
 }
 
+export async function reviseLessonDesignExtension(formData: FormData) {
+  const lesson = await requireLessonContext(formData)
+  const extensionId = requiredText(formData, 'extensionId')
+  const body = requiredText(formData, 'body')
+  const repository = new SupabaseLessonDesignRepository()
+  const extensions = await repository.list(lesson.designContext)
+  const extension = extensions.find((item) => item.id === extensionId)
+  if (!extension) throw new Error('Lesson design extension is outside the current lesson')
+  if (extension.kind !== 'HOOK_QUESTION') throw new Error('Only guiding questions are editable from this surface')
+
+  await repository.revise(lesson.designContext, extensionId, {
+    insertionPosition: extension.insertionPosition,
+    anchorStepId: extension.anchorStepId,
+    title: extension.title,
+    body,
+    cue: extension.cue,
+    minutes: extension.minutes,
+  })
+  revalidateLesson(lesson.sectionId, lesson.blockId)
+}
+
 export async function proposeLessonActivationQuestion(formData: FormData) {
   const lesson = await requireLessonContext(formData)
   const repository = new SupabaseLessonDesignRepository()
