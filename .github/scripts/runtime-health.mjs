@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict'
+import { readdirSync } from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const appUrl = process.env.DOCENTE_OS_BETA_URL ?? 'https://docente-os-2026-27-beta.onrender.com'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://gnshgapmwyjamhmlikeg.supabase.co'
@@ -68,10 +71,42 @@ const db = await timedFetch(`${supabaseUrl}/rest/v1/assistant_write_proposals?se
 assert.equal(db.response.status, 200, `Authenticated database probe returned ${db.response.status}`)
 receipt.checks.databaseMs = db.elapsedMs
 
+const expectedMigration = latestMigrationId()
+const schemaContract = await timedFetch(`${supabaseUrl}/rest/v1/runtime_schema_contract_state?select=migration_id&singleton=eq.true`, {
+  headers: {
+    apikey: publishableKey,
+    authorization: `Bearer ${authPayload.access_token}`,
+  },
+})
+assert.equal(schemaContract.response.status, 200, `Runtime schema contract returned ${schemaContract.response.status}`)
+const schemaRows = await schemaContract.response.json()
+const actualMigration = Array.isArray(schemaRows) ? schemaRows[0]?.migration_id : null
+assert.equal(
+  actualMigration,
+  expectedMigration,
+  `Runtime schema drift: repository requires ${expectedMigration}, Beta exposes ${actualMigration ?? 'none'}`,
+)
+receipt.checks.runtimeSchemaContract = 'PASS'
+receipt.checks.expectedMigration = expectedMigration
+receipt.checks.actualMigration = actualMigration
+receipt.checks.runtimeSchemaMs = schemaContract.elapsedMs
+
 console.log(JSON.stringify(receipt, null, 2))
 
 async function timedFetch(url, init) {
   const started = performance.now()
   const response = await fetch(url, { ...init, signal: AbortSignal.timeout(20_000) })
   return { response, elapsedMs: Math.round(performance.now() - started) }
+}
+
+
+function latestMigrationId() {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
+  const migrations = readdirSync(path.join(root, 'product/supabase/migrations'))
+    .filter((name) => /^\d{4}_[a-z0-9_]+\.sql$/.test(name))
+    .map((name) => ({ id: name.replace(/\.sql$/, ''), version: Number(name.slice(0, 4)) }))
+    .sort((a, b) => a.version - b.version || a.id.localeCompare(b.id))
+  const latest = migrations.at(-1)
+  if (!latest || latest.version < 74) throw new Error('Runtime schema migration inventory is missing 0074+ contract')
+  return latest.id
 }

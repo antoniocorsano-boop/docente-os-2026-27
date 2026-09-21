@@ -34,3 +34,5 @@ projects:
                 value: whisper-large-v3-turbo
               - key: DOCENTE_OS_VOICE_CAPTURE
                 value: on
+              - key: DOCENTE_OS_RUNTIME_SCHEMA_PREFLIGHT
+                value: on

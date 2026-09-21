@@ -4,18 +4,16 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '17 */6 * * *'
-  pull_request:
-    branches:
-      - develop
-    paths:
-      - '.github/scripts/runtime-health.mjs'
-      - '.github/workflows/runtime-health.yml'
   push:
     branches:
       - develop
     paths:
       - '.github/scripts/runtime-health.mjs'
       - '.github/workflows/runtime-health.yml'
+      - '.github/scripts/runtime-release-contract.mjs'
+      - 'ops/runtime-release-contract.json'
+      - 'product/scripts/start-production.mjs'
+      - 'product/supabase/migrations/**'
 
 permissions:
   contents: read

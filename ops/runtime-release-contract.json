@@ -1,0 +1,52 @@
+{
+  "schema": "docente-os.runtime-release-contract.v1",
+  "product": "DOCENTE OS",
+  "strategy": "SELECTIVE_LAYERED",
+  "database": {
+    "migrationDirectory": "product/supabase/migrations",
+    "bootstrapMigration": "0074_runtime_schema_contract",
+    "stateTable": "public.runtime_schema_contract_state",
+    "markerFunction": "private.advance_runtime_schema_contract",
+    "requireExactRuntimeMigration": true,
+    "localReplayOnDatabaseImpact": true,
+    "productionAutoMigrationAllowed": false
+  },
+  "impact": {
+    "databaseDeep": [
+      "product/supabase/migrations/",
+      "product/src/core/infrastructure/supabase/",
+      "product/src/app/classi/[sectionId]/lezioni/actions.ts",
+      "product/src/app/classi/[sectionId]/actions.ts"
+    ],
+    "criticalWrite": [
+      "product/src/core/application/record-teaching-session",
+      "product/src/core/infrastructure/supabase/supabase-teaching-evidence-repository.ts",
+      "product/src/app/classi/[sectionId]/lezioni/actions.ts",
+      "product/supabase/migrations/"
+    ],
+    "capabilityRuntime": [
+      "render.yaml",
+      "product/.env.example",
+      "product/src/app/api/voice/",
+      "product/src/core/application/voice/",
+      "product/src/core/infrastructure/ai/"
+    ]
+  },
+  "budgets": {
+    "fastPreflightTargetSeconds": 20,
+    "databaseReplayTargetMinutes": 6,
+    "browserWriteTargetMinutes": 10
+  },
+  "runtime": {
+    "betaUrl": "https://docente-os-2026-27-beta.onrender.com",
+    "startupSchemaFailFast": true,
+    "scheduledRuntimeReconciliation": true,
+    "browserWriteRequiresIsolatedFixture": true,
+    "humanTeacherTestScope": [
+      "usability",
+      "clarity",
+      "pedagogical control",
+      "didactic quality"
+    ]
+  }
+}
