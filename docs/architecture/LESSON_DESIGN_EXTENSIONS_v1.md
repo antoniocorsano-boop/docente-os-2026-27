@@ -38,7 +38,11 @@ Every tool-generated or system-generated addition begins as:
 
 A proposal can enter the effective lesson only after an explicit teacher action:
 
-`PROPOSED → ACCEPTED`.
+`PROPOSED → [MODIFIED]* → ACCEPTED`.
+
+The teacher may revise title/text before acceptance. A revision is persisted through the governed `revise_lesson_design_extension(...)` boundary, increments the revision, preserves provenance and keeps the item outside the effective classroom sequence until explicit acceptance.
+
+An already accepted sequence addition may also be revised. In that case it deliberately returns to `MODIFIED`, loses its previous effective acceptance and requires a new teacher confirmation before re-entering the classroom sequence. This prevents a post-approval edit from silently changing what was approved.
 
 Direct accepted inserts are rejected in storage. Direct authenticated UPDATE is revoked; acceptance passes through `accept_lesson_design_extension(...)`.
 
@@ -111,7 +115,9 @@ The tool creates a `HOOK_QUESTION` extension with:
 - grounding to the current Bxx/projection/title/objective;
 - no direct acceptance.
 
-The proposal appears in **Da controllare**. Only the existing explicit teacher action **Aggiungi alla lezione** may cross `PROPOSED → ACCEPTED` and make the question part of `In classe`.
+The proposal appears in **Da controllare**. The teacher can edit its title and text before use. Only the explicit teacher action **Usa in questa lezione** may cross `PROPOSED/MODIFIED → ACCEPTED` and make the question part of `In classe`.
+
+To avoid perceptual duplication, the activation-question tool card is hidden while an active proposal or accepted question already exists. The same object is shown in exactly one lifecycle surface at a time: available tool, pending proposal, or accepted sequence.
 
 The mutation path resolves the lesson through `resolveRuntimeHumanTaskLessonProjection`, the same runtime resolver used by the Lesson Workspace page. Runtime-only lesson projections therefore use the same stale-projection guard as the rendered page rather than falling back to the legacy projection map.
 
@@ -180,6 +186,8 @@ Anonymous student self-assessment/lesson/UDA feedback will be a separate subsyst
 - Resource attachments stay resources, not sequence steps.
 - Relevant Knowledge resources can be attached from `Prepara` without duplicating the source.
 - The local activation-question tool creates only a grounded `PROPOSED` extension and never self-accepts.
+- Teacher revision is first-class: pending and accepted sequence additions can be edited; accepted edits return to `MODIFIED` and require re-acceptance.
+- A tool proposal is rendered in only one lifecycle surface at a time, avoiding duplicate proposal/sequence cards.
 - Runtime-only lesson projections use the same resolver for rendering and mutation.
 - Tool proposals declaring a `dedupeKey` are unique per canonical lesson context at the database boundary.
 - Accepted additions remain visible after refresh.
