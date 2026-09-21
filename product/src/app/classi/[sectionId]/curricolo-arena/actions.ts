@@ -36,12 +36,13 @@ export async function acceptArenaCurriculumHandoff(
   formData: FormData,
 ): Promise<CurriculumArenaIntakeActionState> {
   const sectionId = String(formData.get('sectionId') ?? '').trim()
-  const handoffJson = String(formData.get('handoffJson') ?? '').trim()
+  const rawHandoffJson = String(formData.get('handoffJson') ?? '')
+  if (Buffer.byteLength(rawHandoffJson, 'utf8') > ECO02_PILOT_UPLOAD_MAX_BYTES) {
+    return { status: 'error', message: 'Il passaggio Arena supera il limite del pilota. Esporta di nuovo il file da Arena.' }
+  }
+  const handoffJson = rawHandoffJson.trim()
   if (!sectionId || !handoffJson) {
     return { status: 'error', message: 'Seleziona un passaggio Arena valido prima di confermare.' }
-  }
-  if (Buffer.byteLength(handoffJson, 'utf8') > ECO02_PILOT_UPLOAD_MAX_BYTES) {
-    return { status: 'error', message: 'Il passaggio Arena supera il limite del pilota. Esporta di nuovo il file da Arena.' }
   }
 
   let destination: string | null = null
