@@ -6,6 +6,7 @@ import {
   bindArenaDisciplineRefToDocenteOs,
   buildArenaCurriculumTargetScope,
   ECO02_PILOT_UPLOAD_MAX_BYTES,
+  hasUploadedArenaAuthorityClaim,
   isEco02PilotClass,
   type Eco02PilotIdentity,
 } from './cml-discipline-binding'
@@ -131,42 +132,64 @@ test('preserves the incoming section/cohort scope dimensions', () => {
   )
 })
 
-test('rejects every institutional approval-bearing claim from local uploaded JSON', () => {
+test('classifies and rejects every institutional approval-bearing claim from local uploaded JSON', () => {
   const provisional = context({ sectionRef: '2C' })
+  assert.equal(hasUploadedArenaAuthorityClaim(provisional), false)
   assert.doesNotThrow(() => assertUploadedArenaAuthorityContextAllowed(provisional))
 
+  const topLevelApproved = {
+    ...provisional,
+    curriculumState: 'APPROVED' as const,
+    approvalDecisionRef: { namespace: 'curmanlight.arena', entityType: 'Decision', entityId: 'decision-1' },
+  }
+  assert.equal(hasUploadedArenaAuthorityClaim(topLevelApproved), true)
   assert.throws(
-    () => assertUploadedArenaAuthorityContextAllowed({
-      ...provisional,
-      curriculumState: 'APPROVED',
-      approvalDecisionRef: { namespace: 'curmanlight.arena', entityType: 'Decision', entityId: 'decision-1' },
-    }),
+    () => assertUploadedArenaAuthorityContextAllowed(topLevelApproved),
     /cannot establish institutional approval authority/,
   )
 
+  const nestedApproved = {
+    ...provisional,
+    transitionRemodulation: {
+      ...provisional.transitionRemodulation,
+      state: 'APPROVED' as const,
+      institutionallyApproved: true,
+      approvalDecisionRef: { namespace: 'curmanlight.arena', entityType: 'Decision', entityId: 'decision-2' },
+    },
+  }
+  assert.equal(hasUploadedArenaAuthorityClaim(nestedApproved), true)
   assert.throws(
-    () => assertUploadedArenaAuthorityContextAllowed({
-      ...provisional,
-      transitionRemodulation: {
-        ...provisional.transitionRemodulation,
-        state: 'APPROVED',
-        institutionallyApproved: true,
-        approvalDecisionRef: { namespace: 'curmanlight.arena', entityType: 'Decision', entityId: 'decision-2' },
-      },
-    }),
+    () => assertUploadedArenaAuthorityContextAllowed(nestedApproved),
     /cannot establish institutional approval authority/,
   )
 
+  const institutionalFlagOnly = {
+    ...provisional,
+    transitionRemodulation: {
+      ...provisional.transitionRemodulation,
+      institutionallyApproved: true,
+    },
+  }
+  assert.equal(hasUploadedArenaAuthorityClaim(institutionalFlagOnly), true)
   assert.throws(
-    () => assertUploadedArenaAuthorityContextAllowed({
-      ...provisional,
-      transitionRemodulation: {
-        ...provisional.transitionRemodulation,
-        institutionallyApproved: true,
-      },
-    }),
+    () => assertUploadedArenaAuthorityContextAllowed(institutionalFlagOnly),
     /cannot establish institutional approval authority/,
   )
+
+  const nestedDecisionRefOnly = {
+    ...provisional,
+    transitionRemodulation: {
+      ...provisional.transitionRemodulation,
+      approvalDecisionRef: { namespace: 'curmanlight.arena', entityType: 'Decision', entityId: 'decision-3' },
+    },
+  }
+  assert.equal(hasUploadedArenaAuthorityClaim(nestedDecisionRefOnly), true)
+
+  const topLevelDecisionRefOnly = {
+    ...provisional,
+    approvalDecisionRef: { namespace: 'curmanlight.arena', entityType: 'Decision', entityId: 'decision-4' },
+  }
+  assert.equal(hasUploadedArenaAuthorityClaim(topLevelDecisionRefOnly), true)
 })
 
 test('keeps the pilot upload ceiling below the default Server Action request limit', () => {
