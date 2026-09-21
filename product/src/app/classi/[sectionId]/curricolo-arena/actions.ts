@@ -26,11 +26,6 @@ export type CurriculumArenaIntakeActionState = {
   message: string | null
 }
 
-export const CURRICULUM_ARENA_INTAKE_INITIAL_STATE: CurriculumArenaIntakeActionState = {
-  status: 'idle',
-  message: null,
-}
-
 export async function acceptArenaCurriculumHandoff(
   _previous: CurriculumArenaIntakeActionState,
   formData: FormData,
