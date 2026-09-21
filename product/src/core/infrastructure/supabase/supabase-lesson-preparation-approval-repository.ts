@@ -12,7 +12,6 @@ import {
   type LessonPreparationApprovalSnapshot,
   type LessonPreparationContext,
 } from '@/core/application/lesson-preparation-approval'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
 export type LessonPreparationApprovalReceipt = {
@@ -51,6 +50,13 @@ type Row = {
   confirmed_at: string
   created_at: string
   updated_at: string
+}
+
+type LessonApprovalRpcClient = {
+  rpc: (
+    name: 'persist_eco02_lesson_preparation_receipt',
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string } | null }>
 }
 
 type ReadDatabase = {
@@ -113,125 +119,29 @@ export class SupabaseLessonPreparationApprovalRepository {
     })
     const baselineFingerprint = curriculumBaselineFingerprint(input.curriculumBaseline)
     const preparationFingerprint = lessonPreparationFingerprint(snapshot)
-    const admin = createAdminClient()
+    const supabase = await createClient()
+    const { data: claims, error: claimsError } = await supabase.auth.getClaims()
+    const actorId = claims?.claims?.sub
+    if (claimsError || !actorId) throw new Error('Authenticated user required')
+    if (actorId !== input.approvedBy) throw new Error('Lesson approval actor does not match authenticated user')
 
-    const { data: membership, error: membershipError } = await admin
-      .from('workspace_memberships')
-      .select('workspace_id,user_id')
-      .eq('workspace_id', input.context.workspaceId)
-      .eq('user_id', input.approvedBy)
-      .maybeSingle()
-    if (membershipError) throw new Error(membershipError.message)
-    if (!membership) throw new Error('Approving teacher is not a member of the active workspace')
+    const rpc = supabase as unknown as LessonApprovalRpcClient
+    const { data, error } = await rpc.rpc('persist_eco02_lesson_preparation_receipt', {
+      target_workspace_id: input.context.workspaceId,
+      target_academic_year_id: input.context.academicYearId,
+      target_section_id: input.context.sectionId,
+      target_canonical_plan_asset_id: input.context.canonicalPlanAssetId,
+      target_canonical_generation_id: input.context.canonicalGenerationId,
+      target_block_id: input.context.blockId,
+      target_projection_id: input.context.projectionId,
+      target_curriculum_source_handoff_footprint_hash: input.curriculumBaseline.sourceHandoffFootprintHash,
+      target_curriculum_baseline_fingerprint: baselineFingerprint,
+      target_preparation_fingerprint: preparationFingerprint,
+      target_approval_snapshot: snapshot,
+    })
+    if (error) throw new Error(error.message)
+    return toReceipt(data as Row)
 
-    const { data: section, error: sectionError } = await admin
-      .from('annual_plan_sections')
-      .select('id')
-      .eq('id', input.context.sectionId)
-      .eq('workspace_id', input.context.workspaceId)
-      .eq('academic_year_id', input.context.academicYearId)
-      .maybeSingle()
-    if (sectionError) throw new Error(sectionError.message)
-    if (!section) throw new Error('Lesson preparation section is outside the active workspace/year')
-
-    const { data: asset, error: assetError } = await admin
-      .from('knowledge_assets')
-      .select('id,workspace_id,academic_year_id')
-      .eq('id', input.context.canonicalPlanAssetId)
-      .maybeSingle()
-    if (assetError) throw new Error(assetError.message)
-    if (!asset
-      || asset.workspace_id !== input.context.workspaceId
-      || (asset.academic_year_id && asset.academic_year_id !== input.context.academicYearId)) {
-      throw new Error('Lesson preparation canonical plan asset is outside context')
-    }
-
-    const { data: generation, error: generationError } = await admin
-      .from('knowledge_processing_generations')
-      .select('id,asset_id,workspace_id,status')
-      .eq('id', input.context.canonicalGenerationId)
-      .maybeSingle()
-    if (generationError) throw new Error(generationError.message)
-    if (!generation
-      || generation.status !== 'SUCCEEDED'
-      || generation.asset_id !== input.context.canonicalPlanAssetId
-      || generation.workspace_id !== input.context.workspaceId) {
-      throw new Error('Lesson preparation canonical generation is not current and successful')
-    }
-
-    const { data: currentCurriculum, error: curriculumError } = await admin
-      .from('annual_plan_curriculum_adoptions')
-      .select('source_handoff_footprint_hash,curriculum_state,alignment_authority,requires_revalidation_on_approval,curriculum_coverage,curricular_context')
-      .eq('section_id', input.context.sectionId)
-      .eq('discipline_ref', 'technology')
-      .is('authority_quarantined_at', null)
-      .order('accepted_at', { ascending: false })
-      .order('applied_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    if (curriculumError) throw new Error(curriculumError.message)
-    if (!currentCurriculum) throw new Error('Current Arena curriculum baseline is required before lesson approval')
-    if (currentCurriculum.source_handoff_footprint_hash !== input.curriculumBaseline.sourceHandoffFootprintHash) {
-      throw new Error('Arena curriculum baseline changed; reload and revalidate before approval')
-    }
-    if (!isPersistedCurriculumReadyForLessonApproval(currentCurriculum)) {
-      throw new Error('Current Arena curriculum baseline is incomplete, uncovered, or inconsistent for lesson approval')
-    }
-
-    const row = {
-      workspace_id: input.context.workspaceId,
-      academic_year_id: input.context.academicYearId,
-      section_id: input.context.sectionId,
-      canonical_plan_asset_id: input.context.canonicalPlanAssetId,
-      canonical_generation_id: input.context.canonicalGenerationId,
-      block_id: input.context.blockId,
-      projection_id: input.context.projectionId,
-      checklist_snapshot: [
-        { key: 'curriculum', status: 'CONFIRMED', fingerprint: baselineFingerprint },
-        { key: 'projection', status: 'CONFIRMED', projectionId: input.context.projectionId },
-        {
-          key: 'accepted-design',
-          status: 'CONFIRMED',
-          acceptedExtensionCount: snapshot.lesson.acceptedExtensions.length,
-        },
-      ],
-      design_fingerprint: preparationFingerprint,
-      curriculum_source_handoff_footprint_hash: input.curriculumBaseline.sourceHandoffFootprintHash,
-      curriculum_baseline_fingerprint: baselineFingerprint,
-      preparation_fingerprint: preparationFingerprint,
-      approval_snapshot: snapshot,
-      confirmed_by: input.approvedBy,
-    }
-
-    const { data: inserted, error: insertError } = await admin
-      .from('lesson_preparation_receipts')
-      .insert(row)
-      .select('*')
-      .maybeSingle()
-
-    if (!insertError && inserted) return toReceipt(inserted as unknown as Row)
-    if (insertError && insertError.code !== '23505') throw new Error(insertError.message)
-
-    const { data: existing, error: existingError } = await admin
-      .from('lesson_preparation_receipts')
-      .select('*')
-      .eq('workspace_id', input.context.workspaceId)
-      .eq('academic_year_id', input.context.academicYearId)
-      .eq('section_id', input.context.sectionId)
-      .eq('canonical_generation_id', input.context.canonicalGenerationId)
-      .eq('block_id', input.context.blockId)
-      .eq('projection_id', input.context.projectionId)
-      .eq('preparation_fingerprint', preparationFingerprint)
-      .maybeSingle()
-    if (existingError) throw new Error(existingError.message)
-    if (!existing) throw new Error('Lesson preparation approval receipt was not persisted')
-
-    const receipt = toReceipt(existing as unknown as Row)
-    if (receipt.curriculumBaselineFingerprint !== baselineFingerprint
-      || receipt.curriculumSourceHandoffFootprintHash !== input.curriculumBaseline.sourceHandoffFootprintHash) {
-      throw new Error('Idempotency conflict for lesson preparation approval')
-    }
-    return receipt
   }
 }
 
