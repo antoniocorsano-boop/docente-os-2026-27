@@ -77,6 +77,14 @@ reset_database
 
 echo "==> Preparing minimal local Supabase compatibility catalog"
 db_psql -f "$COMPAT_FILE" >/dev/null
+db_psql <<'SQL' >/dev/null
+create schema if not exists supabase_migrations;
+create table if not exists supabase_migrations.schema_migrations (
+  version text primary key,
+  statements text[] not null default array[]::text[],
+  name text not null
+);
+SQL
 
 echo "==> Applying every canonical migration file present in repository"
 mapfile -t migrations < <(find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name '*.sql' | sort)
@@ -85,9 +93,15 @@ if [[ "$migration_count" -lt 1 ]]; then
   echo "No canonical migrations found" >&2
   exit 1
 fi
+migration_ordinal=1
 for migration in "${migrations[@]}"; do
-  echo "    $(basename "$migration")"
+  migration_file="$(basename "$migration")"
+  migration_name="${migration_file%.sql}"
+  migration_version="$(printf '%014d' "$migration_ordinal")"
+  echo "    $migration_file"
   db_psql -f "$migration" >/dev/null
+  db_psql -c "insert into supabase_migrations.schema_migrations(version, statements, name) values ('$migration_version', array[]::text[], '$migration_name');" >/dev/null
+  migration_ordinal=$((migration_ordinal + 1))
 done
 
 echo "Applied canonical migration files: $migration_count"
@@ -148,6 +162,7 @@ assert_scalar "SELECT count(*) FROM auth.users WHERE email = 'restore-rehearsal@
 assert_scalar "SELECT count(*) FROM public.workspaces WHERE id = '20000000-0000-0000-0000-000000000001';" "1" "workspace before backup"
 assert_scalar "SELECT count(*) FROM public.planner_tasks WHERE id = '40000000-0000-0000-0000-000000000001';" "1" "planner sentinel before backup"
 assert_scalar "SELECT count(*) FROM storage.buckets WHERE id = 'knowledge-assets' AND public = false;" "1" "private knowledge bucket before backup"
+assert_scalar "SELECT count(*) FROM supabase_migrations.schema_migrations;" "$migration_count" "migration history before backup"
 
 fingerprint_before="$(schema_fingerprint)"
 rls_tables_before="$(db_psql -Atc "SELECT count(*) FROM pg_tables WHERE schemaname = 'public' AND rowsecurity = true;")"
@@ -186,6 +201,7 @@ assert_scalar "SELECT count(*) FROM public.workspace_memberships WHERE workspace
 assert_scalar "SELECT count(*) FROM public.academic_years WHERE id = '30000000-0000-0000-0000-000000000001' AND is_active = true;" "1" "academic year restored"
 assert_scalar "SELECT count(*) FROM public.planner_tasks WHERE id = '40000000-0000-0000-0000-000000000001' AND title = 'Synthetic restore sentinel';" "1" "planner sentinel restored"
 assert_scalar "SELECT count(*) FROM storage.buckets WHERE id = 'knowledge-assets' AND public = false;" "1" "storage catalog restored"
+assert_scalar "SELECT count(*) FROM supabase_migrations.schema_migrations;" "$migration_count" "migration history restored"
 assert_scalar "SELECT count(*) FROM pg_tables WHERE schemaname = 'public' AND rowsecurity = true;" "$rls_tables_before" "RLS-enabled tables restored"
 
 cat <<EOF
