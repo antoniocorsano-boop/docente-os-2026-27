@@ -6,7 +6,7 @@
 .lessonDesignContract>div{margin-top:2px}
 .lessonDesignKinds{display:grid!important;gap:2px!important;padding-top:4px;border-top:1px solid var(--line)}
 .lessonDesignKinds small{color:var(--ink-soft);font-size:10px;font-weight:850;letter-spacing:.03em}
-.lessonDesignKinds span{padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:var(--ink-soft);font-size:11px!important;font-weight:700!important;letter-spacing:0!important;line-height:1.45}
+.lessonDesignKinds span{padding:0!important;border:0!important;background:transparent!important;color:var(--ink-soft);font-size:11px!important;font-weight:700!important;letter-spacing:0!important;line-height:1.45}
 .lessonDesignSubheading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 2px 8px}
 .lessonDesignSubheading strong{font-size:14px}
 .lessonDesignSubheading small{display:grid;place-items:center;min-width:25px;height:25px;padding:0 7px;border-radius:var(--radius-pill);background:var(--brand-soft);color:var(--brand);font-size:11px;font-weight:900}
