@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { FEEDBACK_ASSERTION, UI_FEEDBACK, isMutationCandidate, matchesPattern } from './lib.mjs'
+import { FEEDBACK_ASSERTION, PERSISTENT_FEEDBACK, UI_FEEDBACK, isMutationCandidate, matchesPattern } from './lib.mjs'
 
 test('detects HTTP mutations', () => {
   assert.equal(isMutationCandidate("fetch('/api/x', { method: 'POST', body: '{}' })"), true)
@@ -38,4 +38,25 @@ test('explicit markers resolve ambiguous custom code', () => {
   assert.equal(isMutationCandidate('function updatePreview() {}'), false)
   assert.equal(isMutationCandidate('/* @trama-write */ function createCustomRecord() {}'), true)
   assert.equal(isMutationCandidate('/* @trama-readonly */ localStorage.setItem("x","y")'), false)
+})
+
+
+test('detects repository record writes on write boundaries', () => {
+  assert.equal(isMutationCandidate('await repository.record(payload)', 'src/app/actions.ts'), true)
+  assert.equal(isMutationCandidate('await repository.persist(payload)', 'src/app/actions.ts'), true)
+})
+
+test('ignores tests and ordinary read-only modules for named heuristics', () => {
+  assert.equal(isMutationCandidate('adoptionRecordFromFields(x)', 'src/a.test.ts'), false)
+  assert.equal(isMutationCandidate('updatePreview()', 'src/pages/Preview.tsx'), false)
+})
+
+test('generic text assertions are not feedback evidence', () => {
+  assert.equal(FEEDBACK_ASSERTION.test("expect(title).toHaveTextContent('Saved')"), false)
+  assert.equal(FEEDBACK_ASSERTION.test("screen.getByRole('status')"), true)
+})
+
+test('critical feedback requires persistent accessible state, not toast alone', () => {
+  assert.equal(PERSISTENT_FEEDBACK.test("toast('Saved')"), false)
+  assert.equal(PERSISTENT_FEEDBACK.test('<div role="status" aria-live="polite">Saved</div>'), true)
 })
