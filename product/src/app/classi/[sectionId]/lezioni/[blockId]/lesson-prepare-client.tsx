@@ -40,6 +40,7 @@ export default function LessonPrepareClient({
   knowledgeSuggestions,
   progress,
   udaProgress,
+  designNotice,
   approval,
 }: {
   sectionId: string
@@ -50,6 +51,7 @@ export default function LessonPrepareClient({
   knowledgeSuggestions: LessonKnowledgeSuggestion[]
   progress: Progress
   udaProgress: { completed: number; total: number }
+  designNotice: string | null
   approval: {
     status: LessonPreparationApprovalStatus
     approvedAt: string | null
@@ -169,6 +171,7 @@ export default function LessonPrepareClient({
               projectionId={projection.projectionId}
               extensions={extensions}
               knowledgeSuggestions={knowledgeSuggestions}
+              designNotice={designNotice}
             />
 
             <details className={styles.evidence}>
