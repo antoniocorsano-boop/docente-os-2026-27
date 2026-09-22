@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useFormStatus } from 'react-dom'
 import {
   isTeachingAdjustment,
   type LessonDesignExtension,
@@ -62,7 +63,11 @@ export function LessonDesignTools({
       </header>
 
       {designNoticeMessage(designNotice) ? (
-        <div className="lessonDesignFeedback" role="status" aria-live="polite">
+        <div
+          className="lessonDesignFeedback"
+          role={designNotice === 'failed' ? 'alert' : 'status'}
+          aria-live={designNotice === 'failed' ? 'assertive' : 'polite'}
+        >
           <strong>{designNoticeMessage(designNotice)}</strong>
         </div>
       ) : null}
@@ -87,7 +92,7 @@ export function LessonDesignTools({
             </div>
             <form action={proposeLessonActivationQuestion}>
               <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
-              <button type="submit">Crea proposta</button>
+              <DesignActionSubmit idle="Crea proposta" pendingLabel="Creazione…" />
             </form>
           </article>
         </div>
@@ -114,12 +119,12 @@ export function LessonDesignTools({
                 <form action={acceptLessonDesignExtension}>
                   <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
                   <input type="hidden" name="extensionId" value={extension.id} />
-                  <button className="primary" type="submit">Usa in questa lezione</button>
+                  <DesignActionSubmit className="primary" idle="Usa in questa lezione" pendingLabel="Aggiunta…" />
                 </form>
                 <form action={removeLessonDesignExtension}>
                   <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
                   <input type="hidden" name="extensionId" value={extension.id} />
-                  <button type="submit">Scarta</button>
+                  <DesignActionSubmit idle="Scarta" pendingLabel="Rimozione…" />
                 </form>
               </div>
             </article>
@@ -143,7 +148,7 @@ export function LessonDesignTools({
                 <form action={acceptLessonDesignExtension}>
                   <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
                   <input type="hidden" name="extensionId" value={extension.id} />
-                  <button className="primary" type="submit">Conferma riprogettazione</button>
+                  <DesignActionSubmit className="primary" idle="Conferma riprogettazione" pendingLabel="Conferma…" />
                 </form>
                 <form action={removeLessonDesignExtension}>
                   <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
@@ -201,7 +206,7 @@ export function LessonDesignTools({
                 <form action={removeLessonDesignExtension}>
                   <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
                   <input type="hidden" name="extensionId" value={extension.id} />
-                  <button type="submit">Rimuovi</button>
+                  <DesignActionSubmit idle="Rimuovi" pendingLabel="Rimozione…" />
                 </form>
               </div>
             </article>
@@ -233,7 +238,7 @@ export function LessonDesignTools({
                 <form action={attachKnowledgeResourceToLesson}>
                   <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
                   <input type="hidden" name="assetId" value={item.assetId} />
-                  <button type="submit">Usa in questa lezione</button>
+                  <DesignActionSubmit idle="Usa in questa lezione" pendingLabel="Aggiunta…" />
                 </form>
               </div>
             </article>
@@ -283,7 +288,7 @@ function AcceptedItem({
         <form action={removeLessonDesignExtension}>
           <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
           <input type="hidden" name="extensionId" value={extension.id} />
-          <button type="submit">Rimuovi</button>
+          <DesignActionSubmit idle="Rimuovi" pendingLabel="Rimozione…" />
         </form>
       </div>
     </article>
@@ -322,7 +327,7 @@ function EditExtensionForm({
         ) : (
           <p>La modifica resta una proposta e non entra nella lezione finché non scegli “Usa in questa lezione”.</p>
         )}
-        <button type="submit">Salva modifica</button>
+        <DesignActionSubmit idle="Salva modifica" pendingLabel="Salvataggio…" />
       </form>
     </details>
   )
@@ -380,11 +385,32 @@ function knowledgeCategoryLabel(category: string) {
 }
 
 
+function DesignActionSubmit({
+  idle,
+  pendingLabel,
+  className,
+}: {
+  idle: string
+  pendingLabel: string
+  className?: string
+}) {
+  const { pending } = useFormStatus()
+  return (
+    <>
+      <button className={className} type="submit" disabled={pending}>
+        {pending ? pendingLabel : idle}
+      </button>
+      {pending ? <span className="lessonDesignPending" role="status" aria-live="polite">{pendingLabel}</span> : null}
+    </>
+  )
+}
+
 function designNoticeMessage(notice: string | null) {
   if (notice === 'proposal-created') return 'Proposta creata. Controllala prima di usarla nella lezione.'
   if (notice === 'accepted') return 'Aggiunta alla lezione. Ora è nella sequenza.'
   if (notice === 'modified') return 'Modifica salvata. L’elemento è tornato “Da controllare”: confermalo di nuovo per usarlo nella lezione.'
   if (notice === 'removed') return 'Elemento rimosso dalla lezione.'
   if (notice === 'material-attached') return 'Materiale aggiunto alla lezione.'
+  if (notice === 'failed') return 'Operazione non completata. Nessuna modifica è stata confermata: controlla il contesto e riprova.'
   return null
 }
