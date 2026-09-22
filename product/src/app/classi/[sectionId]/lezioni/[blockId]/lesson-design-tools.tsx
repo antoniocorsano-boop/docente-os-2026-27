@@ -24,12 +24,14 @@ export function LessonDesignTools({
   projectionId,
   extensions,
   knowledgeSuggestions,
+  designNotice,
 }: {
   sectionId: string
   blockId: string
   projectionId: string
   extensions: LessonDesignExtension[]
   knowledgeSuggestions: LessonKnowledgeSuggestion[]
+  designNotice: string | null
 }) {
   const proposals = extensions.filter(
     (extension) =>
@@ -58,6 +60,12 @@ export function LessonDesignTools({
         <div><span>STRUMENTI DI PROGETTAZIONE</span><h3 id="lesson-design-tools-title">Arricchisci solo se serve</h3></div>
         <small>{acceptedLessonAdditions.length} aggiunte attive</small>
       </header>
+
+      {designNoticeMessage(designNotice) ? (
+        <div className="lessonDesignFeedback" role="status" aria-live="polite">
+          <strong>{designNoticeMessage(designNotice)}</strong>
+        </div>
+      ) : null}
 
       <div className="lessonDesignContract">
         <strong>La sequenza canonica resta intatta.</strong>
@@ -369,4 +377,14 @@ function knowledgeCategoryLabel(category: string) {
   if (category === 'MODEL') return 'MODELLO'
   if (category === 'PROGRAMMING') return 'PIANO'
   return 'MATERIALE'
+}
+
+
+function designNoticeMessage(notice: string | null) {
+  if (notice === 'proposal-created') return 'Proposta creata. Controllala prima di usarla nella lezione.'
+  if (notice === 'accepted') return 'Aggiunta alla lezione. Ora è nella sequenza.'
+  if (notice === 'modified') return 'Modifica salvata. L’elemento è tornato “Da controllare”: confermalo di nuovo per usarlo nella lezione.'
+  if (notice === 'removed') return 'Elemento rimosso dalla lezione.'
+  if (notice === 'material-attached') return 'Materiale aggiunto alla lezione.'
+  return null
 }
