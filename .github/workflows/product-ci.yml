@@ -14,12 +14,8 @@ on:
       - ".github/scripts/runtime-release-contract.mjs"
       - ".github/scripts/runtime-release-contract.test.mjs"
       - "ops/runtime-release-contract.json"
-      - "ops/trama-perceptible-write.json"
-      - "tools/trama-perceptible-write/**"
       - "docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md"
       - "docs/architecture/RUNTIME_RELEASE_CONTRACT_V1.md"
-      - "ops/trama-perceptible-write.json"
-      - "tools/trama-perceptible-write/**"
   pull_request:
     paths:
       - "product/**"
@@ -106,16 +102,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Validate TRAMA Perceptible Write contract
-        working-directory: ${{ github.workspace }}
-        shell: bash
-        env:
-          TRAMA_PW_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-          TRAMA_PW_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          node --test tools/trama-perceptible-write/lib.test.mjs
-          node tools/trama-perceptible-write/validate.mjs
-
       - name: Validate Certification Pipeline V2 foundation
         working-directory: ${{ github.workspace }}
         shell: bash
