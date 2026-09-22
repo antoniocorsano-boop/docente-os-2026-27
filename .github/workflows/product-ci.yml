@@ -112,7 +112,9 @@ jobs:
         env:
           TRAMA_PW_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           TRAMA_PW_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: node tools/trama-perceptible-write/validate.mjs
+        run: |
+          node --test tools/trama-perceptible-write/lib.test.mjs
+          node tools/trama-perceptible-write/validate.mjs
 
       - name: Validate Certification Pipeline V2 foundation
         working-directory: ${{ github.workspace }}
