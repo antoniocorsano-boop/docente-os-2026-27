@@ -1,0 +1,27 @@
+{
+  "contract": "TRAMA-PW-01",
+  "version": 1,
+  "product": "Docente OS",
+  "rule": "NO_SILENT_USER_INITIATED_WRITES",
+  "guarantees": {
+    "intent": true,
+    "pendingWhenAsync": true,
+    "explicitSuccess": true,
+    "explicitFailure": true,
+    "readableResultState": true,
+    "nextStepWhenUseful": true,
+    "assistiveAnnouncement": true,
+    "nonColorOnly": true,
+    "criticalWriteNotToastOnly": true,
+    "implicitApprovalForbidden": true
+  },
+  "enforcement": {
+    "changedWriteRequiresFeedbackEvidence": true,
+    "changedWriteRequiresTestEvidence": true,
+    "failClosed": true
+  },
+  "baselineAudit": {
+    "state": "REQUIRED",
+    "scope": "all existing user-facing writes"
+  }
+}
