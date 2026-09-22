@@ -4,6 +4,7 @@ do $contract$
 declare
   issue_count integer;
   runtime_migration text;
+  runtime_snapshot jsonb;
 begin
   if to_regclass('public.runtime_schema_contract_state') is null then
     raise exception 'runtime schema contract state table missing after migration replay';
@@ -16,6 +17,26 @@ begin
 
   if runtime_migration is null then
     raise exception 'runtime schema contract watermark is empty';
+  end if;
+
+  if to_regprocedure('public.runtime_schema_contract_snapshot()') is null then
+    raise exception 'runtime schema lineage snapshot function missing';
+  end if;
+
+  select public.runtime_schema_contract_snapshot()
+    into runtime_snapshot;
+
+  if coalesce((runtime_snapshot->>'lineageOk')::boolean, false) is not true then
+    raise exception
+      'runtime schema lineage is incomplete: %',
+      runtime_snapshot->'missingMigrations';
+  end if;
+
+  if runtime_snapshot->>'migrationId' <> runtime_migration then
+    raise exception
+      'runtime schema snapshot/watermark mismatch: snapshot %, state %',
+      runtime_snapshot->>'migrationId',
+      runtime_migration;
   end if;
 
   select count(*)
