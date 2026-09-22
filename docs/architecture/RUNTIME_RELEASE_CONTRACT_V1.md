@@ -20,7 +20,9 @@ Target: pochi secondi.
 Verifica:
 - classificazione del diff;
 - inventario migrazioni;
+- continuità canonica della lineage runtime da 0060 in avanti;
 - disciplina del watermark dopo 0074;
+- registrazione obbligatoria di ogni nuova migrazione nel lineage manifest;
 - collisioni PL/pgSQL note;
 - coerenza delle capability esterne dichiarate.
 
@@ -34,13 +36,16 @@ Sul database locale vengono controllate le funzioni PL/pgSQL critiche con `plpgs
 
 ### L2 — runtime reconciliation Beta
 
-Il repository e il database condividono un watermark:
+Il repository e il database condividono:
+- il watermark `runtime_schema_contract_state.migration_id`;
+- il manifest privato `private.runtime_schema_required_migrations`;
+- lo snapshot read-only `public.runtime_schema_contract_snapshot()`.
 
-`runtime_schema_contract_state.migration_id`
+Lo snapshot espone soltanto dati non sensibili: versione, migration id, `lineageOk` e l'eventuale elenco di migrazioni canoniche mancanti.
 
-Il processo di avvio confronta il watermark richiesto dal commit con quello esposto dal database. Se non coincidono, l'avvio fallisce prima di servire la nuova versione.
+Il processo di avvio confronta il watermark richiesto dal commit e richiede anche `lineageOk=true`. Un database che espone l'ultima migrazione ma ha saltato una migrazione richiesta precedente viene quindi rifiutato prima di servire la nuova versione.
 
-Il monitor runtime ripete lo stesso confronto con l'account E2E già governato.
+Il monitor runtime ripete gli stessi controlli con l'account E2E già governato.
 
 ### L3 — write E2E reale, solo percorsi critici
 
@@ -50,14 +55,19 @@ Prima deve esistere una fixture E2E isolata e reversibile. Solo allora un cambia
 
 ## Regola migrazioni dopo 0074
 
-Ogni nuova migrazione deve:
+La lineage runtime canonica parte da **0060**.
+
+Ogni nuova migrazione dopo 0074 deve:
 1. avere numero univoco e sequenziale;
 2. applicarsi dopo il replay completo;
-3. concludere con:
+3. registrare `version` e `migration_id` in `private.runtime_schema_required_migrations`;
+4. concludere con:
 
 `select private.advance_runtime_schema_contract('<migration-id>');`
 
-Il marker impedisce salti silenziosi nella sequenza runtime.
+La funzione di avanzamento verifica che tutte le migrazioni richieste precedenti risultino nella storia Supabase, normalizzando i vecchi nomi con o senza prefisso numerico.
+
+Il watermark da solo non costituisce più prova sufficiente di allineamento.
 
 ## Costi
 

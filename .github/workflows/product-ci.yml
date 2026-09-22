@@ -115,7 +115,7 @@ jobs:
           test -f .github/workflows/browser-certification-orchestrator.yml
           grep -Fq 'browser-certification-preflight' .github/workflows/browser-certification-orchestrator.yml
           grep -Fq 'browser-certification-selected-gates' .github/workflows/browser-certification-orchestrator.yml
-          grep -Fq 'docente-os-governed-mfa-e2e' .github/workflows/browser-certification-orchestrator.yml
+          grep -Fq 'docente-os-pr-governed-mfa-e2e' .github/workflows/browser-certification-orchestrator.yml
           grep -Fq "context: statusContext" .github/workflows/browser-certification-orchestrator.yml
           grep -Fq 'orchestrationAuthorized: true' .github/scripts/certification/classifier.mjs
           grep -Fq 'mergeAuthorized: false' .github/scripts/certification/classifier.mjs

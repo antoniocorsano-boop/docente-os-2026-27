@@ -44,9 +44,14 @@ async function assertRuntimeSchemaReady() {
 
   const expectedMigration = latestMigrationId()
   const response = await fetch(
-    supabaseUrl.replace(/\/$/, '') + '/rest/v1/runtime_schema_contract_state?select=migration_id&singleton=eq.true',
+    supabaseUrl.replace(/\/$/, '') + '/rest/v1/rpc/runtime_schema_contract_snapshot',
     {
-      headers: { apikey: publishableKey },
+      method: 'POST',
+      headers: {
+        apikey: publishableKey,
+        'content-type': 'application/json',
+      },
+      body: '{}',
       signal: AbortSignal.timeout(15_000),
     },
   )
@@ -56,13 +61,19 @@ async function assertRuntimeSchemaReady() {
     throw new Error('Runtime schema preflight failed: database contract unavailable (' + response.status + ') ' + detail.slice(0, 240))
   }
 
-  const rows = await response.json()
-  const actualMigration = Array.isArray(rows) ? rows[0]?.migration_id : null
+  const payload = await response.json()
+  const snapshot = Array.isArray(payload) ? payload[0] : payload
+  const actualMigration = snapshot?.migrationId ?? null
   if (actualMigration !== expectedMigration) {
     throw new Error('Runtime schema mismatch: application requires ' + expectedMigration + ', database exposes ' + (actualMigration ?? 'none'))
   }
 
-  console.log('Runtime schema contract PASS:', expectedMigration)
+  if (snapshot?.lineageOk !== true) {
+    const missing = Array.isArray(snapshot?.missingMigrations) ? snapshot.missingMigrations.join(', ') : 'unknown'
+    throw new Error('Runtime schema lineage incomplete: missing ' + missing)
+  }
+
+  console.log('Runtime schema contract PASS:', expectedMigration, 'lineage=PASS')
 }
 
 function latestMigrationId() {

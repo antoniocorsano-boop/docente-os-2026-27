@@ -78,23 +78,34 @@ assert.equal(db.response.status, 200, `Authenticated database probe returned ${d
 receipt.checks.databaseMs = db.elapsedMs
 
 const expectedMigration = latestMigrationId()
-const schemaContract = await timedFetch(`${supabaseUrl}/rest/v1/runtime_schema_contract_state?select=migration_id&singleton=eq.true`, {
+const schemaContract = await timedFetch(`${supabaseUrl}/rest/v1/rpc/runtime_schema_contract_snapshot`, {
+  method: 'POST',
   headers: {
     apikey: publishableKey,
     authorization: `Bearer ${authPayload.access_token}`,
+    'content-type': 'application/json',
   },
+  body: '{}',
 })
 assert.equal(schemaContract.response.status, 200, `Runtime schema contract returned ${schemaContract.response.status}`)
-const schemaRows = await schemaContract.response.json()
-const actualMigration = Array.isArray(schemaRows) ? schemaRows[0]?.migration_id : null
+const schemaPayload = await schemaContract.response.json()
+const schemaSnapshot = Array.isArray(schemaPayload) ? schemaPayload[0] : schemaPayload
+const actualMigration = schemaSnapshot?.migrationId ?? null
 assert.equal(
   actualMigration,
   expectedMigration,
   `Runtime schema drift: repository requires ${expectedMigration}, Beta exposes ${actualMigration ?? 'none'}`,
 )
+assert.equal(
+  schemaSnapshot?.lineageOk,
+  true,
+  `Runtime schema lineage incomplete: ${Array.isArray(schemaSnapshot?.missingMigrations) ? schemaSnapshot.missingMigrations.join(', ') : 'unknown'}`,
+)
 receipt.checks.runtimeSchemaContract = 'PASS'
+receipt.checks.runtimeSchemaLineage = 'PASS'
 receipt.checks.expectedMigration = expectedMigration
 receipt.checks.actualMigration = actualMigration
+receipt.checks.missingMigrations = schemaSnapshot?.missingMigrations ?? []
 receipt.checks.runtimeSchemaMs = schemaContract.elapsedMs
 
 console.log(JSON.stringify(receipt, null, 2))

@@ -191,7 +191,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 55
     concurrency:
-      group: docente-os-governed-mfa-e2e
+      group: docente-os-pr-governed-mfa-e2e
       queue: max
     env:
       E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}

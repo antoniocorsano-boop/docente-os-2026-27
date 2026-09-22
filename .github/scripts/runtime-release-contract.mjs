@@ -70,12 +70,56 @@ export function validateMigrationInventory(migrationDir = MIGRATION_DIR) {
       if (!marker.test(ordered[index].content)) {
         throw new Error(ordered[index].name + " must advance private.advance_runtime_schema_contract('" + ordered[index].id + "')")
       }
+      if (!ordered[index].content.includes('private.runtime_schema_required_migrations')
+          || !ordered[index].content.includes("'" + ordered[index].id + "'")) {
+        throw new Error(ordered[index].name + ' must register itself in private.runtime_schema_required_migrations')
+      }
     }
   }
 
   const latest = ordered.at(-1)
   if (!latest) throw new Error('runtime migration inventory is empty')
   return { latestMigrationId: latest.id, migrationCount: parsed.length }
+}
+
+export function validateRuntimeLineageInventory(migrationDir = MIGRATION_DIR, startVersion = 60) {
+  const files = readdirSync(migrationDir)
+    .filter((name) => /^\d{4}_[a-z0-9_]+\.sql$/.test(name))
+    .sort()
+
+  const lineage = files
+    .map((name) => ({
+      name,
+      id: name.replace(/\.sql$/, ''),
+      version: Number(name.slice(0, 4)),
+    }))
+    .filter((item) => item.version >= startVersion)
+    .sort((a, b) => a.version - b.version || a.id.localeCompare(b.id))
+
+  if (!lineage.length || lineage[0].version !== startVersion) {
+    throw new Error('runtime lineage must start at ' + String(startVersion).padStart(4, '0'))
+  }
+
+  const seen = new Set()
+  for (let index = 0; index < lineage.length; index += 1) {
+    const item = lineage[index]
+    if (seen.has(item.version)) {
+      throw new Error('duplicate runtime lineage migration number: ' + item.version)
+    }
+    seen.add(item.version)
+    const expected = startVersion + index
+    if (item.version !== expected) {
+      throw new Error(
+        'runtime lineage gap: expected ' + String(expected).padStart(4, '0') + ', found ' + item.id,
+      )
+    }
+  }
+
+  return {
+    lineageStartVersion: startVersion,
+    lineageLatestMigrationId: lineage.at(-1).id,
+    lineageMigrationCount: lineage.length,
+  }
 }
 
 export function lintChangedPlpgsqlMigrations(changedFiles) {
@@ -137,6 +181,7 @@ function main() {
   const changedFiles = changedFilesFromGit(baseSha, testedSha)
   const impact = classifyPaths(changedFiles, contract)
   const inventory = validateMigrationInventory()
+  const lineage = validateRuntimeLineageInventory()
   lintChangedPlpgsqlMigrations(changedFiles)
   validateCapabilityDeclaration()
 
@@ -147,8 +192,10 @@ function main() {
     testedSha,
     ...impact,
     ...inventory,
+    ...lineage,
     checks: {
       migrationInventory: 'PASS',
+      migrationLineageInventory: 'PASS',
       plpgsqlIdentifierPreflight: 'PASS',
       capabilityDeclaration: 'PASS',
     },
