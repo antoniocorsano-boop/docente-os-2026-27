@@ -27,8 +27,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Self-test TRAMA-PW-01 classifier
-        run: node --test tools/trama-perceptible-write/lib.test.mjs
+      - name: Self-test TRAMA-PW-01 gate
+        run: |
+          node --test tools/trama-perceptible-write/lib.test.mjs
+          node --test tools/trama-perceptible-write/engine.test.mjs
       - name: Enforce TRAMA-PW-01
         env:
           TRAMA_PW_BASE_SHA: ${{ github.event.pull_request.base.sha || inputs.base_sha }}
