@@ -1,5 +1,8 @@
 .lessonDesignTools{display:grid;gap:14px;padding:18px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface)}
 .lessonDesignTools .lessonSectionHeading{margin-bottom:0}
+.lessonDesignFeedback{padding:12px 14px;border:1px solid var(--brand-blue-2);border-radius:var(--radius-sm);background:var(--brand-soft);color:var(--ink)}
+.lessonDesignFeedback strong{font-size:12px;line-height:1.45}
+.lessonDesignPending{color:var(--ink-soft);font-size:10px;font-weight:750;line-height:1.4}
 .lessonDesignContract{display:grid;gap:7px;padding:14px;border-radius:var(--radius-sm);background:var(--surface-soft)}
 .lessonDesignContract>strong{font-size:15px}
 .lessonDesignContract>p{margin:0;color:var(--ink-soft);font-size:13px;line-height:1.5}
