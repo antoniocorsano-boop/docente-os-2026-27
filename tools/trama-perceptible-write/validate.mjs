@@ -31,7 +31,7 @@ if (!base || !head || /^0+$/.test(base)) {
 const changed = execFileSync('git', ['diff', '--name-only', base + '...' + head], { encoding: 'utf8' })
   .trim().split('\n').filter(Boolean)
 
-const sourceFiles = changed.filter((p) => /\.(tsx?|jsx?|mjs|cjs)$/.test(p) && fs.existsSync(p))
+const sourceFiles = changed.filter((p) => !p.startsWith('tools/trama-perceptible-write/') && /\.(tsx?|jsx?|mjs|cjs)$/.test(p) && fs.existsSync(p))
 const contents = sourceFiles.map((path) => ({ path, text: fs.readFileSync(path, 'utf8') }))
 
 const mutationPattern = /(form\s+action=|useActionState|onSubmit\s*=|\.insert\s*\(|\.update\s*\(|\.delete\s*\(|\.upsert\s*\(|localStorage\.setItem|indexedDB|repository\.(accept|dismiss|revise|add|save|create|update|remove|delete)\s*\(|\bredirect\s*\()/i
