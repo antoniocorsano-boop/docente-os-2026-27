@@ -38,7 +38,7 @@ permissions:
   statuses: write
 
 concurrency:
-  group: docente-os-governed-mfa-e2e
+  group: docente-os-pr-governed-mfa-e2e
   queue: max
 
 env:
