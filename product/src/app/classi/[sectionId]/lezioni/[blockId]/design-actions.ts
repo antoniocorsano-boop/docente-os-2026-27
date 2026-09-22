@@ -24,14 +24,22 @@ import { textbookMaterialId } from './lesson-material-suggestions'
 export async function acceptLessonDesignExtension(formData: FormData) {
   const lesson = await requireLessonContext(formData)
   const extensionId = requiredText(formData, 'extensionId')
-  await new SupabaseLessonDesignRepository().accept(lesson.designContext, extensionId)
+  try {
+    await new SupabaseLessonDesignRepository().accept(lesson.designContext, extensionId)
+  } catch {
+    completeDesignWrite(lesson.sectionId, lesson.blockId, 'failed')
+  }
   completeDesignWrite(lesson.sectionId, lesson.blockId, 'accepted')
 }
 
 export async function removeLessonDesignExtension(formData: FormData) {
   const lesson = await requireLessonContext(formData)
   const extensionId = requiredText(formData, 'extensionId')
-  await new SupabaseLessonDesignRepository().dismiss(lesson.designContext, extensionId)
+  try {
+    await new SupabaseLessonDesignRepository().dismiss(lesson.designContext, extensionId)
+  } catch {
+    completeDesignWrite(lesson.sectionId, lesson.blockId, 'failed')
+  }
   completeDesignWrite(lesson.sectionId, lesson.blockId, 'removed')
 }
 
@@ -40,38 +48,46 @@ export async function reviseLessonDesignExtensionText(formData: FormData) {
   const extensionId = requiredText(formData, 'extensionId')
   const title = requiredText(formData, 'title')
   const body = requiredText(formData, 'body')
-  const repository = new SupabaseLessonDesignRepository()
-  const extensions = await repository.list(lesson.designContext)
-  const current = extensions.find((extension) => extension.id === extensionId)
-  if (!current) throw new Error('Lesson design extension is outside the active lesson context')
+  try {
+    const repository = new SupabaseLessonDesignRepository()
+    const extensions = await repository.list(lesson.designContext)
+    const current = extensions.find((extension) => extension.id === extensionId)
+    if (!current) throw new Error('Lesson design extension is outside the active lesson context')
 
-  await repository.revise(lesson.designContext, extensionId, {
-    insertionPosition: current.insertionPosition,
-    anchorStepId: current.anchorStepId,
-    title,
-    body,
-    cue: current.cue,
-    minutes: current.minutes,
-  })
+    await repository.revise(lesson.designContext, extensionId, {
+      insertionPosition: current.insertionPosition,
+      anchorStepId: current.anchorStepId,
+      title,
+      body,
+      cue: current.cue,
+      minutes: current.minutes,
+    })
+  } catch {
+    completeDesignWrite(lesson.sectionId, lesson.blockId, 'failed')
+  }
   completeDesignWrite(lesson.sectionId, lesson.blockId, 'modified')
 }
 
 export async function proposeLessonActivationQuestion(formData: FormData) {
   const lesson = await requireLessonContext(formData)
-  const repository = new SupabaseLessonDesignRepository()
-  await repository.addToolProposalOnce(
-    lesson.designContext,
-    buildLessonActivationQuestionProposal({
-      sectionId: lesson.sectionId,
-      canonicalPlanAssetId: lesson.designContext.canonicalPlanAssetId,
-      canonicalGenerationId: lesson.designContext.canonicalGenerationId,
-      blockId: lesson.blockId,
-      projectionId: lesson.designContext.projectionId,
-      lessonTitle: lesson.projection.title,
-      objective: lesson.projection.objective,
-    }),
-    LESSON_ACTIVATION_QUESTION_TOOL_ID,
-  )
+  try {
+    const repository = new SupabaseLessonDesignRepository()
+    await repository.addToolProposalOnce(
+      lesson.designContext,
+      buildLessonActivationQuestionProposal({
+        sectionId: lesson.sectionId,
+        canonicalPlanAssetId: lesson.designContext.canonicalPlanAssetId,
+        canonicalGenerationId: lesson.designContext.canonicalGenerationId,
+        blockId: lesson.blockId,
+        projectionId: lesson.designContext.projectionId,
+        lessonTitle: lesson.projection.title,
+        objective: lesson.projection.objective,
+      }),
+      LESSON_ACTIVATION_QUESTION_TOOL_ID,
+    )
+  } catch {
+    completeDesignWrite(lesson.sectionId, lesson.blockId, 'failed')
+  }
 
   completeDesignWrite(lesson.sectionId, lesson.blockId, 'proposal-created')
 }
@@ -79,60 +95,65 @@ export async function proposeLessonActivationQuestion(formData: FormData) {
 export async function attachKnowledgeResourceToLesson(formData: FormData) {
   const lesson = await requireLessonContext(formData)
   const assetId = requiredText(formData, 'assetId')
-  const knowledgeRepository = new SupabaseKnowledgeRepository()
-  const bundle = await knowledgeRepository.getBundle(lesson.designContext.workspaceId, assetId)
-  if (!bundle) throw new Error('Knowledge resource not found in the active workspace')
-
-  const focused = filterProgettaItemsByFocus(
-    [{ asset: bundle.asset, document: bundle.document }],
-    { blockId: lesson.blockId, uda: lesson.uda, pack: lesson.pack },
-  )
-  const focusLinked = focused.length > 0
-  const editorialTextbookId = textbookMaterialId(bundle.asset.sourceMetadata)
-  const editorialAllowed = editorialTextbookId
-    ? await isConfirmedTextbookForSection(lesson.designContext, lesson.sectionId, editorialTextbookId)
-    : false
-
-  if (!focusLinked && !editorialAllowed) {
-    throw new Error('Knowledge resource is neither linked to this lesson focus nor to a confirmed textbook for this class')
+  try {
+      const knowledgeRepository = new SupabaseKnowledgeRepository()
+      const bundle = await knowledgeRepository.getBundle(lesson.designContext.workspaceId, assetId)
+      if (!bundle) throw new Error('Knowledge resource not found in the active workspace')
+    
+      const focused = filterProgettaItemsByFocus(
+        [{ asset: bundle.asset, document: bundle.document }],
+        { blockId: lesson.blockId, uda: lesson.uda, pack: lesson.pack },
+      )
+      const focusLinked = focused.length > 0
+      const editorialTextbookId = textbookMaterialId(bundle.asset.sourceMetadata)
+      const editorialAllowed = editorialTextbookId
+        ? await isConfirmedTextbookForSection(lesson.designContext, lesson.sectionId, editorialTextbookId)
+        : false
+    
+      if (!focusLinked && !editorialAllowed) {
+        throw new Error('Knowledge resource is neither linked to this lesson focus nor to a confirmed textbook for this class')
+      }
+    
+      const title = humanizeKnowledgeTitle(bundle.document?.title ?? bundle.asset.originalName)
+      const repository = new SupabaseLessonDesignRepository()
+      const proposal = await repository.addProposal(lesson.designContext, {
+        sectionId: lesson.sectionId,
+        canonicalPlanAssetId: lesson.designContext.canonicalPlanAssetId,
+        canonicalGenerationId: lesson.designContext.canonicalGenerationId,
+        blockId: lesson.blockId,
+        projectionId: lesson.designContext.projectionId,
+        kind: 'TEACHER_RESOURCE',
+        insertionPosition: 'START',
+        anchorStepId: null,
+        title,
+        body: bundle.document?.summary?.trim() || (
+          editorialAllowed
+            ? 'Materiale editoriale del libro confermato per questa classe, proposto come supporto alla lezione.'
+            : 'Materiale della Conoscenza collegato esplicitamente a questa fase.'
+        ),
+        cue: null,
+        minutes: null,
+        sourceKind: editorialAllowed ? 'EDITORIAL_KNOWLEDGE' : 'KNOWLEDGE',
+        sourceRef: `knowledge:${bundle.asset.id}`,
+        sourceLabel: editorialAllowed ? `Dal libro · ${title}` : title,
+        payload: {
+          assetId: bundle.asset.id,
+          documentId: bundle.document?.id ?? null,
+          contentCategory: bundle.asset.contentCategory,
+          linkage: focusLinked ? 'LESSON_FOCUS' : 'CONFIRMED_TEXTBOOK',
+          textbookId: editorialAllowed ? editorialTextbookId : null,
+          materialRole: editorialAllowed ? 'TEXTBOOK_TEACHER_MATERIAL' : null,
+        },
+      })
+    
+      // Il bottone è una scelta esplicita del docente (“Usa in questa lezione”):
+      // questa stessa azione può attraversare il confine PROPOSED → ACCEPTED.
+      // Le proposte generate autonomamente da strumenti o AI non usano questo percorso.
+      await repository.accept(lesson.designContext, proposal.id)
+  
+  } catch {
+    completeDesignWrite(lesson.sectionId, lesson.blockId, 'failed')
   }
-
-  const title = humanizeKnowledgeTitle(bundle.document?.title ?? bundle.asset.originalName)
-  const repository = new SupabaseLessonDesignRepository()
-  const proposal = await repository.addProposal(lesson.designContext, {
-    sectionId: lesson.sectionId,
-    canonicalPlanAssetId: lesson.designContext.canonicalPlanAssetId,
-    canonicalGenerationId: lesson.designContext.canonicalGenerationId,
-    blockId: lesson.blockId,
-    projectionId: lesson.designContext.projectionId,
-    kind: 'TEACHER_RESOURCE',
-    insertionPosition: 'START',
-    anchorStepId: null,
-    title,
-    body: bundle.document?.summary?.trim() || (
-      editorialAllowed
-        ? 'Materiale editoriale del libro confermato per questa classe, proposto come supporto alla lezione.'
-        : 'Materiale della Conoscenza collegato esplicitamente a questa fase.'
-    ),
-    cue: null,
-    minutes: null,
-    sourceKind: editorialAllowed ? 'EDITORIAL_KNOWLEDGE' : 'KNOWLEDGE',
-    sourceRef: `knowledge:${bundle.asset.id}`,
-    sourceLabel: editorialAllowed ? `Dal libro · ${title}` : title,
-    payload: {
-      assetId: bundle.asset.id,
-      documentId: bundle.document?.id ?? null,
-      contentCategory: bundle.asset.contentCategory,
-      linkage: focusLinked ? 'LESSON_FOCUS' : 'CONFIRMED_TEXTBOOK',
-      textbookId: editorialAllowed ? editorialTextbookId : null,
-      materialRole: editorialAllowed ? 'TEXTBOOK_TEACHER_MATERIAL' : null,
-    },
-  })
-
-  // Il bottone è una scelta esplicita del docente (“Usa in questa lezione”):
-  // questa stessa azione può attraversare il confine PROPOSED → ACCEPTED.
-  // Le proposte generate autonomamente da strumenti o AI non usano questo percorso.
-  await repository.accept(lesson.designContext, proposal.id)
   completeDesignWrite(lesson.sectionId, lesson.blockId, 'material-attached')
 }
 
@@ -209,7 +230,7 @@ function revalidateLesson(sectionId: string, blockId: string) {
 }
 
 
-type DesignNotice = 'accepted' | 'removed' | 'modified' | 'proposal-created' | 'material-attached'
+type DesignNotice = 'accepted' | 'removed' | 'modified' | 'proposal-created' | 'material-attached' | 'failed'
 
 function completeDesignWrite(sectionId: string, blockId: string, notice: DesignNotice): never {
   revalidateLesson(sectionId, blockId)
