@@ -63,7 +63,7 @@ export function LessonDesignTools({
         <strong>La sequenza canonica resta intatta.</strong>
         <p>Frasi, eventi, micro-video, verifiche e materiali entrano nella lezione solo dopo una tua scelta esplicita. Le proposte degli strumenti compariranno qui prima di essere usate in classe.</p>
         <div className="lessonDesignKinds" aria-label="Tipi previsti, non interattivi">
-          <small>Tipi previsti · esempi, non comandi</small>
+          <small>Tipi previsti · non sono comandi</small>
           <span>Frase · Evento · Micro-video · Domanda · Verifica rapida</span>
         </div>
       </div>
