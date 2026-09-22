@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { filterProgettaItemsByFocus } from '@/app/progetta/progetta-model'
 import {
@@ -24,14 +25,14 @@ export async function acceptLessonDesignExtension(formData: FormData) {
   const lesson = await requireLessonContext(formData)
   const extensionId = requiredText(formData, 'extensionId')
   await new SupabaseLessonDesignRepository().accept(lesson.designContext, extensionId)
-  revalidateLesson(lesson.sectionId, lesson.blockId)
+  completeDesignWrite(lesson.sectionId, lesson.blockId, 'accepted')
 }
 
 export async function removeLessonDesignExtension(formData: FormData) {
   const lesson = await requireLessonContext(formData)
   const extensionId = requiredText(formData, 'extensionId')
   await new SupabaseLessonDesignRepository().dismiss(lesson.designContext, extensionId)
-  revalidateLesson(lesson.sectionId, lesson.blockId)
+  completeDesignWrite(lesson.sectionId, lesson.blockId, 'removed')
 }
 
 export async function reviseLessonDesignExtensionText(formData: FormData) {
@@ -52,7 +53,7 @@ export async function reviseLessonDesignExtensionText(formData: FormData) {
     cue: current.cue,
     minutes: current.minutes,
   })
-  revalidateLesson(lesson.sectionId, lesson.blockId)
+  completeDesignWrite(lesson.sectionId, lesson.blockId, 'modified')
 }
 
 export async function proposeLessonActivationQuestion(formData: FormData) {
@@ -72,7 +73,7 @@ export async function proposeLessonActivationQuestion(formData: FormData) {
     LESSON_ACTIVATION_QUESTION_TOOL_ID,
   )
 
-  revalidateLesson(lesson.sectionId, lesson.blockId)
+  completeDesignWrite(lesson.sectionId, lesson.blockId, 'proposal-created')
 }
 
 export async function attachKnowledgeResourceToLesson(formData: FormData) {
@@ -132,7 +133,7 @@ export async function attachKnowledgeResourceToLesson(formData: FormData) {
   // questa stessa azione può attraversare il confine PROPOSED → ACCEPTED.
   // Le proposte generate autonomamente da strumenti o AI non usano questo percorso.
   await repository.accept(lesson.designContext, proposal.id)
-  revalidateLesson(lesson.sectionId, lesson.blockId)
+  completeDesignWrite(lesson.sectionId, lesson.blockId, 'material-attached')
 }
 
 async function isConfirmedTextbookForSection(
@@ -205,4 +206,14 @@ function requiredText(formData: FormData, name: string) {
 function revalidateLesson(sectionId: string, blockId: string) {
   revalidatePath(`/classi/${sectionId}`)
   revalidatePath(`/classi/${sectionId}/lezioni/${blockId}`)
+}
+
+
+type DesignNotice = 'accepted' | 'removed' | 'modified' | 'proposal-created' | 'material-attached'
+
+function completeDesignWrite(sectionId: string, blockId: string, notice: DesignNotice): never {
+  revalidateLesson(sectionId, blockId)
+  redirect(
+    `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(blockId)}?mode=prepare&review=design&designNotice=${encodeURIComponent(notice)}`,
+  )
 }
