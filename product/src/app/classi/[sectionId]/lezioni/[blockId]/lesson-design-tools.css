@@ -3,8 +3,10 @@
 .lessonDesignContract{display:grid;gap:7px;padding:14px;border-radius:var(--radius-sm);background:var(--surface-soft)}
 .lessonDesignContract>strong{font-size:15px}
 .lessonDesignContract>p{margin:0;color:var(--ink-soft);font-size:13px;line-height:1.5}
-.lessonDesignContract>div{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
-.lessonDesignContract>div span{padding:5px 8px;border:1px solid var(--line);border-radius:var(--radius-pill);background:var(--surface);color:var(--ink-soft);font-size:10px;font-weight:850;letter-spacing:.04em}
+.lessonDesignContract>div{margin-top:2px}
+.lessonDesignKinds{display:grid!important;gap:2px!important;padding-top:4px;border-top:1px solid var(--line)}
+.lessonDesignKinds small{color:var(--ink-soft);font-size:10px;font-weight:850;letter-spacing:.03em}
+.lessonDesignKinds span{padding:0!important;border:0!important;background:transparent!important;color:var(--ink-soft);font-size:11px!important;font-weight:700!important;letter-spacing:0!important;line-height:1.45}
 .lessonDesignSubheading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 2px 8px}
 .lessonDesignSubheading strong{font-size:14px}
 .lessonDesignSubheading small{display:grid;place-items:center;min-width:25px;height:25px;padding:0 7px;border-radius:var(--radius-pill);background:var(--brand-soft);color:var(--brand);font-size:11px;font-weight:900}
@@ -15,6 +17,7 @@
 .lessonDesignAvailableTools article strong,.lessonDesignProposal strong,.lessonKnowledgeSuggestions article strong,.lessonDesignAcceptedItem strong{font-size:14px;line-height:1.35}
 .lessonDesignAvailableTools article p,.lessonDesignProposal p,.lessonKnowledgeSuggestions article p{margin:0;color:var(--ink-soft);font-size:12px;line-height:1.45}
 .lessonDesignProposal small,.lessonDesignAcceptedItem small{color:var(--ink-soft);font-size:11px;line-height:1.4}
+.lessonDesignAcceptedBody{margin:2px 0 0;color:var(--ink);font-size:12px;line-height:1.5;white-space:pre-wrap}
 .lessonDesignAvailableTools form,.lessonDesignProposalActions,.lessonKnowledgeSuggestions article>div:last-child,.lessonDesignAcceptedItem>div:last-child{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end}
 .lessonDesignAvailableTools form,.lessonDesignProposal form,.lessonKnowledgeSuggestions form,.lessonDesignAcceptedItem form{margin:0}
 .lessonDesignAvailableTools button,.lessonDesignProposal button,.lessonKnowledgeSuggestions button,.lessonDesignAcceptedItem button,.lessonKnowledgeSuggestions a,.lessonDesignAcceptedItem a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:11px;font-weight:850;text-decoration:none;white-space:nowrap}
