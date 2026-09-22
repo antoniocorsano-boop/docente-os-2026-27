@@ -194,9 +194,11 @@ Rapporto con i gate esistenti:
 
 Regola operativa:
 
-`commit applicativo -> preflight rapido -> replay DB se necessario -> merge -> schema watermark coerente -> startup Beta -> runtime health`.
+`commit applicativo -> preflight rapido -> replay DB se necessario -> merge -> watermark + migration lineage coerenti -> startup Beta -> runtime health`.
 
-Se il database espone un watermark diverso da quello richiesto dal commit, la nuova istanza applicativa deve fallire prima di essere servita.
+Se il database espone un watermark diverso da quello richiesto dal commit **oppure** manca una migrazione canonica richiesta nella lineage runtime, la nuova istanza applicativa deve fallire prima di essere servita.
+
+Il controllo di lineage parte da 0060 e impedisce il caso osservato nel pilota ECO-02/P1 in cui il DB esponeva 0074 pur avendo saltato migrazioni precedenti.
 
 Il replay DB usa esclusivamente uno stack Supabase locale effimero e non richiede credenziali Beta/Production.
 
