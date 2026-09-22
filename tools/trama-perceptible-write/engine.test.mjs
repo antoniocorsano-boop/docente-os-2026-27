@@ -14,6 +14,7 @@ function model(overrides = {}) {
       sourcePatterns: ['src/write.tsx'],
       feedbackFiles: ['src/write.tsx'],
       testFiles: ['src/write.test.tsx'],
+      critical: false,
     }],
     mutationPaths: ['src/write.tsx'],
     deletedPaths: [],
@@ -53,6 +54,7 @@ test('fails when a write-surface declaration is removed while its source remains
     sourcePatterns:['src/write.tsx'],
     feedbackFiles:['src/write.tsx'],
     testFiles:['src/write.test.tsx'],
+    critical:false,
   }]
   const m=model({surfaces:[],mutationPaths:[],baseSurfaces:prior})
   const errors=validateEvidenceModel(m)
@@ -63,4 +65,22 @@ test('manual or detached validation without base/head fails closed', () => {
   assert.deepEqual(requireComparison('', 'abc'), ['comparison base/head required'])
   assert.deepEqual(requireComparison('abc', ''), ['comparison base/head required'])
   assert.deepEqual(requireComparison('abc', 'def'), [])
+})
+
+
+test('rejects toast-only feedback for critical writes', () => {
+  const errors = validateEvidenceModel(model({
+    files:{
+      'src/write.tsx':"toast('Saved')",
+      'src/write.test.tsx':"/* @trama-feedback-test */",
+    },
+    surfaces:[{
+      id:'W1',
+      sourcePatterns:['src/write.tsx'],
+      feedbackFiles:['src/write.tsx'],
+      testFiles:['src/write.test.tsx'],
+      critical:true,
+    }],
+  }))
+  assert.ok(errors.some((e)=>e.includes('toast-only is insufficient')))
 })
