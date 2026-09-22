@@ -1,4 +1,4 @@
-import { FEEDBACK_ASSERTION, UI_FEEDBACK, matchesPattern } from './lib.mjs'
+import { FEEDBACK_ASSERTION, PERSISTENT_FEEDBACK, UI_FEEDBACK, matchesPattern } from './lib.mjs'
 
 export function requireComparison(base, head) {
   if (!base || !head || /^0+$/.test(base) || /^0+$/.test(head)) {
@@ -20,6 +20,7 @@ export function validateEvidenceModel({
   const current = surfaces ?? []
 
   for (const surface of current) {
+    if (typeof surface.critical !== 'boolean') errors.push((surface.id || 'surface') + ': critical boolean required')
     if (!surface.id || !Array.isArray(surface.sourcePatterns) || !surface.sourcePatterns.length) {
       errors.push('surface entry missing id/sourcePatterns')
       continue
@@ -41,6 +42,9 @@ export function validateEvidenceModel({
       const feedbackText = surface.feedbackFiles.map(readFile).join('\n')
       if (!UI_FEEDBACK.test(feedbackText)) {
         errors.push(surface.id + ': no observable UI feedback marker in declared feedbackFiles')
+      }
+      if (surface.critical === true && !PERSISTENT_FEEDBACK.test(feedbackText)) {
+        errors.push(surface.id + ': critical write requires persistent feedback; toast-only is insufficient')
       }
     }
 
