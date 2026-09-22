@@ -9,7 +9,11 @@
     "markerFunction": "private.advance_runtime_schema_contract",
     "requireExactRuntimeMigration": true,
     "localReplayOnDatabaseImpact": true,
-    "productionAutoMigrationAllowed": false
+    "productionAutoMigrationAllowed": false,
+    "lineageStartVersion": 60,
+    "lineageManifestTable": "private.runtime_schema_required_migrations",
+    "snapshotFunction": "public.runtime_schema_contract_snapshot",
+    "requireCompleteMigrationLineage": true
   },
   "impact": {
     "databaseDeep": [
