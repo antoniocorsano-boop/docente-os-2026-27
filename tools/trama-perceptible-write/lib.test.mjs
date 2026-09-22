@@ -32,3 +32,10 @@ test('glob matcher binds evidence to the declared surface', () => {
   assert.equal(matchesPattern('src/features/**/actions.ts','src/features/lesson/actions.ts'), true)
   assert.equal(matchesPattern('src/features/**/actions.ts','src/other/file.ts'), false)
 })
+
+
+test('explicit markers resolve ambiguous custom code', () => {
+  assert.equal(isMutationCandidate('function updatePreview() {}'), false)
+  assert.equal(isMutationCandidate('/* @trama-write */ function createCustomRecord() {}'), true)
+  assert.equal(isMutationCandidate('/* @trama-readonly */ localStorage.setItem("x","y")'), false)
+})
