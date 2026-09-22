@@ -62,7 +62,10 @@ export function LessonDesignTools({
       <div className="lessonDesignContract">
         <strong>La sequenza canonica resta intatta.</strong>
         <p>Frasi, eventi, micro-video, verifiche e materiali entrano nella lezione solo dopo una tua scelta esplicita. Le proposte degli strumenti compariranno qui prima di essere usate in classe.</p>
-        <div aria-label="Tipi di attivazione previsti"><span>Frase</span><span>Evento</span><span>Micro-video</span><span>Domanda</span><span>Verifica rapida</span></div>
+        <div className="lessonDesignKinds" aria-label="Tipi previsti, non interattivi">
+          <small>Tipi previsti · non sono comandi</small>
+          <span>Frase · Evento · Micro-video · Domanda · Verifica rapida</span>
+        </div>
       </div>
 
       {!activationQuestionActive ? (
@@ -255,6 +258,7 @@ function AcceptedItem({
       <div>
         <span>{extensionKindLabel(extension.kind)}</span>
         <strong>{extension.title}</strong>
+        {!isResource(extension.kind) ? <p className="lessonDesignAcceptedBody">{extension.body}</p> : null}
         <small>{placementLabel(extension)} · {sourceLabel(extension)}</small>
       </div>
       <div>
