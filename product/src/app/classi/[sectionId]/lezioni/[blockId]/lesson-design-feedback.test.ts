@@ -1,3 +1,4 @@
+// TRAMA-PW-01: perceptible write contract regression coverage.
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
