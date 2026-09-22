@@ -36,3 +36,11 @@ test('activation question tool is not duplicated once an active proposal exists'
   assert.ok(source.includes('DOMANDA GUIDA · LOCALE'))
   assert.ok(source.includes('puoi modificarla o scartarla prima di inserirla nella sequenza'))
 })
+
+
+test('accepted lesson additions keep their effective text visible before classroom use', () => {
+  assert.ok(source.includes('lessonDesignAcceptedBody'))
+  assert.ok(source.includes('{extension.body}'))
+  assert.ok(source.includes('Tipi previsti · esempi, non comandi'))
+  assert.ok(source.includes('aria-label="Tipi previsti, non interattivi"'))
+})
