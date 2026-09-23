@@ -49,3 +49,7 @@ Prima del merge:
 - nessun thread aperto;
 - Render preview sulla stessa base `develop`;
 - verifica TRAMA-PW-01 per la scrittura percepibile.
+
+## Design classification
+
+**COMPATIBLE** — la slice riorganizza la superficie esistente con focus singolo e progressive disclosure, senza introdurre una nuova grammatica visuale o modificare il design system.
