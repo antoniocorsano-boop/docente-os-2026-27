@@ -28,7 +28,18 @@ test('lesson design feedback is bound to the actual server action result', () =>
 })
 
 test('all lesson-design writes declare an explicit intent', () => {
-  for (const intent of ['propose-question', 'accept', 'remove', 'revise', 'attach-knowledge']) {
+  for (const intent of ['propose-question', 'accept', 'remove', 'revise', 'attach-knowledge', 'attach-atlas']) {
     assert.match(toolsSource, new RegExp('name="designIntent" value="' + intent + '"'))
   }
+})
+
+
+test('Atlas proposal keeps provenance visible and requires an explicit teacher write', () => {
+  assert.match(toolsSource, /<strong>Da Atlas<\/strong>/)
+  assert.match(toolsSource, /Controlla su Atlas/)
+  assert.match(toolsSource, /name="designIntent" value="attach-atlas"/)
+  assert.match(toolsSource, /Provenienza:/)
+  assert.match(actionsSource, /sourceKind: 'ATLAS'/)
+  assert.match(actionsSource, /sourceRef: `atlas:\$\{atlasMaterial\.materialId\}`/)
+  assert.match(actionsSource, /resolveAtlasMaterialSuggestion/)
 })
