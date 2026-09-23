@@ -2,5 +2,20 @@
   "contract": "TRAMA-PW-01",
   "version": 1,
   "product": "Docente OS",
-  "surfaces": []
+  "surfaces": [
+    {
+      "id": "lesson-design-extension-write",
+      "critical": true,
+      "sourcePatterns": [
+        "product/src/app/classi/[sectionId]/lezioni/[blockId]/design-actions.ts",
+        "product/src/core/infrastructure/supabase/supabase-lesson-design-repository.ts"
+      ],
+      "feedbackFiles": [
+        "product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-design-tools.tsx"
+      ],
+      "testFiles": [
+        "product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-design-feedback.test.ts"
+      ]
+    }
+  ]
 }
