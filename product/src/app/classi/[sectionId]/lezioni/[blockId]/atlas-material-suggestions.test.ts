@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  activeAtlasMaterialIds,
   buildAtlasLessonSuggestions,
   resolveAtlasMaterialSuggestion,
 } from './atlas-material-suggestions'
@@ -42,4 +43,27 @@ test('accepted Atlas material is not proposed a second time', () => {
     uda: '2-01',
     excludedMaterialIds: new Set(['m4']),
   }).length, 0)
+})
+
+
+test('dismissed Atlas material becomes available again after removal from the lesson', () => {
+  const excluded = activeAtlasMaterialIds([
+    { sourceRef: 'atlas:m4', status: 'DISMISSED' },
+  ])
+  assert.equal(excluded.has('m4'), false)
+
+  const items = buildAtlasLessonSuggestions({
+    compactSectionLabel: '2C',
+    blockId: 'B01',
+    uda: '2-01',
+    excludedMaterialIds: excluded,
+  })
+  assert.equal(items.length, 1)
+  assert.equal(items[0].materialId, 'm4')
+})
+
+test('active Atlas material remains suppressed while attached or pending', () => {
+  for (const status of ['PROPOSED', 'MODIFIED', 'ACCEPTED']) {
+    assert.equal(activeAtlasMaterialIds([{ sourceRef: 'atlas:m4', status }]).has('m4'), true)
+  }
 })
