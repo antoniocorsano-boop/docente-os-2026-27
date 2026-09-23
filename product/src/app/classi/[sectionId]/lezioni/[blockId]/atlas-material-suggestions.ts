@@ -57,3 +57,14 @@ export function resolveAtlasMaterialSuggestion(input: {
     excludedMaterialIds: new Set(),
   }).find((item) => item.materialId === input.materialId) ?? null
 }
+
+
+export function activeAtlasMaterialIds(extensions: Array<{ sourceRef: string | null; status: string }>): Set<string> {
+  return new Set(
+    extensions.flatMap((extension) =>
+      extension.status !== 'DISMISSED' && extension.sourceRef?.startsWith('atlas:')
+        ? [extension.sourceRef.slice('atlas:'.length)]
+        : [],
+    ),
+  )
+}
