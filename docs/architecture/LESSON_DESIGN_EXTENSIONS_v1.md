@@ -82,6 +82,7 @@ Every extension carries a source kind and optional source reference/label:
 
 - `EDITORIAL_KNOWLEDGE`;
 - `KNOWLEDGE`;
+- `ATLAS` — risorsa pubblica Atlas proposta a Docente OS, con identità/versione/stato/provenance preservati;
 - `WEB`;
 - `AI_TOOL`;
 - `TEACHER`.
@@ -89,6 +90,21 @@ Every extension carries a source kind and optional source reference/label:
 This contract intentionally separates provenance from authority. A web result, an AI-produced micro-video or an editorial suggestion can be useful source material but cannot become accepted teaching sequence content without the teacher.
 
 ## Current v1 tools
+
+### Atlas proposal
+
+Atlas può proporre una risorsa pubblica attraverso lo stesso confine umano delle Lesson Design Extensions, senza diventare autorità curricolare.
+
+Per ECO-02/P1 il primo slice operativo è deliberatamente ristretto a **2C · B01 · UDA 2-01** e alla risorsa Atlas `m4` / `2c-tec-02`. Il server risolve autonomamente l'identità ammessa e non accetta URL, titolo o provenance arbitrari dal browser.
+
+La UI deve mostrare almeno:
+- origine **Atlas**;
+- identità materiale e lezione Atlas;
+- versione e stato;
+- URL pubblico controllabile;
+- motivazione della pertinenza.
+
+Solo il clic esplicito **Usa in questa lezione** crea e accetta il binding `sourceKind=ATLAS`. La risorsa resta rimovibile dalla lezione. Questa operazione non modifica Arena e non implementa il flusso inverso Docente OS → Atlas.
 
 ### Knowledge attachment
 
