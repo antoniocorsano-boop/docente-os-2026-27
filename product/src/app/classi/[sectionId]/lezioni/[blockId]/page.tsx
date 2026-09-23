@@ -23,6 +23,7 @@ import LessonLiveClient from './lesson-live-client'
 import LessonObserveClient from './lesson-observe-client'
 import LessonCloseClient from './lesson-close-client'
 import { buildLessonMaterialSuggestions } from './lesson-material-suggestions'
+import { buildAtlasLessonSuggestions } from './atlas-material-suggestions'
 import { OpenDesignReview } from './open-design-review'
 import './lesson-workspace.css'
 import './lesson-design-tools.css'
@@ -128,6 +129,16 @@ export default async function LessonWorkspacePage({
   ).values())
 
   const compactSectionLabel = `${GRADE_NUMBER[section.grade]}${section.sectionCode}`
+  const atlasSuggestions = buildAtlasLessonSuggestions({
+    compactSectionLabel,
+    blockId: block.id,
+    uda: block.uda,
+    excludedMaterialIds: new Set(
+      extensions.flatMap((extension) => extension.sourceRef?.startsWith('atlas:')
+        ? [extension.sourceRef.slice('atlas:'.length)]
+        : []),
+    ),
+  })
   const knowledgeSuggestions = buildLessonMaterialSuggestions({
     items: knowledgeItems,
     grade: GRADE_QUERY[section.grade],
@@ -206,6 +217,7 @@ export default async function LessonWorkspacePage({
           projection={projection}
           extensions={extensions}
           knowledgeSuggestions={knowledgeSuggestions}
+          atlasSuggestions={atlasSuggestions}
           progress={progressView}
           udaProgress={udaProgressView}
           approval={{
