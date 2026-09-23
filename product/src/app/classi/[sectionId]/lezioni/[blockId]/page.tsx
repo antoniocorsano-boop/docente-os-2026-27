@@ -23,7 +23,7 @@ import LessonLiveClient from './lesson-live-client'
 import LessonObserveClient from './lesson-observe-client'
 import LessonCloseClient from './lesson-close-client'
 import { buildLessonMaterialSuggestions } from './lesson-material-suggestions'
-import { buildAtlasLessonSuggestions } from './atlas-material-suggestions'
+import { activeAtlasMaterialIds, buildAtlasLessonSuggestions } from './atlas-material-suggestions'
 import { OpenDesignReview } from './open-design-review'
 import './lesson-workspace.css'
 import './lesson-design-tools.css'
@@ -133,11 +133,7 @@ export default async function LessonWorkspacePage({
     compactSectionLabel,
     blockId: block.id,
     uda: block.uda,
-    excludedMaterialIds: new Set(
-      extensions.flatMap((extension) => extension.sourceRef?.startsWith('atlas:')
-        ? [extension.sourceRef.slice('atlas:'.length)]
-        : []),
-    ),
+    excludedMaterialIds: activeAtlasMaterialIds(extensions),
   })
   const knowledgeSuggestions = buildLessonMaterialSuggestions({
     items: knowledgeItems,
