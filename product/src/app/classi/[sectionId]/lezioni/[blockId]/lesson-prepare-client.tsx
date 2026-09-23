@@ -13,6 +13,7 @@ import {
 import { buildLessonBrief } from '@/core/presentation/lesson-brief'
 import { LessonDesignTools } from './lesson-design-tools'
 import type { LessonKnowledgeSuggestion } from './lesson-material-suggestions'
+import type { LessonAtlasSuggestion } from './atlas-material-suggestions'
 import { approveLessonPreparationAndProceed } from './preparation-approval-actions'
 import styles from './lesson-live.module.css'
 
@@ -38,6 +39,7 @@ export default function LessonPrepareClient({
   projection,
   extensions,
   knowledgeSuggestions,
+  atlasSuggestions,
   progress,
   udaProgress,
   approval,
@@ -48,6 +50,7 @@ export default function LessonPrepareClient({
   projection: HumanTaskLessonProjection
   extensions: LessonDesignExtension[]
   knowledgeSuggestions: LessonKnowledgeSuggestion[]
+  atlasSuggestions: LessonAtlasSuggestion[]
   progress: Progress
   udaProgress: { completed: number; total: number }
   approval: {
@@ -169,6 +172,7 @@ export default function LessonPrepareClient({
               projectionId={projection.projectionId}
               extensions={extensions}
               knowledgeSuggestions={knowledgeSuggestions}
+              atlasSuggestions={atlasSuggestions}
             />
 
             <details className={styles.evidence}>

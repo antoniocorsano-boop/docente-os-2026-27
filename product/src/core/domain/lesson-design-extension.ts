@@ -9,7 +9,7 @@ export type LessonDesignExtensionKind =
   | 'TEACHING_ADJUSTMENT'
 
 export type LessonDesignExtensionStatus = 'PROPOSED' | 'MODIFIED' | 'ACCEPTED' | 'DISMISSED'
-export type LessonDesignExtensionSourceKind = 'EDITORIAL_KNOWLEDGE' | 'KNOWLEDGE' | 'WEB' | 'AI_TOOL' | 'TEACHER'
+export type LessonDesignExtensionSourceKind = 'EDITORIAL_KNOWLEDGE' | 'KNOWLEDGE' | 'ATLAS' | 'WEB' | 'AI_TOOL' | 'TEACHER'
 export type LessonDesignInsertionPosition = 'START' | 'BEFORE_STEP' | 'AFTER_STEP' | 'END'
 
 export type LessonDesignDecision = {

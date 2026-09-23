@@ -13,6 +13,7 @@ import {
   type DesignWriteState,
 } from './design-actions'
 import type { LessonKnowledgeSuggestion } from './lesson-material-suggestions'
+import type { LessonAtlasSuggestion } from './atlas-material-suggestions'
 export type { LessonKnowledgeSuggestion } from './lesson-material-suggestions'
 
 const ACTIVATION_QUESTION_TOOL_ID = 'LESSON_ACTIVATION_QUESTION_V1'
@@ -23,12 +24,14 @@ export function LessonDesignTools({
   projectionId,
   extensions,
   knowledgeSuggestions,
+  atlasSuggestions,
 }: {
   sectionId: string
   blockId: string
   projectionId: string
   extensions: LessonDesignExtension[]
   knowledgeSuggestions: LessonKnowledgeSuggestion[]
+  atlasSuggestions: LessonAtlasSuggestion[]
 }) {
   const proposals = extensions.filter(
     (extension) =>
@@ -224,6 +227,37 @@ export function LessonDesignTools({
         </div>
       ) : null}
 
+      {atlasSuggestions.length ? (
+        <div className="lessonKnowledgeSuggestions" aria-label="Risorse Atlas proposte per questa lezione">
+          <div className="lessonDesignSubheading"><strong>Da Atlas</strong><small>{atlasSuggestions.length}</small></div>
+          <p className="lessonKnowledgeLead">Atlas propone una risorsa pubblica con identità, stato e provenienza espliciti. Resta una proposta: puoi controllarla, usarla oppure ignorarla senza modificare il curricolo Arena.</p>
+          {atlasSuggestions.map((item) => (
+            <article key={item.materialId}>
+              <div>
+                <span>ATLAS · {item.kind.toUpperCase()} · {item.state}</span>
+                <strong>{item.title}</strong>
+                <p>{item.summary}</p>
+                <small className="lessonSuggestionReason">Perché qui: {item.reason}</small>
+                <small className="lessonSuggestionReason">Provenienza: {item.provenance} · versione {item.version}</small>
+                <div className="lessonSuggestionTip">
+                  <b>TIP</b>
+                  <p>{item.usageTip}</p>
+                </div>
+              </div>
+              <div>
+                <a href={item.publicUrl} target="_blank" rel="noreferrer">Controlla su Atlas</a>
+                <form action={writeAction}>
+                  <input type="hidden" name="designIntent" value="attach-atlas" />
+                  <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
+                  <input type="hidden" name="atlasMaterialId" value={item.materialId} />
+                  <DesignActionSubmit idle="Usa in questa lezione" pendingLabel="Aggiunta…" />
+                </form>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
       {knowledgeSuggestions.length ? (
         <div className="lessonKnowledgeSuggestions" aria-label="Suggerimenti contestuali per questa lezione">
           <div className="lessonDesignSubheading"><strong>Potrebbe servirti qui</strong><small>{knowledgeSuggestions.length}</small></div>
@@ -278,6 +312,9 @@ function AcceptedItem({
   const knowledgeHref = extension.sourceRef?.startsWith('knowledge:')
     ? `/knowledge/${encodeURIComponent(extension.sourceRef.slice('knowledge:'.length))}`
     : null
+  const atlasHref = extension.sourceKind === 'ATLAS' && typeof extension.payload.publicUrl === 'string'
+    ? extension.payload.publicUrl
+    : null
 
   return (
     <article className="lessonDesignAcceptedItem">
@@ -289,6 +326,7 @@ function AcceptedItem({
       </div>
       <div>
         {knowledgeHref ? <Link href={knowledgeHref}>Apri</Link> : null}
+        {atlasHref ? <a href={atlasHref} target="_blank" rel="noreferrer">Apri su Atlas</a> : null}
         {!isResource(extension.kind) ? (
           <EditExtensionForm
             extension={extension}
@@ -378,7 +416,8 @@ function extensionKindLabel(kind: LessonDesignExtension['kind']) {
 
 function sourceLabel(extension: LessonDesignExtension) {
   return extension.sourceLabel || (
-    extension.sourceKind === 'EDITORIAL_KNOWLEDGE' ? 'Conoscenza editoriale'
+    extension.sourceKind === 'ATLAS' ? 'Atlas'
+      : extension.sourceKind === 'EDITORIAL_KNOWLEDGE' ? 'Conoscenza editoriale'
       : extension.sourceKind === 'KNOWLEDGE' ? 'Conoscenza'
         : extension.sourceKind === 'WEB' ? 'Fonte web'
           : extension.sourceKind === 'AI_TOOL' ? 'Strumento assistito'
