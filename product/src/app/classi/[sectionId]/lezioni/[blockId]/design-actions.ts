@@ -19,6 +19,7 @@ import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supa
 import { humanizeKnowledgeTitle } from '@/core/presentation/product-language'
 import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 import { textbookMaterialId } from './lesson-material-suggestions'
+import { resolveAtlasMaterialSuggestion } from './atlas-material-suggestions'
 
 export type DesignNotice =
   | 'accepted'
@@ -33,7 +34,7 @@ export type DesignWriteState = {
   revision: number
 }
 
-type DesignWriteIntent = 'accept' | 'remove' | 'revise' | 'propose-question' | 'attach-knowledge'
+type DesignWriteIntent = 'accept' | 'remove' | 'revise' | 'propose-question' | 'attach-knowledge' | 'attach-atlas'
 
 export async function runLessonDesignWrite(
   previousState: DesignWriteState,
@@ -95,6 +96,51 @@ export async function runLessonDesignWrite(
       )
       revalidateLesson(lesson.sectionId, lesson.blockId)
       return nextDesignWriteState(previousState, 'proposal-created')
+    }
+
+    if (intent === 'attach-atlas') {
+      const atlasMaterialId = requiredText(formData, 'atlasMaterialId')
+      const atlasMaterial = resolveAtlasMaterialSuggestion({
+        compactSectionLabel: lesson.compactSectionLabel,
+        blockId: lesson.blockId,
+        uda: lesson.uda,
+        materialId: atlasMaterialId,
+      })
+      if (!atlasMaterial) throw new Error('Atlas material is outside the governed ECO-02 lesson context')
+
+      const repository = new SupabaseLessonDesignRepository()
+      const proposal = await repository.addProposal(lesson.designContext, {
+        sectionId: lesson.sectionId,
+        canonicalPlanAssetId: lesson.designContext.canonicalPlanAssetId,
+        canonicalGenerationId: lesson.designContext.canonicalGenerationId,
+        blockId: lesson.blockId,
+        projectionId: lesson.designContext.projectionId,
+        kind: 'TEACHER_RESOURCE',
+        insertionPosition: 'START',
+        anchorStepId: null,
+        title: atlasMaterial.title,
+        body: atlasMaterial.summary,
+        cue: null,
+        minutes: null,
+        sourceKind: 'ATLAS',
+        sourceRef: `atlas:${atlasMaterial.materialId}`,
+        sourceLabel: `Atlas · ${atlasMaterial.title}`,
+        payload: {
+          materialId: atlasMaterial.materialId,
+          atlasLessonId: atlasMaterial.lessonId,
+          atlasVersion: atlasMaterial.version,
+          atlasState: atlasMaterial.state,
+          publicUrl: atlasMaterial.publicUrl,
+          provenance: atlasMaterial.provenance,
+          linkage: 'ECO02_P1_ATLAS_PROPOSAL',
+        },
+      })
+
+      // Atlas propone; il clic esplicito del docente autorizza solo l'uso in questa lezione.
+      // Non modifica Arena e non autorizza alcun flusso Docente OS → Atlas.
+      await repository.accept(lesson.designContext, proposal.id)
+      revalidateLesson(lesson.sectionId, lesson.blockId)
+      return nextDesignWriteState(previousState, 'material-attached')
     }
 
     const assetId = requiredText(formData, 'assetId')
@@ -210,9 +256,12 @@ async function requireLessonContext(formData: FormData) {
     projectionId,
   }
 
+  const compactSectionLabel = `${section.grade === 'PRIMA' ? '1' : section.grade === 'SECONDA' ? '2' : '3'}${section.sectionCode}`
+
   return {
     designContext,
     sectionId,
+    compactSectionLabel,
     blockId,
     uda: block.uda,
     pack: block.pack,
@@ -242,6 +291,7 @@ function requiredDesignIntent(formData: FormData): DesignWriteIntent {
     && value !== 'revise'
     && value !== 'propose-question'
     && value !== 'attach-knowledge'
+    && value !== 'attach-atlas'
   ) {
     throw new Error('Unsupported lesson design write')
   }
