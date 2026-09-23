@@ -209,3 +209,8 @@ Anonymous student self-assessment/lesson/UDA feedback will be a separate subsyst
 - Accepted additions remain visible after refresh.
 - Removing an addition does not remove its Knowledge source or mutate the annual plan.
 - No external AI/news/video provider is falsely claimed as connected by this tranche.
+
+
+## Design classification
+
+**COMPATIBLE.** The Atlas proposal reuses the existing Lesson Design proposal/resource pattern, canonical design tokens and teacher-confirmation boundary. It adds provenance semantics and a governed resource source; it does not introduce a parallel visual system.
