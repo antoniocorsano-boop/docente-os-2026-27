@@ -390,3 +390,70 @@ La specifica rende percepibile in Docente OS la separazione dei domini TRAMA:
 - la decisione professionale resta distinta dalla fonte.
 
 Questo sostiene il principio: **provenienza visibile, authority preservata, decisione umana esplicita**.
+
+
+## 27. Requisiti derivati dal benchmark di maturità
+
+La specifica adotta esplicitamente i seguenti requisiti, ricavati dal confronto con Figma, GitHub, Slack, Microsoft Adaptive Cards e Notion.
+
+### M1 — Provenance persistente
+L'adozione, la modifica locale, la rimozione o la riproposta non devono riscrivere silenziosamente l'origine primaria.
+
+### M2 — Attribution non ambigua
+Il marker ordinario usa sempre **segno/icona + label umana**. L'icon-only resta eccezione governata.
+
+### M3 — Stato separato
+Source provenance e stato operativo/professionale devono essere componenti semanticamente distinti e testabili separatamente.
+
+### M4 — Fonte recuperabile
+Quando esiste un riferimento navigabile o un dettaglio utile, la UI deve consentire di recuperarlo tramite link o progressive disclosure senza rendere il badge stesso necessariamente interattivo.
+
+Per Atlas, `publicUrl`, versione e identificativi restano nel dettaglio/provenance payload.
+
+### M5 — Host-native
+Il contenuto proveniente da Atlas, Web, Editoriale o strumenti assistiti usa layout, token, responsive e accessibilità di Docente OS.
+
+Il source mark identifica l'origine; **non importa il design system della fonte**.
+
+### M6 — Non-impersonation
+Una fonte non può essere presentata visivamente come “Docente”, “Conoscenza” o contenuto nativo Docente OS se il `sourceKind` o il provenance payload indicano un'origine differente.
+
+### M7 — Progressive disclosure
+La vista ordinaria mostra il minimo utile:
+- mark/icon;
+- label.
+
+Dettagli estesi:
+- sistema/fonte completa;
+- versione;
+- binding;
+- URL;
+- identificativi;
+- eventuale stato della fonte.
+
+### M8 — Mapping deterministico
+Dato lo stesso `sourceKind`, il registry deve produrre lo stesso marker primario su tutte le superfici migrate. Le feature non possono ridefinire localmente label o icona.
+
+## 28. Anti-pattern espliciti
+
+Sono non conformi:
+
+- rimuovere “Atlas” dopo che la risorsa è stata adottata;
+- sostituire `✦ Atlas` con un generico “Materiale” quando il sourceKind resta `ATLAS`;
+- mostrare “Docente OS” come provenienza universale solo perché il contenuto è visualizzato dentro Docente OS;
+- usare il colore come unico identificatore di fonte;
+- fondere in una sola pill “Atlas · Pronto · Verificato · Ufficiale”;
+- incorporare una mini-card con palette/layout Atlas dentro Lesson Design;
+- cambiare marker tra proposta e materiale allegato;
+- usare icone diverse per la stessa fonte in superfici differenti;
+- rendere una proposta AI indistinguibile da un contenuto inserito dal docente.
+
+## 29. Acceptance criteria integrativi
+
+Oltre ai criteri P1 già definiti, la prima implementazione deve dimostrare:
+
+11. **persistence:** la stessa risorsa Atlas mantiene lo stesso marker attraverso PROPOSED → ACCEPTED → DISMISSED → riproposta;
+12. **determinismo:** `SourceProvenance(ATLAS)` produce lo stesso output semantico ovunque;
+13. **non-impersonation:** nessun sourceKind esterno viene rappresentato come Docente/Conoscenza;
+14. **host-native:** nessuna provenance introduce CSS/token/layout specifico del prodotto sorgente oltre al mark autorizzato;
+15. **source recovery:** quando disponibile, il dettaglio consente di risalire alla fonte senza sovraccaricare la card primaria.
