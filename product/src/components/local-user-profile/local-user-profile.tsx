@@ -52,7 +52,7 @@ export function LocalTeacherProfileCard() {
         <summary><span aria-hidden>ⓘ</span> Come viene usato</summary>
         <div className="settingsContextDisclosureBody">
           <div><span>Serve a</span><strong>Personalizzare saluto e avatar.</strong></div>
-          <div><span>Resta dove</span><strong>Solo in questo browser/dispositivo.</strong></div>
+          <div><span>Dove resta</span><strong>Solo in questo browser/dispositivo.</strong></div>
           <div><span>Non modifica</span><strong>Account, autorizzazioni, scuola, classi, Orario o documenti istituzionali.</strong></div>
         </div>
       </details>
