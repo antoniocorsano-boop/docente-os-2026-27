@@ -1,0 +1,31 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.2;
+  color: inherit;
+  vertical-align: middle;
+}
+
+.mark {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+}
+
+.atlasMark {
+  display: inline-block;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.docenteOsMark {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+}
