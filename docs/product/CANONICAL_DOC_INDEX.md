@@ -52,6 +52,7 @@ Principio:
 - `docs/architecture/P2_PLANNER.md` — Planner/Oggi;
 - `docs/architecture/KB_INGESTION.md` — Knowledge ingestion;
 - `docs/architecture/SETTINGS_CANONICAL_SPEC.md` — contesto professionale personale;
+- `docs/architecture/LOCAL_USER_PROFILE_AND_SHELL_CANONICAL.md` — profilo personale locale, saluto, avatar e chrome mobile;
 - `docs/architecture/ACCOUNT_SECURITY_CANONICAL_SPEC.md` — account, password, MFA e sessioni;
 - `docs/architecture/TIMETABLE_CANONICAL_SPEC.md` — Orario;
 - `docs/architecture/WORK_TIME_MENTAL_MODEL.md` — significato di Attività, Piano, Orario, Calendario e Oggi;
