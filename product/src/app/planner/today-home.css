@@ -1,0 +1,347 @@
+/* Today/Home polish — uses only governed design tokens. */
+
+.plannerSurface{
+  display:grid;
+  gap:18px;
+}
+
+.todayHomeHeader{
+  margin:0;
+  padding:10px 2px 2px;
+}
+
+.todayHomeDate{
+  margin:0 0 8px;
+  color:var(--ink-faint);
+  font-size:13px;
+  font-weight:750;
+  letter-spacing:.02em;
+  text-transform:capitalize;
+}
+
+.todayHomeGreeting{
+  margin:0 0 3px;
+  color:var(--ink);
+  font-size:17px;
+  font-weight:720;
+  letter-spacing:-.01em;
+}
+
+.todayHomeHeader h1{
+  letter-spacing:-.045em;
+}
+
+.todayHomeHeader .plannerPurpose{
+  max-width:620px;
+  margin:10px 0 0;
+  color:var(--ink-soft);
+  font-size:16px;
+  line-height:1.55;
+}
+
+.todayHomeSummary{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:14px;
+}
+
+.todayHomeSummary>span{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  min-height:32px;
+  padding:0 11px;
+  border:1px solid var(--line);
+  border-radius:var(--radius-pill);
+  background:var(--surface);
+  color:var(--ink-soft);
+  font-size:12px;
+  font-weight:700;
+}
+
+.todayFocusCard{
+  position:relative;
+  overflow:hidden;
+  margin:0;
+  border:1px solid var(--line);
+  background:linear-gradient(145deg,var(--surface) 0%,var(--surface) 62%,var(--brand-soft) 145%);
+  box-shadow:var(--shadow-soft);
+}
+
+.todayFocusCard::before{
+  content:'';
+  position:absolute;
+  inset:0 auto 0 0;
+  width:4px;
+  background:var(--brand);
+}
+
+.todayFocusCard .humanTaskFocusEyebrow{
+  letter-spacing:.11em;
+}
+
+.todayFocusCard h2{
+  max-width:760px;
+}
+
+.todayFocusCard .humanTaskMeta{
+  margin-top:16px;
+}
+
+.todayFocusActions .primary{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+
+.todayTimelineCard{
+  margin:0;
+  border:1px solid var(--line);
+  box-shadow:var(--shadow-soft);
+}
+
+.todayTimelineCard>summary{
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+
+.todaySectionCount{
+  display:grid;
+  place-items:center;
+  min-width:24px;
+  height:24px;
+  padding:0 7px;
+  border-radius:var(--radius-pill);
+  background:var(--brand-soft);
+  color:var(--brand-blue);
+  font-size:11px;
+  font-weight:850;
+}
+
+.todayTimelineList{
+  display:grid;
+}
+
+.todayTimelineRow{
+  display:grid;
+  grid-template-columns:70px minmax(0,1fr) 44px;
+  gap:14px;
+  align-items:center;
+  min-height:76px;
+  padding:13px 4px;
+  border-top:1px solid var(--line);
+}
+
+.todayTimelineRow:first-child{
+  border-top:0;
+}
+
+.todayTimelineRow.current{
+  position:relative;
+}
+
+.todayTimelineRow.current::before{
+  content:'';
+  position:absolute;
+  left:-12px;
+  width:3px;
+  height:36px;
+  border-radius:var(--radius-pill);
+  background:var(--brand);
+}
+
+.todayTimelineTime{
+  display:grid;
+  gap:2px;
+  align-self:start;
+}
+
+.todayTimelineTime strong{
+  color:var(--ink);
+  font-size:17px;
+  line-height:1.1;
+  letter-spacing:-.02em;
+}
+
+.todayTimelineTime span{
+  color:var(--ink-faint);
+  font-size:11px;
+  font-weight:700;
+}
+
+.todayTimelineContent{
+  min-width:0;
+}
+
+.todayTimelineContent h3{
+  margin:0;
+  color:var(--ink);
+  font-size:15px;
+  line-height:1.35;
+  font-weight:750;
+}
+
+.todayTimelineMeta{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-top:6px;
+  color:var(--ink-soft);
+  font-size:11px;
+  font-weight:700;
+}
+
+.todayNowBadge{
+  display:inline-flex;
+  align-items:center;
+  min-height:22px;
+  padding:0 8px;
+  border-radius:var(--radius-pill);
+  background:var(--brand-soft);
+  color:var(--brand-blue);
+}
+
+.todayTimelineAction{
+  display:grid;
+  place-items:center;
+  width:44px;
+  height:44px;
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  background:var(--surface);
+  color:var(--brand);
+}
+
+.todayTimelineAction:hover{
+  border-color:var(--line-strong);
+  background:var(--brand-soft);
+}
+
+.todayQuietSection{
+  margin:0;
+}
+
+.todayQuietSection>summary{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.todaySectionStatus{
+  margin-left:auto;
+  color:var(--ink-faint);
+  font-size:12px;
+  font-weight:650;
+}
+
+.plannerSurface>.humanTaskSecondary{
+  margin-top:0;
+}
+
+@media(max-width:719px){
+  .plannerSurface{
+    gap:14px;
+    padding-top:14px;
+  }
+
+  .todayHomeHeader{
+    padding:4px 10px 4px;
+  }
+
+  .todayHomeDate{
+    display:block;
+    margin-bottom:7px;
+    font-size:12px;
+  }
+
+  .todayHomeGreeting{
+    margin-bottom:2px;
+    font-size:16px;
+  }
+
+  .todayHomeHeader h1{
+    font-size:36px;
+  }
+
+  .todayHomeHeader .plannerPurpose{
+    margin-top:8px;
+    font-size:15px;
+    line-height:1.5;
+  }
+
+  .todayHomeSummary{
+    margin-top:12px;
+  }
+
+  .todayFocusCard{
+    border-radius:var(--radius-lg);
+  }
+
+  .todayFocusCard::before{
+    width:3px;
+  }
+
+  .todayFocusCard h2{
+    font-size:30px;
+    line-height:1.08;
+    letter-spacing:-.035em;
+  }
+
+  .todayTimelineCard{
+    border-radius:var(--radius-lg);
+  }
+
+  .todayTimelineRow{
+    grid-template-columns:58px minmax(0,1fr) 44px;
+    gap:10px;
+    min-height:72px;
+    padding:12px 0;
+  }
+
+  .todayTimelineTime strong{
+    font-size:16px;
+  }
+
+  .todayTimelineContent h3{
+    display:-webkit-box;
+    overflow:hidden;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:2;
+  }
+
+  .todaySectionStatus{
+    max-width:46%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+}
+
+@media(max-width:390px){
+  .todayHomeHeader h1{
+    font-size:34px;
+  }
+
+  .todayHomeSummary>span{
+    padding:0 9px;
+    font-size:11px;
+  }
+
+  .todayFocusCard h2{
+    font-size:27px;
+  }
+
+  .todayTimelineRow{
+    grid-template-columns:52px minmax(0,1fr) 40px;
+    gap:8px;
+  }
+
+  .todayTimelineAction{
+    width:40px;
+    height:40px;
+  }
+}
