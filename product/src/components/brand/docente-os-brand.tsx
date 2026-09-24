@@ -2,7 +2,7 @@ import { type CSSProperties, useId } from 'react'
 import { cn } from '@/lib/utils'
 import { DOCENTE_OS_MARK_COLORS, DOCENTE_OS_MARK_GEOMETRY } from './brand-mark-geometry'
 
-export type BrandMarkVariant = 'light' | 'dark' | 'reduced'
+export type BrandMarkVariant = 'light' | 'dark' | 'reduced' | 'monochrome'
 
 export type BrandMarkProps = {
   size?: number
@@ -101,6 +101,17 @@ export function DocenteOsLockup({
 }
 
 function markColors(variant: BrandMarkVariant) {
+  if (variant === 'monochrome') {
+    return {
+      bodyStart: 'currentColor',
+      bodyMiddle: 'currentColor',
+      bodyEnd: 'currentColor',
+      threadStart: 'currentColor',
+      threadEnd: 'currentColor',
+      dot: 'currentColor',
+    }
+  }
+
   if (variant === 'reduced') {
     return {
       bodyStart: DOCENTE_OS_MARK_COLORS.white,
