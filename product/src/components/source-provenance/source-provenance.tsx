@@ -6,6 +6,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { LessonDesignExtensionSourceKind } from '@/core/domain/lesson-design-extension'
+import { DocenteOsMark } from '@/components/brand/docente-os-brand'
 import { sourceProvenanceDefinition } from './source-provenance-registry'
 import styles from './source-provenance.module.css'
 
