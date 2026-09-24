@@ -1,8 +1,8 @@
 # DOCENTE OS — Home giornaliera / Daily Cockpit
 
-Data: 2026-09-11  
+Data: 2026-09-24  
 Stato: **CANONICAL**  
-Classificazione modifica: **COMPATIBLE** con il Product Experience Masterplan e con Design System V2.
+Classificazione modifica: **COMPATIBLE / PILOT-EVIDENCE UPDATE** con Teacher OS V1, Product Experience Masterplan e Design System V2.
 
 ## 1. Scopo
 
@@ -370,3 +370,107 @@ Questa specifica va letta insieme a:
 - `product/design/ACCESSIBILITY-RULES.md`.
 
 In caso di conflitto prevale l’ordine di autorità definito in `docs/product/CANONICAL_DOC_INDEX.md`.
+
+
+## 19. Evidenza pilot 2026-09-24 — Oggi non è il Planner
+
+La prova mobile reale del 24 settembre 2026 ha evidenziato una contraddizione semantica: la Home poteva mostrare **“Non hai attività che richiedono attenzione immediata”** mentre, nello stesso viewport, risultava una **prossima lezione reale** derivata dall'Orario.
+
+L'errore non era di persistenza ma di gerarchia del read model: la pagina trattava il Planner come focus primario e la realtà temporale del docente come pannello secondario.
+
+Decisione canonica:
+
+> **Oggi è la cockpit della giornata professionale del docente. Il Planner è una delle fonti di Oggi, non il suo modello dominante.**
+
+Conseguenze:
+
+1. se esiste una lezione o un impegno temporale corrente/prossimo, l'empty state del Planner non può dominare il primo viewport;
+2. i contatori Planner devono essere qualificati come attività, oppure omessi quando non aggiungono informazione;
+3. una lezione dell'Orario deve comparire nella giornata/calendario operativo tramite proiezione composta, senza essere duplicata come `calendar_event`;
+4. gli eventi del Calendario, le occorrenze dell'Orario e le attività Planner restano semanticamente distinti e mantengono provenance;
+5. sezioni integralmente vuote non devono produrre stack di empty state ripetuti;
+6. il copy tecnico (“Calendario non classificato”, fallback, stato di composizione) resta disclosure secondaria e non compete con classe, orario e azione;
+7. sticky header e superfici mobili non possono coprire o rendere percettivamente ambiguo il contenuto durante lo scroll.
+
+## 20. TodayProjection — contratto applicativo
+
+La Home deve essere alimentata da un read model applicativo unico, **non persistente**, denominato `TodayProjection`.
+
+Responsabilità minime:
+
+```ts
+interface TodayProjection {
+  localDate: string
+  moment: 'BEFORE_DAY' | 'BEFORE_LESSON' | 'IN_LESSON' | 'AFTER_LESSON' | 'BETWEEN_LESSONS' | 'END_OF_DAY'
+  focus: TodayFocus | null
+  timeline: TodayTimelineItem[]
+  planner: {
+    overdue: PlannerTask[]
+    today: PlannerTask[]
+    waiting: PlannerTask[]
+  }
+  lessonReadiness: TodayLessonReadiness[]
+  closing: TodayClosingState
+}
+```
+
+`TodayProjection` compone i read model esistenti. Non introduce una nuova fonte di verità e non persiste snapshot propri.
+
+Ordine di composizione:
+
+```text
+Temporal Projection
++ PlannerTask
++ Lesson preparation/readiness
++ TeachingSession/closure state
+        ↓
+TodayProjection
+        ↓
+Oggi / Teacher Next Step
+```
+
+Il resolver del focus deve preferire la realtà professionale corrente/prossima rispetto all'assenza di task Planner.
+
+## 21. Modello di modifica dell'Orario dalla Home
+
+La Home deve distinguere due intenzioni umane.
+
+### Solo per oggi
+
+Una variazione puntuale non modifica la settimana tipo e non crea implicitamente una nuova versione Orario.
+
+Esempi:
+
+- lezione annullata;
+- cambio di orario per una data;
+- presenza aggiunta;
+- sostituzione/spostamento.
+
+L'effetto è una **Temporal Exception** riferita all'occorrenza/data.
+
+### Da questa data in poi
+
+Una modifica strutturale prepara una nuova versione dell'Orario con decorrenza esplicita.
+
+La Home non modifica mai silenziosamente la versione attiva.
+
+UI minima:
+
+- `Modifica`
+- `Solo per oggi`
+- `Cambia l'orario da questa data`
+
+Ogni write significativa deve rispettare TRAMA-PW-01 e produrre feedback esplicito, ad esempio `Modifica applicata solo a oggi`.
+
+## 22. Nuova anatomia prioritaria del primo viewport
+
+Ordine target:
+
+1. testata compatta: giorno/data e sintesi;
+2. **Adesso / Prossimo**: lezione, evento o task realmente più pertinente;
+3. accesso contestuale: classe, Prima della lezione, materiale o azione pertinente;
+4. **La mia giornata**: timeline composta;
+5. **Da fare oggi**: Planner, soltanto se informativo;
+6. chiusura / domani, progressivamente rilevante a fine giornata.
+
+Un giorno con una lezione prossima e zero task non è uno stato vuoto.
