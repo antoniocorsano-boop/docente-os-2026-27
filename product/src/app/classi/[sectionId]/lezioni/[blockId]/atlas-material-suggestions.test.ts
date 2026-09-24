@@ -67,3 +67,5 @@ test('active Atlas material remains suppressed while attached or pending', () =>
     assert.equal(activeAtlasMaterialIds([{ sourceRef: 'atlas:m4', status }]).has('m4'), true)
   }
 })
+
+// Design classification: COMPATIBLE — lifecycle regression coverage only; no new visual primitive.
