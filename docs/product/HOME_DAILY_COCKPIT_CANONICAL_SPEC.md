@@ -116,10 +116,13 @@ La soglia di “imminenza” è **parametro evolutivo**, non invariante. Valore 
 
 Mostra solo il contesto che aiuta ad agire:
 
+- saluto contestuale alla fascia della giornata: **Buongiorno / Buon pomeriggio / Buonasera**;
+- nome visualizzato del docente quando disponibile in `teacher_workspace_settings.teacher_display_name`;
 - giorno e data;
-- nome docente quando disponibile;
 - sintesi della giornata, ad esempio “4 lezioni · 1 da registrare”;
 - eventuale avviso umano “Orario provvisorio”.
+
+Regola: il saluto non deve dipendere da dati obbligatori. Se il docente non ha ancora indicato il proprio nome, la Home mostra soltanto il saluto temporale. Il nome non viene inferito da email o altri identificatori.
 
 La testata non deve occupare una porzione dominante del primo viewport mobile.
 
