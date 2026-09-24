@@ -19,6 +19,14 @@
   text-transform:capitalize;
 }
 
+.todayHomeGreeting{
+  margin:0 0 3px;
+  color:var(--ink);
+  font-size:17px;
+  font-weight:720;
+  letter-spacing:-.01em;
+}
+
 .todayHomeHeader h1{
   letter-spacing:-.045em;
 }
@@ -248,6 +256,11 @@
     display:block;
     margin-bottom:7px;
     font-size:12px;
+  }
+
+  .todayHomeGreeting{
+    margin-bottom:2px;
+    font-size:16px;
   }
 
   .todayHomeHeader h1{
