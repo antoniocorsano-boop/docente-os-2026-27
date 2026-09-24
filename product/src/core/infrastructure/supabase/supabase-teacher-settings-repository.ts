@@ -61,19 +61,12 @@ export class SupabaseTeacherSettingsRepository {
     // The common read path above is protected by RLS and needs no explicit user lookup.
     // Resolve the authenticated user only on the first-run creation path.
     const userId = await authenticatedUserId(supabase)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('display_name')
-      .eq('user_id', userId)
-      .maybeSingle()
-
     const { data, error } = await supabase
       .from('teacher_workspace_settings')
       .insert({
         workspace_id: workspaceId,
         academic_year_id: academicYearId,
         user_id: userId,
-        teacher_display_name: profile?.display_name?.trim() ?? '',
       })
       .select('*')
       .single()
@@ -95,7 +88,6 @@ export class SupabaseTeacherSettingsRepository {
         workspace_id: input.workspaceId,
         academic_year_id: input.academicYearId,
         user_id: userId,
-        teacher_display_name: normalizeSettingsText(input.teacherDisplayName, 160),
         school_name: normalizeSettingsText(input.schoolName, 240),
         school_code: normalizeNullable(input.schoolCode, 40),
         school_city: normalizeNullable(input.schoolCity, 120),
