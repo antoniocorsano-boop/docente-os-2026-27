@@ -8,6 +8,7 @@ import {
   type LessonDesignExtension,
 } from '@/core/domain/lesson-design-extension'
 import { teachingMaterialRoleLabel } from '@/core/domain/textbook-teaching-kit'
+import { SourceProvenance } from '@/components/source-provenance/source-provenance'
 import {
   runLessonDesignWrite,
   type DesignWriteState,
@@ -112,7 +113,7 @@ export function LessonDesignTools({
                 <span>{extensionKindLabel(extension.kind)}</span>
                 <strong>{extension.title}</strong>
                 <p>{extension.body}</p>
-                <small>{sourceLabel(extension)}</small>
+                <SourceProvenance kind={extension.sourceKind} />
               </div>
               <div className="lessonDesignProposalActions">
                 <EditExtensionForm
@@ -150,7 +151,7 @@ export function LessonDesignTools({
                 <span>RIPROGETTAZIONE</span>
                 <strong>{extension.title}</strong>
                 <p>{extension.body}</p>
-                <small>{sourceLabel(extension)}</small>
+                <SourceProvenance kind={extension.sourceKind} />
               </div>
               <div className="lessonDesignProposalActions">
                 <form action={writeAction}>
@@ -212,7 +213,8 @@ export function LessonDesignTools({
               <div>
                 <span>RIPROGETTAZIONE</span>
                 <strong>{extension.title}</strong>
-                <small>Decisione accettata · {sourceLabel(extension)}</small>
+                <small>Decisione accettata</small>
+                <SourceProvenance kind={extension.sourceKind} />
               </div>
               <div>
                 <form action={writeAction}>
@@ -234,7 +236,8 @@ export function LessonDesignTools({
           {atlasSuggestions.map((item) => (
             <article key={item.materialId}>
               <div>
-                <span>ATLAS · {item.kind.toUpperCase()} · {item.state}</span>
+                <SourceProvenance kind="ATLAS" />
+                <span>{item.kind.toUpperCase()} · {item.state}</span>
                 <strong>{item.title}</strong>
                 <p>{item.summary}</p>
                 <small className="lessonSuggestionReason">Perché qui: {item.reason}</small>
@@ -265,7 +268,8 @@ export function LessonDesignTools({
           {knowledgeSuggestions.map((item) => (
             <article key={item.assetId}>
               <div>
-                <span>{item.sourceKind === 'EDITORIAL_KNOWLEDGE' ? 'DAL LIBRO' : 'DALLA CONOSCENZA'} · {knowledgeCategoryLabel(item.category)}</span>
+                <SourceProvenance kind={item.sourceKind} />
+                <span>{knowledgeCategoryLabel(item.category)}</span>
                 <strong>{item.title}</strong>
                 <p>{item.summary}</p>
                 {item.pedagogicalRoles.length ? (
@@ -322,7 +326,8 @@ function AcceptedItem({
         <span>{extensionKindLabel(extension.kind)}</span>
         <strong>{extension.title}</strong>
         {!isResource(extension.kind) ? <p className="lessonDesignAcceptedBody">{extension.body}</p> : null}
-        <small>{placementLabel(extension)} · {sourceLabel(extension)}</small>
+        <small>{placementLabel(extension)}</small>
+        <SourceProvenance kind={extension.sourceKind} />
       </div>
       <div>
         {knowledgeHref ? <Link href={knowledgeHref}>Apri</Link> : null}
@@ -412,17 +417,6 @@ function extensionKindLabel(kind: LessonDesignExtension['kind']) {
   if (kind === 'STUDENT_RESOURCE') return 'MATERIALE STUDENTI'
   if (kind === 'TEACHING_ADJUSTMENT') return 'RIPROGETTAZIONE'
   return 'MATERIALE DOCENTE'
-}
-
-function sourceLabel(extension: LessonDesignExtension) {
-  return extension.sourceLabel || (
-    extension.sourceKind === 'ATLAS' ? 'Atlas'
-      : extension.sourceKind === 'EDITORIAL_KNOWLEDGE' ? 'Conoscenza editoriale'
-      : extension.sourceKind === 'KNOWLEDGE' ? 'Conoscenza'
-        : extension.sourceKind === 'WEB' ? 'Fonte web'
-          : extension.sourceKind === 'AI_TOOL' ? 'Strumento assistito'
-            : 'Inserimento docente'
-  )
 }
 
 function placementLabel(extension: LessonDesignExtension) {
