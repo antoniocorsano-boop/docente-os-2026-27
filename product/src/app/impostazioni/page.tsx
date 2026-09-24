@@ -37,7 +37,8 @@ const GRADE_LABELS = {
   TERZA: 'Terza',
 } as const
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
+  const query = await searchParams
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
   if (!context) redirect('/login')
@@ -122,6 +123,13 @@ export default async function SettingsPage() {
           </a>
         ))}
       </nav>
+
+      {query.saved === 'context' ? (
+        <div className="settingsInlineSuccess" role="status" aria-live="polite">
+          <strong>Contesto professionale salvato.</strong>
+          <span>Le informazioni della scuola sono state aggiornate.</span>
+        </div>
+      ) : null}
 
       <LocalTeacherProfileCard />
 
