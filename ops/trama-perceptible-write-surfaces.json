@@ -43,6 +43,20 @@
       "testFiles": [
         "product/src/app/impostazioni/settings-save-feedback.test.ts"
       ]
+    },
+    {
+      "id": "lesson-registration",
+      "sourcePatterns": [
+        "product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-close-client.tsx"
+      ],
+      "feedbackFiles": [
+        "product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-close-client.tsx",
+        "product/src/app/classi/[sectionId]/page.tsx"
+      ],
+      "testFiles": [
+        "product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-close-feedback.test.ts"
+      ],
+      "critical": true
     }
   ]
 }

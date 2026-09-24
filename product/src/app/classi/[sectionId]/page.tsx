@@ -216,7 +216,7 @@ export default async function ClassWorkspacePage({
       </section>
 
       {recordedBlock && recordedProgress ? (
-        <section className="classRecordFeedback" aria-label="Ultimo aggiornamento">
+        <section className="classRecordFeedback" aria-label="Ultimo aggiornamento" role="status" aria-live="polite">
           <strong>Lezione registrata come svolta.</strong>
           <span>{recordedProjection?.title ?? recordedBlock.focus}. Il prossimo passo sopra è stato ricalcolato dal Piano annuale reale della classe.</span>
           {recordedProjection ? <LessonExperienceFeedback sectionId={summary.sectionId} blockId={recordedBlock.id} /> : null}
