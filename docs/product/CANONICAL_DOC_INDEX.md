@@ -99,6 +99,7 @@ Regola:
 - `docs/design/DESIGN_GOVERNANCE_CANONICAL.md`;
 - `docs/design/DESIGN_POLICY_GATE_DPG1.md`;
 - `docs/design/DESIGN_CONFORMANCE_DPG2.md`;
+- `docs/design/SOURCE_PROVENANCE_VISUAL_SYSTEM_CANONICAL.md` — **CANONICAL CANDIDATE**: pattern cross-surface per provenance visuale, source mark + label, separato da stato e authority;
 - `product/design/DESIGN_DEBT_BASELINE.json`;
 - `product/design/DESIGN_DEBT_RESIDUALS.md`.
 
