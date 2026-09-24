@@ -14,6 +14,7 @@ import type { PlannerTask } from '@/core/domain/planner-task'
 import { parseKnowledgeTaskSourceRef } from '@/core/domain/knowledge-task-source'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
+import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import {
@@ -45,7 +46,7 @@ export default async function PlannerPage() {
       )
     : null
 
-  const [tasks, temporalDay] = await Promise.all([
+  const [tasks, temporalDay, teacherSettings] = await Promise.all([
     plannerRepository.listByWorkspace(context.workspace.id),
     temporalProjection && context.academicYear
       ? temporalProjection.projectDay({
@@ -53,6 +54,9 @@ export default async function PlannerPage() {
           academicYearId: context.academicYear.id,
           localDate: today,
         })
+      : Promise.resolve(null),
+    context.academicYear
+      ? new SupabaseTeacherSettingsRepository().getOrCreate(context.workspace.id, context.academicYear.id)
       : Promise.resolve(null),
   ])
 
@@ -62,6 +66,7 @@ export default async function PlannerPage() {
     temporalDay,
     tasks,
   })
+  const greeting = dayGreeting(nowMinutes, teacherSettings?.teacherDisplayName ?? '')
   const humanDate = new Intl.DateTimeFormat('it-IT', {
     timeZone: 'Europe/Rome',
     weekday: 'long',
@@ -77,13 +82,14 @@ export default async function PlannerPage() {
     <AppShell
       active="today"
       academicYearLabel={context.academicYear?.label}
-      workspaceName={context.workspace.name}
+      workspaceName={teacherSettings?.schoolName || context.workspace.name}
       role={context.role}
       contentClassName="plannerSurface"
     >
       <section className="plannerHeader plannerHeaderClarified todayHomeHeader">
         <div>
           <p className="todayHomeDate">{capitalize(humanDate)}</p>
+          <p className="todayHomeGreeting">{greeting}</p>
           <h1>Oggi</h1>
           <p className="plannerPurpose">La tua giornata professionale, già ricomposta.</p>
           <div className="todayHomeSummary" aria-label="Sintesi della giornata">
@@ -461,4 +467,12 @@ function timeLabel(value: string) {
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+
+function dayGreeting(nowMinutes: number, teacherDisplayName: string) {
+  const hour = Math.floor(nowMinutes / 60)
+  const salutation = hour < 12 ? 'Buongiorno' : hour < 18 ? 'Buon pomeriggio' : 'Buonasera'
+  const name = teacherDisplayName.trim()
+  return name ? `${salutation}, ${name}` : salutation
 }
