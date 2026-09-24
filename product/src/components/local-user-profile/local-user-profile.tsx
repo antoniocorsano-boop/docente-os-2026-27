@@ -17,12 +17,25 @@ const EMPTY_PROFILE: LocalTeacherProfileV1 = { version: 1, displayName: '' }
 
 export function LocalTeacherProfileCard() {
   const profile = useLocalTeacherProfile()
-  const [displayName, setDisplayName] = useState('')
-  const [notice, setNotice] = useState<'saved' | 'cleared' | null>(null)
 
-  useEffect(() => {
-    setDisplayName(profile.displayName)
-  }, [profile.displayName])
+  return (
+    <LocalTeacherProfileEditor
+      key={profile.displayName}
+      initialDisplayName={profile.displayName}
+      hasSavedProfile={Boolean(profile.displayName)}
+    />
+  )
+}
+
+function LocalTeacherProfileEditor({
+  initialDisplayName,
+  hasSavedProfile,
+}: {
+  initialDisplayName: string
+  hasSavedProfile: boolean
+}) {
+  const [displayName, setDisplayName] = useState(initialDisplayName)
+  const [notice, setNotice] = useState<'saved' | 'cleared' | null>(null)
 
   const save = () => {
     const normalized = normalizeDisplayName(displayName)
@@ -73,7 +86,7 @@ export function LocalTeacherProfileCard() {
         <div className="settingsActionRow">
           <span>Resta su questo dispositivo. Non viene inviato al server.</span>
           <div className="localProfileActions">
-            {profile.displayName ? <button className="textButton" type="button" onClick={clear}>Azzera</button> : null}
+            {hasSavedProfile ? <button className="textButton" type="button" onClick={clear}>Azzera</button> : null}
             <button className="settingsPrimaryButton" type="button" onClick={save}>Salva sul dispositivo</button>
           </div>
         </div>
