@@ -1,6 +1,6 @@
 # DOCENTE OS — Temporal Composition Canonical Spec
 
-Data: 2026-08-22  
+Data: 2026-09-24  
 Stato: CANONICAL
 
 ## 1. Decisione
@@ -192,3 +192,84 @@ TemporalProjectionService -> Calendar read port
 ```
 
 Questo vincolo deve essere verificato nelle review delle slice T3.
+
+
+## 10. Temporal Exception — variazioni puntuali
+
+La specifica rende operativo l'input già previsto `TemporalExceptionReadModel[]`.
+
+Una **Temporal Exception** modifica la proiezione di una singola data senza riscrivere lo slot ricorrente né creare copie nel Calendario.
+
+Tipi minimi:
+
+```ts
+type TemporalExceptionKind =
+  | 'CANCELLED'
+  | 'TIME_CHANGED'
+  | 'REPLACED'
+  | 'ADDED'
+```
+
+Campi minimi:
+
+```ts
+interface TemporalExceptionReadModel {
+  id: string
+  localDate: string
+  kind: TemporalExceptionKind
+  timetableVersionId?: string | null
+  timetableSlotId?: string | null
+  startTime?: string | null
+  endTime?: string | null
+  sectionId?: string | null
+  disciplineId?: string | null
+  title?: string | null
+  note?: string | null
+  sourceKind: 'TEACHER' | 'INSTITUTION' | 'IMPORT'
+}
+```
+
+Regole:
+
+1. `CANCELLED` sopprime soltanto l'occorrenza della data;
+2. `TIME_CHANGED` conserva l'identità logica dello slot e sostituisce l'intervallo per quella data;
+3. `REPLACED` può sostituire contesto/classe/disciplina della singola occorrenza;
+4. `ADDED` crea una occorrenza puntuale non ricorrente;
+5. ogni eccezione è reversibile/auditabile;
+6. la proiezione espone `exception_state` e provenance completa;
+7. una modifica strutturale futura usa invece il lifecycle/versioning dell'Orario.
+
+## 11. Calendario operativo del docente
+
+Il Calendario come dominio resta autonomo. La **vista calendario operativa**, invece, può visualizzare insieme:
+
+```text
+CalendarEvent
++ Projected timetable occurrence
++ Temporal Exception
+= giornata visibile al docente
+```
+
+Questa composizione non duplica gli slot Orario dentro `calendar_events`.
+
+La UI deve rendere percepibile la provenienza:
+
+- `Orario`;
+- `Calendario`;
+- `Modificato per oggi`.
+
+## 12. Relazione con TodayProjection
+
+`TemporalProjection` risponde: **che cosa accade temporalmente oggi?**
+
+`TodayProjection` risponde: **che cosa richiede l'attenzione professionale del docente adesso e dopo?**
+
+Dipendenza consentita:
+
+```text
+TodayProjectionService -> TemporalProjectionService
+TodayProjectionService -> Planner read port
+TodayProjectionService -> lesson readiness / TeachingSession read ports
+```
+
+Sono vietati write impliciti durante la composizione.
