@@ -1,6 +1,6 @@
 # Impostazioni canoniche DOCENTE OS
 
-Data: 2026-08-26  
+Data: 2026-09-24  
 Stato: **CANONICAL**
 
 ## Scopo
@@ -28,7 +28,8 @@ Per il dominio libri/editore è inoltre autorevole `docs/architecture/TEXTBOOK_A
 
 ## Principi
 
-1. Le informazioni personali/professionali sono persistenti in Supabase e protette da RLS.
+1. **Le preferenze personali locali non vengono persistite sul server.** Nome visualizzato personale, iniziali/avatar locale e preferenze puramente personali appartengono al dispositivo/browser.
+2. Le informazioni professionali condivise dal runtime (istituto, classi, discipline, cattedra, preset organizzativi) sono persistenti in Supabase e protette da RLS.
 2. Le classi non vengono duplicate: la schermata usa `annual_plan_sections`.
 3. Le discipline hanno un registro canonico annuale `teaching_disciplines`.
 4. La Cattedra usa gli stessi `teaching_assignments` letti dall'Orario: non esiste una seconda associazione classe-disciplina.
@@ -39,17 +40,30 @@ Per il dominio libri/editore è inoltre autorevole `docs/architecture/TEXTBOOK_A
 9. Classi, Cattedre o libri proposti non diventano confermati senza azione esplicita.
 10. Le Impostazioni definiscono il contesto; i moduli esecutivi mantengono storico, versioni e identità proprie.
 
-## Profilo docente / istituto
+## Profilo locale docente vs contesto professionale
 
-Tabella `teacher_workspace_settings`, un record per:
+La configurazione viene separata in due boundary.
+
+### Profilo locale personale
+
+Resta sul dispositivo/browser e non viene sincronizzato al server:
+
+- nome visualizzato del docente;
+- iniziali/avatar locale;
+- preferenze personali di presentazione prive di significato istituzionale.
+
+Questi dati possono personalizzare saluto, avatar e chrome, ma non entrano nei record autorevoli, nei manifest, nel Planner o nelle proiezioni.
+
+### Contesto professionale server-side
+
+La tabella `teacher_workspace_settings`, un record per:
 
 ```text
 workspace_id + academic_year_id + user_id
 ```
 
-Campi correnti:
+mantiene:
 
-- nome visualizzato docente;
 - nome istituto;
 - codice meccanografico opzionale;
 - città;
@@ -58,6 +72,10 @@ Campi correnti:
 - ora di inizio della giornata;
 - durata standard del periodo;
 - giorni settimanali abituali di lezione.
+
+### Compatibilità del campo legacy
+
+Il campo DB `teacher_display_name`, se ancora presente per compatibilità storica, è **DEPRECATED**: nuove superfici non lo leggono né lo aggiornano. La sua bonifica/drop richiede una migrazione separata e verificata.
 
 Il codice meccanografico è anche il binding previsto per la futura discovery delle adozioni dal Portale Unico dei Dati della Scuola. Non avvia da solo import o modifiche.
 
