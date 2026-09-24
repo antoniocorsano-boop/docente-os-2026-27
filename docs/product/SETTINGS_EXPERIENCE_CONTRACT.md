@@ -25,7 +25,7 @@ Le Impostazioni contengono informazioni relativamente stabili che descrivono **d
 
 Dentro Impostazioni:
 
-- **profilo personale locale**: nome visualizzato e avatar/inziali, salvati solo sul dispositivo;
+- **profilo personale locale**: nome visualizzato e avatar/iniziali, salvati solo sul dispositivo;
 - istituto;
 - anno scolastico attivo, in sola lettura quando già determinato dal workspace;
 - discipline;
@@ -87,7 +87,7 @@ La superficie separa visivamente e tecnicamente:
 
 **Tu — profilo locale**
 - nome visualizzato del docente;
-- avatar/inziali locali;
+- avatar/iniziali locali;
 - dati non inviati al server.
 
 **La scuola — contesto professionale**
