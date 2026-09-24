@@ -1,6 +1,6 @@
 # DOCENTE OS — Canonical Documentation Index
 
-Data: **2026-09-15**  
+Data: **2026-09-24**  
 Stato: **CANONICAL CANDIDATE / V1 CONVERGENCE**
 
 ## Ordine di autorità
@@ -55,7 +55,7 @@ Principio:
 - `docs/architecture/ACCOUNT_SECURITY_CANONICAL_SPEC.md` — account, password, MFA e sessioni;
 - `docs/architecture/TIMETABLE_CANONICAL_SPEC.md` — Orario;
 - `docs/architecture/WORK_TIME_MENTAL_MODEL.md` — significato di Attività, Piano, Orario, Calendario e Oggi;
-- `docs/architecture/TEMPORAL_COMPOSITION_CANONICAL_SPEC.md` — composizione temporale;
+- `docs/architecture/TEMPORAL_COMPOSITION_CANONICAL_SPEC.md` — composizione temporale, eccezioni puntuali e boundary verso TodayProjection;
 - `docs/architecture/AI_COLLABORATION_CANONICAL_SPEC.md` — AI collaboration e human-in-the-loop;
 - `docs/architecture/LESSON_PREPARATION_ORCHESTRATION_CANONICAL.md` — composizione della readiness della lezione senza nuovo store o semantica parallela;
 - `docs/architecture/CONTEXTUAL_VOICE_CAPTURE_SPEC.md` — voice capture;
@@ -74,7 +74,7 @@ Principio:
 - `docs/product/ASVS_5_0_ASSURANCE_CANONICAL.md` — security assurance;
 - `docs/product/RELEASE_ENGINEERING_CANONICAL.md` — versioning/release/promotion;
 - `docs/product/DOCENTE_OS_LANGUAGE_COLLABORATION_SYSTEM.md` — tono e microcopy;
-- `docs/product/HOME_DAILY_COCKPIT_CANONICAL_SPEC.md` — riferimento storico/verticale Home, subordinato a Today+Next;
+- `docs/product/HOME_DAILY_COCKPIT_CANONICAL_SPEC.md` — specifica verticale canonica di **Oggi / Today+Next**, aggiornata con evidence pilot 2026-09-24 e contratto TodayProjection;
 - `docs/product/SETTINGS_EXPERIENCE_CONTRACT.md` — esperienza Impostazioni;
 - `docs/product/ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md` — esperienza Account.
 
