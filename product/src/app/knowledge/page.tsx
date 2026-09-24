@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
+import { SourceProvenance } from '@/components/source-provenance/source-provenance'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import {
@@ -106,7 +107,7 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
     return (
       <Link key={asset.id} className="knowledgeAssetRow" href={assetHref(asset.id)}>
         <div className="assetIcon">{asset.assetKind === 'NOTE' ? 'N' : fileIcon(asset.mimeType)}</div>
-        <div className="assetMain"><strong>{humanizeKnowledgeTitle(document?.title ?? asset.originalName)}</strong><span>{document?.summary ?? asset.originalText?.slice(0, 150) ?? status.description}</span><div className="assetContext"><small>{contentCategoryLabel(asset.contentCategory)}</small>{asset.disciplines.map((item) => <small key={item}>{item}</small>)}{asset.classLabels.map((item) => <small key={item}>{item}</small>)}</div></div>
+        <div className="assetMain"><strong>{humanizeKnowledgeTitle(document?.title ?? asset.originalName)}</strong><span>{document?.summary ?? asset.originalText?.slice(0, 150) ?? status.description}</span><div className="assetContext"><SourceProvenance provider={asset.sourceProvider} /><small>{contentCategoryLabel(asset.contentCategory)}</small>{asset.disciplines.map((item) => <small key={item}>{item}</small>)}{asset.classLabels.map((item) => <small key={item}>{item}</small>)}</div></div>
         <div className="assetMeta"><span className={`processingPill ${status.tone}`}>{status.label}</span><small>{formatDate(asset.capturedAt)}</small></div>
       </Link>
     )

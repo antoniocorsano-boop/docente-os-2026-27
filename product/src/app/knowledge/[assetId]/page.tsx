@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
+import { SourceProvenance } from '@/components/source-provenance/source-provenance'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { knowledgeCalendarEventProposal } from '@/core/domain/knowledge-calendar-event'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
@@ -14,7 +15,6 @@ import {
   humanizeKnowledgeTitle,
   knowledgeProcessingStatus,
   reliabilityLabel,
-  sourceProviderLabel,
   unitTypeLabel,
   validationStatusLabel,
 } from '@/core/presentation/product-language'
@@ -55,7 +55,6 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
   const currentGeneration = generations.find((generation) => generation.id === asset.currentGenerationId) ?? null
   const displayTitle = humanizeKnowledgeTitle(document?.title ?? asset.originalName)
   const processing = knowledgeProcessingStatus(asset.processingStatus)
-  const sourceLabel = sourceProviderLabel(asset.sourceProvider)
   const category = contentCategoryLabel(asset.contentCategory)
   const contextReference = [...asset.disciplines, ...asset.classLabels].join(' · ') || 'Non specificato'
   const taskMode = asKnowledgeTaskMode(query.mode)
@@ -91,7 +90,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
           <p className="focusedKnowledgeSummary">{document?.summary ?? (asset.contentCategory === 'UDA' ? 'Consulta il percorso, le attività e le evidenze utili per la fase che stai preparando.' : 'Questa risorsa è stata aperta dentro il tuo compito corrente: DOCENTE OS mantiene il contesto finché non scegli di uscirne.')}</p>
           <div className="focusedKnowledgeMeta">
             <span>{category}</span>
-            <span>{sourceLabel}</span>
+            <SourceProvenance provider={asset.sourceProvider} />
             <span>{processing.label}</span>
             {query.block ? <span>{query.block}</span> : null}
           </div>
@@ -162,9 +161,9 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
 
       <section className="plannerHeader knowledgeHeader humanKnowledgeHeader">
         <div>
-          <p className="contextLine">{category} · {sourceLabel}</p>
+          <p className="contextLine"><span>{category}</span> · <SourceProvenance provider={asset.sourceProvider} /></p>
           <h1>{displayTitle}</h1>
-          <p className="dayLine">{sourceLabel === 'DOCENTE OS' ? 'Creato' : 'Acquisito'} {formatDate(asset.capturedAt)}</p>
+          <p className="dayLine">{asset.sourceProvider === 'SYSTEM' ? 'Creato' : 'Acquisito'} {formatDate(asset.capturedAt)}</p>
         </div>
         <div className={`knowledgeStateCard ${processing.tone}`}>
           <strong>{processing.label}</strong>
@@ -173,7 +172,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
       </section>
 
       <section className="provenanceBar humanProvenance" aria-label="Contesto del contenuto">
-        <div><span>Provenienza</span><strong>{sourceLabel}</strong></div>
+        <div><span>Provenienza</span><strong><SourceProvenance provider={asset.sourceProvider} /></strong></div>
         <div><span>Tipologia</span><strong>{category}</strong></div>
         <div><span>Riferimento</span><strong>{contextReference}</strong></div>
         <div><span>Stato</span><strong>{processing.label}</strong></div>

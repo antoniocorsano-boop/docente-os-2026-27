@@ -1,10 +1,11 @@
 import type { LessonDesignExtensionSourceKind } from '@/core/domain/lesson-design-extension'
+import type { KnowledgeSourceProvider } from '@/core/domain/knowledge'
 
 export type SourceProvenanceDefinition = {
   label: string
   accessibleLabel: string
   mark: 'ATLAS' | 'DOCENTE_OS' | 'LUCIDE'
-  icon?: 'BOOK_OPEN' | 'PEN_LINE' | 'GLOBE_2' | 'SPARKLES'
+  icon?: 'BOOK_OPEN' | 'PEN_LINE' | 'GLOBE_2' | 'SPARKLES' | 'FILE_UP' | 'MAIL' | 'CALENDAR_DAYS' | 'CLOUD'
 }
 
 const DEFINITIONS: Record<LessonDesignExtensionSourceKind, SourceProvenanceDefinition> = {
@@ -46,4 +47,47 @@ const DEFINITIONS: Record<LessonDesignExtensionSourceKind, SourceProvenanceDefin
 
 export function sourceProvenanceDefinition(kind: LessonDesignExtensionSourceKind): SourceProvenanceDefinition {
   return DEFINITIONS[kind]
+}
+
+
+const KNOWLEDGE_PROVIDER_DEFINITIONS: Record<KnowledgeSourceProvider, SourceProvenanceDefinition> = {
+  UPLOAD: {
+    label: 'File acquisito',
+    accessibleLabel: 'Provenienza: file acquisito',
+    mark: 'LUCIDE',
+    icon: 'FILE_UP',
+  },
+  DRIVE: {
+    label: 'Google Drive',
+    accessibleLabel: 'Provenienza: Google Drive',
+    mark: 'LUCIDE',
+    icon: 'CLOUD',
+  },
+  GMAIL: {
+    label: 'Gmail',
+    accessibleLabel: 'Provenienza: Gmail',
+    mark: 'LUCIDE',
+    icon: 'MAIL',
+  },
+  CALENDAR: {
+    label: 'Google Calendar',
+    accessibleLabel: 'Provenienza: Google Calendar',
+    mark: 'LUCIDE',
+    icon: 'CALENDAR_DAYS',
+  },
+  MANUAL: {
+    label: 'Inserito da te',
+    accessibleLabel: 'Provenienza: inserito dal docente',
+    mark: 'LUCIDE',
+    icon: 'PEN_LINE',
+  },
+  SYSTEM: {
+    label: 'Docente OS',
+    accessibleLabel: 'Provenienza: Docente OS',
+    mark: 'DOCENTE_OS',
+  },
+}
+
+export function knowledgeSourceProvenanceDefinition(provider: KnowledgeSourceProvider): SourceProvenanceDefinition {
+  return KNOWLEDGE_PROVIDER_DEFINITIONS[provider]
 }
