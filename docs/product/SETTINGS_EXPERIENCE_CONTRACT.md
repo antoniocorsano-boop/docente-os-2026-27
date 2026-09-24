@@ -1,6 +1,6 @@
 # DOCENTE OS — Settings Experience Contract
 
-Data: 2026-08-26  
+Data: 2026-09-24  
 Stato: **CANONICAL / PRODUCT CONTRACT**  
 Compatibilità: **COMPATIBLE** con persistence/RLS, `SETTINGS_CANONICAL_SPEC.md` e `TEXTBOOK_AND_PUBLISHER_RESOURCES_FOUNDATION_v1.md`
 
@@ -25,7 +25,7 @@ Le Impostazioni contengono informazioni relativamente stabili che descrivono **d
 
 Dentro Impostazioni:
 
-- identità professionale;
+- **profilo personale locale**: nome visualizzato e avatar/iniziali, salvati solo sul dispositivo;
 - istituto;
 - anno scolastico attivo, in sola lettura quando già determinato dal workspace;
 - discipline;
@@ -83,11 +83,14 @@ Orario
 
 Domanda: **Chi sei e dove insegni?**
 
-Serve a fornire il contesto professionale riutilizzato da DOCENTE OS.
+La superficie separa visivamente e tecnicamente:
 
-Campi principali:
-
+**Tu — profilo locale**
 - nome visualizzato del docente;
+- avatar/iniziali locali;
+- dati non inviati al server.
+
+**La scuola — contesto professionale**
 - istituto;
 - codice meccanografico opzionale;
 - città opzionale;
@@ -96,8 +99,14 @@ Campi principali:
 
 Microcopy obbligatoria:
 
-- **Serve a:** identificare correttamente il tuo spazio di lavoro;
-- **Usato in:** contesto, intestazioni, documenti e futura ricerca delle adozioni ufficiali;
+- **Profilo locale:** “Resta su questo dispositivo. Non viene inviato al server.”
+- **Serve a:** personalizzare saluto, avatar e presentazione locale;
+- **Usato in:** Home/Oggi e chrome dell'app;
+- **Non modifica:** contesto professionale, attività, Piano annuale, Orario o Calendario.
+
+Per il contesto scuola:
+- **Serve a:** identificare correttamente il contesto professionale;
+- **Usato in:** intestazioni, documenti e futura ricerca delle adozioni ufficiali;
 - **Non modifica:** attività, Piano annuale, Orario o Calendario.
 
 Il codice meccanografico può essere usato per proporre adozioni dal dataset Open Data MIM, ma non deve avviare automaticamente alcuna conferma.

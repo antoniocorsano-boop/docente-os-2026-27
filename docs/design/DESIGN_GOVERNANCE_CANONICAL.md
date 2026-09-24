@@ -1,6 +1,6 @@
 # Docente OS — Design Governance Canonical
 
-Data: 2026-09-11  
+Data: 2026-09-24  
 Stato: CANONICAL / BINDING FOR ALL NEW VISUAL WORK  
 Classificazione: `COMPATIBLE` con Design System V2 e Brand Identity Canonical
 
@@ -124,3 +124,62 @@ Un gate tecnico verde non sostituisce il giudizio HVA sulle regole qualitative, 
 Prima di introdurre CSS, token, icone, card, CTA o varianti del marchio, verificare se esiste già un componente o token canonico. È vietato dedurre una nuova estetica da una singola pagina o da un mockup isolato.
 
 Ogni PR visuale deve dichiarare la classificazione canonica e deve essere valutata da DPG-1, DPG-2 e HVA quando il perimetro tocca una superficie utente. Le tranche di cleanup devono ridurre o mantenere tutte le metriche DPG-2 e abbassare la baseline quando una riduzione è stata validata.
+
+
+## 10. Surface Maturity Review — obbligatoria per ogni vista
+
+L'evidenza raccolta su Oggi conferma che non è sostenibile accorgersi a posteriori, vista per vista, di problemi ricorrenti di rumore, gerarchia, duplicazione dei controlli o qualità percepita.
+
+Da questo aggiornamento ogni superficie utente modificata deve essere valutata con un **Surface Maturity Review** prima della promozione.
+
+La review deve verificare almeno:
+
+1. **Scopo percepibile** — la vista dichiara chiaramente che cosa serve al docente in quel momento.
+2. **Teacher-first** — la gerarchia parte dal compito professionale, non dalla struttura interna del prodotto.
+3. **Noise budget** — ogni elemento visibile deve rispondere a `WHY NOW?`; ciò che non serve ora viene rimosso, subordinato o spostato dietro disclosure.
+4. **Una sola azione primaria** — nessuna competizione tra CTA equivalenti.
+5. **No duplicate controls** — due controlli non possono sembrare o risultare equivalenti nello stesso punto della UI.
+6. **No card inflation** — evitare card dentro card e rettangoli equivalenti quando spacing, tipografia e gerarchia bastano.
+7. **Gerarchia senza colore** — titolo, stato, provenienza, azione e contesto devono restare leggibili anche senza affidarsi al colore.
+8. **Provenienza separata da stato e autorità**.
+9. **Mobile first reale** — primo viewport comprensibile a 360–430 px; niente compressioni improprie o scroll inutilmente lunghi.
+10. **Shell coerente** — header, navigazione, ricerca, profilo e azioni globali mantengono lo stesso significato su tutte le viste.
+11. **Local identity boundary** — nome/avatar personali locali non vengono trasformati in dati server-side.
+12. **Visual maturity** — bordi, ombre, densità e motion sono usati in modo selettivo, non come decorazione.
+
+### Evidence richiesta
+
+Per ogni PR visuale significativa la ricevuta HVA deve dichiarare almeno:
+
+```text
+Surface:
+Primary teacher task:
+First viewport:
+Competing actions:
+Duplicate controls:
+Noise removed/subordinated:
+Mobile 360–430:
+Accessibility:
+Result: PASS / CHANGES REQUIRED
+```
+
+Il PASS tecnico non sostituisce questa review.
+
+## 11. Chrome globale mobile
+
+La barra superiore mobile deve avere ruoli distinti e stabili:
+
+- **Ricerca/Command** — un solo controllo globale per cercare/navigare per intenzione;
+- **Profilo utente** — avatar/identità locale e accesso alle configurazioni personali;
+- **Navigazione secondaria** — resta nel pattern `Altro` della bottom navigation / sheet dedicata, non viene duplicata accanto alla ricerca.
+
+È quindi vietato avere nella stessa testata mobile due pulsanti che, pur avendo icone diverse, aprono superfici percepite come equivalenti o sovrapposte.
+
+Target:
+
+```text
+[brand + contesto]                    [search] [avatar]
+bottom nav: Oggi · Classi · Orario · Altro
+```
+
+L'avatar non è un nuovo provider di identità remoto. È l'accesso alle preferenze personali locali e alle configurazioni utente.

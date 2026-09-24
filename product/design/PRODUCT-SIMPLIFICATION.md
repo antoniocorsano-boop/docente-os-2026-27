@@ -126,3 +126,34 @@ Vincoli:
 ## Definition of Done UX-0
 
 UX-0 non è chiusa quando una pagina appare più pulita. È chiusa quando tutti e cinque i journey canonici sono verificati end-to-end e il docente può raggiungere il proprio obiettivo senza dover comprendere l'architettura interna del prodotto.
+
+
+## Surface Noise Budget
+
+Il costo cognitivo viene ora valutato anche come **rumore di superficie**.
+
+Per ogni vista primaria:
+
+- ogni controllo deve avere un compito distinto;
+- controlli globali duplicati sono una regressione anche se tecnicamente corretti;
+- empty state, badge, metadata e card non devono ripetere la stessa informazione;
+- una informazione tecnica non sale di gerarchia solo perché esiste nel modello;
+- la shell non deve competere con il compito corrente.
+
+Domanda aggiuntiva obbligatoria nella review:
+
+> **Se rimuovo questo elemento, il docente perde una decisione o una capacità necessaria adesso?**
+
+Se la risposta è no, l'elemento va subordinato, spostato o rimosso.
+
+### Shell Cost
+
+La shell contribuisce al Task Cost.
+
+Su mobile, prima del contenuto, sono ammessi soltanto controlli globali con significato non sovrapposto. Baseline:
+
+- ricerca/comando;
+- profilo locale;
+- bottom navigation essenziale.
+
+Il menu `Altro` non deve essere duplicato in alto quando è già disponibile nella bottom navigation.
