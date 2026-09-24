@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { ArrowUpRight, CalendarDays, Clock3 } from 'lucide-react'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { SourceProvenance } from '@/components/source-provenance/source-provenance'
 import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
@@ -25,6 +26,7 @@ import {
   unschedulePlannerTask,
   waitPlannerTask,
 } from './actions'
+import './today-home.css'
 
 export const dynamic = 'force-dynamic'
 
@@ -79,11 +81,15 @@ export default async function PlannerPage() {
       role={context.role}
       contentClassName="plannerSurface"
     >
-      <section className="plannerHeader plannerHeaderClarified">
+      <section className="plannerHeader plannerHeaderClarified todayHomeHeader">
         <div>
-          <p className="contextLine">{capitalize(humanDate)}</p>
+          <p className="todayHomeDate">{capitalize(humanDate)}</p>
           <h1>Oggi</h1>
-          <p className="plannerPurpose">La tua giornata professionale: prima ciò che conta adesso, poi ciò che viene dopo.</p>
+          <p className="plannerPurpose">La tua giornata professionale, già ricomposta.</p>
+          <div className="todayHomeSummary" aria-label="Sintesi della giornata">
+            <span><CalendarDays size={15} aria-hidden />{projection.timeline.length} {projection.timeline.length === 1 ? 'impegno' : 'impegni'}</span>
+            <span><Clock3 size={15} aria-hidden />{todayTaskCount} {todayTaskCount === 1 ? 'attività da fare' : 'attività da fare'}</span>
+          </div>
         </div>
       </section>
 
@@ -162,7 +168,7 @@ function TodayFocusCard({
 }) {
   if (!focus) {
     return (
-      <section className="humanTaskFocus">
+      <section className="humanTaskFocus todayFocusCard">
         <p className="humanTaskFocusEyebrow">OGGI</p>
         <h2>Nessun impegno o attività richiede attenzione adesso</h2>
         <p>La giornata non contiene ancora elementi operativi. Puoi aprire l’orario, le classi o aggiungere un’attività.</p>
@@ -177,7 +183,7 @@ function TodayFocusCard({
   if (focus.kind === 'PLANNER') {
     const task = focus.task
     return (
-      <section className="humanTaskFocus" aria-labelledby="today-focus-title">
+      <section className="humanTaskFocus todayFocusCard" aria-labelledby="today-focus-title">
         <p className="humanTaskFocusEyebrow">DA FARE ADESSO</p>
         <h2 id="today-focus-title">{task.title}</h2>
         <p>{taskFocusReason(task, today)}</p>
@@ -201,7 +207,7 @@ function TodayFocusCard({
 
   const current = isCurrentTemporal(focus, nowMinutes)
   return (
-    <section className="humanTaskFocus" aria-labelledby="today-focus-title">
+    <section className="humanTaskFocus todayFocusCard" aria-labelledby="today-focus-title">
       <p className="humanTaskFocusEyebrow">{current ? 'ADESSO' : focusLabel(moment)}</p>
       <h2 id="today-focus-title">{focus.title}</h2>
       <p>{temporalFocusDescription(focus, current)}</p>
@@ -209,10 +215,10 @@ function TodayFocusCard({
         <span>{temporalSourceLabel(focus)}</span>
         {focus.startAt && focus.endAt ? <span>{timeLabel(focus.startAt)}–{timeLabel(focus.endAt)}</span> : <span>Tutto il giorno</span>}
       </div>
-      <div className="humanTaskActions">
+      <div className="humanTaskActions todayFocusActions">
         {focus.sectionId
-          ? <Link className="primary" href={`/classi/${encodeURIComponent(focus.sectionId)}`}>Apri la classe</Link>
-          : <Link className="primary" href="/calendario">Apri il Calendario</Link>}
+          ? <Link className="primary" href={`/classi/${encodeURIComponent(focus.sectionId)}`}>Apri la classe <ArrowUpRight size={17} aria-hidden /></Link>
+          : <Link className="primary" href="/calendario">Apri il Calendario <ArrowUpRight size={17} aria-hidden /></Link>}
         {focus.sectionId ? <Link href="/orario">Apri l’orario</Link> : null}
       </div>
     </section>
@@ -221,25 +227,33 @@ function TodayFocusCard({
 
 function TodayTimeline({ items, nowMinutes }: { items: TodayTemporalItem[]; nowMinutes: number }) {
   return (
-    <details className="humanTaskSecondary" open>
-      <summary>La mia giornata · {items.length} {items.length === 1 ? 'impegno' : 'impegni'}</summary>
-      <div className="humanTaskSecondaryBody taskSections">
-        <div className="taskList">
-          {items.map((item) => (
-            <article className="taskRow" key={item.id}>
-              <div className="taskBody">
-                <h3>{item.startAt ? timeLabel(item.startAt) : 'Tutto il giorno'} · {item.title}</h3>
-                <div className="taskMeta">
-                  <span>{temporalSourceLabel(item)}</span>
-                  {item.startAt && item.endAt ? <span className="dateChip">{timeLabel(item.startAt)}–{timeLabel(item.endAt)}</span> : null}
-                  {isCurrentTemporal(item, nowMinutes) ? <span className="priorityChip high">In corso</span> : null}
+    <details className="humanTaskSecondary todayTimelineCard" open>
+      <summary>La mia giornata <span className="todaySectionCount">{items.length}</span></summary>
+      <div className="humanTaskSecondaryBody">
+        <div className="todayTimelineList">
+          {items.map((item) => {
+            const current = isCurrentTemporal(item, nowMinutes)
+            return (
+              <article className={`todayTimelineRow ${current ? 'current' : ''}`} key={item.id}>
+                <div className="todayTimelineTime">
+                  <strong>{item.startAt ? timeLabel(item.startAt) : '—'}</strong>
+                  {item.endAt ? <span>{timeLabel(item.endAt)}</span> : <span>Tutto il giorno</span>}
+                </div>
+                <div className="todayTimelineContent">
+                  <h3>{item.title}</h3>
+                  <div className="todayTimelineMeta">
+                    <span>{temporalSourceLabel(item)}</span>
+                    {current ? <span className="todayNowBadge">In corso</span> : null}
+                  </div>
                 </div>
                 {item.sectionId
-                  ? <div className="taskInlineActions"><Link className="knowledgeSourceChip" href={`/classi/${encodeURIComponent(item.sectionId)}`}>Apri la classe</Link></div>
+                  ? <Link className="todayTimelineAction" href={`/classi/${encodeURIComponent(item.sectionId)}`} aria-label={`Apri ${item.title}`}>
+                      <ArrowUpRight size={17} aria-hidden />
+                    </Link>
                   : null}
-              </div>
-            </article>
-          ))}
+              </article>
+            )
+          })}
         </div>
       </div>
     </details>
@@ -269,10 +283,10 @@ function PlannerToday({
 
   if (!openCount && !projection.planner.waiting.length) {
     return (
-      <details className="humanTaskSecondary">
-        <summary>Da fare · nessuna attività aggiuntiva</summary>
+      <details className="humanTaskSecondary todayQuietSection">
+        <summary>Da fare <span className="todaySectionStatus">Niente di urgente</span></summary>
         <div className="humanTaskSecondaryBody">
-          <p>Non ci sono attività Planner aperte. Le lezioni e gli eventi della giornata restano visibili sopra.</p>
+          <p>Non hai attività aggiuntive aperte per oggi.</p>
         </div>
       </details>
     )
