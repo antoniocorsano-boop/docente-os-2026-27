@@ -16,6 +16,33 @@
       "testFiles": [
         "product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-design-feedback.test.ts"
       ]
+    },
+    {
+      "id": "local-user-profile-write",
+      "critical": false,
+      "sourcePatterns": [
+        "product/src/components/local-user-profile/local-user-profile.tsx"
+      ],
+      "feedbackFiles": [
+        "product/src/components/local-user-profile/local-user-profile.tsx"
+      ],
+      "testFiles": [
+        "product/src/components/local-user-profile/local-user-profile-feedback.test.ts"
+      ]
+    },
+    {
+      "id": "settings-professional-context-write",
+      "critical": false,
+      "sourcePatterns": [
+        "product/src/app/impostazioni/actions.ts",
+        "product/src/core/infrastructure/supabase/supabase-teacher-settings-repository.ts"
+      ],
+      "feedbackFiles": [
+        "product/src/app/impostazioni/page.tsx"
+      ],
+      "testFiles": [
+        "product/src/app/impostazioni/settings-save-feedback.test.ts"
+      ]
     }
   ]
 }

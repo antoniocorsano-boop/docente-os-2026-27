@@ -28,7 +28,7 @@ export type SettingsExperienceModel = {
 export function buildSettingsExperienceModel(input: {
   settings: Pick<
     TeacherWorkspaceSettings,
-    'teacherDisplayName' | 'schoolName' | 'schoolType' | 'dailyPeriodCount' | 'schoolDayStart' | 'defaultPeriodMinutes' | 'teachingWeekdays'
+    'schoolName' | 'schoolType' | 'dailyPeriodCount' | 'schoolDayStart' | 'defaultPeriodMinutes' | 'teachingWeekdays'
   >
   disciplines: Pick<TeachingDiscipline, 'id' | 'name' | 'isActive'>[]
   sections: Pick<AnnualPlanSection, 'id' | 'status'>[]
@@ -38,9 +38,7 @@ export function buildSettingsExperienceModel(input: {
   const activeDisciplines = input.disciplines.filter((item) => item.isActive)
   const activeDisciplineIds = new Set(activeDisciplines.map((item) => item.id))
   const activeAssignments = input.assignments.filter((assignment) => activeDisciplineIds.has(assignment.disciplineId))
-  const contextComplete = Boolean(
-    input.settings.teacherDisplayName.trim() && input.settings.schoolName.trim() && input.settings.schoolType.trim(),
-  )
+  const contextComplete = Boolean(input.settings.schoolName.trim() && input.settings.schoolType.trim())
   const organizationComplete = Boolean(
     input.settings.dailyPeriodCount > 0
       && /^\d{2}:\d{2}/.test(input.settings.schoolDayStart)
@@ -79,11 +77,11 @@ export function buildSettingsExperienceModel(input: {
       key: 'context',
       number: 1,
       label: 'Tu e la scuola',
-      question: 'Chi sei e dove insegni?',
+      question: 'Dove insegni?',
       status: contextComplete ? 'COMPLETE' : 'INCOMPLETE',
       summary: contextComplete
-        ? `${input.settings.teacherDisplayName} · ${input.settings.schoolName}`
-        : 'Completa nome professionale, istituto e tipo di scuola.',
+        ? input.settings.schoolName
+        : 'Completa istituto e tipo di scuola.',
       href: '#contesto',
       nextAction: contextComplete ? 'Rivedi il contesto' : 'Completa il contesto',
     },

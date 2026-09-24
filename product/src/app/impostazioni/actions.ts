@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { asAnnualPlanGrade } from '@/core/domain/annual-plan-execution'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
@@ -14,7 +15,6 @@ export async function saveProfessionalContext(formData: FormData) {
   await repository.save({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
-    teacherDisplayName: text(formData, 'teacherDisplayName'),
     schoolName: text(formData, 'schoolName'),
     schoolCode: nullableText(formData, 'schoolCode'),
     schoolCity: nullableText(formData, 'schoolCity'),
@@ -25,6 +25,7 @@ export async function saveProfessionalContext(formData: FormData) {
     teachingWeekdays: current.teachingWeekdays,
   })
   revalidateSettingsContext()
+  redirect('/impostazioni?saved=context#contesto')
 }
 
 export async function saveSchoolOrganization(formData: FormData) {
@@ -34,7 +35,6 @@ export async function saveSchoolOrganization(formData: FormData) {
   await repository.save({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
-    teacherDisplayName: current.teacherDisplayName,
     schoolName: current.schoolName,
     schoolCode: current.schoolCode,
     schoolCity: current.schoolCity,
@@ -55,7 +55,6 @@ export async function saveTeacherSettings(formData: FormData) {
   await repository.save({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
-    teacherDisplayName: text(formData, 'teacherDisplayName'),
     schoolName: text(formData, 'schoolName'),
     schoolCode: nullableText(formData, 'schoolCode'),
     schoolCity: nullableText(formData, 'schoolCity'),

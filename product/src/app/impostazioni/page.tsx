@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
+import { LocalTeacherProfileCard } from '@/components/local-user-profile/local-user-profile'
 import { WEEKDAYS } from '@/core/domain/teacher-settings'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
@@ -36,7 +37,8 @@ const GRADE_LABELS = {
   TERZA: 'Terza',
 } as const
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
+  const query = await searchParams
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
   if (!context) redirect('/login')
@@ -122,23 +124,31 @@ export default async function SettingsPage() {
         ))}
       </nav>
 
+      {query.saved === 'context' ? (
+        <div className="settingsInlineSuccess" role="status" aria-live="polite">
+          <strong>Contesto professionale salvato.</strong>
+          <span>Le informazioni della scuola sono state aggiornate.</span>
+        </div>
+      ) : null}
+
+      <LocalTeacherProfileCard />
+
       <section className="settingsCard" id="contesto" aria-labelledby="context-title">
         <SettingsSectionHeading area={areaFor(experience.areas, 'context')} id="context-title" />
         <SettingsContextDisclosure
-          serves="Identifica correttamente il tuo spazio di lavoro."
-          usedIn="Contesto, intestazioni e documenti."
+          serves="Identifica il contesto professionale della scuola."
+          usedIn="Intestazioni, documenti e funzioni legate alla scuola."
           doesNotChange="Attività, Piano annuale, Orario o Calendario."
         />
         <form action={saveProfessionalContext} className="settingsFormBlock">
           <div className="settingsGrid twoCols">
-            <label className="settingsField"><span>Come vuoi essere indicato in DOCENTE OS?</span><input name="teacherDisplayName" defaultValue={settings.teacherDisplayName} maxLength={160} placeholder="Nome e cognome" /></label>
             <label className="settingsField readOnlyField"><span>Anno scolastico</span><input value={context.academicYear.label} readOnly /></label>
             <label className="settingsField wideField"><span>Istituto</span><input name="schoolName" defaultValue={settings.schoolName} maxLength={240} placeholder="Istituto Comprensivo…" /></label>
             <label className="settingsField"><span>Codice meccanografico <small>facoltativo</small></span><input name="schoolCode" defaultValue={settings.schoolCode ?? ''} maxLength={40} placeholder="Es. AVIC…" /></label>
             <label className="settingsField"><span>Città <small>facoltativa</small></span><input name="schoolCity" defaultValue={settings.schoolCity ?? ''} maxLength={120} placeholder="Comune" /></label>
             <label className="settingsField wideField"><span>Ordine / tipo di scuola</span><input name="schoolType" defaultValue={settings.schoolType} maxLength={160} placeholder="Es. Secondaria di primo grado" /></label>
           </div>
-          <div className="settingsActionRow"><span>Questi dati descrivono il tuo contesto professionale.</span><button className="settingsPrimaryButton" type="submit">Salva il contesto</button></div>
+          <div className="settingsActionRow"><span>Questi dati descrivono la scuola e il tuo contesto professionale.</span><button className="settingsPrimaryButton" type="submit">Salva il contesto</button></div>
         </form>
       </section>
 
