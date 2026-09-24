@@ -32,11 +32,11 @@ Per il dominio libri/editore è inoltre autorevole `docs/architecture/TEXTBOOK_A
 2. Le informazioni professionali condivise dal runtime (istituto, classi, discipline, cattedra, preset organizzativi) sono persistenti in Supabase e protette da RLS.
 3. Le classi non vengono duplicate: la schermata usa `annual_plan_sections`.
 4. Le discipline hanno un registro canonico annuale `teaching_disciplines`.
-9. La Cattedra usa gli stessi `teaching_assignments` letti dall'Orario: non esiste una seconda associazione classe-disciplina.
-5. I libri di testo si collegano alla Cattedra tramite `textbook_adoptions`: non creano una seconda relazione classe-disciplina.
-6. I dati di organizzazione scolastica sono preset di costruzione, non l'Orario ufficiale.
-7. Le versioni e gli slot dell'Orario mantengono il proprio lifecycle indipendente.
-8. Il Calendario è un dominio indipendente e non viene configurato nelle Impostazioni di base.
+5. La Cattedra usa gli stessi `teaching_assignments` letti dall'Orario: non esiste una seconda associazione classe-disciplina.
+6. I libri di testo si collegano alla Cattedra tramite `textbook_adoptions`: non creano una seconda relazione classe-disciplina.
+7. I dati di organizzazione scolastica sono preset di costruzione, non l'Orario ufficiale.
+8. Le versioni e gli slot dell'Orario mantengono il proprio lifecycle indipendente.
+9. Il Calendario è un dominio indipendente e non viene configurato nelle Impostazioni di base.
 10. Classi, Cattedre o libri proposti non diventano confermati senza azione esplicita.
 11. Le Impostazioni definiscono il contesto; i moduli esecutivi mantengono storico, versioni e identità proprie.
 
