@@ -1,11 +1,12 @@
 import type { LessonDesignExtensionSourceKind } from '@/core/domain/lesson-design-extension'
 import type { KnowledgeSourceProvider } from '@/core/domain/knowledge'
+import type { PlannerTaskSourceKind } from '@/core/domain/planner-task'
 
 export type SourceProvenanceDefinition = {
   label: string
   accessibleLabel: string
   mark: 'ATLAS' | 'DOCENTE_OS' | 'LUCIDE'
-  icon?: 'BOOK_OPEN' | 'PEN_LINE' | 'GLOBE_2' | 'SPARKLES' | 'FILE_UP' | 'MAIL' | 'CALENDAR_DAYS' | 'CLOUD'
+  icon?: 'BOOK_OPEN' | 'PEN_LINE' | 'GLOBE_2' | 'SPARKLES' | 'FILE_UP' | 'MAIL' | 'CALENDAR_DAYS' | 'CLOUD' | 'FILE_TEXT' | 'MESSAGE_SQUARE'
 }
 
 const DEFINITIONS: Record<LessonDesignExtensionSourceKind, SourceProvenanceDefinition> = {
@@ -90,4 +91,47 @@ const KNOWLEDGE_PROVIDER_DEFINITIONS: Record<KnowledgeSourceProvider, SourceProv
 
 export function knowledgeSourceProvenanceDefinition(provider: KnowledgeSourceProvider): SourceProvenanceDefinition {
   return KNOWLEDGE_PROVIDER_DEFINITIONS[provider]
+}
+
+
+const PLANNER_SOURCE_DEFINITIONS: Record<PlannerTaskSourceKind, SourceProvenanceDefinition> = {
+  MANUAL: {
+    label: 'Inserita da te',
+    accessibleLabel: 'Provenienza: inserita dal docente',
+    mark: 'LUCIDE',
+    icon: 'PEN_LINE',
+  },
+  COMMUNICATION: {
+    label: 'Comunicazione',
+    accessibleLabel: 'Provenienza: comunicazione',
+    mark: 'LUCIDE',
+    icon: 'MESSAGE_SQUARE',
+  },
+  CALENDAR: {
+    label: 'Calendario',
+    accessibleLabel: 'Provenienza: calendario',
+    mark: 'LUCIDE',
+    icon: 'CALENDAR_DAYS',
+  },
+  TEACHING: {
+    label: 'Didattica',
+    accessibleLabel: 'Provenienza: didattica',
+    mark: 'LUCIDE',
+    icon: 'BOOK_OPEN',
+  },
+  DOCUMENT: {
+    label: 'Documento',
+    accessibleLabel: 'Provenienza: documento',
+    mark: 'LUCIDE',
+    icon: 'FILE_TEXT',
+  },
+  SYSTEM: {
+    label: 'Docente OS',
+    accessibleLabel: 'Provenienza: Docente OS',
+    mark: 'DOCENTE_OS',
+  },
+}
+
+export function plannerSourceProvenanceDefinition(kind: PlannerTaskSourceKind): SourceProvenanceDefinition {
+  return PLANNER_SOURCE_DEFINITIONS[kind]
 }
