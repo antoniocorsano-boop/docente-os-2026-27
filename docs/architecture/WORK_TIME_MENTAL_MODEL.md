@@ -1,6 +1,6 @@
 # DOCENTE OS — Modello mentale lavoro/tempo
 
-Data: 2026-08-22  
+Data: 2026-09-24  
 Stato: CANONICAL / UX_BASELINE
 
 ## Scopo
@@ -59,11 +59,13 @@ Non è un registro operativo. Un documento può originare:
 
 La trasformazione deve essere esplicita: la fonte non cambia natura soltanto perché viene usata altrove.
 
-## 2. Oggi / Attività — azioni da fare
+## 2. Attività — azioni da fare
 
 Domanda a cui risponde: **Cosa devo fare?**
 
 Oggetto canonico: `PlannerTask`.
+
+**Oggi non è sinonimo di Attività.** Oggi è la cockpit che compone la realtà professionale della data e può includere attività, lezioni, eventi, eccezioni e readiness didattica.
 
 Esempi:
 
@@ -256,3 +258,24 @@ Una superficie è conforme quando l'utente può capire senza documentazione este
 4. aggiungere il servizio di Proiezione temporale che compone i due read model;
 5. usare la Proiezione in Oggi e, successivamente, nell'attuazione del Piano annuale;
 6. mantenere X4 in HOLD finché i confini tra oggetti non sono chiari nell'esperienza reale.
+
+
+## 12. Chiarimento pilot 2026-09-24
+
+L'evidenza mobile conferma che la formula corretta è:
+
+```text
+Attività = cosa devo fare
+Orario = cosa ricorre normalmente
+Calendario = cosa accade in date reali
+Eccezioni = cosa cambia solo in una data
+Oggi = cosa conta adesso nella giornata professionale
+```
+
+Conseguenze:
+
+- zero `PlannerTask` non significa “giornata vuota”;
+- una lezione dell'Orario è parte della giornata visibile senza diventare un record Calendario;
+- il docente può correggere una singola giornata senza mutare la settimana tipo;
+- una modifica strutturale dell'Orario resta versionata con decorrenza;
+- Oggi ordina per Teacher Moment e Next Step, non per modulo di provenienza.
