@@ -23,6 +23,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { type ReactNode, useEffect, useState } from 'react'
 import { ContextualAssistantBoundary } from '@/components/assistant/contextual-assistant-boundary'
+import { LocalProfileAvatar } from '@/components/local-user-profile/local-user-profile'
 import { DocenteOsLockup, DocenteOsMark } from '@/components/brand/docente-os-brand'
 import { cn } from '@/lib/utils'
 import {
@@ -162,9 +163,7 @@ export function AppShell({
             <button type="button" onClick={() => setCommandOpen(true)} aria-label="Cerca o vai a una funzione">
               <Search size={19} aria-hidden />
             </button>
-            <button type="button" onClick={() => setSecondaryOpen(true)} aria-label="Apri altre funzioni">
-              <Menu size={20} aria-hidden />
-            </button>
+            <LocalProfileAvatar />
           </div>
         </header>
 

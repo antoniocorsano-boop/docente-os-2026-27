@@ -3,6 +3,7 @@ export type TeacherWorkspaceSettings = {
   workspaceId: string
   academicYearId: string
   userId: string
+  /** @deprecated Personal display name is device-local; retained only for legacy row compatibility. */
   teacherDisplayName: string
   schoolName: string
   schoolCode: string | null
@@ -30,7 +31,6 @@ export type TeachingDiscipline = {
 export type SaveTeacherWorkspaceSettingsInput = {
   workspaceId: string
   academicYearId: string
-  teacherDisplayName: string
   schoolName: string
   schoolCode: string | null
   schoolCity: string | null

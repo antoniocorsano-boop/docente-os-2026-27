@@ -36,7 +36,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 .workSurface{width:100%;max-width:1120px;padding:44px 48px 88px;margin:0 auto}
 .plannerHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:24px}
 .contextLine{margin:0 0 9px;color:var(--ink-faint);font-size:12px;font-weight:700;letter-spacing:.025em}
-.plannerHeader h1{margin:0;font-size:42px;line-height:1;letter-spacing:-.035em}
+.plannerGreeting{margin:0 0 4px;color:var(--brand);font-size:14px;font-weight:750}.plannerHeader h1{margin:0;font-size:42px;line-height:1;letter-spacing:-.035em}
 .dayLine{margin:8px 0 0;font-size:16px;color:var(--ink-soft)}
 .secondaryButton{min-height:44px;border:1px solid var(--line);background:var(--surface);border-radius:var(--radius-sm);padding:0 14px;color:var(--ink-soft);font-weight:650}
 .secondaryButton:hover{border-color:var(--line-strong);color:var(--ink)}

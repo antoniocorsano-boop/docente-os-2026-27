@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
+import { LocalTeacherGreeting } from '@/components/local-user-profile/local-user-profile'
 import { SourceProvenance } from '@/components/source-provenance/source-provenance'
 import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
 import {
@@ -81,6 +82,7 @@ export default async function PlannerPage() {
     >
       <section className="plannerHeader plannerHeaderClarified">
         <div>
+          <p className="plannerGreeting"><LocalTeacherGreeting /></p>
           <p className="contextLine">{capitalize(humanDate)}</p>
           <h1>Oggi</h1>
           <p className="plannerPurpose">La tua giornata professionale: prima ciò che conta adesso, poi ciò che viene dopo.</p>

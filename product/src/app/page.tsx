@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
+import { LocalTeacherGreeting } from '@/components/local-user-profile/local-user-profile'
 import { buildClassWorkspaceLearningFocus } from '@/app/classi/class-workspace-model'
 import { buildBlocks, GRADE_UI } from '@/app/piano-annuale/model'
 import { projectTemporalDay, type ProjectedCalendarState } from '@/core/application/temporal-projection-service'
@@ -132,7 +133,7 @@ export default async function HomePage() {
         <div>
           <p>{formatLongDate(moment.date)}</p>
           <h1 id="home-day-title">Adesso e dopo</h1>
-          <span>{[teacherSettings?.teacherDisplayName || null, context.academicYear?.label ?? null].filter(Boolean).join(' · ')}</span>
+          <span><LocalTeacherGreeting />{context.academicYear?.label ? ` · ${context.academicYear.label}` : ''}</span>
         </div>
         <div className="homeDailySummary" aria-label="Sintesi della giornata">
           <strong>{dailySummary(dailyContext, projectedDay.calendarState)}</strong>
