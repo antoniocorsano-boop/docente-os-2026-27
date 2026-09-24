@@ -3,7 +3,6 @@ import test from 'node:test'
 import { buildSettingsExperienceModel } from './settings-experience-model'
 
 const baseSettings = {
-  teacherDisplayName: 'Docente',
   schoolName: 'Istituto Comprensivo',
   schoolType: 'Secondaria di primo grado',
   dailyPeriodCount: 6,
@@ -110,7 +109,7 @@ test('a confirmed adopted textbook completes the textbook area', () => {
 
 test('incomplete professional context is always the first guided step', () => {
   const model = buildSettingsExperienceModel({
-    settings: { ...baseSettings, teacherDisplayName: '' },
+    settings: { ...baseSettings, schoolName: '' },
     disciplines: [],
     sections: [],
     assignments: [],
@@ -122,7 +121,7 @@ test('incomplete professional context is always the first guided step', () => {
 
 test('optional Home links never interrupt the guided configuration sequence', () => {
   const model = buildSettingsExperienceModel({
-    settings: { ...baseSettings, teacherDisplayName: '' },
+    settings: { ...baseSettings, schoolName: '' },
     disciplines: [],
     sections: [],
     assignments: [],
