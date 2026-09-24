@@ -259,3 +259,118 @@ La soluzione raccomandata è:
 **COMPATIBLE**
 
 La proposta completa Design System V2, Language & Collaboration System e Design Governance senza cambiare brand, authority o domain invariants.
+
+
+## 18. Benchmark di strumenti maturi
+
+Il pattern è stato confrontato con prodotti maturi che gestiscono contenuti, componenti o messaggi provenienti da fonti esterne o condivise. L'obiettivo non è copiarne la grafica, ma verificare quali invarianti ricorrono.
+
+### 18.1 Figma — origine persistente e source of truth
+
+Figma distingue tra **main component/library** e **instance**. Un componente riusato in un altro file resta collegato alla propria library sorgente e riceve aggiornamenti da quella fonte. Gli aggiornamenti vengono resi disponibili e possono essere **rivisti e accettati** dall'utente; la library mantiene il ruolo di source of truth.
+
+Fonti:
+- https://help.figma.com/hc/en-us/articles/360041051154-Guide-to-libraries-in-Figma
+- https://help.figma.com/hc/en-us/articles/360039234193-Review-and-accept-library-updates
+- https://help.figma.com/hc/en-us/articles/360038662654-Guide-to-components-in-Figma
+
+Lezioni applicabili a Docente OS:
+- l'adozione non deve cancellare il legame con la fonte;
+- la provenance deve sopravvivere al lifecycle locale;
+- aggiornamento/origine e decisione di adozione sono concetti distinti;
+- il sistema ospitante può mostrare la fonte senza trasformarla nella propria fonte nativa.
+
+Questo rafforza la decisione già presa per Atlas: una risorsa adottata in Docente OS resta riconoscibile come Atlas.
+
+### 18.2 GitHub — identità/provenienza separata dalla verifica e dallo stato
+
+GitHub usa indicatori specifici per rendere verificabile l'origine di commit e tag (`Verified`, `Partially verified`, `Unverified`) e permette di aprire il dettaglio della verifica. Allo stesso tempo i **status checks** rappresentano un'altra dimensione: build, test, deploy e readiness.
+
+Fonti:
+- https://docs.github.com/en/authentication/managing-commit-signature-verification/about-commit-signature-verification
+- https://docs.github.com/en/pull-requests/reference/status-checks
+
+Lezioni applicabili:
+- **chi/da dove viene** non va fuso con **a che punto è**;
+- un marker compatto può avere un livello di dettaglio verificabile;
+- la fiducia cresce quando il significato del badge è stabile e non ambiguo;
+- provenance e status devono avere componenti distinti.
+
+Questo conferma la separazione `SourceProvenance` / `HumanStatusBadge`.
+
+### 18.3 Slack — identità della sorgente resa visibile con nome + icona
+
+Slack associa ai messaggi di app/bot un'identità composta da **nome e icona**. La documentazione sottolinea che, quando un'app pubblica come altra entità, l'attribuzione deve essere chiara e non sorprendere l'utente. Per i bot correnti esistono campi distinti di identità (`bot_id`, `bot_profile`) e il messaggio mantiene traccia del soggetto che lo ha prodotto.
+
+Fonti:
+- https://docs.slack.dev/reference/methods/chat.postMessage/
+- https://docs.slack.dev/reference/events/message/bot_message/
+- https://docs.slack.dev/messaging/sending-and-scheduling-messages/
+
+Lezioni applicabili:
+- **icona + nome** è un pattern robusto per attribuzione rapida;
+- l'icona da sola non basta;
+- non si deve far apparire un contenuto come “del docente” se proviene da un sistema diverso;
+- l'attribuzione deve restare prevedibile.
+
+Questo sostiene il pattern `mark/icon + human label`.
+
+### 18.4 Microsoft Adaptive Cards — contenuto esterno, resa nativa dell'host
+
+Adaptive Cards sono contenuti scambiabili tra sistemi che vengono resi con la UI nativa dell'host (Teams, Outlook, Copilot, ecc.), adattandosi a tema, dimensione e contesto. Il contenuto mantiene la propria semantica senza portare con sé un mini-design system estraneo.
+
+Fonti:
+- https://learn.microsoft.com/en-us/adaptive-cards/
+- https://learn.microsoft.com/en-us/power-automate/overview-adaptive-cards
+- https://learn.microsoft.com/en-us/microsoftteams/platform/task-modules-and-cards/cards/design-effective-cards
+
+Lezioni applicabili:
+- Docente OS deve rendere la provenance con **componenti Docente OS**, non incorporare una card “in stile Atlas”;
+- il marchio della fonte può essere presente, ma layout, spaziature, accessibilità e responsive restano governati dall'host;
+- il contenuto esterno deve apparire coerente con il prodotto ospitante senza perdere identità.
+
+Questo esclude mini-card brandizzate per ogni sorgente e conferma un unico `SourceProvenance`.
+
+### 18.5 Notion — metadata e stato come proprietà distinte
+
+Notion tratta contesto, URL, autore, date e altre informazioni come proprietà visualizzabili/nascondibili e mantiene `Status` come proprietà semantica distinta. Il modello favorisce metadata componibili senza trasformarli tutti nello stesso tipo di badge.
+
+Fonte:
+- https://www.notion.com/help/database-properties
+
+Lezioni applicabili:
+- provenance è metadata semantico stabile, non stato;
+- il dettaglio può essere progressivamente esposto;
+- la superficie può decidere quanta provenance mostrare senza perdere il dato sottostante.
+
+## 19. Pattern ricorrenti emersi dal benchmark
+
+Dai prodotti analizzati emergono sette invarianti:
+
+1. **Persistenza dell'origine** — l'adozione locale non cancella la fonte.
+2. **Attribution esplicita** — nome/label accompagna il segno.
+3. **Provenance separata dallo stato** — origine e readiness sono dimensioni diverse.
+4. **Source of truth recuperabile** — quando serve, l'utente può risalire alla fonte o ai suoi dettagli.
+5. **Host-native rendering** — la fonte non introduce un design system parallelo dentro il prodotto ospitante.
+6. **Progressive disclosure** — marker compatto nel flusso, dettaglio quando richiesto.
+7. **Non-impersonation** — un contenuto non deve apparire come originato dal docente o da Docente OS se proviene da Atlas, web o strumento assistito.
+
+Questi invarianti confermano la direzione della specifica e ne rendono più rigorosi i criteri di accettazione.
+
+## 20. Conseguenze per TRAMA
+
+Il confronto esterno rafforza una scelta specifica per l'ecosistema:
+
+- **Atlas mantiene identità** quando un contenuto viene usato in Docente OS;
+- **Docente OS mantiene il proprio linguaggio visuale** come host;
+- **Arena authority non viene codificata con la stessa grammatica del source badge**;
+- la provenance è **persistente e recuperabile**, mentre status e decisioni possono cambiare;
+- il docente deve poter distinguere origine, stato e azione senza conoscere il domain model.
+
+Non emerge alcuna ragione per introdurre:
+- colori diversi obbligatori per ogni fonte;
+- loghi grandi;
+- card esterne con stile autonomo;
+- badge che fondono origine e approvazione.
+
+Il benchmark sostiene quindi una soluzione piccola, stabile e sistemica: **un solo componente host-native di provenance, con segno riconoscibile e label umana**.
