@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
+import { SourceProvenance } from '@/components/source-provenance/source-provenance'
 import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
 import type { PlannerTask } from '@/core/domain/planner-task'
 import { parseKnowledgeTaskSourceRef } from '@/core/domain/knowledge-task-source'
@@ -23,15 +24,6 @@ import { TemporalTodayPanel } from './TemporalTodayPanel'
 export const dynamic = 'force-dynamic'
 
 type SectionKey = 'now' | 'today' | 'week' | 'waiting' | 'undated'
-
-const sourceLabels: Record<PlannerTask['sourceKind'], string> = {
-  MANUAL: 'Inserita da te',
-  COMMUNICATION: 'Comunicazione',
-  CALENDAR: 'Dal calendario',
-  TEACHING: 'Didattica',
-  DOCUMENT: 'Documento',
-  SYSTEM: 'DOCENTE OS',
-}
 
 export default async function PlannerPage() {
   const workspaceRepository = new SupabaseWorkspaceRepository()
@@ -78,7 +70,7 @@ export default async function PlannerPage() {
           <h2 id="today-focus-title">{focusTask.title}</h2>
           <p>{taskFocusReason(focusTask, today)}</p>
           <div className="humanTaskMeta">
-            <span>{sourceLabels[focusTask.sourceKind]}</span>
+            <SourceProvenance plannerSource={focusTask.sourceKind} />
             {focusTask.dueAt ? <span>Scade {formatShortDate(focusTask.dueAt)}</span> : null}
             <span>{priorityLabel(focusTask.priority)}</span>
           </div>
@@ -158,7 +150,7 @@ function TaskRow({ task, today }: { task: PlannerTask; today: string }) {
       <form action={task.status === 'WAITING' ? reopenPlannerTask : completePlannerTask}><input type="hidden" name="taskId" value={task.id} /><button className="completeButton" type="submit" aria-label={task.status === 'WAITING' ? `Riapri ${task.title}` : `Completa ${task.title}`}>{task.status === 'WAITING' ? '↺' : '✓'}</button></form>
       <div className="taskBody">
         <h3>{task.title}</h3>
-        <div className="taskMeta"><span className="sourceChip">{sourceLabels[task.sourceKind]}</span>{dateLabel ? <span className="dateChip">{dateLabel}</span> : null}{task.priority === 'URGENT' ? <span className="priorityChip urgent">Urgente</span> : null}{task.priority === 'HIGH' ? <span className="priorityChip high">Alta</span> : null}{task.status === 'WAITING' ? <span className="waitingChip">In attesa</span> : null}{knowledgeSource ? <Link className="knowledgeSourceChip" href={`/knowledge/${knowledgeSource.assetId}`}>Fonte nella Conoscenza</Link> : null}</div>
+        <div className="taskMeta"><SourceProvenance plannerSource={task.sourceKind} />{dateLabel ? <span className="dateChip">{dateLabel}</span> : null}{task.priority === 'URGENT' ? <span className="priorityChip urgent">Urgente</span> : null}{task.priority === 'HIGH' ? <span className="priorityChip high">Alta</span> : null}{task.status === 'WAITING' ? <span className="waitingChip">In attesa</span> : null}{knowledgeSource ? <Link className="knowledgeSourceChip" href={`/knowledge/${knowledgeSource.assetId}`}>Fonte nella Conoscenza</Link> : null}</div>
         {task.status === 'OPEN' ? <div className="taskInlineActions" aria-label={`Azioni per ${task.title}`}>{task.plannedFor !== today ? <MoveButton action={movePlannerTaskToday} taskId={task.id} label="Oggi" /> : null}{task.plannedFor !== tomorrow ? <MoveButton action={movePlannerTaskTomorrow} taskId={task.id} label="Domani" /> : null}<MoveButton action={movePlannerTaskWeek} taskId={task.id} label="Settimana" />{task.plannedFor ? <MoveButton action={unschedulePlannerTask} taskId={task.id} label="Senza data" /> : null}<MoveButton action={waitPlannerTask} taskId={task.id} label="Metti in attesa" /></div> : null}
       </div>
     </article>
