@@ -13,6 +13,7 @@ import {
   type HumanTaskLessonProjection,
   type HumanTaskResource,
 } from '@/core/presentation/human-task-content'
+import { resolveLiveMaterialLink } from './lesson-live-material-link'
 import styles from './lesson-live.module.css'
 
 type Block = {
@@ -115,7 +116,20 @@ export default function LessonLiveClient({
             Sono i materiali allegati alla lezione. Le altre aggiunte accettate, come domande o attività,
             compaiono direttamente nella sequenza.
           </p>
-          <div>{attachedResources.map((resource) => <article key={resource.id}><strong>{resource.title}</strong><small>{resource.body}</small></article>)}</div>
+          <div>{attachedResources.map((resource) => {
+            const link = resolveLiveMaterialLink(resource)
+            return (
+              <article key={resource.id}>
+                <strong>{resource.title}</strong>
+                <small>{resource.body}</small>
+                {link ? (
+                  link.external
+                    ? <a className={styles.attachedAction} href={link.href} target="_blank" rel="noreferrer">{link.label}</a>
+                    : <Link className={styles.attachedAction} href={link.href}>{link.label}</Link>
+                ) : null}
+              </article>
+            )
+          })}</div>
         </details>
       ) : null}
 
