@@ -48,7 +48,6 @@ export async function saveSchoolOrganization(formData: FormData) {
   revalidatePath('/orario')
 }
 
-// Backward-compatible full save used by older clients until every Settings surface is migrated.
 export async function saveTeacherSettings(formData: FormData) {
   const context = await requireContext()
   const repository = new SupabaseTeacherSettingsRepository()
@@ -149,15 +148,16 @@ export async function updateSettingsTeachingAssignment(formData: FormData) {
 }
 
 export async function confirmSettingsTeachingAssignment(formData: FormData) {
-  await setSettingsTeachingAssignmentStatus(formData, 'CONFIRMED')
+  await setSettingsTeachingAssignmentStatus(formData, 'PROVISIONAL', 'CONFIRMED')
 }
 
 export async function reopenSettingsTeachingAssignment(formData: FormData) {
-  await setSettingsTeachingAssignmentStatus(formData, 'PROVISIONAL')
+  await setSettingsTeachingAssignmentStatus(formData, 'CONFIRMED', 'PROVISIONAL')
 }
 
 async function setSettingsTeachingAssignmentStatus(
   formData: FormData,
+  expectedStatus: 'PROVISIONAL' | 'CONFIRMED',
   status: 'PROVISIONAL' | 'CONFIRMED',
 ) {
   const context = await requireContext()
@@ -166,6 +166,8 @@ async function setSettingsTeachingAssignmentStatus(
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
     assignmentId: text(formData, 'assignmentId'),
+    expectedStatus,
+    expectedUpdatedAt: text(formData, 'expectedUpdatedAt'),
     status,
   })
   revalidateTeachingContext()
@@ -190,25 +192,25 @@ function revalidateTeachingContext() {
   revalidatePath('/')
 }
 
-function assignmentPair(value: string): [string, string] {
-  const [sectionId, disciplineId, extra] = value.split('|')
-  if (!sectionId || !disciplineId || extra) throw new Error('Invalid teaching assignment pair')
-  return [sectionId, disciplineId]
+function assignmentPair(value: string) {
+  const [sectionId, disciplineId] = value.split('|')
+  if (!sectionId || !disciplineId) throw new Error('Invalid assignment pair')
+  return [sectionId, disciplineId] as const
 }
 
 function text(formData: FormData, key: string) {
-  const value = formData.get(key)
-  if (typeof value !== 'string') throw new Error(`${key} required`)
+  const value = String(formData.get(key) ?? '').trim()
+  if (!value) throw new Error(`Missing ${key}`)
   return value
 }
 
 function nullableText(formData: FormData, key: string) {
-  const value = text(formData, key).trim()
+  const value = String(formData.get(key) ?? '').trim()
   return value || null
 }
 
 function integer(formData: FormData, key: string) {
-  const value = Number(text(formData, key))
-  if (!Number.isInteger(value)) throw new Error(`${key} must be an integer`)
+  const value = Number(formData.get(key))
+  if (!Number.isInteger(value)) throw new Error(`Invalid ${key}`)
   return value
 }
