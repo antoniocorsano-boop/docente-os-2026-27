@@ -5,20 +5,6 @@ import { asTeachingAssignmentStatus, type TeachingAssignment } from '@/core/doma
 type AssignmentRow = Database['public']['Tables']['teaching_assignments']['Row']
 
 export class SupabaseTeachingAssignmentReader {
-  async getById(workspaceId: string, academicYearId: string, assignmentId: string): Promise<TeachingAssignment | null> {
-    const supabase = await createClient()
-    const { data, error } = await supabase
-      .from('teaching_assignments')
-      .select('*')
-      .eq('id', assignmentId)
-      .eq('workspace_id', workspaceId)
-      .eq('academic_year_id', academicYearId)
-      .maybeSingle()
-
-    if (error) throw new Error(error.message)
-    return data ? toTeachingAssignment(data) : null
-  }
-
   async list(workspaceId: string, academicYearId: string): Promise<TeachingAssignment[]> {
     const supabase = await createClient()
     const { data, error } = await supabase

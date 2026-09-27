@@ -3,10 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { asAnnualPlanGrade } from '@/core/domain/annual-plan-execution'
-import { transitionTeachingAssignmentStatus } from '@/core/application/transition-teaching-assignment-status'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
-import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 
@@ -151,28 +149,24 @@ export async function updateSettingsTeachingAssignment(formData: FormData) {
 }
 
 export async function confirmSettingsTeachingAssignment(formData: FormData) {
-  await setSettingsTeachingAssignmentStatus(formData, 'PROVISIONAL', 'CONFIRMED')
+  await setSettingsTeachingAssignmentStatus(formData, 'CONFIRMED')
 }
 
 export async function reopenSettingsTeachingAssignment(formData: FormData) {
-  await setSettingsTeachingAssignmentStatus(formData, 'CONFIRMED', 'PROVISIONAL')
+  await setSettingsTeachingAssignmentStatus(formData, 'PROVISIONAL')
 }
 
 async function setSettingsTeachingAssignmentStatus(
   formData: FormData,
-  expectedStatus: 'PROVISIONAL' | 'CONFIRMED',
   status: 'PROVISIONAL' | 'CONFIRMED',
 ) {
   const context = await requireContext()
-  const assignmentId = text(formData, 'assignmentId')
-  await transitionTeachingAssignmentStatus({
+  const repository = new SupabaseTimetableRepository()
+  await repository.setAssignmentStatus({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
-    assignmentId,
-    expectedStatus,
+    assignmentId: text(formData, 'assignmentId'),
     status,
-    reader: new SupabaseTeachingAssignmentReader(),
-    writer: new SupabaseTimetableRepository(),
   })
   revalidateTeachingContext()
 }

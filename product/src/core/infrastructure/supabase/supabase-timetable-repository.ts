@@ -20,13 +20,6 @@ type SlotRow = Database['public']['Tables']['timetable_slots']['Row']
 type SlotRowWithPresence = SlotRow & { manual_class_label: string | null; presence_kind: string | null }
 type SlotInsert = Database['public']['Tables']['timetable_slots']['Insert']
 
-export class TeachingAssignmentStaleConflictError extends Error {
-  constructor() {
-    super('Teaching assignment changed since it was loaded')
-    this.name = 'TeachingAssignmentStaleConflictError'
-  }
-}
-
 export class SupabaseTimetableRepository {
   async getOrCreateDraft(
     workspaceId: string,
@@ -153,8 +146,6 @@ export class SupabaseTimetableRepository {
     workspaceId: string
     academicYearId: string
     assignmentId: string
-    expectedStatus: 'PROVISIONAL' | 'CONFIRMED'
-    expectedUpdatedAt: string
     status: 'PROVISIONAL' | 'CONFIRMED'
   }): Promise<TeachingAssignment> {
     const supabase = await createClient()
@@ -164,13 +155,10 @@ export class SupabaseTimetableRepository {
       .eq('id', input.assignmentId)
       .eq('workspace_id', input.workspaceId)
       .eq('academic_year_id', input.academicYearId)
-      .eq('status', input.expectedStatus)
-      .eq('updated_at', input.expectedUpdatedAt)
       .select('*')
-      .maybeSingle()
+      .single()
 
     if (error) throw new Error(error.message)
-    if (!data) throw new TeachingAssignmentStaleConflictError()
     return toAssignment(data)
   }
 
