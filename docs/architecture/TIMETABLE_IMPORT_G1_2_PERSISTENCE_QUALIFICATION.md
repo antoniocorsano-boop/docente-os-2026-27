@@ -57,7 +57,7 @@ Le modifiche puramente tecniche a `updated_at` non devono produrre incrementi au
 
 Le primitive manuali T1 esistenti devono continuare a funzionare, ma il bump deve avvenire centralmente nel DB. Nessuna chiamata client può scegliere il valore della revisione.
 
-## 4. Decisione Q2 — candidato persistente minimizzato
+## 4. Decisione Q2 — candidato persistente minimizzato e revisionabile
 
 Schema logico qualificato:
 
@@ -85,10 +85,23 @@ Vincoli minimi:
 
 - `revision >= 1`;
 - `source_fingerprint` non vuoto e limitato in lunghezza;
-- unicità logica `(workspace_id, academic_year_id, source_fingerprint)` per evitare duplicazione della stessa sorgente nel medesimo contesto;
 - `effective_from_candidate`, quando presente, deve appartenere all'anno scolastico del candidato;
 - `state` limitato agli stati G0 applicabili alla persistenza;
-- identità workspace/anno/creator immutabile dopo insert.
+- identità workspace/anno/creator/source_fingerprint immutabile dopo insert.
+
+### R1 — deduplicazione della sorgente distinta dal versionamento
+
+`source_fingerprint` identifica la sorgente binaria, **non una revisione del candidato**. Una stessa sorgente può quindi produrre revisioni successive dello stesso candidato dopo correzioni/review.
+
+La migrazione non deve imporre `unique(workspace_id, academic_year_id, source_fingerprint)` sulla tabella dei candidati. La deduplicazione viene invece governata così:
+
+- per `(workspace_id, academic_year_id, source_fingerprint)` può esistere un solo candidato logico non terminale;
+- le correzioni incrementano `candidate.revision` sullo stesso `candidate.id`;
+- ogni revisione sostituisce atomicamente il set di righe candidate della revisione precedente oppure adotta un meccanismo equivalente che impedisca mescolanza fra revisioni;
+- `APPLIED_TO_DRAFT` è terminale per quel candidato;
+- un nuovo import intenzionale della stessa sorgente dopo stato terminale richiede una nuova identità candidata e non eredita ricevute/idempotenza dal candidato precedente.
+
+La futura migrazione deve implementare l'unicità parziale o l'enforcement transazionale necessario a impedire due candidati non terminali concorrenti per la stessa sorgente, senza impedire il versionamento.
 
 ## 5. Decisione Q3 — righe candidate
 
@@ -98,6 +111,7 @@ Schema logico:
 timetable_import_candidate_rows
   id uuid PK
   candidate_id uuid FK cascade
+  candidate_revision bigint
   row_key text
   weekday smallint nullable
   ordinal smallint nullable
@@ -122,7 +136,7 @@ Non viene persistito `source_teacher_label` in G1.2. Il nominativo letto nel doc
 
 Le FK risolte devono appartenere allo stesso workspace/anno del candidato. `resolved_assignment_id` non può essere usato per dedurre o correggere implicitamente la disciplina.
 
-`row_key` è un identificatore tecnico stabile nella revisione candidata; non contiene dati personali.
+`row_key` è un identificatore tecnico stabile nella singola revisione candidata; non contiene dati personali. La chiave logica è almeno `(candidate_id, candidate_revision, row_key)`.
 
 ## 6. Decisione Q4 — RLS e ownership
 
@@ -138,7 +152,7 @@ AND created_by = auth.uid()
 Update/delete candidato:
 
 - membership del workspace obbligatoria;
-- identità di contesto immutabile;
+- identità di contesto e fingerprint immutabili;
 - stato `APPLIED_TO_DRAFT` non modificabile dal normale CRUD client;
 - transizioni sensibili effettuate soltanto dalla funzione governata di conferma/apply.
 
@@ -148,7 +162,7 @@ Righe:
 - autorizzazione derivata sempre dal candidato padre;
 - nessun accesso `anon`.
 
-## 7. Decisione Q5 — ricevuta idempotente
+## 7. Decisione Q5 — ricevuta idempotente e anti-spoofing
 
 Persistenza separata:
 
@@ -172,9 +186,34 @@ Vincolo univoco minimo:
 unique(workspace_id, confirmation_request_id)
 ```
 
-Un retry con lo stesso `confirmation_request_id` deve restituire lo stesso esito logico e non rieseguire mutazioni.
+### R2 — idempotenza prima del controllo di concorrenza
 
-La ricevuta non contiene il documento sorgente né una copia completa del piano.
+All'ingresso della funzione governata, dopo autenticazione e determinazione sicura del workspace, la receipt per `(workspace_id, confirmation_request_id)` viene cercata **prima** di acquisire il lock e confrontare la revisione corrente della DRAFT.
+
+Se esiste:
+
+- `candidate_id`, `candidate_revision`, `draft_version_id` ed `expected_draft_revision` devono coincidere con la richiesta;
+- deve essere verificata anche l'equivalenza semantica del piano tramite un digest canonico server-side (`operations_digest`) registrato nella receipt;
+- se tutto coincide, viene restituita la stessa receipt senza rieseguire mutazioni e senza richiedere che la DRAFT conservi la vecchia revisione;
+- se il medesimo `confirmation_request_id` viene riutilizzato con identità o piano diversi, la funzione fallisce con `IDEMPOTENCY_KEY_REUSED` e non scrive nulla.
+
+Solo in assenza di receipt si procede a lock, verifica della DRAFT e applicazione.
+
+### R3 — campi attestati esclusivamente dal server
+
+Le receipt non espongono `INSERT`, `UPDATE` o `DELETE` al normale ruolo `authenticated`. Possono essere create esclusivamente dalla funzione governata di apply.
+
+Sono sempre derivati lato server e non accettati dal payload client:
+
+- `workspace_id` dal candidato/DRAFT validati;
+- `applied_by = auth.uid()`;
+- `applied_at = clock_timestamp()` o equivalente DB;
+- `resulting_draft_revision` dal risultato della transazione;
+- `operations_digest` dalla canonicalizzazione server-side del piano validato.
+
+Il normale CRUD client non può portare un candidato a `APPLIED_TO_DRAFT` né alterare una receipt esistente.
+
+La receipt non contiene il documento sorgente né una copia completa del piano.
 
 ## 8. Decisione Q6 — piano confermato
 
@@ -188,12 +227,9 @@ expected_draft_revision
 confirmation_request_id
 ```
 
-G1.2 deve scegliere una delle due sole forme ammissibili prima della migrazione:
+**Scelta G1.2: forma B.** Il piano non viene persistito in tabelle dedicate prima della conferma. È un payload strutturato validato integralmente dentro la funzione di apply e attestato dalla receipt tramite `operations_digest` canonico server-side.
 
-A. piano normalizzato persistito in tabelle dedicate prima della conferma;
-B. payload strutturato validato integralmente dentro la funzione di apply e attestato dalla ricevuta.
-
-**Preferenza qualificata: B**, per minimizzare persistenza e superfici RLS, a condizione che la funzione DB riconvalidi ogni operazione e non si fidi del client.
+La funzione DB deve riconvalidare ogni operazione e non fidarsi di identificatori, stato, conferme o digest forniti dal client.
 
 ## 9. Decisione Q7 — funzione atomica di apply
 
@@ -210,39 +246,53 @@ apply_timetable_import_to_draft(
 ) -> receipt
 ```
 
-La funzione deve, nella stessa transazione:
+Sequenza vincolante nella stessa transazione:
 
 1. autenticare l'utente;
-2. verificare membership del workspace;
-3. acquisire lock sulla DRAFT target;
-4. verificare `status = DRAFT`;
-5. verificare `expected_draft_revision`;
-6. verificare candidato, stato e `candidate_revision`;
-7. verificare idempotenza;
-8. riconvalidare ogni operazione e riferimento;
-9. applicare solo `KEEP/ADD/MOVE/CHANGE/REMOVE/IGNORE` ammessi;
-10. richiedere evidenza di conferma esplicita per ogni `REMOVE`;
-11. lasciare gli slot fuori perimetro invariati;
-12. affidarsi agli invarianti canonici T1 per overlap e coerenza delle cattedre;
-13. incrementare una sola revisione logica risultante per l'apply complessivo;
-14. scrivere la ricevuta;
-15. portare il candidato a `APPLIED_TO_DRAFT`;
-16. restituire la ricevuta.
+2. risolvere candidato/workspace e verificare membership senza fidarsi del workspace client;
+3. cercare receipt per `(workspace_id, confirmation_request_id)`;
+4. se esiste, verificare identità + `operations_digest` e restituirla oppure fallire `IDEMPOTENCY_KEY_REUSED`;
+5. acquisire lock sulla DRAFT target;
+6. verificare `status = DRAFT`;
+7. verificare `expected_draft_revision`;
+8. verificare candidato, stato, scadenza e `candidate_revision`;
+9. riconvalidare ogni operazione e riferimento;
+10. applicare solo `KEEP/ADD/MOVE/CHANGE/REMOVE/IGNORE` ammessi;
+11. richiedere evidenza di conferma esplicita per ogni `REMOVE`;
+12. lasciare gli slot fuori perimetro invariati;
+13. affidarsi agli invarianti canonici T1 per overlap e coerenza delle cattedre;
+14. incrementare una sola revisione logica risultante per l'apply complessivo;
+15. scrivere la receipt con campi attestati server-side;
+16. portare il candidato a `APPLIED_TO_DRAFT` tramite percorso privilegiato governato;
+17. restituire la receipt.
 
 Qualsiasi errore → rollback totale.
 
-## 10. Decisione Q8 — evitare bump multipli durante apply
+## 10. Decisione Q8 — strategia unica per il bump della revisione
 
-I trigger ordinari sugli slot devono incrementare la revisione per le modifiche manuali T1. L'apply import può però modificare più slot.
+La strategia G1.2 è fissata come segue.
 
-La migrazione non deve produrre una revisione diversa per ogni singola riga dell'importazione. Deve essere progettato un meccanismo DB-safe che produca **un solo incremento logico per l'intera transazione di apply**, senza consentire al client di disabilitare i trigger.
+### Mutazioni manuali T1
 
-Soluzioni da validare nella review SQL:
+Trigger DB sulle mutazioni semantiche degli slot e dei metadati DRAFT incrementano normalmente `timetable_versions.revision`. Il client non può impostare direttamente `revision` né disabilitare i trigger.
 
-- funzione privata/flag transazionale non impostabile dal ruolo client;
-- oppure mutazioni incapsulate in funzione con bump finale e trigger capaci di distinguere il contesto governato.
+### Apply governato multi-slot
 
-È vietato usare una variabile controllabile dal client autenticato per sopprimere il bump.
+`apply_timetable_import_to_draft` è una funzione pubblica governata con privilegi minimi e `SECURITY DEFINER` solo se necessario dopo review SQL; essa invoca una **funzione privata interna** per le mutazioni multi-slot.
+
+La funzione privata usa un contesto transazionale interno per evitare bump per-riga e produce un solo bump finale. Il contesto di soppressione:
+
+- non è esposto come argomento della funzione pubblica;
+- non è impostabile tramite tabella/configurazione scrivibile dal ruolo `authenticated`;
+- non è attivabile chiamando direttamente la funzione privata, perché il ruolo client non possiede `EXECUTE` su di essa;
+- viene riconosciuto dai trigger soltanto se creato nel percorso privilegiato dell'apply;
+- termina con la transazione e non persiste tra richieste.
+
+La migrazione deve revocare esplicitamente `EXECUTE` sulla funzione privata da `PUBLIC`, `anon` e `authenticated`, concedendolo soltanto al proprietario/ruolo interno necessario. La funzione pubblica deve fissare un `search_path` sicuro e usare nomi qualificati per gli oggetti sensibili.
+
+Il bump finale è eseguito server-side una sola volta, dopo tutte le mutazioni e prima della receipt. Se una mutazione o il bump falliscono, rollback totale.
+
+**È vietato qualsiasi flag/session setting liberamente impostabile dal client come autorità sufficiente per sopprimere il bump.** Anche se viene usato un setting transazionale come dettaglio implementativo, i trigger devono richiedere un contesto che il ruolo client non possa produrre autonomamente.
 
 ## 11. Decisione Q9 — retention
 
@@ -257,7 +307,7 @@ Il valore di 30 giorni è un massimo tecnico predefinito, non un obbligo archivi
 Dopo `APPLIED_TO_DRAFT`:
 
 - righe/evidenze transitorie eliminabili secondo job governato;
-- ricevuta minima conservata per idempotenza/provenienza operativa;
+- receipt minima conservata per idempotenza/provenienza operativa;
 - nessun binario sorgente in queste tabelle.
 
 La pulizia automatica effettiva appartiene alla materializzazione DB/operativa e deve avere test dedicati.
@@ -266,13 +316,13 @@ La pulizia automatica effettiva appartiene alla materializzazione DB/operativa e
 
 Da verificare nella futura migrazione:
 
-- unique sorgente per workspace/anno/fingerprint;
-- unique row key per candidato;
-- unique receipt per workspace/confirmation_request_id;
+- enforcement di un solo candidato logico non terminale per workspace/anno/fingerprint, senza impedire revisioni;
+- unique row key per `(candidate_id, candidate_revision, row_key)`;
+- unique receipt per `(workspace_id, confirmation_request_id)`;
 - indici su candidate `(workspace_id, academic_year_id, state)` e `expires_at`;
-- indice righe su `candidate_id`;
+- indice righe su `(candidate_id, candidate_revision)`;
 - FK con `on delete cascade` soltanto candidato → righe;
-- ricevute non eliminate automaticamente con il candidato se ciò compromette idempotenza/audit minimo.
+- receipt non eliminate automaticamente con il candidato se ciò compromette idempotenza/audit minimo.
 
 ## 13. Casi di prova obbligatori prima del PASS G1.2 runtime
 
@@ -280,33 +330,39 @@ La futura PR SQL deve dimostrare almeno:
 
 1. utente non membro non legge/scrive candidati;
 2. anon non accede;
-3. candidato non può cambiare workspace/anno/creator;
+3. candidato non può cambiare workspace/anno/creator/fingerprint;
 4. assignment cross-workspace/cross-year rifiutato;
 5. modifica manuale slot incrementa revision;
 6. delete manuale slot incrementa revision;
 7. update metadati DRAFT incrementa revision;
 8. DRAFT cambiata dopo review → `CONFLICT_DETECTED`, zero scritture;
-9. retry stesso confirmation ID → stesso risultato, zero duplicati;
-10. due conferme concorrenti → una sola applicazione logica;
-11. errore a metà piano → rollback completo;
-12. `REMOVE` non esplicitamente confermato → rifiuto;
-13. slot fuori perimetro → invariato;
-14. apply multi-slot → un solo incremento logico della revisione;
-15. ACTIVE/ARCHIVED non modificabili;
-16. candidato scaduto non applicabile;
-17. documento/nominativi non pertinenti assenti dalle tabelle G1.2.
+9. retry stesso confirmation ID e stesso piano → stessa receipt, zero duplicati anche dopo bump della DRAFT;
+10. riuso stesso confirmation ID con piano/identità diversi → `IDEMPOTENCY_KEY_REUSED`, zero scritture;
+11. due conferme concorrenti → una sola applicazione logica;
+12. errore a metà piano → rollback completo;
+13. `REMOVE` non esplicitamente confermato → rifiuto;
+14. slot fuori perimetro → invariato;
+15. apply multi-slot → un solo incremento logico della revisione;
+16. client authenticated non può sopprimere il revision bump né invocare direttamente la funzione privata;
+17. ACTIVE/ARCHIVED non modificabili;
+18. candidato scaduto non applicabile;
+19. documento/nominativi non pertinenti assenti dalle tabelle G1.2;
+20. stessa sorgente può avanzare di `candidate_revision` senza creare candidati non terminali concorrenti.
 
 ## 14. Gate prima della migrazione
 
 - [x] baseline G1.1 integrata;
 - [x] schema T1 reale riesaminato;
-- [x] modello candidato minimizzato qualificato;
+- [x] modello candidato minimizzato e revisionabile qualificato;
 - [x] RLS/ownership qualificati;
 - [x] revisione DRAFT DB-enforced qualificata;
-- [x] idempotenza qualificata;
+- [x] idempotenza ordinata prima del controllo di concorrenza;
+- [x] receipt anti-spoofing qualificata;
+- [x] forma B del piano confermato scelta;
+- [x] strategia unica di bump multi-slot e privilegi qualificata;
 - [x] apply atomico qualificato;
-- [x] casi di prova obbligatori definiti;
-- [ ] review terza del presente piano;
+- [x] 20 casi di prova obbligatori definiti;
+- [ ] seconda review terza del presente piano;
 - [ ] decisione umana sulla materializzazione SQL.
 
 Fino alla chiusura degli ultimi due punti: **HOLD_MIGRATION**.
