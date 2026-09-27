@@ -44,13 +44,33 @@ function validSlot(slot: TimetableImportCandidateSlot) {
   return slot.slotKind === 'LESSON'
 }
 
+function minutes(value: string) {
+  const [hours, mins] = value.split(':').map(Number)
+  return hours * 60 + mins
+}
+
+function hasOverlappingLessons(slots: TimetableImportCandidateSlot[]) {
+  const validLessons = slots.filter(validSlot)
+  for (let i = 0; i < validLessons.length; i += 1) {
+    for (let j = i + 1; j < validLessons.length; j += 1) {
+      const left = validLessons[i]
+      const right = validLessons[j]
+      if (left.weekday !== right.weekday) continue
+      if (minutes(left.startTime) < minutes(right.endTime) && minutes(right.startTime) < minutes(left.endTime)) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
 export function buildTimetableImportPreview(input: TimetableImportPreviewInput): TimetableImportPreview {
   const teacherSurname = input.teacherSurname.trim()
+  // Preserve source time values exactly: malformed extraction must fail closed,
+  // never be repaired silently before validation.
   const candidateSlots = input.candidateSlots.map((slot) => ({
     ...slot,
     classLabel: slot.classLabel.trim(),
-    startTime: slot.startTime.slice(0, 5),
-    endTime: slot.endTime.slice(0, 5),
   }))
 
   const blockingReasons: string[] = []
@@ -59,15 +79,7 @@ export function buildTimetableImportPreview(input: TimetableImportPreviewInput):
   if (!isRealIsoDate(input.effectiveFrom)) blockingReasons.push('EFFECTIVE_FROM_INVALID')
   if (candidateSlots.length === 0) blockingReasons.push('NO_LESSONS_FOUND')
   if (candidateSlots.some((slot) => !validSlot(slot))) blockingReasons.push('INVALID_LESSON_SLOT')
-
-  const duplicateKeys = new Set<string>()
-  const seenKeys = new Set<string>()
-  for (const slot of candidateSlots) {
-    const key = `${slot.weekday}|${slot.startTime}|${slot.endTime}`
-    if (seenKeys.has(key)) duplicateKeys.add(key)
-    seenKeys.add(key)
-  }
-  if (duplicateKeys.size > 0) blockingReasons.push('AMBIGUOUS_OVERLAPPING_LESSONS')
+  if (hasOverlappingLessons(candidateSlots)) blockingReasons.push('AMBIGUOUS_OVERLAPPING_LESSONS')
 
   return {
     ...input,
