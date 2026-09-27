@@ -117,9 +117,8 @@ test('X3 mobile gate: grounded answers, useful proposals, write preview and no a
 
 test('X3 Today/Planner gate: day context, useful answer and no automatic mutation', async ({ page }) => {
   await login(page)
-  const stats = await openPlannerReady(page)
-  const beforeText = await stats.innerText()
-  const openCount = plannerOpenCount(beforeText)
+  const beforeState = await openPlannerReady(page)
+  const openCount = beforeState.openCount
 
   const trigger = page.getByRole('button', { name: /Chiedi a DOCENTE OS/ })
   await expect(trigger).toBeVisible({ timeout: 30_000 })
@@ -145,9 +144,8 @@ test('X3 Today/Planner gate: day context, useful answer and no automatic mutatio
     await page.screenshot({ path: 'test-results/x3-06-planner-write-boundary.png' })
   })
 
-  const afterStats = await openPlannerReady(page)
-  const afterText = await afterStats.innerText()
-  expect(plannerOpenCount(afterText)).toBe(openCount)
+  const afterState = await openPlannerReady(page)
+  expect(afterState.openCount).toBe(openCount)
 })
 
 async function login(page) {
@@ -163,9 +161,9 @@ async function openPlannerReady(page) {
       await page.goto('/planner', { waitUntil: 'domcontentloaded', timeout: 30_000 })
       await expect(page).toHaveURL(/\/planner(?:$|\?)/, { timeout: 15_000 })
       await expect(page.locator('#dos-main-content')).toBeVisible({ timeout: 30_000 })
-      const stats = page.locator('.humanTaskCompactStats')
-      await expect(stats).toBeVisible({ timeout: 30_000 })
-      return stats
+      const summary = page.getByLabel('Sintesi della giornata')
+      await expect(summary).toBeVisible({ timeout: 30_000 })
+      return { openCount: await plannerOpenCount(page) }
     } catch (error) {
       lastError = error
       if (attempt === 2) break
@@ -198,8 +196,17 @@ async function askAndCheck(page, prompt, expectedAssistantMessages, assertion) {
   await assertion(responses.last())
 }
 
-function plannerOpenCount(text) {
-  const match = text.match(/(\d+)\s+aperte/i)
-  if (!match) throw new Error(`Planner open count not found in: ${text}`)
-  return Number(match[1])
+async function plannerOpenCount(page) {
+  const stats = page.getByLabel('Riepilogo attività Planner')
+  if (await stats.count()) {
+    const text = await stats.innerText()
+    const match = text.match(/(\d+)\s+attività aperte/i)
+    if (!match) throw new Error(`Planner open count not found in: ${text}`)
+    return Number(match[1])
+  }
+
+  const quiet = page.locator('details.todayQuietSection')
+  await expect(quiet).toBeVisible({ timeout: 30_000 })
+  await expect(quiet).toContainText('Niente di urgente')
+  return 0
 }
