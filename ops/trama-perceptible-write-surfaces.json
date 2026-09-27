@@ -35,15 +35,13 @@
       "critical": false,
       "sourcePatterns": [
         "product/src/app/impostazioni/actions.ts",
-        "product/src/core/infrastructure/supabase/supabase-teacher-settings-repository.ts",
-        "product/src/core/infrastructure/supabase/supabase-timetable-repository.ts"
+        "product/src/core/infrastructure/supabase/supabase-teacher-settings-repository.ts"
       ],
       "feedbackFiles": [
         "product/src/app/impostazioni/page.tsx"
       ],
       "testFiles": [
-        "product/src/app/impostazioni/settings-save-feedback.test.ts",
-        "product/src/core/application/transition-teaching-assignment-status.test.ts"
+        "product/src/app/impostazioni/settings-save-feedback.test.ts"
       ]
     },
     {
