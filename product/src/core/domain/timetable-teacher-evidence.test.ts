@@ -2,9 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   TT_TEACHER_UNICODE_VERSION,
-  normalizeTeacherLabel,
+  normalizeTeacherLabelPreview,
   sameTeacherEvidence,
   validateTeacherEvidenceProfile,
+  type TeacherEvidenceOccurrence,
   type TeacherEvidenceProfile,
 } from './timetable-teacher-evidence'
 
@@ -13,57 +14,92 @@ const profile: TeacherEvidenceProfile = {
   profileVersion: '1',
   parserFamily: 'fixture',
   parserVersion: '1',
-  sameRules: [{ allOf: ['teacher-structural-id'] }],
-  distinctRules: [{ allOf: ['distinct-teacher-group'] }],
+  allowedSignalKinds: ['teacher-structural-id', 'teacher-group'],
+  sameRules: [{ kind: 'teacher-structural-id', comparator: 'EQUAL' }],
+  distinctRules: [{ kind: 'teacher-group', comparator: 'NOT_EQUAL' }],
 }
 
-test('dichiara Unicode 17.0.0 come versione contrattuale', () => {
+const occurrence = (id: string, structuralId: string, group = 'G-1'): TeacherEvidenceOccurrence => ({
+  occurrenceId: id,
+  signals: [
+    { kind: 'teacher-structural-id', value: structuralId },
+    { kind: 'teacher-group', value: group },
+  ],
+})
+
+test('dichiara Unicode 17.0.0 come versione contrattuale, senza dichiarare completa la scaffold preview', () => {
   assert.equal(TT_TEACHER_UNICODE_VERSION, '17.0.0')
 })
 
-test('normalizza NFC, spazi governati, apostrofi e trattini senza fuzzy matching', () => {
-  assert.equal(normalizeTeacherLabel('  D’ANGELO\u00A0–  ROSSI  '), "d'angelo - rossi")
-  assert.equal(normalizeTeacherLabel('RÒSSI'), normalizeTeacherLabel('RÒSSI'))
-  assert.notEqual(normalizeTeacherLabel('Rossi'), normalizeTeacherLabel('Ròssi'))
+test('scaffold preview normalizza i casi correnti senza pretendere conformità Unicode 17 completa', () => {
+  assert.equal(normalizeTeacherLabelPreview('  D’ANGELO\u00A0–  ROSSI  '), "d'angelo - rossi")
+  assert.equal(normalizeTeacherLabelPreview('RÒSSI'), normalizeTeacherLabelPreview('RÒSSI'))
+  assert.notEqual(normalizeTeacherLabelPreview('Rossi'), normalizeTeacherLabelPreview('Ròssi'))
 })
 
 test('Unicode non valido fallisce chiuso', () => {
-  assert.throws(() => normalizeTeacherLabel('\uD800ROSSI'), /NO_MATCH_SAFE/)
+  assert.throws(() => normalizeTeacherLabelPreview('\uD800ROSSI'), /NO_MATCH_SAFE/)
 })
 
-test('profilo assente o non valido non abilita inferenze', () => {
+test('profilo assente non abilita inferenze', () => {
   assert.equal(validateTeacherEvidenceProfile(null), false)
-  assert.equal(sameTeacherEvidence([{ kind: 'teacher-structural-id', value: 'x' }], null), 'UNKNOWN')
+  assert.equal(sameTeacherEvidence(occurrence('a', 'T-1'), occurrence('b', 'T-1'), null), 'UNKNOWN')
 })
 
-test('SAME richiede un segnale esplicitamente ammesso dal profilo', () => {
-  assert.equal(sameTeacherEvidence([{ kind: 'teacher-structural-id', value: 'T-1' }], profile), 'SAME')
-  assert.equal(sameTeacherEvidence([{ kind: 'same-surname', value: 'ROSSI' }], profile), 'UNKNOWN')
+test('structural-id uguale produce SAME solo confrontando due occorrenze', () => {
+  assert.equal(sameTeacherEvidence(occurrence('a', 'T-1'), occurrence('b', 'T-1'), profile), 'SAME')
 })
 
-test('DISTINCT richiede un segnale esplicitamente ammesso dal profilo', () => {
-  assert.equal(sameTeacherEvidence([{ kind: 'distinct-teacher-group', value: 'G-2' }], profile), 'DISTINCT')
+test('structural-id diverso non produce SAME', () => {
+  assert.equal(sameTeacherEvidence(occurrence('a', 'T-1'), occurrence('b', 'T-2'), profile), 'UNKNOWN')
 })
 
-test('segnali SAME e DISTINCT contraddittori producono UNKNOWN', () => {
-  assert.equal(sameTeacherEvidence([
-    { kind: 'teacher-structural-id', value: 'T-1' },
-    { kind: 'distinct-teacher-group', value: 'G-2' },
-  ], profile), 'UNKNOWN')
+test('gruppi governati differenti producono DISTINCT', () => {
+  assert.equal(sameTeacherEvidence(occurrence('a', 'T-1', 'G-1'), occurrence('b', 'T-2', 'G-2'), profile), 'DISTINCT')
 })
 
-test('giorno, classe, pagina, coordinate e ripetizione non sono prova implicita', () => {
-  const ungoverned = ['weekday', 'class', 'page', 'coordinates', 'same-surname'].map((kind) => ({ kind, value: 'x' }))
-  assert.equal(sameTeacherEvidence(ungoverned, profile), 'UNKNOWN')
+test('SAME e DISTINCT simultanei falliscono chiuso in UNKNOWN', () => {
+  assert.equal(sameTeacherEvidence(occurrence('a', 'T-1', 'G-1'), occurrence('b', 'T-1', 'G-2'), profile), 'UNKNOWN')
 })
 
-test('fixture multi-giorno/multi-classe si aggrega solo con prova strutturale governata', () => {
-  const occurrences = [
-    { weekday: 1, classLabel: '2A', teacherStructuralId: 'T-1' },
-    { weekday: 2, classLabel: '3C', teacherStructuralId: 'T-1' },
-    { weekday: 5, classLabel: '1B', teacherStructuralId: 'T-1' },
-  ]
-  for (const occurrence of occurrences) {
-    assert.equal(sameTeacherEvidence([{ kind: 'teacher-structural-id', value: occurrence.teacherStructuralId }], profile), 'SAME')
+test('segnali non governati non diventano prova implicita', () => {
+  const a: TeacherEvidenceOccurrence = { occurrenceId: 'a', signals: [{ kind: 'same-surname', value: 'ROSSI' }] }
+  const b: TeacherEvidenceOccurrence = { occurrenceId: 'b', signals: [{ kind: 'same-surname', value: 'ROSSI' }] }
+  assert.equal(sameTeacherEvidence(a, b, profile), 'UNKNOWN')
+})
+
+test('fixture multi-giorno/multi-classe confronta realmente tutte le occorrenze', () => {
+  const occurrences = [occurrence('mon-2A', 'T-1'), occurrence('tue-3C', 'T-1'), occurrence('fri-1B', 'T-1')]
+  for (let index = 1; index < occurrences.length; index += 1) {
+    assert.equal(sameTeacherEvidence(occurrences[0], occurrences[index], profile), 'SAME')
   }
+})
+
+test('profili contraddittori o semanticamente impropri sono rifiutati', () => {
+  const overlapping: TeacherEvidenceProfile = {
+    ...profile,
+    distinctRules: [{ kind: 'teacher-structural-id', comparator: 'NOT_EQUAL' }],
+  }
+  const wrongComparator: TeacherEvidenceProfile = {
+    ...profile,
+    sameRules: [{ kind: 'teacher-structural-id', comparator: 'NOT_EQUAL' }],
+  }
+  const undeclaredKind: TeacherEvidenceProfile = {
+    ...profile,
+    sameRules: [{ kind: 'not-allowed', comparator: 'EQUAL' }],
+  }
+  assert.equal(validateTeacherEvidenceProfile(overlapping), false)
+  assert.equal(validateTeacherEvidenceProfile(wrongComparator), false)
+  assert.equal(validateTeacherEvidenceProfile(undeclaredKind), false)
+})
+
+test('segnale governato duplicato nella stessa occorrenza fallisce chiuso', () => {
+  const duplicated: TeacherEvidenceOccurrence = {
+    occurrenceId: 'a',
+    signals: [
+      { kind: 'teacher-structural-id', value: 'T-1' },
+      { kind: 'teacher-structural-id', value: 'T-2' },
+    ],
+  }
+  assert.equal(sameTeacherEvidence(duplicated, occurrence('b', 'T-1'), profile), 'UNKNOWN')
 })
