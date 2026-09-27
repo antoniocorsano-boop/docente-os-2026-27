@@ -53,6 +53,7 @@ export async function saveSchoolOrganization(formData: FormData) {
   revalidatePath('/orario')
 }
 
+// Backward-compatible full save used by older clients until every Settings surface is migrated.
 export async function saveTeacherSettings(formData: FormData) {
   const context = await requireContext()
   const repository = new SupabaseTeacherSettingsRepository()
@@ -75,14 +76,23 @@ export async function saveTeacherSettings(formData: FormData) {
 export async function addTeachingDiscipline(formData: FormData) {
   const context = await requireContext()
   const repository = new SupabaseTeacherSettingsRepository()
-  await repository.addDiscipline(context.workspace.id, context.academicYear.id, text(formData, 'disciplineName'))
+  await repository.addDiscipline(
+    context.workspace.id,
+    context.academicYear.id,
+    text(formData, 'disciplineName'),
+  )
   revalidateSettingsContext()
 }
 
 export async function setTeachingDisciplineState(formData: FormData) {
   const context = await requireContext()
   const repository = new SupabaseTeacherSettingsRepository()
-  await repository.setDisciplineActive(context.workspace.id, context.academicYear.id, text(formData, 'disciplineId'), text(formData, 'isActive') === 'true')
+  await repository.setDisciplineActive(
+    context.workspace.id,
+    context.academicYear.id,
+    text(formData, 'disciplineId'),
+    text(formData, 'isActive') === 'true',
+  )
   revalidateSettingsContext()
   revalidatePath('/orario')
 }
@@ -90,7 +100,12 @@ export async function setTeachingDisciplineState(formData: FormData) {
 export async function addSettingsSection(formData: FormData) {
   const context = await requireContext()
   const repository = new SupabaseAnnualPlanExecutionRepository()
-  await repository.addSection(context.workspace.id, context.academicYear.id, asAnnualPlanGrade(text(formData, 'grade')), text(formData, 'sectionCode'))
+  await repository.addSection(
+    context.workspace.id,
+    context.academicYear.id,
+    asAnnualPlanGrade(text(formData, 'grade')),
+    text(formData, 'sectionCode'),
+  )
   revalidateSettingsContext()
   revalidatePath('/piano-annuale')
   revalidatePath('/orario')
@@ -99,7 +114,12 @@ export async function addSettingsSection(formData: FormData) {
 export async function confirmSettingsSection(formData: FormData) {
   const context = await requireContext()
   const repository = new SupabaseAnnualPlanExecutionRepository()
-  await repository.setSectionStatus(context.workspace.id, context.academicYear.id, text(formData, 'sectionId'), 'CONFERMATA')
+  await repository.setSectionStatus(
+    context.workspace.id,
+    context.academicYear.id,
+    text(formData, 'sectionId'),
+    'CONFERMATA',
+  )
   revalidateSettingsContext()
   revalidatePath('/piano-annuale')
   revalidatePath('/orario')
@@ -141,11 +161,19 @@ export async function reopenSettingsTeachingAssignment(formData: FormData) {
   await legacyTransition(formData, 'CONFIRMED', 'PROVISIONAL')
 }
 
-async function legacyTransition(formData: FormData, expectedStatus: 'PROVISIONAL' | 'CONFIRMED', status: 'PROVISIONAL' | 'CONFIRMED') {
+async function legacyTransition(
+  formData: FormData,
+  expectedStatus: 'PROVISIONAL' | 'CONFIRMED',
+  status: 'PROVISIONAL' | 'CONFIRMED',
+) {
   const context = await requireContext()
   const repository = new SupabaseTimetableRepository()
   const assignmentId = text(formData, 'assignmentId')
-  const snapshot = await repository.list(context.workspace.id, context.academicYear.id, new Date().toISOString().slice(0, 10))
+  const snapshot = await repository.list(
+    context.workspace.id,
+    context.academicYear.id,
+    new Date().toISOString().slice(0, 10),
+  )
   const current = snapshot.assignments.find((item) => item.id === assignmentId)
   if (!current || current.status !== expectedStatus) return
   await repository.setAssignmentStatus({
@@ -191,7 +219,10 @@ async function guardedTransition(
       status,
     })
     revalidateTeachingContext()
-    return { status: 'success', message: status === 'CONFIRMED' ? 'Assegnazione confermata.' : 'Assegnazione rimessa da controllare.' }
+    return {
+      status: 'success',
+      message: status === 'CONFIRMED' ? 'Assegnazione confermata.' : 'Assegnazione rimessa da controllare.',
+    }
   } catch (error) {
     if (error instanceof TeachingAssignmentStaleConflictError) return staleConflictState()
     return { status: 'error', message: 'Operazione non completata. Riprova.' }
@@ -199,7 +230,10 @@ async function guardedTransition(
 }
 
 function staleConflictState(): TeachingAssignmentTransitionState {
-  return { status: 'conflict', message: 'Questa assegnazione è cambiata nel frattempo. Ricarica la pagina prima di riprovare.' }
+  return {
+    status: 'conflict',
+    message: 'Questa assegnazione è cambiata nel frattempo. Ricarica la pagina prima di riprovare.',
+  }
 }
 
 async function requireContext() {
