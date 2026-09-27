@@ -24,152 +24,141 @@ Accanto al campo di ricerca deve essere sempre visibile, prima dell'elaborazione
 
 L'informativa non può essere nascosta in tooltip, condizioni d'uso o schermate successive.
 
-Per rendere vera e non ambigua questa promessa nel flusso G1.5, anche il documento sorgente caricato è **transitorio**: può essere mantenuto soltanto nella memoria/area temporanea necessaria a parsing, selezione e produzione dell'anteprima e deve essere eliminato o reso non risolvibile al completamento, annullamento o errore della sessione G1.5. Non è consentita una retention persistente del PDF, immagine, scansione o tabella sorgente in questo flusso. Restano ammessi esclusivamente il `source_fingerprint` opaco definito sotto e i dati strutturali minimizzati autorizzati dal contratto.
+Per rendere vera questa promessa, documento sorgente e ogni sua rappresentazione derivata sono transitori: PDF, fotografia, scansione, tabella, nome originale del file, testo estratto/OCR, raster di pagina, miniature, ritagli, tabelle di estrazione, modelli di layout, artefatti intermedi del parser, payload di code e cache temporanee devono essere eliminati o resi non risolvibili al completamento dell'anteprima, all'annullamento o all'errore. Restano ammessi esclusivamente il `source_fingerprint` opaco G1.3, i dati strutturali minimizzati dell'orario e i metadati di governance non nominativi esplicitamente richiesti da G1.3.
 
 ## Privacy e minimizzazione
 
 Sono dati nominativi effimeri G1.5, senza distinzione di provenienza:
 
 - il cognome digitato dal docente;
-- ogni etichetta nominativa grezza estratta dal documento, incluse varianti tipografiche e ripetizioni nelle celle;
-- tutte le forme intermedie e normalizzate prodotte per il confronto;
-- gli eventuali valori nominativi temporanei usati per costruire una scelta in caso di omonimia.
+- ogni etichetta nominativa grezza estratta dal documento, incluse varianti e ripetizioni;
+- tutte le forme intermedie e normalizzate;
+- gli eventuali valori nominativi temporanei usati per una scelta in caso di omonimia;
+- metadati di caricamento che possono contenere nominativi, inclusi nome originale del file, percorso/nome client e `source_label` derivato dalla fonte.
 
 Tutti questi dati:
 
-- esistono soltanto nella memoria volatile necessaria alla singola elaborazione;
+- esistono soltanto nella memoria/area temporanea necessaria alla singola elaborazione;
 - non sono salvati in database, local storage, session storage, cache persistente o profilo;
-- non sono inclusi in parser evidence persistente, diagnostica persistente, log applicativi, telemetria, analytics, receipt, error reporting o audit payload;
+- non sono inclusi in parser evidence persistente, diagnostica persistente, log, telemetria, analytics, receipt, error reporting o audit payload;
 - non sono usati come `teacher_id`, chiave, slug o altro identificatore persistente;
-- non possono essere sottoposti individualmente a hash/digest/fingerprint per creare un surrogato persistente del nominativo;
-- sono eliminati dal contesto di elaborazione quando l'anteprima è prodotta, annullata o fallisce.
+- non possono essere sottoposti individualmente a hash/digest/fingerprint per creare un surrogato persistente;
+- sono eliminati o resi non risolvibili quando l'anteprima è prodotta, annullata o fallisce.
+
+Se uno schema ereditato richiede un `source_label` persistente, G1.5 deve valorizzarlo con un'etichetta **non nominativa generata dal sistema**, mai con nome file originale, cognome o altro testo sorgente potenzialmente nominativo.
 
 ### Eccezione stretta: `source_fingerprint` G1.3
 
-Il divieto precedente non vieta il `source_fingerprint` canonico ereditato da G1.3, purché resti l'impronta crittografica opaca della rappresentazione meaning-preserving dell'**intero documento sorgente** prevista dal contratto G1.3. Tale fingerprint può dipendere indirettamente anche dai valori nominativi presenti nel documento, ma è ammesso esclusivamente per integrità, idempotenza e deduplicazione del documento completo.
+Il `source_fingerprint` canonico G1.3 dell'intero documento resta ammesso esclusivamente per integrità, idempotenza e deduplicazione. Non è un fingerprint del docente, non può essere calcolato su sottoinsiemi nominativi, usato per lookup/associazione docente o autorizzare la persistenza del preimage. G1.5 non modifica algoritmo o preimage canonico G1.3. Qualunque digest nominativo specifico è vietato.
 
-Il `source_fingerprint`:
+### Metadati G1.3 ammessi
 
-- non è un fingerprint del cognome o del docente;
-- non può essere calcolato su un sottoinsieme nominativo, su una singola etichetta o sulla forma normalizzata del cognome;
-- non può essere indicizzato, confrontato o interrogato per identificare/ricercare un docente;
-- non può essere usato come `teacher_id`, alias, chiave di associazione o surrogato persistente del nominativo;
-- non autorizza la persistenza del preimage, del documento sorgente, delle raw candidate labels o delle forme normalizzate;
-- non modifica algoritmo o preimage canonico di deduplicazione G1.3: G1.5 introduce soltanto una classificazione privacy e una retention più restrittiva della fonte per questo flusso.
+La minimizzazione G1.5 **non elimina** i metadati tecnici e di governance non nominativi necessari alle garanzie G1.3. Possono sopravvivere, se previsti dal contratto/schema canonico e privi di contenuto nominativo: `parser_version`, `source_is_provisional`, `source_scope`, `source_completeness`, `source_completeness_provenance`, `effective_from_provenance` e metadati equivalenti richiesti per provenienza, completezza, provvisorietà e sicurezza delle proposte di modifica.
 
-Qualunque nuovo digest/fingerprint specifico del nominativo è vietato. Un futuro cambio del preimage del `source_fingerprint` resta modifica di G1.3 e richiede una fase governata separata.
+Questa è un'allowlist semantica: non autorizza nomi file, testo sorgente, OCR, ritagli o etichette nominative. Campi di governance capaci di trasportare testo libero devono essere validati/sanificati prima della persistenza oppure il flusso fallisce chiuso.
 
-Gli artefatti successivi possono contenere solo i dati strutturali dell'orario necessari al flusso canonico e gli identificatori canonici di Docente OS; non devono conservare la stringa di ricerca, etichette nominative grezze o il documento sorgente.
+Gli artefatti successivi possono contenere soltanto dati strutturali minimizzati dell'orario, identificatori canonici Docente OS, `source_fingerprint` e metadati G1.3 non nominativi necessari.
 
-## Normalizzazione deterministica
+## Normalizzazione deterministica — `TT-TEACHER-NORM-1`
 
-La normalizzazione serve esclusivamente al confronto temporaneo e non modifica il documento sorgente.
+Input e candidati usano la stessa unica funzione normativa. Il profilo è fissato a **Unicode 17.0.0**; codice e test devono dichiarare `UNICODE_VERSION = 17.0.0` e non dipendere dalla versione Unicode implicita della piattaforma.
 
-### Profilo normativo `TT-TEACHER-NORM-1`
+Pipeline: valori scalari Unicode validi; NFC 17.0.0; `White_Space` 17.0.0 (`U+0009–U+000D`, `U+0020`, `U+0085`, `U+00A0`, `U+1680`, `U+2000–U+200A`, `U+2028`, `U+2029`, `U+202F`, `U+205F`, `U+3000`); trim; compressione a `U+0020`; Unicode Default Case Folding **full non-Turkic** 17.0.0; apostrofi `U+2019/U+2018/U+02BC`→`U+0027`; trattini `U+2010/U+2011/U+2012/U+2013/U+2014/U+2212`→`U+002D`.
 
-Input docente e candidati estratti devono attraversare **la stessa unica funzione normativa**. Non sono ammesse implementazioni divergenti client/server/parser.
+Vietati `\s` generico come norma, primitive locale-dependent, rimozione indiscriminata dei diacritici, translitterazione, Levenshtein, ricerca fonetica e fuzzy matching.
 
-`TT-TEACHER-NORM-1` è fissato a **Unicode 17.0.0**. NFC, proprietà e case folding devono riprodurre i dati normativi Unicode 17.0.0. La materializzazione runtime deve includere nel repository le tabelle/dati minimi necessari derivati da Unicode 17.0.0 oppure un artefatto deterministico equivalente verificabile contro Unicode 17.0.0; codice e test devono dichiarare esplicitamente `UNICODE_VERSION = 17.0.0`. Non è consentito delegare il risultato a una versione Unicode implicita della piattaforma.
+## Candidato effimero e prova positiva di aggregazione
 
-Un aggiornamento oltre Unicode 17.0.0, una sostituzione delle tabelle o una modifica del profilo costituiscono modifica del contratto e richiedono nuovi test, review ed exact head.
+La cardinalità non conta celle, righe, pagine o zone. La separazione fisica, da sola, **non prova né identità né omonimia**.
 
-Pipeline, nello stesso ordine:
+L'unità temporanea è `teacherSelectionCandidate`, non persistente e non canonica. Due o più occorrenze con la stessa etichetta normalizzata possono essere aggregate nello stesso candidato **solo quando esiste una prova positiva, deterministica e riproducibile di appartenenza allo stesso gruppo/persona nella struttura della fonte**.
 
-1. validazione come sequenza di valori scalari Unicode; surrogate isolati o sequenze non valide => `NO_MATCH_SAFE`;
-2. normalizzazione canonica `NFC` secondo Unicode 17.0.0;
-3. trattamento come spazio esclusivamente dei code point della proprietà Unicode 17.0.0 `White_Space`: `U+0009–U+000D`, `U+0020`, `U+0085`, `U+00A0`, `U+1680`, `U+2000–U+200A`, `U+2028`, `U+2029`, `U+202F`, `U+205F`, `U+3000`;
-4. rimozione di tali spazi all'inizio e alla fine;
-5. compressione di ogni sequenza interna di uno o più code point dell'insieme precedente a un singolo `U+0020`;
-6. **Unicode Default Case Folding completo (full), non Turkic**, mediante `CaseFolding.txt` Unicode 17.0.0; nessuna locale può alterare il risultato;
-7. equivalenza controllata degli apostrofi `U+2019`, `U+2018`, `U+02BC` con `U+0027`;
-8. equivalenza controllata dei trattini `U+2010`, `U+2011`, `U+2012`, `U+2013`, `U+2014`, `U+2212` con `U+002D`.
+### Predicato `SAME_TEACHER_EVIDENCE`
 
-Non sono consentiti: uso generico di `\s` come definizione normativa dello spazio; `toLocaleLowerCase` o equivalenti dipendenti dalla locale; rimozione indiscriminata di accenti/diacritici; translitterazione; distanza di Levenshtein; ricerca fonetica; completamento probabilistico o fuzzy matching automatico.
+La futura materializzazione deve implementare un unico predicato versionato `SAME_TEACHER_EVIDENCE(a,b,sourceStructure)` con esito `SAME`, `DISTINCT` o `UNKNOWN`, usando esclusivamente segnali strutturali deterministici presenti nella fonte, mai probabilità, similarità o inferenze dal solo cognome.
 
-## Candidato nominativo effimero e aggregazione delle occorrenze
+- `SAME`: prova strutturale positiva della stessa entità/gruppo → aggregazione ammessa.
+- `DISTINCT`: prova strutturale positiva di entità/gruppi differenti → candidati distinti.
+- `UNKNOWN`: prova insufficiente → **non aggregare**, `AMBIGUOUS`/fail-closed.
 
-La cardinalità **non conta le celle, righe, pagine o zone del documento** in cui compare il cognome. Un orario generale può legittimamente contenere lo stesso docente in molte celle separate: tali occorrenze devono poter essere aggregate per ricostruire il suo quadro settimanale.
+Se il documento contiene soltanto ripetizioni di `ROSSI` senza struttura deterministica che le colleghi alla stessa entità, il sistema non le fonde automaticamente. La conferma esplicita del docente può risolvere l'ambiguità solo nella sessione corrente e non crea alias persistenti.
 
-L'unità temporanea è il `teacherSelectionCandidate`: un candidato nominativo effimero costruito a partire dall'etichetta normalizzata e dall'evidenza strutturale del documento. Non è un'identità canonica e non viene persistito.
+La mera distanza fisica non è `DISTINCT`; la sola uguaglianza del cognome non è `SAME`.
 
-Regole:
-
-- tutte le occorrenze distribuite che hanno la stessa etichetta normalizzata e **non presentano evidenza strutturale di persone differenti** possono appartenere allo stesso candidato e vengono aggregate nel quadro proposto;
-- la mera distanza fisica, appartenenza a celle, giorni, classi, righe, colonne, pagine o blocchi differenti **non costituisce evidenza di omonimia**;
-- non è consentito dedurre automaticamente che due persone siano la stessa persona sulla base del solo cognome quando il documento contiene un separatore/identificatore strutturale che dimostra candidati distinti;
-- se la fonte fornisce evidenza strutturale di due o più persone differenti con la stessa etichetta normalizzata, si creano candidati distinti e l'esito è `AMBIGUOUS`;
-- se il parser non può stabilire con sufficiente certezza se occorrenze incompatibili appartengano allo stesso candidato o a omonimi distinti, l'esito è `AMBIGUOUS`/fail-closed, mai una fusione silenziosa;
-- nessun `teacherSelectionCandidate`, gruppo di occorrenze o chiave di aggregazione viene persistito o trasformato in identità docente.
-
-Esiti:
-
-- **0 candidati** — «Nessuna corrispondenza. Controlla il cognome come compare nell'orario.»; nessuna anteprima attribuita;
-- **1 candidato** — aggregare tutte le sue occorrenze strutturalmente compatibili e produrre l'anteprima del quadro settimanale, che il docente deve controllare;
-- **più candidati omonimi** — `AMBIGUOUS`: nessuna scelta automatica. Presentare alternative usando soltanto contesto non nominativo già presente nella fonte (per esempio classi/giorni/ore); la scelta esplicita vale solo nella sessione corrente.
+Esiti: 0 candidati → nessuna attribuzione; 1 candidato determinato → anteprima aggregata da controllare; più candidati o `UNKNOWN` → `AMBIGUOUS`, nessuna scelta automatica.
 
 ## Separazione dall'identità canonica
 
-Il cognome, le occorrenze e `teacherSelectionCandidate` sono strumenti effimeri di selezione, non identità del docente o delle lezioni.
-
-Dopo la selezione, il flusso G1.4/#613 continua esclusivamente con il modello canonico dell'orario e gli identificatori canonici già previsti. G1.5 non introduce store docente, tabella alias o collegamento persistente cognome→utente.
+Cognome, occorrenze, predicato e `teacherSelectionCandidate` sono strumenti effimeri. G1.5 non introduce store docente, alias persistenti o collegamenti cognome→utente.
 
 ## Esperienza docente
 
-Percorso ordinario:
+Percorso ordinario: `carica documento → indica cognome → controlla anteprima`.
 
-`carica documento → indica cognome → controlla anteprima`
-
-Non devono essere richieste in questa fase specializzazioni della singola lezione (teoria, disegno, disposizione o equivalenti): restano funzioni successive proprie della cella/orario.
-
-Il percorso deve essere utilizzabile da smartphone, con campo e informativa immediatamente leggibili e stati di errore espressi in linguaggio non tecnico.
+Teoria, disegno, disposizione o equivalenti restano specializzazioni successive della cella e non vincolano l'intake. Il percorso deve essere utilizzabile da smartphone e gli errori devono essere espressi in linguaggio non tecnico.
 
 ## Casi governati minimi
 
-1. stesso cognome con maiuscole/minuscole diverse → equivalenza;
-2. spazi iniziali/finali del set `White_Space` Unicode 17.0.0 → equivalenza;
-3. più spazi interni normativi → singolo `U+0020`;
-4. NFC vs forma decomposta equivalente → corrispondenza;
-5. apostrofi normativi equivalenti → corrispondenza;
-6. trattini normativi equivalenti → corrispondenza;
-7. cognomi differenti per accento/diacritico → non fonderli automaticamente;
+1. maiuscole/minuscole → equivalenza;
+2. spazi normativi → equivalenza;
+3. più spazi interni → `U+0020`;
+4. NFC/decomposto → equivalenza;
+5. apostrofi normativi → equivalenza;
+6. trattini normativi → equivalenza;
+7. differenza reale per accento/diacritico → non fusione;
 8. errore ortografico → nessun fuzzy match;
 9. nessuna corrispondenza → `NO_MATCH_SAFE`;
-10. stesso cognome dello stesso docente in celle di giorni/classi differenti → un candidato, tutte le celle aggregate;
-11. stesso cognome dello stesso docente in righe/colonne/pagine differenti → la separazione fisica non genera `AMBIGUOUS`;
-12. due persone strutturalmente distinte con lo stesso cognome → candidati distinti, `AMBIGUOUS`;
-13. impossibilità di distinguere con certezza aggregazione legittima da omonimia → `AMBIGUOUS`/fail-closed;
-14. parsing incerto → fail-closed;
-15. input Unicode non valido → fail-closed;
-16. case folding Unicode 17.0.0 full/non-Turkic verificato con fixture simple/full e locale-independent;
-17. ogni code point `White_Space` normativo trattato identicamente sui runtime supportati;
-18. code point escluso da `White_Space` non trasformato per primitive di piattaforma;
-19. cognome digitato assente da DB/localStorage/sessionStorage/cache dopo successo;
-20. etichette nominative grezze assenti da storage persistente dopo successo;
-21. input, raw labels e forme normalizzate assenti da evidence persistente/log/telemetria/analytics/receipt/error reporting/audit payload;
-22. nessun identificatore persistente derivato da cognome, raw label o `teacherSelectionCandidate`;
-23. annullamento → eliminazione di input, raw labels, forme normalizzate, candidati e documento sorgente;
-24. errore → stessa eliminazione del caso precedente;
-25. anteprima prodotta → eliminazione del documento sorgente e nessun dato nominativo di selezione nel payload successivo;
-26. omonimia risolta con contesto non nominativo e decisione esplicita;
-27. nessuna scrittura DB, attivazione o ripianificazione durante G1.5;
-28. informativa «Il cognome serve solo per trovare il tuo orario nel documento. Non viene salvato.» visibile prima dell'elaborazione;
-29. nessuna richiesta di teoria/disegno/disposizione durante l'intake;
-30. input e candidati usano la stessa implementazione `TT-TEACHER-NORM-1` Unicode 17.0.0;
-31. cambio tabelle/versione Unicode senza aggiornamento contrattuale → gate FAIL;
-32. `source_fingerprint` G1.3 dell'intero documento resta stabile e ammesso per integrità/idempotenza/deduplicazione;
-33. nessun hash/digest/fingerprint nominativo specifico viene persistito;
-34. `source_fingerprint` non è usabile per lookup/associazione docente e non modifica il preimage G1.3;
-35. runtime con Unicode implicito diverso deve riprodurre esattamente Unicode 17.0.0 oppure gate FAIL;
-36. PDF/immagine/scansione/tabella sorgente non persiste oltre produzione anteprima, annullamento o errore;
-37. `source_fingerprint` può sopravvivere alla cancellazione della fonte senza rendere nuovamente risolvibile il documento;
-38. dati strutturali minimizzati dell'orario sopravvivono solo se ammessi dal contratto e non contengono etichette nominative;
-39. documento con molte occorrenze distribuite dello stesso docente produce un unico quadro settimanale completo, non una falsa omonimia;
-40. separatore strutturale che dimostra due persone omonime impedisce la fusione automatica.
+10. occorrenze distribuite con prova `SAME` → un candidato/quadro completo;
+11. separazione fisica senza altra evidenza → non `DISTINCT`;
+12. solo cognome uguale → non `SAME`;
+13. prova `DISTINCT` per omonimi → `AMBIGUOUS`;
+14. `UNKNOWN` → `AMBIGUOUS`/fail-closed;
+15. parsing incerto → fail-closed;
+16. Unicode non valido → fail-closed;
+17. case folding full/non-Turkic 17.0.0 verificato;
+18. tutti i `White_Space` normativi verificati;
+19. code point escluso non trasformato;
+20. cognome digitato assente da storage persistente;
+21. raw labels assenti da storage persistente;
+22. forme normalizzate assenti da evidence/log/telemetria/analytics/receipt/error reporting/audit;
+23. nessun identificatore/digest persistente derivato dal nominativo;
+24. `Orario_Rossi.pdf` non persiste e non diventa `source_label`;
+25. `source_label` persistente è non nominativo e non derivato dal nome file;
+26. annullamento rende non risolvibili fonte e derivati;
+27. errore rende non risolvibili fonte e derivati;
+28. anteprima prodotta rende non risolvibili fonte e derivati;
+29. OCR/testo estratto non risolvibile nei tre esiti;
+30. raster/thumbnail/crop non risolvibili nei tre esiti;
+31. extraction table/layout model non risolvibili nei tre esiti;
+32. cache/queue/temp artifact non risolvibili nei tre esiti;
+33. omonimia risolta solo con evidenza deterministica o decisione esplicita;
+34. nessuna scrittura DB, attivazione o ripianificazione durante G1.5;
+35. informativa privacy visibile prima dell'elaborazione;
+36. nessuna richiesta teoria/disegno/disposizione;
+37. stessa `TT-TEACHER-NORM-1` per input/candidati;
+38. cambio Unicode senza governance → FAIL;
+39. `source_fingerprint` G1.3 stabile per integrità/idempotenza/deduplicazione;
+40. nessun fingerprint nominativo specifico;
+41. `source_fingerprint` non usato per lookup docente;
+42. runtime con Unicode diverso riproduce 17.0.0 o FAIL;
+43. documento sorgente non persiste oltre sessione;
+44. fingerprint sopravvive senza rendere risolvibile la fonte;
+45. `parser_version` preservato se non nominativo;
+46. `source_is_provisional` preservato;
+47. `source_scope` preservato solo se strutturato/non nominativo;
+48. `source_completeness` e provenance preservate;
+49. `effective_from_provenance` preservata se non nominativa;
+50. metadati G1.3 necessari alla sicurezza delle rimozioni preservati;
+51. nome/percorso client upload assente da receipt/log/record persistente;
+52. ogni rappresentazione derivata inventariata e verificata non risolvibile su successo/annullamento/errore;
+53. fixture reale con docente distribuito e prova `SAME` → quadro completo;
+54. fixture con omonimi e prova `DISTINCT` → nessuna fusione;
+55. fixture con soli omonimi indistinguibili → `UNKNOWN`/`AMBIGUOUS`.
 
 ## Gate prima del runtime
 
-Prima di qualsiasi materializzazione runtime devono esistere test deterministici per tutti i casi sopra, inclusi controlli negativi su persistenza, evidence, log, digest nominativi e retention della fonte.
+Prima della materializzazione runtime devono esistere test deterministici per tutti i casi sopra. La suite deve includere una **retention matrix** che inventari ogni rappresentazione sorgente/derivata e ne verifichi la non-risolvibilità su successo/anteprima, annullamento ed errore.
 
-La materializzazione deve includere fixture realistiche di orario generale con lo stesso docente distribuito su giorni/classi differenti, omonimi realmente distinti, casi ambigui, caratteri che distinguono full/simple case folding, tutti i code point `White_Space` normativi, almeno un code point deliberatamente escluso, compatibilità del `source_fingerprint` G1.3 e verifica che la fonte non sia più risolvibile dopo la sessione.
+Devono inoltre esistere fixture realistiche `SAME`, `DISTINCT`, `UNKNOWN`; test di preservazione dei metadati G1.3 non nominativi; test di sanificazione `source_label`/nome file; test Unicode 17.0.0; compatibilità `source_fingerprint` G1.3.
 
 Qualunque futura autorizzazione runtime richiede un nuovo exact head, controlli automatici, revisione indipendente e decisione umana esplicita.
