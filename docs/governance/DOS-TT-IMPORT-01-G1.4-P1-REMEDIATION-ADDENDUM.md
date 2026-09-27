@@ -1,4 +1,4 @@
-# DOS-TT-IMPORT-01 / G1.4 — Addendum normativo P1: preparazione lezione ed eccezioni future
+# DOS-TT-IMPORT-01 / G1.4 — Addendum normativo P1: continuità didattica, eccezioni e confine storico
 
 Stato: DRAFT — GOVERNANCE FIRST
 Ambito: integrazione normativa del contratto `DOS-TT-IMPORT-01-G1.4-TRANSITION-REPLAN-CONTRACT.md`.
@@ -6,12 +6,13 @@ Prevalenza: in caso di ambiguità, le regole di questo addendum restringono G1.4
 
 ## 1. Scopo
 
-Questo addendum chiude due rischi di integrazione emersi dalla revisione indipendente sull'exact head `e907d87b727a3494f0adda8a9fb879b1289c5855`:
+Questo addendum chiude tre rischi emersi dalle revisioni sull'exact head `e907d87b727a3494f0adda8a9fb879b1289c5855`:
 
 1. la ripianificazione non deve spezzare il legame canonico tra la lezione pianificata e `NextLessonPreparation` / `LessonPreparationManifest`;
-2. una `timetable_exception` futura riferita a uno slot della versione sostituita non deve scomparire silenziosamente quando cambia `timetable_slot_id`.
+2. una `timetable_exception` futura riferita a uno slot della versione sostituita non deve scomparire silenziosamente quando cambia `timetable_slot_id`;
+3. un `effective_from` retrodatato che interseca storia già eseguita/consolidata deve bloccare sempre l'attivazione, senza valutazioni di equivalenza che riaprano il dominio storico.
 
-Restano invariati `HOLD_RUNTIME / HOLD_PRODUCTION_APPLY / HOLD_REPLAN`.
+Restano invariati `HOLD_RUNTIME / HOLD_PRODUCTION_APPLY / HOLD_REPLAN / HOLD_MERGE`.
 
 ## 2. Ponte canonico sessione ↔ preparazione della lezione
 
@@ -55,45 +56,44 @@ Non è ammesso che `CANCELLED`, `MOVED` o altra eccezione futura già revisionat
 
 ### 3.1 Fail-closed
 
-Se un'eccezione futura:
+Se un'eccezione futura ha più target plausibili, non ha alcun target compatibile, confligge con una decisione di ripianificazione della sessione oppure è cambiata dopo la generazione dell'anteprima, il piano è non applicabile finché il caso non viene risolto esplicitamente o ricalcolato. Nessun trasferimento euristico silenzioso è consentito.
 
-- ha più target plausibili;
-- non ha alcun target compatibile;
-- confligge con una decisione di ripianificazione della sessione;
-- è cambiata dopo la generazione dell'anteprima;
+## 4. Confine storico: regola stretta
 
-il piano è non applicabile finché il caso non viene risolto esplicitamente o ricalcolato. Nessun trasferimento euristico silenzioso è consentito.
+L'`executed_history_boundary` è un **vincolo di esclusione**, non un criterio per decidere se una transizione retroattiva possa essere considerata equivalente.
 
-## 4. Piano atomico e digest
+Regola normativa:
+
+- se `effective_from` interseca anche una sola sessione/occorrenza già eseguita o consolidata nell'ambito governato, **l'attivazione è sempre bloccata**;
+- il blocco si applica anche quando il vecchio e il nuovo orario apparirebbero strutturalmente equivalenti per quella data;
+- nessun algoritmo può usare equivalenza di slot, matching o assenza di variazioni visibili per riaprire il dominio storico;
+- il docente deve scegliere un `effective_from` successivo e compatibile;
+- split o rettifica retroattiva richiedono un contratto separato e non sono autorizzati da G1.4.
+
+Questa regola prevale su qualsiasi formulazione meno restrittiva del contratto principale.
+
+## 5. Piano atomico e digest
 
 `PlanDigestPayload` deve includere anche:
 
 - revisione/fingerprint dell'insieme delle eccezioni future considerate;
-- per ogni eccezione slot-bound interessata: identificità dell'eccezione, vecchio riferimento, esito governato e nuovo riferimento quando presente;
+- per ogni eccezione slot-bound interessata: identità dell'eccezione, vecchio riferimento, esito governato e nuovo riferimento quando presente;
 - il mapping old-occurrence → stable-session → new-occurrence necessario alla continuità della preparazione;
 - la revisione/fingerprint dei riferimenti canonici di preparazione interessati quando necessari a verificare la continuità;
+- il valore/revisione dell'`executed_history_boundary` e la precondizione esplicita `effective_from > executed_history_boundary` per l'ambito pertinente;
 - ogni decisione esplicita del docente sui casi non deterministici.
 
-L'unità atomica di applicazione deve garantire congiuntamente:
+L'unità atomica di applicazione deve garantire congiuntamente: chiusura/attivazione delle versioni; riallineamento delle sessioni; continuità dei riferimenti alla preparazione canonica; rebound/risoluzione delle eccezioni future; creazione e popolamento della successor `DRAFT`; receipt idempotente. Se uno di questi effetti obbligatori fallisce, nessuna transizione parziale è osservabile.
 
-1. chiusura/attivazione delle versioni;
-2. riallineamento delle sessioni;
-3. continuità dei riferimenti alla preparazione canonica;
-4. rebound/risoluzione delle eccezioni future;
-5. creazione e popolamento della successor `DRAFT`;
-6. receipt idempotente.
-
-Se uno di questi effetti obbligatori fallisce, nessuna transizione parziale è osservabile.
-
-## 5. Esperienza docente
+## 6. Esperienza docente
 
 Questi vincoli non aggiungono amministrazione tecnica al percorso ordinario. Se il mapping è deterministico, il riepilogo può limitarsi a confermare che **preparazioni, materiali ed eccezioni già impostate saranno mantenuti**.
 
-Il docente interviene soltanto quando esiste un'ambiguità reale, con formulazione concreta, ad esempio: “Avevi spostato questa lezione. Con il nuovo orario ci sono due possibili collocazioni: scegli quale mantenere.”
+Se la data interseca storia eseguita, il messaggio resta semplice: **“Questa data comprende lezioni già svolte. Scegli una data di entrata in vigore successiva.”**
 
-Identificatori, digest, mapping e nomi delle tabelle restano nel dettaglio tecnico.
+Il docente interviene sulle altre ambiguità reali con formulazioni concrete. Identificatori, digest, mapping e nomi delle tabelle restano nel dettaglio tecnico.
 
-## 6. Casi di prova aggiuntivi G1.4
+## 7. Casi di prova aggiuntivi G1.4
 
 Ai 55 casi già definiti si aggiungono obbligatoriamente:
 
@@ -106,9 +106,12 @@ Ai 55 casi già definiti si aggiungono obbligatoriamente:
 62. eccezione futura con più nuovi target plausibili → conflitto bloccante, nessun rebound silenzioso;
 63. eccezione futura senza target compatibile → conflitto bloccante;
 64. eccezione mutata dopo anteprima → piano obsoleto, nessuna scrittura;
-65. fallimento nel mapping preparazione o nel rebound eccezioni durante apply → rollback dell'intera transizione, nessuno stato parziale osservabile.
+65. fallimento nel mapping preparazione o nel rebound eccezioni durante apply → rollback dell'intera transizione, nessuno stato parziale osservabile;
+66. `effective_from` che interseca storia eseguita/consolidata ma con slot apparentemente equivalenti → attivazione comunque bloccata;
+67. `effective_from` successivo all'intera storia consolidata pertinente → può proseguire agli altri gate;
+68. modifica dell'`executed_history_boundary` dopo anteprima → piano obsoleto e nessuna scrittura.
 
-## 7. Gate aggiuntivi per la materializzazione
+## 8. Gate aggiuntivi per la materializzazione
 
 Prima del runtime G1.4 devono essere verificati anche:
 
@@ -120,8 +123,9 @@ Prima del runtime G1.4 devono essere verificati anche:
 - schema e semantica correnti di `timetable_exception`, inclusi `CANCELLED` e `MOVED`;
 - algoritmo deterministico di rebound delle eccezioni future slot-bound;
 - comportamento fail-closed per eccezioni ambigue o non mappabili;
-- inclusione di mapping della preparazione ed eccezioni nel `PlanDigestPayload` e nell'unità atomica;
-- materializzazione ed esecuzione dei casi 56–65;
+- blocco incondizionato di ogni `effective_from` che interseca storia eseguita/consolidata;
+- inclusione di mapping della preparazione, eccezioni e boundary storico nel `PlanDigestPayload` e nell'unità atomica;
+- materializzazione ed esecuzione dei casi 56–68;
 - nuova revisione indipendente sul nuovo exact head;
 - decisione umana finale.
 
