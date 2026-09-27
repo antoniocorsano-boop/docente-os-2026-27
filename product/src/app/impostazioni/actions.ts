@@ -8,49 +8,238 @@ import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabas
 import { SupabaseTimetableRepository, TeachingAssignmentStaleConflictError } from '@/core/infrastructure/supabase/supabase-timetable-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 
-export type TeachingAssignmentTransitionState = { status: 'idle' | 'success' | 'conflict' | 'error'; message: string }
+export type TeachingAssignmentTransitionState = {
+  status: 'idle' | 'success' | 'conflict' | 'error'
+  message: string
+}
 
 export async function saveProfessionalContext(formData: FormData) {
-  const context = await requireContext(); const repository = new SupabaseTeacherSettingsRepository(); const current = await repository.getOrCreate(context.workspace.id, context.academicYear.id)
-  await repository.save({ workspaceId: context.workspace.id, academicYearId: context.academicYear.id, schoolName: text(formData, 'schoolName'), schoolCode: nullableText(formData, 'schoolCode'), schoolCity: nullableText(formData, 'schoolCity'), schoolType: text(formData, 'schoolType'), dailyPeriodCount: current.dailyPeriodCount, schoolDayStart: current.schoolDayStart, defaultPeriodMinutes: current.defaultPeriodMinutes, teachingWeekdays: current.teachingWeekdays }); revalidateSettingsContext(); redirect('/impostazioni?saved=context#contesto')
+  const context = await requireContext()
+  const repository = new SupabaseTeacherSettingsRepository()
+  const current = await repository.getOrCreate(context.workspace.id, context.academicYear.id)
+  await repository.save({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    schoolName: text(formData, 'schoolName'),
+    schoolCode: nullableText(formData, 'schoolCode'),
+    schoolCity: nullableText(formData, 'schoolCity'),
+    schoolType: text(formData, 'schoolType'),
+    dailyPeriodCount: current.dailyPeriodCount,
+    schoolDayStart: current.schoolDayStart,
+    defaultPeriodMinutes: current.defaultPeriodMinutes,
+    teachingWeekdays: current.teachingWeekdays,
+  })
+  revalidateSettingsContext()
+  redirect('/impostazioni?saved=context#contesto')
 }
+
 export async function saveSchoolOrganization(formData: FormData) {
-  const context = await requireContext(); const repository = new SupabaseTeacherSettingsRepository(); const current = await repository.getOrCreate(context.workspace.id, context.academicYear.id)
-  await repository.save({ workspaceId: context.workspace.id, academicYearId: context.academicYear.id, schoolName: current.schoolName, schoolCode: current.schoolCode, schoolCity: current.schoolCity, schoolType: current.schoolType, dailyPeriodCount: integer(formData, 'dailyPeriodCount'), schoolDayStart: text(formData, 'schoolDayStart'), defaultPeriodMinutes: integer(formData, 'defaultPeriodMinutes'), teachingWeekdays: formData.getAll('teachingWeekdays').map((value) => Number(value)) }); revalidatePath('/impostazioni'); revalidatePath('/orario')
+  const context = await requireContext()
+  const repository = new SupabaseTeacherSettingsRepository()
+  const current = await repository.getOrCreate(context.workspace.id, context.academicYear.id)
+  await repository.save({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    schoolName: current.schoolName,
+    schoolCode: current.schoolCode,
+    schoolCity: current.schoolCity,
+    schoolType: current.schoolType,
+    dailyPeriodCount: integer(formData, 'dailyPeriodCount'),
+    schoolDayStart: text(formData, 'schoolDayStart'),
+    defaultPeriodMinutes: integer(formData, 'defaultPeriodMinutes'),
+    teachingWeekdays: formData.getAll('teachingWeekdays').map((value) => Number(value)),
+  })
+  revalidatePath('/impostazioni')
+  revalidatePath('/orario')
 }
+
 export async function saveTeacherSettings(formData: FormData) {
-  const context = await requireContext(); const repository = new SupabaseTeacherSettingsRepository()
-  await repository.save({ workspaceId: context.workspace.id, academicYearId: context.academicYear.id, schoolName: text(formData, 'schoolName'), schoolCode: nullableText(formData, 'schoolCode'), schoolCity: nullableText(formData, 'schoolCity'), schoolType: text(formData, 'schoolType'), dailyPeriodCount: integer(formData, 'dailyPeriodCount'), schoolDayStart: text(formData, 'schoolDayStart'), defaultPeriodMinutes: integer(formData, 'defaultPeriodMinutes'), teachingWeekdays: formData.getAll('teachingWeekdays').map((value) => Number(value)) }); revalidateSettingsContext(); revalidatePath('/orario')
+  const context = await requireContext()
+  const repository = new SupabaseTeacherSettingsRepository()
+  await repository.save({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    schoolName: text(formData, 'schoolName'),
+    schoolCode: nullableText(formData, 'schoolCode'),
+    schoolCity: nullableText(formData, 'schoolCity'),
+    schoolType: text(formData, 'schoolType'),
+    dailyPeriodCount: integer(formData, 'dailyPeriodCount'),
+    schoolDayStart: text(formData, 'schoolDayStart'),
+    defaultPeriodMinutes: integer(formData, 'defaultPeriodMinutes'),
+    teachingWeekdays: formData.getAll('teachingWeekdays').map((value) => Number(value)),
+  })
+  revalidateSettingsContext()
+  revalidatePath('/orario')
 }
-export async function addTeachingDiscipline(formData: FormData) { const context = await requireContext(); const repository = new SupabaseTeacherSettingsRepository(); await repository.addDiscipline(context.workspace.id, context.academicYear.id, text(formData, 'disciplineName')); revalidateSettingsContext() }
-export async function setTeachingDisciplineState(formData: FormData) { const context = await requireContext(); const repository = new SupabaseTeacherSettingsRepository(); await repository.setDisciplineActive(context.workspace.id, context.academicYear.id, text(formData, 'disciplineId'), text(formData, 'isActive') === 'true'); revalidateSettingsContext(); revalidatePath('/orario') }
-export async function addSettingsSection(formData: FormData) { const context = await requireContext(); const repository = new SupabaseAnnualPlanExecutionRepository(); await repository.addSection(context.workspace.id, context.academicYear.id, asAnnualPlanGrade(text(formData, 'grade')), text(formData, 'sectionCode')); revalidateSettingsContext(); revalidatePath('/piano-annuale'); revalidatePath('/orario') }
-export async function confirmSettingsSection(formData: FormData) { const context = await requireContext(); const repository = new SupabaseAnnualPlanExecutionRepository(); await repository.setSectionStatus(context.workspace.id, context.academicYear.id, text(formData, 'sectionId'), 'CONFERMATA'); revalidateSettingsContext(); revalidatePath('/piano-annuale'); revalidatePath('/orario') }
-export async function addSettingsTeachingAssignment(formData: FormData) { const context = await requireContext(); const [sectionId, disciplineId] = assignmentPair(text(formData, 'assignmentPair')); const repository = new SupabaseTimetableRepository(); await repository.addAssignment({ workspaceId: context.workspace.id, academicYearId: context.academicYear.id, sectionId, disciplineId, weeklyMinutes: integer(formData, 'weeklyMinutes'), sourceNote: nullableText(formData, 'sourceNote') }); revalidateTeachingContext() }
-export async function updateSettingsTeachingAssignment(formData: FormData) { const context = await requireContext(); const repository = new SupabaseTimetableRepository(); await repository.updateAssignment({ workspaceId: context.workspace.id, academicYearId: context.academicYear.id, assignmentId: text(formData, 'assignmentId'), weeklyMinutes: integer(formData, 'weeklyMinutes'), status: text(formData, 'status') === 'CONFIRMED' ? 'CONFIRMED' : 'PROVISIONAL' }); revalidateTeachingContext() }
 
-// Existing page actions remain valid while page.tsx is migrated in a separate, reviewable commit.
-export async function confirmSettingsTeachingAssignment(formData: FormData) { await legacyTransition(formData, 'PROVISIONAL', 'CONFIRMED') }
-export async function reopenSettingsTeachingAssignment(formData: FormData) { await legacyTransition(formData, 'CONFIRMED', 'PROVISIONAL') }
+export async function addTeachingDiscipline(formData: FormData) {
+  const context = await requireContext()
+  const repository = new SupabaseTeacherSettingsRepository()
+  await repository.addDiscipline(context.workspace.id, context.academicYear.id, text(formData, 'disciplineName'))
+  revalidateSettingsContext()
+}
+
+export async function setTeachingDisciplineState(formData: FormData) {
+  const context = await requireContext()
+  const repository = new SupabaseTeacherSettingsRepository()
+  await repository.setDisciplineActive(context.workspace.id, context.academicYear.id, text(formData, 'disciplineId'), text(formData, 'isActive') === 'true')
+  revalidateSettingsContext()
+  revalidatePath('/orario')
+}
+
+export async function addSettingsSection(formData: FormData) {
+  const context = await requireContext()
+  const repository = new SupabaseAnnualPlanExecutionRepository()
+  await repository.addSection(context.workspace.id, context.academicYear.id, asAnnualPlanGrade(text(formData, 'grade')), text(formData, 'sectionCode'))
+  revalidateSettingsContext()
+  revalidatePath('/piano-annuale')
+  revalidatePath('/orario')
+}
+
+export async function confirmSettingsSection(formData: FormData) {
+  const context = await requireContext()
+  const repository = new SupabaseAnnualPlanExecutionRepository()
+  await repository.setSectionStatus(context.workspace.id, context.academicYear.id, text(formData, 'sectionId'), 'CONFERMATA')
+  revalidateSettingsContext()
+  revalidatePath('/piano-annuale')
+  revalidatePath('/orario')
+}
+
+export async function addSettingsTeachingAssignment(formData: FormData) {
+  const context = await requireContext()
+  const [sectionId, disciplineId] = assignmentPair(text(formData, 'assignmentPair'))
+  const repository = new SupabaseTimetableRepository()
+  await repository.addAssignment({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    sectionId,
+    disciplineId,
+    weeklyMinutes: integer(formData, 'weeklyMinutes'),
+    sourceNote: nullableText(formData, 'sourceNote'),
+  })
+  revalidateTeachingContext()
+}
+
+export async function updateSettingsTeachingAssignment(formData: FormData) {
+  const context = await requireContext()
+  const repository = new SupabaseTimetableRepository()
+  await repository.updateAssignment({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    assignmentId: text(formData, 'assignmentId'),
+    weeklyMinutes: integer(formData, 'weeklyMinutes'),
+    status: text(formData, 'status') === 'CONFIRMED' ? 'CONFIRMED' : 'PROVISIONAL',
+  })
+  revalidateTeachingContext()
+}
+
+export async function confirmSettingsTeachingAssignment(formData: FormData) {
+  await legacyTransition(formData, 'PROVISIONAL', 'CONFIRMED')
+}
+
+export async function reopenSettingsTeachingAssignment(formData: FormData) {
+  await legacyTransition(formData, 'CONFIRMED', 'PROVISIONAL')
+}
+
 async function legacyTransition(formData: FormData, expectedStatus: 'PROVISIONAL' | 'CONFIRMED', status: 'PROVISIONAL' | 'CONFIRMED') {
-  const context = await requireContext(); const repository = new SupabaseTimetableRepository(); const assignmentId = text(formData, 'assignmentId')
-  const snapshot = await repository.list(context.workspace.id, context.academicYear.id, new Date().toISOString().slice(0, 10)); const current = snapshot.assignments.find((item) => item.id === assignmentId)
+  const context = await requireContext()
+  const repository = new SupabaseTimetableRepository()
+  const assignmentId = text(formData, 'assignmentId')
+  const snapshot = await repository.list(context.workspace.id, context.academicYear.id, new Date().toISOString().slice(0, 10))
+  const current = snapshot.assignments.find((item) => item.id === assignmentId)
   if (!current || current.status !== expectedStatus) return
-  await repository.setAssignmentStatus({ workspaceId: context.workspace.id, academicYearId: context.academicYear.id, assignmentId, expectedStatus, expectedUpdatedAt: current.updatedAt, status }); revalidateTeachingContext()
+  await repository.setAssignmentStatus({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    assignmentId,
+    expectedStatus,
+    expectedUpdatedAt: current.updatedAt,
+    status,
+  })
+  revalidateTeachingContext()
 }
 
-export async function confirmSettingsTeachingAssignmentWithFeedback(_previousState: TeachingAssignmentTransitionState, formData: FormData): Promise<TeachingAssignmentTransitionState> { return guardedTransition(formData, 'PROVISIONAL', 'CONFIRMED') }
-export async function reopenSettingsTeachingAssignmentWithFeedback(_previousState: TeachingAssignmentTransitionState, formData: FormData): Promise<TeachingAssignmentTransitionState> { return guardedTransition(formData, 'CONFIRMED', 'PROVISIONAL') }
-async function guardedTransition(formData: FormData, expectedStatus: 'PROVISIONAL' | 'CONFIRMED', status: 'PROVISIONAL' | 'CONFIRMED'): Promise<TeachingAssignmentTransitionState> {
-  if (text(formData, 'expectedStatus') !== expectedStatus) return staleConflictState()
-  try { const context = await requireContext(); const repository = new SupabaseTimetableRepository(); await repository.setAssignmentStatus({ workspaceId: context.workspace.id, academicYearId: context.academicYear.id, assignmentId: text(formData, 'assignmentId'), expectedStatus, expectedUpdatedAt: text(formData, 'expectedUpdatedAt'), status }); revalidateTeachingContext(); return { status: 'success', message: status === 'CONFIRMED' ? 'Assegnazione confermata.' : 'Assegnazione rimessa da controllare.' } }
-  catch (error) { if (error instanceof TeachingAssignmentStaleConflictError) return staleConflictState(); return { status: 'error', message: 'Operazione non completata. Riprova.' } }
+export async function confirmSettingsTeachingAssignmentWithFeedback(
+  _previousState: TeachingAssignmentTransitionState,
+  formData: FormData,
+): Promise<TeachingAssignmentTransitionState> {
+  return guardedTransition(formData, 'PROVISIONAL', 'CONFIRMED')
 }
-function staleConflictState(): TeachingAssignmentTransitionState { return { status: 'conflict', message: 'Questa assegnazione è cambiata nel frattempo. Ricarica la pagina prima di riprovare.' } }
-async function requireContext() { const repository = new SupabaseWorkspaceRepository(); const context = await repository.getCurrentContext(); if (!context) throw new Error('Authenticated workspace required'); if (!context.academicYear) throw new Error('Active academic year required'); return { ...context, academicYear: context.academicYear } }
-function revalidateSettingsContext() { revalidatePath('/impostazioni'); revalidatePath('/') }
-function revalidateTeachingContext() { revalidatePath('/impostazioni'); revalidatePath('/orario'); revalidatePath('/') }
-function assignmentPair(value: string): [string, string] { const [sectionId, disciplineId, extra] = value.split('|'); if (!sectionId || !disciplineId || extra) throw new Error('Invalid teaching assignment pair'); return [sectionId, disciplineId] }
-function text(formData: FormData, key: string) { const value = formData.get(key); if (typeof value !== 'string') throw new Error(`${key} required`); return value }
-function nullableText(formData: FormData, key: string) { const value = text(formData, key).trim(); return value || null }
-function integer(formData: FormData, key: string) { const value = Number(text(formData, key)); if (!Number.isInteger(value)) throw new Error(`${key} must be an integer`); return value }
+
+export async function reopenSettingsTeachingAssignmentWithFeedback(
+  _previousState: TeachingAssignmentTransitionState,
+  formData: FormData,
+): Promise<TeachingAssignmentTransitionState> {
+  return guardedTransition(formData, 'CONFIRMED', 'PROVISIONAL')
+}
+
+async function guardedTransition(
+  formData: FormData,
+  expectedStatus: 'PROVISIONAL' | 'CONFIRMED',
+  status: 'PROVISIONAL' | 'CONFIRMED',
+): Promise<TeachingAssignmentTransitionState> {
+  if (text(formData, 'expectedStatus') !== expectedStatus) return staleConflictState()
+  try {
+    const context = await requireContext()
+    const repository = new SupabaseTimetableRepository()
+    await repository.setAssignmentStatus({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      assignmentId: text(formData, 'assignmentId'),
+      expectedStatus,
+      expectedUpdatedAt: text(formData, 'expectedUpdatedAt'),
+      status,
+    })
+    revalidateTeachingContext()
+    return { status: 'success', message: status === 'CONFIRMED' ? 'Assegnazione confermata.' : 'Assegnazione rimessa da controllare.' }
+  } catch (error) {
+    if (error instanceof TeachingAssignmentStaleConflictError) return staleConflictState()
+    return { status: 'error', message: 'Operazione non completata. Riprova.' }
+  }
+}
+
+function staleConflictState(): TeachingAssignmentTransitionState {
+  return { status: 'conflict', message: 'Questa assegnazione è cambiata nel frattempo. Ricarica la pagina prima di riprovare.' }
+}
+
+async function requireContext() {
+  const repository = new SupabaseWorkspaceRepository()
+  const context = await repository.getCurrentContext()
+  if (!context) throw new Error('Authenticated workspace required')
+  if (!context.academicYear) throw new Error('Active academic year required')
+  return { ...context, academicYear: context.academicYear }
+}
+
+function revalidateSettingsContext() {
+  revalidatePath('/impostazioni')
+  revalidatePath('/')
+}
+
+function revalidateTeachingContext() {
+  revalidatePath('/impostazioni')
+  revalidatePath('/orario')
+  revalidatePath('/')
+}
+
+function assignmentPair(value: string): [string, string] {
+  const [sectionId, disciplineId, extra] = value.split('|')
+  if (!sectionId || !disciplineId || extra) throw new Error('Invalid teaching assignment pair')
+  return [sectionId, disciplineId]
+}
+
+function text(formData: FormData, key: string) {
+  const value = formData.get(key)
+  if (typeof value !== 'string') throw new Error(`${key} required`)
+  return value
+}
+
+function nullableText(formData: FormData, key: string) {
+  const value = text(formData, key).trim()
+  return value || null
+}
+
+function integer(formData: FormData, key: string) {
+  const value = Number(text(formData, key))
+  if (!Number.isInteger(value)) throw new Error(`${key} must be an integer`)
+  return value
+}
