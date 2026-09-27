@@ -30,7 +30,7 @@ async function setSettingsTeachingAssignmentStatus(formData: FormData, expectedS
   const context = await requireContext()
   const assignmentId = text(formData, 'assignmentId')
   const reader = new SupabaseTeachingAssignmentReader()
-  const observed = (await reader.list(context.workspace.id, context.academicYear.id)).find((item) => item.id === assignmentId)
+  const observed = await reader.getById(context.workspace.id, context.academicYear.id, assignmentId)
   if (!observed || observed.status !== expectedStatus) throw new Error('STALE_CONFLICT')
   const repository = new SupabaseTimetableRepository()
   await repository.setAssignmentStatus({ workspaceId: context.workspace.id, academicYearId: context.academicYear.id, assignmentId, expectedStatus, expectedUpdatedAt: observed.updatedAt, status })
