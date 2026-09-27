@@ -103,7 +103,7 @@ begin
  end if;
  new.row_key:=btrim(new.row_key); if tg_op='UPDATE' then new.created_at:=old.created_at; end if; new.updated_at:=now(); return new;
 end $$;
-create trigger timetable_import_rows_enforce before insert or update on public.timetable_import_candidate_rows for each row execute function private.enforce_timetable_import_row();
+create trigger timetable_import_rows_enforce before insert or update or delete on public.timetable_import_candidate_rows for each row execute function private.enforce_timetable_import_row();
 create or replace function private.enforce_timetable_import_row_delete() returns trigger language plpgsql security invoker set search_path='' as $$
 declare cs text; begin select state into cs from public.timetable_import_candidates where id=old.candidate_id; if not private.has_timetable_import_apply_context(old.candidate_id) and cs<>'DRAFT' then raise exception 'candidate rows mutable only in DRAFT'; end if; return old; end $$;
 create trigger timetable_import_rows_enforce_delete before delete on public.timetable_import_candidate_rows for each row execute function private.enforce_timetable_import_row_delete();
