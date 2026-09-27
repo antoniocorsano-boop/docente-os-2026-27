@@ -103,20 +103,29 @@ begin
  end if;
  new.row_key:=btrim(new.row_key); if tg_op='UPDATE' then new.created_at:=old.created_at; end if; new.updated_at:=now(); return new;
 end $$;
-create trigger timetable_import_rows_enforce before insert or update or delete on public.timetable_import_candidate_rows for each row execute function private.enforce_timetable_import_row();
+create trigger timetable_import_rows_enforce before insert or update on public.timetable_import_candidate_rows for each row execute function private.enforce_timetable_import_row();
 create or replace function private.enforce_timetable_import_row_delete() returns trigger language plpgsql security invoker set search_path='' as $$
 declare cs text; begin select state into cs from public.timetable_import_candidates where id=old.candidate_id; if not private.has_timetable_import_apply_context(old.candidate_id) and cs<>'DRAFT' then raise exception 'candidate rows mutable only in DRAFT'; end if; return old; end $$;
 create trigger timetable_import_rows_enforce_delete before delete on public.timetable_import_candidate_rows for each row execute function private.enforce_timetable_import_row_delete();
 
+-- Private capability for trusted revision bumps caused by ordinary T1 slot mutations.
+create table private.timetable_revision_bump_context(backend_pid integer not null, transaction_id bigint not null, primary key(backend_pid,transaction_id));
+revoke all on private.timetable_revision_bump_context from public,anon,authenticated;
+create or replace function private.has_timetable_revision_bump_context() returns boolean
+language sql stable security definer set search_path='' as $
+ select exists(select 1 from private.timetable_revision_bump_context c where c.backend_pid=pg_backend_pid() and c.transaction_id=txid_current())
+$;
+revoke all on function private.has_timetable_revision_bump_context() from public,anon,authenticated;
+
 -- Manual T1 edits bump revision; only the private capability suppresses per-row bumps during governed apply.
 create or replace function private.bump_timetable_draft_revision_from_slot() returns trigger language plpgsql security definer set search_path='' as $$
-declare vid uuid; vs text; begin vid:=case when tg_op='DELETE' then old.timetable_version_id else new.timetable_version_id end; select status into vs from public.timetable_versions where id=vid; if vs='DRAFT' and not private.has_timetable_import_apply_context(null) then update public.timetable_versions set revision=revision+1 where id=vid and status='DRAFT'; end if; return null; end $$;
+declare vid uuid; vs text; begin vid:=case when tg_op='DELETE' then old.timetable_version_id else new.timetable_version_id end; select status into vs from public.timetable_versions where id=vid; if vs='DRAFT' and not private.has_timetable_import_apply_context(null) then insert into private.timetable_revision_bump_context values(pg_backend_pid(),txid_current()) on conflict do nothing; update public.timetable_versions set revision=revision+1 where id=vid and status='DRAFT'; delete from private.timetable_revision_bump_context where backend_pid=pg_backend_pid() and transaction_id=txid_current(); end if; return null; end $$;
 revoke all on function private.bump_timetable_draft_revision_from_slot() from public,anon,authenticated;
 create trigger timetable_slots_bump_draft_revision after insert or update or delete on public.timetable_slots for each row execute function private.bump_timetable_draft_revision_from_slot();
 create or replace function private.bump_timetable_draft_revision_from_version() returns trigger language plpgsql security definer set search_path='' as $$
 begin
  if old.status='DRAFT' and new.status='DRAFT' and (new.label is distinct from old.label or new.effective_from is distinct from old.effective_from or new.effective_to is distinct from old.effective_to or new.source_kind is distinct from old.source_kind or new.source_ref is distinct from old.source_ref) and not private.has_timetable_import_apply_context(null) then new.revision:=old.revision+1;
- elsif new.revision<>old.revision and not private.has_timetable_import_apply_context(null) then raise exception 'timetable revision is server controlled'; end if; return new;
+ elsif new.revision<>old.revision and not private.has_timetable_import_apply_context(null) and not private.has_timetable_revision_bump_context() then raise exception 'timetable revision is server controlled'; end if; return new;
 end $$;
 revoke all on function private.bump_timetable_draft_revision_from_version() from public,anon,authenticated;
 create trigger timetable_versions_bump_revision before update on public.timetable_versions for each row execute function private.bump_timetable_draft_revision_from_version();
