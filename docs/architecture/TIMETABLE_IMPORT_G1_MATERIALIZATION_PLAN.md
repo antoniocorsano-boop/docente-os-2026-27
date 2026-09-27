@@ -18,6 +18,8 @@ Il repository T1 corrente espone già `SupabaseTimetableRepository` con:
 - inserimenti distinti per `LESSON`, `CLASS_PRESENCE` e slot speciali;
 - `deleteSlot(versionId, slotId)`.
 
+T1 materializza una sola DRAFT corrente per workspace/anno; l'attivazione e il versionamento storico restano fuori dal perimetro di questa fase. Il gate T1 originario ha già verificato creazione di cattedra/DRAFT/slot, blocco overlap e rollback.
+
 Queste primitive sono adeguate all'editing manuale T1, ma **non sono sufficienti per l'applicazione governata di un candidato importato**, perché una sequenza client/server di `deleteSlot + add...` non garantirebbe da sola atomicità, idempotenza e controllo di revisione richiesti da G0.
 
 ## 2. Decisione G1-A — nessun riuso improprio delle primitive T1 per l'apply
@@ -41,13 +43,15 @@ applyTimetableImportToDraft(command)
 
 che verifichi in una sola transazione: workspace, anno, DRAFT attesa, revisione attesa, idempotenza, piano confermato e invarianti degli slot.
 
-La forma concreta (RPC PostgreSQL / funzione server con transazione governata) sarà scelta solo dopo verifica dello schema e delle policy RLS.
+**Scelta qualificata G1:** la slice di persistenza userà una funzione PostgreSQL/RPC transazionale invocata dal server autenticato, con RLS/ownership coerenti con T1. Non verrà implementata una pseudo-transazione mediante più chiamate Supabase dal livello applicativo.
 
-## 3. Decisione G1-B — persistenza del candidato separata dal canone
+## 3. Decisione G1-B — persistenza candidata minimizzata e separata dal canone
 
 Il candidato non deve essere serializzato dentro `timetable_versions.source_ref`, note degli slot o storage locale.
 
-Prima opzione da qualificare:
+**Scelta qualificata G1:** persistere server-side soltanto il candidato già **proiettato e minimizzato sul workspace del docente**, non l'intera matrice d'istituto estratta.
+
+Schema logico da sottoporre alla review della migrazione G1.2:
 
 ```text
 timetable_import_candidates
@@ -55,17 +59,20 @@ timetable_import_candidates
   workspace_id
   academic_year_id
   source_fingerprint
-  source_kind
+  source_kind = INSTITUTION_DOCUMENT
   source_label
   source_ref nullable
   effective_from_candidate nullable
   source_is_provisional
   state
-  revision
+  revision bigint
   parser_version
+  draft_version_id
+  expected_draft_revision bigint
   created_by
   created_at
   updated_at
+  expires_at
 
 timetable_import_candidate_rows
   id
@@ -87,31 +94,46 @@ timetable_import_candidate_rows
   warnings jsonb
 ```
 
-**Non è ancora una migrazione approvata.** G1 deve prima verificare se una persistenza server-side completa è necessaria o se una forma più minimizzata soddisfa recuperabilità, revisione e concorrenza senza conservare dati sorgente superflui.
+Regole:
 
-## 4. Decisione G1-C — sorgente binaria e retention
+- `source_teacher_label` viene persistito **solo se necessario** a una riga pertinente e ancora da verificare; dopo risoluzione/conferma può essere eliminato o sostituito dall'identificatore canonico;
+- nessun nominativo di docenti non pertinenti al workspace viene persistito;
+- `warnings` non può diventare un contenitore libero del testo integrale della sorgente;
+- `source_position/evidence_ref` deve identificare una regione/cella senza conservare una copia dell'intero documento;
+- candidati terminali scaduti sono eliminabili senza effetto sul canone;
+- l'anti-duplicazione usa almeno `workspace_id + academic_year_id + source_fingerprint`.
 
-Il binario PDF/immagine non entra automaticamente nel database né nel repository Git.
+La migrazione non è autorizzata da questo documento: G1.2 dovrà dimostrare RLS, indici, vincoli, cleanup e test negativi prima del merge.
 
-Pipeline proposta:
+## 4. Decisione G1-C — sorgente binaria e retention qualificata
+
+Il binario PDF/immagine non entra nel repository Git e non viene conservato permanentemente per default.
+
+Pipeline:
 
 ```text
-upload temporaneo governato
+upload temporaneo privato
 → fingerprint SHA-256 sul binario
 → parsing
-→ estrazione delle sole evidenze necessarie
-→ candidato
-→ retention/eliminazione secondo policy esplicita
+→ proiezione/minimizzazione
+→ candidato persistito
+→ eliminazione binario
 ```
 
-Prima del runtime occorre decidere:
+**Scelta qualificata G1:** il binario è materiale transitorio di elaborazione. La v1 non richiede che sopravviva alla riuscita del parsing e della materializzazione delle evidenze minimizzate. In caso di errore di parsing può restare disponibile soltanto per il tempo strettamente necessario a retry/diagnostica governata e comunque entro una finestra massima configurata lato server.
 
-1. durata massima dell'upload temporaneo;
-2. se il binario viene eliminato subito dopo parsing o mantenuto fino alla conferma;
-3. forma di `evidence_ref` dopo l'eliminazione;
-4. minimizzazione dei nominativi non pertinenti al docente/workspace.
+Vincoli per G1.3:
 
-Default di sicurezza da qualificare: **retention minima**, nessuna conservazione permanente del documento solo per comodità.
+1. bucket/area privata, mai URL pubblico;
+2. accesso limitato all'utente/workspace autorizzato e al processo server necessario;
+3. nessun nome file usato come identità o chiave di sicurezza;
+4. fingerprint calcolato prima del parsing;
+5. eliminazione esplicita dopo parsing riuscito; job di cleanup come rete di sicurezza per upload abbandonati/falliti;
+6. **TTL massimo proposto: 24 ore** per upload temporanei non eliminati prima; una durata inferiore è ammessa;
+7. `evidence_ref` persistente non punta al binario temporaneo: descrive posizione/cella e metadati minimizzati sufficienti alla review;
+8. il documento reale del 28-09-2026 resta fuori da Git e dalle fixture automatiche.
+
+La retention del **candidato** è distinta da quella del binario. Default proposto: candidato non applicato con `expires_at`, eliminabile dopo **30 giorni**; candidato applicato conserva soltanto ricevuta/esito e provenienza minima necessaria, mentre righe/evidenze transitorie possono essere eliminate secondo la policy che G1.2 dovrà materializzare. Il periodo è una scelta di minimizzazione tecnica, non una regola archivistica sui documenti scolastici.
 
 ## 5. Decisione G1-D — adattatore di parsing sostituibile
 
@@ -155,19 +177,20 @@ Il parser non può promuovere una riga a `AUTO_RESOLVED` sulla sola confidenza v
 
 `CLASS_PRESENCE`, `DISPOSITION`, `RECEPTION`, `OTHER` richiedono evidenza semantica o conferma docente secondo G0.
 
-## 7. Decisione G1-F — proiezione prima del confronto
+## 7. Decisione G1-F — proiezione prima della persistenza e del confronto
 
 Un prospetto d'istituto può contenere molti docenti. La sequenza corretta è:
 
 ```text
-quadro estratto completo in memoria di parsing
+quadro estratto completo solo nel perimetro transitorio del parser
 → individuazione delle celle pertinenti
 → minimizzazione
 → candidato del workspace
+→ persistenza candidato
 → confronto con DRAFT corrente
 ```
 
-Nominativi/celle non pertinenti non devono essere persistiti nel candidato del docente salvo stretta necessità di evidenza diagnostica, da motivare.
+Nominativi/celle non pertinenti non vengono persistiti nel candidato del docente. Un'esigenza diagnostica non autorizza a conservare l'intero quadro: deve essere risolta con evidenza minimizzata o logging privo di contenuto personale non necessario.
 
 ## 8. Decisione G1-G — piano di differenza esplicito
 
@@ -190,28 +213,48 @@ Regole:
 - slot fuori perimetro sono `KEEP` per difetto;
 - il piano confermato viene legato a `candidate_revision` e `expected_draft_revision`.
 
-## 9. Decisione G1-H — revisione della DRAFT
+## 9. Decisione G1-H — revisione DRAFT qualificata
 
-T1 non espone oggi un numero di revisione applicativa della DRAFT. G0 richiede però optimistic concurrency.
+T1 non espone oggi un numero di revisione applicativa della DRAFT. G0 richiede optimistic concurrency.
 
-G1 deve scegliere una strategia verificabile, preferendo un token server-side monotono o equivalente. Non è sufficiente affidarsi al timestamp mostrato dalla UI.
+**Scelta qualificata G1:** introdurre un contatore monotono `revision bigint` sulla DRAFT canonica (`timetable_versions`), inizializzato in modo sicuro dalla migrazione. Ogni mutazione della DRAFT che possa cambiare l'esito del confronto deve incrementarlo nella stessa transazione della mutazione.
 
-Requisito osservabile:
+Questo comprende almeno:
+
+- metadati DRAFT rilevanti (`effective_from`, provenienza/label quando incidono sul piano);
+- aggiunta slot;
+- modifica slot;
+- rimozione slot;
+- apply dell'importazione.
+
+L'importazione registra `expected_draft_revision` all'apertura/aggiornamento della review. `applyTimetableImportToDraft` esegue un controllo atomico equivalente a:
 
 ```text
-se DRAFT cambia dopo l'apertura della review
-→ apply rifiutato con CONFLICT_DETECTED
-→ nessuna scrittura parziale
-→ docente ricarica differenze e riconferma
+DRAFT.id = expected_draft_version_id
+AND DRAFT.status = DRAFT
+AND DRAFT.revision = expected_draft_revision
 ```
 
-## 10. Decisione G1-I — idempotenza
+Se il controllo fallisce:
+
+```text
+→ CONFLICT_DETECTED
+→ zero scritture
+→ ricalcolo differenze
+→ nuova conferma docente
+```
+
+**Vincolo importante:** aggiungere il solo campo `revision` non basta. G1.2 deve assicurare che anche le attuali primitive manuali T1 incrementino la revisione; altrimenti l'optimistic concurrency sarebbe falsa. La soluzione preferita è un meccanismo DB-enforced/centralizzato, non la disciplina volontaria dei singoli chiamanti.
+
+`updated_at` resta informativo e non sostituisce il token di revisione.
+
+## 10. Decisione G1-I — idempotenza qualificata
 
 Ogni conferma porta un `confirmation_request_id` univoco.
 
 Il server deve memorizzare/riconoscere l'esito logico dell'operazione. Un retry di rete con lo stesso ID non ripete aggiunte o rimozioni.
 
-Chiave minima concettuale:
+Chiave logica:
 
 ```text
 workspace_id
@@ -219,6 +262,8 @@ candidate_id
 candidate_revision
 confirmation_request_id
 ```
+
+G1.2 dovrà introdurre un registro/ricevuta con vincolo univoco. La stessa richiesta restituisce lo stesso esito applicativo; un ID riutilizzato con payload/revisione differenti viene rifiutato.
 
 ## 11. Decisione G1-L — UX teacher-first
 
@@ -238,7 +283,7 @@ Fasi UI:
 
 Su smartphone la review deve privilegiare una sequenza per giorno/ora; nessuna tabella desktop compressa orizzontalmente.
 
-Accessibilità minima da qualificare: tastiera, focus, nomi accessibili, stato non affidato al solo colore, error summary, riflusso/zoom.
+Accessibilità minima da qualificare: tastiera, focus, nomi accessibili, stato non affidato al solo colore, riepilogo errori, riflusso/zoom.
 
 ## 12. Errori e recuperabilità
 
@@ -271,24 +316,25 @@ Nessun DB. Nessun upload. Nessuna UI produttiva.
 - fixture sintetica equivalente al caso 28-09-2026;
 - casi negativi.
 
-### G1.2 — persistence qualification
+### G1.2 — persistenza e transazione
 
-- schema candidato;
-- RLS;
-- token revisione DRAFT;
-- registro idempotenza;
-- funzione/RPC atomica di apply;
-- test transazionali e concorrenza.
+- schema candidato minimizzato + RLS;
+- `revision bigint` DB-enforced sulla DRAFT e adeguamento delle primitive T1;
+- registro/ricevuta idempotenza;
+- funzione/RPC atomica `applyTimetableImportToDraft`;
+- cleanup candidati/evidenze;
+- test transazionali, RLS e concorrenza.
 
 Nessuna UI finché la persistenza non supera review dedicata.
 
 ### G1.3 — ingestion/parser adapter
 
-- upload temporaneo;
-- fingerprint;
+- upload temporaneo privato;
+- SHA-256;
 - parser adapter;
-- minimizzazione/proiezione;
-- policy retention.
+- minimizzazione/proiezione prima della persistenza;
+- eliminazione immediata dopo parsing riuscito + cleanup TTL massimo 24h;
+- nessuna dipendenza del dominio dal fornitore di parsing.
 
 ### G1.4 — review UX
 
@@ -314,9 +360,27 @@ Prima di autorizzare G1.1:
 - [x] prevista optimistic concurrency;
 - [x] prevista idempotenza;
 - [x] prevista minimizzazione prima della persistenza;
-- [ ] qualificare persistenza candidata e retention;
-- [ ] qualificare strategia revisione DRAFT;
+- [x] qualificata persistenza candidata: server-side, minimizzata, post-proiezione;
+- [x] qualificata retention: binario transitorio, eliminazione dopo parsing, cleanup ≤24h; candidato con scadenza separata;
+- [x] qualificata strategia revisione DRAFT: `revision bigint` monotona e DB-enforced;
 - [ ] revisione terza del piano G1;
 - [ ] decisione umana G1.
 
-Fino alla chiusura dei quattro punti residui: **HOLD_RUNTIME**.
+Fino alla chiusura degli ultimi due punti: **HOLD_RUNTIME**.
+
+## 15. Casi negativi obbligatori per G1.2/G1.3
+
+Prima di qualunque attivazione runtime dovranno essere dimostrati almeno:
+
+- modifica manuale della DRAFT durante la review → conflitto, zero scritture;
+- retry della stessa conferma → nessun duplicato;
+- stesso `confirmation_request_id` con payload diverso → rifiuto;
+- utente/workspace diverso → accesso negato;
+- candidato scaduto → non applicabile;
+- upload temporaneo orfano → cleanup;
+- parser fallito → nessuna DRAFT creata/modificata dall'import;
+- documento duplicato → nessuna seconda applicazione silenziosa;
+- riga ambigua → `REVIEW_REQUIRED`;
+- slot DRAFT fuori perimetro → preservato;
+- errore durante apply → rollback totale;
+- nominativi non pertinenti → assenti dalla persistenza candidata.
