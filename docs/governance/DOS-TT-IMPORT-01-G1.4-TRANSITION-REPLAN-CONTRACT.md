@@ -13,7 +13,7 @@ G1.4 non interpreta il documento sorgente, non ridefinisce le personalizzazioni 
 
 Flusso canonico:
 
-`candidato G1.3 revisionato -> bozza G1.2 -> anteprima transizione -> nuove occorrenze future -> impatto sulle sessioni pianificate -> risoluzione sole eccezioni -> conferma docente -> attivazione versione -> ripianificazione governata`
+`candidato G1.3 revisionato -> bozza G1.2 -> anteprima transizione -> verifica storia eseguita -> nuove occorrenze future -> impatto sulle sessioni pianificate -> risoluzione sole eccezioni -> conferma docente -> attivazione versione -> ripianificazione governata`
 
 ## 2. Modello canonico vincolante
 
@@ -41,39 +41,50 @@ Il nome e lo schema fisico dell'identificatore saranno definiti nella materializ
 
 ## 3. Invarianti
 
-1. **Storia immutabile.** Nessuna occorrenza/sessione con collocazione anteriore a `effective_from` viene spostata, ricreata, cancellata o reinterpretata dalla transizione.
+1. **Storia immutabile.** Nessuna occorrenza/sessione già eseguita o consolidata viene spostata, ricreata, cancellata, reinterpretata o resa temporalmente incoerente dalla transizione, indipendentemente dalla posizione rispetto a un `effective_from` proposto.
 2. **Stato storico preservato.** Svolto, materiali, note, collegamenti curricolari e altre evidenze pregresse non vengono riscritti retroattivamente.
 3. **Teacher-first.** Il docente vede un riepilogo comprensibile prima dell'applicazione e interviene soltanto sui casi non deterministici.
-4. **Versionamento temporale.** La nuova `TimetableVersion` inizia a `effective_from`; la precedente viene chiusa al confine coerente immediatamente precedente, senza sovrapposizioni né vuoti artificiali.
+4. **Versionamento temporale.** La nuova `TimetableVersion` inizia a un `effective_from` valido; la precedente viene chiusa al confine coerente immediatamente precedente, senza sovrapposizioni, vuoti artificiali o invalidazione di storia eseguita.
 5. **Termine aperto.** La nuova versione mantiene `effective_to = null` finché non arriva una successiva versione o un altro confine governato.
 6. **Identità didattica preservata.** Una sessione futura già pianificata non viene trattata come contenuto nuovo solo perché cambia giorno/ora o occorrenza di appoggio.
 7. **No silent drop.** Nessuna sessione futura pianificata può scomparire perché il nuovo quadro offre meno capacità o una corrispondenza non è determinabile.
 8. **No silent duplication.** Una transizione non può duplicare una sessione già pianificata.
 9. **Personalizzazioni fuori dal mapping strutturale.** Teoria, disegno, disposizione e altre qualificazioni non determinano il parsing/importazione. Gli attributi didattici già associati a una sessione vengono preservati quando compatibili e non reinterpretati dal nuovo documento.
 10. **Atomicità logica.** Attivazione della versione e ripianificazione approvata devono produrre uno stato coerente; un fallimento non deve lasciare metà transizione applicata.
-11. **Idempotenza.** Ripetere la stessa transizione approvata non deve creare ulteriori spostamenti, duplicati o mutazioni.
+11. **Idempotenza forte.** Un `client_request_id` identifica un solo piano canonico: soltanto il replay esatto dello stesso piano può restituire la receipt precedente; il riuso della chiave con un piano diverso deve fallire senza scritture.
 12. **Nessun DOS-A1.** G1.4 non autorizza decisioni didattiche autonome.
 13. **Eccezioni, non amministrazione.** Nel percorso ordinario il docente non gestisce identificatori, fingerprint, revisioni o liste tecniche: il sistema mostra solo il risultato e le eventuali eccezioni da decidere.
+14. **Nessuna sessione orfana.** Dopo l'attivazione, ogni sessione interessata deve avere una nuova occorrenza valida oppure uno stato persistente governato di non-collocazione; se tale stato non è materializzato, l'attivazione resta bloccata finché il conflitto non è risolto.
 
-## 4. Confine temporale
+## 4. Confine temporale e protezione della storia eseguita
 
-`effective_from` è il confine canonico.
+`effective_from` è il confine canonico **solo se compatibile con la storia già consolidata**.
 
 - prima di `effective_from`: dominio storico, non modificabile da G1.4;
-- da `effective_from` in avanti: dominio potenzialmente interessato dalla nuova versione;
+- da `effective_from` in avanti: dominio potenzialmente interessato dalla nuova versione soltanto per elementi non già eseguiti/consolidati;
 - la versione precedente viene chiusa in funzione dell'inizio della nuova versione;
 - la nuova versione resta aperta (`effective_to = null`);
 - l'eventuale termine generale delle attività didattiche appartiene al calendario/anno scolastico e non viene duplicato come data inventata nel contratto di importazione.
 
-La transizione deve fallire se `effective_from` non è risolto o se produce intervalli di validità incoerenti.
+Prima di rendere applicabile il piano, G1.4 deve calcolare un **executed-history boundary**: la massima data/occorrenza consolidata rilevante per l'ambito della transizione, secondo gli stati canonici della sessione.
+
+Regole obbligatorie:
+
+1. se `effective_from` non interseca alcuna sessione già eseguita/consolidata, la transizione può proseguire;
+2. se `effective_from` è retrodatato e la chiusura della versione precedente renderebbe una sessione già eseguita incompatibile con la validità temporale del proprio slot/versione, **l'attivazione è bloccata**;
+3. il sistema non sposta automaticamente `effective_from` e non riscrive la storia per far quadrare il nuovo orario;
+4. un eventuale meccanismo futuro di split/retifica storica richiede un contratto separato e non è autorizzato da G1.4;
+5. l'interfaccia presenta il problema in termini semplici, ad esempio: **“Questa data comprende lezioni già svolte. Scegli una data di entrata in vigore successiva.”**
+
+La transizione deve inoltre fallire se `effective_from` non è risolto o se produce intervalli di validità incoerenti.
 
 ## 5. Oggetto della ripianificazione
 
-Sono candidate alla ripianificazione soltanto le **sessioni didattiche future già pianificate** la cui occorrenza/collocazione dipende da slot della versione precedente a partire da `effective_from`.
+Sono candidate alla ripianificazione soltanto le **sessioni didattiche future già pianificate e non consolidate** la cui occorrenza/collocazione dipende da slot della versione precedente a partire da `effective_from`.
 
 Non sono candidate automaticamente:
 
-- sessioni già svolte;
+- sessioni già svolte o comunque consolidate;
 - sessioni anteriori a `effective_from`;
 - eventi di calendario non appartenenti al quadro delle lezioni;
 - attività prive di relazione con gli slot modificati;
@@ -121,7 +132,7 @@ Il matching deve privilegiare identità di classe/incarico, data/ordine didattic
 
 Una sessione può essere proposta come riallineata automaticamente nell'anteprima solo se:
 
-1. appartiene al dominio futuro (`>= effective_from`);
+1. appartiene al dominio futuro (`>= effective_from`) e non è già eseguita/consolidata;
 2. esiste una sola nuova occorrenza compatibile;
 3. classe/incarico sono coerenti;
 4. non si crea collisione con altra sessione/evento governato;
@@ -131,7 +142,7 @@ Una sessione può essere proposta come riallineata automaticamente nell'anteprim
 
 `automaticamente` significa **proposta automatica e precomputata**, non decisione didattica autonoma. L'applicazione resta soggetta al gate previsto dalla governance.
 
-## 9. Conflitti e casi non deterministici
+## 9. Conflitti, stato non collocato e casi non deterministici
 
 Devono essere sottoposti al docente almeno:
 
@@ -146,7 +157,14 @@ Devono essere sottoposti al docente almeno:
 
 Il sistema non deve chiedere al docente di comprendere la causa tecnica. Deve presentare una decisione concreta alla volta, ad esempio: **“Questa lezione non trova una sola nuova collocazione. Scegli quando mantenerla.”**
 
-Il docente può confermare uno spostamento, scegliere una diversa collocazione, lasciare la sessione da ripianificare oppure escluderla dalla transizione quando il dominio lo consente. Nessuna scelta elimina il contenuto didattico per effetto implicito.
+Per ogni conflitto che impedisce una collocazione valida sono ammesse soltanto due famiglie di esito governato:
+
+1. **risolto prima dell'attivazione** — il docente sceglie una nuova occorrenza valida e il piano registra la disposizione;
+2. **non collocato esplicitamente** — solo se la materializzazione introduce uno stato persistente canonico, ad esempio `UNSCHEDULED_REPLAN_REQUIRED`, distinto da cancellazione e da sessione pianificata, visibile al docente e recuperabile nel flusso ordinario.
+
+Fino a quando tale stato persistente non è definito e implementato, **qualsiasi sessione senza target valido blocca l'attivazione**. Non è ammesso “escludere” o “lasciare da ripianificare” una sessione mantenendola agganciata a un'occorrenza/versione non più valida.
+
+Nessuna scelta elimina il contenuto didattico per effetto implicito.
 
 ## 10. Percorso utente minimo
 
@@ -156,11 +174,11 @@ Il percorso ordinario target è:
 2. **Indica il docente/cognome**, quando necessario alla selezione della fonte (G1.3).
 3. **Controlla il quadro riconosciuto**.
 4. **Conferma o indica “Valido dal …”** (`effective_from`).
-5. Docente OS calcola l'impatto senza scrivere.
-6. Se non ci sono eccezioni, mostra un riepilogo breve, ad esempio: **“Il nuovo orario entra in vigore il 28 settembre. 6 lezioni future saranno riallineate. Nessun contenuto sarà perso. Le lezioni precedenti non cambiano.”**
+5. Docente OS verifica che la data non intersechi storia eseguita e calcola l'impatto senza scrivere.
+6. Se non ci sono eccezioni, mostra un riepilogo breve, ad esempio: **“Il nuovo orario entra in vigore il 28 settembre. 6 lezioni future saranno riallineate. Nessun contenuto sarà perso. Le lezioni già svolte non cambiano.”**
 7. **Conferma**.
 
-Se esistono conflitti, il percorso aggiunge soltanto il numero minimo di decisioni necessarie. Le informazioni tecniche restano disponibili come dettaglio secondario e non sono prerequisito per l'azione.
+Se `effective_from` interseca storia eseguita, il sistema non espone concetti tecnici: chiede una data successiva compatibile. Se esistono altri conflitti, il percorso aggiunge soltanto il numero minimo di decisioni necessarie. Le informazioni tecniche restano disponibili come dettaglio secondario e non sono prerequisito per l'azione.
 
 Obiettivo di usabilità: nel caso ordinario, dopo il caricamento/selezione della fonte, il docente deve poter completare la transizione con **una verifica sintetica e una conferma**, senza amministrare manualmente le singole lezioni.
 
@@ -172,7 +190,8 @@ Prima dell'applicazione l'interfaccia deve mostrare in primo livello:
 - esito sintetico del riconoscimento;
 - numero di sessioni future riallineate;
 - numero di sessioni che richiedono una scelta;
-- messaggio esplicito che storico e contenuti non saranno modificati.
+- messaggio esplicito che storico e contenuti non saranno modificati;
+- eventuale blocco comprensibile se la data proposta interseca storia già eseguita.
 
 Solo su richiesta/dettaglio mostra:
 
@@ -183,31 +202,38 @@ Solo su richiesta/dettaglio mostra:
 
 La vista deve privilegiare **eccezioni e azioni necessarie**, evitare una lista indistinta dell'intero anno ed essere fruibile rapidamente anche su smartphone.
 
-## 12. Piano di transizione
+## 12. Piano di transizione e digest canonico
 
 Il piano deve essere versionato e contenere almeno:
 
 - `transition_id` / `client_request_id` idempotente;
+- `plan_schema_version`;
+- `plan_digest`, calcolato su una serializzazione canonica versionata dell'intero piano applicabile;
 - `previous_timetable_version_id` e revisione/fingerprint;
 - `next_timetable_version_id` e revisione/fingerprint;
 - `effective_from`;
+- riferimento/revisione dell'`executed_history_boundary` verificato;
 - snapshot/revisione di calendario, eccezioni e pianificazione considerati;
 - operazioni di chiusura/attivazione versione;
 - operazioni di riallineamento riferite alla **identità persistente della sessione** e alle vecchie/nuove collocazioni, senza imporre il nome fisico `lesson_id`;
 - disposizioni esplicite sui conflitti risolti dal docente;
+- eventuali disposizioni `UNSCHEDULED_REPLAN_REQUIRED` solo quando tale stato sarà materializzato e autorizzato;
 - conteggi di controllo;
-- receipt finale.
+- receipt finale legata a `client_request_id + plan_digest`.
 
 Il piano diventa obsoleto se uno degli snapshot governati cambia prima dell'applicazione.
 
-## 13. Atomicità, concorrenza e rollback
+## 13. Atomicità, concorrenza, idempotenza e rollback
 
 La materializzazione deve garantire che:
 
 - nessuna nuova versione risulti attiva se la parte obbligatoria della transizione fallisce;
 - nessuna sessione risulti spostata se l'attivazione della versione non è completata coerentemente;
-- retry con lo stesso `client_request_id` restituisca lo stesso esito o la receipt precedente;
+- un primo uso di `client_request_id` registra in modo atomico anche il `plan_digest` canonico;
+- retry con lo stesso `client_request_id` **e lo stesso `plan_digest`** restituisce lo stesso esito o la receipt precedente senza rieseguire mutazioni;
+- riuso dello stesso `client_request_id` con `plan_digest` diverso produce `IDEMPOTENCY_KEY_REUSE_MISMATCH` (o errore canonico equivalente) e **nessuna scrittura**;
 - revision mismatch produca conflitto e nessuna scrittura parziale;
+- executed-history mismatch dopo l'anteprima produca piano obsoleto e nessuna scrittura;
 - il rollback tecnico non significhi riscrittura della storia già consolidata: riguarda soltanto una transazione non completata.
 
 ## 14. Relazione con calendario e altre superfici
@@ -228,46 +254,54 @@ Se una sessione ripianificata è rappresentata anche in una vista calendario, ta
 
 La materializzazione deve rendere eseguibili almeno questi casi:
 
-1. nuova versione con `effective_from` valido -> precedente chiudibile e nuova attivabile;
+1. nuova versione con `effective_from` valido e nessuna storia eseguita intersecata -> precedente chiudibile e nuova attivabile;
 2. nuova versione con `effective_to = null`;
 3. sessione precedente a `effective_from` -> invariata;
-4. sessione già svolta -> invariata;
-5. sessione futura su occorrenza equivalente -> nessuno spostamento didattico;
-6. sessione futura con unica nuova occorrenza equivalente -> proposta di riallineamento;
-7. due occorrenze equivalenti -> conflitto, nessuna scelta silenziosa;
-8. nessuna occorrenza equivalente -> sessione preservata ma non collocata automaticamente;
-9. riduzione ore settimanali -> nessuna sessione cancellata;
-10. aumento ore settimanali -> nessuna sessione inventata;
-11. collisione con altra sessione -> conflitto;
-12. collisione con evento governato -> conflitto/avviso secondo dominio;
-13. cambio classe/incarico -> nessun remapping silenzioso;
-14. sequenza didattica preservabile -> ordine mantenuto;
-15. sequenza non preservabile -> revisione docente;
-16. materiali/obiettivi/note -> preservati nello spostamento;
-17. personalizzazione della sessione -> preservata, non reinterpretata;
-18. identità persistente della sessione -> invariata nello spostamento;
-19. `TimetableSlot.id` vecchio -> non richiesto come identità della sessione dopo il cambio versione;
-20. identità della vecchia occorrenza -> non riutilizzata artificialmente se la nuova versione genera una nuova occorrenza;
-21. stessa transizione ritentata -> idempotente;
-22. pianificazione mutata dopo anteprima -> piano obsoleto e nessuna applicazione;
-23. vecchia versione mutata -> conflitto;
-24. nuova versione mutata -> conflitto;
-25. calendario/eccezioni mutati -> piano obsoleto;
-26. applicazione fallita -> nessuno stato parziale osservabile;
-27. receipt già presente -> retry sicuro;
-28. nessuna sessione interessata -> sola transizione di versione, se valida;
-29. eventi non-lezione -> non modificati;
-30. vista calendario -> stessa sessione, nuova collocazione, nessun duplicato;
-31. successivo nuovo orario -> chiude la versione corrente al nuovo confine senza riscrivere la storia;
-32. fine attività didattiche senza nuovo orario -> nessuna data finale inventata da G1.4;
-33. percorso ordinario -> riepilogo sintetico + una conferma, senza esposizione di identificatori tecnici;
-34. un solo conflitto -> una sola decisione esplicita mostrata al docente;
-35. molti elementi invariati -> non richiedono conferme individuali;
-36. dettaglio tecnico -> secondario e non necessario per completare il percorso ordinario;
-37. smartphone -> percorso completo senza dipendere da tabella larga o scorrimento orizzontale obbligatorio;
-38. storico -> messaggio percepibile che conferma la non modifica;
-39. contenuti/materiali -> messaggio percepibile che conferma la preservazione;
-40. DOS-A1 -> non attivato.
+4. sessione già svolta -> invariata e temporalmente coerente con la versione storica;
+5. `effective_from` retrodatato che interseca sessioni già eseguite -> attivazione bloccata;
+6. data proposta incompatibile con storia eseguita -> feedback semplice e richiesta di nuova data, nessuna correzione silenziosa;
+7. sessione futura su occorrenza equivalente -> nessuno spostamento didattico;
+8. sessione futura con unica nuova occorrenza equivalente -> proposta di riallineamento;
+9. due occorrenze equivalenti -> conflitto, nessuna scelta silenziosa;
+10. nessuna occorrenza equivalente e nessuno stato persistente non-collocato materializzato -> attivazione bloccata;
+11. stato `UNSCHEDULED_REPLAN_REQUIRED` materializzato e autorizzato -> sessione preservata, visibile e recuperabile senza vecchia occorrenza invalida;
+12. riduzione ore settimanali -> nessuna sessione cancellata e conflitti irrisolti bloccano l'attivazione salvo stato non-collocato governato;
+13. aumento ore settimanali -> nessuna sessione inventata;
+14. collisione con altra sessione -> conflitto;
+15. collisione con evento governato -> conflitto/avviso secondo dominio;
+16. cambio classe/incarico -> nessun remapping silenzioso;
+17. sequenza didattica preservabile -> ordine mantenuto;
+18. sequenza non preservabile -> revisione docente;
+19. materiali/obiettivi/note -> preservati nello spostamento;
+20. personalizzazione della sessione -> preservata, non reinterpretata;
+21. identità persistente della sessione -> invariata nello spostamento;
+22. `TimetableSlot.id` vecchio -> non richiesto come identità della sessione dopo il cambio versione;
+23. identità della vecchia occorrenza -> non riutilizzata artificialmente se la nuova versione genera una nuova occorrenza;
+24. stessa transizione, stesso `client_request_id` e stesso `plan_digest` -> replay idempotente;
+25. stesso `client_request_id` con piano/digest diverso -> `IDEMPOTENCY_KEY_REUSE_MISMATCH`, nessuna scrittura e nessuna receipt fuorviante;
+26. pianificazione mutata dopo anteprima -> piano obsoleto e nessuna applicazione;
+27. storia eseguita mutata dopo anteprima -> piano obsoleto e nessuna applicazione;
+28. vecchia versione mutata -> conflitto;
+29. nuova versione mutata -> conflitto;
+30. calendario/eccezioni mutati -> piano obsoleto;
+31. applicazione fallita -> nessuno stato parziale osservabile;
+32. receipt già presente per replay esatto -> retry sicuro;
+33. nessuna sessione interessata -> sola transizione di versione, se valida;
+34. eventi non-lezione -> non modificati;
+35. vista calendario -> stessa sessione, nuova collocazione, nessun duplicato;
+36. successivo nuovo orario -> chiude la versione corrente al nuovo confine senza riscrivere la storia;
+37. fine attività didattiche senza nuovo orario -> nessuna data finale inventata da G1.4;
+38. percorso ordinario -> riepilogo sintetico + una conferma, senza esposizione di identificatori tecnici;
+39. un solo conflitto -> una sola decisione esplicita mostrata al docente;
+40. molti elementi invariati -> non richiedono conferme individuali;
+41. dettaglio tecnico -> secondario e non necessario per completare il percorso ordinario;
+42. smartphone -> percorso completo senza dipendere da tabella larga o scorrimento orizzontale obbligatorio;
+43. storico -> messaggio percepibile che conferma la non modifica;
+44. contenuti/materiali -> messaggio percepibile che conferma la preservazione;
+45. conflitto senza target -> non può produrre sessione orfana;
+46. attivazione con conflitti irrisolti e senza stato non-collocato governato -> bloccata;
+47. receipt -> contiene/lega il `plan_digest` applicato;
+48. DOS-A1 -> non attivato.
 
 ## 16. Non-obiettivi
 
@@ -278,6 +312,8 @@ G1.4 non autorizza:
 - generazione autonoma di sessioni mancanti;
 - cancellazione autonoma di sessioni eccedenti;
 - modifica retroattiva dello storico;
+- correzione automatica di un `effective_from` che interseca storia eseguita;
+- split/retifica della storia già consolidata;
 - ripianificazione di riunioni/scadenze/circolari;
 - pubblicazione Atlas;
 - introduzione implicita di un `lesson_id` senza contratto persistente verificato;
@@ -290,15 +326,19 @@ Prima del runtime devono essere verificati:
 - compatibilità con `TimetableVersion` e `TimetableSlot` correnti;
 - compatibilità con `TIMETABLE_CANONICAL_SPEC` e modello temporale/calendario corrente;
 - definizione/materializzazione della **identità persistente della sessione didattica**, distinta da slot e occorrenza;
+- definizione canonica degli stati che rendono una sessione **eseguita/consolidata** e calcolo dell'`executed_history_boundary`;
 - campi didattici da preservare durante il riallineamento;
 - definizione precisa della semantica di chiusura della versione precedente;
 - algoritmo di matching deterministico tra vecchie e nuove occorrenze e casi fail-closed;
+- decisione esplicita sullo stato persistente `UNSCHEDULED_REPLAN_REQUIRED` (o equivalente): se non materializzato, i conflitti senza target restano bloccanti;
+- serializzazione canonica/versionata del piano e `plan_digest`;
+- binding atomico `client_request_id + plan_digest` e rifiuto del key reuse mismatch;
 - atomicità/idempotenza/concorrenza;
 - anteprima teacher-first a divulgazione progressiva;
 - percorso ordinario completabile con riepilogo sintetico + conferma;
 - accessibilità e fruibilità smartphone senza tabella tecnica obbligatoria;
-- materializzazione dei casi 1–40;
-- review indipendente del contratto sul nuovo exact head;
+- materializzazione dei casi 1–48;
+- nuova review indipendente del contratto sul nuovo exact head;
 - decisione umana finale.
 
 **HOLD_RUNTIME / HOLD_PRODUCTION_APPLY / HOLD_REPLAN** resta attivo fino al completamento dei gate.
