@@ -13,7 +13,7 @@ G1.4 non interpreta il documento sorgente, non ridefinisce le personalizzazioni 
 
 Flusso canonico:
 
-`candidato G1.3 revisionato -> bozza G1.2 -> anteprima transizione -> verifica storia eseguita -> nuove occorrenze future -> impatto sulle sessioni pianificate -> risoluzione sole eccezioni -> conferma docente -> attivazione versione -> ripianificazione governata`
+`candidato G1.3 revisionato -> bozza G1.2 -> anteprima transizione -> verifica storia eseguita -> nuove occorrenze future -> impatto sulle sessioni pianificate -> risoluzione sole eccezioni -> conferma docente -> attivazione versione + creazione bozza successiva -> ripianificazione governata`
 
 ## 2. Modello canonico vincolante
 
@@ -50,11 +50,12 @@ Il nome e lo schema fisico dell'identificatore saranno definiti nella materializ
 7. **No silent drop.** Nessuna sessione futura pianificata può scomparire perché il nuovo quadro offre meno capacità o una corrispondenza non è determinabile.
 8. **No silent duplication.** Una transizione non può duplicare una sessione già pianificata.
 9. **Personalizzazioni fuori dal mapping strutturale.** Teoria, disegno, disposizione e altre qualificazioni non determinano il parsing/importazione. Gli attributi didattici già associati a una sessione vengono preservati quando compatibili e non reinterpretati dal nuovo documento.
-10. **Atomicità logica.** Attivazione della versione e ripianificazione approvata devono produrre uno stato coerente; un fallimento non deve lasciare metà transizione applicata.
+10. **Atomicità logica.** Attivazione della versione, ripianificazione approvata e predisposizione della bozza successiva devono produrre uno stato coerente; un fallimento non deve lasciare metà transizione applicata.
 11. **Idempotenza forte.** Un `client_request_id` identifica un solo piano canonico: soltanto il replay esatto dello stesso piano può restituire la receipt precedente; il riuso della chiave con un piano diverso deve fallire senza scritture.
 12. **Nessun DOS-A1.** G1.4 non autorizza decisioni didattiche autonome.
 13. **Eccezioni, non amministrazione.** Nel percorso ordinario il docente non gestisce identificatori, fingerprint, revisioni o liste tecniche: il sistema mostra solo il risultato e le eventuali eccezioni da decidere.
 14. **Nessuna sessione orfana.** Dopo l'attivazione, ogni sessione interessata deve avere una nuova occorrenza valida oppure uno stato persistente governato di non-collocazione; se tale stato non è materializzato, l'attivazione resta bloccata finché il conflitto non è risolto.
+15. **Continuità della modifica dell'orario.** L'attivazione deve lasciare disponibile una nuova `TimetableVersion` in stato `DRAFT`, derivata dalla versione appena attivata e popolata con la copia dei relativi slot, in coerenza con il ciclo di vita corrente. La bozza successiva è infrastruttura di editing, non una nuova decisione didattica.
 
 ## 4. Confine temporale e protezione della storia eseguita
 
@@ -208,33 +209,67 @@ Il piano deve essere versionato e contenere almeno:
 
 - `transition_id` / `client_request_id` idempotente;
 - `plan_schema_version`;
-- `plan_digest`, calcolato su una serializzazione canonica versionata dell'intero piano applicabile;
+- `plan_digest_schema_version`, che identifica la forma canonica del payload sottoposto a digest;
+- `plan_digest`, calcolato esclusivamente sul **digest preimage** definito sotto;
 - `previous_timetable_version_id` e revisione/fingerprint;
 - `next_timetable_version_id` e revisione/fingerprint;
 - `effective_from`;
 - riferimento/revisione dell'`executed_history_boundary` verificato;
 - snapshot/revisione di calendario, eccezioni e pianificazione considerati;
 - operazioni di chiusura/attivazione versione;
+- operazione di creazione della **successor draft** dalla versione appena attivata e copia completa degli slot della versione attiva nella nuova bozza;
 - operazioni di riallineamento riferite alla **identità persistente della sessione** e alle vecchie/nuove collocazioni, senza imporre il nome fisico `lesson_id`;
 - disposizioni esplicite sui conflitti risolti dal docente;
 - eventuali disposizioni `UNSCHEDULED_REPLAN_REQUIRED` solo quando tale stato sarà materializzato e autorizzato;
 - conteggi di controllo;
 - receipt finale legata a `client_request_id + plan_digest`.
 
+### 12.1 Digest preimage non ricorsivo
+
+Il `plan_digest` **non** è calcolato serializzando l'oggetto piano finale così come memorizzato. È calcolato su un payload canonico versionato, denominato logicamente `PlanDigestPayload`, costruito prima dell'applicazione.
+
+`PlanDigestPayload` include tutte e sole le decisioni e precondizioni che determinano gli effetti della transizione, comprese:
+
+- versione dello schema del piano e del digest;
+- identificativi/revisioni/fingerprint delle versioni precedente e successiva;
+- `effective_from` ed `executed_history_boundary`;
+- snapshot/revisioni di calendario, eccezioni e pianificazione;
+- chiusura/attivazione della versione;
+- creazione della successor draft e copia degli slot dalla versione attivata;
+- riallineamenti delle sessioni e risoluzioni esplicite dei conflitti;
+- eventuali disposizioni governate di non-collocazione;
+- conteggi/precondizioni che incidono sull'applicazione.
+
+`PlanDigestPayload` esclude esplicitamente:
+
+- `plan_digest` stesso;
+- la receipt finale e qualsiasi suo campo;
+- timestamp, identificativi o metadati generati soltanto dopo l'applicazione;
+- stato/esito runtime derivato dall'esecuzione.
+
+La serializzazione canonica deve essere deterministica e versionata: stesso `PlanDigestPayload` produce lo stesso digest; qualsiasi variazione di una decisione o precondizione applicabile produce un digest diverso. Client e boundary di applicazione devono derivare il digest dalla **stessa specifica di `PlanDigestPayload`**, non da rappresentazioni locali differenti.
+
 Il piano diventa obsoleto se uno degli snapshot governati cambia prima dell'applicazione.
 
 ## 13. Atomicità, concorrenza, idempotenza e rollback
 
-La materializzazione deve garantire che:
+La materializzazione deve garantire che, nella stessa unità atomica governata:
 
-- nessuna nuova versione risulti attiva se la parte obbligatoria della transizione fallisce;
+- la versione precedente venga chiusa e la nuova versione attivata coerentemente;
+- le sessioni approvate vengano riallineate;
+- venga creata una sola successor `DRAFT` derivata dalla versione appena attivata;
+- tutti gli slot della versione appena attivata vengano copiati nella successor draft preservando i campi strutturali necessari all'editing successivo;
+- nessuna nuova versione risulti attiva se una parte obbligatoria della transizione, inclusa la predisposizione della successor draft, fallisce;
 - nessuna sessione risulti spostata se l'attivazione della versione non è completata coerentemente;
-- un primo uso di `client_request_id` registra in modo atomico anche il `plan_digest` canonico;
-- retry con lo stesso `client_request_id` **e lo stesso `plan_digest`** restituisce lo stesso esito o la receipt precedente senza rieseguire mutazioni;
-- riuso dello stesso `client_request_id` con `plan_digest` diverso produce `IDEMPOTENCY_KEY_REUSE_MISMATCH` (o errore canonico equivalente) e **nessuna scrittura**;
+- non possa essere osservata una successor draft vuota o parziale come esito di una transizione dichiarata riuscita;
+- un primo uso di `client_request_id` registri in modo atomico anche il `plan_digest` canonico;
+- retry con lo stesso `client_request_id` **e lo stesso `plan_digest`** restituisca lo stesso esito o la receipt precedente senza rieseguire mutazioni né creare una seconda successor draft;
+- riuso dello stesso `client_request_id` con `plan_digest` diverso produca `IDEMPOTENCY_KEY_REUSE_MISMATCH` (o errore canonico equivalente) e **nessuna scrittura**;
 - revision mismatch produca conflitto e nessuna scrittura parziale;
 - executed-history mismatch dopo l'anteprima produca piano obsoleto e nessuna scrittura;
 - il rollback tecnico non significhi riscrittura della storia già consolidata: riguarda soltanto una transazione non completata.
+
+La materializzazione deve restare compatibile con la semantica del ciclo di vita corrente definita in `product/supabase/migrations/0025_timetable_lifecycle.sql`: l'implementazione può evolvere, ma non può perdere la proprietà per cui l'orario appena attivato costituisce la base della successiva bozza modificabile usata da `/orario`.
 
 ## 14. Relazione con calendario e altre superfici
 
@@ -301,7 +336,14 @@ La materializzazione deve rendere eseguibili almeno questi casi:
 45. conflitto senza target -> non può produrre sessione orfana;
 46. attivazione con conflitti irrisolti e senza stato non-collocato governato -> bloccata;
 47. receipt -> contiene/lega il `plan_digest` applicato;
-48. DOS-A1 -> non attivato.
+48. `PlanDigestPayload` identico -> digest identico indipendentemente da receipt/timestamp post-applicazione;
+49. modifica di una decisione/precondizione applicabile -> digest diverso;
+50. `plan_digest` non appartiene al proprio preimage e non genera ricorsione;
+51. attivazione riuscita -> esiste una sola successor `DRAFT` con copia completa degli slot della versione appena attivata;
+52. fallimento durante creazione/copia della successor draft -> nessuna attivazione/ripianificazione parziale osservabile;
+53. replay idempotente -> non crea una seconda successor draft;
+54. apertura successiva di `/orario` -> la bozza modificabile deriva dall'orario appena attivato, non è vuota per perdita della base;
+55. DOS-A1 -> non attivato.
 
 ## 16. Non-obiettivi
 
@@ -325,19 +367,23 @@ Prima del runtime devono essere verificati:
 
 - compatibilità con `TimetableVersion` e `TimetableSlot` correnti;
 - compatibilità con `TIMETABLE_CANONICAL_SPEC` e modello temporale/calendario corrente;
+- compatibilità con la semantica di successor draft del ciclo di vita corrente (`0025_timetable_lifecycle.sql`) e con il consumo della bozza da parte di `/orario`;
 - definizione/materializzazione della **identità persistente della sessione didattica**, distinta da slot e occorrenza;
 - definizione canonica degli stati che rendono una sessione **eseguita/consolidata** e calcolo dell'`executed_history_boundary`;
 - campi didattici da preservare durante il riallineamento;
 - definizione precisa della semantica di chiusura della versione precedente;
 - algoritmo di matching deterministico tra vecchie e nuove occorrenze e casi fail-closed;
 - decisione esplicita sullo stato persistente `UNSCHEDULED_REPLAN_REQUIRED` (o equivalente): se non materializzato, i conflitti senza target restano bloccanti;
-- serializzazione canonica/versionata del piano e `plan_digest`;
+- specifica versionata di `PlanDigestPayload`, con inclusioni/esclusioni esplicite e serializzazione canonica deterministica;
+- verifica che `plan_digest`, receipt e dati post-applicazione siano esclusi dal digest preimage;
 - binding atomico `client_request_id + plan_digest` e rifiuto del key reuse mismatch;
-- atomicità/idempotenza/concorrenza;
+- creazione atomica della successor draft e copia completa degli slot della versione attivata;
+- idempotenza della successor draft: nessun duplicato al replay;
+- atomicità/idempotenza/concorrenza dell'intera transizione;
 - anteprima teacher-first a divulgazione progressiva;
 - percorso ordinario completabile con riepilogo sintetico + conferma;
 - accessibilità e fruibilità smartphone senza tabella tecnica obbligatoria;
-- materializzazione dei casi 1–48;
+- materializzazione dei casi 1–55;
 - nuova review indipendente del contratto sul nuovo exact head;
 - decisione umana finale.
 
