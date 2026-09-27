@@ -5,8 +5,13 @@ import { redirect } from 'next/navigation'
 import { asAnnualPlanGrade } from '@/core/domain/annual-plan-execution'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
-import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
+import { SupabaseTimetableRepository, TeachingAssignmentStaleConflictError } from '@/core/infrastructure/supabase/supabase-timetable-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+
+export type TeachingAssignmentTransitionState = {
+  status: 'idle' | 'success' | 'conflict' | 'error'
+  message: string
+}
 
 export async function saveProfessionalContext(formData: FormData) {
   const context = await requireContext()
@@ -148,27 +153,56 @@ export async function updateSettingsTeachingAssignment(formData: FormData) {
   revalidateTeachingContext()
 }
 
-export async function confirmSettingsTeachingAssignment(formData: FormData) {
-  await setSettingsTeachingAssignmentStatus(formData, 'CONFIRMED')
+export async function confirmSettingsTeachingAssignment(
+  _previousState: TeachingAssignmentTransitionState,
+  formData: FormData,
+): Promise<TeachingAssignmentTransitionState> {
+  return setSettingsTeachingAssignmentStatus(formData, 'PROVISIONAL', 'CONFIRMED')
 }
 
-export async function reopenSettingsTeachingAssignment(formData: FormData) {
-  await setSettingsTeachingAssignmentStatus(formData, 'PROVISIONAL')
+export async function reopenSettingsTeachingAssignment(
+  _previousState: TeachingAssignmentTransitionState,
+  formData: FormData,
+): Promise<TeachingAssignmentTransitionState> {
+  return setSettingsTeachingAssignmentStatus(formData, 'CONFIRMED', 'PROVISIONAL')
 }
 
 async function setSettingsTeachingAssignmentStatus(
   formData: FormData,
+  expectedStatus: 'PROVISIONAL' | 'CONFIRMED',
   status: 'PROVISIONAL' | 'CONFIRMED',
-) {
-  const context = await requireContext()
-  const repository = new SupabaseTimetableRepository()
-  await repository.setAssignmentStatus({
-    workspaceId: context.workspace.id,
-    academicYearId: context.academicYear.id,
-    assignmentId: text(formData, 'assignmentId'),
-    status,
-  })
-  revalidateTeachingContext()
+): Promise<TeachingAssignmentTransitionState> {
+  if (text(formData, 'expectedStatus') !== expectedStatus) {
+    return staleConflictState()
+  }
+
+  try {
+    const context = await requireContext()
+    const repository = new SupabaseTimetableRepository()
+    await repository.setAssignmentStatus({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      assignmentId: text(formData, 'assignmentId'),
+      expectedStatus,
+      expectedUpdatedAt: text(formData, 'expectedUpdatedAt'),
+      status,
+    })
+    revalidateTeachingContext()
+    return {
+      status: 'success',
+      message: status === 'CONFIRMED' ? 'Assegnazione confermata.' : 'Assegnazione rimessa da controllare.',
+    }
+  } catch (error) {
+    if (error instanceof TeachingAssignmentStaleConflictError) return staleConflictState()
+    return { status: 'error', message: 'Operazione non completata. Riprova.' }
+  }
+}
+
+function staleConflictState(): TeachingAssignmentTransitionState {
+  return {
+    status: 'conflict',
+    message: 'Questa assegnazione è cambiata nel frattempo. Ricarica la pagina prima di riprovare.',
+  }
 }
 
 async function requireContext() {
