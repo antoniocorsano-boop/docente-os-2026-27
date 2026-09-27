@@ -89,7 +89,11 @@ export class SupabaseTimetableRepository {
 
     if (assignmentsError) throw new Error(assignmentsError.message)
     if (slotsError) throw new Error(slotsError.message)
-    return { assignments: assignments.map(toAssignment), draftVersion, slots: slots.map(toSlot) }
+    return {
+      assignments: assignments.map(toAssignment),
+      draftVersion,
+      slots: slots.map(toSlot),
+    }
   }
 
   async addAssignment(input: {
@@ -131,7 +135,10 @@ export class SupabaseTimetableRepository {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('teaching_assignments')
-      .update({ weekly_minutes: normalizeWeeklyMinutes(input.weeklyMinutes), status: input.status })
+      .update({
+        weekly_minutes: normalizeWeeklyMinutes(input.weeklyMinutes),
+        status: input.status,
+      })
       .eq('id', input.assignmentId)
       .eq('workspace_id', input.workspaceId)
       .eq('academic_year_id', input.academicYearId)
@@ -190,45 +197,152 @@ export class SupabaseTimetableRepository {
     return toAssignment(data)
   }
 
-  async updateDraftVersion(input: { workspaceId: string; academicYearId: string; versionId: string; label: string; effectiveFrom: string; sourceKind: 'MANUAL' | 'INSTITUTION_DOCUMENT' | 'IMPORT'; sourceRef?: string | null }): Promise<TimetableVersion> {
+  async updateDraftVersion(input: {
+    workspaceId: string
+    academicYearId: string
+    versionId: string
+    label: string
+    effectiveFrom: string
+    sourceKind: 'MANUAL' | 'INSTITUTION_DOCUMENT' | 'IMPORT'
+    sourceRef?: string | null
+  }): Promise<TimetableVersion> {
     const supabase = await createClient()
     const label = input.label.trim()
     if (!label || label.length > 160) throw new Error('Timetable label required')
-    const { data, error } = await supabase.from('timetable_versions').update({ label, effective_from: input.effectiveFrom, source_kind: input.sourceKind, source_ref: normalizeNullable(input.sourceRef, 1000) }).eq('id', input.versionId).eq('workspace_id', input.workspaceId).eq('academic_year_id', input.academicYearId).eq('status', 'DRAFT').select('*').single()
+    const { data, error } = await supabase
+      .from('timetable_versions')
+      .update({
+        label,
+        effective_from: input.effectiveFrom,
+        source_kind: input.sourceKind,
+        source_ref: normalizeNullable(input.sourceRef, 1000),
+      })
+      .eq('id', input.versionId)
+      .eq('workspace_id', input.workspaceId)
+      .eq('academic_year_id', input.academicYearId)
+      .eq('status', 'DRAFT')
+      .select('*')
+      .single()
+
     if (error) throw new Error(error.message)
     return toVersion(data)
   }
 
-  async addLessonSlot(input: { versionId: string; assignmentId: string; weekday: number; startTime: string; endTime: string; ordinal?: number | null; room?: string | null; note?: string | null }): Promise<TimetableSlot> {
+  async addLessonSlot(input: {
+    versionId: string
+    assignmentId: string
+    weekday: number
+    startTime: string
+    endTime: string
+    ordinal?: number | null
+    room?: string | null
+    note?: string | null
+  }): Promise<TimetableSlot> {
     const supabase = await createClient()
     const userId = await authenticatedUserId(supabase)
-    const { data: assignment, error: assignmentError } = await supabase.from('teaching_assignments').select('id, section_id, discipline_id').eq('id', input.assignmentId).single()
+    const { data: assignment, error: assignmentError } = await supabase
+      .from('teaching_assignments')
+      .select('id, section_id, discipline_id')
+      .eq('id', input.assignmentId)
+      .single()
     if (assignmentError) throw new Error(assignmentError.message)
-    const { data, error } = await supabase.from('timetable_slots').insert({ timetable_version_id: input.versionId, weekday: normalizeWeekday(input.weekday), start_time: normalizeTime(input.startTime), end_time: normalizeTime(input.endTime), slot_kind: 'LESSON', section_id: assignment.section_id, discipline_id: assignment.discipline_id, teaching_assignment_id: assignment.id, ordinal: normalizeOrdinal(input.ordinal), room: normalizeNullable(input.room, 80), note: normalizeNullable(input.note, 1000), created_by: userId }).select('*').single()
+
+    const { data, error } = await supabase
+      .from('timetable_slots')
+      .insert({
+        timetable_version_id: input.versionId,
+        weekday: normalizeWeekday(input.weekday),
+        start_time: normalizeTime(input.startTime),
+        end_time: normalizeTime(input.endTime),
+        slot_kind: 'LESSON',
+        section_id: assignment.section_id,
+        discipline_id: assignment.discipline_id,
+        teaching_assignment_id: assignment.id,
+        ordinal: normalizeOrdinal(input.ordinal),
+        room: normalizeNullable(input.room, 80),
+        note: normalizeNullable(input.note, 1000),
+        created_by: userId,
+      })
+      .select('*')
+      .single()
+
     if (error) throw new Error(error.message)
     return toSlot(data)
   }
 
-  async addClassPresenceSlot(input: { versionId: string; weekday: number; startTime: string; endTime: string; ordinal?: number | null; manualClassLabel: string; presenceKind: TimetablePresenceKind; room?: string | null; note?: string | null }): Promise<TimetableSlot> {
+  async addClassPresenceSlot(input: {
+    versionId: string
+    weekday: number
+    startTime: string
+    endTime: string
+    ordinal?: number | null
+    manualClassLabel: string
+    presenceKind: TimetablePresenceKind
+    room?: string | null
+    note?: string | null
+  }): Promise<TimetableSlot> {
     const supabase = await createClient()
     const userId = await authenticatedUserId(supabase)
-    const payload: SlotInsert & { manual_class_label: string; presence_kind: TimetablePresenceKind } = { timetable_version_id: input.versionId, weekday: normalizeWeekday(input.weekday), start_time: normalizeTime(input.startTime), end_time: normalizeTime(input.endTime), slot_kind: 'CLASS_PRESENCE', manual_class_label: normalizeClassLabel(input.manualClassLabel), presence_kind: input.presenceKind, ordinal: normalizeOrdinal(input.ordinal), room: normalizeNullable(input.room, 80), note: normalizeNullable(input.note, 1000), created_by: userId }
-    const { data, error } = await supabase.from('timetable_slots').insert(payload).select('*').single()
+    const payload: SlotInsert & { manual_class_label: string; presence_kind: TimetablePresenceKind } = {
+      timetable_version_id: input.versionId,
+      weekday: normalizeWeekday(input.weekday),
+      start_time: normalizeTime(input.startTime),
+      end_time: normalizeTime(input.endTime),
+      slot_kind: 'CLASS_PRESENCE',
+      manual_class_label: normalizeClassLabel(input.manualClassLabel),
+      presence_kind: input.presenceKind,
+      ordinal: normalizeOrdinal(input.ordinal),
+      room: normalizeNullable(input.room, 80),
+      note: normalizeNullable(input.note, 1000),
+      created_by: userId,
+    }
+    const { data, error } = await supabase
+      .from('timetable_slots')
+      .insert(payload)
+      .select('*')
+      .single()
+
     if (error) throw new Error(error.message)
     return toSlot(data)
   }
 
-  async addSpecialSlot(input: { versionId: string; kind: Exclude<TimetableSlotKind, 'LESSON' | 'CLASS_PRESENCE'>; weekday: number; startTime: string; endTime: string; ordinal?: number | null; note?: string | null }): Promise<TimetableSlot> {
+  async addSpecialSlot(input: {
+    versionId: string
+    kind: Exclude<TimetableSlotKind, 'LESSON' | 'CLASS_PRESENCE'>
+    weekday: number
+    startTime: string
+    endTime: string
+    ordinal?: number | null
+    note?: string | null
+  }): Promise<TimetableSlot> {
     const supabase = await createClient()
     const userId = await authenticatedUserId(supabase)
-    const { data, error } = await supabase.from('timetable_slots').insert({ timetable_version_id: input.versionId, weekday: normalizeWeekday(input.weekday), start_time: normalizeTime(input.startTime), end_time: normalizeTime(input.endTime), slot_kind: input.kind, ordinal: normalizeOrdinal(input.ordinal), note: normalizeNullable(input.note, 1000), created_by: userId }).select('*').single()
+    const { data, error } = await supabase
+      .from('timetable_slots')
+      .insert({
+        timetable_version_id: input.versionId,
+        weekday: normalizeWeekday(input.weekday),
+        start_time: normalizeTime(input.startTime),
+        end_time: normalizeTime(input.endTime),
+        slot_kind: input.kind,
+        ordinal: normalizeOrdinal(input.ordinal),
+        note: normalizeNullable(input.note, 1000),
+        created_by: userId,
+      })
+      .select('*')
+      .single()
+
     if (error) throw new Error(error.message)
     return toSlot(data)
   }
 
   async deleteSlot(versionId: string, slotId: string): Promise<void> {
     const supabase = await createClient()
-    const { error } = await supabase.from('timetable_slots').delete().eq('id', slotId).eq('timetable_version_id', versionId)
+    const { error } = await supabase
+      .from('timetable_slots')
+      .delete()
+      .eq('id', slotId)
+      .eq('timetable_version_id', versionId)
     if (error) throw new Error(error.message)
   }
 }
@@ -240,12 +354,88 @@ async function authenticatedUserId(supabase: Awaited<ReturnType<typeof createCli
   return userId
 }
 
-function toAssignment(row: AssignmentRow): TeachingAssignment { return { id: row.id, workspaceId: row.workspace_id, academicYearId: row.academic_year_id, sectionId: row.section_id, disciplineId: row.discipline_id, weeklyMinutes: row.weekly_minutes, status: asTeachingAssignmentStatus(row.status), sourceNote: row.source_note, createdAt: row.created_at, updatedAt: row.updated_at } }
-function toVersion(row: VersionRow): TimetableVersion { return { id: row.id, workspaceId: row.workspace_id, academicYearId: row.academic_year_id, label: row.label, status: asTimetableVersionStatus(row.status), effectiveFrom: row.effective_from, effectiveTo: row.effective_to, sourceKind: asTimetableSourceKind(row.source_kind), sourceRef: row.source_ref, createdAt: row.created_at, updatedAt: row.updated_at } }
-function toSlot(row: SlotRow): TimetableSlot { const extended = row as SlotRowWithPresence; return { id: row.id, timetableVersionId: row.timetable_version_id, weekday: row.weekday, startTime: row.start_time.slice(0, 5), endTime: row.end_time.slice(0, 5), slotKind: asTimetableSlotKind(row.slot_kind), sectionId: row.section_id, disciplineId: row.discipline_id, teachingAssignmentId: row.teaching_assignment_id, manualClassLabel: extended.manual_class_label, presenceKind: asTimetablePresenceKind(extended.presence_kind), room: row.room, note: row.note, ordinal: row.ordinal, createdAt: row.created_at, updatedAt: row.updated_at } }
-function normalizeWeeklyMinutes(value: number) { if (!Number.isInteger(value) || value < 30 || value > 2400) throw new Error('Weekly minutes out of range'); return value }
-function normalizeWeekday(value: number) { if (!Number.isInteger(value) || value < 1 || value > 6) throw new Error('Weekday out of range'); return value }
-function normalizeOrdinal(value?: number | null) { if (value == null) return null; if (!Number.isInteger(value) || value < 1 || value > 20) throw new Error('Ordinal out of range'); return value }
-function normalizeTime(value: string) { if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) throw new Error('Invalid time'); return value }
-function normalizeClassLabel(value: string) { const normalized = value.trim().replace(/\s+/g, '').toUpperCase(); if (!normalized || normalized.length > 12) throw new Error('Manual class label required'); return normalized }
-function normalizeNullable(value: string | null | undefined, maxLength: number) { const normalized = value?.trim() ?? ''; if (normalized.length > maxLength) throw new Error(`Value exceeds ${maxLength} characters`); return normalized || null }
+function toAssignment(row: AssignmentRow): TeachingAssignment {
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    academicYearId: row.academic_year_id,
+    sectionId: row.section_id,
+    disciplineId: row.discipline_id,
+    weeklyMinutes: row.weekly_minutes,
+    status: asTeachingAssignmentStatus(row.status),
+    sourceNote: row.source_note,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+function toVersion(row: VersionRow): TimetableVersion {
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    academicYearId: row.academic_year_id,
+    label: row.label,
+    status: asTimetableVersionStatus(row.status),
+    effectiveFrom: row.effective_from,
+    effectiveTo: row.effective_to,
+    sourceKind: asTimetableSourceKind(row.source_kind),
+    sourceRef: row.source_ref,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+function toSlot(row: SlotRow): TimetableSlot {
+  const extended = row as SlotRowWithPresence
+  return {
+    id: row.id,
+    timetableVersionId: row.timetable_version_id,
+    weekday: row.weekday,
+    startTime: row.start_time.slice(0, 5),
+    endTime: row.end_time.slice(0, 5),
+    slotKind: asTimetableSlotKind(row.slot_kind),
+    sectionId: row.section_id,
+    disciplineId: row.discipline_id,
+    teachingAssignmentId: row.teaching_assignment_id,
+    manualClassLabel: extended.manual_class_label,
+    presenceKind: asTimetablePresenceKind(extended.presence_kind),
+    room: row.room,
+    note: row.note,
+    ordinal: row.ordinal,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+function normalizeWeeklyMinutes(value: number) {
+  if (!Number.isInteger(value) || value < 30 || value > 2400) throw new Error('Weekly minutes out of range')
+  return value
+}
+
+function normalizeWeekday(value: number) {
+  if (!Number.isInteger(value) || value < 1 || value > 6) throw new Error('Weekday out of range')
+  return value
+}
+
+function normalizeOrdinal(value?: number | null) {
+  if (value == null) return null
+  if (!Number.isInteger(value) || value < 1 || value > 20) throw new Error('Ordinal out of range')
+  return value
+}
+
+function normalizeTime(value: string) {
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) throw new Error('Invalid time')
+  return value
+}
+
+function normalizeClassLabel(value: string) {
+  const normalized = value.trim().replace(/\s+/g, '').toUpperCase()
+  if (!normalized || normalized.length > 12) throw new Error('Manual class label required')
+  return normalized
+}
+
+function normalizeNullable(value: string | null | undefined, maxLength: number) {
+  const normalized = value?.trim() ?? ''
+  if (normalized.length > maxLength) throw new Error(`Value exceeds ${maxLength} characters`)
+  return normalized || null
+}
