@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { asAnnualPlanGrade } from '@/core/domain/annual-plan-execution'
+import { transitionTeachingAssignmentStatus } from '@/core/application/transition-teaching-assignment-status'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
@@ -29,11 +30,15 @@ export async function reopenSettingsTeachingAssignment(formData: FormData) { awa
 async function setSettingsTeachingAssignmentStatus(formData: FormData, expectedStatus: 'PROVISIONAL' | 'CONFIRMED', status: 'PROVISIONAL' | 'CONFIRMED') {
   const context = await requireContext()
   const assignmentId = text(formData, 'assignmentId')
-  const reader = new SupabaseTeachingAssignmentReader()
-  const observed = await reader.getById(context.workspace.id, context.academicYear.id, assignmentId)
-  if (!observed || observed.status !== expectedStatus) throw new Error('STALE_CONFLICT')
-  const repository = new SupabaseTimetableRepository()
-  await repository.setAssignmentStatus({ workspaceId: context.workspace.id, academicYearId: context.academicYear.id, assignmentId, expectedStatus, expectedUpdatedAt: observed.updatedAt, status })
+  await transitionTeachingAssignmentStatus({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    assignmentId,
+    expectedStatus,
+    status,
+    reader: new SupabaseTeachingAssignmentReader(),
+    writer: new SupabaseTimetableRepository(),
+  })
   revalidateTeachingContext()
 }
 async function requireContext() { const repository = new SupabaseWorkspaceRepository(); const context = await repository.getCurrentContext(); if (!context) throw new Error('Authenticated workspace required'); if (!context.academicYear) throw new Error('Active academic year required'); return { ...context, academicYear: context.academicYear } }
