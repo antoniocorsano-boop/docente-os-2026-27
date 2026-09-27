@@ -6,30 +6,46 @@ Dipendenza: G1.2 integrata; applicazione migrazioni in produzione non autorizzat
 
 ## 1. Scopo
 
-G1.3 definisce il confine tra un documento di orario fornito dal docente e il candidato governato già materializzato da G1.2. L'obiettivo è consentire a Docente OS di acquisire un nuovo orario, estrarne una proposta verificabile e mostrare le differenze rispetto alla bozza corrente, senza alcuna scrittura implicita.
+G1.3 definisce il confine tra un documento di orario fornito dal docente e un nuovo **quadro orario settimanale candidato**. L'obiettivo è consentire a Docente OS di acquisire un documento istituzionale, individuare nel documento il docente richiesto, estrarre il suo quadro settimanale e proporlo per revisione senza alcuna scrittura implicita.
 
 Flusso canonico:
 
-`fonte -> acquisizione -> estrazione -> normalizzazione -> proposta -> revisione docente -> piano esplicito -> G1.2 apply-to-draft`
+`documento -> acquisizione -> selezione docente -> estrazione quadro settimanale -> normalizzazione strutturale -> proposta -> revisione docente -> piano esplicito -> G1.2 apply-to-draft`
 
-Ogni passaggio prima dell'ultimo è non distruttivo. G1.3 non applica direttamente modifiche a `timetable_slots`.
+Ogni passaggio prima dell'ultimo è non distruttivo. G1.3 non applica direttamente modifiche a `timetable_slots` e non modifica lezioni pianificate.
 
 ## 2. Invarianti
 
 1. **Teacher-first.** Il docente mantiene la decisione finale. Nessuna estrazione equivale ad approvazione.
-2. **No implicit write.** Upload, fotografia, PDF, estrazione, normalizzazione, confronto e anteprima non modificano l'orario attivo né la bozza.
+2. **No implicit write.** Upload, fotografia, PDF, ricerca del cognome, estrazione, normalizzazione, confronto e anteprima non modificano l'orario attivo né la bozza.
 3. **Draft only.** L'unico confine di scrittura successivo resta `apply_timetable_import_to_draft(...)` di G1.2.
 4. **Fonte istituzionale, non autorità automatica.** La provenienza del documento è conservata come evidenza; non attribuisce automaticamente stato definitivo.
 5. **Provvisorietà esplicita.** Se la fonte è provvisoria, il candidato mantiene `source_is_provisional=true`; l'interfaccia deve renderlo percepibile prima della conferma.
-6. **Minimizzazione.** Non persistere nomi del docente ricavati dalla fonte quando non necessari al contratto. Nessun `source_teacher_label`.
-7. **Ambiguità visibile.** Valori incerti non vengono inventati: diventano `REVIEW_REQUIRED`/`UNRESOLVED` con evidenza e avviso.
-8. **Identità separata.** L'identità del documento acquisito (`source_fingerprint`) è distinta dall'identità semantica del candidato normalizzato (`candidate_fingerprint`).
-9. **Tracciabilità minimizzata.** Ogni riga proposta deve poter essere ricondotta all'evidenza minima necessaria tramite `evidence_ref`, senza trasformare il riferimento in un archivio parallelo della fonte.
-10. **Completezza prima della sottrazione.** L'assenza di un elemento dalla fonte non autorizza neppure la proposta di rimozione finché ambito e completezza della fonte non sono attestati.
-11. **Effettività esplicita.** La data da cui l'orario dovrebbe valere è dato governato, con provenienza e stato di revisione; non viene inferita silenziosamente.
-12. **Nessun DOS-A1.** G1.3 non autorizza capacità operative autonome.
+6. **Cognome come selettore effimero.** Quando il documento contiene più docenti, l'utente può indicare il cognome/etichetta da cercare. Il valore serve a individuare la porzione pertinente della fonte e non diventa un attributo permanente dell'orario né viene conservato oltre quanto strettamente necessario alla revisione.
+7. **Importazione strutturale, non specializzazione.** G1.3 acquisisce il quadro settimanale e non deve interpretare o imporre le personalizzazioni che Docente OS già consente sulle singole celle.
+8. **Ambiguità visibile.** Valori strutturali incerti non vengono inventati: diventano `REVIEW_REQUIRED`/`UNRESOLVED` con evidenza e avviso.
+9. **Identità separata.** L'identità del documento acquisito (`source_fingerprint`) è distinta dall'identità semantica del quadro settimanale candidato (`candidate_fingerprint`).
+10. **Tracciabilità minimizzata.** Ogni riga proposta deve poter essere ricondotta all'evidenza minima necessaria tramite `evidence_ref`, senza trasformare il riferimento in un archivio parallelo della fonte.
+11. **Completezza prima della sottrazione.** L'assenza di un elemento dalla fonte non autorizza neppure la proposta di rimozione finché ambito e completezza della porzione selezionata non sono attestati.
+12. **Effettività esplicita e aperta.** Il nuovo quadro ha `effective_from`; G1.3 non richiede né inventa una data di termine. `effective_to` resta `null` finché una successiva versione dell'orario o altro confine governato ne determina la chiusura.
+13. **Storia immutata.** L'introduzione di una nuova versione non riscrive la validità né lo stato delle attività anteriori alla sua entrata in vigore.
+14. **Nessun DOS-A1.** G1.3 non autorizza capacità operative autonome.
 
-## 3. Input ammessi
+## 3. Coerenza con l'orario esistente di Docente OS
+
+Il modello corrente di Docente OS è già versionato: una `TimetableVersion` possiede `effectiveFrom` e `effectiveTo`, con `effectiveTo` nullable, e stati `DRAFT | ACTIVE | ARCHIVED`. Gli slot della versione sono celle settimanali ricorrenti. La griglia corrente permette inoltre al docente di aprire una cella e qualificarla/modificarla attraverso l'editor dell'orario.
+
+G1.3 deve quindi **riusare** questo modello, non creare un secondo modello parallelo.
+
+In particolare:
+
+- il risultato dell'importazione è una nuova versione/bozza del quadro settimanale con `effective_from`;
+- `effective_to` della nuova versione nasce `null`;
+- la chiusura della versione precedente è responsabilità della transizione/attivazione governata, non dell'estrazione del documento;
+- quando in futuro entrerà in vigore una nuova versione, il confine tra le versioni potrà determinare la fine della precedente senza chiedere oggi una data di termine sconosciuta;
+- le opzioni di personalizzazione della cella restano responsabilità dell'editor dell'orario già esistente e non sono vincoli del parser G1.3.
+
+## 4. Input ammessi e selezione del docente
 
 G1.3 deve progettare un adattatore di acquisizione indipendente dal formato. Formati previsti:
 
@@ -38,255 +54,260 @@ G1.3 deve progettare un adattatore di acquisizione indipendente dal formato. For
 - immagine derivata da scansione;
 - tabella strutturata, se disponibile.
 
-Il formato non deve modificare il contratto di uscita. Il parser specifico è sostituibile e versionato tramite `parser_version`; le regole contestuali della fonte sono versionate tramite `source_profile_version`.
+Il formato non deve modificare il contratto di uscita. Il parser specifico è sostituibile e versionato tramite `parser_version`.
 
-## 4. Vocabolario minimo dell'orario
+Quando la fonte contiene più docenti:
 
-La normalizzazione deve distinguere almeno:
+1. il docente può fornire un `teacher_lookup_label` (tipicamente il cognome come appare nel documento);
+2. il sistema cerca corrispondenze nella fonte;
+3. una sola corrispondenza strutturalmente coerente può essere proposta;
+4. zero corrispondenze o più corrispondenze plausibili producono `REVIEW_REQUIRED` e nessuna scelta silenziosa;
+5. il valore digitato e le altre etichette nominative presenti nel documento non vengono trasferiti nel modello persistente dell'orario;
+6. la receipt può registrare che la selezione è stata confermata dal docente senza conservare il cognome quando non necessario.
 
-- `LESSON` — lezione associabile a un incarico didattico;
-- `CLASS_PRESENCE` — presenza in classe non rappresentabile correttamente come normale lezione;
-- `DISPOSITION` — disposizione;
-- `RECEPTION` — ricevimento;
-- `OTHER` — attività riconosciuta ma non classificabile nelle precedenti categorie.
+## 5. Semantica minima dell'importazione
 
-Le abbreviazioni della fonte sono **dati di input**, non valori canonici. Per il caso reale corrente:
+G1.3 deve riconoscere **solo ciò che è necessario a costruire il quadro orario settimanale**:
 
-- `T` indica **teoria** e, quando associata a classe/disciplina coerenti, confluisce normalmente in `LESSON`;
-- `D` indica **sostegno** nel documento corrente e non deve essere interpretato automaticamente come una generica lettera D: l'associazione deve essere supportata dall'evidenza della fonte e dal contesto;
-- `DIS` indica **disposizione** e normalizza in `DISPOSITION`.
+- giorno della settimana;
+- ordinal/fascia oraria;
+- `start_time` e `end_time` quando disponibili o derivabili dalla scansione oraria verificata;
+- classe/sezione o altra etichetta strutturale necessaria a identificare la cella;
+- eventuale riferimento a un incarico già risolvibile in Docente OS;
+- `effective_from` della nuova versione.
 
-Le regole di abbreviazione devono essere configurabili per profilo della fonte e non codificate come assunzioni universali.
+Non appartengono al contratto di importazione G1.3 le qualificazioni personali della singola cella, comprese distinzioni come teoria, disegno, disposizione o altre specializzazioni che il docente può effettuare successivamente nell'editor già presente.
 
-## 5. Identità, fingerprint e idempotenza
+La fonte può contenere abbreviazioni o annotazioni ulteriori: G1.3 non deve trasformarle in vincoli semantici se non sono necessarie per individuare correttamente la struttura del quadro. Possono essere ignorate oppure segnalate come informazione non importata, senza bloccare il caricamento quando la struttura è comunque determinabile.
+
+## 6. Identità, fingerprint e idempotenza
 
 G1.3 usa due impronte con scopi distinti.
 
-### 5.1 `source_fingerprint`
+### 6.1 `source_fingerprint`
 
-Identifica i byte/logica della fonte acquisita per deduplicazione tecnica. Deve essere calcolata su una rappresentazione canonica del contenuto sorgente dopo sole trasformazioni tecniche dichiarate che non ne alterano il significato (per esempio normalizzazione deterministica dei metadati di trasporto). Il formato e la versione dell'algoritmo devono essere registrati.
+Identifica la fonte acquisita per deduplicazione tecnica. Deve essere calcolata su una rappresentazione canonica del contenuto sorgente dopo sole trasformazioni tecniche dichiarate che non ne alterano il significato. Il formato e la versione dell'algoritmo devono essere registrati.
 
-`source_fingerprint` **non** definisce equivalenza semantica: un PDF e una fotografia dello stesso orario possono avere impronte sorgente diverse.
+`source_fingerprint` non definisce equivalenza semantica: un PDF e una fotografia dello stesso orario possono avere impronte sorgente diverse.
 
-### 5.2 `candidate_fingerprint`
+### 6.2 `candidate_fingerprint`
 
-Identifica la semantica normalizzata del candidato e consente di riconoscere acquisizioni semanticamente equivalenti anche provenienti da formati diversi. La serializzazione canonica deve includere, in ordine deterministico:
+Identifica la semantica normalizzata del **quadro settimanale strutturale**. La serializzazione canonica deve includere, in ordine deterministico:
 
 - versione dello schema del candidato;
-- `source_profile_version` che governa le abbreviazioni/interpretazioni;
 - `effective_from` quando risolto;
-- `source_scope` canonico;
+- `source_scope` canonico della porzione selezionata;
 - `source_completeness` quando attestato;
-- per ciascuna riga, ordinata per chiave temporale e identità canonica: giorno, ordinal/intervallo, `proposed_slot_kind`, identificatori risolti necessari (`resolved_section_id`, `resolved_assignment_id`) oppure etichette minimizzate quando l'identificatore non esiste, e attributi canonici necessari per `CLASS_PRESENCE`.
+- per ciascuna riga, ordinata per chiave temporale: giorno, ordinal/intervallo e identità strutturale della classe/sezione o incarico risolto.
 
-Sono esclusi dal `candidate_fingerprint` i dati non semantici o instabili: `confidence`, `evidence_ref`, coordinate/ritagli, messaggi diagnostici, timestamp di acquisizione, ordine originario delle righe e metadati del file.
+Sono esclusi dal `candidate_fingerprint`:
 
-`parser_version` è registrato nella provenance ma non entra nell'impronta semantica se produce esattamente lo stesso candidato canonico; `source_profile_version` entra invece nell'impronta perché può modificare il significato delle abbreviazioni.
+- cognome/`teacher_lookup_label` e altre etichette nominative non necessarie;
+- qualificazioni personali della cella;
+- `confidence`, `evidence_ref`, coordinate/ritagli, diagnostica;
+- timestamp di acquisizione, ordine originario delle righe e metadati del file;
+- `effective_to`, che non appartiene al candidato G1.3.
 
-La funzione di canonicalizzazione e l'algoritmo di hash devono essere versionati. A parità di schema/profilo e semantica, PDF, immagine o tabella devono produrre lo stesso `candidate_fingerprint`. Un cambiamento semantico deve produrre un'impronta diversa.
+`parser_version` è registrato nella provenance ma non entra nell'impronta semantica se produce lo stesso quadro canonico. La funzione di canonicalizzazione e l'algoritmo di hash devono essere versionati. A parità di quadro ed `effective_from`, PDF, immagine o tabella devono produrre lo stesso `candidate_fingerprint`.
 
-## 6. Contratto di acquisizione ed estrazione
+## 7. Contratto di acquisizione ed estrazione
 
 A livello di candidato sono governati almeno:
 
 - `parser_version`;
-- `source_profile_version`;
 - `source_fingerprint`;
 - `candidate_fingerprint` dopo normalizzazione;
 - `source_is_provisional`;
-- `source_scope` — ambito che la fonte dichiara/copre (per esempio docente, settimana, sede o altro perimetro necessario), espresso senza dati personali superflui;
+- `source_scope` — porzione della fonte attestata come riferita al docente selezionato e al periodo/settimana rappresentati, senza dati personali superflui;
 - `source_completeness`: `COMPLETE | PARTIAL | UNKNOWN`;
-- `source_completeness_provenance`: evidenza dichiarativa o decisione del docente che consente di attestare `COMPLETE`; l'estrattore non presume completezza dalla sola forma tabellare;
+- `source_completeness_provenance`;
 - `effective_from`: data candidata oppure `null`;
-- `effective_from_provenance`: posizione/affermazione della fonte o decisione esplicita del docente;
+- `effective_from_provenance`;
 - `effective_from_review_state`: `AUTO_RESOLVED | REVIEW_REQUIRED`.
 
-Se `effective_from` manca, è ambiguo o è soltanto dedotto da contesto non governato, deve essere `null` con `REVIEW_REQUIRED`. Il docente può risolverlo esplicitamente prima della generazione del piano. Nessuna data viene assunta in base alla data di caricamento.
+**Non esiste un `effective_to` richiesto dal candidato G1.3.**
 
-Per ogni cella/riga rilevante l'estrattore produce una struttura intermedia con almeno:
+Se `effective_from` manca, è ambiguo o è soltanto dedotto da contesto non governato, deve essere `null` con `REVIEW_REQUIRED`. Il docente può risolverlo esplicitamente prima della generazione del piano. Nessuna data viene assunta dalla data di caricamento.
+
+Per ogni cella/riga rilevante l'estrattore produce almeno:
 
 - `source_row_key` stabile nella stessa fonte;
 - giorno della settimana candidato;
 - ordinal/ora candidato;
 - `start_time` e `end_time` quando disponibili o derivabili da una griglia verificata;
 - etichetta classe originale minimizzata;
-- codice/etichetta attività originale minimizzato;
-- `proposed_slot_kind` canonico o `null`;
 - eventuale `resolved_section_id`;
 - eventuale `resolved_assignment_id`;
-- per `CLASS_PRESENCE`, `proposed_manual_class_label` e `proposed_presence_kind` quando noti;
 - `confidence`: `HIGH | MEDIUM | LOW | UNRESOLVED`;
-- `review_state`: `AUTO_RESOLVED | REVIEW_REQUIRED` in fase di estrazione;
+- `review_state`: `AUTO_RESOLVED | REVIEW_REQUIRED`;
 - `evidence_ref`;
 - `warnings[]` strutturati.
 
-`AUTO_RESOLVED` significa soltanto che il sistema dispone di evidenza sufficiente per proporre il mapping; non equivale a conferma del docente.
+`AUTO_RESOLVED` significa soltanto che il sistema dispone di evidenza sufficiente per proporre la struttura; non equivale a conferma del docente.
 
-## 7. Evidenza, minimizzazione e retention
+## 8. Evidenza, minimizzazione e retention
 
-`evidence_ref` è un riferimento opaco a un'evidenza minimizzata, non il contenuto della fonte. Può riferire soltanto uno dei seguenti artefatti, secondo necessità:
-
-- coordinate/pagina/cella all'interno della fonte ancora disponibile;
-- estratto testuale minimo necessario a spiegare il mapping;
-- identificatore di una decisione esplicita del docente che ha risolto un'ambiguità.
+`evidence_ref` è un riferimento opaco a un'evidenza minimizzata, non il contenuto della fonte. Può riferire, secondo necessità, coordinate/pagina/cella nella fonte ancora disponibile, un estratto testuale minimo o una decisione esplicita del docente.
 
 Regole obbligatorie:
 
-1. non conservare ritagli di immagine o testo più ampi di quanto necessario alla revisione;
+1. non conservare ritagli o testo più ampi di quanto necessario alla revisione;
 2. non duplicare il documento sorgente dentro l'evidenza;
-3. eliminare o rendere non risolvibile l'evidenza derivata dalla fonte quando termina la retention della fonte, salvo la minima receipt decisionale necessaria a dimostrare cosa il docente ha confermato;
-4. la receipt decisionale successiva può conservare valori canonici e decisioni, ma non il documento/ritaglio originario;
-5. la durata concreta della fonte e degli estratti deve essere configurata e documentata prima della materializzazione; il valore predefinito deve essere il minimo compatibile con revisione e recupero da errore;
-6. dopo l'eliminazione della fonte, l'interfaccia deve distinguere chiaramente `EVIDENCE_EXPIRED` da un'evidenza mai esistita; l'eliminazione non modifica retroattivamente la decisione già registrata.
+3. eliminare o rendere non risolvibile l'evidenza derivata dalla fonte quando termina la retention, salvo la minima receipt decisionale necessaria;
+4. la receipt può conservare valori canonici e decisioni, ma non il documento/ritaglio originario;
+5. la durata concreta della fonte e degli estratti deve essere configurata e documentata prima della materializzazione;
+6. dopo l'eliminazione della fonte, distinguere `EVIDENCE_EXPIRED` da evidenza mai esistita;
+7. `teacher_lookup_label` e le altre etichette nominative non devono sopravvivere alla finestra necessaria alla selezione/revisione salvo necessità esplicita e governata.
 
-Nessun nome del docente o altro dato personale estratto viene conservato se non strettamente necessario al perimetro; ove possibile il perimetro usa identificatori locali già presenti in Docente OS anziché testo della fonte.
+## 9. Regole di risoluzione
 
-## 8. Regole di risoluzione
-
-Una riga può essere `AUTO_RESOLVED` solo quando tutti gli elementi necessari all'operazione proposta sono deterministici rispetto alla fonte e al contesto Docente OS.
+Una riga può essere `AUTO_RESOLVED` solo quando gli elementi **strutturali** necessari sono deterministici rispetto alla fonte e al contesto Docente OS.
 
 Deve essere `REVIEW_REQUIRED` quando si verifica almeno una delle condizioni seguenti:
 
-- classe non risolta univocamente;
-- abbreviazione sconosciuta o polisemica;
+- selezione del docente assente o ambigua;
+- classe non risolta univocamente quando necessaria;
 - orario/posizione non determinabile;
-- conflitto tra etichetta della fonte e incarichi del docente;
-- più incarichi compatibili;
-- attività non riconducibile con sicurezza a una categoria canonica;
+- più incarichi compatibili quando l'incarico è necessario;
 - fonte parziale, tagliata o visivamente ambigua;
-- valore derivato con confidenza inferiore alla soglia governata;
-- `effective_from` mancante o ambiguo quando necessario all'applicazione.
+- valore strutturale con confidenza inferiore alla soglia governata;
+- `effective_from` mancante o ambiguo.
 
-`UNRESOLVED` non può diventare un'operazione `ADD`, `MOVE` o `CHANGE` senza intervento esplicito del docente.
+Annotazioni della fonte relative a specializzazioni della cella non generano di per sé `REVIEW_REQUIRED` se il quadro strutturale è determinabile.
 
-## 9. Confronto con la bozza e semantica delle rimozioni
+## 10. Confronto con la bozza e rimozioni
 
-Il comparatore è puro: riceve candidato + snapshot della bozza e restituisce una proposta di differenze. Non scrive sul database dell'orario.
+Il comparatore è puro: riceve candidato + snapshot della bozza e restituisce una proposta di differenze strutturali. Non scrive sul database dell'orario.
 
-Categorie di differenza:
+Categorie:
 
-- `UNCHANGED` -> proposta `KEEP`;
-- `NEW` -> proposta `ADD`;
-- `MOVED` -> proposta `MOVE`;
-- `CHANGED` -> proposta `CHANGE`;
-- `MISSING_FROM_SOURCE` -> stato informativo di confronto;
-- `AMBIGUOUS` -> nessuna operazione applicabile finché non revisionata;
-- `IGNORED` -> `IGNORE` esplicito.
+- `UNCHANGED` -> `KEEP`;
+- `NEW` -> `ADD`;
+- `MOVED` -> `MOVE`;
+- `CHANGED` -> `CHANGE`;
+- `MISSING_FROM_SOURCE` -> stato informativo;
+- `AMBIGUOUS` -> nessuna operazione applicabile;
+- `IGNORED` -> `IGNORE`.
 
-Il matching deve preferire identità didattica e collocazione temporale governate rispetto al semplice testo visualizzato.
+`MISSING_FROM_SOURCE` può diventare proposta `REMOVE` soltanto quando `source_completeness = COMPLETE`, la completezza è attestata, lo slot appartiene integralmente a `source_scope`, non esistono ambiguità pertinenti e le revisioni sono correnti. Con `PARTIAL`, `UNKNOWN` o fuori scope resta informativo. Anche quando proponibile, `REMOVE` richiede conferma esplicita.
 
-### 9.1 Regola fail-closed per `REMOVE`
+## 11. Validità temporale e storia
 
-`MISSING_FROM_SOURCE` può diventare **proposta** `REMOVE` soltanto se tutte le condizioni seguenti sono vere:
+Il quadro importato definisce una nuova versione con **inizio di validità** e termine aperto:
 
-1. `source_completeness = COMPLETE`;
-2. la completezza è supportata da `source_completeness_provenance` valida o confermata esplicitamente dal docente;
-3. lo slot corrente appartiene integralmente a `source_scope`;
-4. il candidato non presenta ambiguità che possano spiegare l'assenza;
-5. la revisione di candidato e bozza è ancora quella usata dal comparatore.
+- `effective_from` è obbligatorio prima dell'applicazione;
+- `effective_to = null` per la nuova versione finché non esiste un successivo confine governato;
+- G1.3 non chiede all'utente di prevedere quando l'orario terminerà;
+- l'arrivo di un successivo orario, provvisorio o definitivo, fornirà un nuovo `effective_from`; la transizione potrà chiudere coerentemente l'intervallo della versione precedente;
+- in assenza di una versione successiva, la validità può proseguire fino al confine dell'anno/attività didattica definito dal modello temporale generale, senza inventare oggi una data nel documento importato;
+- nessuna operazione G1.3 modifica retroattivamente celle, lezioni o stati anteriori a `effective_from`.
 
-Con `PARTIAL` o `UNKNOWN`, oppure fuori dall'ambito attestato, `MISSING_FROM_SOURCE` resta puramente informativo e **non può generare `REMOVE`**. Anche quando la proposta `REMOVE` è ammessa, non è mai preselezionata e richiede conferma esplicita del docente come già imposto da G1.2.
+La **ripianificazione delle lezioni future** conseguente a una nuova versione è un problema distinto dal parsing/importazione. Deve essere governata da un confine successivo: preservare identità e contenuto delle lezioni già pianificate, lasciare intatta la storia precedente a `effective_from` e sottoporre al docente i conflitti non deterministici. G1.3 non implementa né autorizza tale ripianificazione.
 
-## 10. Anteprima docente
+## 12. Anteprima docente
 
-Prima di produrre il piano applicabile, l'interfaccia deve mostrare in forma compatta:
+Prima del piano applicabile l'interfaccia deve mostrare in forma compatta:
 
 - fonte e stato provvisorio/definitivo dichiarato;
-- ambito della fonte e stato di completezza (`COMPLETE/PARTIAL/UNKNOWN`);
+- conferma della porzione/docente individuato senza persistenza nominativa superflua;
+- ambito e completezza (`COMPLETE/PARTIAL/UNKNOWN`);
 - `effective_from` e relativo stato di revisione;
-- numero di righe riconosciute;
+- numero di celle riconosciute;
 - invariati, aggiunti, spostati, modificati, mancanti e ambigui;
 - per ogni differenza, valore attuale -> valore proposto;
 - motivazione/evidenza per gli elementi ambigui;
-- controllo esplicito del docente su ogni riga che richiede revisione;
-- avviso specifico prima di qualsiasi `REMOVE` e indicazione del perché la rimozione è proponibile.
+- controllo esplicito del docente sugli elementi da revisionare;
+- avviso specifico prima di qualsiasi `REMOVE`.
 
-Non è sufficiente una lunga lista indistinta: la vista deve privilegiare le eccezioni e consentire di comprendere rapidamente cosa cambierà.
+Le specializzazioni personali della cella non devono appesantire questa anteprima.
 
-## 11. Piano applicabile
+## 13. Piano applicabile
 
-Solo dopo la revisione viene prodotto il `p_operations` consumabile da G1.2. Ogni riga candidata deve avere esattamente una disposizione esplicita coerente con il contratto G1.2.
+Solo dopo la revisione viene prodotto il `p_operations` consumabile da G1.2.
 
-Il generatore del piano deve fallire chiuso se:
+Il generatore fallisce chiuso se:
 
-- esistono righe `REVIEW_REQUIRED` non risolte;
-- esistono righe `UNRESOLVED`;
-- `effective_from` necessario è nullo o ancora `REVIEW_REQUIRED`;
-- manca una disposizione per una riga candidata;
+- esistono elementi strutturali `REVIEW_REQUIRED` non risolti o `UNRESOLVED`;
+- `effective_from` è nullo o ancora `REVIEW_REQUIRED`;
+- manca una disposizione necessaria per una riga candidata;
 - una rimozione non è stata esplicitamente confermata;
-- una rimozione deriva da fonte `PARTIAL`, `UNKNOWN` o da slot fuori `source_scope`;
-- la revisione del candidato o della bozza è cambiata dopo la generazione dell'anteprima.
+- una rimozione deriva da fonte `PARTIAL`, `UNKNOWN` o fuori `source_scope`;
+- candidato o bozza sono cambiati dopo l'anteprima.
 
-## 12. Casi di prova governati G1.3
+## 14. Casi di prova governati G1.3
 
-La materializzazione successiva deve trasformare questi casi in fixture/golden/reference evidence eseguibili, non considerarli soddisfatti dalla sola presenza nel documento:
+La materializzazione successiva deve trasformare almeno questi casi in fixture/golden/reference evidence eseguibili:
 
-1. PDF testuale leggibile con sole lezioni.
-2. Immagine leggibile dello stesso orario -> normalizzazione semanticamente equivalente.
-3. `T` riconosciuto come teoria nel profilo della fonte corrente.
-4. `D` riconosciuto come sostegno solo con profilo/evidenza coerenti.
-5. `DIS` -> `DISPOSITION`.
-6. Abbreviazione sconosciuta -> `REVIEW_REQUIRED`.
-7. Classe univoca -> risoluzione proposta.
-8. Classe ambigua -> nessuna scelta automatica.
-9. Riga senza orario determinabile -> non applicabile.
-10. Riga con intervallo temporale invalido -> rigetto.
-11. Lezione senza incarico risolto -> non applicabile.
-12. Presenza in classe non-lezione -> `CLASS_PRESENCE`, senza incarico artificiale.
-13. Fonte provvisoria -> indicatore preservato fino all'anteprima.
-14. Stessi byte riacquisiti -> stesso `source_fingerprint`.
-15. PDF e immagine semanticamente equivalenti -> `source_fingerprint` diversi ammessi, stesso `candidate_fingerprint` richiesto a parità di schema/profilo.
-16. Cambiamento semantico -> nuovo `candidate_fingerprint`.
-17. Cambio della sola `confidence`/evidenza -> `candidate_fingerprint` invariato.
-18. Cambio di `source_profile_version` -> identità semantica distinta.
-19. Evidenza minima associata a ogni riga proposta e nessuna duplicazione indiscriminata della fonte.
-20. Fonte eliminata a fine retention -> `EVIDENCE_EXPIRED`, receipt decisionale minima preservata.
-21. Confronto invariato -> `KEEP`.
-22. Nuova attività -> `ADD`.
-23. Spostamento -> `MOVE`.
-24. Variazione sostanziale -> `CHANGE`.
-25. Elemento assente da fonte `UNKNOWN/PARTIAL` -> nessuna proposta `REMOVE`.
-26. Elemento assente da fonte `COMPLETE` ma fuori `source_scope` -> nessuna proposta `REMOVE`.
-27. Elemento assente da fonte `COMPLETE`, dentro scope e senza ambiguità -> `REMOVE` proponibile ma non preselezionata.
-28. `REMOVE` senza conferma -> piano non generabile/apply rifiutato.
-29. Riga ambigua non revisionata -> piano incompleto e bloccato.
-30. Tutte le righe risolte -> piano completo compatibile con G1.2.
-31. Mutazione della bozza dopo l'anteprima -> conflitto, nessuna applicazione.
-32. Mutazione del candidato dopo l'anteprima -> revisione obsoleta, nessuna applicazione.
-33. Acquisizione/anteprima non modifica `timetable_slots`.
-34. Nessun nome docente superfluo persistito dalla fonte.
-35. Nessun percorso alternativo bypassa `apply_timetable_import_to_draft(...)`.
-36. Errore parser -> candidato non READY e feedback comprensibile al docente.
-37. `effective_from` presente e univoco nella fonte -> proposta con provenance.
-38. `effective_from` assente/ambiguo -> `null` + `REVIEW_REQUIRED`, nessuna inferenza dalla data di caricamento.
-39. Risoluzione esplicita del docente di `effective_from` -> provenance decisionale registrata.
-40. Completezza non attestabile dalla sola forma tabellare -> `UNKNOWN` fino a evidenza/decisione valida.
+1. documento con più docenti + cognome univoco -> porzione corretta proposta;
+2. cognome assente -> `REVIEW_REQUIRED`;
+3. cognome con più corrispondenze plausibili -> nessuna scelta automatica;
+4. `teacher_lookup_label` non persistito nel modello dell'orario;
+5. PDF testuale leggibile -> quadro settimanale strutturale;
+6. immagine dello stesso orario -> quadro semanticamente equivalente;
+7. annotazioni come teoria/disegno/disposizione non necessarie alla struttura -> non bloccano l'importazione e non diventano vincoli del candidato;
+8. classe univoca -> risoluzione proposta;
+9. classe ambigua -> revisione richiesta;
+10. riga senza fascia determinabile -> non applicabile;
+11. intervallo temporale invalido -> rigetto;
+12. fonte provvisoria -> indicatore preservato;
+13. stessi byte -> stesso `source_fingerprint`;
+14. formati diversi ma stesso quadro -> stesso `candidate_fingerprint` a parità di `effective_from`;
+15. cambiamento strutturale -> nuovo `candidate_fingerprint`;
+16. cambio di sola evidenza/confidenza -> fingerprint invariato;
+17. evidenza minima, nessuna duplicazione della fonte;
+18. fonte eliminata -> `EVIDENCE_EXPIRED`, receipt minima preservata;
+19. confronto invariato -> `KEEP`;
+20. nuova cella -> `ADD`;
+21. spostamento -> `MOVE`;
+22. variazione strutturale -> `CHANGE`;
+23. assenza da fonte `UNKNOWN/PARTIAL` -> nessun `REMOVE`;
+24. assenza da fonte `COMPLETE` ma fuori scope -> nessun `REMOVE`;
+25. assenza da fonte completa, dentro scope, senza ambiguità -> `REMOVE` proponibile ma non preselezionata;
+26. `REMOVE` senza conferma -> piano bloccato;
+27. mutazione bozza dopo anteprima -> conflitto;
+28. mutazione candidato dopo anteprima -> conflitto;
+29. acquisizione/anteprima non modifica `timetable_slots`;
+30. nessun percorso alternativo bypassa `apply_timetable_import_to_draft(...)`;
+31. errore parser -> candidato non READY e feedback comprensibile;
+32. `effective_from` univoco -> proposta con provenance;
+33. `effective_from` assente/ambiguo -> `null + REVIEW_REQUIRED`, nessuna inferenza dalla data di caricamento;
+34. risoluzione esplicita di `effective_from` -> provenance decisionale;
+35. nuova versione -> `effective_to = null` senza richiesta di data finale;
+36. successivo orario -> il nuovo `effective_from` fornisce il confine necessario alla successiva transizione, senza riscrivere la storia;
+37. attività anteriori a `effective_from` -> nessuna modifica di collocazione o stato da G1.3;
+38. personalizzazione esistente della cella -> fuori dal dominio del parser G1.3;
+39. quadro importato -> compatibile con il modello `TimetableVersion`/slot già esistente;
+40. nessuna ripianificazione di lezioni future eseguita implicitamente durante acquisizione/anteprima.
 
-## 13. Non-obiettivi G1.3
+## 15. Non-obiettivi G1.3
 
-Non sono autorizzati in questa fase:
+Non sono autorizzati:
 
 - applicazione delle migrazioni G1.2 in produzione;
-- attivazione automatica di un nuovo orario;
-- pubblicazione automatica;
-- sincronizzazione autonoma con fonti esterne;
+- attivazione automatica del nuovo orario;
+- interpretazione obbligatoria delle personalizzazioni delle celle;
+- richiesta/invenzione di `effective_to` per il nuovo orario;
+- ripianificazione implicita delle lezioni future;
+- pubblicazione o sincronizzazione autonoma;
 - modifica automatica di calendario, lezioni o programmazioni;
 - DOS-A1;
-- conservazione indiscriminata del documento sorgente.
+- conservazione indiscriminata del documento sorgente o dei nominativi presenti.
 
-## 14. Gate per la materializzazione
+## 16. Gate per la materializzazione
 
 Prima di implementare parser/interfaccia/runtime devono essere verificati:
 
-- compatibilità del contratto con G1.2;
-- schema/versionamento di `source_fingerprint` e `candidate_fingerprint` e relativa canonicalizzazione;
-- minimizzazione, retention ed expiry dell'evidenza;
-- `source_scope` e attestazione di `source_completeness` prima di ogni possibile rimozione;
+- compatibilità con il modello corrente `TimetableVersion` + slot e con G1.2;
+- selezione nominativa effimera e minimizzazione;
+- schema/versionamento di fingerprint e canonicalizzazione;
+- retention/expiry dell'evidenza;
+- `source_scope` e `source_completeness`;
 - provenance/review di `effective_from`;
+- `effective_to` non richiesto in G1.3 e chiusura demandata alla transizione di versione;
 - assenza di scritture implicite;
-- accessibilità dell'anteprima e delle differenze;
-- comportamento smartphone;
+- accessibilità e comportamento smartphone dell'anteprima;
 - materializzazione eseguibile dei casi 1–40;
-- review indipendente sul nuovo exact head finale.
+- definizione separata del contratto di transizione/ripianificazione prima di qualunque modifica automatica alle lezioni future;
+- nuova review indipendente sul nuovo exact head finale.
 
-**HOLD_RUNTIME / HOLD_PRODUCTION_APPLY** fino al completamento dei gate e alla decisione umana prevista dalla governance.
+**HOLD_RUNTIME / HOLD_PRODUCTION_APPLY / HOLD_REPLAN** fino al completamento dei gate e alla decisione umana prevista dalla governance.
