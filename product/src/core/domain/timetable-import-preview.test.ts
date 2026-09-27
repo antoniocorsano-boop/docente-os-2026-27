@@ -53,6 +53,16 @@ test('keeps later lesson specialisations outside structural import', () => {
   assert.ok(preview.blockingReasons.includes('INVALID_LESSON_SLOT'))
 })
 
+test('fails closed on malformed source time instead of silently truncating it', () => {
+  const preview = buildTimetableImportPreview({
+    ...baseInput,
+    candidateSlots: [{ ...baseInput.candidateSlots[0], startTime: '08:00abc' }],
+  })
+  assert.equal(preview.canConfirmDraft, false)
+  assert.equal(preview.candidateSlots[0]?.startTime, '08:00abc')
+  assert.ok(preview.blockingReasons.includes('INVALID_LESSON_SLOT'))
+})
+
 test('fails closed on ambiguous lessons in the same time cell', () => {
   const preview = buildTimetableImportPreview({
     ...baseInput,
@@ -63,4 +73,28 @@ test('fails closed on ambiguous lessons in the same time cell', () => {
   })
   assert.equal(preview.canConfirmDraft, false)
   assert.ok(preview.blockingReasons.includes('AMBIGUOUS_OVERLAPPING_LESSONS'))
+})
+
+test('fails closed on partially overlapping lessons on the same day', () => {
+  const preview = buildTimetableImportPreview({
+    ...baseInput,
+    candidateSlots: [
+      baseInput.candidateSlots[0],
+      { ...baseInput.candidateSlots[0], startTime: '08:30', endTime: '09:30', classLabel: '3A' },
+    ],
+  })
+  assert.equal(preview.canConfirmDraft, false)
+  assert.ok(preview.blockingReasons.includes('AMBIGUOUS_OVERLAPPING_LESSONS'))
+})
+
+test('allows adjacent lessons because touching boundaries do not overlap', () => {
+  const preview = buildTimetableImportPreview({
+    ...baseInput,
+    candidateSlots: [
+      baseInput.candidateSlots[0],
+      { ...baseInput.candidateSlots[0], startTime: '09:00', endTime: '10:00', classLabel: '3A' },
+    ],
+  })
+  assert.equal(preview.canConfirmDraft, true)
+  assert.deepEqual(preview.blockingReasons, [])
 })
