@@ -2,8 +2,8 @@
 
 import { useActionState } from 'react'
 import {
-  confirmSettingsTeachingAssignment,
-  reopenSettingsTeachingAssignment,
+  confirmSettingsTeachingAssignmentWithFeedback,
+  reopenSettingsTeachingAssignmentWithFeedback,
   type TeachingAssignmentTransitionState,
 } from './actions'
 
@@ -22,7 +22,9 @@ export function TeachingAssignmentTransitionForm({
   expectedUpdatedAt,
   mode,
 }: Props) {
-  const action = mode === 'confirm' ? confirmSettingsTeachingAssignment : reopenSettingsTeachingAssignment
+  const action = mode === 'confirm'
+    ? confirmSettingsTeachingAssignmentWithFeedback
+    : reopenSettingsTeachingAssignmentWithFeedback
   const [state, formAction, pending] = useActionState(action, INITIAL_STATE)
   const isConfirm = mode === 'confirm'
 
