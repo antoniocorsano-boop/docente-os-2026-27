@@ -42,11 +42,13 @@ for (const line of raw.compositionExclusions.split(/\r?\n/u)) {
 
 const compose = new Map()
 for (const [cp, mapping] of decomp) {
-  // Full_Composition_Exclusion is broader than CompositionExclusions.txt:
-  // a character whose own canonical combining class is non-zero must never
-  // become a primary composite. This derives the relevant UAX #15 exclusion
-  // directly from the frozen UnicodeData input, without another mutable source.
-  const isPrimaryComposite = mapping.length === 2 && !exclusions.has(cp) && (ccc.get(cp) ?? 0) === 0
+  // Derive the relevant Full_Composition_Exclusion rules from the frozen inputs:
+  // primary composites have a two-code-point canonical decomposition, are not
+  // explicitly excluded, and their decomposition starts with a starter (CCC=0).
+  // Checking the composite character's own CCC is insufficient: Unicode contains
+  // CCC=0 characters whose canonical decomposition begins with a non-starter.
+  const firstIsStarter = mapping.length > 0 && (ccc.get(mapping[0]) ?? 0) === 0
+  const isPrimaryComposite = mapping.length === 2 && !exclusions.has(cp) && firstIsStarter
   if (isPrimaryComposite) compose.set(`${mapping[0]},${mapping[1]}`, cp)
 }
 
