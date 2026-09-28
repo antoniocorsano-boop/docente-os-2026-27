@@ -9,6 +9,7 @@ import {
 export const TT_TEACHER_UNICODE_VERSION = UNICODE17_VERSION
 
 export type TeacherEvidenceResult = 'SAME' | 'DISTINCT' | 'UNKNOWN'
+export type TeacherEvidenceDiagnostic = 'SAME' | 'DISTINCT' | 'INSUFFICIENT' | 'CONTRADICTORY'
 export type TeacherEvidenceSignal = Readonly<{ kind: string; value: string }>
 export type TeacherEvidenceOccurrence = Readonly<{
   occurrenceId: string
@@ -186,22 +187,38 @@ export function validateTeacherEvidenceProfile(profile: TeacherEvidenceProfile |
   return true
 }
 
+/**
+ * Diagnostic companion to SAME | DISTINCT | UNKNOWN.
+ * It reuses the exact G1.6-A rules and only explains why UNKNOWN occurred;
+ * it does not widen or alter the authoritative tri-state semantics.
+ */
+export function diagnoseTeacherEvidence(
+  a: TeacherEvidenceOccurrence,
+  b: TeacherEvidenceOccurrence,
+  profile: TeacherEvidenceProfile | null | undefined,
+): TeacherEvidenceDiagnostic {
+  if (!validateTeacherEvidenceProfile(profile) || !profile) return 'INSUFFICIENT'
+  if (!a.occurrenceId || !b.occurrenceId) return 'INSUFFICIENT'
+
+  const aSignals = uniqueSignalMap(a.signals, profile.allowedSignalKinds)
+  const bSignals = uniqueSignalMap(b.signals, profile.allowedSignalKinds)
+  if (!aSignals || !bSignals) return 'CONTRADICTORY'
+
+  const same = profile.sameRules.some((rule) => compareRule(rule, aSignals, bSignals))
+  const distinct = profile.distinctRules.some((rule) => compareRule(rule, aSignals, bSignals))
+  if (same && distinct) return 'CONTRADICTORY'
+  if (!same && !distinct) return 'INSUFFICIENT'
+  return same ? 'SAME' : 'DISTINCT'
+}
+
 export function sameTeacherEvidence(
   a: TeacherEvidenceOccurrence,
   b: TeacherEvidenceOccurrence,
   profile: TeacherEvidenceProfile | null | undefined,
 ): TeacherEvidenceResult {
-  if (!validateTeacherEvidenceProfile(profile) || !profile) return 'UNKNOWN'
-  if (!a.occurrenceId || !b.occurrenceId) return 'UNKNOWN'
-
-  const aSignals = uniqueSignalMap(a.signals, profile.allowedSignalKinds)
-  const bSignals = uniqueSignalMap(b.signals, profile.allowedSignalKinds)
-  if (!aSignals || !bSignals) return 'UNKNOWN'
-
-  const same = profile.sameRules.some((rule) => compareRule(rule, aSignals, bSignals))
-  const distinct = profile.distinctRules.some((rule) => compareRule(rule, aSignals, bSignals))
-  if (same === distinct) return 'UNKNOWN'
-  return same ? 'SAME' : 'DISTINCT'
+  const diagnostic = diagnoseTeacherEvidence(a, b, profile)
+  if (diagnostic === 'SAME' || diagnostic === 'DISTINCT') return diagnostic
+  return 'UNKNOWN'
 }
 
 function uniqueSignalMap(signals: readonly TeacherEvidenceSignal[], allowedKinds: readonly string[]): Map<string, string> | null {
