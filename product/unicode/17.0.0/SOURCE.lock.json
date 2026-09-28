@@ -1,0 +1,24 @@
+{
+  "unicodeVersion": "17.0.0",
+  "sourceRepository": "unicode-org/unicodetools",
+  "sourceCommit": "48afe632bf194a20bcd27c3488b49dc23274b684",
+  "sourcePath": "unicodetools/data/ucd/17.0.0",
+  "files": {
+    "UnicodeData.txt": {
+      "gitBlobSha1": "fca68e3e154e62e49727ecf69f1df442582bfa96",
+      "size": 2198209
+    },
+    "CompositionExclusions.txt": {
+      "gitBlobSha1": "e2403892a92f1ec091dcab69d9f6fbc95af92043",
+      "size": 9007
+    },
+    "CaseFolding.txt": {
+      "gitBlobSha1": "a0b0f07fd64598e698fc7da3e55ca72077dd6071",
+      "size": 87539
+    },
+    "NormalizationTest.txt": {
+      "gitBlobSha1": "97b4e4e6202e595f88f07e3a94e8e71b180f66be",
+      "size": 2827429
+    }
+  }
+}
