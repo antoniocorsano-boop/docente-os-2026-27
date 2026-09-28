@@ -1,3 +1,4 @@
+// @trama-readonly — outbound extraction request does not mutate Docente OS state
 import { normalizeTeacherLabel } from '@/core/domain/timetable-teacher-evidence'
 
 type ResponsesPayload = {
