@@ -138,3 +138,29 @@ test('G1.6-C canonical identity framing distinguishes values containing former s
   assert.equal(second.state, 'PREVIEW_READY')
   assert.notEqual(first.candidateId, second.candidateId)
 })
+
+test('G1.6-C fails closed instead of throwing when teacherResolution is missing at runtime', () => {
+  const malformed = {
+    day: 1,
+    sourcePosition: '1',
+    classLabel: '2 A',
+    sourceTeacherLabel: 'Rossi',
+  } as unknown as ExtractedTimetableSlot
+
+  assert.doesNotThrow(() => buildTimetableImportCandidate(provenance(), [malformed]))
+  const result = buildTimetableImportCandidate(provenance(), [malformed])
+  assert.equal(result.state, 'REVIEW_REQUIRED')
+  assert.equal(result.reasonCode, 'INVALID_SLOT')
+})
+
+test('G1.6-C fails closed instead of throwing when a trim-required slot field is not a string', () => {
+  const malformed = {
+    ...slot(),
+    sourcePosition: 1,
+  } as unknown as ExtractedTimetableSlot
+
+  assert.doesNotThrow(() => buildTimetableImportCandidate(provenance(), [malformed]))
+  const result = buildTimetableImportCandidate(provenance(), [malformed])
+  assert.equal(result.state, 'REVIEW_REQUIRED')
+  assert.equal(result.reasonCode, 'INVALID_SLOT')
+})
