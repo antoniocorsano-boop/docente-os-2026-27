@@ -29,7 +29,7 @@ function candidate(): TimetableImportCandidate {
         sourceTeacherLabel: 'ROSSI MARIO',
         resolvedAssignmentId: 'assignment-a',
         teacherResolutionState: 'RESOLVED',
-        teacherResolutionReason: 'UNIQUE_MATCH',
+        teacherResolutionReason: 'UNIQUE_EVIDENCE_MATCH',
       },
       {
         day: 1,
@@ -38,7 +38,7 @@ function candidate(): TimetableImportCandidate {
         sourceTeacherLabel: 'ROSSI MARIO',
         resolvedAssignmentId: 'assignment-c',
         teacherResolutionState: 'RESOLVED',
-        teacherResolutionReason: 'UNIQUE_MATCH',
+        teacherResolutionReason: 'UNIQUE_EVIDENCE_MATCH',
       },
     ],
   }
@@ -130,7 +130,7 @@ test('G1.6-H blocks unresolved assignment', () => {
         ...candidate().slots[0],
         resolvedAssignmentId: undefined,
         teacherResolutionState: 'REVIEW_REQUIRED',
-        teacherResolutionReason: 'NO_MATCH',
+        teacherResolutionReason: 'NO_COMPATIBLE_ASSIGNMENT',
       },
     ],
   }
