@@ -88,7 +88,6 @@ export class SupabaseTimetableImportRepository {
         source_ref: input.sourceRef.slice(0, 1000),
         effective_from_candidate: input.effectiveFrom,
         source_is_provisional: true,
-        source_scope: 'TEACHER_COMPLETE',
         state: 'DRAFT',
         parser_version: input.parserVersion.slice(0, 160),
         created_by: userId,
@@ -261,6 +260,79 @@ export class SupabaseTimetableImportRepository {
     await this.promoteIfComplete(candidate.id, editableRevision)
   }
 
+  async addManualRow(input: {
+    candidateId: string
+    assignmentId: string
+    weekday: number
+    ordinal: number
+    startTime: string
+    endTime: string
+  }) {
+    const supabase = await createClient()
+    const { data: candidate, error: candidateError } = await supabase
+      .from('timetable_import_candidates')
+      .select('id,state,revision,workspace_id,academic_year_id')
+      .eq('id', input.candidateId)
+      .single()
+    if (candidateError) throw new Error(candidateError.message)
+
+    let editableRevision = candidate.revision
+    if (candidate.state === 'READY_TO_CONFIRM') {
+      const { data: reopened, error: reopenError } = await supabase
+        .from('timetable_import_candidates')
+        .update({ state: 'DRAFT' })
+        .eq('id', candidate.id)
+        .eq('revision', candidate.revision)
+        .eq('state', 'READY_TO_CONFIRM')
+        .select('revision')
+        .single()
+      if (reopenError) throw new Error(reopenError.message)
+      editableRevision = reopened.revision
+    } else if (candidate.state !== 'DRAFT') {
+      throw new Error('Candidate is no longer editable')
+    }
+
+    const { data: assignment, error: assignmentError } = await supabase
+      .from('teaching_assignments')
+      .select('id,section_id,workspace_id,academic_year_id')
+      .eq('id', input.assignmentId)
+      .eq('workspace_id', candidate.workspace_id)
+      .eq('academic_year_id', candidate.academic_year_id)
+      .single()
+    if (assignmentError) throw new Error(assignmentError.message)
+
+    const rowKey = [
+      'manual',
+      String(normalizeWeekday(input.weekday)),
+      String(normalizeOrdinal(input.ordinal)),
+      assignment.section_id,
+      crypto.randomUUID(),
+    ].join(':')
+
+    const { error } = await supabase
+      .from('timetable_import_candidate_rows')
+      .insert({
+        candidate_id: candidate.id,
+        candidate_revision: editableRevision,
+        row_key: rowKey.slice(0, 160),
+        weekday: normalizeWeekday(input.weekday),
+        ordinal: normalizeOrdinal(input.ordinal),
+        start_time: normalizeTime(input.startTime),
+        end_time: normalizeTime(input.endTime),
+        source_class_label: null,
+        resolved_section_id: assignment.section_id,
+        resolved_assignment_id: assignment.id,
+        proposed_slot_kind: 'LESSON',
+        confidence: 'HIGH',
+        review_state: 'CONFIRMED',
+        evidence_ref: 'teacher:manual-addition',
+        warnings: [],
+      })
+
+    if (error) throw new Error(error.message)
+    await this.promoteIfComplete(candidate.id, editableRevision)
+  }
+
   async promoteIfComplete(candidateId: string, candidateRevision: number) {
     const supabase = await createClient()
     const { data: rows, error } = await supabase
@@ -312,6 +384,7 @@ export class SupabaseTimetableImportRepository {
     draftVersionId: string
     expectedDraftToken: string
     confirmationRequestId: string
+    teacherCompleteConfirmed: boolean
   }): Promise<TimetableImportApplyReceipt> {
     const supabase = await createClient()
     const { data, error } = await supabase.rpc(
@@ -322,6 +395,7 @@ export class SupabaseTimetableImportRepository {
         p_expected_draft_version_id: input.draftVersionId,
         p_expected_draft_token: input.expectedDraftToken,
         p_confirmation_request_id: input.confirmationRequestId,
+        p_teacher_complete_confirmed: input.teacherCompleteConfirmed,
       },
     )
 
