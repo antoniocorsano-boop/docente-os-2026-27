@@ -295,6 +295,30 @@ export async function analyzeTimetableImport(formData: FormData) {
   redirect(`/orario?importCandidate=${encodeURIComponent(candidate.id)}&import=review`)
 }
 
+export async function addTimetableImportRow(formData: FormData) {
+  const context = await requireContext()
+  const candidateId = text(formData, 'candidateId')
+  const repository = new SupabaseTimetableImportRepository()
+  const candidate = await repository.getReview({
+    candidateId,
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+  })
+  if (!candidate || candidate.state === 'APPLIED_TO_DRAFT') redirect('/orario?import=unavailable')
+
+  await repository.addManualRow({
+    candidateId,
+    assignmentId: text(formData, 'assignmentId'),
+    weekday: integer(formData, 'weekday'),
+    ordinal: integer(formData, 'ordinal'),
+    startTime: text(formData, 'startTime'),
+    endTime: text(formData, 'endTime'),
+  })
+
+  revalidatePath('/orario')
+  redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review`)
+}
+
 export async function updateTimetableImportRow(formData: FormData) {
   const context = await requireContext()
   const candidateId = text(formData, 'candidateId')
@@ -341,6 +365,7 @@ export async function applyTimetableImportCandidate(formData: FormData) {
       draftVersionId: text(formData, 'draftVersionId'),
       expectedDraftToken: text(formData, 'expectedDraftToken'),
       confirmationRequestId: text(formData, 'confirmationRequestId'),
+      teacherCompleteConfirmed: text(formData, 'teacherCompleteConfirmed') === 'yes',
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : ''
