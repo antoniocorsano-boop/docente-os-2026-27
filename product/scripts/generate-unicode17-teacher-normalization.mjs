@@ -42,7 +42,12 @@ for (const line of raw.compositionExclusions.split(/\r?\n/u)) {
 
 const compose = new Map()
 for (const [cp, mapping] of decomp) {
-  if (mapping.length === 2 && !exclusions.has(cp)) compose.set(`${mapping[0]},${mapping[1]}`, cp)
+  // Full_Composition_Exclusion is broader than CompositionExclusions.txt:
+  // a character whose own canonical combining class is non-zero must never
+  // become a primary composite. This derives the relevant UAX #15 exclusion
+  // directly from the frozen UnicodeData input, without another mutable source.
+  const isPrimaryComposite = mapping.length === 2 && !exclusions.has(cp) && (ccc.get(cp) ?? 0) === 0
+  if (isPrimaryComposite) compose.set(`${mapping[0]},${mapping[1]}`, cp)
 }
 
 // Hangul constants and algorithms from UAX #15 / Unicode normalization algorithm.
