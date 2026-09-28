@@ -160,6 +160,7 @@ declare
   token_after text;
   first_receipt jsonb;
   retry_receipt jsonb;
+  completeness_blocked boolean := false;
 begin
   select revision into before_revision
   from public.timetable_versions
@@ -173,6 +174,27 @@ begin
     token_before = 'TTDR-1|36:10000000-0000-0000-0000-00000000d625|'
       || char_length(before_revision::text)::text || ':' || before_revision::text,
     '07 token reader reflects exact DB revision'
+  );
+
+  begin
+    perform public.apply_confirmed_timetable_import_v1(
+      '30000000-0000-0000-0000-00000000a625',
+      '2',
+      '10000000-0000-0000-0000-00000000d625',
+      token_before,
+      '40000000-0000-0000-0000-00000000b625',
+      false
+    );
+  exception when others then
+    completeness_blocked := position('teacher completeness confirmation required' in sqlerrm) > 0;
+  end;
+
+  perform pg_temp.assert_true(
+    completeness_blocked
+    and
+    (select revision from public.timetable_versions
+      where id='10000000-0000-0000-0000-00000000d625')=before_revision,
+    '08 missing teacher-complete confirmation fails without writes'
   );
 
   first_receipt := public.apply_confirmed_timetable_import_v1(
@@ -190,21 +212,21 @@ begin
 
   perform pg_temp.assert_true(
     after_revision=before_revision+1,
-    '08 completion apply performs one logical DRAFT revision bump'
+    '09 completion apply performs one logical DRAFT revision bump'
   );
 
   perform pg_temp.assert_true(
     (select count(*) from public.timetable_slots
       where timetable_version_id='10000000-0000-0000-0000-00000000d625'
         and slot_kind='LESSON')=2,
-    '09 confirmed candidate replaces DRAFT LESSON slots'
+    '10 confirmed candidate replaces DRAFT LESSON slots'
   );
 
   perform pg_temp.assert_true(
     exists(select 1 from public.timetable_slots
       where id='20000000-0000-0000-0000-00000000b625'
         and slot_kind='OTHER'),
-    '10 non-LESSON slots are preserved'
+    '11 non-LESSON slots are preserved'
   );
 
   perform pg_temp.assert_true(
@@ -213,7 +235,7 @@ begin
     and
     (select source_kind from public.timetable_versions
       where id='10000000-0000-0000-0000-00000000d625')='IMPORT',
-    '11 effective date and import provenance are applied atomically'
+    '12 effective date and import provenance are applied atomically'
   );
 
   perform pg_temp.assert_true(
@@ -222,7 +244,7 @@ begin
     and
     (select source_scope from public.timetable_import_candidates
       where id='30000000-0000-0000-0000-00000000a625')='TEACHER_COMPLETE',
-    '12 candidate reaches APPLIED_TO_DRAFT with explicit teacher-complete confirmation'
+    '13 candidate reaches APPLIED_TO_DRAFT with explicit teacher-complete confirmation'
   );
 
   token_after := public.read_timetable_draft_revision_token(
@@ -230,7 +252,7 @@ begin
   );
   perform pg_temp.assert_true(
     token_after<>token_before,
-    '13 pre-apply revision token becomes stale after apply'
+    '14 pre-apply revision token becomes stale after apply'
   );
 
   retry_receipt := public.apply_confirmed_timetable_import_v1(
@@ -244,13 +266,13 @@ begin
 
   perform pg_temp.assert_true(
     retry_receipt->>'id'=first_receipt->>'id',
-    '14 exact confirmation retry is idempotent'
+    '15 exact confirmation retry is idempotent'
   );
 
   perform pg_temp.assert_true(
     (select revision from public.timetable_versions
       where id='10000000-0000-0000-0000-00000000d625')=after_revision,
-    '15 idempotent retry does not mutate DRAFT again'
+    '16 idempotent retry does not mutate DRAFT again'
   );
 end
 $$;
