@@ -162,8 +162,12 @@ select pg_temp.assert_true(
 );
 
 select pg_temp.assert_true(
-  private.is_workspace_member('00000000-0000-0000-0000-00000000b625'::uuid),
-  '08 JWT fixture resolves workspace membership'
+  exists (
+    select 1
+    from public.current_workspace_context() c
+    where c.workspace_id='00000000-0000-0000-0000-00000000b625'::uuid
+  ),
+  '08 JWT fixture resolves workspace through authenticated public boundary'
 );
 
 do $block$
