@@ -170,10 +170,8 @@ begin
   );
 
   perform pg_temp.assert_true(
-    token_before = private.timetable_draft_revision_token(
-      '10000000-0000-0000-0000-00000000d625',
-      before_revision
-    ),
+    token_before = 'TTDR-1|36:10000000-0000-0000-0000-00000000d625|'
+      || char_length(before_revision::text)::text || ':' || before_revision::text,
     '07 token reader reflects exact DB revision'
   );
 
