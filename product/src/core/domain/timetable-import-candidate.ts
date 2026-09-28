@@ -168,28 +168,33 @@ function validIsoDate(value: string): boolean {
 
 function candidateIdentity(provenance: TimetableSourceProvenance, slots: readonly CanonicalTimetableSlot[]): string {
   // sourceLabel/capturedAt are intentionally excluded: renaming the same source must not change identity.
-  const slotIdentity = slots.map(canonicalSlotKey).join('|')
-  return [
+  const slotIdentity = encodeSequence(slots.map(canonicalSlotKey))
+  return encodeSequence([
     TIMETABLE_IMPORT_CANDIDATE_VERSION,
     provenance.sourceFingerprint.algorithm,
     provenance.sourceFingerprint.digest,
     provenance.effectiveFrom,
     slotIdentity,
-  ].join('::')
+  ])
 }
 
 function occupancyKey(slot: CanonicalTimetableSlot): string {
-  return [slot.day, slot.sourcePosition, slot.classLabel].join('::')
+  return encodeSequence([String(slot.day), slot.sourcePosition, slot.classLabel])
 }
 
 function canonicalSlotKey(slot: CanonicalTimetableSlot): string {
-  return [
+  return encodeSequence([
     occupancyKey(slot),
     slot.sourceTeacherLabel,
     slot.resolvedAssignmentId ?? '',
     slot.teacherResolutionState,
     slot.teacherResolutionReason,
-  ].join('::')
+  ])
+}
+
+/** Injective framing for arbitrary UTF-16 strings: each field carries its own code-unit length. */
+function encodeSequence(values: readonly string[]): string {
+  return values.map((value) => `${value.length}:${value}`).join('')
 }
 
 function normalizeClassLabel(value: string): string {
