@@ -59,6 +59,10 @@ export function buildTimetableImportCandidate(
   provenance: TimetableSourceProvenance,
   extractedSlots: readonly ExtractedTimetableSlot[],
 ): TimetableImportCandidate {
+  if (!Array.isArray(extractedSlots) || extractedSlots.some((slot) => !validRawSlot(slot))) {
+    return invalidSlotReview(provenance)
+  }
+
   const canonicalSlots = canonicalizeSlots(extractedSlots)
   const base = {
     contractVersion: TIMETABLE_IMPORT_CANDIDATE_VERSION,
@@ -141,6 +145,23 @@ function hasDuplicateConflict(slots: readonly CanonicalTimetableSlot[]): boolean
   return false
 }
 
+function validRawSlot(slot: unknown): slot is ExtractedTimetableSlot {
+  if (typeof slot !== 'object' || slot === null) return false
+  const value = slot as Record<string, unknown>
+  const resolution = value.teacherResolution
+  if (typeof resolution !== 'object' || resolution === null) return false
+  const teacherResolution = resolution as Record<string, unknown>
+  return (
+    typeof value.day === 'number' &&
+    typeof value.sourcePosition === 'string' &&
+    typeof value.classLabel === 'string' &&
+    typeof value.sourceTeacherLabel === 'string' &&
+    (teacherResolution.state === 'RESOLVED' || teacherResolution.state === 'REVIEW_REQUIRED') &&
+    typeof teacherResolution.reasonCode === 'string' &&
+    (teacherResolution.resolvedAssignmentId === undefined || typeof teacherResolution.resolvedAssignmentId === 'string')
+  )
+}
+
 function validSlot(slot: ExtractedTimetableSlot): boolean {
   return (
     Number.isInteger(slot.day) &&
@@ -150,6 +171,17 @@ function validSlot(slot: ExtractedTimetableSlot): boolean {
     slot.classLabel.trim().length > 0 &&
     slot.sourceTeacherLabel.trim().length > 0
   )
+}
+
+function invalidSlotReview(provenance: TimetableSourceProvenance): TimetableImportCandidate {
+  return {
+    contractVersion: TIMETABLE_IMPORT_CANDIDATE_VERSION,
+    candidateId: 'INVALID_SLOT',
+    state: 'REVIEW_REQUIRED',
+    reasonCode: 'INVALID_SLOT',
+    provenance: cloneProvenance(provenance),
+    slots: [],
+  }
 }
 
 function validFingerprint(fingerprint: TimetableSourceFingerprint): boolean {
