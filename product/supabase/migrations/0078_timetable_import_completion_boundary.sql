@@ -105,7 +105,7 @@ begin
 
   select workspace_id,academic_year_id,state,source_scope,expires_at,revision,
          effective_from_candidate,source_ref,source_label
-    into ws,yr,candidate_state,candidate_scope,candidate_exp,actual_candidate_revision,
+    into ws,yr,candidate_state,candidate_scope,candidate_exp,actual_candidate_revision_value,
          candidate_effective_from,candidate_source_ref,candidate_source_label
   from public.timetable_import_candidates
   where id=p_candidate_id
@@ -114,7 +114,7 @@ begin
   if ws is null or not private.is_workspace_member(ws) then
     raise exception 'candidate not accessible';
   end if;
-  if actual_candidate_revision<>candidate_revision_value then
+  if actual_candidate_revision_value<>candidate_revision_value then
     raise exception 'candidate revision mismatch';
   end if;
   select count(*),
