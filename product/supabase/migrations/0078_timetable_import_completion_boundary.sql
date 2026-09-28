@@ -64,6 +64,17 @@ revoke all on function public.read_timetable_draft_revision_token(uuid)
 grant execute on function public.read_timetable_draft_revision_token(uuid)
   to authenticated;
 
+-- The canonical candidate guard can advance revision as a side effect of a
+-- state transition (DRAFT -> READY_TO_CONFIRM). PostgreSQL UPDATE OF triggers
+-- only fire when the named column appears in the SET list, so the historical
+-- revision-only trigger can miss that side-effect. Include state in the trigger
+-- event so reviewed rows are synchronised to the resulting candidate revision.
+drop trigger if exists timetable_import_candidates_sync_row_revision
+  on public.timetable_import_candidates;
+create trigger timetable_import_candidates_sync_row_revision
+after update of revision, state on public.timetable_import_candidates
+for each row execute function private.sync_timetable_import_row_revision();
+
 create or replace function public.apply_confirmed_timetable_import_v1(
   p_candidate_id uuid,
   p_candidate_revision text,
