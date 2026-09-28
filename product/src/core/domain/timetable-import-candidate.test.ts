@@ -164,3 +164,29 @@ test('G1.6-C fails closed instead of throwing when a trim-required slot field is
   assert.equal(result.state, 'REVIEW_REQUIRED')
   assert.equal(result.reasonCode, 'INVALID_SLOT')
 })
+
+test('G1.6-C structurally invalid inputs never receive a persistable candidate identity', () => {
+  const malformedSlot = {
+    day: 1,
+    sourcePosition: '1',
+    classLabel: '2 A',
+    sourceTeacherLabel: 'Rossi',
+  } as unknown as ExtractedTimetableSlot
+  const result = buildTimetableImportCandidate(provenance(), [malformedSlot])
+  assert.equal(result.reasonCode, 'INVALID_SLOT')
+  assert.equal(result.candidateId, null)
+})
+
+test('G1.6-C fails closed on structurally invalid provenance without throwing', () => {
+  const malformed = {
+    sourceKind: 'OFFICIAL_DOCUMENT',
+    sourceLabel: 'orario.pdf',
+    effectiveFrom: '2026-09-28',
+  } as unknown as TimetableSourceProvenance
+
+  assert.doesNotThrow(() => buildTimetableImportCandidate(malformed, [slot()]))
+  const result = buildTimetableImportCandidate(malformed, [slot()])
+  assert.equal(result.state, 'REVIEW_REQUIRED')
+  assert.equal(result.reasonCode, 'INVALID_SOURCE_PROVENANCE')
+  assert.equal(result.candidateId, null)
+})
