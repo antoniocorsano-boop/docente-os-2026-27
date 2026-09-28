@@ -55,6 +55,17 @@ export class SupabaseTimetableImportRepository {
     return data
   }
 
+  async deleteCandidate(candidateId: string) {
+    const supabase = await createClient()
+    const { error } = await supabase
+      .from('timetable_import_candidates')
+      .delete()
+      .eq('id', candidateId)
+      .in('state', ['DRAFT','READY_TO_CONFIRM'])
+
+    if (error) throw new Error(error.message)
+  }
+
   async createCandidate(input: {
     workspaceId: string
     academicYearId: string
@@ -202,7 +213,22 @@ export class SupabaseTimetableImportRepository {
       .eq('id', input.candidateId)
       .single()
     if (candidateError) throw new Error(candidateError.message)
-    if (candidate.state !== 'DRAFT') throw new Error('Candidate is no longer editable')
+
+    let editableRevision = candidate.revision
+    if (candidate.state === 'READY_TO_CONFIRM') {
+      const { data: reopened, error: reopenError } = await supabase
+        .from('timetable_import_candidates')
+        .update({ state: 'DRAFT' })
+        .eq('id', candidate.id)
+        .eq('revision', candidate.revision)
+        .eq('state', 'READY_TO_CONFIRM')
+        .select('revision')
+        .single()
+      if (reopenError) throw new Error(reopenError.message)
+      editableRevision = reopened.revision
+    } else if (candidate.state !== 'DRAFT') {
+      throw new Error('Candidate is no longer editable')
+    }
 
     const { data: assignment, error: assignmentError } = await supabase
       .from('teaching_assignments')
@@ -229,10 +255,10 @@ export class SupabaseTimetableImportRepository {
       })
       .eq('id', input.rowId)
       .eq('candidate_id', candidate.id)
-      .eq('candidate_revision', candidate.revision)
+      .eq('candidate_revision', editableRevision)
 
     if (error) throw new Error(error.message)
-    await this.promoteIfComplete(candidate.id, candidate.revision)
+    await this.promoteIfComplete(candidate.id, editableRevision)
   }
 
   async promoteIfComplete(candidateId: string, candidateRevision: number) {
