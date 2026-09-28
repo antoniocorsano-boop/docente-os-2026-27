@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   TT_TEACHER_UNICODE_VERSION,
+  normalizeTeacherLabel,
   normalizeTeacherLabelPreview,
   sameTeacherEvidence,
   validateTeacherEvidenceProfile,
@@ -27,18 +28,32 @@ const occurrence = (id: string, structuralId: string, group = 'G-1'): TeacherEvi
   ],
 })
 
-test('dichiara Unicode 17.0.0 come versione contrattuale, senza dichiarare completa la scaffold preview', () => {
+test('dichiara Unicode 17.0.0 come versione contrattuale', () => {
   assert.equal(TT_TEACHER_UNICODE_VERSION, '17.0.0')
 })
 
-test('scaffold preview normalizza i casi correnti senza pretendere conformità Unicode 17 completa', () => {
-  assert.equal(normalizeTeacherLabelPreview('  D’ANGELO\u00A0–  ROSSI  '), "d'angelo - rossi")
-  assert.equal(normalizeTeacherLabelPreview('RÒSSI'), normalizeTeacherLabelPreview('RÒSSI'))
-  assert.notEqual(normalizeTeacherLabelPreview('Rossi'), normalizeTeacherLabelPreview('Ròssi'))
+test('normalizzatore autorevole usa equivalenza canonica e regole contrattuali', () => {
+  assert.equal(normalizeTeacherLabel('  D’ANGELO\u00A0–  ROSSI  '), "d'angelo - rossi")
+  assert.equal(normalizeTeacherLabel('RÒSSI'), normalizeTeacherLabel('RÒSSI'))
+  assert.notEqual(normalizeTeacherLabel('Rossi'), normalizeTeacherLabel('Ròssi'))
+})
+
+test('full default case folding Unicode 17 non equivale al semplice lowercase', () => {
+  assert.equal(normalizeTeacherLabel('STRAẞE'), 'strasse')
+  assert.equal(normalizeTeacherLabel('ΟΣΟΣ'), 'οσοσ')
+  assert.equal(normalizeTeacherLabel('İ'), 'i̇')
+})
+
+test('Hangul composto e decomposto convergono senza String.normalize()', () => {
+  assert.equal(normalizeTeacherLabel('\uAC01'), normalizeTeacherLabel('\u1100\u1161\u11A8'))
+})
+
+test('alias preview converge sul normalizzatore autorevole durante PREVIEW_ONLY', () => {
+  assert.equal(normalizeTeacherLabelPreview('RÒSSI'), normalizeTeacherLabel('RÒSSI'))
 })
 
 test('Unicode non valido fallisce chiuso', () => {
-  assert.throws(() => normalizeTeacherLabelPreview('\uD800ROSSI'), /NO_MATCH_SAFE/)
+  assert.throws(() => normalizeTeacherLabel('\uD800ROSSI'), /NO_MATCH_SAFE/)
 })
 
 test('profilo assente non abilita inferenze', () => {
