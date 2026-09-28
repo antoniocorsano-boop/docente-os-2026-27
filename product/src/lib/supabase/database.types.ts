@@ -159,6 +159,7 @@ export type Database = {
           p_expected_draft_version_id: string
           p_expected_draft_token: string
           p_confirmation_request_id: string
+          p_teacher_complete_confirmed: boolean
         }
         Returns: Json
       }
