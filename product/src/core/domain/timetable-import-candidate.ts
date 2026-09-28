@@ -38,7 +38,7 @@ export type TimetableImportCandidate = Readonly<{
   candidateId: string | null
   state: 'PREVIEW_READY' | 'REVIEW_REQUIRED'
   reasonCode: TimetableImportCandidateReason
-  provenance: TimetableSourceProvenance
+  provenance: TimetableSourceProvenance | null
   slots: readonly CanonicalTimetableSlot[]
 }>
 
@@ -203,12 +203,7 @@ function invalidInputReview(
     candidateId: null,
     state: 'REVIEW_REQUIRED',
     reasonCode,
-    provenance: provenance ? cloneProvenance(provenance) : {
-      sourceFingerprint: { algorithm: 'SHA-256', digest: '' },
-      sourceKind: 'TEACHER_UPLOAD',
-      sourceLabel: '',
-      effectiveFrom: '',
-    },
+    provenance: provenance ? cloneProvenance(provenance) : null,
     slots: [],
   }
 }
