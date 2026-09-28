@@ -24,7 +24,7 @@ export type TimetableImportPreviewModel = Readonly<{
   state: TimetableImportCandidate['state']
   reasonCode: TimetableImportCandidateReason
   provenance: TimetableSourceProvenance | null
-  canProceed: boolean
+  isPreviewComplete: boolean
   rows: readonly TimetableImportPreviewRow[]
 }>
 
@@ -46,7 +46,7 @@ export function projectTimetableImportPreview(
     state: candidate.state,
     reasonCode: candidate.reasonCode,
     provenance,
-    canProceed:
+    isPreviewComplete:
       candidate.state === 'PREVIEW_READY' &&
       candidate.reasonCode === 'READY' &&
       candidate.candidateId !== null &&
