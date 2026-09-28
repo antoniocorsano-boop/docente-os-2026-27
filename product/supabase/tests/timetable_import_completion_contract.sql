@@ -162,12 +162,13 @@ select pg_temp.assert_true(
 );
 
 select pg_temp.assert_true(
-  exists (
-    select 1
-    from public.current_workspace_context() c
-    where c.workspace_id='00000000-0000-0000-0000-00000000b625'::uuid
-  ),
-  '08 JWT fixture resolves workspace through authenticated public boundary'
+  jsonb_array_length(
+    public.annual_plan_execution_snapshot(
+      '00000000-0000-0000-0000-00000000b625'::uuid,
+      '00000000-0000-0000-0000-00000000c625'::uuid
+    )->'sections'
+  ) = 1,
+  '08 JWT fixture resolves target workspace membership through authenticated boundary'
 );
 
 do $block$
