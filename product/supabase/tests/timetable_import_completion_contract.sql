@@ -151,6 +151,11 @@ select set_config(
   true
 );
 
+-- Exercise the membership/apply boundary under the same database role used by
+-- authenticated Supabase requests. Fixture creation above intentionally runs
+-- as the migration owner so RLS cannot interfere with deterministic setup.
+set local role authenticated;
+
 select pg_temp.assert_true(
   auth.uid()='00000000-0000-0000-0000-00000000a625'::uuid,
   '07 JWT fixture exposes auth.uid'
