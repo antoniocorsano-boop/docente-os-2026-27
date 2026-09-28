@@ -46,6 +46,8 @@ Il binding temporale è configurazione esplicita. Non può essere inferito da:
 La readiness è `READY` soltanto se:
 - candidate `PREVIEW_READY / READY`;
 - `candidateId` e provenance presenti;
+- `receipt.contractVersion` coincide con la versione governata G1.6-E corrente;
+- `receipt.previewContractVersion` coincide con la versione governata G1.6-D corrente;
 - receipt = `CONFIRM_PREVIEW`;
 - candidateId e sourceFingerprint del receipt coincidono esattamente con il candidato;
 - ogni slot ha `teacherResolutionState=RESOLVED` e `resolvedAssignmentId`;
@@ -95,18 +97,20 @@ A parità di candidate, receipt e binding temporali, l'output è identico. Nessu
 
 ## Gate minimi
 1. CONFIRM esatto + coverage temporale completa -> READY;
-2. REJECT -> BLOCKED;
-3. candidate/fingerprint mismatch -> BLOCKED;
-4. candidato non pronto -> BLOCKED;
-5. slot non risolto -> BLOCKED;
-6. binding mancante -> BLOCKED;
-7. binding extra -> BLOCKED;
-8. binding duplicato -> BLOCKED;
-9. tempo invalido -> BLOCKED;
-10. overlap stesso giorno -> BLOCKED;
-11. input immutati;
-12. nessuna dipendenza Supabase/Server Action/RPC;
-13. regressioni G1.6-A→G PASS.
+2. receipt contract version mismatch -> BLOCKED;
+3. preview contract version mismatch -> BLOCKED;
+4. REJECT -> BLOCKED;
+5. candidate/fingerprint mismatch -> BLOCKED;
+6. candidato non pronto -> BLOCKED;
+7. slot non risolto -> BLOCKED;
+8. binding mancante -> BLOCKED;
+9. binding extra -> BLOCKED;
+10. binding duplicato -> BLOCKED;
+11. tempo invalido -> BLOCKED;
+12. overlap stesso giorno -> BLOCKED;
+13. input immutati;
+14. nessuna dipendenza Supabase/Server Action/RPC;
+15. regressioni G1.6-A→G PASS.
 
 ## Fuori scope
 - persistenza receipt/readiness;
