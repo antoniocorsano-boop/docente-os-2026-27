@@ -157,7 +157,7 @@ select pg_temp.assert_true(
   '07 authenticated fixture exposes auth.uid'
 );
 
-do $
+do $block$
 declare
   before_revision bigint;
   after_revision bigint;
@@ -280,7 +280,7 @@ begin
     '17 idempotent retry does not mutate DRAFT again'
   );
 end
-$$;
+$block$;
 
 reset role;
 rollback;
