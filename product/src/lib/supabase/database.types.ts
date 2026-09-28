@@ -106,15 +106,33 @@ export type Database = {
         Relationships: []
       }
       timetable_versions: {
-        Row: { id: string; workspace_id: string; academic_year_id: string; label: string; status: string; effective_from: string; effective_to: string | null; source_kind: string; source_ref: string | null; created_by: string; created_at: string; updated_at: string }
-        Insert: { id?: string; workspace_id: string; academic_year_id: string; label: string; status?: string; effective_from: string; effective_to?: string | null; source_kind?: string; source_ref?: string | null; created_by: string; created_at?: string; updated_at?: string }
-        Update: { label?: string; status?: string; effective_from?: string; effective_to?: string | null; source_kind?: string; source_ref?: string | null; updated_at?: string }
+        Row: { id: string; workspace_id: string; academic_year_id: string; label: string; status: string; effective_from: string; effective_to: string | null; source_kind: string; source_ref: string | null; revision: number; created_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; workspace_id: string; academic_year_id: string; label: string; status?: string; effective_from: string; effective_to?: string | null; source_kind?: string; source_ref?: string | null; revision?: number; created_by: string; created_at?: string; updated_at?: string }
+        Update: { label?: string; status?: string; effective_from?: string; effective_to?: string | null; source_kind?: string; source_ref?: string | null; revision?: number; updated_at?: string }
         Relationships: []
       }
       timetable_slots: {
         Row: { id: string; timetable_version_id: string; weekday: number; start_time: string; end_time: string; slot_kind: string; section_id: string | null; discipline_id: string | null; teaching_assignment_id: string | null; manual_class_label: string | null; presence_kind: string | null; room: string | null; note: string | null; ordinal: number | null; created_by: string; created_at: string; updated_at: string }
         Insert: { id?: string; timetable_version_id: string; weekday: number; start_time: string; end_time: string; slot_kind?: string; section_id?: string | null; discipline_id?: string | null; teaching_assignment_id?: string | null; manual_class_label?: string | null; presence_kind?: string | null; room?: string | null; note?: string | null; ordinal?: number | null; created_by: string; created_at?: string; updated_at?: string }
         Update: { weekday?: number; start_time?: string; end_time?: string; slot_kind?: string; section_id?: string | null; discipline_id?: string | null; teaching_assignment_id?: string | null; manual_class_label?: string | null; presence_kind?: string | null; room?: string | null; note?: string | null; ordinal?: number | null; updated_at?: string }
+        Relationships: []
+      }
+      timetable_import_candidates: {
+        Row: { id: string; workspace_id: string; academic_year_id: string; source_fingerprint: string; source_kind: string; source_label: string; source_ref: string | null; effective_from_candidate: string | null; source_is_provisional: boolean; source_scope: string; state: string; revision: number; parser_version: string; created_by: string; created_at: string; updated_at: string; expires_at: string }
+        Insert: { id?: string; workspace_id: string; academic_year_id: string; source_fingerprint: string; source_kind?: string; source_label: string; source_ref?: string | null; effective_from_candidate?: string | null; source_is_provisional?: boolean; source_scope?: string; state?: string; revision?: number; parser_version: string; created_by: string; created_at?: string; updated_at?: string; expires_at?: string }
+        Update: { source_label?: string; source_ref?: string | null; effective_from_candidate?: string | null; source_is_provisional?: boolean; source_scope?: string; state?: string; revision?: number; parser_version?: string; updated_at?: string; expires_at?: string }
+        Relationships: []
+      }
+      timetable_import_candidate_rows: {
+        Row: { id: string; candidate_id: string; candidate_revision: number; row_key: string; weekday: number | null; ordinal: number | null; start_time: string | null; end_time: string | null; source_class_label: string | null; resolved_section_id: string | null; resolved_assignment_id: string | null; proposed_slot_kind: string | null; proposed_manual_class_label: string | null; proposed_presence_kind: string | null; confidence: string; review_state: string; evidence_ref: string | null; warnings: Json; created_at: string; updated_at: string }
+        Insert: { id?: string; candidate_id: string; candidate_revision: number; row_key: string; weekday?: number | null; ordinal?: number | null; start_time?: string | null; end_time?: string | null; source_class_label?: string | null; resolved_section_id?: string | null; resolved_assignment_id?: string | null; proposed_slot_kind?: string | null; proposed_manual_class_label?: string | null; proposed_presence_kind?: string | null; confidence: string; review_state: string; evidence_ref?: string | null; warnings?: Json; created_at?: string; updated_at?: string }
+        Update: { candidate_revision?: number; weekday?: number | null; ordinal?: number | null; start_time?: string | null; end_time?: string | null; source_class_label?: string | null; resolved_section_id?: string | null; resolved_assignment_id?: string | null; proposed_slot_kind?: string | null; proposed_manual_class_label?: string | null; proposed_presence_kind?: string | null; confidence?: string; review_state?: string; evidence_ref?: string | null; warnings?: Json; updated_at?: string }
+        Relationships: []
+      }
+      timetable_import_apply_receipts: {
+        Row: { id: string; workspace_id: string; candidate_id: string; candidate_revision: number; confirmation_request_id: string; draft_version_id: string; expected_draft_revision: number; resulting_draft_revision: number; operations_digest: string; applied_at: string; applied_by: string }
+        Insert: { id?: string; workspace_id: string; candidate_id: string; candidate_revision: number; confirmation_request_id: string; draft_version_id: string; expected_draft_revision: number; resulting_draft_revision: number; operations_digest: string; applied_at: string; applied_by: string }
+        Update: { never?: never }
         Relationships: []
       }
       workspace_memberships: {
@@ -133,6 +151,17 @@ export type Database = {
     Views: Record<string, never>
     Functions: {
       bootstrap_personal_workspace: { Args: { workspace_name?: string }; Returns: string }
+      read_timetable_draft_revision_token: { Args: { p_version_id: string }; Returns: string }
+      apply_confirmed_timetable_import_v1: {
+        Args: {
+          p_candidate_id: string
+          p_candidate_revision: string
+          p_expected_draft_version_id: string
+          p_expected_draft_token: string
+          p_confirmation_request_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
