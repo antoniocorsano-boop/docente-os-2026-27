@@ -85,6 +85,25 @@ test('G1.6-B does not infer a discipline from a known class when evidence is ins
   assert.equal(result.reasonCode, 'INSUFFICIENT_EVIDENCE')
 })
 
+test('G1.6-B returns CONTRADICTORY_EVIDENCE for duplicated governed signals instead of treating them as insufficient', () => {
+  const contradictory: TeacherAssignmentCandidate = {
+    ...candidate('a1', 'teacher-1'),
+    teacherEvidence: {
+      occurrenceId: 'candidate-a1',
+      signals: [
+        { kind: 'teacher-key', value: 'teacher-1' },
+        { kind: 'teacher-key', value: 'teacher-2' },
+      ],
+    },
+  }
+  const result = resolveTeacherAssignment(input({ assignmentCandidates: [contradictory] }))
+  assert.equal(result.state, 'REVIEW_REQUIRED')
+  assert.equal(result.reasonCode, 'CONTRADICTORY_EVIDENCE')
+  assert.equal(result.evidenceSummary.contradictoryCandidates, 1)
+  assert.equal(result.evidenceSummary.unknownCandidates, 1)
+  assert.equal('resolvedAssignmentId' in result, false)
+})
+
 test('G1.6-B returns NO_COMPATIBLE_ASSIGNMENT for an empty candidate set', () => {
   assert.equal(resolveTeacherAssignment(input({ assignmentCandidates: [] })).reasonCode, 'NO_COMPATIBLE_ASSIGNMENT')
 })
