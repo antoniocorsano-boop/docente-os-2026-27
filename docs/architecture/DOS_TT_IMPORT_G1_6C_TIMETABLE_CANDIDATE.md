@@ -46,12 +46,15 @@ Lo stesso contenuto rinominato produce lo stesso candidato. Lo stesso documento 
 
 G1.6-C non decide da solo se un candidato già persistito sia un duplicato: espone un'identità stabile che la futura boundary di persistenza potrà usare per un claim idempotente.
 
+Un input strutturalmente invalido non è canonicalizzabile e quindi non riceve un'identità persistibile: in tale percorso `candidateId = null`. Solo gli input che superano il preflight strutturale possono ottenere un `candidateId` deterministico.
+
 ## Stato
 - `PREVIEW_READY`: struttura valida e tutti gli slot risolti deterministicamente.
 - `REVIEW_REQUIRED`: almeno un errore/ambiguità/conflitto; nessuna applicazione silenziosa.
 
 Reason code minimi:
 - `READY`
+- `INVALID_SOURCE_PROVENANCE`
 - `INVALID_SOURCE_FINGERPRINT`
 - `INVALID_EFFECTIVE_FROM`
 - `INVALID_SLOT`
