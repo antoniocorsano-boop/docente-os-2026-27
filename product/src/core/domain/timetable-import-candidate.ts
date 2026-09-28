@@ -25,6 +25,7 @@ export type ExtractedTimetableSlot = Readonly<{
 
 export type TimetableImportCandidateReason =
   | 'READY'
+  | 'INVALID_SOURCE_PROVENANCE'
   | 'INVALID_SOURCE_FINGERPRINT'
   | 'INVALID_EFFECTIVE_FROM'
   | 'INVALID_SLOT'
@@ -34,7 +35,7 @@ export type TimetableImportCandidateReason =
 
 export type TimetableImportCandidate = Readonly<{
   contractVersion: typeof TIMETABLE_IMPORT_CANDIDATE_VERSION
-  candidateId: string
+  candidateId: string | null
   state: 'PREVIEW_READY' | 'REVIEW_REQUIRED'
   reasonCode: TimetableImportCandidateReason
   provenance: TimetableSourceProvenance
@@ -59,8 +60,11 @@ export function buildTimetableImportCandidate(
   provenance: TimetableSourceProvenance,
   extractedSlots: readonly ExtractedTimetableSlot[],
 ): TimetableImportCandidate {
+  if (!validRawProvenance(provenance)) {
+    return invalidInputReview('INVALID_SOURCE_PROVENANCE')
+  }
   if (!Array.isArray(extractedSlots) || extractedSlots.some((slot) => !validRawSlot(slot))) {
-    return invalidSlotReview(provenance)
+    return invalidInputReview('INVALID_SLOT', provenance)
   }
 
   const canonicalSlots = canonicalizeSlots(extractedSlots)
@@ -173,13 +177,38 @@ function validSlot(slot: ExtractedTimetableSlot): boolean {
   )
 }
 
-function invalidSlotReview(provenance: TimetableSourceProvenance): TimetableImportCandidate {
+function validRawProvenance(provenance: unknown): provenance is TimetableSourceProvenance {
+  if (typeof provenance !== 'object' || provenance === null) return false
+  const value = provenance as Record<string, unknown>
+  const fingerprint = value.sourceFingerprint
+  if (typeof fingerprint !== 'object' || fingerprint === null) return false
+  const sourceFingerprint = fingerprint as Record<string, unknown>
+  return (
+    sourceFingerprint.algorithm === 'SHA-256' &&
+    typeof sourceFingerprint.digest === 'string' &&
+    (value.sourceKind === 'OFFICIAL_DOCUMENT' || value.sourceKind === 'TEACHER_UPLOAD') &&
+    typeof value.sourceLabel === 'string' &&
+    value.sourceLabel.trim().length > 0 &&
+    typeof value.effectiveFrom === 'string' &&
+    (value.capturedAt === undefined || typeof value.capturedAt === 'string')
+  )
+}
+
+function invalidInputReview(
+  reasonCode: 'INVALID_SOURCE_PROVENANCE' | 'INVALID_SLOT',
+  provenance?: TimetableSourceProvenance,
+): TimetableImportCandidate {
   return {
     contractVersion: TIMETABLE_IMPORT_CANDIDATE_VERSION,
-    candidateId: 'INVALID_SLOT',
+    candidateId: null,
     state: 'REVIEW_REQUIRED',
-    reasonCode: 'INVALID_SLOT',
-    provenance: cloneProvenance(provenance),
+    reasonCode,
+    provenance: provenance ? cloneProvenance(provenance) : {
+      sourceFingerprint: { algorithm: 'SHA-256', digest: '' },
+      sourceKind: 'TEACHER_UPLOAD',
+      sourceLabel: '',
+      effectiveFrom: '',
+    },
     slots: [],
   }
 }
