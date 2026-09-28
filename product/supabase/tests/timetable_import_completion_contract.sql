@@ -147,7 +147,7 @@ select pg_temp.assert_true(
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000a625',true);
 select set_config(
   'request.jwt.claims',
-  '{"sub":"00000000-0000-0000-0000-00000000a625","role":"authenticated"}',
+  '{"sub":"00000000-0000-0000-0000-00000000a625","role":"authenticated","aal":"aal2"}',
   true
 );
 
