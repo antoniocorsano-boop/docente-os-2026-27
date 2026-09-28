@@ -69,7 +69,8 @@ create or replace function public.apply_confirmed_timetable_import_v1(
   p_candidate_revision text,
   p_expected_draft_version_id uuid,
   p_expected_draft_token text,
-  p_confirmation_request_id uuid
+  p_confirmation_request_id uuid,
+  p_teacher_complete_confirmed boolean
 ) returns jsonb
 language plpgsql
 security definer
@@ -194,8 +195,8 @@ begin
   if candidate_state<>'READY_TO_CONFIRM' then
     raise exception 'candidate not ready';
   end if;
-  if candidate_scope<>'TEACHER_COMPLETE' then
-    raise exception 'candidate source is not teacher-complete';
+  if coalesce(p_teacher_complete_confirmed,false) is not true then
+    raise exception 'teacher completeness confirmation required';
   end if;
   if candidate_exp<=now() then
     raise exception 'candidate expired';
@@ -319,7 +320,7 @@ begin
   returning * into receipt;
 
   update public.timetable_import_candidates
-  set state='APPLIED_TO_DRAFT'
+  set state='APPLIED_TO_DRAFT', source_scope='TEACHER_COMPLETE'
   where id=p_candidate_id;
 
   delete from private.timetable_import_apply_context
@@ -330,13 +331,13 @@ begin
 end
 $$;
 
-revoke all on function public.apply_confirmed_timetable_import_v1(uuid,text,uuid,text,uuid)
+revoke all on function public.apply_confirmed_timetable_import_v1(uuid,text,uuid,text,uuid,boolean)
   from public, anon;
-grant execute on function public.apply_confirmed_timetable_import_v1(uuid,text,uuid,text,uuid)
+grant execute on function public.apply_confirmed_timetable_import_v1(uuid,text,uuid,text,uuid,boolean)
   to authenticated;
 
-comment on function public.apply_confirmed_timetable_import_v1(uuid,text,uuid,text,uuid) is
-  'DOS-TT-IMPORT-01 completion boundary. Atomically replaces only DRAFT LESSON slots from a human-confirmed TEACHER_COMPLETE candidate. Never activates the timetable or replans lessons.';
+comment on function public.apply_confirmed_timetable_import_v1(uuid,text,uuid,text,uuid,boolean) is
+  'DOS-TT-IMPORT-01 completion boundary. Atomically replaces only DRAFT LESSON slots after explicit human confirmation that the reviewed proposal is teacher-complete. Never activates the timetable or replans lessons.';
 
 select private.advance_runtime_schema_contract('0078_timetable_import_completion_boundary');
 
