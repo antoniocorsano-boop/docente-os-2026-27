@@ -180,6 +180,7 @@ declare
   first_receipt jsonb;
   retry_receipt jsonb;
   completeness_blocked boolean := false;
+  completeness_error text;
 begin
   select revision into before_revision
   from public.timetable_versions
@@ -205,7 +206,8 @@ begin
       false
     );
   exception when others then
-    completeness_blocked := position('teacher completeness confirmation required' in sqlerrm) > 0;
+    completeness_error := sqlerrm;
+    completeness_blocked := position('teacher completeness confirmation required' in completeness_error) > 0;
   end;
 
   perform pg_temp.assert_true(
@@ -213,7 +215,8 @@ begin
     and
     (select revision from public.timetable_versions
       where id='10000000-0000-0000-0000-00000000d625')=before_revision,
-    '10 missing teacher-complete confirmation fails without writes'
+    '10 missing teacher-complete confirmation fails without writes; actual='
+      || coalesce(completeness_error,'<no error>')
   );
 
   first_receipt := public.apply_confirmed_timetable_import_v1(
