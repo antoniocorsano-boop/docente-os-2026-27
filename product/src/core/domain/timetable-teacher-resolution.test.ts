@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import assert from 'node:assert/strict'
+import test from 'node:test'
 import type { TeacherEvidenceOccurrence, TeacherEvidenceProfile } from './timetable-teacher-evidence'
 import {
   resolveTeacherAssignment,
@@ -44,88 +45,83 @@ const input = (overrides: Partial<TeacherResolutionInput> = {}): TeacherResoluti
   ...overrides,
 })
 
-describe('G1.6-B teacher resolution boundary', () => {
-  it('resolves exactly one evidence-compatible assignment', () => {
-    expect(resolveTeacherAssignment(input())).toMatchObject({
-      state: 'RESOLVED',
-      resolvedAssignmentId: 'a1',
-      compatibleAssignmentIds: ['a1'],
-      reasonCode: 'UNIQUE_EVIDENCE_MATCH',
-    })
-  })
+test('G1.6-B resolves exactly one evidence-compatible assignment', () => {
+  const result = resolveTeacherAssignment(input())
+  assert.equal(result.state, 'RESOLVED')
+  assert.equal(result.resolvedAssignmentId, 'a1')
+  assert.deepEqual(result.compatibleAssignmentIds, ['a1'])
+  assert.equal(result.reasonCode, 'UNIQUE_EVIDENCE_MATCH')
+})
 
-  it('normalizes canonically equivalent Unicode labels without using the label as identity evidence', () => {
-    const composed = resolveTeacherAssignment(input({ sourceTeacherLabel: 'Róssi' }))
-    const decomposed = resolveTeacherAssignment(input({ sourceTeacherLabel: 'Ro\u0301ssi' }))
-    expect(composed.normalizedTeacherLabel).toBe(decomposed.normalizedTeacherLabel)
-    expect(composed.resolvedAssignmentId).toBe('a1')
-  })
+test('G1.6-B normalizes canonically equivalent Unicode labels without using the label as identity evidence', () => {
+  const composed = resolveTeacherAssignment(input({ sourceTeacherLabel: 'Róssi' }))
+  const decomposed = resolveTeacherAssignment(input({ sourceTeacherLabel: 'Ro\u0301ssi' }))
+  assert.equal(composed.normalizedTeacherLabel, decomposed.normalizedTeacherLabel)
+  assert.equal(composed.resolvedAssignmentId, 'a1')
+})
 
-  it('requires review when two assignments have the same positive evidence', () => {
-    const result = resolveTeacherAssignment(input({
-      assignmentCandidates: [candidate('a2', 'teacher-1'), candidate('a1', 'teacher-1')],
-    }))
-    expect(result).toMatchObject({
-      state: 'REVIEW_REQUIRED',
-      reasonCode: 'AMBIGUOUS_ASSIGNMENT',
-      compatibleAssignmentIds: ['a1', 'a2'],
-    })
-    expect(result).not.toHaveProperty('resolvedAssignmentId')
-  })
+test('G1.6-B requires review when two assignments have the same positive evidence', () => {
+  const result = resolveTeacherAssignment(input({
+    assignmentCandidates: [candidate('a2', 'teacher-1'), candidate('a1', 'teacher-1')],
+  }))
+  assert.equal(result.state, 'REVIEW_REQUIRED')
+  assert.equal(result.reasonCode, 'AMBIGUOUS_ASSIGNMENT')
+  assert.deepEqual(result.compatibleAssignmentIds, ['a1', 'a2'])
+  assert.equal('resolvedAssignmentId' in result, false)
+})
 
-  it('does not resolve a surname match when class context is incompatible', () => {
-    const result = resolveTeacherAssignment(input({ assignmentCandidates: [candidate('a1', 'teacher-1', '3C')] }))
-    expect(result.reasonCode).toBe('NO_COMPATIBLE_ASSIGNMENT')
-    expect(result.state).toBe('REVIEW_REQUIRED')
-  })
+test('G1.6-B does not resolve a surname match when class context is incompatible', () => {
+  const result = resolveTeacherAssignment(input({ assignmentCandidates: [candidate('a1', 'teacher-1', '3C')] }))
+  assert.equal(result.reasonCode, 'NO_COMPATIBLE_ASSIGNMENT')
+  assert.equal(result.state, 'REVIEW_REQUIRED')
+})
 
-  it('does not infer a discipline from a known class when evidence is insufficient', () => {
-    const result = resolveTeacherAssignment(input({
-      evidence: { occurrenceId: 'source', signals: [] },
-      assignmentCandidates: [candidate('technology', 't1'), candidate('math', 't2')],
-    }))
-    expect(result.state).toBe('REVIEW_REQUIRED')
-    expect(result.reasonCode).toBe('INSUFFICIENT_EVIDENCE')
-  })
+test('G1.6-B does not infer a discipline from a known class when evidence is insufficient', () => {
+  const result = resolveTeacherAssignment(input({
+    evidence: { occurrenceId: 'source', signals: [] },
+    assignmentCandidates: [candidate('technology', 't1'), candidate('math', 't2')],
+  }))
+  assert.equal(result.state, 'REVIEW_REQUIRED')
+  assert.equal(result.reasonCode, 'INSUFFICIENT_EVIDENCE')
+})
 
-  it('returns NO_COMPATIBLE_ASSIGNMENT for an empty candidate set', () => {
-    expect(resolveTeacherAssignment(input({ assignmentCandidates: [] })).reasonCode).toBe('NO_COMPATIBLE_ASSIGNMENT')
-  })
+test('G1.6-B returns NO_COMPATIBLE_ASSIGNMENT for an empty candidate set', () => {
+  assert.equal(resolveTeacherAssignment(input({ assignmentCandidates: [] })).reasonCode, 'NO_COMPATIBLE_ASSIGNMENT')
+})
 
-  it('fails closed on an invalid evidence profile', () => {
-    const invalid = { ...profile, sameRules: [], distinctRules: [] }
-    const result = resolveTeacherAssignment(input({ evidenceProfile: invalid }))
-    expect(result.state).toBe('REVIEW_REQUIRED')
-    expect(result.reasonCode).toBe('INVALID_EVIDENCE_PROFILE')
-  })
+test('G1.6-B fails closed on an invalid evidence profile', () => {
+  const invalid = { ...profile, sameRules: [], distinctRules: [] }
+  const result = resolveTeacherAssignment(input({ evidenceProfile: invalid }))
+  assert.equal(result.state, 'REVIEW_REQUIRED')
+  assert.equal(result.reasonCode, 'INVALID_EVIDENCE_PROFILE')
+})
 
-  it('does not promote UNKNOWN alongside a positive match to RESOLVED', () => {
-    const unknown: TeacherAssignmentCandidate = {
-      ...candidate('a2', 'teacher-2'),
-      teacherEvidence: { occurrenceId: 'candidate-a2', signals: [] },
-    }
-    const result = resolveTeacherAssignment(input({ assignmentCandidates: [candidate('a1', 'teacher-1'), unknown] }))
-    expect(result.state).toBe('REVIEW_REQUIRED')
-    expect(result.reasonCode).toBe('AMBIGUOUS_ASSIGNMENT')
-  })
+test('G1.6-B does not promote UNKNOWN alongside a positive match to RESOLVED', () => {
+  const unknown: TeacherAssignmentCandidate = {
+    ...candidate('a2', 'teacher-2'),
+    teacherEvidence: { occurrenceId: 'candidate-a2', signals: [] },
+  }
+  const result = resolveTeacherAssignment(input({ assignmentCandidates: [candidate('a1', 'teacher-1'), unknown] }))
+  assert.equal(result.state, 'REVIEW_REQUIRED')
+  assert.equal(result.reasonCode, 'AMBIGUOUS_ASSIGNMENT')
+})
 
-  it('fails closed for invalid Unicode scalar input', () => {
-    const result = resolveTeacherAssignment(input({ sourceTeacherLabel: '\ud800' }))
-    expect(result.state).toBe('REVIEW_REQUIRED')
-    expect(result.reasonCode).toBe('INVALID_UNICODE_INPUT')
-  })
+test('G1.6-B fails closed for invalid Unicode scalar input', () => {
+  const result = resolveTeacherAssignment(input({ sourceTeacherLabel: '\ud800' }))
+  assert.equal(result.state, 'REVIEW_REQUIRED')
+  assert.equal(result.reasonCode, 'INVALID_UNICODE_INPUT')
+})
 
-  it('is independent from candidate input order', () => {
-    const candidates = [candidate('a2', 'teacher-1'), candidate('a1', 'teacher-1')]
-    const forward = resolveTeacherAssignment(input({ assignmentCandidates: candidates }))
-    const reverse = resolveTeacherAssignment(input({ assignmentCandidates: [...candidates].reverse() }))
-    expect(JSON.stringify(forward)).toBe(JSON.stringify(reverse))
-  })
+test('G1.6-B is independent from candidate input order', () => {
+  const candidates = [candidate('a2', 'teacher-1'), candidate('a1', 'teacher-1')]
+  const forward = resolveTeacherAssignment(input({ assignmentCandidates: candidates }))
+  const reverse = resolveTeacherAssignment(input({ assignmentCandidates: [...candidates].reverse() }))
+  assert.equal(JSON.stringify(forward), JSON.stringify(reverse))
+})
 
-  it('is a pure boundary: its input remains byte-equivalent after resolution', () => {
-    const value = input()
-    const before = JSON.stringify(value)
-    resolveTeacherAssignment(value)
-    expect(JSON.stringify(value)).toBe(before)
-  })
+test('G1.6-B is a pure boundary: its input remains byte-equivalent after resolution', () => {
+  const value = input()
+  const before = JSON.stringify(value)
+  resolveTeacherAssignment(value)
+  assert.equal(JSON.stringify(value), before)
 })
