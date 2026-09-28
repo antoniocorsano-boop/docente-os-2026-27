@@ -1,6 +1,6 @@
 import {
+  diagnoseTeacherEvidence,
   normalizeTeacherLabel,
-  sameTeacherEvidence,
   validateTeacherEvidenceProfile,
   type TeacherEvidenceOccurrence,
   type TeacherEvidenceProfile,
@@ -45,23 +45,21 @@ export type TeacherResolutionResult = Readonly<{
     sameCandidates: number
     unknownCandidates: number
     distinctCandidates: number
+    contradictoryCandidates: number
   }>
 }>
 
-/**
- * Pure G1.6-B boundary. It never writes state and never chooses among ambiguous candidates.
- * Candidate order cannot affect the returned result.
- */
+/** Pure G1.6-B boundary: deterministic, fail-closed and side-effect free. */
 export function resolveTeacherAssignment(input: TeacherResolutionInput): TeacherResolutionResult {
   let normalizedTeacherLabel: string
   try {
     normalizedTeacherLabel = normalizeTeacherLabel(input.sourceTeacherLabel)
   } catch {
-    return review('', 'INVALID_UNICODE_INPUT', [], 0, 0, 0, 0)
+    return review('', 'INVALID_UNICODE_INPUT', [], 0, 0, 0, 0, 0)
   }
 
   if (!validateTeacherEvidenceProfile(input.evidenceProfile) || !input.evidenceProfile) {
-    return review(normalizedTeacherLabel, 'INVALID_EVIDENCE_PROFILE', [], 0, 0, 0, 0)
+    return review(normalizedTeacherLabel, 'INVALID_EVIDENCE_PROFILE', [], 0, 0, 0, 0, 0)
   }
 
   const candidates = input.assignmentCandidates
@@ -74,17 +72,19 @@ export function resolveTeacherAssignment(input: TeacherResolutionInput): Teacher
     .sort((a, b) => a.assignmentId.localeCompare(b.assignmentId))
 
   if (candidates.length === 0) {
-    return review(normalizedTeacherLabel, 'NO_COMPATIBLE_ASSIGNMENT', [], 0, 0, 0, 0)
+    return review(normalizedTeacherLabel, 'NO_COMPATIBLE_ASSIGNMENT', [], 0, 0, 0, 0, 0)
   }
 
   const same: string[] = []
-  let unknown = 0
+  let insufficient = 0
+  let contradictory = 0
   let distinct = 0
 
   for (const candidate of candidates) {
-    const result = sameTeacherEvidence(input.evidence, candidate.teacherEvidence, input.evidenceProfile)
-    if (result === 'SAME') same.push(candidate.assignmentId)
-    else if (result === 'UNKNOWN') unknown += 1
+    const diagnostic = diagnoseTeacherEvidence(input.evidence, candidate.teacherEvidence, input.evidenceProfile)
+    if (diagnostic === 'SAME') same.push(candidate.assignmentId)
+    else if (diagnostic === 'CONTRADICTORY') contradictory += 1
+    else if (diagnostic === 'INSUFFICIENT') insufficient += 1
     else distinct += 1
   }
 
@@ -92,12 +92,18 @@ export function resolveTeacherAssignment(input: TeacherResolutionInput): Teacher
   const summary = {
     evaluatedCandidates: candidates.length,
     sameCandidates: same.length,
-    unknownCandidates: unknown,
+    unknownCandidates: insufficient + contradictory,
     distinctCandidates: distinct,
+    contradictoryCandidates: contradictory,
+  }
+
+  // Contradiction has precedence: it must never be hidden by another positive candidate.
+  if (contradictory > 0) {
+    return reviewWithSummary(normalizedTeacherLabel, 'CONTRADICTORY_EVIDENCE', compatibleAssignmentIds, summary)
   }
 
   // Any unresolved evidence alongside a positive match prevents silent auto-resolution.
-  if (same.length === 1 && unknown === 0) {
+  if (same.length === 1 && insufficient === 0) {
     return {
       state: 'RESOLVED',
       normalizedTeacherLabel,
@@ -108,15 +114,11 @@ export function resolveTeacherAssignment(input: TeacherResolutionInput): Teacher
     }
   }
 
-  if (same.length > 1) {
+  if (same.length > 1 || (same.length === 1 && insufficient > 0)) {
     return reviewWithSummary(normalizedTeacherLabel, 'AMBIGUOUS_ASSIGNMENT', compatibleAssignmentIds, summary)
   }
 
-  if (same.length === 1 && unknown > 0) {
-    return reviewWithSummary(normalizedTeacherLabel, 'AMBIGUOUS_ASSIGNMENT', compatibleAssignmentIds, summary)
-  }
-
-  if (unknown > 0) {
+  if (insufficient > 0) {
     return reviewWithSummary(normalizedTeacherLabel, 'INSUFFICIENT_EVIDENCE', compatibleAssignmentIds, summary)
   }
 
@@ -141,12 +143,14 @@ function review(
   sameCandidates: number,
   unknownCandidates: number,
   distinctCandidates: number,
+  contradictoryCandidates: number,
 ): TeacherResolutionResult {
   return reviewWithSummary(normalizedTeacherLabel, reasonCode, compatibleAssignmentIds, {
     evaluatedCandidates,
     sameCandidates,
     unknownCandidates,
     distinctCandidates,
+    contradictoryCandidates,
   })
 }
 
