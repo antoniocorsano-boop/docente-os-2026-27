@@ -12,6 +12,7 @@ Materializzare la decisione G1.6-F: la RPC legacy G1.2 resta presente per compat
 La migrazione `0077_quarantine_legacy_timetable_import_apply.sql`:
 - registra la propria lineage runtime;
 - revoca `EXECUTE` su `public.apply_timetable_import_to_draft(uuid,bigint,uuid,bigint,uuid,jsonb)` da `PUBLIC`, `anon` e `authenticated`;
+- ristabilisce least privilege sulla receipt legacy: `authenticated` conserva solo `SELECT`, mentre i privilegi di scrittura eventualmente ereditati dalle default privileges Supabase vengono revocati;
 - non elimina né modifica il corpo della RPC;
 - non modifica tabelle candidate, righe o receipt;
 - non modifica timetable DRAFT/ACTIVE;
@@ -37,7 +38,8 @@ Le migrazioni già applicate non vengono riscritte. Un eventuale futuro re-enabl
 2. `authenticated` senza EXECUTE sulla RPC;
 3. RPC ancora presente;
 4. anon/PUBLIC senza capability;
-5. DB contract PASS;
-6. regressioni Product/G1.6-A→E PASS;
-7. review indipendente;
-8. HUMAN REVIEW prima del merge.
+5. receipt legacy client-read/server-write: nessun INSERT/UPDATE/DELETE a `authenticated`;
+6. DB contract PASS;
+7. regressioni Product/G1.6-A→E PASS;
+8. review indipendente;
+9. HUMAN REVIEW prima del merge.
