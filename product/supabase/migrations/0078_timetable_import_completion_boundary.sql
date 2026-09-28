@@ -82,11 +82,11 @@ declare
   candidate_state text;
   candidate_scope text;
   candidate_exp timestamptz;
-  candidate_revision bigint;
+  candidate_revision_value bigint;
   candidate_effective_from date;
   candidate_source_ref text;
   candidate_source_label text;
-  actual_candidate_revision bigint;
+  actual_candidate_revision_value bigint;
   draft_revision bigint;
   draft_status text;
   expected_token text;
@@ -101,7 +101,7 @@ begin
   if p_candidate_revision is null or p_candidate_revision !~ '^(0|[1-9][0-9]*)$' then
     raise exception 'candidate revision invalid';
   end if;
-  candidate_revision := p_candidate_revision::bigint;
+  candidate_revision_value := p_candidate_revision::bigint;
 
   select workspace_id,academic_year_id,state,source_scope,expires_at,revision,
          effective_from_candidate,source_ref,source_label
@@ -114,22 +114,9 @@ begin
   if ws is null or not private.is_workspace_member(ws) then
     raise exception 'candidate not accessible';
   end if;
-  if actual_candidate_revision<>candidate_revision then
+  if actual_candidate_revision<>candidate_revision_value then
     raise exception 'candidate revision mismatch';
   end if;
-  if candidate_state<>'READY_TO_CONFIRM' then
-    raise exception 'candidate not ready';
-  end if;
-  if candidate_scope<>'TEACHER_COMPLETE' then
-    raise exception 'candidate source is not teacher-complete';
-  end if;
-  if candidate_exp<=now() then
-    raise exception 'candidate expired';
-  end if;
-  if candidate_effective_from is null then
-    raise exception 'candidate effective date required';
-  end if;
-
   select count(*),
          count(*) filter (
            where review_state not in ('AUTO_RESOLVED','CONFIRMED')
@@ -143,7 +130,7 @@ begin
     into row_count,invalid_count
   from public.timetable_import_candidate_rows
   where candidate_id=p_candidate_id
-    and candidate_revision=candidate_revision;
+    and candidate_revision=candidate_revision_value;
 
   if row_count=0 then
     raise exception 'candidate has no rows';
@@ -170,7 +157,7 @@ begin
           )::text
           from public.timetable_import_candidate_rows
           where candidate_id=p_candidate_id
-            and candidate_revision=candidate_revision
+            and candidate_revision=candidate_revision_value
         ),'[]'),
         'UTF8'
       ),
@@ -195,13 +182,26 @@ begin
       receipt.expected_draft_revision
     );
     if receipt.candidate_id<>p_candidate_id
-      or receipt.candidate_revision<>candidate_revision
+      or receipt.candidate_revision<>candidate_revision_value
       or receipt.draft_version_id<>p_expected_draft_version_id
       or receipt.operations_digest<>digest_text
       or expected_token<>p_expected_draft_token then
       raise exception 'IDEMPOTENCY_KEY_REUSED';
     end if;
     return to_jsonb(receipt);
+  end if;
+
+  if candidate_state<>'READY_TO_CONFIRM' then
+    raise exception 'candidate not ready';
+  end if;
+  if candidate_scope<>'TEACHER_COMPLETE' then
+    raise exception 'candidate source is not teacher-complete';
+  end if;
+  if candidate_exp<=now() then
+    raise exception 'candidate expired';
+  end if;
+  if candidate_effective_from is null then
+    raise exception 'candidate effective date required';
   end if;
 
   select revision,status
@@ -268,7 +268,7 @@ begin
    and a.workspace_id=ws
    and a.academic_year_id=yr
   where r.candidate_id=p_candidate_id
-    and r.candidate_revision=candidate_revision
+    and r.candidate_revision=candidate_revision_value
   order by r.weekday,r.ordinal,r.row_key;
 
   if (select count(*) from public.timetable_slots
@@ -307,7 +307,7 @@ begin
   ) values(
     ws,
     p_candidate_id,
-    candidate_revision,
+    candidate_revision_value,
     p_confirmation_request_id,
     p_expected_draft_version_id,
     draft_revision-1,
