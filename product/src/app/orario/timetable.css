@@ -31,3 +31,15 @@
 @media(max-width:1100px){.timetableImportForm{grid-template-columns:1fr 1fr}.timetableImportForm button{justify-self:start}.timetableImportRow{grid-template-columns:1fr 1.5fr 1fr 1fr}.timetableImportRowIdentity{grid-column:1/-1}.timetableImportRow>button{grid-column:4}}
 @media(max-width:719px){.timetableImportForm{grid-template-columns:1fr}.timetableImportForm button{width:100%}.timetableImportSummary,.timetableImportConfirm{flex-direction:column;align-items:stretch}.timetableImportConfirm button{width:100%}.timetableImportRow{grid-template-columns:1fr 1fr}.timetableImportRowIdentity{grid-column:1/-1}.timetableImportRow label:first-of-type{grid-column:1/-1}.timetableImportRow>button{grid-column:1/-1;width:100%}}
 @media(max-width:460px){.timetableImportRow{grid-template-columns:1fr}.timetableImportRowIdentity,.timetableImportRow label:first-of-type,.timetableImportRow>button{grid-column:auto}}
+
+.timetableImportAdd{border:1px dashed var(--line-strong);border-radius:var(--radius-sm);padding:10px 12px;background:var(--surface)}
+.timetableImportAdd summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-size:11px;font-weight:750}
+.timetableImportAddForm{display:grid;grid-template-columns:minmax(210px,1.4fr) 130px 90px 120px 120px auto;gap:10px;align-items:end;padding-top:10px}
+.timetableImportAddForm label{display:grid;gap:6px}.timetableImportAddForm label>span{font-size:10px;font-weight:750;color:var(--ink-soft)}
+.timetableImportAddForm input,.timetableImportAddForm select{width:100%;min-height:44px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);padding:0 10px}
+.timetableImportAddForm button{min-height:44px;padding:0 12px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface);font-weight:750}
+.timetableImportCompleteCheck{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:8px;margin-top:8px;font-size:11px;color:var(--ink)}
+.timetableImportCompleteCheck input{width:20px!important;min-height:20px!important;margin:0;flex:0 0 20px}
+@media(max-width:1100px){.timetableImportAddForm{grid-template-columns:1fr 1fr 1fr}.timetableImportAddForm label:first-of-type{grid-column:1/-1}.timetableImportAddForm button{grid-column:3}}
+@media(max-width:719px){.timetableImportAddForm{grid-template-columns:1fr 1fr}.timetableImportAddForm label:first-of-type{grid-column:1/-1}.timetableImportAddForm button{grid-column:1/-1;width:100%}}
+@media(max-width:460px){.timetableImportAddForm{grid-template-columns:1fr}.timetableImportAddForm label:first-of-type,.timetableImportAddForm button{grid-column:auto}}
