@@ -51,6 +51,7 @@ test('G1.6-C builds PREVIEW_READY candidate without inventing an end date', () =
   const result = buildTimetableImportCandidate(provenance(), [slot()])
   assert.equal(result.state, 'PREVIEW_READY')
   assert.equal(result.reasonCode, 'READY')
+  assert.ok(result.provenance !== null)
   assert.equal(result.provenance.effectiveFrom, '2026-09-28')
   assert.equal('effectiveTo' in result.provenance, false)
 })
