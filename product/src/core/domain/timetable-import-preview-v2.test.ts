@@ -33,7 +33,7 @@ test('G1.6-D projects a PREVIEW_READY candidate without adding runtime semantics
   const result = projectTimetableImportPreview(readyCandidate())
 
   assert.equal(result.contractVersion, 'TTIP-1')
-  assert.equal(result.canProceed, true)
+  assert.equal(result.isPreviewComplete, true)
   assert.equal(result.candidateId, 'candidate-1')
   assert.equal(result.provenance?.effectiveFrom, '2026-09-28')
   assert.equal(result.rows.length, 1)
@@ -57,7 +57,7 @@ test('G1.6-D keeps an identifiable REVIEW_REQUIRED candidate blocked', () => {
 
   const result = projectTimetableImportPreview(candidate)
   assert.equal(result.candidateId, 'candidate-1')
-  assert.equal(result.canProceed, false)
+  assert.equal(result.isPreviewComplete, false)
   assert.equal(result.rows[0].requiresReview, true)
   assert.equal(result.rows[0].teacherResolutionReason, 'INSUFFICIENT_EVIDENCE')
 })
@@ -74,7 +74,7 @@ test('G1.6-D never enables continuation for a non-identifiable candidate', () =>
 
   const result = projectTimetableImportPreview(candidate)
   assert.equal(result.candidateId, null)
-  assert.equal(result.canProceed, false)
+  assert.equal(result.isPreviewComplete, false)
 })
 
 test('G1.6-D never fabricates missing provenance', () => {
@@ -89,7 +89,7 @@ test('G1.6-D never fabricates missing provenance', () => {
 
   const result = projectTimetableImportPreview(candidate)
   assert.equal(result.provenance, null)
-  assert.equal(result.canProceed, false)
+  assert.equal(result.isPreviewComplete, false)
 })
 
 test('G1.6-D preserves source teacher evidence separately from resolved assignment', () => {
@@ -126,4 +126,7 @@ test('G1.6-D projection exposes no T/D/DIS or persistence operations', () => {
   assert.equal(serialized.includes('DifferencePlan'), false)
   assert.equal(serialized.includes('AUTO_RESOLVED'), false)
   assert.equal(serialized.includes('canConfirmDraft'), false)
+  assert.equal(serialized.includes('canProceed'), false)
+  assert.equal(serialized.includes('canApply'), false)
+  assert.equal(serialized.includes('canCreateDraft'), false)
 })
