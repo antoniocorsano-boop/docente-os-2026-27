@@ -60,7 +60,7 @@ G1.6-D può riusare o estrarre primitive pure da:
 Non deve invocare le action mutative di `product/src/app/orario/actions.ts`.
 
 ## Decisione umana
-G1.6-D può rappresentare l'intenzione del docente di proseguire, ma **non materializza ancora una conferma persistita né un DRAFT**.
+G1.6-D rappresenta soltanto se la preview è completa (`isPreviewComplete`). **Non espone una capability di prosecuzione, conferma, persistenza o apply e non materializza un DRAFT**.
 
 Un futuro artefatto di conferma dovrà essere legato all'exact `candidateId` e invalidarsi se il candidato cambia. Questo boundary appartiene a una slice successiva e non viene anticipato qui.
 
