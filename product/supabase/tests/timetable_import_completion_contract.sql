@@ -139,13 +139,6 @@ update public.timetable_import_candidates
 set state='READY_TO_CONFIRM'
 where id='30000000-0000-0000-0000-00000000a625';
 
--- The READY transition advances the candidate revision. The reviewed rows
--- belong to the resulting revision that the apply boundary consumes.
-update public.timetable_import_candidate_rows
-set candidate_revision=2
-where candidate_id='30000000-0000-0000-0000-00000000a625'
-  and candidate_revision=1;
-
 select pg_temp.assert_true(
   (select revision from public.timetable_import_candidates where id='30000000-0000-0000-0000-00000000a625')=2,
   '06 ready transition advances candidate revision'
