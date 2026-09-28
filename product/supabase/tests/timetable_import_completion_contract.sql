@@ -27,12 +27,12 @@ select pg_temp.assert_true(
 );
 
 select pg_temp.assert_true(
-  to_regprocedure('public.apply_confirmed_timetable_import_v1(uuid,text,uuid,text,uuid)') is not null,
+  to_regprocedure('public.apply_confirmed_timetable_import_v1(uuid,text,uuid,text,uuid,boolean)') is not null,
   '03 completion apply boundary installed'
 );
 
 select pg_temp.assert_true(
-  has_function_privilege('authenticated','public.apply_confirmed_timetable_import_v1(uuid,text,uuid,text,uuid)','EXECUTE'),
+  has_function_privilege('authenticated','public.apply_confirmed_timetable_import_v1(uuid,text,uuid,text,uuid,boolean)','EXECUTE'),
   '04 authenticated can execute only the governed completion apply'
 );
 
@@ -118,7 +118,7 @@ insert into public.timetable_import_candidates(
   '00000000-0000-0000-0000-00000000c625',
   repeat('a',64),'INSTITUTION_DOCUMENT','Orario provvisorio dal 28-09-2026',
   'sha256:'||repeat('a',64),'2026-09-28',true,'DRAFT',1,'timetable-completion-v1',
-  '00000000-0000-0000-0000-00000000a625','TEACHER_COMPLETE'
+  '00000000-0000-0000-0000-00000000a625','UNKNOWN'
 );
 
 insert into public.timetable_import_candidate_rows(
@@ -180,7 +180,8 @@ begin
     '2',
     '10000000-0000-0000-0000-00000000d625',
     token_before,
-    '40000000-0000-0000-0000-00000000a625'
+    '40000000-0000-0000-0000-00000000a625',
+    true
   );
 
   select revision into after_revision
@@ -217,8 +218,11 @@ begin
 
   perform pg_temp.assert_true(
     (select state from public.timetable_import_candidates
-      where id='30000000-0000-0000-0000-00000000a625')='APPLIED_TO_DRAFT',
-    '12 candidate reaches APPLIED_TO_DRAFT only through completion boundary'
+      where id='30000000-0000-0000-0000-00000000a625')='APPLIED_TO_DRAFT'
+    and
+    (select source_scope from public.timetable_import_candidates
+      where id='30000000-0000-0000-0000-00000000a625')='TEACHER_COMPLETE',
+    '12 candidate reaches APPLIED_TO_DRAFT with explicit teacher-complete confirmation'
   );
 
   token_after := public.read_timetable_draft_revision_token(
@@ -234,7 +238,8 @@ begin
     '2',
     '10000000-0000-0000-0000-00000000d625',
     token_before,
-    '40000000-0000-0000-0000-00000000a625'
+    '40000000-0000-0000-0000-00000000a625',
+    true
   );
 
   perform pg_temp.assert_true(
