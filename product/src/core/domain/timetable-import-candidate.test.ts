@@ -125,3 +125,16 @@ test('G1.6-C input objects remain byte-equivalent after building', () => {
   buildTimetableImportCandidate(p, slots)
   assert.equal(JSON.stringify({ p, slots }), before)
 })
+
+test('G1.6-C canonical identity framing distinguishes values containing former separators', () => {
+  const first = buildTimetableImportCandidate(provenance(), [
+    slot({ sourcePosition: '1::2', classLabel: 'A|B', sourceTeacherLabel: 'Rossi::Verdi' }),
+  ])
+  const second = buildTimetableImportCandidate(provenance(), [
+    slot({ sourcePosition: '1', classLabel: '2::A|B', sourceTeacherLabel: 'Rossi::Verdi' }),
+  ])
+
+  assert.equal(first.state, 'PREVIEW_READY')
+  assert.equal(second.state, 'PREVIEW_READY')
+  assert.notEqual(first.candidateId, second.candidateId)
+})
