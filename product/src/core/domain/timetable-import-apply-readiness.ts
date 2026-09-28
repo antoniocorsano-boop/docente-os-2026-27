@@ -2,7 +2,11 @@ import type {
   CanonicalTimetableSlot,
   TimetableImportCandidate,
 } from './timetable-import-candidate'
-import type { TimetableImportHumanDecisionReceipt } from './timetable-import-human-decision'
+import {
+  TIMETABLE_IMPORT_HUMAN_DECISION_VERSION,
+  type TimetableImportHumanDecisionReceipt,
+} from './timetable-import-human-decision'
+import { TIMETABLE_IMPORT_PREVIEW_VERSION } from './timetable-import-preview-v2'
 
 export const TIMETABLE_IMPORT_APPLY_READINESS_VERSION = 'TTAR-1' as const
 
@@ -40,6 +44,8 @@ export type TimetableImportApplyReadiness =
       reason:
         | 'CANDIDATE_NOT_READY'
         | 'DECISION_NOT_CONFIRMED'
+        | 'RECEIPT_CONTRACT_MISMATCH'
+        | 'PREVIEW_CONTRACT_MISMATCH'
         | 'CANDIDATE_ID_MISMATCH'
         | 'SOURCE_FINGERPRINT_MISMATCH'
         | 'UNRESOLVED_ASSIGNMENT'
@@ -70,6 +76,12 @@ export function buildTimetableImportApplyReadiness(
     return blocked('CANDIDATE_NOT_READY')
   }
 
+  if (receipt.contractVersion !== TIMETABLE_IMPORT_HUMAN_DECISION_VERSION) {
+    return blocked('RECEIPT_CONTRACT_MISMATCH')
+  }
+  if (receipt.previewContractVersion !== TIMETABLE_IMPORT_PREVIEW_VERSION) {
+    return blocked('PREVIEW_CONTRACT_MISMATCH')
+  }
   if (receipt.decision !== 'CONFIRM_PREVIEW') {
     return blocked('DECISION_NOT_CONFIRMED')
   }
