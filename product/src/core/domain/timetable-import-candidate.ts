@@ -104,7 +104,11 @@ export function buildTimetableImportCandidate(
 }
 
 function review(
-  base: Omit<TimetableImportCandidate, 'candidateId' | 'state' | 'reasonCode'>,
+  base: Readonly<{
+    contractVersion: typeof TIMETABLE_IMPORT_CANDIDATE_VERSION
+    provenance: TimetableSourceProvenance
+    slots: readonly CanonicalTimetableSlot[]
+  }>,
   reasonCode: Exclude<TimetableImportCandidateReason, 'READY'>,
 ): TimetableImportCandidate {
   const slots = deduplicateExact(base.slots)
