@@ -152,7 +152,7 @@ begin
   end if;
 
   select encode(
-    digest(
+    extensions.digest(
       convert_to(
         coalesce((
           select jsonb_agg(
