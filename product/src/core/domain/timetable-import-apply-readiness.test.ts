@@ -94,6 +94,28 @@ test('G1.6-H produces deterministic READY projection only with exact explicit ti
   })
 })
 
+test('G1.6-H blocks stale receipt and preview contract versions at runtime', () => {
+  const staleReceipt = {
+    ...receipt(),
+    contractVersion: 'TTID-0',
+  } as unknown as TimetableImportHumanDecisionReceipt
+  assert.deepEqual(buildTimetableImportApplyReadiness(candidate(), staleReceipt, bindings()), {
+    contractVersion: 'TTAR-1',
+    state: 'BLOCKED',
+    reason: 'RECEIPT_CONTRACT_MISMATCH',
+  })
+
+  const stalePreviewReceipt = {
+    ...receipt(),
+    previewContractVersion: 'TTIP-0',
+  } as unknown as TimetableImportHumanDecisionReceipt
+  assert.deepEqual(buildTimetableImportApplyReadiness(candidate(), stalePreviewReceipt, bindings()), {
+    contractVersion: 'TTAR-1',
+    state: 'BLOCKED',
+    reason: 'PREVIEW_CONTRACT_MISMATCH',
+  })
+})
+
 test('G1.6-H blocks REJECT decision', () => {
   assert.deepEqual(buildTimetableImportApplyReadiness(candidate(), receipt('REJECT_PREVIEW'), bindings()), {
     contractVersion: 'TTAR-1',
