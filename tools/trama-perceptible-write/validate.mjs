@@ -37,7 +37,7 @@ const existingSourceChanges = changes
   .filter((x)=>!x.status.startsWith('D') && /\.(tsx?|jsx?|mjs|cjs)$/.test(x.path) && fs.existsSync(x.path))
   .map((x)=>({...x,text:fs.readFileSync(x.path,'utf8')}))
 
-const mutationPaths = existingSourceChanges.filter((f)=>isMutationCandidate(f.text)).map((f)=>f.path)
+const mutationPaths = existingSourceChanges.filter((f)=>isMutationCandidate(f.text, f.path)).map((f)=>f.path)
 const deletedPaths = changes.filter((x)=>x.status.startsWith('D')).map((x)=>x.path)
 const trackedFiles = execFileSync('git',['ls-files'],{encoding:'utf8'}).trim().split('\n').filter(Boolean)
 
