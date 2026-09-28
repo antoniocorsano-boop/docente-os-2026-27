@@ -10,6 +10,7 @@ import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supa
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import {
   activateTimetableDraft,
+  addTimetableImportRow,
   analyzeTimetableImport,
   applyTimetableImportCandidate,
   updateTimetableDraft,
@@ -204,6 +205,41 @@ export default async function TimetablePage({
               ))}
             </div>
 
+            <details className="timetableImportAdd">
+              <summary>Aggiungi una lezione mancante</summary>
+              <form action={addTimetableImportRow} className="timetableImportAddForm">
+                <input type="hidden" name="candidateId" value={importCandidate.id} />
+                <label>
+                  <span>Cattedra</span>
+                  <select name="assignmentId" required defaultValue="">
+                    <option value="" disabled>Seleziona…</option>
+                    {gridAssignments.map((assignment) => (
+                      <option key={assignment.id} value={assignment.id}>{assignment.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Giorno</span>
+                  <select name="weekday" defaultValue={1} required>
+                    {days.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>Ora</span>
+                  <input name="ordinal" type="number" min={1} max={20} required />
+                </label>
+                <label>
+                  <span>Inizio</span>
+                  <input name="startTime" type="time" required />
+                </label>
+                <label>
+                  <span>Fine</span>
+                  <input name="endTime" type="time" required />
+                </label>
+                <button type="submit">Aggiungi</button>
+              </form>
+            </details>
+
             {importCandidate.state === 'READY_TO_CONFIRM' && importDraftToken && confirmationRequestId ? (
               <form action={applyTimetableImportCandidate} className="timetableImportConfirm">
                 <input type="hidden" name="candidateId" value={importCandidate.id} />
@@ -213,6 +249,10 @@ export default async function TimetablePage({
                 <div>
                   <strong>La proposta è completa.</strong>
                   <span>La conferma sostituisce soltanto le lezioni della bozza. Disposizioni, ricevimento e altre personalizzazioni restano invariati.</span>
+                  <label className="timetableImportCompleteCheck">
+                    <input type="checkbox" name="teacherCompleteConfirmed" value="yes" required />
+                    <span>Confermo che questa proposta contiene tutte le mie lezioni del nuovo orario.</span>
+                  </label>
                 </div>
                 <button className="timetablePrimaryButton" type="submit">Applica alla bozza</button>
               </form>
