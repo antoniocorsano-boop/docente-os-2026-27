@@ -1,0 +1,62 @@
+name: Unicode 17 Materialization
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/dos-tt-import-01-g1-6-materialization
+    paths:
+      - product/unicode/17.0.0/SOURCE.lock.json
+      - product/scripts/acquire-unicode17-sources.mjs
+      - product/scripts/generate-unicode17-teacher-normalization.mjs
+      - .github/workflows/unicode17-materialization.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: unicode17-materialization
+  cancel-in-progress: false
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v4
+        with:
+          ref: feature/dos-tt-import-01-g1-6-materialization
+          fetch-depth: 0
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Acquire locked Unicode 17 corpus
+        working-directory: product
+        run: node scripts/acquire-unicode17-sources.mjs
+
+      - name: Generate and run Unicode conformance gate
+        working-directory: product
+        run: node scripts/generate-unicode17-teacher-normalization.mjs
+
+      - name: Verify second generation is byte-identical
+        working-directory: product
+        run: |
+          sha256sum src/core/domain/generated/unicode17-teacher-normalization.ts src/core/domain/generated/unicode17-normalization-vectors.ts > /tmp/unicode17.before
+          node scripts/generate-unicode17-teacher-normalization.mjs
+          sha256sum src/core/domain/generated/unicode17-teacher-normalization.ts src/core/domain/generated/unicode17-normalization-vectors.ts > /tmp/unicode17.after
+          diff -u /tmp/unicode17.before /tmp/unicode17.after
+
+      - name: Commit frozen inputs and generated artifacts
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add product/unicode/17.0.0 product/src/core/domain/generated/unicode17-teacher-normalization.ts product/src/core/domain/generated/unicode17-normalization-vectors.ts
+          if git diff --cached --quiet; then
+            echo 'Unicode 17 corpus already materialized byte-for-byte.'
+            exit 0
+          fi
+          git commit -m 'chore: materialize verified Unicode 17 corpus'
+          git push origin HEAD:feature/dos-tt-import-01-g1-6-materialization
