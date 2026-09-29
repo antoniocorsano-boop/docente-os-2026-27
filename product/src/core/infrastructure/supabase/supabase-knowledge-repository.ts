@@ -285,25 +285,49 @@ export class SupabaseKnowledgeRepository implements
     const term = query.trim()
     if (!term) return []
 
-    const { data: assets, error: assetError } = await supabase.from('knowledge_assets').select('current_generation_id').eq('workspace_id', workspaceId).not('current_generation_id', 'is', null)
-    if (assetError) throw new Error(assetError.message)
-    const generationIds = assets.flatMap((asset) => asset.current_generation_id ? [asset.current_generation_id] : [])
-    if (!generationIds.length) return []
-
-    const { data: documents, error: documentError } = await supabase.from('knowledge_documents').select('*').in('generation_id', generationIds)
-    if (documentError) throw new Error(documentError.message)
-    const documentIds = documents.map((document) => document.id)
-    if (!documentIds.length) return []
-
-    const { data: units, error } = await supabase.from('knowledge_units').select('*')
-      .eq('workspace_id', workspaceId).in('document_id', documentIds)
-      .textSearch('search_vector', term, { config: 'italian', type: 'websearch' }).limit(limit)
-    if (error) throw new Error(error.message)
-    const byId = new Map(documents.map((document) => [document.id, asDocument(document)]))
-    return units.flatMap((unit, index) => {
-      const document = byId.get(unit.document_id)
-      return document ? [{ document, unit: asUnit(unit), rank: 1 / (index + 1) }] : []
+    const { data, error } = await supabase.rpc('search_knowledge_full_text_current', {
+      p_workspace_id: workspaceId,
+      p_query: term,
+      p_limit: limit,
     })
+    if (error) throw new Error(error.message)
+
+    return (data ?? []).map((row) => ({
+      document: asDocument({
+        id: row.document_id,
+        asset_id: row.document_asset_id,
+        generation_id: row.document_generation_id,
+        workspace_id: row.document_workspace_id,
+        title: row.document_title,
+        document_type: row.document_type,
+        language: row.document_language,
+        normalized_text: row.document_normalized_text,
+        normalized_markdown: row.document_normalized_markdown,
+        summary: row.document_summary,
+        extracted_data: row.document_extracted_data,
+        processing_version: row.document_processing_version,
+        created_at: row.document_created_at,
+        updated_at: row.document_updated_at,
+      }),
+      unit: asUnit({
+        id: row.unit_id,
+        document_id: row.unit_document_id,
+        workspace_id: row.unit_workspace_id,
+        ordinal: row.unit_ordinal,
+        unit_type: row.unit_type,
+        title: row.unit_title,
+        content: row.unit_content,
+        structured_data: row.unit_structured_data,
+        source_page: row.unit_source_page,
+        start_offset: row.unit_start_offset,
+        end_offset: row.unit_end_offset,
+        confidence: row.unit_confidence,
+        validation_status: row.unit_validation_status,
+        created_at: row.unit_created_at,
+        updated_at: row.unit_updated_at,
+      }),
+      rank: row.rank,
+    }))
   }
 
   async listRecent(workspaceId: string, limit = 20, filters: { category?: string; discipline?: string; classLabel?: string } = {}): Promise<Array<{ asset: KnowledgeAsset; document: KnowledgeDocument | null }>> {
