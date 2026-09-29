@@ -10,7 +10,7 @@ if (!supabaseUrl || !supabasePublishableKey) {
 
 const GRADE_NUMBER = { PRIMA: '1', SECONDA: '2', TERZA: '3' }
 
-export async function createClassroomMaterialFixture({ sectionId, suffix, targetDate = romeDate() }) {
+export async function createClassroomMaterialFixture({ sectionId, expectedClassLabel = null, suffix, targetDate = romeDate() }) {
   requireE2ECredentials()
   const supabase = createClient(supabaseUrl, supabasePublishableKey, {
     auth: {
@@ -28,14 +28,45 @@ export async function createClassroomMaterialFixture({ sectionId, suffix, target
     throw new Error(`Classroom fixture identity failed: ${authError?.message ?? 'missing user'}`)
   }
 
-  const { data: section, error: sectionError } = await supabase
-    .from('annual_plan_sections')
-    .select('id, workspace_id, academic_year_id, grade, section_code')
-    .eq('id', sectionId)
-    .single()
+  const { data: currentContext, error: contextError } = await supabase.rpc('current_workspace_context')
+  const context = currentContext?.[0]
+  if (contextError || !context?.workspace_id || !context?.academic_year_id) {
+    throw new Error(`Classroom fixture context lookup failed: ${contextError?.message ?? 'missing active workspace/year'}`)
+  }
 
-  if (sectionError || !section) {
-    throw new Error(`Classroom fixture section lookup failed: ${sectionError?.message ?? sectionId}`)
+  const selectSection = 'id, workspace_id, academic_year_id, grade, section_code'
+  const { data: exactSection, error: exactSectionError } = await supabase
+    .from('annual_plan_sections')
+    .select(selectSection)
+    .eq('id', sectionId)
+    .eq('workspace_id', context.workspace_id)
+    .eq('academic_year_id', context.academic_year_id)
+    .maybeSingle()
+
+  if (exactSectionError) {
+    throw new Error(`Classroom fixture section lookup failed: ${exactSectionError.message}`)
+  }
+
+  let section = exactSection
+  if (!section && expectedClassLabel) {
+    const fallback = parseClassLabel(expectedClassLabel)
+    const { data: fallbackSection, error: fallbackError } = await supabase
+      .from('annual_plan_sections')
+      .select(selectSection)
+      .eq('workspace_id', context.workspace_id)
+      .eq('academic_year_id', context.academic_year_id)
+      .eq('grade', fallback.grade)
+      .eq('section_code', fallback.sectionCode)
+      .maybeSingle()
+
+    if (fallbackError) {
+      throw new Error(`Classroom fixture fallback lookup failed: ${fallbackError.message}`)
+    }
+    section = fallbackSection
+  }
+
+  if (!section) {
+    throw new Error(`Classroom fixture section lookup failed: no section for id=${sectionId} in active workspace/year${expectedClassLabel ? ` or class=${expectedClassLabel}` : ''}`)
   }
 
   const classLabel = `${GRADE_NUMBER[section.grade] ?? ''}${section.section_code}`.toUpperCase()
@@ -118,4 +149,13 @@ function romeDate() {
   }).formatToParts(new Date())
   const value = Object.fromEntries(parts.map((part) => [part.type, part.value]))
   return `${value.year}-${value.month}-${value.day}`
+}
+
+
+function parseClassLabel(value) {
+  const normalized = String(value).trim().toUpperCase().replace(/\s+/g, '')
+  const match = normalized.match(/^([123])([A-Z0-9-]{1,4})$/)
+  if (!match) throw new Error(`Unsupported classroom fixture label: ${value}`)
+  const grade = match[1] === '1' ? 'PRIMA' : match[1] === '2' ? 'SECONDA' : 'TERZA'
+  return { grade, sectionCode: match[2] }
 }
