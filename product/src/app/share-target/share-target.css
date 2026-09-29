@@ -1,0 +1,19 @@
+.sharedIntakeSurface {
+  min-height: 100dvh;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+  display: grid;
+  place-items: start center;
+  background: var(--surface-canvas, #f7f8fa);
+}
+
+.sharedIntakeCard {
+  width: min(100%, 44rem);
+  background: var(--surface-raised, #fff);
+  border: 1px solid var(--border-subtle, #dfe3e8);
+  border-radius: 1rem;
+  padding: clamp(1rem, 4vw, 1.5rem);
+}
+
+.sharedIntakeCard h1 {
+  margin-block: .25rem .75rem;
+}
