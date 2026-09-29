@@ -3,14 +3,14 @@
   padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
   display: grid;
   place-items: start center;
-  background: var(--surface-canvas, #f7f8fa);
+  background: var(--canvas);
 }
 
 .sharedIntakeCard {
   width: min(100%, 44rem);
-  background: var(--surface-raised, #fff);
-  border: 1px solid var(--border-subtle, #dfe3e8);
-  border-radius: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
   padding: clamp(1rem, 4vw, 1.5rem);
 }
 
