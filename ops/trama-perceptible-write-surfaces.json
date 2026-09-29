@@ -71,6 +71,20 @@
       "testFiles": [
         "product/src/app/orario/timetable-import-feedback.test.ts"
       ]
+    },
+    {
+      "id": "knowledge-persistence-write",
+      "critical": true,
+      "sourcePatterns": [
+        "product/src/core/infrastructure/supabase/supabase-knowledge-repository.ts"
+      ],
+      "feedbackFiles": [
+        "product/src/app/knowledge/page.tsx",
+        "product/src/app/knowledge/[assetId]/page.tsx"
+      ],
+      "testFiles": [
+        "product/src/app/knowledge/knowledge-write-feedback.test.ts"
+      ]
     }
   ]
 }

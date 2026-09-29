@@ -151,6 +151,41 @@ export type Database = {
     Views: Record<string, never>
     Functions: {
       bootstrap_personal_workspace: { Args: { workspace_name?: string }; Returns: string }
+      search_knowledge_full_text_current: {
+        Args: { p_workspace_id: string; p_query: string; p_limit?: number }
+        Returns: Array<{
+          document_id: string
+          document_asset_id: string
+          document_generation_id: string
+          document_workspace_id: string
+          document_title: string | null
+          document_type: string
+          document_language: string
+          document_normalized_text: string | null
+          document_normalized_markdown: string | null
+          document_summary: string | null
+          document_extracted_data: Json
+          document_processing_version: string
+          document_created_at: string
+          document_updated_at: string
+          unit_id: string
+          unit_document_id: string
+          unit_workspace_id: string
+          unit_ordinal: number
+          unit_type: string
+          unit_title: string | null
+          unit_content: string
+          unit_structured_data: Json
+          unit_source_page: number | null
+          unit_start_offset: number | null
+          unit_end_offset: number | null
+          unit_confidence: number | null
+          unit_validation_status: string
+          unit_created_at: string
+          unit_updated_at: string
+          rank: number
+        }>
+      }
       read_timetable_draft_revision_token: { Args: { p_version_id: string }; Returns: string }
       apply_confirmed_timetable_import_v1: {
         Args: {
