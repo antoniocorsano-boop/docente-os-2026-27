@@ -11,6 +11,6 @@ test('Knowledge write surfaces expose persistent accessible feedback', () => {
   assert.match(indexSource, /knowledgeFeedback/)
   assert.match(detailSource, /role="status"/)
   assert.match(detailSource, /Analisi aggiornata/)
-  assert.match(detailSource, /Contesto professionale aggiornato/)
+  assert.match(detailSource, /Correzione salvata/)
   assert.match(detailSource, /Non sono riuscito ad aggiornare l’analisi/)
 })
