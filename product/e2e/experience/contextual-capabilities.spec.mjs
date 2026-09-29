@@ -20,6 +20,7 @@ test('UX-0E: Classe → Conoscenza contestuale → risorsa → Classe', async ({
 
   const fixture = await createClassroomMaterialFixture({
     sectionId,
+    expectedClassLabel: '2A',
     suffix: `ux0e-${process.env.GITHUB_RUN_ID ?? 'local'}-${testInfo.project.name}-${Date.now()}`,
   })
 

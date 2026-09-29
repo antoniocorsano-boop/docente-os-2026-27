@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import './knowledge-upload-comfort.css'
@@ -36,9 +36,10 @@ type SameOriginUploadResult =
 const PDF_MIME = 'application/pdf'
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
-export function KnowledgeFileUploader({ postUploadQuery = null }: { postUploadQuery?: string | null }) {
+export function KnowledgeFileUploader({ postUploadQuery = null, initialFile = null, onCompleted = null }: { postUploadQuery?: string | null; initialFile?: File | null; onCompleted?: (() => void) | null }) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
+  const initialFileAppliedRef = useRef<File | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [preparedImageFile, setPreparedImageFile] = useState<File | null>(null)
   const [preparedPdfFile, setPreparedPdfFile] = useState<File | null>(null)
@@ -57,8 +58,7 @@ export function KnowledgeFileUploader({ postUploadQuery = null }: { postUploadQu
   const selectedIsDocx = selectedMimeType === DOCX_MIME
   const selectedUsesSafeDerivative = selectedIsImage || Boolean(preparedPdfFile) || Boolean(preparedDocxFile)
 
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.currentTarget.files?.[0] ?? null
+  function applySelectedFile(file: File | null) {
     const mimeType = file ? normalizeKnowledgeUploadMime(file.type, file.name) : null
     setSelectedFile(file)
     setPreparedImageFile(null)
@@ -71,6 +71,16 @@ export function KnowledgeFileUploader({ postUploadQuery = null }: { postUploadQu
     setFailedAt(null)
     setStoredUpload(null)
     setMessage(null)
+  }
+
+  useEffect(() => {
+    if (!initialFile || initialFileAppliedRef.current === initialFile) return
+    initialFileAppliedRef.current = initialFile
+    applySelectedFile(initialFile)
+  }, [initialFile])
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    applySelectedFile(event.currentTarget.files?.[0] ?? null)
   }
 
   function clearSelection() {
@@ -260,6 +270,7 @@ export function KnowledgeFileUploader({ postUploadQuery = null }: { postUploadQu
     if (!result.ok) return fail(finalizeMessage(result.code), 'ORGANIZE')
 
     setStoredUpload(null)
+    onCompleted?.()
     router.push(`/knowledge/${result.assetId}${postUploadQuery ? `?${postUploadQuery}` : ''}`)
     router.refresh()
   }

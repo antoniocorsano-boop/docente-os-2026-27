@@ -1,5 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
-import { E2E_EMAIL, E2E_PASSWORD, requireE2ECredentials } from './e2e-auth.mjs'
+import { authenticatedAal2Supabase } from './direct-aal2-supabase.mjs'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
@@ -10,32 +9,52 @@ if (!supabaseUrl || !supabasePublishableKey) {
 
 const GRADE_NUMBER = { PRIMA: '1', SECONDA: '2', TERZA: '3' }
 
-export async function createClassroomMaterialFixture({ sectionId, suffix, targetDate = romeDate() }) {
-  requireE2ECredentials()
-  const supabase = createClient(supabaseUrl, supabasePublishableKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
+export async function createClassroomMaterialFixture({ sectionId, expectedClassLabel = null, suffix, targetDate = romeDate() }) {
+  const { supabase, userId } = await authenticatedAal2Supabase({
+    supabaseUrl,
+    supabasePublishableKey,
+    label: 'Classroom fixture',
   })
 
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-    email: E2E_EMAIL,
-    password: E2E_PASSWORD,
-  })
-  if (authError || !authData.user) {
-    throw new Error(`Classroom fixture identity failed: ${authError?.message ?? 'missing user'}`)
+  const { data: currentContext, error: contextError } = await supabase.rpc('current_workspace_context')
+  const context = currentContext?.[0]
+  if (contextError || !context?.workspace_id || !context?.academic_year_id) {
+    throw new Error(`Classroom fixture context lookup failed: ${contextError?.message ?? 'missing active workspace/year'}`)
   }
 
-  const { data: section, error: sectionError } = await supabase
+  const selectSection = 'id, workspace_id, academic_year_id, grade, section_code'
+  const { data: exactSection, error: exactSectionError } = await supabase
     .from('annual_plan_sections')
-    .select('id, workspace_id, academic_year_id, grade, section_code')
+    .select(selectSection)
     .eq('id', sectionId)
-    .single()
+    .eq('workspace_id', context.workspace_id)
+    .eq('academic_year_id', context.academic_year_id)
+    .maybeSingle()
 
-  if (sectionError || !section) {
-    throw new Error(`Classroom fixture section lookup failed: ${sectionError?.message ?? sectionId}`)
+  if (exactSectionError) {
+    throw new Error(`Classroom fixture section lookup failed: ${exactSectionError.message}`)
+  }
+
+  let section = exactSection
+  if (!section && expectedClassLabel) {
+    const fallback = parseClassLabel(expectedClassLabel)
+    const { data: fallbackSection, error: fallbackError } = await supabase
+      .from('annual_plan_sections')
+      .select(selectSection)
+      .eq('workspace_id', context.workspace_id)
+      .eq('academic_year_id', context.academic_year_id)
+      .eq('grade', fallback.grade)
+      .eq('section_code', fallback.sectionCode)
+      .maybeSingle()
+
+    if (fallbackError) {
+      throw new Error(`Classroom fixture fallback lookup failed: ${fallbackError.message}`)
+    }
+    section = fallbackSection
+  }
+
+  if (!section) {
+    throw new Error(`Classroom fixture section lookup failed: no section for id=${sectionId} in active workspace/year${expectedClassLabel ? ` or class=${expectedClassLabel}` : ''}`)
   }
 
   const classLabel = `${GRADE_NUMBER[section.grade] ?? ''}${section.section_code}`.toUpperCase()
@@ -97,7 +116,7 @@ export async function createClassroomMaterialFixture({ sectionId, suffix, target
       class_labels: [classLabel],
       context_status: 'REVIEWED',
       reliability: 'VERIFIED',
-      created_by: authData.user.id,
+      created_by: userId,
     })
     .select('id, original_name')
     .single()
@@ -118,4 +137,13 @@ function romeDate() {
   }).formatToParts(new Date())
   const value = Object.fromEntries(parts.map((part) => [part.type, part.value]))
   return `${value.year}-${value.month}-${value.day}`
+}
+
+
+function parseClassLabel(value) {
+  const normalized = String(value).trim().toUpperCase().replace(/\s+/g, '')
+  const match = normalized.match(/^([123])([A-Z0-9-]{1,4})$/)
+  if (!match) throw new Error(`Unsupported classroom fixture label: ${value}`)
+  const grade = match[1] === '1' ? 'PRIMA' : match[1] === '2' ? 'SECONDA' : 'TERZA'
+  return { grade, sectionCode: match[2] }
 }

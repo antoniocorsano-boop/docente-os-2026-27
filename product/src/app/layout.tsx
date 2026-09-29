@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { DOCENTE_OS_MARK_COLORS } from '@/components/brand/brand-mark-geometry'
+import { PwaServiceWorkerRegistration } from '@/components/pwa/PwaServiceWorkerRegistration'
 import './tailwind.css'
 import './globals.css'
 import './app-shell.css'
@@ -27,6 +28,12 @@ export const metadata: Metadata = {
     template: '%s · Docente OS',
   },
   description: 'Il sistema operativo professionale che mantiene il filo del lavoro docente e porta in primo piano il prossimo passo pertinente.',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'Docente OS',
+    statusBarStyle: 'default',
+  },
 }
 
 export const viewport: Viewport = {
@@ -37,7 +44,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="it">
-      <body>{children}</body>
+      <body><PwaServiceWorkerRegistration />{children}</body>
     </html>
   )
 }

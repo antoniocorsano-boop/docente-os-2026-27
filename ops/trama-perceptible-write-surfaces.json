@@ -76,14 +76,20 @@
       "id": "knowledge-persistence-write",
       "critical": true,
       "sourcePatterns": [
-        "product/src/core/infrastructure/supabase/supabase-knowledge-repository.ts"
+        "product/src/core/infrastructure/supabase/supabase-knowledge-repository.ts",
+        "product/src/app/knowledge/KnowledgeFileUploader.tsx",
+        "product/src/app/share-target/ShareTargetIntake.tsx",
+        "product/e2e/support/classroom-material-fixture.mjs"
       ],
       "feedbackFiles": [
         "product/src/app/knowledge/page.tsx",
-        "product/src/app/knowledge/[assetId]/page.tsx"
+        "product/src/app/knowledge/[assetId]/page.tsx",
+        "product/src/app/knowledge/KnowledgeFileUploader.tsx",
+        "product/src/app/share-target/ShareTargetIntake.tsx"
       ],
       "testFiles": [
-        "product/src/app/knowledge/knowledge-write-feedback.test.ts"
+        "product/src/app/knowledge/knowledge-write-feedback.test.ts",
+        "product/src/app/share-target/share-target-feedback.test.ts"
       ]
     }
   ]
