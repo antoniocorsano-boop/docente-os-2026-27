@@ -2,7 +2,7 @@
 
 **Data:** 29 settembre 2026  
 **Stato:** CURRENT EXECUTION TRACE / V1 COMPLETION  
-**Baseline verificata:** `develop@608edabe8f1718882e7f1d63fcddee5b77a54191`  
+**Baseline verificata:** `develop@bc8bc5690a6fc5a336fe9a8aa251570fc75f7836`  
 **Perimetro:** Docente OS V1 — Teacher Operating System  
 **Regola:** questo documento converte l'audit di prodotto in una sequenza operativa breve. Non apre un nuovo feature train.
 
@@ -119,6 +119,8 @@ Ordine:
 
 **Exit:** `PILOT_BLOCKERS_CLEARED`.
 
+**Stato:** COMPLETE — #514 chiusa via PR #628; Voice/STT `DEFER_FROM_RC1`; `develop` protetto dalla ruleset `Protect develop`.
+
 ### E3 — Sustained Pilot reale
 
 Usare Docente OS per più giorni normali di lavoro.
@@ -141,6 +143,12 @@ Per ogni giornata misurare soltanto:
 - materiale già pronto vs da ricostruire.
 
 Non introdurre un sistema metrico complesso: confrontare gli stessi compiti nel tempo.
+
+Finding E3 già registrato:
+- #629 — PWA installabile + Share Target documentale.
+- Fonte canonica: `docs/product/PWA_SHARE_TARGET_INTAKE_CANONICAL.md`.
+- Durante E3 **non implementare per ipotesi**: misurare quante volte emerge l'opportunità `Condividi → Docente OS`, quanti passaggi manuali eviterebbe e quale routing professionale servirebbe.
+- Se l'evidenza è significativa, trattarlo in E4 come Focus-first correction ad alto impatto, riusando Knowledge, Calendario, Orario e Lezione senza nuovo archivio o nuova authority.
 
 **Exit:** `DOCENTE_OS_SUSTAINED_PILOT_EVIDENCE_PASS`.
 
@@ -243,4 +251,4 @@ Docente OS è pronto a uscire dal solo pilota controllato quando un docente può
 **Prodotto:** sostanzialmente completo nel core V1.  
 **UX percepita:** promettente ma da qualificare longitudinalmente.  
 **Scalabilità/distribuzione:** non ancora qualificata oltre il single-owner pilot.  
-**Priorità assoluta:** E2 — chiudere i soli pilot blocker reali; poi sustained pilot, correzioni evidence-driven e RC1.
+**Priorità assoluta:** E3 — sustained pilot reale; poi correzioni evidence-driven in E4 e RC1.
