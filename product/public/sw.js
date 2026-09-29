@@ -20,7 +20,7 @@ self.addEventListener('fetch', (event) => {
 
 async function handleShareTarget(request) {
   const formData = await request.formData()
-  const sharedFiles = formData.getAll('files').filter((value) => value instanceof File)
+  const sharedFiles = collectSharedFiles(formData)
   const intakeId = crypto.randomUUID()
   const cache = await caches.open(SHARE_CACHE)
 
@@ -65,4 +65,32 @@ async function handleShareTarget(request) {
   )
 
   return Response.redirect('/share-target?id=' + encodeURIComponent(intakeId), 303)
+}
+
+
+function collectSharedFiles(formData) {
+  const preferred = formData.getAll('files').filter(isFileLike)
+  const allFileLike = []
+
+  for (const [, value] of formData.entries()) {
+    if (!isFileLike(value)) continue
+    if (!allFileLike.includes(value)) allFileLike.push(value)
+  }
+
+  if (!preferred.length) return allFileLike
+
+  for (const value of allFileLike) {
+    if (!preferred.includes(value)) preferred.push(value)
+  }
+  return preferred
+}
+
+function isFileLike(value) {
+  return Boolean(
+    value
+      && typeof value !== 'string'
+      && typeof value.size === 'number'
+      && value.size > 0
+      && typeof value.arrayBuffer === 'function'
+  )
 }
