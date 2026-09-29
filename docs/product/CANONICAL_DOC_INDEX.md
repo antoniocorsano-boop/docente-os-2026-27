@@ -21,6 +21,10 @@ La storia non viene cancellata. I documenti precedenti restano evidence, ma non 
 
 ## V1 — Teacher Operating System
 
+Fonte operativa corrente:
+
+- `docs/product/DOCENTE_OS_EXECUTION_TRACE_CURRENT.md` — traccia E0→E5, scope V1 congelato e next valid action.
+
 Fonti primarie:
 
 - `docs/product/TEACHER_OS_V1_PRODUCT_CONVERGENCE_CANONICAL.md` — identità del prodotto, Teacher Moment, Today+Next, Lesson Brief, copilota, TAR e programma V1-A→V1-E;
