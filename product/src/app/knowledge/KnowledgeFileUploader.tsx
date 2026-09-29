@@ -36,7 +36,7 @@ type SameOriginUploadResult =
 const PDF_MIME = 'application/pdf'
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
-export function KnowledgeFileUploader({ postUploadQuery = null, initialFile = null, onCompleted = null }: { postUploadQuery?: string | null; initialFile?: File | null; onCompleted?: (() => void) | null }) {
+export function KnowledgeFileUploader({ postUploadQuery = null, initialFile = null, onCompleted = null, sharedIntake = false }: { postUploadQuery?: string | null; initialFile?: File | null; onCompleted?: (() => void) | null; sharedIntake?: boolean }) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const initialFileAppliedRef = useRef<File | null>(null)
@@ -281,7 +281,7 @@ export function KnowledgeFileUploader({ postUploadQuery = null, initialFile = nu
     setMessage(text)
   }
 
-  const steps = uploadSteps({ phase, failedAt, hasFile: Boolean(selectedFile), usesVisualDerivative: selectedUsesSafeDerivative })
+  const steps = uploadSteps({ phase, failedAt, hasFile: Boolean(selectedFile), usesVisualDerivative: selectedUsesSafeDerivative, sharedIntake })
   const feedbackTitle = phase === 'UPLOADING'
     ? selectedUsesSafeDerivative ? 'Sto mettendo al sicuro la copia anonima' : 'Sto mettendo al sicuro l’originale'
     : phase === 'ORGANIZING'
@@ -313,7 +313,9 @@ export function KnowledgeFileUploader({ postUploadQuery = null, initialFile = nu
                     ? 'Controllo non disponibile'
                     : selectedIsPdf && nativeTextPdfPreflight === 'PENDING'
                       ? 'Controllo locale in corso'
-                      : 'Pronto a caricare'
+                      : sharedIntake
+                        ? 'Ricevuto dal dispositivo'
+                        : 'Pronto a caricare'
 
   const submitLabel = phase === 'UPLOADING'
     ? 'Caricamento…'
@@ -336,7 +338,7 @@ export function KnowledgeFileUploader({ postUploadQuery = null, initialFile = nu
                     : phase === 'ERROR' && selectedFile
                       ? 'Riprova'
                       : selectedFile
-                        ? 'Carica e organizza'
+                        ? sharedIntake ? 'Conferma e analizza' : 'Carica e organizza'
                         : 'Seleziona prima un file'
 
   return (
@@ -346,7 +348,7 @@ export function KnowledgeFileUploader({ postUploadQuery = null, initialFile = nu
           ref={inputRef}
           name="file"
           type="file"
-          required
+          required={!selectedFile}
           disabled={busy}
           accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/webp"
           onChange={handleFileChange}
@@ -463,12 +465,12 @@ export function KnowledgeFileUploader({ postUploadQuery = null, initialFile = nu
   )
 }
 
-function uploadSteps(input: { phase: UploadPhase; failedAt: FailedAt; hasFile: boolean; usesVisualDerivative: boolean }) {
-  const { phase, failedAt, hasFile, usesVisualDerivative } = input
+function uploadSteps(input: { phase: UploadPhase; failedAt: FailedAt; hasFile: boolean; usesVisualDerivative: boolean; sharedIntake: boolean }) {
+  const { phase, failedAt, hasFile, usesVisualDerivative, sharedIntake } = input
   return [
     {
-      label: 'File scelto',
-      hint: 'Resta disponibile finché decidi tu',
+      label: sharedIntake ? 'File ricevuto' : 'File scelto',
+      hint: sharedIntake ? 'È già in Docente OS e resta locale finché confermi' : 'Resta disponibile finché decidi tu',
       state: failedAt === 'SELECT' ? 'problem' : hasFile ? 'done' : 'pending',
     },
     {
