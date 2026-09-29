@@ -1,7 +1,7 @@
 # DOCENTE OS — UX-0 Product Simplification Canonical
 
 Data di consolidamento: **2026-09-14**  
-Stato: **CANONICAL / UX-0F HUMAN_USE VALIDATION ACTIVE**  
+Stato: **CANONICAL / UX-0F REWORK_REQUIRED — HUMAN_USE evidence retained**  
 Autorità: **#368 — UX-0 Product Simplification**  
 Baseline di avvio UX-0: `develop@c553feae62e70b23aa932077ec43ed76ce3b075b`  
 Baseline runtime per UX-0F: `develop@3605912f764468b547aeb344c29f548734eca123`
@@ -118,16 +118,18 @@ UX-0E è integrata in `develop@3605912f764468b547aeb344c29f548734eca123` e certi
 
 ### UX-0F — HUMAN_USE validation
 
-UX-0F è validation-only:
+UX-0F è validation-only. La prima HUMAN_USE reale su #383 ha prodotto evidence vincolante **FRICTION / REWORK_REQUIRED**: tale esito resta autorevole e non può essere riscritto retroattivamente come PASS.
 
-- osserva i cinque journey sulla Beta durante uso umano reale;
-- registra `PASS | FRICTION | WORKAROUND | FAIL`;
-- confronta Task Cost before→after;
-- conserva friction e workaround come evidence, senza riscrivere la storia;
-- usa HVA/DPG/WCAG/HIM/P6 come evidenze complementari, non sostitutive;
-- non introduce nuove feature salvo finding separato e dimostrato.
+La chiusura futura di UX-0F richiede una nuova tornata HUMAN_USE legata al runtime canonico corrente che:
 
-Issue operativa: **#383**.
+- esegua i cinque journey sul prodotto effettivamente in uso;
+- registri `PASS | FRICTION | WORKAROUND | FAIL`;
+- confronti Task Cost before→after senza inventare valori retrospettivi;
+- conservi friction e workaround precedenti come evidence storica;
+- usi HVA/DPG/WCAG/HIM/P6 come evidenze complementari, non sostitutive;
+- non introduca nuove feature salvo finding separato e dimostrato.
+
+Issue operativa storica: **#383**. La PR #384 è stata chiusa senza merge perché la sua receipt `PENDING` era vincolata a una baseline non più corrente.
 
 ## 8. Gate di chiusura UX-0 / M5-00D
 
@@ -157,6 +159,6 @@ La maturità generale M5 richiede ancora, separatamente, continuità d’uso su 
 - UX-0F: **#383**.
 - `product/design/PRODUCT-SIMPLIFICATION.md` resta il contratto operativo breve.
 - `product/design/reviews/UX-0A-BASELINE.md` resta la baseline storica e non deve essere riscritta per migliorare retroattivamente l’esito.
-- `product/design/reviews/UX-0F-HUMAN-USE-VALIDATION.md` è la receipt conclusiva da completare con uso reale.
+- La receipt storica proposta in `product/design/reviews/UX-0F-HUMAN-USE-VALIDATION.md` su PR #384 non è stata integrata perché vincolata a una baseline superata. Una nuova receipt di chiusura deve essere legata alla baseline runtime corrente e deve preservare l’esito storico `FRICTION / REWORK_REQUIRED`.
 
 I riferimenti storici a #370 possono essere riallineati dove indicano erroneamente l’autorità corrente, preservando comunque la storia di convergenza delle issue.
