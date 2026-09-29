@@ -1,5 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
-import { E2E_EMAIL, E2E_PASSWORD, requireE2ECredentials } from './e2e-auth.mjs'
+import { authenticatedAal2Supabase } from './direct-aal2-supabase.mjs'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
@@ -11,22 +10,11 @@ if (!supabaseUrl || !supabasePublishableKey) {
 const GRADE_NUMBER = { PRIMA: '1', SECONDA: '2', TERZA: '3' }
 
 export async function createClassroomMaterialFixture({ sectionId, expectedClassLabel = null, suffix, targetDate = romeDate() }) {
-  requireE2ECredentials()
-  const supabase = createClient(supabaseUrl, supabasePublishableKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
+  const { supabase, userId } = await authenticatedAal2Supabase({
+    supabaseUrl,
+    supabasePublishableKey,
+    label: 'Classroom fixture',
   })
-
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-    email: E2E_EMAIL,
-    password: E2E_PASSWORD,
-  })
-  if (authError || !authData.user) {
-    throw new Error(`Classroom fixture identity failed: ${authError?.message ?? 'missing user'}`)
-  }
 
   const { data: currentContext, error: contextError } = await supabase.rpc('current_workspace_context')
   const context = currentContext?.[0]
@@ -128,7 +116,7 @@ export async function createClassroomMaterialFixture({ sectionId, expectedClassL
       class_labels: [classLabel],
       context_status: 'REVIEWED',
       reliability: 'VERIFIED',
-      created_by: authData.user.id,
+      created_by: userId,
     })
     .select('id, original_name')
     .single()
