@@ -57,6 +57,20 @@
         "product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-close-feedback.test.ts"
       ],
       "critical": true
+    },
+    {
+      "id": "timetable-import-write",
+      "critical": true,
+      "sourcePatterns": [
+        "product/src/app/orario/actions.ts",
+        "product/src/core/infrastructure/supabase/supabase-timetable-import-repository.ts"
+      ],
+      "feedbackFiles": [
+        "product/src/app/orario/page.tsx"
+      ],
+      "testFiles": [
+        "product/src/app/orario/timetable-import-feedback.test.ts"
+      ]
     }
   ]
 }

@@ -6,3 +6,40 @@
 
 @media(prefers-reduced-motion:reduce){.emptyTimetableCell,.occupiedTimetableCell{transition:none}}
 @media print{.navRail,.bottomNav,.mobileHeader,.timetableHero,.timetableMetrics,.timetableConfigCard,.timetableContract,.visualTimetableToolbar,.capacityStrip,.timetableLegend{display:none!important}.appShell{display:block!important}.workSurface,.timetableSurface{max-width:none!important;padding:0!important;margin:0!important}.timetableGridCard{border:0!important;padding:0!important;box-shadow:none!important}.timetableGridCard .timetableCardHeading>span,.timetableGridCard .draftBadge{display:none!important}.visualTimetableScroller{overflow:visible!important}.visualTimetableGrid{min-width:0!important;gap:3px!important}.emptyTimetableCell{color:transparent!important}.emptyTimetableCell span,.emptyTimetableCell small{visibility:hidden}.occupiedTimetableCell,.emptyTimetableCell,.timeHeader,.dayHeader,.timeCell{break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}.timetableEditorBackdrop{display:none!important}}
+
+.timetableImportCard{display:grid;gap:16px}
+.timetableImportForm{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1.2fr) minmax(180px,.6fr) auto;gap:12px;align-items:end}
+.timetableImportForm label,.timetableImportRow label{display:grid;gap:6px}
+.timetableImportForm label>span,.timetableImportRow label>span{font-size:10px;font-weight:750;color:var(--ink-soft)}
+.timetableImportForm small{font-size:10px;color:var(--ink-soft);line-height:1.35}
+.timetableImportForm input,.timetableImportRow input,.timetableImportRow select{width:100%;min-height:44px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);padding:0 10px}
+.timetableImportStatus{display:grid;gap:3px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-soft)}
+.timetableImportStatus strong{font-size:12px}.timetableImportStatus span{font-size:11px;color:var(--ink-soft)}
+.timetableImportStatus.success{background:color-mix(in srgb,var(--success) 10%,var(--surface))}
+.timetableImportStatus.warning{background:var(--warning-soft)}
+.timetableImportReview{display:grid;gap:14px}
+.timetableImportSummary{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)}
+.timetableImportSummary>div{display:grid;gap:4px}.timetableImportSummary span{font-size:11px;color:var(--ink-soft)}
+.timetableImportRows{display:grid;gap:10px}
+.timetableImportRow{display:grid;grid-template-columns:minmax(150px,1fr) minmax(210px,1.4fr) 130px 90px 120px 120px auto;gap:10px;align-items:end;padding:12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-soft)}
+.timetableImportRowIdentity{display:grid;gap:3px;align-self:center}.timetableImportRowIdentity span,.timetableImportRowIdentity small{font-size:10px;color:var(--ink-soft)}
+.timetableImportRow>button{min-height:44px;padding:0 12px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface);font-weight:750}
+.timetableImportConfirm{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:14px;border:1px solid color-mix(in srgb,var(--success) 34%,var(--line));border-radius:var(--radius-sm);background:color-mix(in srgb,var(--success) 8%,var(--surface))}
+.timetableImportConfirm>div{display:grid;gap:4px}.timetableImportConfirm span{font-size:11px;color:var(--ink-soft)}
+.timetableImportHint{margin:0;padding:12px;border-radius:var(--radius-sm);background:var(--surface-soft);font-size:11px;color:var(--ink-soft)}
+
+@media(max-width:1100px){.timetableImportForm{grid-template-columns:1fr 1fr}.timetableImportForm button{justify-self:start}.timetableImportRow{grid-template-columns:1fr 1.5fr 1fr 1fr}.timetableImportRowIdentity{grid-column:1/-1}.timetableImportRow>button{grid-column:4}}
+@media(max-width:719px){.timetableImportForm{grid-template-columns:1fr}.timetableImportForm button{width:100%}.timetableImportSummary,.timetableImportConfirm{flex-direction:column;align-items:stretch}.timetableImportConfirm button{width:100%}.timetableImportRow{grid-template-columns:1fr 1fr}.timetableImportRowIdentity{grid-column:1/-1}.timetableImportRow label:first-of-type{grid-column:1/-1}.timetableImportRow>button{grid-column:1/-1;width:100%}}
+@media(max-width:460px){.timetableImportRow{grid-template-columns:1fr}.timetableImportRowIdentity,.timetableImportRow label:first-of-type,.timetableImportRow>button{grid-column:auto}}
+
+.timetableImportAdd{border:1px dashed var(--line-strong);border-radius:var(--radius-sm);padding:10px 12px;background:var(--surface)}
+.timetableImportAdd summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-size:11px;font-weight:750}
+.timetableImportAddForm{display:grid;grid-template-columns:minmax(210px,1.4fr) 130px 90px 120px 120px auto;gap:10px;align-items:end;padding-top:10px}
+.timetableImportAddForm label{display:grid;gap:6px}.timetableImportAddForm label>span{font-size:10px;font-weight:750;color:var(--ink-soft)}
+.timetableImportAddForm input,.timetableImportAddForm select{width:100%;min-height:44px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);padding:0 10px}
+.timetableImportAddForm button{min-height:44px;padding:0 12px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface);font-weight:750}
+.timetableImportCompleteCheck{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:8px;margin-top:8px;font-size:11px;color:var(--ink)}
+.timetableImportCompleteCheck input{width:20px!important;min-height:20px!important;margin:0;flex:0 0 20px}
+@media(max-width:1100px){.timetableImportAddForm{grid-template-columns:1fr 1fr 1fr}.timetableImportAddForm label:first-of-type{grid-column:1/-1}.timetableImportAddForm button{grid-column:3}}
+@media(max-width:719px){.timetableImportAddForm{grid-template-columns:1fr 1fr}.timetableImportAddForm label:first-of-type{grid-column:1/-1}.timetableImportAddForm button{grid-column:1/-1;width:100%}}
+@media(max-width:460px){.timetableImportAddForm{grid-template-columns:1fr}.timetableImportAddForm label:first-of-type,.timetableImportAddForm button{grid-column:auto}}
