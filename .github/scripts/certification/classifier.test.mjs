@@ -39,7 +39,7 @@ test('X4 workflow change requires X4 without inferring product security impact',
   assert.equal(receipt.requiredGates.includes('ASVS_5_0'), false)
 })
 
-test('shared browser support change requires all browser gates without inferring ASVS', () => {
+test('governed auth support still requires all browser gates without inferring ASVS', () => {
   const receipt = classifyCertificationImpact([
     'product/e2e/support/e2e-auth.mjs',
   ])
@@ -50,6 +50,22 @@ test('shared browser support change requires all browser gates without inferring
   }
   assert.equal(receipt.requiredGates.includes('ASVS_5_0'), false)
   assert.equal(receipt.conservative, false)
+})
+
+test('classroom fixture support only requires HVA', () => {
+  const receipt = classifyCertificationImpact([
+    'product/e2e/support/classroom-material-fixture.mjs',
+  ])
+  assert.deepEqual(receipt.requiredGates, ['HVA'])
+})
+
+test('unmapped browser support helper fails closed to all browser gates', () => {
+  const receipt = classifyCertificationImpact([
+    'product/e2e/support/new-shared-helper.mjs',
+  ])
+  for (const gate of ['HVA', 'WCAG_2_2_AA', 'P6_PERFORMANCE', 'X4_PLANNER_WRITE']) {
+    assert.equal(receipt.requiredGates.includes(gate), true)
+  }
 })
 
 test('migration is security-sensitive and runtime-impacting', () => {
