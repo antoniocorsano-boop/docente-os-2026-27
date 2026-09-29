@@ -72,19 +72,27 @@ function Session({ file, disabled, onPrepared, onNativeTextPreflight }: Props) {
 
         onNativeTextPreflightRef.current('NOT_APPLICABLE')
         if (classification.state === 'MULTI_PAGE_VISUAL_BLOCKED') {
-          setMessage(`Il PDF supera il limite locale di ${MAX_LOCAL_VISUAL_PDF_PAGES} pagine. Resta bloccato e nessun originale viene inviato.`)
+          setMessage(classification.diagnostic === 'TEXT_EXTRACTION_FAILED_VISUAL_FALLBACK'
+            ? `Il PDF si apre, ma il testo non può essere estratto localmente e supera il limite di ${MAX_LOCAL_VISUAL_PDF_PAGES} pagine per la revisione visuale. Resta bloccato e nessun originale viene inviato.`
+            : `Il PDF supera il limite locale di ${MAX_LOCAL_VISUAL_PDF_PAGES} pagine. Resta bloccato e nessun originale viene inviato.`)
           return
         }
         if (classification.state === 'FAILED' || !classification.totalPages) {
-          setMessage('Non riesco a verificare questo PDF localmente. Resta bloccato.')
+          setMessage(classification.diagnostic === 'DOCUMENT_OPEN_FAILED'
+            ? 'Il browser non riesce ad aprire la struttura di questo PDF in modo affidabile. Resta bloccato e nessun byte viene inviato.'
+            : 'Non riesco a verificare questo PDF localmente. Resta bloccato.')
           return
         }
         await renderPdf(bytes, classification.totalPages)
         if (cancelled) return
         setReady(true)
-        setMessage(classification.totalPages === 1
-          ? 'Pagina pronta per la revisione locale.'
-          : `${classification.totalPages} pagine pronte: scorri e controllale tutte.`)
+        setMessage(classification.diagnostic === 'TEXT_EXTRACTION_FAILED_VISUAL_FALLBACK'
+          ? classification.totalPages === 1
+            ? 'Il testo non è estraibile localmente, ma la pagina è apribile: controllala visualmente prima di preparare una copia anonima.'
+            : `Il testo non è estraibile localmente, ma le ${classification.totalPages} pagine sono apribili: controllale tutte visualmente prima di preparare una copia anonima.`
+          : classification.totalPages === 1
+            ? 'Pagina pronta per la revisione locale.'
+            : `${classification.totalPages} pagine pronte: scorri e controllale tutte.`)
       } catch (error) {
         console.error('Local PDF privacy workbench failed', error)
         if (!cancelled) {
