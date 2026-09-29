@@ -4,6 +4,7 @@ import test from 'node:test'
 
 const manifestSource = fs.readFileSync(new URL('./manifest.ts', import.meta.url), 'utf8')
 const installPromptSource = fs.readFileSync(new URL('../components/pwa/PwaInstallPrompt.tsx', import.meta.url), 'utf8')
+const settingsSource = fs.readFileSync(new URL('./impostazioni/page.tsx', import.meta.url), 'utf8')
 
 function pngDimensions(path: string) {
   const png = fs.readFileSync(new URL(path, import.meta.url))
@@ -28,14 +29,15 @@ test('PWA manifest exposes Chromium installability icon sizes', () => {
   assert.deepEqual(pngDimensions('../../public/pwa/icon-maskable-512.png'), { width: 512, height: 512 })
 })
 
-test('PWA exposes explicit and manual install paths', () => {
+test('PWA exposes explicit and non-blocking manual install paths', () => {
   assert.match(installPromptSource, /beforeinstallprompt/)
   assert.match(installPromptSource, /appinstalled/)
   assert.match(installPromptSource, /display-mode: standalone/)
-  assert.match(installPromptSource, /showManualFallback/)
-  assert.match(installPromptSource, /Installa app/)
-  assert.match(installPromptSource, /Aggiungi a schermata Home/)
-  assert.match(installPromptSource, /if \(installed \|\| dismissed\) return null/)
+  assert.match(installPromptSource, /if \(installed \|\| dismissed \|\| !installEvent\) return null/)
+  assert.doesNotMatch(installPromptSource, /showManualFallback/)
+  assert.match(settingsSource, /Installazione sul dispositivo/)
+  assert.match(settingsSource, /Installa app/)
+  assert.match(settingsSource, /Aggiungi a schermata Home/)
 })
 
 test('Share Target accepts MIME types and file extensions', () => {
