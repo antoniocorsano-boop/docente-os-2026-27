@@ -36,6 +36,8 @@ jobs:
       x4: ${{ steps.impact.outputs.x4 }}
       any_required: ${{ steps.impact.outputs.any_required }}
       fail_closed: ${{ steps.impact.outputs.fail_closed }}
+      hva_mode: ${{ steps.impact.outputs.hva_mode }}
+      hva_specs: ${{ steps.impact.outputs.hva_specs }}
     steps:
       - name: Checkout exact tested PR head for impact classification
         id: checkout
@@ -129,6 +131,30 @@ jobs:
           else
             echo 'any_required=false' >> "$GITHUB_OUTPUT"
           fi
+
+          set +e
+          hva_scope_json="$(node .github/scripts/certification/browser-scope.mjs "$receipt" "$hva" 2>/tmp/cv3-hva-scope.err)"
+          hva_scope_code=$?
+          set -e
+          if [ "$hva_scope_code" -ne 0 ] || [ -z "$hva_scope_json" ]; then
+            echo 'hva_mode=FULL' >> "$GITHUB_OUTPUT"
+            echo 'hva_specs=' >> "$GITHUB_OUTPUT"
+            echo 'CV3 HVA scope failed: forcing FULL.'
+          else
+            hva_mode="$(printf '%s' "$hva_scope_json" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(String(JSON.parse(s).mode||'FULL'))}catch{process.stdout.write('FULL')}})")"
+            hva_specs="$(printf '%s' "$hva_scope_json" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const v=JSON.parse(s).specs;process.stdout.write(Array.isArray(v)?v.join(' '):'')}catch{}})")"
+            if [ "$hva_mode" != 'NONE' ] && [ "$hva_mode" != 'FOCUSED' ] && [ "$hva_mode" != 'FULL' ]; then
+              hva_mode='FULL'
+              hva_specs=''
+            fi
+            if [ "$hva" = 'true' ] && [ "$hva_mode" = 'FOCUSED' ] && [ -z "$hva_specs" ]; then
+              hva_mode='FULL'
+            fi
+            echo "hva_mode=$hva_mode" >> "$GITHUB_OUTPUT"
+            echo "hva_specs=$hva_specs" >> "$GITHUB_OUTPUT"
+            echo "CV3 HVA scope: mode=$hva_mode specs=$hva_specs"
+          fi
+
           echo 'fail_closed=false' >> "$GITHUB_OUTPUT"
 
       - name: Publish impact evidence
@@ -262,9 +288,18 @@ jobs:
         if: needs.preflight.outputs.hva == 'true'
         working-directory: product
         shell: bash
+        env:
+          HVA_MODE: ${{ needs.preflight.outputs.hva_mode }}
+          HVA_SPECS: ${{ needs.preflight.outputs.hva_specs }}
         run: |
           set +e
-          npx playwright test --config=playwright.experience.config.mjs
+          if [ "$HVA_MODE" = 'FOCUSED' ] && [ -n "$HVA_SPECS" ]; then
+            echo "CV3 focused HVA: $HVA_SPECS"
+            npx playwright test $HVA_SPECS --config=playwright.experience.config.mjs
+          else
+            echo "CV3 full HVA"
+            npx playwright test --config=playwright.experience.config.mjs
+          fi
           code=$?
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           exit 0
