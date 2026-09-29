@@ -133,6 +133,24 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
       <LocalTeacherProfileCard />
 
+      <section className="settingsCard" id="installazione" aria-labelledby="installazione-title">
+        <div className="settingsCardHeading">
+          <span>APP</span>
+          <div>
+            <h2 id="installazione-title">Installazione sul dispositivo</h2>
+            <p>Docente OS può essere aggiunto al dispositivo e aperto come applicazione.</p>
+          </div>
+        </div>
+        <SettingsContextDisclosure
+          serves="Rende Docente OS disponibile come applicazione sul dispositivo."
+          usedIn="Apertura rapida e ricezione di documenti dal menu Condividi."
+          doesNotChange="Dati, impostazioni professionali o contenuti didattici."
+        />
+        <div className="settingsInlineHint">
+          Se il pulsante <strong>Installa Docente OS</strong> non compare automaticamente, in Chrome apri il menu <strong>⋮</strong> e scegli <strong>Installa app</strong> oppure <strong>Aggiungi a schermata Home</strong>.
+        </div>
+      </section>
+
       <section className="settingsCard" id="contesto" aria-labelledby="context-title">
         <SettingsSectionHeading area={areaFor(experience.areas, 'context')} id="context-title" />
         <SettingsContextDisclosure
