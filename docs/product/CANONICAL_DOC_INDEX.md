@@ -23,7 +23,8 @@ La storia non viene cancellata. I documenti precedenti restano evidence, ma non 
 
 Fonte operativa corrente:
 
-- `docs/product/DOCENTE_OS_EXECUTION_TRACE_CURRENT.md` — traccia E0→E5, scope V1 congelato e next valid action.
+- `docs/product/DOCENTE_OS_EXECUTION_TRACE_CURRENT.md` — traccia E0→E5, scope V1 congelato e next valid action;
+- `docs/product/PWA_SHARE_TARGET_INTAKE_CANONICAL.md` — finding E3 su installabilità PWA, condivisione documenti dal dispositivo e routing governato verso Knowledge/Calendario/Orario/Lezione.
 
 Fonti primarie:
 
