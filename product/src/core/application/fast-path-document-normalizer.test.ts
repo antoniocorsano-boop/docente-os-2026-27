@@ -95,8 +95,10 @@ test('payload transitorio non è eliminabile prima che la generazione canonica s
 
   assert.equal(canDisposeIngressPayload(base), true)
   assert.equal(canDisposeIngressPayload({ ...base, generationStatus: 'RUNNING' }), false)
+  assert.equal(canDisposeIngressPayload({ ...base, generationStatus: 'FAILED' }), false)
   assert.equal(canDisposeIngressPayload({ ...base, currentGenerationId: 'generation-1' }), false)
   assert.equal(canDisposeIngressPayload({ ...base, provenancePersisted: false }), false)
+  assert.equal(canDisposeIngressPayload({ ...base, retentionClass: 'EXTERNAL_REFERENCE' }), false)
   assert.equal(canDisposeIngressPayload({ ...base, retentionClass: 'ARCHIVE_REQUIRED' }), false)
 })
 
