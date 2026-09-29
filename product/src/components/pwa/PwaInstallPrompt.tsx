@@ -39,6 +39,7 @@ export function PwaInstallPrompt() {
     }, 1800)
 
     return () => {
+      window.clearTimeout(standaloneTimer)
       window.clearTimeout(fallbackTimer)
       window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt)
       window.removeEventListener('appinstalled', onInstalled)
