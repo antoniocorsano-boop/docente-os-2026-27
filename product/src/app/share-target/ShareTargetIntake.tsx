@@ -102,8 +102,8 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
         <p className="contextLine">Ricevuto dal dispositivo · ancora locale</p>
         <h1 id="shared-intake-title">Condividi con Docente OS</h1>
         <p>
-          Il file resta sul dispositivo finché non confermi il caricamento. Passerà gli stessi controlli
-          privacy e contenuto della Conoscenza.
+          Il file è già stato ricevuto da Docente OS e resta sul dispositivo. Conferma solo quando vuoi
+          autorizzare i controlli privacy e il salvataggio governato.
         </p>
 
         {meta?.title ? <p><strong>Titolo condiviso:</strong> {meta.title}</p> : null}
@@ -122,6 +122,7 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
               initialFile={file}
               postUploadQuery="source=share-target"
               onCompleted={() => { void clearStaging() }}
+              sharedIntake
             />
           </>
         ) : (
