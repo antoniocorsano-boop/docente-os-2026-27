@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next'
+import { DOCENTE_OS_MARK_COLORS } from '@/components/brand/brand-mark-geometry'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -10,8 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: '/',
     display: 'standalone',
     orientation: 'any',
-    background_color: '#ffffff',
-    theme_color: '#17345d',
+    background_color: DOCENTE_OS_MARK_COLORS.white,
+    theme_color: DOCENTE_OS_MARK_COLORS.navy,
     lang: 'it',
     categories: ['education', 'productivity'],
     icons: [
