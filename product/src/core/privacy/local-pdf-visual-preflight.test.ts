@@ -22,6 +22,7 @@ test('PDF apribile ma senza estrazione testuale ricade sulla revisione visuale l
   })
 })
 
+// Governance boundary: the visual fallback must never relax the five-page local-review limit.
 test('fallback visuale resta fail-closed oltre il limite locale', () => {
   const pages = MAX_LOCAL_VISUAL_PDF_PAGES + 1
   const result = classifyTextExtractionFailure(pages)
