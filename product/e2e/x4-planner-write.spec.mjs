@@ -1,6 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
 import { expect, test } from '@playwright/test'
-import { E2E_EMAIL, E2E_PASSWORD, loginE2E, requireE2ECredentials } from './support/e2e-auth.mjs'
+import { loginE2E, requireE2ECredentials } from './support/e2e-auth.mjs'
+import { authenticatedAal2Supabase } from './support/direct-aal2-supabase.mjs'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://gnshgapmwyjamhmlikeg.supabase.co'
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L'
@@ -111,12 +111,11 @@ test('X4A Planner gate: rejection leaves no task', async ({ page }) => {
 })
 
 async function authenticatedSupabase() {
-  const supabase = createClient(supabaseUrl, supabasePublishableKey, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  return authenticatedAal2Supabase({
+    supabaseUrl,
+    supabasePublishableKey,
+    label: 'X4 fixture',
   })
-  const { data, error } = await supabase.auth.signInWithPassword({ email: E2E_EMAIL, password: E2E_PASSWORD })
-  if (error || !data.user) throw new Error(`X4 fixture identity failed: ${error?.message ?? 'missing user'}`)
-  return { supabase, userId: data.user.id }
 }
 
 async function fixtureState({ supabase, userId }, title) {
