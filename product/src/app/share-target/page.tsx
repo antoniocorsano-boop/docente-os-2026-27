@@ -1,3 +1,4 @@
+import './share-target.css'
 import { ShareTargetIntake } from './ShareTargetIntake'
 
 export const dynamic = 'force-dynamic'
