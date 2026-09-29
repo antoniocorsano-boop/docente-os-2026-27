@@ -28,12 +28,14 @@ test('PWA manifest exposes Chromium installability icon sizes', () => {
   assert.deepEqual(pngDimensions('../../public/pwa/icon-maskable-512.png'), { width: 512, height: 512 })
 })
 
-test('PWA exposes an explicit install path only after browser eligibility', () => {
+test('PWA exposes explicit and manual install paths', () => {
   assert.match(installPromptSource, /beforeinstallprompt/)
   assert.match(installPromptSource, /appinstalled/)
   assert.match(installPromptSource, /display-mode: standalone/)
-  assert.match(installPromptSource, /if \(installed \|\| dismissed \|\| !installEvent\) return null/)
-  assert.doesNotMatch(installPromptSource, /showFallback/)
+  assert.match(installPromptSource, /showManualFallback/)
+  assert.match(installPromptSource, /Installa app/)
+  assert.match(installPromptSource, /Aggiungi a schermata Home/)
+  assert.match(installPromptSource, /if \(installed \|\| dismissed\) return null/)
 })
 
 test('Share Target accepts MIME types and file extensions', () => {
