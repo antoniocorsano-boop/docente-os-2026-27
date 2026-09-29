@@ -185,6 +185,7 @@ jobs:
           psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/runtime-release-contract.sql"
           psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/timetable_import_g1_2_contract.sql"
           psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/timetable_import_completion_contract.sql"
+          psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/knowledge_bounded_search_contract.sql"
 
           actual="$(psql "$db_url" -Atc "select migration_id from public.runtime_schema_contract_state where singleton")"
           expected="${{ steps.runtime_impact.outputs.latest_migration }}"
