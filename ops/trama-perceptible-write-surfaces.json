@@ -78,7 +78,8 @@
       "sourcePatterns": [
         "product/src/core/infrastructure/supabase/supabase-knowledge-repository.ts",
         "product/src/app/knowledge/KnowledgeFileUploader.tsx",
-        "product/src/app/share-target/ShareTargetIntake.tsx"
+        "product/src/app/share-target/ShareTargetIntake.tsx",
+        "product/e2e/support/classroom-material-fixture.mjs"
       ],
       "feedbackFiles": [
         "product/src/app/knowledge/page.tsx",
