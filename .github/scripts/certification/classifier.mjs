@@ -1,3 +1,5 @@
+import { browserSupportGateDependencies } from './browser-scope.mjs'
+
 const ALL_DIMENSIONS = [
   'ui',
   'accessibility',
@@ -90,8 +92,15 @@ function classifyKnownPath(path, state) {
   if (path.startsWith(BROWSER_SHARED_SUPPORT_PREFIX)) {
     known = true
     addImpact(state, 'certification_contract', path, 'shared browser acceptance support changed')
-    for (const gate of BROWSER_GATES) {
-      requireGate(state, gate, path, 'shared browser acceptance support is consumed by all browser gates')
+    const dependencies = browserSupportGateDependencies(path)
+    if (dependencies) {
+      for (const gate of dependencies) {
+        requireGate(state, gate, path, 'browser support dependency explicitly consumes this helper')
+      }
+    } else {
+      for (const gate of BROWSER_GATES) {
+        requireGate(state, gate, path, 'unmapped browser support helper: fail-closed browser certification')
+      }
     }
   }
 
