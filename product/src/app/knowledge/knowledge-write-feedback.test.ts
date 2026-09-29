@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 // @trama-feedback-test
+// Design impact: COMPATIBLE — evidence-only binding to existing UI feedback.
 test('Knowledge write surfaces expose persistent accessible feedback', () => {
   const indexSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
   const detailSource = readFileSync(new URL('./[assetId]/page.tsx', import.meta.url), 'utf8')
