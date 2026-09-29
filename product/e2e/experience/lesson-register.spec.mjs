@@ -19,6 +19,7 @@ test('Journey: Classe → Diario → In classe → Registra la lezione', async (
   const targetDate = canonicalSchoolDate()
   const fixture = await createClassroomMaterialFixture({
     sectionId,
+    expectedClassLabel: '2A',
     targetDate,
     suffix: `lesson-register-${process.env.GITHUB_RUN_ID ?? 'local'}-${testInfo.project.name}-${Date.now()}`,
   })
