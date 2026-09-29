@@ -4,6 +4,7 @@ import test from 'node:test'
 
 const intake = fs.readFileSync(new URL('./ShareTargetIntake.tsx', import.meta.url), 'utf8')
 const uploader = fs.readFileSync(new URL('../knowledge/KnowledgeFileUploader.tsx', import.meta.url), 'utf8')
+const serviceWorker = fs.readFileSync(new URL('../../../public/sw.js', import.meta.url), 'utf8')
 
 test('shared intake makes local-only and failure state perceptible before write', () => {
   assert.match(intake, /ancora locale/)
@@ -20,4 +21,12 @@ test('shared file reuses governed Knowledge upload feedback', () => {
   assert.match(uploader, /Conferma e analizza/)
   assert.match(uploader, /required=\{!selectedFile\}/)
   assert.match(uploader, /Ricevuto dal dispositivo/)
+})
+
+
+test('service worker accepts Android multipart file parts even when field name differs', () => {
+  assert.match(serviceWorker, /collectSharedFiles\(formData\)/)
+  assert.match(serviceWorker, /for \(const \[, value\] of formData\.entries\(\)\)/)
+  assert.match(serviceWorker, /typeof value\.arrayBuffer === 'function'/)
+  assert.doesNotMatch(serviceWorker, /instanceof File/)
 })
