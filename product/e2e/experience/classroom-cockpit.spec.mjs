@@ -21,6 +21,7 @@ for (const classMatcher of [/2ª\s*A/i]) {
 
     const fixture = await createClassroomMaterialFixture({
       sectionId,
+      expectedClassLabel: '2A',
       suffix: `${process.env.GITHUB_RUN_ID ?? 'local'}-${testInfo.project.name}-${Date.now()}`,
     })
 
