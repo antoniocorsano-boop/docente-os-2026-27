@@ -21,6 +21,10 @@ export function PwaInstallPrompt() {
   const [showFallback, setShowFallback] = useState(false)
 
   useEffect(() => {
+    const standaloneTimer = window.setTimeout(() => {
+      setInstalled(isStandalone())
+    }, 0)
+
     const onBeforeInstallPrompt = (event: Event) => {
       event.preventDefault()
       setInstallEvent(event as BeforeInstallPromptEvent)
