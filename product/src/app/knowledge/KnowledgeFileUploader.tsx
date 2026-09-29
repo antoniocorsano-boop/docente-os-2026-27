@@ -36,7 +36,7 @@ type SameOriginUploadResult =
 const PDF_MIME = 'application/pdf'
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
-export function KnowledgeFileUploader({ postUploadQuery = null, initialFile = null }: { postUploadQuery?: string | null; initialFile?: File | null }) {
+export function KnowledgeFileUploader({ postUploadQuery = null, initialFile = null, onCompleted = null }: { postUploadQuery?: string | null; initialFile?: File | null; onCompleted?: (() => void) | null }) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const initialFileAppliedRef = useRef<File | null>(null)
@@ -270,6 +270,7 @@ export function KnowledgeFileUploader({ postUploadQuery = null, initialFile = nu
     if (!result.ok) return fail(finalizeMessage(result.code), 'ORGANIZE')
 
     setStoredUpload(null)
+    onCompleted?.()
     router.push(`/knowledge/${result.assetId}${postUploadQuery ? `?${postUploadQuery}` : ''}`)
     router.refresh()
   }
