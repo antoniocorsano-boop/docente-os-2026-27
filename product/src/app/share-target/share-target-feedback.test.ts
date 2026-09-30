@@ -202,3 +202,15 @@ test('service worker expires abandoned share-target staging', () => {
   assert.match(serviceWorker, /x-docente-os-staged-at/)
   assert.match(serviceWorker, /await clearCachedIntake\(cache, intakeId\)/)
 })
+
+
+test('recoverable minimized-share validation keeps staging until server acceptance', () => {
+  const analyzeAt = timetableIntake.indexOf('const result = await analyzeTimetableImport(data)')
+  const cleanupAt = timetableIntake.indexOf('await onBeforeSubmit()', analyzeAt)
+  assert.ok(analyzeAt >= 0)
+  assert.ok(cleanupAt > analyzeAt)
+  assert.match(timetableIntake, /il PDF resta nello staging locale/)
+  assert.match(timetableActions, /const minimizedShare = sourceMode === 'LOCAL_MINIMIZED_SHARE'/)
+  assert.match(timetableActions, /if \(minimizedShare\) return \{ ok: false as const, code \}/)
+  assert.match(timetableActions, /return \{ ok: true as const, candidateId: candidate\.id \}/)
+})
