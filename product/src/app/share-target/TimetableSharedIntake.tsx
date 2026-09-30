@@ -13,6 +13,7 @@ type Selection = Rect & { id: string; weekday: number | null; ordinal: number | 
 type Props = {
   file: File
   onBeforeSubmit: () => Promise<void> | void
+  onCandidateAccepted?: (candidateId: string) => void
 }
 
 const MAX_PAGES = 5
@@ -20,7 +21,7 @@ const GAP = 20
 const MAX_PAGE_DIMENSION = 1800
 const MAX_COMPOSITE_HEIGHT = 12000
 
-export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
+export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepted }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const startRef = useRef<Point | null>(null)
@@ -78,14 +79,26 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
         ctx.fillStyle = canvasSurfaceColor()
         ctx.fillRect(0, 0, width, height)
 
+        const scratch = document.createElement('canvas')
+        const scratchCtx = scratch.getContext('2d', { alpha: false })
+        if (!scratchCtx) throw new Error('Canvas temporaneo non disponibile')
+
         for (const layout of layouts) {
-          layout.x = Math.round((width - layout.viewport.width) / 2)
+          const pageWidth = Math.max(1, Math.round(layout.viewport.width))
+          const pageHeight = Math.max(1, Math.round(layout.viewport.height))
+          scratch.width = pageWidth
+          scratch.height = pageHeight
+          scratchCtx.fillStyle = canvasSurfaceColor()
+          scratchCtx.fillRect(0, 0, pageWidth, pageHeight)
           await layout.page.render({
-            canvas,
-            canvasContext: ctx,
+            canvas: scratch,
+            canvasContext: scratchCtx,
             viewport: layout.viewport,
-            transform: [1, 0, 0, 1, layout.x, layout.y],
           }).promise
+          layout.x = Math.round((width - pageWidth) / 2)
+          ctx.drawImage(scratch, layout.x, layout.y)
+          scratch.width = 1
+          scratch.height = 1
         }
 
         if (cancelled) return
@@ -232,6 +245,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
       }
 
       setAcceptedCandidateId(result.candidateId)
+      onCandidateAccepted?.(result.candidateId)
       try {
         await onBeforeSubmit()
       } catch (cleanupError) {
