@@ -113,7 +113,11 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
               <strong>{file.name}</strong> · {(file.size / 1024 / 1024).toFixed(file.size > 1024 * 1024 ? 1 : 2)} MB
             </div>
             {looksLikeTimetable(meta, file) ? (
-              <TimetableSharedIntake file={file} onBeforeSubmit={clearStaging} />
+              <TimetableSharedIntake
+                key={`${file.name}:${file.size}:${file.lastModified}`}
+                file={file}
+                onBeforeSubmit={clearStaging}
+              />
             ) : (
               <KnowledgeFileUploader
                 initialFile={file}
@@ -128,9 +132,8 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
         )}
 
         <p className="knowledgeUploadTrust">
-          I documenti che sembrano orari vengono instradati al flusso dedicato, che invia soltanto le aree scelte localmente.
-          Gli altri file continuano a usare l’acquisizione governata di Conoscenza. Nessuna destinazione viene scelta automaticamente
-          e nessuna modifica all’orario viene applicata senza conferma.
+          I documenti che sembrano orari vengono instradati automaticamente al flusso dedicato, che invia soltanto le aree scelte localmente.
+          Gli altri file continuano a usare l’acquisizione governata di Conoscenza. Nessuna modifica all’orario viene applicata senza conferma.
         </p>
       </section>
     </main>
