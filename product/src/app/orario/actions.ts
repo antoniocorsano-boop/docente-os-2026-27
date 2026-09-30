@@ -183,12 +183,10 @@ export async function analyzeTimetableImport(formData: FormData) {
   const derivativeFingerprint = createHash('sha256').update(bytes).digest('hex')
   const sourceMode = optionalText(formData, 'sourceMode')
   const originalSourceFingerprint = optionalText(formData, 'originalSourceFingerprint')
-  const originalSourceName = optionalText(formData, 'originalSourceName')
   const sourceIdentity = resolveTimetableSourceIdentity({
     sourceMode,
     derivativeFingerprint,
     originalSourceFingerprint,
-    originalSourceName,
     derivativeName: value.name,
   })
   const fingerprint = sourceIdentity.sourceFingerprint
