@@ -187,3 +187,18 @@ test('timetable analysis uses the atomic replacement RPC instead of delete-then-
   assert.doesNotMatch(timetableActions, /deleteCandidate\(existing\.id\)/)
   assert.doesNotMatch(timetableActions, /createCandidate\(\{/)
 })
+
+
+test('explicit cancellation is fail-closed and removes the staged intake before navigation', () => {
+  assert.match(intake, /await clearStaging\(\)/)
+  assert.match(intake, /window\.location\.assign\('\/orario'\)/)
+  assert.match(intake, /Annulla acquisizione e rimuovi il file locale/)
+  assert.match(intake, /L’acquisizione resta bloccata/)
+})
+
+test('service worker expires abandoned share-target staging', () => {
+  assert.match(serviceWorker, /SHARE_MAX_AGE_MS = 60 \* 60 \* 1000/)
+  assert.match(serviceWorker, /sweepExpiredShareIntakes/)
+  assert.match(serviceWorker, /x-docente-os-staged-at/)
+  assert.match(serviceWorker, /await clearCachedIntake\(cache, intakeId\)/)
+})
