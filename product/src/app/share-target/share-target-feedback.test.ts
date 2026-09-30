@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import test from 'node:test'
+import { isValidIsoCalendarDate, resolveTimetableSourceIdentity } from '../orario/timetable-import-boundary'
+import { clearShareIntakeStaging } from './share-target-staging'
+import { clampRectToBounds, dateFromFilename, isValidOrdinal, looksLikeTimetablePdf, parseOrdinal } from './timetable-share-helpers'
 
 const intake = fs.readFileSync(new URL('./ShareTargetIntake.tsx', import.meta.url), 'utf8')
 const uploader = fs.readFileSync(new URL('../knowledge/KnowledgeFileUploader.tsx', import.meta.url), 'utf8')
@@ -53,11 +56,9 @@ test('timetable-like shared PDFs use local minimization before timetable analysi
   assert.match(timetableIntake, /selections\.some\(\(item\) => !item\.weekday \|\| !isValidOrdinal\(item\.ordinal\)\)/)
 
   assert.match(timetableActions, /LOCAL_MINIMIZED_SHARE/)
-  assert.match(timetableActions, /validateOriginalSourceFingerprint/)
-  assert.match(timetableActions, /sourceLabel = sourceMode === 'LOCAL_MINIMIZED_SHARE'/)
-  assert.match(timetableActions, /derivative-sha256:/)
-  assert.match(timetableActions, /if \(sourceMode === 'LOCAL_MINIMIZED_SHARE'\)/)
-  assert.match(timetableActions, /importCandidate=\$\{encodeURIComponent\(existing\.id\)\}&import=review/)
+  assert.match(timetableActions, /resolveTimetableSourceIdentity/)
+  assert.match(timetableActions, /sourceIdentity\.sourceLabel/)
+  assert.match(timetableActions, /sourceIdentity\.sourceRef/)
 })
 
 
@@ -66,4 +67,84 @@ test('service worker accepts Android multipart file parts even when field name d
   assert.match(serviceWorker, /for \(const \[, value\] of formData\.entries\(\)\)/)
   assert.match(serviceWorker, /typeof value\.arrayBuffer === 'function'/)
   assert.doesNotMatch(serviceWorker, /instanceof File/)
+})
+
+
+test('timetable routing ignores free-form notes and only classifies timetable PDFs', () => {
+  assert.equal(looksLikeTimetablePdf({
+    title: 'Materiale didattico',
+    fileName: 'lezione.pdf',
+    fileType: 'application/pdf',
+  }), false)
+  assert.equal(looksLikeTimetablePdf({
+    title: 'Orario provvisorio',
+    fileName: 'documento.pdf',
+    fileType: 'application/pdf',
+  }), true)
+  assert.equal(looksLikeTimetablePdf({
+    title: 'Orario provvisorio',
+    fileName: 'orario.jpg',
+    fileType: 'image/jpeg',
+  }), false)
+})
+
+test('date parsing rejects impossible calendar dates', () => {
+  assert.equal(dateFromFilename('orario dal 28-09-2026.pdf'), '2026-09-28')
+  assert.equal(dateFromFilename('orario dal 31-02-2026.pdf'), null)
+  assert.equal(isValidIsoCalendarDate('2026-02-28'), true)
+  assert.equal(isValidIsoCalendarDate('2026-02-31'), false)
+})
+
+test('ordinal validation rejects non-integer and out-of-range values', () => {
+  assert.equal(parseOrdinal('1'), 1)
+  assert.equal(parseOrdinal('20'), 20)
+  assert.equal(parseOrdinal('-1'), null)
+  assert.equal(parseOrdinal('21'), null)
+  assert.equal(parseOrdinal('1.5'), null)
+  assert.equal(isValidOrdinal(null), false)
+})
+
+test('crop bounds clamp both endpoints instead of shifting overshoot', () => {
+  assert.deepEqual(
+    clampRectToBounds({ x: -50, y: -20, width: 150, height: 80 }, 500, 500),
+    { x: 0, y: 0, width: 100, height: 60 },
+  )
+})
+
+test('local minimized source identity is server-derived from received derivative bytes', () => {
+  const original = 'a'.repeat(64)
+  const derivative = 'b'.repeat(64)
+  const identity = resolveTimetableSourceIdentity({
+    sourceMode: 'LOCAL_MINIMIZED_SHARE',
+    derivativeFingerprint: derivative,
+    originalSourceFingerprint: original,
+    originalSourceName: 'orario.pdf',
+    derivativeName: 'orario-selezione-locale.png',
+  })
+  assert.equal(identity.sourceFingerprint, derivative)
+  assert.match(identity.sourceRef, new RegExp(`local-original-sha256:${original}`))
+  assert.match(identity.sourceRef, new RegExp(`derivative-sha256:${derivative}`))
+})
+
+test('staging cleanup is fail-closed when any cache deletion fails', async () => {
+  const requests = [
+    new Request('https://example.test/__share-intake/abc/meta'),
+    new Request('https://example.test/__share-intake/abc/file/0'),
+    new Request('https://example.test/__share-intake/other/meta'),
+  ]
+  const deleted: string[] = []
+  const cache = {
+    async keys() { return requests },
+    async delete(request: Request) {
+      deleted.push(request.url)
+      return !request.url.endsWith('/file/0')
+    },
+  }
+
+  await assert.rejects(
+    () => clearShareIntakeStaging(cache, 'abc'),
+    /cleanup incomplete/,
+  )
+  assert.equal(deleted.length, 2)
+  assert.equal(deleted.some((url) => url.includes('/other/')), false)
 })
