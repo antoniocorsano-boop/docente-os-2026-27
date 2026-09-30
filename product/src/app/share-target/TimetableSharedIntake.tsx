@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { getDocumentProxy } from 'unpdf'
 import { analyzeTimetableImport } from '@/app/orario/actions'
-import { clamp, clampRectToBounds, dateFromFilename, isValidOrdinal, parseOrdinal, type Rect } from './timetable-share-helpers'
+import { clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, isValidOrdinal, parseOrdinal, type Rect } from './timetable-share-helpers'
 
 type Point = { x: number; y: number }
 type Selection = Rect & { id: string; weekday: number | null; ordinal: number | null }
@@ -323,8 +323,7 @@ async function cropSelections(source: HTMLCanvasElement, selections: Selection[]
   let y = 0
   for (const rect of normalized) {
     if (!rect.weekday || !isValidOrdinal(rect.ordinal)) throw new Error('Contesto giorno/ora mancante')
-    const day = WEEKDAYS.find((item) => item.value === rect.weekday)?.label ?? `Giorno ${rect.weekday}`
-    ctx.fillText(`DOCENTE: ${teacherLabel} · GIORNO: ${day} · ORA: ${rect.ordinal}`, 8, y + labelHeight / 2)
+    ctx.fillText(derivativeContextLabel(teacherLabel, rect.weekday, rect.ordinal), 8, y + labelHeight / 2)
     y += labelHeight
     ctx.drawImage(source, rect.x, rect.y, rect.width, rect.height, 0, y, rect.width, rect.height)
     y += rect.height + padding
