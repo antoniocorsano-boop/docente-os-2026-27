@@ -372,10 +372,15 @@ export async function applyTimetableImportCandidate(formData: FormData) {
     redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=not_ready`)
   }
 
+  const reviewedRevision = integer(formData, 'candidateRevision')
+  if (candidate.revision !== reviewedRevision) {
+    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
+  }
+
   try {
     await repository.apply({
       candidateId,
-      candidateRevision: candidate.revision,
+      candidateRevision: reviewedRevision,
       draftVersionId: text(formData, 'draftVersionId'),
       expectedDraftToken: text(formData, 'expectedDraftToken'),
       confirmationRequestId: text(formData, 'confirmationRequestId'),
