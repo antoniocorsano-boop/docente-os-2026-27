@@ -100,6 +100,200 @@ select pg_temp.assert_true(
   '29 slot DELETE increments DRAFT revision'
 );
 
+-- G1.2 behavioral evidence for the same-source candidate revision RPC.
+insert into public.teaching_disciplines(
+  id,workspace_id,academic_year_id,name,is_active,created_by
+) values (
+  '00000000-0000-0000-0000-00000000f624',
+  '00000000-0000-0000-0000-00000000b624',
+  '00000000-0000-0000-0000-00000000c624',
+  'Tecnologia',true,
+  '00000000-0000-0000-0000-00000000a624'
+);
+
+insert into public.annual_plan_sections(
+  id,workspace_id,academic_year_id,grade,section_code,status,created_by
+) values (
+  '00000000-0000-0000-0000-00000000a625',
+  '00000000-0000-0000-0000-00000000b624',
+  '00000000-0000-0000-0000-00000000c624',
+  'SECONDA','C','DA_CONFERMARE',
+  '00000000-0000-0000-0000-00000000a624'
+);
+
+insert into public.teaching_assignments(
+  id,workspace_id,academic_year_id,section_id,discipline_id,weekly_minutes,status,created_by
+) values (
+  '00000000-0000-0000-0000-00000000b625',
+  '00000000-0000-0000-0000-00000000b624',
+  '00000000-0000-0000-0000-00000000c624',
+  '00000000-0000-0000-0000-00000000a625',
+  '00000000-0000-0000-0000-00000000f624',
+  120,'CONFIRMED',
+  '00000000-0000-0000-0000-00000000a624'
+);
+
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000a624',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+
+create temporary table g12_replace_probe(
+  first_id uuid,
+  current_id uuid
+) on commit drop;
+
+with result as (
+  select public.replace_timetable_import_candidate_v1(
+    '00000000-0000-0000-0000-00000000b624',
+    '00000000-0000-0000-0000-00000000c624',
+    repeat('a',64),
+    'Fixture import',
+    'client-whole-document-sha256:' || repeat('a',64),
+    '2026-09-28',
+    'fixture@1',
+    jsonb_build_array(jsonb_build_object(
+      'rowKey','r1',
+      'weekday',1,
+      'ordinal',1,
+      'startTime','08:00',
+      'endTime','09:00',
+      'sourceClassLabel','2C',
+      'resolvedSectionId','00000000-0000-0000-0000-00000000a625',
+      'resolvedAssignmentId','00000000-0000-0000-0000-00000000b625',
+      'confidence','HIGH',
+      'reviewState','AUTO_RESOLVED',
+      'evidenceRef','fixture:r1',
+      'warnings',jsonb_build_array()
+    ))
+  ) as payload
+)
+insert into g12_replace_probe(first_id,current_id)
+select (payload->>'id')::uuid,(payload->>'id')::uuid from result;
+
+select pg_temp.assert_true(
+  (select revision from public.timetable_import_candidates where id=(select first_id from g12_replace_probe))=1
+  and (select state from public.timetable_import_candidates where id=(select first_id from g12_replace_probe))='READY_TO_CONFIRM',
+  '30 first atomic replacement creates READY candidate at revision 1'
+);
+
+with result as (
+  select public.replace_timetable_import_candidate_v1(
+    '00000000-0000-0000-0000-00000000b624',
+    '00000000-0000-0000-0000-00000000c624',
+    repeat('a',64),
+    'Fixture import corrected',
+    'client-whole-document-sha256:' || repeat('a',64),
+    '2026-09-28',
+    'fixture@2',
+    jsonb_build_array(jsonb_build_object(
+      'rowKey','r1',
+      'weekday',2,
+      'ordinal',2,
+      'startTime','09:00',
+      'endTime','10:00',
+      'sourceClassLabel','2C',
+      'resolvedSectionId','00000000-0000-0000-0000-00000000a625',
+      'resolvedAssignmentId','00000000-0000-0000-0000-00000000b625',
+      'confidence','HIGH',
+      'reviewState','AUTO_RESOLVED',
+      'evidenceRef','fixture:r1-v2',
+      'warnings',jsonb_build_array()
+    ))
+  ) as payload
+)
+update g12_replace_probe set current_id=(select (payload->>'id')::uuid from result);
+
+select pg_temp.assert_true(
+  (select current_id=first_id from g12_replace_probe)
+  and (select revision from public.timetable_import_candidates where id=(select current_id from g12_replace_probe))=2
+  and (select state from public.timetable_import_candidates where id=(select current_id from g12_replace_probe))='READY_TO_CONFIRM',
+  '31 same source keeps candidate id and increments exactly one revision'
+);
+
+select pg_temp.assert_true(
+  (select count(*) from public.timetable_import_candidate_rows where candidate_id=(select current_id from g12_replace_probe))=1
+  and (select min(candidate_revision) from public.timetable_import_candidate_rows where candidate_id=(select current_id from g12_replace_probe))=2,
+  '32 replacement rows bind exactly to the new candidate revision'
+);
+
+create or replace function pg_temp.expect_replace_failure() returns void language plpgsql as $
+begin
+  perform public.replace_timetable_import_candidate_v1(
+    '00000000-0000-0000-0000-00000000b624',
+    '00000000-0000-0000-0000-00000000c624',
+    repeat('a',64),
+    'Broken fixture',
+    'client-whole-document-sha256:' || repeat('a',64),
+    '2026-09-28',
+    'fixture@broken',
+    jsonb_build_array(jsonb_build_object(
+      'rowKey','broken',
+      'weekday',9,
+      'ordinal',1,
+      'startTime','08:00',
+      'endTime','09:00',
+      'sourceClassLabel','2C',
+      'resolvedSectionId','00000000-0000-0000-0000-00000000a625',
+      'resolvedAssignmentId','00000000-0000-0000-0000-00000000b625',
+      'confidence','HIGH',
+      'reviewState','AUTO_RESOLVED',
+      'warnings',jsonb_build_array()
+    ))
+  );
+  raise exception 'EXPECTED_REPLACEMENT_FAILURE_MISSING';
+exception
+  when others then
+    if sqlerrm='EXPECTED_REPLACEMENT_FAILURE_MISSING' then raise; end if;
+end
+$;
+
+select pg_temp.expect_replace_failure();
+
+select pg_temp.assert_true(
+  (select revision from public.timetable_import_candidates where id=(select current_id from g12_replace_probe))=2
+  and (select state from public.timetable_import_candidates where id=(select current_id from g12_replace_probe))='READY_TO_CONFIRM'
+  and (select count(*) from public.timetable_import_candidate_rows where candidate_id=(select current_id from g12_replace_probe) and candidate_revision=2)=1,
+  '33 failed replacement rolls back candidate revision and rows'
+);
+
+update public.timetable_import_candidates
+set expires_at=now()-interval '1 minute'
+where id=(select current_id from g12_replace_probe);
+
+with result as (
+  select public.replace_timetable_import_candidate_v1(
+    '00000000-0000-0000-0000-00000000b624',
+    '00000000-0000-0000-0000-00000000c624',
+    repeat('a',64),
+    'Fixture after expiry',
+    'client-whole-document-sha256:' || repeat('a',64),
+    '2026-09-28',
+    'fixture@3',
+    jsonb_build_array(jsonb_build_object(
+      'rowKey','r1',
+      'weekday',3,
+      'ordinal',3,
+      'startTime','10:00',
+      'endTime','11:00',
+      'sourceClassLabel','2C',
+      'resolvedSectionId','00000000-0000-0000-0000-00000000a625',
+      'resolvedAssignmentId','00000000-0000-0000-0000-00000000b625',
+      'confidence','HIGH',
+      'reviewState','AUTO_RESOLVED',
+      'evidenceRef','fixture:r1-v3',
+      'warnings',jsonb_build_array()
+    ))
+  ) as payload
+)
+update g12_replace_probe set current_id=(select (payload->>'id')::uuid from result);
+
+select pg_temp.assert_true(
+  (select state from public.timetable_import_candidates where id=(select first_id from g12_replace_probe))='EXPIRED'
+  and (select current_id<>first_id from g12_replace_probe)
+  and (select revision from public.timetable_import_candidates where id=(select current_id from g12_replace_probe))=1
+  and (select state from public.timetable_import_candidates where id=(select current_id from g12_replace_probe))='READY_TO_CONFIRM',
+  '34 expired live candidate is retired and replaced by a usable revision-1 candidate'
+);
+
 rollback;
 
 \echo G1_2_TIMETABLE_IMPORT_DB_CONTRACT_PASS
