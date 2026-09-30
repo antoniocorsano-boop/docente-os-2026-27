@@ -96,7 +96,8 @@
       "id": "share-target-local-staging-cleanup",
       "critical": true,
       "sourcePatterns": [
-        "product/src/app/share-target/share-target-staging.ts"
+        "product/src/app/share-target/share-target-staging.ts",
+        "product/public/sw.js"
       ],
       "feedbackFiles": [
         "product/src/app/share-target/ShareTargetIntake.tsx",
