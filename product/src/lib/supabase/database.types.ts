@@ -198,6 +198,45 @@ export type Database = {
         }
         Returns: Json
       }
+      replace_timetable_import_candidate_v1: {
+        Args: {
+          p_workspace_id: string
+          p_academic_year_id: string
+          p_source_fingerprint: string
+          p_source_label: string
+          p_source_ref: string
+          p_effective_from: string
+          p_parser_version: string
+          p_rows: Json
+          p_replace_reviewed: boolean
+        }
+        Returns: Json
+      }
+      update_timetable_import_row_v1: {
+        Args: {
+          p_candidate_id: string
+          p_expected_revision: string
+          p_row_id: string
+          p_assignment_id: string
+          p_weekday: number
+          p_ordinal: number
+          p_start_time: string
+          p_end_time: string
+        }
+        Returns: Json
+      }
+      add_timetable_import_row_v1: {
+        Args: {
+          p_candidate_id: string
+          p_expected_revision: string
+          p_assignment_id: string
+          p_weekday: number
+          p_ordinal: number
+          p_start_time: string
+          p_end_time: string
+        }
+        Returns: Json
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>

@@ -13,6 +13,7 @@ import { updateDraftTimetableSlot } from '@/core/infrastructure/supabase/supabas
 import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { validateKnowledgeUploadContent } from '../knowledge/upload-content-validation'
+import { isValidIsoCalendarDate, resolveTimetableSourceIdentity } from './timetable-import-boundary'
 import {
   MAX_KNOWLEDGE_UPLOAD_BYTES,
   normalizeKnowledgeUploadMime,
@@ -149,27 +150,39 @@ export async function deleteTimetableSlot(formData: FormData) {
 
 
 export async function analyzeTimetableImport(formData: FormData) {
+  const result = await analyzeTimetableImportResult(formData)
+  if (!result.ok) redirect(`/orario?import=${encodeURIComponent(result.code)}`)
+  redirect(`/orario?importCandidate=${encodeURIComponent(result.candidateId)}&import=review`)
+}
+
+export async function analyzeMinimizedTimetableImport(formData: FormData) {
+  formData.set('sourceMode', 'LOCAL_MINIMIZED_SHARE')
+  return analyzeTimetableImportResult(formData)
+}
+
+async function analyzeTimetableImportResult(formData: FormData) {
   const context = await requireContext()
+
   const value = formData.get('file')
-  if (!(value instanceof File) || value.size === 0) redirect('/orario?import=missing')
-  if (value.size > MAX_KNOWLEDGE_UPLOAD_BYTES) redirect('/orario?import=too_large')
+  if (!(value instanceof File) || value.size === 0) return { ok: false as const, code: 'missing' }
+  if (value.size > MAX_KNOWLEDGE_UPLOAD_BYTES) return { ok: false as const, code: 'too_large' }
 
   const mimeType = normalizeKnowledgeUploadMime(value.type, value.name)
   if (mimeType !== 'application/pdf' && !mimeType.startsWith('image/')) {
-    redirect('/orario?import=unsupported')
+    return { ok: false as const, code: 'unsupported' }
   }
 
   const effectiveFrom = text(formData, 'effectiveFrom').trim()
   if (
-    !/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)
+    !isValidIsoCalendarDate(effectiveFrom)
     || effectiveFrom < context.academicYear.startsOn
     || effectiveFrom > context.academicYear.endsOn
   ) {
-    redirect('/orario?import=invalid_date')
+    return { ok: false as const, code: 'invalid_date' }
   }
 
   const teacherLabel = text(formData, 'teacherLabel').trim()
-  if (!teacherLabel || teacherLabel.length > 120) redirect('/orario?import=teacher_required')
+  if (!teacherLabel || teacherLabel.length > 120) return { ok: false as const, code: 'teacher_required' }
 
   const bytes = new Uint8Array(await value.arrayBuffer())
   const validation = await validateKnowledgeUploadContent({
@@ -177,22 +190,21 @@ export async function analyzeTimetableImport(formData: FormData) {
     mimeType,
     bytes,
   })
-  if (!validation.valid) redirect('/orario?import=invalid_content')
+  if (!validation.valid) return { ok: false as const, code: 'invalid_content' }
 
-  const fingerprint = createHash('sha256').update(bytes).digest('hex')
-  const importRepository = new SupabaseTimetableImportRepository()
-  const existing = await importRepository.findByFingerprint({
-    workspaceId: context.workspace.id,
-    academicYearId: context.academicYear.id,
-    sourceFingerprint: fingerprint,
+  const derivativeFingerprint = createHash('sha256').update(bytes).digest('hex')
+  const sourceMode = optionalText(formData, 'sourceMode')
+  const originalSourceFingerprint = optionalText(formData, 'originalSourceFingerprint')
+  const sourceIdentity = resolveTimetableSourceIdentity({
+    sourceMode,
+    derivativeFingerprint,
+    originalSourceFingerprint,
+    derivativeName: value.name,
   })
-
-  if (existing?.state === 'APPLIED_TO_DRAFT') {
-    redirect('/orario?import=already_applied')
-  }
-  if (existing && (existing.state === 'DRAFT' || existing.state === 'READY_TO_CONFIRM')) {
-    await importRepository.deleteCandidate(existing.id)
-  }
+  const fingerprint = sourceIdentity.sourceFingerprint
+  const sourceLabel = sourceIdentity.sourceLabel
+  const replaceReviewed = optionalText(formData, 'replaceReviewedCandidate') === 'yes'
+  const importRepository = new SupabaseTimetableImportRepository()
 
   const settingsRepository = new SupabaseTeacherSettingsRepository()
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
@@ -234,20 +246,10 @@ export async function analyzeTimetableImport(formData: FormData) {
       knownClassLabels: [...sectionLabels.values()],
     })
   } catch {
-    redirect('/orario?import=parse_failed')
+    return { ok: false as const, code: 'parse_failed' }
   }
 
-  if (!extracted.rows.length) redirect('/orario?import=no_rows')
-
-  const candidate = await importRepository.createCandidate({
-    workspaceId: context.workspace.id,
-    academicYearId: context.academicYear.id,
-    sourceFingerprint: fingerprint,
-    sourceLabel: value.name || 'Orario importato',
-    sourceRef: `sha256:${fingerprint}`,
-    effectiveFrom,
-    parserVersion: `${extracted.processor}@${extracted.processorVersion}`,
-  })
+  if (!extracted.rows.length) return { ok: false as const, code: 'no_rows' }
 
   const rows = extracted.rows.map((row) => {
     const sectionId = sectionIdByClass.get(normalizeClassKey(row.classLabel)) ?? null
@@ -284,15 +286,32 @@ export async function analyzeTimetableImport(formData: FormData) {
     }
   })
 
-  await importRepository.insertRows({
-    candidateId: candidate.id,
-    candidateRevision: candidate.revision,
-    rows,
-  })
-  await importRepository.promoteIfComplete(candidate.id, candidate.revision)
+  let candidate
+  try {
+    candidate = await importRepository.replaceCandidateAtomic({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      sourceFingerprint: fingerprint,
+      sourceLabel,
+      sourceRef: sourceIdentity.sourceRef,
+      effectiveFrom,
+      parserVersion: `${extracted.processor}@${extracted.processorVersion}`,
+      replaceReviewed,
+      rows,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : ''
+    if (message.includes('SOURCE_ALREADY_APPLIED')) {
+      return { ok: false as const, code: 'already_applied' }
+    }
+    if (message.includes('REPLACEMENT_CONFIRMATION_REQUIRED')) {
+      return { ok: false as const, code: 'replace_confirmation_required' }
+    }
+    return { ok: false as const, code: 'persist_failed' }
+  }
 
   revalidatePath('/orario')
-  redirect(`/orario?importCandidate=${encodeURIComponent(candidate.id)}&import=review`)
+  return { ok: true as const, candidateId: candidate.id }
 }
 
 export async function addTimetableImportRow(formData: FormData) {
@@ -305,15 +324,28 @@ export async function addTimetableImportRow(formData: FormData) {
     academicYearId: context.academicYear.id,
   })
   if (!candidate || candidate.state === 'APPLIED_TO_DRAFT') redirect('/orario?import=unavailable')
+  const reviewedRevision = integer(formData, 'candidateRevision')
+  if (candidate.revision !== reviewedRevision) {
+    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
+  }
 
-  await repository.addManualRow({
-    candidateId,
-    assignmentId: text(formData, 'assignmentId'),
-    weekday: integer(formData, 'weekday'),
-    ordinal: integer(formData, 'ordinal'),
-    startTime: text(formData, 'startTime'),
-    endTime: text(formData, 'endTime'),
-  })
+  try {
+    await repository.addManualRow({
+      candidateId,
+      candidateRevision: reviewedRevision,
+      assignmentId: text(formData, 'assignmentId'),
+      weekday: integer(formData, 'weekday'),
+      ordinal: integer(formData, 'ordinal'),
+      startTime: text(formData, 'startTime'),
+      endTime: text(formData, 'endTime'),
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : ''
+    if (message.includes('STALE_CANDIDATE_REVISION')) {
+      redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
+    }
+    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=persist_failed`)
+  }
 
   revalidatePath('/orario')
   redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review`)
@@ -329,16 +361,29 @@ export async function updateTimetableImportRow(formData: FormData) {
     academicYearId: context.academicYear.id,
   })
   if (!candidate || candidate.state === 'APPLIED_TO_DRAFT') redirect('/orario?import=unavailable')
+  const reviewedRevision = integer(formData, 'candidateRevision')
+  if (candidate.revision !== reviewedRevision) {
+    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
+  }
 
-  await repository.updateRow({
-    candidateId,
-    rowId: text(formData, 'rowId'),
-    assignmentId: text(formData, 'assignmentId'),
-    weekday: integer(formData, 'weekday'),
-    ordinal: integer(formData, 'ordinal'),
-    startTime: text(formData, 'startTime'),
-    endTime: text(formData, 'endTime'),
-  })
+  try {
+    await repository.updateRow({
+      candidateId,
+      candidateRevision: reviewedRevision,
+      rowId: text(formData, 'rowId'),
+      assignmentId: text(formData, 'assignmentId'),
+      weekday: integer(formData, 'weekday'),
+      ordinal: integer(formData, 'ordinal'),
+      startTime: text(formData, 'startTime'),
+      endTime: text(formData, 'endTime'),
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : ''
+    if (message.includes('STALE_CANDIDATE_REVISION')) {
+      redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
+    }
+    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=persist_failed`)
+  }
 
   revalidatePath('/orario')
   redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review`)
@@ -358,10 +403,15 @@ export async function applyTimetableImportCandidate(formData: FormData) {
     redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=not_ready`)
   }
 
+  const reviewedRevision = integer(formData, 'candidateRevision')
+  if (candidate.revision !== reviewedRevision) {
+    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
+  }
+
   try {
     await repository.apply({
       candidateId,
-      candidateRevision: candidate.revision,
+      candidateRevision: reviewedRevision,
       draftVersionId: text(formData, 'draftVersionId'),
       expectedDraftToken: text(formData, 'expectedDraftToken'),
       confirmationRequestId: text(formData, 'confirmationRequestId'),
@@ -396,6 +446,11 @@ function text(formData: FormData, key: string) {
 function nullableText(formData: FormData, key: string) {
   const value = text(formData, key).trim()
   return value || null
+}
+
+function optionalText(formData: FormData, key: string) {
+  const value = formData.get(key)
+  return typeof value === 'string' ? value.trim() : ''
 }
 
 function integer(formData: FormData, key: string) {

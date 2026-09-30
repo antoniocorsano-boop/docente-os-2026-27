@@ -149,6 +149,10 @@ export default async function TimetablePage({
                 required
               />
             </label>
+            <label>
+              <input name="replaceReviewedCandidate" type="checkbox" value="yes" />
+              <span>Se questo stesso documento ha già una proposta corretta manualmente, autorizzo a sostituirla con la nuova estrazione.</span>
+            </label>
             <button className="timetablePrimaryButton" type="submit">Analizza il documento</button>
           </form>
         ) : (
@@ -167,6 +171,7 @@ export default async function TimetablePage({
               {importCandidate.rows.map((row) => (
                 <form action={updateTimetableImportRow} className="timetableImportRow" key={row.id}>
                   <input type="hidden" name="candidateId" value={importCandidate.id} />
+                  <input type="hidden" name="candidateRevision" value={importCandidate.revision} />
                   <input type="hidden" name="rowId" value={row.id} />
                   <div className="timetableImportRowIdentity">
                     <strong>{row.sourceClassLabel ?? 'Classe da verificare'}</strong>
@@ -209,6 +214,7 @@ export default async function TimetablePage({
               <summary>Aggiungi una lezione mancante</summary>
               <form action={addTimetableImportRow} className="timetableImportAddForm">
                 <input type="hidden" name="candidateId" value={importCandidate.id} />
+                <input type="hidden" name="candidateRevision" value={importCandidate.revision} />
                 <label>
                   <span>Cattedra</span>
                   <select name="assignmentId" required defaultValue="">
@@ -243,6 +249,7 @@ export default async function TimetablePage({
             {importCandidate.state === 'READY_TO_CONFIRM' && importDraftToken && confirmationRequestId ? (
               <form action={applyTimetableImportCandidate} className="timetableImportConfirm">
                 <input type="hidden" name="candidateId" value={importCandidate.id} />
+                <input type="hidden" name="candidateRevision" value={importCandidate.revision} />
                 <input type="hidden" name="draftVersionId" value={timetable.draftVersion.id} />
                 <input type="hidden" name="expectedDraftToken" value={importDraftToken} />
                 <input type="hidden" name="confirmationRequestId" value={confirmationRequestId} />
@@ -353,7 +360,9 @@ function ImportStatus({ code }: { code: string }) {
     applied: { tone: 'success', title: 'Orario applicato alla bozza', detail: 'La bozza è stata aggiornata. L’orario in uso non è stato attivato né modificato.' },
     review: { tone: 'info', title: 'Proposta pronta', detail: 'Controlla le righe sotto e correggi solo ciò che serve.' },
     conflict: { tone: 'warning', title: 'La bozza è cambiata', detail: 'Nessuna modifica è stata applicata. Ricarica la proposta prima di confermare.' },
+    review_stale: { tone: 'warning', title: 'La proposta è stata aggiornata', detail: 'Questa pagina mostra una revisione precedente. Riapri la proposta e controlla la versione aggiornata prima di confermare.' },
     already_applied: { tone: 'info', title: 'Documento già applicato', detail: 'Questo stesso documento risulta già applicato alla bozza.' },
+    replace_confirmation_required: { tone: 'warning', title: 'Esiste già una proposta revisionata', detail: 'La proposta esistente contiene correzioni del docente. Per sostituirla con una nuova estrazione devi confermarlo esplicitamente prima di analizzare di nuovo il documento.' },
     no_rows: { tone: 'warning', title: 'Nessuna lezione trovata', detail: 'Controlla l’etichetta docente e la leggibilità del documento.' },
     parse_failed: { tone: 'warning', title: 'Documento non analizzabile', detail: 'Nessuna modifica è stata effettuata. Prova con una scansione più leggibile o con il PDF originale.' },
     missing: { tone: 'warning', title: 'File mancante', detail: 'Seleziona un PDF o un’immagine.' },
@@ -364,6 +373,7 @@ function ImportStatus({ code }: { code: string }) {
     teacher_required: { tone: 'warning', title: 'Etichetta docente necessaria', detail: 'Indica il cognome o la stessa etichetta che compare nel documento.' },
     not_ready: { tone: 'warning', title: 'Proposta non completa', detail: 'Controlla le righe prima di confermare.' },
     apply_failed: { tone: 'warning', title: 'Applicazione non riuscita', detail: 'La transazione è stata annullata: la bozza non è stata modificata parzialmente.' },
+    persist_failed: { tone: 'warning', title: 'Proposta non salvata', detail: 'La preparazione è stata annullata senza sostituire la proposta esistente. Riprova oppure riapri la proposta già presente.' },
     unavailable: { tone: 'warning', title: 'Proposta non disponibile', detail: 'Riapri l’importazione partendo dal documento.' },
   }
   const message = messages[code]

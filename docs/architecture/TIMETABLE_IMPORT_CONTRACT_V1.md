@@ -56,7 +56,15 @@ CONFLICT_DETECTED
 
 ## 3. Sorgente e provenienza
 
-Il sistema calcola sul contenuto binario originale un `source_fingerprint` crittografico stabile, prima di qualsiasi trasformazione.
+Nel percorso ordinario, quando il server riceve il documento sorgente, il sistema calcola sul contenuto binario ricevuto un `source_fingerprint` crittografico stabile prima di qualsiasi trasformazione.
+
+Nel percorso privacy-first `LOCAL_MINIMIZED_SHARE`, il documento originale resta sul dispositivo e non attraversa il trust boundary. In questo caso:
+
+- il solo fingerprint persistibile resta il **fingerprint canonico G1.3 dell'intero documento originale**, calcolato localmente prima di qualsiasi crop o trasformazione;
+- **nessun digest del derivato minimizzato, delle celle selezionate, del cognome o di altri sottoinsiemi nominativi può essere persistito**;
+- il fingerprint dell'intero documento è usabile per integrità, idempotenza e deduplicazione nel perimetro canonico `workspace_id + academic_year_id`; non costituisce identità docente né autorizzazione;
+- il derivato minimizzato è transitorio: viene usato per il parsing e poi reso non risolvibile secondo il contratto G1.5;
+- le correzioni della stessa sorgente mantengono lo stesso `candidate.id` e avanzano `candidate.revision`, secondo G1.2.
 
 Metadati minimi:
 
@@ -105,7 +113,7 @@ TimetableImportCandidate
 
 - `candidate_id` identifica la proposta, non una versione canonica dell'orario;
 - `candidate_revision` cambia a ogni modifica sostanziale del candidato/revisione docente ed è il token logico usato dalla conferma;
-- `workspace_id + academic_year_id + source_fingerprint` costituiscono la chiave logica anti-duplicazione della sorgente;
+- `workspace_id + academic_year_id + source_fingerprint` costituiscono la chiave logica anti-duplicazione del candidato live; nel percorso minimizzato `source_fingerprint` è sempre quello canonico dell'intero documento, mai del crop;
 - `effective_from_candidate` può essere nullo finché la data non è verificabile;
 - `source_is_provisional` descrive il documento, non lo stato di una `teaching_assignment`;
 - il candidato può essere scartato senza effetti sulla DRAFT.
@@ -258,7 +266,9 @@ Invarianti:
 6. un errore intermedio produce rollback completo;
 7. nessuna cancellazione/mutazione di sessioni o occorrenze pregresse.
 
-La concreta strategia DB/RPC/transazione sarà definita in una slice successiva; questo contratto ne fissa il comportamento osservabile.
+La strategia DB/RPC per la revisione del candidato live è ora materializzata dalla migration 0080; la strategia di apply alla DRAFT resta governata separatamente dalle primitive G1.2 già qualificate. Per la correzione di un candidato live già esistente vale la regola G1.2 qualificata:
+
+Se la revisione corrente contiene **correzioni manuali del docente o righe aggiunte manualmente**, una nuova estrazione della stessa sorgente non può sostituirla implicitamente: la revisione resta intatta finché il docente non autorizza esplicitamente la sostituzione. La conferma di sostituzione è distinta dalla successiva conferma/applicazione alla bozza. **si conserva lo stesso `candidate.id`, si incrementa atomicamente `candidate.revision`, si sostituisce il set di righe della revisione e si ricalcola lo stato**. Se qualunque passaggio fallisce, la revisione precedente resta intatta.
 
 ## 11. Applicazione alla DRAFT
 

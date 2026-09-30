@@ -69,11 +69,17 @@ select pg_temp.assert_true(
 
 select pg_temp.assert_true(
   (
-    select migration_id
+    select contract_version
     from public.runtime_schema_contract_state
     where singleton
-  ) = '0079_knowledge_full_text_bounded_search',
-  '09 runtime schema watermark advanced'
+  ) >= 79
+  and exists (
+    select 1
+    from private.runtime_schema_required_migrations
+    where version = 79
+      and migration_id = '0079_knowledge_full_text_bounded_search'
+  ),
+  '09 runtime schema watermark includes bounded-search migration'
 );
 
 select 'KNOWLEDGE_BOUNDED_SEARCH_CONTRACT_PASS';

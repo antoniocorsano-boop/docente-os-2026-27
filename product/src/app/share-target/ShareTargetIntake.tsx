@@ -1,8 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { KnowledgeFileUploader } from '@/app/knowledge/KnowledgeFileUploader'
+import { TimetableSharedIntake } from './TimetableSharedIntake'
+import { looksLikeTimetablePdf } from './timetable-share-helpers'
+import { clearShareIntakeStaging } from './share-target-staging'
 
 const SHARE_CACHE = 'docente-os-share-intake-v1'
 const SHARE_PREFIX = '/__share-intake/'
@@ -20,6 +23,8 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
   const [meta, setMeta] = useState<ShareMeta | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+  const [acceptedCandidateId, setAcceptedCandidateId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -82,19 +87,27 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
     return () => { cancelled = true }
   }, [intakeId])
 
-  async function clearStaging() {
+  const clearStaging = useCallback(async () => {
+    const cache = await caches.open(SHARE_CACHE)
+    await clearShareIntakeStaging(cache, intakeId, SHARE_PREFIX)
+  }, [intakeId])
+
+  const cancelIntake = useCallback(async () => {
+    if (cancelling) return
+    setCancelling(true)
+    setError(null)
     try {
-      const cache = await caches.open(SHARE_CACHE)
-      const keys = await cache.keys()
-      await Promise.all(
-        keys
-          .filter((request) => new URL(request.url).pathname.startsWith(SHARE_PREFIX + intakeId + '/'))
-          .map((request) => cache.delete(request)),
-      )
+      await clearStaging()
+      const destination = acceptedCandidateId
+        ? `/orario?importCandidate=${encodeURIComponent(acceptedCandidateId)}&import=review`
+        : file && looksLikeTimetable(meta, file) ? '/orario' : '/knowledge'
+      window.location.assign(destination)
     } catch (cleanupError) {
-      console.warn('Docente OS shared intake cleanup failed', cleanupError)
+      console.error('Docente OS shared intake cancellation cleanup failed', cleanupError)
+      setCancelling(false)
+      setError('Non sono riuscito a rimuovere il file condiviso dal dispositivo. L’acquisizione resta bloccata: riprova Annulla prima di uscire.')
     }
-  }
+  }, [acceptedCandidateId, cancelling, clearStaging, file, meta])
 
   return (
     <main className="sharedIntakeSurface">
@@ -118,22 +131,51 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
             <div className="knowledgeFeedback" role="status">
               <strong>{file.name}</strong> · {(file.size / 1024 / 1024).toFixed(file.size > 1024 * 1024 ? 1 : 2)} MB
             </div>
-            <KnowledgeFileUploader
-              initialFile={file}
-              postUploadQuery="source=share-target"
-              onCompleted={() => { void clearStaging() }}
-              sharedIntake
-            />
+            {looksLikeTimetable(meta, file) ? (
+              <TimetableSharedIntake
+                key={`${file.name}:${file.size}:${file.lastModified}`}
+                file={file}
+                onBeforeSubmit={clearStaging}
+                onCandidateAccepted={setAcceptedCandidateId}
+              />
+            ) : (
+              <KnowledgeFileUploader
+                initialFile={file}
+                postUploadQuery="source=share-target"
+                onCompleted={() => { void clearStaging().catch((cleanupError) => console.warn('Docente OS shared intake cleanup failed', cleanupError)) }}
+                sharedIntake
+              />
+            )}
           </>
         ) : (
           <p role="status">Sto preparando il file condiviso…</p>
         )}
 
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <button type="button" onClick={() => void cancelIntake()} disabled={cancelling}>
+            {cancelling
+              ? 'Rimuovo il file locale…'
+              : acceptedCandidateId
+                ? 'Rimuovi il file locale e apri la revisione'
+                : 'Annulla acquisizione e rimuovi il file locale'}
+          </button>
+        </div>
+
         <p className="knowledgeUploadTrust">
-          Dopo l’acquisizione potrai valutarlo con i workflow già esistenti: Conoscenza, circolari/Calendario,
-          aggiornamento orario o materiali della lezione. Nessuna destinazione viene scelta automaticamente.
+          I documenti che sembrano orari vengono instradati automaticamente al flusso dedicato, che invia soltanto le aree scelte localmente.
+          Gli altri file continuano a usare l’acquisizione governata di Conoscenza. Nessuna modifica all’orario viene applicata senza conferma.
+          Se abbandoni senza annullare, lo staging temporaneo scade automaticamente.
         </p>
       </section>
     </main>
   )
+}
+
+
+function looksLikeTimetable(meta: ShareMeta | null, file: File) {
+  return looksLikeTimetablePdf({
+    title: meta?.title,
+    fileName: file.name,
+    fileType: file.type,
+  })
 }
