@@ -45,7 +45,7 @@ create or replace function public.replace_timetable_import_candidate_v1(
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $function$
 declare
   uid uuid := auth.uid();
   candidate public.timetable_import_candidates%rowtype;
@@ -183,7 +183,7 @@ commit;
 
   return to_jsonb(candidate);
 end
-$;
+$function$;
 
 revoke all on function public.replace_timetable_import_candidate_v1(
   uuid,uuid,text,text,text,date,text,jsonb
