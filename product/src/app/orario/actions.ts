@@ -203,6 +203,7 @@ async function analyzeTimetableImportResult(formData: FormData) {
   })
   const fingerprint = sourceIdentity.sourceFingerprint
   const sourceLabel = sourceIdentity.sourceLabel
+  const replaceReviewed = optionalText(formData, 'replaceReviewedCandidate') === 'yes'
   const importRepository = new SupabaseTimetableImportRepository()
 
   const settingsRepository = new SupabaseTeacherSettingsRepository()
@@ -295,12 +296,16 @@ async function analyzeTimetableImportResult(formData: FormData) {
       sourceRef: sourceIdentity.sourceRef,
       effectiveFrom,
       parserVersion: `${extracted.processor}@${extracted.processorVersion}`,
+      replaceReviewed,
       rows,
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : ''
     if (message.includes('SOURCE_ALREADY_APPLIED')) {
       return { ok: false as const, code: 'already_applied' }
+    }
+    if (message.includes('REPLACEMENT_CONFIRMATION_REQUIRED')) {
+      return { ok: false as const, code: 'replace_confirmation_required' }
     }
     return { ok: false as const, code: 'persist_failed' }
   }
