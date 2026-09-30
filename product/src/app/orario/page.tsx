@@ -149,6 +149,10 @@ export default async function TimetablePage({
                 required
               />
             </label>
+            <label>
+              <input name="replaceReviewedCandidate" type="checkbox" value="yes" />
+              <span>Se questo stesso documento ha già una proposta corretta manualmente, autorizzo a sostituirla con la nuova estrazione.</span>
+            </label>
             <button className="timetablePrimaryButton" type="submit">Analizza il documento</button>
           </form>
         ) : (
@@ -358,6 +362,7 @@ function ImportStatus({ code }: { code: string }) {
     conflict: { tone: 'warning', title: 'La bozza è cambiata', detail: 'Nessuna modifica è stata applicata. Ricarica la proposta prima di confermare.' },
     review_stale: { tone: 'warning', title: 'La proposta è stata aggiornata', detail: 'Questa pagina mostra una revisione precedente. Riapri la proposta e controlla la versione aggiornata prima di confermare.' },
     already_applied: { tone: 'info', title: 'Documento già applicato', detail: 'Questo stesso documento risulta già applicato alla bozza.' },
+    replace_confirmation_required: { tone: 'warning', title: 'Esiste già una proposta revisionata', detail: 'La proposta esistente contiene correzioni del docente. Per sostituirla con una nuova estrazione devi confermarlo esplicitamente prima di analizzare di nuovo il documento.' },
     no_rows: { tone: 'warning', title: 'Nessuna lezione trovata', detail: 'Controlla l’etichetta docente e la leggibilità del documento.' },
     parse_failed: { tone: 'warning', title: 'Documento non analizzabile', detail: 'Nessuna modifica è stata effettuata. Prova con una scansione più leggibile o con il PDF originale.' },
     missing: { tone: 'warning', title: 'File mancante', detail: 'Seleziona un PDF o un’immagine.' },
