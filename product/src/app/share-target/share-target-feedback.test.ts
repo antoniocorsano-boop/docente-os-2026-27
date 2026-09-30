@@ -40,7 +40,7 @@ test('timetable-like shared PDFs use local minimization before timetable analysi
   assert.doesNotMatch(timetableIntake, /data\.set\('file', file\)/)
   assert.match(timetableIntake, /Il PDF completo non viene caricato in Conoscenza/)
   assert.match(timetableIntake, /await onBeforeSubmit\(\)/)
-  assert.match(timetableIntake, /await analyzeTimetableImport\(data\)/)
+  assert.match(timetableIntake, /await analyzeMinimizedTimetableImport\(data\)/)
   assert.match(timetableIntake, /sha256Hex\(bytes\)/)
   assert.match(timetableIntake, /originalSourceFingerprint/)
   assert.doesNotMatch(timetableIntake, /originalSourceName/)
@@ -205,12 +205,13 @@ test('service worker expires abandoned share-target staging', () => {
 
 
 test('recoverable minimized-share validation keeps staging until server acceptance', () => {
-  const analyzeAt = timetableIntake.indexOf('const result = await analyzeTimetableImport(data)')
+  const analyzeAt = timetableIntake.indexOf('const result = await analyzeMinimizedTimetableImport(data)')
   const cleanupAt = timetableIntake.indexOf('await onBeforeSubmit()', analyzeAt)
   assert.ok(analyzeAt >= 0)
   assert.ok(cleanupAt > analyzeAt)
   assert.match(timetableIntake, /il PDF resta nello staging locale/)
-  assert.match(timetableActions, /const minimizedShare = sourceMode === 'LOCAL_MINIMIZED_SHARE'/)
-  assert.match(timetableActions, /if \(minimizedShare\) return \{ ok: false as const, code \}/)
+  assert.match(timetableActions, /export async function analyzeMinimizedTimetableImport/)
+  assert.match(timetableActions, /return analyzeTimetableImportResult\(formData\)/)
+  assert.match(timetableActions, /return \{ ok: false as const, code: 'invalid_date' \}/)
   assert.match(timetableActions, /return \{ ok: true as const, candidateId: candidate\.id \}/)
 })
