@@ -5,31 +5,33 @@ values (80, '0080_timetable_import_creator_scoped_live_source')
 on conflict (version) do update
 set migration_id = excluded.migration_id;
 
--- DOS-TT-IMPORT-01 / privacy-first minimized Share Target
--- A live import candidate is unique per creator. This keeps the canonical
--- whole-document G1.3 identity compatible with creator-scoped lookup/replacement.
+-- DOS-TT-IMPORT-01 / G1.2 + G1.5
+-- Preserve the qualified logical identity: one live candidate per
+-- workspace + academic year + whole-document fingerprint. Corrections
+-- advance revision on the same candidate id.
 
+drop index if exists public.timetable_import_one_live_source_creator_uq;
 drop index if exists public.timetable_import_one_live_source_uq;
 
-create unique index timetable_import_one_live_source_creator_uq
+create unique index timetable_import_one_live_source_uq
   on public.timetable_import_candidates(
     workspace_id,
     academic_year_id,
-    created_by,
     source_fingerprint
   )
   where state in ('DRAFT','READY_TO_CONFIRM');
 
+drop policy if exists timetable_import_candidates_delete_creator
+  on public.timetable_import_candidates;
 drop policy if exists timetable_import_candidates_delete_member
   on public.timetable_import_candidates;
 
-create policy timetable_import_candidates_delete_creator
+create policy timetable_import_candidates_delete_member
   on public.timetable_import_candidates
   for delete
   to authenticated
   using (
     private.is_workspace_member(workspace_id)
-    and created_by = (select auth.uid())
     and state <> 'APPLIED_TO_DRAFT'
   );
 
@@ -73,56 +75,66 @@ begin
 
   perform pg_advisory_xact_lock(
     hashtextextended(
-      uid::text || ':' || p_workspace_id::text || ':' || p_academic_year_id::text || ':' || p_source_fingerprint,
+      p_workspace_id::text || ':' || p_academic_year_id::text || ':' || p_source_fingerprint,
       0
     )
   );
 
-  if exists(
-    select 1
-    from public.timetable_import_candidates c
-    where c.workspace_id = p_workspace_id
-      and c.academic_year_id = p_academic_year_id
-      and c.created_by = uid
-      and c.source_fingerprint = p_source_fingerprint
-      and c.state = 'APPLIED_TO_DRAFT'
-  ) then
-    raise exception 'SOURCE_ALREADY_APPLIED';
-  end if;
-
-  delete from public.timetable_import_candidates c
+  select c.*
+  into candidate
+  from public.timetable_import_candidates c
   where c.workspace_id = p_workspace_id
     and c.academic_year_id = p_academic_year_id
-    and c.created_by = uid
     and c.source_fingerprint = p_source_fingerprint
-    and c.state in ('DRAFT','READY_TO_CONFIRM');
+    and c.state in ('DRAFT','READY_TO_CONFIRM')
+  for update;
 
-  insert into public.timetable_import_candidates(
-    workspace_id,
-    academic_year_id,
-    source_fingerprint,
-    source_kind,
-    source_label,
-    source_ref,
-    effective_from_candidate,
-    source_is_provisional,
-    state,
-    parser_version,
-    created_by
-  ) values (
-    p_workspace_id,
-    p_academic_year_id,
-    p_source_fingerprint,
-    'INSTITUTION_DOCUMENT',
-    left(btrim(p_source_label),240),
-    left(p_source_ref,1000),
-    p_effective_from,
-    true,
-    'DRAFT',
-    left(p_parser_version,160),
-    uid
-  )
-  returning * into candidate;
+  if candidate.id is null then
+    insert into public.timetable_import_candidates(
+      workspace_id,
+      academic_year_id,
+      source_fingerprint,
+      source_kind,
+      source_label,
+      source_ref,
+      effective_from_candidate,
+      source_is_provisional,
+      state,
+      revision,
+      parser_version,
+      created_by
+    ) values (
+      p_workspace_id,
+      p_academic_year_id,
+      p_source_fingerprint,
+      'INSTITUTION_DOCUMENT',
+      left(btrim(p_source_label),240),
+      left(p_source_ref,1000),
+      p_effective_from,
+      true,
+      'DRAFT',
+      1,
+      left(p_parser_version,160),
+      uid
+    )
+    returning * into candidate;
+  else
+    delete from public.timetable_import_candidate_rows r
+    where r.candidate_id = candidate.id;
+
+    update public.timetable_import_candidates c
+    set
+      state = 'DRAFT',
+      revision = c.revision + 1,
+      source_label = left(btrim(p_source_label),240),
+      source_ref = left(p_source_ref,1000),
+      effective_from_candidate = p_effective_from,
+      source_is_provisional = true,
+      parser_version = left(p_parser_version,160),
+      updated_at = now()
+    where c.id = candidate.id
+    returning * into candidate;
+  end if;
 
   for row_value in
     select value from jsonb_array_elements(p_rows)
@@ -200,7 +212,7 @@ grant execute on function public.replace_timetable_import_candidate_v1(
 comment on function public.replace_timetable_import_candidate_v1(
   uuid,uuid,text,text,text,date,text,jsonb
 ) is
-  'Atomically retires the current creator-owned live candidate and creates, populates and conditionally promotes its replacement. Any failure rolls back the prior candidate deletion.';
+  'Atomically creates or revises the one live candidate for a whole-document fingerprint. Revisions keep the same candidate id; any failure rolls back the full replacement.';
 
 select private.advance_runtime_schema_contract('0080_timetable_import_creator_scoped_live_source');
 
