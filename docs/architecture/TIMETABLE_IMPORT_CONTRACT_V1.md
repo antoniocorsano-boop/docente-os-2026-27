@@ -62,9 +62,9 @@ Nel percorso privacy-first `LOCAL_MINIMIZED_SHARE`, il documento originale resta
 
 - il solo fingerprint persistibile resta il **fingerprint canonico G1.3 dell'intero documento originale**, calcolato localmente prima di qualsiasi crop o trasformazione;
 - **nessun digest del derivato minimizzato, delle celle selezionate, del cognome o di altri sottoinsiemi nominativi può essere persistito**;
-- il fingerprint dell'intero documento è usabile per idempotenza/deduplicazione soltanto nel perimetro del medesimo `created_by`; non costituisce identità docente né autorizzazione;
+- il fingerprint dell'intero documento è usabile per integrità, idempotenza e deduplicazione nel perimetro canonico `workspace_id + academic_year_id`; non costituisce identità docente né autorizzazione;
 - il derivato minimizzato è transitorio: viene usato per il parsing e poi reso non risolvibile secondo il contratto G1.5;
-- lookup e replacement possono riguardare solo candidati dello stesso `created_by`.
+- le correzioni della stessa sorgente mantengono lo stesso `candidate.id` e avanzano `candidate.revision`, secondo G1.2.
 
 Metadati minimi:
 
