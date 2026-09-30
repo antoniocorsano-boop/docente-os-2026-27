@@ -24,7 +24,7 @@ export function resolveTimetableSourceIdentity(input: {
   if (input.sourceMode !== 'LOCAL_MINIMIZED_SHARE') {
     return {
       sourceFingerprint: derivativeFingerprint,
-      sourceLabel: input.derivativeName || 'Orario importato',
+      sourceLabel: 'Orario importato',
       sourceRef: `sha256:${derivativeFingerprint}`,
     }
   }
