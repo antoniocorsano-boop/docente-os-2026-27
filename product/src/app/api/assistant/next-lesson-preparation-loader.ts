@@ -162,7 +162,7 @@ async function loadLessonPreparationBundleWithShared(input: {
   }
 
   const discipline = shared.disciplines.find((item) => item.id === confirmedAssignment.disciplineId)
-  if (!discipline || !canonicalPlanSupportsDisciplineName(discipline.name)) {
+  if (!discipline || !discipline.isActive || !canonicalPlanSupportsDisciplineName(discipline.name)) {
     return blockedPreparation(buildNextLessonPreparation({
       lesson,
       lessonContext: null,
