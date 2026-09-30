@@ -1,6 +1,6 @@
 -- DOS-TT-IMPORT-01 / G1.2 DB contract
 -- Executed only against an isolated disposable database after repository migrations.
--- 35 governed assertions. Rolls back all fixtures.
+-- 36 governed assertions. Rolls back all fixtures.
 
 begin;
 
@@ -180,6 +180,42 @@ exception
 end
 $expect$;
 
+create or replace function pg_temp.expect_review_confirmation_required() returns void
+language plpgsql
+as $reviewed$
+begin
+  perform public.replace_timetable_import_candidate_v1(
+    '00000000-0000-0000-0000-00000000b624',
+    '00000000-0000-0000-0000-00000000c624',
+    repeat('a',64),
+    'Must preserve reviewed rows',
+    'client-whole-document-sha256:' || repeat('a',64),
+    '2026-09-28',
+    'fixture@reviewed',
+    jsonb_build_array(jsonb_build_object(
+      'rowKey','r1',
+      'weekday',2,
+      'ordinal',2,
+      'startTime','09:00',
+      'endTime','10:00',
+      'sourceClassLabel','2C',
+      'resolvedSectionId','00000000-0000-0000-0000-00000000a625',
+      'resolvedAssignmentId','00000000-0000-0000-0000-00000000b625',
+      'confidence','HIGH',
+      'reviewState','AUTO_RESOLVED',
+      'evidenceRef','fixture:replacement',
+      'warnings',jsonb_build_array()
+    ))
+  );
+  raise exception 'EXPECTED_REVIEW_CONFIRMATION_MISSING';
+exception
+  when others then
+    if sqlerrm <> 'REPLACEMENT_CONFIRMATION_REQUIRED' then
+      raise;
+    end if;
+end
+$reviewed$;
+
 create or replace function pg_temp.expect_already_applied() returns void
 language plpgsql
 as $applied$
@@ -256,6 +292,20 @@ select pg_temp.assert_true(
   '30 first atomic replacement creates READY candidate at revision 1'
 );
 
+update public.timetable_import_candidate_rows
+set review_state='CONFIRMED',
+    evidence_ref='teacher:manual-correction'
+where candidate_id=(select first_id from g12_replace_probe)
+  and candidate_revision=1;
+
+select pg_temp.expect_review_confirmation_required();
+
+select pg_temp.assert_true(
+  (select revision from public.timetable_import_candidates where id=(select first_id from g12_replace_probe))=1
+  and (select review_state from public.timetable_import_candidate_rows where candidate_id=(select first_id from g12_replace_probe) and candidate_revision=1 limit 1)='CONFIRMED',
+  '30b reviewed rows remain intact until replacement is explicitly confirmed'
+);
+
 with result as (
   select public.replace_timetable_import_candidate_v1(
     '00000000-0000-0000-0000-00000000b624',
@@ -278,7 +328,8 @@ with result as (
       'reviewState','AUTO_RESOLVED',
       'evidenceRef','fixture:r1-v2',
       'warnings',jsonb_build_array()
-    ))
+    )),
+    true
   ) as payload
 )
 update g12_replace_probe set current_id=(select (payload->>'id')::uuid from result);
