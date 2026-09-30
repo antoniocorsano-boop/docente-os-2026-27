@@ -90,12 +90,17 @@ export async function loadCurrentTodayCopilotContext(): Promise<LoadedTodayCopil
     planner,
   })
 
-  const preparation = await loadNextLessonPreparationBundle({
-    workspaceId: workspaceContext.workspace.id,
-    academicYearId,
-    homeDaily,
-    minuteOfDay: clock.minuteOfDay,
-  })
+  let preparation: LoadedNextLessonPreparation | null = null
+  try {
+    preparation = await loadNextLessonPreparationBundle({
+      workspaceId: workspaceContext.workspace.id,
+      academicYearId,
+      homeDaily,
+      minuteOfDay: clock.minuteOfDay,
+    })
+  } catch {
+    console.warn('[DOCENTE OS] Lesson preparation unavailable; Today Copilot continues with base context.')
+  }
 
   return {
     context: enrichTodayCopilotContext(base, preparation?.preparation ?? null),
