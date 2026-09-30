@@ -23,7 +23,6 @@ const MAX_COMPOSITE_HEIGHT = 12000
 export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
-  const sourceRef = useRef<HTMLCanvasElement | null>(null)
   const startRef = useRef<Point | null>(null)
   const [keyboardCursor, setKeyboardCursor] = useState<Point | null>(null)
   const [keyboardStart, setKeyboardStart] = useState<Point | null>(null)
@@ -35,6 +34,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
   const [effectiveFrom, setEffectiveFrom] = useState(() => dateFromFilename(file.name) ?? '')
   const [replaceReviewedCandidate, setReplaceReviewedCandidate] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [acceptedCandidateId, setAcceptedCandidateId] = useState<string | null>(null)
   const [touchSelectMode, setTouchSelectMode] = useState(false)
   const [message, setMessage] = useState('Preparo il documento localmente. Nessun byte viene inviato.')
 
@@ -50,56 +50,52 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
         }
         const bytes = new Uint8Array(await file.arrayBuffer())
         const fingerprint = await sha256Hex(bytes)
-        const pdf = await getDocumentProxy(bytes.slice())
+        const pdf = await getDocumentProxy(bytes)
         if (pdf.numPages < 1 || pdf.numPages > MAX_PAGES) {
           throw new Error(`Il PDF ha ${pdf.numPages} pagine: il flusso locale per l’orario supporta fino a ${MAX_PAGES} pagine.`)
         }
 
-        const rendered: HTMLCanvasElement[] = []
+        const layouts: Array<{ page: Awaited<ReturnType<typeof pdf.getPage>>; viewport: ReturnType<Awaited<ReturnType<typeof pdf.getPage>>['getViewport']>; x: number; y: number }> = []
+        let width = 0
+        let height = 0
         for (let n = 1; n <= pdf.numPages; n += 1) {
           const page = await pdf.getPage(n)
           const base = page.getViewport({ scale: 1 })
           const scale = Math.min(2, MAX_PAGE_DIMENSION / Math.max(base.width, base.height))
           const viewport = page.getViewport({ scale })
-          const pageCanvas = document.createElement('canvas')
-          pageCanvas.width = Math.max(1, Math.round(viewport.width))
-          pageCanvas.height = Math.max(1, Math.round(viewport.height))
-          const ctx = pageCanvas.getContext('2d', { alpha: false })
-          if (!ctx) throw new Error('Canvas non disponibile')
-          ctx.fillStyle = canvasSurfaceColor()
-          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height)
-          await page.render({ canvas: pageCanvas, canvasContext: ctx, viewport }).promise
-          rendered.push(pageCanvas)
+          width = Math.max(width, Math.max(1, Math.round(viewport.width)))
+          layouts.push({ page, viewport, x: 0, y: height })
+          height += Math.max(1, Math.round(viewport.height)) + (n < pdf.numPages ? GAP : 0)
         }
-
-        const width = Math.max(...rendered.map((item) => item.width))
-        const height = rendered.reduce((sum, item) => sum + item.height, 0) + GAP * Math.max(0, rendered.length - 1)
         if (height > MAX_COMPOSITE_HEIGHT) throw new Error('Il documento è troppo alto per la selezione locale.')
 
-        const source = document.createElement('canvas')
-        source.width = width
-        source.height = height
-        const ctx = source.getContext('2d', { alpha: false })
-        if (!ctx) throw new Error('Canvas composito non disponibile')
+        const canvas = canvasRef.current
+        if (!canvas) throw new Error('Canvas non disponibile')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d', { alpha: false })
+        if (!ctx) throw new Error('Canvas non disponibile')
         ctx.fillStyle = canvasSurfaceColor()
         ctx.fillRect(0, 0, width, height)
-        let y = 0
-        for (const pageCanvas of rendered) {
-          ctx.drawImage(pageCanvas, Math.round((width - pageCanvas.width) / 2), y)
-          y += pageCanvas.height + GAP
+
+        for (const layout of layouts) {
+          layout.x = Math.round((width - layout.viewport.width) / 2)
+          await layout.page.render({
+            canvas,
+            canvasContext: ctx,
+            viewport: layout.viewport,
+            transform: [1, 0, 0, 1, layout.x, layout.y],
+          }).promise
         }
 
         if (cancelled) return
-        sourceRef.current = source
         setSourceFingerprint(fingerprint)
         setPages(pdf.numPages)
-        setKeyboardCursor({ x: source.width / 2, y: Math.min(source.height - 1, 120) })
+        setKeyboardCursor({ x: canvas.width / 2, y: Math.min(canvas.height - 1, 120) })
         setReady(true)
         setMessage('Seleziona soltanto la riga o le celle che appartengono al tuo orario. Il resto del documento non verrà inviato.')
-        drawCanvas(source, canvasRef.current, [], { x: source.width / 2, y: Math.min(source.height - 1, 120) }, null)
       } catch (error) {
         if (cancelled) return
-        sourceRef.current = null
         startRef.current = null
         setReady(false)
         setSourceFingerprint(null)
@@ -116,12 +112,8 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
         }
       }
     })()
-    return () => { cancelled = true; sourceRef.current = null }
+    return () => { cancelled = true }
   }, [file, onBeforeSubmit])
-
-  useEffect(() => {
-    drawCanvas(sourceRef.current, canvasRef.current, selections, keyboardCursor, keyboardStart)
-  }, [selections, keyboardCursor, keyboardStart])
 
   function point(event: ReactPointerEvent<HTMLCanvasElement>): Point {
     const canvas = event.currentTarget
@@ -167,8 +159,8 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
   }
 
   function keyboardSelection(event: ReactKeyboardEvent<HTMLCanvasElement>) {
-    if (!ready || busy || !sourceRef.current) return
-    const source = sourceRef.current
+    if (!ready || busy || !canvasRef.current) return
+    const source = canvasRef.current
     const current = keyboardCursor ?? { x: source.width / 2, y: source.height / 2 }
     const step = event.shiftKey ? 40 : 12
 
@@ -200,10 +192,11 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
   }
 
   async function submit() {
-    if (!sourceRef.current || !sourceFingerprint || !selections.length || selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal)) || !teacherLabel.trim() || !effectiveFrom || busy) return
+    const source = canvasRef.current
+    if (!source || !sourceFingerprint || !selections.length || selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal)) || !teacherLabel.trim() || !effectiveFrom || busy || acceptedCandidateId) return
     setBusy(true)
     try {
-      const derivative = await cropSelections(sourceRef.current, selections, teacherLabel.trim())
+      const derivative = await cropSelections(source, selections, teacherLabel.trim())
       const safeFile = new File([derivative], 'orario-selezione-locale.png', {
         type: 'image/png',
         lastModified: Date.now(),
@@ -218,27 +211,55 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
 
       const result = await analyzeMinimizedTimetableImport(data)
 
-      try {
-        await onBeforeSubmit()
-      } catch (cleanupError) {
-        console.error('Timetable local staging cleanup failed after server analysis', cleanupError)
+      if (!result || !result.ok) {
+        const code = result?.code ?? 'persist_failed'
+        if (isRecoverableImportFailure(code)) {
+          setBusy(false)
+          setMessage(messageForImportFailure(code))
+          return
+        }
+        try {
+          await onBeforeSubmit()
+        } catch (cleanupError) {
+          console.error('Timetable local staging cleanup failed after terminal server result', cleanupError)
+          setBusy(false)
+          setMessage(`${messageForImportFailure(code)} La rimozione del PDF locale non è riuscita: usa Annulla acquisizione e riprova finché lo staging viene eliminato.`)
+          return
+        }
         setBusy(false)
-        setMessage('Non posso proseguire finché il PDF completo non viene rimosso dallo staging locale. Riprova Annulla acquisizione prima di uscire.')
+        setMessage(messageForImportFailure(code))
         return
       }
 
-      if (!result || !result.ok) {
+      setAcceptedCandidateId(result.candidateId)
+      try {
+        await onBeforeSubmit()
+      } catch (cleanupError) {
+        console.error('Timetable local staging cleanup failed after candidate acceptance', cleanupError)
         setBusy(false)
-        setMessage(messageForImportFailure(result?.code ?? 'persist_failed'))
+        setMessage('La proposta è stata creata, ma il PDF completo non è ancora stato rimosso dallo staging locale. Riprova la rimozione: al successo aprirò direttamente la revisione già creata, senza rieseguire l’analisi.')
         return
       }
 
       setMessage('Proposta preparata. Il PDF completo è stato rimosso dallo staging locale.')
-      window.location.assign(`/orario?importCandidate=${encodeURIComponent(result.candidateId)}&import=review`)
+      window.location.assign(reviewUrl(result.candidateId))
     } catch (error) {
       console.error('Timetable minimized share intake failed', error)
       setBusy(false)
       setMessage('Non sono riuscito a preparare la proposta. Il PDF originale resta disponibile solo nello staging locale per consentire la correzione o l’annullamento.')
+    }
+  }
+
+  async function retryAcceptedCleanup() {
+    if (!acceptedCandidateId || busy) return
+    setBusy(true)
+    try {
+      await onBeforeSubmit()
+      window.location.assign(reviewUrl(acceptedCandidateId))
+    } catch (cleanupError) {
+      console.error('Timetable local staging cleanup retry failed', cleanupError)
+      setBusy(false)
+      setMessage('La proposta resta salvata, ma il PDF locale non è ancora stato rimosso. Riprova la rimozione prima di uscire.')
     }
   }
 
@@ -270,18 +291,58 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
       </div>
 
       <div ref={viewportRef} style={{ maxHeight: 620, overflow: 'auto', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)' }}>
-        <canvas
-          ref={canvasRef}
-          role="application"
-          tabIndex={0}
-          onPointerDown={pointerDown}
-          onPointerUp={pointerUp}
-          onPointerCancel={() => { startRef.current = null }}
-          onKeyDown={keyboardSelection}
-          aria-label="Anteprima locale dell’orario: trascina oppure usa tastiera per selezionare le tue celle"
-          aria-describedby="timetable-selection-help"
-          style={{ width: '100%', height: 'auto', display: 'block', touchAction: touchSelectMode ? 'none' : 'pan-y', cursor: ready && !busy ? 'crosshair' : 'default' }}
-        />
+        <div style={{ position: 'relative', width: '100%' }}>
+          <canvas
+            ref={canvasRef}
+            role="application"
+            tabIndex={0}
+            onPointerDown={pointerDown}
+            onPointerUp={pointerUp}
+            onPointerCancel={() => { startRef.current = null }}
+            onKeyDown={keyboardSelection}
+            aria-label="Anteprima locale dell’orario: trascina oppure usa tastiera per selezionare le tue celle"
+            aria-describedby="timetable-selection-help"
+            style={{ width: '100%', height: 'auto', display: 'block', touchAction: touchSelectMode ? 'none' : 'pan-y', cursor: ready && !busy ? 'crosshair' : 'default' }}
+          />
+          {canvasRef.current?.width && canvasRef.current?.height ? (
+            <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+              {selections.map((selection) => (
+                <span key={selection.id} style={{
+                  position: 'absolute',
+                  left: `${selection.x / canvasRef.current!.width * 100}%`,
+                  top: `${selection.y / canvasRef.current!.height * 100}%`,
+                  width: `${selection.width / canvasRef.current!.width * 100}%`,
+                  height: `${selection.height / canvasRef.current!.height * 100}%`,
+                  border: '2px dashed currentColor',
+                  boxSizing: 'border-box',
+                }} />
+              ))}
+              {keyboardCursor ? (
+                <span style={{
+                  position: 'absolute',
+                  left: `${keyboardCursor.x / canvasRef.current.width * 100}%`,
+                  top: `${keyboardCursor.y / canvasRef.current.height * 100}%`,
+                  width: 20,
+                  height: 20,
+                  border: '2px solid currentColor',
+                  transform: 'translate(-50%, -50%)',
+                  boxSizing: 'border-box',
+                }} />
+              ) : null}
+              {keyboardCursor && keyboardStart ? (
+                <span style={{
+                  position: 'absolute',
+                  left: `${Math.min(keyboardStart.x, keyboardCursor.x) / canvasRef.current.width * 100}%`,
+                  top: `${Math.min(keyboardStart.y, keyboardCursor.y) / canvasRef.current.height * 100}%`,
+                  width: `${Math.abs(keyboardCursor.x - keyboardStart.x) / canvasRef.current.width * 100}%`,
+                  height: `${Math.abs(keyboardCursor.y - keyboardStart.y) / canvasRef.current.height * 100}%`,
+                  border: '2px dashed currentColor',
+                  boxSizing: 'border-box',
+                }} />
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <small id="timetable-selection-help">
@@ -357,9 +418,14 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        <button type="button" onClick={() => void submit()} disabled={!ready || !sourceFingerprint || !selections.length || selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal)) || !teacherLabel.trim() || !effectiveFrom || busy}>
+        <button type="button" onClick={() => void submit()} disabled={!ready || !sourceFingerprint || !selections.length || selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal)) || !teacherLabel.trim() || !effectiveFrom || busy || Boolean(acceptedCandidateId)}>
           {busy ? 'Preparo la proposta…' : 'Prepara proposta di orario'}
         </button>
+        {acceptedCandidateId ? (
+          <button type="button" onClick={() => void retryAcceptedCleanup()} disabled={busy}>
+            Rimuovi il PDF locale e apri la revisione
+          </button>
+        ) : null}
         <button type="button" onClick={() => { setSelections([]); setMessage('Selezione cancellata. Il PDF resta soltanto sul dispositivo.') }} disabled={!selections.length || busy}>
           Cancella selezione
         </button>
@@ -428,46 +494,6 @@ function canvasInkColor() {
 }
 
 
-function drawCanvas(
-  source: HTMLCanvasElement | null,
-  canvas: HTMLCanvasElement | null,
-  selections: readonly Rect[],
-  keyboardCursor: Point | null,
-  keyboardStart: Point | null,
-) {
-  if (!source || !canvas) return
-  canvas.width = source.width
-  canvas.height = source.height
-  const ctx = canvas.getContext('2d', { alpha: false })
-  if (!ctx) return
-  ctx.drawImage(source, 0, 0)
-  ctx.save()
-  ctx.lineWidth = Math.max(4, source.width / 250)
-  ctx.strokeStyle = canvasInkColor()
-  ctx.setLineDash([14, 10])
-  for (const rect of selections) ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)
-  if (keyboardCursor) {
-    ctx.setLineDash([])
-    ctx.beginPath()
-    ctx.moveTo(keyboardCursor.x - 14, keyboardCursor.y)
-    ctx.lineTo(keyboardCursor.x + 14, keyboardCursor.y)
-    ctx.moveTo(keyboardCursor.x, keyboardCursor.y - 14)
-    ctx.lineTo(keyboardCursor.x, keyboardCursor.y + 14)
-    ctx.stroke()
-  }
-  if (keyboardCursor && keyboardStart) {
-    ctx.setLineDash([14, 10])
-    ctx.strokeRect(
-      Math.min(keyboardStart.x, keyboardCursor.x),
-      Math.min(keyboardStart.y, keyboardCursor.y),
-      Math.abs(keyboardCursor.x - keyboardStart.x),
-      Math.abs(keyboardCursor.y - keyboardStart.y),
-    )
-  }
-  ctx.restore()
-}
-
-
 const WEEKDAYS = [
   { value: 1, label: 'Lunedì' },
   { value: 2, label: 'Martedì' },
@@ -478,19 +504,30 @@ const WEEKDAYS = [
 ] as const
 
 async function sha256Hex(bytes: Uint8Array) {
-  const copy = new Uint8Array(bytes.byteLength)
-  copy.set(bytes)
-  const digest = await crypto.subtle.digest('SHA-256', copy.buffer)
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
   return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, '0')).join('')
 }
 
 
+function isRecoverableImportFailure(code: string) {
+  return code === 'invalid_date'
+    || code === 'teacher_required'
+    || code === 'parse_failed'
+    || code === 'no_rows'
+    || code === 'replace_confirmation_required'
+    || code === 'persist_failed'
+}
+
+function reviewUrl(candidateId: string) {
+  return `/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review`
+}
+
 function messageForImportFailure(code: string) {
-  if (code === 'invalid_date') return 'La data non è valida per l’anno scolastico corrente. Correggila e riprova: il PDF è stato rimosso dallo staging, ma l’anteprima resta disponibile in questa schermata.'
-  if (code === 'teacher_required') return 'Indica il cognome o l’etichetta docente e riprova: il PDF è stato rimosso dallo staging, ma l’anteprima resta disponibile in questa schermata.'
-  if (code === 'parse_failed' || code === 'no_rows') return 'Non riesco ancora a ricavare righe utili dalle aree scelte. Correggi la selezione e riprova: il PDF è stato rimosso dallo staging, ma l’anteprima resta disponibile in questa schermata.'
-  if (code === 'replace_confirmation_required') return 'Esiste già una proposta che contiene correzioni manuali. Se vuoi sostituirla, seleziona la conferma esplicita e riprova.'
-  if (code === 'already_applied') return 'Questo documento è già stato applicato alla bozza dell’orario. Non serve ripetere l’importazione.'
-  if (code === 'invalid_content' || code === 'unsupported' || code === 'too_large') return 'Il file condiviso non supera i controlli di acquisizione. Il PDF è stato rimosso dallo staging locale; per riprovare con un altro file torna alla condivisione.'
-  return 'Non sono riuscito a creare la proposta. Il PDF è stato rimosso dallo staging; puoi correggere i dati nell’anteprima ancora aperta e riprovare.'
+  if (code === 'invalid_date') return 'La data non è valida per l’anno scolastico corrente. Correggila e riprova: il PDF resta nello staging locale per consentire il nuovo tentativo.'
+  if (code === 'teacher_required') return 'Indica il cognome o l’etichetta docente e riprova: il PDF resta nello staging locale.'
+  if (code === 'parse_failed' || code === 'no_rows') return 'Non riesco ancora a ricavare righe utili dalle aree scelte. Correggi la selezione e riprova: il PDF resta nello staging locale.'
+  if (code === 'replace_confirmation_required') return 'Esiste già una proposta che contiene correzioni manuali. Se vuoi sostituirla, seleziona la conferma esplicita e riprova: il PDF resta nello staging locale.'
+  if (code === 'already_applied') return 'Questo documento è già stato applicato alla bozza dell’orario. L’importazione è conclusa e il PDF locale viene rimosso.'
+  if (code === 'invalid_content' || code === 'unsupported' || code === 'too_large') return 'Il file condiviso non supera i controlli di acquisizione. Il PDF locale viene rimosso; per riprovare usa un altro file dalla condivisione.'
+  return 'Non sono riuscito a creare la proposta. Puoi correggere i dati e riprovare finché il PDF resta nello staging locale.'
 }
