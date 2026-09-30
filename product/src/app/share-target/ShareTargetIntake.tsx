@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { KnowledgeFileUploader } from '@/app/knowledge/KnowledgeFileUploader'
 import { TimetableSharedIntake } from './TimetableSharedIntake'
@@ -85,10 +85,10 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
     return () => { cancelled = true }
   }, [intakeId])
 
-  async function clearStaging() {
+  const clearStaging = useCallback(async () => {
     const cache = await caches.open(SHARE_CACHE)
     await clearShareIntakeStaging(cache, intakeId, SHARE_PREFIX)
-  }
+  }, [intakeId])
 
   return (
     <main className="sharedIntakeSurface">
