@@ -216,7 +216,8 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
         <Dialog.Root open onOpenChange={(open) => { if (!open) setEditor(null) }}>
           <Dialog.Portal>
             <Dialog.Overlay className="timetableEditorBackdrop" />
-            <Dialog.Content className="timetableEditor" aria-describedby={undefined}>
+            <Dialog.Content className="timetableEditor">
+              <Dialog.Description className="srOnly">Aggiungi o modifica una voce dell’orario settimanale.</Dialog.Description>
               <div className="timetableEditorHeading"><div><span>{editor.mode === 'create' ? 'Nuova voce' : 'Modifica voce'}</span><Dialog.Title asChild><h3>{days.find((day) => day.value === editor.weekday)?.label ?? 'Giorno'} · {editor.startTime}–{editor.endTime}</h3></Dialog.Title></div><Dialog.Close asChild><button type="button" aria-label="Chiudi">×</button></Dialog.Close></div>
             <form action={editor.mode === 'create' ? createSlot : updateSlot} className="timetableEditorForm">
               <input type="hidden" name="versionId" value={versionId} />{editor.slotId ? <input type="hidden" name="slotId" value={editor.slotId} /> : null}
