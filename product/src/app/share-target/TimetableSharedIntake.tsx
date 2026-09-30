@@ -36,17 +36,6 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
 
   useEffect(() => {
     let cancelled = false
-    sourceRef.current = null
-    startRef.current = null
-    setReady(false)
-    setPages(0)
-    setSelections([])
-    setSourceFingerprint(null)
-    setEffectiveFrom(dateFromFilename(file.name) ?? '')
-    setBusy(false)
-    setKeyboardStart(null)
-    setKeyboardCursor(null)
-    setMessage('Preparo il documento localmente. Nessun byte viene inviato.')
     void (async () => {
       try {
         if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
@@ -190,7 +179,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
     if (!sourceRef.current || !sourceFingerprint || !selections.length || selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal)) || !teacherLabel.trim() || !effectiveFrom || busy) return
     setBusy(true)
     try {
-      const derivative = await cropSelections(sourceRef.current, selections)
+      const derivative = await cropSelections(sourceRef.current, selections, teacherLabel.trim())
       const safeFile = new File([derivative], 'orario-selezione-locale.png', {
         type: 'image/png',
         lastModified: Date.now(),
@@ -307,7 +296,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
   )
 }
 
-async function cropSelections(source: HTMLCanvasElement, selections: Selection[]) {
+async function cropSelections(source: HTMLCanvasElement, selections: Selection[], teacherLabel: string) {
   const padding = 8
   const normalized = selections
     .map((rect) => ({
@@ -335,7 +324,7 @@ async function cropSelections(source: HTMLCanvasElement, selections: Selection[]
   for (const rect of normalized) {
     if (!rect.weekday || !isValidOrdinal(rect.ordinal)) throw new Error('Contesto giorno/ora mancante')
     const day = WEEKDAYS.find((item) => item.value === rect.weekday)?.label ?? `Giorno ${rect.weekday}`
-    ctx.fillText(`GIORNO: ${day} · ORA: ${rect.ordinal}`, 8, y + labelHeight / 2)
+    ctx.fillText(`DOCENTE: ${teacherLabel} · GIORNO: ${day} · ORA: ${rect.ordinal}`, 8, y + labelHeight / 2)
     y += labelHeight
     ctx.drawImage(source, rect.x, rect.y, rect.width, rect.height, 0, y, rect.width, rect.height)
     y += rect.height + padding
