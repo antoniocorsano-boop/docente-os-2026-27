@@ -43,7 +43,8 @@ create or replace function public.replace_timetable_import_candidate_v1(
   p_source_ref text,
   p_effective_from date,
   p_parser_version text,
-  p_rows jsonb
+  p_rows jsonb,
+  p_replace_reviewed boolean
 ) returns jsonb
 language plpgsql
 security definer
@@ -54,6 +55,7 @@ declare
   candidate public.timetable_import_candidates%rowtype;
   row_value jsonb;
   complete boolean;
+  has_teacher_review boolean := false;
 begin
   if uid is null then
     raise exception 'authentication required';
@@ -79,6 +81,17 @@ begin
       0
     )
   );
+
+  -- Lock every matching live/applied candidate before checking terminal state.
+  -- This serializes re-import with apply_confirmed_timetable_import_v1, which
+  -- locks the candidate row before changing it to APPLIED_TO_DRAFT.
+  perform 1
+  from public.timetable_import_candidates c
+  where c.workspace_id = p_workspace_id
+    and c.academic_year_id = p_academic_year_id
+    and c.source_fingerprint = p_source_fingerprint
+    and c.state in ('DRAFT','READY_TO_CONFIRM','APPLIED_TO_DRAFT')
+  for update;
 
   if exists(
     select 1
@@ -151,6 +164,21 @@ begin
     on conflict (backend_pid,transaction_id)
     do update set candidate_id = excluded.candidate_id;
   else
+    select exists(
+      select 1
+      from public.timetable_import_candidate_rows r
+      where r.candidate_id = candidate.id
+        and r.candidate_revision = candidate.revision
+        and (
+          r.review_state = 'CONFIRMED'
+          or r.evidence_ref = 'teacher:manual-addition'
+        )
+    ) into has_teacher_review;
+
+    if has_teacher_review and coalesce(p_replace_reviewed,false) is not true then
+      raise exception 'REPLACEMENT_CONFIRMATION_REQUIRED';
+    end if;
+
     insert into private.timetable_import_apply_context(
       backend_pid,
       transaction_id,
@@ -262,17 +290,17 @@ end
 $function$;
 
 revoke all on function public.replace_timetable_import_candidate_v1(
-  uuid,uuid,text,text,text,date,text,jsonb
+  uuid,uuid,text,text,text,date,text,jsonb,boolean
 ) from public, anon;
 
 grant execute on function public.replace_timetable_import_candidate_v1(
-  uuid,uuid,text,text,text,date,text,jsonb
+  uuid,uuid,text,text,text,date,text,jsonb,boolean
 ) to authenticated;
 
 comment on function public.replace_timetable_import_candidate_v1(
-  uuid,uuid,text,text,text,date,text,jsonb
+  uuid,uuid,text,text,text,date,text,jsonb,boolean
 ) is
-  'Atomically creates or revises the one live candidate for a whole-document fingerprint. Revisions keep the same candidate id; any failure rolls back the full replacement.';
+  'Atomically creates or revises the one live candidate for a whole-document fingerprint. Teacher-reviewed rows are retained unless replacement is explicitly confirmed; revisions keep the same candidate id and concurrent apply/re-import is serialized.';
 
 select private.advance_runtime_schema_contract('0080_timetable_import_same_id_live_source_revision');
 
