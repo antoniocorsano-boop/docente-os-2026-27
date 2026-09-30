@@ -150,20 +150,26 @@ export async function deleteTimetableSlot(formData: FormData) {
 
 
 export async function analyzeTimetableImport(formData: FormData) {
+  const result = await analyzeTimetableImportResult(formData)
+  if (!result.ok) redirect(`/orario?import=${encodeURIComponent(result.code)}`)
+  redirect(`/orario?importCandidate=${encodeURIComponent(result.candidateId)}&import=review`)
+}
+
+export async function analyzeMinimizedTimetableImport(formData: FormData) {
+  formData.set('sourceMode', 'LOCAL_MINIMIZED_SHARE')
+  return analyzeTimetableImportResult(formData)
+}
+
+async function analyzeTimetableImportResult(formData: FormData) {
   const context = await requireContext()
-  const minimizedShare = sourceMode === 'LOCAL_MINIMIZED_SHARE'
-  const failImport = (code: string) => {
-    if (minimizedShare) return { ok: false as const, code }
-    redirect(`/orario?import=${encodeURIComponent(code)}`)
-  }
 
   const value = formData.get('file')
-  if (!(value instanceof File) || value.size === 0) return failImport('missing')
-  if (value.size > MAX_KNOWLEDGE_UPLOAD_BYTES) return failImport('too_large')
+  if (!(value instanceof File) || value.size === 0) return { ok: false as const, code: 'missing' }
+  if (value.size > MAX_KNOWLEDGE_UPLOAD_BYTES) return { ok: false as const, code: 'too_large' }
 
   const mimeType = normalizeKnowledgeUploadMime(value.type, value.name)
   if (mimeType !== 'application/pdf' && !mimeType.startsWith('image/')) {
-    return failImport('unsupported')
+    return { ok: false as const, code: 'unsupported' }
   }
 
   const effectiveFrom = text(formData, 'effectiveFrom').trim()
@@ -172,11 +178,11 @@ export async function analyzeTimetableImport(formData: FormData) {
     || effectiveFrom < context.academicYear.startsOn
     || effectiveFrom > context.academicYear.endsOn
   ) {
-    return failImport('invalid_date')
+    return { ok: false as const, code: 'invalid_date' }
   }
 
   const teacherLabel = text(formData, 'teacherLabel').trim()
-  if (!teacherLabel || teacherLabel.length > 120) return failImport('teacher_required')
+  if (!teacherLabel || teacherLabel.length > 120) return { ok: false as const, code: 'teacher_required' }
 
   const bytes = new Uint8Array(await value.arrayBuffer())
   const validation = await validateKnowledgeUploadContent({
@@ -184,7 +190,7 @@ export async function analyzeTimetableImport(formData: FormData) {
     mimeType,
     bytes,
   })
-  if (!validation.valid) return failImport('invalid_content')
+  if (!validation.valid) return { ok: false as const, code: 'invalid_content' }
 
   const derivativeFingerprint = createHash('sha256').update(bytes).digest('hex')
   const sourceMode = optionalText(formData, 'sourceMode')
@@ -239,10 +245,10 @@ export async function analyzeTimetableImport(formData: FormData) {
       knownClassLabels: [...sectionLabels.values()],
     })
   } catch {
-    return failImport('parse_failed')
+    return { ok: false as const, code: 'parse_failed' }
   }
 
-  if (!extracted.rows.length) return failImport('no_rows')
+  if (!extracted.rows.length) return { ok: false as const, code: 'no_rows' }
 
   const rows = extracted.rows.map((row) => {
     const sectionId = sectionIdByClass.get(normalizeClassKey(row.classLabel)) ?? null
@@ -294,16 +300,13 @@ export async function analyzeTimetableImport(formData: FormData) {
   } catch (error) {
     const message = error instanceof Error ? error.message : ''
     if (message.includes('SOURCE_ALREADY_APPLIED')) {
-      return failImport('already_applied')
+      return { ok: false as const, code: 'already_applied' }
     }
-    return failImport('persist_failed')
+    return { ok: false as const, code: 'persist_failed' }
   }
 
   revalidatePath('/orario')
-  if (minimizedShare) {
-    return { ok: true as const, candidateId: candidate.id }
-  }
-  redirect(`/orario?importCandidate=${encodeURIComponent(candidate.id)}&import=review`)
+  return { ok: true as const, candidateId: candidate.id }
 }
 
 export async function addTimetableImportRow(formData: FormData) {
