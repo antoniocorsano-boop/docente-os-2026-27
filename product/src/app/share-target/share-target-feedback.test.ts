@@ -229,10 +229,13 @@ test('timetable PDF size is checked before reading the full source into memory',
 })
 
 
-test('Android timetable preview avoids duplicate full-resolution canvas buffers', () => {
+test('Android timetable preview uses one reusable scratch canvas and preserves prior PDF pages', () => {
   assert.doesNotMatch(timetableIntake, /const rendered: HTMLCanvasElement\[\]/)
-  assert.doesNotMatch(timetableIntake, /document\.createElement\('canvas'\)[\s\S]*drawCanvas\(/)
-  assert.match(timetableIntake, /transform: \[1, 0, 0, 1, layout\.x, layout\.y\]/)
+  assert.match(timetableIntake, /const scratch = document\.createElement\('canvas'\)/)
+  assert.match(timetableIntake, /await layout\.page\.render\(\{[\s\S]*canvas: scratch/)
+  assert.match(timetableIntake, /ctx\.drawImage\(scratch, layout\.x, layout\.y\)/)
+  assert.match(timetableIntake, /scratch\.width = 1/)
+  assert.match(timetableIntake, /scratch\.height = 1/)
   assert.match(timetableIntake, /position: 'absolute'/)
   assert.match(timetableIntake, /getDocumentProxy\(new Uint8Array\(buffer\)\)/)
 })
@@ -243,6 +246,14 @@ test('accepted candidate survives cleanup failure and cleanup retry opens its re
   assert.match(timetableIntake, /retryAcceptedCleanup/)
   assert.match(timetableIntake, /reviewUrl\(acceptedCandidateId\)/)
   assert.match(timetableIntake, /senza rieseguire l’analisi/)
+})
+
+
+test('parent cleanup action preserves accepted candidate review routing', () => {
+  assert.match(timetableIntake, /onCandidateAccepted\?\.\(result\.candidateId\)/)
+  assert.match(intake, /onCandidateAccepted=\{setAcceptedCandidateId\}/)
+  assert.match(intake, /acceptedCandidateId[\s\S]*importCandidate=\$\{encodeURIComponent\(acceptedCandidateId\)\}&import=review/)
+  assert.match(intake, /Rimuovi il file locale e apri la revisione/)
 })
 
 
