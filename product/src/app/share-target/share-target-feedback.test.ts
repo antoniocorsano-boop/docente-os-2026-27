@@ -160,3 +160,11 @@ test('terminal timetable preparation failures purge local staging before surfaci
   assert.match(timetableIntake, /Il file sorgente è stato rimosso dallo staging locale/)
   assert.match(timetableIntake, /Non sono riuscito a rimuovere il file dallo staging locale/)
 })
+
+
+test('timetable preview preserves touch scrolling and sizes derivative labels', () => {
+  assert.match(timetableIntake, /touchAction: touchSelectMode \? 'none' : 'pan-y'/)
+  assert.match(timetableIntake, /aria-pressed=\{touchSelectMode\}/)
+  assert.match(timetableIntake, /ensureKeyboardCursorVisible/)
+  assert.match(timetableIntake, /measureText\(derivativeContextLabel/)
+})
