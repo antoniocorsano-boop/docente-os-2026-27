@@ -21,6 +21,7 @@ const MAX_COMPOSITE_HEIGHT = 12000
 
 export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const viewportRef = useRef<HTMLDivElement>(null)
   const sourceRef = useRef<HTMLCanvasElement | null>(null)
   const startRef = useRef<Point | null>(null)
   const [keyboardCursor, setKeyboardCursor] = useState<Point | null>(null)
@@ -32,6 +33,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
   const [teacherLabel, setTeacherLabel] = useState('')
   const [effectiveFrom, setEffectiveFrom] = useState(() => dateFromFilename(file.name) ?? '')
   const [busy, setBusy] = useState(false)
+  const [touchSelectMode, setTouchSelectMode] = useState(false)
   const [message, setMessage] = useState('Preparo il documento localmente. Nessun byte viene inviato.')
 
   useEffect(() => {
@@ -86,10 +88,10 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
         sourceRef.current = source
         setSourceFingerprint(fingerprint)
         setPages(pdf.numPages)
-        setKeyboardCursor({ x: source.width / 2, y: source.height / 2 })
+        setKeyboardCursor({ x: source.width / 2, y: Math.min(source.height - 1, 120) })
         setReady(true)
         setMessage('Seleziona soltanto la riga o le celle che appartengono al tuo orario. Il resto del documento non verrà inviato.')
-        drawCanvas(source, canvasRef.current, [], { x: source.width / 2, y: source.height / 2 }, null)
+        drawCanvas(source, canvasRef.current, [], { x: source.width / 2, y: Math.min(source.height - 1, 120) }, null)
       } catch (error) {
         if (cancelled) return
         sourceRef.current = null
@@ -129,6 +131,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
 
   function pointerDown(event: ReactPointerEvent<HTMLCanvasElement>) {
     if (!ready || busy) return
+    if (event.pointerType === 'touch' && !touchSelectMode) return
     event.currentTarget.setPointerCapture(event.pointerId)
     startRef.current = point(event)
   }
@@ -138,6 +141,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
     startRef.current = null
     if (!start || !ready || busy) return
     addSelection(start, point(event))
+    if (event.pointerType === 'touch') setTouchSelectMode(false)
   }
 
   function addSelection(start: Point, end: Point) {
@@ -182,10 +186,12 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
             : null
     if (!delta) return
     event.preventDefault()
-    setKeyboardCursor({
+    const next = {
       x: clamp(current.x + delta.x, 0, source.width),
       y: clamp(current.y + delta.y, 0, source.height),
-    })
+    }
+    setKeyboardCursor(next)
+    requestAnimationFrame(() => ensureKeyboardCursorVisible(next))
   }
 
   async function submit() {
@@ -217,6 +223,20 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
     setSelections((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item))
   }
 
+  function ensureKeyboardCursorVisible(cursor: Point) {
+    const viewport = viewportRef.current
+    const canvas = canvasRef.current
+    if (!viewport || !canvas || canvas.height <= 0) return
+    const scaleY = canvas.clientHeight / canvas.height
+    const y = cursor.y * scaleY
+    const margin = 48
+    if (y < viewport.scrollTop + margin) {
+      viewport.scrollTo({ top: Math.max(0, y - margin) })
+    } else if (y > viewport.scrollTop + viewport.clientHeight - margin) {
+      viewport.scrollTo({ top: Math.max(0, y - viewport.clientHeight + margin) })
+    }
+  }
+
   return (
     <section aria-label="Importazione locale dell’orario" style={{ display: 'grid', gap: 12 }}>
       <div className="knowledgeFeedback" role="status">
@@ -226,7 +246,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
         </p>
       </div>
 
-      <div style={{ maxHeight: 620, overflow: 'auto', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)' }}>
+      <div ref={viewportRef} style={{ maxHeight: 620, overflow: 'auto', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)' }}>
         <canvas
           ref={canvasRef}
           role="application"
@@ -237,7 +257,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
           onKeyDown={keyboardSelection}
           aria-label="Anteprima locale dell’orario: trascina oppure usa tastiera per selezionare le tue celle"
           aria-describedby="timetable-selection-help"
-          style={{ width: '100%', height: 'auto', display: 'block', touchAction: 'none', cursor: ready && !busy ? 'crosshair' : 'default' }}
+          style={{ width: '100%', height: 'auto', display: 'block', touchAction: touchSelectMode ? 'none' : 'pan-y', cursor: ready && !busy ? 'crosshair' : 'default' }}
         />
       </div>
 
@@ -245,6 +265,20 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
         {pages ? `${pages} pagina${pages === 1 ? '' : 'e'} · ${selections.length} area${selections.length === 1 ? '' : 'e'} selezionata${selections.length === 1 ? '' : 'e'}` : 'Preparazione in corso…'}
         {' '}Da tastiera: porta il focus sull’anteprima, usa le frecce per spostarti, premi Invio per iniziare e di nuovo Invio per chiudere l’area. Maiusc + frecce accelera lo spostamento.
       </small>
+
+      <button
+        type="button"
+        aria-pressed={touchSelectMode}
+        onClick={() => {
+          setTouchSelectMode((current) => !current)
+          setMessage(touchSelectMode
+            ? 'Scorrimento touch riattivato.'
+            : 'Modalità selezione touch attiva: trascina una sola area, poi lo scorrimento verrà riattivato.')
+        }}
+        disabled={!ready || busy}
+      >
+        {touchSelectMode ? 'Torna a scorrere' : 'Seleziona area su schermo touch'}
+      </button>
 
       {selections.length ? (
         <div style={{ display: 'grid', gap: 8 }} aria-label="Contesto delle aree selezionate">
@@ -319,7 +353,15 @@ async function cropSelections(source: HTMLCanvasElement, selections: Selection[]
     .filter((rect) => rect.width > 0 && rect.height > 0)
 
   const labelHeight = 44
-  const width = Math.max(...normalized.map((rect) => rect.width), 420)
+  const measureCanvas = document.createElement('canvas')
+  const measureCtx = measureCanvas.getContext('2d')
+  if (!measureCtx) throw new Error('Canvas di misura non disponibile')
+  measureCtx.font = '600 22px sans-serif'
+  const labelWidth = Math.ceil(Math.max(...normalized.map((rect) => {
+    if (!rect.weekday || !isValidOrdinal(rect.ordinal)) return 0
+    return measureCtx.measureText(derivativeContextLabel(teacherLabel, rect.weekday, rect.ordinal)).width
+  }))) + 16
+  const width = Math.max(...normalized.map((rect) => rect.width), labelWidth, 420)
   const height = normalized.reduce((sum, rect) => sum + labelHeight + rect.height, 0) + padding * Math.max(0, normalized.length - 1)
   const output = document.createElement('canvas')
   output.width = width
