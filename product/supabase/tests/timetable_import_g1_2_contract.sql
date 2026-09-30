@@ -292,12 +292,26 @@ select pg_temp.assert_true(
   '30 first atomic replacement creates READY candidate at revision 1'
 );
 
+reset role;
+insert into private.timetable_import_apply_context(
+  backend_pid,transaction_id,candidate_id
+) values (
+  pg_backend_pid(),txid_current(),(select first_id from g12_replace_probe)
+)
+on conflict (backend_pid,transaction_id)
+do update set candidate_id=excluded.candidate_id;
+
 update public.timetable_import_candidate_rows
 set review_state='CONFIRMED',
     evidence_ref='teacher:manual-correction'
 where candidate_id=(select first_id from g12_replace_probe)
   and candidate_revision=1;
 
+delete from private.timetable_import_apply_context
+where backend_pid=pg_backend_pid()
+  and transaction_id=txid_current();
+
+set local role authenticated;
 select pg_temp.expect_review_confirmation_required();
 
 select pg_temp.assert_true(
