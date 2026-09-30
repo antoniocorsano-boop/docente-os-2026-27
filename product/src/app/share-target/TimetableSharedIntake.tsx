@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { getDocumentProxy } from 'unpdf'
 import { analyzeTimetableImport } from '@/app/orario/actions'
+import { clamp, clampRectToBounds, dateFromFilename, isValidOrdinal, parseOrdinal, type Rect } from './timetable-share-helpers'
 
-type Rect = { x: number; y: number; width: number; height: number }
 type Point = { x: number; y: number }
 type Selection = Rect & { id: string; weekday: number | null; ordinal: number | null }
 
@@ -23,6 +23,8 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sourceRef = useRef<HTMLCanvasElement | null>(null)
   const startRef = useRef<Point | null>(null)
+  const [keyboardCursor, setKeyboardCursor] = useState<Point | null>(null)
+  const [keyboardStart, setKeyboardStart] = useState<Point | null>(null)
   const [ready, setReady] = useState(false)
   const [pages, setPages] = useState(0)
   const [selections, setSelections] = useState<Selection[]>([])
@@ -34,6 +36,17 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
 
   useEffect(() => {
     let cancelled = false
+    sourceRef.current = null
+    startRef.current = null
+    setReady(false)
+    setPages(0)
+    setSelections([])
+    setSourceFingerprint(null)
+    setEffectiveFrom(dateFromFilename(file.name) ?? '')
+    setBusy(false)
+    setKeyboardStart(null)
+    setKeyboardCursor(null)
+    setMessage('Preparo il documento localmente. Nessun byte viene inviato.')
     void (async () => {
       try {
         if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
@@ -84,6 +97,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
         sourceRef.current = source
         setSourceFingerprint(fingerprint)
         setPages(pdf.numPages)
+        setKeyboardCursor({ x: source.width / 2, y: source.height / 2 })
         setReady(true)
         setMessage('Seleziona soltanto la riga o le celle che appartengono al tuo orario. Il resto del documento non verrà inviato.')
         drawCanvas(source, canvasRef.current, [])
@@ -97,8 +111,8 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
   }, [file])
 
   useEffect(() => {
-    drawCanvas(sourceRef.current, canvasRef.current, selections)
-  }, [selections])
+    drawCanvas(sourceRef.current, canvasRef.current, selections, keyboardCursor, keyboardStart)
+  }, [selections, keyboardCursor, keyboardStart])
 
   function point(event: ReactPointerEvent<HTMLCanvasElement>): Point {
     const canvas = event.currentTarget
@@ -121,7 +135,10 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
     const start = startRef.current
     startRef.current = null
     if (!start || !ready || busy) return
-    const end = point(event)
+    addSelection(start, point(event))
+  }
+
+  function addSelection(start: Point, end: Point) {
     const rect = {
       x: Math.min(start.x, end.x),
       y: Math.min(start.y, end.y),
@@ -136,6 +153,37 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
       ordinal: null,
     }])
     setMessage('Area aggiunta. Puoi selezionare altre celle oppure preparare la proposta.')
+  }
+
+  function keyboardSelection(event: React.KeyboardEvent<HTMLCanvasElement>) {
+    if (!ready || busy || !sourceRef.current) return
+    const source = sourceRef.current
+    const current = keyboardCursor ?? { x: source.width / 2, y: source.height / 2 }
+    const step = event.shiftKey ? 40 : 12
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      if (!keyboardStart) {
+        setKeyboardStart(current)
+        setMessage('Selezione da tastiera avviata. Usa le frecce e premi Invio per confermare l’area.')
+      } else {
+        addSelection(keyboardStart, current)
+        setKeyboardStart(null)
+      }
+      return
+    }
+
+    const delta = event.key === 'ArrowLeft' ? { x: -step, y: 0 }
+      : event.key === 'ArrowRight' ? { x: step, y: 0 }
+        : event.key === 'ArrowUp' ? { x: 0, y: -step }
+          : event.key === 'ArrowDown' ? { x: 0, y: step }
+            : null
+    if (!delta) return
+    event.preventDefault()
+    setKeyboardCursor({
+      x: clamp(current.x + delta.x, 0, source.width),
+      y: clamp(current.y + delta.y, 0, source.height),
+    })
   }
 
   async function submit() {
@@ -180,15 +228,21 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
       <div style={{ maxHeight: 620, overflow: 'auto', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)' }}>
         <canvas
           ref={canvasRef}
+          tabIndex={0}
           onPointerDown={pointerDown}
           onPointerUp={pointerUp}
           onPointerCancel={() => { startRef.current = null }}
-          aria-label="Anteprima locale dell’orario: trascina per selezionare le tue celle"
+          onKeyDown={keyboardSelection}
+          aria-label="Anteprima locale dell’orario: trascina oppure usa tastiera per selezionare le tue celle"
+          aria-describedby="timetable-selection-help"
           style={{ width: '100%', height: 'auto', display: 'block', touchAction: 'none', cursor: ready && !busy ? 'crosshair' : 'default' }}
         />
       </div>
 
-      <small>{pages ? `${pages} pagina${pages === 1 ? '' : 'e'} · ${selections.length} area${selections.length === 1 ? '' : 'e'} selezionata${selections.length === 1 ? '' : 'e'}` : 'Preparazione in corso…'}</small>
+      <small id="timetable-selection-help">
+        {pages ? `${pages} pagina${pages === 1 ? '' : 'e'} · ${selections.length} area${selections.length === 1 ? '' : 'e'} selezionata${selections.length === 1 ? '' : 'e'}` : 'Preparazione in corso…'}
+        {' '}Da tastiera: porta il focus sull’anteprima, usa le frecce per spostarti, premi Invio per iniziare e di nuovo Invio per chiudere l’area. Maiusc + frecce accelera lo spostamento.
+      </small>
 
       {selections.length ? (
         <div style={{ display: 'grid', gap: 8 }} aria-label="Contesto delle aree selezionate">
@@ -255,20 +309,11 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
 async function cropSelections(source: HTMLCanvasElement, selections: Selection[]) {
   const padding = 8
   const normalized = selections
-    .map((rect) => {
-      const x1 = clamp(Math.floor(rect.x), 0, source.width)
-      const y1 = clamp(Math.floor(rect.y), 0, source.height)
-      const x2 = clamp(Math.ceil(rect.x + rect.width), 0, source.width)
-      const y2 = clamp(Math.ceil(rect.y + rect.height), 0, source.height)
-      return {
-        x: x1,
-        y: y1,
-        width: Math.max(0, x2 - x1),
-        height: Math.max(0, y2 - y1),
-        weekday: rect.weekday,
-        ordinal: rect.ordinal,
-      }
-    })
+    .map((rect) => ({
+      ...clampRectToBounds(rect, source.width, source.height),
+      weekday: rect.weekday,
+      ordinal: rect.ordinal,
+    }))
     .filter((rect) => rect.width > 0 && rect.height > 0)
 
   const labelHeight = 44
@@ -300,14 +345,6 @@ async function cropSelections(source: HTMLCanvasElement, selections: Selection[]
   return blob
 }
 
-function dateFromFilename(filename: string) {
-  const match = filename.match(/\b(\d{1,2})[-_.](\d{1,2})[-_.](20\d{2})\b/)
-  if (!match) return null
-  const [, day, month, year] = match
-  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-}
-
-
 function canvasSurfaceColor() {
   return getComputedStyle(document.body).backgroundColor
 }
@@ -321,6 +358,8 @@ function drawCanvas(
   source: HTMLCanvasElement | null,
   canvas: HTMLCanvasElement | null,
   selections: readonly Rect[],
+  keyboardCursor: Point | null,
+  keyboardStart: Point | null,
 ) {
   if (!source || !canvas) return
   canvas.width = source.width
@@ -328,12 +367,29 @@ function drawCanvas(
   const ctx = canvas.getContext('2d', { alpha: false })
   if (!ctx) return
   ctx.drawImage(source, 0, 0)
-  if (!selections.length) return
   ctx.save()
   ctx.lineWidth = Math.max(4, source.width / 250)
   ctx.strokeStyle = canvasInkColor()
   ctx.setLineDash([14, 10])
   for (const rect of selections) ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)
+  if (keyboardCursor) {
+    ctx.setLineDash([])
+    ctx.beginPath()
+    ctx.moveTo(keyboardCursor.x - 14, keyboardCursor.y)
+    ctx.lineTo(keyboardCursor.x + 14, keyboardCursor.y)
+    ctx.moveTo(keyboardCursor.x, keyboardCursor.y - 14)
+    ctx.lineTo(keyboardCursor.x, keyboardCursor.y + 14)
+    ctx.stroke()
+  }
+  if (keyboardCursor && keyboardStart) {
+    ctx.setLineDash([14, 10])
+    ctx.strokeRect(
+      Math.min(keyboardStart.x, keyboardCursor.x),
+      Math.min(keyboardStart.y, keyboardCursor.y),
+      Math.abs(keyboardCursor.x - keyboardStart.x),
+      Math.abs(keyboardCursor.y - keyboardStart.y),
+    )
+  }
   ctx.restore()
 }
 
@@ -347,23 +403,9 @@ const WEEKDAYS = [
   { value: 6, label: 'Sabato' },
 ] as const
 
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value))
-}
-
 async function sha256Hex(bytes: Uint8Array) {
   const copy = new Uint8Array(bytes.byteLength)
   copy.set(bytes)
   const digest = await crypto.subtle.digest('SHA-256', copy.buffer)
   return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, '0')).join('')
-}
-
-
-function parseOrdinal(value: string) {
-  const parsed = Number(value)
-  return isValidOrdinal(parsed) ? parsed : null
-}
-
-function isValidOrdinal(value: number | null): value is number {
-  return value !== null && Number.isInteger(value) && value >= 1 && value <= 20
 }
