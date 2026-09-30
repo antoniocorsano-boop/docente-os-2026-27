@@ -20,6 +20,18 @@ create unique index timetable_import_one_live_source_creator_uq
   )
   where state in ('DRAFT','READY_TO_CONFIRM');
 
+drop policy if exists timetable_import_candidates_delete_member
+  on public.timetable_import_candidates;
+create policy timetable_import_candidates_delete_creator
+  on public.timetable_import_candidates
+  for delete
+  to authenticated
+  using (
+    private.is_workspace_member(workspace_id)
+    and created_by = (select auth.uid())
+    and state <> 'APPLIED_TO_DRAFT'
+  );
+
 select private.advance_runtime_schema_contract('0080_timetable_import_creator_scoped_live_source');
 
 commit;
