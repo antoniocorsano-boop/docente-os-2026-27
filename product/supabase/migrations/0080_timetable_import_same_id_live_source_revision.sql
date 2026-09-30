@@ -164,6 +164,12 @@ begin
     on conflict (backend_pid,transaction_id)
     do update set candidate_id = excluded.candidate_id;
   else
+    perform 1
+    from public.timetable_import_candidate_rows r
+    where r.candidate_id = candidate.id
+      and r.candidate_revision = candidate.revision
+    for update;
+
     select exists(
       select 1
       from public.timetable_import_candidate_rows r
@@ -301,6 +307,230 @@ comment on function public.replace_timetable_import_candidate_v1(
   uuid,uuid,text,text,text,date,text,jsonb,boolean
 ) is
   'Atomically creates or revises the one live candidate for a whole-document fingerprint. Teacher-reviewed rows are retained unless replacement is explicitly confirmed; revisions keep the same candidate id and concurrent apply/re-import is serialized.';
+
+create or replace function public.update_timetable_import_row_v1(
+  p_candidate_id uuid,
+  p_expected_revision bigint,
+  p_row_id uuid,
+  p_assignment_id uuid,
+  p_weekday smallint,
+  p_ordinal smallint,
+  p_start_time time,
+  p_end_time time
+) returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $edit$
+declare
+  uid uuid := auth.uid();
+  candidate public.timetable_import_candidates%rowtype;
+  assignment public.teaching_assignments%rowtype;
+  next_revision bigint;
+  complete boolean;
+begin
+  if uid is null then raise exception 'authentication required'; end if;
+
+  select c.* into candidate
+  from public.timetable_import_candidates c
+  where c.id = p_candidate_id
+  for update;
+
+  if candidate.id is null then raise exception 'candidate not found'; end if;
+  if not private.is_workspace_member(candidate.workspace_id) then raise exception 'workspace access denied'; end if;
+  if candidate.revision <> p_expected_revision then raise exception 'STALE_CANDIDATE_REVISION'; end if;
+  if candidate.state not in ('DRAFT','READY_TO_CONFIRM') then raise exception 'candidate is not editable'; end if;
+
+  select a.* into assignment
+  from public.teaching_assignments a
+  where a.id = p_assignment_id
+    and a.workspace_id = candidate.workspace_id
+    and a.academic_year_id = candidate.academic_year_id;
+
+  if assignment.id is null then raise exception 'assignment context mismatch'; end if;
+
+  insert into private.timetable_import_apply_context(backend_pid,transaction_id,candidate_id)
+  values (pg_backend_pid(),txid_current(),candidate.id)
+  on conflict (backend_pid,transaction_id)
+  do update set candidate_id = excluded.candidate_id;
+
+  update public.timetable_import_candidates c
+  set state='DRAFT', revision=c.revision+1
+  where c.id=candidate.id
+    and c.revision=p_expected_revision
+  returning c.revision into next_revision;
+
+  if next_revision is null then raise exception 'STALE_CANDIDATE_REVISION'; end if;
+
+  insert into private.timetable_import_apply_context(backend_pid,transaction_id,candidate_id)
+  values (pg_backend_pid(),txid_current(),candidate.id)
+  on conflict (backend_pid,transaction_id)
+  do update set candidate_id = excluded.candidate_id;
+
+  update public.timetable_import_candidate_rows r
+  set weekday=p_weekday,
+      ordinal=p_ordinal,
+      start_time=p_start_time,
+      end_time=p_end_time,
+      resolved_section_id=assignment.section_id,
+      resolved_assignment_id=assignment.id,
+      proposed_slot_kind='LESSON',
+      confidence='HIGH',
+      review_state='CONFIRMED',
+      warnings='[]'::jsonb
+  where r.id=p_row_id
+    and r.candidate_id=candidate.id
+    and r.candidate_revision=next_revision;
+
+  if not found then raise exception 'row not found at current revision'; end if;
+
+  select not exists(
+    select 1
+    from public.timetable_import_candidate_rows r
+    where r.candidate_id=candidate.id
+      and r.candidate_revision=next_revision
+      and (
+        r.weekday is null
+        or r.ordinal is null
+        or r.start_time is null
+        or r.end_time is null
+        or r.resolved_assignment_id is null
+        or r.proposed_slot_kind <> 'LESSON'
+        or r.review_state not in ('AUTO_RESOLVED','CONFIRMED')
+      )
+  ) into complete;
+
+  if complete then
+    insert into private.timetable_import_apply_context(backend_pid,transaction_id,candidate_id)
+    values (pg_backend_pid(),txid_current(),candidate.id)
+    on conflict (backend_pid,transaction_id)
+    do update set candidate_id = excluded.candidate_id;
+
+    update public.timetable_import_candidates
+    set state='READY_TO_CONFIRM'
+    where id=candidate.id and revision=next_revision;
+  end if;
+
+  delete from private.timetable_import_apply_context
+  where backend_pid=pg_backend_pid() and transaction_id=txid_current();
+
+  return jsonb_build_object('candidateId',candidate.id,'revision',next_revision,'state',case when complete then 'READY_TO_CONFIRM' else 'DRAFT' end);
+end
+$edit$;
+
+create or replace function public.add_timetable_import_row_v1(
+  p_candidate_id uuid,
+  p_expected_revision bigint,
+  p_assignment_id uuid,
+  p_weekday smallint,
+  p_ordinal smallint,
+  p_start_time time,
+  p_end_time time
+) returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $add$
+declare
+  uid uuid := auth.uid();
+  candidate public.timetable_import_candidates%rowtype;
+  assignment public.teaching_assignments%rowtype;
+  next_revision bigint;
+  complete boolean;
+  row_key text;
+begin
+  if uid is null then raise exception 'authentication required'; end if;
+
+  select c.* into candidate
+  from public.timetable_import_candidates c
+  where c.id = p_candidate_id
+  for update;
+
+  if candidate.id is null then raise exception 'candidate not found'; end if;
+  if not private.is_workspace_member(candidate.workspace_id) then raise exception 'workspace access denied'; end if;
+  if candidate.revision <> p_expected_revision then raise exception 'STALE_CANDIDATE_REVISION'; end if;
+  if candidate.state not in ('DRAFT','READY_TO_CONFIRM') then raise exception 'candidate is not editable'; end if;
+
+  select a.* into assignment
+  from public.teaching_assignments a
+  where a.id=p_assignment_id
+    and a.workspace_id=candidate.workspace_id
+    and a.academic_year_id=candidate.academic_year_id;
+
+  if assignment.id is null then raise exception 'assignment context mismatch'; end if;
+
+  insert into private.timetable_import_apply_context(backend_pid,transaction_id,candidate_id)
+  values (pg_backend_pid(),txid_current(),candidate.id)
+  on conflict (backend_pid,transaction_id)
+  do update set candidate_id=excluded.candidate_id;
+
+  update public.timetable_import_candidates c
+  set state='DRAFT', revision=c.revision+1
+  where c.id=candidate.id
+    and c.revision=p_expected_revision
+  returning c.revision into next_revision;
+
+  if next_revision is null then raise exception 'STALE_CANDIDATE_REVISION'; end if;
+
+  insert into private.timetable_import_apply_context(backend_pid,transaction_id,candidate_id)
+  values (pg_backend_pid(),txid_current(),candidate.id)
+  on conflict (backend_pid,transaction_id)
+  do update set candidate_id=excluded.candidate_id;
+
+  row_key := left(
+    'manual:' || p_weekday::text || ':' || p_ordinal::text || ':' || assignment.section_id::text || ':' || gen_random_uuid()::text,
+    160
+  );
+
+  insert into public.timetable_import_candidate_rows(
+    candidate_id,candidate_revision,row_key,weekday,ordinal,start_time,end_time,
+    source_class_label,resolved_section_id,resolved_assignment_id,proposed_slot_kind,
+    confidence,review_state,evidence_ref,warnings
+  ) values (
+    candidate.id,next_revision,row_key,p_weekday,p_ordinal,p_start_time,p_end_time,
+    null,assignment.section_id,assignment.id,'LESSON',
+    'HIGH','CONFIRMED','teacher:manual-addition','[]'::jsonb
+  );
+
+  select not exists(
+    select 1
+    from public.timetable_import_candidate_rows r
+    where r.candidate_id=candidate.id
+      and r.candidate_revision=next_revision
+      and (
+        r.weekday is null
+        or r.ordinal is null
+        or r.start_time is null
+        or r.end_time is null
+        or r.resolved_assignment_id is null
+        or r.proposed_slot_kind <> 'LESSON'
+        or r.review_state not in ('AUTO_RESOLVED','CONFIRMED')
+      )
+  ) into complete;
+
+  if complete then
+    insert into private.timetable_import_apply_context(backend_pid,transaction_id,candidate_id)
+    values (pg_backend_pid(),txid_current(),candidate.id)
+    on conflict (backend_pid,transaction_id)
+    do update set candidate_id=excluded.candidate_id;
+
+    update public.timetable_import_candidates
+    set state='READY_TO_CONFIRM'
+    where id=candidate.id and revision=next_revision;
+  end if;
+
+  delete from private.timetable_import_apply_context
+  where backend_pid=pg_backend_pid() and transaction_id=txid_current();
+
+  return jsonb_build_object('candidateId',candidate.id,'revision',next_revision,'state',case when complete then 'READY_TO_CONFIRM' else 'DRAFT' end);
+end
+$add$;
+
+revoke all on function public.update_timetable_import_row_v1(uuid,bigint,uuid,uuid,smallint,smallint,time,time) from public, anon;
+grant execute on function public.update_timetable_import_row_v1(uuid,bigint,uuid,uuid,smallint,smallint,time,time) to authenticated;
+
+revoke all on function public.add_timetable_import_row_v1(uuid,bigint,uuid,smallint,smallint,time,time) from public, anon;
+grant execute on function public.add_timetable_import_row_v1(uuid,bigint,uuid,smallint,smallint,time,time) to authenticated;
 
 select private.advance_runtime_schema_contract('0080_timetable_import_same_id_live_source_revision');
 
