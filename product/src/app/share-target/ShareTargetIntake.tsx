@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { KnowledgeFileUploader } from '@/app/knowledge/KnowledgeFileUploader'
 import { TimetableSharedIntake } from './TimetableSharedIntake'
+import { looksLikeTimetablePdf } from './timetable-share-helpers'
+import { clearShareIntakeStaging } from './share-target-staging'
 
 const SHARE_CACHE = 'docente-os-share-intake-v1'
 const SHARE_PREFIX = '/__share-intake/'
@@ -84,17 +86,8 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
   }, [intakeId])
 
   async function clearStaging() {
-    try {
-      const cache = await caches.open(SHARE_CACHE)
-      const keys = await cache.keys()
-      await Promise.all(
-        keys
-          .filter((request) => new URL(request.url).pathname.startsWith(SHARE_PREFIX + intakeId + '/'))
-          .map((request) => cache.delete(request)),
-      )
-    } catch (cleanupError) {
-      console.warn('Docente OS shared intake cleanup failed', cleanupError)
-    }
+    const cache = await caches.open(SHARE_CACHE)
+    await clearShareIntakeStaging(cache, intakeId, SHARE_PREFIX)
   }
 
   return (
@@ -125,7 +118,7 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
               <KnowledgeFileUploader
                 initialFile={file}
                 postUploadQuery="source=share-target"
-                onCompleted={() => { void clearStaging() }}
+                onCompleted={() => { void clearStaging().catch((cleanupError) => console.warn('Docente OS shared intake cleanup failed', cleanupError)) }}
                 sharedIntake
               />
             )}
@@ -146,8 +139,9 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
 
 
 function looksLikeTimetable(meta: ShareMeta | null, file: File) {
-  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
-  if (!isPdf) return false
-  const haystack = [meta?.title ?? '', meta?.text ?? '', file.name].join(' ').toLocaleLowerCase('it-IT')
-  return /\b(orario|timetable|quadro\s+orario)\b/.test(haystack)
+  return looksLikeTimetablePdf({
+    title: meta?.title,
+    fileName: file.name,
+    fileType: file.type,
+  })
 }
