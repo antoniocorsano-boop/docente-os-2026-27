@@ -1,17 +1,24 @@
 const SHARE_CACHE = 'docente-os-share-intake-v1'
 const SHARE_PREFIX = '/__share-intake/'
+const SHARE_MAX_AGE_MS = 60 * 60 * 1000
+let lastSweepAt = 0
 
 self.addEventListener('install', () => {
   self.skipWaiting()
 })
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim())
+  event.waitUntil((async () => {
+    await self.clients.claim()
+    await sweepExpiredShareIntakes(true)
+  })())
 })
 
 self.addEventListener('fetch', (event) => {
   const request = event.request
   const url = new URL(request.url)
+
+  event.waitUntil(sweepExpiredShareIntakes(false))
 
   if (request.method === 'POST' && url.origin === self.location.origin && url.pathname === '/share-target') {
     event.respondWith(handleShareTarget(request))
@@ -23,6 +30,7 @@ async function handleShareTarget(request) {
   const sharedFiles = collectSharedFiles(formData)
   const intakeId = crypto.randomUUID()
   const cache = await caches.open(SHARE_CACHE)
+  const stagedAt = new Date().toISOString()
 
   const files = []
   for (let index = 0; index < sharedFiles.length; index += 1) {
@@ -34,6 +42,7 @@ async function handleShareTarget(request) {
         headers: {
           'content-type': file.type || 'application/octet-stream',
           'cache-control': 'no-store',
+          'x-docente-os-staged-at': stagedAt,
         },
       }),
     )
@@ -47,7 +56,7 @@ async function handleShareTarget(request) {
 
   const metadata = {
     id: intakeId,
-    receivedAt: new Date().toISOString(),
+    receivedAt: stagedAt,
     title: String(formData.get('title') || ''),
     text: String(formData.get('text') || ''),
     url: String(formData.get('url') || ''),
@@ -60,6 +69,7 @@ async function handleShareTarget(request) {
       headers: {
         'content-type': 'application/json; charset=utf-8',
         'cache-control': 'no-store',
+        'x-docente-os-staged-at': stagedAt,
       },
     }),
   )
@@ -67,6 +77,71 @@ async function handleShareTarget(request) {
   return Response.redirect('/share-target?id=' + encodeURIComponent(intakeId), 303)
 }
 
+async function sweepExpiredShareIntakes(force) {
+  const now = Date.now()
+  if (!force && now - lastSweepAt < 60 * 1000) return
+  lastSweepAt = now
+
+  const cache = await caches.open(SHARE_CACHE)
+  const keys = await cache.keys()
+  const intakeIds = new Set()
+
+  for (const request of keys) {
+    const pathname = new URL(request.url).pathname
+    if (!pathname.startsWith(SHARE_PREFIX)) continue
+    const rest = pathname.slice(SHARE_PREFIX.length)
+    const intakeId = rest.split('/')[0]
+    if (intakeId) intakeIds.add(intakeId)
+  }
+
+  for (const intakeId of intakeIds) {
+    const metaKey = SHARE_PREFIX + intakeId + '/meta'
+    const metaResponse = await cache.match(metaKey)
+    let stagedAt = null
+
+    if (metaResponse) {
+      try {
+        const metadata = await metaResponse.clone().json()
+        stagedAt = Date.parse(String(metadata.receivedAt || ''))
+      } catch {
+        stagedAt = null
+      }
+    } else {
+      const intakeKeys = keys.filter((request) =>
+        new URL(request.url).pathname.startsWith(SHARE_PREFIX + intakeId + '/'),
+      )
+      for (const request of intakeKeys) {
+        const response = await cache.match(request)
+        const header = response?.headers.get('x-docente-os-staged-at')
+        if (header) {
+          stagedAt = Date.parse(header)
+          if (Number.isFinite(stagedAt)) break
+        }
+      }
+    }
+
+    const expired = !Number.isFinite(stagedAt) || now - stagedAt >= SHARE_MAX_AGE_MS
+    if (expired) {
+      await clearCachedIntake(cache, intakeId)
+    }
+  }
+}
+
+async function clearCachedIntake(cache, intakeId) {
+  const keys = await cache.keys()
+  const matches = keys.filter((request) =>
+    new URL(request.url).pathname.startsWith(SHARE_PREFIX + intakeId + '/'),
+  )
+  const metadata = matches.filter((request) =>
+    new URL(request.url).pathname.endsWith('/meta'),
+  )
+  const payloads = matches.filter((request) =>
+    !new URL(request.url).pathname.endsWith('/meta'),
+  )
+
+  for (const request of payloads) await cache.delete(request)
+  for (const request of metadata) await cache.delete(request)
+}
 
 function collectSharedFiles(formData) {
   const preferred = formData.getAll('files').filter(isFileLike)
