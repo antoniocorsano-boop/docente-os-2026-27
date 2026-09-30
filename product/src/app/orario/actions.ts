@@ -179,7 +179,16 @@ export async function analyzeTimetableImport(formData: FormData) {
   })
   if (!validation.valid) redirect('/orario?import=invalid_content')
 
-  const fingerprint = createHash('sha256').update(bytes).digest('hex')
+  const derivativeFingerprint = createHash('sha256').update(bytes).digest('hex')
+  const sourceMode = optionalText(formData, 'sourceMode')
+  const originalSourceFingerprint = optionalText(formData, 'originalSourceFingerprint')
+  const originalSourceName = optionalText(formData, 'originalSourceName')
+  const fingerprint = sourceMode === 'LOCAL_MINIMIZED_SHARE'
+    ? validateOriginalSourceFingerprint(originalSourceFingerprint)
+    : derivativeFingerprint
+  const sourceLabel = sourceMode === 'LOCAL_MINIMIZED_SHARE'
+    ? validateOriginalSourceName(originalSourceName)
+    : (value.name || 'Orario importato')
   const importRepository = new SupabaseTimetableImportRepository()
   const existing = await importRepository.findByFingerprint({
     workspaceId: context.workspace.id,
@@ -243,8 +252,10 @@ export async function analyzeTimetableImport(formData: FormData) {
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
     sourceFingerprint: fingerprint,
-    sourceLabel: value.name || 'Orario importato',
-    sourceRef: `sha256:${fingerprint}`,
+    sourceLabel,
+    sourceRef: sourceMode === 'LOCAL_MINIMIZED_SHARE'
+      ? `sha256:${fingerprint}; derivative-sha256:${derivativeFingerprint}`
+      : `sha256:${fingerprint}`,
     effectiveFrom,
     parserVersion: `${extracted.processor}@${extracted.processorVersion}`,
   })
@@ -396,6 +407,22 @@ function text(formData: FormData, key: string) {
 function nullableText(formData: FormData, key: string) {
   const value = text(formData, key).trim()
   return value || null
+}
+
+function optionalText(formData: FormData, key: string) {
+  const value = formData.get(key)
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function validateOriginalSourceFingerprint(value: string) {
+  if (!/^[a-f0-9]{64}$/.test(value)) throw new Error('Invalid original source fingerprint')
+  return value
+}
+
+function validateOriginalSourceName(value: string) {
+  const normalized = value.trim()
+  if (!normalized || normalized.length > 240) throw new Error('Invalid original source name')
+  return normalized
 }
 
 function integer(formData: FormData, key: string) {
