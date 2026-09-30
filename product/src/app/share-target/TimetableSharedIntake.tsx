@@ -7,6 +7,7 @@ import { analyzeTimetableImport } from '@/app/orario/actions'
 
 type Rect = { x: number; y: number; width: number; height: number }
 type Point = { x: number; y: number }
+type Selection = Rect & { id: string; weekday: number | null; ordinal: number | null }
 
 type Props = {
   file: File
@@ -24,7 +25,8 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
   const startRef = useRef<Point | null>(null)
   const [ready, setReady] = useState(false)
   const [pages, setPages] = useState(0)
-  const [selections, setSelections] = useState<Rect[]>([])
+  const [selections, setSelections] = useState<Selection[]>([])
+  const [sourceFingerprint, setSourceFingerprint] = useState<string | null>(null)
   const [teacherLabel, setTeacherLabel] = useState('')
   const [effectiveFrom, setEffectiveFrom] = useState(() => dateFromFilename(file.name) ?? '')
   const [busy, setBusy] = useState(false)
@@ -38,7 +40,8 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
           throw new Error('Per ora l’importazione locale dall’app Condividi è disponibile per i PDF.')
         }
         const bytes = new Uint8Array(await file.arrayBuffer())
-        const pdf = await getDocumentProxy(bytes)
+        const fingerprint = await sha256Hex(bytes)
+        const pdf = await getDocumentProxy(bytes.slice())
         if (pdf.numPages < 1 || pdf.numPages > MAX_PAGES) {
           throw new Error(`Il PDF ha ${pdf.numPages} pagine: il flusso locale per l’orario supporta fino a ${MAX_PAGES} pagine.`)
         }
@@ -79,6 +82,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
 
         if (cancelled) return
         sourceRef.current = source
+        setSourceFingerprint(fingerprint)
         setPages(pdf.numPages)
         setReady(true)
         setMessage('Seleziona soltanto la riga o le celle che appartengono al tuo orario. Il resto del documento non verrà inviato.')
@@ -97,10 +101,13 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
   }, [selections])
 
   function point(event: ReactPointerEvent<HTMLCanvasElement>): Point {
-    const rect = event.currentTarget.getBoundingClientRect()
+    const canvas = event.currentTarget
+    const rect = canvas.getBoundingClientRect()
+    const x = (event.clientX - rect.left) * canvas.width / rect.width
+    const y = (event.clientY - rect.top) * canvas.height / rect.height
     return {
-      x: (event.clientX - rect.left) * event.currentTarget.width / rect.width,
-      y: (event.clientY - rect.top) * event.currentTarget.height / rect.height,
+      x: clamp(x, 0, canvas.width),
+      y: clamp(y, 0, canvas.height),
     }
   }
 
@@ -122,12 +129,17 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
       height: Math.abs(end.y - start.y),
     }
     if (rect.width < 20 || rect.height < 12) return
-    setSelections((current) => [...current, rect])
+    setSelections((current) => [...current, {
+      ...rect,
+      id: crypto.randomUUID(),
+      weekday: null,
+      ordinal: null,
+    }])
     setMessage('Area aggiunta. Puoi selezionare altre celle oppure preparare la proposta.')
   }
 
   async function submit() {
-    if (!sourceRef.current || !selections.length || !teacherLabel.trim() || !effectiveFrom || busy) return
+    if (!sourceRef.current || !sourceFingerprint || !selections.length || selections.some((item) => !item.weekday || !item.ordinal) || !teacherLabel.trim() || !effectiveFrom || busy) return
     setBusy(true)
     try {
       const derivative = await cropSelections(sourceRef.current, selections)
@@ -139,6 +151,9 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
       data.set('file', safeFile)
       data.set('teacherLabel', teacherLabel.trim())
       data.set('effectiveFrom', effectiveFrom)
+      data.set('originalSourceFingerprint', sourceFingerprint)
+      data.set('originalSourceName', file.name)
+      data.set('sourceMode', 'LOCAL_MINIMIZED_SHARE')
       await onBeforeSubmit()
       setMessage('Invio soltanto le aree selezionate. Il PDF completo è stato rimosso dallo staging locale.')
       await analyzeTimetableImport(data)
@@ -147,6 +162,10 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
       setBusy(false)
       setMessage('Non sono riuscito a preparare la proposta. Il PDF originale non è stato inviato.')
     }
+  }
+
+  function updateSelection(id: string, patch: Partial<Pick<Selection, 'weekday' | 'ordinal'>>) {
+    setSelections((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item))
   }
 
   return (
@@ -171,6 +190,39 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
 
       <small>{pages ? `${pages} pagina${pages === 1 ? '' : 'e'} · ${selections.length} area${selections.length === 1 ? '' : 'e'} selezionata${selections.length === 1 ? '' : 'e'}` : 'Preparazione in corso…'}</small>
 
+      {selections.length ? (
+        <div style={{ display: 'grid', gap: 8 }} aria-label="Contesto delle aree selezionate">
+          {selections.map((selection, index) => (
+            <div key={selection.id} className="knowledgeFeedback" style={{ display: 'grid', gap: 8 }}>
+              <strong>Area {index + 1}</strong>
+              <label>
+                <span>Giorno</span>
+                <select
+                  value={selection.weekday ?? ''}
+                  onChange={(event) => updateSelection(selection.id, { weekday: Number(event.currentTarget.value) || null })}
+                >
+                  <option value="">Seleziona…</option>
+                  {WEEKDAYS.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>Ora</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={selection.ordinal ?? ''}
+                  onChange={(event) => updateSelection(selection.id, { ordinal: Number(event.currentTarget.value) || null })}
+                />
+              </label>
+              <button type="button" onClick={() => setSelections((current) => current.filter((item) => item.id !== selection.id))} disabled={busy}>
+                Rimuovi area
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       <div style={{ display: 'grid', gap: 8 }}>
         <label>
           <span>Cognome o etichetta con cui compari nell’orario</span>
@@ -184,7 +236,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        <button type="button" onClick={() => void submit()} disabled={!ready || !selections.length || !teacherLabel.trim() || !effectiveFrom || busy}>
+        <button type="button" onClick={() => void submit()} disabled={!ready || !sourceFingerprint || !selections.length || selections.some((item) => !item.weekday || !item.ordinal) || !teacherLabel.trim() || !effectiveFrom || busy}>
           {busy ? 'Preparo la proposta…' : 'Prepara proposta di orario'}
         </button>
         <button type="button" onClick={() => { setSelections([]); setMessage('Selezione cancellata. Il PDF resta soltanto sul dispositivo.') }} disabled={!selections.length || busy}>
@@ -200,7 +252,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
   )
 }
 
-async function cropSelections(source: HTMLCanvasElement, selections: Rect[]) {
+async function cropSelections(source: HTMLCanvasElement, selections: Selection[]) {
   const padding = 8
   const normalized = selections
     .map((rect) => ({
@@ -211,8 +263,9 @@ async function cropSelections(source: HTMLCanvasElement, selections: Rect[]) {
     }))
     .filter((rect) => rect.width > 0 && rect.height > 0)
 
-  const width = Math.max(...normalized.map((rect) => rect.width))
-  const height = normalized.reduce((sum, rect) => sum + rect.height, 0) + padding * Math.max(0, normalized.length - 1)
+  const labelHeight = 44
+  const width = Math.max(...normalized.map((rect) => rect.width), 420)
+  const height = normalized.reduce((sum, rect) => sum + labelHeight + rect.height, 0) + padding * Math.max(0, normalized.length - 1)
   const output = document.createElement('canvas')
   output.width = width
   output.height = height
@@ -220,9 +273,20 @@ async function cropSelections(source: HTMLCanvasElement, selections: Rect[]) {
   if (!ctx) throw new Error('Canvas di minimizzazione non disponibile')
   ctx.fillStyle = canvasSurfaceColor()
   ctx.fillRect(0, 0, width, height)
+  ctx.fillStyle = canvasInkColor()
+  ctx.font = '600 22px sans-serif'
+  ctx.textBaseline = 'middle'
 
   let y = 0
   for (const rect of normalized) {
+    const sourceSelection = selections.find((item) =>
+      Math.max(0, Math.floor(item.x)) === rect.x
+      && Math.max(0, Math.floor(item.y)) === rect.y
+    )
+    if (!sourceSelection?.weekday || !sourceSelection.ordinal) throw new Error('Contesto giorno/ora mancante')
+    const day = WEEKDAYS.find((item) => item.value === sourceSelection.weekday)?.label ?? `Giorno ${sourceSelection.weekday}`
+    ctx.fillText(`GIORNO: ${day} · ORA: ${sourceSelection.ordinal}`, 8, y + labelHeight / 2)
+    y += labelHeight
     ctx.drawImage(source, rect.x, rect.y, rect.width, rect.height, 0, y, rect.width, rect.height)
     y += rect.height + padding
   }
@@ -267,4 +331,23 @@ function drawCanvas(
   ctx.setLineDash([14, 10])
   for (const rect of selections) ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)
   ctx.restore()
+}
+
+
+const WEEKDAYS = [
+  { value: 1, label: 'Lunedì' },
+  { value: 2, label: 'Martedì' },
+  { value: 3, label: 'Mercoledì' },
+  { value: 4, label: 'Giovedì' },
+  { value: 5, label: 'Venerdì' },
+  { value: 6, label: 'Sabato' },
+] as const
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+async function sha256Hex(bytes: Uint8Array) {
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, '0')).join('')
 }
