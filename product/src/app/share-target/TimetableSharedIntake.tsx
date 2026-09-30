@@ -112,7 +112,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
           setMessage(`${renderMessage} Il file sorgente è stato rimosso dallo staging locale.`)
         } catch (cleanupError) {
           console.error('Timetable local staging cleanup failed after render error', cleanupError)
-          setMessage(`${renderMessage} Non sono riuscito a rimuovere il file dallo staging locale: chiudi questa acquisizione e riprova.`)
+          setMessage(`${renderMessage} Non sono riuscito a rimuovere il file dallo staging locale. Mantieni aperta questa schermata e usa “Annulla acquisizione e rimuovi il file locale” finché la rimozione non riesce.`)
         }
       }
     })()
