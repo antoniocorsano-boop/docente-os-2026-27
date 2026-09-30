@@ -135,6 +135,12 @@ export function KnowledgeFileUploader({ postUploadQuery = null, initialFile = nu
     if (pdfUpload && nativeTextPdfPreflight === 'BLOCKED') {
       return fail('Il controllo locale del PDF ha rilevato dati non ammessi nel pilot anonimo. Il file non viene inviato.', 'SELECT')
     }
+    if (pdfUpload && nativeTextPdfPreflight === 'FAILED') {
+      return fail('Questo PDF non può essere verificato localmente in modo affidabile. Resta sul dispositivo: scegli un altro file oppure riprova dopo averlo riscaricato.', 'SELECT')
+    }
+    if (pdfUpload && nativeTextPdfPreflight === 'NOT_APPLICABLE' && !preparedPdfFile) {
+      return fail('Prima prepara la copia anonima nella revisione locale. Il PDF originale non verrà inviato.', 'SELECT')
+    }
     if (pdfUpload && originalFile.size > RESUMABLE_KNOWLEDGE_UPLOAD_THRESHOLD_BYTES && nativeTextPdfPreflight !== 'PASSED' && !preparedPdfFile) {
       return fail('Questo PDF oltre 6 MB deve superare il preflight testuale locale oppure produrre una copia revisionata prima del trasferimento.', 'SELECT')
     }
@@ -291,7 +297,7 @@ export function KnowledgeFileUploader({ postUploadQuery = null, initialFile = nu
         : null
 
   const imageReady = !selectedIsImage || Boolean(preparedImageFile)
-  const pdfReady = !selectedIsPdf || (nativeTextPdfPreflight !== 'PENDING' && nativeTextPdfPreflight !== 'BLOCKED')
+  const pdfReady = !selectedIsPdf || Boolean(preparedPdfFile) || nativeTextPdfPreflight === 'PASSED'
   const docxReady = !selectedIsDocx || docxMode === 'TEXT_ONLY' || Boolean(preparedDocxFile)
   const selectionStatus = storedUpload
     ? 'Copia ammessa già al sicuro'
@@ -299,7 +305,9 @@ export function KnowledgeFileUploader({ postUploadQuery = null, initialFile = nu
       ? 'Copia anonima pronta'
       : selectedIsPdf && nativeTextPdfPreflight === 'BLOCKED'
         ? 'Bloccato dal controllo privacy'
-        : selectedIsPdf && nativeTextPdfPreflight === 'PASSED'
+        : selectedIsPdf && nativeTextPdfPreflight === 'FAILED'
+          ? 'Controllo locale non riuscito'
+          : selectedIsPdf && nativeTextPdfPreflight === 'PASSED'
           ? 'Preflight locale superato'
           : selectedIsImage && preparedImageFile
             ? 'Copia anonima pronta'
@@ -329,7 +337,11 @@ export function KnowledgeFileUploader({ postUploadQuery = null, initialFile = nu
             ? 'Controllo PDF…'
             : selectedIsPdf && nativeTextPdfPreflight === 'BLOCKED'
               ? 'PDF non ammesso'
-              : selectedIsDocx && docxMode === 'ANALYZING'
+              : selectedIsPdf && nativeTextPdfPreflight === 'FAILED'
+                ? 'PDF non verificabile'
+                : selectedIsPdf && nativeTextPdfPreflight === 'NOT_APPLICABLE' && !preparedPdfFile
+                  ? 'Prepara prima la copia anonima'
+                  : selectedIsDocx && docxMode === 'ANALYZING'
                 ? 'Controllo DOCX…'
                 : selectedIsDocx && docxMode === 'MEDIA_REVIEWABLE' && !preparedDocxFile
                   ? 'Prepara prima il derivato anonimo'
@@ -392,7 +404,7 @@ export function KnowledgeFileUploader({ postUploadQuery = null, initialFile = nu
           disabled={busy}
           onNativeTextPreflight={(state) => {
             setNativeTextPdfPreflight(state)
-            if (state === 'BLOCKED') setPrivacyConfirmed(false)
+            if (state === 'BLOCKED' || state === 'FAILED') setPrivacyConfirmed(false)
             if (state === 'PASSED') {
               setFailedAt(null)
               setPhase('READY')

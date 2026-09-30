@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { EXPERIENCE_SURFACES, resolveExperienceSurfacePath } from '../../e2e/experience/surfaces.mjs'
+import { parseHvaSpecs, resolveHvaReceiptScope } from '../../../.github/scripts/certification/hva-receipt-scope.mjs'
 
 const outputDir = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience'
 const observationsDir = path.join(outputDir, 'observations')
@@ -11,7 +12,15 @@ const baseUrl = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000'
 const commit = process.env.EXPECTED_COMMIT ?? process.env.GITHUB_SHA ?? 'local-working-tree'
 const testExitCode = Number(process.env.EXPERIENCE_TEST_EXIT_CODE ?? 0)
 const expectedProjects = ['mobile-412x915', 'desktop-1440x1000']
-const expectedJourneyIds = ['class-next-task', 'uda-reading', 'knowledge-document', 'calendar-controls']
+const scopeMode = process.env.EXPERIENCE_SCOPE_MODE ?? 'FULL'
+const scopeSpecs = parseHvaSpecs(process.env.EXPERIENCE_SCOPE_SPECS)
+const receiptScope = resolveHvaReceiptScope({
+  mode: scopeMode,
+  specs: scopeSpecs,
+  surfaceCount: EXPERIENCE_SURFACES.length,
+  projectCount: expectedProjects.length,
+})
+const expectedJourneyIds = receiptScope.expectedJourneyIds
 const canonicalMinimumTargetPx = 44
 const designGovernanceCriteria = [
   ['DPG-05', 'Una sola azione primaria realmente dominante.'],
@@ -31,8 +40,8 @@ const designGovernanceCriteria = [
 const observations = await readJsonDirectory(observationsDir)
 const journeys = await readJsonDirectory(journeysDir)
 const deployment = await readJson(path.join(outputDir, 'deployment.json'))
-const expectedObservationCount = EXPERIENCE_SURFACES.length * expectedProjects.length
-const expectedJourneyCount = expectedJourneyIds.length * expectedProjects.length
+const expectedObservationCount = receiptScope.expectedObservationCount
+const expectedJourneyCount = receiptScope.expectedJourneyCount
 const missingObservationCount = Math.max(0, expectedObservationCount - observations.length)
 const missingJourneyCount = Math.max(0, expectedJourneyCount - journeys.length)
 const failedJourneys = journeys.filter((item) => item.status === 'FAIL')
@@ -83,6 +92,8 @@ const receipt = {
   overall,
   gates,
   coverage: {
+    scopeMode: receiptScope.mode,
+    scopeSpecs: receiptScope.specs,
     surfaces: EXPERIENCE_SURFACES.map((surface) => ({
       id: surface.id,
       label: surface.label,
@@ -159,5 +170,5 @@ function markdown(value) {
   const frameworkNote = value.metrics.ignoredFrameworkAbortCount
     ? `\n- **Abort di framework registrati e ignorati:** ${value.metrics.ignoredFrameworkAbortCount} (solo pattern Next.js esplicitamente ammessi).`
     : ''
-  return `# Human + Visual Acceptance Receipt\n\n- **Commit:** \`${value.commit}\`\n- **Target:** ${value.target}\n- **Base URL:** ${value.baseUrl}\n- **Esito automatico complessivo:** **${value.overall}**\n- **Evidenze:** ${value.coverage.actualObservations}/${value.coverage.expectedObservations} osservazioni · ${value.coverage.actualJourneys}/${value.coverage.expectedJourneys} journey${frameworkNote}\n- **Target mobile minimo canonico:** ${value.metrics.canonicalMinimumTargetPx} px\n\n| Gate | Stato |\n| --- | --- |\n${gateRows}\n\n## Journey Human\n\n| Viewport | Percorso | Stato | Evidenza |\n| --- | --- | --- | --- |\n${journeyRows}\n\n## Finding automatici\n\n${findingRows}\n\n## Giudizio visuale\n\n**REVIEW_REQUIRED** — gli screenshot devono essere osservati secondo \`product/design/VISUAL-ACCEPTANCE.md\`.\n\n## Design Governance Review\n\n| Regola | Criterio | Stato |\n| --- | --- | --- |\n${governanceRows}\n\nLa checklist non viene auto-promossa a PASS: richiede osservazione degli artefatti e del percorso reale.\n`
+  return `# Human + Visual Acceptance Receipt\n\n- **Commit:** \`${value.commit}\`\n- **Target:** ${value.target}\n- **Base URL:** ${value.baseUrl}\n- **Scope HVA:** ${value.coverage.scopeMode}${value.coverage.scopeSpecs.length ? ` · ${value.coverage.scopeSpecs.join(', ')}` : ''}\n- **Esito automatico complessivo:** **${value.overall}**\n- **Evidenze:** ${value.coverage.actualObservations}/${value.coverage.expectedObservations} osservazioni · ${value.coverage.actualJourneys}/${value.coverage.expectedJourneys} journey${frameworkNote}\n- **Target mobile minimo canonico:** ${value.metrics.canonicalMinimumTargetPx} px\n\n| Gate | Stato |\n| --- | --- |\n${gateRows}\n\n## Journey Human\n\n| Viewport | Percorso | Stato | Evidenza |\n| --- | --- | --- | --- |\n${journeyRows}\n\n## Finding automatici\n\n${findingRows}\n\n## Giudizio visuale\n\n**REVIEW_REQUIRED** — gli screenshot devono essere osservati secondo \`product/design/VISUAL-ACCEPTANCE.md\`.\n\n## Design Governance Review\n\n| Regola | Criterio | Stato |\n| --- | --- | --- |\n${governanceRows}\n\nLa checklist non viene auto-promossa a PASS: richiede osservazione degli artefatti e del percorso reale.\n`
 }

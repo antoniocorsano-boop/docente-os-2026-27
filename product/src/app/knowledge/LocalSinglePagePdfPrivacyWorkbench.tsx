@@ -11,7 +11,7 @@ import {
 } from '@/core/privacy/local-pdf-visual-preflight'
 
 type Point = { x: number; y: number }
-export type NativeTextPdfPreflightState = 'PENDING' | 'PASSED' | 'BLOCKED' | 'NOT_APPLICABLE'
+export type NativeTextPdfPreflightState = 'PENDING' | 'PASSED' | 'BLOCKED' | 'FAILED' | 'NOT_APPLICABLE'
 type Props = {
   file: File
   disabled: boolean
@@ -51,7 +51,8 @@ function Session({ file, disabled, onPrepared, onNativeTextPreflight }: Props) {
       onNativeTextPreflightRef.current('PENDING')
       try {
         const bytes = new Uint8Array(await file.arrayBuffer())
-        const classification = await classifyLocalPdfForVisualPreflight(bytes)
+        // Keep an untouched byte buffer for rendering: PDF workers may transfer/detach the buffer used for classification.
+        const classification = await classifyLocalPdfForVisualPreflight(bytes.slice())
         if (cancelled) return
         setState(classification.state)
         setPages(classification.totalPages ?? 0)
@@ -70,14 +71,15 @@ function Session({ file, disabled, onPrepared, onNativeTextPreflight }: Props) {
           return
         }
 
-        onNativeTextPreflightRef.current('NOT_APPLICABLE')
         if (classification.state === 'MULTI_PAGE_VISUAL_BLOCKED') {
+          onNativeTextPreflightRef.current('FAILED')
           setMessage(classification.diagnostic === 'TEXT_EXTRACTION_FAILED_VISUAL_FALLBACK'
             ? `Il PDF si apre, ma il testo non può essere estratto localmente e supera il limite di ${MAX_LOCAL_VISUAL_PDF_PAGES} pagine per la revisione visuale. Resta bloccato e nessun originale viene inviato.`
             : `Il PDF supera il limite locale di ${MAX_LOCAL_VISUAL_PDF_PAGES} pagine. Resta bloccato e nessun originale viene inviato.`)
           return
         }
         if (classification.state === 'FAILED' || !classification.totalPages) {
+          onNativeTextPreflightRef.current('FAILED')
           setMessage(classification.diagnostic === 'DOCUMENT_OPEN_FAILED'
             ? 'Il browser non riesce ad aprire la struttura di questo PDF in modo affidabile. Resta bloccato e nessun byte viene inviato.'
             : 'Non riesco a verificare questo PDF localmente. Resta bloccato.')
@@ -85,6 +87,7 @@ function Session({ file, disabled, onPrepared, onNativeTextPreflight }: Props) {
         }
         await renderPdf(bytes, classification.totalPages)
         if (cancelled) return
+        onNativeTextPreflightRef.current('NOT_APPLICABLE')
         setReady(true)
         setMessage(classification.diagnostic === 'TEXT_EXTRACTION_FAILED_VISUAL_FALLBACK'
           ? classification.totalPages === 1
@@ -97,8 +100,8 @@ function Session({ file, disabled, onPrepared, onNativeTextPreflight }: Props) {
         console.error('Local PDF privacy workbench failed', error)
         if (!cancelled) {
           setState('FAILED')
-          onNativeTextPreflightRef.current('NOT_APPLICABLE')
-          setMessage('Non riesco ad aprire questo PDF localmente. Nessun byte è stato inviato.')
+          onNativeTextPreflightRef.current('FAILED')
+          setMessage('Non riesco ad aprire questo PDF localmente. Il PDF resta bloccato e nessun byte viene inviato.')
         }
       }
     })()
