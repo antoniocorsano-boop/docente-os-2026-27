@@ -223,10 +223,10 @@ as $stale$
 begin
   perform public.update_timetable_import_row_v1(
     p_candidate_id,
-    1,
+    1::bigint,
     p_row_id,
-    '00000000-0000-0000-0000-00000000b625',
-    1,1,'08:00','09:00'
+    '00000000-0000-0000-0000-00000000b625'::uuid,
+    1::smallint,1::smallint,'08:00'::time,'09:00'::time
   );
   raise exception 'EXPECTED_STALE_EDIT_MISSING';
 exception
@@ -489,10 +489,10 @@ select public.replace_timetable_import_candidate_v1(
 
 select public.update_timetable_import_row_v1(
   (select id from public.timetable_import_candidates where source_fingerprint=repeat('b',64)),
-  1,
+  1::bigint,
   (select id from public.timetable_import_candidate_rows where candidate_id=(select id from public.timetable_import_candidates where source_fingerprint=repeat('b',64)) limit 1),
-  '00000000-0000-0000-0000-00000000b625',
-  2,2,'09:00','10:00'
+  '00000000-0000-0000-0000-00000000b625'::uuid,
+  2::smallint,2::smallint,'09:00'::time,'10:00'::time
 );
 
 select pg_temp.assert_true(
