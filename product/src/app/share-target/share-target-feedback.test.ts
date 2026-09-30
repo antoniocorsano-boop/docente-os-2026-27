@@ -6,6 +6,7 @@ const intake = fs.readFileSync(new URL('./ShareTargetIntake.tsx', import.meta.ur
 const uploader = fs.readFileSync(new URL('../knowledge/KnowledgeFileUploader.tsx', import.meta.url), 'utf8')
 const serviceWorker = fs.readFileSync(new URL('../../../public/sw.js', import.meta.url), 'utf8')
 const timetableIntake = fs.readFileSync(new URL('./TimetableSharedIntake.tsx', import.meta.url), 'utf8')
+const timetableActions = fs.readFileSync(new URL('../orario/actions.ts', import.meta.url), 'utf8')
 
 test('shared intake makes local-only and failure state perceptible before write', () => {
   assert.match(intake, /ancora locale/)
@@ -29,6 +30,8 @@ test('timetable-like shared PDFs use local minimization before timetable analysi
   assert.match(intake, /looksLikeTimetable/)
   assert.match(intake, /TimetableSharedIntake/)
   assert.match(intake, /orario|timetable|quadro\\s\+orario/)
+  assert.match(intake, /file\.type === 'application\/pdf'/)
+  assert.match(intake, /\\.pdf\$\/i\.test\(file\.name\)/)
 
   assert.match(timetableIntake, /cropSelections/)
   assert.match(timetableIntake, /orario-selezione-locale\.png/)
@@ -37,6 +40,19 @@ test('timetable-like shared PDFs use local minimization before timetable analysi
   assert.match(timetableIntake, /Il PDF completo non viene caricato in Conoscenza/)
   assert.match(timetableIntake, /await onBeforeSubmit\(\)/)
   assert.match(timetableIntake, /await analyzeTimetableImport\(data\)/)
+  assert.match(timetableIntake, /sha256Hex\(bytes\)/)
+  assert.match(timetableIntake, /originalSourceFingerprint/)
+  assert.match(timetableIntake, /GIORNO:/)
+  assert.match(timetableIntake, /ORA:/)
+  assert.match(timetableIntake, /x: clamp\(x, 0, canvas\.width\)/)
+  assert.match(timetableIntake, /y: clamp\(y, 0, canvas\.height\)/)
+  assert.match(timetableIntake, /x2 = clamp\(Math\.ceil\(rect\.x \+ rect\.width\), 0, source\.width\)/)
+  assert.match(timetableIntake, /y2 = clamp\(Math\.ceil\(rect\.y \+ rect\.height\), 0, source\.height\)/)
+
+  assert.match(timetableActions, /LOCAL_MINIMIZED_SHARE/)
+  assert.match(timetableActions, /validateOriginalSourceFingerprint/)
+  assert.match(timetableActions, /sourceLabel = sourceMode === 'LOCAL_MINIMIZED_SHARE'/)
+  assert.match(timetableActions, /derivative-sha256:/)
 })
 
 
