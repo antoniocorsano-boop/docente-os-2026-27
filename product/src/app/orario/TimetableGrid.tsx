@@ -1,5 +1,6 @@
 'use client'
 
+import * as Dialog from '@radix-ui/react-dialog'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import type { TimetablePresenceKind, TimetableSlot, TimetableSlotKind } from '@/core/domain/timetable'
@@ -83,17 +84,6 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
     }
   }, [days])
 
-  useEffect(() => {
-    if (!editor && !focusedSlotId) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setEditor(null)
-        setFocusedSlotId(null)
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [editor, focusedSlotId])
 
   const rows = useMemo(() => buildTimetableGridRows(periods, slots), [periods, slots])
   const visibleDays = viewMode === 'week' ? days : days.filter((day) => day.value === selectedDay)
@@ -203,26 +193,31 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
       })}</div></details> : null}
 
       {focusedSlot ? (
-        <div className="timetableContextBackdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setFocusedSlotId(null) }}>
-          <section className="timetableContextSheet" role="dialog" aria-modal="true" aria-labelledby="timetable-context-title">
-            <div className="timetableContextHeading"><div><span>{days.find((day) => day.value === focusedSlot.weekday)?.label ?? 'Giorno'} · {focusedSlot.startTime}–{focusedSlot.endTime}</span><h3 id="timetable-context-title">{contextTitle(focusedSlot, focusedAssignment)}</h3><p>{contextSubtitle(focusedSlot, focusedAssignment)}</p></div><button type="button" aria-label="Chiudi" onClick={() => setFocusedSlotId(null)}>×</button></div>
-            {focusedSlot.room || focusedSlot.note ? <div className="timetableContextMeta">{focusedSlot.room ? <span><strong>Aula</strong>{focusedSlot.room}</span> : null}{focusedSlot.note ? <span><strong>Nota</strong>{focusedSlot.note}</span> : null}</div> : null}
-            {focusedSlot.slotKind === 'CLASS_PRESENCE' ? <p className="timetableContextHint">Questa è una presenza registrata manualmente nell’Orario: non crea una classe nella tua Cattedra.</p> : null}
-            <div className="timetableContextActions">
-              {focusedSlot.slotKind === 'LESSON' && focusedAssignment ? <>
-                <Link className="timetablePrimaryButton contextPrimaryAction" href={`/classi/${encodeURIComponent(focusedAssignment.sectionId)}`}>Apri classe</Link>
-                <Link className="secondaryButton" href={`/piano-annuale?section=${encodeURIComponent(focusedAssignment.sectionId)}`}>Piano annuale</Link>
-              </> : null}
-              <button className="secondaryButton" type="button" onClick={editFocusedSlot}>Modifica orario</button>
-            </div>
-          </section>
-        </div>
+        <Dialog.Root open onOpenChange={(open) => { if (!open) setFocusedSlotId(null) }}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="timetableContextBackdrop" />
+            <Dialog.Content className="timetableContextSheet">
+              <div className="timetableContextHeading"><div><span>{days.find((day) => day.value === focusedSlot.weekday)?.label ?? 'Giorno'} · {focusedSlot.startTime}–{focusedSlot.endTime}</span><Dialog.Title asChild><h3>{contextTitle(focusedSlot, focusedAssignment)}</h3></Dialog.Title><Dialog.Description asChild><p>{contextSubtitle(focusedSlot, focusedAssignment)}</p></Dialog.Description></div><Dialog.Close asChild><button type="button" aria-label="Chiudi">×</button></Dialog.Close></div>
+              {focusedSlot.room || focusedSlot.note ? <div className="timetableContextMeta">{focusedSlot.room ? <span><strong>Aula</strong>{focusedSlot.room}</span> : null}{focusedSlot.note ? <span><strong>Nota</strong>{focusedSlot.note}</span> : null}</div> : null}
+              {focusedSlot.slotKind === 'CLASS_PRESENCE' ? <p className="timetableContextHint">Questa è una presenza registrata manualmente nell’Orario: non crea una classe nella tua Cattedra.</p> : null}
+              <div className="timetableContextActions">
+                {focusedSlot.slotKind === 'LESSON' && focusedAssignment ? <>
+                  <Link className="timetablePrimaryButton contextPrimaryAction" href={`/classi/${encodeURIComponent(focusedAssignment.sectionId)}`}>Apri classe</Link>
+                  <Link className="secondaryButton" href={`/piano-annuale?section=${encodeURIComponent(focusedAssignment.sectionId)}`}>Piano annuale</Link>
+                </> : null}
+                <button className="secondaryButton" type="button" onClick={editFocusedSlot}>Modifica orario</button>
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
       ) : null}
 
       {editor ? (
-        <div className="timetableEditorBackdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setEditor(null) }}>
-          <section className="timetableEditor" role="dialog" aria-modal="true" aria-labelledby="timetable-editor-title">
-            <div className="timetableEditorHeading"><div><span>{editor.mode === 'create' ? 'Nuova voce' : 'Modifica voce'}</span><h3 id="timetable-editor-title">{days.find((day) => day.value === editor.weekday)?.label ?? 'Giorno'} · {editor.startTime}–{editor.endTime}</h3></div><button type="button" aria-label="Chiudi" onClick={() => setEditor(null)}>×</button></div>
+        <Dialog.Root open onOpenChange={(open) => { if (!open) setEditor(null) }}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="timetableEditorBackdrop" />
+            <Dialog.Content className="timetableEditor" aria-describedby={undefined}>
+              <div className="timetableEditorHeading"><div><span>{editor.mode === 'create' ? 'Nuova voce' : 'Modifica voce'}</span><Dialog.Title asChild><h3>{days.find((day) => day.value === editor.weekday)?.label ?? 'Giorno'} · {editor.startTime}–{editor.endTime}</h3></Dialog.Title></div><Dialog.Close asChild><button type="button" aria-label="Chiudi">×</button></Dialog.Close></div>
             <form action={editor.mode === 'create' ? createSlot : updateSlot} className="timetableEditorForm">
               <input type="hidden" name="versionId" value={versionId} />{editor.slotId ? <input type="hidden" name="slotId" value={editor.slotId} /> : null}
               <label className="editorWide"><span>Che cosa fai in quest’ora?</span><select name="kind" value={editor.kind} onChange={(event) => setEditor((current) => current ? { ...current, kind: event.target.value as TimetableSlotKind } : current)}>{Object.entries(KIND_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
@@ -235,9 +230,10 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
               {editor.kind === 'LESSON' && !assignments.length ? <p className="editorWarning">Per una lezione della tua cattedra serve prima almeno una associazione in Impostazioni. Puoi comunque registrare una presenza in altra classe.</p> : null}
               <div className="timetableEditorActions"><button className="secondaryButton" type="button" onClick={() => setEditor(null)}>Annulla</button><button className="timetablePrimaryButton" type="submit" disabled={editor.kind === 'LESSON' && !assignments.length}>{editor.mode === 'create' ? 'Aggiungi all’orario' : 'Salva modifiche'}</button></div>
             </form>
-            {editor.mode === 'edit' && editor.slotId ? <form action={removeSlot} className="editorDeleteForm"><input type="hidden" name="versionId" value={versionId} /><input type="hidden" name="slotId" value={editor.slotId} /><button className="textDangerButton" type="submit">Rimuovi dall’orario</button></form> : null}
-          </section>
-        </div>
+              {editor.mode === 'edit' && editor.slotId ? <form action={removeSlot} className="editorDeleteForm"><input type="hidden" name="versionId" value={versionId} /><input type="hidden" name="slotId" value={editor.slotId} /><button className="textDangerButton" type="submit">Rimuovi dall’orario</button></form> : null}
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
       ) : null}
     </div>
   )
