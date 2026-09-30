@@ -97,13 +97,14 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
     setError(null)
     try {
       await clearStaging()
-      window.location.assign('/orario')
+      const destination = file && looksLikeTimetable(meta, file) ? '/orario' : '/knowledge'
+      window.location.assign(destination)
     } catch (cleanupError) {
       console.error('Docente OS shared intake cancellation cleanup failed', cleanupError)
       setCancelling(false)
       setError('Non sono riuscito a rimuovere il file condiviso dal dispositivo. L’acquisizione resta bloccata: riprova Annulla prima di uscire.')
     }
-  }, [cancelling, clearStaging])
+  }, [cancelling, clearStaging, file, meta])
 
   return (
     <main className="sharedIntakeSurface">
