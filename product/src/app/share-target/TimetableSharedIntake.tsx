@@ -365,5 +365,5 @@ function parseOrdinal(value: string) {
 }
 
 function isValidOrdinal(value: number | null): value is number {
-  return Number.isInteger(value) && value >= 1 && value <= 20
+  return value !== null && Number.isInteger(value) && value >= 1 && value <= 20
 }
