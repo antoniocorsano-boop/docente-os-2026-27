@@ -12,9 +12,27 @@ export async function clearShareIntakeStaging(
   const matches = keys.filter((request) =>
     new URL(request.url).pathname.startsWith(sharePrefix + intakeId + '/'),
   )
-  const results = await Promise.all(matches.map((request) => cache.delete(request)))
-  if (results.some((deleted) => !deleted)) {
-    throw new Error('Share Target staging cleanup incomplete')
+  const metadata = matches.filter((request) =>
+    new URL(request.url).pathname.endsWith('/meta'),
+  )
+  const payloads = matches.filter((request) =>
+    !new URL(request.url).pathname.endsWith('/meta'),
+  )
+
+  for (const request of payloads) {
+    const deleted = await cache.delete(request)
+    if (!deleted) {
+      // Keep metadata resolvable so the intake can retry cleanup of an orphaned file.
+      throw new Error('Share Target staging cleanup incomplete')
+    }
   }
+
+  for (const request of metadata) {
+    const deleted = await cache.delete(request)
+    if (!deleted) {
+      throw new Error('Share Target staging cleanup incomplete')
+    }
+  }
+
   return matches.length
 }
