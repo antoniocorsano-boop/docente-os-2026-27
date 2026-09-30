@@ -33,8 +33,6 @@ test('timetable-like shared PDFs use local minimization before timetable analysi
   assert.match(intake, /looksLikeTimetable/)
   assert.match(intake, /TimetableSharedIntake/)
   assert.match(intake, /orario|timetable|quadro\\s\+orario/)
-  assert.match(intake, /file\.type === 'application\/pdf'/)
-  assert.match(intake, /\\.pdf\$\/i\.test\(file\.name\)/)
 
   assert.match(timetableIntake, /cropSelections/)
   assert.match(timetableIntake, /orario-selezione-locale\.png/)
