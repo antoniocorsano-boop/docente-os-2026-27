@@ -58,3 +58,21 @@ export function clampRectToBounds(rect: Rect, width: number, height: number): Re
 export function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
 }
+
+
+const WEEKDAY_LABELS = new Map<number, string>([
+  [1, 'Lunedì'],
+  [2, 'Martedì'],
+  [3, 'Mercoledì'],
+  [4, 'Giovedì'],
+  [5, 'Venerdì'],
+  [6, 'Sabato'],
+])
+
+export function derivativeContextLabel(teacherLabel: string, weekday: number, ordinal: number) {
+  const teacher = teacherLabel.trim()
+  const day = WEEKDAY_LABELS.get(weekday) ?? `Giorno ${weekday}`
+  if (!teacher) throw new Error('Teacher label is required')
+  if (!isValidOrdinal(ordinal)) throw new Error('Valid timetable ordinal is required')
+  return `DOCENTE: ${teacher} · GIORNO: ${day} · ORA: ${ordinal}`
+}
