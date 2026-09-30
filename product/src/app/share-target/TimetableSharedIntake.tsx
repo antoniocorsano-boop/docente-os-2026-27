@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import type { PointerEvent as ReactPointerEvent } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { getDocumentProxy } from 'unpdf'
 import { analyzeTimetableImport } from '@/app/orario/actions'
 import { clamp, clampRectToBounds, dateFromFilename, isValidOrdinal, parseOrdinal, type Rect } from './timetable-share-helpers'
@@ -100,7 +100,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
         setKeyboardCursor({ x: source.width / 2, y: source.height / 2 })
         setReady(true)
         setMessage('Seleziona soltanto la riga o le celle che appartengono al tuo orario. Il resto del documento non verrà inviato.')
-        drawCanvas(source, canvasRef.current, [])
+        drawCanvas(source, canvasRef.current, [], { x: source.width / 2, y: source.height / 2 }, null)
       } catch (error) {
         if (!cancelled) {
           setMessage(error instanceof Error ? error.message : 'Non riesco a preparare questo PDF localmente.')
@@ -155,7 +155,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
     setMessage('Area aggiunta. Puoi selezionare altre celle oppure preparare la proposta.')
   }
 
-  function keyboardSelection(event: React.KeyboardEvent<HTMLCanvasElement>) {
+  function keyboardSelection(event: ReactKeyboardEvent<HTMLCanvasElement>) {
     if (!ready || busy || !sourceRef.current) return
     const source = sourceRef.current
     const current = keyboardCursor ?? { x: source.width / 2, y: source.height / 2 }
