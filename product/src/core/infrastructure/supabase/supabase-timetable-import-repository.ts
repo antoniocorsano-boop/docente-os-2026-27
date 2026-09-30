@@ -268,6 +268,7 @@ export class SupabaseTimetableImportRepository {
 
   async updateRow(input: {
     candidateId: string
+    candidateRevision: number
     rowId: string
     assignmentId: string
     weekday: number
@@ -281,6 +282,7 @@ export class SupabaseTimetableImportRepository {
       .from('timetable_import_candidates')
       .select('id,state,revision,workspace_id,academic_year_id')
       .eq('id', input.candidateId)
+      .eq('revision', input.candidateRevision)
       .single()
     if (candidateError) throw new Error(candidateError.message)
 
@@ -326,6 +328,8 @@ export class SupabaseTimetableImportRepository {
       .eq('id', input.rowId)
       .eq('candidate_id', candidate.id)
       .eq('candidate_revision', editableRevision)
+      .select('id')
+      .single()
 
     if (error) throw new Error(error.message)
     await this.promoteIfComplete(candidate.id, editableRevision)
@@ -333,6 +337,20 @@ export class SupabaseTimetableImportRepository {
 
   async addManualRow(input: {
     candidateId: string
+    candidateRevision: number
+    assignmentId: string
+    weekday: number
+    ordinal: number
+    startTime: string
+    endTime: string
+  }) {
+    const supabase = await createClient()
+    const { data: candidate, error: candidateError } = await supabase
+      .from('timetable_import_candidates')
+      .select('id,state,revision,workspace_id,academic_year_id')
+  async addManualRow(input: {
+    candidateId: string
+    candidateRevision: number
     assignmentId: string
     weekday: number
     ordinal: number
@@ -344,6 +362,7 @@ export class SupabaseTimetableImportRepository {
       .from('timetable_import_candidates')
       .select('id,state,revision,workspace_id,academic_year_id')
       .eq('id', input.candidateId)
+      .eq('revision', input.candidateRevision)
       .single()
     if (candidateError) throw new Error(candidateError.message)
 
