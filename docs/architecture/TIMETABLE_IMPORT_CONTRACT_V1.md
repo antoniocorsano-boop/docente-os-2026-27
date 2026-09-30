@@ -56,7 +56,14 @@ CONFLICT_DETECTED
 
 ## 3. Sorgente e provenienza
 
-Il sistema calcola sul contenuto binario originale un `source_fingerprint` crittografico stabile, prima di qualsiasi trasformazione.
+Nel percorso ordinario, quando il server riceve il documento sorgente, il sistema calcola sul contenuto binario ricevuto un `source_fingerprint` crittografico stabile prima di qualsiasi trasformazione.
+
+Nel percorso privacy-first `LOCAL_MINIMIZED_SHARE`, il documento originale resta sul dispositivo e non attraversa il trust boundary. In questo caso:
+
+- il `source_fingerprint` autorevole del candidato è calcolato **server-side sui byte del derivato minimizzato effettivamente ricevuto**;
+- l'eventuale SHA-256 dell'originale calcolato localmente è soltanto una **attestazione di provenienza locale non autorevole** e può essere registrato in `source_ref`;
+- l'attestazione locale non può essere usata per lookup, deduplicazione, sostituzione, cancellazione o autorizzazione di candidati server-side;
+- lookup e replacement possono riguardare solo candidati dello stesso `created_by`.
 
 Metadati minimi:
 
