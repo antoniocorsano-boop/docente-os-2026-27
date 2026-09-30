@@ -3,8 +3,10 @@ import { selectLatestTeachingSessionContinuity } from '@/core/domain/teaching-se
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
+import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
 import type { HomeDailyContext, HomeDailyLesson } from '@/core/presentation/home-daily-context'
+import { canonicalPlanSupportsDisciplineName } from '@/core/presentation/canonical-plan-discipline'
 import {
   buildInternalLessonMaterialRenderBundle,
   INTERNAL_LESSON_RENDERING_CAPABILITIES,
@@ -30,6 +32,7 @@ export type LoadedNextLessonPreparation = {
 type SharedPreparationData = {
   snapshot: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>>
   assignments: Awaited<ReturnType<SupabaseTeachingAssignmentReader['list']>>
+  disciplines: Awaited<ReturnType<SupabaseTeacherSettingsRepository['listDisciplines']>>
   knowledgeItems: Awaited<ReturnType<SupabaseKnowledgeRepository['listRecent']>>
   knowledgeUnavailable: boolean
   sessionRepository: SupabaseTeachingSessionRepository
@@ -88,11 +91,13 @@ async function loadSharedPreparationData(workspaceId: string, academicYearId: st
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
   const assignmentReader = new SupabaseTeachingAssignmentReader()
   const knowledgeRepository = new SupabaseKnowledgeRepository()
+  const settingsRepository = new SupabaseTeacherSettingsRepository()
   let knowledgeUnavailable = false
 
-  const [snapshot, assignments, knowledgeItems] = await Promise.all([
+  const [snapshot, assignments, disciplines, knowledgeItems] = await Promise.all([
     annualRepository.list(workspaceId, academicYearId),
     assignmentReader.list(workspaceId, academicYearId),
+    settingsRepository.listDisciplines(workspaceId, academicYearId),
     knowledgeRepository.listRecent(workspaceId, 100).catch(() => {
       knowledgeUnavailable = true
       console.warn('[DOCENTE OS] Knowledge index unavailable; lesson preparation degraded to PARTIAL.')
@@ -103,6 +108,7 @@ async function loadSharedPreparationData(workspaceId: string, academicYearId: st
   return {
     snapshot,
     assignments,
+    disciplines,
     knowledgeItems,
     knowledgeUnavailable,
     sessionRepository: new SupabaseTeachingSessionRepository(),
@@ -142,7 +148,7 @@ async function loadLessonPreparationBundleWithShared(input: {
     }))
   }
 
-  const confirmedAssignment = shared.assignments.some((assignment) =>
+  const confirmedAssignment = shared.assignments.find((assignment) =>
     assignment.sectionId === lesson.sectionId
     && assignment.disciplineId === lesson.disciplineId
     && assignment.status === 'CONFIRMED',
@@ -152,6 +158,15 @@ async function loadLessonPreparationBundleWithShared(input: {
       lesson,
       lessonContext: null,
       missingInformation: ['La cattedra non conferma il collegamento tra questa sezione e la disciplina della lezione'],
+    }))
+  }
+
+  const discipline = shared.disciplines.find((item) => item.id === confirmedAssignment.disciplineId)
+  if (!discipline || !canonicalPlanSupportsDisciplineName(discipline.name)) {
+    return blockedPreparation(buildNextLessonPreparation({
+      lesson,
+      lessonContext: null,
+      missingInformation: ['Il Piano annuale canonico disponibile non è associato alla disciplina di questa lezione'],
     }))
   }
 
