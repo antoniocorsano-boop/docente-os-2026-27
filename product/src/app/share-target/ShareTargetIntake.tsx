@@ -24,6 +24,7 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const [acceptedCandidateId, setAcceptedCandidateId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -97,14 +98,16 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
     setError(null)
     try {
       await clearStaging()
-      const destination = file && looksLikeTimetable(meta, file) ? '/orario' : '/knowledge'
+      const destination = acceptedCandidateId
+        ? `/orario?importCandidate=${encodeURIComponent(acceptedCandidateId)}&import=review`
+        : file && looksLikeTimetable(meta, file) ? '/orario' : '/knowledge'
       window.location.assign(destination)
     } catch (cleanupError) {
       console.error('Docente OS shared intake cancellation cleanup failed', cleanupError)
       setCancelling(false)
       setError('Non sono riuscito a rimuovere il file condiviso dal dispositivo. L’acquisizione resta bloccata: riprova Annulla prima di uscire.')
     }
-  }, [cancelling, clearStaging, file, meta])
+  }, [acceptedCandidateId, cancelling, clearStaging, file, meta])
 
   return (
     <main className="sharedIntakeSurface">
@@ -133,6 +136,7 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
                 key={`${file.name}:${file.size}:${file.lastModified}`}
                 file={file}
                 onBeforeSubmit={clearStaging}
+                onCandidateAccepted={setAcceptedCandidateId}
               />
             ) : (
               <KnowledgeFileUploader
@@ -149,7 +153,11 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           <button type="button" onClick={() => void cancelIntake()} disabled={cancelling}>
-            {cancelling ? 'Rimuovo il file locale…' : 'Annulla acquisizione e rimuovi il file locale'}
+            {cancelling
+              ? 'Rimuovo il file locale…'
+              : acceptedCandidateId
+                ? 'Rimuovi il file locale e apri la revisione'
+                : 'Annulla acquisizione e rimuovi il file locale'}
           </button>
         </div>
 
