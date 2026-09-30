@@ -192,15 +192,6 @@ export async function analyzeTimetableImport(formData: FormData) {
   const fingerprint = sourceIdentity.sourceFingerprint
   const sourceLabel = sourceIdentity.sourceLabel
   const importRepository = new SupabaseTimetableImportRepository()
-  const existing = await importRepository.findByFingerprint({
-    workspaceId: context.workspace.id,
-    academicYearId: context.academicYear.id,
-    sourceFingerprint: fingerprint,
-  })
-
-  if (existing?.state === 'APPLIED_TO_DRAFT') {
-    redirect('/orario?import=already_applied')
-  }
 
   const settingsRepository = new SupabaseTeacherSettingsRepository()
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
@@ -247,20 +238,6 @@ export async function analyzeTimetableImport(formData: FormData) {
 
   if (!extracted.rows.length) redirect('/orario?import=no_rows')
 
-  if (existing && (existing.state === 'DRAFT' || existing.state === 'READY_TO_CONFIRM')) {
-    await importRepository.deleteCandidate(existing.id)
-  }
-
-  const candidate = await importRepository.createCandidate({
-    workspaceId: context.workspace.id,
-    academicYearId: context.academicYear.id,
-    sourceFingerprint: fingerprint,
-    sourceLabel,
-    sourceRef: sourceIdentity.sourceRef,
-    effectiveFrom,
-    parserVersion: `${extracted.processor}@${extracted.processorVersion}`,
-  })
-
   const rows = extracted.rows.map((row) => {
     const sectionId = sectionIdByClass.get(normalizeClassKey(row.classLabel)) ?? null
     const assignments = sectionId ? assignmentsBySection.get(sectionId) ?? [] : []
@@ -296,12 +273,25 @@ export async function analyzeTimetableImport(formData: FormData) {
     }
   })
 
-  await importRepository.insertRows({
-    candidateId: candidate.id,
-    candidateRevision: candidate.revision,
-    rows,
-  })
-  await importRepository.promoteIfComplete(candidate.id, candidate.revision)
+  let candidate
+  try {
+    candidate = await importRepository.replaceCandidateAtomic({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      sourceFingerprint: fingerprint,
+      sourceLabel,
+      sourceRef: sourceIdentity.sourceRef,
+      effectiveFrom,
+      parserVersion: `${extracted.processor}@${extracted.processorVersion}`,
+      rows,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : ''
+    if (message.includes('SOURCE_ALREADY_APPLIED')) {
+      redirect('/orario?import=already_applied')
+    }
+    redirect('/orario?import=persist_failed')
+  }
 
   revalidatePath('/orario')
   redirect(`/orario?importCandidate=${encodeURIComponent(candidate.id)}&import=review`)
