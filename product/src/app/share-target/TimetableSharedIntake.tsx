@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { getDocumentProxy } from 'unpdf'
-import { analyzeTimetableImport } from '@/app/orario/actions'
+import { analyzeMinimizedTimetableImport } from '@/app/orario/actions'
 import { clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, isValidOrdinal, parseOrdinal, type Rect } from './timetable-share-helpers'
 
 type Point = { x: number; y: number }
@@ -210,7 +210,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
       data.set('originalSourceFingerprint', sourceFingerprint)
       data.set('sourceMode', 'LOCAL_MINIMIZED_SHARE')
 
-      const result = await analyzeTimetableImport(data)
+      const result = await analyzeMinimizedTimetableImport(data)
       if (!result || !result.ok) {
         setBusy(false)
         setMessage(messageForImportFailure(result?.code ?? 'persist_failed'))
