@@ -255,12 +255,20 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
 async function cropSelections(source: HTMLCanvasElement, selections: Selection[]) {
   const padding = 8
   const normalized = selections
-    .map((rect) => ({
-      x: Math.max(0, Math.floor(rect.x)),
-      y: Math.max(0, Math.floor(rect.y)),
-      width: Math.min(source.width - Math.max(0, Math.floor(rect.x)), Math.ceil(rect.width)),
-      height: Math.min(source.height - Math.max(0, Math.floor(rect.y)), Math.ceil(rect.height)),
-    }))
+    .map((rect) => {
+      const x1 = clamp(Math.floor(rect.x), 0, source.width)
+      const y1 = clamp(Math.floor(rect.y), 0, source.height)
+      const x2 = clamp(Math.ceil(rect.x + rect.width), 0, source.width)
+      const y2 = clamp(Math.ceil(rect.y + rect.height), 0, source.height)
+      return {
+        x: x1,
+        y: y1,
+        width: Math.max(0, x2 - x1),
+        height: Math.max(0, y2 - y1),
+        weekday: rect.weekday,
+        ordinal: rect.ordinal,
+      }
+    })
     .filter((rect) => rect.width > 0 && rect.height > 0)
 
   const labelHeight = 44
@@ -279,13 +287,9 @@ async function cropSelections(source: HTMLCanvasElement, selections: Selection[]
 
   let y = 0
   for (const rect of normalized) {
-    const sourceSelection = selections.find((item) =>
-      Math.max(0, Math.floor(item.x)) === rect.x
-      && Math.max(0, Math.floor(item.y)) === rect.y
-    )
-    if (!sourceSelection?.weekday || !sourceSelection.ordinal) throw new Error('Contesto giorno/ora mancante')
-    const day = WEEKDAYS.find((item) => item.value === sourceSelection.weekday)?.label ?? `Giorno ${sourceSelection.weekday}`
-    ctx.fillText(`GIORNO: ${day} · ORA: ${sourceSelection.ordinal}`, 8, y + labelHeight / 2)
+    if (!rect.weekday || !rect.ordinal) throw new Error('Contesto giorno/ora mancante')
+    const day = WEEKDAYS.find((item) => item.value === rect.weekday)?.label ?? `Giorno ${rect.weekday}`
+    ctx.fillText(`GIORNO: ${day} · ORA: ${rect.ordinal}`, 8, y + labelHeight / 2)
     y += labelHeight
     ctx.drawImage(source, rect.x, rect.y, rect.width, rect.height, 0, y, rect.width, rect.height)
     y += rect.height + padding
