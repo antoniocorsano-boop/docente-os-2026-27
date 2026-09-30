@@ -29,14 +29,14 @@ export function resolveTimetableSourceIdentity(input: {
     }
   }
 
-  const localOriginalFingerprint = validateFingerprint(input.originalSourceFingerprint)
+  const wholeDocumentFingerprint = validateFingerprint(input.originalSourceFingerprint)
 
   return {
-    // The authoritative candidate identity is derived from bytes received and hashed on the server.
-    sourceFingerprint: derivativeFingerprint,
+    // G1.5 allows only the whole-document G1.3 fingerprint to persist.
+    // It is computed locally before minimization because the original never crosses the trust boundary.
+    sourceFingerprint: wholeDocumentFingerprint,
     sourceLabel: 'Orario condiviso - derivato locale',
-    // The local original hash is provenance-only and never drives lookup, replacement or deletion.
-    sourceRef: `local-original-sha256:${localOriginalFingerprint}; derivative-sha256:${derivativeFingerprint}`,
+    sourceRef: `client-whole-document-sha256:${wholeDocumentFingerprint}`,
   }
 }
 
