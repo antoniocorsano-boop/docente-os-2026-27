@@ -208,6 +208,7 @@ export type Database = {
           p_effective_from: string
           p_parser_version: string
           p_rows: Json
+          p_replace_reviewed: boolean
         }
         Returns: Json
       }
