@@ -209,13 +209,29 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
       data.set('effectiveFrom', effectiveFrom)
       data.set('originalSourceFingerprint', sourceFingerprint)
       data.set('sourceMode', 'LOCAL_MINIMIZED_SHARE')
-      await onBeforeSubmit()
-      setMessage('Invio soltanto le aree selezionate. Il PDF completo è stato rimosso dallo staging locale.')
-      await analyzeTimetableImport(data)
+
+      const result = await analyzeTimetableImport(data)
+      if (!result || !result.ok) {
+        setBusy(false)
+        setMessage(messageForImportFailure(result?.code ?? 'persist_failed'))
+        return
+      }
+
+      try {
+        await onBeforeSubmit()
+      } catch (cleanupError) {
+        console.error('Timetable local staging cleanup failed after candidate creation', cleanupError)
+        setBusy(false)
+        setMessage('La proposta è stata preparata, ma il PDF completo non è stato ancora rimosso dallo staging locale. Riprova Annulla acquisizione prima di uscire.')
+        return
+      }
+
+      setMessage('Proposta preparata. Il PDF completo è stato rimosso dallo staging locale.')
+      window.location.assign(`/orario?importCandidate=${encodeURIComponent(result.candidateId)}&import=review`)
     } catch (error) {
       console.error('Timetable minimized share intake failed', error)
       setBusy(false)
-      setMessage('Non sono riuscito a preparare la proposta. Il PDF originale non è stato inviato.')
+      setMessage('Non sono riuscito a preparare la proposta. Il PDF originale resta disponibile solo nello staging locale per consentire la correzione o l’annullamento.')
     }
   }
 
@@ -451,4 +467,13 @@ async function sha256Hex(bytes: Uint8Array) {
   copy.set(bytes)
   const digest = await crypto.subtle.digest('SHA-256', copy.buffer)
   return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, '0')).join('')
+}
+
+
+function messageForImportFailure(code: string) {
+  if (code === 'invalid_date') return 'La data non è valida per l’anno scolastico corrente. Correggila e riprova: il PDF resta nello staging locale.'
+  if (code === 'teacher_required') return 'Indica il cognome o l’etichetta docente e riprova: il PDF resta nello staging locale.'
+  if (code === 'parse_failed' || code === 'no_rows') return 'Non riesco ancora a ricavare righe utili dalle aree scelte. Correggi la selezione e riprova: il PDF resta nello staging locale.'
+  if (code === 'invalid_content' || code === 'unsupported' || code === 'too_large') return 'Il file condiviso non supera i controlli di acquisizione. Puoi annullare per rimuoverlo dallo staging locale.'
+  return 'Non sono riuscito a creare la proposta. Puoi correggere i dati e riprovare oppure annullare l’acquisizione.'
 }
