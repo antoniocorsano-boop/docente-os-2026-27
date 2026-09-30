@@ -80,6 +80,16 @@ test('timetable routing ignores free-form notes and only classifies timetable PD
     fileName: 'orario.jpg',
     fileType: 'image/jpeg',
   }), false)
+  assert.equal(looksLikeTimetablePdf({
+    title: '',
+    fileName: 'orario_scolastico.pdf',
+    fileType: 'application/pdf',
+  }), true)
+  assert.equal(looksLikeTimetablePdf({
+    title: '',
+    fileName: 'quadro_orario.pdf',
+    fileType: 'application/pdf',
+  }), true)
 })
 
 test('date parsing rejects impossible calendar dates', () => {
@@ -105,7 +115,7 @@ test('crop bounds clamp both endpoints instead of shifting overshoot', () => {
   )
 })
 
-test('local minimized source identity is server-derived from received derivative bytes', () => {
+test('local minimized source identity persists only the whole-document fingerprint', () => {
   const original = 'a'.repeat(64)
   const derivative = 'b'.repeat(64)
   const identity = resolveTimetableSourceIdentity({
@@ -114,10 +124,10 @@ test('local minimized source identity is server-derived from received derivative
     originalSourceFingerprint: original,
     derivativeName: 'orario-selezione-locale.png',
   })
-  assert.equal(identity.sourceFingerprint, derivative)
+  assert.equal(identity.sourceFingerprint, original)
   assert.equal(identity.sourceLabel, 'Orario condiviso - derivato locale')
-  assert.match(identity.sourceRef, new RegExp(`local-original-sha256:${original}`))
-  assert.match(identity.sourceRef, new RegExp(`derivative-sha256:${derivative}`))
+  assert.equal(identity.sourceRef, `client-whole-document-sha256:${original}`)
+  assert.doesNotMatch(identity.sourceRef, new RegExp(derivative))
 })
 
 test('staging cleanup is fail-closed when any cache deletion fails', async () => {
@@ -140,7 +150,9 @@ test('staging cleanup is fail-closed when any cache deletion fails', async () =>
     () => clearShareIntakeStaging(cache, 'abc'),
     /cleanup incomplete/,
   )
-  assert.equal(deleted.length, 2)
+  assert.equal(deleted.length, 1)
+  assert.equal(deleted[0]?.endsWith('/file/0'), true)
+  assert.equal(deleted.some((url) => url.endsWith('/meta')), false)
   assert.equal(deleted.some((url) => url.includes('/other/')), false)
 })
 
@@ -167,4 +179,11 @@ test('timetable preview preserves touch scrolling and sizes derivative labels', 
   assert.match(timetableIntake, /aria-pressed=\{touchSelectMode\}/)
   assert.match(timetableIntake, /ensureKeyboardCursorVisible/)
   assert.match(timetableIntake, /measureText\(derivativeContextLabel/)
+})
+
+
+test('timetable analysis uses the atomic replacement RPC instead of delete-then-create', () => {
+  assert.match(timetableActions, /replaceCandidateAtomic/)
+  assert.doesNotMatch(timetableActions, /deleteCandidate\(existing\.id\)/)
+  assert.doesNotMatch(timetableActions, /createCandidate\(\{/)
 })
