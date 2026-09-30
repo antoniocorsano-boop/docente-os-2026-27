@@ -212,6 +212,31 @@ export type Database = {
         }
         Returns: Json
       }
+      update_timetable_import_row_v1: {
+        Args: {
+          p_candidate_id: string
+          p_expected_revision: string
+          p_row_id: string
+          p_assignment_id: string
+          p_weekday: number
+          p_ordinal: number
+          p_start_time: string
+          p_end_time: string
+        }
+        Returns: Json
+      }
+      add_timetable_import_row_v1: {
+        Args: {
+          p_candidate_id: string
+          p_expected_revision: string
+          p_assignment_id: string
+          p_weekday: number
+          p_ordinal: number
+          p_start_time: string
+          p_end_time: string
+        }
+        Returns: Json
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
