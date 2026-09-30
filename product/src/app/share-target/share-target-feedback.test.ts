@@ -127,6 +127,7 @@ test('local minimized source identity is server-derived from received derivative
 })
 
 test('staging cleanup is fail-closed when any cache deletion fails', async () => {
+  // @trama-feedback-test cleanup failure is surfaced through the persistent Share Target status region.
   const requests = [
     new Request('https://example.test/__share-intake/abc/meta'),
     new Request('https://example.test/__share-intake/abc/file/0'),
