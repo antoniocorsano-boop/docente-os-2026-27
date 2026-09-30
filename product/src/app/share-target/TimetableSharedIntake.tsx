@@ -54,7 +54,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
           pageCanvas.height = Math.max(1, Math.round(viewport.height))
           const ctx = pageCanvas.getContext('2d', { alpha: false })
           if (!ctx) throw new Error('Canvas non disponibile')
-          ctx.fillStyle = '#fff'
+          ctx.fillStyle = canvasSurfaceColor()
           ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height)
           await page.render({ canvas: pageCanvas, canvasContext: ctx, viewport }).promise
           rendered.push(pageCanvas)
@@ -69,7 +69,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
         source.height = height
         const ctx = source.getContext('2d', { alpha: false })
         if (!ctx) throw new Error('Canvas composito non disponibile')
-        ctx.fillStyle = '#fff'
+        ctx.fillStyle = canvasSurfaceColor()
         ctx.fillRect(0, 0, width, height)
         let y = 0
         for (const pageCanvas of rendered) {
@@ -106,7 +106,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
     if (selections.length) {
       ctx.save()
       ctx.lineWidth = Math.max(4, source.width / 250)
-      ctx.strokeStyle = '#111'
+      ctx.strokeStyle = canvasInkColor()
       ctx.setLineDash([14, 10])
       for (const rect of selections) ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)
       ctx.restore()
@@ -235,7 +235,7 @@ async function cropSelections(source: HTMLCanvasElement, selections: Rect[]) {
   output.height = height
   const ctx = output.getContext('2d', { alpha: false })
   if (!ctx) throw new Error('Canvas di minimizzazione non disponibile')
-  ctx.fillStyle = '#fff'
+  ctx.fillStyle = canvasSurfaceColor()
   ctx.fillRect(0, 0, width, height)
 
   let y = 0
@@ -254,4 +254,13 @@ function dateFromFilename(filename: string) {
   if (!match) return null
   const [, day, month, year] = match
   return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+}
+
+
+function canvasSurfaceColor() {
+  return getComputedStyle(document.body).backgroundColor
+}
+
+function canvasInkColor() {
+  return getComputedStyle(document.body).color
 }
