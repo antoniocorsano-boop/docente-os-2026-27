@@ -33,6 +33,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
   const [sourceFingerprint, setSourceFingerprint] = useState<string | null>(null)
   const [teacherLabel, setTeacherLabel] = useState('')
   const [effectiveFrom, setEffectiveFrom] = useState(() => dateFromFilename(file.name) ?? '')
+  const [replaceReviewedCandidate, setReplaceReviewedCandidate] = useState(false)
   const [busy, setBusy] = useState(false)
   const [touchSelectMode, setTouchSelectMode] = useState(false)
   const [message, setMessage] = useState('Preparo il documento localmente. Nessun byte viene inviato.')
@@ -213,6 +214,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
       data.set('effectiveFrom', effectiveFrom)
       data.set('originalSourceFingerprint', sourceFingerprint)
       data.set('sourceMode', 'LOCAL_MINIMIZED_SHARE')
+      if (replaceReviewedCandidate) data.set('replaceReviewedCandidate', 'yes')
 
       const result = await analyzeMinimizedTimetableImport(data)
 
@@ -343,6 +345,14 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
         <label>
           <span>Orario valido dal</span>
           <input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.currentTarget.value)} />
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={replaceReviewedCandidate}
+            onChange={(event) => setReplaceReviewedCandidate(event.currentTarget.checked)}
+          />
+          <span>Se questo stesso documento ha già una proposta corretta manualmente, autorizzo a sostituirla con questa nuova estrazione.</span>
         </label>
       </div>
 
@@ -479,6 +489,7 @@ function messageForImportFailure(code: string) {
   if (code === 'invalid_date') return 'La data non è valida per l’anno scolastico corrente. Correggila e riprova: il PDF è stato rimosso dallo staging, ma l’anteprima resta disponibile in questa schermata.'
   if (code === 'teacher_required') return 'Indica il cognome o l’etichetta docente e riprova: il PDF è stato rimosso dallo staging, ma l’anteprima resta disponibile in questa schermata.'
   if (code === 'parse_failed' || code === 'no_rows') return 'Non riesco ancora a ricavare righe utili dalle aree scelte. Correggi la selezione e riprova: il PDF è stato rimosso dallo staging, ma l’anteprima resta disponibile in questa schermata.'
+  if (code === 'replace_confirmation_required') return 'Esiste già una proposta che contiene correzioni manuali. Se vuoi sostituirla, seleziona la conferma esplicita e riprova.'
   if (code === 'invalid_content' || code === 'unsupported' || code === 'too_large') return 'Il file condiviso non supera i controlli di acquisizione. Il PDF è stato rimosso dallo staging locale; per riprovare con un altro file torna alla condivisione.'
   return 'Non sono riuscito a creare la proposta. Il PDF è stato rimosso dallo staging; puoi correggere i dati nell’anteprima ancora aperta e riprovare.'
 }
