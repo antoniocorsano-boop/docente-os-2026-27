@@ -91,6 +91,20 @@
         "product/src/app/knowledge/knowledge-write-feedback.test.ts",
         "product/src/app/share-target/share-target-feedback.test.ts"
       ]
+    },
+    {
+      "id": "share-target-local-staging-cleanup",
+      "critical": true,
+      "sourcePatterns": [
+        "product/src/app/share-target/share-target-staging.ts"
+      ],
+      "feedbackFiles": [
+        "product/src/app/share-target/ShareTargetIntake.tsx",
+        "product/src/app/share-target/TimetableSharedIntake.tsx"
+      ],
+      "testFiles": [
+        "product/src/app/share-target/share-target-feedback.test.ts"
+      ]
     }
   ]
 }
