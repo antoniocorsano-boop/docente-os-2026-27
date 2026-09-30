@@ -224,6 +224,18 @@ begin
   ) into complete;
 
   if complete then
+    insert into private.timetable_import_apply_context(
+      backend_pid,
+      transaction_id,
+      candidate_id
+    ) values (
+      pg_backend_pid(),
+      txid_current(),
+      candidate.id
+    )
+    on conflict (backend_pid,transaction_id)
+    do update set candidate_id = excluded.candidate_id;
+
     update public.timetable_import_candidates
     set state = 'READY_TO_CONFIRM'
     where id = candidate.id
