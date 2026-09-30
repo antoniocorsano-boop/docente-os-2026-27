@@ -198,6 +198,19 @@ export type Database = {
         }
         Returns: Json
       }
+      replace_timetable_import_candidate_v1: {
+        Args: {
+          p_workspace_id: string
+          p_academic_year_id: string
+          p_source_fingerprint: string
+          p_source_label: string
+          p_source_ref: string
+          p_effective_from: string
+          p_parser_version: string
+          p_rows: Json
+        }
+        Returns: Json
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
