@@ -18,7 +18,6 @@ export function resolveTimetableSourceIdentity(input: {
   sourceMode: string
   derivativeFingerprint: string
   originalSourceFingerprint: string
-  originalSourceName: string
   derivativeName: string
 }) {
   const derivativeFingerprint = validateFingerprint(input.derivativeFingerprint)
@@ -31,12 +30,11 @@ export function resolveTimetableSourceIdentity(input: {
   }
 
   const localOriginalFingerprint = validateFingerprint(input.originalSourceFingerprint)
-  const sourceLabel = validateOriginalSourceName(input.originalSourceName)
 
   return {
     // The authoritative candidate identity is derived from bytes received and hashed on the server.
     sourceFingerprint: derivativeFingerprint,
-    sourceLabel,
+    sourceLabel: 'Orario condiviso - derivato locale',
     // The local original hash is provenance-only and never drives lookup, replacement or deletion.
     sourceRef: `local-original-sha256:${localOriginalFingerprint}; derivative-sha256:${derivativeFingerprint}`,
   }
@@ -47,8 +45,3 @@ function validateFingerprint(value: string) {
   return value
 }
 
-function validateOriginalSourceName(value: string) {
-  const normalized = value.trim()
-  if (!normalized || normalized.length > 240) throw new Error('Invalid original source name')
-  return normalized
-}
