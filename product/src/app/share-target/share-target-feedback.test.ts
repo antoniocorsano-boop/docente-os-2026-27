@@ -215,3 +215,11 @@ test('recoverable minimized-share validation returns feedback before cleanup and
   assert.match(timetableActions, /return \{ ok: false as const, code: 'invalid_date' \}/)
   assert.match(timetableActions, /return \{ ok: true as const, candidateId: candidate\.id \}/)
 })
+
+
+test('timetable PDF size is checked before reading the full source into memory', () => {
+  const sizeCheckAt = timetableIntake.indexOf('file.size > MAX_KNOWLEDGE_UPLOAD_BYTES')
+  const arrayBufferAt = timetableIntake.indexOf('await file.arrayBuffer()')
+  assert.ok(sizeCheckAt >= 0)
+  assert.ok(arrayBufferAt > sizeCheckAt)
+})
