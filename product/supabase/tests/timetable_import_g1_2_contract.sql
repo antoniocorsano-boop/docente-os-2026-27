@@ -1,6 +1,6 @@
 -- DOS-TT-IMPORT-01 / G1.2 DB contract
 -- Executed only against an isolated disposable database after repository migrations.
--- 45 governed assertions. Rolls back all fixtures.
+-- 46 governed assertions. Rolls back all fixtures.
 
 begin;
 
@@ -16,6 +16,7 @@ select pg_temp.assert_true(not has_table_privilege('anon','public.timetable_impo
 select pg_temp.assert_true(not has_table_privilege('authenticated','public.timetable_import_apply_receipts','INSERT') and not has_table_privilege('authenticated','public.timetable_import_apply_receipts','UPDATE') and not has_table_privilege('authenticated','public.timetable_import_apply_receipts','DELETE'),'07 receipt writes denied to client');
 select pg_temp.assert_true(not has_table_privilege('authenticated','private.timetable_import_apply_context','INSERT') and not has_table_privilege('authenticated','private.timetable_revision_bump_context','INSERT'),'08 private bump/apply capabilities non-forgeable');
 select pg_temp.assert_true(not has_function_privilege('authenticated','private.has_timetable_import_apply_context(uuid)','EXECUTE') and not has_function_privilege('authenticated','private.has_timetable_revision_bump_context()','EXECUTE'),'09 private capability functions not executable by client');
+select pg_temp.assert_true(not has_table_privilege('authenticated','public.timetable_import_candidate_rows','INSERT') and not has_table_privilege('authenticated','public.timetable_import_candidate_rows','UPDATE') and not has_table_privilege('authenticated','public.timetable_import_candidate_rows','DELETE'),'09b direct candidate-row writes denied; revision-aware RPCs are mandatory');
 select pg_temp.assert_true(not has_function_privilege('authenticated','public.apply_timetable_import_to_draft(uuid,bigint,uuid,bigint,uuid,jsonb)','EXECUTE'),'10 legacy apply RPC quarantined from authenticated');
 select pg_temp.assert_true(to_regprocedure('public.apply_timetable_import_to_draft(uuid,bigint,uuid,bigint,uuid,jsonb)') is not null,'10b legacy apply RPC retained but non-executable by client');
 select pg_temp.assert_true(exists(select 1 from information_schema.columns where table_schema='public' and table_name='timetable_versions' and column_name='revision' and data_type='bigint'),'11 DRAFT monotonic revision materialized');
