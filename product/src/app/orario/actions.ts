@@ -329,15 +329,23 @@ export async function addTimetableImportRow(formData: FormData) {
     redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
   }
 
-  await repository.addManualRow({
-    candidateId,
-    candidateRevision: reviewedRevision,
-    assignmentId: text(formData, 'assignmentId'),
-    weekday: integer(formData, 'weekday'),
-    ordinal: integer(formData, 'ordinal'),
-    startTime: text(formData, 'startTime'),
-    endTime: text(formData, 'endTime'),
-  })
+  try {
+    await repository.addManualRow({
+      candidateId,
+      candidateRevision: reviewedRevision,
+      assignmentId: text(formData, 'assignmentId'),
+      weekday: integer(formData, 'weekday'),
+      ordinal: integer(formData, 'ordinal'),
+      startTime: text(formData, 'startTime'),
+      endTime: text(formData, 'endTime'),
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : ''
+    if (message.includes('STALE_CANDIDATE_REVISION')) {
+      redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
+    }
+    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=persist_failed`)
+  }
 
   revalidatePath('/orario')
   redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review`)
@@ -358,16 +366,24 @@ export async function updateTimetableImportRow(formData: FormData) {
     redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
   }
 
-  await repository.updateRow({
-    candidateId,
-    candidateRevision: reviewedRevision,
-    rowId: text(formData, 'rowId'),
-    assignmentId: text(formData, 'assignmentId'),
-    weekday: integer(formData, 'weekday'),
-    ordinal: integer(formData, 'ordinal'),
-    startTime: text(formData, 'startTime'),
-    endTime: text(formData, 'endTime'),
-  })
+  try {
+    await repository.updateRow({
+      candidateId,
+      candidateRevision: reviewedRevision,
+      rowId: text(formData, 'rowId'),
+      assignmentId: text(formData, 'assignmentId'),
+      weekday: integer(formData, 'weekday'),
+      ordinal: integer(formData, 'ordinal'),
+      startTime: text(formData, 'startTime'),
+      endTime: text(formData, 'endTime'),
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : ''
+    if (message.includes('STALE_CANDIDATE_REVISION')) {
+      redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
+    }
+    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=persist_failed`)
+  }
 
   revalidatePath('/orario')
   redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review`)
