@@ -211,18 +211,19 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
       data.set('sourceMode', 'LOCAL_MINIMIZED_SHARE')
 
       const result = await analyzeMinimizedTimetableImport(data)
-      if (!result || !result.ok) {
-        setBusy(false)
-        setMessage(messageForImportFailure(result?.code ?? 'persist_failed'))
-        return
-      }
 
       try {
         await onBeforeSubmit()
       } catch (cleanupError) {
-        console.error('Timetable local staging cleanup failed after candidate creation', cleanupError)
+        console.error('Timetable local staging cleanup failed after server analysis', cleanupError)
         setBusy(false)
-        setMessage('La proposta è stata preparata, ma il PDF completo non è stato ancora rimosso dallo staging locale. Riprova Annulla acquisizione prima di uscire.')
+        setMessage('Non posso proseguire finché il PDF completo non viene rimosso dallo staging locale. Riprova Annulla acquisizione prima di uscire.')
+        return
+      }
+
+      if (!result || !result.ok) {
+        setBusy(false)
+        setMessage(messageForImportFailure(result?.code ?? 'persist_failed'))
         return
       }
 
@@ -471,9 +472,9 @@ async function sha256Hex(bytes: Uint8Array) {
 
 
 function messageForImportFailure(code: string) {
-  if (code === 'invalid_date') return 'La data non è valida per l’anno scolastico corrente. Correggila e riprova: il PDF resta nello staging locale.'
-  if (code === 'teacher_required') return 'Indica il cognome o l’etichetta docente e riprova: il PDF resta nello staging locale.'
-  if (code === 'parse_failed' || code === 'no_rows') return 'Non riesco ancora a ricavare righe utili dalle aree scelte. Correggi la selezione e riprova: il PDF resta nello staging locale.'
+  if (code === 'invalid_date') return 'La data non è valida per l’anno scolastico corrente. Correggila e riprova: il PDF è stato rimosso dallo staging, ma l’anteprima resta disponibile in questa schermata.'
+  if (code === 'teacher_required') return 'Indica il cognome o l’etichetta docente e riprova: il PDF è stato rimosso dallo staging, ma l’anteprima resta disponibile in questa schermata.'
+  if (code === 'parse_failed' || code === 'no_rows') return 'Non riesco ancora a ricavare righe utili dalle aree scelte. Correggi la selezione e riprova: il PDF è stato rimosso dallo staging, ma l’anteprima resta disponibile in questa schermata.'
   if (code === 'invalid_content' || code === 'unsupported' || code === 'too_large') return 'Il file condiviso non supera i controlli di acquisizione. Puoi annullare per rimuoverlo dallo staging locale.'
-  return 'Non sono riuscito a creare la proposta. Puoi correggere i dati e riprovare oppure annullare l’acquisizione.'
+  return 'Non sono riuscito a creare la proposta. Il PDF è stato rimosso dallo staging; puoi correggere i dati nell’anteprima ancora aperta e riprovare.'
 }
