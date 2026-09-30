@@ -204,12 +204,12 @@ test('service worker expires abandoned share-target staging', () => {
 })
 
 
-test('recoverable minimized-share validation keeps staging until server acceptance', () => {
+test('recoverable minimized-share validation returns feedback before cleanup and preserves in-memory retry', () => {
   const analyzeAt = timetableIntake.indexOf('const result = await analyzeMinimizedTimetableImport(data)')
   const cleanupAt = timetableIntake.indexOf('await onBeforeSubmit()', analyzeAt)
   assert.ok(analyzeAt >= 0)
   assert.ok(cleanupAt > analyzeAt)
-  assert.match(timetableIntake, /il PDF resta nello staging locale/)
+  assert.match(timetableIntake, /il PDF è stato rimosso dallo staging, ma l’anteprima resta disponibile in questa schermata/)
   assert.match(timetableActions, /export async function analyzeMinimizedTimetableImport/)
   assert.match(timetableActions, /return analyzeTimetableImportResult\(formData\)/)
   assert.match(timetableActions, /return \{ ok: false as const, code: 'invalid_date' \}/)
