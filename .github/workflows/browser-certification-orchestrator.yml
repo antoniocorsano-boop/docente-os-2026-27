@@ -312,6 +312,8 @@ jobs:
         env:
           EXPERIENCE_TEST_EXIT_CODE: ${{ steps.hva_browser.outputs.exit_code || '99' }}
           EXPECTED_COMMIT: ${{ github.event.pull_request.head.sha }}
+          EXPERIENCE_SCOPE_MODE: ${{ needs.preflight.outputs.hva_mode }}
+          EXPERIENCE_SCOPE_SPECS: ${{ needs.preflight.outputs.hva_specs }}
         run: node scripts/experience/acceptance-report.mjs
 
       - name: Enforce HVA receipt
