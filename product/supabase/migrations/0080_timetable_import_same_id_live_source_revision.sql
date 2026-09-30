@@ -44,7 +44,7 @@ create or replace function public.replace_timetable_import_candidate_v1(
   p_effective_from date,
   p_parser_version text,
   p_rows jsonb,
-  p_replace_reviewed boolean
+  p_replace_reviewed boolean default false
 ) returns jsonb
 language plpgsql
 security definer
