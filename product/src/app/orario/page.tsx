@@ -167,6 +167,7 @@ export default async function TimetablePage({
               {importCandidate.rows.map((row) => (
                 <form action={updateTimetableImportRow} className="timetableImportRow" key={row.id}>
                   <input type="hidden" name="candidateId" value={importCandidate.id} />
+                  <input type="hidden" name="candidateRevision" value={importCandidate.revision} />
                   <input type="hidden" name="rowId" value={row.id} />
                   <div className="timetableImportRowIdentity">
                     <strong>{row.sourceClassLabel ?? 'Classe da verificare'}</strong>
@@ -209,6 +210,7 @@ export default async function TimetablePage({
               <summary>Aggiungi una lezione mancante</summary>
               <form action={addTimetableImportRow} className="timetableImportAddForm">
                 <input type="hidden" name="candidateId" value={importCandidate.id} />
+                <input type="hidden" name="candidateRevision" value={importCandidate.revision} />
                 <label>
                   <span>Cattedra</span>
                   <select name="assignmentId" required defaultValue="">
