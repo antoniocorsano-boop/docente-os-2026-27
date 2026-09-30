@@ -112,7 +112,7 @@ TimetableImportCandidate
 
 - `candidate_id` identifica la proposta, non una versione canonica dell'orario;
 - `candidate_revision` cambia a ogni modifica sostanziale del candidato/revisione docente ed è il token logico usato dalla conferma;
-- `workspace_id + academic_year_id + source_fingerprint` costituiscono la chiave logica anti-duplicazione della sorgente;
+- `workspace_id + academic_year_id + created_by + source_fingerprint` costituiscono la chiave logica anti-duplicazione del candidato live; questo mantiene coerente la sostituzione creator-scoped senza consentire collisioni tra membri dello stesso workspace;
 - `effective_from_candidate` può essere nullo finché la data non è verificabile;
 - `source_is_provisional` descrive il documento, non lo stato di una `teaching_assignment`;
 - il candidato può essere scartato senza effetti sulla DRAFT.
