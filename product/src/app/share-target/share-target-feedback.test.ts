@@ -43,6 +43,7 @@ test('timetable-like shared PDFs use local minimization before timetable analysi
   assert.match(timetableIntake, /await analyzeTimetableImport\(data\)/)
   assert.match(timetableIntake, /sha256Hex\(bytes\)/)
   assert.match(timetableIntake, /originalSourceFingerprint/)
+  assert.doesNotMatch(timetableIntake, /originalSourceName/)
   assert.match(timetableIntake, /derivativeContextLabel/)
   assert.match(timetableIntake, /x: clamp\(x, 0, canvas\.width\)/)
   assert.match(timetableIntake, /y: clamp\(y, 0, canvas\.height\)/)
@@ -111,10 +112,10 @@ test('local minimized source identity is server-derived from received derivative
     sourceMode: 'LOCAL_MINIMIZED_SHARE',
     derivativeFingerprint: derivative,
     originalSourceFingerprint: original,
-    originalSourceName: 'orario.pdf',
     derivativeName: 'orario-selezione-locale.png',
   })
   assert.equal(identity.sourceFingerprint, derivative)
+  assert.equal(identity.sourceLabel, 'Orario condiviso - derivato locale')
   assert.match(identity.sourceRef, new RegExp(`local-original-sha256:${original}`))
   assert.match(identity.sourceRef, new RegExp(`derivative-sha256:${derivative}`))
 })
@@ -151,4 +152,11 @@ test('minimized derivative context always carries teacher, day and period', () =
   )
   assert.throws(() => derivativeContextLabel('', 2, 4), /Teacher label/)
   assert.throws(() => derivativeContextLabel('ROSSI', 2, 21), /ordinal/)
+})
+
+
+test('terminal timetable preparation failures purge local staging before surfacing the result', () => {
+  assert.match(timetableIntake, /await onBeforeSubmit\(\)/)
+  assert.match(timetableIntake, /Il file sorgente è stato rimosso dallo staging locale/)
+  assert.match(timetableIntake, /Non sono riuscito a rimuovere il file dallo staging locale/)
 })
