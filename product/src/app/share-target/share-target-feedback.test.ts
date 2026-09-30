@@ -248,3 +248,43 @@ test('already-applied timetable sources are guarded by the replacement RPC', () 
   assert.match(migration, /state = 'APPLIED_TO_DRAFT'/)
   assert.match(migration, /raise exception 'SOURCE_ALREADY_APPLIED'/)
 })
+
+
+test('reviewed timetable replacement requires explicit teacher consent', () => {
+  const migration = fs.readFileSync(new URL('../../../supabase/migrations/0080_timetable_import_same_id_live_source_revision.sql', import.meta.url), 'utf8')
+  assert.match(migration, /REPLACEMENT_CONFIRMATION_REQUIRED/)
+  assert.match(migration, /p_replace_reviewed boolean default false/)
+  assert.match(migration, /review_state = 'CONFIRMED'/)
+  assert.match(timetableActions, /replaceReviewedCandidate/)
+  assert.match(timetableIntake, /replaceReviewedCandidate/)
+})
+
+test('re-import locks matching candidates before checking applied terminal state', () => {
+  const migration = fs.readFileSync(new URL('../../../supabase/migrations/0080_timetable_import_same_id_live_source_revision.sql', import.meta.url), 'utf8')
+  const lockAt = migration.indexOf("state in ('DRAFT','READY_TO_CONFIRM','APPLIED_TO_DRAFT')")
+  const appliedAt = migration.indexOf("raise exception 'SOURCE_ALREADY_APPLIED'")
+  assert.ok(lockAt >= 0)
+  assert.ok(appliedAt > lockAt)
+  assert.match(migration, /for update;/)
+})
+
+test('ordinary timetable import persists a system-generated non-nominative label', () => {
+  const ordinary = resolveTimetableSourceIdentity({
+    sourceMode: '',
+    derivativeFingerprint: 'c'.repeat(64),
+    originalSourceFingerprint: '',
+    derivativeName: 'ROSSI-orario-privato.pdf',
+  })
+  assert.equal(ordinary.sourceLabel, 'Orario importato')
+  assert.doesNotMatch(ordinary.sourceLabel, /ROSSI/)
+})
+
+test('service-worker expiry cleanup checks payload deletion before removing metadata', () => {
+  assert.match(serviceWorker, /const deleted = await cache\.delete\(request\)/)
+  assert.match(serviceWorker, /if \(!deleted\) throw new Error\('Share Target staging cleanup incomplete'\)/)
+})
+
+test('ordinary timetable import surfaces persistence failures', () => {
+  assert.match(timetablePage, /persist_failed:/)
+  assert.match(timetablePage, /Proposta non salvata/)
+})
