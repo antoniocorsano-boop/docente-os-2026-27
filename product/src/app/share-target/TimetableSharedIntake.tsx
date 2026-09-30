@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { getDocumentProxy } from 'unpdf'
 import { analyzeMinimizedTimetableImport } from '@/app/orario/actions'
+import { MAX_KNOWLEDGE_UPLOAD_BYTES } from '@/app/knowledge/upload-policy'
 import { clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, isValidOrdinal, parseOrdinal, type Rect } from './timetable-share-helpers'
 
 type Point = { x: number; y: number }
@@ -42,6 +43,9 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
       try {
         if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
           throw new Error('Per ora l’importazione locale dall’app Condividi è disponibile per i PDF.')
+        }
+        if (file.size > MAX_KNOWLEDGE_UPLOAD_BYTES) {
+          throw new Error(`Il PDF supera il limite di ${Math.round(MAX_KNOWLEDGE_UPLOAD_BYTES / 1024 / 1024)} MB per l’acquisizione locale.`)
         }
         const bytes = new Uint8Array(await file.arrayBuffer())
         const fingerprint = await sha256Hex(bytes)
