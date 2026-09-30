@@ -43,6 +43,7 @@ export class SupabaseTimetableImportRepository {
     sourceRef: string
     effectiveFrom: string
     parserVersion: string
+    replaceReviewed: boolean
     rows: readonly {
       rowKey: string
       weekday: number | null
@@ -84,6 +85,7 @@ export class SupabaseTimetableImportRepository {
           evidenceRef: row.evidenceRef,
           warnings: [...row.warnings],
         })),
+        p_replace_reviewed: input.replaceReviewed,
       },
     )
 
