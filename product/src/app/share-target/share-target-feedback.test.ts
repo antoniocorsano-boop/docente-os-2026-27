@@ -233,3 +233,18 @@ test('timetable confirmation is bound to the reviewed candidate revision', () =>
   assert.match(timetableActions, /import=review_stale/)
   assert.match(timetableActions, /candidateRevision: reviewedRevision/)
 })
+
+
+test('all timetable review edits are bound to the rendered candidate revision', () => {
+  const revisionInputs = timetablePage.match(/name="candidateRevision" value=\{importCandidate\.revision\}/g) ?? []
+  assert.ok(revisionInputs.length >= 3)
+  assert.match(timetableActions, /export async function addTimetableImportRow[\s\S]*candidate\.revision !== reviewedRevision/)
+  assert.match(timetableActions, /export async function updateTimetableImportRow[\s\S]*candidate\.revision !== reviewedRevision/)
+  assert.match(timetableActions, /candidateRevision: reviewedRevision/)
+})
+
+test('already-applied timetable sources are guarded by the replacement RPC', () => {
+  const migration = fs.readFileSync(new URL('../../../supabase/migrations/0080_timetable_import_same_id_live_source_revision.sql', import.meta.url), 'utf8')
+  assert.match(migration, /state = 'APPLIED_TO_DRAFT'/)
+  assert.match(migration, /raise exception 'SOURCE_ALREADY_APPLIED'/)
+})
