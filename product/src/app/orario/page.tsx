@@ -368,6 +368,7 @@ function ImportStatus({ code }: { code: string }) {
     teacher_required: { tone: 'warning', title: 'Etichetta docente necessaria', detail: 'Indica il cognome o la stessa etichetta che compare nel documento.' },
     not_ready: { tone: 'warning', title: 'Proposta non completa', detail: 'Controlla le righe prima di confermare.' },
     apply_failed: { tone: 'warning', title: 'Applicazione non riuscita', detail: 'La transazione è stata annullata: la bozza non è stata modificata parzialmente.' },
+    persist_failed: { tone: 'warning', title: 'Proposta non salvata', detail: 'La preparazione è stata annullata senza sostituire la proposta esistente. Riprova oppure riapri la proposta già presente.' },
     unavailable: { tone: 'warning', title: 'Proposta non disponibile', detail: 'Riapri l’importazione partendo dal documento.' },
   }
   const message = messages[code]
