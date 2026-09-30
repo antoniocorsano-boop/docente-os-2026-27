@@ -479,6 +479,6 @@ function messageForImportFailure(code: string) {
   if (code === 'invalid_date') return 'La data non è valida per l’anno scolastico corrente. Correggila e riprova: il PDF è stato rimosso dallo staging, ma l’anteprima resta disponibile in questa schermata.'
   if (code === 'teacher_required') return 'Indica il cognome o l’etichetta docente e riprova: il PDF è stato rimosso dallo staging, ma l’anteprima resta disponibile in questa schermata.'
   if (code === 'parse_failed' || code === 'no_rows') return 'Non riesco ancora a ricavare righe utili dalle aree scelte. Correggi la selezione e riprova: il PDF è stato rimosso dallo staging, ma l’anteprima resta disponibile in questa schermata.'
-  if (code === 'invalid_content' || code === 'unsupported' || code === 'too_large') return 'Il file condiviso non supera i controlli di acquisizione. Puoi annullare per rimuoverlo dallo staging locale.'
+  if (code === 'invalid_content' || code === 'unsupported' || code === 'too_large') return 'Il file condiviso non supera i controlli di acquisizione. Il PDF è stato rimosso dallo staging locale; per riprovare con un altro file torna alla condivisione.'
   return 'Non sono riuscito a creare la proposta. Il PDF è stato rimosso dallo staging; puoi correggere i dati nell’anteprima ancora aperta e riprovare.'
 }
