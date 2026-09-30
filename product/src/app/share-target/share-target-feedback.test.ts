@@ -206,12 +206,14 @@ test('service worker expires abandoned share-target staging', () => {
 })
 
 
-test('recoverable minimized-share validation returns feedback before cleanup and preserves in-memory retry', () => {
+test('recoverable minimized-share validation returns feedback without deleting staged PDF', () => {
   const analyzeAt = timetableIntake.indexOf('const result = await analyzeMinimizedTimetableImport(data)')
-  const cleanupAt = timetableIntake.indexOf('await onBeforeSubmit()', analyzeAt)
+  const recoverableAt = timetableIntake.indexOf('isRecoverableImportFailure(code)', analyzeAt)
+  const cleanupAt = timetableIntake.indexOf('await onBeforeSubmit()', recoverableAt)
   assert.ok(analyzeAt >= 0)
-  assert.ok(cleanupAt > analyzeAt)
-  assert.match(timetableIntake, /il PDF è stato rimosso dallo staging, ma l’anteprima resta disponibile in questa schermata/)
+  assert.ok(recoverableAt > analyzeAt)
+  assert.ok(cleanupAt > recoverableAt)
+  assert.match(timetableIntake, /il PDF resta nello staging locale/)
   assert.match(timetableActions, /export async function analyzeMinimizedTimetableImport/)
   assert.match(timetableActions, /return analyzeTimetableImportResult\(formData\)/)
   assert.match(timetableActions, /return \{ ok: false as const, code: 'invalid_date' \}/)
@@ -224,6 +226,23 @@ test('timetable PDF size is checked before reading the full source into memory',
   const arrayBufferAt = timetableIntake.indexOf('await file.arrayBuffer()')
   assert.ok(sizeCheckAt >= 0)
   assert.ok(arrayBufferAt > sizeCheckAt)
+})
+
+
+test('Android timetable preview avoids duplicate full-resolution canvas buffers', () => {
+  assert.doesNotMatch(timetableIntake, /const rendered: HTMLCanvasElement\[\]/)
+  assert.doesNotMatch(timetableIntake, /document\.createElement\('canvas'\)[\s\S]*drawCanvas\(/)
+  assert.match(timetableIntake, /transform: \[1, 0, 0, 1, layout\.x, layout\.y\]/)
+  assert.match(timetableIntake, /position: 'absolute'/)
+  assert.match(timetableIntake, /getDocumentProxy\(new Uint8Array\(buffer\)\)/)
+})
+
+
+test('accepted candidate survives cleanup failure and cleanup retry opens its review', () => {
+  assert.match(timetableIntake, /setAcceptedCandidateId\(result\.candidateId\)/)
+  assert.match(timetableIntake, /retryAcceptedCleanup/)
+  assert.match(timetableIntake, /reviewUrl\(acceptedCandidateId\)/)
+  assert.match(timetableIntake, /senza rieseguire l’analisi/)
 })
 
 
@@ -288,6 +307,12 @@ test('service-worker expiry cleanup checks payload deletion before removing meta
 test('ordinary timetable import surfaces persistence failures', () => {
   assert.match(timetablePage, /persist_failed:/)
   assert.match(timetablePage, /Proposta non salvata/)
+})
+
+
+test('direct candidate-row mutations are closed behind revision-aware RPCs', () => {
+  const migration = fs.readFileSync(new URL('../../../supabase/migrations/0080_timetable_import_same_id_live_source_revision.sql', import.meta.url), 'utf8')
+  assert.match(migration, /revoke insert, update, delete on table public\.timetable_import_candidate_rows from authenticated, anon/)
 })
 
 
