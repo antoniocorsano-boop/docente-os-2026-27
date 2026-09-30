@@ -7,7 +7,7 @@ set migration_id = excluded.migration_id;
 
 -- DOS-TT-IMPORT-01 / privacy-first minimized Share Target
 -- A live import candidate is unique per creator. This keeps server-derived
--- derivative identity compatible with creator-scoped lookup/replacement.
+-- whole-document G1.3 identity compatible with creator-scoped lookup/replacement.
 
 drop index if exists public.timetable_import_one_live_source_uq;
 
