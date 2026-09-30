@@ -1,6 +1,6 @@
 -- DOS-TT-IMPORT-01 / G1.2 DB contract
 -- Executed only against an isolated disposable database after repository migrations.
--- 34 governed assertions. Rolls back all fixtures.
+-- 35 governed assertions. Rolls back all fixtures.
 
 begin;
 
@@ -133,13 +133,92 @@ insert into public.teaching_assignments(
   '00000000-0000-0000-0000-00000000a624'
 );
 
-select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-00000000a624',true);
-select set_config('request.jwt.claim.role','authenticated',true);
+insert into public.workspace_memberships(workspace_id,user_id,role)
+values (
+  '00000000-0000-0000-0000-00000000b624',
+  '00000000-0000-0000-0000-00000000a624',
+  'OWNER'
+);
 
 create temporary table g12_replace_probe(
   first_id uuid,
   current_id uuid
 ) on commit drop;
+
+create or replace function pg_temp.expect_replace_failure() returns void
+language plpgsql
+as $expect$
+begin
+  perform public.replace_timetable_import_candidate_v1(
+    '00000000-0000-0000-0000-00000000b624',
+    '00000000-0000-0000-0000-00000000c624',
+    repeat('a',64),
+    'Broken fixture',
+    'client-whole-document-sha256:' || repeat('a',64),
+    '2026-09-28',
+    'fixture@broken',
+    jsonb_build_array(jsonb_build_object(
+      'rowKey','broken',
+      'weekday',9,
+      'ordinal',1,
+      'startTime','08:00',
+      'endTime','09:00',
+      'sourceClassLabel','2C',
+      'resolvedSectionId','00000000-0000-0000-0000-00000000a625',
+      'resolvedAssignmentId','00000000-0000-0000-0000-00000000b625',
+      'confidence','HIGH',
+      'reviewState','AUTO_RESOLVED',
+      'warnings',jsonb_build_array()
+    ))
+  );
+  raise exception 'EXPECTED_REPLACEMENT_FAILURE_MISSING';
+exception
+  when check_violation then
+    null;
+end
+$expect$;
+
+create or replace function pg_temp.expect_already_applied() returns void
+language plpgsql
+as $applied$
+begin
+  perform public.replace_timetable_import_candidate_v1(
+    '00000000-0000-0000-0000-00000000b624',
+    '00000000-0000-0000-0000-00000000c624',
+    repeat('a',64),
+    'Must be rejected',
+    'client-whole-document-sha256:' || repeat('a',64),
+    '2026-09-28',
+    'fixture@reimport',
+    jsonb_build_array(jsonb_build_object(
+      'rowKey','r-applied',
+      'weekday',4,
+      'ordinal',4,
+      'startTime','11:00',
+      'endTime','12:00',
+      'sourceClassLabel','2C',
+      'resolvedSectionId','00000000-0000-0000-0000-00000000a625',
+      'resolvedAssignmentId','00000000-0000-0000-0000-00000000b625',
+      'confidence','HIGH',
+      'reviewState','AUTO_RESOLVED',
+      'warnings',jsonb_build_array()
+    ))
+  );
+  raise exception 'EXPECTED_ALREADY_APPLIED_MISSING';
+exception
+  when others then
+    if sqlerrm <> 'SOURCE_ALREADY_APPLIED' then
+      raise;
+    end if;
+end
+$applied$;
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000a624","role":"authenticated","aal":"aal2"}',
+  true
+);
+set local role authenticated;
 
 with result as (
   select public.replace_timetable_import_candidate_v1(
@@ -215,37 +294,6 @@ select pg_temp.assert_true(
   '32 replacement rows bind exactly to the new candidate revision'
 );
 
-create or replace function pg_temp.expect_replace_failure() returns void language plpgsql as $
-begin
-  perform public.replace_timetable_import_candidate_v1(
-    '00000000-0000-0000-0000-00000000b624',
-    '00000000-0000-0000-0000-00000000c624',
-    repeat('a',64),
-    'Broken fixture',
-    'client-whole-document-sha256:' || repeat('a',64),
-    '2026-09-28',
-    'fixture@broken',
-    jsonb_build_array(jsonb_build_object(
-      'rowKey','broken',
-      'weekday',9,
-      'ordinal',1,
-      'startTime','08:00',
-      'endTime','09:00',
-      'sourceClassLabel','2C',
-      'resolvedSectionId','00000000-0000-0000-0000-00000000a625',
-      'resolvedAssignmentId','00000000-0000-0000-0000-00000000b625',
-      'confidence','HIGH',
-      'reviewState','AUTO_RESOLVED',
-      'warnings',jsonb_build_array()
-    ))
-  );
-  raise exception 'EXPECTED_REPLACEMENT_FAILURE_MISSING';
-exception
-  when others then
-    if sqlerrm='EXPECTED_REPLACEMENT_FAILURE_MISSING' then raise; end if;
-end
-$;
-
 select pg_temp.expect_replace_failure();
 
 select pg_temp.assert_true(
@@ -294,6 +342,36 @@ select pg_temp.assert_true(
   '34 expired live candidate is retired and replaced by a usable revision-1 candidate'
 );
 
+reset role;
+insert into private.timetable_import_apply_context(
+  backend_pid,transaction_id,candidate_id
+) values (
+  pg_backend_pid(),txid_current(),(select current_id from g12_replace_probe)
+)
+on conflict (backend_pid,transaction_id)
+do update set candidate_id=excluded.candidate_id;
+
+update public.timetable_import_candidates
+set state='APPLIED_TO_DRAFT'
+where id=(select current_id from g12_replace_probe);
+
+delete from private.timetable_import_apply_context
+where backend_pid=pg_backend_pid()
+  and transaction_id=txid_current();
+
+set local role authenticated;
+select pg_temp.expect_already_applied();
+
+select pg_temp.assert_true(
+  (select count(*) from public.timetable_import_candidates
+   where workspace_id='00000000-0000-0000-0000-00000000b624'
+     and academic_year_id='00000000-0000-0000-0000-00000000c624'
+     and source_fingerprint=repeat('a',64))=2
+  and (select state from public.timetable_import_candidates where id=(select current_id from g12_replace_probe))='APPLIED_TO_DRAFT',
+  '35 already-applied source is rejected without creating another live candidate'
+);
+
+reset role;
 rollback;
 
 \echo G1_2_TIMETABLE_IMPORT_DB_CONTRACT_PASS
