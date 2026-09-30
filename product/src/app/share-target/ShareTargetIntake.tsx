@@ -23,6 +23,7 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
   const [meta, setMeta] = useState<ShareMeta | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -90,6 +91,20 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
     await clearShareIntakeStaging(cache, intakeId, SHARE_PREFIX)
   }, [intakeId])
 
+  const cancelIntake = useCallback(async () => {
+    if (cancelling) return
+    setCancelling(true)
+    setError(null)
+    try {
+      await clearStaging()
+      window.location.assign('/orario')
+    } catch (cleanupError) {
+      console.error('Docente OS shared intake cancellation cleanup failed', cleanupError)
+      setCancelling(false)
+      setError('Non sono riuscito a rimuovere il file condiviso dal dispositivo. L’acquisizione resta bloccata: riprova Annulla prima di uscire.')
+    }
+  }, [cancelling, clearStaging])
+
   return (
     <main className="sharedIntakeSurface">
       <section className="sharedIntakeCard" aria-labelledby="shared-intake-title">
@@ -131,9 +146,16 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
           <p role="status">Sto preparando il file condiviso…</p>
         )}
 
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <button type="button" onClick={() => void cancelIntake()} disabled={cancelling}>
+            {cancelling ? 'Rimuovo il file locale…' : 'Annulla acquisizione e rimuovi il file locale'}
+          </button>
+        </div>
+
         <p className="knowledgeUploadTrust">
           I documenti che sembrano orari vengono instradati automaticamente al flusso dedicato, che invia soltanto le aree scelte localmente.
           Gli altri file continuano a usare l’acquisizione governata di Conoscenza. Nessuna modifica all’orario viene applicata senza conferma.
+          Se abbandoni senza annullare, lo staging temporaneo scade automaticamente.
         </p>
       </section>
     </main>
