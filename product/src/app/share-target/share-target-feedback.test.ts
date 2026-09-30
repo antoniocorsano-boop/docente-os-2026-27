@@ -10,6 +10,7 @@ const uploader = fs.readFileSync(new URL('../knowledge/KnowledgeFileUploader.tsx
 const serviceWorker = fs.readFileSync(new URL('../../../public/sw.js', import.meta.url), 'utf8')
 const timetableIntake = fs.readFileSync(new URL('./TimetableSharedIntake.tsx', import.meta.url), 'utf8')
 const timetableActions = fs.readFileSync(new URL('../orario/actions.ts', import.meta.url), 'utf8')
+const timetablePage = fs.readFileSync(new URL('../orario/page.tsx', import.meta.url), 'utf8')
 
 test('shared intake makes local-only and failure state perceptible before write', () => {
   assert.match(intake, /ancora locale/)
@@ -222,4 +223,13 @@ test('timetable PDF size is checked before reading the full source into memory',
   const arrayBufferAt = timetableIntake.indexOf('await file.arrayBuffer()')
   assert.ok(sizeCheckAt >= 0)
   assert.ok(arrayBufferAt > sizeCheckAt)
+})
+
+
+test('timetable confirmation is bound to the reviewed candidate revision', () => {
+  assert.match(timetablePage, /name="candidateRevision" value=\{importCandidate\.revision\}/)
+  assert.match(timetableActions, /const reviewedRevision = integer\(formData, 'candidateRevision'\)/)
+  assert.match(timetableActions, /candidate\.revision !== reviewedRevision/)
+  assert.match(timetableActions, /import=review_stale/)
+  assert.match(timetableActions, /candidateRevision: reviewedRevision/)
 })
