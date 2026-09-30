@@ -13,6 +13,7 @@ import { updateDraftTimetableSlot } from '@/core/infrastructure/supabase/supabas
 import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { validateKnowledgeUploadContent } from '../knowledge/upload-content-validation'
+import { isValidIsoCalendarDate, resolveTimetableSourceIdentity } from './timetable-import-boundary'
 import {
   MAX_KNOWLEDGE_UPLOAD_BYTES,
   normalizeKnowledgeUploadMime,
@@ -161,7 +162,7 @@ export async function analyzeTimetableImport(formData: FormData) {
 
   const effectiveFrom = text(formData, 'effectiveFrom').trim()
   if (
-    !/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)
+    !isValidIsoCalendarDate(effectiveFrom)
     || effectiveFrom < context.academicYear.startsOn
     || effectiveFrom > context.academicYear.endsOn
   ) {
@@ -183,12 +184,15 @@ export async function analyzeTimetableImport(formData: FormData) {
   const sourceMode = optionalText(formData, 'sourceMode')
   const originalSourceFingerprint = optionalText(formData, 'originalSourceFingerprint')
   const originalSourceName = optionalText(formData, 'originalSourceName')
-  const fingerprint = sourceMode === 'LOCAL_MINIMIZED_SHARE'
-    ? validateOriginalSourceFingerprint(originalSourceFingerprint)
-    : derivativeFingerprint
-  const sourceLabel = sourceMode === 'LOCAL_MINIMIZED_SHARE'
-    ? validateOriginalSourceName(originalSourceName)
-    : (value.name || 'Orario importato')
+  const sourceIdentity = resolveTimetableSourceIdentity({
+    sourceMode,
+    derivativeFingerprint,
+    originalSourceFingerprint,
+    originalSourceName,
+    derivativeName: value.name,
+  })
+  const fingerprint = sourceIdentity.sourceFingerprint
+  const sourceLabel = sourceIdentity.sourceLabel
   const importRepository = new SupabaseTimetableImportRepository()
   const existing = await importRepository.findByFingerprint({
     workspaceId: context.workspace.id,
@@ -246,10 +250,6 @@ export async function analyzeTimetableImport(formData: FormData) {
   if (!extracted.rows.length) redirect('/orario?import=no_rows')
 
   if (existing && (existing.state === 'DRAFT' || existing.state === 'READY_TO_CONFIRM')) {
-    if (sourceMode === 'LOCAL_MINIMIZED_SHARE') {
-      revalidatePath('/orario')
-      redirect(`/orario?importCandidate=${encodeURIComponent(existing.id)}&import=review`)
-    }
     await importRepository.deleteCandidate(existing.id)
   }
 
@@ -258,9 +258,7 @@ export async function analyzeTimetableImport(formData: FormData) {
     academicYearId: context.academicYear.id,
     sourceFingerprint: fingerprint,
     sourceLabel,
-    sourceRef: sourceMode === 'LOCAL_MINIMIZED_SHARE'
-      ? `sha256:${fingerprint}; derivative-sha256:${derivativeFingerprint}`
-      : `sha256:${fingerprint}`,
+    sourceRef: sourceIdentity.sourceRef,
     effectiveFrom,
     parserVersion: `${extracted.processor}@${extracted.processorVersion}`,
   })
@@ -417,17 +415,6 @@ function nullableText(formData: FormData, key: string) {
 function optionalText(formData: FormData, key: string) {
   const value = formData.get(key)
   return typeof value === 'string' ? value.trim() : ''
-}
-
-function validateOriginalSourceFingerprint(value: string) {
-  if (!/^[a-f0-9]{64}$/.test(value)) throw new Error('Invalid original source fingerprint')
-  return value
-}
-
-function validateOriginalSourceName(value: string) {
-  const normalized = value.trim()
-  if (!normalized || normalized.length > 240) throw new Error('Invalid original source name')
-  return normalized
 }
 
 function integer(formData: FormData, key: string) {
