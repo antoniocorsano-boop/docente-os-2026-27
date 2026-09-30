@@ -7,7 +7,10 @@ export function looksLikeTimetablePdf(input: {
 }) {
   const isPdf = input.fileType === 'application/pdf' || /\.pdf$/i.test(input.fileName)
   if (!isPdf) return false
-  const haystack = [input.title ?? '', input.fileName].join(' ').toLocaleLowerCase('it-IT')
+  const haystack = [input.title ?? '', input.fileName]
+    .join(' ')
+    .toLocaleLowerCase('it-IT')
+    .replace(/[_-]+/g, ' ')
   return /\b(orario|timetable|quadro\s+orario)\b/.test(haystack)
 }
 
