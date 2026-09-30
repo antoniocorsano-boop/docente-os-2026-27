@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import test from 'node:test'
 import { isValidIsoCalendarDate, resolveTimetableSourceIdentity } from '../orario/timetable-import-boundary'
 import { clearShareIntakeStaging } from './share-target-staging'
-import { clampRectToBounds, dateFromFilename, isValidOrdinal, looksLikeTimetablePdf, parseOrdinal } from './timetable-share-helpers'
+import { clampRectToBounds, dateFromFilename, derivativeContextLabel, isValidOrdinal, looksLikeTimetablePdf, parseOrdinal } from './timetable-share-helpers'
 
 const intake = fs.readFileSync(new URL('./ShareTargetIntake.tsx', import.meta.url), 'utf8')
 const uploader = fs.readFileSync(new URL('../knowledge/KnowledgeFileUploader.tsx', import.meta.url), 'utf8')
@@ -17,7 +17,8 @@ test('shared intake makes local-only and failure state perceptible before write'
   assert.match(intake, /resta sul dispositivo/)
   assert.match(intake, /role="alert"/)
   assert.match(intake, /role="status"/)
-  assert.match(intake, /Nessuna destinazione viene scelta automaticamente/)
+  assert.match(intake, /instradati automaticamente al flusso dedicato/)
+  assert.match(intake, /Nessuna modifica all’orario viene applicata senza conferma/)
 })
 
 test('shared file reuses governed Knowledge upload feedback', () => {
@@ -42,8 +43,7 @@ test('timetable-like shared PDFs use local minimization before timetable analysi
   assert.match(timetableIntake, /await analyzeTimetableImport\(data\)/)
   assert.match(timetableIntake, /sha256Hex\(bytes\)/)
   assert.match(timetableIntake, /originalSourceFingerprint/)
-  assert.match(timetableIntake, /GIORNO:/)
-  assert.match(timetableIntake, /ORA:/)
+  assert.match(timetableIntake, /derivativeContextLabel/)
   assert.match(timetableIntake, /x: clamp\(x, 0, canvas\.width\)/)
   assert.match(timetableIntake, /y: clamp\(y, 0, canvas\.height\)/)
   assert.match(timetableIntake, /parseOrdinal\(event\.currentTarget\.value\)/)
@@ -141,4 +141,14 @@ test('staging cleanup is fail-closed when any cache deletion fails', async () =>
   )
   assert.equal(deleted.length, 2)
   assert.equal(deleted.some((url) => url.includes('/other/')), false)
+})
+
+
+test('minimized derivative context always carries teacher, day and period', () => {
+  assert.equal(
+    derivativeContextLabel(' ROSSI ', 2, 4),
+    'DOCENTE: ROSSI · GIORNO: Martedì · ORA: 4',
+  )
+  assert.throws(() => derivativeContextLabel('', 2, 4), /Teacher label/)
+  assert.throws(() => derivativeContextLabel('ROSSI', 2, 21), /ordinal/)
 })
