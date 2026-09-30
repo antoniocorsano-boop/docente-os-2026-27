@@ -319,9 +319,14 @@ export async function addTimetableImportRow(formData: FormData) {
     academicYearId: context.academicYear.id,
   })
   if (!candidate || candidate.state === 'APPLIED_TO_DRAFT') redirect('/orario?import=unavailable')
+  const reviewedRevision = integer(formData, 'candidateRevision')
+  if (candidate.revision !== reviewedRevision) {
+    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
+  }
 
   await repository.addManualRow({
     candidateId,
+    candidateRevision: reviewedRevision,
     assignmentId: text(formData, 'assignmentId'),
     weekday: integer(formData, 'weekday'),
     ordinal: integer(formData, 'ordinal'),
@@ -343,9 +348,14 @@ export async function updateTimetableImportRow(formData: FormData) {
     academicYearId: context.academicYear.id,
   })
   if (!candidate || candidate.state === 'APPLIED_TO_DRAFT') redirect('/orario?import=unavailable')
+  const reviewedRevision = integer(formData, 'candidateRevision')
+  if (candidate.revision !== reviewedRevision) {
+    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
+  }
 
   await repository.updateRow({
     candidateId,
+    candidateRevision: reviewedRevision,
     rowId: text(formData, 'rowId'),
     assignmentId: text(formData, 'assignmentId'),
     weekday: integer(formData, 'weekday'),
