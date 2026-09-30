@@ -113,7 +113,7 @@ TimetableImportCandidate
 
 - `candidate_id` identifica la proposta, non una versione canonica dell'orario;
 - `candidate_revision` cambia a ogni modifica sostanziale del candidato/revisione docente ed è il token logico usato dalla conferma;
-- `workspace_id + academic_year_id + created_by + source_fingerprint` costituiscono la chiave logica anti-duplicazione del candidato live; nel percorso minimizzato `source_fingerprint` è sempre quello canonico dell'intero documento, mai del crop;
+- `workspace_id + academic_year_id + source_fingerprint` costituiscono la chiave logica anti-duplicazione del candidato live; nel percorso minimizzato `source_fingerprint` è sempre quello canonico dell'intero documento, mai del crop;
 - `effective_from_candidate` può essere nullo finché la data non è verificabile;
 - `source_is_provisional` descrive il documento, non lo stato di una `teaching_assignment`;
 - il candidato può essere scartato senza effetti sulla DRAFT.
@@ -268,7 +268,7 @@ Invarianti:
 
 La concreta strategia DB/RPC/transazione sarà definita in una slice successiva; questo contratto ne fissa il comportamento osservabile.
 
-Per la sostituzione di un candidato live già esistente vale inoltre una regola specifica: **retirement del candidato precedente, creazione del nuovo candidato, inserimento righe e promozione devono avvenire nella stessa transazione**. Se qualunque passaggio fallisce, il candidato precedente resta intatto.
+Per la correzione di un candidato live già esistente vale inoltre la regola G1.2 qualificata: **si conserva lo stesso `candidate.id`, si incrementa atomicamente `candidate.revision`, si sostituisce il set di righe della revisione e si ricalcola lo stato**. Se qualunque passaggio fallisce, la revisione precedente resta intatta.
 
 ## 11. Applicazione alla DRAFT
 
