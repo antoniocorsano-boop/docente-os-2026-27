@@ -1,6 +1,6 @@
 -- DOS-TT-IMPORT-01 / G1.2 DB contract
 -- Executed only against an isolated disposable database after repository migrations.
--- 29 governed assertions. Rolls back all fixtures.
+-- 34 governed assertions. Rolls back all fixtures.
 
 begin;
 
