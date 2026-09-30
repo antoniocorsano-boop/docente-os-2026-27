@@ -49,7 +49,7 @@ test('timetable-like shared PDFs use local minimization before timetable analysi
   assert.match(timetableIntake, /x2 = clamp\(Math\.ceil\(rect\.x \+ rect\.width\), 0, source\.width\)/)
   assert.match(timetableIntake, /y2 = clamp\(Math\.ceil\(rect\.y \+ rect\.height\), 0, source\.height\)/)
   assert.match(timetableIntake, /parseOrdinal\(event\.currentTarget\.value\)/)
-  assert.match(timetableIntake, /Number\.isInteger\(value\) && value >= 1 && value <= 20/)
+  assert.match(timetableIntake, /value !== null && Number\.isInteger\(value\) && value >= 1 && value <= 20/)
   assert.match(timetableIntake, /selections\.some\(\(item\) => !item\.weekday \|\| !isValidOrdinal\(item\.ordinal\)\)/)
 
   assert.match(timetableActions, /LOCAL_MINIMIZED_SHARE/)
