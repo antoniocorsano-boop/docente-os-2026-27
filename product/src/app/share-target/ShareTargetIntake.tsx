@@ -146,6 +146,8 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
 
 
 function looksLikeTimetable(meta: ShareMeta | null, file: File) {
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+  if (!isPdf) return false
   const haystack = [meta?.title ?? '', meta?.text ?? '', file.name].join(' ').toLocaleLowerCase('it-IT')
   return /\b(orario|timetable|quadro\s+orario)\b/.test(haystack)
 }
