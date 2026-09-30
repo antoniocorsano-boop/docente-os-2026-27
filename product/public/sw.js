@@ -139,8 +139,14 @@ async function clearCachedIntake(cache, intakeId) {
     !new URL(request.url).pathname.endsWith('/meta'),
   )
 
-  for (const request of payloads) await cache.delete(request)
-  for (const request of metadata) await cache.delete(request)
+  for (const request of payloads) {
+    const deleted = await cache.delete(request)
+    if (!deleted) throw new Error('Share Target staging cleanup incomplete')
+  }
+  for (const request of metadata) {
+    const deleted = await cache.delete(request)
+    if (!deleted) throw new Error('Share Target staging cleanup incomplete')
+  }
 }
 
 function collectSharedFiles(formData) {
