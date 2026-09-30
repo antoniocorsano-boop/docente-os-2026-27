@@ -139,7 +139,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
   }
 
   async function submit() {
-    if (!sourceRef.current || !sourceFingerprint || !selections.length || selections.some((item) => !item.weekday || !item.ordinal) || !teacherLabel.trim() || !effectiveFrom || busy) return
+    if (!sourceRef.current || !sourceFingerprint || !selections.length || selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal)) || !teacherLabel.trim() || !effectiveFrom || busy) return
     setBusy(true)
     try {
       const derivative = await cropSelections(sourceRef.current, selections)
@@ -212,7 +212,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
                   min={1}
                   max={20}
                   value={selection.ordinal ?? ''}
-                  onChange={(event) => updateSelection(selection.id, { ordinal: Number(event.currentTarget.value) || null })}
+                  onChange={(event) => updateSelection(selection.id, { ordinal: parseOrdinal(event.currentTarget.value) })}
                 />
               </label>
               <button type="button" onClick={() => setSelections((current) => current.filter((item) => item.id !== selection.id))} disabled={busy}>
@@ -236,7 +236,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        <button type="button" onClick={() => void submit()} disabled={!ready || !sourceFingerprint || !selections.length || selections.some((item) => !item.weekday || !item.ordinal) || !teacherLabel.trim() || !effectiveFrom || busy}>
+        <button type="button" onClick={() => void submit()} disabled={!ready || !sourceFingerprint || !selections.length || selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal)) || !teacherLabel.trim() || !effectiveFrom || busy}>
           {busy ? 'Preparo la proposta…' : 'Prepara proposta di orario'}
         </button>
         <button type="button" onClick={() => { setSelections([]); setMessage('Selezione cancellata. Il PDF resta soltanto sul dispositivo.') }} disabled={!selections.length || busy}>
@@ -287,7 +287,7 @@ async function cropSelections(source: HTMLCanvasElement, selections: Selection[]
 
   let y = 0
   for (const rect of normalized) {
-    if (!rect.weekday || !rect.ordinal) throw new Error('Contesto giorno/ora mancante')
+    if (!rect.weekday || !isValidOrdinal(rect.ordinal)) throw new Error('Contesto giorno/ora mancante')
     const day = WEEKDAYS.find((item) => item.value === rect.weekday)?.label ?? `Giorno ${rect.weekday}`
     ctx.fillText(`GIORNO: ${day} · ORA: ${rect.ordinal}`, 8, y + labelHeight / 2)
     y += labelHeight
@@ -356,4 +356,14 @@ async function sha256Hex(bytes: Uint8Array) {
   copy.set(bytes)
   const digest = await crypto.subtle.digest('SHA-256', copy.buffer)
   return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, '0')).join('')
+}
+
+
+function parseOrdinal(value: string) {
+  const parsed = Number(value)
+  return isValidOrdinal(parsed) ? parsed : null
+}
+
+function isValidOrdinal(value: number | null): value is number {
+  return Number.isInteger(value) && value >= 1 && value <= 20
 }
