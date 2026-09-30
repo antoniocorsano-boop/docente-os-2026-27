@@ -136,7 +136,8 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
 
         <p className="knowledgeUploadTrust">
           I documenti che sembrano orari vengono instradati al flusso dedicato, che invia soltanto le aree scelte localmente.
-          Gli altri file continuano a usare l’acquisizione governata di Conoscenza. Nessuna modifica all’orario viene applicata senza conferma.
+          Gli altri file continuano a usare l’acquisizione governata di Conoscenza. Nessuna destinazione viene scelta automaticamente
+          e nessuna modifica all’orario viene applicata senza conferma.
         </p>
       </section>
     </main>
