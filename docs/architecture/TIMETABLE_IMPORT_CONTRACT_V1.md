@@ -60,9 +60,10 @@ Nel percorso ordinario, quando il server riceve il documento sorgente, il sistem
 
 Nel percorso privacy-first `LOCAL_MINIMIZED_SHARE`, il documento originale resta sul dispositivo e non attraversa il trust boundary. In questo caso:
 
-- il `source_fingerprint` autorevole del candidato è calcolato **server-side sui byte del derivato minimizzato effettivamente ricevuto**;
-- l'eventuale SHA-256 dell'originale calcolato localmente è soltanto una **attestazione di provenienza locale non autorevole** e può essere registrato in `source_ref`;
-- l'attestazione locale non può essere usata per lookup, deduplicazione, sostituzione, cancellazione o autorizzazione di candidati server-side;
+- il solo fingerprint persistibile resta il **fingerprint canonico G1.3 dell'intero documento originale**, calcolato localmente prima di qualsiasi crop o trasformazione;
+- **nessun digest del derivato minimizzato, delle celle selezionate, del cognome o di altri sottoinsiemi nominativi può essere persistito**;
+- il fingerprint dell'intero documento è usabile per idempotenza/deduplicazione soltanto nel perimetro del medesimo `created_by`; non costituisce identità docente né autorizzazione;
+- il derivato minimizzato è transitorio: viene usato per il parsing e poi reso non risolvibile secondo il contratto G1.5;
 - lookup e replacement possono riguardare solo candidati dello stesso `created_by`.
 
 Metadati minimi:
@@ -112,7 +113,7 @@ TimetableImportCandidate
 
 - `candidate_id` identifica la proposta, non una versione canonica dell'orario;
 - `candidate_revision` cambia a ogni modifica sostanziale del candidato/revisione docente ed è il token logico usato dalla conferma;
-- `workspace_id + academic_year_id + created_by + source_fingerprint` costituiscono la chiave logica anti-duplicazione del candidato live; questo mantiene coerente la sostituzione creator-scoped senza consentire collisioni tra membri dello stesso workspace;
+- `workspace_id + academic_year_id + created_by + source_fingerprint` costituiscono la chiave logica anti-duplicazione del candidato live; nel percorso minimizzato `source_fingerprint` è sempre quello canonico dell'intero documento, mai del crop;
 - `effective_from_candidate` può essere nullo finché la data non è verificabile;
 - `source_is_provisional` descrive il documento, non lo stato di una `teaching_assignment`;
 - il candidato può essere scartato senza effetti sulla DRAFT.
@@ -266,6 +267,8 @@ Invarianti:
 7. nessuna cancellazione/mutazione di sessioni o occorrenze pregresse.
 
 La concreta strategia DB/RPC/transazione sarà definita in una slice successiva; questo contratto ne fissa il comportamento osservabile.
+
+Per la sostituzione di un candidato live già esistente vale inoltre una regola specifica: **retirement del candidato precedente, creazione del nuovo candidato, inserimento righe e promozione devono avvenire nella stessa transazione**. Se qualunque passaggio fallisce, il candidato precedente resta intatto.
 
 ## 11. Applicazione alla DRAFT
 
