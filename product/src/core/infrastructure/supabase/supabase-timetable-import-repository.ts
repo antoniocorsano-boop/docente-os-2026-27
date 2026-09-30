@@ -35,6 +35,77 @@ export type TimetableImportApplyReceipt = Readonly<{
 }>
 
 export class SupabaseTimetableImportRepository {
+  async replaceCandidateAtomic(input: {
+    workspaceId: string
+    academicYearId: string
+    sourceFingerprint: string
+    sourceLabel: string
+    sourceRef: string
+    effectiveFrom: string
+    parserVersion: string
+    rows: readonly {
+      rowKey: string
+      weekday: number | null
+      ordinal: number | null
+      startTime: string | null
+      endTime: string | null
+      sourceClassLabel: string
+      resolvedSectionId: string | null
+      resolvedAssignmentId: string | null
+      confidence: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNRESOLVED'
+      reviewState: 'AUTO_RESOLVED' | 'REVIEW_REQUIRED'
+      evidenceRef: string | null
+      warnings: readonly string[]
+    }[]
+  }) {
+    if (!input.rows.length) throw new Error('Timetable candidate requires at least one row')
+    const supabase = await createClient()
+    const { data, error } = await supabase.rpc(
+      'replace_timetable_import_candidate_v1',
+      {
+        p_workspace_id: input.workspaceId,
+        p_academic_year_id: input.academicYearId,
+        p_source_fingerprint: input.sourceFingerprint,
+        p_source_label: input.sourceLabel.slice(0, 240),
+        p_source_ref: input.sourceRef.slice(0, 1000),
+        p_effective_from: input.effectiveFrom,
+        p_parser_version: input.parserVersion.slice(0, 160),
+        p_rows: input.rows.map((row) => ({
+          rowKey: row.rowKey.slice(0, 160),
+          weekday: row.weekday,
+          ordinal: row.ordinal,
+          startTime: row.startTime,
+          endTime: row.endTime,
+          sourceClassLabel: row.sourceClassLabel.slice(0, 120),
+          resolvedSectionId: row.resolvedSectionId,
+          resolvedAssignmentId: row.resolvedAssignmentId,
+          confidence: row.confidence,
+          reviewState: row.reviewState,
+          evidenceRef: row.evidenceRef,
+          warnings: [...row.warnings],
+        })),
+      },
+    )
+
+    if (error) throw new Error(error.message)
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      throw new Error('Timetable candidate replacement returned no candidate')
+    }
+    const candidate = data as Record<string, unknown>
+    if (
+      typeof candidate.id !== 'string'
+      || typeof candidate.revision !== 'number'
+      || typeof candidate.state !== 'string'
+    ) {
+      throw new Error('Timetable candidate replacement returned an invalid candidate')
+    }
+    return {
+      id: candidate.id,
+      revision: candidate.revision,
+      state: candidate.state,
+    }
+  }
+
   async findByFingerprint(input: {
     workspaceId: string
     academicYearId: string
