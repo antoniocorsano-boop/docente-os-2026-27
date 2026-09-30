@@ -266,7 +266,9 @@ Invarianti:
 6. un errore intermedio produce rollback completo;
 7. nessuna cancellazione/mutazione di sessioni o occorrenze pregresse.
 
-La strategia DB/RPC per la revisione del candidato live è ora materializzata dalla migration 0080; la strategia di apply alla DRAFT resta governata separatamente dalle primitive G1.2 già qualificate. Per la correzione di un candidato live già esistente vale la regola G1.2 qualificata: **si conserva lo stesso `candidate.id`, si incrementa atomicamente `candidate.revision`, si sostituisce il set di righe della revisione e si ricalcola lo stato**. Se qualunque passaggio fallisce, la revisione precedente resta intatta.
+La strategia DB/RPC per la revisione del candidato live è ora materializzata dalla migration 0080; la strategia di apply alla DRAFT resta governata separatamente dalle primitive G1.2 già qualificate. Per la correzione di un candidato live già esistente vale la regola G1.2 qualificata:
+
+Se la revisione corrente contiene **correzioni manuali del docente o righe aggiunte manualmente**, una nuova estrazione della stessa sorgente non può sostituirla implicitamente: la revisione resta intatta finché il docente non autorizza esplicitamente la sostituzione. La conferma di sostituzione è distinta dalla successiva conferma/applicazione alla bozza. **si conserva lo stesso `candidate.id`, si incrementa atomicamente `candidate.revision`, si sostituisce il set di righe della revisione e si ricalcola lo stato**. Se qualunque passaggio fallisce, la revisione precedente resta intatta.
 
 ## 11. Applicazione alla DRAFT
 
