@@ -199,9 +199,6 @@ export async function analyzeTimetableImport(formData: FormData) {
   if (existing?.state === 'APPLIED_TO_DRAFT') {
     redirect('/orario?import=already_applied')
   }
-  if (existing && (existing.state === 'DRAFT' || existing.state === 'READY_TO_CONFIRM')) {
-    await importRepository.deleteCandidate(existing.id)
-  }
 
   const settingsRepository = new SupabaseTeacherSettingsRepository()
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
@@ -247,6 +244,14 @@ export async function analyzeTimetableImport(formData: FormData) {
   }
 
   if (!extracted.rows.length) redirect('/orario?import=no_rows')
+
+  if (existing && (existing.state === 'DRAFT' || existing.state === 'READY_TO_CONFIRM')) {
+    if (sourceMode === 'LOCAL_MINIMIZED_SHARE') {
+      revalidatePath('/orario')
+      redirect(`/orario?importCandidate=${encodeURIComponent(existing.id)}&import=review`)
+    }
+    await importRepository.deleteCandidate(existing.id)
+  }
 
   const candidate = await importRepository.createCandidate({
     workspaceId: context.workspace.id,
