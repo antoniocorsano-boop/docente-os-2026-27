@@ -1,6 +1,6 @@
 -- DOS-TT-IMPORT-01 / G1.2 DB contract
 -- Executed only against an isolated disposable database after repository migrations.
--- 36 governed assertions. Rolls back all fixtures.
+-- 45 governed assertions. Rolls back all fixtures.
 
 begin;
 
@@ -215,6 +215,24 @@ exception
     end if;
 end
 $reviewed$;
+
+create or replace function pg_temp.expect_stale_row_edit(p_candidate_id uuid, p_row_id uuid) returns void
+language plpgsql
+as $stale$
+begin
+  perform public.update_timetable_import_row_v1(
+    p_candidate_id,
+    1,
+    p_row_id,
+    '00000000-0000-0000-0000-00000000b625',
+    1,1,'08:00','09:00'
+  );
+  raise exception 'EXPECTED_STALE_EDIT_MISSING';
+exception
+  when others then
+    if sqlerrm <> 'STALE_CANDIDATE_REVISION' then raise; end if;
+end
+$stale$;
 
 create or replace function pg_temp.expect_already_applied() returns void
 language plpgsql
@@ -436,6 +454,60 @@ select pg_temp.assert_true(
      and source_fingerprint=repeat('a',64))=2
   and (select state from public.timetable_import_candidates where id=(select current_id from g12_replace_probe))='APPLIED_TO_DRAFT',
   '35 already-applied source is rejected without creating another live candidate'
+);
+
+select pg_temp.assert_true(
+  to_regprocedure('public.update_timetable_import_row_v1(uuid,bigint,uuid,uuid,smallint,smallint,time,time)') is not null
+  and to_regprocedure('public.add_timetable_import_row_v1(uuid,bigint,uuid,smallint,smallint,time,time)') is not null,
+  '43 atomic review-edit RPCs are installed'
+);
+
+select public.replace_timetable_import_candidate_v1(
+  '00000000-0000-0000-0000-00000000b624',
+  '00000000-0000-0000-0000-00000000c624',
+  repeat('b',64),
+  'Edit fixture',
+  'client-whole-document-sha256:' || repeat('b',64),
+  '2026-09-28',
+  'fixture@edit',
+  jsonb_build_array(jsonb_build_object(
+    'rowKey','edit-r1',
+    'weekday',1,
+    'ordinal',1,
+    'startTime','08:00',
+    'endTime','09:00',
+    'sourceClassLabel','2C',
+    'resolvedSectionId','00000000-0000-0000-0000-00000000a625',
+    'resolvedAssignmentId','00000000-0000-0000-0000-00000000b625',
+    'confidence','HIGH',
+    'reviewState','AUTO_RESOLVED',
+    'evidenceRef','fixture:edit-r1',
+    'warnings',jsonb_build_array()
+  ))
+);
+
+select public.update_timetable_import_row_v1(
+  (select id from public.timetable_import_candidates where source_fingerprint=repeat('b',64)),
+  1,
+  (select id from public.timetable_import_candidate_rows where candidate_id=(select id from public.timetable_import_candidates where source_fingerprint=repeat('b',64)) limit 1),
+  '00000000-0000-0000-0000-00000000b625',
+  2,2,'09:00','10:00'
+);
+
+select pg_temp.assert_true(
+  (select revision from public.timetable_import_candidates where source_fingerprint=repeat('b',64))=2
+  and (select count(*) from public.timetable_import_candidate_rows r join public.timetable_import_candidates c on c.id=r.candidate_id where c.source_fingerprint=repeat('b',64) and r.candidate_revision=2 and r.review_state='CONFIRMED')=1,
+  '44 substantive row edit advances candidate revision exactly once'
+);
+
+select pg_temp.expect_stale_row_edit(
+  (select id from public.timetable_import_candidates where source_fingerprint=repeat('b',64)),
+  (select id from public.timetable_import_candidate_rows where candidate_id=(select id from public.timetable_import_candidates where source_fingerprint=repeat('b',64)) limit 1)
+);
+
+select pg_temp.assert_true(
+  (select revision from public.timetable_import_candidates where source_fingerprint=repeat('b',64))=2,
+  '45 stale edit is rejected without advancing revision'
 );
 
 reset role;
