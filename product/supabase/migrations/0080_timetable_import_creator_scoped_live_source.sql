@@ -118,7 +118,31 @@ begin
       uid
     )
     returning * into candidate;
+
+    insert into private.timetable_import_apply_context(
+      backend_pid,
+      transaction_id,
+      candidate_id
+    ) values (
+      pg_backend_pid(),
+      txid_current(),
+      candidate.id
+    )
+    on conflict (backend_pid,transaction_id)
+    do update set candidate_id = excluded.candidate_id;
   else
+    insert into private.timetable_import_apply_context(
+      backend_pid,
+      transaction_id,
+      candidate_id
+    ) values (
+      pg_backend_pid(),
+      txid_current(),
+      candidate.id
+    )
+    on conflict (backend_pid,transaction_id)
+    do update set candidate_id = excluded.candidate_id;
+
     delete from public.timetable_import_candidate_rows r
     where r.candidate_id = candidate.id;
 
@@ -196,6 +220,10 @@ begin
     where id = candidate.id
     returning * into candidate;
   end if;
+
+  delete from private.timetable_import_apply_context
+  where backend_pid = pg_backend_pid()
+    and transaction_id = txid_current();
 
   return to_jsonb(candidate);
 end
