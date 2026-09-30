@@ -348,19 +348,6 @@ export class SupabaseTimetableImportRepository {
     const { data: candidate, error: candidateError } = await supabase
       .from('timetable_import_candidates')
       .select('id,state,revision,workspace_id,academic_year_id')
-  async addManualRow(input: {
-    candidateId: string
-    candidateRevision: number
-    assignmentId: string
-    weekday: number
-    ordinal: number
-    startTime: string
-    endTime: string
-  }) {
-    const supabase = await createClient()
-    const { data: candidate, error: candidateError } = await supabase
-      .from('timetable_import_candidates')
-      .select('id,state,revision,workspace_id,academic_year_id')
       .eq('id', input.candidateId)
       .eq('revision', input.candidateRevision)
       .single()
