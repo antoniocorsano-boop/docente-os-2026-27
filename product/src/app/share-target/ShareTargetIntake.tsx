@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { KnowledgeFileUploader } from '@/app/knowledge/KnowledgeFileUploader'
+import { TimetableSharedIntake } from './TimetableSharedIntake'
 
 const SHARE_CACHE = 'docente-os-share-intake-v1'
 const SHARE_PREFIX = '/__share-intake/'
@@ -118,22 +119,32 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
             <div className="knowledgeFeedback" role="status">
               <strong>{file.name}</strong> · {(file.size / 1024 / 1024).toFixed(file.size > 1024 * 1024 ? 1 : 2)} MB
             </div>
-            <KnowledgeFileUploader
-              initialFile={file}
-              postUploadQuery="source=share-target"
-              onCompleted={() => { void clearStaging() }}
-              sharedIntake
-            />
+            {looksLikeTimetable(meta, file) ? (
+              <TimetableSharedIntake file={file} onBeforeSubmit={clearStaging} />
+            ) : (
+              <KnowledgeFileUploader
+                initialFile={file}
+                postUploadQuery="source=share-target"
+                onCompleted={() => { void clearStaging() }}
+                sharedIntake
+              />
+            )}
           </>
         ) : (
           <p role="status">Sto preparando il file condiviso…</p>
         )}
 
         <p className="knowledgeUploadTrust">
-          Dopo l’acquisizione potrai valutarlo con i workflow già esistenti: Conoscenza, circolari/Calendario,
-          aggiornamento orario o materiali della lezione. Nessuna destinazione viene scelta automaticamente.
+          I documenti che sembrano orari vengono instradati al flusso dedicato, che invia soltanto le aree scelte localmente.
+          Gli altri file continuano a usare l’acquisizione governata di Conoscenza. Nessuna modifica all’orario viene applicata senza conferma.
         </p>
       </section>
     </main>
   )
+}
+
+
+function looksLikeTimetable(meta: ShareMeta | null, file: File) {
+  const haystack = [meta?.title ?? '', meta?.text ?? '', file.name].join(' ').toLocaleLowerCase('it-IT')
+  return /\b(orario|timetable|quadro\s+orario)\b/.test(haystack)
 }
