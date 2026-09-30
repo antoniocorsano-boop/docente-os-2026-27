@@ -243,6 +243,7 @@ export default async function TimetablePage({
             {importCandidate.state === 'READY_TO_CONFIRM' && importDraftToken && confirmationRequestId ? (
               <form action={applyTimetableImportCandidate} className="timetableImportConfirm">
                 <input type="hidden" name="candidateId" value={importCandidate.id} />
+                <input type="hidden" name="candidateRevision" value={importCandidate.revision} />
                 <input type="hidden" name="draftVersionId" value={timetable.draftVersion.id} />
                 <input type="hidden" name="expectedDraftToken" value={importDraftToken} />
                 <input type="hidden" name="confirmationRequestId" value={confirmationRequestId} />
@@ -353,6 +354,7 @@ function ImportStatus({ code }: { code: string }) {
     applied: { tone: 'success', title: 'Orario applicato alla bozza', detail: 'La bozza è stata aggiornata. L’orario in uso non è stato attivato né modificato.' },
     review: { tone: 'info', title: 'Proposta pronta', detail: 'Controlla le righe sotto e correggi solo ciò che serve.' },
     conflict: { tone: 'warning', title: 'La bozza è cambiata', detail: 'Nessuna modifica è stata applicata. Ricarica la proposta prima di confermare.' },
+    review_stale: { tone: 'warning', title: 'La proposta è stata aggiornata', detail: 'Questa pagina mostra una revisione precedente. Riapri la proposta e controlla la versione aggiornata prima di confermare.' },
     already_applied: { tone: 'info', title: 'Documento già applicato', detail: 'Questo stesso documento risulta già applicato alla bozza.' },
     no_rows: { tone: 'warning', title: 'Nessuna lezione trovata', detail: 'Controlla l’etichetta docente e la leggibilità del documento.' },
     parse_failed: { tone: 'warning', title: 'Documento non analizzabile', detail: 'Nessuna modifica è stata effettuata. Prova con una scansione più leggibile o con il PDF originale.' },
