@@ -41,12 +41,14 @@ export class SupabaseTimetableImportRepository {
     sourceFingerprint: string
   }) {
     const supabase = await createClient()
+    const userId = await authenticatedUserId(supabase)
     const { data, error } = await supabase
       .from('timetable_import_candidates')
       .select('id,state,revision')
       .eq('workspace_id', input.workspaceId)
       .eq('academic_year_id', input.academicYearId)
       .eq('source_fingerprint', input.sourceFingerprint)
+      .eq('created_by', userId)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -57,10 +59,12 @@ export class SupabaseTimetableImportRepository {
 
   async deleteCandidate(candidateId: string) {
     const supabase = await createClient()
+    const userId = await authenticatedUserId(supabase)
     const { error } = await supabase
       .from('timetable_import_candidates')
       .delete()
       .eq('id', candidateId)
+      .eq('created_by', userId)
       .in('state', ['DRAFT','READY_TO_CONFIRM'])
 
     if (error) throw new Error(error.message)
