@@ -82,7 +82,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
         setPages(pdf.numPages)
         setReady(true)
         setMessage('Seleziona soltanto la riga o le celle che appartengono al tuo orario. Il resto del documento non verrà inviato.')
-        draw()
+        drawCanvas(source, canvasRef.current, [])
       } catch (error) {
         if (!cancelled) {
           setMessage(error instanceof Error ? error.message : 'Non riesco a preparare questo PDF localmente.')
@@ -92,26 +92,9 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
     return () => { cancelled = true; sourceRef.current = null }
   }, [file])
 
-  useEffect(() => { draw() }, [selections])
-
-  function draw() {
-    const source = sourceRef.current
-    const canvas = canvasRef.current
-    if (!source || !canvas) return
-    canvas.width = source.width
-    canvas.height = source.height
-    const ctx = canvas.getContext('2d', { alpha: false })
-    if (!ctx) return
-    ctx.drawImage(source, 0, 0)
-    if (selections.length) {
-      ctx.save()
-      ctx.lineWidth = Math.max(4, source.width / 250)
-      ctx.strokeStyle = canvasInkColor()
-      ctx.setLineDash([14, 10])
-      for (const rect of selections) ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)
-      ctx.restore()
-    }
-  }
+  useEffect(() => {
+    drawCanvas(sourceRef.current, canvasRef.current, selections)
+  }, [selections])
 
   function point(event: ReactPointerEvent<HTMLCanvasElement>): Point {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -263,4 +246,25 @@ function canvasSurfaceColor() {
 
 function canvasInkColor() {
   return getComputedStyle(document.body).color
+}
+
+
+function drawCanvas(
+  source: HTMLCanvasElement | null,
+  canvas: HTMLCanvasElement | null,
+  selections: readonly Rect[],
+) {
+  if (!source || !canvas) return
+  canvas.width = source.width
+  canvas.height = source.height
+  const ctx = canvas.getContext('2d', { alpha: false })
+  if (!ctx) return
+  ctx.drawImage(source, 0, 0)
+  if (!selections.length) return
+  ctx.save()
+  ctx.lineWidth = Math.max(4, source.width / 250)
+  ctx.strokeStyle = canvasInkColor()
+  ctx.setLineDash([14, 10])
+  for (const rect of selections) ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)
+  ctx.restore()
 }
