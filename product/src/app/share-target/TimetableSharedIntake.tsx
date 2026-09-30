@@ -228,6 +228,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
       <div style={{ maxHeight: 620, overflow: 'auto', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)' }}>
         <canvas
           ref={canvasRef}
+          role="application"
           tabIndex={0}
           onPointerDown={pointerDown}
           onPointerUp={pointerUp}
