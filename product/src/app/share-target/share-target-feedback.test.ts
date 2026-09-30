@@ -190,9 +190,10 @@ test('timetable analysis uses the atomic replacement RPC instead of delete-then-
 })
 
 
-test('explicit cancellation is fail-closed and removes the staged intake before navigation', () => {
+test('explicit cancellation is fail-closed and returns to the classified destination', () => {
   assert.match(intake, /await clearStaging\(\)/)
-  assert.match(intake, /window\.location\.assign\('\/orario'\)/)
+  assert.match(intake, /looksLikeTimetable\(meta, file\) \? '\/orario' : '\/knowledge'/)
+  assert.match(intake, /window\.location\.assign\(destination\)/)
   assert.match(intake, /Annulla acquisizione e rimuovi il file locale/)
   assert.match(intake, /L’acquisizione resta bloccata/)
 })
@@ -287,4 +288,20 @@ test('service-worker expiry cleanup checks payload deletion before removing meta
 test('ordinary timetable import surfaces persistence failures', () => {
   assert.match(timetablePage, /persist_failed:/)
   assert.match(timetablePage, /Proposta non salvata/)
+})
+
+
+test('draft timetable review edits use atomic revision-advancing RPCs', () => {
+  const repository = fs.readFileSync(new URL('../core/infrastructure/supabase/supabase-timetable-import-repository.ts', import.meta.url), 'utf8')
+  const migration = fs.readFileSync(new URL('../../../supabase/migrations/0080_timetable_import_same_id_live_source_revision.sql', import.meta.url), 'utf8')
+  assert.match(repository, /update_timetable_import_row_v1/)
+  assert.match(repository, /add_timetable_import_row_v1/)
+  assert.match(migration, /revision=c\.revision\+1/)
+  assert.match(migration, /STALE_CANDIDATE_REVISION/)
+  assert.match(migration, /from public\.timetable_import_candidate_rows r[\s\S]*for update;/)
+})
+
+test('already-applied minimized import is surfaced as terminal', () => {
+  assert.match(timetableIntake, /code === 'already_applied'/)
+  assert.match(timetableIntake, /Questo documento è già stato applicato alla bozza dell’orario/)
 })
