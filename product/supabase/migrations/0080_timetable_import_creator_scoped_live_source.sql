@@ -80,6 +80,14 @@ begin
     )
   );
 
+  update public.timetable_import_candidates c
+  set state = 'EXPIRED'
+  where c.workspace_id = p_workspace_id
+    and c.academic_year_id = p_academic_year_id
+    and c.source_fingerprint = p_source_fingerprint
+    and c.state in ('DRAFT','READY_TO_CONFIRM')
+    and c.expires_at <= now();
+
   select c.*
   into candidate
   from public.timetable_import_candidates c
@@ -87,6 +95,7 @@ begin
     and c.academic_year_id = p_academic_year_id
     and c.source_fingerprint = p_source_fingerprint
     and c.state in ('DRAFT','READY_TO_CONFIRM')
+    and c.expires_at > now()
   for update;
 
   if candidate.id is null then
