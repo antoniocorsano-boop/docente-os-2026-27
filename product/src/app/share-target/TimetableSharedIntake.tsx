@@ -48,9 +48,9 @@ export function TimetableSharedIntake({ file, onBeforeSubmit }: Props) {
         if (file.size > MAX_KNOWLEDGE_UPLOAD_BYTES) {
           throw new Error(`Il PDF supera il limite di ${Math.round(MAX_KNOWLEDGE_UPLOAD_BYTES / 1024 / 1024)} MB per l’acquisizione locale.`)
         }
-        const bytes = new Uint8Array(await file.arrayBuffer())
-        const fingerprint = await sha256Hex(bytes)
-        const pdf = await getDocumentProxy(bytes)
+        const buffer = await file.arrayBuffer()
+        const fingerprint = await sha256Hex(buffer)
+        const pdf = await getDocumentProxy(new Uint8Array(buffer))
         if (pdf.numPages < 1 || pdf.numPages > MAX_PAGES) {
           throw new Error(`Il PDF ha ${pdf.numPages} pagine: il flusso locale per l’orario supporta fino a ${MAX_PAGES} pagine.`)
         }
@@ -503,8 +503,8 @@ const WEEKDAYS = [
   { value: 6, label: 'Sabato' },
 ] as const
 
-async function sha256Hex(bytes: Uint8Array) {
-  const digest = await crypto.subtle.digest('SHA-256', bytes)
+async function sha256Hex(buffer: ArrayBuffer) {
+  const digest = await crypto.subtle.digest('SHA-256', buffer)
   return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, '0')).join('')
 }
 
