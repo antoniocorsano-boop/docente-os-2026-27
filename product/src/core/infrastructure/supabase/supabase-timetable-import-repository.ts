@@ -279,62 +279,18 @@ export class SupabaseTimetableImportRepository {
     endTime: string
   }) {
     const supabase = await createClient()
-
-    const { data: candidate, error: candidateError } = await supabase
-      .from('timetable_import_candidates')
-      .select('id,state,revision,workspace_id,academic_year_id')
-      .eq('id', input.candidateId)
-      .eq('revision', input.candidateRevision)
-      .single()
-    if (candidateError) throw new Error(candidateError.message)
-
-    let editableRevision = candidate.revision
-    if (candidate.state === 'READY_TO_CONFIRM') {
-      const { data: reopened, error: reopenError } = await supabase
-        .from('timetable_import_candidates')
-        .update({ state: 'DRAFT' })
-        .eq('id', candidate.id)
-        .eq('revision', candidate.revision)
-        .eq('state', 'READY_TO_CONFIRM')
-        .select('revision')
-        .single()
-      if (reopenError) throw new Error(reopenError.message)
-      editableRevision = reopened.revision
-    } else if (candidate.state !== 'DRAFT') {
-      throw new Error('Candidate is no longer editable')
-    }
-
-    const { data: assignment, error: assignmentError } = await supabase
-      .from('teaching_assignments')
-      .select('id,section_id,workspace_id,academic_year_id')
-      .eq('id', input.assignmentId)
-      .eq('workspace_id', candidate.workspace_id)
-      .eq('academic_year_id', candidate.academic_year_id)
-      .single()
-    if (assignmentError) throw new Error(assignmentError.message)
-
-    const { error } = await supabase
-      .from('timetable_import_candidate_rows')
-      .update({
-        weekday: normalizeWeekday(input.weekday),
-        ordinal: normalizeOrdinal(input.ordinal),
-        start_time: normalizeTime(input.startTime),
-        end_time: normalizeTime(input.endTime),
-        resolved_section_id: assignment.section_id,
-        resolved_assignment_id: assignment.id,
-        proposed_slot_kind: 'LESSON',
-        confidence: 'HIGH',
-        review_state: 'CONFIRMED',
-        warnings: [],
-      })
-      .eq('id', input.rowId)
-      .eq('candidate_id', candidate.id)
-      .eq('candidate_revision', editableRevision)
-      .select('id')
-      .single()
-
+    const { data, error } = await supabase.rpc('update_timetable_import_row_v1', {
+      p_candidate_id: input.candidateId,
+      p_expected_revision: String(input.candidateRevision),
+      p_row_id: input.rowId,
+      p_assignment_id: input.assignmentId,
+      p_weekday: normalizeWeekday(input.weekday),
+      p_ordinal: normalizeOrdinal(input.ordinal),
+      p_start_time: normalizeTime(input.startTime),
+      p_end_time: normalizeTime(input.endTime),
+    })
     if (error) throw new Error(error.message)
-    await this.promoteIfComplete(candidate.id, editableRevision)
+    return data
   }
 
   async addManualRow(input: {
@@ -347,69 +303,17 @@ export class SupabaseTimetableImportRepository {
     endTime: string
   }) {
     const supabase = await createClient()
-    const { data: candidate, error: candidateError } = await supabase
-      .from('timetable_import_candidates')
-      .select('id,state,revision,workspace_id,academic_year_id')
-      .eq('id', input.candidateId)
-      .eq('revision', input.candidateRevision)
-      .single()
-    if (candidateError) throw new Error(candidateError.message)
-
-    let editableRevision = candidate.revision
-    if (candidate.state === 'READY_TO_CONFIRM') {
-      const { data: reopened, error: reopenError } = await supabase
-        .from('timetable_import_candidates')
-        .update({ state: 'DRAFT' })
-        .eq('id', candidate.id)
-        .eq('revision', candidate.revision)
-        .eq('state', 'READY_TO_CONFIRM')
-        .select('revision')
-        .single()
-      if (reopenError) throw new Error(reopenError.message)
-      editableRevision = reopened.revision
-    } else if (candidate.state !== 'DRAFT') {
-      throw new Error('Candidate is no longer editable')
-    }
-
-    const { data: assignment, error: assignmentError } = await supabase
-      .from('teaching_assignments')
-      .select('id,section_id,workspace_id,academic_year_id')
-      .eq('id', input.assignmentId)
-      .eq('workspace_id', candidate.workspace_id)
-      .eq('academic_year_id', candidate.academic_year_id)
-      .single()
-    if (assignmentError) throw new Error(assignmentError.message)
-
-    const rowKey = [
-      'manual',
-      String(normalizeWeekday(input.weekday)),
-      String(normalizeOrdinal(input.ordinal)),
-      assignment.section_id,
-      crypto.randomUUID(),
-    ].join(':')
-
-    const { error } = await supabase
-      .from('timetable_import_candidate_rows')
-      .insert({
-        candidate_id: candidate.id,
-        candidate_revision: editableRevision,
-        row_key: rowKey.slice(0, 160),
-        weekday: normalizeWeekday(input.weekday),
-        ordinal: normalizeOrdinal(input.ordinal),
-        start_time: normalizeTime(input.startTime),
-        end_time: normalizeTime(input.endTime),
-        source_class_label: null,
-        resolved_section_id: assignment.section_id,
-        resolved_assignment_id: assignment.id,
-        proposed_slot_kind: 'LESSON',
-        confidence: 'HIGH',
-        review_state: 'CONFIRMED',
-        evidence_ref: 'teacher:manual-addition',
-        warnings: [],
-      })
-
+    const { data, error } = await supabase.rpc('add_timetable_import_row_v1', {
+      p_candidate_id: input.candidateId,
+      p_expected_revision: String(input.candidateRevision),
+      p_assignment_id: input.assignmentId,
+      p_weekday: normalizeWeekday(input.weekday),
+      p_ordinal: normalizeOrdinal(input.ordinal),
+      p_start_time: normalizeTime(input.startTime),
+      p_end_time: normalizeTime(input.endTime),
+    })
     if (error) throw new Error(error.message)
-    await this.promoteIfComplete(candidate.id, editableRevision)
+    return data
   }
 
   async promoteIfComplete(candidateId: string, candidateRevision: number) {
