@@ -42,7 +42,7 @@ test('timetable-like shared PDFs use local minimization before timetable analysi
   assert.match(timetableIntake, /Il PDF completo non viene caricato in Conoscenza/)
   assert.match(timetableIntake, /await onBeforeSubmit\(\)/)
   assert.match(timetableIntake, /await analyzeMinimizedTimetableImport\(data\)/)
-  assert.match(timetableIntake, /sha256Hex\(bytes\)/)
+  assert.match(timetableIntake, /sha256Hex\(buffer\)/)
   assert.match(timetableIntake, /originalSourceFingerprint/)
   assert.doesNotMatch(timetableIntake, /originalSourceName/)
   assert.match(timetableIntake, /derivativeContextLabel/)
@@ -317,7 +317,7 @@ test('direct candidate-row mutations are closed behind revision-aware RPCs', () 
 
 
 test('draft timetable review edits use atomic revision-advancing RPCs', () => {
-  const repository = fs.readFileSync(new URL('../core/infrastructure/supabase/supabase-timetable-import-repository.ts', import.meta.url), 'utf8')
+  const repository = fs.readFileSync(new URL('../../core/infrastructure/supabase/supabase-timetable-import-repository.ts', import.meta.url), 'utf8')
   const migration = fs.readFileSync(new URL('../../../supabase/migrations/0080_timetable_import_same_id_live_source_revision.sql', import.meta.url), 'utf8')
   assert.match(repository, /update_timetable_import_row_v1/)
   assert.match(repository, /add_timetable_import_row_v1/)
