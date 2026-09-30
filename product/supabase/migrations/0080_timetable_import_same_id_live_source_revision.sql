@@ -532,6 +532,11 @@ grant execute on function public.update_timetable_import_row_v1(uuid,bigint,uuid
 revoke all on function public.add_timetable_import_row_v1(uuid,bigint,uuid,smallint,smallint,time,time) from public, anon;
 grant execute on function public.add_timetable_import_row_v1(uuid,bigint,uuid,smallint,smallint,time,time) to authenticated;
 
+-- All substantive candidate-row mutations must pass through the revision-aware
+-- SECURITY DEFINER RPCs above. Closing direct PostgREST writes prevents legacy
+-- or stale clients from bypassing p_expected_revision and the atomic bump.
+revoke insert, update, delete on table public.timetable_import_candidate_rows from authenticated, anon;
+
 select private.advance_runtime_schema_contract('0080_timetable_import_same_id_live_source_revision');
 
 commit;
