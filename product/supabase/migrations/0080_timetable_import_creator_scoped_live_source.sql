@@ -1,3 +1,10 @@
+begin;
+
+insert into private.runtime_schema_required_migrations(version, migration_id)
+values (80, '0080_timetable_import_creator_scoped_live_source')
+on conflict (version) do update
+set migration_id = excluded.migration_id;
+
 -- DOS-TT-IMPORT-01 / privacy-first minimized Share Target
 -- A live import candidate is unique per creator. This keeps server-derived
 -- derivative identity compatible with creator-scoped lookup/replacement.
@@ -12,3 +19,7 @@ create unique index timetable_import_one_live_source_creator_uq
     source_fingerprint
   )
   where state in ('DRAFT','READY_TO_CONFIRM');
+
+select private.advance_runtime_schema_contract('0080_timetable_import_creator_scoped_live_source');
+
+commit;
