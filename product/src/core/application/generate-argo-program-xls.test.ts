@@ -51,8 +51,6 @@ test('maps the governed Argo program to the exact six-column didUP row grammar',
 test('writes a true OLE/BIFF8 .xls workbook and round-trips the semantic table', () => {
   const bytes = generateArgoProgramXls(specimen())
 
-  console.log(`G5C_REFERENCE_XLS_BASE64=${bytes.toString('base64')}`)
-
   assert.ok(Buffer.isBuffer(bytes))
   assert.deepEqual(
     [...bytes.subarray(0, 8)],
