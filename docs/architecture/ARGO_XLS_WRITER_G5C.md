@@ -49,3 +49,17 @@ Two human/external checks remain mandatory before G5-C can close:
 2. import that same file manually in didUP and record the result.
 
 No browser automation, credentials, API write, DB migration or UI integration is part of this spike.
+
+
+## Reference artifact generated from CI
+
+Generation evidence:
+
+- source head: `5b8bb6306829ca2a494c70dc39ee7a90fb9387ad`
+- artifact: `argo-program-g5c-reference.xls`
+- size: `4096 bytes`
+- SHA-256: `23f3564b959cbb99b7d9a249429da2f6d9d16f785311b1e744b5202e9cc6fcf9`
+- OLE/CFB signature: `d0cf11e0a1b11ae1`
+- automated Product CI result on generation head: PASS
+
+The artifact bytes were produced by the G5-C writer executed in CI. The temporary Base64 log emission used only to extract this proof artifact was removed immediately afterwards and is not part of the intended implementation.
