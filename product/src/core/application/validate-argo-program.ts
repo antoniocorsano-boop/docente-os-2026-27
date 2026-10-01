@@ -15,14 +15,14 @@ const PERFORMED_STATUSES = new Set<ArgoPerformedStatus>([
 export function validateArgoProgram(program: ArgoProgram): ArgoProgramValidationResult {
   const findings: ArgoProgramValidationFinding[] = []
 
-  for (const module of program.modules) {
-    if (!module.description.trim()) {
-      findings.push(error(module.id, 'MODULE_DESCRIPTION_REQUIRED'))
-    } else if (module.description.length > ARGO_MODULE_DESCRIPTION_MAX_LENGTH) {
-      findings.push(error(module.id, 'MODULE_DESCRIPTION_TOO_LONG'))
+  for (const programModule of program.modules) {
+    if (!programModule.description.trim()) {
+      findings.push(error(programModule.id, 'MODULE_DESCRIPTION_REQUIRED'))
+    } else if (programModule.description.length > ARGO_MODULE_DESCRIPTION_MAX_LENGTH) {
+      findings.push(error(programModule.id, 'MODULE_DESCRIPTION_TOO_LONG'))
     }
 
-    for (const argument of module.arguments) {
+    for (const argument of programModule.arguments) {
       if (!argument.description.trim()) {
         findings.push(error(argument.id, 'ARGUMENT_DESCRIPTION_REQUIRED'))
       }
