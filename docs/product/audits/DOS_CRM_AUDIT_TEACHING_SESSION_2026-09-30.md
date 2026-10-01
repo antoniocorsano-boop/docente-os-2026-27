@@ -81,3 +81,10 @@ Creare/passare `DOS-TEACHING-SESSION-QUALIFICATION` su exact SHA con:
 `DOS-TEACHING-SESSION` passa da `NEEDS_REAUDIT / STALE` a:
 
 `CRL 4 / INTEGRATED / CURRENT`.
+
+
+## Addendum 2026-10-01 — remediation e QL-1
+
+I finding relativi alla mancata inclusione di `lesson-registration-runtime-contract.test.ts` e `lesson-close-error-contract.test.ts` nel Product CI sono **CLOSED** dalla PR #642.
+
+QL-1 (PR #643) ha attraversato TeachingSession sull'exact head `eda319ec545d5ad37104882d5224c020ebe302dc` con technical PASS e Human Review PASS. Il CRL resta **4**: `human_use=NOT_RUN` e manca ancora la receipt operativa/recovery task-based richiesta dalla lane prima di una promozione.
