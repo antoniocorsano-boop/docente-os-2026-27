@@ -18,9 +18,9 @@ export function normalizeTeacherSearch(value: string) {
   return value
     .normalize('NFKC')
     .toLocaleUpperCase('it-IT')
-    .replace(/[^\\p{L}\\p{N}]+/gu, ' ')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim()
-    .replace(/\\s+/g, ' ')
+    .replace(/\s+/g, ' ')
 }
 
 export function teacherLabelMatches(text: string, teacherLabel: string) {
