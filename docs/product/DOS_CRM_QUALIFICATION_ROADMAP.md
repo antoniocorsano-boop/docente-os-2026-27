@@ -1,6 +1,6 @@
 # DOCENTE OS — DOS-CRM Qualification Roadmap
 
-Data: **2026-09-30**  
+Data: **2026-10-01**  
 Stato: **CURRENT / EXECUTION ROADMAP**  
 Fonte: `ops/capability-readiness.json`
 
@@ -149,29 +149,23 @@ Potenziale impatto:
 - promozione **Copilot** CRL 4→5;
 - evidence complementare per Today+Next, Lesson Prep, Knowledge e Piano/UDA.
 
-## 4. Remediation immediata prima delle qualification lanes
+## 4. Stato esecutivo aggiornato — 2026-10-01
+
+- **R-1 — COMPLETE** via PR #642, exact head `04ca4e6fb5b6832ae26df84da2290928ea8c3742`, merge `1d8c4ee7c1209f624b412db1b11e666c2de25aaa`. Product CI include ora le regression contract TeachingSession.
+- **R-2 — COMPLETE** via PR #642: binding disciplina fail-closed sul piano canonico supportato e graceful degradation della dipendenza opzionale di preparation.
+- **R-3 — COMPLETE**: schema e contract receipt già consolidati.
+- **QL-1 — TECHNICAL PASS + HUMAN REVIEW PASS / HUMAN_USE PENDING** via PR #643, qualified exact head `eda319ec545d5ad37104882d5224c020ebe302dc`, merge `a59cc21e01b1955514e946fa487a50712a004857`. 45 test browser PASS, Browser Certification/Product CI/K1/ASVS/Human Interaction/TRAMA/MFA Queue Hygiene PASS.
+- **Nessuna promozione CRL automatica**: la lane richiede ancora HUMAN_USE task-based prima di attribuire una promozione alle capability attraversate.
+
+## 4-bis. Remediation immediata prima delle qualification lanes
 
 ### R-1 — TeachingSession regression discovery
 
-Problema corrente:
-- `lesson-registration-runtime-contract.test.ts`;
-- `lesson-close-error-contract.test.ts`;
-
-non risultano inclusi nello script `npm test`.
-
-Azione:
-- includerli esplicitamente oppure adottare test discovery deterministica;
-- verificare che Product CI li esegua realmente.
-
-È un blocker diretto di QL-1.
+Stato: **COMPLETE** con PR #642. Le regression contract TeachingSession sono ora incluse nel Product CI e il blocker di QL-1 è chiuso.
 
 ### R-2 — Copilot K2 historical findings
 
-Verificare sul codice corrente:
-1. discipline binding del piano canonico;
-2. graceful degradation quando una dipendenza opzionale di preparation fallisce.
-
-Se già risolti, produrre evidence; se ancora presenti, correggere prima di QL-4.
+Stato: **COMPLETE** con PR #642. Il binding disciplina corrente è fail-closed sul piano canonico supportato e la dipendenza opzionale di preparation degrada senza perdere il contesto base.
 
 ### R-3 — Release-grade operational receipts
 
@@ -189,7 +183,7 @@ Lo stesso schema deve essere riusabile da QL-1..QL-4 e dal Control Center.
 3. R-3 receipt schema + validator.
 
 ### Wave B — massimo leverage
-4. QL-1 Daily Teaching Loop;
+4. QL-1 Daily Teaching Loop — technical PASS + Human Review PASS; HUMAN_USE pending;
 5. QL-2 Professional Context & Setup.
 
 ### Wave C — knowledge/AI
