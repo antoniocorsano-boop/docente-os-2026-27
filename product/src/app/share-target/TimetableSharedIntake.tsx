@@ -5,11 +5,11 @@ import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerE
 import { getDocumentProxy } from 'unpdf'
 import { analyzeMinimizedTimetableImport } from '@/app/orario/actions'
 import { MAX_KNOWLEDGE_UPLOAD_BYTES } from '@/app/knowledge/upload-policy'
-import { clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, isValidOrdinal, parseOrdinal, teacherLabelMatches, type Rect } from './timetable-share-helpers'
+import { clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, inferTeacherTimetableCells, isValidOrdinal, parseOrdinal, teacherLabelMatches, type Rect, type TimetableTextAnchor } from './timetable-share-helpers'
 
 type Point = { x: number; y: number }
-type Selection = Rect & { id: string; weekday: number | null; ordinal: number | null }
-type SearchAnchor = { text: string; rect: Rect; page: number }
+type Selection = Rect & { id: string; weekday: number | null; ordinal: number | null; classLabel: string | null }
+type SearchAnchor = TimetableTextAnchor
 
 type Props = {
   file: File
@@ -179,11 +179,26 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
       return
     }
     const matches = searchAnchorsRef.current.filter((anchor) => teacherLabelMatches(anchor.text, label))
+    const inferred = inferTeacherTimetableCells(searchAnchorsRef.current, label)
     setTeacherMatches(matches)
     if (!matches.length) {
-      setMessage('Non trovo il nominativo nel testo leggibile del PDF. Puoi comunque selezionare manualmente la tua riga o le tue celle.')
+      setSelections([])
+      setNeedsManualContext(true)
+      setMessage('Non trovo il nominativo nel testo leggibile del PDF. Puoi usare la selezione manuale come fallback.')
       return
     }
+
+    const nextSelections: Selection[] = inferred.map((cell) => ({
+      ...cell.rect,
+      id: crypto.randomUUID(),
+      weekday: cell.weekday,
+      ordinal: cell.ordinal,
+      classLabel: cell.classLabel,
+    }))
+    setSelections(nextSelections)
+    const incomplete = nextSelections.filter((item) => !item.weekday || !isValidOrdinal(item.ordinal) || !item.classLabel)
+    setNeedsManualContext(incomplete.length > 0)
+
     const first = matches[0]
     const viewport = viewportRef.current
     const canvas = canvasRef.current
@@ -191,9 +206,9 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
       const scaleY = canvas.clientHeight / canvas.height
       viewport.scrollTo({ top: Math.max(0, first.rect.y * scaleY - 80), behavior: 'smooth' })
     }
-    setMessage(matches.length === 1
-      ? 'Nome trovato. Ho portato in vista la posizione corrispondente: controlla e seleziona solo le tue celle.'
-      : `Nome trovato in ${matches.length} punti. Le occorrenze sono evidenziate: controlla e seleziona solo le tue celle.`)
+    setMessage(incomplete.length
+      ? `Ho trovato ${nextSelections.length} lezioni candidate; ${incomplete.length} richiedono un controllo dei dettagli.`
+      : `Ho ricostruito automaticamente ${nextSelections.length} lezioni: controlla il riepilogo e continua.`)
   }
 
   function point(event: ReactPointerEvent<HTMLCanvasElement>): Point {
@@ -235,6 +250,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
       id: crypto.randomUUID(),
       weekday: null,
       ordinal: null,
+      classLabel: null,
     }])
     setMessage('Area aggiunta. Puoi selezionare altre celle oppure preparare la proposta.')
   }
@@ -274,7 +290,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
 
   async function submit() {
     const source = canvasRef.current
-    const missingManualContext = needsManualContext && selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal))
+    const missingManualContext = needsManualContext && selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal) || !item.classLabel)
     if (!source || !sourceFingerprint || !selections.length || missingManualContext || !teacherLabel.trim() || !effectiveFrom || busy || acceptedCandidateId) return
     setBusy(true)
     try {
@@ -352,7 +368,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
     }
   }
 
-  function updateSelection(id: string, patch: Partial<Pick<Selection, 'weekday' | 'ordinal'>>) {
+  function updateSelection(id: string, patch: Partial<Pick<Selection, 'weekday' | 'ordinal' | 'classLabel'>>) {
     setSelections((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item))
   }
 
@@ -375,7 +391,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
       <div className="knowledgeFeedback" role="status">
         <strong>Trova il tuo nome, controlla le celle, conferma</strong>
         <p style={{ margin: '4px 0 0' }}>
-          Il PDF resta sul dispositivo. Docente OS cerca localmente il tuo nominativo e ti porta nel punto giusto; tu selezioni solo le celle che ti appartengono.
+          Il PDF resta sul dispositivo. Inserisci il nominativo: Docente OS ricostruisce automaticamente il tuo orario settimanale e ti chiede solo di controllarlo.
         </p>
       </div>
 
@@ -385,7 +401,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
           <input value={teacherLabel} onChange={(event) => { setTeacherLabel(event.currentTarget.value); setTeacherMatches([]) }} maxLength={120} autoComplete="off" placeholder="Es. ROSSI" />
         </label>
         <button type="button" onClick={findTeacher} disabled={!ready || !teacherLabel.trim() || busy}>
-          Trova il mio nome
+          Estrai il mio orario
         </button>
         <small>La ricerca avviene localmente nel PDF. Se il testo non è leggibile, puoi comunque usare la selezione manuale.</small>
       </div>
@@ -462,7 +478,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
         <span className="timetableKeyboardHelp"> Da tastiera: usa le frecce, Invio per iniziare/chiudere l’area e Maiusc + frecce per spostarti più velocemente.</span>
       </small>
 
-      <button
+      {(!selections.length || needsManualContext) ? <button
         type="button"
         aria-pressed={touchSelectMode}
         onClick={() => {
@@ -473,20 +489,26 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
         }}
         disabled={!ready || busy}
       >
-        {touchSelectMode ? 'Torna a scorrere' : 'Seleziona area su schermo touch'}
-      </button>
+        {touchSelectMode ? 'Torna a scorrere' : 'Selezione manuale (fallback)'}
+      </button> : null}
 
       {selections.length ? (
         <div className="knowledgeFeedback" style={{ display: 'grid', gap: 8 }}>
-          <strong>{selections.length} area{selections.length === 1 ? '' : 'e'} pronta{selections.length === 1 ? '' : 'e'} per il controllo</strong>
-          <span>Prova prima a preparare la proposta: Docente OS ricaverà giorno e ora dal contesto visibile quando è sufficientemente chiaro.</span>
+          <strong>{selections.length} lezion{selections.length === 1 ? 'e' : 'i'} trovata{selections.length === 1 ? '' : 'e'}</strong>
+          <div style={{ display: 'grid', gap: 4 }}>
+            {selections.map((selection, index) => (
+              <span key={selection.id}>
+                {index + 1}. {WEEKDAYS.find((day) => day.value === selection.weekday)?.label ?? 'Giorno da verificare'} · {selection.ordinal ? `${selection.ordinal}ª ora` : 'ora da verificare'} · {selection.classLabel ?? 'classe da verificare'}
+              </span>
+            ))}
+          </div>
         </div>
       ) : null}
 
       {needsManualContext && selections.length ? (
         <details open>
-          <summary><strong>Correzione avanzata · indica giorno e ora</strong></summary>
-          <p>Questi campi compaiono solo perché il documento non contiene abbastanza contesto per ricavarli in modo affidabile.</p>
+          <summary><strong>Correzione avanzata · completa i dettagli ambigui</strong></summary>
+          <p>Questi campi compaiono solo quando il documento non consente una ricostruzione automatica affidabile.</p>
           <div style={{ display: 'grid', gap: 8 }} aria-label="Contesto avanzato delle aree selezionate">
             {selections.map((selection, index) => (
               <div key={selection.id} className="knowledgeFeedback" style={{ display: 'grid', gap: 8 }}>
@@ -511,6 +533,14 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
                     onChange={(event) => updateSelection(selection.id, { ordinal: parseOrdinal(event.currentTarget.value) })}
                   />
                 </label>
+                <label>
+                  <span>Classe</span>
+                  <input
+                    value={selection.classLabel ?? ''}
+                    onChange={(event) => updateSelection(selection.id, { classLabel: event.currentTarget.value.trim() || null })}
+                    placeholder="Es. 2C"
+                  />
+                </label>
                 <button type="button" onClick={() => setSelections((current) => current.filter((item) => item.id !== selection.id))} disabled={busy}>
                   Rimuovi area
                 </button>
@@ -521,7 +551,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
       ) : null}
 
       <div className="timetablePrimaryActions">
-        <button type="button" onClick={() => void submit()} disabled={!ready || !sourceFingerprint || !selections.length || (needsManualContext && selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal))) || !teacherLabel.trim() || !effectiveFrom || busy || Boolean(acceptedCandidateId)}>
+        <button type="button" onClick={() => void submit()} disabled={!ready || !sourceFingerprint || !selections.length || (needsManualContext && selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal) || !item.classLabel)) || !teacherLabel.trim() || !effectiveFrom || busy || Boolean(acceptedCandidateId)}>
           {busy ? 'Preparo la proposta…' : 'Continua'}
         </button>
         {acceptedCandidateId ? (
@@ -571,6 +601,7 @@ async function cropSelections(source: HTMLCanvasElement, selections: Selection[]
       ...clampRectToBounds(rect, source.width, source.height),
       weekday: rect.weekday,
       ordinal: rect.ordinal,
+      classLabel: rect.classLabel,
     }))
     .filter((rect) => rect.width > 0 && rect.height > 0)
 
@@ -580,7 +611,7 @@ async function cropSelections(source: HTMLCanvasElement, selections: Selection[]
   if (!measureCtx) throw new Error('Canvas di misura non disponibile')
   measureCtx.font = '600 22px sans-serif'
   const labelWidth = Math.ceil(Math.max(...normalized.map((rect) =>
-    measureCtx.measureText(derivativeContextLabel(teacherLabel, rect.weekday, rect.ordinal)).width
+    measureCtx.measureText(derivativeContextLabel(teacherLabel, rect.weekday, rect.ordinal, rect.classLabel)).width
   ))) + 16
   const width = Math.max(...normalized.map((rect) => rect.width), labelWidth, 420)
   const height = normalized.reduce((sum, rect) => sum + labelHeight + rect.height, 0) + padding * Math.max(0, normalized.length - 1)
@@ -597,7 +628,7 @@ async function cropSelections(source: HTMLCanvasElement, selections: Selection[]
 
   let y = 0
   for (const rect of normalized) {
-    ctx.fillText(derivativeContextLabel(teacherLabel, rect.weekday, rect.ordinal), 8, y + labelHeight / 2)
+    ctx.fillText(derivativeContextLabel(teacherLabel, rect.weekday, rect.ordinal, rect.classLabel), 8, y + labelHeight / 2)
     y += labelHeight
     ctx.drawImage(source, rect.x, rect.y, rect.width, rect.height, 0, y, rect.width, rect.height)
     y += rect.height + padding
