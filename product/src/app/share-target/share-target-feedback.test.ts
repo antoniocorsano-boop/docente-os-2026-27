@@ -31,29 +31,19 @@ test('shared file reuses governed Knowledge upload feedback', () => {
 })
 
 
-test('timetable-like shared PDFs use local minimization before timetable analysis', () => {
+test('timetable-like shared PDFs use governed real-document understanding after explicit teacher action', () => {
   assert.match(intake, /looksLikeTimetable/)
   assert.match(intake, /TimetableSharedIntake/)
-
-  assert.match(timetableIntake, /cropSelections/)
-  assert.match(timetableIntake, /orario-selezione-locale\.png/)
-  assert.match(timetableIntake, /data\.set\('file', safeFile\)/)
-  assert.doesNotMatch(timetableIntake, /data\.set\('file', file\)/)
-  assert.match(timetableIntake, /Il PDF completo non viene caricato in Conoscenza/)
-  assert.match(timetableIntake, /await onBeforeSubmit\(\)/)
-  assert.match(timetableIntake, /await analyzeMinimizedTimetableImport\(data\)/)
-  assert.match(timetableIntake, /sha256Hex\(buffer\)/)
-  assert.match(timetableIntake, /originalSourceFingerprint/)
-  assert.doesNotMatch(timetableIntake, /originalSourceName/)
-  assert.match(timetableIntake, /derivativeContextLabel/)
-  assert.match(timetableIntake, /x: clamp\(x, 0, canvas\.width\)/)
-  assert.match(timetableIntake, /y: clamp\(y, 0, canvas\.height\)/)
-  assert.match(timetableIntake, /parseOrdinal\(event\.currentTarget\.value\)/)
-  assert.match(timetableIntake, /needsManualContext && selections\.some\(\(item\) => !item\.weekday \|\| !isValidOrdinal\(item\.ordinal\) \|\| !item\.classLabel\)/)
-
-  assert.match(timetableActions, /resolveTimetableSourceIdentity/)
-  assert.match(timetableActions, /sourceIdentity\.sourceLabel/)
-  assert.match(timetableActions, /sourceIdentity\.sourceRef/)
+  assert.match(timetableIntake, /Trova il mio orario/)
+  assert.match(timetableIntake, /data\.set\('file', file\)/)
+  assert.match(timetableIntake, /await analyzeSharedTimetableImport\(data\)/)
+  assert.match(timetableIntake, /Sto leggendo il tuo orario/)
+  assert.match(timetableIntake, /Cerco .* nel documento e ricostruisco giorno, ora e classe/)
+  assert.doesNotMatch(timetableIntake, /Selezione manuale/)
+  assert.doesNotMatch(timetableIntake, /cropSelections/)
+  assert.match(timetableActions, /export async function analyzeSharedTimetableImport/)
+  assert.match(timetableActions, /OpenAiTimetableDocumentExtractor/)
+  assert.match(timetableActions, /replaceCandidateAtomic/)
 })
 
 
@@ -135,19 +125,19 @@ test('teacher timetable is reconstructed locally from table geometry', () => {
 })
 
 
-test('mobile timetable flow keeps day and period in progressive fallback', () => {
-  assert.match(timetableIntake, /Estrai il mio orario/)
-  assert.match(timetableIntake, /teacherLabelMatches/)
-  assert.match(timetableIntake, /teacherMatches/)
-  assert.match(timetableIntake, /needsManualContext/)
-  assert.match(timetableIntake, /Correzione avanzata · completa i dettagli ambigui/)
-  assert.match(timetableIntake, /code === 'parse_failed' \|\| code === 'no_rows'/)
-  assert.match(timetableIntake, /derivativeContextLabel\(teacherLabel, rect\.weekday, rect\.ordinal, rect\.classLabel\)/)
+test('mobile timetable primary flow is document understanding, not manual cell reconstruction', () => {
+  assert.match(timetableIntake, /Come compari nell’orario\?/)
+  assert.match(timetableIntake, /Trova il mio orario/)
+  assert.match(timetableIntake, /ricostruisco giorno, ora e classe/)
+  assert.doesNotMatch(timetableIntake, /teacherLabelMatches/)
+  assert.doesNotMatch(timetableIntake, /needsManualContext/)
+  assert.doesNotMatch(timetableIntake, /Correzione avanzata/)
 })
+
 
 test('real-device mobile flow keeps primary action compact and secondary controls collapsed', () => {
   assert.match(timetableIntake, /timetablePrimaryActions/)
-  assert.match(timetableIntake, /'Continua'/)
+  assert.match(timetableIntake, /Trova il mio orario/)
   assert.match(timetableIntake, /<summary>Altre opzioni<\/summary>/)
   assert.match(timetableIntake, /<summary>Privacy e file locale<\/summary>/)
   assert.match(timetableIntake, /timetableKeyboardHelp/)
