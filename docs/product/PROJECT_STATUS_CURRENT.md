@@ -216,6 +216,12 @@ Prima capability qualificata nel nuovo registro:
 
 Il registro va aggiornato quando nuove evidence cambiano materialmente funzionalità, UX, dati, sicurezza, integrazione, qualificazione, operatività o governance di una capability.
 
+Aggiornamento 2026-10-01:
+- Wave A remediation PR #642 è consolidata;
+- QL-1 Daily Teaching Loop PR #643 è consolidata su merge `a59cc21e01b1955514e946fa487a50712a004857`;
+- QL-1 ha technical PASS + Human Review PASS, ma `human_use=NOT_RUN`;
+- nessuna capability viene promossa automaticamente: il registro conserva i CRL finché l'evidence mancante non è completata.
+
 ## 14. Maturity e assurance
 
 M5 continua come assurance di prodotto ma non detta più il ritmo quotidiano di implementazione.
