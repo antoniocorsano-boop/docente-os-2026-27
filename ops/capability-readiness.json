@@ -4,8 +4,8 @@
   "model_version": "1.0",
   "system": "Docente OS",
   "canonical_branch": "develop",
-  "as_of": "2026-09-30",
-  "baseline_sha": "74290511ee58a6b61652160463461527e3e0f57a",
+  "as_of": "2026-10-01",
+  "baseline_sha": "a59cc21e01b1955514e946fa487a50712a004857",
   "rules": {
     "aggregate": "lowest_applicable_critical_axis",
     "percentages_forbidden": true,
@@ -90,12 +90,15 @@
         "PR #490 in-force timetable fallback",
         "PR #612 Cattedra lifecycle without timetable side effects",
         "PR #625 end-to-end timetable import",
-        "PR #640 Share Target minimized timetable import"
+        "PR #640 Share Target minimized timetable import",
+        "QL-1 technical qualification PR #643 merged",
+        "QL-1 qualified exact head eda319ec545d5ad37104882d5224c020ebe302dc",
+        "QL-1 Human Review PASS; human_use=NOT_RUN"
       ],
       "open_findings": [
         "Whole-capability HUMAN_USE evidence is not current.",
-        "No single exact-head qualification roll-up covers the complete Orario journey.",
-        "No recent complete operational receipt covers manual edit, import/review/apply, day/week use and recovery together."
+        "No recent complete operational receipt covers manual edit, import/review/apply, day/week use and recovery together.",
+        "QL-1 now provides current exact-head technical qualification + Human Review, but task-based HUMAN_USE remains pending."
       ],
       "next_promotion_criterion": "Create and pass DOS-TIMETABLE-QUALIFICATION on one exact SHA with Browser Certification, targeted HUMAN_USE and runtime/recovery receipt."
     },
@@ -127,12 +130,15 @@
         "PR #390 V1-A Teacher Moment + Today/Next",
         "PR #490 timetable fallback",
         "PR #481 next-day lesson packs",
-        "PR #568 navigation/pilot evidence"
+        "PR #568 navigation/pilot evidence",
+        "QL-1 technical qualification PR #643 merged",
+        "QL-1 qualified exact head eda319ec545d5ad37104882d5224c020ebe302dc",
+        "QL-1 Human Review PASS; human_use=NOT_RUN"
       ],
       "open_findings": [
         "Historical HUMAN_USE FRICTION/REWORK_REQUIRED has not yet been closed by a fresh whole-cockpit human-use receipt.",
-        "No single exact-head qualification roll-up covers all canonical Daily Cockpit scenarios.",
-        "No recent mobile/PWA operational receipt covers the complete before/during/between/after journey."
+        "No recent mobile/PWA operational receipt covers the complete before/during/between/after journey.",
+        "QL-1 now provides current exact-head technical qualification + Human Review, but task-based HUMAN_USE remains pending."
       ],
       "next_promotion_criterion": "Pass DOS-TODAY-NEXT-QUALIFICATION on one exact SHA with canonical scenario coverage, Browser Certification and fresh HUMAN_USE."
     },
@@ -165,11 +171,14 @@
         "lesson-materials and tomorrow-materials E2E",
         "PR #568 ECO-02/P8 merged",
         "HUMAN REVIEW PASS on PR #568 exact head fd5913aa9ce8a60f16112b88e49f3274209fdc19",
-        "2026-09-21 lesson-record runtime incident corrected with regression contract"
+        "2026-09-21 lesson-record runtime incident corrected with regression contract",
+        "QL-1 technical qualification PR #643 merged",
+        "QL-1 qualified exact head eda319ec545d5ad37104882d5224c020ebe302dc",
+        "QL-1 Human Review PASS; human_use=NOT_RUN"
       ],
       "open_findings": [
-        "Qualification is recent but not rerun on the 2026-09-30 develop baseline.",
-        "CRL-6 requires sustained real-use evidence over multiple days/classes."
+        "CRL-6 requires sustained real-use evidence over multiple days/classes.",
+        "QL-1 reran the lesson-preparation path on current develop with technical PASS and Human Review; freshness remains RECENT until lane-required HUMAN_USE is completed."
       ],
       "next_promotion_criterion": "Requalify on current develop for CURRENT freshness; promote to CRL-6 only after sustained operational/pilot evidence across the full Diary-to-next-lesson cycle."
     },
@@ -200,15 +209,17 @@
         "PR #572 runtime projection parity fix",
         "lesson-register E2E",
         "teaching-session domain tests",
-        "docs/incidents/2026-09-21-lesson-record-runtime-projection.md"
+        "docs/incidents/2026-09-21-lesson-record-runtime-projection.md",
+        "QL-1 technical qualification PR #643 merged",
+        "QL-1 qualified exact head eda319ec545d5ad37104882d5224c020ebe302dc",
+        "QL-1 Human Review PASS; human_use=NOT_RUN"
       ],
       "open_findings": [
-        "lesson-registration-runtime-contract.test.ts is not in the current npm test script.",
-        "lesson-close-error-contract.test.ts is not in the current npm test script.",
         "Beta required manual TE-1A migration reconciliation after the 2026-09-21 runtime fix.",
-        "Fresh post-reconciliation whole-journey HUMAN_USE/operational receipt is missing."
+        "Fresh post-reconciliation whole-journey HUMAN_USE/operational receipt is missing.",
+        "QL-1 technical qualification and Human Review PASS are current; task-based HUMAN_USE and operational recovery evidence remain pending."
       ],
-      "next_promotion_criterion": "Run a single exact-head TeachingSession qualification after CI test-discovery and migration-parity remediation, including E2E, Browser Certification and Human Review."
+      "next_promotion_criterion": "Complete task-based HUMAN_USE and operational recovery evidence for the QL-1 Daily Teaching Loop before any CRL-5 promotion."
     },
     {
       "capability_id": "DOS-PLAN-UDA",
@@ -235,11 +246,14 @@
         "product/src/app/piano-annuale/model.ts + tests",
         "SupabaseAnnualPlanExecutionRepository",
         "PR #239/#240/#242 curriculum-plan interop",
-        "PR #538 H9-A governed replanning consumption"
+        "PR #538 H9-A governed replanning consumption",
+        "QL-1 technical qualification PR #643 merged",
+        "QL-1 qualified exact head eda319ec545d5ad37104882d5224c020ebe302dc",
+        "QL-1 Human Review PASS; human_use=NOT_RUN"
       ],
       "open_findings": [
-        "No single exact-head qualification covers the whole Plan/UDA journey.",
-        "Fresh whole-journey HUMAN_USE and operational receipt are missing."
+        "Fresh whole-journey HUMAN_USE and operational receipt are missing.",
+        "QL-1 now provides current exact-head technical qualification + Human Review, but task-based HUMAN_USE remains pending."
       ],
       "next_promotion_criterion": "Pass an exact-head Plan/UDA qualification from plan progress through governed replanning into lesson preparation and TeachingSession."
     },
@@ -304,11 +318,15 @@
         "PR #257 operational agenda",
         "PR #510 server hardening",
         "PR #569 DOS-CAL-01 Human Review PASS",
-        "PR #592 temporal exceptions"
+        "PR #592 temporal exceptions",
+        "QL-1 technical qualification PR #643 merged",
+        "QL-1 qualified exact head eda319ec545d5ad37104882d5224c020ebe302dc",
+        "QL-1 Human Review PASS; human_use=NOT_RUN"
       ],
       "open_findings": [
         "DOS-CAL-01 is qualified but the entire Calendar capability is not qualified as one journey.",
-        "Current end-to-end Browser/HUMAN_USE evidence for events, exceptions, agenda and recovery is missing."
+        "Current end-to-end Browser/HUMAN_USE evidence for events, exceptions, agenda and recovery is missing.",
+        "QL-1 now provides current exact-head technical qualification + Human Review, but task-based HUMAN_USE remains pending."
       ],
       "next_promotion_criterion": "Run a single exact-head Calendar qualification including events, exceptions, temporal composition, recovery and Human Review."
     },
@@ -409,12 +427,13 @@
         "assistant/teacher/today context tests",
         "PR #420 K2 next-lesson context",
         "PR #422 governed Knowledge retrieval",
-        "Lesson Preparation integration"
+        "Lesson Preparation integration",
+        "PR #642 remediated discipline binding and optional-dependency graceful degradation"
       ],
       "open_findings": [
         "Whole Copilot qualification is missing.",
-        "Historical K2 review findings require current verification of discipline binding and graceful degradation.",
-        "HUMAN_USE still identifies Copilot as not sufficiently operational in the teacher workflow."
+        "HUMAN_USE still identifies Copilot as not sufficiently operational in the teacher workflow.",
+        "Historical K2 findings were remediated by PR #642; full QL-4 Copilot qualification and HUMAN_USE are still missing."
       ],
       "next_promotion_criterion": "Pass a current multi-discipline Copilot qualification covering partial failure, retrieval, proposal/write governance, latency and HUMAN_USE."
     },
@@ -482,7 +501,7 @@
   ],
   "qualification_roadmap": {
     "version": 1,
-    "updated_on": "2026-09-30",
+    "updated_on": "2026-10-01",
     "source": "docs/product/DOS_CRM_QUALIFICATION_ROADMAP.md",
     "remediation": [
       {
@@ -491,7 +510,13 @@
         "blocks": [
           "QL-1"
         ],
-        "status": "OPEN"
+        "status": "COMPLETE",
+        "evidence": [
+          "PR #642 merged",
+          "exact head 04ca4e6fb5b6832ae26df84da2290928ea8c3742",
+          "merge commit 1d8c4ee7c1209f624b412db1b11e666c2de25aaa",
+          "Product CI now executes TeachingSession runtime regressions"
+        ]
       },
       {
         "id": "R-2",
@@ -499,7 +524,13 @@
         "blocks": [
           "QL-4"
         ],
-        "status": "OPEN"
+        "status": "COMPLETE",
+        "evidence": [
+          "PR #642 merged",
+          "exact head 04ca4e6fb5b6832ae26df84da2290928ea8c3742",
+          "canonical-plan discipline binding introduced for current supported Tecnologia plan",
+          "optional next-lesson preparation dependency now fails closed while preserving base context"
+        ]
       },
       {
         "id": "R-3",
@@ -529,7 +560,24 @@
           "DOS-TEACHING-SESSION",
           "DOS-PLAN-UDA"
         ],
-        "status": "PLANNED"
+        "status": "TECHNICAL_PASS_HUMAN_USE_PENDING",
+        "evidence": [
+          "PR #643 merged",
+          "qualified exact head eda319ec545d5ad37104882d5224c020ebe302dc",
+          "merge commit a59cc21e01b1955514e946fa487a50712a004857",
+          "45 QL-1 browser tests PASS on exact head",
+          "Browser Certification PASS",
+          "Product CI PASS",
+          "K1 Knowledge Upload PASS",
+          "ASVS 5.0 Assurance PASS",
+          "Human Interaction Model PASS",
+          "TRAMA Perceptible Write PASS",
+          "Governed MFA Queue Hygiene PASS",
+          "Independent technical review PASS",
+          "HUMAN REVIEW PASS",
+          "human_use=NOT_RUN"
+        ],
+        "open_requirement": "Task-based HUMAN_USE remains required before any CRL promotion attributed to QL-1."
       },
       {
         "id": "QL-2",
