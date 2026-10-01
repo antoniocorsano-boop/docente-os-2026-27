@@ -27,13 +27,13 @@ Un valore `NEEDS_REAUDIT` è intenzionale: significa che esiste una capability r
 | Share Target → importazione Orario con minimizzazione locale | Organizzazione didattica | **5** | **QUALIFIED** | **CURRENT** |
 | Orario | Organizzazione didattica | **4** | **INTEGRATED** | **CURRENT** |
 | Oggi / Today + Next | Teacher Moment | **4** | **INTEGRATED** | **CURRENT** |
-| Preparazione della lezione / Lesson Brief | Didattica | **5** | **QUALIFIED** | **RECENT** |
+| Preparazione della lezione / Lesson Brief | Didattica | **5** | **QUALIFIED** | **STALE** |
 | TeachingSession / registrazione | Didattica | **4** | **INTEGRATED** | **CURRENT** |
 | Piano annuale / UDA | Progettazione | **4** | **INTEGRATED** | **CURRENT** |
 | Conoscenza / KB | Conoscenza | **4** | **INTEGRATED** | **CURRENT** |
 | Calendario / composizione temporale | Organizzazione didattica | **4** | **INTEGRATED** | **CURRENT** |
 | Impostazioni / contesto professionale | Configurazione | **4** | **INTEGRATED** | **CURRENT** |
-| Account / MFA / sessioni | Sicurezza | **5** | **QUALIFIED** | **RECENT** |
+| Account / MFA / sessioni | Sicurezza | **5** | **QUALIFIED** | **STALE** |
 | Copilota docente | AI collaboration | **4** | **INTEGRATED** | **CURRENT** |
 | Contextual Voice Capture | AI collaboration | **3** | **DEFERRED** | **CURRENT** |
 | Institutional Configurator | Integrazione istituzionale | **1** | **CONDITIONAL** | **CURRENT** |
@@ -86,13 +86,13 @@ Audit dettagliato:
 
 ### DOS-LESSON-PREP
 
-**CRL 5 — QUALIFIED / RECENT**
+**CRL 5 — QUALIFIED / STALE**
 
 | F | UX | D | S | I | Q | O | K |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | **5** | **5** | **5** | **5** | **5** | **5** | **5** | **5** |
 
-La capability dispone di una qualification end-to-end con Human Review PASS sul pilota “Prima della lezione”, E2E materiali/preparazione e lifecycle di approvazione governato. La freshness resta RECENT perché l'exact head qualificato è del 21 settembre e non è stato rieseguito sullo SHA corrente del 30 settembre.
+La capability conserva una qualification end-to-end storica con Human Review PASS. Tuttavia sono intervenute modifiche successive; QL-1 ha rieseguito il percorso tecnico sullo SHA corrente ma con `human_use=NOT_RUN`. Perciò il CRL resta 5 come evidence storica qualificata, mentre la freshness è **STALE** finché non viene completata una revalidation whole-capability.
 
 Audit dettagliato:
 
@@ -122,7 +122,7 @@ Audit dettagliato:
 | Conoscenza / KB | **4** | 5 | 4 | 5 | 5 | 5 | 5 | 4 | 5 | CURRENT |
 | Calendario | **4** | 5 | 4 | 5 | 5 | 5 | 4 | 4 | 5 | CURRENT |
 | Impostazioni | **4** | 5 | 4 | 5 | 5 | 5 | 4 | 4 | 5 | CURRENT |
-| Account / MFA / sessioni | **5** | 5 | 5 | 5 | 6 | 5 | 5 | 5 | 5 | RECENT |
+| Account / MFA / sessioni | **5** | 5 | 5 | 5 | 6 | 5 | 5 | 5 | 5 | STALE |
 | Copilota docente | **4** | 4 | 4 | 5 | 5 | 5 | 4 | 4 | 5 | CURRENT |
 
 ### Lettura sintetica
@@ -131,7 +131,7 @@ Audit dettagliato:
 - **Conoscenza**: dati, provenance, security e K1 sono forti; il limite è l'operatività complessiva del journey e la HUMAN_USE.
 - **Calendario**: DOS-CAL-01 è stato qualificato con Human Review, ma il dominio completo non ha ancora un roll-up unico.
 - **Impostazioni**: configurazione persistente e propagazione sono reali; manca qualification completa del first-run e della consistenza cross-surface.
-- **Account/Sicurezza**: prima capability di questo blocco a **CRL 5**, grazie a MFA/AAL2, Browser Gate reale e recovery/re-login verificati.
+- **Account/Sicurezza**: resta **CRL 5** per la qualification storica, ma la freshness è **STALE** perché modifiche successive non sono ancora state riqualificate come whole capability.
 - **Copilota**: realmente integrato, ma non ancora qualificato end-to-end; Voice Capture resta esclusa e separatamente `DEFERRED`.
 
 Audit dettagliati:
@@ -196,17 +196,13 @@ la consultazione deve partire da questo documento e dal registro JSON, quindi ve
 
 ## Prossimo passo previsto
 
-Condurre l'audit capability-by-capability sulla baseline corrente, iniziando dalle capability core già dichiarate disponibili nel sistema:
+1. completare HUMAN_USE task-based della QL-1 prima di qualsiasi promozione CRL attribuita alla lane;
+2. eseguire QL-2 Professional Context & Setup;
+3. revalidare Lesson Prep e Account/Sicurezza per ripristinare freshness CURRENT;
+4. estendere progressivamente il registro alle capability governate ancora fuori copertura (`DOS-CURRICULUM-INTAKE`, `DOS-MATERIALS`, `DOS-OBSERVATION-EVIDENCE`), che devono restare `NEEDS_REAUDIT` finché non auditate;
+5. procedere poi con QL-3 e QL-4.
 
-1. Orario;
-2. Oggi / Today + Next;
-3. Preparazione lezione / Lesson Brief;
-4. TeachingSession;
-5. Piano annuale / UDA;
-6. Conoscenza;
-7. Calendario;
-8. Impostazioni;
-9. Account/Sicurezza;
-10. Copilota.
 
-Il risultato non sostituirà gli audit M5: ne costituirà la vista operativa granulare e continuamente aggiornabile.
+## Coverage boundary del registro
+
+Il registro DOS-CRM corrente è release-oriented e non pretende ancora copertura totale di ogni capability governata. In particolare Curriculum intake/revalidation, Materials e Observation/Evidence restano esplicitamente fuori dal set corrente e devono essere trattate come **NEEDS_REAUDIT**, non come assenti o complete.
