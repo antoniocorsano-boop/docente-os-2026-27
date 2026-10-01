@@ -100,3 +100,9 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
   .timetablePrimaryActions button{width:100%}
   .timetableSecondaryOptions{font-size:14px}
 }
+
+.timetablePreviewViewport{max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:var(--radius-sm)}
+.timetableStatus{margin:0;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-soft);font-weight:650}
+.timetableSpinner{display:inline-block;width:18px;height:18px;margin-right:8px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;vertical-align:-3px;animation:timetableSpin .8s linear infinite}
+@keyframes timetableSpin{to{transform:rotate(360deg)}}
+@media(max-width:719px){.timetablePreviewViewport{max-height:280px}}
