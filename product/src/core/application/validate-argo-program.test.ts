@@ -8,6 +8,7 @@ function validProgram(): ArgoProgram {
     schoolYear: '2026/2027',
     classRef: '1A',
     subjectRef: 'Tecnologia',
+    sourceAssetId: 'asset-programming-1',
     sourceGenerationId: 'gen-1',
     modules: [{
       id: 'MOD-1',
