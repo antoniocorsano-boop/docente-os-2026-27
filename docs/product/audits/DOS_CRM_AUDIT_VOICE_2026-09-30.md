@@ -22,3 +22,8 @@ La capability ha implementazione reale, ma non possiede evidence sufficiente di 
 `CRL 3 / IMPLEMENTED / DEFERRED / CURRENT`.
 
 La promozione richiede scelta esplicita di reinclusione, provider/policy operativa, HVA/HUMAN_USE, privacy/retention receipt e fallback manuale verificato.
+
+
+## Decisione di release consolidata — 2026-10-01
+
+Contextual Voice Capture resta **DEFERRED** dal release core. Questa non è una dichiarazione di qualification: la capability richiede esplicita re-autorizzazione prima di qualunque percorso di release, seguito da provider/privacy/runtime/HVA/HUMAN_USE evidence.
