@@ -14,6 +14,21 @@ export function looksLikeTimetablePdf(input: {
   return /\b(orario|timetable|quadro\s+orario)\b/.test(haystack)
 }
 
+export function normalizeTeacherSearch(value: string) {
+  return value
+    .normalize('NFKC')
+    .toLocaleUpperCase('it-IT')
+    .replace(/[^\\p{L}\\p{N}]+/gu, ' ')
+    .trim()
+    .replace(/\\s+/g, ' ')
+}
+
+export function teacherLabelMatches(text: string, teacherLabel: string) {
+  const needle = normalizeTeacherSearch(teacherLabel)
+  if (needle.length < 2) return false
+  return normalizeTeacherSearch(text).includes(needle)
+}
+
 export function parseOrdinal(value: string) {
   const parsed = Number(value)
   return isValidOrdinal(parsed) ? parsed : null
@@ -72,10 +87,19 @@ const WEEKDAY_LABELS = new Map<number, string>([
   [6, 'Sabato'],
 ])
 
-export function derivativeContextLabel(teacherLabel: string, weekday: number, ordinal: number) {
+export function derivativeContextLabel(
+  teacherLabel: string,
+  weekday: number | null,
+  ordinal: number | null,
+) {
   const teacher = teacherLabel.trim()
-  const day = WEEKDAY_LABELS.get(weekday) ?? `Giorno ${weekday}`
   if (!teacher) throw new Error('Teacher label is required')
+
+  if (weekday === null || ordinal === null) {
+    return `DOCENTE: ${teacher}`
+  }
+
+  const day = WEEKDAY_LABELS.get(weekday) ?? `Giorno ${weekday}`
   if (!isValidOrdinal(ordinal)) throw new Error('Valid timetable ordinal is required')
   return `DOCENTE: ${teacher} · GIORNO: ${day} · ORA: ${ordinal}`
 }
