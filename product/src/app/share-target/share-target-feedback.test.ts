@@ -126,6 +126,15 @@ test('mobile timetable flow keeps day and period in progressive fallback', () =>
   assert.match(timetableIntake, /derivativeContextLabel\(teacherLabel, rect\.weekday, rect\.ordinal\)/)
 })
 
+test('real-device mobile flow keeps primary action compact and secondary controls collapsed', () => {
+  assert.match(timetableIntake, /timetablePrimaryActions/)
+  assert.match(timetableIntake, />Continua</)
+  assert.match(timetableIntake, /<summary>Altre opzioni<\/summary>/)
+  assert.match(timetableIntake, /<summary>Privacy e file locale<\/summary>/)
+  assert.match(timetableIntake, /timetableKeyboardHelp/)
+  assert.doesNotMatch(timetableIntake, /Prepara proposta di orario/)
+})
+
 test('teacher-only derivative context is allowed before advanced fallback', () => {
   assert.equal(derivativeContextLabel(' ROSSI ', null, null), 'DOCENTE: ROSSI')
 })
