@@ -22,10 +22,6 @@ permissions:
   contents: read
   statuses: write
 
-concurrency:
-  group: x3-e2e-beta
-  cancel-in-progress: true
-
 env:
   E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
   E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
@@ -34,6 +30,9 @@ env:
 jobs:
   x3-application-acceptance:
     name: x3-application-acceptance
+    concurrency:
+      group: docente-os-governed-mfa-e2e
+      queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -174,6 +173,9 @@ jobs:
 
   x3-render-acceptance:
     name: x3-render-acceptance
+    concurrency:
+      group: docente-os-governed-mfa-e2e
+      queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
