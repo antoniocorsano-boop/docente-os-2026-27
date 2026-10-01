@@ -21,3 +21,8 @@ La capability è ben definita sul piano canonico ma non deve essere trattata com
 `CRL 1 / DEFINED / CONDITIONAL / CURRENT`.
 
 La promozione inizia solo quando viene autorizzato un perimetro istituzionale concreto, con institution binding, consent, policy versionata e tenant isolation verificabili.
+
+
+## Rettifica assi DOS-CRM — 2026-10-01
+
+Finché non esiste un pilot istituzionale autorizzato né implementazione eseguibile di institution binding, consent lifecycle, tenant isolation e data/security plane, gli assi F/UX/D/S/I/Q/O restano al livello **1 — DEFINED**. Solo K può essere superiore in virtù della documentazione/governance disponibile. Nessun prototipo o livello implementato viene inferito dalla sola specifica.
