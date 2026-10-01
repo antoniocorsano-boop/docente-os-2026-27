@@ -115,8 +115,8 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
         <p className="contextLine">Ricevuto dal dispositivo · ancora locale</p>
         <h1 id="shared-intake-title">Condividi con Docente OS</h1>
         <p>
-          Il file è già stato ricevuto da Docente OS e resta sul dispositivo. Conferma solo quando vuoi
-          autorizzare i controlli privacy e il salvataggio governato.
+          Il file è già stato ricevuto da Docente OS e resta sul dispositivo. Se è un orario, vedrai subito
+          l’anteprima e potrai autorizzare il riconoscimento automatico del tuo orario.
         </p>
 
         {meta?.title ? <p><strong>Titolo condiviso:</strong> {meta.title}</p> : null}
@@ -162,9 +162,9 @@ export function ShareTargetIntake({ intakeId }: { intakeId: string }) {
         </div>
 
         <p className="knowledgeUploadTrust">
-          I documenti che sembrano orari vengono instradati automaticamente al flusso dedicato, che invia soltanto le aree scelte localmente.
-          Gli altri file continuano a usare l’acquisizione governata di Conoscenza. Nessuna modifica all’orario viene applicata senza conferma.
-          Se abbandoni senza annullare, lo staging temporaneo scade automaticamente.
+          I documenti che sembrano orari vengono instradati automaticamente al flusso dedicato. Il PDF viene inviato al riconoscimento
+          soltanto dopo la tua azione esplicita e non viene conservato come fonte in Conoscenza. Nessuna modifica all’orario viene applicata
+          senza conferma. Se abbandoni senza annullare, lo staging temporaneo scade automaticamente.
         </p>
       </section>
     </main>
