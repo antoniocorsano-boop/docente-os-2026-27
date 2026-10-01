@@ -1,21 +1,23 @@
 export type ArgoPerformedStatus = 'NOT_PERFORMED' | 'PARTIALLY_PERFORMED' | 'PERFORMED'
 
-export type CanonicalAnnualProgramming = {
+export type ArgoProgramProjectionSource = {
+  sourceKind: 'GOVERNED_MODULE_ARGUMENT_PROJECTION'
   schoolYear: string
   classRef: string
   subjectRef: string
+  sourceAssetId: string
   sourceGenerationId: string
-  modules: CanonicalProgrammingModule[]
+  modules: ArgoProgramProjectionModule[]
 }
 
-export type CanonicalProgrammingModule = {
+export type ArgoProgramProjectionModule = {
   id: string
   order?: string | null
   description: string
-  arguments: CanonicalProgrammingArgument[]
+  arguments: ArgoProgramProjectionArgument[]
 }
 
-export type CanonicalProgrammingArgument = {
+export type ArgoProgramProjectionArgument = {
   id: string
   order?: string | null
   description: string
@@ -27,6 +29,7 @@ export type ArgoProgram = {
   schoolYear: string
   classRef: string
   subjectRef: string
+  sourceAssetId: string
   sourceGenerationId: string
   modules: ArgoProgramModule[]
 }
