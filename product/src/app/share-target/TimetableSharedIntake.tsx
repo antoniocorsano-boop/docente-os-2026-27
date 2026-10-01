@@ -5,10 +5,11 @@ import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerE
 import { getDocumentProxy } from 'unpdf'
 import { analyzeMinimizedTimetableImport } from '@/app/orario/actions'
 import { MAX_KNOWLEDGE_UPLOAD_BYTES } from '@/app/knowledge/upload-policy'
-import { clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, isValidOrdinal, parseOrdinal, type Rect } from './timetable-share-helpers'
+import { clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, isValidOrdinal, parseOrdinal, teacherLabelMatches, type Rect } from './timetable-share-helpers'
 
 type Point = { x: number; y: number }
 type Selection = Rect & { id: string; weekday: number | null; ordinal: number | null }
+type SearchAnchor = { text: string; rect: Rect; page: number }
 
 type Props = {
   file: File
@@ -25,6 +26,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const startRef = useRef<Point | null>(null)
+  const searchAnchorsRef = useRef<SearchAnchor[]>([])
   const [keyboardCursor, setKeyboardCursor] = useState<Point | null>(null)
   const [keyboardStart, setKeyboardStart] = useState<Point | null>(null)
   const [ready, setReady] = useState(false)
@@ -37,6 +39,8 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
   const [busy, setBusy] = useState(false)
   const [acceptedCandidateId, setAcceptedCandidateId] = useState<string | null>(null)
   const [touchSelectMode, setTouchSelectMode] = useState(false)
+  const [teacherMatches, setTeacherMatches] = useState<SearchAnchor[]>([])
+  const [needsManualContext, setNeedsManualContext] = useState(false)
   const [message, setMessage] = useState('Preparo il documento localmente. Nessun byte viene inviato.')
 
   useEffect(() => {
@@ -83,6 +87,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
         const scratchCtx = scratch.getContext('2d', { alpha: false })
         if (!scratchCtx) throw new Error('Canvas temporaneo non disponibile')
 
+        const searchAnchors: SearchAnchor[] = []
         for (const layout of layouts) {
           const pageWidth = Math.max(1, Math.round(layout.viewport.width))
           const pageHeight = Math.max(1, Math.round(layout.viewport.height))
@@ -97,11 +102,46 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
           }).promise
           layout.x = Math.round((width - pageWidth) / 2)
           ctx.drawImage(scratch, layout.x, layout.y)
+
+          try {
+            const textPage = layout.page as unknown as {
+              getTextContent: () => Promise<{ items: Array<{ str?: string; transform?: number[]; width?: number; height?: number }> }>
+            }
+            const viewport = layout.viewport as unknown as {
+              scale?: number
+              convertToViewportPoint: (x: number, y: number) => [number, number]
+            }
+            const textContent = await textPage.getTextContent()
+            for (const item of textContent.items) {
+              const text = item.str?.trim()
+              const transform = item.transform
+              if (!text || !transform || transform.length < 6) continue
+              const [x, baselineY] = viewport.convertToViewportPoint(transform[4] ?? 0, transform[5] ?? 0)
+              const scale = viewport.scale ?? 1
+              const itemHeight = Math.max(18, Math.abs(item.height ?? transform[3] ?? 10) * scale)
+              searchAnchors.push({
+                text,
+                page: layouts.indexOf(layout) + 1,
+                rect: {
+                  x: layout.x + x,
+                  y: layout.y + baselineY - itemHeight,
+                  width: Math.max(36, Math.abs(item.width ?? 0) * scale),
+                  height: itemHeight,
+                },
+              })
+            }
+          } catch {
+            // Native text search is an ergonomic enhancement only; selection remains available without it.
+          }
+
           scratch.width = 1
           scratch.height = 1
         }
 
         if (cancelled) return
+        searchAnchorsRef.current = searchAnchors
+        setTeacherMatches([])
+        setNeedsManualContext(false)
         setSourceFingerprint(fingerprint)
         setPages(pdf.numPages)
         setKeyboardCursor({ x: canvas.width / 2, y: Math.min(canvas.height - 1, 120) })
@@ -113,6 +153,9 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
         setReady(false)
         setSourceFingerprint(null)
         setSelections([])
+        searchAnchorsRef.current = []
+        setTeacherMatches([])
+        setNeedsManualContext(false)
         setKeyboardStart(null)
         setKeyboardCursor(null)
         const renderMessage = error instanceof Error ? error.message : 'Non riesco a preparare questo PDF localmente.'
@@ -127,6 +170,31 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
     })()
     return () => { cancelled = true }
   }, [file, onBeforeSubmit])
+
+  function findTeacher() {
+    const label = teacherLabel.trim()
+    if (!label) {
+      setTeacherMatches([])
+      setMessage('Scrivi prima il cognome o l’etichetta con cui compari nell’orario.')
+      return
+    }
+    const matches = searchAnchorsRef.current.filter((anchor) => teacherLabelMatches(anchor.text, label))
+    setTeacherMatches(matches)
+    if (!matches.length) {
+      setMessage('Non trovo il nominativo nel testo leggibile del PDF. Puoi comunque selezionare manualmente la tua riga o le tue celle.')
+      return
+    }
+    const first = matches[0]
+    const viewport = viewportRef.current
+    const canvas = canvasRef.current
+    if (viewport && canvas && canvas.height > 0) {
+      const scaleY = canvas.clientHeight / canvas.height
+      viewport.scrollTo({ top: Math.max(0, first.rect.y * scaleY - 80), behavior: 'smooth' })
+    }
+    setMessage(matches.length === 1
+      ? 'Nome trovato. Ho portato in vista la posizione corrispondente: controlla e seleziona solo le tue celle.'
+      : `Nome trovato in ${matches.length} punti. Le occorrenze sono evidenziate: controlla e seleziona solo le tue celle.`)
+  }
 
   function point(event: ReactPointerEvent<HTMLCanvasElement>): Point {
     const canvas = event.currentTarget
@@ -206,7 +274,8 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
 
   async function submit() {
     const source = canvasRef.current
-    if (!source || !sourceFingerprint || !selections.length || selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal)) || !teacherLabel.trim() || !effectiveFrom || busy || acceptedCandidateId) return
+    const missingManualContext = needsManualContext && selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal))
+    if (!source || !sourceFingerprint || !selections.length || missingManualContext || !teacherLabel.trim() || !effectiveFrom || busy || acceptedCandidateId) return
     setBusy(true)
     try {
       const derivative = await cropSelections(source, selections, teacherLabel.trim())
@@ -227,6 +296,12 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
       if (!result || !result.ok) {
         const code = result?.code ?? 'persist_failed'
         if (isRecoverableImportFailure(code)) {
+          if ((code === 'parse_failed' || code === 'no_rows') && !needsManualContext) {
+            setNeedsManualContext(true)
+            setBusy(false)
+            setMessage('Non riesco a ricavare con sicurezza giorno e ora dalle sole aree scelte. Completa questi dettagli e riprova: è il percorso di correzione, non quello principale.')
+            return
+          }
           setBusy(false)
           setMessage(messageForImportFailure(code))
           return
@@ -298,10 +373,21 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
   return (
     <section aria-label="Importazione locale dell’orario" style={{ display: 'grid', gap: 12 }}>
       <div className="knowledgeFeedback" role="status">
-        <strong>Importa nell’Orario senza inviare il quadro completo</strong>
+        <strong>Trova il tuo nome, controlla le celle, conferma</strong>
         <p style={{ margin: '4px 0 0' }}>
-          Seleziona solo la tua riga o le tue celle. Docente OS creerà una nuova immagine locale con quelle sole aree e userà quella per preparare la proposta.
+          Il PDF resta sul dispositivo. Docente OS cerca localmente il tuo nominativo e ti porta nel punto giusto; tu selezioni solo le celle che ti appartengono.
         </p>
+      </div>
+
+      <div style={{ display: 'grid', gap: 8 }}>
+        <label>
+          <span>Cognome o etichetta con cui compari nell’orario</span>
+          <input value={teacherLabel} onChange={(event) => { setTeacherLabel(event.currentTarget.value); setTeacherMatches([]) }} maxLength={120} autoComplete="off" placeholder="Es. ROSSI" />
+        </label>
+        <button type="button" onClick={findTeacher} disabled={!ready || !teacherLabel.trim() || busy}>
+          Trova il mio nome
+        </button>
+        <small>La ricerca avviene localmente nel PDF. Se il testo non è leggibile, puoi comunque usare la selezione manuale.</small>
       </div>
 
       <div ref={viewportRef} style={{ maxHeight: 620, overflow: 'auto', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)' }}>
@@ -320,6 +406,18 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
           />
           {canvasRef.current?.width && canvasRef.current?.height ? (
             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+              {teacherMatches.map((match, index) => (
+                <span key={`teacher-match-${index}`} style={{
+                  position: 'absolute',
+                  left: `${match.rect.x / canvasRef.current!.width * 100}%`,
+                  top: `${match.rect.y / canvasRef.current!.height * 100}%`,
+                  width: `${match.rect.width / canvasRef.current!.width * 100}%`,
+                  height: `${match.rect.height / canvasRef.current!.height * 100}%`,
+                  outline: '3px solid currentColor',
+                  outlineOffset: 2,
+                  boxSizing: 'border-box',
+                }} />
+              ))}
               {selections.map((selection) => (
                 <span key={selection.id} style={{
                   position: 'absolute',
@@ -379,44 +477,50 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
       </button>
 
       {selections.length ? (
-        <div style={{ display: 'grid', gap: 8 }} aria-label="Contesto delle aree selezionate">
-          {selections.map((selection, index) => (
-            <div key={selection.id} className="knowledgeFeedback" style={{ display: 'grid', gap: 8 }}>
-              <strong>Area {index + 1}</strong>
-              <label>
-                <span>Giorno</span>
-                <select
-                  value={selection.weekday ?? ''}
-                  onChange={(event) => updateSelection(selection.id, { weekday: Number(event.currentTarget.value) || null })}
-                >
-                  <option value="">Seleziona…</option>
-                  {WEEKDAYS.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}
-                </select>
-              </label>
-              <label>
-                <span>Ora</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={selection.ordinal ?? ''}
-                  onChange={(event) => updateSelection(selection.id, { ordinal: parseOrdinal(event.currentTarget.value) })}
-                />
-              </label>
-              <button type="button" onClick={() => setSelections((current) => current.filter((item) => item.id !== selection.id))} disabled={busy}>
-                Rimuovi area
-              </button>
-            </div>
-          ))}
+        <div className="knowledgeFeedback" style={{ display: 'grid', gap: 8 }}>
+          <strong>{selections.length} area{selections.length === 1 ? '' : 'e'} pronta{selections.length === 1 ? '' : 'e'} per il controllo</strong>
+          <span>Prova prima a preparare la proposta: Docente OS ricaverà giorno e ora dal contesto visibile quando è sufficientemente chiaro.</span>
         </div>
       ) : null}
 
+      {needsManualContext && selections.length ? (
+        <details open>
+          <summary><strong>Correzione avanzata · indica giorno e ora</strong></summary>
+          <p>Questi campi compaiono solo perché il documento non contiene abbastanza contesto per ricavarli in modo affidabile.</p>
+          <div style={{ display: 'grid', gap: 8 }} aria-label="Contesto avanzato delle aree selezionate">
+            {selections.map((selection, index) => (
+              <div key={selection.id} className="knowledgeFeedback" style={{ display: 'grid', gap: 8 }}>
+                <strong>Area {index + 1}</strong>
+                <label>
+                  <span>Giorno</span>
+                  <select
+                    value={selection.weekday ?? ''}
+                    onChange={(event) => updateSelection(selection.id, { weekday: Number(event.currentTarget.value) || null })}
+                  >
+                    <option value="">Seleziona…</option>
+                    {WEEKDAYS.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>Ora</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={selection.ordinal ?? ''}
+                    onChange={(event) => updateSelection(selection.id, { ordinal: parseOrdinal(event.currentTarget.value) })}
+                  />
+                </label>
+                <button type="button" onClick={() => setSelections((current) => current.filter((item) => item.id !== selection.id))} disabled={busy}>
+                  Rimuovi area
+                </button>
+              </div>
+            ))}
+          </div>
+        </details>
+      ) : null}
+
       <div style={{ display: 'grid', gap: 8 }}>
-        <label>
-          <span>Cognome o etichetta con cui compari nell’orario</span>
-          <input value={teacherLabel} onChange={(event) => setTeacherLabel(event.currentTarget.value)} maxLength={120} autoComplete="off" placeholder="Es. ROSSI" />
-          <small>Serve solo a riconoscere le celle selezionate; non viene salvato come dato dell’orario.</small>
-        </label>
         <label>
           <span>Orario valido dal</span>
           <input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.currentTarget.value)} />
@@ -432,7 +536,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        <button type="button" onClick={() => void submit()} disabled={!ready || !sourceFingerprint || !selections.length || selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal)) || !teacherLabel.trim() || !effectiveFrom || busy || Boolean(acceptedCandidateId)}>
+        <button type="button" onClick={() => void submit()} disabled={!ready || !sourceFingerprint || !selections.length || (needsManualContext && selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal))) || !teacherLabel.trim() || !effectiveFrom || busy || Boolean(acceptedCandidateId)}>
           {busy ? 'Preparo la proposta…' : 'Prepara proposta di orario'}
         </button>
         {acceptedCandidateId ? (
@@ -468,10 +572,9 @@ async function cropSelections(source: HTMLCanvasElement, selections: Selection[]
   const measureCtx = measureCanvas.getContext('2d')
   if (!measureCtx) throw new Error('Canvas di misura non disponibile')
   measureCtx.font = '600 22px sans-serif'
-  const labelWidth = Math.ceil(Math.max(...normalized.map((rect) => {
-    if (!rect.weekday || !isValidOrdinal(rect.ordinal)) return 0
-    return measureCtx.measureText(derivativeContextLabel(teacherLabel, rect.weekday, rect.ordinal)).width
-  }))) + 16
+  const labelWidth = Math.ceil(Math.max(...normalized.map((rect) =>
+    measureCtx.measureText(derivativeContextLabel(teacherLabel, rect.weekday, rect.ordinal)).width
+  ))) + 16
   const width = Math.max(...normalized.map((rect) => rect.width), labelWidth, 420)
   const height = normalized.reduce((sum, rect) => sum + labelHeight + rect.height, 0) + padding * Math.max(0, normalized.length - 1)
   const output = document.createElement('canvas')
@@ -487,7 +590,6 @@ async function cropSelections(source: HTMLCanvasElement, selections: Selection[]
 
   let y = 0
   for (const rect of normalized) {
-    if (!rect.weekday || !isValidOrdinal(rect.ordinal)) throw new Error('Contesto giorno/ora mancante')
     ctx.fillText(derivativeContextLabel(teacherLabel, rect.weekday, rect.ordinal), 8, y + labelHeight / 2)
     y += labelHeight
     ctx.drawImage(source, rect.x, rect.y, rect.width, rect.height, 0, y, rect.width, rect.height)
