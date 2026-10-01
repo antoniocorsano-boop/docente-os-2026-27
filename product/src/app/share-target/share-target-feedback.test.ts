@@ -19,7 +19,7 @@ test('shared intake makes local-only and failure state perceptible before write'
   assert.match(intake, /role="alert"/)
   assert.match(intake, /role="status"/)
   assert.match(intake, /instradati automaticamente al flusso dedicato/)
-  assert.match(intake, /Nessuna modifica all’orario viene applicata senza conferma/)
+  assert.match(intake, /Nessuna modifica all’orario viene applicata[\s\S]*senza conferma/)
 })
 
 test('shared file reuses governed Knowledge upload feedback', () => {
@@ -211,18 +211,22 @@ test('minimized derivative context always carries teacher, day and period', () =
 })
 
 
-test('terminal timetable preparation failures purge local staging before surfacing the result', () => {
-  assert.match(timetableIntake, /await onBeforeSubmit\(\)/)
-  assert.match(timetableIntake, /Il file sorgente è stato rimosso dallo staging locale/)
-  assert.match(timetableIntake, /Non sono riuscito a rimuovere il file dallo staging locale/)
+test('accepted timetable candidate is cleaned up locally before opening review', () => {
+  const acceptedAt = timetableIntake.indexOf('setAcceptedCandidateId(result.candidateId)')
+  const cleanupAt = timetableIntake.indexOf('await onBeforeSubmit()', acceptedAt)
+  const reviewAt = timetableIntake.indexOf('window.location.assign(reviewUrl(result.candidateId))', cleanupAt)
+  assert.ok(acceptedAt >= 0)
+  assert.ok(cleanupAt > acceptedAt)
+  assert.ok(reviewAt > cleanupAt)
+  assert.match(timetableIntake, /il PDF locale non è ancora stato rimosso/)
 })
 
-
-test('timetable preview preserves touch scrolling and sizes derivative labels', () => {
-  assert.match(timetableIntake, /touchAction: touchSelectMode \? 'none' : 'pan-y'/)
-  assert.match(timetableIntake, /aria-pressed=\{touchSelectMode\}/)
-  assert.match(timetableIntake, /ensureKeyboardCursorVisible/)
-  assert.match(timetableIntake, /measureText\(derivativeContextLabel/)
+test('timetable preview is confirmation-only and exposes no manual cell-selection controls', () => {
+  assert.match(timetableIntake, /Anteprima del documento condiviso/)
+  assert.match(timetableIntake, /maxHeight: 260/)
+  assert.doesNotMatch(timetableIntake, /touchSelectMode/)
+  assert.doesNotMatch(timetableIntake, /cropSelections/)
+  assert.doesNotMatch(timetableIntake, /ensureKeyboardCursorVisible/)
 })
 
 
@@ -249,18 +253,15 @@ test('service worker expires abandoned share-target staging', () => {
 })
 
 
-test('recoverable minimized-share validation returns feedback without deleting staged PDF', () => {
-  const analyzeAt = timetableIntake.indexOf('const result = await analyzeMinimizedTimetableImport(data)')
-  const recoverableAt = timetableIntake.indexOf('isRecoverableImportFailure(code)', analyzeAt)
-  const cleanupAt = timetableIntake.indexOf('await onBeforeSubmit()', recoverableAt)
+test('recoverable real-document validation keeps the shared PDF available for retry', () => {
+  const analyzeAt = timetableIntake.indexOf('const result = await analyzeSharedTimetableImport(data)')
+  const failureAt = timetableIntake.indexOf('if (!result.ok)', analyzeAt)
+  const cleanupAt = timetableIntake.indexOf('await onBeforeSubmit()', failureAt)
   assert.ok(analyzeAt >= 0)
-  assert.ok(recoverableAt > analyzeAt)
-  assert.ok(cleanupAt > recoverableAt)
-  assert.match(timetableIntake, /il PDF resta nello staging locale/)
-  assert.match(timetableActions, /export async function analyzeMinimizedTimetableImport/)
-  assert.match(timetableActions, /return analyzeTimetableImportResult\(formData\)/)
-  assert.match(timetableActions, /return \{ ok: false as const, code: 'invalid_date' \}/)
-  assert.match(timetableActions, /return \{ ok: true as const, candidateId: candidate\.id \}/)
+  assert.ok(failureAt > analyzeAt)
+  assert.ok(cleanupAt > failureAt)
+  assert.match(timetableIntake, /Il PDF resta disponibile sul dispositivo/)
+  assert.match(timetableIntake, /puoi riprovare senza ricaricarlo/)
 })
 
 
@@ -272,15 +273,12 @@ test('timetable PDF size is checked before reading the full source into memory',
 })
 
 
-test('Android timetable preview uses one reusable scratch canvas and preserves prior PDF pages', () => {
-  assert.doesNotMatch(timetableIntake, /const rendered: HTMLCanvasElement\[\]/)
-  assert.match(timetableIntake, /const scratch = document\.createElement\('canvas'\)/)
-  assert.match(timetableIntake, /await layout\.page\.render\(\{[\s\S]*canvas: scratch/)
-  assert.match(timetableIntake, /ctx\.drawImage\(scratch, layout\.x, layout\.y\)/)
-  assert.match(timetableIntake, /scratch\.width = 1/)
-  assert.match(timetableIntake, /scratch\.height = 1/)
-  assert.match(timetableIntake, /position: 'absolute'/)
-  assert.match(timetableIntake, /getDocumentProxy\(new Uint8Array\(buffer\)\)/)
+test('Android timetable preview renders only a bounded first-page confirmation image', () => {
+  assert.match(timetableIntake, /const MAX_PAGES = 5/)
+  assert.match(timetableIntake, /const MAX_PREVIEW_DIMENSION = 1400/)
+  assert.match(timetableIntake, /const page = await pdf\.getPage\(1\)/)
+  assert.match(timetableIntake, /await page\.render\(\{ canvas, canvasContext: context, viewport \}\)\.promise/)
+  assert.doesNotMatch(timetableIntake, /for \(let page/)
 })
 
 
@@ -288,7 +286,7 @@ test('accepted candidate survives cleanup failure and cleanup retry opens its re
   assert.match(timetableIntake, /setAcceptedCandidateId\(result\.candidateId\)/)
   assert.match(timetableIntake, /retryAcceptedCleanup/)
   assert.match(timetableIntake, /reviewUrl\(acceptedCandidateId\)/)
-  assert.match(timetableIntake, /senza rieseguire l’analisi/)
+  assert.match(timetableIntake, /Riprova prima di uscire/)
 })
 
 
@@ -382,5 +380,5 @@ test('draft timetable review edits use atomic revision-advancing RPCs', () => {
 
 test('already-applied minimized import is surfaced as terminal', () => {
   assert.match(timetableIntake, /code === 'already_applied'/)
-  assert.match(timetableIntake, /Questo documento è già stato applicato alla bozza dell’orario/)
+  assert.match(timetableIntake, /Questo documento risulta già applicato alla bozza dell’orario/)
 })
