@@ -128,7 +128,7 @@ test('mobile timetable flow keeps day and period in progressive fallback', () =>
 
 test('real-device mobile flow keeps primary action compact and secondary controls collapsed', () => {
   assert.match(timetableIntake, /timetablePrimaryActions/)
-  assert.match(timetableIntake, />Continua</)
+  assert.match(timetableIntake, /'Continua'/)
   assert.match(timetableIntake, /<summary>Altre opzioni<\/summary>/)
   assert.match(timetableIntake, /<summary>Privacy e file locale<\/summary>/)
   assert.match(timetableIntake, /timetableKeyboardHelp/)
