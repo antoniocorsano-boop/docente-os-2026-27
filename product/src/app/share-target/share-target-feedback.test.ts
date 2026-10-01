@@ -31,17 +31,21 @@ test('shared file reuses governed Knowledge upload feedback', () => {
 })
 
 
-test('timetable-like shared PDFs use local minimization before timetable analysis', () => {
+test('shared timetable primary flow uses governed structured extraction and keeps minimization as advanced fallback', () => {
   assert.match(intake, /looksLikeTimetable/)
   assert.match(intake, /TimetableSharedIntake/)
 
+  assert.match(timetableIntake, /analyzeSharedTimetableImport/)
+  assert.match(timetableIntake, /data\.set\('file', file\)/)
+  assert.match(timetableIntake, /Analizzo l’orario/)
+  assert.match(timetableIntake, /Problemi di lettura\? Opzioni avanzate/)
+  assert.match(timetableIntake, /Selezione manuale/)
   assert.match(timetableIntake, /cropSelections/)
   assert.match(timetableIntake, /orario-selezione-locale\.png/)
   assert.match(timetableIntake, /data\.set\('file', safeFile\)/)
-  assert.doesNotMatch(timetableIntake, /data\.set\('file', file\)/)
-  assert.match(timetableIntake, /Il PDF completo non viene caricato in Conoscenza/)
-  assert.match(timetableIntake, /await onBeforeSubmit\(\)/)
   assert.match(timetableIntake, /await analyzeMinimizedTimetableImport\(data\)/)
+  assert.match(timetableIntake, /non viene archiviato in Conoscenza come documento originale/)
+  assert.match(timetableIntake, /await onBeforeSubmit\(\)/)
   assert.match(timetableIntake, /sha256Hex\(buffer\)/)
   assert.match(timetableIntake, /originalSourceFingerprint/)
   assert.doesNotMatch(timetableIntake, /originalSourceName/)
@@ -49,11 +53,8 @@ test('timetable-like shared PDFs use local minimization before timetable analysi
   assert.match(timetableIntake, /x: clamp\(x, 0, canvas\.width\)/)
   assert.match(timetableIntake, /y: clamp\(y, 0, canvas\.height\)/)
   assert.match(timetableIntake, /parseOrdinal\(event\.currentTarget\.value\)/)
-  assert.match(timetableIntake, /needsManualContext && selections\.some\(\(item\) => !item\.weekday \|\| !isValidOrdinal\(item\.ordinal\) \|\| !item\.classLabel\)/)
-
+  assert.match(timetableActions, /export async function analyzeSharedTimetableImport/)
   assert.match(timetableActions, /resolveTimetableSourceIdentity/)
-  assert.match(timetableActions, /sourceIdentity\.sourceLabel/)
-  assert.match(timetableActions, /sourceIdentity\.sourceRef/)
 })
 
 
@@ -135,8 +136,10 @@ test('teacher timetable is reconstructed locally from table geometry', () => {
 })
 
 
-test('mobile timetable flow keeps day and period in progressive fallback', () => {
+test('mobile timetable flow makes structured extraction primary and local geometry a progressive fallback', () => {
   assert.match(timetableIntake, /Estrai il mio orario/)
+  assert.match(timetableIntake, /analyzeWholeDocument/)
+  assert.match(timetableIntake, /analyzeSharedTimetableImport/)
   assert.match(timetableIntake, /teacherLabelMatches/)
   assert.match(timetableIntake, /teacherMatches/)
   assert.match(timetableIntake, /needsManualContext/)
@@ -145,9 +148,11 @@ test('mobile timetable flow keeps day and period in progressive fallback', () =>
   assert.match(timetableIntake, /derivativeContextLabel\(teacherLabel, rect\.weekday, rect\.ordinal, rect\.classLabel\)/)
 })
 
-test('real-device mobile flow keeps primary action compact and secondary controls collapsed', () => {
-  assert.match(timetableIntake, /timetablePrimaryActions/)
-  assert.match(timetableIntake, /'Continua'/)
+test('real-device mobile flow shows visible analysis state, compact preview and secondary controls', () => {
+  assert.match(timetableIntake, /timetableSpinner/)
+  assert.match(timetableIntake, /timetableStatus/)
+  assert.match(timetableIntake, /timetablePreviewViewport/)
+  assert.match(timetableIntake, /Continua con la selezione manuale/)
   assert.match(timetableIntake, /<summary>Altre opzioni<\/summary>/)
   assert.match(timetableIntake, /<summary>Privacy e file locale<\/summary>/)
   assert.match(timetableIntake, /timetableKeyboardHelp/)
