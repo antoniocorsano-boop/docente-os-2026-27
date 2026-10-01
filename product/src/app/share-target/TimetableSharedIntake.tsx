@@ -459,7 +459,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
 
       <small id="timetable-selection-help">
         {pages ? `${pages} pagina${pages === 1 ? '' : 'e'} · ${selections.length} area${selections.length === 1 ? '' : 'e'} selezionata${selections.length === 1 ? '' : 'e'}` : 'Preparazione in corso…'}
-        {' '}Da tastiera: porta il focus sull’anteprima, usa le frecce per spostarti, premi Invio per iniziare e di nuovo Invio per chiudere l’area. Maiusc + frecce accelera lo spostamento.
+        <span className="timetableKeyboardHelp"> Da tastiera: usa le frecce, Invio per iniziare/chiudere l’area e Maiusc + frecce per spostarti più velocemente.</span>
       </small>
 
       <button
@@ -520,39 +520,46 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
         </details>
       ) : null}
 
-      <div style={{ display: 'grid', gap: 8 }}>
-        <label>
-          <span>Orario valido dal</span>
-          <input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.currentTarget.value)} />
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={replaceReviewedCandidate}
-            onChange={(event) => setReplaceReviewedCandidate(event.currentTarget.checked)}
-          />
-          <span>Se questo stesso documento ha già una proposta corretta manualmente, autorizzo a sostituirla con questa nuova estrazione.</span>
-        </label>
-      </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      <div className="timetablePrimaryActions">
         <button type="button" onClick={() => void submit()} disabled={!ready || !sourceFingerprint || !selections.length || (needsManualContext && selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal))) || !teacherLabel.trim() || !effectiveFrom || busy || Boolean(acceptedCandidateId)}>
-          {busy ? 'Preparo la proposta…' : 'Prepara proposta di orario'}
+          {busy ? 'Preparo la proposta…' : 'Continua'}
         </button>
         {acceptedCandidateId ? (
           <button type="button" onClick={() => void retryAcceptedCleanup()} disabled={busy}>
-            Rimuovi il PDF locale e apri la revisione
+            Apri la revisione
           </button>
         ) : null}
-        <button type="button" onClick={() => { setSelections([]); setMessage('Selezione cancellata. Il PDF resta soltanto sul dispositivo.') }} disabled={!selections.length || busy}>
-          Cancella selezione
-        </button>
       </div>
 
       <p role="status" aria-live="polite" style={{ margin: 0 }}>{message}</p>
-      <p className="knowledgeUploadTrust" style={{ margin: 0 }}>
-        Il PDF completo non viene caricato in Conoscenza e non viene conservato come fonte. La proposta resta modificabile e richiede conferma prima di cambiare la bozza dell’Orario.
-      </p>
+
+      <details className="timetableSecondaryOptions">
+        <summary>Altre opzioni</summary>
+        <div style={{ display: 'grid', gap: 10, paddingTop: 10 }}>
+          <label>
+            <span>Orario valido dal</span>
+            <input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.currentTarget.value)} />
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={replaceReviewedCandidate}
+              onChange={(event) => setReplaceReviewedCandidate(event.currentTarget.checked)}
+            />
+            <span>Sostituisci una proposta precedente già corretta manualmente.</span>
+          </label>
+          <button type="button" onClick={() => { setSelections([]); setMessage('Selezione cancellata. Il PDF resta soltanto sul dispositivo.') }} disabled={!selections.length || busy}>
+            Cancella selezione
+          </button>
+        </div>
+      </details>
+
+      <details className="timetableSecondaryOptions">
+        <summary>Privacy e file locale</summary>
+        <p className="knowledgeUploadTrust" style={{ margin: '8px 0 0' }}>
+          Il PDF completo non viene caricato in Conoscenza e non viene conservato come fonte. La proposta resta modificabile e richiede conferma prima di cambiare la bozza dell’Orario.
+        </p>
+      </details>
     </section>
   )
 }
