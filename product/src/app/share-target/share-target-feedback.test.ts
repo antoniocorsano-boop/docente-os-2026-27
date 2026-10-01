@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import test from 'node:test'
 import { isValidIsoCalendarDate, resolveTimetableSourceIdentity } from '../orario/timetable-import-boundary'
 import { clearShareIntakeStaging } from './share-target-staging'
-import { clampRectToBounds, dateFromFilename, derivativeContextLabel, isValidOrdinal, looksLikeTimetablePdf, parseOrdinal, teacherLabelMatches } from './timetable-share-helpers'
+import { clampRectToBounds, dateFromFilename, derivativeContextLabel, inferTeacherTimetableCells, isValidOrdinal, looksLikeTimetablePdf, parseOrdinal, teacherLabelMatches } from './timetable-share-helpers'
 
 const intake = fs.readFileSync(new URL('./ShareTargetIntake.tsx', import.meta.url), 'utf8')
 const uploader = fs.readFileSync(new URL('../knowledge/KnowledgeFileUploader.tsx', import.meta.url), 'utf8')
@@ -116,14 +116,33 @@ test('teacher-first search normalizes ordinary timetable labels locally', () => 
   assert.equal(teacherLabelMatches('R', 'r'), false)
 })
 
+test('teacher timetable is reconstructed locally from table geometry', () => {
+  const anchors = [
+    { text: '1A', page: 1, rect: { x: 200, y: 20, width: 40, height: 20 } },
+    { text: '2A', page: 1, rect: { x: 260, y: 20, width: 40, height: 20 } },
+    { text: 'lunedì', page: 1, rect: { x: 20, y: 80, width: 60, height: 20 } },
+    { text: '1ora', page: 1, rect: { x: 95, y: 80, width: 45, height: 20 } },
+    { text: 'Corsano', page: 1, rect: { x: 205, y: 80, width: 45, height: 20 } },
+    { text: '2ora', page: 1, rect: { x: 95, y: 110, width: 45, height: 20 } },
+    { text: 'Corsano', page: 1, rect: { x: 265, y: 110, width: 45, height: 20 } },
+  ]
+  const cells = inferTeacherTimetableCells(anchors, 'Corsano')
+  assert.equal(cells.length, 2)
+  assert.deepEqual(cells.map(({ weekday, ordinal, classLabel }) => ({ weekday, ordinal, classLabel })), [
+    { weekday: 1, ordinal: 1, classLabel: '1A' },
+    { weekday: 1, ordinal: 2, classLabel: '2A' },
+  ])
+})
+
+
 test('mobile timetable flow keeps day and period in progressive fallback', () => {
-  assert.match(timetableIntake, /Trova il mio nome/)
+  assert.match(timetableIntake, /Estrai il mio orario/)
   assert.match(timetableIntake, /teacherLabelMatches/)
   assert.match(timetableIntake, /teacherMatches/)
   assert.match(timetableIntake, /needsManualContext/)
-  assert.match(timetableIntake, /Correzione avanzata · indica giorno e ora/)
+  assert.match(timetableIntake, /Correzione avanzata · completa i dettagli ambigui/)
   assert.match(timetableIntake, /code === 'parse_failed' \|\| code === 'no_rows'/)
-  assert.match(timetableIntake, /derivativeContextLabel\(teacherLabel, rect\.weekday, rect\.ordinal\)/)
+  assert.match(timetableIntake, /derivativeContextLabel\(teacherLabel, rect\.weekday, rect\.ordinal, rect\.classLabel\)/)
 })
 
 test('real-device mobile flow keeps primary action compact and secondary controls collapsed', () => {
@@ -137,6 +156,10 @@ test('real-device mobile flow keeps primary action compact and secondary control
 
 test('teacher-only derivative context is allowed before advanced fallback', () => {
   assert.equal(derivativeContextLabel(' ROSSI ', null, null), 'DOCENTE: ROSSI')
+  assert.equal(
+    derivativeContextLabel('ROSSI', 2, 4, '2C'),
+    'DOCENTE: ROSSI · GIORNO: Martedì · ORA: 4 · CLASSE: 2C',
+  )
 })
 
 test('crop bounds clamp both endpoints instead of shifting overshoot', () => {
