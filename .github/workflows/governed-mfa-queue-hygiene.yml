@@ -28,17 +28,24 @@ jobs:
           script: |
             const governedPaths = new Set([
               '.github/workflows/browser-certification-orchestrator.yml',
+              '.github/workflows/dos-crm-ql1-daily-teaching-loop.yml',
               '.github/workflows/experience-acceptance.yml',
               '.github/workflows/x4-planner-e2e.yml',
+              '.github/workflows/x3-e2e.yml',
               '.github/workflows/wcag22-aa-assurance.yml',
               '.github/workflows/k1-knowledge-e2e.yml',
               '.github/workflows/p6-performance.yml',
+              '.github/workflows/p3-workspace-export-e2e.yml',
+              '.github/workflows/x5-authoring-e2e.yml',
             ])
             const runtimePaths = new Set([
               '.github/workflows/experience-acceptance.yml',
               '.github/workflows/x4-planner-e2e.yml',
+              '.github/workflows/x3-e2e.yml',
               '.github/workflows/k1-knowledge-e2e.yml',
               '.github/workflows/p6-performance.yml',
+              '.github/workflows/p3-workspace-export-e2e.yml',
+              '.github/workflows/x5-authoring-e2e.yml',
             ])
             const activeStatuses = ['queued', 'pending', 'in_progress', 'waiting', 'requested']
 

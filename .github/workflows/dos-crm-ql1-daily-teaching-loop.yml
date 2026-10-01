@@ -1,0 +1,121 @@
+name: DOS-CRM QL-1 Daily Teaching Loop
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - edited
+    paths:
+      - 'product/**'
+      - '.github/workflows/dos-crm-ql1-daily-teaching-loop.yml'
+
+permissions:
+  contents: read
+
+# QL-1 uses the same governed MFA fixture as Browser Certification.
+# Serialize the workflows so the persistent TOTP factor is never contended.
+concurrency:
+  group: docente-os-governed-mfa-e2e
+  queue: max
+
+jobs:
+  ql1:
+    name: ql1-daily-teaching-loop
+    if: contains(github.event.pull_request.body || '', 'DOS-CRM-QL1')
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
+      E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
+      E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
+      E2E_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      EXPERIENCE_TARGET: local
+      EXPERIENCE_OUTPUT_DIR: test-results/experience
+      TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+    steps:
+      - name: Require governed AAL2 E2E credential
+        run: test -n "${E2E_EMAIL:-}" && test -n "${E2E_PASSWORD:-}" && test -n "${E2E_TOTP_SECRET:-}"
+
+      - name: Checkout exact tested PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact tested head
+        run: test "$(git rev-parse HEAD)" = "$TESTED_SHA"
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install locked product dependencies
+        working-directory: product
+        run: npm ci --no-audit --no-fund
+
+      - name: Install browser assurance dependency without changing lockfile
+        working-directory: product
+        run: npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund @playwright/test@1.55.0
+
+      - name: Build exact tested application
+        working-directory: product
+        run: npm run build
+
+      - name: Start exact tested application
+        working-directory: product
+        shell: bash
+        run: |
+          npm start > /tmp/docente-os-ql1.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 5 "$E2E_BASE_URL/login" >/dev/null; then
+              echo 'QL-1 runtime ready.'
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/docente-os-ql1.log >&2 || true
+          exit 1
+
+      - name: Install Chromium
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run QL-1 focused Daily Teaching Loop
+        id: browser
+        working-directory: product
+        shell: bash
+        run: |
+          set +e
+          npx playwright test             e2e/experience/surfaces.spec.mjs             e2e/experience/critical-journeys.spec.mjs             e2e/experience/classroom-cockpit.spec.mjs             e2e/experience/lesson-materials.spec.mjs             e2e/experience/lesson-register.spec.mjs             e2e/experience/day-review.spec.mjs             e2e/experience/tomorrow-materials.spec.mjs             --config=playwright.experience.config.mjs
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Generate DOS-CRM QL-1 exact-head receipt
+        if: always()
+        working-directory: product
+        run: node scripts/qualification/ql1-receipt.mjs "${{ steps.browser.outputs.exit_code || '99' }}" "$TESTED_SHA" "$RUN_URL"
+
+      - name: Publish QL-1 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dos-crm-ql1-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 90
+          path: |
+            product/test-results/dos-crm/
+            product/test-results/experience/
+            product/playwright-report/
+            /tmp/docente-os-ql1.log

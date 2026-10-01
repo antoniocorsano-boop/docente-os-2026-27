@@ -6,10 +6,7 @@ on:
     paths:
       - "product/**"
       - "render.yaml"
-      - ".github/workflows/product-ci.yml"
-      - ".github/workflows/experience-acceptance.yml"
-      - ".github/workflows/browser-certification-orchestrator.yml"
-      - ".github/workflows/certification-impact.yml"
+      - ".github/workflows/**"
       - ".github/scripts/certification/**"
       - ".github/scripts/runtime-release-contract.mjs"
       - ".github/scripts/runtime-release-contract.test.mjs"
@@ -20,10 +17,7 @@ on:
     paths:
       - "product/**"
       - "render.yaml"
-      - ".github/workflows/product-ci.yml"
-      - ".github/workflows/experience-acceptance.yml"
-      - ".github/workflows/browser-certification-orchestrator.yml"
-      - ".github/workflows/certification-impact.yml"
+      - ".github/workflows/**"
       - ".github/scripts/certification/**"
       - ".github/scripts/runtime-release-contract.mjs"
       - ".github/scripts/runtime-release-contract.test.mjs"
@@ -115,7 +109,15 @@ jobs:
           test -f .github/workflows/browser-certification-orchestrator.yml
           grep -Fq 'browser-certification-preflight' .github/workflows/browser-certification-orchestrator.yml
           grep -Fq 'browser-certification-selected-gates' .github/workflows/browser-certification-orchestrator.yml
-          grep -Fq 'docente-os-pr-governed-mfa-e2e' .github/workflows/browser-certification-orchestrator.yml
+          while IFS= read -r workflow; do
+            grep -Fq 'group: docente-os-governed-mfa-e2e' "$workflow" || {
+              echo "Workflow using governed MFA fixture is outside the canonical concurrency queue: $workflow" >&2
+              exit 1
+            }
+          done < <(grep -l 'DOCENTE_OS_MFA_E2E_' .github/workflows/*.yml | sort)
+          test "$(grep -Fc 'group: docente-os-governed-mfa-e2e' .github/workflows/x3-e2e.yml)" -eq 2
+          grep -Fq 'x3-application-acceptance:' .github/workflows/x3-e2e.yml
+          grep -Fq 'x3-render-acceptance:' .github/workflows/x3-e2e.yml
           grep -Fq "context: statusContext" .github/workflows/browser-certification-orchestrator.yml
           grep -Fq 'orchestrationAuthorized: true' .github/scripts/certification/classifier.mjs
           grep -Fq 'mergeAuthorized: false' .github/scripts/certification/classifier.mjs
