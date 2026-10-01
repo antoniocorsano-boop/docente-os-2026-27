@@ -72,6 +72,8 @@ Principio:
 - `docs/product/PROJECT_STATUS_CURRENT.md` — stato sintetico autorevole;
 - `docs/product/DOCENTE_OS_CAPABILITY_READINESS_MODEL.md` — modello permanente DOS-CRM v1 per il livello di maturità delle capability;
 - `docs/product/CAPABILITY_READINESS_CURRENT.md` + `ops/capability-readiness.json` — vista umana e registro machine-readable CURRENT della readiness capability-per-capability;
+- `docs/product/DOS_CRM_QUALIFICATION_ROADMAP.md` — stato esecutivo delle remediation e qualification lane;
+- `docs/product/DOS_CRM_QUALIFICATION_RECEIPT_CONTRACT.md` + `ops/dos-crm-qualification-receipt.schema.json` — contratto/receipt machine-readable per evidence exact-head;
 - `docs/product/TEACHER_OS_V1_PRODUCT_CONVERGENCE_CANONICAL.md` — programma di prodotto corrente;
 - `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — masterplan;
 - `docs/product/TEACHER_AI_COPILOT_PRODUCT_DIRECTION.md` — direzione AI/copilota;
