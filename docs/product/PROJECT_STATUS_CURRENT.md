@@ -1,11 +1,15 @@
 # DOCENTE OS — Stato corrente canonico
 
-Data: **2026-09-18**  
+Data: **2026-09-30**  
 Stato documento: **CURRENT / CANONICAL CANDIDATE — V1 CONVERGENCE**
 
-## 1. Baseline runtime integrata
+## 1. Baseline runtime integrata — snapshot storico
 
 `develop@7f714e6ac6f4264af86f15f8a6f5b99121a52a41`
+
+Questa è la baseline storica del checkpoint V1 del 18 settembre, non il current repository head.
+
+**Current repository / DOS-CRM baseline:** `develop@a59cc21e01b1955514e946fa487a50712a004857`
 
 La Beta corrente ha completato UX-0E ma la successiva HUMAN_USE reale (#383) ha prodotto **FRICTION / REWORK_REQUIRED**. Il prodotto non viene dichiarato UX-complete: l'evidenza umana ha mostrato che la complessità di orchestrazione resta troppo elevata.
 
@@ -190,7 +194,7 @@ Documento:
 
 1. **V1-A — Teacher Moment + Today/Next** — integrato;
 2. **V1-B — Lesson Brief** — integrato;
-3. **V1-C — Copilot reale + Contextual Voice Capture** — Copilot/context governance avanzati; Voice/STT resta da chiudere operativamente o deferire esplicitamente dalla release;
+3. **V1-C — Copilot reale + Contextual Voice Capture** — Copilot/context governance avanzati; Voice/STT è **DEFERRED** dal release core e richiede esplicita re-autorizzazione;
 4. **V1-D — Institutional Configurator** — da completare secondo necessità di pilot;
 5. **V1-E — Runtime benchmark e hosting decision** — da chiudere su evidence.
 
@@ -199,6 +203,28 @@ Completamenti successivi già acquisiti:
 - **H9-A — consumo governato di TEACHING_ADJUSTMENT(ACCEPTED) nella preparazione** — COMPLETE e post-merge certificato.
 
 Questi assi hanno precedenza su nuove superfici autonome.
+
+## 13-bis. Capability Readiness — DOS-CRM v1
+
+Dal 30 settembre 2026 Docente OS adotta **DOS-CRM v1** come strumento permanente per rappresentare il livello di completamento delle singole capability.
+
+Fonti:
+- `docs/product/DOCENTE_OS_CAPABILITY_READINESS_MODEL.md` — metodo e scala CRL 0–7;
+- `docs/product/CAPABILITY_READINESS_CURRENT.md` — vista umana corrente;
+- `ops/capability-readiness.json` — registro machine-readable.
+
+Il DOS-CRM non usa percentuali di completamento e non eredita automaticamente punteggi da audit storici. Una capability non riesaminata sulla baseline corrente viene mostrata come `NEEDS_REAUDIT`/stale anziché ricevere un livello non dimostrato.
+
+Prima capability qualificata nel nuovo registro:
+- `DOS-TT-SHARE-IMPORT` — Share Target → importazione Orario con minimizzazione locale: **CRL 5 / QUALIFIED**, baseline `develop@74290511ee58a6b61652160463461527e3e0f57a`.
+
+Il registro va aggiornato quando nuove evidence cambiano materialmente funzionalità, UX, dati, sicurezza, integrazione, qualificazione, operatività o governance di una capability.
+
+Aggiornamento 2026-10-01:
+- Wave A remediation PR #642 è consolidata;
+- QL-1 Daily Teaching Loop PR #643 è consolidata su merge `a59cc21e01b1955514e946fa487a50712a004857`;
+- QL-1 ha technical PASS + Human Review PASS, ma `human_use=NOT_RUN`;
+- nessuna capability viene promossa automaticamente: il registro conserva i CRL finché l'evidence mancante non è completata.
 
 ## 14. Maturity e assurance
 
@@ -220,7 +246,7 @@ Stato dove non esiste nuova evidence:
 2. emettere versione/tag/GitHub Release/changelog e receipt sullo SHA esatto;
 3. raccogliere evidence HUMAN_USE longitudinale su più giornate reali;
 4. chiudere i soli finding UX/pilot realmente osservati;
-5. chiudere Voice/STT oppure deferirlo esplicitamente dalla release;
+5. Voice/STT è **esplicitamente DEFERRED** dal release core; riattivarlo solo con nuova autorizzazione e qualification dedicata;
 6. completare WCAG manuale/assistive, ASVS requirement-level e SLI/SLO;
 7. maturare Drive runtime continuity e decidere Canva da evidence;
 8. mantenere Arena runtime transport condizionale fino alla chiusura Arena S3/S4.
