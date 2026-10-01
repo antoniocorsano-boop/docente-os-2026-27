@@ -1,8 +1,9 @@
 # DOCENTE OS — Capability Readiness Current
 
-Data: **2026-09-30**  
+Data: **2026-10-01**  
 Modello: **DOS-CRM v1**  
 Baseline iniziale: `develop@74290511ee58a6b61652160463461527e3e0f57a`  
+Baseline registro aggiornata: `develop@a59cc21e01b1955514e946fa487a50712a004857`  
 Stato: **CURRENT / CAPABILITY AUDIT REGISTER**
 
 ## Come leggere questa pagina
@@ -36,6 +37,16 @@ Un valore `NEEDS_REAUDIT` è intenzionale: significa che esiste una capability r
 | Copilota docente | AI collaboration | **4** | **INTEGRATED** | **CURRENT** |
 | Contextual Voice Capture | AI collaboration | **3** | **DEFERRED** | **CURRENT** |
 | Institutional Configurator | Integrazione istituzionale | **1** | **CONDITIONAL** | **CURRENT** |
+
+## Aggiornamento qualification — 2026-10-01
+
+Wave A e QL-1 sono state consolidate senza promozioni automatiche:
+
+- PR #642: R-1 TeachingSession e R-2 Copilot **COMPLETE**;
+- PR #643: QL-1 Daily Teaching Loop **technical PASS + Human Review PASS** sull'exact head `eda319ec545d5ad37104882d5224c020ebe302dc`, merge `a59cc21e01b1955514e946fa487a50712a004857`;
+- 45 test browser QL-1 PASS e Browser Certification/Product CI/K1/ASVS/Human Interaction/TRAMA/MFA Queue Hygiene PASS;
+- `human_use=NOT_RUN`: resta il blocker esplicito prima di qualunque promozione CRL attribuita a QL-1;
+- i CRL riportati sotto restano pertanto invariati.
 
 ## Orario — primo audit capability completo
 
@@ -97,7 +108,7 @@ Audit dettagliato:
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | **5** | **4** | **5** | **5** | **5** | **4** | **4** | **5** |
 
-Il dominio è maturo e il journey è reale, ma la qualification resta limitata da due regression contract ancora esclusi dallo script `npm test` corrente e dalla necessità storica di riconciliare manualmente le migration TE-1A nel Beta dopo il fix runtime del 21 settembre.
+Il dominio è maturo e il journey è reale. Le due regression contract precedentemente escluse da `npm test` sono state portate nel Product CI dalla PR #642. QL-1 ha inoltre prodotto technical PASS + Human Review sullo SHA corrente; il CRL resta 4 perché HUMAN_USE task-based e recovery operativo della lane non sono ancora completati.
 
 Audit dettagliato:
 
