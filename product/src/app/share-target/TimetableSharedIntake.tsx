@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { getDocumentProxy } from 'unpdf'
-import { analyzeMinimizedTimetableImport } from '@/app/orario/actions'
+import { analyzeMinimizedTimetableImport, analyzeSharedTimetableImport } from '@/app/orario/actions'
 import { MAX_KNOWLEDGE_UPLOAD_BYTES } from '@/app/knowledge/upload-policy'
 import { clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, inferTeacherTimetableCells, isValidOrdinal, parseOrdinal, teacherLabelMatches, type Rect, type TimetableTextAnchor } from './timetable-share-helpers'
 
@@ -170,6 +170,63 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
     })()
     return () => { cancelled = true }
   }, [file, onBeforeSubmit])
+
+  async function analyzeWholeDocument() {
+    if (!ready || !teacherLabel.trim() || !effectiveFrom || busy || acceptedCandidateId) return
+    setBusy(true)
+    setMessage('Analizzo il documento e ricostruisco il tuo orario settimanale…')
+    try {
+      const data = new FormData()
+      data.set('file', file)
+      data.set('teacherLabel', teacherLabel.trim())
+      data.set('effectiveFrom', effectiveFrom)
+      if (replaceReviewedCandidate) data.set('replaceReviewedCandidate', 'yes')
+
+      const result = await analyzeSharedTimetableImport(data)
+      if (!result || !result.ok) {
+        const code = result?.code ?? 'persist_failed'
+        if (isRecoverableImportFailure(code)) {
+          if (code === 'parse_failed' || code === 'no_rows') {
+            setNeedsManualContext(true)
+            setBusy(false)
+            setMessage('Non riesco a ricostruire automaticamente l’orario da questo documento. Puoi riprovare oppure aprire le opzioni avanzate; la selezione manuale non è il percorso ordinario.')
+            return
+          }
+          setBusy(false)
+          setMessage(messageForImportFailure(code))
+          return
+        }
+        try {
+          await onBeforeSubmit()
+        } catch (cleanupError) {
+          console.error('Timetable shared staging cleanup failed after terminal server result', cleanupError)
+          setBusy(false)
+          setMessage(`${messageForImportFailure(code)} La rimozione del PDF locale non è riuscita: usa Annulla acquisizione e riprova finché lo staging viene eliminato.`)
+          return
+        }
+        setBusy(false)
+        setMessage(messageForImportFailure(code))
+        return
+      }
+
+      setAcceptedCandidateId(result.candidateId)
+      onCandidateAccepted?.(result.candidateId)
+      setMessage('Orario ricostruito. Apro la revisione…')
+      try {
+        await onBeforeSubmit()
+      } catch (cleanupError) {
+        console.error('Timetable shared staging cleanup failed after candidate acceptance', cleanupError)
+        setBusy(false)
+        setMessage('La proposta è stata creata, ma il PDF locale non è ancora stato rimosso. Usa “Apri la revisione” per riprovare la rimozione senza rieseguire l’analisi.')
+        return
+      }
+      window.location.assign(reviewUrl(result.candidateId))
+    } catch (error) {
+      console.error('Timetable shared structured extraction failed', error)
+      setBusy(false)
+      setMessage('L’analisi automatica non è riuscita. Il PDF resta nello staging locale: puoi riprovare o usare le opzioni avanzate.')
+    }
+  }
 
   function findTeacher() {
     const label = teacherLabel.trim()
@@ -387,11 +444,11 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
   }
 
   return (
-    <section aria-label="Importazione locale dell’orario" style={{ display: 'grid', gap: 12 }}>
+    <section aria-label="Importazione dell’orario condiviso" aria-busy={busy} style={{ display: 'grid', gap: 12 }}>
       <div className="knowledgeFeedback" role="status">
-        <strong>Trova il tuo nome, controlla le celle, conferma</strong>
+        <strong>PDF ricevuto · ora estraggo il tuo orario</strong>
         <p style={{ margin: '4px 0 0' }}>
-          Il PDF resta sul dispositivo. Inserisci il nominativo: Docente OS ricostruisce automaticamente il tuo orario settimanale e ti chiede solo di controllarlo.
+          Inserisci il nominativo. Quando avvii l’analisi, il documento viene elaborato temporaneamente dal servizio di estrazione configurato; Docente OS non lo archivia come documento originale.
         </p>
       </div>
 
@@ -400,13 +457,15 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
           <span>Cognome o etichetta con cui compari nell’orario</span>
           <input value={teacherLabel} onChange={(event) => { setTeacherLabel(event.currentTarget.value); setTeacherMatches([]) }} maxLength={120} autoComplete="off" placeholder="Es. ROSSI" />
         </label>
-        <button type="button" onClick={findTeacher} disabled={!ready || !teacherLabel.trim() || busy}>
-          Estrai il mio orario
+        <button type="button" onClick={() => void analyzeWholeDocument()} disabled={!ready || !teacherLabel.trim() || !effectiveFrom || busy || Boolean(acceptedCandidateId)} aria-busy={busy}>
+          {busy ? <><span className="timetableSpinner" aria-hidden="true" />Analizzo l’orario…</> : 'Estrai il mio orario'}
         </button>
-        <small>La ricerca avviene localmente nel PDF. Se il testo non è leggibile, puoi comunque usare la selezione manuale.</small>
+        <small>Il risultato viene mostrato nella revisione: controlli le lezioni riconosciute prima di applicare qualsiasi modifica.</small>
       </div>
 
-      <div ref={viewportRef} style={{ maxHeight: 620, overflow: 'auto', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)' }}>
+      <p role="status" aria-live="polite" className="timetableStatus">{message}</p>
+
+      <div ref={viewportRef} className="timetablePreviewViewport">
         <div style={{ position: 'relative', width: '100%' }}>
           <canvas
             ref={canvasRef}
@@ -478,19 +537,29 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
         <span className="timetableKeyboardHelp"> Da tastiera: usa le frecce, Invio per iniziare/chiudere l’area e Maiusc + frecce per spostarti più velocemente.</span>
       </small>
 
-      {(!selections.length || needsManualContext) ? <button
-        type="button"
-        aria-pressed={touchSelectMode}
-        onClick={() => {
-          setTouchSelectMode((current) => !current)
-          setMessage(touchSelectMode
-            ? 'Scorrimento touch riattivato.'
-            : 'Modalità selezione touch attiva: trascina una sola area, poi lo scorrimento verrà riattivato.')
-        }}
-        disabled={!ready || busy}
-      >
-        {touchSelectMode ? 'Torna a scorrere' : 'Selezione manuale (fallback)'}
-      </button> : null}
+      {(!selections.length || needsManualContext) ? (
+        <details className="timetableSecondaryOptions">
+          <summary>Problemi di lettura? Opzioni avanzate</summary>
+          <div style={{ display: 'grid', gap: 8, paddingTop: 8 }}>
+            <button type="button" onClick={findTeacher} disabled={!ready || !teacherLabel.trim() || busy}>
+              Prova la ricerca locale nel PDF
+            </button>
+            <button
+              type="button"
+              aria-pressed={touchSelectMode}
+              onClick={() => {
+                setTouchSelectMode((current) => !current)
+                setMessage(touchSelectMode
+                  ? 'Scorrimento touch riattivato.'
+                  : 'Modalità selezione touch attiva: trascina una sola area, poi lo scorrimento verrà riattivato.')
+              }}
+              disabled={!ready || busy}
+            >
+              {touchSelectMode ? 'Torna a scorrere' : 'Selezione manuale'}
+            </button>
+          </div>
+        </details>
+      ) : null}
 
       {selections.length ? (
         <div className="knowledgeFeedback" style={{ display: 'grid', gap: 8 }}>
@@ -550,18 +619,20 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
         </details>
       ) : null}
 
-      <div className="timetablePrimaryActions">
-        <button type="button" onClick={() => void submit()} disabled={!ready || !sourceFingerprint || !selections.length || (needsManualContext && selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal) || !item.classLabel)) || !teacherLabel.trim() || !effectiveFrom || busy || Boolean(acceptedCandidateId)}>
-          {busy ? 'Preparo la proposta…' : 'Continua'}
-        </button>
-        {acceptedCandidateId ? (
+      {selections.length ? (
+        <div className="timetablePrimaryActions">
+          <button type="button" onClick={() => void submit()} disabled={!ready || !sourceFingerprint || (needsManualContext && selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal) || !item.classLabel)) || !teacherLabel.trim() || !effectiveFrom || busy || Boolean(acceptedCandidateId)}>
+            {busy ? 'Preparo la proposta…' : 'Continua con la selezione manuale'}
+          </button>
+        </div>
+      ) : null}
+      {acceptedCandidateId ? (
+        <div className="timetablePrimaryActions">
           <button type="button" onClick={() => void retryAcceptedCleanup()} disabled={busy}>
             Apri la revisione
           </button>
-        ) : null}
-      </div>
-
-      <p role="status" aria-live="polite" style={{ margin: 0 }}>{message}</p>
+        </div>
+      ) : null}
 
       <details className="timetableSecondaryOptions">
         <summary>Altre opzioni</summary>
@@ -587,7 +658,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
       <details className="timetableSecondaryOptions">
         <summary>Privacy e file locale</summary>
         <p className="knowledgeUploadTrust" style={{ margin: '8px 0 0' }}>
-          Il PDF completo non viene caricato in Conoscenza e non viene conservato come fonte. La proposta resta modificabile e richiede conferma prima di cambiare la bozza dell’Orario.
+          Il PDF condiviso viene usato solo per l’estrazione dell’orario e non viene archiviato in Conoscenza come documento originale. La proposta resta modificabile e richiede conferma prima di cambiare la bozza dell’Orario.
         </p>
       </details>
     </section>
@@ -679,7 +750,7 @@ function reviewUrl(candidateId: string) {
 function messageForImportFailure(code: string) {
   if (code === 'invalid_date') return 'La data non è valida per l’anno scolastico corrente. Correggila e riprova: il PDF resta nello staging locale per consentire il nuovo tentativo.'
   if (code === 'teacher_required') return 'Indica il cognome o l’etichetta docente e riprova: il PDF resta nello staging locale.'
-  if (code === 'parse_failed' || code === 'no_rows') return 'Non riesco ancora a ricavare righe utili dalle aree scelte. Correggi la selezione e riprova: il PDF resta nello staging locale.'
+  if (code === 'parse_failed' || code === 'no_rows') return 'Non riesco a ricostruire automaticamente l’orario da questo documento. Puoi riprovare oppure usare le opzioni avanzate: il PDF resta nello staging locale.'
   if (code === 'replace_confirmation_required') return 'Esiste già una proposta che contiene correzioni manuali. Se vuoi sostituirla, seleziona la conferma esplicita e riprova: il PDF resta nello staging locale.'
   if (code === 'already_applied') return 'Questo documento è già stato applicato alla bozza dell’orario. L’importazione è conclusa e il PDF locale viene rimosso.'
   if (code === 'invalid_content' || code === 'unsupported' || code === 'too_large') return 'Il file condiviso non supera i controlli di acquisizione. Il PDF locale viene rimosso; per riprovare usa un altro file dalla condivisione.'
