@@ -10,7 +10,8 @@
     "aggregate": "lowest_applicable_critical_axis",
     "percentages_forbidden": true,
     "evidence_required_for_promotion": true,
-    "stale_records_are_not_current_claims": true
+    "stale_records_are_not_current_claims": true,
+    "workflow_gate_pass_is_not_assurance_completion": true
   },
   "axes": [
     "F",
@@ -49,7 +50,7 @@
         "Browser Certification PASS",
         "P7 DB Restore PASS",
         "K1 Knowledge Upload PASS",
-        "ASVS 5.0 Assurance PASS",
+        "ASVS 5.0 workflow gate PASS for this change; product-wide ASVS assurance remains PARTIAL / NO VERIFICATION CLAIM",
         "Human Interaction Model PASS",
         "Design Policy Gate PASS",
         "TRAMA Perceptible Write PASS",
@@ -148,7 +149,7 @@
       "name": "Preparazione della lezione / Lesson Brief",
       "crl": 5,
       "status": "QUALIFIED",
-      "freshness": "RECENT",
+      "freshness": "STALE",
       "axes": {
         "F": 5,
         "UX": 5,
@@ -178,9 +179,9 @@
       ],
       "open_findings": [
         "CRL-6 requires sustained real-use evidence over multiple days/classes.",
-        "QL-1 reran the lesson-preparation path on current develop with technical PASS and Human Review; freshness remains RECENT until lane-required HUMAN_USE is completed."
+        "CRL-5 qualification remains historical evidence, but post-qualification changes require whole-capability revalidation; QL-1 technical PASS does not by itself restore CURRENT freshness because human_use=NOT_RUN."
       ],
-      "next_promotion_criterion": "Requalify on current develop for CURRENT freshness; promote to CRL-6 only after sustained operational/pilot evidence across the full Diary-to-next-lesson cycle."
+      "next_promotion_criterion": "Revalidate the whole capability on a current exact head; restore CURRENT freshness only after the required qualification evidence is complete. CRL-6 still requires sustained operational/pilot evidence."
     },
     {
       "capability_id": "DOS-TEACHING-SESSION",
@@ -371,7 +372,7 @@
       "name": "Account / MFA / sessioni",
       "crl": 5,
       "status": "QUALIFIED",
-      "freshness": "RECENT",
+      "freshness": "STALE",
       "axes": {
         "F": 5,
         "UX": 5,
@@ -397,9 +398,9 @@
       ],
       "open_findings": [
         "ASVS L1/L2 product-wide mapping remains PARTIAL.",
-        "Qualification has not been rerun as a whole capability on the 2026-09-30 baseline."
+        "Post-qualification Account/MFA/session changes make the historical CRL-5 evidence STALE until whole-capability revalidation on a current exact head."
       ],
-      "next_promotion_criterion": "Requalify on the release candidate; CRL-6 requires sustained operational/recovery evidence with no critical account/session findings."
+      "next_promotion_criterion": "Revalidate Account/MFA/session behavior on the release candidate exact head before restoring CURRENT freshness; CRL-6 requires sustained operational/recovery evidence."
     },
     {
       "capability_id": "DOS-COPILOT",
@@ -461,10 +462,11 @@
         "CONTEXTUAL_VOICE_CAPTURE_SPEC.md",
         "lesson-voice-capture.tsx",
         "contextual-capture + tests",
-        "STT adapter/tests"
+        "STT adapter/tests",
+        "PROJECT_STATUS_CURRENT.md: DOS-VOICE explicitly DEFERRED from release core pending re-authorization"
       ],
       "open_findings": [
-        "Capability is deliberately deferred from the release core.",
+        "Capability is explicitly DEFERRED from the release core and requires re-authorization before release qualification.",
         "No complete provider/privacy/runtime/HUMAN_USE qualification exists."
       ],
       "next_promotion_criterion": "Explicitly re-authorize Voice for release, then qualify provider policy, privacy/retention, fallback, HVA and HUMAN_USE."
@@ -479,9 +481,9 @@
       "axes": {
         "F": 1,
         "UX": 1,
-        "D": 2,
-        "S": 3,
-        "I": 2,
+        "D": 1,
+        "S": 1,
+        "I": 1,
         "Q": 1,
         "O": 1,
         "K": 5
@@ -494,7 +496,7 @@
       ],
       "open_findings": [
         "No authorized institutional pilot scope is active.",
-        "Institution binding, consent lifecycle and tenant isolation are not implemented as a qualified capability."
+        "Institution binding, consent lifecycle, tenant isolation and executable security/data-plane behavior are not implemented; non-knowledge axes remain at DEFINED level."
       ],
       "next_promotion_criterion": "Authorize a concrete institutional pilot before implementing and qualifying tenant/provider policy."
     }
@@ -613,5 +615,38 @@
         "status": "PLANNED"
       }
     ]
+  },
+  "coverage_boundary": {
+    "scope": "current DOS-CRM core/release-oriented capability register",
+    "included_capability_ids": [
+      "DOS-TT-SHARE-IMPORT",
+      "DOS-TIMETABLE",
+      "DOS-TODAY-NEXT",
+      "DOS-LESSON-PREP",
+      "DOS-TEACHING-SESSION",
+      "DOS-PLAN-UDA",
+      "DOS-KNOWLEDGE",
+      "DOS-CALENDAR",
+      "DOS-SETTINGS",
+      "DOS-ACCOUNT-SECURITY",
+      "DOS-COPILOT",
+      "DOS-VOICE",
+      "DOS-INSTITUTIONAL-CONFIG"
+    ],
+    "governed_capabilities_not_yet_registered": [
+      {
+        "capability_id": "DOS-CURRICULUM-INTAKE",
+        "status": "NEEDS_REAUDIT"
+      },
+      {
+        "capability_id": "DOS-MATERIALS",
+        "status": "NEEDS_REAUDIT"
+      },
+      {
+        "capability_id": "DOS-OBSERVATION-EVIDENCE",
+        "status": "NEEDS_REAUDIT"
+      }
+    ],
+    "rule": "Omission from capabilities[] is not evidence of absence or readiness; governed capabilities outside the current register must surface as NEEDS_REAUDIT until audited."
   }
 }
