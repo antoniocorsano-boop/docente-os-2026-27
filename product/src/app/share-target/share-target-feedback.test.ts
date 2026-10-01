@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import test from 'node:test'
 import { isValidIsoCalendarDate, resolveTimetableSourceIdentity } from '../orario/timetable-import-boundary'
 import { clearShareIntakeStaging } from './share-target-staging'
-import { clampRectToBounds, dateFromFilename, derivativeContextLabel, isValidOrdinal, looksLikeTimetablePdf, parseOrdinal } from './timetable-share-helpers'
+import { clampRectToBounds, dateFromFilename, derivativeContextLabel, isValidOrdinal, looksLikeTimetablePdf, parseOrdinal, teacherLabelMatches } from './timetable-share-helpers'
 
 const intake = fs.readFileSync(new URL('./ShareTargetIntake.tsx', import.meta.url), 'utf8')
 const uploader = fs.readFileSync(new URL('../knowledge/KnowledgeFileUploader.tsx', import.meta.url), 'utf8')
@@ -49,7 +49,7 @@ test('timetable-like shared PDFs use local minimization before timetable analysi
   assert.match(timetableIntake, /x: clamp\(x, 0, canvas\.width\)/)
   assert.match(timetableIntake, /y: clamp\(y, 0, canvas\.height\)/)
   assert.match(timetableIntake, /parseOrdinal\(event\.currentTarget\.value\)/)
-  assert.match(timetableIntake, /selections\.some\(\(item\) => !item\.weekday \|\| !isValidOrdinal\(item\.ordinal\)\)/)
+  assert.match(timetableIntake, /needsManualContext && selections\.some\(\(item\) => !item\.weekday \|\| !isValidOrdinal\(item\.ordinal\)\)/)
 
   assert.match(timetableActions, /resolveTimetableSourceIdentity/)
   assert.match(timetableActions, /sourceIdentity\.sourceLabel/)
@@ -107,6 +107,27 @@ test('ordinal validation rejects non-integer and out-of-range values', () => {
   assert.equal(parseOrdinal('21'), null)
   assert.equal(parseOrdinal('1.5'), null)
   assert.equal(isValidOrdinal(null), false)
+})
+
+test('teacher-first search normalizes ordinary timetable labels locally', () => {
+  assert.equal(teacherLabelMatches('Prof. Rossi', 'rossi'), true)
+  assert.equal(teacherLabelMatches('RÓSSI', 'róssi'), true)
+  assert.equal(teacherLabelMatches('BIANCHI', 'rossi'), false)
+  assert.equal(teacherLabelMatches('R', 'r'), false)
+})
+
+test('mobile timetable flow keeps day and period in progressive fallback', () => {
+  assert.match(timetableIntake, /Trova il mio nome/)
+  assert.match(timetableIntake, /teacherLabelMatches/)
+  assert.match(timetableIntake, /teacherMatches/)
+  assert.match(timetableIntake, /needsManualContext/)
+  assert.match(timetableIntake, /Correzione avanzata · indica giorno e ora/)
+  assert.match(timetableIntake, /code === 'parse_failed' \|\| code === 'no_rows'/)
+  assert.match(timetableIntake, /derivativeContextLabel\(teacherLabel, rect\.weekday, rect\.ordinal\)/)
+})
+
+test('teacher-only derivative context is allowed before advanced fallback', () => {
+  assert.equal(derivativeContextLabel(' ROSSI ', null, null), 'DOCENTE: ROSSI')
 })
 
 test('crop bounds clamp both endpoints instead of shifting overshoot', () => {
