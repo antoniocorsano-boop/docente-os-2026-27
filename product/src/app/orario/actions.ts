@@ -160,6 +160,11 @@ export async function analyzeMinimizedTimetableImport(formData: FormData) {
   return analyzeTimetableImportResult(formData)
 }
 
+export async function analyzeSharedTimetableImport(formData: FormData) {
+  formData.set('sourceMode', 'LOCAL_SHARED_DOCUMENT')
+  return analyzeTimetableImportResult(formData)
+}
+
 async function analyzeTimetableImportResult(formData: FormData) {
   const context = await requireContext()
 
