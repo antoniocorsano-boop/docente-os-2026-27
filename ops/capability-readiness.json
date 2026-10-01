@@ -1,0 +1,569 @@
+{
+  "schema_version": 1,
+  "model": "DOS-CRM",
+  "model_version": "1.0",
+  "system": "Docente OS",
+  "canonical_branch": "develop",
+  "as_of": "2026-09-30",
+  "baseline_sha": "74290511ee58a6b61652160463461527e3e0f57a",
+  "rules": {
+    "aggregate": "lowest_applicable_critical_axis",
+    "percentages_forbidden": true,
+    "evidence_required_for_promotion": true,
+    "stale_records_are_not_current_claims": true
+  },
+  "axes": [
+    "F",
+    "UX",
+    "D",
+    "S",
+    "I",
+    "Q",
+    "O",
+    "K"
+  ],
+  "capabilities": [
+    {
+      "capability_id": "DOS-TT-SHARE-IMPORT",
+      "domain": "Organizzazione didattica",
+      "name": "Share Target → importazione Orario con minimizzazione locale",
+      "crl": 5,
+      "status": "QUALIFIED",
+      "freshness": "CURRENT",
+      "axes": {
+        "F": 5,
+        "UX": 5,
+        "D": 5,
+        "S": 5,
+        "I": 5,
+        "Q": 5,
+        "O": 5,
+        "K": 5
+      },
+      "verified_on": "2026-09-30",
+      "verified_baseline": "74290511ee58a6b61652160463461527e3e0f57a",
+      "evidence": [
+        "PR #640 merged",
+        "exact head d9bcb21f44b916569e25ad957b2afa3cc502efe8",
+        "Product CI PASS",
+        "Browser Certification PASS",
+        "P7 DB Restore PASS",
+        "K1 Knowledge Upload PASS",
+        "ASVS 5.0 Assurance PASS",
+        "Human Interaction Model PASS",
+        "Design Policy Gate PASS",
+        "TRAMA Perceptible Write PASS",
+        "Codex final review: no major issues"
+      ],
+      "open_findings": [
+        "Operational Security hosted X5 fixture failure remains external to this capability"
+      ],
+      "next_promotion_criterion": "Runtime/pilot evidence of repeated real teacher use and recovery sufficient for CRL-6."
+    },
+    {
+      "capability_id": "DOS-TIMETABLE",
+      "domain": "Organizzazione didattica",
+      "name": "Orario",
+      "crl": 4,
+      "status": "INTEGRATED",
+      "freshness": "CURRENT",
+      "axes": {
+        "F": 5,
+        "UX": 4,
+        "D": 5,
+        "S": 5,
+        "I": 5,
+        "Q": 4,
+        "O": 4,
+        "K": 5
+      },
+      "verified_on": "2026-09-30",
+      "verified_baseline": "74290511ee58a6b61652160463461527e3e0f57a",
+      "evidence": [
+        "docs/product/audits/DOS_CRM_AUDIT_ORARIO_2026-09-30.md",
+        "docs/architecture/TIMETABLE_CANONICAL_SPEC.md",
+        "docs/product/ORARIO_DAILY_COCKPIT_CONTRACT.md",
+        "PR #38 shared Cattedra",
+        "PR #46 guidance map + manual class presence",
+        "PR #48 class context",
+        "PR #94 Timetable + Calendar composition",
+        "PR #490 in-force timetable fallback",
+        "PR #612 Cattedra lifecycle without timetable side effects",
+        "PR #625 end-to-end timetable import",
+        "PR #640 Share Target minimized timetable import"
+      ],
+      "open_findings": [
+        "Whole-capability HUMAN_USE evidence is not current.",
+        "No single exact-head qualification roll-up covers the complete Orario journey.",
+        "No recent complete operational receipt covers manual edit, import/review/apply, day/week use and recovery together."
+      ],
+      "next_promotion_criterion": "Create and pass DOS-TIMETABLE-QUALIFICATION on one exact SHA with Browser Certification, targeted HUMAN_USE and runtime/recovery receipt."
+    },
+    {
+      "capability_id": "DOS-TODAY-NEXT",
+      "domain": "Teacher Moment",
+      "name": "Oggi / Today + Next",
+      "crl": 4,
+      "status": "INTEGRATED",
+      "freshness": "CURRENT",
+      "axes": {
+        "F": 5,
+        "UX": 4,
+        "D": 5,
+        "S": 5,
+        "I": 5,
+        "Q": 4,
+        "O": 4,
+        "K": 5
+      },
+      "verified_on": "2026-09-30",
+      "verified_baseline": "74290511ee58a6b61652160463461527e3e0f57a",
+      "evidence": [
+        "docs/product/audits/DOS_CRM_AUDIT_TODAY_NEXT_2026-09-30.md",
+        "docs/product/HOME_DAILY_COCKPIT_CANONICAL_SPEC.md",
+        "product/src/app/page.tsx",
+        "home-daily-context + tests",
+        "teacher-moment + tests",
+        "PR #390 V1-A Teacher Moment + Today/Next",
+        "PR #490 timetable fallback",
+        "PR #481 next-day lesson packs",
+        "PR #568 navigation/pilot evidence"
+      ],
+      "open_findings": [
+        "Historical HUMAN_USE FRICTION/REWORK_REQUIRED has not yet been closed by a fresh whole-cockpit human-use receipt.",
+        "No single exact-head qualification roll-up covers all canonical Daily Cockpit scenarios.",
+        "No recent mobile/PWA operational receipt covers the complete before/during/between/after journey."
+      ],
+      "next_promotion_criterion": "Pass DOS-TODAY-NEXT-QUALIFICATION on one exact SHA with canonical scenario coverage, Browser Certification and fresh HUMAN_USE."
+    },
+    {
+      "capability_id": "DOS-LESSON-PREP",
+      "domain": "Didattica",
+      "name": "Preparazione della lezione / Lesson Brief",
+      "crl": 5,
+      "status": "QUALIFIED",
+      "freshness": "RECENT",
+      "axes": {
+        "F": 5,
+        "UX": 5,
+        "D": 5,
+        "S": 5,
+        "I": 5,
+        "Q": 5,
+        "O": 5,
+        "K": 5
+      },
+      "verified_on": "2026-09-21",
+      "verified_baseline": "fd5913aa9ce8a60f16112b88e49f3274209fdc19",
+      "evidence": [
+        "docs/product/audits/DOS_CRM_AUDIT_LESSON_PREP_2026-09-30.md",
+        "docs/architecture/LESSON_PREPARATION_ORCHESTRATION_CANONICAL.md",
+        "next-lesson-preparation + tests",
+        "lesson-brief + tests",
+        "lesson-preparation-manifest",
+        "lesson-material-renderer + tests",
+        "lesson-materials and tomorrow-materials E2E",
+        "PR #568 ECO-02/P8 merged",
+        "HUMAN REVIEW PASS on PR #568 exact head fd5913aa9ce8a60f16112b88e49f3274209fdc19",
+        "2026-09-21 lesson-record runtime incident corrected with regression contract"
+      ],
+      "open_findings": [
+        "Qualification is recent but not rerun on the 2026-09-30 develop baseline.",
+        "CRL-6 requires sustained real-use evidence over multiple days/classes."
+      ],
+      "next_promotion_criterion": "Requalify on current develop for CURRENT freshness; promote to CRL-6 only after sustained operational/pilot evidence across the full Diary-to-next-lesson cycle."
+    },
+    {
+      "capability_id": "DOS-TEACHING-SESSION",
+      "domain": "Didattica",
+      "name": "TeachingSession / registrazione della lezione",
+      "crl": 4,
+      "status": "INTEGRATED",
+      "freshness": "CURRENT",
+      "axes": {
+        "F": 5,
+        "UX": 4,
+        "D": 5,
+        "S": 5,
+        "I": 5,
+        "Q": 4,
+        "O": 4,
+        "K": 5
+      },
+      "verified_on": "2026-09-30",
+      "verified_baseline": "74290511ee58a6b61652160463461527e3e0f57a",
+      "evidence": [
+        "docs/product/audits/DOS_CRM_AUDIT_TEACHING_SESSION_2026-09-30.md",
+        "PR #312 In classe → Registra → Diario",
+        "PR #366 TE-1B atomic Observation/TeachingSession",
+        "PR #504 previous lesson recording",
+        "PR #572 runtime projection parity fix",
+        "lesson-register E2E",
+        "teaching-session domain tests",
+        "docs/incidents/2026-09-21-lesson-record-runtime-projection.md"
+      ],
+      "open_findings": [
+        "lesson-registration-runtime-contract.test.ts is not in the current npm test script.",
+        "lesson-close-error-contract.test.ts is not in the current npm test script.",
+        "Beta required manual TE-1A migration reconciliation after the 2026-09-21 runtime fix.",
+        "Fresh post-reconciliation whole-journey HUMAN_USE/operational receipt is missing."
+      ],
+      "next_promotion_criterion": "Run a single exact-head TeachingSession qualification after CI test-discovery and migration-parity remediation, including E2E, Browser Certification and Human Review."
+    },
+    {
+      "capability_id": "DOS-PLAN-UDA",
+      "domain": "Progettazione",
+      "name": "Piano annuale / UDA",
+      "crl": 4,
+      "status": "INTEGRATED",
+      "freshness": "CURRENT",
+      "axes": {
+        "F": 5,
+        "UX": 4,
+        "D": 5,
+        "S": 5,
+        "I": 5,
+        "Q": 4,
+        "O": 4,
+        "K": 5
+      },
+      "verified_on": "2026-09-30",
+      "verified_baseline": "74290511ee58a6b61652160463461527e3e0f57a",
+      "evidence": [
+        "docs/product/audits/DOS_CRM_AUDIT_PLAN_UDA_2026-09-30.md",
+        "docs/architecture/ANNUAL_EXECUTION_PLAN.md",
+        "product/src/app/piano-annuale/model.ts + tests",
+        "SupabaseAnnualPlanExecutionRepository",
+        "PR #239/#240/#242 curriculum-plan interop",
+        "PR #538 H9-A governed replanning consumption"
+      ],
+      "open_findings": [
+        "No single exact-head qualification covers the whole Plan/UDA journey.",
+        "Fresh whole-journey HUMAN_USE and operational receipt are missing."
+      ],
+      "next_promotion_criterion": "Pass an exact-head Plan/UDA qualification from plan progress through governed replanning into lesson preparation and TeachingSession."
+    },
+    {
+      "capability_id": "DOS-KNOWLEDGE",
+      "domain": "Conoscenza",
+      "name": "Conoscenza / KB e provenienza",
+      "crl": 4,
+      "status": "INTEGRATED",
+      "freshness": "CURRENT",
+      "axes": {
+        "F": 5,
+        "UX": 4,
+        "D": 5,
+        "S": 5,
+        "I": 5,
+        "Q": 5,
+        "O": 4,
+        "K": 5
+      },
+      "verified_on": "2026-09-30",
+      "verified_baseline": "74290511ee58a6b61652160463461527e3e0f57a",
+      "evidence": [
+        "docs/product/audits/DOS_CRM_AUDIT_KNOWLEDGE_2026-09-30.md",
+        "docs/architecture/KB_INGESTION.md",
+        "ASVS V5.2.2 CLOSED_VERIFIED",
+        "K1 Knowledge Upload Gate",
+        "PR #267 teacher resources → Knowledge",
+        "PR #281 local PDF recovery",
+        "PR #422 governed Knowledge retrieval"
+      ],
+      "open_findings": [
+        "Whole upload→processing→provenance→retrieval→lesson-reuse journey lacks a single current qualification.",
+        "Fresh HUMAN_USE/operational receipt for the Knowledge surface is missing."
+      ],
+      "next_promotion_criterion": "Pass a whole-journey Knowledge qualification with Browser/HUMAN_USE evidence on current develop."
+    },
+    {
+      "capability_id": "DOS-CALENDAR",
+      "domain": "Organizzazione didattica",
+      "name": "Calendario e composizione temporale",
+      "crl": 4,
+      "status": "INTEGRATED",
+      "freshness": "CURRENT",
+      "axes": {
+        "F": 5,
+        "UX": 4,
+        "D": 5,
+        "S": 5,
+        "I": 5,
+        "Q": 4,
+        "O": 4,
+        "K": 5
+      },
+      "verified_on": "2026-09-30",
+      "verified_baseline": "74290511ee58a6b61652160463461527e3e0f57a",
+      "evidence": [
+        "docs/product/audits/DOS_CRM_AUDIT_CALENDAR_2026-09-30.md",
+        "TEMPORAL_COMPOSITION_CANONICAL_SPEC.md",
+        "PR #93 Calendar core",
+        "PR #94 temporal composition",
+        "PR #257 operational agenda",
+        "PR #510 server hardening",
+        "PR #569 DOS-CAL-01 Human Review PASS",
+        "PR #592 temporal exceptions"
+      ],
+      "open_findings": [
+        "DOS-CAL-01 is qualified but the entire Calendar capability is not qualified as one journey.",
+        "Current end-to-end Browser/HUMAN_USE evidence for events, exceptions, agenda and recovery is missing."
+      ],
+      "next_promotion_criterion": "Run a single exact-head Calendar qualification including events, exceptions, temporal composition, recovery and Human Review."
+    },
+    {
+      "capability_id": "DOS-SETTINGS",
+      "domain": "Configurazione",
+      "name": "Impostazioni / contesto professionale",
+      "crl": 4,
+      "status": "INTEGRATED",
+      "freshness": "CURRENT",
+      "axes": {
+        "F": 5,
+        "UX": 4,
+        "D": 5,
+        "S": 5,
+        "I": 5,
+        "Q": 4,
+        "O": 4,
+        "K": 5
+      },
+      "verified_on": "2026-09-30",
+      "verified_baseline": "74290511ee58a6b61652160463461527e3e0f57a",
+      "evidence": [
+        "docs/product/audits/DOS_CRM_AUDIT_SETTINGS_2026-09-30.md",
+        "SETTINGS_CANONICAL_SPEC.md",
+        "SETTINGS_EXPERIENCE_CONTRACT.md",
+        "PR #20 persistent settings",
+        "PR #38 guided context/shared Cattedra",
+        "PR #324 visual convergence",
+        "PR #596 local teacher profile",
+        "PR #612 Cattedra lifecycle"
+      ],
+      "open_findings": [
+        "No single qualification covers first-time setup and cross-surface propagation.",
+        "Fresh mobile/PWA HUMAN_USE evidence is missing."
+      ],
+      "next_promotion_criterion": "Qualify first-time setup plus propagation to Classes, Timetable, Home and Plan on one exact SHA."
+    },
+    {
+      "capability_id": "DOS-ACCOUNT-SECURITY",
+      "domain": "Sicurezza",
+      "name": "Account / MFA / sessioni",
+      "crl": 5,
+      "status": "QUALIFIED",
+      "freshness": "RECENT",
+      "axes": {
+        "F": 5,
+        "UX": 5,
+        "D": 5,
+        "S": 6,
+        "I": 5,
+        "Q": 5,
+        "O": 5,
+        "K": 5
+      },
+      "verified_on": "2026-09-13",
+      "verified_baseline": "958a61d185970157fc8dd4a4a7cd0877a38cc420",
+      "evidence": [
+        "docs/product/audits/DOS_CRM_AUDIT_ACCOUNT_SECURITY_2026-09-30.md",
+        "ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md",
+        "ASVS_5_0_ASSURANCE_CANONICAL.md",
+        "PR #346 MFA TOTP/AAL2",
+        "PR #348 authenticated Account UI",
+        "PR #364 Account consolidation",
+        "MFA Browser AAL2 Gate",
+        "AAL2 data-plane contract",
+        "provider runtime + recovery/re-login receipt"
+      ],
+      "open_findings": [
+        "ASVS L1/L2 product-wide mapping remains PARTIAL.",
+        "Qualification has not been rerun as a whole capability on the 2026-09-30 baseline."
+      ],
+      "next_promotion_criterion": "Requalify on the release candidate; CRL-6 requires sustained operational/recovery evidence with no critical account/session findings."
+    },
+    {
+      "capability_id": "DOS-COPILOT",
+      "domain": "AI collaboration",
+      "name": "Copilota docente",
+      "crl": 4,
+      "status": "INTEGRATED",
+      "freshness": "CURRENT",
+      "axes": {
+        "F": 4,
+        "UX": 4,
+        "D": 5,
+        "S": 5,
+        "I": 5,
+        "Q": 4,
+        "O": 4,
+        "K": 5
+      },
+      "verified_on": "2026-09-30",
+      "verified_baseline": "74290511ee58a6b61652160463461527e3e0f57a",
+      "evidence": [
+        "docs/product/audits/DOS_CRM_AUDIT_COPILOT_2026-09-30.md",
+        "AI_COLLABORATION_CANONICAL_SPEC.md",
+        "TEACHER_AI_COPILOT_PRODUCT_DIRECTION.md",
+        "assistant/teacher/today context tests",
+        "PR #420 K2 next-lesson context",
+        "PR #422 governed Knowledge retrieval",
+        "Lesson Preparation integration"
+      ],
+      "open_findings": [
+        "Whole Copilot qualification is missing.",
+        "Historical K2 review findings require current verification of discipline binding and graceful degradation.",
+        "HUMAN_USE still identifies Copilot as not sufficiently operational in the teacher workflow."
+      ],
+      "next_promotion_criterion": "Pass a current multi-discipline Copilot qualification covering partial failure, retrieval, proposal/write governance, latency and HUMAN_USE."
+    },
+    {
+      "capability_id": "DOS-VOICE",
+      "domain": "AI collaboration",
+      "name": "Contextual Voice Capture",
+      "crl": 3,
+      "status": "DEFERRED",
+      "freshness": "CURRENT",
+      "axes": {
+        "F": 3,
+        "UX": 3,
+        "D": 4,
+        "S": 4,
+        "I": 4,
+        "Q": 3,
+        "O": 2,
+        "K": 5
+      },
+      "verified_on": "2026-09-30",
+      "verified_baseline": "74290511ee58a6b61652160463461527e3e0f57a",
+      "evidence": [
+        "docs/product/audits/DOS_CRM_AUDIT_VOICE_2026-09-30.md",
+        "CONTEXTUAL_VOICE_CAPTURE_SPEC.md",
+        "lesson-voice-capture.tsx",
+        "contextual-capture + tests",
+        "STT adapter/tests"
+      ],
+      "open_findings": [
+        "Capability is deliberately deferred from the release core.",
+        "No complete provider/privacy/runtime/HUMAN_USE qualification exists."
+      ],
+      "next_promotion_criterion": "Explicitly re-authorize Voice for release, then qualify provider policy, privacy/retention, fallback, HVA and HUMAN_USE."
+    },
+    {
+      "capability_id": "DOS-INSTITUTIONAL-CONFIG",
+      "domain": "Integrazione istituzionale",
+      "name": "Institutional Configurator",
+      "crl": 1,
+      "status": "CONDITIONAL",
+      "freshness": "CURRENT",
+      "axes": {
+        "F": 1,
+        "UX": 1,
+        "D": 2,
+        "S": 3,
+        "I": 2,
+        "Q": 1,
+        "O": 1,
+        "K": 5
+      },
+      "verified_on": "2026-09-30",
+      "verified_baseline": "74290511ee58a6b61652160463461527e3e0f57a",
+      "evidence": [
+        "docs/product/audits/DOS_CRM_AUDIT_INSTITUTIONAL_CONFIG_2026-09-30.md",
+        "INSTITUTIONAL_INTEGRATION_CONFIGURATOR_CANONICAL.md"
+      ],
+      "open_findings": [
+        "No authorized institutional pilot scope is active.",
+        "Institution binding, consent lifecycle and tenant isolation are not implemented as a qualified capability."
+      ],
+      "next_promotion_criterion": "Authorize a concrete institutional pilot before implementing and qualifying tenant/provider policy."
+    }
+  ],
+  "qualification_roadmap": {
+    "version": 1,
+    "updated_on": "2026-09-30",
+    "source": "docs/product/DOS_CRM_QUALIFICATION_ROADMAP.md",
+    "remediation": [
+      {
+        "id": "R-1",
+        "name": "TeachingSession regression discovery",
+        "blocks": [
+          "QL-1"
+        ],
+        "status": "OPEN"
+      },
+      {
+        "id": "R-2",
+        "name": "Copilot historical findings verification",
+        "blocks": [
+          "QL-4"
+        ],
+        "status": "OPEN"
+      },
+      {
+        "id": "R-3",
+        "name": "Common qualification receipt schema",
+        "blocks": [
+          "QL-1",
+          "QL-2",
+          "QL-3",
+          "QL-4"
+        ],
+        "status": "COMPLETE",
+        "evidence": [
+          "ops/dos-crm-qualification-receipt.schema.json",
+          "docs/product/DOS_CRM_QUALIFICATION_RECEIPT_CONTRACT.md"
+        ]
+      }
+    ],
+    "lanes": [
+      {
+        "id": "QL-1",
+        "name": "Daily Teaching Loop",
+        "capability_ids": [
+          "DOS-TODAY-NEXT",
+          "DOS-TIMETABLE",
+          "DOS-CALENDAR",
+          "DOS-LESSON-PREP",
+          "DOS-TEACHING-SESSION",
+          "DOS-PLAN-UDA"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "QL-2",
+        "name": "Professional Context & Setup",
+        "capability_ids": [
+          "DOS-SETTINGS",
+          "DOS-ACCOUNT-SECURITY",
+          "DOS-TIMETABLE",
+          "DOS-TODAY-NEXT"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "QL-3",
+        "name": "Knowledge to Lesson",
+        "capability_ids": [
+          "DOS-KNOWLEDGE",
+          "DOS-LESSON-PREP",
+          "DOS-COPILOT"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "QL-4",
+        "name": "Governed Copilot",
+        "capability_ids": [
+          "DOS-COPILOT",
+          "DOS-TODAY-NEXT",
+          "DOS-LESSON-PREP",
+          "DOS-KNOWLEDGE",
+          "DOS-PLAN-UDA"
+        ],
+        "status": "PLANNED"
+      }
+    ]
+  }
+}

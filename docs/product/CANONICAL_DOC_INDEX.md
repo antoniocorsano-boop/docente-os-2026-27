@@ -70,6 +70,8 @@ Principio:
 ## Product e maturità
 
 - `docs/product/PROJECT_STATUS_CURRENT.md` — stato sintetico autorevole;
+- `docs/product/DOCENTE_OS_CAPABILITY_READINESS_MODEL.md` — modello permanente DOS-CRM v1 per il livello di maturità delle capability;
+- `docs/product/CAPABILITY_READINESS_CURRENT.md` + `ops/capability-readiness.json` — vista umana e registro machine-readable CURRENT della readiness capability-per-capability;
 - `docs/product/TEACHER_OS_V1_PRODUCT_CONVERGENCE_CANONICAL.md` — programma di prodotto corrente;
 - `docs/product/DOCENTE_OS_PRODUCT_EXPERIENCE_MASTERPLAN.md` — masterplan;
 - `docs/product/TEACHER_AI_COPILOT_PRODUCT_DIRECTION.md` — direzione AI/copilota;
@@ -159,6 +161,10 @@ Una PR verde o una Beta funzionante non equivalgono a Production.
 La fonte sintetica da consultare per prima è sempre:
 
 `docs/product/PROJECT_STATUS_CURRENT.md`
+
+Per domande sul livello di completamento di viste, flussi o funzioni, usare il **DOS-CRM v1**:
+
+`docs/product/CAPABILITY_READINESS_CURRENT.md` → `ops/capability-readiness.json` → evidence richiamate. I record `STALE` o `NEEDS_REAUDIT` devono essere verificati sul repository corrente prima di essere presentati come stato reale.
 
 Per decidere cosa costruire dopo, la fonte corrente è:
 

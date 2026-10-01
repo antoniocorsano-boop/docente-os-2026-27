@@ -1,6 +1,6 @@
 # DOCENTE OS — Stato corrente canonico
 
-Data: **2026-09-18**  
+Data: **2026-09-30**  
 Stato documento: **CURRENT / CANONICAL CANDIDATE — V1 CONVERGENCE**
 
 ## 1. Baseline runtime integrata
@@ -199,6 +199,22 @@ Completamenti successivi già acquisiti:
 - **H9-A — consumo governato di TEACHING_ADJUSTMENT(ACCEPTED) nella preparazione** — COMPLETE e post-merge certificato.
 
 Questi assi hanno precedenza su nuove superfici autonome.
+
+## 13-bis. Capability Readiness — DOS-CRM v1
+
+Dal 30 settembre 2026 Docente OS adotta **DOS-CRM v1** come strumento permanente per rappresentare il livello di completamento delle singole capability.
+
+Fonti:
+- `docs/product/DOCENTE_OS_CAPABILITY_READINESS_MODEL.md` — metodo e scala CRL 0–7;
+- `docs/product/CAPABILITY_READINESS_CURRENT.md` — vista umana corrente;
+- `ops/capability-readiness.json` — registro machine-readable.
+
+Il DOS-CRM non usa percentuali di completamento e non eredita automaticamente punteggi da audit storici. Una capability non riesaminata sulla baseline corrente viene mostrata come `NEEDS_REAUDIT`/stale anziché ricevere un livello non dimostrato.
+
+Prima capability qualificata nel nuovo registro:
+- `DOS-TT-SHARE-IMPORT` — Share Target → importazione Orario con minimizzazione locale: **CRL 5 / QUALIFIED**, baseline `develop@74290511ee58a6b61652160463461527e3e0f57a`.
+
+Il registro va aggiornato quando nuove evidence cambiano materialmente funzionalità, UX, dati, sicurezza, integrazione, qualificazione, operatività o governance di una capability.
 
 ## 14. Maturity e assurance
 

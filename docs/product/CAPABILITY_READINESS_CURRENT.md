@@ -1,0 +1,201 @@
+# DOCENTE OS — Capability Readiness Current
+
+Data: **2026-09-30**  
+Modello: **DOS-CRM v1**  
+Baseline iniziale: `develop@74290511ee58a6b61652160463461527e3e0f57a`  
+Stato: **CURRENT / CAPABILITY AUDIT REGISTER**
+
+## Come leggere questa pagina
+
+Questa è la vista di consultazione del livello di completamento delle capability di Docente OS.
+
+La fonte machine-readable è:
+
+`ops/capability-readiness.json`
+
+Il metodo è definito in:
+
+`docs/product/DOCENTE_OS_CAPABILITY_READINESS_MODEL.md`
+
+Un valore `NEEDS_REAUDIT` è intenzionale: significa che esiste una capability reale e documentata, ma il suo livello non viene promosso o ereditato da audit storici senza una verifica sulla baseline corrente.
+
+## Stato iniziale
+
+| Capability | Dominio | CRL | Stato | Freshness |
+| --- | --- | ---: | --- | --- |
+| Share Target → importazione Orario con minimizzazione locale | Organizzazione didattica | **5** | **QUALIFIED** | **CURRENT** |
+| Orario | Organizzazione didattica | **4** | **INTEGRATED** | **CURRENT** |
+| Oggi / Today + Next | Teacher Moment | **4** | **INTEGRATED** | **CURRENT** |
+| Preparazione della lezione / Lesson Brief | Didattica | **5** | **QUALIFIED** | **RECENT** |
+| TeachingSession / registrazione | Didattica | **4** | **INTEGRATED** | **CURRENT** |
+| Piano annuale / UDA | Progettazione | **4** | **INTEGRATED** | **CURRENT** |
+| Conoscenza / KB | Conoscenza | **4** | **INTEGRATED** | **CURRENT** |
+| Calendario / composizione temporale | Organizzazione didattica | **4** | **INTEGRATED** | **CURRENT** |
+| Impostazioni / contesto professionale | Configurazione | **4** | **INTEGRATED** | **CURRENT** |
+| Account / MFA / sessioni | Sicurezza | **5** | **QUALIFIED** | **RECENT** |
+| Copilota docente | AI collaboration | **4** | **INTEGRATED** | **CURRENT** |
+| Contextual Voice Capture | AI collaboration | **3** | **DEFERRED** | **CURRENT** |
+| Institutional Configurator | Integrazione istituzionale | **1** | **CONDITIONAL** | **CURRENT** |
+
+## Orario — primo audit capability completo
+
+### DOS-TIMETABLE
+
+**CRL 4 — INTEGRATED / CURRENT**
+
+Assi:
+
+| F | UX | D | S | I | Q | O | K |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| **5** | **4** | **5** | **5** | **5** | **4** | **4** | **5** |
+
+L'Orario è una capability realmente integrata: cattedra condivisa, versioni, slot, persistenza Supabase, griglia, editing, import, composizione temporale e apertura del contesto classe sono presenti e collegati. Non viene però promosso a CRL 5 finché non esiste una qualification unica dell'intero journey sulla stessa baseline, con Browser Certification complessiva, HUMAN_USE mirata e receipt operativa/recovery.
+
+Audit dettagliato:
+
+`docs/product/audits/DOS_CRM_AUDIT_ORARIO_2026-09-30.md`
+
+## Oggi / Today + Next — audit capability
+
+### DOS-TODAY-NEXT
+
+**CRL 4 — INTEGRATED / CURRENT**
+
+| F | UX | D | S | I | Q | O | K |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| **5** | **4** | **5** | **5** | **5** | **4** | **4** | **5** |
+
+La Home corrente compone realmente Teacher Moment, Orario, Calendario, Planner, Piano annuale e TeachingSession. Il limite a CRL 4 è deliberato: i finding HUMAN_USE storici non vengono cancellati finché una nuova prova end-to-end del cockpit corrente non li chiude con evidence.
+
+Audit dettagliato:
+
+`docs/product/audits/DOS_CRM_AUDIT_TODAY_NEXT_2026-09-30.md`
+
+## Preparazione della lezione / Lesson Brief — audit capability
+
+### DOS-LESSON-PREP
+
+**CRL 5 — QUALIFIED / RECENT**
+
+| F | UX | D | S | I | Q | O | K |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| **5** | **5** | **5** | **5** | **5** | **5** | **5** | **5** |
+
+La capability dispone di una qualification end-to-end con Human Review PASS sul pilota “Prima della lezione”, E2E materiali/preparazione e lifecycle di approvazione governato. La freshness resta RECENT perché l'exact head qualificato è del 21 settembre e non è stato rieseguito sullo SHA corrente del 30 settembre.
+
+Audit dettagliato:
+
+`docs/product/audits/DOS_CRM_AUDIT_LESSON_PREP_2026-09-30.md`
+
+## TeachingSession / registrazione — audit capability
+
+### DOS-TEACHING-SESSION
+
+**CRL 4 — INTEGRATED / CURRENT**
+
+| F | UX | D | S | I | Q | O | K |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| **5** | **4** | **5** | **5** | **5** | **4** | **4** | **5** |
+
+Il dominio è maturo e il journey è reale, ma la qualification resta limitata da due regression contract ancora esclusi dallo script `npm test` corrente e dalla necessità storica di riconciliare manualmente le migration TE-1A nel Beta dopo il fix runtime del 21 settembre.
+
+Audit dettagliato:
+
+`docs/product/audits/DOS_CRM_AUDIT_TEACHING_SESSION_2026-09-30.md`
+
+## Secondo blocco audit — 2026-09-30
+
+| Capability | CRL | F | UX | D | S | I | Q | O | K | Freshness |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Piano annuale / UDA | **4** | 5 | 4 | 5 | 5 | 5 | 4 | 4 | 5 | CURRENT |
+| Conoscenza / KB | **4** | 5 | 4 | 5 | 5 | 5 | 5 | 4 | 5 | CURRENT |
+| Calendario | **4** | 5 | 4 | 5 | 5 | 5 | 4 | 4 | 5 | CURRENT |
+| Impostazioni | **4** | 5 | 4 | 5 | 5 | 5 | 4 | 4 | 5 | CURRENT |
+| Account / MFA / sessioni | **5** | 5 | 5 | 5 | 6 | 5 | 5 | 5 | 5 | RECENT |
+| Copilota docente | **4** | 4 | 4 | 5 | 5 | 5 | 4 | 4 | 5 | CURRENT |
+
+### Lettura sintetica
+
+- **Piano annuale/UDA**: dominio e integrazione forti; manca la qualification unificata del ciclo avanzamento → replanning → preparazione → registrazione.
+- **Conoscenza**: dati, provenance, security e K1 sono forti; il limite è l'operatività complessiva del journey e la HUMAN_USE.
+- **Calendario**: DOS-CAL-01 è stato qualificato con Human Review, ma il dominio completo non ha ancora un roll-up unico.
+- **Impostazioni**: configurazione persistente e propagazione sono reali; manca qualification completa del first-run e della consistenza cross-surface.
+- **Account/Sicurezza**: prima capability di questo blocco a **CRL 5**, grazie a MFA/AAL2, Browser Gate reale e recovery/re-login verificati.
+- **Copilota**: realmente integrato, ma non ancora qualificato end-to-end; Voice Capture resta esclusa e separatamente `DEFERRED`.
+
+Audit dettagliati:
+- `docs/product/audits/DOS_CRM_AUDIT_PLAN_UDA_2026-09-30.md`
+- `docs/product/audits/DOS_CRM_AUDIT_KNOWLEDGE_2026-09-30.md`
+- `docs/product/audits/DOS_CRM_AUDIT_CALENDAR_2026-09-30.md`
+- `docs/product/audits/DOS_CRM_AUDIT_SETTINGS_2026-09-30.md`
+- `docs/product/audits/DOS_CRM_AUDIT_ACCOUNT_SECURITY_2026-09-30.md`
+- `docs/product/audits/DOS_CRM_AUDIT_COPILOT_2026-09-30.md`
+
+## Capability governate fuori dal core release
+
+| Capability | CRL | Stato | Freshness | Significato |
+| --- | ---: | --- | --- | --- |
+| Contextual Voice Capture | **3** | **DEFERRED** | CURRENT | Implementazione reale presente, ma non qualificata per il release core |
+| Institutional Configurator | **1** | **CONDITIONAL** | CURRENT | Policy definita; implementazione subordinata a un pilot istituzionale autorizzato |
+
+Voice non viene confusa con il Copilota: il Copilota resta CRL 4 anche se il canale vocale è deferito.
+
+L'Institutional Configurator non è un debito del pilot personale: diventa un requisito solo quando viene autorizzato un perimetro istituzionale concreto.
+
+## Prima capability qualificata con DOS-CRM
+
+### DOS-TT-SHARE-IMPORT — Share Target → importazione Orario
+
+**CRL 5 — QUALIFIED**
+
+Evidence corrente:
+- PR #640 merged;
+- exact head qualificato `d9bcb21f44b916569e25ad957b2afa3cc502efe8`;
+- merge commit `74290511ee58a6b61652160463461527e3e0f57a`;
+- Product CI PASS;
+- Browser Certification PASS;
+- P7 DB Restore PASS;
+- K1 PASS;
+- ASVS, Human Interaction, Design Policy e TRAMA PASS;
+- review Codex conclusiva senza rilievi maggiori.
+
+Il failure Operational Security sulla fixture hosted X5 resta classificato come problema esterno alla capability e non viene trasformato artificialmente in PASS.
+
+**Promozione successiva:** CRL 6 richiede evidence di uso runtime/pilot reale ripetuto e recovery nel contesto previsto.
+
+## Regola di aggiornamento
+
+Quando una PR o una decisione cambia materialmente una capability, deve essere verificato anche questo registro.
+
+Il processo è:
+
+`cambiamento → evidence → aggiornamento assi → CRL → freshness → snapshot CURRENT`
+
+Non si aggiorna il CRL per anzianità, percezione o numero di modifiche.
+
+## Richiamo operativo
+
+Quando viene richiesto:
+- “mostrami il DOS-CRM”;
+- “audit di completamento Docente OS”;
+- “a che punto sono le capability?”;
+- “aggiorna la maturità del sistema”;
+
+la consultazione deve partire da questo documento e dal registro JSON, quindi verificare il repository corrente per gli elementi non `CURRENT`.
+
+## Prossimo passo previsto
+
+Condurre l'audit capability-by-capability sulla baseline corrente, iniziando dalle capability core già dichiarate disponibili nel sistema:
+
+1. Orario;
+2. Oggi / Today + Next;
+3. Preparazione lezione / Lesson Brief;
+4. TeachingSession;
+5. Piano annuale / UDA;
+6. Conoscenza;
+7. Calendario;
+8. Impostazioni;
+9. Account/Sicurezza;
+10. Copilota.
+
+Il risultato non sostituirà gli audit M5: ne costituirà la vista operativa granulare e continuamente aggiornabile.
