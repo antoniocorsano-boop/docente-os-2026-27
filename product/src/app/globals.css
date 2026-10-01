@@ -96,7 +96,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 .timetableSecondaryOptions summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--ink-soft);font-weight:700}
 @media(pointer:coarse){.timetableKeyboardHelp{display:none}}
 @media(max-width:719px){
-  .timetablePrimaryActions{position:sticky;bottom:10px;z-index:24;background:color-mix(in srgb,var(--surface) 92%,transparent);padding:8px;border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:var(--shadow-soft);backdrop-filter:blur(8px)}
+  .timetablePrimaryActions{position:sticky;bottom:10px;z-index:24;background:color-mix(in srgb,var(--surface) 92%,transparent);padding:8px;border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:var(--shadow-soft)}
   .timetablePrimaryActions button{width:100%}
   .timetableSecondaryOptions{font-size:14px}
 }
