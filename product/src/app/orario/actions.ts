@@ -155,6 +155,12 @@ export async function analyzeTimetableImport(formData: FormData) {
   redirect(`/orario?importCandidate=${encodeURIComponent(result.candidateId)}&import=review`)
 }
 
+export async function analyzeSharedTimetableImport(formData: FormData) {
+  // Share Target primary path: the source is processed transiently by the governed
+  // timetable extractor and is never persisted here as a document asset.
+  return analyzeTimetableImportResult(formData)
+}
+
 export async function analyzeMinimizedTimetableImport(formData: FormData) {
   formData.set('sourceMode', 'LOCAL_MINIMIZED_SHARE')
   return analyzeTimetableImportResult(formData)
