@@ -27,3 +27,12 @@ Il Copilota è integrato nel sistema e non più un mock isolato, ma la direzione
 
 ## Promozione
 CRL 5 richiede test/review correnti su context binding multi-disciplina, partial failure, retrieval, proposal/write governance, latenza percepita e HUMAN_USE del copilota nel Teacher Moment.
+
+
+## Addendum 2026-10-01 — K2 remediation
+
+I finding storici K2 su discipline binding e graceful degradation sono **CLOSED** dalla PR #642:
+- binding fail-closed sul piano canonico attualmente supportato;
+- preservazione del contesto base quando la dipendenza opzionale di next-lesson preparation fallisce.
+
+Il Copilota resta **CRL 4**: la QL-4 end-to-end e la HUMAN_USE operativa non sono ancora completate.
