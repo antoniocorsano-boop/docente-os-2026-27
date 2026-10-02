@@ -5,7 +5,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerE
 import { getDocumentProxy } from 'unpdf'
 import { analyzeMinimizedTimetableImport, analyzeRasterTimetableImport, persistLocallyExtractedTimetableImport } from '@/app/orario/actions'
 import { rectFromPolygon } from '@/core/document-understanding/local-document-understanding'
-import { recognizeLocalDocumentImage } from '@/core/document-understanding/paddle-local-ocr'
+import { recognizeLocalDocumentImage } from '@/core/document-understanding/tesseract-local-ocr'
 import { MAX_KNOWLEDGE_UPLOAD_BYTES } from '@/app/knowledge/upload-policy'
 import { chooseTimetableExtractionStrategy, classifyTimetablePageTextLayer, clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, parseOrdinal, type Rect, type TimetablePageTextKind, type TimetableTextAnchor } from './timetable-share-helpers'
 
