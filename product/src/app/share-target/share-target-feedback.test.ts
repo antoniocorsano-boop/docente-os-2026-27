@@ -77,6 +77,10 @@ test('timetable-like shared PDFs use local minimization before timetable analysi
   assert.match(timetableIntake, /orario-selezione-locale\.png/)
   assert.match(timetableIntake, /data\.set\('file', safeFile\)/)
   assert.doesNotMatch(timetableIntake, /data\.set\('file', file\)/)
+  assert.match(timetableIntake, /analyzeRasterTimetableImport/)
+  assert.match(timetableIntake, /cropPageRegions/)
+  assert.match(timetableIntake, /orario-pagine-immagine\.png/)
+  assert.match(timetableIntake, /region\.kind !== 'TEXT_BEARING'/)
   assert.match(timetableIntake, /Il PDF completo non viene caricato in Conoscenza/)
   assert.match(timetableIntake, /await onBeforeSubmit\(\)/)
   assert.match(timetableIntake, /await analyzeMinimizedTimetableImport\(data\)/)
@@ -302,6 +306,40 @@ test('local minimized source identity persists only the whole-document fingerpri
   assert.equal(identity.sourceLabel, 'Orario condiviso - derivato locale')
   assert.equal(identity.sourceRef, `client-whole-document-sha256:${original}`)
   assert.doesNotMatch(identity.sourceRef, new RegExp(derivative))
+})
+
+test('raster-page derivatives keep whole-document provenance for share and upload', () => {
+  const original = 'c'.repeat(64)
+  const derivative = 'f'.repeat(64)
+  const shared = resolveTimetableSourceIdentity({
+    sourceMode: 'LOCAL_RASTER_PAGE_SHARE',
+    derivativeFingerprint: derivative,
+    originalSourceFingerprint: original,
+    derivativeName: 'orario-pagine-immagine.png',
+  })
+  const uploaded = resolveTimetableSourceIdentity({
+    sourceMode: 'LOCAL_RASTER_PAGE_UPLOAD',
+    derivativeFingerprint: derivative,
+    originalSourceFingerprint: original,
+    derivativeName: 'orario-pagine-immagine.png',
+  })
+  assert.equal(shared.sourceFingerprint, original)
+  assert.equal(uploaded.sourceFingerprint, original)
+  assert.match(shared.sourceLabel, /pagina immagine derivata localmente/)
+  assert.match(uploaded.sourceLabel, /pagina immagine derivata localmente/)
+  assert.equal(shared.sourceRef, `client-whole-document-sha256:${original}`)
+  assert.equal(uploaded.sourceRef, `client-whole-document-sha256:${original}`)
+})
+
+test('manual selection is exposed only after automatic extraction needs correction', () => {
+  assert.match(timetableIntake, /\{needsManualContext \? <button/)
+  assert.doesNotMatch(timetableIntake, /\{\(!selections\.length \|\| needsManualContext\) \? <button/)
+  assert.match(timetableIntake, /Sto leggendo le pagine immagine dell’orario/)
+})
+
+test('selection counter uses correct Italian plural', () => {
+  assert.match(timetableIntake, /aree selezionate/)
+  assert.doesNotMatch(timetableIntake, /selezionatae/)
 })
 
 test('staging cleanup is fail-closed when any cache deletion fails', async () => {
