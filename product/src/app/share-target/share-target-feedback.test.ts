@@ -11,6 +11,8 @@ const serviceWorker = fs.readFileSync(new URL('../../../public/sw.js', import.me
 const timetableIntake = fs.readFileSync(new URL('./TimetableSharedIntake.tsx', import.meta.url), 'utf8')
 const timetableActions = fs.readFileSync(new URL('../orario/actions.ts', import.meta.url), 'utf8')
 const timetablePage = fs.readFileSync(new URL('../orario/page.tsx', import.meta.url), 'utf8')
+const timetableExperience = fs.readFileSync(new URL('../orario/TimetableExperience.tsx', import.meta.url), 'utf8')
+const timetableGrid = fs.readFileSync(new URL('../orario/TimetableGrid.tsx', import.meta.url), 'utf8')
 const timetableLocalLauncher = fs.readFileSync(new URL('../orario/TimetableLocalImportLauncher.tsx', import.meta.url), 'utf8')
 
 test('shared intake makes local-only and failure state perceptible before write', () => {
@@ -31,6 +33,19 @@ test('shared file reuses governed Knowledge upload feedback', () => {
   assert.match(uploader, /Ricevuto dal dispositivo/)
 })
 
+
+test('orario hierarchy separates consultation, update and advanced management', () => {
+  assert.match(timetablePage, /mode="view"/)
+  assert.match(timetableExperience, /href="\/orario\/aggiorna"/)
+  assert.match(timetableExperience, /href="\/orario\/gestisci"/)
+  assert.match(timetableExperience, /slots=\{mode === 'view' \? operationalSlots : timetable\.slots\}/)
+  assert.match(timetableExperience, /readOnly=\{mode === 'view'\}/)
+  assert.match(timetableExperience, /mode === 'update' \? <section className="timetableCard timetableImportCard"/)
+  assert.match(timetableExperience, /mode === 'manage' \? <>/)
+  assert.match(timetableGrid, /readOnly\?: boolean/)
+  assert.match(timetableGrid, /!readOnly && editor/)
+  assert.match(timetableGrid, /!readOnly && assignments\.length/)
+})
 
 test('ordinary timetable upload reuses the same local teacher-first intake', () => {
   assert.match(timetablePage, /TimetableLocalImportLauncher/)
