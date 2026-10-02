@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { TimetablePresenceKind } from '@/core/domain/timetable'
-import { OpenAiTimetableDocumentExtractor } from '@/core/infrastructure/ai/openai-timetable-document-extractor'
+import { OpenAiTimetableDocumentExtractor, TimetableDocumentExtractionUnavailableError } from '@/core/infrastructure/ai/openai-timetable-document-extractor'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTimetableImportRepository } from '@/core/infrastructure/supabase/supabase-timetable-import-repository'
@@ -260,11 +260,20 @@ async function analyzeTimetableImportResult(formData: FormData) {
       teacherLabel,
       knownClassLabels: [...sectionLabels.values()],
     })
-  } catch {
+  } catch (error) {
+    if (error instanceof TimetableDocumentExtractionUnavailableError) {
+      console.error('Timetable visual extraction unavailable:', error.message)
+      return { ok: false as const, code: 'extractor_unavailable' }
+    }
+    const message = error instanceof Error ? error.message : 'unknown extraction failure'
+    console.error('Timetable visual extraction failed:', message.slice(0, 240))
     return { ok: false as const, code: 'parse_failed' }
   }
 
-  if (!extracted.rows.length) return { ok: false as const, code: 'no_rows' }
+  if (!extracted.rows.length) {
+    console.warn('Timetable visual extraction returned no matching rows')
+    return { ok: false as const, code: 'no_rows' }
+  }
 
   const rows = extracted.rows.map((row) => {
     const sectionId = sectionIdByClass.get(normalizeClassKey(row.classLabel)) ?? null
