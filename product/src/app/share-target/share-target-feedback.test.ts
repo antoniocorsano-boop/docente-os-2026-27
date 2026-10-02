@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import test from 'node:test'
 import { isValidIsoCalendarDate, resolveTimetableSourceIdentity } from '../orario/timetable-import-boundary'
 import { clearShareIntakeStaging } from './share-target-staging'
-import { clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, looksLikeTimetablePdf, ordinalFromTimetableText, parseOrdinal, teacherLabelMatches, weekdayFromTimetableText } from './timetable-share-helpers'
+import { classifyTimetablePageTextLayer, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, looksLikeTimetablePdf, ordinalFromTimetableText, parseOrdinal, teacherLabelMatches, weekdayFromTimetableText } from './timetable-share-helpers'
 
 const intake = fs.readFileSync(new URL('./ShareTargetIntake.tsx', import.meta.url), 'utf8')
 const uploader = fs.readFileSync(new URL('../knowledge/KnowledgeFileUploader.tsx', import.meta.url), 'utf8')
@@ -129,6 +129,18 @@ test('timetable routing ignores free-form notes and only classifies timetable PD
     fileName: 'quadro_orario.pdf',
     fileType: 'application/pdf',
   }), true)
+})
+
+test('timetable page classification distinguishes native text, raster and sparse mixed pages', () => {
+  assert.equal(classifyTimetablePageTextLayer([]), 'RASTER')
+  assert.equal(classifyTimetablePageTextLayer([{ str: '   ' }]), 'RASTER')
+  assert.equal(classifyTimetablePageTextLayer([{ str: 'Corsano' }]), 'MIXED')
+  assert.equal(classifyTimetablePageTextLayer([
+    { str: 'lunedì' },
+    { str: '1ora' },
+    { str: 'Corsano' },
+    { str: 'Classe 2C' },
+  ]), 'TEXT_BEARING')
 })
 
 test('date parsing rejects impossible calendar dates', () => {
