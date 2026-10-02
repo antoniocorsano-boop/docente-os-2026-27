@@ -26,6 +26,7 @@ type TimetableGridProps = {
   periods: TimetableGridPeriod[]
   slots: TimetableSlot[]
   assignments: TimetableGridAssignment[]
+  readOnly?: boolean
 }
 
 type EditorState = {
@@ -59,7 +60,7 @@ const PRESENCE_LABELS: Record<TimetablePresenceKind, string> = {
   OTHER: 'Altra presenza',
 }
 
-export default function TimetableGrid({ versionId, days, periods, slots, assignments }: TimetableGridProps) {
+export default function TimetableGrid({ versionId, days, periods, slots, assignments, readOnly = false }: TimetableGridProps) {
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week')
   const [selectedDay, setSelectedDay] = useState(days[0]?.value ?? 1)
   const [moment, setMoment] = useState<TimetableMoment | null>(null)
@@ -170,7 +171,14 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
                   const current = slot ? isCurrentTimetableInterval(day.value, slot.startTime, slot.endTime, moment) : false
                   const emptyCurrent = !slot && day.value === moment?.weekday && rowCurrent
                   return <div role="cell" key={`${day.value}-${row.key}`}>{slot ? (
-                    <OccupiedCell slot={slot} assignment={slot.teachingAssignmentId ? assignmentById.get(slot.teachingAssignmentId) : undefined} current={current} onClick={() => setFocusedSlotId(slot.id)} />
+                    <OccupiedCell
+                      slot={slot}
+                      assignment={slot.teachingAssignmentId ? assignmentById.get(slot.teachingAssignmentId) : undefined}
+                      current={current}
+                      onClick={() => setFocusedSlotId(slot.id)}
+                    />
+                  ) : readOnly ? (
+                    <div className={`emptyTimetableCell timetableReadOnlyEmpty ${emptyCurrent ? 'currentEmpty' : ''}`} aria-label={`Nessuna attività: ${day.label}, ${row.start}–${row.end}`} />
                   ) : (
                     <button className={`emptyTimetableCell ${emptyCurrent ? 'currentEmpty' : ''}`} type="button" aria-label={`Aggiungi attività: ${day.label}, ${row.start}–${row.end}`} onClick={() => openEmptyCell(day.value, row.start, row.end, row.ordinal)}><span aria-hidden>＋</span><small>{emptyCurrent ? 'Ora attuale · aggiungi' : 'Aggiungi'}</small></button>
                   )}</div>
@@ -187,7 +195,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
         <span><i className="legendLesson" /> Lezione</span><span><i className="legendPresence" /> Presenza in altra classe</span><span><i className="legendDisposition" /> Disposizione</span><span><i className="legendReception" /> Ricevimento</span><span><i className="legendOther" /> Altro</span>
       </div>
 
-      {assignments.length ? <details className="capacityDisclosure"><summary><span>Controllo monte ore</span><strong>{unresolvedAssignments ? `${unresolvedAssignments} ${unresolvedAssignments === 1 ? 'voce da allineare' : 'voci da allineare'}` : 'Cattedra allineata'}</strong></summary><div className="capacityStrip" aria-label="Verifica monte ore">{assignments.map((assignment) => {
+      {!readOnly && assignments.length ? <details className="capacityDisclosure"><summary><span>Controllo monte ore</span><strong>{unresolvedAssignments ? `${unresolvedAssignments} ${unresolvedAssignments === 1 ? 'voce da allineare' : 'voci da allineare'}` : 'Cattedra allineata'}</strong></summary><div className="capacityStrip" aria-label="Verifica monte ore">{assignments.map((assignment) => {
         const delta = assignment.weeklyMinutes - assignment.scheduledMinutes
         return <div key={assignment.id} className={`capacityChip ${delta === 0 ? 'ok' : delta < 0 ? 'over' : 'pending'}`}><strong>{assignment.label}</strong><span>{assignment.scheduledMinutes}/{assignment.weeklyMinutes} min · {delta === 0 ? 'allineata' : delta > 0 ? `mancano ${delta}` : `eccesso ${Math.abs(delta)}`}</span></div>
       })}</div></details> : null}
@@ -205,14 +213,14 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
                   <Link className="timetablePrimaryButton contextPrimaryAction" href={`/classi/${encodeURIComponent(focusedAssignment.sectionId)}`}>Apri classe</Link>
                   <Link className="secondaryButton" href={`/piano-annuale?section=${encodeURIComponent(focusedAssignment.sectionId)}`}>Piano annuale</Link>
                 </> : null}
-                <button className="secondaryButton" type="button" onClick={editFocusedSlot}>Modifica orario</button>
+                {!readOnly ? <button className="secondaryButton" type="button" onClick={editFocusedSlot}>Modifica orario</button> : null}
               </div>
             </Dialog.Content>
           </Dialog.Portal>
         </Dialog.Root>
       ) : null}
 
-      {editor ? (
+      {!readOnly && editor ? (
         <Dialog.Root open onOpenChange={(open) => { if (!open) setEditor(null) }}>
           <Dialog.Portal>
             <Dialog.Overlay className="timetableEditorBackdrop" />
