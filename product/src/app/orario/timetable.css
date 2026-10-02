@@ -69,3 +69,6 @@
   .timetableModeNav a:first-child{grid-column:1/-1}
   .timetableModeNav a{justify-content:center}
 }
+
+
+.timetablePrimaryActions button:disabled{opacity:.5;cursor:not-allowed;filter:saturate(.35)}
