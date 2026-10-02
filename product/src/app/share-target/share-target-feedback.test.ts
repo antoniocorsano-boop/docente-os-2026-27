@@ -356,6 +356,16 @@ test('manual selection is exposed only after automatic extraction needs correcti
   assert.match(timetableIntake, /Sto leggendo le pagine immagine dell’orario/)
 })
 
+test('raster timetable derivative stays below the Server Action payload ceiling', () => {
+  assert.match(timetableIntake, /MAX_RASTER_DERIVATIVE_BYTES = 3 \* 1024 \* 1024/)
+  assert.match(timetableIntake, /MAX_RASTER_DERIVATIVE_EDGE = 1400/)
+  assert.match(timetableIntake, /MAX_RASTER_DERIVATIVE_PIXELS = 5_000_000/)
+  assert.match(timetableIntake, /output\.toBlob\(resolve, 'image\/jpeg', quality\)/)
+  assert.match(timetableIntake, /orario-pagine-immagine\.jpg/)
+  assert.match(timetableIntake, /type: rasterDerivative\.type \|\| 'image\/jpeg'/)
+  assert.doesNotMatch(timetableIntake, /orario-pagine-immagine\.png/)
+})
+
 test('selection counter uses correct Italian plural', () => {
   assert.match(timetableIntake, /aree selezionate/)
   assert.doesNotMatch(timetableIntake, /selezionatae/)
