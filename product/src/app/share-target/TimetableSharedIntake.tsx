@@ -24,6 +24,9 @@ const MAX_PAGES = 5
 const GAP = 20
 const MAX_PAGE_DIMENSION = 1800
 const MAX_COMPOSITE_HEIGHT = 12000
+const MAX_RASTER_DERIVATIVE_EDGE = 1400
+const MAX_RASTER_DERIVATIVE_PIXELS = 5_000_000
+const MAX_RASTER_DERIVATIVE_BYTES = 3 * 1024 * 1024
 
 export function TimetableSharedIntake({
   file,
@@ -251,8 +254,8 @@ export function TimetableSharedIntake({
     setMessage('Sto leggendo le pagine immagine dell’orario…')
     try {
       const rasterDerivative = await cropPageRegions(source, visualRegions)
-      const safeFile = new File([rasterDerivative], 'orario-pagine-immagine.png', {
-        type: 'image/png',
+      const safeFile = new File([rasterDerivative], 'orario-pagine-immagine.jpg', {
+        type: rasterDerivative.type || 'image/jpeg',
         lastModified: Date.now(),
       })
       const data = new FormData()
@@ -740,8 +743,14 @@ async function cropPageRegions(source: HTMLCanvasElement, regions: PageRegion[])
   if (!normalized.length) throw new Error('Nessuna pagina immagine disponibile')
 
   const gap = 16
-  const width = Math.max(...normalized.map((region) => region.width))
-  const height = normalized.reduce((sum, region) => sum + region.height, 0) + gap * Math.max(0, normalized.length - 1)
+  const rawWidth = Math.max(...normalized.map((region) => region.width))
+  const rawHeight = normalized.reduce((sum, region) => sum + region.height, 0) + gap * Math.max(0, normalized.length - 1)
+  const edgeScale = Math.min(1, MAX_RASTER_DERIVATIVE_EDGE / rawWidth)
+  const pixelScale = Math.min(1, Math.sqrt(MAX_RASTER_DERIVATIVE_PIXELS / Math.max(1, rawWidth * rawHeight)))
+  const scale = Math.min(edgeScale, pixelScale)
+  const width = Math.max(1, Math.round(rawWidth * scale))
+  const height = Math.max(1, Math.round(rawHeight * scale))
+
   const output = document.createElement('canvas')
   output.width = width
   output.height = height
@@ -752,13 +761,28 @@ async function cropPageRegions(source: HTMLCanvasElement, regions: PageRegion[])
 
   let y = 0
   for (const region of normalized) {
-    ctx.drawImage(source, region.x, region.y, region.width, region.height, 0, y, region.width, region.height)
+    const targetWidth = Math.max(1, Math.round(region.width * scale))
+    const targetHeight = Math.max(1, Math.round(region.height * scale))
+    ctx.drawImage(
+      source,
+      region.x,
+      region.y,
+      region.width,
+      region.height,
+      0,
+      Math.round(y * scale),
+      targetWidth,
+      targetHeight,
+    )
     y += region.height + gap
   }
 
-  const blob = await new Promise<Blob | null>((resolve) => output.toBlob(resolve, 'image/png'))
-  if (!blob) throw new Error('Impossibile creare il derivato raster')
-  return blob
+  for (const quality of [0.82, 0.72, 0.62, 0.52]) {
+    const blob = await new Promise<Blob | null>((resolve) => output.toBlob(resolve, 'image/jpeg', quality))
+    if (blob && blob.size <= MAX_RASTER_DERIVATIVE_BYTES) return blob
+  }
+
+  throw new Error('Il derivato raster resta troppo grande dopo la compressione locale')
 }
 
 function canvasSurfaceColor() {

@@ -79,7 +79,7 @@ test('timetable-like shared PDFs use local minimization before timetable analysi
   assert.doesNotMatch(timetableIntake, /data\.set\('file', file\)/)
   assert.match(timetableIntake, /analyzeRasterTimetableImport/)
   assert.match(timetableIntake, /cropPageRegions/)
-  assert.match(timetableIntake, /orario-pagine-immagine\.png/)
+  assert.match(timetableIntake, /orario-pagine-immagine\.jpg/)
   assert.match(timetableIntake, /region\.kind !== 'TEXT_BEARING'/)
   assert.match(timetableIntake, /Il PDF completo non viene caricato in Conoscenza/)
   assert.match(timetableIntake, /await onBeforeSubmit\(\)/)
@@ -354,6 +354,16 @@ test('manual selection is exposed only after automatic extraction needs correcti
   assert.match(timetableIntake, /\{needsManualContext \? <button/)
   assert.doesNotMatch(timetableIntake, /\{\(!selections\.length \|\| needsManualContext\) \? <button/)
   assert.match(timetableIntake, /Sto leggendo le pagine immagine dell’orario/)
+})
+
+test('raster timetable derivative stays below the Server Action payload ceiling', () => {
+  assert.match(timetableIntake, /MAX_RASTER_DERIVATIVE_BYTES = 3 \* 1024 \* 1024/)
+  assert.match(timetableIntake, /MAX_RASTER_DERIVATIVE_EDGE = 1400/)
+  assert.match(timetableIntake, /MAX_RASTER_DERIVATIVE_PIXELS = 5_000_000/)
+  assert.match(timetableIntake, /output\.toBlob\(resolve, 'image\/jpeg', quality\)/)
+  assert.match(timetableIntake, /orario-pagine-immagine\.jpg/)
+  assert.match(timetableIntake, /type: rasterDerivative\.type \|\| 'image\/jpeg'/)
+  assert.doesNotMatch(timetableIntake, /orario-pagine-immagine\.png/)
 })
 
 test('selection counter uses correct Italian plural', () => {
