@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "provenance": "Sanitized structural fixture derived from the 28-09-2026 timetable visible in the real Android test. Other teacher names removed.",
+  "sourceDate": "2026-09-28",
+  "teacherLabel": "Corsano",
+  "expectedLessons": [
+    {
+      "weekday": 1,
+      "day": "Lunedì",
+      "ordinal": 4,
+      "classLabel": "3E"
+    },
+    {
+      "weekday": 1,
+      "day": "Lunedì",
+      "ordinal": 5,
+      "classLabel": "3A"
+    },
+    {
+      "weekday": 1,
+      "day": "Lunedì",
+      "ordinal": 6,
+      "classLabel": "3C"
+    },
+    {
+      "weekday": 2,
+      "day": "Martedì",
+      "ordinal": 5,
+      "classLabel": "2C"
+    },
+    {
+      "weekday": 2,
+      "day": "Martedì",
+      "ordinal": 6,
+      "classLabel": "2A"
+    },
+    {
+      "weekday": 3,
+      "day": "Mercoledì",
+      "ordinal": 5,
+      "classLabel": "1C"
+    },
+    {
+      "weekday": 3,
+      "day": "Mercoledì",
+      "ordinal": 6,
+      "classLabel": "1A"
+    },
+    {
+      "weekday": 4,
+      "day": "Giovedì",
+      "ordinal": 1,
+      "classLabel": "1A"
+    },
+    {
+      "weekday": 4,
+      "day": "Giovedì",
+      "ordinal": 2,
+      "classLabel": "2C"
+    },
+    {
+      "weekday": 4,
+      "day": "Giovedì",
+      "ordinal": 3,
+      "classLabel": "3E"
+    },
+    {
+      "weekday": 4,
+      "day": "Giovedì",
+      "ordinal": 5,
+      "classLabel": "3C"
+    },
+    {
+      "weekday": 5,
+      "day": "Venerdì",
+      "ordinal": 1,
+      "classLabel": "3A"
+    },
+    {
+      "weekday": 5,
+      "day": "Venerdì",
+      "ordinal": 4,
+      "classLabel": "1C"
+    },
+    {
+      "weekday": 5,
+      "day": "Venerdì",
+      "ordinal": 5,
+      "classLabel": "2A"
+    }
+  ]
+}

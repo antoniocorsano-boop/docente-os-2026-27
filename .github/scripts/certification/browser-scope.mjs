@@ -18,6 +18,7 @@ const FOCUSED_RULES = [
     specs: [
       'e2e/experience/surfaces.spec.mjs',
       'e2e/experience/contextual-capabilities.spec.mjs',
+      'e2e/experience/timetable-import-real-fixture.spec.mjs',
     ],
   },
   {
@@ -30,7 +31,10 @@ const FOCUSED_RULES = [
   },
   {
     test: (path) => path.startsWith('product/src/app/orario/'),
-    specs: ['e2e/experience/surfaces.spec.mjs'],
+    specs: [
+      'e2e/experience/surfaces.spec.mjs',
+      'e2e/experience/timetable-import-real-fixture.spec.mjs',
+    ],
   },
   {
     test: (path) => path.startsWith('product/src/app/calendario/'),
@@ -43,6 +47,12 @@ const FOCUSED_RULES = [
 ]
 
 const SUPPORT_HVA_SPECS = new Map([
+  ['product/e2e/support/timetable-real-fixture.mjs', [
+    'e2e/experience/timetable-import-real-fixture.spec.mjs',
+  ]],
+  ['product/e2e/fixtures/timetable-real-shape-28-09-2026.expected.json', [
+    'e2e/experience/timetable-import-real-fixture.spec.mjs',
+  ]],
   ['product/e2e/support/classroom-material-fixture.mjs', [
     'e2e/experience/classroom-cockpit.spec.mjs',
     'e2e/experience/contextual-capabilities.spec.mjs',

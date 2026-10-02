@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import test from 'node:test'
 import { isValidIsoCalendarDate, resolveTimetableSourceIdentity } from '../orario/timetable-import-boundary'
 import { clearShareIntakeStaging } from './share-target-staging'
-import { clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, looksLikeTimetablePdf, parseOrdinal, teacherLabelMatches } from './timetable-share-helpers'
+import { clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, looksLikeTimetablePdf, ordinalFromTimetableText, parseOrdinal, teacherLabelMatches, weekdayFromTimetableText } from './timetable-share-helpers'
 
 const intake = fs.readFileSync(new URL('./ShareTargetIntake.tsx', import.meta.url), 'utf8')
 const uploader = fs.readFileSync(new URL('../knowledge/KnowledgeFileUploader.tsx', import.meta.url), 'utf8')
@@ -147,6 +147,42 @@ test('ordinal validation rejects non-integer and out-of-range values', () => {
   assert.equal(isValidOrdinal(null), false)
 })
 
+test('weekday parsing accepts accented and ASCII labels from real PDFs', () => {
+  assert.equal(weekdayFromTimetableText('lunedì'), 1)
+  assert.equal(weekdayFromTimetableText('lunedi'), 1)
+  assert.equal(weekdayFromTimetableText('martedì'), 2)
+  assert.equal(weekdayFromTimetableText('giovedi'), 4)
+})
+
+test('real timetable ordinal cells accept plain numbers under the Ora column', () => {
+  assert.equal(ordinalFromTimetableText('1'), 1)
+  assert.equal(ordinalFromTimetableText('5'), 5)
+  assert.equal(ordinalFromTimetableText('1ora'), 1)
+  assert.equal(ordinalFromTimetableText('21'), null)
+})
+
+test('teacher search does not duplicate a complete surname when neighboring PDF fragments share the row', () => {
+  const anchors = [
+    { text: 'Docente', page: 1, rect: { x: 40, y: 80, width: 42, height: 12 } },
+    { text: 'Corsano', page: 1, rect: { x: 90, y: 80, width: 48, height: 12 } },
+    { text: 'Docente', page: 1, rect: { x: 145, y: 80, width: 42, height: 12 } },
+  ]
+  const matches = findTeacherTextAnchors(anchors, 'Corsano')
+  assert.equal(matches.length, 1)
+  assert.equal(matches[0].text, 'Corsano')
+})
+
+test('teacher search combines direct and split occurrences from the same PDF', () => {
+  const anchors = [
+    { text: 'Corsano', page: 1, rect: { x: 10, y: 40, width: 45, height: 12 } },
+    { text: 'Cor', page: 1, rect: { x: 100, y: 100, width: 18, height: 12 } },
+    { text: 'sa', page: 1, rect: { x: 119, y: 100, width: 12, height: 12 } },
+    { text: 'no', page: 1, rect: { x: 132, y: 100, width: 12, height: 12 } },
+  ]
+  const matches = findTeacherTextAnchors(anchors, 'Corsano')
+  assert.equal(matches.length, 2)
+})
+
 test('teacher-first search recovers a surname split across adjacent PDF text fragments', () => {
   const anchors = [
     { text: 'Cor', page: 1, rect: { x: 100, y: 100, width: 18, height: 12 } },
@@ -194,6 +230,12 @@ test('mobile timetable flow keeps day and period in progressive fallback', () =>
   assert.match(timetableIntake, /Correzione avanzata · completa i dettagli ambigui/)
   assert.match(timetableIntake, /code === 'parse_failed' \|\| code === 'no_rows'/)
   assert.match(timetableIntake, /derivativeContextLabel\(teacherLabel, rect\.weekday, rect\.ordinal, rect\.classLabel\)/)
+})
+
+test('lesson-count feedback uses correct singular and plural copy', () => {
+  assert.match(timetableIntake, /1 lezione trovata/)
+  assert.match(timetableIntake, /lezioni trovate/)
+  assert.doesNotMatch(timetableIntake, /trovatae/)
 })
 
 test('real-device mobile flow keeps primary action compact and secondary controls collapsed', () => {
