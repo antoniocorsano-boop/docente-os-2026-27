@@ -10,7 +10,7 @@ if (process.env.DOCENTE_OS_RUNTIME_SCHEMA_PREFLIGHT?.trim().toLowerCase() === 'o
   await assertRuntimeSchemaReady()
 }
 
-console.log('Timetable visual extractor:', process.env.OPENAI_API_KEY?.trim() ? 'CONFIGURED' : 'UNAVAILABLE')
+console.log('Timetable visual extractor:', process.env.OPENAI_TIMETABLE_API_KEY?.trim() ? 'CONFIGURED' : 'UNAVAILABLE')
 
 const child = spawn(nextBin, ['start', '-H', '0.0.0.0', '-p', port], {
   stdio: 'inherit',
