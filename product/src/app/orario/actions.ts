@@ -299,7 +299,7 @@ export async function persistLocallyExtractedTimetableImport(formData: FormData)
     effectiveFrom,
     sourceFingerprint,
     sourceLabel: `local-ocr:${sourceFingerprint.slice(0, 16)}`,
-    sourceRef: null,
+    sourceRef: `client-whole-document-sha256:${sourceFingerprint}`,
     replaceReviewed: optionalText(formData, 'replaceReviewedCandidate') === 'yes',
     parserVersion: 'paddleocr-js@0.4.2+structural-v1',
     rows,
@@ -355,7 +355,7 @@ async function persistStructuredTimetableCandidate(input: {
   effectiveFrom: string
   sourceFingerprint: string
   sourceLabel: string
-  sourceRef: string | null
+  sourceRef: string
   replaceReviewed: boolean
   parserVersion: string
   rows: readonly StructuredTimetableRow[]
