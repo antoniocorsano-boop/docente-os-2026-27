@@ -66,7 +66,7 @@
         "product/src/core/infrastructure/supabase/supabase-timetable-import-repository.ts"
       ],
       "feedbackFiles": [
-        "product/src/app/orario/page.tsx"
+        "product/src/app/orario/TimetableExperience.tsx"
       ],
       "testFiles": [
         "product/src/app/orario/timetable-import-feedback.test.ts"
