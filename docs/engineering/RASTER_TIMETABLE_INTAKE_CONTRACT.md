@@ -68,18 +68,25 @@ Implementation must explicitly choose and document one of these governed strateg
 
 ### Selected strategy for the timetable closure lane
 
-For the current lane, Docente OS uses strategy 2 with local minimization before transfer:
+The canonical strategy is now **local-first** and follows
+`LOCAL_DOCUMENT_UNDERSTANDING_CONTRACT.md`:
 
+1. usable native text -> local text anchors;
+2. raster/unresolved page -> local OCR producing text + geometry;
+3. deterministic timetable structural reconstruction;
+4. browser AI only as optional progressive enhancement for ambiguity;
+5. governed remote visual extraction only as an optional fallback when explicitly enabled;
+6. manual correction only for unresolved evidence.
+
+Consequences:
 - the browser renders the PDF locally;
-- pages with usable native text stay on the native-text path;
-- only pages classified `RASTER` or unresolved `MIXED` are rendered into a PNG derivative;
-- the original PDF bytes are not submitted to the timetable visual extractor;
-- pressing the existing `Estrai il mio orario` action authorizes the extraction attempt; no additional technical confirmation is introduced;
-- the privacy details disclose that required rendered page images may leave the device for the configured extraction service;
+- the original PDF does not leave the device in the primary path;
+- local OCR evidence is not authority: timetable rows are accepted/reviewed by deterministic domain rules;
+- absolute coordinates or one school template must not be encoded as the parser contract;
 - source identity remains bound to the locally computed whole-document SHA-256 fingerprint;
-- successful candidate creation is followed by the existing staging cleanup before review navigation.
+- successful candidate creation preserves existing staging cleanup semantics.
 
-For any remote strategy:
+For any optional remote strategy:
 - minimize bytes/regions where technically feasible;
 - avoid persistence of the original source;
 - preserve staging cleanup semantics;
@@ -146,13 +153,14 @@ Those may reuse this capability later, but they do not block closure of the time
 ## 9. Implementation order
 
 1. page-level `TEXT_BEARING / RASTER / MIXED` detection;
-2. routing abstraction for extraction strategy;
-3. raster extraction path;
-4. deterministic row validation;
-5. ambiguity-only correction UX;
-6. raster 14/14 regression;
-7. real Android acceptance with the original 28-09-2026 PDF;
-8. close #649 lane C only after real-device PASS.
+2. shared local-document routing abstraction;
+3. local OCR adapter qualification and raster extraction path;
+4. deterministic row validation and structural reconstruction;
+5. optional browser-AI ambiguity adapter;
+6. ambiguity-only correction UX;
+7. raster 14/14 regression;
+8. real Android acceptance with the original 28-09-2026 PDF;
+9. close #649 lane C only after real-device PASS.
 
 ## 10. Closure rule
 
