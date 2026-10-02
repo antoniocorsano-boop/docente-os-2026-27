@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import test from 'node:test'
 import { isValidIsoCalendarDate, resolveTimetableSourceIdentity } from '../orario/timetable-import-boundary'
 import { clearShareIntakeStaging } from './share-target-staging'
-import { clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, looksLikeTimetablePdf, ordinalFromTimetableText, parseOrdinal, teacherLabelMatches } from './timetable-share-helpers'
+import { clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, looksLikeTimetablePdf, ordinalFromTimetableText, parseOrdinal, teacherLabelMatches, weekdayFromTimetableText } from './timetable-share-helpers'
 
 const intake = fs.readFileSync(new URL('./ShareTargetIntake.tsx', import.meta.url), 'utf8')
 const uploader = fs.readFileSync(new URL('../knowledge/KnowledgeFileUploader.tsx', import.meta.url), 'utf8')
@@ -145,6 +145,13 @@ test('ordinal validation rejects non-integer and out-of-range values', () => {
   assert.equal(parseOrdinal('21'), null)
   assert.equal(parseOrdinal('1.5'), null)
   assert.equal(isValidOrdinal(null), false)
+})
+
+test('weekday parsing accepts accented and ASCII labels from real PDFs', () => {
+  assert.equal(weekdayFromTimetableText('lunedì'), 1)
+  assert.equal(weekdayFromTimetableText('lunedi'), 1)
+  assert.equal(weekdayFromTimetableText('martedì'), 2)
+  assert.equal(weekdayFromTimetableText('giovedi'), 4)
 })
 
 test('real timetable ordinal cells accept plain numbers under the Ora column', () => {
