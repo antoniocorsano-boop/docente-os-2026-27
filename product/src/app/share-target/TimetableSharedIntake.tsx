@@ -5,7 +5,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerE
 import { getDocumentProxy } from 'unpdf'
 import { analyzeMinimizedTimetableImport } from '@/app/orario/actions'
 import { MAX_KNOWLEDGE_UPLOAD_BYTES } from '@/app/knowledge/upload-policy'
-import { clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, inferTeacherTimetableCells, isValidOrdinal, parseOrdinal, teacherLabelMatches, type Rect, type TimetableTextAnchor } from './timetable-share-helpers'
+import { clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, parseOrdinal, type Rect, type TimetableTextAnchor } from './timetable-share-helpers'
 
 type Point = { x: number; y: number }
 type Selection = Rect & { id: string; weekday: number | null; ordinal: number | null; classLabel: string | null }
@@ -186,7 +186,7 @@ export function TimetableSharedIntake({
       setMessage('Scrivi prima il cognome o l’etichetta con cui compari nell’orario.')
       return
     }
-    const matches = searchAnchorsRef.current.filter((anchor) => teacherLabelMatches(anchor.text, label))
+    const matches = findTeacherTextAnchors(searchAnchorsRef.current, label)
     const inferred = inferTeacherTimetableCells(searchAnchorsRef.current, label)
     setTeacherMatches(matches)
     if (!matches.length) {
@@ -681,7 +681,7 @@ function isRecoverableImportFailure(code: string) {
 }
 
 function reviewUrl(candidateId: string) {
-  return `/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review`
+  return `/orario/aggiorna?importCandidate=${encodeURIComponent(candidateId)}&import=review`
 }
 
 function messageForImportFailure(code: string) {
