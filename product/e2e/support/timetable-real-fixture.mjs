@@ -1,21 +1,21 @@
-const DAYS = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì']
+const DAYS = ['lunedi', 'martedi', 'mercoledi', 'giovedi', 'venerdi']
 const CLASSES = ['1A', '2A', '3A', '1B', '2B', '3B', '1C', '2C', '3C', '1D', '3D', '3E']
 
 const LESSONS = new Set([
-  'lunedì|4|3E',
-  'lunedì|5|3A',
-  'lunedì|6|3C',
-  'martedì|5|2C',
-  'martedì|6|2A',
-  'mercoledì|5|1C',
-  'mercoledì|6|1A',
-  'giovedì|1|1A',
-  'giovedì|2|2C',
-  'giovedì|3|3E',
-  'giovedì|5|3C',
-  'venerdì|1|3A',
-  'venerdì|4|1C',
-  'venerdì|5|2A',
+  'lunedi|4|3E',
+  'lunedi|5|3A',
+  'lunedi|6|3C',
+  'martedi|5|2C',
+  'martedi|6|2A',
+  'mercoledi|5|1C',
+  'mercoledi|6|1A',
+  'giovedi|1|1A',
+  'giovedi|2|2C',
+  'giovedi|3|3E',
+  'giovedi|5|3C',
+  'venerdi|1|3A',
+  'venerdi|4|1C',
+  'venerdi|5|2A',
 ])
 
 export function buildSanitizedTimetablePdf() {
@@ -51,7 +51,7 @@ export function buildSanitizedTimetablePdf() {
         const x = classStartX + classIndex * classStep
         if (LESSONS.has(`${day}|${ordinal}|${classLabel}`)) {
           // Preserve one split-token case seen in compact timetable PDFs.
-          if (day === 'giovedì' && ordinal === 5 && classLabel === '3C') {
+          if (day === 'giovedi' && ordinal === 5 && classLabel === '3C') {
             text(x, y, 'Cor')
             text(x + 14, y, 'sa')
             text(x + 24, y, 'no')
