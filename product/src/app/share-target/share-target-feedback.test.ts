@@ -79,7 +79,7 @@ test('timetable-like shared PDFs use local minimization before timetable analysi
   assert.doesNotMatch(timetableIntake, /data\.set\('file', file\)/)
   assert.match(timetableIntake, /analyzeRasterTimetableImport/)
   assert.match(timetableIntake, /cropPageRegions/)
-  assert.match(timetableIntake, /orario-pagine-immagine\.png/)
+  assert.match(timetableIntake, /orario-pagine-immagine\.jpg/)
   assert.match(timetableIntake, /region\.kind !== 'TEXT_BEARING'/)
   assert.match(timetableIntake, /Il PDF completo non viene caricato in Conoscenza/)
   assert.match(timetableIntake, /await onBeforeSubmit\(\)/)
