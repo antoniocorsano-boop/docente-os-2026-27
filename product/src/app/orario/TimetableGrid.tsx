@@ -178,7 +178,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
                       onClick={() => setFocusedSlotId(slot.id)}
                     />
                   ) : readOnly ? (
-                    <div className={`emptyTimetableCell timetableReadOnlyEmpty ${emptyCurrent ? 'currentEmpty' : ''}`} aria-label={`Nessuna attività: ${day.label}, ${row.start}–${row.end}`} />
+                    <div className={`emptyTimetableCell timetableReadOnlyEmpty ${emptyCurrent ? 'currentEmpty' : ''}`} />
                   ) : (
                     <button className={`emptyTimetableCell ${emptyCurrent ? 'currentEmpty' : ''}`} type="button" aria-label={`Aggiungi attività: ${day.label}, ${row.start}–${row.end}`} onClick={() => openEmptyCell(day.value, row.start, row.end, row.ordinal)}><span aria-hidden>＋</span><small>{emptyCurrent ? 'Ora attuale · aggiungi' : 'Aggiungi'}</small></button>
                   )}</div>
