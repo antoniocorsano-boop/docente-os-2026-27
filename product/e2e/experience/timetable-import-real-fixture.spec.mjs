@@ -36,18 +36,18 @@ test('Orario mobile: PDF tabellare reale sanitizzato ricostruisce tutte le lezio
   await expect(page.getByText(`${expected.expectedLessons.length} lezioni trovate`, { exact: true })).toBeVisible({ timeout: 20_000 })
   await expect(page.getByText(/Non trovo il nominativo nel testo leggibile del PDF/)).toHaveCount(0)
 
-  const actualLessons = await page.locator('.knowledgeFeedback')
+  const actualLessons = (await page.locator('.knowledgeFeedback')
     .filter({ hasText: /lezioni trovate/ })
     .locator('span')
-    .allTextContents()
-  console.log('TIMETABLE_REAL_FIXTURE_ACTUAL', JSON.stringify(actualLessons))
+    .allTextContents())
+    .map((value) => value.replace(/^\\d+\\.\\s*/, '').trim())
 
-  for (const lesson of expected.expectedLessons) {
-    await expect(
-      page.getByText(`${lesson.day} · ${lesson.ordinal}ª ora · ${lesson.classLabel}`, { exact: true }),
-      `Manca ${lesson.day} ${lesson.ordinal}ª ora ${lesson.classLabel}`,
-    ).toBeVisible()
-  }
+  const expectedLessonLabels = expected.expectedLessons.map(
+    (lesson) => `${lesson.day} · ${lesson.ordinal}ª ora · ${lesson.classLabel}`,
+  )
+
+  expect(actualLessons, 'Le 14 lezioni inferite devono coincidere esattamente con giorno, ora e classe attesi.')
+    .toEqual(expectedLessonLabels)
 
   await expect(page.getByRole('button', { name: 'Selezione manuale (fallback)' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Continua' })).toBeEnabled()
