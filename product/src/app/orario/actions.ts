@@ -151,8 +151,8 @@ export async function deleteTimetableSlot(formData: FormData) {
 
 export async function analyzeTimetableImport(formData: FormData) {
   const result = await analyzeTimetableImportResult(formData)
-  if (!result.ok) redirect(`/orario?import=${encodeURIComponent(result.code)}`)
-  redirect(`/orario?importCandidate=${encodeURIComponent(result.candidateId)}&import=review`)
+  if (!result.ok) redirect(`/orario/aggiorna?import=${encodeURIComponent(result.code)}`)
+  redirect(`/orario/aggiorna?importCandidate=${encodeURIComponent(result.candidateId)}&import=review`)
 }
 
 export async function analyzeMinimizedTimetableImport(formData: FormData) {
@@ -327,10 +327,10 @@ export async function addTimetableImportRow(formData: FormData) {
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
   })
-  if (!candidate || candidate.state === 'APPLIED_TO_DRAFT') redirect('/orario?import=unavailable')
+  if (!candidate || candidate.state === 'APPLIED_TO_DRAFT') redirect('/orario/aggiorna?import=unavailable')
   const reviewedRevision = integer(formData, 'candidateRevision')
   if (candidate.revision !== reviewedRevision) {
-    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
+    redirect(`/orario/aggiorna?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
   }
 
   try {
@@ -346,13 +346,13 @@ export async function addTimetableImportRow(formData: FormData) {
   } catch (error) {
     const message = error instanceof Error ? error.message : ''
     if (message.includes('STALE_CANDIDATE_REVISION')) {
-      redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
+      redirect(`/orario/aggiorna?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
     }
-    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=persist_failed`)
+    redirect(`/orario/aggiorna?importCandidate=${encodeURIComponent(candidateId)}&import=persist_failed`)
   }
 
   revalidatePath('/orario')
-  redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review`)
+  redirect(`/orario/aggiorna?importCandidate=${encodeURIComponent(candidateId)}&import=review`)
 }
 
 export async function updateTimetableImportRow(formData: FormData) {
@@ -364,10 +364,10 @@ export async function updateTimetableImportRow(formData: FormData) {
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
   })
-  if (!candidate || candidate.state === 'APPLIED_TO_DRAFT') redirect('/orario?import=unavailable')
+  if (!candidate || candidate.state === 'APPLIED_TO_DRAFT') redirect('/orario/aggiorna?import=unavailable')
   const reviewedRevision = integer(formData, 'candidateRevision')
   if (candidate.revision !== reviewedRevision) {
-    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
+    redirect(`/orario/aggiorna?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
   }
 
   try {
@@ -384,13 +384,13 @@ export async function updateTimetableImportRow(formData: FormData) {
   } catch (error) {
     const message = error instanceof Error ? error.message : ''
     if (message.includes('STALE_CANDIDATE_REVISION')) {
-      redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
+      redirect(`/orario/aggiorna?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
     }
-    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=persist_failed`)
+    redirect(`/orario/aggiorna?importCandidate=${encodeURIComponent(candidateId)}&import=persist_failed`)
   }
 
   revalidatePath('/orario')
-  redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review`)
+  redirect(`/orario/aggiorna?importCandidate=${encodeURIComponent(candidateId)}&import=review`)
 }
 
 export async function applyTimetableImportCandidate(formData: FormData) {
@@ -404,12 +404,12 @@ export async function applyTimetableImportCandidate(formData: FormData) {
   })
 
   if (!candidate || candidate.state !== 'READY_TO_CONFIRM') {
-    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=not_ready`)
+    redirect(`/orario/aggiorna?importCandidate=${encodeURIComponent(candidateId)}&import=not_ready`)
   }
 
   const reviewedRevision = integer(formData, 'candidateRevision')
   if (candidate.revision !== reviewedRevision) {
-    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
+    redirect(`/orario/aggiorna?importCandidate=${encodeURIComponent(candidateId)}&import=review_stale`)
   }
 
   try {
@@ -424,12 +424,12 @@ export async function applyTimetableImportCandidate(formData: FormData) {
   } catch (error) {
     const message = error instanceof Error ? error.message : ''
     const code = message.includes('CONFLICT_DETECTED') ? 'conflict' : 'apply_failed'
-    redirect(`/orario?importCandidate=${encodeURIComponent(candidateId)}&import=${code}`)
+    redirect(`/orario/aggiorna?importCandidate=${encodeURIComponent(candidateId)}&import=${code}`)
   }
 
   revalidatePath('/')
   revalidatePath('/orario')
-  redirect('/orario?import=applied')
+  redirect('/orario/aggiorna?import=applied')
 }
 
 
