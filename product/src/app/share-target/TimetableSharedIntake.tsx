@@ -5,7 +5,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerE
 import { getDocumentProxy } from 'unpdf'
 import { analyzeMinimizedTimetableImport, analyzeRasterTimetableImport } from '@/app/orario/actions'
 import { MAX_KNOWLEDGE_UPLOAD_BYTES } from '@/app/knowledge/upload-policy'
-import { classifyTimetablePageTextLayer, clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, parseOrdinal, type Rect, type TimetablePageTextKind, type TimetableTextAnchor } from './timetable-share-helpers'
+import { chooseTimetableExtractionStrategy, classifyTimetablePageTextLayer, clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, parseOrdinal, type Rect, type TimetablePageTextKind, type TimetableTextAnchor } from './timetable-share-helpers'
 
 type Point = { x: number; y: number }
 type Selection = Rect & { id: string; weekday: number | null; ordinal: number | null; classLabel: string | null }
@@ -207,8 +207,12 @@ export function TimetableSharedIntake({
     const matches = findTeacherTextAnchors(searchAnchorsRef.current, label)
     const inferred = inferTeacherTimetableCells(searchAnchorsRef.current, label)
     setTeacherMatches(matches)
+    const extractionStrategy = chooseTimetableExtractionStrategy({
+      pageKinds: pageRegionsRef.current.map((region) => region.kind),
+      nativeTeacherMatches: matches.length,
+    })
 
-    if (matches.length) {
+    if (extractionStrategy === 'NATIVE_TEXT') {
       const nextSelections: Selection[] = inferred.map((cell) => ({
         ...cell.rect,
         id: crypto.randomUUID(),
@@ -235,7 +239,7 @@ export function TimetableSharedIntake({
 
     const visualRegions = pageRegionsRef.current.filter((region) => region.kind !== 'TEXT_BEARING')
     const source = canvasRef.current
-    if (!source || !sourceFingerprint || !visualRegions.length || !effectiveFrom) {
+    if (extractionStrategy !== 'VISUAL_PAGE' || !source || !sourceFingerprint || !visualRegions.length || !effectiveFrom) {
       setSelections([])
       setNeedsManualContext(true)
       setMessage('Non riesco a ricostruire automaticamente l’orario da questo documento. Puoi usare la correzione manuale.')
