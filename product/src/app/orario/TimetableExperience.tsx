@@ -120,7 +120,7 @@ export async function TimetableExperience({
         <Link className={mode === 'manage' ? 'active' : ''} href="/orario/gestisci">Gestisci</Link>
       </nav>
 
-      {mode === 'view' ? ({focusSlot ? (
+      {mode === 'view' ? (focusSlot ? (
         <section className="humanTaskFocus" aria-labelledby="timetable-focus-title">
           <p className="humanTaskFocusEyebrow">{currentSlot ? 'ADESSO' : 'PROSSIMA LEZIONE'}</p>
           <h2 id="timetable-focus-title">{focusSlot.title}</h2>
@@ -130,7 +130,7 @@ export async function TimetableExperience({
         </section>
       ) : (
         <section className="humanTaskFocus"><p className="humanTaskFocusEyebrow">ADESSO</p><h2>Nessuna lezione prevista in questa fascia</h2><p>{lifecycle.activeVersion ? 'L’orario in uso non prevede una lezione adesso.' : 'Non hai ancora messo in uso una versione dell’orario: per orientarti uso temporaneamente la bozza iniziale.'}</p><div className="humanTaskActions"><Link className="primary" href="#settimana-tipo">Apri la settimana</Link></div></section>
-      )}) : null}
+      ) : null) : null}
 
       {mode === 'update' ? <section className="timetableCard timetableImportCard" id="importa-orario" aria-labelledby="import-title">
         <div className="timetableCardHeading">
