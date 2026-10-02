@@ -36,6 +36,12 @@ test('Orario mobile: PDF tabellare reale sanitizzato ricostruisce tutte le lezio
   await expect(page.getByText(`${expected.expectedLessons.length} lezioni trovate`, { exact: true })).toBeVisible({ timeout: 20_000 })
   await expect(page.getByText(/Non trovo il nominativo nel testo leggibile del PDF/)).toHaveCount(0)
 
+  const actualLessons = await page.locator('.knowledgeFeedback')
+    .filter({ hasText: /lezioni trovate/ })
+    .locator('span')
+    .allTextContents()
+  console.log('TIMETABLE_REAL_FIXTURE_ACTUAL', JSON.stringify(actualLessons))
+
   for (const lesson of expected.expectedLessons) {
     await expect(
       page.getByText(`${lesson.day} · ${lesson.ordinal}ª ora · ${lesson.classLabel}`, { exact: true }),
