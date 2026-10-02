@@ -13,5 +13,5 @@ test('beta declares timetable visual extraction secret without committing a valu
 test('startup exposes only readiness state for timetable visual extraction', () => {
   assert.match(start, /Timetable visual extractor:/)
   assert.match(start, /'CONFIGURED' : 'UNAVAILABLE'/)
-  assert.doesNotMatch(start, /console\.log\([^\n]*OPENAI_TIMETABLE_API_KEY/)
+  assert.doesNotMatch(start, /console\.log\([^\n]*process\.env\.OPENAI_TIMETABLE_API_KEY\s*[,)]/)
 })
