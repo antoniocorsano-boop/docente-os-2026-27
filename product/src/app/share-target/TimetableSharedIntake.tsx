@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { getDocumentProxy } from 'unpdf'
-import { analyzeMinimizedTimetableImport, analyzeRasterTimetableImport } from '@/app/orario/actions'
+import { analyzeMinimizedTimetableImport, analyzeRasterTimetableImport, persistLocallyExtractedTimetableImport } from '@/app/orario/actions'
+import { rectFromPolygon } from '@/core/document-understanding/local-document-understanding'
+import { recognizeLocalDocumentImage } from '@/core/document-understanding/paddle-local-ocr'
 import { MAX_KNOWLEDGE_UPLOAD_BYTES } from '@/app/knowledge/upload-policy'
 import { chooseTimetableExtractionStrategy, classifyTimetablePageTextLayer, clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, parseOrdinal, type Rect, type TimetablePageTextKind, type TimetableTextAnchor } from './timetable-share-helpers'
 
@@ -251,7 +253,95 @@ export function TimetableSharedIntake({
 
     setBusy(true)
     setNeedsManualContext(false)
-    setMessage('Sto leggendo le pagine immagine dell’orario…')
+    setMessage('Sto leggendo localmente le pagine immagine dell’orario…')
+
+    try {
+      const localItems = []
+      for (const region of visualRegions) {
+        const pageCanvas = copyPageRegionToCanvas(source, region)
+        try {
+          localItems.push(...await recognizeLocalDocumentImage({
+            image: pageCanvas,
+            page: region.page,
+            offset: { x: region.x, y: region.y },
+          }))
+        } finally {
+          pageCanvas.width = 1
+          pageCanvas.height = 1
+        }
+      }
+
+      const localAnchors: SearchAnchor[] = localItems.flatMap((item) => {
+        const rect = rectFromPolygon(item.polygon)
+        return rect ? [{ text: item.text, page: item.page, rect }] : []
+      })
+      const localMatches = findTeacherTextAnchors(localAnchors, label)
+      const localInferred = inferTeacherTimetableCells(localAnchors, label)
+      const completeRows = localInferred.filter(
+        (cell): cell is typeof cell & { weekday: number; ordinal: number; classLabel: string } =>
+          cell.weekday !== null && isValidOrdinal(cell.ordinal) && Boolean(cell.classLabel),
+      )
+
+      if (
+        localMatches.length > 0
+        && completeRows.length > 0
+        && completeRows.length === localInferred.length
+      ) {
+        setTeacherMatches(localMatches)
+        const data = new FormData()
+        data.set('teacherLabel', label)
+        data.set('effectiveFrom', effectiveFrom)
+        data.set('sourceFingerprint', sourceFingerprint)
+        data.set('rows', JSON.stringify(completeRows.map((cell) => ({
+          day: cell.weekday,
+          ordinal: cell.ordinal,
+          classLabel: cell.classLabel,
+          confidence: 0.8,
+          evidenceRef: `local-ocr:p${cell.page}`,
+        }))))
+        if (replaceReviewedCandidate) data.set('replaceReviewedCandidate', 'yes')
+
+        const localResult = await persistLocallyExtractedTimetableImport(data)
+        if (localResult?.ok) {
+          setAcceptedCandidateId(localResult.candidateId)
+          onCandidateAccepted?.(localResult.candidateId)
+          setMessage(`Ho ricostruito localmente ${completeRows.length} lezioni. Apro il controllo…`)
+          try {
+            await onBeforeSubmit()
+          } catch (cleanupError) {
+            console.error('Timetable local OCR staging cleanup failed after candidate acceptance', cleanupError)
+            setBusy(false)
+            setMessage('La proposta è pronta, ma il PDF locale non è ancora stato rimosso. Riprova la rimozione prima di aprire la revisione.')
+            return
+          }
+          window.location.assign(reviewUrl(localResult.candidateId))
+          return
+        }
+
+        const localCode = localResult?.code ?? 'persist_failed'
+        if (localCode !== 'parse_failed' && localCode !== 'no_rows') {
+          setBusy(false)
+          if (isRecoverableImportFailure(localCode)) {
+            setMessage(messageForImportFailure(localCode))
+            return
+          }
+          try {
+            await onBeforeSubmit()
+          } catch (cleanupError) {
+            console.error('Timetable local OCR staging cleanup failed after terminal result', cleanupError)
+            setMessage(`${messageForImportFailure(localCode)} La rimozione del PDF locale non è riuscita: usa Annulla acquisizione e riprova.`)
+            return
+          }
+          setMessage(messageForImportFailure(localCode))
+          return
+        }
+      }
+    } catch (localError) {
+      const message = localError instanceof Error ? localError.message : 'local OCR unavailable'
+      console.warn('Timetable local OCR did not complete:', message.slice(0, 240))
+    }
+
+    setMessage('La lettura locale non è sufficiente. Provo il servizio di estrazione configurato…')
     try {
       const rasterDerivative = await cropPageRegions(source, visualRegions)
       const safeFile = new File([rasterDerivative], 'orario-pagine-immagine.jpg', {
@@ -686,7 +776,7 @@ export function TimetableSharedIntake({
       <details className="timetableSecondaryOptions">
         <summary>Privacy e file locale</summary>
         <p className="knowledgeUploadTrust" style={{ margin: '8px 0 0' }}>
-          Il PDF completo non viene caricato in Conoscenza e non viene conservato come fonte. Se una pagina non contiene testo leggibile, Docente OS invia al servizio di estrazione configurato soltanto l’immagine renderizzata delle pagine necessarie, non il PDF originale. La proposta resta modificabile e richiede conferma prima di cambiare la bozza dell’Orario.
+          Il PDF completo non viene caricato in Conoscenza e non viene conservato come fonte. Le pagine immagine vengono lette prima localmente sul dispositivo; al server arrivano soltanto le righe strutturate necessarie a preparare la proposta. Solo se la lettura locale non basta, Docente OS può usare il servizio di estrazione configurato inviando le sole pagine renderizzate necessarie, mai il PDF originale. La proposta resta modificabile e richiede conferma prima di cambiare la bozza dell’Orario.
         </p>
       </details>
     </section>
@@ -736,6 +826,32 @@ async function cropSelections(source: HTMLCanvasElement, selections: Selection[]
   const blob = await new Promise<Blob | null>((resolve) => output.toBlob(resolve, 'image/png'))
   if (!blob) throw new Error('Impossibile creare il derivato locale')
   return blob
+}
+
+function copyPageRegionToCanvas(source: HTMLCanvasElement, region: PageRegion) {
+  const normalized = clampRectToBounds(region, source.width, source.height)
+  if (normalized.width <= 0 || normalized.height <= 0) {
+    throw new Error('Pagina immagine non disponibile per la lettura locale')
+  }
+  const output = document.createElement('canvas')
+  output.width = normalized.width
+  output.height = normalized.height
+  const ctx = output.getContext('2d', { alpha: false })
+  if (!ctx) throw new Error('Canvas OCR locale non disponibile')
+  ctx.fillStyle = canvasSurfaceColor()
+  ctx.fillRect(0, 0, output.width, output.height)
+  ctx.drawImage(
+    source,
+    normalized.x,
+    normalized.y,
+    normalized.width,
+    normalized.height,
+    0,
+    0,
+    normalized.width,
+    normalized.height,
+  )
+  return output
 }
 
 async function cropPageRegions(source: HTMLCanvasElement, regions: PageRegion[]) {
