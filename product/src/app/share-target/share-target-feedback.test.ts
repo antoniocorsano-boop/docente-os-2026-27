@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import test from 'node:test'
 import { isValidIsoCalendarDate, resolveTimetableSourceIdentity } from '../orario/timetable-import-boundary'
 import { clearShareIntakeStaging } from './share-target-staging'
-import { clampRectToBounds, dateFromFilename, derivativeContextLabel, inferTeacherTimetableCells, isValidOrdinal, looksLikeTimetablePdf, parseOrdinal, teacherLabelMatches } from './timetable-share-helpers'
+import { clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, looksLikeTimetablePdf, parseOrdinal, teacherLabelMatches } from './timetable-share-helpers'
 
 const intake = fs.readFileSync(new URL('./ShareTargetIntake.tsx', import.meta.url), 'utf8')
 const uploader = fs.readFileSync(new URL('../knowledge/KnowledgeFileUploader.tsx', import.meta.url), 'utf8')
@@ -14,6 +14,7 @@ const timetablePage = fs.readFileSync(new URL('../orario/page.tsx', import.meta.
 const timetableExperience = fs.readFileSync(new URL('../orario/TimetableExperience.tsx', import.meta.url), 'utf8')
 const timetableGrid = fs.readFileSync(new URL('../orario/TimetableGrid.tsx', import.meta.url), 'utf8')
 const timetableLocalLauncher = fs.readFileSync(new URL('../orario/TimetableLocalImportLauncher.tsx', import.meta.url), 'utf8')
+const timetableCss = fs.readFileSync(new URL('../orario/timetable.css', import.meta.url), 'utf8')
 
 test('shared intake makes local-only and failure state perceptible before write', () => {
   assert.match(intake, /ancora locale/)
@@ -45,6 +46,18 @@ test('orario hierarchy separates consultation, update and advanced management', 
   assert.match(timetableGrid, /readOnly\?: boolean/)
   assert.match(timetableGrid, /!readOnly && editor/)
   assert.match(timetableGrid, /!readOnly && assignments\.length/)
+})
+
+test('mobile update route keeps heading before import and visibly disables blocked continuation', () => {
+  assert.doesNotMatch(timetableCss, /\.timetableImportCard\s*\{\s*order\s*:\s*-1/)
+  assert.match(timetableCss, /\.timetablePrimaryActions button:disabled/)
+  assert.match(timetableIntake, /disabled=\{!ready \|\| !sourceFingerprint \|\| !selections\.length/)
+})
+
+test('import review stays on the dedicated update route after the hierarchy split', () => {
+  assert.match(timetableIntake, /\/orario\/aggiorna\?importCandidate=/)
+  assert.doesNotMatch(timetableIntake, /return `\/orario\?importCandidate=/)
+  assert.match(timetableActions, /\/orario\/aggiorna\?importCandidate=/)
 })
 
 test('ordinary timetable upload reuses the same local teacher-first intake', () => {
@@ -132,6 +145,19 @@ test('ordinal validation rejects non-integer and out-of-range values', () => {
   assert.equal(parseOrdinal('21'), null)
   assert.equal(parseOrdinal('1.5'), null)
   assert.equal(isValidOrdinal(null), false)
+})
+
+test('teacher-first search recovers a surname split across adjacent PDF text fragments', () => {
+  const anchors = [
+    { text: 'Cor', page: 1, rect: { x: 100, y: 100, width: 18, height: 12 } },
+    { text: 'sa', page: 1, rect: { x: 119, y: 100, width: 12, height: 12 } },
+    { text: 'no', page: 1, rect: { x: 132, y: 100, width: 12, height: 12 } },
+    { text: 'Altro', page: 1, rect: { x: 210, y: 100, width: 30, height: 12 } },
+  ]
+  const matches = findTeacherTextAnchors(anchors, 'Corsano')
+  assert.equal(matches.length, 1)
+  assert.equal(matches[0].page, 1)
+  assert.ok(matches[0].rect.width >= 44)
 })
 
 test('teacher-first search normalizes ordinary timetable labels locally', () => {
