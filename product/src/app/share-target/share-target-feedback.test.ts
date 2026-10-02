@@ -154,6 +154,17 @@ test('real timetable ordinal cells accept plain numbers under the Ora column', (
   assert.equal(ordinalFromTimetableText('21'), null)
 })
 
+test('teacher search does not duplicate a complete surname when neighboring PDF fragments share the row', () => {
+  const anchors = [
+    { text: 'Docente', page: 1, rect: { x: 40, y: 80, width: 42, height: 12 } },
+    { text: 'Corsano', page: 1, rect: { x: 90, y: 80, width: 48, height: 12 } },
+    { text: 'Docente', page: 1, rect: { x: 145, y: 80, width: 42, height: 12 } },
+  ]
+  const matches = findTeacherTextAnchors(anchors, 'Corsano')
+  assert.equal(matches.length, 1)
+  assert.equal(matches[0].text, 'Corsano')
+})
+
 test('teacher search combines direct and split occurrences from the same PDF', () => {
   const anchors = [
     { text: 'Corsano', page: 1, rect: { x: 10, y: 40, width: 45, height: 12 } },
