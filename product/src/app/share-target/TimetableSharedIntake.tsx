@@ -272,9 +272,11 @@ export function TimetableSharedIntake({
         setBusy(false)
         if (isRecoverableImportFailure(code)) {
           setNeedsManualContext(true)
-          setMessage(code === 'parse_failed' || code === 'no_rows'
-            ? 'Non riesco ancora a ricostruire con sicurezza il tuo orario. Puoi usare la correzione manuale.'
-            : messageForImportFailure(code))
+          setMessage(code === 'extractor_unavailable'
+            ? 'La lettura automatica delle pagine immagine non è disponibile su questo servizio. Puoi usare la correzione manuale.'
+            : code === 'parse_failed' || code === 'no_rows'
+              ? 'Non riesco ancora a ricostruire con sicurezza il tuo orario. Puoi usare la correzione manuale.'
+              : messageForImportFailure(code))
           return
         }
         try {
@@ -812,6 +814,7 @@ async function sha256Hex(buffer: ArrayBuffer) {
 function isRecoverableImportFailure(code: string) {
   return code === 'invalid_date'
     || code === 'teacher_required'
+    || code === 'extractor_unavailable'
     || code === 'parse_failed'
     || code === 'no_rows'
     || code === 'replace_confirmation_required'
