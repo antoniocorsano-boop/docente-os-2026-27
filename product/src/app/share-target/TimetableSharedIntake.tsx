@@ -282,6 +282,11 @@ export function TimetableSharedIntake({
           cell.weekday !== null && isValidOrdinal(cell.ordinal) && Boolean(cell.classLabel),
       )
 
+      const incompleteRows = localInferred.length - completeRows.length
+      setMessage(
+        `Lettura locale: ${localItems.length} parole · ${localMatches.length} occorrenze di “${label}” · ${completeRows.length} lezioni complete${incompleteRows > 0 ? ` · ${incompleteRows} incomplete` : ''}.`,
+      )
+
       if (
         localMatches.length > 0
         && completeRows.length > 0
@@ -339,8 +344,12 @@ export function TimetableSharedIntake({
     } catch (localError) {
       const message = localError instanceof Error ? localError.message : 'local OCR unavailable'
       console.warn('Timetable local OCR did not complete:', message.slice(0, 240))
+      setMessage(`Lettura locale non riuscita: ${message.slice(0, 160)}`)
     }
 
+    // Keep the real-device OCR outcome visible long enough to make failures diagnosable.
+    // The remote fallback still runs immediately afterwards and remains governed.
+    await new Promise((resolve) => window.setTimeout(resolve, 1200))
     setMessage('La lettura locale non è sufficiente. Provo il servizio di estrazione configurato…')
     try {
       const rasterDerivative = await cropPageRegions(source, visualRegions)
