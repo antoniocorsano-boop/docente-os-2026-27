@@ -15,6 +15,17 @@ export function classifyTimetablePageTextLayer(
   return 'MIXED'
 }
 
+export type TimetableExtractionStrategy = 'NATIVE_TEXT' | 'VISUAL_PAGE' | 'MANUAL'
+
+export function chooseTimetableExtractionStrategy(input: {
+  pageKinds: readonly TimetablePageTextKind[]
+  nativeTeacherMatches: number
+}): TimetableExtractionStrategy {
+  if (input.nativeTeacherMatches > 0) return 'NATIVE_TEXT'
+  if (input.pageKinds.some((kind) => kind !== 'TEXT_BEARING')) return 'VISUAL_PAGE'
+  return 'MANUAL'
+}
+
 export function looksLikeTimetablePdf(input: {
   title?: string | null
   fileName: string
