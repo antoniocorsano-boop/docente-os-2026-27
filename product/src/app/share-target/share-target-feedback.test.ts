@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import test from 'node:test'
 import { isValidIsoCalendarDate, resolveTimetableSourceIdentity } from '../orario/timetable-import-boundary'
 import { clearShareIntakeStaging } from './share-target-staging'
-import { classifyTimetablePageTextLayer, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, looksLikeTimetablePdf, ordinalFromTimetableText, parseOrdinal, teacherLabelMatches, weekdayFromTimetableText } from './timetable-share-helpers'
+import { chooseTimetableExtractionStrategy, classifyTimetablePageTextLayer, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, looksLikeTimetablePdf, ordinalFromTimetableText, parseOrdinal, teacherLabelMatches, weekdayFromTimetableText } from './timetable-share-helpers'
 
 const intake = fs.readFileSync(new URL('./ShareTargetIntake.tsx', import.meta.url), 'utf8')
 const uploader = fs.readFileSync(new URL('../knowledge/KnowledgeFileUploader.tsx', import.meta.url), 'utf8')
@@ -145,6 +145,25 @@ test('timetable page classification distinguishes native text, raster and sparse
     { str: 'Corsano' },
     { str: 'Classe 2C' },
   ]), 'TEXT_BEARING')
+})
+
+test('timetable extraction routing prefers native, then visual, then manual', () => {
+  assert.equal(chooseTimetableExtractionStrategy({
+    pageKinds: ['RASTER'],
+    nativeTeacherMatches: 0,
+  }), 'VISUAL_PAGE')
+  assert.equal(chooseTimetableExtractionStrategy({
+    pageKinds: ['TEXT_BEARING', 'MIXED'],
+    nativeTeacherMatches: 0,
+  }), 'VISUAL_PAGE')
+  assert.equal(chooseTimetableExtractionStrategy({
+    pageKinds: ['TEXT_BEARING'],
+    nativeTeacherMatches: 2,
+  }), 'NATIVE_TEXT')
+  assert.equal(chooseTimetableExtractionStrategy({
+    pageKinds: ['TEXT_BEARING'],
+    nativeTeacherMatches: 0,
+  }), 'MANUAL')
 })
 
 test('date parsing rejects impossible calendar dates', () => {
