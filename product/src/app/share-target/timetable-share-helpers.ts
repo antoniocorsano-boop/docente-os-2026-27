@@ -34,14 +34,14 @@ export function findTeacherTextAnchors(
   anchors: readonly TimetableTextAnchor[],
   teacherLabel: string,
 ): TimetableTextAnchor[] {
-  const direct = anchors.filter((anchor) => teacherLabelMatches(anchor.text, teacherLabel))
-  if (direct.length) return direct
-
   const needle = normalizeTeacherSearch(teacherLabel).replace(/\s+/g, '')
   if (needle.length < 2) return []
 
-  const matches: TimetableTextAnchor[] = []
-  const seen = new Set<string>()
+  const direct = anchors.filter((anchor) => teacherLabelMatches(anchor.text, teacherLabel))
+  const matches: TimetableTextAnchor[] = [...direct]
+  const keyFor = (anchor: TimetableTextAnchor) =>
+    `${anchor.page}:${Math.round(anchor.rect.x)}:${Math.round(anchor.rect.y)}:${Math.round(anchor.rect.x + anchor.rect.width)}:${Math.round(anchor.rect.y + anchor.rect.height)}`
+  const seen = new Set(direct.map(keyFor))
 
   for (const page of new Set(anchors.map((anchor) => anchor.page))) {
     const rows: TimetableTextAnchor[][] = []
@@ -88,14 +88,15 @@ export function findTeacherTextAnchors(
           const compact = normalizeTeacherSearch(text).replace(/\s+/g, '')
           if (!compact.includes(needle)) continue
 
-          const key = `${page}:${Math.round(left)}:${Math.round(top)}:${Math.round(right)}:${Math.round(bottom)}`
+          const merged: TimetableTextAnchor = {
+            text,
+            page,
+            rect: { x: left, y: top, width: right - left, height: bottom - top },
+          }
+          const key = keyFor(merged)
           if (!seen.has(key)) {
             seen.add(key)
-            matches.push({
-              text,
-              page,
-              rect: { x: left, y: top, width: right - left, height: bottom - top },
-            })
+            matches.push(merged)
           }
           break
         }
@@ -103,9 +104,8 @@ export function findTeacherTextAnchors(
     }
   }
 
-  return matches
+  return matches.sort((a, b) => a.page - b.page || centerY(a.rect) - centerY(b.rect) || a.rect.x - b.rect.x)
 }
-
 
 export type TimetableTextAnchor = {
   text: string
@@ -147,7 +147,7 @@ export function weekdayFromTimetableText(value: string) {
 
 export function ordinalFromTimetableText(value: string) {
   const normalized = normalizeStructuralText(value)
-  const match = /^(\d{1,2})\s*(?:A\s*)?ORA$/.exec(normalized)
+  const match = /^(\d{1,2})(?:\s*(?:A\s*)?ORA)?$/.exec(normalized)
   if (!match) return null
   const ordinal = Number(match[1])
   return isValidOrdinal(ordinal) ? ordinal : null
