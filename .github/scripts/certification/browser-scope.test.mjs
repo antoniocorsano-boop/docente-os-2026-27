@@ -20,6 +20,7 @@ test('share target runtime uses focused HVA', () => {
   assert.deepEqual(scope.specs, [
     'e2e/experience/contextual-capabilities.spec.mjs',
     'e2e/experience/surfaces.spec.mjs',
+    'e2e/experience/timetable-import-real-fixture.spec.mjs',
   ])
 })
 
