@@ -502,7 +502,7 @@ export function TimetableSharedIntake({
 
       {selections.length ? (
         <div className="knowledgeFeedback" style={{ display: 'grid', gap: 8 }}>
-          <strong>{selections.length} lezion{selections.length === 1 ? 'e' : 'i'} trovata{selections.length === 1 ? '' : 'e'}</strong>
+          <strong>{selections.length === 1 ? '1 lezione trovata' : `${selections.length} lezioni trovate`}</strong>
           <div style={{ display: 'grid', gap: 4 }}>
             {selections.map((selection, index) => (
               <span key={selection.id}>
