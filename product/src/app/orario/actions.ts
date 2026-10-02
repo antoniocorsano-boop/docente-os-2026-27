@@ -219,8 +219,6 @@ async function analyzeTimetableImportResult(formData: FormData) {
   const fingerprint = sourceIdentity.sourceFingerprint
   const sourceLabel = sourceIdentity.sourceLabel
   const replaceReviewed = optionalText(formData, 'replaceReviewedCandidate') === 'yes'
-  const importRepository = new SupabaseTimetableImportRepository()
-
   const extractor = new OpenAiTimetableDocumentExtractor()
   let extracted
   try {
