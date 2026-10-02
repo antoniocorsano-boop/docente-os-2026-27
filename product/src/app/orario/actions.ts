@@ -301,7 +301,7 @@ export async function persistLocallyExtractedTimetableImport(formData: FormData)
     sourceLabel: `local-ocr:${sourceFingerprint.slice(0, 16)}`,
     sourceRef: `client-whole-document-sha256:${sourceFingerprint}`,
     replaceReviewed: optionalText(formData, 'replaceReviewedCandidate') === 'yes',
-    parserVersion: 'paddleocr-js@0.4.2+structural-v1',
+    parserVersion: 'tesseract.js@7.0.0+ita@1.0.0+structural-v1',
     rows,
   })
 }
