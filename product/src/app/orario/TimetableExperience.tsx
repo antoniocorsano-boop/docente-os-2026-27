@@ -130,7 +130,7 @@ export async function TimetableExperience({
         </section>
       ) : (
         <section className="humanTaskFocus"><p className="humanTaskFocusEyebrow">ADESSO</p><h2>Nessuna lezione prevista in questa fascia</h2><p>{lifecycle.activeVersion ? 'L’orario in uso non prevede una lezione adesso.' : 'Non hai ancora messo in uso una versione dell’orario: per orientarti uso temporaneamente la bozza iniziale.'}</p><div className="humanTaskActions"><Link className="primary" href="#settimana-tipo">Apri la settimana</Link></div></section>
-      ) : null) : null}
+      )) : null}
 
       {mode === 'update' ? <section className="timetableCard timetableImportCard" id="importa-orario" aria-labelledby="import-title">
         <div className="timetableCardHeading">
