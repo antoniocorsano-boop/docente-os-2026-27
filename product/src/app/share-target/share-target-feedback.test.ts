@@ -48,9 +48,9 @@ test('orario hierarchy separates consultation, update and advanced management', 
 })
 
 test('ordinary timetable upload reuses the same local teacher-first intake', () => {
-  assert.match(timetablePage, /TimetableLocalImportLauncher/)
-  assert.doesNotMatch(timetablePage, /action=\{analyzeTimetableImport\}/)
-  assert.doesNotMatch(timetablePage, /Analizza il documento/)
+  assert.match(timetableExperience, /TimetableLocalImportLauncher/)
+  assert.doesNotMatch(timetableExperience, /action=\{analyzeTimetableImport\}/)
+  assert.doesNotMatch(timetableExperience, /Analizza il documento/)
   assert.match(timetableLocalLauncher, /TimetableSharedIntake/)
   assert.match(timetableLocalLauncher, /sourceMode="LOCAL_MINIMIZED_UPLOAD"/)
   assert.match(timetableLocalLauncher, /Docente OS ricostruirà automaticamente il tuo orario settimanale/)
