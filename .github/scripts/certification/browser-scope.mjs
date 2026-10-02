@@ -47,7 +47,7 @@ const FOCUSED_RULES = [
 ]
 
 const SUPPORT_HVA_SPECS = new Map([
-  ['product/e2e/fixtures/timetable-real-shape-28-09-2026.pdf.b64', [
+  ['product/e2e/support/timetable-real-fixture.mjs', [
     'e2e/experience/timetable-import-real-fixture.spec.mjs',
   ]],
   ['product/e2e/fixtures/timetable-real-shape-28-09-2026.expected.json', [
