@@ -164,6 +164,17 @@ export async function analyzeMinimizedTimetableImport(formData: FormData) {
   return analyzeTimetableImportResult(formData)
 }
 
+export async function analyzeRasterTimetableImport(formData: FormData) {
+  const requestedMode = optionalText(formData, 'sourceMode')
+  formData.set(
+    'sourceMode',
+    requestedMode === 'LOCAL_MINIMIZED_UPLOAD' || requestedMode === 'LOCAL_RASTER_PAGE_UPLOAD'
+      ? 'LOCAL_RASTER_PAGE_UPLOAD'
+      : 'LOCAL_RASTER_PAGE_SHARE',
+  )
+  return analyzeTimetableImportResult(formData)
+}
+
 async function analyzeTimetableImportResult(formData: FormData) {
   const context = await requireContext()
 

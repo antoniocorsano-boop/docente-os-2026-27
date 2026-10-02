@@ -1,4 +1,32 @@
+import { hasUsablePdfText } from '@/core/privacy/pdf-text-usability'
+
 export type Rect = { x: number; y: number; width: number; height: number }
+
+export type TimetablePageTextKind = 'TEXT_BEARING' | 'RASTER' | 'MIXED'
+
+export function classifyTimetablePageTextLayer(
+  items: readonly { str?: string | null }[],
+): TimetablePageTextKind {
+  const visible = items
+    .map((item) => item.str?.trim() ?? '')
+    .filter(Boolean)
+  const text = visible.join(' ')
+
+  if (!text) return 'RASTER'
+  if (hasUsablePdfText(text)) return 'TEXT_BEARING'
+  return 'MIXED'
+}
+
+export type TimetableExtractionStrategy = 'NATIVE_TEXT' | 'VISUAL_PAGE' | 'MANUAL'
+
+export function chooseTimetableExtractionStrategy(input: {
+  pageKinds: readonly TimetablePageTextKind[]
+  nativeTeacherMatches: number
+}): TimetableExtractionStrategy {
+  if (input.nativeTeacherMatches > 0) return 'NATIVE_TEXT'
+  if (input.pageKinds.some((kind) => kind !== 'TEXT_BEARING')) return 'VISUAL_PAGE'
+  return 'MANUAL'
+}
 
 export function looksLikeTimetablePdf(input: {
   title?: string | null

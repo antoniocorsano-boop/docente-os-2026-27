@@ -4,6 +4,7 @@ import {
   pilotPrivacyErrorMessage,
   sanitizeContactIdentifiersForPilot,
 } from './anonymization-guard'
+import { hasUsablePdfText, normalizePdfExtractedText } from './pdf-text-usability'
 
 export const MAX_LOCAL_VISUAL_PDF_PAGES = 5
 
@@ -50,7 +51,7 @@ export async function classifyLocalPdfForVisualPreflight(bytes: Uint8Array): Pro
     return classifyTextExtractionFailure(pdf.numPages)
   }
 
-  const pages = Array.isArray(text) ? text.map((page) => normalizeText(String(page ?? ''))) : []
+  const pages = Array.isArray(text) ? text.map((page) => normalizePdfExtractedText(String(page ?? ''))) : []
   const classification = classifyPdfPages(totalPages, pages)
   if (classification.state !== 'NATIVE_TEXT_ONLY') return classification
 
@@ -93,8 +94,8 @@ export function classifyTextExtractionFailure(totalPages: number): LocalPdfVisua
 export function classifyPdfPages(totalPages: number, pages: string[]): LocalPdfVisualPreflightResult {
   if (!Number.isInteger(totalPages) || totalPages < 1 || pages.length !== totalPages) return failed('DOCUMENT_OPEN_FAILED')
 
-  const normalized = pages.map(normalizeText)
-  const missingNativeTextPages = normalized.flatMap((page, index) => hasUsableText(page) ? [] : [index + 1])
+  const normalized = pages.map(normalizePdfExtractedText)
+  const missingNativeTextPages = normalized.flatMap((page, index) => hasUsablePdfText(page) ? [] : [index + 1])
 
   if (missingNativeTextPages.length === 0) {
     return { state: 'NATIVE_TEXT_ONLY', totalPages, missingNativeTextPages }
@@ -109,15 +110,6 @@ export function classifyPdfPages(totalPages: number, pages: string[]): LocalPdfV
   }
 
   return { state: 'MULTI_PAGE_VISUAL_BLOCKED', totalPages, missingNativeTextPages }
-}
-
-function normalizeText(value: string) {
-  return value.replace(/\u0000/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
-}
-
-function hasUsableText(value: string) {
-  const alphanumeric = value.match(/[\p{L}\p{N}]/gu)?.length ?? 0
-  return alphanumeric >= 20
 }
 
 function failed(diagnostic: LocalPdfVisualPreflightDiagnostic): LocalPdfVisualPreflightResult {
