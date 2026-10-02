@@ -71,12 +71,18 @@ export function findTeacherTextAnchors(
         let right = row[start].rect.x + row[start].rect.width
         let bottom = row[start].rect.y + row[start].rect.height
 
+        let containsDirectMatch = false
         for (let end = start; end < Math.min(row.length, start + 10); end += 1) {
           const current = row[end]
           if (end > start) {
             const previous = row[end - 1]
             const gap = current.rect.x - (previous.rect.x + previous.rect.width)
             if (gap > Math.max(18, Math.max(previous.rect.height, current.rect.height) * 1.6)) break
+          }
+
+          if (teacherLabelMatches(current.text, teacherLabel)) {
+            containsDirectMatch = true
+            break
           }
 
           text += current.text
@@ -100,6 +106,7 @@ export function findTeacherTextAnchors(
           }
           break
         }
+        if (containsDirectMatch) continue
       }
     }
   }
