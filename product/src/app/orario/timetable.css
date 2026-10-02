@@ -58,3 +58,14 @@
   .timetableLocalFileSummary button{width:100%}
   .timetableImportCard{order:-1}
 }
+
+
+.timetableModeNav{display:flex;gap:8px;flex-wrap:wrap}
+.timetableModeNav a{min-height:44px;display:inline-flex;align-items:center;padding:0 14px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink-soft);font-weight:750;text-decoration:none}
+.timetableModeNav a.active{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+.timetableReadOnlyEmpty{cursor:default;background:var(--surface-soft)}
+@media(max-width:719px){
+  .timetableModeNav{display:grid;grid-template-columns:1fr 1fr}
+  .timetableModeNav a:first-child{grid-column:1/-1}
+  .timetableModeNav a{justify-content:center}
+}
