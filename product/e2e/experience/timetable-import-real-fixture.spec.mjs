@@ -40,7 +40,7 @@ test('Orario mobile: PDF tabellare reale sanitizzato ricostruisce tutte le lezio
     .filter({ hasText: /lezioni trovate/ })
     .locator('span')
     .allTextContents())
-    .map((value) => value.replace(/^\\d+\\.\\s*/, '').trim())
+    .map((value) => value.replace(/^\d+\.\s*/, '').trim())
 
   const expectedLessonLabels = expected.expectedLessons.map(
     (lesson) => `${lesson.day} · ${lesson.ordinal}ª ora · ${lesson.classLabel}`,
