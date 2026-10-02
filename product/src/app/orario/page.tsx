@@ -11,12 +11,12 @@ import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supa
 import {
   activateTimetableDraft,
   addTimetableImportRow,
-  analyzeTimetableImport,
   applyTimetableImportCandidate,
   updateTimetableDraft,
   updateTimetableImportRow,
 } from './actions'
 import TimetableGrid from './TimetableGrid'
+import { TimetableLocalImportLauncher } from './TimetableLocalImportLauncher'
 import './timetable.css'
 import './orario-guidance.css'
 
@@ -128,33 +128,9 @@ export default async function TimetablePage({
         {importStatus ? <ImportStatus code={importStatus} /> : null}
 
         {!importCandidate || importCandidate.state === 'APPLIED_TO_DRAFT' ? (
-          <form action={analyzeTimetableImport} className="timetableImportForm">
-            <label>
-              <span>PDF o immagine</span>
-              <input name="file" type="file" accept="application/pdf,image/png,image/jpeg,image/webp" required />
-            </label>
-            <label>
-              <span>Cognome o etichetta docente nel documento</span>
-              <input name="teacherLabel" autoComplete="off" maxLength={120} required placeholder="Es. ROSSI" />
-              <small>Serve solo per trovare il tuo orario nel documento. Non viene salvato.</small>
-            </label>
-            <label>
-              <span>Valido dal</span>
-              <input
-                name="effectiveFrom"
-                type="date"
-                defaultValue={clampDate(currentRomeDate(), context.academicYear.startsOn, context.academicYear.endsOn)}
-                min={context.academicYear.startsOn}
-                max={context.academicYear.endsOn}
-                required
-              />
-            </label>
-            <label>
-              <input name="replaceReviewedCandidate" type="checkbox" value="yes" />
-              <span>Se questo stesso documento ha già una proposta corretta manualmente, autorizzo a sostituirla con la nuova estrazione.</span>
-            </label>
-            <button className="timetablePrimaryButton" type="submit">Analizza il documento</button>
-          </form>
+          <TimetableLocalImportLauncher
+            defaultEffectiveFrom={clampDate(currentRomeDate(), context.academicYear.startsOn, context.academicYear.endsOn)}
+          />
         ) : (
           <div className="timetableImportReview">
             <div className="timetableImportSummary">

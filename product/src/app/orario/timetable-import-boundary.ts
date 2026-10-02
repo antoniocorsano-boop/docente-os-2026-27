@@ -1,4 +1,4 @@
-export type TimetableSourceMode = '' | 'LOCAL_MINIMIZED_SHARE'
+export type TimetableSourceMode = '' | 'LOCAL_MINIMIZED_SHARE' | 'LOCAL_MINIMIZED_UPLOAD'
 
 export function isValidIsoCalendarDate(value: string) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
@@ -21,7 +21,7 @@ export function resolveTimetableSourceIdentity(input: {
   derivativeName: string
 }) {
   const derivativeFingerprint = validateFingerprint(input.derivativeFingerprint)
-  if (input.sourceMode !== 'LOCAL_MINIMIZED_SHARE') {
+  if (input.sourceMode !== 'LOCAL_MINIMIZED_SHARE' && input.sourceMode !== 'LOCAL_MINIMIZED_UPLOAD') {
     return {
       sourceFingerprint: derivativeFingerprint,
       sourceLabel: 'Orario importato',
@@ -32,10 +32,11 @@ export function resolveTimetableSourceIdentity(input: {
   const wholeDocumentFingerprint = validateFingerprint(input.originalSourceFingerprint)
 
   return {
-    // G1.5 allows only the whole-document G1.3 fingerprint to persist.
-    // It is computed locally before minimization because the original never crosses the trust boundary.
+    // Persist only the locally computed whole-document fingerprint; the source never crosses the trust boundary.
     sourceFingerprint: wholeDocumentFingerprint,
-    sourceLabel: 'Orario condiviso - derivato locale',
+    sourceLabel: input.sourceMode === 'LOCAL_MINIMIZED_SHARE'
+      ? 'Orario condiviso - derivato locale'
+      : 'Orario caricato - derivato locale',
     sourceRef: `client-whole-document-sha256:${wholeDocumentFingerprint}`,
   }
 }

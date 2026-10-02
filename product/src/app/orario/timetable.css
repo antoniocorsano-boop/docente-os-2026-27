@@ -43,3 +43,18 @@
 @media(max-width:1100px){.timetableImportAddForm{grid-template-columns:1fr 1fr 1fr}.timetableImportAddForm label:first-of-type{grid-column:1/-1}.timetableImportAddForm button{grid-column:3}}
 @media(max-width:719px){.timetableImportAddForm{grid-template-columns:1fr 1fr}.timetableImportAddForm label:first-of-type{grid-column:1/-1}.timetableImportAddForm button{grid-column:1/-1;width:100%}}
 @media(max-width:460px){.timetableImportAddForm{grid-template-columns:1fr}.timetableImportAddForm label:first-of-type,.timetableImportAddForm button{grid-column:auto}}
+
+
+.timetableLocalImportLauncher{display:grid;gap:12px}
+.timetableLocalFilePicker{display:grid;gap:8px;padding:14px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-soft)}
+.timetableLocalFilePicker>span{font-size:12px;font-weight:750;color:var(--ink)}
+.timetableLocalFilePicker input{width:100%;min-height:44px}
+.timetableLocalFilePicker small{color:var(--ink-soft);font-size:11px;line-height:1.45}
+.timetableLocalFileSummary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-soft)}
+.timetableLocalFileSummary strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.timetableLocalFileSummary button{min-height:44px;padding:0 12px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface);font-weight:700}
+@media(max-width:719px){
+  .timetableLocalFileSummary{align-items:stretch;flex-direction:column}
+  .timetableLocalFileSummary button{width:100%}
+  .timetableImportCard{order:-1}
+}

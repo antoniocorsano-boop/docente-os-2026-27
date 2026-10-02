@@ -156,7 +156,11 @@ export async function analyzeTimetableImport(formData: FormData) {
 }
 
 export async function analyzeMinimizedTimetableImport(formData: FormData) {
-  formData.set('sourceMode', 'LOCAL_MINIMIZED_SHARE')
+  const requestedMode = optionalText(formData, 'sourceMode')
+  formData.set(
+    'sourceMode',
+    requestedMode === 'LOCAL_MINIMIZED_UPLOAD' ? 'LOCAL_MINIMIZED_UPLOAD' : 'LOCAL_MINIMIZED_SHARE',
+  )
   return analyzeTimetableImportResult(formData)
 }
 

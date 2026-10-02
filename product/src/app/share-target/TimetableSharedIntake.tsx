@@ -15,6 +15,8 @@ type Props = {
   file: File
   onBeforeSubmit: () => Promise<void> | void
   onCandidateAccepted?: (candidateId: string) => void
+  defaultEffectiveFrom?: string
+  sourceMode?: 'LOCAL_MINIMIZED_SHARE' | 'LOCAL_MINIMIZED_UPLOAD'
 }
 
 const MAX_PAGES = 5
@@ -22,7 +24,13 @@ const GAP = 20
 const MAX_PAGE_DIMENSION = 1800
 const MAX_COMPOSITE_HEIGHT = 12000
 
-export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepted }: Props) {
+export function TimetableSharedIntake({
+  file,
+  onBeforeSubmit,
+  onCandidateAccepted,
+  defaultEffectiveFrom = '',
+  sourceMode = 'LOCAL_MINIMIZED_SHARE',
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const startRef = useRef<Point | null>(null)
@@ -34,7 +42,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
   const [selections, setSelections] = useState<Selection[]>([])
   const [sourceFingerprint, setSourceFingerprint] = useState<string | null>(null)
   const [teacherLabel, setTeacherLabel] = useState('')
-  const [effectiveFrom, setEffectiveFrom] = useState(() => dateFromFilename(file.name) ?? '')
+  const [effectiveFrom, setEffectiveFrom] = useState(() => dateFromFilename(file.name) ?? defaultEffectiveFrom)
   const [replaceReviewedCandidate, setReplaceReviewedCandidate] = useState(false)
   const [busy, setBusy] = useState(false)
   const [acceptedCandidateId, setAcceptedCandidateId] = useState<string | null>(null)
@@ -304,7 +312,7 @@ export function TimetableSharedIntake({ file, onBeforeSubmit, onCandidateAccepte
       data.set('teacherLabel', teacherLabel.trim())
       data.set('effectiveFrom', effectiveFrom)
       data.set('originalSourceFingerprint', sourceFingerprint)
-      data.set('sourceMode', 'LOCAL_MINIMIZED_SHARE')
+      data.set('sourceMode', sourceMode)
       if (replaceReviewedCandidate) data.set('replaceReviewedCandidate', 'yes')
 
       const result = await analyzeMinimizedTimetableImport(data)
