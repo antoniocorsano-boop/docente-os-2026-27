@@ -188,7 +188,7 @@ test('teacher timetable is reconstructed locally from table geometry', () => {
 
 test('mobile timetable flow keeps day and period in progressive fallback', () => {
   assert.match(timetableIntake, /Estrai il mio orario/)
-  assert.match(timetableIntake, /teacherLabelMatches/)
+  assert.match(timetableIntake, /findTeacherTextAnchors/)
   assert.match(timetableIntake, /teacherMatches/)
   assert.match(timetableIntake, /needsManualContext/)
   assert.match(timetableIntake, /Correzione avanzata · completa i dettagli ambigui/)
