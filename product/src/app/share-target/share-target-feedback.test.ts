@@ -225,6 +225,12 @@ test('mobile timetable flow keeps day and period in progressive fallback', () =>
   assert.match(timetableIntake, /derivativeContextLabel\(teacherLabel, rect\.weekday, rect\.ordinal, rect\.classLabel\)/)
 })
 
+test('lesson-count feedback uses correct singular and plural copy', () => {
+  assert.match(timetableIntake, /1 lezione trovata/)
+  assert.match(timetableIntake, /lezioni trovate/)
+  assert.doesNotMatch(timetableIntake, /trovatae/)
+})
+
 test('real-device mobile flow keeps primary action compact and secondary controls collapsed', () => {
   assert.match(timetableIntake, /timetablePrimaryActions/)
   assert.match(timetableIntake, /'Continua'/)
