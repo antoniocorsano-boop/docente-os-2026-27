@@ -1,19 +1,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { expect, test } from '@playwright/test'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
+import { buildSanitizedTimetablePdf } from '../support/timetable-real-fixture.mjs'
 
 requireE2ECredentials()
 
-const here = path.dirname(fileURLToPath(import.meta.url))
-const fixtureDir = path.resolve(here, '../fixtures')
-const fixturePdf = Buffer.from(
-  fs.readFileSync(path.join(fixtureDir, 'timetable-real-shape-28-09-2026.pdf.b64'), 'utf8').trim(),
-  'base64',
-)
 const expected = JSON.parse(
-  fs.readFileSync(path.join(fixtureDir, 'timetable-real-shape-28-09-2026.expected.json'), 'utf8'),
+  fs.readFileSync(new URL('../fixtures/timetable-real-shape-28-09-2026.expected.json', import.meta.url), 'utf8'),
 )
 
 test('Orario mobile: PDF tabellare reale sanitizzato ricostruisce tutte le lezioni del docente', async ({ page }, testInfo) => {
@@ -27,7 +21,7 @@ test('Orario mobile: PDF tabellare reale sanitizzato ricostruisce tutte le lezio
   await fileInput.setInputFiles({
     name: 'orario provvisorio dal 28-09-2026.pdf',
     mimeType: 'application/pdf',
-    buffer: fixturePdf,
+    buffer: buildSanitizedTimetablePdf(),
   })
 
   await expect(page.getByText('orario provvisorio dal 28-09-2026.pdf', { exact: true })).toBeVisible()
