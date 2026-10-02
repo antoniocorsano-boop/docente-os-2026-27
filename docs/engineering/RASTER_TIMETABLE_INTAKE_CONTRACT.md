@@ -66,6 +66,19 @@ Implementation must explicitly choose and document one of these governed strateg
 1. local OCR/local localization before remote processing; or
 2. remote visual extraction under an explicit governed transfer contract.
 
+### Selected strategy for the timetable closure lane
+
+For the current lane, Docente OS uses strategy 2 with local minimization before transfer:
+
+- the browser renders the PDF locally;
+- pages with usable native text stay on the native-text path;
+- only pages classified `RASTER` or unresolved `MIXED` are rendered into a PNG derivative;
+- the original PDF bytes are not submitted to the timetable visual extractor;
+- pressing the existing `Estrai il mio orario` action authorizes the extraction attempt; no additional technical confirmation is introduced;
+- the privacy details disclose that required rendered page images may leave the device for the configured extraction service;
+- source identity remains bound to the locally computed whole-document SHA-256 fingerprint;
+- successful candidate creation is followed by the existing staging cleanup before review navigation.
+
 For any remote strategy:
 - minimize bytes/regions where technically feasible;
 - avoid persistence of the original source;
