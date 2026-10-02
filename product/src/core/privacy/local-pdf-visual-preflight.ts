@@ -94,7 +94,7 @@ export function classifyTextExtractionFailure(totalPages: number): LocalPdfVisua
 export function classifyPdfPages(totalPages: number, pages: string[]): LocalPdfVisualPreflightResult {
   if (!Number.isInteger(totalPages) || totalPages < 1 || pages.length !== totalPages) return failed('DOCUMENT_OPEN_FAILED')
 
-  const normalized = pages.map(normalizeText)
+  const normalized = pages.map(normalizePdfExtractedText)
   const missingNativeTextPages = normalized.flatMap((page, index) => hasUsablePdfText(page) ? [] : [index + 1])
 
   if (missingNativeTextPages.length === 0) {
