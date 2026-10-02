@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import test from 'node:test'
 import { isValidIsoCalendarDate, resolveTimetableSourceIdentity } from '../orario/timetable-import-boundary'
 import { clearShareIntakeStaging } from './share-target-staging'
-import { clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, looksLikeTimetablePdf, parseOrdinal, teacherLabelMatches } from './timetable-share-helpers'
+import { clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, looksLikeTimetablePdf, ordinalFromTimetableText, parseOrdinal, teacherLabelMatches } from './timetable-share-helpers'
 
 const intake = fs.readFileSync(new URL('./ShareTargetIntake.tsx', import.meta.url), 'utf8')
 const uploader = fs.readFileSync(new URL('../knowledge/KnowledgeFileUploader.tsx', import.meta.url), 'utf8')
@@ -145,6 +145,24 @@ test('ordinal validation rejects non-integer and out-of-range values', () => {
   assert.equal(parseOrdinal('21'), null)
   assert.equal(parseOrdinal('1.5'), null)
   assert.equal(isValidOrdinal(null), false)
+})
+
+test('real timetable ordinal cells accept plain numbers under the Ora column', () => {
+  assert.equal(ordinalFromTimetableText('1'), 1)
+  assert.equal(ordinalFromTimetableText('5'), 5)
+  assert.equal(ordinalFromTimetableText('1ora'), 1)
+  assert.equal(ordinalFromTimetableText('21'), null)
+})
+
+test('teacher search combines direct and split occurrences from the same PDF', () => {
+  const anchors = [
+    { text: 'Corsano', page: 1, rect: { x: 10, y: 40, width: 45, height: 12 } },
+    { text: 'Cor', page: 1, rect: { x: 100, y: 100, width: 18, height: 12 } },
+    { text: 'sa', page: 1, rect: { x: 119, y: 100, width: 12, height: 12 } },
+    { text: 'no', page: 1, rect: { x: 132, y: 100, width: 12, height: 12 } },
+  ]
+  const matches = findTeacherTextAnchors(anchors, 'Corsano')
+  assert.equal(matches.length, 2)
 })
 
 test('teacher-first search recovers a surname split across adjacent PDF text fragments', () => {
