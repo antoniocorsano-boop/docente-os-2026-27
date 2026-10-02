@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@assistant-ui/react": "^0.15.16",
+    "@paddleocr/paddleocr-js": "0.4.2",
     "@radix-ui/react-dialog": "^1.1.15",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.57.0",
