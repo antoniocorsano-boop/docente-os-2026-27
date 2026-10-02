@@ -30,6 +30,83 @@ export function teacherLabelMatches(text: string, teacherLabel: string) {
 }
 
 
+export function findTeacherTextAnchors(
+  anchors: readonly TimetableTextAnchor[],
+  teacherLabel: string,
+): TimetableTextAnchor[] {
+  const direct = anchors.filter((anchor) => teacherLabelMatches(anchor.text, teacherLabel))
+  if (direct.length) return direct
+
+  const needle = normalizeTeacherSearch(teacherLabel).replace(/\s+/g, '')
+  if (needle.length < 2) return []
+
+  const matches: TimetableTextAnchor[] = []
+  const seen = new Set<string>()
+
+  for (const page of new Set(anchors.map((anchor) => anchor.page))) {
+    const rows: TimetableTextAnchor[][] = []
+    const pageAnchors = anchors
+      .filter((anchor) => anchor.page === page)
+      .sort((a, b) => centerY(a.rect) - centerY(b.rect) || a.rect.x - b.rect.x)
+
+    for (const anchor of pageAnchors) {
+      const cy = centerY(anchor.rect)
+      let row = rows.find((candidate) => {
+        const reference = candidate[0]
+        return reference && Math.abs(centerY(reference.rect) - cy) <= Math.max(4, Math.min(reference.rect.height, anchor.rect.height) * 0.7)
+      })
+      if (!row) {
+        row = []
+        rows.push(row)
+      }
+      row.push(anchor)
+    }
+
+    for (const row of rows) {
+      row.sort((a, b) => a.rect.x - b.rect.x)
+      for (let start = 0; start < row.length; start += 1) {
+        let text = ''
+        let left = row[start].rect.x
+        let top = row[start].rect.y
+        let right = row[start].rect.x + row[start].rect.width
+        let bottom = row[start].rect.y + row[start].rect.height
+
+        for (let end = start; end < Math.min(row.length, start + 10); end += 1) {
+          const current = row[end]
+          if (end > start) {
+            const previous = row[end - 1]
+            const gap = current.rect.x - (previous.rect.x + previous.rect.width)
+            if (gap > Math.max(18, Math.max(previous.rect.height, current.rect.height) * 1.6)) break
+          }
+
+          text += current.text
+          left = Math.min(left, current.rect.x)
+          top = Math.min(top, current.rect.y)
+          right = Math.max(right, current.rect.x + current.rect.width)
+          bottom = Math.max(bottom, current.rect.y + current.rect.height)
+
+          const compact = normalizeTeacherSearch(text).replace(/\s+/g, '')
+          if (!compact.includes(needle)) continue
+
+          const key = `${page}:${Math.round(left)}:${Math.round(top)}:${Math.round(right)}:${Math.round(bottom)}`
+          if (!seen.has(key)) {
+            seen.add(key)
+            matches.push({
+              text,
+              page,
+              rect: { x: left, y: top, width: right - left, height: bottom - top },
+            })
+          }
+          break
+        }
+      }
+    }
+  }
+
+  return matches
+}
+
+
 export type TimetableTextAnchor = {
   text: string
   rect: Rect
@@ -93,7 +170,7 @@ export function inferTeacherTimetableCells(
   anchors: readonly TimetableTextAnchor[],
   teacherLabel: string,
 ): InferredTeacherTimetableCell[] {
-  const teacherAnchors = anchors.filter((anchor) => teacherLabelMatches(anchor.text, teacherLabel))
+  const teacherAnchors = findTeacherTextAnchors(anchors, teacherLabel)
   const inferred: InferredTeacherTimetableCell[] = []
   const seen = new Set<string>()
 
