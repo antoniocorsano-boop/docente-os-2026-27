@@ -1,3 +1,5 @@
+import { hasUsablePdfText } from '@/core/privacy/pdf-text-usability'
+
 export type Rect = { x: number; y: number; width: number; height: number }
 
 export type TimetablePageTextKind = 'TEXT_BEARING' | 'RASTER' | 'MIXED'
@@ -8,10 +10,10 @@ export function classifyTimetablePageTextLayer(
   const visible = items
     .map((item) => item.str?.trim() ?? '')
     .filter(Boolean)
-  const compactChars = visible.join('').replace(/\s+/g, '').length
+  const text = visible.join(' ')
 
-  if (compactChars === 0) return 'RASTER'
-  if (visible.length >= 3 && compactChars >= 24) return 'TEXT_BEARING'
+  if (!text) return 'RASTER'
+  if (hasUsablePdfText(text)) return 'TEXT_BEARING'
   return 'MIXED'
 }
 
