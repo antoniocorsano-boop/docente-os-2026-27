@@ -11,6 +11,8 @@ const serviceWorker = fs.readFileSync(new URL('../../../public/sw.js', import.me
 const timetableIntake = fs.readFileSync(new URL('./TimetableSharedIntake.tsx', import.meta.url), 'utf8')
 const timetableActions = fs.readFileSync(new URL('../orario/actions.ts', import.meta.url), 'utf8')
 const timetablePage = fs.readFileSync(new URL('../orario/page.tsx', import.meta.url), 'utf8')
+const timetableExperience = fs.readFileSync(new URL('../orario/TimetableExperience.tsx', import.meta.url), 'utf8')
+const timetableGrid = fs.readFileSync(new URL('../orario/TimetableGrid.tsx', import.meta.url), 'utf8')
 const timetableLocalLauncher = fs.readFileSync(new URL('../orario/TimetableLocalImportLauncher.tsx', import.meta.url), 'utf8')
 
 test('shared intake makes local-only and failure state perceptible before write', () => {
@@ -32,10 +34,23 @@ test('shared file reuses governed Knowledge upload feedback', () => {
 })
 
 
+test('orario hierarchy separates consultation, update and advanced management', () => {
+  assert.match(timetablePage, /mode="view"/)
+  assert.match(timetableExperience, /href="\/orario\/aggiorna"/)
+  assert.match(timetableExperience, /href="\/orario\/gestisci"/)
+  assert.match(timetableExperience, /slots=\{mode === 'view' \? operationalSlots : timetable\.slots\}/)
+  assert.match(timetableExperience, /readOnly=\{mode === 'view'\}/)
+  assert.match(timetableExperience, /mode === 'update' \? <section className="timetableCard timetableImportCard"/)
+  assert.match(timetableExperience, /mode === 'manage' \? <>/)
+  assert.match(timetableGrid, /readOnly\?: boolean/)
+  assert.match(timetableGrid, /!readOnly && editor/)
+  assert.match(timetableGrid, /!readOnly && assignments\.length/)
+})
+
 test('ordinary timetable upload reuses the same local teacher-first intake', () => {
-  assert.match(timetablePage, /TimetableLocalImportLauncher/)
-  assert.doesNotMatch(timetablePage, /action=\{analyzeTimetableImport\}/)
-  assert.doesNotMatch(timetablePage, /Analizza il documento/)
+  assert.match(timetableExperience, /TimetableLocalImportLauncher/)
+  assert.doesNotMatch(timetableExperience, /action=\{analyzeTimetableImport\}/)
+  assert.doesNotMatch(timetableExperience, /Analizza il documento/)
   assert.match(timetableLocalLauncher, /TimetableSharedIntake/)
   assert.match(timetableLocalLauncher, /sourceMode="LOCAL_MINIMIZED_UPLOAD"/)
   assert.match(timetableLocalLauncher, /Docente OS ricostruirà automaticamente il tuo orario settimanale/)
@@ -336,7 +351,7 @@ test('parent cleanup action preserves accepted candidate review routing', () => 
 
 
 test('timetable confirmation is bound to the reviewed candidate revision', () => {
-  assert.match(timetablePage, /name="candidateRevision" value=\{importCandidate\.revision\}/)
+  assert.match(timetableExperience, /name="candidateRevision" value=\{importCandidate\.revision\}/)
   assert.match(timetableActions, /const reviewedRevision = integer\(formData, 'candidateRevision'\)/)
   assert.match(timetableActions, /candidate\.revision !== reviewedRevision/)
   assert.match(timetableActions, /import=review_stale/)
@@ -345,7 +360,7 @@ test('timetable confirmation is bound to the reviewed candidate revision', () =>
 
 
 test('all timetable review edits are bound to the rendered candidate revision', () => {
-  const revisionInputs = timetablePage.match(/name="candidateRevision" value=\{importCandidate\.revision\}/g) ?? []
+  const revisionInputs = timetableExperience.match(/name="candidateRevision" value=\{importCandidate\.revision\}/g) ?? []
   assert.ok(revisionInputs.length >= 3)
   assert.match(timetableActions, /export async function addTimetableImportRow[\s\S]*candidate\.revision !== reviewedRevision/)
   assert.match(timetableActions, /export async function updateTimetableImportRow[\s\S]*candidate\.revision !== reviewedRevision/)
@@ -394,8 +409,8 @@ test('service-worker expiry cleanup checks payload deletion before removing meta
 })
 
 test('ordinary timetable import surfaces persistence failures', () => {
-  assert.match(timetablePage, /persist_failed:/)
-  assert.match(timetablePage, /Proposta non salvata/)
+  assert.match(timetableExperience, /persist_failed:/)
+  assert.match(timetableExperience, /Proposta non salvata/)
 })
 
 
