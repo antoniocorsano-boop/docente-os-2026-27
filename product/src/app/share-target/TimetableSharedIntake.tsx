@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { getDocumentProxy } from 'unpdf'
-import { analyzeMinimizedTimetableImport } from '@/app/orario/actions'
+import { analyzeMinimizedTimetableImport, analyzeRasterTimetableImport } from '@/app/orario/actions'
 import { MAX_KNOWLEDGE_UPLOAD_BYTES } from '@/app/knowledge/upload-policy'
-import { clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, parseOrdinal, type Rect, type TimetableTextAnchor } from './timetable-share-helpers'
+import { classifyTimetablePageTextLayer, clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, parseOrdinal, type Rect, type TimetablePageTextKind, type TimetableTextAnchor } from './timetable-share-helpers'
 
 type Point = { x: number; y: number }
 type Selection = Rect & { id: string; weekday: number | null; ordinal: number | null; classLabel: string | null }
 type SearchAnchor = TimetableTextAnchor
+type PageRegion = Rect & { page: number; kind: TimetablePageTextKind }
 
 type Props = {
   file: File
@@ -35,6 +36,7 @@ export function TimetableSharedIntake({
   const viewportRef = useRef<HTMLDivElement>(null)
   const startRef = useRef<Point | null>(null)
   const searchAnchorsRef = useRef<SearchAnchor[]>([])
+  const pageRegionsRef = useRef<PageRegion[]>([])
   const [keyboardCursor, setKeyboardCursor] = useState<Point | null>(null)
   const [keyboardStart, setKeyboardStart] = useState<Point | null>(null)
   const [ready, setReady] = useState(false)
@@ -96,6 +98,7 @@ export function TimetableSharedIntake({
         if (!scratchCtx) throw new Error('Canvas temporaneo non disponibile')
 
         const searchAnchors: SearchAnchor[] = []
+        pageRegionsRef.current = []
         for (const layout of layouts) {
           const pageWidth = Math.max(1, Math.round(layout.viewport.width))
           const pageHeight = Math.max(1, Math.round(layout.viewport.height))
@@ -111,6 +114,7 @@ export function TimetableSharedIntake({
           layout.x = Math.round((width - pageWidth) / 2)
           ctx.drawImage(scratch, layout.x, layout.y)
 
+          let pageKind: TimetablePageTextKind = 'RASTER'
           try {
             const textPage = layout.page as unknown as {
               getTextContent: () => Promise<{ items: Array<{ str?: string; transform?: number[]; width?: number; height?: number }> }>
@@ -120,6 +124,7 @@ export function TimetableSharedIntake({
               convertToViewportPoint: (x: number, y: number) => [number, number]
             }
             const textContent = await textPage.getTextContent()
+            pageKind = classifyTimetablePageTextLayer(textContent.items)
             for (const item of textContent.items) {
               const text = item.str?.trim()
               const transform = item.transform
@@ -139,8 +144,17 @@ export function TimetableSharedIntake({
               })
             }
           } catch {
-            // Native text search is an ergonomic enhancement only; selection remains available without it.
+            pageKind = 'RASTER'
           }
+
+          pageRegionsRef.current.push({
+            page: layouts.indexOf(layout) + 1,
+            kind: pageKind,
+            x: layout.x,
+            y: layout.y,
+            width: pageWidth,
+            height: pageHeight,
+          })
 
           scratch.width = 1
           scratch.height = 1
@@ -154,7 +168,7 @@ export function TimetableSharedIntake({
         setPages(pdf.numPages)
         setKeyboardCursor({ x: canvas.width / 2, y: Math.min(canvas.height - 1, 120) })
         setReady(true)
-        setMessage('Seleziona soltanto la riga o le celle che appartengono al tuo orario. Il resto del documento non verrà inviato.')
+        setMessage('Documento pronto. Inserisci il nominativo e Docente OS sceglierà automaticamente il percorso di lettura più adatto.')
       } catch (error) {
         if (cancelled) return
         startRef.current = null
@@ -162,6 +176,7 @@ export function TimetableSharedIntake({
         setSourceFingerprint(null)
         setSelections([])
         searchAnchorsRef.current = []
+        pageRegionsRef.current = []
         setTeacherMatches([])
         setNeedsManualContext(false)
         setKeyboardStart(null)
@@ -179,44 +194,111 @@ export function TimetableSharedIntake({
     return () => { cancelled = true }
   }, [file, onBeforeSubmit])
 
-  function findTeacher() {
+  async function findTeacher() {
     const label = teacherLabel.trim()
-    if (!label) {
-      setTeacherMatches([])
-      setMessage('Scrivi prima il cognome o l’etichetta con cui compari nell’orario.')
+    if (!label || busy) {
+      if (!label) {
+        setTeacherMatches([])
+        setMessage('Scrivi prima il cognome o l’etichetta con cui compari nell’orario.')
+      }
       return
     }
+
     const matches = findTeacherTextAnchors(searchAnchorsRef.current, label)
     const inferred = inferTeacherTimetableCells(searchAnchorsRef.current, label)
     setTeacherMatches(matches)
-    if (!matches.length) {
-      setSelections([])
-      setNeedsManualContext(true)
-      setMessage('Non trovo il nominativo nel testo leggibile del PDF. Puoi usare la selezione manuale come fallback.')
+
+    if (matches.length) {
+      const nextSelections: Selection[] = inferred.map((cell) => ({
+        ...cell.rect,
+        id: crypto.randomUUID(),
+        weekday: cell.weekday,
+        ordinal: cell.ordinal,
+        classLabel: cell.classLabel,
+      }))
+      setSelections(nextSelections)
+      const incomplete = nextSelections.filter((item) => !item.weekday || !isValidOrdinal(item.ordinal) || !item.classLabel)
+      setNeedsManualContext(incomplete.length > 0)
+
+      const first = matches[0]
+      const viewport = viewportRef.current
+      const canvas = canvasRef.current
+      if (viewport && canvas && canvas.height > 0) {
+        const scaleY = canvas.clientHeight / canvas.height
+        viewport.scrollTo({ top: Math.max(0, first.rect.y * scaleY - 80), behavior: 'smooth' })
+      }
+      setMessage(incomplete.length
+        ? `Ho trovato ${nextSelections.length} lezioni candidate; ${incomplete.length} richiedono un controllo dei dettagli.`
+        : `Ho ricostruito automaticamente ${nextSelections.length} lezioni: controlla il riepilogo e continua.`)
       return
     }
 
-    const nextSelections: Selection[] = inferred.map((cell) => ({
-      ...cell.rect,
-      id: crypto.randomUUID(),
-      weekday: cell.weekday,
-      ordinal: cell.ordinal,
-      classLabel: cell.classLabel,
-    }))
-    setSelections(nextSelections)
-    const incomplete = nextSelections.filter((item) => !item.weekday || !isValidOrdinal(item.ordinal) || !item.classLabel)
-    setNeedsManualContext(incomplete.length > 0)
-
-    const first = matches[0]
-    const viewport = viewportRef.current
-    const canvas = canvasRef.current
-    if (viewport && canvas && canvas.height > 0) {
-      const scaleY = canvas.clientHeight / canvas.height
-      viewport.scrollTo({ top: Math.max(0, first.rect.y * scaleY - 80), behavior: 'smooth' })
+    const visualRegions = pageRegionsRef.current.filter((region) => region.kind !== 'TEXT_BEARING')
+    const source = canvasRef.current
+    if (!source || !sourceFingerprint || !visualRegions.length || !effectiveFrom) {
+      setSelections([])
+      setNeedsManualContext(true)
+      setMessage('Non riesco a ricostruire automaticamente l’orario da questo documento. Puoi usare la correzione manuale.')
+      return
     }
-    setMessage(incomplete.length
-      ? `Ho trovato ${nextSelections.length} lezioni candidate; ${incomplete.length} richiedono un controllo dei dettagli.`
-      : `Ho ricostruito automaticamente ${nextSelections.length} lezioni: controlla il riepilogo e continua.`)
+
+    setBusy(true)
+    setNeedsManualContext(false)
+    setMessage('Sto leggendo le pagine immagine dell’orario…')
+    try {
+      const rasterDerivative = await cropPageRegions(source, visualRegions)
+      const safeFile = new File([rasterDerivative], 'orario-pagine-immagine.png', {
+        type: 'image/png',
+        lastModified: Date.now(),
+      })
+      const data = new FormData()
+      data.set('file', safeFile)
+      data.set('teacherLabel', label)
+      data.set('effectiveFrom', effectiveFrom)
+      data.set('originalSourceFingerprint', sourceFingerprint)
+      data.set('sourceMode', sourceMode)
+      if (replaceReviewedCandidate) data.set('replaceReviewedCandidate', 'yes')
+
+      const result = await analyzeRasterTimetableImport(data)
+      if (!result || !result.ok) {
+        const code = result?.code ?? 'persist_failed'
+        setBusy(false)
+        if (isRecoverableImportFailure(code)) {
+          setNeedsManualContext(true)
+          setMessage(code === 'parse_failed' || code === 'no_rows'
+            ? 'Non riesco ancora a ricostruire con sicurezza il tuo orario. Puoi usare la correzione manuale.'
+            : messageForImportFailure(code))
+          return
+        }
+        try {
+          await onBeforeSubmit()
+        } catch (cleanupError) {
+          console.error('Timetable raster staging cleanup failed after terminal server result', cleanupError)
+          setMessage(`${messageForImportFailure(code)} La rimozione del PDF locale non è riuscita: usa Annulla acquisizione e riprova.`)
+          return
+        }
+        setMessage(messageForImportFailure(code))
+        return
+      }
+
+      setAcceptedCandidateId(result.candidateId)
+      onCandidateAccepted?.(result.candidateId)
+      setMessage('Ho ricostruito l’orario. Apro il controllo delle lezioni trovate…')
+      try {
+        await onBeforeSubmit()
+      } catch (cleanupError) {
+        console.error('Timetable raster staging cleanup failed after candidate acceptance', cleanupError)
+        setBusy(false)
+        setMessage('La proposta è pronta, ma il PDF locale non è ancora stato rimosso. Riprova la rimozione prima di aprire la revisione.')
+        return
+      }
+      window.location.assign(reviewUrl(result.candidateId))
+    } catch (error) {
+      console.error('Timetable raster intake failed', error)
+      setBusy(false)
+      setNeedsManualContext(true)
+      setMessage('Non riesco ancora a ricostruire automaticamente l’orario. Puoi usare la correzione manuale.')
+    }
   }
 
   function point(event: ReactPointerEvent<HTMLCanvasElement>): Point {
@@ -408,10 +490,10 @@ export function TimetableSharedIntake({
           <span>Cognome o etichetta con cui compari nell’orario</span>
           <input value={teacherLabel} onChange={(event) => { setTeacherLabel(event.currentTarget.value); setTeacherMatches([]) }} maxLength={120} autoComplete="off" placeholder="Es. ROSSI" />
         </label>
-        <button type="button" onClick={findTeacher} disabled={!ready || !teacherLabel.trim() || busy}>
+        <button type="button" onClick={() => void findTeacher()} disabled={!ready || !teacherLabel.trim() || busy}>
           Estrai il mio orario
         </button>
-        <small>La ricerca avviene localmente nel PDF. Se il testo non è leggibile, puoi comunque usare la selezione manuale.</small>
+        <small>Docente OS prova prima la lettura locale. Se il PDF è un’immagine, usa automaticamente la pagina renderizzata per ricostruire l’orario.</small>
       </div>
 
       <div ref={viewportRef} style={{ maxHeight: 620, overflow: 'auto', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)' }}>
@@ -482,11 +564,11 @@ export function TimetableSharedIntake({
       </div>
 
       <small id="timetable-selection-help">
-        {pages ? `${pages} pagina${pages === 1 ? '' : 'e'} · ${selections.length} area${selections.length === 1 ? '' : 'e'} selezionata${selections.length === 1 ? '' : 'e'}` : 'Preparazione in corso…'}
+        {pages ? `${pages} pagina${pages === 1 ? '' : 'e'} · ${selections.length} ${selections.length === 1 ? 'area selezionata' : 'aree selezionate'}` : 'Preparazione in corso…'}
         <span className="timetableKeyboardHelp"> Da tastiera: usa le frecce, Invio per iniziare/chiudere l’area e Maiusc + frecce per spostarti più velocemente.</span>
       </small>
 
-      {(!selections.length || needsManualContext) ? <button
+      {needsManualContext ? <button
         type="button"
         aria-pressed={touchSelectMode}
         onClick={() => {
@@ -595,7 +677,7 @@ export function TimetableSharedIntake({
       <details className="timetableSecondaryOptions">
         <summary>Privacy e file locale</summary>
         <p className="knowledgeUploadTrust" style={{ margin: '8px 0 0' }}>
-          Il PDF completo non viene caricato in Conoscenza e non viene conservato come fonte. La proposta resta modificabile e richiede conferma prima di cambiare la bozza dell’Orario.
+          Il PDF completo non viene caricato in Conoscenza e non viene conservato come fonte. Se una pagina non contiene testo leggibile, Docente OS invia al servizio di estrazione configurato soltanto l’immagine renderizzata delle pagine necessarie, non il PDF originale. La proposta resta modificabile e richiede conferma prima di cambiare la bozza dell’Orario.
         </p>
       </details>
     </section>
@@ -644,6 +726,34 @@ async function cropSelections(source: HTMLCanvasElement, selections: Selection[]
 
   const blob = await new Promise<Blob | null>((resolve) => output.toBlob(resolve, 'image/png'))
   if (!blob) throw new Error('Impossibile creare il derivato locale')
+  return blob
+}
+
+async function cropPageRegions(source: HTMLCanvasElement, regions: PageRegion[]) {
+  const normalized = regions
+    .map((region) => ({ ...region, ...clampRectToBounds(region, source.width, source.height) }))
+    .filter((region) => region.width > 0 && region.height > 0)
+  if (!normalized.length) throw new Error('Nessuna pagina immagine disponibile')
+
+  const gap = 16
+  const width = Math.max(...normalized.map((region) => region.width))
+  const height = normalized.reduce((sum, region) => sum + region.height, 0) + gap * Math.max(0, normalized.length - 1)
+  const output = document.createElement('canvas')
+  output.width = width
+  output.height = height
+  const ctx = output.getContext('2d', { alpha: false })
+  if (!ctx) throw new Error('Canvas di derivazione raster non disponibile')
+  ctx.fillStyle = canvasSurfaceColor()
+  ctx.fillRect(0, 0, width, height)
+
+  let y = 0
+  for (const region of normalized) {
+    ctx.drawImage(source, region.x, region.y, region.width, region.height, 0, y, region.width, region.height)
+    y += region.height + gap
+  }
+
+  const blob = await new Promise<Blob | null>((resolve) => output.toBlob(resolve, 'image/png'))
+  if (!blob) throw new Error('Impossibile creare il derivato raster')
   return blob
 }
 
