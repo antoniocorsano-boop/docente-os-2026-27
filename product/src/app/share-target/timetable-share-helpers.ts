@@ -1,5 +1,20 @@
 export type Rect = { x: number; y: number; width: number; height: number }
 
+export type TimetablePageTextKind = 'TEXT_BEARING' | 'RASTER' | 'MIXED'
+
+export function classifyTimetablePageTextLayer(
+  items: readonly { str?: string | null }[],
+): TimetablePageTextKind {
+  const visible = items
+    .map((item) => item.str?.trim() ?? '')
+    .filter(Boolean)
+  const compactChars = visible.join('').replace(/\s+/g, '').length
+
+  if (compactChars === 0) return 'RASTER'
+  if (visible.length >= 3 && compactChars >= 24) return 'TEXT_BEARING'
+  return 'MIXED'
+}
+
 export function looksLikeTimetablePdf(input: {
   title?: string | null
   fileName: string
