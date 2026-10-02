@@ -367,7 +367,7 @@ test('raster timetable prefers on-device OCR and structured persistence before r
   assert.match(timetableIntake, /La lettura locale non è sufficiente\. Provo il servizio di estrazione configurato/)
   assert.match(timetableIntake, /local-ocr:p\$\{cell\.page\}/)
   assert.match(timetableActions, /export async function persistLocallyExtractedTimetableImport/)
-  assert.match(timetableActions, /parserVersion: 'paddleocr-js@0\.4\.2\+structural-v1'/)
+  assert.match(timetableActions, /parserVersion: 'tesseract\.js@7\.0\.0\+ita@1\.0\.0\+structural-v1'/)
   assert.match(timetableActions, /sourceLabel: `local-ocr:/)
   assert.match(timetableActions, /normalizeLocalStructuredRows/)
   assert.match(timetableActions, /persistStructuredTimetableCandidate/)
