@@ -351,7 +351,7 @@ test('parent cleanup action preserves accepted candidate review routing', () => 
 
 
 test('timetable confirmation is bound to the reviewed candidate revision', () => {
-  assert.match(timetablePage, /name="candidateRevision" value=\{importCandidate\.revision\}/)
+  assert.match(timetableExperience, /name="candidateRevision" value=\{importCandidate\.revision\}/)
   assert.match(timetableActions, /const reviewedRevision = integer\(formData, 'candidateRevision'\)/)
   assert.match(timetableActions, /candidate\.revision !== reviewedRevision/)
   assert.match(timetableActions, /import=review_stale/)
@@ -360,7 +360,7 @@ test('timetable confirmation is bound to the reviewed candidate revision', () =>
 
 
 test('all timetable review edits are bound to the rendered candidate revision', () => {
-  const revisionInputs = timetablePage.match(/name="candidateRevision" value=\{importCandidate\.revision\}/g) ?? []
+  const revisionInputs = timetableExperience.match(/name="candidateRevision" value=\{importCandidate\.revision\}/g) ?? []
   assert.ok(revisionInputs.length >= 3)
   assert.match(timetableActions, /export async function addTimetableImportRow[\s\S]*candidate\.revision !== reviewedRevision/)
   assert.match(timetableActions, /export async function updateTimetableImportRow[\s\S]*candidate\.revision !== reviewedRevision/)
@@ -409,8 +409,8 @@ test('service-worker expiry cleanup checks payload deletion before removing meta
 })
 
 test('ordinary timetable import surfaces persistence failures', () => {
-  assert.match(timetablePage, /persist_failed:/)
-  assert.match(timetablePage, /Proposta non salvata/)
+  assert.match(timetableExperience, /persist_failed:/)
+  assert.match(timetableExperience, /Proposta non salvata/)
 })
 
 
