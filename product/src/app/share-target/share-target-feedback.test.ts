@@ -11,6 +11,7 @@ const serviceWorker = fs.readFileSync(new URL('../../../public/sw.js', import.me
 const timetableIntake = fs.readFileSync(new URL('./TimetableSharedIntake.tsx', import.meta.url), 'utf8')
 const timetableActions = fs.readFileSync(new URL('../orario/actions.ts', import.meta.url), 'utf8')
 const timetablePage = fs.readFileSync(new URL('../orario/page.tsx', import.meta.url), 'utf8')
+const timetableLocalLauncher = fs.readFileSync(new URL('../orario/TimetableLocalImportLauncher.tsx', import.meta.url), 'utf8')
 
 test('shared intake makes local-only and failure state perceptible before write', () => {
   assert.match(intake, /ancora locale/)
@@ -30,6 +31,15 @@ test('shared file reuses governed Knowledge upload feedback', () => {
   assert.match(uploader, /Ricevuto dal dispositivo/)
 })
 
+
+test('ordinary timetable upload reuses the same local teacher-first intake', () => {
+  assert.match(timetablePage, /TimetableLocalImportLauncher/)
+  assert.doesNotMatch(timetablePage, /action=\{analyzeTimetableImport\}/)
+  assert.doesNotMatch(timetablePage, /Analizza il documento/)
+  assert.match(timetableLocalLauncher, /TimetableSharedIntake/)
+  assert.match(timetableLocalLauncher, /sourceMode="LOCAL_MINIMIZED_UPLOAD"/)
+  assert.match(timetableLocalLauncher, /Docente OS ricostruirà automaticamente il tuo orario settimanale/)
+})
 
 test('timetable-like shared PDFs use local minimization before timetable analysis', () => {
   assert.match(intake, /looksLikeTimetable/)
@@ -167,6 +177,21 @@ test('crop bounds clamp both endpoints instead of shifting overshoot', () => {
     clampRectToBounds({ x: -50, y: -20, width: 150, height: 80 }, 500, 500),
     { x: 0, y: 0, width: 100, height: 60 },
   )
+})
+
+test('local page upload persists whole-document identity without pretending it was shared', () => {
+  const original = 'd'.repeat(64)
+  const derivative = 'e'.repeat(64)
+  const identity = resolveTimetableSourceIdentity({
+    sourceMode: 'LOCAL_MINIMIZED_UPLOAD',
+    derivativeFingerprint: derivative,
+    originalSourceFingerprint: original,
+    derivativeName: 'orario-selezione-locale.png',
+  })
+  assert.equal(identity.sourceFingerprint, original)
+  assert.equal(identity.sourceLabel, 'Orario caricato - derivato locale')
+  assert.equal(identity.sourceRef, `client-whole-document-sha256:${original}`)
+  assert.doesNotMatch(identity.sourceRef, new RegExp(derivative))
 })
 
 test('local minimized source identity persists only the whole-document fingerprint', () => {
