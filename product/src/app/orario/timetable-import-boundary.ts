@@ -1,4 +1,4 @@
-export type TimetableSourceMode = '' | 'LOCAL_MINIMIZED_SHARE' | 'LOCAL_MINIMIZED_UPLOAD'
+export type TimetableSourceMode = '' | 'LOCAL_MINIMIZED_SHARE' | 'LOCAL_MINIMIZED_UPLOAD' | 'LOCAL_RASTER_PAGE_SHARE' | 'LOCAL_RASTER_PAGE_UPLOAD'
 
 export function isValidIsoCalendarDate(value: string) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
@@ -21,7 +21,7 @@ export function resolveTimetableSourceIdentity(input: {
   derivativeName: string
 }) {
   const derivativeFingerprint = validateFingerprint(input.derivativeFingerprint)
-  if (input.sourceMode !== 'LOCAL_MINIMIZED_SHARE' && input.sourceMode !== 'LOCAL_MINIMIZED_UPLOAD') {
+  if (!['LOCAL_MINIMIZED_SHARE', 'LOCAL_MINIMIZED_UPLOAD', 'LOCAL_RASTER_PAGE_SHARE', 'LOCAL_RASTER_PAGE_UPLOAD'].includes(input.sourceMode)) {
     return {
       sourceFingerprint: derivativeFingerprint,
       sourceLabel: 'Orario importato',
@@ -36,7 +36,11 @@ export function resolveTimetableSourceIdentity(input: {
     sourceFingerprint: wholeDocumentFingerprint,
     sourceLabel: input.sourceMode === 'LOCAL_MINIMIZED_SHARE'
       ? 'Orario condiviso - derivato locale'
-      : 'Orario caricato - derivato locale',
+      : input.sourceMode === 'LOCAL_MINIMIZED_UPLOAD'
+        ? 'Orario caricato - derivato locale'
+        : input.sourceMode === 'LOCAL_RASTER_PAGE_SHARE'
+          ? 'Orario condiviso - pagina immagine derivata localmente'
+          : 'Orario caricato - pagina immagine derivata localmente',
     sourceRef: `client-whole-document-sha256:${wholeDocumentFingerprint}`,
   }
 }
