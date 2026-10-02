@@ -70,8 +70,8 @@ export function mapPaddleItemsToLocalDocumentTextItems(
 }
 
 async function createRuntime(): Promise<PaddleOcrLike> {
-  const module = await import('@paddleocr/paddleocr-js')
-  const ocr = await module.PaddleOCR.create({
+  const paddleModule = await import('@paddleocr/paddleocr-js')
+  const ocr = await paddleModule.PaddleOCR.create({
     lang: 'it',
     ocrVersion: 'PP-OCRv5',
     worker: true,
