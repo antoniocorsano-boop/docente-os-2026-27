@@ -38,7 +38,7 @@ export class TimetableDocumentExtractionUnavailableError extends Error {
  */
 export class OpenAiTimetableDocumentExtractor {
   constructor(
-    private readonly apiKey = process.env.OPENAI_API_KEY,
+    private readonly apiKey = process.env.OPENAI_TIMETABLE_API_KEY ?? process.env.OPENAI_API_KEY,
     private readonly model = process.env.OPENAI_VISION_MODEL ?? 'gpt-5.6',
   ) {}
 
@@ -51,7 +51,7 @@ export class OpenAiTimetableDocumentExtractor {
   }): Promise<TimetableDocumentExtraction> {
     if (!this.apiKey) {
       throw new TimetableDocumentExtractionUnavailableError(
-        'OPENAI_API_KEY is required for timetable document extraction',
+        'OPENAI_TIMETABLE_API_KEY is required for timetable document extraction',
       )
     }
     if (input.mimeType !== 'application/pdf' && !input.mimeType.startsWith('image/')) {

@@ -366,6 +366,14 @@ test('raster timetable derivative stays below the Server Action payload ceiling'
   assert.doesNotMatch(timetableIntake, /orario-pagine-immagine\.png/)
 })
 
+test('visual timetable provider unavailability is observable and teacher-facing', () => {
+  assert.match(timetableActions, /TimetableDocumentExtractionUnavailableError/)
+  assert.match(timetableActions, /code: 'extractor_unavailable'/)
+  assert.match(timetableActions, /Timetable visual extraction unavailable:/)
+  assert.match(timetableIntake, /code === 'extractor_unavailable'/)
+  assert.match(timetableIntake, /La lettura automatica delle pagine immagine non è disponibile su questo servizio/)
+})
+
 test('selection counter uses correct Italian plural', () => {
   assert.match(timetableIntake, /aree selezionate/)
   assert.doesNotMatch(timetableIntake, /selezionatae/)
