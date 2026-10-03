@@ -117,6 +117,21 @@ Conclusione: capability **IMPLEMENTED / CRL 3**, non ancora CRL 4/5.
 
 `CAP-DOS-ARGO-SYNC` resta spike/non-production-authorized: non entra nel registro core finché non esiste un perimetro prodotto autorizzato.
 
+## Runtime post-merge #664
+
+Beta Render:
+- commit live: `57743e9d395ae5d739ca89e9afbdbb3a7edf875d`;
+- deploy `dep-db0b7tjm8hqs73ctv150` LIVE;
+- runtime schema contract timetable: PASS;
+- Next runtime: Ready;
+- remote timetable visual extractor: **UNAVAILABLE**;
+- Supabase runtime warning: user object sourced from `getSession()` / auth-state storage may be unauthenticated unless verified with `getUser()`.
+
+Interpretazione:
+- il nuovo direct-edit Orario non dipende dal visual extractor remoto;
+- il finding extractor resta però rilevante per il fallback visuale del journey Share/Import e sostiene la freshness STALE di `DOS-TT-SHARE-IMPORT`;
+- il warning Supabase non viene classificato come vulnerabilità senza root-cause analysis, ma diventa finding esplicito di `DOS-ACCOUNT-SECURITY` prima della revalidation CURRENT.
+
 ## Gap di completion ancora reali
 
 1. HUMAN_USE task-based QL-1.
