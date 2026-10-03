@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { mapTesseractWordsToLocalDocumentTextItems } from './tesseract-local-ocr'
+import { LOCAL_OCR_MAX_EDGE, LOCAL_OCR_TIMEOUT_MS, LocalDocumentOcrTimeoutError, localOcrDimensions, localOcrProgressFromLog, mapTesseractWordsToLocalDocumentTextItems, withLocalOcrDeadline } from './tesseract-local-ocr'
 
 test('maps Tesseract words and bounding boxes into shared local evidence', () => {
   assert.deepEqual(
@@ -46,4 +46,40 @@ test('drops unusable words and clamps confidence', () => {
       ],
     }],
   )
+})
+
+
+test('mobile OCR bounds raster work while preserving coordinate scale', () => {
+  assert.equal(LOCAL_OCR_MAX_EDGE, 1200)
+  assert.deepEqual(
+    localOcrDimensions(1800, 1200),
+    { width: 1200, height: 800, coordinateScale: 1.5 },
+  )
+  assert.deepEqual(
+    localOcrDimensions(780, 540),
+    { width: 780, height: 540, coordinateScale: 1 },
+  )
+})
+
+test('normalizes Tesseract progress for teacher-facing feedback', () => {
+  assert.deepEqual(
+    localOcrProgressFromLog({ status: 'recognizing text', progress: 0.42 }),
+    { status: 'recognizing text', progress: 0.42 },
+  )
+  assert.equal(localOcrProgressFromLog({ status: 'loading tesseract core' }), null)
+  assert.equal(localOcrProgressFromLog({ status: 'recognizing text', progress: 2 }), null)
+})
+
+test('mobile OCR deadline is bounded and triggers cancellation', async () => {
+  assert.equal(LOCAL_OCR_TIMEOUT_MS, 30_000)
+  let cancelled = false
+  await assert.rejects(
+    () => withLocalOcrDeadline(
+      new Promise<never>(() => {}),
+      5,
+      () => { cancelled = true },
+    ),
+    (error: unknown) => error instanceof LocalDocumentOcrTimeoutError,
+  )
+  assert.equal(cancelled, true)
 })
