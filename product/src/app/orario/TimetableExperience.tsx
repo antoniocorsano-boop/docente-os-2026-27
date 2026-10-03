@@ -120,18 +120,6 @@ export async function TimetableExperience({
         <Link className={mode === 'manage' ? 'active' : ''} href="/orario/gestisci">Gestisci</Link>
       </nav>
 
-      {mode === 'view' ? (focusSlot ? (
-        <section className="humanTaskFocus" aria-labelledby="timetable-focus-title">
-          <p className="humanTaskFocusEyebrow">{currentSlot ? 'ADESSO' : 'PROSSIMA LEZIONE'}</p>
-          <h2 id="timetable-focus-title">{focusSlot.title}</h2>
-          <p>{focusSlot.description}</p>
-          <div className="humanTaskMeta"><span>{focusSlot.time}</span><span>{focusSlot.kind}</span>{focusSlot.room ? <span>Aula {focusSlot.room}</span> : null}<span>{lifecycle.activeVersion ? 'Orario in uso' : 'Bozza iniziale'}</span></div>
-          <div className="humanTaskActions">{focusSlot.sectionId ? <Link className="primary" href={`/classi/${encodeURIComponent(focusSlot.sectionId)}`}>Apri la classe</Link> : <Link className="primary" href="#settimana-tipo">Vedi in griglia</Link>}{focusSlot.sectionId ? <Link href={`/piano-annuale?section=${encodeURIComponent(focusSlot.sectionId)}`}>Piano annuale</Link> : null}</div>
-        </section>
-      ) : (
-        <section className="humanTaskFocus"><p className="humanTaskFocusEyebrow">ADESSO</p><h2>Nessuna lezione prevista in questa fascia</h2><p>{lifecycle.activeVersion ? 'L’orario in uso non prevede una lezione adesso.' : 'Non hai ancora messo in uso una versione dell’orario: per orientarti uso temporaneamente la bozza iniziale.'}</p><div className="humanTaskActions"><Link className="primary" href="#settimana-tipo">Apri la settimana</Link></div></section>
-      )) : null}
-
       {mode === 'update' ? <>
       <section className="timetableCard timetableGridCard" id="modifica-settimana" aria-labelledby="direct-grid-title">
         <div className="timetableCardHeading">
@@ -303,11 +291,11 @@ export async function TimetableExperience({
 
       {(mode === 'view' || mode === 'manage') ? <section className="timetableCard timetableGridCard" id="settimana-tipo" aria-labelledby="grid-title">
         <div className="timetableCardHeading">
-          <span>{mode === 'view' ? '01' : '02'}</span>
+          <span>{mode === 'view' ? 'ORARIO' : '02'}</span>
           <div>
             <h2 id="grid-title">{mode === 'view' ? 'Orario attuale' : 'Bozza modificabile'}</h2>
             <p>{mode === 'view'
-              ? 'Consulta la giornata o l’intera settimana. Le modifiche si fanno da Gestisci.'
+              ? 'Consulta subito la giornata o l’intera settimana. Le funzioni di modifica sono disponibili sotto l’orario.'
               : 'Questa è la versione che stai preparando. Non cambia l’orario in uso finché non la attivi.'}</p>
           </div>
           {mode === 'manage' ? <b className="draftBadge">{draftLabel}</b> : null}
@@ -321,6 +309,31 @@ export async function TimetableExperience({
           readOnly={mode === 'view'}
         />
       </section> : null}
+
+      {mode === 'view' ? <>
+      <section className="timetableViewActions" aria-label="Funzioni orario">
+        <div>
+          <strong>Devi cambiare l’orario?</strong>
+          <span>Modifica le celle e indica da quale data deve valere il nuovo orario.</span>
+        </div>
+        <div className="humanTaskActions">
+          <Link className="primary" href="/orario/aggiorna#modifica-settimana">Modifica orario</Link>
+          <Link href="/orario/gestisci">Versioni e dettagli</Link>
+        </div>
+      </section>
+      {mode === 'view' ? (focusSlot ? (
+        <section className="humanTaskFocus" aria-labelledby="timetable-focus-title">
+          <p className="humanTaskFocusEyebrow">{currentSlot ? 'ADESSO' : 'PROSSIMA LEZIONE'}</p>
+          <h2 id="timetable-focus-title">{focusSlot.title}</h2>
+          <p>{focusSlot.description}</p>
+          <div className="humanTaskMeta"><span>{focusSlot.time}</span><span>{focusSlot.kind}</span>{focusSlot.room ? <span>Aula {focusSlot.room}</span> : null}<span>{lifecycle.activeVersion ? 'Orario in uso' : 'Bozza iniziale'}</span></div>
+          <div className="humanTaskActions">{focusSlot.sectionId ? <Link className="primary" href={`/classi/${encodeURIComponent(focusSlot.sectionId)}`}>Apri la classe</Link> : <Link className="primary" href="#settimana-tipo">Vedi in griglia</Link>}{focusSlot.sectionId ? <Link href={`/piano-annuale?section=${encodeURIComponent(focusSlot.sectionId)}`}>Piano annuale</Link> : null}</div>
+        </section>
+      ) : (
+        <section className="humanTaskFocus"><p className="humanTaskFocusEyebrow">ADESSO</p><h2>Nessuna lezione prevista in questa fascia</h2><p>{lifecycle.activeVersion ? 'L’orario in uso non prevede una lezione adesso.' : 'Non hai ancora messo in uso una versione dell’orario: per orientarti uso temporaneamente la bozza iniziale.'}</p><div className="humanTaskActions"><Link className="primary" href="#settimana-tipo">Apri la settimana</Link></div></section>
+      )) : null}
+
+      </> : null}
 
       {mode === 'manage' ? <>
       <details className="timetableVersionDetails" open={!lifecycle.activeVersion}>
