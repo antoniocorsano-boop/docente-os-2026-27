@@ -341,3 +341,13 @@ export function derivativeContextLabel(
   const classroom = classLabel?.trim() ? ` · CLASSE: ${classLabel.trim()}` : ''
   return `DOCENTE: ${teacher} · GIORNO: ${day} · ORA: ${ordinal}${classroom}`
 }
+
+
+export function localOcrProgressLabel(input: {
+  progress: number
+  rasterIndex: number
+  rasterTotal: number
+}) {
+  const percent = Math.max(1, Math.min(100, Math.round(input.progress * 100)))
+  return `Lettura OCR locale · ${percent}% · pagina ${input.rasterIndex + 1}/${input.rasterTotal}`
+}
