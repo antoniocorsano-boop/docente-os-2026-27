@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "releaseVersion": "0.1.0-rc.1",
+  "releaseState": "RC",
+  "candidateSha": "efc31ed084da9cc6fe495ac6403151c3361f428a",
+  "testedPrHeadSha": "3181ad63ace61bed197d4d64d500b747a8de8bc1",
+  "testedProductTreeSha": "75ef21ec4b1853209f4ab60d7855690034aacfaf",
+  "sourceBranch": "develop",
+  "freezeDate": "2026-10-03",
+  "tag": "v0.1.0-rc.1",
+  "scope": {
+    "maturity": "M4_ADVANCED_CONTROLLED_PILOT",
+    "audience": "single-owner teacher pilot / release-candidate validation",
+    "betaUrl": "https://docente-os-2026-27-beta.onrender.com",
+    "betaDeployId": "dep-db0bu9jtqb8s7388jrog",
+    "betaServedSha": "efc31ed084da9cc6fe495ac6403151c3361f428a",
+    "productionPromotionAuthorized": false,
+    "realProfessionalDataAdmissionChanged": false
+  },
+  "changedCapabilities": [
+    "DOS-TIMETABLE",
+    "DOS-TT-SHARE-IMPORT",
+    "DOS-PWA-DEVICE-INTAKE",
+    "DOS-TODAY-NEXT",
+    "DOS-LESSON-PREP",
+    "DOS-MATERIALS",
+    "DOS-TEACHING-SESSION",
+    "DOS-OBSERVATION-EVIDENCE",
+    "DOS-PLAN-UDA",
+    "DOS-CURRICULUM-INTAKE",
+    "DOS-KNOWLEDGE",
+    "DOS-CALENDAR",
+    "DOS-SETTINGS",
+    "DOS-ACCOUNT-SECURITY",
+    "DOS-COPILOT"
+  ],
+  "gateMatrix": [
+    {
+      "gate": "Release Engineering Policy",
+      "status": "PASS",
+      "runId": 37110023058,
+      "sha": "3181ad63ace61bed197d4d64d500b747a8de8bc1"
+    },
+    {
+      "gate": "Product CI",
+      "status": "PASS",
+      "runId": 37110022999,
+      "sha": "3181ad63ace61bed197d4d64d500b747a8de8bc1"
+    },
+    {
+      "gate": "Dependency Security Gate",
+      "status": "PASS",
+      "runId": 37110023042,
+      "sha": "3181ad63ace61bed197d4d64d500b747a8de8bc1"
+    },
+    {
+      "gate": "Human Interaction Model",
+      "status": "PASS",
+      "runId": 37110023017,
+      "sha": "3181ad63ace61bed197d4d64d500b747a8de8bc1"
+    },
+    {
+      "gate": "TRAMA Perceptible Write",
+      "status": "PASS",
+      "runId": 37110022993,
+      "sha": "3181ad63ace61bed197d4d64d500b747a8de8bc1"
+    },
+    {
+      "gate": "Governed MFA Queue Hygiene",
+      "status": "PASS",
+      "runId": 37110023081,
+      "sha": "3181ad63ace61bed197d4d64d500b747a8de8bc1"
+    },
+    {
+      "gate": "Certification Impact Classifier",
+      "status": "PASS",
+      "runId": 37110023005,
+      "sha": "3181ad63ace61bed197d4d64d500b747a8de8bc1"
+    },
+    {
+      "gate": "Browser Certification Orchestrator",
+      "status": "PASS",
+      "runId": 37110022983,
+      "sha": "3181ad63ace61bed197d4d64d500b747a8de8bc1"
+    },
+    {
+      "gate": "Human + Visual Acceptance",
+      "status": "PASS",
+      "runId": 37110022983,
+      "statusContext": "hva/application"
+    },
+    {
+      "gate": "WCAG 2.2 AA automated assurance",
+      "status": "PASS",
+      "runId": 37110022983,
+      "statusContext": "wcag22-aa/application"
+    },
+    {
+      "gate": "P6 Performance",
+      "status": "PASS",
+      "runId": 37110022983,
+      "statusContext": "p6-performance/application"
+    },
+    {
+      "gate": "X4 Planner",
+      "status": "PASS",
+      "runId": 37110022983,
+      "statusContext": "x4-planner/application"
+    },
+    {
+      "gate": "CodeRabbit",
+      "status": "PASS",
+      "sha": "3181ad63ace61bed197d4d64d500b747a8de8bc1"
+    },
+    {
+      "gate": "Devin Review",
+      "status": "PASS",
+      "sha": "3181ad63ace61bed197d4d64d500b747a8de8bc1"
+    },
+    {
+      "gate": "Design Policy",
+      "status": "EQUIVALENT",
+      "evidence": "PR #664 exact head 6150cd260fd8574a5e16a6fcf58588bcba5b6b0d; no UI/design change after that product tree except package version identity"
+    },
+    {
+      "gate": "ASVS 5.0 Assurance",
+      "status": "EQUIVALENT",
+      "evidence": "PR #664 exact head 6150cd260fd8574a5e16a6fcf58588bcba5b6b0d; no security/runtime implementation change in RC version bump"
+    },
+    {
+      "gate": "Operational Security",
+      "status": "PENDING_CERTIFICATION",
+      "evidence": "must be current before RC -> CERTIFIED"
+    },
+    {
+      "gate": "Production Readiness Review",
+      "status": "PENDING_CERTIFICATION",
+      "evidence": "required before RC -> CERTIFIED / promotion"
+    },
+    {
+      "gate": "Production Promotion Contract",
+      "status": "PENDING_PROMOTION",
+      "evidence": "RC freeze does not authorize Production"
+    }
+  ],
+  "migrations": {
+    "previousCertifiedSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "currentRuntimeContract": "0080_timetable_import_same_id_live_source_revision",
+    "lineageStatusOnBeta": "PASS",
+    "addedSincePreviousCertified": [
+      "0020_timetable_import_g1_2_persistence.sql",
+      "0021_timetable_import_g1_2_review_hardening.sql",
+      "0023_annual_plan_curriculum_adoptions.sql",
+      "0024_annual_plan_curriculum_adoption_rpc.sql",
+      "0035_textbook_adoption_foundation.sql",
+      "0036_textbook_adoption_lifecycle_hardening.sql",
+      "0037_lesson_design_extensions.sql",
+      "0038_lesson_design_tool_deduplication.sql",
+      "0039_cml_curriculum_feedback_outbox.sql",
+      "0040_knowledge_real_corpus_categories.sql",
+      "0041_mim_textbook_cache.sql",
+      "0042_mim_textbook_edge_boundary.sql",
+      "0043_mim_textbook_oidc_only.sql",
+      "0044_teaching_session_unallocated_evidence.sql",
+      "0045_teaching_session_drive_outbox.sql",
+      "0046_teaching_session_drive_outbox_indexes.sql",
+      "0047_google_oauth_connections.sql",
+      "0048_teaching_session_drive_outbox_status.sql",
+      "0049_workspace_pinned_resources.sql",
+      "0050_workspace_selection_fail_closed.sql",
+      "0051_mfa_aal2_enforcement.sql",
+      "0052_teaching_session_registration_idempotency.sql",
+      "0053_teaching_evidence_atomic_persistence.sql",
+      "0054_teaching_evidence_cross_boundary_race_hardening.sql",
+      "0055_teaching_evidence_replay_hardening.sql",
+      "0056_teaching_evidence_null_boundary.sql",
+      "0057_teaching_evidence_atomic_authorization.sql",
+      "0058_knowledge_semantic_foundation.sql",
+      "0059_knowledge_semantic_advisor_hardening.sql",
+      "0060_teaching_session_timetable_fallback.sql",
+      "0061_lesson_design_governed_lifecycle.sql",
+      "0062_teaching_adjustment_extension_kind.sql",
+      "0063_lesson_preparation_approvals.sql",
+      "0064_quarantine_unverified_curriculum_approvals.sql",
+      "0065_eco02_provisional_curriculum_intake_rpc.sql",
+      "0066_eco02_lesson_preparation_approval_rpc.sql",
+      "0067_dos_cal_01_knowledge_calendar_source.sql",
+      "0068_dos_cal_01_link_integrity.sql",
+      "0069_lesson_design_tool_reproposal_after_dismissal.sql",
+      "0070_teaching_evidence_registration_key_disambiguation.sql",
+      "0071_teaching_evidence_receipt_column_disambiguation.sql",
+      "0072_teaching_evidence_receipt_values_disambiguation.sql",
+      "0073_teaching_evidence_receipt_values_regex_fix.sql",
+      "0074_runtime_schema_contract.sql",
+      "0075_runtime_migration_lineage_contract.sql",
+      "0076_lesson_design_atlas_source_kind.sql",
+      "0077_quarantine_legacy_timetable_import_apply.sql",
+      "0078_timetable_import_completion_boundary.sql",
+      "0079_knowledge_full_text_bounded_search.sql",
+      "0080_timetable_import_same_id_live_source_revision.sql"
+    ],
+    "destructiveRollbackAllowed": false,
+    "rollbackPolicy": "FORWARD_RECOVERY_UNLESS_PROVEN_RESTORE_PATH"
+  },
+  "previousCertifiedSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+  "rollbackTargetSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+  "knownResiduals": [
+    "HUMAN_USE task-based QL-1 remains pending on the frozen RC.",
+    "DOS-TT-SHARE-IMPORT retains historical CRL 5 but freshness STALE until the current Android/share/import journey is requalified.",
+    "Beta startup reports Timetable visual extractor UNAVAILABLE, but startup readiness checks only OPENAI_TIMETABLE_API_KEY while runtime also accepts OPENAI_API_KEY; actual remote fallback availability remains unverified.",
+    "Supabase runtime warning about user data sourced from getSession()/auth-state storage requires root-cause review before Account/Security freshness can return to CURRENT.",
+    "WCAG automated assurance is PASS; manual/assistive evidence required by the maturity program remains incomplete.",
+    "ASVS assurance gate PASS does not constitute ASVS L2 verification; requirement-level mapping remains incomplete.",
+    "PWA/device intake, Observation/Evidence and other capability-specific HUMAN_USE/qualification gaps remain as recorded in DOS-CRM."
+  ],
+  "humanDecision": {
+    "decision": "AUTHORIZE_RC_FREEZE",
+    "decisionDate": "2026-10-03",
+    "decisionSource": "EXPLICIT_HUMAN_OWNER_AUTHORIZATION_IN_CHAT",
+    "productionPromotionAuthorized": false,
+    "certificationAuthorized": false
+  },
+  "releaseNotesPath": "docs/product/releases/0.1.0-rc.1.md",
+  "changelogPath": "CHANGELOG.md"
+}
