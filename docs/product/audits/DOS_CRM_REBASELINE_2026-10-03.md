@@ -124,12 +124,13 @@ Beta Render:
 - deploy `dep-db0b7tjm8hqs73ctv150` LIVE;
 - runtime schema contract timetable: PASS;
 - Next runtime: Ready;
-- remote timetable visual extractor: **UNAVAILABLE**;
+- startup diagnostic timetable extractor: **UNAVAILABLE**;
+- il diagnostico startup controlla solo `OPENAI_TIMETABLE_API_KEY`, mentre l'extractor runtime accetta anche `OPENAI_API_KEY`; l'effettiva disponibilità del fallback remoto resta quindi da verificare;
 - Supabase runtime warning: user object sourced from `getSession()` / auth-state storage may be unauthenticated unless verified with `getUser()`.
 
 Interpretazione:
 - il nuovo direct-edit Orario non dipende dal visual extractor remoto;
-- il finding extractor resta però rilevante per il fallback visuale del journey Share/Import e sostiene la freshness STALE di `DOS-TT-SHARE-IMPORT`;
+- il finding extractor è prima di tutto un mismatch di readiness/observability: finché diagnostico e risoluzione runtime non coincidono, il fallback remoto non può essere attestato; questo sostiene la freshness STALE di `DOS-TT-SHARE-IMPORT`;
 - il warning Supabase non viene classificato come vulnerabilità senza root-cause analysis, ma diventa finding esplicito di `DOS-ACCOUNT-SECURITY` prima della revalidation CURRENT.
 
 ## Gap di completion ancora reali
