@@ -1,3 +1,10 @@
+begin;
+
+insert into private.runtime_schema_required_migrations(version, migration_id)
+values (81, '0081_timetable_lesson_activity_kind')
+on conflict (version) do update
+set migration_id = excluded.migration_id;
+
 -- Timetable lesson activity kind: lightweight, teacher-authored classification used by the grid micro-icon.
 -- Existing lesson slots default to THEORY at read time; the column stays nullable for backwards compatibility.
 
@@ -15,3 +22,7 @@ alter table public.timetable_slots
 
 comment on column public.timetable_slots.activity_kind is
   'Teacher-authored lesson activity classification for compact timetable semantics; null outside ordinary lessons.';
+
+select private.advance_runtime_schema_contract('0081_timetable_lesson_activity_kind');
+
+commit;
