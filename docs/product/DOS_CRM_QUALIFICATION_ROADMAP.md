@@ -38,7 +38,7 @@ Non si promuove automaticamente una capability perché condivide un gate: l'evid
 - DOS-CURRICULUM-INTAKE — CRL 4 / CONDITIONAL, solo pilot autorizzato.
 
 ### Fuori dal core release
-- DOS-VOICE — CRL 3 / DEFERRED;
+- DOS-VOICE — CRL 2 / DEFERRED;
 - DOS-INSTITUTIONAL-CONFIG — CRL 1 / CONDITIONAL.
 
 ## 3. Quattro qualification lanes ad alto leverage
