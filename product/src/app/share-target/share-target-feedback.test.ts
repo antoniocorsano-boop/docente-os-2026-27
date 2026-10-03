@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import test from 'node:test'
 import { isValidIsoCalendarDate, resolveTimetableSourceIdentity } from '../orario/timetable-import-boundary'
 import { clearShareIntakeStaging } from './share-target-staging'
-import { chooseTimetableExtractionStrategy, classifyTimetablePageTextLayer, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, looksLikeTimetablePdf, ordinalFromTimetableText, parseOrdinal, teacherLabelMatches, weekdayFromTimetableText } from './timetable-share-helpers'
+import { chooseTimetableExtractionStrategy, classifyTimetablePageTextLayer, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, localOcrProgressLabel, looksLikeTimetablePdf, ordinalFromTimetableText, parseOrdinal, teacherLabelMatches, weekdayFromTimetableText } from './timetable-share-helpers'
 
 const intake = fs.readFileSync(new URL('./ShareTargetIntake.tsx', import.meta.url), 'utf8')
 const uploader = fs.readFileSync(new URL('../knowledge/KnowledgeFileUploader.tsx', import.meta.url), 'utf8')
@@ -83,10 +83,11 @@ test('PWA install prompt never covers the timetable workflow', () => {
   assert.match(pwaInstallPrompt, /pathname\.startsWith\('\/orario'\)/)
 })
 
-test('mobile update route keeps heading before import and visibly disables blocked continuation', () => {
+test('mobile update route keeps heading before import and hides continuation until there is something to review', () => {
   assert.doesNotMatch(timetableCss, /\.timetableImportCard\s*\{\s*order\s*:\s*-1/)
   assert.match(timetableCss, /\.timetablePrimaryActions button:disabled/)
-  assert.match(timetableIntake, /disabled=\{!ready \|\| !sourceFingerprint \|\| !selections\.length/)
+  assert.match(timetableIntake, /\{\(selections\.length > 0 \|\| acceptedCandidateId\) \? \(/)
+  assert.match(timetableIntake, /disabled=\{!ready \|\| !sourceFingerprint \|\| \(needsManualContext/)
 })
 
 test('import review stays on the dedicated update route after the hierarchy split', () => {
@@ -388,7 +389,7 @@ test('raster-page derivatives keep whole-document provenance for share and uploa
 test('manual selection is exposed only after automatic extraction needs correction', () => {
   assert.match(timetableIntake, /\{needsManualContext \? <button/)
   assert.doesNotMatch(timetableIntake, /\{\(!selections\.length \|\| needsManualContext\) \? <button/)
-  assert.match(timetableIntake, /Sto leggendo localmente le pagine immagine dell’orario/)
+  assert.match(timetableIntake, /setMessage\('Sto leggendo l’orario…'\)/)
 })
 
 test('raster timetable prefers on-device OCR and structured persistence before remote assist', () => {
@@ -479,7 +480,7 @@ test('terminal timetable preparation failures purge local staging before surfaci
 
 
 test('timetable preview preserves touch scrolling and sizes derivative labels', () => {
-  assert.match(timetableIntake, /touchAction: touchSelectMode \? 'none' : 'pan-y'/)
+  assert.match(timetableIntake, /touchAction: needsManualContext && touchSelectMode \? 'none' : 'pan-y'/)
   assert.match(timetableIntake, /aria-pressed=\{touchSelectMode\}/)
   assert.match(timetableIntake, /ensureKeyboardCursorVisible/)
   assert.match(timetableIntake, /measureText\(derivativeContextLabel/)
@@ -643,4 +644,76 @@ test('draft timetable review edits use atomic revision-advancing RPCs', () => {
 test('already-applied minimized import is surfaced as terminal', () => {
   assert.match(timetableIntake, /code === 'already_applied'/)
   assert.match(timetableIntake, /Questo documento è già stato applicato alla bozza dell’orario/)
+})
+
+
+test('Android OCR exposes bounded progress before the preview and keeps manual UI secondary', () => {
+  const statusAt = timetableIntake.indexOf('<p role="status"')
+  const previewAt = timetableIntake.indexOf('<div ref={viewportRef}')
+  assert.ok(statusAt >= 0)
+  assert.ok(previewAt > statusAt)
+  assert.match(timetableIntake, /aria-busy=\{busy\}/)
+  assert.match(timetableIntake, /onProgress:/)
+  assert.match(timetableIntake, /Analisi automatica in corso/)
+  assert.match(timetableIntake, /needsManualContext \? <span className="timetableKeyboardHelp"/)
+  assert.match(timetableIntake, /\{\(selections\.length > 0 \|\| acceptedCandidateId\) \? \(/)
+  assert.match(timetableIntake, /maxHeight: 360/)
+})
+
+
+test('mixed PDF progress uses raster position without exposing implementation jargon', () => {
+  const label = localOcrProgressLabel({ status: 'recognizing text', progress: 0.42, rasterIndex: 1, rasterTotal: 2 })
+  assert.equal(label, 'Sto leggendo l’orario… 42% · pagina 2/2')
+  assert.doesNotMatch(label, /\b(?:OCR|raster|parser|fallback|text layer)\b/i)
+})
+
+test('mobile raster OCR uses one shared 30-second deadline across all visual pages', () => {
+  assert.match(timetableIntake, /const localOcrDeadlineAt = Date\.now\(\) \+ LOCAL_OCR_TIMEOUT_MS/)
+  assert.match(timetableIntake, /remainingLocalOcrBudgetMs\(localOcrDeadlineAt\)/)
+  assert.doesNotMatch(timetableIntake, /timeoutMs:\s*LOCAL_OCR_TIMEOUT_MS,\s*\n\s*onProgress/)
+})
+
+
+test('automatic timetable extraction keeps the preview read-only until manual recovery is required', () => {
+  assert.match(timetableIntake, /role=\{needsManualContext \? 'application' : 'img'\}/)
+  assert.match(timetableIntake, /tabIndex=\{needsManualContext \? 0 : -1\}/)
+  assert.match(timetableIntake, /onPointerDown=\{needsManualContext \? pointerDown : undefined\}/)
+  assert.match(timetableIntake, /onPointerUp=\{needsManualContext \? pointerUp : undefined\}/)
+  assert.match(timetableIntake, /onKeyDown=\{needsManualContext \? keyboardSelection : undefined\}/)
+  assert.match(timetableIntake, /aria-label=\{needsManualContext/)
+  const visualStart = timetableIntake.indexOf("if (extractionStrategy !== 'VISUAL_PAGE'")
+  const clearAt = timetableIntake.indexOf('setSelections([])', visualStart)
+  const automaticAt = timetableIntake.indexOf('setNeedsManualContext(false)', visualStart)
+  assert.ok(visualStart >= 0)
+  assert.ok(clearAt > visualStart)
+  assert.ok(automaticAt > clearAt)
+})
+
+
+test('raster preparation time is charged to the shared OCR deadline', () => {
+  const loopAt = timetableIntake.indexOf('for (const [regionIndex, region] of visualRegions.entries())')
+  const copyAt = timetableIntake.indexOf('const localPage = copyPageRegionForLocalOcr(source, region)', loopAt)
+  const budgetAt = timetableIntake.indexOf('const timeoutMs = remainingLocalOcrBudgetMs(localOcrDeadlineAt)', loopAt)
+  assert.ok(loopAt >= 0)
+  assert.ok(copyAt > loopAt)
+  assert.ok(budgetAt > copyAt)
+})
+
+test('OCR progress stays indeterminate until text recognition begins', () => {
+  const bootstrap = localOcrProgressLabel({
+    status: 'loading tesseract core',
+    progress: 0.88,
+    rasterIndex: 0,
+    rasterTotal: 2,
+  })
+  assert.equal(bootstrap, 'Sto preparando la lettura dell’orario… pagina 1/2')
+  assert.doesNotMatch(bootstrap, /%/)
+
+  const recognition = localOcrProgressLabel({
+    status: 'recognizing text',
+    progress: 0.42,
+    rasterIndex: 1,
+    rasterTotal: 2,
+  })
+  assert.equal(recognition, 'Sto leggendo l’orario… 42% · pagina 2/2')
 })

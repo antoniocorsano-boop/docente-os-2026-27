@@ -1,3 +1,4 @@
+// @trama-readonly — local OCR worker/progress state is transient; no domain/storage write.
 import { createWorker, OEM, type Worker } from 'tesseract.js'
 import type {
   LocalDocumentPoint,
@@ -10,16 +11,108 @@ type TesseractWordLike = Readonly<{
   bbox?: Readonly<{ x0?: unknown; y0?: unknown; x1?: unknown; y1?: unknown }>
 }>
 
+type TesseractProgressLike = Readonly<{
+  status?: unknown
+  progress?: unknown
+}>
+
+export type LocalOcrProgress = Readonly<{
+  status: string
+  progress: number
+}>
+
+export const LOCAL_OCR_MAX_EDGE = 1200
+export const LOCAL_OCR_TIMEOUT_MS = 30_000
+
+export function clearWorkerPromiseIfCurrent<T>(
+  current: Promise<T> | null,
+  expected: Promise<T>,
+): Promise<T> | null {
+  return current === expected ? null : current
+}
+
+export function remainingLocalOcrBudgetMs(deadlineAtMs: number, nowMs = Date.now()): number {
+  return Math.max(0, Math.floor(deadlineAtMs - nowMs))
+}
+
 let workerPromise: Promise<Worker> | null = null
+const progressListeners = new Set<(progress: LocalOcrProgress) => void>()
 
 function finite(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+export function localOcrDimensions(
+  width: number,
+  height: number,
+  maxEdge = LOCAL_OCR_MAX_EDGE,
+): Readonly<{ width: number; height: number; coordinateScale: number }> {
+  if (![width, height, maxEdge].every((value) => Number.isFinite(value) && value > 0)) {
+    throw new Error('Local OCR dimensions must be positive finite numbers')
+  }
+  const scale = Math.min(1, maxEdge / Math.max(width, height))
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+    coordinateScale: 1 / scale,
+  }
+}
+
+export function localOcrProgressFromLog(value: unknown): LocalOcrProgress | null {
+  if (!value || typeof value !== 'object') return null
+  const input = value as TesseractProgressLike
+  const status = typeof input.status === 'string' ? input.status.trim() : ''
+  const progress = finite(input.progress)
+  if (!status || progress === null || progress < 0 || progress > 1) return null
+  return { status, progress }
+}
+
+export class LocalDocumentOcrTimeoutError extends Error {
+  readonly timeoutMs: number
+
+  constructor(timeoutMs: number) {
+    super(`Local OCR exceeded ${timeoutMs} ms`)
+    this.name = 'LocalDocumentOcrTimeoutError'
+    this.timeoutMs = timeoutMs
+  }
+}
+
+export function withLocalOcrDeadline<T>(
+  work: Promise<T>,
+  timeoutMs: number,
+  onTimeout: () => void | Promise<void>,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    let settled = false
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      void Promise.resolve().then(onTimeout).catch(() => undefined)
+      reject(new LocalDocumentOcrTimeoutError(timeoutMs))
+    }, timeoutMs)
+
+    work.then(
+      (value) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
 }
 
 export function mapTesseractWordsToLocalDocumentTextItems(
   words: readonly TesseractWordLike[],
   page: number,
   offset: Readonly<{ x: number; y: number }> = { x: 0, y: 0 },
+  coordinateScale = 1,
 ): LocalDocumentTextItem[] {
   const items: LocalDocumentTextItem[] = []
 
@@ -39,10 +132,10 @@ export function mapTesseractWordsToLocalDocumentTextItems(
       : Math.min(1, Math.max(0, rawConfidence / 100))
 
     const polygon: LocalDocumentPoint[] = [
-      { x: x0 + offset.x, y: y0 + offset.y },
-      { x: x1 + offset.x, y: y0 + offset.y },
-      { x: x1 + offset.x, y: y1 + offset.y },
-      { x: x0 + offset.x, y: y1 + offset.y },
+      { x: x0 * coordinateScale + offset.x, y: y0 * coordinateScale + offset.y },
+      { x: x1 * coordinateScale + offset.x, y: y0 * coordinateScale + offset.y },
+      { x: x1 * coordinateScale + offset.x, y: y1 * coordinateScale + offset.y },
+      { x: x0 * coordinateScale + offset.x, y: y1 * coordinateScale + offset.y },
     ]
 
     items.push({ text, confidence, polygon, page })
@@ -82,16 +175,28 @@ async function createLocalWorker(): Promise<Worker> {
     langPath: '/local-ocr/lang',
     gzip: true,
     workerBlobURL: false,
-    logger: () => {},
+    logger: (entry) => {
+      const progress = localOcrProgressFromLog(entry)
+      if (!progress) return
+      for (const listener of progressListeners) {
+        try {
+          listener(progress)
+        } catch {
+          // Progress feedback must never abort OCR.
+        }
+      }
+    },
   })
 }
 
-async function worker(): Promise<Worker> {
+function worker(): Promise<Worker> {
   if (!workerPromise) {
-    workerPromise = createLocalWorker().catch((error) => {
-      workerPromise = null
+    const pending = createLocalWorker()
+    const guarded: Promise<Worker> = pending.catch((error) => {
+      workerPromise = clearWorkerPromiseIfCurrent(workerPromise, guarded)
       throw error
     })
+    workerPromise = guarded
   }
   return workerPromise
 }
@@ -100,18 +205,44 @@ export async function recognizeLocalDocumentImage(input: {
   image: Blob | HTMLCanvasElement
   page: number
   offset?: Readonly<{ x: number; y: number }>
+  coordinateScale?: number
+  timeoutMs?: number
+  onProgress?: (progress: LocalOcrProgress) => void
 }): Promise<LocalDocumentTextItem[]> {
-  const instance = await worker()
-  const result = await instance.recognize(input.image, undefined, {
-    text: true,
-    blocks: true,
-  })
+  if (input.onProgress) progressListeners.add(input.onProgress)
+  const pendingWorker = worker()
+  let instance: Worker | null = null
+  let timedOut = false
+  const timeoutMs = input.timeoutMs ?? LOCAL_OCR_TIMEOUT_MS
 
-  return mapTesseractWordsToLocalDocumentTextItems(
-    wordsFromBlocks(result.data.blocks),
-    input.page,
-    input.offset ?? { x: 0, y: 0 },
-  )
+  try {
+    const result = await withLocalOcrDeadline(
+      (async () => {
+        instance = await pendingWorker
+        if (timedOut) throw new LocalDocumentOcrTimeoutError(timeoutMs)
+        return instance.recognize(input.image, undefined, {
+          text: true,
+          blocks: true,
+        })
+      })(),
+      timeoutMs,
+      async () => {
+        timedOut = true
+        workerPromise = clearWorkerPromiseIfCurrent(workerPromise, pendingWorker)
+        const current = instance ?? await pendingWorker.catch(() => null)
+        await current?.terminate()
+      },
+    )
+
+    return mapTesseractWordsToLocalDocumentTextItems(
+      wordsFromBlocks(result.data.blocks),
+      input.page,
+      input.offset ?? { x: 0, y: 0 },
+      input.coordinateScale ?? 1,
+    )
+  } finally {
+    if (input.onProgress) progressListeners.delete(input.onProgress)
+  }
 }
 
 export async function disposeLocalDocumentOcr(): Promise<void> {
