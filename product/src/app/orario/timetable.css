@@ -71,3 +71,12 @@
 
 
 .timetablePrimaryActions button:disabled{opacity:.5;cursor:not-allowed;filter:saturate(.35)}
+
+
+.timetableViewActions{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px 18px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-soft)}
+.timetableViewActions>div:first-child{display:grid;gap:3px}
+.timetableViewActions strong{font-size:14px}
+.timetableViewActions span{font-size:12px;color:var(--ink-soft);line-height:1.4}
+.timetableViewActions .humanTaskActions{margin:0;flex:0 0 auto}
+@media(max-width:719px){.timetableViewActions{align-items:stretch;flex-direction:column}.timetableViewActions .humanTaskActions{display:grid;grid-template-columns:1fr 1fr;width:100%}.timetableViewActions .humanTaskActions a{justify-content:center;text-align:center}}
+@media(max-width:460px){.timetableViewActions .humanTaskActions{grid-template-columns:1fr}}
