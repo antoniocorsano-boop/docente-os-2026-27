@@ -265,18 +265,19 @@ export function TimetableSharedIntake({
       const localItems = []
       const localOcrDeadlineAt = Date.now() + LOCAL_OCR_TIMEOUT_MS
       for (const [regionIndex, region] of visualRegions.entries()) {
-        const timeoutMs = remainingLocalOcrBudgetMs(localOcrDeadlineAt)
-        if (timeoutMs <= 0) throw new LocalDocumentOcrTimeoutError(LOCAL_OCR_TIMEOUT_MS)
         const localPage = copyPageRegionForLocalOcr(source, region)
         try {
+          const timeoutMs = remainingLocalOcrBudgetMs(localOcrDeadlineAt)
+          if (timeoutMs <= 0) throw new LocalDocumentOcrTimeoutError(LOCAL_OCR_TIMEOUT_MS)
           localItems.push(...await recognizeLocalDocumentImage({
             image: localPage.canvas,
             page: region.page,
             offset: { x: region.x, y: region.y },
             coordinateScale: localPage.coordinateScale,
             timeoutMs,
-            onProgress: ({ progress }) => {
+            onProgress: ({ status, progress }) => {
               setMessage(localOcrProgressLabel({
+                status,
                 progress,
                 rasterIndex: regionIndex,
                 rasterTotal: visualRegions.length,
