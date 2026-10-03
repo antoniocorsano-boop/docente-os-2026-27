@@ -442,7 +442,7 @@
       "capability_id": "DOS-VOICE",
       "domain": "AI collaboration",
       "name": "Contextual Voice Capture",
-      "crl": 3,
+      "crl": 2,
       "status": "DEFERRED",
       "freshness": "CURRENT",
       "axes": {
@@ -466,10 +466,11 @@
         "PROJECT_STATUS_CURRENT.md: DOS-VOICE explicitly DEFERRED from release core pending re-authorization"
       ],
       "open_findings": [
-        "Capability is explicitly DEFERRED from the release core and requires re-authorization before release qualification.",
-        "No complete provider/privacy/runtime/HUMAN_USE qualification exists."
+        "Capability remains explicitly DEFERRED from the release core and requires re-authorization before release qualification.",
+        "Operability is still at axis O=2: no complete provider/privacy/runtime/HUMAN_USE qualification exists.",
+        "Because DOS-CRM aggregates on the lowest applicable critical axis, CRL 2 is the consistent roll-up until operability reaches at least 3."
       ],
-      "next_promotion_criterion": "Explicitly re-authorize Voice for release, then qualify provider policy, privacy/retention, fallback, HVA and HUMAN_USE."
+      "next_promotion_criterion": "Explicitly re-authorize Voice for release, then raise operability through provider/runtime/privacy/recovery evidence before reassessing CRL 3+."
     },
     {
       "capability_id": "DOS-INSTITUTIONAL-CONFIG",
