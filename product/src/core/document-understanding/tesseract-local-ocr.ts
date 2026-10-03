@@ -196,19 +196,28 @@ export async function recognizeLocalDocumentImage(input: {
   timeoutMs?: number
   onProgress?: (progress: LocalOcrProgress) => void
 }): Promise<LocalDocumentTextItem[]> {
-  const instance = await worker()
   if (input.onProgress) progressListeners.add(input.onProgress)
+  const pendingWorker = worker()
+  let instance: Worker | null = null
+  let timedOut = false
+  const timeoutMs = input.timeoutMs ?? LOCAL_OCR_TIMEOUT_MS
 
   try {
     const result = await withLocalOcrDeadline(
-      instance.recognize(input.image, undefined, {
-        text: true,
-        blocks: true,
-      }),
-      input.timeoutMs ?? LOCAL_OCR_TIMEOUT_MS,
+      (async () => {
+        instance = await pendingWorker
+        if (timedOut) throw new LocalDocumentOcrTimeoutError(timeoutMs)
+        return instance.recognize(input.image, undefined, {
+          text: true,
+          blocks: true,
+        })
+      })(),
+      timeoutMs,
       async () => {
+        timedOut = true
         workerPromise = null
-        await instance.terminate()
+        const current = instance ?? await pendingWorker.catch(() => null)
+        await current?.terminate()
       },
     )
 
