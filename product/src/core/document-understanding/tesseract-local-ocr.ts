@@ -189,7 +189,7 @@ async function createLocalWorker(): Promise<Worker> {
   })
 }
 
-async function worker(): Promise<Worker> {
+function worker(): Promise<Worker> {
   if (!workerPromise) {
     const pending = createLocalWorker()
     const guarded: Promise<Worker> = pending.catch((error) => {
