@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "product": "DOCENTE OS",
   "releaseVersion": "0.1.0-rc.1",
-  "releaseState": "DRAFT",
+  "releaseState": "RC",
   "candidateSha": "efc31ed084da9cc6fe495ac6403151c3361f428a",
   "testedPrHeadSha": "3181ad63ace61bed197d4d64d500b747a8de8bc1",
   "testedProductTreeSha": "75ef21ec4b1853209f4ab60d7855690034aacfaf",
@@ -220,11 +220,18 @@
     "decisionSource": "EXPLICIT_HUMAN_OWNER_AUTHORIZATION_IN_CHAT",
     "productionPromotionAuthorized": false,
     "certificationAuthorized": false,
-    "freezeCompleted": false
+    "freezeCompleted": true
   },
   "releaseNotesPath": "docs/product/releases/0.1.0-rc.1.md",
   "changelogPath": "CHANGELOG.md",
-  "freezeStatus": "PENDING_TAG",
-  "tagStatus": "NOT_CREATED",
-  "githubReleaseStatus": "NOT_CREATED"
+  "freezeStatus": "COMPLETE",
+  "tagStatus": "CREATED_VERIFIED",
+  "githubReleaseStatus": "PRERELEASE_PUBLISHED",
+  "freezeReceipt": {
+    "tag": "v0.1.0-rc.1",
+    "tagResolvedSha": "efc31ed084da9cc6fe495ac6403151c3361f428a",
+    "githubReleaseUrl": "https://github.com/antoniocorsano-boop/docente-os-2026-27/releases/tag/v0.1.0-rc.1",
+    "githubReleasePublishedAt": "2026-10-03T09:09:42Z",
+    "productionPromotionAuthorized": false
+  }
 }
