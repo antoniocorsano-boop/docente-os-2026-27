@@ -661,15 +661,30 @@ test('Android OCR exposes bounded progress before the preview and keeps manual U
 })
 
 
-test('mixed PDF OCR progress uses raster position, not original PDF page number', () => {
-  assert.equal(
-    localOcrProgressLabel({ progress: 0.42, rasterIndex: 1, rasterTotal: 2 }),
-    'Lettura OCR locale · 42% · pagina 2/2',
-  )
+test('mixed PDF progress uses raster position without exposing implementation jargon', () => {
+  const label = localOcrProgressLabel({ progress: 0.42, rasterIndex: 1, rasterTotal: 2 })
+  assert.equal(label, 'Sto leggendo l’orario… 42% · pagina 2/2')
+  assert.doesNotMatch(label, /\b(?:OCR|raster|parser|fallback|text layer)\b/i)
 })
 
 test('mobile raster OCR uses one shared 30-second deadline across all visual pages', () => {
   assert.match(timetableIntake, /const localOcrDeadlineAt = Date\.now\(\) \+ LOCAL_OCR_TIMEOUT_MS/)
   assert.match(timetableIntake, /remainingLocalOcrBudgetMs\(localOcrDeadlineAt\)/)
   assert.doesNotMatch(timetableIntake, /timeoutMs:\s*LOCAL_OCR_TIMEOUT_MS,\s*\n\s*onProgress/)
+})
+
+
+test('automatic timetable extraction keeps the preview read-only until manual recovery is required', () => {
+  assert.match(timetableIntake, /role=\{needsManualContext \? 'application' : 'img'\}/)
+  assert.match(timetableIntake, /tabIndex=\{needsManualContext \? 0 : -1\}/)
+  assert.match(timetableIntake, /onPointerDown=\{needsManualContext \? pointerDown : undefined\}/)
+  assert.match(timetableIntake, /onPointerUp=\{needsManualContext \? pointerUp : undefined\}/)
+  assert.match(timetableIntake, /onKeyDown=\{needsManualContext \? keyboardSelection : undefined\}/)
+  assert.match(timetableIntake, /aria-label=\{needsManualContext/)
+  const visualStart = timetableIntake.indexOf("if (extractionStrategy !== 'VISUAL_PAGE'")
+  const clearAt = timetableIntake.indexOf('setSelections([])', visualStart)
+  const automaticAt = timetableIntake.indexOf('setNeedsManualContext(false)', visualStart)
+  assert.ok(visualStart >= 0)
+  assert.ok(clearAt > visualStart)
+  assert.ok(automaticAt > clearAt)
 })
