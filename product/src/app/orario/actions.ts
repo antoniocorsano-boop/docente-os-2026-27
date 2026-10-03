@@ -219,19 +219,159 @@ async function analyzeTimetableImportResult(formData: FormData) {
   const fingerprint = sourceIdentity.sourceFingerprint
   const sourceLabel = sourceIdentity.sourceLabel
   const replaceReviewed = optionalText(formData, 'replaceReviewedCandidate') === 'yes'
-  const importRepository = new SupabaseTimetableImportRepository()
+  const extractor = new OpenAiTimetableDocumentExtractor()
+  let extracted
+  try {
+    extracted = await extractor.extract({
+      bytes,
+      mimeType,
+      filename: value.name || 'orario',
+      teacherLabel,
+      knownClassLabels: await knownTimetableClassLabels(context),
+    })
+  } catch (error) {
+    if (error instanceof TimetableDocumentExtractionUnavailableError) {
+      console.error('Timetable visual extraction unavailable:', error.message)
+      return { ok: false as const, code: 'extractor_unavailable' }
+    }
+    const message = error instanceof Error ? error.message : 'unknown extraction failure'
+    console.error('Timetable visual extraction failed:', message.slice(0, 240))
+    return { ok: false as const, code: 'parse_failed' }
+  }
 
+  if (!extracted.rows.length) {
+    console.warn('Timetable visual extraction returned no matching rows')
+    return { ok: false as const, code: 'no_rows' }
+  }
+
+  return persistStructuredTimetableCandidate({
+    context,
+    effectiveFrom,
+    sourceFingerprint: fingerprint,
+    sourceLabel,
+    sourceRef: sourceIdentity.sourceRef,
+    replaceReviewed,
+    parserVersion: `${extracted.processor}@${extracted.processorVersion}`,
+    rows: extracted.rows,
+  })
+}
+
+type StructuredTimetableRow = Readonly<{
+  day: number
+  ordinal: number
+  classLabel: string
+  confidence?: number | null
+  evidenceRef?: string | null
+}>
+
+export async function persistLocallyExtractedTimetableImport(formData: FormData) {
+  const context = await requireContext()
+
+  const effectiveFrom = text(formData, 'effectiveFrom').trim()
+  if (
+    !isValidIsoCalendarDate(effectiveFrom)
+    || effectiveFrom < context.academicYear.startsOn
+    || effectiveFrom > context.academicYear.endsOn
+  ) {
+    return { ok: false as const, code: 'invalid_date' }
+  }
+
+  const teacherLabel = text(formData, 'teacherLabel').trim()
+  if (!teacherLabel || teacherLabel.length > 120) return { ok: false as const, code: 'teacher_required' }
+
+  const sourceFingerprint = text(formData, 'sourceFingerprint').trim().toLowerCase()
+  if (!/^[a-f0-9]{64}$/.test(sourceFingerprint)) {
+    return { ok: false as const, code: 'invalid_content' }
+  }
+
+  let parsedRows: unknown
+  try {
+    parsedRows = JSON.parse(text(formData, 'rows'))
+  } catch {
+    return { ok: false as const, code: 'parse_failed' }
+  }
+  const rows = normalizeLocalStructuredRows(parsedRows)
+  if (rows === null) return { ok: false as const, code: 'parse_failed' }
+  if (!rows.length) return { ok: false as const, code: 'no_rows' }
+
+  return persistStructuredTimetableCandidate({
+    context,
+    effectiveFrom,
+    sourceFingerprint,
+    sourceLabel: `local-ocr:${sourceFingerprint.slice(0, 16)}`,
+    sourceRef: `client-whole-document-sha256:${sourceFingerprint}`,
+    replaceReviewed: optionalText(formData, 'replaceReviewedCandidate') === 'yes',
+    parserVersion: 'tesseract.js@7.0.0+ita@1.0.0+structural-v1',
+    rows,
+  })
+}
+
+function normalizeLocalStructuredRows(value: unknown): StructuredTimetableRow[] | null {
+  if (!Array.isArray(value) || value.length > 120) return null
+  const rows: StructuredTimetableRow[] = []
+  const seen = new Set<string>()
+
+  for (const raw of value) {
+    if (!raw || typeof raw !== 'object') return null
+    const candidate = raw as Record<string, unknown>
+    const day = candidate.day
+    const ordinal = candidate.ordinal
+    const classLabel = typeof candidate.classLabel === 'string' ? candidate.classLabel.trim() : ''
+    if (
+      typeof day !== 'number' || !Number.isInteger(day) || day < 1 || day > 6
+      || typeof ordinal !== 'number' || !Number.isInteger(ordinal) || ordinal < 1 || ordinal > 20
+      || !classLabel || classLabel.length > 32
+    ) {
+      return null
+    }
+
+    const rawConfidence = candidate.confidence
+    const confidence = typeof rawConfidence === 'number' && Number.isFinite(rawConfidence)
+      ? Math.min(1, Math.max(0, rawConfidence))
+      : 0.8
+    const evidenceRef = typeof candidate.evidenceRef === 'string'
+      ? candidate.evidenceRef.slice(0, 240)
+      : 'local-ocr'
+
+    const key = `${day}:${ordinal}:${normalizeClassKey(classLabel)}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    rows.push({ day, ordinal, classLabel, confidence, evidenceRef })
+  }
+
+  return rows
+}
+
+async function knownTimetableClassLabels(
+  context: Awaited<ReturnType<typeof requireContext>>,
+): Promise<string[]> {
+  const annualRepository = new SupabaseAnnualPlanExecutionRepository()
+  const annualSnapshot = await annualRepository.list(context.workspace.id, context.academicYear.id)
+  return annualSnapshot.sections.map((section) => compactClassLabel(section.grade, section.sectionCode))
+}
+
+async function persistStructuredTimetableCandidate(input: {
+  context: Awaited<ReturnType<typeof requireContext>>
+  effectiveFrom: string
+  sourceFingerprint: string
+  sourceLabel: string
+  sourceRef: string
+  replaceReviewed: boolean
+  parserVersion: string
+  rows: readonly StructuredTimetableRow[]
+}) {
   const settingsRepository = new SupabaseTeacherSettingsRepository()
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
   const timetableRepository = new SupabaseTimetableRepository()
+  const importRepository = new SupabaseTimetableImportRepository()
 
   const [settings, annualSnapshot, timetable] = await Promise.all([
-    settingsRepository.getOrCreate(context.workspace.id, context.academicYear.id),
-    annualRepository.list(context.workspace.id, context.academicYear.id),
+    settingsRepository.getOrCreate(input.context.workspace.id, input.context.academicYear.id),
+    annualRepository.list(input.context.workspace.id, input.context.academicYear.id),
     timetableRepository.list(
-      context.workspace.id,
-      context.academicYear.id,
-      context.academicYear.startsOn,
+      input.context.workspace.id,
+      input.context.academicYear.id,
+      input.context.academicYear.startsOn,
     ),
   ])
 
@@ -250,32 +390,7 @@ async function analyzeTimetableImportResult(formData: FormData) {
     assignmentsBySection.set(assignment.sectionId, [...current, assignment])
   }
 
-  const extractor = new OpenAiTimetableDocumentExtractor()
-  let extracted
-  try {
-    extracted = await extractor.extract({
-      bytes,
-      mimeType,
-      filename: value.name || 'orario',
-      teacherLabel,
-      knownClassLabels: [...sectionLabels.values()],
-    })
-  } catch (error) {
-    if (error instanceof TimetableDocumentExtractionUnavailableError) {
-      console.error('Timetable visual extraction unavailable:', error.message)
-      return { ok: false as const, code: 'extractor_unavailable' }
-    }
-    const message = error instanceof Error ? error.message : 'unknown extraction failure'
-    console.error('Timetable visual extraction failed:', message.slice(0, 240))
-    return { ok: false as const, code: 'parse_failed' }
-  }
-
-  if (!extracted.rows.length) {
-    console.warn('Timetable visual extraction returned no matching rows')
-    return { ok: false as const, code: 'no_rows' }
-  }
-
-  const rows = extracted.rows.map((row) => {
+  const rows = input.rows.map((row) => {
     const sectionId = sectionIdByClass.get(normalizeClassKey(row.classLabel)) ?? null
     const assignments = sectionId ? assignmentsBySection.get(sectionId) ?? [] : []
     const assignment = assignments.length === 1 ? assignments[0] : null
@@ -305,7 +420,7 @@ async function analyzeTimetableImportResult(formData: FormData) {
       resolvedAssignmentId: assignment?.id ?? null,
       confidence: highConfidence ? 'HIGH' as const : 'MEDIUM' as const,
       reviewState: autoResolved ? 'AUTO_RESOLVED' as const : 'REVIEW_REQUIRED' as const,
-      evidenceRef: row.evidenceRef,
+      evidenceRef: row.evidenceRef ?? null,
       warnings,
     }
   })
@@ -313,14 +428,14 @@ async function analyzeTimetableImportResult(formData: FormData) {
   let candidate
   try {
     candidate = await importRepository.replaceCandidateAtomic({
-      workspaceId: context.workspace.id,
-      academicYearId: context.academicYear.id,
-      sourceFingerprint: fingerprint,
-      sourceLabel,
-      sourceRef: sourceIdentity.sourceRef,
-      effectiveFrom,
-      parserVersion: `${extracted.processor}@${extracted.processorVersion}`,
-      replaceReviewed,
+      workspaceId: input.context.workspace.id,
+      academicYearId: input.context.academicYear.id,
+      sourceFingerprint: input.sourceFingerprint,
+      sourceLabel: input.sourceLabel,
+      sourceRef: input.sourceRef,
+      effectiveFrom: input.effectiveFrom,
+      parserVersion: input.parserVersion,
+      replaceReviewed: input.replaceReviewed,
       rows,
     })
   } catch (error) {
@@ -337,6 +452,7 @@ async function analyzeTimetableImportResult(formData: FormData) {
   revalidatePath('/orario')
   return { ok: true as const, candidateId: candidate.id }
 }
+
 
 export async function addTimetableImportRow(formData: FormData) {
   const context = await requireContext()

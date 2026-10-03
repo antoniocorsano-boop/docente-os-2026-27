@@ -41,11 +41,24 @@ test('orario hierarchy separates consultation, update and advanced management', 
   assert.match(timetableExperience, /href="\/orario\/gestisci"/)
   assert.match(timetableExperience, /slots=\{mode === 'view' \? operationalSlots : timetable\.slots\}/)
   assert.match(timetableExperience, /readOnly=\{mode === 'view'\}/)
-  assert.match(timetableExperience, /mode === 'update' \? <section className="timetableCard timetableImportCard"/)
+  const directEditAt = timetableExperience.indexOf('id="modifica-settimana"')
+  const optionalImportAt = timetableExperience.indexOf('className="timetableVersionDetails timetableOptionalImport"')
+  assert.ok(directEditAt >= 0)
+  assert.ok(optionalImportAt > directEditAt)
+  assert.match(timetableExperience, /<span>In vigore dal<\/span>/)
+  assert.match(timetableExperience, /Non serve indicare una data di fine/)
+  assert.match(timetableExperience, /Importa da PDF o foto/)
+  assert.match(timetableExperience, /Opzionale/)
   assert.match(timetableExperience, /mode === 'manage' \? <>/)
   assert.match(timetableGrid, /readOnly\?: boolean/)
   assert.match(timetableGrid, /!readOnly && editor/)
   assert.match(timetableGrid, /!readOnly && assignments\.length/)
+})
+
+test('mobile timetable editor renders above its backdrop', () => {
+  assert.match(timetableCss, /\.timetableEditorBackdrop,\.timetableContextBackdrop\{position:fixed;inset:0;z-index:100/)
+  assert.match(timetableCss, /\.timetableEditor,\.timetableContextSheet\{position:fixed;z-index:101/)
+  assert.match(timetableCss, /bottom:0;transform:none;width:100%;max-height:min\(82dvh,760px\)/)
 })
 
 test('mobile update route keeps heading before import and visibly disables blocked continuation', () => {
@@ -353,7 +366,26 @@ test('raster-page derivatives keep whole-document provenance for share and uploa
 test('manual selection is exposed only after automatic extraction needs correction', () => {
   assert.match(timetableIntake, /\{needsManualContext \? <button/)
   assert.doesNotMatch(timetableIntake, /\{\(!selections\.length \|\| needsManualContext\) \? <button/)
-  assert.match(timetableIntake, /Sto leggendo le pagine immagine dell’orario/)
+  assert.match(timetableIntake, /Sto leggendo localmente le pagine immagine dell’orario/)
+})
+
+test('raster timetable prefers on-device OCR and structured persistence before remote assist', () => {
+  const localOcrAt = timetableIntake.indexOf('recognizeLocalDocumentImage')
+  const localPersistAt = timetableIntake.indexOf('persistLocallyExtractedTimetableImport', localOcrAt)
+  const remoteAt = timetableIntake.indexOf('analyzeRasterTimetableImport', localPersistAt)
+
+  assert.ok(localOcrAt >= 0)
+  assert.ok(localPersistAt > localOcrAt)
+  assert.ok(remoteAt > localPersistAt)
+  assert.match(timetableIntake, /localDiagnostic =/)
+  assert.match(timetableIntake, /Provo il servizio di estrazione configurato/)
+  assert.match(timetableIntake, /local-ocr:p\$\{cell\.page\}/)
+  assert.match(timetableActions, /export async function persistLocallyExtractedTimetableImport/)
+  assert.match(timetableActions, /parserVersion: 'tesseract\.js@7\.0\.0\+ita@1\.0\.0\+structural-v1'/)
+  assert.match(timetableActions, /sourceLabel: `local-ocr:/)
+  assert.match(timetableActions, /normalizeLocalStructuredRows/)
+  assert.match(timetableActions, /persistStructuredTimetableCandidate/)
+  assert.match(timetableIntake, /Le pagine immagine vengono lette prima localmente sul dispositivo/)
 })
 
 test('raster timetable derivative stays below the Server Action payload ceiling', () => {
@@ -371,7 +403,8 @@ test('visual timetable provider unavailability is observable and teacher-facing'
   assert.match(timetableActions, /code: 'extractor_unavailable'/)
   assert.match(timetableActions, /Timetable visual extraction unavailable:/)
   assert.match(timetableIntake, /code === 'extractor_unavailable'/)
-  assert.match(timetableIntake, /La lettura automatica delle pagine immagine non è disponibile su questo servizio/)
+  assert.match(timetableIntake, /Il servizio remoto non è disponibile/)
+  assert.match(timetableIntake, /Lettura locale senza diagnosi/)
 })
 
 test('selection counter uses correct Italian plural', () => {

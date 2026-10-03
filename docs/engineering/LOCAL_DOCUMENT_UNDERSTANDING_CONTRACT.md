@@ -102,16 +102,23 @@ Local inference must be bounded:
 
 ## 8. Technology qualification
 
-The preferred OCR implementation candidate is the official PaddleOCR.js browser SDK with PP-OCRv5, because it returns recognized text with geometry and can run in-browser.
+The first preferred candidate was the official PaddleOCR.js browser SDK with PP-OCRv5. Qualification on the Docente OS Next.js 16.3/Turbopack production build failed cleanly: the published 0.4.2 bundle exposes OpenCV Node references and ONNX worker asset imports that Turbopack cannot resolve without host-level bundler workarounds. It is therefore **NOT_PROMOTED** for the current runtime.
 
-It is not promoted to production merely by this contract. Runtime adoption requires:
+The current adapter candidate is **Tesseract.js 7.0.0** with **@tesseract.js-data/ita 1.0.0**:
+- browser worker execution;
+- local word text + bounding-box evidence;
+- worker, WASM core and Italian trained data self-hosted by Docente OS;
+- lazy initialization and worker reuse;
+- no document/image transfer to an OCR provider or CDN.
+
+Production qualification still requires:
 - dependency/supply-chain review;
-- bundle/model-loading assessment;
+- Next/Turbopack production build proof;
 - Android memory/performance proof;
 - Italian/Latin-script fixture accuracy;
-- offline/cache behavior decision.
+- real 28-09-2026 timetable 14/14 acceptance.
 
-Tesseract.js remains a possible fallback adapter if the preferred implementation fails these criteria.
+The adapter boundary remains replaceable: a future OCR engine may supersede Tesseract without changing domain validation or consumer contracts.
 
 ## 9. Consumer contract
 
