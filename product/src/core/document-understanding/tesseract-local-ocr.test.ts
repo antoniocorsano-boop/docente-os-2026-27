@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import fs from 'node:fs'
 import { LOCAL_OCR_MAX_EDGE, LOCAL_OCR_TIMEOUT_MS, LocalDocumentOcrTimeoutError, localOcrDimensions, localOcrProgressFromLog, mapTesseractWordsToLocalDocumentTextItems, withLocalOcrDeadline } from './tesseract-local-ocr'
 
 test('maps Tesseract words and bounding boxes into shared local evidence', () => {
@@ -82,4 +83,21 @@ test('mobile OCR deadline is bounded and triggers cancellation', async () => {
     (error: unknown) => error instanceof LocalDocumentOcrTimeoutError,
   )
   assert.equal(cancelled, true)
+})
+
+
+test('OCR deadline and progress cover worker bootstrap as well as recognition', () => {
+  const source = fs.readFileSync(new URL('./tesseract-local-ocr.ts', import.meta.url), 'utf8')
+  const recognizeAt = source.indexOf('export async function recognizeLocalDocumentImage')
+  const listenerAt = source.indexOf('progressListeners.add(input.onProgress)', recognizeAt)
+  const pendingWorkerAt = source.indexOf('const pendingWorker = worker()', recognizeAt)
+  const deadlineAt = source.indexOf('withLocalOcrDeadline(', pendingWorkerAt)
+  const bootstrapAt = source.indexOf('instance = await pendingWorker', deadlineAt)
+
+  assert.ok(recognizeAt >= 0)
+  assert.ok(listenerAt > recognizeAt)
+  assert.ok(pendingWorkerAt > listenerAt)
+  assert.ok(deadlineAt > pendingWorkerAt)
+  assert.ok(bootstrapAt > deadlineAt)
+  assert.doesNotMatch(source.slice(recognizeAt), /const instance = await worker\(\)/)
 })
