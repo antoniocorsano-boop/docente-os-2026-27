@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import fs from 'node:fs'
-import { LOCAL_OCR_MAX_EDGE, LOCAL_OCR_TIMEOUT_MS, LocalDocumentOcrTimeoutError, clearWorkerPromiseIfCurrent, localOcrDimensions, localOcrProgressFromLog, mapTesseractWordsToLocalDocumentTextItems, remainingLocalOcrBudgetMs, withLocalOcrDeadline } from './tesseract-local-ocr'
+import { LOCAL_OCR_MAX_EDGE, LOCAL_OCR_TIMEOUT_MS, LOCAL_OCR_WORKER_TIMEOUT_MS, LocalDocumentOcrTimeoutError, clearWorkerPromiseIfCurrent, localOcrDimensions, localOcrProgressFromLog, mapTesseractWordsToLocalDocumentTextItems, remainingLocalOcrBudgetMs, withLocalOcrDeadline } from './tesseract-local-ocr'
 
 test('maps Tesseract words and bounding boxes into shared local evidence', () => {
   assert.deepEqual(
@@ -51,11 +51,13 @@ test('drops unusable words and clamps confidence', () => {
 
 
 test('mobile OCR bounds raster work while preserving coordinate scale', () => {
-  assert.equal(LOCAL_OCR_MAX_EDGE, 1200)
+  assert.equal(LOCAL_OCR_MAX_EDGE, 1000)
+  const bounded = localOcrDimensions(1800, 1200)
   assert.deepEqual(
-    localOcrDimensions(1800, 1200),
-    { width: 1200, height: 800, coordinateScale: 1.5 },
+    { width: bounded.width, height: bounded.height },
+    { width: 1000, height: 667 },
   )
+  assert.ok(Math.abs(bounded.coordinateScale - 1.8) < Number.EPSILON * 2)
   assert.deepEqual(
     localOcrDimensions(780, 540),
     { width: 780, height: 540, coordinateScale: 1 },
@@ -73,6 +75,7 @@ test('normalizes Tesseract progress for teacher-facing feedback', () => {
 
 test('mobile OCR deadline is bounded and triggers cancellation', async () => {
   assert.equal(LOCAL_OCR_TIMEOUT_MS, 30_000)
+  assert.equal(LOCAL_OCR_WORKER_TIMEOUT_MS, 30_000)
   let cancelled = false
   await assert.rejects(
     () => withLocalOcrDeadline(
@@ -86,19 +89,23 @@ test('mobile OCR deadline is bounded and triggers cancellation', async () => {
 })
 
 
-test('OCR deadline and progress cover worker bootstrap as well as recognition', () => {
+test('OCR gives cold worker bootstrap its own deadline before recognition', () => {
   const source = fs.readFileSync(new URL('./tesseract-local-ocr.ts', import.meta.url), 'utf8')
   const recognizeAt = source.indexOf('export async function recognizeLocalDocumentImage')
   const listenerAt = source.indexOf('progressListeners.add(input.onProgress)', recognizeAt)
   const pendingWorkerAt = source.indexOf('const pendingWorker = worker()', recognizeAt)
   const deadlineAt = source.indexOf('withLocalOcrDeadline(', pendingWorkerAt)
-  const bootstrapAt = source.indexOf('instance = await pendingWorker', deadlineAt)
+  const bootstrapAt = source.indexOf('pendingWorker,', deadlineAt)
+  const recognitionAt = source.indexOf('activeWorker.recognize(', bootstrapAt)
 
   assert.ok(recognizeAt >= 0)
   assert.ok(listenerAt > recognizeAt)
   assert.ok(pendingWorkerAt > listenerAt)
   assert.ok(deadlineAt > pendingWorkerAt)
   assert.ok(bootstrapAt > deadlineAt)
+  assert.ok(recognitionAt > bootstrapAt)
+  assert.match(source.slice(deadlineAt, recognitionAt), /LOCAL_OCR_WORKER_TIMEOUT_MS/)
+  assert.match(source.slice(recognitionAt), /recognitionTimeoutMs/)
   assert.doesNotMatch(source.slice(recognizeAt), /const instance = await worker\(\)/)
 })
 

@@ -21,7 +21,11 @@ export type LocalOcrProgress = Readonly<{
   progress: number
 }>
 
-export const LOCAL_OCR_MAX_EDGE = 1200
+export const LOCAL_OCR_MAX_EDGE = 1000
+// Mobile devices may spend a material part of the first OCR call loading the
+// worker, WASM core and Italian language data. Keep bootstrap and recognition
+// budgets independent so a cold start cannot consume the whole OCR allowance.
+export const LOCAL_OCR_WORKER_TIMEOUT_MS = 30_000
 export const LOCAL_OCR_TIMEOUT_MS = 30_000
 
 export function clearWorkerPromiseIfCurrent<T>(
@@ -212,25 +216,32 @@ export async function recognizeLocalDocumentImage(input: {
   if (input.onProgress) progressListeners.add(input.onProgress)
   const pendingWorker = worker()
   let instance: Worker | null = null
-  let timedOut = false
-  const timeoutMs = input.timeoutMs ?? LOCAL_OCR_TIMEOUT_MS
+  const recognitionTimeoutMs = input.timeoutMs ?? LOCAL_OCR_TIMEOUT_MS
 
   try {
-    const result = await withLocalOcrDeadline(
-      (async () => {
-        instance = await pendingWorker
-        if (timedOut) throw new LocalDocumentOcrTimeoutError(timeoutMs)
-        return instance.recognize(input.image, undefined, {
-          text: true,
-          blocks: true,
-        })
-      })(),
-      timeoutMs,
+    // Do not charge a cold worker bootstrap against recognition time. This is
+    // especially important on Android, where loading WASM + ita.traineddata can
+    // take most of the former single 30 s deadline.
+    instance = await withLocalOcrDeadline(
+      pendingWorker,
+      LOCAL_OCR_WORKER_TIMEOUT_MS,
       async () => {
-        timedOut = true
         workerPromise = clearWorkerPromiseIfCurrent(workerPromise, pendingWorker)
-        const current = instance ?? await pendingWorker.catch(() => null)
+        const current = await pendingWorker.catch(() => null)
         await current?.terminate()
+      },
+    )
+
+    const activeWorker = instance
+    const result = await withLocalOcrDeadline(
+      activeWorker.recognize(input.image, undefined, {
+        text: true,
+        blocks: true,
+      }),
+      recognitionTimeoutMs,
+      async () => {
+        workerPromise = clearWorkerPromiseIfCurrent(workerPromise, pendingWorker)
+        await activeWorker.terminate()
       },
     )
 
