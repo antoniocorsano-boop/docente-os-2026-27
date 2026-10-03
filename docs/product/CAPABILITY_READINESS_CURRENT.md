@@ -79,6 +79,12 @@ La qualification CRL 5 di #640 resta evidence valida, ma successivamente sono ca
 
 Il livello storico non viene retrocesso; la freshness viene però correttamente resa **STALE** finché il journey corrente non viene riqualificato, inclusa l'entrata reale dal menu Condividi Android.
 
+## Finding runtime corrente
+
+- Beta #664 è LIVE sul merge `57743e9d395ae5d739ca89e9afbdbb3a7edf875d`.
+- Il fallback visuale remoto Orario risulta `UNAVAILABLE`: non blocca la modifica diretta, ma resta gap operativo del journey Share/Import.
+- Il runtime Supabase emette un warning sull'affidabilità del `user` letto da `getSession()`: va eseguita root-cause analysis dei call site prima di ripristinare Account/Security a freshness CURRENT.
+
 ## Gap di completamento che restano
 
 1. HUMAN_USE task-based di QL-1.
