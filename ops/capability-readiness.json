@@ -706,8 +706,7 @@
           "DOS-CALENDAR",
           "DOS-LESSON-PREP",
           "DOS-TEACHING-SESSION",
-          "DOS-PLAN-UDA",
-          "DOS-OBSERVATION-EVIDENCE"
+          "DOS-PLAN-UDA"
         ],
         "status": "TECHNICAL_PASS_HUMAN_USE_PENDING",
         "evidence": [
