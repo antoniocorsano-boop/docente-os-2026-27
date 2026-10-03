@@ -55,6 +55,12 @@ test('orario hierarchy separates consultation, update and advanced management', 
   assert.match(timetableGrid, /!readOnly && assignments\.length/)
 })
 
+test('mobile timetable editor renders above its backdrop', () => {
+  assert.match(timetableCss, /\.timetableEditorBackdrop,\.timetableContextBackdrop\{position:fixed;inset:0;z-index:100/)
+  assert.match(timetableCss, /\.timetableEditor,\.timetableContextSheet\{position:fixed;z-index:101/)
+  assert.match(timetableCss, /bottom:0;transform:none;width:100%;max-height:min\(82dvh,760px\)/)
+})
+
 test('mobile update route keeps heading before import and visibly disables blocked continuation', () => {
   assert.doesNotMatch(timetableCss, /\.timetableImportCard\s*\{\s*order\s*:\s*-1/)
   assert.match(timetableCss, /\.timetablePrimaryActions button:disabled/)
