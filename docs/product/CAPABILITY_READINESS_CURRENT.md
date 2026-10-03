@@ -36,7 +36,7 @@ Il CRL è il livello sostenuto dall'asse critico più debole applicabile. Non è
 | Impostazioni / contesto professionale | **4** | INTEGRATED | CURRENT | QL-2 ancora da eseguire |
 | Account / MFA / sessioni | **5** | QUALIFIED | **STALE** | qualification storica da revalidare sull'RC corrente |
 | Copilota docente | **4** | INTEGRATED | CURRENT | QL-4 + HUMAN_USE mancanti |
-| Contextual Voice Capture | **3** | DEFERRED | CURRENT | fuori dal release core fino a nuova autorizzazione |
+| Contextual Voice Capture | **2** | DEFERRED | CURRENT | fuori dal release core fino a nuova autorizzazione |
 | Institutional Configurator | **1** | CONDITIONAL | CURRENT | subordinato a pilot istituzionale autorizzato |
 
 ## Evidence nuova — Orario 2026-10-03
