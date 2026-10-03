@@ -662,7 +662,7 @@ test('Android OCR exposes bounded progress before the preview and keeps manual U
 
 
 test('mixed PDF progress uses raster position without exposing implementation jargon', () => {
-  const label = localOcrProgressLabel({ progress: 0.42, rasterIndex: 1, rasterTotal: 2 })
+  const label = localOcrProgressLabel({ status: 'recognizing text', progress: 0.42, rasterIndex: 1, rasterTotal: 2 })
   assert.equal(label, 'Sto leggendo l’orario… 42% · pagina 2/2')
   assert.doesNotMatch(label, /\b(?:OCR|raster|parser|fallback|text layer)\b/i)
 })
