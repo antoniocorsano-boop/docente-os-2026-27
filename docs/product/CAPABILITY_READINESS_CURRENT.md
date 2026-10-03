@@ -100,6 +100,6 @@ Il livello storico non viene retrocesso; la freshness viene però correttamente 
 
 Il sistema resta in **completion and maturation mode**:
 
-`qualification → HUMAN_USE → recovery/runtime receipts → RC → sustained pilot`
+`rebaseline → RC freeze → qualification/HUMAN_USE sullo SHA RC → recovery/runtime receipts → sustained pilot`
 
 Non si apre un nuovo feature train per aumentare artificialmente il numero di capability.
