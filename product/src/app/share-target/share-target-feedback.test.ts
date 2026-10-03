@@ -688,3 +688,32 @@ test('automatic timetable extraction keeps the preview read-only until manual re
   assert.ok(clearAt > visualStart)
   assert.ok(automaticAt > clearAt)
 })
+
+
+test('raster preparation time is charged to the shared OCR deadline', () => {
+  const loopAt = timetableIntake.indexOf('for (const [regionIndex, region] of visualRegions.entries())')
+  const copyAt = timetableIntake.indexOf('const localPage = copyPageRegionForLocalOcr(source, region)', loopAt)
+  const budgetAt = timetableIntake.indexOf('const timeoutMs = remainingLocalOcrBudgetMs(localOcrDeadlineAt)', loopAt)
+  assert.ok(loopAt >= 0)
+  assert.ok(copyAt > loopAt)
+  assert.ok(budgetAt > copyAt)
+})
+
+test('OCR progress stays indeterminate until text recognition begins', () => {
+  const bootstrap = localOcrProgressLabel({
+    status: 'loading tesseract core',
+    progress: 0.88,
+    rasterIndex: 0,
+    rasterTotal: 2,
+  })
+  assert.equal(bootstrap, 'Sto preparando la lettura dell’orario… pagina 1/2')
+  assert.doesNotMatch(bootstrap, /%/)
+
+  const recognition = localOcrProgressLabel({
+    status: 'recognizing text',
+    progress: 0.42,
+    rasterIndex: 1,
+    rasterTotal: 2,
+  })
+  assert.equal(recognition, 'Sto leggendo l’orario… 42% · pagina 2/2')
+})
