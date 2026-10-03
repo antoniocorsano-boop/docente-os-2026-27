@@ -24,6 +24,17 @@ export type LocalOcrProgress = Readonly<{
 export const LOCAL_OCR_MAX_EDGE = 1200
 export const LOCAL_OCR_TIMEOUT_MS = 30_000
 
+export function clearWorkerPromiseIfCurrent<T>(
+  current: Promise<T> | null,
+  expected: Promise<T>,
+): Promise<T> | null {
+  return current === expected ? null : current
+}
+
+export function remainingLocalOcrBudgetMs(deadlineAtMs: number, nowMs = Date.now()): number {
+  return Math.max(0, Math.floor(deadlineAtMs - nowMs))
+}
+
 let workerPromise: Promise<Worker> | null = null
 const progressListeners = new Set<(progress: LocalOcrProgress) => void>()
 
@@ -76,7 +87,7 @@ export function withLocalOcrDeadline<T>(
     const timer = setTimeout(() => {
       if (settled) return
       settled = true
-      void Promise.resolve(onTimeout()).catch(() => undefined)
+      void Promise.resolve().then(onTimeout).catch(() => undefined)
       reject(new LocalDocumentOcrTimeoutError(timeoutMs))
     }, timeoutMs)
 
@@ -180,10 +191,13 @@ async function createLocalWorker(): Promise<Worker> {
 
 async function worker(): Promise<Worker> {
   if (!workerPromise) {
-    workerPromise = createLocalWorker().catch((error) => {
-      workerPromise = null
+    const pending = createLocalWorker()
+    let guarded: Promise<Worker>
+    guarded = pending.catch((error) => {
+      workerPromise = clearWorkerPromiseIfCurrent(workerPromise, guarded)
       throw error
     })
+    workerPromise = guarded
   }
   return workerPromise
 }
@@ -215,7 +229,7 @@ export async function recognizeLocalDocumentImage(input: {
       timeoutMs,
       async () => {
         timedOut = true
-        workerPromise = null
+        workerPromise = clearWorkerPromiseIfCurrent(workerPromise, pendingWorker)
         const current = instance ?? await pendingWorker.catch(() => null)
         await current?.terminate()
       },
