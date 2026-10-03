@@ -4,8 +4,8 @@
   "model_version": "1.0",
   "system": "Docente OS",
   "canonical_branch": "develop",
-  "as_of": "2026-10-01",
-  "baseline_sha": "a59cc21e01b1955514e946fa487a50712a004857",
+  "as_of": "2026-10-03",
+  "baseline_sha": "57743e9d395ae5d739ca89e9afbdbb3a7edf875d",
   "rules": {
     "aggregate": "lowest_applicable_critical_axis",
     "percentages_forbidden": true,
@@ -30,7 +30,7 @@
       "name": "Share Target → importazione Orario con minimizzazione locale",
       "crl": 5,
       "status": "QUALIFIED",
-      "freshness": "CURRENT",
+      "freshness": "STALE",
       "axes": {
         "F": 5,
         "UX": 5,
@@ -57,9 +57,11 @@
         "Codex final review: no major issues"
       ],
       "open_findings": [
-        "Operational Security hosted X5 fixture failure remains external to this capability"
+        "The historical CRL-5 qualification remains valid evidence, but the import journey changed materially after PR #640 through local-first document understanding and the direct-edit/optional-import redesign.",
+        "Generic Android PWA installation/share-sheet behavior is not covered by the historical Share→Orario qualification.",
+        "Operational Security hosted X5 fixture failure remains external to this capability."
       ],
-      "next_promotion_criterion": "Runtime/pilot evidence of repeated real teacher use and recovery sufficient for CRL-6."
+      "next_promotion_criterion": "Revalidate the current Share→Orario journey on one exact head, including Android share-sheet entry, local-first extraction/fallback, review/apply, recovery and real-device HUMAN_USE before restoring CURRENT freshness or considering CRL-6."
     },
     {
       "capability_id": "DOS-TIMETABLE",
@@ -78,30 +80,28 @@
         "O": 4,
         "K": 5
       },
-      "verified_on": "2026-09-30",
-      "verified_baseline": "74290511ee58a6b61652160463461527e3e0f57a",
+      "verified_on": "2026-10-03",
+      "verified_baseline": "57743e9d395ae5d739ca89e9afbdbb3a7edf875d",
       "evidence": [
-        "docs/product/audits/DOS_CRM_AUDIT_ORARIO_2026-09-30.md",
+        "docs/product/audits/DOS_CRM_REBASELINE_2026-10-03.md",
         "docs/architecture/TIMETABLE_CANONICAL_SPEC.md",
-        "docs/product/ORARIO_DAILY_COCKPIT_CONTRACT.md",
-        "PR #38 shared Cattedra",
-        "PR #46 guidance map + manual class presence",
-        "PR #48 class context",
-        "PR #94 Timetable + Calendar composition",
-        "PR #490 in-force timetable fallback",
-        "PR #612 Cattedra lifecycle without timetable side effects",
-        "PR #625 end-to-end timetable import",
-        "PR #640 Share Target minimized timetable import",
-        "QL-1 technical qualification PR #643 merged",
-        "QL-1 qualified exact head eda319ec545d5ad37104882d5224c020ebe302dc",
-        "QL-1 Human Review PASS; human_use=NOT_RUN"
+        "PR #663 merged: direct edit with effective-from date, local-first document understanding and timetable-first hierarchy",
+        "PR #664 exact head 6150cd260fd8574a5e16a6fcf58588bcba5b6b0d",
+        "PR #664 merge commit 57743e9d395ae5d739ca89e9afbdbb3a7edf875d",
+        "Product CI PASS on #664 exact head",
+        "Browser Certification PASS on #664 exact head",
+        "HVA full: 69 passed",
+        "WCAG automated assurance: 30 passed",
+        "timetable-import-real-fixture.spec.mjs PASS mobile + desktop",
+        "timetable-mobile-direct-edit.spec.mjs PASS mobile",
+        "Human Interaction Model, Design Policy, TRAMA, ASVS, MFA, P6, X4 and CodeRabbit PASS"
       ],
       "open_findings": [
-        "Whole-capability HUMAN_USE evidence is not current.",
-        "No recent complete operational receipt covers manual edit, import/review/apply, day/week use and recovery together.",
-        "QL-1 now provides current exact-head technical qualification + Human Review, but task-based HUMAN_USE remains pending."
+        "Task-based HUMAN_USE on the current mobile timetable remains pending.",
+        "CRL-5 still requires one capability-level qualification receipt covering direct edit/version activation, optional import/review/apply, day/week use and recovery on one exact release SHA.",
+        "Sustained operational evidence is still insufficient for CRL-6."
       ],
-      "next_promotion_criterion": "Create and pass DOS-TIMETABLE-QUALIFICATION on one exact SHA with Browser Certification, targeted HUMAN_USE and runtime/recovery receipt."
+      "next_promotion_criterion": "Complete current task-based HUMAN_USE and one exact-head DOS-TIMETABLE qualification receipt covering direct edit/version activation, optional import/review/apply and recovery before any CRL-5 promotion."
     },
     {
       "capability_id": "DOS-TODAY-NEXT",
@@ -499,11 +499,154 @@
         "Institution binding, consent lifecycle, tenant isolation and executable security/data-plane behavior are not implemented; non-knowledge axes remain at DEFINED level."
       ],
       "next_promotion_criterion": "Authorize a concrete institutional pilot before implementing and qualifying tenant/provider policy."
+    },
+    {
+      "capability_id": "DOS-PWA-DEVICE-INTAKE",
+      "domain": "Accesso dispositivo",
+      "name": "PWA installabile + ingresso documentale dal dispositivo",
+      "crl": 3,
+      "status": "IMPLEMENTED",
+      "freshness": "CURRENT",
+      "axes": {
+        "F": 4,
+        "UX": 3,
+        "D": 4,
+        "S": 4,
+        "I": 4,
+        "Q": 4,
+        "O": 3,
+        "K": 4
+      },
+      "verified_on": "2026-10-03",
+      "verified_baseline": "57743e9d395ae5d739ca89e9afbdbb3a7edf875d",
+      "evidence": [
+        "docs/product/audits/DOS_CRM_REBASELINE_2026-10-03.md",
+        "docs/product/PWA_SHARE_TARGET_INTAKE_CANONICAL.md",
+        "product/src/app/manifest.ts",
+        "product/public/sw.js",
+        "product/src/components/pwa/PwaServiceWorkerRegistration.tsx",
+        "product/src/components/pwa/PwaInstallPrompt.tsx",
+        "product/src/app/share-target/page.tsx",
+        "product/src/app/share-target/share-target-staging.ts",
+        "PWA installability/share-target regression tests in Product CI",
+        "PR #664: install prompt suppressed from /orario to avoid covering the primary task"
+      ],
+      "open_findings": [
+        "No autonomous real-device qualification yet proves install, update, launch, Android share-sheet discovery, intake and recovery as one journey.",
+        "Observed real-device friction means UX and operability remain below integrated/qualified level.",
+        "The CRL-5 DOS-TT-SHARE-IMPORT evidence covers one governed destination and must not be generalized to the whole PWA/device-intake capability."
+      ],
+      "next_promotion_criterion": "Pass an Android real-device qualification covering install/update, share-sheet entry, staging/routing, cancellation/recovery and at least the supported Knowledge/Calendar/Orario destinations before CRL-4/5 reassessment."
+    },
+    {
+      "capability_id": "DOS-MATERIALS",
+      "domain": "Didattica",
+      "name": "Materiali pronti / lesson materials",
+      "crl": 4,
+      "status": "INTEGRATED",
+      "freshness": "CURRENT",
+      "axes": {
+        "F": 5,
+        "UX": 4,
+        "D": 4,
+        "S": 4,
+        "I": 5,
+        "Q": 4,
+        "O": 4,
+        "K": 5
+      },
+      "verified_on": "2026-10-03",
+      "verified_baseline": "57743e9d395ae5d739ca89e9afbdbb3a7edf875d",
+      "evidence": [
+        "docs/product/audits/DOS_CRM_REBASELINE_2026-10-03.md",
+        "docs/architecture/CLASS_PREPARED_MATERIALS_CONTRACT.md",
+        "product/src/app/materiali/prossima/page.tsx",
+        "product/src/app/materiali/domani/page.tsx",
+        "lesson-materials.spec.mjs PASS mobile + desktop in PR #664 full HVA",
+        "tomorrow-materials.spec.mjs PASS mobile + desktop in PR #664 full HVA",
+        "LessonPreparationManifest materialSlots and governed Knowledge/Atlas suggestions are reused rather than creating a parallel material store"
+      ],
+      "open_findings": [
+        "No capability-specific qualification receipt covers source/provenance, missing/degraded resources, recovery and teacher HUMAN_USE as one journey.",
+        "Runtime use over multiple real lessons/days is not yet sufficient for CRL-6."
+      ],
+      "next_promotion_criterion": "Qualify the whole materials journey from governed source/provenance through next/tomorrow lesson use, degraded/missing-resource recovery and HUMAN_USE on one exact SHA."
+    },
+    {
+      "capability_id": "DOS-OBSERVATION-EVIDENCE",
+      "domain": "Didattica",
+      "name": "Observation / Teaching Evidence",
+      "crl": 3,
+      "status": "IMPLEMENTED",
+      "freshness": "CURRENT",
+      "axes": {
+        "F": 4,
+        "UX": 3,
+        "D": 5,
+        "S": 5,
+        "I": 4,
+        "Q": 4,
+        "O": 3,
+        "K": 4
+      },
+      "verified_on": "2026-10-03",
+      "verified_baseline": "57743e9d395ae5d739ca89e9afbdbb3a7edf875d",
+      "evidence": [
+        "docs/product/audits/DOS_CRM_REBASELINE_2026-10-03.md",
+        "docs/product/TEACHING_EVIDENCE_EXPERIENCE_CONTRACT.md",
+        "product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-observe-client.tsx",
+        "product/src/app/classi/[sectionId]/lezioni/lesson-observation-model.test.ts",
+        "product/src/core/application/record-teaching-session-with-evidence.ts",
+        "product/src/core/application/record-teaching-session-with-evidence.test.ts",
+        "Atomic replay/idempotency/security hardening migrations 0055-0057"
+      ],
+      "open_findings": [
+        "The observe→record browser journey is not yet qualified end-to-end on mobile and desktop.",
+        "Current UX/HUMAN_USE evidence for in-lesson micro-observation is insufficient for CRL-4/5.",
+        "The experience contract was stale and still described the UI as not authorized; governance text must be realigned to the implemented state."
+      ],
+      "next_promotion_criterion": "Run a dedicated browser/HUMAN_USE qualification for Observe→Registra proving mobile task cost, privacy fail-closed behavior, atomic persistence, replay/recovery and ex-post provenance."
+    },
+    {
+      "capability_id": "DOS-CURRICULUM-INTAKE",
+      "domain": "Curricolo",
+      "name": "Arena → curriculum intake/revalidation",
+      "crl": 4,
+      "status": "CONDITIONAL",
+      "freshness": "CURRENT",
+      "axes": {
+        "F": 4,
+        "UX": 4,
+        "D": 5,
+        "S": 5,
+        "I": 4,
+        "Q": 4,
+        "O": 4,
+        "K": 4
+      },
+      "verified_on": "2026-10-03",
+      "verified_baseline": "57743e9d395ae5d739ca89e9afbdbb3a7edf875d",
+      "evidence": [
+        "docs/product/audits/DOS_CRM_REBASELINE_2026-10-03.md",
+        "product/src/app/classi/[sectionId]/curricolo-arena/page.tsx",
+        "product/src/app/classi/[sectionId]/curricolo-arena/actions.ts",
+        "product/src/app/classi/[sectionId]/curricolo-arena/curriculum-arena-intake-client.tsx",
+        "SupabaseAnnualPlanCurriculumRepository",
+        "CML handoff v2 acceptance, structural footprint and target-scope guards",
+        "ECO-02 pilot scope is fail-closed to the configured Technology 2C context",
+        "Local upload cannot promote institutional APPROVED authority"
+      ],
+      "open_findings": [
+        "The current runtime is intentionally pilot-scoped; this record must not be generalized beyond the authorized ECO-02 Technology 2C context.",
+        "The older ECO-01 mapping document still describes a non-operational prototype and requires governance realignment.",
+        "A server-verifiable Arena approval/revalidation transport is still required before institutional authority can be promoted."
+      ],
+      "next_promotion_criterion": "Within the authorized pilot, produce an exact-head browser/runtime receipt for intake, duplicate/same-footprint behavior, mismatch rejection and governed revalidation. Generalization requires a separately authorized Arena runtime transport."
     }
   ],
   "qualification_roadmap": {
     "version": 1,
-    "updated_on": "2026-10-01",
+    "updated_on": "2026-10-03",
     "source": "docs/product/DOS_CRM_QUALIFICATION_ROADMAP.md",
     "remediation": [
       {
@@ -560,7 +703,8 @@
           "DOS-CALENDAR",
           "DOS-LESSON-PREP",
           "DOS-TEACHING-SESSION",
-          "DOS-PLAN-UDA"
+          "DOS-PLAN-UDA",
+          "DOS-OBSERVATION-EVIDENCE"
         ],
         "status": "TECHNICAL_PASS_HUMAN_USE_PENDING",
         "evidence": [
@@ -598,7 +742,8 @@
         "capability_ids": [
           "DOS-KNOWLEDGE",
           "DOS-LESSON-PREP",
-          "DOS-COPILOT"
+          "DOS-COPILOT",
+          "DOS-MATERIALS"
         ],
         "status": "PLANNED"
       },
@@ -617,7 +762,7 @@
     ]
   },
   "coverage_boundary": {
-    "scope": "current DOS-CRM core/release-oriented capability register",
+    "scope": "current DOS-CRM core/release-oriented capability register, including implemented cross-cutting and pilot-scoped capabilities audited on 2026-10-03",
     "included_capability_ids": [
       "DOS-TT-SHARE-IMPORT",
       "DOS-TIMETABLE",
@@ -631,22 +776,13 @@
       "DOS-ACCOUNT-SECURITY",
       "DOS-COPILOT",
       "DOS-VOICE",
-      "DOS-INSTITUTIONAL-CONFIG"
+      "DOS-INSTITUTIONAL-CONFIG",
+      "DOS-PWA-DEVICE-INTAKE",
+      "DOS-MATERIALS",
+      "DOS-OBSERVATION-EVIDENCE",
+      "DOS-CURRICULUM-INTAKE"
     ],
-    "governed_capabilities_not_yet_registered": [
-      {
-        "capability_id": "DOS-CURRICULUM-INTAKE",
-        "status": "NEEDS_REAUDIT"
-      },
-      {
-        "capability_id": "DOS-MATERIALS",
-        "status": "NEEDS_REAUDIT"
-      },
-      {
-        "capability_id": "DOS-OBSERVATION-EVIDENCE",
-        "status": "NEEDS_REAUDIT"
-      }
-    ],
-    "rule": "Omission from capabilities[] is not evidence of absence or readiness; governed capabilities outside the current register must surface as NEEDS_REAUDIT until audited."
+    "governed_capabilities_not_yet_registered": [],
+    "rule": "All governed product capabilities identified by the 2026-10-03 audit are now represented. Experimental/non-production-authorized spikes are not promoted into the capability register."
   }
 }
