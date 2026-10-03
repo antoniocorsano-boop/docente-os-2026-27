@@ -130,9 +130,7 @@
   .timetable-view .timetableGridCard{
     padding:6px 0 0;
     border:0;
-    border-radius:0;
     background:transparent;
-    box-shadow:none;
   }
   .timetable-view .timetableGridCard .timetableCardHeading{display:none}
 
@@ -159,7 +157,7 @@
   .timetableSurface .dayNavigator button{
     width:38px;
     height:38px;
-    border-radius:12px;
+    border-radius:var(--radius-sm);
   }
   .timetableSurface .dayNavigator strong{
     min-width:68px;
