@@ -146,4 +146,4 @@ Interpretazione:
 
 ## Regola operativa
 
-Il lavoro successivo deve essere **qualification/consolidation-first**. Questo audit non autorizza un nuovo feature train.
+Il lavoro successivo deve essere **RC-first, poi qualification/HUMAN_USE sullo SHA congelato**. Questo audit non autorizza un nuovo feature train.
