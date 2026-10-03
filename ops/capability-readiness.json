@@ -59,6 +59,7 @@
       "open_findings": [
         "The historical CRL-5 qualification remains valid evidence, but the import journey changed materially after PR #640 through local-first document understanding and the direct-edit/optional-import redesign.",
         "Generic Android PWA installation/share-sheet behavior is not covered by the historical Share→Orario qualification.",
+        "Current Beta runtime reports `Timetable visual extractor: UNAVAILABLE`; native/local-first paths remain available, but the governed remote visual fallback is not operational on the current deployment.",
         "Operational Security hosted X5 fixture failure remains external to this capability."
       ],
       "next_promotion_criterion": "Revalidate the current Share→Orario journey on one exact head, including Android share-sheet entry, local-first extraction/fallback, review/apply, recovery and real-device HUMAN_USE before restoring CURRENT freshness or considering CRL-6."
@@ -398,7 +399,8 @@
       ],
       "open_findings": [
         "ASVS L1/L2 product-wide mapping remains PARTIAL.",
-        "Post-qualification Account/MFA/session changes make the historical CRL-5 evidence STALE until whole-capability revalidation on a current exact head."
+        "Post-qualification Account/MFA/session changes make the historical CRL-5 evidence STALE until whole-capability revalidation on a current exact head.",
+        "Current Beta runtime emits the Supabase warning that a user object sourced from getSession()/auth state storage may be unauthenticated; the concrete call sites and authorization impact must be reviewed before restoring CURRENT freshness."
       ],
       "next_promotion_criterion": "Revalidate Account/MFA/session behavior on the release candidate exact head before restoring CURRENT freshness; CRL-6 requires sustained operational/recovery evidence."
     },
