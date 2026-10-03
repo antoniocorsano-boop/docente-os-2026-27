@@ -16,6 +16,12 @@ test('Orario mobile: PDF tabellare reale sanitizzato ricostruisce tutte le lezio
 
   await expect(page.getByRole('heading', { name: 'Aggiorna orario', level: 1 })).toBeVisible()
 
+  const optionalImport = page.locator('details.timetableOptionalImport')
+  await expect(optionalImport, 'L’importazione deve restare disponibile come percorso opzionale.').toBeVisible()
+  await expect(optionalImport, 'L’importazione non deve competere con la modifica diretta iniziale.').not.toHaveAttribute('open', '')
+  await optionalImport.locator(':scope > summary').click()
+  await expect(optionalImport).toHaveAttribute('open', '')
+
   const fileInput = page.locator('.timetableLocalFilePicker input[type="file"]')
   await expect(fileInput).toBeAttached()
   await fileInput.setInputFiles({
