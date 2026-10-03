@@ -67,6 +67,7 @@ test('mobile timetable prioritizes the grid and direct editing', () => {
   assert.match(timetableExperience, /contentClassName=\{\`timetableSurface timetable-\$\{mode\}\`\}/)
   assert.match(timetableGrid, /readOnly \? setFocusedSlotId\(slot\.id\) : openOccupiedCell\(slot\)/)
   assert.match(timetableGrid, /<summary>Cambia giorno o orario<\/summary>/)
+  assert.match(timetableGrid, /<summary>Dettagli opzionali<\/summary>/)
   assert.match(timetableCss, /\.timetableSurface \.timetableHero\{display:none\}/)
   assert.match(timetableCss, /\.timetable-view \.timetableModeNav\{display:none\}/)
   assert.match(timetableCss, /\.timetableSurface \.printTimetableButton\{display:none\}/)
