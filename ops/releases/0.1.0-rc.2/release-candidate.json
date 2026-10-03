@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "releaseVersion": "0.1.0-rc.2",
+  "releaseState": "DRAFT",
+  "candidateSha": "617b4f8901259ce2318ce721236241d7681b1c9c",
+  "testedPrHeadSha": "04a168e16f49f6ebe4e96624f77a73643844bf6f",
+  "testedProductTreeSha": "4c31de49dcbccb44d3d53fa30590d002bd9cd691",
+  "sourceBranch": "develop",
+  "freezeDate": "2026-10-03",
+  "tag": "v0.1.0-rc.2",
+  "scope": {
+    "maturity": "M4_ADVANCED_CONTROLLED_PILOT",
+    "audience": "single-owner teacher pilot / release-candidate validation",
+    "betaUrl": "https://docente-os-2026-27-beta.onrender.com",
+    "betaDeployId": null,
+    "betaServedSha": "617b4f8901259ce2318ce721236241d7681b1c9c",
+    "betaExactShaVerifiedBy": "P6 Performance Baseline Gate run 37119411841 / api/build-info",
+    "productionPromotionAuthorized": false,
+    "realProfessionalDataAdmissionChanged": false
+  },
+  "changedCapabilities": [
+    "DOS-TIMETABLE",
+    "DOS-TT-SHARE-IMPORT",
+    "DOS-PWA-DEVICE-INTAKE"
+  ],
+  "gateMatrix": [
+    {
+      "gate": "Release Engineering Policy",
+      "status": "PASS",
+      "runId": 37119411874,
+      "sha": "617b4f8901259ce2318ce721236241d7681b1c9c"
+    },
+    {
+      "gate": "Product CI",
+      "status": "PASS",
+      "runId": 37119411846,
+      "sha": "617b4f8901259ce2318ce721236241d7681b1c9c"
+    },
+    {
+      "gate": "Dependency Security Gate",
+      "status": "PASS",
+      "runId": 37119411857,
+      "sha": "617b4f8901259ce2318ce721236241d7681b1c9c"
+    },
+    {
+      "gate": "Human Interaction Model",
+      "status": "PASS",
+      "runId": 37119411842,
+      "sha": "617b4f8901259ce2318ce721236241d7681b1c9c"
+    },
+    {
+      "gate": "P6 Performance",
+      "status": "PASS",
+      "runId": 37119411841,
+      "sha": "617b4f8901259ce2318ce721236241d7681b1c9c",
+      "statusContext": "p6-performance/render-beta"
+    },
+    {
+      "gate": "Beta exact SHA",
+      "status": "PASS",
+      "runId": 37119411841,
+      "sha": "617b4f8901259ce2318ce721236241d7681b1c9c",
+      "evidence": "api/build-info served the candidate exact SHA before P6 execution"
+    },
+    {
+      "gate": "Browser Certification Orchestrator",
+      "status": "EQUIVALENT",
+      "runId": 37117410949,
+      "sha": "90f8433cb5ce62ab173b6e3bf68a1461676ec727",
+      "evidence": "candidate differs from the independently reviewed browser-certified product only by package version identity; no UI/runtime behavior change after #671"
+    },
+    {
+      "gate": "Human + Visual Acceptance",
+      "status": "EQUIVALENT",
+      "runId": 37117410949,
+      "sha": "90f8433cb5ce62ab173b6e3bf68a1461676ec727",
+      "evidence": "same rationale as Browser Certification equivalence"
+    },
+    {
+      "gate": "WCAG 2.2 AA automated assurance",
+      "status": "EQUIVALENT",
+      "runId": 37117410949,
+      "sha": "90f8433cb5ce62ab173b6e3bf68a1461676ec727",
+      "evidence": "same rationale as Browser Certification equivalence"
+    },
+    {
+      "gate": "Design Policy",
+      "status": "EQUIVALENT",
+      "sha": "90f8433cb5ce62ab173b6e3bf68a1461676ec727",
+      "evidence": "no design change after #671 final-head"
+    },
+    {
+      "gate": "TRAMA Perceptible Write",
+      "status": "EQUIVALENT",
+      "sha": "90f8433cb5ce62ab173b6e3bf68a1461676ec727",
+      "evidence": "teacher-facing copy final-head already PASS; candidate changes only package identity"
+    },
+    {
+      "gate": "ASVS 5.0 Assurance",
+      "status": "EQUIVALENT",
+      "sha": "90f8433cb5ce62ab173b6e3bf68a1461676ec727",
+      "evidence": "no security implementation change after #671 final-head"
+    },
+    {
+      "gate": "GitHub Copilot independent review",
+      "status": "PASS",
+      "sha": "90f8433cb5ce62ab173b6e3bf68a1461676ec727",
+      "evidence": "fourth independent review 5400407980: Findings: None"
+    },
+    {
+      "gate": "Operational Security",
+      "status": "PENDING_CERTIFICATION",
+      "evidence": "must be current before RC -> CERTIFIED"
+    },
+    {
+      "gate": "Production Readiness Review",
+      "status": "PENDING_CERTIFICATION",
+      "evidence": "required before RC -> CERTIFIED / promotion"
+    },
+    {
+      "gate": "Production Promotion Contract",
+      "status": "PENDING_PROMOTION",
+      "evidence": "RC freeze does not authorize Production"
+    }
+  ],
+  "migrations": {
+    "previousCertifiedSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "currentRuntimeContract": "0080_timetable_import_same_id_live_source_revision",
+    "lineageStatusOnBeta": "PASS",
+    "addedSincePreviousCertified": [
+      "0020_timetable_import_g1_2_persistence.sql",
+      "0021_timetable_import_g1_2_review_hardening.sql",
+      "0023_annual_plan_curriculum_adoptions.sql",
+      "0024_annual_plan_curriculum_adoption_rpc.sql",
+      "0035_textbook_adoption_foundation.sql",
+      "0036_textbook_adoption_lifecycle_hardening.sql",
+      "0037_lesson_design_extensions.sql",
+      "0038_lesson_design_tool_deduplication.sql",
+      "0039_cml_curriculum_feedback_outbox.sql",
+      "0040_knowledge_real_corpus_categories.sql",
+      "0041_mim_textbook_cache.sql",
+      "0042_mim_textbook_edge_boundary.sql",
+      "0043_mim_textbook_oidc_only.sql",
+      "0044_teaching_session_unallocated_evidence.sql",
+      "0045_teaching_session_drive_outbox.sql",
+      "0046_teaching_session_drive_outbox_indexes.sql",
+      "0047_google_oauth_connections.sql",
+      "0048_teaching_session_drive_outbox_status.sql",
+      "0049_workspace_pinned_resources.sql",
+      "0050_workspace_selection_fail_closed.sql",
+      "0051_mfa_aal2_enforcement.sql",
+      "0052_teaching_session_registration_idempotency.sql",
+      "0053_teaching_evidence_atomic_persistence.sql",
+      "0054_teaching_evidence_cross_boundary_race_hardening.sql",
+      "0055_teaching_evidence_replay_hardening.sql",
+      "0056_teaching_evidence_null_boundary.sql",
+      "0057_teaching_evidence_atomic_authorization.sql",
+      "0058_knowledge_semantic_foundation.sql",
+      "0059_knowledge_semantic_advisor_hardening.sql",
+      "0060_teaching_session_timetable_fallback.sql",
+      "0061_lesson_design_governed_lifecycle.sql",
+      "0062_teaching_adjustment_extension_kind.sql",
+      "0063_lesson_preparation_approvals.sql",
+      "0064_quarantine_unverified_curriculum_approvals.sql",
+      "0065_eco02_provisional_curriculum_intake_rpc.sql",
+      "0066_eco02_lesson_preparation_approval_rpc.sql",
+      "0067_dos_cal_01_knowledge_calendar_source.sql",
+      "0068_dos_cal_01_link_integrity.sql",
+      "0069_lesson_design_tool_reproposal_after_dismissal.sql",
+      "0070_teaching_evidence_registration_key_disambiguation.sql",
+      "0071_teaching_evidence_receipt_column_disambiguation.sql",
+      "0072_teaching_evidence_receipt_values_disambiguation.sql",
+      "0073_teaching_evidence_receipt_values_regex_fix.sql",
+      "0074_runtime_schema_contract.sql",
+      "0075_runtime_migration_lineage_contract.sql",
+      "0076_lesson_design_atlas_source_kind.sql",
+      "0077_quarantine_legacy_timetable_import_apply.sql",
+      "0078_timetable_import_completion_boundary.sql",
+      "0079_knowledge_full_text_bounded_search.sql",
+      "0080_timetable_import_same_id_live_source_revision.sql"
+    ],
+    "destructiveRollbackAllowed": false,
+    "rollbackPolicy": "FORWARD_RECOVERY_UNLESS_PROVEN_RESTORE_PATH"
+  },
+  "previousCertifiedSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+  "rollbackTargetSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+  "knownResiduals": [
+    "Physical Android validation with the representative real timetable PDF remains required: Corsano -> 14 lessons -> review -> confirm -> persistence.",
+    "PWA installed/standalone and Share Target cleanup success/error/cancel still require current real-device evidence before the mobile lane is fully closed.",
+    "WCAG automated assurance is PASS/equivalent; manual and assistive evidence required by the maturity program remains incomplete.",
+    "ASVS assurance gate evidence does not constitute full ASVS L2 verification.",
+    "Production certification and promotion remain separate human decisions."
+  ],
+  "humanDecision": {
+    "decision": "AUTHORIZE_RC_FREEZE_PREPARATION",
+    "decisionDate": "2026-10-03",
+    "decisionSource": "EXPLICIT_HUMAN_OWNER_AUTHORIZATION_IN_CHAT",
+    "productionPromotionAuthorized": false,
+    "certificationAuthorized": false,
+    "freezeCompleted": false
+  },
+  "releaseNotesPath": "docs/product/releases/0.1.0-rc.2.md",
+  "changelogPath": "CHANGELOG.md",
+  "freezeStatus": "PENDING_TAG",
+  "tagStatus": "NOT_CREATED",
+  "githubReleaseStatus": "NOT_CREATED",
+  "freezeReceipt": null
+}
