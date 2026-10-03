@@ -154,14 +154,14 @@ export async function TimetableExperience({
       </section>
 
       <details className="timetableVersionDetails timetableOptionalImport">
-        <summary><div><strong>Importa da PDF o foto</strong><span>Opzionale · usa il documento solo se vuoi tentare la compilazione automatica</span></div></summary>
+        <summary><div><strong>Importa da PDF o foto</strong><span>Sperimentale · opzionale · non serve per usare o aggiornare l’orario</span></div></summary>
         <div className="timetableVersionDetailsBody">
       <section className="timetableCard timetableImportCard" id="importa-orario" aria-labelledby="import-title">
         <div className="timetableCardHeading">
           <span>02</span>
           <div>
             <h2 id="import-title">Importa da documento</h2>
-            <p>Carica il PDF o una foto dell’orario. Docente OS prepara la proposta; tu controlli e poi decidi se applicarla alla bozza.</p>
+            <p>Percorso sperimentale: Docente OS può tentare di preparare una proposta dal documento. Se non riesce, continua a modificare direttamente la griglia: l’importazione non è un prerequisito.</p>
           </div>
         </div>
 
