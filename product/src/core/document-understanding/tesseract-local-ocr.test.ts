@@ -52,10 +52,12 @@ test('drops unusable words and clamps confidence', () => {
 
 test('mobile OCR bounds raster work while preserving coordinate scale', () => {
   assert.equal(LOCAL_OCR_MAX_EDGE, 1000)
+  const bounded = localOcrDimensions(1800, 1200)
   assert.deepEqual(
-    localOcrDimensions(1800, 1200),
-    { width: 1000, height: 667, coordinateScale: 1.8 },
+    { width: bounded.width, height: bounded.height },
+    { width: 1000, height: 667 },
   )
+  assert.ok(Math.abs(bounded.coordinateScale - 1.8) < Number.EPSILON * 2)
   assert.deepEqual(
     localOcrDimensions(780, 540),
     { width: 780, height: 540, coordinateScale: 1 },
