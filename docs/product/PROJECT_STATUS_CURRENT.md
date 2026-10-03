@@ -244,13 +244,13 @@ Stato dove non esiste nuova evidence:
 
 ## 15. Priorità operative immediate
 
-1. completare HUMAN_USE task-based della QL-1 sul prodotto corrente;
-2. eseguire QL-2 Professional Context & Setup;
-3. eseguire QL-3 Knowledge to Lesson includendo Materiali;
-4. eseguire QL-4 Governed Copilot;
-5. qualificare PWA/device intake su Android reale e Observe→Registra come journey dedicato;
-6. revalidare Lesson Prep e Account/Security prima di ripristinare freshness CURRENT;
-7. congelare una **vera RC Docente OS** solo dopo questi blocker di qualification;
+1. congelare una **vera RC Docente OS** dalla linea `develop` rebaselined e verificata;
+2. eseguire sulla RC esatta la HUMAN_USE task-based della QL-1;
+3. eseguire QL-2 Professional Context & Setup sulla stessa linea RC, senza riaprire un feature train;
+4. eseguire QL-3 Knowledge to Lesson includendo Materiali e QL-4 Governed Copilot;
+5. qualificare PWA/device intake su Android reale e Observe→Registra come journey dedicati;
+6. revalidare Lesson Prep e Account/Security sullo SHA RC prima di ripristinare freshness CURRENT;
+7. raccogliere sustained runtime/pilot evidence e promuovere solo le capability realmente supportate;
 8. Voice/STT resta **DEFERRED** e Institutional Configurator/Curriculum generalizzato restano subordinati ad autorizzazione/pilot.
 
 ## 16. KPI principale
