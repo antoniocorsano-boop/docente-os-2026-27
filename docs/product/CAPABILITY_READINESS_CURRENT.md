@@ -82,7 +82,7 @@ Il livello storico non viene retrocesso; la freshness viene però correttamente 
 ## Finding runtime corrente
 
 - Beta #664 è LIVE sul merge `57743e9d395ae5d739ca89e9afbdbb3a7edf875d`.
-- Il fallback visuale remoto Orario risulta `UNAVAILABLE`: non blocca la modifica diretta, ma resta gap operativo del journey Share/Import.
+- Il diagnostico startup Orario riporta `UNAVAILABLE`, ma controlla una chiave più stretta di quella accettata dall'extractor runtime; la disponibilità reale del fallback remoto è quindi **non verificata** e il mismatch va corretto.
 - Il runtime Supabase emette un warning sull'affidabilità del `user` letto da `getSession()`: va eseguita root-cause analysis dei call site prima di ripristinare Account/Security a freshness CURRENT.
 
 ## Gap di completamento che restano
