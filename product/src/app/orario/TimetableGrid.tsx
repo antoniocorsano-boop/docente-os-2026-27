@@ -2,8 +2,9 @@
 
 import * as Dialog from '@radix-ui/react-dialog'
 import Link from 'next/link'
+import { BookOpen, ClipboardCheck, DraftingCompass, FlaskConical, Shapes } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import type { TimetablePresenceKind, TimetableSlot, TimetableSlotKind } from '@/core/domain/timetable'
+import type { TimetableActivityKind, TimetablePresenceKind, TimetableSlot, TimetableSlotKind } from '@/core/domain/timetable'
 import { addClassPresenceSlot, addLessonSlot, addSpecialSlot, deleteTimetableSlot, updateTimetableSlot } from './actions'
 import { buildTimetableGridRows, timetableCellKey, type TimetableGridPeriod } from './timetable-grid-model'
 import { isCurrentTimetableInterval, isCurrentTimetableRow, type TimetableMoment } from './timetable-operational-model'
@@ -40,6 +41,7 @@ type EditorState = {
   assignmentId: string
   manualClassLabel: string
   presenceKind: TimetablePresenceKind
+  activityKind: TimetableActivityKind
   room: string
   note: string
 }
@@ -51,6 +53,22 @@ const KIND_LABELS: Record<TimetableSlotKind, string> = {
   RECEPTION: 'Ricevimento',
   OTHER: 'Altro',
 }
+
+const ACTIVITY_LABELS: Record<TimetableActivityKind, string> = {
+  THEORY: 'Teoria',
+  DRAWING_PROJECT: 'Disegno / progetto',
+  PRACTICAL_LAB: 'Pratica / laboratorio',
+  ASSESSMENT: 'Verifica',
+  OTHER: 'Altra attività',
+}
+
+const ACTIVITY_ICONS = {
+  THEORY: BookOpen,
+  DRAWING_PROJECT: DraftingCompass,
+  PRACTICAL_LAB: FlaskConical,
+  ASSESSMENT: ClipboardCheck,
+  OTHER: Shapes,
+} as const
 
 const PRESENCE_LABELS: Record<TimetablePresenceKind, string> = {
   SUBSTITUTION: 'Supplenza',
@@ -96,14 +114,14 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
   const unresolvedAssignments = assignments.filter((assignment) => assignment.weeklyMinutes !== assignment.scheduledMinutes).length
 
   function openEmptyCell(weekday: number, startTime: string, endTime: string, ordinal: number | null) {
-    setEditor({ mode: 'create', slotId: null, weekday, startTime, endTime, ordinal, kind: 'LESSON', assignmentId: assignments[0]?.id ?? '', manualClassLabel: '', presenceKind: 'SUBSTITUTION', room: '', note: '' })
+    setEditor({ mode: 'create', slotId: null, weekday, startTime, endTime, ordinal, kind: 'LESSON', assignmentId: assignments[0]?.id ?? '', manualClassLabel: '', presenceKind: 'SUBSTITUTION', activityKind: 'THEORY', room: '', note: '' })
   }
 
   function openOccupiedCell(slot: TimetableSlot) {
     setEditor({
       mode: 'edit', slotId: slot.id, weekday: slot.weekday, startTime: slot.startTime, endTime: slot.endTime, ordinal: slot.ordinal,
       kind: slot.slotKind, assignmentId: slot.teachingAssignmentId ?? assignments[0]?.id ?? '', manualClassLabel: slot.manualClassLabel ?? '',
-      presenceKind: slot.presenceKind ?? 'SUBSTITUTION', room: slot.room ?? '', note: slot.note ?? '',
+      presenceKind: slot.presenceKind ?? 'SUBSTITUTION', activityKind: slot.activityKind ?? 'THEORY', room: slot.room ?? '', note: slot.note ?? '',
     })
   }
 
@@ -239,7 +257,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
                   <label><span>Fine</span><input name="endTime" type="time" value={editor.endTime} onChange={(event) => setEditor((current) => current ? { ...current, endTime: event.target.value } : current)} required /></label>
                 </div>
               </details>
-              {editor.kind === 'LESSON' ? <label className="editorWide"><span>Classe e disciplina della tua cattedra</span><select name="assignmentId" value={editor.assignmentId} onChange={(event) => setEditor((current) => current ? { ...current, assignmentId: event.target.value } : current)} required>{assignments.map((assignment) => <option key={assignment.id} value={assignment.id}>{assignment.label}{assignment.status === 'PROVISIONAL' ? ' · da confermare' : ''}</option>)}</select></label> : editor.kind === 'CLASS_PRESENCE' ? <><label><span>Classe</span><input name="manualClassLabel" maxLength={12} value={editor.manualClassLabel} onChange={(event) => setEditor((current) => current ? { ...current, manualClassLabel: event.target.value.toUpperCase() } : current)} placeholder="Es. 3B" required /></label><label><span>Tipo di presenza</span><select name="presenceKind" value={editor.presenceKind} onChange={(event) => setEditor((current) => current ? { ...current, presenceKind: event.target.value as TimetablePresenceKind } : current)}>{Object.entries(PRESENCE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></> : null}
+              {editor.kind === 'LESSON' ? <><label className="editorWide"><span>Classe e disciplina della tua cattedra</span><select name="assignmentId" value={editor.assignmentId} onChange={(event) => setEditor((current) => current ? { ...current, assignmentId: event.target.value } : current)} required>{assignments.map((assignment) => <option key={assignment.id} value={assignment.id}>{assignment.label}{assignment.status === 'PROVISIONAL' ? ' · da confermare' : ''}</option>)}</select></label><label className="editorWide"><span>Tipo di attività</span><select name="activityKind" value={editor.activityKind} onChange={(event) => setEditor((current) => current ? { ...current, activityKind: event.target.value as TimetableActivityKind } : current)}>{Object.entries(ACTIVITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><small className="editorFieldHint">Serve solo a distinguere l’attività con una piccola icona nell’orario.</small></label></> : editor.kind === 'CLASS_PRESENCE' ? <><label><span>Classe</span><input name="manualClassLabel" maxLength={12} value={editor.manualClassLabel} onChange={(event) => setEditor((current) => current ? { ...current, manualClassLabel: event.target.value.toUpperCase() } : current)} placeholder="Es. 3B" required /></label><label><span>Tipo di presenza</span><select name="presenceKind" value={editor.presenceKind} onChange={(event) => setEditor((current) => current ? { ...current, presenceKind: event.target.value as TimetablePresenceKind } : current)}>{Object.entries(PRESENCE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></> : null}
               <details className="editorScheduleDetails editorOptionalDetails editorWide">
                 <summary>Dettagli opzionali</summary>
                 <div className="editorScheduleGrid editorOptionalGrid">
@@ -282,7 +300,10 @@ function OccupiedCell({ slot, assignment, current, onClick }: { slot: TimetableS
     const classLabel = assignment?.classLabel ?? assignment?.label ?? 'Lezione'
     const disciplineLabel = assignment?.disciplineLabel ?? 'Lezione'
     const meta = [slot.room ? `Aula ${slot.room}` : null, slot.note].filter(Boolean).join(' · ')
-    return <button className={`occupiedTimetableCell kind-lesson ${current ? 'currentSlot' : ''}`} type="button" onClick={onClick} aria-label={`${classLabel}, ${disciplineLabel}, ${slot.startTime}–${slot.endTime}`}><span className="cellKind">Lezione</span><strong className="cellPrimary">{classLabel}</strong><span className="cellSecondary">{disciplineLabel}</span>{meta ? <small>{meta}</small> : null}{current ? <b className="cellNow">Adesso</b> : null}</button>
+    const activityKind = slot.activityKind ?? 'THEORY'
+    const ActivityIcon = ACTIVITY_ICONS[activityKind]
+    const activityLabel = ACTIVITY_LABELS[activityKind]
+    return <button className={`occupiedTimetableCell kind-lesson ${current ? 'currentSlot' : ''}`} type="button" onClick={onClick} aria-label={`${classLabel}, ${disciplineLabel}, ${activityLabel}, ${slot.startTime}–${slot.endTime}`}><span className="cellKind"><ActivityIcon className="cellActivityIcon" size={12} strokeWidth={1.5} aria-hidden="true" /><span className="srOnly">{activityLabel}</span></span><strong className="cellPrimary">{classLabel}</strong><span className="cellSecondary">{disciplineLabel}</span>{meta ? <small>{meta}</small> : null}{current ? <b className="cellNow">Adesso</b> : null}</button>
   }
   const title = KIND_LABELS[slot.slotKind]
   return <button className={`occupiedTimetableCell kind-${slot.slotKind.toLowerCase()} ${current ? 'currentSlot' : ''}`} type="button" onClick={onClick} aria-label={`${title}, ${slot.startTime}–${slot.endTime}`}><span className="cellKind">Impegno</span><strong className="cellPrimary">{title}</strong>{slot.note ? <span className="cellSecondary">{slot.note}</span> : null}{current ? <b className="cellNow">Adesso</b> : null}</button>
