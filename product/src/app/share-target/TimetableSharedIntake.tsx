@@ -5,9 +5,9 @@ import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerE
 import { getDocumentProxy } from 'unpdf'
 import { analyzeMinimizedTimetableImport, analyzeRasterTimetableImport, persistLocallyExtractedTimetableImport } from '@/app/orario/actions'
 import { rectFromPolygon } from '@/core/document-understanding/local-document-understanding'
-import { LOCAL_OCR_TIMEOUT_MS, LocalDocumentOcrTimeoutError, localOcrDimensions, recognizeLocalDocumentImage } from '@/core/document-understanding/tesseract-local-ocr'
+import { LOCAL_OCR_TIMEOUT_MS, LocalDocumentOcrTimeoutError, localOcrDimensions, recognizeLocalDocumentImage, remainingLocalOcrBudgetMs } from '@/core/document-understanding/tesseract-local-ocr'
 import { MAX_KNOWLEDGE_UPLOAD_BYTES } from '@/app/knowledge/upload-policy'
-import { chooseTimetableExtractionStrategy, classifyTimetablePageTextLayer, clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, parseOrdinal, type Rect, type TimetablePageTextKind, type TimetableTextAnchor } from './timetable-share-helpers'
+import { chooseTimetableExtractionStrategy, classifyTimetablePageTextLayer, clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, localOcrProgressLabel, parseOrdinal, type Rect, type TimetablePageTextKind, type TimetableTextAnchor } from './timetable-share-helpers'
 
 type Point = { x: number; y: number }
 type Selection = Rect & { id: string; weekday: number | null; ordinal: number | null; classLabel: string | null }
@@ -258,7 +258,10 @@ export function TimetableSharedIntake({
 
     try {
       const localItems = []
-      for (const region of visualRegions) {
+      const localOcrDeadlineAt = Date.now() + LOCAL_OCR_TIMEOUT_MS
+      for (const [regionIndex, region] of visualRegions.entries()) {
+        const timeoutMs = remainingLocalOcrBudgetMs(localOcrDeadlineAt)
+        if (timeoutMs <= 0) throw new LocalDocumentOcrTimeoutError(LOCAL_OCR_TIMEOUT_MS)
         const localPage = copyPageRegionForLocalOcr(source, region)
         try {
           localItems.push(...await recognizeLocalDocumentImage({
@@ -266,10 +269,13 @@ export function TimetableSharedIntake({
             page: region.page,
             offset: { x: region.x, y: region.y },
             coordinateScale: localPage.coordinateScale,
-            timeoutMs: LOCAL_OCR_TIMEOUT_MS,
+            timeoutMs,
             onProgress: ({ progress }) => {
-              const percent = Math.max(1, Math.min(100, Math.round(progress * 100)))
-              setMessage(`Lettura OCR locale · ${percent}% · pagina ${region.page}/${visualRegions.length}`)
+              setMessage(localOcrProgressLabel({
+                progress,
+                rasterIndex: regionIndex,
+                rasterTotal: visualRegions.length,
+              }))
             },
           }))
         } finally {
