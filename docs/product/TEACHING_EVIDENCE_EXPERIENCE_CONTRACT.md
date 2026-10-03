@@ -1,36 +1,43 @@
 # DOCENTE OS — Osservazioni ed evidenze — Experience Contract
 
-Data: 2026-09-14  
-Stato: CONTRACT FROZEN — TE-1A STORAGE ONLY — UI NOT YET AUTHORIZED
+Data: **2026-10-03**  
+Stato: **TE-1B IMPLEMENTED / WHOLE-JOURNEY QUALIFICATION PENDING**  
+Classificazione DOS-CRM: `DOS-OBSERVATION-EVIDENCE` — CRL 3 / IMPLEMENTED / CURRENT
 
 ## Intento
 
 Consentire al docente di **osservare senza smettere di insegnare** e ricostruire ex post ciò che è accaduto senza introdurre una seconda burocrazia.
 
-La capability vive nelle superfici già esistenti: **Classe, Lezione, Diario, Progetta**. Non introduce una nuova destinazione primaria di navigazione.
+La capability vive nelle superfici esistenti: **Classe, Lezione, Diario, Progetta**. Non introduce una nuova destinazione primaria di navigazione.
 
-## Semantica già consolidata
+## Stato runtime corrente
 
-PR #361 ha unificato `Registra la lezione`: ogni percorso canonico produce una `TeachingSession`; la decisione sul Piano annuale resta separata e human-gated.
+Il precedente confine “TE-1A storage only / UI not yet authorized” è superato.
 
-La sequenza di esperienza resta:
+Il runtime corrente include:
+- una superficie `Osserva` nel workspace Lezione;
+- 0–1 osservazione professionale sintetica di classe nel percorso corrente;
+- dimensione canonica + stato osservato;
+- nota facoltativa;
+- draft effimero in `sessionStorage`;
+- blocco/fail-closed quando un'osservazione authored non può essere conservata localmente;
+- rifiuto di nominativi di studenti nelle note class-level;
+- passaggio del draft al flusso `Registra la lezione`;
+- persistenza atomica con TeachingSession attraverso TE-1A;
+- ricevuta coerente sessione + observations + evidence references;
+- replay/idempotency/security hardening lato database.
 
-```text
-Prepara → In classe → Osserva → Registra
-```
+## Sequenza di esperienza
 
-## In aula
+`Prepara → In classe → Osserva → Registra`
 
-La futura TE-1B dovrà consentire 0–4 micro-rilevazioni tipiche con pochi tocchi, nessun obbligo di completare una griglia e nessuna scelta di alunni individuali.
+Finché il docente non registra:
+- le spunte di attenzione restano promemoria locali;
+- l'osservazione professionale resta draft effimero;
+- nessuna `Observation` canonica viene persistita;
+- non viene creata una seconda sessione canonica.
 
-Finché il docente non sceglie **Registra la lezione**:
-
-- le micro-rilevazioni sono draft effimeri della superficie;
-- nessuna `Observation` viene persistita;
-- nessuna seconda “sessione in corso” canonica viene creata;
-- il docente può modificare liberamente le selezioni.
-
-`Registra` sarà l'unico gesto che invia sessione + observation draft + evidence-reference draft al boundary atomico TE-1A.
+`Registra` resta il gesto che attraversa il boundary atomico.
 
 ## Stati umani
 
@@ -41,38 +48,61 @@ Finché il docente non sceglie **Registra la lezione**:
 
 Gli stati non hanno valore numerico implicito, non equivalgono a voti e non vengono mediati.
 
-## Classe e lettura ex post
+## Privacy e minimizzazione
 
-La Classe non diventa una tabella permanente di livelli. Dovrà privilegiare segnali recenti, aspetti da osservare, evidenze recenti e accesso `Perché?` alla provenienza.
+Nel perimetro corrente:
+- scope primario `CLASS`;
+- nessun profilo individuale persistente;
+- nessun nominativo studente ammesso nella nota class-level;
+- gruppi anonimi, quando usati, non diventano identità permanenti;
+- la nota è limitata dimensionalmente;
+- l'assenza di osservazione non blocca la registrazione della lezione.
 
-Nel Tier 1 corrente l'analisi longitudinale è solo `CLASS`. I gruppi anonimi sono temporanei e session-local.
+## Persistenza atomica
 
-## Diario
+`recordTeachingSessionWithEvidence` deve mantenere:
+- una sola TeachingSession autorevole;
+- cardinalità coerente tra draft e receipt;
+- fail-closed su evidence non valide;
+- idempotenza/replay coerenti;
+- separazione tra registrazione della lezione e decisioni sul Piano annuale.
 
-`TeachingSessionReflection` e la proiezione Drive restano il Diario canonico. Observation/Evidence possono preparare una bozza di sintesi, ma non sovrascrivono silenziosamente una reflection già salvata.
+Le migrazioni di hardening 0055–0057 restano parte del confine di sicurezza.
 
-## Progetta
+## Mobile e accessibilità
 
-Un pattern può generare una proposta, mai una mutazione automatica. Solo `Accetta` o `Modifica` può autorizzare un successivo write attraverso i boundary umani già esistenti.
+La UI deve restare mobile-first:
+- nessuna tabella orizzontale;
+- nessun hover necessario;
+- input essenziali e facoltativi distinguibili;
+- stati non dipendenti dal solo colore;
+- focus/feedback coerenti col design system.
 
-## Mobile e accessibilità per TE-1B
-
-La futura UI sarà mobile-first, utilizzabile con una mano, senza tabelle orizzontali, hover o testo lungo obbligatorio. Gli stati non dipenderanno dal solo colore; controlli, focus e feedback seguiranno il design system canonico e i gate WCAG/HVA/HIM.
+Questa implementazione **non viene però dichiarata qualificata**: manca una prova browser whole-journey dedicata `Osserva → Registra` su mobile e desktop e manca HUMAN_USE del task in contesto reale.
 
 ## Anti-feature
 
 Non costruire:
-
 - pagina autonoma “Valutazione classe”;
 - heatmap o semaforo globale;
 - medie numeriche delle osservazioni;
 - ranking;
 - profili individuali persistenti;
-- autosave di Observation prima della TeachingSession;
+- autosave canonico di Observation prima della TeachingSession;
 - secondo Diario;
 - secondo modello di TeachingSession;
 - chatbot o orchestratore AI parallelo.
 
-## Confine TE-1A
+## Criterio di promozione DOS-CRM
 
-TE-1A implementa **solo persistenza atomica, provenienza, idempotenza e sicurezza**. Non rende ancora persistente la UI `Osserva`. Il passaggio UI richiede una TE-1B separata e nuovi gate HVA/WCAG/mobile sul relativo exact head.
+Per CRL 4 serve dimostrare sul journey reale:
+1. apertura `Osserva`;
+2. draft opzionale;
+3. privacy guards;
+4. navigazione a `Registra`;
+5. persistenza atomica;
+6. replay/recovery;
+7. lettura ex-post/provenance;
+8. Browser Certification mobile + desktop.
+
+CRL 5 richiede inoltre HUMAN_USE e failure/recovery evidence adeguate al rischio.

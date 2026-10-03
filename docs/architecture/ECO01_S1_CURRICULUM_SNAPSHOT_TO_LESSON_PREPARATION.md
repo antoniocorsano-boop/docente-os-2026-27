@@ -1,9 +1,27 @@
 # ECO-01/S1 — CurriculumSnapshot v1 → lesson preparation mapping
 
-Status: **NON-OPERATIONAL PROTOTYPE / RUNTIME_DEFERRED**  
-Date: 2026-09-20  
+Status: **HISTORICAL PROTOTYPE / SUPERSEDED BY ECO-02 PILOT RUNTIME**  
+Date: 2026-09-20 · status note updated 2026-10-03  
 Program: ECO-01  
 Governed memory: `CML-DOS-INTEGRATED-GOVERNANCE-V1`
+
+## Current status note — 2026-10-03
+
+This document remains the historical S1 mapping design. It must **not** be read as the current runtime status.
+
+A governed runtime intake now exists for the explicitly configured ECO-02 Technology 2C pilot under:
+
+- `product/src/app/classi/[sectionId]/curricolo-arena/`;
+- `SupabaseAnnualPlanCurriculumRepository`;
+- CML handoff v2 acceptance / structural-footprint / target-scope guards.
+
+The current runtime remains fail-closed and pilot-scoped:
+- local upload cannot promote institutional `APPROVED` authority;
+- teacher confirmation is required before persistence;
+- a different existing baseline cannot be silently replaced;
+- a future approved/revalidation flow still requires server-verifiable Arena authority.
+
+DOS-A1 remains `RUNTIME_DEFERRED`.
 
 ## Purpose
 

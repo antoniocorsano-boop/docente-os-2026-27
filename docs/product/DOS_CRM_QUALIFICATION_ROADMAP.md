@@ -1,6 +1,6 @@
 # DOCENTE OS — DOS-CRM Qualification Roadmap
 
-Data: **2026-10-01**  
+Data: **2026-10-03**  
 Stato: **CURRENT / EXECUTION ROADMAP**  
 Fonte: `ops/capability-readiness.json`
 
@@ -16,10 +16,10 @@ Non si promuove automaticamente una capability perché condivide un gate: l'evid
 
 ## 2. Stato di partenza
 
-### Già CRL 5
-- DOS-TT-SHARE-IMPORT — Share Target → import Orario;
-- DOS-LESSON-PREP — Preparazione lezione / Lesson Brief (freshness RECENT);
-- DOS-ACCOUNT-SECURITY — Account / MFA / sessioni (freshness RECENT).
+### Già CRL 5 come evidence storica
+- DOS-TT-SHARE-IMPORT — Share Target → import Orario (**freshness STALE** dopo i cambi del journey);
+- DOS-LESSON-PREP — Preparazione lezione / Lesson Brief (**freshness STALE**);
+- DOS-ACCOUNT-SECURITY — Account / MFA / sessioni (**freshness STALE**).
 
 ### Core a CRL 4
 - DOS-TIMETABLE;
@@ -29,10 +29,16 @@ Non si promuove automaticamente una capability perché condivide un gate: l'evid
 - DOS-KNOWLEDGE;
 - DOS-CALENDAR;
 - DOS-SETTINGS;
-- DOS-COPILOT.
+- DOS-COPILOT;
+- DOS-MATERIALS.
+
+### Capability implementate da qualificare
+- DOS-PWA-DEVICE-INTAKE — CRL 3;
+- DOS-OBSERVATION-EVIDENCE — CRL 3;
+- DOS-CURRICULUM-INTAKE — CRL 4 / CONDITIONAL, solo pilot autorizzato.
 
 ### Fuori dal core release
-- DOS-VOICE — CRL 3 / DEFERRED;
+- DOS-VOICE — CRL 2 / DEFERRED;
 - DOS-INSTITUTIONAL-CONFIG — CRL 1 / CONDITIONAL.
 
 ## 3. Quattro qualification lanes ad alto leverage
@@ -98,6 +104,7 @@ Copre:
 - upload/ingestion;
 - provenance;
 - retrieval;
+- Materiali pronti / lesson materials;
 - riuso in Lesson Preparation;
 - Copilot retrieval.
 
@@ -157,6 +164,23 @@ Potenziale impatto:
 - **QL-1 — TECHNICAL PASS + HUMAN REVIEW PASS / HUMAN_USE PENDING** via PR #643, qualified exact head `eda319ec545d5ad37104882d5224c020ebe302dc`, merge `a59cc21e01b1955514e946fa487a50712a004857`. 45 test browser PASS, Browser Certification/Product CI/K1/ASVS/Human Interaction/TRAMA/MFA Queue Hygiene PASS.
 - **Nessuna promozione CRL automatica**: la lane richiede ancora HUMAN_USE task-based prima di attribuire una promozione alle capability attraversate.
 
+## 4-a. Rebaseline capability — 2026-10-03
+
+Audit: `docs/product/audits/DOS_CRM_REBASELINE_2026-10-03.md`.
+
+Baseline: `develop@57743e9d395ae5d739ca89e9afbdbb3a7edf875d`.
+
+Esiti:
+- DOS-TIMETABLE resta CRL 4 / CURRENT con evidence #664;
+- DOS-TT-SHARE-IMPORT conserva CRL 5 storico ma freshness STALE;
+- DOS-MATERIALS entra nel registro a CRL 4 / INTEGRATED;
+- DOS-PWA-DEVICE-INTAKE entra a CRL 3 / IMPLEMENTED;
+- DOS-OBSERVATION-EVIDENCE entra a CRL 3 / IMPLEMENTED;
+- DOS-CURRICULUM-INTAKE entra a CRL 4 / CONDITIONAL nel solo pilot ECO-02;
+- nessuna promozione automatica derivata dal full HVA di #664.
+
+Il full HVA di #664 ha prodotto 69 test PASS e WCAG automated assurance 30 PASS, ma questa evidence resta regression/interaction evidence: non sostituisce HUMAN_USE o una qualification capability-level quando richiesta.
+
 ## 4-bis. Remediation immediata prima delle qualification lanes
 
 ### R-1 — TeachingSession regression discovery
@@ -177,24 +201,30 @@ Lo stesso schema deve essere riusabile da QL-1..QL-4 e dal Control Center.
 
 ## 5. Ordine esecutivo
 
-### Wave A — deterministica, basso costo
+### Wave A — già consolidata
 1. R-1 TeachingSession test discovery;
 2. R-2 verifica Copilot historical findings;
-3. R-3 receipt schema + validator.
+3. R-3 receipt schema + validator;
+4. QL-1 technical PASS + Human Review PASS; HUMAN_USE pending.
 
-### Wave B — massimo leverage
-4. QL-1 Daily Teaching Loop — technical PASS + Human Review PASS; HUMAN_USE pending;
-5. QL-2 Professional Context & Setup.
+### Wave B — freeze
+5. rebaseline DOS-CRM;
+6. congelare una RC esatta da `develop` dopo il rebaseline;
+7. emettere receipt/version reference dello SHA RC.
 
-### Wave C — knowledge/AI
-6. QL-3 Knowledge to Lesson;
-7. QL-4 Governed Copilot.
+### Wave C — qualification sulla RC
+8. completare HUMAN_USE QL-1;
+9. QL-2 Professional Context & Setup;
+10. QL-3 Knowledge to Lesson, includendo DOS-MATERIALS;
+11. QL-4 Governed Copilot;
+12. qualification PWA/device intake Android real-device;
+13. qualification Observe → Registra / Teaching Evidence;
+14. revalidation Lesson Prep e Account/Security.
 
-### Wave D — solo dopo le precedenti
-8. re-audit DOS-CRM;
-9. promozione capability realmente supportate;
-10. congelamento RC;
-11. sustained HUMAN_USE per CRL 6.
+### Wave D — pilot e promozione
+15. sustained HUMAN_USE/runtime evidence;
+16. promozione delle sole capability realmente supportate;
+17. chiusura dei finding osservati senza riaprire il feature train.
 
 ## 6. Cosa NON fare
 
