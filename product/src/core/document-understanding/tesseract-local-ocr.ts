@@ -1,3 +1,4 @@
+// @trama-readonly — local OCR worker/progress state is transient; no domain/storage write.
 import { createWorker, OEM, type Worker } from 'tesseract.js'
 import type {
   LocalDocumentPoint,
