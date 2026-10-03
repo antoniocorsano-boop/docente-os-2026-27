@@ -10,8 +10,8 @@ Nessuna modifica applicativa successiva al freeze di `0.1.0-rc.1`.
 
 ## [0.1.0-rc.1] - 2026-10-03
 
-Release Candidate congelata su `efc31ed084da9cc6fe495ac6403151c3361f428a`.
-La RC non è ancora `CERTIFIED` né `PROMOTED`; la promozione Production resta una decisione umana separata.
+Pacchetto di freeze preparato per `0.1.0-rc.1` sul candidate SHA `efc31ed084da9cc6fe495ac6403151c3361f428a`.
+Lo stato formale resta `DRAFT` finché il tag immutabile `v0.1.0-rc.1` e la GitHub prerelease non sono creati. La candidata non è `CERTIFIED` né `PROMOTED`; la promozione Production resta una decisione umana separata.
 
 ### Changed
 
