@@ -3,6 +3,7 @@ export type TimetableVersionStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED'
 export type TimetableSourceKind = 'MANUAL' | 'INSTITUTION_DOCUMENT' | 'IMPORT'
 export type TimetableSlotKind = 'LESSON' | 'CLASS_PRESENCE' | 'DISPOSITION' | 'RECEPTION' | 'OTHER'
 export type TimetablePresenceKind = 'SUBSTITUTION' | 'CO_TEACHING' | 'SUPERVISION' | 'PROJECT' | 'OTHER'
+export type TimetableActivityKind = 'THEORY' | 'DRAWING_PROJECT' | 'PRACTICAL_LAB' | 'ASSESSMENT' | 'OTHER'
 
 export type TeachingAssignment = {
   id: string
@@ -43,6 +44,7 @@ export type TimetableSlot = {
   teachingAssignmentId: string | null
   manualClassLabel: string | null
   presenceKind: TimetablePresenceKind | null
+  activityKind: TimetableActivityKind | null
   room: string | null
   note: string | null
   ordinal: number | null
@@ -74,6 +76,12 @@ export function asTimetableSourceKind(value: string): TimetableSourceKind {
 export function asTimetableSlotKind(value: string): TimetableSlotKind {
   if (value === 'LESSON' || value === 'CLASS_PRESENCE' || value === 'DISPOSITION' || value === 'RECEPTION' || value === 'OTHER') return value
   throw new Error(`Unsupported timetable slot kind: ${value}`)
+}
+
+export function asTimetableActivityKind(value: string | null): TimetableActivityKind | null {
+  if (value == null) return null
+  if (value === 'THEORY' || value === 'DRAWING_PROJECT' || value === 'PRACTICAL_LAB' || value === 'ASSESSMENT' || value === 'OTHER') return value
+  throw new Error(`Unsupported timetable activity kind: ${value}`)
 }
 
 export function asTimetablePresenceKind(value: string | null): TimetablePresenceKind | null {

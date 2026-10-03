@@ -1,6 +1,7 @@
 import type { Database } from '@/lib/supabase/database.types'
 import { createClient } from '@/lib/supabase/server'
 import {
+  asTimetableActivityKind,
   asTimetablePresenceKind,
   asTimetableSlotKind,
   asTimetableSourceKind,
@@ -11,7 +12,7 @@ import {
 
 type VersionRow = Database['public']['Tables']['timetable_versions']['Row']
 type SlotRow = Database['public']['Tables']['timetable_slots']['Row']
-type SlotRowWithPresence = SlotRow & { manual_class_label: string | null; presence_kind: string | null }
+type SlotRowWithPresence = SlotRow & { manual_class_label: string | null; presence_kind: string | null; activity_kind: string | null }
 
 export type TimetableLifecycleSnapshot = {
   activeVersion: TimetableVersion | null
@@ -108,6 +109,7 @@ function toSlot(row: SlotRow): TimetableSlot {
     teachingAssignmentId: row.teaching_assignment_id,
     manualClassLabel: extended.manual_class_label,
     presenceKind: asTimetablePresenceKind(extended.presence_kind),
+    activityKind: asTimetableActivityKind(extended.activity_kind),
     room: row.room,
     note: row.note,
     ordinal: row.ordinal,

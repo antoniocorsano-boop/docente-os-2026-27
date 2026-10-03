@@ -2,11 +2,13 @@ import type { Database } from '@/lib/supabase/database.types'
 import { createClient } from '@/lib/supabase/server'
 import {
   asTeachingAssignmentStatus,
+  asTimetableActivityKind,
   asTimetablePresenceKind,
   asTimetableSlotKind,
   asTimetableSourceKind,
   asTimetableVersionStatus,
   type TeachingAssignment,
+  type TimetableActivityKind,
   type TimetablePresenceKind,
   type TimetableSlot,
   type TimetableSlotKind,
@@ -200,6 +202,7 @@ export class SupabaseTimetableRepository {
     startTime: string
     endTime: string
     ordinal?: number | null
+    activityKind?: TimetableActivityKind | null
     room?: string | null
     note?: string | null
   }): Promise<TimetableSlot> {
@@ -224,6 +227,7 @@ export class SupabaseTimetableRepository {
         discipline_id: assignment.discipline_id,
         teaching_assignment_id: assignment.id,
         ordinal: normalizeOrdinal(input.ordinal),
+        activity_kind: input.activityKind ?? 'THEORY',
         room: normalizeNullable(input.room, 80),
         note: normalizeNullable(input.note, 1000),
         created_by: userId,
@@ -364,6 +368,7 @@ function toSlot(row: SlotRow): TimetableSlot {
     teachingAssignmentId: row.teaching_assignment_id,
     manualClassLabel: extended.manual_class_label,
     presenceKind: asTimetablePresenceKind(extended.presence_kind),
+    activityKind: asTimetableActivityKind(row.activity_kind),
     room: row.room,
     note: row.note,
     ordinal: row.ordinal,

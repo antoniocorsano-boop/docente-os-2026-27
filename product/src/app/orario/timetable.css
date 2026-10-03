@@ -221,3 +221,31 @@
   .timetableSurface .dayNavigator strong{min-width:58px}
   .editorScheduleGrid{grid-template-columns:1fr}
 }
+
+
+/* Activity semantics stay deliberately quiet: the icon identifies the lesson type without competing with class/discipline. */
+.cellActivityIcon {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  opacity: .68;
+  vertical-align: -1px;
+}
+
+.kind-lesson .cellKind {
+  min-height: 12px;
+  line-height: 1;
+}
+
+.editorFieldHint {
+  display: block;
+  margin-top: 4px;
+  font-size: .75rem;
+  line-height: 1.3;
+  opacity: .72;
+}
+
+@media print {
+  .cellActivityIcon { opacity: .8; }
+}

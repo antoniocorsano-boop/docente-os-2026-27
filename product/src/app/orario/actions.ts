@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import type { TimetablePresenceKind } from '@/core/domain/timetable'
+import type { TimetableActivityKind, TimetablePresenceKind } from '@/core/domain/timetable'
 import { OpenAiTimetableDocumentExtractor, TimetableDocumentExtractionUnavailableError } from '@/core/infrastructure/ai/openai-timetable-document-extractor'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
@@ -79,6 +79,7 @@ export async function addLessonSlot(formData: FormData) {
     startTime: text(formData, 'startTime'),
     endTime: text(formData, 'endTime'),
     ordinal: optionalInteger(formData, 'ordinal'),
+    activityKind: activityKind(optionalText(formData, 'activityKind')),
     room: nullableText(formData, 'room'),
     note: nullableText(formData, 'note'),
   })
@@ -131,6 +132,7 @@ export async function updateTimetableSlot(formData: FormData) {
     assignmentId: kind === 'LESSON' ? text(formData, 'assignmentId') : null,
     manualClassLabel: kind === 'CLASS_PRESENCE' ? text(formData, 'manualClassLabel') : null,
     presenceKind: kind === 'CLASS_PRESENCE' ? presenceKind(text(formData, 'presenceKind')) : null,
+    activityKind: kind === 'LESSON' ? activityKind(optionalText(formData, 'activityKind')) : null,
     weekday: integer(formData, 'weekday'),
     startTime: text(formData, 'startTime'),
     endTime: text(formData, 'endTime'),
@@ -653,4 +655,9 @@ function minutesToClock(total: number) {
 function presenceKind(value: string): TimetablePresenceKind {
   if (value === 'SUBSTITUTION' || value === 'CO_TEACHING' || value === 'SUPERVISION' || value === 'PROJECT' || value === 'OTHER') return value
   throw new Error('Unsupported presence kind')
+}
+
+function activityKind(value: string): TimetableActivityKind {
+  if (value === 'DRAWING_PROJECT' || value === 'PRACTICAL_LAB' || value === 'ASSESSMENT' || value === 'OTHER') return value
+  return 'THEORY'
 }

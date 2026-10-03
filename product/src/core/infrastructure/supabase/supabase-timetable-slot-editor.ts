@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { TimetablePresenceKind, TimetableSlotKind } from '@/core/domain/timetable'
+import type { TimetableActivityKind, TimetablePresenceKind, TimetableSlotKind } from '@/core/domain/timetable'
 
 export async function updateDraftTimetableSlot(input: {
   versionId: string
@@ -8,6 +8,7 @@ export async function updateDraftTimetableSlot(input: {
   assignmentId?: string | null
   manualClassLabel?: string | null
   presenceKind?: TimetablePresenceKind | null
+  activityKind?: TimetableActivityKind | null
   weekday: number
   startTime: string
   endTime: string
@@ -44,6 +45,7 @@ export async function updateDraftTimetableSlot(input: {
     teaching_assignment_id: teachingAssignmentId,
     manual_class_label: presence ? normalizeClassLabel(input.manualClassLabel) : null,
     presence_kind: presence ? requirePresenceKind(input.presenceKind) : null,
+    activity_kind: input.kind === 'LESSON' ? requireActivityKind(input.activityKind) : null,
     ordinal: normalizeOrdinal(input.ordinal),
     room: input.kind === 'LESSON' || presence ? normalizeNullable(input.room, 80) : null,
     note: normalizeNullable(input.note, 1000),
@@ -68,6 +70,7 @@ type DatabaseSlotUpdateWithPresence = {
   teaching_assignment_id: string | null
   manual_class_label: string | null
   presence_kind: TimetablePresenceKind | null
+  activity_kind: TimetableActivityKind | null
   ordinal: number | null
   room: string | null
   note: string | null
@@ -94,6 +97,11 @@ function normalizeClassLabel(value?: string | null) {
   const normalized = value?.trim().replace(/\s+/g, '').toUpperCase() ?? ''
   if (!normalized || normalized.length > 12) throw new Error('Class label required')
   return normalized
+}
+
+function requireActivityKind(value?: TimetableActivityKind | null): TimetableActivityKind {
+  if (value === 'THEORY' || value === 'DRAWING_PROJECT' || value === 'PRACTICAL_LAB' || value === 'ASSESSMENT' || value === 'OTHER') return value
+  return 'THEORY'
 }
 
 function requirePresenceKind(value?: TimetablePresenceKind | null): TimetablePresenceKind {

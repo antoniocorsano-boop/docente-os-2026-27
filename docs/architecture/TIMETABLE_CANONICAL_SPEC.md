@@ -691,3 +691,41 @@ Si sostituiscono:
 - assenza di ancoraggio CAN-PLAN.
 
 Questa specifica costituisce il contratto per l'implementazione dell'orario in Docente OS 2026/2027.
+
+## 15. Decisione operativa 03/10/2026 — manuale canonico, import sperimentale
+
+La validazione su Android reale ha dimostrato che Share Target e visualizzazione del PDF sono utilizzabili, mentre la ricostruzione automatica dell'orario da documento non raggiunge ancora l'affidabilità richiesta per sostenere una capability fondamentale.
+
+Da questa data valgono quindi le seguenti regole di prodotto:
+
+- **editing manuale della griglia = percorso canonico e primario**;
+- il docente può costruire e modificare l'orario senza caricare alcun documento;
+- `effective_from` è presentato come **In vigore dal / Valido dal** e può essere retroattivo entro l'anno scolastico, nel rispetto dello storico già attivato;
+- l'attivazione resta esplicita e teacher-authoritative;
+- una nuova versione chiude la precedente senza riscrivere il passato;
+- importazione PDF/OCR = **sperimentale, opzionale, non bloccante**; un suo fallimento non degrada la capability Orario;
+- il lavoro document-understanding resta riutilizzabile, ma non costituisce gate per l'Orario.
+
+### 15.1 Tipologia didattica della lezione
+
+Ogni slot `LESSON` può qualificare in modo leggero la tipologia dell'attività:
+
+```text
+THEORY
+DRAWING_PROJECT
+PRACTICAL_LAB
+ASSESSMENT
+OTHER
+```
+
+La classificazione è teacher-authored e non modifica il CAN-PLAN. Serve a rendere l'orario immediatamente leggibile. Nella cella è rappresentata da una **micro-icona a tratto sottile**, accessibile e subordinata a classe e disciplina. L'icona non sostituisce mai l'etichetta semantica per screen reader e non deve aumentare sensibilmente l'altezza della cella.
+
+Per Tecnologia, in particolare, `DRAWING_PROJECT` copre disegno/progettazione e `PRACTICAL_LAB` copre attività pratica/laboratoriale. Il modello resta però generale e riutilizzabile dalle altre discipline.
+
+### 15.2 Criterio di chiusura aggiornato
+
+La capability Orario è verificata sul percorso:
+
+`Orario → Aggiorna → modifica celle → scegli tipologia attività → imposta Valido dal → salva → attiva esplicitamente → riapri → stessi dati e stessa decorrenza`.
+
+Una modifica successiva deve produrre/operare su una versione successiva senza alterare le occorrenze storiche già governate dalla versione precedente.
