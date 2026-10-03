@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import fs from 'node:fs'
-import { LOCAL_OCR_MAX_EDGE, LOCAL_OCR_TIMEOUT_MS, LocalDocumentOcrTimeoutError, localOcrDimensions, localOcrProgressFromLog, mapTesseractWordsToLocalDocumentTextItems, withLocalOcrDeadline } from './tesseract-local-ocr'
+import { LOCAL_OCR_MAX_EDGE, LOCAL_OCR_TIMEOUT_MS, LocalDocumentOcrTimeoutError, clearWorkerPromiseIfCurrent, localOcrDimensions, localOcrProgressFromLog, mapTesseractWordsToLocalDocumentTextItems, remainingLocalOcrBudgetMs, withLocalOcrDeadline } from './tesseract-local-ocr'
 
 test('maps Tesseract words and bounding boxes into shared local evidence', () => {
   assert.deepEqual(
@@ -100,4 +100,33 @@ test('OCR deadline and progress cover worker bootstrap as well as recognition', 
   assert.ok(deadlineAt > pendingWorkerAt)
   assert.ok(bootstrapAt > deadlineAt)
   assert.doesNotMatch(source.slice(recognizeAt), /const instance = await worker\(\)/)
+})
+
+
+test('synchronous timeout cleanup errors cannot bypass deadline rejection', async () => {
+  await assert.rejects(
+    () => withLocalOcrDeadline(
+      new Promise<never>(() => {}),
+      5,
+      () => { throw new Error('cleanup failed synchronously') },
+    ),
+    (error: unknown) => error instanceof LocalDocumentOcrTimeoutError,
+  )
+})
+
+test('stale worker completion cannot clear a newer worker promise', async () => {
+  const oldWorker = Promise.resolve({ id: 'old' })
+  const newerWorker = Promise.resolve({ id: 'new' })
+
+  assert.equal(clearWorkerPromiseIfCurrent(newerWorker, oldWorker), newerWorker)
+  assert.equal(clearWorkerPromiseIfCurrent(oldWorker, oldWorker), null)
+
+  await Promise.all([oldWorker, newerWorker])
+})
+
+test('global OCR budget only exposes the time remaining from one shared deadline', () => {
+  assert.equal(remainingLocalOcrBudgetMs(30_000, 0), 30_000)
+  assert.equal(remainingLocalOcrBudgetMs(30_000, 12_500), 17_500)
+  assert.equal(remainingLocalOcrBudgetMs(30_000, 30_000), 0)
+  assert.equal(remainingLocalOcrBudgetMs(30_000, 45_000), 0)
 })
