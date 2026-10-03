@@ -9,7 +9,9 @@ Stato documento: **CURRENT / CANONICAL CANDIDATE — V1 CONVERGENCE**
 
 Questa è la baseline storica del checkpoint V1 del 18 settembre, non il current repository head.
 
-**Current repository / DOS-CRM baseline:** `develop@57743e9d395ae5d739ca89e9afbdbb3a7edf875d`
+**Baseline prodotto/runtime auditata dal DOS-CRM:** `develop@57743e9d395ae5d739ca89e9afbdbb3a7edf875d`
+
+La PR #665 ha aggiornato soltanto il registro e la documentazione di governance; i successivi commit documentali non cambiano questa baseline runtime auditata.
 
 La Beta corrente ha completato UX-0E ma la successiva HUMAN_USE reale (#383) ha prodotto **FRICTION / REWORK_REQUIRED**. Il prodotto non viene dichiarato UX-complete: l'evidenza umana ha mostrato che la complessità di orchestrazione resta troppo elevata.
 
