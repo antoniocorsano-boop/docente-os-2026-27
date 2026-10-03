@@ -1,7 +1,7 @@
 # DOCENTE OS — DOS-CRM rebaseline audit — 2026-10-03
 
 Stato: **AUDIT CURRENT / NO AUTOMATIC PROMOTION**  
-Baseline repository: `develop@57743e9d395ae5d739ca89e9afbdbb3a7edf875d`  
+Baseline prodotto/runtime auditata: `develop@57743e9d395ae5d739ca89e9afbdbb3a7edf875d`  
 Fonte primaria: `ops/capability-readiness.json`
 
 ## Scopo

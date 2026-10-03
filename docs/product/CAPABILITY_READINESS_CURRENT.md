@@ -2,7 +2,7 @@
 
 Data: **2026-10-03**  
 Modello: **DOS-CRM v1**  
-Baseline registro: `develop@57743e9d395ae5d739ca89e9afbdbb3a7edf875d`  
+Baseline prodotto/runtime auditata: `develop@57743e9d395ae5d739ca89e9afbdbb3a7edf875d`  
 Stato: **CURRENT / CAPABILITY AUDIT REGISTER**
 
 Fonte machine-readable: `ops/capability-readiness.json`  
