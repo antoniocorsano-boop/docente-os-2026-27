@@ -1,6 +1,6 @@
 # DOCENTE OS — Stato corrente canonico
 
-Data: **2026-09-30**  
+Data: **2026-10-03**  
 Stato documento: **CURRENT / CANONICAL CANDIDATE — V1 CONVERGENCE**
 
 ## 1. Baseline runtime integrata — snapshot storico
@@ -9,7 +9,7 @@ Stato documento: **CURRENT / CANONICAL CANDIDATE — V1 CONVERGENCE**
 
 Questa è la baseline storica del checkpoint V1 del 18 settembre, non il current repository head.
 
-**Current repository / DOS-CRM baseline:** `develop@a59cc21e01b1955514e946fa487a50712a004857`
+**Current repository / DOS-CRM baseline:** `develop@57743e9d395ae5d739ca89e9afbdbb3a7edf875d`
 
 La Beta corrente ha completato UX-0E ma la successiva HUMAN_USE reale (#383) ha prodotto **FRICTION / REWORK_REQUIRED**. Il prodotto non viene dichiarato UX-complete: l'evidenza umana ha mostrato che la complessità di orchestrazione resta troppo elevata.
 
@@ -220,11 +220,13 @@ Prima capability qualificata nel nuovo registro:
 
 Il registro va aggiornato quando nuove evidence cambiano materialmente funzionalità, UX, dati, sicurezza, integrazione, qualificazione, operatività o governance di una capability.
 
-Aggiornamento 2026-10-01:
-- Wave A remediation PR #642 è consolidata;
-- QL-1 Daily Teaching Loop PR #643 è consolidata su merge `a59cc21e01b1955514e946fa487a50712a004857`;
-- QL-1 ha technical PASS + Human Review PASS, ma `human_use=NOT_RUN`;
-- nessuna capability viene promossa automaticamente: il registro conserva i CRL finché l'evidence mancante non è completata.
+Aggiornamento 2026-10-03:
+- Wave A remediation PR #642 e QL-1 PR #643 restano evidence valide; QL-1 ha technical PASS + Human Review PASS, ma `human_use=NOT_RUN`;
+- il filone Orario mobile è consolidato con PR #663 e #664; #664 ha Product CI PASS, Browser Certification PASS, HVA full 69/69 e WCAG automated assurance 30/30 sull'exact head qualificato;
+- il DOS-CRM è rebaselined sul merge `57743e9d395ae5d739ca89e9afbdbb3a7edf875d`;
+- il registro include ora anche PWA/device intake, Materials, Observation/Evidence e Curriculum Intake pilot-scoped;
+- Share→Orario conserva CRL 5 storico ma freshness STALE dopo i cambi materiali del journey;
+- nessuna capability viene promossa automaticamente: HUMAN_USE e qualification capability-level restano necessarie dove previste.
 
 ## 14. Maturity e assurance
 
@@ -242,14 +244,14 @@ Stato dove non esiste nuova evidence:
 
 ## 15. Priorità operative immediate
 
-1. congelare una **vera RC Docente OS** dalla linea `develop` corrente;
-2. emettere versione/tag/GitHub Release/changelog e receipt sullo SHA esatto;
-3. raccogliere evidence HUMAN_USE longitudinale su più giornate reali;
-4. chiudere i soli finding UX/pilot realmente osservati;
-5. Voice/STT è **esplicitamente DEFERRED** dal release core; riattivarlo solo con nuova autorizzazione e qualification dedicata;
-6. completare WCAG manuale/assistive, ASVS requirement-level e SLI/SLO;
-7. maturare Drive runtime continuity e decidere Canva da evidence;
-8. mantenere Arena runtime transport condizionale fino alla chiusura Arena S3/S4.
+1. completare HUMAN_USE task-based della QL-1 sul prodotto corrente;
+2. eseguire QL-2 Professional Context & Setup;
+3. eseguire QL-3 Knowledge to Lesson includendo Materiali;
+4. eseguire QL-4 Governed Copilot;
+5. qualificare PWA/device intake su Android reale e Observe→Registra come journey dedicato;
+6. revalidare Lesson Prep e Account/Security prima di ripristinare freshness CURRENT;
+7. congelare una **vera RC Docente OS** solo dopo questi blocker di qualification;
+8. Voice/STT resta **DEFERRED** e Institutional Configurator/Curriculum generalizzato restano subordinati ad autorizzazione/pilot.
 
 ## 16. KPI principale
 
