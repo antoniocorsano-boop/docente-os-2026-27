@@ -100,7 +100,7 @@ Conclusione: capability **IMPLEMENTED / CRL 3**, non ancora CRL 4/5.
 - DOS-SETTINGS resta CRL 4;
 - DOS-ACCOUNT-SECURITY resta CRL 5 / STALE;
 - DOS-COPILOT resta CRL 4;
-- DOS-VOICE resta CRL 3 / DEFERRED;
+- DOS-VOICE viene riallineato da CRL 3 a **CRL 2 / DEFERRED** perché l’asse Operability resta 2 e il modello aggrega sul più basso asse critico;
 - DOS-INSTITUTIONAL-CONFIG resta CRL 1 / CONDITIONAL.
 
 ### Aggiornati
