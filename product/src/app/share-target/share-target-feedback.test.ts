@@ -15,6 +15,7 @@ const timetableExperience = fs.readFileSync(new URL('../orario/TimetableExperien
 const timetableGrid = fs.readFileSync(new URL('../orario/TimetableGrid.tsx', import.meta.url), 'utf8')
 const timetableLocalLauncher = fs.readFileSync(new URL('../orario/TimetableLocalImportLauncher.tsx', import.meta.url), 'utf8')
 const timetableCss = fs.readFileSync(new URL('../orario/timetable.css', import.meta.url), 'utf8')
+const pwaInstallPrompt = fs.readFileSync(new URL('../../components/pwa/PwaInstallPrompt.tsx', import.meta.url), 'utf8')
 
 test('shared intake makes local-only and failure state perceptible before write', () => {
   assert.match(intake, /ancora locale/)
@@ -59,6 +60,23 @@ test('mobile timetable editor renders above its backdrop', () => {
   assert.match(timetableCss, /\.timetableEditorBackdrop,\.timetableContextBackdrop\{position:fixed;inset:0;z-index:100/)
   assert.match(timetableCss, /\.timetableEditor,\.timetableContextSheet\{position:fixed;z-index:101/)
   assert.match(timetableCss, /bottom:0;transform:none;width:100%;max-height:min\(82dvh,760px\)/)
+})
+
+
+test('mobile timetable prioritizes the grid and direct editing', () => {
+  assert.match(timetableExperience, /contentClassName=\{\`timetableSurface timetable-\$\{mode\}\`\}/)
+  assert.match(timetableGrid, /readOnly \? setFocusedSlotId\(slot\.id\) : openOccupiedCell\(slot\)/)
+  assert.match(timetableGrid, /<summary>Cambia giorno o orario<\/summary>/)
+  assert.match(timetableCss, /\.timetable-view \.timetableHero\{display:none\}/)
+  assert.match(timetableCss, /\.timetable-view \.timetableModeNav\{display:none\}/)
+  assert.match(timetableCss, /\.timetableSurface \.printTimetableButton\{display:none\}/)
+  assert.match(timetableCss, /\.timetableSurface \.timeCell,[\s\S]*min-height:64px/)
+  assert.match(timetableCss, /\.timetableEditorActions\{[\s\S]*position:sticky/)
+})
+
+test('PWA install prompt never covers the timetable workflow', () => {
+  assert.match(pwaInstallPrompt, /usePathname/)
+  assert.match(pwaInstallPrompt, /pathname\.startsWith\('\/orario'\)/)
 })
 
 test('mobile update route keeps heading before import and visibly disables blocked continuation', () => {
