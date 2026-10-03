@@ -254,6 +254,7 @@ export function TimetableSharedIntake({
     setBusy(true)
     setNeedsManualContext(false)
     setMessage('Sto leggendo localmente le pagine immagine dell’orario…')
+    let localDiagnostic = ''
 
     try {
       const localItems = []
@@ -283,9 +284,8 @@ export function TimetableSharedIntake({
       )
 
       const incompleteRows = localInferred.length - completeRows.length
-      setMessage(
-        `Lettura locale: ${localItems.length} parole · ${localMatches.length} occorrenze di “${label}” · ${completeRows.length} lezioni complete${incompleteRows > 0 ? ` · ${incompleteRows} incomplete` : ''}.`,
-      )
+      localDiagnostic = `Lettura locale: ${localItems.length} parole · ${localMatches.length} occorrenze di “${label}” · ${completeRows.length} lezioni complete${incompleteRows > 0 ? ` · ${incompleteRows} incomplete` : ''}.`
+      setMessage(localDiagnostic)
 
       if (
         localMatches.length > 0
@@ -344,13 +344,12 @@ export function TimetableSharedIntake({
     } catch (localError) {
       const message = localError instanceof Error ? localError.message : 'local OCR unavailable'
       console.warn('Timetable local OCR did not complete:', message.slice(0, 240))
-      setMessage(`Lettura locale non riuscita: ${message.slice(0, 160)}`)
+      localDiagnostic = `Lettura locale non riuscita: ${message.slice(0, 160)}`
+      setMessage(localDiagnostic)
     }
 
-    // Keep the real-device OCR outcome visible long enough to make failures diagnosable.
-    // The remote fallback still runs immediately afterwards and remains governed.
-    await new Promise((resolve) => window.setTimeout(resolve, 1200))
-    setMessage('La lettura locale non è sufficiente. Provo il servizio di estrazione configurato…')
+    // Preserve the local-device evidence while the governed remote fallback is attempted.
+    setMessage(`${localDiagnostic || 'La lettura locale non ha prodotto una diagnosi.'} Provo il servizio di estrazione configurato…`)
     try {
       const rasterDerivative = await cropPageRegions(source, visualRegions)
       const safeFile = new File([rasterDerivative], 'orario-pagine-immagine.jpg', {
@@ -372,10 +371,10 @@ export function TimetableSharedIntake({
         if (isRecoverableImportFailure(code)) {
           setNeedsManualContext(true)
           setMessage(code === 'extractor_unavailable'
-            ? 'La lettura automatica delle pagine immagine non è disponibile su questo servizio. Puoi usare la correzione manuale.'
+            ? `${localDiagnostic || 'Lettura locale senza diagnosi.'} Il servizio remoto non è disponibile. La selezione manuale resta un fallback secondario.`
             : code === 'parse_failed' || code === 'no_rows'
-              ? 'Non riesco ancora a ricostruire con sicurezza il tuo orario. Puoi usare la correzione manuale.'
-              : messageForImportFailure(code))
+              ? `${localDiagnostic || 'Lettura locale senza diagnosi.'} Il servizio remoto non ha ricostruito l’orario con sicurezza. La selezione manuale resta un fallback secondario.`
+              : `${localDiagnostic ? `${localDiagnostic} ` : ''}${messageForImportFailure(code)}`)
           return
         }
         try {
