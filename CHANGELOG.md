@@ -6,6 +6,13 @@ DOCENTE OS adotta Semantic Versioning per le release formalmente emesse dal prog
 
 ## Unreleased
 
+Nessuna modifica applicativa successiva al freeze di `0.1.0-rc.1`.
+
+## [0.1.0-rc.1] - 2026-10-03
+
+Release Candidate congelata su `efc31ed084da9cc6fe495ac6403151c3361f428a`.
+La RC non è ancora `CERTIFIED` né `PROMOTED`; la promozione Production resta una decisione umana separata.
+
 ### Changed
 
 - Aperto il programma **M5 — Maintenance & Maturation** e congelata la baseline di maturità del 12 settembre 2026.
