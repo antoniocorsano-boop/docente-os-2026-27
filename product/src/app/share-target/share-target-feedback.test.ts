@@ -389,7 +389,7 @@ test('raster-page derivatives keep whole-document provenance for share and uploa
 test('manual selection is exposed only after automatic extraction needs correction', () => {
   assert.match(timetableIntake, /\{needsManualContext \? <button/)
   assert.doesNotMatch(timetableIntake, /\{\(!selections\.length \|\| needsManualContext\) \? <button/)
-  assert.match(timetableIntake, /Sto leggendo localmente le pagine immagine dell’orario/)
+  assert.match(timetableIntake, /setMessage\('Sto leggendo l’orario…'\)/)
 })
 
 test('raster timetable prefers on-device OCR and structured persistence before remote assist', () => {
@@ -480,7 +480,7 @@ test('terminal timetable preparation failures purge local staging before surfaci
 
 
 test('timetable preview preserves touch scrolling and sizes derivative labels', () => {
-  assert.match(timetableIntake, /touchAction: touchSelectMode \? 'none' : 'pan-y'/)
+  assert.match(timetableIntake, /touchAction: needsManualContext && touchSelectMode \? 'none' : 'pan-y'/)
   assert.match(timetableIntake, /aria-pressed=\{touchSelectMode\}/)
   assert.match(timetableIntake, /ensureKeyboardCursorVisible/)
   assert.match(timetableIntake, /measureText\(derivativeContextLabel/)
