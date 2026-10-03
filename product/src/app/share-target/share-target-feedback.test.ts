@@ -83,10 +83,11 @@ test('PWA install prompt never covers the timetable workflow', () => {
   assert.match(pwaInstallPrompt, /pathname\.startsWith\('\/orario'\)/)
 })
 
-test('mobile update route keeps heading before import and visibly disables blocked continuation', () => {
+test('mobile update route keeps heading before import and hides continuation until there is something to review', () => {
   assert.doesNotMatch(timetableCss, /\.timetableImportCard\s*\{\s*order\s*:\s*-1/)
   assert.match(timetableCss, /\.timetablePrimaryActions button:disabled/)
-  assert.match(timetableIntake, /disabled=\{!ready \|\| !sourceFingerprint \|\| !selections\.length/)
+  assert.match(timetableIntake, /\{\(selections\.length > 0 \|\| acceptedCandidateId\) \? \(/)
+  assert.match(timetableIntake, /disabled=\{!ready \|\| !sourceFingerprint \|\| \(needsManualContext/)
 })
 
 test('import review stays on the dedicated update route after the hierarchy split', () => {
