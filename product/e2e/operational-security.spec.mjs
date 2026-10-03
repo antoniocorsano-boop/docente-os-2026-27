@@ -6,7 +6,6 @@ const email = process.env.E2E_EMAIL ?? 'docente-os-e2e-2dbf49e1@example.invalid'
 const password = process.env.E2E_PASSWORD
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://gnshgapmwyjamhmlikeg.supabase.co'
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L'
-const sourceLocator = 'x5-e2e-uda-source'
 const transientProviderPattern = /(gateway timeout|timed out|timeout|temporarily unavailable|fetch failed|network|\b502\b|\b503\b|\b504\b)/i
 
 if (!password) throw new Error('E2E_PASSWORD is required for the operational security gate')
@@ -36,11 +35,11 @@ await expectAnonymousDenied('open_uda_authoring', {
   initial_body_markdown: '',
 })
 
-// The hosted Beta still represents the pre-0051 data-plane until the candidate
-// migration is promoted. Keep this gate read-only: it verifies the existing
-// authenticated ACL/RLS fixture without creating state that an AAL1 session may
-// no longer be allowed to clean up after promotion. AAL1→AAL2 enforcement itself
-// is certified separately by the isolated MFA data-plane contract and AAL2 gates.
+// Keep this gate read-only and deterministic. It verifies anonymous denial plus
+// authenticated hosted ACL/RLS boundaries without depending on mutable seeded rows.
+// X5 authoring fixtures are run-scoped, created and cleaned up by x5-uda-authoring.spec.mjs;
+// AAL1→AAL2 enforcement is certified separately by the isolated MFA data-plane contract
+// and the governed X5 AAL2 acceptance gates.
 const authenticated = createClient(supabaseUrl, publishableKey, {
   auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
 })
@@ -51,16 +50,6 @@ assert.ok(session.user, 'E2E authenticated user is required')
 const assurance = await authenticated.auth.mfa.getAuthenticatorAssuranceLevel()
 assert.equal(assurance.error, null, `AAL lookup failed: ${assurance.error?.message ?? ''}`)
 assert.equal(assurance.data.currentLevel, 'aal1', 'Legacy hosted operational fixture must remain password-only AAL1')
-
-const { data: source, error: sourceError } = await authenticated
-  .from('knowledge_assets')
-  .select('id,workspace_id,academic_year_id,created_by')
-  .eq('source_locator', sourceLocator)
-  .eq('content_category', 'UDA')
-  .single()
-assert.equal(sourceError, null, `Hosted X5 security fixture lookup failed: ${sourceError?.message ?? ''}`)
-assert.ok(source, 'Hosted X5 UDA fixture is required')
-assert.equal(source.created_by, session.user.id, 'Hosted X5 fixture must belong to the authenticated technical identity')
 
 const { error: receiptReadError } = await authenticated
   .from('assistant_write_proposals')
@@ -74,7 +63,7 @@ const { data: missingSnapshot, error: missingSnapshotError } = await authenticat
 assert.equal(missingSnapshotError, null, `Authenticated snapshot probe failed: ${missingSnapshotError?.message ?? ''}`)
 assert.equal(missingSnapshot, null, 'Authenticated snapshot probe must not expose an unavailable document')
 
-console.log('Operational security gate PASS: anonymous X5 RPC denied; hosted authenticated ACL/RLS fixture verified read-only.')
+console.log('Operational security gate PASS: anonymous X5 RPC denied; authenticated hosted ACL/RLS boundaries verified read-only.')
 
 async function expectAnonymousDenied(name, args) {
   let lastNormalized = ''
