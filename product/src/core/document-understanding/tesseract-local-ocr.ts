@@ -192,8 +192,7 @@ async function createLocalWorker(): Promise<Worker> {
 async function worker(): Promise<Worker> {
   if (!workerPromise) {
     const pending = createLocalWorker()
-    let guarded: Promise<Worker>
-    guarded = pending.catch((error) => {
+    const guarded: Promise<Worker> = pending.catch((error) => {
       workerPromise = clearWorkerPromiseIfCurrent(workerPromise, guarded)
       throw error
     })
