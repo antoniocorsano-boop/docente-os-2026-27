@@ -344,10 +344,15 @@ export function derivativeContextLabel(
 
 
 export function localOcrProgressLabel(input: {
+  status: string
   progress: number
   rasterIndex: number
   rasterTotal: number
 }) {
+  const page = `${input.rasterIndex + 1}/${input.rasterTotal}`
+  if (input.status !== 'recognizing text') {
+    return `Sto preparando la lettura dell’orario… pagina ${page}`
+  }
   const percent = Math.max(1, Math.min(100, Math.round(input.progress * 100)))
-  return `Sto leggendo l’orario… ${percent}% · pagina ${input.rasterIndex + 1}/${input.rasterTotal}`
+  return `Sto leggendo l’orario… ${percent}% · pagina ${page}`
 }
