@@ -389,7 +389,8 @@ test('visual timetable provider unavailability is observable and teacher-facing'
   assert.match(timetableActions, /code: 'extractor_unavailable'/)
   assert.match(timetableActions, /Timetable visual extraction unavailable:/)
   assert.match(timetableIntake, /code === 'extractor_unavailable'/)
-  assert.match(timetableIntake, /La lettura automatica delle pagine immagine non è disponibile su questo servizio/)
+  assert.match(timetableIntake, /Il servizio remoto non è disponibile/)
+  assert.match(timetableIntake, /Lettura locale senza diagnosi/)
 })
 
 test('selection counter uses correct Italian plural', () => {
