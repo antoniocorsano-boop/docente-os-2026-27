@@ -5,7 +5,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerE
 import { getDocumentProxy } from 'unpdf'
 import { analyzeMinimizedTimetableImport, analyzeRasterTimetableImport, persistLocallyExtractedTimetableImport } from '@/app/orario/actions'
 import { rectFromPolygon } from '@/core/document-understanding/local-document-understanding'
-import { recognizeLocalDocumentImage } from '@/core/document-understanding/tesseract-local-ocr'
+import { LOCAL_OCR_TIMEOUT_MS, LocalDocumentOcrTimeoutError, localOcrDimensions, recognizeLocalDocumentImage } from '@/core/document-understanding/tesseract-local-ocr'
 import { MAX_KNOWLEDGE_UPLOAD_BYTES } from '@/app/knowledge/upload-policy'
 import { chooseTimetableExtractionStrategy, classifyTimetablePageTextLayer, clamp, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, parseOrdinal, type Rect, type TimetablePageTextKind, type TimetableTextAnchor } from './timetable-share-helpers'
 
@@ -259,16 +259,22 @@ export function TimetableSharedIntake({
     try {
       const localItems = []
       for (const region of visualRegions) {
-        const pageCanvas = copyPageRegionToCanvas(source, region)
+        const localPage = copyPageRegionForLocalOcr(source, region)
         try {
           localItems.push(...await recognizeLocalDocumentImage({
-            image: pageCanvas,
+            image: localPage.canvas,
             page: region.page,
             offset: { x: region.x, y: region.y },
+            coordinateScale: localPage.coordinateScale,
+            timeoutMs: LOCAL_OCR_TIMEOUT_MS,
+            onProgress: ({ progress }) => {
+              const percent = Math.max(1, Math.min(100, Math.round(progress * 100)))
+              setMessage(`Lettura OCR locale · ${percent}% · pagina ${region.page}/${visualRegions.length}`)
+            },
           }))
         } finally {
-          pageCanvas.width = 1
-          pageCanvas.height = 1
+          localPage.canvas.width = 1
+          localPage.canvas.height = 1
         }
       }
 
@@ -344,7 +350,9 @@ export function TimetableSharedIntake({
     } catch (localError) {
       const message = localError instanceof Error ? localError.message : 'local OCR unavailable'
       console.warn('Timetable local OCR did not complete:', message.slice(0, 240))
-      localDiagnostic = `Lettura locale non riuscita: ${message.slice(0, 160)}`
+      localDiagnostic = localError instanceof LocalDocumentOcrTimeoutError
+        ? `Lettura locale interrotta dopo ${Math.round(LOCAL_OCR_TIMEOUT_MS / 1000)} secondi.`
+        : `Lettura locale non riuscita: ${message.slice(0, 160)}`
       setMessage(localDiagnostic)
     }
 
@@ -597,13 +605,15 @@ export function TimetableSharedIntake({
           <span>Cognome o etichetta con cui compari nell’orario</span>
           <input value={teacherLabel} onChange={(event) => { setTeacherLabel(event.currentTarget.value); setTeacherMatches([]) }} maxLength={120} autoComplete="off" placeholder="Es. ROSSI" />
         </label>
-        <button type="button" onClick={() => void findTeacher()} disabled={!ready || !teacherLabel.trim() || busy}>
-          Estrai il mio orario
+        <button type="button" onClick={() => void findTeacher()} disabled={!ready || !teacherLabel.trim() || busy} aria-busy={busy}>
+          {busy ? 'Sto leggendo l’orario…' : 'Estrai il mio orario'}
         </button>
         <small>Docente OS prova prima la lettura locale. Se il PDF è un’immagine, usa automaticamente la pagina renderizzata per ricostruire l’orario.</small>
       </div>
 
-      <div ref={viewportRef} style={{ maxHeight: 620, overflow: 'auto', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)' }}>
+      <p role="status" aria-live="polite" style={{ margin: 0 }}>{message}</p>
+
+      <div ref={viewportRef} style={{ maxHeight: 360, overflow: 'auto', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)' }}>
         <div style={{ position: 'relative', width: '100%' }}>
           <canvas
             ref={canvasRef}
@@ -671,8 +681,14 @@ export function TimetableSharedIntake({
       </div>
 
       <small id="timetable-selection-help">
-        {pages ? `${pages} pagina${pages === 1 ? '' : 'e'} · ${selections.length} ${selections.length === 1 ? 'area selezionata' : 'aree selezionate'}` : 'Preparazione in corso…'}
-        <span className="timetableKeyboardHelp"> Da tastiera: usa le frecce, Invio per iniziare/chiudere l’area e Maiusc + frecce per spostarti più velocemente.</span>
+        {busy
+          ? 'Analisi automatica in corso…'
+          : pages
+            ? (needsManualContext || selections.length > 0
+              ? `${pages} pagina${pages === 1 ? '' : 'e'} · ${selections.length} ${selections.length === 1 ? 'area selezionata' : 'aree selezionate'}`
+              : `${pages} pagina${pages === 1 ? '' : 'e'} pronta`)
+            : 'Preparazione in corso…'}
+        {needsManualContext ? <span className="timetableKeyboardHelp"> Da tastiera: usa le frecce, Invio per iniziare/chiudere l’area e Maiusc + frecce per spostarti più velocemente.</span> : null}
       </small>
 
       {needsManualContext ? <button
@@ -747,18 +763,20 @@ export function TimetableSharedIntake({
         </details>
       ) : null}
 
-      <div className="timetablePrimaryActions">
-        <button type="button" onClick={() => void submit()} disabled={!ready || !sourceFingerprint || !selections.length || (needsManualContext && selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal) || !item.classLabel)) || !teacherLabel.trim() || !effectiveFrom || busy || Boolean(acceptedCandidateId)}>
-          {busy ? 'Preparo la proposta…' : 'Continua'}
-        </button>
-        {acceptedCandidateId ? (
-          <button type="button" onClick={() => void retryAcceptedCleanup()} disabled={busy}>
-            Apri la revisione
-          </button>
-        ) : null}
-      </div>
-
-      <p role="status" aria-live="polite" style={{ margin: 0 }}>{message}</p>
+      {(selections.length > 0 || acceptedCandidateId) ? (
+        <div className="timetablePrimaryActions">
+          {selections.length > 0 ? (
+            <button type="button" onClick={() => void submit()} disabled={!ready || !sourceFingerprint || (needsManualContext && selections.some((item) => !item.weekday || !isValidOrdinal(item.ordinal) || !item.classLabel)) || !teacherLabel.trim() || !effectiveFrom || busy || Boolean(acceptedCandidateId)}>
+              {busy ? 'Preparo la proposta…' : 'Continua'}
+            </button>
+          ) : null}
+          {acceptedCandidateId ? (
+            <button type="button" onClick={() => void retryAcceptedCleanup()} disabled={busy}>
+              Apri la revisione
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <details className="timetableSecondaryOptions">
         <summary>Altre opzioni</summary>
@@ -836,14 +854,15 @@ async function cropSelections(source: HTMLCanvasElement, selections: Selection[]
   return blob
 }
 
-function copyPageRegionToCanvas(source: HTMLCanvasElement, region: PageRegion) {
+function copyPageRegionForLocalOcr(source: HTMLCanvasElement, region: PageRegion) {
   const normalized = clampRectToBounds(region, source.width, source.height)
   if (normalized.width <= 0 || normalized.height <= 0) {
     throw new Error('Pagina immagine non disponibile per la lettura locale')
   }
+  const dimensions = localOcrDimensions(normalized.width, normalized.height)
   const output = document.createElement('canvas')
-  output.width = normalized.width
-  output.height = normalized.height
+  output.width = dimensions.width
+  output.height = dimensions.height
   const ctx = output.getContext('2d', { alpha: false })
   if (!ctx) throw new Error('Canvas OCR locale non disponibile')
   ctx.fillStyle = canvasSurfaceColor()
@@ -856,10 +875,10 @@ function copyPageRegionToCanvas(source: HTMLCanvasElement, region: PageRegion) {
     normalized.height,
     0,
     0,
-    normalized.width,
-    normalized.height,
+    output.width,
+    output.height,
   )
-  return output
+  return { canvas: output, coordinateScale: dimensions.coordinateScale }
 }
 
 async function cropPageRegions(source: HTMLCanvasElement, regions: PageRegion[]) {
