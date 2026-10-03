@@ -108,7 +108,7 @@ export async function TimetableExperience({
             {mode === 'view'
               ? (lifecycle.activeVersion ? `In uso dal ${formatDate(lifecycle.activeVersion.effectiveFrom)}. Qui vedi soltanto ciò che vale adesso.` : 'Non hai ancora un orario attivo: completa la prima configurazione.')
               : mode === 'update'
-                ? 'Acquisisci il nuovo documento, controlla le lezioni trovate e scegli da quando deve valere.'
+                ? 'Modifica direttamente la settimana e scegli da quando deve valere. L’importazione da documento resta disponibile come aiuto opzionale.'
                 : 'Correggi manualmente la bozza, controlla copertura e versioni senza cambiare ciò che è già in uso.'}
           </span>
         </div>
@@ -132,11 +132,47 @@ export async function TimetableExperience({
         <section className="humanTaskFocus"><p className="humanTaskFocusEyebrow">ADESSO</p><h2>Nessuna lezione prevista in questa fascia</h2><p>{lifecycle.activeVersion ? 'L’orario in uso non prevede una lezione adesso.' : 'Non hai ancora messo in uso una versione dell’orario: per orientarti uso temporaneamente la bozza iniziale.'}</p><div className="humanTaskActions"><Link className="primary" href="#settimana-tipo">Apri la settimana</Link></div></section>
       )) : null}
 
-      {mode === 'update' ? <section className="timetableCard timetableImportCard" id="importa-orario" aria-labelledby="import-title">
+      {mode === 'update' ? <>
+      <section className="timetableCard timetableGridCard" id="modifica-settimana" aria-labelledby="direct-grid-title">
         <div className="timetableCardHeading">
           <span>01</span>
           <div>
-            <h2 id="import-title">Importa un nuovo orario</h2>
+            <h2 id="direct-grid-title">Modifica direttamente l’orario</h2>
+            <p>Tocca una cella della settimana per inserire, cambiare o rimuovere una lezione. Le modifiche restano nella bozza finché non decidi di metterla in uso.</p>
+          </div>
+          <b className="draftBadge">{draftLabel}</b>
+        </div>
+        <TimetableGrid
+          versionId={timetable.draftVersion.id}
+          days={days}
+          periods={periodPresets}
+          slots={timetable.slots}
+          assignments={gridAssignments}
+          readOnly={false}
+        />
+        <form action={updateTimetableDraft} className="timetableForm versionForm timetableDirectValidity">
+          <input type="hidden" name="versionId" value={timetable.draftVersion.id} />
+          <input type="hidden" name="label" value={timetable.draftVersion.label} />
+          <input type="hidden" name="sourceKind" value="MANUAL" />
+          <input type="hidden" name="sourceRef" value={timetable.draftVersion.sourceRef ?? ''} />
+          <label>
+            <span>In vigore dal</span>
+            <input name="effectiveFrom" type="date" defaultValue={timetable.draftVersion.effectiveFrom} min={context.academicYear.startsOn} max={context.academicYear.endsOn} required />
+          </label>
+          <button className="timetablePrimaryButton" type="submit">Salva data di validità</button>
+        </form>
+        <p className="timetableImportHint">Non serve indicare una data di fine. Quando metterai in uso un orario successivo, Docente OS chiuderà automaticamente quello precedente.</p>
+        <div className="humanTaskActions"><Link className="primary" href="/orario/gestisci">Controlla e metti in uso la bozza</Link></div>
+      </section>
+
+      <details className="timetableVersionDetails timetableOptionalImport">
+        <summary><div><strong>Importa da PDF o foto</strong><span>Opzionale · usa il documento solo se vuoi tentare la compilazione automatica</span></div></summary>
+        <div className="timetableVersionDetailsBody">
+      <section className="timetableCard timetableImportCard" id="importa-orario" aria-labelledby="import-title">
+        <div className="timetableCardHeading">
+          <span>02</span>
+          <div>
+            <h2 id="import-title">Importa da documento</h2>
             <p>Carica il PDF o una foto dell’orario. Docente OS prepara la proposta; tu controlli e poi decidi se applicarla alla bozza.</p>
           </div>
         </div>
@@ -260,7 +296,10 @@ export async function TimetableExperience({
             )}
           </div>
         )}
-      </section> : null}
+      </section>
+        </div>
+      </details>
+      </> : null}
 
       {(mode === 'view' || mode === 'manage') ? <section className="timetableCard timetableGridCard" id="settimana-tipo" aria-labelledby="grid-title">
         <div className="timetableCardHeading">
