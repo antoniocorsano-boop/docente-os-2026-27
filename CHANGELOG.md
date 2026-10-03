@@ -6,7 +6,25 @@ DOCENTE OS adotta Semantic Versioning per le release formalmente emesse dal prog
 
 ## Unreleased
 
-Nessuna modifica applicativa successiva al freeze di `0.1.0-rc.1`.
+Nessuna modifica applicativa successiva al candidate SHA di `0.1.0-rc.2`.
+
+## [0.1.0-rc.2] - 2026-10-03 (DRAFT)
+
+Release Candidate rc.2 preparata sul candidate SHA `617b4f8901259ce2318ce721236241d7681b1c9c`. Il tag e la GitHub prerelease non sono ancora creati; la candidata non è `CERTIFIED` né `PROMOTED`.
+
+### Fixed
+
+- Ridotto e reso prevedibile il costo dell’estrazione locale dell’orario raster su Android: raster OCR max 1200 px e budget globale di 30 secondi inclusi preparazione e bootstrap.
+- Reso retry-safe il lifecycle del worker locale dopo timeout.
+- Reso il feedback teacher-first e progressivo: nessun gergo OCR nel percorso primario, percentuale solo durante il riconoscimento effettivo.
+- Bloccata la selezione manuale finché l’estrazione automatica non richiede davvero il fallback.
+- Corretto il progresso multipagina per PDF misti usando la posizione tra le pagine raster.
+
+### Validation
+
+- Quarta review indipendente GitHub Copilot sulla remediation finale: **Findings: None**.
+- Product CI, Dependency Security, Release Engineering, Human Interaction e P6 PASS sul candidate SHA; P6 ha verificato che la Beta serve lo SHA candidato esatto.
+- Resta necessaria la prova Android fisica sul PDF rappresentativo: `Corsano → 14 lezioni → revisione → conferma → persistenza`.
 
 ## [0.1.0-rc.1] - 2026-10-03
 
