@@ -201,28 +201,30 @@ Lo stesso schema deve essere riusabile da QL-1..QL-4 e dal Control Center.
 
 ## 5. Ordine esecutivo
 
-### Wave A — deterministica, basso costo
+### Wave A — già consolidata
 1. R-1 TeachingSession test discovery;
 2. R-2 verifica Copilot historical findings;
-3. R-3 receipt schema + validator.
+3. R-3 receipt schema + validator;
+4. QL-1 technical PASS + Human Review PASS; HUMAN_USE pending.
 
-### Wave B — massimo leverage
-4. QL-1 Daily Teaching Loop — technical PASS + Human Review PASS; HUMAN_USE pending;
-5. QL-2 Professional Context & Setup.
+### Wave B — freeze
+5. rebaseline DOS-CRM;
+6. congelare una RC esatta da `develop` dopo il rebaseline;
+7. emettere receipt/version reference dello SHA RC.
 
-### Wave C — knowledge/AI
-6. QL-3 Knowledge to Lesson, includendo DOS-MATERIALS;
-7. QL-4 Governed Copilot.
+### Wave C — qualification sulla RC
+8. completare HUMAN_USE QL-1;
+9. QL-2 Professional Context & Setup;
+10. QL-3 Knowledge to Lesson, includendo DOS-MATERIALS;
+11. QL-4 Governed Copilot;
+12. qualification PWA/device intake Android real-device;
+13. qualification Observe → Registra / Teaching Evidence;
+14. revalidation Lesson Prep e Account/Security.
 
-### Wave D — qualification mirate
-8. PWA/device intake Android real-device;
-9. Observe → Registra / Teaching Evidence;
-10. revalidation Lesson Prep e Account/Security.
-
-### Wave E — release
-11. promozione capability realmente supportate;
-12. congelamento RC;
-13. sustained HUMAN_USE per CRL 6.
+### Wave D — pilot e promozione
+15. sustained HUMAN_USE/runtime evidence;
+16. promozione delle sole capability realmente supportate;
+17. chiusura dei finding osservati senza riaprire il feature train.
 
 ## 6. Cosa NON fare
 
