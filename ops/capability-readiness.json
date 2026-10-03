@@ -59,7 +59,7 @@
       "open_findings": [
         "The historical CRL-5 qualification remains valid evidence, but the import journey changed materially after PR #640 through local-first document understanding and the direct-edit/optional-import redesign.",
         "Generic Android PWA installation/share-sheet behavior is not covered by the historical Share→Orario qualification.",
-        "Current Beta runtime reports `Timetable visual extractor: UNAVAILABLE`; native/local-first paths remain available, but the governed remote visual fallback is not operational on the current deployment.",
+        "Beta startup diagnostics report `Timetable visual extractor: UNAVAILABLE`, but the diagnostic checks only OPENAI_TIMETABLE_API_KEY while the extractor also accepts OPENAI_API_KEY. Actual remote-fallback availability is therefore unverified; readiness observability/configuration must be aligned before requalification.",
         "Operational Security hosted X5 fixture failure remains external to this capability."
       ],
       "next_promotion_criterion": "Revalidate the current Share→Orario journey on one exact head, including Android share-sheet entry, local-first extraction/fallback, review/apply, recovery and real-device HUMAN_USE before restoring CURRENT freshness or considering CRL-6."
