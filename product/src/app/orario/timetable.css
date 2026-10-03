@@ -110,7 +110,10 @@
 }
 
 @media(max-width:719px){
-  .timetableSurface .timetableHero{display:none}
+  .timetableSurface .timetableHero{padding:0;border:0;background:transparent}
+  .timetableSurface .timetableHero p,
+  .timetableSurface .timetableHero span{display:none}
+  .timetableSurface .timetableHero h1{margin:0;font-size:20px;line-height:1.2;letter-spacing:-.02em}
 
   .timetableSurface .timetableModeNav{
     display:grid;
