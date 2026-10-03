@@ -80,3 +80,144 @@
 .timetableViewActions .humanTaskActions{margin:0;flex:0 0 auto}
 @media(max-width:719px){.timetableViewActions{align-items:stretch;flex-direction:column}.timetableViewActions .humanTaskActions{display:grid;grid-template-columns:1fr 1fr;width:100%}.timetableViewActions .humanTaskActions a{justify-content:center;text-align:center}}
 @media(max-width:460px){.timetableViewActions .humanTaskActions{grid-template-columns:1fr}}
+
+
+/* ORARIO_MOBILE_DIRECT_EDIT_V2 */
+.editorScheduleDetails{
+  grid-column:1/-1;
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  background:var(--surface-soft);
+}
+.editorScheduleDetails summary{
+  min-height:44px;
+  display:flex;
+  align-items:center;
+  padding:0 12px;
+  cursor:pointer;
+  font-size:11px;
+  font-weight:750;
+  color:var(--ink-soft);
+}
+.editorScheduleDetails[open] summary{
+  border-bottom:1px solid var(--line);
+}
+.editorScheduleGrid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  padding:12px;
+}
+
+@media(max-width:719px){
+  .timetableSurface .timetableHero{padding:0;border:0;background:transparent}
+  .timetableSurface .timetableHero p,
+  .timetableSurface .timetableHero span{display:none}
+  .timetableSurface .timetableHero h1{margin:0;font-size:20px;line-height:1.2;letter-spacing:-.02em}
+
+  .timetableSurface .timetableModeNav{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:6px;
+  }
+  .timetableSurface .timetableModeNav a:first-child{grid-column:auto}
+  .timetableSurface .timetableModeNav a{
+    min-height:40px;
+    justify-content:center;
+    padding:0 6px;
+    font-size:12px;
+    text-align:center;
+  }
+
+  .timetable-view .timetableModeNav{display:none}
+  .timetable-view .timetableGridCard{
+    padding:6px 0 0;
+    border:0;
+    background:transparent;
+  }
+  .timetable-view .timetableGridCard .timetableCardHeading{display:none}
+
+  .timetableSurface .visualTimetable{gap:8px}
+  .timetableSurface .visualTimetableToolbar{
+    flex-wrap:nowrap;
+    align-items:center;
+    gap:8px;
+  }
+  .timetableSurface .viewSwitch{flex:0 0 136px}
+  .timetableSurface .viewSwitch button{
+    min-height:38px;
+    padding:0 7px;
+    font-size:12px;
+  }
+  .timetableSurface .printTimetableButton{display:none}
+  .timetableSurface .dayNavigator{
+    order:0;
+    width:auto;
+    flex:1;
+    justify-content:flex-end;
+    gap:3px;
+  }
+  .timetableSurface .dayNavigator button{
+    width:38px;
+    height:38px;
+    border-radius:var(--radius-sm);
+  }
+  .timetableSurface .dayNavigator strong{
+    min-width:68px;
+    font-size:12px;
+  }
+
+  .timetableSurface .visualTimetableGrid{gap:4px}
+  .timetableSurface .timeHeader,
+  .timetableSurface .dayHeader{min-height:38px}
+  .timetableSurface .timeCell,
+  .timetableSurface .emptyTimetableCell,
+  .timetableSurface .occupiedTimetableCell{min-height:64px}
+  .timetableSurface .timeCell{padding:5px}
+  .timetableSurface .timeCell strong{font-size:11px}
+  .timetableSurface .timeCell span{font-size:8px}
+  .timetableSurface .occupiedTimetableCell{
+    gap:2px;
+    padding:7px 8px;
+  }
+  .timetableSurface .occupiedTimetableCell .cellKind{font-size:7px}
+  .timetableSurface .occupiedTimetableCell strong{font-size:11px}
+  .timetableSurface .occupiedTimetableCell small{display:none}
+  .timetableSurface .emptyTimetableCell span{font-size:16px}
+  .timetableSurface .timetableLegend{display:none}
+
+  .timetableEditor{
+    max-height:calc(100dvh - 72px);
+  }
+  .timetableEditorHeading{
+    position:sticky;
+    top:-17px;
+    z-index:2;
+    margin:0 -17px 10px;
+    padding:17px 17px 10px;
+    background:var(--surface);
+    border-bottom:1px solid var(--line);
+  }
+  .timetableEditorHeading h3{font-size:18px}
+  .timetableEditorForm{gap:10px}
+  .editorScheduleGrid{
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .timetableEditorActions{
+    position:sticky;
+    bottom:-17px;
+    z-index:2;
+    margin:0 -17px -17px;
+    padding:10px 17px max(17px,env(safe-area-inset-bottom));
+    background:var(--surface);
+    border-top:1px solid var(--line);
+  }
+  .timetableEditorActions button{min-height:48px}
+}
+
+@media(max-width:390px){
+  .timetableSurface .viewSwitch{flex-basis:126px}
+  .timetableSurface .dayNavigator strong{min-width:58px}
+  .editorScheduleGrid{grid-template-columns:1fr}
+}

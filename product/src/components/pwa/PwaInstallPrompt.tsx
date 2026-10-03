@@ -1,5 +1,6 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import styles from './PwaInstallPrompt.module.css'
 
@@ -15,6 +16,7 @@ function isStandalone() {
 }
 
 export function PwaInstallPrompt() {
+  const pathname = usePathname()
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null)
   const [installed, setInstalled] = useState(false)
   const [dismissed, setDismissed] = useState(false)
@@ -43,7 +45,7 @@ export function PwaInstallPrompt() {
     }
   }, [])
 
-  if (installed || dismissed || !installEvent) return null
+  if (pathname.startsWith('/orario') || installed || dismissed || !installEvent) return null
 
   const install = async () => {
     await installEvent.prompt()

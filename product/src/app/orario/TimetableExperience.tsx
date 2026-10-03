@@ -99,7 +99,7 @@ export async function TimetableExperience({
   const canActivateDraft = canActivateTimetableDraft(lifecycle.activeVersion, timetable.draftVersion)
 
   return (
-    <AppShell active="timetable" academicYearLabel={context.academicYear.label} workspaceName={settings.schoolName || context.workspace.name} role={context.role} contentClassName="timetableSurface">
+    <AppShell active="timetable" academicYearLabel={context.academicYear.label} workspaceName={settings.schoolName || context.workspace.name} role={context.role} contentClassName={`timetableSurface timetable-${mode}`}>
       <section className="timetableHero">
         <div>
           <p>ORARIO · {context.academicYear.label}</p>
