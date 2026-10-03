@@ -251,9 +251,14 @@ export function TimetableSharedIntake({
       return
     }
 
+    setSelections([])
+    setTouchSelectMode(false)
+    setKeyboardCursor(null)
+    setKeyboardStart(null)
+    startRef.current = null
     setBusy(true)
     setNeedsManualContext(false)
-    setMessage('Sto leggendo localmente le pagine immagine dell’orario…')
+    setMessage('Sto leggendo l’orario…')
     let localDiagnostic = ''
 
     try {
@@ -623,15 +628,23 @@ export function TimetableSharedIntake({
         <div style={{ position: 'relative', width: '100%' }}>
           <canvas
             ref={canvasRef}
-            role="application"
-            tabIndex={0}
-            onPointerDown={pointerDown}
-            onPointerUp={pointerUp}
-            onPointerCancel={() => { startRef.current = null }}
-            onKeyDown={keyboardSelection}
-            aria-label="Anteprima locale dell’orario: trascina oppure usa tastiera per selezionare le tue celle"
-            aria-describedby="timetable-selection-help"
-            style={{ width: '100%', height: 'auto', display: 'block', touchAction: touchSelectMode ? 'none' : 'pan-y', cursor: ready && !busy ? 'crosshair' : 'default' }}
+            role={needsManualContext ? 'application' : 'img'}
+            tabIndex={needsManualContext ? 0 : -1}
+            onPointerDown={needsManualContext ? pointerDown : undefined}
+            onPointerUp={needsManualContext ? pointerUp : undefined}
+            onPointerCancel={needsManualContext ? () => { startRef.current = null } : undefined}
+            onKeyDown={needsManualContext ? keyboardSelection : undefined}
+            aria-label={needsManualContext
+              ? 'Anteprima locale dell’orario: trascina oppure usa tastiera per selezionare le tue celle'
+              : 'Anteprima locale dell’orario'}
+            aria-describedby={needsManualContext ? 'timetable-selection-help' : undefined}
+            style={{
+              width: '100%',
+              height: 'auto',
+              display: 'block',
+              touchAction: needsManualContext && touchSelectMode ? 'none' : 'pan-y',
+              cursor: needsManualContext && ready && !busy ? 'crosshair' : 'default',
+            }}
           />
           {canvasRef.current?.width && canvasRef.current?.height ? (
             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
