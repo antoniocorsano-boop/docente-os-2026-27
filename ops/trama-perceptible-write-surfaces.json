@@ -59,10 +59,25 @@
       "critical": true
     },
     {
-      "id": "timetable-import-write",
+      "id": "timetable-manual-write",
       "critical": true,
       "sourcePatterns": [
         "product/src/app/orario/actions.ts",
+        "product/src/core/infrastructure/supabase/supabase-timetable-repository.ts",
+        "product/src/core/infrastructure/supabase/supabase-timetable-slot-editor.ts"
+      ],
+      "feedbackFiles": [
+        "product/src/app/orario/TimetableGrid.tsx",
+        "product/src/app/orario/TimetableExperience.tsx"
+      ],
+      "testFiles": [
+        "product/src/app/orario/timetable-direct-feedback.test.ts"
+      ]
+    },
+    {
+      "id": "timetable-import-write",
+      "critical": true,
+      "sourcePatterns": [
         "product/src/core/infrastructure/supabase/supabase-timetable-import-repository.ts"
       ],
       "feedbackFiles": [
