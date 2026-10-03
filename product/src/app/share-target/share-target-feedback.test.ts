@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import test from 'node:test'
 import { isValidIsoCalendarDate, resolveTimetableSourceIdentity } from '../orario/timetable-import-boundary'
 import { clearShareIntakeStaging } from './share-target-staging'
-import { chooseTimetableExtractionStrategy, classifyTimetablePageTextLayer, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, looksLikeTimetablePdf, ordinalFromTimetableText, parseOrdinal, teacherLabelMatches, weekdayFromTimetableText } from './timetable-share-helpers'
+import { chooseTimetableExtractionStrategy, classifyTimetablePageTextLayer, clampRectToBounds, dateFromFilename, derivativeContextLabel, findTeacherTextAnchors, inferTeacherTimetableCells, isValidOrdinal, localOcrProgressLabel, looksLikeTimetablePdf, ordinalFromTimetableText, parseOrdinal, teacherLabelMatches, weekdayFromTimetableText } from './timetable-share-helpers'
 
 const intake = fs.readFileSync(new URL('./ShareTargetIntake.tsx', import.meta.url), 'utf8')
 const uploader = fs.readFileSync(new URL('../knowledge/KnowledgeFileUploader.tsx', import.meta.url), 'utf8')
@@ -658,4 +658,18 @@ test('Android OCR exposes bounded progress before the preview and keeps manual U
   assert.match(timetableIntake, /needsManualContext \? <span className="timetableKeyboardHelp"/)
   assert.match(timetableIntake, /\{\(selections\.length > 0 \|\| acceptedCandidateId\) \? \(/)
   assert.match(timetableIntake, /maxHeight: 360/)
+})
+
+
+test('mixed PDF OCR progress uses raster position, not original PDF page number', () => {
+  assert.equal(
+    localOcrProgressLabel({ progress: 0.42, rasterIndex: 1, rasterTotal: 2 }),
+    'Lettura OCR locale · 42% · pagina 2/2',
+  )
+})
+
+test('mobile raster OCR uses one shared 30-second deadline across all visual pages', () => {
+  assert.match(timetableIntake, /const localOcrDeadlineAt = Date\.now\(\) \+ LOCAL_OCR_TIMEOUT_MS/)
+  assert.match(timetableIntake, /remainingLocalOcrBudgetMs\(localOcrDeadlineAt\)/)
+  assert.doesNotMatch(timetableIntake, /timeoutMs:\s*LOCAL_OCR_TIMEOUT_MS,\s*\n\s*onProgress/)
 })
