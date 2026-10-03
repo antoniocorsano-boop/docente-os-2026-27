@@ -130,3 +130,12 @@ test('global OCR budget only exposes the time remaining from one shared deadline
   assert.equal(remainingLocalOcrBudgetMs(30_000, 30_000), 0)
   assert.equal(remainingLocalOcrBudgetMs(30_000, 45_000), 0)
 })
+
+
+test('worker accessor preserves cached promise identity for timeout reset', () => {
+  const source = fs.readFileSync(new URL('./tesseract-local-ocr.ts', import.meta.url), 'utf8')
+  assert.match(source, /\nfunction worker\(\): Promise<Worker>/)
+  assert.doesNotMatch(source, /async function worker\(\): Promise<Worker>/)
+  assert.match(source, /const pendingWorker = worker\(\)/)
+  assert.match(source, /clearWorkerPromiseIfCurrent\(workerPromise, pendingWorker\)/)
+})
