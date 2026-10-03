@@ -644,3 +644,17 @@ test('already-applied minimized import is surfaced as terminal', () => {
   assert.match(timetableIntake, /code === 'already_applied'/)
   assert.match(timetableIntake, /Questo documento è già stato applicato alla bozza dell’orario/)
 })
+
+
+test('Android OCR exposes bounded progress before the preview and keeps manual UI secondary', () => {
+  const statusAt = timetableIntake.indexOf('<p role="status"')
+  const previewAt = timetableIntake.indexOf('<div ref={viewportRef}')
+  assert.ok(statusAt >= 0)
+  assert.ok(previewAt > statusAt)
+  assert.match(timetableIntake, /aria-busy=\{busy\}/)
+  assert.match(timetableIntake, /onProgress:/)
+  assert.match(timetableIntake, /Analisi automatica in corso/)
+  assert.match(timetableIntake, /needsManualContext \? <span className="timetableKeyboardHelp"/)
+  assert.match(timetableIntake, /\{\(selections\.length > 0 \|\| acceptedCandidateId\) \? \(/)
+  assert.match(timetableIntake, /maxHeight: 360/)
+})
