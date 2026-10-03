@@ -16,6 +16,7 @@ function slot(overrides: Partial<TimetableSlot>): TimetableSlot {
     teachingAssignmentId: 'assignment-1',
     manualClassLabel: null,
     presenceKind: null,
+    activityKind: null,
     room: null,
     note: null,
     ordinal: 1,
