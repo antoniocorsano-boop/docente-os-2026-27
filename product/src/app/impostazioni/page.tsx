@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { LocalTeacherProfileCard } from '@/components/local-user-profile/local-user-profile'
+import { PwaInstallControl } from '@/components/pwa/PwaInstallControl'
 import { WEEKDAYS } from '@/core/domain/teacher-settings'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
@@ -146,9 +147,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           usedIn="Apertura rapida e ricezione di documenti dal menu Condividi."
           doesNotChange="Dati, impostazioni professionali o contenuti didattici."
         />
-        <div className="settingsInlineHint">
-          Se il pulsante <strong>Installa Docente OS</strong> non compare automaticamente, in Chrome apri il menu <strong>⋮</strong> e scegli <strong>Installa app</strong> oppure <strong>Aggiungi a schermata Home</strong>.
-        </div>
+        <PwaInstallControl />
       </section>
 
       <section className="settingsCard" id="contesto" aria-labelledby="context-title">
