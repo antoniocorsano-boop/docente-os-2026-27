@@ -46,7 +46,11 @@ export async function TimetableExperience({
   const actionFeedback = singleParam(params.feedback)
   const requestedPhase = singleParam(params.fase)
   const updatePhase = requestedPhase === 'data' || requestedPhase === 'controllo' ? requestedPhase : 'modifica'
-  const showImportTool = mode === 'update' && singleParam(params.strumento) === 'importa'
+  const showImportTool = mode === 'update' && Boolean(
+    importCandidateId
+    || importStatus
+    || singleParam(params.strumento) === 'importa',
+  )
 
   const moment = currentRomeMoment()
   const settingsRepository = new SupabaseTeacherSettingsRepository()
@@ -132,25 +136,33 @@ export async function TimetableExperience({
     <AppShell active="timetable" academicYearLabel={context.academicYear.label} workspaceName={settings.schoolName || context.workspace.name} role={context.role} contentClassName={`timetableSurface timetable-${mode}`}>
       <section className="timetableHero">
         <div>
-          <p>{mode === 'update' ? `MODIFICA ORARIO · ${updatePhase === 'modifica' ? '1 DI 3' : updatePhase === 'data' ? '2 DI 3' : '3 DI 3'}` : `ORARIO · ${context.academicYear.label}`}</p>
+          <p>{mode === 'update'
+            ? showImportTool
+              ? 'IMPORTA ORARIO'
+              : `MODIFICA ORARIO · ${updatePhase === 'modifica' ? '1 DI 3' : updatePhase === 'data' ? '2 DI 3' : '3 DI 3'}`
+            : `ORARIO · ${context.academicYear.label}`}</p>
           <h1>{mode === 'view'
             ? 'Il tuo orario'
-            : updatePhase === 'modifica'
-              ? 'Modifica orario'
-              : updatePhase === 'data'
-                ? 'Da quando deve valere?'
-                : 'Controlla e attiva'}</h1>
+            : showImportTool
+              ? 'Importa orario'
+              : updatePhase === 'modifica'
+                ? 'Modifica orario'
+                : updatePhase === 'data'
+                  ? 'Da quando deve valere?'
+                  : 'Controlla e attiva'}</h1>
           <span>{mode === 'view'
             ? (lifecycle.activeVersion ? `In uso dal ${formatDate(lifecycle.activeVersion.effectiveFrom)}.` : 'Non hai ancora un orario attivo.')
-            : updatePhase === 'modifica'
-              ? 'Cambia soltanto ciò che serve. L’orario in uso non cambia ancora.'
-              : updatePhase === 'data'
-                ? 'Scegli la data dalla quale vuoi usare le modifiche.'
-                : 'Controlla il risultato. Solo il pulsante finale renderà operative le modifiche.'}</span>
+            : showImportTool
+              ? 'Controlla la proposta ricavata dal documento. Nulla entra in uso senza la tua conferma.'
+              : updatePhase === 'modifica'
+                ? 'Cambia soltanto ciò che serve. L’orario in uso non cambia ancora.'
+                : updatePhase === 'data'
+                  ? 'Scegli la data dalla quale vuoi usare le modifiche.'
+                  : 'Controlla il risultato. Solo il pulsante finale renderà operative le modifiche.'}</span>
         </div>
       </section>
 
-      {mode === 'update' ? (
+      {mode === 'update' && !showImportTool ? (
         <div className="timetableFlowHeader">
           <ol className="timetableFlowSteps" aria-label="Avanzamento modifica orario">
             <li className={updatePhase === 'modifica' ? 'active' : 'done'}><span>1</span><strong>Modifica</strong></li>
@@ -201,7 +213,7 @@ export async function TimetableExperience({
       ) : null}
 
       {mode === 'update' ? <>
-        {updatePhase === 'modifica' ? <>
+        {!showImportTool && updatePhase === 'modifica' ? <>
           <section
             className="timetableCard timetableGridCard timetableGuidedStep"
             id="modifica-settimana"
@@ -231,7 +243,7 @@ export async function TimetableExperience({
           </div>
         </> : null}
 
-        {updatePhase === 'data' ? (
+        {!showImportTool && updatePhase === 'data' ? (
           <section
             className="timetableGuidedDecision"
             aria-labelledby="timetable-date-title"
@@ -261,7 +273,7 @@ export async function TimetableExperience({
           </section>
         ) : null}
 
-        {updatePhase === 'controllo' ? <>
+        {!showImportTool && updatePhase === 'controllo' ? <>
           <section
             className="timetableGuidedReview"
             aria-labelledby="timetable-review-title"
