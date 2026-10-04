@@ -722,6 +722,18 @@ La classificazione è teacher-authored e non modifica il CAN-PLAN. Serve a rende
 
 Per Tecnologia, in particolare, `DRAWING_PROJECT` copre disegno/progettazione e `PRACTICAL_LAB` copre attività pratica/laboratoriale. Il modello resta però generale e riutilizzabile dalle altre discipline.
 
+La tipologia memorizzata sullo slot è un **default ricorrente**, non un vincolo sulla singola lezione. Il docente può modificarla per una data concreta, anche immediatamente prima della lezione, tramite una Temporal Exception teacher-authored che vale soltanto per quell'occorrenza. La scelta puntuale non crea una nuova versione dell'orario e non modifica le settimane successive.
+
+Precedenza applicativa:
+
+```text
+tipologia puntuale della data
+→ altrimenti tipologia dello slot settimanale
+→ altrimenti THEORY
+```
+
+Quando esiste già una `TeachingSession` registrata per slot + data, la tipologia prevista di quell'occorrenza non è più riscrivibile: lo storico didattico resta stabile.
+
 ### 15.2 Criterio di chiusura aggiornato
 
 La capability Orario è verificata sul percorso:
