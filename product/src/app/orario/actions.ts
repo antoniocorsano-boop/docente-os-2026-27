@@ -75,7 +75,7 @@ export async function activateTimetableDraft(formData: FormData) {
   await repository.activateDraft(text(formData, 'versionId'))
   revalidatePath('/')
   revalidatePath('/orario')
-  redirect('/orario/gestisci?feedback=timetable_activated')
+  redirect('/orario?feedback=timetable_activated')
 }
 
 export async function addLessonSlot(formData: FormData) {
