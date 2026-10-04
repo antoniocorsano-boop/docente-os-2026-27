@@ -49,7 +49,7 @@ test('Orario mobile: heading percepibile e modifica diretta end-to-end', async (
     await createDialog.getByLabel('Che cosa fai in quest’ora?').selectOption('OTHER')
     await createDialog.getByText('Dettagli opzionali', { exact: true }).click()
     await createDialog.getByLabel('Nota').fill(TEMP_NOTE)
-    await createDialog.getByRole('button', { name: 'Aggiungi all’orario' }).click()
+    await createDialog.getByRole('button', { name: 'Aggiungi' }).click()
     temporarySlotCreated = true
 
     const createFeedback = page.locator('[data-visual-priority="status-transient"]').filter({ hasText: 'Modifica salvata.' })
@@ -89,7 +89,7 @@ test('Orario mobile: heading percepibile e modifica diretta end-to-end', async (
         if (await dialog.getByRole('button', { name: 'Modifica orario' }).count()) {
           await dialog.getByRole('button', { name: 'Modifica orario' }).click()
         }
-        await page.getByRole('button', { name: 'Rimuovi dall’orario' }).click()
+        await page.getByRole('button', { name: 'Rimuovi' }).click()
         await expect(page.locator('.occupiedTimetableCell').filter({ hasText: /HVA mobile direct edit/ })).toHaveCount(0)
       }
     }
