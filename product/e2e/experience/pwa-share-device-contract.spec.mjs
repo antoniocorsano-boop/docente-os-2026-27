@@ -29,6 +29,21 @@ test('PWA device contract: manifest and Share Target are exposed by the deployed
   expect(worker).toContain("Response.redirect('/share-target?id='")
 })
 
+test('Home keeps installation visible even without beforeinstallprompt', async ({ page }) => {
+  await loginE2E(page)
+  await page.goto('/')
+
+  const installSurface = page.locator('[aria-label="Installazione Docente OS"]')
+  await expect(installSurface).toBeVisible()
+
+  const nativeInstallButton = installSurface.getByRole('button', { name: 'Installa', exact: true })
+  if (await nativeInstallButton.count()) {
+    await expect(nativeInstallButton).toBeVisible()
+  } else {
+    await expect(installSurface.getByRole('link', { name: 'Come installare' })).toBeVisible()
+  }
+})
+
 test('Impostazioni keeps installation discoverable even when Chromium does not surface it automatically', async ({ page }) => {
   await loginE2E(page)
   await page.goto('/impostazioni#installazione')
