@@ -10,6 +10,8 @@ const ALTERNATE_ICON_LIBRARY_RE = /from\s+['"](?:react-icons(?:\/[^'"]*)?|@heroi
 const LOCAL_TOKEN_RE = /--(?:color|brand|primary|success|warning|danger|info|radius|shadow)[\w-]*\s*:/i
 const LOCAL_BRAND_DEFINITION_RE = /(?:function\s+DocenteOsMark\b|const\s+DocenteOsMark\b|dosLogo(?:Frame|Stem|Thread|Dot)|DOCENTE_OS_MARK_GEOMETRY\s*=)/
 const DECORATIVE_WATCH_RE = /(?:backdrop-filter\s*:|filter\s*:\s*(?:blur|drop-shadow)|text-shadow\s*:)/
+const VISUAL_PRIORITY_RE = /data-visual-priority\s*=\s*["']([^"']+)["']/g
+const VISUAL_PRIORITY_ALLOWED = new Set(['decision-primary', 'operational-primary', 'status-transient', 'guidance', 'supporting', 'metadata'])
 
 const RAW_COLOR_ALLOWED = new Set([
   'product/src/app/brand-system.css',
@@ -54,6 +56,11 @@ export function evaluatePolicy({ changedFiles, prBody = '', requireClassificatio
       if (DECORATIVE_WATCH_RE.test(line)) {
         warnings.push(finding('DPG-07', 'Effetto decorativo da giustificare in HVA secondo la regola delle superfici calme.', file.path, line, 'WATCH'))
       }
+      for (const match of line.matchAll(VISUAL_PRIORITY_RE)) {
+        if (!VISUAL_PRIORITY_ALLOWED.has(match[1])) {
+          findings.push(finding('DPG-21', 'Priorità visuale non canonica: usare il vocabolario del Visual Hierarchy Context Contract.', file.path, line))
+        }
+      }
     }
 
     const addsMotion = file.addedLines.some((line) => MOTION_RE.test(line))
@@ -67,7 +74,7 @@ export function evaluatePolicy({ changedFiles, prBody = '', requireClassificatio
     runtimeVisualFiles: runtimeVisualFiles.map((file) => file.path),
     findings,
     warnings,
-    automatedRules: ['DPG-01', 'DPG-04', 'DPG-13', 'DPG-14', 'DPG-19', 'DPG-20'],
+    automatedRules: ['DPG-01', 'DPG-04', 'DPG-13', 'DPG-14', 'DPG-19', 'DPG-20', 'DPG-21'],
     hvaRules: ['DPG-05', 'DPG-06', 'DPG-07', 'DPG-08', 'DPG-09', 'DPG-10', 'DPG-11', 'DPG-12', 'DPG-15', 'DPG-16', 'DPG-17', 'DPG-18'],
   }
 }
