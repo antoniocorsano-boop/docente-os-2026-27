@@ -25,6 +25,8 @@ test('PWA manifest exposes Chromium installability icon sizes', () => {
   assert.match(manifestSource, /\/pwa\/icon-maskable-512\.png/)
   assert.match(manifestSource, /purpose: 'maskable'/)
   assert.match(manifestSource, /prefer_related_applications: false/)
+  assert.doesNotMatch(manifestSource, /sizes: 'any'/)
+  assert.doesNotMatch(manifestSource, /type: 'image\/svg\+xml'/)
 
   assert.deepEqual(pngDimensions('../../public/pwa/icon-192.png'), { width: 192, height: 192 })
   assert.deepEqual(pngDimensions('../../public/pwa/icon-512.png'), { width: 512, height: 512 })
