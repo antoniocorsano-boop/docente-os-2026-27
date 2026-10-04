@@ -56,3 +56,17 @@ test('unmapped HVA-only support falls back to full HVA', () => {
   ], { hvaRequired: true })
   assert.equal(scope.mode, 'FULL')
 })
+
+
+test('timetable runtime change runs hierarchy and direct-edit focused HVA', () => {
+  const scope = deriveHvaScope([
+    'product/src/app/orario/TimetableExperience.tsx',
+  ], { hvaRequired: true })
+  assert.equal(scope.mode, 'FOCUSED')
+  assert.deepEqual(scope.specs, [
+    'e2e/experience/surfaces.spec.mjs',
+    'e2e/experience/timetable-import-real-fixture.spec.mjs',
+    'e2e/experience/timetable-mobile-direct-edit.spec.mjs',
+    'e2e/experience/timetable-visual-hierarchy-context.spec.mjs',
+  ])
+})
