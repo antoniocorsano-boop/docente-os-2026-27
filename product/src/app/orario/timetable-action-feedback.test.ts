@@ -30,8 +30,8 @@ test('timetable writes expose perceptible transient feedback and explicit activa
   assert.match(experienceSource, /data-visual-priority="supporting"/)
   assert.match(experienceSource, /data-visual-priority="metadata"/)
 
-  const activationIndex = experienceSource.indexOf('timetableActivationAction')
-  const manageGridIndex = experienceSource.indexOf("{(mode === 'view' || mode === 'manage') ? <section className=\"timetableCard timetableGridCard\"")
+  const activationIndex = experienceSource.indexOf('data-visual-priority="decision-primary"')
+  const manageGridIndex = experienceSource.indexOf("data-visual-moment={mode === 'view' ? 'now' : 'review'}")
   assert.ok(activationIndex >= 0 && manageGridIndex >= 0 && activationIndex < manageGridIndex)
 
   assert.match(gridSource, /@\/components\/ui\/transient-feedback/)
