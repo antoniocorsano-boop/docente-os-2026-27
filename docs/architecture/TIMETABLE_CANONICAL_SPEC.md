@@ -734,6 +734,8 @@ tipologia puntuale della data
 
 Quando esiste già una `TeachingSession` registrata per slot + data, la tipologia prevista di quell'occorrenza non è più riscrivibile: lo storico didattico resta stabile.
 
+Sul piano visuale questa estensione è **COMPATIBLE** con la superficie Orario esistente: usa il focus `Adesso / Prossima lezione`, mantiene invariata la gerarchia della griglia e aggiunge soltanto una scelta contestuale subordinata, senza introdurre un nuovo percorso di navigazione.
+
 ### 15.2 Criterio di chiusura aggiornato
 
 La capability Orario è verificata sul percorso:
