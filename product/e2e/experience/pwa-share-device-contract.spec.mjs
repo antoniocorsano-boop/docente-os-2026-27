@@ -29,7 +29,7 @@ test('PWA device contract: manifest and Share Target are exposed by the deployed
   expect(worker).toContain("Response.redirect('/share-target?id='")
 })
 
-test('Impostazioni keeps installation discoverable even when Chromium does not surface it automatically', async ({ page }) => {
+test('Impostazioni documents the browser-native install path without replacing it', async ({ page }) => {
   await loginE2E(page)
   await page.goto('/impostazioni#installazione')
 
