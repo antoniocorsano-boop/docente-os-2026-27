@@ -46,7 +46,7 @@ export default async function HomePage() {
     new SupabasePlannerRepository().listByWorkspace(context.workspace.id),
     year
       ? timetableReader.read(context.workspace.id, year.id)
-      : Promise.resolve({ versions: [], slots: [] }),
+      : Promise.resolve({ versions: [], slots: [], exceptions: [] }),
     year
       ? calendarReader.read(context.workspace.id, year.id)
       : Promise.resolve({ days: [], events: [] }),
@@ -65,6 +65,7 @@ export default async function HomePage() {
     localDate: moment.date,
     timetableVersions: timetableProjection.versions,
     timetableSlots: timetableProjection.slots,
+    timetableExceptions: timetableProjection.exceptions ?? [],
     calendarDays: calendarProjection.days,
     calendarEvents: calendarProjection.events,
   })
