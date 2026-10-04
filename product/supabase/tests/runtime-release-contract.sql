@@ -6,7 +6,6 @@ declare
   runtime_migration text;
   runtime_snapshot jsonb;
   timetable_activation_definition text;
-  activity_kind_occurrences integer;
 begin
   if to_regclass('public.runtime_schema_contract_state') is null then
     raise exception 'runtime schema contract state table missing after migration replay';
@@ -54,11 +53,8 @@ begin
   select pg_get_functiondef('public.activate_timetable_version(uuid)'::regprocedure)
     into timetable_activation_definition;
 
-  activity_kind_occurrences :=
-    (length(timetable_activation_definition) - length(replace(timetable_activation_definition, 'activity_kind', '')))
-    / length('activity_kind');
-
-  if activity_kind_occurrences < 2 then
+  if timetable_activation_definition !~ 'presence_kind,\\s*activity_kind,'
+     or timetable_activation_definition !~ 's\\.activity_kind' then
     raise exception
       'activate_timetable_version does not preserve activity_kind in activation clones';
   end if;
