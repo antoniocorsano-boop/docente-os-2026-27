@@ -147,12 +147,22 @@ declare
   version_end date;
   year_start date;
   year_end date;
+  calendar_day_kind text;
   requested_activity_kind text := nullif(btrim(coalesce(p_activity_kind, '')), '');
   effective_default text;
   override_id uuid;
 begin
   if actor_id is null then
     raise exception 'authenticated user required';
+  end if;
+
+  perform 1
+  from public.timetable_slots
+  where id = p_timetable_slot_id
+  for update;
+
+  if not found then
+    raise exception 'timetable slot not found';
   end if;
 
   select
@@ -212,6 +222,17 @@ begin
 
   if year_start is null or p_local_date < year_start or p_local_date > year_end then
     raise exception 'occurrence date is outside academic year';
+  end if;
+
+  select day_kind
+    into calendar_day_kind
+  from public.calendar_days
+  where workspace_id = source_workspace_id
+    and academic_year_id = source_academic_year_id
+    and local_date = p_local_date;
+
+  if calendar_day_kind in ('SUSPENSION', 'HOLIDAY', 'CLOSURE') then
+    raise exception 'lesson occurrence is suppressed by school calendar';
   end if;
 
   if exists (
@@ -292,7 +313,7 @@ grant execute on function public.set_timetable_occurrence_activity_kind(uuid,dat
 comment on table public.timetable_exceptions is
   'Teacher-visible single-date deviations from a recurring timetable pattern. These rows never rewrite the recurring slot.';
 comment on function public.set_timetable_occurrence_activity_kind(uuid,date,text) is
-  'Sets or clears the teacher-authored activity kind for one concrete lesson occurrence without modifying the recurring timetable slot. Recorded lesson occurrences are immutable.';
+  'Sets or clears the teacher-authored activity kind for one concrete lesson occurrence without modifying the recurring timetable slot. The RPC locks the source slot, rejects calendar-suppressed dates, and keeps recorded occurrences immutable.';
 
 select private.advance_runtime_schema_contract('0083_timetable_occurrence_activity_kind');
 
