@@ -29,21 +29,6 @@ test('PWA device contract: manifest and Share Target are exposed by the deployed
   expect(worker).toContain("Response.redirect('/share-target?id='")
 })
 
-test('Home keeps installation visible even without beforeinstallprompt', async ({ page }) => {
-  await loginE2E(page)
-  await page.goto('/')
-
-  const installSurface = page.locator('[aria-label="Installazione Docente OS"]')
-  await expect(installSurface).toBeVisible()
-
-  const nativeInstallButton = installSurface.getByRole('button', { name: 'Installa', exact: true })
-  if (await nativeInstallButton.count()) {
-    await expect(nativeInstallButton).toBeVisible()
-  } else {
-    await expect(installSurface.getByRole('link', { name: 'Come installare' })).toBeVisible()
-  }
-})
-
 test('Impostazioni keeps installation discoverable even when Chromium does not surface it automatically', async ({ page }) => {
   await loginE2E(page)
   await page.goto('/impostazioni#installazione')
@@ -54,25 +39,10 @@ test('Impostazioni keeps installation discoverable even when Chromium does not s
 
   const hasInstalledState = await installSection.getByText('Docente OS è installato.').count()
   if (!hasInstalledState) {
-    await expect(
-      installSection.getByText('Installa app', { exact: true }),
-      'Senza beforeinstallprompt deve restare visibile il fallback manuale.',
-    ).toBeVisible()
-    await expect(
-      installSection.getByText('Aggiungi a schermata Home', { exact: true }),
-      'Il fallback manuale deve indicare anche l’aggiunta alla schermata Home.',
-    ).toBeVisible()
-
-    await page.evaluate(() => {
-      const event = new Event('beforeinstallprompt', { cancelable: true })
-      Object.assign(event, {
-        prompt: async () => {},
-        userChoice: Promise.resolve({ outcome: 'dismissed', platform: 'web' }),
-      })
-      window.dispatchEvent(event)
-    })
-
-    await expect(installSection.getByRole('button', { name: 'Installa Docente OS' })).toBeVisible()
+    await expect(installSection.getByText('L’installazione è gestita dal browser.', { exact: false })).toBeVisible()
+    await expect(installSection.getByText('Installa app', { exact: true })).toBeVisible()
+    await expect(installSection.getByText('Aggiungi a schermata Home', { exact: true })).toBeVisible()
+    await expect(installSection.getByRole('button', { name: /Installa Docente OS/i })).toHaveCount(0)
   }
 })
 
@@ -81,15 +51,6 @@ test('Share Target stays task-first and never shows the floating install prompt'
   if (!response) throw new Error('No navigation response for /share-target')
   expect(response.status()).toBeLessThan(400)
   await expect(page.getByRole('heading', { name: 'Condividi con Docente OS' })).toBeVisible()
-
-  await page.evaluate(() => {
-    const event = new Event('beforeinstallprompt', { cancelable: true })
-    Object.assign(event, {
-      prompt: async () => {},
-      userChoice: Promise.resolve({ outcome: 'dismissed', platform: 'web' }),
-    })
-    window.dispatchEvent(event)
-  })
 
   await expect(page.locator('[aria-label="Installazione Docente OS"]')).toHaveCount(0)
 })
