@@ -10,7 +10,8 @@ const ALTERNATE_ICON_LIBRARY_RE = /from\s+['"](?:react-icons(?:\/[^'"]*)?|@heroi
 const LOCAL_TOKEN_RE = /--(?:color|brand|primary|success|warning|danger|info|radius|shadow)[\w-]*\s*:/i
 const LOCAL_BRAND_DEFINITION_RE = /(?:function\s+DocenteOsMark\b|const\s+DocenteOsMark\b|dosLogo(?:Frame|Stem|Thread|Dot)|DOCENTE_OS_MARK_GEOMETRY\s*=)/
 const DECORATIVE_WATCH_RE = /(?:backdrop-filter\s*:|filter\s*:\s*(?:blur|drop-shadow)|text-shadow\s*:)/
-const VISUAL_PRIORITY_RE = /data-visual-priority\s*=\s*["']([^"']+)["']/g
+const VISUAL_PRIORITY_ATTR_RE = /data-visual-priority\s*=\s*(?:"([^"]+)"|'([^']+)'|\{([^}]*)\})/g
+const VISUAL_PRIORITY_ANY_RE = /data-visual-priority\s*=/g
 const VISUAL_PRIORITY_ALLOWED = new Set(['decision-primary', 'operational-primary', 'status-transient', 'guidance', 'supporting', 'metadata'])
 
 const RAW_COLOR_ALLOWED = new Set([
@@ -56,11 +57,24 @@ export function evaluatePolicy({ changedFiles, prBody = '', requireClassificatio
       if (DECORATIVE_WATCH_RE.test(line)) {
         warnings.push(finding('DPG-07', 'Effetto decorativo da giustificare in HVA secondo la regola delle superfici calme.', file.path, line, 'WATCH'))
       }
-      for (const match of line.matchAll(VISUAL_PRIORITY_RE)) {
-        if (!VISUAL_PRIORITY_ALLOWED.has(match[1])) {
-          findings.push(finding('DPG-21', 'Priorità visuale non canonica: usare il vocabolario del Visual Hierarchy Context Contract.', file.path, line))
-        }
+    }
+
+    let visualPriorityMatches = 0
+    for (const match of file.content.matchAll(VISUAL_PRIORITY_ATTR_RE)) {
+      visualPriorityMatches += 1
+      const expression = match[3]
+      if (expression != null) {
+        findings.push(finding('DPG-21', 'data-visual-priority deve usare un valore letterale canonico, non una JSX expression.', file.path, match[0]))
+        continue
       }
+      const value = match[1] ?? match[2] ?? ''
+      if (!VISUAL_PRIORITY_ALLOWED.has(value)) {
+        findings.push(finding('DPG-21', 'Priorità visuale non canonica: usare il vocabolario del Visual Hierarchy Context Contract.', file.path, match[0]))
+      }
+    }
+    const visualPriorityAttributes = [...file.content.matchAll(VISUAL_PRIORITY_ANY_RE)].length
+    if (visualPriorityMatches !== visualPriorityAttributes) {
+      findings.push(finding('DPG-21', 'Attributo data-visual-priority non interpretabile: usare una stringa letterale canonica.', file.path))
     }
 
     const addsMotion = file.addedLines.some((line) => MOTION_RE.test(line))
