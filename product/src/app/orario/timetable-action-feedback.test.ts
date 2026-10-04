@@ -25,9 +25,13 @@ test('timetable writes expose perceptible transient feedback and explicit activa
   assert.match(experienceSource, /timetableActivationAction/)
   assert.match(experienceSource, /Metti in uso questo orario/)
   assert.match(experienceSource, /Metti in uso dal/)
+  assert.match(experienceSource, /data-visual-priority="decision-primary"/)
+  assert.match(experienceSource, /data-visual-priority="operational-primary"/)
+  assert.match(experienceSource, /data-visual-priority="supporting"/)
+  assert.match(experienceSource, /data-visual-priority="metadata"/)
 
-  const activationIndex = experienceSource.indexOf('timetableActivationAction')
-  const manageGridIndex = experienceSource.indexOf("{(mode === 'view' || mode === 'manage') ? <section className=\"timetableCard timetableGridCard\"")
+  const activationIndex = experienceSource.indexOf('data-visual-priority="decision-primary"')
+  const manageGridIndex = experienceSource.indexOf("data-visual-moment={mode === 'view' ? 'now' : 'review'}")
   assert.ok(activationIndex >= 0 && manageGridIndex >= 0 && activationIndex < manageGridIndex)
 
   assert.match(gridSource, /@\/components\/ui\/transient-feedback/)
@@ -42,6 +46,7 @@ test('timetable writes expose perceptible transient feedback and explicit activa
   assert.match(transientSource, /window\.setTimeout/)
   assert.match(transientSource, /prefers-reduced-motion/)
   assert.match(transientSource, /fixed right-3 top-\[76px\]/)
+  assert.match(transientSource, /data-visual-priority="status-transient"/)
   assert.match(transientSource, /role=\{role\}/)
   assert.match(transientSource, /aria-live=/)
 

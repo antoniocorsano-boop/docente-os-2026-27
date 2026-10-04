@@ -69,6 +69,8 @@ export function TransientFeedback({
     <div
       ref={hostRef}
       className="pointer-events-none fixed right-3 top-[76px] z-[1600] w-[min(420px,calc(100vw-24px))] md:right-5 md:top-5"
+      data-visual-priority="status-transient"
+      data-visual-moment="now"
     >
       <Alert
         className="pointer-events-auto shadow-[var(--shadow-float)]"

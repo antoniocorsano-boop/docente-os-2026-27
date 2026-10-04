@@ -34,6 +34,8 @@ const FOCUSED_RULES = [
     specs: [
       'e2e/experience/surfaces.spec.mjs',
       'e2e/experience/timetable-import-real-fixture.spec.mjs',
+      'e2e/experience/timetable-mobile-direct-edit.spec.mjs',
+      'e2e/experience/timetable-visual-hierarchy-context.spec.mjs',
     ],
   },
   {

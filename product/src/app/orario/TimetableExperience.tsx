@@ -150,6 +150,8 @@ export async function TimetableExperience({
         <section
           className={`timetableActivationAction ${canActivateDraft ? 'ready' : 'blocked'}`}
           aria-labelledby="timetable-activation-title"
+          data-visual-priority="decision-primary"
+          data-visual-moment="review"
         >
           <div className="timetableActivationCopy">
             <span className="timetableActivationEyebrow">{canActivateDraft ? 'BOZZA PRONTA' : 'DATA DA AGGIORNARE'}</span>
@@ -182,7 +184,13 @@ export async function TimetableExperience({
       ) : null}
 
       {mode === 'update' ? <>
-      <section className="timetableCard timetableGridCard" id="modifica-settimana" aria-labelledby="direct-grid-title">
+      <section
+        className="timetableCard timetableGridCard"
+        id="modifica-settimana"
+        aria-labelledby="direct-grid-title"
+        data-visual-priority="operational-primary"
+        data-visual-moment="prepare"
+      >
         <div className="timetableCardHeading">
           <span>01</span>
           <div>
@@ -215,7 +223,7 @@ export async function TimetableExperience({
         <div className="humanTaskActions"><Link className="primary" href="/orario/gestisci">Controlla e metti in uso la bozza</Link></div>
       </section>
 
-      <details className="timetableVersionDetails timetableOptionalImport">
+      <details className="timetableVersionDetails timetableOptionalImport" data-visual-priority="supporting" data-visual-moment="prepare">
         <summary><div><strong>Importa da PDF o foto</strong><span>Sperimentale · opzionale · non serve per usare o aggiornare l’orario</span></div></summary>
         <div className="timetableVersionDetailsBody">
       <section className="timetableCard timetableImportCard" id="importa-orario" aria-labelledby="import-title">
@@ -351,7 +359,13 @@ export async function TimetableExperience({
       </details>
       </> : null}
 
-      {(mode === 'view' || mode === 'manage') ? <section className="timetableCard timetableGridCard" id="settimana-tipo" aria-labelledby="grid-title">
+      {(mode === 'view' || mode === 'manage') ? <section
+        className="timetableCard timetableGridCard"
+        id="settimana-tipo"
+        aria-labelledby="grid-title"
+        data-visual-priority="operational-primary"
+        data-visual-moment={mode === 'view' ? 'now' : 'review'}
+      >
         <div className="timetableCardHeading">
           <span>{mode === 'view' ? 'ORARIO' : '02'}</span>
           <div>
@@ -424,7 +438,7 @@ export async function TimetableExperience({
       </> : null}
 
       {mode === 'manage' ? <>
-      <details className="timetableVersionDetails">
+      <details className="timetableVersionDetails" data-visual-priority="metadata" data-visual-moment="history">
         <summary><div><strong>{lifecycle.activeVersion ? `Orario in uso · ${lifecycle.activeVersion.label}` : 'Nessun orario ancora messo in uso'}</strong><span>{lifecycle.activeVersion ? `Dal ${formatDate(lifecycle.activeVersion.effectiveFrom)} · apri per storico e dettagli` : 'Apri per vedere come funziona la prima messa in uso'}</span></div></summary>
         <div className="timetableVersionDetailsBody">
           {lifecycle.activeVersion ? <p><strong>Orario in uso.</strong> Oggi e la home leggono questa versione. La bozza che stai preparando resta separata finché non usi l’azione “Metti in uso” mostrata sopra la griglia.</p> : <p><strong>Prima messa in uso.</strong> L’azione mostrata sopra la griglia rende operativa la bozza dalla data indicata. Docente OS conserva automaticamente una nuova bozza modificabile per i cambi futuri.</p>}

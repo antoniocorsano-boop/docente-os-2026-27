@@ -79,8 +79,9 @@ Per ogni lavoro di interfaccia:
 5. questo `DESIGN_GOVERNANCE_CANONICAL.md` per le regole trasversali;
 6. `DESIGN_POLICY_GATE_DPG1.md` per il gate sul diff;
 7. `DESIGN_CONFORMANCE_DPG2.md` per il ratchet sul debito visuale storico;
-8. Language & Collaboration System;
-9. evidenza HVA/pilot più recente.
+8. `VISUAL_HIERARCHY_CONTEXT_CONTRACT.md` per ordine, priorità e comportamento responsive delle informazioni;
+9. Language & Collaboration System;
+10. evidenza HVA/pilot più recente.
 
 In caso di conflitto tra una soluzione locale e questo documento, prevale la regola canonica finché non viene formalmente aggiornata.
 
@@ -89,6 +90,8 @@ In caso di conflitto tra una soluzione locale e questo documento, prevale la reg
 Le 20 regole non sono considerate “reali” soltanto perché documentate. Devono essere sostenute da enforcement statico, componenti canonici, browser checks, HVA esplicita o invarianti di dominio.
 
 `DESIGN_POLICY_GATE_DPG1.md` definisce il primo livello automatico bloccante sul diff. DPG-1 controlla almeno:
+
+- vocabolario canonico dei marker `data-visual-priority` (`DPG-21`);
 
 - duplicazione/ridefinizione locale del marchio (`DPG-01`);
 - nuovi colori raw fuori dai token/brand (`DPG-04`);

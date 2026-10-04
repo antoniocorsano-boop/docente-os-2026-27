@@ -10,6 +10,9 @@ const ALTERNATE_ICON_LIBRARY_RE = /from\s+['"](?:react-icons(?:\/[^'"]*)?|@heroi
 const LOCAL_TOKEN_RE = /--(?:color|brand|primary|success|warning|danger|info|radius|shadow)[\w-]*\s*:/i
 const LOCAL_BRAND_DEFINITION_RE = /(?:function\s+DocenteOsMark\b|const\s+DocenteOsMark\b|dosLogo(?:Frame|Stem|Thread|Dot)|DOCENTE_OS_MARK_GEOMETRY\s*=)/
 const DECORATIVE_WATCH_RE = /(?:backdrop-filter\s*:|filter\s*:\s*(?:blur|drop-shadow)|text-shadow\s*:)/
+const VISUAL_PRIORITY_ATTR_RE = /data-visual-priority\s*=\s*(?:"([^"]+)"|'([^']+)'|\{([^}]*)\})/g
+const VISUAL_PRIORITY_TOKEN_RE = /data-visual-priority/g
+const VISUAL_PRIORITY_ALLOWED = new Set(['decision-primary', 'operational-primary', 'status-transient', 'guidance', 'supporting', 'metadata'])
 
 const RAW_COLOR_ALLOWED = new Set([
   'product/src/app/brand-system.css',
@@ -56,6 +59,24 @@ export function evaluatePolicy({ changedFiles, prBody = '', requireClassificatio
       }
     }
 
+    let visualPriorityMatches = 0
+    for (const match of file.content.matchAll(VISUAL_PRIORITY_ATTR_RE)) {
+      visualPriorityMatches += 1
+      const expression = match[3]
+      if (expression != null) {
+        findings.push(finding('DPG-21', 'data-visual-priority deve usare un valore letterale canonico, non una JSX expression.', file.path, match[0]))
+        continue
+      }
+      const value = match[1] ?? match[2] ?? ''
+      if (!VISUAL_PRIORITY_ALLOWED.has(value)) {
+        findings.push(finding('DPG-21', 'Priorità visuale non canonica: usare il vocabolario del Visual Hierarchy Context Contract.', file.path, match[0]))
+      }
+    }
+    const visualPriorityTokens = [...file.content.matchAll(VISUAL_PRIORITY_TOKEN_RE)].length
+    if (visualPriorityMatches !== visualPriorityTokens) {
+      findings.push(finding('DPG-21', 'Attributo data-visual-priority non interpretabile: usare una stringa letterale canonica.', file.path))
+    }
+
     const addsMotion = file.addedLines.some((line) => MOTION_RE.test(line))
     if (addsMotion && !file.content.includes('prefers-reduced-motion')) {
       findings.push(finding('DPG-13', 'Motion introdotto senza gestione prefers-reduced-motion nello stesso contratto di stile.', file.path))
@@ -67,7 +88,7 @@ export function evaluatePolicy({ changedFiles, prBody = '', requireClassificatio
     runtimeVisualFiles: runtimeVisualFiles.map((file) => file.path),
     findings,
     warnings,
-    automatedRules: ['DPG-01', 'DPG-04', 'DPG-13', 'DPG-14', 'DPG-19', 'DPG-20'],
+    automatedRules: ['DPG-01', 'DPG-04', 'DPG-13', 'DPG-14', 'DPG-19', 'DPG-20', 'DPG-21'],
     hvaRules: ['DPG-05', 'DPG-06', 'DPG-07', 'DPG-08', 'DPG-09', 'DPG-10', 'DPG-11', 'DPG-12', 'DPG-15', 'DPG-16', 'DPG-17', 'DPG-18'],
   }
 }

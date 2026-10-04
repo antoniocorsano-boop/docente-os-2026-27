@@ -52,6 +52,13 @@ test('Orario mobile: heading percepibile e modifica diretta end-to-end', async (
     await createDialog.getByRole('button', { name: 'Aggiungi all’orario' }).click()
     temporarySlotCreated = true
 
+    const createFeedback = page.locator('[data-visual-priority="status-transient"]').filter({ hasText: 'Voce aggiunta all’orario.' })
+    await expect(createFeedback, 'Il feedback di write deve entrare nel viewport corrente.').toBeVisible()
+    const feedbackBox = await createFeedback.boundingBox()
+    expect(feedbackBox, 'Il feedback transitorio deve avere una geometria misurabile.').not.toBeNull()
+    expect(feedbackBox.y, 'Il feedback transitorio non deve comparire fuori dal viewport.').toBeGreaterThanOrEqual(0)
+    expect(feedbackBox.y + feedbackBox.height, 'Il feedback transitorio deve restare nel viewport mobile.').toBeLessThanOrEqual(915)
+
     const createdCell = page.locator('.occupiedTimetableCell').filter({ hasText: TEMP_NOTE }).first()
     await expect(createdCell, 'La voce creata deve comparire nella griglia.').toBeVisible()
     await createdCell.click()
