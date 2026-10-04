@@ -40,8 +40,12 @@ test('Impostazioni keeps installation discoverable even when Chromium does not s
   const hasInstalledState = await installSection.getByText('Docente OS è installato.').count()
   if (!hasInstalledState) {
     await expect(
-      installSection.getByText(/Installa app|Aggiungi a schermata Home/),
+      installSection.getByText('Installa app', { exact: true }),
       'Senza beforeinstallprompt deve restare visibile il fallback manuale.',
+    ).toBeVisible()
+    await expect(
+      installSection.getByText('Aggiungi a schermata Home', { exact: true }),
+      'Il fallback manuale deve indicare anche l’aggiunta alla schermata Home.',
     ).toBeVisible()
 
     await page.evaluate(() => {
