@@ -81,3 +81,20 @@ test('flags decorative effects as WATCH rather than pretending aesthetic automat
 test('normalizes SVG whitespace for parity checks', () => {
   assert.equal(normalizeSvg('<svg>\n <path />\n</svg>'), normalizeSvg('<svg><path /></svg>'))
 })
+
+
+test('accepts canonical visual hierarchy priority markers', () => {
+  const result = evaluatePolicy({
+    changedFiles: [file('product/src/app/page.tsx', ['<section data-visual-priority="decision-primary">'])],
+    prBody: 'COMPATIBLE',
+  })
+  assert.equal(result.findings.some((item) => item.code === 'DPG-21'), false)
+})
+
+test('rejects ad hoc visual hierarchy priority markers', () => {
+  const result = evaluatePolicy({
+    changedFiles: [file('product/src/app/page.tsx', ['<section data-visual-priority="super-important">'])],
+    prBody: 'COMPATIBLE',
+  })
+  assert.ok(result.findings.some((item) => item.code === 'DPG-21'))
+})
