@@ -1,5 +1,7 @@
 'use client'
 
+// @trama-readonly — service-worker lifecycle maintenance; no user data write.
+
 import { useEffect } from 'react'
 
 export function PwaServiceWorkerRegistration() {
