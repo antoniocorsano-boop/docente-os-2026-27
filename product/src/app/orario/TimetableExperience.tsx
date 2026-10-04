@@ -129,7 +129,7 @@ export async function TimetableExperience({
   const archivedVersions = lifecycle.versions.filter((version) => version.status === 'ARCHIVED').slice(0, 3)
   const canActivateDraft = canActivateTimetableDraft(lifecycle.activeVersion, timetable.draftVersion)
   const minimumDraftDate = lifecycle.activeVersion
-    ? nextIsoDate(lifecycle.activeVersion.effectiveFrom)
+    ? lifecycle.activeVersion.effectiveFrom
     : context.academicYear.startsOn
 
   return (
@@ -253,7 +253,7 @@ export async function TimetableExperience({
             <div>
               <span className="timetableGuidedEyebrow">PASSO 2 DI 3</span>
               <h2 id="timetable-date-title">Da quando vuoi usare questo orario?</h2>
-              {lifecycle.activeVersion ? <p>L’orario attuale resta in uso fino al giorno precedente.</p> : null}
+              {lifecycle.activeVersion ? <p>Puoi mantenere la stessa data dell’orario attuale oppure sceglierne una successiva.</p> : null}
             </div>
             <form action={updateTimetableDraft} className="timetableGuidedDateForm">
               <input type="hidden" name="versionId" value={timetable.draftVersion.id} />
@@ -305,11 +305,11 @@ export async function TimetableExperience({
             data-visual-moment="review"
           >
             <div>
-              <h2 id="timetable-final-title">{canActivateDraft ? 'Vuoi metterlo in uso?' : 'Serve una data successiva'}</h2>
+              <h2 id="timetable-final-title">{canActivateDraft ? 'Vuoi metterlo in uso?' : 'Controlla la data'}</h2>
               <p>{canActivateDraft
                 ? `Dal ${formatDate(timetable.draftVersion.effectiveFrom)} questo orario sostituirà quello attuale.`
                 : lifecycle.activeVersion
-                  ? `Scegli una data successiva al ${formatDate(lifecycle.activeVersion.effectiveFrom)}.`
+                  ? `Scegli il ${formatDate(lifecycle.activeVersion.effectiveFrom)} oppure una data successiva.`
                   : 'Controlla la data prima di continuare.'}</p>
             </div>
             <div className="timetableGuidedActions">
@@ -578,7 +578,6 @@ function sectionLabel(grade: keyof typeof GRADE_LABELS, sectionCode: string) { r
 function versionStatusLabel(value: string) { if (value === 'DRAFT') return 'Bozza'; if (value === 'ACTIVE') return 'In uso'; if (value === 'ARCHIVED') return 'Precedente'; return value }
 function formatHours(minutes: number) { if (!minutes) return '0h'; const hours = Math.floor(minutes / 60); const rest = minutes % 60; if (!hours) return `${rest}m`; return rest ? `${hours}h ${rest}m` : `${hours}h` }
 function formatDate(value: string) { const [year, month, day] = value.split('-'); return `${day}/${month}/${year}` }
-function nextIsoDate(value: string) { const date = new Date(`${value}T00:00:00Z`); date.setUTCDate(date.getUTCDate() + 1); return date.toISOString().slice(0, 10) }
 function currentRomeMoment() { const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()); const value = Object.fromEntries(parts.map((part) => [part.type, part.value])); const weekday = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 }[value.weekday] ?? 7; return { localDate: `${value.year}-${value.month}-${value.day}`, weekday, minutes: Number(value.hour) * 60 + Number(value.minute) } }
 function describeSlot(slot: { sectionId: string | null; disciplineId: string | null; manualClassLabel: string | null; slotKind: string; startTime: string; endTime: string; room: string | null }, sectionById: Map<string, { grade: keyof typeof GRADE_LABELS; sectionCode: string }>, disciplineById: Map<string, { name: string }>) { const section = slot.sectionId ? sectionById.get(slot.sectionId) : null; const discipline = slot.disciplineId ? disciplineById.get(slot.disciplineId) : null; const title = section ? sectionLabel(section.grade, section.sectionCode) : slot.manualClassLabel || presenceLabel(slot.slotKind); return { title, sectionId: section ? slot.sectionId : null, time: `${slot.startTime.slice(0, 5)}–${slot.endTime.slice(0, 5)}`, kind: discipline?.name || presenceLabel(slot.slotKind), room: slot.room, description: section ? `Questa è la lezione pertinente nell’orario che vale adesso. Entra nella classe per vedere il prossimo tratto didattico e i materiali utili.` : `Questa presenza appartiene all’orario che vale adesso e non crea una classe canonica.` } }
 function presenceLabel(kind: string) { if (kind === 'DISPOSITION') return 'Disposizione'; if (kind === 'RECEPTION') return 'Ricevimento'; if (kind === 'CLASS_PRESENCE') return 'Presenza in classe'; return 'Impegno' }
