@@ -183,7 +183,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
       setMutationFeedback({ tone: 'success', message: 'Modifica salvata.' })
     } catch (error) {
       console.error('Timetable delete failed', error)
-      setMutationFeedback({ tone: 'error', message: 'Non sono riuscito a rimuovere la voce. L’orario è rimasto invariato.' })
+      setMutationFeedback({ tone: 'error', message: 'Non sono riuscito a rimuovere la voce. Nessuna modifica è stata salvata.' })
     }
   }
 
@@ -307,9 +307,9 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
                 </div>
               </details>
               {editor.kind === 'LESSON' && !assignments.length ? <p className="editorWarning">Per una lezione della tua cattedra serve prima almeno una associazione in Impostazioni. Puoi comunque registrare una presenza in altra classe.</p> : null}
-              <div className="timetableEditorActions"><button className="secondaryButton" type="button" onClick={() => setEditor(null)}>Annulla</button><TimetableSubmitButton className="timetablePrimaryButton" type="submit" disabled={editor.kind === 'LESSON' && !assignments.length} pendingLabel={editor.mode === 'create' ? 'Aggiunta…' : 'Salvataggio…'}>{editor.mode === 'create' ? 'Aggiungi all’orario' : 'Salva modifiche'}</TimetableSubmitButton></div>
+              <div className="timetableEditorActions"><button className="secondaryButton" type="button" onClick={() => setEditor(null)}>Annulla</button><TimetableSubmitButton className="timetablePrimaryButton" type="submit" disabled={editor.kind === 'LESSON' && !assignments.length} pendingLabel={editor.mode === 'create' ? 'Aggiunta…' : 'Salvataggio…'}>{editor.mode === 'create' ? (guided ? 'Aggiungi' : 'Aggiungi all’orario') : 'Salva modifiche'}</TimetableSubmitButton></div>
             </form>
-              {editor.mode === 'edit' && editor.slotId ? <form action={removeSlot} className="editorDeleteForm"><input type="hidden" name="versionId" value={versionId} /><input type="hidden" name="slotId" value={editor.slotId} /><TimetableSubmitButton className="textDangerButton" type="submit" pendingLabel="Rimozione…">Rimuovi dall’orario</TimetableSubmitButton></form> : null}
+              {editor.mode === 'edit' && editor.slotId ? <form action={removeSlot} className="editorDeleteForm"><input type="hidden" name="versionId" value={versionId} /><input type="hidden" name="slotId" value={editor.slotId} /><TimetableSubmitButton className="textDangerButton" type="submit" pendingLabel="Rimozione…">{guided ? 'Rimuovi' : 'Rimuovi dall’orario'}</TimetableSubmitButton></form> : null}
             </Dialog.Content>
           </Dialog.Portal>
         </Dialog.Root>
