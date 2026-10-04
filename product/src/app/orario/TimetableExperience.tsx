@@ -220,7 +220,34 @@ export async function TimetableExperience({
           <TimetableSubmitButton className="timetablePrimaryButton" type="submit" pendingLabel="Salvataggio data…">Salva data di validità</TimetableSubmitButton>
         </form>
         <p className="timetableImportHint">Non serve indicare una data di fine. Quando metterai in uso un orario successivo, Docente OS chiuderà automaticamente quello precedente.</p>
-        <div className="humanTaskActions"><Link className="primary" href="/orario/gestisci">Controlla e metti in uso la bozza</Link></div>
+      </section>
+
+      <section
+        className={`timetableUpdateCompletion ${canActivateDraft ? 'ready' : 'blocked'}`}
+        aria-labelledby="timetable-update-completion-title"
+        data-visual-priority="decision-primary"
+        data-visual-moment="review"
+      >
+        <div className="timetableUpdateCompletionCopy">
+          <span className="timetableUpdateCompletionEyebrow">{canActivateDraft ? 'PASSAGGIO SUCCESSIVO' : 'PRIMA DI CONTINUARE'}</span>
+          <h2 id="timetable-update-completion-title">Hai finito le modifiche?</h2>
+          <p>
+            {canActivateDraft
+              ? `La bozza è pronta per il controllo finale. Verifica l’orario e decidi se metterlo in uso dal ${formatDate(timetable.draftVersion.effectiveFrom)}.`
+              : lifecycle.activeVersion
+                ? `Prima di metterla in uso, salva una data successiva al ${formatDate(lifecycle.activeVersion.effectiveFrom)}.`
+                : 'Prima di metterla in uso, salva una data di validità per questa bozza.'}
+          </p>
+        </div>
+        {canActivateDraft ? (
+          <Link className="timetableUpdateCompletionAction" href="/orario/gestisci">
+            Controlla e metti in uso
+          </Link>
+        ) : (
+          <a className="timetableUpdateCompletionAction" href="#modifica-settimana">
+            Sistema la data di validità
+          </a>
+        )}
       </section>
 
       <details className="timetableVersionDetails timetableOptionalImport" data-visual-priority="supporting" data-visual-moment="prepare">
