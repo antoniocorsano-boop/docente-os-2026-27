@@ -20,10 +20,10 @@ test('una prima bozza può essere messa in uso', () => {
   assert.equal(canActivateTimetableDraft(null, version('DRAFT', '2026-09-01')), true)
 })
 
-test('una modifica può sostituire l’orario dalla stessa data o da una data successiva', () => {
+test('una modifica può sostituire l’orario anche da una data precedente a quella attiva', () => {
   const active = version('ACTIVE', '2026-09-01')
   assert.equal(canActivateTimetableDraft(active, version('DRAFT', '2026-09-01')), true)
-  assert.equal(canActivateTimetableDraft(active, version('DRAFT', '2026-08-31')), false)
+  assert.equal(canActivateTimetableDraft(active, version('DRAFT', '2026-08-31')), true)
   assert.equal(canActivateTimetableDraft(active, version('DRAFT', '2026-09-15')), true)
 })
 
