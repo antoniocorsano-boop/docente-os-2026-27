@@ -61,6 +61,9 @@ export async function updateTimetableDraft(formData: FormData) {
   })
   revalidatePath('/orario')
   const feedback = optionalText(formData, 'feedback')
+  if (feedback === 'guided_date_saved') {
+    redirect('/orario/aggiorna?fase=controllo')
+  }
   if (feedback === 'validity_saved') {
     redirect('/orario/aggiorna?feedback=validity_saved#modifica-settimana')
   }
