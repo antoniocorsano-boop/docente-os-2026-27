@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 // @trama-feedback-test
-// Design impact: COMPATIBLE — canonical transient feedback and visible human activation action.
+// Design impact: COMPATIBLE — canonical transient feedback plus a visible, still human-triggered activation action.
 test('timetable writes expose perceptible transient feedback and explicit activation', () => {
   const submitSource = readFileSync(new URL('./TimetableSubmitButton.tsx', import.meta.url), 'utf8')
   const experienceSource = readFileSync(new URL('./TimetableExperience.tsx', import.meta.url), 'utf8')
