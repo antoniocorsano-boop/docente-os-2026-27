@@ -209,7 +209,7 @@
   align-items:center;
   justify-content:center;
   flex:0 0 24px;
-  border-radius:999px;
+  border-radius:var(--radius-md);
   background:var(--surface-soft);
   font-size:10px;
   font-weight:850;
