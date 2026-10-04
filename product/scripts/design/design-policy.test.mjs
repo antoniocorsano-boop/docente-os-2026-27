@@ -132,3 +132,22 @@ test('accepts multiline literal visual hierarchy priority markers', () => {
   })
   assert.equal(result.findings.some((item) => item.code === 'DPG-21'), false)
 })
+
+
+test('rejects visual hierarchy priority hidden in a JSX object spread', () => {
+  const content = "<section {...{'data-visual-priority': priority}} />"
+  const result = evaluatePolicy({
+    changedFiles: [file('product/src/app/page.tsx', [content], content)],
+    prBody: 'COMPATIBLE',
+  })
+  assert.ok(result.findings.some((item) => item.code === 'DPG-21'))
+})
+
+test('rejects visual hierarchy priority hidden in a props object', () => {
+  const content = "const hierarchyProps = {'data-visual-priority': priority}\n<section {...hierarchyProps} />"
+  const result = evaluatePolicy({
+    changedFiles: [file('product/src/app/page.tsx', content.split('\n'), content)],
+    prBody: 'COMPATIBLE',
+  })
+  assert.ok(result.findings.some((item) => item.code === 'DPG-21'))
+})
