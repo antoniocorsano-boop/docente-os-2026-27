@@ -90,7 +90,21 @@ Nel test reale mobile il prompt di installazione interferiva con il task Orario.
 
 Questa correzione migliora il flusso, ma non equivale ancora a qualification della capability PWA nel suo complesso.
 
-## 8. Criterio di promozione
+## 8. Chiusura UX installazione — 4 ottobre 2026
+
+La tranche di chiusura Android mantiene invariato il modello di intake e rende l'installazione più prevedibile:
+
+- il prompt automatico è opportunistico e compare soltanto in Home;
+- le superfici operative, inclusi Orario e Share Target, non vengono coperte dal prompt;
+- Impostazioni espone sempre uno stato di installazione comprensibile;
+- quando Chromium rende disponibile `beforeinstallprompt`, Impostazioni espone il comando **Installa Docente OS**;
+- quando il prompt nativo non è disponibile, resta visibile il percorso manuale Chrome **⋮ → Installa app / Aggiungi a schermata Home**;
+- la registrazione del service worker verifica esplicitamente la disponibilità di un aggiornamento;
+- manifest, service worker e Share Target sono coperti da un test browser dedicato.
+
+Questa tranche non promuove da sola la capability: resta necessaria la qualification su Android reale di installazione/aggiornamento e presenza nel menu Condividi.
+
+## 9. Criterio di promozione
 
 Per passare almeno a CRL 4 serve una qualification real-device Android che dimostri:
 
