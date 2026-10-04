@@ -110,7 +110,7 @@ export function asTimetablePresenceKind(value: string | null): TimetablePresence
 export function canActivateTimetableDraft(activeVersion: TimetableVersion | null, draftVersion: TimetableVersion) {
   if (draftVersion.status !== 'DRAFT') return false
   if (!activeVersion) return true
-  return draftVersion.effectiveFrom >= activeVersion.effectiveFrom
+  return true
 }
 
 export const TIMETABLE_WEEKDAYS = [
