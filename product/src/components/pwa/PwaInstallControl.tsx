@@ -24,13 +24,16 @@ export function PwaInstallControl() {
       setMessage('Docente OS è installato su questo dispositivo.')
     }
 
-    setInstalled(isPwaStandalone())
-    refreshPrompt()
+    const initialStateTimer = window.setTimeout(() => {
+      setInstalled(isPwaStandalone())
+      refreshPrompt()
+    }, 0)
     window.addEventListener(PWA_INSTALL_READY_EVENT, refreshPrompt)
     window.addEventListener(PWA_INSTALL_CLEARED_EVENT, refreshPrompt)
     window.addEventListener('appinstalled', onInstalled)
 
     return () => {
+      window.clearTimeout(initialStateTimer)
       window.removeEventListener(PWA_INSTALL_READY_EVENT, refreshPrompt)
       window.removeEventListener(PWA_INSTALL_CLEARED_EVENT, refreshPrompt)
       window.removeEventListener('appinstalled', onInstalled)
