@@ -4,6 +4,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import Link from 'next/link'
 import { BookOpen, ClipboardCheck, DraftingCompass, FlaskConical, Shapes } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import type { TimetableActivityKind, TimetablePresenceKind, TimetableSlot, TimetableSlotKind } from '@/core/domain/timetable'
 import { addClassPresenceSlot, addLessonSlot, addSpecialSlot, deleteTimetableSlot, updateTimetableSlot } from './actions'
 import { TimetableSubmitButton } from './TimetableSubmitButton'
@@ -203,14 +204,14 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
       </div>
 
       {mutationFeedback ? (
-        <div
-          className={`timetableActionToast ${mutationFeedback.tone}`}
+        <Alert
+          className="timetableMutationFeedback"
+          variant={mutationFeedback.tone === 'error' ? 'destructive' : 'success'}
           role={mutationFeedback.tone === 'error' ? 'alert' : 'status'}
           aria-live={mutationFeedback.tone === 'error' ? 'assertive' : 'polite'}
         >
-          <span>{mutationFeedback.message}</span>
-          <button type="button" onClick={() => setMutationFeedback(null)} aria-label="Chiudi messaggio">×</button>
-        </div>
+          <AlertDescription>{mutationFeedback.message}</AlertDescription>
+        </Alert>
       ) : null}
 
       <div className="visualTimetableScroller">
