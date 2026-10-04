@@ -129,6 +129,51 @@
 }
 
 
+.timetableUpdateCompletion{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:18px;
+  border:1px solid color-mix(in srgb,var(--brand) 28%,var(--line));
+  border-radius:var(--radius-md);
+  background:color-mix(in srgb,var(--brand) 6%,var(--surface));
+}
+.timetableUpdateCompletion.blocked{
+  border-color:color-mix(in srgb,var(--warning) 32%,var(--line));
+  background:var(--warning-soft);
+}
+.timetableUpdateCompletionCopy{display:grid;gap:4px;min-width:0}
+.timetableUpdateCompletionEyebrow{
+  color:var(--brand);
+  font-size:10px;
+  font-weight:850;
+  letter-spacing:.08em;
+}
+.timetableUpdateCompletion.blocked .timetableUpdateCompletionEyebrow{color:var(--warning)}
+.timetableUpdateCompletionCopy h2{margin:0;font-size:18px;line-height:1.2;letter-spacing:-.02em}
+.timetableUpdateCompletionCopy p{margin:0;max-width:700px;color:var(--ink-soft);font-size:12px;line-height:1.5}
+.timetableUpdateCompletionAction{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  padding:0 14px;
+  border:1px solid var(--brand);
+  border-radius:var(--radius-sm);
+  background:var(--brand);
+  color:var(--ink-on-dark);
+  font-weight:750;
+  text-align:center;
+  text-decoration:none;
+}
+@media(max-width:719px){
+  .timetableUpdateCompletion{align-items:stretch;flex-direction:column;padding:14px}
+  .timetableUpdateCompletionAction{width:100%}
+}
+
+
 /* ORARIO_MOBILE_DIRECT_EDIT_V2 */
 .editorScheduleDetails{
   grid-column:1/-1;
