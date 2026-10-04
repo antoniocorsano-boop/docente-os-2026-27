@@ -98,3 +98,37 @@ test('rejects ad hoc visual hierarchy priority markers', () => {
   })
   assert.ok(result.findings.some((item) => item.code === 'DPG-21'))
 })
+
+
+test('rejects JSX expressions for visual hierarchy priority markers', () => {
+  const result = evaluatePolicy({
+    changedFiles: [file(
+      'product/src/app/page.tsx',
+      ["<section data-visual-priority={priority}>"],
+      "<section data-visual-priority={priority}>",
+    )],
+    prBody: 'COMPATIBLE',
+  })
+  assert.ok(result.findings.some((item) => item.code === 'DPG-21'))
+})
+
+test('rejects JSX-wrapped literals for visual hierarchy priority markers', () => {
+  const result = evaluatePolicy({
+    changedFiles: [file(
+      'product/src/app/page.tsx',
+      ["<section data-visual-priority={'decision-primary'}>"],
+      "<section data-visual-priority={'decision-primary'}>",
+    )],
+    prBody: 'COMPATIBLE',
+  })
+  assert.ok(result.findings.some((item) => item.code === 'DPG-21'))
+})
+
+test('accepts multiline literal visual hierarchy priority markers', () => {
+  const content = '<section\n  data-visual-priority=\n  "decision-primary"\n>'
+  const result = evaluatePolicy({
+    changedFiles: [file('product/src/app/page.tsx', content.split('\n'), content)],
+    prBody: 'COMPATIBLE',
+  })
+  assert.equal(result.findings.some((item) => item.code === 'DPG-21'), false)
+})
