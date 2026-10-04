@@ -503,6 +503,8 @@ function ImportStatus({ code }: { code: string }) {
   const messages: Record<string, { tone: string; title: string; detail: string }> = {
     applied: { tone: 'success', title: 'Orario applicato alla bozza', detail: 'La bozza è stata aggiornata. L’orario in uso non è stato attivato né modificato.' },
     review: { tone: 'info', title: 'Proposta pronta', detail: 'Controlla le righe sotto e correggi solo ciò che serve.' },
+    row_saved: { tone: 'success', title: 'Riga salvata', detail: 'La correzione è stata registrata. Puoi continuare con le altre righe oppure confermare la proposta.' },
+    row_added: { tone: 'success', title: 'Lezione aggiunta', detail: 'La nuova riga è stata registrata nella proposta da controllare.' },
     conflict: { tone: 'warning', title: 'La bozza è cambiata', detail: 'Nessuna modifica è stata applicata. Ricarica la proposta prima di confermare.' },
     review_stale: { tone: 'warning', title: 'La proposta è stata aggiornata', detail: 'Questa pagina mostra una revisione precedente. Riapri la proposta e controlla la versione aggiornata prima di confermare.' },
     already_applied: { tone: 'info', title: 'Documento già applicato', detail: 'Questo stesso documento risulta già applicato alla bozza.' },
