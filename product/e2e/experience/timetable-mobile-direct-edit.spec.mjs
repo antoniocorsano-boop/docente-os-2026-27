@@ -58,6 +58,10 @@ test('Orario mobile: heading percepibile e modifica diretta end-to-end', async (
     expect(feedbackBox, 'Il feedback transitorio deve avere una geometria misurabile.').not.toBeNull()
     expect(feedbackBox.y, 'Il feedback transitorio non deve comparire fuori dal viewport.').toBeGreaterThanOrEqual(0)
     expect(feedbackBox.y + feedbackBox.height, 'Il feedback transitorio deve restare nel viewport mobile.').toBeLessThanOrEqual(915)
+    await expect(
+      createFeedback,
+      'Il feedback di successo deve scomparire automaticamente: non può restare come riquadro statico.',
+    ).toBeHidden({ timeout: 6_000 })
 
     const createdCell = page.locator('.occupiedTimetableCell').filter({ hasText: TEMP_NOTE }).first()
     await expect(createdCell, 'La voce creata deve comparire nella griglia.').toBeVisible()
