@@ -53,8 +53,8 @@ begin
   select pg_get_functiondef('public.activate_timetable_version(uuid)'::regprocedure)
     into timetable_activation_definition;
 
-  if timetable_activation_definition !~ 'presence_kind,\\s*activity_kind,'
-     or timetable_activation_definition !~ 's\\.activity_kind' then
+  if timetable_activation_definition !~ 'presence_kind,[[:space:]]*activity_kind,'
+     or timetable_activation_definition !~ 's[.]activity_kind' then
     raise exception
       'activate_timetable_version does not preserve activity_kind in activation clones';
   end if;
