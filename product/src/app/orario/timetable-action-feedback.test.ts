@@ -3,13 +3,13 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 // @trama-feedback-test
-// Design impact: COMPATIBLE — additive feedback on existing timetable write surfaces.
-// Regression for the Beta pilot observation: timetable writes must acknowledge both pending and completed states.
-test('timetable writes expose perceptible pending and completion feedback', () => {
+// Design impact: COMPATIBLE — canonical transient feedback and visible human activation action.
+test('timetable writes expose perceptible transient feedback and explicit activation', () => {
   const submitSource = readFileSync(new URL('./TimetableSubmitButton.tsx', import.meta.url), 'utf8')
   const experienceSource = readFileSync(new URL('./TimetableExperience.tsx', import.meta.url), 'utf8')
   const gridSource = readFileSync(new URL('./TimetableGrid.tsx', import.meta.url), 'utf8')
   const actionsSource = readFileSync(new URL('./actions.ts', import.meta.url), 'utf8')
+  const transientSource = readFileSync(new URL('../../components/ui/transient-feedback.tsx', import.meta.url), 'utf8')
 
   assert.match(submitSource, /useFormStatus/)
   assert.match(submitSource, /aria-busy/)
@@ -20,17 +20,31 @@ test('timetable writes expose perceptible pending and completion feedback', () =
   assert.match(experienceSource, /pendingLabel="Attivazione orario…"/)
   assert.match(experienceSource, /Lezione aggiornata/)
   assert.match(experienceSource, /Orario messo in uso/)
-  assert.match(experienceSource, /@\/components\/ui\/alert/)
-  assert.match(experienceSource, /<Alert className="timetableActionFeedback" variant="success"/)
-  assert.match(experienceSource, /aria-live="polite"/)
+  assert.match(experienceSource, /@\/components\/ui\/transient-feedback/)
+  assert.match(experienceSource, /<TransientFeedback/)
+  assert.match(experienceSource, /clearQueryParam="feedback"/)
+  assert.match(experienceSource, /timetableActivationAction/)
+  assert.match(experienceSource, /Metti in uso questo orario/)
+  assert.match(experienceSource, /Metti in uso dal/)
 
-  assert.match(gridSource, /@\/components\/ui\/alert/)
-  assert.match(gridSource, /timetableMutationFeedback/)
-  assert.match(gridSource, /variant=\{mutationFeedback\.tone === 'error' \? 'destructive' : 'success'\}/)
+  const activationIndex = experienceSource.indexOf('timetableActivationAction')
+  const manageGridIndex = experienceSource.indexOf("{(mode === 'view' || mode === 'manage') ? <section className=\"timetableCard timetableGridCard\"")
+  assert.ok(activationIndex >= 0 && manageGridIndex >= 0 && activationIndex < manageGridIndex)
+
+  assert.match(gridSource, /@\/components\/ui\/transient-feedback/)
+  assert.match(gridSource, /<TransientFeedback/)
+  assert.match(gridSource, /durationMs=\{mutationFeedback\.tone === 'error' \? 6500 : 4200\}/)
   assert.match(gridSource, /Modifiche salvate nell’orario/)
   assert.match(gridSource, /Non sono riuscito a salvare le modifiche/)
-  assert.match(gridSource, /role=\{mutationFeedback\.tone === 'error' \? 'alert' : 'status'\}/)
   assert.doesNotMatch(gridSource, /timetableActionToast/)
+  assert.doesNotMatch(gridSource, /timetableMutationFeedback/)
+
+  assert.match(transientSource, /translate3d\(28px, 0, 0\)/)
+  assert.match(transientSource, /window\.setTimeout/)
+  assert.match(transientSource, /prefers-reduced-motion/)
+  assert.match(transientSource, /window\.history\.replaceState/)
+  assert.match(transientSource, /role=\{role\}/)
+  assert.match(transientSource, /aria-live=/)
 
   assert.match(actionsSource, /feedback=occurrence_saved/)
   assert.match(actionsSource, /feedback=timetable_activated/)
