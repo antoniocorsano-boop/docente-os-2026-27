@@ -4,6 +4,8 @@ export type TimetableSourceKind = 'MANUAL' | 'INSTITUTION_DOCUMENT' | 'IMPORT'
 export type TimetableSlotKind = 'LESSON' | 'CLASS_PRESENCE' | 'DISPOSITION' | 'RECEPTION' | 'OTHER'
 export type TimetablePresenceKind = 'SUBSTITUTION' | 'CO_TEACHING' | 'SUPERVISION' | 'PROJECT' | 'OTHER'
 export type TimetableActivityKind = 'THEORY' | 'DRAWING_PROJECT' | 'PRACTICAL_LAB' | 'ASSESSMENT' | 'OTHER'
+export type TimetableExceptionKind = 'ACTIVITY_KIND_CHANGED'
+export type TimetableExceptionSourceKind = 'TEACHER' | 'INSTITUTION' | 'IMPORT'
 
 export type TeachingAssignment = {
   id: string
@@ -48,6 +50,21 @@ export type TimetableSlot = {
   room: string | null
   note: string | null
   ordinal: number | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type TimetableException = {
+  id: string
+  workspaceId: string
+  academicYearId: string
+  localDate: string
+  timetableVersionId: string
+  timetableSlotId: string
+  kind: TimetableExceptionKind
+  activityKind: TimetableActivityKind
+  sourceKind: TimetableExceptionSourceKind
+  sourceRef: string | null
   createdAt: string
   updatedAt: string
 }
