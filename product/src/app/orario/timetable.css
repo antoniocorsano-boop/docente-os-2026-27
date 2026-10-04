@@ -310,68 +310,15 @@
 button[aria-busy="true"]{cursor:progress}
 @keyframes timetableButtonSpin{to{transform:rotate(360deg)}}
 
-.timetableActionStatus{
-  display:grid;
-  gap:3px;
-  margin:0 0 14px;
-  padding:12px 14px;
-  border:1px solid var(--line);
-  border-radius:var(--radius-sm);
-  background:var(--surface);
+.timetableActionFeedback{margin:0 0 14px}
+.timetableMutationFeedback{
+  position:sticky;
+  top:8px;
+  z-index:30;
 }
-.timetableActionStatus.success{
-  border-color:color-mix(in srgb,var(--brand) 38%,var(--line));
-  background:color-mix(in srgb,var(--brand) 7%,var(--surface));
-}
-.timetableActionStatus strong{font-size:13px}
-.timetableActionStatus span{font-size:12px;line-height:1.45;color:var(--ink-soft)}
-
-.timetableActionToast{
-  position:fixed;
-  right:18px;
-  bottom:max(18px,env(safe-area-inset-bottom));
-  z-index:1400;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  max-width:min(420px,calc(100vw - 36px));
-  padding:12px 12px 12px 14px;
-  border:1px solid var(--line);
-  border-radius:var(--radius-sm);
-  background:var(--surface);
-  box-shadow:var(--shadow-float);
-}
-.timetableActionToast.success{
-  border-color:color-mix(in srgb,var(--brand) 42%,var(--line));
-}
-.timetableActionToast.error{
-  border-color:color-mix(in srgb,var(--danger) 55%,var(--line));
-}
-.timetableActionToast span{
-  flex:1;
-  font-size:13px;
-  font-weight:700;
-  line-height:1.4;
-}
-.timetableActionToast button{
-  min-width:34px;
-  min-height:34px;
-  border:0;
-  border-radius:var(--radius-pill);
-  background:transparent;
-  color:var(--ink-soft);
-  font-size:20px;
-  line-height:1;
-}
-.timetableActionToast button:hover{background:var(--surface-muted)}
 
 @media(max-width:719px){
-  .timetableActionToast{
-    left:12px;
-    right:12px;
-    bottom:max(12px,env(safe-area-inset-bottom));
-    max-width:none;
-  }
+  .timetableMutationFeedback{top:74px}
 }
 @media(prefers-reduced-motion:reduce){
   .timetableButtonSpinner{animation:none}
