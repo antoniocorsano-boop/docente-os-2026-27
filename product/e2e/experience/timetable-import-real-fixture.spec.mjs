@@ -12,15 +12,14 @@ const expected = JSON.parse(
 
 test('Orario mobile: PDF tabellare reale sanitizzato ricostruisce tutte le lezioni del docente', async ({ page }, testInfo) => {
   await loginE2E(page)
-  await page.goto('/orario/aggiorna')
+  await page.goto('/orario/aggiorna?strumento=importa')
 
-  await expect(page.getByRole('heading', { name: 'Aggiorna orario', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Importa orario', level: 1 })).toBeVisible()
 
   const optionalImport = page.locator('details.timetableOptionalImport')
-  await expect(optionalImport, 'L’importazione deve restare disponibile come percorso opzionale.').toBeVisible()
-  await expect(optionalImport, 'L’importazione non deve competere con la modifica diretta iniziale.').not.toHaveAttribute('open', '')
-  await optionalImport.locator(':scope > summary').click()
-  await expect(optionalImport).toHaveAttribute('open', '')
+  await expect(optionalImport, 'Il contesto di importazione deve essere visibile quando viene richiesto esplicitamente.').toBeVisible()
+  await expect(optionalImport, 'Nel contesto dedicato l’importazione deve essere già aperta.').toHaveAttribute('open', '')
+  await expect(page.locator('.timetableFlowSteps'), 'I tre passi della modifica manuale non devono competere con l’importazione.').toHaveCount(0)
 
   const fileInput = page.locator('.timetableLocalFilePicker input[type="file"]')
   await expect(fileInput).toBeAttached()
@@ -61,20 +60,19 @@ test('Orario mobile: PDF tabellare reale sanitizzato ricostruisce tutte le lezio
   if (testInfo.project.name.startsWith('mobile')) {
     const hierarchy = await page.evaluate(() => {
       const hero = document.querySelector('.timetableHero')
-      const nav = document.querySelector('.timetableModeNav')
       const importCard = document.querySelector('.timetableImportCard')
-      if (!hero || !nav || !importCard) return null
+      if (!hero || !importCard) return null
       const heroRect = hero.getBoundingClientRect()
-      const navRect = nav.getBoundingClientRect()
       const importRect = importCard.getBoundingClientRect()
       return {
         heroTop: heroRect.top + window.scrollY,
-        navTop: navRect.top + window.scrollY,
         importTop: importRect.top + window.scrollY,
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
       }
     })
-    expect(hierarchy, 'Impossibile misurare la gerarchia mobile dell’Orario.').not.toBeNull()
-    expect(hierarchy.heroTop).toBeLessThan(hierarchy.navTop)
-    expect(hierarchy.navTop).toBeLessThan(hierarchy.importTop)
+    expect(hierarchy, 'Impossibile misurare la gerarchia mobile dell’importazione Orario.').not.toBeNull()
+    expect(hierarchy.heroTop).toBeLessThan(hierarchy.importTop)
+    expect(hierarchy.scrollWidth).toBeLessThanOrEqual(hierarchy.clientWidth + 1)
   }
 })
