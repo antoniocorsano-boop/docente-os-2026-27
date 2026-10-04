@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { DOCENTE_OS_MARK_COLORS } from '@/components/brand/brand-mark-geometry'
 import { PwaServiceWorkerRegistration } from '@/components/pwa/PwaServiceWorkerRegistration'
-import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt'
 import './tailwind.css'
 import './globals.css'
 import './app-shell.css'
@@ -45,7 +44,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="it">
-      <body><PwaServiceWorkerRegistration /><PwaInstallPrompt />{children}</body>
+      <body><PwaServiceWorkerRegistration />{children}</body>
     </html>
   )
 }
