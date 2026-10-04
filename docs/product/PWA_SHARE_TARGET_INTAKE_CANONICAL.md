@@ -92,17 +92,18 @@ Il prodotto conserva soltanto un fallback informativo in Impostazioni e non inte
 
 ## 8. Chiusura UX installazione — 4 ottobre 2026
 
-La tranche di chiusura Android mantiene invariato il modello di intake e rende l'installazione più prevedibile:
+La tranche di chiusura Android mantiene invariato il modello di intake e restituisce l’installazione alla UI nativa del browser:
 
-- Docente OS non intercetta né sopprime `beforeinstallprompt`;
-- Docente OS non chiama programmaticamente il prompt di installazione;
-- la UI di installazione resta responsabilità del browser;
-- Impostazioni espone soltanto lo stato **installata** oppure il percorso manuale Chrome **⋮ → Installa app / Aggiungi a schermata Home**;
-- nessun banner o popup personalizzato compete con Home, Orario o Share Target;
+- nessun listener applicativo `beforeinstallprompt`;
+- nessun `preventDefault()` sull’evento di installazione;
+- nessuna chiamata applicativa a `.prompt()`;
+- nessun popup o pulsante proprietario che sostituisce l’installazione del browser;
+- Home, Orario e Share Target restano privi di promozioni di installazione proprietarie;
+- Impostazioni mostra soltanto lo stato installato/non installato e il percorso nativo Chrome **messaggio/comando del browser → ⋮ → Installa app / Aggiungi a schermata Home**;
 - la registrazione del service worker verifica esplicitamente la disponibilità di un aggiornamento;
-- manifest, service worker e Share Target sono coperti da un test browser dedicato.
+- manifest, service worker e Share Target restano coperti da test browser dedicati.
 
-Questa tranche non promuove da sola la capability: resta necessaria la qualification su Android reale di installazione/aggiornamento e presenza nel menu Condividi.
+Questa tranche non promuove da sola la capability: resta necessaria la qualification su Android reale dell’installazione nativa, dell’aggiornamento e della presenza nel menu Condividi.
 
 ## 9. Criterio di promozione
 
