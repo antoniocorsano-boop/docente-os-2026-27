@@ -45,17 +45,10 @@ declare
   target_timetable_slot_id uuid;
   calendar_day_kind text;
 begin
-  if tg_op = 'DELETE' then
-    target_workspace_id := old.workspace_id;
-    target_academic_year_id := old.academic_year_id;
-    target_local_date := old.local_date;
-    target_timetable_slot_id := old.timetable_slot_id;
-  else
-    target_workspace_id := new.workspace_id;
-    target_academic_year_id := new.academic_year_id;
-    target_local_date := new.local_date;
-    target_timetable_slot_id := new.timetable_slot_id;
-  end if;
+  target_workspace_id := new.workspace_id;
+  target_academic_year_id := new.academic_year_id;
+  target_local_date := new.local_date;
+  target_timetable_slot_id := new.timetable_slot_id;
 
   perform 1
   from public.timetable_slots
@@ -88,22 +81,19 @@ begin
     raise exception 'recorded lesson occurrence is immutable';
   end if;
 
-  if tg_op = 'DELETE' then
-    return old;
-  end if;
   return new;
 end;
-$$;
+$;
 
 drop trigger if exists timetable_exceptions_atomic_guard on public.timetable_exceptions;
 create trigger timetable_exceptions_atomic_guard
-before insert or update or delete on public.timetable_exceptions
+before insert or update on public.timetable_exceptions
 for each row execute function private.guard_timetable_activity_exception();
 
 comment on function private.lock_teaching_session_timetable_slot() is
   'Serializes TeachingSession registration with single-date timetable activity changes by locking the shared timetable slot row.';
 comment on function private.guard_timetable_activity_exception() is
-  'Serializes single-date activity changes with TeachingSession registration and rejects changes on calendar-suppressed or already-recorded occurrences.';
+  'Serializes single-date activity inserts/updates with TeachingSession registration and rejects calendar-suppressed or already-recorded occurrences. Deletes are intentionally left to the guarded RPC or FK cascades.';
 
 select private.advance_runtime_schema_contract('0084_timetable_occurrence_activity_guard');
 
