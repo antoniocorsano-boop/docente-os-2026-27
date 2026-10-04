@@ -287,3 +287,11 @@
   .timetableOccurrenceActivity{grid-template-columns:1fr}
   .timetableOccurrenceActivity button{width:100%}
 }
+
+.timetableOccurrenceActivityState{
+  grid-template-columns:1fr;
+  align-items:start;
+}
+.timetableOccurrenceActivityState strong{
+  font-size:13px;
+}
