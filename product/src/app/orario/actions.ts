@@ -8,6 +8,7 @@ import { OpenAiTimetableDocumentExtractor, TimetableDocumentExtractionUnavailabl
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTimetableImportRepository } from '@/core/infrastructure/supabase/supabase-timetable-import-repository'
+import { SupabaseTimetableExceptionRepository } from '@/core/infrastructure/supabase/supabase-timetable-exception-repository'
 import { SupabaseTimetableLifecycleRepository } from '@/core/infrastructure/supabase/supabase-timetable-lifecycle-repository'
 import { updateDraftTimetableSlot } from '@/core/infrastructure/supabase/supabase-timetable-slot-editor'
 import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
@@ -140,6 +141,18 @@ export async function updateTimetableSlot(formData: FormData) {
     room: kind === 'LESSON' || kind === 'CLASS_PRESENCE' ? nullableText(formData, 'room') : null,
     note: nullableText(formData, 'note'),
   })
+  revalidatePath('/orario')
+}
+
+export async function setTimetableOccurrenceActivityKind(formData: FormData) {
+  await requireContext()
+  const repository = new SupabaseTimetableExceptionRepository()
+  await repository.setActivityKind({
+    timetableSlotId: text(formData, 'timetableSlotId'),
+    localDate: text(formData, 'localDate'),
+    activityKind: occurrenceActivityKind(optionalText(formData, 'activityKind')),
+  })
+  revalidatePath('/')
   revalidatePath('/orario')
 }
 
@@ -655,6 +668,12 @@ function minutesToClock(total: number) {
 function presenceKind(value: string): TimetablePresenceKind {
   if (value === 'SUBSTITUTION' || value === 'CO_TEACHING' || value === 'SUPERVISION' || value === 'PROJECT' || value === 'OTHER') return value
   throw new Error('Unsupported presence kind')
+}
+
+function occurrenceActivityKind(value: string): TimetableActivityKind | null {
+  if (!value) return null
+  if (value === 'THEORY' || value === 'DRAWING_PROJECT' || value === 'PRACTICAL_LAB' || value === 'ASSESSMENT' || value === 'OTHER') return value
+  throw new Error('Unsupported timetable activity kind')
 }
 
 function activityKind(value: string): TimetableActivityKind {
