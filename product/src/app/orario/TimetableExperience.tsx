@@ -194,10 +194,12 @@ export async function TimetableExperience({
         <div className="timetableCardHeading">
           <span>01</span>
           <div>
-            <h2 id="direct-grid-title">Modifica direttamente l’orario</h2>
-            <p>Tocca una cella della settimana per inserire, cambiare o rimuovere una lezione. Le modifiche restano nella bozza finché non decidi di metterla in uso.</p>
+            <h2 id="direct-grid-title">{lifecycle.activeVersion ? 'Prepara una modifica all’orario' : 'Modifica direttamente l’orario'}</h2>
+            <p>{lifecycle.activeVersion
+              ? `Stai modificando una nuova bozza. L’orario in uso dal ${formatDate(lifecycle.activeVersion.effectiveFrom)} non cambia finché non metti in uso questa versione da una nuova data.`
+              : 'Tocca una cella della settimana per inserire, cambiare o rimuovere una lezione. Le modifiche restano nella bozza finché non decidi di metterla in uso.'}</p>
           </div>
-          <b className="draftBadge">{draftLabel}</b>
+          <b className="draftBadge">{lifecycle.activeVersion ? 'Bozza · non in uso' : draftLabel}</b>
         </div>
         <TimetableGrid
           versionId={timetable.draftVersion.id}
@@ -466,7 +468,7 @@ export async function TimetableExperience({
 
       {mode === 'manage' ? <>
       <details className="timetableVersionDetails" data-visual-priority="metadata" data-visual-moment="history">
-        <summary><div><strong>{lifecycle.activeVersion ? `Orario in uso · ${lifecycle.activeVersion.label}` : 'Nessun orario ancora messo in uso'}</strong><span>{lifecycle.activeVersion ? `Dal ${formatDate(lifecycle.activeVersion.effectiveFrom)} · apri per storico e dettagli` : 'Apri per vedere come funziona la prima messa in uso'}</span></div></summary>
+        <summary><div><strong>{lifecycle.activeVersion ? 'Orario in uso' : 'Nessun orario ancora messo in uso'}</strong><span>{lifecycle.activeVersion ? `Dal ${formatDate(lifecycle.activeVersion.effectiveFrom)} · apri per storico e dettagli` : 'Apri per vedere come funziona la prima messa in uso'}</span></div></summary>
         <div className="timetableVersionDetailsBody">
           {lifecycle.activeVersion ? <p><strong>Orario in uso.</strong> Oggi e la home leggono questa versione. La bozza che stai preparando resta separata finché non usi l’azione “Metti in uso” mostrata sopra la griglia.</p> : <p><strong>Prima messa in uso.</strong> L’azione mostrata sopra la griglia rende operativa la bozza dalla data indicata. Docente OS conserva automaticamente una nuova bozza modificabile per i cambi futuri.</p>}
           {archivedVersions.length ? <details><summary>Vedi versioni precedenti</summary><div>{archivedVersions.map((version) => <p key={version.id}><strong>{version.label}</strong><br />{formatDate(version.effectiveFrom)}–{version.effectiveTo ? formatDate(version.effectiveTo) : 'fine non registrata'}</p>)}</div></details> : null}
@@ -491,7 +493,7 @@ export async function TimetableExperience({
       </details>
 
       <details className="timetableVersionDetails">
-        <summary><div><strong>Dettagli della bozza · {timetable.draftVersion.label}</strong><span>{draftLabel} · prevista dal {formatDate(timetable.draftVersion.effectiveFrom)}</span></div></summary>
+        <summary><div><strong>{lifecycle.activeVersion ? 'Bozza per modifiche future' : 'Dettagli della bozza'}</strong><span>{lifecycle.activeVersion ? 'Non ancora in uso · ' : `${draftLabel} · `}prevista dal {formatDate(timetable.draftVersion.effectiveFrom)}</span></div></summary>
         <div className="timetableVersionDetailsBody"><form action={updateTimetableDraft} className="timetableForm versionForm"><input type="hidden" name="versionId" value={timetable.draftVersion.id} /><input type="hidden" name="feedback" value="draft_saved" /><label><span>Nome della bozza</span><input name="label" defaultValue={timetable.draftVersion.label} maxLength={160} required /></label><label><span>Prevista dal</span><input name="effectiveFrom" type="date" defaultValue={timetable.draftVersion.effectiveFrom} min={context.academicYear.startsOn} max={context.academicYear.endsOn} required /></label><label><span>Da dove deriva</span><select name="sourceKind" defaultValue={timetable.draftVersion.sourceKind}><option value="MANUAL">Inserimento manuale</option><option value="INSTITUTION_DOCUMENT">Documento istituzionale</option><option value="IMPORT">Importazione</option></select></label><label className="wideField"><span>Riferimento della fonte</span><input name="sourceRef" defaultValue={timetable.draftVersion.sourceRef ?? ''} maxLength={1000} placeholder="Opzionale: circolare, file, nota…" /></label><TimetableSubmitButton className="timetablePrimaryButton" type="submit" pendingLabel="Salvataggio bozza…">Salva bozza</TimetableSubmitButton></form></div>
       </details>
       </> : null}
@@ -558,7 +560,7 @@ function TimetableActionFeedback({ code }: { code: string }) {
     },
     timetable_activated: {
       title: 'Orario messo in uso',
-      detail: 'La nuova versione è attiva dalla data indicata. La versione precedente resta nello storico.',
+      detail: 'Questa è la versione che vale adesso. Le modifiche future partiranno da una nuova bozza.',
     },
   }
   const message = messages[code]
