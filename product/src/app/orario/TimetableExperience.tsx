@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { canActivateTimetableDraft, minutesToTime, slotDurationMinutes, timeToMinutes, TIMETABLE_WEEKDAYS } from '@/core/domain/timetable'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
@@ -492,10 +493,10 @@ function TimetableActionFeedback({ code }: { code: string }) {
   const message = messages[code]
   if (!message) return null
   return (
-    <div className="timetableActionStatus success" role="status" aria-live="polite">
-      <strong>{message.title}</strong>
-      <span>{message.detail}</span>
-    </div>
+    <Alert className="timetableActionFeedback" variant="success" aria-live="polite">
+      <AlertTitle>{message.title}</AlertTitle>
+      <AlertDescription>{message.detail}</AlertDescription>
+    </Alert>
   )
 }
 
