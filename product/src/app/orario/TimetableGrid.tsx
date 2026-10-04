@@ -6,6 +6,7 @@ import { BookOpen, ClipboardCheck, DraftingCompass, FlaskConical, Shapes } from 
 import { useEffect, useMemo, useState } from 'react'
 import type { TimetableActivityKind, TimetablePresenceKind, TimetableSlot, TimetableSlotKind } from '@/core/domain/timetable'
 import { addClassPresenceSlot, addLessonSlot, addSpecialSlot, deleteTimetableSlot, updateTimetableSlot } from './actions'
+import { TimetableSubmitButton } from './TimetableSubmitButton'
 import { buildTimetableGridRows, timetableCellKey, type TimetableGridPeriod } from './timetable-grid-model'
 import { isCurrentTimetableInterval, isCurrentTimetableRow, type TimetableMoment } from './timetable-operational-model'
 
@@ -28,6 +29,11 @@ type TimetableGridProps = {
   slots: TimetableSlot[]
   assignments: TimetableGridAssignment[]
   readOnly?: boolean
+}
+
+type TimetableMutationFeedback = {
+  tone: 'success' | 'error'
+  message: string
 }
 
 type EditorState = {
@@ -84,6 +90,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
   const [moment, setMoment] = useState<TimetableMoment | null>(null)
   const [focusedSlotId, setFocusedSlotId] = useState<string | null>(null)
   const [editor, setEditor] = useState<EditorState | null>(null)
+  const [mutationFeedback, setMutationFeedback] = useState<TimetableMutationFeedback | null>(null)
 
   useEffect(() => {
     const updateClock = () => {
@@ -114,10 +121,12 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
   const unresolvedAssignments = assignments.filter((assignment) => assignment.weeklyMinutes !== assignment.scheduledMinutes).length
 
   function openEmptyCell(weekday: number, startTime: string, endTime: string, ordinal: number | null) {
+    setMutationFeedback(null)
     setEditor({ mode: 'create', slotId: null, weekday, startTime, endTime, ordinal, kind: 'LESSON', assignmentId: assignments[0]?.id ?? '', manualClassLabel: '', presenceKind: 'SUBSTITUTION', activityKind: 'THEORY', room: '', note: '' })
   }
 
   function openOccupiedCell(slot: TimetableSlot) {
+    setMutationFeedback(null)
     setEditor({
       mode: 'edit', slotId: slot.id, weekday: slot.weekday, startTime: slot.startTime, endTime: slot.endTime, ordinal: slot.ordinal,
       kind: slot.slotKind, assignmentId: slot.teachingAssignmentId ?? assignments[0]?.id ?? '', manualClassLabel: slot.manualClassLabel ?? '',
@@ -139,20 +148,41 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
 
   async function createSlot(formData: FormData) {
     if (!editor) return
-    if (editor.kind === 'LESSON') await addLessonSlot(formData)
-    else if (editor.kind === 'CLASS_PRESENCE') await addClassPresenceSlot(formData)
-    else await addSpecialSlot(formData)
-    setEditor(null)
+    setMutationFeedback(null)
+    try {
+      if (editor.kind === 'LESSON') await addLessonSlot(formData)
+      else if (editor.kind === 'CLASS_PRESENCE') await addClassPresenceSlot(formData)
+      else await addSpecialSlot(formData)
+      setEditor(null)
+      setMutationFeedback({ tone: 'success', message: 'Voce aggiunta all’orario.' })
+    } catch (error) {
+      console.error('Timetable create failed', error)
+      setMutationFeedback({ tone: 'error', message: 'Non sono riuscito ad aggiungere la voce. Nessuna modifica parziale è stata confermata.' })
+    }
   }
 
   async function updateSlot(formData: FormData) {
-    await updateTimetableSlot(formData)
-    setEditor(null)
+    setMutationFeedback(null)
+    try {
+      await updateTimetableSlot(formData)
+      setEditor(null)
+      setMutationFeedback({ tone: 'success', message: 'Modifiche salvate nell’orario.' })
+    } catch (error) {
+      console.error('Timetable update failed', error)
+      setMutationFeedback({ tone: 'error', message: 'Non sono riuscito a salvare le modifiche. Controlla i dati e riprova.' })
+    }
   }
 
   async function removeSlot(formData: FormData) {
-    await deleteTimetableSlot(formData)
-    setEditor(null)
+    setMutationFeedback(null)
+    try {
+      await deleteTimetableSlot(formData)
+      setEditor(null)
+      setMutationFeedback({ tone: 'success', message: 'Voce rimossa dall’orario.' })
+    } catch (error) {
+      console.error('Timetable delete failed', error)
+      setMutationFeedback({ tone: 'error', message: 'Non sono riuscito a rimuovere la voce. L’orario è rimasto invariato.' })
+    }
   }
 
   return (
@@ -171,6 +201,17 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
         ) : <span className="gridHint">Tocca una voce per aprire il contesto</span>}
         <button className="printTimetableButton" type="button" onClick={() => window.print()}>Stampa</button>
       </div>
+
+      {mutationFeedback ? (
+        <div
+          className={`timetableActionToast ${mutationFeedback.tone}`}
+          role={mutationFeedback.tone === 'error' ? 'alert' : 'status'}
+          aria-live={mutationFeedback.tone === 'error' ? 'assertive' : 'polite'}
+        >
+          <span>{mutationFeedback.message}</span>
+          <button type="button" onClick={() => setMutationFeedback(null)} aria-label="Chiudi messaggio">×</button>
+        </div>
+      ) : null}
 
       <div className="visualTimetableScroller">
         <div className="visualTimetableGrid" role="table" aria-label="Orario settimanale" style={{ gridTemplateColumns: `92px repeat(${Math.max(visibleDays.length, 1)}, minmax(138px, 1fr))` }}>
@@ -266,9 +307,9 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
                 </div>
               </details>
               {editor.kind === 'LESSON' && !assignments.length ? <p className="editorWarning">Per una lezione della tua cattedra serve prima almeno una associazione in Impostazioni. Puoi comunque registrare una presenza in altra classe.</p> : null}
-              <div className="timetableEditorActions"><button className="secondaryButton" type="button" onClick={() => setEditor(null)}>Annulla</button><button className="timetablePrimaryButton" type="submit" disabled={editor.kind === 'LESSON' && !assignments.length}>{editor.mode === 'create' ? 'Aggiungi all’orario' : 'Salva modifiche'}</button></div>
+              <div className="timetableEditorActions"><button className="secondaryButton" type="button" onClick={() => setEditor(null)}>Annulla</button><TimetableSubmitButton className="timetablePrimaryButton" type="submit" disabled={editor.kind === 'LESSON' && !assignments.length} pendingLabel={editor.mode === 'create' ? 'Aggiunta…' : 'Salvataggio…'}>{editor.mode === 'create' ? 'Aggiungi all’orario' : 'Salva modifiche'}</TimetableSubmitButton></div>
             </form>
-              {editor.mode === 'edit' && editor.slotId ? <form action={removeSlot} className="editorDeleteForm"><input type="hidden" name="versionId" value={versionId} /><input type="hidden" name="slotId" value={editor.slotId} /><button className="textDangerButton" type="submit">Rimuovi dall’orario</button></form> : null}
+              {editor.mode === 'edit' && editor.slotId ? <form action={removeSlot} className="editorDeleteForm"><input type="hidden" name="versionId" value={versionId} /><input type="hidden" name="slotId" value={editor.slotId} /><TimetableSubmitButton className="textDangerButton" type="submit" pendingLabel="Rimozione…">Rimuovi dall’orario</TimetableSubmitButton></form> : null}
             </Dialog.Content>
           </Dialog.Portal>
         </Dialog.Root>

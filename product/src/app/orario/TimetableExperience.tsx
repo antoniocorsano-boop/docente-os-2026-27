@@ -21,6 +21,7 @@ import {
 } from './actions'
 import TimetableGrid from './TimetableGrid'
 import { TimetableLocalImportLauncher } from './TimetableLocalImportLauncher'
+import { TimetableSubmitButton } from './TimetableSubmitButton'
 import './timetable.css'
 import './orario-guidance.css'
 
@@ -41,6 +42,7 @@ export async function TimetableExperience({
 
   const importCandidateId = singleParam(params.importCandidate)
   const importStatus = singleParam(params.import)
+  const actionFeedback = singleParam(params.feedback)
 
   const moment = currentRomeMoment()
   const settingsRepository = new SupabaseTeacherSettingsRepository()
@@ -141,6 +143,8 @@ export async function TimetableExperience({
         <Link className={mode === 'manage' ? 'active' : ''} href="/orario/gestisci">Gestisci</Link>
       </nav>
 
+      {actionFeedback ? <TimetableActionFeedback code={actionFeedback} /> : null}
+
       {mode === 'update' ? <>
       <section className="timetableCard timetableGridCard" id="modifica-settimana" aria-labelledby="direct-grid-title">
         <div className="timetableCardHeading">
@@ -164,11 +168,12 @@ export async function TimetableExperience({
           <input type="hidden" name="label" value={timetable.draftVersion.label} />
           <input type="hidden" name="sourceKind" value="MANUAL" />
           <input type="hidden" name="sourceRef" value={timetable.draftVersion.sourceRef ?? ''} />
+          <input type="hidden" name="feedback" value="validity_saved" />
           <label>
             <span>In vigore dal</span>
             <input name="effectiveFrom" type="date" defaultValue={timetable.draftVersion.effectiveFrom} min={context.academicYear.startsOn} max={context.academicYear.endsOn} required />
           </label>
-          <button className="timetablePrimaryButton" type="submit">Salva data di validità</button>
+          <TimetableSubmitButton className="timetablePrimaryButton" type="submit" pendingLabel="Salvataggio data…">Salva data di validità</TimetableSubmitButton>
         </form>
         <p className="timetableImportHint">Non serve indicare una data di fine. Quando metterai in uso un orario successivo, Docente OS chiuderà automaticamente quello precedente.</p>
         <div className="humanTaskActions"><Link className="primary" href="/orario/gestisci">Controlla e metti in uso la bozza</Link></div>
@@ -242,7 +247,7 @@ export async function TimetableExperience({
                     <span>Fine</span>
                     <input name="endTime" type="time" defaultValue={row.endTime ?? ''} required />
                   </label>
-                  <button type="submit">Salva riga</button>
+                  <TimetableSubmitButton type="submit" pendingLabel="Salvataggio riga…">Salva riga</TimetableSubmitButton>
                 </form>
               ))}
             </div>
@@ -279,7 +284,7 @@ export async function TimetableExperience({
                   <span>Fine</span>
                   <input name="endTime" type="time" required />
                 </label>
-                <button type="submit">Aggiungi</button>
+                <TimetableSubmitButton type="submit" pendingLabel="Aggiunta…">Aggiungi</TimetableSubmitButton>
               </form>
             </details>
 
@@ -298,7 +303,7 @@ export async function TimetableExperience({
                     <span>Confermo che questa proposta contiene tutte le mie lezioni del nuovo orario.</span>
                   </label>
                 </div>
-                <button className="timetablePrimaryButton" type="submit">Applica alla bozza</button>
+                <TimetableSubmitButton className="timetablePrimaryButton" type="submit" pendingLabel="Applicazione…">Applica alla bozza</TimetableSubmitButton>
               </form>
             ) : (
               <p className="timetableImportHint">Completa le righe da controllare. Quando tutte sono valide comparirà il pulsante di conferma.</p>
@@ -370,7 +375,7 @@ export async function TimetableExperience({
                     <option value="OTHER">Altro</option>
                   </select>
                 </label>
-                <button type="submit">Salva per questa lezione</button>
+                <TimetableSubmitButton type="submit" pendingLabel="Salvataggio…">Salva per questa lezione</TimetableSubmitButton>
                 <small>Vale solo per {formatDate(moment.localDate)}. La settimana tipo non viene modificata.</small>
               </form>
             )
@@ -390,7 +395,7 @@ export async function TimetableExperience({
           {!canActivateDraft && lifecycle.activeVersion ? <p><strong>Prima scegli una decorrenza successiva.</strong> La bozza è ancora impostata dal {formatDate(timetable.draftVersion.effectiveFrom)}, mentre l’orario in uso parte dal {formatDate(lifecycle.activeVersion.effectiveFrom)}. Salva nella bozza una data successiva prima di sostituirlo.</p> : null}
           <form action={activateTimetableDraft}>
             <input type="hidden" name="versionId" value={timetable.draftVersion.id} />
-            <button className="timetablePrimaryButton" type="submit" disabled={!canActivateDraft}>Metti in uso dal {formatDate(timetable.draftVersion.effectiveFrom)}</button>
+            <TimetableSubmitButton className="timetablePrimaryButton" type="submit" disabled={!canActivateDraft} pendingLabel="Attivazione orario…">Metti in uso dal {formatDate(timetable.draftVersion.effectiveFrom)}</TimetableSubmitButton>
           </form>
           {archivedVersions.length ? <details><summary>Vedi versioni precedenti</summary><div>{archivedVersions.map((version) => <p key={version.id}><strong>{version.label}</strong><br />{formatDate(version.effectiveFrom)}–{version.effectiveTo ? formatDate(version.effectiveTo) : 'fine non registrata'}</p>)}</div></details> : null}
         </div>
@@ -415,7 +420,7 @@ export async function TimetableExperience({
 
       <details className="timetableVersionDetails">
         <summary><div><strong>Dettagli della bozza · {timetable.draftVersion.label}</strong><span>{draftLabel} · prevista dal {formatDate(timetable.draftVersion.effectiveFrom)}</span></div></summary>
-        <div className="timetableVersionDetailsBody"><form action={updateTimetableDraft} className="timetableForm versionForm"><input type="hidden" name="versionId" value={timetable.draftVersion.id} /><label><span>Nome della bozza</span><input name="label" defaultValue={timetable.draftVersion.label} maxLength={160} required /></label><label><span>Prevista dal</span><input name="effectiveFrom" type="date" defaultValue={timetable.draftVersion.effectiveFrom} min={context.academicYear.startsOn} max={context.academicYear.endsOn} required /></label><label><span>Da dove deriva</span><select name="sourceKind" defaultValue={timetable.draftVersion.sourceKind}><option value="MANUAL">Inserimento manuale</option><option value="INSTITUTION_DOCUMENT">Documento istituzionale</option><option value="IMPORT">Importazione</option></select></label><label className="wideField"><span>Riferimento della fonte</span><input name="sourceRef" defaultValue={timetable.draftVersion.sourceRef ?? ''} maxLength={1000} placeholder="Opzionale: circolare, file, nota…" /></label><button className="timetablePrimaryButton" type="submit">Salva bozza</button></form></div>
+        <div className="timetableVersionDetailsBody"><form action={updateTimetableDraft} className="timetableForm versionForm"><input type="hidden" name="versionId" value={timetable.draftVersion.id} /><input type="hidden" name="feedback" value="draft_saved" /><label><span>Nome della bozza</span><input name="label" defaultValue={timetable.draftVersion.label} maxLength={160} required /></label><label><span>Prevista dal</span><input name="effectiveFrom" type="date" defaultValue={timetable.draftVersion.effectiveFrom} min={context.academicYear.startsOn} max={context.academicYear.endsOn} required /></label><label><span>Da dove deriva</span><select name="sourceKind" defaultValue={timetable.draftVersion.sourceKind}><option value="MANUAL">Inserimento manuale</option><option value="INSTITUTION_DOCUMENT">Documento istituzionale</option><option value="IMPORT">Importazione</option></select></label><label className="wideField"><span>Riferimento della fonte</span><input name="sourceRef" defaultValue={timetable.draftVersion.sourceRef ?? ''} maxLength={1000} placeholder="Opzionale: circolare, file, nota…" /></label><TimetableSubmitButton className="timetablePrimaryButton" type="submit" pendingLabel="Salvataggio bozza…">Salva bozza</TimetableSubmitButton></form></div>
       </details>
       </> : null}
     </AppShell>
@@ -465,10 +470,41 @@ function weekdayLabel(value: number | null) {
   return value ? labels[value] ?? 'Giorno da verificare' : 'Giorno da verificare'
 }
 
+function TimetableActionFeedback({ code }: { code: string }) {
+  const messages: Record<string, { title: string; detail: string }> = {
+    validity_saved: {
+      title: 'Data salvata',
+      detail: 'La decorrenza della bozza è stata aggiornata.',
+    },
+    draft_saved: {
+      title: 'Bozza salvata',
+      detail: 'Le impostazioni della bozza sono state registrate.',
+    },
+    occurrence_saved: {
+      title: 'Lezione aggiornata',
+      detail: 'La tipologia scelta vale per questa lezione. La settimana tipo resta invariata.',
+    },
+    timetable_activated: {
+      title: 'Orario messo in uso',
+      detail: 'La nuova versione è attiva dalla data indicata. La versione precedente resta nello storico.',
+    },
+  }
+  const message = messages[code]
+  if (!message) return null
+  return (
+    <div className="timetableActionStatus success" role="status" aria-live="polite">
+      <strong>{message.title}</strong>
+      <span>{message.detail}</span>
+    </div>
+  )
+}
+
 function ImportStatus({ code }: { code: string }) {
   const messages: Record<string, { tone: string; title: string; detail: string }> = {
     applied: { tone: 'success', title: 'Orario applicato alla bozza', detail: 'La bozza è stata aggiornata. L’orario in uso non è stato attivato né modificato.' },
     review: { tone: 'info', title: 'Proposta pronta', detail: 'Controlla le righe sotto e correggi solo ciò che serve.' },
+    row_saved: { tone: 'success', title: 'Riga salvata', detail: 'La correzione è stata registrata. Puoi continuare con le altre righe oppure confermare la proposta.' },
+    row_added: { tone: 'success', title: 'Lezione aggiunta', detail: 'La nuova riga è stata registrata nella proposta da controllare.' },
     conflict: { tone: 'warning', title: 'La bozza è cambiata', detail: 'Nessuna modifica è stata applicata. Ricarica la proposta prima di confermare.' },
     review_stale: { tone: 'warning', title: 'La proposta è stata aggiornata', detail: 'Questa pagina mostra una revisione precedente. Riapri la proposta e controlla la versione aggiornata prima di confermare.' },
     already_applied: { tone: 'info', title: 'Documento già applicato', detail: 'Questo stesso documento risulta già applicato alla bozza.' },

@@ -60,6 +60,13 @@ export async function updateTimetableDraft(formData: FormData) {
     sourceRef: nullableText(formData, 'sourceRef'),
   })
   revalidatePath('/orario')
+  const feedback = optionalText(formData, 'feedback')
+  if (feedback === 'validity_saved') {
+    redirect('/orario/aggiorna?feedback=validity_saved#modifica-settimana')
+  }
+  if (feedback === 'draft_saved') {
+    redirect('/orario/gestisci?feedback=draft_saved')
+  }
 }
 
 export async function activateTimetableDraft(formData: FormData) {
@@ -68,6 +75,7 @@ export async function activateTimetableDraft(formData: FormData) {
   await repository.activateDraft(text(formData, 'versionId'))
   revalidatePath('/')
   revalidatePath('/orario')
+  redirect('/orario/gestisci?feedback=timetable_activated')
 }
 
 export async function addLessonSlot(formData: FormData) {
@@ -154,6 +162,7 @@ export async function setTimetableOccurrenceActivityKind(formData: FormData) {
   })
   revalidatePath('/')
   revalidatePath('/orario')
+  redirect('/orario?feedback=occurrence_saved#timetable-focus-title')
 }
 
 export async function deleteTimetableSlot(formData: FormData) {
@@ -503,7 +512,7 @@ export async function addTimetableImportRow(formData: FormData) {
   }
 
   revalidatePath('/orario')
-  redirect(`/orario/aggiorna?importCandidate=${encodeURIComponent(candidateId)}&import=review`)
+  redirect(`/orario/aggiorna?importCandidate=${encodeURIComponent(candidateId)}&import=row_added`)
 }
 
 export async function updateTimetableImportRow(formData: FormData) {
@@ -541,7 +550,7 @@ export async function updateTimetableImportRow(formData: FormData) {
   }
 
   revalidatePath('/orario')
-  redirect(`/orario/aggiorna?importCandidate=${encodeURIComponent(candidateId)}&import=review`)
+  redirect(`/orario/aggiorna?importCandidate=${encodeURIComponent(candidateId)}&import=row_saved`)
 }
 
 export async function applyTimetableImportCandidate(formData: FormData) {
