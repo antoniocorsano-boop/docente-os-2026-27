@@ -83,7 +83,7 @@ begin
 
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists timetable_exceptions_atomic_guard on public.timetable_exceptions;
 create trigger timetable_exceptions_atomic_guard
