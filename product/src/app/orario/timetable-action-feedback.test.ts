@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 // @trama-feedback-test
+// Design impact: COMPATIBLE — additive feedback on existing timetable write surfaces.
 // Regression for the Beta pilot observation: timetable writes must acknowledge both pending and completed states.
 test('timetable writes expose perceptible pending and completion feedback', () => {
   const submitSource = readFileSync(new URL('./TimetableSubmitButton.tsx', import.meta.url), 'utf8')
