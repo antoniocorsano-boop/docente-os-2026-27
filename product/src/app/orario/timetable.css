@@ -304,7 +304,7 @@
   flex:0 0 14px;
   border:2px solid currentColor;
   border-right-color:transparent;
-  border-radius:999px;
+  border-radius:var(--radius-pill);
   animation:timetableButtonSpin .7s linear infinite;
 }
 button[aria-busy="true"]{cursor:progress}
@@ -357,7 +357,7 @@ button[aria-busy="true"]{cursor:progress}
   min-width:34px;
   min-height:34px;
   border:0;
-  border-radius:999px;
+  border-radius:var(--radius-pill);
   background:transparent;
   color:var(--ink-soft);
   font-size:20px;
