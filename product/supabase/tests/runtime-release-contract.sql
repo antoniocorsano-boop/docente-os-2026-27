@@ -81,6 +81,16 @@ begin
     raise exception 'single-occurrence activity kind RPC does not persist a bounded temporal exception';
   end if;
 
+  if position('FOR UPDATE' in upper(occurrence_activity_rpc_definition)) = 0 then
+    raise exception 'single-occurrence activity RPC does not lock the source timetable slot';
+  end if;
+
+  if position('SUSPENSION' in occurrence_activity_rpc_definition) = 0
+     or position('HOLIDAY' in occurrence_activity_rpc_definition) = 0
+     or position('CLOSURE' in occurrence_activity_rpc_definition) = 0 then
+    raise exception 'single-occurrence activity RPC does not reject calendar-suppressed dates';
+  end if;
+
   if to_regprocedure('private.guard_timetable_activity_exception()') is null then
     raise exception 'atomic timetable activity exception guard missing after migration replay';
   end if;
@@ -111,8 +121,11 @@ begin
     where tgrelid = 'public.timetable_exceptions'::regclass
       and tgname = 'timetable_exceptions_atomic_guard'
       and not tgisinternal
+      and (tgtype & 4) <> 0
+      and (tgtype & 16) <> 0
+      and (tgtype & 8) = 0
   ) then
-    raise exception 'timetable exception atomic guard trigger missing';
+    raise exception 'timetable exception atomic guard must cover INSERT/UPDATE without blocking DELETE cascades';
   end if;
 
   if not exists (
