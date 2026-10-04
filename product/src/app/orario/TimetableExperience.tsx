@@ -329,7 +329,7 @@ export async function TimetableExperience({
         </> : null}
 
         {showImportTool ? (
-          <details className="timetableVersionDetails timetableOptionalImport" data-visual-priority="supporting" data-visual-moment="prepare">
+          <details className="timetableVersionDetails timetableOptionalImport" data-visual-priority="operational-primary" data-visual-moment="prepare" open>
                   <summary><div><strong>Importa da PDF o foto</strong><span>Sperimentale · opzionale · non serve per usare o aggiornare l’orario</span></div></summary>
                   <div className="timetableVersionDetailsBody">
                 <section className="timetableCard timetableImportCard" id="importa-orario" aria-labelledby="import-title">
