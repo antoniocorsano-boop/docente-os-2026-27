@@ -82,6 +82,53 @@
 @media(max-width:460px){.timetableViewActions .humanTaskActions{grid-template-columns:1fr}}
 
 
+.timetableActivationAction{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:18px;
+  border:1px solid color-mix(in srgb,var(--success) 28%,var(--line));
+  border-radius:var(--radius-md);
+  background:color-mix(in srgb,var(--success) 7%,var(--surface));
+}
+.timetableActivationAction.blocked{
+  border-color:color-mix(in srgb,var(--warning) 32%,var(--line));
+  background:var(--warning-soft);
+}
+.timetableActivationCopy{display:grid;gap:4px;min-width:0}
+.timetableActivationEyebrow{
+  color:var(--success);
+  font-size:10px;
+  font-weight:850;
+  letter-spacing:.08em;
+}
+.timetableActivationAction.blocked .timetableActivationEyebrow{color:var(--warning)}
+.timetableActivationCopy h2{margin:0;font-size:18px;line-height:1.2;letter-spacing:-.02em}
+.timetableActivationCopy p{margin:0;max-width:700px;color:var(--ink-soft);font-size:12px;line-height:1.5}
+.timetableActivationAction form{flex:0 0 auto}
+.timetableActivationLink{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  padding:0 14px;
+  border:1px solid var(--brand);
+  border-radius:var(--radius-sm);
+  background:var(--brand);
+  color:var(--ink-on-dark);
+  font-weight:750;
+  text-decoration:none;
+}
+@media(max-width:719px){
+  .timetableActivationAction{align-items:stretch;flex-direction:column;padding:14px}
+  .timetableActivationAction form,
+  .timetableActivationAction .timetablePrimaryButton,
+  .timetableActivationLink{width:100%}
+}
+
+
 /* ORARIO_MOBILE_DIRECT_EDIT_V2 */
 .editorScheduleDetails{
   grid-column:1/-1;
@@ -310,16 +357,6 @@
 button[aria-busy="true"]{cursor:progress}
 @keyframes timetableButtonSpin{to{transform:rotate(360deg)}}
 
-.timetableActionFeedback{margin:0 0 14px}
-.timetableMutationFeedback{
-  position:sticky;
-  top:8px;
-  z-index:30;
-}
-
-@media(max-width:719px){
-  .timetableMutationFeedback{top:74px}
-}
 @media(prefers-reduced-motion:reduce){
   .timetableButtonSpinner{animation:none}
 }

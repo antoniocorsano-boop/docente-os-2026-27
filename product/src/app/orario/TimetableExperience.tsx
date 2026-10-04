@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { TransientFeedback } from '@/components/ui/transient-feedback'
 import { canActivateTimetableDraft, minutesToTime, slotDurationMinutes, timeToMinutes, TIMETABLE_WEEKDAYS } from '@/core/domain/timetable'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
@@ -145,6 +145,41 @@ export async function TimetableExperience({
       </nav>
 
       {actionFeedback ? <TimetableActionFeedback code={actionFeedback} /> : null}
+
+      {mode === 'manage' ? (
+        <section
+          className={`timetableActivationAction ${canActivateDraft ? 'ready' : 'blocked'}`}
+          aria-labelledby="timetable-activation-title"
+        >
+          <div className="timetableActivationCopy">
+            <span className="timetableActivationEyebrow">{canActivateDraft ? 'BOZZA PRONTA' : 'DATA DA AGGIORNARE'}</span>
+            <h2 id="timetable-activation-title">
+              {canActivateDraft ? 'Metti in uso questo orario' : 'Scegli da quando deve valere'}
+            </h2>
+            <p>
+              {canActivateDraft
+                ? lifecycle.activeVersion
+                  ? `La bozza è salvata. Dal ${formatDate(timetable.draftVersion.effectiveFrom)} sostituirà l’orario attuale; quello precedente resterà nello storico.`
+                  : `La bozza è salvata. Dal ${formatDate(timetable.draftVersion.effectiveFrom)} diventerà l’orario usato da Oggi e dalla home.`
+                : lifecycle.activeVersion
+                  ? `L’orario in uso parte dal ${formatDate(lifecycle.activeVersion.effectiveFrom)}. La bozza deve avere una decorrenza successiva prima di poterlo sostituire.`
+                  : 'Questa versione non è ancora pronta per essere messa in uso. Controlla la data di decorrenza della bozza.'}
+            </p>
+          </div>
+          {canActivateDraft ? (
+            <form action={activateTimetableDraft}>
+              <input type="hidden" name="versionId" value={timetable.draftVersion.id} />
+              <TimetableSubmitButton className="timetablePrimaryButton" type="submit" pendingLabel="Attivazione orario…">
+                Metti in uso dal {formatDate(timetable.draftVersion.effectiveFrom)}
+              </TimetableSubmitButton>
+            </form>
+          ) : (
+            <Link className="timetableActivationLink" href="/orario/aggiorna#modifica-settimana">
+              Cambia la data di validità
+            </Link>
+          )}
+        </section>
+      ) : null}
 
       {mode === 'update' ? <>
       <section className="timetableCard timetableGridCard" id="modifica-settimana" aria-labelledby="direct-grid-title">
@@ -389,15 +424,10 @@ export async function TimetableExperience({
       </> : null}
 
       {mode === 'manage' ? <>
-      <details className="timetableVersionDetails" open={!lifecycle.activeVersion}>
-        <summary><div><strong>{lifecycle.activeVersion ? `In uso · ${lifecycle.activeVersion.label}` : 'Nessun orario ancora messo in uso'}</strong><span>{lifecycle.activeVersion ? `Dal ${formatDate(lifecycle.activeVersion.effectiveFrom)} · le modifiche restano separate` : 'La bozza iniziale guida temporaneamente la vista operativa finché non la attivi'}</span></div></summary>
+      <details className="timetableVersionDetails">
+        <summary><div><strong>{lifecycle.activeVersion ? `Orario in uso · ${lifecycle.activeVersion.label}` : 'Nessun orario ancora messo in uso'}</strong><span>{lifecycle.activeVersion ? `Dal ${formatDate(lifecycle.activeVersion.effectiveFrom)} · apri per storico e dettagli` : 'Apri per vedere come funziona la prima messa in uso'}</span></div></summary>
         <div className="timetableVersionDetailsBody">
-          {lifecycle.activeVersion ? <p><strong>Orario in uso.</strong> Oggi e la home leggono questa versione, non la bozza che stai modificando. Quando attiverai la bozza, questo orario verrà chiuso il giorno precedente alla nuova decorrenza e resterà nello storico.</p> : <p><strong>Primo passaggio.</strong> Mettere in uso la bozza stabilisce quale orario deve guidare Oggi. Il sistema conserva automaticamente una copia identica come nuova bozza, così potrai preparare cambi futuri senza toccare ciò che è già operativo.</p>}
-          {!canActivateDraft && lifecycle.activeVersion ? <p><strong>Prima scegli una decorrenza successiva.</strong> La bozza è ancora impostata dal {formatDate(timetable.draftVersion.effectiveFrom)}, mentre l’orario in uso parte dal {formatDate(lifecycle.activeVersion.effectiveFrom)}. Salva nella bozza una data successiva prima di sostituirlo.</p> : null}
-          <form action={activateTimetableDraft}>
-            <input type="hidden" name="versionId" value={timetable.draftVersion.id} />
-            <TimetableSubmitButton className="timetablePrimaryButton" type="submit" disabled={!canActivateDraft} pendingLabel="Attivazione orario…">Metti in uso dal {formatDate(timetable.draftVersion.effectiveFrom)}</TimetableSubmitButton>
-          </form>
+          {lifecycle.activeVersion ? <p><strong>Orario in uso.</strong> Oggi e la home leggono questa versione. La bozza che stai preparando resta separata finché non usi l’azione “Metti in uso” mostrata sopra la griglia.</p> : <p><strong>Prima messa in uso.</strong> L’azione mostrata sopra la griglia rende operativa la bozza dalla data indicata. Docente OS conserva automaticamente una nuova bozza modificabile per i cambi futuri.</p>}
           {archivedVersions.length ? <details><summary>Vedi versioni precedenti</summary><div>{archivedVersions.map((version) => <p key={version.id}><strong>{version.label}</strong><br />{formatDate(version.effectiveFrom)}–{version.effectiveTo ? formatDate(version.effectiveTo) : 'fine non registrata'}</p>)}</div></details> : null}
         </div>
       </details>
@@ -493,10 +523,11 @@ function TimetableActionFeedback({ code }: { code: string }) {
   const message = messages[code]
   if (!message) return null
   return (
-    <Alert className="timetableActionFeedback" variant="success" aria-live="polite">
-      <AlertTitle>{message.title}</AlertTitle>
-      <AlertDescription>{message.detail}</AlertDescription>
-    </Alert>
+    <TransientFeedback
+      title={message.title}
+      message={message.detail}
+      tone="success"
+    />
   )
 }
 
