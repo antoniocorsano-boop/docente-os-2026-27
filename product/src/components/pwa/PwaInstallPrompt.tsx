@@ -3,17 +3,13 @@
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import styles from './PwaInstallPrompt.module.css'
-
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>
-}
-
-function isStandalone() {
-  if (typeof window === 'undefined') return false
-  const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean }
-  return window.matchMedia('(display-mode: standalone)').matches || navigatorWithStandalone.standalone === true
-}
+import {
+  clearInstallPrompt,
+  currentInstallPrompt,
+  isPwaStandalone,
+  rememberInstallPrompt,
+  type BeforeInstallPromptEvent,
+} from './pwa-install-state'
 
 export function PwaInstallPrompt() {
   const pathname = usePathname()
@@ -22,17 +18,21 @@ export function PwaInstallPrompt() {
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
+    setInstallEvent(currentInstallPrompt())
     const standaloneTimer = window.setTimeout(() => {
-      setInstalled(isStandalone())
+      setInstalled(isPwaStandalone())
     }, 0)
 
     const onBeforeInstallPrompt = (event: Event) => {
       event.preventDefault()
-      setInstallEvent(event as BeforeInstallPromptEvent)
+      const installPrompt = event as BeforeInstallPromptEvent
+      rememberInstallPrompt(installPrompt)
+      setInstallEvent(installPrompt)
     }
     const onInstalled = () => {
       setInstalled(true)
       setInstallEvent(null)
+      clearInstallPrompt()
     }
 
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
@@ -45,12 +45,13 @@ export function PwaInstallPrompt() {
     }
   }, [])
 
-  if (pathname.startsWith('/orario') || installed || dismissed || !installEvent) return null
+  if (pathname !== '/' || installed || dismissed || !installEvent) return null
 
   const install = async () => {
     await installEvent.prompt()
     const choice = await installEvent.userChoice
     if (choice.outcome === 'accepted') setDismissed(true)
+    clearInstallPrompt()
     setInstallEvent(null)
   }
 
