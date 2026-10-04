@@ -105,6 +105,12 @@ export type Database = {
         Update: { name?: string; is_active?: boolean; updated_at?: string }
         Relationships: []
       }
+      timetable_exceptions: {
+        Row: { id: string; workspace_id: string; academic_year_id: string; local_date: string; timetable_version_id: string; timetable_slot_id: string; kind: string; activity_kind: string; source_kind: string; source_ref: string | null; created_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; workspace_id: string; academic_year_id: string; local_date: string; timetable_version_id: string; timetable_slot_id: string; kind?: string; activity_kind: string; source_kind?: string; source_ref?: string | null; created_by: string; created_at?: string; updated_at?: string }
+        Update: { local_date?: string; timetable_version_id?: string; timetable_slot_id?: string; kind?: string; activity_kind?: string; source_kind?: string; source_ref?: string | null; updated_at?: string }
+        Relationships: []
+      }
       timetable_versions: {
         Row: { id: string; workspace_id: string; academic_year_id: string; label: string; status: string; effective_from: string; effective_to: string | null; source_kind: string; source_ref: string | null; revision: number; created_by: string; created_at: string; updated_at: string }
         Insert: { id?: string; workspace_id: string; academic_year_id: string; label: string; status?: string; effective_from: string; effective_to?: string | null; source_kind?: string; source_ref?: string | null; revision?: number; created_by: string; created_at?: string; updated_at?: string }
@@ -185,6 +191,10 @@ export type Database = {
           unit_updated_at: string
           rank: number
         }>
+      }
+      set_timetable_occurrence_activity_kind: {
+        Args: { p_timetable_slot_id: string; p_local_date: string; p_activity_kind: string | null }
+        Returns: Json
       }
       read_timetable_draft_revision_token: { Args: { p_version_id: string }; Returns: string }
       apply_confirmed_timetable_import_v1: {
