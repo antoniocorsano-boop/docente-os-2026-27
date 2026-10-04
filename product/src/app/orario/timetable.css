@@ -249,3 +249,41 @@
 @media print {
   .cellActivityIcon { opacity: .8; }
 }
+
+
+/* ORARIO_SINGLE_OCCURRENCE_ACTIVITY */
+.timetableOccurrenceActivity{
+  margin-top:14px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px 10px;
+  align-items:end;
+  padding-top:14px;
+  border-top:1px solid var(--line);
+}
+.timetableOccurrenceActivity label{display:grid;gap:6px;min-width:0}
+.timetableOccurrenceActivity label>span{font-size:11px;font-weight:750;color:var(--ink-soft)}
+.timetableOccurrenceActivity select{
+  width:100%;
+  min-height:44px;
+  border:1px solid var(--line-strong);
+  border-radius:var(--radius-sm);
+  background:var(--surface);
+  color:var(--ink);
+  padding:0 10px;
+}
+.timetableOccurrenceActivity select:focus{outline:3px solid var(--focus-ring);outline-offset:1px;border-color:var(--brand)}
+.timetableOccurrenceActivity button{
+  min-height:44px;
+  border:1px solid var(--line-strong);
+  border-radius:var(--radius-sm);
+  background:var(--surface);
+  color:var(--ink);
+  padding:0 14px;
+  font-weight:750;
+}
+.timetableOccurrenceActivity small{grid-column:1/-1;color:var(--ink-soft);line-height:1.4}
+@media(max-width:719px){
+  .timetableOccurrenceActivity{grid-template-columns:1fr}
+  .timetableOccurrenceActivity button{width:100%}
+}
