@@ -318,7 +318,6 @@ button[aria-busy="true"]{cursor:progress}
   border:1px solid var(--line);
   border-radius:var(--radius-sm);
   background:var(--surface);
-  box-shadow:var(--shadow-sm);
 }
 .timetableActionStatus.success{
   border-color:color-mix(in srgb,var(--brand) 38%,var(--line));
@@ -340,7 +339,7 @@ button[aria-busy="true"]{cursor:progress}
   border:1px solid var(--line);
   border-radius:var(--radius-sm);
   background:var(--surface);
-  box-shadow:var(--shadow-lg);
+  box-shadow:var(--shadow-float);
 }
 .timetableActionToast.success{
   border-color:color-mix(in srgb,var(--brand) 42%,var(--line));
@@ -375,5 +374,5 @@ button[aria-busy="true"]{cursor:progress}
   }
 }
 @media(prefers-reduced-motion:reduce){
-  .timetableButtonSpinner{animation-duration:1.4s}
+  .timetableButtonSpinner{animation:none}
 }
