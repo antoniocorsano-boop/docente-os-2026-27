@@ -18,8 +18,8 @@ export function PwaInstallPrompt() {
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
-    setInstallEvent(currentInstallPrompt())
     const standaloneTimer = window.setTimeout(() => {
+      setInstallEvent(currentInstallPrompt())
       setInstalled(isPwaStandalone())
     }, 0)
 
