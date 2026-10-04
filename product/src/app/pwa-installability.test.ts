@@ -3,11 +3,10 @@ import fs from 'node:fs'
 import test from 'node:test'
 
 const manifestSource = fs.readFileSync(new URL('./manifest.ts', import.meta.url), 'utf8')
-const installPromptSource = fs.readFileSync(new URL('../components/pwa/PwaInstallPrompt.tsx', import.meta.url), 'utf8')
 const installControlSource = fs.readFileSync(new URL('../components/pwa/PwaInstallControl.tsx', import.meta.url), 'utf8')
-const installStateSource = fs.readFileSync(new URL('../components/pwa/pwa-install-state.ts', import.meta.url), 'utf8')
 const serviceWorkerRegistrationSource = fs.readFileSync(new URL('../components/pwa/PwaServiceWorkerRegistration.tsx', import.meta.url), 'utf8')
 const settingsSource = fs.readFileSync(new URL('./impostazioni/page.tsx', import.meta.url), 'utf8')
+const layoutSource = fs.readFileSync(new URL('./layout.tsx', import.meta.url), 'utf8')
 
 function pngDimensions(path: string) {
   const png = fs.readFileSync(new URL(path, import.meta.url))
@@ -32,19 +31,13 @@ test('PWA manifest exposes Chromium installability icon sizes', () => {
   assert.deepEqual(pngDimensions('../../public/pwa/icon-maskable-512.png'), { width: 512, height: 512 })
 })
 
-test('PWA exposes one non-blocking install path on Home and a persistent control in Settings', () => {
-  assert.match(installPromptSource, /beforeinstallprompt/)
-  assert.match(installPromptSource, /appinstalled/)
-  assert.match(installPromptSource, /pathname !== '\/'/)
-  assert.match(installPromptSource, /!ready \|\| installed \|\| dismissed/)
-  assert.doesNotMatch(installPromptSource, /\|\| !installEvent/)
-  assert.match(installPromptSource, /Come installare/)
-  assert.match(installPromptSource, /\/impostazioni#installazione/)
-  assert.match(installPromptSource, /rememberInstallPrompt/)
-  assert.match(installStateSource, /display-mode: standalone/)
-  assert.match(installStateSource, /__docenteOsInstallPrompt/)
+test('PWA leaves installation UI to the browser and keeps only a manual fallback in Settings', () => {
+  assert.doesNotMatch(layoutSource, /PwaInstallPrompt/)
+  assert.doesNotMatch(installControlSource, /beforeinstallprompt/)
+  assert.doesNotMatch(installControlSource, /preventDefault/)
+  assert.doesNotMatch(installControlSource, /\.prompt\(\)/)
   assert.match(settingsSource, /PwaInstallControl/)
-  assert.match(installControlSource, /Installa Docente OS/)
+  assert.match(installControlSource, /L’installazione è gestita dal browser/)
   assert.match(installControlSource, /Installa app/)
   assert.match(installControlSource, /Aggiungi a schermata Home/)
   assert.match(installControlSource, /Docente OS è installato/)
