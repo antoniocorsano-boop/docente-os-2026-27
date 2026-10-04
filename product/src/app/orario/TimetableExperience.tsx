@@ -153,7 +153,7 @@ export async function TimetableExperience({
       {mode === 'update' ? (
         <div className="timetableFlowHeader">
           <ol className="timetableFlowSteps" aria-label="Avanzamento modifica orario">
-            <li className={updatePhase === 'modifica' ? 'active' : updatePhase !== 'modifica' ? 'done' : ''}><span>1</span><strong>Modifica</strong></li>
+            <li className={updatePhase === 'modifica' ? 'active' : 'done'}><span>1</span><strong>Modifica</strong></li>
             <li className={updatePhase === 'data' ? 'active' : updatePhase === 'controllo' ? 'done' : ''}><span>2</span><strong>Data</strong></li>
             <li className={updatePhase === 'controllo' ? 'active' : ''}><span>3</span><strong>Controlla</strong></li>
           </ol>
