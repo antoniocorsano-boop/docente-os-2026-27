@@ -40,7 +40,7 @@ test('timetable writes expose perceptible transient feedback and explicit activa
   assert.match(gridSource, /@\/components\/ui\/transient-feedback/)
   assert.match(gridSource, /<TransientFeedback/)
   assert.match(gridSource, /durationMs=\{mutationFeedback\.tone === 'error' \? 6500 : 4200\}/)
-  assert.match(gridSource, /Modifiche salvate nell’orario/)
+  assert.match(gridSource, /Modifica salvata nella bozza\. L’orario in uso non è cambiato\./)
   assert.match(gridSource, /Non sono riuscito a salvare le modifiche/)
   assert.doesNotMatch(gridSource, /timetableActionToast/)
   assert.doesNotMatch(gridSource, /timetableMutationFeedback/)
@@ -54,7 +54,7 @@ test('timetable writes expose perceptible transient feedback and explicit activa
   assert.match(transientSource, /aria-live=/)
 
   assert.match(actionsSource, /feedback=occurrence_saved/)
-  assert.match(actionsSource, /feedback=timetable_activated/)
+  assert.match(actionsSource, /redirect\('\/orario\?feedback=timetable_activated'\)/)
   assert.match(actionsSource, /import=row_saved/)
   assert.match(actionsSource, /import=row_added/)
 })
