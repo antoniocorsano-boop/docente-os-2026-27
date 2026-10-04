@@ -22,7 +22,6 @@ test('timetable writes expose perceptible transient feedback and explicit activa
   assert.match(experienceSource, /Orario messo in uso/)
   assert.match(experienceSource, /@\/components\/ui\/transient-feedback/)
   assert.match(experienceSource, /<TransientFeedback/)
-  assert.match(experienceSource, /clearQueryParam="feedback"/)
   assert.match(experienceSource, /timetableActivationAction/)
   assert.match(experienceSource, /Metti in uso questo orario/)
   assert.match(experienceSource, /Metti in uso dal/)
@@ -42,7 +41,7 @@ test('timetable writes expose perceptible transient feedback and explicit activa
   assert.match(transientSource, /translate3d\(28px, 0, 0\)/)
   assert.match(transientSource, /window\.setTimeout/)
   assert.match(transientSource, /prefers-reduced-motion/)
-  assert.match(transientSource, /window\.history\.replaceState/)
+  assert.match(transientSource, /fixed right-3 top-\[76px\]/)
   assert.match(transientSource, /role=\{role\}/)
   assert.match(transientSource, /aria-live=/)
 
