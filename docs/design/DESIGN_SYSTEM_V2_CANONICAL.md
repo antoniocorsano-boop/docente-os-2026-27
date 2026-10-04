@@ -23,6 +23,7 @@ Il V2 opera insieme a `BRAND_IDENTITY_CANONICAL.md` e `DESIGN_GOVERNANCE_CANONIC
 10. **Nessuna dipendenza dal colore come unico segnale**.
 11. **Coerenza cross-surface**: il prodotto deve apparire come un unico sistema anche quando cambia funzione.
 12. **Mobile-first reale**: le superfici primarie devono essere progettate e validate anche nel range 360–430 px.
+13. **Gerarchia contestuale misurabile**: priorità semantica, momento operativo, spazio disponibile e persistenza devono essere dichiarabili e verificabili secondo `VISUAL_HIERARCHY_CONTEXT_CONTRACT.md`.
 
 ## 3. Component foundation
 
