@@ -1,9 +1,11 @@
 import type {
+  TemporalExceptionReadModel,
   TimetableProjectionReadPort,
   TimetableSlotReadModel,
   TimetableVersionReadModel,
 } from '@/core/application/ports/temporal-projection'
 import {
+  asTimetableActivityKind,
   asTimetableSlotKind,
   asTimetableVersionStatus,
 } from '@/core/domain/timetable'
@@ -43,14 +45,23 @@ export class SupabaseTimetableProjectionReadRepository implements TimetableProje
       effectiveTo: row.effective_to,
     }))
     const versionIds = versions.map((version) => version.id)
-    if (!versionIds.length) return { versions, slots: [] }
+    if (!versionIds.length) return { versions, slots: [], exceptions: [] }
 
-    const { data: slotRows, error: slotsError } = await supabase
-      .from('timetable_slots')
-      .select('id,timetable_version_id,weekday,start_time,end_time,slot_kind,section_id,discipline_id,manual_class_label,room')
-      .in('timetable_version_id', versionIds)
+    const [{ data: slotRows, error: slotsError }, { data: exceptionRows, error: exceptionsError }] = await Promise.all([
+      supabase
+        .from('timetable_slots')
+        .select('id,timetable_version_id,weekday,start_time,end_time,slot_kind,section_id,discipline_id,manual_class_label,room,activity_kind')
+        .in('timetable_version_id', versionIds),
+      supabase
+        .from('timetable_exceptions')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .eq('academic_year_id', academicYearId)
+        .in('timetable_version_id', versionIds),
+    ])
 
     if (slotsError) throw new Error(slotsError.message)
+    if (exceptionsError) throw new Error(exceptionsError.message)
 
     const sectionLabels = new Map(sectionsResult.data.map((row) => [row.id, `${GRADE_LABELS[row.grade] ?? row.grade} ${row.section_code}`]))
     const disciplineLabels = new Map(disciplinesResult.data.map((row) => [row.id, row.name]))
@@ -67,8 +78,28 @@ export class SupabaseTimetableProjectionReadRepository implements TimetableProje
       disciplineLabel: row.discipline_id ? disciplineLabels.get(row.discipline_id) ?? null : null,
       manualClassLabel: row.manual_class_label,
       room: row.room,
+      activityKind: asTimetableActivityKind(row.activity_kind),
     }))
 
-    return { versions, slots }
+    const exceptions: TemporalExceptionReadModel[] = exceptionRows.map((row) => {
+      const activityKind = asTimetableActivityKind(row.activity_kind)
+      if (!activityKind) throw new Error('Timetable exception requires activity kind')
+      return {
+        id: row.id,
+        workspaceId: row.workspace_id,
+        academicYearId: row.academic_year_id,
+        localDate: row.local_date,
+        timetableVersionId: row.timetable_version_id,
+        timetableSlotId: row.timetable_slot_id,
+        kind: 'ACTIVITY_KIND_CHANGED',
+        activityKind,
+        sourceKind: row.source_kind === 'INSTITUTION' ? 'INSTITUTION' : row.source_kind === 'IMPORT' ? 'IMPORT' : 'TEACHER',
+        sourceRef: row.source_ref,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }
+    })
+
+    return { versions, slots, exceptions }
   }
 }
