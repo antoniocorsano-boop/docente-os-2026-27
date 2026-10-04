@@ -128,9 +128,7 @@ export async function TimetableExperience({
     : null
   const archivedVersions = lifecycle.versions.filter((version) => version.status === 'ARCHIVED').slice(0, 3)
   const canActivateDraft = canActivateTimetableDraft(lifecycle.activeVersion, timetable.draftVersion)
-  const minimumDraftDate = lifecycle.activeVersion
-    ? lifecycle.activeVersion.effectiveFrom
-    : context.academicYear.startsOn
+  const minimumDraftDate = context.academicYear.startsOn
 
   return (
     <AppShell active="timetable" academicYearLabel={context.academicYear.label} workspaceName={settings.schoolName || context.workspace.name} role={context.role} contentClassName={`timetableSurface timetable-${mode}`}>
@@ -253,7 +251,7 @@ export async function TimetableExperience({
             <div>
               <span className="timetableGuidedEyebrow">PASSO 2 DI 3</span>
               <h2 id="timetable-date-title">Da quando vuoi usare questo orario?</h2>
-              {lifecycle.activeVersion ? <p>Puoi mantenere la stessa data dell’orario attuale oppure sceglierne una successiva.</p> : null}
+              <p>Scegli liberamente da quale data vuoi far valere questa versione.</p>
             </div>
             <form action={updateTimetableDraft} className="timetableGuidedDateForm">
               <input type="hidden" name="versionId" value={timetable.draftVersion.id} />
@@ -309,7 +307,7 @@ export async function TimetableExperience({
               <p>{canActivateDraft
                 ? `Dal ${formatDate(timetable.draftVersion.effectiveFrom)} questo orario sostituirà quello attuale.`
                 : lifecycle.activeVersion
-                  ? `Scegli il ${formatDate(lifecycle.activeVersion.effectiveFrom)} oppure una data successiva.`
+                  ? 'Scegli una data compresa nell’anno scolastico.'
                   : 'Controlla la data prima di continuare.'}</p>
             </div>
             <div className="timetableGuidedActions">
