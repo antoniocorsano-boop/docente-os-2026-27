@@ -527,7 +527,6 @@ function TimetableActionFeedback({ code }: { code: string }) {
       title={message.title}
       message={message.detail}
       tone="success"
-      clearQueryParam="feedback"
     />
   )
 }
