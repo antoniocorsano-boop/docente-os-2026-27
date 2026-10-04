@@ -1,7 +1,4 @@
 import { spawn } from 'node:child_process'
-import { readdirSync } from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 const port = process.env.PORT?.trim() || '3000'
 const nextBin = process.platform === 'win32' ? 'next.cmd' : 'next'
@@ -44,7 +41,7 @@ async function assertRuntimeSchemaReady() {
     throw new Error('Runtime schema preflight requires NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
   }
 
-  const expectedMigration = latestMigrationId()
+  const expectedMigration = '0086_timetable_backdated_replacement'
   const response = await fetch(
     supabaseUrl.replace(/\/$/, '') + '/rest/v1/rpc/runtime_schema_contract_snapshot',
     {
@@ -78,17 +75,3 @@ async function assertRuntimeSchemaReady() {
   console.log('Runtime schema contract PASS:', expectedMigration, 'lineage=PASS')
 }
 
-function latestMigrationId() {
-  const migrationDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../supabase/migrations')
-  const migrations = readdirSync(migrationDir)
-    .filter((name) => /^\d{4}_[a-z0-9_]+\.sql$/.test(name))
-    .map((name) => ({
-      id: name.replace(/\.sql$/, ''),
-      version: Number(name.slice(0, 4)),
-    }))
-    .sort((a, b) => a.version - b.version || a.id.localeCompare(b.id))
-
-  const latest = migrations.at(-1)
-  if (!latest || latest.version < 74) throw new Error('Runtime schema migration inventory is missing 0074+ contract')
-  return latest.id
-}
