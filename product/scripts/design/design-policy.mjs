@@ -11,7 +11,7 @@ const LOCAL_TOKEN_RE = /--(?:color|brand|primary|success|warning|danger|info|rad
 const LOCAL_BRAND_DEFINITION_RE = /(?:function\s+DocenteOsMark\b|const\s+DocenteOsMark\b|dosLogo(?:Frame|Stem|Thread|Dot)|DOCENTE_OS_MARK_GEOMETRY\s*=)/
 const DECORATIVE_WATCH_RE = /(?:backdrop-filter\s*:|filter\s*:\s*(?:blur|drop-shadow)|text-shadow\s*:)/
 const VISUAL_PRIORITY_ATTR_RE = /data-visual-priority\s*=\s*(?:"([^"]+)"|'([^']+)'|\{([^}]*)\})/g
-const VISUAL_PRIORITY_ANY_RE = /data-visual-priority\s*=/g
+const VISUAL_PRIORITY_TOKEN_RE = /data-visual-priority/g
 const VISUAL_PRIORITY_ALLOWED = new Set(['decision-primary', 'operational-primary', 'status-transient', 'guidance', 'supporting', 'metadata'])
 
 const RAW_COLOR_ALLOWED = new Set([
@@ -72,8 +72,8 @@ export function evaluatePolicy({ changedFiles, prBody = '', requireClassificatio
         findings.push(finding('DPG-21', 'Priorità visuale non canonica: usare il vocabolario del Visual Hierarchy Context Contract.', file.path, match[0]))
       }
     }
-    const visualPriorityAttributes = [...file.content.matchAll(VISUAL_PRIORITY_ANY_RE)].length
-    if (visualPriorityMatches !== visualPriorityAttributes) {
+    const visualPriorityTokens = [...file.content.matchAll(VISUAL_PRIORITY_TOKEN_RE)].length
+    if (visualPriorityMatches !== visualPriorityTokens) {
       findings.push(finding('DPG-21', 'Attributo data-visual-priority non interpretabile: usare una stringa letterale canonica.', file.path))
     }
 
