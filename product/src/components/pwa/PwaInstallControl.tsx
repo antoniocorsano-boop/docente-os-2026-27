@@ -16,25 +16,23 @@ export function PwaInstallControl() {
   const [message, setMessage] = useState<string | null>(null)
 
   useEffect(() => {
-    const refresh = () => {
-      setInstalled(isPwaStandalone())
-      setInstallEvent(currentInstallPrompt())
-    }
+    const refreshPrompt = () => setInstallEvent(currentInstallPrompt())
     const onInstalled = () => {
+      clearInstallPrompt()
       setInstalled(true)
       setInstallEvent(null)
       setMessage('Docente OS è installato su questo dispositivo.')
-      clearInstallPrompt()
     }
 
-    refresh()
-    window.addEventListener(PWA_INSTALL_READY_EVENT, refresh)
-    window.addEventListener(PWA_INSTALL_CLEARED_EVENT, refresh)
+    setInstalled(isPwaStandalone())
+    refreshPrompt()
+    window.addEventListener(PWA_INSTALL_READY_EVENT, refreshPrompt)
+    window.addEventListener(PWA_INSTALL_CLEARED_EVENT, refreshPrompt)
     window.addEventListener('appinstalled', onInstalled)
 
     return () => {
-      window.removeEventListener(PWA_INSTALL_READY_EVENT, refresh)
-      window.removeEventListener(PWA_INSTALL_CLEARED_EVENT, refresh)
+      window.removeEventListener(PWA_INSTALL_READY_EVENT, refreshPrompt)
+      window.removeEventListener(PWA_INSTALL_CLEARED_EVENT, refreshPrompt)
       window.removeEventListener('appinstalled', onInstalled)
     }
   }, [])
