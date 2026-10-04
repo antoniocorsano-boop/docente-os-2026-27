@@ -6,6 +6,7 @@ declare
   runtime_migration text;
   runtime_snapshot jsonb;
   timetable_activation_definition text;
+  occurrence_activity_rpc_definition text;
 begin
   if to_regclass('public.runtime_schema_contract_state') is null then
     raise exception 'runtime schema contract state table missing after migration replay';
@@ -57,6 +58,25 @@ begin
      or timetable_activation_definition !~ 's[.]activity_kind' then
     raise exception
       'activate_timetable_version does not preserve activity_kind in activation clones';
+  end if;
+
+  if to_regclass('public.timetable_exceptions') is null then
+    raise exception 'timetable_exceptions missing after migration replay';
+  end if;
+
+  if to_regprocedure('public.set_timetable_occurrence_activity_kind(uuid,date,text)') is null then
+    raise exception 'single-occurrence activity kind RPC missing after migration replay';
+  end if;
+
+  select pg_get_functiondef('public.set_timetable_occurrence_activity_kind(uuid,date,text)'::regprocedure)
+    into occurrence_activity_rpc_definition;
+
+  if position('recorded lesson occurrence is immutable' in occurrence_activity_rpc_definition) = 0 then
+    raise exception 'single-occurrence activity kind RPC does not protect recorded lessons';
+  end if;
+
+  if position('ACTIVITY_KIND_CHANGED' in occurrence_activity_rpc_definition) = 0 then
+    raise exception 'single-occurrence activity kind RPC does not persist a bounded temporal exception';
   end if;
 
   select count(*)
