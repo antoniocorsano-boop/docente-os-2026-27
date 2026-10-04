@@ -10,15 +10,13 @@ type TransientFeedbackProps = {
   message: string
   tone?: TransientFeedbackTone
   durationMs?: number
-  clearQueryParam?: string
 }
 
 export function TransientFeedback({
   title,
   message,
   tone = 'success',
-  durationMs = 4200,
-  clearQueryParam,
+  durationMs = 4200
 }: TransientFeedbackProps) {
   const [visible, setVisible] = useState(true)
   const hostRef = useRef<HTMLDivElement>(null)
@@ -38,16 +36,8 @@ export function TransientFeedback({
     }
 
     let exitAnimation: Animation | null = null
-    const clearLocationFeedback = () => {
-      if (!clearQueryParam) return
-      const url = new URL(window.location.href)
-      if (!url.searchParams.has(clearQueryParam)) return
-      url.searchParams.delete(clearQueryParam)
-      window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
-    }
     const finishDismiss = () => {
       setVisible(false)
-      clearLocationFeedback()
     }
     const timer = window.setTimeout(() => {
       if (!host || reducedMotion) {
@@ -68,7 +58,7 @@ export function TransientFeedback({
       window.clearTimeout(timer)
       exitAnimation?.cancel()
     }
-  }, [clearQueryParam, durationMs])
+  }, [durationMs])
 
   if (!visible) return null
 
