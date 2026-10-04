@@ -155,7 +155,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
       else if (editor.kind === 'CLASS_PRESENCE') await addClassPresenceSlot(formData)
       else await addSpecialSlot(formData)
       setEditor(null)
-      setMutationFeedback({ tone: 'success', message: 'Voce aggiunta all’orario.' })
+      setMutationFeedback({ tone: 'success', message: 'Voce aggiunta alla bozza. L’orario in uso non è cambiato.' })
     } catch (error) {
       console.error('Timetable create failed', error)
       setMutationFeedback({ tone: 'error', message: 'Non sono riuscito ad aggiungere la voce. Nessuna modifica parziale è stata confermata.' })
@@ -167,7 +167,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
     try {
       await updateTimetableSlot(formData)
       setEditor(null)
-      setMutationFeedback({ tone: 'success', message: 'Modifiche salvate nell’orario.' })
+      setMutationFeedback({ tone: 'success', message: 'Modifica salvata nella bozza. L’orario in uso non è cambiato.' })
     } catch (error) {
       console.error('Timetable update failed', error)
       setMutationFeedback({ tone: 'error', message: 'Non sono riuscito a salvare le modifiche. Controlla i dati e riprova.' })
@@ -179,7 +179,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
     try {
       await deleteTimetableSlot(formData)
       setEditor(null)
-      setMutationFeedback({ tone: 'success', message: 'Voce rimossa dall’orario.' })
+      setMutationFeedback({ tone: 'success', message: 'Voce rimossa dalla bozza. L’orario in uso non è cambiato.' })
     } catch (error) {
       console.error('Timetable delete failed', error)
       setMutationFeedback({ tone: 'error', message: 'Non sono riuscito a rimuovere la voce. L’orario è rimasto invariato.' })
