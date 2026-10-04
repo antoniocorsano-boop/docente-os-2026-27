@@ -20,7 +20,7 @@ Il runtime `product` espone oggi:
 - `start_url`, identità applicativa, icone 192/512/maskable e `display: standalone`;
 - service worker in `product/public/sw.js`;
 - registrazione del service worker;
-- gestione del prompt di installazione;
+- installabilità affidata alla UI nativa del browser, senza intercettazione del prompt;
 - Web Share Target e superficie `/share-target`;
 - staging/intake locale del file ricevuto;
 - routing governato verso capability esistenti;
@@ -86,11 +86,26 @@ Per l'Orario il file completo non deve diventare automaticamente una fonte persi
 
 ## 7. Finding UX corrente
 
-Nel test reale mobile il prompt di installazione interferiva con il task Orario. PR #664 lo esclude esplicitamente da `/orario`.
+Nel test reale mobile il prompt di installazione personalizzato interferiva con il task Orario. La direzione finale è quindi più semplice: Docente OS non deve sostituire la UI nativa del browser.
 
-Questa correzione migliora il flusso, ma non equivale ancora a qualification della capability PWA nel suo complesso.
+Il prodotto conserva soltanto un fallback informativo in Impostazioni e non intercetta `beforeinstallprompt`. Questa correzione migliora il flusso, ma non equivale ancora a qualification della capability PWA nel suo complesso.
 
-## 8. Criterio di promozione
+## 8. Chiusura UX installazione — 4 ottobre 2026
+
+La tranche di chiusura Android mantiene invariato il modello di intake e restituisce l’installazione alla UI nativa del browser:
+
+- nessun listener applicativo `beforeinstallprompt`;
+- nessun `preventDefault()` sull’evento di installazione;
+- nessuna chiamata applicativa a `.prompt()`;
+- nessun popup o pulsante proprietario che sostituisce l’installazione del browser;
+- Home, Orario e Share Target restano privi di promozioni di installazione proprietarie;
+- Impostazioni mostra soltanto lo stato installato/non installato e il percorso nativo Chrome **messaggio/comando del browser → ⋮ → Installa app / Aggiungi a schermata Home**;
+- la registrazione del service worker verifica esplicitamente la disponibilità di un aggiornamento;
+- manifest, service worker e Share Target restano coperti da test browser dedicati.
+
+Questa tranche non promuove da sola la capability: resta necessaria la qualification su Android reale dell’installazione nativa, dell’aggiornamento e della presenza nel menu Condividi.
+
+## 9. Criterio di promozione
 
 Per passare almeno a CRL 4 serve una qualification real-device Android che dimostri:
 

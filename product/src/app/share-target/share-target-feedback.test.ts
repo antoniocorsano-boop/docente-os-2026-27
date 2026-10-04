@@ -15,7 +15,7 @@ const timetableExperience = fs.readFileSync(new URL('../orario/TimetableExperien
 const timetableGrid = fs.readFileSync(new URL('../orario/TimetableGrid.tsx', import.meta.url), 'utf8')
 const timetableLocalLauncher = fs.readFileSync(new URL('../orario/TimetableLocalImportLauncher.tsx', import.meta.url), 'utf8')
 const timetableCss = fs.readFileSync(new URL('../orario/timetable.css', import.meta.url), 'utf8')
-const pwaInstallPrompt = fs.readFileSync(new URL('../../components/pwa/PwaInstallPrompt.tsx', import.meta.url), 'utf8')
+const rootLayout = fs.readFileSync(new URL('../layout.tsx', import.meta.url), 'utf8')
 
 test('shared intake makes local-only and failure state perceptible before write', () => {
   assert.match(intake, /ancora locale/)
@@ -79,9 +79,10 @@ test('mobile timetable prioritizes the guided task and direct editing', () => {
   assert.match(timetableCss, /\.timetableEditorActions\{[\s\S]*position:sticky/)
 })
 
-test('PWA install prompt never covers the timetable workflow', () => {
-  assert.match(pwaInstallPrompt, /usePathname/)
-  assert.match(pwaInstallPrompt, /pathname\.startsWith\('\/orario'\)/)
+test('PWA installation stays browser-native and never adds an app-level install prompt', () => {
+  assert.doesNotMatch(rootLayout, /PwaInstallPrompt/)
+  assert.doesNotMatch(rootLayout, /beforeinstallprompt/)
+  assert.doesNotMatch(rootLayout, /preventDefault\(\)/)
 })
 
 test('mobile update route keeps heading before import and hides continuation until there is something to review', () => {
