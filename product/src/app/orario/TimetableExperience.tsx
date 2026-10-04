@@ -44,6 +44,13 @@ export async function TimetableExperience({
   const importCandidateId = singleParam(params.importCandidate)
   const importStatus = singleParam(params.import)
   const actionFeedback = singleParam(params.feedback)
+  const requestedPhase = singleParam(params.fase)
+  const updatePhase = requestedPhase === 'data' || requestedPhase === 'controllo' ? requestedPhase : 'modifica'
+  const showImportTool = mode === 'update' && Boolean(
+    importCandidateId
+    || importStatus
+    || singleParam(params.strumento) === 'importa',
+  )
 
   const moment = currentRomeMoment()
   const settingsRepository = new SupabaseTeacherSettingsRepository()
@@ -121,28 +128,48 @@ export async function TimetableExperience({
     : null
   const archivedVersions = lifecycle.versions.filter((version) => version.status === 'ARCHIVED').slice(0, 3)
   const canActivateDraft = canActivateTimetableDraft(lifecycle.activeVersion, timetable.draftVersion)
+  const minimumDraftDate = context.academicYear.startsOn
 
   return (
     <AppShell active="timetable" academicYearLabel={context.academicYear.label} workspaceName={settings.schoolName || context.workspace.name} role={context.role} contentClassName={`timetableSurface timetable-${mode}`}>
       <section className="timetableHero">
         <div>
-          <p>ORARIO · {context.academicYear.label}</p>
-          <h1>{mode === 'view' ? 'Il tuo orario' : mode === 'update' ? 'Aggiorna orario' : 'Gestisci orario'}</h1>
-          <span>
-            {mode === 'view'
-              ? (lifecycle.activeVersion ? `In uso dal ${formatDate(lifecycle.activeVersion.effectiveFrom)}. Qui vedi soltanto ciò che vale adesso.` : 'Non hai ancora un orario attivo: completa la prima configurazione.')
-              : mode === 'update'
-                ? 'Modifica direttamente la settimana e scegli da quando deve valere. L’importazione da documento resta disponibile come aiuto opzionale.'
-                : 'Correggi manualmente la bozza, controlla copertura e versioni senza cambiare ciò che è già in uso.'}
-          </span>
+          <p>{mode === 'update'
+            ? showImportTool
+              ? 'IMPORTA ORARIO'
+              : `MODIFICA ORARIO · ${updatePhase === 'modifica' ? '1 DI 3' : updatePhase === 'data' ? '2 DI 3' : '3 DI 3'}`
+            : `ORARIO · ${context.academicYear.label}`}</p>
+          <h1>{mode === 'view'
+            ? 'Il tuo orario'
+            : showImportTool
+              ? 'Importa orario'
+              : updatePhase === 'modifica'
+                ? 'Modifica orario'
+                : updatePhase === 'data'
+                  ? 'Da quando deve valere?'
+                  : 'Controlla e attiva'}</h1>
+          <span>{mode === 'view'
+            ? (lifecycle.activeVersion ? `In uso dal ${formatDate(lifecycle.activeVersion.effectiveFrom)}.` : 'Non hai ancora un orario attivo.')
+            : showImportTool
+              ? 'Controlla la proposta ricavata dal documento. Nulla entra in uso senza la tua conferma.'
+              : updatePhase === 'modifica'
+                ? 'Cambia soltanto ciò che serve. L’orario in uso non cambia ancora.'
+                : updatePhase === 'data'
+                  ? 'Scegli la data dalla quale vuoi usare le modifiche.'
+                  : 'Controlla il risultato. Solo il pulsante finale renderà operative le modifiche.'}</span>
         </div>
       </section>
 
-      <nav className="timetableModeNav" aria-label="Azioni orario">
-        <Link className={mode === 'view' ? 'active' : ''} href="/orario">Orario</Link>
-        <Link className={mode === 'update' ? 'active' : ''} href="/orario/aggiorna">Aggiorna orario</Link>
-        <Link className={mode === 'manage' ? 'active' : ''} href="/orario/gestisci">Gestisci</Link>
-      </nav>
+      {mode === 'update' && !showImportTool ? (
+        <div className="timetableFlowHeader">
+          <ol className="timetableFlowSteps" aria-label="Avanzamento modifica orario">
+            <li className={updatePhase === 'modifica' ? 'active' : 'done'}><span>1</span><strong>Modifica</strong></li>
+            <li className={updatePhase === 'data' ? 'active' : updatePhase === 'controllo' ? 'done' : ''}><span>2</span><strong>Data</strong></li>
+            <li className={updatePhase === 'controllo' ? 'active' : ''}><span>3</span><strong>Controlla</strong></li>
+          </ol>
+          <Link className="timetableFlowExit" href="/orario">Esci</Link>
+        </div>
+      ) : null}
 
       {actionFeedback ? <TimetableActionFeedback code={actionFeedback} /> : null}
 
@@ -184,218 +211,290 @@ export async function TimetableExperience({
       ) : null}
 
       {mode === 'update' ? <>
-      <section
-        className="timetableCard timetableGridCard"
-        id="modifica-settimana"
-        aria-labelledby="direct-grid-title"
-        data-visual-priority="operational-primary"
-        data-visual-moment="prepare"
-      >
-        <div className="timetableCardHeading">
-          <span>01</span>
-          <div>
-            <h2 id="direct-grid-title">Modifica direttamente l’orario</h2>
-            <p>Tocca una cella della settimana per inserire, cambiare o rimuovere una lezione. Le modifiche restano nella bozza finché non decidi di metterla in uso.</p>
-          </div>
-          <b className="draftBadge">{draftLabel}</b>
-        </div>
-        <TimetableGrid
-          versionId={timetable.draftVersion.id}
-          days={days}
-          periods={periodPresets}
-          slots={timetable.slots}
-          assignments={gridAssignments}
-          readOnly={false}
-        />
-        <form action={updateTimetableDraft} className="timetableForm versionForm timetableDirectValidity">
-          <input type="hidden" name="versionId" value={timetable.draftVersion.id} />
-          <input type="hidden" name="label" value={timetable.draftVersion.label} />
-          <input type="hidden" name="sourceKind" value="MANUAL" />
-          <input type="hidden" name="sourceRef" value={timetable.draftVersion.sourceRef ?? ''} />
-          <input type="hidden" name="feedback" value="validity_saved" />
-          <label>
-            <span>In vigore dal</span>
-            <input name="effectiveFrom" type="date" defaultValue={timetable.draftVersion.effectiveFrom} min={context.academicYear.startsOn} max={context.academicYear.endsOn} required />
-          </label>
-          <TimetableSubmitButton className="timetablePrimaryButton" type="submit" pendingLabel="Salvataggio data…">Salva data di validità</TimetableSubmitButton>
-        </form>
-        <p className="timetableImportHint">Non serve indicare una data di fine. Quando metterai in uso un orario successivo, Docente OS chiuderà automaticamente quello precedente.</p>
-        <div className="humanTaskActions"><Link className="primary" href="/orario/gestisci">Controlla e metti in uso la bozza</Link></div>
-      </section>
-
-      <details className="timetableVersionDetails timetableOptionalImport" data-visual-priority="supporting" data-visual-moment="prepare">
-        <summary><div><strong>Importa da PDF o foto</strong><span>Sperimentale · opzionale · non serve per usare o aggiornare l’orario</span></div></summary>
-        <div className="timetableVersionDetailsBody">
-      <section className="timetableCard timetableImportCard" id="importa-orario" aria-labelledby="import-title">
-        <div className="timetableCardHeading">
-          <span>02</span>
-          <div>
-            <h2 id="import-title">Importa da documento</h2>
-            <p>Percorso sperimentale: Docente OS può tentare di preparare una proposta dal documento. Se non riesce, continua a modificare direttamente la griglia: l’importazione non è un prerequisito.</p>
-          </div>
-        </div>
-
-        {importStatus ? <ImportStatus code={importStatus} /> : null}
-
-        {!importCandidate || importCandidate.state === 'APPLIED_TO_DRAFT' ? (
-          <TimetableLocalImportLauncher
-            defaultEffectiveFrom={clampDate(currentRomeDate(), context.academicYear.startsOn, context.academicYear.endsOn)}
-          />
-        ) : (
-          <div className="timetableImportReview">
-            <div className="timetableImportSummary">
+        {!showImportTool && updatePhase === 'modifica' ? <>
+          <section
+            className="timetableCard timetableGridCard timetableGuidedStep"
+            id="modifica-settimana"
+            aria-labelledby="direct-grid-title"
+            data-visual-priority="operational-primary"
+            data-visual-moment="prepare"
+          >
+            <div className="timetableCardHeading timetableGuidedHeading">
+              <span>1</span>
               <div>
-                <strong>{importCandidate.sourceLabel}</strong>
-                <span>Valido dal {importCandidate.effectiveFrom ? formatDate(importCandidate.effectiveFrom) : '—'} · {importCandidate.rows.length} righe</span>
+                <h2 id="direct-grid-title">Modifica l’orario</h2>
+                <p>Le modifiche vengono salvate mentre lavori. L’orario in uso non cambia ancora.</p>
               </div>
-              <b className={importCandidate.state === 'READY_TO_CONFIRM' ? 'draftBadge ready' : 'draftBadge'}>
-                {importCandidate.state === 'READY_TO_CONFIRM' ? 'Pronto da confermare' : 'Da controllare'}
-              </b>
             </div>
-
-            <div className="timetableImportRows">
-              {importCandidate.rows.map((row) => (
-                <form action={updateTimetableImportRow} className="timetableImportRow" key={row.id}>
-                  <input type="hidden" name="candidateId" value={importCandidate.id} />
-                  <input type="hidden" name="candidateRevision" value={importCandidate.revision} />
-                  <input type="hidden" name="rowId" value={row.id} />
-                  <div className="timetableImportRowIdentity">
-                    <strong>{row.sourceClassLabel ?? 'Classe da verificare'}</strong>
-                    <span>{weekdayLabel(row.weekday)} · {row.ordinal ? row.ordinal + 'ª ora' : 'ora da verificare'}</span>
-                    <small>{row.reviewState === 'REVIEW_REQUIRED' ? 'Controllo necessario' : 'Risolta'}</small>
-                  </div>
-                  <label>
-                    <span>Cattedra</span>
-                    <select name="assignmentId" defaultValue={row.resolvedAssignmentId ?? ''} required>
-                      <option value="" disabled>Seleziona…</option>
-                      {gridAssignments.map((assignment) => (
-                        <option key={assignment.id} value={assignment.id}>{assignment.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>Giorno</span>
-                    <select name="weekday" defaultValue={row.weekday ?? 1} required>
-                      {days.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}
-                    </select>
-                  </label>
-                  <label>
-                    <span>Ora</span>
-                    <input name="ordinal" type="number" min={1} max={20} defaultValue={row.ordinal ?? ''} required />
-                  </label>
-                  <label>
-                    <span>Inizio</span>
-                    <input name="startTime" type="time" defaultValue={row.startTime ?? ''} required />
-                  </label>
-                  <label>
-                    <span>Fine</span>
-                    <input name="endTime" type="time" defaultValue={row.endTime ?? ''} required />
-                  </label>
-                  <TimetableSubmitButton type="submit" pendingLabel="Salvataggio riga…">Salva riga</TimetableSubmitButton>
-                </form>
-              ))}
-            </div>
-
-            <details className="timetableImportAdd">
-              <summary>Aggiungi una lezione mancante</summary>
-              <form action={addTimetableImportRow} className="timetableImportAddForm">
-                <input type="hidden" name="candidateId" value={importCandidate.id} />
-                <input type="hidden" name="candidateRevision" value={importCandidate.revision} />
-                <label>
-                  <span>Cattedra</span>
-                  <select name="assignmentId" required defaultValue="">
-                    <option value="" disabled>Seleziona…</option>
-                    {gridAssignments.map((assignment) => (
-                      <option key={assignment.id} value={assignment.id}>{assignment.label}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>Giorno</span>
-                  <select name="weekday" defaultValue={1} required>
-                    {days.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}
-                  </select>
-                </label>
-                <label>
-                  <span>Ora</span>
-                  <input name="ordinal" type="number" min={1} max={20} required />
-                </label>
-                <label>
-                  <span>Inizio</span>
-                  <input name="startTime" type="time" required />
-                </label>
-                <label>
-                  <span>Fine</span>
-                  <input name="endTime" type="time" required />
-                </label>
-                <TimetableSubmitButton type="submit" pendingLabel="Aggiunta…">Aggiungi</TimetableSubmitButton>
-              </form>
-            </details>
-
-            {importCandidate.state === 'READY_TO_CONFIRM' && importDraftToken && confirmationRequestId ? (
-              <form action={applyTimetableImportCandidate} className="timetableImportConfirm">
-                <input type="hidden" name="candidateId" value={importCandidate.id} />
-                <input type="hidden" name="candidateRevision" value={importCandidate.revision} />
-                <input type="hidden" name="draftVersionId" value={timetable.draftVersion.id} />
-                <input type="hidden" name="expectedDraftToken" value={importDraftToken} />
-                <input type="hidden" name="confirmationRequestId" value={confirmationRequestId} />
-                <div>
-                  <strong>La proposta è completa.</strong>
-                  <span>La conferma sostituisce soltanto le lezioni della bozza. Disposizioni, ricevimento e altre personalizzazioni restano invariati.</span>
-                  <label className="timetableImportCompleteCheck">
-                    <input type="checkbox" name="teacherCompleteConfirmed" value="yes" required />
-                    <span>Confermo che questa proposta contiene tutte le mie lezioni del nuovo orario.</span>
-                  </label>
-                </div>
-                <TimetableSubmitButton className="timetablePrimaryButton" type="submit" pendingLabel="Applicazione…">Applica alla bozza</TimetableSubmitButton>
-              </form>
-            ) : (
-              <p className="timetableImportHint">Completa le righe da controllare. Quando tutte sono valide comparirà il pulsante di conferma.</p>
-            )}
+            <TimetableGrid
+              versionId={timetable.draftVersion.id}
+              days={days}
+              periods={periodPresets}
+              slots={timetable.slots}
+              assignments={gridAssignments}
+              readOnly={false}
+              guided
+            />
+          </section>
+          <div className="timetableFlowActions" data-visual-priority="decision-primary" data-visual-moment="prepare">
+            <Link className="timetablePrimaryButton timetableFlowPrimary" href="/orario/aggiorna?fase=data">Continua</Link>
           </div>
-        )}
-      </section>
-        </div>
-      </details>
+        </> : null}
+
+        {!showImportTool && updatePhase === 'data' ? (
+          <section
+            className="timetableGuidedDecision"
+            aria-labelledby="timetable-date-title"
+            data-visual-priority="decision-primary"
+            data-visual-moment="prepare"
+          >
+            <div>
+              <span className="timetableGuidedEyebrow">PASSO 2 DI 3</span>
+              <h2 id="timetable-date-title">Da quando vuoi usare questo orario?</h2>
+              <p>Scegli liberamente da quale data vuoi far valere questa versione.</p>
+            </div>
+            <form action={updateTimetableDraft} className="timetableGuidedDateForm">
+              <input type="hidden" name="versionId" value={timetable.draftVersion.id} />
+              <input type="hidden" name="label" value={timetable.draftVersion.label} />
+              <input type="hidden" name="sourceKind" value={timetable.draftVersion.sourceKind} />
+              <input type="hidden" name="sourceRef" value={timetable.draftVersion.sourceRef ?? ''} />
+              <input type="hidden" name="feedback" value="guided_date_saved" />
+              <label>
+                <span>In uso dal</span>
+                <input name="effectiveFrom" type="date" defaultValue={timetable.draftVersion.effectiveFrom < minimumDraftDate ? minimumDraftDate : timetable.draftVersion.effectiveFrom} min={minimumDraftDate} max={context.academicYear.endsOn} required />
+              </label>
+              <div className="timetableGuidedActions">
+                <Link href="/orario/aggiorna">Torna a modificare</Link>
+                <TimetableSubmitButton className="timetablePrimaryButton" type="submit" pendingLabel="Salvataggio…">Continua</TimetableSubmitButton>
+              </div>
+            </form>
+          </section>
+        ) : null}
+
+        {!showImportTool && updatePhase === 'controllo' ? <>
+          <section
+            className="timetableGuidedReview"
+            aria-labelledby="timetable-review-title"
+            data-visual-priority="operational-primary"
+            data-visual-moment="review"
+          >
+            <div className="timetableGuidedReviewHeading">
+              <div>
+                <span className="timetableGuidedEyebrow">PASSO 3 DI 3</span>
+                <h2 id="timetable-review-title">Questo sarà il nuovo orario</h2>
+              </div>
+              <strong>Dal {formatDate(timetable.draftVersion.effectiveFrom)}</strong>
+            </div>
+            <TimetableGrid
+              versionId={timetable.draftVersion.id}
+              days={days}
+              periods={periodPresets}
+              slots={timetable.slots}
+              assignments={gridAssignments}
+              readOnly
+              guided
+            />
+          </section>
+
+          <section
+            className={`timetableGuidedDecision ${canActivateDraft ? 'ready' : 'blocked'}`}
+            aria-labelledby="timetable-final-title"
+            data-visual-priority="decision-primary"
+            data-visual-moment="review"
+          >
+            <div>
+              <h2 id="timetable-final-title">{canActivateDraft ? 'Vuoi metterlo in uso?' : 'Controlla la data'}</h2>
+              <p>{canActivateDraft
+                ? `Dal ${formatDate(timetable.draftVersion.effectiveFrom)} questo orario sostituirà quello attuale.`
+                : lifecycle.activeVersion
+                  ? 'Scegli una data compresa nell’anno scolastico.'
+                  : 'Controlla la data prima di continuare.'}</p>
+            </div>
+            <div className="timetableGuidedActions">
+              <Link href="/orario/aggiorna">Torna a modificare</Link>
+              {canActivateDraft ? (
+                <form action={activateTimetableDraft}>
+                  <input type="hidden" name="versionId" value={timetable.draftVersion.id} />
+                  <TimetableSubmitButton className="timetablePrimaryButton" type="submit" pendingLabel="Attivazione…">
+                    Metti in uso
+                  </TimetableSubmitButton>
+                </form>
+              ) : (
+                <Link className="timetablePrimaryButton" href="/orario/aggiorna?fase=data">Cambia la data</Link>
+              )}
+            </div>
+          </section>
+        </> : null}
+
+        {showImportTool ? (
+          <details className="timetableVersionDetails timetableOptionalImport" data-visual-priority="operational-primary" data-visual-moment="prepare" open>
+                  <summary><div><strong>Importa da PDF o foto</strong><span>Sperimentale · opzionale · non serve per usare o aggiornare l’orario</span></div></summary>
+                  <div className="timetableVersionDetailsBody">
+                <section className="timetableCard timetableImportCard" id="importa-orario" aria-labelledby="import-title">
+                  <div className="timetableCardHeading">
+                    <span>02</span>
+                    <div>
+                      <h2 id="import-title">Importa da documento</h2>
+                      <p>Percorso sperimentale: Docente OS può tentare di preparare una proposta dal documento. Se non riesce, continua a modificare direttamente la griglia: l’importazione non è un prerequisito.</p>
+                    </div>
+                  </div>
+          
+                  {importStatus ? <ImportStatus code={importStatus} /> : null}
+          
+                  {!importCandidate || importCandidate.state === 'APPLIED_TO_DRAFT' ? (
+                    <TimetableLocalImportLauncher
+                      defaultEffectiveFrom={clampDate(currentRomeDate(), context.academicYear.startsOn, context.academicYear.endsOn)}
+                    />
+                  ) : (
+                    <div className="timetableImportReview">
+                      <div className="timetableImportSummary">
+                        <div>
+                          <strong>{importCandidate.sourceLabel}</strong>
+                          <span>Valido dal {importCandidate.effectiveFrom ? formatDate(importCandidate.effectiveFrom) : '—'} · {importCandidate.rows.length} righe</span>
+                        </div>
+                        <b className={importCandidate.state === 'READY_TO_CONFIRM' ? 'draftBadge ready' : 'draftBadge'}>
+                          {importCandidate.state === 'READY_TO_CONFIRM' ? 'Pronto da confermare' : 'Da controllare'}
+                        </b>
+                      </div>
+          
+                      <div className="timetableImportRows">
+                        {importCandidate.rows.map((row) => (
+                          <form action={updateTimetableImportRow} className="timetableImportRow" key={row.id}>
+                            <input type="hidden" name="candidateId" value={importCandidate.id} />
+                            <input type="hidden" name="candidateRevision" value={importCandidate.revision} />
+                            <input type="hidden" name="rowId" value={row.id} />
+                            <div className="timetableImportRowIdentity">
+                              <strong>{row.sourceClassLabel ?? 'Classe da verificare'}</strong>
+                              <span>{weekdayLabel(row.weekday)} · {row.ordinal ? row.ordinal + 'ª ora' : 'ora da verificare'}</span>
+                              <small>{row.reviewState === 'REVIEW_REQUIRED' ? 'Controllo necessario' : 'Risolta'}</small>
+                            </div>
+                            <label>
+                              <span>Cattedra</span>
+                              <select name="assignmentId" defaultValue={row.resolvedAssignmentId ?? ''} required>
+                                <option value="" disabled>Seleziona…</option>
+                                {gridAssignments.map((assignment) => (
+                                  <option key={assignment.id} value={assignment.id}>{assignment.label}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label>
+                              <span>Giorno</span>
+                              <select name="weekday" defaultValue={row.weekday ?? 1} required>
+                                {days.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}
+                              </select>
+                            </label>
+                            <label>
+                              <span>Ora</span>
+                              <input name="ordinal" type="number" min={1} max={20} defaultValue={row.ordinal ?? ''} required />
+                            </label>
+                            <label>
+                              <span>Inizio</span>
+                              <input name="startTime" type="time" defaultValue={row.startTime ?? ''} required />
+                            </label>
+                            <label>
+                              <span>Fine</span>
+                              <input name="endTime" type="time" defaultValue={row.endTime ?? ''} required />
+                            </label>
+                            <TimetableSubmitButton type="submit" pendingLabel="Salvataggio riga…">Salva riga</TimetableSubmitButton>
+                          </form>
+                        ))}
+                      </div>
+          
+                      <details className="timetableImportAdd">
+                        <summary>Aggiungi una lezione mancante</summary>
+                        <form action={addTimetableImportRow} className="timetableImportAddForm">
+                          <input type="hidden" name="candidateId" value={importCandidate.id} />
+                          <input type="hidden" name="candidateRevision" value={importCandidate.revision} />
+                          <label>
+                            <span>Cattedra</span>
+                            <select name="assignmentId" required defaultValue="">
+                              <option value="" disabled>Seleziona…</option>
+                              {gridAssignments.map((assignment) => (
+                                <option key={assignment.id} value={assignment.id}>{assignment.label}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <label>
+                            <span>Giorno</span>
+                            <select name="weekday" defaultValue={1} required>
+                              {days.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}
+                            </select>
+                          </label>
+                          <label>
+                            <span>Ora</span>
+                            <input name="ordinal" type="number" min={1} max={20} required />
+                          </label>
+                          <label>
+                            <span>Inizio</span>
+                            <input name="startTime" type="time" required />
+                          </label>
+                          <label>
+                            <span>Fine</span>
+                            <input name="endTime" type="time" required />
+                          </label>
+                          <TimetableSubmitButton type="submit" pendingLabel="Aggiunta…">Aggiungi</TimetableSubmitButton>
+                        </form>
+                      </details>
+          
+                      {importCandidate.state === 'READY_TO_CONFIRM' && importDraftToken && confirmationRequestId ? (
+                        <form action={applyTimetableImportCandidate} className="timetableImportConfirm">
+                          <input type="hidden" name="candidateId" value={importCandidate.id} />
+                          <input type="hidden" name="candidateRevision" value={importCandidate.revision} />
+                          <input type="hidden" name="draftVersionId" value={timetable.draftVersion.id} />
+                          <input type="hidden" name="expectedDraftToken" value={importDraftToken} />
+                          <input type="hidden" name="confirmationRequestId" value={confirmationRequestId} />
+                          <div>
+                            <strong>La proposta è completa.</strong>
+                            <span>La conferma sostituisce soltanto le lezioni della bozza. Disposizioni, ricevimento e altre personalizzazioni restano invariati.</span>
+                            <label className="timetableImportCompleteCheck">
+                              <input type="checkbox" name="teacherCompleteConfirmed" value="yes" required />
+                              <span>Confermo che questa proposta contiene tutte le mie lezioni del nuovo orario.</span>
+                            </label>
+                          </div>
+                          <TimetableSubmitButton className="timetablePrimaryButton" type="submit" pendingLabel="Applicazione…">Applica alla bozza</TimetableSubmitButton>
+                        </form>
+                      ) : (
+                        <p className="timetableImportHint">Completa le righe da controllare. Quando tutte sono valide comparirà il pulsante di conferma.</p>
+                      )}
+                    </div>
+                  )}
+                </section>
+                  </div>
+                </details>
+        ) : null}
       </> : null}
 
-      {(mode === 'view' || mode === 'manage') ? <section
+      {mode === 'view' ? <section
         className="timetableCard timetableGridCard"
         id="settimana-tipo"
         aria-labelledby="grid-title"
         data-visual-priority="operational-primary"
-        data-visual-moment={mode === 'view' ? 'now' : 'review'}
+        data-visual-moment="now"
       >
         <div className="timetableCardHeading">
-          <span>{mode === 'view' ? 'ORARIO' : '02'}</span>
+          <span>ORARIO</span>
           <div>
-            <h2 id="grid-title">{mode === 'view' ? 'Orario attuale' : 'Bozza modificabile'}</h2>
-            <p>{mode === 'view'
-              ? 'Consulta subito la giornata o l’intera settimana. Le funzioni di modifica sono disponibili sotto l’orario.'
-              : 'Questa è la versione che stai preparando. Non cambia l’orario in uso finché non la attivi.'}</p>
+            <h2 id="grid-title">Orario attuale</h2>
+            <p>Consulta la giornata o l’intera settimana.</p>
           </div>
-          {mode === 'manage' ? <b className="draftBadge">{draftLabel}</b> : null}
         </div>
         <TimetableGrid
           versionId={timetable.draftVersion.id}
           days={days}
           periods={periodPresets}
-          slots={mode === 'view' ? operationalSlots : timetable.slots}
+          slots={operationalSlots}
           assignments={gridAssignments}
-          readOnly={mode === 'view'}
+          readOnly
         />
       </section> : null}
 
       {mode === 'view' ? <>
-      <section className="timetableViewActions" aria-label="Funzioni orario">
+      <section className="timetableViewActions" aria-label="Modifica orario">
         <div>
           <strong>Devi cambiare l’orario?</strong>
-          <span>Modifica le celle e indica da quale data deve valere il nuovo orario.</span>
+          <span>Segui tre passaggi: modifica, scegli la data, controlla e attiva.</span>
         </div>
-        <div className="humanTaskActions">
-          <Link className="primary" href="/orario/aggiorna#modifica-settimana">Modifica orario</Link>
-          <Link href="/orario/gestisci">Versioni e dettagli</Link>
-        </div>
+        <Link className="primary" href="/orario/aggiorna">Modifica orario</Link>
       </section>
       {mode === 'view' ? (focusSlot ? (
         <section className="humanTaskFocus" aria-labelledby="timetable-focus-title">
@@ -439,7 +538,7 @@ export async function TimetableExperience({
 
       {mode === 'manage' ? <>
       <details className="timetableVersionDetails" data-visual-priority="metadata" data-visual-moment="history">
-        <summary><div><strong>{lifecycle.activeVersion ? `Orario in uso · ${lifecycle.activeVersion.label}` : 'Nessun orario ancora messo in uso'}</strong><span>{lifecycle.activeVersion ? `Dal ${formatDate(lifecycle.activeVersion.effectiveFrom)} · apri per storico e dettagli` : 'Apri per vedere come funziona la prima messa in uso'}</span></div></summary>
+        <summary><div><strong>{lifecycle.activeVersion ? 'Orario in uso' : 'Nessun orario ancora messo in uso'}</strong><span>{lifecycle.activeVersion ? `Dal ${formatDate(lifecycle.activeVersion.effectiveFrom)} · apri per storico e dettagli` : 'Apri per vedere come funziona la prima messa in uso'}</span></div></summary>
         <div className="timetableVersionDetailsBody">
           {lifecycle.activeVersion ? <p><strong>Orario in uso.</strong> Oggi e la home leggono questa versione. La bozza che stai preparando resta separata finché non usi l’azione “Metti in uso” mostrata sopra la griglia.</p> : <p><strong>Prima messa in uso.</strong> L’azione mostrata sopra la griglia rende operativa la bozza dalla data indicata. Docente OS conserva automaticamente una nuova bozza modificabile per i cambi futuri.</p>}
           {archivedVersions.length ? <details><summary>Vedi versioni precedenti</summary><div>{archivedVersions.map((version) => <p key={version.id}><strong>{version.label}</strong><br />{formatDate(version.effectiveFrom)}–{version.effectiveTo ? formatDate(version.effectiveTo) : 'fine non registrata'}</p>)}</div></details> : null}
@@ -464,7 +563,7 @@ export async function TimetableExperience({
       </details>
 
       <details className="timetableVersionDetails">
-        <summary><div><strong>Dettagli della bozza · {timetable.draftVersion.label}</strong><span>{draftLabel} · prevista dal {formatDate(timetable.draftVersion.effectiveFrom)}</span></div></summary>
+        <summary><div><strong>{lifecycle.activeVersion ? 'Bozza per modifiche future' : 'Dettagli della bozza'}</strong><span>{lifecycle.activeVersion ? 'Non ancora in uso · ' : `${draftLabel} · `}prevista dal {formatDate(timetable.draftVersion.effectiveFrom)}</span></div></summary>
         <div className="timetableVersionDetailsBody"><form action={updateTimetableDraft} className="timetableForm versionForm"><input type="hidden" name="versionId" value={timetable.draftVersion.id} /><input type="hidden" name="feedback" value="draft_saved" /><label><span>Nome della bozza</span><input name="label" defaultValue={timetable.draftVersion.label} maxLength={160} required /></label><label><span>Prevista dal</span><input name="effectiveFrom" type="date" defaultValue={timetable.draftVersion.effectiveFrom} min={context.academicYear.startsOn} max={context.academicYear.endsOn} required /></label><label><span>Da dove deriva</span><select name="sourceKind" defaultValue={timetable.draftVersion.sourceKind}><option value="MANUAL">Inserimento manuale</option><option value="INSTITUTION_DOCUMENT">Documento istituzionale</option><option value="IMPORT">Importazione</option></select></label><label className="wideField"><span>Riferimento della fonte</span><input name="sourceRef" defaultValue={timetable.draftVersion.sourceRef ?? ''} maxLength={1000} placeholder="Opzionale: circolare, file, nota…" /></label><TimetableSubmitButton className="timetablePrimaryButton" type="submit" pendingLabel="Salvataggio bozza…">Salva bozza</TimetableSubmitButton></form></div>
       </details>
       </> : null}
@@ -531,7 +630,7 @@ function TimetableActionFeedback({ code }: { code: string }) {
     },
     timetable_activated: {
       title: 'Orario messo in uso',
-      detail: 'La nuova versione è attiva dalla data indicata. La versione precedente resta nello storico.',
+      detail: 'Questa è la versione che vale adesso. Le modifiche future partiranno da una nuova bozza.',
     },
   }
   const message = messages[code]

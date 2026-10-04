@@ -1,11 +1,7 @@
-import { TimetableExperience } from '../TimetableExperience'
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
-export default function TimetableRoute({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>
-}) {
-  return <TimetableExperience searchParams={searchParams} mode="manage" />
+export default function TimetableManageLegacyRoute() {
+  redirect('/orario/aggiorna?fase=controllo')
 }

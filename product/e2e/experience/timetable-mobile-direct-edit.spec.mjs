@@ -10,9 +10,9 @@ test('Orario mobile: heading percepibile e modifica diretta end-to-end', async (
   test.skip(!testInfo.project.name.startsWith('mobile'), 'Il contratto riguarda la gerarchia e l’editor mobile.')
 
   await loginE2E(page)
-  await page.goto('/orario/gestisci')
+  await page.goto('/orario/aggiorna')
 
-  const heading = page.getByRole('heading', { level: 1, name: 'Gestisci orario' })
+  const heading = page.getByRole('heading', { level: 1, name: 'Modifica orario' })
   await expect(
     heading,
     'La vista mobile deve conservare un titolo primario percepibile senza ripristinare il grande hero.',
@@ -49,15 +49,19 @@ test('Orario mobile: heading percepibile e modifica diretta end-to-end', async (
     await createDialog.getByLabel('Che cosa fai in quest’ora?').selectOption('OTHER')
     await createDialog.getByText('Dettagli opzionali', { exact: true }).click()
     await createDialog.getByLabel('Nota').fill(TEMP_NOTE)
-    await createDialog.getByRole('button', { name: 'Aggiungi all’orario' }).click()
+    await createDialog.getByRole('button', { name: 'Aggiungi' }).click()
     temporarySlotCreated = true
 
-    const createFeedback = page.locator('[data-visual-priority="status-transient"]').filter({ hasText: 'Voce aggiunta all’orario.' })
+    const createFeedback = page.locator('[data-visual-priority="status-transient"]').filter({ hasText: 'Modifica salvata.' })
     await expect(createFeedback, 'Il feedback di write deve entrare nel viewport corrente.').toBeVisible()
     const feedbackBox = await createFeedback.boundingBox()
     expect(feedbackBox, 'Il feedback transitorio deve avere una geometria misurabile.').not.toBeNull()
     expect(feedbackBox.y, 'Il feedback transitorio non deve comparire fuori dal viewport.').toBeGreaterThanOrEqual(0)
     expect(feedbackBox.y + feedbackBox.height, 'Il feedback transitorio deve restare nel viewport mobile.').toBeLessThanOrEqual(915)
+    await expect(
+      createFeedback,
+      'Il feedback di successo deve scomparire automaticamente: non può restare come riquadro statico.',
+    ).toBeHidden({ timeout: 6_000 })
 
     const createdCell = page.locator('.occupiedTimetableCell').filter({ hasText: TEMP_NOTE }).first()
     await expect(createdCell, 'La voce creata deve comparire nella griglia.').toBeVisible()
@@ -66,7 +70,7 @@ test('Orario mobile: heading percepibile e modifica diretta end-to-end', async (
     const editDialog = page.getByRole('dialog')
     await expect(
       editDialog.getByRole('button', { name: 'Salva modifiche' }),
-      'Una voce occupata in Gestisci deve aprire direttamente l’editor, non un pannello intermedio.',
+      'Una voce occupata nel passo Modifica deve aprire direttamente l’editor.',
     ).toBeVisible()
 
     await editDialog.getByText('Dettagli opzionali', { exact: true }).click()
@@ -77,7 +81,7 @@ test('Orario mobile: heading percepibile e modifica diretta end-to-end', async (
     await expect(updatedCell, 'La modifica salvata deve tornare visibile nella griglia.').toBeVisible()
   } finally {
     if (temporarySlotCreated) {
-      await page.goto('/orario/gestisci')
+      await page.goto('/orario/aggiorna')
       const temporaryCell = page.locator('.occupiedTimetableCell').filter({ hasText: /HVA mobile direct edit/ }).first()
       if (await temporaryCell.count()) {
         await temporaryCell.click()
@@ -85,7 +89,7 @@ test('Orario mobile: heading percepibile e modifica diretta end-to-end', async (
         if (await dialog.getByRole('button', { name: 'Modifica orario' }).count()) {
           await dialog.getByRole('button', { name: 'Modifica orario' }).click()
         }
-        await page.getByRole('button', { name: 'Rimuovi dall’orario' }).click()
+        await page.getByRole('button', { name: 'Rimuovi' }).click()
         await expect(page.locator('.occupiedTimetableCell').filter({ hasText: /HVA mobile direct edit/ })).toHaveCount(0)
       }
     }

@@ -129,6 +129,222 @@
 }
 
 
+.timetableUpdateCompletion{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:18px;
+  border:1px solid color-mix(in srgb,var(--brand) 28%,var(--line));
+  border-radius:var(--radius-md);
+  background:color-mix(in srgb,var(--brand) 6%,var(--surface));
+}
+.timetableUpdateCompletion.blocked{
+  border-color:color-mix(in srgb,var(--warning) 32%,var(--line));
+  background:var(--warning-soft);
+}
+.timetableUpdateCompletionCopy{display:grid;gap:4px;min-width:0}
+.timetableUpdateCompletionEyebrow{
+  color:var(--brand);
+  font-size:10px;
+  font-weight:850;
+  letter-spacing:.08em;
+}
+.timetableUpdateCompletion.blocked .timetableUpdateCompletionEyebrow{color:var(--warning)}
+.timetableUpdateCompletionCopy h2{margin:0;font-size:18px;line-height:1.2;letter-spacing:-.02em}
+.timetableUpdateCompletionCopy p{margin:0;max-width:700px;color:var(--ink-soft);font-size:12px;line-height:1.5}
+.timetableUpdateCompletionAction{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  padding:0 14px;
+  border:1px solid var(--brand);
+  border-radius:var(--radius-sm);
+  background:var(--brand);
+  color:var(--ink-on-dark);
+  font-weight:750;
+  text-align:center;
+  text-decoration:none;
+}
+@media(max-width:719px){
+  .timetableUpdateCompletion{align-items:stretch;flex-direction:column;padding:14px}
+  .timetableUpdateCompletionAction{width:100%}
+}
+
+
+
+/* ORARIO_GUIDED_FLOW_V1 */
+.timetableFlowHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+.timetableFlowSteps{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  flex:1;
+  margin:0;
+  padding:0;
+  list-style:none;
+}
+.timetableFlowSteps li{
+  min-height:44px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:0 12px;
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  background:var(--surface);
+  color:var(--ink-soft);
+}
+.timetableFlowSteps li>span{
+  width:24px;
+  height:24px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 24px;
+  border-radius:var(--radius-md);
+  background:var(--surface-soft);
+  font-size:10px;
+  font-weight:850;
+}
+.timetableFlowSteps li>strong{font-size:11px}
+.timetableFlowSteps li.active{
+  border-color:var(--brand);
+  background:var(--brand-soft);
+  color:var(--brand);
+}
+.timetableFlowSteps li.active>span{background:var(--brand);color:var(--ink-on-dark)}
+.timetableFlowSteps li.done{color:var(--ink)}
+.timetableFlowExit{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  padding:0 10px;
+  color:var(--ink-soft);
+  font-size:11px;
+  font-weight:750;
+  text-decoration:none;
+}
+.timetableGuidedStep{display:grid;gap:16px}
+.timetableGuidedHeading{grid-template-columns:auto minmax(0,1fr)}
+.timetableGuidedDecision,.timetableGuidedReview{
+  display:grid;
+  gap:18px;
+  padding:22px;
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  background:var(--surface);
+}
+.timetableGuidedDecision>div:first-child,.timetableGuidedDateForm{display:grid;gap:8px}
+.timetableGuidedEyebrow{
+  color:var(--brand);
+  font-size:10px;
+  font-weight:850;
+  letter-spacing:.08em;
+}
+.timetableGuidedDecision h2,.timetableGuidedReview h2{margin:0;font-size:22px;line-height:1.2;letter-spacing:-.025em}
+.timetableGuidedDecision p{margin:0;color:var(--ink-soft);font-size:13px;line-height:1.5}
+.timetableGuidedDateForm label{display:grid;gap:7px;max-width:360px}
+.timetableGuidedDateForm label>span{font-size:11px;font-weight:750;color:var(--ink-soft)}
+.timetableGuidedDateForm input{
+  min-height:48px;
+  width:100%;
+  padding:0 12px;
+  border:1px solid var(--line-strong);
+  border-radius:var(--radius-sm);
+  background:var(--surface);
+  color:var(--ink);
+  font:inherit;
+}
+.timetableGuidedActions,.timetableFlowActions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+}
+.timetableGuidedActions>a:not(.timetablePrimaryButton){
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  padding:0 10px;
+  color:var(--ink-soft);
+  font-weight:700;
+  text-decoration:none;
+}
+.timetableFlowPrimary{min-width:180px;text-decoration:none}
+.timetableGuidedReviewHeading{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+}
+.timetableGuidedReviewHeading>div{display:grid;gap:4px}
+.timetableGuidedReviewHeading>strong{
+  flex:0 0 auto;
+  padding:7px 10px;
+  border-radius:var(--radius-sm);
+  background:var(--brand-soft);
+  color:var(--brand);
+  font-size:12px;
+}
+.timetableGuidedDecision.ready{
+  border-color:color-mix(in srgb,var(--success) 28%,var(--line));
+  background:color-mix(in srgb,var(--success) 6%,var(--surface));
+}
+.timetableGuidedDecision.blocked{
+  border-color:color-mix(in srgb,var(--warning) 32%,var(--line));
+  background:var(--warning-soft);
+}
+.occupiedTimetableCell:disabled{cursor:default;opacity:1}
+.timetableViewActions>a.primary{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  padding:0 14px;
+  border-radius:var(--radius-sm);
+  background:var(--brand);
+  color:var(--ink-on-dark);
+  font-weight:750;
+  text-decoration:none;
+}
+@media(max-width:719px){
+  .timetableFlowHeader{align-items:flex-start}
+  .timetableFlowSteps{gap:4px}
+  .timetableFlowSteps li{
+    min-height:42px;
+    justify-content:center;
+    gap:5px;
+    padding:0 5px;
+  }
+  .timetableFlowSteps li>span{width:21px;height:21px;flex-basis:21px}
+  .timetableFlowSteps li>strong{font-size:10px}
+  .timetableFlowExit{padding:0 4px}
+  .timetableGuidedStep{padding:12px}
+  .timetableGuidedStep .timetableCardHeading{margin-bottom:0}
+  .timetableGuidedDecision,.timetableGuidedReview{padding:16px}
+  .timetableGuidedDecision h2,.timetableGuidedReview h2{font-size:20px}
+  .timetableGuidedActions,.timetableFlowActions{
+    align-items:stretch;
+    flex-direction:column-reverse;
+  }
+  .timetableGuidedActions>*,
+  .timetableFlowActions>*,
+  .timetableGuidedActions form,
+  .timetableGuidedActions .timetablePrimaryButton,
+  .timetableFlowPrimary{width:100%}
+  .timetableGuidedReviewHeading{align-items:flex-start;flex-direction:column}
+  .timetableViewActions>a.primary{width:100%}
+}
+
 /* ORARIO_MOBILE_DIRECT_EDIT_V2 */
 .editorScheduleDetails{
   grid-column:1/-1;
