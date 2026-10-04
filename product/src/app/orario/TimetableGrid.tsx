@@ -30,6 +30,7 @@ type TimetableGridProps = {
   slots: TimetableSlot[]
   assignments: TimetableGridAssignment[]
   readOnly?: boolean
+  guided?: boolean
 }
 
 type TimetableMutationFeedback = {
@@ -85,7 +86,7 @@ const PRESENCE_LABELS: Record<TimetablePresenceKind, string> = {
   OTHER: 'Altra presenza',
 }
 
-export default function TimetableGrid({ versionId, days, periods, slots, assignments, readOnly = false }: TimetableGridProps) {
+export default function TimetableGrid({ versionId, days, periods, slots, assignments, readOnly = false, guided = false }: TimetableGridProps) {
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week')
   const [selectedDay, setSelectedDay] = useState(days[0]?.value ?? 1)
   const [moment, setMoment] = useState<TimetableMoment | null>(null)
@@ -155,7 +156,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
       else if (editor.kind === 'CLASS_PRESENCE') await addClassPresenceSlot(formData)
       else await addSpecialSlot(formData)
       setEditor(null)
-      setMutationFeedback({ tone: 'success', message: 'Voce aggiunta alla bozza. L’orario in uso non è cambiato.' })
+      setMutationFeedback({ tone: 'success', message: 'Modifica salvata.' })
     } catch (error) {
       console.error('Timetable create failed', error)
       setMutationFeedback({ tone: 'error', message: 'Non sono riuscito ad aggiungere la voce. Nessuna modifica parziale è stata confermata.' })
@@ -167,7 +168,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
     try {
       await updateTimetableSlot(formData)
       setEditor(null)
-      setMutationFeedback({ tone: 'success', message: 'Modifica salvata nella bozza. L’orario in uso non è cambiato.' })
+      setMutationFeedback({ tone: 'success', message: 'Modifica salvata.' })
     } catch (error) {
       console.error('Timetable update failed', error)
       setMutationFeedback({ tone: 'error', message: 'Non sono riuscito a salvare le modifiche. Controlla i dati e riprova.' })
@@ -179,7 +180,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
     try {
       await deleteTimetableSlot(formData)
       setEditor(null)
-      setMutationFeedback({ tone: 'success', message: 'Voce rimossa dalla bozza. L’orario in uso non è cambiato.' })
+      setMutationFeedback({ tone: 'success', message: 'Modifica salvata.' })
     } catch (error) {
       console.error('Timetable delete failed', error)
       setMutationFeedback({ tone: 'error', message: 'Non sono riuscito a rimuovere la voce. L’orario è rimasto invariato.' })
@@ -200,7 +201,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
             <button type="button" onClick={() => navigateDay(1)} disabled={selectedDayIndex >= days.length - 1} aria-label="Giorno successivo">›</button>
           </div>
         ) : <span className="gridHint">Tocca una voce per aprire il contesto</span>}
-        <button className="printTimetableButton" type="button" onClick={() => window.print()}>Stampa</button>
+        {!guided ? <button className="printTimetableButton" type="button" onClick={() => window.print()}>Stampa</button> : null}
       </div>
 
       {mutationFeedback ? (
@@ -232,7 +233,8 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
                       slot={slot}
                       assignment={slot.teachingAssignmentId ? assignmentById.get(slot.teachingAssignmentId) : undefined}
                       current={current}
-                      onClick={() => readOnly ? setFocusedSlotId(slot.id) : openOccupiedCell(slot)}
+                      onClick={() => readOnly ? (guided ? undefined : setFocusedSlotId(slot.id)) : openOccupiedCell(slot)}
+                      disabled={readOnly && guided}
                     />
                   ) : readOnly ? (
                     <div className={`emptyTimetableCell timetableReadOnlyEmpty ${emptyCurrent ? 'currentEmpty' : ''}`} />
@@ -248,11 +250,11 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
 
       {!rows.length ? <div className="timetableEmpty"><strong>Configura la scansione oraria</strong><span>Le fasce della griglia derivano dalle Impostazioni.</span></div> : null}
 
-      <div className="timetableLegend" aria-label="Legenda">
+      {!guided ? <div className="timetableLegend" aria-label="Legenda">
         <span><i className="legendLesson" /> Lezione</span><span><i className="legendPresence" /> Presenza in altra classe</span><span><i className="legendDisposition" /> Disposizione</span><span><i className="legendReception" /> Ricevimento</span><span><i className="legendOther" /> Altro</span>
-      </div>
+      </div> : null}
 
-      {!readOnly && assignments.length ? <details className="capacityDisclosure"><summary><span>Controllo monte ore</span><strong>{unresolvedAssignments ? `${unresolvedAssignments} ${unresolvedAssignments === 1 ? 'voce da allineare' : 'voci da allineare'}` : 'Cattedra allineata'}</strong></summary><div className="capacityStrip" aria-label="Verifica monte ore">{assignments.map((assignment) => {
+      {!guided && !readOnly && assignments.length ? <details className="capacityDisclosure"><summary><span>Controllo monte ore</span><strong>{unresolvedAssignments ? `${unresolvedAssignments} ${unresolvedAssignments === 1 ? 'voce da allineare' : 'voci da allineare'}` : 'Cattedra allineata'}</strong></summary><div className="capacityStrip" aria-label="Verifica monte ore">{assignments.map((assignment) => {
         const delta = assignment.weeklyMinutes - assignment.scheduledMinutes
         return <div key={assignment.id} className={`capacityChip ${delta === 0 ? 'ok' : delta < 0 ? 'over' : 'pending'}`}><strong>{assignment.label}</strong><span>{assignment.scheduledMinutes}/{assignment.weeklyMinutes} min · {delta === 0 ? 'allineata' : delta > 0 ? `mancano ${delta}` : `eccesso ${Math.abs(delta)}`}</span></div>
       })}</div></details> : null}
@@ -328,12 +330,12 @@ function contextSubtitle(slot: TimetableSlot, assignment?: TimetableGridAssignme
   return 'Impegno ricorrente della settimana tipo'
 }
 
-function OccupiedCell({ slot, assignment, current, onClick }: { slot: TimetableSlot; assignment?: TimetableGridAssignment; current: boolean; onClick: () => void }) {
+function OccupiedCell({ slot, assignment, current, onClick, disabled = false }: { slot: TimetableSlot; assignment?: TimetableGridAssignment; current: boolean; onClick: () => void | undefined; disabled?: boolean }) {
   if (slot.slotKind === 'CLASS_PRESENCE') {
     const presence = slot.presenceKind ? PRESENCE_LABELS[slot.presenceKind] : 'Presenza'
     const classLabel = slot.manualClassLabel ?? 'Classe'
     const meta = [slot.room ? `Aula ${slot.room}` : null, slot.note].filter(Boolean).join(' · ')
-    return <button className={`occupiedTimetableCell kind-class_presence ${current ? 'currentSlot' : ''}`} type="button" onClick={onClick} aria-label={`${classLabel}, ${presence}, ${slot.startTime}–${slot.endTime}`}><span className="cellKind">Presenza in altra classe</span><strong className="cellPrimary">{classLabel}</strong><span className="cellSecondary">{presence}</span>{meta ? <small>{meta}</small> : null}{current ? <b className="cellNow">Adesso</b> : null}</button>
+    return <button className={`occupiedTimetableCell kind-class_presence ${current ? 'currentSlot' : ''}`} type="button" onClick={onClick} disabled={disabled} aria-label={`${classLabel}, ${presence}, ${slot.startTime}–${slot.endTime}`}><span className="cellKind">Presenza in altra classe</span><strong className="cellPrimary">{classLabel}</strong><span className="cellSecondary">{presence}</span>{meta ? <small>{meta}</small> : null}{current ? <b className="cellNow">Adesso</b> : null}</button>
   }
   if (slot.slotKind === 'LESSON') {
     const classLabel = assignment?.classLabel ?? assignment?.label ?? 'Lezione'
@@ -342,8 +344,8 @@ function OccupiedCell({ slot, assignment, current, onClick }: { slot: TimetableS
     const activityKind = slot.activityKind ?? 'THEORY'
     const ActivityIcon = ACTIVITY_ICONS[activityKind]
     const activityLabel = ACTIVITY_LABELS[activityKind]
-    return <button className={`occupiedTimetableCell kind-lesson ${current ? 'currentSlot' : ''}`} type="button" onClick={onClick} aria-label={`${classLabel}, ${disciplineLabel}, ${activityLabel}, ${slot.startTime}–${slot.endTime}`}><span className="cellKind"><ActivityIcon className="cellActivityIcon" size={12} strokeWidth={1.5} aria-hidden="true" /><span className="srOnly">{activityLabel}</span></span><strong className="cellPrimary">{classLabel}</strong><span className="cellSecondary">{disciplineLabel}</span>{meta ? <small>{meta}</small> : null}{current ? <b className="cellNow">Adesso</b> : null}</button>
+    return <button className={`occupiedTimetableCell kind-lesson ${current ? 'currentSlot' : ''}`} type="button" onClick={onClick} disabled={disabled} aria-label={`${classLabel}, ${disciplineLabel}, ${activityLabel}, ${slot.startTime}–${slot.endTime}`}><span className="cellKind"><ActivityIcon className="cellActivityIcon" size={12} strokeWidth={1.5} aria-hidden="true" /><span className="srOnly">{activityLabel}</span></span><strong className="cellPrimary">{classLabel}</strong><span className="cellSecondary">{disciplineLabel}</span>{meta ? <small>{meta}</small> : null}{current ? <b className="cellNow">Adesso</b> : null}</button>
   }
   const title = KIND_LABELS[slot.slotKind]
-  return <button className={`occupiedTimetableCell kind-${slot.slotKind.toLowerCase()} ${current ? 'currentSlot' : ''}`} type="button" onClick={onClick} aria-label={`${title}, ${slot.startTime}–${slot.endTime}`}><span className="cellKind">Impegno</span><strong className="cellPrimary">{title}</strong>{slot.note ? <span className="cellSecondary">{slot.note}</span> : null}{current ? <b className="cellNow">Adesso</b> : null}</button>
+  return <button className={`occupiedTimetableCell kind-${slot.slotKind.toLowerCase()} ${current ? 'currentSlot' : ''}`} type="button" onClick={onClick} disabled={disabled} aria-label={`${title}, ${slot.startTime}–${slot.endTime}`}><span className="cellKind">Impegno</span><strong className="cellPrimary">{title}</strong>{slot.note ? <span className="cellSecondary">{slot.note}</span> : null}{current ? <b className="cellNow">Adesso</b> : null}</button>
 }
