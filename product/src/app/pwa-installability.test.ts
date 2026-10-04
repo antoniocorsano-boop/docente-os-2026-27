@@ -4,6 +4,9 @@ import test from 'node:test'
 
 const manifestSource = fs.readFileSync(new URL('./manifest.ts', import.meta.url), 'utf8')
 const installPromptSource = fs.readFileSync(new URL('../components/pwa/PwaInstallPrompt.tsx', import.meta.url), 'utf8')
+const installControlSource = fs.readFileSync(new URL('../components/pwa/PwaInstallControl.tsx', import.meta.url), 'utf8')
+const installStateSource = fs.readFileSync(new URL('../components/pwa/pwa-install-state.ts', import.meta.url), 'utf8')
+const serviceWorkerRegistrationSource = fs.readFileSync(new URL('../components/pwa/PwaServiceWorkerRegistration.tsx', import.meta.url), 'utf8')
 const settingsSource = fs.readFileSync(new URL('./impostazioni/page.tsx', import.meta.url), 'utf8')
 
 function pngDimensions(path: string) {
@@ -29,16 +32,23 @@ test('PWA manifest exposes Chromium installability icon sizes', () => {
   assert.deepEqual(pngDimensions('../../public/pwa/icon-maskable-512.png'), { width: 512, height: 512 })
 })
 
-test('PWA exposes explicit and non-blocking manual install paths', () => {
+test('PWA exposes one non-blocking install path on Home and a persistent control in Settings', () => {
   assert.match(installPromptSource, /beforeinstallprompt/)
   assert.match(installPromptSource, /appinstalled/)
-  assert.match(installPromptSource, /display-mode: standalone/)
-  assert.match(installPromptSource, /installed \|\| dismissed \|\| !installEvent/)
-  assert.match(installPromptSource, /pathname\.startsWith\('\/orario'\)/)
-  assert.doesNotMatch(installPromptSource, /showManualFallback/)
-  assert.match(settingsSource, /Installazione sul dispositivo/)
-  assert.match(settingsSource, /Installa app/)
-  assert.match(settingsSource, /Aggiungi a schermata Home/)
+  assert.match(installPromptSource, /pathname !== '\/'/)
+  assert.match(installPromptSource, /rememberInstallPrompt/)
+  assert.match(installStateSource, /display-mode: standalone/)
+  assert.match(installStateSource, /__docenteOsInstallPrompt/)
+  assert.match(settingsSource, /PwaInstallControl/)
+  assert.match(installControlSource, /Installa Docente OS/)
+  assert.match(installControlSource, /Installa app/)
+  assert.match(installControlSource, /Aggiungi a schermata Home/)
+  assert.match(installControlSource, /Docente OS è installato/)
+})
+
+test('PWA actively checks the service worker for updates', () => {
+  assert.match(serviceWorkerRegistrationSource, /navigator\.serviceWorker\.register/)
+  assert.match(serviceWorkerRegistrationSource, /registration\.update\(\)/)
 })
 
 test('Share Target accepts MIME types and file extensions', () => {
