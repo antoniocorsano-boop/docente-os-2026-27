@@ -36,24 +36,25 @@ test('shared file reuses governed Knowledge upload feedback', () => {
 })
 
 
-test('orario hierarchy separates consultation, update and advanced management', () => {
+test('orario hierarchy separates consultation from the guided three-step update', () => {
   assert.match(timetablePage, /mode="view"/)
   assert.match(timetableExperience, /href="\/orario\/aggiorna"/)
-  assert.match(timetableExperience, /href="\/orario\/gestisci"/)
-  assert.match(timetableExperience, /slots=\{mode === 'view' \? operationalSlots : timetable\.slots\}/)
-  assert.match(timetableExperience, /readOnly=\{mode === 'view'\}/)
+  assert.doesNotMatch(timetableExperience, /href="\/orario\/gestisci"/)
+  assert.match(timetableExperience, /timetableFlowSteps/)
+  assert.match(timetableExperience, /Modifica l’orario/)
+  assert.match(timetableExperience, /Da quando vuoi usare questo orario\?/)
+  assert.match(timetableExperience, /Questo sarà il nuovo orario/)
+  assert.match(timetableExperience, /Metti in uso/)
+  assert.match(timetableExperience, /slots=\{operationalSlots\}/)
+  assert.match(timetableExperience, /readOnly/)
   const directEditAt = timetableExperience.indexOf('id="modifica-settimana"')
   const optionalImportAt = timetableExperience.indexOf('className="timetableVersionDetails timetableOptionalImport"')
   assert.ok(directEditAt >= 0)
   assert.ok(optionalImportAt > directEditAt)
-  assert.match(timetableExperience, /<span>In vigore dal<\/span>/)
-  assert.match(timetableExperience, /Non serve indicare una data di fine/)
-  assert.match(timetableExperience, /Importa da PDF o foto/)
-  assert.match(timetableExperience, /Opzionale/)
-  assert.match(timetableExperience, /mode === 'manage' \? <>/)
+  assert.match(timetableExperience, /showImportTool \?/)
   assert.match(timetableGrid, /readOnly\?: boolean/)
-  assert.match(timetableGrid, /!readOnly && editor/)
-  assert.match(timetableGrid, /!readOnly && assignments\.length/)
+  assert.match(timetableGrid, /guided\?: boolean/)
+  assert.match(timetableGrid, /!guided && !readOnly && assignments\.length/)
 })
 
 test('mobile timetable editor renders above its backdrop', () => {
@@ -63,17 +64,17 @@ test('mobile timetable editor renders above its backdrop', () => {
 })
 
 
-test('mobile timetable prioritizes the grid and direct editing', () => {
+test('mobile timetable prioritizes the guided task and direct editing', () => {
   assert.match(timetableExperience, /contentClassName=\{\`timetableSurface timetable-\$\{mode\}\`\}/)
-  assert.match(timetableGrid, /readOnly \? setFocusedSlotId\(slot\.id\) : openOccupiedCell\(slot\)/)
+  assert.match(timetableExperience, /timetableFlowHeader/)
+  assert.match(timetableGrid, /readOnly \? \(guided \? undefined : setFocusedSlotId\(slot\.id\)\) : openOccupiedCell\(slot\)/)
   assert.match(timetableGrid, /<summary>Cambia giorno o orario<\/summary>/)
   assert.match(timetableGrid, /<summary>Dettagli opzionali<\/summary>/)
+  assert.match(timetableGrid, /!guided \? <button className="printTimetableButton"/)
   assert.doesNotMatch(timetableCss, /\.timetableSurface \.timetableHero\{display:none\}/)
   assert.match(timetableCss, /\.timetableSurface \.timetableHero\{padding:0;border:0;background:transparent\}/)
-  assert.match(timetableCss, /\.timetableSurface \.timetableHero p,\s*\.timetableSurface \.timetableHero span\{display:none\}/)
-  assert.match(timetableCss, /\.timetableSurface \.timetableHero h1\{margin:0;font-size:20px/)
-  assert.match(timetableCss, /\.timetable-view \.timetableModeNav\{display:none\}/)
-  assert.match(timetableCss, /\.timetableSurface \.printTimetableButton\{display:none\}/)
+  assert.match(timetableCss, /\.timetableFlowSteps/)
+  assert.match(timetableCss, /\.timetableGuidedActions/)
   assert.match(timetableCss, /\.timetableSurface \.timeCell,[\s\S]*min-height:64px/)
   assert.match(timetableCss, /\.timetableEditorActions\{[\s\S]*position:sticky/)
 })
