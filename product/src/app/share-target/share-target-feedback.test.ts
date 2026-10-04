@@ -79,9 +79,9 @@ test('mobile timetable prioritizes the guided task and direct editing', () => {
   assert.match(timetableCss, /\.timetableEditorActions\{[\s\S]*position:sticky/)
 })
 
-test('PWA install prompt never covers the timetable workflow', () => {
+test('PWA install prompt stays on Home and never covers operational workflows', () => {
   assert.match(pwaInstallPrompt, /usePathname/)
-  assert.match(pwaInstallPrompt, /pathname\.startsWith\('\/orario'\)/)
+  assert.match(pwaInstallPrompt, /pathname !== '\/'/)
 })
 
 test('mobile update route keeps heading before import and hides continuation until there is something to review', () => {
