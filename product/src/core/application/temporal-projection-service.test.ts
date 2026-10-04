@@ -28,6 +28,7 @@ const mondayLesson: TimetableSlotReadModel = {
   disciplineLabel: 'Tecnologia',
   manualClassLabel: null,
   room: null,
+  activityKind: 'THEORY',
 }
 
 function day(localDate: string, kind: CalendarDayReadModel['kind'], label: string): CalendarDayReadModel {
@@ -40,11 +41,13 @@ function project(input: {
   events?: CalendarEventReadModel[]
   versions?: TimetableVersionReadModel[]
   slots?: TimetableSlotReadModel[]
+  exceptions?: Parameters<typeof projectTemporalDay>[0]['timetableExceptions']
 }) {
   return projectTemporalDay({
     localDate: input.localDate ?? '2026-09-07',
     timetableVersions: input.versions ?? [activeVersion],
     timetableSlots: input.slots ?? [mondayLesson],
+    timetableExceptions: input.exceptions ?? [],
     calendarDays: input.days ?? [],
     calendarEvents: input.events ?? [],
   })
@@ -118,4 +121,32 @@ test('historical projection resolves the version whose effective interval covers
   assert.equal(resolveTimetableVersionForDate(versions, '2026-09-28')?.id, 'old')
   assert.equal(resolveTimetableVersionForDate(versions, '2026-10-05')?.id, 'new')
   assert.equal(resolveTimetableVersionForDate(versions, '2026-08-31'), null)
+})
+
+
+test('a single-date activity exception overrides only the projected occurrence and preserves provenance', () => {
+  const result = project({
+    exceptions: [{
+      id: 'ex-1',
+      workspaceId: 'workspace',
+      academicYearId: 'year',
+      localDate: '2026-09-07',
+      timetableVersionId: 'tt-active',
+      timetableSlotId: 'slot-1',
+      kind: 'ACTIVITY_KIND_CHANGED',
+      activityKind: 'PRACTICAL_LAB',
+      sourceKind: 'TEACHER',
+      sourceRef: null,
+      createdAt: '2026-09-01T00:00:00Z',
+      updatedAt: '2026-09-01T00:00:00Z',
+    }],
+  })
+
+  assert.equal(result.occurrences[0].activityKind, 'PRACTICAL_LAB')
+  assert.equal(result.occurrences[0].exceptionState, 'ACTIVITY_KIND_CHANGED')
+  assert.ok(result.occurrences[0].provenance.includes('timetable_exception:ex-1'))
+
+  const followingMonday = project({ localDate: '2026-09-14' })
+  assert.equal(followingMonday.occurrences[0].activityKind, 'THEORY')
+  assert.equal(followingMonday.occurrences[0].exceptionState, 'NONE')
 })

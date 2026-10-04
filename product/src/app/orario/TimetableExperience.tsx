@@ -4,7 +4,10 @@ import { AppShell } from '@/components/app-shell/app-shell'
 import { canActivateTimetableDraft, minutesToTime, slotDurationMinutes, timeToMinutes, TIMETABLE_WEEKDAYS } from '@/core/domain/timetable'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
+import { SupabaseCalendarRepository } from '@/core/infrastructure/supabase/supabase-calendar-repository'
+import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
 import { SupabaseTimetableImportRepository } from '@/core/infrastructure/supabase/supabase-timetable-import-repository'
+import { SupabaseTimetableExceptionRepository } from '@/core/infrastructure/supabase/supabase-timetable-exception-repository'
 import { SupabaseTimetableLifecycleRepository } from '@/core/infrastructure/supabase/supabase-timetable-lifecycle-repository'
 import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
@@ -12,6 +15,7 @@ import {
   activateTimetableDraft,
   addTimetableImportRow,
   applyTimetableImportCandidate,
+  setTimetableOccurrenceActivityKind,
   updateTimetableDraft,
   updateTimetableImportRow,
 } from './actions'
@@ -38,17 +42,24 @@ export async function TimetableExperience({
   const importCandidateId = singleParam(params.importCandidate)
   const importStatus = singleParam(params.import)
 
+  const moment = currentRomeMoment()
   const settingsRepository = new SupabaseTeacherSettingsRepository()
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
   const timetableRepository = new SupabaseTimetableRepository()
   const lifecycleRepository = new SupabaseTimetableLifecycleRepository()
   const importRepository = new SupabaseTimetableImportRepository()
-  const [settings, disciplines, annualSnapshot, timetable, lifecycle] = await Promise.all([
+  const exceptionRepository = new SupabaseTimetableExceptionRepository()
+  const calendarRepository = new SupabaseCalendarRepository()
+  const teachingSessionRepository = new SupabaseTeachingSessionRepository()
+  const [settings, disciplines, annualSnapshot, timetable, lifecycle, todayExceptions, calendarSnapshot, todaySessions] = await Promise.all([
     settingsRepository.getOrCreate(context.workspace.id, context.academicYear.id),
     settingsRepository.listDisciplines(context.workspace.id, context.academicYear.id),
     annualRepository.list(context.workspace.id, context.academicYear.id),
     timetableRepository.list(context.workspace.id, context.academicYear.id, context.academicYear.startsOn),
     lifecycleRepository.read(context.workspace.id, context.academicYear.id),
+    exceptionRepository.listByDate(context.workspace.id, context.academicYear.id, moment.localDate),
+    calendarRepository.list(context.workspace.id, context.academicYear.id),
+    teachingSessionRepository.listByDay(context.workspace.id, context.academicYear.id, moment.localDate),
   ])
 
   const importCandidate = importCandidateId
@@ -90,11 +101,21 @@ export async function TimetableExperience({
   const draftLabel = versionStatusLabel(timetable.draftVersion.status)
   const days = weekdayOptions.map((day) => ({ value: day.value, label: day.label, short: day.short }))
   const operationalSlots = lifecycle.activeVersion ? lifecycle.activeSlots : timetable.slots
-  const moment = currentRomeMoment()
-  const todaySlots = operationalSlots.filter((slot) => slot.weekday === moment.weekday).sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
+  const todayCalendarDay = calendarSnapshot.days.find((day) => day.localDate === moment.localDate) ?? null
+  const todayNoLessons = Boolean(todayCalendarDay && todayCalendarDay.dayKind !== 'SCHOOL_DAY')
+  const todaySlots = (todayNoLessons ? [] : operationalSlots.filter((slot) => slot.weekday === moment.weekday)).sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
   const currentSlot = todaySlots.find((slot) => timeToMinutes(slot.startTime) <= moment.minutes && timeToMinutes(slot.endTime) > moment.minutes) ?? null
   const nextSlot = currentSlot ?? todaySlots.find((slot) => timeToMinutes(slot.startTime) > moment.minutes) ?? null
   const focusSlot = nextSlot ? describeSlot(nextSlot, sectionById, disciplineById) : null
+  const focusActivityException = nextSlot
+    ? todayExceptions.find((exception) => exception.timetableSlotId === nextSlot.id && exception.kind === 'ACTIVITY_KIND_CHANGED') ?? null
+    : null
+  const focusActivityKind = nextSlot?.slotKind === 'LESSON'
+    ? focusActivityException?.activityKind ?? nextSlot.activityKind ?? 'THEORY'
+    : null
+  const focusRecordedSession = nextSlot
+    ? todaySessions.find((session) => session.source.timetableSlotId === nextSlot.id && session.localDate === moment.localDate) ?? null
+    : null
   const archivedVersions = lifecycle.versions.filter((version) => version.status === 'ARCHIVED').slice(0, 3)
   const canActivateDraft = canActivateTimetableDraft(lifecycle.activeVersion, timetable.draftVersion)
 
@@ -326,11 +347,37 @@ export async function TimetableExperience({
           <p className="humanTaskFocusEyebrow">{currentSlot ? 'ADESSO' : 'PROSSIMA LEZIONE'}</p>
           <h2 id="timetable-focus-title">{focusSlot.title}</h2>
           <p>{focusSlot.description}</p>
-          <div className="humanTaskMeta"><span>{focusSlot.time}</span><span>{focusSlot.kind}</span>{focusSlot.room ? <span>Aula {focusSlot.room}</span> : null}<span>{lifecycle.activeVersion ? 'Orario in uso' : 'Bozza iniziale'}</span></div>
+          <div className="humanTaskMeta"><span>{focusSlot.time}</span><span>{focusSlot.kind}</span>{focusActivityKind ? <span>{activityKindLabel(focusActivityKind)}{focusActivityException ? ' · solo oggi' : ''}</span> : null}{focusSlot.room ? <span>Aula {focusSlot.room}</span> : null}<span>{lifecycle.activeVersion ? 'Orario in uso' : 'Bozza iniziale'}</span></div>
           <div className="humanTaskActions">{focusSlot.sectionId ? <Link className="primary" href={`/classi/${encodeURIComponent(focusSlot.sectionId)}`}>Apri la classe</Link> : <Link className="primary" href="#settimana-tipo">Vedi in griglia</Link>}{focusSlot.sectionId ? <Link href={`/piano-annuale?section=${encodeURIComponent(focusSlot.sectionId)}`}>Piano annuale</Link> : null}</div>
+          {lifecycle.activeVersion && nextSlot?.slotKind === 'LESSON' ? (
+            focusRecordedSession ? (
+              <div className="timetableOccurrenceActivity timetableOccurrenceActivityState" role="status">
+                <strong>Lezione già registrata</strong>
+                <small>La tipologia di questa occorrenza fa ormai parte dello storico e non può più essere modificata.</small>
+              </div>
+            ) : (
+              <form action={setTimetableOccurrenceActivityKind} className="timetableOccurrenceActivity">
+                <input type="hidden" name="timetableSlotId" value={nextSlot.id} />
+                <input type="hidden" name="localDate" value={moment.localDate} />
+                <label>
+                  <span>Tipo per questa lezione</span>
+                  <select name="activityKind" defaultValue={focusActivityException ? focusActivityKind ?? '' : ''}>
+                    <option value="">Come nell’orario · {activityKindLabel(nextSlot.activityKind ?? 'THEORY')}</option>
+                    <option value="THEORY">Teoria</option>
+                    <option value="DRAWING_PROJECT">Disegno / progettazione</option>
+                    <option value="PRACTICAL_LAB">Pratica / laboratorio</option>
+                    <option value="ASSESSMENT">Verifica / valutazione</option>
+                    <option value="OTHER">Altro</option>
+                  </select>
+                </label>
+                <button type="submit">Salva per questa lezione</button>
+                <small>Vale solo per {formatDate(moment.localDate)}. La settimana tipo non viene modificata.</small>
+              </form>
+            )
+          ) : null}
         </section>
       ) : (
-        <section className="humanTaskFocus"><p className="humanTaskFocusEyebrow">ADESSO</p><h2>Nessuna lezione prevista in questa fascia</h2><p>{lifecycle.activeVersion ? 'L’orario in uso non prevede una lezione adesso.' : 'Non hai ancora messo in uso una versione dell’orario: per orientarti uso temporaneamente la bozza iniziale.'}</p><div className="humanTaskActions"><Link className="primary" href="#settimana-tipo">Apri la settimana</Link></div></section>
+        <section className="humanTaskFocus"><p className="humanTaskFocusEyebrow">ADESSO</p><h2>{todayNoLessons ? (todayCalendarDay?.label || 'Oggi non ci sono lezioni') : 'Nessuna lezione prevista in questa fascia'}</h2><p>{todayNoLessons ? 'Il calendario scolastico indica una giornata senza lezioni: le attività della settimana tipo non vengono materializzate per oggi.' : lifecycle.activeVersion ? 'L’orario in uso non prevede una lezione adesso.' : 'Non hai ancora messo in uso una versione dell’orario: per orientarti uso temporaneamente la bozza iniziale.'}</p><div className="humanTaskActions"><Link className="primary" href="#settimana-tipo">Apri la settimana</Link></div></section>
       )) : null}
 
       </> : null}
@@ -380,9 +427,10 @@ function sectionLabel(grade: keyof typeof GRADE_LABELS, sectionCode: string) { r
 function versionStatusLabel(value: string) { if (value === 'DRAFT') return 'Bozza'; if (value === 'ACTIVE') return 'In uso'; if (value === 'ARCHIVED') return 'Precedente'; return value }
 function formatHours(minutes: number) { if (!minutes) return '0h'; const hours = Math.floor(minutes / 60); const rest = minutes % 60; if (!hours) return `${rest}m`; return rest ? `${hours}h ${rest}m` : `${hours}h` }
 function formatDate(value: string) { const [year, month, day] = value.split('-'); return `${day}/${month}/${year}` }
-function currentRomeMoment() { const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()); const value = Object.fromEntries(parts.map((part) => [part.type, part.value])); const weekday = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 }[value.weekday] ?? 7; return { weekday, minutes: Number(value.hour) * 60 + Number(value.minute) } }
+function currentRomeMoment() { const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()); const value = Object.fromEntries(parts.map((part) => [part.type, part.value])); const weekday = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 }[value.weekday] ?? 7; return { localDate: `${value.year}-${value.month}-${value.day}`, weekday, minutes: Number(value.hour) * 60 + Number(value.minute) } }
 function describeSlot(slot: { sectionId: string | null; disciplineId: string | null; manualClassLabel: string | null; slotKind: string; startTime: string; endTime: string; room: string | null }, sectionById: Map<string, { grade: keyof typeof GRADE_LABELS; sectionCode: string }>, disciplineById: Map<string, { name: string }>) { const section = slot.sectionId ? sectionById.get(slot.sectionId) : null; const discipline = slot.disciplineId ? disciplineById.get(slot.disciplineId) : null; const title = section ? sectionLabel(section.grade, section.sectionCode) : slot.manualClassLabel || presenceLabel(slot.slotKind); return { title, sectionId: section ? slot.sectionId : null, time: `${slot.startTime.slice(0, 5)}–${slot.endTime.slice(0, 5)}`, kind: discipline?.name || presenceLabel(slot.slotKind), room: slot.room, description: section ? `Questa è la lezione pertinente nell’orario che vale adesso. Entra nella classe per vedere il prossimo tratto didattico e i materiali utili.` : `Questa presenza appartiene all’orario che vale adesso e non crea una classe canonica.` } }
 function presenceLabel(kind: string) { if (kind === 'DISPOSITION') return 'Disposizione'; if (kind === 'RECEPTION') return 'Ricevimento'; if (kind === 'CLASS_PRESENCE') return 'Presenza in classe'; return 'Impegno' }
+function activityKindLabel(kind: string) { if (kind === 'DRAWING_PROJECT') return 'Disegno / progettazione'; if (kind === 'PRACTICAL_LAB') return 'Pratica / laboratorio'; if (kind === 'ASSESSMENT') return 'Verifica / valutazione'; if (kind === 'OTHER') return 'Altro'; return 'Teoria' }
 
 function singleParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? null : value ?? null

@@ -1,5 +1,5 @@
 import type { CalendarDayKind, CalendarEventKind } from '@/core/domain/calendar'
-import type { TimetableSlotKind, TimetableVersionStatus } from '@/core/domain/timetable'
+import type { TimetableActivityKind, TimetableException, TimetableSlotKind, TimetableVersionStatus } from '@/core/domain/timetable'
 
 export type TimetableVersionReadModel = {
   id: string
@@ -21,7 +21,10 @@ export type TimetableSlotReadModel = {
   disciplineLabel: string | null
   manualClassLabel: string | null
   room: string | null
+  activityKind?: TimetableActivityKind | null
 }
+
+export type TemporalExceptionReadModel = TimetableException
 
 export type CalendarDayReadModel = {
   id: string
@@ -46,6 +49,7 @@ export interface TimetableProjectionReadPort {
   read(workspaceId: string, academicYearId: string): Promise<{
     versions: TimetableVersionReadModel[]
     slots: TimetableSlotReadModel[]
+    exceptions?: TemporalExceptionReadModel[]
   }>
 }
 

@@ -2,15 +2,16 @@ import type {
   CalendarDayReadModel,
   CalendarEventReadModel,
   CalendarProjectionReadPort,
+  TemporalExceptionReadModel,
   TimetableProjectionReadPort,
   TimetableSlotReadModel,
   TimetableVersionReadModel,
 } from '@/core/application/ports/temporal-projection'
-import type { TimetableSlotKind } from '@/core/domain/timetable'
+import type { TimetableActivityKind, TimetableSlotKind } from '@/core/domain/timetable'
 
 export type ProjectedCalendarState = 'SCHOOL_DAY' | 'NO_LESSONS' | 'UNDETERMINED'
 export type ProjectedTimetableState = 'IN_FORCE' | 'UNAVAILABLE' | 'NOT_APPLICABLE'
-export type ProjectedExceptionState = 'NONE'
+export type ProjectedExceptionState = 'NONE' | 'ACTIVITY_KIND_CHANGED'
 
 export type ProjectedOccurrence = {
   logicalId: string
@@ -26,6 +27,7 @@ export type ProjectedOccurrence = {
   calendarEventId: string | null
   calendarState: ProjectedCalendarState
   exceptionState: ProjectedExceptionState
+  activityKind?: TimetableActivityKind | null
   provenance: string[]
 }
 
@@ -54,6 +56,7 @@ export class TemporalProjectionService {
       localDate: input.localDate,
       timetableVersions: timetable.versions,
       timetableSlots: timetable.slots,
+      timetableExceptions: timetable.exceptions ?? [],
       calendarDays: calendar.days,
       calendarEvents: calendar.events,
     })
@@ -64,6 +67,7 @@ export function projectTemporalDay(input: {
   localDate: string
   timetableVersions: TimetableVersionReadModel[]
   timetableSlots: TimetableSlotReadModel[]
+  timetableExceptions?: TemporalExceptionReadModel[]
   calendarDays: CalendarDayReadModel[]
   calendarEvents: CalendarEventReadModel[]
 }): ProjectedDay {
@@ -103,7 +107,7 @@ export function projectTemporalDay(input: {
   const weekday = isoWeekday(input.localDate)
   const occurrences = input.timetableSlots
     .filter((slot) => slot.timetableVersionId === version.id && slot.weekday === weekday)
-    .map((slot) => projectTimetableSlot(slot, version, input.localDate, calendarState))
+    .map((slot) => projectTimetableSlot(slot, version, input.localDate, calendarState, input.timetableExceptions ?? []))
     .sort(compareOccurrence)
 
   return {
@@ -135,7 +139,18 @@ function projectTimetableSlot(
   version: TimetableVersionReadModel,
   localDate: string,
   calendarState: ProjectedCalendarState,
+  exceptions: TemporalExceptionReadModel[],
 ): ProjectedOccurrence {
+  const activityOverride = exceptions.find((exception) =>
+    exception.kind === 'ACTIVITY_KIND_CHANGED'
+    && exception.localDate === localDate
+    && exception.timetableVersionId === version.id
+    && exception.timetableSlotId === slot.id
+  ) ?? null
+  const activityKind = slot.kind === 'LESSON'
+    ? activityOverride?.activityKind ?? slot.activityKind ?? 'THEORY'
+    : null
+
   return {
     logicalId: `tt:${version.id}:${slot.id}:${localDate}`,
     localDate,
@@ -149,10 +164,12 @@ function projectTimetableSlot(
     timetableSlotId: slot.id,
     calendarEventId: null,
     calendarState,
-    exceptionState: 'NONE',
+    exceptionState: activityOverride ? 'ACTIVITY_KIND_CHANGED' : 'NONE',
+    activityKind,
     provenance: [
       `timetable_version:${version.id}`,
       `timetable_slot:${slot.id}`,
+      ...(activityOverride ? [`timetable_exception:${activityOverride.id}`] : []),
       calendarState === 'UNDETERMINED' ? `calendar_state:undetermined:${localDate}` : `calendar_day:${localDate}`,
     ],
   }
@@ -177,6 +194,7 @@ function projectCalendarEvent(event: CalendarEventReadModel, localDate: string, 
     calendarEventId: event.id,
     calendarState,
     exceptionState: 'NONE',
+    activityKind: null,
     provenance: [`calendar_event:${event.id}`, `calendar_interval:${event.startsOn}:${event.endsOn}`, `calendar_position:${isStart ? 'start' : isEnd ? 'end' : 'middle'}`],
   }
 }

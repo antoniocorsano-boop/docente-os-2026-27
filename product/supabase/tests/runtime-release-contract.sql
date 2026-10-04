@@ -6,6 +6,9 @@ declare
   runtime_migration text;
   runtime_snapshot jsonb;
   timetable_activation_definition text;
+  occurrence_activity_rpc_definition text;
+  occurrence_activity_guard_definition text;
+  teaching_session_lock_definition text;
 begin
   if to_regclass('public.runtime_schema_contract_state') is null then
     raise exception 'runtime schema contract state table missing after migration replay';
@@ -57,6 +60,82 @@ begin
      or timetable_activation_definition !~ 's[.]activity_kind' then
     raise exception
       'activate_timetable_version does not preserve activity_kind in activation clones';
+  end if;
+
+  if to_regclass('public.timetable_exceptions') is null then
+    raise exception 'timetable_exceptions missing after migration replay';
+  end if;
+
+  if to_regprocedure('public.set_timetable_occurrence_activity_kind(uuid,date,text)') is null then
+    raise exception 'single-occurrence activity kind RPC missing after migration replay';
+  end if;
+
+  select pg_get_functiondef('public.set_timetable_occurrence_activity_kind(uuid,date,text)'::regprocedure)
+    into occurrence_activity_rpc_definition;
+
+  if position('recorded lesson occurrence is immutable' in occurrence_activity_rpc_definition) = 0 then
+    raise exception 'single-occurrence activity kind RPC does not protect recorded lessons';
+  end if;
+
+  if position('ACTIVITY_KIND_CHANGED' in occurrence_activity_rpc_definition) = 0 then
+    raise exception 'single-occurrence activity kind RPC does not persist a bounded temporal exception';
+  end if;
+
+  if position('FOR UPDATE' in upper(occurrence_activity_rpc_definition)) = 0 then
+    raise exception 'single-occurrence activity RPC does not lock the source timetable slot';
+  end if;
+
+  if position('SUSPENSION' in occurrence_activity_rpc_definition) = 0
+     or position('HOLIDAY' in occurrence_activity_rpc_definition) = 0
+     or position('CLOSURE' in occurrence_activity_rpc_definition) = 0 then
+    raise exception 'single-occurrence activity RPC does not reject calendar-suppressed dates';
+  end if;
+
+  if to_regprocedure('private.guard_timetable_activity_exception()') is null then
+    raise exception 'atomic timetable activity exception guard missing after migration replay';
+  end if;
+
+  if to_regprocedure('private.lock_teaching_session_timetable_slot()') is null then
+    raise exception 'TeachingSession timetable slot lock missing after migration replay';
+  end if;
+
+  select pg_get_functiondef('private.guard_timetable_activity_exception()'::regprocedure)
+    into occurrence_activity_guard_definition;
+  select pg_get_functiondef('private.lock_teaching_session_timetable_slot()'::regprocedure)
+    into teaching_session_lock_definition;
+
+  if position('FOR UPDATE' in upper(occurrence_activity_guard_definition)) = 0
+     or position('FOR UPDATE' in upper(teaching_session_lock_definition)) = 0 then
+    raise exception 'single-occurrence activity and TeachingSession boundaries do not share a locking invariant';
+  end if;
+
+  if position('SUSPENSION' in occurrence_activity_guard_definition) = 0
+     or position('HOLIDAY' in occurrence_activity_guard_definition) = 0
+     or position('CLOSURE' in occurrence_activity_guard_definition) = 0 then
+    raise exception 'single-occurrence activity guard does not reject calendar-suppressed dates';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_trigger
+    where tgrelid = 'public.timetable_exceptions'::regclass
+      and tgname = 'timetable_exceptions_atomic_guard'
+      and not tgisinternal
+      and (tgtype & 4) <> 0
+      and (tgtype & 16) <> 0
+      and (tgtype & 8) = 0
+  ) then
+    raise exception 'timetable exception atomic guard must cover INSERT/UPDATE without blocking DELETE cascades';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_trigger
+    where tgrelid = 'public.teaching_sessions'::regclass
+      and tgname = 'teaching_sessions_lock_timetable_slot'
+      and not tgisinternal
+  ) then
+    raise exception 'TeachingSession timetable slot lock trigger missing';
   end if;
 
   select count(*)

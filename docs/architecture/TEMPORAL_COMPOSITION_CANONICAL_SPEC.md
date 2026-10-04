@@ -225,6 +225,7 @@ interface TemporalExceptionReadModel {
   disciplineId?: string | null
   title?: string | null
   note?: string | null
+  activityKind?: 'THEORY' | 'DRAWING_PROJECT' | 'PRACTICAL_LAB' | 'ASSESSMENT' | 'OTHER' | null
   sourceKind: 'TEACHER' | 'INSTITUTION' | 'IMPORT'
 }
 ```
@@ -237,7 +238,9 @@ Regole:
 4. `ADDED` crea una occorrenza puntuale non ricorrente;
 5. ogni eccezione è reversibile/auditabile;
 6. la proiezione espone `exception_state` e provenance completa;
-7. una modifica strutturale futura usa invece il lifecycle/versioning dell'Orario.
+7. una modifica strutturale futura usa invece il lifecycle/versioning dell'Orario;
+8. la tipologia didattica dello slot resta il default ricorrente, mentre una variazione `ACTIVITY_KIND_CHANGED` può valere per una sola occorrenza;
+9. una variazione puntuale della tipologia non riscrive lo slot settimanale e, dopo la registrazione della TeachingSession collegata, non è più modificabile.
 
 ## 11. Calendario operativo del docente
 
