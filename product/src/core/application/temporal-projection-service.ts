@@ -27,7 +27,7 @@ export type ProjectedOccurrence = {
   calendarEventId: string | null
   calendarState: ProjectedCalendarState
   exceptionState: ProjectedExceptionState
-  activityKind: TimetableActivityKind | null
+  activityKind?: TimetableActivityKind | null
   provenance: string[]
 }
 
