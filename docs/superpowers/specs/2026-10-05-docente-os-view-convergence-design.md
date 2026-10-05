@@ -17,6 +17,13 @@ The tranche addresses two concrete defects observed during the view audit and ex
 
 The goal is not to make thirty-four screens merely prettier. The goal is to make them behave as parts of one professional teacher-first product.
 
+A benchmark against mature mobile productivity patterns supports the overall direction while refining three decisions before implementation:
+
+- use all five mobile navigation slots intentionally;
+- expose Home as an explicit primary destination;
+- replace the residual label `Altro` with the intentional hub label `Naviga`;
+- treat installation as a device/app concern under `App e dispositivo`, not as an essential setup area.
+
 ## 2. Product principle
 
 Canonical Docente OS interaction grammar:
@@ -30,7 +37,7 @@ Home, Oggi, Classe and Orario are the current reference surfaces. Less mature vi
 ### 3.1 In scope
 
 - mobile shell and bottom navigation;
-- mobile secondary navigation (`Altro`);
+- mobile secondary navigation (`Naviga`);
 - Settings information architecture and mobile presentation;
 - terminology used in Settings;
 - readiness semantics for required versus optional setup;
@@ -54,31 +61,41 @@ Home, Oggi, Classe and Orario are the current reference surfaces. Less mature vi
 
 ### 4.1 Primary destinations
 
-The mobile bottom navigation keeps exactly four operational destinations:
+The mobile bottom navigation uses exactly five intentional destinations:
 
+- Home
 - Oggi
 - Classi
 - Orario
-- Altro
+- Naviga
 
-Home remains reachable from the mobile brand/header affordance and continues to act as the recomposition surface rather than a duplicate operational destination.
+The distinction between Home and Oggi is semantic and must remain explicit:
+
+- **Home** is the recomposition surface: overall context, what matters now, continuity across work areas;
+- **Oggi** is the operational day view: the teacher's chronological work for the current day.
+
+`Naviga` is not a residual overflow bucket. It is the structured access point to less frequent but still first-class product areas.
 
 ### 4.2 Layout rule
 
-The bottom navigation must not encode a fixed number of columns independent of the rendered destinations. Column count must derive from the number of rendered primary items so that adding or removing a destination cannot leave an empty slot.
+The bottom navigation must not encode a fixed number of columns independently from the rendered destinations. Column count must derive from the number of rendered primary items so that adding or removing a destination cannot leave an empty slot.
+
+For the current approved information architecture, five destinations are rendered and the layout therefore resolves to five equal columns.
 
 Acceptance criteria:
 
 - no visible empty navigation slot at supported mobile widths;
+- exactly five approved destinations are visible in the current configuration;
 - all visible items receive equal available width;
 - all interactive targets remain at least 44 × 44 CSS px;
 - safe-area insets remain respected;
 - active state and `aria-current` remain correct;
-- keyboard/focus behavior remains valid where the layout is reachable by keyboard.
+- keyboard/focus behavior remains valid where the layout is reachable by keyboard;
+- Home is directly reachable through its own labeled navigation item rather than requiring discovery of a brand-mark shortcut.
 
-### 4.3 `Altro` information architecture
+### 4.3 `Naviga` information architecture
 
-`Altro` is a secondary navigation surface, not a catch-all bucket. It is grouped as follows:
+`Naviga` is a secondary navigation hub, not a catch-all bucket. It is grouped as follows:
 
 **Prepara e insegna**
 - Progetta
@@ -116,8 +133,10 @@ The page becomes a readable setup/maintenance index with four conceptual groups.
 - Settimana scolastica
 - Libri di testo
 
-**Docente OS sul dispositivo**
-- Installazione
+**App e dispositivo**
+- Docente OS su questo dispositivo
+- stato installazione/applicazione
+- accesso all'azione di installazione browser-native quando disponibile
 - Accessi rapidi Home
 
 **Identità e sicurezza**
@@ -129,6 +148,7 @@ Rename Settings labels for disambiguation:
 
 - `Classi` → `Classi assegnate`
 - `Organizzazione scolastica` → `Settimana scolastica`
+- `Installazione` → `App e dispositivo`
 
 The main navigation destination `Classi` retains its current name because it represents operational class work, not setup.
 
@@ -159,12 +179,14 @@ Example:
 Optional areas:
 
 - Libri di testo
-- Installazione
+- App e dispositivo
 - Accessi rapidi Home
 
 Optional areas must not increment the essential readiness numerator or denominator. Their state is reported separately, for example:
 
 > 2 opzioni facoltative disponibili
+
+`App e dispositivo` may expose a device/app state such as `Installato`, `Disponibile per l'installazione`, `Aperto nel browser` or an equivalent supported state, but it remains outside essential readiness.
 
 Optional items may still have their own state (`not configured`, `configured`, `review needed`) when useful, but they do not block essential readiness.
 
@@ -189,6 +211,8 @@ Mobile Settings uses a vertical, grouped index. Each row contains, in this order
 The next essential action, when one exists, is placed before the complete index.
 
 Long configuration sections use progressive disclosure or dedicated subviews where already available. The page must not require horizontal swiping to discover setup categories.
+
+`App e dispositivo` must be discoverable in the same vertical hierarchy as the other settings groups, without contributing to essential setup completeness.
 
 ## 8. Shared presentation primitives
 
@@ -301,8 +325,10 @@ Where applicable:
 Behavioral changes follow RED → GREEN → relevant suite → full qualifying suite. Tests are added before implementation for:
 
 - dynamic bottom-navigation layout semantics;
+- exact approved primary navigation membership: Home, Oggi, Classi, Orario, Naviga;
 - Settings essential/optional readiness calculations;
 - Settings grouping and discoverability contracts;
+- `App e dispositivo` exclusion from essential readiness;
 - any new shared primitive with behavior rather than pure presentation.
 
 ## 14. Implementation sequence
@@ -310,13 +336,15 @@ Behavioral changes follow RED → GREEN → relevant suite → full qualifying s
 The implementation plan must preserve this dependency order:
 
 1. **DOS-VIEW-CONV-01A — Mobile shell**
-   - dynamic four-item bottom navigation;
-   - secondary navigation grouping;
+   - five intentional mobile destinations: Home, Oggi, Classi, Orario, Naviga;
+   - dynamic bottom-navigation layout;
+   - `Naviga` secondary grouping;
    - mobile shell tests.
 
 2. **DOS-VIEW-CONV-01B — Settings IA/model**
    - essential vs optional semantics;
-   - Installazione in the Settings index;
+   - `App e dispositivo` in the Settings index;
+   - install/device state kept outside essential readiness;
    - Account/security linked destination;
    - terminology changes;
    - model tests.
@@ -361,10 +389,11 @@ Implementation must:
 
 DOS-VIEW-CONV-01 is complete only when all of the following are true:
 
-- mobile bottom navigation has no empty slot and remains accessible/responsive;
-- `Altro` has the defined information architecture;
+- mobile bottom navigation contains Home, Oggi, Classi, Orario and Naviga with no empty slot and remains accessible/responsive;
+- Home and Oggi remain semantically distinct and independently reachable;
+- `Naviga` has the defined information architecture;
 - Settings distinguishes essential and optional setup correctly;
-- Installazione is discoverable from Settings;
+- `App e dispositivo` is discoverable from Settings and does not alter essential readiness;
 - mobile Settings no longer relies on a horizontal category carousel;
 - Settings terminology disambiguates setup from operational destinations;
 - targeted shared primitives are consolidated without unnecessary abstraction;
@@ -381,7 +410,7 @@ Stop and require a new design decision if implementation reveals that a requeste
 
 - a new authority boundary;
 - destructive data migration;
-- a new major navigation concept beyond the four-primary-plus-Altro model;
+- a new major navigation concept beyond the approved five-destination model plus the `Naviga` hub;
 - changes to timetable domain behavior;
 - activation of a deferred runtime capability;
 - a new subsystem rather than convergence of an existing one.
