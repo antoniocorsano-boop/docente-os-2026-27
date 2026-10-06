@@ -168,7 +168,7 @@ export function buildSettingsExperienceModel(input: {
       kind: 'OPTIONAL',
       group: 'device',
       summary: 'Installazione e comportamento dell’app su questo dispositivo.',
-      href: '#app-dispositivo',
+      href: '#installazione',
       nextAction: 'Controlla app e dispositivo',
     },
     {
