@@ -5,19 +5,24 @@ const email = process.env.E2E_EMAIL ?? 'docente-os-e2e-2dbf49e1@example.invalid'
 const password = process.env.E2E_PASSWORD
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://gnshgapmwyjamhmlikeg.supabase.co'
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L'
-const sourceLocator = 'x5-e2e-uda-source'
+const runId = process.env.GITHUB_RUN_ID ?? 'local'
+const sourceTitle = `X5B E2E — UDA fonte controllata — ${runId}`
+const sourceBody = `# X5B E2E — UDA fonte controllata\n\nFonte tecnica creata dal run ${runId} per verificare l’export professionale senza dipendere da fixture permanenti.`
 
 if (!password) throw new Error('E2E_PASSWORD is required for the authenticated X5B acceptance test')
 
 test('X5B export: saved immutable version, provenance, no write and explicit print', async ({ page }) => {
   const identity = await authenticatedSupabase()
-  const source = await sourceFixture(identity)
-  await cleanupAuthoredDocuments(identity, source.id)
   await login(page)
 
+  let sourceId = null
   let documentId = null
+
   try {
-    await page.goto(`/progetta/documenti/nuovo/${source.id}`)
+    sourceId = await createSourceFixture(page)
+    await cleanupAuthoredDocuments(identity, sourceId)
+
+    await page.goto(`/progetta/documenti/nuovo/${sourceId}`)
     await Promise.all([
       page.waitForURL(/\/progetta\/documenti\/[0-9a-f-]+$/, { timeout: 30_000 }),
       page.getByRole('button', { name: 'Inizia documento di lavoro' }).click(),
@@ -63,8 +68,11 @@ test('X5B export: saved immutable version, provenance, no write and explicit pri
     await expect(page.locator('.udaExportDocument')).toBeVisible()
     await page.emulateMedia({ media: 'screen' })
   } finally {
-    await cleanupAuthoredDocuments(identity, source.id)
-    expect(await authoredDocuments(identity, source.id)).toHaveLength(0)
+    if (sourceId) {
+      await cleanupAuthoredDocuments(identity, sourceId)
+      expect(await authoredDocuments(identity, sourceId)).toHaveLength(0)
+      await deleteSourceFixture(page, sourceId)
+    }
   }
 })
 
@@ -82,6 +90,35 @@ async function login(page) {
   ])
 }
 
+async function createSourceFixture(page) {
+  await page.goto('/knowledge')
+  const capture = page.locator('details.knowledgeCaptureDisclosure')
+  await expect(capture).toBeVisible()
+  if (await capture.getAttribute('open') === null) await capture.locator(':scope > summary').click()
+  await expect(capture).toHaveAttribute('open', '')
+  await page.locator('input[name="title"]').fill(sourceTitle)
+  await page.locator('textarea[name="text"]').fill(sourceBody)
+
+  await Promise.all([
+    page.waitForURL(/\/knowledge\/[^/?#]+$/, { timeout: 60_000 }),
+    page.getByRole('button', { name: 'Salva e organizza' }).click(),
+  ])
+
+  const sourceId = assetIdFromUrl(page.url())
+  const contextForm = page.locator('form.contextForm')
+  await expect(contextForm).toBeVisible()
+  await contextForm.locator('select[name="contentCategory"]').selectOption('UDA')
+  await contextForm.locator('input[name="disciplines"]').fill('Tecnologia')
+  await contextForm.locator('input[name="classLabels"]').fill('1A')
+  await expect(contextForm.locator('input[name="contextStatus"]')).toHaveValue('REVIEWED')
+  await Promise.all([
+    page.waitForURL(new RegExp(`/knowledge/${escapeRegExp(sourceId)}\\?context=updated$`), { timeout: 30_000 }),
+    contextForm.getByRole('button', { name: 'Salva correzione' }).click(),
+  ])
+
+  return sourceId
+}
+
 async function authenticatedSupabase() {
   const supabase = createClient(supabaseUrl, supabasePublishableKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -89,12 +126,6 @@ async function authenticatedSupabase() {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error || !data.user) throw new Error(`X5B fixture identity failed: ${error?.message ?? 'missing user'}`)
   return { supabase, userId: data.user.id }
-}
-
-async function sourceFixture({ supabase }) {
-  const { data, error } = await supabase.from('knowledge_assets').select('id').eq('source_locator', sourceLocator).eq('content_category', 'UDA').single()
-  if (error || !data) throw new Error(`X5B UDA source fixture missing: ${error?.message ?? 'no data'}`)
-  return data
 }
 
 async function authoredDocuments({ supabase }, sourceAssetId) {
@@ -116,4 +147,21 @@ async function cleanupAuthoredDocuments(identity, sourceAssetId) {
     const { data, error } = await identity.supabase.rpc('discard_authored_document', { target_document_id: document.id })
     if (error || data !== true) throw new Error(`X5B authored cleanup failed: ${error?.message ?? 'not deleted'}`)
   }
+}
+
+async function deleteSourceFixture(page, sourceAssetId) {
+  const response = await page.request.delete(`/api/knowledge/${encodeURIComponent(sourceAssetId)}`)
+  if (response.status() === 204 || response.status() === 404) return
+  const body = await response.text().catch(() => '')
+  throw new Error(`X5B source cleanup failed for ${sourceAssetId}: HTTP ${response.status()} ${body}`)
+}
+
+function assetIdFromUrl(url) {
+  const match = new URL(url).pathname.match(/^\/knowledge\/([^/?#]+)$/)
+  if (!match) throw new Error(`Knowledge asset id not found in URL: ${url}`)
+  return decodeURIComponent(match[1])
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
