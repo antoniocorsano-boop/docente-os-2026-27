@@ -121,6 +121,21 @@
       "testFiles": [
         "product/src/app/share-target/share-target-feedback.test.ts"
       ]
+    },
+    {
+      "id": "annual-plan-progress-write",
+      "critical": true,
+      "sourcePatterns": [
+        "product/src/app/piano-annuale/AnnualPlanClient.tsx",
+        "product/src/app/piano-annuale/actions.ts",
+        "product/src/core/infrastructure/supabase/supabase-annual-plan-execution-repository.ts"
+      ],
+      "feedbackFiles": [
+        "product/src/app/piano-annuale/AnnualPlanClient.tsx"
+      ],
+      "testFiles": [
+        "product/src/app/piano-annuale/model.test.ts"
+      ]
     }
   ]
 }
