@@ -5,11 +5,10 @@ import { useEffect, useMemo, useState } from 'react'
 import type { LessonMaterialRenderBundle } from '@/core/presentation/lesson-material-renderer'
 import type { LessonReplanningDisplayProjection } from '@/core/presentation/lesson-replanning-decision'
 import type { RoleViewSnapshot } from '@/core/presentation/roleview-governance'
+import { MATERIAL_VIEW_OPTIONS, type MaterialView } from './lesson-materials-view-model'
 import { RoleViewTeacherPanel } from './roleview-teacher-panel'
 import styles from './lesson-materials.module.css'
 import visualStyles from './lesson-materials-visual.module.css'
-
-type MaterialView = 'lim' | 'visuale' | 'scheda' | 'docente'
 
 export default function LessonMaterialsClient({
   bundle,
@@ -40,13 +39,7 @@ export default function LessonMaterialsClient({
   const currentScreen = screens[activeScreen] ?? screens[0]
   const isFirst = activeScreen === 0
   const isLast = activeScreen >= screens.length - 1
-  const viewTitle = view === 'lim'
-    ? 'Proietta'
-    : view === 'visuale'
-      ? 'Mappa visuale'
-      : view === 'scheda'
-        ? 'Scheda studenti'
-        : 'Guida docente'
+  const viewTitle = MATERIAL_VIEW_OPTIONS.find((option) => option.id === view)?.label ?? 'Proietta'
 
   useEffect(() => {
     if (view !== 'lim') return
@@ -85,11 +78,18 @@ export default function LessonMaterialsClient({
 
       <RoleViewTeacherPanel roleView={roleView} />
 
-      <nav className={`${styles.viewNav} ${visualStyles.fourViews}`} aria-label="Scegli la vista dei materiali">
-        <button type="button" aria-pressed={view === 'lim'} onClick={() => setView('lim')}>Proietta</button>
-        <button type="button" aria-pressed={view === 'visuale'} onClick={() => setView('visuale')}>Mappa visuale</button>
-        <button type="button" aria-pressed={view === 'scheda'} onClick={() => setView('scheda')}>Scheda studenti</button>
-        <button type="button" aria-pressed={view === 'docente'} onClick={() => setView('docente')}>Guida docente</button>
+      <nav className={styles.viewNav} aria-label="Scegli la vista dei materiali">
+        {MATERIAL_VIEW_OPTIONS.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            data-priority={option.priority}
+            aria-pressed={view === option.id}
+            onClick={() => setView(option.id)}
+          >
+            {option.label}
+          </button>
+        ))}
       </nav>
 
       <div className={styles.viewHeading}>
