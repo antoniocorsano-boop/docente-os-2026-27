@@ -3,6 +3,7 @@ import path from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import { expect, test } from '@playwright/test'
 import { loginE2E, requireE2ECredentials } from './support/e2e-auth.mjs'
+import { generateTotp, governedMfaRetryJitterMs, millisecondsUntilNextTotpStep } from './support/totp.mjs'
 
 requireE2ECredentials()
 
@@ -24,10 +25,60 @@ for (const [name, value] of Object.entries({
   if (!value) throw new Error(`${name} is required for DOS-M4 runtime canary`)
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
 function writeReceipt(receipt) {
   const outputDir = path.join(process.cwd(), 'test-results', 'dos-m4-canary')
   fs.mkdirSync(outputDir, { recursive: true })
   fs.writeFileSync(path.join(outputDir, 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`, 'utf8')
+}
+
+async function elevateSupabaseToGovernedAal2(supabase) {
+  const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors()
+  if (factorsError) throw new Error(`Could not list governed canary MFA factors: ${factorsError.message}`)
+
+  const verifiedTotp = (factorsData?.totp ?? []).filter((factor) => factor.status === 'verified')
+  const factor = verifiedTotp.find((candidate) => candidate.friendly_name === 'Docente OS CI') ?? verifiedTotp[0]
+  if (!factor) throw new Error('Governed canary account has no verified TOTP factor')
+
+  // Browser login has just consumed a TOTP code. Move to the next step before
+  // elevating the independent RLS client so replay protection cannot couple the probes.
+  await sleep(millisecondsUntilNextTotpStep() + 750 + governedMfaRetryJitterMs())
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: factor.id })
+    if (challengeError || !challenge?.id) {
+      throw new Error(`Could not start governed canary MFA challenge: ${challengeError?.message ?? 'missing challenge id'}`)
+    }
+
+    const code = generateTotp(process.env.E2E_TOTP_SECRET)
+    const { error: verifyError } = await supabase.auth.mfa.verify({
+      factorId: factor.id,
+      challengeId: challenge.id,
+      code,
+    })
+
+    if (!verifyError) {
+      const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (aalError) throw new Error(`Could not verify governed canary AAL: ${aalError.message}`)
+      if (aal?.currentLevel === 'aal2') return
+    }
+
+    if (attempt === 3) {
+      throw new Error(`Governed canary RLS client did not reach AAL2: ${verifyError?.message ?? 'unknown verification failure'}`)
+    }
+    await sleep(millisecondsUntilNextTotpStep() + 750 + governedMfaRetryJitterMs())
+  }
+}
+
+async function readWorkspaceContext(supabase) {
+  const { data, error } = await supabase.rpc('current_workspace_context')
+  if (error) throw new Error(`Could not read current workspace context through governed RLS: ${error.message}`)
+  const row = data?.[0]
+  if (!row?.workspace_id || !row?.academic_year_id) {
+    throw new Error(`Governed RLS session returned no active workspace/year context: ${JSON.stringify(data)}`)
+  }
+  return row
 }
 
 async function readVersions(supabase, workspaceId, academicYearId) {
@@ -39,16 +90,6 @@ async function readVersions(supabase, workspaceId, academicYearId) {
     .order('created_at', { ascending: true })
   if (error) throw new Error(`Could not read timetable versions through RLS: ${error.message}`)
   return data ?? []
-}
-
-async function readVersionById(supabase, versionId) {
-  const { data, error } = await supabase
-    .from('timetable_versions')
-    .select('id,workspace_id,academic_year_id,label,status,effective_from,effective_to,created_at,updated_at')
-    .eq('id', versionId)
-    .single()
-  if (error) throw new Error(`Could not read timetable version ${versionId} through RLS: ${error.message}`)
-  return data
 }
 
 async function markerSlotCount(supabase, versionId) {
@@ -71,18 +112,25 @@ async function waitForLifecycle(supabase, workspaceId, academicYearId, activated
     if (activated?.status === 'ACTIVE' && previous?.status === 'ARCHIVED' && nextDraft) {
       return { versions: last, activated, previous, nextDraft }
     }
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    await sleep(500)
   }
   throw new Error(`Timetable lifecycle did not converge after activation: ${JSON.stringify(last)}`)
 }
 
 test('DOS-M4-01 runtime canary: Orario persists, activates and preserves lineage', async ({ page, request }) => {
-  test.setTimeout(240_000)
+  test.setTimeout(300_000)
 
   const buildInfoResponse = await request.get('/api/build-info')
   expect(buildInfoResponse.ok()).toBeTruthy()
   const buildInfo = await buildInfoResponse.json()
   expect(buildInfo.commit).toBe(expectedRuntimeSha)
+
+  await loginE2E(page)
+
+  await page.goto('/orario/aggiorna?fase=data')
+  await expect(page.getByRole('heading', { name: 'Da quando deve valere?' })).toBeVisible()
+  const draftVersionId = await page.locator('input[name="versionId"]').inputValue()
+  expect(draftVersionId).toBeTruthy()
 
   const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -92,17 +140,13 @@ test('DOS-M4-01 runtime canary: Orario persists, activates and preserves lineage
     password: process.env.E2E_PASSWORD,
   })
   if (signInError) throw new Error(`Governed canary RLS sign-in failed: ${signInError.message}`)
+  await elevateSupabaseToGovernedAal2(supabase)
 
-  await loginE2E(page)
-
-  await page.goto('/orario/aggiorna?fase=data')
-  await expect(page.getByRole('heading', { name: 'Da quando deve valere?' })).toBeVisible()
-  const draftVersionId = await page.locator('input[name="versionId"]').inputValue()
-  expect(draftVersionId).toBeTruthy()
-
-  const draftBefore = await readVersionById(supabase, draftVersionId)
+  const workspaceContext = await readWorkspaceContext(supabase)
+  const versionsBefore = await readVersions(supabase, workspaceContext.workspace_id, workspaceContext.academic_year_id)
+  const draftBefore = versionsBefore.find((version) => version.id === draftVersionId)
+  expect(draftBefore, `UI draft ${draftVersionId} must be visible through the same governed AAL2 RLS context`).toBeTruthy()
   expect(draftBefore.status).toBe('DRAFT')
-  const versionsBefore = await readVersions(supabase, draftBefore.workspace_id, draftBefore.academic_year_id)
   const previousActive = versionsBefore.find((version) => version.status === 'ACTIVE')
   expect(previousActive, 'La canary L4 richiede una sostituzione reale di una versione ACTIVE esistente').toBeTruthy()
   expect(previousActive.id).not.toBe(draftVersionId)
@@ -154,8 +198,8 @@ test('DOS-M4-01 runtime canary: Orario persists, activates and preserves lineage
 
   const lifecycle = await waitForLifecycle(
     supabase,
-    draftBefore.workspace_id,
-    draftBefore.academic_year_id,
+    workspaceContext.workspace_id,
+    workspaceContext.academic_year_id,
     draftVersionId,
     previousActive.id,
   )
