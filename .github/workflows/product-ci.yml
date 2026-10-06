@@ -213,7 +213,53 @@ jobs:
           node --check e2e/experience/surfaces.spec.mjs
           node --check playwright.experience.config.mjs
       - run: npm ci --no-audit --no-fund
-      - run: npm test
+      - name: Run product tests
+        id: product_tests
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p test-results/product-ci
+          npm test 2>&1 | tee test-results/product-ci/npm-test.log
+          status=${PIPESTATUS[0]}
+          printf '%s\n' "$status" > test-results/product-ci/exit-code.txt
+          grep -nE 'not ok|AssertionError|ERR_ASSERTION|Error:|FAIL|failed|failure' test-results/product-ci/npm-test.log > test-results/product-ci/failure-index.txt || true
+          exit "$status"
+      - name: Summarize product test failure
+        if: failure() && steps.product_tests.outcome == 'failure'
+        shell: bash
+        run: |
+          log=test-results/product-ci/npm-test.log
+          index=test-results/product-ci/failure-index.txt
+          {
+            echo '## Product CI — test failure'
+            echo
+            echo '- Exact head: `${{ github.event.pull_request.head.sha || github.sha }}`'
+            echo '- Command: `npm test`'
+            echo '- Job: `validate`'
+            echo
+            echo '### Failure index'
+            echo '```text'
+            if [ -s "$index" ]; then
+              tail -n 80 "$index"
+            else
+              echo 'No indexed failure marker found; inspect the raw log excerpt below.'
+            fi
+            echo '```'
+            echo
+            echo '### Raw log tail'
+            echo '```text'
+            tail -n 120 "$log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo '::error title=Product tests failed::npm test failed; see Product CI summary and product-test-diagnostics artifact.'
+      - name: Upload product test diagnostics
+        if: failure() && steps.product_tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: product-test-diagnostics-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 30
+          path: product/test-results/product-ci/
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
