@@ -43,7 +43,7 @@ export default async function AccountMfaPage() {
     >
       <div className="grid gap-6 py-2 sm:py-4">
         <header className="grid gap-2">
-          <p className="m-0 text-xs font-semibold text-primary">ACCOUNT E SICUREZZA · MFA</p>
+          <p className="m-0 text-xs font-semibold text-primary">ACCOUNT E SICUREZZA · SECONDO FATTORE</p>
           <h1 className="m-0 text-3xl font-bold tracking-[-0.03em]">Gestisci il secondo fattore</h1>
           <p className="m-0 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
             Aggiungi un autenticatore prima di sostituire quello in uso. Docente OS impedisce la rimozione dell’ultimo fattore verificato.
@@ -52,8 +52,8 @@ export default async function AccountMfaPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Autenticatori TOTP</CardTitle>
-            <CardDescription>La gestione è disponibile soltanto da una sessione già verificata ad AAL2.</CardDescription>
+            <CardTitle>Autenticatori</CardTitle>
+            <CardDescription>La gestione è disponibile soltanto dopo aver confermato il secondo fattore.</CardDescription>
           </CardHeader>
           <CardContent>
             <MfaManager initialFactors={initialFactors} />
