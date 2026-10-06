@@ -3,8 +3,10 @@ import { buildTextbookSettingsCoverage, type TextbookAdoption } from '@/core/dom
 import type { TeachingAssignment } from '@/core/domain/timetable'
 import type { TeacherWorkspaceSettings, TeachingDiscipline } from '@/core/domain/teacher-settings'
 
-export type SettingsAreaKey = 'context' | 'disciplines' | 'classes' | 'assignments' | 'textbooks' | 'organization' | 'homeLinks'
-export type SettingsAreaStatus = 'COMPLETE' | 'INCOMPLETE' | 'REVIEW' | 'OPTIONAL'
+export type SettingsAreaKey = 'context' | 'disciplines' | 'classes' | 'assignments' | 'organization' | 'textbooks' | 'appDevice' | 'homeLinks' | 'account'
+export type SettingsAreaStatus = 'COMPLETE' | 'INCOMPLETE' | 'REVIEW' | 'OPTIONAL' | 'LINK'
+export type SettingsAreaKind = 'ESSENTIAL' | 'OPTIONAL' | 'LINK'
+export type SettingsGroupKey = 'assignment' | 'organization' | 'device' | 'identity'
 
 export type SettingsArea = {
   key: SettingsAreaKey
@@ -12,6 +14,8 @@ export type SettingsArea = {
   label: string
   question: string
   status: SettingsAreaStatus
+  kind: SettingsAreaKind
+  group: SettingsGroupKey
   summary: string
   href: string
   nextAction: string
@@ -79,9 +83,9 @@ export function buildSettingsExperienceModel(input: {
       label: 'Tu e la scuola',
       question: 'Dove insegni?',
       status: contextComplete ? 'COMPLETE' : 'INCOMPLETE',
-      summary: contextComplete
-        ? input.settings.schoolName
-        : 'Completa istituto e tipo di scuola.',
+      kind: 'ESSENTIAL',
+      group: 'assignment',
+      summary: contextComplete ? input.settings.schoolName : 'Completa istituto e tipo di scuola.',
       href: '#contesto',
       nextAction: contextComplete ? 'Rivedi il contesto' : 'Completa il contesto',
     },
@@ -91,6 +95,8 @@ export function buildSettingsExperienceModel(input: {
       label: 'Discipline',
       question: 'Che cosa insegni?',
       status: activeDisciplines.length > 0 ? 'COMPLETE' : 'INCOMPLETE',
+      kind: 'ESSENTIAL',
+      group: 'assignment',
       summary: activeDisciplines.length > 0
         ? `${activeDisciplines.length} ${activeDisciplines.length === 1 ? 'disciplina attiva' : 'discipline attive'}`
         : 'Aggiungi almeno una disciplina attiva.',
@@ -100,9 +106,11 @@ export function buildSettingsExperienceModel(input: {
     {
       key: 'classes',
       number: 3,
-      label: 'Classi',
+      label: 'Classi assegnate',
       question: 'Con quali classi lavori?',
       status: classStatus,
+      kind: 'ESSENTIAL',
+      group: 'assignment',
       summary: classesSummary(input.sections),
       href: '#classi',
       nextAction: classStatus === 'COMPLETE' ? 'Gestisci le classi' : classStatus === 'REVIEW' ? 'Controlla le classi' : 'Configura le classi',
@@ -113,6 +121,8 @@ export function buildSettingsExperienceModel(input: {
       label: 'Cattedra',
       question: 'In quali classi insegni cosa e per quante ore?',
       status: assignmentStatus,
+      kind: 'ESSENTIAL',
+      group: 'assignment',
       summary: assignmentsSummary({
         assignmentCount: activeAssignments.length,
         sectionCount: input.sections.length,
@@ -124,48 +134,79 @@ export function buildSettingsExperienceModel(input: {
       nextAction: assignmentStatus === 'COMPLETE' ? 'Gestisci la cattedra' : assignmentStatus === 'REVIEW' ? 'Controlla la cattedra' : 'Completa la cattedra',
     },
     {
-      key: 'textbooks',
+      key: 'organization',
       number: 5,
+      label: 'Settimana scolastica',
+      question: 'Com’è normalmente organizzata la settimana?',
+      status: organizationComplete ? 'COMPLETE' : 'INCOMPLETE',
+      kind: 'ESSENTIAL',
+      group: 'organization',
+      summary: organizationComplete
+        ? `${input.settings.teachingWeekdays.length} giorni · ${input.settings.dailyPeriodCount} periodi · dalle ${input.settings.schoolDayStart.slice(0, 5)}`
+        : 'Controlla giorni, orario di inizio e durata abituale dei periodi.',
+      href: '#organizzazione',
+      nextAction: organizationComplete ? 'Rivedi la settimana' : 'Completa la settimana',
+    },
+    {
+      key: 'textbooks',
+      number: 6,
       label: 'Libri di testo',
       question: 'Quali libri usi in ciascuna classe e disciplina?',
       status: textbookStatus,
+      kind: 'OPTIONAL',
+      group: 'organization',
       summary: textbooksSummary(textbookCoverage),
       href: '/impostazioni/libri-di-testo',
       nextAction: textbookStatus === 'REVIEW' ? 'Controlla i libri proposti' : 'Gestisci i libri di testo',
     },
     {
-      key: 'organization',
-      number: 6,
-      label: 'Organizzazione scolastica',
-      question: 'Com’è normalmente organizzata la settimana?',
-      status: organizationComplete ? 'COMPLETE' : 'INCOMPLETE',
-      summary: organizationComplete
-        ? `${input.settings.teachingWeekdays.length} giorni · ${input.settings.dailyPeriodCount} periodi · dalle ${input.settings.schoolDayStart.slice(0, 5)}`
-        : 'Controlla giorni, orario di inizio e durata abituale dei periodi.',
-      href: '#organizzazione',
-      nextAction: organizationComplete ? 'Rivedi l’organizzazione' : 'Completa l’organizzazione',
+      key: 'appDevice',
+      number: 7,
+      label: 'App e dispositivo',
+      question: 'Come vuoi usare Docente OS su questo dispositivo?',
+      status: 'OPTIONAL',
+      kind: 'OPTIONAL',
+      group: 'device',
+      summary: 'Installazione e comportamento dell’app su questo dispositivo.',
+      href: '#app-dispositivo',
+      nextAction: 'Controlla app e dispositivo',
     },
     {
       key: 'homeLinks',
-      number: 7,
-      label: 'Accessi Home',
+      number: 8,
+      label: 'Accessi rapidi Home',
       question: 'Quali risorse vuoi trovare subito nella tua Home?',
       status: 'OPTIONAL',
+      kind: 'OPTIONAL',
+      group: 'device',
       summary: 'Configura Oggi, Sezione, Progettazione, Diario e Anno di prova nel tuo workspace.',
       href: '/impostazioni/collegamenti',
       nextAction: 'Configura gli accessi Home',
     },
+    {
+      key: 'account',
+      number: 9,
+      label: 'Account e sicurezza',
+      question: 'Vuoi gestire identità di accesso e sicurezza?',
+      status: 'LINK',
+      kind: 'LINK',
+      group: 'identity',
+      summary: 'Gestisci accesso, password, MFA e sessioni nella sezione dedicata.',
+      href: '/account',
+      nextAction: 'Apri Account e sicurezza',
+    },
   ]
 
-  const readyCount = areas.filter((area) => area.status === 'COMPLETE' || area.status === 'OPTIONAL').length
-  const nextArea = areas.find((area) => area.status === 'INCOMPLETE')
-    ?? areas.find((area) => area.status === 'REVIEW')
+  const essentialAreas = areas.filter((area) => area.kind === 'ESSENTIAL')
+  const readyCount = essentialAreas.filter((area) => area.status === 'COMPLETE').length
+  const nextArea = essentialAreas.find((area) => area.status === 'INCOMPLETE')
+    ?? essentialAreas.find((area) => area.status === 'REVIEW')
     ?? null
 
   return {
     mode: nextArea ? 'GUIDED' : 'MAINTENANCE',
     readyCount,
-    totalCount: areas.length,
+    totalCount: essentialAreas.length,
     nextArea,
     areas,
   }
@@ -175,6 +216,7 @@ export function settingsAreaStatusLabel(status: SettingsAreaStatus) {
   if (status === 'COMPLETE') return 'Completo'
   if (status === 'INCOMPLETE') return 'Da completare'
   if (status === 'REVIEW') return 'Da controllare'
+  if (status === 'LINK') return 'Apri'
   return 'Facoltativo'
 }
 
