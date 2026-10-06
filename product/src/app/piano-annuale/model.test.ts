@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
 import test from 'node:test'
 import { buildBlocks } from './model'
+
+const annualPlanClientSource = fs.readFileSync(new URL('./AnnualPlanClient.tsx', import.meta.url), 'utf8')
+const annualPlanCssSource = fs.readFileSync(new URL('./annual-plan.css', import.meta.url), 'utf8')
 
 test('Prima follows the canonical B07-B15 alternation from CAN-PLAN-1', () => {
   const byId = new Map(buildBlocks('Prima').map((block) => [block.id, block]))
@@ -37,4 +41,14 @@ test('all annual plans still contain 33 blocks and 66 hours', () => {
     assert.equal(blocks.length, 33, grade)
     assert.equal(blocks.reduce((sum, block) => sum + block.hours, 0), 66, grade)
   }
+})
+
+test('Piano annuale has a dedicated mobile block list while retaining the desktop table and provenance disclosure', () => {
+  assert.match(annualPlanClientSource, /className="annualDesktopTable"/)
+  assert.match(annualPlanClientSource, /className="annualMobileBlockList"[^>]*role="list"/)
+  assert.match(annualPlanClientSource, /className="annualMobileBlockCard"[^>]*role="listitem"/)
+  assert.match(annualPlanCssSource, /\.annualMobileBlockList\{display:none\}/)
+  assert.match(annualPlanCssSource, /@media\(max-width:760px\)[\s\S]*\.annualDesktopTable\{display:none\}[\s\S]*\.annualMobileBlockList\{display:grid/)
+  assert.match(annualPlanClientSource, /Documento di riferimento/)
+  assert.match(annualPlanClientSource, /generazione \{source\.generationId\}/)
 })
