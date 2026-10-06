@@ -179,6 +179,11 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
           </section>
         </div>
       </details>
+
+      <aside className="calendarBoundary">
+        <strong>Calendario e Orario restano distinti</strong>
+        <span>Il Calendario registra date, sospensioni, scadenze e impegni reali. L’Orario resta lo schema ricorrente della settimana: consultarli insieme non modifica automaticamente nessuno dei due.</span>
+      </aside>
     </AppShell>
   )
 }
