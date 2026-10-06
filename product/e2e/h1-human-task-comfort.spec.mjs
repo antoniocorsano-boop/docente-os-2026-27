@@ -1,14 +1,10 @@
 import { expect, test } from '@playwright/test'
+import { loginE2E, requireE2ECredentials } from './support/e2e-auth.mjs'
 
-const email = process.env.E2E_EMAIL ?? 'docente-os-e2e-2dbf49e1@example.invalid'
-const password = process.env.E2E_PASSWORD
-
-if (!password) {
-  throw new Error('E2E_PASSWORD is required for the authenticated H1 acceptance test')
-}
+requireE2ECredentials()
 
 test('H1 mobile comfort: Piano annuale usa esposizione progressiva senza scroll laterale', async ({ page }) => {
-  await login(page)
+  await loginE2E(page)
   await page.goto('/piano-annuale')
 
   await expect(page.getByRole('heading', { name: 'Piano annuale' })).toBeVisible()
@@ -37,7 +33,7 @@ test('H1 mobile comfort: Piano annuale usa esposizione progressiva senza scroll 
 })
 
 test('H1 mobile comfort: Progetta mostra tutte le quattro fasi senza scroll laterale', async ({ page }) => {
-  await login(page)
+  await loginE2E(page)
   await page.goto('/progetta?grade=prima')
 
   await expect(page.getByRole('heading', { name: 'Progetta' })).toBeVisible()
@@ -61,13 +57,3 @@ test('H1 mobile comfort: Progetta mostra tutte le quattro fasi senza scroll late
 
   await page.screenshot({ path: 'test-results/h1-02-progetta-mobile.png', fullPage: true })
 })
-
-async function login(page) {
-  await page.goto('/login')
-  await page.locator('#email').fill(email)
-  await page.locator('#password').fill(password)
-  await Promise.all([
-    page.waitForURL(/\/workspace(?:$|\?)/, { timeout: 30_000 }),
-    page.getByRole('button', { name: 'Entra nel tuo spazio docente' }).click(),
-  ])
-}
