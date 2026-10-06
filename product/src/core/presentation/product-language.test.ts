@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
   assetKindLabel,
@@ -31,3 +32,31 @@ test('canonical and file-system titles are humanized without altering stored dat
   assert.equal(humanizeKnowledgeTitle('Idee per insegnare-anonimizzato.txt'), 'Idee per insegnare')
   assert.equal(humanizeKnowledgeTitle(null), 'Contenuto senza titolo')
 })
+
+test('account and authentication copy hides implementation jargon from ordinary teacher-facing surfaces', () => {
+  const login = source('../../app/login/page.tsx')
+  const account = source('../../app/account/page.tsx')
+  const mfaGate = source('../../app/mfa/page.tsx')
+  const mfaManagement = source('../../app/account/mfa/page.tsx')
+  const password = source('../../app/imposta-password/page.tsx')
+
+  assert.doesNotMatch(login, /servizio email di Supabase/i)
+  assert.doesNotMatch(login, /autorizzazioni applicative restano governate da Supabase e RLS/i)
+  assert.doesNotMatch(account, /identità è gestita da Supabase Auth/i)
+  assert.doesNotMatch(account, /autenticatore.*TOTP verificato/i)
+  assert.doesNotMatch(mfaGate, /passaggio ad AAL2/i)
+  assert.doesNotMatch(mfaManagement, /Autenticatori TOTP/i)
+  assert.doesNotMatch(mfaManagement, /sessione già verificata ad AAL2/i)
+  assert.doesNotMatch(password, /password resta gestita da Supabase Auth/i)
+  assert.doesNotMatch(password, /sessione MFA verificata/i)
+
+  assert.match(login, /accesso con password continua a funzionare normalmente/i)
+  assert.match(account, /secondo fattore/i)
+  assert.match(mfaGate, /codice temporaneo dell’autenticatore/i)
+  assert.match(mfaManagement, /autenticatore/i)
+  assert.match(password, /secondo fattore verificat/i)
+})
+
+function source(relativePath: string) {
+  return readFileSync(new URL(relativePath, import.meta.url), 'utf8')
+}
