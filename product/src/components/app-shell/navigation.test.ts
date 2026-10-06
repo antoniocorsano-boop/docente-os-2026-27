@@ -7,6 +7,7 @@ import {
   SECONDARY_NAVIGATION_GROUPS,
   navigationGroupItems,
   navigationItem,
+  workNavigationItems,
 } from './navigation'
 import {
   resolveLessonMaterialsEntrypoint,
@@ -36,6 +37,11 @@ test('DOS-VIEW-CONV-01A exposes Home, Oggi, Classi and Orario before the Naviga 
   assert.deepEqual(MOBILE_NAVIGATION_KEYS, ['home', 'today', 'classes', 'timetable'])
   assert.equal(MOBILE_NAVIGATION_KEYS.includes('home'), true)
   assert.equal(MOBILE_NAVIGATION_KEYS.includes('today'), true)
+})
+
+test('DOS-VIEW-CONV-01A keeps Home mobile-only in the primary work navigation', () => {
+  assert.deepEqual(workNavigationItems().map((item) => item.key), ['today', 'classes', 'timetable'])
+  assert.equal(workNavigationItems().some((item) => item.key === 'home'), false)
 })
 
 test('DOS-VIEW-CONV-01A Naviga follows the approved secondary information architecture', () => {
