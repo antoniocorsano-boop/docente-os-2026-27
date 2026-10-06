@@ -41,11 +41,11 @@
 - Produces primary mobile membership: `home`, `today`, `classes`, `timetable`, plus the `Naviga` trigger.
 - Produces approved `SECONDARY_NAVIGATION_GROUPS`: Prepara e insegna, Organizza, Trova, Configura.
 
-- [ ] Write failing tests asserting exact five mobile destinations, Home/Oggi distinction, no duplicated primary destinations in Naviga, correct active semantics, and layout derived from rendered item count.
-- [ ] Run focused tests and record RED caused by current three-item `WORK_NAVIGATION_KEYS` plus residual `Altro` behavior.
-- [ ] Implement the minimal navigation registry/AppShell changes; rename teacher-facing `Altro` hub to `Naviga` without changing domain-specific uses of “Altro”.
-- [ ] Run focused tests to GREEN.
-- [ ] Run relevant AppShell/browser/design tests and commit the independently reviewable slice.
+- [x] Write failing tests asserting exact five mobile destinations, Home/Oggi distinction, no duplicated primary destinations in Naviga, correct active semantics, and layout derived from rendered item count.
+- [x] Run focused tests and record RED caused by current three-item `WORK_NAVIGATION_KEYS` plus residual `Altro` behavior.
+- [x] Implement the minimal navigation registry/AppShell changes; rename teacher-facing `Altro` hub to `Naviga` without changing domain-specific uses of “Altro”.
+- [x] Run focused tests to GREEN.
+- [x] Run relevant AppShell/browser/design tests and commit the independently reviewable slice.
 
 ### Task 2: DOS-VIEW-CONV-01B — Settings IA and readiness model
 
@@ -59,11 +59,11 @@
 - Optional set: Libri di testo; App e dispositivo; Accessi rapidi Home.
 - `GUIDED` depends only on essential readiness/review state.
 
-- [ ] Write failing tests for 5/5 essential calculation, optional exclusion, GUIDED→MAINTENANCE transition, approved labels and account/security linked destination.
-- [ ] Run focused tests and record RED.
-- [ ] Implement minimal readiness/grouping model and terminology changes.
-- [ ] Run focused tests to GREEN.
-- [ ] Run Settings/product tests and commit.
+- [x] Write failing tests for 5/5 essential calculation, optional exclusion, GUIDED→MAINTENANCE transition, approved labels and account/security linked destination.
+- [x] Run focused tests and record RED.
+- [x] Implement minimal readiness/grouping model and terminology changes.
+- [x] Run focused tests to GREEN.
+- [x] Run Settings/product tests and commit.
 
 ### Task 3: DOS-VIEW-CONV-01C — Settings mobile presentation
 
