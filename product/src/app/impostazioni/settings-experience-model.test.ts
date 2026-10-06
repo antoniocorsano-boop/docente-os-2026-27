@@ -55,7 +55,7 @@ test('DOS-VIEW-CONV-01B exposes the approved Settings IA labels and linked desti
   assert.equal(labels.get('appDevice'), 'App e dispositivo')
   assert.equal(labels.get('homeLinks'), 'Accessi rapidi Home')
   assert.equal(labels.get('account'), 'Account e sicurezza')
-  assert.equal(hrefs.get('appDevice'), '#app-dispositivo')
+  assert.equal(hrefs.get('appDevice'), '#installazione')
   assert.equal(hrefs.get('account'), '/account')
 })
 
