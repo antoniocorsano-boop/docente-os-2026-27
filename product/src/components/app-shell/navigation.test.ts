@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
   MOBILE_NAVIGATION_KEYS,
@@ -37,6 +38,15 @@ test('DOS-VIEW-CONV-01A exposes Home, Oggi, Classi and Orario before the Naviga 
   assert.deepEqual(MOBILE_NAVIGATION_KEYS, ['home', 'today', 'classes', 'timetable'])
   assert.equal(MOBILE_NAVIGATION_KEYS.includes('home'), true)
   assert.equal(MOBILE_NAVIGATION_KEYS.includes('today'), true)
+})
+
+test('DOS-VIEW-CONV-01A derives mobile navigation columns from rendered children instead of a fixed count', () => {
+  const appShellCss = readFileSync(new URL('../../app/app-shell.css', import.meta.url), 'utf8')
+  const mobileRule = appShellCss.match(/\.dosBottomNav\{[^}]+\}/)?.[0] ?? ''
+
+  assert.match(mobileRule, /grid-auto-flow:column/)
+  assert.match(mobileRule, /grid-auto-columns:minmax\(0,1fr\)/)
+  assert.doesNotMatch(mobileRule, /grid-template-columns:repeat\(\d+/)
 })
 
 test('DOS-VIEW-CONV-01A keeps the primary work destinations coherent across desktop and mobile', () => {
