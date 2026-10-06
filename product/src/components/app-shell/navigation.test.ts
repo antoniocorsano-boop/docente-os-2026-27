@@ -42,7 +42,8 @@ test('DOS-VIEW-CONV-01A exposes Home, Oggi, Classi and Orario before the Naviga 
 
 test('DOS-VIEW-CONV-01A derives mobile navigation columns from rendered children instead of a fixed count', () => {
   const appShellCss = readFileSync(new URL('../../app/app-shell.css', import.meta.url), 'utf8')
-  const mobileRule = appShellCss.match(/\.dosBottomNav\{[^}]+\}/)?.[0] ?? ''
+  const bottomNavRules = appShellCss.match(/\.dosBottomNav\{[^}]+\}/g) ?? []
+  const mobileRule = bottomNavRules.find((rule) => /position:fixed/.test(rule)) ?? ''
 
   assert.match(mobileRule, /grid-auto-flow:column/)
   assert.match(mobileRule, /grid-auto-columns:minmax\(0,1fr\)/)
