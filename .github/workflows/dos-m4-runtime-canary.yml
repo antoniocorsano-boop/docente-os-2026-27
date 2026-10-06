@@ -20,6 +20,8 @@ env:
   E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
   E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
   E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
+  NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
   EXPECTED_RUNTIME_SHA: 39bce05fa2e87f3746ee3b6dcd7433065cb2d876
   EXPECTED_DEPLOY_ID: dep-db2ke2ajnfac73f3qoog
   CANARY_MARKER: DOS-M4-01-39bce05f-20261006
@@ -106,7 +108,7 @@ jobs:
         shell: bash
         run: |
           test -s test-results/dos-m4-canary/receipt.json
-          node -e "const r=require('./test-results/dos-m4-canary/receipt.json'); if(r.status!=='PASS'||r.binding?.exactHead!==process.env.EXPECTED_RUNTIME_SHA||r.binding?.releaseRef!==process.env.EXPECTED_DEPLOY_ID) process.exit(1)"
+          node -e "const r=require('./test-results/dos-m4-canary/receipt.json'); if(r.status!=='PASS'||r.binding?.exactHead!==process.env.EXPECTED_RUNTIME_SHA||r.binding?.releaseRef!==process.env.EXPECTED_DEPLOY_ID||r.canary?.lineageVerifiedThroughRls!==true) process.exit(1)"
 
       - name: Publish canary evidence
         if: always()
@@ -114,7 +116,7 @@ jobs:
         with:
           name: dos-m4-runtime-canary-${{ github.run_id }}
           if-no-files-found: warn
-          retention-days: 365
+          retention-days: 90
           path: |
             product/test-results/dos-m4-canary/
             product/playwright-report/
