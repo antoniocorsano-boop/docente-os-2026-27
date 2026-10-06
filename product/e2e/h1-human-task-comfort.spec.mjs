@@ -11,12 +11,13 @@ test('H1 mobile comfort: Piano annuale usa esposizione progressiva senza scroll 
   const disclosure = page.locator('details.humanTaskSecondary').filter({ hasText: 'Sequenza didattica completa' })
   await expect(disclosure).not.toHaveAttribute('open', '')
 
-  const firstBlock = disclosure.locator('.annualTable tbody tr').first()
+  const firstBlock = disclosure.locator('.annualMobileBlockCard').first()
   await expect(firstBlock).not.toBeVisible()
   await disclosure.locator('summary').click()
   await expect(disclosure).toHaveAttribute('open', '')
   await expect(firstBlock).toBeVisible()
-  await expect(firstBlock.locator('td').first()).not.toBeEmpty()
+  await expect(firstBlock.locator('h3')).not.toBeEmpty()
+  await expect(disclosure.locator('.annualDesktopTable')).not.toBeVisible()
 
   const metrics = await page.evaluate(() => ({
     viewport: window.innerWidth,
@@ -24,10 +25,10 @@ test('H1 mobile comfort: Piano annuale usa esposizione progressiva senza scroll 
   }))
   expect(metrics.body).toBeLessThanOrEqual(metrics.viewport + 1)
 
-  const rowBox = await firstBlock.boundingBox()
-  expect(rowBox).not.toBeNull()
-  expect(rowBox.width).toBeLessThanOrEqual(metrics.viewport - 12)
-  expect(rowBox.x).toBeGreaterThanOrEqual(0)
+  const blockBox = await firstBlock.boundingBox()
+  expect(blockBox).not.toBeNull()
+  expect(blockBox.width).toBeLessThanOrEqual(metrics.viewport - 12)
+  expect(blockBox.x).toBeGreaterThanOrEqual(0)
 
   await page.screenshot({ path: 'test-results/h1-01-annual-plan-mobile.png', fullPage: true })
 })
