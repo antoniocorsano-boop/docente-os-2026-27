@@ -55,7 +55,7 @@ export default async function ClassDiaryPage({ params }: { params: Promise<{ sec
       <header className="classDiaryHero">
         <p>DIARIO DEL DOCENTE</p>
         <h1>{classLabel}</h1>
-        <span>Lezioni registrate, osservazioni professionali e stato della memoria documentale.</span>
+        <span>Cosa hai svolto, cosa hai osservato e da dove ripartire alla prossima lezione.</span>
       </header>
 
       {sessions.length ? (
@@ -68,6 +68,13 @@ export default async function ClassDiaryPage({ params }: { params: Promise<{ sec
               ? `/classi/${encodeURIComponent(sectionId)}/in-classe/${encodeURIComponent(parsed.materialAssetId)}`
               : null
             const reflection = parsed?.reflection ?? null
+            const hasSecondaryReflection = Boolean(
+              reflection?.observations
+              || reflection?.difficulties
+              || reflection?.ideas
+              || reflection?.udaChangeProposal,
+            )
+
             return (
               <article className="classDiaryEntry" key={session.id}>
                 <header>
@@ -82,24 +89,44 @@ export default async function ClassDiaryPage({ params }: { params: Promise<{ sec
                 </header>
 
                 {reflection ? (
-                  <div className="classDiaryDetails">
-                    <DiaryField label="Svolto" value={reflection.activityDone} />
-                    <DiaryField label="Osservato" value={reflection.observations} />
-                    <DiaryField label="Difficoltà" value={reflection.difficulties} />
-                    <DiaryField label="Idea emersa" value={reflection.ideas} />
-                    <DiaryField label="Proposta per l’UDA" value={reflection.udaChangeProposal} />
-                    <DiaryField label="Prossima attività" value={reflection.nextActivity} />
-                  </div>
+                  <>
+                    {reflection.activityDone ? (
+                      <div className="classDiaryDone">
+                        <span>SVOLTO</span>
+                        <p>{reflection.activityDone}</p>
+                      </div>
+                    ) : null}
+
+                    {reflection.nextActivity ? (
+                      <p className="classDiaryNext">
+                        <span>DA RIPRENDERE</span>
+                        <strong>{reflection.nextActivity}</strong>
+                      </p>
+                    ) : null}
+
+                    {hasSecondaryReflection ? (
+                      <details className="classDiaryDetailsDisclosure">
+                        <summary>Osservazioni della lezione</summary>
+                        <div className="classDiaryDetails">
+                          <DiaryField label="Osservato" value={reflection.observations} />
+                          <DiaryField label="Difficoltà" value={reflection.difficulties} />
+                          <DiaryField label="Idea emersa" value={reflection.ideas} />
+                          <DiaryField label="Proposta per l’UDA" value={reflection.udaChangeProposal} />
+                        </div>
+                      </details>
+                    ) : null}
+                  </>
                 ) : session.evidenceNote ? (
                   <p className="classDiaryLegacyNote">{session.evidenceNote}</p>
                 ) : (
                   <p className="classDiaryLegacyNote">Registrazione quantitativa senza nota professionale.</p>
                 )}
 
-                <footer>
-                  {materialHref ? <Link href={materialHref}>Apri attività / materiale</Link> : <span />}
-                  {parsed?.driveRecordId ? <small>Registro: {parsed.driveRecordId}</small> : null}
-                </footer>
+                {materialHref ? (
+                  <footer>
+                    <Link href={materialHref}>Apri attività / materiale</Link>
+                  </footer>
+                ) : null}
               </article>
             )
           })}
@@ -112,10 +139,11 @@ export default async function ClassDiaryPage({ params }: { params: Promise<{ sec
         </section>
       )}
 
-      <aside className="classDiaryBoundary">
-        <strong>Una sola memoria didattica</strong>
-        <p>Docente OS conserva la registrazione autorevole della lezione; Drive ne mantiene la proiezione documentale. Le proposte di modifica all’UDA restano separate finché non vengono confermate dal docente.</p>
-      </aside>
+      <details className="classDiarySupport">
+        <summary>Come funziona il salvataggio</summary>
+        <p>Le lezioni restano nel Diario. Se hai collegato un registro Drive, lo stato di aggiornamento è indicato accanto a ogni lezione.</p>
+        <p>Le proposte di modifica all’UDA restano separate finché non le confermi.</p>
+      </details>
     </AppShell>
   )
 }
