@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import type { KnowledgeAsset, KnowledgeDocument } from '@/core/domain/knowledge'
 import {
@@ -145,4 +146,19 @@ test('la modalità guidata accetta solo un blocco coerente col piano canonico', 
   const incoerente = asProgettaFocus({ block: 'B01', uda: '1-02', pack: 'CAN-PACK-1B' })
   assert.equal(resolveCanonicalProgettaFocus('prima', incoerente), null)
   assert.equal(resolveCanonicalProgettaFocus(null, prima), null)
+})
+
+test('la modalità guidata rende primario l’authoring contestuale senza nascondere piano e archivio', () => {
+  const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+  const styleSource = readFileSync(new URL('./progetta-focus.css', import.meta.url), 'utf8')
+
+  assert.match(pageSource, /const guidedAuthoringItem = coreItems\.find\(\(\{ asset \}\) => asset\.contentCategory === 'UDA'\)/)
+  assert.match(pageSource, /className="guidedPrimaryAuthoring"/)
+  assert.match(pageSource, /className="guidedPrimaryAuthoringAction"/)
+  assert.match(pageSource, /\/progetta\/documenti\/nuovo\/\$\{encodeURIComponent\(guidedAuthoringItem\.asset\.id\)\}/)
+  assert.match(pageSource, />Prepara documento</)
+  assert.match(pageSource, />Piano annuale</)
+  assert.match(pageSource, />Esplora tutta la progettazione</)
+  assert.match(styleSource, /\.guidedPrimaryAuthoring/)
+  assert.match(styleSource, /\.guidedPrimaryAuthoringAction/)
 })
