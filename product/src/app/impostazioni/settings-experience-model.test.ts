@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { readFileSync } from 'node:fs'
 import { buildSettingsExperienceModel } from './settings-experience-model'
 
 const baseSettings = {
@@ -179,4 +180,20 @@ test('optional areas never interrupt the guided configuration sequence', () => {
   assert.notEqual(model.nextArea?.key, 'homeLinks')
   assert.notEqual(model.nextArea?.key, 'appDevice')
   assert.equal(model.nextArea?.key, 'context')
+})
+
+
+test('DOS-VIEW-CONV-01C renders a grouped vertical Settings index on mobile', () => {
+  const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+  const cssSource = readFileSync(new URL('./settings.css', import.meta.url), 'utf8')
+  const mobileCss = cssSource.slice(cssSource.indexOf('@media(max-width:719px)'))
+
+  assert.match(pageSource, /settingsOverviewGroup/)
+  assert.match(pageSource, /Il tuo incarico/)
+  assert.match(pageSource, /Organizzazione didattica/)
+  assert.match(pageSource, /App e dispositivo/)
+  assert.match(pageSource, /Identità e sicurezza/)
+  assert.ok(pageSource.indexOf('settingsGuidance') < pageSource.indexOf('settingsOverview'))
+  assert.doesNotMatch(mobileCss, /\.settingsOverview\{[^}]*overflow-x:auto/)
+  assert.match(mobileCss, /\.settingsOverview\{[^}]*grid-template-columns:1fr/)
 })
