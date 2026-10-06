@@ -39,8 +39,9 @@ test('DOS-VIEW-CONV-01A exposes Home, Oggi, Classi and Orario before the Naviga 
   assert.equal(MOBILE_NAVIGATION_KEYS.includes('today'), true)
 })
 
-test('DOS-VIEW-CONV-01A preserves the desktop work destinations without leaking mobile Home', () => {
-  assert.deepEqual(workNavigationItems().map((item) => item.key), ['today', 'classes', 'timetable'])
+test('DOS-VIEW-CONV-01A keeps the primary work destinations coherent across desktop and mobile', () => {
+  assert.deepEqual(workNavigationItems().map((item) => item.key), ['home', 'today', 'classes', 'timetable'])
+  assert.deepEqual(workNavigationItems().map((item) => item.key), [...MOBILE_NAVIGATION_KEYS])
 })
 
 test('DOS-VIEW-CONV-01A Naviga follows the approved secondary information architecture', () => {
