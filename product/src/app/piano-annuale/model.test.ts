@@ -52,3 +52,8 @@ test('Piano annuale has a dedicated mobile block list while retaining the deskto
   assert.match(annualPlanClientSource, /Documento di riferimento/)
   assert.match(annualPlanClientSource, /generazione \{source\.generationId\}/)
 })
+
+test('Piano annuale exposes persistent save feedback to assistive technology', () => {
+  // @trama-feedback-test
+  assert.match(annualPlanClientSource, /className=\{`annualSaveState[^}]+\} role="status" aria-live="polite"/)
+})
