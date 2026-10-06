@@ -1,19 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
 import { expect, test } from '@playwright/test'
+import { E2E_EMAIL, E2E_PASSWORD, E2E_TOTP_SECRET, loginE2E, requireE2ECredentials } from './support/e2e-auth.mjs'
+import { generateTotp, governedMfaRetryJitterMs, millisecondsUntilNextTotpStep } from './support/totp.mjs'
 
-const email = process.env.E2E_EMAIL ?? 'docente-os-e2e-2dbf49e1@example.invalid'
-const password = process.env.E2E_PASSWORD
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://gnshgapmwyjamhmlikeg.supabase.co'
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L'
 const runId = process.env.GITHUB_RUN_ID ?? 'local'
 const sourceTitle = `X5B E2E — UDA fonte controllata — ${runId}`
 const sourceBody = `# X5B E2E — UDA fonte controllata\n\nFonte tecnica creata dal run ${runId} per verificare l’export professionale senza dipendere da fixture permanenti.`
 
-if (!password) throw new Error('E2E_PASSWORD is required for the authenticated X5B acceptance test')
+requireE2ECredentials()
 
 test('X5B export: saved immutable version, provenance, no write and explicit print', async ({ page }) => {
   const identity = await authenticatedSupabase()
-  await login(page)
+  await loginE2E(page)
 
   let sourceId = null
   let documentId = null
@@ -80,16 +80,6 @@ async function assertNoHorizontalOverflow(page) {
   expect(await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - window.innerWidth))).toBeLessThanOrEqual(1)
 }
 
-async function login(page) {
-  await page.goto('/login')
-  await page.locator('#email').fill(email)
-  await page.locator('#password').fill(password)
-  await Promise.all([
-    page.waitForURL(/\/workspace(?:$|\?)/, { timeout: 30_000 }),
-    page.getByRole('button', { name: 'Entra nel tuo spazio docente' }).click(),
-  ])
-}
-
 async function createSourceFixture(page) {
   await page.goto('/knowledge')
   const capture = page.locator('details.knowledgeCaptureDisclosure')
@@ -123,9 +113,62 @@ async function authenticatedSupabase() {
   const supabase = createClient(supabaseUrl, supabasePublishableKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   })
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({ email: E2E_EMAIL, password: E2E_PASSWORD })
   if (error || !data.user) throw new Error(`X5B fixture identity failed: ${error?.message ?? 'missing user'}`)
+
+  await promoteToAal2(supabase)
+  const assurance = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (assurance.error || assurance.data.currentLevel !== 'aal2') {
+    throw new Error(`X5B fixture did not reach AAL2: ${assurance.error?.message ?? assurance.data.currentLevel}`)
+  }
+
   return { supabase, userId: data.user.id }
+}
+
+async function promoteToAal2(supabase) {
+  const factor = await findGovernedVerifiedFactor(supabase)
+  const runJitter = governedMfaRetryJitterMs()
+
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    const remaining = millisecondsUntilNextTotpStep()
+    if (remaining < 6_000 + runJitter) await sleep(remaining + 750 + runJitter)
+    else if (runJitter) await sleep(runJitter)
+
+    const challenge = await supabase.auth.mfa.challenge({ factorId: factor.id })
+    if (challenge.error) {
+      if (attempt === 4) throw new Error(`X5B MFA challenge failed: ${challenge.error.message}`)
+      await sleep(millisecondsUntilNextTotpStep() + 750 + runJitter)
+      continue
+    }
+
+    const verified = await supabase.auth.mfa.verify({
+      factorId: factor.id,
+      challengeId: challenge.data.id,
+      code: generateTotp(E2E_TOTP_SECRET),
+    })
+
+    if (!verified.error) {
+      const assurance = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (!assurance.error && assurance.data.currentLevel === 'aal2') return
+    }
+
+    if (attempt === 4) throw new Error(`X5B MFA verification failed: ${verified.error?.message ?? 'session did not reach aal2'}`)
+    await sleep(millisecondsUntilNextTotpStep() + 750 + runJitter)
+  }
+}
+
+async function findGovernedVerifiedFactor(supabase) {
+  for (let attempt = 1; attempt <= 8; attempt += 1) {
+    const listed = await supabase.auth.mfa.listFactors()
+    if (!listed.error) {
+      const verified = listed.data.totp.filter((factor) => factor.status === 'verified')
+      const factor = verified.find((candidate) => candidate.friendly_name === 'Docente OS CI')
+        ?? (verified.length === 1 ? verified[0] : null)
+      if (factor) return factor
+    }
+    await sleep(Math.min(1_000 * attempt, 4_000) + governedMfaRetryJitterMs())
+  }
+  throw new Error('X5B governed verified TOTP factor is unavailable')
 }
 
 async function authoredDocuments({ supabase }, sourceAssetId) {
@@ -164,4 +207,8 @@ function assetIdFromUrl(url) {
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function sleep(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds))
 }
