@@ -36,15 +36,15 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
   const factors = (factorsResult.data?.totp ?? []).filter(isVerifiedMfaFactor)
   const assurance = assuranceResult.data?.currentLevel ?? null
   const mfaTitle = !mfaStateAvailable
-    ? 'Stato MFA non disponibile'
+    ? 'Stato del secondo fattore non disponibile'
     : factors.length > 0
-      ? 'MFA attiva'
-      : 'MFA da configurare'
+      ? 'Secondo fattore attivo'
+      : 'Secondo fattore da configurare'
   const mfaDetail = !mfaStateAvailable
-    ? 'Non è stato possibile verificare in modo affidabile lo stato MFA. Ricarica la pagina prima di modificarlo.'
+    ? 'Non è stato possibile verificare in modo affidabile lo stato del secondo fattore. Ricarica la pagina prima di modificarlo.'
     : factors.length > 0
-      ? `${factors.length} autenticatore${factors.length === 1 ? '' : 'i'} TOTP verificato${factors.length === 1 ? '' : 'i'} · sessione ${(assurance ?? 'aal1').toUpperCase()}`
-      : 'Nessun autenticatore TOTP verificato.'
+      ? `${factors.length} autenticatore${factors.length === 1 ? '' : 'i'} configurato${factors.length === 1 ? '' : 'i'} · protezione ${assurance ? 'verificata' : 'attiva'}`
+      : 'Nessun autenticatore configurato.'
   const notice = params.password === 'updated'
     ? 'Password aggiornata correttamente.'
     : params.sessions === 'revoked'
@@ -85,31 +85,31 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                 <span className="text-xs font-semibold text-muted-foreground">EMAIL</span>
                 <strong className="break-all text-sm">{user.email ?? 'Email non disponibile'}</strong>
               </div>
-              <p className="m-0 text-xs leading-5 text-muted-foreground">L’identità è gestita da Supabase Auth; Docente OS non mostra né conserva la password in chiaro.</p>
+              <p className="m-0 text-xs leading-5 text-muted-foreground">Docente OS non mostra né conserva la password in chiaro.</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>Secondo fattore</CardTitle>
-              <CardDescription>Protezione MFA richiesta per le superfici operative.</CardDescription>
+              <CardDescription>Protezione aggiuntiva richiesta per le superfici operative.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
               <div className="grid gap-1">
                 <strong>{mfaTitle}</strong>
                 <span className="text-sm text-muted-foreground">{mfaDetail}</span>
               </div>
-              <Link className={buttonVariants({ variant: 'secondary' })} href="/account/mfa">Gestisci MFA</Link>
+              <Link className={buttonVariants({ variant: 'secondary' })} href="/account/mfa">Gestisci secondo fattore</Link>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>Password</CardTitle>
-              <CardDescription>Cambia la password mantenendo la sessione ad alta affidabilità.</CardDescription>
+              <CardDescription>Cambia la password dopo aver confermato il secondo fattore.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
-              <p className="m-0 text-sm leading-6 text-muted-foreground">Il cambio password richiede una sessione MFA valida e non espone mai la credenziale corrente.</p>
+              <p className="m-0 text-sm leading-6 text-muted-foreground">Il cambio password richiede la verifica del secondo fattore e non espone mai la credenziale corrente.</p>
               <Link className={buttonVariants({ variant: 'secondary' })} href="/imposta-password?source=account">Cambia password</Link>
             </CardContent>
           </Card>
@@ -126,7 +126,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
               <form action="/auth/signout" method="post">
                 <Button className="w-full" type="submit" variant="ghost">Esci da questa sessione</Button>
               </form>
-              <p className="m-0 text-xs leading-5 text-muted-foreground">La revoca impedisce il rinnovo delle altre sessioni e mantiene attiva quella corrente. Eventuali token di accesso già emessi restano validi fino alla loro scadenza.</p>
+              <p className="m-0 text-xs leading-5 text-muted-foreground">La revoca impedisce il rinnovo delle altre sessioni e mantiene attiva quella corrente. Eventuali accessi già autorizzati restano validi fino alla loro scadenza.</p>
             </CardContent>
           </Card>
         </div>
