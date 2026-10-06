@@ -219,8 +219,8 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p test-results/product-ci
-          npm test 2>&1 | tee test-results/product-ci/npm-test.log
-          status=${PIPESTATUS[0]}
+          status=0
+          npm test 2>&1 | tee test-results/product-ci/npm-test.log || status=$?
           printf '%s\n' "$status" > test-results/product-ci/exit-code.txt
           grep -nE 'not ok|AssertionError|ERR_ASSERTION|Error:|FAIL|failed|failure' test-results/product-ci/npm-test.log > test-results/product-ci/failure-index.txt || true
           exit "$status"
