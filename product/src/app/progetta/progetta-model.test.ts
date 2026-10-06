@@ -156,7 +156,7 @@ test('la modalità guidata rende primario l’authoring contestuale senza nascon
   assert.match(pageSource, /className="guidedPrimaryAuthoring"/)
   assert.match(pageSource, /className="guidedPrimaryAuthoringAction"/)
   assert.match(pageSource, /\/progetta\/documenti\/nuovo\/\$\{encodeURIComponent\(guidedAuthoringItem\.asset\.id\)\}/)
-  assert.match(pageSource, />Prepara documento</)
+  assert.match(pageSource, /className="guidedPrimaryAuthoringAction"[^>]*>Prepara documento\s*<span aria-hidden>→<\/span><\/Link>/)
   assert.match(pageSource, />Piano annuale</)
   assert.match(pageSource, />Esplora tutta la progettazione</)
   assert.match(styleSource, /\.guidedPrimaryAuthoring/)
