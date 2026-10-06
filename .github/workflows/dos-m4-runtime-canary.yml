@@ -1,0 +1,122 @@
+name: DOS-M4 Runtime Canary
+
+on:
+  push:
+    branches:
+      - canary/dos-m4-01-2026-10-06
+    paths:
+      - 'product/e2e/dos-m4-runtime-canary.spec.mjs'
+      - '.github/workflows/dos-m4-runtime-canary.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docente-os-governed-mfa-e2e
+  queue: max
+
+env:
+  E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
+  E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
+  E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
+  EXPECTED_RUNTIME_SHA: 39bce05fa2e87f3746ee3b6dcd7433065cb2d876
+  EXPECTED_DEPLOY_ID: dep-db2ke2ajnfac73f3qoog
+  CANARY_MARKER: DOS-M4-01-39bce05f-20261006
+  CANARY_EFFECTIVE_DATE: '2026-10-06'
+
+jobs:
+  runtime-canary:
+    name: dos-m4-runtime-canary
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Require governed AAL2 canary credentials
+        shell: bash
+        run: |
+          missing=0
+          for name in E2E_EMAIL E2E_PASSWORD E2E_TOTP_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is required for DOS-M4 runtime canary."
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
+
+      - name: Checkout isolated canary branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify canary branch is runtime-neutral
+        shell: bash
+        run: |
+          git merge-base --is-ancestor "$EXPECTED_RUNTIME_SHA" HEAD
+          unexpected="$(git diff --name-only "$EXPECTED_RUNTIME_SHA" HEAD | grep -Ev '^(product/e2e/dos-m4-runtime-canary\.spec\.mjs|\.github/workflows/dos-m4-runtime-canary\.yml)$' || true)"
+          if [ -n "$unexpected" ]; then
+            echo '::error::Canary branch contains runtime-affecting changes:'
+            printf '%s\n' "$unexpected"
+            exit 1
+          fi
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Wait for exact bound Beta runtime
+        shell: bash
+        run: |
+          mkdir -p product/test-results/dos-m4-canary
+          for attempt in $(seq 1 40); do
+            : > /tmp/build-info.json
+            http_code="$(curl -sS --max-time 20 -o /tmp/build-info.json -w '%{http_code}' "$E2E_BASE_URL/api/build-info" 2>/dev/null || true)"
+            payload="$(cat /tmp/build-info.json 2>/dev/null || true)"
+            deployed="$(printf '%s' "$payload" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).commit||'')}catch{console.log('')}})")"
+            echo "Attempt $attempt/40: http=${http_code:-000}, deployed=${deployed:-unavailable}, expected=$EXPECTED_RUNTIME_SHA"
+            if [ "$deployed" = "$EXPECTED_RUNTIME_SHA" ]; then
+              cp /tmp/build-info.json product/test-results/dos-m4-canary/build-info.json
+              echo 'Exact bound Beta runtime confirmed.'
+              exit 0
+            fi
+            sleep 15
+          done
+          echo 'Bound Beta runtime unavailable or drifted.' >&2
+          exit 1
+
+      - name: Install locked product dependencies
+        working-directory: product
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Playwright runner without changing lockfile
+        working-directory: product
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Install Chromium
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run DOS-M4 runtime canary
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/dos-m4-runtime-canary.spec.mjs --retries=0 --workers=1
+
+      - name: Verify PASS receipt exists
+        working-directory: product
+        shell: bash
+        run: |
+          test -s test-results/dos-m4-canary/receipt.json
+          node -e "const r=require('./test-results/dos-m4-canary/receipt.json'); if(r.status!=='PASS'||r.binding?.exactHead!==process.env.EXPECTED_RUNTIME_SHA||r.binding?.releaseRef!==process.env.EXPECTED_DEPLOY_ID) process.exit(1)"
+
+      - name: Publish canary evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dos-m4-runtime-canary-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 365
+          path: |
+            product/test-results/dos-m4-canary/
+            product/playwright-report/
+            product/test-results/**/*.png
+            product/test-results/**/*.zip
