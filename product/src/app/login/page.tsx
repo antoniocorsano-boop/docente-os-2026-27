@@ -25,7 +25,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     : params.sent === 'setup'
       ? 'Controlla la posta: ti abbiamo inviato un collegamento monouso per configurare l’accesso.'
       : params.error === 'email_rate_limited'
-        ? 'Il servizio email di Supabase ha raggiunto il limite temporaneo. L’accesso con password continua a funzionare normalmente.'
+        ? 'Il servizio di invio email ha raggiunto il limite temporaneo. L’accesso con password continua a funzionare normalmente.'
         : params.error === 'invalid_credentials'
           ? 'Email o password non corrette.'
           : params.error === 'workspace_bootstrap_failed' || params.error === 'academic_year_bootstrap_failed'
@@ -110,7 +110,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </Card>
 
         <p className="m-0 px-1 text-xs leading-5 text-muted-foreground">
-          Docente OS mantiene separati autenticazione, dati del tuo workspace e integrazioni esterne. Le autorizzazioni applicative restano governate da Supabase e RLS.
+          Docente OS mantiene separati accesso, dati del tuo spazio docente e integrazioni esterne. Le protezioni applicative restano attive durante l’uso.
         </p>
       </div>
     </main>
