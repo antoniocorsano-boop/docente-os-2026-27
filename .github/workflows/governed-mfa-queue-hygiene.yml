@@ -39,6 +39,7 @@ jobs:
               '.github/workflows/p6-performance.yml',
               '.github/workflows/p3-workspace-export-e2e.yml',
               '.github/workflows/x5-authoring-e2e.yml',
+              '.github/workflows/mfa-browser-e2e.yml',
             ])
             const runtimePaths = new Set([
               '.github/workflows/experience-acceptance.yml',
