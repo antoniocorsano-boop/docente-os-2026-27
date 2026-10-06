@@ -187,7 +187,7 @@ export default function AnnualPlanClient({
         <section className="humanTaskFocus annualCurrentFocus" aria-labelledby="annual-next-title">
           <p className="humanTaskFocusEyebrow">PROSSIMO NEL PIANO · {sectionLabel}</p>
           {nextBlock ? <><h2 id="annual-next-title">{nextBlock.focus}</h2><p>Questo è il primo blocco attivo non ancora completato. DOCENTE OS non presume che sia già stato preparato o svolto.</p><div className="humanTaskMeta"><span>{nextBlock.id}</span><span>UDA {nextBlock.uda}</span><span>{nextBlock.pack}</span><span>{nextBlock.period}</span><span>{completed.length}/33 completati</span></div><div className="humanTaskActions"><button className="primary" type="button" onClick={markNextDone} disabled={isPending}>Segna svolto</button>{prepareHref ? <Link href={prepareHref}>Prepara questa fase</Link> : null}</div></> : <><h2 id="annual-next-title">Percorso annuale completato</h2><p>Tutti i blocchi attivi risultano conclusi o esclusi.</p><div className="humanTaskMeta"><span>{completed.length}/33 completati</span></div></>}
-          <span className={`annualSaveState${syncError ? ' syncError' : ''}`}>{saveStateLabel}</span>
+          <span className={`annualSaveState${syncError ? ' syncError' : ''}`} role="status" aria-live="polite">{saveStateLabel}</span>
         </section>
       ) : (
         <div className="humanTaskCompactStats" aria-label="Quadro generale"><span><strong>33</strong> blocchi per grado</span><span><strong>66</strong> ore</span><span><strong>{source.code}</strong> fonte canonica</span></div>
