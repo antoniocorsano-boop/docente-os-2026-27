@@ -86,7 +86,9 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
   ])
   const recentVisible = recent.slice(0, RECENT_VISIBLE_COUNT)
   const recentMore = recent.slice(RECENT_VISIBLE_COUNT)
-  const captureOpen = recent.length === 0 || Boolean(uploadMessage) || textbookMaterialCapture || calendarIntent
+  const captureRequested = Boolean(params.capture) || calendarIntent || textbookMaterialRequested
+  const captureOpen = recent.length === 0 || Boolean(uploadMessage) || captureRequested || textbookMaterialCapture
+  const entryIntent = captureRequested ? 'capture' : taskMode || query ? 'find' : 'browse'
   const assetHref = (assetId: string) => taskMode && taskReturnTo
     ? buildTaskAwareKnowledgeHref(assetId, {
         mode: taskMode,
@@ -112,6 +114,89 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
       </Link>
     )
   })
+
+  const searchPanel = (
+    <section className={`knowledgePanel searchPanel ${entryIntent === 'find' ? 'knowledgeIntentPrimary' : 'knowledgeIntentSecondary'}`}>
+      <div className="knowledgePanelHeading"><div><span className="panelEyebrow">RITROVA</span><h2>Cerca nella Conoscenza</h2></div></div>
+      <form className="knowledgeSearch" action="/knowledge" method="get">
+        {taskHiddenInputs()}
+        <input name="q" defaultValue={query} placeholder="Cerca un argomento, una scadenza, una classe…" />
+        <button type="submit">Cerca</button>
+      </form>
+      {query ? (
+        <div className="knowledgeResults">
+          <p className="resultsLabel">{results.length} risultati per “{query}”</p>
+          {results.length ? results.map(({ document, unit }) => (
+            <Link className="knowledgeResult" key={unit?.id ?? document.id} href={assetHref(document.assetId)}>
+              <strong>{humanizeKnowledgeTitle(document.title)}</strong>
+              <span>{unit?.content ?? document.summary ?? 'Apri il contenuto per vedere i dettagli.'}</span>
+              <small>{unit ? 'Risultato nel contenuto' : 'Documento'}</small>
+            </Link>
+          )) : <p className="emptyLine">Non ho trovato corrispondenze. Prova con una parola più generale o controlla i contenuti recenti.</p>}
+        </div>
+      ) : <>
+        <p className="searchPlaceholder">La ricerca lavora solo sui contenuti del tuo spazio docente.</p>
+        <div className="kbPrinciples">
+          <div><strong>Originale al sicuro</strong><span>Le elaborazioni non sostituiscono la fonte.</span></div>
+          <div><strong>Provenienza leggibile</strong><span>Sai sempre da dove arriva un contenuto.</span></div>
+          <div><strong>Conferma umana</strong><span>Azioni e scadenze diventano operative solo quando decidi tu.</span></div>
+        </div>
+      </>}
+    </section>
+  )
+
+  const capturePanel = (
+    <details className={`knowledgePanel capturePanel knowledgeCaptureDisclosure ${entryIntent === 'capture' ? 'knowledgeIntentPrimary' : 'knowledgeIntentSecondary'}`} open={captureOpen}>
+      <summary className="knowledgeCaptureSummary">
+        <div>
+          <span className="panelEyebrow">AGGIUNGI</span>
+          <strong>Aggiungi un contenuto</strong>
+          <small>Testo o file, con originale preservato.</small>
+        </div>
+        <span className="knowledgeCaptureSummaryAction" aria-hidden>{captureOpen ? 'Riduci' : 'Apri'}</span>
+      </summary>
+      <div className="knowledgeCaptureBody">
+        <div className="knowledgeCaptureAssurance"><span className="statusPill">Originale preservato</span><p>Il contenuto entra nella Conoscenza solo quando scegli di aggiungerlo.</p></div>
+        <KnowledgeCaptureModes
+          initialMode={textbookMaterialCapture || calendarIntent ? 'file' : 'text'}
+          sourceHint={calendarIntent
+            ? 'Il documento originale resta nella Conoscenza. Date e orari diventano soltanto proposte da controllare: nessun impegno viene registrato senza la tua conferma.'
+            : textbookMaterialCapture
+            ? 'Carica solo una guida, verifica o altro materiale che hai ottenuto legittimamente. DOCENTE OS conserverà il collegamento al libro confermato, ma non acquisisce contenuti protetti direttamente dall’editore.'
+            : null}
+          postUploadQuery={calendarIntent && calendarReturnTo
+            ? `intent=calendar&returnTo=${encodeURIComponent(calendarReturnTo)}`
+            : null}
+        />
+      </div>
+    </details>
+  )
+
+  const renderRecentKnowledge = () => (
+    <section className={`recentKnowledge ${entryIntent === 'browse' ? 'knowledgeIntentPrimary' : 'knowledgeIntentSecondary'}`}>
+      <div className="sectionHeading"><h2>Contenuti recenti</h2><span>{recent.length}</span></div>
+      <form className="knowledgeFilters" action="/knowledge" method="get">
+        {taskHiddenInputs()}
+        <select name="category" defaultValue={filters.category ?? ''} aria-label="Filtra per tipologia"><option value="">Tutte le tipologie</option>{CONTENT_CATEGORIES.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>
+        <input name="discipline" defaultValue={filters.discipline ?? ''} placeholder="Disciplina" aria-label="Filtra per disciplina" />
+        <input name="classLabel" defaultValue={filters.classLabel ?? ''} placeholder="Classe, es. 2C" aria-label="Filtra per classe" />
+        <button type="submit">Applica filtri</button>
+      </form>
+      {recent.length ? <>
+        <div className="knowledgeAssetList knowledgeAssetListPrimary">
+          {renderRecentRows(recentVisible)}
+        </div>
+        {recentMore.length ? (
+          <details className="knowledgeRecentMore">
+            <summary>Mostra altri {recentMore.length} contenuti</summary>
+            <div className="knowledgeAssetList knowledgeAssetListMore">
+              {renderRecentRows(recentMore)}
+            </div>
+          </details>
+        ) : null}
+      </> : <p className="emptyLine">Non ci sono ancora contenuti. Aggiungi un appunto o un file per iniziare a costruire la tua Conoscenza.</p>}
+    </section>
+  )
 
   return (
     <AppShell
@@ -139,84 +224,14 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
       {calendarIntent && calendarReturnTo ? <div className="knowledgeFeedback" role="status"><span>Carica la circolare: dopo l’analisi potrai verificare l’impegno e registrarlo nel Calendario.</span>{' '}<Link href={calendarReturnTo}>Torna al Calendario</Link></div> : null}
       {textbookMaterialMessage ? <div className="knowledgeFeedback" role="alert">{textbookMaterialMessage}</div> : null}
 
-      <div className="knowledgeGrid">
-        <section className="knowledgePanel searchPanel">
-          <div className="knowledgePanelHeading"><div><span className="panelEyebrow">RITROVA</span><h2>Cerca nella Conoscenza</h2></div></div>
-          <form className="knowledgeSearch" action="/knowledge" method="get">
-            {taskHiddenInputs()}
-            <input name="q" defaultValue={query} placeholder="Cerca un argomento, una scadenza, una classe…" />
-            <button type="submit">Cerca</button>
-          </form>
-          {query ? (
-            <div className="knowledgeResults">
-              <p className="resultsLabel">{results.length} risultati per “{query}”</p>
-              {results.length ? results.map(({ document, unit }) => (
-                <Link className="knowledgeResult" key={unit?.id ?? document.id} href={assetHref(document.assetId)}>
-                  <strong>{humanizeKnowledgeTitle(document.title)}</strong>
-                  <span>{unit?.content ?? document.summary ?? 'Apri il contenuto per vedere i dettagli.'}</span>
-                  <small>{unit ? 'Risultato nel contenuto' : 'Documento'}</small>
-                </Link>
-              )) : <p className="emptyLine">Non ho trovato corrispondenze. Prova con una parola più generale o controlla i contenuti recenti.</p>}
-            </div>
-          ) : <>
-            <p className="searchPlaceholder">La ricerca lavora solo sui contenuti del tuo spazio docente.</p>
-            <div className="kbPrinciples">
-              <div><strong>Originale al sicuro</strong><span>Le elaborazioni non sostituiscono la fonte.</span></div>
-              <div><strong>Provenienza leggibile</strong><span>Sai sempre da dove arriva un contenuto.</span></div>
-              <div><strong>Conferma umana</strong><span>Azioni e scadenze diventano operative solo quando decidi tu.</span></div>
-            </div>
-          </>}
-        </section>
+      {entryIntent === 'browse' ? renderRecentKnowledge() : null}
 
-        <details className="knowledgePanel capturePanel knowledgeCaptureDisclosure" open={captureOpen}>
-          <summary className="knowledgeCaptureSummary">
-            <div>
-              <span className="panelEyebrow">AGGIUNGI</span>
-              <strong>Aggiungi un contenuto</strong>
-              <small>Testo o file, con originale preservato.</small>
-            </div>
-            <span className="knowledgeCaptureSummaryAction" aria-hidden>{captureOpen ? 'Riduci' : 'Apri'}</span>
-          </summary>
-          <div className="knowledgeCaptureBody">
-            <div className="knowledgeCaptureAssurance"><span className="statusPill">Originale preservato</span><p>Il contenuto entra nella Conoscenza solo quando scegli di aggiungerlo.</p></div>
-            <KnowledgeCaptureModes
-              initialMode={textbookMaterialCapture || calendarIntent ? 'file' : 'text'}
-              sourceHint={calendarIntent
-                ? 'Il documento originale resta nella Conoscenza. Date e orari diventano soltanto proposte da controllare: nessun impegno viene registrato senza la tua conferma.'
-                : textbookMaterialCapture
-                ? 'Carica solo una guida, verifica o altro materiale che hai ottenuto legittimamente. DOCENTE OS conserverà il collegamento al libro confermato, ma non acquisisce contenuti protetti direttamente dall’editore.'
-                : null}
-              postUploadQuery={calendarIntent && calendarReturnTo
-                ? `intent=calendar&returnTo=${encodeURIComponent(calendarReturnTo)}`
-                : null}
-            />
-          </div>
-        </details>
+      <div className="knowledgeGrid" data-entry-intent={entryIntent}>
+        {entryIntent === 'capture' ? capturePanel : searchPanel}
+        {entryIntent === 'capture' ? searchPanel : capturePanel}
       </div>
 
-      <section className="recentKnowledge">
-        <div className="sectionHeading"><h2>Contenuti recenti</h2><span>{recent.length}</span></div>
-        <form className="knowledgeFilters" action="/knowledge" method="get">
-          {taskHiddenInputs()}
-          <select name="category" defaultValue={filters.category ?? ''} aria-label="Filtra per tipologia"><option value="">Tutte le tipologie</option>{CONTENT_CATEGORIES.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>
-          <input name="discipline" defaultValue={filters.discipline ?? ''} placeholder="Disciplina" aria-label="Filtra per disciplina" />
-          <input name="classLabel" defaultValue={filters.classLabel ?? ''} placeholder="Classe, es. 2C" aria-label="Filtra per classe" />
-          <button type="submit">Applica filtri</button>
-        </form>
-        {recent.length ? <>
-          <div className="knowledgeAssetList knowledgeAssetListPrimary">
-            {renderRecentRows(recentVisible)}
-          </div>
-          {recentMore.length ? (
-            <details className="knowledgeRecentMore">
-              <summary>Mostra altri {recentMore.length} contenuti</summary>
-              <div className="knowledgeAssetList knowledgeAssetListMore">
-                {renderRecentRows(recentMore)}
-              </div>
-            </details>
-          ) : null}
-        </> : <p className="emptyLine">Non ci sono ancora contenuti. Aggiungi un appunto o un file per iniziare a costruire la tua Conoscenza.</p>}
-      </section>
+      {entryIntent !== 'browse' ? renderRecentKnowledge() : null}
     </AppShell>
   )
 }

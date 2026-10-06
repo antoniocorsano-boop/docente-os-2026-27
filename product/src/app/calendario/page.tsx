@@ -77,11 +77,6 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
       {query.created === 'new' ? <div className="calendarFeedback" role="status"><strong>Impegno registrato nel calendario.</strong><span>La circolare originale resta collegata all’evento.</span></div> : null}
       {query.created === 'known' ? <div className="calendarFeedback" role="status"><strong>Impegno già presente.</strong><span>Non è stato creato alcun duplicato.</span></div> : null}
 
-      <section className="calendarCircularIntake" aria-labelledby="calendar-circular-title">
-        <div><span>DA UNA CIRCOLARE</span><h2 id="calendar-circular-title">Carica e verifica un impegno</h2><p>DOCENTE OS legge il documento e prepara una scheda modificabile. Il Calendario viene aggiornato soltanto dopo la tua conferma.</p></div>
-        <Link href="/knowledge?capture=file&intent=calendar&returnTo=%2Fcalendario">Carica una circolare</Link>
-      </section>
-
       {focus ? (
         <section className="humanTaskFocus" aria-labelledby="calendar-focus-title">
           <p className="humanTaskFocusEyebrow">{focus.eyebrow}</p>
@@ -104,34 +99,6 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         today={today}
         events={snapshot.events}
       />
-
-      <section className="calendarGrid" aria-label="Calendario operativo">
-        <article className="calendarCard">
-          <div className="calendarCardHeading">
-            <div><span>01</span><h2>Giorni che cambiano la scuola</h2></div>
-            <p>Lezione, sospensione, festività o chiusura: una sola classificazione esplicita per data.</p>
-          </div>
-          {upcomingDays.length ? (
-            <div className="calendarList">{upcomingDays.map((day) => <CalendarDayRow day={day} key={day.id} />)}</div>
-          ) : (
-            <div className="calendarEmpty"><strong>Nessun giorno futuro registrato</strong><span>Non viene applicata nessuna regola implicita.</span></div>
-          )}
-          {previousDays.length ? <details className="calendarHistory"><summary>Vedi giorni precedenti</summary><div className="calendarList">{previousDays.map((day) => <CalendarDayRow day={day} key={day.id} />)}</div></details> : null}
-        </article>
-
-        <article className="calendarCard">
-          <div className="calendarCardHeading">
-            <div><span>02</span><h2>Impegni e scadenze</h2></div>
-            <p>Riunioni, attività d’istituto, formazione e scadenze con data reale.</p>
-          </div>
-          {upcomingEvents.length ? (
-            <div className="calendarList">{upcomingEvents.map((event) => <CalendarEventRow event={event} key={event.id} />)}</div>
-          ) : (
-            <div className="calendarEmpty"><strong>Nessun impegno futuro registrato</strong><span>Puoi aggiungerlo senza trasformarlo in una lezione dell’Orario.</span></div>
-          )}
-          {previousEvents.length ? <details className="calendarHistory"><summary>Vedi impegni precedenti</summary><div className="calendarList">{previousEvents.map((event) => <CalendarEventRow event={event} key={event.id} />)}</div></details> : null}
-        </article>
-      </section>
 
       <details className="calendarAdd" open={!snapshot.days.length && !snapshot.events.length}>
         <summary>Aggiungi una data o un impegno</summary>
@@ -175,9 +142,47 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         </div>
       </details>
 
+      <section className="calendarCircularIntake" aria-labelledby="calendar-circular-title">
+        <div><span>DA UNA CIRCOLARE</span><h2 id="calendar-circular-title">Carica e verifica un impegno</h2><p>DOCENTE OS legge il documento e prepara una scheda modificabile. Il Calendario viene aggiornato soltanto dopo la tua conferma.</p></div>
+        <Link href="/knowledge?capture=file&intent=calendar&returnTo=%2Fcalendario">Carica una circolare</Link>
+      </section>
+
+      <details className="humanTaskSecondary calendarStructureDisclosure">
+        <summary>Vedi il quadro completo del calendario</summary>
+        <div className="humanTaskSecondaryBody">
+          <section className="calendarGrid" aria-label="Calendario operativo">
+            <article className="calendarCard">
+              <div className="calendarCardHeading">
+                <div><span>01</span><h2>Giorni che cambiano la scuola</h2></div>
+                <p>Lezione, sospensione, festività o chiusura: una sola classificazione esplicita per data.</p>
+              </div>
+              {upcomingDays.length ? (
+                <div className="calendarList">{upcomingDays.map((day) => <CalendarDayRow day={day} key={day.id} />)}</div>
+              ) : (
+                <div className="calendarEmpty"><strong>Nessun giorno futuro registrato</strong><span>Non viene applicata nessuna regola implicita.</span></div>
+              )}
+              {previousDays.length ? <details className="calendarHistory"><summary>Vedi giorni precedenti</summary><div className="calendarList">{previousDays.map((day) => <CalendarDayRow day={day} key={day.id} />)}</div></details> : null}
+            </article>
+
+            <article className="calendarCard">
+              <div className="calendarCardHeading">
+                <div><span>02</span><h2>Impegni e scadenze</h2></div>
+                <p>Riunioni, attività d’istituto, formazione e scadenze con data reale.</p>
+              </div>
+              {upcomingEvents.length ? (
+                <div className="calendarList">{upcomingEvents.map((event) => <CalendarEventRow event={event} key={event.id} />)}</div>
+              ) : (
+                <div className="calendarEmpty"><strong>Nessun impegno futuro registrato</strong><span>Puoi aggiungerlo senza trasformarlo in una lezione dell’Orario.</span></div>
+              )}
+              {previousEvents.length ? <details className="calendarHistory"><summary>Vedi impegni precedenti</summary><div className="calendarList">{previousEvents.map((event) => <CalendarEventRow event={event} key={event.id} />)}</div></details> : null}
+            </article>
+          </section>
+        </div>
+      </details>
+
       <aside className="calendarBoundary">
-        <strong>Confine intenzionale</strong>
-        <span>Calendario conosce date, sospensioni ed eventi. Orario conosce la settimana ricorrente. La loro composizione arriverà nella wave T3C e sarà una proiezione in lettura, non un accoppiamento nascosto.</span>
+        <strong>Calendario e Orario restano distinti</strong>
+        <span>Il Calendario registra date, sospensioni, scadenze e impegni reali. L’Orario resta lo schema ricorrente della settimana: consultarli insieme non modifica automaticamente nessuno dei due.</span>
       </aside>
     </AppShell>
   )

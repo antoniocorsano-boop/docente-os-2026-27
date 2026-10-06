@@ -75,6 +75,7 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
     const focusedItems = filterProgettaItemsByFocus(scopedItems, focus)
     const focused = partitionProgettaFocusBySection(focusedItems, compactSectionLabel)
     const coreItems = prioritizeGuidedItems(focused.core).slice(0, 4)
+    const guidedAuthoringItem = coreItems.find(({ asset }) => asset.contentCategory === 'UDA')
     const sectionItems = prioritizeGuidedItems(focused.section).slice(0, 3)
     const fullPlanningHref = grade ? `/progetta?grade=${grade}` : '/progetta'
     const annualPlanHref = sectionContext ? `/piano-annuale?section=${encodeURIComponent(sectionContext.id)}` : '/piano-annuale'
@@ -103,6 +104,17 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
           </div>
           <p className="guidedPlanningInstruction">Parti dal nucleo comune del grado. Adatta alla sezione solo quando serve davvero: non è necessario creare una copia dell’UDA.</p>
         </section>
+
+        {guidedAuthoringItem ? (
+          <section className="guidedPrimaryAuthoring" aria-labelledby="guided-authoring-title">
+            <div>
+              <span>PASSO PRINCIPALE</span>
+              <h2 id="guided-authoring-title">Prepara il documento dell’UDA</h2>
+              <p>Usa l’UDA pertinente già collegata a questa fase e continua nel flusso di authoring esistente.</p>
+            </div>
+            <Link className="guidedPrimaryAuthoringAction" href={`/progetta/documenti/nuovo/${encodeURIComponent(guidedAuthoringItem.asset.id)}`}>Prepara documento <span aria-hidden>→</span></Link>
+          </section>
+        ) : null}
 
         <section className="guidedNow" aria-labelledby="guided-now-title">
           <header>

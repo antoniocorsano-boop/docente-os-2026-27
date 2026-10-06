@@ -33,7 +33,7 @@ test('Journey: Classe → Diario → In classe → Registra la lezione', async (
     await expect(page).toHaveURL(new RegExp(`/classi/${escapeRegExp(sectionId)}/diario$`))
     await expect(page.getByText('DIARIO DEL DOCENTE', { exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: /2ª\s*A/i })).toBeVisible()
-    await expect(page.getByText(/Una sola memoria didattica/i)).toBeVisible()
+    await expect(page.getByText(/Cosa hai svolto, cosa hai osservato e da dove ripartire/i)).toBeVisible()
 
     await page.goto(`/classi/${encodeURIComponent(sectionId)}/in-classe/${fixture.assetId}`)
     const registerLink = page.getByRole('link', { name: 'Registra la lezione' })

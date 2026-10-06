@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import './[sectionId]/diario/diary-human-task-contract.test'
 import { classCounts } from './class-counts'
 
 test('conta e ordina le classi associate agli asset', () => {

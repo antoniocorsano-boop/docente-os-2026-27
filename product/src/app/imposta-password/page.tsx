@@ -40,7 +40,7 @@ export default async function PasswordSetupPage({ searchParams }: PasswordSetupP
         : isRecovery
           ? 'Identità e secondo fattore verificati. Scegli una nuova password per completare il recupero dell’account.'
           : isAccountChange
-            ? 'Sessione MFA verificata. Scegli una nuova password per il tuo account.'
+            ? 'Secondo fattore verificato. Scegli una nuova password per il tuo account.'
             : 'Email e secondo fattore verificati. Imposta ora una password: da questo momento gli accessi ordinari non richiederanno più email.'
 
   const title = isRecovery ? 'Scegli una nuova password' : isAccountChange ? 'Cambia password' : 'Imposta la password'
@@ -52,7 +52,7 @@ export default async function PasswordSetupPage({ searchParams }: PasswordSetupP
         <p className="eyebrow">DOCENTE OS 2026/27</p>
         <h1>{title}</h1>
         <p className="muted">
-          Questa password resta gestita da Supabase Auth. Docente OS non la salva in chiaro e ogni modifica richiede una sessione MFA verificata.
+          Docente OS non mostra né conserva questa password in chiaro. Ogni modifica richiede un secondo fattore verificato.
         </p>
 
         <p role="status" className="notice">{message}</p>

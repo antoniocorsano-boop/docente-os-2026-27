@@ -38,6 +38,13 @@ const GRADE_LABELS = {
   TERZA: 'Terza',
 } as const
 
+const SETTINGS_OVERVIEW_GROUPS = [
+  { key: 'assignment', label: 'Il tuo incarico' },
+  { key: 'organization', label: 'Organizzazione didattica' },
+  { key: 'device', label: 'App e dispositivo' },
+  { key: 'identity', label: 'Identità e sicurezza' },
+] as const
+
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
   const query = await searchParams
   const workspaceRepository = new SupabaseWorkspaceRepository()
@@ -92,9 +99,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               : 'Qui mantieni aggiornato il contesto professionale usato da DOCENTE OS.'}
           </span>
         </div>
-        <div className="settingsHeaderProgress" aria-label={`${experience.readyCount} di ${experience.totalCount} aree pronte`}>
+        <div className="settingsHeaderProgress" aria-label={`${experience.readyCount} di ${experience.totalCount} configurazioni essenziali pronte`}>
           <strong>{experience.readyCount}/{experience.totalCount}</strong>
-          <span>aree pronte</span>
+          <span>configurazioni essenziali</span>
         </div>
       </header>
 
@@ -113,16 +120,28 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </section>
 
       <nav className="settingsOverview" aria-label="Stato della configurazione">
-        {experience.areas.map((area) => (
-          <a className={`settingsOverviewCard status-${area.status.toLowerCase()}`} href={area.href} key={area.key}>
-            <span className="settingsOverviewNumber">{String(area.number).padStart(2, '0')}</span>
-            <div>
-              <strong>{area.label}</strong>
-              <small>{area.summary}</small>
-            </div>
-            <span className="settingsStatusBadge">{settingsAreaStatusLabel(area.status)}</span>
-          </a>
-        ))}
+        {SETTINGS_OVERVIEW_GROUPS.map((group) => {
+          const areas = experience.areas.filter((area) => area.group === group.key)
+          if (!areas.length) return null
+          const headingId = `settings-overview-${group.key}`
+          return (
+            <section className="settingsOverviewGroup" aria-labelledby={headingId} key={group.key}>
+              <h2 id={headingId}>{group.label}</h2>
+              <div className="settingsOverviewList">
+                {areas.map((area) => (
+                  <a className={`settingsOverviewCard status-${area.status.toLowerCase()}`} href={area.href} key={area.key}>
+                    <span className="settingsOverviewNumber">{String(area.number).padStart(2, '0')}</span>
+                    <div>
+                      <strong>{area.label}</strong>
+                      <small>{area.summary}</small>
+                    </div>
+                    <span className="settingsStatusBadge">{settingsAreaStatusLabel(area.status)}</span>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )
+        })}
       </nav>
 
       {query.saved === 'context' ? (

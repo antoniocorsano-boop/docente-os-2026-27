@@ -187,7 +187,7 @@ export default function AnnualPlanClient({
         <section className="humanTaskFocus annualCurrentFocus" aria-labelledby="annual-next-title">
           <p className="humanTaskFocusEyebrow">PROSSIMO NEL PIANO · {sectionLabel}</p>
           {nextBlock ? <><h2 id="annual-next-title">{nextBlock.focus}</h2><p>Questo è il primo blocco attivo non ancora completato. DOCENTE OS non presume che sia già stato preparato o svolto.</p><div className="humanTaskMeta"><span>{nextBlock.id}</span><span>UDA {nextBlock.uda}</span><span>{nextBlock.pack}</span><span>{nextBlock.period}</span><span>{completed.length}/33 completati</span></div><div className="humanTaskActions"><button className="primary" type="button" onClick={markNextDone} disabled={isPending}>Segna svolto</button>{prepareHref ? <Link href={prepareHref}>Prepara questa fase</Link> : null}</div></> : <><h2 id="annual-next-title">Percorso annuale completato</h2><p>Tutti i blocchi attivi risultano conclusi o esclusi.</p><div className="humanTaskMeta"><span>{completed.length}/33 completati</span></div></>}
-          <span className={`annualSaveState${syncError ? ' syncError' : ''}`}>{saveStateLabel}</span>
+          <span className={`annualSaveState${syncError ? ' syncError' : ''}`} role="status" aria-live="polite">{saveStateLabel}</span>
         </section>
       ) : (
         <div className="humanTaskCompactStats" aria-label="Quadro generale"><span><strong>33</strong> blocchi per grado</span><span><strong>66</strong> ore</span><span><strong>{source.code}</strong> fonte canonica</span></div>
@@ -198,7 +198,32 @@ export default function AnnualPlanClient({
         <div className="humanTaskSecondaryBody annualTableDisclosure">
           <section className="annualTableCard">
             <div className="annualTableHeader"><div><h2>Sequenza didattica</h2><p>Usala quando devi correggere uno stato, una data o una evidenza specifica.</p></div><span>{blocks.length} blocchi · 66 ore</span></div>
-            <div className="annualTableWrap"><table className="annualTable"><thead><tr><th>Blocco</th><th>UDA</th><th>Pacchetto</th><th>Periodo</th><th>Focus</th><th>Stato</th><th>Data svolta</th><th>Evidenza / nota</th></tr></thead><tbody>{blocks.map((block) => { const progress = progressFor(block.id); return <tr key={block.id} className={COMPLETE_STATUSES.has(progress.status) ? 'annualDoneRow' : ''}><td><strong>{block.id}</strong></td><td>{block.uda}</td><td><span className="annualPackChip">{block.pack}</span></td><td>{block.period}</td><td>{block.focus}</td><td>{selectedSection ? <select value={progress.status} onChange={(event) => applyAndPersist(block.id, { status: event.target.value as AnnualPlanBlockStatus })} aria-label={`Stato ${block.id}`} disabled={isPending}>{BLOCK_STATUSES.map((status) => <option key={status} value={status}>{blockStatusLabel(status)}</option>)}</select> : <span className="annualNeutralStatus">Pianificato</span>}</td><td>{selectedSection ? <input type="date" value={progress.date} onChange={(event) => applyAndPersist(block.id, { date: event.target.value })} aria-label={`Data ${block.id}`} disabled={isPending} /> : '—'}</td><td>{selectedSection ? <input value={progress.note} onChange={(event) => updateLocalProgress(block.id, { ...progress, note: event.target.value })} onBlur={(event) => persistProgressEntry(block.id, { ...progressFor(block.id), note: event.currentTarget.value })} placeholder="Prodotto, verifica, recupero…" aria-label={`Evidenza ${block.id}`} maxLength={4000} /> : '—'}</td></tr> })}</tbody></table></div>
+            <div className="annualDesktopTable">
+              <div className="annualTableWrap"><table className="annualTable"><thead><tr><th>Blocco</th><th>UDA</th><th>Pacchetto</th><th>Periodo</th><th>Focus</th><th>Stato</th><th>Data svolta</th><th>Evidenza / nota</th></tr></thead><tbody>{blocks.map((block) => { const progress = progressFor(block.id); return <tr key={block.id} className={COMPLETE_STATUSES.has(progress.status) ? 'annualDoneRow' : ''}><td><strong>{block.id}</strong></td><td>{block.uda}</td><td><span className="annualPackChip">{block.pack}</span></td><td>{block.period}</td><td>{block.focus}</td><td>{selectedSection ? <select value={progress.status} onChange={(event) => applyAndPersist(block.id, { status: event.target.value as AnnualPlanBlockStatus })} aria-label={`Stato ${block.id}`} disabled={isPending}>{BLOCK_STATUSES.map((status) => <option key={status} value={status}>{blockStatusLabel(status)}</option>)}</select> : <span className="annualNeutralStatus">Pianificato</span>}</td><td>{selectedSection ? <input type="date" value={progress.date} onChange={(event) => applyAndPersist(block.id, { date: event.target.value })} aria-label={`Data ${block.id}`} disabled={isPending} /> : '—'}</td><td>{selectedSection ? <input value={progress.note} onChange={(event) => updateLocalProgress(block.id, { ...progress, note: event.target.value })} onBlur={(event) => persistProgressEntry(block.id, { ...progressFor(block.id), note: event.currentTarget.value })} placeholder="Prodotto, verifica, recupero…" aria-label={`Evidenza ${block.id}`} maxLength={4000} /> : '—'}</td></tr> })}</tbody></table></div>
+            </div>
+            <ol className="annualMobileBlockList" role="list" aria-label="Sequenza didattica per blocchi">
+              {blocks.map((block) => {
+                const progress = progressFor(block.id)
+                const isComplete = COMPLETE_STATUSES.has(progress.status)
+                return (
+                  <li className="annualMobileBlockCard" role="listitem" key={`mobile-${block.id}`}>
+                    <div className="annualMobileBlockHeading">
+                      <div><strong>{block.id}</strong><span>{block.period}</span></div>
+                      {selectedSection ? <span className={isComplete ? 'annualNeutralStatus annualMobileComplete' : 'annualNeutralStatus'}>{blockStatusLabel(progress.status)}</span> : <span className="annualNeutralStatus">Pianificato</span>}
+                    </div>
+                    <h3>{block.focus}</h3>
+                    <div className="annualMobileBlockMeta"><span>UDA {block.uda}</span><span className="annualPackChip">{block.pack}</span></div>
+                    {selectedSection ? (
+                      <div className="annualMobileBlockFields">
+                        <label><span>Stato</span><select value={progress.status} onChange={(event) => applyAndPersist(block.id, { status: event.target.value as AnnualPlanBlockStatus })} aria-label={`Stato mobile ${block.id}`} disabled={isPending}>{BLOCK_STATUSES.map((status) => <option key={status} value={status}>{blockStatusLabel(status)}</option>)}</select></label>
+                        <label><span>Data svolta</span><input type="date" value={progress.date} onChange={(event) => applyAndPersist(block.id, { date: event.target.value })} aria-label={`Data mobile ${block.id}`} disabled={isPending} /></label>
+                        <label className="annualMobileEvidence"><span>Evidenza / nota</span><input value={progress.note} onChange={(event) => updateLocalProgress(block.id, { ...progress, note: event.target.value })} onBlur={(event) => persistProgressEntry(block.id, { ...progressFor(block.id), note: event.currentTarget.value })} placeholder="Prodotto, verifica, recupero…" aria-label={`Evidenza mobile ${block.id}`} maxLength={4000} /></label>
+                      </div>
+                    ) : null}
+                  </li>
+                )
+              })}
+            </ol>
           </section>
         </div>
       </details>

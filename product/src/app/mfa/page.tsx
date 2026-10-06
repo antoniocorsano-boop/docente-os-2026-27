@@ -46,8 +46,8 @@ export default async function MfaPage({ searchParams }: MfaPageProps) {
         <Card className="overflow-hidden shadow-[var(--shadow-float)]">
           <CardHeader className="border-b border-border bg-card">
             <p className="m-0 text-xs font-semibold text-primary">ACCESSO A DUE FATTORI</p>
-            <CardTitle>Verifica MFA</CardTitle>
-            <CardDescription>Docente OS accetta una sessione operativa solo dopo il passaggio ad AAL2.</CardDescription>
+            <CardTitle>Verifica di sicurezza</CardTitle>
+            <CardDescription>Conferma il secondo fattore per continuare nelle superfici operative.</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             <MfaGate nextPath={nextPath} />
