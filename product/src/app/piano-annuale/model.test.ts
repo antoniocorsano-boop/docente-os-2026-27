@@ -55,5 +55,6 @@ test('Piano annuale has a dedicated mobile block list while retaining the deskto
 
 test('Piano annuale exposes persistent save feedback to assistive technology', () => {
   // @trama-feedback-test
-  assert.match(annualPlanClientSource, /className=\{`annualSaveState[^}]+\} role="status" aria-live="polite"/)
+  assert.match(annualPlanClientSource, /<span className=\{`annualSaveState/)
+  assert.match(annualPlanClientSource, /role="status" aria-live="polite">\{saveStateLabel\}<\/span>/)
 })
