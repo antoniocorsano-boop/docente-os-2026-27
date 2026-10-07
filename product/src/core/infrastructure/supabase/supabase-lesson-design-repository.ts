@@ -154,7 +154,6 @@ export class SupabaseLessonDesignRepository {
     const items = inputs.map((input): AtlasMaterialBundleRpcItem => {
       const draft = validateLessonDesignExtensionDraft(input)
       assertDraftContext(context, draft)
-      if (draft.workspaceId !== context.workspaceId || draft.academicYearId !== context.academicYearId) throw new Error('Atlas material bundle is outside the active lesson context')
       if (draft.sourceKind !== 'ATLAS') throw new Error('Atlas material bundle requires ATLAS provenance')
       const dedupeKey = typeof draft.payload.dedupeKey === 'string' ? draft.payload.dedupeKey.trim() : ''
       if (!dedupeKey) throw new Error('Atlas material bundle item requires a dedupe key')
