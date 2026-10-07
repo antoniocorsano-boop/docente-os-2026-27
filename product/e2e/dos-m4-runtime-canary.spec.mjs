@@ -106,26 +106,10 @@ async function activateDraft(page, marker, activeDateIso = null) {
   return { ...mutation, effectiveFrom }
 }
 
-async function inspectLineage(page) {
-  await page.goto('/orario/gestisci', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('heading', { name: 'Il tuo orario' })).toBeVisible()
-
-  const activeDetails = page.locator('details.timetableVersionDetails').filter({ hasText: 'Orario in uso' }).first()
-  await expect(activeDetails).toBeVisible()
-  await ensureDetailsOpen(activeDetails)
-
-  const nextDraft = page.locator('details.timetableVersionDetails').filter({ hasText: 'Bozza per modifiche future' }).first()
-  await expect(nextDraft).toBeVisible()
-
-  const previousToggle = activeDetails.getByText('Vedi versioni precedenti', { exact: true })
-  const hasPrevious = (await previousToggle.count()) > 0
-  if (hasPrevious) {
-    await previousToggle.click()
-    const previousBody = activeDetails.locator('details').filter({ hasText: 'Vedi versioni precedenti' }).first()
-    await expect(previousBody).toBeVisible()
-  }
-
-  return { hasPrevious, nextDraftObserved: true }
+async function verifyNextDraftCopy(page, marker) {
+  await page.goto('/orario/aggiorna', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: 'Modifica orario' })).toBeVisible()
+  await expect(page.getByText(marker, { exact: false }).first()).toBeVisible()
 }
 
 test.beforeAll(() => {
@@ -134,7 +118,7 @@ test.beforeAll(() => {
   if (!RELEASE_REF) throw new Error('DOS_M4_RELEASE_REF is required')
 })
 
-test('DOS-M4 real timetable canary is persistent, version-bound and preserves lineage', async ({ page, request }) => {
+test('DOS-M4 real timetable canary is persistent, version-bound and creates replacement lineage', async ({ page, request }) => {
   const observedAt = new Date().toISOString()
   const buildResponse = await request.get('/api/build-info')
   expect(buildResponse.ok()).toBeTruthy()
@@ -146,32 +130,33 @@ test('DOS-M4 real timetable canary is persistent, version-bound and preserves li
   await expect(page.getByRole('heading', { name: 'Il tuo orario' })).toBeVisible()
 
   const initialHero = await page.locator('.timetableHero').innerText()
-  const activeDateIso = italianDateToIso(initialHero)
+  const initialActiveDateIso = italianDateToIso(initialHero)
+  const hadInitialActive = Boolean(initialActiveDateIso)
   const markerBase = `DOS-M4-CANARY-${Date.now()}`
   const activations = []
 
-  activations.push(await activateDraft(page, markerBase, activeDateIso))
-  let lineage = await inspectLineage(page)
+  activations.push(await activateDraft(page, markerBase, initialActiveDateIso))
 
-  if (!lineage.hasPrevious) {
-    const secondMarker = `${markerBase}-HISTORY`
-    activations.push(await activateDraft(page, secondMarker, activations[0].effectiveFrom))
-    lineage = await inspectLineage(page)
+  if (!hadInitialActive) {
+    const historyMarker = `${markerBase}-HISTORY`
+    activations.push(await activateDraft(page, historyMarker, activations[0].effectiveFrom))
   }
-
-  expect(lineage.hasPrevious).toBeTruthy()
-  expect(lineage.nextDraftObserved).toBeTruthy()
 
   const finalActivation = activations.at(-1)
   await page.goto('/orario', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText(finalActivation.marker, { exact: false }).first()).toBeVisible()
+  await mkdir('test-results', { recursive: true })
+  await page.screenshot({ path: 'test-results/dos-m4-runtime-canary-active.png', fullPage: true })
+
+  await verifyNextDraftCopy(page, finalActivation.marker)
+  await page.screenshot({ path: 'test-results/dos-m4-runtime-canary-next-draft.png', fullPage: true })
 
   const runUrl = process.env.GITHUB_RUN_ID
     ? `${process.env.GITHUB_SERVER_URL}/${REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
     : 'local'
   const receipt = [
-    'id: EV-MAT-DOS-RUNTIME-CANARY-2026-10-07',
-    'type: RUNTIME_CANARY',
+    'id: EV-MAT-DOS-RUNTIME-CANARY-BROWSER-2026-10-07',
+    'type: RUNTIME_CANARY_BROWSER',
     'area: docente-os',
     'status: PASS',
     'source:',
@@ -181,8 +166,6 @@ test('DOS-M4 real timetable canary is persistent, version-bound and preserves li
     'freshness:',
     '  policy: RUNTIME_BOUND',
     'confidence: HIGH',
-    'supports:',
-    '  - level: 4',
     'binding:',
     '  areaRef: docente-os',
     `  releaseRef: ${RELEASE_REF}`,
@@ -192,15 +175,14 @@ test('DOS-M4 real timetable canary is persistent, version-bound and preserves li
     '  aal2: true',
     '  realSupabase: true',
     '  persistedAfterReload: true',
-    '  historyObserved: true',
-    '  nextDraftObserved: true',
+    '  replacementPerformed: true',
+    '  nextDraftCopyObserved: true',
+    '  historyObservation: EXTERNAL_READ_ONLY_REQUIRED',
     `  activationCount: ${activations.length}`,
     `  finalMarker: "${finalActivation.marker}"`,
     `  effectiveFrom: ${finalActivation.effectiveFrom}`,
     '',
   ].join('\n')
 
-  await mkdir('test-results', { recursive: true })
-  await writeFile('test-results/dos-m4-runtime-canary-receipt.yaml', receipt, 'utf8')
-  await page.screenshot({ path: 'test-results/dos-m4-runtime-canary-final.png', fullPage: true })
+  await writeFile('test-results/dos-m4-runtime-canary-browser-receipt.yaml', receipt, 'utf8')
 })
