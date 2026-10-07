@@ -19,7 +19,8 @@ jobs:
           node-version: '22'
       - name: Install Playwright
         run: |
-          npm install --no-save playwright@1.55.0\n          npx playwright install --with-deps chromium
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
       - name: Run preview probe
         env:
           TARGET_URL: https://docente-os-pr692-atlas.onrender.com
