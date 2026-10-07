@@ -19,16 +19,16 @@ jobs:
           node-version: '22'
       - name: Install Playwright
         run: |
-          npm --prefix product exec --yes playwright@1.55.0 install --with-deps chromium
+          npm install --no-save playwright@1.55.0\n          npx playwright install --with-deps chromium
       - name: Run preview probe
         env:
           TARGET_URL: https://docente-os-pr692-atlas.onrender.com
         run: |
-          mkdir -p test-results/pr692-preview
-          cat > /tmp/pr692-probe.mjs <<'EOF'
+          mkdir -p product/test-results/pr692-preview
+          cat > product/pr692-probe.mjs <<'EOF'
           import { chromium } from 'playwright';
           import fs from 'node:fs/promises';
-          const out='test-results/pr692-preview';
+          const out=process.cwd()+'/test-results/pr692-preview';
           const browser=await chromium.launch({headless:true});
           const report=[];
           async function snap(page,name){
@@ -80,7 +80,7 @@ jobs:
           await browser.close();
           EOF
           cd product
-          npx --yes -p playwright@1.55.0 node /tmp/pr692-probe.mjs
+          node pr692-probe.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
