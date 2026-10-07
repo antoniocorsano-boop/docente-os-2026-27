@@ -109,5 +109,5 @@ jobs:
         run: |
           echo '## DOS-M4 Runtime Canary receipt' >> "$GITHUB_STEP_SUMMARY"
           echo '```yaml' >> "$GITHUB_STEP_SUMMARY"
-          cat test-results/dos-m4-runtime-canary-receipt.yaml >> "$GITHUB_STEP_SUMMARY"
+          cat test-results/dos-m4-runtime-canary-browser-receipt.yaml >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
