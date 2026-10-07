@@ -38,7 +38,7 @@ const MATERIAL_TYPES = new Set<AtlasMaterialType>(['presentation', 'worksheet', 
 
 export function encodeTeachingContext(context: TeachingContextSnapshot) {
   assertTeachingContext(context)
-  return Buffer.from(JSON.stringify(context), 'utf8').toString('base64url')
+  return encodeBase64UrlUtf8(JSON.stringify(context))
 }
 
 export function buildStudioAtlasMaterialHref(origin: string, context: TeachingContextSnapshot) {
@@ -81,11 +81,26 @@ export function parseAtlasMaterialBundle(value: unknown): AtlasMaterialBundle {
 export function decodeAtlasMaterialBundle(encoded: string) {
   if (!encoded || encoded.length > 16_384) throw new Error('Invalid Atlas material envelope')
   try {
-    return parseAtlasMaterialBundle(JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')))
+    return parseAtlasMaterialBundle(JSON.parse(decodeBase64UrlUtf8(encoded)))
   } catch (error) {
     if (error instanceof Error && !error.message.startsWith('Unexpected')) throw error
     throw new Error('Malformed Atlas material envelope')
   }
+}
+
+function encodeBase64UrlUtf8(value: string) {
+  const bytes = new TextEncoder().encode(value)
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/u, '')
+}
+
+function decodeBase64UrlUtf8(value: string) {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+  const binary = atob(padded)
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0))
+  return new TextDecoder().decode(bytes)
 }
 
 function assertTeachingContext(value: TeachingContextSnapshot) {
