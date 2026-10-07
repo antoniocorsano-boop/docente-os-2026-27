@@ -4,13 +4,16 @@
 
 Documentazione usa un unico motore per progettare e governare modelli documentali istituzionali. I file già utilizzati dalla scuola sono sorgenti di riferimento: aiutano a comprendere funzione, prassi e informazioni necessarie, ma non obbligano DOCENTE OS a riprodurne impaginazione, duplicazioni o limiti storici.
 
+Il motore deve separare con chiarezza **identità grafica istituzionale comune** e **struttura specifica della singola famiglia documentale**. Un documento non definisce da solo la propria veste grafica: eredita la base istituzionale approvata e vi applica il modello semantico della propria famiglia.
+
 ## Ownership
 
 `DOC-TPL-01` possiede esclusivamente:
 
 - identità e famiglia del modello;
 - versioni canoniche del modello;
-- struttura semantica di sezioni e campi;
+- base grafica istituzionale condivisa;
+- struttura semantica di sezioni e campi della famiglia documentale;
 - regole di resa documentale;
 - collegamento alle sorgenti di riferimento;
 - controllo di qualità del modello;
@@ -32,6 +35,73 @@ La sorgente viene conservata come evidenza storica. Il modello canonico può:
 
 Una nuova sorgente non modifica retroattivamente un modello attivo o un documento già finalizzato.
 
+## Two-layer template model
+
+Ogni documento professionale deriva da due livelli versionati e distinti.
+
+### Institutional shell
+
+La base istituzionale condivisa governa gli elementi trasversali a tutte le famiglie:
+
+- denominazione e identità dell'Istituto;
+- marchio o logo approvato;
+- intestazione e piè di pagina;
+- tipografia e gerarchia dei titoli;
+- margini, spaziature e geometria A4;
+- regole comuni per tabelle e blocchi testuali;
+- numerazione e interruzioni di pagina;
+- blocchi data, luogo e firma;
+- criteri di leggibilità, stampa e accessibilità;
+- eventuali elementi cromatici istituzionali ammessi.
+
+La base istituzionale non contiene la semantica della Programmazione, dell'UDA, del Programma svolto o della Relazione finale.
+
+### Document-family template
+
+Ogni famiglia definisce invece:
+
+- funzione professionale del documento;
+- sezioni semantiche;
+- ordine e obbligatorietà delle sezioni;
+- campi e contenuti richiesti;
+- regole condizionali;
+- uso appropriato di testo, tabelle e selezioni guidate;
+- punti che possono essere composti da dati già disponibili;
+- punti che richiedono giudizio o conferma del docente;
+- eventuali vincoli specifici di resa.
+
+Gerarchia canonica:
+
+```text
+INSTITUTIONAL_SHELL
+├── ANNUAL_PLAN
+├── UDA
+├── COMPLETED_PROGRAM
+└── FINAL_REPORT
+```
+
+Un modello di famiglia eredita la base istituzionale. Può variare soltanto gli elementi dichiarati dal proprio contratto; non può ridefinire autonomamente identità, tipografia o regole comuni di impaginazione.
+
+## Shared rendering contract
+
+Contenuto e resa grafica restano separati.
+
+```text
+structured document content
+        ↓
+document-family template
+        ↓
+institutional shell
+        ↓
+shared renderer
+  ↙      ↓      ↘
+preview  PDF    DOCX
+```
+
+Anteprima, PDF e DOCX devono derivare dalla stessa versione salvata del documento e dalle stesse versioni di shell e template di famiglia. Il passaggio da un formato di esportazione all'altro non deve richiedere duplicazione del contenuto professionale.
+
+Una nuova versione della base istituzionale o del modello di famiglia non modifica retroattivamente documenti già finalizzati.
+
 ## Quality before activation
 
 Una versione può diventare attiva solo dopo:
@@ -41,7 +111,7 @@ Una versione può diventare attiva solo dopo:
 3. esito `PASS` o `PASS_WITH_NOTES` sulla review più recente della versione;
 4. conferma umana esplicita.
 
-Il controllo considera almeno funzione, chiarezza semantica, necessità dei dati, privacy, adeguatezza di tabelle/checklist/testo, coerenza con gli altri documenti e purezza dell'output.
+Il controllo considera almeno funzione, chiarezza semantica, necessità dei dati, privacy, adeguatezza di tabelle/checklist/testo, coerenza con gli altri documenti, coerenza con la base istituzionale e purezza dell'output.
 
 ## Institutional output is clean
 
@@ -78,15 +148,22 @@ Programmazione annuale e Programma svolto restano documenti distinti, con funzio
 ## Runtime boundaries
 
 - Registry e versioni sono workspace-scoped e protetti da RLS.
-- Le versioni semantiche e le review restano storiche e immutabili.
+- Le versioni semantiche, della base istituzionale e le review restano storiche e immutabili.
 - Le scritture avvengono tramite boundary governati, non tramite write dirette del client autenticato.
 - Una sola variante canonica per famiglia può essere attiva nello stesso workspace.
+- Una sola base istituzionale corrente viene applicata ai nuovi documenti, salvo varianti esplicitamente approvate.
 - Il motore non dipende da un provider generativo.
 - `Documentazione` resta una destinazione secondaria: la bottom navigation mobile non cambia.
 
+## Daily UX boundary
+
+Il registro dei modelli è una superficie amministrativa/secondaria. Il docente, nel percorso quotidiano, sceglie il **tipo di documento** e lavora sul contenuto; non deve scegliere identificatori di template, versioni o varianti tecniche.
+
+Il sistema eredita automaticamente il modello attivo pertinente e mostra una normale anteprima istituzionale. Eventuali cambi di modello che incidono su un documento già in lavorazione richiedono confronto e decisione esplicita, mai sostituzione silenziosa.
+
 ## Downstream contract
 
-`DOC-01/X5` userà una versione precisa del template per creare documenti versionati. `DOC-04` fornirà contenuti e giudizi professionali alla Relazione finale, mantenendo separati dati documentati, derivazioni, conferme del docente e provenienza interna.
+`DOC-01/X5` userà versioni precise della base istituzionale e del template di famiglia per creare documenti versionati. `DOC-04` fornirà contenuti e giudizi professionali alla Relazione finale, mantenendo separati dati documentati, derivazioni, conferme del docente e provenienza interna.
 
 Dipendenza canonica:
 
