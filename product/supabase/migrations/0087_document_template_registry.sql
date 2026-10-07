@@ -333,6 +333,18 @@ begin
          and not ('SECTION_PURPOSE_REQUIRED' = any(validation_codes)) then
         validation_codes := array_append(validation_codes, 'SECTION_PURPOSE_REQUIRED');
       end if;
+      if coalesce(section_node->>'renderRole', '') not in ('HEADING','PARAGRAPH','KEY_VALUE','TABLE','CHECKLIST','CALLOUT','SIGNATURE_BLOCK')
+         and not ('INVALID_SECTION_RENDER_ROLE' = any(validation_codes)) then
+        validation_codes := array_append(validation_codes, 'INVALID_SECTION_RENDER_ROLE');
+      end if;
+      if coalesce(jsonb_typeof(section_node->'required'), '') <> 'boolean'
+         and not ('INVALID_SECTION_REQUIRED' = any(validation_codes)) then
+        validation_codes := array_append(validation_codes, 'INVALID_SECTION_REQUIRED');
+      end if;
+      if coalesce(jsonb_typeof(section_node->'repeatable'), '') <> 'boolean'
+         and not ('INVALID_SECTION_REPEATABLE' = any(validation_codes)) then
+        validation_codes := array_append(validation_codes, 'INVALID_SECTION_REPEATABLE');
+      end if;
 
       external_text := external_text || E'\n'
         || coalesce(section_node->>'label', '') || E'\n'
@@ -375,6 +387,26 @@ begin
         if nullif(trim(field_node->>'label'), '') is null
            and not ('FIELD_LABEL_REQUIRED' = any(validation_codes)) then
           validation_codes := array_append(validation_codes, 'FIELD_LABEL_REQUIRED');
+        end if;
+        if coalesce(field_node->>'type', '') not in ('TEXT_SHORT','TEXT_LONG','NUMBER','DATE','BOOLEAN','SINGLE_SELECT','MULTI_SELECT','CHECKLIST','TABLE','REPEATING_GROUP','DERIVED_VALUE','DERIVED_TEXT','STATIC_TEXT','IMAGE','SIGNATURE')
+           and not ('INVALID_FIELD_TYPE' = any(validation_codes)) then
+          validation_codes := array_append(validation_codes, 'INVALID_FIELD_TYPE');
+        end if;
+        if coalesce(jsonb_typeof(field_node->'required'), '') <> 'boolean'
+           and not ('INVALID_FIELD_REQUIRED' = any(validation_codes)) then
+          validation_codes := array_append(validation_codes, 'INVALID_FIELD_REQUIRED');
+        end if;
+        if coalesce(field_node->>'cardinality', '') not in ('ONE','MANY')
+           and not ('INVALID_FIELD_CARDINALITY' = any(validation_codes)) then
+          validation_codes := array_append(validation_codes, 'INVALID_FIELD_CARDINALITY');
+        end if;
+        if coalesce(field_node->>'valuePolicy', '') not in ('AUTO_DOCUMENTED','DERIVED','TEACHER_INPUT','TEACHER_CONFIRMATION','OPTIONAL_PROPOSAL','RESTRICTED','STATIC')
+           and not ('INVALID_FIELD_VALUE_POLICY' = any(validation_codes)) then
+          validation_codes := array_append(validation_codes, 'INVALID_FIELD_VALUE_POLICY');
+        end if;
+        if coalesce(field_node->>'privacyClass', '') not in ('PUBLIC_INSTITUTIONAL','PROFESSIONAL_CONTEXT','AGGREGATE_CLASS_DATA','SENSITIVE_AGGREGATE','PERSONAL_STUDENT_DATA','SPECIAL_CATEGORY_DATA')
+           and not ('INVALID_FIELD_PRIVACY_CLASS' = any(validation_codes)) then
+          validation_codes := array_append(validation_codes, 'INVALID_FIELD_PRIVACY_CLASS');
         end if;
 
         external_text := external_text || E'\n'
