@@ -54,8 +54,8 @@ jobs:
               report.push({name:`missing-e2e-credentials-${suffix}`,url:page.url()});
               return false;
             }
-            await page.getByLabel('Email').fill(process.env.E2E_EMAIL);
-            await page.getByLabel('Password').fill(process.env.E2E_PASSWORD);
+            await page.locator('#email').fill(process.env.E2E_EMAIL);
+            await page.locator('#password').fill(process.env.E2E_PASSWORD);
             await page.getByRole('button',{name:/Entra nel tuo spazio docente/i}).click();
             await page.waitForLoadState('networkidle',{timeout:15000}).catch(()=>{});
             await page.waitForTimeout(1000);
