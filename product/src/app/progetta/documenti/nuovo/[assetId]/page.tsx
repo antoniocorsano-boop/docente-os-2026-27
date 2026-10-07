@@ -22,12 +22,12 @@ export default async function NewUdaAuthoringPage({ params }: { params: Promise<
   if (!bundle || bundle.asset.contentCategory !== 'UDA') notFound()
 
   const title = humanizeKnowledgeTitle(bundle.document?.title ?? bundle.asset.originalName)
-  const body = bundle.document?.normalizedMarkdown ?? bundle.document?.normalizedText ?? bundle.asset.originalText ?? ''
   const sourceHref = `/knowledge/${encodeURIComponent(assetId)}`
   const studioOrigin = process.env.NEXT_PUBLIC_STUDIO_ATLAS_ORIGIN
   const docenteOrigin = process.env.NEXT_PUBLIC_DOCENTE_OS_ORIGIN ?? process.env.RENDER_EXTERNAL_URL ?? 'http://localhost:3000'
   const grade = asGrade(bundle.asset.sourceMetadata.grade)
   const sectionLabel = firstSectionLabel(bundle.asset.classLabels ?? [])
+  const discipline = metadataString(bundle.asset.sourceMetadata.discipline) ?? 'Tecnologia'
   const udaId = metadataString(bundle.asset.sourceMetadata.uda) ?? assetId
   const atlasHref = studioOrigin && grade
     ? buildStudioAtlasMaterialHref(studioOrigin, {
@@ -37,7 +37,7 @@ export default async function NewUdaAuthoringPage({ params }: { params: Promise<
         udaTitle: title,
         grade,
         ...(sectionLabel ? { sectionLabel } : {}),
-        discipline: metadataString(bundle.asset.sourceMetadata.discipline) ?? 'Tecnologia',
+        discipline,
         ...(metadataString(bundle.asset.sourceMetadata.block) ? { blockId: metadataString(bundle.asset.sourceMetadata.block) } : {}),
         ...(metadataString(bundle.asset.sourceMetadata.pack) ? { packId: metadataString(bundle.asset.sourceMetadata.pack) } : {}),
         returnUrl: `${docenteOrigin}/progetta/atlas/ritorno`,
@@ -46,32 +46,37 @@ export default async function NewUdaAuthoringPage({ params }: { params: Promise<
 
   return (
     <AppShell active="design" academicYearLabel={context.academicYear.label} workspaceName={context.workspace.name} role={context.role} contentClassName="newUdaAuthoringSurface">
-      <nav className="newUdaBack"><Link href="/progetta">← Torna a Progetta</Link></nav>
-      <section className="newUdaGate" aria-labelledby="new-uda-title">
-        <div className="newUdaGateCopy">
-          <p>DOCUMENTO DI LAVORO</p>
-          <h1 id="new-uda-title">Prepara questa UDA</h1>
-          <span>La fonte resta invariata. DOCENTE OS crea una copia di lavoro separata e versionata solo dopo la tua conferma.</span>
-        </div>
-        <article className="newUdaSource">
-          <small>FONTE SELEZIONATA</small>
-          <h2>{title}</h2>
-          <p>{bundle.document?.summary ?? 'Unità di apprendimento presente in Conoscenza.'}</p>
-          <div><span>{body.length.toLocaleString('it-IT')} caratteri disponibili</span><Link href={sourceHref}>Controlla la fonte</Link></div>
-        </article>
-        <div className="newUdaEffects">
-          <div><strong>Cosa succede</strong><p>Viene creata, oppure riaperta se esiste già, una UDA di lavoro collegata a questa fonte. Ogni salvataggio successivo produrrà una nuova versione.</p></div>
-          <div><strong>Cosa non succede</strong><p>La fonte in Conoscenza non viene modificata e non vengono creati eventi, attività Planner o modifiche al Piano annuale.</p></div>
-        </div>
-        <section className="newUdaAtlas" aria-labelledby="new-uda-atlas-title">
-          <div><small>MATERIALI PER LA LEZIONE</small><h2 id="new-uda-atlas-title">Continua in Studio Atlas senza perdere il contesto</h2><p>Atlas riceve solo UDA, classe e riferimenti didattici. Potrai selezionare i materiali e tornare qui prima di qualsiasi associazione alla lezione.</p></div>
-          {atlasHref ? <a className="newUdaAtlasAction" href={atlasHref}>Prepara materiali con Atlas <span aria-hidden>→</span></a> : <span className="newUdaAtlasUnavailable">Studio Atlas non è ancora collegato a questo ambiente.</span>}
+      <nav className="newUdaBack"><Link href="/progetta">← Progetta</Link></nav>
+      <main className="newUdaGate" aria-labelledby="new-uda-title">
+        <header className="newUdaGateCopy">
+          <h1 id="new-uda-title">Cosa vuoi preparare?</h1>
+        </header>
+
+        <section className="newUdaContext" aria-label="Contesto UDA">
+          <div><small>UDA</small><strong>{title}</strong></div>
+          <span>{sectionLabel ? `${sectionLabel} · ` : ''}{discipline}</span>
         </section>
-        <div className="newUdaActions">
-          <form action={openUdaAuthoring.bind(null, assetId)}><button type="submit">Inizia documento di lavoro</button></form>
-          <Link href={sourceHref}>Non ancora: apri la fonte</Link>
-        </div>
-      </section>
+
+        <section className="newUdaChoices" aria-label="Azioni disponibili">
+          {atlasHref ? (
+            <a className="newUdaAtlasAction" href={atlasHref}>
+              <span><strong>Prepara materiali con Atlas</strong><small>Presentazione, scheda, guida e rubrica</small></span>
+              <b aria-hidden>→</b>
+            </a>
+          ) : (
+            <div className="newUdaAtlasUnavailable"><strong>Prepara materiali con Atlas</strong><span>Studio Atlas non è collegato a questo ambiente.</span></div>
+          )}
+
+          <form action={openUdaAuthoring.bind(null, assetId)}>
+            <button className="newUdaWorkAction" type="submit">
+              <span><strong>Lavora sull’UDA</strong><small>Apri il documento di lavoro</small></span>
+              <b aria-hidden>→</b>
+            </button>
+          </form>
+        </section>
+
+        <Link className="newUdaSourceLink" href={sourceHref}>Controlla la fonte</Link>
+      </main>
     </AppShell>
   )
 }
