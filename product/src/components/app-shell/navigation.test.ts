@@ -23,7 +23,7 @@ test('canonical navigation has unique keys and routes', () => {
 })
 
 test('canonical navigation preserves every teacher capability', () => {
-  assert.deepEqual(PRIMARY_NAVIGATION.map((item) => item.key), ['home', 'today', 'design', 'knowledge', 'classes', 'timetable', 'calendar', 'annual-plan', 'settings', 'account'])
+  assert.deepEqual(PRIMARY_NAVIGATION.map((item) => item.key), ['home', 'today', 'design', 'knowledge', 'classes', 'timetable', 'calendar', 'annual-plan', 'documentation', 'settings', 'account'])
 })
 
 test('canonical navigation groups cover every destination exactly once', () => {
@@ -38,6 +38,7 @@ test('DOS-VIEW-CONV-01A exposes Home, Oggi, Classi and Orario before the Naviga 
   assert.deepEqual(MOBILE_NAVIGATION_KEYS, ['home', 'today', 'classes', 'timetable'])
   assert.equal(MOBILE_NAVIGATION_KEYS.includes('home'), true)
   assert.equal(MOBILE_NAVIGATION_KEYS.includes('today'), true)
+  assert.equal(MOBILE_NAVIGATION_KEYS.includes('documentation'), false)
 })
 
 test('DOS-VIEW-CONV-01A derives mobile navigation columns from rendered children instead of a fixed count', () => {
@@ -58,7 +59,7 @@ test('DOS-VIEW-CONV-01A keeps the primary work destinations coherent across desk
 test('DOS-VIEW-CONV-01A Naviga follows the approved secondary information architecture', () => {
   assert.deepEqual(SECONDARY_NAVIGATION_GROUPS.map((group) => group.label), ['Prepara e insegna', 'Organizza', 'Trova', 'Configura'])
   assert.deepEqual(SECONDARY_NAVIGATION_GROUPS.map((group) => group.items), [
-    ['design', 'annual-plan'],
+    ['design', 'annual-plan', 'documentation'],
     ['calendar'],
     ['knowledge'],
     ['settings', 'account'],
@@ -69,11 +70,17 @@ test('DOS-VIEW-CONV-01A Naviga follows the approved secondary information archit
 
 test('canonical navigation groups follow human tasks rather than technical containers', () => {
   assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[0]).map((item) => item.key), ['home', 'today'])
-  assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[1]).map((item) => item.key), ['classes', 'design', 'annual-plan'])
+  assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[1]).map((item) => item.key), ['classes', 'design', 'annual-plan', 'documentation'])
   assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[2]).map((item) => item.key), ['timetable', 'calendar'])
   assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[3]).map((item) => item.key), ['knowledge'])
   assert.deepEqual(navigationGroupItems(NAVIGATION_GROUPS[4]).map((item) => item.key), ['settings', 'account'])
   assert.equal(NAVIGATION_GROUPS[1].label, 'Prepara e insegna')
+})
+
+test('Documentazione stays a secondary human-task destination', () => {
+  assert.equal(navigationItem('documentation').href, '/documentazione')
+  assert.match(navigationItem('documentation').description, /documenti professionali/i)
+  assert.equal(MOBILE_NAVIGATION_KEYS.includes('documentation'), false)
 })
 
 test('account and professional settings stay distinct and secondary', () => {
