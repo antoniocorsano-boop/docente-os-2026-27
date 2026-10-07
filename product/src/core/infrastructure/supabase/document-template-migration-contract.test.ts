@@ -25,3 +25,15 @@ test('quality review is independently recomputed inside the database boundary', 
   assert.match(sql, /computed_review\s*:=\s*private\.compute_document_template_quality_review\(version_schema\)/i)
   assert.match(sql, /quality review does not match deterministic review/i)
 })
+
+test('trusted quality review validates the complete field and section schema before PASS', () => {
+  const sql = readFileSync(migrationPath, 'utf8')
+  assert.match(sql, /INVALID_SECTION_RENDER_ROLE/)
+  assert.match(sql, /INVALID_SECTION_REQUIRED/)
+  assert.match(sql, /INVALID_SECTION_REPEATABLE/)
+  assert.match(sql, /INVALID_FIELD_TYPE/)
+  assert.match(sql, /INVALID_FIELD_REQUIRED/)
+  assert.match(sql, /INVALID_FIELD_CARDINALITY/)
+  assert.match(sql, /INVALID_FIELD_VALUE_POLICY/)
+  assert.match(sql, /INVALID_FIELD_PRIVACY_CLASS/)
+})
