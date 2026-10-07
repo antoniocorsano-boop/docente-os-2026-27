@@ -37,3 +37,20 @@ test('timetable guided flow keeps writes perceptible and activation explicitly h
   assert.match(actionsSource, /redirect\('\/orario\/aggiorna\?fase=controllo'\)/)
   assert.match(actionsSource, /redirect\('\/orario\?feedback=timetable_activated'\)/)
 })
+
+test('timetable lesson context keeps class actions above the modal backdrop', () => {
+  const gridSource = readFileSync(new URL('./TimetableGrid.tsx', import.meta.url), 'utf8')
+  const guidanceSource = readFileSync(new URL('./orario-guidance.css', import.meta.url), 'utf8')
+
+  assert.match(gridSource, /<Dialog\.Overlay className="timetableContextBackdrop" \/>/)
+  assert.match(gridSource, /<Dialog\.Content className="timetableContextSheet">/)
+  assert.match(gridSource, /Apri classe<\/Link>/)
+
+  const backdropLayer = guidanceSource.match(/\.timetableContextBackdrop\{[^}]*z-index:(\d+)/)
+  const sheetLayer = guidanceSource.match(/\.timetableContextSheet\{[^}]*z-index:(\d+)/)
+
+  assert.ok(backdropLayer, 'the modal backdrop must declare its stacking layer')
+  assert.ok(sheetLayer, 'the lesson context sheet must declare its stacking layer')
+  assert.ok(Number(sheetLayer[1]) > Number(backdropLayer[1]), 'the lesson context sheet must stay above the backdrop')
+  assert.match(guidanceSource, /\.timetableContextSheet\{[^}]*position:fixed/)
+})

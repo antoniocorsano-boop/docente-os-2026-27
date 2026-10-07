@@ -10,6 +10,7 @@ const outputRoot = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience
 
 for (const journey of [
   { id: 'class-next-task', label: 'Classe → prossimo compito', run: classNextTask },
+  { id: 'timetable-open-class', label: 'Orario → apri classe', run: timetableOpenClass },
   { id: 'uda-reading', label: 'Progetta → UDA', run: udaReading },
   { id: 'knowledge-document', label: 'Conoscenza → documento', run: knowledgeDocument },
   { id: 'calendar-controls', label: 'Calendario → controlli intenzionali', run: calendarControls },
@@ -33,6 +34,22 @@ async function classNextTask(page, testInfo) {
   if (await primary.count()) await expect(primary).toBeVisible()
   await screenshot(page, testInfo, 'class-next-task')
   return pass(await page.locator('h1').first().innerText())
+}
+
+async function timetableOpenClass(page, testInfo) {
+  await page.goto('/orario')
+  const lesson = page.locator('button.occupiedTimetableCell.kind-lesson').first()
+  if (!(await lesson.count())) return na('Nessuna lezione canonica configurata nell’orario tecnico.')
+
+  await lesson.click()
+  const openClass = page.getByRole('link', { name: 'Apri classe', exact: true })
+  await expect(openClass).toBeVisible()
+  await expect(openClass).toHaveAttribute('href', /^\/classi\//)
+  await openClass.click()
+  await expect(page).toHaveURL(/\/classi\//)
+  await expect(page.locator('h1').first()).toBeVisible()
+  await screenshot(page, testInfo, 'timetable-open-class')
+  return pass(`Classe aperta dall’orario: ${await page.locator('h1').first().innerText()}`)
 }
 
 async function udaReading(page, testInfo) {
