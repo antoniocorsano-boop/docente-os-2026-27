@@ -1,10 +1,17 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import test from 'node:test'
-import { buildBlocks } from './model'
+import { buildBlocks, resolveCanonicalUdaCode } from './model'
 
 const annualPlanClientSource = fs.readFileSync(new URL('./AnnualPlanClient.tsx', import.meta.url), 'utf8')
 const annualPlanCssSource = fs.readFileSync(new URL('./annual-plan.css', import.meta.url), 'utf8')
+
+test('recovers the canonical UDA code from metadata or CAN-UDA source identity', () => {
+  assert.equal(resolveCanonicalUdaCode('Prima', '1-01', 'qualunque-nome'), '1-01')
+  assert.equal(resolveCanonicalUdaCode('Prima', undefined, 'CAN-UDA-1-01_Tecnologia_bisogni_risorse_e_sistemi.pdf'), '1-01')
+  assert.equal(resolveCanonicalUdaCode('Seconda', undefined, 'CAN-UDA-1-01_Tecnologia_bisogni_risorse_e_sistemi.pdf'), null)
+  assert.equal(resolveCanonicalUdaCode('Prima', undefined, 'documento-senza-codice.pdf'), null)
+})
 
 test('Prima follows the canonical B07-B15 alternation from CAN-PLAN-1', () => {
   const byId = new Map(buildBlocks('Prima').map((block) => [block.id, block]))
