@@ -13,7 +13,7 @@ permissions:
 jobs:
   capture-preview:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 7
     steps:
       - name: Set up Node 22
         uses: actions/setup-node@v4
@@ -93,9 +93,9 @@ jobs:
               try {
                 const response = await page.goto(entry.requestedUrl, {
                   waitUntil: 'domcontentloaded',
-                  timeout: 90000,
+                  timeout: 20000,
                 })
-                await page.waitForTimeout(1800)
+                await page.waitForTimeout(800)
                 entry.status = response?.status() ?? null
                 entry.finalUrl = page.url()
                 entry.title = await page.title().catch(() => null)
