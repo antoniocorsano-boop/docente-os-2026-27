@@ -95,7 +95,9 @@ export default async function NewUdaAuthoringPage({
       <nav className="newUdaBack"><Link href="/progetta">← Progetta</Link></nav>
       <main className="newUdaGate" aria-labelledby="new-uda-title">
         <header className="newUdaGateCopy">
-          <h1 id="new-uda-title">Cosa vuoi preparare?</h1>
+          <span className="newUdaGatePrompt">Cosa vuoi preparare?</span>
+          <h1 id="new-uda-title">Prepara questa UDA</h1>
+          <p className="newUdaGateInvariant">La fonte resta invariata. Il documento di lavoro è separato e versionato; non vengono creati eventi, attività Planner o modifiche al Piano annuale.</p>
         </header>
 
         <section className="newUdaContext" aria-label="Contesto UDA">
@@ -114,7 +116,7 @@ export default async function NewUdaAuthoringPage({
           )}
 
           <form action={openUdaAuthoring.bind(null, assetId)}>
-            <button className="newUdaWorkAction" type="submit">
+            <button className="newUdaWorkAction" type="submit" aria-label="Inizia documento di lavoro">
               <span><strong>Lavora sull’UDA</strong><small>Apri il documento di lavoro</small></span>
               <b aria-hidden>→</b>
             </button>
