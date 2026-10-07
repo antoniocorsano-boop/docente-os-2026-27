@@ -196,6 +196,27 @@ export const DEFAULT_SECTION_SETS: Record<GradeKey, Array<{ code: string; status
   ],
 }
 
+export function resolveCanonicalUdaCode(
+  grade: GradeKey,
+  metadataUda: unknown,
+  ...sourceIdentities: Array<string | null | undefined>
+): string | null {
+  const knownCodes = new Set(ANNUAL_PLAN_SEGMENTS[grade].map((segment) => segment.uda))
+  const metadataCode = typeof metadataUda === 'string' ? metadataUda.trim() : ''
+  if (knownCodes.has(metadataCode)) return metadataCode
+
+  const gradeNumber = ({ Prima: '1', Seconda: '2', Terza: '3' } as const)[grade]
+  for (const identity of sourceIdentities) {
+    if (typeof identity !== 'string' || !identity.trim()) continue
+    const match = identity.match(/CAN-UDA-([1-3])-(\d{2})(?=$|[^0-9])/i)
+    if (!match || match[1] !== gradeNumber) continue
+    const candidate = `${match[1]}-${match[2]}`
+    if (knownCodes.has(candidate)) return candidate
+  }
+
+  return null
+}
+
 export function buildBlocks(grade: GradeKey): AnnualPlanBlock[] {
   let ordinal = 1
   return ANNUAL_PLAN_SEGMENTS[grade].flatMap((segment, segmentIndex) => {
