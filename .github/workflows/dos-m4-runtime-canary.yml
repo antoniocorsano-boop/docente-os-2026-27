@@ -1,0 +1,106 @@
+name: DOS-M4 Runtime Canary
+
+on:
+  push:
+    branches:
+      - canary/dos-m4-runtime-39bce05f
+    paths:
+      - 'product/e2e/dos-m4-runtime-canary.spec.mjs'
+      - 'product/e2e/support/e2e-auth.mjs'
+      - 'product/e2e/support/totp.mjs'
+      - 'product/playwright.config.mjs'
+      - '.github/workflows/dos-m4-runtime-canary.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docente-os-governed-mfa-e2e
+  cancel-in-progress: false
+
+env:
+  E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
+  E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
+  E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
+  DOS_M4_EXPECTED_HEAD: 39bce05fa2e87f3746ee3b6dcd7433065cb2d876
+  DOS_M4_RELEASE_REF: dep-db2ke2ajnfac73f3qoog
+
+jobs:
+  runtime-canary:
+    name: runtime-canary
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Check governed AAL2 E2E credentials
+        shell: bash
+        run: |
+          missing=0
+          for name in E2E_EMAIL E2E_PASSWORD E2E_TOTP_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is required for DOS-M4 runtime canary."
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
+
+      - name: Checkout canary harness
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify Beta exact-head binding
+        shell: bash
+        run: |
+          : > /tmp/build-info.json
+          http_code="$(curl -sS --max-time 20 -o /tmp/build-info.json -w '%{http_code}' "$E2E_BASE_URL/api/build-info")"
+          payload="$(cat /tmp/build-info.json)"
+          deployed="$(printf '%s' "$payload" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).commit||'')}catch{console.log('')}})")"
+          echo "Beta http=$http_code deployed=$deployed expected=$DOS_M4_EXPECTED_HEAD"
+          test "$http_code" = "200"
+          test "$deployed" = "$DOS_M4_EXPECTED_HEAD"
+
+      - name: Install product dependencies
+        working-directory: product
+        run: npm install --no-audit --no-fund
+
+      - name: Install Playwright runner without changing lockfile
+        working-directory: product
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Install Chromium
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Syntax-check runtime canary
+        working-directory: product
+        run: node --check e2e/dos-m4-runtime-canary.spec.mjs
+
+      - name: Run DOS-M4 real runtime canary
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/dos-m4-runtime-canary.spec.mjs --retries=0
+
+      - name: Publish DOS-M4 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dos-m4-runtime-canary-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            product/playwright-report/
+            product/test-results/
+
+      - name: Append receipt to summary
+        if: success()
+        working-directory: product
+        shell: bash
+        run: |
+          echo '## DOS-M4 Runtime Canary receipt' >> "$GITHUB_STEP_SUMMARY"
+          echo '```yaml' >> "$GITHUB_STEP_SUMMARY"
+          cat test-results/dos-m4-runtime-canary-receipt.yaml >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
