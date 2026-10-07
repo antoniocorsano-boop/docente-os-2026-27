@@ -182,3 +182,17 @@ test('il ritorno da Atlas mostra solo la decisione di associazione alla lezione'
   assert.doesNotMatch(returnSource, /Origine: Atlas/)
   assert.doesNotMatch(returnSource, /Il selettore della lezione e il binding persistente/)
 })
+
+test('l’associazione Atlas persiste solo dopo una scelta esplicita della lezione canonica', () => {
+  const actionSource = readFileSync(new URL('./atlas/ritorno/actions.ts', import.meta.url), 'utf8')
+  const returnSource = readFileSync(new URL('./atlas/ritorno/AtlasMaterialReturnReview.tsx', import.meta.url), 'utf8')
+
+  assert.match(actionSource, /SupabaseLessonDesignRepository/)
+  assert.match(actionSource, /sourceKind: 'ATLAS'/)
+  assert.match(actionSource, /addToolProposalOnce/)
+  assert.match(actionSource, /repository\.accept/)
+  assert.match(actionSource, /bundle\.sourceUdaId !== expectedUda/)
+  assert.match(returnSource, /name="blockId"/)
+  assert.match(returnSource, /name="bundle"/)
+  assert.doesNotMatch(returnSource, /type="button" disabled>Associa alla lezione/)
+})
