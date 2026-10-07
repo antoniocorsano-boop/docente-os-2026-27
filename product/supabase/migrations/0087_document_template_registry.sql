@@ -254,6 +254,224 @@ begin
 end;
 $$;
 
+create or replace function private.compute_document_template_quality_review(target_schema_json jsonb)
+returns jsonb
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  findings jsonb := '[]'::jsonb;
+  validation_codes text[] := '{}'::text[];
+  seen_section_keys text[] := '{}'::text[];
+  seen_field_keys text[] := '{}'::text[];
+  section_node jsonb;
+  field_node jsonb;
+  option_node jsonb;
+  section_key text;
+  field_key text;
+  version_text text;
+  external_text text := coalesce(target_schema_json->>'name', '');
+  validation_code text;
+  final_result text;
+begin
+  if target_schema_json is null or jsonb_typeof(target_schema_json) <> 'object' then
+    findings := jsonb_build_array(jsonb_build_object(
+      'code', 'INVALID_TEMPLATE_SCHEMA',
+      'severity', 'BLOCKER',
+      'category', 'STRUCTURE',
+      'summary', 'Struttura del template non valida: INVALID_TEMPLATE_SCHEMA'
+    ));
+    return jsonb_build_object('result', 'BLOCKED', 'findings', findings);
+  end if;
+
+  if nullif(trim(target_schema_json->>'name'), '') is null then
+    validation_codes := array_append(validation_codes, 'TEMPLATE_NAME_REQUIRED');
+  end if;
+
+  if coalesce(target_schema_json->>'kind', '') not in ('FINAL_REPORT','PROGRAM_CARRIED_OUT','ANNUAL_PROGRAMMING','UDA_INSTITUTIONAL') then
+    validation_codes := array_append(validation_codes, 'INVALID_TEMPLATE_KIND');
+  end if;
+
+  version_text := target_schema_json->>'version';
+  if version_text is null or version_text !~ '^[0-9]+$' then
+    validation_codes := array_append(validation_codes, 'INVALID_TEMPLATE_VERSION');
+  elsif version_text::numeric < 1 then
+    validation_codes := array_append(validation_codes, 'INVALID_TEMPLATE_VERSION');
+  end if;
+
+  if jsonb_typeof(target_schema_json->'sections') <> 'array'
+     or jsonb_array_length(target_schema_json->'sections') = 0 then
+    validation_codes := array_append(validation_codes, 'TEMPLATE_SECTIONS_REQUIRED');
+  else
+    for section_node in select value from jsonb_array_elements(target_schema_json->'sections') loop
+      if jsonb_typeof(section_node) <> 'object' then
+        if not ('SECTION_KEY_REQUIRED' = any(validation_codes)) then
+          validation_codes := array_append(validation_codes, 'SECTION_KEY_REQUIRED');
+        end if;
+        continue;
+      end if;
+
+      section_key := trim(coalesce(section_node->>'key', ''));
+      if section_key = '' then
+        if not ('SECTION_KEY_REQUIRED' = any(validation_codes)) then
+          validation_codes := array_append(validation_codes, 'SECTION_KEY_REQUIRED');
+        end if;
+      elsif section_key = any(seen_section_keys) then
+        if not ('DUPLICATE_SECTION_KEY' = any(validation_codes)) then
+          validation_codes := array_append(validation_codes, 'DUPLICATE_SECTION_KEY');
+        end if;
+      else
+        seen_section_keys := array_append(seen_section_keys, section_key);
+      end if;
+
+      if nullif(trim(section_node->>'label'), '') is null
+         and not ('SECTION_LABEL_REQUIRED' = any(validation_codes)) then
+        validation_codes := array_append(validation_codes, 'SECTION_LABEL_REQUIRED');
+      end if;
+      if nullif(trim(section_node->>'purpose'), '') is null
+         and not ('SECTION_PURPOSE_REQUIRED' = any(validation_codes)) then
+        validation_codes := array_append(validation_codes, 'SECTION_PURPOSE_REQUIRED');
+      end if;
+
+      external_text := external_text || E'\n'
+        || coalesce(section_node->>'label', '') || E'\n'
+        || coalesce(section_node->>'purpose', '');
+
+      if jsonb_typeof(section_node->'fields') <> 'array' then
+        if not ('FIELD_KEY_REQUIRED' = any(validation_codes)) then
+          validation_codes := array_append(validation_codes, 'FIELD_KEY_REQUIRED');
+        end if;
+        if not ('FIELD_LABEL_REQUIRED' = any(validation_codes)) then
+          validation_codes := array_append(validation_codes, 'FIELD_LABEL_REQUIRED');
+        end if;
+        continue;
+      end if;
+
+      for field_node in select value from jsonb_array_elements(section_node->'fields') loop
+        if jsonb_typeof(field_node) <> 'object' then
+          if not ('FIELD_KEY_REQUIRED' = any(validation_codes)) then
+            validation_codes := array_append(validation_codes, 'FIELD_KEY_REQUIRED');
+          end if;
+          if not ('FIELD_LABEL_REQUIRED' = any(validation_codes)) then
+            validation_codes := array_append(validation_codes, 'FIELD_LABEL_REQUIRED');
+          end if;
+          continue;
+        end if;
+
+        field_key := trim(coalesce(field_node->>'key', ''));
+        if field_key = '' then
+          if not ('FIELD_KEY_REQUIRED' = any(validation_codes)) then
+            validation_codes := array_append(validation_codes, 'FIELD_KEY_REQUIRED');
+          end if;
+        elsif field_key = any(seen_field_keys) then
+          if not ('DUPLICATE_FIELD_KEY' = any(validation_codes)) then
+            validation_codes := array_append(validation_codes, 'DUPLICATE_FIELD_KEY');
+          end if;
+        else
+          seen_field_keys := array_append(seen_field_keys, field_key);
+        end if;
+
+        if nullif(trim(field_node->>'label'), '') is null
+           and not ('FIELD_LABEL_REQUIRED' = any(validation_codes)) then
+          validation_codes := array_append(validation_codes, 'FIELD_LABEL_REQUIRED');
+        end if;
+
+        external_text := external_text || E'\n'
+          || coalesce(field_node->>'label', '') || E'\n'
+          || coalesce(field_node->>'helpText', '');
+
+        if jsonb_typeof(field_node->'options') = 'array' then
+          for option_node in select value from jsonb_array_elements(field_node->'options') loop
+            external_text := external_text || E'\n' || coalesce(option_node->>'label', '');
+          end loop;
+        end if;
+      end loop;
+    end loop;
+  end if;
+
+  if cardinality(validation_codes) > 0 then
+    foreach validation_code in array validation_codes loop
+      findings := findings || jsonb_build_array(jsonb_build_object(
+        'code', validation_code,
+        'severity', 'BLOCKER',
+        'category', 'STRUCTURE',
+        'summary', 'Struttura del template non valida: ' || validation_code
+      ));
+    end loop;
+    return jsonb_build_object('result', 'BLOCKED', 'findings', findings);
+  end if;
+
+  for section_node in select value from jsonb_array_elements(target_schema_json->'sections') loop
+    section_key := trim(coalesce(section_node->>'key', ''));
+    for field_node in select value from jsonb_array_elements(section_node->'fields') loop
+      if field_node->'required' = 'true'::jsonb
+         and field_node->>'privacyClass' in ('SENSITIVE_AGGREGATE','PERSONAL_STUDENT_DATA','SPECIAL_CATEGORY_DATA') then
+        findings := findings || jsonb_build_array(jsonb_build_object(
+          'code', 'REQUIRED_SENSITIVE_FIELD',
+          'severity', 'MAJOR',
+          'category', 'PRIVACY',
+          'sectionKey', section_key,
+          'summary', 'Il campo obbligatorio “' || coalesce(field_node->>'label', '') || '” richiede una decisione esplicita di minimizzazione.'
+        ));
+      end if;
+      if field_node->'required' = 'true'::jsonb
+         and field_node->>'valuePolicy' = 'RESTRICTED' then
+        findings := findings || jsonb_build_array(jsonb_build_object(
+          'code', 'REQUIRED_RESTRICTED_FIELD',
+          'severity', 'MAJOR',
+          'category', 'PRIVACY',
+          'sectionKey', section_key,
+          'summary', 'Il campo obbligatorio “' || coalesce(field_node->>'label', '') || '” è soggetto a policy dedicata.'
+        ));
+      end if;
+    end loop;
+  end loop;
+
+  if external_text ~* '(^|[^[:alnum:]_])CAN-[A-Z0-9-]+([^[:alnum:]_]|$)' then
+    findings := findings || jsonb_build_array(jsonb_build_object('code','EXTERNAL_CAN_CODE','severity','BLOCKER','category','EXTERNAL_PURITY','summary','Il testo professionale contiene un riferimento tecnico vietato (CAN_CODE).'));
+  end if;
+  if external_text ~ '(^|[^[:alnum:]_])B(0[1-9]|[12][0-9]|3[0-3])([^[:alnum:]_]|$)' then
+    findings := findings || jsonb_build_array(jsonb_build_object('code','EXTERNAL_BXX_CODE','severity','BLOCKER','category','EXTERNAL_PURITY','summary','Il testo professionale contiene un riferimento tecnico vietato (BXX_CODE).'));
+  end if;
+  if external_text ~* '(^|[^0-9a-f])[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}([^0-9a-f]|$)' then
+    findings := findings || jsonb_build_array(jsonb_build_object('code','EXTERNAL_UUID','severity','BLOCKER','category','EXTERNAL_PURITY','summary','Il testo professionale contiene un riferimento tecnico vietato (UUID).'));
+  end if;
+  if external_text ~* '(TeachingSession|KnowledgeAsset|authored_documents?|document_template_versions?)' then
+    findings := findings || jsonb_build_array(jsonb_build_object('code','EXTERNAL_SOFTWARE_ENTITY','severity','BLOCKER','category','EXTERNAL_PURITY','summary','Il testo professionale contiene un riferimento tecnico vietato (SOFTWARE_ENTITY).'));
+  end if;
+  if external_text ~ '(^|[^[:alnum:]_])(AUTO_DOCUMENTED|TEACHER_CONFIRMED|OPTIONAL_PROPOSAL|RESTRICTED|TO_VERIFY|MIXED)([^[:alnum:]_]|$)' then
+    findings := findings || jsonb_build_array(jsonb_build_object('code','EXTERNAL_INTERNAL_STATE','severity','BLOCKER','category','EXTERNAL_PURITY','summary','Il testo professionale contiene un riferimento tecnico vietato (INTERNAL_STATE).'));
+  end if;
+  if external_text ~* '(^|[^0-9a-f])[0-9a-f]{40,64}([^0-9a-f]|$)' then
+    findings := findings || jsonb_build_array(jsonb_build_object('code','EXTERNAL_HASH','severity','BLOCKER','category','EXTERNAL_PURITY','summary','Il testo professionale contiene un riferimento tecnico vietato (HASH).'));
+  end if;
+  if external_text ~* '(drive://|/Google Drive/|https://drive\.google\.com/)' then
+    findings := findings || jsonb_build_array(jsonb_build_object('code','EXTERNAL_DRIVE_PATH','severity','BLOCKER','category','EXTERNAL_PURITY','summary','Il testo professionale contiene un riferimento tecnico vietato (DRIVE_PATH).'));
+  end if;
+  if external_text ~* '(^|[^[:alnum:]_])(OpenAI|GPT-[0-9.]+|Claude|Gemini|DeepSeek|Groq|Hugging[[:space:]]*Face)([^[:alnum:]_]|$)' then
+    findings := findings || jsonb_build_array(jsonb_build_object('code','EXTERNAL_AI_PROVIDER','severity','BLOCKER','category','EXTERNAL_PURITY','summary','Il testo professionale contiene un riferimento tecnico vietato (AI_PROVIDER).'));
+  end if;
+  if external_text ~* 'generat[oa][[:space:]]+automaticamente' then
+    findings := findings || jsonb_build_array(jsonb_build_object('code','EXTERNAL_AUTO_GENERATED_WORDING','severity','BLOCKER','category','EXTERNAL_PURITY','summary','Il testo professionale contiene un riferimento tecnico vietato (AUTO_GENERATED_WORDING).'));
+  end if;
+
+  if exists (select 1 from jsonb_array_elements(findings) finding where finding->>'severity' = 'BLOCKER') then
+    final_result := 'BLOCKED';
+  elsif exists (select 1 from jsonb_array_elements(findings) finding where finding->>'severity' = 'MAJOR') then
+    final_result := 'REVIEW_REQUIRED';
+  elsif jsonb_array_length(findings) > 0 then
+    final_result := 'PASS_WITH_NOTES';
+  else
+    final_result := 'PASS';
+  end if;
+
+  return jsonb_build_object('result', final_result, 'findings', findings);
+end;
+$$;
+
+revoke all on function private.compute_document_template_quality_review(jsonb) from public;
+
 create or replace function public.record_document_template_quality_review(
   target_template_id uuid,
   target_version_no integer,
@@ -269,6 +487,10 @@ declare
   uid uuid := auth.uid();
   workspace uuid;
   review_id uuid;
+  version_schema jsonb;
+  computed_review jsonb;
+  computed_result text;
+  computed_findings jsonb;
 begin
   if uid is null then raise exception 'authentication required'; end if;
   if target_result not in ('PASS','PASS_WITH_NOTES','REVIEW_REQUIRED','BLOCKED') then raise exception 'invalid quality review result'; end if;
@@ -278,23 +500,32 @@ begin
   from public.document_templates template
   where template.id = target_template_id;
   if workspace is null or not private.is_workspace_member(workspace) then raise exception 'template not available'; end if;
-  if not exists (
-    select 1 from public.document_template_versions version
-    where version.template_id = target_template_id
-      and version.version_no = target_version_no
-  ) then raise exception 'template version not available'; end if;
+
+  select version.schema_json into version_schema
+  from public.document_template_versions version
+  where version.template_id = target_template_id
+    and version.version_no = target_version_no;
+  if version_schema is null then raise exception 'template version not available'; end if;
+
+  computed_review := private.compute_document_template_quality_review(version_schema);
+  computed_result := computed_review->>'result';
+  computed_findings := coalesce(computed_review->'findings', '[]'::jsonb);
+
+  if target_result is distinct from computed_result then
+    raise exception 'quality review does not match deterministic review';
+  end if;
 
   insert into public.document_template_quality_reviews(
     template_id, version_no, result, findings, note, reviewed_by
   ) values (
-    target_template_id, target_version_no, target_result, target_findings,
+    target_template_id, target_version_no, computed_result, computed_findings,
     nullif(trim(target_note), ''), uid
   ) returning id into review_id;
 
   update public.document_templates
   set status = case
-    when target_result in ('PASS','PASS_WITH_NOTES') then 'QUALITY_REVIEWED'
-    when target_result = 'REVIEW_REQUIRED' then 'REVIEW_REQUIRED'
+    when computed_result in ('PASS','PASS_WITH_NOTES') then 'QUALITY_REVIEWED'
+    when computed_result = 'REVIEW_REQUIRED' then 'REVIEW_REQUIRED'
     else 'BLOCKED'
   end,
   updated_at = now()
