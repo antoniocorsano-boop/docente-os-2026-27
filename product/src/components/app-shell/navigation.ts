@@ -7,6 +7,7 @@ export type NavigationKey =
   | 'timetable'
   | 'calendar'
   | 'annual-plan'
+  | 'documentation'
   | 'settings'
   | 'account'
 
@@ -35,13 +36,14 @@ export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
   { key: 'timetable', href: '/orario', label: 'Orario', shortLabel: 'Orario', description: 'Vedi dove sei nella settimana e apri la lezione pertinente.', keywords: ['orario', 'lezioni', 'settimana', 'adesso', 'ore'] },
   { key: 'calendar', href: '/calendario', label: 'Calendario', shortLabel: 'Calendario', description: 'Registra giorni reali, sospensioni, impegni e scadenze dell’anno scolastico.', keywords: ['calendario', 'date', 'sospensioni', 'festività', 'riunioni', 'scadenze', 'eventi'] },
   { key: 'annual-plan', href: '/piano-annuale', label: 'Piano annuale', shortLabel: 'Piano', description: 'Registra e rivedi l’avanzamento didattico per sezione.', keywords: ['piano annuale', 'registra', 'blocchi', 'b01', 'avanzamento'] },
+  { key: 'documentation', href: '/documentazione', label: 'Documentazione', shortLabel: 'Documenti', description: 'Prepara e rivedi i documenti professionali dell’anno scolastico.', keywords: ['documentazione', 'relazione finale', 'programma svolto', 'programmazione', 'documenti'] },
   { key: 'settings', href: '/impostazioni', label: 'Impostazioni', shortLabel: 'Impostazioni', description: 'Configura contesto professionale, istituto, cattedra e organizzazione.', keywords: ['impostazioni', 'istituto', 'discipline', 'cattedra', 'configurazione'] },
   { key: 'account', href: '/account', label: 'Account e sicurezza', shortLabel: 'Account', description: 'Gestisci identità di accesso, password, MFA e sessioni.', keywords: ['account', 'sicurezza', 'password', 'mfa', 'sessioni', 'accesso'] },
 ] as const
 
 export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
   { key: 'work', label: 'Adesso', description: 'Riprendi il lavoro o affronta ciò che richiede attenzione.', items: ['home', 'today'] },
-  { key: 'teaching', label: 'Prepara e insegna', description: 'Lavora con una classe, prepara la fase e registra ciò che hai svolto.', items: ['classes', 'design', 'annual-plan'] },
+  { key: 'teaching', label: 'Prepara e insegna', description: 'Lavora con una classe, prepara la fase e documenta il percorso.', items: ['classes', 'design', 'annual-plan', 'documentation'] },
   { key: 'time', label: 'Tempo', description: 'Distingui lo schema ricorrente dalle date reali dell’anno scolastico.', items: ['timetable', 'calendar'] },
   { key: 'resources', label: 'Trova', description: 'Cerca una fonte o un materiale soltanto quando ti serve.', items: ['knowledge'] },
   { key: 'system', label: 'Configura', description: 'Modifica il contesto professionale e la sicurezza dell’account.', items: ['settings', 'account'] },
@@ -50,7 +52,7 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
 export const MOBILE_NAVIGATION_KEYS: readonly NavigationKey[] = ['home', 'today', 'classes', 'timetable']
 
 export const SECONDARY_NAVIGATION_GROUPS: readonly NavigationGroup[] = [
-  { key: 'teaching', label: 'Prepara e insegna', description: 'Prepara la didattica e segui il piano annuale.', items: ['design', 'annual-plan'] },
+  { key: 'teaching', label: 'Prepara e insegna', description: 'Prepara la didattica, segui il piano annuale e cura la documentazione.', items: ['design', 'annual-plan', 'documentation'] },
   { key: 'time', label: 'Organizza', description: 'Organizza date, impegni e scadenze reali.', items: ['calendar'] },
   { key: 'resources', label: 'Trova', description: 'Trova fonti e materiali quando servono.', items: ['knowledge'] },
   { key: 'system', label: 'Configura', description: 'Gestisci contesto professionale e sicurezza.', items: ['settings', 'account'] },
