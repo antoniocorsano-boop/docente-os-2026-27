@@ -17,3 +17,11 @@ test('document template registry migration enforces governed persistence', () =>
   assert.match(sql, /runtime_schema_required_migrations/i)
   assert.match(sql, /advance_runtime_schema_contract\('0087_document_template_registry'\)/i)
 })
+
+test('quality review is independently recomputed inside the database boundary', () => {
+  const sql = readFileSync(migrationPath, 'utf8')
+  assert.match(sql, /create or replace function private\.compute_document_template_quality_review/i)
+  assert.match(sql, /computed_review\s+jsonb/i)
+  assert.match(sql, /computed_review\s*:=\s*private\.compute_document_template_quality_review\(version_schema\)/i)
+  assert.match(sql, /quality review does not match deterministic review/i)
+})
