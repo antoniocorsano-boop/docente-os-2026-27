@@ -162,3 +162,23 @@ test('la modalità guidata rende primario l’authoring contestuale senza nascon
   assert.match(styleSource, /\.guidedPrimaryAuthoring/)
   assert.match(styleSource, /\.guidedPrimaryAuthoringAction/)
 })
+
+test('il passaggio UDA → Atlas resta una scelta semplice e contestuale', () => {
+  const udaSource = readFileSync(new URL('./documenti/nuovo/[assetId]/page.tsx', import.meta.url), 'utf8')
+
+  assert.match(udaSource, />Cosa vuoi preparare\?</)
+  assert.match(udaSource, />Prepara materiali con Atlas/)
+  assert.match(udaSource, />Lavora sull’UDA</)
+  assert.match(udaSource, />Controlla la fonte</)
+  assert.doesNotMatch(udaSource, />Cosa succede</)
+  assert.doesNotMatch(udaSource, />Cosa non succede</)
+})
+
+test('il ritorno da Atlas mostra solo la decisione di associazione alla lezione', () => {
+  const returnSource = readFileSync(new URL('./atlas/ritorno/AtlasMaterialReturnReview.tsx', import.meta.url), 'utf8')
+
+  assert.match(returnSource, />Associa i materiali alla lezione</)
+  assert.doesNotMatch(returnSource, /RITORNO DA STUDIO ATLAS/)
+  assert.doesNotMatch(returnSource, /Origine: Atlas/)
+  assert.doesNotMatch(returnSource, /Il selettore della lezione e il binding persistente/)
+})
