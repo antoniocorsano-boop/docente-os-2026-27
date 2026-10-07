@@ -24,59 +24,119 @@ jobs:
       - name: Run preview probe
         env:
           TARGET_URL: https://docente-os-pr692-atlas.onrender.com
+          E2E_EMAIL: ${{ secrets.DOCENTE_OS_PRODUCTION_E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.DOCENTE_OS_PRODUCTION_E2E_PASSWORD }}
         run: |
           mkdir -p product/test-results/pr692-preview
           cat > product/pr692-probe.mjs <<'EOF'
           import { chromium } from 'playwright';
           import fs from 'node:fs/promises';
+
           const out=process.cwd()+'/test-results/pr692-preview';
           const browser=await chromium.launch({headless:true});
           const report=[];
+
           async function snap(page,name){
+            const text=(await page.locator('body').innerText()).slice(0,5000);
+            const links=await page.locator('a').evaluateAll(nodes => nodes.slice(0,80).map(a => ({text:(a.textContent||'').trim(),href:a.href})));
             await page.screenshot({path:`${out}/${name}.png`,fullPage:true});
-            report.push({name,url:page.url(),title:await page.title(),text:(await page.locator('body').innerText()).slice(0,4000)});
+            report.push({name,url:page.url(),title:await page.title(),text,links});
           }
-          async function clickText(page, texts){
-            for (const t of texts) {
-              const el=page.getByText(t,{exact:false}).first();
-              if(await el.count() && await el.isVisible().catch(()=>false)){
-                await el.click().catch(()=>{});
-                await page.waitForLoadState('networkidle',{timeout:8000}).catch(()=>{});
-                return t;
-              }
+
+          async function visible(locator){
+            return await locator.count() > 0 && await locator.first().isVisible().catch(()=>false);
+          }
+
+          async function login(page, suffix){
+            await page.goto(process.env.TARGET_URL,{waitUntil:'networkidle',timeout:60000});
+            if(!page.url().includes('/login')) return true;
+            if(!process.env.E2E_EMAIL || !process.env.E2E_PASSWORD){
+              report.push({name:`missing-e2e-credentials-${suffix}`,url:page.url()});
+              return false;
             }
-            return null;
+            await page.getByLabel('Email').fill(process.env.E2E_EMAIL);
+            await page.getByLabel('Password').fill(process.env.E2E_PASSWORD);
+            await page.getByRole('button',{name:/Entra nel tuo spazio docente/i}).click();
+            await page.waitForLoadState('networkidle',{timeout:15000}).catch(()=>{});
+            await page.waitForTimeout(1000);
+            if(page.url().includes('/mfa')){
+              await snap(page,`01b-mfa-${suffix}`);
+              report.push({name:`blocked-mfa-${suffix}`,url:page.url()});
+              return false;
+            }
+            if(page.url().includes('/login')){
+              await snap(page,`01b-login-failed-${suffix}`);
+              report.push({name:`blocked-login-${suffix}`,url:page.url()});
+              return false;
+            }
+            await snap(page,`02-authenticated-home-${suffix}`);
+            return true;
           }
+
+          async function openFirstUdaAuthoring(page,suffix){
+            await page.goto(`${process.env.TARGET_URL}/progetta`,{waitUntil:'networkidle',timeout:60000});
+            await snap(page,`03-progetta-${suffix}`);
+            const authoring=page.getByRole('link',{name:/Prepara documento/i}).first();
+            if(await visible(authoring)){
+              await authoring.click();
+              await page.waitForLoadState('networkidle',{timeout:12000}).catch(()=>{});
+              await snap(page,`04-uda-gate-${suffix}`);
+              return true;
+            }
+            return false;
+          }
+
+          async function openFocusedUdaFromClass(page,suffix){
+            await page.goto(`${process.env.TARGET_URL}/classi`,{waitUntil:'networkidle',timeout:60000});
+            await snap(page,`05-classi-${suffix}`);
+            const classLink=page.locator('a[href^="/classi/"]').filter({hasNot:page.locator('a[href*="lezioni"]')}).first();
+            if(!await visible(classLink)) return false;
+            await classLink.click();
+            await page.waitForLoadState('networkidle',{timeout:12000}).catch(()=>{});
+            await snap(page,`06-class-workspace-${suffix}`);
+            const focused=page.locator('a[href*="/progetta?grade="]').first();
+            if(!await visible(focused)) return false;
+            await focused.click();
+            await page.waitForLoadState('networkidle',{timeout:12000}).catch(()=>{});
+            await snap(page,`07-focused-progetta-${suffix}`);
+            const prep=page.getByRole('link',{name:/Prepara documento/i}).first();
+            if(!await visible(prep)) return false;
+            await prep.click();
+            await page.waitForLoadState('networkidle',{timeout:12000}).catch(()=>{});
+            await snap(page,`08-focused-uda-gate-${suffix}`);
+            return true;
+          }
+
+          async function tryAtlas(page,suffix){
+            const atlas=page.getByRole('link',{name:/Prepara materiali con Atlas/i}).first();
+            if(!await visible(atlas)){
+              report.push({name:`atlas-link-unavailable-${suffix}`,url:page.url(),text:(await page.locator('body').innerText()).slice(0,3000)});
+              return false;
+            }
+            await atlas.click();
+            await page.waitForLoadState('networkidle',{timeout:15000}).catch(()=>{});
+            await page.waitForTimeout(1000);
+            await snap(page,`09-studio-atlas-${suffix}`);
+            return true;
+          }
+
           for (const cfg of [
             {name:'desktop',viewport:{width:1440,height:1000}},
             {name:'mobile',viewport:{width:390,height:844}}
           ]) {
             const page=await browser.newPage({viewport:cfg.viewport});
-            await page.goto(process.env.TARGET_URL,{waitUntil:'networkidle',timeout:60000});
-            await snap(page,`01-home-${cfg.name}`);
-            const body=(await page.locator('body').innerText()).toLowerCase();
-            if(body.includes('accedi')||body.includes('login')||body.includes('password')){
-              report.push({name:`blocked-auth-${cfg.name}`,url:page.url()});
-              await page.close(); continue;
+            const authenticated=await login(page,cfg.name);
+            if(!authenticated){ await page.close(); continue; }
+            const generic=await openFirstUdaAuthoring(page,cfg.name);
+            let atlasReady=false;
+            if(generic) atlasReady=await tryAtlas(page,`${cfg.name}-generic`);
+            if(!atlasReady){
+              const focused=await openFocusedUdaFromClass(page,cfg.name);
+              if(focused) await tryAtlas(page,`${cfg.name}-focused`);
             }
-            await clickText(page,['Progetta']);
-            await snap(page,`02-progetta-${cfg.name}`);
-            const uda=await clickText(page,['UDA','Unità di apprendimento']);
-            if(uda){ await snap(page,`03-uda-${cfg.name}`); }
-            const prep=await clickText(page,['Prepara materiali con Atlas']);
-            if(prep){ await snap(page,`04-atlas-entry-${cfg.name}`); }
-            const options=['Presentazione','Scheda di lavoro','Guida','Rubrica'];
-            for(const o of options){
-              const el=page.getByText(o,{exact:false}).first();
-              if(await el.count() && await el.isVisible().catch(()=>false)) await el.click().catch(()=>{});
-            }
-            const cont=await clickText(page,['Continua con']);
-            if(cont){ await snap(page,`05-atlas-selection-${cfg.name}`); }
-            const assoc=await clickText(page,['Associa alla lezione']);
-            if(assoc){ await snap(page,`06-associated-${cfg.name}`); }
-            if((await page.locator('body').innerText()).includes('Materiali allegati')) await snap(page,`07-materials-attached-${cfg.name}`);
             await page.close();
           }
+
           await fs.writeFile(`${out}/report.json`,JSON.stringify(report,null,2));
           await browser.close();
           EOF
