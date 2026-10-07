@@ -5,167 +5,133 @@ Stato: **DESIGN SPEC / HUMAN REVIEW REQUIRED / NO IMPLEMENTATION AUTHORIZED**
 Codice di lavoro: **DOC-04**  
 Baseline di progetto: `develop@4c3c7f7d0bd4ad56d9d1427f141a8a4ec9283b84`
 
-## 1. Decisione di prodotto
+## 1. Decisione proposta
 
-DOCENTE OS introduce una capability denominata **Documentazione** per trasformare dati, fonti, attività ed evidenze già posseduti dai domini canonici in documenti professionali del docente, senza duplicare la source of truth sottostante.
+DOCENTE OS introduce una capability denominata **Documentazione** per trasformare dati, fonti, attività ed evidenze già posseduti dai domini canonici in documenti professionali del docente, senza duplicare le source of truth sottostanti.
 
-La prima verticale è **Relazione finale** perché attraversa l'intera catena professionale:
+La prima verticale proposta è **Relazione finale**, perché attraversa l'intera catena professionale:
 
-`curricolo/programmazione → Piano annuale → attività realmente svolte → evidenze → scostamenti → valutazione professionale → documento finale`
+`curricolo/programmazione → Piano annuale → attività realmente svolte → evidenze → scostamenti → giudizio professionale → documento finale`
 
-La capability non ricostruisce SchoolDocs come applicazione separata. Recupera invece i principi utili già emersi nel lavoro storico — provenienza, versionamento, composizione, revisione umana e distinzione fra canone e attuazione — e li integra nel runtime attuale di DOCENTE OS.
+Non viene ricostruito SchoolDocs come applicazione separata. Vengono recuperati i principi utili emersi nel lavoro storico — provenienza, versionamento, composizione, revisione umana e distinzione fra canone e attuazione — integrandoli nel runtime corrente di DOCENTE OS.
 
-La verticale deve essere utile anche senza provider generativi: la raccolta dei dati, il controllo di completezza, la composizione strutturale, l'editing, il versionamento e l'esportazione restano funzioni del prodotto.
+La verticale deve restare pienamente utilizzabile senza provider generativi: raccolta dati, controllo di completezza, composizione strutturale, editing, versionamento, validazione ed esportazione sono funzioni del prodotto.
 
 ## 2. Obiettivo umano
 
-A fine anno il docente non deve ricostruire a memoria mesi di lavoro né copiare informazioni già presenti altrove.
+A fine anno il docente non deve ricostruire a memoria mesi di attività né copiare informazioni che DOCENTE OS possiede già.
 
-Il sistema deve permettere di arrivare da:
-
-> «Devo preparare la relazione finale della 2C»
-
-ad una superficie che risponde immediatamente a:
+Partendo da «Devo preparare la relazione finale della 2C», la superficie deve rispondere a:
 
 1. **Quali dati possiedo già?**
 2. **Che cosa manca davvero?**
 3. **Quali affermazioni derivano da registrazioni verificabili?**
-4. **Quali parti richiedono invece un giudizio professionale del docente?**
-5. **Qual è la versione che sto revisionando?**
+4. **Quali parti richiedono un giudizio professionale del docente?**
+5. **Quale versione sto revisionando?**
 6. **Che cosa sto validando come definitivo?**
-7. **Da quali fonti deriva il documento esportato?**
+7. **Da quali fonti deriva la versione esportata?**
 
-Successo della verticale: il docente deve dedicare il proprio tempo alla **valutazione professionale e alla revisione**, non alla ricostruzione amministrativa di dati già registrati.
+Il tempo del docente deve concentrarsi sulla **valutazione professionale e sulla revisione**, non sulla ricostruzione amministrativa.
 
-## 3. Vincoli canonici esistenti
-
-La progettazione rispetta i seguenti confini già presenti nel prodotto.
+## 3. Confini canonici da preservare
 
 ### 3.1 Proprietà dei dati
 
-- **Classe/sezione** resta posseduta dal registro canonico delle sezioni.
-- **Piano annuale e stato B01–B33** restano posseduti dal dominio Piano annuale.
-- **Esecuzione reale** resta posseduta da `TeachingSession` e dalle sue evidenze.
-- **UDA e progettazione** restano possedute dal dominio Progetta/Knowledge secondo i relativi contratti.
-- **Fonti e documenti importati** restano `KnowledgeAsset` e relative generazioni.
-- **Impostazioni professionali e istituto** restano nelle impostazioni del workspace.
-- **Documentazione** possiede esclusivamente il documento professionale composto: identità, versioni, stato di revisione/finalizzazione e manifest di provenienza della singola versione.
+- **Classe/sezione**: registro canonico delle sezioni.
+- **Piano annuale e stato B01–B33**: dominio Piano annuale.
+- **Esecuzione reale**: `TeachingSession`, allocazioni ed evidenze.
+- **UDA/progettazione**: Progetta/Knowledge secondo i contratti correnti.
+- **Fonti importate**: `KnowledgeAsset` e relative generazioni.
+- **Impostazioni professionali e istituto**: impostazioni del workspace.
+- **Documentazione**: soltanto identità del documento composto, versioni, struttura semantica della versione, manifest di provenienza, decisioni di validazione/finalizzazione ed export della versione scelta.
 
-Una superficie di Documentazione può leggere e comporre gli altri domini, ma non acquisisce il diritto di modificarli.
+Documentazione può **leggere e comporre**, ma non acquisisce il diritto di modificare gli owner sorgente.
 
 ### 3.2 Canone vs accaduto
 
-Il Piano annuale descrive ciò che è programmato e conserva lo stato professionale dei blocchi. `TeachingSession` descrive ciò che è stato realmente registrato dal docente, con durata, data, note, provenienza ed eventuale allocazione ai blocchi.
+Il Piano annuale descrive il percorso programmato e il suo stato professionale. `TeachingSession` descrive ciò che è stato realmente registrato dal docente, con data, durata, note, provenienza ed eventuale allocazione ai blocchi.
 
-La Relazione finale deve **comporre** queste due prospettive e non usarne una come sostituto dell'altra.
+La Relazione finale compone le due prospettive senza sostituirne una con l'altra:
 
-In particolare:
+- una `TeachingSession` non rende automaticamente `SVOLTO` un Bxx;
+- un Bxx `SVOLTO` non autorizza a inventare dettagli di una sessione non registrata;
+- sessioni diagnostiche, di recupero o trasversali possono esistere senza allocazione Bxx;
+- gli scostamenti restano scostamenti e non riscrivono retroattivamente il canone.
 
-- una `TeachingSession` non rende automaticamente `SVOLTO` un blocco del Piano;
-- un blocco `SVOLTO` non autorizza a inventare dettagli di una sessione non registrata;
-- le sessioni diagnostiche, di recupero o trasversali possono esistere senza allocazione Bxx;
-- gli scostamenti devono restare visibili come scostamenti, non essere riscritti retroattivamente nel canone.
+### 3.3 Decisione umana
 
-### 3.3 Human-in-the-loop
+Validare o finalizzare una Relazione finale è una **decisione professionale/istituzionale umana**. L'assistenza può leggere, sintetizzare e proporre, ma non può validare o finalizzare autonomamente.
 
-La validazione di una Relazione finale è una **decisione istituzionale/professionale umana**. Un assistente può leggere, sintetizzare e proporre, ma non può validare o finalizzare autonomamente il documento.
+## 4. Infrastruttura esistente da riusare
 
-## 4. Stato tecnico riusabile
+X5 fornisce già:
 
-DOCENTE OS possiede già una prima infrastruttura documentale X5:
-
-- `authored_documents`;
-- `authored_document_versions`;
-- salvataggi come versioni immutabili;
-- controllo di concorrenza ottimistico;
-- accesso RLS per workspace;
-- scritture tramite boundary dedicati, non via `insert/update/delete` diretto;
-- authoring UDA con fonte originale immutata;
+- `authored_documents` e `authored_document_versions`;
+- versioni immutabili;
+- concorrenza ottimistica;
+- RLS per workspace;
+- scritture tramite boundary dedicati;
+- fonte UDA originale immutata;
 - cronologia versioni;
-- esportazione da una versione salvata e immutabile;
-- anteprima A4 e stampa/salvataggio PDF senza nuova dipendenza PDF.
+- esportazione da versione salvata;
+- anteprima A4 e stampa/salvataggio PDF.
 
-La verticale DOC-04 deve **generalizzare questo motore**, non crearne un secondo.
+DOC-04 **generalizza X5** e non crea un secondo motore documentale.
 
-Limite attuale da superare: X5 è deliberatamente UDA-specifico. `document_kind` accetta solo `UDA`, `source_asset_id` è obbligatorio e il repository espone `openUda()`. Una Relazione finale deriva invece da più fonti e da un contesto di sezione/anno, quindi non può essere modellata come copia editabile di un singolo `KnowledgeAsset`.
+Limiti attuali: `document_kind` accetta solo `UDA`, `source_asset_id` è obbligatorio e il repository espone un flusso UDA-specifico. Una Relazione finale deriva invece da più owner e da un contesto `anno + sezione + disciplina`.
 
-## 5. Alternative architetturali esaminate
+## 5. Alternative esaminate
 
-### A. Nuovo archivio `final_reports`
+### A — Nuovo archivio `final_reports`
 
-Creare tabelle, editor ed export separati per la Relazione finale.
+Più semplice localmente, ma duplica versionamento, RLS, concorrenza, export e provenienza.
 
-**Vantaggio:** implementazione locale apparentemente semplice.  
-**Svantaggi:** duplica versionamento, concorrenza, RLS, export e provenienza; crea un secondo motore documentale; rende più difficile aggiungere Programmazione, Programma svolto e verbali.
+**Respinta.**
 
-**Decisione: respinta.**
+### B — Relazione generata al volo senza persistenza
 
-### B. Documento generato al volo senza persistenza
+Evita nuove tabelle, ma non conserva la versione realmente revisionata né il contesto delle fonti usate.
 
-Comporre ogni volta la relazione dalle fonti correnti e lasciare all'utente solo l'esportazione.
+**Respinta.**
 
-**Vantaggio:** nessuna nuova persistenza.  
-**Svantaggi:** non conserva la versione effettivamente revisionata; le fonti possono cambiare; non esiste una storia professionale del documento; impossibile distinguere bozza, validazione e finale.
+### C — Generalizzazione X5 + struttura semantica + manifest per versione
 
-**Decisione: respinta.**
+Un solo motore documentale, con versionamento esistente e tracciabilità degli input.
 
-### C. Generalizzazione X5 + manifest di fonti per versione
+**Raccomandata.**
 
-Estendere l'authoring esistente a più tipi documentali e legare ogni versione a uno **snapshot di composizione/provenienza** che elenca gli input realmente usati.
-
-**Vantaggi:** riuso di versioning/RLS/export; un solo motore documentale; provenienza verificabile; compatibilità con UDA; estensibilità futura a Programmazione, Programma svolto, verbali e altri documenti.
-
-**Decisione raccomandata.**
-
-## 6. Nuovo confine di capability
-
-### 6.1 Owner proposto
+## 6. Nuovo confine di capability proposto
 
 **Documentazione professionale** diventa owner soltanto di:
 
 - identità del documento composto;
-- tipo documentale;
-- contesto professionale del documento;
-- versioni immutabili del testo;
-- manifest di input/provenienza associato a ciascuna versione;
+- tipo e contesto professionale;
+- versioni immutabili del contenuto;
+- struttura semantica delle sezioni della versione;
+- manifest degli input/provenienza della versione;
 - decisioni umane di validazione/finalizzazione;
-- proiezione per esportazione della versione scelta.
+- proiezione di export.
 
-Non possiede né copia come fonte autonoma:
+Non possiede sezioni, Piano, TeachingSession, osservazioni, evidenze, UDA, Knowledge, curricolo, Orario o Calendario.
 
-- sezioni;
-- Piano annuale;
-- TeachingSession;
-- osservazioni/evidenze;
-- UDA;
-- Knowledge;
-- curricolo istituzionale;
-- dati di calendario/orario.
+Questa è una **estensione esplicita della Capability Ownership Map** e deve essere approvata prima dell'implementazione.
 
-Questa estensione della mappa di capability richiede approvazione architetturale esplicita prima dell'implementazione.
+Il read model di preparazione deve essere ricostruibile dagli owner sottostanti. Il documento revisionato, invece, è un nuovo artefatto professionale e va persistito perché contiene interventi e decisioni umane non ricostruibili deterministicamente.
 
-### 6.2 Principio di ricostruibilità
+## 7. Modello documentale
 
-Il **read model di preparazione** della Relazione finale deve essere ricostruibile dagli owner sottostanti.
+### 7.1 Generalizzazione `authored_documents`
 
-Il **documento revisionato**, invece, è un nuovo artefatto professionale e deve essere persistito perché contiene interventi umani, versioni e una decisione finale che non sono ricostruibili deterministicamente dalle fonti.
-
-## 7. Modello documentale proposto
-
-L'implementazione dovrà preservare compatibilità con le UDA X5 esistenti.
-
-### 7.1 `authored_documents`
-
-Generalizzazione concettuale:
+Modello concettuale:
 
 ```text
 id
 workspace_id
 academic_year_id
 document_kind
-source_asset_id?      # obbligatorio per UDA, non per Relazione finale
-section_id?           # obbligatorio per FINAL_REPORT
-teaching_discipline_id?
+source_asset_id?          # richiesto per UDA
+section_id?               # richiesto per FINAL_REPORT
+teaching_discipline_id?   # richiesto per FINAL_REPORT
 title
 current_version_no
 created_by
@@ -173,25 +139,24 @@ created_at
 updated_at
 ```
 
-Tipi iniziali:
+Tipi autorizzati nel pilot:
 
 ```text
 UDA
 FINAL_REPORT
 ```
 
-I tipi successivi (`ANNUAL_PROGRAMMING`, `PROGRAM_CARRIED_OUT`, ecc.) non vengono implementati nella verticale DOC-04, ma il modello non deve impedirli.
-
 Invarianti:
 
-- `UDA` mantiene l'attuale vincolo di `source_asset_id`;
-- `FINAL_REPORT` richiede anno scolastico e sezione canonica dello stesso workspace/anno;
-- una Relazione finale è unica per `workspace + academic_year + section + discipline + document_kind`, salvo futura decisione esplicita su più relazioni per la stessa disciplina;
-- la navigazione non crea documenti: la creazione avviene solo dopo azione esplicita del docente.
+- `UDA` mantiene il contratto X5 attuale e richiede `source_asset_id`;
+- `FINAL_REPORT` richiede anno, sezione e disciplina coerenti nello stesso workspace;
+- una relazione è unica per `workspace + anno + sezione + disciplina + tipo`;
+- la sola navigazione non crea un documento;
+- l'apertura/creazione richiede un'azione esplicita del docente.
 
 ### 7.2 `authored_document_versions`
 
-Il contenuto resta immutabile dopo il salvataggio:
+Il testo salvato resta immutabile:
 
 ```text
 id
@@ -203,18 +168,63 @@ created_by
 created_at
 ```
 
-Ogni salvataggio produce una nuova versione, mantenendo il comportamento X5.
+Ogni salvataggio crea una nuova versione e conserva la concorrenza ottimistica X5.
 
-### 7.3 Manifest di provenienza per versione
+### 7.3 Struttura semantica della versione
 
-Nuovo concetto: **Document Source Manifest**.
+La sola stringa Markdown non è sufficiente per una Relazione finale tracciabile. Serve una struttura immutabile associata alla versione, senza obbligare subito a sostituire l'editor.
 
-Ogni versione della Relazione finale deve essere associata agli input che hanno sostenuto la composizione iniziale o un aggiornamento guidato.
-
-Campi logici minimi per una voce:
+Modello logico:
 
 ```text
 version_id
+section_key
+ordinal
+title
+content_markdown
+content_classification
+```
+
+Esempi `section_key`:
+
+```text
+HEADER
+PLANNING_REFERENCE
+EXECUTION
+DEVIATIONS
+METHODS_TOOLS
+EVIDENCE_ASSESSMENT
+CLASS_PROGRESS
+INCLUSION
+CIVIC_EDUCATION
+FINAL_REFLECTION
+NEXT_YEAR
+```
+
+`content_classification`:
+
+```text
+DOCUMENTED
+DERIVED
+TEACHER_CONFIRMED
+PROPOSED
+TO_VERIFY
+MIXED
+```
+
+Il `body_markdown` può restare la serializzazione completa compatibile con X5/export. Le sezioni forniscono invece il livello minimo necessario per spiegare **perché un contenuto compare** e per legarlo alle fonti.
+
+Per il pilot la tracciabilità è richiesta a livello di **sezione semantica**, non di singola frase: evita una granularità artificiale e mantiene gestibile l'editing.
+
+### 7.4 Manifest di provenienza per versione/sezione
+
+Ogni versione possiede un **Document Source Manifest**. Le singole voci possono essere collegate all'intera versione o a una `section_key`.
+
+Campi logici:
+
+```text
+version_id
+section_key?
 source_kind
 source_ref
 source_version_ref?
@@ -224,7 +234,7 @@ source_fingerprint?
 summary_snapshot?
 ```
 
-`source_kind` deve poter distinguere almeno:
+`source_kind` minimo:
 
 - `TEACHER_SETTINGS`;
 - `SECTION`;
@@ -239,19 +249,19 @@ summary_snapshot?
 - `TEACHER_INPUT`;
 - `TEMPLATE`.
 
-Il manifest non crea una nuova source of truth: serve a spiegare **quali versioni/fonti sono state usate per produrre quella specifica versione del documento**.
+Il manifest non copia gli owner sottostanti come nuovo archivio. Registra i riferimenti e un **payload snapshot minimo** sufficiente a spiegare la versione salvata anche se lo stato corrente cambia.
 
-Per le fonti versionabili deve essere fissato il riferimento preciso alla generazione/versione usata, non solo l'identificatore logico corrente.
+Per fonti versionabili si fissa la generazione/versione esatta, non solo l'identificatore logico corrente.
 
-### 7.4 Decisioni di revisione e finalizzazione
+Una versione derivata da una precedente **eredita la provenienza rilevante** e aggiunge le nuove fonti o gli interventi `TEACHER_INPUT`; non deve perdere la catena di origine.
 
-Non si deve rendere mutabile una versione soltanto per cambiarne lo stato.
+### 7.5 Decisioni di validazione/finalizzazione
 
-Si propone un registro separato di decisioni:
+Il contenuto di una versione non viene mutato per cambiarne lo stato. Si usa un registro separato:
 
 ```text
 document_version_id
-decision = VALIDATED | FINALIZED | REOPENED
+decision = VALIDATED | FINALIZED
 actor_id
 decided_at
 note?
@@ -259,286 +269,190 @@ note?
 
 Regole:
 
-- `VALIDATED`: il docente dichiara di avere revisionato professionalmente la versione;
-- `FINALIZED`: quella versione diventa la versione finale corrente;
-- un successivo intervento non altera il contenuto finalizzato: crea una nuova versione e, se necessario, una nuova finalizzazione;
-- le versioni finali precedenti restano storicamente consultabili;
-- nessun modello generativo può creare una decisione `VALIDATED` o `FINALIZED`.
+- `VALIDATED`: il docente attesta di avere revisionato professionalmente quella versione;
+- `FINALIZED`: quella versione diventa la finale corrente;
+- per modificare una finale si crea una nuova versione;
+- una nuova finalizzazione rende la precedente una **finale storica**, senza cancellarla o modificarla;
+- nessun modello generativo può scrivere `VALIDATED` o `FINALIZED`.
 
-## 8. Read model `FinalReportEvidenceBundle`
+## 8. `FinalReportEvidenceBundle`
 
-Prima di creare una bozza, DOCENTE OS costruisce un read model **non persistente** che mostra ciò che sa e ciò che non sa.
-
-Struttura logica:
+Prima della bozza il sistema costruisce un read model **non persistente**:
 
 ```text
 context
-  workspace
-  academicYear
-  teacher
-  school
-  section
-  discipline
+  workspace, anno, docente, istituto, sezione, disciplina
 
 planned
-  canonicalPlan
-  UDA / nuclei
-  expectedBlocks
+  piano canonico, UDA/nuclei, blocchi attesi
 
 executed
-  annualPlanProgress
-  teachingSessions
-  allocatedMinutes
-  unallocatedSessions
-  deviations
+  stato Piano, TeachingSession, minuti, sessioni allocate/non allocate, scostamenti
 
 observed
-  classObservations
-  anonymousGroupObservations
-  evidenceReferences
+  osservazioni classe/gruppo anonimo, evidence references
 
 institutionalSources
-  curriculumBinding
-  explicitlySelectedTemplate
-  relevantVerifiedKnowledge
+  curricolo verificato, template selezionato, Knowledge pertinente verificato
 
 humanRequired
-  classOverview
-  methodologyJudgement
-  overallAssessment
-  reasonsForDeviations
-  inclusionSummary
-  civicEducationSummary
-  finalReflection
-  nextYearIndications
+  quadro classe
+  giudizio metodologico
+  valutazione complessiva
+  motivazione professionale degli scostamenti
+  sintesi inclusione
+  sintesi educazione civica
+  riflessione finale
+  indicazioni per l'anno successivo
 
 missingInformation
 provenance
 ```
 
-Il bundle è una **proiezione**, non un nuovo database.
+Il bundle è una **proiezione**: nessun secondo database di Piano, lezioni o evidenze.
 
-## 9. Classificazione dei dati nella bozza
-
-Ogni elemento usato nella relazione deve appartenere internamente a una delle seguenti classi:
+## 9. Classificazione delle informazioni
 
 ### DOCUMENTED
 
-Dato proveniente da record persistente o fonte versionata verificabile.
-
-Esempi:
-
-- identità della classe;
-- disciplina;
-- data/durata di una TeachingSession;
-- blocco Bxx e relativo stato;
-- nota/evidenza registrata;
-- UDA appartenente al piano canonico;
-- asset Knowledge e generazione usata.
+Fatto supportato da record persistente o fonte versionata: classe, disciplina, data/durata di una sessione, stato Bxx, UDA, evidenza registrata, generazione Knowledge.
 
 ### DERIVED
 
-Calcolo deterministico a partire da dati documentati.
-
-Esempi:
-
-- numero di blocchi per stato;
-- minuti complessivi di sessioni valide;
-- distribuzione temporale;
-- elenco degli scostamenti registrati;
-- confronto fra previsto ed eseguito.
-
-Ogni derivazione deve avere una regola testabile e non dipendere da un modello generativo.
+Calcolo deterministico e testabile: conteggi per stato, minuti validi, distribuzione temporale, confronto previsto/eseguito, elenco scostamenti.
 
 ### TEACHER_CONFIRMED
 
-Valutazione, interpretazione o formulazione esplicitamente confermata dal docente.
-
-Esempi:
-
-- andamento complessivo della classe;
-- efficacia metodologica;
-- qualità della partecipazione;
-- valutazione degli esiti;
-- motivazione pedagogica di uno scostamento;
-- indicazioni per l'anno successivo.
+Giudizio o interpretazione esplicitamente assunta dal docente: andamento della classe, efficacia metodologica, valutazione complessiva, ragioni pedagogiche, indicazioni future.
 
 ### PROPOSED
 
-Testo proposto da un sistema assistivo ma non ancora confermato.
-
-Non può essere presentato come fatto né rendere il documento «validato».
+Testo proposto da un sistema assistivo e non ancora assunto dal docente.
 
 ### TO_VERIFY
 
 Informazione incompleta, incoerente o priva di fonte sufficiente.
 
-Deve restare visibile come elemento da controllare e non essere trasformata automaticamente in testo assertivo.
+### MIXED
 
-## 10. Readiness: niente percentuale cosmetica
+Sezione che combina fatti documentati e formulazioni professionali. La vista «Perché compare qui?» deve distinguere le parti di provenienza e ciò che è stato aggiunto/confermato dal docente.
 
-DOCENTE OS non deve mostrare un «87% completo» se il numero non deriva da una regola professionale esplicita.
+## 10. Readiness senza percentuali cosmetiche
 
-Stati raccomandati:
+Nessun «87% completo» senza una metrica professionale definita.
 
-- **DATI_INSUFFICIENTI** — mancano fonti minime per iniziare una bozza significativa;
-- **PRONTA_PER_BOZZA** — esiste contesto sufficiente per comporre la struttura e i fatti documentati;
-- **RICHIEDE_INTEGRAZIONI** — la bozza esiste ma restano campi professionali necessari;
-- **PRONTA_PER_REVISIONE** — tutti i campi obbligatori sono presenti, ma non ancora validati;
-- **VALIDATA** — una versione è stata revisionata e validata dal docente;
-- **FINALE** — una versione è stata esplicitamente finalizzata.
+Stati:
 
-Il sistema deve mostrare **quali elementi** determinano lo stato, non solo l'etichetta.
+- **DATI_INSUFFICIENTI**;
+- **PRONTA_PER_BOZZA**;
+- **RICHIEDE_INTEGRAZIONI**;
+- **PRONTA_PER_REVISIONE**;
+- **VALIDATA**;
+- **FINALE**.
 
-## 11. Contenuto della Relazione finale
+La UI mostra sempre **gli elementi che determinano lo stato**.
 
-La struttura deve essere governata da un modello configurabile e, quando disponibile, da un **template di istituto esplicitamente selezionato**. DOCENTE OS non deve assumere che esista un unico modello normativo nazionale di Relazione finale.
+## 11. Struttura semantica della Relazione finale
 
-Baseline semantica della verticale:
+Il layout è configurabile e può adottare un template d'istituto esplicitamente selezionato. DOCENTE OS non assume l'esistenza di un unico modello nazionale.
 
-1. **Intestazione**
-   - istituto;
-   - anno scolastico;
-   - docente;
-   - disciplina;
-   - classe/sezione.
+Baseline:
 
-2. **Riferimento alla programmazione**
-   - percorso annuale adottato;
-   - nuclei/UDA essenziali;
-   - eventuale riferimento al curricolo istituzionale verificato.
+1. **Intestazione** — istituto, anno, docente, disciplina, classe.
+2. **Riferimento alla programmazione** — percorso, nuclei/UDA, eventuale curricolo istituzionale verificato.
+3. **Sviluppo effettivo** — attività/UDA/blocchi attestati, periodizzazione, sessioni significative.
+4. **Scostamenti e rimodulazioni** — previsto vs svolto, recuperi/rimodulazioni/annullamenti e motivazioni documentate o confermate.
+5. **Metodologie, strumenti e ambienti** — da fonti confermate o compilazione docente; mai inferiti dalla sola presenza di un materiale.
+6. **Evidenze e valutazione** — tipi di evidenze, criteri/rubriche se realmente collegati, giudizio complessivo umano.
+7. **Partecipazione e andamento della classe** — osservazioni aggregate come supporto, senza trasformarle in esiti certi di apprendimento.
+8. **Inclusione e adattamenti** — sintesi generale; nessuna acquisizione automatica di diagnosi, condizioni sanitarie o nomi di alunni.
+9. **Educazione civica / trasversalità** — solo se esplicitamente registrata o aggiunta e confermata dal docente.
+10. **Considerazioni finali e continuità** — criticità/punti di forza, nuclei da riprendere, indicazioni per l'anno successivo.
 
-3. **Sviluppo effettivo del percorso**
-   - attività/UDA/blocchi effettivamente attestati;
-   - periodizzazione;
-   - sessioni significative;
-   - attività trasversali registrate.
+Il **Programma svolto** resta un documento distinto nella futura DOC-03. DOC-04 può usarne gli stessi fatti, ma non deve cancellare la distinzione fra i due artefatti.
 
-4. **Scostamenti e rimodulazioni**
-   - previsto vs svolto;
-   - recuperi, rimodulazioni, annullamenti;
-   - motivazioni solo se documentate o confermate dal docente.
-
-5. **Metodologie, strumenti e ambienti**
-   - da fonti/progettazioni confermate quando disponibili;
-   - altrimenti campo professionale del docente;
-   - vietato inferire automaticamente una metodologia dalla sola presenza di un materiale.
-
-6. **Evidenze e valutazione**
-   - tipi di evidenze registrate;
-   - criteri/rubriche solo se fonti effettivamente collegate;
-   - valutazione complessiva come giudizio professionale umano.
-
-7. **Partecipazione e andamento della classe**
-   - può essere assistita dalle osservazioni di classe/gruppi anonimi;
-   - non deve trasformare indicatori osservativi in giudizi certi sugli apprendimenti;
-   - formulazione finale confermata dal docente.
-
-8. **Inclusione e adattamenti**
-   - sintesi professionale generale;
-   - nessun caricamento automatico di diagnosi, condizioni sanitarie o dati personali degli alunni;
-   - nessun nome alunno nella composizione predefinita;
-   - eventuali elementi sensibili richiedono caso d'uso e policy separati.
-
-9. **Educazione civica / trasversalità**
-   - inclusa solo quando esistono attività/evidenze o input esplicito;
-   - non dedotta automaticamente dalla semplice affinità tematica di una UDA.
-
-10. **Considerazioni finali e continuità**
-    - punti di forza/criticità;
-    - eventuali nuclei da riprendere;
-    - indicazioni utili per l'anno successivo;
-    - formulazione finale del docente.
-
-Il **Programma svolto** resta un documento distinto nella futura DOC-03. DOC-04 può mostrare una sintesi del percorso svolto e usare gli stessi dati, ma non deve cancellare la distinzione tra i due artefatti professionali.
-
-## 12. Regole di composizione deterministica
+## 12. Composizione deterministica
 
 La prima bozza deve poter essere costruita senza AI.
 
-Un compositore deterministico deve poter:
+Il compositore deterministico può:
 
 - inserire intestazione e contesto;
-- elencare il percorso pianificato;
-- ricavare stati Bxx e date di esecuzione disponibili;
-- aggregare durate reali delle TeachingSession valide, evitando doppio conteggio delle sessioni superseded;
-- distinguere sessioni allocate al canone e sessioni non allocate;
+- proiettare il percorso pianificato;
+- ricavare stati Bxx e date disponibili;
+- aggregare durate reali delle `TeachingSession` valide;
+- distinguere sessioni allocate e non allocate;
 - elencare scostamenti registrati;
-- sintetizzare in forma tabellare/strutturata le evidenze;
-- predisporre segnaposto espliciti per i giudizi professionali mancanti.
+- sintetizzare evidenze in forma strutturata;
+- predisporre campi espliciti per i giudizi professionali mancanti.
 
-La prosa narrativa può essere:
-
-1. scritta direttamente dal docente; oppure
-2. proposta dall'assistente partendo dallo stesso bundle tracciabile.
-
-La disponibilità di un provider AI non è un requisito per aprire, completare, validare o esportare il documento.
+La prosa narrativa può essere scritta dal docente o proposta dall'assistente a partire dallo stesso bundle tracciabile.
 
 ## 13. Ruolo dell'assistenza generativa
 
-L'assistente può:
+Può:
 
 - spiegare cosa manca;
-- sintetizzare fonti documentate;
-- proporre una formulazione più leggibile;
+- sintetizzare fatti documentati;
+- proporre formulazioni;
 - confrontare previsto e registrato;
 - segnalare incoerenze;
-- proporre una bozza di un paragrafo indicando le evidenze usate.
+- proporre paragrafi indicando le evidenze usate.
 
 Non può:
 
-- inventare attività non registrate;
-- dedurre esiti di apprendimento dalla sola copertura del Piano;
-- trasformare `DEVELOPING/CONSOLIDATED` in voti o giudizi individuali;
+- inventare attività;
+- dedurre esiti di apprendimento dalla copertura del Piano;
+- trasformare osservazioni aggregate in voti/giudizi individuali;
 - dichiarare svolta una parte non supportata;
-- modificare Piano, TeachingSession o Knowledge durante la composizione;
-- validare/finalizzare il documento;
-- esportare su sistemi esterni senza conferma esplicita.
+- modificare Piano, TeachingSession, UDA o Knowledge durante la composizione;
+- validare/finalizzare;
+- eseguire scritture esterne senza conferma.
 
-Ogni proposta generativa resta `PROPOSED` fino a intervento umano.
+Il prodotto resta operativo con assistenza disabilitata.
 
-## 14. Esperienza utente della verticale
+## 14. Esperienza utente
 
 ### 14.1 Ingresso
 
-Nuova superficie primaria completa:
+Nuova superficie:
 
 `/documentazione`
 
-Non viene aggiunta inizialmente una sesta destinazione alla barra mobile inferiore. La superficie è raggiungibile da:
+Non viene inizialmente aggiunta una sesta destinazione alla barra mobile inferiore. Accessi:
 
-- navigazione completa/menu generale;
-- Home quando esiste un compito documentale pertinente;
+- menu/navigazione completa;
+- Home quando esiste un compito pertinente;
 - Classe;
 - Piano annuale;
-- eventuali richiami contestuali nel periodo di chiusura dell'anno.
+- richiami contestuali nel periodo di chiusura.
 
-### 14.2 Elenco Relazioni finali
+### 14.2 Elenco
 
 `/documentazione/relazioni-finali`
 
-Mostra per ogni sezione/discipline pertinente:
+Per ogni sezione/disciplina:
 
 - classe;
-- stato di readiness;
-- eventuale documento esistente e sua versione;
+- readiness;
+- documento/versione esistente;
 - ultima revisione;
 - prossima azione umana.
 
-Nessun codice CAN o UUID al primo livello.
+Nessun UUID o codice CAN al primo livello.
 
-### 14.3 Superficie focalizzata di sezione
+### 14.3 Superficie focalizzata
 
 `/documentazione/relazioni-finali/<sectionId>`
 
-Sequenza cognitiva:
+Mostra nell'ordine:
 
-1. **Dove sono?** — Relazione finale · Tecnologia · 2C · 2026/27.
-2. **Che cosa sa già il sistema?** — fatti disponibili e fonti.
-3. **Che cosa manca?** — massimo elenco prioritario di integrazioni reali.
-4. **Che cosa faccio adesso?** — una sola azione primaria coerente con lo stato.
+1. contesto: «Relazione finale · Tecnologia · 2C · 2026/27»;
+2. ciò che il sistema sa;
+3. ciò che manca;
+4. una sola azione primaria.
 
-Azioni primarie per stato:
+Azione per stato:
 
 - `DATI_INSUFFICIENTI` → **Controlla ciò che manca**;
 - `PRONTA_PER_BOZZA` → **Crea bozza**;
@@ -547,275 +461,238 @@ Azioni primarie per stato:
 - `VALIDATA` → **Finalizza**;
 - `FINALE` → **Esporta / consulta versione finale**.
 
-Dettagli tecnici e provenienza sono accessibili su richiesta, non competono con l'azione primaria.
-
 ### 14.4 Editor
 
-L'editor deve riusare il paradigma X5:
+Riusa il paradigma X5:
 
-- titolo;
 - contenuto modificabile;
-- salvataggio come nuova versione immutabile;
+- salvataggio come nuova versione;
 - cronologia;
-- indicazione chiara delle modifiche non salvate;
-- controllo di concorrenza.
+- modifiche locali chiaramente indicate;
+- concorrenza ottimistica.
 
-La verticale dovrà valutare se il textarea Markdown attuale è sufficiente o se il documento richiede una superficie a blocchi più strutturata. La scelta dell'editor non deve cambiare il modello di versionamento.
+Per DOC-04 il contenuto è organizzato per sezioni semantiche. Questo può essere realizzato inizialmente anche con controlli testuali/Markdown per sezione: non è necessario introdurre subito un nuovo editor a blocchi.
 
-## 15. Evidenza visibile, senza sovraccarico
+## 15. «Perché compare qui?»
 
-Per ogni sezione significativa del documento deve essere possibile aprire **Perché compare qui?** e vedere, in forma umana:
+Ogni sezione della relazione può aprire una vista leggera che mostra:
 
-- dati registrati che la supportano;
-- eventuale fonte istituzionale;
-- eventuale formulazione proposta;
-- eventuale campo compilato dal docente.
+- fatti registrati di supporto;
+- eventuale fonte istituzionale/template;
+- eventuale testo proposto;
+- interventi/conferme del docente;
+- versione/generazione delle fonti quando rilevante.
 
-Questa vista è diagnostica e di fiducia, non deve diventare un pannello tecnico sempre aperto.
+È una funzione di fiducia e diagnosi, non un pannello tecnico sempre visibile.
 
 ## 16. Privacy e minimizzazione
 
-La verticale parte da un principio restrittivo:
-
-- nessun dato nominativo degli studenti è necessario per produrre la Relazione finale di classe;
-- osservazioni supportate sono `CLASS` o `ANONYMOUS_GROUP`;
+- nessun dato nominativo studente è necessario per la Relazione finale di classe;
+- osservazioni ammesse in composizione automatica: `CLASS` o `ANONYMOUS_GROUP`;
 - nessuna inferenza su salute, BES/DSA, disabilità o altre categorie sensibili;
-- nessuna acquisizione automatica di dati sensibili da documenti Knowledge;
-- eventuale futura documentazione individuale è fuori perimetro e richiederà specifica privacy dedicata;
-- il bundle passato a un provider generativo contiene soltanto i dati minimi necessari alla sezione richiesta.
+- nessuna acquisizione automatica di dati sensibili da Knowledge;
+- documentazione individuale fuori perimetro;
+- al provider generativo passa soltanto il minimo necessario alla sezione richiesta.
 
 ## 17. Esportazione
 
-DOC-04 riusa il contratto X5B:
+DOC-04 riusa X5B:
 
-- si esporta **una versione salvata**;
-- l'apertura dell'anteprima non produce write;
-- versione corrente e versioni storiche restano distinguibili;
-- versione, anno scolastico e provenienza essenziale sono visibili;
-- resa A4 e stampa/salvataggio PDF riusano il renderer già qualificato, generalizzandolo oltre `UDA`.
+- export di una **versione salvata**;
+- anteprima senza write;
+- versioni storiche distinguibili;
+- versione/anno/provenienza essenziale visibili;
+- resa A4 e stampa/salvataggio PDF tramite renderer generalizzato.
 
-### Fuori perimetro iniziale
+Fuori dal pilot:
 
-- generazione nativa DOCX non ancora verificata nel runtime corrente;
-- scrittura automatica su Drive;
+- DOCX nativo non ancora qualificato;
+- salvataggio automatico su Drive;
 - invio e-mail;
-- protocollazione;
+- protocollo;
 - firma digitale.
 
-Qualunque esportazione/salvataggio verso Drive è una `WRITE_EXTERNAL` e richiederà una tranche separata con conferma esplicita.
+Una futura scrittura verso Drive resta `WRITE_EXTERNAL` e richiede conferma immediatamente prima dell'effetto.
 
 ## 18. Template di istituto
 
-La Relazione finale deve poter adottare un modello fornito dall'istituto senza farne una nuova autorità curricolare.
+Un template può essere conservato in Knowledge con provenienza e associato esplicitamente a `FINAL_REPORT`.
 
-Approccio previsto:
+Regole:
 
-- template importato/conservato in Knowledge con provenienza;
-- associazione esplicita del template alla classe di documento `FINAL_REPORT`;
-- struttura/placeholder interpretati da un adapter di template;
-- contenuti del documento sempre versionati nel motore Documentazione;
-- cambio template non riscrive retroattivamente una versione già finalizzata.
-
-La prima verticale può partire dal template interno canonico se nessun modello d'istituto è configurato, ma deve dichiararlo chiaramente.
+- il template non diventa owner dei dati didattici;
+- il cambio template non modifica versioni già salvate/finalizzate;
+- se non è configurato un modello d'istituto, il sistema usa il template interno dichiarandolo chiaramente;
+- il mapping di placeholder è una capability separata e può essere differita se non necessaria al pilot.
 
 ## 19. Coerenza temporale e snapshot
 
-Una Relazione finale non deve cambiare silenziosamente perché le fonti cambiano dopo la creazione della bozza.
+Una bozza non cambia silenziosamente quando cambiano le fonti.
 
-Regola:
+- la readiness legge lo stato corrente;
+- **Crea bozza** cattura manifest e snapshot minimo;
+- **Aggiorna dai dati registrati** confronta snapshot della versione con fonti correnti;
+- l'aggiornamento crea una nuova versione dopo conferma;
+- la finale resta legata alle fonti che la sostenevano alla finalizzazione.
 
-- la pagina di readiness legge lo stato corrente;
-- **Crea bozza** cattura il manifest degli input usati;
-- una funzione **Aggiorna dai dati registrati** può proporre un nuovo confronto tra snapshot della versione e fonti correnti;
-- l'aggiornamento non modifica la versione esistente: produce una nuova versione dopo conferma;
-- una versione finalizzata resta legata alle fonti/snapshot che la sostenevano al momento della finalizzazione.
+## 20. TeachingSession superseded
 
-## 20. Correzioni e supersessione delle TeachingSession
+Poiché una sessione può supersederne un'altra, il bundle usa solo la catena effettiva corrente.
 
-Poiché `TeachingSession` può avere `supersedes_session_id`, il bundle deve usare soltanto la versione effettiva della catena di registrazione.
+Non si devono doppio-conteggiare:
 
-Il calcolo di:
-
-- numero sessioni;
-- minuti svolti;
-- evidenze;
+- sessioni;
+- minuti;
 - osservazioni;
+- evidenze.
 
-non deve sommare sia la sessione superseded sia la sua sostituzione.
+Test dedicato obbligatorio.
 
-Questa regola deve avere test dedicati.
+## 21. Coerenza Piano ↔ esecuzione reale
 
-## 21. Coerenza tra Piano ed evidenza reale
+Segnalazioni minime:
 
-Il bundle deve segnalare almeno:
-
-- blocco dichiarato `SVOLTO` senza TeachingSession allocata, se tale incoerenza è significativa per il contesto;
-- TeachingSession allocata a un blocco ancora `PIANIFICATO`;
+- Bxx `SVOLTO` senza sessione allocata, quando significativo;
+- sessione allocata a Bxx ancora `PIANIFICATO`;
 - sessioni non allocate;
-- blocchi `RIMODULATO`, `RECUPERATO`, `ANNULLATO`;
-- differenze fra durata pianificata e durata effettivamente registrata quando disponibili.
+- Bxx `RIMODULATO`, `RECUPERATO`, `ANNULLATO`;
+- differenze fra durata pianificata ed effettiva quando disponibili.
 
-Questi elementi sono **segnalazioni di controllo**, non mutazioni automatiche.
+Sono controlli read-only: DOC-04 non corregge il Piano e non registra lezioni retroattive.
 
-DOC-04 non corregge il Piano e non registra retroattivamente lezioni per rendere «pulita» la relazione.
+## 22. Educazione civica e trasversalità
 
-## 22. Educazione civica e attività trasversali
+DOC-04 non assume un monte ore disciplinare autonomo di Educazione civica.
 
-La verticale non deve assumere un monte ore disciplinare autonomo di Educazione civica né inventare una quota per materia.
+Include attività civiche/trasversali soltanto se:
 
-La Relazione finale può includere attività di Educazione civica soltanto quando:
+- esplicitamente registrate/collegate; oppure
+- aggiunte e confermate dal docente.
 
-- sono esplicitamente collegate/registrate; oppure
-- il docente le aggiunge e conferma.
+Nessuna deduzione automatica dalla sola affinità tematica di una UDA.
 
-La contabilizzazione istituzionale complessiva resta nel dominio appropriato e non viene reinterpretata da DOC-04.
+## 23. Fail-closed
 
-## 23. Error handling e fail-closed
+Fallire in modo esplicito se:
 
-Il sistema deve fallire in modo comprensibile quando:
+- la sezione è estranea al workspace/anno;
+- manca una disciplina coerente;
+- il Piano canonico richiesto è assente/non valido;
+- una fonte Knowledge è fuori contesto;
+- una generazione/versione richiesta non esiste;
+- il documento è stato modificato altrove;
+- il template non è leggibile.
 
-- `sectionId` non appartiene al workspace/anno corrente;
-- manca un'identità disciplinare coerente;
-- il Piano canonico è assente o non valido;
-- una fonte Knowledge richiesta non appartiene al workspace;
-- una generazione versionata non è disponibile;
-- una versione documentale richiesta non esiste;
-- il documento è stato modificato altrove dopo l'apertura;
-- il template configurato non è leggibile.
-
-Comportamento:
-
-- nessun fallback verso dati di un'altra sezione;
-- nessuna scelta automatica di una fonte «simile»;
-- nessuna perdita della bozza locale in caso di conflitto;
-- indicazione dell'azione correttiva più vicina al compito umano.
+Nessun fallback a una sezione/fonte «simile». Nessuna perdita della bozza locale in caso di conflitto.
 
 ## 24. Sicurezza e writer boundary
 
-Le nuove scritture seguono il modello X5:
-
 - RLS deny-by-default;
 - lettura limitata ai membri del workspace;
-- creazione/salvataggio/finalizzazione tramite application boundary/RPC dedicati;
-- direct write revocata alle tabelle documentali;
+- creazione/salvataggio/validazione/finalizzazione tramite boundary dedicati;
+- direct write revocata;
 - validazione server-side di workspace, anno, sezione, disciplina e versione attesa;
-- controllo di concorrenza ottimistico;
+- concorrenza ottimistica;
 - nessuna write implicita del Copilota;
-- nessuna write sui domini sorgente durante la composizione.
+- nessuna write sugli owner sorgente durante la composizione.
 
-La finalizzazione deve richiedere un'azione umana esplicita e una preview dell'effetto: «questa versione diventa la versione finale corrente».
+La finalizzazione richiede conferma esplicita con preview dell'effetto: **questa versione diventa la finale corrente**.
 
-## 25. Perimetro DOC-04 pilota
+## 25. Perimetro pilot DOC-04
 
 ### In scope
 
-- nuova superficie `Documentazione`;
-- catalogo minimo con `Relazione finale`;
-- sezione/classe come verticale primaria;
+- superficie `Documentazione`;
+- catalogo minimo `Relazione finale`;
+- sezione/disciplina come contesto;
 - evidence bundle reale;
 - readiness deterministica;
-- creazione di una bozza versionata;
-- editing e nuove versioni;
-- manifest di provenienza per versione;
-- validazione e finalizzazione umane;
-- export PDF/stampa riusando X5B;
-- desktop e mobile;
-- test di sicurezza, coerenza, accessibilità e journey.
+- bozza versionata e sezioni semantiche;
+- manifest di provenienza;
+- editing/versioni;
+- validazione/finalizzazione umane;
+- export PDF/stampa tramite X5B;
+- desktop/mobile;
+- sicurezza, accessibilità e journey.
 
 ### Out of scope
 
 - Programmazione annuale completa;
 - Programma svolto autonomo;
 - verbali/Collegio/dipartimento;
-- documentazione individuale alunni;
-- firma digitale;
-- protocollo;
+- documenti individuali alunni;
+- firma/protocollo;
 - invio automatico;
-- DOCX nativo finché non viene progettato e qualificato;
-- migrazione del vecchio SchoolDocs come runtime;
-- qualunque modifica automatica a Piano, UDA o TeachingSession.
+- DOCX nativo;
+- porting del runtime SchoolDocs;
+- modifiche automatiche a Piano/UDA/TeachingSession.
 
-## 26. Scomposizione tecnica successiva alla specifica
+## 26. Tranche future, solo dopo approvazione e piano
 
-La futura implementazione, se autorizzata dopo Human Review e piano dedicato, dovrebbe essere divisa in tranche indipendenti:
+- **DOC-01A — Generalizzazione authoring X5**: estendere il dominio senza regressioni UDA.
+- **DOC-04A — Evidence bundle + readiness**: verticale read-only sui dati reali.
+- **DOC-04B — Bozza/versionamento**: `FINAL_REPORT`, sezioni, manifest.
+- **DOC-04C — Validazione/finalizzazione**: decisioni umane auditabili.
+- **DOC-04D — Export generalizzato**: riuso X5B.
+- **DOC-04E — Esperienza**: Documentazione + ingressi contestuali.
+- **DOC-04F — Certificazione**: E2E, RLS, concorrenza, accessibilità, mobile, export, provenance, Human Review.
 
-- **DOC-01A — Generalizzazione authoring X5**  
-  Estendere il dominio documentale senza cambiare il comportamento UDA esistente.
+Questa specifica **non autorizza l'implementazione**.
 
-- **DOC-04A — Evidence bundle + readiness**  
-  Read-only, nessuna nuova bozza: prova che i dati reali sono componibili correttamente.
+## 27. Criteri di accettazione funzionali
 
-- **DOC-04B — Apertura e versionamento Relazione finale**  
-  Nuovo `document_kind`, contesto sezione/disciplina, manifest input.
+1. Il docente apre una relazione per una sezione canonica senza codici tecnici.
+2. Dati disponibili/mancanti sono espliciti e non ridotti a percentuali arbitrarie.
+3. Previsto, registrato, derivato, proposto e giudizio umano restano distinguibili.
+4. Sessioni superseded non sono doppio-conteggiate.
+5. Sessioni senza Bxx restano visibili senza allocazioni fittizie.
+6. La bozza conserva manifest e snapshot minimo degli input.
+7. Cambiare una fonte non modifica retroattivamente una versione salvata.
+8. Ogni salvataggio crea una nuova versione immutabile.
+9. La provenienza è ispezionabile almeno per sezione semantica.
+10. Un conflitto concorrente non sovrascrive lavoro precedente.
+11. Validazione e finalizzazione richiedono decisione umana.
+12. Finalizzare non modifica Piano, TeachingSession, UDA o Knowledge.
+13. Le finali storiche restano consultabili.
+14. L'export usa una versione salvata e mostra chiaramente versione/anno.
+15. Il prodotto funziona senza provider AI.
+16. Una proposta AI non viene presentata come fatto o contenuto confermato.
+17. Nessun dato nominativo studente entra automaticamente nella relazione.
+18. Su mobile resta una sola azione primaria coerente con lo stato.
+19. La verticale non modifica la membership della barra mobile inferiore.
+20. Il percorso UDA X5A/X5B continua a funzionare invariato.
 
-- **DOC-04C — Revisione, validazione e finalizzazione**  
-  Decisioni umane auditabili e versioni finali immutabili.
-
-- **DOC-04D — Export generalizzato**  
-  Riuso X5B per `FINAL_REPORT`.
-
-- **DOC-04E — Integrazione esperienza**  
-  `/documentazione`, ingressi da Classe/Piano/Home, responsive.
-
-- **DOC-04F — Certificazione**  
-  E2E, RLS, race/concurrency, accessibilità, mobile, export, provenance e Human Review.
-
-Nessuna tranche è autorizzata da questo documento: richiedono un piano di implementazione successivo all'approvazione della specifica.
-
-## 27. Acceptance criteria funzionali
-
-La verticale è accettabile quando:
-
-1. un docente può aprire `Relazione finale` per una sezione canonica senza digitare codici tecnici;
-2. il sistema mostra dati disponibili e mancanti senza inventare una percentuale arbitraria;
-3. il bundle distingue previsto, registrato, derivato e giudizio umano;
-4. sessioni superseded non vengono doppio-conteggiate;
-5. sessioni senza Bxx restano visibili senza creare un'allocazione fittizia;
-6. una bozza conserva il manifest preciso degli input usati;
-7. modificare una fonte dopo la bozza non cambia retroattivamente la versione salvata;
-8. ogni salvataggio crea una nuova versione immutabile;
-9. un conflitto concorrente non sovrascrive il lavoro precedente;
-10. la validazione/finalizzazione richiede decisione umana esplicita;
-11. la finalizzazione non modifica Piano, TeachingSession, UDA o Knowledge;
-12. una versione finale precedente resta consultabile dopo una revisione successiva;
-13. l'export usa una versione salvata ed espone chiaramente versione/anno;
-14. il sistema funziona senza provider AI;
-15. l'assistenza generativa, se disponibile, non presenta inferenze come fatti;
-16. nessun dato nominativo degli studenti entra automaticamente nella relazione;
-17. la UI mobile conserva una sola azione primaria coerente con lo stato;
-18. la nuova superficie non altera la membership della barra mobile inferiore senza decisione separata.
-
-## 28. Acceptance criteria di qualità e governance
+## 28. Gate di qualità e governance
 
 Gate minimi futuri:
 
-- unit test del compositore e readiness;
-- test deterministici dei calcoli;
-- regressione completa X5A/X5B UDA;
-- RLS e cross-workspace isolation;
+- unit test compositore/readiness;
+- test calcoli deterministici;
+- regressione X5A/X5B;
+- RLS/cross-workspace isolation;
 - optimistic concurrency;
-- fail-closed su sezione/anno/disciplina;
-- snapshot/provenance immutabile;
-- test session supersession;
+- fail-closed sezione/anno/disciplina;
+- snapshot/provenance immutabili;
+- test supersession;
 - test sessioni allocate/non allocate;
-- test assenza AI/provider;
+- test assenza AI;
 - test `PROPOSED` vs `TEACHER_CONFIRMED`;
 - test finalizzazione solo umana;
 - WCAG 2.2 AA pertinente;
-- browser journey desktop/mobile;
-- stampa A4/PDF;
+- journey desktop/mobile;
+- export A4/PDF;
 - Human Visual Acceptance;
 - review indipendente prima dell'integrazione.
 
-## 29. Verticale pilota di accettazione
+## 29. Pilot di accettazione
 
-Il pilot deve usare una sezione reale del workspace di prova con:
+Usare una sezione reale del workspace di prova con:
 
-- Piano annuale canonico presente;
-- almeno un blocco in stato non `PIANIFICATO`;
-- almeno due TeachingSession, di cui una con allocazione Bxx;
-- almeno una sessione/evidenza non allocata oppure un caso esplicito di rimodulazione;
-- almeno una osservazione di classe o gruppo anonimo;
+- Piano canonico presente;
+- almeno un Bxx non `PIANIFICATO`;
+- almeno due TeachingSession, una allocata a Bxx;
+- almeno una sessione non allocata oppure un caso di rimodulazione;
+- almeno una osservazione di classe/gruppo anonimo;
 - almeno una fonte Knowledge verificata;
 - nessun dato nominativo studente.
 
@@ -824,41 +701,40 @@ Journey:
 ```text
 Documentazione
 → Relazioni finali
-→ classe
+→ classe/disciplina
 → verifica dati disponibili/mancanti
 → crea bozza
 → completa giudizi professionali
-→ salva v2
-→ controlla provenienza
+→ salva nuova versione
+→ controlla «Perché compare qui?»
 → valida
 → finalizza
 → esporta PDF
-→ riapre v1/v2/finale e verifica storia
+→ riapre versioni storiche e finale
 ```
 
-## 30. Decisioni aperte da risolvere nel piano, non nella UI
+## 30. Decisioni di dettaglio da demandare al piano
 
-1. **Struttura del manifest:** tabella relazionale per source refs vs snapshot JSON normalizzato. Raccomandazione: riferimenti relazionali + payload snapshot minimo, evitando copie integrali dei domini.
-2. **Editor:** mantenere Markdown X5 nella prima tranche oppure introdurre blocchi strutturati. Raccomandazione: non cambiare editor finché DOC-04A non dimostra un limite reale del Markdown corrente.
-3. **Template di istituto:** formato iniziale supportato e mapping dei placeholder. Da progettare come tranche successiva se il pilot non ne ha bisogno.
-4. **Disciplina:** usare `teaching_disciplines.id` come binding esplicito e non testo libero.
-5. **Finalizzazione multipla:** mantenere storia di più versioni finali con una sola finale corrente.
+1. **Persistenza del manifest**: riferimenti relazionali + snapshot JSON minimo raccomandati; niente copie integrali dei domini.
+2. **Editor**: partire da sezioni Markdown compatibili con X5; introdurre editor a blocchi solo se il pilot dimostra un limite reale.
+3. **Template istituto**: formato/placeholder come tranche dedicata se necessario.
+4. **Disciplina**: binding tramite `teaching_disciplines.id`, non testo libero.
+5. **Finale corrente**: determinata dalla decisione `FINALIZED` più recente; le precedenti restano finali storiche.
 
-## 31. Decisioni già congelate da questa specifica
+## 31. Decisioni congelate se la specifica viene approvata
 
-Se approvata, la specifica congela i seguenti principi:
-
-- **Documentazione è parte di DOCENTE OS**, non un'applicazione separata;
-- **Relazione finale è la prima verticale**;
-- **riuso/generalizzazione X5**, nessun secondo motore documentale;
-- **nessuna duplicazione degli owner esistenti**;
-- **evidence bundle read-only e ricostruibile**;
-- **manifest di provenienza per ogni versione composta**;
-- **versioni immutabili**;
-- **giudizi professionali distinti dai fatti documentati**;
-- **AI opzionale e subordinata**;
-- **validazione/finalizzazione esclusivamente umane**;
-- **privacy by default senza dati nominativi studenti**;
-- **export iniziale tramite il percorso PDF/stampa già qualificato**;
-- **nessun nuovo slot nella bottom navigation nella verticale iniziale**;
-- **nessuna implementazione prima di piano e Human Review della specifica**.
+- Documentazione è parte di DOCENTE OS, non un'app separata.
+- Relazione finale è la prima verticale.
+- Un solo motore documentale: generalizzazione X5.
+- Nessuna duplicazione degli owner sorgente.
+- Evidence bundle read-only e ricostruibile.
+- Versioni immutabili.
+- Struttura semantica della Relazione finale separata dal solo blob Markdown.
+- Provenienza ispezionabile almeno per sezione.
+- Giudizi professionali distinti dai fatti documentati.
+- AI opzionale e subordinata.
+- Validazione/finalizzazione esclusivamente umane.
+- Privacy predefinita senza dati nominativi studenti.
+- Export iniziale PDF/stampa tramite percorso X5B generalizzato.
+- Nessun nuovo slot nella barra mobile inferiore nel pilot.
+- Nessuna implementazione prima della Human Review di questa specifica e del successivo piano dedicato.
