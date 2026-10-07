@@ -56,13 +56,20 @@ jobs:
       - name: Verify Beta exact-head binding
         shell: bash
         run: |
-          : > /tmp/build-info.json
-          http_code="$(curl -sS --max-time 20 -o /tmp/build-info.json -w '%{http_code}' "$E2E_BASE_URL/api/build-info")"
-          payload="$(cat /tmp/build-info.json)"
-          deployed="$(printf '%s' "$payload" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).commit||'')}catch{console.log('')}})")"
-          echo "Beta http=$http_code deployed=$deployed expected=$DOS_M4_EXPECTED_HEAD"
-          test "$http_code" = "200"
-          test "$deployed" = "$DOS_M4_EXPECTED_HEAD"
+          for attempt in $(seq 1 120); do
+            : > /tmp/build-info.json
+            http_code="$(curl -sS --max-time 20 -o /tmp/build-info.json -w '%{http_code}' "$E2E_BASE_URL/api/build-info" 2>/dev/null || true)"
+            payload="$(cat /tmp/build-info.json 2>/dev/null || true)"
+            deployed="$(printf '%s' "$payload" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).commit||'')}catch{console.log('')}})")"
+            echo "Attempt $attempt/120: http=${http_code:-000}, deployed=${deployed:-unavailable}, expected=$DOS_M4_EXPECTED_HEAD"
+            if [ "$deployed" = "$DOS_M4_EXPECTED_HEAD" ]; then
+              echo 'Render is serving the DOS-M4 bound product commit.'
+              exit 0
+            fi
+            sleep 15
+          done
+          echo 'Render did not expose the DOS-M4 bound product commit within the bounded wait.' >&2
+          exit 1
 
       - name: Install product dependencies
         working-directory: product
