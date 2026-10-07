@@ -7,91 +7,97 @@ Branch: `docs/doc-04-relazione-finale-design`
 
 ## 1. Scopo
 
-Definire un motore unico per acquisire, analizzare, validare, strutturare, versionare e usare **template documentali istituzionali** in DOCENTE OS.
+Definire un motore unico per **studiare, migliorare, progettare, strutturare, versionare e usare** template documentali istituzionali in DOCENTE OS.
 
-Il motore nasce dal caso reale della **Relazione finale del docente** dell'I.C. “don Lorenzo Milani”, ma deve supportare nel tempo anche Programmazione annuale, Programma svolto, verbali, relazioni, schede di validazione e altri documenti professionali.
+I documenti presenti in Drive sono **sorgenti di riferimento**, non vincoli grafici da riprodurre alla lettera. Servono a comprendere:
 
-DOC-TPL-01 non produce ancora documenti finali e non implementa editor o renderer. Congela i contratti necessari affinché le verticali documentali successive possano usare modelli istituzionali senza hard-code per singolo file.
+- funzione del documento;
+- prassi dell'istituto;
+- informazioni richieste;
+- strutture ricorrenti;
+- tabelle o checklist utili;
+- identità visiva essenziale.
+
+Da queste sorgenti DOCENTE OS deve poter produrre un **template canonico migliorato**, coerente, leggibile e uniforme. Se un documento necessario non esiste ancora, lo stesso canone deve permettere di progettarlo da zero.
+
+Il primo caso reale resta la **Relazione finale del docente** dell'I.C. “don Lorenzo Milani”; il motore dovrà supportare anche Programmazione annuale, Programma svolto, UDA nella resa istituzionale, verbali, relazioni, schede di validazione e altri documenti professionali.
 
 ## 2. Principio architetturale
 
-La semantica del documento appartiene a DOCENTE OS; la forma documentale appartiene al template istituzionale.
+La regola fondamentale è:
 
-Un file DOCX/PDF/Google Doc trovato in Drive non diventa automaticamente un template valido. Deve attraversare:
+> **La sorgente documenta la prassi; il template canonico rappresenta la migliore forma documentale approvata.**
+
+Non si persegue la fedeltà geometrica al vecchio file. Si preservano invece:
+
+- funzione istituzionale;
+- significato delle informazioni;
+- identità dell'istituto;
+- eventuali elementi formali realmente necessari;
+- provenienza della revisione.
+
+La forma può essere migliorata: sezioni riordinate, duplicazioni eliminate, tabelle ridisegnate, campi accorpati, spaziature corrette e formulazioni rese più chiare.
+
+Pipeline canonica:
 
 ```text
-Sorgente istituzionale
-→ acquisizione
-→ analisi strutturale
-→ audit di coerenza
-→ mappatura semantica
-→ privacy/provenienza
-→ preview
+Sorgente/e istituzionali
+→ comprensione della funzione
+→ analisi strutturale e semantica
+→ Document Quality Review
+→ proposta di struttura migliorata
+→ mapping dati/privacy
+→ preview documentale
 → Human Review
-→ attivazione
+→ template canonico attivo
 ```
 
-Il sistema deve poter preservare fedelmente un modello istituzionale e, separatamente, segnalare che quel modello presenta incoerenze o aree migliorabili.
+Per un documento mancante:
 
-## 3. Requisiti derivati dai documenti reali
+```text
+Funzione istituzionale richiesta
+→ analisi dei documenti collegati
+→ progettazione struttura
+→ Document Quality Review
+→ preview
+→ Human Review
+→ template canonico attivo
+```
 
-La ricerca in Drive mostra già famiglie diverse:
+## 3. Separazione obbligatoria: sorgente vs template canonico
 
-- Relazione finale del docente;
-- Programma svolto;
-- Programmazione annuale;
-- documenti dipartimentali e schede di validazione.
+DOC-TPL-01 distingue due oggetti concettuali.
 
-Queste famiglie hanno strutture, finalità e granularità differenti. Il motore non può quindi ridursi a una sostituzione di stringhe `[[PLACEHOLDER]]`.
+### 3.1 `TemplateSourceRevision`
 
-La storia precedente Excel → Word dimostra però un requisito utile: ogni campo documentale deve poter dichiarare **origine, significato e destinazione**.
+Conserva l'evidenza storica/importata:
 
-## 4. Alternative esaminate
+```text
+id
+workspace_id
+source_asset_ref
+source_revision_ref?
+source_kind
+source_fingerprint
+captured_at
+classification
+```
 
-### A — Template hard-coded per tipo documento
+Classificazioni possibili:
 
-Ogni verticale codifica il proprio layout e i propri campi.
+```text
+INSTITUTION_OFFICIAL
+INSTITUTION_WORKING_DRAFT
+TEACHER_ADAPTED
+HISTORICAL_REFERENCE
+UNKNOWN
+```
 
-**Respinta:** scala male, duplica logiche e rende fragile il rapporto con i modelli di istituto.
+La sorgente non viene modificata automaticamente.
 
-### B — DOCX con segnaposto testuali
+### 3.2 `DocumentTemplate`
 
-Il DOCX resta sorgente e DOCENTE OS sostituisce token tipo `[[CLASS_NAME]]`.
-
-**Respinta come architettura primaria:** utile come compatibilità/import, ma insufficiente per validazione semantica, tipi di campo, provenienza, privacy, versioni e audit.
-
-### C — Template semantico strutturato + renderer istituzionale
-
-Il template viene normalizzato in schema semantico, mantenendo il file istituzionale come fonte di resa/document fidelity.
-
-**Raccomandata.**
-
-## 5. Capability owner
-
-DOC-TPL-01 possiede esclusivamente:
-
-- identità del template;
-- tipo documentale;
-- versione del template;
-- struttura semantica;
-- definizione dei campi;
-- regole di mapping;
-- riferimento al file sorgente/rendering;
-- esito dell'audit;
-- stato di attivazione;
-- provenienza e impronta della sorgente.
-
-Non possiede:
-
-- dati di classe;
-- Piano annuale;
-- TeachingSession;
-- UDA;
-- Knowledge;
-- dati studenti;
-- contenuti professionali del documento compilato.
-
-## 6. Modello logico `DocumentTemplate`
+È il modello canonico migliorato e utilizzabile:
 
 ```text
 id
@@ -103,9 +109,7 @@ version
 status
 valid_from?
 valid_to?
-source_asset_ref
-source_revision_ref?
-source_fingerprint
+source_revision_refs[]
 render_profile
 created_at
 created_by
@@ -117,7 +121,7 @@ approved_by?
 
 ```text
 DRAFT
-AUDITED
+QUALITY_REVIEWED
 REVIEW_REQUIRED
 ACTIVE
 RETIRED
@@ -127,12 +131,136 @@ BLOCKED
 Regole:
 
 - `ACTIVE` richiede Human Review;
-- la modifica della sorgente dopo l'attivazione non muta il template attivo: produce una nuova revisione candidata;
-- i documenti generati conservano il riferimento esatto alla versione template usata.
+- una nuova sorgente non modifica un template attivo;
+- il miglioramento produce una nuova versione del template;
+- ogni documento generato conserva internamente il riferimento alla versione template usata;
+- la provenienza tecnica non compare nel documento finale.
 
-## 7. Struttura semantica `TemplateSection`
+## 4. Famiglie documentali
 
-Ogni template è scomposto in sezioni ordinabili:
+La ricerca in Drive conferma almeno queste famiglie:
+
+- Relazione finale;
+- Programma svolto;
+- Programmazione annuale;
+- UDA/progettazione in forma istituzionale;
+- verbali e documenti dipartimentali;
+- schede di validazione;
+- materiali collegiali e relazioni.
+
+Il motore deve modellare funzioni differenti senza imporre una struttura unica.
+
+Esempio:
+
+- **Programmazione annuale** = progettazione e pianificazione;
+- **Programma svolto** = rendicontazione sintetica di ciò che è stato effettivamente svolto;
+- **Relazione finale** = lettura professionale del percorso e dei suoi esiti;
+- **Verbale** = registrazione ordinata di fatti, decisioni e responsabilità.
+
+## 5. Alternative architetturali
+
+### A — Hard-code per documento
+
+**Respinta.** Duplica logiche e impedisce coerenza fra famiglie.
+
+### B — DOCX con soli placeholder
+
+**Respinta come architettura primaria.** Può essere un formato di compatibilità, ma non governa semantica, qualità, privacy, versionamento o documenti mancanti.
+
+### C — Schema semantico + canone documentale + renderer
+
+**Raccomandata.**
+
+DOCENTE OS conserva internamente struttura e mapping; il renderer produce il documento istituzionale approvato.
+
+## 6. Institutional Document Design Canon
+
+Ogni template attivo deve rispettare queste regole.
+
+### 6.1 Funzione prima della forma
+
+Ogni sezione deve avere uno scopo documentale riconoscibile. Nessuna sezione viene mantenuta soltanto perché esisteva nel Word precedente.
+
+### 6.2 Una informazione, un posto
+
+Evitare duplicazioni fra sezioni equivalenti. Se due informazioni hanno funzioni diverse, la differenza deve essere esplicita.
+
+### 6.3 Tabelle solo quando migliorano la comprensione
+
+Usare tabelle per:
+
+- confronti;
+- corrispondenze;
+- dati strutturati;
+- sintesi di elementi omogenei;
+- griglie realmente funzionali.
+
+Non usare tabelle come sostituto di un testo professionale che richiede argomentazione.
+
+### 6.4 Testo per giudizi professionali
+
+Andamento, valutazione complessiva, motivazioni, criticità e considerazioni finali devono avere spazio testuale adeguato, eventualmente guidato.
+
+### 6.5 Checklist per vere selezioni multiple
+
+Materiali, metodologie e modalità di verifica possono usare checklist quando la selezione è informativa. Deve essere possibile integrare con testo libero se il dominio lo richiede.
+
+### 6.6 Economia documentale
+
+Evitare:
+
+- doppie intestazioni senza funzione;
+- pagine quasi vuote;
+- grandi spazi fissi non necessari;
+- sezioni rituali prive di contenuto;
+- ripetizioni dello stesso dato;
+- griglie create solo per imitare il file sorgente.
+
+### 6.7 Coerenza interdocumentale
+
+Ogni famiglia deve dichiarare cosa legge dai documenti a monte e cosa produce per quelli a valle, evitando copie ridondanti.
+
+### 6.8 Stile istituzionale uniforme
+
+Intestazione, titoli, tabelle, date, firme, spaziature e gerarchia tipografica devono appartenere a un sistema coerente dell'istituto.
+
+### 6.9 Linguaggio scolastico-professionale
+
+Il documento deve essere comprensibile a docenti, dirigenza e organi collegiali senza conoscere DOCENTE OS.
+
+## 7. Regola assoluta: nessun riferimento tecnico nel documento finale
+
+Il documento esportato non deve esporre il funzionamento interno del sistema.
+
+Sono vietati nell'output professionale, salvo richiesta istituzionale esplicita e non tecnica:
+
+- codici CAN;
+- codici Bxx;
+- UUID;
+- nomi di tabelle o modelli dati;
+- `TeachingSession`, `KnowledgeAsset` o equivalenti;
+- nomi di stati interni come `AUTO_DOCUMENTED`, `DERIVED`, `PROPOSED`;
+- nomi di workflow o pipeline;
+- riferimenti a modelli di IA/provider;
+- percorsi Drive interni;
+- hash, fingerprint o versioni tecniche;
+- formule come «generato automaticamente dal sistema»;
+- provenance tecnica.
+
+La provenienza resta disponibile **solo nella superficie di controllo interna**.
+
+Il documento può mostrare esclusivamente informazioni professionalmente pertinenti, ad esempio:
+
+- istituto;
+- anno scolastico;
+- classe/sezione;
+- disciplina;
+- docente;
+- contenuti e valutazioni professionali;
+- data e firma;
+- eventuale versione documentale solo se l'istituto decide che abbia valore amministrativo.
+
+## 8. Struttura semantica `TemplateSection`
 
 ```text
 id
@@ -144,33 +272,22 @@ purpose
 required
 repeatable
 visibility_rule?
-render_anchor?
+render_role
 ```
 
-Una sezione deve descrivere **funzione documentale**, non coordinate grafiche.
-
-Esempi per Relazione finale:
+`render_role` descrive la forma migliore, non coordinate del vecchio file:
 
 ```text
-IDENTITY
-CLASS_PROFILE
-CLASS_COMPOSITION
-CLASS_ANALYSIS
-EXECUTED_CONTENT
-KNOWLEDGE_SKILLS_COMPETENCES
-RESULTS
-COMPETENCE_TARGETS
-KEY_COMPETENCES
-MATERIALS
-COMMUNICATION_CHANNELS
-METHODOLOGIES
-GENERAL_PROGRESS
-ASSESSMENT_METHODS
-FINAL_COHERENCE
-SIGNATURE
+HEADING
+PARAGRAPH
+KEY_VALUE
+TABLE
+CHECKLIST
+CALLOUT
+SIGNATURE_BLOCK
 ```
 
-## 8. Modello `TemplateField`
+## 9. Modello `TemplateField`
 
 ```text
 id
@@ -185,7 +302,6 @@ value_policy
 privacy_class
 validation_rule?
 source_policy?
-render_anchor?
 help_text?
 ```
 
@@ -209,39 +325,31 @@ IMAGE
 SIGNATURE
 ```
 
-## 9. Chiavi semantiche stabili
+## 10. Chiavi semantiche stabili
 
-Le chiavi non devono incorporare anno o sezione.
+Le chiavi interne non incorporano classe o anno.
 
-Da evitare:
-
-```text
-IIIC_LIV_AVANZATO
-IA_PARAGRAFO_CONCLUSIVO_DATI
-```
-
-Da preferire:
+Esempi:
 
 ```text
-class.students.total
-class.composition.repeaters
-class.profile.type
-class.profile.level
-class.profile.work_pace
-class.profile.relational_climate
+academic_year.label
+class.label
+discipline.label
+teacher.display_name
+class.profile.summary
 learning.executed_content
-learning.results
+learning.outcomes_summary
 learning.competence_targets
 methods.selected
 assessment.methods
-final.coherence_status
+final.reflection
 ```
 
-Classe, anno e disciplina appartengono al **context binding**, non al nome del campo.
+Queste chiavi **non vengono stampate**.
 
-## 10. Politica del valore
+## 11. Politica del valore
 
-Ogni campo dichiara come può ottenere un valore:
+Internamente ogni campo può essere:
 
 ```text
 AUTO_DOCUMENTED
@@ -253,17 +361,9 @@ RESTRICTED
 STATIC
 ```
 
-Regole:
+Queste etichette servono al sistema e non compaiono mai nel documento.
 
-- `AUTO_DOCUMENTED`: solo da owner canonico verificabile;
-- `DERIVED`: regola deterministica testabile;
-- `TEACHER_INPUT`: il docente compila;
-- `TEACHER_CONFIRMATION`: il sistema può precompilare ma serve conferma;
-- `OPTIONAL_PROPOSAL`: eventuale AI, mai fatto autoritativo;
-- `RESTRICTED`: richiede policy dedicata e non entra automaticamente nel bundle;
-- `STATIC`: parte del modello istituzionale.
-
-## 11. Privacy class
+## 12. Privacy class
 
 Classi minime:
 
@@ -276,28 +376,32 @@ PERSONAL_STUDENT_DATA
 SPECIAL_CATEGORY_DATA
 ```
 
-Per DOC-TPL-01 il template può **descrivere** campi sensibili presenti nel modello originale, ma la loro compilazione automatica resta bloccata finché una policy verticale non la autorizza.
+La presenza di un campo nella sorgente storica non costituisce da sola motivo sufficiente per mantenerlo nel template canonico.
 
-Nessuna presenza di un campo nel DOCX equivale ad autorizzazione al trattamento.
+Un dato viene mantenuto solo se:
 
-## 12. Template Coherence Audit
+1. serve realmente alla funzione del documento;
+2. ha una policy compatibile;
+3. è approvato nella Human Review del template.
 
-Ogni template candidato deve superare un audit formale.
+## 13. Document Quality Review
 
-### 12.1 Dimensioni
+Il precedente concetto di audit viene rifocalizzato sui problemi sostanziali.
 
-1. **Purpose coherence** — le sezioni sono pertinenti alla funzione dichiarata?
-2. **Internal coherence** — esistono duplicazioni, contraddizioni o sovrapposizioni?
-3. **Sequential coherence** — l'ordine riflette una progressione professionale comprensibile?
-4. **Terminological coherence** — termini come contenuti, conoscenze, abilità, competenze, traguardi, risultati sono usati in modo distinto?
-5. **Data coherence** — ogni campo ha fonte, derivazione o responsabilità umana definita?
-6. **Inter-document coherence** — il template si raccorda correttamente con i documenti upstream/downstream?
-7. **Privacy necessity** — ogni dato richiesto è necessario e trattabile?
-8. **Render coherence** — struttura visiva e struttura semantica concordano?
-9. **Completeness** — manca qualche elemento essenziale allo scopo?
-10. **Redundancy/YAGNI** — esistono sezioni rituali o duplicate prive di funzione chiara?
+Domande principali:
 
-### 12.2 Esito
+1. **Purpose** — il documento serve bene al proprio scopo?
+2. **Information architecture** — le informazioni sono ordinate, non duplicate e leggibili?
+3. **Semantic clarity** — i termini hanno significato chiaro e non sovrapposto?
+4. **Representation** — tabella, checklist o testo sono usati dove realmente appropriato?
+5. **Inter-document coherence** — il documento è coerente con quelli a monte/a valle senza duplicarli?
+6. **Data necessity** — ogni informazione richiesta è necessaria?
+7. **Privacy** — i dati richiesti sono appropriati e minimizzati?
+8. **Institutional consistency** — stile e lessico sono coerenti con la famiglia documentale?
+9. **Readability** — il documento è leggibile a schermo e in stampa?
+10. **External purity** — l'output è privo di riferimenti tecnici?
+
+Esito:
 
 ```text
 PASS
@@ -306,9 +410,9 @@ REVIEW_REQUIRED
 BLOCKED
 ```
 
-Un finding non autorizza una correzione automatica del documento istituzionale.
+Dettagli puramente cosmetici diventano finding solo se incidono su leggibilità, funzione o resa professionale.
 
-## 13. Modello `TemplateAuditFinding`
+## 14. Modello `TemplateQualityFinding`
 
 ```text
 id
@@ -319,10 +423,8 @@ category
 section_key?
 summary
 evidence
-recommendation
+recommended_design_change
 resolution_status
-resolved_by?
-resolved_at?
 ```
 
 Severità:
@@ -334,235 +436,195 @@ MAJOR
 BLOCKER
 ```
 
-Stato:
+## 15. Importazione da documento esistente
+
+Pipeline:
 
 ```text
-OPEN
-ACCEPTED_AS_IS
-RESOLVED_IN_NEW_TEMPLATE_VERSION
-NOT_APPLICABLE
-```
-
-## 14. Fedeltà istituzionale vs coerenza
-
-DOC-TPL-01 separa due gate:
-
-### Gate A — Institution Fidelity
-
-Verifica che il template digitale rappresenti fedelmente il modello sorgente: logo, intestazioni, sezioni, tabelle, campi, firma e impaginazione rilevante.
-
-### Gate B — Document Coherence
-
-Verifica che il modello sia internamente comprensibile e adeguato allo scopo.
-
-Un template può essere:
-
-```text
-FIDELITY = PASS
-COHERENCE = REVIEW_REQUIRED
-```
-
-In quel caso DOCENTE OS conserva il modello fedele ma non nasconde i rilievi.
-
-## 15. Importazione DOCX
-
-La prima versione non deve tentare un editor Word completo.
-
-Pipeline proposta:
-
-```text
-DOCX sorgente
-→ parser struttura
-→ paragrafi / tabelle / immagini / sezioni / caselle
-→ rilevazione campi candidati
-→ mapping umano a section_key / field_key
-→ audit
+DOCX/PDF/Google Doc
+→ estrazione struttura utile
+→ identificazione funzione/sezioni/campi
+→ confronto con documenti collegati
+→ proposta normalizzata
+→ Document Quality Review
 → preview
-→ attivazione
+→ Human Review
+→ template canonico
 ```
 
-Il parser può riconoscere automaticamente struttura fisica, ma **non deve inventare semantica**.
+Il parser non deve ricostruire pixel-per-pixel il file precedente.
 
-## 16. Rendering profile
+## 16. Progettazione di documenti mancanti
 
-Il motore distingue schema semantico e renderer.
+DOC-TPL-01 deve supportare template senza sorgente preesistente.
 
-Profilo iniziale:
+Input minimi:
+
+- funzione istituzionale;
+- destinatari;
+- informazioni necessarie;
+- documenti a monte;
+- documenti a valle;
+- identità visiva dell'istituto;
+- eventuali vincoli formali approvati.
+
+Output:
+
+- struttura semantica;
+- scelta dei pattern di rappresentazione;
+- campi e policy;
+- preview;
+- Quality Review;
+- Human Review.
+
+## 17. Renderer
+
+Profili iniziali:
 
 ```text
 DOCX_INSTITUTIONAL
 PRINT_PDF
 ```
 
-La sorgente DOCX può essere normalizzata con anchor strutturati. Dove possibile si preferiscono content controls/tag o bookmark governati rispetto a token testuali fragili.
+Il renderer deve preservare **identità e qualità istituzionale**, non gli errori di impaginazione della sorgente.
 
-Il renderer deve preservare:
+Deve gestire:
 
-- logo/immagini;
-- tabelle;
-- bordi e celle;
-- gerarchia tipografica rilevante;
-- paginazione intenzionale;
-- campi firma/data;
-- caselle/selection state.
+- logo e intestazione;
+- gerarchia tipografica;
+- tabelle responsive alla quantità di contenuto;
+- checklist;
+- paragrafi professionali;
+- interruzioni di pagina intelligenti;
+- blocco data/firma;
+- margini e spaziature uniformi.
 
-## 17. Template Builder v1
+## 18. Template Builder v1
 
-Il primo builder non è un word processor.
+Il builder non è un word processor generale.
 
-Funzioni necessarie:
+Funzioni:
 
-1. importa una sorgente;
-2. mostra struttura rilevata;
-3. permette di definire sezioni semantiche;
-4. permette di mappare campi;
-5. assegna value policy e privacy class;
-6. esegue audit di coerenza;
-7. mostra preview con dati campione;
-8. registra Human Review;
-9. attiva una versione.
+1. importa una o più sorgenti oppure parte da un nuovo documento;
+2. identifica la funzione documentale;
+3. propone/mostra la struttura semantica;
+4. permette di eliminare, accorpare o riordinare sezioni;
+5. permette di scegliere il pattern di resa per ogni sezione;
+6. mappa i campi alle fonti;
+7. assegna privacy/value policy;
+8. esegue Document Quality Review;
+9. mostra una preview priva di metadati tecnici;
+10. registra Human Review;
+11. pubblica una versione canonica.
 
-Fuori scope iniziale:
-
-- progettazione grafica libera da zero;
-- collaboration editor complesso;
-- modifica completa del DOCX dall'interfaccia;
-- AI che decide autonomamente la struttura.
-
-## 18. Raccordo con X5 / Documentazione
-
-DOC-TPL-01 non sostituisce X5.
+## 19. Raccordo con X5 / Documentazione
 
 ```text
 DOC-TPL-01
-  definisce struttura, campi e resa
+  progetta struttura e resa canonica
 
 DOC-01 / X5 generalizzato
   possiede documenti e versioni compilate
 
 DOC-04 Relazione finale
-  compone evidence bundle e contenuti professionali
+  compone contenuti professionali e provenienza interna
 
 Renderer
-  materializza la versione usando il template esatto
+  produce il documento istituzionale pulito
 ```
 
-Il `DocumentTemplateVersionRef` deve entrare nel manifest di ogni versione documentale prodotta.
+La versione template usata resta nel manifest interno; non viene stampata salvo scelta amministrativa esplicita.
 
-## 19. Raccordo interdocumentale
-
-Il template può dichiarare dipendenze semantiche:
+## 20. Raccordo interdocumentale
 
 ```text
-FINAL_REPORT
-  reads PROGRAMMING
-  reads PROGRAM_CARRIED_OUT
-  reads EXECUTION_EVIDENCE
+ANNUAL_PROGRAMMING
+  reads CURRICULUM
 
 PROGRAM_CARRIED_OUT
   reads ANNUAL_PLAN
-  reads TEACHING_SESSION
+  reads EXECUTION_EVIDENCE
 
-ANNUAL_PROGRAMMING
-  reads CURRICULUM
+FINAL_REPORT
+  reads ANNUAL_PROGRAMMING
+  reads PROGRAM_CARRIED_OUT
+  reads EXECUTION_EVIDENCE
 ```
 
-Le dipendenze non implicano copia o write sugli owner sorgente.
+Il raccordo serve alla coerenza; non implica copia integrale dei documenti a monte.
 
-## 20. Coherence rules machine-checkable vs human
+## 21. Regole verificabili automaticamente
 
-### Deterministiche
+Il sistema può controllare:
 
-- campo required senza source policy;
-- field key duplicata;
-- sezione required priva di campi/contenuto;
-- render anchor mancante;
-- mapping verso owner inesistente;
-- template attivo senza source fingerprint;
-- duplicazione esatta di sezione;
-- presenza di campo `PERSONAL_STUDENT_DATA` in una verticale che lo vieta.
+- campi obbligatori senza fonte/policy;
+- duplicazioni di field key;
+- sezioni vuote obbligatorie;
+- incompatibilità privacy;
+- riferimenti a fonti inesistenti;
+- token tecnici residui nell'output;
+- codici interni, UUID o provenance tecnica presenti nella preview;
+- template attivo senza Human Review;
+- documenti generati senza versione template associata internamente.
 
-### Human Review
+## 22. Human Review
 
-- chiarezza semantica di “Risultati”;
-- pertinenza delle sezioni;
-- correttezza della sequenza professionale;
-- adeguatezza del lessico istituzionale;
-- opportunità di mantenere una duplicazione formale;
-- qualità della resa grafica.
+La revisione umana giudica soprattutto:
 
-## 21. Versionamento
-
-Distinguere sempre:
-
-```text
-Template Version
-Document Version
-Source File Revision
-```
-
-Un documento finalizzato non cambia quando viene pubblicata una nuova versione del template.
-
-## 22. Stato della sorgente
-
-Una sorgente può essere classificata:
-
-```text
-INSTITUTION_OFFICIAL
-INSTITUTION_WORKING_DRAFT
-TEACHER_ADAPTED
-HISTORICAL_REFERENCE
-UNKNOWN
-```
-
-La classificazione deve essere esplicita; il nome del file non basta.
+- adeguatezza della struttura;
+- chiarezza del lessico;
+- opportunità delle tabelle;
+- equilibrio fra sintesi e completezza;
+- qualità istituzionale della resa;
+- coerenza con le prassi della scuola;
+- assenza di tecnicismi visibili.
 
 ## 23. Acceptance criteria DOC-TPL-01
 
-1. un DOCX reale può essere acquisito senza modificarne l'originale;
-2. struttura fisica e semantica restano distinte;
-3. sezioni e campi hanno chiavi stabili;
-4. ogni campo ha value policy e privacy class;
-5. l'audit produce finding tracciabili;
-6. fidelity e coherence sono gate distinti;
-7. `ACTIVE` richiede Human Review;
-8. una nuova revisione della sorgente non modifica il template attivo;
-9. una versione documento conserva il template esatto usato;
-10. il motore non dipende da AI;
-11. i token legacy possono essere importati ma non sono il contratto canonico;
-12. il motore supporta almeno Relazione finale, Programma svolto e Programmazione annuale come famiglie modellabili;
-13. nessun campo sensibile viene auto-compilato solo perché presente nel template;
-14. il rendering conserva gli elementi istituzionali essenziali;
-15. nessuna verticale deve hard-codificare il layout del singolo istituto.
+1. una sorgente Drive può essere acquisita senza modificarla;
+2. il template canonico può discostarsi dalla forma sorgente quando ciò migliora il documento;
+3. ogni modifica di struttura mantiene tracciabile la provenienza interna;
+4. tabelle/checklist/testo sono scelti in base alla funzione;
+5. un documento mancante può essere progettato senza sorgente preesistente;
+6. il Quality Review individua duplicazioni e ambiguità sostanziali;
+7. un template `ACTIVE` richiede Human Review;
+8. i dati sensibili non vengono mantenuti per inerzia storica;
+9. il motore non dipende da AI;
+10. Relazione finale, Programma svolto e Programmazione annuale sono modellabili come famiglie distinte;
+11. il renderer produce un documento professionale coerente con l'identità dell'istituto;
+12. **nessun riferimento tecnico interno compare nell'output finale**;
+13. nessuna verticale hard-codifica il layout di un singolo file;
+14. una nuova versione del template non altera documenti già finalizzati;
+15. il documento esportato resta comprensibile autonomamente fuori da DOCENTE OS.
 
 ## 24. Pilot
 
-Primo pilot: `Relazione finale del docente.docx` dell'I.C. “don Lorenzo Milani”.
+Primo pilot: **Relazione finale**.
 
-Output del pilot:
+Output richiesti:
 
-- schema strutturale;
-- audit di coerenza;
-- mapping iniziale section/field keys;
-- classificazione privacy;
-- elenco dei finding;
-- decisione Human Review sul template sorgente;
-- nessuna generazione runtime prima dell'approvazione del piano.
+- analisi della sorgente 2025/26;
+- proposta di struttura migliorata;
+- mapping semantico;
+- privacy review;
+- preview professionale senza riferimenti tecnici;
+- confronto motivato sorgente → versione migliorata;
+- Human Review.
+
+Il pilot non deve limitarsi a rendere digitale il vecchio Word.
 
 ## 25. Dipendenza DOC-04
 
-DOC-04 resta la prima verticale documentale, ma non deve incorporare un proprio sistema di template.
-
-Dipendenza canonica proposta:
+Dipendenza canonica:
 
 ```text
 DOC-TPL-01 → DOC-01/X5 → DOC-04
 ```
 
-DOC-04 possiede contenuto e workflow della Relazione finale; DOC-TPL-01 possiede struttura e resa del modello istituzionale.
+DOC-04 usa il template canonico approvato; non replica la struttura storica del DOCX.
 
 ## 26. Implementazione
 
 **NON AUTORIZZATA da questa specifica.**
 
-Dopo Human Review della presente specifica sarà necessario un piano separato con TDD, migrazioni compatibili con X5, parser/importer, audit engine, template registry, renderer contract e pilot end-to-end.
+Dopo Human Review sarà necessario un piano separato con TDD, compatibilità X5, template registry, quality rules, builder, renderer e pilot end-to-end.
