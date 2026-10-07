@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
-import { buildBlocks, GRADE_UI } from '@/app/piano-annuale/model'
+import { buildBlocks, GRADE_UI, resolveCanonicalUdaCode } from '@/app/piano-annuale/model'
 import { buildStudioAtlasMaterialHref, type TeachingContextSnapshot } from '@/core/domain/atlas-material-handoff'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
@@ -44,7 +44,6 @@ export default async function NewUdaAuthoringPage({
   const docenteOrigin = process.env.NEXT_PUBLIC_DOCENTE_OS_ORIGIN ?? process.env.RENDER_EXTERNAL_URL ?? 'http://localhost:3000'
   const grade = asGrade(bundle.asset.sourceMetadata.grade)
   const discipline = metadataString(bundle.asset.sourceMetadata.discipline) ?? 'Tecnologia'
-  const udaId = metadataString(bundle.asset.sourceMetadata.uda) ?? assetId
   const referrer = requestHeaders.get('referer')
   const requestedSectionId = clean(query.section) || referrerParam(referrer, 'section')
   const requestedBlockId = (clean(query.block) || referrerParam(referrer, 'block')).toUpperCase()
@@ -57,7 +56,15 @@ export default async function NewUdaAuthoringPage({
     ? annualSnapshot.sections.find((item) => item.id === requestedSectionId && item.grade === GRADE_STORAGE[grade]) ?? null
     : null
   const gradeKey = section ? GRADE_UI[section.grade] : null
-  const block = gradeKey && requestedBlockId
+  const udaId = gradeKey
+    ? resolveCanonicalUdaCode(
+        gradeKey,
+        bundle.asset.sourceMetadata.uda,
+        bundle.asset.originalName,
+        bundle.document?.title,
+      )
+    : null
+  const block = gradeKey && udaId && requestedBlockId
     ? buildBlocks(gradeKey).find((item) => item.id === requestedBlockId && item.uda === udaId) ?? null
     : null
   const sectionLabel = section
@@ -66,10 +73,10 @@ export default async function NewUdaAuthoringPage({
 
   const returnUrl = new URL('/progetta/atlas/ritorno', docenteOrigin)
   if (section) returnUrl.searchParams.set('sectionId', section.id)
-  returnUrl.searchParams.set('uda', udaId)
+  if (udaId) returnUrl.searchParams.set('uda', udaId)
   if (block) returnUrl.searchParams.set('blockId', block.id)
 
-  const atlasHref = studioOrigin && grade && section
+  const atlasHref = studioOrigin && grade && section && udaId
     ? buildStudioAtlasMaterialHref(studioOrigin, {
         schema: 'docente-os.teaching-context/v0.1',
         source: 'docente-os',
@@ -88,7 +95,9 @@ export default async function NewUdaAuthoringPage({
     ? 'Studio Atlas non è collegato a questo ambiente.'
     : !section
       ? 'Apri questa UDA dal contesto di una classe per preparare i materiali.'
-      : 'Il contesto dell’UDA non è completo.'
+      : !udaId
+        ? 'Questa UDA non è ancora collegata al piano annuale.'
+        : 'Il contesto dell’UDA non è completo.'
 
   return (
     <AppShell active="design" academicYearLabel={context.academicYear.label} workspaceName={context.workspace.name} role={context.role} contentClassName="newUdaAuthoringSurface">
