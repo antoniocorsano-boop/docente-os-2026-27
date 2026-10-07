@@ -63,37 +63,33 @@ export async function bindAtlasMaterialsToLesson(
     projectionId: projection.projectionId,
   }
   const repository = new SupabaseLessonDesignRepository()
+  const drafts: LessonDesignExtensionDraft[] = bundle.items.map((item) => ({
+    ...lessonContext,
+    kind: item.type === 'worksheet' ? 'STUDENT_RESOURCE' : 'TEACHER_RESOURCE',
+    insertionPosition: 'END',
+    anchorStepId: null,
+    title: item.title,
+    body: item.description,
+    cue: null,
+    minutes: null,
+    sourceKind: 'ATLAS',
+    sourceRef: `atlas:${item.materialId}`,
+    sourceLabel: 'Studio Atlas',
+    payload: {
+      dedupeKey: `atlas-material:${bundle.sourceUdaId}:${item.materialId}`,
+      title: item.title,
+      area: 'atlas_materials',
+      sourceUdaId: bundle.sourceUdaId,
+      bundleId: bundle.bundleId,
+      materialId: item.materialId,
+      materialType: item.type,
+      origin: 'atlas',
+      ...(item.previewRef ? { previewRef: item.previewRef } : {}),
+    },
+  }))
 
   try {
-    for (const item of bundle.items) {
-      const dedupeKey = `atlas-material:${bundle.sourceUdaId}:${item.materialId}`
-      const draft: LessonDesignExtensionDraft = {
-        ...lessonContext,
-        kind: item.type === 'worksheet' ? 'STUDENT_RESOURCE' : 'TEACHER_RESOURCE',
-        insertionPosition: 'END',
-        anchorStepId: null,
-        title: item.title,
-        body: item.description,
-        cue: null,
-        minutes: null,
-        sourceKind: 'ATLAS',
-        sourceRef: `atlas:${item.materialId}`,
-        sourceLabel: 'Studio Atlas',
-        payload: {
-          dedupeKey,
-          title: item.title,
-          area: 'atlas_materials',
-          sourceUdaId: bundle.sourceUdaId,
-          bundleId: bundle.bundleId,
-          materialId: item.materialId,
-          materialType: item.type,
-          origin: 'atlas',
-          ...(item.previewRef ? { previewRef: item.previewRef } : {}),
-        },
-      }
-      const extension = await repository.addToolProposalOnce(lessonContext, draft, dedupeKey)
-      if (extension.status !== 'ACCEPTED') await repository.accept(lessonContext, extension.id)
-    }
+    await repository.acceptAtlasMaterialBundle(lessonContext, drafts)
   } catch {
     return { error: 'Non è stato possibile associare i materiali. Riprova senza perdere la selezione.' }
   }
