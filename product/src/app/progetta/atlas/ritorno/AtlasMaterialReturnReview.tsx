@@ -42,7 +42,14 @@ export function AtlasMaterialReturnReview({
     return <p className="atlasReturnLoading">Sto controllando i materiali…</p>
   }
 
-  const contextReady = Boolean(sectionId && expectedUda && lessons.length)
+  const contextError = !sectionId
+    ? 'Apri l’UDA dal contesto di una classe per scegliere la lezione.'
+    : !expectedUda
+      ? 'Questa UDA non è ancora collegata al piano annuale.'
+      : !lessons.length
+        ? 'Non ci sono ancora lezioni disponibili per questa UDA nel piano annuale.'
+        : null
+  const contextReady = !contextError
 
   return (
     <main className="atlasReturnFlow">
@@ -80,7 +87,7 @@ export function AtlasMaterialReturnReview({
             <option value="">Scegli una lezione</option>
             {lessons.map((lesson) => <option key={lesson.blockId} value={lesson.blockId}>{lesson.title} · {lesson.period}</option>)}
           </select>
-          {!contextReady ? <p className="atlasReturnContextError">Apri l’UDA dal contesto di una classe per scegliere la lezione.</p> : null}
+          {contextError ? <p className="atlasReturnContextError">{contextError}</p> : null}
         </section>
 
         {state.error ? <p className="atlasReturnActionError" role="alert">{state.error}</p> : null}
