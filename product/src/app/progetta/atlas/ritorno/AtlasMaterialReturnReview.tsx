@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useState, useSyncExternalStore } from 'react'
 import { decodeAtlasMaterialBundle, type AtlasMaterialBundle } from '@/core/domain/atlas-material-handoff'
 import { bindAtlasMaterialsToLesson, type AtlasMaterialBindState } from './actions'
 
@@ -12,6 +12,7 @@ export type AtlasLessonOption = {
 }
 
 const INITIAL_STATE: AtlasMaterialBindState = { error: null }
+const SERVER_HASH_SNAPSHOT = '__atlas_return_server__'
 
 export function AtlasMaterialReturnReview({
   sectionId,
@@ -24,31 +25,22 @@ export function AtlasMaterialReturnReview({
   lessons: AtlasLessonOption[]
   preferredBlockId: string
 }) {
-  const [bundle, setBundle] = useState<AtlasMaterialBundle | null>(null)
-  const [encodedBundle, setEncodedBundle] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const hash = useSyncExternalStore(subscribeToHash, readHash, readServerHash)
   const [selectedBlockId, setSelectedBlockId] = useState(preferredBlockId)
   const [state, action, pending] = useActionState(bindAtlasMaterialsToLesson, INITIAL_STATE)
 
-  useEffect(() => {
-    const encoded = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('bundle')
-    if (!encoded) {
-      setError('Atlas non ha restituito materiali da associare.')
-      return
-    }
-    try {
-      setBundle(decodeAtlasMaterialBundle(encoded))
-      setEncodedBundle(encoded)
-    } catch {
-      setError('I materiali restituiti non sono validi. Nessuna modifica è stata applicata.')
-    }
-  }, [])
-
-  if (error) {
-    return <section className="atlasReturnError"><strong>Materiali non disponibili</strong><p>{error}</p><Link href="/progetta">Torna a Progetta</Link></section>
+  if (hash === SERVER_HASH_SNAPSHOT) {
+    return <p className="atlasReturnLoading">Sto controllando i materiali…</p>
   }
 
-  if (!bundle) return <p className="atlasReturnLoading">Sto controllando i materiali…</p>
+  const resolved = resolveBundleFromHash(hash)
+  if (resolved.error) {
+    return <section className="atlasReturnError"><strong>Materiali non disponibili</strong><p>{resolved.error}</p><Link href="/progetta">Torna a Progetta</Link></section>
+  }
+
+  if (!resolved.bundle || !resolved.encodedBundle) {
+    return <p className="atlasReturnLoading">Sto controllando i materiali…</p>
+  }
 
   const contextReady = Boolean(sectionId && expectedUda && lessons.length)
 
@@ -62,7 +54,7 @@ export function AtlasMaterialReturnReview({
 
       <section className="atlasReturnMaterials" aria-label="Materiali scelti">
         <div className="atlasReturnGrid">
-          {bundle.items.map((item) => (
+          {resolved.bundle.items.map((item) => (
             <article key={item.materialId}>
               <span aria-hidden>{materialIcon(item.type)}</span>
               <div><strong>{item.title}</strong><small>{materialLabel(item.type)}</small></div>
@@ -72,7 +64,7 @@ export function AtlasMaterialReturnReview({
       </section>
 
       <form action={action} className="atlasReturnAssociation">
-        <input type="hidden" name="bundle" value={encodedBundle} />
+        <input type="hidden" name="bundle" value={resolved.encodedBundle} />
         <input type="hidden" name="sectionId" value={sectionId} />
         <input type="hidden" name="expectedUda" value={expectedUda} />
 
@@ -98,6 +90,48 @@ export function AtlasMaterialReturnReview({
       </form>
     </main>
   )
+}
+
+function subscribeToHash(onStoreChange: () => void) {
+  window.addEventListener('hashchange', onStoreChange)
+  return () => window.removeEventListener('hashchange', onStoreChange)
+}
+
+function readHash() {
+  return window.location.hash
+}
+
+function readServerHash() {
+  return SERVER_HASH_SNAPSHOT
+}
+
+function resolveBundleFromHash(hash: string): {
+  bundle: AtlasMaterialBundle | null
+  encodedBundle: string
+  error: string | null
+} {
+  const encodedBundle = new URLSearchParams(hash.replace(/^#/, '')).get('bundle') ?? ''
+  if (!encodedBundle) {
+    return {
+      bundle: null,
+      encodedBundle: '',
+      error: 'Atlas non ha restituito materiali da associare.',
+    }
+  }
+
+  try {
+    return {
+      bundle: decodeAtlasMaterialBundle(encodedBundle),
+      encodedBundle,
+      error: null,
+    }
+  } catch {
+    return {
+      bundle: null,
+      encodedBundle: '',
+      error: 'I materiali restituiti non sono validi. Nessuna modifica è stata applicata.',
+    }
+  }
 }
 
 function materialLabel(type: AtlasMaterialBundle['items'][number]['type']) {
