@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import type { KnowledgeAsset, KnowledgeDocument } from '@/core/domain/knowledge'
+import { decodeAtlasMaterialBundle, encodeTeachingContext } from '@/core/domain/atlas-material-handoff'
 import {
   asProgettaFocus,
   asProgettaGrade,
@@ -195,4 +196,44 @@ test('l’associazione Atlas persiste solo dopo una scelta esplicita della lezio
   assert.match(returnSource, /name="blockId"/)
   assert.match(returnSource, /name="bundle"/)
   assert.doesNotMatch(returnSource, /type="button" disabled>Associa alla lezione/)
+})
+
+test('il contratto UDA → Atlas codifica anche in un runtime browser senza Node Buffer', { concurrency: false }, () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'Buffer')
+  try {
+    Object.defineProperty(globalThis, 'Buffer', { value: undefined, configurable: true })
+    const encoded = encodeTeachingContext({
+      schema: 'docente-os.teaching-context/v0.1',
+      source: 'docente-os',
+      udaId: '1-02',
+      udaTitle: 'Materiali dalla risorsa al prodotto',
+      grade: 'prima',
+      sectionId: 'section-1a',
+      sectionLabel: '1A',
+      discipline: 'Tecnologia',
+      returnUrl: 'https://docente-os-pr692-atlas.onrender.com/progetta/atlas/ritorno',
+    })
+    assert.match(encoded, /^[A-Za-z0-9_-]+$/)
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, 'Buffer', descriptor)
+  }
+})
+
+test('il ritorno Atlas decodifica il MaterialBundle anche in un runtime browser senza Node Buffer', { concurrency: false }, () => {
+  const bundle = {
+    schema: 'studio-atlas.material-bundle/v0.1',
+    source: 'studio-atlas',
+    bundleId: 'bundle-1-02',
+    sourceUdaId: '1-02',
+    generatedAt: '2026-10-07T16:00:00.000Z',
+    items: [{ materialId: 'slides', type: 'presentation', title: 'Presentazione', description: 'Avvio UDA', origin: 'atlas' }],
+  } as const
+  const encoded = Buffer.from(JSON.stringify(bundle), 'utf8').toString('base64url')
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'Buffer')
+  try {
+    Object.defineProperty(globalThis, 'Buffer', { value: undefined, configurable: true })
+    assert.deepEqual(decodeAtlasMaterialBundle(encoded), bundle)
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, 'Buffer', descriptor)
+  }
 })
