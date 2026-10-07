@@ -38,8 +38,20 @@ async function classNextTask(page, testInfo) {
 
 async function timetableOpenClass(page, testInfo) {
   await page.goto('/orario')
+
+  if (testInfo.project.name.startsWith('mobile')) {
+    const dayView = page.getByRole('button', { name: 'Giorno', exact: true })
+    const weekView = page.getByRole('button', { name: 'Settimana', exact: true })
+    await expect(dayView, 'Su mobile Orario deve stabilizzarsi nella vista Giorno prima della verifica del journey.').toHaveClass(/active/)
+    await weekView.click()
+    await expect(weekView, 'Il journey mobile deve verificare una lezione sull’intera settimana, non soltanto sul giorno corrente.').toHaveClass(/active/)
+  }
+
   const lesson = page.locator('button.occupiedTimetableCell.kind-lesson').first()
-  if (!(await lesson.count())) return na('Nessuna lezione canonica configurata nell’orario tecnico.')
+  await expect(
+    lesson,
+    'La fixture tecnica deve esporre almeno una lezione canonica nella settimana: il journey Apri classe non può essere NOT_APPLICABLE.',
+  ).toBeVisible()
 
   await lesson.click()
   const openClass = page.getByRole('link', { name: 'Apri classe', exact: true })
