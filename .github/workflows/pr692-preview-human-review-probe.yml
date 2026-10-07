@@ -1,0 +1,134 @@
+name: PR692 Preview Human Review Probe
+
+on:
+  push:
+    branches:
+      - probe/pr692-preview-human-review
+    paths:
+      - '.github/workflows/pr692-preview-human-review-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  capture-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install isolated Playwright runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pr692-probe
+          cd /tmp/pr692-probe
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Capture public preview evidence
+        shell: bash
+        env:
+          PREVIEW_URL: https://docente-os-pr692-atlas.onrender.com
+          EVIDENCE_DIR: ${{ github.workspace }}/evidence/pr692
+        run: |
+          set -euo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          cat > /tmp/pr692-probe/capture.mjs <<'NODE'
+          import { chromium } from 'playwright'
+          import fs from 'node:fs/promises'
+          import path from 'node:path'
+
+          const base = process.env.PREVIEW_URL
+          const outDir = process.env.EVIDENCE_DIR
+          const targets = [
+            { name: 'root', pathname: '/' },
+            { name: 'progetta', pathname: '/progetta' },
+            { name: 'atlas-return', pathname: '/progetta/atlas/ritorno?sectionId=probe&uda=probe' },
+          ]
+          const viewports = [
+            { name: 'desktop', width: 1440, height: 1000 },
+            { name: 'mobile', width: 390, height: 844 },
+          ]
+
+          await fs.mkdir(outDir, { recursive: true })
+          const browser = await chromium.launch({ headless: true })
+          const report = {
+            preview: base,
+            expectedPrHead: 'c6d877cb6d92d32e663f86ecdc88822dd377cc4d',
+            capturedAt: new Date().toISOString(),
+            captures: [],
+          }
+
+          for (const viewport of viewports) {
+            const context = await browser.newContext({
+              viewport: { width: viewport.width, height: viewport.height },
+              locale: 'it-IT',
+            })
+            const page = await context.newPage()
+            const consoleErrors = []
+            page.on('console', msg => {
+              if (msg.type() === 'error') consoleErrors.push(msg.text())
+            })
+            page.on('pageerror', error => consoleErrors.push(`pageerror: ${error.message}`))
+
+            for (const target of targets) {
+              const entry = {
+                viewport: viewport.name,
+                target: target.name,
+                requestedUrl: new URL(target.pathname, base).toString(),
+                finalUrl: null,
+                status: null,
+                title: null,
+                heading: null,
+                bodyText: null,
+                screenshot: null,
+                consoleErrors: [],
+                error: null,
+              }
+              try {
+                const response = await page.goto(entry.requestedUrl, {
+                  waitUntil: 'domcontentloaded',
+                  timeout: 90000,
+                })
+                await page.waitForTimeout(1800)
+                entry.status = response?.status() ?? null
+                entry.finalUrl = page.url()
+                entry.title = await page.title().catch(() => null)
+                entry.heading = await page.locator('h1').first().textContent().catch(() => null)
+                entry.bodyText = (await page.locator('body').innerText().catch(() => '')).slice(0, 4000)
+                const screenshotName = `${viewport.name}-${target.name}.png`
+                await page.screenshot({ path: path.join(outDir, screenshotName), fullPage: true })
+                entry.screenshot = screenshotName
+              } catch (error) {
+                entry.finalUrl = page.url()
+                entry.error = error instanceof Error ? error.message : String(error)
+                const screenshotName = `${viewport.name}-${target.name}-error.png`
+                await page.screenshot({ path: path.join(outDir, screenshotName), fullPage: true }).catch(() => {})
+                entry.screenshot = screenshotName
+              }
+              entry.consoleErrors = consoleErrors.splice(0)
+              report.captures.push(entry)
+            }
+            await context.close()
+          }
+
+          await browser.close()
+          await fs.writeFile(path.join(outDir, 'summary.json'), JSON.stringify(report, null, 2))
+          console.log(JSON.stringify(report, null, 2))
+          NODE
+          cd /tmp/pr692-probe
+          node capture.mjs | tee "$EVIDENCE_DIR/run.log"
+
+      - name: Upload screenshots and navigation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr692-preview-human-review-evidence
+          path: evidence/pr692
+          if-no-files-found: error
+          retention-days: 14
