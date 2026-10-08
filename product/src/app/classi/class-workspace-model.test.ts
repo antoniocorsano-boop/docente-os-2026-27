@@ -34,9 +34,10 @@ test('projects the next canonical block and only explicitly pertinent materials'
   const focus = buildClassWorkspaceLearningFocus(
     section2C,
     [
-      { id: 'p1', sectionId: 'section-2c', canonicalPlanAssetId: '36ef3be5-925f-4e28-afff-df11097827a9', canonicalGenerationId: 'a1066c0a-2720-40b0-841e-306cb998ce3e', blockId: 'B01', status: 'SVOLTO', executedOn: null, evidenceNote: null, updatedAt: '' },
-      { id: 'p2', sectionId: 'section-2c', canonicalPlanAssetId: '36ef3be5-925f-4e28-afff-df11097827a9', canonicalGenerationId: 'a1066c0a-2720-40b0-841e-306cb998ce3e', blockId: 'B02', status: 'PIANIFICATO', executedOn: null, evidenceNote: null, updatedAt: '' },
+      { id: 'p1', sectionId: 'section-2c', canonicalPlanAssetId: 'asset-plan', canonicalGenerationId: 'gen-plan', blockId: 'B01', status: 'SVOLTO', executedOn: null, evidenceNote: null, updatedAt: '' },
+      { id: 'p2', sectionId: 'section-2c', canonicalPlanAssetId: 'asset-plan', canonicalGenerationId: 'gen-plan', blockId: 'B02', status: 'PIANIFICATO', executedOn: null, evidenceNote: null, updatedAt: '' },
     ],
+    'gen-plan',
     [
       knowledgeItem('pack', 'Scheda operativa CAN-PACK-2A', { grade: 'seconda' }),
       knowledgeItem('class', 'Materiale specifico 2C', {}, ['2C']),
@@ -91,6 +92,7 @@ test('prepared materials receive priority in the generic material list without c
   const focus = buildClassWorkspaceLearningFocus(
     section2C,
     [],
+    null,
     [
       knowledgeItem('generic', 'Materiale 2C', {}, ['2C']),
       knowledgeItem('prepared', 'Presentazione per la classe', {
