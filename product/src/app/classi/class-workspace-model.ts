@@ -70,6 +70,7 @@ export function buildClassWorkspaceSummary(
   assignments: TeachingAssignment[],
   disciplines: TeachingDiscipline[],
   progress: AnnualPlanBlockProgress[],
+  canonicalGenerationId: string | null,
 ): ClassWorkspaceSummary {
   const disciplineById = new Map(disciplines.map((discipline) => [discipline.id, discipline.name]))
   const sectionAssignments = assignments
@@ -81,7 +82,11 @@ export function buildClassWorkspaceSummary(
       status: assignment.status,
     }))
     .sort((a, b) => a.discipline.localeCompare(b.discipline, 'it'))
-  const sectionProgress = progress.filter((entry) => entry.sectionId === section.id)
+  const sectionProgress = progress.filter((entry) =>
+    entry.sectionId === section.id &&
+    canonicalGenerationId !== null &&
+    entry.canonicalGenerationId === canonicalGenerationId,
+  )
 
   return {
     sectionId: section.id,
