@@ -25,16 +25,17 @@ export default async function AnnualPlanPage({
 }) {
   const context = await new SupabaseWorkspaceRepository().getCurrentContext()
   if (!context) redirect('/login')
-  if (!context.academicYear) redirect('/workspace')
+  const academicYear = context.academicYear
+  if (!academicYear) redirect('/workspace')
 
   const executionRepository = new SupabaseAnnualPlanExecutionRepository()
-  let initialSnapshot = await executionRepository.list(context.workspace.id, context.academicYear.id)
+  let initialSnapshot = await executionRepository.list(context.workspace.id, academicYear.id)
 
   // Default sections are a first-run bootstrap, not work to repeat on every navigation.
   if (!initialSnapshot.sections.length) {
     await executionRepository.ensureDefaultSections(
       context.workspace.id,
-      context.academicYear.id,
+      academicYear.id,
       GRADES.flatMap((grade) =>
         DEFAULT_SECTION_SETS[grade].map((section) => ({
           grade: GRADE_STORAGE[grade],
@@ -44,7 +45,7 @@ export default async function AnnualPlanPage({
         })),
       ),
     )
-    initialSnapshot = await executionRepository.list(context.workspace.id, context.academicYear.id)
+    initialSnapshot = await executionRepository.list(context.workspace.id, academicYear.id)
   }
 
   const sourceRepository = new SupabaseCanonicalPlanSourceRepository()
@@ -53,7 +54,7 @@ export default async function AnnualPlanPage({
       grade,
       await sourceRepository.resolve({
         workspaceId: context.workspace.id,
-        academicYearId: context.academicYear.id,
+        academicYearId: academicYear.id,
         code: CANONICAL_PLAN_SOURCES[grade].code,
       }),
     ] as const),
@@ -68,7 +69,7 @@ export default async function AnnualPlanPage({
   return (
     <AppShell
       active="annual-plan"
-      academicYearLabel={context.academicYear.label}
+      academicYearLabel={academicYear.label}
       workspaceName={context.workspace.name}
       role={context.role}
       contentClassName="annualPlanSurface"
@@ -76,7 +77,7 @@ export default async function AnnualPlanPage({
       <AnnualPlanClient
         initialSnapshot={initialSnapshot}
         runtimeSources={runtimeSources}
-        academicYearId={context.academicYear.id}
+        academicYearId={academicYear.id}
         initialSectionId={initialSectionId}
       />
     </AppShell>
