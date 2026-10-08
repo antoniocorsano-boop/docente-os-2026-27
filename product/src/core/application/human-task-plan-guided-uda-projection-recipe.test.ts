@@ -153,7 +153,9 @@ test('batch dispatcher prepares B16-B19 with PLAN_GUIDED_UDA recipes', () => {
   const review = buildProjectionBatchReview(
     ['B16', 'B17', 'B18', 'B19'].map((blockId) => drawingCandidate(blockId as 'B16' | 'B17' | 'B18' | 'B19')),
     [...B16_B19_RECIPE_PROPOSALS],
-  , TEST_PLAN_RUNTIME_SOURCES)
+    [],
+    TEST_PLAN_RUNTIME_SOURCES,
+  )
   assert.deepEqual(review.map((item) => [item.blockId, item.status]), [
     ['B16', 'READY_FOR_HUMAN_APPROVAL'],
     ['B17', 'READY_FOR_HUMAN_APPROVAL'],
@@ -231,7 +233,9 @@ test('B20-B22 reuse PLAN_GUIDED_UDA by pairing consecutive one-hour phases into 
   const review = buildProjectionBatchReview(
     ['B20', 'B21', 'B22'].map((blockId) => circularCandidate(blockId as 'B20' | 'B21' | 'B22')),
     [...B20_B22_RECIPE_PROPOSALS],
-  , TEST_PLAN_RUNTIME_SOURCES)
+    [],
+    TEST_PLAN_RUNTIME_SOURCES,
+  )
   assert.deepEqual(review.map((item) => [item.blockId, item.status]), [
     ['B20', 'READY_FOR_HUMAN_APPROVAL'],
     ['B21', 'READY_FOR_HUMAN_APPROVAL'],
