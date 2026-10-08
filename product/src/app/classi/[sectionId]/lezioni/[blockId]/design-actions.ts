@@ -8,6 +8,7 @@ import {
   LESSON_ACTIVATION_QUESTION_TOOL_ID,
 } from '@/core/application/lesson-activation-question-tool'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import {
   SupabaseLessonDesignRepository,
@@ -136,8 +137,6 @@ export async function runLessonDesignWrite(
         },
       })
 
-      // Atlas propone; il clic esplicito del docente autorizza solo l'uso in questa lezione.
-      // Non modifica Arena e non autorizza alcun flusso Docente OS → Atlas.
       await repository.accept(lesson.designContext, proposal.id)
       revalidateLesson(lesson.sectionId, lesson.blockId)
       return nextDesignWriteState(previousState, 'material-attached')
@@ -194,9 +193,6 @@ export async function runLessonDesignWrite(
       },
     })
 
-    // Il bottone è una scelta esplicita del docente (“Usa in questa lezione”):
-    // questa stessa azione può attraversare il confine PROPOSED → ACCEPTED.
-    // Le proposte generate autonomamente da strumenti o AI non usano questo percorso.
     await repository.accept(lesson.designContext, proposal.id)
     revalidateLesson(lesson.sectionId, lesson.blockId)
     return nextDesignWriteState(previousState, 'material-attached')
@@ -245,13 +241,19 @@ async function requireLessonContext(formData: FormData) {
     throw new Error('Lesson projection has changed; reload before modifying the lesson design')
   }
 
-  const source = CANONICAL_PLAN_SOURCES[grade]
+  const runtimeSource = await new SupabaseCanonicalPlanSourceRepository().resolve({
+    workspaceId: workspaceContext.workspace.id,
+    academicYearId: workspaceContext.academicYear.id,
+    code: CANONICAL_PLAN_SOURCES[grade].code,
+  })
+  if (!runtimeSource) throw new Error('Il piano annuale della classe non è ancora collegato alla sorgente canonica.')
+
   const designContext: LessonDesignContext = {
     workspaceId: workspaceContext.workspace.id,
     academicYearId: workspaceContext.academicYear.id,
     sectionId,
-    canonicalPlanAssetId: source.assetId,
-    canonicalGenerationId: source.generationId,
+    canonicalPlanAssetId: runtimeSource.assetId,
+    canonicalGenerationId: runtimeSource.generationId,
     blockId,
     projectionId,
   }
@@ -279,9 +281,6 @@ function revalidateLesson(sectionId: string, blockId: string) {
   revalidatePath(`/classi/${sectionId}`)
   revalidatePath(`/classi/${sectionId}/lezioni/${blockId}`)
 }
-
-
-
 
 function requiredDesignIntent(formData: FormData): DesignWriteIntent {
   const value = requiredText(formData, 'designIntent')
