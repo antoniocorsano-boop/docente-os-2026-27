@@ -4,6 +4,7 @@ import test from 'node:test'
 
 const migrationUrl = new URL('../../../../supabase/migrations/0088_canonical_plan_runtime_identity.sql', import.meta.url)
 const repositorySource = readFileSync(new URL('./supabase-canonical-plan-source-repository.ts', import.meta.url), 'utf8')
+const cpriRuntimePreflightSource = readFileSync(new URL('../../../../scripts/experience/cpri-runtime-preflight.mjs', import.meta.url), 'utf8')
 
 test('canonical plan runtime identity is governed by a workspace/year binding table', () => {
   assert.equal(
@@ -54,5 +55,28 @@ test('the governed identity contract keeps cross-workspace materializations fail
     migrationSource,
     /generation_id[\s\S]*asset_id|asset_id[\s\S]*generation_id/i,
     'the database must enforce generation-to-asset coherence',
+  )
+})
+
+test('CPRI probes Atlas acceptance through the authenticated RPC without depending on the PostgREST OpenAPI schema', () => {
+  assert.doesNotMatch(
+    cpriRuntimePreflightSource,
+    /application\/openapi\+json/,
+    'runtime certification must not depend on global PostgREST OpenAPI visibility',
+  )
+  assert.match(
+    cpriRuntimePreflightSource,
+    /\.rpc\(['"]accept_atlas_material_bundle['"]/,
+    'runtime certification must probe the authenticated Atlas acceptance RPC directly',
+  )
+  assert.match(
+    cpriRuntimePreflightSource,
+    /p_items:\s*\[\]/,
+    'the RPC probe must use an empty bundle so it cannot persist lesson materials',
+  )
+  assert.match(
+    cpriRuntimePreflightSource,
+    /Atlas material bundle must contain at least one item/,
+    'the probe must require the expected pre-insert validation failure as proof of callable RPC exposure',
   )
 })
