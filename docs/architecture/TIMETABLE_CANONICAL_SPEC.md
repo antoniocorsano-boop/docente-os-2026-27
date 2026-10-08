@@ -599,10 +599,12 @@ Le tabelle esistenti `annual_plan_sections` e `annual_plan_block_progress` resta
 
 Non devono essere duplicate.
 
+In coerenza con CPRI-01, gli UUID CAN-PLAN non sono identità canoniche portabili: ogni sessione usa la materializzazione locale risolta da `(workspace_id, academic_year_id, canonical_plan_code)`, mentre i record storici conservano gli UUID effettivamente usati quando furono creati. Un binding mancante o incoerente è blocking e non abilita fallback a UUID compilati o metadata JSON.
+
 La slice orario dovrà:
 
 - usare `annual_plan_sections.id` come identità della sezione annuale;
-- usare i `CANONICAL_PLAN_SOURCES` già presenti nel runtime;
+- usare `CAN-PLAN-x` come identità logica e risolvere `asset_id` / `generation_id` esclusivamente tramite il binding runtime governato dello stesso workspace/anno;
 - alimentare `executed_on` e lo stato aggregato del blocco a partire dalle sessioni effettive;
 - preservare le cinque sezioni provvisorie già materializzate finché non sono confermate/sostituite;
 - non creare sezioni di prima senza evidenza ufficiale;
