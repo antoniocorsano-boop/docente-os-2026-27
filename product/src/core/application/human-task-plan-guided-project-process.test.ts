@@ -86,7 +86,9 @@ test('B23-B27 all reuse PLAN_GUIDED_UDA without introducing a fifth recipe', () 
   const review = buildProjectionBatchReview(
     ['B23', 'B24', 'B25', 'B26', 'B27'].map((blockId) => candidate(blockId as 'B23' | 'B24' | 'B25' | 'B26' | 'B27')),
     [...B23_B27_RECIPE_PROPOSALS],
-  , TEST_PLAN_RUNTIME_SOURCES)
+    [],
+    TEST_PLAN_RUNTIME_SOURCES,
+  )
 
   assert.deepEqual(review.map((item) => [item.blockId, item.status]), [
     ['B23', 'READY_FOR_HUMAN_APPROVAL'],
