@@ -9,6 +9,7 @@ import {
 } from '@/core/application/lesson-preparation-approval'
 import { SupabaseAnnualPlanCurriculumRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-curriculum-repository'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
 import { SupabaseLessonPreparationApprovalRepository } from '@/core/infrastructure/supabase/supabase-lesson-preparation-approval-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
@@ -42,13 +43,19 @@ export async function approveLessonPreparationAndProceed(formData: FormData) {
     redirect(prepareHref(sectionId, blockId, 'changed'))
   }
 
-  const source = CANONICAL_PLAN_SOURCES[grade]
+  const runtimeSource = await new SupabaseCanonicalPlanSourceRepository().resolve({
+    workspaceId: workspaceContext.workspace.id,
+    academicYearId: workspaceContext.academicYear.id,
+    code: CANONICAL_PLAN_SOURCES[grade].code,
+  })
+  if (!runtimeSource) throw new Error('Il piano annuale della classe non è ancora collegato alla sorgente canonica.')
+
   const context: LessonPreparationContext = {
     workspaceId: workspaceContext.workspace.id,
     academicYearId: workspaceContext.academicYear.id,
     sectionId,
-    canonicalPlanAssetId: source.assetId,
-    canonicalGenerationId: source.generationId,
+    canonicalPlanAssetId: runtimeSource.assetId,
+    canonicalGenerationId: runtimeSource.generationId,
     blockId,
     projectionId: projection.projectionId,
   }
