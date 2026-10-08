@@ -106,6 +106,7 @@ jobs:
           test -f ops/runtime-release-contract.json
           test -f product/supabase/migrations/0074_runtime_schema_contract.sql
           test -f product/supabase/tests/runtime-release-contract.sql
+          test -f product/supabase/tests/canonical_plan_runtime_identity_behavior.sql
           test -f .github/workflows/browser-certification-orchestrator.yml
           grep -Fq 'browser-certification-preflight' .github/workflows/browser-certification-orchestrator.yml
           grep -Fq 'browser-certification-selected-gates' .github/workflows/browser-certification-orchestrator.yml
@@ -185,6 +186,7 @@ jobs:
           db_url="$(supabase status -o env | sed -n 's/^DB_URL=//p' | tr -d '"' | head -n 1)"
           test -n "$db_url"
           psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/runtime-release-contract.sql"
+          psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/canonical_plan_runtime_identity_behavior.sql"
           psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/timetable_import_g1_2_contract.sql"
           psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/timetable_import_completion_contract.sql"
           psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/knowledge_bounded_search_contract.sql"
