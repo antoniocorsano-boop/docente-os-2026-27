@@ -44,7 +44,7 @@ test('manifest validation fails closed on source-generation or structural drift'
   const current = APPROVED_HUMAN_TASK_MANIFESTS[0]
   const generationDrift = {
     ...current,
-    sourceBindings: current.sourceBindings.map((source, index) => index === 1 ? { ...source, generationId: '' } : source),
+    sourceBindings: current.sourceBindings.map((source) => source.role === 'UDA' ? { ...source, generationId: '' } : source),
   }
   assert.ok(validateApprovedHumanTaskManifest(generationDrift).includes('SOURCE_GENERATION_BINDING_MISSING'))
 
@@ -65,4 +65,3 @@ test('manifest validation rejects a PLAN binding that embeds workspace-local run
   }
   assert.ok(validateApprovedHumanTaskManifest(legacyPlan as typeof current).includes('PLAN_RUNTIME_IDENTITY_EMBEDDED'))
 })
-
