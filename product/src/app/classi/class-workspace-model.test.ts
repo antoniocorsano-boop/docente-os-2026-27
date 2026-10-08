@@ -20,6 +20,7 @@ test('builds class workspace from canonical section, assignment and progress', (
       { id: 'p1', sectionId: 'section-2c', canonicalPlanAssetId: 'asset', canonicalGenerationId: 'gen', blockId: 'B01', status: 'SVOLTO', executedOn: null, evidenceNote: null, updatedAt: '' },
       { id: 'p2', sectionId: 'section-2c', canonicalPlanAssetId: 'asset', canonicalGenerationId: 'gen', blockId: 'B02', status: 'PIANIFICATO', executedOn: null, evidenceNote: null, updatedAt: '' },
     ],
+    'gen',
   )
 
   assert.equal(summary.displayLabel, '2ª C')
