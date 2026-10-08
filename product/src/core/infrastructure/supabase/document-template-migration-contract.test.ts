@@ -63,3 +63,22 @@ test('trusted quality review fails closed when section or field arrays are absen
     /jsonb_typeof\(section_node->'fields'\)\s+is\s+distinct\s+from\s+'array'/i,
   )
 })
+
+test('saving and reviewing a draft preserves an already active publication', () => {
+  const sql = readFileSync(migrationPath, 'utf8')
+  const activePreservationBranches = sql.match(/when active_version_no is not null then 'ACTIVE'/gi) ?? []
+  assert.equal(activePreservationBranches.length >= 2, true)
+})
+
+test('template source identity preserves provenance for identical bytes', () => {
+  const sql = readFileSync(migrationPath, 'utf8')
+  assert.match(sql, /uq_document_template_sources_provenance/i)
+  assert.match(sql, /source\.source_asset_id\s+is\s+not\s+distinct\s+from\s+target_source_asset_id/i)
+  assert.match(sql, /source\.source_revision_ref\s+is\s+not\s+distinct\s+from\s+safe_revision_ref/i)
+  assert.match(sql, /source\.source_kind\s*=\s*target_source_kind/i)
+})
+
+test('trusted purity guard blocks actual serialized internal states and policies', () => {
+  const sql = readFileSync(migrationPath, 'utf8')
+  assert.match(sql, /AUTO_DOCUMENTED\|TEACHER_CONFIRMATION\|OPTIONAL_PROPOSAL\|RESTRICTED\|QUALITY_REVIEWED\|REVIEW_REQUIRED/)
+})

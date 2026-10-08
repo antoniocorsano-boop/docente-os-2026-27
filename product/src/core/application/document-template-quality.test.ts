@@ -46,3 +46,10 @@ test('technical reference scanner finds Bxx and UUID without false categories', 
     ['BXX_CODE', 'UUID'],
   )
 })
+
+test('technical reference scanner blocks actual serialized internal states and policies', () => {
+  assert.deepEqual(
+    findForbiddenTechnicalReferences('QUALITY_REVIEWED · REVIEW_REQUIRED · TEACHER_CONFIRMATION'),
+    ['INTERNAL_STATE'],
+  )
+})
