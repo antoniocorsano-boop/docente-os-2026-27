@@ -92,9 +92,9 @@ export async function bindAtlasMaterialsToLesson(
       sourceUdaId: bundle.sourceUdaId,
       bundleId: bundle.bundleId,
       materialId: item.materialId,
-      materialType: item.type,
+      atlasMaterialType: item.type,
+      publicUrl: item.previewRef,
       origin: 'atlas',
-      ...(item.previewRef ? { previewRef: item.previewRef } : {}),
     },
   }))
 
