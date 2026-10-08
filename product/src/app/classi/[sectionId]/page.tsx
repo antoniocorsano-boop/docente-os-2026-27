@@ -203,7 +203,13 @@ export default async function ClassWorkspacePage({
       ) : null}
 
       <section className="classLessonFocus" aria-label="Lavoro della classe adesso">
-        {learningFocus.nextBlock && nextTitle ? (
+        {!learningFocus.progressAvailable ? (
+          <div className="classLessonFocusMain">
+            <p>PIANO ANNUALE</p>
+            <div className="classLessonFocusIdentity"><span aria-hidden>→</span><div><strong>Avanzamento non disponibile</strong><small>Collega il piano annuale per vedere il prossimo blocco e lo stato reale.</small></div></div>
+            <p className="classLessonFocusHint">Nessun avanzamento viene dedotto finché manca il collegamento runtime.</p>
+          </div>
+        ) : learningFocus.nextBlock && nextTitle ? (
           <div className="classLessonFocusMain">
             <p>{taskPresentation.eyebrow}</p>
             <div className="classLessonFocusIdentity"><span aria-hidden>→</span><div><strong>{nextTitle}</strong><small>{nextContext}</small></div></div>
@@ -218,14 +224,20 @@ export default async function ClassWorkspacePage({
           </div>
         )}
         <div className="classLessonFocusAside">
-          <div className="classLessonProgress"><strong>{learningFocus.completedBlocks}/33</strong><span>lezioni concluse</span></div>
+          <div className="classLessonProgress">
+            {learningFocus.progressAvailable ? (
+              <><strong>{learningFocus.completedBlocks}/33</strong><span>lezioni concluse</span></>
+            ) : (
+              <><strong aria-hidden>—</strong><span>Avanzamento non disponibile</span></>
+            )}
+          </div>
           <div className="classLessonFocusActions">
             {source && nextProjection && learningFocus.nextBlock ? (
               <Link href={buildLessonWorkspaceHref(summary.sectionId, learningFocus.nextBlock.id, 'prepare')}>
                 Prima della lezione
               </Link>
             ) : null}
-            {taskDecision.label ? <Link className="primary" href={taskHref}>{taskDecision.label}</Link> : null}
+            {learningFocus.progressAvailable && taskDecision.label ? <Link className="primary" href={taskHref}>{taskDecision.label}</Link> : null}
           </div>
         </div>
       </section>

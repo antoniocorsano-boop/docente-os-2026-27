@@ -25,8 +25,9 @@ export type ClassWorkspaceSummary = {
   sectionStatus: AnnualPlanSectionStatus
   sectionStatusLabel: string
   assignments: ClassWorkspaceAssignment[]
-  completedBlocks: number
+  completedBlocks: number | null
   hasProgress: boolean
+  progressAvailable: boolean
 }
 
 export type ClassWorkspaceLearningBlock = {
@@ -58,9 +59,10 @@ export type PreparedClassMaterial = {
 }
 
 export type ClassWorkspaceLearningFocus = {
-  completedBlocks: number
+  completedBlocks: number | null
   nextBlock: ClassWorkspaceLearningBlock | null
   materials: ClassWorkspaceMaterial[]
+  progressAvailable: boolean
 }
 
 type KnowledgeItem = { asset: KnowledgeAsset; document: KnowledgeDocument | null }
@@ -82,11 +84,13 @@ export function buildClassWorkspaceSummary(
       status: assignment.status,
     }))
     .sort((a, b) => a.discipline.localeCompare(b.discipline, 'it'))
-  const sectionProgress = progress.filter((entry) =>
-    entry.sectionId === section.id &&
-    canonicalGenerationId !== null &&
-    entry.canonicalGenerationId === canonicalGenerationId,
-  )
+  const progressAvailable = canonicalGenerationId !== null
+  const sectionProgress = progressAvailable
+    ? progress.filter((entry) =>
+        entry.sectionId === section.id &&
+        entry.canonicalGenerationId === canonicalGenerationId,
+      )
+    : []
 
   return {
     sectionId: section.id,
@@ -96,8 +100,11 @@ export function buildClassWorkspaceSummary(
     sectionStatus: section.status,
     sectionStatusLabel: sectionStatusLabel(section.status),
     assignments: sectionAssignments,
-    completedBlocks: sectionProgress.filter((entry) => COMPLETE_STATUSES.has(entry.status)).length,
-    hasProgress: sectionProgress.length > 0,
+    completedBlocks: progressAvailable
+      ? sectionProgress.filter((entry) => COMPLETE_STATUSES.has(entry.status)).length
+      : null,
+    hasProgress: progressAvailable && sectionProgress.length > 0,
+    progressAvailable,
   }
 }
 
@@ -107,13 +114,21 @@ export function buildClassWorkspaceLearningFocus(
   canonicalGenerationId: string | null,
   knowledgeItems: KnowledgeItem[],
 ): ClassWorkspaceLearningFocus {
+  if (canonicalGenerationId === null) {
+    return {
+      completedBlocks: null,
+      nextBlock: null,
+      materials: selectPertinentMaterials(section, null, knowledgeItems),
+      progressAvailable: false,
+    }
+  }
+
   const grade = GRADE_UI[section.grade]
   const blocks = buildBlocks(grade)
   const progressByBlock = new Map(
     progress
       .filter((entry) =>
         entry.sectionId === section.id &&
-        canonicalGenerationId !== null &&
         entry.canonicalGenerationId === canonicalGenerationId,
       )
       .map((entry) => [entry.blockId, entry]),
@@ -137,6 +152,7 @@ export function buildClassWorkspaceLearningFocus(
     completedBlocks,
     nextBlock,
     materials: selectPertinentMaterials(section, nextBlock?.pack ?? null, knowledgeItems),
+    progressAvailable: true,
   }
 }
 

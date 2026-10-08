@@ -102,7 +102,7 @@ export default async function NewUdaAuthoringPage({
   return (
     <AppShell active="design" academicYearLabel={context.academicYear.label} workspaceName={context.workspace.name} role={context.role} contentClassName="newUdaAuthoringSurface">
       <nav className="newUdaBack"><Link href="/progetta">← Progetta</Link></nav>
-      <main className="newUdaGate" aria-labelledby="new-uda-title">
+      <section className="newUdaGate" aria-labelledby="new-uda-title">
         <header className="newUdaGateCopy">
           <span className="newUdaGatePrompt">Cosa vuoi preparare?</span>
           <h1 id="new-uda-title">Prepara questa UDA</h1>
@@ -133,7 +133,7 @@ export default async function NewUdaAuthoringPage({
         </section>
 
         <Link className="newUdaSourceLink" href={sourceHref}>Controlla la fonte</Link>
-      </main>
+      </section>
     </AppShell>
   )
 }
