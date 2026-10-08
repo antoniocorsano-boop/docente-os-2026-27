@@ -300,7 +300,7 @@ begin
     validation_codes := array_append(validation_codes, 'INVALID_TEMPLATE_VERSION');
   end if;
 
-  if jsonb_typeof(target_schema_json->'sections') <> 'array'
+  if jsonb_typeof(target_schema_json->'sections') is distinct from 'array'
      or jsonb_array_length(target_schema_json->'sections') = 0 then
     validation_codes := array_append(validation_codes, 'TEMPLATE_SECTIONS_REQUIRED');
   else
@@ -350,7 +350,7 @@ begin
         || coalesce(section_node->>'label', '') || E'\n'
         || coalesce(section_node->>'purpose', '');
 
-      if jsonb_typeof(section_node->'fields') <> 'array' then
+      if jsonb_typeof(section_node->'fields') is distinct from 'array' then
         if not ('FIELD_KEY_REQUIRED' = any(validation_codes)) then
           validation_codes := array_append(validation_codes, 'FIELD_KEY_REQUIRED');
         end if;
