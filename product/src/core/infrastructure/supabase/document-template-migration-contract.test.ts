@@ -51,3 +51,15 @@ test('trusted quality review binds schema identity to the persisted registry row
   assert.match(sql, /TEMPLATE_VERSION_MISMATCH/)
   assert.match(sql, /jsonb_typeof\(version_schema->'version'\)\s*<>\s*'number'/)
 })
+
+test('trusted quality review fails closed when section or field arrays are absent', () => {
+  const sql = readFileSync(migrationPath, 'utf8')
+  assert.match(
+    sql,
+    /jsonb_typeof\(target_schema_json->'sections'\)\s+is\s+distinct\s+from\s+'array'/i,
+  )
+  assert.match(
+    sql,
+    /jsonb_typeof\(section_node->'fields'\)\s+is\s+distinct\s+from\s+'array'/i,
+  )
+})
