@@ -36,8 +36,7 @@ jobs:
           test "$(git rev-parse "$TARGET_SHA:product/src")" = "$(git rev-parse 'HEAD:product/src')"
           test "$(git rev-parse "$TARGET_SHA:product/supabase")" = "$(git rev-parse 'HEAD:product/supabase')"
           test "$(git rev-parse "$TARGET_SHA:product/package-lock.json")" = "$(git rev-parse 'HEAD:product/package-lock.json')"
-          changed="$(git diff --name-only "$TARGET_SHA" HEAD)"
-          test "$changed" = '.github/workflows/pr692-exact-head-human-review-v4.yml'
+          test "$(git diff --name-only "$TARGET_SHA" HEAD)" = '.github/workflows/pr692-exact-head-human-review-v4.yml'
           printf 'target_sha=%s\nprobe_sha=%s\nsrc_tree=%s\nsupabase_tree=%s\n' \
             "$TARGET_SHA" "$(git rev-parse HEAD)" "$(git rev-parse 'HEAD:product/src')" "$(git rev-parse 'HEAD:product/supabase')" \
             | tee /tmp/pr692-exact-head-proof.txt
@@ -95,16 +94,15 @@ jobs:
           import { chromium, expect } from '@playwright/test'
           import fs from 'node:fs/promises'
           import { loginE2E } from './e2e/support/e2e-auth.mjs'
-          import { deleteAllKnowledgeFixtures, fixtureIdentity } from './e2e/support/knowledge-fixture-hygiene.mjs'
+          import { fixtureIdentity } from './e2e/support/knowledge-fixture-hygiene.mjs'
 
           const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
           const out = 'test-results/pr692-v4'
           const token = process.env.GITHUB_RUN_ID ?? String(Date.now())
-          const fixtureTitle = `CAN-UDA-3-01 HVA Atlas ${token}`
-          const materialPrefix = `HVA Atlas ${token}`
-          const report = { targetSha: process.env.TARGET_SHA, probeSha: process.env.GITHUB_SHA, fixtureTitle, runs: [], cleanup: null }
+          const assetId = 'b407c74c-6c04-476e-a444-7262ae830ba0'
+          const materialPrefix = `Scheda Atlas HVA ${token}`
+          const report = { targetSha: process.env.TARGET_SHA, probeSha: process.env.GITHUB_SHA, canonicalUda: '2-01', assetId, runs: [], cleanup: null }
 
-          const assetIdFromUrl = (url) => decodeURIComponent(new URL(url).pathname.split('/').filter(Boolean).at(-1))
           const sectionIdFromHref = (href) => decodeURIComponent(href.match(/^\/classi\/([^/?#]+)/)?.[1] ?? '')
           const encodeBundle = (value) => Buffer.from(JSON.stringify(value), 'utf8').toString('base64url')
           const decodeContext = (value) => JSON.parse(Buffer.from(value, 'base64url').toString('utf8'))
@@ -114,58 +112,23 @@ jobs:
             return path
           }
 
-          async function chooseTerzaSection(page) {
+          async function chooseSecondaSection(page) {
             await page.goto('/classi', { waitUntil: 'networkidle' })
             const hrefs = await page.locator('a.canonicalClassCard').evaluateAll((links) => links.map((a) => a.getAttribute('href')).filter(Boolean))
             for (const href of hrefs) {
               await page.goto(href, { waitUntil: 'networkidle' })
-              if (await page.locator('a[href*="/progetta?grade=terza"]').first().isVisible().catch(() => false)) return sectionIdFromHref(href)
+              if (await page.locator('a[href*="/progetta?grade=seconda"]').first().isVisible().catch(() => false)) return sectionIdFromHref(href)
             }
-            throw new Error('No Terza section with annual-plan context')
+            throw new Error('No Seconda section with annual-plan context')
           }
 
-          async function provision(browser, supabase) {
-            const context = await browser.newContext({ baseURL, viewport: { width: 1280, height: 900 }, locale: 'it-IT' })
-            const page = await context.newPage()
-            try {
-              await loginE2E(page)
-              await deleteAllKnowledgeFixtures(page, fixtureTitle)
-              const sectionId = await chooseTerzaSection(page)
-              await page.goto('/knowledge', { waitUntil: 'networkidle' })
-              const capture = page.locator('details.knowledgeCaptureDisclosure')
-              await expect(capture).toBeVisible()
-              if (await capture.getAttribute('open') === null) await capture.locator(':scope > summary').click()
-              await page.locator('input[name="title"]').fill(fixtureTitle)
-              await page.locator('textarea[name="text"]').fill('UDA tecnica CAN-UDA-3-01. Classe terza — Tecnologia. Energia: forme, trasformazioni e fabbisogni.')
-              await Promise.all([
-                page.waitForURL(/\/knowledge\/[^/?#]+$/, { timeout: 60_000 }),
-                page.getByRole('button', { name: 'Salva e organizza' }).click(),
-              ])
-              const assetId = assetIdFromUrl(page.url())
-              const form = page.locator('form.contextForm')
-              await form.locator('select[name="contentCategory"]').selectOption('UDA')
-              await form.locator('input[name="disciplines"]').fill('Tecnologia')
-              await form.locator('input[name="classLabels"]').fill('3E')
-              await Promise.all([
-                page.waitForURL(new RegExp(`/knowledge/${assetId}\\?context=updated$`), { timeout: 30_000 }),
-                form.getByRole('button', { name: 'Salva correzione' }).click(),
-              ])
-              const read = await supabase.from('knowledge_assets').select('source_metadata').eq('id', assetId).single()
-              if (read.error) throw new Error(`Fixture metadata read failed: ${read.error.message}`)
-              const current = read.data?.source_metadata && typeof read.data.source_metadata === 'object' ? read.data.source_metadata : {}
-              const write = await supabase.from('knowledge_assets').update({ source_metadata: { ...current, grade: 'terza', discipline: 'Tecnologia', uda: '3-01', fixtureKind: 'pr692-v4' } }).eq('id', assetId)
-              if (write.error) throw new Error(`Fixture metadata update failed: ${write.error.message}`)
-              return { assetId, sectionId }
-            } finally { await context.close() }
-          }
-
-          async function journey(browser, fixture, viewportName, viewport) {
+          async function journey(browser, sectionId, viewportName, viewport) {
             const context = await browser.newContext({ baseURL, viewport, locale: 'it-IT' })
             const page = await context.newPage()
             const evidence = { viewport: viewportName, screenshots: [] }
             try {
               await loginE2E(page)
-              await page.goto(`/progetta/documenti/nuovo/${fixture.assetId}?section=${fixture.sectionId}&block=B01`, { waitUntil: 'networkidle' })
+              await page.goto(`/progetta/documenti/nuovo/${assetId}?section=${sectionId}&block=B01`, { waitUntil: 'networkidle' })
               const atlas = page.locator('a.newUdaAtlasAction').first()
               await expect(atlas).toBeVisible()
               evidence.screenshots.push(await screenshot(page, viewportName, '01-uda-atlas-action'))
@@ -173,12 +136,13 @@ jobs:
               const encoded = new URLSearchParams(new URL(href).hash.replace(/^#/, '')).get('context')
               if (!encoded) throw new Error('Missing Atlas teaching context')
               const teachingContext = decodeContext(encoded)
+              if (teachingContext.udaId !== '2-01' || teachingContext.blockId !== 'B01' || teachingContext.grade !== 'seconda') throw new Error('Unexpected teaching context')
               evidence.teachingContext = teachingContext
               const materialTitle = `${materialPrefix} ${viewportName}`
               const bundle = {
                 schema: 'studio-atlas.material-bundle/v0.1', source: 'studio-atlas', bundleId: `bundle-${token}-${viewportName}`,
                 sourceUdaId: teachingContext.udaId, generatedAt: new Date().toISOString(),
-                items: [{ materialId: `material-${token}-${viewportName}`, type: 'worksheet', title: materialTitle, description: 'Evidenza HVA Atlas.', origin: 'atlas' }],
+                items: [{ materialId: `material-${token}-${viewportName}`, type: 'worksheet', title: materialTitle, description: 'Scheda di lavoro per la lezione.', origin: 'atlas' }],
               }
               const returnUrl = new URL(teachingContext.returnUrl)
               returnUrl.hash = `bundle=${encodeBundle(bundle)}`
@@ -187,14 +151,13 @@ jobs:
               await expect(page.getByText(materialTitle, { exact: true })).toBeVisible()
               const select = page.locator('#atlas-target-lesson')
               await expect(select).toBeVisible()
-              if (!(await select.inputValue())) {
-                const option = await select.locator('option').evaluateAll((options) => options.map((o) => o.value).find(Boolean) ?? '')
-                if (!option) throw new Error('No lesson available for Atlas association')
-                await select.selectOption(option)
-              }
+              const options = await select.locator('option').evaluateAll((nodes) => nodes.map((option) => ({ value: option.value, text: option.textContent ?? '' })).filter((option) => option.value))
+              evidence.lessonOptions = options
+              if (!options.some((option) => option.value === 'B01')) throw new Error('Canonical B01 lesson is not available for UDA 2-01')
+              if (!(await select.inputValue())) await select.selectOption('B01')
               evidence.screenshots.push(await screenshot(page, viewportName, '02-atlas-return-review'))
               await Promise.all([
-                page.waitForURL(/\/classi\/[^/]+\/lezioni\/[^/?#]+\?mode=prepare/, { timeout: 60_000 }),
+                page.waitForURL(/\/classi\/[^/]+\/lezioni\/B01\?mode=prepare/, { timeout: 60_000 }),
                 page.getByRole('button', { name: 'Associa alla lezione' }).click(),
               ])
               await expect(page.getByText(materialTitle, { exact: true })).toBeVisible({ timeout: 30_000 })
@@ -214,7 +177,6 @@ jobs:
             const page = await context.newPage()
             try {
               await loginE2E(page)
-              const removedFixtures = await deleteAllKnowledgeFixtures(page, fixtureTitle)
               const found = await supabase.from('lesson_design_extensions').select('id,status,title').eq('source_kind', 'ATLAS').ilike('title', `${materialPrefix}%`)
               if (found.error) throw new Error(`Atlas cleanup lookup failed: ${found.error.message}`)
               let dismissed = 0
@@ -224,17 +186,21 @@ jobs:
                 if (result.error) throw new Error(`Atlas cleanup dismiss failed: ${result.error.message}`)
                 dismissed += 1
               }
-              report.cleanup = { status: 'PASS', removedFixtures, dismissedExtensions: dismissed }
+              report.cleanup = { status: 'PASS', dismissedExtensions: dismissed }
             } finally { await context.close() }
           }
 
           const browser = await chromium.launch({ headless: true })
           const { supabase } = await fixtureIdentity()
           try {
-            const fixture = await provision(browser, supabase)
-            report.fixture = fixture
-            await journey(browser, fixture, 'desktop-1440x1000', { width: 1440, height: 1000 })
-            await journey(browser, fixture, 'mobile-390x844', { width: 390, height: 844 })
+            const setupContext = await browser.newContext({ baseURL, viewport: { width: 1280, height: 900 }, locale: 'it-IT' })
+            const setupPage = await setupContext.newPage()
+            await loginE2E(setupPage)
+            const sectionId = await chooseSecondaSection(setupPage)
+            report.sectionId = sectionId
+            await setupContext.close()
+            await journey(browser, sectionId, 'desktop-1440x1000', { width: 1440, height: 1000 })
+            await journey(browser, sectionId, 'mobile-390x844', { width: 390, height: 844 })
             await cleanup(browser, supabase)
           } catch (error) {
             report.fatalError = error instanceof Error ? error.message : String(error)
@@ -251,7 +217,8 @@ jobs:
         if: always()
         shell: bash
         run: |
-          cp /tmp/pr692-exact-head-proof.txt product/test-results/pr692-v4/exact-head-proof.txt
+          mkdir -p product/test-results/pr692-v4
+          cp /tmp/pr692-exact-head-proof.txt product/test-results/pr692-v4/exact-head-proof.txt || true
           cp /tmp/pr692-v4-runtime.log product/test-results/pr692-v4/runtime.log || true
 
       - name: Upload focused HVA evidence
