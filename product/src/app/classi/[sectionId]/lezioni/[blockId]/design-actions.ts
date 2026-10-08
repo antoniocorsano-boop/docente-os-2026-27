@@ -137,6 +137,8 @@ export async function runLessonDesignWrite(
         },
       })
 
+      // Atlas propone; il clic esplicito del docente autorizza solo l'uso in questa lezione.
+      // Non modifica Arena e non autorizza alcun flusso Docente OS → Atlas.
       await repository.accept(lesson.designContext, proposal.id)
       revalidateLesson(lesson.sectionId, lesson.blockId)
       return nextDesignWriteState(previousState, 'material-attached')
@@ -193,6 +195,9 @@ export async function runLessonDesignWrite(
       },
     })
 
+    // Il bottone è una scelta esplicita del docente (“Usa in questa lezione”):
+    // questa stessa azione può attraversare il confine PROPOSED → ACCEPTED.
+    // Le proposte generate autonomamente da strumenti o AI non usano questo percorso.
     await repository.accept(lesson.designContext, proposal.id)
     revalidateLesson(lesson.sectionId, lesson.blockId)
     return nextDesignWriteState(previousState, 'material-attached')
