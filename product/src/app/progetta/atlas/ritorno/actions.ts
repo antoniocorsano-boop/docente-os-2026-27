@@ -6,6 +6,7 @@ import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annua
 import { decodeAtlasMaterialBundle } from '@/core/domain/atlas-material-handoff'
 import type { LessonDesignExtensionDraft } from '@/core/domain/lesson-design-extension'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
@@ -53,12 +54,21 @@ export async function bindAtlasMaterialsToLesson(
   if (!projection) return { error: 'Questa lezione non è ancora pronta per ricevere materiali.' }
 
   const source = CANONICAL_PLAN_SOURCES[grade]
+  const runtimeSource = await new SupabaseCanonicalPlanSourceRepository().resolve({
+    workspaceId: workspace.workspace.id,
+    academicYearId: workspace.academicYear.id,
+    code: source.code,
+  })
+  if (!runtimeSource) {
+    return { error: 'Il piano annuale della classe non è ancora collegato alla sorgente canonica.' }
+  }
+
   const lessonContext = {
     workspaceId: workspace.workspace.id,
     academicYearId: workspace.academicYear.id,
     sectionId: section.id,
-    canonicalPlanAssetId: source.assetId,
-    canonicalGenerationId: source.generationId,
+    canonicalPlanAssetId: runtimeSource.assetId,
+    canonicalGenerationId: runtimeSource.generationId,
     blockId: block.id,
     projectionId: projection.projectionId,
   }
