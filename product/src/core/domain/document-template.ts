@@ -113,6 +113,7 @@ export type TemplateQualityFinding = {
 export type TemplateQualityReview = {
   result: TemplateQualityResult
   findings: TemplateQualityFinding[]
+  versionNo?: number
 }
 
 export function validateDocumentTemplate(draft: DocumentTemplateVersionDraft): TemplateValidation {

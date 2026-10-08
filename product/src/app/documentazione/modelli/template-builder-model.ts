@@ -31,9 +31,16 @@ export function buildTemplateBuilderViewModel(
   snapshot: DocumentTemplateSnapshot,
   review: TemplateQualityReview,
 ): TemplateBuilderViewModel {
-  const version = snapshot.activeVersion
-    ?? [...snapshot.versions].sort((left, right) => right.versionNo - left.versionNo)[0]
-  if (!version) throw new Error('Il modello non contiene ancora una versione revisionabile.')
+  const version = snapshot.versions.find(
+    (candidate) => candidate.versionNo === snapshot.template.currentVersionNo,
+  )
+  if (!version) throw new Error('Il modello non contiene la versione corrente revisionabile.')
+  if (review.versionNo !== version.versionNo) {
+    throw new Error('La review non corrisponde alla versione corrente del modello.')
+  }
+
+  const hasPendingVersion = snapshot.template.activeVersionNo === null
+    || snapshot.template.activeVersionNo !== version.versionNo
 
   return {
     title: snapshot.template.name,
@@ -43,7 +50,7 @@ export function buildTemplateBuilderViewModel(
       : 'Nuovo modello',
     reviewLabel: reviewResultLabel(review.result),
     findings: review.findings.map((finding) => finding.summary),
-    canApprove: (review.result === 'PASS' || review.result === 'PASS_WITH_NOTES') && snapshot.template.status !== 'ACTIVE',
+    canApprove: (review.result === 'PASS' || review.result === 'PASS_WITH_NOTES') && hasPendingVersion,
     sections: version.draft.sections.map((section, index, sections) => ({
       label: section.label,
       purpose: section.purpose,

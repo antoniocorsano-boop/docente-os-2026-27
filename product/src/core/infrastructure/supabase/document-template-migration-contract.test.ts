@@ -4,6 +4,11 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const migrationPath = resolve(process.cwd(), 'supabase/migrations/0087_document_template_registry.sql')
+const reviewFixMigrationPath = resolve(process.cwd(), 'supabase/migrations/0088_document_template_registry_review_fixes.sql')
+
+function readGovernedMigrationSql() {
+  return `${readFileSync(migrationPath, 'utf8')}\n${readFileSync(reviewFixMigrationPath, 'utf8')}`
+}
 
 test('document template registry migration enforces governed persistence', () => {
   const sql = readFileSync(migrationPath, 'utf8')
@@ -65,13 +70,13 @@ test('trusted quality review fails closed when section or field arrays are absen
 })
 
 test('saving and reviewing a draft preserves an already active publication', () => {
-  const sql = readFileSync(migrationPath, 'utf8')
+  const sql = readGovernedMigrationSql()
   const activePreservationBranches = sql.match(/when active_version_no is not null then 'ACTIVE'/gi) ?? []
   assert.equal(activePreservationBranches.length >= 2, true)
 })
 
 test('template source identity preserves provenance for identical bytes', () => {
-  const sql = readFileSync(migrationPath, 'utf8')
+  const sql = readGovernedMigrationSql()
   assert.match(sql, /uq_document_template_sources_provenance/i)
   assert.match(sql, /source\.source_asset_id\s+is\s+not\s+distinct\s+from\s+target_source_asset_id/i)
   assert.match(sql, /source\.source_revision_ref\s+is\s+not\s+distinct\s+from\s+safe_revision_ref/i)
@@ -79,6 +84,6 @@ test('template source identity preserves provenance for identical bytes', () => 
 })
 
 test('trusted purity guard blocks actual serialized internal states and policies', () => {
-  const sql = readFileSync(migrationPath, 'utf8')
+  const sql = readGovernedMigrationSql()
   assert.match(sql, /AUTO_DOCUMENTED\|TEACHER_CONFIRMATION\|OPTIONAL_PROPOSAL\|RESTRICTED\|QUALITY_REVIEWED\|REVIEW_REQUIRED/)
 })

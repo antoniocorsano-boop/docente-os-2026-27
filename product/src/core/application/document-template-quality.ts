@@ -10,7 +10,7 @@ const TECHNICAL_PATTERNS: ReadonlyArray<[string, RegExp]> = [
   ['BXX_CODE', /\bB(?:0[1-9]|[12][0-9]|3[0-3])\b/],
   ['UUID', /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i],
   ['SOFTWARE_ENTITY', /\b(?:TeachingSession|KnowledgeAsset|authored_documents?|document_template_versions?)\b/i],
-  ['INTERNAL_STATE', /\b(?:AUTO_DOCUMENTED|TEACHER_CONFIRMED|OPTIONAL_PROPOSAL|RESTRICTED|TO_VERIFY|MIXED)\b/],
+  ['INTERNAL_STATE', /\b(?:AUTO_DOCUMENTED|TEACHER_CONFIRMATION|OPTIONAL_PROPOSAL|RESTRICTED|QUALITY_REVIEWED|REVIEW_REQUIRED|TEACHER_CONFIRMED|TO_VERIFY|MIXED)\b/],
   ['HASH', /\b[0-9a-f]{40,64}\b/i],
   ['DRIVE_PATH', /(?:drive:\/\/|\/Google Drive\/|https:\/\/drive\.google\.com\/)/i],
   ['AI_PROVIDER', /\b(?:OpenAI|GPT-[0-9.]+|Claude|Gemini|DeepSeek|Groq|Hugging\s*Face)\b/i],
@@ -32,6 +32,7 @@ export function reviewDocumentTemplate(draft: DocumentTemplateVersionDraft): Tem
         category: 'STRUCTURE',
         summary: `Struttura del template non valida: ${code}`,
       })),
+      versionNo: draft.version,
     }
   }
 
@@ -88,8 +89,12 @@ export function reviewDocumentTemplate(draft: DocumentTemplateVersionDraft): Tem
     })
   }
 
-  if (findings.some((finding) => finding.severity === 'BLOCKER')) return { result: 'BLOCKED', findings }
-  if (findings.some((finding) => finding.severity === 'MAJOR')) return { result: 'REVIEW_REQUIRED', findings }
-  if (findings.length) return { result: 'PASS_WITH_NOTES', findings }
-  return { result: 'PASS', findings: [] }
+  if (findings.some((finding) => finding.severity === 'BLOCKER')) {
+    return { result: 'BLOCKED', findings, versionNo: draft.version }
+  }
+  if (findings.some((finding) => finding.severity === 'MAJOR')) {
+    return { result: 'REVIEW_REQUIRED', findings, versionNo: draft.version }
+  }
+  if (findings.length) return { result: 'PASS_WITH_NOTES', findings, versionNo: draft.version }
+  return { result: 'PASS', findings: [], versionNo: draft.version }
 }
