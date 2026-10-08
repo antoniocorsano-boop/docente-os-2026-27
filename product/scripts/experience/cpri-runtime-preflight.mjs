@@ -67,7 +67,6 @@ export async function runCpriRuntimePreflight() {
 
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
     requireCheck(!sessionError && sessionData?.session?.access_token, 'aal2-session', 'authenticated AAL2 session unavailable')
-    await verifyAtlasAcceptanceRpc(supabaseUrl, publishableKey, sessionData.session.access_token)
 
     const { data: contextRows, error: contextError } = await supabase.rpc('current_workspace_context')
     requireCheck(!contextError, 'workspace-context-rpc', contextError?.message ?? 'workspace context unavailable')
@@ -81,6 +80,8 @@ export async function runCpriRuntimePreflight() {
 
     const workspaceId = current.workspace_id
     const academicYearId = current.academic_year_id
+
+    await verifyAtlasAcceptanceRpc(supabase, workspaceId, academicYearId)
 
     const { data: bindings, error: bindingError } = await supabase
       .from('canonical_plan_runtime_bindings')
@@ -231,21 +232,22 @@ async function signInAtAal2(supabase, { email, password, totpSecret }) {
   requireCheck(aal?.currentLevel === 'aal2', 'aal2-required', 'governed session did not reach AAL2')
 }
 
-async function verifyAtlasAcceptanceRpc(supabaseUrl, publishableKey, accessToken) {
-  const response = await fetch(`${supabaseUrl}/rest/v1/`, {
-    headers: {
-      apikey: publishableKey,
-      authorization: `Bearer ${accessToken}`,
-      accept: 'application/openapi+json',
-    },
+async function verifyAtlasAcceptanceRpc(supabase, workspaceId, academicYearId) {
+  const expectedProbeError = 'Atlas material bundle must contain at least one item'
+  const { error } = await supabase.rpc('accept_atlas_material_bundle', {
+    p_workspace_id: workspaceId,
+    p_academic_year_id: academicYearId,
+    p_section_id: null,
+    p_canonical_plan_asset_id: null,
+    p_canonical_generation_id: null,
+    p_block_id: '__cpri_probe__',
+    p_projection_id: '__cpri_probe__',
+    p_items: [],
   })
-  requireCheck(response.ok, 'postgrest-openapi', `PostgREST schema returned ${response.status}`)
-  const schema = await response.json()
-  const paths = Object.keys(schema?.paths ?? {})
   requireCheck(
-    paths.includes('/rpc/accept_atlas_material_bundle'),
+    error?.message?.includes(expectedProbeError),
     'atlas-acceptance-rpc',
-    'accept_atlas_material_bundle RPC is not exposed in the runtime schema',
+    error?.message ?? 'Atlas acceptance RPC probe unexpectedly succeeded',
   )
 }
 
