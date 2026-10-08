@@ -49,4 +49,5 @@ test('trusted quality review binds schema identity to the persisted registry row
   const sql = readFileSync(migrationPath, 'utf8')
   assert.match(sql, /TEMPLATE_KIND_MISMATCH/)
   assert.match(sql, /TEMPLATE_VERSION_MISMATCH/)
+  assert.match(sql, /jsonb_typeof\(version_schema->'version'\)\s*<>\s*'number'/)
 })
