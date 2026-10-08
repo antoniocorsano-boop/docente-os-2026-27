@@ -101,25 +101,48 @@ jobs:
           const token = process.env.GITHUB_RUN_ID ?? String(Date.now())
           const assetId = 'b407c74c-6c04-476e-a444-7262ae830ba0'
           const materialPrefix = `Scheda Atlas HVA ${token}`
-          const report = { targetSha: process.env.TARGET_SHA, probeSha: process.env.GITHUB_SHA, canonicalUda: '2-01', assetId, runs: [], cleanup: null }
+          const report = {
+            targetSha: process.env.TARGET_SHA,
+            probeSha: process.env.GITHUB_SHA,
+            canonicalUda: '2-01',
+            assetId,
+            runs: [],
+            cleanup: null,
+          }
 
-          const sectionIdFromHref = (href) => decodeURIComponent(href.match(/^\/classi\/([^/?#]+)/)?.[1] ?? '')
           const encodeBundle = (value) => Buffer.from(JSON.stringify(value), 'utf8').toString('base64url')
           const decodeContext = (value) => JSON.parse(Buffer.from(value, 'base64url').toString('utf8'))
+
           async function screenshot(page, viewport, step) {
             const path = `${out}/${viewport}--${step}.png`
             await page.screenshot({ path, fullPage: true })
             return path
           }
 
-          async function chooseSecondaSection(page) {
-            await page.goto('/classi', { waitUntil: 'networkidle' })
-            const hrefs = await page.locator('a.canonicalClassCard').evaluateAll((links) => links.map((a) => a.getAttribute('href')).filter(Boolean))
-            for (const href of hrefs) {
-              await page.goto(href, { waitUntil: 'networkidle' })
-              if (await page.locator('a[href*="/progetta?grade=seconda"]').first().isVisible().catch(() => false)) return sectionIdFromHref(href)
+          async function resolveSecondaSection(supabase) {
+            const contextResult = await supabase.rpc('current_workspace_context')
+            if (contextResult.error) throw new Error(`Workspace context lookup failed: ${contextResult.error.message}`)
+            const active = contextResult.data?.[0]
+            if (!active?.workspace_id || !active?.academic_year_id) throw new Error('Active workspace/year unavailable')
+            report.workspaceContext = {
+              workspaceId: active.workspace_id,
+              academicYearId: active.academic_year_id,
+              academicYearLabel: active.academic_year_label,
             }
-            throw new Error('No Seconda section with annual-plan context')
+
+            const sectionResult = await supabase
+              .from('annual_plan_sections')
+              .select('id,workspace_id,academic_year_id,grade,section_code,status')
+              .eq('workspace_id', active.workspace_id)
+              .eq('academic_year_id', active.academic_year_id)
+              .order('grade', { ascending: true })
+              .order('section_code', { ascending: true })
+            if (sectionResult.error) throw new Error(`Annual-plan section lookup failed: ${sectionResult.error.message}`)
+            report.sectionInventory = sectionResult.data ?? []
+            const section = (sectionResult.data ?? []).find((item) => item.grade === 'SECONDA')
+            if (!section) throw new Error(`No SECONDA annual-plan section in active workspace/year; inventory=${JSON.stringify(report.sectionInventory)}`)
+            report.section = section
+            return section.id
           }
 
           async function journey(browser, sectionId, viewportName, viewport) {
@@ -132,30 +155,49 @@ jobs:
               const atlas = page.locator('a.newUdaAtlasAction').first()
               await expect(atlas).toBeVisible()
               evidence.screenshots.push(await screenshot(page, viewportName, '01-uda-atlas-action'))
+
               const href = await atlas.getAttribute('href')
               const encoded = new URLSearchParams(new URL(href).hash.replace(/^#/, '')).get('context')
               if (!encoded) throw new Error('Missing Atlas teaching context')
               const teachingContext = decodeContext(encoded)
-              if (teachingContext.udaId !== '2-01' || teachingContext.blockId !== 'B01' || teachingContext.grade !== 'seconda') throw new Error('Unexpected teaching context')
+              if (teachingContext.udaId !== '2-01' || teachingContext.blockId !== 'B01' || teachingContext.grade !== 'seconda') {
+                throw new Error(`Unexpected teaching context: ${JSON.stringify(teachingContext)}`)
+              }
               evidence.teachingContext = teachingContext
+
               const materialTitle = `${materialPrefix} ${viewportName}`
               const bundle = {
-                schema: 'studio-atlas.material-bundle/v0.1', source: 'studio-atlas', bundleId: `bundle-${token}-${viewportName}`,
-                sourceUdaId: teachingContext.udaId, generatedAt: new Date().toISOString(),
-                items: [{ materialId: `material-${token}-${viewportName}`, type: 'worksheet', title: materialTitle, description: 'Scheda di lavoro per la lezione.', origin: 'atlas' }],
+                schema: 'studio-atlas.material-bundle/v0.1',
+                source: 'studio-atlas',
+                bundleId: `bundle-${token}-${viewportName}`,
+                sourceUdaId: teachingContext.udaId,
+                generatedAt: new Date().toISOString(),
+                items: [{
+                  materialId: `material-${token}-${viewportName}`,
+                  type: 'worksheet',
+                  title: materialTitle,
+                  description: 'Scheda di lavoro per la lezione.',
+                  origin: 'atlas',
+                }],
               }
               const returnUrl = new URL(teachingContext.returnUrl)
               returnUrl.hash = `bundle=${encodeBundle(bundle)}`
               await page.goto(returnUrl.toString(), { waitUntil: 'networkidle' })
+
               await expect(page.getByRole('heading', { name: 'Associa i materiali alla lezione' })).toBeVisible()
               await expect(page.getByText(materialTitle, { exact: true })).toBeVisible()
               const select = page.locator('#atlas-target-lesson')
               await expect(select).toBeVisible()
-              const options = await select.locator('option').evaluateAll((nodes) => nodes.map((option) => ({ value: option.value, text: option.textContent ?? '' })).filter((option) => option.value))
+              const options = await select.locator('option').evaluateAll((nodes) =>
+                nodes.map((option) => ({ value: option.value, text: option.textContent ?? '' })).filter((option) => option.value),
+              )
               evidence.lessonOptions = options
-              if (!options.some((option) => option.value === 'B01')) throw new Error('Canonical B01 lesson is not available for UDA 2-01')
+              if (!options.some((option) => option.value === 'B01')) {
+                throw new Error(`Canonical B01 lesson unavailable for UDA 2-01: ${JSON.stringify(options)}`)
+              }
               if (!(await select.inputValue())) await select.selectOption('B01')
               evidence.screenshots.push(await screenshot(page, viewportName, '02-atlas-return-review'))
+
               await Promise.all([
                 page.waitForURL(/\/classi\/[^/]+\/lezioni\/B01\?mode=prepare/, { timeout: 60_000 }),
                 page.getByRole('button', { name: 'Associa alla lezione' }).click(),
@@ -169,15 +211,22 @@ jobs:
               evidence.error = error instanceof Error ? error.message : String(error)
               evidence.screenshots.push(await screenshot(page, viewportName, '99-failure').catch(() => null))
               throw error
-            } finally { report.runs.push(evidence); await context.close() }
+            } finally {
+              report.runs.push(evidence)
+              await context.close()
+            }
           }
 
           async function cleanup(browser, supabase) {
-            const context = await browser.newContext({ baseURL, viewport: { width: 1280, height: 900 } })
+            const context = await browser.newContext({ baseURL, viewport: { width: 1280, height: 900 }, locale: 'it-IT' })
             const page = await context.newPage()
             try {
               await loginE2E(page)
-              const found = await supabase.from('lesson_design_extensions').select('id,status,title').eq('source_kind', 'ATLAS').ilike('title', `${materialPrefix}%`)
+              const found = await supabase
+                .from('lesson_design_extensions')
+                .select('id,status,title')
+                .eq('source_kind', 'ATLAS')
+                .ilike('title', `${materialPrefix}%`)
               if (found.error) throw new Error(`Atlas cleanup lookup failed: ${found.error.message}`)
               let dismissed = 0
               for (const extension of found.data ?? []) {
@@ -187,24 +236,25 @@ jobs:
                 dismissed += 1
               }
               report.cleanup = { status: 'PASS', dismissedExtensions: dismissed }
-            } finally { await context.close() }
+            } finally {
+              await context.close()
+            }
           }
 
           const browser = await chromium.launch({ headless: true })
           const { supabase } = await fixtureIdentity()
           try {
-            const setupContext = await browser.newContext({ baseURL, viewport: { width: 1280, height: 900 }, locale: 'it-IT' })
-            const setupPage = await setupContext.newPage()
-            await loginE2E(setupPage)
-            const sectionId = await chooseSecondaSection(setupPage)
-            report.sectionId = sectionId
-            await setupContext.close()
+            const sectionId = await resolveSecondaSection(supabase)
             await journey(browser, sectionId, 'desktop-1440x1000', { width: 1440, height: 1000 })
             await journey(browser, sectionId, 'mobile-390x844', { width: 390, height: 844 })
             await cleanup(browser, supabase)
           } catch (error) {
             report.fatalError = error instanceof Error ? error.message : String(error)
-            try { await cleanup(browser, supabase) } catch (cleanupError) { report.cleanup = { status: 'FAIL', error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError) } }
+            try {
+              await cleanup(browser, supabase)
+            } catch (cleanupError) {
+              report.cleanup = { status: 'FAIL', error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError) }
+            }
             throw error
           } finally {
             await browser.close()
