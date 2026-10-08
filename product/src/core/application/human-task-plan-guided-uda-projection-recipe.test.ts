@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { compileHumanTaskContentCandidate, type HumanTaskPipelineSource } from './human-task-content-pipeline'
-import { buildPlanGuidedUdaProjectionDraft } from './human-task-plan-guided-uda-projection-recipe'
+import { compileHumanTaskContentCandidate, type HumanTaskContentCandidate, type HumanTaskPipelineSource } from './human-task-content-pipeline'
+import { buildPlanGuidedUdaProjectionDraft, type HumanTaskPlanGuidedUdaProjectionRecipe } from './human-task-plan-guided-uda-projection-recipe'
 import { buildProjectionBatchReview } from './human-task-projection-batch'
 import {
   B16_B19_RECIPE_PROPOSALS,
@@ -16,6 +16,19 @@ import {
   B21_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL,
   B22_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL,
 } from './human-task-projection-recipes-b20-b22'
+
+const TEST_PLAN_RUNTIME_SOURCE = {
+  code: B16_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL.planSource.code,
+  generationId: B16_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL.planSource.generationId,
+}
+const TEST_PLAN_RUNTIME_SOURCES = { Prima: TEST_PLAN_RUNTIME_SOURCE }
+
+function buildPlanGuidedDraft(
+  candidate: HumanTaskContentCandidate,
+  recipe: HumanTaskPlanGuidedUdaProjectionRecipe,
+) {
+  return buildPlanGuidedUdaProjectionDraft(candidate, recipe, TEST_PLAN_RUNTIME_SOURCE)
+}
 
 const UDA_103 = `CAN-UDA-1-03 — DISEGNARE PER COMPRENDERE E COMUNICARE
 Classe prima
@@ -140,7 +153,7 @@ test('batch dispatcher prepares B16-B19 with PLAN_GUIDED_UDA recipes', () => {
   const review = buildProjectionBatchReview(
     ['B16', 'B17', 'B18', 'B19'].map((blockId) => drawingCandidate(blockId as 'B16' | 'B17' | 'B18' | 'B19')),
     [...B16_B19_RECIPE_PROPOSALS],
-  )
+  , TEST_PLAN_RUNTIME_SOURCES)
   assert.deepEqual(review.map((item) => [item.blockId, item.status]), [
     ['B16', 'READY_FOR_HUMAN_APPROVAL'],
     ['B17', 'READY_FOR_HUMAN_APPROVAL'],
@@ -150,7 +163,7 @@ test('batch dispatcher prepares B16-B19 with PLAN_GUIDED_UDA recipes', () => {
 })
 
 test('B16 uses the exact two-hour UDA phase while keeping the Plan evidence', () => {
-  const draft = buildPlanGuidedUdaProjectionDraft(drawingCandidate('B16'), B16_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
+  const draft = buildPlanGuidedDraft(drawingCandidate('B16'), B16_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
   assert.equal(draft.status, 'READY_FOR_HUMAN_APPROVAL')
   assert.ok(draft.projection)
   assert.equal(draft.projection.steps.length, 1)
@@ -161,8 +174,8 @@ test('B16 uses the exact two-hour UDA phase while keeping the Plan evidence', ()
 })
 
 test('B17 and B18 share the four-hour UDA phase but Plan disambiguates their distinct two-hour tasks', () => {
-  const b17 = buildPlanGuidedUdaProjectionDraft(drawingCandidate('B17'), B17_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
-  const b18 = buildPlanGuidedUdaProjectionDraft(drawingCandidate('B18'), B18_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
+  const b17 = buildPlanGuidedDraft(drawingCandidate('B17'), B17_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
+  const b18 = buildPlanGuidedDraft(drawingCandidate('B18'), B18_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
   assert.equal(b17.status, 'READY_FOR_HUMAN_APPROVAL')
   assert.equal(b18.status, 'READY_FOR_HUMAN_APPROVAL')
   assert.ok(b17.projection)
@@ -180,7 +193,7 @@ test('phase coverage must account for all four hours of the shared UDA phase', (
     ...B17_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL,
     phaseCoverageBlockIds: ['B17'],
   }
-  const draft = buildPlanGuidedUdaProjectionDraft(drawingCandidate('B17'), invalidRecipe)
+  const draft = buildPlanGuidedDraft(drawingCandidate('B17'), invalidRecipe)
   assert.equal(draft.status, 'INVALID')
   assert.ok(draft.issues.some((item) => item.code === 'GUIDE_DURATION_MISMATCH' && item.severity === 'BLOCKING'))
 })
@@ -195,13 +208,13 @@ test('plan generation drift invalidates the recipe without changing the existing
   }
   const currentCandidate = drawingCandidate('B18')
   assert.equal(currentCandidate.candidateId, B18_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL.candidateId)
-  const draft = buildPlanGuidedUdaProjectionDraft(currentCandidate, invalidRecipe)
+  const draft = buildPlanGuidedDraft(currentCandidate, invalidRecipe)
   assert.equal(draft.status, 'INVALID')
   assert.ok(draft.issues.some((item) => item.code === 'PLAN_BINDING_MISMATCH' && item.severity === 'BLOCKING'))
 })
 
 test('B19 keeps the Plan-specific final evidence instead of reducing it to a generic UDA indicator', () => {
-  const draft = buildPlanGuidedUdaProjectionDraft(drawingCandidate('B19'), B19_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
+  const draft = buildPlanGuidedDraft(drawingCandidate('B19'), B19_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
   assert.equal(draft.status, 'READY_FOR_HUMAN_APPROVAL')
   assert.ok(draft.projection)
   assert.equal(draft.projection.steps[0].instruction, 'Elaborato individuale con più costruzioni e autovalutazione.')
@@ -218,7 +231,7 @@ test('B20-B22 reuse PLAN_GUIDED_UDA by pairing consecutive one-hour phases into 
   const review = buildProjectionBatchReview(
     ['B20', 'B21', 'B22'].map((blockId) => circularCandidate(blockId as 'B20' | 'B21' | 'B22')),
     [...B20_B22_RECIPE_PROPOSALS],
-  )
+  , TEST_PLAN_RUNTIME_SOURCES)
   assert.deepEqual(review.map((item) => [item.blockId, item.status]), [
     ['B20', 'READY_FOR_HUMAN_APPROVAL'],
     ['B21', 'READY_FOR_HUMAN_APPROVAL'],
@@ -232,7 +245,7 @@ test('B20-B22 reuse PLAN_GUIDED_UDA by pairing consecutive one-hour phases into 
 })
 
 test('B20 derives two operational steps from UDA phases 1 and 2 and keeps the Plan evidence', () => {
-  const draft = buildPlanGuidedUdaProjectionDraft(circularCandidate('B20'), B20_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
+  const draft = buildPlanGuidedDraft(circularCandidate('B20'), B20_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
   assert.equal(draft.status, 'READY_FOR_HUMAN_APPROVAL')
   assert.ok(draft.projection)
   assert.deepEqual(draft.projection.provenance.selectedUdaPhases, [1, 2])
@@ -243,7 +256,7 @@ test('B20 derives two operational steps from UDA phases 1 and 2 and keeps the Pl
 })
 
 test('B21 pairs recovery-chain and circular-model phases without inventing internal timing', () => {
-  const draft = buildPlanGuidedUdaProjectionDraft(circularCandidate('B21'), B21_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
+  const draft = buildPlanGuidedDraft(circularCandidate('B21'), B21_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
   assert.equal(draft.status, 'READY_FOR_HUMAN_APPROVAL')
   assert.ok(draft.projection)
   assert.deepEqual(draft.projection.provenance.selectedUdaPhases, [3, 4])
@@ -253,7 +266,7 @@ test('B21 pairs recovery-chain and circular-model phases without inventing inter
 })
 
 test('B22 keeps timing from UDA phases but exposes the PACK worksheet as a task resource', () => {
-  const draft = buildPlanGuidedUdaProjectionDraft(circularCandidate('B22'), B22_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
+  const draft = buildPlanGuidedDraft(circularCandidate('B22'), B22_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
   assert.equal(draft.status, 'READY_FOR_HUMAN_APPROVAL')
   assert.ok(draft.projection)
   assert.deepEqual(draft.projection.provenance.selectedUdaPhases, [5, 6])
@@ -270,7 +283,7 @@ test('multi-phase PLAN_GUIDED_UDA fails closed if selected phases do not exactly
     ...B20_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL,
     operationalPhaseOrdinals: [1],
   }
-  const draft = buildPlanGuidedUdaProjectionDraft(circularCandidate('B20'), invalidRecipe)
+  const draft = buildPlanGuidedDraft(circularCandidate('B20'), invalidRecipe)
   assert.equal(draft.status, 'INVALID')
   assert.ok(draft.issues.some((item) => item.code === 'GUIDE_DURATION_MISMATCH' && item.severity === 'BLOCKING'))
 })
