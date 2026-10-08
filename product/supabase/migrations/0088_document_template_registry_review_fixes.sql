@@ -118,7 +118,8 @@ begin
   update public.document_templates
   set current_version_no = next_no,
       status = case
-        when active_version_no is not null then 'ACTIVE'
+        when status = 'ACTIVE' and active_version_no is not null then 'ACTIVE'
+        when status = 'RETIRED' then 'RETIRED'
         else 'DRAFT'
       end,
       updated_at = now()
@@ -234,7 +235,8 @@ begin
 
   update public.document_templates
   set status = case
-    when active_version_no is not null then 'ACTIVE'
+    when status = 'ACTIVE' and active_version_no is not null then 'ACTIVE'
+    when status = 'RETIRED' then 'RETIRED'
     when computed_result in ('PASS','PASS_WITH_NOTES') then 'QUALITY_REVIEWED'
     when computed_result = 'REVIEW_REQUIRED' then 'REVIEW_REQUIRED'
     else 'BLOCKED'
