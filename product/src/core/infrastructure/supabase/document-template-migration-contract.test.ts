@@ -69,10 +69,12 @@ test('trusted quality review fails closed when section or field arrays are absen
   )
 })
 
-test('saving and reviewing a draft preserves an already active publication', () => {
-  const sql = readGovernedMigrationSql()
-  const activePreservationBranches = sql.match(/when active_version_no is not null then 'ACTIVE'/gi) ?? []
-  assert.equal(activePreservationBranches.length >= 2, true)
+test('saving and reviewing a draft preserves live ACTIVE and historical RETIRED status separately', () => {
+  const sql = readFileSync(reviewFixMigrationPath, 'utf8')
+  const activePreservationBranches = sql.match(/when status = 'ACTIVE' and active_version_no is not null then 'ACTIVE'/gi) ?? []
+  const retiredPreservationBranches = sql.match(/when status = 'RETIRED' then 'RETIRED'/gi) ?? []
+  assert.equal(activePreservationBranches.length, 2)
+  assert.equal(retiredPreservationBranches.length, 2)
 })
 
 test('template source identity preserves provenance for identical bytes', () => {
