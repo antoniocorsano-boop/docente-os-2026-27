@@ -105,6 +105,12 @@ export type HomeSurfaceComposition = SurfaceComposition & {
   primaryAction: CompositionAction
 }
 
+export type HomePrimaryTargetRequest =
+  | { kind: 'CURRENT_LESSON' | 'UPCOMING_LESSON' | 'NEXT_MOMENT'; sectionId: string | null; blockId: string | null; modeled: boolean; label: string }
+  | { kind: 'PENDING_REGISTRATION'; sectionId: string | null; blockId: string | null; label: string }
+  | { kind: 'AMBIGUOUS' | 'PLANNER' | 'DAY_CLOSED' | 'FALLBACK'; label: string }
+
+export function resolveHomePrimaryTarget(input: HomePrimaryTargetRequest): HomeActionDescriptor
 export function composeHomeIntelligentSurface(primary: HomePrimaryViewModel): HomeSurfaceComposition
 ```
 
@@ -131,7 +137,9 @@ Support-action policy is frozen to current behavior:
 
 Fallback is same-surface and deterministic: `EXPLORE/NONE`, generic `RIPARTI DA QUI`, primary `HOME_OPEN_PLANNER`, support `HOME_OPEN_TIMETABLE`, full view `HOME_SHOW_ALL`. Every valid fixture must have `fallbackReason === undefined`; only deliberately invalid descriptors may exercise fallback.
 
-- [ ] **Step 1: Write the failing adapter tests before creating the implementation file.** Cover CURRENT modeled, CURRENT class fallback, PENDING class record, UPCOMING modeled, NEXT_MOMENT modeled, AMBIGUOUS, PLANNER, DAY_CLOSED, FALLBACK, incomplete lesson target to Orario and invalid descriptor fallback. Assert exact intent, mode, primary action id/href semantics, exactly one support action, full-view action and absence/presence of `fallbackReason`.
+`resolveHomePrimaryTarget()` is the only pure mapper from already-authoritative route capability to a Home registered action. It does not inspect repositories or infer lesson state. Rules: CURRENT uses `teach`; UPCOMING/NEXT use `prepare`; PENDING uses class `record`; AMBIGUOUS uses Orario; PLANNER/DAY_CLOSED/FALLBACK use Oggi. Missing `sectionId` degrades lesson/next/pending to Orario. `modeled=true` without a canonical `blockId` is incoherent and also degrades to Orario rather than throwing or guessing.
+
+- [ ] **Step 1: Write the failing adapter/target tests before creating the implementation file.** Cover CURRENT modeled, CURRENT class fallback, PENDING class record, UPCOMING modeled, NEXT_MOMENT modeled, AMBIGUOUS, PLANNER, DAY_CLOSED, FALLBACK, missing section to Orario, incoherent `modeled=true` + missing block to Orario, and invalid descriptor fallback. Assert the exact descriptor returned by `resolveHomePrimaryTarget()`, then exact intent, mode, primary action id/href semantics, exactly one support action, full-view action and absence/presence of `fallbackReason`.
 - [ ] **Step 2: Add a source-boundary test.** Read `home-intelligent-ui.ts` and reject `core/infrastructure`, `Supabase`, `/actions`, provider/OpenAI imports, arbitrary `href` input fields and any plain helper declaration matching `function use[A-Z]`.
 - [ ] **Step 3: Run RED.** `cd product && npx tsx --test src/app/home-intelligent-ui.test.ts` → expected failure because the adapter does not exist yet.
 - [ ] **Step 4: Implement only the pure adapter/types/mapping above.** Delegate materialization and validation to `composeDeterministicSurface()`; do not reimplement registry or policy behavior.
@@ -162,14 +170,15 @@ type HomeLessonRouteContext = {
 }
 
 function resolveHomeLessonRouteContext(
-  section: AnnualSection,
-  annualSnapshot: AnnualSnapshot,
+  section: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>>['sections'][number],
+  annualSnapshot: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>>,
 ): HomeLessonRouteContext
 ```
 
 The existing `buildClassWorkspaceLearningFocus()` + `buildBlocks()` + `resolveRuntimeHumanTaskLessonProjection()` logic remains unchanged inside this helper.
 
 4. `buildLessonWorkspaceHref` must disappear from Home imports; registered actions own route construction.
+5. `page.tsx` must call `resolveHomePrimaryTarget()` rather than hand-assembling `HOME_*` descriptors. This makes every route-mode decision unit-testable before the Next.js integration/browser gate.
 
 **Exact target mapping:**
 
@@ -187,7 +196,7 @@ The existing `buildClassWorkspaceLearningFocus()` + `buildBlocks()` + `resolveRu
 
 The textual title/description/meta and priority expression are otherwise unchanged.
 
-- [ ] **Step 1: Extend RED tests/source assertions before the page refactor.** Assert `page.tsx` must not import/call `buildLessonWorkspaceHref`, must not render `primary.href` or `primary.action`, and must still contain the authoritative order `dailyPrimary` before `immediateTask`, then `nextMomentPrimary`.
+- [ ] **Step 1: Extend RED tests/source assertions before the page refactor.** Unit-test `resolveHomePrimaryTarget()` for every exact mapping below. Assert `page.tsx` must import/call that resolver, must not import/call `buildLessonWorkspaceHref`, must not render `primary.href` or `primary.action`, and must still contain the authoritative order `dailyPrimary` before `immediateTask`, then `nextMomentPrimary`.
 - [ ] **Step 2: Run RED.** `npx tsx --test src/app/home-intelligent-ui.test.ts` → expected failure on current source assertions.
 - [ ] **Step 3: Refactor only the primary target fields/helper described above.** Do not touch repository queries, `resolveHomeDailyContext`, `resolveNextTeacherMoment`, planner ranking, pinned resources or reminder semantics.
 - [ ] **Step 4: Run focused tests.** `npx tsx --test src/app/home-intelligent-ui.test.ts` → PASS.
