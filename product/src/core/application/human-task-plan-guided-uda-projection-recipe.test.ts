@@ -19,7 +19,7 @@ import {
 
 const TEST_PLAN_RUNTIME_SOURCE = {
   code: B16_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL.planSource.code,
-  generationId: B16_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL.planSource.generationId,
+  generationId: 'runtime-plan-generation',
 }
 const TEST_PLAN_RUNTIME_SOURCES = { Prima: TEST_PLAN_RUNTIME_SOURCE }
 
@@ -200,19 +200,17 @@ test('phase coverage must account for all four hours of the shared UDA phase', (
   assert.ok(draft.issues.some((item) => item.code === 'GUIDE_DURATION_MISMATCH' && item.severity === 'BLOCKING'))
 })
 
-test('plan generation drift invalidates the recipe without changing the existing candidate fingerprint', () => {
-  const invalidRecipe = {
-    ...B18_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL,
-    planSource: {
-      ...B18_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL.planSource,
-      generationId: 'different-plan-generation',
-    },
-  }
+test('plan recipe stays portable while runtime generation evidence is workspace-local', () => {
   const currentCandidate = drawingCandidate('B18')
   assert.equal(currentCandidate.candidateId, B18_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL.candidateId)
-  const draft = buildPlanGuidedDraft(currentCandidate, invalidRecipe)
-  assert.equal(draft.status, 'INVALID')
-  assert.ok(draft.issues.some((item) => item.code === 'PLAN_BINDING_MISMATCH' && item.severity === 'BLOCKING'))
+  assert.equal('generationId' in B18_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL.planSource, false)
+
+  const draft = buildPlanGuidedUdaProjectionDraft(
+    currentCandidate,
+    B18_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL,
+    { code: 'CAN-PLAN-1', generationId: 'another-workspace-local-generation' },
+  )
+  assert.equal(draft.status, 'READY_FOR_HUMAN_APPROVAL')
 })
 
 test('B19 keeps the Plan-specific final evidence instead of reducing it to a generic UDA indicator', () => {

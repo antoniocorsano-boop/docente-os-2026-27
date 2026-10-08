@@ -6,15 +6,29 @@ import {
   type HumanTaskStakeholder,
 } from '@/core/application/human-task-stakeholder-cognitive-gate'
 
-export type ApprovedHumanTaskSourceBinding = {
+export type ApprovedHumanTaskLogicalPlanBinding = {
   code: string
-  role: 'PLAN' | 'UDA' | 'PACK'
+  role: 'PLAN'
+  /** DIDACTIC is exposed in the projection; STRUCTURAL is retained only for validation/fingerprint provenance. */
+  contribution?: 'DIDACTIC' | 'STRUCTURAL'
+  sourceRevision?: string
+  assetId?: never
+  generationId?: never
+}
+
+export type ApprovedHumanTaskMaterializedSourceBinding = {
+  code: string
+  role: 'UDA' | 'PACK'
   /** DIDACTIC is exposed in the projection; STRUCTURAL is retained only for validation/fingerprint provenance. */
   contribution?: 'DIDACTIC' | 'STRUCTURAL'
   assetId: string
   generationId: string
   sourceRevision?: string
 }
+
+export type ApprovedHumanTaskSourceBinding =
+  | ApprovedHumanTaskLogicalPlanBinding
+  | ApprovedHumanTaskMaterializedSourceBinding
 
 export type ApprovedHumanTaskCognitiveReceipt = {
   status: 'SATISFIED'
@@ -59,8 +73,15 @@ export function validateApprovedHumanTaskManifest(manifest: ApprovedHumanTaskMan
   if (manifest.approval.decision !== 'APPROVE') issues.push('MANIFEST_NOT_APPROVED')
   if (!manifest.approval.reviewPackageId.trim()) issues.push('REVIEW_PACKAGE_MISSING')
   if (!manifest.approval.improvementNote.trim()) issues.push('IMPROVEMENT_REVIEW_MISSING')
-  if (!manifest.sourceBindings.length || manifest.sourceBindings.some((source) => !source.assetId || !source.generationId)) {
+  if (!manifest.sourceBindings.length || manifest.sourceBindings.some((source) =>
+    source.role !== 'PLAN' && (!source.assetId || !source.generationId)
+  )) {
     issues.push('SOURCE_GENERATION_BINDING_MISSING')
+  }
+  if (manifest.sourceBindings.some((source) =>
+    source.role === 'PLAN' && ('assetId' in source || 'generationId' in source)
+  )) {
+    issues.push('PLAN_RUNTIME_IDENTITY_EMBEDDED')
   }
   if (manifest.schemaVersion >= 2) issues.push(...validateCognitiveReceipt(manifest.approval.cognitiveFulfillment))
   if (projection.grade !== binding.grade) issues.push('GRADE_MISMATCH')

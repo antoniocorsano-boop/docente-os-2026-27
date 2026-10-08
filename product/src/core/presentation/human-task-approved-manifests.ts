@@ -26,8 +26,6 @@ const SOURCE_BINDINGS: ApprovedHumanTaskSourceBinding[] = [
   {
     code: 'CAN-PLAN-1',
     role: 'PLAN',
-    assetId: '4a027986-5b6d-49db-9b52-01cfae679c08',
-    generationId: 'd327355b-76a9-496f-99cb-dc942fd950e4',
     sourceRevision: 'AIroW36pbUMbMlUcOeMxi9OCzPfdnUEUcdx2qF4yPJDZZ6ChzDjwtP-kCQPdkXadhwPRoLyU3X3cT2R4mHJCyWcslKA0uY8qPRGcj83FIU4',
   },
   {

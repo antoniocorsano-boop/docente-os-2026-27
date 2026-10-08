@@ -86,8 +86,11 @@ test('approved B31-B33 manifests are schema v2, source-bound and cognitively rec
     assert.equal(manifest.schemaVersion, 2)
     assert.deepEqual(validateApprovedHumanTaskManifest(manifest), [])
     assert.equal(manifest.sourceBindings.find((source) => source.code === 'CAN-PACK-1D')?.contribution, 'STRUCTURAL')
-    assert.deepEqual(manifest.sourceBindings.map((source) => [source.code, source.generationId]), [
-      ['CAN-PLAN-1', 'd327355b-76a9-496f-99cb-dc942fd950e4'],
+    const plan = manifest.sourceBindings.find((source) => source.role === 'PLAN')
+    assert.ok(plan)
+    assert.equal('assetId' in plan, false)
+    assert.equal('generationId' in plan, false)
+    assert.deepEqual(manifest.sourceBindings.flatMap((source) => source.role === 'PLAN' ? [] : [[source.code, source.generationId]]), [
       ['CAN-UDA-1-07', '92194b46-b7e5-4c52-82a7-b1d75403b8b1'],
       ['CAN-PACK-1D', '1d150f77-6a7f-4f8b-8e85-2fa370956e29'],
     ])

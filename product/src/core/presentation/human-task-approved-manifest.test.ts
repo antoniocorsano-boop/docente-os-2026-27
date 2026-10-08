@@ -18,8 +18,11 @@ test('materializer exposes all approved manifest projections and preserves curre
   assert.deepEqual(projections.map((projection) => projection.blockId), ['B28', 'B29', 'B30'])
 
   for (const manifest of APPROVED_HUMAN_TASK_MANIFESTS) {
-    assert.deepEqual(manifest.sourceBindings.map((source) => [source.code, source.generationId]), [
-      ['CAN-PLAN-1', 'd327355b-76a9-496f-99cb-dc942fd950e4'],
+    const plan = manifest.sourceBindings.find((source) => source.role === 'PLAN')
+    assert.ok(plan)
+    assert.equal('assetId' in plan, false)
+    assert.equal('generationId' in plan, false)
+    assert.deepEqual(manifest.sourceBindings.flatMap((source) => source.role === 'PLAN' ? [] : [[source.code, source.generationId]]), [
       ['CAN-UDA-1-06', '7b438474-22ad-4f00-99af-c84701c8dfbe'],
       ['CAN-PACK-1F', '3b884504-990b-4c70-a1a6-51439ad66894'],
     ])
@@ -51,3 +54,15 @@ test('manifest validation fails closed on source-generation or structural drift'
   }
   assert.ok(validateApprovedHumanTaskManifest(structuralDrift).includes('UDA_MISMATCH'))
 })
+
+test('manifest validation rejects a PLAN binding that embeds workspace-local runtime identity', () => {
+  const current = APPROVED_HUMAN_TASK_MANIFESTS[0]
+  const legacyPlan = {
+    ...current,
+    sourceBindings: current.sourceBindings.map((source) => source.role === 'PLAN'
+      ? { ...source, assetId: 'legacy-plan-asset', generationId: 'legacy-plan-generation' }
+      : source),
+  }
+  assert.ok(validateApprovedHumanTaskManifest(legacyPlan as typeof current).includes('PLAN_RUNTIME_IDENTITY_EMBEDDED'))
+})
+

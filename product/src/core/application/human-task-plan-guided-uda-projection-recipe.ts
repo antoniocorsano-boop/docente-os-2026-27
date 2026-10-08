@@ -35,7 +35,6 @@ export type HumanTaskPlanGuidedUdaProjectionRecipe = {
   planBinding: ProjectionRecipePlanBinding
   planSource: {
     code: string
-    generationId: string
     blockActivity: string | null
     blockEvidence: string
   }
@@ -102,12 +101,11 @@ export function buildPlanGuidedUdaProjectionDraft(
   } else if (
     runtimePlanSource.code !== canonicalPlan.code
     || recipe.planSource.code !== runtimePlanSource.code
-    || recipe.planSource.generationId !== runtimePlanSource.generationId
   ) {
     issues.push(issue(
       'PLAN_BINDING_MISMATCH',
       'BLOCKING',
-      `Il frammento del Piano è legato a ${recipe.planSource.code}/${recipe.planSource.generationId}, ma il binding runtime corrente richiede ${runtimePlanSource.code}/${runtimePlanSource.generationId}.`,
+      `Il frammento del Piano usa ${recipe.planSource.code}, ma il binding runtime corrente richiede ${runtimePlanSource.code}.`,
     ))
   }
 

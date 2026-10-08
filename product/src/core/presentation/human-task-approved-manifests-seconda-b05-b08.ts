@@ -10,7 +10,7 @@ const SOURCES: HumanTaskContentSource[] = [
     code: 'CAN-PLAN-2',
     label: 'Piano annuale operativo Tecnologia — classe seconda',
     role: 'PLAN',
-    url: '/knowledge/36ef3be5-925f-4e28-afff-df11097827a9',
+    url: '/piano-annuale',
   },
   {
     code: 'CAN-UDA-2-02',
@@ -29,7 +29,6 @@ const SOURCES: HumanTaskContentSource[] = [
 const SOURCE_BINDINGS: ApprovedHumanTaskSourceBinding[] = [
   {
     code: 'CAN-PLAN-2', role: 'PLAN', contribution: 'DIDACTIC',
-    assetId: '36ef3be5-925f-4e28-afff-df11097827a9', generationId: 'a1066c0a-2720-40b0-841e-306cb998ce3e',
   },
   {
     code: 'CAN-UDA-2-02', role: 'UDA', contribution: 'DIDACTIC',

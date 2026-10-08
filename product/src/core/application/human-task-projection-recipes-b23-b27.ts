@@ -2,7 +2,6 @@ import type { HumanTaskPlanGuidedUdaProjectionRecipe } from './human-task-plan-g
 
 const PLAN_SOURCE = {
   code: 'CAN-PLAN-1',
-  generationId: 'd327355b-76a9-496f-99cb-dc942fd950e4',
 } as const
 
 const UDA_GENERATION = '9c70abfe-9d45-4977-9551-6b745778f248'
