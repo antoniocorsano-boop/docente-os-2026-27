@@ -14,42 +14,43 @@ export type CanonicalPlanSourceLookup = {
 
 export class SupabaseCanonicalPlanSourceRepository {
   async resolve(input: CanonicalPlanSourceLookup): Promise<CanonicalPlanRuntimeSource | null> {
-    const code = input.code.trim()
+    const code = input.code.trim().toUpperCase()
     if (!code) throw new Error('Canonical plan source code is required')
 
     const supabase = await createClient()
-    const { data: assets, error: assetError } = await supabase
-      .from('knowledge_assets')
-      .select('id,workspace_id,academic_year_id,current_generation_id')
+    const { data: binding, error: bindingError } = await supabase
+      .from('canonical_plan_runtime_bindings')
+      .select('asset_id,generation_id')
       .eq('workspace_id', input.workspaceId)
       .eq('academic_year_id', input.academicYearId)
-      .contains('source_metadata', { canonicalExecCode: code })
-      .limit(2)
+      .eq('canonical_plan_code', code)
+      .maybeSingle()
+
+    if (bindingError) throw new Error(bindingError.message)
+    if (!binding) return null
+
+    const { data: asset, error: assetError } = await supabase
+      .from('knowledge_assets')
+      .select('id,workspace_id,academic_year_id')
+      .eq('id', binding.asset_id)
+      .eq('workspace_id', input.workspaceId)
+      .eq('academic_year_id', input.academicYearId)
+      .maybeSingle()
 
     if (assetError) throw new Error(assetError.message)
-    if (!assets || assets.length === 0) return null
-    if (assets.length > 1) throw new Error(`Canonical plan source ${code} is ambiguous in the active workspace`)
-
-    const asset = assets[0]
-    if (!asset.current_generation_id) return null
+    if (!asset) return null
 
     const { data: generation, error: generationError } = await supabase
       .from('knowledge_processing_generations')
       .select('id,asset_id,workspace_id,status')
-      .eq('id', asset.current_generation_id)
+      .eq('id', binding.generation_id)
+      .eq('asset_id', asset.id)
+      .eq('workspace_id', input.workspaceId)
+      .eq('status', 'SUCCEEDED')
       .maybeSingle()
 
     if (generationError) throw new Error(generationError.message)
     if (!generation) return null
-    if (
-      generation.status !== 'SUCCEEDED' ||
-      generation.workspace_id !== input.workspaceId ||
-      generation.asset_id !== asset.id ||
-      asset.workspace_id !== input.workspaceId ||
-      asset.academic_year_id !== input.academicYearId
-    ) {
-      return null
-    }
 
     return {
       code,
