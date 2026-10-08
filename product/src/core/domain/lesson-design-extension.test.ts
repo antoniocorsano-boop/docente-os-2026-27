@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
 import test from 'node:test'
 import {
   acceptedLessonDesignResources,
@@ -8,6 +9,15 @@ import {
   validateLessonDesignExtensionRevision,
   type LessonDesignExtension,
 } from './lesson-design-extension'
+
+const atlasBindActionsSource = fs.readFileSync(
+  new URL('../../app/progetta/atlas/ritorno/actions.ts', import.meta.url),
+  'utf8',
+)
+const lessonWorkspaceSource = fs.readFileSync(
+  new URL('../../app/classi/[sectionId]/lezioni/[blockId]/page.tsx', import.meta.url),
+  'utf8',
+)
 
 const BASE = [
   { id: 'S01', minutes: 10, title: 'Avvio', instruction: 'Apri il tema.' },
@@ -95,4 +105,11 @@ test('revision validation normalizes editable content without touching provenanc
   assert.equal(revision.title, 'Chiusura rapida')
   assert.equal(revision.body, 'Domanda finale.')
   assert.equal(revision.cue, 'Un minuto')
+})
+
+test('Atlas material persistence does not bind canonical plan provenance to global workspace UUIDs', () => {
+  assert.doesNotMatch(atlasBindActionsSource, /canonicalPlanAssetId:\s*source\.assetId/)
+  assert.doesNotMatch(atlasBindActionsSource, /canonicalGenerationId:\s*source\.generationId/)
+  assert.doesNotMatch(lessonWorkspaceSource, /canonicalPlanAssetId:\s*source\.assetId/)
+  assert.doesNotMatch(lessonWorkspaceSource, /canonicalGenerationId:\s*source\.generationId/)
 })
