@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
 import test from 'node:test'
 import {
   buildStudioAtlasMaterialHref,
@@ -7,6 +8,15 @@ import {
   parseAtlasMaterialBundle,
   type TeachingContextSnapshot,
 } from './atlas-material-handoff'
+
+const atlasBindActionsSource = fs.readFileSync(
+  new URL('../../app/progetta/atlas/ritorno/actions.ts', import.meta.url),
+  'utf8',
+)
+const lessonWorkspaceSource = fs.readFileSync(
+  new URL('../../app/classi/[sectionId]/lezioni/[blockId]/page.tsx', import.meta.url),
+  'utf8',
+)
 
 const context: TeachingContextSnapshot = {
   schema: 'docente-os.teaching-context/v0.1',
@@ -76,4 +86,11 @@ test('Atlas bundle parser fails closed outside the v0.1 material taxonomy', () =
   const encoded = Buffer.from(JSON.stringify(validBundle), 'utf8').toString('base64url')
   assert.deepEqual(decodeAtlasMaterialBundle(encoded), validBundle)
   assert.throws(() => parseAtlasMaterialBundle({ ...validBundle, items: [{ ...validBundle.items[0], type: 'video' }] }))
+})
+
+test('Atlas material persistence does not bind canonical plan provenance to global workspace UUIDs', () => {
+  assert.doesNotMatch(atlasBindActionsSource, /canonicalPlanAssetId:\s*source\.assetId/)
+  assert.doesNotMatch(atlasBindActionsSource, /canonicalGenerationId:\s*source\.generationId/)
+  assert.doesNotMatch(lessonWorkspaceSource, /canonicalPlanAssetId:\s*source\.assetId/)
+  assert.doesNotMatch(lessonWorkspaceSource, /canonicalGenerationId:\s*source\.generationId/)
 })
