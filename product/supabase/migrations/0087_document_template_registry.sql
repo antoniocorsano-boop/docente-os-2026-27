@@ -413,10 +413,40 @@ begin
           || coalesce(field_node->>'label', '') || E'\n'
           || coalesce(field_node->>'helpText', '');
 
-        if jsonb_typeof(field_node->'options') = 'array' then
-          for option_node in select value from jsonb_array_elements(field_node->'options') loop
-            external_text := external_text || E'\n' || coalesce(option_node->>'label', '');
-          end loop;
+        if field_node ? 'options' then
+          if jsonb_typeof(field_node->'options') <> 'array' then
+            if not ('INVALID_FIELD_OPTIONS' = any(validation_codes)) then
+              validation_codes := array_append(validation_codes, 'INVALID_FIELD_OPTIONS');
+            end if;
+          else
+            for option_node in select value from jsonb_array_elements(field_node->'options') loop
+              if jsonb_typeof(option_node) <> 'object' then
+                if not ('INVALID_FIELD_OPTION_VALUE' = any(validation_codes)) then
+                  validation_codes := array_append(validation_codes, 'INVALID_FIELD_OPTION_VALUE');
+                end if;
+                if not ('INVALID_FIELD_OPTION_LABEL' = any(validation_codes)) then
+                  validation_codes := array_append(validation_codes, 'INVALID_FIELD_OPTION_LABEL');
+                end if;
+                continue;
+              end if;
+
+              if jsonb_typeof(option_node->'value') <> 'string'
+                 or nullif(trim(option_node->>'value'), '') is null then
+                if not ('INVALID_FIELD_OPTION_VALUE' = any(validation_codes)) then
+                  validation_codes := array_append(validation_codes, 'INVALID_FIELD_OPTION_VALUE');
+                end if;
+              end if;
+
+              if jsonb_typeof(option_node->'label') <> 'string'
+                 or nullif(trim(option_node->>'label'), '') is null then
+                if not ('INVALID_FIELD_OPTION_LABEL' = any(validation_codes)) then
+                  validation_codes := array_append(validation_codes, 'INVALID_FIELD_OPTION_LABEL');
+                end if;
+              end if;
+
+              external_text := external_text || E'\n' || coalesce(option_node->>'label', '');
+            end loop;
+          end if;
         end if;
       end loop;
     end loop;
@@ -518,6 +548,7 @@ as $$
 declare
   uid uuid := auth.uid();
   workspace uuid;
+  template_kind text;
   review_id uuid;
   version_schema jsonb;
   computed_review jsonb;
@@ -528,7 +559,8 @@ begin
   if target_result not in ('PASS','PASS_WITH_NOTES','REVIEW_REQUIRED','BLOCKED') then raise exception 'invalid quality review result'; end if;
   if target_findings is null or jsonb_typeof(target_findings) <> 'array' then raise exception 'quality review findings must be an array'; end if;
 
-  select template.workspace_id into workspace
+  select template.workspace_id, template.document_kind
+    into workspace, template_kind
   from public.document_templates template
   where template.id = target_template_id;
   if workspace is null or not private.is_workspace_member(workspace) then raise exception 'template not available'; end if;
@@ -538,6 +570,13 @@ begin
   where version.template_id = target_template_id
     and version.version_no = target_version_no;
   if version_schema is null then raise exception 'template version not available'; end if;
+
+  if version_schema->>'kind' is distinct from template_kind then
+    raise exception 'TEMPLATE_KIND_MISMATCH';
+  end if;
+  if version_schema->>'version' is distinct from target_version_no::text then
+    raise exception 'TEMPLATE_VERSION_MISMATCH';
+  end if;
 
   computed_review := private.compute_document_template_quality_review(version_schema);
   computed_result := computed_review->>'result';
