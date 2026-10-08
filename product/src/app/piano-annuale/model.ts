@@ -1,6 +1,7 @@
 import type { AnnualPlanGrade } from '@/core/domain/annual-plan-execution'
 
 export type GradeKey = 'Prima' | 'Seconda' | 'Terza'
+export type CanonicalPlanCode = 'CAN-PLAN-1' | 'CAN-PLAN-2' | 'CAN-PLAN-3'
 
 export type AnnualPlanSegment = {
   uda: string
@@ -13,10 +14,15 @@ export type AnnualPlanSegment = {
 }
 
 export type CanonicalPlanSource = {
-  code: string
+  code: CanonicalPlanCode
+}
+
+export type CanonicalPlanRuntimeSource = CanonicalPlanSource & {
   assetId: string
   generationId: string
 }
+
+export type CanonicalPlanRuntimeSources = Record<GradeKey, CanonicalPlanRuntimeSource | null>
 
 export type AnnualPlanBlock = {
   id: string
@@ -43,21 +49,9 @@ export const GRADE_UI: Record<AnnualPlanGrade, GradeKey> = {
 }
 
 export const CANONICAL_PLAN_SOURCES: Record<GradeKey, CanonicalPlanSource> = {
-  Prima: {
-    code: 'CAN-PLAN-1',
-    assetId: '4a027986-5b6d-49db-9b52-01cfae679c08',
-    generationId: 'd327355b-76a9-496f-99cb-dc942fd950e4',
-  },
-  Seconda: {
-    code: 'CAN-PLAN-2',
-    assetId: '36ef3be5-925f-4e28-afff-df11097827a9',
-    generationId: 'a1066c0a-2720-40b0-841e-306cb998ce3e',
-  },
-  Terza: {
-    code: 'CAN-PLAN-3',
-    assetId: '978702f8-4579-452d-925b-8e4d890e19f9',
-    generationId: 'bd4cb766-5d46-4420-bc82-f979528a14b2',
-  },
+  Prima: { code: 'CAN-PLAN-1' },
+  Seconda: { code: 'CAN-PLAN-2' },
+  Terza: { code: 'CAN-PLAN-3' },
 }
 
 export const ANNUAL_PLAN_SEGMENTS: Record<GradeKey, AnnualPlanSegment[]> = {
