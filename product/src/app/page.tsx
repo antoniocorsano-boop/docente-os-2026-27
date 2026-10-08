@@ -3,12 +3,13 @@ import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { LocalTeacherGreeting } from '@/components/local-user-profile/local-user-profile'
 import { buildClassWorkspaceLearningFocus } from '@/app/classi/class-workspace-model'
-import { buildBlocks, GRADE_UI } from '@/app/piano-annuale/model'
+import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { projectTemporalDay, type ProjectedCalendarState } from '@/core/application/temporal-projection-service'
 import type { PlannerTask } from '@/core/domain/planner-task'
 import { WORKSPACE_PINNED_RESOURCE_SLOTS } from '@/core/domain/workspace-pinned-resource'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
+import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
@@ -20,6 +21,8 @@ import { buildLessonWorkspaceHref, resolveRuntimeHumanTaskLessonProjection } fro
 import { resolveNextTeacherMoment, type TeacherMoment } from '@/core/presentation/teacher-moment'
 
 export const dynamic = 'force-dynamic'
+
+type CanonicalGenerationByGrade = Record<'PRIMA' | 'SECONDA' | 'TERZA', string | null>
 
 const entrances = [
   { href: '/planner', title: 'Oggi', description: 'Attività, priorità e cose da fare.' },
@@ -39,7 +42,7 @@ export default async function HomePage() {
   const timetableReader = new SupabaseTimetableProjectionReadRepository()
   const calendarReader = new SupabaseCalendarProjectionReadRepository()
 
-  const [teacherSettings, tasks, timetableProjection, calendarProjection, annualSnapshot, sessions, pinnedResources] = await Promise.all([
+  const [teacherSettings, tasks, timetableProjection, calendarProjection, annualSnapshot, sessions, pinnedResources, canonicalGenerationByGrade] = await Promise.all([
     year
       ? new SupabaseTeacherSettingsRepository().getOrCreate(context.workspace.id, year.id)
       : Promise.resolve(null),
@@ -59,6 +62,9 @@ export default async function HomePage() {
     year
       ? new SupabaseWorkspacePinnedResourceRepository().list(context.workspace.id, year.id)
       : Promise.resolve([]),
+    year
+      ? loadCanonicalGenerationByGrade(context.workspace.id, year.id)
+      : Promise.resolve({ PRIMA: null, SECONDA: null, TERZA: null } satisfies CanonicalGenerationByGrade),
   ])
 
   const projectedDay = projectTemporalDay({
@@ -86,8 +92,8 @@ export default async function HomePage() {
 
   const priorityTask = selectPriorityTask(tasks, moment.date)
   const immediateTask = priorityTask && taskNeedsAttentionNow(priorityTask, moment.date) ? priorityTask : null
-  const dailyPrimary = resolveDailyPrimary(dailyContext, annualSnapshot)
-  const nextMomentPrimary = resolveNextMomentPrimary(nextTeacherMoment, annualSnapshot)
+  const dailyPrimary = resolveDailyPrimary(dailyContext, annualSnapshot, canonicalGenerationByGrade)
+  const nextMomentPrimary = resolveNextMomentPrimary(nextTeacherMoment, annualSnapshot, canonicalGenerationByGrade)
   const primary = dailyPrimary
     ?? (immediateTask
       ? {
@@ -202,6 +208,7 @@ export default async function HomePage() {
 function resolveDailyPrimary(
   dailyContext: HomeDailyContext,
   annualSnapshot: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>> | null,
+  canonicalGenerationByGrade: CanonicalGenerationByGrade,
 ) {
   const primary = dailyContext.primary
   if (!primary) return null
@@ -224,7 +231,9 @@ function resolveDailyPrimary(
     ? annualSnapshot.sections.find((item) => item.id === lesson.sectionId) ?? null
     : null
   const classLabel = section ? `${gradeNumber(section.grade)}ª ${section.sectionCode}` : lesson.title
-  const lessonHref = section && annualSnapshot ? resolveLessonHref(section, annualSnapshot, 'teach') : null
+  const lessonHref = section && annualSnapshot
+    ? resolveLessonHref(section, annualSnapshot, canonicalGenerationByGrade[section.grade], 'teach')
+    : null
   const classHref = section ? `/classi/${encodeURIComponent(section.id)}` : '/orario'
   const time = lessonTime(lesson)
   const authorityMeta = lesson.authority === 'PROVISIONAL_DRAFT' ? 'Orario provvisorio' : 'Orario in vigore'
@@ -275,6 +284,7 @@ function resolveDailyPrimary(
 function resolveNextMomentPrimary(
   moment: TeacherMoment | null,
   annualSnapshot: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>> | null,
+  canonicalGenerationByGrade: CanonicalGenerationByGrade,
 ) {
   if (!moment || moment.lessons.length === 0) return null
 
@@ -283,7 +293,7 @@ function resolveNextMomentPrimary(
     ? annualSnapshot.sections.find((item) => item.id === first.sectionId) ?? null
     : null
   const firstHref = firstSection && annualSnapshot
-    ? resolveLessonHref(firstSection, annualSnapshot, 'prepare') ?? `/classi/${encodeURIComponent(firstSection.id)}`
+    ? resolveLessonHref(firstSection, annualSnapshot, canonicalGenerationByGrade[firstSection.grade], 'prepare') ?? `/classi/${encodeURIComponent(firstSection.id)}`
     : first.sectionId
       ? `/classi/${encodeURIComponent(first.sectionId)}`
       : '/orario'
@@ -335,9 +345,11 @@ function resolveNextMomentPrimary(
 function resolveLessonHref(
   section: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>>['sections'][number],
   annualSnapshot: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>>,
+  canonicalGenerationId: string | null,
   mode: 'prepare' | 'teach' = 'teach',
 ) {
-  const learningFocus = buildClassWorkspaceLearningFocus(section, annualSnapshot.progress, [])
+  if (!canonicalGenerationId) return null
+  const learningFocus = buildClassWorkspaceLearningFocus(section, annualSnapshot.progress, canonicalGenerationId, [])
   const grade = GRADE_UI[section.grade]
   const nextBlock = learningFocus.nextBlock
     ? buildBlocks(grade).find((item) => item.id === learningFocus.nextBlock?.id) ?? null
@@ -404,6 +416,23 @@ function currentRomeMoment() {
 
 function gradeNumber(grade: 'PRIMA' | 'SECONDA' | 'TERZA') {
   return grade === 'PRIMA' ? '1' : grade === 'SECONDA' ? '2' : '3'
+}
+
+async function loadCanonicalGenerationByGrade(
+  workspaceId: string,
+  academicYearId: string,
+): Promise<CanonicalGenerationByGrade> {
+  const repository = new SupabaseCanonicalPlanSourceRepository()
+  const [prima, seconda, terza] = await Promise.all([
+    repository.resolve({ workspaceId, academicYearId, code: CANONICAL_PLAN_SOURCES.Prima.code }),
+    repository.resolve({ workspaceId, academicYearId, code: CANONICAL_PLAN_SOURCES.Seconda.code }),
+    repository.resolve({ workspaceId, academicYearId, code: CANONICAL_PLAN_SOURCES.Terza.code }),
+  ])
+  return {
+    PRIMA: prima?.generationId ?? null,
+    SECONDA: seconda?.generationId ?? null,
+    TERZA: terza?.generationId ?? null,
+  }
 }
 
 function taskReason(task: PlannerTask, today: string) {
