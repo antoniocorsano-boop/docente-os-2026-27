@@ -18,6 +18,10 @@ const lessonWorkspaceSource = fs.readFileSync(
   new URL('../../app/classi/[sectionId]/lezioni/[blockId]/page.tsx', import.meta.url),
   'utf8',
 )
+const atlasAcceptanceSqlSource = fs.readFileSync(
+  new URL('../../../supabase/migrations/0087_lesson_design_atlas_bundle_atomic_acceptance.sql', import.meta.url),
+  'utf8',
+)
 
 const BASE = [
   { id: 'S01', minutes: 10, title: 'Avvio', instruction: 'Apri il tema.' },
@@ -112,4 +116,13 @@ test('Atlas material persistence does not bind canonical plan provenance to glob
   assert.doesNotMatch(atlasBindActionsSource, /canonicalGenerationId:\s*source\.generationId/)
   assert.doesNotMatch(lessonWorkspaceSource, /canonicalPlanAssetId:\s*source\.assetId/)
   assert.doesNotMatch(lessonWorkspaceSource, /canonicalGenerationId:\s*source\.generationId/)
+})
+
+test('Atlas material persistence preserves semantic type and an openable locator', () => {
+  assert.match(atlasBindActionsSource, /atlasMaterialType:\s*item\.type/)
+  assert.match(atlasBindActionsSource, /publicUrl:\s*item\.previewRef/)
+})
+
+test('Atlas bundle RPC rejects non-material extension kinds at the database boundary', () => {
+  assert.match(atlasAcceptanceSqlSource, /not in\s*\(\s*'TEACHER_RESOURCE'\s*,\s*'STUDENT_RESOURCE'\s*\)/i)
 })
