@@ -126,6 +126,7 @@ test('fallback di una superficie diversa viene rifiutato', () => {
   assert.throws(() => composeDeterministicSurface({
     context: focusedContext,
     ...focusedDraft(),
+    primaryAction: { id: 'OPEN_EXTERNAL', label: 'Apri', href: 'https://evil.example' } as unknown as RegisteredActionDescriptor,
     fallback: () => ({
       ...fallbackDraft(),
       context: {
