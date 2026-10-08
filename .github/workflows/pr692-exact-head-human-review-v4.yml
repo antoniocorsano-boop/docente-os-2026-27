@@ -27,16 +27,17 @@ jobs:
       - name: Checkout probe derived from exact PR head
         uses: actions/checkout@v6
         with:
-          fetch-depth: 2
+          fetch-depth: 3
 
       - name: Prove exact runtime tree
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "$TARGET_SHA"
           test "$(git rev-parse "$TARGET_SHA:product/src")" = "$(git rev-parse 'HEAD:product/src')"
           test "$(git rev-parse "$TARGET_SHA:product/supabase")" = "$(git rev-parse 'HEAD:product/supabase')"
           test "$(git rev-parse "$TARGET_SHA:product/package-lock.json")" = "$(git rev-parse 'HEAD:product/package-lock.json')"
+          changed="$(git diff --name-only "$TARGET_SHA" HEAD)"
+          test "$changed" = '.github/workflows/pr692-exact-head-human-review-v4.yml'
           printf 'target_sha=%s\nprobe_sha=%s\nsrc_tree=%s\nsupabase_tree=%s\n' \
             "$TARGET_SHA" "$(git rev-parse HEAD)" "$(git rev-parse 'HEAD:product/src')" "$(git rev-parse 'HEAD:product/supabase')" \
             | tee /tmp/pr692-exact-head-proof.txt
