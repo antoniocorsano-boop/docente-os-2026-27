@@ -8,6 +8,7 @@ import { bindArenaDisciplineRefToDocenteOs, isEco02PilotClass } from '@/core/dom
 import { eco02PilotIdentityFromEnv } from '@/core/server/eco02-pilot-config'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
+import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
@@ -70,8 +71,13 @@ export default async function ClassWorkspacePage({
 
   const grade = GRADE_UI[section.grade]
   const blocks = buildBlocks(grade)
-  const source = CANONICAL_PLAN_SOURCES[grade]
-  const summary = buildClassWorkspaceSummary(section, assignments, disciplines, snapshot.progress)
+  const source = await new SupabaseCanonicalPlanSourceRepository().resolve({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    code: CANONICAL_PLAN_SOURCES[grade].code,
+  })
+  const canonicalGenerationId = source?.generationId ?? null
+  const summary = buildClassWorkspaceSummary(section, assignments, disciplines, snapshot.progress, canonicalGenerationId)
   const showArenaPilotIntake = isEco02PilotClass({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
@@ -81,10 +87,12 @@ export default async function ClassWorkspacePage({
   }, eco02PilotIdentityFromEnv()) && summary.assignments.some(
     (assignment) => bindArenaDisciplineRefToDocenteOs(assignment.discipline) === 'technology',
   )
-  const learningFocus = buildClassWorkspaceLearningFocus(section, snapshot.progress, knowledgeItems)
+  const learningFocus = buildClassWorkspaceLearningFocus(section, snapshot.progress, canonicalGenerationId, knowledgeItems)
   const preparedMaterials = selectPreparedClassMaterials(section, knowledgeItems, today)
   const currentSessions = currentTeachingSessions(teachingSnapshot)
-  const allocationTotals = allocatedMinutesByBlock(teachingSnapshot, source.generationId)
+  const allocationTotals = source
+    ? allocatedMinutesByBlock(teachingSnapshot, source.generationId)
+    : new Map<string, number>()
 
   const nextCanonicalBlock = learningFocus.nextBlock
     ? blocks.find((item) => item.id === learningFocus.nextBlock?.id) ?? null
@@ -111,7 +119,7 @@ export default async function ClassWorkspacePage({
   const recordedBlock = requestedRecordedId
     ? blocks.find((item) => item.id === requestedRecordedId) ?? null
     : null
-  const recordedProgress = recordedBlock
+  const recordedProgress = source && recordedBlock
     ? snapshot.progress.find((entry) =>
         entry.sectionId === section.id &&
         entry.canonicalGenerationId === source.generationId &&
@@ -153,13 +161,13 @@ export default async function ClassWorkspacePage({
     plannedMinutes: block.hours * 60,
   }))
   const nextAllocatedMinutes = nextCanonicalBlock ? allocationTotals.get(nextCanonicalBlock.id) ?? 0 : 0
-  const nextCompletion = nextCanonicalBlock
+  const nextCompletion = nextCanonicalBlock && source
     ? completionProposal({ allocatedMinutes: nextAllocatedMinutes, plannedBlockMinutes: nextCanonicalBlock.hours * 60 })
     : null
   const occurrenceEnded = eligibleOccurrence?.endAt ? timeMinutes(eligibleOccurrence.endAt) <= nowMinutes : false
   const taskDecision = resolveClassTaskDecision({
     hasNextBlock: Boolean(nextCanonicalBlock),
-    hasModeledLesson: Boolean(nextProjection && learningFocus.nextBlock),
+    hasModeledLesson: Boolean(source && nextProjection && learningFocus.nextBlock),
     hasSessionReceipt: hasTodaySessionReceipt,
     hasEligibleOccurrence: Boolean(eligibleOccurrence),
     hasPendingPastOccurrence: Boolean(pendingPastOccurrence),
@@ -176,7 +184,7 @@ export default async function ClassWorkspacePage({
     ? '#decisione-completamento'
     : taskDecision.useInlineRecorder
       ? '#registrazione-avanzata'
-      : taskDecision.lessonMode && nextProjection && learningFocus.nextBlock
+      : source && taskDecision.lessonMode && nextProjection && learningFocus.nextBlock
         ? buildLessonWorkspaceHref(summary.sectionId, learningFocus.nextBlock.id, taskDecision.lessonMode)
         : focusPlanningHref
   const advancedPanelId = taskDecision.focusCompletion ? 'decisione-completamento' : 'registrazione-avanzata'
@@ -186,6 +194,13 @@ export default async function ClassWorkspacePage({
       <section className="classWorkspaceHeader">
         <div><p>CLASSE · {summary.sectionStatusLabel.toUpperCase()}</p><h1>{summary.displayLabel}</h1><span>Qui trovi il lavoro da fare adesso. Il resto si apre solo quando serve.</span></div>
       </section>
+
+      {!source ? (
+        <section className="classRecordFeedback" role="status" aria-live="polite">
+          <strong>Piano annuale non ancora collegato.</strong>
+          <span>Le attività che registrano avanzamento restano disabilitate finché {CANONICAL_PLAN_SOURCES[grade].code} non è associato alla sorgente canonica di questo spazio.</span>
+        </section>
+      ) : null}
 
       <section className="classLessonFocus" aria-label="Lavoro della classe adesso">
         {learningFocus.nextBlock && nextTitle ? (
@@ -205,7 +220,7 @@ export default async function ClassWorkspacePage({
         <div className="classLessonFocusAside">
           <div className="classLessonProgress"><strong>{learningFocus.completedBlocks}/33</strong><span>lezioni concluse</span></div>
           <div className="classLessonFocusActions">
-            {nextProjection && learningFocus.nextBlock ? (
+            {source && nextProjection && learningFocus.nextBlock ? (
               <Link href={buildLessonWorkspaceHref(summary.sectionId, learningFocus.nextBlock.id, 'prepare')}>
                 Prima della lezione
               </Link>
@@ -232,7 +247,7 @@ export default async function ClassWorkspacePage({
         </section>
       ) : null}
 
-      {nextCanonicalBlock ? (
+      {source && nextCanonicalBlock ? (
         <details id={advancedPanelId} className="humanTaskSecondary" open={taskDecision.useInlineRecorder || taskDecision.focusCompletion}>
           <summary>{taskDecision.focusCompletion ? 'Valuta il completamento' : taskDecision.state === 'CATCH_UP' ? 'Registra la lezione precedente' : taskDecision.useInlineRecorder ? 'Registra questa lezione' : 'Decisioni e registrazione avanzata'}</summary>
           <div className="humanTaskSecondaryBody">
@@ -327,7 +342,7 @@ export default async function ClassWorkspacePage({
         </div>
       </details>
 
-      <details className="technicalDetails"><summary><span><strong>Dettagli tecnici</strong><small>Provenienza e riferimenti canonici</small></span><b aria-hidden>＋</b></summary><div className="technicalDetailsBody"><p>Identificatore sezione: <strong>{summary.sectionId}</strong></p>{learningFocus.nextBlock ? <p>Prossimo riferimento: <strong>{learningFocus.nextBlock.id}</strong> · UDA {learningFocus.nextBlock.uda} · {learningFocus.nextBlock.pack}</p> : null}<p>Fonte sezione: {section.sourceNote ?? 'Registro delle classi dell’anno scolastico corrente.'}</p><p>Sessioni effettive correnti: <strong>{currentSessions.length}</strong>. Le sessioni sostituite restano nella storia e non contribuiscono ai totali correnti.</p></div></details>
+      <details className="technicalDetails"><summary><span><strong>Dettagli tecnici</strong><small>Provenienza e riferimenti canonici</small></span><b aria-hidden>＋</b></summary><div className="technicalDetailsBody"><p>Identificatore sezione: <strong>{summary.sectionId}</strong></p>{learningFocus.nextBlock ? <p>Prossimo riferimento: <strong>{learningFocus.nextBlock.id}</strong> · UDA {learningFocus.nextBlock.uda} · {learningFocus.nextBlock.pack}</p> : null}<p>Identità piano: <strong>{CANONICAL_PLAN_SOURCES[grade].code}</strong>{source ? ` · generazione ${source.generationId}` : ' · collegamento runtime non disponibile'}</p><p>Fonte sezione: {section.sourceNote ?? 'Registro delle classi dell’anno scolastico corrente.'}</p><p>Sessioni effettive correnti: <strong>{currentSessions.length}</strong>. Le sessioni sostituite restano nella storia e non contribuiscono ai totali correnti.</p></div></details>
     </AppShell>
   )
 }
