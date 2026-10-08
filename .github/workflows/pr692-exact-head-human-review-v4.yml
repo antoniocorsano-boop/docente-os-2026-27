@@ -21,7 +21,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
-      NEXT_PUBLIC_DOCENTE_OS_ORIGIN: http://127.0.0.1:3000
+      NEXT_PUBLIC_DOCENTE_OS_ORIGIN: http://localhost:3000
       NEXT_PUBLIC_STUDIO_ATLAS_ORIGIN: https://studio-atlas.invalid
     steps:
       - name: Checkout probe derived from exact PR head
