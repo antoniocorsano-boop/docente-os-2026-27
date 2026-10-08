@@ -37,7 +37,7 @@
 
 ## STEP A — Contract and consumer inventory
 
-**Status:** IN PROGRESS when this plan is first committed.
+**Status:** PASS — verified on `df59bbf0f37bf60adb04e419882128483da3253b`; this closeout commit changes only plan metadata.
 
 **Files:**
 - Create: `docs/architecture/CANONICAL_PLAN_RUNTIME_IDENTITY.md`
@@ -51,9 +51,9 @@
 - [x] Verify Atlas return and lesson-page reads already resolve workspace-local asset/generation through the transitional resolver.
 - [x] Verify other consumers still use hard-coded generation/asset identity for progress, allocation, duplicate detection or local cache keys.
 - [x] Identify the semantic seam in `PLAN_GUIDED_UDA`: `generationId` must be treated as workspace-local materialization evidence, not as a portable canonical revision.
-- [ ] Commit the architecture contract and complete the exact consumer matrix.
-- [ ] Re-read the contract from the branch and verify STEP A exit criteria.
-- [ ] Mark STEP A PASS in this plan; do not start STEP B in the same documentation-only tranche.
+- [x] Commit the architecture contract and complete the exact consumer matrix.
+- [x] Re-read the contract from the branch and verify STEP A exit criteria.
+- [x] Mark STEP A PASS in this plan; STEP B starts from a fresh exact-head check and RED test commit.
 
 ### STEP A exit criteria
 
