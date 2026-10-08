@@ -1,10 +1,17 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import test from 'node:test'
-import { buildBlocks, resolveCanonicalUdaCode } from './model'
+import { buildBlocks, CANONICAL_PLAN_SOURCES, resolveCanonicalUdaCode } from './model'
 
 const annualPlanClientSource = fs.readFileSync(new URL('./AnnualPlanClient.tsx', import.meta.url), 'utf8')
 const annualPlanCssSource = fs.readFileSync(new URL('./annual-plan.css', import.meta.url), 'utf8')
+
+test('canonical plan constants expose only stable logical identity', () => {
+  for (const [grade, source] of Object.entries(CANONICAL_PLAN_SOURCES)) {
+    assert.deepEqual(Object.keys(source).sort(), ['code'], `${grade} must not embed runtime asset/generation UUIDs`)
+    assert.match(source.code, /^CAN-PLAN-[123]$/, `${grade} canonical code`)
+  }
+})
 
 test('recovers the canonical UDA code from metadata or CAN-UDA source identity', () => {
   assert.equal(resolveCanonicalUdaCode('Prima', '1-01', 'qualunque-nome'), '1-01')
