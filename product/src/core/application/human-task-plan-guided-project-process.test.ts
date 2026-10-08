@@ -14,7 +14,7 @@ import {
 
 const TEST_PLAN_RUNTIME_SOURCE = {
   code: B23_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL.planSource.code,
-  generationId: B23_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL.planSource.generationId,
+  generationId: 'runtime-plan-generation',
 }
 const TEST_PLAN_RUNTIME_SOURCES = { Prima: TEST_PLAN_RUNTIME_SOURCE }
 
