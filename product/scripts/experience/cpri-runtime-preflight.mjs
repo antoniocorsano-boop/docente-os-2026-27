@@ -258,12 +258,38 @@ function verifyStaticRuntimeAuthority() {
   const srcRoot = path.resolve(process.cwd(), 'src')
   const offenders = []
   for (const file of runtimeSourceFiles(srcRoot)) {
+    if (isCanonicalPlanApprovalArtifact(srcRoot, file)) continue
     const text = fs.readFileSync(file, 'utf8')
     if (LEGACY_RUNTIME_UUIDS.some((uuid) => text.includes(uuid))) {
       offenders.push(path.relative(process.cwd(), file))
     }
   }
-  requireCheck(offenders.length === 0, 'no-static-canonical-uuids', `legacy CAN-PLAN UUIDs remain in runtime source: ${offenders.join(', ')}`)
+  requireCheck(offenders.length === 0, 'no-static-canonical-uuids', `legacy CAN-PLAN UUIDs remain in runtime authority source: ${offenders.join(', ')}`)
+
+  const nonArtifactImports = runtimeSourceFiles(srcRoot)
+    .filter((file) => !isCanonicalPlanApprovalArtifact(srcRoot, file))
+    .filter((file) => fs.readFileSync(file, 'utf8').includes('human-task-projection-recipes-'))
+    .map((file) => path.relative(process.cwd(), file))
+  requireCheck(
+    nonArtifactImports.length === 0,
+    'plan-recipe-artifacts-not-runtime-imported',
+    `PLAN_GUIDED approval recipe artifacts must not be imported by runtime authority paths: ${nonArtifactImports.join(', ')}`,
+  )
+
+  const planGuidedGate = fs.readFileSync(path.join(srcRoot, 'core/application/human-task-plan-guided-uda-projection-recipe.ts'), 'utf8')
+  requireCheck(
+    !/recipe\.planSource\.generationId\s*!==?\s*runtimePlanSource\.generationId/.test(planGuidedGate)
+      && /runtimePlanSource\.generationId\.trim\(\)/.test(planGuidedGate),
+    'plan-guided-runtime-generation-authority',
+    'PLAN_GUIDED_UDA must require a runtime generation without comparing it to a static recipe generation',
+  )
+
+  const manifestMaterializer = fs.readFileSync(path.join(srcRoot, 'core/presentation/human-task-approved-manifest.ts'), 'utf8')
+  requireCheck(
+    /source\.role === ['"]PLAN['"][\s\S]*url: ['"]\/piano-annuale['"]/.test(manifestMaterializer),
+    'approved-manifest-plan-source-portable',
+    'approved manifests may retain historical source bindings, but runtime PLAN links must materialize through /piano-annuale',
+  )
 
   const model = fs.readFileSync(path.join(srcRoot, 'app/piano-annuale/model.ts'), 'utf8')
   const start = model.indexOf('export const CANONICAL_PLAN_SOURCES')
@@ -299,6 +325,12 @@ function verifyLessonDesignRuntimeContract() {
     'atlas-return-runtime-binding',
     'Atlas return must resolve the governed runtime CAN-PLAN source',
   )
+}
+
+function isCanonicalPlanApprovalArtifact(srcRoot, file) {
+  const relative = path.relative(srcRoot, file).split(path.sep).join('/')
+  return /^core\/application\/human-task-projection-recipes-b\d+-b\d+\.ts$/.test(relative)
+    || /^core\/presentation\/human-task-approved-manifests(?:-.*)?\.ts$/.test(relative)
 }
 
 function runtimeSourceFiles(root) {

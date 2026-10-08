@@ -19,7 +19,7 @@ import {
 
 const TEST_PLAN_RUNTIME_SOURCE = {
   code: B16_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL.planSource.code,
-  generationId: B16_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL.planSource.generationId,
+  generationId: 'runtime-local-plan-generation',
 }
 const TEST_PLAN_RUNTIME_SOURCES = { Prima: TEST_PLAN_RUNTIME_SOURCE }
 
@@ -200,19 +200,40 @@ test('phase coverage must account for all four hours of the shared UDA phase', (
   assert.ok(draft.issues.some((item) => item.code === 'GUIDE_DURATION_MISMATCH' && item.severity === 'BLOCKING'))
 })
 
-test('plan generation drift invalidates the recipe without changing the existing candidate fingerprint', () => {
-  const invalidRecipe = {
+test('historical recipe generation is not runtime CAN-PLAN authority', () => {
+  const historicalRecipe = {
     ...B18_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL,
     planSource: {
       ...B18_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL.planSource,
-      generationId: 'different-plan-generation',
+      generationId: 'historical-approval-generation',
     },
   }
   const currentCandidate = drawingCandidate('B18')
   assert.equal(currentCandidate.candidateId, B18_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL.candidateId)
-  const draft = buildPlanGuidedDraft(currentCandidate, invalidRecipe)
-  assert.equal(draft.status, 'INVALID')
-  assert.ok(draft.issues.some((item) => item.code === 'PLAN_BINDING_MISMATCH' && item.severity === 'BLOCKING'))
+  const draft = buildPlanGuidedUdaProjectionDraft(currentCandidate, historicalRecipe, TEST_PLAN_RUNTIME_SOURCE)
+  assert.equal(draft.status, 'READY_FOR_HUMAN_APPROVAL')
+  assert.equal(draft.issues.some((item) => item.code === 'PLAN_BINDING_MISMATCH'), false)
+})
+
+test('PLAN_GUIDED_UDA still fails closed when the runtime CAN-PLAN materialization is missing or incoherent', () => {
+  const currentCandidate = drawingCandidate('B18')
+  const missing = buildPlanGuidedUdaProjectionDraft(currentCandidate, B18_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
+  assert.equal(missing.status, 'INVALID')
+  assert.ok(missing.issues.some((item) => item.code === 'PLAN_BINDING_MISMATCH' && item.severity === 'BLOCKING'))
+
+  const emptyGeneration = buildPlanGuidedUdaProjectionDraft(currentCandidate, B18_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL, {
+    code: 'CAN-PLAN-1',
+    generationId: '',
+  })
+  assert.equal(emptyGeneration.status, 'INVALID')
+  assert.ok(emptyGeneration.issues.some((item) => item.code === 'PLAN_BINDING_MISMATCH' && item.severity === 'BLOCKING'))
+
+  const wrongCode = buildPlanGuidedUdaProjectionDraft(currentCandidate, B18_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL, {
+    code: 'CAN-PLAN-2',
+    generationId: 'runtime-local-plan-generation',
+  })
+  assert.equal(wrongCode.status, 'INVALID')
+  assert.ok(wrongCode.issues.some((item) => item.code === 'PLAN_BINDING_MISMATCH' && item.severity === 'BLOCKING'))
 })
 
 test('B19 keeps the Plan-specific final evidence instead of reducing it to a generic UDA indicator', () => {

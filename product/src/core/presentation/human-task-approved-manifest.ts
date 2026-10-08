@@ -94,8 +94,17 @@ export function materializeApprovedHumanTaskManifests(manifests: readonly Approv
     const key = `${manifest.structuralBinding.grade}:${manifest.structuralBinding.blockId}`
     if (seen.has(key)) return []
     seen.add(key)
-    return validateApprovedHumanTaskManifest(manifest).length ? [] : [manifest.projection]
+    return validateApprovedHumanTaskManifest(manifest).length ? [] : [materializePortableProjection(manifest.projection)]
   })
+}
+
+function materializePortableProjection(projection: HumanTaskLessonProjection): HumanTaskLessonProjection {
+  return {
+    ...projection,
+    sources: projection.sources.map((source) => source.role === 'PLAN'
+      ? { ...source, url: '/piano-annuale' }
+      : source),
+  }
 }
 
 function validateCognitiveReceipt(receipt: ApprovedHumanTaskCognitiveReceipt | undefined) {

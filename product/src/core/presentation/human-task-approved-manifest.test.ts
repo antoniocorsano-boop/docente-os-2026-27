@@ -13,9 +13,14 @@ test('B28-B30 are approved declarative manifests, not tranche-specific runtime c
   assert.equal(APPROVED_HUMAN_TASK_MANIFESTS.every((manifest) => validateApprovedHumanTaskManifest(manifest).length === 0), true)
 })
 
-test('materializer exposes all approved manifest projections and preserves current source generations', () => {
+test('materializer keeps approval provenance but emits a portable runtime PLAN source', () => {
   const projections = materializeApprovedHumanTaskManifests(APPROVED_HUMAN_TASK_MANIFESTS)
   assert.deepEqual(projections.map((projection) => projection.blockId), ['B28', 'B29', 'B30'])
+  for (const projection of projections) {
+    const plan = projection.sources.find((source) => source.role === 'PLAN')
+    assert.equal(plan?.url, '/piano-annuale')
+    assert.doesNotMatch(plan?.url ?? '', /\/knowledge\/[0-9a-f-]{36}/i)
+  }
 
   for (const manifest of APPROVED_HUMAN_TASK_MANIFESTS) {
     assert.deepEqual(manifest.sourceBindings.map((source) => [source.code, source.generationId]), [
