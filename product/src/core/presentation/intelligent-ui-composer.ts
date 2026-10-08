@@ -17,22 +17,22 @@ export function composeDeterministicSurface(input: DeterministicSurfaceDraft & {
   fallback: () => DeterministicSurfaceDraft
 }): SurfaceComposition {
   const contextValidation = validateUIContext(input.context)
-  if (!contextValidation.ok) return useFallback(input, 'INVALID_CONTEXT')
+  if (!contextValidation.ok) return materializeFallback(input, 'INVALID_CONTEXT')
 
   let composition: SurfaceComposition
   try {
     composition = materialize(input)
   } catch {
-    return useFallback(input, 'UNKNOWN_ACTION')
+    return materializeFallback(input, 'UNKNOWN_ACTION')
   }
 
   if (!validateSurfaceComposition(composition).ok) {
-    return useFallback(input, 'INVALID_COMPOSITION')
+    return materializeFallback(input, 'INVALID_COMPOSITION')
   }
   return composition
 }
 
-function useFallback(
+function materializeFallback(
   input: DeterministicSurfaceDraft & { fallback: () => DeterministicSurfaceDraft },
   reason: DeterministicFallbackReason,
 ): SurfaceComposition {
