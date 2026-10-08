@@ -14,12 +14,13 @@ import {
 import { parseTeachingSessionEvidenceNote } from '@/core/domain/teaching-session-reflection'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
+import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
 import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
-import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
+import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI, type GradeKey } from '@/app/piano-annuale/model'
 
 export async function recordTeachingSession(formData: FormData) {
   const context = await requireContext()
@@ -37,7 +38,7 @@ export async function recordTeachingSession(formData: FormData) {
   if (!section) throw new Error('Classe fuori dal contesto attivo')
 
   const grade = GRADE_UI[section.grade]
-  const source = CANONICAL_PLAN_SOURCES[grade]
+  const source = await requireCanonicalPlanSource(context, grade)
   const blocks = buildBlocks(grade)
   const allocations = allocationInputs(formData).map((allocation) => {
     if (!blocks.some((block) => block.id === allocation.blockId)) throw new Error('Blocco fuori dal Piano annuale della classe')
@@ -199,7 +200,7 @@ export async function confirmTeachingBlockCompletion(formData: FormData) {
   if (!section) throw new Error('Classe fuori dal contesto attivo')
 
   const grade = GRADE_UI[section.grade]
-  const source = CANONICAL_PLAN_SOURCES[grade]
+  const source = await requireCanonicalPlanSource(context, grade)
   const block = buildBlocks(grade).find((item) => item.id === blockId)
   if (!block) throw new Error('Blocco fuori dal Piano annuale della classe')
 
@@ -248,6 +249,19 @@ async function requireContext() {
   if (!context) throw new Error('Spazio autenticato richiesto')
   if (!context.academicYear) throw new Error('Anno scolastico attivo richiesto')
   return { ...context, academicYear: context.academicYear }
+}
+
+async function requireCanonicalPlanSource(
+  context: Awaited<ReturnType<typeof requireContext>>,
+  grade: GradeKey,
+) {
+  const source = await new SupabaseCanonicalPlanSourceRepository().resolve({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    code: CANONICAL_PLAN_SOURCES[grade].code,
+  })
+  if (!source) throw new Error('Il piano annuale della classe non è ancora collegato alla sorgente canonica.')
+  return source
 }
 
 function allocationInputs(formData: FormData) {
