@@ -4,7 +4,7 @@
 
 **Goal:** Implement the deterministic intelligent-composition core and qualify the first teacher journey, Home → Classe → prossima lezione, without introducing a runtime model dependency or changing domain authority.
 
-**Architecture:** Reuse the canonical Human Task Model as the only intent/mode taxonomy. Add a small presentation-layer contract, a closed semantic block/action registry and a fail-closed policy validator. Home and Classe remain domain-aware adapters: they translate already-authoritative state into a validated `SurfaceComposition`; they do not infer new didactic state. Rendering stays application-owned and reuses the existing `humanTaskFocus` / `classLessonFocus` layouts. No generic page DSL, no arbitrary JSX/HTML/CSS, no new write path.
+**Architecture:** Reuse the canonical Human Task Model as the only intent/mode taxonomy. Add a small presentation-layer contract, safe task-continuity helpers, a closed semantic block/action registry, a fail-closed policy validator and a pure deterministic composer. Home and Classe remain domain-aware adapters: they translate already-authoritative state into a validated `SurfaceComposition`; they do not infer new didactic state. Rendering stays application-owned and reuses the existing `humanTaskFocus` / `classLessonFocus` layouts. No generic page DSL, no arbitrary JSX/HTML/CSS, no new write path.
 
 **Tech Stack:** Next.js 16.3.1, React 19.2.8, TypeScript 5.9.2, Node 22, existing `node:test`/`tsx` test stack, existing Product CI, Browser Certification, Human Interaction Model, Design Policy, no-implicit-write and HVA gates.
 
@@ -29,6 +29,7 @@
 - The new layer must reduce duplication of presentation decisions without becoming a second domain model.
 - Incoming task parameters are advisory continuity context only; current authoritative application state always wins.
 - FOCUSED mode exposes exactly one primary action and at most two peer support actions; broader access stays secondary.
+- A completed Class path may use a non-FOCUSED REVIEW composition with no fabricated operational action.
 - Full-view access remains understandable but does not compete visually with the primary action.
 - Existing Class recording/completion boundaries remain explicit and server-revalidated.
 - New tests must be added to the repository's explicit `product/package.json` test list so Product CI actually executes them.
@@ -93,103 +94,15 @@ export type SurfaceComposition = {
 }
 ```
 
-`HumanTaskContext`, `HumanIntent` and `ExperienceMode` are imported from the existing canonical module, never redeclared.
+`HumanTaskContext`, `HumanIntent` and `ExperienceMode` are imported from the existing canonical module, never redeclared. `RegisteredActionId` is imported from the registry once Task 3 is implemented; until then the RED fixture may use a temporary type-only stub inside the test, not product code.
 
-- [ ] Write RED tests proving that the new contract reuses canonical Human Task types and that `UIContext.mode` must correspond to the existing `resolveExperienceMode(task)` policy through the later validator contract.
-- [ ] Add compile/runtime fixture tests for HOME/CLASS contexts and serializable `SurfaceComposition` data; explicitly prove there is no field capable of carrying JSX, HTML, CSS or executable code.
+- [ ] Write RED tests proving the new contract reuses canonical Human Task types and produces serializable HOME/CLASS fixtures without any field capable of carrying JSX, HTML, CSS or executable code.
 - [ ] Run `cd product && npx tsx --test src/core/presentation/intelligent-ui-contract.test.ts` and record the expected RED because the contract does not exist yet.
-- [ ] Implement the minimal types/constants only; no route builders, repository imports or product behavior.
+- [ ] Implement only the types/constants above; no route builders, repositories or product behavior.
 - [ ] Run the focused test to GREEN and `npm run typecheck`.
 - [ ] Commit the contract slice independently.
 
-### Task 2: IUI-02B — Closed block/action registry and policy validator
-
-**Files:**
-- Create: `product/src/core/presentation/intelligent-ui-registry.ts`
-- Create: `product/src/core/presentation/intelligent-ui-registry.test.ts`
-- Create: `product/src/core/presentation/intelligent-ui-policy.ts`
-- Create: `product/src/core/presentation/intelligent-ui-policy.test.ts`
-- Reuse: `product/src/core/presentation/human-task-model.ts`
-- Reuse: `product/src/core/presentation/human-task-content.ts` / exported `buildLessonWorkspaceHref`
-- Reuse: `product/src/core/presentation/task-continuity.ts`
-
-**Interfaces:**
-
-The first catalogue is intentionally small: only `TASK_FOCUS` on HOME and `LESSON_FOCUS` on CLASS. Do not pre-create future Materiali/Conoscenza/Documentazione blocks.
-
-Define `RegisteredActionId` only for actions needed by this tranche:
-
-- `HOME_OPEN_PLANNER`
-- `HOME_OPEN_TIMETABLE`
-- `HOME_OPEN_CLASS`
-- `HOME_OPEN_LESSON`
-- `HOME_SHOW_ALL`
-- `CLASS_OPEN_MODELED_LESSON`
-- `CLASS_OPEN_INLINE_RECORDER`
-- `CLASS_OPEN_COMPLETION`
-- `CLASS_OPEN_PLANNING`
-- `CLASS_SHOW_ALL`
-
-Use typed action descriptors rather than accepting arbitrary `href` input. A factory such as `resolveRegisteredAction(descriptor)` owns route creation and returns `CompositionAction`; descriptors carry only known parameters (`sectionId`, `blockId`, allowed lesson/class mode, label). Static actions own their canonical hrefs. The registry must never accept an external URL.
-
-`validateUIContext(context)` and `validateSurfaceComposition(composition)` return an inspectable result (`ok`, errors) rather than silently normalizing invalid data.
-
-Validator requirements:
-
-- `mode === resolveExperienceMode(task)`;
-- block exists and is allowed on the requested surface/mode;
-- every action ID is registered and its resolved href matches registry policy;
-- FOCUSED: one non-null primary action, ≤2 peer support actions;
-- automatic narrowing requires non-empty `reason`, `contextSummary` and full-view action;
-- `fullViewAction` belongs to the same surface and never mutates;
-- unknown block/action fails closed;
-- no action registry entry maps to a mutation endpoint, external URL, server action or database operation.
-
-- [ ] Write RED registry tests for exact membership, valid internal routes, encoded section/block IDs, rejection of external/arbitrary targets and absence of mutation-capable actions.
-- [ ] Write RED policy tests for FOCUSED budgets, missing reason/context/full-view path, wrong mode, unknown block/action and deterministic valid fixtures.
-- [ ] Run both focused test files and record RED.
-- [ ] Implement the smallest closed registry and pure validator; do not import infrastructure/repositories.
-- [ ] Run focused tests to GREEN plus `npm run typecheck` and `npm run lint`.
-- [ ] Commit the registry/policy slice.
-
-### Task 3: IUI-02C — Deterministic composition boundary and fallback
-
-**Files:**
-- Create: `product/src/core/presentation/intelligent-ui-composer.ts`
-- Create: `product/src/core/presentation/intelligent-ui-composer.test.ts`
-- Reuse: Task 1/2 contract, registry and validator.
-
-**Interfaces:**
-
-Expose a pure entry point similar to:
-
-```ts
-composeDeterministicSurface(input: {
-  context: UIContext
-  primaryBlock: CompositionBlock
-  supportBlocks?: readonly CompositionBlock[]
-  primaryAction: RegisteredActionDescriptor | null
-  supportActions?: readonly RegisteredActionDescriptor[]
-  fullViewAction: RegisteredActionDescriptor
-}): SurfaceComposition
-```
-
-The function resolves registered actions, constructs `SurfaceComposition`, validates it and either returns it or invokes an explicit deterministic safe fallback supplied by the surface adapter. It never guesses missing domain state.
-
-Fallback semantics:
-
-- invalid SPECIFIC input does not produce a partially rendered focused composition;
-- fallback records a machine-readable diagnostic reason such as `INVALID_CONTEXT`, `UNKNOWN_ACTION`, `STALE_CONTINUITY` without exposing technical noise to the teacher;
-- fallback remains on the same surface and uses only registered read/navigation actions.
-
-- [ ] Write table-driven RED tests for equivalent-input stability, action ordering, fail-closed unknown action, invalid FOCUSED budgets and explicit fallback reason.
-- [ ] Add a source-boundary test proving this core module does not import `core/infrastructure`, Supabase repositories, app server actions or provider clients.
-- [ ] Run the focused test and record RED.
-- [ ] Implement the pure composer and safe fallback hook with no side effects.
-- [ ] Run focused tests to GREEN, then Tasks 1–3 tests together and `npm run typecheck`.
-- [ ] Commit IUI-02 core complete.
-
-### Task 4: IUI-03A — Safe task continuity from Home to Classe
+### Task 2: IUI-03A — Safe task continuity from Home to Classe
 
 **Files:**
 - Modify: `product/src/core/presentation/task-continuity.ts`
@@ -197,7 +110,7 @@ Fallback semantics:
 
 **Interfaces:**
 
-Extend the existing continuity module, do not create a parallel URL utility:
+Extend the existing continuity module; do not create a parallel URL utility:
 
 ```ts
 export type ClassTaskEntryMode = 'prepare' | 'teach' | 'record'
@@ -216,16 +129,116 @@ export function parseClassTaskEntry(
 Requirements:
 
 - encode `sectionId` and `block` safely;
-- accept only canonical class modes;
-- accept only canonical block syntax used by the current plan (`B01`…`B33`); malformed blocks become `null`;
-- reuse `sanitizeInternalReturnTo()`; external or protocol-relative return targets fail to the supplied internal fallback;
-- these parameters are continuity hints, not authorization or state.
+- accept only `prepare | teach | record`;
+- accept only canonical current-plan block syntax `B01`…`B33`; malformed/out-of-range blocks become `null`;
+- reuse `sanitizeInternalReturnTo()`; external, protocol-relative or malformed return targets fail to the supplied internal fallback;
+- parameters are continuity hints only, never authorization or domain state.
 
-- [ ] Add RED tests for valid prepare/teach/record links, encoding, malformed mode/block, external `returnTo`, and deterministic parse/build round-trip.
+- [ ] Add RED tests for prepare/teach/record links, encoding, invalid/out-of-range block, external `returnTo`, and deterministic parse/build round-trip.
 - [ ] Run `npx tsx --test src/core/presentation/task-continuity.test.ts` and record RED.
 - [ ] Implement only the continuity helpers above; preserve existing Knowledge continuity behavior.
 - [ ] Run the focused test to GREEN plus existing Human Task tests.
 - [ ] Commit the continuity slice.
+
+### Task 3: IUI-02B — Closed block/action registry and policy validator
+
+**Files:**
+- Create: `product/src/core/presentation/intelligent-ui-registry.ts`
+- Create: `product/src/core/presentation/intelligent-ui-registry.test.ts`
+- Create: `product/src/core/presentation/intelligent-ui-policy.ts`
+- Create: `product/src/core/presentation/intelligent-ui-policy.test.ts`
+- Reuse: `product/src/core/presentation/human-task-model.ts`
+- Reuse: exported `buildLessonWorkspaceHref` from Human Task runtime/content
+- Reuse: Task 2 `buildTaskAwareClassHref()`
+
+**Interfaces:**
+
+The first block catalogue is intentionally small: only `TASK_FOCUS` on HOME and `LESSON_FOCUS` on CLASS. Do not pre-create future Materiali/Conoscenza/Documentazione blocks.
+
+Define only these action IDs:
+
+- `HOME_OPEN_PLANNER`
+- `HOME_OPEN_TIMETABLE`
+- `HOME_OPEN_CLASS`
+- `HOME_OPEN_LESSON`
+- `HOME_SHOW_ALL`
+- `CLASS_OPEN_MODELED_LESSON`
+- `CLASS_OPEN_INLINE_RECORDER`
+- `CLASS_OPEN_COMPLETION`
+- `CLASS_OPEN_PLANNING`
+- `CLASS_SHOW_ALL`
+
+Use a discriminated `RegisteredActionDescriptor` union rather than arbitrary href input. The union must be equivalent to:
+
+```ts
+type RegisteredActionDescriptor =
+  | { id: 'HOME_OPEN_PLANNER'; label: string }
+  | { id: 'HOME_OPEN_TIMETABLE'; label: string }
+  | { id: 'HOME_OPEN_CLASS'; label: string; sectionId: string; mode: ClassTaskEntryMode; blockId?: string | null; returnTo: string }
+  | { id: 'HOME_OPEN_LESSON'; label: string; sectionId: string; blockId: string; mode: 'prepare' | 'teach' | 'observe' | 'record' }
+  | { id: 'HOME_SHOW_ALL'; label: string }
+  | { id: 'CLASS_OPEN_MODELED_LESSON'; label: string; sectionId: string; blockId: string; mode: 'prepare' | 'teach' | 'record' }
+  | { id: 'CLASS_OPEN_INLINE_RECORDER'; label: string }
+  | { id: 'CLASS_OPEN_COMPLETION'; label: string }
+  | { id: 'CLASS_OPEN_PLANNING'; label: string; gradeQuery: 'prima' | 'seconda' | 'terza'; sectionId: string; blockId?: string | null; uda?: string | null; pack?: string | null }
+  | { id: 'CLASS_SHOW_ALL'; label: string; sectionId: string }
+```
+
+`resolveRegisteredAction(descriptor)` owns all href generation. Static actions own exact internal paths/anchors. Class and lesson routes use the existing builders. `CLASS_OPEN_PLANNING` constructs only the existing `/progetta` route from canonical grade/section/block/UDA/pack inputs. The registry never receives or passes through an arbitrary href and never emits an external URL.
+
+`validateUIContext(context)` and `validateSurfaceComposition(composition)` return inspectable validation results rather than silently normalizing invalid data.
+
+Validator requirements:
+
+- `context.mode === resolveExperienceMode(context.task)`;
+- block exists and is allowed on the requested surface/mode;
+- every action is a resolved registered action;
+- FOCUSED: one non-null primary action and ≤2 peer support actions;
+- automatic narrowing requires non-empty `reason`, `contextSummary` and full-view action;
+- `fullViewAction` belongs to the same surface and is non-mutating;
+- unknown block/action fails closed;
+- no registry entry maps to a mutation endpoint, external URL, server action or database operation.
+
+- [ ] Write RED registry tests for exact membership, route generation/encoding, Home → Classe reuse of Task 2, Progetta canonical query generation, rejection of unknown descriptors and absence of mutation/external actions.
+- [ ] Write RED policy tests for wrong mode, FOCUSED budgets, missing reason/context/full-view path, wrong-surface block/action and deterministic valid fixtures.
+- [ ] Run the focused registry/policy tests and record RED.
+- [ ] Implement the smallest registry and pure validator; no infrastructure/repository imports.
+- [ ] Run focused tests to GREEN plus `npm run typecheck` and `npm run lint`.
+- [ ] Commit the registry/policy slice.
+
+### Task 4: IUI-02C — Deterministic composition boundary and fallback
+
+**Files:**
+- Create: `product/src/core/presentation/intelligent-ui-composer.ts`
+- Create: `product/src/core/presentation/intelligent-ui-composer.test.ts`
+- Reuse: Tasks 1–3 contract, continuity, registry and validator.
+
+**Interfaces:**
+
+Expose a pure entry point:
+
+```ts
+composeDeterministicSurface(input: {
+  context: UIContext
+  primaryBlock: CompositionBlock
+  supportBlocks?: readonly CompositionBlock[]
+  primaryAction: RegisteredActionDescriptor | null
+  supportActions?: readonly RegisteredActionDescriptor[]
+  fullViewAction: RegisteredActionDescriptor
+  fallback: () => ValidDeterministicFallback
+}): SurfaceComposition
+```
+
+The function resolves descriptors through the registry, constructs the composition and validates it. Invalid focused input never leaks partially to rendering; the explicit same-surface fallback is used instead. It never guesses domain state.
+
+Fallback diagnostics are machine-readable (`INVALID_CONTEXT`, `UNKNOWN_ACTION`, `STALE_CONTINUITY`, or narrower enum values) and stored only in `fallbackReason`; teacher-facing text remains human.
+
+- [ ] Write table-driven RED tests for equivalent-input stability, action ordering, fail-closed unknown action, invalid FOCUSED budgets and explicit same-surface fallback.
+- [ ] Add a source-boundary test proving the core composer does not import `core/infrastructure`, Supabase repositories, app server actions or provider clients.
+- [ ] Run the focused test and record RED.
+- [ ] Implement the pure composer/fallback with no side effects.
+- [ ] Run focused tests to GREEN, then all IUI core tests together and `npm run typecheck`.
+- [ ] Commit IUI-02 core complete.
 
 ### Task 5: IUI-03B — Home composition adapter
 
@@ -233,97 +246,108 @@ Requirements:
 - Create: `product/src/app/home-intelligent-ui.ts`
 - Create: `product/src/app/home-intelligent-ui.test.ts`
 - Modify: `product/src/app/page.tsx`
-- Modify only if required for an anchor/id, not for redesign: existing Home styles in `product/src/app/globals.css` or owning stylesheet.
+- Modify styles only if an anchor/focus affordance requires it; no redesign.
 
 **Interfaces and boundaries:**
 
-Create a pure Home adapter that receives the already-resolved Home primary view model and returns a validated `SurfaceComposition`. Keep temporal authority in `resolveHomeDailyContext()` and keep current priority ordering unless a focused test proves an inconsistency.
+Create a pure Home adapter receiving the already-authoritative Home primary view model. Keep `resolveHomeDailyContext()` and the current priority ordering authoritative.
 
-Map lesson state to canonical Human Task intent:
+Map state to canonical intent:
 
 - current lesson → `TEACH`;
 - pending registration → `RECORD`;
 - upcoming/next lesson → `PREPARE`;
 - urgent planner task → `ACT_NOW`;
-- ambiguous timetable context → safe `REVIEW`/GUIDED route to Orario;
+- ambiguous timetable context → safe `REVIEW`/GUIDED path to Orario;
 - no operational task → `EXPLORE` or contextual `REVIEW`, never invented urgency.
 
-Home action rules:
+Refactor the local Home primary view model so its target is a `RegisteredActionDescriptor`, not an arbitrary href. Existing helpers such as `resolveDailyPrimary()` / `resolveNextMomentPrimary()` may keep their prioritization/text responsibilities but must produce canonical route parameters for the descriptor.
 
-- preserve existing direct modeled Lesson Workspace href for current/upcoming lessons when already available;
-- enrich only legitimate Home → Classe routes with `buildTaskAwareClassHref()` so Classe can understand why it was opened;
-- never force a modeled direct lesson through Classe;
-- full view maps to the existing `Esplora tutto lo spazio docente` details element, given a stable `id="home-full-view"` if needed;
-- the existing secondary Planner/Orario link remains at most one peer support action.
+Home routing rules:
 
-Rendering remains application-owned: `page.tsx` consumes only a **validated** composition and renders the existing `humanTaskFocus` markup; do not add a general-purpose renderer or second design system in this slice.
+- preserve existing direct modeled Lesson Workspace navigation for current/upcoming lessons when already available;
+- only legitimate class targets use `HOME_OPEN_CLASS` + Task 2 continuity;
+- never force a modeled lesson through Classe;
+- `HOME_SHOW_ALL` maps to the existing `Esplora tutto lo spazio docente` details element via stable `id="home-full-view"`;
+- existing Planner/Orario secondary action remains at most one peer support action.
 
-- [ ] Write RED pure-adapter tests for CURRENT/UPCOMING/PENDING/AMBIGUOUS/PLANNER/FALLBACK cases, exact intent/mode, one primary action, support-action budget, reason, full-view path and direct-lesson preservation.
-- [ ] Add a RED source contract proving Home cannot render a composition that failed policy validation and that no composition helper imports repositories or performs writes.
-- [ ] Run focused Home test and record RED.
-- [ ] Implement the adapter; minimally refactor the current inline Home primary shape only as needed to feed it.
-- [ ] Replace direct rendering fields with the validated composition while preserving current visual hierarchy and labels unless the adapter contract requires a clearer human reason.
-- [ ] Add/retain `id="home-full-view"` on the existing secondary details surface and ensure the full-view route remains visible but subordinate.
-- [ ] Run focused tests to GREEN, then Home/Human Task tests, typecheck and lint.
+`page.tsx` consumes only a validated composition and renders it through the existing `humanTaskFocus` application-owned markup; do not create a general page renderer or second design system.
+
+- [ ] Write RED adapter tests for CURRENT/UPCOMING/PENDING/AMBIGUOUS/PLANNER/FALLBACK cases, exact intent/mode, action budget, human reason, full-view path, task-aware class descriptor and direct-lesson preservation.
+- [ ] Add a RED source-boundary assertion that the adapter imports no repositories/server actions and cannot return unvalidated arbitrary hrefs.
+- [ ] Run focused Home tests and record RED.
+- [ ] Implement the adapter and the smallest Home primary-view-model refactor needed to supply registered descriptors.
+- [ ] Render composition fields/actions through existing Home focus markup; add `id="home-full-view"` to the existing secondary details surface.
+- [ ] Run focused tests to GREEN, then existing Home/Human Task tests, typecheck and lint.
 - [ ] Commit the Home pilot slice.
 
-### Task 6: IUI-03C — Classe composition adapter, authoritative-state reconciliation
+### Task 6: IUI-03C — Classe composition adapter and authoritative-state reconciliation
 
 **Files:**
 - Create: `product/src/app/classi/[sectionId]/class-intelligent-ui.ts`
 - Create: `product/src/app/classi/[sectionId]/class-intelligent-ui.test.ts`
 - Modify: `product/src/app/classi/[sectionId]/page.tsx`
-- Modify: `product/src/app/classi/[sectionId]/class-task-state.test.ts` only for new integration/source assertions; do not rewrite its state machine.
+- Modify: `product/src/app/classi/[sectionId]/class-task-state.test.ts` only for integration/source assertions; do not rewrite its state machine.
 
 **Interfaces and boundaries:**
 
 The Class adapter receives:
 
-- current `ClassTaskDecision` from `resolveClassTaskDecision()`;
-- current presentation from `presentClassTaskState()`;
-- section human label;
-- current/next canonical block and title/context when present;
-- current task hrefs already derived from authoritative state;
-- optional parsed Home entry continuity.
+- `ClassTaskDecision` from `resolveClassTaskDecision()`;
+- `presentClassTaskState()` result;
+- human section label;
+- current/next canonical block/title/context;
+- canonical route parameters needed by the action descriptor: section, lesson mode, grade query, block/UDA/pack;
+- optional parsed Home continuity.
 
-Canonical intent mapping:
+It must **not** receive or pass an arbitrary `taskHref`; the registered-action factory owns href generation.
+
+Intent mapping:
 
 - `PREPARE` → `PREPARE`;
 - `TEACH` → `TEACH`;
 - `RECORD` / `CATCH_UP` → `RECORD`;
-- `AFTER_RECORD` with completion decision → `REVIEW`;
+- `AFTER_RECORD` + completion decision → `REVIEW`;
 - `AFTER_RECORD` preparing next meeting → `PREPARE`;
-- `COMPLETE` → `REVIEW` with no fabricated operational task.
+- `COMPLETE` → `REVIEW`, `ContextSpecificity='CONTEXTUAL'`, non-FOCUSED composition, no invented task.
 
 Continuity reconciliation:
 
-- extend page `searchParams` with `mode`, `block`, `returnTo`;
-- parse/sanitize through Task 4 helpers;
-- if the requested block/mode is coherent with current Class state, record it as the reason/continuity context;
-- if it is stale or incoherent, ignore it and compose from current authoritative Class state, recording `STALE_CONTINUITY` diagnostically;
-- incoming continuity must never change `taskDecision`, occurrence selection, completion proposal, TeachingSession recording, or annual-plan state.
+- extend page search params with `mode`, `block`, `returnTo`;
+- parse/sanitize using Task 2 helpers;
+- coherent entry context may explain why Classe opened but never changes authoritative state;
+- stale/mismatched block or mode is ignored; current Class state is composed and `STALE_CONTINUITY` is diagnostic only;
+- continuity never changes occurrence selection, completion proposal, TeachingSession recording or annual-plan state.
 
-Rendering remains in the existing `classLessonFocus` structure. The page maps only validated `LESSON_FOCUS` data/actions to the current application-owned markup. Preserve `Prima della lezione` only when it is valid and keep total peer support actions within the Human Task budget. Give the existing `Contesto della classe e altri percorsi` secondary details element a stable `id="class-full-view"` and use that as the full-view path.
+Action mapping:
 
-- [ ] Write RED adapter tests covering every `ClassTaskState`, intent mapping, SPECIFIC/FOCUSED composition, COMPLETE behavior, support-action budget and current-state precedence over stale query context.
-- [ ] Write RED tests proving a mismatched block or mode cannot redirect the task to another lesson and an external `returnTo` is discarded.
-- [ ] Extend `class-task-state.test.ts` with source/boundary assertions that the new adapter does not replace `resolveClassTaskDecision()` and that render/composition still has no write path.
+- modeled current task → `CLASS_OPEN_MODELED_LESSON`;
+- recorder fallback → `CLASS_OPEN_INLINE_RECORDER`;
+- completion decision → `CLASS_OPEN_COMPLETION`;
+- planning fallback → `CLASS_OPEN_PLANNING` built from canonical grade/section/block/UDA/pack;
+- broad view → `CLASS_SHOW_ALL` mapped to stable `#class-full-view`/same-section route policy.
+
+Rendering remains the existing `classLessonFocus` application-owned structure. Preserve `Prima della lezione` only when valid and keep peer support actions within the canonical budget. Add stable `id="class-full-view"` to the existing `Contesto della classe e altri percorsi` details element.
+
+- [ ] Write RED tests for every `ClassTaskState`, intent/specificity mapping, FOCUSED budgets, COMPLETE non-focused behavior and current-state precedence over incoming continuity.
+- [ ] Add RED cases proving mismatched block/mode cannot redirect to another lesson and external return targets are discarded.
+- [ ] Extend `class-task-state.test.ts` with source assertions that the new adapter does not replace `resolveClassTaskDecision()` and introduces no render-time write path.
 - [ ] Run focused tests and record RED.
-- [ ] Implement the pure adapter and page integration without changing the existing class state machine or server actions.
-- [ ] Render the validated composition through existing `classLessonFocus` markup; add `id="class-full-view"` to the existing secondary full-context details element.
+- [ ] Implement the pure adapter and page integration without changing the existing state machine/server actions.
+- [ ] Render validated `LESSON_FOCUS` content/actions through existing markup; add `id="class-full-view"` to the existing secondary details surface.
 - [ ] Run Class adapter/state/continuity tests to GREEN, then typecheck/lint.
 - [ ] Commit the Class pilot slice.
 
 ### Task 7: IUI-03D — Product CI inclusion, regression and exact-head certification
 
 **Files:**
-- Modify: `product/package.json` — append all new tests to the existing explicit `test` script; do not remove existing entries.
+- Modify: `product/package.json` — append all new tests to the explicit `test` script; remove none.
 - Create: `docs/superpowers/evidence/2026-10-08-iui-02-03-closeout.md`
-- Modify existing browser/certification test files only if a missing Home/Class assertion is required; do not create a parallel certification framework.
+- Modify existing browser/certification tests only when a missing Home/Class assertion requires it; do not create a parallel certification system.
 
-**Required automated verification:**
+**Automated verification:**
 
-- new contract/registry/policy/composer tests;
+- all new IUI contract/registry/policy/composer tests;
 - task continuity tests;
 - Home adapter tests;
 - Class adapter + existing Class state tests;
@@ -331,44 +355,44 @@ Rendering remains in the existing `classLessonFocus` structure. The page maps on
 - `npm run typecheck`;
 - `npm run lint`;
 - `npm run build`;
-- existing Human Interaction Model gate;
-- Design Policy gate;
-- Browser Certification on changed Home/Class routes;
+- Human Interaction Model;
+- Design Policy;
+- Browser Certification for Home/Class;
 - WCAG 2.2 AA coverage for changed surfaces;
 - no-implicit-write/X3-equivalent gate;
 - Human Visual Acceptance on smartphone and desktop.
 
 **Browser/Human Review scenarios:**
 
-1. Home with current modeled lesson: direct lesson path remains direct and focused.
-2. Home with pending registration: opens Classe with safe continuity; Classe shows RECORD/CATCH_UP from authoritative state.
-3. Home with upcoming modeled lesson: preparation path remains minimal; no artificial detour.
-4. Ambiguous/incomplete context: no class or lesson is guessed.
-5. Stale Home continuity arriving at Classe: current Class state wins, no stale task is executed.
+1. Home current modeled lesson: direct lesson path remains direct and focused.
+2. Home pending registration: safe continuity opens Classe; authoritative Class state selects RECORD/CATCH_UP.
+3. Home upcoming modeled lesson: preparation path remains minimal; no artificial detour.
+4. Ambiguous/incomplete context: no class/lesson is guessed.
+5. Stale Home continuity arriving at Classe: current Class state wins.
 6. Classe PREPARE / TEACH / RECORD / AFTER_RECORD / COMPLETE: location, task, state, next action, reason and broader-view path remain understandable.
-7. Rendering/composition alone produces no database mutation or annual-plan advancement.
+7. Composition/rendering alone produces no database mutation or annual-plan advancement.
 
-- [ ] Add each new `.test.ts` file to `product/package.json` and run `npm test`; expected first RED if any file was omitted from the script, then correct the list only.
-- [ ] Run the focused tranche tests, then full Product CI commands locally/connected environment as available.
-- [ ] Push exact implementation head and run repository CI/certification on that exact SHA; do not inherit PASS from earlier heads.
-- [ ] Capture smartphone + desktop evidence for Home and Classe in the existing HVA path, including full-view escape and focus/keyboard behavior.
-- [ ] Record in the closeout evidence: baseline SHA, exact head SHA, test/run identifiers, PASS/FAIL per gate, and explicit statements `MODEL_RUNTIME=DISABLED`, `IMPLICIT_WRITE=NONE`, `DOS-A1=RUNTIME_DEFERRED`.
-- [ ] If any product defect is found, return to the owning RED/GREEN task and recertify the new exact head. Distinguish CI/infrastructure failure from product failure.
+- [ ] Add every new `.test.ts` file to `product/package.json` and verify the canonical test script executes each one.
+- [ ] Run focused tranche tests, then full Product CI commands.
+- [ ] Push exact implementation head and run repository CI/certification on that exact SHA; inherit no PASS from earlier heads.
+- [ ] Capture smartphone + desktop evidence for Home and Classe through the existing HVA path, including full-view escape, keyboard/focus and no unintended horizontal overflow.
+- [ ] Record baseline SHA, exact head SHA, run identifiers and PASS/FAIL per gate in the closeout evidence, with explicit `MODEL_RUNTIME=DISABLED`, `IMPLICIT_WRITE=NONE`, `DOS-A1=RUNTIME_DEFERRED`.
+- [ ] If a product defect appears, return to the owning RED/GREEN task and recertify the new exact head. Distinguish infrastructure/CI failures from product failures.
 - [ ] Keep implementation PR Draft until exact-head automated gates and Human Review pass. No automatic merge.
 
 ## Definition of done for IUI-02/03
 
 IUI-02/03 is complete only when:
 
-- the closed deterministic composition contract/registry/policy exists and is independently tested;
+- closed deterministic contract/continuity/registry/policy/composer layers exist and are independently tested;
 - Home and Classe consume validated `SurfaceComposition` without duplicating domain authority;
 - direct modeled Home → lesson journeys are not lengthened;
 - legitimate Home → Classe transitions preserve sanitized task context;
 - stale/incoherent continuity cannot override current Class state;
-- FOCUSED action budgets and full-view escape paths are enforced;
+- FOCUSED action budgets and broader-view escape paths are enforced;
 - composition/rendering performs no writes;
 - no runtime GPT/model/provider dependency exists;
-- all new tests are part of the canonical `npm test` command;
+- every new test is part of canonical `npm test`;
 - Product CI, typecheck, lint, build, Human Interaction, Design Policy, Browser/WCAG/no-implicit-write and HVA pass on the exact implementation head;
 - Human Review judges the journey simpler and predictable;
 - no automatic merge has occurred.
