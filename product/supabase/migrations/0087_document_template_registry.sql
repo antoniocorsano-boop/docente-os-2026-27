@@ -574,7 +574,10 @@ begin
   if version_schema->>'kind' is distinct from template_kind then
     raise exception 'TEMPLATE_KIND_MISMATCH';
   end if;
-  if version_schema->>'version' is distinct from target_version_no::text then
+  if jsonb_typeof(version_schema->'version') <> 'number' then
+    raise exception 'TEMPLATE_VERSION_MISMATCH';
+  end if;
+  if (version_schema->>'version')::numeric <> target_version_no::numeric then
     raise exception 'TEMPLATE_VERSION_MISMATCH';
   end if;
 
