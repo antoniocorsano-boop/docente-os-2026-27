@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import type { KnowledgeAsset, KnowledgeDocument } from '@/core/domain/knowledge'
 import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes, humanMaterialTitle, selectPreparedClassMaterials } from './class-workspace-model'
@@ -104,6 +105,30 @@ test('prepared materials receive priority in the generic material list without c
   )
 
   assert.equal(focus.materials[0]?.assetId, 'prepared')
+})
+
+test('missing canonical runtime binding is unavailable instead of being projected as 0/33 and B01', () => {
+  const progress = [
+    { id: 'p1', sectionId: 'section-2c', canonicalPlanAssetId: 'asset-plan', canonicalGenerationId: 'gen-plan', blockId: 'B01', status: 'SVOLTO' as const, executedOn: null, evidenceNote: null, updatedAt: '' },
+  ]
+  const summary = buildClassWorkspaceSummary(section2C, [], [], progress, null)
+  const focus = buildClassWorkspaceLearningFocus(section2C, progress, null, [])
+
+  assert.equal(summary.progressAvailable, false)
+  assert.equal(summary.completedBlocks, null)
+  assert.equal(focus.progressAvailable, false)
+  assert.equal(focus.completedBlocks, null)
+  assert.equal(focus.nextBlock, null)
+})
+
+test('class surfaces render an explicit unavailable state when the canonical binding is missing', () => {
+  const listSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+  const detailSource = readFileSync(new URL('./[sectionId]/page.tsx', import.meta.url), 'utf8')
+
+  assert.match(listSource, /item\.progressAvailable/)
+  assert.match(listSource, /Avanzamento non disponibile/)
+  assert.match(detailSource, /learningFocus\.progressAvailable/)
+  assert.match(detailSource, /Avanzamento non disponibile/)
 })
 
 test('technical document identifiers are removed from human material titles', () => {

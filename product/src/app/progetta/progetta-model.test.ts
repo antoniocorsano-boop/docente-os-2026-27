@@ -175,6 +175,13 @@ test('il passaggio UDA → Atlas resta una scelta semplice e contestuale', () =>
   assert.doesNotMatch(udaSource, />Cosa non succede</)
 })
 
+test('l’authoring UDA mantiene un solo landmark main fornito da AppShell', () => {
+  const udaSource = readFileSync(new URL('./documenti/nuovo/[assetId]/page.tsx', import.meta.url), 'utf8')
+
+  assert.doesNotMatch(udaSource, /<main className="newUdaGate"/)
+  assert.match(udaSource, /<section className="newUdaGate"/)
+})
+
 test('il ritorno da Atlas mostra solo la decisione di associazione alla lezione', () => {
   const returnSource = readFileSync(new URL('./atlas/ritorno/AtlasMaterialReturnReview.tsx', import.meta.url), 'utf8')
 
