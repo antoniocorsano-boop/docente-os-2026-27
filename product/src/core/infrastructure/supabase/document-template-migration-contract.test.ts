@@ -37,3 +37,16 @@ test('trusted quality review validates the complete field and section schema bef
   assert.match(sql, /INVALID_FIELD_VALUE_POLICY/)
   assert.match(sql, /INVALID_FIELD_PRIVACY_CLASS/)
 })
+
+test('trusted quality review rejects malformed option collections before PASS', () => {
+  const sql = readFileSync(migrationPath, 'utf8')
+  assert.match(sql, /INVALID_FIELD_OPTIONS/)
+  assert.match(sql, /INVALID_FIELD_OPTION_VALUE/)
+  assert.match(sql, /INVALID_FIELD_OPTION_LABEL/)
+})
+
+test('trusted quality review binds schema identity to the persisted registry row', () => {
+  const sql = readFileSync(migrationPath, 'utf8')
+  assert.match(sql, /TEMPLATE_KIND_MISMATCH/)
+  assert.match(sql, /TEMPLATE_VERSION_MISMATCH/)
+})
