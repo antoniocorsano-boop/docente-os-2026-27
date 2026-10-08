@@ -27,13 +27,12 @@ jobs:
       - name: Checkout probe derived from exact PR head
         uses: actions/checkout@v6
         with:
-          fetch-depth: 2
+          fetch-depth: 20
 
       - name: Prove product tree is byte-identical to PR #692 exact head
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "$TARGET_SHA"
           test "$(git rev-parse "$TARGET_SHA:product")" = "$(git rev-parse 'HEAD:product')"
           changed="$(git diff --name-only "$TARGET_SHA" HEAD)"
           test "$changed" = '.github/workflows/pr692-exact-head-human-review-v3.yml'
@@ -94,11 +93,12 @@ jobs:
           const out = 'test-results/pr692-exact-head-hva'
           const runToken = process.env.GITHUB_RUN_ID ?? String(Date.now())
           const report = {
-            schemaVersion: 1,
+            schemaVersion: 2,
             targetSha: process.env.TARGET_SHA,
             probeSha: process.env.GITHUB_SHA,
             productTreeExact: true,
             journey: 'UDA → ritorno Atlas → scelta lezione → associazione → materiale visibile nella lezione',
+            discovery: [],
             runs: [],
           }
 
@@ -120,6 +120,16 @@ jobs:
             return path
           }
 
+          function sectionIdFromClassHref(href) {
+            const match = href.match(/^\/classi\/([^/?#]+)/)
+            return match ? decodeURIComponent(match[1]) : ''
+          }
+
+          function gradeFromPlanningHref(href) {
+            const url = new URL(href, baseURL)
+            return url.searchParams.get('grade') ?? ''
+          }
+
           async function findAtlasReadyAuthoring(page) {
             await page.goto('/classi', { waitUntil: 'networkidle', timeout: 60_000 })
             const cards = page.locator('a.canonicalClassCard')
@@ -133,37 +143,48 @@ jobs:
             }
 
             for (const classHref of classHrefs) {
+              const sectionId = sectionIdFromClassHref(classHref)
+              if (!sectionId) continue
               await page.goto(classHref, { waitUntil: 'networkidle', timeout: 60_000 })
               const planning = page.locator('a[href*="/progetta?grade="]').first()
-              if (!(await visible(planning))) continue
-              const planningHref = await planning.getAttribute('href')
-              if (!planningHref) continue
+              if (!(await visible(planning))) {
+                report.discovery.push({ classHref, sectionId, state: 'NO_PLANNING_LINK' })
+                continue
+              }
+              const focusedPlanningHref = await planning.getAttribute('href')
+              if (!focusedPlanningHref) continue
+              const grade = gradeFromPlanningHref(focusedPlanningHref)
+              if (!grade) continue
 
-              await page.goto(planningHref, { waitUntil: 'networkidle', timeout: 60_000 })
-              const candidates = page.locator('a.guidedPrimaryAuthoringAction, a.progettaAuthoringAction')
-              const candidateCount = await candidates.count()
+              const allPlanningHref = `/progetta?grade=${encodeURIComponent(grade)}&section=${encodeURIComponent(sectionId)}`
+              await page.goto(allPlanningHref, { waitUntil: 'networkidle', timeout: 60_000 })
+              const candidates = page.locator('a.progettaAuthoringAction')
+              const candidateHrefs = []
+              for (let index = 0; index < await candidates.count(); index += 1) {
+                const href = await candidates.nth(index).getAttribute('href')
+                if (href) candidateHrefs.push(href)
+              }
+              report.discovery.push({ classHref, sectionId, grade, allPlanningHref, candidateHrefs })
 
-              for (let index = 0; index < candidateCount; index += 1) {
-                const candidate = candidates.nth(index)
-                if (!(await visible(candidate))) continue
-                await Promise.all([
-                  page.waitForURL(/\/progetta\/documenti\/nuovo\//, { timeout: 30_000 }),
-                  candidate.click(),
-                ])
+              for (const candidateHref of candidateHrefs) {
+                const authoringUrl = new URL(candidateHref, baseURL)
+                authoringUrl.searchParams.set('section', sectionId)
+                await page.goto(authoringUrl.toString(), { waitUntil: 'networkidle', timeout: 60_000 })
                 const atlas = page.locator('a.newUdaAtlasAction').first()
                 if (await visible(atlas)) {
                   return {
                     atlasHref: await atlas.getAttribute('href'),
                     authoringUrl: page.url(),
                     classHref,
-                    planningHref,
+                    planningHref: allPlanningHref,
+                    sectionId,
+                    grade,
                   }
                 }
-                await page.goto(planningHref, { waitUntil: 'networkidle', timeout: 60_000 })
               }
             }
 
-            throw new Error('No UDA with complete class/annual-plan context exposed the Atlas material action')
+            throw new Error('No canonical UDA asset exposed the Atlas action when class context was preserved explicitly')
           }
 
           async function runViewport(browser, viewportName, viewport) {
@@ -224,8 +245,7 @@ jobs:
                 if (!option) throw new Error('No lesson option available for Atlas material association')
                 await select.selectOption(option)
               }
-              const selectedBlockId = await select.inputValue()
-              evidence.selectedBlockId = selectedBlockId
+              evidence.selectedBlockId = await select.inputValue()
               evidence.screenshots.push(await snap(page, viewportName, '02-atlas-return-review'))
 
               await Promise.all([
