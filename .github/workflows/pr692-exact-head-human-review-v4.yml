@@ -17,10 +17,10 @@ jobs:
       E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
       E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
       E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
-      E2E_BASE_URL: http://127.0.0.1:3000
+      E2E_BASE_URL: http://localhost:3000
       NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
-      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
       NEXT_PUBLIC_DOCENTE_OS_ORIGIN: http://localhost:3000
       NEXT_PUBLIC_STUDIO_ATLAS_ORIGIN: https://studio-atlas.invalid
     steps:
@@ -97,7 +97,7 @@ jobs:
           import { loginE2E } from './e2e/support/e2e-auth.mjs'
           import { deleteAllKnowledgeFixtures, fixtureIdentity } from './e2e/support/knowledge-fixture-hygiene.mjs'
 
-          const baseURL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000'
+          const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
           const out = 'test-results/pr692-v4'
           const token = process.env.GITHUB_RUN_ID ?? String(Date.now())
           const fixtureTitle = `CAN-UDA-3-01 HVA Atlas ${token}`
