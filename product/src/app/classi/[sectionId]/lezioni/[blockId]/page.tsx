@@ -11,6 +11,7 @@ import {
 } from '@/core/application/lesson-preparation-approval'
 import { SupabaseAnnualPlanCurriculumRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-curriculum-repository'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
 import { SupabaseLessonPreparationApprovalRepository } from '@/core/infrastructure/supabase/supabase-lesson-preparation-approval-repository'
@@ -66,18 +67,24 @@ export default async function LessonWorkspacePage({
   }
 
   const source = CANONICAL_PLAN_SOURCES[grade]
-  const designContext = {
+  const runtimeSource = await new SupabaseCanonicalPlanSourceRepository().resolve({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    code: source.code,
+  })
+  const designContext = runtimeSource ? {
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
     sectionId: section.id,
-    canonicalPlanAssetId: source.assetId,
-    canonicalGenerationId: source.generationId,
+    canonicalPlanAssetId: runtimeSource.assetId,
+    canonicalGenerationId: runtimeSource.generationId,
     blockId: block.id,
     projectionId: projection.projectionId,
-  }
+  } : null
+
   const curriculumRepository = new SupabaseAnnualPlanCurriculumRepository()
   const [extensions, knowledgeItems, assignments, textbookAdoptions, curriculumBaseline, latestApproval] = await Promise.all([
-    new SupabaseLessonDesignRepository().list(designContext),
+    designContext ? new SupabaseLessonDesignRepository().list(designContext) : Promise.resolve([]),
     new SupabaseKnowledgeRepository().listRecent(context.workspace.id, 100),
     new SupabaseTeachingAssignmentReader().list(context.workspace.id, context.academicYear.id),
     new SupabaseTextbookRepository().list(context.workspace.id, context.academicYear.id),
@@ -87,11 +94,11 @@ export default async function LessonWorkspacePage({
       sectionId: section.id,
       disciplineRef: 'technology',
     }),
-    new SupabaseLessonPreparationApprovalRepository().latest(designContext),
+    designContext ? new SupabaseLessonPreparationApprovalRepository().latest(designContext) : Promise.resolve(null),
   ])
 
   let approvalStatus: LessonPreparationApprovalStatus = 'CURRICULUM_REQUIRED'
-  if (curriculumBaseline && isCurriculumBaselineReadyForLessonApproval(curriculumBaseline)) {
+  if (designContext && curriculumBaseline && isCurriculumBaselineReadyForLessonApproval(curriculumBaseline)) {
     const preparationSnapshot = buildLessonPreparationApprovalSnapshot({
       context: designContext,
       curriculumBaseline,
@@ -106,18 +113,22 @@ export default async function LessonWorkspacePage({
       : 'NEEDS_APPROVAL'
   }
 
-  const progress = snapshot.progress.find((entry) =>
-    entry.sectionId === section.id &&
-    entry.canonicalGenerationId === source.generationId &&
-    entry.blockId === block.id,
-  ) ?? null
+  const progress = runtimeSource
+    ? snapshot.progress.find((entry) =>
+        entry.sectionId === section.id &&
+        entry.canonicalGenerationId === runtimeSource.generationId &&
+        entry.blockId === block.id,
+      ) ?? null
+    : null
   const udaBlocks = blocks.filter((item) => item.uda === block.uda)
-  const udaProgress = snapshot.progress.filter((entry) =>
-    entry.sectionId === section.id &&
-    entry.canonicalGenerationId === source.generationId &&
-    udaBlocks.some((item) => item.id === entry.blockId) &&
-    COMPLETE_STATUSES.has(entry.status),
-  ).length
+  const udaProgress = runtimeSource
+    ? snapshot.progress.filter((entry) =>
+        entry.sectionId === section.id &&
+        entry.canonicalGenerationId === runtimeSource.generationId &&
+        udaBlocks.some((item) => item.id === entry.blockId) &&
+        COMPLETE_STATUSES.has(entry.status),
+      ).length
+    : 0
 
   const sectionAssignmentIds = new Set(
     assignments.filter((assignment) => assignment.sectionId === section.id).map((assignment) => assignment.id),
@@ -244,7 +255,6 @@ function currentRomeDate() {
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
   return `${values.year}-${values.month}-${values.day}`
 }
-
 
 async function lessonCurriculumBaselineOrNull(
   repository: SupabaseAnnualPlanCurriculumRepository,
