@@ -1,0 +1,277 @@
+name: PR692 Exact-Head Human Review V3
+
+on:
+  push:
+    branches:
+      - probe/pr692-exact-head-human-review-v3
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head-atlas-journey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TARGET_SHA: 5a352dad061273d659df44321fae5450009553ff
+      E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
+      E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
+      E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
+      E2E_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_DOCENTE_OS_ORIGIN: http://127.0.0.1:3000
+      NEXT_PUBLIC_STUDIO_ATLAS_ORIGIN: https://studio-atlas.invalid
+    steps:
+      - name: Checkout probe derived from exact PR head
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Prove product tree is byte-identical to PR #692 exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "$TARGET_SHA"
+          test "$(git rev-parse "$TARGET_SHA:product")" = "$(git rev-parse 'HEAD:product')"
+          changed="$(git diff --name-only "$TARGET_SHA" HEAD)"
+          test "$changed" = '.github/workflows/pr692-exact-head-human-review-v3.yml'
+          printf 'target_sha=%s\nprobe_sha=%s\nproduct_tree=%s\n' \
+            "$TARGET_SHA" "$(git rev-parse HEAD)" "$(git rev-parse 'HEAD:product')" | tee /tmp/pr692-exact-head-proof.txt
+
+      - name: Require governed AAL2 E2E credential
+        shell: bash
+        run: test -n "${E2E_EMAIL:-}" && test -n "${E2E_PASSWORD:-}" && test -n "${E2E_TOTP_SECRET:-}"
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install product dependencies
+        working-directory: product
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Playwright without changing lockfile
+        working-directory: product
+        run: npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund @playwright/test@1.55.0
+
+      - name: Build exact product tree
+        working-directory: product
+        run: npm run build
+
+      - name: Start exact product tree
+        working-directory: product
+        shell: bash
+        run: |
+          npm start > /tmp/pr692-exact-head-runtime.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 5 "$E2E_BASE_URL/login" >/dev/null; then
+              echo 'Exact-head Docente OS runtime ready.'
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/pr692-exact-head-runtime.log >&2 || true
+          exit 1
+
+      - name: Install Chromium
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run focused Atlas material handoff journey
+        working-directory: product
+        shell: bash
+        run: |
+          mkdir -p test-results/pr692-exact-head-hva
+          cat > pr692-exact-head-hva.mjs <<'EOF'
+          import { chromium, expect } from '@playwright/test'
+          import fs from 'node:fs/promises'
+          import { loginE2E } from './e2e/support/e2e-auth.mjs'
+
+          const baseURL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000'
+          const out = 'test-results/pr692-exact-head-hva'
+          const runToken = process.env.GITHUB_RUN_ID ?? String(Date.now())
+          const report = {
+            schemaVersion: 1,
+            targetSha: process.env.TARGET_SHA,
+            probeSha: process.env.GITHUB_SHA,
+            productTreeExact: true,
+            journey: 'UDA → ritorno Atlas → scelta lezione → associazione → materiale visibile nella lezione',
+            runs: [],
+          }
+
+          function decodeBase64Url(value) {
+            return JSON.parse(Buffer.from(value, 'base64url').toString('utf8'))
+          }
+
+          function encodeBase64Url(value) {
+            return Buffer.from(JSON.stringify(value), 'utf8').toString('base64url')
+          }
+
+          async function visible(locator) {
+            return await locator.count() > 0 && await locator.first().isVisible().catch(() => false)
+          }
+
+          async function snap(page, viewportName, step) {
+            const path = `${out}/${viewportName}--${step}.png`
+            await page.screenshot({ path, fullPage: true })
+            return path
+          }
+
+          async function findAtlasReadyAuthoring(page) {
+            await page.goto('/classi', { waitUntil: 'networkidle', timeout: 60_000 })
+            const cards = page.locator('a.canonicalClassCard')
+            const count = await cards.count()
+            if (!count) throw new Error('No canonical class cards available for focused Atlas HVA')
+
+            const classHrefs = []
+            for (let i = 0; i < count; i += 1) {
+              const href = await cards.nth(i).getAttribute('href')
+              if (href) classHrefs.push(href)
+            }
+
+            for (const classHref of classHrefs) {
+              await page.goto(classHref, { waitUntil: 'networkidle', timeout: 60_000 })
+              const planning = page.locator('a[href*="/progetta?grade="]').first()
+              if (!(await visible(planning))) continue
+              const planningHref = await planning.getAttribute('href')
+              if (!planningHref) continue
+
+              await page.goto(planningHref, { waitUntil: 'networkidle', timeout: 60_000 })
+              const candidates = page.locator('a.guidedPrimaryAuthoringAction, a.progettaAuthoringAction')
+              const candidateCount = await candidates.count()
+
+              for (let index = 0; index < candidateCount; index += 1) {
+                const candidate = candidates.nth(index)
+                if (!(await visible(candidate))) continue
+                await Promise.all([
+                  page.waitForURL(/\/progetta\/documenti\/nuovo\//, { timeout: 30_000 }),
+                  candidate.click(),
+                ])
+                const atlas = page.locator('a.newUdaAtlasAction').first()
+                if (await visible(atlas)) {
+                  return {
+                    atlasHref: await atlas.getAttribute('href'),
+                    authoringUrl: page.url(),
+                    classHref,
+                    planningHref,
+                  }
+                }
+                await page.goto(planningHref, { waitUntil: 'networkidle', timeout: 60_000 })
+              }
+            }
+
+            throw new Error('No UDA with complete class/annual-plan context exposed the Atlas material action')
+          }
+
+          async function runViewport(browser, viewportName, viewport) {
+            const context = await browser.newContext({
+              baseURL,
+              viewport,
+              locale: 'it-IT',
+              timezoneId: 'Europe/Rome',
+            })
+            const page = await context.newPage()
+            const evidence = { viewport: viewportName, screenshots: [] }
+            try {
+              await loginE2E(page)
+              const source = await findAtlasReadyAuthoring(page)
+              evidence.source = source
+              evidence.screenshots.push(await snap(page, viewportName, '01-uda-atlas-action'))
+
+              if (!source.atlasHref) throw new Error('Atlas href missing on Atlas-ready authoring surface')
+              const atlasUrl = new URL(source.atlasHref)
+              const encodedContext = new URLSearchParams(atlasUrl.hash.replace(/^#/, '')).get('context')
+              if (!encodedContext) throw new Error('Atlas teaching context missing from handoff URL')
+              const teachingContext = decodeBase64Url(encodedContext)
+              if (!teachingContext.returnUrl || !teachingContext.udaId) throw new Error('Atlas teaching context is incomplete')
+              evidence.teachingContext = {
+                udaId: teachingContext.udaId,
+                sectionId: teachingContext.sectionId,
+                blockId: teachingContext.blockId ?? null,
+                returnUrl: teachingContext.returnUrl,
+              }
+
+              const materialTitle = `HVA Atlas ${viewportName} ${runToken}`
+              const materialId = `hva-${viewportName}-${runToken}`
+              const bundle = {
+                schema: 'studio-atlas.material-bundle/v0.1',
+                source: 'studio-atlas',
+                bundleId: `bundle-${viewportName}-${runToken}`,
+                sourceUdaId: teachingContext.udaId,
+                generatedAt: new Date().toISOString(),
+                items: [{
+                  materialId,
+                  type: 'worksheet',
+                  title: materialTitle,
+                  description: 'Evidenza tecnica HVA del ritorno Studio Atlas e dell’associazione esplicita alla lezione.',
+                  origin: 'atlas',
+                }],
+              }
+              const encodedBundle = encodeBase64Url(bundle)
+              const returnUrl = new URL(teachingContext.returnUrl)
+              returnUrl.hash = `bundle=${encodedBundle}`
+              await page.goto(returnUrl.toString(), { waitUntil: 'networkidle', timeout: 60_000 })
+
+              await expect(page.getByRole('heading', { name: 'Associa i materiali alla lezione' })).toBeVisible()
+              await expect(page.getByText(materialTitle, { exact: true })).toBeVisible()
+              const select = page.locator('#atlas-target-lesson')
+              await expect(select).toBeVisible()
+              if (!(await select.inputValue())) {
+                const option = await select.locator('option').evaluateAll((options) => options.map((o) => o.value).find(Boolean) ?? '')
+                if (!option) throw new Error('No lesson option available for Atlas material association')
+                await select.selectOption(option)
+              }
+              const selectedBlockId = await select.inputValue()
+              evidence.selectedBlockId = selectedBlockId
+              evidence.screenshots.push(await snap(page, viewportName, '02-atlas-return-review'))
+
+              await Promise.all([
+                page.waitForURL(/\/classi\/[^/]+\/lezioni\/[^/?#]+\?mode=prepare/, { timeout: 60_000 }),
+                page.getByRole('button', { name: 'Associa alla lezione' }).click(),
+              ])
+              evidence.lessonUrl = page.url()
+              await expect(page.getByText(materialTitle, { exact: true })).toBeVisible({ timeout: 30_000 })
+              evidence.screenshots.push(await snap(page, viewportName, '03-material-visible-in-lesson'))
+              evidence.status = 'PASS'
+            } catch (error) {
+              evidence.status = 'FAIL'
+              evidence.error = error instanceof Error ? error.message : String(error)
+              evidence.screenshots.push(await snap(page, viewportName, '99-failure').catch(() => null))
+              throw error
+            } finally {
+              report.runs.push(evidence)
+              await context.close()
+            }
+          }
+
+          const browser = await chromium.launch({ headless: true })
+          try {
+            await runViewport(browser, 'desktop-1440x1000', { width: 1440, height: 1000 })
+            await runViewport(browser, 'mobile-390x844', { width: 390, height: 844 })
+          } finally {
+            await browser.close()
+            await fs.writeFile(`${out}/report.json`, `${JSON.stringify(report, null, 2)}\n`)
+          }
+
+          if (report.runs.some((entry) => entry.status !== 'PASS')) process.exit(1)
+          EOF
+          node pr692-exact-head-hva.mjs
+
+      - name: Record exact-head proof with evidence
+        if: always()
+        shell: bash
+        run: |
+          cp /tmp/pr692-exact-head-proof.txt product/test-results/pr692-exact-head-hva/exact-head-proof.txt
+          cp /tmp/pr692-exact-head-runtime.log product/test-results/pr692-exact-head-hva/runtime.log || true
+
+      - name: Upload focused HVA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr692-exact-head-hva-${{ github.run_id }}
+          path: product/test-results/pr692-exact-head-hva
+          if-no-files-found: error
+          retention-days: 90
