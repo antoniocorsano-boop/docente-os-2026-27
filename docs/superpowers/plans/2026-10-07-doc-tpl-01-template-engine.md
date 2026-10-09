@@ -17,6 +17,8 @@
 - `InstitutionalBaseVersion` and `DocumentTemplateVersion` are independent immutable version streams.
 - `ACTIVE` base versions and `ACTIVE` family-template versions require deterministic Quality Review plus explicit Human Review.
 - Lifecycle transitions are trusted, auditable operations; direct status writes are forbidden.
+- Institutional lifecycle authority is explicit: in v1 `TEMPLATE_GOVERNANCE` maps to existing workspace roles `OWNER | ADMIN`; authenticated `MEMBER` is not authorized to activate, block, clear a block or retire either registry stream.
+- Lifecycle RPCs resolve the caller role from `workspace_memberships` at the trusted boundary; client-supplied role/capability claims are ignored.
 - `RETIRED` is terminal for the same registry identity in v1: once retirement is recorded, **every mutating RPC targeting that identity must fail closed**. No new version, review, block, clear-block, repeated retirement or activation is allowed. Only authorized historical reads/snapshots remain available.
 - `BLOCKED` stops use for new documents. It can return only to a reviewable state through an explicit trusted `clearBlock` decision; it cannot jump directly back to `ACTIVE`.
 - A new source revision never mutates an active base or family template.
@@ -45,6 +47,7 @@ family_template_version_no
 - Institutional styling must be updateable once as a new base version without copying it into every family template.
 - Historical output must resolve the exact pinned institutional-base version even after a newer base becomes active.
 - Retirement/blocking must never destroy historical resolution and retirement must not be bypassable through any later mutation, not only activation.
+- A workspace `MEMBER` must not be able to change institution-wide base/template availability; OWNER/ADMIN authorization is revalidated inside each consequential lifecycle RPC.
 - Family-template changes must not carry or duplicate logo/header/typography/page-geometry definitions.
 - A legacy source with duplicate/ambiguous sections must be improvable without mutating the source file.
 - A template containing a technically named field internally must still render only human institutional labels externally.
@@ -100,7 +103,11 @@ export type RegistryLifecycleDecision =
   | 'BLOCKED'
   | 'BLOCK_CLEARED'
   | 'RETIRED'
+
+export type TemplateGovernanceRole = 'OWNER' | 'ADMIN'
 ```
+
+`TemplateGovernanceRole` is an authorization projection of the existing canonical `WorkspaceRole`; do not create a parallel membership store or a new global RBAC system.
 
 The profile types are deterministic serializable data only: no JSX, HTML, executable code, arbitrary CSS text, provider/model data or source provenance intended for professional output.
 
@@ -189,7 +196,7 @@ document_template_quality_reviews
 document_template_lifecycle_decisions
 ```
 
-Each lifecycle-decision row stores at least registry identity, decision, actor, timestamp, optional exact version reference where relevant, and a human-readable internal note/reason. It is audit evidence and is never emitted in professional output.
+Each lifecycle-decision row stores at least registry identity, decision, actor, actor workspace role, timestamp, optional exact version reference where relevant, and a human-readable internal note/reason. It is audit evidence and is never emitted in professional output.
 
 The base registry produces RPCs equivalent to:
 
@@ -226,13 +233,16 @@ document_template_version_snapshot(target_template_id uuid, target_version_no in
 - direct authenticated insert/update/delete is revoked for all registry/version/review/lifecycle-decision tables;
 - SELECT is workspace-member scoped;
 - every write RPC revalidates workspace membership and authenticated actor;
+- `activate_*`, `block_*`, `clear_*_block`, and `retire_*` additionally load the current workspace membership role inside the same trusted transaction and require `role in ('OWNER','ADMIN')`; authenticated `MEMBER` fails closed with a stable authorization error before any status/decision mutation;
+- no lifecycle RPC accepts role/capability as trusted input from the client;
+- deterministic quality-review computation may remain available to ordinary workspace members, but its result never grants lifecycle authority by itself;
 - **every mutating RPC that targets an existing base/template begins by loading and locking that registry identity and fails closed when `status = 'RETIRED'`; this applies to version save, quality-review recording, activation, block, clear-block and retirement itself. Historical read/snapshot RPCs are the only operations allowed on a retired identity;**
-- activation of either stream requires a persisted trusted Quality Review result `PASS` or `PASS_WITH_NOTES` for that exact version plus explicit Human Review confirmation;
+- activation of either stream requires a persisted trusted Quality Review result `PASS` or `PASS_WITH_NOTES` for that exact version plus explicit Human Review confirmation and `TEMPLATE_GOVERNANCE` authority;
 - activation rejects registry identities currently `RETIRED` or `BLOCKED`;
 - `retire_*` is explicit, records `RETIRED`, clears the active pointer for future selection, preserves all historical versions/snapshots, and is terminal for the same registry identity in v1;
 - a repeated `retire_*` call on an already retired identity fails closed rather than rewriting/duplicating decision history;
 - `block_*` records `BLOCKED`, prevents selection/activation for new documents and preserves historical pin resolution; it rejects a `RETIRED` identity before any status change or decision insert;
-- `clear_*_block` is the only path out of `BLOCKED`; it records `BLOCK_CLEARED` and moves the identity only to `REVIEW_REQUIRED` (or equivalent non-active review state). It rejects a `RETIRED` identity and a separate successful review + Human Review + activation is still required;
+- `clear_*_block` is the only path out of `BLOCKED`; it records `BLOCK_CLEARED` and moves the identity only to `REVIEW_REQUIRED` (or equivalent non-active review state). It rejects a `RETIRED` identity and a separate successful review + Human Review + authorized activation is still required;
 - calling `activate_*` directly after `BLOCKED`, or on `RETIRED`, fails closed;
 - `save_*_version` and `record_*_quality_review` reject `RETIRED`; saving a new version while `BLOCKED` does not silently clear the block;
 - activating a new version changes only the active pointer/status of its own stream and never rewrites the other stream;
@@ -241,8 +251,8 @@ document_template_version_snapshot(target_template_id uuid, target_version_no in
 - snapshot-by-version RPCs resolve historical versions by explicit identity/version after the identity is blocked/retired and never fall back to active/current versions;
 - schema/profile payloads are validated JSON data, never rendered HTML/DOCX coordinates or executable styling.
 
-- [ ] **Step 1: Write RED migration-contract assertions** for both base and family registry tables/RPCs, RLS/revokes, trusted activation, `block/clearBlock/retire`, lifecycle-decision evidence and explicit version snapshots.
-- [ ] **Step 2: Add RED behavior cases** for **both registry streams** proving: direct reactivation from `BLOCKED` fails; `clearBlock` does not activate; after `RETIRED`, `saveVersion`, `recordQualityReview`, `activate`, `block`, `clearBlock` and repeated `retire` all fail without changing status/decision history; historical `snapshot/getVersion` still succeeds by exact identity/version.
+- [ ] **Step 1: Write RED migration-contract assertions** for both base and family registry tables/RPCs, RLS/revokes, trusted activation, `block/clearBlock/retire`, lifecycle-decision evidence, governance-role checks and explicit version snapshots.
+- [ ] **Step 2: Add RED behavior cases** for **both registry streams** proving: unauthenticated/non-member rejected; `MEMBER` rejected for activate/block/clearBlock/retire with no mutation; OWNER and ADMIN can exercise permitted lifecycle transitions; direct reactivation from `BLOCKED` fails; `clearBlock` does not activate; after `RETIRED`, `saveVersion`, `recordQualityReview`, `activate`, `block`, `clearBlock` and repeated `retire` all fail without changing status/decision history; historical `snapshot/getVersion` still succeeds by exact identity/version.
 - [ ] **Step 3: Run the migration contract and verify RED.**
 - [ ] **Step 4: Implement the migration minimally.** Do not duplicate institutional-base profile data inside `document_template_versions`.
 - [ ] **Step 5: Replay the full Supabase migration chain and run the migration/behavior contracts to GREEN.**
@@ -296,6 +306,8 @@ Repository tests must prove:
 - current/active version pointers remain independent;
 - explicit historical `getVersion()` resolves the requested version, not the current active version;
 - RPC errors propagate;
+- lifecycle adapters never accept a caller-supplied role/capability override and rely on trusted RPC authorization;
+- `MEMBER` authorization errors from lifecycle RPCs propagate without client fallback or generic status write;
 - `block`, `clearBlock`, `retire` call only the matching trusted RPC and expose no generic status setter;
 - every mutation attempted after retirement propagates the trusted `RETIRED` rejection and does not attempt a fallback/generic status write;
 - `listActive` excludes BLOCKED/RETIRED identities;
@@ -369,13 +381,14 @@ The builder/review surface may show internal version/provenance/lifecycle-decisi
 
 UI rules:
 
-- `Blocca` and `Ritira` are explicit Human Review/control actions with confirmation and reason/note;
-- a BLOCKED/RETIRED identity is never shown as selectable for a new document;
-- `Rimuovi blocco` returns only to review-required state; it does not silently activate;
-- after `RETIRED`, no mutation control is rendered for that registry identity; only authorized historical inspection/preview remains;
-- historical preview by exact pin remains available to authorized control surfaces.
+- `Attiva`, `Blocca`, `Rimuovi blocco` e `Ritira` sono visibili/abilitati soltanto per actor con `TEMPLATE_GOVERNANCE` (`OWNER|ADMIN` in v1); `MEMBER` può consultare secondo le normali policy ma non vede controlli che simulino authority;
+- le azioni lifecycle richiedono conferma e, dove previsto, reason/note; l’UI non sostituisce il controllo server-side del ruolo;
+- a BLOCKED/RETIRED identity non è mai selezionabile per un nuovo documento;
+- `Rimuovi blocco` torna soltanto a review-required state; non attiva;
+- dopo `RETIRED`, nessun mutation control è esposto; resta soltanto inspection/preview storica autorizzata;
+- historical preview by exact pin resta disponibile alle superfici autorizzate.
 
-- [ ] **Step 1: RED view-model/navigation tests** proving the two streams remain distinct, human labels only, mobile navigation unchanged, lifecycle actions/statuses follow the trusted contract, and RETIRED surfaces expose no mutation controls.
+- [ ] **Step 1: RED view-model/navigation tests** proving the two streams remain distinct, human labels only, mobile navigation unchanged, OWNER/ADMIN vs MEMBER controls, lifecycle statuses and RETIRED no-mutation UI.
 - [ ] **Step 2: Implement the smallest review surface.** Do not build a WYSIWYG editor.
 - [ ] **Step 3: Run focused tests, typecheck and build.**
 - [ ] **Step 4: Commit.**
@@ -456,6 +469,7 @@ Repository certification must additionally prove on the same exact head:
 - base-registry and family-registry migration contracts;
 - institutional-base repository + family-template repository tests;
 - trusted Quality Review/Human Review activation boundaries for both streams;
+- OWNER/ADMIN governance succeeds for authorized lifecycle cases; authenticated MEMBER is rejected for activate/block/clearBlock/retire before state/decision mutation;
 - trusted `block/clearBlock/retire` behavior and persisted lifecycle evidence for both streams;
 - direct activation from BLOCKED fails; clearBlock returns only to review-required state;
 - **after RETIRED, every mutating RPC (`saveVersion`, `recordQualityReview`, `activate`, `block`, `clearBlock`, `retire`) fails for both streams, while exact historical reads remain available;**
@@ -470,6 +484,7 @@ The architecture note records the stable ownership rule:
 InstitutionalBaseVersion = shared institutional presentation authority
 DocumentTemplateVersion = family semantic authority
 AuthoredDocumentVersion = content/version authority + exact pins to both
+Template governance = OWNER|ADMIN lifecycle authority at trusted boundary; MEMBER cannot alter institutional availability
 Registry lifecycle = trusted review/activation/block/clear/retire decisions with evidence; RETIRED is read-only historical state
 Renderer = pure composition of the exact pinned versions; no silent current-version lookup
 ```
@@ -484,6 +499,7 @@ Renderer = pure composition of the exact pinned versions; no silent current-vers
 ## Self-Review
 
 - **First-class base:** Tasks 1–3 define, persist, activate, block, clear-block, retire and resolve `InstitutionalBaseVersion` independently from family templates.
+- **Authorization:** institution-wide lifecycle changes require `TEMPLATE_GOVERNANCE`, mapped to the existing `OWNER|ADMIN` roles in v1 and revalidated server-side; ordinary MEMBER access cannot mutate availability.
 - **Lifecycle completeness:** trusted transitions exist for both streams; `RETIRED` is a strict read-only terminal state for the registry identity, every mutating RPC rejects it, BLOCKED cannot self-reactivate, and decision evidence is immutable/auditable.
 - **Historical reconstruction:** Tasks 2/3/6 require explicit version snapshots and reject current-version fallback even after retirement/blocking.
 - **Family separation:** Tasks 1/4 keep document semantics out of the institutional base and shared visual policy out of family schemas.
