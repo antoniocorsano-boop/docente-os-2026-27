@@ -51,7 +51,7 @@ test('Journey: Atlas → associa materiali alla lezione', async ({ page }, testI
   await expect(page.getByText('Presentazione', { exact: true })).toBeVisible()
   await expect(page.getByText('Scheda di lavoro', { exact: true })).toBeVisible()
 
-  const lesson = page.getByLabel('Lezione')
+  const lesson = page.getByLabel('Lezione', { exact: true })
   await expect(lesson).toBeEnabled()
   await expect(lesson).toHaveValue('B01')
 
