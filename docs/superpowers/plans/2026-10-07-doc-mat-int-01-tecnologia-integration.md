@@ -94,7 +94,7 @@ Riutilizzare TeachingSession corrente e allocazioni, TeachingEvidence aggregata,
 
 Additively support `AuthoredDocumentKind = ANNUAL_PROGRAMMING` while preserving UDA/FINAL_REPORT behavior.
 
-The create boundary must receive or resolve. Nel seguente pseudocodice, `CanonicalCurricoloContext` e `CanonicalCurricoloCoverage` sono **alias semantici del piano** per i tipi canonici di applicabilità/copertura già presenti nel runtime: l'implementazione deve adattare i simboli legacy esistenti, non introdurre tipi concorrenti né rinominarli implicitamente.
+The create boundary receives document/context identifiers plus **compare-only expectations**, never caller-supplied curricolo authority. Nel seguente pseudocodice, `CanonicalCurricoloContext` e `CanonicalCurricoloCoverage` restano **alias semantici del piano** per i tipi canonici di applicabilità/copertura già presenti nel runtime: l'implementazione adatta i simboli legacy esistenti, senza introdurre tipi concorrenti né rinominarli implicitamente.
 
 ```ts
 {
@@ -102,15 +102,26 @@ The create boundary must receive or resolve. Nel seguente pseudocodice, `Canonic
   academicYearId: string
   sectionId: string
   teachingDisciplineId: string
-  curricoloContext: CanonicalCurricoloContext
-  curricoloCoverage: CanonicalCurricoloCoverage
+  expectedCurricoloBaselineId: string
+  expectedCurricoloContextId: string
+  expectedCurricoloFootprintHash: string
   institutionalBaseVersionId: string
   templateVersionId: string
   initialTitle: string
 }
 ```
 
-The trusted boundary validates that `curricoloContext` and `curricoloCoverage` match the same class/year/discipline and accepted command/scope, then persists a **lossless immutable curricolo footprint snapshot on the created document version**. `CanonicalCurricoloContext` and `CanonicalCurricoloCoverage` are plan-level semantic aliases for the existing canonical applicability types, not new runtime domain models. Do not store only a document-level pointer that could be overwritten later.
+`expectedCurricoloBaselineId`, `expectedCurricoloContextId` e `expectedCurricoloFootprintHash` sono soltanto precondizioni di intent/freshness della vista che il docente ha esaminato: non diventano authority e non possono scegliere il contenuto persistito. L'ID della baseline è l'identità opaca della receipt/snapshot corrente già restituita dal current-baseline reader canonico; un nuovo atto di adozione/rivalidazione produce una diversa baseline corrente anche quando il footprint sorgente non cambia.
+
+Il trusted boundary, prima di qualsiasi write:
+
+1. deriva dal contesto autenticato e dal target documento il workspace, l'anno scolastico, la classe e la disciplina effettivi;
+2. risolve **server-side** la baseline curricolare corrente tramite il repository canonico del Piano annuale / current-baseline reader già usato dalla superficie `curricolo-arena`;
+3. verifica che la baseline appartenga esattamente a workspace + anno + classe + disciplina, che l'authority/applicabilità sia ammessa e che la copertura obbligatoria sia soddisfatta;
+4. confronta `expectedCurricoloBaselineId`, `expectedCurricoloContextId` e `expectedCurricoloFootprintHash` con la baseline autorevole appena riletta; baseline assente, nuova receipt di adozione/rivalidazione, mismatch, payload stale/forged o cross-scope falliscono prima della persistenza;
+5. persiste sulla nuova immutable document version il **lossless curricolo footprint snapshot derivato dalla baseline server-resolved**, mai un oggetto di contesto/copertura scelto dal caller.
+
+Lo snapshot persistito comprende il contesto e la copertura canonici già governati dal runtime (`CanonicalCurricoloContext` / `CanonicalCurricoloCoverage` nel lessico di questo piano), inclusi authority, requirements/source refs, transition/remodulation, status di copertura, requirement coverage, blocking IDs e stato di revalidation. Non memorizzare soltanto un pointer document-level sovrascrivibile.
 
 Each later saved Programmazione version either:
 
@@ -119,9 +130,13 @@ Each later saved Programmazione version either:
 
 Identity remains one current Programmazione annuale per workspace + anno + sezione + disciplina, with immutable version history.
 
-- [ ] RED domain tests for required class/discipline/curricolo context+coverage/base/template identity and unchanged UDA/FINAL_REPORT fixtures.
-- [ ] RED persistence test: version v1 stores a complete immutable snapshot of `curricoloContext` + `curricoloCoverage`.
-- [ ] RED persistence test: v2 can retain v1 footprint unchanged without reading “current” Arena state during historical rendering.
+- [ ] RED domain tests for required class/discipline/expected curricolo baseline/base/template identity and unchanged UDA/FINAL_REPORT fixtures.
+- [ ] RED trusted-source test: the boundary resolves the current baseline server-side for the authenticated workspace + year + section + discipline; a caller cannot substitute a different context/coverage object.
+- [ ] RED persistence test: version v1 stores a complete immutable context+coverage snapshot derived from that trusted baseline, not from caller data.
+- [ ] RED stale/forged test: valid-looking expected baseline/context/footprint identifiers that do not match the freshly resolved baseline fail before document/version persistence; a new adoption/revalidation receipt invalidates a stale UI intent even when the source footprint hash is unchanged.
+- [ ] RED cross-scope test: a baseline from another workspace/year/section/discipline cannot be persisted even when its identifiers are known to the caller.
+- [ ] RED missing-baseline test: no authoritative current baseline means no Programmazione v1 is created.
+- [ ] RED persistence test: v2 can retain v1 footprint unchanged without reading current Arena state during historical rendering.
 - [ ] RED revalidation test: same canonical curricolo version reference but changed requirements/sourceRefs/transition state/coverage is detected as a different footprint and cannot silently replace v1.
 - [ ] RED migration/repository tests for workspace/context validation, uniqueness and immutable history.
 - [ ] Implement minimally using existing X5 tables/RPC patterns; no parallel archive.
@@ -170,6 +185,15 @@ The family template inherits a pinned `InstitutionalBaseVersion`; it does not du
 - Create: `compose-annual-programming-draft.ts` + tests
 - Read/reuse: `product/src/app/piano-annuale/model.ts`
 - Reuse canonical curricolo applicability contract/repository.
+
+**Source authority:**
+
+- il builder parte dal current authenticated workspace/year e verifica che la classe appartenga a quel contesto;
+- la disciplina viene risolta attraverso il binding canonico già in uso, non da un ruolo/authority inviato dal client;
+- il builder carica la baseline corrente dal **current-baseline reader canonico** per workspace + anno + classe + disciplina e deriva da lì contesto e copertura;
+- request/form payload possono contenere soltanto expected identifiers/freshness per rilevare stale UI; non possono fornire o sovrascrivere authority, requirements, source refs, transition state o coverage;
+- baseline mancante, scope non coincidente o copertura obbligatoria non soddisfatta bloccano la composizione fail-closed; una baseline provvisoria già accettata resta utilizzabile con authority provvisoria e `requires revalidation` preservato, senza essere promossa implicitamente ad authority istituzionale;
+- il builder è read-only: non muta Arena, Piano annuale o la baseline curricolare.
 
 **Interface:**
 
@@ -229,6 +253,7 @@ The draft composer passes the exact curricolo context+coverage snapshots to Task
 - absent → `Prepara bozza`;
 - existing draft → `Continua`;
 - known context inherited;
+- `Prepara bozza` conserva come compare-only baseline ID + context ID + footprint hash mostrati nella vista; al submit il server rilegge la baseline canonica e, se nel frattempo è cambiata — incluso un passaggio provvisoria → approvata — rifiuta la creazione con reload/revalidation semantics invece di usare il payload stale;
 - current document version can expose internal “Da dove viene?” data from its persisted curricolo footprint;
 - if a newly resolved curricolo footprint differs from the one pinned to the current document version, show explicit comparison/revalidation rather than auto-updating;
 - ordinary UI hides technical curricolo/template/base IDs.

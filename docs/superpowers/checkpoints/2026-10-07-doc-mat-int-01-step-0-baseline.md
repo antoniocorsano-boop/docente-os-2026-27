@@ -148,7 +148,7 @@ Questi thread non vengono considerati risolti soltanto perché il branch è avan
 
 ### Residuo
 
-#695 **non è ancora qualificata**. Lo STEP 2 dovrà essere un ciclo circoscritto di diagnosi/correzione/verifica, senza introdurre nuove feature.
+PR #695 **non è ancora qualificata**. Lo STEP 2 dovrà essere un ciclo circoscritto di diagnosi/correzione/verifica, senza introdurre nuove feature.
 
 ---
 
