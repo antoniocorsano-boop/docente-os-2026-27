@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
-import { reviewDocumentTemplate, reviewInstitutionalBase } from '@/core/application/document-template-quality'
 import { SupabaseDocumentTemplateRepository } from '@/core/infrastructure/supabase/supabase-document-template-repository'
 import { SupabaseInstitutionalBaseRepository } from '@/core/infrastructure/supabase/supabase-institutional-base-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
@@ -30,22 +29,9 @@ export default async function DocumentTemplateBuilderPage() {
     familySummary ? familyRepository.get(familySummary.id) : Promise.resolve(null),
   ])
 
-  const institutionalBaseCurrentVersion = institutionalBase?.versions.find(
-    (candidate) => candidate.versionNo === institutionalBase.base.currentVersionNo,
-  ) ?? null
-  const familyCurrentVersion = familyTemplate?.versions.find(
-    (candidate) => candidate.versionNo === familyTemplate.template.currentVersionNo,
-  ) ?? null
-
   const model = buildGovernedTemplateBuilderViewModel({
     institutionalBase,
-    institutionalBaseReview: institutionalBaseCurrentVersion
-      ? reviewInstitutionalBase(institutionalBaseCurrentVersion.draft)
-      : null,
     familyTemplate,
-    familyTemplateReview: familyCurrentVersion
-      ? reviewDocumentTemplate(familyCurrentVersion.draft)
-      : null,
     role: context.role,
   })
 
