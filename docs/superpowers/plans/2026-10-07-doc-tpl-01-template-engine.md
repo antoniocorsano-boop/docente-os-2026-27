@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the reusable institutional-template foundation that can turn existing school documents or a blank institutional need into an approved canonical template, with structured fields, quality review, privacy rules, clean preview, and no technical references in the exported document surface.
+**Goal:** Build the reusable institutional-template foundation that can turn existing school documents or a blank institutional need into an approved canonical document system, with a separately versioned institutional base, separately versioned family templates, deterministic quality/privacy rules, clean preview, exact historical reconstruction and no technical references in professional output.
 
-**Architecture:** Keep source evidence and canonical templates separate. Store versioned semantic template schemas in Supabase, evaluate them with deterministic quality/purity rules, and expose a first Template Builder surface under Documentazione. The builder must work without AI and must not modify the original Drive/Knowledge source.
+**Architecture:** Keep three concerns distinct. Source evidence is immutable input. `InstitutionalBaseVersion` owns shared institutional rendering (identity, header/footer, typography, page geometry, common tables, signatures and accessibility). `DocumentTemplateVersion` owns only family semantics (sections, fields, render roles, value/privacy/source policies). Supabase persists and reviews both version streams independently. Every preview/render operation receives an explicit base version and family-template version; no renderer silently substitutes the current active version for either pin.
 
 **Tech Stack:** Next.js 16, React 19, TypeScript 5.9, Supabase/Postgres/RLS, Node `tsx --test`, existing DOCENTE OS app shell.
 
@@ -13,18 +13,35 @@
 ## Global Constraints
 
 - Existing Drive/DOCX models are sources of practice, not layout contracts to copy literally.
-- Preserve source evidence separately from the improved canonical template.
-- `ACTIVE` template versions require explicit Human Review.
+- Preserve source evidence separately from both the institutional base and the family template.
+- `InstitutionalBaseVersion` and `DocumentTemplateVersion` are independent immutable version streams.
+- `ACTIVE` base versions and `ACTIVE` family-template versions require deterministic Quality Review plus explicit Human Review.
+- A new source revision never mutates an active base or family template.
+- A new institutional-base version never changes the rendering of an already saved/finalized document version.
+- A new family-template version never changes the semantics/rendering of an already saved/finalized document version.
+- Preview/render/export boundaries accept explicit base + family-template versions; they never resolve “latest/current” silently during historical rendering.
+- Downstream authored-document versions must be able to pin exactly:
+
+```text
+institutional_base_id
+institutional_base_version_no
+family_template_id
+family_template_version_no
+```
+
 - The engine must work with AI disabled.
 - Tables/checklists/text are chosen by document function, not by legacy layout.
 - Historical sensitive fields are not retained by inertia; privacy/minimization must be explicit.
-- No CAN/Bxx codes, UUIDs, DB/entity names, provider names, hashes, internal states, Drive paths, provenance, or “generated automatically” wording may appear in the professional preview/output.
+- No CAN/Bxx codes, UUIDs, DB/entity names, provider names, hashes, internal states, Drive paths, provenance, or “generato automaticamente” wording may appear in the professional preview/output.
 - No new mobile-bottom-navigation destination.
 - Use RLS deny-by-default and RPC/application boundaries for writes.
-- Reserve migration number `0060` for this tranche; before execution, rebase on latest `develop` and verify `0060` is still free. If not, renumber this plan mechanically before coding.
+- At execution time, refresh from the governed current `develop`, record the exact baseline SHA, determine the next free migration number from the integrated lineage and use it consistently in migration/contracts/tests. Do not rely on the historical `0060` placeholder.
 
 ## Review Focus
 
+- Institutional styling must be updateable once as a new base version without copying it into every family template.
+- Historical output must resolve the exact pinned institutional-base version even after a newer base becomes active.
+- Family-template changes must not carry or duplicate logo/header/typography/page-geometry definitions.
 - A legacy source with duplicate/ambiguous sections must be improvable without mutating the source file.
 - A template containing a technically named field internally must still render only human institutional labels externally.
 - A source containing sensitive aggregate fields must not make them auto-populated or required by default.
@@ -33,142 +50,206 @@
 
 ---
 
-### Task 1: Define the canonical template domain and deterministic validation
+### Task 1: Define the institutional-base and family-template domains
 
 **Files:**
-- Create: `product/src/core/domain/document-template.ts`
-- Create: `product/src/core/domain/document-template.test.ts`
-- Create: `product/src/core/application/document-template-quality.ts`
-- Create: `product/src/core/application/document-template-quality.test.ts`
+- Create/Modify: `product/src/core/domain/document-template.ts`
+- Create/Modify: `product/src/core/domain/document-template.test.ts`
+- Create/Modify: `product/src/core/application/document-template-quality.ts`
+- Create/Modify: `product/src/core/application/document-template-quality.test.ts`
 
 **Interfaces:**
-- Produces `DocumentTemplateKind`, `DocumentTemplateStatus`, `TemplateRenderRole`, `TemplateFieldType`, `TemplateValuePolicy`, `TemplatePrivacyClass`, `TemplateSection`, `TemplateField`, `DocumentTemplateVersionDraft`, `TemplateQualityFinding`, `TemplateQualityReview`.
-- Produces `validateDocumentTemplate(draft: DocumentTemplateVersionDraft): { valid: boolean; codes: string[] }`.
-- Produces `reviewDocumentTemplate(draft: DocumentTemplateVersionDraft): TemplateQualityReview`.
-- Produces `findForbiddenTechnicalReferences(text: string): string[]`.
+
+Keep family semantics in the existing template domain and add a first-class shared-base contract. The exact public types must be equivalent to:
+
+```ts
+export type InstitutionalBaseStatus =
+  | 'DRAFT'
+  | 'QUALITY_REVIEWED'
+  | 'REVIEW_REQUIRED'
+  | 'ACTIVE'
+  | 'RETIRED'
+  | 'BLOCKED'
+
+export type InstitutionalBaseVersionDraft = {
+  name: string
+  version: number
+  identityProfile: InstitutionalIdentityProfile
+  headerProfile: InstitutionalHeaderProfile
+  footerProfile: InstitutionalFooterProfile
+  typographyProfile: InstitutionalTypographyProfile
+  pageGeometryProfile: InstitutionalPageGeometryProfile
+  commonTableProfile: InstitutionalCommonTableProfile
+  signatureProfile: InstitutionalSignatureProfile
+  accessibilityProfile: InstitutionalAccessibilityProfile
+  sourceRevisionRefs: string[]
+}
+
+export type InstitutionalRenderPin = {
+  institutionalBaseId: string
+  institutionalBaseVersionNo: number
+  familyTemplateId: string
+  familyTemplateVersionNo: number
+}
+```
+
+The profile types are deterministic serializable data only: no JSX, HTML, executable code, arbitrary CSS text, provider/model data or source provenance intended for professional output.
+
+The family-template side continues to produce `DocumentTemplateKind`, `DocumentTemplateStatus`, `TemplateRenderRole`, `TemplateFieldType`, `TemplateValuePolicy`, `TemplatePrivacyClass`, `TemplateSection`, `TemplateField`, `DocumentTemplateVersionDraft`, `TemplateQualityFinding`, `TemplateQualityReview`.
+
+Validation boundaries:
+
+```ts
+validateInstitutionalBase(draft: InstitutionalBaseVersionDraft): { valid: boolean; codes: string[] }
+validateDocumentTemplate(draft: DocumentTemplateVersionDraft): { valid: boolean; codes: string[] }
+reviewInstitutionalBase(draft: InstitutionalBaseVersionDraft): TemplateQualityReview
+reviewDocumentTemplate(draft: DocumentTemplateVersionDraft): TemplateQualityReview
+findForbiddenTechnicalReferences(text: string): string[]
+```
 
 - [ ] **Step 1: Write failing domain tests**
 
-Add tests asserting:
+Pin at least:
 
 ```ts
+assert.equal(validateInstitutionalBase(validBase).valid, true)
+assert.equal(validateInstitutionalBase(baseWithArbitraryCssOrHtml).valid, false)
 assert.equal(validateDocumentTemplate(validDraft).valid, true)
 assert.deepEqual(validateDocumentTemplate(duplicateFieldDraft).codes, ['DUPLICATE_FIELD_KEY'])
 assert.equal(reviewDocumentTemplate(requiredSensitiveDraft).result, 'REVIEW_REQUIRED')
 assert.deepEqual(findForbiddenTechnicalReferences('Classe 2C · B03 · uuid 123e4567-e89b-12d3-a456-426614174000'), ['BXX_CODE', 'UUID'])
 ```
 
-- [ ] **Step 2: Run the focused tests and verify RED**
+Also assert that `DocumentTemplateVersionDraft` contains no institutional-logo/header/footer/typography/page-geometry copy and that `InstitutionalRenderPin` requires both version streams.
 
-Run: `cd product && npx tsx --test src/core/domain/document-template.test.ts src/core/application/document-template-quality.test.ts`
+- [ ] **Step 2: Run focused tests and verify RED**
 
-Expected: FAIL because the new modules do not exist.
+Run the domain/quality tests and record the expected failures before adding missing base contracts.
 
-- [ ] **Step 3: Implement the domain types and validators**
+- [ ] **Step 3: Implement the minimum domain types and validators**
 
-Implement the files above. Pin initial public document kinds to:
+Initial family kinds remain:
 
 ```ts
 'FINAL_REPORT' | 'PROGRAM_CARRIED_OUT' | 'ANNUAL_PROGRAMMING' | 'UDA_INSTITUTIONAL'
 ```
 
-Pin render roles to:
+Render roles remain:
 
 ```ts
 'HEADING' | 'PARAGRAPH' | 'KEY_VALUE' | 'TABLE' | 'CHECKLIST' | 'CALLOUT' | 'SIGNATURE_BLOCK'
 ```
 
-Pin technical-reference scanner categories to at least:
+Technical-reference scanner categories include at least:
 
 ```ts
 'CAN_CODE' | 'BXX_CODE' | 'UUID' | 'SOFTWARE_ENTITY' | 'INTERNAL_STATE' | 'HASH' | 'DRIVE_PATH' | 'AI_PROVIDER' | 'AUTO_GENERATED_WORDING'
 ```
 
-- [ ] **Step 4: Run focused tests and verify GREEN**
-
-Run the same command. Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/src/core/domain/document-template.ts product/src/core/domain/document-template.test.ts product/src/core/application/document-template-quality.ts product/src/core/application/document-template-quality.test.ts
-git commit -m "feat: define institutional template domain"
-```
+- [ ] **Step 4: Run focused tests and full typecheck to GREEN**
+- [ ] **Step 5: Commit only the Task 1 slice**
 
 ---
 
-### Task 2: Add versioned template persistence with RLS and human activation
+### Task 2: Add two independently versioned registries with RLS and human activation
 
 **Files:**
-- Create: `product/supabase/migrations/0060_document_template_registry.sql`
-- Modify after generation if required: `product/src/lib/supabase/database.types.ts`
+- Create/Modify: the next free migration, conceptually `<NNNN>_document_template_registry.sql`
+- Create/Modify: `product/src/core/infrastructure/supabase/document-template-migration-contract.test.ts`
+- Modify generated Supabase types only through the repository-standard process when required.
 
-**Interfaces:**
-- Produces tables: `document_template_sources`, `document_templates`, `document_template_versions`, `document_template_quality_reviews`.
-- Produces RPCs:
-  - `register_document_template_source(...) -> uuid`
-  - `create_document_template(...) -> uuid`
-  - `save_document_template_version(...) -> integer`
-  - `record_document_template_quality_review(...) -> uuid`
-  - `activate_document_template_version(...) -> void`
-  - `document_template_snapshot(target_template_id uuid) -> jsonb`
+**Persistence contract:**
 
-- [ ] **Step 1: Write migration contract assertions before SQL implementation**
+The migration owns shared source evidence plus two distinct registry families.
 
-Create `product/src/core/infrastructure/supabase/document-template-migration-contract.test.ts` that reads `0060_document_template_registry.sql` and asserts:
+Shared source evidence:
+
+```text
+document_template_sources
+```
+
+Institutional-base registry:
+
+```text
+institutional_bases
+institutional_base_versions
+institutional_base_quality_reviews
+```
+
+Family-template registry:
+
+```text
+document_templates
+document_template_versions
+document_template_quality_reviews
+```
+
+The base registry produces RPCs equivalent to:
+
+```text
+create_institutional_base(...) -> uuid
+save_institutional_base_version(...) -> integer
+record_institutional_base_quality_review(...) -> uuid
+activate_institutional_base_version(...) -> void
+institutional_base_snapshot(target_base_id uuid) -> jsonb
+institutional_base_version_snapshot(target_base_id uuid, target_version_no integer) -> jsonb
+```
+
+The family-template registry produces:
+
+```text
+register_document_template_source(...) -> uuid
+create_document_template(...) -> uuid
+save_document_template_version(...) -> integer
+record_document_template_quality_review(...) -> uuid
+activate_document_template_version(...) -> void
+document_template_snapshot(target_template_id uuid) -> jsonb
+document_template_version_snapshot(target_template_id uuid, target_version_no integer) -> jsonb
+```
+
+**Trusted-boundary rules:**
+
+- institutional-base versions and family-template versions are immutable historical rows;
+- direct authenticated insert/update/delete is revoked for all registry/version/review tables;
+- SELECT is workspace-member scoped;
+- every write RPC revalidates workspace membership and authenticated actor;
+- activation of either stream requires a persisted trusted Quality Review result `PASS` or `PASS_WITH_NOTES` for that exact version plus explicit Human Review confirmation;
+- activating a new version changes only the active pointer/status of its own stream and never rewrites the other stream;
+- a new source revision does not mutate active versions;
+- source IDs referenced by either stream must belong to the same workspace;
+- snapshot-by-version RPCs resolve historical versions by explicit identity/version and never fall back to active/current versions;
+- schema/profile payloads are validated JSON data, never rendered HTML/DOCX coordinates or executable styling.
+
+- [ ] **Step 1: Write RED migration-contract assertions** for both base and family registry tables/RPCs, RLS/revokes, trusted activation and explicit version snapshot functions.
+- [ ] **Step 2: Run the migration contract and verify RED.**
+- [ ] **Step 3: Implement the migration minimally.** Do not duplicate institutional-base profile data inside `document_template_versions`.
+- [ ] **Step 4: Replay the full Supabase migration chain and run the migration contract to GREEN.**
+- [ ] **Step 5: Regenerate/update Supabase types using the existing process.**
+- [ ] **Step 6: Commit the persistence slice.**
+
+---
+
+### Task 3: Add separate repository boundaries for base and family versions
+
+**Files:**
+- Create/Modify: `product/src/core/infrastructure/supabase/supabase-institutional-base-repository.ts`
+- Create/Modify: `product/src/core/infrastructure/supabase/supabase-institutional-base-repository.test.ts`
+- Create/Modify: `product/src/core/infrastructure/supabase/supabase-document-template-repository.ts`
+- Create/Modify: `product/src/core/infrastructure/supabase/supabase-document-template-repository.test.ts`
+
+**Institutional-base repository contract:**
 
 ```ts
-assert.match(sql, /enable row level security/)
-assert.match(sql, /revoke insert, update, delete/)
-assert.match(sql, /activate_document_template_version/)
-assert.match(sql, /Human Review|quality_review/i)
-assert.match(sql, /document_template_versions/)
+createBase(input: CreateInstitutionalBaseInput): Promise<string>
+saveVersion(input: SaveInstitutionalBaseVersionInput): Promise<number>
+recordQualityReview(input: RecordInstitutionalBaseQualityReviewInput): Promise<string>
+activate(input: ActivateInstitutionalBaseVersionInput): Promise<void>
+get(baseId: string): Promise<InstitutionalBaseSnapshot | null>
+getVersion(baseId: string, versionNo: number): Promise<InstitutionalBaseVersion | null>
+listActive(workspaceId: string): Promise<InstitutionalBaseSummary[]>
 ```
 
-- [ ] **Step 2: Run contract test and verify RED**
-
-Run: `cd product && npx tsx --test src/core/infrastructure/supabase/document-template-migration-contract.test.ts`
-
-Expected: FAIL because migration is missing.
-
-- [ ] **Step 3: Implement `0060_document_template_registry.sql`**
-
-Required DB rules:
-
-- sources and template versions are immutable historical rows;
-- direct authenticated writes are revoked;
-- SELECT is workspace-member scoped;
-- write RPCs validate workspace membership and authenticated actor;
-- `activate_document_template_version` requires a persisted quality review with result `PASS` or `PASS_WITH_NOTES` and an explicit actor;
-- a new source revision never mutates the active canonical template version;
-- template schema is stored as validated `jsonb` payload, not as rendered HTML/DOCX coordinates;
-- `source_asset_id` is nullable to support documents designed from scratch.
-
-- [ ] **Step 4: Run migration contract test**
-
-Expected: PASS.
-
-- [ ] **Step 5: Regenerate or update Supabase types using the repository's existing process**
-
-Verify TypeScript sees the new tables/RPCs. Do not hand-edit unrelated generated types.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add product/supabase/migrations/0060_document_template_registry.sql product/src/core/infrastructure/supabase/document-template-migration-contract.test.ts product/src/lib/supabase/database.types.ts
-git commit -m "feat: add institutional template registry"
-```
-
----
-
-### Task 3: Add the Supabase template repository
-
-**Files:**
-- Create: `product/src/core/infrastructure/supabase/supabase-document-template-repository.ts`
-- Create: `product/src/core/infrastructure/supabase/supabase-document-template-repository.test.ts`
-
-**Interfaces:**
-- Produces class `SupabaseDocumentTemplateRepository` with:
+**Family-template repository contract:**
 
 ```ts
 registerSource(input: RegisterTemplateSourceInput): Promise<string>
@@ -177,53 +258,40 @@ saveVersion(input: SaveTemplateVersionInput): Promise<number>
 recordQualityReview(input: RecordTemplateQualityReviewInput): Promise<string>
 activate(input: ActivateTemplateVersionInput): Promise<void>
 get(templateId: string): Promise<DocumentTemplateSnapshot | null>
+getVersion(templateId: string, versionNo: number): Promise<DocumentTemplateVersion | null>
 listActive(workspaceId: string, kind?: DocumentTemplateKind): Promise<DocumentTemplateSummary[]>
 ```
 
-- [ ] **Step 1: Write failing adapter tests**
+Repository tests must prove:
 
-Test raw snake_case → domain mapping, null source support, active-version selection, and propagation of RPC errors.
+- snake_case → domain mapping independently for both streams;
+- current/active version pointers remain independent;
+- explicit historical `getVersion()` resolves the requested version, not the current active version;
+- RPC errors propagate;
+- a family-template repository never synthesizes or embeds the base profile;
+- an institutional-base repository never owns family sections/fields.
 
-- [ ] **Step 2: Run focused test and verify RED**
-
-Run: `cd product && npx tsx --test src/core/infrastructure/supabase/supabase-document-template-repository.test.ts`
-
-- [ ] **Step 3: Implement the repository**
-
-Follow the existing explicit RPC typing pattern used by `supabase-authored-document-repository.ts`; do not add a new ORM.
-
-- [ ] **Step 4: Run test and typecheck**
-
-Run:
-
-```bash
-cd product
-npx tsx --test src/core/infrastructure/supabase/supabase-document-template-repository.test.ts
-npm run typecheck
-```
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/src/core/infrastructure/supabase/supabase-document-template-repository.ts product/src/core/infrastructure/supabase/supabase-document-template-repository.test.ts
-git commit -m "feat: add template repository"
-```
+- [ ] **Step 1: Write RED repository tests.**
+- [ ] **Step 2: Implement separate adapters following the existing explicit RPC typing pattern; no new ORM.**
+- [ ] **Step 3: Run focused tests + full typecheck to GREEN.**
+- [ ] **Step 4: Commit the repository slice.**
 
 ---
 
-### Task 4: Encode the improved Relazione finale pilot as the first canonical template draft
+### Task 4: Encode the improved Relazione finale as a family template only
 
 **Files:**
-- Create: `product/src/core/presentation/final-report-canonical-template.ts`
-- Create: `product/src/core/presentation/final-report-canonical-template.test.ts`
+- Create/Modify: `product/src/core/presentation/final-report-canonical-template.ts`
+- Create/Modify: `product/src/core/presentation/final-report-canonical-template.test.ts`
 
 **Interfaces:**
-- Produces `FINAL_REPORT_CANONICAL_TEMPLATE_V1: DocumentTemplateVersionDraft`.
-- Produces `finalReportCanonicalTemplate(): DocumentTemplateVersionDraft` returning a defensive copy.
 
-- [ ] **Step 1: Write failing tests for the approved document structure**
+```ts
+FINAL_REPORT_CANONICAL_TEMPLATE_V1: DocumentTemplateVersionDraft
+finalReportCanonicalTemplate(): DocumentTemplateVersionDraft
+```
+
+The family template owns semantic sections only. It must not embed logo, institution header/footer, typography, A4 geometry, common table styling or signature styling; those come from the separately resolved `InstitutionalBaseVersion`.
 
 Assert section order exactly:
 
@@ -241,160 +309,98 @@ Assert section order exactly:
 ]
 ```
 
-Assert `EXECUTED_PATH.renderRole === 'TABLE'`, `OUTCOMES.renderRole === 'PARAGRAPH'`, `CIVIC_TRANSVERSAL` is conditional, and no field label contains a technical term.
-
-- [ ] **Step 2: Run focused test and verify RED**
-
-Run: `cd product && npx tsx --test src/core/presentation/final-report-canonical-template.test.ts`
-
-- [ ] **Step 3: Implement the canonical template draft**
-
-Use only school-professional labels. Do not include BES/foreign-student counts in the default canonical template. Keep optional sensitive aggregate capability in the engine, not in this pilot template.
-
-- [ ] **Step 4: Run template + quality tests**
-
-Expected: PASS with `reviewDocumentTemplate(FINAL_REPORT_CANONICAL_TEMPLATE_V1).result === 'PASS'` or `PASS_WITH_NOTES` only for explicitly documented non-blocking notes.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/src/core/presentation/final-report-canonical-template.ts product/src/core/presentation/final-report-canonical-template.test.ts
-git commit -m "feat: add improved final report template"
-```
+- [ ] **Step 1: Write RED tests** for section order, render roles, professional labels, sensitive defaults and absence of institutional-base duplication.
+- [ ] **Step 2: Implement the canonical family draft.**
+- [ ] **Step 3: Run family-template + quality tests to GREEN.**
+- [ ] **Step 4: Commit.**
 
 ---
 
-### Task 5: Build the first Template Builder read/review surface
+### Task 5: Build the first Template Builder / institutional-base review surface
 
 **Files:**
-- Create: `product/src/app/documentazione/modelli/template-builder-model.ts`
-- Create: `product/src/app/documentazione/modelli/template-builder-model.test.ts`
-- Create: `product/src/app/documentazione/modelli/page.tsx`
-- Create: `product/src/app/documentazione/modelli/TemplateBuilder.tsx`
-- Create: `product/src/app/documentazione/modelli/template-builder.css`
-- Modify: `product/src/components/app-shell/navigation.ts`
-- Modify: `product/src/components/app-shell/navigation.test.ts`
+- Create/Modify: `product/src/app/documentazione/modelli/template-builder-model.ts`
+- Create/Modify: `product/src/app/documentazione/modelli/template-builder-model.test.ts`
+- Create/Modify: `product/src/app/documentazione/modelli/page.tsx`
+- Create/Modify: `product/src/app/documentazione/modelli/TemplateBuilder.tsx`
+- Modify styles only inside the existing Documentazione/Modelli surface.
+- Modify secondary/full navigation only as already approved; mobile bottom navigation membership remains unchanged.
 
-**Interfaces:**
-- Produces `buildTemplateBuilderViewModel(snapshot, review): TemplateBuilderViewModel`.
-- Adds navigation key `documentation` with href `/documentazione` to secondary/full navigation only.
-- `MOBILE_NAVIGATION_KEYS` remains exactly `['home', 'today', 'classes', 'timetable']`.
+**View-model boundary:**
 
-- [ ] **Step 1: Write failing view-model and navigation tests**
+The ordinary UI distinguishes two professional concepts without exposing technical IDs:
 
-Assert the builder exposes human labels only, groups sections in semantic order, shows review findings, and does not render internal field keys as primary labels.
+1. **Veste istituzionale** — shared base identity/format review and active-state summary;
+2. **Modello del documento** — family sections/fields/quality review.
 
-Also assert mobile navigation membership is unchanged.
+The builder/review surface may show internal version/provenance details in an advanced control panel, but ordinary creation chooses the document type and uses the approved active institutional base + approved family template without asking the teacher for technical version IDs.
 
-- [ ] **Step 2: Run focused tests and verify RED**
-
-Run:
-
-```bash
-cd product
-npx tsx --test src/app/documentazione/modelli/template-builder-model.test.ts src/components/app-shell/navigation.test.ts
-```
-
-- [ ] **Step 3: Implement the builder model, route and navigation entry**
-
-The first builder supports:
-
-- source summary or “Nuovo modello”;
-- section reorder/remove/merge decisions represented in the view model;
-- render-role choice per section;
-- value/privacy policy display in an advanced/internal panel;
-- quality-review result;
-- clean preview;
-- explicit “Approva modello” action only when review allows activation.
-
-Do not implement freeform WYSIWYG editing.
-
-- [ ] **Step 4: Run focused tests, typecheck and build**
-
-Run:
-
-```bash
-cd product
-npx tsx --test src/app/documentazione/modelli/template-builder-model.test.ts src/components/app-shell/navigation.test.ts
-npm run typecheck
-npm run build
-```
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/src/app/documentazione/modelli product/src/components/app-shell/navigation.ts product/src/components/app-shell/navigation.test.ts
-git commit -m "feat: add document template builder surface"
-```
+- [ ] **Step 1: RED view-model/navigation tests** proving the two streams remain distinct, human labels only, mobile navigation unchanged, and activation controls appear only when the corresponding trusted review allows them.
+- [ ] **Step 2: Implement the smallest review surface.** Do not build a WYSIWYG editor.
+- [ ] **Step 3: Run focused tests, typecheck and build.**
+- [ ] **Step 4: Commit.**
 
 ---
 
-### Task 6: Enforce clean institutional preview/output
+### Task 6: Render clean institutional output from explicit base + family versions
 
 **Files:**
-- Create: `product/src/core/presentation/institutional-document-preview.ts`
-- Create: `product/src/core/presentation/institutional-document-preview.test.ts`
+- Create/Modify: `product/src/core/presentation/institutional-document-preview.ts`
+- Create/Modify: `product/src/core/presentation/institutional-document-preview.test.ts`
 
 **Interfaces:**
-- Produces:
+
+The renderer must not accept a family template alone. It receives the exact resolved versions selected by the caller:
 
 ```ts
 renderInstitutionalPreview(input: {
-  template: DocumentTemplateVersionDraft
+  institutionalBase: InstitutionalBaseVersion
+  template: DocumentTemplateVersion
+  values: Record<string, unknown>
+}): InstitutionalPreview
+
+renderPinnedInstitutionalPreview(input: {
+  pin: InstitutionalRenderPin
+  institutionalBase: InstitutionalBaseVersion
+  template: DocumentTemplateVersion
   values: Record<string, unknown>
 }): InstitutionalPreview
 
 assertInstitutionalOutputPurity(text: string): void
 ```
 
-- [ ] **Step 1: Write failing purity tests**
+`renderPinnedInstitutionalPreview` fails closed unless:
 
-Assert normal school text passes and each forbidden family fails independently: `B03`, `CAN-PRG-2`, UUID, `TeachingSession`, `AUTO_DOCUMENTED`, Drive path, provider/model name, hash-like fingerprint, “generato automaticamente”.
-
-- [ ] **Step 2: Run focused test and verify RED**
-
-Run: `cd product && npx tsx --test src/core/presentation/institutional-document-preview.test.ts`
-
-- [ ] **Step 3: Implement semantic preview rendering and purity guard**
-
-Rendering rules:
-
-- `TABLE` creates semantic rows/cells from field values;
-- `PARAGRAPH` renders professional prose only;
-- `CHECKLIST` renders human option labels only;
-- internal keys/policies/provenance are never emitted.
-
-- [ ] **Step 4: Run focused tests and full typecheck**
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/src/core/presentation/institutional-document-preview.ts product/src/core/presentation/institutional-document-preview.test.ts
-git commit -m "feat: enforce clean institutional document preview"
+```text
+pin.institutional_base_id/version_no == institutionalBase identity/version
+pin.family_template_id/version_no == template identity/version
 ```
+
+It must never resolve a current active base/template internally as a fallback.
+
+**Rendering ownership:**
+
+- institutional base owns logo/identity/header/footer/typography/page geometry/common table treatment/signature/accessibility;
+- family template owns semantic order, field labels, visibility, render roles and value/source/privacy semantics;
+- `TABLE`, `PARAGRAPH`, `CHECKLIST`, etc. render semantic values using the base’s shared presentation rules;
+- internal keys/policies/source refs/provenance are never emitted.
+
+- [ ] **Step 1: Write RED tests** for normal professional rendering, each forbidden technical-token family, and explicit base+template input.
+- [ ] **Step 2: Add historical-pin tests:** render base v1 + template v1, activate/create v2 versions, then prove rendering the old pin still uses v1/v1 and fails if a v2 object is supplied against a v1 pin.
+- [ ] **Step 3: Add separation tests:** changing only base version changes shared institutional presentation without changing family schema; changing only family version changes semantics without silently changing base.
+- [ ] **Step 4: Implement semantic preview + purity guard without DB lookups or implicit current-version resolution.**
+- [ ] **Step 5: Run focused tests + full typecheck to GREEN.**
+- [ ] **Step 6: Commit.**
 
 ---
 
-### Task 7: Certify DOC-TPL-01 without touching document authoring
+### Task 7: Certify DOC-TPL-01 and publish the canonical architecture contract
 
 **Files:**
-- Modify: `product/package.json` only if the new focused tests must be added to the canonical `test` script.
-- Create: `docs/architecture/DOCUMENT_TEMPLATE_ENGINE_CANONICAL.md`
+- Modify `product/package.json` only when repository policy requires explicit test enumeration; preserve the union of all existing tests.
+- Create/Modify: `docs/architecture/DOCUMENT_TEMPLATE_ENGINE_CANONICAL.md`
 
-**Interfaces:**
-- Produces a concise architecture contract for later DOC-01/DOC-04 plans.
-
-- [ ] **Step 1: Add the new tests to the canonical test command if repository policy requires explicit enumeration**
-
-Do not remove or reorder unrelated tests.
-
-- [ ] **Step 2: Run the full verification suite**
-
-Run:
+**Required verification:**
 
 ```bash
 cd product
@@ -404,26 +410,39 @@ npm run lint
 npm run build
 ```
 
-Expected: all PASS.
+Repository certification must additionally prove on the same exact head:
 
-- [ ] **Step 3: Verify output-purity fixtures manually**
+- full Supabase migration replay;
+- base-registry and family-registry migration contracts;
+- institutional-base repository + family-template repository tests;
+- trusted Quality Review/Human Review activation boundaries for both streams;
+- explicit historical snapshot resolution for base and family versions;
+- renderer pin mismatch fails closed;
+- output purity;
+- Template Builder/HVA/browser/accessibility gates selected by the repository classifier.
 
-Render the pilot template with sample values and confirm that no internal technical label appears in the preview.
+The architecture note records the stable ownership rule:
 
-- [ ] **Step 4: Write the canonical architecture note**
-
-Document only stable ownership/boundary decisions; keep implementation internals out of user-facing terminology.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/package.json docs/architecture/DOCUMENT_TEMPLATE_ENGINE_CANONICAL.md
-git commit -m "docs: certify document template engine contract"
+```text
+InstitutionalBaseVersion = shared institutional presentation authority
+DocumentTemplateVersion = family semantic authority
+AuthoredDocumentVersion = content/version authority + exact pins to both
+Renderer = pure composition of the exact pinned versions; no silent current-version lookup
 ```
+
+- [ ] **Step 1: Add/repair test enumeration without deleting existing suites.**
+- [ ] **Step 2: Run full local/CI verification and capture exact-head evidence.**
+- [ ] **Step 3: Manually inspect pilot preview for professional purity and base/template separation.**
+- [ ] **Step 4: Write/update the canonical architecture note.**
+- [ ] **Step 5: Request independent review on the exact certified head.**
+- [ ] **Step 6: Human Review remains final; no automatic merge.**
 
 ## Self-Review
 
-- Spec coverage: source/canonical separation, improvement of old models, missing-model creation, quality review, privacy, renderer roles, builder, human activation, output purity all have owning tasks.
-- Type consistency: all later tasks consume `DocumentTemplateVersionDraft` and `TemplateQualityReview` from Task 1.
-- Review Focus coverage: duplicate/ambiguous legacy source → Tasks 1/5; technical field names → Tasks 1/6; sensitive legacy fields → Tasks 1/4; no-source template → Tasks 2/5; technical leak → Task 6.
-- Proportion: implementation bodies are intentionally omitted; tests pin decisions and interfaces.
+- **First-class base:** Tasks 1–3 define, persist, activate and resolve `InstitutionalBaseVersion` independently from family templates.
+- **Historical reconstruction:** Tasks 2/3/6 require explicit version snapshots and reject current-version fallback.
+- **Family separation:** Tasks 1/4 keep document semantics out of the institutional base and shared visual policy out of family schemas.
+- **Renderer contract:** Task 6 consumes explicit base + family versions and verifies all four pin coordinates before rendering.
+- **Source/canonical separation:** source evidence remains immutable and shared only as provenance input.
+- **Quality/privacy/purity:** deterministic validation, trusted activation and output-purity gates apply before integration.
+- **Scope:** no authored-document workflow or final-report content composition is implemented here; DOC-01/DOC-04 own compiled document versions and persist the four render pins downstream.
