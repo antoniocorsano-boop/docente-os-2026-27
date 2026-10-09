@@ -44,23 +44,23 @@
 - Consumes: canonical audit `docs/superpowers/checkpoints/2026-10-09-parallel-work-integration-audit.md`
 - Produces: explicit integration-order notices visible on active PRs
 
-- [ ] **Step 1: Add a coordination notice to #692**
+- [x] **Step 1: Add a coordination notice to #692**
 
 State that #692 is individually green but must not merge before the migration lineage and `product/package.json` are reconciled against integrated #695/#697; record the current exact head and the stale-body issue.
 
-- [ ] **Step 2: Add a coordination notice to #695**
+- [x] **Step 2: Add a coordination notice to #695**
 
 State that #693 is the canonical specification dependency and that #692 currently conflicts on migration versions 87/88; do not change #695 runtime merely to accommodate an unintegrated branch.
 
-- [ ] **Step 3: Add a coordination notice to #697**
+- [x] **Step 3: Add a coordination notice to #697**
 
 State that #696 must land first and that `product/package.json` will require union reconciliation when #692/#695 are later integrated.
 
-- [ ] **Step 4: Add lightweight dependency notices to #693 and #696**
+- [x] **Step 4: Add lightweight dependency notices to #693 and #696**
 
 Keep the notices factual: #693 gates #695; #696 gates #697. Do not request merge automatically.
 
-- [ ] **Step 5: Verify no runtime branch head changed**
+- [x] **Step 5: Verify no runtime branch head changed**
 
 Fetch PR metadata for #692/#695/#697 and confirm the notices did not modify branch heads.
 
@@ -252,9 +252,11 @@ Record integrated PR order, final migration mapping, final exact SHA and evidenc
 - Consumes: stable integrated chain
 - Produces: no stale PRs or misleading current-head claims
 
-- [ ] **Step 1: Mark #687 superseded by merged #688**
+**Ruling:** Step 1 was executed early because #688 was already merged and #687 was independently superseded; closing #687 is reversible governance cleanup and has no dependency on the remaining runtime integration chain.
 
-Add a factual closing comment and close #687. This is governance cleanup only; do not modify #688.
+- [x] **Step 1: Mark #687 superseded by merged #688**
+
+A factual closing comment was added and #687 was closed without merge on 2026-10-09.
 
 - [ ] **Step 2: Ensure #692 body reflects its final exact head and evidence**
 
