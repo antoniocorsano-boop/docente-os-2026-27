@@ -1,22 +1,72 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { reviewDocumentTemplate } from '../../../core/application/document-template-quality'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { reviewDocumentTemplate, reviewInstitutionalBase } from '../../../core/application/document-template-quality'
 import { finalReportCanonicalTemplate } from '../../../core/presentation/final-report-canonical-template'
 import type { DocumentTemplateSnapshot } from '../../../core/infrastructure/supabase/supabase-document-template-repository'
-import { buildTemplateBuilderViewModel } from './template-builder-model'
+import type { InstitutionalBaseSnapshot } from '../../../core/infrastructure/supabase/supabase-institutional-base-repository'
+import type { InstitutionalBaseVersionDraft } from '../../../core/domain/document-template'
+import {
+  buildGovernedTemplateBuilderViewModel,
+  buildTemplateBuilderViewModel,
+} from './template-builder-model'
 
 function snapshot(): DocumentTemplateSnapshot {
   const draft = finalReportCanonicalTemplate()
   return {
     template: {
-      id: 'pilot-final-report', workspaceId: 'workspace', kind: 'FINAL_REPORT', name: draft.name,
+      id: 'final-report-template', workspaceId: 'workspace', kind: 'FINAL_REPORT', name: draft.name,
       status: 'DRAFT', currentVersionNo: 1, activeVersionNo: null,
       createdBy: 'teacher', createdAt: '2026-10-07T00:00:00Z', updatedAt: '2026-10-07T00:00:00Z',
     },
     activeVersion: null,
     versions: [{
-      id: 'version-1', templateId: 'pilot-final-report', versionNo: 1, draft,
+      id: 'version-1', templateId: 'final-report-template', versionNo: 1, draft,
       sourceRevisionIds: [], createdBy: 'teacher', createdAt: '2026-10-07T00:00:00Z',
+    }],
+    qualityReviews: [],
+    sources: [],
+  }
+}
+
+function institutionalBaseDraft(): InstitutionalBaseVersionDraft {
+  return {
+    version: 1,
+    identityProfile: {
+      institutionName: 'I.C. Calvario-Covotta – don Lorenzo Milani',
+      logoAssetRef: null,
+    },
+    headerProfile: { lines: ['Istituto Comprensivo'] },
+    footerProfile: { lines: [] },
+    typographyProfile: {
+      bodyFontFamily: 'Arial', headingFontFamily: 'Arial', baseFontSizePt: 11, lineHeight: 1.3,
+    },
+    pageGeometryProfile: {
+      format: 'A4', orientation: 'PORTRAIT', marginTopMm: 18, marginRightMm: 18, marginBottomMm: 18, marginLeftMm: 18,
+    },
+    commonTableProfile: { headerWeight: 'BOLD', cellPaddingMm: 2, repeatHeader: true },
+    signatureProfile: { showLocation: true, showDate: true, label: 'Il docente' },
+    accessibilityProfile: { minimumFontSizePt: 10, highContrast: true, tableHeadersRequired: true },
+    sourceRevisionRefs: [],
+  }
+}
+
+function baseSnapshot(status: InstitutionalBaseSnapshot['base']['status'] = 'DRAFT'): InstitutionalBaseSnapshot {
+  const draft = institutionalBaseDraft()
+  return {
+    base: {
+      id: 'institutional-base', workspaceId: 'workspace', name: 'Veste istituzionale', status,
+      currentVersionNo: 1, activeVersionNo: status === 'ACTIVE' ? 1 : null,
+      createdBy: 'owner', createdAt: '2026-10-07T00:00:00Z', updatedAt: '2026-10-07T00:00:00Z',
+    },
+    activeVersion: status === 'ACTIVE' ? {
+      id: 'base-version-1', baseId: 'institutional-base', versionNo: 1, draft,
+      sourceRevisionIds: [], createdBy: 'owner', createdAt: '2026-10-07T00:00:00Z',
+    } : null,
+    versions: [{
+      id: 'base-version-1', baseId: 'institutional-base', versionNo: 1, draft,
+      sourceRevisionIds: [], createdBy: 'owner', createdAt: '2026-10-07T00:00:00Z',
     }],
     qualityReviews: [],
     sources: [],
@@ -63,7 +113,7 @@ test('builder reviews the current draft even while an older version remains acti
   source.versions = [
     source.activeVersion,
     {
-      id: 'version-2', templateId: 'pilot-final-report', versionNo: 2, draft: currentDraft,
+      id: 'version-2', templateId: 'final-report-template', versionNo: 2, draft: currentDraft,
       sourceRevisionIds: [], createdBy: 'teacher', createdAt: '2026-10-07T01:00:00Z',
     },
   ]
@@ -78,7 +128,7 @@ test('builder rejects a quality review that belongs to a different version', () 
   source.template.currentVersionNo = 2
   const currentDraft = { ...finalReportCanonicalTemplate(), version: 2 }
   source.versions.push({
-    id: 'version-2', templateId: 'pilot-final-report', versionNo: 2, draft: currentDraft,
+    id: 'version-2', templateId: 'final-report-template', versionNo: 2, draft: currentDraft,
     sourceRevisionIds: [], createdBy: 'teacher', createdAt: '2026-10-07T01:00:00Z',
   })
   const staleReview = { ...reviewDocumentTemplate(source.versions[0].draft), versionNo: 1 }
@@ -86,4 +136,67 @@ test('builder rejects a quality review that belongs to a different version', () 
     () => buildTemplateBuilderViewModel(source, staleReview),
     /review.*versione|versione.*review/i,
   )
+})
+
+test('governed builder keeps Veste istituzionale and Modello del documento as distinct streams', () => {
+  const base = baseSnapshot()
+  const family = snapshot()
+  const model = buildGovernedTemplateBuilderViewModel({
+    institutionalBase: base,
+    institutionalBaseReview: reviewInstitutionalBase(base.versions[0].draft),
+    familyTemplate: family,
+    familyTemplateReview: reviewDocumentTemplate(family.versions[0].draft),
+    role: 'OWNER',
+  })
+
+  assert.equal(model.institutionalBase.heading, 'Veste istituzionale')
+  assert.equal(model.familyTemplate.heading, 'Modello del documento')
+  assert.equal(model.institutionalBase.title, 'Veste istituzionale')
+  assert.equal(model.familyTemplate.title, 'Relazione finale del docente')
+  assert.equal(model.familyTemplate.sections.length > 0, true)
+})
+
+test('MEMBER can inspect both streams but never receives institution-wide lifecycle controls', () => {
+  const base = baseSnapshot()
+  const family = snapshot()
+  const model = buildGovernedTemplateBuilderViewModel({
+    institutionalBase: base,
+    institutionalBaseReview: reviewInstitutionalBase(base.versions[0].draft),
+    familyTemplate: family,
+    familyTemplateReview: reviewDocumentTemplate(family.versions[0].draft),
+    role: 'MEMBER',
+  })
+
+  assert.deepEqual(model.institutionalBase.actions, [])
+  assert.deepEqual(model.familyTemplate.actions, [])
+})
+
+test('OWNER sees state-safe lifecycle actions and RETIRED exposes inspection only', () => {
+  const blockedBase = baseSnapshot('BLOCKED')
+  const retiredFamily = snapshot()
+  retiredFamily.template.status = 'RETIRED'
+  const model = buildGovernedTemplateBuilderViewModel({
+    institutionalBase: blockedBase,
+    institutionalBaseReview: reviewInstitutionalBase(blockedBase.versions[0].draft),
+    familyTemplate: retiredFamily,
+    familyTemplateReview: reviewDocumentTemplate(retiredFamily.versions[0].draft),
+    role: 'OWNER',
+  })
+
+  assert.equal(model.institutionalBase.actions.some((action) => action.key === 'ACTIVATE'), false)
+  assert.equal(model.institutionalBase.actions.some((action) => action.key === 'CLEAR_BLOCK'), true)
+  assert.equal(model.institutionalBase.actions.some((action) => action.key === 'RETIRE'), true)
+  assert.deepEqual(model.familyTemplate.actions, [])
+})
+
+test('runtime page uses persisted base and family repositories instead of an in-memory pilot snapshot', () => {
+  const page = readFileSync(resolve(process.cwd(), 'src/app/documentazione/modelli/page.tsx'), 'utf8')
+  const component = readFileSync(resolve(process.cwd(), 'src/app/documentazione/modelli/TemplateBuilder.tsx'), 'utf8')
+
+  assert.match(page, /SupabaseInstitutionalBaseRepository/)
+  assert.match(page, /SupabaseDocumentTemplateRepository/)
+  assert.match(page, /listForWorkspace/)
+  assert.doesNotMatch(page, /pilot-final-report-template|finalReportCanonicalTemplate/)
+  assert.match(component, /model\.institutionalBase/)
+  assert.match(component, /model\.familyTemplate/)
 })
