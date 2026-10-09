@@ -52,6 +52,11 @@ export type ActivateTemplateVersionInput = {
   humanReviewConfirmed: boolean
 }
 
+export type TemplateLifecycleTransitionInput = {
+  templateId: string
+  note: string
+}
+
 export type DocumentTemplateSummary = {
   id: string
   workspaceId: string
@@ -158,6 +163,13 @@ type RawSnapshot = {
   sources: RawSource[]
 }
 
+type RawVersionSnapshot = {
+  template: RawTemplate
+  version: RawVersion
+  qualityReviews: RawReview[]
+  sources: RawSource[]
+}
+
 export interface TemplateListQuery extends PromiseLike<{ data: RawTemplate[] | null; error: DbError | null }> {
   eq(column: string, value: string): TemplateListQuery
   order(column: string, options?: { ascending?: boolean }): TemplateListQuery
@@ -171,7 +183,11 @@ export interface TemplateRepositoryClient {
       | 'save_document_template_version'
       | 'record_document_template_quality_review'
       | 'activate_document_template_version'
-      | 'document_template_snapshot',
+      | 'block_document_template'
+      | 'clear_document_template_block'
+      | 'retire_document_template'
+      | 'document_template_snapshot'
+      | 'document_template_version_snapshot',
     args: Record<string, unknown>,
   ): RpcResult
   from(table: 'document_templates'): { select(columns: string): TemplateListQuery }
@@ -247,12 +263,42 @@ export class SupabaseDocumentTemplateRepository {
     if (error) throw new Error(error.message)
   }
 
+  async block(input: TemplateLifecycleTransitionInput): Promise<void> {
+    await this.runLifecycleTransition('block_document_template', input)
+  }
+
+  async clearBlock(input: TemplateLifecycleTransitionInput): Promise<void> {
+    await this.runLifecycleTransition('clear_document_template_block', input)
+  }
+
+  async retire(input: TemplateLifecycleTransitionInput): Promise<void> {
+    await this.runLifecycleTransition('retire_document_template', input)
+  }
+
   async get(templateId: string): Promise<DocumentTemplateSnapshot | null> {
     const client = await this.clientFactory()
     const { data, error } = await client.rpc('document_template_snapshot', { target_template_id: templateId })
     if (error) throw new Error(error.message)
     if (!data) return null
     return mapDocumentTemplateSnapshot(data as RawSnapshot)
+  }
+
+  async getVersion(templateId: string, versionNo: number): Promise<DocumentTemplateVersion | null> {
+    if (!Number.isInteger(versionNo) || versionNo < 1) throw new Error('Invalid document template version pin')
+
+    const client = await this.clientFactory()
+    const { data, error } = await client.rpc('document_template_version_snapshot', {
+      target_template_id: templateId,
+      target_version_no: versionNo,
+    })
+    if (error) throw new Error(error.message)
+    if (!data) return null
+
+    const raw = data as RawVersionSnapshot
+    if (raw.template?.id !== templateId || raw.version?.template_id !== templateId || raw.version?.version_no !== versionNo) {
+      throw new Error('Historical document template snapshot does not match the requested exact pin')
+    }
+    return mapVersion(raw.version)
   }
 
   async listActive(workspaceId: string, kind?: DocumentTemplateKind): Promise<DocumentTemplateSummary[]> {
@@ -262,6 +308,19 @@ export class SupabaseDocumentTemplateRepository {
     const { data, error } = await query.order('updated_at', { ascending: false })
     if (error) throw new Error(error.message)
     return (data ?? []).map(mapTemplate)
+  }
+
+  private async runLifecycleTransition(
+    rpcName: 'block_document_template' | 'clear_document_template_block' | 'retire_document_template',
+    input: TemplateLifecycleTransitionInput,
+  ): Promise<void> {
+    if (!input.note.trim()) throw new Error('Lifecycle note is required')
+    const client = await this.clientFactory()
+    const { error } = await client.rpc(rpcName, {
+      target_template_id: input.templateId,
+      target_note: input.note,
+    })
+    if (error) throw new Error(error.message)
   }
 }
 
