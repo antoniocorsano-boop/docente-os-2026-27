@@ -9,7 +9,7 @@ Qualified implementation head before this receipt: `2a714c4be005ec127e3101df9d51
 
 - canonical institutional term: **curricolo di istituto**
 - canonical short form: **curricolo**
-- new occurrences of `curriculum` or `curricular` are rejected unless an exact path, fragment and reason are explicitly governed
+- new occurrences of the governed legacy English vocabulary are rejected unless an exact path, fragment and reason are explicitly governed
 
 ## Frozen legacy baseline
 
@@ -30,13 +30,13 @@ This tranche intentionally does not globally rewrite published v1 identifiers, p
 - runs on pushes to `develop` and `main`
 - uses complete Git history
 - validates only added lines for anti-regression, so removals are always allowed
-- blocks both `curriculum` and `curricular`, case-insensitively
+- blocks both governed legacy English forms, case-insensitively
 - supports only exact path + exact fragment + non-empty reason exceptions
 - current exception set: **0**
 
 ## Authority and compatibility
 
-- Arena remains the sole institutional curricular authority
+- Arena remains the sole institutional authority sul curricolo
 - Docente OS remains the teacher operational workspace
 - no authority promotion was introduced
 - no transport, handoff or persistence semantics were changed
