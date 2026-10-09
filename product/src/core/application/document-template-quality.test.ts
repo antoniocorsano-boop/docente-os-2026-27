@@ -47,9 +47,20 @@ test('technical reference scanner finds Bxx and UUID without false categories', 
   )
 })
 
-test('technical reference scanner blocks actual serialized internal states and policies', () => {
+test('technical reference scanner blocks every serialized lifecycle state and restricted policy', () => {
   assert.deepEqual(
-    findForbiddenTechnicalReferences('QUALITY_REVIEWED · REVIEW_REQUIRED · TEACHER_CONFIRMATION'),
+    findForbiddenTechnicalReferences(
+      'DRAFT · QUALITY_REVIEWED · REVIEW_REQUIRED · ACTIVE · RETIRED · BLOCKED · PASS_WITH_NOTES · TEACHER_CONFIRMATION',
+    ),
     ['INTERNAL_STATE'],
+  )
+})
+
+test('technical reference scanner blocks template-engine database entities', () => {
+  assert.deepEqual(
+    findForbiddenTechnicalReferences(
+      'document_templates institutional_base_versions document_template_lifecycle_decisions institutional_base_quality_reviews',
+    ),
+    ['SOFTWARE_ENTITY'],
   )
 })
