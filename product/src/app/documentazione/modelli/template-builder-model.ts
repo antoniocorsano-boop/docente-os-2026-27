@@ -1,7 +1,9 @@
 import type {
   TemplatePrivacyClass,
+  TemplateQualityFinding,
   TemplateQualityReview,
   TemplateRenderRole,
+  TemplateSection,
   TemplateValuePolicy,
 } from '../../../core/domain/document-template'
 import type { WorkspaceRole } from '../../../core/domain/workspace'
@@ -22,6 +24,13 @@ export type TemplateBuilderSectionViewModel = {
   requiredLabel: string
   fields: TemplateBuilderFieldViewModel[]
   availableDecisions: string[]
+}
+
+export type TemplateBuilderHistoryEntry = {
+  versionNo: number
+  current: boolean
+  active: boolean
+  reviewLabel: string
 }
 
 export type TemplateBuilderViewModel = {
@@ -49,6 +58,7 @@ export type GovernedInstitutionalBaseViewModel = {
   reviewLabel: string
   findings: string[]
   actions: TemplateBuilderLifecycleAction[]
+  history: TemplateBuilderHistoryEntry[]
   identityId: string | null
   currentVersionNo: number | null
   institutionName: string | null
@@ -57,6 +67,7 @@ export type GovernedInstitutionalBaseViewModel = {
 export type GovernedFamilyTemplateViewModel = TemplateBuilderViewModel & {
   heading: 'Modello del documento'
   actions: TemplateBuilderLifecycleAction[]
+  history: TemplateBuilderHistoryEntry[]
   identityId: string | null
   currentVersionNo: number | null
 }
@@ -69,10 +80,18 @@ export type GovernedTemplateBuilderViewModel = {
 
 export type BuildGovernedTemplateBuilderInput = {
   institutionalBase: InstitutionalBaseSnapshot | null
-  institutionalBaseReview: TemplateQualityReview | null
+  institutionalBaseReview?: TemplateQualityReview | null
   familyTemplate: DocumentTemplateSnapshot | null
-  familyTemplateReview: TemplateQualityReview | null
+  familyTemplateReview?: TemplateQualityReview | null
   role: WorkspaceRole
+}
+
+type PersistedQualityReview = {
+  id: string
+  versionNo: number
+  result: TemplateQualityReview['result']
+  findings: TemplateQualityFinding[]
+  reviewedAt: string
 }
 
 export function buildTemplateBuilderViewModel(
@@ -96,25 +115,8 @@ export function buildTemplateBuilderViewModel(
     sourceSummary: sourceSummary(snapshot.sources.length, 'modello'),
     reviewLabel: reviewResultLabel(review.result),
     findings: review.findings.map((finding) => finding.summary),
-    canApprove: (review.result === 'PASS' || review.result === 'PASS_WITH_NOTES') && hasPendingVersion,
-    sections: version.draft.sections.map((section, index, sections) => ({
-      label: section.label,
-      purpose: section.purpose,
-      renderRoleLabel: renderRoleLabel(section.renderRole),
-      requiredLabel: section.required ? 'Necessaria' : 'Solo quando pertinente',
-      fields: section.fields.map((field) => ({
-        label: field.label,
-        requiredLabel: field.required ? 'Richiesta' : 'Facoltativa',
-        valuePolicyLabel: valuePolicyLabel(field.valuePolicy),
-        privacyLabel: privacyLabel(field.privacyClass),
-      })),
-      availableDecisions: [
-        ...(index > 0 ? ['Sposta prima'] : []),
-        ...(index < sections.length - 1 ? ['Sposta dopo'] : []),
-        'Accorpa con una sezione vicina',
-        ...(section.required ? [] : ['Rimuovi dal modello']),
-      ],
-    })),
+    canApprove: isReviewPass(review) && hasPendingVersion,
+    sections: sectionViewModels(version.draft.sections),
   }
 }
 
@@ -133,6 +135,7 @@ export function buildGovernedTemplateBuilderViewModel(
       reviewLabel: 'Controllo non disponibile',
       findings: [],
       actions: [],
+      history: [],
       identityId: null,
       currentVersionNo: null,
       institutionName: null,
@@ -141,11 +144,14 @@ export function buildGovernedTemplateBuilderViewModel(
     const snapshot = input.institutionalBase
     const version = snapshot.versions.find((candidate) => candidate.versionNo === snapshot.base.currentVersionNo)
     if (!version) throw new Error('La veste istituzionale non contiene la versione corrente revisionabile.')
-    if (!input.institutionalBaseReview || input.institutionalBaseReview.versionNo !== version.versionNo) {
-      throw new Error('La review non corrisponde alla versione corrente della veste istituzionale.')
-    }
-    const review = input.institutionalBaseReview
-    const canActivate = isReviewPass(review)
+
+    const review = resolveReview(
+      snapshot.qualityReviews,
+      version.versionNo,
+      input.institutionalBaseReview,
+    )
+    const canActivate = review !== null
+      && isReviewPass(review)
       && snapshot.base.activeVersionNo !== version.versionNo
 
     institutionalBase = {
@@ -153,9 +159,16 @@ export function buildGovernedTemplateBuilderViewModel(
       title: snapshot.base.name,
       statusLabel: statusLabel(snapshot.base.status),
       sourceSummary: sourceSummary(snapshot.sources.length, 'veste'),
-      reviewLabel: reviewResultLabel(review.result),
-      findings: review.findings.map((finding) => finding.summary),
+      reviewLabel: review ? reviewResultLabel(review.result) : 'Controllo non disponibile',
+      findings: review?.findings.map((finding) => finding.summary) ?? [],
       actions: lifecycleActions(snapshot.base.status, canGovern, canActivate),
+      history: buildHistory(
+        snapshot.versions.map((candidate) => candidate.versionNo),
+        snapshot.qualityReviews,
+        snapshot.base.currentVersionNo,
+        snapshot.base.activeVersionNo,
+        input.institutionalBaseReview,
+      ),
       identityId: snapshot.base.id,
       currentVersionNo: version.versionNo,
       institutionName: version.draft.identityProfile.institutionName,
@@ -174,28 +187,118 @@ export function buildGovernedTemplateBuilderViewModel(
       canApprove: false,
       sections: [],
       actions: [],
+      history: [],
       identityId: null,
       currentVersionNo: null,
     }
   } else {
-    if (!input.familyTemplateReview) {
-      throw new Error('Il modello documentale non contiene una review della versione corrente.')
-    }
-    const base = buildTemplateBuilderViewModel(input.familyTemplate, input.familyTemplateReview)
+    const snapshot = input.familyTemplate
+    const version = snapshot.versions.find(
+      (candidate) => candidate.versionNo === snapshot.template.currentVersionNo,
+    )
+    if (!version) throw new Error('Il modello non contiene la versione corrente revisionabile.')
+
+    const review = resolveReview(
+      snapshot.qualityReviews,
+      version.versionNo,
+      input.familyTemplateReview,
+    )
+    const hasPendingVersion = snapshot.template.activeVersionNo === null
+      || snapshot.template.activeVersionNo !== version.versionNo
+    const canApprove = review !== null && isReviewPass(review) && hasPendingVersion
+
     familyTemplate = {
-      ...base,
       heading: 'Modello del documento',
-      actions: lifecycleActions(
-        input.familyTemplate.template.status,
-        canGovern,
-        base.canApprove,
+      title: snapshot.template.name,
+      statusLabel: statusLabel(snapshot.template.status),
+      sourceSummary: sourceSummary(snapshot.sources.length, 'modello'),
+      reviewLabel: review ? reviewResultLabel(review.result) : 'Controllo non disponibile',
+      findings: review?.findings.map((finding) => finding.summary) ?? [],
+      canApprove,
+      sections: sectionViewModels(version.draft.sections),
+      actions: lifecycleActions(snapshot.template.status, canGovern, canApprove),
+      history: buildHistory(
+        snapshot.versions.map((candidate) => candidate.versionNo),
+        snapshot.qualityReviews,
+        snapshot.template.currentVersionNo,
+        snapshot.template.activeVersionNo,
+        input.familyTemplateReview,
       ),
-      identityId: input.familyTemplate.template.id,
-      currentVersionNo: input.familyTemplate.template.currentVersionNo,
+      identityId: snapshot.template.id,
+      currentVersionNo: snapshot.template.currentVersionNo,
     }
   }
 
   return { canGovern, institutionalBase, familyTemplate }
+}
+
+function resolveReview(
+  persistedReviews: readonly PersistedQualityReview[],
+  versionNo: number,
+  fallback?: TemplateQualityReview | null,
+): TemplateQualityReview | null {
+  const persisted = [...persistedReviews]
+    .filter((review) => review.versionNo === versionNo)
+    .sort((left, right) => {
+      const byTime = right.reviewedAt.localeCompare(left.reviewedAt)
+      return byTime !== 0 ? byTime : right.id.localeCompare(left.id)
+    })[0]
+
+  if (persisted) {
+    return {
+      result: persisted.result,
+      findings: persisted.findings,
+      versionNo,
+    }
+  }
+
+  if (fallback?.versionNo === versionNo) return fallback
+  return null
+}
+
+function buildHistory(
+  versionNumbers: number[],
+  reviews: readonly PersistedQualityReview[],
+  currentVersionNo: number,
+  activeVersionNo: number | null,
+  currentFallback?: TemplateQualityReview | null,
+): TemplateBuilderHistoryEntry[] {
+  return [...versionNumbers]
+    .sort((left, right) => right - left)
+    .map((versionNo) => {
+      const review = resolveReview(
+        reviews,
+        versionNo,
+        versionNo === currentVersionNo ? currentFallback : null,
+      )
+      return {
+        versionNo,
+        current: versionNo === currentVersionNo,
+        active: versionNo === activeVersionNo,
+        reviewLabel: review ? reviewResultLabel(review.result) : 'Controllo non disponibile',
+      }
+    })
+}
+
+function sectionViewModels(sections: TemplateSection[]): TemplateBuilderSectionViewModel[] {
+  return sections.map((section, index, allSections) => ({
+    label: section.label,
+    purpose: section.purpose,
+    renderRoleLabel: renderRoleLabel(section.renderRole),
+    requiredLabel: section.required ? 'Necessaria' : 'Solo quando pertinente',
+    fields: section.fields.map((field) => ({
+      label: field.label,
+      requiredLabel: field.required ? 'Richiesta' : 'Facoltativa',
+      valuePolicyLabel: valuePolicyLabel(field.valuePolicy),
+      privacyLabel: privacyLabel(field.privacyClass),
+    })),
+    availableDecisions: [
+      ...(index > 0 ? ['Sposta prima'] : []),
+      ...(index < allSections.length - 1 ? ['Sposta dopo'] : []),
+      'Accorpa con una sezione vicina',
+      ...(section.required ? [] : ['Rimuovi dal modello']),
+    ],
+  }))
 }
 
 function lifecycleActions(
