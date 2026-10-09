@@ -20,8 +20,11 @@ This checkpoint is a coordination artifact only. It does not authorize merge, ru
 | #696 | IUI-01 — Intelligent UI composition architecture | `8ece0f900e9d90f3af825ef4f6b123028cdf8c6d` | Canonical specification | MUST precede #697 |
 | #697 | IUI-02/03 — Deterministic intelligent UI composition | `48c29451e37c388a99ed1fce72da4caa33c081fa` | Runtime implementation | Git-descendant of #696; integrate after #696 |
 | #692 | UDA → Studio Atlas material handoff | `09a973a1782019a89aa62635a17222854e68e144` | Large runtime/materials tranche | Integrate last after rebase, migration-lineage reconciliation, package-test reconciliation and exact-head recertification |
-| #687 | DOS-VIEW-CONV-01 design | `4677c8e6c6c5419d404bcfe9ec417b35ca0c0187` | Superseded specification | #688 is already merged; #687 is residual governance debt |
 | #647 | Argo BIFF8 XLS proof | `e5dd179f074421f08b2c7952238fa0764d643ce6` | Isolated proof | Outside current integration chain |
+
+## Completed governance cleanup
+
+- #687 — DOS-VIEW-CONV-01 design — `4677c8e6c6c5419d404bcfe9ec417b35ca0c0187` — **CLOSED / NOT MERGED / SUPERSEDED BY #688** on 2026-10-09. The design history remains available; it is no longer part of the active integration queue.
 
 ## Verified structural conflicts
 
@@ -111,9 +114,9 @@ These PASS results prove each branch individually. They MUST NOT be treated as p
 
 The body still names an older exact head (`5a352dad…`) while GitHub currently reports `09a973a…`, 110 commits and 65 changed files. The body must be refreshed before final Human Review/integration.
 
-### G2 — #687 is superseded
+### G2 — #687 superseded cleanup — CLOSED
 
-#688 (view convergence implementation) is already merged and contains the certified closeout. #687 remains open as a stale design PR. It should be explicitly marked superseded and then closed when doing governance cleanup; it is not part of the current runtime merge chain.
+#688 (view convergence implementation) is already merged and contains the certified closeout. On 2026-10-09, #687 was explicitly commented as superseded and closed without merge. No further integration action is required for #687.
 
 ## Canonical integration order
 
