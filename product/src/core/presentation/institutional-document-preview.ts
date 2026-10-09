@@ -1,5 +1,23 @@
 import { findForbiddenTechnicalReferences } from '../application/document-template-quality'
-import type { DocumentTemplateVersionDraft, TemplateField, TemplateSection } from '../domain/document-template'
+import type {
+  DocumentTemplateVersionDraft,
+  InstitutionalBaseVersionDraft,
+  InstitutionalRenderPin,
+  TemplateField,
+  TemplateSection,
+} from '../domain/document-template'
+
+export type InstitutionalBaseRenderVersion = {
+  baseId: string
+  versionNo: number
+  draft: InstitutionalBaseVersionDraft
+}
+
+export type DocumentTemplateRenderVersion = {
+  templateId: string
+  versionNo: number
+  draft: DocumentTemplateVersionDraft
+}
 
 export type InstitutionalPreviewSection = {
   title: string
@@ -21,31 +39,81 @@ type TableValue = {
 }
 
 export function renderInstitutionalPreview(input: {
-  template: DocumentTemplateVersionDraft
+  institutionalBase: InstitutionalBaseRenderVersion
+  template: DocumentTemplateRenderVersion
   values: Record<string, unknown>
 }): InstitutionalPreview {
-  const sections = input.template.sections.flatMap((section) => {
+  assertResolvedVersions(input.institutionalBase, input.template)
+
+  const base = input.institutionalBase.draft
+  const template = input.template.draft
+  const sections = template.sections.flatMap((section) => {
     if (!section.required && !section.fields.some((field) => hasValue(input.values[field.key]))) return []
     const rendered = renderSection(section, input.values)
     return rendered.lines.length || rendered.table || rendered.checklist?.length ? [rendered] : []
   })
   const text = [
-    input.template.name,
+    base.identityProfile.institutionName,
+    ...base.headerProfile.lines,
+    template.name,
     ...sections.flatMap((section) => [
       section.title,
       ...section.lines,
       ...(section.table ? [section.table.columns.join(' | '), ...section.table.rows.map((row) => row.join(' | '))] : []),
       ...(section.checklist ?? []),
     ]),
-  ].join('\n')
+    ...base.footerProfile.lines,
+  ].filter((line) => line.trim().length > 0).join('\n')
   assertInstitutionalOutputPurity(text)
-  return { title: input.template.name, sections, text }
+  return { title: template.name, sections, text }
+}
+
+export function renderPinnedInstitutionalPreview(input: {
+  pin: InstitutionalRenderPin
+  institutionalBase: InstitutionalBaseRenderVersion
+  template: DocumentTemplateRenderVersion
+  values: Record<string, unknown>
+}): InstitutionalPreview {
+  const { pin, institutionalBase, template } = input
+  if (
+    pin.institutionalBaseId !== institutionalBase.baseId
+    || pin.institutionalBaseVersionNo !== institutionalBase.versionNo
+    || pin.familyTemplateId !== template.templateId
+    || pin.familyTemplateVersionNo !== template.versionNo
+  ) {
+    throw new Error('Il pin istituzionale non corrisponde alle versioni risolte di base e modello.')
+  }
+
+  return renderInstitutionalPreview({ institutionalBase, template, values: input.values })
 }
 
 export function assertInstitutionalOutputPurity(text: string): void {
   const forbidden = findForbiddenTechnicalReferences(text)
   if (forbidden.length) {
     throw new Error(`L’output istituzionale contiene riferimenti tecnici vietati: ${forbidden.join(', ')}`)
+  }
+}
+
+function assertResolvedVersions(
+  institutionalBase: InstitutionalBaseRenderVersion,
+  template: DocumentTemplateRenderVersion,
+): void {
+  if (
+    !Number.isInteger(institutionalBase.versionNo)
+    || institutionalBase.versionNo < 1
+    || institutionalBase.draft.version !== institutionalBase.versionNo
+  ) {
+    throw new Error('La versione risolta della base istituzionale non corrisponde al relativo contenuto.')
+  }
+  if (
+    !Number.isInteger(template.versionNo)
+    || template.versionNo < 1
+    || template.draft.version !== template.versionNo
+  ) {
+    throw new Error('La versione risolta del modello documentale non corrisponde al relativo contenuto.')
+  }
+  if (!institutionalBase.baseId.trim() || !template.templateId.trim()) {
+    throw new Error('Le identità risolte di base e modello sono obbligatorie.')
   }
 }
 
