@@ -301,6 +301,15 @@ export class SupabaseDocumentTemplateRepository {
     return mapVersion(raw.version)
   }
 
+  async listForWorkspace(workspaceId: string, kind?: DocumentTemplateKind): Promise<DocumentTemplateSummary[]> {
+    const client = await this.clientFactory()
+    let query = client.from('document_templates').select('*').eq('workspace_id', workspaceId)
+    if (kind) query = query.eq('document_kind', kind)
+    const { data, error } = await query.order('updated_at', { ascending: false })
+    if (error) throw new Error(error.message)
+    return (data ?? []).map(mapTemplate)
+  }
+
   async listActive(workspaceId: string, kind?: DocumentTemplateKind): Promise<DocumentTemplateSummary[]> {
     const client = await this.clientFactory()
     let query = client.from('document_templates').select('*').eq('workspace_id', workspaceId).eq('status', 'ACTIVE')
