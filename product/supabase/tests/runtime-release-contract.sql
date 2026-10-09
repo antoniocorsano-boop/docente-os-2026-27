@@ -163,3 +163,5 @@ begin
   end if;
 end;
 $contract$;
+
+\ir document_template_lifecycle_behavior_contract.sql
