@@ -281,6 +281,16 @@ export class SupabaseInstitutionalBaseRepository {
     return mapVersion(raw.version)
   }
 
+  async listForWorkspace(workspaceId: string): Promise<InstitutionalBaseSummary[]> {
+    const client = await this.clientFactory()
+    const query = client.from('institutional_bases')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+    const { data, error } = await query.order('updated_at', { ascending: false })
+    if (error) throw new Error(error.message)
+    return (data ?? []).map(mapBase)
+  }
+
   async listActive(workspaceId: string): Promise<InstitutionalBaseSummary[]> {
     const client = await this.clientFactory()
     const query = client.from('institutional_bases')
