@@ -21,8 +21,8 @@
 - La lezione è il principale punto operativo di raccordo fra progettazione e materiali.
 - Studio Atlas e Materiali non modificano automaticamente Programmazione annuale, UDA, Piano annuale o Calendario.
 - `LessonDesignExtension.status = ACCEPTED` significa **disponibile/accettato per la lezione**, non prova che il materiale sia stato effettivamente utilizzato.
-- Un materiale è classificabile come **usato** nei documenti consuntivi solo con evidenza/receipt esplicita legata a una TeachingSession corrente e al materiale specifico.
-- In assenza di receipt, il materiale può comparire soltanto come pianificato/disponibile, mai come fatto svolto.
+- Un materiale è classificabile come **usato** nei documenti consuntivi solo con evidenza/receipt esplicita, durevole e autorevole legata a una TeachingSession corrente e al materiale specifico.
+- In assenza di receipt persistita, il materiale può comparire soltanto come pianificato/disponibile, mai come fatto svolto.
 - Le evidenze verso Programma svolto/Relazione finale sono read-only e non trasformano automaticamente fatti in giudizi professionali.
 - Nessun dato studente viene trasferito a Studio Atlas.
 - Educazione civica resta trasversale: non inventare quote orarie disciplinari.
@@ -59,7 +59,7 @@ Il footprint curricolare persistito è uno snapshot della combinazione `Curricul
 
 ### Domini operativi
 
-Riutilizzare TeachingSession corrente e allocazioni, TeachingEvidence aggregata, LessonDesignExtension per materiali proposti/accettati, eventuale receipt session-linked di effettivo uso materiali e la vista Materiali della lezione.
+Riutilizzare TeachingSession corrente e allocazioni, TeachingEvidence aggregata, LessonDesignExtension per materiali proposti/accettati, una receipt persistita session-linked per l’effettivo uso dei materiali e la vista Materiali della lezione.
 
 ## Prerequisiti
 
@@ -74,7 +74,8 @@ Riutilizzare TeachingSession corrente e allocazioni, TeachingEvidence aggregata,
 - nessuna Programmazione senza footprint curricolare persistito nella stessa immutable version;
 - source drift/revalidation espliciti anche se cambia il footprint mantenendo lo stesso version ref;
 - sessioni superseded escluse;
-- `ACCEPTED` senza receipt non contato come “usato”;
+- `ACCEPTED` senza receipt persistita non contato come “usato”;
+- l’uso effettivo nasce solo da un gesto esplicito del docente su una TeachingSession corrente;
 - output professionale senza token tecnici.
 
 ---
@@ -271,11 +272,51 @@ export type ProgrammingLessonContext = {
 ### Task 6: Costruire evidenze consuntive senza confondere “accettato” e “usato”
 
 **Files:**
+- Create: `product/src/core/domain/material-usage-receipt.ts` + tests
+- Create: `product/src/core/infrastructure/supabase/supabase-material-usage-receipt-repository.ts` + tests
+- Create: migration contract test + next free migration after landed lineage
+- Create/Modify: server action under the existing lesson/material surface for explicit teacher recording
 - Create: `build-program-execution-evidence.ts` + tests
-- Reuse TeachingSession/TeachingEvidence/LessonDesignExtension.
-- Reuse or introduce only at governed session boundary an explicit material-use receipt/read model; do not infer usage from `ACCEPTED`.
+- Reuse TeachingSession/TeachingEvidence/LessonDesignExtension; do not infer usage from `ACCEPTED`.
 
-**Internal types:**
+**Durable persistence contract:**
+
+Introduce one governed read/write model equivalent to:
+
+```text
+teaching_session_material_usage_receipts
+  id
+  workspace_id
+  teaching_session_id
+  lesson_extension_id
+  used = true
+  recorded_by
+  recorded_at
+```
+
+Constraints and authority:
+
+- one authoritative receipt per `(teaching_session_id, lesson_extension_id)`; duplicate recording is idempotent or returns the existing receipt without creating duplicate evidence;
+- direct client insert/update/delete is denied; recording happens through a trusted RPC/repository boundary;
+- actor and timestamp come from the trusted boundary, never from caller-supplied authority fields;
+- the writer loads and validates the target TeachingSession and LessonDesignExtension inside the trusted transaction;
+- the TeachingSession must be current/non-superseded and belong to the same workspace, academic year, section/lesson context as the accepted extension;
+- the LessonDesignExtension must exist, belong to that same context and have `status = ACCEPTED` at recording time;
+- workspace/session/extension/context mismatch, superseded session, or PROPOSED/MODIFIED/DISMISSED extension fails before any receipt is written;
+- the receipt contains no student data and does not create a parallel document/evidence archive.
+
+Trusted writer contract is equivalent to:
+
+```text
+record_teaching_session_material_usage(
+  target_teaching_session_id uuid,
+  target_lesson_extension_id uuid
+) -> material_usage_receipt
+```
+
+The ordinary teacher UI exposes an explicit action such as **“Segna come usato”** / **“Usato in questa lezione”** inside the current lesson/material surface. The action is always teacher-initiated: Atlas, Materiali import, acceptance of a bundle, opening the lesson or rendering evidence must never create a usage receipt automatically.
+
+**Internal read model:**
 
 ```ts
 export type PlannedMaterialRef = {
@@ -286,9 +327,11 @@ export type PlannedMaterialRef = {
 }
 
 export type MaterialUsageReceipt = {
+  workspaceId: string
   teachingSessionId: string
   lessonExtensionId: string
   used: true
+  recordedBy: string
   recordedAt: string
 }
 
@@ -303,20 +346,26 @@ export type ProgramExecutionEvidenceItem = {
 }
 ```
 
-Rules:
+Read rules:
 
 - `availableMaterials` may include current `ACCEPTED` extensions;
-- `usedMaterials` requires matching explicit receipt for the same current TeachingSession + extension;
-- no receipt → never claim used;
-- receipt on superseded session → ignored;
-- proposed/dismissed resource cannot become used;
+- `usedMaterials` is derived only from persisted authoritative receipts returned by the repository/read model for the same current TeachingSession + extension;
+- transient/caller-supplied receipt objects are never authority for consuntive evidence;
+- no persisted receipt → never claim used;
+- receipt on superseded/non-current session → ignored by the evidence reader even if historical storage is retained;
+- proposed/modified/dismissed resource cannot become used;
 - unallocated minutes stay unallocated.
 
 - [ ] RED accepted-without-receipt = available but not used.
-- [ ] RED current-session receipt promotes only matching accepted resource to used.
-- [ ] RED superseded/mismatched/proposed/dismissed cases do not count.
-- [ ] Implement read-only evidence builder and reuse DOC-04 evidence adapter.
-- [ ] Run domain regression tests.
+- [ ] RED trusted recording on current session + matching ACCEPTED extension persists one receipt and promotes only that resource to used.
+- [ ] RED duplicate recording for the same session+extension is idempotent / uniqueness-safe and never duplicates evidence.
+- [ ] RED mismatched workspace/session/lesson/extension fails before persistence.
+- [ ] RED superseded session fails recording; a historical receipt from a superseded session is ignored by current execution evidence.
+- [ ] RED PROPOSED/MODIFIED/DISMISSED extension fails recording and cannot appear in `usedMaterials`.
+- [ ] RED evidence builder ignores caller-supplied/transient receipt-like objects that are absent from the authoritative repository read model.
+- [ ] Implement migration + trusted RPC + repository + explicit teacher action minimally; no automatic writes from Atlas/Materiali.
+- [ ] Implement read-only execution evidence builder and reuse DOC-04 evidence adapter.
+- [ ] Replay migrations and run focused domain/repository/action tests + typecheck to GREEN.
 - [ ] Commit.
 
 ---
@@ -332,20 +381,22 @@ curricolo applicabile Tecnologia Seconda
 → UDA 2-01
 → canonical lesson/block
 → Atlas material ACCEPTED (available only)
-→ explicit current TeachingSession material-use receipt
+→ explicit teacher action records durable current-TeachingSession material-use receipt
 → TeachingSession allocation
-→ ProgramExecutionEvidence
+→ authoritative ProgramExecutionEvidence read
 → factual input to Programma svolto / Relazione finale
 ```
 
 **Negative assertions:**
 
-- no student data in Atlas context;
+- no student data in Atlas context or material-use receipt;
 - no automatic Programmazione/UDA/Piano annuale/Calendario write;
+- no automatic material-use receipt from Atlas handoff, bundle acceptance or lesson opening;
 - no curricolo inferred from CAN-PLAN alone;
 - same version ref with changed accepted footprint triggers revalidation and does not mutate historical version;
-- no duplicate evidence from superseded sessions;
-- accepted material without receipt is not “used”;
+- no duplicate evidence from superseded sessions or duplicate receipt writes;
+- accepted material without persisted receipt is not “used”;
+- mismatched/non-ACCEPTED material cannot receive a valid usage receipt;
 - no technical code in professional output.
 
 - [ ] Run focused integration tests.
@@ -359,5 +410,5 @@ curricolo applicabile Tecnologia Seconda
 - **Authority:** curricolo, Piano annuale, X5, template engine, TeachingSession and Materiali retain distinct responsibilities.
 - **Persistence:** every immutable Programmazione version contains the exact accepted curricolo context+coverage footprint used to compose it; historical comparison never depends on current Arena state alone.
 - **Revalidation:** equal `curriculumVersionRef` does not suppress revalidation when requirements/source refs/transition/coverage changed.
-- **Materiali:** `ACCEPTED` means available; only session-linked receipt means used.
-- **Privacy/output:** no student data is added to Atlas and technical provenance stays internal.
+- **Materiali:** `ACCEPTED` means available; only an explicit teacher-recorded, durable, authoritative current-TeachingSession receipt means used.
+- **Privacy/output:** no student data is added to Atlas or material-use receipts and technical provenance stays internal.
