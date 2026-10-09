@@ -17,8 +17,8 @@ This checkpoint is a coordination artifact only. It does not authorize merge, ru
 | --- | --- | --- | --- | --- |
 | #693 | DOC-04 — Documentazione / Relazione finale | `92493223465cb251d5274085d959cfd2406ec7ab` | Canonical specification | MUST precede #695 |
 | #695 | DOC-TPL-01 — Institutional Template Engine | `2c10ae1b2de5b7c757c14064307b20f13f73f695` | Runtime implementation | Implements #693; keep Draft until canonical spec is integrated and final gate is repeated |
-| #696 | IUI-01 — Intelligent UI composition architecture | `8ece0f900e9d90f3af825ef4f6b123028cdf8c6d` | Canonical specification | MUST precede #697 |
-| #697 | IUI-02/03 — Deterministic intelligent UI composition | `48c29451e37c388a99ed1fce72da4caa33c081fa` | Runtime implementation | Git-descendant of #696; integrate after #696 |
+| #696 | IUI-01 — Intelligent UI composition architecture | `416ecae32baa330460cb6982c469ec9b2ce54e49` | Canonical specification | MUST precede #697; includes review remediation for full-view reveal and return-to-origin continuity |
+| #697 | IUI-02/03 — Deterministic intelligent UI composition | `48c29451e37c388a99ed1fce72da4caa33c081fa` | Runtime implementation | Based on prior #696 head `8ece0f9…`; now ahead 18 / behind 1 and requires refresh/remediation after #696 lands |
 | #692 | UDA → Studio Atlas material handoff | `09a973a1782019a89aa62635a17222854e68e144` | Large runtime/materials tranche | Integrate last after rebase, migration-lineage reconciliation, package-test reconciliation and exact-head recertification |
 | #647 | Argo BIFF8 XLS proof | `e5dd179f074421f08b2c7952238fa0764d643ce6` | Isolated proof | Outside current integration chain |
 
@@ -62,6 +62,19 @@ The changes are semantically compatible but line-conflicting. A later rebase/mer
 
 **Guardrail:** never accept a conflict resolution that chooses one branch's `test` line wholesale. Reconstruct it from integrated `develop` plus every new suite and verify Product CI.
 
+### C3 — #696 remediation invalidates #697 specification alignment — REQUIRED REFRESH
+
+Codex review of #696 found two P2 specification gaps on `8ece0f900…`:
+
+1. full-view actions targeted a closed `<details>` disclosure without guaranteeing it would open;
+2. sanitized `returnTo` was parsed but not exposed as an explicit return action in Classe.
+
+Both were corrected in #696 commit `416ecae32baa330460cb6982c469ec9b2ce54e49` by requiring `view=all` + open disclosure behavior, explicit browser assertions, and a registered `CLASS_RETURN_TO_ORIGIN` action with re-sanitization/fallback.
+
+#697 remains based on the previous #696 head. Direct comparison `416ecae… → 48c29451…` is `diverged`, ahead 18 / behind 1, merge-base `8ece0f900…`.
+
+**Guardrail:** do not integrate #697 on its current head. After #696 is reviewed and integrated, refresh/rebase #697 onto the new `develop`, implement any runtime contract delta required by the remediated specification (including registry/continuity/full-view behavior), then repeat TDD and exact-head certification.
+
 ## Verified dependency relationships
 
 ### D1 — #693 → #695
@@ -72,9 +85,9 @@ The changes are semantically compatible but line-conflicting. A later rebase/mer
 
 ### D2 — #696 → #697
 
-`48c29451…` (#697) is 18 commits ahead of `8ece0f900…` (#696), with `8ece0f900…` as merge-base and no commits behind. This is a true implementation chain, not parallel competing work.
+The original #697 branch was 18 commits ahead of #696 head `8ece0f900…`. After review remediation advanced #696 to `416ecae…`, the branches are now diverged: #697 is ahead 18 and behind 1, with merge-base `8ece0f900…`.
 
-**Rule:** integrate #696 before #697. Preserve the Git ancestry by using a normal **merge commit** for #696; do not squash or rebase-merge #696 unless you intentionally accept a subsequent #697 rebase/reconciliation. With ancestry preserved, #697 naturally reduces to its implementation-only delta after #696 lands.
+**Rule:** finish/review #696 first and integrate it with a normal **merge commit**. Then refresh #697 onto that integrated state and explicitly implement the new specification delta before relying on any prior #697 certification.
 
 ## Verified non-conflicts
 
@@ -98,9 +111,13 @@ No direct runtime conflict is currently identified beyond the shared `package.js
 
 Verified exact-head evidence includes Product CI #2686 PASS, Browser Certification #959 PASS, P7 #520 PASS, Codex independent review complete with no fresh finding.
 
+### #696 — `416ecae…`
+
+Document-only gates on the remediated head are PASS: Human Interaction Model, TRAMA Perceptible Write, Certification Impact Classifier and Governed MFA Queue Hygiene. Independent re-review is pending at this snapshot.
+
 ### #697 — `48c29451…`
 
-Verified exact-head evidence includes Product CI #2707 PASS and Browser Certification #980 PASS.
+Historical exact-head evidence includes Product CI #2707 PASS and Browser Certification #980 PASS. These prove that head against the prior specification, but are **not sufficient for integration after #696 remediation**.
 
 ### #692 — `09a973a…`
 
@@ -118,14 +135,18 @@ The body still names an older exact head (`5a352dad…`) while GitHub currently 
 
 #688 (view convergence implementation) is already merged and contains the certified closeout. On 2026-10-09, #687 was explicitly commented as superseded and closed without merge. No further integration action is required for #687.
 
+### G3 — #696 PR body head label is stale after remediation
+
+The #696 body still mentions `8ece0f900…` as current document head, while GitHub now reports `416ecae…`. Refresh the body before final Human Review/integration.
+
 ## Canonical integration order
 
 Unless a new material dependency is discovered, use this sequence:
 
 1. #693 — canonical documentation specification.
 2. #695 — template-engine implementation, after refreshing exact-head evidence against integrated #693 if required.
-3. #696 — intelligent-UI architecture, preferably by merge commit to preserve the ancestry already consumed by #697.
-4. #697 — intelligent-UI implementation, after refreshing exact-head evidence against integrated #696 if required.
+3. #696 — intelligent-UI architecture, after independent re-review of `416ecae…`; use a merge commit.
+4. #697 — refresh/rebase onto integrated #696, implement the remediated continuity/full-view contract, recertify, then integrate.
 5. #692 — rebase onto the resulting `develop`, recompute/renumber migrations, reconcile `product/package.json`, resolve any real file/semantic conflicts, then perform full exact-head recertification and Human Review.
 
 ## Rules while parallel work continues
@@ -133,8 +154,8 @@ Unless a new material dependency is discovered, use this sequence:
 1. Parallel implementation may continue on isolated branches.
 2. Do not merge #692, #695 or #697 independently just because their own CI is green.
 3. Do not renumber #692 migrations early while upstream migration ownership is still moving; do it once against the actual integrated lineage.
-4. Do not rebase certified branches merely for cosmetic freshness. Rebase only when entering their integration step or when a material base dependency requires it.
-5. Never inherit PASS evidence across a rebase, migration renumbering, conflict resolution or package-test reconciliation. New exact head = new certification.
+4. Do not rebase certified branches merely for cosmetic freshness. Rebase when entering their integration step or when a material base/spec dependency requires it; #697 now has such a material dependency on remediated #696.
+5. Never inherit PASS evidence across a rebase, migration renumbering, conflict resolution, specification remediation or package-test reconciliation. New exact head/spec contract = new certification.
 6. Preserve `DOS-A1=RUNTIME_DEFERRED`, no implicit writes, teacher authority, and existing Docente OS / Arena / Atlas / Studio Atlas boundaries.
 7. No automatic merge.
 8. Human Review remains the final gate after combined-state verification.
