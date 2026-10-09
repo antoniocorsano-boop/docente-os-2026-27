@@ -1,5 +1,12 @@
-import type { TemplatePrivacyClass, TemplateQualityReview, TemplateRenderRole, TemplateValuePolicy } from '../../../core/domain/document-template'
+import type {
+  TemplatePrivacyClass,
+  TemplateQualityReview,
+  TemplateRenderRole,
+  TemplateValuePolicy,
+} from '../../../core/domain/document-template'
+import type { WorkspaceRole } from '../../../core/domain/workspace'
 import type { DocumentTemplateSnapshot } from '../../../core/infrastructure/supabase/supabase-document-template-repository'
+import type { InstitutionalBaseSnapshot } from '../../../core/infrastructure/supabase/supabase-institutional-base-repository'
 
 export type TemplateBuilderFieldViewModel = {
   label: string
@@ -27,6 +34,47 @@ export type TemplateBuilderViewModel = {
   sections: TemplateBuilderSectionViewModel[]
 }
 
+export type TemplateBuilderLifecycleActionKey = 'ACTIVATE' | 'BLOCK' | 'CLEAR_BLOCK' | 'RETIRE'
+
+export type TemplateBuilderLifecycleAction = {
+  key: TemplateBuilderLifecycleActionKey
+  label: string
+}
+
+export type GovernedInstitutionalBaseViewModel = {
+  heading: 'Veste istituzionale'
+  title: string
+  statusLabel: string
+  sourceSummary: string
+  reviewLabel: string
+  findings: string[]
+  actions: TemplateBuilderLifecycleAction[]
+  identityId: string | null
+  currentVersionNo: number | null
+  institutionName: string | null
+}
+
+export type GovernedFamilyTemplateViewModel = TemplateBuilderViewModel & {
+  heading: 'Modello del documento'
+  actions: TemplateBuilderLifecycleAction[]
+  identityId: string | null
+  currentVersionNo: number | null
+}
+
+export type GovernedTemplateBuilderViewModel = {
+  canGovern: boolean
+  institutionalBase: GovernedInstitutionalBaseViewModel
+  familyTemplate: GovernedFamilyTemplateViewModel
+}
+
+export type BuildGovernedTemplateBuilderInput = {
+  institutionalBase: InstitutionalBaseSnapshot | null
+  institutionalBaseReview: TemplateQualityReview | null
+  familyTemplate: DocumentTemplateSnapshot | null
+  familyTemplateReview: TemplateQualityReview | null
+  role: WorkspaceRole
+}
+
 export function buildTemplateBuilderViewModel(
   snapshot: DocumentTemplateSnapshot,
   review: TemplateQualityReview,
@@ -45,9 +93,7 @@ export function buildTemplateBuilderViewModel(
   return {
     title: snapshot.template.name,
     statusLabel: statusLabel(snapshot.template.status),
-    sourceSummary: snapshot.sources.length
-      ? `${snapshot.sources.length} ${snapshot.sources.length === 1 ? 'sorgente di riferimento' : 'sorgenti di riferimento'}`
-      : 'Nuovo modello',
+    sourceSummary: sourceSummary(snapshot.sources.length, 'modello'),
     reviewLabel: reviewResultLabel(review.result),
     findings: review.findings.map((finding) => finding.summary),
     canApprove: (review.result === 'PASS' || review.result === 'PASS_WITH_NOTES') && hasPendingVersion,
@@ -72,12 +118,121 @@ export function buildTemplateBuilderViewModel(
   }
 }
 
-function statusLabel(status: DocumentTemplateSnapshot['template']['status']) {
+export function buildGovernedTemplateBuilderViewModel(
+  input: BuildGovernedTemplateBuilderInput,
+): GovernedTemplateBuilderViewModel {
+  const canGovern = input.role === 'OWNER' || input.role === 'ADMIN'
+
+  let institutionalBase: GovernedInstitutionalBaseViewModel
+  if (!input.institutionalBase) {
+    institutionalBase = {
+      heading: 'Veste istituzionale',
+      title: 'Nessuna veste istituzionale registrata',
+      statusLabel: 'Non disponibile',
+      sourceSummary: 'Nessuna sorgente registrata',
+      reviewLabel: 'Controllo non disponibile',
+      findings: [],
+      actions: [],
+      identityId: null,
+      currentVersionNo: null,
+      institutionName: null,
+    }
+  } else {
+    const snapshot = input.institutionalBase
+    const version = snapshot.versions.find((candidate) => candidate.versionNo === snapshot.base.currentVersionNo)
+    if (!version) throw new Error('La veste istituzionale non contiene la versione corrente revisionabile.')
+    if (!input.institutionalBaseReview || input.institutionalBaseReview.versionNo !== version.versionNo) {
+      throw new Error('La review non corrisponde alla versione corrente della veste istituzionale.')
+    }
+    const review = input.institutionalBaseReview
+    const canActivate = isReviewPass(review)
+      && snapshot.base.activeVersionNo !== version.versionNo
+
+    institutionalBase = {
+      heading: 'Veste istituzionale',
+      title: snapshot.base.name,
+      statusLabel: statusLabel(snapshot.base.status),
+      sourceSummary: sourceSummary(snapshot.sources.length, 'veste'),
+      reviewLabel: reviewResultLabel(review.result),
+      findings: review.findings.map((finding) => finding.summary),
+      actions: lifecycleActions(snapshot.base.status, canGovern, canActivate),
+      identityId: snapshot.base.id,
+      currentVersionNo: version.versionNo,
+      institutionName: version.draft.identityProfile.institutionName,
+    }
+  }
+
+  let familyTemplate: GovernedFamilyTemplateViewModel
+  if (!input.familyTemplate) {
+    familyTemplate = {
+      heading: 'Modello del documento',
+      title: 'Nessun modello documentale registrato',
+      statusLabel: 'Non disponibile',
+      sourceSummary: 'Nessuna sorgente registrata',
+      reviewLabel: 'Controllo non disponibile',
+      findings: [],
+      canApprove: false,
+      sections: [],
+      actions: [],
+      identityId: null,
+      currentVersionNo: null,
+    }
+  } else {
+    if (!input.familyTemplateReview) {
+      throw new Error('Il modello documentale non contiene una review della versione corrente.')
+    }
+    const base = buildTemplateBuilderViewModel(input.familyTemplate, input.familyTemplateReview)
+    familyTemplate = {
+      ...base,
+      heading: 'Modello del documento',
+      actions: lifecycleActions(
+        input.familyTemplate.template.status,
+        canGovern,
+        base.canApprove,
+      ),
+      identityId: input.familyTemplate.template.id,
+      currentVersionNo: input.familyTemplate.template.currentVersionNo,
+    }
+  }
+
+  return { canGovern, institutionalBase, familyTemplate }
+}
+
+function lifecycleActions(
+  status: DocumentTemplateSnapshot['template']['status'] | InstitutionalBaseSnapshot['base']['status'],
+  canGovern: boolean,
+  canActivate: boolean,
+): TemplateBuilderLifecycleAction[] {
+  if (!canGovern || status === 'RETIRED') return []
+  if (status === 'BLOCKED') {
+    return [
+      { key: 'CLEAR_BLOCK', label: 'Rimuovi blocco' },
+      { key: 'RETIRE', label: 'Ritira' },
+    ]
+  }
+
+  return [
+    ...(canActivate ? [{ key: 'ACTIVATE' as const, label: 'Attiva' }] : []),
+    { key: 'BLOCK', label: 'Blocca' },
+    { key: 'RETIRE', label: 'Ritira' },
+  ]
+}
+
+function isReviewPass(review: TemplateQualityReview) {
+  return review.result === 'PASS' || review.result === 'PASS_WITH_NOTES'
+}
+
+function sourceSummary(count: number, subject: 'modello' | 'veste') {
+  if (!count) return subject === 'modello' ? 'Nuovo modello' : 'Nuova veste'
+  return `${count} ${count === 1 ? 'sorgente di riferimento' : 'sorgenti di riferimento'}`
+}
+
+function statusLabel(status: DocumentTemplateSnapshot['template']['status'] | InstitutionalBaseSnapshot['base']['status']) {
   switch (status) {
     case 'DRAFT': return 'In preparazione'
     case 'QUALITY_REVIEWED': return 'Qualità verificata'
     case 'REVIEW_REQUIRED': return 'Da rivedere'
-    case 'ACTIVE': return 'Modello in uso'
+    case 'ACTIVE': return 'In uso'
     case 'RETIRED': return 'Versione storica'
     case 'BLOCKED': return 'Non pubblicabile'
   }
