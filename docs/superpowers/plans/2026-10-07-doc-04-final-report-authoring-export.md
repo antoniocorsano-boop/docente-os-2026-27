@@ -2,110 +2,117 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn the certified read-only final-report evidence bundle into a versioned, human-reviewed, finalizable and exportable institutional Relazione finale using the active canonical template.
+**Goal:** Turn the certified read-only final-report evidence bundle into a versioned, human-reviewed, finalizable and exportable institutional Relazione finale using pinned `InstitutionalBaseVersion` + `DocumentTemplateVersion`.
 
-**Architecture:** Compose the first draft deterministically from the evidence bundle + active template, persist semantic sections and source manifest alongside the immutable authored-document version, and keep validation/finalization as separate human decisions. Export renders the saved version through the institutional template and runs an output-purity gate before print/PDF.
+**Architecture:** Create the first structured document version atomically from evidence + template, persist semantic sections and source manifest against the same immutable version, and treat `VALIDATED` and `FINALIZED` as trusted human decisions on an exact version. A version can become `FINALIZED` only after that **same immutable version** has a valid persisted `VALIDATED` decision. Export renders a saved version through its pinned base/template versions and runs output-purity checks.
 
-**Tech Stack:** Next.js 16, React 19, TypeScript 5.9, Supabase/Postgres/RLS/RPC, existing X5 authored-document engine, DOC-TPL-01 renderer primitives, Node `tsx --test`.
+**Tech Stack:** Next.js 16, React 19, TypeScript 5.9, Supabase/Postgres/RLS/RPC, X5 authored-document engine, DOC-TPL-01 renderer primitives, Node `tsx --test`.
 
 **Spec:** `docs/superpowers/specs/2026-10-07-documentazione-relazione-finale-design.md`
 
 ## Global Constraints
 
-- Depends on successful DOC-TPL-01, DOC-01 generalized authoring, and DOC-04 evidence/readiness plans.
-- First draft must be possible with AI disabled.
-- Each save creates a new immutable version; no in-place mutation of saved versions.
-- Source manifest/provenance is internal only and is never printed/exported.
-- Validation and finalization are explicit human actions; assistant/copilot code paths cannot trigger them implicitly.
-- A finalized version is immutable; later edits create a new version and later finalization creates a new current final while preserving historical finals.
-- Export uses a saved version and exact template version.
-- Professional output contains no CAN/Bxx, UUIDs, DB/entity names, workflow states, provider/model names, Drive paths, hashes, provenance or “generated automatically” wording.
+- Depends on reviewed/integrated DOC-TPL-01, DOC-01 generalized authoring and DOC-04 evidence/readiness work.
+- First draft works with AI disabled.
+- **No provenance-less v1:** document identity, first immutable version, structured sections and source manifest are created/completed atomically in one trusted transaction.
+- Never implement `openFinalReport → unstructured v1 → saveStructured → v2` for initial creation.
+- Each later save creates a new immutable version; no in-place mutation.
+- Source manifest/provenance is internal only and never printed/exported.
+- Validation and finalization are explicit human actions; assistant/copilot code paths cannot invoke them implicitly.
+- Validation is version-specific and allowed only when mandatory teacher inputs are complete.
+- Finalization is version-specific and is rejected unless the exact same immutable version already has a valid persisted `VALIDATED` decision.
+- Saving a newer version does not transfer validation/finalization from the previous version.
+- A finalized version remains immutable and historical; later edits create a new version that must be validated/finalized independently.
+- Export uses a saved document version plus the exact pinned `InstitutionalBaseVersion` and `DocumentTemplateVersion`.
+- Professional output contains no CAN/Bxx, UUID, DB/entity names, internal workflow states, provider/model names, Drive paths, hashes, provenance or “generato automaticamente”.
 - Programma svolto and Programmazione annuale remain separate documents.
 - No new bottom-navigation slot.
-- Native DOCX export is not part of this plan; print/PDF is the qualified pilot output. DOCX gets a later dedicated tranche.
-- Reserve migration number `0062`; rebase and verify number availability before execution.
+- Native DOCX is deferred; print/PDF is the pilot output.
+- Migration number is **not pre-reserved**. At execution, rebase on current `develop`, inspect the runtime migration lineage and use the next free contiguous version.
 
 ## Review Focus
 
-- A source update after draft creation must not silently alter the saved version.
-- A user who opens an old version must see/export that exact version, not current content.
-- Finalizing v2 after v1 was final must preserve v1 as a historical final.
-- A conflict save must preserve local edits and return the existing “reload before saving” class of error.
-- Any technical token introduced by content, template data or assistance must block export until removed.
+- Source changes after draft creation never silently alter a saved version.
+- Historical export resolves the exact requested document/base/template versions.
+- A direct `FINALIZED` attempt without same-version `VALIDATED` must fail at the trusted boundary.
+- `VALIDATED(v1)` cannot authorize `FINALIZED(v2)`.
+- Saving v2 after finalized v1 preserves v1 and resets decision requirements for v2.
+- Initial creation yields exactly one structured v1, not a blank/unstructured historical v1 plus v2.
+- Stale optimistic-concurrency save preserves local edits and returns reload/conflict semantics.
+- Any technical token in professional output blocks export.
 
 ---
 
-### Task 1: Persist semantic sections, source manifest and human decisions
+### Task 1: Trusted structured-version and decision persistence
 
 **Files:**
-- Create: `product/supabase/migrations/0062_authored_document_structure_and_decisions.sql`
-- Create: `product/src/core/infrastructure/supabase/authored-document-structure-migration-contract.test.ts`
-- Modify after generation if required: `product/src/lib/supabase/database.types.ts`
+- Create: next free migration `<NNNN>_authored_document_structure_and_decisions.sql`
+- Create: migration contract test
+- Modify generated database types if required.
 
-**Interfaces:**
-- Produces tables:
-  - `authored_document_version_sections`
-  - `authored_document_version_sources`
-  - `authored_document_decisions`
-- Produces RPCs:
-  - `save_structured_authored_document_version(...) -> integer`
-  - `authored_document_structured_snapshot(target_document_id uuid) -> jsonb`
-  - `record_authored_document_decision(target_document_id uuid, target_version_no integer, decision text, note text) -> void`
+**Tables/read models:**
 
-- [ ] **Step 1: Write failing migration contract test**
+- `authored_document_version_sections`
+- `authored_document_version_sources`
+- `authored_document_decisions`
 
-Assert migration contains:
+Decisions:
 
-```ts
-assert.match(sql, /authored_document_version_sections/)
-assert.match(sql, /authored_document_version_sources/)
-assert.match(sql, /authored_document_decisions/)
-assert.match(sql, /VALIDATED/)
-assert.match(sql, /FINALIZED/)
-assert.match(sql, /save_structured_authored_document_version/)
+```text
+VALIDATED
+FINALIZED
 ```
 
-- [ ] **Step 2: Run focused test and verify RED**
+**Trusted RPC boundaries:**
 
-Run: `cd product && npx tsx --test src/core/infrastructure/supabase/authored-document-structure-migration-contract.test.ts`
-
-- [ ] **Step 3: Implement migration**
-
-Required rules:
-
-- section rows reference an immutable version id and carry `section_key`, ordinal, title, content_markdown, classification;
-- source rows reference exact version + optional section key + source kind/ref/version/fingerprint/minimal snapshot;
-- decisions reference exact document version and actor/time;
-- allowed decisions are `VALIDATED` and `FINALIZED`;
-- direct authenticated writes revoked;
-- RPC validates workspace membership and expected current version;
-- `FINALIZED` decision does not mutate version content;
-- latest FINALIZED decision determines current final; older finalized versions remain queryable;
-- no decision RPC is called by generic assistant write boundaries.
-
-- [ ] **Step 4: Run contract test and regenerate types**
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/supabase/migrations/0062_authored_document_structure_and_decisions.sql product/src/core/infrastructure/supabase/authored-document-structure-migration-contract.test.ts product/src/lib/supabase/database.types.ts
-git commit -m "feat: persist structured document versions and decisions"
+```text
+create_structured_final_report_draft(...) -> { document_id, version_no }
+save_structured_authored_document_version(...) -> integer
+authored_document_structured_snapshot(target_document_id) -> jsonb
+record_authored_document_validation(target_document_id, target_version_no, ...) -> void
+finalize_authored_document_version(target_document_id, target_version_no, ...) -> void
 ```
+
+`create_structured_final_report_draft(...)` MUST execute in one transaction and either:
+
+1. create/reuse the FINAL_REPORT document identity as appropriate;
+2. create the first/current immutable version;
+3. persist body/title;
+4. persist semantic section rows;
+5. persist source manifest/provenance;
+6. persist pinned institutional-base version + family-template version;
+7. return that exact `version_no`;
+
+or roll back everything. No externally observable incomplete v1 is allowed.
+
+**Decision invariants:**
+
+- direct authenticated table writes are revoked;
+- membership/workspace/document-kind/version checks occur in the trusted boundary;
+- validation targets an existing immutable version and fails when mandatory professional inputs are incomplete;
+- finalization targets the current exact immutable version and requires explicit human confirmation;
+- finalization queries persisted decisions and fails unless `VALIDATED` exists for `target_document_id + target_version_no`;
+- a `VALIDATED` decision on another version never satisfies the precondition;
+- finalization never mutates version content;
+- older finalized versions remain queryable.
+
+- [ ] RED migration contract tests for tables/RPCs, atomic create, version/base/template pins and same-version validation→finalization invariant.
+- [ ] RED test: `FINALIZED` without any validation is rejected.
+- [ ] RED test: `VALIDATED(v1)` then `FINALIZED(v2)` is rejected.
+- [ ] RED test: incomplete required inputs cannot record `VALIDATED`, therefore cannot finalize.
+- [ ] Implement migration/RPCs minimally.
+- [ ] Replay migrations + focused contract tests to GREEN; regenerate types.
+- [ ] Commit.
 
 ---
 
-### Task 2: Extend authored-document domain/repository for structured versions
+### Task 2: Structured authored-document domain/repository
 
 **Files:**
-- Modify: `product/src/core/domain/authored-document.ts`
-- Modify: `product/src/core/domain/authored-document.test.ts`
-- Modify: `product/src/core/infrastructure/supabase/supabase-authored-document-repository.ts`
-- Modify: `product/src/core/infrastructure/supabase/supabase-authored-document-repository.test.ts`
+- Modify authored-document domain + tests.
+- Modify Supabase authored-document repository + tests.
 
-**Interfaces:**
-- Add domain types:
+**Types:**
 
 ```ts
 AuthoredDocumentSection
@@ -114,58 +121,41 @@ AuthoredDocumentDecision
 StructuredAuthoredDocumentSnapshot
 ```
 
-- Add repository methods:
+Snapshot must include:
+
+- document identity/current version;
+- immutable versions;
+- structured sections/sources;
+- decision history by exact version;
+- pinned `institutionalBaseVersionId`;
+- pinned `templateVersionId`.
+
+**Repository methods:**
 
 ```ts
+createStructuredFinalReportDraft(input: ...): Promise<{ documentId: string; versionNo: number }>
 getStructured(documentId: string): Promise<StructuredAuthoredDocumentSnapshot | null>
-saveStructured(input: {
-  documentId: string
-  expectedCurrentVersion: number
-  title: string
-  bodyMarkdown: string
-  sections: AuthoredDocumentSectionDraft[]
-  sources: AuthoredDocumentSourceManifestDraft[]
-}): Promise<number>
-recordDecision(input: {
-  documentId: string
-  versionNo: number
-  decision: 'VALIDATED' | 'FINALIZED'
-  note?: string | null
-}): Promise<void>
+saveStructured(input: ...): Promise<number>
+validateVersion(input: { documentId: string; versionNo: number; note?: string | null }): Promise<void>
+finalizeVersion(input: { documentId: string; versionNo: number; confirmed: true; note?: string | null }): Promise<void>
 ```
 
-- [ ] **Step 1: Write failing domain/repository tests**
-
-Pin mapping, historical finals, section order, section-scoped source entries, and decision history.
-
-- [ ] **Step 2: Run focused tests and verify RED**
-
-- [ ] **Step 3: Implement domain/repository changes**
-
-Keep existing `get()` and `save()` methods for UDA compatibility; structured methods are additive.
-
-- [ ] **Step 4: Run tests + typecheck**
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/src/core/domain/authored-document.ts product/src/core/domain/authored-document.test.ts product/src/core/infrastructure/supabase/supabase-authored-document-repository.ts product/src/core/infrastructure/supabase/supabase-authored-document-repository.test.ts
-git commit -m "feat: support structured authored document versions"
-```
+- [ ] RED repository tests for atomic v1 mapping, section order, provenance, base/template pins and decision history.
+- [ ] RED repository test: no API path can bypass same-version validation requirement.
+- [ ] Preserve existing UDA compatibility additively.
+- [ ] Implement and run focused tests + typecheck.
+- [ ] Commit.
 
 ---
 
-### Task 3: Build deterministic Relazione finale draft composition
+### Task 3: Deterministic Relazione finale draft composition
 
 **Files:**
-- Create: `product/src/core/application/compose-final-report-draft.ts`
-- Create: `product/src/core/application/compose-final-report-draft.test.ts`
+- Create `compose-final-report-draft.ts` + tests.
 
-**Interfaces:**
-- Consumes `FinalReportEvidenceBundle` and active `DocumentTemplateVersionDraft`.
-- Produces:
+**Input:** reviewed `FinalReportEvidenceBundle` + pinned active canonical family template/base selection.
+
+**Output:**
 
 ```ts
 export type FinalReportDraft = {
@@ -175,53 +165,31 @@ export type FinalReportDraft = {
   sources: AuthoredDocumentSourceManifestDraft[]
   missingTeacherInputs: string[]
 }
-
-export function composeFinalReportDraft(input: {
-  bundle: FinalReportEvidenceBundle
-  template: DocumentTemplateVersionDraft
-}): FinalReportDraft
 ```
 
-- [ ] **Step 1: Write failing composition tests**
+**Rules:**
 
-Assert:
+- documented identity/execution facts may be prefilled;
+- superseded sessions excluded;
+- materials are described as actually used only when the evidence bundle contains explicit session-linked use evidence; `LessonDesignExtension.status=ACCEPTED` alone is insufficient;
+- professional outcomes/reflection remain teacher inputs, never invented;
+- source manifest is internal;
+- body/preview passes institutional output purity.
 
-- identity fields populate from context;
-- executed-path table is composed from documented current execution only;
-- superseded sessions do not appear;
-- unallocated activities can be represented in professional language without Bxx;
-- `OUTCOMES`, `FINAL_REFLECTION`, and other human-required sections contain explicit neutral prompts/placeholders, not invented conclusions;
-- source manifest contains internal refs while `bodyMarkdown` contains none;
-- `assertInstitutionalOutputPurity(bodyMarkdown)` passes.
-
-- [ ] **Step 2: Run focused test and verify RED**
-
-Run: `cd product && npx tsx --test src/core/application/compose-final-report-draft.test.ts`
-
-- [ ] **Step 3: Implement deterministic composer**
-
-Do not call AI. Human-required missing content should be represented in the editor model as missing inputs; avoid printing technical placeholder tokens in the professional preview.
-
-- [ ] **Step 4: Run test and verify GREEN**
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/src/core/application/compose-final-report-draft.ts product/src/core/application/compose-final-report-draft.test.ts
-git commit -m "feat: compose deterministic final report drafts"
-```
+- [ ] RED composition tests for all rules above.
+- [ ] Implement without AI.
+- [ ] Run focused test to GREEN.
+- [ ] Commit.
 
 ---
 
-### Task 4: Wire `Crea bozza` to open and persist the first FINAL_REPORT version
+### Task 4: `Crea bozza` creates the first structured version atomically
 
 **Files:**
-- Create: `product/src/app/documentazione/relazioni-finali/[sectionId]/actions.ts`
-- Create: `product/src/app/documentazione/relazioni-finali/[sectionId]/actions.test.ts`
-- Modify: `product/src/app/documentazione/relazioni-finali/[sectionId]/FinalReportReadiness.tsx`
+- Create actions/tests under `documentazione/relazioni-finali/[sectionId]/`.
+- Modify readiness UI button only.
 
-**Interfaces:**
-- Produces server action/helper:
+**Server action:**
 
 ```ts
 createFinalReportDraft(input: {
@@ -232,51 +200,32 @@ createFinalReportDraft(input: {
 }): Promise<{ documentId: string; versionNo: number }>
 ```
 
-- [ ] **Step 1: Write failing action tests with fakes**
+**Required order:**
 
-Assert order:
+1. load evidence/readiness;
+2. require adequate factual readiness;
+3. resolve exact institutional-base version + FINAL_REPORT template version;
+4. compose deterministic structured draft;
+5. call **one atomic repository/RPC boundary** that creates/reuses document identity and persists the first structured immutable version + sections + sources + both pins;
+6. return that exact document/version.
 
-1. load evidence;
-2. require readiness `PRONTA_PER_BOZZA` or `RICHIEDE_INTEGRAZIONI` with sufficient factual base;
-3. select active template;
-4. compose deterministic draft;
-5. `openFinalReport`;
-6. persist structured version/manifest;
-7. return document id/version.
+There is no preceding `openFinalReport` call that exposes a blank/unstructured v1.
 
-Assert no source-domain writes occur.
-
-- [ ] **Step 2: Run focused test and verify RED**
-
-- [ ] **Step 3: Implement action and connect button**
-
-After success navigate to `/documentazione/documenti/<documentId>`.
-
-- [ ] **Step 4: Run tests + typecheck**
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/src/app/documentazione/relazioni-finali/[sectionId]
-git commit -m "feat: create versioned final report draft"
-```
+- [ ] RED action test proves exactly one version is produced on first creation and it already has sections/sources/base/template pins.
+- [ ] RED rollback test proves a source/section failure leaves no partial document/version.
+- [ ] Assert no source-domain writes.
+- [ ] Implement action and button, navigate to document editor.
+- [ ] Run tests + typecheck.
+- [ ] Commit.
 
 ---
 
-### Task 5: Build the Relazione finale editor and version history
+### Task 5: Relazione finale editor and immutable history
 
 **Files:**
-- Create: `product/src/app/documentazione/documenti/[documentId]/page.tsx`
-- Create: `product/src/app/documentazione/documenti/[documentId]/FinalReportEditor.tsx`
-- Create: `product/src/app/documentazione/documenti/[documentId]/final-report-editor-model.ts`
-- Create: `product/src/app/documentazione/documenti/[documentId]/final-report-editor-model.test.ts`
-- Create: `product/src/app/documentazione/documenti/[documentId]/final-report-editor.css`
-- Create: `product/src/app/documentazione/documenti/[documentId]/actions.ts`
-- Create: `product/src/app/documentazione/documenti/[documentId]/actions.test.ts`
+- Create document page/editor/model/tests/actions/styles under `documentazione/documenti/[documentId]/`.
 
-**Interfaces:**
-- Editor model exposes canonical section labels and content, version history, unsaved-change state, missing human inputs, and internal-only “Da dove viene?” drawer data.
-- Save action:
+**Save:**
 
 ```ts
 saveFinalReportVersion(input: {
@@ -287,230 +236,134 @@ saveFinalReportVersion(input: {
 }): Promise<{ versionNo: number }>
 ```
 
-- [ ] **Step 1: Write failing editor-model tests**
+Rules:
 
-Assert:
+- structured semantic sections, not one monolithic editor;
+- technical field keys/provenance are not ordinary labels;
+- stale save returns conflict without destroying local content;
+- every successful save creates a new immutable version;
+- new version has no inherited `VALIDATED`/`FINALIZED` status even if previous version was final;
+- exact base/template pins are retained or explicitly reselected through a governed new-version operation; never silently replaced by today’s active versions.
 
-- section order follows stored template/version structure;
-- technical field keys are not primary labels;
-- source/provenance drawer is never included in printable model;
-- saving with stale expected version returns conflict state and preserves local content;
-- every successful save increments version.
-
-- [ ] **Step 2: Run focused tests and verify RED**
-
-- [ ] **Step 3: Implement editor + save action**
-
-Use structured sections rather than one monolithic textarea. Plain text/Markdown per semantic section is sufficient; do not build a freeform block editor.
-
-- [ ] **Step 4: Run tests, typecheck, build**
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/src/app/documentazione/documenti/[documentId]
-git commit -m "feat: edit and version final reports"
-```
+- [ ] RED editor/save/history tests.
+- [ ] Implement.
+- [ ] Run tests + typecheck + build.
+- [ ] Commit.
 
 ---
 
-### Task 6: Add human validation and finalization
+### Task 6: Human validation and same-version finalization
 
 **Files:**
-- Create: `product/src/app/documentazione/documenti/[documentId]/final-report-decision-model.ts`
-- Create: `product/src/app/documentazione/documenti/[documentId]/final-report-decision-model.test.ts`
-- Modify: `product/src/app/documentazione/documenti/[documentId]/FinalReportEditor.tsx`
-- Modify: `product/src/app/documentazione/documenti/[documentId]/actions.ts`
-- Modify: `product/src/app/documentazione/documenti/[documentId]/actions.test.ts`
+- Create decision model/tests.
+- Modify editor/actions/tests.
 
-**Interfaces:**
-- Produces actions:
+**Actions:**
 
 ```ts
 validateFinalReport(documentId: string, versionNo: number): Promise<void>
-finalizeFinalReport(documentId: string, versionNo: number): Promise<void>
+finalizeFinalReport(documentId: string, versionNo: number, confirmed: true): Promise<void>
 ```
 
-- [ ] **Step 1: Write failing decision tests**
+**Rules:**
 
-Assert:
+- validation checks persisted required sections/teacher inputs for that exact immutable version;
+- validation creates a persisted `VALIDATED` decision for that exact version;
+- finalization requires explicit UI confirmation **and** trusted-boundary verification of same-version `VALIDATED`;
+- `VALIDATED(v1)` cannot authorize `FINALIZED(v2)`;
+- if v1 was final and v2 is saved, v1 remains historical final while v2 returns to unvalidated draft state;
+- assistant/copilot has no decision path.
 
-- incomplete required human inputs block validation;
-- validation does not equal finalization;
-- finalization requires explicit confirmation payload;
-- finalizing v2 after v1 preserves both decision records and makes v2 current final;
-- assistant/copilot write contract has no path to invoke these decisions.
-
-- [ ] **Step 2: Run focused tests and verify RED**
-
-- [ ] **Step 3: Implement decision model/actions/UI confirmation**
-
-User-facing labels: `Valida la relazione`, `Finalizza`, and confirmation copy `Questa versione diventerà la versione finale corrente.`
-
-- [ ] **Step 4: Run tests + typecheck**
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/src/app/documentazione/documenti/[documentId]
-git commit -m "feat: add human final report decisions"
-```
+- [ ] RED: incomplete version cannot validate.
+- [ ] RED: direct finalization without validation fails.
+- [ ] RED: stale/cross-version validation fails finalization.
+- [ ] RED: v1 final + save v2 preserves v1 but requires fresh v2 validation before v2 finalization.
+- [ ] Implement decision UI/actions/RPC usage.
+- [ ] Run tests + typecheck.
+- [ ] Commit.
 
 ---
 
-### Task 7: Render and export a clean institutional PDF/print view
+### Task 7: Clean institutional print/PDF export
 
 **Files:**
-- Create: `product/src/app/documentazione/documenti/[documentId]/export/page.tsx`
-- Create: `product/src/app/documentazione/documenti/[documentId]/export/final-report-export-model.ts`
-- Create: `product/src/app/documentazione/documenti/[documentId]/export/final-report-export-model.test.ts`
-- Create: `product/src/app/documentazione/documenti/[documentId]/export/final-report-export.css`
-- Reuse without breaking: `product/src/app/progetta/documenti/[documentId]/export/export-model.ts`
-- Reuse: `product/src/core/presentation/institutional-document-preview.ts`
+- Create export route/model/tests/styles.
+- Reuse institutional renderer and X5B print patterns.
 
-**Interfaces:**
-- Produces:
+`buildFinalReportExportModel(snapshot, requestedVersion)` must:
 
-```ts
-buildFinalReportExportModel(snapshot: StructuredAuthoredDocumentSnapshot, requestedVersion?: string | null): FinalReportExportModel | null
-```
+- export the exact requested saved document version;
+- resolve its exact pinned institutional-base + family-template versions;
+- default to current saved version, never unsaved editor state;
+- omit source manifest/internal classifications;
+- fail output-purity scan on technical tokens;
+- render professional institution/class/discipline/teacher/date/signature labels.
 
-- [ ] **Step 1: Write failing export tests**
-
-Assert:
-
-- requested historical version exports exactly that version;
-- default export uses current saved version, not unsaved editor state;
-- source manifest and internal classifications are absent;
-- output-purity scan rejects Bxx/CAN/UUID/software entity/provider/path/hash/autogenerated wording;
-- institutional heading, class, discipline, teacher, date/signature render with human labels.
-
-- [ ] **Step 2: Run focused test and verify RED**
-
-- [ ] **Step 3: Implement export model/page/styles**
-
-Reuse A4/print patterns from X5B; generalize styling rather than copying UDA-specific copy.
-
-- [ ] **Step 4: Run focused tests + build**
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/src/app/documentazione/documenti/[documentId]/export
-git commit -m "feat: export clean institutional final reports"
-```
+- [ ] RED historical-version/base/template pin tests.
+- [ ] RED purity tests.
+- [ ] Implement and build.
+- [ ] Commit.
 
 ---
 
-### Task 8: Add contextual entry points without expanding mobile bottom navigation
+### Task 8: Contextual entry points without bottom-nav expansion
 
 **Files:**
-- Modify: `product/src/app/classi/[sectionId]/page.tsx`
-- Modify: `product/src/app/piano-annuale/page.tsx` or the current annual-plan section component that owns section actions
-- Modify: `product/src/components/app-shell/navigation.ts`
-- Modify: `product/src/components/app-shell/navigation.test.ts`
-- Create: `product/src/app/documentazione/documentation-entry-model.test.ts`
+- Modify Class workspace / Annual Plan contextual links.
+- Modify navigation only for full `Documentazione` destination semantics; no sixth bottom-nav item.
+- Add entry-model tests.
 
-**Interfaces:**
-- Context links:
-  - Class workspace → `Relazione finale` when section/year/discipline context is valid.
-  - Annual Plan → `Relazione finale` contextual link; no document duplication.
-  - Full navigation → `Documentazione`.
-- Mobile bottom navigation unchanged.
-
-- [ ] **Step 1: Write failing entry-point tests**
-
-Assert links preserve section/discipline context and no sixth mobile nav key appears.
-
-- [ ] **Step 2: Run focused tests and verify RED**
-
-- [ ] **Step 3: Implement contextual links**
-
-Do not add seasonal auto-prompts to Home in this tranche unless the existing task model already exposes a stable hook; keep Home integration for a later UX pass if needed.
-
-- [ ] **Step 4: Run tests + typecheck**
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/src/app/classi/[sectionId] product/src/app/piano-annuale product/src/components/app-shell/navigation.ts product/src/components/app-shell/navigation.test.ts product/src/app/documentazione/documentation-entry-model.test.ts
-git commit -m "feat: add contextual documentation entry points"
-```
+- [ ] RED tests for valid context links and unchanged mobile nav membership.
+- [ ] Implement contextual links only.
+- [ ] Run tests + typecheck.
+- [ ] Commit.
 
 ---
 
-### Task 9: End-to-end certification and Human Review package
+### Task 9: End-to-end certification and Human Review
 
 **Files:**
-- Create: `product/e2e/documentazione-final-report.spec.ts`
-- Create: `docs/reviews/2026-10-07-doc-04-final-report-human-review.md`
-- Modify: `product/package.json` only if explicit unit-test enumeration requires it.
+- Create final-report E2E scenario.
+- Create Human Review evidence doc.
+- Add tests to canonical suite if required.
 
-**Interfaces:**
-- E2E journey:
+**E2E journey:**
 
 ```text
 Documentazione
 → Relazioni finali
-→ sezione/disciplina
 → readiness
-→ Crea bozza
-→ completa sezioni umane
-→ salva nuova versione
-→ Da dove viene? (internal only)
-→ Valida
-→ Finalizza
-→ export PDF/print
-→ riapri versione storica e finale corrente
+→ Crea bozza (atomic structured v1)
+→ completa input umani
+→ salva versioni
+→ Valida exact version
+→ Finalizza same exact version
+→ print/PDF
+→ riapri versioni/finali storici
 ```
 
-- [ ] **Step 1: Add E2E fixture with all required pilot conditions**
+**Mandatory E2E negatives:**
 
-Fixture includes plan progress, current + superseded session, allocated + unallocated session, class/group observation, Knowledge reference, and no student names.
+- first creation never exposes blank/unstructured v1;
+- direct FINALIZED without VALIDATED fails;
+- VALIDATED on another version does not authorize finalization;
+- source updates do not mutate saved versions;
+- accepted-but-not-session-used material is not described as used;
+- technical tokens absent from UI/export;
+- bottom nav unchanged.
 
-- [ ] **Step 2: Add E2E assertions**
-
-Pin:
-
-- correct readiness;
-- no technical tokens in visible document/export;
-- immutable version history;
-- old final preserved after new finalization;
-- print view contains only institutional/professional content;
-- mobile journey has one primary action and no bottom-nav expansion.
-
-- [ ] **Step 3: Run full verification**
-
-```bash
-cd product
-npm test
-npm run typecheck
-npm run lint
-npm run build
-# run repository-standard Playwright command for product/e2e/documentazione-final-report.spec.ts
-```
-
-Expected: all PASS.
-
-- [ ] **Step 4: Perform Human Visual Acceptance on desktop + mobile + print preview**
-
-Record PASS/REWORK with screenshots/evidence according to existing product review practice.
-
-- [ ] **Step 5: Request independent whole-branch review**
-
-No merge automatically. Resolve findings, rerun exact-head gates, then return to Human Review.
-
-- [ ] **Step 6: Commit review evidence**
-
-```bash
-git add product/e2e/documentazione-final-report.spec.ts docs/reviews/2026-10-07-doc-04-final-report-human-review.md product/package.json
-git commit -m "test: certify final report vertical"
-```
+- [ ] Run full `npm test`, typecheck, lint, build.
+- [ ] Run repository Browser/HVA/WCAG/security/governance gates selected by classifier on the exact head.
+- [ ] Human Visual Acceptance desktop/mobile/print.
+- [ ] Independent whole-branch review.
+- [ ] Resolve findings and recertify new exact head.
+- [ ] No automatic merge.
 
 ## Self-Review
 
-- Spec coverage: deterministic draft, structured versions, manifest, human validation/finalization, historical finals, clean export, contextual entry points, responsive/HVA and independent review all have tasks.
-- Type consistency: structured repository methods consume Task 1 DB model; composer produces exactly the section/source drafts saved by Task 2; export reads the same snapshot.
-- Review Focus coverage: source drift → Tasks 1/2/9; historical export → Task 7/9; multiple finals → Task 6/9; stale save → Task 5; technical leakage → Tasks 3/7/9.
+- **Atomicity:** initial draft creation creates exactly one structured v1 with provenance and both renderer pins.
+- **Decision integrity:** finalization is impossible without persisted same-version validation; decisions never carry across immutable versions.
+- **History:** old finals remain queryable; new edits become new unvalidated versions.
+- **Authority:** evidence supplies facts; teacher supplies professional judgement; assistant cannot validate/finalize.
+- **Rendering:** historical document rendering uses saved base/template pins, never current defaults.
+- **Scope:** print/PDF only; DOCX and broader automation remain deferred.
