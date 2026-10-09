@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "canonicalTerm": "curricolo",
+  "canonicalInstitutionalTerm": "curricolo di istituto",
+  "baselineRef": "a9006cb632fc5c3c9b1b0e4a9f2587c55c9c5ba2",
+  "legacyTokens": ["curriculum", "curricular"],
+  "policy": "Existing legacy vocabulary is frozen as compatibility debt. New occurrences are forbidden unless an exact path, fragment and reason are declared here.",
+  "compatibilityClasses": [
+    "published-v1-contract-or-wire-field",
+    "persistence-rpc-schema",
+    "historical-governance-evidence",
+    "external-source-identifier"
+  ],
+  "exceptions": []
+}
