@@ -134,7 +134,7 @@ Regole:
 - ogni modifica produce una nuova `InstitutionalBaseVersion`;
 - `ACTIVE` richiede Quality Review + Human Review;
 - una nuova versione non modifica retroattivamente documenti già salvati/finalizzati;
-- una base `RETIRED` conserva lo storico e non viene riattivata implicitamente;
+- una base `RETIRED` conserva lo storico ed è terminale/read-only per la stessa identità: nessuna nuova versione, Quality Review, attivazione, blocco, rimozione blocco o ulteriore retirement è consentita; restano ammessi soltanto read/snapshot storici autorizzati;
 - l’utente ordinario non vede ID o numeri tecnici della base.
 
 ## 5. Modello di famiglia: `DocumentTemplate`
@@ -168,6 +168,8 @@ Le famiglie restano semanticamente distinte:
 - UDA = unità didattica/progettuale;
 - Programma svolto = rendicontazione sintetica dell’effettivamente svolto;
 - Relazione finale = lettura professionale del percorso e dei suoi esiti.
+
+Il lifecycle della famiglia segue le stesse regole della base: `RETIRED` è terminale/read-only per la stessa identità e non può essere riaperto, ribloccato, revisionato o riattivato. Per una nuova vita istituzionale serve una nuova identità/template, non la mutazione di quello ritirato.
 
 ## 6. `DocumentTemplateVersion`
 
@@ -216,7 +218,45 @@ Regole:
 
 Questo è un requisito di identità/versionamento, non un dettaglio grafico.
 
-## 8. Pipeline canonica
+## 8. Governance e lifecycle
+
+Le azioni che cambiano la disponibilità istituzionale di una base/template hanno impatto sull’intero workspace e richiedono una capability esplicita.
+
+Per v1 la capability canonica è:
+
+```text
+TEMPLATE_GOVERNANCE
+```
+
+Mapping ai ruoli workspace già esistenti:
+
+```text
+OWNER  → consentita
+ADMIN  → consentita
+MEMBER → negata
+```
+
+La capability `TEMPLATE_GOVERNANCE` è obbligatoria per:
+
+```text
+ACTIVATE
+BLOCK
+CLEAR_BLOCK
+RETIRE
+```
+
+Regole:
+
+- autenticazione + semplice membership non sono sufficienti per queste azioni;
+- il trusted boundary/RPC ricalcola il ruolo corrente dal workspace e non si fida di un ruolo inviato dal client;
+- Quality Review deterministica può essere eseguita senza trasferire authority istituzionale; l’attivazione resta comunque subordinata a Human Review e `TEMPLATE_GOVERNANCE`;
+- ogni decisione lifecycle persiste actor, ruolo/capability effettiva, timestamp e nota/evidenza interna;
+- `BLOCKED` esclude la base/template dai nuovi usi; `CLEAR_BLOCK` riporta soltanto a uno stato revisionabile, non direttamente ad `ACTIVE`;
+- `RETIRED` è terminale/read-only per entrambe le famiglie di registry: `saveVersion`, `recordQualityReview`, `activate`, `block`, `clearBlock` e `retire` devono fallire **prima** di qualsiasi mutazione o nuova decisione;
+- un `MEMBER` non può attivare, bloccare, sbloccare o ritirare una base/template neppure se appartiene allo stesso workspace;
+- i read/snapshot storici restano regolati dalle normali policy di lettura e non riaprono il lifecycle.
+
+## 9. Pipeline canonica
 
 Per documento con sorgenti:
 
@@ -228,7 +268,7 @@ sorgenti
 → Document Quality Review
 → preview con pin base+template
 → Human Review
-→ attivazione esplicita
+→ attivazione esplicita da actor TEMPLATE_GOVERNANCE
 ```
 
 Per famiglia mancante:
@@ -241,10 +281,10 @@ funzione istituzionale
 → Quality Review
 → preview
 → Human Review
-→ template attivo
+→ template attivo tramite TEMPLATE_GOVERNANCE
 ```
 
-## 9. `TemplateSection`
+## 10. `TemplateSection`
 
 ```text
 section_key
@@ -271,7 +311,7 @@ SIGNATURE_BLOCK
 
 La forma descrive il ruolo migliore, non coordinate del vecchio file.
 
-## 10. `TemplateField`
+## 11. `TemplateField`
 
 ```text
 field_key
@@ -332,7 +372,7 @@ SPECIAL_CATEGORY_DATA
 
 Le etichette interne non compaiono nel documento professionale.
 
-## 11. Chiavi semantiche e purezza esterna
+## 12. Chiavi semantiche e purezza esterna
 
 Esempi interni:
 
@@ -364,7 +404,7 @@ Nell’output professionale sono vietati:
 
 La provenance resta disponibile soltanto nella superficie interna di controllo.
 
-## 12. Document Quality Review
+## 13. Document Quality Review
 
 Il Quality Review verifica almeno:
 
@@ -390,9 +430,9 @@ REVIEW_REQUIRED
 BLOCKED
 ```
 
-L’attivazione della base o del template richiede review deterministica affidabile e decisione umana esplicita sulla stessa versione.
+L’attivazione della base o del template richiede review deterministica affidabile, decisione umana esplicita sulla stessa versione e actor con `TEMPLATE_GOVERNANCE`.
 
-## 13. Builder v1
+## 14. Builder v1
 
 Il builder non è un word processor generale. Deve permettere di:
 
@@ -406,11 +446,11 @@ Il builder non è un word processor generale. Deve permettere di:
 8. eseguire Quality Review;
 9. mostrare preview con base+template esatti;
 10. registrare Human Review;
-11. pubblicare esplicitamente una nuova versione.
+11. pubblicare esplicitamente una nuova versione solo se l’actor possiede `TEMPLATE_GOVERNANCE`.
 
-La UI quotidiana del docente sceglie il **tipo di documento**, non ID/versioni tecniche.
+La UI quotidiana del docente sceglie il **tipo di documento**, non ID/versioni tecniche. I controlli `Attiva`, `Blocca`, `Rimuovi blocco`, `Ritira` non sono disponibili a `MEMBER`.
 
-## 14. Renderer
+## 15. Renderer
 
 Profili iniziali:
 
@@ -423,7 +463,7 @@ Il renderer riceve contenuto salvato + `InstitutionalBaseVersion` + `DocumentTem
 
 Deve gestire identità, logo/intestazione, gerarchia tipografica, tabelle, checklist, paragrafi, page break, data/firma, margini e accessibilità.
 
-## 15. Raccordo con X5 / Documentazione
+## 16. Raccordo con X5 / Documentazione
 
 ```text
 DOC-TPL-01
@@ -440,7 +480,7 @@ Renderer
   produce output istituzionale pulito dai pin salvati
 ```
 
-## 16. Raccordo interdocumentale
+## 17. Raccordo interdocumentale
 
 ```text
 ANNUAL_PROGRAMMING
@@ -455,7 +495,7 @@ FINAL_REPORT
 
 Il raccordo non implica copia integrale e non trasferisce authority fra domini.
 
-## 17. Regole verificabili automaticamente
+## 18. Regole verificabili automaticamente
 
 Il sistema deve poter rilevare:
 
@@ -467,9 +507,11 @@ Il sistema deve poter rilevare:
 - base/template attivi senza review valida;
 - documento/versione senza entrambi i pin;
 - mismatch fra schema kind/version e registry;
-- tentativo di ricostruire un documento storico con base/template correnti anziché pinnati.
+- tentativo di ricostruire un documento storico con base/template correnti anziché pinnati;
+- lifecycle mutation richiesta da `MEMBER` o actor senza `TEMPLATE_GOVERNANCE`;
+- qualsiasi mutazione richiesta su identità `RETIRED`.
 
-## 18. Human Review
+## 19. Human Review
 
 La Human Review giudica:
 
@@ -481,7 +523,9 @@ La Human Review giudica:
 - identità comune coerente fra famiglie;
 - assenza di tecnicismi visibili.
 
-## 19. Acceptance criteria DOC-TPL-01
+La Human Review non sostituisce l’autorizzazione del trusted boundary: la pubblicazione/lifecycle istituzionale richiede comunque `TEMPLATE_GOVERNANCE`.
+
+## 20. Acceptance criteria DOC-TPL-01
 
 1. sorgenti acquisibili senza modifica;
 2. provenance distinte preservate;
@@ -490,15 +534,18 @@ La Human Review giudica:
 5. ogni document version pinna esattamente una base version e una family-template version;
 6. preview/export storico usa i pin salvati;
 7. aggiornamenti base/template non alterano retroattivamente documenti precedenti;
-8. template ACTIVE richiede Quality Review + Human Review;
-9. dati sensibili non sono mantenuti per inerzia storica;
-10. motore non dipende da AI;
-11. famiglie documentali restano semanticamente distinte;
-12. output finale non contiene riferimenti tecnici;
-13. nessuna verticale hard-codifica il layout di un singolo file;
-14. output resta comprensibile fuori da DOCENTE OS.
+8. template/base `ACTIVE` richiedono Quality Review + Human Review + `TEMPLATE_GOVERNANCE`;
+9. `MEMBER` non può eseguire activate/block/clearBlock/retire;
+10. dopo `RETIRED`, tutte le sei mutazioni `saveVersion`, `recordQualityReview`, `activate`, `block`, `clearBlock`, `retire` falliscono per base e family template senza cambiare stato/decision history;
+11. read/snapshot storico exact-pin resta disponibile dopo block/retirement secondo le policy di lettura;
+12. dati sensibili non sono mantenuti per inerzia storica;
+13. motore non dipende da AI;
+14. famiglie documentali restano semanticamente distinte;
+15. output finale non contiene riferimenti tecnici;
+16. nessuna verticale hard-codifica il layout di un singolo file;
+17. output resta comprensibile fuori da DOCENTE OS.
 
-## 20. Pilot
+## 21. Pilot
 
 Pilot Relazione finale:
 
@@ -512,8 +559,8 @@ Pilot Relazione finale:
 
 Il pilot non digitalizza semplicemente il vecchio Word.
 
-## 21. Implementazione
+## 22. Implementazione
 
 **NON AUTORIZZATA da questa specifica.**
 
-Dopo Human Review, la foundation runtime DOC-TPL-01 deve dimostrare con TDD che registry, repository, snapshot, preview e renderer trattano `InstitutionalBaseVersion` e `DocumentTemplateVersion` come pin separati, senza regressione del lifecycle ACTIVE/RETIRED, della provenance o della purezza dell’output.
+Dopo Human Review, la foundation runtime DOC-TPL-01 deve dimostrare con TDD che registry, repository, snapshot, preview e renderer trattano `InstitutionalBaseVersion` e `DocumentTemplateVersion` come pin separati; che lifecycle istituzionale è autorizzato solo da `TEMPLATE_GOVERNANCE` (`OWNER|ADMIN` in v1); che `RETIRED` è terminale/read-only per entrambe le identità; e che provenance/purezza dell’output restano preservate.
