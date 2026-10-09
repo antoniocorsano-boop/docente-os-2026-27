@@ -208,7 +208,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add product/src/app/progetta/documenti/uda-authoring-regression.test.ts product/src/app/progetta/documenti/[documentId]
+git add -- product/src/app/progetta/documenti/uda-authoring-regression.test.ts ':(literal)product/src/app/progetta/documenti/[documentId]'
 git commit -m "test: preserve UDA authoring compatibility"
 ```
 

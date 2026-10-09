@@ -4,7 +4,7 @@
 
 **Goal:** Build a read-only final-report evidence bundle and readiness model that proves DOCENTE OS can reconstruct the planned-vs-actual teaching path for one section/discipline without creating or mutating a document.
 
-**Architecture:** Reuse existing Annual Plan and TeachingSession repositories, add a read-only evidence reader for class/group observations and evidence references, then compose a pure `FinalReportEvidenceBundle`. Readiness is deterministic and explanatory: it returns named missing items and consistency findings, never a cosmetic percentage.
+**Architecture:** Reuse existing Annual Plan and TeachingSession repositories, add read-only readers for class/group observations/evidence references **and for the authoritative `MaterialUsageReceipt` stream owned by DOC-MAT-INT-01**, resolve eligible DOC-TPL institutional-base and FINAL_REPORT family-template sources, then compose a pure `FinalReportEvidenceBundle`. Readiness is deterministic and explanatory: it returns named missing items and consistency findings, never a cosmetic percentage.
 
 **Tech Stack:** TypeScript, Supabase read models/RLS, existing annual-plan/teaching-session domain, Next.js 16 server components, Node `tsx --test`.
 
@@ -22,7 +22,8 @@
 - No percentages unless a later approved professional metric defines them.
 - Technical codes may exist internally but the user-facing model must expose school-professional labels.
 - No bottom-navigation slot is added.
-- The read-only bundle carries an **internal compare-only freshness descriptor** derived from the authoritative plan/session/evidence state used to compose it. It is never user-facing and never treated as document provenance text.
+- The read-only bundle carries an **internal compare-only freshness descriptor** derived from the authoritative plan/session/evidence/**material-usage-receipt** state used to compose it. It is never user-facing and never treated as document provenance text.
+- Readiness must fail closed when no eligible active institutional base or no eligible active FINAL_REPORT family template is available; it must not offer `Crea bozza` for a configuration that first-version creation would necessarily reject.
 
 ## Review Focus
 
@@ -31,6 +32,8 @@
 - A block marked `SVOLTO` without a corresponding session must become a consistency finding, not an invented session.
 - A session allocated to a still-`PIANIFICATO` block must become a consistency finding, not an automatic plan update.
 - Empty evidence/observations must not prevent a factual draft when minimum planning/execution data exists, but must be reported as a missing professional input where required by the template.
+- A material-use receipt committed after bundle load must change the authoritative receipt frontier and make the prior bundle stale before first-version creation.
+- Missing eligible institutional base must be a readiness blocker, not a late create-time surprise.
 
 ---
 
@@ -57,6 +60,7 @@ export type FinalReportConsistencyCode =
   | 'REMAPPED_BLOCK'
   | 'RECOVERED_BLOCK'
   | 'CANCELLED_BLOCK'
+  | 'MISSING_ACTIVE_INSTITUTIONAL_BASE'
   | 'MISSING_ACTIVE_TEMPLATE'
   | 'MISSING_DISCIPLINE_CONTEXT'
 
@@ -78,7 +82,8 @@ Fixtures must include:
 - one allocated and one unallocated current session;
 - one `SVOLTO` Bxx with no session;
 - one allocation pointing at a `PIANIFICATO` Bxx;
-- class observation and anonymous-group observation.
+- class observation and anonymous-group observation;
+- a separate institutional-source fixture with an active FINAL_REPORT family template but **no eligible active institutional base**.
 
 Assertions:
 
@@ -88,6 +93,8 @@ assert.equal(bundle.executed.supersededSessionCount, 1)
 assert.equal(bundle.executed.unallocatedSessions.length, 1)
 assert.ok(readiness.findings.some((f) => f.code === 'PLAN_BLOCK_WITHOUT_SESSION'))
 assert.ok(readiness.findings.some((f) => f.code === 'SESSION_ON_PLANNED_BLOCK'))
+assert.ok(missingBaseReadiness.findings.some((f) => f.code === 'MISSING_ACTIVE_INSTITUTIONAL_BASE'))
+assert.notEqual(missingBaseReadiness.state, 'PRONTA_PER_BOZZA')
 ```
 
 - [ ] **Step 2: Run focused test and verify RED**
@@ -125,11 +132,15 @@ git commit -m "feat: compose final report evidence bundle"
 
 ---
 
-### Task 2: Add a read-only teaching evidence repository
+### Task 2: Add read-only teaching-evidence and material-usage receipt readers
 
 **Files:**
 - Create: `product/src/core/infrastructure/supabase/supabase-teaching-evidence-read-repository.ts`
 - Create: `product/src/core/infrastructure/supabase/supabase-teaching-evidence-read-repository.test.ts`
+- Create: `product/src/core/infrastructure/supabase/supabase-material-usage-receipt-read-repository.ts`
+- Create: `product/src/core/infrastructure/supabase/supabase-material-usage-receipt-read-repository.test.ts`
+
+The receipt adapter is **read-only** and consumes the authoritative `teaching_session_material_usage_receipts` storage introduced/owned by DOC-MAT-INT-01. This tranche must not create a parallel receipt table, writer, lifecycle or authority model; if the authoritative receipt contract is not integrated yet, this reader remains an explicit implementation dependency rather than degrading to transient/caller-supplied objects.
 
 **Interfaces:**
 - Produces:
@@ -141,6 +152,10 @@ class SupabaseTeachingEvidenceReadRepository {
     evidenceReferences: TeachingEvidenceReference[]
   }>
 }
+
+class SupabaseMaterialUsageReceiptReadRepository {
+  listBySessionIds(sessionIds: string[]): Promise<MaterialUsageReceipt[]>
+}
 ```
 
 - [ ] **Step 1: Write failing mapping tests**
@@ -150,15 +165,18 @@ Cover:
 - empty `sessionIds` → empty arrays and no DB query;
 - only `CLASS` / `ANONYMOUS_GROUP` rows map successfully;
 - observation/evidence rows outside requested session ids never appear;
-- evidence references preserve `knowledgeAssetId` and `observationIds` as references only.
+- evidence references preserve `knowledgeAssetId` and `observationIds` as references only;
+- material receipt reads are restricted to the requested session ids and map `acceptedRevision` plus the immutable `acceptedMaterialSnapshot` from authoritative persisted rows;
+- no accepted extension without a persisted receipt is synthesized as used material;
+- empty receipt session ids return an empty array without a DB query.
 
 - [ ] **Step 2: Run focused test and verify RED**
 
-Run: `cd product && npx tsx --test src/core/infrastructure/supabase/supabase-teaching-evidence-read-repository.test.ts`
+Run: `cd product && npx tsx --test src/core/infrastructure/supabase/supabase-teaching-evidence-read-repository.test.ts src/core/infrastructure/supabase/supabase-material-usage-receipt-read-repository.test.ts`
 
 - [ ] **Step 3: Implement read-only repository**
 
-Read existing `teaching_observations`, `teaching_evidence_references`, and link data created by the teaching-evidence migrations. Do not add writes or new canonical tables.
+Read existing `teaching_observations`, `teaching_evidence_references`, and link data created by the teaching-evidence migrations. Read material-use receipts only from the authoritative DOC-MAT-INT-01 storage. Do not add writes, duplicate receipt persistence, or new canonical tables in this tranche.
 
 - [ ] **Step 4: Run test + typecheck**
 
@@ -167,7 +185,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add product/src/core/infrastructure/supabase/supabase-teaching-evidence-read-repository.ts product/src/core/infrastructure/supabase/supabase-teaching-evidence-read-repository.test.ts
+git add product/src/core/infrastructure/supabase/supabase-teaching-evidence-read-repository.ts product/src/core/infrastructure/supabase/supabase-teaching-evidence-read-repository.test.ts product/src/core/infrastructure/supabase/supabase-material-usage-receipt-read-repository.ts product/src/core/infrastructure/supabase/supabase-material-usage-receipt-read-repository.test.ts
 git commit -m "feat: read teaching evidence for documentation"
 ```
 
@@ -183,7 +201,9 @@ git commit -m "feat: read teaching evidence for documentation"
 - Consumes:
   - `SupabaseAnnualPlanExecutionRepository.list(workspaceId, academicYearId)`.
   - `SupabaseTeachingSessionRepository.listBySection(workspaceId, academicYearId, sectionId)`.
-  - `SupabaseTeachingEvidenceReadRepository.listBySessionIds(sessionIds)`.
+  - `SupabaseTeachingEvidenceReadRepository.listBySessionIds(currentSessionIds)`.
+  - `SupabaseMaterialUsageReceiptReadRepository.listBySessionIds(currentSessionIds)` over the authoritative DOC-MAT-INT-01 receipt store.
+  - `SupabaseInstitutionalBaseRepository.listActive(workspaceId)` from DOC-TPL-01.
   - `SupabaseDocumentTemplateRepository.listActive(workspaceId, 'FINAL_REPORT')` from DOC-TPL-01.
 - Produces:
 
@@ -203,10 +223,14 @@ Assert:
 - section is resolved from Annual Plan snapshot and must match active year/workspace;
 - sessions are filtered to the requested discipline when `disciplineId` is present;
 - superseded sessions are retained only as internal provenance counts, not current execution;
-- `evidenceFreshness` deterministically captures the authoritative plan/session/evidence frontier needed to detect source drift between readiness and first-version creation (for example exact plan/source refs plus current-session/supersession frontier or an equivalent server-verifiable token);
+- `evidenceFreshness` deterministically captures the authoritative plan/session/evidence/**material-usage-receipt** frontier needed to detect source drift between readiness and first-version creation (for example exact plan/source refs, current-session/supersession frontier, and the sorted authoritative receipt identity/session/extension/accepted-revision set or an equivalent server-verifiable token);
+- persisted receipts for current sessions are included in the bundle as the only authority for material use; `ACCEPTED` without a receipt remains available/planned;
+- a receipt committed after bundle load changes the receipt frontier and therefore makes the previous freshness descriptor stale;
+- at least one eligible active institutional base is required in `institutionalSources`; zero eligible bases yields `MISSING_ACTIVE_INSTITUTIONAL_BASE` and draft creation is not offered;
 - active FINAL_REPORT template is required in `institutionalSources`;
+- `listActive()` results are treated as identity-local eligible candidates, not as a global singleton and never selected by an implicit `[0]` assumption; exact renderer pins remain the responsibility of the authoring/create boundary;
 - no write method is called;
-- a supersession/source-state change produces a different freshness descriptor, while identical authoritative state reproduces the same descriptor.
+- a supersession/source/receipt-state change produces a different freshness descriptor, while identical authoritative state reproduces the same descriptor.
 
 - [ ] **Step 2: Run focused test and verify RED**
 
@@ -257,6 +281,7 @@ Assert:
 - no percent field exists;
 - `PRONTA_PER_BOZZA` maps to primary label `Crea bozza`;
 - insufficient data maps to `Controlla ciò che manca` and disabled draft creation;
+- missing eligible institutional base maps to a professional message such as `Manca la veste istituzionale attiva per questa relazione.` and keeps `Crea bozza` disabled; the technical code `MISSING_ACTIVE_INSTITUTIONAL_BASE` never appears in serialized UI output;
 - consistency findings are translated into human messages such as `Una parte dichiarata svolta non ha ancora una lezione associata.`
 
 - [ ] **Step 2: Run focused test and verify RED**
@@ -356,7 +381,7 @@ Expected: all PASS.
 
 - [ ] **Step 3: Browser-certify a fixture with all Review Focus cases**
 
-Verify current/superseded, allocated/unallocated, plan/session mismatches, empty evidence, and clean human language.
+Verify current/superseded, allocated/unallocated, plan/session mismatches, empty evidence, persisted-vs-absent material receipts, receipt-frontier staleness, missing institutional base/template blockers, and clean human language.
 
 - [ ] **Step 4: Confirm no DB mutation occurs during the complete journey**
 
@@ -372,5 +397,5 @@ git commit -m "docs: certify final report evidence readiness"
 ## Self-Review
 
 - Spec coverage: planned/executed separation, supersession, unallocated sessions, aggregate evidence, deterministic readiness, no percentages, clean language and read-only behavior are all owned.
-- Review Focus coverage: every listed failure mode is pinned in Task 1/3/4 tests and Task 6 browser fixture.
+- Review Focus coverage: every listed failure mode is pinned in Task 1/3/4 tests and Task 6 browser fixture, including receipt-frontier freshness and institutional-base readiness.
 - Type consistency: loader output is exactly `FinalReportEvidenceBundle`; view model consumes only that type.
