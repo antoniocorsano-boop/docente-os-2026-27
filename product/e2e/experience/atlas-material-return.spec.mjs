@@ -11,30 +11,19 @@ test('Journey: Atlas → associa materiali alla lezione', async ({ page }, testI
   await loginE2E(page)
   await page.goto('/classi')
 
-  const classes = page.locator('a.canonicalClassCard')
-  const count = await classes.count()
-  let sectionId = ''
-  let classLabel = ''
-
-  for (let index = 0; index < count; index += 1) {
-    const card = classes.nth(index)
-    const label = (await card.locator('h2').innerText()).trim()
-    if (!/^1(?:\D|$)/u.test(label)) continue
-    const href = await card.getAttribute('href')
-    const match = href?.match(/^\/classi\/([^/?#]+)/u)
-    if (!match) continue
-    sectionId = decodeURIComponent(match[1])
-    classLabel = label
-    break
-  }
-
-  test.skip(!sectionId, 'La fixture HVA non espone una classe prima canonica per verificare il return Atlas.')
+  const classCard = page.locator('a.canonicalClassCard').filter({ hasText: /2ª\s*A/i }).first()
+  await expect(
+    classCard,
+    'La fixture HVA deve avere una 2ª A canonica utilizzabile per verificare il return Atlas.',
+  ).toBeVisible()
+  const sectionId = sectionIdFromHref(await classCard.getAttribute('href'))
+  const classLabel = (await classCard.locator('h2').innerText()).trim()
 
   const bundle = {
     schema: 'studio-atlas.material-bundle/v0.1',
     source: 'studio-atlas',
     bundleId: 'hva-atlas-return-bundle',
-    sourceUdaId: '1-00',
+    sourceUdaId: '2-01',
     generatedAt: '2026-10-09T00:00:00.000Z',
     items: [
       {
@@ -54,7 +43,7 @@ test('Journey: Atlas → associa materiali alla lezione', async ({ page }, testI
     ],
   }
   const encodedBundle = Buffer.from(JSON.stringify(bundle), 'utf8').toString('base64url')
-  const route = `/progetta/atlas/ritorno?sectionId=${encodeURIComponent(sectionId)}&uda=1-00&blockId=B01#bundle=${encodedBundle}`
+  const route = `/progetta/atlas/ritorno?sectionId=${encodeURIComponent(sectionId)}&uda=2-01&blockId=B01#bundle=${encodedBundle}`
 
   await page.goto(route)
   await expect(page.getByRole('heading', { name: 'Associa i materiali alla lezione' })).toBeVisible()
@@ -96,6 +85,12 @@ test('Journey: Atlas → associa materiali alla lezione', async ({ page }, testI
     }, null, 2)}\n`,
   )
 })
+
+function sectionIdFromHref(value) {
+  const match = typeof value === 'string' ? value.match(/^\/classi\/([^/?#]+)$/) : null
+  if (!match) throw new Error(`Section id not found in class href: ${value}`)
+  return decodeURIComponent(match[1])
+}
 
 function safe(value) {
   return String(value).toLowerCase().replace(/[^a-z0-9_-]+/g, '-')
