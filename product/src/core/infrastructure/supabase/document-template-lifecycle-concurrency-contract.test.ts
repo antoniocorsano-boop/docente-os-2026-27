@@ -31,7 +31,7 @@ test('template activation serializes the workspace-kind family before any target
   assert.ok(lockIndex < targetLookupIndex, 'template family lock must be acquired before target row lock')
   assert.ok(lockIndex < displacedLookupIndex, 'template family lock must be acquired before displaced lookup')
   assert.match(sql, /pg_catalog\.pg_advisory_xact_lock\s*\(/i)
-  assert.match(sql, /workspace::text\s*\|\|\s*':'\s*\|\|\s*kind/i)
+  assert.match(sql, /lock_workspace::text\s*\|\|\s*':'\s*\|\|\s*lock_kind/i)
 })
 
 test('institutional base activation serializes the workspace before any target or displaced row lock', () => {
