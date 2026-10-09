@@ -5,9 +5,10 @@ import { resolve } from 'node:path'
 
 const migrationPath = resolve(process.cwd(), 'supabase/migrations/0087_document_template_registry.sql')
 const reviewFixMigrationPath = resolve(process.cwd(), 'supabase/migrations/0088_document_template_registry_review_fixes.sql')
+const canonicalAlignmentMigrationPath = resolve(process.cwd(), 'supabase/migrations/0089_institutional_base_and_template_lifecycle.sql')
 
 function readGovernedMigrationSql() {
-  return `${readFileSync(migrationPath, 'utf8')}\n${readFileSync(reviewFixMigrationPath, 'utf8')}`
+  return `${readFileSync(migrationPath, 'utf8')}\n${readFileSync(reviewFixMigrationPath, 'utf8')}\n${readFileSync(canonicalAlignmentMigrationPath, 'utf8')}`
 }
 
 test('document template registry migration enforces governed persistence', () => {
@@ -69,12 +70,61 @@ test('trusted quality review fails closed when section or field arrays are absen
   )
 })
 
-test('saving and reviewing a draft preserves live ACTIVE and historical RETIRED status separately', () => {
-  const sql = readFileSync(reviewFixMigrationPath, 'utf8')
-  const activePreservationBranches = sql.match(/when status = 'ACTIVE' and active_version_no is not null then 'ACTIVE'/gi) ?? []
-  const retiredPreservationBranches = sql.match(/when status = 'RETIRED' then 'RETIRED'/gi) ?? []
-  assert.equal(activePreservationBranches.length, 2)
-  assert.equal(retiredPreservationBranches.length, 2)
+test('canonical alignment adds a separately versioned institutional base registry', () => {
+  const sql = readFileSync(canonicalAlignmentMigrationPath, 'utf8')
+  assert.match(sql, /create table public\.institutional_bases/i)
+  assert.match(sql, /create table public\.institutional_base_versions/i)
+  assert.match(sql, /create table public\.institutional_base_quality_reviews/i)
+  assert.match(sql, /create_institutional_base/i)
+  assert.match(sql, /save_institutional_base_version/i)
+  assert.match(sql, /record_institutional_base_quality_review/i)
+  assert.match(sql, /activate_institutional_base_version/i)
+  assert.match(sql, /institutional_base_version_snapshot/i)
+})
+
+test('both registries expose trusted block clear-block and retirement transitions', () => {
+  const sql = readFileSync(canonicalAlignmentMigrationPath, 'utf8')
+  for (const rpc of [
+    'block_document_template',
+    'clear_document_template_block',
+    'retire_document_template',
+    'block_institutional_base',
+    'clear_institutional_base_block',
+    'retire_institutional_base',
+  ]) assert.match(sql, new RegExp(`function public\\.${rpc}`, 'i'))
+  assert.match(sql, /lifecycle_decisions/i)
+})
+
+test('institutional lifecycle authority reuses canonical OWNER ADMIN workspace roles', () => {
+  const sql = readFileSync(canonicalAlignmentMigrationPath, 'utf8')
+  assert.match(sql, /workspace_memberships/i)
+  assert.match(sql, /role\s+in\s*\(\s*'OWNER'\s*,\s*'ADMIN'\s*\)/i)
+  assert.match(sql, /institutional lifecycle authority required/i)
+})
+
+test('RETIRED is terminal for every mutating boundary in both registries', () => {
+  const sql = readFileSync(canonicalAlignmentMigrationPath, 'utf8')
+  const guards = sql.match(/cannot mutate RETIRED identity/gi) ?? []
+  assert.ok(guards.length >= 12, `expected terminal guards on all mutating boundaries, found ${guards.length}`)
+})
+
+test('BLOCKED identities cannot activate directly and clearBlock only returns them to review', () => {
+  const sql = readFileSync(canonicalAlignmentMigrationPath, 'utf8')
+  assert.match(sql, /cannot activate BLOCKED identity/i)
+  assert.match(sql, /set status = 'REVIEW_REQUIRED'/i)
+})
+
+test('historical exact-pin reads remain available after block or retirement', () => {
+  const sql = readFileSync(canonicalAlignmentMigrationPath, 'utf8')
+  assert.match(sql, /document_template_version_snapshot/i)
+  assert.match(sql, /institutional_base_version_snapshot/i)
+  assert.match(sql, /target_version_no/i)
+})
+
+test('canonical alignment advances the runtime schema contract at migration 0089', () => {
+  const sql = readFileSync(canonicalAlignmentMigrationPath, 'utf8')
+  assert.match(sql, /values \(89, '0089_institutional_base_and_template_lifecycle'\)/i)
+  assert.match(sql, /advance_runtime_schema_contract\('0089_institutional_base_and_template_lifecycle'\)/i)
 })
 
 test('template source identity preserves provenance for identical bytes', () => {
