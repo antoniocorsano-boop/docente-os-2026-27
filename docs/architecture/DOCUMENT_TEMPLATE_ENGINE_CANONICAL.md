@@ -82,6 +82,32 @@ INSTITUTIONAL_SHELL
 
 Un modello di famiglia eredita la base istituzionale. Può variare soltanto gli elementi dichiarati dal proprio contratto; non può ridefinire autonomamente identità, tipografia o regole comuni di impaginazione.
 
+## Stable version, pin and governance contract
+
+La regola di ownership stabile è:
+
+```text
+InstitutionalBaseVersion = autorità sulla presentazione istituzionale condivisa
+DocumentTemplateVersion = autorità sulla semantica della famiglia documentale
+AuthoredDocumentVersion = autorità su contenuto/versione + pin esatti a entrambi
+Template governance = autorità lifecycle OWNER|ADMIN al trusted boundary; MEMBER non modifica la disponibilità istituzionale
+Registry lifecycle = review/attivazione/blocco/rimozione blocco/ritiro trusted e tracciati; RETIRED è storico e read-only
+Renderer = composizione pura delle versioni esattamente pinnate; nessuna risoluzione silenziosa della versione corrente
+```
+
+Ogni versione di documento a valle deve poter conservare esattamente queste quattro coordinate:
+
+```text
+institutional_base_id
+institutional_base_version_no
+family_template_id
+family_template_version_no
+```
+
+Anteprima, rendering ed esportazione storica usano quelle coordinate come contratto: non sostituiscono una base o un modello con la versione attiva più recente. Un’identità `BLOCKED` o `RETIRED` non è selezionabile per nuovi documenti, ma le versioni storiche già pinnate restano risolvibili per le superfici autorizzate.
+
+Le operazioni istituzionali `Attiva`, `Blocca`, `Rimuovi blocco` e `Ritira` sono autorizzate soltanto a `OWNER|ADMIN`, con ruolo ricalcolato nel trusted boundary. `MEMBER` può consultare secondo le policy del workspace ma non può mutare la disponibilità istituzionale. `RETIRED` è terminale per la stessa identità: tutte le mutazioni successive falliscono chiuse, mentre le letture storiche esatte restano disponibili.
+
 ## Shared rendering contract
 
 Contenuto e resa grafica restano separati.
@@ -113,11 +139,13 @@ Una versione può diventare attiva solo dopo:
 
 Il controllo considera almeno funzione, chiarezza semantica, necessità dei dati, privacy, adeguatezza di tabelle/checklist/testo, coerenza con gli altri documenti, coerenza con la base istituzionale e purezza dell'output.
 
+Il risultato e i findings usati per autorizzare l’attivazione sono ricalcolati nel trusted boundary sui dati persistiti. La UI può rappresentare l’esito, ma non può sostituire o migliorare localmente una review trusted mancante o bloccante.
+
 ## Institutional output is clean
 
 Il documento professionale non espone il funzionamento interno di DOCENTE OS. Non devono comparire codici di dominio o di piano, identificatori tecnici, nomi di tabelle o entità software, stati interni, percorsi di archiviazione, impronte tecniche, provenienza di sistema, nomi di provider o formule che dichiarino una generazione automatica.
 
-La provenienza rimane disponibile alle funzioni interne di controllo e audit, non alla resa professionale.
+La provenienza rimane disponibile alle funzioni interne di controllo e audit, non alla resa professionale. Il gate di purezza è applicato anche nel trusted Quality Review dei due stream, affinché un payload professionalmente impuro non possa ottenere una review persistita valida per l’attivazione.
 
 ## Representation rules
 
