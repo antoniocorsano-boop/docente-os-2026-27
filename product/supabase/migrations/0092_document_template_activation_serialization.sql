@@ -6,9 +6,9 @@ on conflict (version) do update
 set migration_id = excluded.migration_id;
 
 -- Replacement activation is a family-wide transition, not a target-row-only
--- transition. Serialize the family before discovering the currently ACTIVE
--- identity so a waiter always observes the ACTIVE row committed by the prior
--- activator and records/clears that exact displaced identity.
+-- transition. Resolve the immutable family key without a row lock, serialize
+-- the family, then lock/re-read the target and displaced rows. This consistent
+-- ordering avoids cycles between the target-row lock and the family lock.
 create or replace function public.activate_document_template_version(
   target_template_id uuid,
   target_version_no integer,
@@ -20,6 +20,8 @@ set search_path = ''
 as $$
 declare
   uid uuid := auth.uid();
+  lock_workspace uuid;
+  lock_kind text;
   workspace uuid;
   current_status text;
   kind text;
@@ -30,26 +32,36 @@ begin
   if uid is null then raise exception 'authentication required'; end if;
   if human_review_confirmed is not true then raise exception 'Human Review confirmation required'; end if;
 
+  select template.workspace_id, template.document_kind
+    into lock_workspace, lock_kind
+  from public.document_templates template
+  where template.id = target_template_id;
+
+  if lock_workspace is null or not private.is_workspace_member(lock_workspace) then
+    raise exception 'template not available';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(
+      'document-template-activation:' || lock_workspace::text || ':' || lock_kind,
+      0
+    )
+  );
+
   select template.workspace_id, template.status, template.document_kind
     into workspace, current_status, kind
   from public.document_templates template
   where template.id = target_template_id
   for update;
 
-  if workspace is null or not private.is_workspace_member(workspace) then raise exception 'template not available'; end if;
+  if workspace is null or workspace is distinct from lock_workspace or kind is distinct from lock_kind then
+    raise exception 'template identity changed during activation';
+  end if;
+  if not private.is_workspace_member(workspace) then raise exception 'template not available'; end if;
   actor_role := private.institutional_lifecycle_actor_role(workspace);
   if actor_role is null then raise exception 'institutional lifecycle authority required'; end if;
   if current_status = 'RETIRED' then raise exception 'cannot mutate RETIRED identity'; end if;
   if current_status = 'BLOCKED' then raise exception 'cannot activate BLOCKED identity'; end if;
-
-  -- The target row lock protects this identity; the advisory transaction lock
-  -- protects the workspace+document-kind family while replacement is resolved.
-  perform pg_catalog.pg_advisory_xact_lock(
-    pg_catalog.hashtextextended(
-      'document-template-activation:' || workspace::text || ':' || kind,
-      0
-    )
-  );
 
   select template.id, template.status into displaced_id, displaced_status
   from public.document_templates template
@@ -96,6 +108,7 @@ set search_path = ''
 as $$
 declare
   uid uuid := auth.uid();
+  lock_workspace uuid;
   workspace uuid;
   current_status text;
   displaced_id uuid;
@@ -105,12 +118,30 @@ begin
   if uid is null then raise exception 'authentication required'; end if;
   if human_review_confirmed is not true then raise exception 'Human Review confirmation required'; end if;
 
+  select base.workspace_id into lock_workspace
+  from public.institutional_bases base
+  where base.id = target_base_id;
+
+  if lock_workspace is null or not private.is_workspace_member(lock_workspace) then
+    raise exception 'institutional base not available';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(
+      'institutional-base-activation:' || lock_workspace::text,
+      0
+    )
+  );
+
   select base.workspace_id, base.status into workspace, current_status
   from public.institutional_bases base
   where base.id = target_base_id
   for update;
 
-  if workspace is null or not private.is_workspace_member(workspace) then raise exception 'institutional base not available'; end if;
+  if workspace is null or workspace is distinct from lock_workspace then
+    raise exception 'institutional base identity changed during activation';
+  end if;
+  if not private.is_workspace_member(workspace) then raise exception 'institutional base not available'; end if;
   actor_role := private.institutional_lifecycle_actor_role(workspace);
   if actor_role is null then raise exception 'institutional lifecycle authority required'; end if;
   if current_status = 'RETIRED' then raise exception 'cannot mutate RETIRED identity'; end if;
@@ -128,13 +159,6 @@ begin
   ), false) is not true then
     raise exception 'latest quality_review must be PASS or PASS_WITH_NOTES before activation';
   end if;
-
-  perform pg_catalog.pg_advisory_xact_lock(
-    pg_catalog.hashtextextended(
-      'institutional-base-activation:' || workspace::text,
-      0
-    )
-  );
 
   select base.id, base.status into displaced_id, displaced_status
   from public.institutional_bases base
