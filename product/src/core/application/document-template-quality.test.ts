@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { DocumentTemplateVersionDraft } from '../domain/document-template'
+import type { DocumentTemplateVersionDraft, InstitutionalBaseVersionDraft } from '../domain/document-template'
 import {
   findForbiddenTechnicalReferences,
   reviewDocumentTemplate,
+  reviewInstitutionalBase,
 } from './document-template-quality'
 
 function requiredSensitiveDraft(): DocumentTemplateVersionDraft {
@@ -36,8 +37,65 @@ function requiredSensitiveDraft(): DocumentTemplateVersionDraft {
   }
 }
 
+function validInstitutionalBase(): InstitutionalBaseVersionDraft {
+  return {
+    version: 1,
+    identityProfile: {
+      institutionName: 'I.C. Calvario-Covotta – don Lorenzo Milani',
+      logoAssetRef: null,
+    },
+    headerProfile: { lines: ['Istituto Comprensivo'] },
+    footerProfile: { lines: [] },
+    typographyProfile: {
+      bodyFontFamily: 'Arial',
+      headingFontFamily: 'Arial',
+      baseFontSizePt: 11,
+      lineHeight: 1.3,
+    },
+    pageGeometryProfile: {
+      format: 'A4',
+      orientation: 'PORTRAIT',
+      marginTopMm: 18,
+      marginRightMm: 18,
+      marginBottomMm: 18,
+      marginLeftMm: 18,
+    },
+    commonTableProfile: {
+      headerWeight: 'BOLD',
+      cellPaddingMm: 2,
+      repeatHeader: true,
+    },
+    signatureProfile: {
+      showLocation: true,
+      showDate: true,
+      label: 'Il docente',
+    },
+    accessibilityProfile: {
+      minimumFontSizePt: 10,
+      highContrast: true,
+      tableHeadersRequired: true,
+    },
+    sourceRevisionRefs: [],
+  }
+}
+
 test('required sensitive aggregate fields require human review', () => {
   assert.equal(reviewDocumentTemplate(requiredSensitiveDraft()).result, 'REVIEW_REQUIRED')
+})
+
+test('institutional base application review accepts a valid shared base', () => {
+  const review = reviewInstitutionalBase(validInstitutionalBase())
+  assert.equal(review.result, 'PASS')
+  assert.equal(review.versionNo, 1)
+  assert.deepEqual(review.findings, [])
+})
+
+test('institutional base application review fails closed on professional technical references', () => {
+  const base = validInstitutionalBase()
+  base.headerProfile.lines = ['document_template_versions']
+  const review = reviewInstitutionalBase(base)
+  assert.equal(review.result, 'BLOCKED')
+  assert.equal(review.findings.some((finding) => finding.category === 'EXTERNAL_PURITY'), true)
 })
 
 test('technical reference scanner finds Bxx and UUID without false categories', () => {
