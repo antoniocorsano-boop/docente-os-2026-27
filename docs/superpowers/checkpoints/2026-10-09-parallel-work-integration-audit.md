@@ -74,7 +74,7 @@ The changes are semantically compatible but line-conflicting. A later rebase/mer
 
 `48c29451…` (#697) is 18 commits ahead of `8ece0f900…` (#696), with `8ece0f900…` as merge-base and no commits behind. This is a true implementation chain, not parallel competing work.
 
-**Rule:** integrate #696 before #697.
+**Rule:** integrate #696 before #697. Preserve the Git ancestry by using a normal **merge commit** for #696; do not squash or rebase-merge #696 unless you intentionally accept a subsequent #697 rebase/reconciliation. With ancestry preserved, #697 naturally reduces to its implementation-only delta after #696 lands.
 
 ## Verified non-conflicts
 
@@ -124,7 +124,7 @@ Unless a new material dependency is discovered, use this sequence:
 
 1. #693 — canonical documentation specification.
 2. #695 — template-engine implementation, after refreshing exact-head evidence against integrated #693 if required.
-3. #696 — intelligent-UI architecture.
+3. #696 — intelligent-UI architecture, preferably by merge commit to preserve the ancestry already consumed by #697.
 4. #697 — intelligent-UI implementation, after refreshing exact-head evidence against integrated #696 if required.
 5. #692 — rebase onto the resulting `develop`, recompute/renumber migrations, reconcile `product/package.json`, resolve any real file/semantic conflicts, then perform full exact-head recertification and Human Review.
 
