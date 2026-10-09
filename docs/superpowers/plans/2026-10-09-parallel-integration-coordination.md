@@ -20,6 +20,7 @@
 - Do not renumber #692 migrations before earlier migration-owning work is settled.
 - Human Review is the final gate after fresh exact-head certification.
 - Do not resolve `product/package.json` by choosing one branch's monolithic `test` line; preserve the union of all required tests.
+- Preserve real dependency ancestry when it reduces integration risk: #696 must use a normal merge commit unless a deliberate #697 rebase/reconciliation is accepted.
 
 ## Review Focus
 
@@ -45,24 +46,10 @@
 - Produces: explicit integration-order notices visible on active PRs
 
 - [x] **Step 1: Add a coordination notice to #692**
-
-State that #692 is individually green but must not merge before the migration lineage and `product/package.json` are reconciled against integrated #695/#697; record the current exact head and the stale-body issue.
-
 - [x] **Step 2: Add a coordination notice to #695**
-
-State that #693 is the canonical specification dependency and that #692 currently conflicts on migration versions 87/88; do not change #695 runtime merely to accommodate an unintegrated branch.
-
 - [x] **Step 3: Add a coordination notice to #697**
-
-State that #696 must land first and that `product/package.json` will require union reconciliation when #692/#695 are later integrated.
-
 - [x] **Step 4: Add lightweight dependency notices to #693 and #696**
-
-Keep the notices factual: #693 gates #695; #696 gates #697. Do not request merge automatically.
-
 - [x] **Step 5: Verify no runtime branch head changed**
-
-Fetch PR metadata for #692/#695/#697 and confirm the notices did not modify branch heads.
 
 ---
 
@@ -78,7 +65,7 @@ Fetch PR metadata for #692/#695/#697 and confirm the notices did not modify bran
 
 - [ ] **Step 1: Review #693 as specification-only work**
 
-Verify that it still encodes the frozen Documenti/Materiali boundary, institutional-template hierarchy and teacher-authority constraints.
+Verify that it still encodes the frozen Documenti/Materiali boundary, institutional-template hierarchy and teacher-authority constraints. Exact-head document gates and independent review must be clean.
 
 - [ ] **Step 2: Integrate #693 only after its Human Review PASS**
 
@@ -113,13 +100,13 @@ After integration, inspect `product/supabase/migrations` and record the actual h
 - Consumes: #696 architecture as parent of #697
 - Produces: integrated deterministic Intelligent UI foundation without runtime-model dependency
 
-- [ ] **Step 1: Review and integrate #696**
+- [ ] **Step 1: Review and integrate #696 with ancestry preserved**
 
-Confirm closed component registry, deterministic fallback, no generated JSX/HTML/CSS, no runtime provider dependency, no implicit writes and preserved state authorities.
+Confirm closed component registry, deterministic fallback, no generated JSX/HTML/CSS, no runtime provider dependency, no implicit writes and preserved state authorities. Because #697 is a true descendant of #696, integrate #696 with a normal **merge commit**, not squash/rebase-merge, so `8ece0f900…` remains an ancestor and #697 naturally reduces to its implementation-only delta.
 
 - [ ] **Step 2: Compare #697 against the new `develop`**
 
-Because #697 is a descendant of #696, preserve its implementation commits while reconciling any intervening `develop` changes.
+Because #697 is a descendant of #696, preserve its implementation commits while reconciling any intervening `develop` changes. If ancestry was not preserved for an exceptional reason, explicitly rebase/reconcile #697 and discard inherited certification.
 
 - [ ] **Step 3: Reconcile `product/package.json` against already integrated test suites**
 
@@ -156,54 +143,19 @@ Record the resulting `develop` SHA for #692 rebase.
 - Produces: one rebased #692 branch with unique migration lineage and complete combined test suite
 
 - [ ] **Step 1: Refresh #692 metadata before code changes**
-
-Update the PR body to the actual exact head and current gate status; remove stale claims tied to `5a352dad…`.
-
 - [ ] **Step 2: Rebase #692 onto the current integrated `develop`**
-
-Do this only once upstream #695/#697 are stable. Record pre-rebase and post-rebase SHAs.
-
 - [ ] **Step 3: Inspect actual migration maximum on rebased `develop`**
-
-Do not assume 88. Compute the highest registered migration version and next free contiguous versions.
-
 - [ ] **Step 4: Renumber the three #692 migrations**
 
-If the maximum remains 88, map:
-
-- `0087_lesson_design_atlas_bundle_atomic_acceptance` → `0089_…`
-- `0088_canonical_plan_runtime_identity` → `0090_…`
-- `0089_lesson_design_atlas_material_kind_guard` → `0091_…`
-
-Update `runtime_schema_required_migrations`, `advance_runtime_schema_contract(...)`, filenames and every test/contract reference consistently. If the maximum differs, use the actual next contiguous versions instead.
+If the maximum remains 88, map `0087→0089`, `0088→0090`, `0089→0091`; otherwise use the actual next contiguous versions. Update filenames, `runtime_schema_required_migrations`, `advance_runtime_schema_contract(...)` and every test/contract reference consistently.
 
 - [ ] **Step 5: Add/adjust the migration-lineage regression**
-
-The test must fail if two migration IDs claim the same runtime version or if the expected contiguous chain is broken.
-
 - [ ] **Step 6: Reconcile `product/package.json` as a union**
-
-Verify explicitly that Atlas/canonical-plan, document-template and Intelligent UI tests are all present alongside the pre-existing suite.
-
 - [ ] **Step 7: Resolve semantic file conflicts one by one**
-
-For Home/Class/lesson/Human Task files, preserve #697 deterministic authority while retaining #692 material-handoff behavior. For UDA/Annual Plan, preserve the no-implicit-write boundary from #693/#695.
-
 - [ ] **Step 8: Run full Product CI**
-
-Expected: migration replay PASS; all product tests PASS; typecheck PASS; lint PASS; production build PASS.
-
 - [ ] **Step 9: Run exact-head certification**
-
-Required where selected: Browser HVA, WCAG 2.2 AA, P6, X3/X4, P7 DB restore, X5/X5B, K1, security/readiness/governance gates.
-
 - [ ] **Step 10: Request independent review on the exact post-rebase head**
-
-Review focus: migration lineage, package-test union, Human Task/Intelligent UI authority, no implicit writes, Atlas material atomicity.
-
 - [ ] **Step 11: Human Review #692**
-
-Judge the combined product, not inherited branch evidence. The PR may leave Draft only after the combined-state evidence is clean.
 
 ---
 
@@ -215,29 +167,11 @@ Judge the combined product, not inherited branch evidence. The PR may leave Draf
 - `product/package.json`
 - Coordination checkpoint
 
-**Interfaces:**
-- Consumes: integrated #693/#695/#696/#697/#692
-- Produces: combined Docente OS baseline safe for subsequent release/maturity work
-
 - [ ] **Step 1: Verify unique migration lineage on integrated `develop`**
-
-No duplicate runtime version or migration ID; sequence matches repository contract.
-
 - [ ] **Step 2: Verify combined test-script coverage**
-
-Confirm all branch-specific suites remain in `product/package.json` and Product CI passes from integrated `develop`.
-
 - [ ] **Step 3: Re-run or inspect post-merge required gates on integrated SHA**
-
-Do not claim combined completion from pre-merge PR heads alone.
-
 - [ ] **Step 4: Validate authority boundaries**
-
-Check no Atlas/material action implicitly mutates institutional documents, Annual Plan or Calendar; check Intelligent UI still delegates state authority to canonical resolvers.
-
 - [ ] **Step 5: Update the coordination checkpoint with final SHAs and CLOSED status**
-
-Record integrated PR order, final migration mapping, final exact SHA and evidence runs.
 
 ---
 
@@ -248,10 +182,6 @@ Record integrated PR order, final migration mapping, final exact SHA and evidenc
 - PR #692 body
 - Coordination checkpoint
 
-**Interfaces:**
-- Consumes: stable integrated chain
-- Produces: no stale PRs or misleading current-head claims
-
 **Ruling:** Step 1 was executed early because #688 was already merged and #687 was independently superseded; closing #687 is reversible governance cleanup and has no dependency on the remaining runtime integration chain.
 
 - [x] **Step 1: Mark #687 superseded by merged #688**
@@ -259,9 +189,6 @@ Record integrated PR order, final migration mapping, final exact SHA and evidenc
 A factual closing comment was added and #687 was closed without merge on 2026-10-09.
 
 - [ ] **Step 2: Ensure #692 body reflects its final exact head and evidence**
-
-Remove superseded intermediate heads and distinguish historical RED/GREEN evidence from the final qualified head.
-
 - [ ] **Step 3: Close the coordination PR/checkpoint only when exit conditions are met**
 
 Exit requires unique migrations, complete test union, combined exact-head evidence and no unresolved integration blocker.
