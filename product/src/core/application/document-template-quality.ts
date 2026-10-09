@@ -1,6 +1,8 @@
 import {
   validateDocumentTemplate,
+  validateInstitutionalBase,
   type DocumentTemplateVersionDraft,
+  type InstitutionalBaseVersionDraft,
   type TemplateQualityFinding,
   type TemplateQualityReview,
 } from '../domain/document-template'
@@ -27,19 +29,53 @@ export function findForbiddenTechnicalReferences(text: string): string[] {
   return TECHNICAL_PATTERNS.filter(([, pattern]) => pattern.test(text)).map(([code]) => code)
 }
 
+function blockedStructuralReview(versionNo: number, codes: string[], subject: string): TemplateQualityReview {
+  return {
+    result: 'BLOCKED',
+    findings: codes.map((code): TemplateQualityFinding => ({
+      code,
+      severity: 'BLOCKER',
+      category: 'STRUCTURE',
+      summary: `${subject} non valida: ${code}`,
+    })),
+    versionNo,
+  }
+}
+
+function appendExternalPurityFindings(findings: TemplateQualityFinding[], text: string): void {
+  for (const code of findForbiddenTechnicalReferences(text)) {
+    findings.push({
+      code: `EXTERNAL_${code}`,
+      severity: 'BLOCKER',
+      category: 'EXTERNAL_PURITY',
+      summary: `Il testo professionale contiene un riferimento tecnico vietato (${code}).`,
+    })
+  }
+}
+
+export function reviewInstitutionalBase(draft: InstitutionalBaseVersionDraft): TemplateQualityReview {
+  const validation = validateInstitutionalBase(draft)
+  if (!validation.valid) {
+    return blockedStructuralReview(draft.version, validation.codes, 'Base istituzionale')
+  }
+
+  const findings: TemplateQualityFinding[] = []
+  const professionalText = [
+    draft.identityProfile.institutionName,
+    ...draft.headerProfile.lines,
+    ...draft.footerProfile.lines,
+    draft.signatureProfile.label,
+  ].join('\n')
+  appendExternalPurityFindings(findings, professionalText)
+
+  if (findings.length) return { result: 'BLOCKED', findings, versionNo: draft.version }
+  return { result: 'PASS', findings: [], versionNo: draft.version }
+}
+
 export function reviewDocumentTemplate(draft: DocumentTemplateVersionDraft): TemplateQualityReview {
   const validation = validateDocumentTemplate(draft)
   if (!validation.valid) {
-    return {
-      result: 'BLOCKED',
-      findings: validation.codes.map((code): TemplateQualityFinding => ({
-        code,
-        severity: 'BLOCKER',
-        category: 'STRUCTURE',
-        summary: `Struttura del template non valida: ${code}`,
-      })),
-      versionNo: draft.version,
-    }
+    return blockedStructuralReview(draft.version, validation.codes, 'Struttura del template')
   }
 
   const findings: TemplateQualityFinding[] = []
@@ -85,15 +121,7 @@ export function reviewDocumentTemplate(draft: DocumentTemplateVersionDraft): Tem
       ]),
     ]),
   ].join('\n')
-  const technicalCodes = findForbiddenTechnicalReferences(externalText)
-  for (const code of technicalCodes) {
-    findings.push({
-      code: `EXTERNAL_${code}`,
-      severity: 'BLOCKER',
-      category: 'EXTERNAL_PURITY',
-      summary: `Il testo professionale contiene un riferimento tecnico vietato (${code}).`,
-    })
-  }
+  appendExternalPurityFindings(findings, externalText)
 
   if (findings.some((finding) => finding.severity === 'BLOCKER')) {
     return { result: 'BLOCKED', findings, versionNo: draft.version }
