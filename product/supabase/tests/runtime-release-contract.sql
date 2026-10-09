@@ -165,3 +165,10 @@ end;
 $contract$;
 
 \ir document_template_lifecycle_behavior_contract.sql
+
+-- The deep replay already owns the ephemeral Supabase connection. Export that
+-- local connection to the child process so the concurrency contract can open
+-- genuinely independent PostgreSQL sessions against the exact same database.
+\set concurrency_db_url 'postgresql://' :USER ':postgres@' :HOST ':' :PORT '/' :DBNAME
+\setenv DATABASE_URL :concurrency_db_url
+\! bash "$GITHUB_WORKSPACE/product/supabase/tests/run_document_template_activation_concurrency_contract.sh"
