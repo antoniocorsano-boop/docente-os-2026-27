@@ -307,7 +307,9 @@ Constraints and authority:
 - the writer starts from `auth.uid()` and, inside the same trusted transaction, loads the target TeachingSession and resolves its workspace before any write;
 - the caller must be authenticated and satisfy the repository’s canonical teaching-write authorization for that exact session workspace; at minimum the existing workspace-membership predicate must pass, and any stricter teaching capability already used by the canonical lesson/session write boundary must be reused rather than inventing a parallel role model;
 - non-members and callers outside the authorized teaching-write boundary are rejected before receipt lookup/insert, even if they possess valid session/extension UUIDs;
-- the writer locks/serializes the target TeachingSession and LessonDesignExtension before validation and insert (`SELECT ... FOR UPDATE` or a database invariant/conditional write with equivalent atomicity); the canonical revise and session-supersede writers must participate in the same serialization discipline, so a concurrent revise/supersede cannot commit between validation and receipt persistence;
+- before its session/extension locks, the receipt writer acquires the canonical **report-context source-frontier serialization** for the same workspace + academic year + section + discipline used by DOC-04 first-version creation; material-use receipts are part of that report evidence frontier, so receipt writes and report first-create cannot interleave between freshness validation and v1 persistence;
+- after the context frontier is held, the writer locks/serializes the target TeachingSession and LessonDesignExtension before validation and insert (`SELECT ... FOR UPDATE` or a database invariant/conditional write with equivalent atomicity); the canonical revise and session-supersede writers must participate in the same serialization discipline, so a concurrent revise/supersede cannot commit between validation and receipt persistence;
+- lock ordering is canonical and uniform (`report-context frontier` → `TeachingSession` → `LessonDesignExtension`) for receipt/revise/supersede paths that need multiple boundaries, preventing deadlock-by-inconsistent-order;
 - after acquiring the serialization boundary, the writer loads and validates the target TeachingSession and LessonDesignExtension inside the same trusted transaction;
 - the TeachingSession must be current/non-superseded and belong to the same workspace, academic year, section/lesson context as the accepted extension;
 - the LessonDesignExtension must exist, belong to that same context and have `status = ACCEPTED` at recording time;
@@ -385,6 +387,7 @@ Read rules:
 - [ ] RED stale-action intent: UI loaded revision N, concurrent revise/re-accept commits N+1 before the receipt writer obtains its lock, then `expected_accepted_revision=N` is rejected and no N+1 receipt is created from the stale gesture.
 - [ ] RED concurrency: receipt recording racing with `revise_lesson_design_extension` is serialized; no committed receipt may pair revision N with N+1 content/status, and exactly one valid ordering wins.
 - [ ] RED concurrency: receipt recording racing with TeachingSession supersede is serialized; a receipt cannot commit for a session that became non-current before the protected insert/invariant check.
+- [ ] RED report-frontier concurrency: receipt recording racing with DOC-04 first-version creation shares the same workspace/year/section/discipline frontier; exactly one ordering wins, so a newly committed receipt is either included by a fresh report read or causes the stale bundle/create to fail before v1 persistence.
 - [ ] RED unauthenticated caller fails before persistence.
 - [ ] RED authenticated non-member/caller outside the canonical teaching-write authority of the session workspace fails before persistence even with valid UUIDs.
 - [ ] RED mismatched workspace/session/lesson/extension fails before persistence.
@@ -427,6 +430,7 @@ curricolo applicabile Tecnologia Seconda
 - accepted material without persisted receipt for its current accepted revision is not “used”;
 - receipt for an older accepted revision preserves its own immutable used-content snapshot but does not carry usage forward to a later revision after revise → re-accept;
 - concurrent revise or session supersede cannot interleave between receipt validation and persistence to create stale/invalid authoritative evidence;
+- receipt persistence and FINAL_REPORT first-create serialize on the same report-context evidence frontier, so a receipt cannot appear after freshness validation but before v1 persistence;
 - a stale teacher gesture for accepted revision N cannot be rebound to N+1: expected-revision mismatch fails before persistence;
 - mismatched/non-ACCEPTED material cannot receive a valid usage receipt;
 - no technical code in professional output.

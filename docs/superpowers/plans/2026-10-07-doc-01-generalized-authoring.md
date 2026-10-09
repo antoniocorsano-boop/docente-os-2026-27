@@ -17,7 +17,7 @@
 - UDA still requires `source_asset_id`.
 - FINAL_REPORT identity requires workspace, academic year, section and teaching discipline. Exact eligible institutional-base + family-template pins are selected and persisted on the first immutable version by DOC-04, not on the document identity here.
 - Document creation is explicit; navigation alone never creates a document. For `FINAL_REPORT`, no unstructured open/create path may expose a first version before DOC-04 structured atomic creation.
-- Every save creates a new immutable version.
+- Every permitted save creates a new immutable version. The legacy/generic X5 title/body `save` path remains UDA-only in this tranche; `FINAL_REPORT` must fail closed with a stable `STRUCTURED_SAVE_REQUIRED`-style error and use DOC-04 structured save.
 - Optimistic concurrency stays mandatory.
 - Direct authenticated table writes remain revoked.
 - No finalization/semantic sections/provenance tables in this plan; those belong to DOC-04 authoring plan.
@@ -143,14 +143,14 @@ git commit -m "feat: generalize versioned document persistence"
 ```ts
 openUda(input: OpenUdaInput): Promise<string>
 get(documentId: string): Promise<AuthoredDocumentSnapshot | null>
-save(input: SaveAuthoredDocumentVersionInput): Promise<number>
+save(input: SaveAuthoredDocumentVersionInput): Promise<number> // UDA-compatible path; FINAL_REPORT rejected
 ```
 
-- Do **not** add `openFinalReport(...)`. Repository generalization in this tranche maps FINAL_REPORT identities/snapshots and preserves existing generic read/save compatibility only; first creation is delegated to the structured DOC-04 repository boundary.
+- Do **not** add `openFinalReport(...)`. Repository generalization may read/map FINAL_REPORT identities, but the legacy/generic `save(...)` path must reject `FINAL_REPORT`; first creation and every later FINAL_REPORT version are delegated to DOC-04 structured repository boundaries.
 
 - [ ] **Step 1: Write failing repository tests**
 
-Cover raw mapping for UDA and FINAL_REPORT, null source on FINAL_REPORT, absence of any standalone FINAL_REPORT opening RPC, and unchanged UDA RPC mapping.
+Cover raw mapping for UDA and FINAL_REPORT, null source on FINAL_REPORT, absence of any standalone FINAL_REPORT opening RPC, unchanged UDA RPC mapping, and fail-closed rejection when generic `save(...)` targets a FINAL_REPORT.
 
 - [ ] **Step 2: Run focused tests and verify RED**
 
@@ -254,6 +254,6 @@ git commit -m "docs: certify generalized document ownership"
 
 ## Self-Review
 
-- Spec coverage: UDA compatibility, FINAL_REPORT context/schema support, **single structured atomic first-version boundary owned by DOC-04**, immutable versions, optimistic concurrency and writer boundaries all have tasks.
+- Spec coverage: UDA compatibility, FINAL_REPORT context/schema support, **single structured atomic first-version boundary owned by DOC-04**, structured-only later FINAL_REPORT saves, immutable versions, optimistic concurrency and writer boundaries all have tasks.
 - Type consistency: repository raw mapping matches Task 1 domain nullable fields.
 - Review Focus coverage: legacy UDA → Tasks 2/4; cross-workspace context → Task 2; retired template → Task 2; concurrent save → Task 2/3; title/body/source regression → Tasks 2/4.

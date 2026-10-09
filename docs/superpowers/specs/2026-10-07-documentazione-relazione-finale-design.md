@@ -371,6 +371,8 @@ Questa funzione è parte della UI di DOCENTE OS e **non viene stampata/esportata
 ## 18. Privacy e minimizzazione
 
 - nessun nominativo studente nella Relazione finale di classe;
+- il testo libero inserito dal docente è soggetto a una **conferma privacy umana sulla stessa versione immutabile** prima di `VALIDATED`/`FINALIZED`/export: il docente conferma assenza di nomi/identificatori studente e dati personali di categoria particolare; una nuova versione richiede una nuova conferma;
+- non si introduce o importa un roster studenti soltanto per tentare il riconoscimento automatico dei nomi nel testo libero; eventuali controlli deterministici restano complementari e non sostituiscono il giudizio umano;
 - osservazioni automatiche solo aggregate/classe/gruppo anonimo;
 - nessuna acquisizione automatica di diagnosi o categorie sensibili;
 - campi storici non necessari possono essere rimossi dal template canonico;
@@ -504,7 +506,7 @@ Una versione finalizzata non viene modificata. Una revisione successiva crea una
 10. La provenienza è ispezionabile nella UI ma assente nell'output.
 11. Validazione/finalizzazione sono umane.
 12. Il prodotto funziona senza AI.
-13. Nessun dato nominativo studente entra automaticamente.
+13. Nessun dato nominativo studente entra automaticamente e nessuna versione con testo libero può essere validata/finalizzata/esportata senza la propria conferma privacy umana.
 14. Tabelle e checklist sono usate solo quando utili.
 15. Programma svolto e Programmazione restano documenti distinti.
 16. Il percorso UDA X5A/X5B non regredisce.

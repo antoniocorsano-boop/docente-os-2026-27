@@ -24,8 +24,8 @@
 - Saving a newer version does not transfer validation/finalization from the previous version.
 - Version-advancing saves and finalization serialize on the same authored-document identity (row lock or equivalent atomic compare) so `FINALIZED(v1)` cannot be recorded after v2 has become current.
 - First-version creation revalidates the evidence bundle freshness descriptor at the trusted persistence boundary; stale evidence is rejected before any document/version write.
-- Freshness revalidation and first-version persistence participate in a **shared source-frontier serialization protocol** keyed to the report context (workspace + academic year + section + discipline). Every canonical writer that can change the Annual Plan execution/session/evidence frontier represented by the bundle must participate in the same transaction-scoped lock/atomic revision protocol. If that shared protocol is not available, first-version creation remains blocked rather than degrading to read-then-write.
-- First-version creation also locks/resolves the exact institutional-base and family-template registry identities through the same lifecycle serialization used by DOC-TPL-01 mutations, then revalidates that both exact pinned versions are still eligible for a new document. `BLOCKED`, `RETIRED`, inactive, wrong-kind or otherwise ineligible pins fail before any document/version write.
+- Freshness revalidation and first-version persistence participate in a **shared source-frontier serialization protocol** keyed to the report context (workspace + academic year + section + discipline). Every canonical writer that can change the Annual Plan execution/session/evidence frontier represented by the bundle — **including the MaterialUsageReceipt writer** — must participate in the same transaction-scoped lock/atomic revision protocol. If that shared protocol is not available, first-version creation remains blocked rather than degrading to read-then-write.
+- First-version creation also locks/resolves the exact institutional-base and family-template registry identities through the same lifecycle serialization used by DOC-TPL-01 mutations, then revalidates that both exact pinned versions are still eligible for a new document. `BLOCKED`, `RETIRED`, inactive, wrong-kind or otherwise ineligible pins fail before any document/version write. Eligibility is **identity-local**: DOC-TPL may expose multiple ACTIVE identities for a kind; activating another independent identity does not invalidate an already chosen exact pin. The protected race is a lifecycle/current-version change of either chosen identity.
 - A finalized version remains immutable and historical; later edits create a new version that must be validated/finalized independently.
 - Export uses a saved document version plus the exact pinned `InstitutionalBaseVersion` and `DocumentTemplateVersion`.
 - Professional output contains no CAN/Bxx, UUID, DB/entity names, internal workflow states, provider/model names, Drive paths, hashes, provenance or “generato automaticamente”.
@@ -44,7 +44,7 @@
 - A save racing with finalization has one serial order: either v1 finalizes before v2 is created, or v2 becomes current first and finalization of stale v1 is rejected.
 - Initial creation yields exactly one structured v1, not a blank/unstructured historical v1 plus v2.
 - A source writer racing with first creation cannot commit between freshness validation and v1 persistence: both operations serialize on the same report-context source frontier.
-- A base/template block, retire or active-version change racing with first creation cannot produce a new document pinned to an ineligible renderer version.
+- A block, retire or active-version change on either **chosen renderer identity** racing with first creation cannot produce a new document pinned to an ineligible renderer version; unrelated active identities are not a global singleton selection.
 - Stale optimistic-concurrency save preserves local edits and returns reload/conflict semantics.
 - Any technical token in professional output blocks export.
 
@@ -96,9 +96,10 @@ or roll back everything. No externally observable incomplete v1 is allowed.
 
 - direct authenticated table writes are revoked;
 - membership/workspace/document-kind/version checks occur in the trusted boundary;
-- the exact `InstitutionalBaseVersion` and `DocumentTemplateVersion` pins are re-resolved/revalidated transactionally after locking their registry identities; both must still be eligible for new documents and match the requested workspace/kind/active selection;
+- the exact `InstitutionalBaseVersion` and `DocumentTemplateVersion` pins are re-resolved/revalidated transactionally after locking their registry identities; both must still be eligible for new documents, belong to the requested workspace/kind and remain the active/current version **of those chosen identities**;
 - DOC-TPL lifecycle mutation RPCs and first-version creation use the same identity-level serialization so a concurrent block/retire/activation cannot interleave after eligibility validation;
 - validation targets an existing immutable version and fails when mandatory professional inputs are incomplete;
+- validation also requires an explicit same-version human privacy confirmation that the teacher-entered text contains no student names/identifiers or special-category personal data; this is a semantic human gate, not a reason to ingest a student roster merely for automated scanning;
 - finalization targets the current exact immutable version and requires explicit human confirmation;
 - finalization and `save_structured_authored_document_version` acquire the same authored-document serialization boundary (or equivalent atomic current-version predicate) before checking/updating current-version state;
 - finalization queries persisted decisions and fails unless `VALIDATED` exists for `target_document_id + target_version_no`;
@@ -111,7 +112,7 @@ or roll back everything. No externally observable incomplete v1 is allowed.
 - [ ] RED test: `VALIDATED(v1)` then `FINALIZED(v2)` is rejected.
 - [ ] RED test: incomplete required inputs cannot record `VALIDATED`, therefore cannot finalize.
 - [ ] RED concurrency tests cover both orderings of save-vs-finalize: finalization-before-save is preserved historically; save-before-finalize rejects stale finalization.
-- [ ] RED renderer-lifecycle race: base/template resolves eligible, then a concurrent block/retire/active-version change races with create; exactly one serialized ordering wins and create never persists v1 with an ineligible pin.
+- [ ] RED renderer-lifecycle race: a chosen base/template identity resolves eligible, then a concurrent block/retire/active-version change on that same identity races with create; exactly one serialized ordering wins and create never persists v1 with an ineligible pin. A separate active identity does not stale the chosen pin merely by becoming active.
 - [ ] Implement migration/RPCs minimally.
 - [ ] Replay migrations + focused contract tests to GREEN; regenerate types.
 - [ ] Commit.
@@ -148,7 +149,7 @@ Snapshot must include:
 createStructuredFinalReportDraft(input: ...): Promise<{ documentId: string; versionNo: number }>
 getStructured(documentId: string): Promise<StructuredAuthoredDocumentSnapshot | null>
 saveStructured(input: ...): Promise<number>
-validateVersion(input: { documentId: string; versionNo: number; note?: string | null }): Promise<void>
+validateVersion(input: { documentId: string; versionNo: number; privacyConfirmed: true; note?: string | null }): Promise<void>
 finalizeVersion(input: { documentId: string; versionNo: number; confirmed: true; note?: string | null }): Promise<void>
 ```
 
@@ -200,7 +201,7 @@ export type FinalReportDraft = {
 **Files:**
 - Create actions/tests under `documentazione/relazioni-finali/[sectionId]/`.
 - Modify readiness UI button only.
-- Reuse or add one canonical report-context source-frontier serialization primitive. The Annual Plan execution, TeachingSession current/supersede and teaching-evidence writers that can change this bundle frontier must acquire the same primitive before mutation; do not duplicate their domain semantics or write from Documentazione into those sources.
+- Reuse or add one canonical report-context source-frontier serialization primitive. The Annual Plan execution, TeachingSession current/supersede, teaching-evidence **and MaterialUsageReceipt** writers that can change this bundle frontier must acquire the same primitive before mutation; do not duplicate their domain semantics or write from Documentazione into those sources.
 
 **Server action:**
 
@@ -280,20 +281,23 @@ Rules:
 **Actions:**
 
 ```ts
-validateFinalReport(documentId: string, versionNo: number): Promise<void>
+validateFinalReport(documentId: string, versionNo: number, privacyConfirmed: true): Promise<void>
 finalizeFinalReport(documentId: string, versionNo: number, confirmed: true): Promise<void>
 ```
 
 **Rules:**
 
 - validation checks persisted required sections/teacher inputs for that exact immutable version;
-- validation creates a persisted `VALIDATED` decision for that exact version;
+- validation UI requires the teacher to confirm that the exact version contains no nominative student data, student identifiers or special-category personal data; the trusted boundary rejects missing confirmation and persists the confirmation as part of the same-version validation evidence;
+- deterministic purity checks may flag known technical/structured identifiers, but they do not pretend to infer arbitrary personal names and no student roster is imported solely to scan free text;
+- validation creates a persisted `VALIDATED` decision for that exact version only after this privacy confirmation;
 - finalization requires explicit UI confirmation **and** trusted-boundary verification of same-version `VALIDATED`;
 - `VALIDATED(v1)` cannot authorize `FINALIZED(v2)`;
 - if v1 was final and v2 is saved, v1 remains historical final while v2 returns to unvalidated draft state;
 - assistant/copilot has no decision path.
 
 - [ ] RED: incomplete version cannot validate.
+- [ ] RED: validation without `privacyConfirmed: true` fails and therefore finalization/export remain unavailable for that version.
 - [ ] RED: direct finalization without validation fails.
 - [ ] RED: stale/cross-version validation fails finalization.
 - [ ] RED: save-vs-finalize race is serialized on the same document/current-version boundary in both operation orderings.
@@ -374,6 +378,7 @@ Documentazione
 - renderer lifecycle changes and first-create serialize on the canonical DOC-TPL identity boundary, so no new v1 can pin a blocked/retired/ineligible version;
 - save/finalize races cannot finalize a version that ceased to be current;
 - technical tokens absent from UI/export;
+- teacher-entered free text cannot reach `VALIDATED`/`FINALIZED`/export without exact-version privacy confirmation; a new saved version requires a new confirmation;
 - bottom nav unchanged.
 
 - [ ] Run full `npm test`, typecheck, lint, build.
