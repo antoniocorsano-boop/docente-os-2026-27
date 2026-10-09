@@ -4,6 +4,7 @@ import {
 } from './actions'
 import type {
   GovernedTemplateBuilderViewModel,
+  TemplateBuilderHistoryEntry,
   TemplateBuilderLifecycleAction,
 } from './template-builder-model'
 
@@ -77,6 +78,32 @@ function ReviewGate({
   )
 }
 
+function VersionHistory({ history }: { history: TemplateBuilderHistoryEntry[] }) {
+  if (!history.length) return null
+
+  return (
+    <details className="templateBuilderHistory">
+      <summary>Versioni registrate</summary>
+      <ul>
+        {history.map((entry) => {
+          const state = [
+            entry.current ? 'Corrente' : null,
+            entry.active ? 'In uso' : null,
+            entry.reviewLabel,
+          ].filter(Boolean).join(' · ')
+
+          return (
+            <li key={entry.versionNo}>
+              <strong>Versione {entry.versionNo}</strong>
+              <span>{state}</span>
+            </li>
+          )
+        })}
+      </ul>
+    </details>
+  )
+}
+
 export function TemplateBuilder({ model }: { model: GovernedTemplateBuilderViewModel }) {
   return (
     <div className="templateBuilder">
@@ -120,6 +147,7 @@ export function TemplateBuilder({ model }: { model: GovernedTemplateBuilderViewM
           currentVersionNo={model.institutionalBase.currentVersionNo}
           serverAction={mutateInstitutionalBaseAction}
         />
+        <VersionHistory history={model.institutionalBase.history} />
       </section>
 
       <section className="templateBuilderStream" aria-labelledby="family-template-heading">
@@ -144,6 +172,7 @@ export function TemplateBuilder({ model }: { model: GovernedTemplateBuilderViewM
           currentVersionNo={model.familyTemplate.currentVersionNo}
           serverAction={mutateFamilyTemplateAction}
         />
+        <VersionHistory history={model.familyTemplate.history} />
 
         <div className="templateBuilderSections">
           {model.familyTemplate.sections.map((section, index) => (
