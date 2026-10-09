@@ -6,16 +6,16 @@
 
 **Architecture:** Riusa le authority esistenti invece di crearne di parallele. Il curricolo applicabile resta governato dal contratto curricolare canonico; il Piano annuale resta proiezione operativa; X5 resta identità/version history dei documenti; DOC-TPL-01 governa base istituzionale + template di famiglia; TeachingSession/evidenze governano ciò che è effettivamente accaduto. Ogni versione immutabile della Programmazione conserva il footprint curricolare esatto usato per comporla. Un materiale `ACCEPTED` è disponibile/pianificato, non automaticamente “usato”.
 
-**Tech Stack:** Next.js 16, React 19, TypeScript 5.9, Supabase/Postgres/RLS/RPC, Node `tsx --test`, X5 authored documents, DOC-TPL-01, `CurriculumContextForClassV1`, `CurriculumCoverageEvaluation`, TeachingSession/TeachingEvidence/LessonDesignExtension.
+**Tech Stack:** Next.js 16, React 19, TypeScript 5.9, Supabase/Postgres/RLS/RPC, Node `tsx --test`, X5 authored documents, DOC-TPL-01, contratto canonico di applicabilità/copertura del curricolo, TeachingSession/TeachingEvidence/LessonDesignExtension.
 
 **Spec:** `docs/superpowers/specs/2026-10-07-documenti-materiali-boundary-design.md`
 
 ## Global Constraints
 
 - Il **curricolo applicabile** è una authority distinta dal Piano annuale. `product/src/app/piano-annuale/model.ts` è proiezione operativa, non sorgente curricolare autonoma.
-- La Programmazione annuale deve pin-nare, **per ogni immutable document version**, il footprint curricolare accettato usato per comporla: `CurriculumContextForClassV1` + `CurriculumCoverageEvaluation` (o un equivalente snapshot canonico lossless), non soltanto `curriculumVersionRef`.
-- Il footprint persistito deve conservare almeno: `contextId`, `curriculumVersionRef`, authority effettiva, requirements e relativi source refs, transition/remodulation state, coverage status, requirement coverage, blocking IDs e `requiresRevalidationOnApproval`.
-- `PROVISIONAL_BASELINE` e `APPROVED_INSTITUTIONAL` non sono equivalenti. Un successivo cambio di authority, requirements, source refs, transition state o coverage richiede confronto/revalidation esplicita anche se il `curriculumVersionRef` testuale restasse uguale.
+- La Programmazione annuale deve pin-nare, **per ogni immutable document version**, uno snapshot canonico lossless del contesto curricolare applicabile e della relativa valutazione di copertura, non soltanto il riferimento di versione del curricolo.
+- Il footprint persistito deve conservare almeno: `contextId`, riferimento canonico di versione del curricolo, authority effettiva, requirements e relativi source refs, transition/remodulation state, coverage status, requirement coverage, blocking IDs e `requiresRevalidationOnApproval`.
+- `PROVISIONAL_BASELINE` e `APPROVED_INSTITUTIONAL` non sono equivalenti. Un successivo cambio di authority, requirements, source refs, transition state o coverage richiede confronto/revalidation esplicita anche se il riferimento canonico di versione del curricolo restasse uguale.
 - Non creare un secondo archivio documentale: X5 `authored_documents` / versioni resta l’unica identità/version history.
 - Non creare un secondo motore template: DOC-TPL-01 governa `InstitutionalBaseVersion` + family `DocumentTemplateVersion`.
 - La lezione è il principale punto operativo di raccordo fra progettazione e materiali.
@@ -45,9 +45,9 @@ Riutilizzare X5 per documenti/versioni e DOC-TPL-01 per base istituzionale + tem
 Riutilizzare il contratto già presente:
 
 ```text
-CurriculumContextForClassV1
-CurriculumCoverageEvaluation
-curriculumVersionRef
+contesto curricolare canonico applicabile
+valutazione canonica della copertura curricolare
+riferimento canonico di versione del curricolo
 authority = PROVISIONAL_BASELINE | APPROVED_INSTITUTIONAL
 requirements + sourceRefs
 transitionRemodulation
@@ -55,7 +55,7 @@ coverage status + requirementCoverage + blockingRequirementIds
 requiresRevalidationOnApproval
 ```
 
-Il footprint curricolare persistito è uno snapshot della combinazione `CurriculumContextForClassV1 + CurriculumCoverageEvaluation` accettata per quella versione documento. Non duplicare questi concetti in costanti del Piano annuale.
+Il footprint curricolare persistito è lo snapshot lossless della combinazione tra contesto curricolare canonico applicabile e valutazione canonica della copertura accettata per quella versione documento. Non duplicare questi concetti in costanti del Piano annuale e non rinominare in questa tranche i simboli runtime legacy già esistenti: l’implementazione deve adattarli al lessico canonico senza creare un dominio parallelo.
 
 ### Domini operativi
 
@@ -94,7 +94,7 @@ Riutilizzare TeachingSession corrente e allocazioni, TeachingEvidence aggregata,
 
 Additively support `AuthoredDocumentKind = ANNUAL_PROGRAMMING` while preserving UDA/FINAL_REPORT behavior.
 
-The create boundary must receive or resolve:
+The create boundary must receive or resolve. Nel seguente pseudocodice, `CanonicalCurricoloContext` e `CanonicalCurricoloCoverage` sono **alias semantici del piano** per i tipi canonici di applicabilità/copertura già presenti nel runtime: l'implementazione deve adattare i simboli legacy esistenti, non introdurre tipi concorrenti né rinominarli implicitamente.
 
 ```ts
 {
@@ -102,27 +102,27 @@ The create boundary must receive or resolve:
   academicYearId: string
   sectionId: string
   teachingDisciplineId: string
-  curricularContext: CurriculumContextForClassV1
-  curriculumCoverage: CurriculumCoverageEvaluation
+  curricoloContext: CanonicalCurricoloContext
+  curricoloCoverage: CanonicalCurricoloCoverage
   institutionalBaseVersionId: string
   templateVersionId: string
   initialTitle: string
 }
 ```
 
-The trusted boundary validates that `curricularContext` and `curriculumCoverage` match the same class/year/discipline and accepted command/scope, then persists a **lossless immutable curriculum footprint snapshot on the created document version**. Do not store only a document-level pointer that could be overwritten later.
+The trusted boundary validates that `curricoloContext` and `curricoloCoverage` match the same class/year/discipline and accepted command/scope, then persists a **lossless immutable curricolo footprint snapshot on the created document version**. `CanonicalCurricoloContext` and `CanonicalCurricoloCoverage` are plan-level semantic aliases for the existing canonical applicability types, not new runtime domain models. Do not store only a document-level pointer that could be overwritten later.
 
 Each later saved Programmazione version either:
 
-1. inherits the exact prior footprint unchanged because its curricular basis is unchanged; or
+1. inherits the exact prior footprint unchanged because its curricolo basis is unchanged; or
 2. explicitly adopts a newly reviewed footprint and records that exact snapshot on the new immutable version.
 
 Identity remains one current Programmazione annuale per workspace + anno + sezione + disciplina, with immutable version history.
 
-- [ ] RED domain tests for required class/discipline/curriculum context+coverage/base/template identity and unchanged UDA/FINAL_REPORT fixtures.
-- [ ] RED persistence test: version v1 stores a complete immutable snapshot of `curricularContext` + `curriculumCoverage`.
+- [ ] RED domain tests for required class/discipline/curricolo context+coverage/base/template identity and unchanged UDA/FINAL_REPORT fixtures.
+- [ ] RED persistence test: version v1 stores a complete immutable snapshot of `curricoloContext` + `curricoloCoverage`.
 - [ ] RED persistence test: v2 can retain v1 footprint unchanged without reading “current” Arena state during historical rendering.
-- [ ] RED revalidation test: same `curriculumVersionRef` but changed requirements/sourceRefs/transition state/coverage is detected as a different footprint and cannot silently replace v1.
+- [ ] RED revalidation test: same canonical curricolo version reference but changed requirements/sourceRefs/transition state/coverage is detected as a different footprint and cannot silently replace v1.
 - [ ] RED migration/repository tests for workspace/context validation, uniqueness and immutable history.
 - [ ] Implement minimally using existing X5 tables/RPC patterns; no parallel archive.
 - [ ] Run focused tests + typecheck to GREEN.
@@ -181,8 +181,8 @@ export type AnnualProgrammingContext = {
   disciplineId: string
   disciplineLabel: string
   grade: 'Prima' | 'Seconda' | 'Terza'
-  curricularContext: CurriculumContextForClassV1
-  curriculumCoverage: CurriculumCoverageEvaluation
+  curricoloContext: CanonicalCurricoloContext
+  curricoloCoverage: CanonicalCurricoloCoverage
   canonicalPlanSource: {
     code: string
     assetId: string
@@ -200,8 +200,8 @@ export type AnnualProgrammingContext = {
 `buildAnnualProgrammingContext()` MUST:
 
 1. resolve the applicable curricolo for workspace/anno/classe/disciplina;
-2. validate and bind `CurriculumContextForClassV1` + `CurriculumCoverageEvaluation` using the canonical applicability contract;
-3. fail closed when mandatory curriculum coverage is not satisfied;
+2. validate and bind the canonical curricolo context + coverage using the existing applicability contract;
+3. fail closed when mandatory curricolo coverage is not satisfied;
 4. independently resolve the canonical operational plan/projection;
 5. never infer curricolo authority from `CAN-PLAN-*` constants.
 
@@ -210,7 +210,7 @@ The draft composer passes the exact curricolo context+coverage snapshots to Task
 - [ ] RED Tecnologia Seconda: accepted curricolo snapshot + CAN-PLAN-2 + nine segments/66 planned hours.
 - [ ] RED: CAN-PLAN exists but curricolo applicability missing/unsatisfied → fail closed.
 - [ ] RED: provisional baseline retains `requiresRevalidationOnApproval` and its exact requirements/source refs.
-- [ ] RED: two snapshots with equal `curriculumVersionRef` but different requirements/coverage compare as materially different and require explicit revalidation.
+- [ ] RED: two snapshots with the same canonical curricolo version reference but different requirements/coverage compare as materially different and require explicit revalidation.
 - [ ] Implement pure/read-only adapters; no source-domain writes.
 - [ ] Draft tests: facts prefilled; professional judgements remain missing teacher inputs; no technical refs in body.
 - [ ] Run focused tests + typecheck to GREEN.
@@ -231,7 +231,7 @@ The draft composer passes the exact curricolo context+coverage snapshots to Task
 - known context inherited;
 - current document version can expose internal “Da dove viene?” data from its persisted curricolo footprint;
 - if a newly resolved curricolo footprint differs from the one pinned to the current document version, show explicit comparison/revalidation rather than auto-updating;
-- ordinary UI hides technical curriculum/template/base IDs.
+- ordinary UI hides technical curricolo/template/base IDs.
 
 - [ ] RED one-primary-action/no-navigation-write tests.
 - [ ] RED exact-footprint pin and revalidation comparison tests.
@@ -255,8 +255,8 @@ export type ProgrammingLessonContext = {
   disciplineId: string
   udaId: string
   blockId: string | null
-  curriculumContextId: string
-  curriculumVersionRef: CmlCanonicalRef
+  curricoloContextId: string
+  curricoloVersionRef: CmlCanonicalRef
   canonicalPlanAssetId: string
   canonicalGenerationId: string
 }
@@ -407,7 +407,7 @@ Read rules:
 
 ```text
 curricolo applicabile Tecnologia Seconda
-→ persisted exact curricular footprint on Programmazione v1
+→ persisted exact curricolo footprint on Programmazione v1
 → CAN-PLAN-2 operational projection
 → UDA 2-01
 → canonical lesson/block
@@ -445,6 +445,6 @@ curricolo applicabile Tecnologia Seconda
 
 - **Authority:** curricolo, Piano annuale, X5, template engine, TeachingSession and Materiali retain distinct responsibilities; material-use recording additionally requires authenticated authorization in the session workspace at the trusted server boundary.
 - **Persistence:** every immutable Programmazione version contains the exact accepted curricolo context+coverage footprint used to compose it; historical comparison never depends on current Arena state alone.
-- **Revalidation:** equal `curriculumVersionRef` does not suppress revalidation when requirements/source refs/transition/coverage changed.
+- **Revalidation:** equal canonical curricolo version reference does not suppress revalidation when requirements/source refs/transition/coverage changed.
 - **Materiali:** `ACCEPTED` means available; only an explicit teacher-recorded, durable, authoritative current-TeachingSession receipt pinned to the accepted revision **and its immutable content snapshot**, persisted under a concurrency-safe serialization boundary, means used.
 - **Privacy/output:** no student data is added to Atlas or material-use receipts and technical provenance stays internal.
