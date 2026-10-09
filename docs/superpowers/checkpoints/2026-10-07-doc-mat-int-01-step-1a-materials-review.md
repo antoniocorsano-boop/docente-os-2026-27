@@ -92,6 +92,10 @@ Questo non è compatibile con una chiusura Human Review affidabile del gesto com
 
 La correzione deve preservare l'idempotenza e non introdurre un archivio parallelo.
 
+### Chiarimento retrospettivo HR-02 — 2026-10-09
+
+Sul candidato `c6d877cb…` la persistenza parziale descritta sopra era **recuperabile e retry-idempotent per le proposte non dismesse** grazie al `dedupeKey` e al riuso/skip degli elementi già accettati. HR-02 non classificava quindi il comportamento come corruzione dei dati e non imponeva l'atomicità come unica soluzione: il difetto di review era la discrepanza tra il gesto/copy percepito come unitario e la possibilità di scritture parziali durevoli. La chiusura resta valida sia con bundle atomico nel trusted boundary sia con semantica di progresso/recupero esplicita e verificata. Gli stati successivi di #692 vanno giudicati sul loro exact head e non riscrivono retroattivamente questo checkpoint.
+
 ## Copertura E2E specifica mancante
 
 Il run HVA FULL copre `Progetta → UDA` e la superficie `uda-authoring-entry`, ma non espone un journey browser dedicato e nominato che provi end-to-end:

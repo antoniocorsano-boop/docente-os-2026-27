@@ -4,7 +4,7 @@
 
 **Goal:** Generalize the existing UDA-only X5 authoring engine so it can safely host `FINAL_REPORT` documents while preserving the current UDA workflow unchanged.
 
-**Architecture:** Extend the existing `authored_documents` model additively instead of replacing it. Keep `open_uda_authoring` as a compatibility contract, add a final-report-specific opening boundary, make source/template/context fields conditional by document kind, and retain immutable versioning plus optimistic concurrency.
+**Architecture:** Extend the existing `authored_documents` model additively instead of replacing it. Keep `open_uda_authoring` as a compatibility contract and generalize schema/domain support for `FINAL_REPORT`, but **do not create a standalone title/body-only FINAL_REPORT opening boundary**. The first FINAL_REPORT version is created only by DOC-04 `create_structured_final_report_draft`, which creates/reuses identity and persists the first structured version, provenance and renderer pins atomically. Source/context fields remain conditional by document kind, with immutable versioning plus optimistic concurrency preserved. Renderer base/template pins are version-level concerns owned by DOC-04 structured authoring, not document-identity fields in this tranche.
 
 **Tech Stack:** TypeScript, Supabase/Postgres/RLS/RPC, Next.js server runtime, Node `tsx --test`.
 
@@ -15,19 +15,19 @@
 - UDA X5A/X5B behavior must remain unchanged.
 - `AuthoredDocumentKind` becomes `'UDA' | 'FINAL_REPORT'` only in this tranche.
 - UDA still requires `source_asset_id`.
-- FINAL_REPORT requires workspace, academic year, section, teaching discipline, and active template version.
-- Document opening is explicit; navigation alone never creates a document.
+- FINAL_REPORT identity requires workspace, academic year, section and teaching discipline. Exact eligible institutional-base + family-template pins are selected and persisted on the first immutable version by DOC-04, not on the document identity here.
+- Document creation is explicit; navigation alone never creates a document. For `FINAL_REPORT`, no unstructured open/create path may expose a first version before DOC-04 structured atomic creation.
 - Every save creates a new immutable version.
 - Optimistic concurrency stays mandatory.
 - Direct authenticated table writes remain revoked.
 - No finalization/semantic sections/provenance tables in this plan; those belong to DOC-04 authoring plan.
-- Reserve migration number `0061`; rebase and verify number availability before execution.
+- Migration number is not pre-reserved; at execution rebase on governed current `develop`, inspect integrated migration lineage and use the next free contiguous version.
 
 ## Review Focus
 
 - Existing UDA rows with non-null `source_asset_id` must remain valid after migration.
-- A FINAL_REPORT cannot be opened for a section/discipline outside the active workspace/year.
-- A FINAL_REPORT cannot use a retired/non-active template version.
+- A FINAL_REPORT cannot be created for a section/discipline outside the active workspace/year.
+- DOC-01 does not select renderer versions; DOC-04 first-version creation must reject blocked/retired/ineligible base or family-template versions and persist exact version-level pins.
 - Concurrent saves must still fail with the existing reload-before-saving behavior.
 - A generic refactor must not silently change UDA title/body limits or source-category validation.
 
@@ -41,7 +41,7 @@
 
 **Interfaces:**
 - `AuthoredDocumentKind = 'UDA' | 'FINAL_REPORT'`.
-- `AuthoredDocument` adds nullable `sourceAssetId`, `sectionId`, `teachingDisciplineId`, `templateVersionId`.
+- `AuthoredDocument` adds nullable `sourceAssetId`, `sectionId`, `teachingDisciplineId`. Renderer pins are not document-identity fields in this tranche.
 - Produces:
 
 ```ts
@@ -57,7 +57,6 @@ Assert:
 ```ts
 assert.deepEqual(validateAuthoredDocumentContext(validUda), [])
 assert.deepEqual(validateAuthoredDocumentContext(validFinalReport), [])
-assert.ok(validateAuthoredDocumentContext(finalReportWithoutTemplate).includes('FINAL_REPORT_TEMPLATE_REQUIRED'))
 assert.ok(validateAuthoredDocumentContext(udaWithoutSource).includes('UDA_SOURCE_REQUIRED'))
 ```
 
@@ -85,17 +84,17 @@ git commit -m "refactor: generalize authored document domain"
 ### Task 2: Add a backward-compatible Supabase migration
 
 **Files:**
-- Create: `product/supabase/migrations/0061_generalized_authored_documents.sql`
+- Create: next free migration `<NNNN>_generalized_authored_documents.sql` after refreshing the integrated lineage
 - Create: `product/src/core/infrastructure/supabase/generalized-authoring-migration-contract.test.ts`
 - Modify after generation if required: `product/src/lib/supabase/database.types.ts`
 
 **Interfaces:**
-- Alters `authored_documents` with nullable `source_asset_id` plus `section_id`, `teaching_discipline_id`, `template_version_id`.
+- Alters `authored_documents` with nullable `source_asset_id` plus `section_id`, `teaching_discipline_id`. Renderer pins are persisted at immutable-version level by DOC-04, not as mutable/current document identity metadata.
 - Adds `FINAL_REPORT` to document-kind constraint.
 - Adds partial uniqueness:
   - UDA unique by `workspace_id + source_asset_id + document_kind`.
   - FINAL_REPORT unique by `workspace_id + academic_year_id + section_id + teaching_discipline_id + document_kind`.
-- Produces `open_final_report_authoring(...) -> uuid`.
+- **Does not** introduce `open_final_report_authoring(...)`; DOC-04 owns the sole first-version boundary through `create_structured_final_report_draft(...)`.
 - Preserves `open_uda_authoring(...)` signature and behavior.
 
 - [ ] **Step 1: Write failing SQL contract test**
@@ -104,10 +103,9 @@ Assertions must pin:
 
 ```ts
 assert.match(sql, /document_kind.*FINAL_REPORT/s)
-assert.match(sql, /open_final_report_authoring/)
+assert.doesNotMatch(sql, /open_final_report_authoring/)
 assert.match(sql, /open_uda_authoring/)
 assert.match(sql, /document changed; reload before saving/)
-assert.match(sql, /template_version_id/)
 ```
 
 - [ ] **Step 2: Run test and verify RED**
@@ -116,27 +114,9 @@ Run: `cd product && npx tsx --test src/core/infrastructure/supabase/generalized-
 
 - [ ] **Step 3: Implement migration**
 
-`open_final_report_authoring` arguments:
+This migration only generalizes the authored-document schema and constraints needed by `FINAL_REPORT`; it must **not** create a title/body-only FINAL_REPORT row/version. Workspace/year/section/discipline validation and base/template eligibility for first creation belong to DOC-04 `create_structured_final_report_draft(...)`, where identity, structured v1, source manifest and exact renderer pins are persisted in one transaction.
 
-```text
-target_workspace_id uuid
-target_academic_year_id uuid
-target_section_id uuid
-target_teaching_discipline_id uuid
-target_template_version_id uuid
-initial_title text
-initial_body_markdown text
-```
-
-Server-side checks:
-
-- authenticated workspace member;
-- academic year belongs to workspace;
-- section belongs to workspace/year;
-- teaching discipline belongs to workspace/year and is valid for the section context according to existing assignment data;
-- template version is `ACTIVE`, belongs to the workspace/institution scope and kind `FINAL_REPORT`;
-- same existing 300-char title and 250000-char body limits;
-- existing FINAL_REPORT is returned rather than duplicated.
+The generalized schema must still make those context fields representable and enforce the uniqueness needed for one current FINAL_REPORT identity per workspace + academic year + section + discipline.
 
 - [ ] **Step 4: Run SQL contract test and regenerate types**
 
@@ -145,7 +125,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add product/supabase/migrations/0061_generalized_authored_documents.sql product/src/core/infrastructure/supabase/generalized-authoring-migration-contract.test.ts product/src/lib/supabase/database.types.ts
+git add product/supabase/migrations/<NNNN>_generalized_authored_documents.sql product/src/core/infrastructure/supabase/generalized-authoring-migration-contract.test.ts product/src/lib/supabase/database.types.ts
 git commit -m "feat: generalize versioned document persistence"
 ```
 
@@ -166,23 +146,11 @@ get(documentId: string): Promise<AuthoredDocumentSnapshot | null>
 save(input: SaveAuthoredDocumentVersionInput): Promise<number>
 ```
 
-- Add:
-
-```ts
-openFinalReport(input: {
-  workspaceId: string
-  academicYearId: string
-  sectionId: string
-  teachingDisciplineId: string
-  templateVersionId: string
-  initialTitle: string
-  initialBodyMarkdown: string
-}): Promise<string>
-```
+- Do **not** add `openFinalReport(...)`. Repository generalization in this tranche maps FINAL_REPORT identities/snapshots and preserves existing generic read/save compatibility only; first creation is delegated to the structured DOC-04 repository boundary.
 
 - [ ] **Step 1: Write failing repository tests**
 
-Cover raw mapping for UDA and FINAL_REPORT, null source on FINAL_REPORT, final-report RPC argument mapping, and unchanged UDA RPC mapping.
+Cover raw mapping for UDA and FINAL_REPORT, null source on FINAL_REPORT, absence of any standalone FINAL_REPORT opening RPC, and unchanged UDA RPC mapping.
 
 - [ ] **Step 2: Run focused tests and verify RED**
 
@@ -286,6 +254,6 @@ git commit -m "docs: certify generalized document ownership"
 
 ## Self-Review
 
-- Spec coverage: UDA compatibility, FINAL_REPORT context, active template dependency, immutable versions, optimistic concurrency and writer boundaries all have tasks.
+- Spec coverage: UDA compatibility, FINAL_REPORT context/schema support, **single structured atomic first-version boundary owned by DOC-04**, immutable versions, optimistic concurrency and writer boundaries all have tasks.
 - Type consistency: repository raw mapping matches Task 1 domain nullable fields.
 - Review Focus coverage: legacy UDA → Tasks 2/4; cross-workspace context → Task 2; retired template → Task 2; concurrent save → Task 2/3; title/body/source regression → Tasks 2/4.

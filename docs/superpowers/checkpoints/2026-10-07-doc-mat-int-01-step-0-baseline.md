@@ -166,6 +166,10 @@ Ordine canonico confermato:
 
 `STEP 1 #692 → STEP 2 #695 → STEP 3 #693 → STEP 4+ integrazione`
 
+### Nota di supersessione — 2026-10-09
+
+L'ordine sopra resta **evidenza storica del checkpoint del 7 ottobre** e non va reinterpretato come ordine di integrazione corrente. La governance successiva ha stabilito che il contratto documentale #693 deve essere stabilizzato e sottoposto a Human Review **prima** di qualunque promozione runtime di #695. L'ordine operativo corrente è quindi governato da COORD-01 e prevale sulle prescrizioni operative di questo checkpoint storico; questa nota non altera gli exact head o i giudizi registrati il 7 ottobre.
+
 ## Prossimo passo unico
 
 **STEP 1 — chiusura linea Materiali #692.**

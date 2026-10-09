@@ -311,7 +311,8 @@ Constraints and authority:
 - after acquiring the serialization boundary, the writer loads and validates the target TeachingSession and LessonDesignExtension inside the same trusted transaction;
 - the TeachingSession must be current/non-superseded and belong to the same workspace, academic year, section/lesson context as the accepted extension;
 - the LessonDesignExtension must exist, belong to that same context and have `status = ACCEPTED` at recording time;
-- the writer reads the extension’s current `revision`, verifies that this revision is the accepted revision represented by the current acceptance state/decision history, and persists that value as `accepted_revision`; the caller cannot supply or override it;
+- the teacher action supplies the revision it actually displayed as `expected_accepted_revision` **only as a compare-only intent precondition**; after locking the extension, the writer reads the current accepted revision and rejects the request if it differs, preventing a stale action opened on revision N from recording use for a later N+1;
+- after that equality check, the writer still derives and persists `accepted_revision` from trusted server state; the caller cannot choose or override the stored revision;
 - in the same locked transaction the writer persists `accepted_material_snapshot` from the exact accepted revision before any later in-place revision can change title/body/cue/minutes/source/placement fields; the snapshot is immutable evidence and cannot be client-supplied or rewritten;
 - workspace/session/extension/context mismatch, unauthorized caller, superseded session, PROPOSED/MODIFIED/DISMISSED extension, or a state/revision change detected by the atomic predicate fails before any receipt is written;
 - the receipt contains no student data and does not create a parallel document/evidence archive.
@@ -321,11 +322,12 @@ Trusted writer contract remains caller-minimal:
 ```text
 record_teaching_session_material_usage(
   target_teaching_session_id uuid,
-  target_lesson_extension_id uuid
+  target_lesson_extension_id uuid,
+  expected_accepted_revision integer
 ) -> material_usage_receipt
 ```
 
-The RPC derives `accepted_revision`, `accepted_material_snapshot`, `recorded_by` and `recorded_at` server-side after authorization, serialization and context validation. The ordinary teacher UI exposes an explicit action such as **“Segna come usato”** / **“Usato in questa lezione”** inside the current lesson/material surface. The action is always teacher-initiated: Atlas, Materiali import, acceptance of a bundle, opening the lesson or rendering evidence must never create a usage receipt automatically.
+`expected_accepted_revision` is never stored as authority: it is compared after serialization against the server-resolved current accepted revision and a mismatch fails closed before receipt lookup/insert. The RPC then derives `accepted_revision`, `accepted_material_snapshot`, `recorded_by` and `recorded_at` server-side after authorization, serialization and context validation. The ordinary teacher UI exposes an explicit action such as **“Segna come usato”** / **“Usato in questa lezione”** inside the current lesson/material surface. The action is always teacher-initiated: Atlas, Materiali import, acceptance of a bundle, opening the lesson or rendering evidence must never create a usage receipt automatically.
 
 **Internal read model:**
 
@@ -380,6 +382,7 @@ Read rules:
 - [ ] RED trusted recording on current session + matching ACCEPTED extension persists one receipt with server-derived `accepted_revision` + immutable `accepted_material_snapshot`, and execution evidence reconstructs the used material from that snapshot.
 - [ ] RED duplicate recording for the same session+extension+acceptedRevision is idempotent / uniqueness-safe and never duplicates evidence.
 - [ ] RED revise → re-accept the same extension ID increments revision: receipt for revision N still reconstructs the exact N content after the mutable extension becomes N+1, never makes N+1 used, and a new explicit teacher action is required for N+1.
+- [ ] RED stale-action intent: UI loaded revision N, concurrent revise/re-accept commits N+1 before the receipt writer obtains its lock, then `expected_accepted_revision=N` is rejected and no N+1 receipt is created from the stale gesture.
 - [ ] RED concurrency: receipt recording racing with `revise_lesson_design_extension` is serialized; no committed receipt may pair revision N with N+1 content/status, and exactly one valid ordering wins.
 - [ ] RED concurrency: receipt recording racing with TeachingSession supersede is serialized; a receipt cannot commit for a session that became non-current before the protected insert/invariant check.
 - [ ] RED unauthenticated caller fails before persistence.
@@ -424,6 +427,7 @@ curricolo applicabile Tecnologia Seconda
 - accepted material without persisted receipt for its current accepted revision is not “used”;
 - receipt for an older accepted revision preserves its own immutable used-content snapshot but does not carry usage forward to a later revision after revise → re-accept;
 - concurrent revise or session supersede cannot interleave between receipt validation and persistence to create stale/invalid authoritative evidence;
+- a stale teacher gesture for accepted revision N cannot be rebound to N+1: expected-revision mismatch fails before persistence;
 - mismatched/non-ACCEPTED material cannot receive a valid usage receipt;
 - no technical code in professional output.
 

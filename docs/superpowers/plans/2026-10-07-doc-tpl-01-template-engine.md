@@ -78,8 +78,11 @@ export type InstitutionalBaseStatus =
   | 'RETIRED'
   | 'BLOCKED'
 
-export type InstitutionalBaseVersionDraft = {
+export type CreateInstitutionalBaseInput = {
   name: string
+}
+
+export type InstitutionalBaseVersionDraft = {
   version: number
   identityProfile: InstitutionalIdentityProfile
   headerProfile: InstitutionalHeaderProfile
@@ -136,7 +139,7 @@ assert.equal(reviewDocumentTemplate(requiredSensitiveDraft).result, 'REVIEW_REQU
 assert.deepEqual(findForbiddenTechnicalReferences('Classe 2C · B03 · uuid 123e4567-e89b-12d3-a456-426614174000'), ['BXX_CODE', 'UUID'])
 ```
 
-Also assert that `DocumentTemplateVersionDraft` contains no institutional-logo/header/footer/typography/page-geometry copy and that `InstitutionalRenderPin` requires both version streams.
+Also assert that `InstitutionalBase.name` is stable identity metadata supplied only by `CreateInstitutionalBaseInput` (not repeated in `InstitutionalBaseVersionDraft`), that `DocumentTemplateVersionDraft` contains no institutional-logo/header/footer/typography/page-geometry copy, and that `InstitutionalRenderPin` requires both version streams.
 
 - [ ] **Step 2: Run focused tests and verify RED**
 - [ ] **Step 3: Implement the minimum domain types and validators.**

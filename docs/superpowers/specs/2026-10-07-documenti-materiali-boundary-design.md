@@ -290,7 +290,7 @@ Quando la lezione viene registrata, il sistema può rendere disponibili alla lin
 - unità / UDA collegata;
 - data e stato della lezione;
 - attività effettivamente svolta;
-- materiali utilizzati;
+- materiali utilizzati **solo quando esiste una receipt esplicita, durevole e autorevole registrata dal docente per la TeachingSession corrente/non-superseded, legata alla stessa revisione ACCEPTED e al relativo snapshot immutabile**; senza tale receipt il materiale resta pianificato/disponibile, non “usato”;
 - evidenze e osservazioni compatibili con privacy e ruolo;
 - eventuale scostamento fra previsto e svolto.
 
@@ -382,7 +382,7 @@ Il confine Documenti ↔ Materiali è qualificabile soltanto se:
 3. la lezione è il punto operativo principale di raccordo;
 4. un materiale può essere associato a una lezione solo attraverso un'azione esplicita;
 5. l'uso di un materiale non modifica automaticamente Programmazione o UDA;
-6. una lezione registrata può alimentare Programma svolto e Relazione finale come evidenza strutturata;
+6. una lezione registrata può alimentare Programma svolto e Relazione finale come evidenza strutturata; per i materiali, l'uso effettivo è attestato soltanto dalla receipt durevole della TeachingSession corrente sulla stessa revisione accettata, mai dalla sola associazione o dallo stato `ACCEPTED`;
 7. nessun dato studente viene trasferito a Studio Atlas;
 8. la linea Documenti recepisce i riferimenti istituzionali senza ricopiarli meccanicamente;
 9. il docente mantiene la decisione su aggiornamento, interpretazione e finalizzazione;

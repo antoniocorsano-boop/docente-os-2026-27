@@ -22,6 +22,7 @@
 - No percentages unless a later approved professional metric defines them.
 - Technical codes may exist internally but the user-facing model must expose school-professional labels.
 - No bottom-navigation slot is added.
+- The read-only bundle carries an **internal compare-only freshness descriptor** derived from the authoritative plan/session/evidence state used to compose it. It is never user-facing and never treated as document provenance text.
 
 ## Review Focus
 
@@ -59,7 +60,7 @@ export type FinalReportConsistencyCode =
   | 'MISSING_ACTIVE_TEMPLATE'
   | 'MISSING_DISCIPLINE_CONTEXT'
 
-export type FinalReportEvidenceBundle = { /* exact fields pinned by tests */ }
+export type FinalReportEvidenceBundle = { /* exact fields pinned by tests, including internal evidenceFreshness */ }
 
 export function composeFinalReportEvidenceBundle(input: FinalReportEvidenceInput): FinalReportEvidenceBundle
 export function deriveFinalReportReadiness(bundle: FinalReportEvidenceBundle): {
@@ -108,6 +109,7 @@ institutionalSources
 humanRequired
 missingInformation
 internalProvenance
+evidenceFreshness
 ```
 
 - [ ] **Step 4: Run test and verify GREEN**
@@ -201,8 +203,10 @@ Assert:
 - section is resolved from Annual Plan snapshot and must match active year/workspace;
 - sessions are filtered to the requested discipline when `disciplineId` is present;
 - superseded sessions are retained only as internal provenance counts, not current execution;
+- `evidenceFreshness` deterministically captures the authoritative plan/session/evidence frontier needed to detect source drift between readiness and first-version creation (for example exact plan/source refs plus current-session/supersession frontier or an equivalent server-verifiable token);
 - active FINAL_REPORT template is required in `institutionalSources`;
-- no write method is called.
+- no write method is called;
+- a supersession/source-state change produces a different freshness descriptor, while identical authoritative state reproduces the same descriptor.
 
 - [ ] **Step 2: Run focused test and verify RED**
 

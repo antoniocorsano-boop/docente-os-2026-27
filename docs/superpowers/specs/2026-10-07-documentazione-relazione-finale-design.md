@@ -88,7 +88,6 @@ academic_year_id
 document_kind
 section_id
 teaching_discipline_id
-template_version_ref
 current_version_no
 title
 created_by
@@ -102,7 +101,7 @@ Per il pilot:
 FINAL_REPORT
 ```
 
-La versione template è obbligatoria internamente ma non viene stampata nel documento professionale.
+I riferimenti di rendering non appartengono all’identità documento: **ogni versione immutabile** pinna internamente la propria `InstitutionalBaseVersion` e la propria `DocumentTemplateVersion`. I pin non vengono stampati nel documento professionale.
 
 ### 6.2 Versione
 
@@ -114,6 +113,10 @@ document_id
 version_no
 title
 body_markdown
+institutional_base_id
+institutional_base_version_no
+family_template_id
+family_template_version_no
 created_by
 created_at
 ```
@@ -409,7 +412,7 @@ Output target:
 - PDF/stampa;
 - DOCX istituzionale quando la relativa tranche sarà qualificata.
 
-L'export usa sempre una versione salvata del documento e una versione precisa del template, ma tali riferimenti restano interni salvo scelta amministrativa esplicita.
+L'export usa sempre una versione salvata del documento e le versioni precise della base istituzionale e del template, ma **identificatori, numeri/version ref e provenance tecnica restano sempre interni** e non vengono mai stampati/esportati. Eventuali informazioni amministrative non tecniche possono essere mostrate soltanto in superfici interne dedicate, separate dal documento professionale.
 
 ## 22. Coerenza temporale
 
@@ -495,7 +498,7 @@ Una versione finalizzata non viene modificata. Una revisione successiva crea una
 4. Il percorso effettivamente svolto è ricostruito senza inventare attività.
 5. Sessioni sostituite non sono doppio-conteggiate.
 6. Attività non riconciliate restano visibili internamente senza allocazioni fittizie.
-7. La bozza conserva manifest e template version ref internamente.
+7. La bozza conserva manifest e pin esatti della base istituzionale e del template di famiglia sulla stessa versione immutabile.
 8. Cambiare una fonte non modifica una versione salvata.
 9. Ogni salvataggio crea una nuova versione immutabile.
 10. La provenienza è ispezionabile nella UI ma assente nell'output.
