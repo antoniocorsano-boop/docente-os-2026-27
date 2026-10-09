@@ -79,6 +79,7 @@ test('canonical alignment adds a separately versioned institutional base registr
   assert.match(sql, /save_institutional_base_version/i)
   assert.match(sql, /record_institutional_base_quality_review/i)
   assert.match(sql, /activate_institutional_base_version/i)
+  assert.match(sql, /institutional_base_snapshot/i)
   assert.match(sql, /institutional_base_version_snapshot/i)
 })
 
@@ -95,11 +96,34 @@ test('both registries expose trusted block clear-block and retirement transition
   assert.match(sql, /lifecycle_decisions/i)
 })
 
+test('lifecycle mutation signatures trust only identity plus human note, never caller capability', () => {
+  const sql = readFileSync(canonicalAlignmentMigrationPath, 'utf8')
+  for (const rpc of [
+    'block_document_template',
+    'clear_document_template_block',
+    'retire_document_template',
+    'block_institutional_base',
+    'clear_institutional_base_block',
+    'retire_institutional_base',
+  ]) {
+    assert.match(sql, new RegExp(`function public\\.${rpc}\\(\\s*target_(?:template|base)_id uuid,\\s*target_note text\\s*\\)`, 'i'))
+  }
+  assert.doesNotMatch(sql, /target_(?:role|capability|governance_role)/i)
+})
+
 test('institutional lifecycle authority reuses canonical OWNER ADMIN workspace roles', () => {
   const sql = readFileSync(canonicalAlignmentMigrationPath, 'utf8')
   assert.match(sql, /workspace_memberships/i)
   assert.match(sql, /role\s+in\s*\(\s*'OWNER'\s*,\s*'ADMIN'\s*\)/i)
   assert.match(sql, /institutional lifecycle authority required/i)
+})
+
+test('lifecycle decision evidence persists the trusted actor workspace role', () => {
+  const sql = readFileSync(canonicalAlignmentMigrationPath, 'utf8')
+  assert.match(sql, /actor_workspace_role text not null/i)
+  assert.match(sql, /actor_workspace_role[^\n]*check[^\n]*OWNER[^\n]*ADMIN/i)
+  assert.match(sql, /decided_by/i)
+  assert.match(sql, /decided_at/i)
 })
 
 test('RETIRED is terminal for every mutating boundary in both registries', () => {
@@ -112,6 +136,18 @@ test('BLOCKED identities cannot activate directly and clearBlock only returns th
   const sql = readFileSync(canonicalAlignmentMigrationPath, 'utf8')
   assert.match(sql, /cannot activate BLOCKED identity/i)
   assert.match(sql, /set status = 'REVIEW_REQUIRED'/i)
+})
+
+test('save and quality review preserve BLOCKED until explicit clearBlock', () => {
+  const sql = readFileSync(canonicalAlignmentMigrationPath, 'utf8')
+  const preserveBlockGuards = sql.match(/preserve BLOCKED until clearBlock/gi) ?? []
+  assert.ok(preserveBlockGuards.length >= 4, `expected BLOCKED preservation for save/review in both registries, found ${preserveBlockGuards.length}`)
+})
+
+test('retirement clears active pointers for future selection in both registries', () => {
+  const sql = readFileSync(canonicalAlignmentMigrationPath, 'utf8')
+  const clearPointers = sql.match(/active_version_no\s*=\s*null/gi) ?? []
+  assert.ok(clearPointers.length >= 2, `expected both retirement paths to clear active pointers, found ${clearPointers.length}`)
 })
 
 test('historical exact-pin reads remain available after block or retirement', () => {
