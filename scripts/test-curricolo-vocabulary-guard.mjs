@@ -10,6 +10,7 @@ import {
 const registry = {
   schemaVersion: 1,
   canonicalTerm: "curricolo",
+  baselineRef: "a9006cb632fc5c3c9b1b0e4a9f2587c55c9c5ba2",
   legacyTokens: ["curriculum", "curricular"],
   exceptions: [],
 };
