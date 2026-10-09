@@ -278,6 +278,69 @@ $$;
 
 revoke all on function private.compute_institutional_base_quality_review(jsonb) from public;
 
+-- The pre-v0095 base RPC required callers to reproduce the complete findings
+-- array. That makes the client, not the trusted reviewer, the effective source
+-- of truth. Preserve all lifecycle guards in the v0094 chain, but always pass
+-- the database-computed findings into that chain. This mirrors the family RPC.
+alter function public.record_institutional_base_quality_review(uuid, integer, text, jsonb, text)
+  rename to record_institutional_base_quality_review_v0094;
+revoke all on function public.record_institutional_base_quality_review_v0094(uuid, integer, text, jsonb, text) from public, authenticated;
+
+create function public.record_institutional_base_quality_review(
+  target_base_id uuid,
+  target_version_no integer,
+  target_result text,
+  target_findings jsonb default '[]'::jsonb,
+  target_note text default null
+) returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  uid uuid := auth.uid();
+  workspace uuid;
+  profile jsonb;
+  computed jsonb;
+  computed_result text;
+  computed_findings jsonb;
+begin
+  if uid is null then raise exception 'authentication required'; end if;
+
+  select base.workspace_id into workspace
+  from public.institutional_bases base
+  where base.id = target_base_id;
+  if workspace is null or not private.is_workspace_member(workspace) then
+    raise exception 'institutional base not available';
+  end if;
+
+  select version.profile_json into profile
+  from public.institutional_base_versions version
+  where version.base_id = target_base_id
+    and version.version_no = target_version_no;
+  if profile is null then raise exception 'institutional base version not available'; end if;
+
+  computed := private.compute_institutional_base_quality_review(profile);
+  computed_result := computed->>'result';
+  computed_findings := coalesce(computed->'findings', '[]'::jsonb);
+
+  if target_result is distinct from computed_result then
+    raise exception 'quality review does not match deterministic review';
+  end if;
+
+  return public.record_institutional_base_quality_review_v0094(
+    target_base_id,
+    target_version_no,
+    computed_result,
+    computed_findings,
+    target_note
+  );
+end;
+$$;
+
+revoke all on function public.record_institutional_base_quality_review(uuid, integer, text, jsonb, text) from public;
+grant execute on function public.record_institutional_base_quality_review(uuid, integer, text, jsonb, text) to authenticated;
+
 select private.advance_runtime_schema_contract('0095_document_template_trusted_purity');
 
 commit;
