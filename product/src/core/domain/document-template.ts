@@ -95,6 +95,77 @@ export type DocumentTemplateVersionDraft = {
   sections: TemplateSection[]
 }
 
+export type CreateInstitutionalBaseInput = {
+  name: string
+}
+
+export type InstitutionalIdentityProfile = {
+  institutionName: string
+  logoAssetRef: string | null
+}
+
+export type InstitutionalHeaderProfile = {
+  lines: string[]
+}
+
+export type InstitutionalFooterProfile = {
+  lines: string[]
+}
+
+export type InstitutionalTypographyProfile = {
+  bodyFontFamily: string
+  headingFontFamily: string
+  baseFontSizePt: number
+  lineHeight: number
+}
+
+export type InstitutionalPageGeometryProfile = {
+  format: 'A4'
+  orientation: 'PORTRAIT' | 'LANDSCAPE'
+  marginTopMm: number
+  marginRightMm: number
+  marginBottomMm: number
+  marginLeftMm: number
+}
+
+export type InstitutionalCommonTableProfile = {
+  headerWeight: 'NORMAL' | 'BOLD'
+  cellPaddingMm: number
+  repeatHeader: boolean
+}
+
+export type InstitutionalSignatureProfile = {
+  showLocation: boolean
+  showDate: boolean
+  label: string
+}
+
+export type InstitutionalAccessibilityProfile = {
+  minimumFontSizePt: number
+  highContrast: boolean
+  tableHeadersRequired: boolean
+}
+
+export type InstitutionalBaseVersionDraft = {
+  version: number
+  identityProfile: InstitutionalIdentityProfile
+  headerProfile: InstitutionalHeaderProfile
+  footerProfile: InstitutionalFooterProfile
+  typographyProfile: InstitutionalTypographyProfile
+  pageGeometryProfile: InstitutionalPageGeometryProfile
+  commonTableProfile: InstitutionalCommonTableProfile
+  signatureProfile: InstitutionalSignatureProfile
+  accessibilityProfile: InstitutionalAccessibilityProfile
+  sourceRevisionRefs: string[]
+}
+
+export type InstitutionalRenderPin = {
+  institutionalBaseId: string
+  institutionalBaseVersionNo: number
+  familyTemplateId: string
+  familyTemplateVersionNo: number
+}
+
 export type TemplateValidation = {
   valid: boolean
   codes: string[]
@@ -140,6 +211,52 @@ export function validateDocumentTemplate(draft: DocumentTemplateVersionDraft): T
       if (!field.label.trim()) codes.push('FIELD_LABEL_REQUIRED')
     }
   }
+
+  const uniqueCodes = [...new Set(codes)]
+  return { valid: uniqueCodes.length === 0, codes: uniqueCodes }
+}
+
+const FORBIDDEN_LAYOUT_KEYS = new Set(['css', 'html', 'rawcss', 'rawhtml', 'style', 'classname', 'script', 'jsx'])
+
+function hasForbiddenLayoutPayload(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false
+  if (Array.isArray(value)) return value.some(hasForbiddenLayoutPayload)
+
+  for (const [key, child] of Object.entries(value)) {
+    if (FORBIDDEN_LAYOUT_KEYS.has(key.toLowerCase())) return true
+    if (hasForbiddenLayoutPayload(child)) return true
+  }
+  return false
+}
+
+function isPositiveFinite(value: number): boolean {
+  return Number.isFinite(value) && value > 0
+}
+
+function hasOnlyNonBlankLines(lines: string[]): boolean {
+  return lines.every((line) => typeof line === 'string' && line.trim().length > 0)
+}
+
+export function validateInstitutionalBase(draft: InstitutionalBaseVersionDraft): TemplateValidation {
+  const codes: string[] = []
+
+  if (!Number.isInteger(draft.version) || draft.version < 1) codes.push('INVALID_INSTITUTIONAL_BASE_VERSION')
+  if (!draft.identityProfile.institutionName.trim()) codes.push('INSTITUTION_NAME_REQUIRED')
+  if (!hasOnlyNonBlankLines(draft.headerProfile.lines)) codes.push('INVALID_HEADER_PROFILE')
+  if (!hasOnlyNonBlankLines(draft.footerProfile.lines)) codes.push('INVALID_FOOTER_PROFILE')
+  if (!draft.typographyProfile.bodyFontFamily.trim() || !draft.typographyProfile.headingFontFamily.trim()) {
+    codes.push('FONT_FAMILY_REQUIRED')
+  }
+  if (!isPositiveFinite(draft.typographyProfile.baseFontSizePt)) codes.push('INVALID_BASE_FONT_SIZE')
+  if (!isPositiveFinite(draft.typographyProfile.lineHeight)) codes.push('INVALID_LINE_HEIGHT')
+  if (!isPositiveFinite(draft.pageGeometryProfile.marginTopMm)) codes.push('INVALID_PAGE_GEOMETRY')
+  if (!isPositiveFinite(draft.pageGeometryProfile.marginRightMm)) codes.push('INVALID_PAGE_GEOMETRY')
+  if (!isPositiveFinite(draft.pageGeometryProfile.marginBottomMm)) codes.push('INVALID_PAGE_GEOMETRY')
+  if (!isPositiveFinite(draft.pageGeometryProfile.marginLeftMm)) codes.push('INVALID_PAGE_GEOMETRY')
+  if (!isPositiveFinite(draft.commonTableProfile.cellPaddingMm)) codes.push('INVALID_TABLE_PROFILE')
+  if (!draft.signatureProfile.label.trim()) codes.push('SIGNATURE_LABEL_REQUIRED')
+  if (!isPositiveFinite(draft.accessibilityProfile.minimumFontSizePt)) codes.push('INVALID_ACCESSIBILITY_PROFILE')
+  if (hasForbiddenLayoutPayload(draft)) codes.push('ARBITRARY_LAYOUT_PAYLOAD_FORBIDDEN')
 
   const uniqueCodes = [...new Set(codes)]
   return { valid: uniqueCodes.length === 0, codes: uniqueCodes }
