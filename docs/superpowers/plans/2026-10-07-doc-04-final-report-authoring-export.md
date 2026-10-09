@@ -24,6 +24,8 @@
 - Saving a newer version does not transfer validation/finalization from the previous version.
 - Version-advancing saves and finalization serialize on the same authored-document identity (row lock or equivalent atomic compare) so `FINALIZED(v1)` cannot be recorded after v2 has become current.
 - First-version creation revalidates the evidence bundle freshness descriptor at the trusted persistence boundary; stale evidence is rejected before any document/version write.
+- Freshness revalidation and first-version persistence participate in a **shared source-frontier serialization protocol** keyed to the report context (workspace + academic year + section + discipline). Every canonical writer that can change the Annual Plan execution/session/evidence frontier represented by the bundle must participate in the same transaction-scoped lock/atomic revision protocol. If that shared protocol is not available, first-version creation remains blocked rather than degrading to read-then-write.
+- First-version creation also locks/resolves the exact institutional-base and family-template registry identities through the same lifecycle serialization used by DOC-TPL-01 mutations, then revalidates that both exact pinned versions are still eligible for a new document. `BLOCKED`, `RETIRED`, inactive, wrong-kind or otherwise ineligible pins fail before any document/version write.
 - A finalized version remains immutable and historical; later edits create a new version that must be validated/finalized independently.
 - Export uses a saved document version plus the exact pinned `InstitutionalBaseVersion` and `DocumentTemplateVersion`.
 - Professional output contains no CAN/Bxx, UUID, DB/entity names, internal workflow states, provider/model names, Drive paths, hashes, provenance or “generato automaticamente”.
@@ -41,6 +43,8 @@
 - Saving v2 after finalized v1 preserves v1 and resets decision requirements for v2.
 - A save racing with finalization has one serial order: either v1 finalizes before v2 is created, or v2 becomes current first and finalization of stale v1 is rejected.
 - Initial creation yields exactly one structured v1, not a blank/unstructured historical v1 plus v2.
+- A source writer racing with first creation cannot commit between freshness validation and v1 persistence: both operations serialize on the same report-context source frontier.
+- A base/template block, retire or active-version change racing with first creation cannot produce a new document pinned to an ineligible renderer version.
 - Stale optimistic-concurrency save preserves local edits and returns reload/conflict semantics.
 - Any technical token in professional output blocks export.
 
@@ -76,7 +80,7 @@ record_authored_document_validation(target_document_id, target_version_no, ...) 
 finalize_authored_document_version(target_document_id, target_version_no, ...) -> void
 ```
 
-`create_structured_final_report_draft(...)` MUST execute in one transaction and either:
+`create_structured_final_report_draft(...)` MUST execute in one transaction. Before any document write it must acquire/participate in the shared source-frontier serialization for the target report context and the DOC-TPL lifecycle serialization for both renderer identities, re-read the authoritative evidence frontier, and revalidate exact renderer-pin eligibility. It then either:
 
 1. create/reuse the FINAL_REPORT document identity as appropriate;
 2. create the first/current immutable version;
@@ -92,6 +96,8 @@ or roll back everything. No externally observable incomplete v1 is allowed.
 
 - direct authenticated table writes are revoked;
 - membership/workspace/document-kind/version checks occur in the trusted boundary;
+- the exact `InstitutionalBaseVersion` and `DocumentTemplateVersion` pins are re-resolved/revalidated transactionally after locking their registry identities; both must still be eligible for new documents and match the requested workspace/kind/active selection;
+- DOC-TPL lifecycle mutation RPCs and first-version creation use the same identity-level serialization so a concurrent block/retire/activation cannot interleave after eligibility validation;
 - validation targets an existing immutable version and fails when mandatory professional inputs are incomplete;
 - finalization targets the current exact immutable version and requires explicit human confirmation;
 - finalization and `save_structured_authored_document_version` acquire the same authored-document serialization boundary (or equivalent atomic current-version predicate) before checking/updating current-version state;
@@ -105,6 +111,7 @@ or roll back everything. No externally observable incomplete v1 is allowed.
 - [ ] RED test: `VALIDATED(v1)` then `FINALIZED(v2)` is rejected.
 - [ ] RED test: incomplete required inputs cannot record `VALIDATED`, therefore cannot finalize.
 - [ ] RED concurrency tests cover both orderings of save-vs-finalize: finalization-before-save is preserved historically; save-before-finalize rejects stale finalization.
+- [ ] RED renderer-lifecycle race: base/template resolves eligible, then a concurrent block/retire/active-version change races with create; exactly one serialized ordering wins and create never persists v1 with an ineligible pin.
 - [ ] Implement migration/RPCs minimally.
 - [ ] Replay migrations + focused contract tests to GREEN; regenerate types.
 - [ ] Commit.
@@ -193,6 +200,7 @@ export type FinalReportDraft = {
 **Files:**
 - Create actions/tests under `documentazione/relazioni-finali/[sectionId]/`.
 - Modify readiness UI button only.
+- Reuse or add one canonical report-context source-frontier serialization primitive. The Annual Plan execution, TeachingSession current/supersede and teaching-evidence writers that can change this bundle frontier must acquire the same primitive before mutation; do not duplicate their domain semantics or write from Documentazione into those sources.
 
 **Server action:**
 
@@ -211,15 +219,19 @@ createFinalReportDraft(input: {
 2. require adequate factual readiness;
 3. resolve exact institutional-base version + FINAL_REPORT template version;
 4. compose deterministic structured draft;
-5. call **one atomic repository/RPC boundary** that first re-reads/revalidates the authoritative plan/session/evidence frontier against the supplied freshness descriptor, then creates/reuses document identity and persists the first structured immutable version + sections + sources + both pins;
-6. if the descriptor is stale (including a TeachingSession superseded after readiness was loaded), reject with reload/recompose semantics and write nothing;
-7. return that exact document/version.
+5. enter **one atomic repository/RPC boundary** and acquire the shared report-context source-frontier serialization plus the DOC-TPL identity/lifecycle serialization for both renderer pins;
+6. while those boundaries are held, re-read/revalidate the authoritative plan/session/evidence frontier against the supplied freshness descriptor and revalidate both exact renderer versions as eligible for new documents;
+7. if evidence is stale or either renderer pin is blocked/retired/inactive/wrong-kind/otherwise ineligible, reject with reload/recompose semantics and write nothing;
+8. only after those checks, create/reuse document identity and persist the first structured immutable version + sections + sources + both pins before releasing the serialization boundaries;
+9. return that exact document/version.
 
 There is no preceding `openFinalReport` call that exposes a blank/unstructured v1.
 
 - [ ] RED action test proves exactly one version is produced on first creation and it already has sections/sources/base/template pins.
 - [ ] RED rollback test proves a source/section failure leaves no partial document/version.
-- [ ] RED interleaving test: a TeachingSession/source frontier changes after evidence load but before create; the trusted boundary rejects stale evidence and persists no v1.
+- [ ] RED interleaving test: a TeachingSession/source frontier changes after evidence load but before create; the source writer and create share the same context serialization, exactly one ordering wins, and stale evidence persists no v1.
+- [ ] RED interleaving tests for Annual Plan execution, TeachingSession supersede/currentness and evidence writes prove none can commit between the protected freshness re-read and v1 persistence.
+- [ ] RED pin-lifecycle interleaving test: base/template becomes blocked/retired or active selection changes after action resolution but before create; trusted create rejects stale/ineligible pins and writes no v1.
 - [ ] Assert no source-domain writes.
 - [ ] Implement action and button, navigate to document editor.
 - [ ] Run tests + typecheck.
@@ -358,6 +370,8 @@ Documentazione
 - source updates do not mutate saved versions;
 - accepted-but-not-session-used material is not described as used;
 - stale evidence bundle after session supersession/source drift cannot create a first version;
+- source-frontier writers and first-create serialize on one context boundary, so no source change can commit between freshness check and v1 persistence;
+- renderer lifecycle changes and first-create serialize on the canonical DOC-TPL identity boundary, so no new v1 can pin a blocked/retired/ineligible version;
 - save/finalize races cannot finalize a version that ceased to be current;
 - technical tokens absent from UI/export;
 - bottom nav unchanged.
