@@ -106,3 +106,31 @@ test('family getVersion resolves exactly the requested historical version throug
     args: { target_template_id: 'tpl-1', target_version_no: 1 },
   }])
 })
+
+test('family workspace listing exposes reviewable identities while active listing remains ACTIVE-only', async () => {
+  const rows = [
+    { ...rawSnapshot.template, id: 'draft', status: 'DRAFT' as const, active_version_no: null },
+    { ...rawSnapshot.template, id: 'active', status: 'ACTIVE' as const },
+    { ...rawSnapshot.template, id: 'blocked', status: 'BLOCKED' as const, active_version_no: null },
+  ]
+  const createQuery = () => {
+    const filters: Array<[string, string]> = []
+    const query = {
+      eq(column: string, value: string) { filters.push([column, value]); return query },
+      order() { return query },
+      then(resolve: (value: { data: typeof rows; error: null }) => unknown, reject?: (reason: unknown) => unknown) {
+        const data = rows.filter((row) => filters.every(([column, value]) => String(row[column as keyof typeof row]) === value))
+        return Promise.resolve({ data, error: null }).then(resolve, reject)
+      },
+    }
+    return query
+  }
+  const client = {
+    rpc: async () => ({ data: null, error: null }),
+    from: () => ({ select: () => createQuery() }),
+  } as unknown as TemplateRepositoryClient
+  const repository = new SupabaseDocumentTemplateRepository(async () => client)
+
+  assert.deepEqual((await repository.listForWorkspace('ws-1')).map((item) => item.status), ['DRAFT', 'ACTIVE', 'BLOCKED'])
+  assert.deepEqual((await repository.listActive('ws-1')).map((item) => item.status), ['ACTIVE'])
+})
