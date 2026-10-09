@@ -27,7 +27,7 @@
 - Full-view actions must reveal the broader content, not merely scroll to a closed `<details>` element.
 - **Return continuity is a closed UI-surface token, not a URL.** For this pilot the only allowed return origin is `HOME`; no arbitrary `returnTo` string is carried into a registered action.
 - `/api/**`, authentication/handler routes, `/_next/**`, asset paths, technical routes, external URLs and all non-registered destinations are ineligible as Class return origins by construction.
-- Existing Class receipt/query semantics (`recorded`, `session`, `replanning`) are preserved; IUI only extends them with its own optional continuity/presentation parameters.
+- Existing Class receipt/query semantics (`recorded`, `session`, `replanning`) are preserved. IUI never passes their raw query values through the registry: the page first validates them against current canonical block/progress or current TeachingSession state, then exposes a typed receipt context to composition.
 - No automatic merge. Exact-head certification and Human Review are required before integration.
 
 ## Review Focus
@@ -38,6 +38,7 @@
 - Completed Class state may render a non-FOCUSED REVIEW composition without inventing a task.
 - Full-view access must actually expose broader content.
 - Home → Classe origin continuity must be explicit, safe, UI-only, and survive the transition to the Class full-view surface.
+- Validated Class feedback receipts must also survive that same-surface full-view transition without copying unvalidated query input.
 - No registered action may accept arbitrary href input or point to a mutation/route-handler endpoint.
 - Existing Class recording/completion/receipt boundaries remain explicit and server-revalidated.
 - Every new test must be included in the canonical `product/package.json` test command.
@@ -115,13 +116,11 @@ export type SurfaceComposition = {
 }
 ```
 
-`HumanTaskContext`, `HumanIntent` and `ExperienceMode` are imported from the canonical Human Task module and never redeclared.
-
-- [ ] Write RED tests proving HOME/CLASS compositions reuse canonical Human Task types, expose the exact closed `RegisteredActionId` union, and are serializable without JSX, HTML, CSS or executable-code fields.
-- [ ] Run the focused contract test and record RED.
-- [ ] Implement only the transport/presentation types and version constant.
-- [ ] Run focused test + `npm run typecheck` to GREEN; Task 1 must compile without any Task 3 file existing.
-- [ ] Commit independently.
+- [ ] RED tests proving HOME/CLASS compositions reuse canonical Human Task types, expose the exact closed `RegisteredActionId` union, and contain no JSX/HTML/CSS/executable-code field.
+- [ ] Run focused contract test and record RED.
+- [ ] Implement only Task 1 types/constants.
+- [ ] Run focused test + full `npm run typecheck` to GREEN before any Task 3 file exists.
+- [ ] Commit.
 
 ---
 
@@ -130,10 +129,6 @@ export type SurfaceComposition = {
 **Files:**
 - Modify: `product/src/core/presentation/task-continuity.ts`
 - Modify: `product/src/core/presentation/task-continuity.test.ts`
-
-**Interfaces:**
-
-Keep existing Knowledge continuity helpers intact, but define Class IUI continuity through a closed origin token:
 
 ```ts
 export type ClassTaskEntryMode = 'prepare' | 'teach' | 'record'
@@ -161,17 +156,17 @@ export function parseClassTaskEntry(input: {
 
 **Contract:**
 
-- `returnOrigin: 'HOME'` emits a compact closed token such as `origin=home`; it does not encode `/` as an arbitrary return URL.
-- parser accepts only exact registered token `home`; every other value becomes `null`.
-- `/api/google/drive/connect`, `/login`, `/_next/static/...`, `/knowledge`, `//evil.example`, `https://evil.example` and encoded variants do not become a return origin.
-- `sectionId` and `block` are safely encoded; only `prepare | teach | record` and `B01`…`B33` are accepted.
-- these values are hints, never authorization or state authority.
+- `returnOrigin: 'HOME'` emits `origin=home`, not a raw return URL.
+- only exact token `home` maps to `HOME`; all others map to `null`.
+- API/auth/`/_next`/arbitrary same-origin/external/encoded values never become a return origin.
+- only `prepare | teach | record` and canonical blocks `B01`…`B33` are accepted.
+- continuity is a hint, never authority.
 
-- [ ] RED tests: prepare/teach/record, encoding, invalid block, `origin=home`, unknown origin, API/auth/technical/external values and deterministic round-trip.
+- [ ] RED prepare/teach/record, encoding, invalid block, HOME origin, unknown/API/auth/technical/external origins and deterministic round-trip.
 - [ ] Verify RED.
-- [ ] Implement minimum closed-token helpers; preserve existing Knowledge continuity behavior.
+- [ ] Implement minimum closed-token helpers; preserve existing Knowledge continuity.
 - [ ] Run continuity + Human Task tests to GREEN.
-- [ ] Commit independently.
+- [ ] Commit.
 
 ---
 
@@ -182,9 +177,22 @@ export function parseClassTaskEntry(input: {
 - Create: `product/src/core/presentation/intelligent-ui-registry.test.ts`
 - Create: `product/src/core/presentation/intelligent-ui-policy.ts`
 - Create: `product/src/core/presentation/intelligent-ui-policy.test.ts`
-- Reuse: `RegisteredActionId` from Task 1, Human Task model, lesson-route builders and Task 2 continuity helpers.
+- Reuse `RegisteredActionId` from Task 1 and Task 2 continuity types.
 
 The initial block catalogue contains only `TASK_FOCUS` for HOME and `LESSON_FOCUS` for CLASS.
+
+Define a validated receipt context owned by the Class adapter/registry boundary, not by raw query strings:
+
+```ts
+export type ClassReceiptContext =
+  | { kind: 'RECORDED_BLOCK'; blockId: string }
+  | { kind: 'SESSION'; sessionId: string; replanning: boolean }
+```
+
+A `ClassReceiptContext` may be created only after the existing page logic has validated:
+
+- `recorded` against a canonical block with current completed progress; or
+- `session` against `currentTeachingSessions`; `replanning` is reduced to its current boolean presentation semantic.
 
 **Descriptor contract:**
 
@@ -200,32 +208,28 @@ type RegisteredActionDescriptor =
   | { id: 'CLASS_OPEN_COMPLETION'; label: string }
   | { id: 'CLASS_OPEN_PLANNING'; label: string; gradeQuery: 'prima' | 'seconda' | 'terza'; sectionId: string; blockId?: string | null; uda?: string | null; pack?: string | null }
   | { id: 'CLASS_RETURN_TO_ORIGIN'; label: string; origin: ClassReturnOrigin }
-  | { id: 'CLASS_SHOW_ALL'; label: string; sectionId: string; returnOrigin?: ClassReturnOrigin | null }
+  | { id: 'CLASS_SHOW_ALL'; label: string; sectionId: string; returnOrigin?: ClassReturnOrigin | null; receipt?: ClassReceiptContext | null }
 ```
 
 `resolveRegisteredAction()` is the only href factory.
 
-- `CLASS_RETURN_TO_ORIGIN` contains no href/raw path; `origin: 'HOME'` resolves to `/`.
-- `CLASS_SHOW_ALL` resolves to `/classi/<section>?view=all#class-full-view` and, when `returnOrigin === 'HOME'`, preserves the closed token in the same URL (for example `?view=all&origin=home#class-full-view`).
-- no descriptor carries `/api/**`, `/login`, `/_next/**`, technical paths or arbitrary same-origin/external URLs.
+- `CLASS_RETURN_TO_ORIGIN` has no href/raw path; `HOME` resolves to `/`.
+- `CLASS_SHOW_ALL` resolves the same Class route with `view=all`, optionally preserves `origin=home`, and optionally re-emits **only validated receipt data**:
+  - `RECORDED_BLOCK` → `recorded=<validated blockId>`;
+  - `SESSION` → `session=<validated current sessionId>` and, if `replanning`, a fixed presentation marker such as `replanning=1` (not the raw inbound value).
+- `CLASS_SHOW_ALL` never accepts a generic query object/string.
+- unknown receipt kinds/invalid block/session contexts fail before descriptor construction.
+- no descriptor carries API/auth/technical/arbitrary/external destinations.
 - `HOME_SHOW_ALL` resolves to `/?view=all#home-full-view`.
-- `CLASS_OPEN_PLANNING` constructs only typed `/progetta` routes.
-- unknown descriptors/origins fail closed.
 
-**Validator invariants:**
+**Validator invariants:** canonical mode, registered surface/block/action, FOCUSED budgets, required narrowing metadata, non-mutating full-view action, no API/handler/external destination.
 
-- mode matches canonical `resolveExperienceMode()`;
-- block/action belongs to the surface/mode registry;
-- FOCUSED has one primary action and ≤2 peer support actions;
-- narrowed surface has reason/context/full-view action;
-- full-view action is non-mutating;
-- no registry entry maps to API/handler, external destination, server action or DB operation.
-
-- [ ] RED registry tests for membership, route generation, fixed Home return, impossibility of raw href input, API/technical rejection, full-view routes and `origin=home` preservation through `CLASS_SHOW_ALL`.
-- [ ] RED policy tests for wrong mode, budgets, missing narrowing metadata, wrong-surface action and deterministic valid fixtures.
+- [ ] RED registry tests for membership, fixed Home return, no raw href/query input, technical-route rejection and full-view URL preservation for: origin only, recorded receipt, session receipt, session+replanning, origin+each receipt.
+- [ ] RED test that invalid/unvalidated receipt input cannot construct a `CLASS_SHOW_ALL` action.
+- [ ] RED policy tests for mode/budget/narrowing/wrong-surface failures and deterministic valid fixtures.
 - [ ] Verify RED.
 - [ ] Implement smallest closed registry/policy.
-- [ ] Run focused tests + typecheck + lint to GREEN.
+- [ ] Run focused tests + typecheck + lint.
 - [ ] Commit.
 
 ---
@@ -235,8 +239,6 @@ type RegisteredActionDescriptor =
 **Files:**
 - Create: `product/src/core/presentation/intelligent-ui-composer.ts`
 - Create: `product/src/core/presentation/intelligent-ui-composer.test.ts`
-
-**Interface:**
 
 ```ts
 composeDeterministicSurface(input: {
@@ -250,12 +252,12 @@ composeDeterministicSurface(input: {
 }): SurfaceComposition
 ```
 
-Resolve descriptors, construct/validate composition, and use explicit same-surface fallback on invalid input. Never guess domain state.
+Resolve descriptors, construct/validate composition, use explicit same-surface fallback on invalid input, never guess domain state.
 
 - [ ] RED stability/order/unknown-action/budget/fallback tests.
 - [ ] RED source-boundary test forbidding infrastructure/Supabase/server-action/provider imports.
 - [ ] Implement pure composer/fallback.
-- [ ] Run all IUI core tests + typecheck to GREEN.
+- [ ] Run IUI core tests + typecheck.
 - [ ] Commit.
 
 ---
@@ -266,25 +268,22 @@ Resolve descriptors, construct/validate composition, and use explicit same-surfa
 - Create: `product/src/app/home-intelligent-ui.ts`
 - Create: `product/src/app/home-intelligent-ui.test.ts`
 - Modify: `product/src/app/page.tsx`
-- Modify styles only if existing focus/anchor affordance requires it; no redesign.
+- Modify styles only if existing affordance requires it.
 
-`resolveHomeDailyContext()` and current Home priority ordering remain authority.
+`resolveHomeDailyContext()` and current priority ordering remain authority.
 
-**Intent mapping:** current lesson→TEACH; pending registration→RECORD; upcoming→PREPARE; urgent planner→ACT_NOW; ambiguous timetable→safe REVIEW/GUIDED; no operational task→EXPLORE/REVIEW.
+- current lesson→TEACH;
+- pending registration→RECORD;
+- upcoming→PREPARE;
+- urgent planner→ACT_NOW;
+- ambiguous timetable→safe REVIEW/GUIDED;
+- no operational task→EXPLORE/REVIEW.
 
-**Routing:**
+Routing preserves direct modeled lesson paths. Legitimate class targets use `returnOrigin: 'HOME'`. `HOME_SHOW_ALL` uses `/?view=all#home-full-view`, and validated `view=all` renders the existing disclosure open.
 
-- preserve direct modeled lesson routes;
-- legitimate class targets use `HOME_OPEN_CLASS` with `returnOrigin: 'HOME'`;
-- never force modeled lesson through Classe;
-- `HOME_SHOW_ALL` uses `/?view=all#home-full-view`;
-- validated `view=all` renders existing Home broader-content `<details>` open;
-- support actions remain inside canonical budget.
-
-- [ ] RED Home adapter tests including `returnOrigin: 'HOME'` and direct-route preservation.
-- [ ] Source-boundary RED: no repositories/server actions/arbitrary href output.
-- [ ] Implement smallest adapter/view-model integration.
-- [ ] Add stable `home-full-view` + open behavior.
+- [ ] RED Home adapter tests including HOME origin and direct-route preservation.
+- [ ] Source-boundary RED: no repository/server action/arbitrary href output.
+- [ ] Implement minimum adapter/view integration and stable `home-full-view` open behavior.
 - [ ] Run Home/Human Task tests + typecheck + lint.
 - [ ] Commit.
 
@@ -298,35 +297,29 @@ Resolve descriptors, construct/validate composition, and use explicit same-surfa
 - Modify: `product/src/app/classi/[sectionId]/page.tsx`
 - Modify existing Class state tests only for integration/source assertions.
 
-The adapter consumes authoritative `ClassTaskDecision`, presented task state, canonical context and optional parsed `returnOrigin`; it does not consume arbitrary `taskHref` or `returnTo` URLs.
+The page keeps its existing receipt parsing/validation first:
 
-**Query contract:**
+- `recorded` is uppercased, resolved to a canonical block and accepted only when matching current completed progress;
+- `session` is accepted only when it resolves to a current TeachingSession;
+- `replanning` is used only with a valid session receipt and reduced to the existing boolean presentation state.
 
-- Preserve the Class page’s existing receipt/feedback parameters, including `recorded`, `session`, and `replanning`, with their current semantics.
-- Extend the existing query contract additively with optional IUI parameters `mode`, `block`, `origin`, `view`.
-- IUI parsing must never drop or reinterpret the existing receipt parameters.
+Only after those checks does the page construct optional `ClassReceiptContext` for composition. Raw receipt query values never enter registry descriptors.
 
-**Intent mapping:** PREPARE→PREPARE; TEACH→TEACH; RECORD/CATCH_UP→RECORD; AFTER_RECORD completion→REVIEW; AFTER_RECORD next meeting→PREPARE; COMPLETE→non-FOCUSED contextual REVIEW.
+**Query contract:** preserve existing `recorded`, `session`, `replanning`; extend additively with `mode`, `block`, `origin`, `view`.
 
-**Continuity reconciliation:**
+**Continuity:** only `origin=home` → HOME; stale mode/block ignored; current Class state wins; HOME origin may add return action; full-view action preserves both HOME token and validated receipt context; no raw return URL.
 
-- Task 2 parser converts only `origin=home` to `returnOrigin='HOME'`;
-- stale/mismatched mode/block is ignored and authoritative Class state wins;
-- valid HOME origin may add secondary `CLASS_RETURN_TO_ORIGIN`;
-- unknown origin creates no return action;
-- there is no raw return URL;
-- entering full view through `CLASS_SHOW_ALL` preserves the closed HOME token so the return action remains available after the disclosure opens;
-- receipt params `recorded/session/replanning` remain available throughout this journey;
-- continuity never changes occurrence selection, completion proposal, TeachingSession recording or annual-plan state.
+**Action mapping:** modeled task→MODELED_LESSON; recorder→INLINE_RECORDER; completion→COMPLETION; planning→typed PLANNING; HOME origin→RETURN_TO_ORIGIN; broad view→SHOW_ALL with optional HOME + validated receipt context.
 
-**Action mapping:** modeled task→MODELED_LESSON; recorder fallback→INLINE_RECORDER; completion→COMPLETION; planning→typed PLANNING; valid HOME origin→RETURN_TO_ORIGIN; broad view→SHOW_ALL with optional preserved return origin.
-
-- [ ] RED every ClassTaskState + current-state precedence.
-- [ ] RED `origin=home` fixed Home return and rejection of API/auth/technical/external values.
-- [ ] RED receipt regression: existing `recorded/session/replanning` survive when IUI params are present.
-- [ ] RED origin→`CLASS_SHOW_ALL`→open disclosure→`CLASS_RETURN_TO_ORIGIN` sequence.
-- [ ] Source assertions keep `resolveClassTaskDecision()` authoritative and add no write path.
-- [ ] Implement pure adapter/page integration without changing state machine/server actions.
+- [ ] RED every ClassTaskState/current-state precedence.
+- [ ] RED API/auth/technical/external origin rejection.
+- [ ] RED existing receipt validation behavior unchanged.
+- [ ] RED full-view preservation for validated recorded receipt.
+- [ ] RED full-view preservation for validated session receipt with/without replanning.
+- [ ] RED origin + receipt → full view → receipt remains visible and Home return remains available.
+- [ ] RED forged `recorded`, unknown `session`, or standalone raw `replanning` are not preserved as receipt context.
+- [ ] Source assertions keep `resolveClassTaskDecision()` authority and no new write path.
+- [ ] Implement pure adapter/page integration without changing server-action semantics.
 - [ ] Run Class/continuity/receipt tests + typecheck + lint.
 - [ ] Commit.
 
@@ -337,49 +330,50 @@ The adapter consumes authoritative `ClassTaskDecision`, presented task state, ca
 **Files:**
 - Modify: `product/package.json` — append all new tests; remove none.
 - Create: `docs/superpowers/evidence/2026-10-08-iui-02-03-closeout.md`
-- Modify existing browser/certification tests only as needed; no parallel certification system.
+- Modify existing browser/certification tests only as needed.
 
-**Automated verification:** all IUI tests, continuity tests, Home/Class adapter + existing Class receipt/state tests, complete `npm test`, typecheck, lint, build, Human Interaction, Design Policy, Browser, WCAG, no-implicit-write and HVA.
+**Automated verification:** all IUI tests, continuity, Home/Class adapter + existing Class receipt/state tests, full `npm test`, typecheck, lint, build, Human Interaction, Design Policy, Browser, WCAG, no-implicit-write, HVA.
 
 **Browser/Human Review scenarios:**
 
 1. Current modeled lesson keeps direct route.
-2. Pending registration opens Classe with `origin=home`; Class authority chooses state.
+2. Pending registration opens Classe with HOME token; Class authority chooses state.
 3. Ambiguous context guesses nothing.
-4. Stale hints cannot override Class state.
-5. Existing post-write receipts still render with `recorded/session/replanning` when IUI params coexist.
-6. Home/Class full-view actions actually reveal content.
-7. `origin=home` → Class full view preserves origin → return action resolves exactly `/`.
-8. `/api/google/drive/connect`, `/login`, `/_next/**`, arbitrary same-origin/external/encoded variants create no return action and trigger no route-handler request.
-9. Composition/rendering produces no mutation.
+4. Stale hints cannot override state.
+5. Valid post-write `recorded` feedback remains visible after opening full view.
+6. Valid current-session/replanning feedback remains visible after opening full view.
+7. HOME origin survives opening Class full view and still offers fixed `/` return.
+8. Forged/unknown receipt values are not propagated by full-view composition.
+9. API/auth/technical/external origins create no return action or route-handler request.
+10. Composition/rendering produces no mutation.
 
 - [ ] Add every new test to canonical `product/package.json` suite.
-- [ ] Run focused tranche tests then full Product CI commands.
-- [ ] Push exact head and certify that SHA; inherit no PASS from earlier heads.
-- [ ] Capture HVA evidence including full-view reveal, receipt preservation, fixed Home return and technical/API origin rejection.
-- [ ] Record baseline/head/run IDs with `MODEL_RUNTIME=DISABLED`, `IMPLICIT_WRITE=NONE`, `DOS-A1=RUNTIME_DEFERRED`.
-- [ ] Any defect returns to owning RED→GREEN task and forces new exact-head certification.
-- [ ] Keep PR Draft until automated gates + Human Review pass.
+- [ ] Run focused tests then full Product CI commands.
+- [ ] Certify exact implementation SHA; inherit no earlier PASS.
+- [ ] HVA includes full-view reveal, validated receipt preservation, HOME return and technical-origin rejection.
+- [ ] Record exact baseline/head/run IDs with `MODEL_RUNTIME=DISABLED`, `IMPLICIT_WRITE=NONE`, `DOS-A1=RUNTIME_DEFERRED`.
+- [ ] Defect → owning RED→GREEN task → new exact-head certification.
+- [ ] Keep Draft until gates + Human Review pass.
 
 ## Definition of done
 
 IUI-02/03 is complete only when:
 
-- implementation started from current governed `develop` on isolated branch/worktree;
-- Task 1 typechecks independently with `RegisteredActionId` already defined;
-- Home/Class consume validated composition without duplicating authority;
-- direct modeled lesson journeys are not lengthened;
-- Class return continuity uses only closed HOME token;
-- no API/auth/technical/external path can become return action;
-- Home origin survives Class full-view transition;
-- existing Class receipt feedback parameters/flows remain intact;
-- stale continuity cannot override current Class state;
+- implementation starts from current governed `develop` in isolated branch/worktree;
+- Task 1 typechecks independently;
+- Home/Class use validated composition without replacing authority;
+- direct modeled lesson journeys remain direct;
+- return continuity uses only closed HOME token;
+- no API/auth/technical/external path can become a return action;
+- HOME origin survives full-view transition;
+- validated Class receipts survive full-view transition while forged/unvalidated receipt query values do not;
+- stale continuity cannot override Class state;
 - broader-view actions actually reveal content;
 - composition/rendering performs no writes;
 - no runtime model/provider dependency exists;
 - all tests are in canonical `npm test`;
 - Product CI + required Browser/WCAG/HVA/no-implicit-write gates pass on exact implementation head;
-- Human Review judges the journey simpler/predictable;
+- Human Review judges journey simpler/predictable;
 - no automatic merge occurred.
 
 ## Explicitly deferred
