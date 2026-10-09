@@ -9,8 +9,14 @@ const TECHNICAL_PATTERNS: ReadonlyArray<[string, RegExp]> = [
   ['CAN_CODE', /\bCAN-[A-Z0-9-]+\b/i],
   ['BXX_CODE', /\bB(?:0[1-9]|[12][0-9]|3[0-3])\b/],
   ['UUID', /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i],
-  ['SOFTWARE_ENTITY', /\b(?:TeachingSession|KnowledgeAsset|authored_documents?|document_template_versions?)\b/i],
-  ['INTERNAL_STATE', /\b(?:AUTO_DOCUMENTED|TEACHER_CONFIRMATION|OPTIONAL_PROPOSAL|RESTRICTED|QUALITY_REVIEWED|REVIEW_REQUIRED|TEACHER_CONFIRMED|TO_VERIFY|MIXED)\b/],
+  [
+    'SOFTWARE_ENTITY',
+    /\b(?:TeachingSession|KnowledgeAsset|authored_documents?|document_templates?|document_template_versions?|document_template_quality_reviews?|document_template_lifecycle_decisions?|institutional_bases?|institutional_base_versions?|institutional_base_quality_reviews?|institutional_base_lifecycle_decisions?)\b/i,
+  ],
+  [
+    'INTERNAL_STATE',
+    /\b(?:DRAFT|QUALITY_REVIEWED|REVIEW_REQUIRED|ACTIVE|RETIRED|BLOCKED|PASS_WITH_NOTES|PASS|AUTO_DOCUMENTED|TEACHER_CONFIRMATION|OPTIONAL_PROPOSAL|RESTRICTED|TEACHER_CONFIRMED|TO_VERIFY|MIXED)\b/,
+  ],
   ['HASH', /\b[0-9a-f]{40,64}\b/i],
   ['DRIVE_PATH', /(?:drive:\/\/|\/Google Drive\/|https:\/\/drive\.google\.com\/)/i],
   ['AI_PROVIDER', /\b(?:OpenAI|GPT-[0-9.]+|Claude|Gemini|DeepSeek|Groq|Hugging\s*Face)\b/i],
