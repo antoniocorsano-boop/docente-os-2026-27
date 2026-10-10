@@ -323,6 +323,20 @@ jobs:
         working-directory: product
         run: node -e "const r=require('./test-results/experience/receipt/acceptance.json'); if(Object.values(r.gates).includes('FAIL')) process.exit(1)"
 
+      - name: Preserve HVA HTML report
+        if: always() && needs.preflight.outputs.hva == 'true'
+        working-directory: product
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_dir='playwright-report/experience'
+          target_dir='test-results/experience/hva-html-report'
+          test -f "$source_dir/index.html"
+          rm -rf "$target_dir"
+          mkdir -p "$(dirname "$target_dir")"
+          cp -R "$source_dir" "$target_dir"
+          test -f "$target_dir/index.html"
+
       - name: Run WCAG 2.2 AA automated assurance
         id: wcag_gate
         if: needs.preflight.outputs.wcag == 'true'
