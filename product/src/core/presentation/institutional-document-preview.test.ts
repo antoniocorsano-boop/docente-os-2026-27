@@ -158,3 +158,33 @@ test('historical pinned rendering keeps using the supplied v1 base and template 
   assert.match(preview.text, /Intestazione storica/)
   assert.doesNotMatch(preview.text, /versione corrente|latest|current/i)
 })
+
+test('TABLE sections render every populated table and companion field without dropping content', () => {
+  const draft = finalReportCanonicalTemplate()
+  const tableSection = draft.sections.find((section) => section.renderRole === 'TABLE')
+  assert.ok(tableSection)
+  const companion = structuredClone(draft.sections[1].fields[0])
+  companion.key = 'learning.executed_note'
+  companion.label = 'Nota sul percorso'
+  const secondTable = structuredClone(tableSection.fields[0])
+  secondTable.key = 'learning.executed_follow_up'
+  secondTable.label = 'Approfondimenti svolti'
+  tableSection.fields.push(companion, secondTable)
+
+  const preview = renderInstitutionalPreview({
+    institutionalBase: { baseId: 'base-1', versionNo: 1, draft: institutionalBase(1) },
+    template: { templateId: 'template-1', versionNo: 1, draft },
+    values: {
+      ...values,
+      'learning.executed_note': 'Approfondimento laboratoriale conclusivo',
+      'learning.executed_follow_up': {
+        columns: ['Approfondimento', 'Esito'],
+        rows: [['Riciclo dei materiali', 'Attività completata']],
+      },
+    },
+  })
+
+  assert.match(preview.text, /Nota sul percorso: Approfondimento laboratoriale conclusivo/)
+  assert.match(preview.text, /Approfondimento \| Esito/)
+  assert.match(preview.text, /Riciclo dei materiali \| Attività completata/)
+})
