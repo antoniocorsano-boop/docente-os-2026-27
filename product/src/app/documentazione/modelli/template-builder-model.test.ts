@@ -230,3 +230,72 @@ test('browser certification preserves the HVA HTML report before later Playwrigh
   assert.match(workflow, /playwright-report\/experience/)
   assert.match(workflow, /test-results\/experience\/hva-html-report/)
 })
+
+test('governed builder keeps newly created identities usable before version 1 exists', () => {
+  const base = baseSnapshot()
+  base.base.currentVersionNo = 0
+  base.base.activeVersionNo = null
+  base.versions = []
+  base.activeVersion = null
+  base.qualityReviews = []
+
+  const family = snapshot()
+  family.template.currentVersionNo = 0
+  family.template.activeVersionNo = null
+  family.versions = []
+  family.activeVersion = null
+  family.qualityReviews = []
+
+  const model = buildGovernedTemplateBuilderViewModel({
+    institutionalBase: base,
+    familyTemplate: family,
+    role: 'OWNER',
+  })
+
+  assert.equal(model.institutionalBase.identityId, 'institutional-base')
+  assert.equal(model.institutionalBase.currentVersionNo, null)
+  assert.equal(model.institutionalBase.reviewAvailable, false)
+  assert.deepEqual(model.institutionalBase.actions, [])
+  assert.equal(model.familyTemplate.identityId, 'final-report-template')
+  assert.equal(model.familyTemplate.currentVersionNo, null)
+  assert.equal(model.familyTemplate.reviewAvailable, false)
+  assert.deepEqual(model.familyTemplate.sections, [])
+  assert.deepEqual(model.familyTemplate.actions, [])
+})
+
+test('governed builder fails safe when the current family draft has malformed sections', () => {
+  const base = baseSnapshot()
+  const family = snapshot()
+  family.versions[0].draft = {} as DocumentTemplateSnapshot['versions'][number]['draft']
+
+  const model = buildGovernedTemplateBuilderViewModel({
+    institutionalBase: base,
+    institutionalBaseReview: reviewInstitutionalBase(base.versions[0].draft),
+    familyTemplate: family,
+    role: 'OWNER',
+  })
+
+  assert.equal(model.familyTemplate.reviewAvailable, false)
+  assert.equal(model.familyTemplate.canApprove, false)
+  assert.deepEqual(model.familyTemplate.sections, [])
+})
+
+test('HVA report preservation failure cannot suppress later independent browser gates', () => {
+  const workflow = readFileSync(
+    resolve(process.cwd(), '../.github/workflows/browser-certification-orchestrator.yml'),
+    'utf8',
+  )
+  const preserveStart = workflow.indexOf('- name: Preserve HVA HTML report')
+  const wcagStart = workflow.indexOf('- name: Run WCAG 2.2 AA automated assurance')
+  assert.notEqual(preserveStart, -1)
+  assert.notEqual(wcagStart, -1)
+  const preserveStep = workflow.slice(preserveStart, wcagStart)
+  assert.match(preserveStep, /continue-on-error:\s*true/)
+})
+
+test('canonical npm test keeps the class task-state regression suite', () => {
+  const packageJson = JSON.parse(readFileSync(resolve(process.cwd(), 'package.json'), 'utf8')) as {
+    scripts?: { test?: string }
+  }
+  assert.match(packageJson.scripts?.test ?? '', /src\/app\/classi\/\[sectionId\]\/class-task-state\.test\.ts/)
+})
