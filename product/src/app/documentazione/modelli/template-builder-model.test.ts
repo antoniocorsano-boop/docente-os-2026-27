@@ -299,3 +299,27 @@ test('canonical npm test keeps the class task-state regression suite', () => {
   }
   assert.match(packageJson.scripts?.test ?? '', /src\/app\/classi\/\[sectionId\]\/class-task-state\.test\.ts/)
 })
+
+test('governed builder fails safe when the current family draft contains malformed section entries', () => {
+  for (const malformedSection of [{}, null]) {
+    const base = baseSnapshot()
+    const family = snapshot()
+    family.versions[0].draft = {
+      ...finalReportCanonicalTemplate(),
+      sections: [malformedSection],
+    } as DocumentTemplateSnapshot['versions'][number]['draft']
+
+    const model = buildGovernedTemplateBuilderViewModel({
+      institutionalBase: base,
+      institutionalBaseReview: reviewInstitutionalBase(base.versions[0].draft),
+      familyTemplate: family,
+      role: 'OWNER',
+    })
+
+    assert.equal(model.familyTemplate.reviewAvailable, false)
+    assert.equal(model.familyTemplate.canApprove, false)
+    assert.deepEqual(model.familyTemplate.sections, [])
+    assert.equal(model.familyTemplate.actions.some((action) => action.key === 'ACTIVATE'), false)
+  }
+})
+
