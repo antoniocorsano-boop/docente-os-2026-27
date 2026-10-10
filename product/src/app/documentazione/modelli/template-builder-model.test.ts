@@ -213,3 +213,20 @@ test('runtime page uses persisted base and family repositories instead of an in-
   assert.match(component, /model\.institutionalBase/)
   assert.match(component, /model\.familyTemplate/)
 })
+
+test('browser certification preserves the HVA HTML report before later Playwright gates run', () => {
+  const workflow = readFileSync(
+    resolve(process.cwd(), '../.github/workflows/browser-certification-orchestrator.yml'),
+    'utf8',
+  )
+  const enforceHVA = workflow.indexOf('name: Enforce HVA receipt')
+  const preserveHVA = workflow.indexOf('name: Preserve HVA HTML report')
+  const wcag = workflow.indexOf('name: Run WCAG 2.2 AA automated assurance')
+
+  assert.notEqual(enforceHVA, -1)
+  assert.notEqual(preserveHVA, -1)
+  assert.notEqual(wcag, -1)
+  assert.equal(enforceHVA < preserveHVA && preserveHVA < wcag, true)
+  assert.match(workflow, /playwright-report\/experience/)
+  assert.match(workflow, /test-results\/experience\/hva-html-report/)
+})
