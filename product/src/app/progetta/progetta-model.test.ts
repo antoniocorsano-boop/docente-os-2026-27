@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import type { KnowledgeAsset, KnowledgeDocument } from '@/core/domain/knowledge'
+import { decodeAtlasMaterialBundle, encodeTeachingContext } from '@/core/domain/atlas-material-handoff'
 import {
   asProgettaFocus,
   asProgettaGrade,
@@ -161,4 +162,86 @@ test('la modalità guidata rende primario l’authoring contestuale senza nascon
   assert.match(pageSource, />Esplora tutta la progettazione</)
   assert.match(styleSource, /\.guidedPrimaryAuthoring/)
   assert.match(styleSource, /\.guidedPrimaryAuthoringAction/)
+})
+
+test('il passaggio UDA → Atlas resta una scelta semplice e contestuale', () => {
+  const udaSource = readFileSync(new URL('./documenti/nuovo/[assetId]/page.tsx', import.meta.url), 'utf8')
+
+  assert.match(udaSource, />Cosa vuoi preparare\?</)
+  assert.match(udaSource, />Prepara materiali con Atlas/)
+  assert.match(udaSource, />Lavora sull’UDA</)
+  assert.match(udaSource, />Controlla la fonte</)
+  assert.doesNotMatch(udaSource, />Cosa succede</)
+  assert.doesNotMatch(udaSource, />Cosa non succede</)
+})
+
+test('l’authoring UDA mantiene un solo landmark main fornito da AppShell', () => {
+  const udaSource = readFileSync(new URL('./documenti/nuovo/[assetId]/page.tsx', import.meta.url), 'utf8')
+
+  assert.doesNotMatch(udaSource, /<main className="newUdaGate"/)
+  assert.match(udaSource, /<section className="newUdaGate"/)
+})
+
+test('il ritorno da Atlas mostra solo la decisione di associazione alla lezione', () => {
+  const returnSource = readFileSync(new URL('./atlas/ritorno/AtlasMaterialReturnReview.tsx', import.meta.url), 'utf8')
+
+  assert.match(returnSource, />Associa i materiali alla lezione</)
+  assert.doesNotMatch(returnSource, /RITORNO DA STUDIO ATLAS/)
+  assert.doesNotMatch(returnSource, /Origine: Atlas/)
+  assert.doesNotMatch(returnSource, /Il selettore della lezione e il binding persistente/)
+})
+
+test('l’associazione Atlas delega l’intero bundle a una singola scrittura atomica dopo la scelta esplicita', () => {
+  const actionSource = readFileSync(new URL('./atlas/ritorno/actions.ts', import.meta.url), 'utf8')
+  const returnSource = readFileSync(new URL('./atlas/ritorno/AtlasMaterialReturnReview.tsx', import.meta.url), 'utf8')
+
+  assert.match(actionSource, /SupabaseLessonDesignRepository/)
+  assert.match(actionSource, /sourceKind: 'ATLAS'/)
+  assert.match(actionSource, /acceptAtlasMaterialBundle/)
+  assert.doesNotMatch(actionSource, /addToolProposalOnce/)
+  assert.doesNotMatch(actionSource, /repository\.accept\(/)
+  assert.match(actionSource, /bundle\.sourceUdaId !== expectedUda/)
+  assert.match(returnSource, /name="blockId"/)
+  assert.match(returnSource, /name="bundle"/)
+  assert.doesNotMatch(returnSource, /type="button" disabled>Associa alla lezione/)
+})
+
+test('il contratto UDA → Atlas codifica anche in un runtime browser senza Node Buffer', { concurrency: false }, () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'Buffer')
+  try {
+    Object.defineProperty(globalThis, 'Buffer', { value: undefined, configurable: true })
+    const encoded = encodeTeachingContext({
+      schema: 'docente-os.teaching-context/v0.1',
+      source: 'docente-os',
+      udaId: '1-02',
+      udaTitle: 'Materiali dalla risorsa al prodotto',
+      grade: 'prima',
+      sectionId: 'section-1a',
+      sectionLabel: '1A',
+      discipline: 'Tecnologia',
+      returnUrl: 'https://docente-os-pr692-atlas.onrender.com/progetta/atlas/ritorno',
+    })
+    assert.match(encoded, /^[A-Za-z0-9_-]+$/)
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, 'Buffer', descriptor)
+  }
+})
+
+test('il ritorno Atlas decodifica il MaterialBundle anche in un runtime browser senza Node Buffer', { concurrency: false }, () => {
+  const bundle = {
+    schema: 'studio-atlas.material-bundle/v0.1',
+    source: 'studio-atlas',
+    bundleId: 'bundle-1-02',
+    sourceUdaId: '1-02',
+    generatedAt: '2026-10-07T16:00:00.000Z',
+    items: [{ materialId: 'slides', type: 'presentation', title: 'Presentazione', description: 'Avvio UDA', origin: 'atlas' }],
+  } as const
+  const encoded = Buffer.from(JSON.stringify(bundle), 'utf8').toString('base64url')
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'Buffer')
+  try {
+    Object.defineProperty(globalThis, 'Buffer', { value: undefined, configurable: true })
+    assert.deepEqual(decodeAtlasMaterialBundle(encoded), bundle)
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, 'Buffer', descriptor)
+  }
 })

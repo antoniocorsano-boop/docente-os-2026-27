@@ -163,3 +163,5 @@ begin
   end if;
 end;
 $contract$;
+
+\ir canonical_plan_runtime_identity_behavior.sql

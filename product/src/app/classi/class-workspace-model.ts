@@ -2,7 +2,7 @@ import type { AnnualPlanBlockProgress, AnnualPlanSection, AnnualPlanSectionStatu
 import type { KnowledgeAsset, KnowledgeDocument } from '@/core/domain/knowledge'
 import type { TeachingDiscipline } from '@/core/domain/teacher-settings'
 import type { TeachingAssignment } from '@/core/domain/timetable'
-import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '../piano-annuale/model'
+import { buildBlocks, GRADE_UI } from '../piano-annuale/model'
 
 const GRADE_NUMBER = { PRIMA: '1', SECONDA: '2', TERZA: '3' } as const
 const GRADE_WORD = { PRIMA: 'prima', SECONDA: 'seconda', TERZA: 'terza' } as const
@@ -25,8 +25,9 @@ export type ClassWorkspaceSummary = {
   sectionStatus: AnnualPlanSectionStatus
   sectionStatusLabel: string
   assignments: ClassWorkspaceAssignment[]
-  completedBlocks: number
+  completedBlocks: number | null
   hasProgress: boolean
+  progressAvailable: boolean
 }
 
 export type ClassWorkspaceLearningBlock = {
@@ -58,9 +59,10 @@ export type PreparedClassMaterial = {
 }
 
 export type ClassWorkspaceLearningFocus = {
-  completedBlocks: number
+  completedBlocks: number | null
   nextBlock: ClassWorkspaceLearningBlock | null
   materials: ClassWorkspaceMaterial[]
+  progressAvailable: boolean
 }
 
 type KnowledgeItem = { asset: KnowledgeAsset; document: KnowledgeDocument | null }
@@ -70,6 +72,7 @@ export function buildClassWorkspaceSummary(
   assignments: TeachingAssignment[],
   disciplines: TeachingDiscipline[],
   progress: AnnualPlanBlockProgress[],
+  canonicalGenerationId: string | null,
 ): ClassWorkspaceSummary {
   const disciplineById = new Map(disciplines.map((discipline) => [discipline.id, discipline.name]))
   const sectionAssignments = assignments
@@ -81,7 +84,13 @@ export function buildClassWorkspaceSummary(
       status: assignment.status,
     }))
     .sort((a, b) => a.discipline.localeCompare(b.discipline, 'it'))
-  const sectionProgress = progress.filter((entry) => entry.sectionId === section.id)
+  const progressAvailable = canonicalGenerationId !== null
+  const sectionProgress = progressAvailable
+    ? progress.filter((entry) =>
+        entry.sectionId === section.id &&
+        entry.canonicalGenerationId === canonicalGenerationId,
+      )
+    : []
 
   return {
     sectionId: section.id,
@@ -91,22 +100,37 @@ export function buildClassWorkspaceSummary(
     sectionStatus: section.status,
     sectionStatusLabel: sectionStatusLabel(section.status),
     assignments: sectionAssignments,
-    completedBlocks: sectionProgress.filter((entry) => COMPLETE_STATUSES.has(entry.status)).length,
-    hasProgress: sectionProgress.length > 0,
+    completedBlocks: progressAvailable
+      ? sectionProgress.filter((entry) => COMPLETE_STATUSES.has(entry.status)).length
+      : null,
+    hasProgress: progressAvailable && sectionProgress.length > 0,
+    progressAvailable,
   }
 }
 
 export function buildClassWorkspaceLearningFocus(
   section: AnnualPlanSection,
   progress: AnnualPlanBlockProgress[],
+  canonicalGenerationId: string | null,
   knowledgeItems: KnowledgeItem[],
 ): ClassWorkspaceLearningFocus {
+  if (canonicalGenerationId === null) {
+    return {
+      completedBlocks: null,
+      nextBlock: null,
+      materials: selectPertinentMaterials(section, null, knowledgeItems),
+      progressAvailable: false,
+    }
+  }
+
   const grade = GRADE_UI[section.grade]
-  const canonicalSource = CANONICAL_PLAN_SOURCES[grade]
   const blocks = buildBlocks(grade)
   const progressByBlock = new Map(
     progress
-      .filter((entry) => entry.sectionId === section.id && entry.canonicalGenerationId === canonicalSource.generationId)
+      .filter((entry) =>
+        entry.sectionId === section.id &&
+        entry.canonicalGenerationId === canonicalGenerationId,
+      )
       .map((entry) => [entry.blockId, entry]),
   )
   const completedBlocks = blocks.filter((block) => COMPLETE_STATUSES.has(progressByBlock.get(block.id)?.status ?? '')).length
@@ -128,6 +152,7 @@ export function buildClassWorkspaceLearningFocus(
     completedBlocks,
     nextBlock,
     materials: selectPertinentMaterials(section, nextBlock?.pack ?? null, knowledgeItems),
+    progressAvailable: true,
   }
 }
 

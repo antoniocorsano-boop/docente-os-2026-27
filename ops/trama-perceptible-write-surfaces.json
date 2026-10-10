@@ -18,6 +18,21 @@
       ]
     },
     {
+      "id": "atlas-material-binding-write",
+      "critical": true,
+      "sourcePatterns": [
+        "product/src/app/progetta/atlas/ritorno/actions.ts"
+      ],
+      "feedbackFiles": [
+        "product/src/app/progetta/atlas/ritorno/AtlasMaterialReturnReview.tsx",
+        "product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-design-tools.tsx"
+      ],
+      "testFiles": [
+        "product/src/app/progetta/progetta-model.test.ts",
+        "product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-design-feedback.test.ts"
+      ]
+    },
+    {
       "id": "local-user-profile-write",
       "critical": false,
       "sourcePatterns": [
@@ -47,6 +62,8 @@
     {
       "id": "lesson-registration",
       "sourcePatterns": [
+        "product/src/app/classi/[sectionId]/actions.ts",
+        "product/src/app/classi/[sectionId]/lezioni/actions.ts",
         "product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-close-client.tsx"
       ],
       "feedbackFiles": [
@@ -57,6 +74,19 @@
         "product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-close-feedback.test.ts"
       ],
       "critical": true
+    },
+    {
+      "id": "lesson-experience-feedback-write",
+      "critical": true,
+      "sourcePatterns": [
+        "product/src/app/feedback/actions.ts"
+      ],
+      "feedbackFiles": [
+        "product/src/components/experience-feedback/experience-feedback.tsx"
+      ],
+      "testFiles": [
+        "product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-close-feedback.test.ts"
+      ]
     },
     {
       "id": "timetable-manual-write",

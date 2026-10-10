@@ -1,4 +1,5 @@
 import { chromium, expect } from '@playwright/test'
+import { runCpriRuntimePreflight } from '../../scripts/experience/cpri-runtime-preflight.mjs'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
 import {
   deleteAllKnowledgeFixtures,
@@ -15,6 +16,9 @@ const baseURL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000'
 
 export default async function globalSetup() {
   requireE2ECredentials()
+  process.env.CPRI_TESTED_SHA ??= process.env.P6_TESTED_SHA ?? process.env.GITHUB_SHA
+  await runCpriRuntimePreflight()
+
   const title = experienceUdaFixtureTitle()
   const browser = await chromium.launch()
   const context = await browser.newContext({

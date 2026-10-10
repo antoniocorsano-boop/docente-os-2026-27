@@ -21,6 +21,12 @@ export type Database = {
         Update: { status?: string; executed_on?: string | null; evidence_note?: string | null; updated_by?: string; updated_at?: string }
         Relationships: []
       }
+      canonical_plan_runtime_bindings: {
+        Row: { id: string; workspace_id: string; academic_year_id: string; canonical_plan_code: string; asset_id: string; generation_id: string; created_at: string; updated_at: string }
+        Insert: { id?: string; workspace_id: string; academic_year_id: string; canonical_plan_code: string; asset_id: string; generation_id: string; created_at?: string; updated_at?: string }
+        Update: { workspace_id?: string; academic_year_id?: string; canonical_plan_code?: string; asset_id?: string; generation_id?: string; updated_at?: string }
+        Relationships: []
+      }
       calendar_days: {
         Row: { id: string; workspace_id: string; academic_year_id: string; local_date: string; day_kind: string; label: string; note: string | null; source_kind: string; source_ref: string | null; created_by: string; created_at: string; updated_at: string }
         Insert: { id?: string; workspace_id: string; academic_year_id: string; local_date: string; day_kind: string; label: string; note?: string | null; source_kind?: string; source_ref?: string | null; created_by: string; created_at?: string; updated_at?: string }
@@ -156,6 +162,10 @@ export type Database = {
     }
     Views: Record<string, never>
     Functions: {
+      bind_canonical_plan_runtime_source: {
+        Args: { p_workspace_id: string; p_academic_year_id: string; p_canonical_plan_code: string; p_asset_id: string; p_generation_id: string }
+        Returns: string
+      }
       bootstrap_personal_workspace: { Args: { workspace_name?: string }; Returns: string }
       search_knowledge_full_text_current: {
         Args: { p_workspace_id: string; p_query: string; p_limit?: number }

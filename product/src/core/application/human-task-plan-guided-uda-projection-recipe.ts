@@ -35,7 +35,6 @@ export type HumanTaskPlanGuidedUdaProjectionRecipe = {
   planBinding: ProjectionRecipePlanBinding
   planSource: {
     code: string
-    generationId: string
     blockActivity: string | null
     blockEvidence: string
   }
@@ -67,9 +66,15 @@ export type HumanTaskPlanGuidedUdaProjectionRecipe = {
   }
 }
 
+export type CanonicalPlanRuntimeEvidence = {
+  code: string
+  generationId: string
+}
+
 export function buildPlanGuidedUdaProjectionDraft(
   candidate: HumanTaskContentCandidate,
   recipe: HumanTaskPlanGuidedUdaProjectionRecipe,
+  runtimePlanSource?: CanonicalPlanRuntimeEvidence,
 ): HumanTaskProjectionDraft {
   const issues: ProjectionDraftIssue[] = []
 
@@ -87,11 +92,20 @@ export function buildPlanGuidedUdaProjectionDraft(
   }
 
   const canonicalPlan = CANONICAL_PLAN_SOURCES[recipe.grade]
-  if (recipe.planSource.code !== canonicalPlan.code || recipe.planSource.generationId !== canonicalPlan.generationId) {
+  if (!runtimePlanSource) {
     issues.push(issue(
       'PLAN_BINDING_MISMATCH',
       'BLOCKING',
-      `Il frammento del Piano è legato a ${recipe.planSource.code}/${recipe.planSource.generationId}, ma il modello canonico corrente richiede ${canonicalPlan.code}/${canonicalPlan.generationId}.`,
+      `Il binding runtime di ${canonicalPlan.code} non è disponibile per validare la generazione locale della recipe.`,
+    ))
+  } else if (
+    runtimePlanSource.code !== canonicalPlan.code
+    || recipe.planSource.code !== runtimePlanSource.code
+  ) {
+    issues.push(issue(
+      'PLAN_BINDING_MISMATCH',
+      'BLOCKING',
+      `Il frammento del Piano usa ${recipe.planSource.code}, ma il binding runtime corrente richiede ${runtimePlanSource.code}.`,
     ))
   }
 

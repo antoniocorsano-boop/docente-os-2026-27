@@ -43,6 +43,19 @@ type LessonDesignExtensionRow = {
   updated_at: string
 }
 
+type AtlasMaterialBundleRpcItem = {
+  kind: string
+  insertionPosition: string
+  anchorStepId: string | null
+  title: string
+  body: string
+  cue: string | null
+  minutes: number | null
+  sourceRef: string | null
+  sourceLabel: string | null
+  payload: Record<string, unknown>
+}
+
 type LessonDesignDatabase = {
   public: {
     Tables: {
@@ -68,6 +81,19 @@ type LessonDesignDatabase = {
     Views: Record<string, never>
     Functions: {
       accept_lesson_design_extension: { Args: { target_extension_id: string }; Returns: undefined }
+      accept_atlas_material_bundle: {
+        Args: {
+          p_workspace_id: string
+          p_academic_year_id: string
+          p_section_id: string
+          p_canonical_plan_asset_id: string
+          p_canonical_generation_id: string
+          p_block_id: string
+          p_projection_id: string
+          p_items: AtlasMaterialBundleRpcItem[]
+        }
+        Returns: undefined
+      }
       revise_lesson_design_extension: { Args: { target_extension_id: string; new_insertion_position: string; new_anchor_step_id: string | null; new_title: string; new_body: string; new_cue: string | null; new_minutes: number | null }; Returns: undefined }
       dismiss_lesson_design_extension: { Args: { target_extension_id: string }; Returns: undefined }
     }
@@ -121,6 +147,43 @@ export class SupabaseLessonDesignRepository {
     if (existingError) throw new Error(existingError.message)
     if (!existing) throw new Error('Lesson design proposal uniqueness conflict could not be resolved')
     return toExtension(existing)
+  }
+
+  async acceptAtlasMaterialBundle(context: LessonDesignContext, inputs: LessonDesignExtensionDraft[]): Promise<void> {
+    if (inputs.length === 0) throw new Error('Atlas material bundle must contain at least one item')
+    const items = inputs.map((input): AtlasMaterialBundleRpcItem => {
+      const draft = validateLessonDesignExtensionDraft(input)
+      assertDraftContext(context, draft)
+      if (draft.sourceKind !== 'ATLAS') throw new Error('Atlas material bundle requires ATLAS provenance')
+      const dedupeKey = typeof draft.payload.dedupeKey === 'string' ? draft.payload.dedupeKey.trim() : ''
+      if (!dedupeKey) throw new Error('Atlas material bundle item requires a dedupe key')
+      return {
+        kind: draft.kind,
+        insertionPosition: draft.insertionPosition,
+        anchorStepId: draft.anchorStepId,
+        title: draft.title,
+        body: draft.body,
+        cue: draft.cue,
+        minutes: draft.minutes,
+        sourceRef: draft.sourceRef,
+        sourceLabel: draft.sourceLabel,
+        payload: { ...draft.payload, dedupeKey },
+      }
+    })
+
+    const supabase = await lessonDesignClient()
+    await authenticatedUserId(supabase)
+    const { error } = await supabase.rpc('accept_atlas_material_bundle', {
+      p_workspace_id: context.workspaceId,
+      p_academic_year_id: context.academicYearId,
+      p_section_id: context.sectionId,
+      p_canonical_plan_asset_id: context.canonicalPlanAssetId,
+      p_canonical_generation_id: context.canonicalGenerationId,
+      p_block_id: context.blockId,
+      p_projection_id: context.projectionId,
+      p_items: items,
+    })
+    if (error) throw new Error(error.message)
   }
 
   async accept(context: LessonDesignContext, extensionId: string): Promise<void> {

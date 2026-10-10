@@ -18,6 +18,7 @@ import {
   buildBlocks,
   CANONICAL_PLAN_SOURCES,
   GRADE_UI,
+  type CanonicalPlanRuntimeSources,
   type GradeKey,
 } from './model'
 
@@ -42,13 +43,16 @@ type StoredState = {
 const BLOCK_STATUSES: AnnualPlanBlockStatus[] = ['PIANIFICATO', 'SVOLTO', 'RECUPERATO', 'RIMODULATO', 'ANNULLATO']
 const COMPLETE_STATUSES = new Set<AnnualPlanBlockStatus>(['SVOLTO', 'RECUPERATO', 'RIMODULATO'])
 const GRADES: GradeKey[] = ['Prima', 'Seconda', 'Terza']
+const MISSING_RUNTIME_SOURCE = 'Il piano annuale della classe non è ancora collegato alla sorgente canonica.'
 
 export default function AnnualPlanClient({
   initialSnapshot,
+  runtimeSources,
   academicYearId,
   initialSectionId,
 }: {
   initialSnapshot: AnnualPlanExecutionSnapshot
+  runtimeSources: CanonicalPlanRuntimeSources
   academicYearId: string
   initialSectionId?: string | null
 }) {
@@ -66,11 +70,12 @@ export default function AnnualPlanClient({
   }, [state, storageKey])
 
   const blocks = useMemo(() => buildBlocks(grade), [grade])
-  const source = CANONICAL_PLAN_SOURCES[grade]
+  const logicalSource = CANONICAL_PLAN_SOURCES[grade]
+  const source = runtimeSources[grade]
   const selectedSection = state.sections[grade].find((item) => item.id === sectionId) ?? null
 
   const progressFor = (blockId: string): ProgressEntry => {
-    if (!selectedSection) return emptyProgress()
+    if (!selectedSection || !source) return emptyProgress()
     return state.progress[progressKey(selectedSection.id, source.generationId, blockId)] ?? emptyProgress()
   }
 
@@ -81,13 +86,17 @@ export default function AnnualPlanClient({
   })
 
   function updateLocalProgress(blockId: string, entry: ProgressEntry) {
-    if (!selectedSection) return
+    if (!selectedSection || !source) return
     const key = progressKey(selectedSection.id, source.generationId, blockId)
     setState((current) => ({ ...current, progress: { ...current.progress, [key]: entry } }))
   }
 
   function persistProgressEntry(blockId: string, entry: ProgressEntry) {
     if (!selectedSection) return
+    if (!source) {
+      setSyncError(MISSING_RUNTIME_SOURCE)
+      return
+    }
     const currentSection = selectedSection
     setSyncError(null)
     startTransition(async () => {
@@ -108,7 +117,7 @@ export default function AnnualPlanClient({
   }
 
   function markNextDone() {
-    if (!selectedSection || !nextBlock) return
+    if (!selectedSection || !nextBlock || !source) return
     const current = progressFor(nextBlock.id)
     applyAndPersist(nextBlock.id, { status: 'SVOLTO', date: current.date || currentRomeDate() })
   }
@@ -146,7 +155,7 @@ export default function AnnualPlanClient({
   }
 
   function resetSection() {
-    if (!selectedSection) return
+    if (!selectedSection || !source) return
     if (!window.confirm(`Azzera i dati di avanzamento correnti per ${grade} ${selectedSection.code}?`)) return
     const currentSection = selectedSection
     setSyncError(null)
@@ -161,9 +170,15 @@ export default function AnnualPlanClient({
     })
   }
 
-  const saveStateLabel = syncError ? `Salvataggio non riuscito: ${syncError}` : isPending ? 'Sto salvando…' : 'Modifiche salvate'
+  const saveStateLabel = syncError
+    ? `Salvataggio non riuscito: ${syncError}`
+    : !source
+      ? MISSING_RUNTIME_SOURCE
+      : isPending
+        ? 'Sto salvando…'
+        : 'Modifiche salvate'
   const sectionLabel = selectedSection ? `${gradeOrdinal(grade)} ${selectedSection.code}` : null
-  const prepareHref = selectedSection && nextBlock
+  const prepareHref = source && selectedSection && nextBlock
     ? `/progetta?grade=${grade.toLowerCase()}&section=${encodeURIComponent(selectedSection.id)}&block=${encodeURIComponent(nextBlock.id)}&uda=${encodeURIComponent(nextBlock.uda)}&pack=${encodeURIComponent(nextBlock.pack)}#focus-operativo`
     : null
 
@@ -175,7 +190,7 @@ export default function AnnualPlanClient({
 
       <section className="annualContextPanel annualContextCompact">
         <div className="annualSelectors">
-          <label><span>Classe</span><select value={grade} onChange={(event) => { setGrade(event.target.value as GradeKey); setSectionId('') }}>{GRADES.map((item) => <option key={item}>{item}</option>)}</select></label>
+          <label><span>Classe</span><select value={grade} onChange={(event) => { setGrade(event.target.value as GradeKey); setSectionId(''); setSyncError(null) }}>{GRADES.map((item) => <option key={item}>{item}</option>)}</select></label>
           <label><span>Sezione</span><select value={sectionId} onChange={(event) => setSectionId(event.target.value)}><option value="">Vista generale</option>{state.sections[grade].map((item) => <option key={item.id} value={item.id}>{grade} {item.code}</option>)}</select></label>
         </div>
         <div className="annualSectionState">
@@ -186,11 +201,11 @@ export default function AnnualPlanClient({
       {selectedSection ? (
         <section className="humanTaskFocus annualCurrentFocus" aria-labelledby="annual-next-title">
           <p className="humanTaskFocusEyebrow">PROSSIMO NEL PIANO · {sectionLabel}</p>
-          {nextBlock ? <><h2 id="annual-next-title">{nextBlock.focus}</h2><p>Questo è il primo blocco attivo non ancora completato. DOCENTE OS non presume che sia già stato preparato o svolto.</p><div className="humanTaskMeta"><span>{nextBlock.id}</span><span>UDA {nextBlock.uda}</span><span>{nextBlock.pack}</span><span>{nextBlock.period}</span><span>{completed.length}/33 completati</span></div><div className="humanTaskActions"><button className="primary" type="button" onClick={markNextDone} disabled={isPending}>Segna svolto</button>{prepareHref ? <Link href={prepareHref}>Prepara questa fase</Link> : null}</div></> : <><h2 id="annual-next-title">Percorso annuale completato</h2><p>Tutti i blocchi attivi risultano conclusi o esclusi.</p><div className="humanTaskMeta"><span>{completed.length}/33 completati</span></div></>}
-          <span className={`annualSaveState${syncError ? ' syncError' : ''}`} role="status" aria-live="polite">{saveStateLabel}</span>
+          {nextBlock ? <><h2 id="annual-next-title">{nextBlock.focus}</h2><p>Questo è il primo blocco attivo non ancora completato. DOCENTE OS non presume che sia già stato preparato o svolto.</p><div className="humanTaskMeta"><span>{nextBlock.id}</span><span>UDA {nextBlock.uda}</span><span>{nextBlock.pack}</span><span>{nextBlock.period}</span><span>{completed.length}/33 completati</span></div><div className="humanTaskActions"><button className="primary" type="button" onClick={markNextDone} disabled={isPending || !source}>Segna svolto</button>{prepareHref ? <Link href={prepareHref}>Prepara questa fase</Link> : null}</div></> : <><h2 id="annual-next-title">Percorso annuale completato</h2><p>Tutti i blocchi attivi risultano conclusi o esclusi.</p><div className="humanTaskMeta"><span>{completed.length}/33 completati</span></div></>}
+          <span className={`annualSaveState${syncError || !source ? ' syncError' : ''}`} role="status" aria-live="polite">{saveStateLabel}</span>
         </section>
       ) : (
-        <div className="humanTaskCompactStats" aria-label="Quadro generale"><span><strong>33</strong> blocchi per grado</span><span><strong>66</strong> ore</span><span><strong>{source.code}</strong> fonte canonica</span></div>
+        <div className="humanTaskCompactStats" aria-label="Quadro generale"><span><strong>33</strong> blocchi per grado</span><span><strong>66</strong> ore</span><span><strong>{logicalSource.code}</strong> fonte canonica</span></div>
       )}
 
       <details className="humanTaskSecondary">
@@ -199,7 +214,7 @@ export default function AnnualPlanClient({
           <section className="annualTableCard">
             <div className="annualTableHeader"><div><h2>Sequenza didattica</h2><p>Usala quando devi correggere uno stato, una data o una evidenza specifica.</p></div><span>{blocks.length} blocchi · 66 ore</span></div>
             <div className="annualDesktopTable">
-              <div className="annualTableWrap"><table className="annualTable"><thead><tr><th>Blocco</th><th>UDA</th><th>Pacchetto</th><th>Periodo</th><th>Focus</th><th>Stato</th><th>Data svolta</th><th>Evidenza / nota</th></tr></thead><tbody>{blocks.map((block) => { const progress = progressFor(block.id); return <tr key={block.id} className={COMPLETE_STATUSES.has(progress.status) ? 'annualDoneRow' : ''}><td><strong>{block.id}</strong></td><td>{block.uda}</td><td><span className="annualPackChip">{block.pack}</span></td><td>{block.period}</td><td>{block.focus}</td><td>{selectedSection ? <select value={progress.status} onChange={(event) => applyAndPersist(block.id, { status: event.target.value as AnnualPlanBlockStatus })} aria-label={`Stato ${block.id}`} disabled={isPending}>{BLOCK_STATUSES.map((status) => <option key={status} value={status}>{blockStatusLabel(status)}</option>)}</select> : <span className="annualNeutralStatus">Pianificato</span>}</td><td>{selectedSection ? <input type="date" value={progress.date} onChange={(event) => applyAndPersist(block.id, { date: event.target.value })} aria-label={`Data ${block.id}`} disabled={isPending} /> : '—'}</td><td>{selectedSection ? <input value={progress.note} onChange={(event) => updateLocalProgress(block.id, { ...progress, note: event.target.value })} onBlur={(event) => persistProgressEntry(block.id, { ...progressFor(block.id), note: event.currentTarget.value })} placeholder="Prodotto, verifica, recupero…" aria-label={`Evidenza ${block.id}`} maxLength={4000} /> : '—'}</td></tr> })}</tbody></table></div>
+              <div className="annualTableWrap"><table className="annualTable"><thead><tr><th>Blocco</th><th>UDA</th><th>Pacchetto</th><th>Periodo</th><th>Focus</th><th>Stato</th><th>Data svolta</th><th>Evidenza / nota</th></tr></thead><tbody>{blocks.map((block) => { const progress = progressFor(block.id); return <tr key={block.id} className={COMPLETE_STATUSES.has(progress.status) ? 'annualDoneRow' : ''}><td><strong>{block.id}</strong></td><td>{block.uda}</td><td><span className="annualPackChip">{block.pack}</span></td><td>{block.period}</td><td>{block.focus}</td><td>{selectedSection ? <select value={progress.status} onChange={(event) => applyAndPersist(block.id, { status: event.target.value as AnnualPlanBlockStatus })} aria-label={`Stato ${block.id}`} disabled={isPending || !source}>{BLOCK_STATUSES.map((status) => <option key={status} value={status}>{blockStatusLabel(status)}</option>)}</select> : <span className="annualNeutralStatus">Pianificato</span>}</td><td>{selectedSection ? <input type="date" value={progress.date} onChange={(event) => applyAndPersist(block.id, { date: event.target.value })} aria-label={`Data ${block.id}`} disabled={isPending || !source} /> : '—'}</td><td>{selectedSection ? <input value={progress.note} onChange={(event) => updateLocalProgress(block.id, { ...progress, note: event.target.value })} onBlur={(event) => persistProgressEntry(block.id, { ...progressFor(block.id), note: event.currentTarget.value })} placeholder="Prodotto, verifica, recupero…" aria-label={`Evidenza ${block.id}`} maxLength={4000} disabled={isPending || !source} /> : '—'}</td></tr> })}</tbody></table></div>
             </div>
             <ol className="annualMobileBlockList" role="list" aria-label="Sequenza didattica per blocchi">
               {blocks.map((block) => {
@@ -215,9 +230,9 @@ export default function AnnualPlanClient({
                     <div className="annualMobileBlockMeta"><span>UDA {block.uda}</span><span className="annualPackChip">{block.pack}</span></div>
                     {selectedSection ? (
                       <div className="annualMobileBlockFields">
-                        <label><span>Stato</span><select value={progress.status} onChange={(event) => applyAndPersist(block.id, { status: event.target.value as AnnualPlanBlockStatus })} aria-label={`Stato mobile ${block.id}`} disabled={isPending}>{BLOCK_STATUSES.map((status) => <option key={status} value={status}>{blockStatusLabel(status)}</option>)}</select></label>
-                        <label><span>Data svolta</span><input type="date" value={progress.date} onChange={(event) => applyAndPersist(block.id, { date: event.target.value })} aria-label={`Data mobile ${block.id}`} disabled={isPending} /></label>
-                        <label className="annualMobileEvidence"><span>Evidenza / nota</span><input value={progress.note} onChange={(event) => updateLocalProgress(block.id, { ...progress, note: event.target.value })} onBlur={(event) => persistProgressEntry(block.id, { ...progressFor(block.id), note: event.currentTarget.value })} placeholder="Prodotto, verifica, recupero…" aria-label={`Evidenza mobile ${block.id}`} maxLength={4000} /></label>
+                        <label><span>Stato</span><select value={progress.status} onChange={(event) => applyAndPersist(block.id, { status: event.target.value as AnnualPlanBlockStatus })} aria-label={`Stato mobile ${block.id}`} disabled={isPending || !source}>{BLOCK_STATUSES.map((status) => <option key={status} value={status}>{blockStatusLabel(status)}</option>)}</select></label>
+                        <label><span>Data svolta</span><input type="date" value={progress.date} onChange={(event) => applyAndPersist(block.id, { date: event.target.value })} aria-label={`Data mobile ${block.id}`} disabled={isPending || !source} /></label>
+                        <label className="annualMobileEvidence"><span>Evidenza / nota</span><input value={progress.note} onChange={(event) => updateLocalProgress(block.id, { ...progress, note: event.target.value })} onBlur={(event) => persistProgressEntry(block.id, { ...progressFor(block.id), note: event.currentTarget.value })} placeholder="Prodotto, verifica, recupero…" aria-label={`Evidenza mobile ${block.id}`} maxLength={4000} disabled={isPending || !source} /></label>
                       </div>
                     ) : null}
                   </li>
@@ -232,8 +247,8 @@ export default function AnnualPlanClient({
         <summary>Gestione del piano e della sezione</summary>
         <div className="humanTaskSecondaryBody annualManagementPanel">
           <div className="annualAddSection"><input value={newSection} onChange={(event) => setNewSection(event.target.value)} placeholder="Nuova sezione, es. A" aria-label="Nuova sezione" /><button className="secondaryButton" type="button" onClick={addSection} disabled={isPending || !newSection.trim()}>Aggiungi sezione</button></div>
-          <div className="annualManagementLinks"><Link className="secondaryButton" href={`/knowledge/${source.assetId}`}>Documento di riferimento</Link><button className="secondaryButton" type="button" onClick={resetSection} disabled={isPending || !selectedSection}>Azzera avanzamento sezione</button></div>
-          <p>Fonte {source.code} · generazione {source.generationId}. L’avanzamento è persistito sul servizio dati; la cache browser resta di supporto.</p>
+          <div className="annualManagementLinks">{source ? <Link className="secondaryButton" href={`/knowledge/${source.assetId}`}>Documento di riferimento</Link> : <span>Documento di riferimento non collegato</span>}<button className="secondaryButton" type="button" onClick={resetSection} disabled={isPending || !selectedSection || !source}>Azzera avanzamento sezione</button></div>
+          <p>Fonte {logicalSource.code}{source ? <> · generazione {source.generationId}</> : ' · collegamento runtime non disponibile'}. L’avanzamento è persistito sul servizio dati; la cache browser resta di supporto.</p>
         </div>
       </details>
     </>

@@ -1,6 +1,8 @@
 import { buildClassWorkspaceLearningFocus } from '@/app/classi/class-workspace-model'
+import { CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { selectLatestTeachingSessionContinuity } from '@/core/domain/teaching-session-reflection'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
@@ -170,7 +172,26 @@ async function loadLessonPreparationBundleWithShared(input: {
     }))
   }
 
-  const focus = buildClassWorkspaceLearningFocus(section, shared.snapshot.progress, shared.knowledgeItems)
+  const grade = GRADE_UI[section.grade]
+  const runtimeSource = await new SupabaseCanonicalPlanSourceRepository().resolve({
+    workspaceId: input.workspaceId,
+    academicYearId: input.academicYearId,
+    code: CANONICAL_PLAN_SOURCES[grade].code,
+  })
+  if (!runtimeSource) {
+    return blockedPreparation(buildNextLessonPreparation({
+      lesson,
+      lessonContext: null,
+      missingInformation: ['Il piano annuale della classe non è ancora collegato alla sorgente canonica'],
+    }))
+  }
+
+  const focus = buildClassWorkspaceLearningFocus(
+    section,
+    shared.snapshot.progress,
+    runtimeSource.generationId,
+    shared.knowledgeItems,
+  )
   if (!focus.nextBlock) {
     return blockedPreparation(buildNextLessonPreparation({
       lesson,

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { compileHumanTaskContentCandidate, type HumanTaskPipelineSource } from './human-task-content-pipeline'
-import { buildPlanGuidedUdaProjectionDraft } from './human-task-plan-guided-uda-projection-recipe'
+import { compileHumanTaskContentCandidate, type HumanTaskContentCandidate, type HumanTaskPipelineSource } from './human-task-content-pipeline'
+import { buildPlanGuidedUdaProjectionDraft, type HumanTaskPlanGuidedUdaProjectionRecipe } from './human-task-plan-guided-uda-projection-recipe'
 import { buildProjectionBatchReview } from './human-task-projection-batch'
 import {
   B23_B27_RECIPE_PROPOSALS,
@@ -11,6 +11,19 @@ import {
   B26_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL,
   B27_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL,
 } from './human-task-projection-recipes-b23-b27'
+
+const TEST_PLAN_RUNTIME_SOURCE = {
+  code: B23_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL.planSource.code,
+  generationId: 'runtime-plan-generation',
+}
+const TEST_PLAN_RUNTIME_SOURCES = { Prima: TEST_PLAN_RUNTIME_SOURCE }
+
+function buildPlanGuidedDraft(
+  candidate: HumanTaskContentCandidate,
+  recipe: HumanTaskPlanGuidedUdaProjectionRecipe,
+) {
+  return buildPlanGuidedUdaProjectionDraft(candidate, recipe, TEST_PLAN_RUNTIME_SOURCE)
+}
 
 const UDA_105 = `CAN-UDA-1-05 — DAL PROBLEMA AL PROGETTO
 Classe prima
@@ -73,6 +86,8 @@ test('B23-B27 all reuse PLAN_GUIDED_UDA without introducing a fifth recipe', () 
   const review = buildProjectionBatchReview(
     ['B23', 'B24', 'B25', 'B26', 'B27'].map((blockId) => candidate(blockId as 'B23' | 'B24' | 'B25' | 'B26' | 'B27')),
     [...B23_B27_RECIPE_PROPOSALS],
+    [],
+    TEST_PLAN_RUNTIME_SOURCES,
   )
 
   assert.deepEqual(review.map((item) => [item.blockId, item.status]), [
@@ -94,7 +109,7 @@ test('each project block is covered by exactly one two-hour UDA phase and keeps 
   ] as const
 
   for (const [blockId, recipe, instructionPattern, evidence] of cases) {
-    const draft = buildPlanGuidedUdaProjectionDraft(candidate(blockId), recipe)
+    const draft = buildPlanGuidedDraft(candidate(blockId), recipe)
     assert.equal(draft.status, 'READY_FOR_HUMAN_APPROVAL')
     assert.ok(draft.projection)
     assert.equal(draft.projection.durationMinutes, 120)
@@ -107,7 +122,7 @@ test('each project block is covered by exactly one two-hour UDA phase and keeps 
 })
 
 test('the eight-hour Open Day PACK never overrides the ten-hour UDA or two-hour block timing', () => {
-  const draft = buildPlanGuidedUdaProjectionDraft(candidate('B26'), B26_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
+  const draft = buildPlanGuidedDraft(candidate('B26'), B26_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
   assert.equal(draft.status, 'READY_FOR_HUMAN_APPROVAL')
   assert.ok(draft.projection)
   assert.equal(draft.projection.durationMinutes, 120)
@@ -121,7 +136,7 @@ test('phase mismatch fails closed instead of borrowing adjacent project hours', 
     ...B24_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL,
     operationalPhaseOrdinals: [2, 3],
   }
-  const draft = buildPlanGuidedUdaProjectionDraft(candidate('B24'), invalidRecipe)
+  const draft = buildPlanGuidedDraft(candidate('B24'), invalidRecipe)
   assert.equal(draft.status, 'INVALID')
   assert.ok(draft.issues.some((issue) => issue.code === 'GUIDE_DURATION_MISMATCH' && issue.severity === 'BLOCKING'))
 })
@@ -134,13 +149,13 @@ test('current UDA and PACK generations are part of the candidate fingerprint', (
     uda: source('CAN-UDA-1-05', 'different-uda-generation', UDA_105),
     pack: source('CAN-PACK-1C', '2f1da16d-45b4-42aa-841a-09d283d5d96a', PACK_1C),
   })
-  const draft = buildPlanGuidedUdaProjectionDraft(drifted, B27_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
+  const draft = buildPlanGuidedDraft(drifted, B27_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
   assert.equal(draft.status, 'INVALID')
   assert.ok(draft.issues.some((issue) => issue.code === 'CANDIDATE_ID_MISMATCH' && issue.severity === 'BLOCKING'))
 })
 
 test('B27 closes UDA 1-05 through verification and improvement, not prototype completion alone', () => {
-  const draft = buildPlanGuidedUdaProjectionDraft(candidate('B27'), B27_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
+  const draft = buildPlanGuidedDraft(candidate('B27'), B27_PRIMA_PLAN_GUIDED_RECIPE_PROPOSAL)
   assert.equal(draft.status, 'READY_FOR_HUMAN_APPROVAL')
   assert.ok(draft.projection)
   assert.match(draft.projection.steps[0].instruction, /individuazione di difetti, correzioni e possibili miglioramenti/i)
