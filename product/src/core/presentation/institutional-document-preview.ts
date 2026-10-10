@@ -24,6 +24,7 @@ export type InstitutionalPreviewSection = {
   role: TemplateSection['renderRole']
   lines: string[]
   table?: { columns: string[]; rows: string[][] }
+  tables?: { columns: string[]; rows: string[][] }[]
   checklist?: string[]
 }
 
@@ -59,7 +60,10 @@ export function renderInstitutionalPreview(input: {
     ...sections.flatMap((section) => [
       section.title,
       ...section.lines,
-      ...(section.table ? [section.table.columns.join(' | '), ...section.table.rows.map((row) => row.join(' | '))] : []),
+      ...((section.tables ?? (section.table ? [section.table] : [])).flatMap((table) => [
+        table.columns.join(' | '),
+        ...table.rows.map((row) => row.join(' | ')),
+      ])),
       ...(section.checklist ?? []),
     ]),
     ...base.footerProfile.lines,
@@ -119,8 +123,19 @@ function assertResolvedVersions(
 
 function renderSection(section: TemplateSection, values: Record<string, unknown>): InstitutionalPreviewSection {
   if (section.renderRole === 'TABLE') {
-    const table = firstTable(section.fields, values)
-    return { title: section.label, role: section.renderRole, lines: [], ...(table ? { table } : {}) }
+    const tables = section.fields.flatMap((field) => {
+      const table = tableValue(values[field.key])
+      return table ? [table] : []
+    })
+    const lines = section.fields.flatMap((field) => (
+      tableValue(values[field.key]) ? [] : renderLabeledValue(field, values[field.key])
+    ))
+    return {
+      title: section.label,
+      role: section.renderRole,
+      lines,
+      ...(tables.length ? { table: tables[0], tables } : {}),
+    }
   }
 
   if (section.renderRole === 'CHECKLIST') {
@@ -135,17 +150,13 @@ function renderSection(section: TemplateSection, values: Record<string, unknown>
   return { title: section.label, role: section.renderRole, lines }
 }
 
-function firstTable(fields: TemplateField[], values: Record<string, unknown>): TableValue | undefined {
-  for (const field of fields) {
-    const raw = values[field.key]
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue
-    const candidate = raw as Partial<TableValue>
-    if (!Array.isArray(candidate.columns) || !Array.isArray(candidate.rows)) continue
-    const columns = candidate.columns.map(stringValue)
-    const rows = candidate.rows.map((row) => Array.isArray(row) ? row.map(stringValue) : [])
-    return { columns, rows }
-  }
-  return undefined
+function tableValue(raw: unknown): TableValue | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const candidate = raw as Partial<TableValue>
+  if (!Array.isArray(candidate.columns) || !Array.isArray(candidate.rows)) return undefined
+  const columns = candidate.columns.map(stringValue)
+  const rows = candidate.rows.map((row) => Array.isArray(row) ? row.map(stringValue) : [])
+  return { columns, rows }
 }
 
 function renderChecklist(field: TemplateField, raw: unknown): string[] {

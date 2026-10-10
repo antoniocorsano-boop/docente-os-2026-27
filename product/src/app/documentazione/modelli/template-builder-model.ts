@@ -147,36 +147,54 @@ export function buildGovernedTemplateBuilderViewModel(
   } else {
     const snapshot = input.institutionalBase
     const version = snapshot.versions.find((candidate) => candidate.versionNo === snapshot.base.currentVersionNo)
-    if (!version) throw new Error('La veste istituzionale non contiene la versione corrente revisionabile.')
-
-    const review = resolveReview(
-      snapshot.qualityReviews,
-      version.versionNo,
-      input.institutionalBaseReview,
-    )
-    const canActivate = review !== null
-      && isReviewPass(review)
-      && snapshot.base.activeVersionNo !== version.versionNo
-
-    institutionalBase = {
-      heading: 'Veste istituzionale',
-      title: snapshot.base.name,
-      statusLabel: statusLabel(snapshot.base.status),
-      sourceSummary: sourceSummary(snapshot.sources.length, 'veste'),
-      reviewAvailable: review !== null,
-      reviewLabel: review ? reviewResultLabel(review.result) : 'Controllo non ancora effettuato',
-      findings: review?.findings.map((finding) => finding.summary) ?? [],
-      actions: lifecycleActions(snapshot.base.status, canGovern, canActivate),
-      history: buildHistory(
-        snapshot.versions.map((candidate) => candidate.versionNo),
+    if (!version) {
+      if (snapshot.base.currentVersionNo !== 0) {
+        throw new Error('La veste istituzionale non contiene la versione corrente revisionabile.')
+      }
+      institutionalBase = {
+        heading: 'Veste istituzionale',
+        title: snapshot.base.name,
+        statusLabel: statusLabel(snapshot.base.status),
+        sourceSummary: sourceSummary(snapshot.sources.length, 'veste'),
+        reviewAvailable: false,
+        reviewLabel: 'Controllo non ancora effettuato',
+        findings: [],
+        actions: [],
+        history: [],
+        identityId: snapshot.base.id,
+        currentVersionNo: null,
+        institutionName: null,
+      }
+    } else {
+      const review = resolveReview(
         snapshot.qualityReviews,
-        snapshot.base.currentVersionNo,
-        snapshot.base.activeVersionNo,
+        version.versionNo,
         input.institutionalBaseReview,
-      ),
-      identityId: snapshot.base.id,
-      currentVersionNo: version.versionNo,
-      institutionName: version.draft.identityProfile.institutionName,
+      )
+      const canActivate = review !== null
+        && isReviewPass(review)
+        && snapshot.base.activeVersionNo !== version.versionNo
+
+      institutionalBase = {
+        heading: 'Veste istituzionale',
+        title: snapshot.base.name,
+        statusLabel: statusLabel(snapshot.base.status),
+        sourceSummary: sourceSummary(snapshot.sources.length, 'veste'),
+        reviewAvailable: review !== null,
+        reviewLabel: review ? reviewResultLabel(review.result) : 'Controllo non ancora effettuato',
+        findings: review?.findings.map((finding) => finding.summary) ?? [],
+        actions: lifecycleActions(snapshot.base.status, canGovern, canActivate),
+        history: buildHistory(
+          snapshot.versions.map((candidate) => candidate.versionNo),
+          snapshot.qualityReviews,
+          snapshot.base.currentVersionNo,
+          snapshot.base.activeVersionNo,
+          input.institutionalBaseReview,
+        ),
+        identityId: snapshot.base.id,
+        currentVersionNo: version.versionNo,
+        institutionName: version.draft.identityProfile.institutionName,
+      }
     }
   }
 
@@ -202,37 +220,55 @@ export function buildGovernedTemplateBuilderViewModel(
     const version = snapshot.versions.find(
       (candidate) => candidate.versionNo === snapshot.template.currentVersionNo,
     )
-    if (!version) throw new Error('Il modello non contiene la versione corrente revisionabile.')
+    if (!version) {
+      if (snapshot.template.currentVersionNo !== 0) {
+        throw new Error('Il modello non contiene la versione corrente revisionabile.')
+      }
+      familyTemplate = {
+        heading: 'Modello del documento',
+        title: snapshot.template.name,
+        statusLabel: statusLabel(snapshot.template.status),
+        sourceSummary: sourceSummary(snapshot.sources.length, 'modello'),
+        reviewAvailable: false,
+        reviewLabel: 'Controllo non ancora effettuato',
+        findings: [],
+        canApprove: false,
+        sections: [],
+        actions: [],
+        history: [],
+        identityId: snapshot.template.id,
+        currentVersionNo: null,
+      }
+    } else {
+      const draftReviewable = Array.isArray(version.draft.sections)
+      const review = draftReviewable
+        ? resolveReview(snapshot.qualityReviews, version.versionNo, input.familyTemplateReview)
+        : null
+      const hasPendingVersion = snapshot.template.activeVersionNo === null
+        || snapshot.template.activeVersionNo !== version.versionNo
+      const canApprove = review !== null && isReviewPass(review) && hasPendingVersion
 
-    const review = resolveReview(
-      snapshot.qualityReviews,
-      version.versionNo,
-      input.familyTemplateReview,
-    )
-    const hasPendingVersion = snapshot.template.activeVersionNo === null
-      || snapshot.template.activeVersionNo !== version.versionNo
-    const canApprove = review !== null && isReviewPass(review) && hasPendingVersion
-
-    familyTemplate = {
-      heading: 'Modello del documento',
-      title: snapshot.template.name,
-      statusLabel: statusLabel(snapshot.template.status),
-      sourceSummary: sourceSummary(snapshot.sources.length, 'modello'),
-      reviewAvailable: review !== null,
-      reviewLabel: review ? reviewResultLabel(review.result) : 'Controllo non ancora effettuato',
-      findings: review?.findings.map((finding) => finding.summary) ?? [],
-      canApprove,
-      sections: sectionViewModels(version.draft.sections),
-      actions: lifecycleActions(snapshot.template.status, canGovern, canApprove),
-      history: buildHistory(
-        snapshot.versions.map((candidate) => candidate.versionNo),
-        snapshot.qualityReviews,
-        snapshot.template.currentVersionNo,
-        snapshot.template.activeVersionNo,
-        input.familyTemplateReview,
-      ),
-      identityId: snapshot.template.id,
-      currentVersionNo: snapshot.template.currentVersionNo,
+      familyTemplate = {
+        heading: 'Modello del documento',
+        title: snapshot.template.name,
+        statusLabel: statusLabel(snapshot.template.status),
+        sourceSummary: sourceSummary(snapshot.sources.length, 'modello'),
+        reviewAvailable: review !== null,
+        reviewLabel: review ? reviewResultLabel(review.result) : 'Controllo non ancora effettuato',
+        findings: review?.findings.map((finding) => finding.summary) ?? [],
+        canApprove,
+        sections: draftReviewable ? sectionViewModels(version.draft.sections) : [],
+        actions: lifecycleActions(snapshot.template.status, canGovern, canApprove),
+        history: buildHistory(
+          snapshot.versions.map((candidate) => candidate.versionNo),
+          snapshot.qualityReviews,
+          snapshot.template.currentVersionNo,
+          snapshot.template.activeVersionNo,
+          input.familyTemplateReview,
+        ),
+        identityId: snapshot.template.id,
+        currentVersionNo: snapshot.template.currentVersionNo,
+      }
     }
   }
 

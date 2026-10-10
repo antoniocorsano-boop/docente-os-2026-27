@@ -325,6 +325,7 @@ jobs:
 
       - name: Preserve HVA HTML report
         if: always() && needs.preflight.outputs.hva == 'true'
+        continue-on-error: true
         working-directory: product
         shell: bash
         run: |
