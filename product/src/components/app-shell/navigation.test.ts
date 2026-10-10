@@ -51,6 +51,19 @@ test('DOS-VIEW-CONV-01A derives mobile navigation columns from rendered children
   assert.doesNotMatch(mobileRule, /grid-template-columns:repeat\(\d+/)
 })
 
+test('DOS-VIEW-CONV-01A reserves mobile content space above the fixed bottom navigation', () => {
+  const appShellCss = readFileSync(new URL('../../app/app-shell.css', import.meta.url), 'utf8')
+  const mobileStart = appShellCss.indexOf('@media(max-width:719px)')
+  const mobileEnd = appShellCss.indexOf('@media(max-width:380px)', mobileStart)
+  assert.notEqual(mobileStart, -1)
+  assert.notEqual(mobileEnd, -1)
+  const mobileCss = appShellCss.slice(mobileStart, mobileEnd)
+
+  assert.match(mobileCss, /\.dosMainColumn\{[^}]*--dos-bottom-nav-height:68px[^}]*\}/)
+  assert.match(mobileCss, /\.dosContent\.workSurface\{[^}]*padding-bottom:calc\(var\(--dos-bottom-nav-height\) \+ env\(safe-area-inset-bottom\) \+ 16px\)[^}]*\}/)
+  assert.match(mobileCss, /\.dosBottomNav\{[^}]*min-height:var\(--dos-bottom-nav-height\)[^}]*\}/)
+})
+
 test('DOS-VIEW-CONV-01A keeps the primary work destinations coherent across desktop and mobile', () => {
   assert.deepEqual(workNavigationItems().map((item) => item.key), ['home', 'today', 'classes', 'timetable'])
   assert.deepEqual(workNavigationItems().map((item) => item.key), [...MOBILE_NAVIGATION_KEYS])
