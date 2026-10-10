@@ -141,7 +141,7 @@ select public.create_document_template(
 select pg_temp.expect_failure(
   format(
     'select public.save_document_template_version(%L::uuid,0,%L::jsonb,''{}''::uuid[])',
-    :'ingress_family_id', '{}'::jsonb::text
+    :'ingress_family_id', '{"version":1}'::jsonb::text
   ),
   'family save rejects structurally invalid schema before persistence',
   'template schema structurally invalid'
