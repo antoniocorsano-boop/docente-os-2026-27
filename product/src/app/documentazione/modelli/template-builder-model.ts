@@ -37,6 +37,7 @@ export type TemplateBuilderViewModel = {
   title: string
   statusLabel: string
   sourceSummary: string
+  reviewAvailable: boolean
   reviewLabel: string
   findings: string[]
   canApprove: boolean
@@ -55,6 +56,7 @@ export type GovernedInstitutionalBaseViewModel = {
   title: string
   statusLabel: string
   sourceSummary: string
+  reviewAvailable: boolean
   reviewLabel: string
   findings: string[]
   actions: TemplateBuilderLifecycleAction[]
@@ -113,6 +115,7 @@ export function buildTemplateBuilderViewModel(
     title: snapshot.template.name,
     statusLabel: statusLabel(snapshot.template.status),
     sourceSummary: sourceSummary(snapshot.sources.length, 'modello'),
+    reviewAvailable: true,
     reviewLabel: reviewResultLabel(review.result),
     findings: review.findings.map((finding) => finding.summary),
     canApprove: isReviewPass(review) && hasPendingVersion,
@@ -132,7 +135,8 @@ export function buildGovernedTemplateBuilderViewModel(
       title: 'Nessuna veste istituzionale registrata',
       statusLabel: 'Non disponibile',
       sourceSummary: 'Nessuna sorgente registrata',
-      reviewLabel: 'Controllo non disponibile',
+      reviewAvailable: false,
+      reviewLabel: 'Controllo non ancora effettuato',
       findings: [],
       actions: [],
       history: [],
@@ -159,7 +163,8 @@ export function buildGovernedTemplateBuilderViewModel(
       title: snapshot.base.name,
       statusLabel: statusLabel(snapshot.base.status),
       sourceSummary: sourceSummary(snapshot.sources.length, 'veste'),
-      reviewLabel: review ? reviewResultLabel(review.result) : 'Controllo non disponibile',
+      reviewAvailable: review !== null,
+      reviewLabel: review ? reviewResultLabel(review.result) : 'Controllo non ancora effettuato',
       findings: review?.findings.map((finding) => finding.summary) ?? [],
       actions: lifecycleActions(snapshot.base.status, canGovern, canActivate),
       history: buildHistory(
@@ -182,7 +187,8 @@ export function buildGovernedTemplateBuilderViewModel(
       title: 'Nessun modello documentale registrato',
       statusLabel: 'Non disponibile',
       sourceSummary: 'Nessuna sorgente registrata',
-      reviewLabel: 'Controllo non disponibile',
+      reviewAvailable: false,
+      reviewLabel: 'Controllo non ancora effettuato',
       findings: [],
       canApprove: false,
       sections: [],
@@ -212,7 +218,8 @@ export function buildGovernedTemplateBuilderViewModel(
       title: snapshot.template.name,
       statusLabel: statusLabel(snapshot.template.status),
       sourceSummary: sourceSummary(snapshot.sources.length, 'modello'),
-      reviewLabel: review ? reviewResultLabel(review.result) : 'Controllo non disponibile',
+      reviewAvailable: review !== null,
+      reviewLabel: review ? reviewResultLabel(review.result) : 'Controllo non ancora effettuato',
       findings: review?.findings.map((finding) => finding.summary) ?? [],
       canApprove,
       sections: sectionViewModels(version.draft.sections),
@@ -275,7 +282,7 @@ function buildHistory(
         versionNo,
         current: versionNo === currentVersionNo,
         active: versionNo === activeVersionNo,
-        reviewLabel: review ? reviewResultLabel(review.result) : 'Controllo non disponibile',
+        reviewLabel: review ? reviewResultLabel(review.result) : 'Controllo non ancora effettuato',
       }
     })
 }
