@@ -132,6 +132,50 @@ values
 set role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-000000000921","aal":"aal2"}', false);
 
+-- Structurally invalid payloads must never enter either immutable version registry.
+select public.create_document_template(
+  '00000000-0000-4000-8000-000000000930'::uuid,
+  'FINAL_REPORT',
+  'Relazione finale structural-ingress fixture'
+) as ingress_family_id \gset
+select pg_temp.expect_failure(
+  format(
+    'select public.save_document_template_version(%L::uuid,0,%L::jsonb,''{}''::uuid[])',
+    :'ingress_family_id', '{}'::jsonb::text
+  ),
+  'family save rejects structurally invalid schema before persistence',
+  'template schema structurally invalid'
+);
+select pg_temp.assert_true(
+  (select current_version_no = 0 from public.document_templates where id = :'ingress_family_id'::uuid),
+  'family rejected schema does not advance current_version_no'
+);
+select pg_temp.assert_true(
+  (select count(*) = 0 from public.document_template_versions where template_id = :'ingress_family_id'::uuid),
+  'family rejected schema creates no immutable version row'
+);
+
+select public.create_institutional_base(
+  '00000000-0000-4000-8000-000000000930'::uuid,
+  'Veste structural-ingress fixture'
+) as ingress_base_id \gset
+select pg_temp.expect_failure(
+  format(
+    'select public.save_institutional_base_version(%L::uuid,0,%L::jsonb,''{}''::uuid[])',
+    :'ingress_base_id', '{"version":1}'::jsonb::text
+  ),
+  'institutional-base save rejects structurally invalid profile before persistence',
+  'institutional base profile structurally invalid'
+);
+select pg_temp.assert_true(
+  (select current_version_no = 0 from public.institutional_bases where id = :'ingress_base_id'::uuid),
+  'base rejected profile does not advance current_version_no'
+);
+select pg_temp.assert_true(
+  (select count(*) = 0 from public.institutional_base_versions where base_id = :'ingress_base_id'::uuid),
+  'base rejected profile creates no immutable version row'
+);
+
 -- Trusted purity must fail closed on both independent streams.
 select public.create_document_template(
   '00000000-0000-4000-8000-000000000930'::uuid,
