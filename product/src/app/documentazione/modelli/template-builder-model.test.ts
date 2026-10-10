@@ -171,6 +171,19 @@ test('MEMBER can inspect both streams but never receives institution-wide lifecy
   assert.deepEqual(model.familyTemplate.actions, [])
 })
 
+test('empty governed streams distinguish a review not yet performed from a blocker-free review', () => {
+  const model = buildGovernedTemplateBuilderViewModel({
+    institutionalBase: null,
+    familyTemplate: null,
+    role: 'OWNER',
+  })
+
+  assert.equal(model.institutionalBase.reviewAvailable, false)
+  assert.equal(model.familyTemplate.reviewAvailable, false)
+  assert.equal(model.institutionalBase.reviewLabel, 'Controllo non ancora effettuato')
+  assert.equal(model.familyTemplate.reviewLabel, 'Controllo non ancora effettuato')
+})
+
 test('OWNER sees state-safe lifecycle actions and RETIRED exposes inspection only', () => {
   const blockedBase = baseSnapshot('BLOCKED')
   const retiredFamily = snapshot()
