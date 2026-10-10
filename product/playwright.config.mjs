@@ -14,7 +14,7 @@ export default defineConfig({
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
   ],
-  outputDir: 'test-results',
+  outputDir: 'test-results/browser-gates',
   use: {
     baseURL,
     viewport: { width: 412, height: 915 },
