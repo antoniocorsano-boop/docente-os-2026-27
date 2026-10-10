@@ -54,6 +54,9 @@ begin
   if target_schema_json is null or jsonb_typeof(target_schema_json) <> 'object' then
     raise exception 'template schema must be a JSON object';
   end if;
+  if jsonb_typeof(target_schema_json->'version') is distinct from 'number' then
+    raise exception 'template version must be a JSON number';
+  end if;
 
   computed_review := private.compute_document_template_quality_review(target_schema_json);
   select exists (
