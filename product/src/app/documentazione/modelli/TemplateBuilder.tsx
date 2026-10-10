@@ -55,23 +55,29 @@ function GovernanceControls({
 }
 
 function ReviewGate({
+  reviewAvailable,
   reviewLabel,
   findings,
 }: {
+  reviewAvailable: boolean
   reviewLabel: string
   findings: string[]
 }) {
-  const ready = !findings.length && /superato/i.test(reviewLabel)
+  const ready = reviewAvailable && !findings.length && /superato/i.test(reviewLabel)
   return (
     <section className={`templateBuilderGate ${ready ? 'ready' : 'attention'}`} aria-live="polite">
       <div>
         <span>REVISIONE</span>
         <strong>{reviewLabel}</strong>
-        <p>{ready
-          ? 'La versione corrente non presenta rilievi bloccanti.'
-          : 'Verifica i rilievi prima di rendere disponibile questa versione.'}</p>
+        <p>{!reviewAvailable
+          ? 'Il controllo qualità deve ancora essere eseguito per questa versione.'
+          : ready
+            ? 'La versione corrente non presenta rilievi bloccanti.'
+            : 'Verifica i rilievi prima di rendere disponibile questa versione.'}</p>
       </div>
-      {findings.length ? (
+      {!reviewAvailable ? (
+        <span>In attesa del controllo qualità.</span>
+      ) : findings.length ? (
         <ul>{findings.map((finding) => <li key={finding}>{finding}</li>)}</ul>
       ) : <span className="templateBuilderPass">Nessun rilievo bloccante.</span>}
     </section>
@@ -138,6 +144,7 @@ export function TemplateBuilder({ model }: { model: GovernedTemplateBuilderViewM
           </div>
         </header>
         <ReviewGate
+          reviewAvailable={model.institutionalBase.reviewAvailable}
           reviewLabel={model.institutionalBase.reviewLabel}
           findings={model.institutionalBase.findings}
         />
@@ -163,6 +170,7 @@ export function TemplateBuilder({ model }: { model: GovernedTemplateBuilderViewM
           </div>
         </header>
         <ReviewGate
+          reviewAvailable={model.familyTemplate.reviewAvailable}
           reviewLabel={model.familyTemplate.reviewLabel}
           findings={model.familyTemplate.findings}
         />
