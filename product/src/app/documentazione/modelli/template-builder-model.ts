@@ -240,7 +240,7 @@ export function buildGovernedTemplateBuilderViewModel(
         currentVersionNo: null,
       }
     } else {
-      const draftReviewable = Array.isArray(version.draft.sections)
+      const draftReviewable = areRenderableTemplateSections(version.draft.sections)
       const review = draftReviewable
         ? resolveReview(snapshot.qualityReviews, version.versionNo, input.familyTemplateReview)
         : null
@@ -321,6 +321,59 @@ function buildHistory(
         reviewLabel: review ? reviewResultLabel(review.result) : 'Controllo non ancora effettuato',
       }
     })
+}
+
+const RENDER_ROLES = new Set<TemplateRenderRole>([
+  'HEADING',
+  'PARAGRAPH',
+  'KEY_VALUE',
+  'TABLE',
+  'CHECKLIST',
+  'CALLOUT',
+  'SIGNATURE_BLOCK',
+])
+
+const VALUE_POLICIES = new Set<TemplateValuePolicy>([
+  'AUTO_DOCUMENTED',
+  'DERIVED',
+  'TEACHER_INPUT',
+  'TEACHER_CONFIRMATION',
+  'OPTIONAL_PROPOSAL',
+  'RESTRICTED',
+  'STATIC',
+])
+
+const PRIVACY_CLASSES = new Set<TemplatePrivacyClass>([
+  'PUBLIC_INSTITUTIONAL',
+  'PROFESSIONAL_CONTEXT',
+  'AGGREGATE_CLASS_DATA',
+  'SENSITIVE_AGGREGATE',
+  'PERSONAL_STUDENT_DATA',
+  'SPECIAL_CATEGORY_DATA',
+])
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isRenderableTemplateSection(value: unknown): value is TemplateSection {
+  if (!isRecord(value)) return false
+  if (typeof value.label !== 'string' || typeof value.purpose !== 'string') return false
+  if (typeof value.required !== 'boolean') return false
+  if (typeof value.renderRole !== 'string' || !RENDER_ROLES.has(value.renderRole as TemplateRenderRole)) return false
+  if (!Array.isArray(value.fields)) return false
+
+  return value.fields.every((field) => {
+    if (!isRecord(field)) return false
+    if (typeof field.label !== 'string' || typeof field.required !== 'boolean') return false
+    if (typeof field.valuePolicy !== 'string' || !VALUE_POLICIES.has(field.valuePolicy as TemplateValuePolicy)) return false
+    return typeof field.privacyClass === 'string'
+      && PRIVACY_CLASSES.has(field.privacyClass as TemplatePrivacyClass)
+  })
+}
+
+function areRenderableTemplateSections(value: unknown): value is TemplateSection[] {
+  return Array.isArray(value) && value.every(isRenderableTemplateSection)
 }
 
 function sectionViewModels(sections: TemplateSection[]): TemplateBuilderSectionViewModel[] {
