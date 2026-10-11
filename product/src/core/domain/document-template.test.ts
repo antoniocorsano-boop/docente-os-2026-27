@@ -8,6 +8,7 @@ import {
   type InstitutionalBaseVersionDraft,
   type InstitutionalRenderPin,
 } from './document-template'
+import './authored-document.test'
 
 function validDraft(): DocumentTemplateVersionDraft {
   return {
