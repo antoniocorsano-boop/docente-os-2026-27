@@ -31,13 +31,15 @@ declare
   uid uuid := auth.uid();
   workspace uuid;
   current_status text;
+  template_document_kind text;
+  schema_version numeric;
   computed_review jsonb;
   has_structural_finding boolean;
 begin
   if uid is null then raise exception 'authentication required'; end if;
 
-  select template.workspace_id, template.status
-    into workspace, current_status
+  select template.workspace_id, template.status, template.document_kind
+    into workspace, current_status, template_document_kind
   from public.document_templates template
   where template.id = target_template_id
   for update;
@@ -56,6 +58,13 @@ begin
   end if;
   if jsonb_typeof(target_schema_json->'version') is distinct from 'number' then
     raise exception 'template version must be a JSON number';
+  end if;
+  if target_schema_json->>'kind' is distinct from template_document_kind then
+    raise exception 'template schema kind must match template identity';
+  end if;
+  schema_version := (target_schema_json->>'version')::numeric;
+  if schema_version is distinct from (expected_current_version + 1)::numeric then
+    raise exception 'template schema version must match next registry version';
   end if;
 
   computed_review := private.compute_document_template_quality_review(target_schema_json);
