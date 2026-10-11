@@ -5,7 +5,7 @@ import { screenshotPath } from '../support/experience-observer.mjs'
 requireE2ECredentials()
 
 const PRIMARY_LABELS = ['Home', 'Oggi', 'Classi', 'Orario', 'Naviga']
-const SECONDARY_LABELS = ['Progetta', 'Piano annuale', 'Calendario', 'Conoscenza', 'Impostazioni', 'Account e sicurezza']
+const SECONDARY_LABELS = ['Progetta', 'Piano annuale', 'Documentazione', 'Calendario', 'Conoscenza', 'Impostazioni', 'Account e sicurezza']
 
 test('UX-0E: la shell espone la IA DOS-VIEW-CONV-01A e rende Conoscenza contestuale', async ({ page }, testInfo) => {
   await loginE2E(page)
