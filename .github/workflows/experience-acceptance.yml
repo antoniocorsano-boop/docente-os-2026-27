@@ -49,31 +49,17 @@ jobs:
     if: github.event_name == 'pull_request'
     name: hva-application
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 50
     env:
       EXPERIENCE_TARGET: local
       E2E_BASE_URL: http://127.0.0.1:3000
-      NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
 
     steps:
-      - name: Check governed AAL2 E2E credential configuration
+      - name: Initialize isolated application acceptance
         id: credentials
         shell: bash
-        run: |
-          missing=0
-          for name in E2E_EMAIL E2E_PASSWORD E2E_TOTP_SECRET; do
-            if [ -z "${!name:-}" ]; then
-              echo "::error::$name is required for HVA authenticated acceptance."
-              missing=1
-            fi
-          done
-          if [ "$missing" -eq 0 ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-          fi
+        run: echo "ready=true" >> "$GITHUB_OUTPUT"
 
       - name: Publish pending application status
         if: steps.credentials.outputs.ready == 'true'
@@ -108,6 +94,25 @@ jobs:
         if: steps.credentials.outputs.ready == 'true'
         working-directory: product
         run: npm install --no-audit --no-fund
+
+      - name: Set up Supabase CLI for isolated HVA runtime
+        if: steps.credentials.outputs.ready == 'true'
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: latest
+
+      - name: Prepare isolated exact-head Supabase runtime
+        if: steps.credentials.outputs.ready == 'true'
+        shell: bash
+        env:
+          TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+          CPRI_TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash .github/scripts/certification/prepare-isolated-hva-runtime.sh prepare
+
+      - name: Verify isolated CPRI preflight
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: node -e "import('./scripts/experience/cpri-runtime-preflight.mjs').then((m) => m.runCpriRuntimePreflight())"
 
       - name: Install Playwright runner without changing the lockfile
         if: steps.credentials.outputs.ready == 'true'
@@ -169,6 +174,7 @@ jobs:
           retention-days: 90
           path: |
             product/test-results/experience/
+            product/test-results/cpri/
             product/playwright-report/experience/
             /tmp/docente-os-hva-server.log
 
@@ -176,6 +182,11 @@ jobs:
         if: always() && steps.credentials.outputs.ready == 'true'
         working-directory: product
         run: node -e "const r=require('./test-results/experience/receipt/acceptance.json'); if(Object.values(r.gates).includes('FAIL')) process.exit(1)"
+
+      - name: Stop isolated exact-head Supabase runtime
+        if: always() && steps.credentials.outputs.ready == 'true'
+        shell: bash
+        run: bash .github/scripts/certification/prepare-isolated-hva-runtime.sh stop
 
       - name: Publish final application status
         if: always()
@@ -194,7 +205,7 @@ jobs:
               sha: testedSha,
               state: !ready ? 'error' : ok ? 'success' : 'failure',
               context: 'hva/application',
-              description: !ready ? 'HVA non eseguito: credenziale AAL2 mancante' : ok ? 'Gate automatico HVA locale superato' : 'Gate automatico HVA locale non superato',
+              description: !ready ? 'HVA non eseguito: runtime isolato non inizializzato' : ok ? 'Gate automatico HVA locale superato' : 'Gate automatico HVA locale non superato',
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
 
