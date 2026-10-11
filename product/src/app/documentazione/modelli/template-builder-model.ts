@@ -173,7 +173,10 @@ export function buildGovernedTemplateBuilderViewModel(
       )
       const canActivate = review !== null
         && isReviewPass(review)
-        && snapshot.base.status !== 'ACTIVE'
+        && (
+          snapshot.base.status !== 'ACTIVE'
+          || snapshot.base.activeVersionNo !== version.versionNo
+        )
 
       institutionalBase = {
         heading: 'Veste istituzionale',
@@ -249,7 +252,10 @@ export function buildGovernedTemplateBuilderViewModel(
       const canApprove = review !== null && isReviewPass(review) && hasPendingVersion
       const canActivate = review !== null
         && isReviewPass(review)
-        && snapshot.template.status !== 'ACTIVE'
+        && (
+          snapshot.template.status !== 'ACTIVE'
+          || snapshot.template.activeVersionNo !== version.versionNo
+        )
 
       familyTemplate = {
         heading: 'Modello del documento',
