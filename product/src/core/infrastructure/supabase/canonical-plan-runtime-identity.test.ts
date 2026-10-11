@@ -5,6 +5,7 @@ import test from 'node:test'
 const migrationUrl = new URL('../../../../supabase/migrations/0099_canonical_plan_runtime_identity.sql', import.meta.url)
 const repositorySource = readFileSync(new URL('./supabase-canonical-plan-source-repository.ts', import.meta.url), 'utf8')
 const cpriRuntimePreflightSource = readFileSync(new URL('../../../../scripts/experience/cpri-runtime-preflight.mjs', import.meta.url), 'utf8')
+const runtimeReleaseContractSource = readFileSync(new URL('../../../../supabase/tests/runtime-release-contract.sql', import.meta.url), 'utf8')
 
 test('canonical plan runtime identity is governed by a workspace/year binding table', () => {
   assert.equal(
@@ -56,6 +57,19 @@ test('the governed identity contract keeps cross-workspace materializations fail
     /generation_id[\s\S]*asset_id|asset_id[\s\S]*generation_id/i,
     'the database must enforce generation-to-asset coherence',
   )
+})
+
+test('CPRI rollout backfills only missing governed bindings from legacy discovery metadata', () => {
+  const migrationSource = readFileSync(migrationUrl, 'utf8')
+  assert.match(migrationSource, /backfill_canonical_plan_runtime_bindings/i)
+  assert.match(migrationSource, /canonicalExecCode/)
+  assert.match(migrationSource, /on conflict[\s\S]*do nothing/i)
+  assert.match(migrationSource, /grant execute[\s\S]*backfill_canonical_plan_runtime_bindings[\s\S]*service_role/i)
+  assert.match(migrationSource, /select public\.backfill_canonical_plan_runtime_bindings\(\)/i)
+})
+
+test('Atlas atomicity behavior contract is part of the deep runtime replay', () => {
+  assert.match(runtimeReleaseContractSource, /\\ir atlas_material_bundle_atomicity_contract\.sql/)
 })
 
 test('CPRI runtime preflight targets the final rebaselined schema watermark', () => {

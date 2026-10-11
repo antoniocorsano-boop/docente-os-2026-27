@@ -13,8 +13,16 @@ const atlasBindActionsSource = fs.readFileSync(
   new URL('../../app/progetta/atlas/ritorno/actions.ts', import.meta.url),
   'utf8',
 )
+const atlasReturnReviewSource = fs.readFileSync(
+  new URL('../../app/progetta/atlas/ritorno/AtlasMaterialReturnReview.tsx', import.meta.url),
+  'utf8',
+)
 const lessonWorkspaceSource = fs.readFileSync(
   new URL('../../app/classi/[sectionId]/lezioni/[blockId]/page.tsx', import.meta.url),
+  'utf8',
+)
+const lessonPreparationManifestSource = fs.readFileSync(
+  new URL('../presentation/lesson-preparation-manifest.ts', import.meta.url),
   'utf8',
 )
 
@@ -93,4 +101,16 @@ test('Atlas material persistence does not bind canonical plan provenance to glob
   assert.doesNotMatch(atlasBindActionsSource, /canonicalGenerationId:\s*source\.generationId/)
   assert.doesNotMatch(lessonWorkspaceSource, /canonicalPlanAssetId:\s*source\.assetId/)
   assert.doesNotMatch(lessonWorkspaceSource, /canonicalGenerationId:\s*source\.generationId/)
+})
+
+test('Atlas return review does not nest a second main landmark inside AppShell', () => {
+  assert.doesNotMatch(atlasReturnReviewSource, /<main\b/)
+})
+
+test('Atlas material semantic type survives into lesson preparation roles', () => {
+  assert.match(lessonPreparationManifestSource, /atlasMaterialType/)
+  assert.match(lessonPreparationManifestSource, /presentation[\s\S]*MINI_DECK/)
+  assert.match(lessonPreparationManifestSource, /rubric[\s\S]*ASSESSMENT/)
+  assert.match(lessonPreparationManifestSource, /worksheet[\s\S]*STUDENT_HANDOUT/)
+  assert.match(lessonPreparationManifestSource, /guide[\s\S]*TEACHER_BRIEF/)
 })
