@@ -146,6 +146,133 @@ $$;
 revoke all on function public.bind_canonical_plan_runtime_source(uuid, uuid, text, uuid, uuid) from public, anon, authenticated;
 grant execute on function public.bind_canonical_plan_runtime_source(uuid, uuid, text, uuid, uuid) to service_role;
 
+create or replace function public.backfill_canonical_plan_runtime_bindings()
+returns integer
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  target record;
+  candidate record;
+  generation record;
+  candidate_count integer;
+  inserted_count integer := 0;
+begin
+  for target in
+    select distinct
+      ka.workspace_id,
+      ka.academic_year_id,
+      supported.canonical_plan_code
+    from public.knowledge_assets ka
+    cross join (
+      values
+        ('CAN-PLAN-1'::text),
+        ('CAN-PLAN-2'::text),
+        ('CAN-PLAN-3'::text)
+    ) as supported(canonical_plan_code)
+    where ka.academic_year_id is not null
+      and ka.source_metadata @> jsonb_build_object('canonicalExecCode', supported.canonical_plan_code)
+  loop
+    if exists (
+      select 1
+      from public.canonical_plan_runtime_bindings b
+      where b.workspace_id = target.workspace_id
+        and b.academic_year_id = target.academic_year_id
+        and b.canonical_plan_code = target.canonical_plan_code
+    ) then
+      continue;
+    end if;
+
+    select count(*)
+      into candidate_count
+    from (
+      select 1
+      from public.knowledge_assets ka
+      where ka.workspace_id = target.workspace_id
+        and ka.academic_year_id = target.academic_year_id
+        and ka.source_metadata @> jsonb_build_object('canonicalExecCode', target.canonical_plan_code)
+      limit 2
+    ) legacy_candidates;
+
+    if candidate_count > 1 then
+      raise exception
+        'Canonical plan source % is ambiguous in workspace % academic year %',
+        target.canonical_plan_code,
+        target.workspace_id,
+        target.academic_year_id;
+    end if;
+
+    select
+      ka.id,
+      ka.workspace_id,
+      ka.academic_year_id,
+      ka.current_generation_id
+      into candidate
+    from public.knowledge_assets ka
+    where ka.workspace_id = target.workspace_id
+      and ka.academic_year_id = target.academic_year_id
+      and ka.source_metadata @> jsonb_build_object('canonicalExecCode', target.canonical_plan_code)
+    limit 1;
+
+    if found is not true then
+      continue;
+    end if;
+
+    if candidate.current_generation_id is null then
+      continue;
+    end if;
+
+    select
+      kpg.id,
+      kpg.asset_id,
+      kpg.workspace_id,
+      kpg.status
+      into generation
+    from public.knowledge_processing_generations kpg
+    where kpg.id = candidate.current_generation_id;
+
+    if found is not true then
+      continue;
+    end if;
+
+    if generation.status <> 'SUCCEEDED'
+      or generation.workspace_id <> target.workspace_id
+      or generation.asset_id <> candidate.id
+      or candidate.workspace_id <> target.workspace_id
+      or candidate.academic_year_id <> target.academic_year_id then
+      continue;
+    end if;
+
+    insert into public.canonical_plan_runtime_bindings(
+      workspace_id,
+      academic_year_id,
+      canonical_plan_code,
+      asset_id,
+      generation_id
+    ) values (
+      target.workspace_id,
+      target.academic_year_id,
+      target.canonical_plan_code,
+      candidate.id,
+      generation.id
+    )
+    on conflict (workspace_id, academic_year_id, canonical_plan_code) do nothing;
+
+    if found then
+      inserted_count := inserted_count + 1;
+    end if;
+  end loop;
+
+  return inserted_count;
+end;
+$$;
+
+revoke all on function public.backfill_canonical_plan_runtime_bindings() from public, anon, authenticated;
+grant execute on function public.backfill_canonical_plan_runtime_bindings() to service_role;
+
+select public.backfill_canonical_plan_runtime_bindings();
+
 select private.advance_runtime_schema_contract('0099_canonical_plan_runtime_identity');
 
 commit;

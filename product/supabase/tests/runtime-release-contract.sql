@@ -168,6 +168,7 @@ $contract$;
 \ir document_template_governance_residual_behavior_contract.sql
 \ir authored_document_generalization_contract.sql
 \ir canonical_plan_runtime_identity_behavior.sql
+\ir atlas_material_bundle_atomicity_contract.sql
 
 -- The deep replay already owns the ephemeral Supabase connection. Export that
 -- local connection to the child process so the concurrency contract can open

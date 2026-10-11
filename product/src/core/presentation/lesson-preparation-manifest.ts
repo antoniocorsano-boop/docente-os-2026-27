@@ -373,6 +373,15 @@ function roleForProjectionResource(kind: HumanTaskResourceKind): LessonMaterialR
 }
 
 function roleForExtension(extension: LessonDesignExtension): LessonMaterialRole | null {
+  const atlasMaterialType = extension.sourceKind === 'ATLAS' && typeof extension.payload.atlasMaterialType === 'string'
+    ? extension.payload.atlasMaterialType.trim().toLowerCase()
+    : null
+
+  if (atlasMaterialType === 'presentation') return 'MINI_DECK'
+  if (atlasMaterialType === 'rubric') return 'ASSESSMENT'
+  if (atlasMaterialType === 'worksheet') return 'STUDENT_HANDOUT'
+  if (atlasMaterialType === 'guide') return 'TEACHER_BRIEF'
+
   if (extension.kind === 'TEACHER_RESOURCE') return 'TEACHER_BRIEF'
   if (extension.kind === 'STUDENT_RESOURCE') return 'STUDENT_HANDOUT'
   return null

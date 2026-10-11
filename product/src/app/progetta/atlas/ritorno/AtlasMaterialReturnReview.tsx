@@ -52,7 +52,7 @@ export function AtlasMaterialReturnReview({
   const contextReady = !contextError
 
   return (
-    <main className="atlasReturnFlow">
+    <div className="atlasReturnFlow">
       <nav><Link href="/progetta">← Progetta</Link></nav>
       <header className="atlasReturnHeader">
         <h1>Associa i materiali alla lezione</h1>
@@ -95,7 +95,7 @@ export function AtlasMaterialReturnReview({
           {pending ? 'Associazione in corso…' : 'Associa alla lezione'}
         </button>
       </form>
-    </main>
+    </div>
   )
 }
 
