@@ -8,7 +8,7 @@ import {
   millisecondsUntilNextTotpStep,
 } from '../../e2e/support/totp.mjs'
 
-const EXPECTED_MIGRATION = '0088_canonical_plan_runtime_identity'
+const EXPECTED_MIGRATION = '0100_lesson_design_atlas_material_kind_guard'
 const EXPECTED_CODES = ['CAN-PLAN-1', 'CAN-PLAN-2', 'CAN-PLAN-3']
 const GRADE_TO_PLAN = {
   PRIMA: 'CAN-PLAN-1',
@@ -61,7 +61,7 @@ export async function runCpriRuntimePreflight() {
         && schemaSnapshot?.lineageOk === true
         && Array.isArray(schemaSnapshot?.missingMigrations)
         && schemaSnapshot.missingMigrations.length === 0,
-      'runtime-schema-0088',
+      'runtime-schema-0100',
       `expected ${EXPECTED_MIGRATION} with complete lineage`,
     )
 

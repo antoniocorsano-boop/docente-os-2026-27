@@ -58,6 +58,16 @@ test('the governed identity contract keeps cross-workspace materializations fail
   )
 })
 
+test('CPRI runtime preflight targets the final rebaselined schema watermark', () => {
+  assert.match(
+    cpriRuntimePreflightSource,
+    /const EXPECTED_MIGRATION = '0100_lesson_design_atlas_material_kind_guard'/,
+    'CPRI must certify the final 0100 schema state rather than the intermediate 0099 binding migration',
+  )
+  assert.match(cpriRuntimePreflightSource, /'runtime-schema-0100'/)
+  assert.doesNotMatch(cpriRuntimePreflightSource, /runtime-schema-0088/)
+})
+
 test('CPRI probes Atlas acceptance through the authenticated RPC without depending on the PostgREST OpenAPI schema', () => {
   assert.doesNotMatch(
     cpriRuntimePreflightSource,
