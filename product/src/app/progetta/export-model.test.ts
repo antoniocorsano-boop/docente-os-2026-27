@@ -5,7 +5,7 @@ import { exportBlocks, selectExportVersion } from './documenti/[documentId]/expo
 
 const snapshot: AuthoredDocumentSnapshot = {
   document: {
-    id: 'doc-1', workspaceId: 'ws-1', academicYearId: 'year-1', sourceAssetId: 'source-1', documentKind: 'UDA',
+    id: 'doc-1', workspaceId: 'ws-1', academicYearId: 'year-1', sourceAssetId: 'source-1', sectionId: null, teachingDisciplineId: null, documentKind: 'UDA',
     title: 'UDA corrente', currentVersionNo: 2, createdBy: 'user-1', createdAt: '2026-08-24T10:00:00Z', updatedAt: '2026-08-24T11:00:00Z',
   },
   current: { id: 'v2', documentId: 'doc-1', versionNo: 2, title: 'UDA v2', bodyMarkdown: '# Titolo', createdBy: 'user-1', createdAt: '2026-08-24T11:00:00Z' },

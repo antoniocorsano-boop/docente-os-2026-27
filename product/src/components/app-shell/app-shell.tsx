@@ -2,7 +2,7 @@
 
 import * as Dialog from '@radix-ui/react-dialog'
 import { Command } from 'cmdk'
-import { BookOpenCheck, CalendarClock, CalendarDays, CheckCircle2, Command as CommandIcon, Home, LibraryBig, Menu, Search, Settings2, ShieldCheck, Sparkles, UsersRound, X, type LucideIcon } from 'lucide-react'
+import { BookOpenCheck, CalendarClock, CalendarDays, CheckCircle2, Command as CommandIcon, FileText, Home, LibraryBig, Menu, Search, Settings2, ShieldCheck, Sparkles, UsersRound, X, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { type ReactNode, useEffect, useState } from 'react'
@@ -12,7 +12,7 @@ import { DocenteOsLockup, DocenteOsMark } from '@/components/brand/docente-os-br
 import { cn } from '@/lib/utils'
 import { MOBILE_NAVIGATION_KEYS, NAVIGATION_GROUPS, SECONDARY_NAVIGATION_GROUPS, navigationGroupItems, navigationItem, workNavigationItems, type NavigationGroup, type NavigationKey } from './navigation'
 
-const ICONS: Record<NavigationKey, LucideIcon> = { home: Home, today: CheckCircle2, design: Sparkles, knowledge: LibraryBig, classes: UsersRound, timetable: CalendarClock, calendar: CalendarDays, 'annual-plan': BookOpenCheck, settings: Settings2, account: ShieldCheck }
+const ICONS: Record<NavigationKey, LucideIcon> = { home: Home, today: CheckCircle2, design: Sparkles, knowledge: LibraryBig, classes: UsersRound, timetable: CalendarClock, calendar: CalendarDays, 'annual-plan': BookOpenCheck, documentation: FileText, settings: Settings2, account: ShieldCheck }
 
 export type AppShellProps = { active: NavigationKey; academicYearLabel?: string | null; workspaceName: string; role?: string | null; children: ReactNode; contentClassName?: string; contextualAssistantEnabled?: boolean }
 

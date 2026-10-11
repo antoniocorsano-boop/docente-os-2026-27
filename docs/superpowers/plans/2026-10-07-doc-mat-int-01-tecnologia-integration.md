@@ -1,0 +1,475 @@
+# DOC-MAT-INT-01 — Integrazione Documenti ↔ Materiali, verticale Tecnologia — Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Collegare senza riscritture Documenti e Materiali attraverso la prima verticale reale Tecnologia: curricolo applicabile → Programmazione annuale → UDA → lezione → materiali → evidenze → Programma svolto / Relazione finale.
+
+**Architecture:** Riusa le authority esistenti invece di crearne di parallele. Il curricolo applicabile resta governato dal contratto curricolare canonico; il Piano annuale resta proiezione operativa; X5 resta identità/version history dei documenti; DOC-TPL-01 governa base istituzionale + template di famiglia; TeachingSession/evidenze governano ciò che è effettivamente accaduto. Ogni versione immutabile della Programmazione conserva il footprint curricolare esatto usato per comporla. Un materiale `ACCEPTED` è disponibile/pianificato, non automaticamente “usato”.
+
+**Tech Stack:** Next.js 16, React 19, TypeScript 5.9, Supabase/Postgres/RLS/RPC, Node `tsx --test`, X5 authored documents, DOC-TPL-01, contratto canonico di applicabilità/copertura del curricolo, TeachingSession/TeachingEvidence/LessonDesignExtension.
+
+**Spec:** `docs/superpowers/specs/2026-10-07-documenti-materiali-boundary-design.md`
+
+## Global Constraints
+
+- Il **curricolo applicabile** è una authority distinta dal Piano annuale. `product/src/app/piano-annuale/model.ts` è proiezione operativa, non sorgente curricolare autonoma.
+- La Programmazione annuale deve pin-nare, **per ogni immutable document version**, uno snapshot canonico lossless del contesto curricolare applicabile e della relativa valutazione di copertura, non soltanto il riferimento di versione del curricolo.
+- Il footprint persistito deve conservare almeno: `contextId`, riferimento canonico di versione del curricolo, authority effettiva, requirements e relativi source refs, transition/remodulation state, coverage status, requirement coverage, blocking IDs e `requiresRevalidationOnApproval`.
+- `PROVISIONAL_BASELINE` e `APPROVED_INSTITUTIONAL` non sono equivalenti. Un successivo cambio di authority, requirements, source refs, transition state o coverage richiede confronto/revalidation esplicita anche se il riferimento canonico di versione del curricolo restasse uguale.
+- Non creare un secondo archivio documentale: X5 `authored_documents` / versioni resta l’unica identità/version history.
+- Non creare un secondo motore template: DOC-TPL-01 governa `InstitutionalBaseVersion` + family `DocumentTemplateVersion`.
+- La lezione è il principale punto operativo di raccordo fra progettazione e materiali.
+- Studio Atlas e Materiali non modificano automaticamente Programmazione annuale, UDA, Piano annuale o Calendario.
+- `LessonDesignExtension.status = ACCEPTED` significa **disponibile/accettato per la lezione**, non prova che il materiale sia stato effettivamente utilizzato.
+- Un materiale è classificabile come **usato** nei documenti consuntivi solo con evidenza/receipt esplicita, durevole e autorevole legata a una TeachingSession corrente, al materiale specifico e alla **stessa revisione accettata**.
+- In assenza di receipt persistita per l’esatta revisione accettata, il materiale può comparire soltanto come pianificato/disponibile, mai come fatto svolto.
+- Le evidenze verso Programma svolto/Relazione finale sono read-only e non trasformano automaticamente fatti in giudizi professionali.
+- Nessun dato studente viene trasferito a Studio Atlas.
+- Educazione civica resta trasversale: non inventare quote orarie disciplinari.
+- Validazione/finalizzazione dei documenti sono umane.
+- Nessun identificatore tecnico, CAN/Bxx, UUID, provenance tecnica, provider o formula “generato automaticamente” compare nell’output professionale.
+- UI docente in italiano professionale; nessun nuovo elemento nella bottom navigation.
+
+## Lavoro esistente da preservare
+
+### Materiali / Studio Atlas
+
+Riutilizzare il contratto UDA → Studio Atlas → `AtlasMaterialBundle` → scelta esplicita della lezione → persistenza canonica. Nessun binding implicito e nessuna authority Atlas su documenti/Piano annuale.
+
+### Documenti / template
+
+Riutilizzare X5 per documenti/versioni e DOC-TPL-01 per base istituzionale + template di famiglia. Ogni versione documento conserva i pin esatti della base e del family template usati.
+
+### Curricolo
+
+Riutilizzare il contratto già presente:
+
+```text
+contesto curricolare canonico applicabile
+valutazione canonica della copertura curricolare
+riferimento canonico di versione del curricolo
+authority = PROVISIONAL_BASELINE | APPROVED_INSTITUTIONAL
+requirements + sourceRefs
+transitionRemodulation
+coverage status + requirementCoverage + blockingRequirementIds
+requiresRevalidationOnApproval
+```
+
+Il footprint curricolare persistito è lo snapshot lossless della combinazione tra contesto curricolare canonico applicabile e valutazione canonica della copertura accettata per quella versione documento. Non duplicare questi concetti in costanti del Piano annuale e non rinominare in questa tranche i simboli runtime legacy già esistenti: l’implementazione deve adattarli al lessico canonico senza creare un dominio parallelo.
+
+### Domini operativi
+
+Riutilizzare TeachingSession corrente e allocazioni, TeachingEvidence aggregata, LessonDesignExtension per materiali proposti/accettati, una receipt persistita session-linked e **accepted-revision-linked** per l’effettivo uso dei materiali e la vista Materiali della lezione.
+
+## Prerequisiti
+
+1. #693 deve essere Human Review PASS nella versione remediata.
+2. Le fondazioni runtime Materiali (#692) e DOC-TPL-01 (#695) devono essere integrate/ricertificate nel loro ordine governato prima di eseguire questa tranche.
+3. DOC-01/X5 generalizzato deve poter ospitare `ANNUAL_PROGRAMMING`.
+4. DOC-04 evidence/readiness resta una dipendenza separata; questo piano non crea un bundle concorrente.
+
+## Review Focus
+
+- nessuna mutazione silenziosa da Materiali a Programmazione/UDA;
+- nessuna Programmazione senza footprint curricolare persistito nella stessa immutable version;
+- source drift/revalidation espliciti anche se cambia il footprint mantenendo lo stesso version ref;
+- sessioni superseded escluse;
+- `ACCEPTED` senza receipt persistita per la stessa revisione non contato come “usato”;
+- l’uso effettivo nasce solo da un gesto esplicito di un docente autorizzato nello stesso workspace su una TeachingSession corrente;
+- output professionale senza token tecnici.
+
+---
+
+### Task 1: Estendere X5 alla Programmazione annuale e pin-nare il footprint curricolare
+
+**Files:**
+- Modify: `product/src/core/domain/authored-document.ts`
+- Modify: `product/src/core/domain/authored-document.test.ts`
+- Modify: `product/src/core/infrastructure/supabase/supabase-authored-document-repository.ts`
+- Modify: repository tests
+- Create: migration contract test
+- Create: next free migration after landed lineage
+
+**Interfaces:**
+
+Additively support `AuthoredDocumentKind = ANNUAL_PROGRAMMING` while preserving UDA/FINAL_REPORT behavior.
+
+The create boundary receives document/context identifiers plus **compare-only expectations**, never caller-supplied curricolo authority. Nel seguente pseudocodice, `CanonicalCurricoloContext` e `CanonicalCurricoloCoverage` restano **alias semantici del piano** per i tipi canonici di applicabilità/copertura già presenti nel runtime: l'implementazione adatta i simboli legacy esistenti, senza introdurre tipi concorrenti né rinominarli implicitamente.
+
+```ts
+{
+  workspaceId: string
+  academicYearId: string
+  sectionId: string
+  teachingDisciplineId: string
+  expectedCurricoloBaselineId: string
+  expectedCurricoloContextId: string
+  expectedCurricoloFootprintHash: string
+  institutionalBaseVersionId: string
+  templateVersionId: string
+  initialTitle: string
+}
+```
+
+`expectedCurricoloBaselineId`, `expectedCurricoloContextId` e `expectedCurricoloFootprintHash` sono soltanto precondizioni di intent/freshness della vista che il docente ha esaminato: non diventano authority e non possono scegliere il contenuto persistito. L'ID della baseline è l'identità opaca della receipt/snapshot corrente già restituita dal current-baseline reader canonico; un nuovo atto di adozione/rivalidazione produce una diversa baseline corrente anche quando il footprint sorgente non cambia.
+
+Il trusted boundary, prima di qualsiasi write:
+
+1. deriva dal contesto autenticato e dal target documento il workspace, l'anno scolastico, la classe e la disciplina effettivi;
+2. risolve **server-side** la baseline curricolare corrente tramite il repository canonico del Piano annuale / current-baseline reader già usato dalla superficie `curricolo-arena`;
+3. verifica che la baseline appartenga esattamente a workspace + anno + classe + disciplina, che l'authority/applicabilità sia ammessa e che la copertura obbligatoria sia soddisfatta;
+4. confronta `expectedCurricoloBaselineId`, `expectedCurricoloContextId` e `expectedCurricoloFootprintHash` con la baseline autorevole appena riletta; baseline assente, nuova receipt di adozione/rivalidazione, mismatch, payload stale/forged o cross-scope falliscono prima della persistenza;
+5. persiste sulla nuova immutable document version il **lossless curricolo footprint snapshot derivato dalla baseline server-resolved**, mai un oggetto di contesto/copertura scelto dal caller.
+
+Lo snapshot persistito comprende il contesto e la copertura canonici già governati dal runtime (`CanonicalCurricoloContext` / `CanonicalCurricoloCoverage` nel lessico di questo piano), inclusi authority, requirements/source refs, transition/remodulation, status di copertura, requirement coverage, blocking IDs e stato di revalidation. Non memorizzare soltanto un pointer document-level sovrascrivibile.
+
+Each later saved Programmazione version either:
+
+1. inherits the exact prior footprint unchanged because its curricolo basis is unchanged; or
+2. explicitly adopts a newly reviewed footprint and records that exact snapshot on the new immutable version.
+
+Identity remains one current Programmazione annuale per workspace + anno + sezione + disciplina, with immutable version history.
+
+- [ ] RED domain tests for required class/discipline/expected curricolo baseline/base/template identity and unchanged UDA/FINAL_REPORT fixtures.
+- [ ] RED trusted-source test: the boundary resolves the current baseline server-side for the authenticated workspace + year + section + discipline; a caller cannot substitute a different context/coverage object.
+- [ ] RED persistence test: version v1 stores a complete immutable context+coverage snapshot derived from that trusted baseline, not from caller data.
+- [ ] RED stale/forged test: valid-looking expected baseline/context/footprint identifiers that do not match the freshly resolved baseline fail before document/version persistence; a new adoption/revalidation receipt invalidates a stale UI intent even when the source footprint hash is unchanged.
+- [ ] RED cross-scope test: a baseline from another workspace/year/section/discipline cannot be persisted even when its identifiers are known to the caller.
+- [ ] RED missing-baseline test: no authoritative current baseline means no Programmazione v1 is created.
+- [ ] RED persistence test: v2 can retain v1 footprint unchanged without reading current Arena state during historical rendering.
+- [ ] RED revalidation test: same canonical curricolo version reference but changed requirements/sourceRefs/transition state/coverage is detected as a different footprint and cannot silently replace v1.
+- [ ] RED migration/repository tests for workspace/context validation, uniqueness and immutable history.
+- [ ] Implement minimally using existing X5 tables/RPC patterns; no parallel archive.
+- [ ] Run focused tests + typecheck to GREEN.
+- [ ] Commit.
+
+---
+
+### Task 2: Aggiungere il template istituzionale della Programmazione annuale
+
+**Files:**
+- Create: `product/src/core/presentation/annual-programming-canonical-template.ts`
+- Create: focused test
+- Modify shared renderer only if needed for generic rendering, not semantics.
+
+**Contract:**
+
+`ANNUAL_PROGRAMMING` defines these semantic areas:
+
+```text
+IDENTITY_CONTEXT
+COMPETENCES_OBJECTIVES
+CONTENT_PATHS
+METHODS_TOOLS
+INCLUSION_PERSONALIZATION
+CIVIC_TRANSVERSAL
+ASSESSMENT
+RECOVERY_ENHANCEMENT
+MONITORING
+SIGNATURE
+```
+
+The family template inherits a pinned `InstitutionalBaseVersion`; it does not duplicate institutional header/footer/typography geometry.
+
+- [ ] RED tests for kind/order/render roles, no invented civic-hours quota, professional labels, separate base/template pin.
+- [ ] Implement with DOC-TPL-01 only.
+- [ ] Run template + quality + purity/preview tests to GREEN.
+- [ ] Commit.
+
+---
+
+### Task 3: Costruire il contesto Programmazione da curricolo + Piano annuale
+
+**Files:**
+- Create: `build-annual-programming-context.ts` + tests
+- Create: `compose-annual-programming-draft.ts` + tests
+- Read/reuse: `product/src/app/piano-annuale/model.ts`
+- Reuse canonical curricolo applicability contract/repository.
+
+**Source authority:**
+
+- il builder parte dal current authenticated workspace/year e verifica che la classe appartenga a quel contesto;
+- la disciplina viene risolta attraverso il binding canonico già in uso, non da un ruolo/authority inviato dal client;
+- il builder carica la baseline corrente dal **current-baseline reader canonico** per workspace + anno + classe + disciplina e deriva da lì contesto e copertura;
+- request/form payload possono contenere soltanto expected identifiers/freshness per rilevare stale UI; non possono fornire o sovrascrivere authority, requirements, source refs, transition state o coverage;
+- baseline mancante, scope non coincidente o copertura obbligatoria non soddisfatta bloccano la composizione fail-closed; una baseline provvisoria già accettata resta utilizzabile con authority provvisoria e `requires revalidation` preservato, senza essere promossa implicitamente ad authority istituzionale;
+- il builder è read-only: non muta Arena, Piano annuale o la baseline curricolare.
+
+**Interface:**
+
+```ts
+export type AnnualProgrammingContext = {
+  academicYearId: string
+  sectionId: string
+  sectionLabel: string
+  disciplineId: string
+  disciplineLabel: string
+  grade: 'Prima' | 'Seconda' | 'Terza'
+  curricoloContext: CanonicalCurricoloContext
+  curricoloCoverage: CanonicalCurricoloCoverage
+  canonicalPlanSource: {
+    code: string
+    assetId: string
+    generationId: string
+  }
+  segments: Array<{
+    uda: string
+    period: string
+    focus: string
+    plannedHours: number
+  }>
+}
+```
+
+`buildAnnualProgrammingContext()` MUST:
+
+1. resolve the applicable curricolo for workspace/anno/classe/disciplina;
+2. validate and bind the canonical curricolo context + coverage using the existing applicability contract;
+3. fail closed when mandatory curricolo coverage is not satisfied;
+4. independently resolve the canonical operational plan/projection;
+5. never infer curricolo authority from `CAN-PLAN-*` constants.
+
+The draft composer passes the exact curricolo context+coverage snapshots to Task 1 persistence. They are not discarded after composition.
+
+- [ ] RED Tecnologia Seconda: accepted curricolo snapshot + CAN-PLAN-2 + nine segments/66 planned hours.
+- [ ] RED: CAN-PLAN exists but curricolo applicability missing/unsatisfied → fail closed.
+- [ ] RED: provisional baseline retains `requiresRevalidationOnApproval` and its exact requirements/source refs.
+- [ ] RED: two snapshots with the same canonical curricolo version reference but different requirements/coverage compare as materially different and require explicit revalidation.
+- [ ] Implement pure/read-only adapters; no source-domain writes.
+- [ ] Draft tests: facts prefilled; professional judgements remain missing teacher inputs; no technical refs in body.
+- [ ] Run focused tests + typecheck to GREEN.
+- [ ] Commit.
+
+---
+
+### Task 4: Superficie docente Programmazione annuale
+
+**Files:**
+- Create route/editor/model/actions under `product/src/app/documentazione/programmazioni/[sectionId]/`
+- Modify `/documentazione` entry only.
+
+**Behavior:**
+
+- absent → `Prepara bozza`;
+- existing draft → `Continua`;
+- known context inherited;
+- `Prepara bozza` conserva come compare-only baseline ID + context ID + footprint hash mostrati nella vista; al submit il server rilegge la baseline canonica e, se nel frattempo è cambiata — incluso un passaggio provvisoria → approvata — rifiuta la creazione con reload/revalidation semantics invece di usare il payload stale;
+- current document version can expose internal “Da dove viene?” data from its persisted curricolo footprint;
+- if a newly resolved curricolo footprint differs from the one pinned to the current document version, show explicit comparison/revalidation rather than auto-updating;
+- ordinary UI hides technical curricolo/template/base IDs.
+
+- [ ] RED one-primary-action/no-navigation-write tests.
+- [ ] RED exact-footprint pin and revalidation comparison tests.
+- [ ] Implement with X5 structured versions.
+- [ ] Run focused tests + typecheck + build.
+- [ ] Commit.
+
+---
+
+### Task 5: Collegare Programmazione/UDA alla lezione preservando Materiali
+
+**Files:**
+- Create: `resolve-programming-lesson-context.ts` + tests
+- Modify existing Progetta/UDA UI only if contextual entry is required.
+
+**Interface:**
+
+```ts
+export type ProgrammingLessonContext = {
+  sectionId: string
+  disciplineId: string
+  udaId: string
+  blockId: string | null
+  curricoloContextId: string
+  curricoloVersionRef: CmlCanonicalRef
+  canonicalPlanAssetId: string
+  canonicalGenerationId: string
+}
+```
+
+- [ ] RED: UDA/block belong to selected annual context and generation; curricolo context/version preserved; mismatches fail closed; no student data.
+- [ ] Implement resolver only; no lesson/calendar/material/Planner creation.
+- [ ] Re-run Atlas handoff contracts unchanged.
+- [ ] Commit.
+
+---
+
+### Task 6: Costruire evidenze consuntive senza confondere “accettato” e “usato”
+
+**Files:**
+- Create: `product/src/core/domain/material-usage-receipt.ts` + tests
+- Create: `product/src/core/infrastructure/supabase/supabase-material-usage-receipt-repository.ts` + tests
+- Create: migration contract test + next free migration after landed lineage
+- Create/Modify: server action under the existing lesson/material surface for explicit teacher recording
+- Create: `build-program-execution-evidence.ts` + tests
+- Reuse TeachingSession/TeachingEvidence/LessonDesignExtension; do not infer usage from `ACCEPTED`.
+
+**Durable persistence contract:**
+
+Introduce one governed read/write model equivalent to:
+
+```text
+teaching_session_material_usage_receipts
+  id
+  workspace_id
+  teaching_session_id
+  lesson_extension_id
+  accepted_revision integer
+  accepted_material_snapshot jsonb
+  used = true
+  recorded_by
+  recorded_at
+```
+
+`accepted_revision` pins the exact `lesson_design_extensions.revision` that was `ACCEPTED` when the teacher explicitly recorded use. `accepted_material_snapshot` is an immutable, server-derived snapshot of the content of that exact accepted revision (at minimum source kind/ref, title, body, cue, minutes, insertion position and anchor). The receipt therefore remains sufficient to reconstruct what was actually used even after `lesson_design_extensions` is revised in place. Neither field is a pointer to “whatever revision is current later”.
+
+Constraints and authority:
+
+- one authoritative receipt per `(teaching_session_id, lesson_extension_id, accepted_revision)`; duplicate recording for the **same accepted revision** is idempotent or returns the existing receipt without creating duplicate evidence;
+- if the same extension is later `MODIFIED` and re-`ACCEPTED` with a higher revision, the old receipt remains historical but does **not** authorize that newer revision; a new explicit teacher action is required to record use of the newly accepted revision;
+- direct client insert/update/delete is denied; recording happens through a trusted RPC/repository boundary;
+- actor and timestamp come from the trusted boundary, never from caller-supplied authority fields;
+- the writer starts from `auth.uid()` and, inside the same trusted transaction, loads the target TeachingSession and resolves its workspace before any write;
+- the caller must be authenticated and satisfy the repository’s canonical teaching-write authorization for that exact session workspace; at minimum the existing workspace-membership predicate must pass, and any stricter teaching capability already used by the canonical lesson/session write boundary must be reused rather than inventing a parallel role model;
+- non-members and callers outside the authorized teaching-write boundary are rejected before receipt lookup/insert, even if they possess valid session/extension UUIDs;
+- before its session/extension locks, the receipt writer acquires the canonical **report-context source-frontier serialization** for the same workspace + academic year + section + discipline used by DOC-04 first-version creation; material-use receipts are part of that report evidence frontier, so receipt writes and report first-create cannot interleave between freshness validation and v1 persistence;
+- after the context frontier is held, the writer locks/serializes the target TeachingSession and LessonDesignExtension before validation and insert (`SELECT ... FOR UPDATE` or a database invariant/conditional write with equivalent atomicity); the canonical revise and session-supersede writers must participate in the same serialization discipline, so a concurrent revise/supersede cannot commit between validation and receipt persistence;
+- lock ordering is canonical and uniform (`report-context frontier` → `TeachingSession` → `LessonDesignExtension`) for receipt/revise/supersede paths that need multiple boundaries, preventing deadlock-by-inconsistent-order;
+- after acquiring the serialization boundary, the writer loads and validates the target TeachingSession and LessonDesignExtension inside the same trusted transaction;
+- the TeachingSession must be current/non-superseded and belong to the same workspace, academic year, section/lesson context as the accepted extension;
+- the LessonDesignExtension must exist, belong to that same context and have `status = ACCEPTED` at recording time;
+- the teacher action supplies the revision it actually displayed as `expected_accepted_revision` **only as a compare-only intent precondition**; after locking the extension, the writer reads the current accepted revision and rejects the request if it differs, preventing a stale action opened on revision N from recording use for a later N+1;
+- after that equality check, the writer still derives and persists `accepted_revision` from trusted server state; the caller cannot choose or override the stored revision;
+- in the same locked transaction the writer persists `accepted_material_snapshot` from the exact accepted revision before any later in-place revision can change title/body/cue/minutes/source/placement fields; the snapshot is immutable evidence and cannot be client-supplied or rewritten;
+- workspace/session/extension/context mismatch, unauthorized caller, superseded session, PROPOSED/MODIFIED/DISMISSED extension, or a state/revision change detected by the atomic predicate fails before any receipt is written;
+- the receipt contains no student data and does not create a parallel document/evidence archive.
+
+Trusted writer contract remains caller-minimal:
+
+```text
+record_teaching_session_material_usage(
+  target_teaching_session_id uuid,
+  target_lesson_extension_id uuid,
+  expected_accepted_revision integer
+) -> material_usage_receipt
+```
+
+`expected_accepted_revision` is never stored as authority: it is compared after serialization against the server-resolved current accepted revision and a mismatch fails closed before receipt lookup/insert. The RPC then derives `accepted_revision`, `accepted_material_snapshot`, `recorded_by` and `recorded_at` server-side after authorization, serialization and context validation. The ordinary teacher UI exposes an explicit action such as **“Segna come usato”** / **“Usato in questa lezione”** inside the current lesson/material surface. The action is always teacher-initiated: Atlas, Materiali import, acceptance of a bundle, opening the lesson or rendering evidence must never create a usage receipt automatically.
+
+**Internal read model:**
+
+```ts
+export type PlannedMaterialRef = {
+  lessonExtensionId: string
+  sourceKind: string
+  sourceRef: string | null
+  title: string
+}
+
+export type MaterialUsageReceipt = {
+  workspaceId: string
+  teachingSessionId: string
+  lessonExtensionId: string
+  acceptedRevision: number
+  acceptedMaterialSnapshot: PlannedMaterialRef & {
+    body: string
+    cue: string | null
+    minutes: number | null
+    insertionPosition: string | null
+    anchorStepId: string | null
+  }
+  used: true
+  recordedBy: string
+  recordedAt: string
+}
+
+export type ProgramExecutionEvidenceItem = {
+  udaId: string
+  blockId: string
+  teachingSessionId: string
+  localDate: string
+  allocatedMinutes: number
+  availableMaterials: PlannedMaterialRef[]
+  usedMaterials: PlannedMaterialRef[]
+}
+```
+
+Read rules:
+
+- `availableMaterials` may include current `ACCEPTED` extensions;
+- `usedMaterials` is derived only from persisted authoritative receipts and their immutable `accepted_material_snapshot`; historical execution evidence must not re-read mutable current extension content to reconstruct what was used;
+- a receipt for revision N proves that the snapshotted revision N was used in its TeachingSession even if the extension later becomes N+1; it must never make N+1 “used”, and N+1 requires a new explicit receipt before it can be reported as used;
+- transient/caller-supplied receipt objects are never authority for consuntive evidence;
+- no matching persisted receipt → never claim used;
+- receipt on superseded/non-current session → ignored by the evidence reader even if historical storage is retained;
+- proposed/modified/dismissed resource cannot become used;
+- unallocated minutes stay unallocated.
+
+- [ ] RED accepted-without-receipt = available but not used.
+- [ ] RED trusted recording on current session + matching ACCEPTED extension persists one receipt with server-derived `accepted_revision` + immutable `accepted_material_snapshot`, and execution evidence reconstructs the used material from that snapshot.
+- [ ] RED duplicate recording for the same session+extension+acceptedRevision is idempotent / uniqueness-safe and never duplicates evidence.
+- [ ] RED revise → re-accept the same extension ID increments revision: receipt for revision N still reconstructs the exact N content after the mutable extension becomes N+1, never makes N+1 used, and a new explicit teacher action is required for N+1.
+- [ ] RED stale-action intent: UI loaded revision N, concurrent revise/re-accept commits N+1 before the receipt writer obtains its lock, then `expected_accepted_revision=N` is rejected and no N+1 receipt is created from the stale gesture.
+- [ ] RED concurrency: receipt recording racing with `revise_lesson_design_extension` is serialized; no committed receipt may pair revision N with N+1 content/status, and exactly one valid ordering wins.
+- [ ] RED concurrency: receipt recording racing with TeachingSession supersede is serialized; a receipt cannot commit for a session that became non-current before the protected insert/invariant check.
+- [ ] RED report-frontier concurrency: receipt recording racing with DOC-04 first-version creation shares the same workspace/year/section/discipline frontier; exactly one ordering wins, so a newly committed receipt is either included by a fresh report read or causes the stale bundle/create to fail before v1 persistence.
+- [ ] RED unauthenticated caller fails before persistence.
+- [ ] RED authenticated non-member/caller outside the canonical teaching-write authority of the session workspace fails before persistence even with valid UUIDs.
+- [ ] RED mismatched workspace/session/lesson/extension fails before persistence.
+- [ ] RED superseded session fails recording; a historical receipt from a superseded session is ignored by current execution evidence.
+- [ ] RED PROPOSED/MODIFIED/DISMISSED extension fails recording and cannot appear in `usedMaterials`.
+- [ ] RED evidence builder ignores caller-supplied/transient receipt-like objects that are absent from the authoritative repository read model.
+- [ ] Implement migration + trusted RPC + repository + explicit teacher action minimally; no automatic writes from Atlas/Materiali.
+- [ ] Implement read-only execution evidence builder and reuse DOC-04 evidence adapter.
+- [ ] Replay migrations and run focused domain/repository/action tests + typecheck to GREEN.
+- [ ] Commit.
+
+---
+
+### Task 7: Certificare la verticale Tecnologia end-to-end
+
+**Fixture:**
+
+```text
+curricolo applicabile Tecnologia Seconda
+→ persisted exact curricolo footprint on Programmazione v1
+→ CAN-PLAN-2 operational projection
+→ UDA 2-01
+→ canonical lesson/block
+→ Atlas material revision N ACCEPTED (available only)
+→ authenticated + authorized teacher action atomically records durable current-TeachingSession usage receipt pinned to revision N + immutable content snapshot N
+→ TeachingSession allocation
+→ authoritative ProgramExecutionEvidence read reconstructs the used material from receipt snapshot N, independent of later mutable extension revisions
+→ factual input to Programma svolto / Relazione finale
+```
+
+**Negative assertions:**
+
+- no student data in Atlas context or material-use receipt;
+- no automatic Programmazione/UDA/Piano annuale/Calendario write;
+- no automatic material-use receipt from Atlas handoff, bundle acceptance or lesson opening;
+- no usage receipt from an unauthenticated or cross-workspace/non-member caller;
+- no curricolo inferred from CAN-PLAN alone;
+- same version ref with changed accepted footprint triggers revalidation and does not mutate historical version;
+- no duplicate evidence from superseded sessions or duplicate receipt writes for the same accepted revision;
+- accepted material without persisted receipt for its current accepted revision is not “used”;
+- receipt for an older accepted revision preserves its own immutable used-content snapshot but does not carry usage forward to a later revision after revise → re-accept;
+- concurrent revise or session supersede cannot interleave between receipt validation and persistence to create stale/invalid authoritative evidence;
+- receipt persistence and FINAL_REPORT first-create serialize on the same report-context evidence frontier, so a receipt cannot appear after freshness validation but before v1 persistence;
+- a stale teacher gesture for accepted revision N cannot be rebound to N+1: expected-revision mismatch fails before persistence;
+- mismatched/non-ACCEPTED material cannot receive a valid usage receipt;
+- no technical code in professional output.
+
+- [ ] Run focused integration tests.
+- [ ] Run full `npm test`, typecheck, lint, build.
+- [ ] Run exact-head Product/Browser/Design/WCAG/Human Interaction/HVA/security gates as selected.
+- [ ] Human Review desktop/mobile of Programmazione → UDA/lezione → Atlas/materiali → evidenze → consuntivi.
+- [ ] No merge before Human Review PASS.
+
+## Self-Review
+
+- **Authority:** curricolo, Piano annuale, X5, template engine, TeachingSession and Materiali retain distinct responsibilities; material-use recording additionally requires authenticated authorization in the session workspace at the trusted server boundary.
+- **Persistence:** every immutable Programmazione version contains the exact accepted curricolo context+coverage footprint used to compose it; historical comparison never depends on current Arena state alone.
+- **Revalidation:** equal canonical curricolo version reference does not suppress revalidation when requirements/source refs/transition/coverage changed.
+- **Materiali:** `ACCEPTED` means available; only an explicit teacher-recorded, durable, authoritative current-TeachingSession receipt pinned to the accepted revision **and its immutable content snapshot**, persisted under a concurrency-safe serialization boundary, means used.
+- **Privacy/output:** no student data is added to Atlas or material-use receipts and technical provenance stays internal.
