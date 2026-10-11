@@ -27,9 +27,10 @@ function assertIsolatedRuntime(job, label) {
 }
 
 test('shared isolated runtime preparer exports local Supabase authority for subsequent certification steps', () => {
-  assert.match(preparer, /NEXT_PUBLIC_SUPABASE_URL=.*GITHUB_ENV/)
-  assert.match(preparer, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=.*GITHUB_ENV/)
-  assert.match(preparer, /CPRI_TESTED_SHA=.*TESTED_SHA/)
+  assert.match(preparer, /echo "NEXT_PUBLIC_SUPABASE_URL=\$api_url"/)
+  assert.match(preparer, /echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=\$publishable_key"/)
+  assert.match(preparer, /echo "CPRI_TESTED_SHA=\$TESTED_SHA"/)
+  assert.match(preparer, /}\s*>> "\$GITHUB_ENV"/)
   assert.match(preparer, /bootstrap-isolated-runtime\.mjs/)
 })
 
