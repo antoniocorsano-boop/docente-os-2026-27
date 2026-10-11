@@ -59,13 +59,6 @@ begin
   if jsonb_typeof(target_schema_json->'version') is distinct from 'number' then
     raise exception 'template version must be a JSON number';
   end if;
-  if target_schema_json->>'kind' is distinct from template_document_kind then
-    raise exception 'template schema kind must match template identity';
-  end if;
-  schema_version := (target_schema_json->>'version')::numeric;
-  if schema_version is distinct from (expected_current_version + 1)::numeric then
-    raise exception 'template schema version must match next registry version';
-  end if;
 
   computed_review := private.compute_document_template_quality_review(target_schema_json);
   select exists (
@@ -76,6 +69,14 @@ begin
 
   if has_structural_finding then
     raise exception 'template schema structurally invalid';
+  end if;
+
+  if target_schema_json->>'kind' is distinct from template_document_kind then
+    raise exception 'template schema kind must match template identity';
+  end if;
+  schema_version := (target_schema_json->>'version')::numeric;
+  if schema_version is distinct from (expected_current_version + 1)::numeric then
+    raise exception 'template schema version must match next registry version';
   end if;
 
   return public.save_document_template_version_v0094(
