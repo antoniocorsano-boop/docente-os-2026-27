@@ -18,7 +18,7 @@
 - Do not relax RLS, FK, trigger or workspace/year guards.
 - Preserve HR-02 atomic Atlas acceptance: one governed RPC / one transaction.
 - Preserve explicit teacher lesson selection.
-- Atlas must not become curriculum authority and must not mutate UDA, Piano annuale or Calendario.
+- Atlas must not become curricolo authority and must not mutate UDA, Piano annuale or Calendario.
 - Do not create a parallel Materials persistence model.
 - `source_metadata.canonicalExecCode` may be used only as a transitional discovery aid; it is not the definitive runtime identity authority.
 - No automatic merge. PR #692 remains Draft until exact-head certification and Human Review.
