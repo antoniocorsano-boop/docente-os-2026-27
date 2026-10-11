@@ -26,6 +26,30 @@ rm -rf "$work"
 mkdir -p "$work"
 cd "$work"
 supabase init
+
+# Supabase local Auth keeps TOTP enrollment/verification disabled by default.
+# Browser certification needs an ephemeral AAL2 fixture, so enable TOTP only
+# inside this runner-local config before the stack starts. Beta is untouched.
+python3 - <<'PY'
+from pathlib import Path
+
+path = Path('supabase/config.toml')
+text = path.read_text(encoding='utf-8')
+section = '[auth.mfa.totp]'
+start = text.find(section)
+if start < 0:
+    raise SystemExit('Supabase local config is missing [auth.mfa.totp]')
+end = text.find('\n[', start + len(section))
+if end < 0:
+    end = len(text)
+block = text[start:end]
+block = block.replace('enroll_enabled = false', 'enroll_enabled = true')
+block = block.replace('verify_enabled = false', 'verify_enabled = true')
+if 'enroll_enabled = true' not in block or 'verify_enabled = true' not in block:
+    raise SystemExit('Unable to enable local TOTP enrollment and verification')
+path.write_text(text[:start] + block + text[end:], encoding='utf-8')
+PY
+
 rm -rf supabase/migrations
 mkdir -p supabase/migrations
 
