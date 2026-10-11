@@ -19,7 +19,7 @@ const lessonWorkspaceSource = fs.readFileSync(
   'utf8',
 )
 const atlasAcceptanceSqlSource = fs.readFileSync(
-  new URL('../../../supabase/migrations/0089_lesson_design_atlas_material_kind_guard.sql', import.meta.url),
+  new URL('../../../supabase/migrations/0100_lesson_design_atlas_material_kind_guard.sql', import.meta.url),
   'utf8',
 )
 

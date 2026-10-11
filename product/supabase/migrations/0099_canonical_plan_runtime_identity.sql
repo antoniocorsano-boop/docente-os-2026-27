@@ -1,7 +1,7 @@
 begin;
 
 insert into private.runtime_schema_required_migrations(version, migration_id)
-values (88, '0088_canonical_plan_runtime_identity')
+values (99, '0099_canonical_plan_runtime_identity')
 on conflict (version) do update
 set migration_id = excluded.migration_id;
 
@@ -146,6 +146,6 @@ $$;
 revoke all on function public.bind_canonical_plan_runtime_source(uuid, uuid, text, uuid, uuid) from public, anon, authenticated;
 grant execute on function public.bind_canonical_plan_runtime_source(uuid, uuid, text, uuid, uuid) to service_role;
 
-select private.advance_runtime_schema_contract('0088_canonical_plan_runtime_identity');
+select private.advance_runtime_schema_contract('0099_canonical_plan_runtime_identity');
 
 commit;

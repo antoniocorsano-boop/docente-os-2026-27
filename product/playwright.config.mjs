@@ -14,8 +14,7 @@ export default defineConfig({
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
   ],
-  // Keep standard X3/X4 cleanup scoped away from governed HVA evidence in test-results/experience.
-  outputDir: 'test-results/playwright-artifacts',
+  outputDir: 'test-results/browser-gates',
   use: {
     baseURL,
     viewport: { width: 412, height: 915 },

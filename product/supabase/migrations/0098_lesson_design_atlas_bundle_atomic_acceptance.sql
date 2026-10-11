@@ -1,7 +1,7 @@
 begin;
 
 insert into private.runtime_schema_required_migrations(version, migration_id)
-values (87, '0087_lesson_design_atlas_bundle_atomic_acceptance')
+values (98, '0098_lesson_design_atlas_bundle_atomic_acceptance')
 on conflict (version) do update
 set migration_id = excluded.migration_id;
 
@@ -156,6 +156,6 @@ grant execute on function public.accept_atlas_material_bundle(uuid, uuid, uuid, 
 comment on function public.accept_atlas_material_bundle(uuid, uuid, uuid, uuid, uuid, text, text, jsonb) is
   'Atomically persists and accepts one teacher-confirmed Studio Atlas MaterialBundle inside a single canonical lesson context. Any item failure rolls back the whole bundle.';
 
-select private.advance_runtime_schema_contract('0087_lesson_design_atlas_bundle_atomic_acceptance');
+select private.advance_runtime_schema_contract('0098_lesson_design_atlas_bundle_atomic_acceptance');
 
 commit;

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
 
-const migrationUrl = new URL('../../../../supabase/migrations/0088_canonical_plan_runtime_identity.sql', import.meta.url)
+const migrationUrl = new URL('../../../../supabase/migrations/0099_canonical_plan_runtime_identity.sql', import.meta.url)
 const repositorySource = readFileSync(new URL('./supabase-canonical-plan-source-repository.ts', import.meta.url), 'utf8')
 const cpriRuntimePreflightSource = readFileSync(new URL('../../../../scripts/experience/cpri-runtime-preflight.mjs', import.meta.url), 'utf8')
 
@@ -10,7 +10,7 @@ test('canonical plan runtime identity is governed by a workspace/year binding ta
   assert.equal(
     existsSync(migrationUrl),
     true,
-    'CPRI-01 requires migration 0088_canonical_plan_runtime_identity.sql before runtime resolution can be authoritative',
+    'CPRI-01 requires migration 0099_canonical_plan_runtime_identity.sql before runtime resolution can be authoritative',
   )
 
   const migrationSource = readFileSync(migrationUrl, 'utf8')

@@ -1,7 +1,7 @@
 begin;
 
 insert into private.runtime_schema_required_migrations(version, migration_id)
-values (89, '0089_lesson_design_atlas_material_kind_guard')
+values (100, '0100_lesson_design_atlas_material_kind_guard')
 on conflict (version) do update
 set migration_id = excluded.migration_id;
 
@@ -163,6 +163,6 @@ grant execute on function public.accept_atlas_material_bundle(uuid, uuid, uuid, 
 comment on function public.accept_atlas_material_bundle(uuid, uuid, uuid, uuid, uuid, text, text, jsonb) is
   'Atomically persists and accepts one teacher-confirmed Studio Atlas MaterialBundle inside a single canonical lesson context. Only teacher/student resources are admitted; any item failure rolls back the whole bundle.';
 
-select private.advance_runtime_schema_contract('0089_lesson_design_atlas_material_kind_guard');
+select private.advance_runtime_schema_contract('0100_lesson_design_atlas_material_kind_guard');
 
 commit;
