@@ -7,6 +7,7 @@ type GeneralizedDomain = typeof authoredDocumentDomain & {
   validateAuthoredDocumentContext?: (document: Record<string, unknown>) => string[]
   isUdaAuthoredDocument?: (document: Record<string, unknown>) => boolean
   isFinalReportAuthoredDocument?: (document: Record<string, unknown>) => boolean
+  canOpenUdaAuthoring?: (document: Record<string, unknown>) => boolean
 }
 
 const domain = authoredDocumentDomain as GeneralizedDomain
@@ -61,6 +62,13 @@ function requireKindGuards() {
   }
 }
 
+function requireUdaAuthoringGuard() {
+  if (typeof domain.canOpenUdaAuthoring !== 'function') {
+    assert.fail('canOpenUdaAuthoring must be exported')
+  }
+  return domain.canOpenUdaAuthoring
+}
+
 test('generalized authored-document domain accepts valid UDA context unchanged', () => {
   assert.deepEqual(requireValidator()(validUda), [])
 })
@@ -72,6 +80,18 @@ test('generalized authored-document domain accepts valid FINAL_REPORT context', 
 test('generalized authored-document domain requires a source asset for UDA', () => {
   const errors = requireValidator()({ ...validUda, sourceAssetId: null })
   assert.ok(errors.includes('UDA_SOURCE_REQUIRED'))
+})
+
+test('generalized authored-document domain rejects a source asset for FINAL_REPORT', () => {
+  const errors = requireValidator()({ ...validFinalReport, sourceAssetId: 'asset-forbidden' })
+  assert.ok(errors.includes('FINAL_REPORT_SOURCE_FORBIDDEN'))
+})
+
+test('UDA authoring guard rejects FINAL_REPORT and source-less UDA contexts', () => {
+  const canOpen = requireUdaAuthoringGuard()
+  assert.equal(canOpen(validUda), true)
+  assert.equal(canOpen(validFinalReport), false)
+  assert.equal(canOpen({ ...validUda, sourceAssetId: null }), false)
 })
 
 test('generalized authored-document kind guards distinguish UDA and FINAL_REPORT', () => {
