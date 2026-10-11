@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
+import { canOpenUdaAuthoring } from '@/core/domain/authored-document'
 import { SupabaseAuthoredDocumentRepository } from '@/core/infrastructure/supabase/supabase-authored-document-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { UdaAuthoringEditor } from './UdaAuthoringEditor'
@@ -17,6 +18,7 @@ export default async function UdaAuthoringPage({ params }: { params: Promise<{ d
   const repository = new SupabaseAuthoredDocumentRepository()
   const snapshot = await repository.get(documentId)
   if (!snapshot || snapshot.document.workspaceId !== context.workspace.id) notFound()
+  if (!canOpenUdaAuthoring(snapshot.document)) notFound()
 
   return (
     <AppShell active="design" academicYearLabel={context.academicYear?.label} workspaceName={context.workspace.name} role={context.role} contentClassName="udaAuthoringSurface">
