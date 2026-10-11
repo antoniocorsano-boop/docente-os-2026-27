@@ -42,10 +42,17 @@ export function validateAuthoredDocumentContext(document: AuthoredDocumentContex
   }
 
   const errors: string[] = []
+  if (document.sourceAssetId) errors.push('FINAL_REPORT_SOURCE_FORBIDDEN')
   if (!document.academicYearId) errors.push('FINAL_REPORT_ACADEMIC_YEAR_REQUIRED')
   if (!document.sectionId) errors.push('FINAL_REPORT_SECTION_REQUIRED')
   if (!document.teachingDisciplineId) errors.push('FINAL_REPORT_DISCIPLINE_REQUIRED')
   return errors
+}
+
+export function canOpenUdaAuthoring(
+  document: Pick<AuthoredDocument, 'documentKind' | 'sourceAssetId'>,
+): boolean {
+  return document.documentKind === 'UDA' && Boolean(document.sourceAssetId)
 }
 
 export function isUdaAuthoredDocument(document: Pick<AuthoredDocument, 'documentKind'>): boolean {
