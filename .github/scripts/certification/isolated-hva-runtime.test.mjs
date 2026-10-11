@@ -34,6 +34,18 @@ test('shared isolated runtime preparer exports local Supabase authority for subs
   assert.match(preparer, /bootstrap-isolated-runtime\.mjs/)
 })
 
+test('isolated runtime explicitly enables local TOTP enrollment and verification before Supabase starts', () => {
+  const initIndex = preparer.indexOf('supabase init')
+  const totpIndex = preparer.indexOf('[auth.mfa.totp]')
+  const startIndex = preparer.indexOf('supabase start')
+
+  assert.ok(initIndex >= 0, 'isolated runtime must initialize Supabase')
+  assert.ok(totpIndex > initIndex, 'TOTP configuration must be applied after supabase init')
+  assert.ok(startIndex > totpIndex, 'TOTP configuration must be applied before supabase start')
+  assert.match(preparer, /enroll_enabled = true/)
+  assert.match(preparer, /verify_enabled = true/)
+})
+
 test('hva-application certifies against an isolated exact-head Supabase runtime, never Beta', () => {
   assertIsolatedRuntime(jobBlock(experienceWorkflow, 'application-acceptance', 'runtime-acceptance'), 'hva-application')
 })
