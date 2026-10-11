@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
 import test from 'node:test'
 import {
   validateDocumentTemplate,
@@ -82,16 +81,6 @@ function validInstitutionalBase(): InstitutionalBaseVersionDraft {
     sourceRevisionRefs: [],
   }
 }
-
-test('temporary diagnostic: product TypeScript compilation is clean', () => {
-  const result = spawnSync('npx', ['tsc', '--noEmit'], {
-    cwd: process.cwd(),
-    encoding: 'utf8',
-  })
-  if (result.stdout) process.stderr.write(result.stdout)
-  if (result.stderr) process.stderr.write(result.stderr)
-  assert.equal(result.status, 0, `tsc --noEmit failed with status ${result.status}`)
-})
 
 test('a valid institutional template draft passes deterministic validation', () => {
   assert.equal(validateDocumentTemplate(validDraft()).valid, true)
