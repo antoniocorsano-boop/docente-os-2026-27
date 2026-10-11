@@ -323,3 +323,35 @@ test('governed builder fails safe when the current family draft contains malform
   }
 })
 
+test('governed builder offers ACTIVATE for a reviewed current version while the older version remains published', () => {
+  const base = baseSnapshot('ACTIVE')
+  const baseV2Draft: InstitutionalBaseVersionDraft = { ...institutionalBaseDraft(), version: 2 }
+  base.base.currentVersionNo = 2
+  base.base.activeVersionNo = 1
+  base.versions.push({
+    id: 'base-version-2', baseId: 'institutional-base', versionNo: 2, draft: baseV2Draft,
+    sourceRevisionIds: [], createdBy: 'owner', createdAt: '2026-10-07T01:00:00Z',
+  })
+
+  const family = snapshot()
+  const familyV2Draft = { ...finalReportCanonicalTemplate(), version: 2 }
+  family.template.status = 'ACTIVE'
+  family.template.currentVersionNo = 2
+  family.template.activeVersionNo = 1
+  family.activeVersion = family.versions[0]
+  family.versions.push({
+    id: 'version-2', templateId: 'final-report-template', versionNo: 2, draft: familyV2Draft,
+    sourceRevisionIds: [], createdBy: 'teacher', createdAt: '2026-10-07T01:00:00Z',
+  })
+
+  const model = buildGovernedTemplateBuilderViewModel({
+    institutionalBase: base,
+    institutionalBaseReview: { ...reviewInstitutionalBase(baseV2Draft), versionNo: 2 },
+    familyTemplate: family,
+    familyTemplateReview: { ...reviewDocumentTemplate(familyV2Draft), versionNo: 2 },
+    role: 'OWNER',
+  })
+
+  assert.equal(model.institutionalBase.actions.some((action) => action.key === 'ACTIVATE'), true)
+  assert.equal(model.familyTemplate.actions.some((action) => action.key === 'ACTIVATE'), true)
+})
