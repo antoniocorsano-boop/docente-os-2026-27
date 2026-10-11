@@ -2,9 +2,10 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import test from 'node:test'
 
-const workflow = fs.readFileSync(new URL('../../workflows/experience-acceptance.yml', import.meta.url), 'utf8')
+const experienceWorkflow = fs.readFileSync(new URL('../../workflows/experience-acceptance.yml', import.meta.url), 'utf8')
+const browserWorkflow = fs.readFileSync(new URL('../../workflows/browser-certification-orchestrator.yml', import.meta.url), 'utf8')
 
-function jobBlock(name, nextName) {
+function jobBlock(workflow, name, nextName) {
   const start = workflow.indexOf(`  ${name}:`)
   assert.notEqual(start, -1, `${name} job must exist`)
   const end = nextName ? workflow.indexOf(`  ${nextName}:`, start + 1) : workflow.length
@@ -12,16 +13,22 @@ function jobBlock(name, nextName) {
   return workflow.slice(start, end)
 }
 
-test('hva-application certifies against an isolated exact-head Supabase runtime, never Beta', () => {
-  const application = jobBlock('application-acceptance', 'runtime-acceptance')
-
+function assertIsolatedRuntime(job, label) {
   assert.doesNotMatch(
-    application,
+    job,
     /https:\/\/gnshgapmwyjamhmlikeg\.supabase\.co/,
-    'hva-application must not inherit the Beta Supabase runtime',
+    `${label} must not inherit the Beta Supabase runtime`,
   )
-  assert.match(application, /Set up Supabase CLI for isolated HVA runtime/)
-  assert.match(application, /Prepare isolated exact-head Supabase runtime/)
-  assert.match(application, /NEXT_PUBLIC_SUPABASE_URL=.*GITHUB_ENV/)
-  assert.match(application, /CPRI_TESTED_SHA/)
+  assert.match(job, /Set up Supabase CLI for isolated HVA runtime/)
+  assert.match(job, /Prepare isolated exact-head Supabase runtime/)
+  assert.match(job, /NEXT_PUBLIC_SUPABASE_URL=.*GITHUB_ENV/)
+  assert.match(job, /CPRI_TESTED_SHA/)
+}
+
+test('hva-application certifies against an isolated exact-head Supabase runtime, never Beta', () => {
+  assertIsolatedRuntime(jobBlock(experienceWorkflow, 'application-acceptance', 'runtime-acceptance'), 'hva-application')
+})
+
+test('browser-certification certifies the exact head against the same isolated Supabase runtime', () => {
+  assertIsolatedRuntime(jobBlock(browserWorkflow, 'browser-certification', 'enforce-browser-certification'), 'browser-certification')
 })
