@@ -22,6 +22,7 @@ export default async function UdaExportPage({ params, searchParams }: { params: 
   const authoredRepository = new SupabaseAuthoredDocumentRepository()
   const snapshot = await authoredRepository.get(documentId)
   if (!snapshot || snapshot.document.workspaceId !== context.workspace.id) notFound()
+  if (snapshot.document.documentKind !== 'UDA' || !snapshot.document.sourceAssetId) notFound()
 
   const version = selectExportVersion(snapshot, query.version)
   if (!version) notFound()
