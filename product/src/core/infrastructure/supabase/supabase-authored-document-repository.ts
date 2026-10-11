@@ -1,9 +1,10 @@
-import type { AuthoredDocumentSnapshot } from '@/core/domain/authored-document'
+import type { AuthoredDocumentKind, AuthoredDocumentSnapshot } from '@/core/domain/authored-document'
 import { createClient } from '@/lib/supabase/server'
 
 type RawSnapshot = {
   document: {
-    id: string; workspace_id: string; academic_year_id: string | null; source_asset_id: string; document_kind: 'UDA';
+    id: string; workspace_id: string; academic_year_id: string | null; source_asset_id: string | null; document_kind: AuthoredDocumentKind;
+    section_id?: string | null; teaching_discipline_id?: string | null;
     title: string; current_version_no: number; created_by: string; created_at: string; updated_at: string
   }
   current: RawVersion
@@ -62,6 +63,8 @@ export class SupabaseAuthoredDocumentRepository {
         workspaceId: data.document.workspace_id,
         academicYearId: data.document.academic_year_id,
         sourceAssetId: data.document.source_asset_id,
+        sectionId: data.document.section_id ?? null,
+        teachingDisciplineId: data.document.teaching_discipline_id ?? null,
         documentKind: data.document.document_kind,
         title: data.document.title,
         currentVersionNo: data.document.current_version_no,
