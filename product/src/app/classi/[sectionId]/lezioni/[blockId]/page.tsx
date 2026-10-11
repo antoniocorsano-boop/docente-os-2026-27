@@ -98,7 +98,8 @@ export default async function LessonWorkspacePage({
   ])
 
   let approvalStatus: LessonPreparationApprovalStatus = 'CURRICULUM_REQUIRED'
-  if (designContext && curriculumBaseline && isCurriculumBaselineReadyForLessonApproval(curriculumBaseline)) {
+  if (curriculumBaseline && isCurriculumBaselineReadyForLessonApproval(curriculumBaseline)) {
+    if (!designContext) notFound()
     const preparationSnapshot = buildLessonPreparationApprovalSnapshot({
       context: designContext,
       curriculumBaseline,
