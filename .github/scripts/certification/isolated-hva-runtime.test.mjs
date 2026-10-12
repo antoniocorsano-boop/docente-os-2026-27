@@ -5,6 +5,7 @@ import test from 'node:test'
 const experienceWorkflow = fs.readFileSync(new URL('../../workflows/experience-acceptance.yml', import.meta.url), 'utf8')
 const browserWorkflow = fs.readFileSync(new URL('../../workflows/browser-certification-orchestrator.yml', import.meta.url), 'utf8')
 const preparer = fs.readFileSync(new URL('./prepare-isolated-hva-runtime.sh', import.meta.url), 'utf8')
+const bootstrap = fs.readFileSync(new URL('../../../product/scripts/experience/bootstrap-isolated-runtime.mjs', import.meta.url), 'utf8')
 
 function jobBlock(workflow, name, nextName) {
   const start = workflow.indexOf(`  ${name}:`)
@@ -44,6 +45,17 @@ test('isolated runtime explicitly enables local TOTP enrollment and verification
   assert.ok(startIndex > totpIndex, 'TOTP configuration must be applied before supabase start')
   assert.match(preparer, /enroll_enabled = true/)
   assert.match(preparer, /verify_enabled = true/)
+})
+
+test('isolated HVA bootstrap provisions canonical 2A and an active lesson-bearing timetable', () => {
+  assert.match(bootstrap, /grade:\s*'SECONDA'/)
+  assert.match(bootstrap, /section_code:\s*'A'/)
+  assert.doesNotMatch(bootstrap, /section_code:\s*'C'/)
+  assert.match(bootstrap, /\.from\('teaching_disciplines'\)\.insert/)
+  assert.match(bootstrap, /\.from\('teaching_assignments'\)\.insert/)
+  assert.match(bootstrap, /\.from\('timetable_versions'\)\.insert/)
+  assert.match(bootstrap, /\.from\('timetable_slots'\)\.insert/)
+  assert.match(bootstrap, /\.from\('timetable_versions'\)\.update\(\{\s*status:\s*'ACTIVE'/s)
 })
 
 test('hva-application certifies against an isolated exact-head Supabase runtime, never Beta', () => {
