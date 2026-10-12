@@ -93,15 +93,71 @@ for (const code of ['CAN-PLAN-1', 'CAN-PLAN-2', 'CAN-PLAN-3']) {
   if (bindingError) throw new Error(`${code} binding failed: ${bindingError.message}`)
 }
 
+const sectionId = crypto.randomUUID()
 await must(userClient.from('annual_plan_sections').insert({
+  id: sectionId,
   workspace_id: workspaceId,
   academic_year_id: academicYearId,
   grade: 'SECONDA',
-  section_code: 'C',
+  section_code: 'A',
   status: 'CONFERMATA',
   source_note: 'Isolated exact-head browser certification fixture',
   created_by: userId,
-}), 'confirmed SECONDA/C section')
+}), 'confirmed SECONDA/A section')
+
+const disciplineId = crypto.randomUUID()
+await must(admin.from('teaching_disciplines').insert({
+  id: disciplineId,
+  workspace_id: workspaceId,
+  academic_year_id: academicYearId,
+  name: 'Tecnologia',
+  is_active: true,
+  created_by: userId,
+}), 'Tecnologia discipline')
+
+const assignmentId = crypto.randomUUID()
+await must(admin.from('teaching_assignments').insert({
+  id: assignmentId,
+  workspace_id: workspaceId,
+  academic_year_id: academicYearId,
+  section_id: sectionId,
+  discipline_id: disciplineId,
+  weekly_minutes: 120,
+  status: 'CONFIRMED',
+  source_note: 'Isolated exact-head browser certification fixture',
+  created_by: userId,
+}), '2A Tecnologia teaching assignment')
+
+const timetableVersionId = crypto.randomUUID()
+await must(admin.from('timetable_versions').insert({
+  id: timetableVersionId,
+  workspace_id: workspaceId,
+  academic_year_id: academicYearId,
+  label: 'Orario HVA isolato',
+  status: 'DRAFT',
+  effective_from: '2026-09-01',
+  source_kind: 'MANUAL',
+  source_ref: 'isolated-hva-bootstrap',
+  created_by: userId,
+}), 'isolated HVA timetable draft')
+
+await must(admin.from('timetable_slots').insert({
+  id: crypto.randomUUID(),
+  timetable_version_id: timetableVersionId,
+  weekday: 1,
+  start_time: '08:00:00',
+  end_time: '09:00:00',
+  slot_kind: 'LESSON',
+  section_id: sectionId,
+  discipline_id: disciplineId,
+  teaching_assignment_id: assignmentId,
+  ordinal: 1,
+  created_by: userId,
+}), 'isolated HVA lesson slot')
+
+await must(admin.from('timetable_versions').update({
+  status: 'ACTIVE',
+}).eq('id', timetableVersionId), 'activate isolated HVA timetable')
 
 fs.appendFileSync(
   githubEnv,
