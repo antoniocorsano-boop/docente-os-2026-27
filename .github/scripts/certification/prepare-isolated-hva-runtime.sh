@@ -84,6 +84,8 @@ export ISOLATED_SUPABASE_SERVICE_ROLE_KEY="$service_role_key"
   echo "NEXT_PUBLIC_SUPABASE_URL=$api_url"
   echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$publishable_key"
   echo "CPRI_TESTED_SHA=$TESTED_SHA"
+  echo "CPRI_TARGET_GRADE=SECONDA"
+  echo "CPRI_TARGET_SECTION_CODE=A"
 } >> "$GITHUB_ENV"
 
 cd "$repo_root/product"
