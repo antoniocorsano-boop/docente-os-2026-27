@@ -1,4 +1,4 @@
--- DOC-ATLAS-BUNDLE-01 atomicity and idempotency contract
+-- DOC-ATLAS-BUNDLE-01 atomicity, idempotency and locator-safety contract
 -- Behavioral qualification against an isolated disposable database.
 -- This deliberately does not define resource replacement semantics.
 
@@ -146,14 +146,68 @@ begin
         jsonb_build_object(
           'kind', 'TEACHER_RESOURCE',
           'insertionPosition', 'END',
+          'title', 'Unsafe absolute locator',
+          'body', 'A direct RPC caller must not persist an absolute or off-origin locator.',
+          'sourceRef', 'atlas:unsafe-locator',
+          'sourceLabel', 'Atlas locator safety fixture',
+          'payload', jsonb_build_object(
+            'dedupeKey', 'atlas-bundle-unsafe-locator',
+            'atlasMaterialType', 'presentation',
+            'atlasLocator', 'https://evil.example/materials/slides'
+          )
+        )
+      )
+    );
+  exception
+    when others then
+      if sqlerrm = 'Atlas material bundle item requires a safe relative Atlas locator' then
+        saw_expected_failure := true;
+      else
+        raise;
+      end if;
+  end;
+
+  if not saw_expected_failure then
+    raise exception 'ATLAS MATERIAL BUNDLE FAIL: unsafe absolute locator was accepted';
+  end if;
+end
+$$;
+
+select pg_temp.assert_true(
+  not exists (
+    select 1
+    from public.lesson_design_extensions
+    where workspace_id = '00000000-0000-0000-0000-00000000b692'::uuid
+      and payload ->> 'dedupeKey' = 'atlas-bundle-unsafe-locator'
+  ),
+  '04 direct RPC cannot persist an unsafe Atlas locator'
+);
+
+do $$
+declare
+  saw_expected_failure boolean := false;
+begin
+  begin
+    perform public.accept_atlas_material_bundle(
+      '00000000-0000-0000-0000-00000000b692'::uuid,
+      '00000000-0000-0000-0000-00000000c692'::uuid,
+      '00000000-0000-0000-0000-00000000d692'::uuid,
+      '00000000-0000-0000-0000-00000000e692'::uuid,
+      '00000000-0000-0000-0000-00000000f692'::uuid,
+      'B01',
+      'atlas-bundle-contract',
+      jsonb_build_array(
+        jsonb_build_object(
+          'kind', 'TEACHER_RESOURCE',
+          'insertionPosition', 'END',
           'title', 'Atomic rollback teacher resource',
           'body', 'The first item is valid and would be accepted before the second item fails.',
-          'sourceRef', 'https://atlas.example.invalid/materials/rollback-teacher',
+          'sourceRef', 'atlas:rollback-teacher',
           'sourceLabel', 'Atlas rollback fixture',
           'payload', jsonb_build_object(
             'dedupeKey', 'atlas-bundle-rollback:teacher',
-            'atlasMaterialType', 'PDF',
-            'publicUrl', 'https://atlas.example.invalid/materials/rollback-teacher'
+            'atlasMaterialType', 'presentation',
+            'atlasLocator', '/materials/rollback-teacher'
           )
         ),
         jsonb_build_object(
@@ -162,7 +216,8 @@ begin
           'title', 'Invalid non-material item',
           'body', 'This item must make the whole bundle fail.',
           'payload', jsonb_build_object(
-            'dedupeKey', 'atlas-bundle-rollback:invalid'
+            'dedupeKey', 'atlas-bundle-rollback:invalid',
+            'atlasLocator', '/materials/rollback-invalid'
           )
         )
       )
@@ -190,7 +245,7 @@ select pg_temp.assert_true(
       and section_id = '00000000-0000-0000-0000-00000000d692'::uuid
       and payload ->> 'dedupeKey' like 'atlas-bundle-rollback:%'
   ) = 0,
-  '04 failure on the second item rolls back the already-processed first item'
+  '05 failure on the second item rolls back the already-processed first item'
 );
 
 select public.accept_atlas_material_bundle(
@@ -207,12 +262,12 @@ select public.accept_atlas_material_bundle(
       'insertionPosition', 'END',
       'title', 'Idempotent teacher resource',
       'body', 'Teacher-facing Atlas resource for the idempotency probe.',
-      'sourceRef', 'https://atlas.example.invalid/materials/idempotent-teacher',
+      'sourceRef', 'atlas:idempotent-teacher',
       'sourceLabel', 'Atlas idempotency fixture',
       'payload', jsonb_build_object(
         'dedupeKey', 'atlas-bundle-idempotency:teacher',
-        'atlasMaterialType', 'PDF',
-        'publicUrl', 'https://atlas.example.invalid/materials/idempotent-teacher'
+        'atlasMaterialType', 'presentation',
+        'atlasLocator', '/materials/idempotent-teacher'
       )
     ),
     jsonb_build_object(
@@ -220,12 +275,12 @@ select public.accept_atlas_material_bundle(
       'insertionPosition', 'END',
       'title', 'Idempotent student resource',
       'body', 'Student-facing Atlas resource for the idempotency probe.',
-      'sourceRef', 'https://atlas.example.invalid/materials/idempotent-student',
+      'sourceRef', 'atlas:idempotent-student',
       'sourceLabel', 'Atlas idempotency fixture',
       'payload', jsonb_build_object(
         'dedupeKey', 'atlas-bundle-idempotency:student',
-        'atlasMaterialType', 'WEB',
-        'publicUrl', 'https://atlas.example.invalid/materials/idempotent-student'
+        'atlasMaterialType', 'worksheet',
+        'atlasLocator', '/materials/idempotent-student'
       )
     )
   )
@@ -239,7 +294,7 @@ select pg_temp.assert_true(
       and section_id = '00000000-0000-0000-0000-00000000d692'::uuid
       and payload ->> 'dedupeKey' like 'atlas-bundle-idempotency:%'
   ) = 2,
-  '05 valid two-item bundle persists exactly two material resources'
+  '06 valid two-item bundle persists exactly two material resources'
 );
 
 select pg_temp.assert_true(
@@ -253,9 +308,11 @@ select pg_temp.assert_true(
         status <> 'ACCEPTED'
         or source_kind <> 'ATLAS'
         or accepted_by <> '00000000-0000-0000-0000-00000000a692'::uuid
+        or payload ? 'publicUrl'
+        or payload ->> 'atlasLocator' not like '/%'
       )
   ),
-  '06 valid bundle rows are accepted Atlas resources owned by the teacher decision'
+  '07 valid bundle rows are accepted Atlas resources with relative locators only'
 );
 
 do $$
@@ -288,12 +345,12 @@ begin
         'insertionPosition', 'END',
         'title', 'Idempotent teacher resource',
         'body', 'Teacher-facing Atlas resource for the idempotency probe.',
-        'sourceRef', 'https://atlas.example.invalid/materials/idempotent-teacher',
+        'sourceRef', 'atlas:idempotent-teacher',
         'sourceLabel', 'Atlas idempotency fixture',
         'payload', jsonb_build_object(
           'dedupeKey', 'atlas-bundle-idempotency:teacher',
-          'atlasMaterialType', 'PDF',
-          'publicUrl', 'https://atlas.example.invalid/materials/idempotent-teacher'
+          'atlasMaterialType', 'presentation',
+          'atlasLocator', '/materials/idempotent-teacher'
         )
       ),
       jsonb_build_object(
@@ -301,12 +358,12 @@ begin
         'insertionPosition', 'END',
         'title', 'Idempotent student resource',
         'body', 'Student-facing Atlas resource for the idempotency probe.',
-        'sourceRef', 'https://atlas.example.invalid/materials/idempotent-student',
+        'sourceRef', 'atlas:idempotent-student',
         'sourceLabel', 'Atlas idempotency fixture',
         'payload', jsonb_build_object(
           'dedupeKey', 'atlas-bundle-idempotency:student',
-          'atlasMaterialType', 'WEB',
-          'publicUrl', 'https://atlas.example.invalid/materials/idempotent-student'
+          'atlasMaterialType', 'worksheet',
+          'atlasLocator', '/materials/idempotent-student'
         )
       )
     )
@@ -333,7 +390,7 @@ select pg_temp.assert_true(
       and section_id = '00000000-0000-0000-0000-00000000d692'::uuid
       and payload ->> 'dedupeKey' like 'atlas-bundle-idempotency:%'
   ) = 2,
-  '07 identical retry does not create duplicate material resources'
+  '08 identical retry does not create duplicate material resources'
 );
 
 select pg_temp.assert_true(
@@ -345,9 +402,9 @@ select pg_temp.assert_true(
       and payload ->> 'dedupeKey' like 'atlas-bundle-idempotency:%'
       and jsonb_array_length(decision_history) <> 1
   ),
-  '08 identical retry does not append a second acceptance decision'
+  '09 identical retry does not append a second acceptance decision'
 );
 
 rollback;
 
-\echo 'ATLAS MATERIAL BUNDLE PASS: rollback atomicity and identical-retry idempotency qualified'
+\echo 'ATLAS MATERIAL BUNDLE PASS: locator safety, rollback atomicity and identical-retry idempotency qualified'
