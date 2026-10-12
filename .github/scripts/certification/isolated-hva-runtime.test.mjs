@@ -58,6 +58,13 @@ test('isolated HVA bootstrap provisions canonical 2A and an active lesson-bearin
   assert.match(bootstrap, /\.from\('timetable_versions'\)\.update\(\{\s*status:\s*'ACTIVE'/s)
 })
 
+test('isolated HVA CPRI target is explicitly aligned with the canonical 2A fixture', () => {
+  assert.match(preparer, /echo "CPRI_TARGET_GRADE=SECONDA"/)
+  assert.match(preparer, /echo "CPRI_TARGET_SECTION_CODE=A"/)
+  assert.match(bootstrap, /grade:\s*'SECONDA'/)
+  assert.match(bootstrap, /section_code:\s*'A'/)
+})
+
 test('hva-application certifies against an isolated exact-head Supabase runtime, never Beta', () => {
   assertIsolatedRuntime(jobBlock(experienceWorkflow, 'application-acceptance', 'runtime-acceptance'), 'hva-application')
 })
