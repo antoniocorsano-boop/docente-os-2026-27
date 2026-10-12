@@ -47,6 +47,46 @@ export function buildStudioAtlasMaterialHref(origin: string, context: TeachingCo
   return url.toString()
 }
 
+export function toStudioAtlasLocator(previewRef: string | undefined, studioOrigin: string | undefined) {
+  const trustedOrigin = parseStudioAtlasOrigin(studioOrigin)
+  const candidate = requiredString(previewRef, 'Atlas preview locator')
+  if (candidate.includes('\\')) throw new Error('Unsafe Atlas preview locator')
+
+  let preview: URL
+  try {
+    preview = new URL(candidate)
+  } catch {
+    throw new Error('Unsafe Atlas preview locator')
+  }
+
+  if (!isHttpProtocol(preview.protocol) || preview.username || preview.password || preview.origin !== trustedOrigin.origin) {
+    throw new Error('Unsafe Atlas preview locator')
+  }
+
+  const locator = `${preview.pathname}${preview.search}${preview.hash}`
+  if (!isSafeRelativeAtlasLocator(locator)) throw new Error('Unsafe Atlas preview locator')
+  return locator
+}
+
+export function resolveStudioAtlasLocatorHref(studioOrigin: string | undefined | null, locator: unknown) {
+  if (typeof locator !== 'string' || !isSafeRelativeAtlasLocator(locator.trim())) return null
+
+  let trustedOrigin: URL
+  try {
+    trustedOrigin = parseStudioAtlasOrigin(studioOrigin ?? undefined)
+  } catch {
+    return null
+  }
+
+  try {
+    const href = new URL(locator.trim(), trustedOrigin.origin)
+    if (href.origin !== trustedOrigin.origin || href.username || href.password || !isHttpProtocol(href.protocol)) return null
+    return href.toString()
+  } catch {
+    return null
+  }
+}
+
 export function parseAtlasMaterialBundle(value: unknown): AtlasMaterialBundle {
   const input = asRecord(value, 'Atlas material bundle')
   if (input.schema !== ATLAS_MATERIAL_BUNDLE_SCHEMA || input.source !== 'studio-atlas') throw new Error('Unsupported Atlas material bundle')
@@ -111,6 +151,31 @@ function assertTeachingContext(value: TeachingContextSnapshot) {
   if (!['prima', 'seconda', 'terza'].includes(value.grade)) throw new Error('Unsupported grade')
   const returnUrl = new URL(requiredString(value.returnUrl, 'returnUrl'))
   if (returnUrl.protocol !== 'https:' && returnUrl.hostname !== 'localhost') throw new Error('Unsafe returnUrl')
+}
+
+function parseStudioAtlasOrigin(value: string | undefined) {
+  const configured = requiredString(value, 'Studio Atlas origin')
+  let origin: URL
+  try {
+    origin = new URL(configured)
+  } catch {
+    throw new Error('Unsafe Studio Atlas origin')
+  }
+  if (!isHttpProtocol(origin.protocol) || origin.username || origin.password || origin.origin === 'null') {
+    throw new Error('Unsafe Studio Atlas origin')
+  }
+  return origin
+}
+
+function isSafeRelativeAtlasLocator(value: string) {
+  return value.startsWith('/')
+    && !value.startsWith('//')
+    && !value.includes('\\')
+    && !/[\u0000-\u0020\u007f]/u.test(value)
+}
+
+function isHttpProtocol(protocol: string) {
+  return protocol === 'https:' || protocol === 'http:'
 }
 
 function asRecord(value: unknown, label: string): Record<string, unknown> {
