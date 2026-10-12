@@ -79,3 +79,52 @@ must update `INTEGRATED_PROJECT_GOVERNED_MEMORY_V1.md` consistently in both repo
 ## Session/checkpoint rule
 
 Keep temporary findings, test runs and implementation checkpoints outside the canonical shared memory. The integrated memory contains durable governance only.
+
+### Operational Continuity Rule v1
+
+For any substantial PR- or issue-backed task that may span a long agent turn, external CI/review wait, tool interruption or conversation boundary, maintain one **Operational Checkpoint v1** attached to the active PR or issue.
+
+The checkpoint is operational state, not governed memory and not release evidence. It must never be treated as proof that a test, review or gate passed, and it never authorizes merge, deploy, promotion, schema activation, canonical-memory mutation or any other human-gated action.
+
+Use one stable checkpoint comment per active PR/issue, identified by the hidden marker:
+
+`<!-- docente-os:operational-checkpoint:v1 -->`
+
+Update that same comment only when the operational state changes materially; do not create a new checkpoint comment for each poll, test step or agent message.
+
+The checkpoint must contain, in compact human-readable form:
+
+- **STATE** — current ECO Agentic Officina state or blocker state;
+- **EXACT HEAD** — current GitHub head SHA, freshly verified before writing the checkpoint;
+- **COMPLETED** — only actions and evidence actually completed;
+- **GATES** — relevant checks classified explicitly as `PASS`, `FAIL`, `PENDING` or `NOT_APPLICABLE`;
+- **OPEN FINDINGS / BLOCKER** — the reason the task is not yet complete, if any;
+- **CURRENT ACTION** — the bounded action currently being executed;
+- **NEXT AUTHORIZED ACTION** — the next step the agent may perform without further human approval;
+- **NEXT HUMAN DECISION** — only when a real human gate remains;
+- **CONSTRAINTS** — active limits such as `NO MERGE`, `NO DEPLOY`, `NO BETA PROMOTION`.
+
+Do not copy a stale exact head from the PR body, an old checkpoint or conversation history. GitHub head state is authoritative for the checkpoint identity; exact-head tests, reviews and certification remain authoritative for their own results.
+
+Before resuming work after an interruption or new conversation turn:
+
+1. read the active PR/issue;
+2. read the current Operational Checkpoint v1, if present;
+3. freshly verify the actual GitHub head and relevant external state;
+4. classify any mismatch between checkpoint and current reality;
+5. resume from `NEXT AUTHORIZED ACTION` without requesting another approval for steps already authorized.
+
+A simple user instruction such as `procedi`, `continua` or `controlla` is sufficient to resume the already-authorized sequence. Ask again only when a genuine human review/decision, irreversible operation, credential boundary, scope change or higher-precedence contract requires it.
+
+### Human-readable progress rule
+
+During long-running work, communicate only material state transitions rather than raw polling activity. Each user-facing progress update should make clear, in plain language:
+
+1. **what changed** since the previous meaningful update;
+2. **where the task is now**;
+3. **why it is not complete yet**, when applicable;
+4. **what happens next** under the already-authorized plan.
+
+If a turn must end while external work is still `PENDING`, do not leave the conversation with an ambiguous promise such as “procedo”. Update the Operational Checkpoint first when materially needed, then report the exact head, completed work, `PASS / FAIL / PENDING / NOT_APPLICABLE` gates, blocker and next authorized action.
+
+This rule operationalizes the ECO Agentic Officina completion record; it does not replace that contract or weaken exact-head governance.
