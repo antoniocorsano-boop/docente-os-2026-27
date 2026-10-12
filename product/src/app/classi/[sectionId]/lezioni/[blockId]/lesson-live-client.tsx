@@ -39,7 +39,6 @@ export default function LessonLiveClient({
   extensions,
   progress,
   udaProgress,
-  studioAtlasOrigin,
 }: {
   sectionId: string
   sectionLabel: string
@@ -48,7 +47,6 @@ export default function LessonLiveClient({
   extensions: LessonDesignExtension[]
   progress: Progress
   udaProgress: { completed: number; total: number }
-  studioAtlasOrigin: string | null
 }) {
   const composed = useMemo(() => composeLessonSequence(projection.steps, extensions), [projection.steps, extensions])
   const steps = composed.steps
@@ -119,7 +117,7 @@ export default function LessonLiveClient({
             compaiono direttamente nella sequenza.
           </p>
           <div>{attachedResources.map((resource) => {
-            const link = resolveLiveMaterialLink(resource, studioAtlasOrigin)
+            const link = resolveLiveMaterialLink(resource)
             return (
               <article key={resource.id}>
                 <strong>{resource.title}</strong>
