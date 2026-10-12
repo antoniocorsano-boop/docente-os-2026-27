@@ -1,4 +1,3 @@
-import { resolveStudioAtlasLocatorHref } from '@/core/domain/atlas-material-handoff'
 import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
 
 export type LiveMaterialLink = {
@@ -9,7 +8,6 @@ export type LiveMaterialLink = {
 
 export function resolveLiveMaterialLink(
   extension: Pick<LessonDesignExtension, 'sourceKind' | 'sourceRef' | 'payload'>,
-  studioAtlasOrigin: string | null,
 ): LiveMaterialLink | null {
   if (extension.sourceRef?.startsWith('knowledge:')) {
     const assetId = extension.sourceRef.slice('knowledge:'.length).trim()
@@ -21,8 +19,8 @@ export function resolveLiveMaterialLink(
     }
   }
 
-  if (extension.sourceKind === 'ATLAS') {
-    const href = resolveStudioAtlasLocatorHref(studioAtlasOrigin, extension.payload.atlasLocator)
+  if (extension.sourceKind === 'ATLAS' && typeof extension.payload.publicUrl === 'string') {
+    const href = extension.payload.publicUrl.trim()
     if (!href) return null
     return {
       href,
