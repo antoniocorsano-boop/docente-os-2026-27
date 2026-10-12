@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { resolveStudioAtlasLocatorHref } from '@/core/domain/atlas-material-handoff'
 import {
   validateLessonDesignExtensionDraft,
   validateLessonDesignExtensionRevision,
@@ -226,7 +227,15 @@ function toExtension(row: LessonDesignExtensionRow): LessonDesignExtension {
   if (!['START', 'BEFORE_STEP', 'AFTER_STEP', 'END'].includes(row.insertion_position)) throw new Error('Unsupported lesson design insertion position in storage')
   if (!['EDITORIAL_KNOWLEDGE', 'KNOWLEDGE', 'ATLAS', 'WEB', 'AI_TOOL', 'TEACHER'].includes(row.source_kind)) throw new Error('Unsupported lesson design source kind in storage')
   if (!Number.isInteger(row.revision) || row.revision < 1) throw new Error('Unsupported lesson design revision in storage')
-  return { id: row.id, workspaceId: row.workspace_id, academicYearId: row.academic_year_id, sectionId: row.section_id, canonicalPlanAssetId: row.canonical_plan_asset_id, canonicalGenerationId: row.canonical_generation_id, blockId: row.block_id, projectionId: row.projection_id, kind: row.kind as LessonDesignExtension['kind'], status: row.status as LessonDesignExtension['status'], insertionPosition: row.insertion_position as LessonDesignExtension['insertionPosition'], anchorStepId: row.anchor_step_id, title: row.title, body: row.body, cue: row.cue, minutes: row.minutes, sourceKind: row.source_kind as LessonDesignExtension['sourceKind'], sourceRef: row.source_ref, sourceLabel: row.source_label, payload: row.payload ?? {}, revision: row.revision, decisionHistory: toDecisionHistory(row.decision_history), modifiedBy: row.modified_by, modifiedAt: row.modified_at, acceptedBy: row.accepted_by, acceptedAt: row.accepted_at, dismissedBy: row.dismissed_by, dismissedAt: row.dismissed_at, createdBy: row.created_by, createdAt: row.created_at, updatedAt: row.updated_at }
+  const payload = hydrateAtlasPayload(row.source_kind, row.payload ?? {})
+  return { id: row.id, workspaceId: row.workspace_id, academicYearId: row.academic_year_id, sectionId: row.section_id, canonicalPlanAssetId: row.canonical_plan_asset_id, canonicalGenerationId: row.canonical_generation_id, blockId: row.block_id, projectionId: row.projection_id, kind: row.kind as LessonDesignExtension['kind'], status: row.status as LessonDesignExtension['status'], insertionPosition: row.insertion_position as LessonDesignExtension['insertionPosition'], anchorStepId: row.anchor_step_id, title: row.title, body: row.body, cue: row.cue, minutes: row.minutes, sourceKind: row.source_kind as LessonDesignExtension['sourceKind'], sourceRef: row.source_ref, sourceLabel: row.source_label, payload, revision: row.revision, decisionHistory: toDecisionHistory(row.decision_history), modifiedBy: row.modified_by, modifiedAt: row.modified_at, acceptedBy: row.accepted_by, acceptedAt: row.accepted_at, dismissedBy: row.dismissed_by, dismissedAt: row.dismissed_at, createdBy: row.created_by, createdAt: row.created_at, updatedAt: row.updated_at }
+}
+
+function hydrateAtlasPayload(sourceKind: string, payload: Record<string, unknown>) {
+  if (sourceKind !== 'ATLAS' || !Object.prototype.hasOwnProperty.call(payload, 'atlasLocator')) return payload
+  const { publicUrl: _persistedPublicUrl, ...safePayload } = payload
+  const publicUrl = resolveStudioAtlasLocatorHref(process.env.NEXT_PUBLIC_STUDIO_ATLAS_ORIGIN, safePayload.atlasLocator)
+  return publicUrl ? { ...safePayload, publicUrl } : safePayload
 }
 
 function toDecisionHistory(value: unknown): LessonDesignDecision[] {
