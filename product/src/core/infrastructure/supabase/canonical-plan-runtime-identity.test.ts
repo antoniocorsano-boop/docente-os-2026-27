@@ -122,22 +122,28 @@ test('experience global setup runs CPRI only against the isolated exact-head dat
   )
 })
 
-test('Atlas association rejects locator-less materials before atomic persistence', () => {
-  const locatorGuardIndex = atlasReturnActionSource.indexOf('!item.previewRef')
+test('Atlas association validates a governed usable locator before atomic persistence', () => {
+  const locatorGuardIndex = atlasReturnActionSource.indexOf('toStudioAtlasLocator(')
+  const governedOriginIndex = atlasReturnActionSource.indexOf('process.env.NEXT_PUBLIC_STUDIO_ATLAS_ORIGIN')
   const persistenceIndex = atlasReturnActionSource.indexOf('acceptAtlasMaterialBundle')
 
   assert.notEqual(
     locatorGuardIndex,
     -1,
-    'an Atlas item without previewRef must be rejected before it can be persisted as accepted material',
+    'Atlas previewRef must be normalized through the governed locator validator before persistence',
+  )
+  assert.notEqual(
+    governedOriginIndex,
+    -1,
+    'Atlas locator validation must be bound to NEXT_PUBLIC_STUDIO_ATLAS_ORIGIN',
   )
   assert.ok(
-    locatorGuardIndex < persistenceIndex,
-    'the usable-locator guard must run before acceptAtlasMaterialBundle',
+    locatorGuardIndex < persistenceIndex && governedOriginIndex < persistenceIndex,
+    'the governed usable-locator validation must run before acceptAtlasMaterialBundle',
   )
   assert.match(
     atlasReturnActionSource,
     /collegamento utilizzabile/,
-    'the teacher must receive a clear fail-closed error for locator-less Atlas materials',
+    'the teacher must receive a clear fail-closed error for missing or unsafe Atlas locators',
   )
 })
