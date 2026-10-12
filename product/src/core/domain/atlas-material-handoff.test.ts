@@ -6,6 +6,7 @@ import {
   decodeAtlasMaterialBundle,
   encodeTeachingContext,
   parseAtlasMaterialBundle,
+  toStudioAtlasLocator,
   type TeachingContextSnapshot,
 } from './atlas-material-handoff'
 
@@ -94,6 +95,27 @@ test('Atlas bundle parser fails closed outside the v0.1 material taxonomy', () =
   const encoded = Buffer.from(JSON.stringify(validBundle), 'utf8').toString('base64url')
   assert.deepEqual(decodeAtlasMaterialBundle(encoded), validBundle)
   assert.throws(() => parseAtlasMaterialBundle({ ...validBundle, items: [{ ...validBundle.items[0], type: 'video' }] }))
+})
+
+test('Atlas preview refs become same-origin relative locators before persistence', () => {
+  assert.equal(
+    toStudioAtlasLocator(
+      'https://studio-atlas.example/materiali/slides?mode=preview#page=2',
+      'https://studio-atlas.example',
+    ),
+    '/materiali/slides?mode=preview#page=2',
+  )
+  assert.throws(() => toStudioAtlasLocator('https://evil.example/materiali/slides', 'https://studio-atlas.example'))
+  assert.throws(() => toStudioAtlasLocator('javascript:alert(1)', 'https://studio-atlas.example'))
+  assert.throws(() => toStudioAtlasLocator('not-a-url', 'https://studio-atlas.example'))
+  assert.throws(() => toStudioAtlasLocator('https://user:pass@studio-atlas.example/materiali/slides', 'https://studio-atlas.example'))
+})
+
+test('Atlas association uses the governed Studio Atlas origin and never persists previewRef directly', () => {
+  assert.match(atlasBindActionsSource, /NEXT_PUBLIC_STUDIO_ATLAS_ORIGIN/)
+  assert.match(atlasBindActionsSource, /toStudioAtlasLocator/)
+  assert.doesNotMatch(atlasBindActionsSource, /publicUrl:\s*item\.previewRef/)
+  assert.match(atlasBindActionsSource, /atlasLocator/)
 })
 
 test('Atlas material persistence does not bind canonical plan provenance to global workspace UUIDs', () => {
