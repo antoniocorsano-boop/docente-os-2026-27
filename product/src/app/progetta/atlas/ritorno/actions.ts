@@ -35,6 +35,9 @@ export async function bindAtlasMaterialsToLesson(
   if (bundle.sourceUdaId !== expectedUda) {
     return { error: 'Questi materiali non appartengono all’UDA corrente.' }
   }
+  if (bundle.items.some((item) => !item.previewRef)) {
+    return { error: 'I materiali ricevuti da Atlas non includono un collegamento utilizzabile.' }
+  }
 
   const workspace = await new SupabaseWorkspaceRepository().getCurrentContext()
   if (!workspace?.academicYear) return { error: 'Il contesto dell’anno scolastico non è disponibile.' }
