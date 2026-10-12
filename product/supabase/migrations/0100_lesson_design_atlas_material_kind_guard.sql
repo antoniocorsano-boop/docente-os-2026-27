@@ -25,6 +25,7 @@ declare
   item jsonb;
   item_payload jsonb;
   dedupe_key text;
+  atlas_locator text;
   target_extension_id uuid;
   target_status text;
   item_minutes integer;
@@ -58,6 +59,17 @@ begin
     if dedupe_key is null then
       raise exception 'Atlas material bundle item requires a dedupe key';
     end if;
+
+    atlas_locator := nullif(btrim(item_payload ->> 'atlasLocator'), '');
+    if atlas_locator is null
+       or left(atlas_locator, 1) <> '/'
+       or left(atlas_locator, 2) = '//'
+       or position(chr(92) in atlas_locator) > 0
+       or atlas_locator ~ '[[:space:]]' then
+      raise exception 'Atlas material bundle item requires a safe relative Atlas locator';
+    end if;
+
+    item_payload := (item_payload - 'publicUrl') || jsonb_build_object('atlasLocator', atlas_locator);
 
     if nullif(btrim(item ->> 'kind'), '') is null
        or nullif(btrim(item ->> 'insertionPosition'), '') is null
@@ -161,7 +173,7 @@ revoke all on function public.accept_atlas_material_bundle(uuid, uuid, uuid, uui
 grant execute on function public.accept_atlas_material_bundle(uuid, uuid, uuid, uuid, uuid, text, text, jsonb) to authenticated;
 
 comment on function public.accept_atlas_material_bundle(uuid, uuid, uuid, uuid, uuid, text, text, jsonb) is
-  'Atomically persists and accepts one teacher-confirmed Studio Atlas MaterialBundle inside a single canonical lesson context. Only teacher/student resources are admitted; any item failure rolls back the whole bundle.';
+  'Atomically persists and accepts one teacher-confirmed Studio Atlas MaterialBundle inside a single canonical lesson context. Only teacher/student resources with safe relative Atlas locators are admitted; any item failure rolls back the whole bundle.';
 
 select private.advance_runtime_schema_contract('0100_lesson_design_atlas_material_kind_guard');
 
