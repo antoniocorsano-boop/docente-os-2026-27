@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
-import { decodeAtlasMaterialBundle } from '@/core/domain/atlas-material-handoff'
+import { decodeAtlasMaterialBundle, toStudioAtlasLocator } from '@/core/domain/atlas-material-handoff'
 import type { LessonDesignExtensionDraft } from '@/core/domain/lesson-design-extension'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
@@ -35,7 +35,14 @@ export async function bindAtlasMaterialsToLesson(
   if (bundle.sourceUdaId !== expectedUda) {
     return { error: 'Questi materiali non appartengono all’UDA corrente.' }
   }
-  if (bundle.items.some((item) => !item.previewRef)) {
+
+  let atlasLocators: string[]
+  try {
+    atlasLocators = bundle.items.map((item) => toStudioAtlasLocator(
+      item.previewRef,
+      process.env.NEXT_PUBLIC_STUDIO_ATLAS_ORIGIN,
+    ))
+  } catch {
     return { error: 'I materiali ricevuti da Atlas non includono un collegamento utilizzabile.' }
   }
 
@@ -76,7 +83,7 @@ export async function bindAtlasMaterialsToLesson(
     projectionId: projection.projectionId,
   }
   const repository = new SupabaseLessonDesignRepository()
-  const drafts: LessonDesignExtensionDraft[] = bundle.items.map((item) => ({
+  const drafts: LessonDesignExtensionDraft[] = bundle.items.map((item, index) => ({
     ...lessonContext,
     kind: item.type === 'worksheet' ? 'STUDENT_RESOURCE' : 'TEACHER_RESOURCE',
     insertionPosition: 'END',
@@ -96,7 +103,7 @@ export async function bindAtlasMaterialsToLesson(
       bundleId: bundle.bundleId,
       materialId: item.materialId,
       atlasMaterialType: item.type,
-      publicUrl: item.previewRef,
+      atlasLocator: atlasLocators[index],
       origin: 'atlas',
     },
   }))
