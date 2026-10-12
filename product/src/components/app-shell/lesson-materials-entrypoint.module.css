@@ -63,8 +63,10 @@
 
 @media (max-width: 719px) {
   .root {
-    right: 10px;
-    bottom: calc(76px + env(safe-area-inset-bottom));
+    position: static;
+    right: auto;
+    bottom: auto;
     width: min(330px, calc(100vw - 20px));
+    margin: 18px 10px 0 auto;
   }
 }
