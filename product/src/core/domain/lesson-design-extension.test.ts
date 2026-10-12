@@ -118,9 +118,11 @@ test('Atlas material persistence does not bind canonical plan provenance to glob
   assert.doesNotMatch(lessonWorkspaceSource, /canonicalGenerationId:\s*source\.generationId/)
 })
 
-test('Atlas material persistence preserves semantic type and an openable locator', () => {
+test('Atlas material persistence preserves semantic type and a governed openable locator', () => {
   assert.match(atlasBindActionsSource, /atlasMaterialType:\s*item\.type/)
-  assert.match(atlasBindActionsSource, /publicUrl:\s*item\.previewRef/)
+  assert.match(atlasBindActionsSource, /atlasLocator:\s*atlasLocators\[index\]/)
+  assert.match(atlasBindActionsSource, /toStudioAtlasLocator\([\s\S]*item\.previewRef[\s\S]*NEXT_PUBLIC_STUDIO_ATLAS_ORIGIN/)
+  assert.doesNotMatch(atlasBindActionsSource, /publicUrl:\s*item\.previewRef/)
 })
 
 test('Atlas bundle RPC rejects non-material extension kinds at the database boundary', () => {
