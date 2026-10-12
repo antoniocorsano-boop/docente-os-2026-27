@@ -6,6 +6,8 @@ const migrationUrl = new URL('../../../../supabase/migrations/0099_canonical_pla
 const repositorySource = readFileSync(new URL('./supabase-canonical-plan-source-repository.ts', import.meta.url), 'utf8')
 const cpriRuntimePreflightSource = readFileSync(new URL('../../../../scripts/experience/cpri-runtime-preflight.mjs', import.meta.url), 'utf8')
 const runtimeReleaseContractSource = readFileSync(new URL('../../../../supabase/tests/runtime-release-contract.sql', import.meta.url), 'utf8')
+const experienceGlobalSetupSource = readFileSync(new URL('../../../../e2e/experience/global-setup.mjs', import.meta.url), 'utf8')
+const atlasReturnActionSource = readFileSync(new URL('../../../app/progetta/atlas/ritorno/actions.ts', import.meta.url), 'utf8')
 
 test('canonical plan runtime identity is governed by a workspace/year binding table', () => {
   assert.equal(
@@ -102,5 +104,40 @@ test('CPRI probes Atlas acceptance through the authenticated RPC without dependi
     cpriRuntimePreflightSource,
     /Atlas material bundle must contain at least one item/,
     'the probe must require the expected pre-insert validation failure as proof of callable RPC exposure',
+  )
+})
+
+test('experience global setup runs CPRI only against the isolated exact-head database', () => {
+  const isolatedGuardIndex = experienceGlobalSetupSource.indexOf('process.env.ISOLATED_SUPABASE_DIR')
+  const preflightIndex = experienceGlobalSetupSource.indexOf('await runCpriRuntimePreflight()')
+
+  assert.notEqual(
+    isolatedGuardIndex,
+    -1,
+    'shared-Beta browser consumers such as QL1 must not run candidate-schema CPRI preflight',
+  )
+  assert.ok(
+    isolatedGuardIndex < preflightIndex,
+    'the isolated-runtime guard must be evaluated before the CPRI preflight is invoked',
+  )
+})
+
+test('Atlas association rejects locator-less materials before atomic persistence', () => {
+  const locatorGuardIndex = atlasReturnActionSource.indexOf('!item.previewRef')
+  const persistenceIndex = atlasReturnActionSource.indexOf('acceptAtlasMaterialBundle')
+
+  assert.notEqual(
+    locatorGuardIndex,
+    -1,
+    'an Atlas item without previewRef must be rejected before it can be persisted as accepted material',
+  )
+  assert.ok(
+    locatorGuardIndex < persistenceIndex,
+    'the usable-locator guard must run before acceptAtlasMaterialBundle',
+  )
+  assert.match(
+    atlasReturnActionSource,
+    /collegamento utilizzabile/,
+    'the teacher must receive a clear fail-closed error for locator-less Atlas materials',
   )
 })
