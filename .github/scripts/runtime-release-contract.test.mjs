@@ -8,6 +8,7 @@ import {
   lintChangedPlpgsqlMigrations,
   validateMigrationInventory,
   validateRuntimeLineageInventory,
+  validateSensitiveRuntimeContainment,
 } from './runtime-release-contract.mjs'
 
 const contract = {
@@ -72,6 +73,39 @@ test('post-0074 migration without lineage registration fails closed', () => {
   writeFileSync(path.join(dir, '0074_runtime_schema_contract.sql'), 'select 1;')
   writeFileSync(path.join(dir, '0075_example.sql'), "select private.advance_runtime_schema_contract('0075_example');")
   assert.throws(() => validateMigrationInventory(dir), /must register itself/)
+})
+
+test('sensitive containment rejects a legacy Atlas RPC that stays executable', () => {
+  const migration = `
+    create or replace function public.accept_atlas_material_bundle(
+      p_workspace_id uuid,
+      p_academic_year_id uuid,
+      p_section_id uuid,
+      p_canonical_plan_asset_id uuid,
+      p_canonical_generation_id uuid,
+      p_block_id text,
+      p_projection_id text,
+      p_items jsonb
+    ) returns void language plpgsql security definer as $$ begin null; end $$;
+    grant execute on function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb) to authenticated;
+  `
+  assert.throws(
+    () => validateSensitiveRuntimeContainment(migration),
+    /legacy Atlas material write boundary must be revoked/,
+  )
+})
+
+test('sensitive containment requires explicit CPRI salvage adoption and legacy Atlas revoke', () => {
+  const migration = `
+    create table if not exists public.canonical_plan_runtime_bindings (id uuid primary key);
+    comment on table public.canonical_plan_runtime_bindings is 'CONTAIN-01 salvaged historical CPRI binding state; runtime mutation remains deferred';
+    revoke all on function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb) from public, anon, authenticated, service_role;
+  `
+  const result = validateSensitiveRuntimeContainment(migration)
+  assert.deepEqual(result, {
+    canonicalPlanBindingAdopted: true,
+    legacyAtlasWriteRevoked: true,
+  })
 })
 
 test('collision-prone local identifiers fail static preflight', () => {
