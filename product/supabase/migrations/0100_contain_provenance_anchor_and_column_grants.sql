@@ -6,8 +6,9 @@ on conflict (version) do update
 set migration_id = excluded.migration_id;
 
 -- CONTAIN-01 hardening: provenance must fail closed when the containment anchor
--- itself is absent from migration history. An empty post-anchor set is not proof
--- of provenance when the anchor cannot be located.
+-- itself is absent from migration history. A manifest entry is authoritative only
+-- up to the active runtime contract watermark: a future/self-registered migration
+-- must not become trusted before the canonical watermark advances to that version.
 create or replace function private.runtime_schema_unexpected_migrations_since_containment()
 returns text[]
 language plpgsql
@@ -17,8 +18,18 @@ set search_path = ''
 as $function$
 declare
   v_anchor_version bigint;
+  v_active_contract_version integer;
   v_unexpected text[];
 begin
+  select state.contract_version
+    into v_active_contract_version
+  from public.runtime_schema_contract_state state
+  where state.singleton;
+
+  if v_active_contract_version is null then
+    return array['ACTIVE_WATERMARK_MISSING']::text[];
+  end if;
+
   select max(history.version::bigint)
     into v_anchor_version
   from supabase_migrations.schema_migrations history
@@ -43,7 +54,8 @@ begin
     and not exists (
       select 1
       from private.runtime_schema_required_migrations required
-      where regexp_replace(history.name, '^[0-9]{4}_', '') =
+      where required.version <= v_active_contract_version
+        and regexp_replace(history.name, '^[0-9]{4}_', '') =
             regexp_replace(required.migration_id, '^[0-9]{4}_', '')
     );
 
@@ -55,7 +67,7 @@ revoke all on function private.runtime_schema_unexpected_migrations_since_contai
   from public, anon, authenticated, service_role;
 
 comment on function private.runtime_schema_unexpected_migrations_since_containment() is
-  'CONTAIN-01 provenance guard: returns a fail-closed sentinel when the 0098 containment anchor is missing and otherwise reports unregistered post-containment migrations.';
+  'CONTAIN-01 provenance guard: requires the 0098 containment anchor and trusts only registered post-containment migrations at or below the active runtime contract watermark.';
 
 -- CONTAIN-01 hardening: table privileges and column privileges are separate in
 -- PostgreSQL. Keep the existing effective table-level checks and additionally
