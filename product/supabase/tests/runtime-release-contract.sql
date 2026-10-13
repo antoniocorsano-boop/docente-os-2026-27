@@ -14,7 +14,8 @@ declare
   cpri_bind_rpc regprocedure;
   cpri_backfill_rpc regprocedure;
   trigger_shape_rejected boolean := false;
-  inherited_privilege_rejected boolean := false;
+  atlas_inherited_execute_rejected boolean := false;
+  cpri_inherited_insert_rejected boolean := false;
   atlas_rpc_created_for_probe boolean := false;
 begin
   if to_regclass('public.runtime_schema_contract_state') is null then
@@ -195,17 +196,37 @@ begin
   end if;
 
   execute 'create role contain_01_inherited_probe nologin';
-  execute 'grant execute on function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb) to contain_01_inherited_probe';
-  execute 'grant insert on table public.canonical_plan_runtime_bindings to contain_01_inherited_probe';
   execute 'grant contain_01_inherited_probe to authenticated';
 
+  -- Probe Atlas inherited EXECUTE independently. CPRI remains clean so the
+  -- specific Atlas exposure must be the only reason containment fails closed.
+  execute 'grant execute on function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb) to contain_01_inherited_probe';
   select public.runtime_schema_contract_snapshot()
     into runtime_snapshot;
-  inherited_privilege_rejected := coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true;
+  atlas_inherited_execute_rejected :=
+    coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true
+    and coalesce((runtime_snapshot->'containment'->>'legacyAtlasRuntimeExposed')::boolean, false) is true
+    and coalesce((runtime_snapshot->'containment'->>'cpriRuntimeMutationGrants')::boolean, false) is false;
 
-  execute 'revoke contain_01_inherited_probe from authenticated';
   execute 'revoke execute on function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb) from contain_01_inherited_probe';
+  select public.runtime_schema_contract_snapshot()
+    into runtime_snapshot;
+  if coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true then
+    raise exception 'CONTAIN-01 runtime snapshot did not recover after Atlas inherited EXECUTE probe cleanup';
+  end if;
+
+  -- Probe CPRI inherited INSERT independently. Atlas EXECUTE is already revoked,
+  -- so the specific CPRI mutation grant must be the only fail-closed cause.
+  execute 'grant insert on table public.canonical_plan_runtime_bindings to contain_01_inherited_probe';
+  select public.runtime_schema_contract_snapshot()
+    into runtime_snapshot;
+  cpri_inherited_insert_rejected :=
+    coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true
+    and coalesce((runtime_snapshot->'containment'->>'legacyAtlasRuntimeExposed')::boolean, false) is false
+    and coalesce((runtime_snapshot->'containment'->>'cpriRuntimeMutationGrants')::boolean, false) is true;
+
   execute 'revoke insert on table public.canonical_plan_runtime_bindings from contain_01_inherited_probe';
+  execute 'revoke contain_01_inherited_probe from authenticated';
   execute 'drop role contain_01_inherited_probe';
 
   if atlas_rpc_created_for_probe then
@@ -219,11 +240,14 @@ begin
     raise exception 'CONTAIN-01 runtime snapshot did not recover after inherited privilege probe cleanup';
   end if;
 
-  if not trigger_shape_rejected or not inherited_privilege_rejected then
+  if not trigger_shape_rejected
+     or not atlas_inherited_execute_rejected
+     or not cpri_inherited_insert_rejected then
     raise exception
-      'CONTAIN-01 certification gap reproduced: trigger_shape_rejected=%, inherited_privilege_rejected=%',
+      'CONTAIN-01 certification gap reproduced: trigger_shape_rejected=%, atlas_inherited_execute_rejected=%, cpri_inherited_insert_rejected=%',
       trigger_shape_rejected,
-      inherited_privilege_rejected;
+      atlas_inherited_execute_rejected,
+      cpri_inherited_insert_rejected;
   end if;
 
   if not exists (
