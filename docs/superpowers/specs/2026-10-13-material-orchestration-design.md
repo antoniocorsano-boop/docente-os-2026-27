@@ -1,9 +1,10 @@
-# MATERIAL-ORCH-01 — Governed Material Orchestration Design v2
+# MATERIAL-ORCH-01 — Governed Material Orchestration Design v2.1
 
-**Status:** `DESIGN_V2 / INDEPENDENT_REVIEW_REQUIRED / IMPLEMENTATION_HOLD`  
+**Status:** `DESIGN_REWORK / INDEPENDENT_REVIEW_REQUIRED / IMPLEMENTATION_HOLD`  
 **Audit sources:**
 - `docs/superpowers/checkpoints/2026-10-13-material-orch-01-architecture-audit.md`
 - `docs/superpowers/checkpoints/2026-10-13-material-orch-01-deep-preimplementation-audit.md`
+- `docs/superpowers/checkpoints/2026-10-13-material-orch-01-design-v2-rework-checkpoint.md`
 
 **Current Docente OS baseline considered:** `develop@a2e8f46972b60914e3a554df3b6d3942b34029a1`  
 **Containment baseline:** CONTAIN-01 + CONTAIN-01B integrated; runtime schema contract v100; legacy Studio Atlas material mutation contained.  
@@ -15,6 +16,7 @@ Define a stable, provider-neutral architecture for preparing teaching materials 
 
 - a second lesson-material domain;
 - a second source archive outside Knowledge;
+- a second persisted acceptance lifecycle;
 - a provider-owned source of truth;
 - a parallel cross-system protocol;
 - an implicit cross-product runtime authorization.
@@ -23,7 +25,7 @@ The target user task is **Prepara materiali**. The target architecture must reus
 
 ## 2. Binding references
 
-This design is subordinate to the following existing contracts and decisions.
+This design is subordinate to existing contracts and decisions.
 
 ### Docente OS
 
@@ -32,6 +34,10 @@ This design is subordinate to the following existing contracts and decisions.
   - reuse `NextLessonPreparation`, `LessonDesignExtension`, Knowledge/Material assets and `LessonPreparationManifest.materialSlots`;
   - provider-independent internal fallback first;
   - no second lesson-material model or Copilot frontdoor.
+- `docs/architecture/CLASS_PREPARED_MATERIALS_CONTRACT.md`
+  - existing pre-MATERIAL-ORCH path for class-prepared material;
+  - currently stores `approvalState=PENDING_HUMAN | APPROVED` in `knowledge_assets.source_metadata`;
+  - must be reconciled by MATERIAL-CORE-01 because metadata-only `APPROVED` cannot remain a second acceptance authority.
 
 ### TRAMA
 
@@ -71,15 +77,17 @@ This Docente OS document does **not** create or supersede TRAMA governed memory.
 6. External/provider results are proposals, never authoritative lesson state.
 7. Teacher acceptance is an explicit local Docente OS domain action.
 8. Shared capability execution, when eventually authorized, remains `PROPOSE_ONLY`; it does not perform the acceptance write.
-9. `LessonMaterialRole`, `artifactKind` and `audience` are separate semantic dimensions.
+9. `LessonMaterialRole`, `artifactKind` and `audience` are separate semantic dimensions and must survive acceptance as typed state.
 10. A provider locator is provenance, not durable internal material identity.
-11. `ACCEPTED` is not equivalent to real use; use remains TeachingSession evidence.
-12. Browser-return data is untrusted proposal input, not provenance evidence by itself.
-13. Every mutative entrypoint enforces authorization at the write boundary; UI visibility is never sufficient.
-14. CPRI is provider-neutral and separate from materials/providers.
-15. A deploy flag can only restrict or technically enable a capability already authorized by governance; it cannot create authority.
-16. No personal student data is required for ordinary material preparation.
-17. Every implementation tranche owns one primary architectural boundary.
+11. Every accepted material pins an immutable material revision; an `assetId` alone is never sufficient acceptance identity.
+12. `ACCEPTED` is not equivalent to real use; use remains TeachingSession evidence.
+13. Browser-return data is untrusted proposal input, not provenance evidence by itself.
+14. Every mutative entrypoint enforces authorization at the write boundary; UI visibility is never sufficient.
+15. CPRI is provider-neutral and separate from materials/providers.
+16. A deploy flag can only restrict or technically enable a capability already authorized by governance; it cannot create authority.
+17. Existing `source_metadata.approvalState=APPROVED` is legacy confirmation evidence during reconciliation, not a second permanent acceptance authority.
+18. No personal student data is required for ordinary material preparation.
+19. Every implementation tranche owns one primary architectural boundary.
 
 ## 4. Authority matrix
 
@@ -93,9 +101,9 @@ This Docente OS document does **not** create or supersede TRAMA governed memory.
 | Material search/proposal | local services or shared capability as proposal | canonical persistence |
 | Specialist artifact production concept | Officina materiali boundary | Studio Atlas as universal engine |
 | Atlas Pathway authoring | Studio Atlas within ADR-020 | lesson ownership |
-| Material acceptance | teacher + Docente OS local domain command | OR-07 provider/capability |
-| Durable material identity | Docente OS Knowledge/canonical internal reference | `atlas:*`, URL, provider object id alone |
-| Lesson readiness | `LessonPreparationManifest.materialSlots` | candidate bundle status |
+| Material acceptance | teacher + Docente OS local domain command represented by canonical lesson state | provider, OR-07 result, legacy metadata flag alone |
+| Durable accepted material identity | immutable Docente OS material revision reference | asset UUID alone, `atlas:*`, mutable URL, provider object id alone |
+| Lesson readiness | `LessonPreparationManifest.materialSlots` | candidate bundle status, `source_metadata.approvalState` alone |
 | Actual use | TeachingSession/evidence | `ACCEPTED` flag |
 | Cross-product authorization | TRAMA governance | env var, browser payload, provider availability |
 | Technical enablement | deployment config after governance | governance authority |
@@ -127,8 +135,8 @@ PREPARE_MATERIALS
                 v
        explicit local acceptance
                 |
-                +--> durable Knowledge/canonical material identity
-                +--> LessonDesignExtension accepted/proposed state
+                +--> immutable Knowledge/canonical material revision
+                +--> typed material binding persisted in LessonDesignExtension
                 +--> LessonPreparationManifest.materialSlots derived state
                 |
                 v
@@ -158,8 +166,6 @@ The UI must search/offer existing materials before exposing generation as the de
 
 ### 7.1 Material role
 
-The lesson needs a semantic role independent of file format/provider:
-
 ```ts
 type LessonMaterialRole =
   | 'TEACHER_BRIEF'
@@ -174,35 +180,59 @@ A provider may suggest a role, but Docente OS resolves/validates the canonical r
 
 ### 7.2 Artifact kind
 
-`artifactKind` describes the produced object, not how it is used in the lesson. Initial examples:
-
-```text
-PRESENTATION
-WORKSHEET
-GUIDE
-RUBRIC
-VISUAL
-ASSESSMENT
-OTHER
+```ts
+type LessonMaterialArtifactKind =
+  | 'PRESENTATION'
+  | 'WORKSHEET'
+  | 'GUIDE'
+  | 'RUBRIC'
+  | 'VISUAL'
+  | 'ASSESSMENT'
+  | 'OTHER'
 ```
+
+`artifactKind` describes the produced object, not how it is used in the lesson.
 
 ### 7.3 Audience
 
-```text
-TEACHER
-STUDENT
-MIXED
+```ts
+type LessonMaterialAudience = 'TEACHER' | 'STUDENT' | 'MIXED'
 ```
 
 `LessonMaterialRole`, `artifactKind` and `audience` must never be collapsed into one enum.
 
 A presentation may map to `LIM_VIEW` or `MINI_DECK`; a rubric may map to `ASSESSMENT`; a guide may map to `TEACHER_BRIEF`. Mapping is a Docente OS semantic decision, not provider authority.
 
+### 7.4 Accepted-state material binding
+
+The transient candidate may be discarded only after the accepted extension contains enough typed state to reconstruct all canonical material slots without consulting provider-specific proposal state.
+
+Target semantic payload:
+
+```ts
+interface LessonMaterialBindingV1 {
+  schema: 'docente-os.lesson-material-binding.v1'
+  role: LessonMaterialRole
+  artifactKind: LessonMaterialArtifactKind
+  audience: LessonMaterialAudience
+  materialRef: CanonicalMaterialRefV1
+  provenance: MaterialProposalProvenanceV1
+}
+```
+
+MATERIAL-CORE-01 may persist this typed structure inside the existing `LessonDesignExtension.payload` or an equivalent canonical extension-owned typed representation; it must **not** create a second material acceptance store.
+
+`LessonDesignExtension.kind` is not sufficient material-role authority. The current `TEACHER_RESOURCE -> TEACHER_BRIEF` / `STUDENT_RESOURCE -> STUDENT_HANDOUT` fallback covers only two of six roles and therefore must be completed/reconciled by MATERIAL-CORE-01.
+
+After MATERIAL-CORE-01, `roleForExtension()` or its replacement must reconstruct all six canonical roles from the typed accepted material state. Legacy extension-kind fallback may remain only for explicitly classified historical extensions and must not be used for new canonical material acceptance.
+
 ## 8. Proposal capability: reuse OR-07, do not create a parallel envelope
 
 `MaterialTaskRequestV1` and `MaterialCandidateBundleV1` are **not** canonical top-level transport envelopes.
 
-The future shared boundary, if authorized, must use OR-07:
+The following typed shapes are **local design proposals only** until registered through the applicable TRAMA governed process. They do not create a canonical cross-system contract by appearing in this Docente OS document.
+
+If authorized, the shared boundary must use OR-07:
 
 ```ts
 SharedCapabilityRequest<MaterialProposalInputV1>
@@ -241,8 +271,8 @@ interface MaterialProposalOutputV1 {
 interface MaterialProposalItemV1 {
   candidateId: string
   suggestedRole?: LessonMaterialRole
-  artifactKind: string
-  audience: 'TEACHER' | 'STUDENT' | 'MIXED'
+  artifactKind: LessonMaterialArtifactKind
+  audience: LessonMaterialAudience
   title: string
   description?: string
   providerArtifactRef?: string
@@ -282,35 +312,47 @@ Canonical interpretation:
 - external/local candidate: transient proposal result;
 - teacher-edited/selected proposal: represented through existing local lesson-design semantics;
 - `LessonDesignExtension`: `PROPOSED | MODIFIED | ACCEPTED | DISMISSED`;
+- accepted material extension: contains a validated `LessonMaterialBindingV1`;
 - `AVAILABLE_FOR_LESSON`: derived state of the relevant `LessonPreparationManifest.materialSlots`;
 - `USED`: TeachingSession/evidence, not a material acceptance state.
 
 The existing exact-state preparation receipt/fingerprint invalidation remains the approval model; a new approval subsystem is not introduced.
 
-## 10. Durable material identity
+## 10. Immutable accepted material identity
 
 ### 10.1 Rule
 
-A material accepted for lesson use must resolve to a durable Docente OS identity before it can be considered ready.
+A material accepted for lesson use must resolve to a durable **immutable revision** before it can be considered ready.
 
-Preferred target:
+Target semantic contract:
 
 ```ts
-interface CanonicalMaterialRefV1 {
-  kind: 'KNOWLEDGE_ASSET'
-  assetId: string
-  generationId?: string
-  integrityDigest?: string
-}
+type CanonicalMaterialRefV1 =
+  | {
+      kind: 'KNOWLEDGE_GENERATION'
+      assetId: string
+      generationId: string
+      integrityDigest?: string
+    }
+  | {
+      kind: 'IMMUTABLE_REVISION'
+      assetId: string
+      revisionRef: string
+      integrityDigest: string
+    }
 ```
 
-Exact implementation is deferred to MATERIAL-CORE-01, but the following invariant is fixed:
+An accepted `CanonicalMaterialRefV1` must always pin an immutable generation/revision. `assetId` alone is forbidden. `integrityDigest` is additionally required when the underlying revision identifier cannot independently guarantee content immutability.
 
-> provider identity is retained in provenance; it is not the canonical internal material identity.
+Provider identity is retained in provenance; it is not the canonical internal material identity.
 
 ### 10.2 Reuse
 
-For `REUSE_EXISTING`, acceptance references an existing canonical Knowledge/Material asset. No duplicate archive is created.
+`REUSE_EXISTING` does **not** relax immutability. Acceptance must pin the exact reusable revision/generation the teacher reviewed.
+
+If an existing external/provider-backed Knowledge asset has only a mutable URL/current pointer and cannot prove an immutable revision, it may be discovered/previewed but cannot become `READY` until Docente OS materializes or records an immutable canonical revision/snapshot.
+
+No duplicate source archive is created merely for reuse; the immutable revision belongs to the existing canonical Knowledge/material pipeline.
 
 ### 10.3 Adapt/create
 
@@ -320,7 +362,7 @@ For `ADAPT_EXISTING` or `CREATE_NEW`, the accepted artifact must be materialized
 
 A durable asset/revision referenced by accepted lesson material must not be silently deletable. MATERIAL-CORE-01 must make deletion fail closed or require an explicit detach/replace workflow before destructive removal.
 
-A plain `LessonDesignExtension.source_ref='atlas:*'` or provider URL is insufficient for this guarantee.
+A plain `LessonDesignExtension.source_ref='atlas:*'`, provider URL, mutable `source_locator` or asset UUID without revision identity is insufficient.
 
 ## 11. Acceptance mapping into the canonical lesson model
 
@@ -330,15 +372,50 @@ Target semantic result:
 
 1. resolve/validate lesson context from existing persisted identities;
 2. resolve the active CPRI source where required;
-3. resolve/materialize the durable internal material reference;
-4. resolve/validate `LessonMaterialRole`;
-5. create/update the governed `LessonDesignExtension` representation;
-6. mark the extension accepted only through the existing local acceptance semantics;
-7. rebuild/read the `LessonPreparationManifest`;
-8. observe the corresponding `materialSlots` state as `READY | NEEDS_REVIEW | PROPOSED | MISSING`;
-9. never write an independent `AVAILABLE_FOR_LESSON` record.
+3. resolve/materialize the immutable internal material revision;
+4. resolve/validate `LessonMaterialRole`, `artifactKind` and `audience` independently;
+5. persist the typed `LessonMaterialBindingV1` as extension-owned accepted state;
+6. create/update the governed `LessonDesignExtension` representation;
+7. mark the extension accepted only through the existing local acceptance semantics;
+8. rebuild/read the `LessonPreparationManifest`;
+9. derive the corresponding `materialSlots` state as `READY | NEEDS_REVIEW | PROPOSED | MISSING` from the typed extension state;
+10. never write an independent `AVAILABLE_FOR_LESSON` record.
 
-The read-after-write source of truth is the canonical lesson-preparation composition, not a provider callback result.
+The read-after-write source of truth is the canonical lesson-preparation composition, not a provider callback result or Knowledge metadata flag.
+
+### 11.1 Reconcile the existing prepared-class material path
+
+Current product behavior predating MATERIAL-ORCH must be explicitly reconciled:
+
+```text
+knowledge_assets.source_metadata.approvalState
+  PENDING_HUMAN | APPROVED
+```
+
+and `selectPreparedClassMaterials()` currently maps metadata `APPROVED` directly to the UI label `Confermato` without a `LessonDesignExtension`/`materialSlots` representation.
+
+MATERIAL-CORE-01 therefore owns a mandatory reconciliation/migration slice:
+
+1. inventory every `CLASS_LESSON_MATERIAL` using `approvalState`;
+2. preserve original metadata as historical/import provenance;
+3. classify `PENDING_HUMAN` as **prepared/discovery state**, not accepted lesson state;
+4. classify legacy `APPROVED` as **legacy confirmation evidence requiring canonical reconciliation**, not permanent acceptance authority;
+5. never silently fabricate missing immutable revision, block, projection, CPRI or actor/evidence context;
+6. where exact canonical lesson context + immutable revision + acceptance evidence are sufficient, materialize the equivalent typed `LessonDesignExtension` through a governed reconciliation path;
+7. where those requirements are not sufficient, surface `REVALIDATION_REQUIRED` / teacher re-association rather than silently carrying forward `APPROVED`;
+8. migrate `selectPreparedClassMaterials()` and any equivalent consumer so canonical accepted/`Confermato` state comes from lesson composition/accepted typed extension, not `source_metadata.approvalState`;
+9. after reconciliation, metadata `APPROVED` may remain only as historical provenance and must not independently make a material `READY` or canonically `Confermato`.
+
+`PRE_CANONICAL_DIAGNOSTIC` resources that lack a canonical lesson block remain valid prepared/supporting Knowledge resources, but cannot be invented into a block-bound accepted extension. They require explicit association with an actual lesson before canonical acceptance.
+
+### 11.2 No acceptance-state loss
+
+The reconciliation must preserve user intent without overstating evidence:
+
+- never delete legacy confirmation metadata;
+- never downgrade historical evidence to “never confirmed”;
+- never interpret a legacy confirmation as proof of a lesson/block/revision that was not recorded;
+- make any required teacher revalidation explicit and bounded.
 
 ## 12. Authoritative local write boundary
 
@@ -379,8 +456,8 @@ The write boundary must derive or verify, not trust from browser/provider payloa
 - logical CAN-PLAN for the section/grade;
 - current governed CPRI binding when required;
 - contextual block identity;
-- durable internal material identity;
-- material role mapping;
+- immutable internal material revision;
+- material role/kind/audience mapping;
 - dedupe/idempotency scope.
 
 ### 12.3 Transactional properties
@@ -417,6 +494,7 @@ Rules:
 - reuse preserves source identity and applicable rights;
 - adaptation preserves derivation lineage and attribution requirements;
 - new creation still records incorporated sources/assets when present;
+- accepted typed extension state preserves the provenance required to explain the immutable material revision;
 - unknown rights may permit a private draft under applicable policy but block any claim of publication readiness;
 - publication remains a distinct governed action outside MATERIAL-ORCH acceptance.
 
@@ -470,13 +548,15 @@ After a proposal result:
 6. local canonical acceptance;
 7. read-after-write from lesson-preparation state.
 
+Existing legacy prepared materials remain discoverable during reconciliation, but metadata-only `APPROVED` cannot be presented indefinitely as canonical acceptance after MATERIAL-CORE migration.
+
 Provider naming is secondary UI detail, not the primary task label.
 
 ## 17. Runtime authorization
 
 ### 17.1 Current state
 
-`DOS-A1` remains `RUNTIME_DEFERRED`. MATERIAL-ORCH v2 does not authorize cross-product runtime.
+`DOS-A1` remains `RUNTIME_DEFERRED`. MATERIAL-ORCH v2.1 does not authorize cross-product runtime.
 
 CONTAIN-01 deliberately revoked/blocked the legacy #692 Studio Atlas material write surfaces while preserving historical evidence.
 
@@ -534,15 +614,16 @@ CPRI-01 owns these semantics, not the material provider layer.
 
 ## 19. Migration/data readiness rules
 
-Before any new schema change:
+Before any new schema or stronger persistence invariant:
 
 1. read the current runtime schema contract and migration lineage;
 2. use the next free migration version from the exact baseline;
-3. run read-only preflight against existing data when introducing stronger invariants;
-4. classify `READY | BLOCKED` before promotion;
-5. do not use migration execution as discovery;
-6. preserve historical evidence; no cleanup by deletion to satisfy a new design;
-7. retain schema provenance/drift checks established by CONTAIN-01.
+3. run read-only preflight against existing data;
+4. inventory legacy prepared/confirmed material state before changing acceptance semantics;
+5. classify `READY | BLOCKED` before promotion;
+6. do not use migration execution as discovery;
+7. preserve historical evidence; no cleanup by deletion to satisfy a new design;
+8. retain schema provenance/drift checks established by CONTAIN-01.
 
 ## 20. Implementation decomposition
 
@@ -550,9 +631,9 @@ Before any new schema change:
 
 **Closed / integrated.** Schema provenance, legacy Atlas mutation containment and runtime release preflight are established through v100.
 
-### 1 — MATERIAL-ORCH-01 design v2
+### 1 — MATERIAL-ORCH-01 design v2.1
 
-This PR only. Documentation, architecture, implementation plan and independent review. No runtime.
+This PR only. Documentation, architecture, implementation plans and independent review. No runtime.
 
 ### 2 — CPRI-01
 
@@ -567,22 +648,32 @@ Provider-neutral Docente OS runtime identity authority:
 
 ### 3 — MATERIAL-CORE-01
 
-Local canonical material acceptance only:
+Local canonical material acceptance only. This tranche must include **all** of the following before it can be considered complete:
 
-- Knowledge/canonical material identity;
-- `LessonDesignExtension` lifecycle;
-- `LessonPreparationManifest.materialSlots` derivation;
+- read-only inventory of current `CLASS_LESSON_MATERIAL` `approvalState` data and consumers;
+- explicit reconciliation/retirement of metadata-only `APPROVED` as current acceptance authority;
+- migration of `selectPreparedClassMaterials()` and equivalent consumers to canonical lesson-composition acceptance semantics;
+- immutable Knowledge/canonical material revision identity for every accepted material, including reuse;
+- typed `LessonMaterialBindingV1` persisted as extension-owned state;
+- all six canonical `LessonMaterialRole` values reconstructable from accepted extension state;
+- separate persistence of role, artifact kind and audience semantics;
+- `LessonDesignExtension` lifecycle reuse;
+- `LessonPreparationManifest.materialSlots` derivation from typed accepted state;
+- legacy extension/resource compatibility classified explicitly without allowing new writes into legacy semantics;
 - durable deletion/reference safety;
 - no external provider runtime.
 
+MATERIAL-CORE-01 is not complete if any runtime surface can still call a metadata-only `APPROVED` resource canonically `Confermato` while bypassing accepted extension/material-slot composition.
+
 ### 4 — MATERIAL-TASK-UX-01
 
-Teacher-first orchestration:
+Teacher-first orchestration starts only after MATERIAL-CORE reconciliation:
 
 - search/reuse first;
 - `Riutilizza | Adatta | Crea nuova`;
 - local/internal provider-independent fallback first;
-- visible review/acceptance.
+- visible review/acceptance;
+- legacy-revalidation UX only where MATERIAL-CORE classified historical confirmation as insufficient for automatic canonical reconciliation.
 
 ### 5 — MATERIAL-CAPABILITY-01
 
@@ -608,9 +699,12 @@ Before leaving design/starting implementation, all must be true:
 
 - canonical lesson-preparation foundation explicitly reused;
 - no second persisted material lifecycle/store;
-- accepted material maps to durable internal identity + `LessonDesignExtension` + `materialSlots`;
-- material role separated from kind/audience;
+- existing metadata-only `APPROVED` path explicitly reconciled and assigned to MATERIAL-CORE consumer migration;
+- accepted material maps to an immutable internal revision + typed `LessonDesignExtension` material binding + `materialSlots`;
+- all six material roles survive acceptance and are reconstructable after transient proposal state is discarded;
+- material role separated from kind/audience in persisted accepted state;
 - OR-07 reused instead of a parallel top-level cross-system protocol;
+- proposed material capability types explicitly local/noncanonical until TRAMA registration;
 - provider-specific capability identity removed;
 - Officina/Studio Atlas boundaries explicit;
 - browser payload classified untrusted;
@@ -623,18 +717,20 @@ Before leaving design/starting implementation, all must be true:
 - no runtime/schema/deploy mutation in this design PR;
 - fresh independent review on the revised exact head has no relevant unresolved findings.
 
-## 22. Acceptance criteria for MATERIAL-ORCH design v2
+## 22. Acceptance criteria for MATERIAL-ORCH design v2.1
 
 The design may be classified `ARCHITECTURE_READY` only when:
 
 1. all five original Codex review findings are addressed in the documents;
 2. all deep-audit findings B1–B10 are represented as invariants or explicit tranche ownership;
-3. CPRI plan starts from the contained v100 schema reality, not from a fictional clean pre-0098 state;
-4. no local document claims a new cross-system capability/handoff as canonically governed without TRAMA registration/shared-memory update;
-5. PR #692 remains frozen reference only;
-6. documentation CI is green on one exact head;
-7. fresh independent review is clean;
-8. Human Review, if required by the project process, refers to that same exact head.
+3. the fresh-review P1 findings on legacy confirmed-material reconciliation, typed six-role persistence and immutable accepted revision are addressed;
+4. CPRI plan starts from the contained v100 schema reality, not from a fictional clean pre-0098 state;
+5. MATERIAL-CORE has an explicit execution plan that retires metadata-only current acceptance without deleting historical evidence;
+6. no local document claims a new cross-system capability/handoff as canonically governed without TRAMA registration/shared-memory update;
+7. PR #692 remains frozen reference only;
+8. documentation CI is green on one exact head;
+9. fresh independent review of that revised exact head is clean;
+10. Human Review, if required by the project process, refers to that same exact head.
 
 Until then:
 
