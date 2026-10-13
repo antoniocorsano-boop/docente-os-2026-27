@@ -8,6 +8,7 @@ const CONTRACT_PATH = path.join(ROOT, 'ops/runtime-release-contract.json')
 const MIGRATION_DIR = path.join(ROOT, 'product/supabase/migrations')
 const OUTPUT_PATH = process.env.RUNTIME_RELEASE_CONTRACT_OUTPUT
   ?? path.join(ROOT, 'test-results/release-runtime-contract/impact.json')
+const CONTAINMENT_MIGRATION = '0098_contain_legacy_atlas_runtime_and_reconcile_cpri.sql'
 
 const COLLISION_PRONE_LOCALS = new Set([
   'id',
@@ -122,6 +123,22 @@ export function validateRuntimeLineageInventory(migrationDir = MIGRATION_DIR, st
   }
 }
 
+export function validateSensitiveRuntimeContainment(migrationContent) {
+  const source = String(migrationContent ?? '')
+  const canonicalPlanBindingAdopted = /canonical_plan_runtime_bindings/i.test(source)
+    && /CONTAIN-01 salvaged historical CPRI binding state; runtime mutation remains deferred/i.test(source)
+  if (!canonicalPlanBindingAdopted) {
+    throw new Error('CPRI salvage state must be adopted explicitly without authorizing runtime mutation')
+  }
+
+  const legacyAtlasWriteRevoked = /revoke\s+all(?:\s+privileges)?\s+on\s+function\s+public\.accept_atlas_material_bundle\s*\(\s*uuid\s*,\s*uuid\s*,\s*uuid\s*,\s*uuid\s*,\s*uuid\s*,\s*text\s*,\s*text\s*,\s*jsonb\s*\)\s+from\s+public\s*,\s*anon\s*,\s*authenticated\s*,\s*service_role/iu.test(source)
+  if (!legacyAtlasWriteRevoked) {
+    throw new Error('legacy Atlas material write boundary must be revoked from runtime roles')
+  }
+
+  return { canonicalPlanBindingAdopted, legacyAtlasWriteRevoked }
+}
+
 export function lintChangedPlpgsqlMigrations(changedFiles) {
   const findings = []
   for (const file of changedFiles.map(normalizePath)) {
@@ -182,6 +199,8 @@ function main() {
   const impact = classifyPaths(changedFiles, contract)
   const inventory = validateMigrationInventory()
   const lineage = validateRuntimeLineageInventory()
+  const containmentPath = path.join(MIGRATION_DIR, CONTAINMENT_MIGRATION)
+  const containment = validateSensitiveRuntimeContainment(readFileSync(containmentPath, 'utf8'))
   lintChangedPlpgsqlMigrations(changedFiles)
   validateCapabilityDeclaration()
 
@@ -193,9 +212,11 @@ function main() {
     ...impact,
     ...inventory,
     ...lineage,
+    containment,
     checks: {
       migrationInventory: 'PASS',
       migrationLineageInventory: 'PASS',
+      sensitiveRuntimeContainment: 'PASS',
       plpgsqlIdentifierPreflight: 'PASS',
       capabilityDeclaration: 'PASS',
     },
