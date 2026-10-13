@@ -40,6 +40,7 @@ export default async function NewUdaAuthoringPage({
 
   const title = humanizeKnowledgeTitle(bundle.document?.title ?? bundle.asset.originalName)
   const sourceHref = `/knowledge/${encodeURIComponent(assetId)}`
+  const studioRuntimeAuthorized = process.env.STUDIO_ATLAS_RUNTIME_AUTHORIZATION === 'AUTHORIZED'
   const studioOrigin = process.env.NEXT_PUBLIC_STUDIO_ATLAS_ORIGIN
   const docenteOrigin = process.env.NEXT_PUBLIC_DOCENTE_OS_ORIGIN ?? process.env.RENDER_EXTERNAL_URL ?? 'http://localhost:3000'
   const grade = asGrade(bundle.asset.sourceMetadata.grade)
@@ -76,7 +77,7 @@ export default async function NewUdaAuthoringPage({
   if (udaId) returnUrl.searchParams.set('uda', udaId)
   if (block) returnUrl.searchParams.set('blockId', block.id)
 
-  const atlasHref = studioOrigin && grade && section && udaId
+  const atlasHref = studioRuntimeAuthorized && studioOrigin && grade && section && udaId
     ? buildStudioAtlasMaterialHref(studioOrigin, {
         schema: 'docente-os.teaching-context/v0.1',
         source: 'docente-os',
@@ -91,8 +92,8 @@ export default async function NewUdaAuthoringPage({
       } satisfies TeachingContextSnapshot)
     : null
 
-  const atlasUnavailable = !studioOrigin
-    ? 'Studio Atlas non è collegato a questo ambiente.'
+  const atlasUnavailable = !studioRuntimeAuthorized || !studioOrigin
+    ? 'La preparazione con Atlas non è ancora disponibile in questo ambiente.'
     : !section
       ? 'Apri questa UDA dal contesto di una classe per preparare i materiali.'
       : !udaId
