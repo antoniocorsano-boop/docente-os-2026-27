@@ -5,6 +5,28 @@ values (100, '0100_lesson_design_atlas_material_kind_guard')
 on conflict (version) do update
 set migration_id = excluded.migration_id;
 
+-- The active-extension identity is semantic: surrounding whitespace in dedupeKey
+-- must not create a second active row. Keep the uniqueness boundary atomic and
+-- canonical so direct authenticated inserts and RPC writes use the same identity.
+drop index if exists public.uq_lesson_design_extensions_context_dedupe_key;
+
+create unique index uq_lesson_design_extensions_context_dedupe_key
+  on public.lesson_design_extensions (
+    workspace_id,
+    academic_year_id,
+    section_id,
+    canonical_plan_asset_id,
+    canonical_generation_id,
+    block_id,
+    projection_id,
+    (nullif(btrim(payload ->> 'dedupeKey'), ''))
+  )
+  where nullif(btrim(payload ->> 'dedupeKey'), '') is not null
+    and status <> 'DISMISSED';
+
+comment on index public.uq_lesson_design_extensions_context_dedupe_key is
+  'Atomically prevents canonically equivalent active tool-generated lesson proposals in the same canonical lesson projection while allowing a new proposal after the teacher dismisses the previous one. Surrounding dedupeKey whitespace is not a distinct identity; dismissed rows remain immutable audit history.';
+
 create or replace function public.accept_atlas_material_bundle(
   p_workspace_id uuid,
   p_academic_year_id uuid,
@@ -179,7 +201,9 @@ begin
           'minutes', e.minutes,
           'sourceRef', e.source_ref,
           'sourceLabel', e.source_label,
-          'payload', e.payload
+          'payload', (e.payload - 'dedupeKey') || jsonb_build_object(
+            'dedupeKey', nullif(btrim(e.payload ->> 'dedupeKey'), '')
+          )
         )
         into target_extension_id, target_status, existing_signature
       from public.lesson_design_extensions e
@@ -191,7 +215,7 @@ begin
         and e.block_id = p_block_id
         and e.projection_id = canonical_projection_id
         and e.source_kind = 'ATLAS'
-        and e.payload ->> 'dedupeKey' = dedupe_key
+        and nullif(btrim(e.payload ->> 'dedupeKey'), '') = dedupe_key
         and e.status <> 'DISMISSED'
       limit 1;
     end if;
@@ -220,7 +244,7 @@ revoke all on function public.accept_atlas_material_bundle(uuid, uuid, uuid, uui
 grant execute on function public.accept_atlas_material_bundle(uuid, uuid, uuid, uuid, uuid, text, text, jsonb) to authenticated;
 
 comment on function public.accept_atlas_material_bundle(uuid, uuid, uuid, uuid, uuid, text, text, jsonb) is
-  'Atomically persists and accepts one teacher-confirmed Studio Atlas MaterialBundle inside a single canonical lesson context. Only teacher/student resources with safe relative Atlas locators are admitted; dedupe conflicts are idempotent only for semantically identical rows that are already accepted; any item failure rolls back the whole bundle.';
+  'Atomically persists and accepts one teacher-confirmed Studio Atlas MaterialBundle inside a single canonical lesson context. Only teacher/student resources with safe relative Atlas locators are admitted; dedupe conflicts use canonical active identity and are idempotent only for semantically identical rows that are already accepted; any item failure rolls back the whole bundle.';
 
 select private.advance_runtime_schema_contract('0100_lesson_design_atlas_material_kind_guard');
 
