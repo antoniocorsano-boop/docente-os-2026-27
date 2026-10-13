@@ -95,7 +95,8 @@ begin
        or left(atlas_locator, 1) <> '/'
        or left(atlas_locator, 2) = '//'
        or position(chr(92) in atlas_locator) > 0
-       or atlas_locator ~ '[[:space:]]' then
+       or atlas_locator ~ '[[:space:]]'
+       or atlas_locator ~ '[[:cntrl:]]' then
       raise exception 'Atlas material bundle item requires a safe relative Atlas locator';
     end if;
 
