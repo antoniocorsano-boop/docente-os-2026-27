@@ -13,9 +13,13 @@ declare
   atlas_rpc regprocedure;
   cpri_bind_rpc regprocedure;
   cpri_backfill_rpc regprocedure;
+  containment_anchor_version text;
+  containment_anchor_name text;
   trigger_shape_rejected boolean := false;
   atlas_inherited_execute_rejected boolean := false;
   cpri_inherited_insert_rejected boolean := false;
+  provenance_anchor_missing_rejected boolean := false;
+  cpri_inherited_column_insert_rejected boolean := false;
   atlas_rpc_created_for_probe boolean := false;
 begin
   if to_regclass('public.runtime_schema_contract_state') is null then
@@ -59,6 +63,41 @@ begin
     raise exception
       'runtime schema provenance contains unexpected post-containment migrations: %',
       runtime_snapshot->'unexpectedMigrations';
+  end if;
+
+  -- Regression for fresh Codex P2: if the 0098 containment anchor disappears from
+  -- migration history, provenance must fail closed instead of treating an empty
+  -- post-anchor set as healthy. Restore the row before evaluating the probe result.
+  select history.version::text, history.name
+    into containment_anchor_version, containment_anchor_name
+  from supabase_migrations.schema_migrations history
+  where regexp_replace(history.name, '^[0-9]{4}_', '') =
+        regexp_replace('0098_contain_legacy_atlas_runtime_and_reconcile_cpri', '^[0-9]{4}_', '')
+  order by history.version::bigint desc
+  limit 1;
+
+  if containment_anchor_version is null or containment_anchor_name is null then
+    raise exception 'CONTAIN-01 provenance probe could not locate the 0098 containment anchor';
+  end if;
+
+  update supabase_migrations.schema_migrations
+  set name = containment_anchor_name || '_probe_missing_anchor'
+  where version::text = containment_anchor_version;
+
+  select public.runtime_schema_contract_snapshot()
+    into runtime_snapshot;
+  provenance_anchor_missing_rejected :=
+    coalesce((runtime_snapshot->>'provenanceOk')::boolean, true) is false
+    and jsonb_array_length(coalesce(runtime_snapshot->'unexpectedMigrations', '[]'::jsonb)) > 0;
+
+  update supabase_migrations.schema_migrations
+  set name = containment_anchor_name
+  where version::text = containment_anchor_version;
+
+  select public.runtime_schema_contract_snapshot()
+    into runtime_snapshot;
+  if coalesce((runtime_snapshot->>'provenanceOk')::boolean, false) is not true then
+    raise exception 'CONTAIN-01 runtime snapshot did not recover after restoring the 0098 containment anchor';
   end if;
 
   if coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true then
@@ -215,8 +254,8 @@ begin
     raise exception 'CONTAIN-01 runtime snapshot did not recover after Atlas inherited EXECUTE probe cleanup';
   end if;
 
-  -- Probe CPRI inherited INSERT independently. Atlas EXECUTE is already revoked,
-  -- so the specific CPRI mutation grant must be the only fail-closed cause.
+  -- Probe CPRI inherited table-level INSERT independently. Atlas EXECUTE is already
+  -- revoked, so the specific CPRI mutation grant must be the only fail-closed cause.
   execute 'grant insert on table public.canonical_plan_runtime_bindings to contain_01_inherited_probe';
   select public.runtime_schema_contract_snapshot()
     into runtime_snapshot;
@@ -229,6 +268,23 @@ begin
   execute 'revoke contain_01_inherited_probe from authenticated';
   execute 'drop role contain_01_inherited_probe';
 
+  -- Regression for fresh Codex P2: PostgreSQL column ACLs are independent of
+  -- table-level ACLs. A parent role inherited by service_role with INSERT on one
+  -- CPRI column must still make cpriRuntimeMutationGrants fail closed.
+  execute 'create role contain_01_column_probe nologin';
+  execute 'grant contain_01_column_probe to service_role';
+  execute 'grant insert (workspace_id) on table public.canonical_plan_runtime_bindings to contain_01_column_probe';
+  select public.runtime_schema_contract_snapshot()
+    into runtime_snapshot;
+  cpri_inherited_column_insert_rejected :=
+    coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true
+    and coalesce((runtime_snapshot->'containment'->>'legacyAtlasRuntimeExposed')::boolean, false) is false
+    and coalesce((runtime_snapshot->'containment'->>'cpriRuntimeMutationGrants')::boolean, false) is true;
+
+  execute 'revoke insert (workspace_id) on table public.canonical_plan_runtime_bindings from contain_01_column_probe';
+  execute 'revoke contain_01_column_probe from service_role';
+  execute 'drop role contain_01_column_probe';
+
   if atlas_rpc_created_for_probe then
     execute 'drop function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb)';
     atlas_rpc := null;
@@ -240,14 +296,18 @@ begin
     raise exception 'CONTAIN-01 runtime snapshot did not recover after inherited privilege probe cleanup';
   end if;
 
-  if not trigger_shape_rejected
+  if not provenance_anchor_missing_rejected
+     or not trigger_shape_rejected
      or not atlas_inherited_execute_rejected
-     or not cpri_inherited_insert_rejected then
+     or not cpri_inherited_insert_rejected
+     or not cpri_inherited_column_insert_rejected then
     raise exception
-      'CONTAIN-01 certification gap reproduced: trigger_shape_rejected=%, atlas_inherited_execute_rejected=%, cpri_inherited_insert_rejected=%',
+      'CONTAIN-01 certification gap reproduced: provenance_anchor_missing_rejected=%, trigger_shape_rejected=%, atlas_inherited_execute_rejected=%, cpri_inherited_insert_rejected=%, cpri_inherited_column_insert_rejected=%',
+      provenance_anchor_missing_rejected,
       trigger_shape_rejected,
       atlas_inherited_execute_rejected,
-      cpri_inherited_insert_rejected;
+      cpri_inherited_insert_rejected,
+      cpri_inherited_column_insert_rejected;
   end if;
 
   if not exists (
