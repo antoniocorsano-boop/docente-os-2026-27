@@ -194,7 +194,7 @@ begin
     into teaching_session_lock_definition;
 
   if position('FOR UPDATE' in upper(occurrence_activity_guard_definition)) = 0
-     or position('FOR UPDATE' in upper(teaching_session_lock_definition) = 0 then
+     or position('FOR UPDATE' in upper(teaching_session_lock_definition)) = 0 then
     raise exception 'single-occurrence activity and TeachingSession boundaries do not share a locking invariant';
   end if;
 
