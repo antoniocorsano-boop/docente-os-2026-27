@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
+import { spawn } from 'node:child_process'
 import { mkdtempSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs'
+import { createServer } from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -156,3 +158,76 @@ test('collision-prone local identifiers fail static preflight', () => {
     unlinkSync(absolute)
   }
 })
+
+test('production startup preflight fails closed on provenance drift', async () => {
+  const result = await runProductionStartupPreflight({
+    migrationId: '0100_contain_provenance_anchor_and_column_grants',
+    lineageOk: true,
+    missingMigrations: [],
+    provenanceOk: false,
+    unexpectedMigrations: ['0101_rogue'],
+    containmentOk: true,
+    containment: { legacyAtlasRuntimeExposed: false, cpriRuntimeMutationGrants: false },
+  })
+
+  assert.notEqual(result.code, 0)
+  assert.match(result.stderr, /Runtime schema provenance drift:.*0101_rogue/)
+  assert.doesNotMatch(result.stdout, /Timetable visual extractor:/)
+})
+
+test('production startup preflight fails closed on containment drift', async () => {
+  const result = await runProductionStartupPreflight({
+    migrationId: '0100_contain_provenance_anchor_and_column_grants',
+    lineageOk: true,
+    missingMigrations: [],
+    provenanceOk: true,
+    unexpectedMigrations: [],
+    containmentOk: false,
+    containment: { legacyAtlasRuntimeExposed: true, cpriRuntimeMutationGrants: false },
+  })
+
+  assert.notEqual(result.code, 0)
+  assert.match(result.stderr, /Runtime containment failed:.*legacyAtlasRuntimeExposed/)
+  assert.doesNotMatch(result.stdout, /Timetable visual extractor:/)
+})
+
+async function runProductionStartupPreflight(snapshot) {
+  const server = createServer((request, response) => {
+    if (request.method !== 'POST' || request.url !== '/rest/v1/rpc/runtime_schema_contract_snapshot') {
+      response.writeHead(404).end()
+      return
+    }
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify(snapshot))
+  })
+
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const address = server.address()
+  assert.ok(address && typeof address === 'object')
+
+  try {
+    return await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, ['scripts/start-production.mjs'], {
+        cwd: path.resolve(process.cwd(), 'product'),
+        env: {
+          ...process.env,
+          DOCENTE_OS_RUNTIME_SCHEMA_PREFLIGHT: 'on',
+          NEXT_PUBLIC_SUPABASE_URL: `http://127.0.0.1:${address.port}`,
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
+          PATH: '',
+        },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+      let stdout = ''
+      let stderr = ''
+      child.stdout.setEncoding('utf8')
+      child.stderr.setEncoding('utf8')
+      child.stdout.on('data', (chunk) => { stdout += chunk })
+      child.stderr.on('data', (chunk) => { stderr += chunk })
+      child.once('error', reject)
+      child.once('close', (code, signal) => resolve({ code, signal, stdout, stderr }))
+    })
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
+  }
+}
