@@ -26,6 +26,7 @@ declare
   item_payload jsonb;
   dedupe_key text;
   atlas_locator text;
+  canonical_projection_id text;
   target_extension_id uuid;
   target_status text;
   item_minutes integer;
@@ -38,6 +39,11 @@ begin
 
   if not private.is_workspace_member(p_workspace_id) then
     raise exception 'Atlas material bundle is outside caller workspace';
+  end if;
+
+  canonical_projection_id := nullif(btrim(p_projection_id), '');
+  if canonical_projection_id is null then
+    raise exception 'Atlas material bundle requires a projection id';
   end if;
 
   if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
@@ -71,7 +77,10 @@ begin
       raise exception 'Atlas material bundle item requires a safe relative Atlas locator';
     end if;
 
-    item_payload := (item_payload - 'publicUrl') || jsonb_build_object('atlasLocator', atlas_locator);
+    item_payload := (item_payload - 'publicUrl') || jsonb_build_object(
+      'dedupeKey', dedupe_key,
+      'atlasLocator', atlas_locator
+    );
 
     if nullif(btrim(item ->> 'kind'), '') is null
        or nullif(btrim(item ->> 'insertionPosition'), '') is null
@@ -138,7 +147,7 @@ begin
       p_canonical_plan_asset_id,
       p_canonical_generation_id,
       p_block_id,
-      p_projection_id,
+      canonical_projection_id,
       item ->> 'kind',
       'PROPOSED',
       item ->> 'insertionPosition',
@@ -180,7 +189,7 @@ begin
         and e.canonical_plan_asset_id = p_canonical_plan_asset_id
         and e.canonical_generation_id = p_canonical_generation_id
         and e.block_id = p_block_id
-        and e.projection_id = p_projection_id
+        and e.projection_id = canonical_projection_id
         and e.source_kind = 'ATLAS'
         and e.payload ->> 'dedupeKey' = dedupe_key
         and e.status <> 'DISMISSED'
