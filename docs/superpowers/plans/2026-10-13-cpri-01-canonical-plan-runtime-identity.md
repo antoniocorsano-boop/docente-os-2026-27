@@ -1,187 +1,178 @@
-# CPRI-01 — Canonical Plan Runtime Identity Implementation Plan
+# CPRI-01 — Canonical Plan Runtime Identity Implementation Plan v2
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** estrarre CPRI dalla PR #692 e introdurre una singola authority runtime provider-neutral per risolvere `CAN-PLAN-x` in `assetId/generationId` locali al workspace/anno, senza dipendenze Studio Atlas.
+**Goal:** make the governed CPRI binding the single provider-neutral runtime authority for new CAN-PLAN work, starting from the contained runtime-schema v100 reality, while preserving historical generation-bound evidence.
 
-**Architecture:** `CAN-PLAN-x` resta identità logica portabile. I consumer runtime risolvono un binding governato `(workspace_id, academic_year_id, canonical_plan_code) → (asset_id, generation_id)`. Prima di creare/provisionare binding su un ambiente viene eseguito un preflight read-only; la migration non viene usata per scoprire ambiguità.
+**Architecture:** `CAN-PLAN-x` remains the portable logical identity. Runtime consumers resolve `(workspace_id, academic_year_id, canonical_plan_code) -> (asset_id, generation_id)` from the already-contained `canonical_plan_runtime_bindings` table. CPRI-01 does not recreate that table; it qualifies the resolver, repository-wide authority migration and binding-movement/revalidation semantics, including TeachingSession allocation compatibility.
 
-**Tech Stack:** Next.js/TypeScript, Supabase/PostgreSQL, SQL contract tests, Node test runner, GitHub Actions.
+**Tech Stack:** Next.js 16 / TypeScript 5.9, Supabase/PostgreSQL, Node/tsx test runner, SQL contract tests, GitHub Actions.
 
 **Spec:** `docs/architecture/CANONICAL_PLAN_RUNTIME_IDENTITY.md`
 
 ## Global Constraints
 
-- Baseline iniziale: `develop@7ac09a8795d93cc9a950083cda8b01d5d1407257`; rifissare l'exact baseline prima dell'esecuzione.
-- PR #692 resta `QUALIFIED_REFERENCE / ARCHITECTURE_FREEZE / NOT_INTEGRATION_CANDIDATE`.
-- Nessuna dipendenza Studio Atlas, MaterialBundle o runtime handoff in CPRI-01.
-- `CAN-PLAN-x` è l'unica identità logica portabile.
-- `asset_id` e `generation_id` sono materializzazioni workspace/year-local.
-- Nessun UUID CAN-PLAN statico può restare authority runtime.
-- `source_metadata.canonicalExecCode` è ammesso solo per preflight/provisioning transitorio, mai per read authority runtime.
-- Nessun consumer può auto-bindare durante una normale lettura/scrittura didattica.
-- Binding assente/invalido/context-mismatch/generation non `SUCCEEDED` => fail-closed.
-- Una nuova generazione Knowledge non sposta implicitamente il binding.
-- Record storici non vengono riscritti quando cambia il binding corrente.
-- Nessuna riduzione di RLS, FK, trigger o isolamento workspace/anno.
-- TDD RED → GREEN per ogni modifica comportamentale.
-- Nessun merge automatico e nessuna promozione Beta prima di exact-head certification + independent review + Human Review applicabile.
+- Execution baseline must be re-frozen from the current `develop` head; the design baseline considered by this plan is `develop@a2e8f46972b60914e3a554df3b6d3942b34029a1`.
+- Runtime schema contract v100 after CONTAIN-01/CONTAIN-01B is the starting schema reality.
+- Migration `0098_contain_legacy_atlas_runtime_and_reconcile_cpri.sql` already creates/adopts and contains `canonical_plan_runtime_bindings`; do not recreate or renumber history.
+- Any new migration uses the next free version on the execution exact head (currently `>=0101`; never hard-code 0101 before rechecking).
+- PR #692 remains `QUALIFIED_REFERENCE / ARCHITECTURE_FREEZE / NOT_INTEGRATION_CANDIDATE`.
+- CPRI-01 has no Studio Atlas, Officina materiali, MaterialBundle or cross-product runtime dependency.
+- `CAN-PLAN-x` is the only portable logical identity.
+- `asset_id` and `generation_id` are workspace/year-local materialization identities.
+- No static production UUID may remain runtime authority.
+- Historical/provenance literals are preserved when they are evidence, not current runtime authority.
+- `source_metadata.canonicalExecCode` may be used only for read-only diagnostics/provisioning discovery, never runtime authority.
+- Normal teaching flows cannot auto-create, auto-repair or auto-move bindings.
+- Missing/invalid/context-mismatched/non-`SUCCEEDED` binding resolution fails closed.
+- Reprocessing a Knowledge asset does not implicitly move its CPRI binding.
+- Binding movement requires explicit impact/revalidation semantics across progress, extensions, receipts and teaching-session allocations.
+- Historical rows are never rewritten merely because the current binding changes.
+- New TeachingSession allocations must eventually validate against CPRI authority rather than only `knowledge_assets.current_generation_id`.
+- Preserve runtime-schema lineage/provenance/containment checks introduced by CONTAIN-01.
+- No reduction of RLS, FK, trigger, workspace/year isolation or fail-closed behavior.
+- TDD RED -> GREEN for every behavioral change.
+- No auto-merge or Beta promotion before exact-head qualification + fresh independent review + applicable Human Review.
 
 ## Review Focus
 
-- **Dati legacy ambigui:** due asset nello stesso workspace/anno con lo stesso `canonicalExecCode` devono produrre `BLOCKED` nel preflight, non una scelta arbitraria. Test ownership: Task 1.
-- **Cross-workspace/cross-year:** un asset o generation di un altro contesto non può essere bindato né risolto. Test ownership: Task 2.
-- **Generation non pronta:** `PENDING/FAILED` non può essere bindata o restituita come runtime source. Test ownership: Task 2/3.
-- **Consumer residuo:** nessun percorso in scope può continuare a leggere asset/generation UUID da `CANONICAL_PLAN_SOURCES`. Test ownership: Task 5.
-- **Storia:** aggiornare il binding non deve riscrivere progress/session/provenance storici. Test ownership: Task 2/4.
+- **Pinned binding vs reprocessed asset:** CPRI stays on generation A while `current_generation_id` becomes B; new authoritative reads use A and allocation logic must not reject A merely because B is current. Test ownership: Tasks 3 and 4.
+- **Binding movement A -> B:** history on A remains immutable; current preparation becomes stale/requires revalidation; extensions/progress do not silently carry forward. Test ownership: Task 4.
+- **Repository-wide residual authority:** any runtime use of static CAN-PLAN UUIDs outside an explicit historical/forensic allowlist fails the guard. Test ownership: Task 2.
+- **Cross-workspace/year target:** resolver and movement boundary fail closed on asset/generation/context mismatch. Test ownership: Tasks 1, 3 and 4.
+- **Schema drift / contained legacy mutators:** runtime contract must remain v100+ provenance-safe and legacy CPRI/Atlas mutators stay non-executable unless a separate governed change authorizes replacement. Test ownership: Tasks 1 and 6.
 
 ---
 
-### Task 1: Data-readiness preflight prima della migration
+### Task 1: Adopt and verify the contained v100 CPRI baseline
 
 **Files:**
-- Create: `product/scripts/experience/cpri-data-readiness-preflight.mjs`
-- Create: `product/scripts/experience/cpri-data-readiness-preflight.test.mjs`
-- Modify: `.github/workflows/product-ci.yml`
-- Modify: `product/package.json`
+- Create: `product/scripts/experience/cpri-runtime-baseline-preflight.mjs`
+- Create: `product/scripts/experience/cpri-runtime-baseline-preflight.test.mjs`
+- Modify: `.github/workflows/product-ci.yml` only if the existing workflow does not already execute the chosen test path.
+- Modify: `product/package.json` only if a stable script alias is required.
 
 **Interfaces:**
-- Consumes: dati esistenti `knowledge_assets`, `knowledge_processing_generations`, workspace/academic year; transitional metadata `source_metadata.canonicalExecCode` solo in modalità read-only.
-- Produces: comando che emette un risultato stabile `READY | BLOCKED` con conteggi/classificazioni `MISSING | AMBIGUOUS | GENERATION_MISSING | GENERATION_NOT_SUCCEEDED | CONTEXT_MISMATCH`.
+- Consumes: runtime-schema contract snapshot/provenance checks, `canonical_plan_runtime_bindings`, Knowledge asset/generation state.
+- Produces: read-only `READY | BLOCKED` baseline classification; no writes.
 
-- [ ] **Step 1: scrivere i test RED del classificatore**
+- [ ] **Step 1: write the RED baseline-preflight tests**
 
-Testare almeno:
+Test at least:
 
 ```text
-single valid candidate -> READY
-2 candidates same context/code -> AMBIGUOUS/BLOCKED
-candidate without current generation -> GENERATION_MISSING/BLOCKED when required
-generation != SUCCEEDED -> GENERATION_NOT_SUCCEEDED/BLOCKED
-asset/generation context mismatch -> CONTEXT_MISMATCH/BLOCKED
+runtime contract below contained CPRI baseline -> BLOCKED
+binding table missing/incompatible -> BLOCKED
+legacy CPRI mutator executable -> BLOCKED
+required binding missing -> BLOCKED
+binding asset/generation context mismatch -> BLOCKED
+generation != SUCCEEDED -> BLOCKED
+valid contained binding set -> READY
 ```
 
-- [ ] **Step 2: eseguire il test e verificare RED**
+- [ ] **Step 2: run the focused test and observe RED**
 
-Run: `cd product && node --test scripts/experience/cpri-data-readiness-preflight.test.mjs`
+Run:
 
-Expected: FAIL perché il classificatore/preflight non esiste.
-
-- [ ] **Step 3: implementare il classificatore read-only**
-
-Esporre una funzione pura testabile, ad esempio:
-
-```ts
-classifyCanonicalPlanCandidateSet(input): CpriReadinessResult
+```bash
+cd product
+node --test scripts/experience/cpri-runtime-baseline-preflight.test.mjs
 ```
 
-Il comando runtime può usare Supabase, ma nessun path del preflight deve scrivere dati.
+Expected: FAIL because the preflight does not yet exist.
 
-- [ ] **Step 4: integrare il preflight nella CI come controllo non distruttivo**
+- [ ] **Step 3: implement the read-only classifier/preflight**
 
-Il test del classificatore è obbligatorio in Product CI. L'esecuzione contro un ambiente reale resta un gate di promotion, non deve richiedere secret aggiuntivi nei test locali.
+Expose a pure classifier for fixtures plus an environment reader. The environment reader must not mutate bindings or schema.
 
-- [ ] **Step 5: verificare GREEN**
+- [ ] **Step 4: preserve schema-provenance semantics**
 
-Run: test focused + script lint/typecheck applicabile.
+The preflight must consume or align with the existing runtime-schema contract rather than inventing a second migration-lineage authority.
+
+- [ ] **Step 5: verify GREEN**
+
+Run the focused test; then `npm run typecheck` if TypeScript files are added.
 
 Expected: PASS.
 
 - [ ] **Step 6: commit**
 
-Commit suggerito: `test: add CPRI data readiness preflight`
+Suggested commit: `test: add CPRI contained-baseline preflight`
 
 ---
 
-### Task 2: Database authority per il binding CPRI
+### Task 2: Repository-wide static runtime-authority guard and logical model split
 
 **Files:**
-- Create: `product/supabase/migrations/0098_canonical_plan_runtime_identity.sql` **solo se 0098 è ancora libero sulla baseline rifissata; altrimenti usare il prossimo numero libero**
-- Create: `product/supabase/tests/canonical_plan_runtime_identity_behavior.sql`
-- Modify: `product/supabase/tests/runtime-release-contract.sql`
-- Modify: `product/src/lib/supabase/database.types.ts`
+- Create: `.github/scripts/certification/cpri-static-runtime-authority.test.mjs`
+- Modify: `product/src/app/piano-annuale/model.ts`
+- Modify: `product/src/app/piano-annuale/model.test.ts`
+- Modify: direct tests/fixtures that intentionally encode current production UUID authority.
 
 **Interfaces:**
-- Consumes: risultato `READY` del preflight per la promotion dell'ambiente; schema Knowledge esistente.
-- Produces: `canonical_plan_runtime_bindings` e writer governato service-role-only.
+- Consumes: complete repository tree on the execution exact head.
+- Produces: logical grade -> `CAN-PLAN-x` mapping and a guard that classifies every static CAN-PLAN UUID occurrence as runtime-authority, historical/provenance, forensic fixture or synthetic test.
 
-- [ ] **Step 1: scrivere RED SQL contract**
+- [ ] **Step 1: write the RED repository guard**
 
-Dimostrare con test che oggi mancano:
+The guard must discover all occurrences related to `CANONICAL_PLAN_SOURCES`, known production CAN-PLAN asset/generation UUID literals and equivalent static runtime mappings.
 
-```text
-UNIQUE(workspace, academicYear, canonicalPlanCode)
-workspace/year integrity
-asset workspace/year integrity
-generation -> asset/workspace integrity
-generation status SUCCEEDED
-identity immutability
-member read / no authenticated write
-service-role governed bind/upsert
-```
-
-- [ ] **Step 2: eseguire migration/test replay e verificare RED**
-
-Run: usare il runner SQL canonico del repository che include `runtime-release-contract.sql`.
-
-Expected: FAIL per tabella/funzioni mancanti.
-
-- [ ] **Step 3: creare la tabella e le invarianti**
-
-Schema minimo:
+Assertions:
 
 ```text
-canonical_plan_runtime_bindings(
-  id,
-  workspace_id,
-  academic_year_id,
-  canonical_plan_code,
-  asset_id,
-  generation_id,
-  created_at,
-  updated_at
-)
+runtime authority occurrence -> FAIL
+unclassified occurrence -> FAIL
+historical/provenance allowlisted occurrence -> PASS
+synthetic non-production test UUID -> PASS
 ```
 
-- [ ] **Step 4: introdurre writer governato**
+- [ ] **Step 2: run RED**
 
-Funzione proposta:
+Run:
 
-```text
-bind_canonical_plan_runtime_source(
-  workspace_id,
-  academic_year_id,
-  canonical_plan_code,
-  asset_id,
-  generation_id
-) -> binding_id
+```bash
+node --test .github/scripts/certification/cpri-static-runtime-authority.test.mjs
 ```
 
-EXECUTE solo a `service_role`; nessun self-bind da consumer authenticated.
+Expected: FAIL with current active consumers such as piano-annuale/actions, feedback/actions, class lesson actions/pages, AnnualPlanClient, human-task pipeline/recipe and any additional current matches.
 
-- [ ] **Step 5: non includere backfill discovery cieco nella migration**
+- [ ] **Step 3: split the logical model from runtime identity**
 
-La migration può creare struttura e primitive di provisioning; l'ambiente viene provisionato solo dopo preflight `READY` con input esplicito/governato. Se viene mantenuta una utility di backfill, deve richiedere dati già classificati e non scegliere autonomamente candidati ambigui.
+Target exported shape:
 
-- [ ] **Step 6: aggiornare types e runtime contract**
+```ts
+export const CANONICAL_PLAN_CODES: Record<GradeKey, 'CAN-PLAN-1' | 'CAN-PLAN-2' | 'CAN-PLAN-3'>
+```
 
-- [ ] **Step 7: verificare GREEN**
+No production `assetId/generationId` remains in the logical mapping.
 
-Run: migration replay + focused SQL behavior contract.
+- [ ] **Step 4: classify evidence literals instead of deleting history**
 
-Expected: PASS.
+Use the smallest explicit allowlist/fixture classification possible. Do not erase migration receipts or historical evidence merely to satisfy the guard.
 
-- [ ] **Step 8: commit**
+- [ ] **Step 5: run GREEN for the model + guard**
 
-Commit suggerito: `feat: add governed canonical plan runtime bindings`
+Run:
+
+```bash
+cd product && npx tsx --test src/app/piano-annuale/model.test.ts
+cd .. && node --test .github/scripts/certification/cpri-static-runtime-authority.test.mjs
+```
+
+Expected: model test PASS; the repository guard may remain RED only for consumers intentionally left for Task 5, but its discovered inventory must be deterministic and complete. Record the exact remaining paths as Task 5 input.
+
+- [ ] **Step 6: commit**
+
+Suggested commit: `refactor: separate CAN-PLAN logical and runtime authority`
 
 ---
 
-### Task 3: Repository resolver unico
+### Task 3: Single CPRI resolver for runtime reads
 
 **Files:**
 - Create: `product/src/core/infrastructure/supabase/supabase-canonical-plan-source-repository.ts`
 - Create: `product/src/core/infrastructure/supabase/canonical-plan-runtime-identity.test.ts`
+- Modify: `product/src/lib/supabase/database.types.ts` only if generated/current types do not expose the contained table shape.
 
 **Interfaces:**
 - Consumes:
@@ -190,7 +181,7 @@ Commit suggerito: `feat: add governed canonical plan runtime bindings`
 type CanonicalPlanSourceLookup = {
   workspaceId: string
   academicYearId: string
-  code: string
+  code: 'CAN-PLAN-1' | 'CAN-PLAN-2' | 'CAN-PLAN-3'
 }
 ```
 
@@ -198,201 +189,276 @@ type CanonicalPlanSourceLookup = {
 
 ```ts
 type CanonicalPlanRuntimeSource = {
-  code: string
+  code: 'CAN-PLAN-1' | 'CAN-PLAN-2' | 'CAN-PLAN-3'
   assetId: string
   generationId: string
 }
 
-class SupabaseCanonicalPlanSourceRepository {
-  resolve(input: CanonicalPlanSourceLookup): Promise<CanonicalPlanRuntimeSource | null>
+interface CanonicalPlanSourceRepository {
+  resolve(input: CanonicalPlanSourceLookup): Promise<CanonicalPlanRuntimeSource>
 }
 ```
 
-- [ ] **Step 1: scrivere RED repository tests**
+- [ ] **Step 1: write RED resolver tests**
 
-Testare: valid binding, missing binding, invalid asset context, invalid generation context, non-`SUCCEEDED`, code trimming/canonicalization.
+Test:
 
-- [ ] **Step 2: eseguire RED**
+```text
+valid binding -> resolved source
+missing binding -> fail-closed typed error
+asset workspace/year mismatch -> fail-closed
+generation/asset mismatch -> fail-closed
+generation non-SUCCEEDED -> fail-closed
+asset current_generation_id differs but bound generation is valid SUCCEEDED -> resolve bound generation
+no metadata/static fallback -> fail-closed
+```
 
-Run: focused Node/TS test command secondo il runner corrente.
+- [ ] **Step 2: run RED**
 
-Expected: FAIL perché il repository non esiste su `develop`.
+Use focused `npx tsx --test ...`.
 
-- [ ] **Step 3: implementare resolver DB-binding-only**
+Expected: FAIL because repository/resolver does not exist.
 
-Il resolver legge `canonical_plan_runtime_bindings` e verifica che asset/generation siano ancora coerenti. Nessun metadata scan e nessun fallback statico.
+- [ ] **Step 3: implement DB-binding-only resolver**
 
-- [ ] **Step 4: verificare GREEN**
+Resolve only through `canonical_plan_runtime_bindings` plus authoritative relation validation. Never scan `source_metadata`, never use `CANONICAL_PLAN_SOURCES` as UUID authority.
+
+- [ ] **Step 4: verify GREEN**
+
+Run focused resolver tests and `npm run typecheck`.
+
+Expected: PASS.
 
 - [ ] **Step 5: commit**
 
-Commit suggerito: `feat: resolve canonical plans from governed runtime binding`
+Suggested commit: `feat: resolve CAN-PLAN runtime source from governed binding`
 
 ---
 
-### Task 4: Separare identità logica da UUID nel modello Piano annuale
+### Task 4: Binding movement/revalidation semantics and TeachingSession compatibility
 
 **Files:**
-- Modify: `product/src/app/piano-annuale/model.ts`
-- Modify: `product/src/app/piano-annuale/model.test.ts`
-- Modify: `product/src/core/application/human-task-content-pipeline.ts`
-- Modify: `product/src/core/application/human-task-plan-guided-uda-projection-recipe.ts`
-- Modify: relativi test della projection recipe/pipeline.
+- Create: `product/supabase/tests/canonical_plan_runtime_identity_behavior.sql`
+- Modify: `product/supabase/tests/runtime-release-contract.sql`
+- Modify: `product/supabase/migrations/<next-free>_cpri_runtime_authority_and_revalidation.sql` only if DB changes are proven necessary; choose the number from the execution exact head, never from this document.
+- Modify/add focused TypeScript/domain tests for current preparation stale/revalidation behavior where the behavior is application-owned.
 
 **Interfaces:**
-- Consumes: logical `CAN-PLAN-x`; runtime identity viene fornita separatamente quando necessaria.
-- Produces: mapping grade → logical canonical plan code senza `assetId/generationId` statici.
+- Consumes: existing v100 CPRI table/trigger; resolver from Task 3; generation-bound tables.
+- Produces: DB/domain semantics for pinned bindings, new allocations and explicit binding movement impact.
 
-- [ ] **Step 1: scrivere RED che vieta UUID statici nel logical model**
+- [ ] **Step 1: write RED SQL/domain tests for pinned binding compatibility**
 
-Asserire che il modello canonico espone codice/struttura ma non runtime UUID authority.
+Scenario:
 
-- [ ] **Step 2: eseguire RED**
-
-Expected: FAIL sulla baseline perché `CANONICAL_PLAN_SOURCES` contiene UUID reali incorporati.
-
-- [ ] **Step 3: introdurre mapping logical-only**
-
-Nome preferito, da mantenere coerente nei consumer:
-
-```ts
-CANONICAL_PLAN_CODES: Record<GradeKey, 'CAN-PLAN-1' | 'CAN-PLAN-2' | 'CAN-PLAN-3'>
+```text
+CPRI binds asset generation A (SUCCEEDED)
+knowledge_assets.current_generation_id advances to B (SUCCEEDED)
+new TeachingSession allocation using governed binding A
 ```
 
-Se il modello deve conservare metadati strutturali, nessun campo deve essere interpretato come runtime UUID authority.
+Expected target: allocation authority is evaluated against CPRI binding/context, not rejected solely because B is current.
 
-- [ ] **Step 4: aggiornare pipeline/recipe**
+- [ ] **Step 2: write RED movement/history tests**
 
-`generationId` della recipe, quando richiesto, viene trattato come evidenza locale e confrontato con identity risolta del medesimo workspace/anno, non con un UUID globale compilato.
+For explicit A -> B movement, assert:
 
-- [ ] **Step 5: verificare GREEN**
+```text
+historical teaching_session_allocations on A unchanged
+lesson_preparation_receipts on A unchanged
+lesson_design_extensions on A not silently rewritten/carried
+annual_plan_block_progress on A not silently copied/reset to B
+current preparation requiring A becomes stale/revalidation-required
+new runtime resolution returns B only after governed move succeeds
+invalid/cross-context B -> move blocked
+```
 
-- [ ] **Step 6: commit**
+- [ ] **Step 3: run RED using the canonical SQL replay/test harness + focused TS tests**
 
-Commit suggerito: `refactor: separate CAN-PLAN logical and runtime identity`
+Expected: FAIL at the current-generation allocation invariant and/or missing movement/revalidation boundary.
 
----
+- [ ] **Step 4: implement the minimum DB authority change**
 
-### Task 5: Migrare tutti i runtime consumers in scope
+Replace only the incompatible current-generation assumption for new authoritative allocation with CPRI-aware validation while preserving workspace/year/asset/generation/SUCCEEDED checks.
 
-**Files:**
-- Modify: `product/src/app/piano-annuale/actions.ts`
-- Modify: `product/src/app/piano-annuale/AnnualPlanClient.tsx`
-- Modify: `product/src/app/feedback/actions.ts`
-- Modify: `product/src/app/classi/[sectionId]/lezioni/actions.ts`
-- Modify: `product/src/app/classi/class-workspace-model.ts`
-- Modify: `product/src/app/classi/[sectionId]/page.tsx`
-- Modify: `product/src/app/classi/[sectionId]/lezioni/[blockId]/page.tsx`
-- Modify: relativi test/fixture.
-- Explicitly exclude: `product/src/app/progetta/atlas/**` e qualunque file provider-specifico della #692.
+Do not rewrite historical rows.
 
-**Interfaces:**
-- Consumes: `SupabaseCanonicalPlanSourceRepository.resolve(...)` oppure `CanonicalPlanRuntimeSource` già risolto dal route/server boundary.
-- Produces: nessun runtime consumer in scope legge UUID da un logical model statico.
+- [ ] **Step 5: implement explicit movement impact/revalidation boundary**
 
-- [ ] **Step 1: creare un inventory regression test/search guard**
+The movement path must compute/validate impact before changing the binding. Existing contained legacy mutators are not automatically re-enabled; introduce/qualify a new governed primitive only if required by the approved implementation design.
 
-Il guard deve fallire se, nei percorsi in scope, ricompare l'uso di static `assetId/generationId` associati a `CAN-PLAN-x`.
+- [ ] **Step 6: verify GREEN**
 
-- [ ] **Step 2: verificare RED sulla baseline**
+Run SQL replay/behavior contract + focused TS tests.
 
-Expected: FAIL con i consumer legacy individuati.
-
-- [ ] **Step 3: migrare prima i server/action boundary**
-
-Risoluzione una volta per workspace/anno/code; passare l'identità risolta ai helper/presentation layer quando pratico.
-
-- [ ] **Step 4: migrare helper/client state**
-
-Cache/progress keys e filtering non devono dipendere da UUID compilati.
-
-- [ ] **Step 5: aggiornare fixture con UUID sintetici locali**
-
-Nessun test deve dipendere dagli UUID canonici reali storici.
-
-- [ ] **Step 6: verificare focused suites**
+Expected: all movement/history/pinned-binding assertions PASS.
 
 - [ ] **Step 7: commit**
 
-Commit suggerito: `refactor: migrate CAN-PLAN runtime consumers to CPRI`
+Suggested commit: `feat: align CPRI movement with generation-bound history`
 
 ---
 
-### Task 6: Documentazione, runtime preflight e full qualification
+### Task 5: Migrate every active runtime consumer
 
 **Files:**
-- Modify: `docs/architecture/TIMETABLE_CANONICAL_SPEC.md`
-- Modify: `docs/architecture/CANONICAL_PLAN_RUNTIME_IDENTITY.md` solo per eventuali delta emersi dall'implementazione, senza allargare il contratto.
-- Create or reuse: `product/scripts/experience/cpri-runtime-preflight.mjs`
-- Add tests for the runtime preflight.
+- Modify all active runtime paths discovered by Task 2, including at minimum:
+  - `product/src/app/piano-annuale/actions.ts`
+  - `product/src/app/piano-annuale/AnnualPlanClient.tsx`
+  - `product/src/app/feedback/actions.ts`
+  - `product/src/app/classi/[sectionId]/actions.ts` if discovered on the execution head
+  - `product/src/app/classi/[sectionId]/lezioni/actions.ts`
+  - `product/src/app/classi/class-workspace-model.ts`
+  - `product/src/app/classi/[sectionId]/page.tsx`
+  - `product/src/app/classi/[sectionId]/lezioni/[blockId]/page.tsx`
+  - `product/src/core/application/human-task-content-pipeline.ts`
+  - `product/src/core/application/human-task-plan-guided-uda-projection-recipe.ts`
+  - assistant/copilot context loaders discovered by the repository-wide guard.
+- Modify corresponding tests/fixtures.
 
 **Interfaces:**
-- Consumes: schema CPRI installato e binding provisionati.
-- Produces: `READY | BLOCKED` prima di qualsiasi HVA dipendente da CPRI.
+- Consumes: `CanonicalPlanSourceRepository.resolve(...)` or a `CanonicalPlanRuntimeSource` already resolved at an authoritative server boundary.
+- Produces: zero active runtime paths that use static production CAN-PLAN UUID authority.
 
-- [ ] **Step 1: scrivere RED runtime-preflight tests**
+- [ ] **Step 1: freeze the Task 2 inventory on the current task BASE**
 
-Verificare almeno:
+Search the complete repository again. Do not trust the original hand-written file list.
+
+- [ ] **Step 2: migrate server/action write boundaries first**
+
+Resolve once per authoritative `(workspace, academicYear, code)` context and pass resolved identity inward where practical.
+
+- [ ] **Step 3: migrate read/context loaders**
+
+Assistant/Copilot/read models consume resolved identity or logical code as appropriate; they do not open metadata/static fallbacks.
+
+- [ ] **Step 4: migrate presentation/client helpers**
+
+Client state must not own runtime authority. Pass only the minimum resolved IDs where genuinely required.
+
+- [ ] **Step 5: update tests with synthetic/local identities**
+
+No test should require production canonical UUIDs unless it is an explicit historical/forensic fixture classified by the guard.
+
+- [ ] **Step 6: run focused suites and repository guard**
+
+Run relevant `npx tsx --test ...` files plus:
+
+```bash
+node --test .github/scripts/certification/cpri-static-runtime-authority.test.mjs
+```
+
+Expected: repository-wide guard PASS with zero unclassified/static runtime-authority consumers.
+
+- [ ] **Step 7: commit**
+
+Suggested commit: `refactor: migrate CAN-PLAN runtime consumers to CPRI`
+
+---
+
+### Task 6: Runtime preflight, canonical docs and full qualification
+
+**Files:**
+- Create or extend: `product/scripts/experience/cpri-runtime-preflight.mjs`
+- Create or extend corresponding tests.
+- Modify: `docs/architecture/TIMETABLE_CANONICAL_SPEC.md`
+- Modify: `docs/architecture/CANONICAL_PLAN_RUNTIME_IDENTITY.md` only for implementation-discovered deltas that do not silently enlarge authority.
+- Modify Product CI/certification wiring only if the new guard/preflight is not already executed.
+
+**Interfaces:**
+- Consumes: qualified CPRI schema, resolver, migrated consumers, movement semantics.
+- Produces: `READY | BLOCKED` runtime qualification result before dependent browser/HVA certification.
+
+- [ ] **Step 1: write RED runtime-preflight tests**
+
+Test:
 
 ```text
-schema missing -> BLOCKED
-binding missing -> BLOCKED
-asset/year mismatch -> BLOCKED
+schema/provenance/containment invalid -> BLOCKED
+required binding missing -> BLOCKED
+binding context invalid -> BLOCKED
 generation non-SUCCEEDED -> BLOCKED
-valid binding -> READY
-static UUID consumer detected -> BLOCKED
+legacy contained mutator unexpectedly executable -> BLOCKED
+static runtime-authority guard fails -> BLOCKED
+all invariants valid -> READY
 ```
 
-- [ ] **Step 2: implementare runtime preflight**
+- [ ] **Step 2: implement/compose the runtime preflight**
 
-Il preflight non scrive dati.
+Reuse the runtime-schema contract and Task 1/2 classifiers; do not create independent contradictory authorities.
 
-- [ ] **Step 3: aggiornare la documentazione canonica**
+- [ ] **Step 3: update canonical documentation**
 
-`TIMETABLE_CANONICAL_SPEC.md` deve parlare di logical CAN-PLAN + governed runtime binding, non di UUID “già presenti nel runtime”.
+`TIMETABLE_CANONICAL_SPEC.md` must refer to logical CAN-PLAN + governed runtime binding, not “UUIDs already present in runtime”.
 
-- [ ] **Step 4: eseguire full local/repository qualification**
+- [ ] **Step 4: run full product verification**
 
-Run: focused tests, full Product CI suite, typecheck, lint, production build, SQL migration replay/runtime-release contract.
+From `product/`:
 
-Expected: tutti PASS sullo stesso exact head.
+```bash
+npm test
+npm run typecheck
+npm run lint
+npm run build
+```
 
-- [ ] **Step 5: Architecture Readiness Gate**
+Also run the repository certification/SQL migration replay/runtime-release contract used by Product CI.
 
-Confermare:
+Expected: all PASS on one exact head.
+
+- [ ] **Step 5: run the Architecture Readiness Gate**
+
+Confirm:
 
 ```text
-provider-specific coupling = 0
+provider-specific coupling in CPRI = 0
 unauthorized cross-product runtime = 0
-static CAN-PLAN runtime UUID authority = 0
-metadata scan runtime authority = 0
-CPRI SQL/domain mismatch = 0
-preflight missing from CI/promotion path = 0
+static production CAN-PLAN runtime UUID authority = 0
+metadata-scan runtime authority = 0
+unclassified repository matches = 0
+CPRI/current_generation allocation conflict = 0
+silent historical rewrite/carry-forward = 0
+schema provenance/containment regression = 0
 ```
 
-- [ ] **Step 6: independent review**
+- [ ] **Step 6: fresh independent review**
 
-Fresh review sull'exact head della tranche; nessun PASS ereditato dalla #692.
+Request review on the exact qualified head. No PASS is inherited from #692, #703 or CONTAIN-01.
 
-- [ ] **Step 7: Human Review applicabile**
+- [ ] **Step 7: Human Review classification**
 
-Se la tranche non modifica resa/UX, classificare correttamente l'impatto; se il processo richiede Human Review finale, riferirla allo stesso exact head.
+If no visual/product surface changes, record the correct impact classification. If governance/process requires Human Review, it must refer to the same exact head.
 
-- [ ] **Step 8: commit di closeout documentale solo se necessario**
+- [ ] **Step 8: commit**
 
-Non modificare codice dopo la review finale senza ricertificare.
+Suggested commit: `docs: certify CPRI runtime identity implementation`
 
-## Completion Contract
+---
 
-CPRI-01 è completo solo quando:
+## Plan self-review
 
-1. preflight dati reali è `READY` prima della promotion;
-2. binding governato è la sola authority runtime CAN-PLAN;
-3. resolver unico è attivo;
-4. tutti i consumer in scope sono migrati;
-5. nessun file Atlas/provider-specifico è necessario a CPRI;
-6. nessun UUID CAN-PLAN statico resta runtime authority;
-7. migration replay e Product CI sono verdi sull'exact head;
-8. fresh independent review è pulita;
-9. Human Review applicabile è sullo stesso exact head;
-10. solo dopo questi gate la tranche può essere proposta per integrazione autonoma.
+### Spec coverage
+
+- existing v100 CPRI baseline: Task 1;
+- repository-wide static authority inventory: Tasks 2 and 5;
+- resolver: Task 3;
+- pinned-binding vs `current_generation_id`: Task 4;
+- movement/revalidation across progress/extensions/receipts/sessions: Task 4;
+- history preservation: Task 4;
+- environment preflight/provenance/containment: Tasks 1 and 6;
+- canonical docs and full qualification: Task 6.
+
+### Type consistency
+
+Tasks 3 and 5 share `CanonicalPlanSourceLookup` / `CanonicalPlanRuntimeSource`; Task 4 changes DB semantics but does not change the resolver contract.
+
+### Execution stop conditions
+
+Do not start CPRI implementation unless MATERIAL-ORCH design v2 has:
+
+1. documentation CI PASS;
+2. all original #703 review findings resolved or made outdated by the corrected text;
+3. fresh independent review with no relevant unresolved finding;
+4. explicit confirmation that no new cross-system runtime authority is introduced.
+
+Any destructive data rewrite, runtime promotion or governance authorization remains a separate stop/gate.
