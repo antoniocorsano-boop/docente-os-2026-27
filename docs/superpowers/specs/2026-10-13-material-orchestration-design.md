@@ -1,158 +1,192 @@
-# MATERIAL-ORCH-01 — Governed Material Orchestration Design
+# MATERIAL-ORCH-01 — Governed Material Orchestration Design v2
 
-**Status:** `DESIGN_BASELINE / HUMAN_REVIEW_REQUIRED`  
-**Audit source:** `docs/superpowers/checkpoints/2026-10-13-material-orch-01-architecture-audit.md`  
-**Baseline:** `develop@7ac09a8795d93cc9a950083cda8b01d5d1407257`
+**Status:** `DESIGN_V2 / INDEPENDENT_REVIEW_REQUIRED / IMPLEMENTATION_HOLD`  
+**Audit sources:**
+- `docs/superpowers/checkpoints/2026-10-13-material-orch-01-architecture-audit.md`
+- `docs/superpowers/checkpoints/2026-10-13-material-orch-01-deep-preimplementation-audit.md`
 
-## 1. Obiettivo
+**Current Docente OS baseline considered:** `develop@a2e8f46972b60914e3a554df3b6d3942b34029a1`  
+**Containment baseline:** CONTAIN-01 + CONTAIN-01B integrated; runtime schema contract v100; legacy Studio Atlas material mutation contained.  
+**Legacy/reference PR:** #692 remains `QUALIFIED_REFERENCE / ARCHITECTURE_FREEZE / NOT_INTEGRATION_CANDIDATE`.
 
-Definire un'architettura stabile per la preparazione, produzione, revisione, accettazione e associazione dei materiali didattici in Docente OS, separando nettamente:
+## 1. Goal
 
-- identità canonica del Piano annuale;
-- dominio dei materiali;
-- provider di produzione;
-- persistenza autorevole;
-- autorizzazione runtime cross-product.
+Define a stable, provider-neutral architecture for preparing teaching materials in Docente OS without creating:
 
-La specifica elimina il coupling strutturale emerso nella PR #692 e consente tranche piccole, indipendenti e qualificabili.
+- a second lesson-material domain;
+- a second source archive outside Knowledge;
+- a provider-owned source of truth;
+- a parallel cross-system protocol;
+- an implicit cross-product runtime authorization.
 
-## 2. Principi non negoziabili
+The target user task is **Prepara materiali**. The target architecture must reuse the canonical lesson-preparation foundation and preserve teacher authority end-to-end.
 
-1. Docente OS modella il **compito professionale** “Prepara materiali”, non il provider.
-2. Studio Atlas propone candidati; non diventa autorità su UDA, Piano annuale, lezione, Calendario o persistenza professionale.
-3. Nessuna scrittura implicita.
-4. Il docente accetta esplicitamente il materiale e la lezione di destinazione.
-5. Riuso e adattamento vengono prima della generazione di nuovo contenuto.
-6. CPRI è provider-neutral e vive fuori dal dominio Atlas.
-7. `artifactKind` e `audience` sono dimensioni indipendenti.
-8. `artifactRef` è durevole; `previewRef` è opzionale.
-9. `ACCEPTED` non equivale a `USED_IN_TEACHING_SESSION`.
-10. Il database risolve o verifica il contesto autorevole prima di persistire.
-11. La configurazione di deploy non costituisce autorità di governance.
-12. Ogni tranche ha un solo confine architetturale principale.
+## 2. Binding references
 
-## 3. Authority matrix
+This design is subordinate to the following existing contracts and decisions.
 
-| Area | Authority | Non-authority |
+### Docente OS
+
+- `docs/architecture/LESSON_PREPARATION_ORCHESTRATION_CANONICAL.md`
+  - lesson preparation is composition/orchestration, not a competing domain;
+  - reuse `NextLessonPreparation`, `LessonDesignExtension`, Knowledge/Material assets and `LessonPreparationManifest.materialSlots`;
+  - provider-independent internal fallback first;
+  - no second lesson-material model or Copilot frontdoor.
+
+### TRAMA
+
+- `docs/decisions/trama-adr-010-atlas-integral-material-studio.md`
+  - **APPROVED**;
+  - Officina materiali is the provider-neutral specialist artifact-production concept;
+  - Docente OS remains teacher workspace/orchestrator;
+  - reuse before generation;
+  - runtime remains not authorized; `DOS-A1` remains `RUNTIME_DEFERRED`.
+- `docs/decisions/trama-adr-020-studio-atlas-product-boundary.md`
+  - Studio Atlas is a separable professional product for Atlas Pathway authoring;
+  - its primary handoff is the Pathway Authoring Package;
+  - a lesson/material deep link may be a minimized seed but does not transfer lesson ownership;
+  - runtime remains not authorized.
+- `docs/contracts/r4-p1-entry-contract.md`
+  - teacher-first path `Riutilizza | Adatta | Crea nuova`;
+  - no direct writes from specialist engines;
+  - explicit preview/review before lesson association;
+  - rights, lineage, accessibility and quality gates;
+  - `DOS-A1` remains `RUNTIME_DEFERRED`.
+- `docs/contracts/trama-shared-capability-layer-contract-v0.md` (OR-07)
+  - provider-neutral capability identity;
+  - `SharedCapabilityRequest` / `SharedCapabilityResult` envelopes;
+  - `requestId`, explicit caller/decision owner, provider/adapter provenance, evidence refs;
+  - only `READ_ONLY | PROPOSE_ONLY` in v0;
+  - no write authority and no DOS-A1 authorization.
+
+This Docente OS document does **not** create or supersede TRAMA governed memory. Any future semantic cross-system handoff change must follow the shared-memory rule in `AGENTS.md` before becoming canonical.
+
+## 3. Non-negotiable principles
+
+1. Docente OS models the professional task **Prepara materiali**, not a provider.
+2. Reuse and adaptation precede generation.
+3. The canonical lesson-material composition remains `LessonPreparationManifest.materialSlots`.
+4. `LessonDesignExtension` remains the governed proposal/acceptance lifecycle for lesson-design additions.
+5. Knowledge/Material assets remain the durable source pipeline; there is no second artifact archive.
+6. External/provider results are proposals, never authoritative lesson state.
+7. Teacher acceptance is an explicit local Docente OS domain action.
+8. Shared capability execution, when eventually authorized, remains `PROPOSE_ONLY`; it does not perform the acceptance write.
+9. `LessonMaterialRole`, `artifactKind` and `audience` are separate semantic dimensions.
+10. A provider locator is provenance, not durable internal material identity.
+11. `ACCEPTED` is not equivalent to real use; use remains TeachingSession evidence.
+12. Browser-return data is untrusted proposal input, not provenance evidence by itself.
+13. Every mutative entrypoint enforces authorization at the write boundary; UI visibility is never sufficient.
+14. CPRI is provider-neutral and separate from materials/providers.
+15. A deploy flag can only restrict or technically enable a capability already authorized by governance; it cannot create authority.
+16. No personal student data is required for ordinary material preparation.
+17. Every implementation tranche owns one primary architectural boundary.
+
+## 4. Authority matrix
+
+| Concern | Authority | Non-authority |
 |---|---|---|
-| Curricolo di istituto | Arena / contratti governati applicabili | Studio Atlas, MaterialBundle |
-| Identità logica Piano annuale | `CAN-PLAN-x` | UUID Knowledge |
-| Materializzazione runtime CAN-PLAN | binding workspace/anno governato in Docente OS | UUID compilati nel codice, metadata JSON |
-| UDA/documento | Docente OS | Studio Atlas |
-| Lezione | Docente OS | Studio Atlas |
-| Materiale candidato | provider/adapter come proposta | persistenza professionale |
-| Accettazione materiale | docente + Docente OS | provider |
-| Persistenza materiale | Docente OS | Studio Atlas |
-| Uso reale del materiale | TeachingSession/evidenza durevole | semplice stato `ACCEPTED` |
-| Autorizzazione handoff | governance TRAMA | environment variable |
-| Enablement tecnico | configurazione deploy | governance |
+| Curricolo di istituto | Arena / applicable governed contracts | Docente OS, Studio Atlas, provider output |
+| Logical annual-plan identity | `CAN-PLAN-x` | Knowledge UUIDs |
+| Runtime CAN-PLAN materialization | governed Docente OS CPRI binding | compiled UUIDs, metadata scans |
+| UDA/document | Docente OS | provider/adapter |
+| Lesson context and lesson decision | Docente OS + teacher | provider/adapter |
+| Material search/proposal | local services or shared capability as proposal | canonical persistence |
+| Specialist artifact production concept | Officina materiali boundary | Studio Atlas as universal engine |
+| Atlas Pathway authoring | Studio Atlas within ADR-020 | lesson ownership |
+| Material acceptance | teacher + Docente OS local domain command | OR-07 provider/capability |
+| Durable material identity | Docente OS Knowledge/canonical internal reference | `atlas:*`, URL, provider object id alone |
+| Lesson readiness | `LessonPreparationManifest.materialSlots` | candidate bundle status |
+| Actual use | TeachingSession/evidence | `ACCEPTED` flag |
+| Cross-product authorization | TRAMA governance | env var, browser payload, provider availability |
+| Technical enablement | deployment config after governance | governance authority |
 
-## 4. Componenti architetturali
-
-### 4.1 CPRI — Canonical Plan Runtime Identity
-
-Input logico:
-
-```text
-workspaceId
-academicYearId
-canonicalPlanCode
-```
-
-Output runtime:
+## 5. Target flow
 
 ```text
-assetId
-generationId
+UDA / lesson / NextLessonPreparation
+        |
+        v
+PREPARE_MATERIALS
+        |
+        +--> discover existing relevant materials
+        |       +--> REUSE_EXISTING
+        |       +--> ADAPT_EXISTING
+        |
+        +--> CREATE_NEW only when needed
+                |
+                v
+      provider-neutral proposal capability
+      (local/internal first; OR-07 only when governed)
+                |
+                v
+         transient candidates
+                |
+                v
+        teacher preview/review
+                |
+                v
+       explicit local acceptance
+                |
+                +--> durable Knowledge/canonical material identity
+                +--> LessonDesignExtension accepted/proposed state
+                +--> LessonPreparationManifest.materialSlots derived state
+                |
+                v
+         lesson use / TeachingSession evidence
 ```
 
-Invarianti:
+No provider may skip the teacher-review/local-acceptance boundary.
 
-- `CAN-PLAN-x` è l'identità logica portabile;
-- `assetId`/`generationId` sono locali al workspace/anno;
-- nessun consumer risolve authority tramite scansione JSON metadata;
-- binding assente, invalido o ambiguo produce fail-closed;
-- una nuova generazione Knowledge non sposta implicitamente il binding.
+## 6. Local Material Task
 
-CPRI non conosce Studio Atlas né il dominio materiali.
+The Docente OS domain intent is local and provider-neutral:
 
-### 4.2 Material Task
+```ts
+type MaterialTaskIntent = 'PREPARE_MATERIALS'
 
-Intento utente canonico:
-
-`PREPARE_MATERIALS`
-
-Percorsi consentiti:
-
-```text
-REUSE_EXISTING
-ADAPT_EXISTING
-CREATE_NEW
+type MaterialTaskMode =
+  | 'REUSE_EXISTING'
+  | 'ADAPT_EXISTING'
+  | 'CREATE_NEW'
 ```
 
-Studio Atlas può implementare `CREATE_NEW` o `ADAPT_EXISTING` tramite adapter, ma non è codificato nell'intento canonico.
+This intent is not itself a cross-system wire protocol.
 
-### 4.3 MaterialTaskRequest v1
+The UI must search/offer existing materials before exposing generation as the default path.
 
-Forma concettuale:
+## 7. Canonical lesson-material semantics
 
-```text
-MaterialTaskRequestV1
-  version: 1
-  task: PREPARE_MATERIALS
-  lessonContext
-    lessonBlockId
-    sectionRef
-    canonicalPlanCode?
-    udaDocumentRef?
-  requestedMode: REUSE_EXISTING | ADAPT_EXISTING | CREATE_NEW
-  constraints
-  returnContractVersion
+### 7.1 Material role
+
+The lesson needs a semantic role independent of file format/provider:
+
+```ts
+type LessonMaterialRole =
+  | 'TEACHER_BRIEF'
+  | 'LIM_VIEW'
+  | 'STUDENT_HANDOUT'
+  | 'MINI_DECK'
+  | 'VISUAL_AID'
+  | 'ASSESSMENT'
 ```
 
-Vincoli:
+A provider may suggest a role, but Docente OS resolves/validates the canonical role before acceptance.
 
-- nessun dato studente necessario al flusso;
-- nessun token/API key nel payload;
-- identificatori tecnici cross-product ridotti al minimo;
-- il provider non riceve authority per modificare risorse Docente OS.
+### 7.2 Artifact kind
 
-### 4.4 MaterialCandidateBundle v1
-
-```text
-MaterialCandidateBundleV1
-  version: 1
-  bundleId
-  producer
-  items[]
-```
-
-Ogni item:
-
-```text
-MaterialCandidateItemV1
-  candidateId
-  dedupeKey
-  artifactKind
-  audience
-  title
-  description?
-  artifactRef
-  previewRef?
-  provenance
-```
-
-`artifactKind` minimo iniziale:
+`artifactKind` describes the produced object, not how it is used in the lesson. Initial examples:
 
 ```text
 PRESENTATION
 WORKSHEET
 GUIDE
 RUBRIC
+VISUAL
+ASSESSMENT
 OTHER
 ```
 
-`audience`:
+### 7.3 Audience
 
 ```text
 TEACHER
@@ -160,251 +194,467 @@ STUDENT
 MIXED
 ```
 
-Il mapping provider-specifico resta nell'adapter.
+`LessonMaterialRole`, `artifactKind` and `audience` must never be collapsed into one enum.
 
-### 4.5 ArtifactReference v1
+A presentation may map to `LIM_VIEW` or `MINI_DECK`; a rubric may map to `ASSESSMENT`; a guide may map to `TEACHER_BRIEF`. Mapping is a Docente OS semantic decision, not provider authority.
 
-```text
-ArtifactReferenceV1
-  provider
-  artifactId
-  revision?
-  integrityDigest?
+## 8. Proposal capability: reuse OR-07, do not create a parallel envelope
+
+`MaterialTaskRequestV1` and `MaterialCandidateBundleV1` are **not** canonical top-level transport envelopes.
+
+The future shared boundary, if authorized, must use OR-07:
+
+```ts
+SharedCapabilityRequest<MaterialProposalInputV1>
+  -> SharedCapabilityResult<MaterialProposalOutputV1>
 ```
 
-Requisiti:
+### 8.1 Typed input
 
-- stabile abbastanza da ricostruire quale artefatto è stato accettato;
-- non coincidente con `previewRef`;
-- nessuna URL pubblica considerata identità canonica;
-- il riferimento non concede authority al provider.
-
-Quando applicabile, Docente OS può materializzare uno snapshot durevole dell'artefatto accettato.
-
-### 4.6 Provenance
-
-La provenance deve conservare almeno:
-
-```text
-producer
-contractVersion
-producedAt?
-sourceRefs?
+```ts
+interface MaterialProposalInputV1 {
+  task: 'PREPARE_MATERIALS'
+  mode: 'ADAPT_EXISTING' | 'CREATE_NEW'
+  lessonSeed: {
+    lessonRef?: string
+    sectionRef?: string
+    blockId?: string
+    canonicalPlanCode?: 'CAN-PLAN-1' | 'CAN-PLAN-2' | 'CAN-PLAN-3'
+    udaDocumentRef?: string
+  }
+  requestedRoles: readonly LessonMaterialRole[]
+  constraints: Record<string, unknown>
+  sourceArtifactRefs: readonly string[]
+}
 ```
 
-Non deve contenere informazioni tecniche destinate all'output professionale del docente.
+The seed is minimized context, not transferred authority. The provider cannot infer or write authoritative lesson relationships from it.
 
-## 5. Lifecycle
+### 8.2 Typed output
 
-Lifecycle del candidato/materiale:
+```ts
+interface MaterialProposalOutputV1 {
+  proposalId: string
+  items: readonly MaterialProposalItemV1[]
+}
 
-```text
-CANDIDATE
-  ↓
-REVIEWED
-  ↓
-ACCEPTED
-  ↓
-AVAILABLE_FOR_LESSON
+interface MaterialProposalItemV1 {
+  candidateId: string
+  suggestedRole?: LessonMaterialRole
+  artifactKind: string
+  audience: 'TEACHER' | 'STUDENT' | 'MIXED'
+  title: string
+  description?: string
+  providerArtifactRef?: string
+  previewRef?: string
+  provenance: MaterialProposalProvenanceV1
+}
 ```
 
-Lifecycle d'uso:
+Candidate items are transient proposal results. They are not canonical assets and do not own a persisted acceptance lifecycle.
+
+### 8.3 Capability identity
+
+This Docente OS document does not freeze a new canonical OR-07 capability ID.
+
+An outcome-oriented shape such as:
 
 ```text
-AVAILABLE_FOR_LESSON
-  ↓
-USED_IN_TEACHING_SESSION
+lesson.material.propose
 ```
 
-L'ultimo passaggio richiede una receipt/evidenza durevole collegata alla TeachingSession pertinente.
+is compatible with OR-07 naming, but it becomes canonical only after registration through the applicable TRAMA governed process/shared memory. Provider-specific IDs such as `DOS.STUDIO_ATLAS.MATERIAL_HANDOFF` are forbidden as canonical capability identity.
 
-## 6. Authoritative Material Acceptance Boundary
+### 8.4 Decision boundary
 
-### 6.1 Obiettivo
+OR-07 result state is `PROPOSAL`. Teacher acceptance is a separate Docente OS local domain command and cannot be embedded in the shared capability result.
 
-Persistenza atomica e fail-closed dei materiali accettati dal docente.
+## 9. Lifecycle: one persisted lifecycle, derived readiness
 
-### 6.2 Principio “resolve, do not trust”
-
-L'RPC non deve considerare autorevoli relazioni dichiarate dal chiamante se possono essere risolte o verificate nel database.
-
-Forma target preferita:
+Do **not** persist a second lifecycle such as:
 
 ```text
-accept_material_bundle(
-  p_lesson_block_id uuid,
-  p_bundle jsonb,
-  p_idempotency_key text
-)
+CANDIDATE -> REVIEWED -> ACCEPTED -> AVAILABLE_FOR_LESSON
 ```
 
-Questa firma è una decisione di design da validare durante MATERIAL-CORE-01 rispetto allo schema reale; l'invariante obbligatoria è la minimizzazione degli input autorevoli.
+Canonical interpretation:
 
-### 6.3 Verifiche transazionali obbligatorie
+- external/local candidate: transient proposal result;
+- teacher-edited/selected proposal: represented through existing local lesson-design semantics;
+- `LessonDesignExtension`: `PROPOSED | MODIFIED | ACCEPTED | DISMISSED`;
+- `AVAILABLE_FOR_LESSON`: derived state of the relevant `LessonPreparationManifest.materialSlots`;
+- `USED`: TeachingSession/evidence, not a material acceptance state.
 
-Prima della scrittura il boundary deve dimostrare, nello stesso contesto transazionale:
+The existing exact-state preparation receipt/fingerprint invalidation remains the approval model; a new approval subsystem is not introduced.
 
-- utente autenticato autorizzato per il workspace;
-- lesson block esistente e appartenente al workspace/anno/sezione corretti;
-- eventuale CAN-PLAN risolto tramite CPRI;
-- bundle conforme al contratto supportato;
-- `dedupeKey` canonicalizzata;
-- `artifactRef` valido;
-- nessun controllo/carattere vietato nei locator/riferimenti testuali destinati alla navigazione;
-- duplicate/semantic retry gestiti in modo deterministico;
-- nessuna persistenza parziale del bundle;
-- nessuna mutazione implicita a UDA/Piano/Calendario.
+## 10. Durable material identity
 
-### 6.4 Idempotenza
+### 10.1 Rule
 
-Un retry semanticamente identico può restituire il risultato già accettato.
+A material accepted for lesson use must resolve to a durable Docente OS identity before it can be considered ready.
 
-Un conflitto con payload semanticamente diverso deve fallire chiuso.
+Preferred target:
 
-La canonicalizzazione usata dalla lookup deve coincidere con quella usata dall'indice di unicità.
+```ts
+interface CanonicalMaterialRefV1 {
+  kind: 'KNOWLEDGE_ASSET'
+  assetId: string
+  generationId?: string
+  integrityDigest?: string
+}
+```
 
-## 7. Provider Adapter
+Exact implementation is deferred to MATERIAL-CORE-01, but the following invariant is fixed:
 
-Interfaccia concettuale:
+> provider identity is retained in provenance; it is not the canonical internal material identity.
+
+### 10.2 Reuse
+
+For `REUSE_EXISTING`, acceptance references an existing canonical Knowledge/Material asset. No duplicate archive is created.
+
+### 10.3 Adapt/create
+
+For `ADAPT_EXISTING` or `CREATE_NEW`, the accepted artifact must be materialized into the canonical Docente OS material/Knowledge pipeline (for example `knowledge_assets.asset_kind='GENERATED'` with an exact usable generation/revision) before lesson readiness can depend on it.
+
+### 10.4 Deletion safety
+
+A durable asset/revision referenced by accepted lesson material must not be silently deletable. MATERIAL-CORE-01 must make deletion fail closed or require an explicit detach/replace workflow before destructive removal.
+
+A plain `LessonDesignExtension.source_ref='atlas:*'` or provider URL is insufficient for this guarantee.
+
+## 11. Acceptance mapping into the canonical lesson model
+
+Local acceptance must perform one coherent operation from teacher decision to canonical lesson state.
+
+Target semantic result:
+
+1. resolve/validate lesson context from existing persisted identities;
+2. resolve the active CPRI source where required;
+3. resolve/materialize the durable internal material reference;
+4. resolve/validate `LessonMaterialRole`;
+5. create/update the governed `LessonDesignExtension` representation;
+6. mark the extension accepted only through the existing local acceptance semantics;
+7. rebuild/read the `LessonPreparationManifest`;
+8. observe the corresponding `materialSlots` state as `READY | NEEDS_REVIEW | PROPOSED | MISSING`;
+9. never write an independent `AVAILABLE_FOR_LESSON` record.
+
+The read-after-write source of truth is the canonical lesson-preparation composition, not a provider callback result.
+
+## 12. Authoritative local write boundary
+
+### 12.1 Existing identity, no invented lesson UUID
+
+There is no persisted UUID `lesson_block` entity. `block_id` is contextual.
+
+Therefore the future local command must be grounded in existing identities such as:
 
 ```text
-prepareMaterials(request: MaterialTaskRequestV1)
-  -> MaterialCandidateBundleV1
+section_id (annual_plan_sections.id)
+block_id (B01..B33)
 ```
 
-L'adapter:
+and derive/verify workspace, academic year and active canonical generation through authoritative server/database relations.
 
-- traduce il contratto canonico nel protocollo del provider;
-- valida il ritorno;
-- non persiste direttamente materiale autorevole;
-- non modifica UDA/Piano/Calendario;
-- non decide la lezione di destinazione;
-- non diventa authority sui CAN-PLAN.
+A conceptual application command may be shaped as:
 
-Studio Atlas è il primo adapter previsto, non l'unico modello possibile.
+```ts
+acceptLessonMaterialProposal({
+  sectionId,
+  blockId,
+  candidate,
+  resolvedRole,
+  idempotencyKey
+})
+```
 
-## 8. UX canonica
+This is not an RPC signature freeze. MATERIAL-CORE-01 must minimize caller-controlled authority and may use a DB function/repository boundary only after verifying the actual schema.
 
-Punto di ingresso:
+### 12.2 Resolve, do not trust
+
+The write boundary must derive or verify, not trust from browser/provider payload:
+
+- current authenticated actor;
+- workspace membership/authorization;
+- section workspace/year;
+- logical CAN-PLAN for the section/grade;
+- current governed CPRI binding when required;
+- contextual block identity;
+- durable internal material identity;
+- material role mapping;
+- dedupe/idempotency scope.
+
+### 12.3 Transactional properties
+
+Where a single operation spans multiple local writes, it must be atomic or fail closed with no partially accepted lesson state.
+
+Semantic retry with identical canonical payload may return the prior acceptance. Conflicting payload under the same idempotency scope must fail closed.
+
+Canonicalization used for conflict lookup must match persistence uniqueness semantics.
+
+## 13. Provenance, derivation and rights
+
+Proposal/accepted-material provenance must preserve, when applicable:
+
+```ts
+interface MaterialProposalProvenanceV1 {
+  sourceArtifactRefs: readonly string[]
+  derivationRefs: readonly string[]
+  providerType?: string
+  providerId?: string
+  adapterId?: string
+  adapterVersion?: string
+  requestId?: string
+  evidenceRefs: readonly string[]
+  rightsState: 'KNOWN' | 'UNKNOWN' | 'RESTRICTED'
+  licenseRef?: string
+  attributionRequirements: readonly string[]
+  integrityDigest?: string
+}
+```
+
+Rules:
+
+- reuse preserves source identity and applicable rights;
+- adaptation preserves derivation lineage and attribution requirements;
+- new creation still records incorporated sources/assets when present;
+- unknown rights may permit a private draft under applicable policy but block any claim of publication readiness;
+- publication remains a distinct governed action outside MATERIAL-ORCH acceptance.
+
+## 14. Browser/deep-link transport is untrusted
+
+Browser fragments/query payloads may carry minimized proposal/return data but are not authentic evidence.
+
+Invariants:
+
+- `source='studio-atlas'` does not prove origin;
+- base64url encoding does not provide integrity;
+- provider/browser data cannot become accepted state without server-side validation;
+- governed cross-product execution, if later authorized, must bind result to OR-07 `requestId` + `evidenceRefs` or an equivalent governed server-verifiable receipt/digest;
+- same-origin/allowed-origin checks remain necessary but are not provenance proof.
+
+## 15. Officina materiali vs Studio Atlas
+
+### Officina materiali
+
+ADR-010 defines the general provider-neutral specialist artifact-production concept. It may use different engines/providers behind replaceable adapters. It owns no lesson/curricolo/editorial authority.
+
+### Studio Atlas
+
+ADR-020 defines Studio Atlas primarily for professional Atlas Pathway authoring. Its main contract is the Pathway Authoring Package.
+
+Studio Atlas therefore **must not** become the universal material-production engine by convenience.
+
+A Studio Atlas adapter may be introduced only for a capability explicitly compatible with/assigned to its governed product boundary. General material proposal/production remains provider-neutral and Officina-oriented.
+
+## 16. UX contract
+
+Primary entry:
 
 **Prepara materiali**
 
-Gerarchia iniziale:
+Initial hierarchy:
 
-1. materiali già disponibili/pertinenti;
+1. show relevant available materials;
 2. `Riutilizza`;
 3. `Adatta`;
-4. `Crea nuovo`;
-5. eventuale provider, solo quando necessario e autorizzato.
+4. `Crea nuova`;
+5. provider/tool choice only when necessary and authorized.
 
-Il nome Studio Atlas può comparire quando utile a spiegare lo strumento, ma non sostituisce l'intento principale.
+After a proposal result:
 
-Dopo il ritorno di candidati:
+1. preview;
+2. compare/select;
+3. modify or discard;
+4. verify/choose canonical lesson context if not already fixed;
+5. explicit `Associa alla lezione` / equivalent teacher decision;
+6. local canonical acceptance;
+7. read-after-write from lesson-preparation state.
 
-1. anteprima;
-2. selezione esplicita;
-3. scelta/verifica lezione pertinente;
-4. `Associa alla lezione`;
-5. persistenza atomica;
-6. read-after-write dalla lezione canonica.
+Provider naming is secondary UI detail, not the primary task label.
 
-## 9. Runtime capability governance
+## 17. Runtime authorization
 
-Capability canonica proposta:
+### 17.1 Current state
 
-`DOS.STUDIO_ATLAS.MATERIAL_HANDOFF`
+`DOS-A1` remains `RUNTIME_DEFERRED`. MATERIAL-ORCH v2 does not authorize cross-product runtime.
 
-Stati:
+CONTAIN-01 deliberately revoked/blocked the legacy #692 Studio Atlas material write surfaces while preserving historical evidence.
 
-```text
-DISABLED
-QUALIFIED
-AUTHORIZED
-```
+### 17.2 Future shared capability
 
-Effettiva apertura runtime:
+A future OR-07 provider binding must distinguish at least:
 
 ```text
-effectiveCapability =
-  governanceState == AUTHORIZED
-  AND deploymentEnabled == true
+supported
+available
+authorized
+qualified
 ```
 
-Requisiti:
+These are not equivalent.
 
-- una environment variable può solo restringere/abilitare tecnicamente una capacità già autorizzata;
-- una environment variable non può trasformare `RUNTIME_DEFERRED` in autorizzazione;
-- CI deve fallire se un percorso runtime cross-product diventa raggiungibile senza manifest governato compatibile.
+### 17.3 Mutative boundary enforcement
 
-## 10. Migrazioni e data readiness
+When cross-product proposal runtime is eventually authorized, effective authorization must be checked at **every** relevant boundary, including:
 
-Prima di applicare una migration che materializza binding o invariant forti su dati esistenti:
+- outbound invocation;
+- return/callback ingestion;
+- authoritative local acceptance if it consumes externally produced proposal evidence;
+- any retry/replay path.
 
-1. eseguire un preflight read-only;
-2. classificare `READY | BLOCKED`;
-3. riportare candidati mancanti, duplicati, ambigui o incoerenti;
-4. non usare la migration come strumento di discovery;
-5. non introdurre fixture HVA speciali per superare il gate.
+UI gating alone is insufficient.
 
-## 11. Decomposizione di implementazione
+### 17.4 Deployment configuration
 
-### CPRI-01
+A deploy flag may only narrow/technically enable an already-governed capability. It cannot turn `RUNTIME_DEFERRED` into authorization.
 
-Solo identità runtime CAN-PLAN.
+## 18. CPRI dependency and movement semantics
 
-### MATERIAL-CORE-01
+MATERIAL-CORE-01 depends on CPRI-01 where lesson context requires a canonical annual-plan generation.
 
-Solo dominio provider-neutral + persistence boundary.
+The current contained v100 schema already preserves `canonical_plan_runtime_bindings`; existence of the table does not mean runtime mutation is authorized.
 
-### MATERIAL-TASK-UX-01
+A future explicit binding movement from generation A to B must first produce an impact/revalidation decision covering:
 
-Solo esperienza “Prepara materiali”.
+- `annual_plan_block_progress`;
+- `lesson_design_extensions`;
+- `lesson_preparation_receipts`;
+- `teaching_session_allocations`.
 
-### ATLAS-MATERIAL-ADAPTER-01
+Required semantics:
 
-Solo protocol adapter.
+- historical TeachingSession allocations remain immutable evidence;
+- historical lesson-preparation receipts remain append-only evidence;
+- current preparation becomes stale/requires revalidation where its generation-bound state no longer matches;
+- accepted extensions from A do not silently disappear and do not silently carry forward to B;
+- annual-plan progress from A is not silently copied/reset onto B;
+- new TeachingSession allocations must validate against the governed CPRI binding rather than merely `knowledge_assets.current_generation_id` once CPRI becomes runtime authority.
 
-### DOS-A1 Material Handoff Authorization
+CPRI-01 owns these semantics, not the material provider layer.
 
-Solo decisione/governance + capability manifest + abilitazione controllata.
+## 19. Migration/data readiness rules
 
-Nessuna tranche può assorbire retroattivamente responsabilità di una tranche successiva.
+Before any new schema change:
 
-## 12. Architecture Readiness Gate
+1. read the current runtime schema contract and migration lineage;
+2. use the next free migration version from the exact baseline;
+3. run read-only preflight against existing data when introducing stronger invariants;
+4. classify `READY | BLOCKED` before promotion;
+5. do not use migration execution as discovery;
+6. preserve historical evidence; no cleanup by deletion to satisfy a new design;
+7. retain schema provenance/drift checks established by CONTAIN-01.
 
-Prima della independent review di ogni tranche devono essere verificati:
+## 20. Implementation decomposition
 
-- nessun provider specifico nell'identità canonica;
-- nessun runtime cross-product non autorizzato;
-- nessun `SECURITY DEFINER` che accetta contesto non risolto/non verificato come authority;
-- dominio e SQL semanticamente allineati;
-- test di boundary realmente inclusi nella CI;
-- migrazioni con preflight quando toccano dati esistenti;
-- `ACCEPTED` distinto da `USED`;
-- nessun UUID CAN-PLAN statico usato come runtime authority.
+### 0 — CONTAIN-01
 
-## 13. Criteri di accettazione della specifica
+**Closed / integrated.** Schema provenance, legacy Atlas mutation containment and runtime release preflight are established through v100.
 
-La specifica è pronta per l'esecuzione quando:
+### 1 — MATERIAL-ORCH-01 design v2
 
-- authority matrix accettata;
-- CPRI separato da Atlas;
-- contratti MaterialTaskRequest/MaterialCandidateBundle/ArtifactReference congelati almeno semanticamente;
-- lifecycle congelato;
-- principle `resolve, do not trust` accettato;
-- capability model accettato;
-- decomposizione delle tranche accettata;
-- #692 mantenuta frozen come reference, non candidata all'integrazione.
+This PR only. Documentation, architecture, implementation plan and independent review. No runtime.
 
-## 14. Non-obiettivi
+### 2 — CPRI-01
 
-Questa specifica non:
+Provider-neutral Docente OS runtime identity authority:
 
-- autorizza Studio Atlas a runtime;
-- modifica il contenuto del curricolo;
-- modifica i CAN-PLAN;
-- esegue migration;
-- promuove Supabase Beta;
-- esegue merge;
-- crea un nuovo modello parallelo di lezioni o documenti;
-- introduce dati studente nel protocollo materiali.
+- adopt/reconcile the contained v100 CPRI baseline;
+- repository-wide runtime-authority inventory guard;
+- resolver;
+- generation movement/revalidation semantics;
+- migrate runtime consumers;
+- preserve historical/provenance literals where they are evidence rather than runtime authority.
+
+### 3 — MATERIAL-CORE-01
+
+Local canonical material acceptance only:
+
+- Knowledge/canonical material identity;
+- `LessonDesignExtension` lifecycle;
+- `LessonPreparationManifest.materialSlots` derivation;
+- durable deletion/reference safety;
+- no external provider runtime.
+
+### 4 — MATERIAL-TASK-UX-01
+
+Teacher-first orchestration:
+
+- search/reuse first;
+- `Riutilizza | Adatta | Crea nuova`;
+- local/internal provider-independent fallback first;
+- visible review/acceptance.
+
+### 5 — MATERIAL-CAPABILITY-01
+
+OR-07-compatible typed proposal capability:
+
+- provider-neutral input/output only;
+- `PROPOSE_ONLY`;
+- `requestId`, evidence, provenance, stale/failure semantics;
+- no write authority;
+- no provider binding runtime unless separately authorized.
+
+### 6 — Provider adapter slices
+
+Separate per provider/capability. Studio Atlas only where its governed product boundary permits it; general artifact production remains Officina/provider-neutral.
+
+### 7 — Governed runtime authorization
+
+Explicit TRAMA decision + shared governed-memory update where applicable + exact-head certification + independent review + Human Review before activation.
+
+## 21. Architecture readiness gate
+
+Before leaving design/starting implementation, all must be true:
+
+- canonical lesson-preparation foundation explicitly reused;
+- no second persisted material lifecycle/store;
+- accepted material maps to durable internal identity + `LessonDesignExtension` + `materialSlots`;
+- material role separated from kind/audience;
+- OR-07 reused instead of a parallel top-level cross-system protocol;
+- provider-specific capability identity removed;
+- Officina/Studio Atlas boundaries explicit;
+- browser payload classified untrusted;
+- rights/derivation provenance defined;
+- local write boundary grounded in existing identities, no invented lesson UUID;
+- CPRI movement semantics cover progress/extensions/receipts/sessions;
+- repository-wide static runtime-authority guard required for CPRI;
+- historical evidence preserved;
+- `DOS-A1` still deferred;
+- no runtime/schema/deploy mutation in this design PR;
+- fresh independent review on the revised exact head has no relevant unresolved findings.
+
+## 22. Acceptance criteria for MATERIAL-ORCH design v2
+
+The design may be classified `ARCHITECTURE_READY` only when:
+
+1. all five original Codex review findings are addressed in the documents;
+2. all deep-audit findings B1–B10 are represented as invariants or explicit tranche ownership;
+3. CPRI plan starts from the contained v100 schema reality, not from a fictional clean pre-0098 state;
+4. no local document claims a new cross-system capability/handoff as canonically governed without TRAMA registration/shared-memory update;
+5. PR #692 remains frozen reference only;
+6. documentation CI is green on one exact head;
+7. fresh independent review is clean;
+8. Human Review, if required by the project process, refers to that same exact head.
+
+Until then:
+
+`IMPLEMENTATION_HOLD`.
+
+## 23. Non-goals
+
+This design does not:
+
+- authorize Studio Atlas or Officina runtime;
+- authorize DOS-A1;
+- change curricolo authority;
+- change CAN-PLAN content;
+- create a new material table/store;
+- create a new lesson entity;
+- register a new canonical OR-07 capability ID;
+- update TRAMA governed memory by itself;
+- apply migrations;
+- mutate Beta data;
+- deploy code;
+- merge PR #692 or #703 automatically;
+- publish materials to Atlas;
+- introduce student accounts, profiles or tracking.
