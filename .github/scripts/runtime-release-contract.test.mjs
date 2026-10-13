@@ -95,16 +95,31 @@ test('sensitive containment rejects a legacy Atlas RPC that stays executable', (
   )
 })
 
-test('sensitive containment requires explicit CPRI salvage adoption and legacy Atlas revoke', () => {
+test('sensitive containment requires an authoritative Atlas insert guard', () => {
   const migration = `
     create table if not exists public.canonical_plan_runtime_bindings (id uuid primary key);
     comment on table public.canonical_plan_runtime_bindings is 'CONTAIN-01 salvaged historical CPRI binding state; runtime mutation remains deferred';
     revoke all on function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb) from public, anon, authenticated, service_role;
   `
+  assert.throws(
+    () => validateSensitiveRuntimeContainment(migration),
+    /new Atlas lesson-design inserts must be blocked at the database boundary/,
+  )
+})
+
+test('sensitive containment requires CPRI salvage, legacy Atlas revoke, and database Atlas insert guard', () => {
+  const migration = `
+    create table if not exists public.canonical_plan_runtime_bindings (id uuid primary key);
+    comment on table public.canonical_plan_runtime_bindings is 'CONTAIN-01 salvaged historical CPRI binding state; runtime mutation remains deferred';
+    revoke all on function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb) from public, anon, authenticated, service_role;
+    create or replace function private.reject_deferred_atlas_lesson_design_insert() returns trigger language plpgsql as $$ begin if new.source_kind = 'ATLAS' then raise exception 'Studio Atlas lesson material runtime is deferred'; end if; return new; end $$;
+    create trigger lesson_design_extensions_reject_deferred_atlas_insert before insert on public.lesson_design_extensions for each row execute function private.reject_deferred_atlas_lesson_design_insert();
+  `
   const result = validateSensitiveRuntimeContainment(migration)
   assert.deepEqual(result, {
     canonicalPlanBindingAdopted: true,
     legacyAtlasWriteRevoked: true,
+    atlasInsertGuardDeclared: true,
   })
 })
 
