@@ -75,7 +75,16 @@ async function assertRuntimeSchemaReady() {
     throw new Error('Runtime schema lineage incomplete: missing ' + missing)
   }
 
-  console.log('Runtime schema contract PASS:', expectedMigration, 'lineage=PASS')
+  if (snapshot?.provenanceOk !== true) {
+    const unexpected = Array.isArray(snapshot?.unexpectedMigrations) ? snapshot.unexpectedMigrations.join(', ') : 'unknown'
+    throw new Error('Runtime schema provenance drift: unexpected ' + unexpected)
+  }
+
+  if (snapshot?.containmentOk !== true) {
+    throw new Error('Runtime containment failed: ' + JSON.stringify(snapshot?.containment ?? null))
+  }
+
+  console.log('Runtime schema contract PASS:', expectedMigration, 'lineage=PASS provenance=PASS containment=PASS')
 }
 
 function latestMigrationId() {

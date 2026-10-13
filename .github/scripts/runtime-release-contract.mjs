@@ -8,6 +8,7 @@ const CONTRACT_PATH = path.join(ROOT, 'ops/runtime-release-contract.json')
 const MIGRATION_DIR = path.join(ROOT, 'product/supabase/migrations')
 const OUTPUT_PATH = process.env.RUNTIME_RELEASE_CONTRACT_OUTPUT
   ?? path.join(ROOT, 'test-results/release-runtime-contract/impact.json')
+const CONTAINMENT_MIGRATION = '0098_contain_legacy_atlas_runtime_and_reconcile_cpri.sql'
 
 const COLLISION_PRONE_LOCALS = new Set([
   'id',
@@ -122,6 +123,40 @@ export function validateRuntimeLineageInventory(migrationDir = MIGRATION_DIR, st
   }
 }
 
+export function validateSensitiveRuntimeContainment(migrationContent) {
+  const source = String(migrationContent ?? '')
+  const canonicalPlanBindingAdopted = /canonical_plan_runtime_bindings/i.test(source)
+    && /CONTAIN-01 salvaged historical CPRI binding state; runtime mutation remains deferred/i.test(source)
+  if (!canonicalPlanBindingAdopted) {
+    throw new Error('CPRI salvage state must be adopted explicitly without authorizing runtime mutation')
+  }
+
+  const legacyAtlasWriteRevoked = /revoke\s+all(?:\s+privileges)?\s+on\s+function\s+public\.accept_atlas_material_bundle\s*\(\s*uuid\s*,\s*uuid\s*,\s*uuid\s*,\s*uuid\s*,\s*uuid\s*,\s*text\s*,\s*text\s*,\s*jsonb\s*\)\s+from\s+public\s*,\s*anon\s*,\s*authenticated\s*,\s*service_role/iu.test(source)
+  if (!legacyAtlasWriteRevoked) {
+    throw new Error('legacy Atlas material write boundary must be revoked from runtime roles')
+  }
+
+  const guardFunctionDeclared = /create\s+or\s+replace\s+function\s+private\.reject_deferred_atlas_lesson_design_insert\s*\(\s*\)/iu.test(source)
+  const guardTriggerDeclared = /create\s+trigger\s+lesson_design_extensions_reject_deferred_atlas_insert[\s\S]*before\s+insert\s+on\s+public\.lesson_design_extensions/iu.test(source)
+  if (!guardFunctionDeclared || !guardTriggerDeclared) {
+    throw new Error('legacy Studio Atlas bundle inserts must be blocked at the database boundary')
+  }
+
+  const scopedToLegacyBundle = /new\.source_kind\s*=\s*['"]ATLAS['"]/iu.test(source)
+    && /new\.payload\s*->>\s*['"]area['"]\s*=\s*['"]atlas_materials['"]/iu.test(source)
+    && /new\.payload\s*\?\s*['"]bundleId['"]/iu.test(source)
+    && /new\.payload\s*\?\s*['"]sourceUdaId['"]/iu.test(source)
+  if (!scopedToLegacyBundle) {
+    throw new Error('containment guard must preserve governed ECO-02 Atlas reuse')
+  }
+
+  return {
+    canonicalPlanBindingAdopted,
+    legacyAtlasWriteRevoked,
+    atlasBundleInsertGuardDeclared: true,
+  }
+}
+
 export function lintChangedPlpgsqlMigrations(changedFiles) {
   const findings = []
   for (const file of changedFiles.map(normalizePath)) {
@@ -182,6 +217,8 @@ function main() {
   const impact = classifyPaths(changedFiles, contract)
   const inventory = validateMigrationInventory()
   const lineage = validateRuntimeLineageInventory()
+  const containmentPath = path.join(MIGRATION_DIR, CONTAINMENT_MIGRATION)
+  const containment = validateSensitiveRuntimeContainment(readFileSync(containmentPath, 'utf8'))
   lintChangedPlpgsqlMigrations(changedFiles)
   validateCapabilityDeclaration()
 
@@ -193,9 +230,11 @@ function main() {
     ...impact,
     ...inventory,
     ...lineage,
+    containment,
     checks: {
       migrationInventory: 'PASS',
       migrationLineageInventory: 'PASS',
+      sensitiveRuntimeContainment: 'PASS',
       plpgsqlIdentifierPreflight: 'PASS',
       capabilityDeclaration: 'PASS',
     },
