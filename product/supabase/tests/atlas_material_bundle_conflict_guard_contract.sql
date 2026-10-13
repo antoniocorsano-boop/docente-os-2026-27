@@ -20,6 +20,8 @@ create temporary table atlas_conflict_probe_results (
   detail text null
 ) on commit drop;
 
+grant select, insert, update on atlas_conflict_probe_results to authenticated;
+
 insert into auth.users(id, email)
 values ('00000000-0000-0000-0000-00000000a693', 'atlas-conflict-693@example.invalid');
 
