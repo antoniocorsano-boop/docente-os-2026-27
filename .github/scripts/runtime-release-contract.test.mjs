@@ -95,7 +95,7 @@ test('sensitive containment rejects a legacy Atlas RPC that stays executable', (
   )
 })
 
-test('sensitive containment requires an authoritative Atlas insert guard', () => {
+test('sensitive containment requires an authoritative Atlas bundle insert guard', () => {
   const migration = `
     create table if not exists public.canonical_plan_runtime_bindings (id uuid primary key);
     comment on table public.canonical_plan_runtime_bindings is 'CONTAIN-01 salvaged historical CPRI binding state; runtime mutation remains deferred';
@@ -103,11 +103,11 @@ test('sensitive containment requires an authoritative Atlas insert guard', () =>
   `
   assert.throws(
     () => validateSensitiveRuntimeContainment(migration),
-    /new Atlas lesson-design inserts must be blocked at the database boundary/,
+    /legacy Studio Atlas bundle inserts must be blocked at the database boundary/,
   )
 })
 
-test('sensitive containment requires CPRI salvage, legacy Atlas revoke, and database Atlas insert guard', () => {
+test('over-broad Atlas insert guard is rejected because ECO-02 manual reuse is protected', () => {
   const migration = `
     create table if not exists public.canonical_plan_runtime_bindings (id uuid primary key);
     comment on table public.canonical_plan_runtime_bindings is 'CONTAIN-01 salvaged historical CPRI binding state; runtime mutation remains deferred';
@@ -115,11 +115,25 @@ test('sensitive containment requires CPRI salvage, legacy Atlas revoke, and data
     create or replace function private.reject_deferred_atlas_lesson_design_insert() returns trigger language plpgsql as $$ begin if new.source_kind = 'ATLAS' then raise exception 'Studio Atlas lesson material runtime is deferred'; end if; return new; end $$;
     create trigger lesson_design_extensions_reject_deferred_atlas_insert before insert on public.lesson_design_extensions for each row execute function private.reject_deferred_atlas_lesson_design_insert();
   `
+  assert.throws(
+    () => validateSensitiveRuntimeContainment(migration),
+    /containment guard must preserve governed ECO-02 Atlas reuse/,
+  )
+})
+
+test('sensitive containment targets legacy bundle signatures while preserving governed Atlas reuse', () => {
+  const migration = `
+    create table if not exists public.canonical_plan_runtime_bindings (id uuid primary key);
+    comment on table public.canonical_plan_runtime_bindings is 'CONTAIN-01 salvaged historical CPRI binding state; runtime mutation remains deferred';
+    revoke all on function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb) from public, anon, authenticated, service_role;
+    create or replace function private.reject_deferred_atlas_lesson_design_insert() returns trigger language plpgsql as $$ begin if new.source_kind = 'ATLAS' and (new.payload ->> 'area' = 'atlas_materials' or new.payload ? 'bundleId' or new.payload ? 'sourceUdaId') then raise exception 'Studio Atlas lesson material runtime is deferred'; end if; return new; end $$;
+    create trigger lesson_design_extensions_reject_deferred_atlas_insert before insert on public.lesson_design_extensions for each row execute function private.reject_deferred_atlas_lesson_design_insert();
+  `
   const result = validateSensitiveRuntimeContainment(migration)
   assert.deepEqual(result, {
     canonicalPlanBindingAdopted: true,
     legacyAtlasWriteRevoked: true,
-    atlasInsertGuardDeclared: true,
+    atlasBundleInsertGuardDeclared: true,
   })
 })
 
