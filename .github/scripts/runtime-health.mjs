@@ -101,11 +101,25 @@ assert.equal(
   true,
   `Runtime schema lineage incomplete: ${Array.isArray(schemaSnapshot?.missingMigrations) ? schemaSnapshot.missingMigrations.join(', ') : 'unknown'}`,
 )
+assert.equal(
+  schemaSnapshot?.provenanceOk,
+  true,
+  `Runtime schema provenance drift: ${Array.isArray(schemaSnapshot?.unexpectedMigrations) ? schemaSnapshot.unexpectedMigrations.join(', ') : 'unknown'}`,
+)
+assert.equal(
+  schemaSnapshot?.containmentOk,
+  true,
+  `Runtime containment failed: ${JSON.stringify(schemaSnapshot?.containment ?? null)}`,
+)
 receipt.checks.runtimeSchemaContract = 'PASS'
 receipt.checks.runtimeSchemaLineage = 'PASS'
+receipt.checks.runtimeSchemaProvenance = 'PASS'
+receipt.checks.runtimeContainment = 'PASS'
 receipt.checks.expectedMigration = expectedMigration
 receipt.checks.actualMigration = actualMigration
 receipt.checks.missingMigrations = schemaSnapshot?.missingMigrations ?? []
+receipt.checks.unexpectedMigrations = schemaSnapshot?.unexpectedMigrations ?? []
+receipt.checks.containment = schemaSnapshot?.containment ?? null
 receipt.checks.runtimeSchemaMs = schemaContract.elapsedMs
 
 console.log(JSON.stringify(receipt, null, 2))
