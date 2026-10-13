@@ -1,5 +1,6 @@
 -- DOC-ATLAS-BUNDLE-01 conflict-path fail-closed contract
--- A preexisting divergent Atlas row must never be accepted merely because it shares a dedupe key.
+-- A preexisting Atlas proposal must never gain trust merely because it shares a dedupe key.
+-- Legitimate retries are idempotent only after the atomic RPC has already accepted the row.
 
 begin;
 
@@ -12,6 +13,12 @@ begin
   raise notice 'PASS: %', label;
 end
 $$;
+
+create temporary table atlas_conflict_probe_results (
+  probe text primary key,
+  ok boolean not null,
+  detail text null
+) on commit drop;
 
 insert into auth.users(id, email)
 values ('00000000-0000-0000-0000-00000000a693', 'atlas-conflict-693@example.invalid');
@@ -223,6 +230,207 @@ select pg_temp.assert_true(
   '02 divergent preexisting row remains unaccepted after the rejected conflict'
 );
 
+-- A semantically identical row that was inserted outside the atomic Atlas RPC is
+-- still untrusted. Equality of content is not provenance and must not promote it.
+insert into public.lesson_design_extensions (
+  workspace_id,
+  academic_year_id,
+  section_id,
+  canonical_plan_asset_id,
+  canonical_generation_id,
+  block_id,
+  projection_id,
+  kind,
+  status,
+  insertion_position,
+  anchor_step_id,
+  title,
+  body,
+  cue,
+  minutes,
+  source_kind,
+  source_ref,
+  source_label,
+  payload,
+  created_by
+) values (
+  '00000000-0000-0000-0000-00000000b693'::uuid,
+  '00000000-0000-0000-0000-00000000c693'::uuid,
+  '00000000-0000-0000-0000-00000000d693'::uuid,
+  '00000000-0000-0000-0000-00000000e693'::uuid,
+  '00000000-0000-0000-0000-00000000f693'::uuid,
+  'B01',
+  'atlas-conflict-contract',
+  'TEACHER_RESOURCE',
+  'PROPOSED',
+  'END',
+  null,
+  'Identical preexisting Atlas row',
+  'Semantic equality must not authorize a preexisting pending proposal.',
+  null,
+  null,
+  'ATLAS',
+  'atlas:conflict-identical',
+  'Atlas conflict fixture',
+  jsonb_build_object(
+    'dedupeKey', 'atlas-bundle-conflict:identical',
+    'atlasMaterialType', 'presentation',
+    'atlasLocator', '/materials/conflict-identical',
+    'origin', 'atlas'
+  ),
+  '00000000-0000-0000-0000-00000000a693'::uuid
+);
+
+do $$
+declare
+  rejected_preexisting_proposed boolean := false;
+  retry_error text := null;
+begin
+  begin
+    perform public.accept_atlas_material_bundle(
+      '00000000-0000-0000-0000-00000000b693'::uuid,
+      '00000000-0000-0000-0000-00000000c693'::uuid,
+      '00000000-0000-0000-0000-00000000d693'::uuid,
+      '00000000-0000-0000-0000-00000000e693'::uuid,
+      '00000000-0000-0000-0000-00000000f693'::uuid,
+      'B01',
+      'atlas-conflict-contract',
+      jsonb_build_array(
+        jsonb_build_object(
+          'kind', 'TEACHER_RESOURCE',
+          'insertionPosition', 'END',
+          'title', 'Identical preexisting Atlas row',
+          'body', 'Semantic equality must not authorize a preexisting pending proposal.',
+          'sourceRef', 'atlas:conflict-identical',
+          'sourceLabel', 'Atlas conflict fixture',
+          'payload', jsonb_build_object(
+            'dedupeKey', 'atlas-bundle-conflict:identical',
+            'atlasMaterialType', 'presentation',
+            'atlasLocator', '/materials/conflict-identical',
+            'origin', 'atlas'
+          )
+        )
+      )
+    );
+  exception
+    when others then
+      if sqlerrm = 'Atlas material bundle conflict is not an accepted retry' then
+        rejected_preexisting_proposed := true;
+      else
+        raise;
+      end if;
+  end;
+
+  insert into atlas_conflict_probe_results(probe, ok, detail)
+  values (
+    'identical-preexisting-proposed',
+    rejected_preexisting_proposed,
+    case when rejected_preexisting_proposed then null else 'RPC accepted a preexisting PROPOSED row' end
+  );
+
+  -- First call creates and accepts the row. The trigger canonicalizes title/body.
+  perform public.accept_atlas_material_bundle(
+    '00000000-0000-0000-0000-00000000b693'::uuid,
+    '00000000-0000-0000-0000-00000000c693'::uuid,
+    '00000000-0000-0000-0000-00000000d693'::uuid,
+    '00000000-0000-0000-0000-00000000e693'::uuid,
+    '00000000-0000-0000-0000-00000000f693'::uuid,
+    'B01',
+    'atlas-conflict-contract',
+    jsonb_build_array(
+      jsonb_build_object(
+        'kind', 'TEACHER_RESOURCE',
+        'insertionPosition', 'END',
+        'title', '  Whitespace retry title  ',
+        'body', '  Whitespace retry body  ',
+        'sourceRef', '  atlas:whitespace-retry  ',
+        'sourceLabel', '  Atlas conflict fixture  ',
+        'payload', jsonb_build_object(
+          'dedupeKey', 'atlas-bundle-conflict:whitespace-retry',
+          'atlasMaterialType', 'presentation',
+          'atlasLocator', '/materials/whitespace-retry',
+          'origin', 'atlas'
+        )
+      )
+    )
+  );
+
+  -- Exact retry of the same incoming payload must find the already ACCEPTED row
+  -- and compare against the same canonical representation used by persistence.
+  begin
+    perform public.accept_atlas_material_bundle(
+      '00000000-0000-0000-0000-00000000b693'::uuid,
+      '00000000-0000-0000-0000-00000000c693'::uuid,
+      '00000000-0000-0000-0000-00000000d693'::uuid,
+      '00000000-0000-0000-0000-00000000e693'::uuid,
+      '00000000-0000-0000-0000-00000000f693'::uuid,
+      'B01',
+      'atlas-conflict-contract',
+      jsonb_build_array(
+        jsonb_build_object(
+          'kind', 'TEACHER_RESOURCE',
+          'insertionPosition', 'END',
+          'title', '  Whitespace retry title  ',
+          'body', '  Whitespace retry body  ',
+          'sourceRef', '  atlas:whitespace-retry  ',
+          'sourceLabel', '  Atlas conflict fixture  ',
+          'payload', jsonb_build_object(
+            'dedupeKey', 'atlas-bundle-conflict:whitespace-retry',
+            'atlasMaterialType', 'presentation',
+            'atlasLocator', '/materials/whitespace-retry',
+            'origin', 'atlas'
+          )
+        )
+      )
+    );
+  exception
+    when others then
+      retry_error := sqlerrm;
+  end;
+
+  insert into atlas_conflict_probe_results(probe, ok, detail)
+  values (
+    'canonicalized-accepted-retry',
+    retry_error is null,
+    retry_error
+  );
+end
+$$;
+
+select pg_temp.assert_true(
+  (select ok from atlas_conflict_probe_results where probe = 'identical-preexisting-proposed'),
+  '03 semantically identical preexisting PROPOSED row is rejected as untrusted conflict provenance'
+);
+
+select pg_temp.assert_true(
+  exists (
+    select 1
+    from public.lesson_design_extensions
+    where workspace_id = '00000000-0000-0000-0000-00000000b693'::uuid
+      and payload ->> 'dedupeKey' = 'atlas-bundle-conflict:identical'
+      and status = 'PROPOSED'
+  ),
+  '04 rejected semantically identical preexisting row remains PROPOSED'
+);
+
+select pg_temp.assert_true(
+  (select ok from atlas_conflict_probe_results where probe = 'canonicalized-accepted-retry'),
+  '05 exact retry remains idempotent after trigger canonicalizes title/body/source metadata'
+);
+
+select pg_temp.assert_true(
+  (
+    select count(*) = 1
+      and bool_and(status = 'ACCEPTED')
+      and bool_and(title = 'Whitespace retry title')
+      and bool_and(body = 'Whitespace retry body')
+    from public.lesson_design_extensions
+    where workspace_id = '00000000-0000-0000-0000-00000000b693'::uuid
+      and payload ->> 'dedupeKey' = 'atlas-bundle-conflict:whitespace-retry'
+  ),
+  '06 accepted retry keeps one canonicalized row'
+);
+
 rollback;
 
-\echo 'ATLAS MATERIAL BUNDLE CONFLICT PASS: divergent conflict reuse is fail-closed'
+\echo 'ATLAS MATERIAL BUNDLE CONFLICT PASS: divergent and identical pending conflicts fail closed; accepted retries remain canonical and idempotent'
