@@ -86,9 +86,9 @@ begin
     where tgrelid = 'public.lesson_design_extensions'::regclass
       and tgname = 'lesson_design_extensions_reject_deferred_atlas_insert'
       and not tgisinternal
-      and tgenabled <> 'D'
+      and tgenabled in ('O', 'A')
   ) then
-    raise exception 'CONTAIN-01 Atlas bundle insert guard trigger missing or disabled';
+    raise exception 'CONTAIN-01 Atlas bundle insert guard trigger missing or not origin-firing';
   end if;
 
   -- Regression for Codex P2: a replica-only trigger is visible in pg_trigger but
