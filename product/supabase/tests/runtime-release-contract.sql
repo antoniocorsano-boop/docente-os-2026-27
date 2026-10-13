@@ -15,6 +15,7 @@ declare
   cpri_backfill_rpc regprocedure;
   trigger_shape_rejected boolean := false;
   inherited_privilege_rejected boolean := false;
+  atlas_rpc_created_for_probe boolean := false;
 begin
   if to_regclass('public.runtime_schema_contract_state') is null then
     raise exception 'runtime schema contract state table missing after migration replay';
@@ -170,10 +171,27 @@ begin
   end if;
 
   -- Regression for fresh Codex P2: direct ACL inspection misses privileges inherited
-  -- through a parent role. Add both function and table mutation authority through a
-  -- temporary parent role and require the effective containment snapshot to fail.
+  -- through a parent role. The canonical clean replay may not contain the legacy
+  -- Atlas RPC at all, so create a side-effect-free stub with the exact protected
+  -- signature only for this probe, then remove it during cleanup.
   if atlas_rpc is null then
-    raise exception 'legacy Atlas RPC missing; inherited privilege regression cannot execute';
+    execute $ddl$
+      create function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb)
+      returns void
+      language plpgsql
+      security invoker
+      set search_path = ''
+      as 'begin return; end;'
+    $ddl$;
+    execute 'revoke all on function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb) from public, anon, authenticated, service_role';
+    atlas_rpc_created_for_probe := true;
+    atlas_rpc := to_regprocedure(
+      'public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb)'
+    );
+  end if;
+
+  if atlas_rpc is null then
+    raise exception 'inherited privilege probe could not materialize Atlas RPC signature';
   end if;
 
   execute 'create role contain_01_inherited_probe nologin';
@@ -189,6 +207,11 @@ begin
   execute 'revoke execute on function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb) from contain_01_inherited_probe';
   execute 'revoke insert on table public.canonical_plan_runtime_bindings from contain_01_inherited_probe';
   execute 'drop role contain_01_inherited_probe';
+
+  if atlas_rpc_created_for_probe then
+    execute 'drop function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb)';
+    atlas_rpc := null;
+  end if;
 
   select public.runtime_schema_contract_snapshot()
     into runtime_snapshot;
