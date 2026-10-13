@@ -29,6 +29,8 @@ declare
   target_extension_id uuid;
   target_status text;
   item_minutes integer;
+  incoming_signature jsonb;
+  existing_signature jsonb;
 begin
   if caller_id is null then
     raise exception 'authenticated user required';
@@ -91,8 +93,22 @@ begin
       item_minutes := null;
     end if;
 
+    incoming_signature := jsonb_build_object(
+      'kind', item ->> 'kind',
+      'insertionPosition', item ->> 'insertionPosition',
+      'anchorStepId', nullif(btrim(item ->> 'anchorStepId'), ''),
+      'title', item ->> 'title',
+      'body', item ->> 'body',
+      'cue', nullif(btrim(item ->> 'cue'), ''),
+      'minutes', item_minutes,
+      'sourceRef', nullif(btrim(item ->> 'sourceRef'), ''),
+      'sourceLabel', nullif(btrim(item ->> 'sourceLabel'), ''),
+      'payload', item_payload
+    );
+
     target_extension_id := null;
     target_status := null;
+    existing_signature := null;
 
     insert into public.lesson_design_extensions (
       workspace_id,
@@ -141,8 +157,22 @@ begin
     returning id, status into target_extension_id, target_status;
 
     if target_extension_id is null then
-      select e.id, e.status
-        into target_extension_id, target_status
+      select
+        e.id,
+        e.status,
+        jsonb_build_object(
+          'kind', e.kind,
+          'insertionPosition', e.insertion_position,
+          'anchorStepId', e.anchor_step_id,
+          'title', e.title,
+          'body', e.body,
+          'cue', e.cue,
+          'minutes', e.minutes,
+          'sourceRef', e.source_ref,
+          'sourceLabel', e.source_label,
+          'payload', e.payload
+        )
+        into target_extension_id, target_status, existing_signature
       from public.lesson_design_extensions e
       where e.workspace_id = p_workspace_id
         and e.academic_year_id = p_academic_year_id
@@ -161,6 +191,11 @@ begin
       raise exception 'Atlas material bundle uniqueness conflict could not be resolved';
     end if;
 
+    if existing_signature is not null
+       and existing_signature is distinct from incoming_signature then
+      raise exception 'Atlas material bundle conflict does not match incoming material';
+    end if;
+
     if target_status <> 'ACCEPTED' then
       perform public.accept_lesson_design_extension(target_extension_id);
     end if;
@@ -173,7 +208,7 @@ revoke all on function public.accept_atlas_material_bundle(uuid, uuid, uuid, uui
 grant execute on function public.accept_atlas_material_bundle(uuid, uuid, uuid, uuid, uuid, text, text, jsonb) to authenticated;
 
 comment on function public.accept_atlas_material_bundle(uuid, uuid, uuid, uuid, uuid, text, text, jsonb) is
-  'Atomically persists and accepts one teacher-confirmed Studio Atlas MaterialBundle inside a single canonical lesson context. Only teacher/student resources with safe relative Atlas locators are admitted; any item failure rolls back the whole bundle.';
+  'Atomically persists and accepts one teacher-confirmed Studio Atlas MaterialBundle inside a single canonical lesson context. Only teacher/student resources with safe relative Atlas locators are admitted; dedupe conflicts are idempotent only for semantically identical rows; any item failure rolls back the whole bundle.';
 
 select private.advance_runtime_schema_contract('0100_lesson_design_atlas_material_kind_guard');
 
