@@ -168,15 +168,32 @@ grant select on table public.canonical_plan_runtime_bindings to authenticated;
 comment on table public.canonical_plan_runtime_bindings is
   'CONTAIN-01 salvaged historical CPRI binding state; runtime mutation remains deferred';
 
--- Any legacy CPRI mutator came from an out-of-lineage experiment. Preserve the rows,
--- but remove the mutation boundary until CPRI-01 is independently qualified.
-drop function if exists public.bind_canonical_plan_runtime_source(uuid, uuid, text, uuid, uuid);
-drop function if exists public.backfill_canonical_plan_runtime_bindings();
+-- Preserve any legacy CPRI helper definitions as forensic schema evidence, but remove
+-- runtime execution rights. CPRI-01 will later decide the canonical mutation boundary.
+do $cpri_mutator_containment$
+begin
+  if to_regprocedure('public.bind_canonical_plan_runtime_source(uuid,uuid,text,uuid,uuid)') is not null then
+    execute 'revoke all on function public.bind_canonical_plan_runtime_source(uuid,uuid,text,uuid,uuid) from public, anon, authenticated, service_role';
+    execute $comment$
+      comment on function public.bind_canonical_plan_runtime_source(uuid,uuid,text,uuid,uuid) is
+      'CONTAIN-01 legacy CPRI mutator retained only as forensic schema evidence; runtime execution is revoked pending CPRI-01 qualification.'
+    $comment$;
+  end if;
 
--- The legacy Atlas RPC may exist only on environments that received the frozen #692
--- experiment. Preserve the function definition as forensic evidence, but remove all
--- runtime execution capability. On clean replay the function is absent and stays absent.
-do $atlas_containment$
+  if to_regprocedure('public.backfill_canonical_plan_runtime_bindings()') is not null then
+    execute 'revoke all on function public.backfill_canonical_plan_runtime_bindings() from public, anon, authenticated, service_role';
+    execute $comment$
+      comment on function public.backfill_canonical_plan_runtime_bindings() is
+      'CONTAIN-01 legacy CPRI backfill retained only as forensic schema evidence; runtime execution is revoked pending CPRI-01 qualification.'
+    $comment$;
+  end if;
+end;
+$cpri_mutator_containment$;
+
+-- The legacy #692 Studio Atlas bundle write boundary may exist only on environments
+-- that received the frozen experiment. Keep its definition as forensic evidence, but
+-- revoke all runtime execution. Clean replay never creates the function.
+do $atlas_rpc_containment$
 begin
   if to_regprocedure(
     'public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb)'
@@ -184,11 +201,45 @@ begin
     execute 'revoke all on function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb) from public, anon, authenticated, service_role';
     execute $comment$
       comment on function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb) is
-      'CONTAIN-01 legacy Studio Atlas write boundary retained only as forensic schema evidence; runtime execution is revoked pending explicit governance authorization.'
+      'CONTAIN-01 legacy Studio Atlas bundle write boundary retained only as forensic schema evidence; runtime execution is revoked pending explicit governance authorization.'
     $comment$;
   end if;
 end;
-$atlas_containment$;
+$atlas_rpc_containment$;
+
+-- Protect the authoritative write boundary from the old Render preview, which can
+-- insert directly through the generic LessonDesignExtension repository without using
+-- accept_atlas_material_bundle(). The guard is deliberately scoped to the #692 bundle
+-- signature and MUST NOT block the already-governed ECO-02 manual Atlas reuse path.
+create or replace function private.reject_deferred_atlas_lesson_design_insert()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if new.source_kind = 'ATLAS'
+    and (
+      new.payload ->> 'area' = 'atlas_materials'
+      or new.payload ? 'bundleId'
+      or new.payload ? 'sourceUdaId'
+    ) then
+    raise exception 'Studio Atlas lesson material runtime is deferred';
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function private.reject_deferred_atlas_lesson_design_insert() from public, anon, authenticated, service_role;
+
+drop trigger if exists lesson_design_extensions_reject_deferred_atlas_insert on public.lesson_design_extensions;
+create trigger lesson_design_extensions_reject_deferred_atlas_insert
+before insert on public.lesson_design_extensions
+for each row execute function private.reject_deferred_atlas_lesson_design_insert();
+
+comment on trigger lesson_design_extensions_reject_deferred_atlas_insert on public.lesson_design_extensions is
+  'CONTAIN-01 blocks only legacy Studio Atlas bundle inserts; governed ECO-02 Atlas reuse remains available.';
 
 create or replace function private.runtime_schema_unexpected_migrations_since_containment()
 returns text[]
@@ -232,7 +283,9 @@ declare
   v_atlas_rpc oid;
   v_cpri_table oid;
   v_atlas_runtime_exposed boolean := false;
+  v_atlas_bundle_insert_guard_present boolean := false;
   v_cpri_runtime_mutators_present boolean := false;
+  v_cpri_runtime_mutators_exposed boolean := false;
   v_cpri_runtime_mutation_grants boolean := false;
 begin
   v_atlas_rpc := to_regprocedure(
@@ -255,9 +308,37 @@ begin
     ) into v_atlas_runtime_exposed;
   end if;
 
+  select exists (
+    select 1
+    from pg_catalog.pg_trigger trigger_row
+    join pg_catalog.pg_proc function_row on function_row.oid = trigger_row.tgfoid
+    join pg_catalog.pg_namespace namespace_row on namespace_row.oid = function_row.pronamespace
+    where trigger_row.tgrelid = 'public.lesson_design_extensions'::regclass
+      and trigger_row.tgname = 'lesson_design_extensions_reject_deferred_atlas_insert'
+      and not trigger_row.tgisinternal
+      and trigger_row.tgenabled <> 'D'
+      and namespace_row.nspname = 'private'
+      and function_row.proname = 'reject_deferred_atlas_lesson_design_insert'
+  ) into v_atlas_bundle_insert_guard_present;
+
   v_cpri_runtime_mutators_present :=
     to_regprocedure('public.bind_canonical_plan_runtime_source(uuid,uuid,text,uuid,uuid)') is not null
     or to_regprocedure('public.backfill_canonical_plan_runtime_bindings()') is not null;
+
+  select exists (
+    select 1
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace namespace_row on namespace_row.oid = p.pronamespace
+    cross join lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) privilege
+    left join pg_catalog.pg_roles role on role.oid = privilege.grantee
+    where namespace_row.nspname = 'public'
+      and p.proname in ('bind_canonical_plan_runtime_source', 'backfill_canonical_plan_runtime_bindings')
+      and privilege.privilege_type = 'EXECUTE'
+      and (
+        privilege.grantee = 0
+        or role.rolname in ('anon', 'authenticated', 'service_role')
+      )
+  ) into v_cpri_runtime_mutators_exposed;
 
   if v_cpri_table is not null then
     select exists (
@@ -277,13 +358,16 @@ begin
   return jsonb_build_object(
     'legacyAtlasRpcPresent', v_atlas_rpc is not null,
     'legacyAtlasRuntimeExposed', v_atlas_runtime_exposed,
+    'atlasBundleInsertGuardPresent', v_atlas_bundle_insert_guard_present,
     'cpriBindingTablePresent', v_cpri_table is not null,
-    'cpriRuntimeMutatorsPresent', v_cpri_runtime_mutators_present,
+    'cpriLegacyMutatorsPresent', v_cpri_runtime_mutators_present,
+    'cpriLegacyMutatorsExposed', v_cpri_runtime_mutators_exposed,
     'cpriRuntimeMutationGrants', v_cpri_runtime_mutation_grants,
     'ok',
       not v_atlas_runtime_exposed
+      and v_atlas_bundle_insert_guard_present
       and v_cpri_table is not null
-      and not v_cpri_runtime_mutators_present
+      and not v_cpri_runtime_mutators_exposed
       and not v_cpri_runtime_mutation_grants
   );
 end;
