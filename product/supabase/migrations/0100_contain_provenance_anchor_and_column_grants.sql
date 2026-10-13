@@ -97,18 +97,50 @@ begin
       or has_function_privilege('service_role', v_atlas_rpc, 'EXECUTE');
   end if;
 
+  -- The Atlas containment guard is authoritative only if both its trigger shape
+  -- and its bound implementation remain canonical. A trigger WHEN clause can make
+  -- the guard inert, while a same-named trigger function can drift to a no-op.
+  -- Compare the complete function source after whitespace normalization so benign
+  -- formatting differences do not matter but any semantic body change fails closed.
   select exists (
     select 1
     from pg_catalog.pg_trigger trigger_row
     join pg_catalog.pg_proc function_row on function_row.oid = trigger_row.tgfoid
     join pg_catalog.pg_namespace namespace_row on namespace_row.oid = function_row.pronamespace
+    join pg_catalog.pg_language language_row on language_row.oid = function_row.prolang
     where trigger_row.tgrelid = 'public.lesson_design_extensions'::regclass
       and trigger_row.tgname = 'lesson_design_extensions_reject_deferred_atlas_insert'
       and not trigger_row.tgisinternal
       and trigger_row.tgenabled in ('O', 'A')
       and trigger_row.tgtype = 7
+      and trigger_row.tgqual is null
       and namespace_row.nspname = 'private'
       and function_row.proname = 'reject_deferred_atlas_lesson_design_insert'
+      and language_row.lanname = 'plpgsql'
+      and not function_row.prosecdef
+      and pg_catalog.btrim(
+        pg_catalog.regexp_replace(function_row.prosrc, '[[:space:]]+', ' ', 'g')
+      ) = pg_catalog.btrim(
+        pg_catalog.regexp_replace(
+          $guard$
+begin
+  if new.source_kind = 'ATLAS'
+    and (
+      new.payload ->> 'area' = 'atlas_materials'
+      or new.payload ? 'bundleId'
+      or new.payload ? 'sourceUdaId'
+    ) then
+    raise exception 'Studio Atlas lesson material runtime is deferred';
+  end if;
+
+  return new;
+end;
+$guard$,
+          '[[:space:]]+',
+          ' ',
+          'g'
+        )
+      )
   ) into v_atlas_bundle_insert_guard_present;
 
   v_cpri_runtime_mutators_present :=
@@ -184,7 +216,7 @@ revoke all on function private.runtime_sensitive_containment_snapshot()
   from public, anon, authenticated, service_role;
 
 comment on function private.runtime_sensitive_containment_snapshot() is
-  'CONTAIN-01 containment snapshot: requires the authoritative Atlas INSERT guard and rejects effective runtime mutation authority on CPRI, including inherited column-level grants.';
+  'CONTAIN-01 containment snapshot: requires an origin-firing, unconditional Atlas INSERT guard with the canonical implementation and rejects effective runtime mutation authority on CPRI, including inherited column-level grants.';
 
 select private.advance_runtime_schema_contract(
   '0100_contain_provenance_anchor_and_column_grants'
