@@ -13,6 +13,8 @@ declare
   atlas_rpc regprocedure;
   cpri_bind_rpc regprocedure;
   cpri_backfill_rpc regprocedure;
+  trigger_shape_rejected boolean := false;
+  inherited_privilege_rejected boolean := false;
 begin
   if to_regclass('public.runtime_schema_contract_state') is null then
     raise exception 'runtime schema contract state table missing after migration replay';
@@ -87,11 +89,12 @@ begin
       and tgname = 'lesson_design_extensions_reject_deferred_atlas_insert'
       and not tgisinternal
       and tgenabled in ('O', 'A')
+      and tgtype = 7
   ) then
-    raise exception 'CONTAIN-01 Atlas bundle insert guard trigger missing or not origin-firing';
+    raise exception 'CONTAIN-01 Atlas bundle insert guard trigger missing or not ROW BEFORE INSERT origin-firing';
   end if;
 
-  -- Regression for Codex P2: a replica-only trigger is visible in pg_trigger but
+  -- Regression for Codex P2 #1: a replica-only trigger is visible in pg_trigger but
   -- does not fire for ordinary PostgREST/origin writes. The runtime snapshot must
   -- therefore fail containment while the trigger is in REPLICA mode, then recover
   -- after restoring normal origin firing.
@@ -107,6 +110,22 @@ begin
     into runtime_snapshot;
   if coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true then
     raise exception 'CONTAIN-01 runtime snapshot did not recover after restoring origin-firing Atlas guard';
+  end if;
+
+  -- Regression for fresh Codex P2: object/name/mode checks are insufficient if the
+  -- trigger is recreated on UPDATE instead of INSERT. Probe the exact firing shape.
+  execute 'drop trigger lesson_design_extensions_reject_deferred_atlas_insert on public.lesson_design_extensions';
+  execute 'create trigger lesson_design_extensions_reject_deferred_atlas_insert before update on public.lesson_design_extensions for each row execute function private.reject_deferred_atlas_lesson_design_insert()';
+  select public.runtime_schema_contract_snapshot()
+    into runtime_snapshot;
+  trigger_shape_rejected := coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true;
+
+  execute 'drop trigger lesson_design_extensions_reject_deferred_atlas_insert on public.lesson_design_extensions';
+  execute 'create trigger lesson_design_extensions_reject_deferred_atlas_insert before insert on public.lesson_design_extensions for each row execute function private.reject_deferred_atlas_lesson_design_insert()';
+  select public.runtime_schema_contract_snapshot()
+    into runtime_snapshot;
+  if coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true then
+    raise exception 'CONTAIN-01 runtime snapshot did not recover after restoring ROW BEFORE INSERT Atlas guard';
   end if;
 
   select pg_get_functiondef('private.reject_deferred_atlas_lesson_design_insert()'::regprocedure)
@@ -148,6 +167,40 @@ begin
     or has_function_privilege('service_role', cpri_backfill_rpc, 'EXECUTE')
   ) then
     raise exception 'legacy CPRI backfill mutator remains executable by a runtime role';
+  end if;
+
+  -- Regression for fresh Codex P2: direct ACL inspection misses privileges inherited
+  -- through a parent role. Add both function and table mutation authority through a
+  -- temporary parent role and require the effective containment snapshot to fail.
+  if atlas_rpc is null then
+    raise exception 'legacy Atlas RPC missing; inherited privilege regression cannot execute';
+  end if;
+
+  execute 'create role contain_01_inherited_probe nologin';
+  execute 'grant execute on function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb) to contain_01_inherited_probe';
+  execute 'grant insert on table public.canonical_plan_runtime_bindings to contain_01_inherited_probe';
+  execute 'grant contain_01_inherited_probe to authenticated';
+
+  select public.runtime_schema_contract_snapshot()
+    into runtime_snapshot;
+  inherited_privilege_rejected := coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true;
+
+  execute 'revoke contain_01_inherited_probe from authenticated';
+  execute 'revoke execute on function public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb) from contain_01_inherited_probe';
+  execute 'revoke insert on table public.canonical_plan_runtime_bindings from contain_01_inherited_probe';
+  execute 'drop role contain_01_inherited_probe';
+
+  select public.runtime_schema_contract_snapshot()
+    into runtime_snapshot;
+  if coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true then
+    raise exception 'CONTAIN-01 runtime snapshot did not recover after inherited privilege probe cleanup';
+  end if;
+
+  if not trigger_shape_rejected or not inherited_privilege_rejected then
+    raise exception
+      'CONTAIN-01 certification gap reproduced: trigger_shape_rejected=%, inherited_privilege_rejected=%',
+      trigger_shape_rejected,
+      inherited_privilege_rejected;
   end if;
 
   if not exists (
