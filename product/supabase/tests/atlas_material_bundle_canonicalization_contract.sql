@@ -270,6 +270,121 @@ begin
 end
 $$;
 
+-- P2 regression 3: an authenticated caller can pre-insert a PROPOSED Atlas row
+-- with surrounding whitespace in payload.dedupeKey. Canonically equivalent active
+-- keys must collide at the persistence boundary; the RPC must fail closed rather
+-- than accepting a second active row under the trimmed spelling.
+insert into public.lesson_design_extensions (
+  workspace_id,
+  academic_year_id,
+  section_id,
+  canonical_plan_asset_id,
+  canonical_generation_id,
+  block_id,
+  projection_id,
+  kind,
+  status,
+  insertion_position,
+  anchor_step_id,
+  title,
+  body,
+  cue,
+  minutes,
+  source_kind,
+  source_ref,
+  source_label,
+  payload,
+  created_by
+) values (
+  '00000000-0000-0000-0000-00000000b694'::uuid,
+  '00000000-0000-0000-0000-00000000c694'::uuid,
+  '00000000-0000-0000-0000-00000000d694'::uuid,
+  '00000000-0000-0000-0000-00000000e694'::uuid,
+  '00000000-0000-0000-0000-00000000f694'::uuid,
+  'B01',
+  'atlas-preexisting-padded-conflict',
+  'TEACHER_RESOURCE',
+  'PROPOSED',
+  'END',
+  null,
+  'Preexisting padded Atlas row',
+  'A padded active dedupe identity must not allow a second accepted row.',
+  null,
+  null,
+  'ATLAS',
+  'atlas:preexisting-padded-conflict',
+  'Atlas canonicalization fixture',
+  jsonb_build_object(
+    'dedupeKey', '  atlas-bundle-canonicalization:preexisting-padded  ',
+    'atlasMaterialType', 'presentation',
+    'atlasLocator', '/materials/preexisting-padded-conflict',
+    'origin', 'atlas'
+  ),
+  '00000000-0000-0000-0000-00000000a694'::uuid
+);
+
+do $$
+declare
+  rejected_preexisting_padded boolean := false;
+  active_canonical_rows integer := 0;
+  rejection_detail text := null;
+begin
+  begin
+    perform public.accept_atlas_material_bundle(
+      '00000000-0000-0000-0000-00000000b694'::uuid,
+      '00000000-0000-0000-0000-00000000c694'::uuid,
+      '00000000-0000-0000-0000-00000000d694'::uuid,
+      '00000000-0000-0000-0000-00000000e694'::uuid,
+      '00000000-0000-0000-0000-00000000f694'::uuid,
+      'B01',
+      'atlas-preexisting-padded-conflict',
+      jsonb_build_array(
+        jsonb_build_object(
+          'kind', 'TEACHER_RESOURCE',
+          'insertionPosition', 'END',
+          'title', 'Preexisting padded Atlas row',
+          'body', 'A padded active dedupe identity must not allow a second accepted row.',
+          'sourceRef', 'atlas:preexisting-padded-conflict',
+          'sourceLabel', 'Atlas canonicalization fixture',
+          'payload', jsonb_build_object(
+            'dedupeKey', '  atlas-bundle-canonicalization:preexisting-padded  ',
+            'atlasMaterialType', 'presentation',
+            'atlasLocator', '/materials/preexisting-padded-conflict',
+            'origin', 'atlas'
+          )
+        )
+      )
+    );
+  exception
+    when others then
+      rejection_detail := sqlerrm;
+      rejected_preexisting_padded := sqlerrm in (
+        'Atlas material bundle conflict is not an accepted retry',
+        'Atlas material bundle conflict does not match incoming material',
+        'Atlas material bundle uniqueness conflict could not be resolved'
+      );
+      if not rejected_preexisting_padded then
+        raise;
+      end if;
+  end;
+
+  select count(*)
+    into active_canonical_rows
+  from public.lesson_design_extensions
+  where workspace_id = '00000000-0000-0000-0000-00000000b694'::uuid
+    and projection_id = 'atlas-preexisting-padded-conflict'
+    and nullif(btrim(payload ->> 'dedupeKey'), '') = 'atlas-bundle-canonicalization:preexisting-padded'
+    and status <> 'DISMISSED';
+
+  insert into atlas_canonicalization_probe_results(probe, ok, detail)
+  values (
+    'preexisting-padded-dedupe-conflict',
+    rejected_preexisting_padded and active_canonical_rows = 1,
+    concat_ws('; ', rejection_detail, 'active canonical rows=' || active_canonical_rows::text)
+  );
+end
+$$;
+
 do $$
 declare
   failures text;
@@ -287,4 +402,4 @@ $$;
 
 rollback;
 
-\echo 'ATLAS MATERIAL BUNDLE CANONICALIZATION PASS: padded dedupe keys and projection IDs remain canonical and retry-idempotent'
+\echo 'ATLAS MATERIAL BUNDLE CANONICALIZATION PASS: padded dedupe keys, projection IDs, and preexisting padded active conflicts remain canonical and fail closed'
