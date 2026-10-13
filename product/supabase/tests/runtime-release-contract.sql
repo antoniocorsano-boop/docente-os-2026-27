@@ -16,6 +16,8 @@ declare
   containment_anchor_version text;
   containment_anchor_name text;
   trigger_shape_rejected boolean := false;
+  atlas_guard_when_clause_rejected boolean := false;
+  atlas_guard_noop_definition_rejected boolean := false;
   atlas_inherited_execute_rejected boolean := false;
   cpri_inherited_insert_rejected boolean := false;
   provenance_anchor_missing_rejected boolean := false;
@@ -179,6 +181,50 @@ begin
     raise exception 'CONTAIN-01 Atlas guard is not narrowly scoped to the legacy Studio bundle signature';
   end if;
 
+  -- Regression for fresh Codex P2: a same-named ROW BEFORE INSERT trigger with an
+  -- always-false WHEN clause is inert. Runtime health must reject that schema drift.
+  execute 'drop trigger lesson_design_extensions_reject_deferred_atlas_insert on public.lesson_design_extensions';
+  execute 'create trigger lesson_design_extensions_reject_deferred_atlas_insert before insert on public.lesson_design_extensions for each row when (false) execute function private.reject_deferred_atlas_lesson_design_insert()';
+  select public.runtime_schema_contract_snapshot()
+    into runtime_snapshot;
+  atlas_guard_when_clause_rejected :=
+    coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true;
+
+  execute 'drop trigger lesson_design_extensions_reject_deferred_atlas_insert on public.lesson_design_extensions';
+  execute 'create trigger lesson_design_extensions_reject_deferred_atlas_insert before insert on public.lesson_design_extensions for each row execute function private.reject_deferred_atlas_lesson_design_insert()';
+  select public.runtime_schema_contract_snapshot()
+    into runtime_snapshot;
+  if coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true then
+    raise exception 'CONTAIN-01 runtime snapshot did not recover after removing the inert Atlas WHEN clause';
+  end if;
+
+  -- Regression for fresh Codex P2: preserving the trigger metadata is insufficient
+  -- if the bound function body is replaced by a no-op. Restore the exact canonical
+  -- definition after probing so subsequent checks run against the authoritative guard.
+  execute $ddl$
+    create or replace function private.reject_deferred_atlas_lesson_design_insert()
+    returns trigger
+    language plpgsql
+    security invoker
+    set search_path = ''
+    as $body$
+    begin
+      return new;
+    end;
+    $body$;
+  $ddl$;
+  select public.runtime_schema_contract_snapshot()
+    into runtime_snapshot;
+  atlas_guard_noop_definition_rejected :=
+    coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true;
+
+  execute atlas_insert_guard_definition;
+  select public.runtime_schema_contract_snapshot()
+    into runtime_snapshot;
+  if coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true then
+    raise exception 'CONTAIN-01 runtime snapshot did not recover after restoring the canonical Atlas guard definition';
+  end if;
+
   atlas_rpc := to_regprocedure(
     'public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb)'
   );
@@ -298,13 +344,17 @@ begin
 
   if not provenance_anchor_missing_rejected
      or not trigger_shape_rejected
+     or not atlas_guard_when_clause_rejected
+     or not atlas_guard_noop_definition_rejected
      or not atlas_inherited_execute_rejected
      or not cpri_inherited_insert_rejected
      or not cpri_inherited_column_insert_rejected then
     raise exception
-      'CONTAIN-01 certification gap reproduced: provenance_anchor_missing_rejected=%, trigger_shape_rejected=%, atlas_inherited_execute_rejected=%, cpri_inherited_insert_rejected=%, cpri_inherited_column_insert_rejected=%',
+      'CONTAIN-01 certification gap reproduced: provenance_anchor_missing_rejected=%, trigger_shape_rejected=%, atlas_guard_when_clause_rejected=%, atlas_guard_noop_definition_rejected=%, atlas_inherited_execute_rejected=%, cpri_inherited_insert_rejected=%, cpri_inherited_column_insert_rejected=%',
       provenance_anchor_missing_rejected,
       trigger_shape_rejected,
+      atlas_guard_when_clause_rejected,
+      atlas_guard_noop_definition_rejected,
       atlas_inherited_execute_rejected,
       cpri_inherited_insert_rejected,
       cpri_inherited_column_insert_rejected;
