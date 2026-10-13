@@ -142,10 +142,10 @@ export function validateSensitiveRuntimeContainment(migrationContent) {
     throw new Error('legacy Studio Atlas bundle inserts must be blocked at the database boundary')
   }
 
-  const scopedToLegacyBundle = /new\.source_kind\s*=\s*['\"]ATLAS['\"]/iu.test(source)
-    && /new\.payload\s*->>\s*['\"]area['\"]\s*=\s*['\"]atlas_materials['\"]/iu.test(source)
-    && /new\.payload\s*\?\s*['\"]bundleId['\"]/iu.test(source)
-    && /new\.payload\s*\?\s*['\"]sourceUdaId['\"]/iu.test(source)
+  const scopedToLegacyBundle = /new\.source_kind\s*=\s*['"]ATLAS['"]/iu.test(source)
+    && /new\.payload\s*->>\s*['"]area['"]\s*=\s*['"]atlas_materials['"]/iu.test(source)
+    && /new\.payload\s*\?\s*['"]bundleId['"]/iu.test(source)
+    && /new\.payload\s*\?\s*['"]sourceUdaId['"]/iu.test(source)
   if (!scopedToLegacyBundle) {
     throw new Error('containment guard must preserve governed ECO-02 Atlas reuse')
   }
