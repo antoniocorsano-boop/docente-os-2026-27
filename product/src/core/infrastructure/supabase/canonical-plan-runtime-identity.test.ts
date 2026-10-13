@@ -3,11 +3,13 @@ import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
 
 const migrationUrl = new URL('../../../../supabase/migrations/0099_canonical_plan_runtime_identity.sql', import.meta.url)
+const atlasAcceptanceMigrationSource = readFileSync(new URL('../../../../supabase/migrations/0100_lesson_design_atlas_material_kind_guard.sql', import.meta.url), 'utf8')
 const repositorySource = readFileSync(new URL('./supabase-canonical-plan-source-repository.ts', import.meta.url), 'utf8')
 const cpriRuntimePreflightSource = readFileSync(new URL('../../../../scripts/experience/cpri-runtime-preflight.mjs', import.meta.url), 'utf8')
 const runtimeReleaseContractSource = readFileSync(new URL('../../../../supabase/tests/runtime-release-contract.sql', import.meta.url), 'utf8')
 const experienceGlobalSetupSource = readFileSync(new URL('../../../../e2e/experience/global-setup.mjs', import.meta.url), 'utf8')
 const atlasReturnActionSource = readFileSync(new URL('../../../app/progetta/atlas/ritorno/actions.ts', import.meta.url), 'utf8')
+const udaAuthoringSource = readFileSync(new URL('../../../app/progetta/documenti/nuovo/[assetId]/page.tsx', import.meta.url), 'utf8')
 
 test('canonical plan runtime identity is governed by a workspace/year binding table', () => {
   assert.equal(
@@ -145,5 +147,26 @@ test('Atlas association validates a governed usable locator before atomic persis
     atlasReturnActionSource,
     /collegamento utilizzabile/,
     'the teacher must receive a clear fail-closed error for missing or unsafe Atlas locators',
+  )
+})
+
+test('Atlas runtime handoff requires explicit server-side authorization in addition to the configured origin', () => {
+  assert.match(
+    udaAuthoringSource,
+    /const studioRuntimeAuthorized = process\.env\.STUDIO_ATLAS_RUNTIME_AUTHORIZATION === 'AUTHORIZED'/,
+    'configured Atlas origin alone must not activate a runtime capability that governance still marks deferred',
+  )
+  assert.match(
+    udaAuthoringSource,
+    /const atlasHref = studioRuntimeAuthorized && studioOrigin && grade && section && udaId/,
+    'the live Atlas handoff must remain unavailable until the server-side authorization gate is explicitly opened',
+  )
+})
+
+test('Atlas RPC rejects control characters at the same persistence boundary that validates relative locators', () => {
+  assert.match(
+    atlasAcceptanceMigrationSource,
+    /atlas_locator\s*~\s*'\[\[:cntrl:\]\]'/,
+    'the SQL acceptance boundary must reject non-whitespace control characters, including U+0001 and DEL',
   )
 })
