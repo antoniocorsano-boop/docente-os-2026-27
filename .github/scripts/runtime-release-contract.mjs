@@ -136,14 +136,25 @@ export function validateSensitiveRuntimeContainment(migrationContent) {
     throw new Error('legacy Atlas material write boundary must be revoked from runtime roles')
   }
 
-  const atlasInsertGuardDeclared = /create\s+or\s+replace\s+function\s+private\.reject_deferred_atlas_lesson_design_insert\s*\(\s*\)/iu.test(source)
-    && /new\.source_kind\s*=\s*['\"]ATLAS['\"]/iu.test(source)
-    && /create\s+trigger\s+lesson_design_extensions_reject_deferred_atlas_insert[\s\S]*before\s+insert\s+on\s+public\.lesson_design_extensions/iu.test(source)
-  if (!atlasInsertGuardDeclared) {
-    throw new Error('new Atlas lesson-design inserts must be blocked at the database boundary')
+  const guardFunctionDeclared = /create\s+or\s+replace\s+function\s+private\.reject_deferred_atlas_lesson_design_insert\s*\(\s*\)/iu.test(source)
+  const guardTriggerDeclared = /create\s+trigger\s+lesson_design_extensions_reject_deferred_atlas_insert[\s\S]*before\s+insert\s+on\s+public\.lesson_design_extensions/iu.test(source)
+  if (!guardFunctionDeclared || !guardTriggerDeclared) {
+    throw new Error('legacy Studio Atlas bundle inserts must be blocked at the database boundary')
   }
 
-  return { canonicalPlanBindingAdopted, legacyAtlasWriteRevoked, atlasInsertGuardDeclared }
+  const scopedToLegacyBundle = /new\.source_kind\s*=\s*['\"]ATLAS['\"]/iu.test(source)
+    && /new\.payload\s*->>\s*['\"]area['\"]\s*=\s*['\"]atlas_materials['\"]/iu.test(source)
+    && /new\.payload\s*\?\s*['\"]bundleId['\"]/iu.test(source)
+    && /new\.payload\s*\?\s*['\"]sourceUdaId['\"]/iu.test(source)
+  if (!scopedToLegacyBundle) {
+    throw new Error('containment guard must preserve governed ECO-02 Atlas reuse')
+  }
+
+  return {
+    canonicalPlanBindingAdopted,
+    legacyAtlasWriteRevoked,
+    atlasBundleInsertGuardDeclared: true,
+  }
 }
 
 export function lintChangedPlpgsqlMigrations(changedFiles) {
