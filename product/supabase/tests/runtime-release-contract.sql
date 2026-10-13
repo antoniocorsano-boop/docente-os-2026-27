@@ -9,6 +9,10 @@ declare
   occurrence_activity_rpc_definition text;
   occurrence_activity_guard_definition text;
   teaching_session_lock_definition text;
+  atlas_insert_guard_definition text;
+  atlas_rpc regprocedure;
+  cpri_bind_rpc regprocedure;
+  cpri_backfill_rpc regprocedure;
 begin
   if to_regclass('public.runtime_schema_contract_state') is null then
     raise exception 'runtime schema contract state table missing after migration replay';
@@ -41,6 +45,91 @@ begin
       'runtime schema snapshot/watermark mismatch: snapshot %, state %',
       runtime_snapshot->>'migrationId',
       runtime_migration;
+  end if;
+
+  if runtime_snapshot->>'schema' <> 'docente-os.runtime-schema-contract.v3' then
+    raise exception 'CONTAIN-01 runtime schema snapshot must expose v3';
+  end if;
+
+  if coalesce((runtime_snapshot->>'provenanceOk')::boolean, false) is not true then
+    raise exception
+      'runtime schema provenance contains unexpected post-containment migrations: %',
+      runtime_snapshot->'unexpectedMigrations';
+  end if;
+
+  if coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true then
+    raise exception
+      'runtime sensitive containment is not healthy: %',
+      runtime_snapshot->'containment';
+  end if;
+
+  if to_regclass('public.canonical_plan_runtime_bindings') is null then
+    raise exception 'CONTAIN-01 CPRI salvage table missing after migration replay';
+  end if;
+
+  if has_table_privilege('authenticated', 'public.canonical_plan_runtime_bindings', 'INSERT')
+     or has_table_privilege('authenticated', 'public.canonical_plan_runtime_bindings', 'UPDATE')
+     or has_table_privilege('authenticated', 'public.canonical_plan_runtime_bindings', 'DELETE')
+     or has_table_privilege('service_role', 'public.canonical_plan_runtime_bindings', 'INSERT')
+     or has_table_privilege('service_role', 'public.canonical_plan_runtime_bindings', 'UPDATE')
+     or has_table_privilege('service_role', 'public.canonical_plan_runtime_bindings', 'DELETE') then
+    raise exception 'CONTAIN-01 CPRI salvage table exposes a runtime mutation grant';
+  end if;
+
+  if to_regprocedure('private.reject_deferred_atlas_lesson_design_insert()') is null then
+    raise exception 'CONTAIN-01 Atlas bundle insert guard function missing';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_trigger
+    where tgrelid = 'public.lesson_design_extensions'::regclass
+      and tgname = 'lesson_design_extensions_reject_deferred_atlas_insert'
+      and not tgisinternal
+      and tgenabled <> 'D'
+  ) then
+    raise exception 'CONTAIN-01 Atlas bundle insert guard trigger missing or disabled';
+  end if;
+
+  select pg_get_functiondef('private.reject_deferred_atlas_lesson_design_insert()'::regprocedure)
+    into atlas_insert_guard_definition;
+
+  if position('new.source_kind = ''ATLAS''' in atlas_insert_guard_definition) = 0
+     or position('new.payload ->> ''area'' = ''atlas_materials''' in atlas_insert_guard_definition) = 0
+     or position('new.payload ? ''bundleId''' in atlas_insert_guard_definition) = 0
+     or position('new.payload ? ''sourceUdaId''' in atlas_insert_guard_definition) = 0 then
+    raise exception 'CONTAIN-01 Atlas guard is not narrowly scoped to the legacy Studio bundle signature';
+  end if;
+
+  atlas_rpc := to_regprocedure(
+    'public.accept_atlas_material_bundle(uuid,uuid,uuid,uuid,uuid,text,text,jsonb)'
+  );
+  if atlas_rpc is not null and (
+    has_function_privilege('anon', atlas_rpc, 'EXECUTE')
+    or has_function_privilege('authenticated', atlas_rpc, 'EXECUTE')
+    or has_function_privilege('service_role', atlas_rpc, 'EXECUTE')
+  ) then
+    raise exception 'legacy Atlas bundle RPC remains executable by a runtime role';
+  end if;
+
+  cpri_bind_rpc := to_regprocedure(
+    'public.bind_canonical_plan_runtime_source(uuid,uuid,text,uuid,uuid)'
+  );
+  if cpri_bind_rpc is not null and (
+    has_function_privilege('anon', cpri_bind_rpc, 'EXECUTE')
+    or has_function_privilege('authenticated', cpri_bind_rpc, 'EXECUTE')
+    or has_function_privilege('service_role', cpri_bind_rpc, 'EXECUTE')
+  ) then
+    raise exception 'legacy CPRI bind mutator remains executable by a runtime role';
+  end if;
+
+  cpri_backfill_rpc := to_regprocedure('public.backfill_canonical_plan_runtime_bindings()');
+  if cpri_backfill_rpc is not null and (
+    has_function_privilege('anon', cpri_backfill_rpc, 'EXECUTE')
+    or has_function_privilege('authenticated', cpri_backfill_rpc, 'EXECUTE')
+    or has_function_privilege('service_role', cpri_backfill_rpc, 'EXECUTE')
+  ) then
+    raise exception 'legacy CPRI backfill mutator remains executable by a runtime role';
   end if;
 
   if not exists (
@@ -105,7 +194,7 @@ begin
     into teaching_session_lock_definition;
 
   if position('FOR UPDATE' in upper(occurrence_activity_guard_definition)) = 0
-     or position('FOR UPDATE' in upper(teaching_session_lock_definition)) = 0 then
+     or position('FOR UPDATE' in upper(teaching_session_lock_definition) = 0 then
     raise exception 'single-occurrence activity and TeachingSession boundaries do not share a locking invariant';
   end if;
 
