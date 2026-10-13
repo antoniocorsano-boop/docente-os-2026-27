@@ -136,7 +136,14 @@ export function validateSensitiveRuntimeContainment(migrationContent) {
     throw new Error('legacy Atlas material write boundary must be revoked from runtime roles')
   }
 
-  return { canonicalPlanBindingAdopted, legacyAtlasWriteRevoked }
+  const atlasInsertGuardDeclared = /create\s+or\s+replace\s+function\s+private\.reject_deferred_atlas_lesson_design_insert\s*\(\s*\)/iu.test(source)
+    && /new\.source_kind\s*=\s*['\"]ATLAS['\"]/iu.test(source)
+    && /create\s+trigger\s+lesson_design_extensions_reject_deferred_atlas_insert[\s\S]*before\s+insert\s+on\s+public\.lesson_design_extensions/iu.test(source)
+  if (!atlasInsertGuardDeclared) {
+    throw new Error('new Atlas lesson-design inserts must be blocked at the database boundary')
+  }
+
+  return { canonicalPlanBindingAdopted, legacyAtlasWriteRevoked, atlasInsertGuardDeclared }
 }
 
 export function lintChangedPlpgsqlMigrations(changedFiles) {
