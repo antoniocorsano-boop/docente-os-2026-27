@@ -77,6 +77,8 @@ test('post-0074 migration without lineage registration fails closed', () => {
 
 test('sensitive containment rejects a legacy Atlas RPC that stays executable', () => {
   const migration = `
+    create table if not exists public.canonical_plan_runtime_bindings (id uuid primary key);
+    comment on table public.canonical_plan_runtime_bindings is 'CONTAIN-01 salvaged historical CPRI binding state; runtime mutation remains deferred';
     create or replace function public.accept_atlas_material_bundle(
       p_workspace_id uuid,
       p_academic_year_id uuid,
