@@ -91,6 +91,24 @@ begin
     raise exception 'CONTAIN-01 Atlas bundle insert guard trigger missing or disabled';
   end if;
 
+  -- Regression for Codex P2: a replica-only trigger is visible in pg_trigger but
+  -- does not fire for ordinary PostgREST/origin writes. The runtime snapshot must
+  -- therefore fail containment while the trigger is in REPLICA mode, then recover
+  -- after restoring normal origin firing.
+  execute 'alter table public.lesson_design_extensions enable replica trigger lesson_design_extensions_reject_deferred_atlas_insert';
+  select public.runtime_schema_contract_snapshot()
+    into runtime_snapshot;
+  if coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is true then
+    raise exception 'CONTAIN-01 runtime snapshot incorrectly accepts a REPLICA-only Atlas guard';
+  end if;
+
+  execute 'alter table public.lesson_design_extensions enable trigger lesson_design_extensions_reject_deferred_atlas_insert';
+  select public.runtime_schema_contract_snapshot()
+    into runtime_snapshot;
+  if coalesce((runtime_snapshot->>'containmentOk')::boolean, false) is not true then
+    raise exception 'CONTAIN-01 runtime snapshot did not recover after restoring origin-firing Atlas guard';
+  end if;
+
   select pg_get_functiondef('private.reject_deferred_atlas_lesson_design_insert()'::regprocedure)
     into atlas_insert_guard_definition;
 
