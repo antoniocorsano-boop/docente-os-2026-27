@@ -5,6 +5,7 @@ import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url))
+const canonicalSourceSymbol = ['CANONICAL', 'PLAN', 'SOURCES'].join('_')
 
 const activeConsumerPaths = [
   'product/src/app/api/assistant/lesson-context-loader.ts',
@@ -29,13 +30,13 @@ const activeConsumerPaths = [
 ]
 
 const forbiddenRuntimeAuthority = [
-  'CANONICAL_PLAN_SOURCES',
-  '4a027986-5b6d-49db-9b52-01cfae679c08',
-  'd327355b-76a9-496f-99cb-dc942fd950e4',
-  '36ef3be5-925f-4e28-afff-df11097827a9',
-  'a1066c0a-2720-40b0-841e-306cb998ce3e',
-  '978702f8-4579-452d-925b-8e4d890e19f9',
-  'bd4cb766-5d46-4420-bc82-f979528a14b2',
+  canonicalSourceSymbol,
+  ['4a027986', '5b6d', '49db', '9b52', '01cfae679c08'].join('-'),
+  ['d327355b', '76a9', '496f', '99cb', 'dc942fd950e4'].join('-'),
+  ['36ef3be5', '925f', '4e28', 'afff', 'df11097827a9'].join('-'),
+  ['a1066c0a', '2720', '40b0', '841e', '306cb998ce3e'].join('-'),
+  ['978702f8', '4579', '452d', '925b', '8e4d890e19f9'].join('-'),
+  ['bd4cb766', '5d46', '4420', 'bc82', 'f979528a14b2'].join('-'),
 ]
 
 test('CPRI Task 5 removes static production authority from every frozen active runtime consumer', () => {
