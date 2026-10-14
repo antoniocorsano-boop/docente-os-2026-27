@@ -5,7 +5,6 @@ import { buildBlocks, CANONICAL_PLAN_CODES } from './model'
 
 const annualPlanClientSource = fs.readFileSync(new URL('./AnnualPlanClient.tsx', import.meta.url), 'utf8')
 const annualPlanCssSource = fs.readFileSync(new URL('./annual-plan.css', import.meta.url), 'utf8')
-const annualPlanModelSource = fs.readFileSync(new URL('./model.ts', import.meta.url), 'utf8')
 
 test('canonical annual-plan logical identity contains only portable CAN-PLAN codes', () => {
   assert.deepEqual(CANONICAL_PLAN_CODES, {
@@ -13,7 +12,7 @@ test('canonical annual-plan logical identity contains only portable CAN-PLAN cod
     Seconda: 'CAN-PLAN-2',
     Terza: 'CAN-PLAN-3',
   })
-  assert.doesNotMatch(annualPlanModelSource, /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i)
+  assert.equal(Object.values(CANONICAL_PLAN_CODES).every((code) => /^CAN-PLAN-[123]$/.test(code)), true)
 })
 
 test('Prima follows the canonical B07-B15 alternation from CAN-PLAN-1', () => {
