@@ -20,6 +20,13 @@ const provenanceManifestPaths = new Set([
   'product/src/core/presentation/human-task-approved-manifests.ts',
   'product/src/core/presentation/human-task-approved-manifests-b31-b33.ts',
   'product/src/core/presentation/human-task-approved-manifests-b31-b33-v2.ts',
+  'product/src/core/presentation/human-task-approved-manifests-seconda-b01-b04.ts',
+  'product/src/core/presentation/human-task-approved-manifests-seconda-b05-b08.ts',
+])
+
+const provenanceAssertionPaths = new Set([
+  'product/src/core/presentation/human-task-approved-manifest.test.ts',
+  'product/src/core/application/human-task-stakeholder-cognitive-gate.test.ts',
 ])
 
 const textExtensions = new Set([
@@ -54,6 +61,7 @@ function classifyOccurrence({ file, token }) {
   if (file.startsWith('docs/')) return 'HISTORICAL_PROVENANCE'
   if (file.startsWith('product/supabase/migrations/')) return 'HISTORICAL_PROVENANCE'
   if (provenanceManifestPaths.has(file)) return 'HISTORICAL_PROVENANCE'
+  if (provenanceAssertionPaths.has(file) && productionCanonicalIds.has(token)) return 'HISTORICAL_PROVENANCE'
   if (/\.test\.[cm]?[jt]sx?$/.test(file) && isSyntheticUuid(token)) return 'SYNTHETIC_TEST'
 
   if (file.startsWith('product/src/') || file.startsWith('product/scripts/') || file.startsWith('.github/')) {
@@ -106,6 +114,14 @@ test('CPRI static-authority classifier distinguishes runtime, provenance, unknow
   )
   assert.equal(
     classifyOccurrence({ file: 'product/src/core/presentation/human-task-approved-manifests.ts', token: productionId }),
+    'HISTORICAL_PROVENANCE',
+  )
+  assert.equal(
+    classifyOccurrence({ file: 'product/src/core/presentation/human-task-approved-manifests-seconda-b01-b04.ts', token: productionId }),
+    'HISTORICAL_PROVENANCE',
+  )
+  assert.equal(
+    classifyOccurrence({ file: 'product/src/core/presentation/human-task-approved-manifest.test.ts', token: productionId }),
     'HISTORICAL_PROVENANCE',
   )
   assert.equal(
