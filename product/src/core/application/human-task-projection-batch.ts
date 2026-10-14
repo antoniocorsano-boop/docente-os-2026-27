@@ -49,6 +49,7 @@ export function buildProjectionBatchReview(
   candidates: HumanTaskContentCandidate[],
   recipes: HumanTaskProjectionBatchRecipe[],
   gaps: HumanTaskProjectionGap[] = [],
+  runtimePlanSources: Partial<Record<GradeKey, { code: string; generationId: string }>> = {},
 ): HumanTaskProjectionBatchItem[] {
   const recipeByKey = new Map(recipes.map((recipe) => [key(recipe.grade, recipe.blockId), recipe]))
   const gapByKey = new Map(gaps.map((gap) => [key(gap.grade, gap.blockId), gap]))
@@ -74,7 +75,7 @@ export function buildProjectionBatchReview(
       : isPackComposedRecipe(recipe)
         ? buildPackComposedProjectionDraft(candidate, recipe)
         : isPlanGuidedUdaRecipe(recipe)
-          ? buildPlanGuidedUdaProjectionDraft(candidate, recipe)
+          ? buildPlanGuidedUdaProjectionDraft(candidate, recipe, runtimePlanSources[recipe.grade])
           : buildProjectionDraft(candidate, recipe)
 
     if (draft.status === 'INVALID') {
