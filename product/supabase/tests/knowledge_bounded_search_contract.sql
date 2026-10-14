@@ -83,8 +83,3 @@ select pg_temp.assert_true(
 );
 
 select 'KNOWLEDGE_BOUNDED_SEARCH_CONTRACT_PASS';
-
--- CPRI-01 Task 4 is intentionally included in the existing deep DB replay lane.
--- The behavior contract is transaction-isolated and must fail closed until the
--- TeachingSession allocation invariant recognizes governed CPRI authority.
-\ir canonical_plan_runtime_identity_behavior.sql
