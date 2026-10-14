@@ -1,9 +1,21 @@
 # MATERIAL-ORCH-01 — Audit architetturale e decisione di fase
 
+> [!IMPORTANT]
+> **SUPERSEDED / HISTORICAL EVIDENCE / NON-NORMATIVE.** Questo documento conserva l'audit originario che ha motivato la separazione della PR #692, ma **non rappresenta più l'architettura approvata corrente** di MATERIAL-ORCH-01. Le sezioni che seguono su `MaterialTaskRequest`, `MaterialCandidateBundle`, lifecycle materiale parallelo, `DOS.STUDIO_ATLAS.MATERIAL_HANDOFF` e relative tranche descrivono una direzione **pre-v2** e non devono essere usate come contratto di implementazione o fonte di autorità.
+>
+> La direzione normativa corrente è definita da:
+> - `docs/superpowers/specs/2026-10-13-material-orchestration-design.md` — design v2.2;
+> - `docs/superpowers/plans/2026-10-13-material-core-01-canonical-material-acceptance.md`;
+> - `docs/architecture/CANONICAL_PLAN_RUNTIME_IDENTITY.md`;
+> - `docs/superpowers/plans/2026-10-13-cpri-01-canonical-plan-runtime-identity.md`;
+> - `docs/architecture/LESSON_PREPARATION_ORCHESTRATION_CANONICAL.md`.
+>
+> In caso di conflitto, **prevalgono sempre i documenti correnti sopra elencati**. In particolare: nessun protocollo Atlas parallelo, nessun capability ID provider-specifico canonico, shared capability subordinata a OR-07 `PROPOSE_ONLY`, e materiali accettati instradati attraverso Knowledge/canonical content → typed `LessonDesignExtension` → `LessonPreparationManifest.materialSlots`.
+
 **Data:** 2026-10-13  
 **Baseline canonica di partenza:** `develop@7ac09a8795d93cc9a950083cda8b01d5d1407257`  
 **Riferimento qualificato ma non integrabile:** PR #692 `feat/uda-atlas-material-binding`  
-**Stato della decisione:** `CANONICAL_AUDIT / APPROVED_DIRECTION / IMPLEMENTATION_RESTRUCTURE_REQUIRED`
+**Stato storico della decisione al momento dell'audit:** `SUPERSEDED_PRE_V2 / HISTORICAL_EVIDENCE / IMPLEMENTATION_RESTRUCTURE_REQUIRED`
 
 ## 1. Decisione esecutiva
 
@@ -142,7 +154,9 @@ Ogni tranche futura deve avere un solo confine architetturale principale e quatt
 
 Browser/HVA non deve essere usato per scoprire errori di schema, provisioning o identity mismatch.
 
-## 5. Architettura target MATERIAL-ORCH-01
+## 5. Architettura target MATERIAL-ORCH-01 — contenuto storico superseded
+
+> **Nota:** la rappresentazione seguente è conservata esclusivamente per spiegare l'evoluzione dell'audit. Non è un'architettura implementabile né una fonte di autorità dopo il design v2.2.
 
 ```text
 TRAMA GOVERNANCE
@@ -180,7 +194,9 @@ Authoritative Material Acceptance Boundary
 
 Studio Atlas produce **candidati**. Docente OS resta autorità sull'accettazione, sulla lezione e sulla persistenza professionale.
 
-## 6. Lifecycle canonico
+## 6. Lifecycle pre-v2 — contenuto storico superseded
+
+> **Nota:** questo lifecycle parallelo è superseded. Il design corrente riusa il lifecycle canonico di `LessonDesignExtension` e deriva `LessonPreparationManifest.materialSlots`.
 
 ```text
 CANDIDATE
@@ -196,29 +212,33 @@ L'uso effettivo è uno stato/evidenza successiva:
 
 `USED_IN_TEACHING_SESSION`
 
-Invariante: **ACCEPTED non significa USED**.
+Invariante storico ancora valido: **ACCEPTED non significa USED**.
 
-## 7. Capability governance
+## 7. Capability governance pre-v2 — contenuto storico superseded
 
-Capacità proposta:
+> **Nota:** `DOS.STUDIO_ATLAS.MATERIAL_HANDOFF` non è un capability ID canonico. La direzione corrente usa il boundary OR-07 `SharedCapabilityRequest/Result`, provider-neutral e `PROPOSE_ONLY`; ogni futura estensione semantica cross-system richiede il normale processo di governed-memory TRAMA.
+
+Capacità proposta storicamente:
 
 `DOS.STUDIO_ATLAS.MATERIAL_HANDOFF`
 
-Stati concettuali:
+Stati concettuali storici:
 
 - `DISABLED`
 - `QUALIFIED`
 - `AUTHORIZED`
 
-Effettiva attivazione runtime:
+Effettiva attivazione runtime proposta storicamente:
 
 ```text
 effectiveCapability = governanceAuthorized AND deploymentEnabled
 ```
 
-Né il manifest governato né la configurazione di deploy, isolatamente, possono aprire il boundary.
+Resta valido il principio che né manifest governato né configurazione di deploy, isolatamente, possono aprire il boundary.
 
-## 8. Decomposizione canonica
+## 8. Decomposizione pre-v2 — contenuto storico superseded
+
+> **Nota:** l'ordine seguente è storico. L'ordine operativo corrente è quello pubblicato nel design v2.2 e nella descrizione aggiornata della PR #703.
 
 ### Tranche 0 — MATERIAL-ORCH-01 Design
 
@@ -257,9 +277,11 @@ Prima della review indipendente di ogni tranche, il gate deve intercettare almen
 - `ACCEPTED` confuso con `USED`;
 - dipendenza da UUID CAN-PLAN incorporati nel codice runtime.
 
-## 10. Criterio di uscita MATERIAL-ORCH-01
+## 10. Criterio di uscita storico MATERIAL-ORCH-01
 
-La fase può dirsi conclusa solo quando:
+> **Nota:** questo elenco è conservato come evidenza dell'audit originario. I criteri di uscita correnti sono definiti dai documenti normativi v2.2 richiamati all'inizio.
+
+La fase, secondo l'audit originario, poteva dirsi conclusa solo quando:
 
 - CPRI è separato e qualificato;
 - il contratto materiali è provider-neutral;
@@ -275,7 +297,9 @@ La fase può dirsi conclusa solo quando:
 - una fresh independent review non produce finding rilevanti;
 - Human Review si riferisce allo stesso exact head.
 
-## 11. Prossimo passo autorizzato
+## 11. Prossimo passo storico — superseded
+
+> **Nota:** i passi sotto descrivono la sequenza prevista al momento dell'audit e non autorizzano attività correnti. L'ordine corrente è quello del design v2.2 e della PR #703 aggiornata.
 
 1. salvare questa baseline;
 2. produrre la specifica MATERIAL-ORCH-01;
