@@ -2,7 +2,7 @@
 
 begin;
 
-create or replace function pg_temp.assert_true(ok boolean, label text)
+create or replace function pg_temp.cpri_assert_true(ok boolean, label text)
 returns void
 language plpgsql
 as $$
@@ -114,7 +114,7 @@ update public.knowledge_assets
 set current_generation_id = '00000000-0000-4000-8000-000000000a22'
 where id = '00000000-0000-4000-8000-000000000a20';
 
-select pg_temp.assert_true(
+select pg_temp.cpri_assert_true(
   (
     select generation_id = '00000000-0000-4000-8000-000000000a21'::uuid
     from public.canonical_plan_runtime_bindings
@@ -159,7 +159,7 @@ values (
   '00000000-0000-4000-8000-000000000a21'
 );
 
-select pg_temp.assert_true(
+select pg_temp.cpri_assert_true(
   exists (
     select 1
     from public.teaching_session_allocations allocation
