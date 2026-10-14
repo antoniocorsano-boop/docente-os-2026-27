@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { asAnnualPlanBlockStatus } from '@/core/domain/annual-plan-execution'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_STORAGE, type GradeKey } from './model'
 
@@ -49,7 +50,7 @@ export async function saveAnnualPlanProgress(input: {
   if (!input.sectionId) throw new Error('Section id required')
 
   const context = await requireContext()
-  const source = CANONICAL_PLAN_SOURCES[grade]
+  const source = await requireCanonicalPlanSource(context, grade)
   const repository = new SupabaseAnnualPlanExecutionRepository()
   const progress = await repository.saveProgress({
     workspaceId: context.workspace.id,
@@ -70,12 +71,13 @@ export async function resetAnnualPlanProgress(gradeValue: string, sectionId: str
   const grade = asGradeKey(gradeValue)
   if (!sectionId) throw new Error('Section id required')
   const context = await requireContext()
+  const source = await requireCanonicalPlanSource(context, grade)
   const repository = new SupabaseAnnualPlanExecutionRepository()
   await repository.resetProgress(
     context.workspace.id,
     context.academicYear.id,
     sectionId,
-    CANONICAL_PLAN_SOURCES[grade].generationId,
+    source.generationId,
   )
   revalidatePath('/piano-annuale')
 }
@@ -86,6 +88,19 @@ async function requireContext() {
   if (!context) throw new Error('Authenticated workspace required')
   if (!context.academicYear) throw new Error('Active academic year required')
   return { ...context, academicYear: context.academicYear }
+}
+
+async function requireCanonicalPlanSource(
+  context: Awaited<ReturnType<typeof requireContext>>,
+  grade: GradeKey,
+) {
+  const source = await new SupabaseCanonicalPlanSourceRepository().resolve({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    code: CANONICAL_PLAN_SOURCES[grade].code,
+  })
+  if (!source) throw new Error('Il piano annuale della classe non è ancora collegato alla sorgente canonica.')
+  return source
 }
 
 function asGradeKey(value: string): GradeKey {
