@@ -45,8 +45,8 @@ async function loadModule() {
 }
 
 async function classify(snapshot) {
-  const module = await loadModule()
-  return module.classifyCpriRuntimeBaseline(snapshot)
+  const cpriModule = await loadModule()
+  return cpriModule.classifyCpriRuntimeBaseline(snapshot)
 }
 
 test('CPRI baseline preflight implementation exists', () => {
@@ -162,8 +162,8 @@ test('environment reader uses only the runtime snapshot RPC and read-only table 
     throw new Error(`Unexpected preflight request: ${url}`)
   }
 
-  const module = await loadModule()
-  const snapshot = await module.readCpriRuntimeBaselineEnvironment({
+  const cpriModule = await loadModule()
+  const snapshot = await cpriModule.readCpriRuntimeBaselineEnvironment({
     fetchImpl,
     supabaseUrl: 'https://example.supabase.co',
     apiKey: 'publishable-key',
@@ -173,7 +173,7 @@ test('environment reader uses only the runtime snapshot RPC and read-only table 
     requiredCodes: ['CAN-PLAN-1'],
   })
 
-  assert.deepEqual(module.classifyCpriRuntimeBaseline(snapshot), { status: 'READY', blockers: [] })
+  assert.deepEqual(cpriModule.classifyCpriRuntimeBaseline(snapshot), { status: 'READY', blockers: [] })
   assert.equal(requests.length, 4)
   assert.deepEqual(requests.map((request) => request.method), ['POST', 'GET', 'GET', 'GET'])
   assert.equal(requests[0].body, '{}')
