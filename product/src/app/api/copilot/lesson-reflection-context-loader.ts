@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { assembleLessonReflectionCopilotContext } from '@/core/application/copilot/copilot-context-assembler'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 
@@ -37,6 +38,15 @@ export async function loadLessonReflectionCopilotContext(
 
   const projection = resolveRuntimeHumanTaskLessonProjection(grade, block)
   const source = CANONICAL_PLAN_SOURCES[grade]
+  const runtimeSource = await new SupabaseCanonicalPlanSourceRepository().resolve({
+    workspaceId: current.workspace.id,
+    academicYearId: current.academicYear.id,
+    code: source.code,
+  })
+  if (!runtimeSource) {
+    return { status: 'BLOCKED', message: 'Il piano annuale della classe non è ancora collegato alla sorgente canonica.' }
+  }
+
   const assembled = assembleLessonReflectionCopilotContext({
     runId: randomUUID(),
     localDate: currentRomeDate(),
@@ -47,7 +57,7 @@ export async function loadLessonReflectionCopilotContext(
     blockId: block.id,
     projectionId: projection?.projectionId ?? null,
     lessonTitle: projection?.title ?? block.focus ?? block.title,
-    canonicalPlanRef: source.assetId,
+    canonicalPlanRef: runtimeSource.assetId,
     canonicalPlanLabel: `Piano annuale ${GRADE_NUMBER[section.grade]}ª ${section.sectionCode}`,
   })
 
