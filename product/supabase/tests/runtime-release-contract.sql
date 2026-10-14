@@ -105,27 +105,27 @@ begin
 
   -- Regression for fresh Codex P2: a post-watermark migration must not become
   -- trusted merely by self-registering in the required-migration manifest. Keep
-  -- the active watermark at 0100, add a synthetic 0101 history+manifest row,
+  -- the active watermark at 0101, add a synthetic 0102 history+manifest row,
   -- require provenance to fail closed, then remove both probe rows.
   insert into private.runtime_schema_required_migrations(version, migration_id)
-  values (101, '0101_rogue_self_registered_probe');
+  values (102, '0102_rogue_self_registered_probe');
 
   insert into supabase_migrations.schema_migrations(version, name)
-  values ('99999999999999', '0101_rogue_self_registered_probe');
+  values ('99999999999999', '0102_rogue_self_registered_probe');
 
   select public.runtime_schema_contract_snapshot()
     into runtime_snapshot;
   provenance_future_manifest_entry_rejected :=
     coalesce((runtime_snapshot->>'provenanceOk')::boolean, true) is false
-    and runtime_snapshot->'unexpectedMigrations' @> '["0101_rogue_self_registered_probe"]'::jsonb;
+    and runtime_snapshot->'unexpectedMigrations' @> '["0102_rogue_self_registered_probe"]'::jsonb;
 
   delete from supabase_migrations.schema_migrations
   where version = '99999999999999'
-    and name = '0101_rogue_self_registered_probe';
+    and name = '0102_rogue_self_registered_probe';
 
   delete from private.runtime_schema_required_migrations
-  where version = 101
-    and migration_id = '0101_rogue_self_registered_probe';
+  where version = 102
+    and migration_id = '0102_rogue_self_registered_probe';
 
   select public.runtime_schema_contract_snapshot()
     into runtime_snapshot;
