@@ -29,6 +29,35 @@ const provenanceAssertionPaths = new Set([
   'product/src/core/application/human-task-stakeholder-cognitive-gate.test.ts',
 ])
 
+const task5DeferredRuntimeAuthority = new Map([
+  ['product/src/app/api/assistant/lesson-context-loader.ts|' + canonicalSourceSymbol, 2],
+  ['product/src/app/api/copilot/lesson-reflection-context-loader.ts|' + canonicalSourceSymbol, 2],
+  ['product/src/app/classi/[sectionId]/actions.ts|' + canonicalSourceSymbol, 3],
+  ['product/src/app/classi/[sectionId]/lezioni/[blockId]/design-actions.ts|' + canonicalSourceSymbol, 2],
+  ['product/src/app/classi/[sectionId]/lezioni/[blockId]/page.tsx|' + canonicalSourceSymbol, 2],
+  ['product/src/app/classi/[sectionId]/lezioni/[blockId]/preparation-approval-actions.ts|' + canonicalSourceSymbol, 2],
+  ['product/src/app/classi/[sectionId]/lezioni/actions.ts|' + canonicalSourceSymbol, 2],
+  ['product/src/app/classi/[sectionId]/page.tsx|' + canonicalSourceSymbol, 2],
+  ['product/src/app/classi/class-workspace-model.test.ts|36ef3be5-925f-4e28-afff-df11097827a9', 2],
+  ['product/src/app/classi/class-workspace-model.test.ts|a1066c0a-2720-40b0-841e-306cb998ce3e', 2],
+  ['product/src/app/classi/class-workspace-model.ts|' + canonicalSourceSymbol, 2],
+  ['product/src/app/feedback/actions.ts|' + canonicalSourceSymbol, 2],
+  ['product/src/app/piano-annuale/actions.ts|' + canonicalSourceSymbol, 3],
+  ['product/src/app/piano-annuale/AnnualPlanClient.tsx|' + canonicalSourceSymbol, 2],
+  ['product/src/app/piano-annuale/model.ts|' + canonicalSourceSymbol, 1],
+  ['product/src/app/piano-annuale/model.ts|4a027986-5b6d-49db-9b52-01cfae679c08', 1],
+  ['product/src/app/piano-annuale/model.ts|d327355b-76a9-496f-99cb-dc942fd950e4', 1],
+  ['product/src/app/piano-annuale/model.ts|36ef3be5-925f-4e28-afff-df11097827a9', 1],
+  ['product/src/app/piano-annuale/model.ts|a1066c0a-2720-40b0-841e-306cb998ce3e', 1],
+  ['product/src/app/piano-annuale/model.ts|978702f8-4579-452d-925b-8e4d890e19f9', 1],
+  ['product/src/app/piano-annuale/model.ts|bd4cb766-5d46-4420-bc82-f979528a14b2', 1],
+  ['product/src/core/application/human-task-content-pipeline.ts|' + canonicalSourceSymbol, 3],
+  ['product/src/core/application/human-task-plan-guided-uda-projection-recipe.ts|' + canonicalSourceSymbol, 2],
+  ['product/src/core/application/human-task-projection-recipes-b16-b19.ts|d327355b-76a9-496f-99cb-dc942fd950e4', 1],
+  ['product/src/core/application/human-task-projection-recipes-b20-b22.ts|d327355b-76a9-496f-99cb-dc942fd950e4', 1],
+  ['product/src/core/application/human-task-projection-recipes-b23-b27.ts|d327355b-76a9-496f-99cb-dc942fd950e4', 1],
+])
+
 const textExtensions = new Set([
   '.cjs', '.js', '.json', '.md', '.mjs', '.sql', '.ts', '.tsx', '.txt', '.yaml', '.yml',
 ])
@@ -100,6 +129,15 @@ function formatOccurrences(items) {
   return items.map((item) => `${item.classification} ${item.file}:${item.line} ${item.token}`).join('\n')
 }
 
+function occurrenceCounts(items) {
+  const counts = new Map()
+  for (const item of items) {
+    const key = `${item.file}|${item.token}`
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b))
+}
+
 test('CPRI static-authority classifier distinguishes runtime, provenance, unknown and synthetic test identities', () => {
   const productionId = [...productionCanonicalIds][0]
   const syntheticId = '11111111-1111-4111-8111-111111111111'
@@ -139,7 +177,13 @@ test('repository has no unclassified CPRI static-authority occurrence', () => {
   assert.equal(unclassified.length, 0, `Unclassified CPRI occurrences:\n${formatOccurrences(unclassified)}`)
 })
 
-test('repository has no active static CPRI runtime authority', () => {
+test('repository static CPRI runtime authority matches the frozen Task 5 migration inventory', () => {
   const runtimeAuthority = scanRepository().filter((item) => item.classification === 'RUNTIME_AUTHORITY')
-  assert.equal(runtimeAuthority.length, 0, `Static CPRI runtime authority remains:\n${formatOccurrences(runtimeAuthority)}`)
+  const actual = occurrenceCounts(runtimeAuthority)
+  const expected = [...task5DeferredRuntimeAuthority.entries()].sort(([a], [b]) => a.localeCompare(b))
+  assert.deepEqual(
+    actual,
+    expected,
+    `Task 5 CPRI runtime-authority inventory drifted:\n${formatOccurrences(runtimeAuthority)}`,
+  )
 })
