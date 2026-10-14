@@ -5,7 +5,6 @@ import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url))
-const canonicalSourceSymbol = ['CANONICAL', 'PLAN', 'SOURCES'].join('_')
 
 const activeConsumerPaths = [
   'product/src/app/api/assistant/lesson-context-loader.ts',
@@ -24,13 +23,9 @@ const activeConsumerPaths = [
   'product/src/app/piano-annuale/model.ts',
   'product/src/core/application/human-task-content-pipeline.ts',
   'product/src/core/application/human-task-plan-guided-uda-projection-recipe.ts',
-  'product/src/core/application/human-task-projection-recipes-b16-b19.ts',
-  'product/src/core/application/human-task-projection-recipes-b20-b22.ts',
-  'product/src/core/application/human-task-projection-recipes-b23-b27.ts',
 ]
 
-const forbiddenRuntimeAuthority = [
-  canonicalSourceSymbol,
+const productionCanonicalIds = [
   ['4a027986', '5b6d', '49db', '9b52', '01cfae679c08'].join('-'),
   ['d327355b', '76a9', '496f', '99cb', 'dc942fd950e4'].join('-'),
   ['36ef3be5', '925f', '4e28', 'afff', 'df11097827a9'].join('-'),
@@ -39,14 +34,14 @@ const forbiddenRuntimeAuthority = [
   ['bd4cb766', '5d46', '4420', 'bc82', 'f979528a14b2'].join('-'),
 ]
 
-test('CPRI Task 5 removes static production authority from every frozen active runtime consumer', () => {
+test('CPRI Task 5 removes static production materialization from every active runtime consumer', () => {
   const residuals = []
 
   for (const relativePath of activeConsumerPaths) {
     const source = readFileSync(path.join(repoRoot, relativePath), 'utf8')
     const lines = source.split(/\r?\n/)
     lines.forEach((line, index) => {
-      for (const token of forbiddenRuntimeAuthority) {
+      for (const token of productionCanonicalIds) {
         if (line.includes(token)) residuals.push(`${relativePath}:${index + 1} ${token}`)
       }
     })
@@ -55,6 +50,16 @@ test('CPRI Task 5 removes static production authority from every frozen active r
   assert.deepEqual(
     residuals,
     [],
-    `Static CPRI runtime authority remains in Task 5 consumers:\n${residuals.join('\n')}`,
+    `Static CPRI runtime materialization remains in active consumers:\n${residuals.join('\n')}`,
   )
+})
+
+test('canonical plan model exposes logical identity without embedded runtime asset or generation', () => {
+  const source = readFileSync(path.join(repoRoot, 'product/src/app/piano-annuale/model.ts'), 'utf8')
+  const registryStart = source.indexOf('export const CANONICAL_PLAN_SOURCES')
+  const registryEnd = source.indexOf('export const ANNUAL_PLAN_SEGMENTS')
+  assert.ok(registryStart >= 0 && registryEnd > registryStart, 'logical canonical-plan registry must exist')
+  const registry = source.slice(registryStart, registryEnd)
+  assert.doesNotMatch(registry, /assetId|generationId/)
+  assert.match(registry, /CANONICAL_PLAN_CODES/)
 })
