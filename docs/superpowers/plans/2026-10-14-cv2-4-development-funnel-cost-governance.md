@@ -1,51 +1,44 @@
 # CV2-4 Development Funnel & Cost Governance Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans task-by-task. Track every task with RED → GREEN evidence and exact-head verification.
 
-**Goal:** Implement a stable DEVELOPMENT → CANDIDATE → RUNTIME funnel that blocks expensive GitHub Actions work until a PR exact head is genuinely ready for candidate qualification, while preserving fail-closed exact-head assurance.
+**Goal:** Establish a durable DEVELOPMENT → CANDIDATE → RUNTIME funnel that stops expensive GitHub Actions work on broken development heads while preserving exact-head, fail-closed assurance.
 
-**Architecture:** Product CI becomes the cheap SHA-bound DEVELOPMENT preflight and does not re-run on `ready_for_review`. A single `candidate-qualification.yml` workflow is the PR CANDIDATE authority and is triggered only by `pull_request.ready_for_review`; it verifies the live PR head and prior same-SHA `cv2/development-preflight`, then calls existing heavy gate implementations through `workflow_call`. `certification-impact.v1` remains the certification selector, the Runtime Release Contract remains the DB/runtime-depth selector, and runtime/push/manual gate behavior is preserved.
+**Architecture:** The cutover is deliberately two-phase. Phase A adds the new DEVELOPMENT status, exact-head candidate lease, authoritative gate selection and reusable candidate workers **without retiring legacy heavy PR assurance**. An exact head is then certified in shadow mode, with the new candidate path and legacy controls both present. Only after that proof does Phase B remove duplicate/heavy DEVELOPMENT triggers, perform the cost-containment probe, and recertify the final exact head. This satisfies CV2-4 Stage 4: replacement is proven before the old control is retired.
 
-**Tech Stack:** GitHub Actions YAML, Node.js 22, existing `.github/scripts/certification/*.mjs` contracts, TypeScript 5.9, Next.js 16, Supabase CLI, Playwright, PostgreSQL.
+**Tech Stack:** GitHub Actions YAML, Node.js 22, existing `.github/scripts/certification/*.mjs`, TypeScript 5.9, Next.js 16, Supabase CLI, Playwright, PostgreSQL.
 
-**Spec:** `docs/superpowers/specs/2026-10-14-cv2-4-development-funnel-cost-governance-design.md`
+**Approved spec:** `docs/superpowers/specs/2026-10-14-cv2-4-development-funnel-cost-governance-design.md`
 
-## Global Constraints
+## Global invariants
 
-- `develop` is the governed product line; `main` remains GitHub default unless separately changed.
-- PR `opened`, `reopened`, and `synchronize` are DEVELOPMENT only.
-- `pull_request.ready_for_review` is the single PR event that authorizes CANDIDATE.
-- Product CI MUST NOT start a second preflight on `ready_for_review`; CANDIDATE consumes the already-green same-SHA DEVELOPMENT status.
+- `develop` remains the governed product line; changing default branch `main` is out of scope.
+- `opened`, `reopened`, `synchronize` are DEVELOPMENT events; `ready_for_review` is the only automatic PR CANDIDATE event.
 - Candidate evidence is bound to PR base SHA + exact head SHA and full base-to-head diff.
-- `certification-impact.v1` remains authoritative for certification gates; Runtime Release Contract remains authoritative for DB/runtime depth.
-- Missing, stale, malformed, contradictory, or incomplete evidence fails closed.
-- No auto-merge, Beta promotion, live DB mutation, or weakening of ASVS/WCAG/HVA/P6/recovery assurance.
-- Same-SHA retry only for evidence-backed `INFRA_TRANSIENT`; no rerun-all.
-- Bootstrap cost rule: implementation work happens on an isolated branch without an open PR until deterministic local/cloud DEVELOPMENT verification is green.
-- Open the implementation PR as **Draft** exactly once; use DEVELOPMENT there, then transition Draft → Ready for review exactly once for candidate qualification.
-- Central certification changes receive one intentional full assurance before merge.
-- No unrelated product refactors.
+- `certification-impact.v1` remains the certification selector; Runtime Release Contract remains the DB/runtime-depth selector.
+- No second path classifier, no auto-merge, no Beta promotion, no live DB mutation.
+- Missing/stale/malformed evidence fails closed.
+- Same-SHA rerun only for evidence-backed `INFRA_TRANSIENT`; `CASCADE` is never independently rerun.
+- Implementation work stays on an isolated branch without an open implementation PR until deterministic verification is green.
+- Central certification policy changes receive one deliberate shadow qualification before legacy controls are retired and one final qualification after cutover.
 
-## Review Focus
+## Required machine states
 
-1. **New commit after Ready for review:** stale candidate must fail before browser, Supabase, PostgreSQL or authenticated E2E setup.
-2. **Missing/failed DEVELOPMENT status:** candidate must fail closed and no reusable heavy gate may start.
-3. **DB change plus compile defect:** DEVELOPMENT must fail at typecheck/tests without Supabase replay or P7 restore.
-4. **Non-applicable gate:** candidate finalizer must treat caller-level `skipped` as acceptable only when the authoritative receipt says the gate was not required.
-5. **Transient gate failure:** same-SHA failed reusable job remains individually retryable without rerunning unrelated successful gates.
+- `cv2/development-preflight`
+- `cv2/candidate-qualification`
 
----
+A new commit after CANDIDATE invalidates the prior candidate by SHA. Requalification requires Draft → Ready for review again.
 
-## File Structure
+## New files
 
-### New files
-- `.github/scripts/certification/cv2-lifecycle.mjs` — pure candidate lease/finalization logic.
-- `.github/scripts/certification/cv2-lifecycle.test.mjs` — lifecycle RED/GREEN tests.
-- `.github/scripts/certification/cv2-topology-contract.test.mjs` — repository topology guard.
-- `.github/workflows/candidate-qualification.yml` — sole PR candidate coordinator.
-- `.github/workflows/candidate-database-assurance.yml` — reusable exact-head deep DB replay.
+- `.github/scripts/certification/cv2-lifecycle.mjs`
+- `.github/scripts/certification/cv2-lifecycle.test.mjs`
+- `.github/scripts/certification/cv2-topology-contract.test.mjs`
+- `.github/workflows/candidate-qualification.yml`
+- `.github/workflows/candidate-database-assurance.yml`
 
-### Modified files
+## Main modified files
+
 - `AGENTS.md`
 - `docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md`
 - `docs/architecture/RUNTIME_RELEASE_CONTRACT_V1.md`
@@ -58,194 +51,230 @@
 - `.github/workflows/wcag22-aa-assurance.yml`
 - `.github/workflows/p6-performance.yml`
 - `.github/workflows/x4-planner-e2e.yml`
-- `.github/scripts/certification/classifier.mjs`
-- `.github/scripts/certification/classifier.test.mjs`
-- `.github/scripts/certification/gate-decision.mjs`
-- `.github/scripts/certification/gate-decision.test.mjs`
-- `.github/scripts/runtime-release-contract.test.mjs` and `runtime-release-contract.mjs` only if lifecycle output needs an explicit field; DB impact semantics must not change silently.
+- classifier/gate-decision tests and implementation
 
 ---
 
-### Task 1: Persist the approved lifecycle contract
+# PHASE A — Build and certify the replacement while legacy assurance remains
 
-**Files:** `AGENTS.md`, both canonical architecture documents, new `cv2-topology-contract.test.mjs`.
+### Task A1 — Persist the approved contract
 
-**Interfaces:** Produces the repository-readable process future chats/agents must load.
+**Files:** `AGENTS.md`, both canonical architecture docs, new topology test.
 
-- [ ] **Step 1: Write RED governance tests** asserting:
-  - `AGENTS.md` points to CV2 before significant code/CI/test/qualification/rerun work;
-  - CV2 canonical contains DEVELOPMENT/CANDIDATE/RUNTIME, `ready_for_review`, and stable status names;
-  - Runtime Release Contract states DEVELOPMENT=L0/static, DB deep replay/recovery=CANDIDATE, reconciliation=RUNTIME.
-- [ ] **Step 2: Run RED:** `node --test .github/scripts/certification/cv2-topology-contract.test.mjs` → FAIL.
-- [ ] **Step 3: Materialize the approved contracts** without changing workflows yet.
-- [ ] **Step 4: Run GREEN:** `node --test .github/scripts/certification/*.test.mjs .github/scripts/runtime-release-contract.test.mjs` → PASS.
-- [ ] **Step 5: Commit:** `docs(cv2): persist development candidate runtime funnel`.
+- [ ] Write RED tests requiring `AGENTS.md` to load CV2 + Runtime Release Contract before significant code/CI/testing/qualification/rerun work.
+- [ ] Require canonical docs to contain DEVELOPMENT/CANDIDATE/RUNTIME, `ready_for_review`, stable status names, Draft → Ready recandidation, and DEVELOPMENT=L0 / CANDIDATE=L1+recovery / RUNTIME=L2 timing.
+- [ ] Run RED: `node --test .github/scripts/certification/cv2-topology-contract.test.mjs`.
+- [ ] Materialize approved contract text; do not change workflows yet.
+- [ ] Run GREEN: `node --test .github/scripts/certification/*.test.mjs .github/scripts/runtime-release-contract.test.mjs`.
+- [ ] Commit: `docs(cv2): persist development candidate runtime funnel`.
 
----
+### Task A2 — Add DEVELOPMENT status and fail-fast ordering, but keep legacy deep assurance temporarily
 
-### Task 2: Make Product CI the DEVELOPMENT circuit breaker
+**Files:** `product-ci.yml`, topology test.
 
-**Files:** `.github/workflows/product-ci.yml`, topology test.
+**Purpose:** Make root-cause feedback cheap-first without yet removing an existing assurance control.
 
-**Interfaces:** Produces commit status `cv2/development-preflight` bound to exact PR head SHA.
+- [ ] RED topology tests require Product CI to publish pending/final `cv2/development-preflight` on exact head and use `cancel-in-progress: true` for stale PR runs.
+- [ ] RED ordering test requires `npm ci → typecheck → product tests → lint → build` before any full Supabase replay.
+- [ ] Keep current DB impact computation and deep replay **temporarily**, but move replay after all cheap compile/test/build prerequisites. A broken typecheck must therefore stop before Supabase.
+- [ ] Product CI PR types remain `opened`, `reopened`, `synchronize`; it must not rerun merely on `ready_for_review`.
+- [ ] Verify certification tests + `npm ci` + typecheck + tests + lint + build.
+- [ ] Commit: `ci(cv2): add fail-fast development preflight shadow mode`.
 
-- [ ] **Step 1: Extend RED topology tests** asserting Product CI:
-  - PR types are exactly DEVELOPMENT-relevant `opened`, `reopened`, `synchronize` (not `ready_for_review`);
-  - uses PR-scoped concurrency with `cancel-in-progress: true`;
-  - publishes pending/final `cv2/development-preflight` on exact head;
-  - orders `npm ci → typecheck → product tests → lint → build` after static contract checks;
-  - contains no Supabase deep replay inside the DEVELOPMENT job.
-- [ ] **Step 2: Run RED** against current Product CI → FAIL because DB replay currently precedes typecheck.
-- [ ] **Step 3: Implement minimal DEVELOPMENT flow** preserving cheap deterministic certification/runtime contract tests.
-- [ ] **Step 4: Verify locally/cloud:** certification tests, `npm ci`, typecheck, product tests, lint, build all PASS.
-- [ ] **Step 5: Commit:** `ci(cv2): add fail-fast development preflight`.
-
----
-
-### Task 3: Add exact-head candidate lease and finalization contracts
+### Task A3 — Add pure lifecycle contracts
 
 **Files:** new `cv2-lifecycle.mjs` and test.
 
-**Interfaces:**
+Implement:
 - `evaluateCandidateLease({ expectedSha, liveSha, developmentStatus })`
-- result: `{ schema:'cv2-candidate-lease.v1', authorized, reason, expectedSha, liveSha, mergeAuthorized:false }`
 - `evaluateCandidateQualification({ lease, required, results })`
-- result state: `success | failure | pending`, always `mergeAuthorized:false`.
 
-- [ ] **Step 1: RED lease tests:** valid same SHA+success authorizes; stale/missing/pending/failed/malformed denies.
-- [ ] **Step 2: RED finalization tests:** required success passes; required failure fails; required missing/pending never succeeds; skipped is allowed only when `required=false`.
-- [ ] **Step 3: Implement pure helpers** with no GitHub API calls.
-- [ ] **Step 4: Run GREEN:** lifecycle + existing certification tests PASS.
-- [ ] **Step 5: Commit:** `feat(cv2): add exact-head lifecycle contracts`.
+Required tests:
+- [ ] same SHA + DEVELOPMENT success authorizes;
+- [ ] stale/missing/pending/failed/malformed denies;
+- [ ] required success passes;
+- [ ] required failure fails;
+- [ ] required missing/pending never succeeds;
+- [ ] `skipped` is acceptable only where authoritative `required=false`;
+- [ ] all receipts retain `mergeAuthorized=false`.
 
----
+Run RED, implement minimally, run GREEN. Commit: `feat(cv2): add exact-head lifecycle contracts`.
 
-### Task 4: Extend the authoritative classifier for K1 rather than creating a second classifier
+### Task A4 — Extend existing classifier with K1
 
 **Files:** classifier/gate-decision modules and tests.
 
-**Interfaces:** Adds gate `K1_KNOWLEDGE_UPLOAD` to existing `certification-impact.v1` / `certification-gate-decision.v1`; no new schema.
+- [ ] Add `K1_KNOWLEDGE_UPLOAD` to the existing `certification-impact.v1` / `certification-gate-decision.v1`; do not create a second schema.
+- [ ] RED tests cover current K1 governed paths: Knowledge UI/API, ingestion/infrastructure/storage port, K1 E2E support/config, relevant migrations and K1 workflow contract.
+- [ ] Central certification-contract change must require K1 during one-time full assurance.
+- [ ] Unknown relevant files remain fail-closed.
+- [ ] GREEN all certification tests.
+- [ ] Commit: `feat(cv2): classify K1 as governed candidate gate`.
 
-- [ ] **Step 1: RED tests** copy K1's current governed path set into classifier expectations: Knowledge UI/API, ingestion/infrastructure/storage port, K1 E2E support/config, relevant migrations and K1 workflow contract require K1.
-- [ ] **Step 2: RED fail-closed test:** central certification-contract change includes K1 in one-time full heavy assurance.
-- [ ] **Step 3: Extend `ALL_HEAVY_GATES`, `KNOWN_CERTIFICATION_GATES`, reasons and tests**; do not change merge authority.
-- [ ] **Step 4: Run GREEN:** all certification tests PASS.
-- [ ] **Step 5: Commit:** `feat(cv2): classify K1 as governed candidate gate`.
-
----
-
-### Task 5: Convert heavy gate implementations to reusable candidate workers
+### Task A5 — Make heavy implementations reusable **without retiring their legacy PR entry yet**
 
 **Files:** Browser orchestrator, K1, P7, ASVS, topology test.
 
-**Interfaces:** Each reusable workflow accepts explicit `base_sha`/`tested_sha` where needed and returns normal workflow success/failure; heavy implementations remain separate files.
+This is the key shadow-mode rule: add `workflow_call`; preserve existing PR/push/manual entrypoints until Checkpoint A passes.
 
-- [ ] **Step 1: RED topology tests** require:
-  - no direct ordinary PR trigger for Browser/K1/P7 heavy execution;
-  - `workflow_call` exists for Browser, K1, P7, ASVS;
-  - push/runtime/manual triggers currently required remain intact.
-- [ ] **Step 2: Browser:** replace direct PR candidate authority with `workflow_call`; consume explicit base/tested SHA; preserve full `certification-impact.v1` selection, existing HVA/WCAG/P6/X4 statuses and evidence.
-- [ ] **Step 3: K1:** add `workflow_call` local-application acceptance path; preserve push/Beta and manual behavior; no duplicate K1 path classifier remains in workflow routing.
-- [ ] **Step 4: P7:** add `workflow_call` restore-rehearsal path; preserve manual behavior and `p7-recovery/db-restore-rehearsal` status.
-- [ ] **Step 5: ASVS:** add reusable invocation while preserving cheap existing push/PR behavior unless later evidence shows duplication is material.
-- [ ] **Step 6: Run GREEN** topology + certification tests.
-- [ ] **Step 7: Commit:** `ci(cv2): make heavy assurance reusable by candidate orchestrator`.
+- [ ] Browser reusable path accepts explicit `base_sha` + `tested_sha`, preserves exact-head classifier, HVA/WCAG/P6/X4 statuses and evidence.
+- [ ] K1 reusable local-application path accepts exact SHA and inherits governed MFA secrets; existing PR/push/Beta behavior remains for shadow certification.
+- [ ] P7 reusable path accepts exact SHA; existing PR/manual restore path remains for shadow certification.
+- [ ] ASVS gains reusable exact-head invocation; existing cheap behavior remains.
+- [ ] Called workflows never rely on `github.event.pull_request` when invoked via `workflow_call`; all PR-specific values arrive as explicit inputs.
+- [ ] GREEN topology/certification tests.
+- [ ] Commit: `ci(cv2): add reusable shadow assurance workers`.
+
+### Task A6 — Add reusable candidate DB assurance while retaining legacy Product CI replay
+
+**Files:** new `candidate-database-assurance.yml`, runtime/topology tests.
+
+- [ ] Extract/reuse the proven migration-copy order, local Supabase start/reset, SQL contracts and watermark equality behavior.
+- [ ] Inputs: explicit `base_sha`, `tested_sha`; no Beta/Production DB credential.
+- [ ] Runtime Release Contract decides `databaseDeep`; false produces explicit NOT_APPLICABLE at caller level.
+- [ ] For Checkpoint A only, Product CI's old deep replay remains as parallel legacy evidence.
+- [ ] GREEN runtime/topology tests.
+- [ ] Commit: `ci(cv2): add shadow candidate database assurance`.
+
+### Task A7 — Build the sole Candidate Qualification orchestrator
+
+**File:** new `candidate-qualification.yml`, lifecycle/topology tests.
+
+Trigger only:
+`pull_request` targeting `develop`, `types: [ready_for_review]`.
+
+`lease-and-impact` must:
+1. bind event PR/base/head;
+2. re-read live PR head;
+3. read same-SHA `cv2/development-preflight`;
+4. fail closed on stale/non-green head;
+5. explicitly checkout exact head;
+6. generate full base-to-head certification receipt;
+7. generate Runtime Release Contract impact.
+
+Then use reusable workers:
+- Browser orchestrator;
+- ASVS when required;
+- K1 when required;
+- candidate DB assurance when `databaseDeep=true`;
+- P7 when recovery is required.
+
+Finalizer:
+- [ ] runs `if: always()`;
+- [ ] publishes a machine-readable `cv2-candidate-qualification.v1` artifact/summary with expected SHA, live SHA, required gates, worker results and derived outcome;
+- [ ] marks an upstream-blocked downstream result as `CASCADE` in the summary rather than a second product defect;
+- [ ] publishes exact-head `cv2/candidate-qualification`;
+- [ ] never merges/promotes.
+
+Commit: `feat(cv2): add shadow exact-head candidate orchestrator`.
+
+### Task A8 — Verify implementation branch before opening a PR
+
+No implementation PR yet.
+
+Run in isolated cloud worktree/container:
+- [ ] `node --test .github/scripts/certification/*.test.mjs .github/scripts/runtime-release-contract.test.mjs`
+- [ ] `cd product && npm ci --no-audit --no-fund`
+- [ ] `npm run typecheck`
+- [ ] `npm test`
+- [ ] `npm run lint`
+- [ ] `npm run build`
+
+All must PASS before PR creation. Do not use the user's PC or paid external compute.
 
 ---
 
-### Task 6: Move deep Supabase replay into reusable CANDIDATE DB assurance
+# CHECKPOINT A — Shadow certification before retirement
 
-**Files:** new `candidate-database-assurance.yml`, Product CI cleanup, runtime-contract tests/topology test.
+### Task A9 — Open one Draft implementation PR and certify the replacement in parallel
 
-**Interfaces:** Inputs `base_sha`, `tested_sha`; caller invokes only when Runtime Release Contract says `databaseDeep=true`.
+- [ ] Open exactly one Draft PR to `develop` from the verified implementation branch.
+- [ ] Accept the one-time broad legacy run caused by central certification changes; do not make exploratory commits.
+- [ ] Classify every red as `CODE_REGRESSION`, `POLICY_CERTIFICATION`, `INFRA_TRANSIENT`, or `CASCADE`; no rerun-all.
+- [ ] Obtain green `cv2/development-preflight` on exact head H1.
+- [ ] Mark Draft → Ready for review once to run new CANDIDATE path on H1.
+- [ ] Verify new candidate workers and legacy controls both provide required exact-head assurance on H1.
+- [ ] Verify candidate summary/receipt is SHA-bound and every required gate is success or explicit NOT_APPLICABLE.
+- [ ] Verify targeted same-SHA retry is technically possible for a reusable worker; do not manufacture an infrastructure failure.
 
-- [ ] **Step 1: RED tests** prove DEVELOPMENT never starts Supabase and candidate DB worker is the only PR deep replay path.
-- [ ] **Step 2: Create reusable workflow** by moving, not rewriting, the proven lexical migration-copy, local Supabase start/reset, SQL contracts and watermark equality logic from Product CI.
-- [ ] **Step 3: Ensure no real/Beta DB credential is consumed** by this worker.
-- [ ] **Step 4: Run GREEN** runtime/topology tests; final candidate later proves one real ephemeral replay.
-- [ ] **Step 5: Commit:** `ci(cv2): isolate deep database assurance for candidates`.
+**Checkpoint A PASS condition:** new candidate route is exact-head certified while legacy heavy assurance still exists. Only then may Phase B begin.
 
----
-
-### Task 7: Build the sole Candidate Qualification orchestrator
-
-**Files:** new `.github/workflows/candidate-qualification.yml`, lifecycle/topology tests.
-
-**Interfaces:** Trigger only `pull_request` to `develop`, `types: [ready_for_review]`; publishes `cv2/candidate-qualification`.
-
-- [ ] **Step 1: RED topology tests** assert sole candidate event authority and no heavy worker has its own `ready_for_review` PR authority.
-- [ ] **Step 2: Implement `lease-and-impact` job:**
-  1. bind expected head from event;
-  2. re-read live PR head via GitHub API;
-  3. read same-SHA `cv2/development-preflight` status;
-  4. evaluate candidate lease;
-  5. checkout exact head only after/for deterministic impact work;
-  6. generate full base-to-head `certification-impact.v1` receipt;
-  7. generate Runtime Release Contract impact outputs.
-- [ ] **Step 3: Call reusable workers with `needs`/`if`:**
-  - Browser orchestrator (it internally selects HVA/WCAG/P6/X4);
-  - ASVS when `ASVS_5_0` required;
-  - K1 when `K1_KNOWLEDGE_UPLOAD` required;
-  - Candidate DB assurance when `databaseDeep=true`;
-  - P7 restore when DB/recovery impact requires it.
-- [ ] **Step 4: Implement finalizer with `if: always()`:** feed authoritative required booleans + `needs.*.result` to `evaluateCandidateQualification`; publish final exact-head `cv2/candidate-qualification`; never merge/promote.
-- [ ] **Step 5: Run GREEN** lifecycle/topology/certification/runtime tests.
-- [ ] **Step 6: Commit:** `feat(cv2): orchestrate exact-head candidate qualification`.
+If Checkpoint A is not PASS: stop. Do not retire any legacy trigger.
 
 ---
 
-### Task 8: Complete CV2-1B duplicate browser PR-trigger retirement
+# PHASE B — Cut over cost containment only after replacement is proven
 
-**Files:** experience-acceptance, WCAG, P6, X4 legacy workflows, topology test.
+### Task B1 — Return PR to Draft and retire duplicated/heavy DEVELOPMENT execution
 
-**Interfaces:** Browser Certification Orchestrator remains candidate PR authority; legacy workflows retain governed push/runtime/manual roles.
+Start only after Checkpoint A PASS.
 
-- [ ] **Step 1: RED tests** show duplicate legacy PR heavy triggers still exist.
-- [ ] **Step 2: Remove only duplicate PR triggers**; do not delete runtime/manual triggers, evidence retention, status naming or human review semantics.
-- [ ] **Step 3: GREEN topology/certification tests.**
-- [ ] **Step 4: Commit:** `ci(cv2): retire duplicate legacy browser pr triggers`.
+- [ ] Convert PR back to Draft.
+- [ ] Remove full Supabase replay from ordinary Product CI; retain static L0 impact/lineage checks and `cv2/development-preflight`.
+- [ ] Remove direct ordinary PR heavy entry from Browser, K1 and P7 now that reusable candidate routes are certified; preserve push/runtime/manual behavior where governed.
+- [ ] Complete CV2-1B: remove duplicate legacy PR triggers from HVA/WCAG/P6/X4 workflows; preserve runtime/push/manual roles and evidence semantics.
+- [ ] Do not remove ASVS cheap PR checks unless evidence shows they are materially wasteful; candidate still invokes ASVS when authoritative receipt requires it.
+- [ ] RED topology tests must fail before this cutover and GREEN after it, proving `synchronize` cannot authorize Browser/K1/P7/Supabase-replay or duplicate browser heavy work.
+- [ ] Commit only the planned cutover: `ci(cv2): retire duplicate development heavy assurance`.
 
----
+### Task B2 — Prove the cost circuit breaker on the open Draft PR
 
-### Task 9: Bootstrap and prove the cutover economically
+Now the new topology is active in the PR ref.
 
-**Files:** no new product files; execution/PR evidence.
+- [ ] Create one controlled, test-only/typecheck failure that cannot affect production behavior.
+- [ ] Push once and verify exact failing head H2-fail:
+  - `cv2/development-preflight` = failure;
+  - zero Chromium/browser candidate jobs;
+  - zero K1 authenticated browser job;
+  - zero Supabase deep replay;
+  - zero P7 PostgreSQL restore;
+  - no CANDIDATE run because PR is Draft.
+- [ ] Record workflow/job count and compare with PR #706 baseline of 17 PR workflows on one head.
+- [ ] Revert the controlled failure immediately.
+- [ ] On new exact head H2-green, obtain green DEVELOPMENT verification.
 
-**Interfaces:** Consumes Tasks 1–8 locally/cloud GREEN; produces one implementation PR and exact-head transition evidence.
+### Task B3 — Final candidate qualification after cutover
 
-- [ ] **Step 1: Before opening any implementation PR**, in isolated cloud worktree/container run:
-  - `node --test .github/scripts/certification/*.test.mjs .github/scripts/runtime-release-contract.test.mjs`
-  - `cd product && npm ci --no-audit --no-fund`
-  - `cd product && npm run typecheck`
-  - `cd product && npm test`
-  - `cd product && npm run lint`
-  - `cd product && npm run build`
-  All must PASS.
-- [ ] **Step 2: Open exactly one Draft implementation PR to `develop`.** Accept one intentional broad transition run caused by changing central certification policy; do not make exploratory follow-up commits.
-- [ ] **Step 3: DEVELOPMENT cost probe while PR is Draft:** introduce one controlled test-only/typecheck failure, push once, verify `cv2/development-preflight` fails and Browser/K1/Supabase/P7 heavy work does not start; revert immediately and obtain green DEVELOPMENT on new exact head.
-- [ ] **Step 4: Classify every red** as `CODE_REGRESSION`, `POLICY_CERTIFICATION`, `INFRA_TRANSIENT`, or `CASCADE`; never rerun CASCADE.
-- [ ] **Step 5: Mark Draft → Ready for review once.** Verify one CANDIDATE run bound to the exact green head and full base-to-head diff.
-- [ ] **Step 6: Full transition assurance:** required browser gates, ASVS, K1, DB replay and P7 execute/select correctly; candidate status is green; human gates remain human; no merge/Beta/live DB mutation.
-- [ ] **Step 7: Compare cost evidence** against PR #706 baseline of 17 PR workflow runs on one exact head. Hard acceptance: failing DEVELOPMENT head starts zero browser/Chromium, Supabase deep replay, P7 PostgreSQL restore and K1 authenticated browser jobs.
-- [ ] **Step 8: Human Review** of exact-head assurance + cost delta before merge.
+- [ ] Mark Draft → Ready for review again on H2-green.
+- [ ] Candidate re-reads live head and refuses any stale H1 evidence.
+- [ ] Full base-to-head classification includes the trigger-retirement changes and therefore receives the assurance required for central certification policy changes.
+- [ ] Required Browser/ASVS/K1/DB/P7 candidate gates execute or become explicit NOT_APPLICABLE under authoritative receipts.
+- [ ] `cv2/candidate-qualification` PASS only if all required same-SHA evidence is valid.
+- [ ] No auto-merge, Beta promotion, live DB mutation.
+
+### Task B4 — Final Human Review and cost decision
+
+Present:
+- exact final head;
+- DEVELOPMENT result;
+- CANDIDATE result and receipt;
+- legacy-retirement topology evidence;
+- controlled-failure cost evidence;
+- comparison against #706 baseline;
+- any remaining cheap branch-agnostic governance workflows (for example vocabulary/perceptible-write) as separate low-cost residuals rather than hidden heavy work.
+
+No merge until Human Review approves.
 
 ---
 
 ## Rollback
 
-If the candidate orchestrator cannot prove required gate coverage, workflow-call semantics, or exact-head binding:
+If Checkpoint A cannot prove the new candidate path, legacy controls remain untouched.
 
-1. do not retire/restore additional legacy triggers;
-2. restore prior full candidate behavior for the affected gate;
-3. retain DEVELOPMENT fail-fast improvements only if they do not suppress required assurance;
-4. classify as `POLICY_CERTIFICATION`;
+If Phase B cutover breaks required assurance:
+1. restore the affected legacy PR trigger(s);
+2. keep only improvements whose assurance equivalence is proven;
+3. classify as `POLICY_CERTIFICATION`;
+4. return PR to Draft;
 5. no merge until exact-head full assurance is restored.
 
-## Post-cutover operating rule
+## Post-cutover rule for every future chat/agent
 
-- ordinary commit → DEVELOPMENT only;
-- fix the primary failure before candidate escalation;
-- Draft → Ready for review → one CANDIDATE qualification on exact head;
-- any later commit → DEVELOPMENT automatically and prior candidate evidence is stale;
-- runtime/deploy checks stay separate;
-- no rerun-all; same-SHA targeted retry only for verified transient infrastructure failure.
+1. Load CV2 canonical + Runtime Release Contract from repository.
+2. Ordinary commit = DEVELOPMENT only.
+3. Fix primary cheap failure before candidate escalation.
+4. Draft → Ready = CANDIDATE on exact head.
+5. New commit after candidate = DEVELOPMENT; stale evidence is invalid.
+6. Recandidate only via Draft → Ready.
+7. Runtime/deploy assurance remains separate.
+8. No rerun-all; same-SHA targeted retry only for verified transient infrastructure failure.
