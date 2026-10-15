@@ -81,3 +81,29 @@ test('Product CI runs cheap product prerequisites before any full Supabase repla
     'Replay complete migration chain on ephemeral Supabase',
   ], 'product-ci.yml')
 })
+
+test('shadow heavy workers expose workflow_call without retiring legacy entrypoints', () => {
+  const browser = read('.github/workflows/browser-certification-orchestrator.yml')
+  const k1 = read('.github/workflows/k1-knowledge-e2e.yml')
+  const p7 = read('.github/workflows/p7-db-restore-rehearsal.yml')
+  const asvs = read('.github/workflows/asvs50-assurance.yml')
+
+  for (const [label, workflow] of [['browser', browser], ['k1', k1], ['p7', p7], ['asvs', asvs]]) {
+    requiredTokens(workflow, ['workflow_call:', 'tested_sha:'], `${label} reusable worker`)
+  }
+  requiredTokens(browser, ['base_sha:', 'pull_request:'], 'browser shadow worker')
+  requiredTokens(k1, ['pull_request:', 'push:', 'workflow_dispatch:'], 'k1 shadow worker')
+  requiredTokens(p7, ['pull_request:', 'workflow_dispatch:'], 'p7 shadow worker')
+  requiredTokens(asvs, ['pull_request:', 'push:', 'workflow_dispatch:'], 'asvs shadow worker')
+})
+
+test('reusable heavy workers bind checkout/status to explicit tested SHA when called', () => {
+  const browser = read('.github/workflows/browser-certification-orchestrator.yml')
+  const k1 = read('.github/workflows/k1-knowledge-e2e.yml')
+  const p7 = read('.github/workflows/p7-db-restore-rehearsal.yml')
+  const asvs = read('.github/workflows/asvs50-assurance.yml')
+  requiredTokens(browser, ['inputs.tested_sha', 'inputs.base_sha'], 'browser reusable worker')
+  for (const [label, workflow] of [['k1', k1], ['p7', p7], ['asvs', asvs]]) {
+    requiredTokens(workflow, ['inputs.tested_sha'], `${label} reusable worker`)
+  }
+})
