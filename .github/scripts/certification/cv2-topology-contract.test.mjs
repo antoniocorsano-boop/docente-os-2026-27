@@ -128,3 +128,39 @@ test('candidate DB assurance is reusable, exact-head and local-only', () => {
     assert.equal(workflow.includes(forbidden), false, `candidate DB assurance must not contain ${forbidden}`)
   }
 })
+
+test('candidate qualification has one ready_for_review authority and exact-head lease', () => {
+  const workflow = read('.github/workflows/candidate-qualification.yml')
+  requiredTokens(workflow, [
+    'types: [ready_for_review]',
+    'branches: [develop]',
+    'lease-and-impact:',
+    'github.event.pull_request.head.sha',
+    'github.event.pull_request.base.sha',
+    'cv2/development-preflight',
+    'cv2-lifecycle.mjs',
+    'generate-impact-receipt.mjs',
+    'runtime-release-contract.mjs',
+  ], 'candidate-qualification.yml')
+  assert.equal(workflow.includes('workflow_dispatch:'), false, 'Candidate authority must not be workflow_dispatch')
+  assert.equal(workflow.includes('types: [synchronize]'), false, 'Synchronize must not authorize CANDIDATE')
+})
+
+test('candidate qualification orchestrates reusable workers and always finalizes exact-head evidence', () => {
+  const workflow = read('.github/workflows/candidate-qualification.yml')
+  requiredTokens(workflow, [
+    './.github/workflows/browser-certification-orchestrator.yml',
+    './.github/workflows/asvs50-assurance.yml',
+    './.github/workflows/k1-knowledge-e2e.yml',
+    './.github/workflows/candidate-database-assurance.yml',
+    './.github/workflows/p7-db-restore-rehearsal.yml',
+    'if: always()',
+    'cv2-candidate-qualification.v1',
+    "context: 'cv2/candidate-qualification'",
+    'CASCADE',
+    'mergeAuthorized',
+  ], 'candidate-qualification.yml')
+  for (const forbidden of ['merge_pull_request', 'gh pr merge', 'render deploy', 'Beta promotion']) {
+    assert.equal(workflow.includes(forbidden), false, `candidate orchestrator must not contain ${forbidden}`)
+  }
+})
