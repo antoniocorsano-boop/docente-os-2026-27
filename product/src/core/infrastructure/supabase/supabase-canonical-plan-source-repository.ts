@@ -12,6 +12,7 @@ export type CanonicalPlanRuntimeSource = {
   code: CanonicalPlanCode
   assetId: string
   generationId: string
+  authorityEpoch: number
 }
 
 export interface CanonicalPlanSourceRepository {
@@ -62,6 +63,7 @@ type BindingRow = {
   canonical_plan_code: CanonicalPlanCode
   asset_id: string
   generation_id: string
+  authority_epoch: number
 }
 
 type AssetRow = {
@@ -99,7 +101,9 @@ function asBindingRow(value: unknown): BindingRow | null {
     || !hasString(value, 'academic_year_id')
     || !hasString(value, 'canonical_plan_code')
     || !hasString(value, 'asset_id')
-    || !hasString(value, 'generation_id')) return null
+    || !hasString(value, 'generation_id')
+    || !Number.isSafeInteger(value.authority_epoch)
+    || Number(value.authority_epoch) < 0) return null
   if (!['CAN-PLAN-1', 'CAN-PLAN-2', 'CAN-PLAN-3'].includes(String(value.canonical_plan_code))) return null
   return value as unknown as BindingRow
 }
@@ -137,7 +141,7 @@ export class SupabaseCanonicalPlanSourceRepository implements CanonicalPlanSourc
 
     const bindingQuery = client
       .from('canonical_plan_runtime_bindings')
-      .select('workspace_id, academic_year_id, canonical_plan_code, asset_id, generation_id')
+      .select('workspace_id, academic_year_id, canonical_plan_code, asset_id, generation_id, authority_epoch')
       .eq('workspace_id', input.workspaceId)
       .eq('academic_year_id', input.academicYearId)
       .eq('canonical_plan_code', input.code)
@@ -241,6 +245,7 @@ export class SupabaseCanonicalPlanSourceRepository implements CanonicalPlanSourc
       code: input.code,
       assetId: binding.asset_id,
       generationId: binding.generation_id,
+      authorityEpoch: binding.authority_epoch,
     }
   }
 }

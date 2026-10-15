@@ -11,6 +11,7 @@ export type LessonPreparationContext = {
   sectionId: string
   canonicalPlanAssetId: string
   canonicalGenerationId: string
+  canonicalAuthorityEpoch?: number
   blockId: string
   projectionId: string
 }
@@ -108,7 +109,7 @@ export function buildLessonPreparationApprovalSnapshot(input: {
 
   return {
     schemaVersion: 1,
-    context: { ...input.context },
+    context: approvalSnapshotContext(input.context),
     canonicalPlan: {
       assetId: input.context.canonicalPlanAssetId,
       generationId: input.context.canonicalGenerationId,
@@ -136,6 +137,15 @@ export function curriculumBaselineFingerprint(baseline: AnnualPlanCurriculumBase
 
 export function lessonPreparationFingerprint(snapshot: LessonPreparationApprovalSnapshot) {
   return sha256(snapshot)
+}
+
+function approvalSnapshotContext(context: LessonPreparationContext): LessonPreparationContext {
+  const { canonicalAuthorityEpoch, ...stableContext } = context
+  if (canonicalAuthorityEpoch === undefined || canonicalAuthorityEpoch === 0) return stableContext
+  if (!Number.isSafeInteger(canonicalAuthorityEpoch) || canonicalAuthorityEpoch < 0) {
+    throw new Error('Canonical authority epoch must be a non-negative safe integer')
+  }
+  return { ...stableContext, canonicalAuthorityEpoch }
 }
 
 function sha256(value: unknown) {

@@ -17,6 +17,7 @@ const context: LessonPreparationContext = {
   sectionId: 'section-2c',
   canonicalPlanAssetId: 'asset-plan-2',
   canonicalGenerationId: 'generation-plan-2',
+  canonicalAuthorityEpoch: 0,
   blockId: 'B01',
   projectionId: 'HTC-SECONDA-B01-v1',
 }
@@ -152,6 +153,23 @@ test('same effective preparation produces the same fingerprint', () => {
   const first = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [extension('ACCEPTED')] })
   const second = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [extension('ACCEPTED')] })
   assert.equal(lessonPreparationFingerprint(first), lessonPreparationFingerprint(second))
+})
+
+test('authority epoch zero preserves the historical approval fingerprint shape', () => {
+  const snapshot = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [] })
+  assert.equal(snapshot.context.canonicalAuthorityEpoch, undefined)
+})
+
+test('a governed authority movement invalidates the previous lesson approval identity', () => {
+  const beforeMovement = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [] })
+  const afterMovement = buildLessonPreparationApprovalSnapshot({
+    context: { ...context, canonicalAuthorityEpoch: 1 },
+    curriculumBaseline: baseline(),
+    projection,
+    extensions: [],
+  })
+  assert.notEqual(lessonPreparationFingerprint(beforeMovement), lessonPreparationFingerprint(afterMovement))
+  assert.equal(afterMovement.context.canonicalAuthorityEpoch, 1)
 })
 
 test('semantic curriculum drift invalidates approval even when curriculum version ref is unchanged', () => {

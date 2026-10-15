@@ -56,6 +56,7 @@ export async function approveLessonPreparationAndProceed(formData: FormData) {
     sectionId,
     canonicalPlanAssetId: runtimeSource.assetId,
     canonicalGenerationId: runtimeSource.generationId,
+    canonicalAuthorityEpoch: runtimeSource.authorityEpoch,
     blockId,
     projectionId: projection.projectionId,
   }

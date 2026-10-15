@@ -78,6 +78,7 @@ export default async function LessonWorkspacePage({
     sectionId: section.id,
     canonicalPlanAssetId: runtimeSource.assetId,
     canonicalGenerationId: runtimeSource.generationId,
+    canonicalAuthorityEpoch: runtimeSource.authorityEpoch,
     blockId: block.id,
     projectionId: projection.projectionId,
   } : null
