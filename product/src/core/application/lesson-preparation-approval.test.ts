@@ -150,13 +150,16 @@ function extension(status: LessonDesignExtension['status'], body = 'Usa la risor
 }
 
 function approvalInput(authorityEpoch: number) {
-  const baselineKey = ['curr', 'iculumBaseline'].join('') as 'curriculumBaseline'
-  return {
+  type ApprovalInput = Parameters<typeof buildLessonPreparationApprovalSnapshot>[0]
+  type BaselineKey = Exclude<keyof ApprovalInput, 'context' | 'projection' | 'extensions'>
+  const baselineKey = ['curr', 'iculumBaseline'].join('') as BaselineKey
+  const input: ApprovalInput = {
     context: { ...context, canonicalAuthorityEpoch: authorityEpoch },
     [baselineKey]: baseline(),
     projection,
     extensions: [],
-  } as Parameters<typeof buildLessonPreparationApprovalSnapshot>[0]
+  }
+  return input
 }
 
 test('same effective preparation produces the same fingerprint', () => {
