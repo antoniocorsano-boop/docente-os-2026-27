@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
 import '../../../product/scripts/experience/cpri-runtime-preflight.test.mjs'
 
@@ -7,6 +7,9 @@ const workflow = readFileSync(
   new URL('../../workflows/browser-certification-orchestrator.yml', import.meta.url),
   'utf8',
 )
+const cliUrl = new URL('../../../product/scripts/experience/cpri-runtime-preflight-cli.mjs', import.meta.url)
+const cliExists = existsSync(cliUrl)
+const cli = cliExists ? readFileSync(cliUrl, 'utf8') : ''
 
 test('browser certification enforces CPRI runtime preflight before dependent browser gates', () => {
   const cpriStep = '- name: Enforce CPRI runtime preflight'
@@ -24,4 +27,15 @@ test('browser certification enforces CPRI runtime preflight before dependent bro
     /continue-on-error:\s*true/,
     'CPRI runtime preflight must fail closed rather than continue on error',
   )
+})
+
+test('CPRI browser preflight CLI performs governed AAL2 authentication before reading runtime state', () => {
+  assert.equal(cliExists, true, 'browser certification requires a concrete CPRI runtime preflight CLI')
+  assert.match(cli, /createClient/)
+  assert.match(cli, /signInWithPassword/)
+  assert.match(cli, /listFactors/)
+  assert.match(cli, /challengeAndVerify/)
+  assert.match(cli, /getAuthenticatorAssuranceLevel/)
+  assert.match(cli, /currentLevel\s*!==\s*['"]aal2['"]/)
+  assert.match(cli, /runCpriRuntimePreflight/)
 })
