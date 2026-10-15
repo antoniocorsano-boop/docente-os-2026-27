@@ -1,25 +1,21 @@
 name: Browser Certification Orchestrator
 
 on:
-  pull_request:
-    branches:
-      - develop
-    paths:
-      - 'product/**'
-      - 'render.yaml'
-      - '.github/scripts/certification/**'
-      - '.github/scripts/runtime-health.mjs'
-      - '.github/workflows/browser-certification-orchestrator.yml'
-      - '.github/workflows/experience-acceptance.yml'
-      - '.github/workflows/wcag22-aa-assurance.yml'
-      - '.github/workflows/p6-performance.yml'
-      - '.github/workflows/x4-planner-e2e.yml'
-      - '.github/workflows/asvs50-assurance.yml'
-      - '.github/workflows/product-ci.yml'
-      - '.github/workflows/certification-impact.yml'
-      - '.github/workflows/governed-mfa-queue-hygiene.yml'
-      - 'docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md'
-
+  workflow_call:
+    inputs:
+      base_sha:
+        required: true
+        type: string
+      tested_sha:
+        required: true
+        type: string
+    secrets:
+      DOCENTE_OS_MFA_E2E_EMAIL:
+        required: true
+      DOCENTE_OS_MFA_E2E_PASSWORD:
+        required: true
+      DOCENTE_OS_MFA_E2E_TOTP_SECRET:
+        required: true
 permissions:
   contents: read
   statuses: write
@@ -44,7 +40,7 @@ jobs:
         continue-on-error: true
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ inputs.tested_sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
 
       - name: Set up Node 22 for impact classification
@@ -59,8 +55,8 @@ jobs:
         if: always()
         shell: bash
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ inputs.base_sha || github.event.pull_request.base.sha }}
+          TESTED_SHA: ${{ inputs.tested_sha || github.event.pull_request.head.sha }}
           CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
           NODE_OUTCOME: ${{ steps.node.outcome }}
         run: |
@@ -170,6 +166,7 @@ jobs:
         if: always()
         uses: actions/github-script@v7
         env:
+          TESTED_SHA: ${{ inputs.tested_sha || github.event.pull_request.head.sha }}
           HVA: ${{ steps.impact.outputs.hva }}
           WCAG: ${{ steps.impact.outputs.wcag }}
           P6: ${{ steps.impact.outputs.p6 }}
@@ -177,7 +174,7 @@ jobs:
           FAIL_CLOSED: ${{ steps.impact.outputs.fail_closed }}
         with:
           script: |
-            const sha = context.payload.pull_request.head.sha
+            const sha = process.env.TESTED_SHA
             const gates = [
               ['HVA', process.env.HVA, 'hva/application'],
               ['WCAG 2.2 AA', process.env.WCAG, 'wcag22-aa/application'],
@@ -231,7 +228,7 @@ jobs:
       EXPERIENCE_OUTPUT_DIR: test-results/experience
       P6_ROUTE_BUDGET_MS: 2500
       P6_P95_BUDGET_MS: 1800
-      P6_TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+      P6_TESTED_SHA: ${{ inputs.tested_sha || github.event.pull_request.head.sha }}
 
     steps:
       - name: Require governed AAL2 E2E credential
@@ -240,7 +237,7 @@ jobs:
       - name: Checkout exact tested PR head
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ inputs.tested_sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
 
       - name: Verify exact tested PR head
@@ -311,7 +308,7 @@ jobs:
         working-directory: product
         env:
           EXPERIENCE_TEST_EXIT_CODE: ${{ steps.hva_browser.outputs.exit_code || '99' }}
-          EXPECTED_COMMIT: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_COMMIT: ${{ inputs.tested_sha || github.event.pull_request.head.sha }}
           EXPERIENCE_SCOPE_MODE: ${{ needs.preflight.outputs.hva_mode }}
           EXPERIENCE_SCOPE_SPECS: ${{ needs.preflight.outputs.hva_specs }}
         run: node scripts/experience/acceptance-report.mjs
@@ -384,6 +381,7 @@ jobs:
         if: always()
         uses: actions/github-script@v7
         env:
+          TESTED_SHA: ${{ inputs.tested_sha || github.event.pull_request.head.sha }}
           HVA_REQUIRED: ${{ needs.preflight.outputs.hva }}
           WCAG_REQUIRED: ${{ needs.preflight.outputs.wcag }}
           P6_REQUIRED: ${{ needs.preflight.outputs.p6 }}
@@ -395,7 +393,7 @@ jobs:
           X4_OUTCOME: ${{ steps.x4_gate.outcome }}
         with:
           script: |
-            const sha = context.payload.pull_request.head.sha
+            const sha = process.env.TESTED_SHA
             const checks = [
               ['HVA', process.env.HVA_REQUIRED, process.env.HVA_OUTCOME === 'success', 'hva/application'],
               ['WCAG 2.2 AA', process.env.WCAG_REQUIRED, process.env.WCAG_OUTCOME === 'success', 'wcag22-aa/application'],

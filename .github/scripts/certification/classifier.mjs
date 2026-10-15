@@ -16,6 +16,7 @@ const ALL_HEAVY_GATES = [
   'P6_PERFORMANCE',
   'X4_PLANNER_WRITE',
   'ASVS_5_0',
+  'K1_KNOWLEDGE_UPLOAD',
 ]
 
 const BROWSER_GATES = [
@@ -23,17 +24,21 @@ const BROWSER_GATES = [
   'WCAG_2_2_AA',
   'P6_PERFORMANCE',
   'X4_PLANNER_WRITE',
+  'K1_KNOWLEDGE_UPLOAD',
 ]
 
 const CENTRAL_ORCHESTRATION_PATHS = new Set([
   '.github/workflows/product-ci.yml',
   '.github/workflows/certification-impact.yml',
   '.github/workflows/browser-certification-orchestrator.yml',
+  '.github/workflows/candidate-qualification.yml',
+  '.github/workflows/candidate-database-assurance.yml',
   '.github/workflows/governed-mfa-queue-hygiene.yml',
   '.github/scripts/runtime-release-contract.mjs',
   'ops/runtime-release-contract.json',
   'docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md',
   'docs/architecture/RUNTIME_RELEASE_CONTRACT_V1.md',
+  'product/playwright.config.mjs',
 ])
 
 const GATE_WORKFLOW_PATHS = new Map([
@@ -42,6 +47,7 @@ const GATE_WORKFLOW_PATHS = new Map([
   ['.github/workflows/p6-performance.yml', ['P6_PERFORMANCE']],
   ['.github/workflows/x4-planner-e2e.yml', ['X4_PLANNER_WRITE']],
   ['.github/workflows/asvs50-assurance.yml', ['ASVS_5_0']],
+  ['.github/workflows/k1-knowledge-e2e.yml', ['K1_KNOWLEDGE_UPLOAD']],
 ])
 
 const BROWSER_SHARED_SUPPORT_PREFIX = 'product/e2e/support/'
@@ -102,6 +108,22 @@ function classifyKnownPath(path, state) {
         requireGate(state, gate, path, 'unmapped browser support helper: fail-closed browser certification')
       }
     }
+  }
+
+  const k1Knowledge =
+    path.startsWith('product/src/app/knowledge/') ||
+    path.startsWith('product/src/app/api/knowledge/') ||
+    path === 'product/src/core/application/knowledge-ingestion-service.ts' ||
+    path.startsWith('product/src/core/infrastructure/knowledge/') ||
+    path === 'product/src/core/infrastructure/supabase/supabase-storage-knowledge-content-port.ts' ||
+    path === 'product/e2e/k1-knowledge-upload.spec.mjs' ||
+    path === 'product/e2e/support/knowledge-fixture-hygiene.mjs' ||
+    path === 'product/e2e/support/e2e-auth.mjs' ||
+    path.startsWith('product/supabase/migrations/')
+
+  if (k1Knowledge) {
+    known = true
+    requireGate(state, 'K1_KNOWLEDGE_UPLOAD', path, 'Knowledge upload or persistence boundary changed')
   }
 
   const ui =

@@ -14,6 +14,7 @@ on:
       - "docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md"
       - "docs/architecture/RUNTIME_RELEASE_CONTRACT_V1.md"
   pull_request:
+    types: [opened, reopened, synchronize]
     paths:
       - "product/**"
       - "render.yaml"
@@ -24,6 +25,14 @@ on:
       - "ops/runtime-release-contract.json"
       - "docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md"
       - "docs/architecture/RUNTIME_RELEASE_CONTRACT_V1.md"
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: product-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -36,6 +45,23 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+
+      - name: Publish DEVELOPMENT pending status
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.payload.pull_request.head.sha
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha,
+              state: 'pending',
+              context: 'cv2/development-preflight',
+              description: 'CV2 DEVELOPMENT preflight in esecuzione',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+
       - name: Validate Render deployment contract
         working-directory: ${{ github.workspace }}
         shell: bash
@@ -70,6 +96,7 @@ jobs:
           grep -Fq 'key: DOCENTE_OS_VOICE_CAPTURE' render.yaml
           grep -Fq 'value: on' render.yaml
           grep -A1 -F 'key: DOCENTE_OS_RUNTIME_SCHEMA_PREFLIGHT' render.yaml | grep -Fq 'value: on'
+
       - name: Validate Human + Visual Acceptance contract
         working-directory: ${{ github.workspace }}
         shell: bash
@@ -93,9 +120,11 @@ jobs:
           grep -Fq "testIgnore: wcagAssurance ? [] : '**/accessibility.spec.mjs'" product/playwright.experience.config.mjs
           grep -Fq "WCAG_ASSURANCE: '1'" .github/workflows/browser-certification-orchestrator.yml
           grep -Fq 'e2e/experience/accessibility.spec.mjs' .github/workflows/browser-certification-orchestrator.yml
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
       - name: Validate Certification Pipeline V2 foundation
         working-directory: ${{ github.workspace }}
         shell: bash
@@ -121,6 +150,7 @@ jobs:
           grep -Fq "context: statusContext" .github/workflows/browser-certification-orchestrator.yml
           grep -Fq 'orchestrationAuthorized: true' .github/scripts/certification/classifier.mjs
           grep -Fq 'mergeAuthorized: false' .github/scripts/certification/classifier.mjs
+
       - name: Evaluate selective runtime release impact
         id: runtime_impact
         working-directory: ${{ github.workspace }}
@@ -140,6 +170,74 @@ jobs:
           console.log('capability_runtime=' + String(r.capabilityRuntime))
           console.log('latest_migration=' + r.latestMigrationId)
           NODE
+
+      - name: Validate HVA script syntax
+        run: |
+          node --check scripts/experience/wait-for-target.mjs
+          node --check scripts/experience/acceptance-report.mjs
+          node --check e2e/support/e2e-auth.mjs
+          node --check e2e/support/experience-observer.mjs
+          node --check e2e/experience/surfaces.mjs
+          node --check e2e/experience/surfaces.spec.mjs
+          node --check playwright.experience.config.mjs
+
+      - run: npm ci --no-audit --no-fund
+
+      - run: npm run typecheck
+
+      - name: Run product tests
+        id: product_tests
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p test-results/product-ci
+          status=0
+          npm test 2>&1 | tee test-results/product-ci/npm-test.log || status=$?
+          printf '%s\n' "$status" > test-results/product-ci/exit-code.txt
+          grep -nE 'not ok|AssertionError|ERR_ASSERTION|Error:|FAIL|failed|failure' test-results/product-ci/npm-test.log > test-results/product-ci/failure-index.txt || true
+          exit "$status"
+
+      - name: Summarize product test failure
+        if: failure() && steps.product_tests.outcome == 'failure'
+        shell: bash
+        run: |
+          log=test-results/product-ci/npm-test.log
+          index=test-results/product-ci/failure-index.txt
+          {
+            echo '## Product CI — test failure'
+            echo
+            echo '- Exact head: `${{ github.event.pull_request.head.sha || github.sha }}`'
+            echo '- Command: `npm test`'
+            echo '- Job: `validate`'
+            echo
+            echo '### Failure index'
+            echo '```text'
+            if [ -s "$index" ]; then
+              tail -n 80 "$index"
+            else
+              echo 'No indexed failure marker found; inspect the raw log excerpt below.'
+            fi
+            echo '```'
+            echo
+            echo '### Raw log tail'
+            echo '```text'
+            tail -n 120 "$log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo '::error title=Product tests failed::npm test failed; see Product CI summary and product-test-diagnostics artifact.'
+
+      - name: Upload product test diagnostics
+        if: failure() && steps.product_tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: product-test-diagnostics-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 30
+          path: product/test-results/product-ci/
+
+      - run: npm run lint
+
+      - run: npm run build
 
       - name: Set up Supabase CLI for deep DB replay
         if: steps.runtime_impact.outputs.database_deep == 'true'
@@ -203,63 +301,21 @@ jobs:
           retention-days: 90
           path: test-results/release-runtime-contract/impact.json
 
-      - name: Validate HVA script syntax
-        run: |
-          node --check scripts/experience/wait-for-target.mjs
-          node --check scripts/experience/acceptance-report.mjs
-          node --check e2e/support/e2e-auth.mjs
-          node --check e2e/support/experience-observer.mjs
-          node --check e2e/experience/surfaces.mjs
-          node --check e2e/experience/surfaces.spec.mjs
-          node --check playwright.experience.config.mjs
-      - run: npm ci --no-audit --no-fund
-      - name: Run product tests
-        id: product_tests
-        shell: bash
-        run: |
-          set -o pipefail
-          mkdir -p test-results/product-ci
-          status=0
-          npm test 2>&1 | tee test-results/product-ci/npm-test.log || status=$?
-          printf '%s\n' "$status" > test-results/product-ci/exit-code.txt
-          grep -nE 'not ok|AssertionError|ERR_ASSERTION|Error:|FAIL|failed|failure' test-results/product-ci/npm-test.log > test-results/product-ci/failure-index.txt || true
-          exit "$status"
-      - name: Summarize product test failure
-        if: failure() && steps.product_tests.outcome == 'failure'
-        shell: bash
-        run: |
-          log=test-results/product-ci/npm-test.log
-          index=test-results/product-ci/failure-index.txt
-          {
-            echo '## Product CI — test failure'
-            echo
-            echo '- Exact head: `${{ github.event.pull_request.head.sha || github.sha }}`'
-            echo '- Command: `npm test`'
-            echo '- Job: `validate`'
-            echo
-            echo '### Failure index'
-            echo '```text'
-            if [ -s "$index" ]; then
-              tail -n 80 "$index"
-            else
-              echo 'No indexed failure marker found; inspect the raw log excerpt below.'
-            fi
-            echo '```'
-            echo
-            echo '### Raw log tail'
-            echo '```text'
-            tail -n 120 "$log"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          echo '::error title=Product tests failed::npm test failed; see Product CI summary and product-test-diagnostics artifact.'
-      - name: Upload product test diagnostics
-        if: failure() && steps.product_tests.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+      - name: Publish DEVELOPMENT final status
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
         with:
-          name: product-test-diagnostics-${{ github.run_id }}
-          if-no-files-found: error
-          retention-days: 30
-          path: product/test-results/product-ci/
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm run build
+          script: |
+            const sha = context.payload.pull_request.head.sha
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha,
+              state: ok ? 'success' : 'failure',
+              context: 'cv2/development-preflight',
+              description: ok ? 'CV2 DEVELOPMENT preflight superato' : 'CV2 DEVELOPMENT preflight non superato',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })

@@ -62,6 +62,59 @@ The orchestrator publishes per-gate commit statuses. A non-required gate is publ
 
 The legacy HVA/WCAG/P6/X4 workflows remain authoritative for push/runtime and explicit manual execution until their PR triggers are retired after the orchestrator itself has passed full certification. This staged cutover prevents a new orchestrator from disabling the controls that are validating it.
 
+## CV2-4 DEVELOPMENT → CANDIDATE → RUNTIME lifecycle
+
+CV2-4 separates cheap development feedback, exact-head candidate qualification and post-promotion runtime assurance. It changes when expensive assurance is allowed to run; it does not weaken any gate required by the complete candidate diff.
+
+### DEVELOPMENT
+
+Ordinary `pull_request` activity on the governed `develop` line (`opened`, `reopened`, `synchronize`) is DEVELOPMENT. DEVELOPMENT is fail-fast and bounded: static contracts, dependency installation, typecheck, product tests, lint and build precede any expensive environment-dependent work. Heavy browser certification, full Supabase replay and recovery rehearsal are not authorized by ordinary DEVELOPMENT synchronization.
+
+A successful DEVELOPMENT head publishes the stable exact-head status:
+
+- `cv2/development-preflight`
+
+This status proves only that the current head is coherent enough to be considered for candidate qualification. It never authorizes merge, promotion, persistence or evidence rebinding.
+
+### CANDIDATE
+
+There is exactly one automatic PR event that authorizes candidate qualification: `pull_request` with activity type `ready_for_review`, targeting `develop`.
+
+The candidate orchestrator must:
+
+1. bind the event PR, base SHA and exact head SHA;
+2. re-read the live PR immediately before candidate work;
+3. fail closed when the live head differs from the event head;
+4. require same-SHA success of `cv2/development-preflight`;
+5. explicitly checkout the exact PR head rather than the merge ref;
+6. classify the complete base-to-head diff with `certification-impact.v1`;
+7. apply Runtime Release Contract timing for DB/recovery assurance;
+8. run every required heavy gate and publish one machine-readable candidate receipt.
+
+The stable final status is:
+
+- `cv2/candidate-qualification`
+
+Candidate evidence is SHA-bound. Any new commit invalidates the prior candidate receipt and returns the effective state to DEVELOPMENT. Requalification requires an explicit Draft → Ready transition on the new exact head; rerunning stale heavy jobs is not a substitute.
+
+### QUALIFIED / REWORK
+
+A candidate becomes QUALIFIED only when every authoritative required gate for that exact head is success or explicit `NOT_APPLICABLE`, and any human gate required by existing governance has passed. A real code or policy failure yields REWORK and returns the PR to DEVELOPMENT after correction.
+
+Failures are classified as `CODE_REGRESSION`, `POLICY_CERTIFICATION`, `INFRA_TRANSIENT` or `CASCADE`. Same-SHA retry is permitted only for evidence-backed `INFRA_TRANSIENT`. `CASCADE` is not an independent defect and is never a reason for rerun-all.
+
+### RUNTIME
+
+RUNTIME assurance remains separate from DEVELOPMENT and CANDIDATE. It verifies that the promoted exact state is actually served and coherent in the target runtime. DEVELOPMENT evidence cannot substitute for runtime evidence, and runtime evidence cannot retroactively qualify a stale candidate SHA.
+
+### Checkpoint A cutover
+
+After Checkpoint A PASS, duplicate heavy `pull_request` entrypoints are retired from the reusable Browser, K1, P7 and ASVS workers. Ordinary DEVELOPMENT synchronization can no longer start those workers directly. Candidate qualification remains the only PR authority for heavy reusable assurance. Existing `push` runtime entrypoints and `workflow_dispatch` manual entrypoints remain where they were already authoritative.
+
+### Cost-governance invariant
+
+An ordinary DEVELOPMENT commit that fails a cheap prerequisite must not automatically start browser certification, authenticated K1 work, full Supabase replay or PostgreSQL restore rehearsal. Central certification-policy changes receive a deliberate one-time shadow qualification before legacy controls are retired and a final exact-head qualification after cutover.
+
 ## `certification-rebinding.v1`
 
 Evidence rebinding is allowed to become *eligible* only when all of these facts are explicitly proven true:
@@ -88,6 +141,7 @@ Therefore rebinding eligibility is not a release decision.
 - **CV2-1B**: retire duplicate legacy PR triggers after exact-head certification of CV2-1A; preserve runtime/manual workflows.
 - **CV2-2**: operational exact-head evidence rebinding with deterministic Git/tree checks and a new receipt bound to the target SHA.
 - **CV2-3**: replace redundant post-merge full suites with runtime smoke when equivalence is proven; full assurance remains mandatory when impact or equivalence requires it.
+- **CV2-4**: DEVELOPMENT preflight → exact-head CANDIDATE via Draft → Ready → separate RUNTIME assurance, with staged retirement of duplicated heavy PR work only after shadow qualification.
 
 ## Non-goals
 
@@ -105,7 +159,7 @@ Il Runtime Release Contract risponde a: **quali verifiche di coerenza applicazio
 La classificazione centrale considera quindi modifiche al Runtime Release Contract come modifiche di orchestrazione e richiede una one-time full assurance del contratto stesso.
 
 Il costo resta selettivo:
-- preflight statico su ogni diff rilevante;
-- replay Supabase locale solo su impatto DB/persistenza;
-- runtime reconciliation sul Beta dopo merge;
-- write E2E reale solo su percorsi critici e solo con fixture isolata.
+- DEVELOPMENT: preflight statico L0 su ogni diff rilevante;
+- CANDIDATE con impatto DB/persistenza: replay Supabase locale L1 e recovery assurance richiesto;
+- RUNTIME: riconciliazione L2 sul Beta dopo promozione;
+- write E2E reale L3 solo su percorsi critici e solo con fixture isolata.

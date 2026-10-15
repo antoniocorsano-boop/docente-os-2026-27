@@ -1,22 +1,19 @@
 name: K1 Knowledge Upload Gate
 
 on:
+  workflow_call:
+    inputs:
+      tested_sha:
+        required: true
+        type: string
+    secrets:
+      DOCENTE_OS_MFA_E2E_EMAIL:
+        required: true
+      DOCENTE_OS_MFA_E2E_PASSWORD:
+        required: true
+      DOCENTE_OS_MFA_E2E_TOTP_SECRET:
+        required: true
   workflow_dispatch:
-  pull_request:
-    branches:
-      - develop
-    paths:
-      - 'product/e2e/k1-knowledge-upload.spec.mjs'
-      - 'product/e2e/support/knowledge-fixture-hygiene.mjs'
-      - 'product/e2e/support/e2e-auth.mjs'
-      - 'product/playwright.config.mjs'
-      - 'product/src/app/knowledge/**'
-      - 'product/src/app/api/knowledge/**'
-      - 'product/src/core/application/knowledge-ingestion-service.ts'
-      - 'product/src/core/infrastructure/knowledge/**'
-      - 'product/src/core/infrastructure/supabase/supabase-storage-knowledge-content-port.ts'
-      - 'product/supabase/migrations/**'
-      - '.github/workflows/k1-knowledge-e2e.yml'
   push:
     branches:
       - develop
@@ -48,11 +45,12 @@ env:
 
 jobs:
   k1-application-acceptance:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_call'
     name: k1-application-acceptance
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
+      TESTED_SHA: ${{ inputs.tested_sha || github.event.pull_request.head.sha || github.sha }}
       E2E_BASE_URL: http://127.0.0.1:3000
       NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
@@ -71,8 +69,31 @@ jobs:
           done
           test "$missing" -eq 0
 
+      - name: Publish pending K1 application status
+        uses: actions/github-script@v7
+        env:
+          TESTED_SHA: ${{ inputs.tested_sha || github.event.pull_request.head.sha || github.sha }}
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: process.env.TESTED_SHA,
+              state: 'pending',
+              context: 'k1/application',
+              description: 'Gate K1 applicativo in esecuzione',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+
       - name: Checkout tested commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tested_sha || github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact tested head
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$TESTED_SHA"
 
       - name: Set up Node 22
         uses: actions/setup-node@v4
@@ -126,8 +147,27 @@ jobs:
             product/test-results/
             /tmp/docente-os-k1-server.log
 
+      - name: Publish final K1 application status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+          TESTED_SHA: ${{ inputs.tested_sha || github.event.pull_request.head.sha || github.sha }}
+        with:
+          script: |
+            const ok = process.env.JOB_STATUS === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: process.env.TESTED_SHA,
+              state: ok ? 'success' : 'failure',
+              context: 'k1/application',
+              description: ok ? 'Gate K1 applicativo superato' : 'Gate K1 applicativo non superato',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+
   k1-render-acceptance:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     name: k1-render-acceptance
     runs-on: ubuntu-latest
     timeout-minutes: 40
