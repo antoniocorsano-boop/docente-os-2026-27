@@ -31,6 +31,15 @@ Contract ID: `ECO-AGENTIC-OFFICINA-V1`.
 
 Use the sequence `intent -> plan -> test contract -> execute -> independent review -> verify -> human gate -> remember`. This execution contract is subordinate to the integrated governed memory and repository-specific architecture/governance. It creates no new product or institutional authority and does not authorize autonomous promotion, merge, deploy or canonical memory mutation.
 
+## Mandatory CV2 + Runtime Release lifecycle
+
+Before any **significant code** change, **CI** or workflow change, testing campaign, PR **qualification**, rerun decision, merge/promotion decision, or runtime-release work, read both canonical contracts:
+
+- `docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md`
+- `docs/architecture/RUNTIME_RELEASE_CONTRACT_V1.md`
+
+The durable lifecycle is `DEVELOPMENT -> CANDIDATE -> QUALIFIED` (or `REWORK -> DEVELOPMENT`) with runtime assurance kept separate. Ordinary commits remain DEVELOPMENT. A candidate is authorized only by the governed Draft → Ready transition on an exact head that already has green `cv2/development-preflight`. A new commit invalidates candidate evidence for the previous SHA. Do not use rerun-all: same-SHA rerun is reserved for evidence-backed transient infrastructure failures.
+
 ## Mandatory lesson-preparation and material foundation
 
 Before any work that affects Copilot-driven lesson preparation, end-of-day reflection, next-day readiness, lesson materials, LIM/student/teacher outputs, Canva/Drive rendering/export or reuse of teaching content, read:
