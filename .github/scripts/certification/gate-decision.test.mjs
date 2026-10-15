@@ -36,6 +36,18 @@ test('explicitly non-required gate skips', () => {
   assert.equal(result.failClosed, false)
 })
 
+test('K1 is a known gate and obeys exact-head requiredGates selection', () => {
+  const required = decide({ requiredGates: ['K1_KNOWLEDGE_UPLOAD'] }, 'K1_KNOWLEDGE_UPLOAD')
+  assert.equal(required.decision, 'RUN')
+  assert.equal(required.run, true)
+  assert.equal(required.failClosed, false)
+
+  const skipped = decide({ requiredGates: [] }, 'K1_KNOWLEDGE_UPLOAD')
+  assert.equal(skipped.decision, 'SKIP')
+  assert.equal(skipped.run, false)
+  assert.equal(skipped.failClosed, false)
+})
+
 test('missing receipt runs fail-closed', () => {
   const result = decideGateExecution({
     receipt: null,
@@ -80,4 +92,5 @@ test('invalid requiredGates runs fail-closed', () => {
 test('gate decision can never authorize merge', () => {
   assert.equal(decide().mergeAuthorized, false)
   assert.equal(decide({}, 'P6_PERFORMANCE').mergeAuthorized, false)
+  assert.equal(decide({ requiredGates: ['K1_KNOWLEDGE_UPLOAD'] }, 'K1_KNOWLEDGE_UPLOAD').mergeAuthorized, false)
 })

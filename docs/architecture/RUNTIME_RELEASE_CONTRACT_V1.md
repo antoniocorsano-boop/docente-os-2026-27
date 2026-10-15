@@ -53,6 +53,17 @@ Non viene attivato usando dati didattici reali.
 
 Prima deve esistere una fixture E2E isolata e reversibile. Solo allora un cambiamento classificato `criticalWrite` eseguirà un write reale browser/API e ne verificherà la receipt.
 
+## Timing CV2-4: DEVELOPMENT / CANDIDATE / RUNTIME
+
+Il livello richiesto dipende dalla fase del ciclo di qualificazione, non soltanto dal tipo di diff.
+
+- **DEVELOPMENT** — esegue L0/static preflight. Un normale `opened`, `reopened` o `synchronize` di PR non autorizza L1, recovery rehearsal o browser assurance pesante.
+- **CANDIDATE** — l'ingresso avviene esclusivamente tramite `pull_request.ready_for_review` su `develop`, dopo `cv2/development-preflight` verde sullo stesso exact head. Se il diff completo ha impatto DB/persistenza, il candidato esegue L0 + **L1** effimero e la recovery assurance richiesta.
+- **RUNTIME** — dopo promozione/deploy esegue **L2** per riconciliare commit servito, watermark, lineage e capability del target.
+- **L3** — resta limitato ai percorsi di scrittura critici e viene eseguito soltanto quando la fixture isolata governata lo autorizza.
+
+Un nuovo commit invalida la candidate qualification del vecchio SHA. La nuova testa torna DEVELOPMENT e deve essere ricandidata tramite Draft → Ready. Nessun livello L1/L2/L3 può essere riusato da uno SHA precedente senza una prova di equivalenza esplicitamente autorizzata dai contratti canonici.
+
 ## Regola migrazioni dopo 0074
 
 La lineage runtime canonica parte da **0060**.
@@ -71,11 +82,12 @@ Il watermark da solo non costituisce più prova sufficiente di allineamento.
 
 ## Costi
 
-- PR normale: solo L0;
-- DB/persistenza: L0 + L1;
-- capability esterna: L0 + verifica runtime appropriata;
-- write critico: L0 + L1 + L3 quando la fixture isolata sarà disponibile;
-- controlli completi più pesanti: schedulati/notturni o per release candidate.
+- DEVELOPMENT ordinario: solo L0;
+- CANDIDATE con DB/persistenza: L0 + L1 + recovery assurance richiesta;
+- capability esterna: L0 in DEVELOPMENT + verifica runtime appropriata nella fase governata;
+- write critico: L0 + L1 + L3 quando la fixture isolata sarà disponibile e il candidato lo richiede;
+- RUNTIME post-promozione: L2;
+- controlli completi più pesanti: candidati espliciti, schedulati/notturni o release candidate secondo governance.
 
 ## Confini
 

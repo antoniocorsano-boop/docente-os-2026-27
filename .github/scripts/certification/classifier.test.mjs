@@ -93,11 +93,31 @@ test('single heavy workflow change requires its gate', () => {
   assert.equal(hva.requiredGates.includes('HVA'), true)
 })
 
+test('K1 governed paths require K1 Knowledge Upload candidate assurance', () => {
+  const paths = [
+    'product/src/app/knowledge/page.tsx',
+    'product/src/app/api/knowledge/upload/route.ts',
+    'product/src/core/application/knowledge-ingestion-service.ts',
+    'product/src/core/infrastructure/knowledge/knowledge-repository.ts',
+    'product/src/core/infrastructure/supabase/supabase-storage-knowledge-content-port.ts',
+    'product/e2e/k1-knowledge-upload.spec.mjs',
+    'product/e2e/support/knowledge-fixture-hygiene.mjs',
+    'product/playwright.config.mjs',
+    'product/supabase/migrations/9999_knowledge_example.sql',
+    '.github/workflows/k1-knowledge-e2e.yml',
+  ]
+  for (const path of paths) {
+    const receipt = classifyCertificationImpact([path])
+    assert.equal(receipt.requiredGates.includes('K1_KNOWLEDGE_UPLOAD'), true, `${path} must require K1`)
+    assert.equal(receipt.conservative, false, `${path} must be explicitly classified`)
+  }
+})
+
 test('central orchestration change requires one-time full heavy certification', () => {
   const receipt = classifyCertificationImpact([
     '.github/scripts/certification/gate-decision.mjs',
   ])
-  for (const gate of ['HVA', 'WCAG_2_2_AA', 'P6_PERFORMANCE', 'X4_PLANNER_WRITE', 'ASVS_5_0']) {
+  for (const gate of ['HVA', 'WCAG_2_2_AA', 'P6_PERFORMANCE', 'X4_PLANNER_WRITE', 'ASVS_5_0', 'K1_KNOWLEDGE_UPLOAD']) {
     assert.equal(receipt.requiredGates.includes(gate), true)
   }
 })
@@ -106,7 +126,7 @@ test('browser orchestrator workflow change requires one-time full heavy certific
   const receipt = classifyCertificationImpact([
     '.github/workflows/browser-certification-orchestrator.yml',
   ])
-  for (const gate of ['HVA', 'WCAG_2_2_AA', 'P6_PERFORMANCE', 'X4_PLANNER_WRITE', 'ASVS_5_0']) {
+  for (const gate of ['HVA', 'WCAG_2_2_AA', 'P6_PERFORMANCE', 'X4_PLANNER_WRITE', 'ASVS_5_0', 'K1_KNOWLEDGE_UPLOAD']) {
     assert.equal(receipt.requiredGates.includes(gate), true)
   }
 })
@@ -117,7 +137,7 @@ test('unknown relevant file fails closed to full certification', () => {
   ])
   assert.equal(receipt.conservative, true)
   assert.deepEqual(receipt.unknownRelevantFiles, ['product/unknown/new-runtime-format.xyz'])
-  for (const gate of ['HVA', 'WCAG_2_2_AA', 'P6_PERFORMANCE', 'X4_PLANNER_WRITE', 'ASVS_5_0']) {
+  for (const gate of ['HVA', 'WCAG_2_2_AA', 'P6_PERFORMANCE', 'X4_PLANNER_WRITE', 'ASVS_5_0', 'K1_KNOWLEDGE_UPLOAD']) {
     assert.equal(receipt.requiredGates.includes(gate), true)
   }
   assert.equal(receipt.mergeAuthorized, false)

@@ -7,6 +7,7 @@ export const KNOWN_CERTIFICATION_GATES = Object.freeze([
   'P6_PERFORMANCE',
   'X4_PLANNER_WRITE',
   'ASVS_5_0',
+  'K1_KNOWLEDGE_UPLOAD',
 ])
 
 function runFailClosed(gate, reason) {
