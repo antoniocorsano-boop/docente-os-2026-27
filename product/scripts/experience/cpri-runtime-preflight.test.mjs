@@ -4,8 +4,7 @@ import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
 const implementationUrl = new URL('./cpri-runtime-preflight.mjs', import.meta.url)
-const implementationPath = fileURLToPath(implementationUrl)
-const implementationExists = existsSync(implementationPath)
+const implementationExists = existsSync(fileURLToPath(implementationUrl))
 
 function validRuntimeSnapshot() {
   return {
