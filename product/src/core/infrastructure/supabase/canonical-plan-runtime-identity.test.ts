@@ -12,6 +12,7 @@ type BindingRow = {
   canonical_plan_code: string
   asset_id: string
   generation_id: string
+  authority_epoch: number
 }
 
 type AssetRow = {
@@ -59,6 +60,7 @@ function validFixture(): Required<Fixture> {
       canonical_plan_code: 'CAN-PLAN-1',
       asset_id: IDS.asset,
       generation_id: IDS.boundGeneration,
+      authority_epoch: 0,
     }],
     assets: [{
       id: IDS.asset,
@@ -120,7 +122,7 @@ async function expectSourceError(
   )
 }
 
-test('valid governed binding resolves its asset and generation', async () => {
+test('valid governed binding resolves its asset, generation, and authority epoch', async () => {
   const { client } = fakeClient(validFixture())
   const repository = new SupabaseCanonicalPlanSourceRepository(async () => client)
 
@@ -128,6 +130,7 @@ test('valid governed binding resolves its asset and generation', async () => {
     code: 'CAN-PLAN-1',
     assetId: IDS.asset,
     generationId: IDS.boundGeneration,
+    authorityEpoch: 0,
   })
 })
 
