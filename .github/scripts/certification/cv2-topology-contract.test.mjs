@@ -82,7 +82,7 @@ test('Product CI runs cheap product prerequisites before any full Supabase repla
   ], 'product-ci.yml')
 })
 
-test('shadow heavy workers expose workflow_call without retiring legacy entrypoints', () => {
+test('post-checkpoint cutover retires duplicate PR entrypoints while preserving reusable runtime and manual paths', () => {
   const browser = read('.github/workflows/browser-certification-orchestrator.yml')
   const k1 = read('.github/workflows/k1-knowledge-e2e.yml')
   const p7 = read('.github/workflows/p7-db-restore-rehearsal.yml')
@@ -90,11 +90,14 @@ test('shadow heavy workers expose workflow_call without retiring legacy entrypoi
 
   for (const [label, workflow] of [['browser', browser], ['k1', k1], ['p7', p7], ['asvs', asvs]]) {
     requiredTokens(workflow, ['workflow_call:', 'tested_sha:'], `${label} reusable worker`)
+    assert.equal(workflow.includes('\n  pull_request:'), false, `${label} must not run on ordinary PR synchronization after Checkpoint A`)
   }
-  requiredTokens(browser, ['base_sha:', 'pull_request:'], 'browser shadow worker')
-  requiredTokens(k1, ['pull_request:', 'push:', 'workflow_dispatch:'], 'k1 shadow worker')
-  requiredTokens(p7, ['pull_request:', 'workflow_dispatch:'], 'p7 shadow worker')
-  requiredTokens(asvs, ['pull_request:', 'push:', 'workflow_dispatch:'], 'asvs shadow worker')
+  requiredTokens(browser, ['base_sha:'], 'browser candidate worker')
+  requiredTokens(k1, ['push:', 'workflow_dispatch:'], 'k1 runtime/manual worker')
+  requiredTokens(p7, ['workflow_dispatch:'], 'p7 manual worker')
+  requiredTokens(asvs, ['push:', 'workflow_dispatch:'], 'asvs runtime/manual worker')
+  const cv2 = read('docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md')
+  requiredTokens(cv2, ['After Checkpoint A PASS', 'duplicate heavy `pull_request` entrypoints are retired', '`push` runtime entrypoints', '`workflow_dispatch` manual entrypoints'], 'CV2 cutover contract')
 })
 
 test('reusable heavy workers bind checkout/status to explicit tested SHA when called', () => {

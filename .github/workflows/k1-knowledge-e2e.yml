@@ -14,21 +14,6 @@ on:
       DOCENTE_OS_MFA_E2E_TOTP_SECRET:
         required: true
   workflow_dispatch:
-  pull_request:
-    branches:
-      - develop
-    paths:
-      - 'product/e2e/k1-knowledge-upload.spec.mjs'
-      - 'product/e2e/support/knowledge-fixture-hygiene.mjs'
-      - 'product/e2e/support/e2e-auth.mjs'
-      - 'product/playwright.config.mjs'
-      - 'product/src/app/knowledge/**'
-      - 'product/src/app/api/knowledge/**'
-      - 'product/src/core/application/knowledge-ingestion-service.ts'
-      - 'product/src/core/infrastructure/knowledge/**'
-      - 'product/src/core/infrastructure/supabase/supabase-storage-knowledge-content-port.ts'
-      - 'product/supabase/migrations/**'
-      - '.github/workflows/k1-knowledge-e2e.yml'
   push:
     branches:
       - develop

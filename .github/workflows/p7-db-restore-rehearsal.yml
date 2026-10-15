@@ -6,13 +6,6 @@ on:
       tested_sha:
         required: true
         type: string
-  pull_request:
-    branches: [develop]
-    paths:
-      - 'product/supabase/migrations/**'
-      - '.github/fixtures/local-supabase-compat.sql'
-      - '.github/scripts/run-local-db-restore-rehearsal.sh'
-      - '.github/workflows/p7-db-restore-rehearsal.yml'
   workflow_dispatch:
 
 permissions:

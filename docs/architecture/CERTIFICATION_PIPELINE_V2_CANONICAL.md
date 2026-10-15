@@ -107,6 +107,10 @@ Failures are classified as `CODE_REGRESSION`, `POLICY_CERTIFICATION`, `INFRA_TRA
 
 RUNTIME assurance remains separate from DEVELOPMENT and CANDIDATE. It verifies that the promoted exact state is actually served and coherent in the target runtime. DEVELOPMENT evidence cannot substitute for runtime evidence, and runtime evidence cannot retroactively qualify a stale candidate SHA.
 
+### Checkpoint A cutover
+
+After Checkpoint A PASS, duplicate heavy `pull_request` entrypoints are retired from the reusable Browser, K1, P7 and ASVS workers. Ordinary DEVELOPMENT synchronization can no longer start those workers directly. Candidate qualification remains the only PR authority for heavy reusable assurance. Existing `push` runtime entrypoints and `workflow_dispatch` manual entrypoints remain where they were already authoritative.
+
 ### Cost-governance invariant
 
 An ordinary DEVELOPMENT commit that fails a cheap prerequisite must not automatically start browser certification, authenticated K1 work, full Supabase replay or PostgreSQL restore rehearsal. Central certification-policy changes receive a deliberate one-time shadow qualification before legacy controls are retired and a final exact-head qualification after cutover.

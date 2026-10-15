@@ -6,26 +6,6 @@ on:
       tested_sha:
         required: true
         type: string
-  pull_request:
-    branches: [develop]
-    paths:
-      - 'ops/asvs50-assurance.json'
-      - 'docs/product/ASVS_5_0_ASSURANCE_CANONICAL.md'
-      - 'docs/product/M5_READINESS_MATRIX_2026-09-12.md'
-      - 'docs/product/PROJECT_STATUS_CURRENT.md'
-      - 'docs/product/CANONICAL_DOC_INDEX.md'
-      - 'CHANGELOG.md'
-      - '.github/scripts/validate-asvs50-assurance.mjs'
-      - '.github/workflows/asvs50-assurance.yml'
-      - '.github/workflows/dependency-security.yml'
-      - '.github/scripts/dependency-security.mjs'
-      - '.github/scripts/certification/**'
-      - '.github/workflows/browser-certification-orchestrator.yml'
-      - '.github/workflows/certification-impact.yml'
-      - 'docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md'
-      - 'product/src/**'
-      - 'product/supabase/**'
-      - 'product/next.config.*'
   push:
     branches: [develop]
     paths:

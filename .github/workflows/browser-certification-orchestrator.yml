@@ -16,25 +16,6 @@ on:
         required: true
       DOCENTE_OS_MFA_E2E_TOTP_SECRET:
         required: true
-  pull_request:
-    branches:
-      - develop
-    paths:
-      - 'product/**'
-      - 'render.yaml'
-      - '.github/scripts/certification/**'
-      - '.github/scripts/runtime-health.mjs'
-      - '.github/workflows/browser-certification-orchestrator.yml'
-      - '.github/workflows/experience-acceptance.yml'
-      - '.github/workflows/wcag22-aa-assurance.yml'
-      - '.github/workflows/p6-performance.yml'
-      - '.github/workflows/x4-planner-e2e.yml'
-      - '.github/workflows/asvs50-assurance.yml'
-      - '.github/workflows/product-ci.yml'
-      - '.github/workflows/certification-impact.yml'
-      - '.github/workflows/governed-mfa-queue-hygiene.yml'
-      - 'docs/architecture/CERTIFICATION_PIPELINE_V2_CANONICAL.md'
-
 permissions:
   contents: read
   statuses: write
