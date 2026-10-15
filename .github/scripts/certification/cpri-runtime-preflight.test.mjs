@@ -1,1 +1,27 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import test from 'node:test'
 import '../../../product/scripts/experience/cpri-runtime-preflight.test.mjs'
+
+const workflow = readFileSync(
+  new URL('../../workflows/browser-certification-orchestrator.yml', import.meta.url),
+  'utf8',
+)
+
+test('browser certification enforces CPRI runtime preflight before dependent browser gates', () => {
+  const cpriStep = '- name: Enforce CPRI runtime preflight'
+  const hvaStep = '- name: Run Human + Visual Acceptance'
+  const cpriIndex = workflow.indexOf(cpriStep)
+  const hvaIndex = workflow.indexOf(hvaStep)
+
+  assert.ok(cpriIndex >= 0, 'browser orchestrator must declare the CPRI runtime preflight step')
+  assert.ok(hvaIndex >= 0, 'browser orchestrator must retain the HVA step')
+  assert.ok(cpriIndex < hvaIndex, 'CPRI runtime preflight must execute before HVA and dependent browser gates')
+  assert.match(workflow, /run: node scripts\/experience\/cpri-runtime-preflight-cli\.mjs/)
+  assert.match(workflow, /CPRI_PREFLIGHT_OUTPUT: test-results\/experience\/cpri-runtime-preflight\.json/)
+  assert.doesNotMatch(
+    workflow.slice(cpriIndex, hvaIndex),
+    /continue-on-error:\s*true/,
+    'CPRI runtime preflight must fail closed rather than continue on error',
+  )
+})
