@@ -10,6 +10,16 @@ const requiredTokens = (text, tokens, label) => {
   for (const token of tokens) assert.ok(text.includes(token), `${label} missing ${token}`)
 }
 
+const ordered = (text, tokens, label) => {
+  let previous = -1
+  for (const token of tokens) {
+    const index = text.indexOf(token)
+    assert.ok(index >= 0, `${label} missing ${token}`)
+    assert.ok(index > previous, `${label} has ${token} out of order`)
+    previous = index
+  }
+}
+
 test('AGENTS requires CV2 and Runtime Release contracts before significant CI work', () => {
   const agents = read('AGENTS.md')
   requiredTokens(agents, [
@@ -46,4 +56,28 @@ test('Runtime Release contract binds L0 L1 L2 to lifecycle stages', () => {
     'RUNTIME',
     'L2',
   ], 'RUNTIME_RELEASE_CONTRACT_V1.md')
+})
+
+test('Product CI publishes DEVELOPMENT status, cancels stale PR work and excludes ready_for_review', () => {
+  const workflow = read('.github/workflows/product-ci.yml')
+  requiredTokens(workflow, [
+    'types: [opened, reopened, synchronize]',
+    'cancel-in-progress: true',
+    "context: 'cv2/development-preflight'",
+    'github.event.pull_request.head.sha || github.sha',
+  ], 'product-ci.yml')
+  assert.equal(workflow.includes('ready_for_review'), false, 'Product CI must not run because a PR became Ready')
+})
+
+test('Product CI runs cheap product prerequisites before any full Supabase replay', () => {
+  const workflow = read('.github/workflows/product-ci.yml')
+  ordered(workflow, [
+    'npm ci --no-audit --no-fund',
+    'npm run typecheck',
+    'npm test',
+    'npm run lint',
+    'npm run build',
+    'Set up Supabase CLI for deep DB replay',
+    'Replay complete migration chain on ephemeral Supabase',
+  ], 'product-ci.yml')
 })
