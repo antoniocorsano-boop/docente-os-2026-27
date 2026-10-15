@@ -107,3 +107,24 @@ test('reusable heavy workers bind checkout/status to explicit tested SHA when ca
     requiredTokens(workflow, ['inputs.tested_sha'], `${label} reusable worker`)
   }
 })
+
+test('candidate DB assurance is reusable, exact-head and local-only', () => {
+  const workflow = read('.github/workflows/candidate-database-assurance.yml')
+  requiredTokens(workflow, [
+    'workflow_call:',
+    'base_sha:',
+    'tested_sha:',
+    'runtime-release-contract.mjs',
+    'supabase db start',
+    'supabase db reset --local --no-seed',
+    'runtime-release-contract.sql',
+    'timetable_import_g1_2_contract.sql',
+    'timetable_import_completion_contract.sql',
+    'knowledge_bounded_search_contract.sql',
+    'inputs.tested_sha',
+    'inputs.base_sha',
+  ], 'candidate-database-assurance.yml')
+  for (const forbidden of ['gnshgapmwyjamhmlikeg', 'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_ACCESS_TOKEN', 'service_role']) {
+    assert.equal(workflow.includes(forbidden), false, `candidate DB assurance must not contain ${forbidden}`)
+  }
+})
