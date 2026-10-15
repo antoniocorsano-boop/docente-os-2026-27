@@ -280,6 +280,13 @@ jobs:
         working-directory: product
         run: npx playwright install --with-deps chromium
 
+      - name: Enforce CPRI runtime preflight
+        working-directory: product
+        shell: bash
+        env:
+          CPRI_PREFLIGHT_OUTPUT: test-results/experience/cpri-runtime-preflight.json
+        run: node scripts/experience/cpri-runtime-preflight-cli.mjs
+
       - name: Run Human + Visual Acceptance
         id: hva_browser
         if: needs.preflight.outputs.hva == 'true'
