@@ -1,0 +1,363 @@
+name: CV2 Candidate Qualification
+
+on:
+  pull_request:
+    branches: [develop]
+    types: [ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: write
+
+jobs:
+  lease-and-impact:
+    name: cv2-candidate-lease-and-impact
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      authorized: ${{ steps.lease.outputs.authorized }}
+      lease_json: ${{ steps.lease.outputs.lease_json }}
+      base_sha: ${{ steps.boundary.outputs.base_sha }}
+      tested_sha: ${{ steps.boundary.outputs.tested_sha }}
+      browser_required: ${{ steps.impact.outputs.browser_required }}
+      asvs_required: ${{ steps.impact.outputs.asvs_required }}
+      k1_required: ${{ steps.impact.outputs.k1_required }}
+      database_deep: ${{ steps.runtime.outputs.database_deep }}
+      recovery_required: ${{ steps.runtime.outputs.recovery_required }}
+
+    steps:
+      - name: Bind event candidate boundary
+        id: boundary
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "tested_sha=$TESTED_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Publish pending candidate qualification status
+        uses: actions/github-script@v7
+        env:
+          TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: process.env.TESTED_SHA,
+              state: 'pending',
+              context: 'cv2/candidate-qualification',
+              description: 'CV2 CANDIDATE qualification in esecuzione',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+
+      - name: Checkout exact candidate head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact candidate checkout
+        shell: bash
+        env:
+          TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: test "$(git rev-parse HEAD)" = "$TESTED_SHA"
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Re-read live PR head and DEVELOPMENT status
+        id: live
+        uses: actions/github-script@v7
+        env:
+          TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            })
+            const liveSha = pr.data.head.sha
+            const statuses = await github.rest.repos.listCommitStatusesForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: process.env.TESTED_SHA,
+              per_page: 100,
+            })
+            const development = statuses.data.find((status) => status.context === 'cv2/development-preflight')
+            core.setOutput('live_sha', liveSha)
+            core.setOutput('development_status', development?.state ?? '')
+
+      - name: Evaluate exact-head candidate lease
+        id: lease
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          LIVE_SHA: ${{ steps.live.outputs.live_sha }}
+          DEVELOPMENT_STATUS: ${{ steps.live.outputs.development_status }}
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/candidate
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs'
+          import { evaluateCandidateLease } from './.github/scripts/certification/cv2-lifecycle.mjs'
+
+          const lease = evaluateCandidateLease({
+            expectedSha: process.env.EXPECTED_SHA,
+            liveSha: process.env.LIVE_SHA,
+            developmentStatus: process.env.DEVELOPMENT_STATUS || null,
+          })
+          fs.writeFileSync('test-results/candidate/lease.json', JSON.stringify(lease, null, 2) + '\n')
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `authorized=${lease.authorized}\n`)
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `lease_json=${JSON.stringify(lease)}\n`)
+          NODE
+
+      - name: Generate full base-to-head certification impact receipt
+        id: impact
+        if: steps.lease.outputs.authorized == 'true'
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+          CERTIFICATION_IMPACT_OUTPUT: test-results/candidate/certification-impact.json
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" "$TESTED_SHA" \
+            | env CERTIFICATION_BASE_SHA="$BASE_SHA" \
+                  CERTIFICATION_TESTED_SHA="$TESTED_SHA" \
+                  CERTIFICATION_IMPACT_OUTPUT="$CERTIFICATION_IMPACT_OUTPUT" \
+                  node .github/scripts/certification/generate-impact-receipt.mjs
+          node --input-type=module <<'NODE' >> "$GITHUB_OUTPUT"
+          import fs from 'node:fs'
+          const receipt = JSON.parse(fs.readFileSync(process.env.CERTIFICATION_IMPACT_OUTPUT, 'utf8'))
+          const required = new Set(receipt.requiredGates ?? [])
+          const browser = ['HVA', 'WCAG_2_2_AA', 'P6_PERFORMANCE', 'X4_PLANNER_WRITE'].some((gate) => required.has(gate))
+          console.log(`browser_required=${browser}`)
+          console.log(`asvs_required=${required.has('ASVS_5_0')}`)
+          console.log(`k1_required=${required.has('K1_KNOWLEDGE_UPLOAD')}`)
+          NODE
+
+      - name: Evaluate Runtime Release Contract candidate impact
+        id: runtime
+        if: steps.lease.outputs.authorized == 'true'
+        shell: bash
+        env:
+          RUNTIME_CONTRACT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          RUNTIME_CONTRACT_TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+          RUNTIME_RELEASE_CONTRACT_OUTPUT: test-results/candidate/runtime-release-impact.json
+        run: |
+          set -euo pipefail
+          node .github/scripts/runtime-release-contract.mjs
+          node --input-type=module <<'NODE' >> "$GITHUB_OUTPUT"
+          import fs from 'node:fs'
+          const receipt = JSON.parse(fs.readFileSync(process.env.RUNTIME_RELEASE_CONTRACT_OUTPUT, 'utf8'))
+          const databaseDeep = receipt.databaseDeep === true
+          console.log(`database_deep=${databaseDeep}`)
+          console.log(`recovery_required=${databaseDeep}`)
+          NODE
+
+      - name: Publish candidate boundary evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cv2-candidate-boundary-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 90
+          path: test-results/candidate/
+
+  browser:
+    needs: lease-and-impact
+    if: needs.lease-and-impact.outputs.authorized == 'true' && needs.lease-and-impact.outputs.browser_required == 'true'
+    uses: ./.github/workflows/browser-certification-orchestrator.yml
+    with:
+      base_sha: ${{ needs.lease-and-impact.outputs.base_sha }}
+      tested_sha: ${{ needs.lease-and-impact.outputs.tested_sha }}
+    secrets: inherit
+
+  asvs:
+    needs: lease-and-impact
+    if: needs.lease-and-impact.outputs.authorized == 'true' && needs.lease-and-impact.outputs.asvs_required == 'true'
+    uses: ./.github/workflows/asvs50-assurance.yml
+    with:
+      tested_sha: ${{ needs.lease-and-impact.outputs.tested_sha }}
+
+  k1:
+    needs: lease-and-impact
+    if: needs.lease-and-impact.outputs.authorized == 'true' && needs.lease-and-impact.outputs.k1_required == 'true'
+    uses: ./.github/workflows/k1-knowledge-e2e.yml
+    with:
+      tested_sha: ${{ needs.lease-and-impact.outputs.tested_sha }}
+    secrets: inherit
+
+  candidate-db:
+    needs: lease-and-impact
+    if: needs.lease-and-impact.outputs.authorized == 'true' && needs.lease-and-impact.outputs.database_deep == 'true'
+    uses: ./.github/workflows/candidate-database-assurance.yml
+    with:
+      base_sha: ${{ needs.lease-and-impact.outputs.base_sha }}
+      tested_sha: ${{ needs.lease-and-impact.outputs.tested_sha }}
+
+  p7-recovery:
+    needs: lease-and-impact
+    if: needs.lease-and-impact.outputs.authorized == 'true' && needs.lease-and-impact.outputs.recovery_required == 'true'
+    uses: ./.github/workflows/p7-db-restore-rehearsal.yml
+    with:
+      tested_sha: ${{ needs.lease-and-impact.outputs.tested_sha }}
+
+  finalizer:
+    name: cv2-candidate-finalizer
+    needs: [lease-and-impact, browser, asvs, k1, candidate-db, p7-recovery]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact candidate head for finalization
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build SHA-bound candidate qualification receipt
+        id: qualify
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          LIVE_SHA: ${{ needs.lease-and-impact.outputs.tested_sha }}
+          LEASE_JSON: ${{ needs.lease-and-impact.outputs.lease_json }}
+          BROWSER_REQUIRED: ${{ needs.lease-and-impact.outputs.browser_required }}
+          ASVS_REQUIRED: ${{ needs.lease-and-impact.outputs.asvs_required }}
+          K1_REQUIRED: ${{ needs.lease-and-impact.outputs.k1_required }}
+          DB_REQUIRED: ${{ needs.lease-and-impact.outputs.database_deep }}
+          P7_REQUIRED: ${{ needs.lease-and-impact.outputs.recovery_required }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
+          ASVS_RESULT: ${{ needs.asvs.result }}
+          K1_RESULT: ${{ needs.k1.result }}
+          DB_RESULT: ${{ needs.candidate-db.result }}
+          P7_RESULT: ${{ needs.p7-recovery.result }}
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/candidate
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs'
+          import { evaluateCandidateLease, evaluateCandidateQualification } from './.github/scripts/certification/cv2-lifecycle.mjs'
+
+          const bool = (value) => value === 'true'
+          const required = {
+            BROWSER_ORCHESTRATOR: bool(process.env.BROWSER_REQUIRED),
+            ASVS_5_0: bool(process.env.ASVS_REQUIRED),
+            K1_KNOWLEDGE_UPLOAD: bool(process.env.K1_REQUIRED),
+            DATABASE_DEEP: bool(process.env.DB_REQUIRED),
+            P7_RECOVERY: bool(process.env.P7_REQUIRED),
+          }
+
+          let lease
+          try {
+            lease = JSON.parse(process.env.LEASE_JSON || '')
+          } catch {
+            lease = evaluateCandidateLease({
+              expectedSha: process.env.EXPECTED_SHA,
+              liveSha: process.env.LIVE_SHA || null,
+              developmentStatus: null,
+            })
+          }
+
+          const authorizedLease = lease?.authorized === true
+          const raw = {
+            BROWSER_ORCHESTRATOR: process.env.BROWSER_RESULT,
+            ASVS_5_0: process.env.ASVS_RESULT,
+            K1_KNOWLEDGE_UPLOAD: process.env.K1_RESULT,
+            DATABASE_DEEP: process.env.DB_RESULT,
+            P7_RECOVERY: process.env.P7_RESULT,
+          }
+          const results = {}
+          const classifications = {}
+          for (const [gate, isRequired] of Object.entries(required)) {
+            const state = raw[gate] || 'skipped'
+            if (!isRequired) {
+              results[gate] = state === 'success' ? 'success' : 'skipped'
+              classifications[gate] = 'NOT_APPLICABLE'
+            } else if (!authorizedLease && state === 'skipped') {
+              results[gate] = 'CASCADE'
+              classifications[gate] = 'CASCADE'
+            } else if (state === 'success') {
+              results[gate] = 'success'
+              classifications[gate] = 'PASS'
+            } else {
+              results[gate] = 'failure'
+              classifications[gate] = state === 'skipped' ? 'CASCADE' : 'FAIL'
+            }
+          }
+
+          const qualification = evaluateCandidateQualification({ lease, required, results })
+          if (qualification.schema !== 'cv2-candidate-qualification.v1') throw new Error('unexpected qualification schema')
+          const receipt = {
+            ...qualification,
+            expectedSha: process.env.EXPECTED_SHA,
+            testedSha: process.env.LIVE_SHA || process.env.EXPECTED_SHA,
+            classifications,
+            rawWorkerResults: raw,
+            mergeAuthorized: false,
+          }
+          fs.writeFileSync('test-results/candidate/candidate-qualification.json', JSON.stringify(receipt, null, 2) + '\n')
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `outcome=${receipt.outcome}\n`)
+
+          const summary = [
+            '## CV2 Candidate Qualification',
+            '',
+            `- schema: \`${receipt.schema}\``,
+            `- exact head: \`${receipt.expectedSha}\``,
+            `- outcome: \`${receipt.outcome}\``,
+            `- mergeAuthorized: \`${receipt.mergeAuthorized}\``,
+            '',
+            '### Worker classifications',
+            ...Object.entries(classifications).map(([gate, classification]) => `- ${gate}: \`${classification}\``),
+            '',
+            'A downstream gate blocked by an upstream lease/prerequisite is recorded as `CASCADE`, not as a second product defect.',
+          ].join('\n') + '\n'
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary)
+          NODE
+
+      - name: Publish candidate qualification receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cv2-candidate-qualification-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 90
+          path: test-results/candidate/candidate-qualification.json
+
+      - name: Publish final candidate qualification status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+          OUTCOME: ${{ steps.qualify.outputs.outcome }}
+        with:
+          script: |
+            const ok = process.env.OUTCOME === 'PASS'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: process.env.TESTED_SHA,
+              state: ok ? 'success' : 'failure',
+              context: 'cv2/candidate-qualification',
+              description: ok ? 'CV2 CANDIDATE exact-head qualificato' : 'CV2 CANDIDATE exact-head non qualificato',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+
+      - name: Enforce candidate qualification
+        if: always()
+        env:
+          OUTCOME: ${{ steps.qualify.outputs.outcome }}
+        run: test "$OUTCOME" = 'PASS'
