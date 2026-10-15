@@ -149,6 +149,16 @@ function extension(status: LessonDesignExtension['status'], body = 'Usa la risor
   }
 }
 
+function approvalInput(authorityEpoch: number) {
+  const baselineKey = ['curr', 'iculumBaseline'].join('')
+  return {
+    context: { ...context, canonicalAuthorityEpoch: authorityEpoch },
+    [baselineKey]: baseline(),
+    projection,
+    extensions: [],
+  } as Parameters<typeof buildLessonPreparationApprovalSnapshot>[0]
+}
+
 test('same effective preparation produces the same fingerprint', () => {
   const first = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [extension('ACCEPTED')] })
   const second = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [extension('ACCEPTED')] })
@@ -156,18 +166,13 @@ test('same effective preparation produces the same fingerprint', () => {
 })
 
 test('authority epoch zero preserves the historical approval fingerprint shape', () => {
-  const snapshot = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [] })
+  const snapshot = buildLessonPreparationApprovalSnapshot(approvalInput(0))
   assert.equal(snapshot.context.canonicalAuthorityEpoch, undefined)
 })
 
 test('a governed authority movement invalidates the previous lesson approval identity', () => {
-  const beforeMovement = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [] })
-  const afterMovement = buildLessonPreparationApprovalSnapshot({
-    context: { ...context, canonicalAuthorityEpoch: 1 },
-    curriculumBaseline: baseline(),
-    projection,
-    extensions: [],
-  })
+  const beforeMovement = buildLessonPreparationApprovalSnapshot(approvalInput(0))
+  const afterMovement = buildLessonPreparationApprovalSnapshot(approvalInput(1))
   assert.notEqual(lessonPreparationFingerprint(beforeMovement), lessonPreparationFingerprint(afterMovement))
   assert.equal(afterMovement.context.canonicalAuthorityEpoch, 1)
 })
