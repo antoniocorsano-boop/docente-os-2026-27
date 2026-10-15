@@ -31,6 +31,8 @@ const CENTRAL_ORCHESTRATION_PATHS = new Set([
   '.github/workflows/product-ci.yml',
   '.github/workflows/certification-impact.yml',
   '.github/workflows/browser-certification-orchestrator.yml',
+  '.github/workflows/candidate-qualification.yml',
+  '.github/workflows/candidate-database-assurance.yml',
   '.github/workflows/governed-mfa-queue-hygiene.yml',
   '.github/scripts/runtime-release-contract.mjs',
   'ops/runtime-release-contract.json',
