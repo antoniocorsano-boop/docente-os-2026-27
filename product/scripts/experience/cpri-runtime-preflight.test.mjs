@@ -40,8 +40,8 @@ function validRuntimeSnapshot() {
 const cleanStaticAuthority = () => ({ ok: true, runtimeAuthority: [], unclassified: [] })
 
 async function classify(runtimeSnapshot = validRuntimeSnapshot(), staticAuthority = cleanStaticAuthority()) {
-  const module = await import(implementationUrl.href)
-  return module.classifyCpriRuntimePreflight({ runtimeSnapshot, staticAuthority })
+  const preflightModule = await import(implementationUrl.href)
+  return preflightModule.classifyCpriRuntimePreflight({ runtimeSnapshot, staticAuthority })
 }
 
 test('CPRI final runtime preflight implementation exists', () => {
