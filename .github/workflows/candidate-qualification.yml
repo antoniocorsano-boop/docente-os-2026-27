@@ -20,9 +20,12 @@ jobs:
       lease_json: ${{ steps.lease.outputs.lease_json }}
       base_sha: ${{ steps.boundary.outputs.base_sha }}
       tested_sha: ${{ steps.boundary.outputs.tested_sha }}
+      live_sha: ${{ steps.live.outputs.live_sha }}
+      development_status: ${{ steps.live.outputs.development_status }}
       browser_required: ${{ steps.impact.outputs.browser_required }}
       asvs_required: ${{ steps.impact.outputs.asvs_required }}
       k1_required: ${{ steps.impact.outputs.k1_required }}
+      required_gates_json: ${{ steps.impact.outputs.required_gates_json }}
       database_deep: ${{ steps.runtime.outputs.database_deep }}
       recovery_required: ${{ steps.runtime.outputs.recovery_required }}
 
@@ -78,19 +81,21 @@ jobs:
           TESTED_SHA: ${{ github.event.pull_request.head.sha }}
         with:
           script: |
-            const pr = await github.rest.pulls.get({
+            const { data: pr } = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: context.issue.number,
             })
-            const liveSha = pr.data.head.sha
-            const statuses = await github.rest.repos.listCommitStatusesForRef({
+            const liveSha = pr.head.sha
+            const { data: combined } = await github.rest.repos.getCombinedStatusForRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
               ref: process.env.TESTED_SHA,
               per_page: 100,
             })
-            const development = statuses.data.find((status) => status.context === 'cv2/development-preflight')
+            const development = combined.statuses
+              .filter((status) => status.context === 'cv2/development-preflight')
+              .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))[0]
             core.setOutput('live_sha', liveSha)
             core.setOutput('development_status', development?.state ?? '')
 
@@ -107,7 +112,6 @@ jobs:
           node --input-type=module <<'NODE'
           import fs from 'node:fs'
           import { evaluateCandidateLease } from './.github/scripts/certification/cv2-lifecycle.mjs'
-
           const lease = evaluateCandidateLease({
             expectedSha: process.env.EXPECTED_SHA,
             liveSha: process.env.LIVE_SHA,
@@ -141,6 +145,7 @@ jobs:
           console.log(`browser_required=${browser}`)
           console.log(`asvs_required=${required.has('ASVS_5_0')}`)
           console.log(`k1_required=${required.has('K1_KNOWLEDGE_UPLOAD')}`)
+          console.log(`required_gates_json=${JSON.stringify([...required])}`)
           NODE
 
       - name: Evaluate Runtime Release Contract candidate impact
@@ -173,7 +178,7 @@ jobs:
 
   browser:
     needs: lease-and-impact
-    if: needs.lease-and-impact.outputs.authorized == 'true' && needs.lease-and-impact.outputs.browser_required == 'true'
+    if: needs.lease-and-impact.result == 'success' && needs.lease-and-impact.outputs.authorized == 'true' && needs.lease-and-impact.outputs.browser_required == 'true'
     uses: ./.github/workflows/browser-certification-orchestrator.yml
     with:
       base_sha: ${{ needs.lease-and-impact.outputs.base_sha }}
@@ -182,14 +187,14 @@ jobs:
 
   asvs:
     needs: lease-and-impact
-    if: needs.lease-and-impact.outputs.authorized == 'true' && needs.lease-and-impact.outputs.asvs_required == 'true'
+    if: needs.lease-and-impact.result == 'success' && needs.lease-and-impact.outputs.authorized == 'true' && needs.lease-and-impact.outputs.asvs_required == 'true'
     uses: ./.github/workflows/asvs50-assurance.yml
     with:
       tested_sha: ${{ needs.lease-and-impact.outputs.tested_sha }}
 
   k1:
     needs: lease-and-impact
-    if: needs.lease-and-impact.outputs.authorized == 'true' && needs.lease-and-impact.outputs.k1_required == 'true'
+    if: needs.lease-and-impact.result == 'success' && needs.lease-and-impact.outputs.authorized == 'true' && needs.lease-and-impact.outputs.k1_required == 'true'
     uses: ./.github/workflows/k1-knowledge-e2e.yml
     with:
       tested_sha: ${{ needs.lease-and-impact.outputs.tested_sha }}
@@ -197,7 +202,7 @@ jobs:
 
   candidate-db:
     needs: lease-and-impact
-    if: needs.lease-and-impact.outputs.authorized == 'true' && needs.lease-and-impact.outputs.database_deep == 'true'
+    if: needs.lease-and-impact.result == 'success' && needs.lease-and-impact.outputs.authorized == 'true' && needs.lease-and-impact.outputs.database_deep == 'true'
     uses: ./.github/workflows/candidate-database-assurance.yml
     with:
       base_sha: ${{ needs.lease-and-impact.outputs.base_sha }}
@@ -205,7 +210,7 @@ jobs:
 
   p7-recovery:
     needs: lease-and-impact
-    if: needs.lease-and-impact.outputs.authorized == 'true' && needs.lease-and-impact.outputs.recovery_required == 'true'
+    if: needs.lease-and-impact.result == 'success' && needs.lease-and-impact.outputs.authorized == 'true' && needs.lease-and-impact.outputs.recovery_required == 'true'
     uses: ./.github/workflows/p7-db-restore-rehearsal.yml
     with:
       tested_sha: ${{ needs.lease-and-impact.outputs.tested_sha }}
@@ -232,9 +237,13 @@ jobs:
         id: qualify
         shell: bash
         env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
-          LIVE_SHA: ${{ needs.lease-and-impact.outputs.tested_sha }}
+          LIVE_SHA: ${{ needs.lease-and-impact.outputs.live_sha }}
+          DEVELOPMENT_STATUS: ${{ needs.lease-and-impact.outputs.development_status }}
           LEASE_JSON: ${{ needs.lease-and-impact.outputs.lease_json }}
+          PREFLIGHT_RESULT: ${{ needs.lease-and-impact.result }}
+          REQUIRED_GATES_JSON: ${{ needs.lease-and-impact.outputs.required_gates_json }}
           BROWSER_REQUIRED: ${{ needs.lease-and-impact.outputs.browser_required }}
           ASVS_REQUIRED: ${{ needs.lease-and-impact.outputs.asvs_required }}
           K1_REQUIRED: ${{ needs.lease-and-impact.outputs.k1_required }}
@@ -253,7 +262,9 @@ jobs:
           import { evaluateCandidateLease, evaluateCandidateQualification } from './.github/scripts/certification/cv2-lifecycle.mjs'
 
           const bool = (value) => value === 'true'
+          const preflightSuccess = process.env.PREFLIGHT_RESULT === 'success'
           const required = {
+            PREFLIGHT: true,
             BROWSER_ORCHESTRATOR: bool(process.env.BROWSER_REQUIRED),
             ASVS_5_0: bool(process.env.ASVS_REQUIRED),
             K1_KNOWLEDGE_UPLOAD: bool(process.env.K1_REQUIRED),
@@ -268,12 +279,13 @@ jobs:
             lease = evaluateCandidateLease({
               expectedSha: process.env.EXPECTED_SHA,
               liveSha: process.env.LIVE_SHA || null,
-              developmentStatus: null,
+              developmentStatus: process.env.DEVELOPMENT_STATUS || null,
             })
           }
 
           const authorizedLease = lease?.authorized === true
           const raw = {
+            PREFLIGHT: process.env.PREFLIGHT_RESULT,
             BROWSER_ORCHESTRATOR: process.env.BROWSER_RESULT,
             ASVS_5_0: process.env.ASVS_RESULT,
             K1_KNOWLEDGE_UPLOAD: process.env.K1_RESULT,
@@ -284,12 +296,12 @@ jobs:
           const classifications = {}
           for (const [gate, isRequired] of Object.entries(required)) {
             const state = raw[gate] || 'skipped'
-            if (!authorizedLease) {
-              results[gate] = isRequired ? 'CASCADE' : 'skipped'
-              classifications[gate] = 'CASCADE'
-            } else if (!isRequired) {
+            if (!isRequired) {
               results[gate] = state === 'success' ? 'success' : 'skipped'
               classifications[gate] = 'NOT_APPLICABLE'
+            } else if (gate !== 'PREFLIGHT' && (!preflightSuccess || !authorizedLease) && state === 'skipped') {
+              results[gate] = 'CASCADE'
+              classifications[gate] = 'CASCADE'
             } else if (state === 'success') {
               results[gate] = 'success'
               classifications[gate] = 'PASS'
@@ -301,22 +313,32 @@ jobs:
 
           const qualification = evaluateCandidateQualification({ lease, required, results })
           if (qualification.schema !== 'cv2-candidate-qualification.v1') throw new Error('unexpected qualification schema')
+          let certificationGates = []
+          try {
+            certificationGates = JSON.parse(process.env.REQUIRED_GATES_JSON || '[]')
+          } catch {
+            certificationGates = []
+          }
           const receipt = {
             ...qualification,
+            baseSha: process.env.BASE_SHA,
             expectedSha: process.env.EXPECTED_SHA,
-            testedSha: process.env.LIVE_SHA || process.env.EXPECTED_SHA,
+            liveSha: process.env.LIVE_SHA || null,
+            developmentStatus: process.env.DEVELOPMENT_STATUS || null,
+            requiredCertificationGates: certificationGates,
             classifications,
             rawWorkerResults: raw,
             mergeAuthorized: false,
           }
           fs.writeFileSync('test-results/candidate/candidate-qualification.json', JSON.stringify(receipt, null, 2) + '\n')
           fs.appendFileSync(process.env.GITHUB_OUTPUT, `outcome=${receipt.outcome}\n`)
-
           const summary = [
             '## CV2 Candidate Qualification',
             '',
             `- schema: \`${receipt.schema}\``,
             `- exact head: \`${receipt.expectedSha}\``,
+            `- live head: \`${receipt.liveSha ?? 'unavailable'}\``,
+            `- DEVELOPMENT: \`${receipt.developmentStatus ?? 'missing'}\``,
             `- outcome: \`${receipt.outcome}\``,
             `- mergeAuthorized: \`${receipt.mergeAuthorized}\``,
             '',
