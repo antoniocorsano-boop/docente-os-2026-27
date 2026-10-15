@@ -1,6 +1,11 @@
 name: ASVS 5.0 Assurance
 
 on:
+  workflow_call:
+    inputs:
+      tested_sha:
+        required: true
+        type: string
   pull_request:
     branches: [develop]
     paths:
@@ -47,11 +52,18 @@ permissions:
 jobs:
   asvs50-assurance:
     runs-on: ubuntu-latest
+    env:
+      TESTED_SHA: ${{ inputs.tested_sha || github.event.pull_request.head.sha || github.sha }}
     steps:
       - name: Checkout exact head
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ inputs.tested_sha || github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact tested head
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$TESTED_SHA"
 
       - name: Use Node 22
         uses: actions/setup-node@v4
