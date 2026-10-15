@@ -49,17 +49,18 @@ export default async function AnnualPlanPage({
   }
 
   const sourceRepository = new SupabaseCanonicalPlanSourceRepository()
-  const runtimeEntries = await Promise.all(
-    GRADES.map(async (grade) => [
-      grade,
-      await sourceRepository.resolve({
-        workspaceId: context.workspace.id,
-        academicYearId: academicYear.id,
-        code: CANONICAL_PLAN_SOURCES[grade].code,
-      }),
-    ] as const),
+  const [primaSource, secondaSource, terzaSource] = await Promise.all(
+    GRADES.map((grade) => sourceRepository.resolve({
+      workspaceId: context.workspace.id,
+      academicYearId: academicYear.id,
+      code: CANONICAL_PLAN_SOURCES[grade].code,
+    })),
   )
-  const runtimeSources = Object.fromEntries(runtimeEntries) as CanonicalPlanRuntimeSources
+  const runtimeSources: CanonicalPlanRuntimeSources = {
+    Prima: primaSource,
+    Seconda: secondaSource,
+    Terza: terzaSource,
+  }
 
   const requestedSectionId = (await searchParams).section ?? null
   const initialSectionId = requestedSectionId && initialSnapshot.sections.some((section) => section.id === requestedSectionId)

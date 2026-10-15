@@ -259,8 +259,8 @@ create or replace function public.persist_eco02_lesson_preparation_receipt(
   target_canonical_generation_id uuid,
   target_block_id text,
   target_projection_id text,
-  target_curriculum_source_handoff_footprint_hash text,
-  target_curriculum_baseline_fingerprint text,
+  target_curricolo_source_handoff_footprint_hash text,
+  target_curricolo_baseline_fingerprint text,
   target_preparation_fingerprint text,
   target_approval_snapshot jsonb
 )
@@ -330,8 +330,8 @@ begin
     target_canonical_generation_id,
     target_block_id,
     target_projection_id,
-    target_curriculum_source_handoff_footprint_hash,
-    target_curriculum_baseline_fingerprint,
+    target_curricolo_source_handoff_footprint_hash,
+    target_curricolo_baseline_fingerprint,
     target_preparation_fingerprint,
     target_approval_snapshot
   );

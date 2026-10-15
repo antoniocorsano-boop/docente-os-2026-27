@@ -138,8 +138,8 @@ export class SupabaseLessonPreparationApprovalRepository {
       target_canonical_generation_id: input.context.canonicalGenerationId,
       target_block_id: input.context.blockId,
       target_projection_id: input.context.projectionId,
-      target_curriculum_source_handoff_footprint_hash: input.curriculumBaseline.sourceHandoffFootprintHash,
-      target_curriculum_baseline_fingerprint: baselineFingerprint,
+      target_curricolo_source_handoff_footprint_hash: input.curriculumBaseline.sourceHandoffFootprintHash,
+      target_curricolo_baseline_fingerprint: baselineFingerprint,
       target_preparation_fingerprint: preparationFingerprint,
       target_approval_snapshot: snapshot,
     })

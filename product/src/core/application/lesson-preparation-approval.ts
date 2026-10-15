@@ -1,3 +1,4 @@
+// @trama-readonly
 import { createHash } from 'node:crypto'
 import type { AnnualPlanCurriculumBaselineSnapshot } from '@/core/domain/cml-curriculum-revalidation'
 import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
