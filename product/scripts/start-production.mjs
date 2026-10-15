@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 
-const EXPECTED_RUNTIME_MIGRATION = '0101_cpri_teaching_session_runtime_authority'
+const EXPECTED_RUNTIME_MIGRATION = '0102_cpri_binding_movement_and_revalidation'
 const port = process.env.PORT?.trim() || '3000'
 const nextBin = process.platform === 'win32' ? 'next.cmd' : 'next'
 
