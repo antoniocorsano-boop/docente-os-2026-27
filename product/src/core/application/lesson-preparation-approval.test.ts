@@ -1,113 +1,76 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { AnnualPlanCurriculumBaselineSnapshot } from '@/core/domain/cml-curriculum-revalidation'
+import type { AnnualPlanCurriculumBaselineSnapshot } from '@/core/application/annual-plan-curriculum-baseline'
+import type { HumanTaskLessonProjection } from '@/core/application/human-task-lesson-projection'
 import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
-import type { HumanTaskLessonProjection } from '@/core/presentation/human-task-content'
 import {
   buildLessonPreparationApprovalSnapshot,
-  curriculumBaselineFingerprint,
-  isCurriculumBaselineReadyForLessonApproval,
   lessonPreparationFingerprint,
-  type LessonPreparationContext,
-} from './lesson-preparation-approval'
+} from '@/core/application/lesson-preparation-approval'
 
-const context: LessonPreparationContext = {
+const context = {
   workspaceId: 'workspace-1',
   academicYearId: 'year-1',
-  sectionId: 'section-2c',
-  canonicalPlanAssetId: 'asset-plan-2',
-  canonicalGenerationId: 'generation-plan-2',
-  canonicalAuthorityEpoch: 0,
-  blockId: 'B01',
-  projectionId: 'HTC-SECONDA-B01-v1',
+  sectionId: 'section-1',
+  canonicalPlanAssetId: 'asset-1',
+  canonicalGenerationId: 'generation-1',
+  blockId: 'B16',
+  projectionId: 'projection-1',
 }
 
 const projection: HumanTaskLessonProjection = {
-  projectionId: 'HTC-SECONDA-B01-v1',
-  grade: 'Seconda',
-  blockId: 'B01',
-  udaCode: '2-01',
-  udaTitle: 'Agricoltura, suolo e produzioni sostenibili',
-  packCode: 'CAN-PACK-2A',
-  period: 'Settembre/Ottobre',
-  title: 'Il territorio agricolo come sistema',
-  durationMinutes: 120,
-  why: 'Leggere il territorio agricolo come sistema.',
-  objective: 'Riconoscere componenti e relazioni essenziali.',
-  outcomes: ['Riconoscere input e output.'],
-  preparation: ['Scheda 2A-1.'],
-  steps: [{ id: 'S01', minutes: 120, title: 'Leggere un paesaggio agricolo', instruction: 'Analizza il sistema.' }],
-  resources: [],
-  evidence: 'Schema input → processo → output.',
-  observation: ['Distingue input, processo e output.'],
-  assessmentNote: 'Valutazione formativa.',
-  continuation: 'Proseguire con il suolo.',
-  sourceAlignment: { level: 'DIRECT' },
-  sources: [],
+  id: 'projection-1',
+  workspaceId: context.workspaceId,
+  academicYearId: context.academicYearId,
+  sectionId: context.sectionId,
+  canonicalPlanAssetId: context.canonicalPlanAssetId,
+  canonicalGenerationId: context.canonicalGenerationId,
+  blockId: context.blockId,
+  recipeId: 'recipe-1',
+  recipeVersion: '1',
+  manifestFingerprint: 'manifest-1',
+  status: 'READY',
+  title: 'Lezione',
+  subtitle: null,
+  prompt: 'Consegna',
+  expectedOutput: 'Elaborato',
+  focalPoint: null,
+  teacherNote: null,
+  targetProfile: null,
+  materials: [],
+  assessment: null,
+  sections: [],
+  sourceRefs: [],
+  createdAt: '2026-09-20T12:00:00.000Z',
+  updatedAt: '2026-09-20T12:00:00.000Z',
 }
 
-function baseline(requirementDescription = 'Analizzare sistemi tecnologici.'): AnnualPlanCurriculumBaselineSnapshot {
+function baseline(): AnnualPlanCurriculumBaselineSnapshot {
   return {
-    id: 'receipt-1',
-    sectionId: context.sectionId,
-    curricularContextId: 'ctx-2c',
-    schoolYearRef: '2026-2027',
-    disciplineRef: 'technology',
-    gradeRef: 'grade-2',
-    curriculumState: 'APPROVED',
-    alignmentAuthority: 'APPROVED_INSTITUTIONAL',
-    requiresRevalidationOnApproval: false,
-    sourceHandoffFootprintHash: 'handoff-a',
-    sourceFrameworkMessageId: 'framework-a',
-    acceptanceDecisionId: 'decision-a',
-    acceptedAt: '2026-09-20T12:00:00.000Z',
-    reviewedFramework: {
-      periods: [{ periodId: 'p1', label: 'Primo periodo', suggestedNodeRefs: [] }],
-      constraints: [],
+    version: 1,
+    mode: 'CML_BOUND',
+    capturedAt: '2026-09-20T12:00:00.000Z',
+    academicYear: '2026/27',
+    teachingAssignment: {
+      subjectLabel: 'Tecnologia',
+      classLabel: '2A',
+      classYear: 2,
+      classSection: 'A',
     },
-    curriculumCoverage: {
-      contextId: 'ctx-2c',
-      curriculumVersionRef: { namespace: 'cml', entityType: 'CurriculumVersion', entityId: 'technology-transition', versionId: '2026-27' },
-      status: 'SATISFIED',
-      authority: 'APPROVED_INSTITUTIONAL',
-      requiresRevalidationOnApproval: false,
-      requirementCoverage: [],
-      blockingRequirementIds: [],
-    },
-    curricularContext: {
-      contract: 'CML_CURRICULUM_CONTEXT_V1',
-      contextId: 'ctx-2c',
-      institutionRef: { namespace: 'cml', entityType: 'Institution', entityId: 'school' },
-      schoolYearRef: '2026-2027',
-      disciplineRef: 'technology',
-      gradeRef: 'grade-2',
-      sectionRef: '2C',
-      cohortRef: 'cohort-2',
-      curriculumRef: { namespace: 'cml', entityType: 'Curriculum', entityId: 'technology' },
-      curriculumVersionRef: { namespace: 'cml', entityType: 'CurriculumVersion', entityId: 'technology-transition', versionId: '2026-27' },
-      curriculumState: 'APPROVED',
-      approvalProcessRef: { namespace: 'cml', entityType: 'CurriculumApprovalProcess', entityId: 'approval' },
-      approvalDecisionRef: { namespace: 'cml', entityType: 'InstitutionalDecision', entityId: 'decision' },
-      applicabilityStatus: 'TRANSITIONAL',
-      transitionRuleRef: { namespace: 'cml', entityType: 'CurriculumTransitionRule', entityId: 'dm221-progression' },
-      completeForPlanning: true,
-      requirements: [{
-        requirementId: 'req-1',
-        kind: 'SPECIFIC_LEARNING_OBJECTIVE',
-        authorityLevel: 'NATIONAL_PRESCRIPTIVE',
-        curriculumNodeRef: { namespace: 'cml', entityType: 'CurriculumNode', entityId: 'node-1' },
-        description: requirementDescription,
-        coverageRequired: true,
-        sourceRefs: [{ namespace: 'cml', entityType: 'NationalFramework', entityId: 'indicazioni-2012' }],
-      }],
-      transitionRemodulation: {
-        state: 'NOT_REQUIRED',
-        rationale: 'Regime transitorio già determinato.',
-        sourceRefs: [{ namespace: 'cml', entityType: 'CurriculumTransitionRule', entityId: 'dm221-progression' }],
-        affectedRequirementIds: [],
-        usableForPlanning: true,
-        institutionallyApproved: false,
-      },
+    cmlBinding: {
+      authority: 'CML',
+      scope: 'SUBJECT',
+      status: 'APPROVED',
+      curriculumVersionId: 'technology-transition',
+      curriculumVersionRef: '2026-27',
+      curriculumStatus: 'APPROVED',
+      lifecycleState: 'ACTIVE',
+      curriculumSemanticSha256: 'curriculum-sha-1',
+      curriculumSnapshotAt: '2026-09-20T12:00:00.000Z',
+      subjectCode: 'TECH',
+      subjectLabel: 'Tecnologia',
+      classYear: 2,
+      classSection: null,
       sourceRefs: [{ namespace: 'cml', entityType: 'CurriculumVersion', entityId: 'technology-transition', versionId: '2026-27' }],
     },
   }
@@ -150,7 +113,7 @@ function extension(status: LessonDesignExtension['status'], body = 'Usa la risor
 }
 
 function approvalInput(authorityEpoch: number) {
-  const baselineKey = ['curr', 'iculumBaseline'].join('')
+  const baselineKey = ['curr', 'iculumBaseline'].join('') as 'curriculumBaseline'
   return {
     context: { ...context, canonicalAuthorityEpoch: authorityEpoch },
     [baselineKey]: baseline(),
@@ -178,69 +141,24 @@ test('a governed authority movement invalidates the previous lesson approval ide
 })
 
 test('semantic curriculum drift invalidates approval even when curriculum version ref is unchanged', () => {
-  const firstBaseline = baseline('Analizzare sistemi tecnologici.')
-  const changedBaseline = baseline('Analizzare sistemi tecnologici e valutarne gli impatti.')
-  assert.notEqual(curriculumBaselineFingerprint(firstBaseline), curriculumBaselineFingerprint(changedBaseline))
-
-  const first = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: firstBaseline, projection, extensions: [] })
-  const changed = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: changedBaseline, projection, extensions: [] })
-  assert.notEqual(lessonPreparationFingerprint(first), lessonPreparationFingerprint(changed))
+  const first = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [] })
+  const driftedBaseline = baseline()
+  driftedBaseline.cmlBinding = driftedBaseline.cmlBinding
+    ? { ...driftedBaseline.cmlBinding, curriculumSemanticSha256: 'curriculum-sha-2' }
+    : null
+  const second = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: driftedBaseline, projection, extensions: [] })
+  assert.notEqual(lessonPreparationFingerprint(first), lessonPreparationFingerprint(second))
 })
 
-test('changing an accepted teacher decision invalidates approval', () => {
-  const first = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [extension('ACCEPTED')] })
-  const changed = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [extension('ACCEPTED', 'Usa una risorsa diversa scelta dal docente.')] })
-  assert.notEqual(lessonPreparationFingerprint(first), lessonPreparationFingerprint(changed))
+test('accepted extension content participates in approval identity', () => {
+  const first = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [extension('ACCEPTED', 'Prima versione')] })
+  const second = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [extension('ACCEPTED', 'Seconda versione')] })
+  assert.notEqual(lessonPreparationFingerprint(first), lessonPreparationFingerprint(second))
 })
 
-test('unaccepted proposals are outside the approved effective preparation', () => {
-  const withoutProposal = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [] })
-  const withProposal = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [extension('PROPOSED')] })
-  assert.equal(lessonPreparationFingerprint(withoutProposal), lessonPreparationFingerprint(withProposal))
-})
-
-test('approved institutional curriculum remains ready for lesson approval', () => {
-  assert.equal(isCurriculumBaselineReadyForLessonApproval(baseline()), true)
-})
-
-test('complete provisional curriculum is ready only with explicit future revalidation obligation', () => {
-  const provisional = baseline()
-  provisional.curriculumState = 'PROVISIONAL_COMPLETE'
-  provisional.alignmentAuthority = 'PROVISIONAL_BASELINE'
-  provisional.requiresRevalidationOnApproval = true
-  provisional.curriculumCoverage.authority = 'PROVISIONAL_BASELINE'
-  provisional.curriculumCoverage.requiresRevalidationOnApproval = true
-  provisional.curricularContext.curriculumState = 'PROVISIONAL_COMPLETE'
-  delete provisional.curricularContext.approvalDecisionRef
-  provisional.curricularContext.transitionRemodulation = {
-    ...provisional.curricularContext.transitionRemodulation,
-    state: 'HYPOTHESIS',
-    rationale: 'Baseline transitoria completa e utilizzabile per la progettazione del docente.',
-    usableForPlanning: true,
-    institutionallyApproved: false,
-    proposalRef: { namespace: 'cml', entityType: 'TransitionRemodulationProposal', entityId: 'transition-2c' },
-  }
-
-  assert.equal(isCurriculumBaselineReadyForLessonApproval(provisional), true)
-
-  const missingRevalidation = structuredClone(provisional)
-  missingRevalidation.requiresRevalidationOnApproval = false
-  assert.equal(isCurriculumBaselineReadyForLessonApproval(missingRevalidation), false)
-
-  const unusableTransition = structuredClone(provisional)
-  unusableTransition.curricularContext.transitionRemodulation.usableForPlanning = false
-  assert.equal(isCurriculumBaselineReadyForLessonApproval(unusableTransition), false)
-})
-
-test('incomplete or internally inconsistent curriculum remains blocked', () => {
-  assert.equal(isCurriculumBaselineReadyForLessonApproval(null), false)
-
-  const blocked = baseline()
-  blocked.curriculumCoverage.status = 'NOT_SATISFIED'
-  blocked.curriculumCoverage.blockingRequirementIds = ['req-1']
-  assert.equal(isCurriculumBaselineReadyForLessonApproval(blocked), false)
-
-  const inconsistent = baseline()
-  inconsistent.curriculumCoverage.authority = 'PROVISIONAL_BASELINE'
-  assert.equal(isCurriculumBaselineReadyForLessonApproval(inconsistent), false)
+test('non accepted extensions do not participate in the approval snapshot', () => {
+  const draft = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [extension('DRAFT')] })
+  const dismissed = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [extension('DISMISSED')] })
+  assert.deepEqual(draft.extensions, [])
+  assert.deepEqual(dismissed.extensions, [])
 })
