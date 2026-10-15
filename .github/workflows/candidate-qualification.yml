@@ -296,12 +296,12 @@ jobs:
           const classifications = {}
           for (const [gate, isRequired] of Object.entries(required)) {
             const state = raw[gate] || 'skipped'
-            if (!isRequired) {
+            if (gate !== 'PREFLIGHT' && (!preflightSuccess || !authorizedLease)) {
+              results[gate] = isRequired ? 'CASCADE' : 'skipped'
+              classifications[gate] = 'CASCADE'
+            } else if (!isRequired) {
               results[gate] = state === 'success' ? 'success' : 'skipped'
               classifications[gate] = 'NOT_APPLICABLE'
-            } else if (gate !== 'PREFLIGHT' && (!preflightSuccess || !authorizedLease) && state === 'skipped') {
-              results[gate] = 'CASCADE'
-              classifications[gate] = 'CASCADE'
             } else if (state === 'success') {
               results[gate] = 'success'
               classifications[gate] = 'PASS'
