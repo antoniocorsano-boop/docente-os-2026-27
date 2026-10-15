@@ -1,6 +1,11 @@
 name: P7 DB Restore Rehearsal
 
 on:
+  workflow_call:
+    inputs:
+      tested_sha:
+        required: true
+        type: string
   pull_request:
     branches: [develop]
     paths:
@@ -19,9 +24,6 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        # Keep the restore rehearsal capable of applying canonical migrations that
-        # depend on pgvector. The version is pinned to the pgvector version
-        # currently available on the Beta Supabase project.
         image: pgvector/pgvector:0.8.2-pg16
         env:
           POSTGRES_USER: postgres
@@ -40,9 +42,17 @@ jobs:
       PGPORT: '5432'
       PGUSER: postgres
       PGPASSWORD: postgres
+      TESTED_SHA: ${{ inputs.tested_sha || github.event.pull_request.head.sha || github.sha }}
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tested_sha || github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact tested head
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$TESTED_SHA"
 
       - name: Install PostgreSQL client
         run: |
@@ -50,14 +60,16 @@ jobs:
           sudo apt-get install -y postgresql-client
 
       - name: Publish pending restore status
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_call'
         uses: actions/github-script@v7
+        env:
+          TESTED_SHA: ${{ inputs.tested_sha || github.event.pull_request.head.sha || github.sha }}
         with:
           script: |
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: context.payload.pull_request.head.sha,
+              sha: process.env.TESTED_SHA,
               state: 'pending',
               context: 'p7-recovery/db-restore-rehearsal',
               description: 'Restore rehearsal DB isolato in esecuzione',
@@ -68,17 +80,18 @@ jobs:
         run: bash .github/scripts/run-local-db-restore-rehearsal.sh
 
       - name: Publish final restore status
-        if: always() && github.event_name == 'pull_request'
+        if: always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_call')
         uses: actions/github-script@v7
         env:
           JOB_STATUS: ${{ job.status }}
+          TESTED_SHA: ${{ inputs.tested_sha || github.event.pull_request.head.sha || github.sha }}
         with:
           script: |
             const ok = process.env.JOB_STATUS === 'success'
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: context.payload.pull_request.head.sha,
+              sha: process.env.TESTED_SHA,
               state: ok ? 'success' : 'failure',
               context: 'p7-recovery/db-restore-rehearsal',
               description: ok ? 'Restore rehearsal DB isolato verificato' : 'Restore rehearsal DB isolato non superato',
