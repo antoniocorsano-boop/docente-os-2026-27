@@ -1,0 +1,129 @@
+name: Candidate Database Assurance
+
+on:
+  workflow_call:
+    inputs:
+      base_sha:
+        required: true
+        type: string
+      tested_sha:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-database-assurance:
+    name: candidate-database-assurance
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      BASE_SHA: ${{ inputs.base_sha }}
+      TESTED_SHA: ${{ inputs.tested_sha }}
+      RUNTIME_RELEASE_CONTRACT_OUTPUT: test-results/release-runtime-contract/candidate-impact.json
+
+    steps:
+      - name: Checkout exact candidate head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tested_sha }}
+          fetch-depth: 0
+
+      - name: Verify exact candidate head
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$TESTED_SHA"
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Evaluate candidate Runtime Release Contract impact
+        id: runtime_impact
+        shell: bash
+        env:
+          RUNTIME_CONTRACT_BASE_SHA: ${{ inputs.base_sha }}
+          RUNTIME_CONTRACT_TESTED_SHA: ${{ inputs.tested_sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$RUNTIME_RELEASE_CONTRACT_OUTPUT")"
+          node .github/scripts/runtime-release-contract.mjs
+          node - <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require('node:fs')
+          const r = JSON.parse(fs.readFileSync(process.env.RUNTIME_RELEASE_CONTRACT_OUTPUT, 'utf8'))
+          console.log('database_deep=' + String(r.databaseDeep))
+          console.log('latest_migration=' + r.latestMigrationId)
+          NODE
+
+      - name: Record NOT_APPLICABLE when deep DB assurance is not required
+        if: steps.runtime_impact.outputs.database_deep != 'true'
+        shell: bash
+        run: |
+          {
+            echo '## Candidate DB Assurance'
+            echo
+            echo '- result: `NOT_APPLICABLE`'
+            echo '- reason: Runtime Release Contract reports `databaseDeep=false`.'
+            echo '- tested SHA: `${{ inputs.tested_sha }}`'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up Supabase CLI for candidate deep DB replay
+        if: steps.runtime_impact.outputs.database_deep == 'true'
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: latest
+
+      - name: Replay complete migration chain on ephemeral Supabase
+        if: steps.runtime_impact.outputs.database_deep == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/docente-os-candidate-runtime-db"
+          rm -rf "$work"
+          mkdir -p "$work"
+          cd "$work"
+          supabase init
+          rm -rf supabase/migrations
+          mkdir -p supabase/migrations
+
+          # Historical repository migrations contain duplicated numeric prefixes.
+          # Preserve canonical lexical SQL order while assigning synthetic unique
+          # versions only inside this disposable local replay workspace.
+          i=1
+          while IFS= read -r src; do
+            version="$(printf '%014d' "$i")"
+            stem="$(basename "$src" .sql)"
+            cp "$src" "supabase/migrations/${version}_${stem}.sql"
+            i=$((i + 1))
+          done < <(find "$GITHUB_WORKSPACE/product/supabase/migrations" -maxdepth 1 -type f -name '*.sql' | sort)
+
+          supabase db start
+          trap 'supabase stop --no-backup >/dev/null 2>&1 || true' EXIT
+          supabase db reset --local --no-seed
+
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+
+          db_url="$(supabase status -o env | sed -n 's/^DB_URL=//p' | tr -d '"' | head -n 1)"
+          test -n "$db_url"
+          psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/runtime-release-contract.sql"
+          psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/timetable_import_g1_2_contract.sql"
+          psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/timetable_import_completion_contract.sql"
+          psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/knowledge_bounded_search_contract.sql"
+
+          actual="$(psql "$db_url" -Atc "select migration_id from public.runtime_schema_contract_state where singleton")"
+          expected="${{ steps.runtime_impact.outputs.latest_migration }}"
+          echo "runtime schema watermark: actual=$actual expected=$expected"
+          test "$actual" = "$expected"
+
+      - name: Publish candidate DB assurance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-db-assurance-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 90
+          path: test-results/release-runtime-contract/candidate-impact.json
