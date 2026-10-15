@@ -161,7 +161,7 @@ test('collision-prone local identifiers fail static preflight', () => {
 
 test('production startup preflight fails closed on provenance drift', async () => {
   const result = await runProductionStartupPreflight({
-    migrationId: '0101_cpri_teaching_session_runtime_authority',
+    migrationId: '0102_cpri_binding_movement_and_revalidation',
     lineageOk: true,
     missingMigrations: [],
     provenanceOk: false,
@@ -177,7 +177,7 @@ test('production startup preflight fails closed on provenance drift', async () =
 
 test('production startup preflight fails closed on containment drift', async () => {
   const result = await runProductionStartupPreflight({
-    migrationId: '0101_cpri_teaching_session_runtime_authority',
+    migrationId: '0102_cpri_binding_movement_and_revalidation',
     lineageOk: true,
     missingMigrations: [],
     provenanceOk: true,
