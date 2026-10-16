@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process'
 test('material core legacy inventory contract passes its focused fixtures', () => {
   const result = spawnSync(
     process.execPath,
-    ['--test', 'scripts/experience/material-core-legacy-inventory.test.mjs'],
+    ['scripts/experience/material-core-legacy-inventory.test.mjs'],
     { encoding: 'utf8' },
   )
 
