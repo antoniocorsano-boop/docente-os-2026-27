@@ -2,6 +2,13 @@
 -- MATERIAL-CORE-01 / Task 8
 -- Preserve accepted typed material authority across Knowledge deletion and exact-generation acceptance.
 
+begin;
+
+insert into private.runtime_schema_required_migrations(version, migration_id)
+values (103, '0103_material_reference_safety')
+on conflict (version) do update
+set migration_id = excluded.migration_id;
+
 create or replace function private.enforce_lesson_material_binding_reference_integrity()
 returns trigger
 language plpgsql
@@ -213,3 +220,9 @@ comment on function public.delete_own_knowledge_asset(uuid) is
   'Deletes an owned Knowledge asset only when no ACCEPTED docente-os.lesson-material-binding.v1 reference remains.';
 comment on function public.detach_and_delete_own_knowledge_asset(uuid) is
   'Explicitly dismisses ACCEPTED typed lesson material bindings, preserving lifecycle history, then deletes the owned Knowledge asset atomically.';
+
+select private.advance_runtime_schema_contract(
+  '0103_material_reference_safety'
+);
+
+commit;
