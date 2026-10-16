@@ -16,14 +16,16 @@ test('browser certification enforces CPRI runtime preflight before dependent bro
   const hvaStep = '- name: Run Human + Visual Acceptance'
   const cpriIndex = workflow.indexOf(cpriStep)
   const hvaIndex = workflow.indexOf(hvaStep)
+  const nextStepIndex = workflow.indexOf('\n      - name:', cpriIndex + cpriStep.length)
 
   assert.ok(cpriIndex >= 0, 'browser orchestrator must declare the CPRI runtime preflight step')
   assert.ok(hvaIndex >= 0, 'browser orchestrator must retain the HVA step')
   assert.ok(cpriIndex < hvaIndex, 'CPRI runtime preflight must execute before HVA and dependent browser gates')
+  assert.ok(nextStepIndex > cpriIndex, 'CPRI runtime preflight must remain a bounded workflow step')
   assert.match(workflow, /run: node scripts\/experience\/cpri-runtime-preflight-cli\.mjs/)
   assert.match(workflow, /CPRI_PREFLIGHT_OUTPUT: test-results\/experience\/cpri-runtime-preflight\.json/)
   assert.doesNotMatch(
-    workflow.slice(cpriIndex, hvaIndex),
+    workflow.slice(cpriIndex, nextStepIndex),
     /continue-on-error:\s*true/,
     'CPRI runtime preflight must fail closed rather than continue on error',
   )
