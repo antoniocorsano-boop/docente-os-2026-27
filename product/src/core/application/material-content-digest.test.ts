@@ -28,7 +28,7 @@ function snapshot(): MaterialContentSnapshotV1 {
         unitType: 'TOPIC',
         title: 'Trasformazioni',
         content: 'Esempi di trasformazione energetica.',
-        structuredData: { examples: ['lampadina', 'motore'] },
+        structuredData: { examples: ['lampadina', 'motore'], count: 2 },
         sourcePage: 2,
         startOffset: 20,
         endOffset: 55,
@@ -55,7 +55,7 @@ test('deterministic ordering yields the same canonical content and SHA-256 diges
   const right = snapshot()
   right.units = [...right.units].reverse()
   right.document.extractedData = { tags: ['energia', 'trasformazioni'], level: 3 }
-  right.units[0].structuredData = { examples: ['lampadina', 'motore'] }
+  right.units[1].structuredData = { count: 2, examples: ['lampadina', 'motore'] }
 
   assert.equal(canonicalizeMaterialContentV1(left), canonicalizeMaterialContentV1(right))
   assert.deepEqual(digestMaterialContentV1(left), digestMaterialContentV1(right))
