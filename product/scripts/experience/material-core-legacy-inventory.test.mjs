@@ -90,11 +90,7 @@ test('invalid or unknown legacy metadata is blocked for automatic reconciliation
   )
 })
 
-test('repository-wide runtime scan finds legacy material consumers without a hand-curated file list', async () => {
+test('repository-wide runtime scan finds no current metadata-only material approval authority', async () => {
   const consumers = await scanLegacyMaterialConsumers(path.resolve(process.cwd(), 'src'))
-  const paths = consumers.map((entry) => entry.path)
-
-  assert.ok(paths.includes('app/classi/class-workspace-model.ts'))
-  assert.ok(paths.includes('app/classi/[sectionId]/in-classe/[assetId]/classroom-session-model.ts'))
-  assert.ok(consumers.every((entry) => !entry.path.includes('.test.')))
+  assert.deepEqual(consumers, [])
 })
