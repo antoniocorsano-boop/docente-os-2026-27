@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
+import path from 'node:path'
 import test from 'node:test'
 
-import { classifyLegacyPreparedMaterial } from './material-core-legacy-inventory.mjs'
+import {
+  classifyLegacyPreparedMaterial,
+  scanLegacyMaterialConsumers,
+} from './material-core-legacy-inventory.mjs'
 
 const digest = {
   algorithm: 'SHA-256',
@@ -84,4 +88,13 @@ test('invalid or unknown legacy metadata is blocked for automatic reconciliation
     classifyLegacyPreparedMaterial({ approvalState: 'MYSTERY' }),
     'BLOCKED_FOR_AUTOMATIC_RECONCILIATION',
   )
+})
+
+test('repository-wide runtime scan finds legacy material consumers without a hand-curated file list', async () => {
+  const consumers = await scanLegacyMaterialConsumers(path.resolve(process.cwd(), 'src'))
+  const paths = consumers.map((entry) => entry.path)
+
+  assert.ok(paths.includes('app/classi/class-workspace-model.ts'))
+  assert.ok(paths.includes('app/classi/[sectionId]/in-classe/[assetId]/classroom-session-model.ts'))
+  assert.ok(consumers.every((entry) => !entry.path.includes('.test.')))
 })
