@@ -29,6 +29,21 @@ test('browser certification enforces CPRI runtime preflight before dependent bro
   )
 })
 
+test('P6 measures the fresh shared runtime before stateful HVA and WCAG suites', () => {
+  const cpriIndex = workflow.indexOf('- name: Enforce CPRI runtime preflight')
+  const p6Index = workflow.indexOf('- name: Run P6 performance baseline')
+  const hvaIndex = workflow.indexOf('- name: Run Human + Visual Acceptance')
+  const wcagIndex = workflow.indexOf('- name: Run WCAG 2.2 AA automated assurance')
+
+  assert.ok(cpriIndex >= 0, 'browser orchestrator must retain the CPRI runtime preflight')
+  assert.ok(p6Index >= 0, 'browser orchestrator must declare the P6 performance gate')
+  assert.ok(hvaIndex >= 0, 'browser orchestrator must retain HVA')
+  assert.ok(wcagIndex >= 0, 'browser orchestrator must retain WCAG assurance')
+  assert.ok(cpriIndex < p6Index, 'P6 must run only after the fail-closed CPRI runtime preflight')
+  assert.ok(p6Index < hvaIndex, 'P6 must run before HVA can load and prefetch authenticated routes')
+  assert.ok(p6Index < wcagIndex, 'P6 must run before WCAG can load and prefetch authenticated routes')
+})
+
 test('CPRI browser preflight CLI performs governed AAL2 authentication before reading runtime state', () => {
   assert.equal(cliExists, true, 'browser certification requires a concrete CPRI runtime preflight CLI')
   assert.match(cli, /createClient/)
