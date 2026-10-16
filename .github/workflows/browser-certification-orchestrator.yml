@@ -287,6 +287,13 @@ jobs:
           CPRI_PREFLIGHT_OUTPUT: test-results/experience/cpri-runtime-preflight.json
         run: node scripts/experience/cpri-runtime-preflight-cli.mjs
 
+      - name: Run P6 performance baseline
+        id: p6_gate
+        if: needs.preflight.outputs.p6 == 'true'
+        continue-on-error: true
+        working-directory: product
+        run: npx playwright test --config=playwright.config.mjs e2e/p6-performance-baseline.spec.mjs
+
       - name: Run Human + Visual Acceptance
         id: hva_browser
         if: needs.preflight.outputs.hva == 'true'
@@ -350,13 +357,6 @@ jobs:
         env:
           WCAG_ASSURANCE: '1'
         run: npx playwright test e2e/experience/accessibility.spec.mjs --config=playwright.experience.config.mjs
-
-      - name: Run P6 performance baseline
-        id: p6_gate
-        if: needs.preflight.outputs.p6 == 'true'
-        continue-on-error: true
-        working-directory: product
-        run: npx playwright test --config=playwright.config.mjs e2e/p6-performance-baseline.spec.mjs
 
       - name: Run X3 no-implicit-write regression
         id: x3_gate
