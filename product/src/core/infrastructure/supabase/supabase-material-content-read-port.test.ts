@@ -1,13 +1,18 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import test from 'node:test'
-import { materializeKnowledgeGenerationRecordV1 } from './supabase-material-content-read-port'
+import {
+  materializeKnowledgeGenerationRecordV1,
+  type MaterializeKnowledgeGenerationInputV1,
+} from './supabase-material-content-read-port'
 
 const bytes = new Uint8Array([1, 2, 3, 4])
 const sourceSha256 = createHash('sha256').update(bytes).digest('hex')
 
-function input(overrides: Record<string, unknown> = {}) {
-  return {
+function input(
+  overrides: Partial<MaterializeKnowledgeGenerationInputV1> = {},
+): MaterializeKnowledgeGenerationInputV1 {
+  const base: MaterializeKnowledgeGenerationInputV1 = {
     asset: {
       id: 'asset-1',
       current_generation_id: 'generation-2',
@@ -47,8 +52,9 @@ function input(overrides: Record<string, unknown> = {}) {
       },
     ],
     localSourceBytes: bytes,
-    ...overrides,
   }
+
+  return { ...base, ...overrides }
 }
 
 test('materializes an exact historical generation without substituting current generation', () => {
@@ -71,10 +77,11 @@ test('local storage bytes are immutable captured content and participate in the 
 })
 
 test('loaded bytes that do not match declared source SHA are surfaced as mismatch', () => {
+  const base = input()
   const record = materializeKnowledgeGenerationRecordV1(
     input({
       asset: {
-        ...(input().asset as Record<string, unknown>),
+        ...base.asset,
         sha256: 'f'.repeat(64),
       },
     }),
@@ -87,7 +94,7 @@ test('external URL without captured original text or local bytes remains mutable
   const record = materializeKnowledgeGenerationRecordV1({
     ...base,
     asset: {
-      ...(base.asset as Record<string, unknown>),
+      ...base.asset,
       source_locator: 'https://example.test/live.pdf',
       sha256: null,
     },
@@ -104,7 +111,7 @@ test('captured original text is exact local content even when the source locator
   const record = materializeKnowledgeGenerationRecordV1({
     ...base,
     asset: {
-      ...(base.asset as Record<string, unknown>),
+      ...base.asset,
       source_locator: 'https://example.test/page',
       original_text: 'Copia acquisita del contenuto.',
       mime_type: 'text/plain',
@@ -118,6 +125,7 @@ test('captured original text is exact local content even when the source locator
 })
 
 test('document or generation context mismatch fails while materializing instead of being repaired silently', () => {
+  const base = input()
   assert.throws(
     () =>
       materializeKnowledgeGenerationRecordV1(
@@ -133,7 +141,7 @@ test('document or generation context mismatch fails while materializing instead 
       materializeKnowledgeGenerationRecordV1(
         input({
           document: {
-            ...(input().document as Record<string, unknown>),
+            ...base.document,
             asset_id: 'asset-other',
           },
         }),
