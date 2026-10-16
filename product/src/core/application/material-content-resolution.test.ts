@@ -95,6 +95,17 @@ test('missing exact asset/generation fails closed', async () => {
   assert.deepEqual(result, { status: 'MISSING', reason: 'KNOWLEDGE_GENERATION_NOT_FOUND' })
 })
 
+test('read result for a different asset or generation fails closed', async () => {
+  for (const mismatch of [record({ assetId: 'asset-other' }), record({ generationId: 'generation-other' })]) {
+    const result = await resolveCanonicalMaterialContentV1({
+      workspaceId: 'workspace-1',
+      ref: knowledgeRef(),
+      readPort: new FakeReadPort(mismatch),
+    })
+    assert.deepEqual(result, { status: 'INCOMPLETE', reason: 'REFERENCE_CONTEXT_MISMATCH' })
+  }
+})
+
 test('non-succeeded generation fails closed even when content is present', async () => {
   const result = await resolveCanonicalMaterialContentV1({
     workspaceId: 'workspace-1',
