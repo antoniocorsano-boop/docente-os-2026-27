@@ -21,7 +21,7 @@ This checkpoint replaces the stale coordination picture from the 7–9 October p
 
 ### Core semantic/runtime foundations
 
-- TRAMA-TERM-01: integrated; new ungoverned school-domain `curriculum` vocabulary is forbidden while exact legacy compatibility debt remains governed.
+- TRAMA-TERM-01: integrated; new ungoverned legacy English school-domain vocabulary is forbidden while exact compatibility debt remains governed.
 - MATERIAL-ORCH-01: integrated architecture; one provider-neutral, teacher-first material lifecycle; no second material store or Atlas-specific current authority.
 - CONTAIN-01 / CONTAIN-01B: integrated; legacy Atlas mutation contained and runtime schema provenance reconciled.
 - CPRI-01: integrated; canonical annual-plan runtime identity is authoritative for current lesson-context resolution; Beta schema contract is v102.
