@@ -1,3 +1,4 @@
+// @trama-readonly — pure in-memory canonicalization and hashing; no persisted state mutation.
 import { createHash } from 'node:crypto'
 import type { MaterialContentDigestV1 } from '@/core/domain/lesson-material-binding'
 
