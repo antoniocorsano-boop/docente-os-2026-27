@@ -1,3 +1,9 @@
+import {
+  classifyLessonMaterialBindingPayload,
+  type LessonDesignExtensionPayload,
+  type LessonMaterialBindingPayloadClassification,
+} from './lesson-material-binding'
+
 export type LessonDesignExtensionKind =
   | 'HOOK_QUOTE'
   | 'HOOK_EVENT'
@@ -39,7 +45,7 @@ export type LessonDesignExtension = {
   sourceKind: LessonDesignExtensionSourceKind
   sourceRef: string | null
   sourceLabel: string | null
-  payload: Record<string, unknown>
+  payload: LessonDesignExtensionPayload
   revision: number
   decisionHistory: LessonDesignDecision[]
   modifiedBy: string | null
@@ -124,6 +130,12 @@ export function isLessonSequenceExtension(extension: Pick<LessonDesignExtension,
 
 export function isTeachingAdjustment(extension: Pick<LessonDesignExtension, 'kind'>) {
   return extension.kind === 'TEACHING_ADJUSTMENT'
+}
+
+export function lessonMaterialBindingState(
+  extension: Pick<LessonDesignExtension, 'payload'>,
+): LessonMaterialBindingPayloadClassification {
+  return classifyLessonMaterialBindingPayload(extension.payload)
 }
 
 export function acceptedLessonDesignResources(extensions: LessonDesignExtension[]) {
