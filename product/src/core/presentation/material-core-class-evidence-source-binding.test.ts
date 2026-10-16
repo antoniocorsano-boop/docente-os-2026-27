@@ -105,6 +105,12 @@ class FakeReadPort implements MaterialContentReadPortV1 {
   }
 }
 
+class ThrowingReadPort implements MaterialContentReadPortV1 {
+  async readKnowledgeGeneration(): Promise<KnowledgeGenerationMaterialRecordV1 | null> {
+    throw new Error('knowledge read unavailable')
+  }
+}
+
 test('accepted typed material extension resolves exact content and returns READY evidence keyed by extension id', async () => {
   const readPort = new FakeReadPort(snapshot())
   const accepted = extension()
@@ -134,6 +140,16 @@ test('post-acceptance exact-content mutation remains STALE in class acceptance e
   })
 
   assert.equal(evidence.materialContentResolutions['extension-1']?.status, 'STALE')
+})
+
+test('unavailable exact-content verification remains unverified instead of becoming READY', async () => {
+  const evidence = await buildClassMaterialAcceptanceEvidenceV1({
+    workspaceId: 'workspace-1',
+    extensions: [extension()],
+    readPort: new ThrowingReadPort(),
+  })
+
+  assert.equal(evidence.materialContentResolutions['extension-1'], undefined)
 })
 
 test('non-accepted and non-material extensions never trigger canonical content reads', async () => {
