@@ -179,7 +179,7 @@ function parseMaterialProposalProvenanceV1(input: unknown): MaterialProposalProv
     throw new Error('Invalid material provenance rights state')
   }
 
-  return {
+  const parsed: MaterialProposalProvenanceV1 = {
     sourceArtifactRefs: requireStringArray(provenance.sourceArtifactRefs, 'Material provenance sourceArtifactRefs'),
     derivationRefs: requireStringArray(provenance.derivationRefs, 'Material provenance derivationRefs'),
     providerType: optionalNonEmptyString(provenance.providerType, 'Material provenance providerType'),
@@ -195,6 +195,10 @@ function parseMaterialProposalProvenanceV1(input: unknown): MaterialProposalProv
       'Material provenance attributionRequirements',
     ),
   }
+
+  return Object.fromEntries(
+    Object.entries(parsed).filter(([, value]) => value !== undefined),
+  ) as MaterialProposalProvenanceV1
 }
 
 function requireStringArray(value: unknown, label: string): string[] {
