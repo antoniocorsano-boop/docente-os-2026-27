@@ -89,6 +89,22 @@ test('prepared class material is selected by exact class and nearest teaching da
   assert.equal(prepared[0]?.canonicalBindingLabel, 'Diagnostica di accoglienza · non imputata al Piano')
 })
 
+test('metadata-only APPROVED requires teacher revalidation and is never current confirmation authority', () => {
+  const prepared = selectPreparedClassMaterials(
+    section2C,
+    [
+      knowledgeItem('legacy-approved', 'Presentazione storicamente approvata', {
+        docenteOsResource: 'CLASS_LESSON_MATERIAL', provider: 'CANVA', resourceKind: 'PRESENTATION', audience: 'STUDENT',
+        approvalState: 'APPROVED', targetDate: '2026-09-14', canonicalBinding: 'ALIGNED', canonicalBlockId: 'B01',
+      }, ['2C'], 'https://www.canva.com/d/legacy-approved'),
+    ],
+    '2026-09-10',
+  )
+
+  assert.equal(prepared.length, 1)
+  assert.equal(prepared[0]?.stateLabel, 'Da riconfermare')
+})
+
 test('prepared materials receive priority in the generic material list without changing their canonical meaning', () => {
   const focus = buildClassWorkspaceLearningFocus(
     section2C,
