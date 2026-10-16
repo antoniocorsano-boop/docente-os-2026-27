@@ -9,6 +9,7 @@ import { buildTeachingSessionEvidenceNote } from '@/core/domain/teaching-session
 import type { TeachingSessionDraft } from '@/core/domain/teaching-session'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
+import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseTeachingEvidenceRepository } from '@/core/infrastructure/supabase/supabase-teaching-evidence-repository'
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
 import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
@@ -50,6 +51,13 @@ export async function recordLessonExecution(formData: FormData) {
   const projection = resolveRuntimeHumanTaskLessonProjection(grade, block)
   if (!projection) throw new Error('Human-task lesson projection is not available for this block')
 
+  const source = await new SupabaseCanonicalPlanSourceRepository().resolve({
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    code: CANONICAL_PLAN_SOURCES[grade].code,
+  })
+  if (!source) throw new Error('Il piano annuale della classe non è ancora collegato alla sorgente canonica.')
+
   const evidenceNote = nextActivity || udaChangeProposal
     ? buildTeachingSessionEvidenceNote({
         reflection: {
@@ -63,7 +71,6 @@ export async function recordLessonExecution(formData: FormData) {
       })
     : freeEvidenceNote
 
-  const source = CANONICAL_PLAN_SOURCES[grade]
   const teachingRepository = new SupabaseTeachingSessionRepository()
   const temporalProjection = new TemporalProjectionService(
     new SupabaseTimetableProjectionReadRepository(),

@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 
-const EXPECTED_RUNTIME_MIGRATION = '0100_contain_provenance_anchor_and_column_grants'
+const EXPECTED_RUNTIME_MIGRATION = '0102_cpri_binding_movement_and_revalidation'
 const port = process.env.PORT?.trim() || '3000'
 const nextBin = process.platform === 'win32' ? 'next.cmd' : 'next'
 

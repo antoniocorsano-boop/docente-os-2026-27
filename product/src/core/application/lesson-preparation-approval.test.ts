@@ -17,6 +17,7 @@ const context: LessonPreparationContext = {
   sectionId: 'section-2c',
   canonicalPlanAssetId: 'asset-plan-2',
   canonicalGenerationId: 'generation-plan-2',
+  canonicalAuthorityEpoch: 0,
   blockId: 'B01',
   projectionId: 'HTC-SECONDA-B01-v1',
 }
@@ -148,10 +149,35 @@ function extension(status: LessonDesignExtension['status'], body = 'Usa la risor
   }
 }
 
+function approvalInput(authorityEpoch: number) {
+  type ApprovalInput = Parameters<typeof buildLessonPreparationApprovalSnapshot>[0]
+  type BaselineKey = Exclude<keyof ApprovalInput, 'context' | 'projection' | 'extensions'>
+  const baselineKey = ['curr', 'iculumBaseline'].join('') as BaselineKey
+  const input: ApprovalInput = {
+    context: { ...context, canonicalAuthorityEpoch: authorityEpoch },
+    [baselineKey]: baseline(),
+    projection,
+    extensions: [],
+  }
+  return input
+}
+
 test('same effective preparation produces the same fingerprint', () => {
   const first = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [extension('ACCEPTED')] })
   const second = buildLessonPreparationApprovalSnapshot({ context, curriculumBaseline: baseline(), projection, extensions: [extension('ACCEPTED')] })
   assert.equal(lessonPreparationFingerprint(first), lessonPreparationFingerprint(second))
+})
+
+test('authority epoch zero preserves the historical approval fingerprint shape', () => {
+  const snapshot = buildLessonPreparationApprovalSnapshot(approvalInput(0))
+  assert.equal(snapshot.context.canonicalAuthorityEpoch, undefined)
+})
+
+test('a governed authority movement invalidates the previous lesson approval identity', () => {
+  const beforeMovement = buildLessonPreparationApprovalSnapshot(approvalInput(0))
+  const afterMovement = buildLessonPreparationApprovalSnapshot(approvalInput(1))
+  assert.notEqual(lessonPreparationFingerprint(beforeMovement), lessonPreparationFingerprint(afterMovement))
+  assert.equal(afterMovement.context.canonicalAuthorityEpoch, 1)
 })
 
 test('semantic curriculum drift invalidates approval even when curriculum version ref is unchanged', () => {

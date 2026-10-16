@@ -161,23 +161,23 @@ test('collision-prone local identifiers fail static preflight', () => {
 
 test('production startup preflight fails closed on provenance drift', async () => {
   const result = await runProductionStartupPreflight({
-    migrationId: '0100_contain_provenance_anchor_and_column_grants',
+    migrationId: '0102_cpri_binding_movement_and_revalidation',
     lineageOk: true,
     missingMigrations: [],
     provenanceOk: false,
-    unexpectedMigrations: ['0101_rogue'],
+    unexpectedMigrations: ['0102_rogue'],
     containmentOk: true,
     containment: { legacyAtlasRuntimeExposed: false, cpriRuntimeMutationGrants: false },
   })
 
   assert.notEqual(result.code, 0)
-  assert.match(result.stderr, /Runtime schema provenance drift:.*0101_rogue/)
+  assert.match(result.stderr, /Runtime schema provenance drift:.*0102_rogue/)
   assert.doesNotMatch(result.stdout, /Timetable visual extractor:/)
 })
 
 test('production startup preflight fails closed on containment drift', async () => {
   const result = await runProductionStartupPreflight({
-    migrationId: '0100_contain_provenance_anchor_and_column_grants',
+    migrationId: '0102_cpri_binding_movement_and_revalidation',
     lineageOk: true,
     missingMigrations: [],
     provenanceOk: true,

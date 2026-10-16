@@ -8,6 +8,7 @@ import {
   LESSON_ACTIVATION_QUESTION_TOOL_ID,
 } from '@/core/application/lesson-activation-question-tool'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import {
   SupabaseLessonDesignRepository,
@@ -245,13 +246,19 @@ async function requireLessonContext(formData: FormData) {
     throw new Error('Lesson projection has changed; reload before modifying the lesson design')
   }
 
-  const source = CANONICAL_PLAN_SOURCES[grade]
+  const runtimeSource = await new SupabaseCanonicalPlanSourceRepository().resolve({
+    workspaceId: workspaceContext.workspace.id,
+    academicYearId: workspaceContext.academicYear.id,
+    code: CANONICAL_PLAN_SOURCES[grade].code,
+  })
+  if (!runtimeSource) throw new Error('Il piano annuale della classe non è ancora collegato alla sorgente canonica.')
+
   const designContext: LessonDesignContext = {
     workspaceId: workspaceContext.workspace.id,
     academicYearId: workspaceContext.academicYear.id,
     sectionId,
-    canonicalPlanAssetId: source.assetId,
-    canonicalGenerationId: source.generationId,
+    canonicalPlanAssetId: runtimeSource.assetId,
+    canonicalGenerationId: runtimeSource.generationId,
     blockId,
     projectionId,
   }
@@ -279,9 +286,6 @@ function revalidateLesson(sectionId: string, blockId: string) {
   revalidatePath(`/classi/${sectionId}`)
   revalidatePath(`/classi/${sectionId}/lezioni/${blockId}`)
 }
-
-
-
 
 function requiredDesignIntent(formData: FormData): DesignWriteIntent {
   const value = requiredText(formData, 'designIntent')

@@ -2,6 +2,8 @@ import type { AnnualPlanGrade } from '@/core/domain/annual-plan-execution'
 
 export type GradeKey = 'Prima' | 'Seconda' | 'Terza'
 
+export type CanonicalPlanCode = 'CAN-PLAN-1' | 'CAN-PLAN-2' | 'CAN-PLAN-3'
+
 export type AnnualPlanSegment = {
   uda: string
   hours: number
@@ -13,10 +15,15 @@ export type AnnualPlanSegment = {
 }
 
 export type CanonicalPlanSource = {
-  code: string
+  code: CanonicalPlanCode
+}
+
+export type CanonicalPlanRuntimeSource = CanonicalPlanSource & {
   assetId: string
   generationId: string
 }
+
+export type CanonicalPlanRuntimeSources = Record<GradeKey, CanonicalPlanRuntimeSource | null>
 
 export type AnnualPlanBlock = {
   id: string
@@ -42,22 +49,17 @@ export const GRADE_UI: Record<AnnualPlanGrade, GradeKey> = {
   TERZA: 'Terza',
 }
 
+export const CANONICAL_PLAN_CODES: Record<GradeKey, CanonicalPlanCode> = {
+  Prima: 'CAN-PLAN-1',
+  Seconda: 'CAN-PLAN-2',
+  Terza: 'CAN-PLAN-3',
+}
+
+/** Logical identity only. Runtime asset/generation authority is resolved through CPRI. */
 export const CANONICAL_PLAN_SOURCES: Record<GradeKey, CanonicalPlanSource> = {
-  Prima: {
-    code: 'CAN-PLAN-1',
-    assetId: '4a027986-5b6d-49db-9b52-01cfae679c08',
-    generationId: 'd327355b-76a9-496f-99cb-dc942fd950e4',
-  },
-  Seconda: {
-    code: 'CAN-PLAN-2',
-    assetId: '36ef3be5-925f-4e28-afff-df11097827a9',
-    generationId: 'a1066c0a-2720-40b0-841e-306cb998ce3e',
-  },
-  Terza: {
-    code: 'CAN-PLAN-3',
-    assetId: '978702f8-4579-452d-925b-8e4d890e19f9',
-    generationId: 'bd4cb766-5d46-4420-bc82-f979528a14b2',
-  },
+  Prima: { code: CANONICAL_PLAN_CODES.Prima },
+  Seconda: { code: CANONICAL_PLAN_CODES.Seconda },
+  Terza: { code: CANONICAL_PLAN_CODES.Terza },
 }
 
 export const ANNUAL_PLAN_SEGMENTS: Record<GradeKey, AnnualPlanSegment[]> = {

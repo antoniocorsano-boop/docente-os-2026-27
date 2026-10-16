@@ -21,6 +21,7 @@ export type LessonPreparationApprovalReceipt = {
   sectionId: string
   canonicalPlanAssetId: string
   canonicalGenerationId: string
+  canonicalAuthorityEpoch: number
   blockId: string
   projectionId: string
   curriculumSourceHandoffFootprintHash: string
@@ -38,6 +39,7 @@ type Row = {
   section_id: string
   canonical_plan_asset_id: string
   canonical_generation_id: string
+  canonical_authority_epoch: number
   block_id: string
   projection_id: string
   checklist_snapshot: unknown
@@ -82,6 +84,7 @@ export class SupabaseLessonPreparationApprovalRepository {
     const { data: claims, error: claimsError } = await supabase.auth.getClaims()
     if (claimsError || !claims?.claims?.sub) throw new Error('Authenticated user required')
 
+    const authorityEpoch = context.canonicalAuthorityEpoch ?? 0
     const { data, error } = await supabase
       .from('lesson_preparation_receipts')
       .select('*')
@@ -90,6 +93,7 @@ export class SupabaseLessonPreparationApprovalRepository {
       .eq('section_id', context.sectionId)
       .eq('canonical_plan_asset_id', context.canonicalPlanAssetId)
       .eq('canonical_generation_id', context.canonicalGenerationId)
+      .eq('canonical_authority_epoch', authorityEpoch)
       .eq('block_id', context.blockId)
       .eq('projection_id', context.projectionId)
       .order('confirmed_at', { ascending: false })
@@ -134,8 +138,8 @@ export class SupabaseLessonPreparationApprovalRepository {
       target_canonical_generation_id: input.context.canonicalGenerationId,
       target_block_id: input.context.blockId,
       target_projection_id: input.context.projectionId,
-      target_curriculum_source_handoff_footprint_hash: input.curriculumBaseline.sourceHandoffFootprintHash,
-      target_curriculum_baseline_fingerprint: baselineFingerprint,
+      target_curricolo_source_handoff_footprint_hash: input.curriculumBaseline.sourceHandoffFootprintHash,
+      target_curricolo_baseline_fingerprint: baselineFingerprint,
       target_preparation_fingerprint: preparationFingerprint,
       target_approval_snapshot: snapshot,
     })
@@ -153,6 +157,8 @@ function isExactStateRow(row: Row): row is Row & {
   return typeof row.curriculum_source_handoff_footprint_hash === 'string'
     && typeof row.curriculum_baseline_fingerprint === 'string'
     && typeof row.preparation_fingerprint === 'string'
+    && Number.isSafeInteger(row.canonical_authority_epoch)
+    && row.canonical_authority_epoch >= 0
     && Boolean(row.approval_snapshot && typeof row.approval_snapshot === 'object')
 }
 
@@ -167,6 +173,7 @@ function toReceipt(row: Row): LessonPreparationApprovalReceipt {
     sectionId: row.section_id,
     canonicalPlanAssetId: row.canonical_plan_asset_id,
     canonicalGenerationId: row.canonical_generation_id,
+    canonicalAuthorityEpoch: row.canonical_authority_epoch,
     blockId: row.block_id,
     projectionId: row.projection_id,
     curriculumSourceHandoffFootprintHash: row.curriculum_source_handoff_footprint_hash,

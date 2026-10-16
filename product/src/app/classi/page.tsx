@@ -2,9 +2,11 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { CANONICAL_PLAN_SOURCES } from '../piano-annuale/model'
 import { buildClassWorkspaceSummary, formatWeeklyMinutes } from './class-workspace-model'
 import './classi.css'
 
@@ -17,17 +19,44 @@ export default async function ClassesPage() {
   if (!context.academicYear) redirect('/workspace')
 
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
+  const canonicalSourceRepository = new SupabaseCanonicalPlanSourceRepository()
   const settingsRepository = new SupabaseTeacherSettingsRepository()
   const assignmentReader = new SupabaseTeachingAssignmentReader()
-  const [snapshot, disciplines, assignments, settings] = await Promise.all([
+  const [snapshot, disciplines, assignments, settings, primaSource, secondaSource, terzaSource] = await Promise.all([
     annualRepository.list(context.workspace.id, context.academicYear.id),
     settingsRepository.listDisciplines(context.workspace.id, context.academicYear.id),
     assignmentReader.list(context.workspace.id, context.academicYear.id),
     settingsRepository.getOrCreate(context.workspace.id, context.academicYear.id),
+    canonicalSourceRepository.resolve({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      code: CANONICAL_PLAN_SOURCES.Prima.code,
+    }),
+    canonicalSourceRepository.resolve({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      code: CANONICAL_PLAN_SOURCES.Seconda.code,
+    }),
+    canonicalSourceRepository.resolve({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      code: CANONICAL_PLAN_SOURCES.Terza.code,
+    }),
   ])
 
+  const canonicalGenerationByGrade = {
+    PRIMA: primaSource?.generationId ?? null,
+    SECONDA: secondaSource?.generationId ?? null,
+    TERZA: terzaSource?.generationId ?? null,
+  } as const
   const classes = snapshot.sections
-    .map((section) => buildClassWorkspaceSummary(section, assignments, disciplines, snapshot.progress))
+    .map((section) => buildClassWorkspaceSummary(
+      section,
+      assignments,
+      disciplines,
+      snapshot.progress,
+      canonicalGenerationByGrade[section.grade],
+    ))
     .sort((a, b) => a.compactLabel.localeCompare(b.compactLabel, 'it', { numeric: true }))
   const confirmed = classes.filter((item) => item.sectionStatus === 'CONFERMATA').length
   const onChair = classes.filter((item) => item.assignments.length > 0).length

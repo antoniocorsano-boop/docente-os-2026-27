@@ -6,6 +6,7 @@ import {
 } from '@/core/application/lesson-preparation-approval'
 import { SupabaseAnnualPlanCurriculumRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-curriculum-repository'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
 import { SupabaseLessonPreparationApprovalRepository } from '@/core/infrastructure/supabase/supabase-lesson-preparation-approval-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
@@ -48,12 +49,19 @@ export async function loadAuthoritativeLessonCopilotBundle(input: {
   if (!projection) return null
 
   const source = CANONICAL_PLAN_SOURCES[grade]
+  const runtimeSource = await new SupabaseCanonicalPlanSourceRepository().resolve({
+    workspaceId: input.workspaceId,
+    academicYearId: input.academicYearId,
+    code: source.code,
+  })
+  if (!runtimeSource) return null
+
   const designContext = {
     workspaceId: input.workspaceId,
     academicYearId: input.academicYearId,
     sectionId: section.id,
-    canonicalPlanAssetId: source.assetId,
-    canonicalGenerationId: source.generationId,
+    canonicalPlanAssetId: runtimeSource.assetId,
+    canonicalGenerationId: runtimeSource.generationId,
     blockId: block.id,
     projectionId: projection.projectionId,
   }
@@ -111,7 +119,7 @@ export async function loadAuthoritativeLessonCopilotBundle(input: {
 
   const progress = snapshot.progress.find((entry) =>
     entry.sectionId === section.id
-    && entry.canonicalGenerationId === source.generationId
+    && entry.canonicalGenerationId === runtimeSource.generationId
     && entry.blockId === block.id,
   ) ?? null
 

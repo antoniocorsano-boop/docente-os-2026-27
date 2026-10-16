@@ -1,6 +1,7 @@
 'use server'
 
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { resolveHumanTaskLessonProjection } from '@/core/presentation/human-task-content'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
@@ -51,7 +52,15 @@ export async function submitLessonExperienceFeedback(
       return { status: 'error', message: 'Non riesco a collegare il feedback alla lezione appena conclusa.' }
     }
 
-    const source = CANONICAL_PLAN_SOURCES[grade]
+    const source = await new SupabaseCanonicalPlanSourceRepository().resolve({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      code: CANONICAL_PLAN_SOURCES[grade].code,
+    })
+    if (!source) {
+      return { status: 'error', message: 'Il piano annuale della classe non è ancora collegato alla sorgente canonica.' }
+    }
+
     const progress = snapshot.progress.find((entry) =>
       entry.sectionId === section.id &&
       entry.canonicalGenerationId === source.generationId &&

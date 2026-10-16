@@ -1,10 +1,19 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import test from 'node:test'
-import { buildBlocks } from './model'
+import { buildBlocks, CANONICAL_PLAN_CODES } from './model'
 
 const annualPlanClientSource = fs.readFileSync(new URL('./AnnualPlanClient.tsx', import.meta.url), 'utf8')
 const annualPlanCssSource = fs.readFileSync(new URL('./annual-plan.css', import.meta.url), 'utf8')
+
+test('canonical annual-plan logical identity contains only portable CAN-PLAN codes', () => {
+  assert.deepEqual(CANONICAL_PLAN_CODES, {
+    Prima: 'CAN-PLAN-1',
+    Seconda: 'CAN-PLAN-2',
+    Terza: 'CAN-PLAN-3',
+  })
+  assert.equal(Object.values(CANONICAL_PLAN_CODES).every((code) => /^CAN-PLAN-[123]$/.test(code)), true)
+})
 
 test('Prima follows the canonical B07-B15 alternation from CAN-PLAN-1', () => {
   const byId = new Map(buildBlocks('Prima').map((block) => [block.id, block]))

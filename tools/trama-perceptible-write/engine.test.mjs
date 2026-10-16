@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
 import test from 'node:test'
 import { requireComparison, validateEvidenceModel } from './engine.mjs'
+import { matchesPattern } from './lib.mjs'
 
 function model(overrides = {}) {
   const files = {
@@ -83,4 +85,20 @@ test('rejects toast-only feedback for critical writes', () => {
     }],
   }))
   assert.ok(errors.some((e)=>e.includes('toast-only is insufficient')))
+})
+
+test('CPRI-touched write files bind to exactly one perceptible-write surface', () => {
+  const manifest = JSON.parse(fs.readFileSync('ops/trama-perceptible-write-surfaces.json', 'utf8'))
+  const paths = [
+    'product/src/app/classi/[sectionId]/actions.ts',
+    'product/src/app/classi/[sectionId]/lezioni/actions.ts',
+    'product/src/app/feedback/actions.ts',
+  ]
+
+  for (const path of paths) {
+    const bound = (manifest.surfaces ?? []).filter((surface) =>
+      surface.sourcePatterns?.some((pattern) => matchesPattern(pattern, path)),
+    )
+    assert.equal(bound.length, 1, `${path} must bind to exactly one declared write surface`)
+  }
 })

@@ -105,27 +105,27 @@ begin
 
   -- Regression for fresh Codex P2: a post-watermark migration must not become
   -- trusted merely by self-registering in the required-migration manifest. Keep
-  -- the active watermark at 0100, add a synthetic 0101 history+manifest row,
+  -- the active watermark at 0102, add a synthetic 0103 history+manifest row,
   -- require provenance to fail closed, then remove both probe rows.
   insert into private.runtime_schema_required_migrations(version, migration_id)
-  values (101, '0101_rogue_self_registered_probe');
+  values (103, '0103_rogue_self_registered_probe');
 
   insert into supabase_migrations.schema_migrations(version, name)
-  values ('99999999999999', '0101_rogue_self_registered_probe');
+  values ('99999999999999', '0103_rogue_self_registered_probe');
 
   select public.runtime_schema_contract_snapshot()
     into runtime_snapshot;
   provenance_future_manifest_entry_rejected :=
     coalesce((runtime_snapshot->>'provenanceOk')::boolean, true) is false
-    and runtime_snapshot->'unexpectedMigrations' @> '["0101_rogue_self_registered_probe"]'::jsonb;
+    and runtime_snapshot->'unexpectedMigrations' @> '["0103_rogue_self_registered_probe"]'::jsonb;
 
   delete from supabase_migrations.schema_migrations
   where version = '99999999999999'
-    and name = '0101_rogue_self_registered_probe';
+    and name = '0103_rogue_self_registered_probe';
 
   delete from private.runtime_schema_required_migrations
-  where version = 101
-    and migration_id = '0101_rogue_self_registered_probe';
+  where version = 103
+    and migration_id = '0103_rogue_self_registered_probe';
 
   select public.runtime_schema_contract_snapshot()
     into runtime_snapshot;
@@ -150,6 +150,44 @@ begin
      or has_table_privilege('service_role', 'public.canonical_plan_runtime_bindings', 'UPDATE')
      or has_table_privilege('service_role', 'public.canonical_plan_runtime_bindings', 'DELETE') then
     raise exception 'CONTAIN-01 CPRI salvage table exposes a runtime mutation grant';
+  end if;
+
+  if to_regclass('private.canonical_plan_runtime_binding_movements') is null then
+    raise exception 'CPRI-01 governed movement audit table missing after migration replay';
+  end if;
+
+  if to_regprocedure('private.move_canonical_plan_runtime_binding(uuid,uuid,text,uuid,uuid,uuid,uuid,text)') is null then
+    raise exception 'CPRI-01 governed binding movement primitive missing after migration replay';
+  end if;
+
+  if has_function_privilege(
+       'anon',
+       'private.move_canonical_plan_runtime_binding(uuid,uuid,text,uuid,uuid,uuid,uuid,text)'::regprocedure,
+       'EXECUTE'
+     )
+     or has_function_privilege(
+       'authenticated',
+       'private.move_canonical_plan_runtime_binding(uuid,uuid,text,uuid,uuid,uuid,uuid,text)'::regprocedure,
+       'EXECUTE'
+     )
+     or has_function_privilege(
+       'service_role',
+       'private.move_canonical_plan_runtime_binding(uuid,uuid,text,uuid,uuid,uuid,uuid,text)'::regprocedure,
+       'EXECUTE'
+     ) then
+    raise exception 'CPRI-01 governed binding movement primitive is executable by a runtime role';
+  end if;
+
+  if has_table_privilege('anon', 'private.canonical_plan_runtime_binding_movements', 'INSERT')
+     or has_table_privilege('anon', 'private.canonical_plan_runtime_binding_movements', 'UPDATE')
+     or has_table_privilege('anon', 'private.canonical_plan_runtime_binding_movements', 'DELETE')
+     or has_table_privilege('authenticated', 'private.canonical_plan_runtime_binding_movements', 'INSERT')
+     or has_table_privilege('authenticated', 'private.canonical_plan_runtime_binding_movements', 'UPDATE')
+     or has_table_privilege('authenticated', 'private.canonical_plan_runtime_binding_movements', 'DELETE')
+     or has_table_privilege('service_role', 'private.canonical_plan_runtime_binding_movements', 'INSERT')
+     or has_table_privilege('service_role', 'private.canonical_plan_runtime_binding_movements', 'UPDATE')
+     or has_table_privilege('service_role', 'private.canonical_plan_runtime_binding_movements', 'DELETE') then
+    raise exception 'CPRI-01 governed movement audit table exposes a runtime mutation grant';
   end if;
 
   if to_regprocedure('private.reject_deferred_atlas_lesson_design_insert()') is null then

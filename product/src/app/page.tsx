@@ -3,11 +3,12 @@ import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { LocalTeacherGreeting } from '@/components/local-user-profile/local-user-profile'
 import { buildClassWorkspaceLearningFocus } from '@/app/classi/class-workspace-model'
-import { buildBlocks, GRADE_UI } from '@/app/piano-annuale/model'
+import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { projectTemporalDay, type ProjectedCalendarState } from '@/core/application/temporal-projection-service'
 import type { PlannerTask } from '@/core/domain/planner-task'
 import { WORKSPACE_PINNED_RESOURCE_SLOTS } from '@/core/domain/workspace-pinned-resource'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
@@ -86,8 +87,10 @@ export default async function HomePage() {
 
   const priorityTask = selectPriorityTask(tasks, moment.date)
   const immediateTask = priorityTask && taskNeedsAttentionNow(priorityTask, moment.date) ? priorityTask : null
-  const dailyPrimary = resolveDailyPrimary(dailyContext, annualSnapshot)
-  const nextMomentPrimary = resolveNextMomentPrimary(nextTeacherMoment, annualSnapshot)
+  const [dailyPrimary, nextMomentPrimary] = await Promise.all([
+    resolveDailyPrimary(dailyContext, annualSnapshot, context.workspace.id, year?.id ?? null),
+    resolveNextMomentPrimary(nextTeacherMoment, annualSnapshot, context.workspace.id, year?.id ?? null),
+  ])
   const primary = dailyPrimary
     ?? (immediateTask
       ? {
@@ -199,9 +202,11 @@ export default async function HomePage() {
   )
 }
 
-function resolveDailyPrimary(
+async function resolveDailyPrimary(
   dailyContext: HomeDailyContext,
   annualSnapshot: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>> | null,
+  workspaceId: string,
+  academicYearId: string | null,
 ) {
   const primary = dailyContext.primary
   if (!primary) return null
@@ -224,7 +229,9 @@ function resolveDailyPrimary(
     ? annualSnapshot.sections.find((item) => item.id === lesson.sectionId) ?? null
     : null
   const classLabel = section ? `${gradeNumber(section.grade)}ª ${section.sectionCode}` : lesson.title
-  const lessonHref = section && annualSnapshot ? resolveLessonHref(section, annualSnapshot, 'teach') : null
+  const lessonHref = section && annualSnapshot && academicYearId
+    ? await resolveLessonHref(section, annualSnapshot, workspaceId, academicYearId, 'teach')
+    : null
   const classHref = section ? `/classi/${encodeURIComponent(section.id)}` : '/orario'
   const time = lessonTime(lesson)
   const authorityMeta = lesson.authority === 'PROVISIONAL_DRAFT' ? 'Orario provvisorio' : 'Orario in vigore'
@@ -272,9 +279,11 @@ function resolveDailyPrimary(
   }
 }
 
-function resolveNextMomentPrimary(
+async function resolveNextMomentPrimary(
   moment: TeacherMoment | null,
   annualSnapshot: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>> | null,
+  workspaceId: string,
+  academicYearId: string | null,
 ) {
   if (!moment || moment.lessons.length === 0) return null
 
@@ -282,8 +291,8 @@ function resolveNextMomentPrimary(
   const firstSection = first.sectionId && annualSnapshot
     ? annualSnapshot.sections.find((item) => item.id === first.sectionId) ?? null
     : null
-  const firstHref = firstSection && annualSnapshot
-    ? resolveLessonHref(firstSection, annualSnapshot, 'prepare') ?? `/classi/${encodeURIComponent(firstSection.id)}`
+  const firstHref = firstSection && annualSnapshot && academicYearId
+    ? (await resolveLessonHref(firstSection, annualSnapshot, workspaceId, academicYearId, 'prepare')) ?? `/classi/${encodeURIComponent(firstSection.id)}`
     : first.sectionId
       ? `/classi/${encodeURIComponent(first.sectionId)}`
       : '/orario'
@@ -332,13 +341,20 @@ function resolveNextMomentPrimary(
   }
 }
 
-function resolveLessonHref(
+async function resolveLessonHref(
   section: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>>['sections'][number],
   annualSnapshot: Awaited<ReturnType<SupabaseAnnualPlanExecutionRepository['list']>>,
+  workspaceId: string,
+  academicYearId: string,
   mode: 'prepare' | 'teach' = 'teach',
 ) {
-  const learningFocus = buildClassWorkspaceLearningFocus(section, annualSnapshot.progress, [])
   const grade = GRADE_UI[section.grade]
+  const runtimeSource = await new SupabaseCanonicalPlanSourceRepository().resolve({
+    workspaceId,
+    academicYearId,
+    code: CANONICAL_PLAN_SOURCES[grade].code,
+  })
+  const learningFocus = buildClassWorkspaceLearningFocus(section, annualSnapshot.progress, runtimeSource.generationId, [])
   const nextBlock = learningFocus.nextBlock
     ? buildBlocks(grade).find((item) => item.id === learningFocus.nextBlock?.id) ?? null
     : null
