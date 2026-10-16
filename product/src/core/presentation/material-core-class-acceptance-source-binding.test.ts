@@ -141,6 +141,6 @@ test('accepted typed extension with stale verification requires revalidation ins
   assert.equal(projection.canonicalConfirmed, false)
 })
 
-function neverSnapshot() {
+function neverSnapshot(): never {
   throw new Error('unreachable')
 }
