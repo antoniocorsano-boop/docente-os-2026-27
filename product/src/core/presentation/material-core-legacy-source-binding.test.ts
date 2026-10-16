@@ -2,10 +2,6 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { spawnSync } from 'node:child_process'
 
-test('material core legacy inventory wrapper is executed by the product suite', () => {
-  assert.fail('MATERIAL_CORE_RED_WIRING_SENTINEL')
-})
-
 test('material core legacy inventory contract passes its focused fixtures', () => {
   const result = spawnSync(
     process.execPath,
