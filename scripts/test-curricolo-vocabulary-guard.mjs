@@ -89,6 +89,36 @@ assert.equal(
   "the machine-readable registry must be able to declare the vocabulary it governs",
 );
 
+const canonicalRegistry = JSON.parse(fs.readFileSync(VOCABULARY_REGISTRY_PATH, "utf8"));
+const cpriCompatibilityExceptions = [
+  {
+    path: "product/src/app/classi/[sectionId]/lezioni/[blockId]/page.tsx",
+    contains: "isCurriculumBaselineReadyForLessonApproval(curriculumBaseline)",
+  },
+  {
+    path: "product/src/core/infrastructure/supabase/supabase-lesson-preparation-approval-repository.ts",
+    contains: "input.curriculumBaseline.sourceHandoffFootprintHash",
+  },
+  {
+    path: "product/supabase/tests/canonical_plan_runtime_identity_behavior.sql",
+    contains: "curriculum_source_handoff_footprint_hash, curriculum_baseline_fingerprint,",
+  },
+  {
+    path: "product/supabase/tests/canonical_plan_runtime_identity_behavior.sql",
+    contains: "'curriculum', jsonb_build_object(",
+  },
+];
+for (const expected of cpriCompatibilityExceptions) {
+  assert.ok(
+    canonicalRegistry.exceptions.some((exception) =>
+      exception.path === expected.path
+      && exception.contains === expected.contains
+      && typeof exception.reason === "string"
+      && exception.reason.trim().length > 0),
+    `CPRI TERM-01 compatibility exception must be exact and justified: ${expected.path} :: ${expected.contains}`,
+  );
+}
+
 const workflow = fs.readFileSync(".github/workflows/trama-term-01-curricolo-vocabulary.yml", "utf8");
 assert.match(workflow, /pull_request:/, "guard must run on pull requests");
 assert.match(workflow, /push:/, "guard must run on pushes");

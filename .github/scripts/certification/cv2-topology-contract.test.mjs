@@ -66,6 +66,15 @@ test('Product CI publishes DEVELOPMENT status, cancels stale PR work and exclude
     "context: 'cv2/development-preflight'",
     'github.event.pull_request.head.sha || github.sha',
   ], 'product-ci.yml')
+  const pullRequestStart = workflow.indexOf('  pull_request:')
+  const permissionsStart = workflow.indexOf('\npermissions:')
+  assert.ok(pullRequestStart >= 0 && permissionsStart > pullRequestStart, 'Product CI pull_request trigger must exist before permissions')
+  const pullRequestTrigger = workflow.slice(pullRequestStart, permissionsStart)
+  assert.equal(
+    pullRequestTrigger.includes('    paths:'),
+    false,
+    'Product CI DEVELOPMENT must run for every opened/reopened/synchronize PR head',
+  )
   assert.equal(workflow.includes('ready_for_review'), false, 'Product CI must not run because a PR became Ready')
 })
 
