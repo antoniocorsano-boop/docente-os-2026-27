@@ -4,6 +4,8 @@ import type { TeachingDiscipline } from '@/core/domain/teacher-settings'
 import type { TeachingAssignment } from '@/core/domain/timetable'
 import {
   presentLegacyClassMaterialAcceptance,
+  projectClassMaterialAcceptanceForAsset,
+  type ClassMaterialAcceptanceEvidence,
   type ClassMaterialAcceptanceProjection,
 } from '@/core/presentation/class-material-acceptance-projection'
 import { buildBlocks, GRADE_UI } from '../piano-annuale/model'
@@ -148,6 +150,7 @@ export function selectPreparedClassMaterials(
   section: AnnualPlanSection,
   items: KnowledgeItem[],
   referenceDate: string,
+  acceptanceEvidence?: ClassMaterialAcceptanceEvidence,
 ): PreparedClassMaterial[] {
   const compactLabel = `${GRADE_NUMBER[section.grade]}${section.sectionCode}`.toUpperCase()
   const prepared = items.flatMap(({ asset, document }) => {
@@ -163,6 +166,13 @@ export function selectPreparedClassMaterials(
     const canonicalBinding = metadataString(asset.sourceMetadata, 'canonicalBinding')
     const canonicalBlockId = metadataString(asset.sourceMetadata, 'canonicalBlockId')
     const rawTitle = document?.title?.trim() || asset.originalName?.trim() || 'Materiale predisposto'
+    const acceptance = acceptanceEvidence
+      ? projectClassMaterialAcceptanceForAsset({
+          assetId: asset.id,
+          sourceMetadata: asset.sourceMetadata,
+          ...acceptanceEvidence,
+        })
+      : presentLegacyClassMaterialAcceptance(asset.sourceMetadata)
 
     return [{
       assetId: asset.id,
@@ -172,7 +182,7 @@ export function selectPreparedClassMaterials(
       resourceKindLabel: resourceKind === 'PRESENTATION' ? 'Presentazione' : resourceKind === 'STUDENT_SHEET' ? 'Scheda alunni' : 'Materiale',
       audienceLabel: audience === 'TEACHER' ? 'Solo docente' : 'Per la classe',
       targetDate,
-      stateLabel: presentLegacyClassMaterialAcceptance(asset.sourceMetadata).label,
+      stateLabel: acceptance.label,
       canonicalBindingLabel: canonicalBinding === 'ALIGNED' && canonicalBlockId
         ? `Allineato a ${canonicalBlockId}`
         : canonicalBinding === 'PRE_CANONICAL_DIAGNOSTIC'
