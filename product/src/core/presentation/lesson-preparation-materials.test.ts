@@ -201,7 +201,6 @@ function lessonContext(): LessonCopilotContext {
     availableCapabilities: [],
     forbiddenCapabilities: [],
     missingInformation: [],
-    curriculumAuthority: null,
     lesson: {
       sectionId: 'section-1',
       sectionLabel: '1A',
@@ -312,6 +311,7 @@ test('accepted typed bindings reconstruct all six canonical material slots', asy
     const slot = manifest.materialSlots.find((candidate) => candidate.role === role)
     assert.ok(slot, `missing slot for ${role}`)
     assert.equal(slot.status, 'READY', role)
+    assert.ok(slot.materials, `missing material metadata for ${role}`)
     const canonical = slot.materials.find((material) => material.binding?.role === role)
     assert.ok(canonical, `missing canonical material metadata for ${role}`)
     assert.equal(canonical.binding?.artifactKind, ARTIFACT_BY_ROLE[role])
@@ -328,7 +328,7 @@ test('role, artifact kind and audience remain distinct after manifest serializat
   })
   const serialized = JSON.parse(JSON.stringify(requireManifest(result))) as ReturnType<typeof requireManifest>
   const slot = serialized.materialSlots.find((candidate) => candidate.role === 'LIM_VIEW')
-  const canonical = slot?.materials.find((material) => material.binding)
+  const canonical = slot?.materials?.find((material) => material.binding)
 
   assert.equal(canonical?.binding?.role, 'LIM_VIEW')
   assert.equal(canonical?.binding?.artifactKind, 'PRESENTATION')
@@ -350,8 +350,8 @@ test('accepted resource kind without typed material binding is historical-only a
   for (const role of ['TEACHER_BRIEF', 'STUDENT_HANDOUT'] as const) {
     const slot = manifest.materialSlots.find((candidate) => candidate.role === role)
     assert.equal(slot?.status, 'NEEDS_REVIEW')
-    assert.ok(slot?.materials.every((material) => material.binding === null))
-    assert.ok(slot?.materials.every((material) => material.authority === 'LEGACY_HISTORICAL'))
+    assert.ok(slot?.materials?.every((material) => material.binding === null))
+    assert.ok(slot?.materials?.every((material) => material.authority === 'LEGACY_HISTORICAL'))
   }
   assert.equal(manifest.readiness, 'REVIEW_REQUIRED')
   assert.equal(readPort.reads, 0)

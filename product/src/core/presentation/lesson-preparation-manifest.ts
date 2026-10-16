@@ -55,7 +55,7 @@ export type LessonMaterialSlot = {
   status: LessonMaterialSlotStatus
   resourceRefs: string[]
   titles: string[]
-  materials: LessonMaterialSlotMaterial[]
+  materials?: LessonMaterialSlotMaterial[]
   reason: string
   provenance: LessonPreparationProvenance[]
 }
