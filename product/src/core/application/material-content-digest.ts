@@ -34,6 +34,13 @@ export type MaterialContentSnapshotV1 = {
   }>
 }
 
+type ComparableMaterialUnit = {
+  ordinal: number
+  unitType: string
+  title: string | null
+  content: string
+}
+
 const CANONICALIZATION = 'docente-os.material-content.v1' as const
 
 export function canonicalizeMaterialContentV1(snapshot: MaterialContentSnapshotV1): string {
@@ -94,10 +101,7 @@ export function digestMaterialContentV1(snapshot: MaterialContentSnapshotV1): Ma
   }
 }
 
-function compareUnits(
-  left: MaterialContentSnapshotV1['units'][number],
-  right: MaterialContentSnapshotV1['units'][number],
-) {
+function compareUnits(left: ComparableMaterialUnit, right: ComparableMaterialUnit) {
   return (
     left.ordinal - right.ordinal ||
     left.unitType.localeCompare(right.unitType) ||
