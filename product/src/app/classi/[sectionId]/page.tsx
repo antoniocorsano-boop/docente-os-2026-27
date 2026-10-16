@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { LessonExperienceFeedback } from '@/components/experience-feedback/experience-feedback'
+import { buildClassMaterialAcceptanceEvidenceV1 } from '@/core/application/class-material-acceptance-evidence'
 import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
 import { allocatedMinutesByBlock, completionProposal, currentTeachingSessions } from '@/core/domain/teaching-session'
 import { bindArenaDisciplineRefToDocenteOs, isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
@@ -10,6 +11,8 @@ import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/sup
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
+import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
+import { SupabaseMaterialContentReadPortV1 } from '@/core/infrastructure/supabase/supabase-material-content-read-port'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
@@ -88,7 +91,6 @@ export default async function ClassWorkspacePage({
     (assignment) => bindArenaDisciplineRefToDocenteOs(assignment.discipline) === 'technology',
   )
   const learningFocus = buildClassWorkspaceLearningFocus(section, snapshot.progress, canonicalGenerationId, knowledgeItems)
-  const preparedMaterials = selectPreparedClassMaterials(section, knowledgeItems, today)
   const currentSessions = currentTeachingSessions(teachingSnapshot)
   const allocationTotals = source
     ? allocatedMinutesByBlock(teachingSnapshot, source.generationId)
@@ -100,6 +102,23 @@ export default async function ClassWorkspacePage({
   const nextProjection = nextCanonicalBlock
     ? resolveRuntimeHumanTaskLessonProjection(grade, nextCanonicalBlock)
     : null
+  const acceptanceExtensions = source && nextCanonicalBlock && nextProjection
+    ? await new SupabaseLessonDesignRepository().list({
+        workspaceId: context.workspace.id,
+        academicYearId: context.academicYear.id,
+        sectionId: section.id,
+        canonicalPlanAssetId: source.assetId,
+        canonicalGenerationId: source.generationId,
+        blockId: nextCanonicalBlock.id,
+        projectionId: nextProjection.projectionId,
+      })
+    : []
+  const acceptanceEvidence = await buildClassMaterialAcceptanceEvidenceV1({
+    workspaceId: context.workspace.id,
+    extensions: acceptanceExtensions,
+    readPort: new SupabaseMaterialContentReadPortV1(),
+  })
+  const preparedMaterials = selectPreparedClassMaterials(section, knowledgeItems, today, acceptanceEvidence)
 
   const planningHref = `/progetta?grade=${summary.gradeQuery}&section=${encodeURIComponent(summary.sectionId)}`
   const focusPlanningHref = learningFocus.nextBlock
