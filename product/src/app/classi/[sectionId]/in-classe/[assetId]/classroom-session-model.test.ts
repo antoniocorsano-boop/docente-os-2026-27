@@ -79,6 +79,20 @@ test('builds an in-class session only for the exact class and a safe external so
   assert.equal(buildClassroomSessionView(section, asset({ sourceLocator: 'javascript:alert(1)' })), null)
 })
 
+test('metadata-only APPROVED is historical evidence and requires revalidation in class', () => {
+  const view = buildClassroomSessionView(section, asset({
+    sourceMetadata: {
+      ...asset().sourceMetadata,
+      approvalState: 'APPROVED',
+      canonicalBinding: 'ALIGNED',
+      canonicalBlockId: 'B01',
+    },
+  }))
+
+  assert.ok(view)
+  assert.equal(view.approvalLabel, 'Da riconfermare')
+})
+
 test('rejects a material explicitly bound to another canonical section', () => {
   const mismatched = asset({
     sourceMetadata: { ...asset().sourceMetadata, sectionId: 'section-3a' },
