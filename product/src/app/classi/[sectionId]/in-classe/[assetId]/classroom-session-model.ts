@@ -1,5 +1,9 @@
 import type { AnnualPlanSection } from '@/core/domain/annual-plan-execution'
 import type { KnowledgeAsset } from '@/core/domain/knowledge'
+import {
+  presentLegacyClassMaterialAcceptance,
+  type ClassMaterialAcceptanceProjection,
+} from '@/core/presentation/class-material-acceptance-projection'
 
 const GRADE_NUMBER = { PRIMA: '1', SECONDA: '2', TERZA: '3' } as const
 const CLASS_RESOURCE_MARKER = 'CLASS_LESSON_MATERIAL'
@@ -30,7 +34,7 @@ export type ClassroomSessionView = {
   targetDate: string | null
   providerLabel: string
   sourceHref: string
-  approvalLabel: 'Predisposto' | 'Confermato'
+  approvalLabel: ClassMaterialAcceptanceProjection['label']
   canonicalBindingLabel: string | null
   steps: ClassroomStep[]
   supportHints: ClassroomSupportHints
@@ -57,7 +61,7 @@ export function buildClassroomSessionView(section: AnnualPlanSection, asset: Kno
     targetDate: metadataString(asset.sourceMetadata, 'targetDate'),
     providerLabel: metadataString(asset.sourceMetadata, 'provider') === 'CANVA' ? 'Canva' : metadataString(asset.sourceMetadata, 'provider') || 'Fonte esterna',
     sourceHref: asset.sourceLocator,
-    approvalLabel: metadataString(asset.sourceMetadata, 'approvalState') === 'APPROVED' ? 'Confermato' : 'Predisposto',
+    approvalLabel: presentLegacyClassMaterialAcceptance(asset.sourceMetadata).label,
     canonicalBindingLabel: canonicalBinding === 'ALIGNED' && canonicalBlockId
       ? `Allineato a ${canonicalBlockId}`
       : canonicalBinding === 'PRE_CANONICAL_DIAGNOSTIC'
