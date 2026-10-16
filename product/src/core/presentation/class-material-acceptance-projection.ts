@@ -38,3 +38,14 @@ export function presentClassMaterialAcceptance(
     requiresRevalidation: false,
   }
 }
+
+export function presentLegacyClassMaterialAcceptance(
+  sourceMetadata: Record<string, unknown>,
+): ClassMaterialAcceptanceProjection {
+  const rawState = sourceMetadata.approvalState
+  const historicalApproval = typeof rawState === 'string' && rawState.trim() === 'APPROVED'
+
+  return presentClassMaterialAcceptance(
+    historicalApproval ? 'REVALIDATION_REQUIRED' : 'PREPARED',
+  )
+}
