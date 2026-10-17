@@ -18,6 +18,7 @@ export type TodayTeachingFocus = {
   stateLabel: 'Lezione in corso' | 'Prossima lezione'
   minutesUntilStart: number
   classLabel: string | null
+  subjectLabel: string | null
   occurrenceTitle: string
   lessonTitle: string
   startAt: string
@@ -50,6 +51,7 @@ export function buildTodayTeachingFocus(input: {
     stateLabel: state === 'CURRENT' ? 'Lezione in corso' : 'Prossima lezione',
     minutesUntilStart: state === 'CURRENT' ? 0 : Math.max(0, start - input.minuteOfDay),
     classLabel: canonical?.sectionLabel ?? null,
+    subjectLabel: canonical?.disciplineLabel ?? null,
     occurrenceTitle: preparation.lesson.title,
     lessonTitle: canonical?.title ?? preparation.lesson.title,
     startAt: preparation.lesson.startAt,
