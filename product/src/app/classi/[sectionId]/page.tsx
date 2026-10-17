@@ -46,6 +46,7 @@ export default async function ClassWorkspacePage({
   const context = await workspaceRepository.getCurrentContext()
   if (!context) redirect('/login')
   if (!context.academicYear) redirect('/workspace')
+  const academicYearId = context.academicYear.id
 
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
   const settingsRepository = new SupabaseTeacherSettingsRepository()
@@ -59,14 +60,14 @@ export default async function ClassWorkspacePage({
   const today = currentRomeDate()
   const previousDate = shiftLocalDate(today, -1)
   const [snapshot, disciplines, assignments, settings, knowledgeItems, teachingSnapshot, temporalDay, previousTemporalDay] = await Promise.all([
-    annualRepository.list(context.workspace.id, context.academicYear.id),
-    settingsRepository.listDisciplines(context.workspace.id, context.academicYear.id),
-    assignmentReader.list(context.workspace.id, context.academicYear.id),
-    settingsRepository.getOrCreate(context.workspace.id, context.academicYear.id),
+    annualRepository.list(context.workspace.id, academicYearId),
+    settingsRepository.listDisciplines(context.workspace.id, academicYearId),
+    assignmentReader.list(context.workspace.id, academicYearId),
+    settingsRepository.getOrCreate(context.workspace.id, academicYearId),
     knowledgeRepository.listRecent(context.workspace.id, 100),
-    teachingSessionRepository.listBySection(context.workspace.id, context.academicYear.id, sectionId),
-    temporalProjection.projectDay({ workspaceId: context.workspace.id, academicYearId: context.academicYear.id, localDate: today }),
-    temporalProjection.projectDay({ workspaceId: context.workspace.id, academicYearId: context.academicYear.id, localDate: previousDate }),
+    teachingSessionRepository.listBySection(context.workspace.id, academicYearId, sectionId),
+    temporalProjection.projectDay({ workspaceId: context.workspace.id, academicYearId, localDate: today }),
+    temporalProjection.projectDay({ workspaceId: context.workspace.id, academicYearId, localDate: previousDate }),
   ])
 
   const section = snapshot.sections.find((item) => item.id === sectionId)
@@ -76,14 +77,14 @@ export default async function ClassWorkspacePage({
   const blocks = buildBlocks(grade)
   const source = await new SupabaseCanonicalPlanSourceRepository().resolve({
     workspaceId: context.workspace.id,
-    academicYearId: context.academicYear.id,
+    academicYearId,
     code: CANONICAL_PLAN_SOURCES[grade].code,
   })
   const canonicalGenerationId = source?.generationId ?? null
   const summary = buildClassWorkspaceSummary(section, assignments, disciplines, snapshot.progress, canonicalGenerationId)
   const showArenaPilotIntake = isEco02PilotClass({
     workspaceId: context.workspace.id,
-    academicYearId: context.academicYear.id,
+    academicYearId,
     sectionId: section.id,
     grade: section.grade,
     sectionCode: section.sectionCode,
@@ -124,7 +125,7 @@ export default async function ClassWorkspacePage({
               if (!projection) return []
               return lessonDesignRepository.list({
                 workspaceId: context.workspace.id,
-                academicYearId: context.academicYear.id,
+                academicYearId,
                 sectionId: section.id,
                 canonicalPlanAssetId: source.assetId,
                 canonicalGenerationId: source.generationId,
