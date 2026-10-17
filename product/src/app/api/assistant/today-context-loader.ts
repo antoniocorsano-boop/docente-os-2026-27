@@ -16,12 +16,22 @@ import {
   type LoadedNextLessonPreparation,
 } from './next-lesson-preparation-loader'
 
+export type LoadedTodayOperationalContext = {
+  workspaceContext: NonNullable<Awaited<ReturnType<SupabaseWorkspaceRepository['getCurrentContext']>>>
+  localDate: string
+  minuteOfDay: number
+  tasks: Awaited<ReturnType<SupabasePlannerRepository['listByWorkspace']>>
+  projectedDay: ReturnType<typeof projectTemporalDay> | null
+  homeDaily: HomeDailyContext
+  preparation: LoadedNextLessonPreparation | null
+}
+
 export type LoadedTodayCopilotContext = {
   context: TodayCopilotK2Context
   preparation: LoadedNextLessonPreparation | null
 }
 
-export async function loadCurrentTodayCopilotContext(): Promise<LoadedTodayCopilotContext | null> {
+export async function loadCurrentTodayOperationalContext(): Promise<LoadedTodayOperationalContext | null> {
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const workspaceContext = await workspaceRepository.getCurrentContext()
   if (!workspaceContext) return null
@@ -29,25 +39,15 @@ export async function loadCurrentTodayCopilotContext(): Promise<LoadedTodayCopil
   const clock = currentRomeClock()
   const plannerRepository = new SupabasePlannerRepository()
   const tasks = await plannerRepository.listByWorkspace(workspaceContext.workspace.id)
-  const planner = buildPlannerAssistantContext({
-    workspaceId: workspaceContext.workspace.id,
-    academicYearId: workspaceContext.academicYear?.id ?? null,
-    localDate: clock.localDate,
-    tasks,
-  }).planner
 
   if (!workspaceContext.academicYear) {
-    const base = buildTodayCopilotContext({
-      workspaceId: workspaceContext.workspace.id,
-      academicYearId: null,
-      homeDaily: emptyDailyContext(clock.localDate),
-      calendarState: 'UNDETERMINED',
-      calendarLabel: null,
-      timetableState: 'UNAVAILABLE',
-      planner,
-    })
     return {
-      context: enrichTodayCopilotContext(base, null),
+      workspaceContext,
+      localDate: clock.localDate,
+      minuteOfDay: clock.minuteOfDay,
+      tasks,
+      projectedDay: null,
+      homeDaily: emptyDailyContext(clock.localDate),
       preparation: null,
     }
   }
@@ -80,16 +80,6 @@ export async function loadCurrentTodayCopilotContext(): Promise<LoadedTodayCopil
     sessions,
   })
 
-  const base = buildTodayCopilotContext({
-    workspaceId: workspaceContext.workspace.id,
-    academicYearId,
-    homeDaily,
-    calendarState: projectedDay.calendarState,
-    calendarLabel: projectedDay.calendarLabel,
-    timetableState: projectedDay.timetableState,
-    planner,
-  })
-
   let preparation: LoadedNextLessonPreparation | null = null
   try {
     preparation = await loadNextLessonPreparationBundle({
@@ -101,6 +91,45 @@ export async function loadCurrentTodayCopilotContext(): Promise<LoadedTodayCopil
   } catch {
     console.warn('[DOCENTE OS] Lesson preparation unavailable; Today Copilot continues with base context.')
   }
+
+  return {
+    workspaceContext,
+    localDate: clock.localDate,
+    minuteOfDay: clock.minuteOfDay,
+    tasks,
+    projectedDay,
+    homeDaily,
+    preparation,
+  }
+}
+
+export async function loadCurrentTodayCopilotContext(): Promise<LoadedTodayCopilotContext | null> {
+  const operational = await loadCurrentTodayOperationalContext()
+  if (!operational) return null
+
+  const {
+    workspaceContext,
+    localDate,
+    tasks,
+    projectedDay,
+    homeDaily,
+    preparation,
+  } = operational
+  const planner = buildPlannerAssistantContext({
+    workspaceId: workspaceContext.workspace.id,
+    academicYearId: workspaceContext.academicYear?.id ?? null,
+    localDate,
+    tasks,
+  }).planner
+  const base = buildTodayCopilotContext({
+    workspaceId: workspaceContext.workspace.id,
+    academicYearId: workspaceContext.academicYear?.id ?? null,
+    homeDaily,
+    calendarState: projectedDay?.calendarState ?? 'UNDETERMINED',
+    calendarLabel: projectedDay?.calendarLabel ?? null,
+    timetableState: projectedDay?.timetableState ?? 'UNAVAILABLE',
+    planner,
+  })
 
   return {
     context: enrichTodayCopilotContext(base, preparation?.preparation ?? null),
