@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import {
   isTeachingAdjustment,
@@ -16,6 +16,8 @@ import {
 import type { LessonKnowledgeSuggestion } from './lesson-material-suggestions'
 import type { LessonAtlasSuggestion } from './atlas-material-suggestions'
 export type { LessonKnowledgeSuggestion } from './lesson-material-suggestions'
+
+type MaterialPreparationIntent = 'reuse' | 'adapt' | 'create'
 
 const ACTIVATION_QUESTION_TOOL_ID = 'LESSON_ACTIVATION_QUESTION_V1'
 
@@ -39,6 +41,8 @@ export function LessonDesignTools({
       (extension.status === 'PROPOSED' || extension.status === 'MODIFIED')
       && !isTeachingAdjustment(extension),
   )
+  const materialProposals = proposals.filter((extension) => isResource(extension.kind))
+  const [materialIntent, setMaterialIntent] = useState<MaterialPreparationIntent>('reuse')
   const replanningReview = extensions.filter(
     (extension) =>
       isTeachingAdjustment(extension)
@@ -85,6 +89,120 @@ export function LessonDesignTools({
           <span>Frase · Evento · Micro-video · Domanda · Verifica rapida</span>
         </div>
       </div>
+
+      <section className="lessonKnowledgeSuggestions" aria-labelledby="material-preparation-title">
+        <div className="lessonDesignSubheading"><h4 id="material-preparation-title">Prepara materiali</h4></div>
+        <div className="lessonMaterialIntent" role="group" aria-label="Come vuoi preparare il materiale?">
+          <button type="button" aria-pressed={materialIntent === 'reuse'} onClick={() => setMaterialIntent('reuse')}>Riutilizza</button>
+          <button type="button" aria-pressed={materialIntent === 'adapt'} onClick={() => setMaterialIntent('adapt')}>Adatta</button>
+          <button type="button" aria-pressed={materialIntent === 'create'} onClick={() => setMaterialIntent('create')}>Crea nuovo</button>
+        </div>
+        {materialIntent === 'reuse' ? (
+          <div className="lessonKnowledgeSuggestions" aria-label="Materiali disponibili">
+            <div className="lessonDesignSubheading"><strong>Materiali disponibili</strong><small>{atlasSuggestions.length + knowledgeSuggestions.length}</small></div>
+            <p className="lessonKnowledgeLead">Controlla il materiale e scegli se usarlo in questa lezione. La provenienza resta visibile.</p>
+            {atlasSuggestions.length ? (
+              <div className="lessonKnowledgeSuggestions" aria-label="Risorse Atlas proposte per questa lezione">
+
+                {atlasSuggestions.map((item) => (
+                  <article key={item.materialId}>
+                    <div>
+                      <SourceProvenance kind="ATLAS" />
+                      <span>{item.kind.toUpperCase()} · {item.state}</span>
+                      <strong>{item.title}</strong>
+                      <p>{item.summary}</p>
+                      <small className="lessonSuggestionReason">Perché qui: {item.reason}</small>
+                      <small className="lessonSuggestionReason">Provenienza: {item.provenance} · versione {item.version}</small>
+                      <div className="lessonSuggestionTip">
+                        <b>TIP</b>
+                        <p>{item.usageTip}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <a href={item.publicUrl} target="_blank" rel="noreferrer">Controlla su Atlas</a>
+                      <form action={writeAction}>
+                        <input type="hidden" name="designIntent" value="attach-atlas" />
+                        <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
+                        <input type="hidden" name="atlasMaterialId" value={item.materialId} />
+                        <DesignActionSubmit idle="Usa questo materiale" pendingLabel="Aggiunta…" />
+                      </form>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+
+            {knowledgeSuggestions.length ? (
+              <div className="lessonKnowledgeSuggestions" aria-label="Suggerimenti contestuali per questa lezione">
+
+                {knowledgeSuggestions.map((item) => (
+                  <article key={item.assetId}>
+                    <div>
+                      <SourceProvenance kind={item.sourceKind} />
+                      <span>{knowledgeCategoryLabel(item.category)}</span>
+                      <strong>{item.title}</strong>
+                      <p>{item.summary}</p>
+                      {item.pedagogicalRoles.length ? (
+                        <small className="lessonSuggestionRoles">Uso suggerito: {item.pedagogicalRoles.slice(0, 3).map(teachingMaterialRoleLabel).join(' · ')}</small>
+                      ) : null}
+                      <small className="lessonSuggestionReason">Perché qui: {item.reason}</small>
+                      <div className="lessonSuggestionTip">
+                        <b>TIP</b>
+                        <p>{item.usageTip}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <Link href={`/knowledge/${encodeURIComponent(item.assetId)}`}>Controlla</Link>
+                      <form action={writeAction}>
+                        <input type="hidden" name="designIntent" value="attach-knowledge" />
+                        <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
+                        <input type="hidden" name="assetId" value={item.assetId} />
+                        <DesignActionSubmit idle="Usa questo materiale" pendingLabel="Aggiunta…" />
+                      </form>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+            {!atlasSuggestions.length && !knowledgeSuggestions.length ? (
+              <p className="lessonDesignEmpty">Non ci sono materiali pertinenti da suggerire. Puoi creare un nuovo contenuto oppure proseguire con la lezione già preparata.</p>
+            ) : null}
+          </div>
+        ) : null}
+        {materialIntent === 'adapt' ? (
+          <div className="lessonDesignProposalList" aria-label="Materiali da adattare">
+            <p className="lessonKnowledgeLead">Adatta titolo e note del materiale per questa lezione. L’originale resta invariato: il file o la risorsa collegata non vengono modificati. Dopo il salvataggio, controlla e conferma nuovamente la proposta.</p>
+            {[...materialProposals, ...acceptedResources].map((extension) => (
+              <article className="lessonDesignProposal" key={extension.id}>
+                <div>
+                  <strong>{extension.title}</strong>
+                  <p>{extension.body}</p>
+                  <SourceProvenance kind={extension.sourceKind} />
+                </div>
+                <div className="lessonDesignProposalActions">
+                  <EditExtensionForm
+                    extension={extension}
+                    sectionId={sectionId}
+                    blockId={blockId}
+                    projectionId={projectionId}
+                    writeAction={writeAction}
+                    accepted={extension.status === 'ACCEPTED'}
+                  />
+                </div>
+              </article>
+            ))}
+            {!materialProposals.length && !acceptedResources.length ? (
+              <p className="lessonDesignEmpty">Non ci sono materiali da adattare. Scegli prima un materiale da Riutilizza oppure aggiungi un nuovo contenuto.</p>
+            ) : null}
+          </div>
+        ) : null}
+        {materialIntent === 'create' ? (
+          <div className="lessonKnowledgeSuggestions" aria-label="Crea un materiale">
+            <p className="lessonKnowledgeLead">Scrivi o carica un contenuto nella Conoscenza. Per usarlo nella lezione dovrai controllarlo e selezionarlo esplicitamente.</p>
+            <Link href={buildKnowledgeCaptureHref(sectionId, blockId)}>Aggiungi un nuovo contenuto</Link>
+          </div>
+        ) : null}
+      </section>
 
       {!activationQuestionActive ? (
         <div className="lessonDesignAvailableTools" aria-label="Strumenti disponibili">
@@ -229,75 +347,13 @@ export function LessonDesignTools({
         </div>
       ) : null}
 
-      {atlasSuggestions.length ? (
-        <div className="lessonKnowledgeSuggestions" aria-label="Risorse Atlas proposte per questa lezione">
-          <div className="lessonDesignSubheading"><strong>Da Atlas</strong><small>{atlasSuggestions.length}</small></div>
-          <p className="lessonKnowledgeLead">Atlas propone una risorsa pubblica con identità, stato e provenienza espliciti. Resta una proposta: puoi controllarla, usarla oppure ignorarla senza modificare il curricolo Arena.</p>
-          {atlasSuggestions.map((item) => (
-            <article key={item.materialId}>
-              <div>
-                <SourceProvenance kind="ATLAS" />
-                <span>{item.kind.toUpperCase()} · {item.state}</span>
-                <strong>{item.title}</strong>
-                <p>{item.summary}</p>
-                <small className="lessonSuggestionReason">Perché qui: {item.reason}</small>
-                <small className="lessonSuggestionReason">Provenienza: {item.provenance} · versione {item.version}</small>
-                <div className="lessonSuggestionTip">
-                  <b>TIP</b>
-                  <p>{item.usageTip}</p>
-                </div>
-              </div>
-              <div>
-                <a href={item.publicUrl} target="_blank" rel="noreferrer">Controlla su Atlas</a>
-                <form action={writeAction}>
-                  <input type="hidden" name="designIntent" value="attach-atlas" />
-                  <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
-                  <input type="hidden" name="atlasMaterialId" value={item.materialId} />
-                  <DesignActionSubmit idle="Usa in questa lezione" pendingLabel="Aggiunta…" />
-                </form>
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : null}
-
-      {knowledgeSuggestions.length ? (
-        <div className="lessonKnowledgeSuggestions" aria-label="Suggerimenti contestuali per questa lezione">
-          <div className="lessonDesignSubheading"><strong>Potrebbe servirti qui</strong><small>{knowledgeSuggestions.length}</small></div>
-          <p className="lessonKnowledgeLead">DOCENTE OS incrocia questa fase con i materiali già presenti nella tua Conoscenza e con i libri confermati per la classe. È sempre un suggerimento: nulla entra nella lezione senza una tua scelta.</p>
-          {knowledgeSuggestions.map((item) => (
-            <article key={item.assetId}>
-              <div>
-                <SourceProvenance kind={item.sourceKind} />
-                <span>{knowledgeCategoryLabel(item.category)}</span>
-                <strong>{item.title}</strong>
-                <p>{item.summary}</p>
-                {item.pedagogicalRoles.length ? (
-                  <small className="lessonSuggestionRoles">Uso suggerito: {item.pedagogicalRoles.slice(0, 3).map(teachingMaterialRoleLabel).join(' · ')}</small>
-                ) : null}
-                <small className="lessonSuggestionReason">Perché qui: {item.reason}</small>
-                <div className="lessonSuggestionTip">
-                  <b>TIP</b>
-                  <p>{item.usageTip}</p>
-                </div>
-              </div>
-              <div>
-                <Link href={`/knowledge/${encodeURIComponent(item.assetId)}`}>Controlla</Link>
-                <form action={writeAction}>
-                  <input type="hidden" name="designIntent" value="attach-knowledge" />
-                  <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
-                  <input type="hidden" name="assetId" value={item.assetId} />
-                  <DesignActionSubmit idle="Usa in questa lezione" pendingLabel="Aggiunta…" />
-                </form>
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <p className="lessonDesignEmpty">Non ci sono ancora materiali abbastanza pertinenti da suggerire per questa fase. La lezione canonica resta comunque utilizzabile così com’è.</p>
-      )}
     </section>
   )
+}
+
+function buildKnowledgeCaptureHref(sectionId: string, blockId: string) {
+  const returnTo = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(blockId)}?mode=prepare`
+  return `/knowledge?capture=text&mode=prepare&section=${encodeURIComponent(sectionId)}&block=${encodeURIComponent(blockId)}&returnTo=${encodeURIComponent(returnTo)}`
 }
 
 function AcceptedItem({
@@ -384,7 +440,7 @@ function EditExtensionForm({
           <textarea name="body" defaultValue={extension.body} maxLength={5000} rows={4} required />
         </label>
         {accepted ? (
-          <p>Salvando la modifica, l’elemento esce temporaneamente dalla sequenza e torna “Da controllare”. Rientra solo dopo una nuova conferma.</p>
+          <p>Salvando la modifica, l’elemento esce temporaneamente dalla lezione e torna “Da controllare”. Rientra solo dopo una nuova conferma.</p>
         ) : (
           <p>La modifica resta una proposta e non entra nella lezione finché non scegli “Usa in questa lezione”.</p>
         )}
