@@ -57,6 +57,7 @@ export default async function PlannerPage() {
   const openCount = operational.tasks.filter((task) => task.status === 'OPEN').length
   const todayTaskCount = projection.planner.overdue.length + projection.planner.today.length
   const materialsAvailable = Boolean(operational.preparation?.rendering?.bundle)
+  const teachingSectionId = operational.preparation?.preparation.lesson.sectionId ?? null
 
   return (
     <AppShell
@@ -85,7 +86,7 @@ export default async function PlannerPage() {
       {teachingFocus ? (
         <>
           <TodayTeachingFocusCard focus={teachingFocus} />
-          <TodayQuickActions materialsAvailable={materialsAvailable} />
+          <TodayQuickActions materialsAvailable={materialsAvailable} sectionId={teachingSectionId} />
         </>
       ) : (
         <TodayFocusCard focus={projection.focus} moment={projection.moment} today={today} nowMinutes={nowMinutes} />
@@ -153,7 +154,9 @@ export default async function PlannerPage() {
   )
 }
 
-function TodayQuickActions({ materialsAvailable }: { materialsAvailable: boolean }) {
+function TodayQuickActions({ materialsAvailable, sectionId }: { materialsAvailable: boolean; sectionId: string | null }) {
+  if (!materialsAvailable && !sectionId) return null
+
   return (
     <section className="todayQuickActions" aria-labelledby="today-quick-actions-title">
       <div className="todayQuickActionsHeading">
@@ -161,9 +164,18 @@ function TodayQuickActions({ materialsAvailable }: { materialsAvailable: boolean
         <span>Solo percorsi già disponibili</span>
       </div>
       <div className="todayQuickActionGrid">
-        {materialsAvailable ? <Link href="/materiali/prossima"><strong>Materiali della lezione</strong><span>Apri ciò che è già pronto</span></Link> : null}
-        <Link href="/classi"><strong>Classi</strong><span>Entra nel contesto della sezione</span></Link>
-        <Link href="/orario"><strong>Orario</strong><span>Controlla la settimana</span></Link>
+        {sectionId ? (
+          <Link href={`/classi/${encodeURIComponent(sectionId)}`}>
+            <strong>Apri la classe</strong>
+            <span>Entra nel contesto della sezione</span>
+          </Link>
+        ) : null}
+        {materialsAvailable ? (
+          <Link href="/materiali/prossima">
+            <strong>Materiali della prossima lezione</strong>
+            <span>Apri ciò che è già pronto</span>
+          </Link>
+        ) : null}
       </div>
     </section>
   )
