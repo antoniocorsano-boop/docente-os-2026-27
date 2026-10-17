@@ -13,6 +13,8 @@ declare
   atlas_rpc regprocedure;
   cpri_bind_rpc regprocedure;
   cpri_backfill_rpc regprocedure;
+  probe_migration_version integer;
+  probe_migration_id text;
   containment_anchor_version text;
   containment_anchor_name text;
   trigger_shape_rejected boolean := false;
@@ -105,27 +107,32 @@ begin
 
   -- Regression for fresh Codex P2: a post-watermark migration must not become
   -- trusted merely by self-registering in the required-migration manifest. Keep
-  -- the active watermark at 0102, add a synthetic 0103 history+manifest row,
+  -- the active watermark unchanged, add a synthetic future history+manifest row,
   -- require provenance to fail closed, then remove both probe rows.
+  select greatest(coalesce(max(version), 0), split_part(runtime_migration, '_', 1)::integer) + 1
+    into probe_migration_version
+  from private.runtime_schema_required_migrations;
+  probe_migration_id := lpad(probe_migration_version::text, 4, '0') || '_rogue_self_registered_probe';
+
   insert into private.runtime_schema_required_migrations(version, migration_id)
-  values (103, '0103_rogue_self_registered_probe');
+  values (probe_migration_version, probe_migration_id);
 
   insert into supabase_migrations.schema_migrations(version, name)
-  values ('99999999999999', '0103_rogue_self_registered_probe');
+  values ('99999999999999', probe_migration_id);
 
   select public.runtime_schema_contract_snapshot()
     into runtime_snapshot;
   provenance_future_manifest_entry_rejected :=
     coalesce((runtime_snapshot->>'provenanceOk')::boolean, true) is false
-    and runtime_snapshot->'unexpectedMigrations' @> '["0103_rogue_self_registered_probe"]'::jsonb;
+    and runtime_snapshot->'unexpectedMigrations' @> jsonb_build_array(probe_migration_id);
 
   delete from supabase_migrations.schema_migrations
   where version = '99999999999999'
-    and name = '0103_rogue_self_registered_probe';
+    and name = probe_migration_id;
 
   delete from private.runtime_schema_required_migrations
-  where version = 103
-    and migration_id = '0103_rogue_self_registered_probe';
+  where version = probe_migration_version
+    and migration_id = probe_migration_id;
 
   select public.runtime_schema_contract_snapshot()
     into runtime_snapshot;

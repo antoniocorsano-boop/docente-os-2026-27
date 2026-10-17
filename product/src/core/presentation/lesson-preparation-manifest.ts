@@ -1,10 +1,19 @@
 import {
-  acceptedLessonDesignResources,
   composeLessonSequence,
   isTeachingAdjustment,
+  lessonMaterialBindingState,
   type ComposedLessonSequenceStep,
   type LessonDesignExtension,
 } from '@/core/domain/lesson-design-extension'
+import type {
+  LessonMaterialBindingV1,
+  LessonMaterialRole as CanonicalLessonMaterialRole,
+} from '@/core/domain/lesson-material-binding'
+import {
+  resolveCanonicalMaterialContentV1,
+  type CanonicalMaterialContentResolutionV1,
+  type MaterialContentReadPortV1,
+} from '@/core/application/material-content-resolution'
 import {
   resolveHumanTaskResourcesForSurface,
   type HumanTaskLessonProjection,
@@ -17,13 +26,7 @@ import {
 } from './lesson-replanning-decision'
 import type { LessonCopilotContext } from './teacher-copilot-context'
 
-export type LessonMaterialRole =
-  | 'TEACHER_BRIEF'
-  | 'LIM_VIEW'
-  | 'STUDENT_HANDOUT'
-  | 'MINI_DECK'
-  | 'VISUAL_AID'
-  | 'ASSESSMENT'
+export type LessonMaterialRole = CanonicalLessonMaterialRole
 
 export type LessonMaterialSlotStatus = 'READY' | 'MISSING' | 'PROPOSED' | 'NEEDS_REVIEW'
 export type LessonPreparationReadiness = 'DRAFT' | 'REVIEW_REQUIRED' | 'READY' | 'USED' | 'NEEDS_REVISION'
@@ -35,12 +38,24 @@ export type LessonPreparationProvenance = {
   label?: string
 }
 
+export type LessonMaterialSlotMaterial = {
+  resourceRef: string
+  title: string
+  authority:
+    | 'CANONICAL_PROJECTION'
+    | 'CANONICAL_ACCEPTED_BINDING'
+    | 'CANONICAL_PROPOSED_BINDING'
+    | 'LEGACY_HISTORICAL'
+  binding: LessonMaterialBindingV1 | null
+}
+
 export type LessonMaterialSlot = {
   role: LessonMaterialRole
   required: boolean
   status: LessonMaterialSlotStatus
   resourceRefs: string[]
   titles: string[]
+  materials?: LessonMaterialSlotMaterial[]
   reason: string
   provenance: LessonPreparationProvenance[]
 }
@@ -88,7 +103,9 @@ export type LessonPreparationManifestResult =
       reasons: string[]
     }
 
-export function buildLessonPreparationManifest(input: {
+export type LessonPreparationMaterialVerification = Readonly<Record<string, CanonicalMaterialContentResolutionV1>>
+
+export type LessonPreparationManifestInput = {
   preparation: NextLessonPreparation
   lessonContext: LessonCopilotContext | null
   projection: HumanTaskLessonProjection | null
@@ -96,7 +113,19 @@ export function buildLessonPreparationManifest(input: {
   replanning?: LessonReplanningProjection
   requiredMaterialRoles?: LessonMaterialRole[]
   renderingCapabilities?: string[]
-}): LessonPreparationManifestResult {
+  materialContentResolutions?: LessonPreparationMaterialVerification
+}
+
+export type VerifiedLessonPreparationManifestInput = Omit<
+  LessonPreparationManifestInput,
+  'materialContentResolutions'
+> & {
+  materialContentReadPort: MaterialContentReadPortV1
+}
+
+export function buildLessonPreparationManifest(
+  input: LessonPreparationManifestInput,
+): LessonPreparationManifestResult {
   const blockers = validateCanonicalBinding(input)
   if (blockers.length) return { resolution: 'BLOCKED', manifest: null, reasons: blockers }
 
@@ -124,7 +153,6 @@ export function buildLessonPreparationManifest(input: {
     (extension) => extension.status === 'PROPOSED' && !isTeachingAdjustment(extension),
   )
   const composed = composeLessonSequence(projection.steps, lessonExtensions)
-  const acceptedResources = acceptedLessonDesignResources(lessonExtensions)
   const projectionResources = resolveHumanTaskResourcesForSurface(projection, 'PREPARE')
 
   const derivedRequiredRoles = projectionResources
@@ -138,9 +166,10 @@ export function buildLessonPreparationManifest(input: {
   const materialSlots = buildMaterialSlots({
     projectionId: projection.projectionId,
     projectionResources,
-    acceptedResources,
+    acceptedExtensions,
     proposedExtensions,
     requiredRoles,
+    materialContentResolutions: input.materialContentResolutions ?? {},
   })
 
   const missingInformation = uniqueStrings([
@@ -216,6 +245,40 @@ export function buildLessonPreparationManifest(input: {
   }
 }
 
+export async function buildVerifiedLessonPreparationManifest(
+  input: VerifiedLessonPreparationManifestInput,
+): Promise<LessonPreparationManifestResult> {
+  const unverified = buildLessonPreparationManifest(input)
+  if (unverified.resolution === 'BLOCKED') return unverified
+
+  const context = input.lessonContext as LessonCopilotContext
+  const sectionId = input.preparation.lesson.sectionId as string
+  const resolutions: Record<string, CanonicalMaterialContentResolutionV1> = {}
+  const lessonExtensions = (input.extensions ?? []).filter((extension) => (
+    extension.sectionId === sectionId
+    && extension.blockId === context.lesson.blockId
+    && extension.projectionId === context.lesson.projectionId
+    && extension.status === 'ACCEPTED'
+    && !isTeachingAdjustment(extension)
+  ))
+
+  for (const extension of lessonExtensions) {
+    const state = classifyMaterialExtension(extension)
+    if (state.classification !== 'MATERIAL_BINDING_V1') continue
+
+    resolutions[extension.id] = await resolveCanonicalMaterialContentV1({
+      workspaceId: context.workspaceId,
+      ref: state.binding.materialRef,
+      readPort: input.materialContentReadPort,
+    })
+  }
+
+  return buildLessonPreparationManifest({
+    ...input,
+    materialContentResolutions: resolutions,
+  })
+}
+
 function validateCanonicalBinding(input: {
   preparation: NextLessonPreparation
   lessonContext: LessonCopilotContext | null
@@ -267,54 +330,155 @@ function validateExtensionScope(
   return uniqueStrings(reasons)
 }
 
+type MaterialExtensionClassification =
+  | { classification: 'MATERIAL_BINDING_V1'; binding: LessonMaterialBindingV1 }
+  | { classification: 'LEGACY_EXTENSION'; binding: null }
+  | { classification: 'INVALID_MATERIAL_BINDING'; binding: null }
+
+type SlotRoleItem = {
+  ref: string
+  title: string
+  provenance: LessonPreparationProvenance
+  material: LessonMaterialSlotMaterial
+  reviewReason?: string
+}
+
+function classifyMaterialExtension(extension: LessonDesignExtension): MaterialExtensionClassification {
+  try {
+    return lessonMaterialBindingState(extension)
+  } catch {
+    return { classification: 'INVALID_MATERIAL_BINDING', binding: null }
+  }
+}
+
 function buildMaterialSlots(input: {
   projectionId: string
   projectionResources: Array<{ id: string; kind: HumanTaskResourceKind; title: string }>
-  acceptedResources: LessonDesignExtension[]
+  acceptedExtensions: LessonDesignExtension[]
   proposedExtensions: LessonDesignExtension[]
   requiredRoles: LessonMaterialRole[]
+  materialContentResolutions: LessonPreparationMaterialVerification
 }) {
-  const readyByRole = new Map<LessonMaterialRole, Array<{ ref: string; title: string; provenance: LessonPreparationProvenance }>>()
-  const proposedByRole = new Map<LessonMaterialRole, Array<{ ref: string; title: string; provenance: LessonPreparationProvenance }>>()
+  const readyByRole = new Map<LessonMaterialRole, SlotRoleItem[]>()
+  const proposedByRole = new Map<LessonMaterialRole, SlotRoleItem[]>()
+  const reviewByRole = new Map<LessonMaterialRole, SlotRoleItem[]>()
 
   for (const resource of input.projectionResources) {
     const role = roleForProjectionResource(resource.kind)
     if (!role) continue
+    const ref = `projection:${input.projectionId}:resource:${resource.id}`
     pushRoleItem(readyByRole, role, {
-      ref: `projection:${input.projectionId}:resource:${resource.id}`,
+      ref,
       title: resource.title,
       provenance: {
         kind: 'CANONICAL_LESSON_RESOURCE',
-        ref: `projection:${input.projectionId}:resource:${resource.id}`,
+        ref,
         label: resource.title,
+      },
+      material: {
+        resourceRef: ref,
+        title: resource.title,
+        authority: 'CANONICAL_PROJECTION',
+        binding: null,
       },
     })
   }
 
-  for (const extension of input.acceptedResources) {
-    const role = roleForExtension(extension)
+  for (const extension of input.acceptedExtensions) {
+    const state = classifyMaterialExtension(extension)
+    if (state.classification === 'MATERIAL_BINDING_V1') {
+      const role = state.binding.role
+      const ref = `lesson-extension:${extension.id}`
+      const resolution = input.materialContentResolutions[extension.id]
+      const item: SlotRoleItem = {
+        ref,
+        title: extension.title,
+        provenance: {
+          kind: resolution?.status === 'READY'
+            ? 'CANONICAL_ACCEPTED_MATERIAL'
+            : 'CANONICAL_ACCEPTED_MATERIAL_REVIEW_REQUIRED',
+          ref,
+          label: extension.title,
+        },
+        material: {
+          resourceRef: ref,
+          title: extension.title,
+          authority: 'CANONICAL_ACCEPTED_BINDING',
+          binding: state.binding,
+        },
+        reviewReason: materialVerificationReason(resolution),
+      }
+
+      if (resolution?.status === 'READY') pushRoleItem(readyByRole, role, item)
+      else pushRoleItem(reviewByRole, role, item)
+      continue
+    }
+
+    const role = roleForLegacyExtension(extension)
     if (!role) continue
-    pushRoleItem(readyByRole, role, {
-      ref: `lesson-extension:${extension.id}`,
+    const ref = `lesson-extension:${extension.id}`
+    pushRoleItem(reviewByRole, role, {
+      ref,
       title: extension.title,
       provenance: {
-        kind: 'ACCEPTED_LESSON_RESOURCE',
-        ref: `lesson-extension:${extension.id}`,
+        kind: state.classification === 'INVALID_MATERIAL_BINDING'
+          ? 'INVALID_MATERIAL_BINDING'
+          : 'HISTORICAL_LEGACY_LESSON_RESOURCE',
+        ref,
         label: extension.title,
       },
+      material: {
+        resourceRef: ref,
+        title: extension.title,
+        authority: 'LEGACY_HISTORICAL',
+        binding: null,
+      },
+      reviewReason: state.classification === 'INVALID_MATERIAL_BINDING'
+        ? 'La binding tipizzata del materiale non è valida e richiede una nuova verifica.'
+        : 'Risorsa legacy conservata come evidenza storica: il kind non costituisce autorità di accettazione corrente.',
     })
   }
 
   for (const extension of input.proposedExtensions) {
-    const role = roleForExtension(extension)
+    const state = classifyMaterialExtension(extension)
+    const typedRole = state.classification === 'MATERIAL_BINDING_V1' ? state.binding.role : null
+    const role = typedRole ?? roleForLegacyExtension(extension)
     if (!role) continue
+    const ref = `lesson-extension:${extension.id}`
+
+    if (state.classification === 'INVALID_MATERIAL_BINDING') {
+      pushRoleItem(reviewByRole, role, {
+        ref,
+        title: extension.title,
+        provenance: { kind: 'INVALID_MATERIAL_BINDING', ref, label: extension.title },
+        material: {
+          resourceRef: ref,
+          title: extension.title,
+          authority: 'LEGACY_HISTORICAL',
+          binding: null,
+        },
+        reviewReason: 'La binding tipizzata della proposta non è valida e richiede una nuova verifica.',
+      })
+      continue
+    }
+
     pushRoleItem(proposedByRole, role, {
-      ref: `lesson-extension:${extension.id}`,
+      ref,
       title: extension.title,
       provenance: {
-        kind: 'PROPOSED_LESSON_RESOURCE',
-        ref: `lesson-extension:${extension.id}`,
+        kind: state.classification === 'MATERIAL_BINDING_V1'
+          ? 'CANONICAL_PROPOSED_MATERIAL'
+          : 'HISTORICAL_LEGACY_LESSON_RESOURCE_PROPOSAL',
+        ref,
         label: extension.title,
+      },
+      material: {
+        resourceRef: ref,
+        title: extension.title,
+        authority: state.classification === 'MATERIAL_BINDING_V1'
+          ? 'CANONICAL_PROPOSED_BINDING'
+          : 'LEGACY_HISTORICAL',
+        binding: state.binding,
       },
     })
   }
@@ -323,22 +487,39 @@ function buildMaterialSlots(input: {
     ...input.requiredRoles,
     ...readyByRole.keys(),
     ...proposedByRole.keys(),
+    ...reviewByRole.keys(),
   ])
 
   return roles.map((role): LessonMaterialSlot => {
     const ready = readyByRole.get(role) ?? []
     const proposed = proposedByRole.get(role) ?? []
+    const review = reviewByRole.get(role) ?? []
+    const all = [...review, ...ready, ...proposed]
     const required = input.requiredRoles.includes(role)
+
+    if (review.length) {
+      return {
+        role,
+        required,
+        status: 'NEEDS_REVIEW',
+        resourceRefs: uniqueStrings(all.map((item) => item.ref)),
+        titles: uniqueStrings(all.map((item) => item.title)),
+        materials: all.map((item) => item.material),
+        reason: uniqueStrings(review.map((item) => item.reviewReason ?? 'Verifica del materiale richiesta.')).join(' '),
+        provenance: mergeProvenance(all.map((item) => item.provenance)),
+      }
+    }
 
     if (ready.length) {
       return {
         role,
         required,
         status: 'READY',
-        resourceRefs: ready.map((item) => item.ref),
-        titles: uniqueStrings(ready.map((item) => item.title)),
-        reason: required ? 'Risorsa necessaria già disponibile nel contesto canonico della lezione.' : 'Risorsa opzionale già disponibile e accettata.',
-        provenance: mergeProvenance(ready.map((item) => item.provenance)),
+        resourceRefs: uniqueStrings(all.map((item) => item.ref)),
+        titles: uniqueStrings(all.map((item) => item.title)),
+        materials: all.map((item) => item.material),
+        reason: required ? 'Risorsa necessaria già disponibile nel contesto canonico della lezione.' : 'Risorsa opzionale già disponibile e verificata.',
+        provenance: mergeProvenance(all.map((item) => item.provenance)),
       }
     }
 
@@ -349,6 +530,7 @@ function buildMaterialSlots(input: {
         status: 'PROPOSED',
         resourceRefs: proposed.map((item) => item.ref),
         titles: uniqueStrings(proposed.map((item) => item.title)),
+        materials: proposed.map((item) => item.material),
         reason: 'Esiste una proposta pertinente, ma non è ancora stata accettata dal docente.',
         provenance: mergeProvenance(proposed.map((item) => item.provenance)),
       }
@@ -360,10 +542,32 @@ function buildMaterialSlots(input: {
       status: 'MISSING',
       resourceRefs: [],
       titles: [],
+      materials: [],
       reason: 'Il ruolo è richiesto per questa lezione ma non risulta ancora coperto.',
       provenance: [],
     }
   })
+}
+
+function materialVerificationReason(
+  resolution: CanonicalMaterialContentResolutionV1 | undefined,
+) {
+  if (!resolution) {
+    return 'Verifica digest del materiale accettato non disponibile: READY è negato fino al read-back canonico.'
+  }
+  if (resolution.status === 'STALE') {
+    return 'Digest canonico non coincidente: il materiale è stale e richiede una nuova verifica.'
+  }
+  if (resolution.status === 'MISSING') {
+    return 'Verifica del contenuto canonico non disponibile: la generazione accettata non è più reperibile.'
+  }
+  if (resolution.status === 'INCOMPLETE') {
+    return `Verifica del contenuto canonico incompleta (${resolution.reason}): READY è negato.`
+  }
+  if (resolution.status === 'UNSUPPORTED_REFERENCE') {
+    return 'Verifica del riferimento canonico non supportata: READY è negato.'
+  }
+  return undefined
 }
 
 function roleForProjectionResource(kind: HumanTaskResourceKind): LessonMaterialRole | null {
@@ -372,7 +576,7 @@ function roleForProjectionResource(kind: HumanTaskResourceKind): LessonMaterialR
   return null
 }
 
-function roleForExtension(extension: LessonDesignExtension): LessonMaterialRole | null {
+function roleForLegacyExtension(extension: LessonDesignExtension): LessonMaterialRole | null {
   if (extension.kind === 'TEACHER_RESOURCE') return 'TEACHER_BRIEF'
   if (extension.kind === 'STUDENT_RESOURCE') return 'STUDENT_HANDOUT'
   return null

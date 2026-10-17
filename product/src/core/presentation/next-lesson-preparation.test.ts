@@ -335,6 +335,29 @@ test('LP-1: compone un manifest READY riusando sequenza, risorse canoniche, este
       relevanceLabel: 'Fase corrente',
     }],
   })
+  const teacherBriefDigest = {
+    algorithm: 'SHA-256' as const,
+    canonicalization: 'docente-os.material-content.v1' as const,
+    value: '0'.repeat(64),
+  }
+  const teacherBriefSnapshot = {
+    assetContent: {
+      originalText: 'Guida docente rapida',
+      mimeType: 'text/plain',
+      sourceSha256: null,
+    },
+    document: {
+      title: 'Guida docente rapida',
+      documentType: 'TEACHING',
+      language: 'it',
+      normalizedText: 'Guida docente rapida',
+      normalizedMarkdown: null,
+      summary: null,
+      extractedData: {},
+    },
+    units: [],
+    referencedBinaryContent: [],
+  }
 
   const result = buildLessonPreparationManifest({
     preparation,
@@ -347,11 +370,40 @@ test('LP-1: compone un manifest READY riusando sequenza, risorse canoniche, este
         kind: 'TEACHER_RESOURCE',
         title: 'Guida docente rapida',
         insertionPosition: 'END',
-        sourceRef: 'knowledge:teacher-guide',
+        sourceKind: 'KNOWLEDGE',
+        sourceRef: 'knowledge:asset-teacher-guide:generation-teacher-guide',
         sourceLabel: 'Guida docente',
+        payload: {
+          materialBinding: {
+            schema: 'docente-os.lesson-material-binding.v1',
+            role: 'TEACHER_BRIEF',
+            artifactKind: 'GUIDE',
+            audience: 'TEACHER',
+            materialRef: {
+              kind: 'KNOWLEDGE_GENERATION',
+              assetId: 'asset-teacher-guide',
+              generationId: 'generation-teacher-guide',
+              contentDigest: teacherBriefDigest,
+            },
+            provenance: {
+              sourceArtifactRefs: ['knowledge:teacher-guide'],
+              derivationRefs: ['lp-1-canonical-fixture'],
+              evidenceRefs: ['evidence:teacher-guide'],
+              rightsState: 'KNOWN',
+              attributionRequirements: [],
+            },
+          },
+        },
         createdAt: '2026-09-15T13:01:00Z',
       }),
     ],
+    materialContentResolutions: {
+      'teacher-brief': {
+        status: 'READY',
+        snapshot: teacherBriefSnapshot,
+        actualDigest: teacherBriefDigest,
+      },
+    },
   })
 
   assert.equal(result.resolution, 'SUPPORTED')

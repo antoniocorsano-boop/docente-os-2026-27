@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { LessonExperienceFeedback } from '@/components/experience-feedback/experience-feedback'
+import { buildClassMaterialAcceptanceEvidenceV1 } from '@/core/application/class-material-acceptance-evidence'
 import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
 import { allocatedMinutesByBlock, completionProposal, currentTeachingSessions } from '@/core/domain/teaching-session'
 import { bindArenaDisciplineRefToDocenteOs, isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
@@ -10,6 +11,8 @@ import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/sup
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
+import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/supabase-lesson-design-repository'
+import { SupabaseMaterialContentReadPortV1 } from '@/core/infrastructure/supabase/supabase-material-content-read-port'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
@@ -43,6 +46,7 @@ export default async function ClassWorkspacePage({
   const context = await workspaceRepository.getCurrentContext()
   if (!context) redirect('/login')
   if (!context.academicYear) redirect('/workspace')
+  const academicYearId = context.academicYear.id
 
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
   const settingsRepository = new SupabaseTeacherSettingsRepository()
@@ -56,14 +60,14 @@ export default async function ClassWorkspacePage({
   const today = currentRomeDate()
   const previousDate = shiftLocalDate(today, -1)
   const [snapshot, disciplines, assignments, settings, knowledgeItems, teachingSnapshot, temporalDay, previousTemporalDay] = await Promise.all([
-    annualRepository.list(context.workspace.id, context.academicYear.id),
-    settingsRepository.listDisciplines(context.workspace.id, context.academicYear.id),
-    assignmentReader.list(context.workspace.id, context.academicYear.id),
-    settingsRepository.getOrCreate(context.workspace.id, context.academicYear.id),
+    annualRepository.list(context.workspace.id, academicYearId),
+    settingsRepository.listDisciplines(context.workspace.id, academicYearId),
+    assignmentReader.list(context.workspace.id, academicYearId),
+    settingsRepository.getOrCreate(context.workspace.id, academicYearId),
     knowledgeRepository.listRecent(context.workspace.id, 100),
-    teachingSessionRepository.listBySection(context.workspace.id, context.academicYear.id, sectionId),
-    temporalProjection.projectDay({ workspaceId: context.workspace.id, academicYearId: context.academicYear.id, localDate: today }),
-    temporalProjection.projectDay({ workspaceId: context.workspace.id, academicYearId: context.academicYear.id, localDate: previousDate }),
+    teachingSessionRepository.listBySection(context.workspace.id, academicYearId, sectionId),
+    temporalProjection.projectDay({ workspaceId: context.workspace.id, academicYearId, localDate: today }),
+    temporalProjection.projectDay({ workspaceId: context.workspace.id, academicYearId, localDate: previousDate }),
   ])
 
   const section = snapshot.sections.find((item) => item.id === sectionId)
@@ -73,14 +77,14 @@ export default async function ClassWorkspacePage({
   const blocks = buildBlocks(grade)
   const source = await new SupabaseCanonicalPlanSourceRepository().resolve({
     workspaceId: context.workspace.id,
-    academicYearId: context.academicYear.id,
+    academicYearId,
     code: CANONICAL_PLAN_SOURCES[grade].code,
   })
   const canonicalGenerationId = source?.generationId ?? null
   const summary = buildClassWorkspaceSummary(section, assignments, disciplines, snapshot.progress, canonicalGenerationId)
   const showArenaPilotIntake = isEco02PilotClass({
     workspaceId: context.workspace.id,
-    academicYearId: context.academicYear.id,
+    academicYearId,
     sectionId: section.id,
     grade: section.grade,
     sectionCode: section.sectionCode,
@@ -88,7 +92,6 @@ export default async function ClassWorkspacePage({
     (assignment) => bindArenaDisciplineRefToDocenteOs(assignment.discipline) === 'technology',
   )
   const learningFocus = buildClassWorkspaceLearningFocus(section, snapshot.progress, canonicalGenerationId, knowledgeItems)
-  const preparedMaterials = selectPreparedClassMaterials(section, knowledgeItems, today)
   const currentSessions = currentTeachingSessions(teachingSnapshot)
   const allocationTotals = source
     ? allocatedMinutesByBlock(teachingSnapshot, source.generationId)
@@ -100,6 +103,45 @@ export default async function ClassWorkspacePage({
   const nextProjection = nextCanonicalBlock
     ? resolveRuntimeHumanTaskLessonProjection(grade, nextCanonicalBlock)
     : null
+  const preparedMaterialsForEvidence = selectPreparedClassMaterials(section, knowledgeItems, today)
+  const preparedMaterialAssetIds = new Set(preparedMaterialsForEvidence.map((material) => material.assetId))
+  const preparedMaterialBlockIds = new Set(
+    knowledgeItems.flatMap(({ asset }) => {
+      if (!preparedMaterialAssetIds.has(asset.id)) return []
+      const canonicalBlockId = asset.sourceMetadata.canonicalBlockId
+      return typeof canonicalBlockId === 'string' && canonicalBlockId.trim().length > 0
+        ? [canonicalBlockId.trim()]
+        : []
+    }),
+  )
+  const lessonDesignRepository = new SupabaseLessonDesignRepository()
+  const acceptanceExtensions = source
+    ? (
+        await Promise.all(
+          blocks
+            .filter((block) => preparedMaterialBlockIds.has(block.id))
+            .map(async (block) => {
+              const projection = resolveRuntimeHumanTaskLessonProjection(grade, block)
+              if (!projection) return []
+              return lessonDesignRepository.list({
+                workspaceId: context.workspace.id,
+                academicYearId,
+                sectionId: section.id,
+                canonicalPlanAssetId: source.assetId,
+                canonicalGenerationId: source.generationId,
+                blockId: block.id,
+                projectionId: projection.projectionId,
+              })
+            }),
+        )
+      ).flat()
+    : []
+  const acceptanceEvidence = await buildClassMaterialAcceptanceEvidenceV1({
+    workspaceId: context.workspace.id,
+    extensions: acceptanceExtensions,
+    readPort: new SupabaseMaterialContentReadPortV1(),
+  })
+  const preparedMaterials = selectPreparedClassMaterials(section, knowledgeItems, today, acceptanceEvidence)
 
   const planningHref = `/progetta?grade=${summary.gradeQuery}&section=${encodeURIComponent(summary.sectionId)}`
   const focusPlanningHref = learningFocus.nextBlock

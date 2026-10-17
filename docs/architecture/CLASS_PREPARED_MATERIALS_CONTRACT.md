@@ -1,126 +1,85 @@
-# DOCENTE OS — Class Prepared Materials Contract v1
+# Class Prepared Materials Contract
 
-Status: IMPLEMENTATION CANDIDATE / INTERACTIVE ACCEPTANCE PENDING
-Scope: materiali predisposti per una classe e un incontro, inclusi artefatti esterni come presentazioni Canva
+## Stato
 
-## 1. Scopo
+**Versione 2 — MATERIAL-CORE-01.** Il contratto descrive come Docente OS presenta e riconferma i materiali didattici predisposti per una classe senza trasformare metadati legacy in verità canonica.
 
-La superficie `Classi` deve poter mostrare ciò che il docente ha già predisposto per il prossimo incontro senza confondere tale materiale con il Piano annuale, con una UDA canonica o con una decisione di pubblicazione agli alunni.
+## Scopo
 
-La catena operativa è:
+Un materiale predisposto per una classe resta un asset Knowledge con `contentCategory=TEACHING_RESOURCE` e `sourceMetadata.docenteOsResource=CLASS_LESSON_MATERIAL`. I metadati di importazione continuano a descrivere provenienza e contesto operativo, ma non costituiscono autorità di accettazione.
 
-`Orario / data prevista → Classe → materiale predisposto → eventuale conferma docente → uso in classe`
+Il contratto separa quindi tre piani:
 
-Il materiale può essere una presentazione, una scheda, un documento o altra risorsa. La prima integrazione usa presentazioni Canva già create dal docente.
+1. **evidenza storica/importata**, conservata in `KnowledgeAsset.sourceMetadata`;
+2. **collegamento didattico canonico**, rappresentato da `LessonMaterialBindingV1` dentro una `LessonDesignExtension` accettata;
+3. **verifica del contenuto**, risolta sulla versione Knowledge esatta mediante digest canonico.
 
-## 2. Confini di autorità
+## Metadati legacy: evidenza storica, non autorità
 
-- **Classi** governa il contesto: per quale sezione e per quale incontro il materiale è utile.
-- **Conoscenza** conserva identità, provenienza e contesto professionale dell'artefatto.
-- **Canva** resta il provider della presentazione; DOCENTE OS conserva il collegamento, non una copia autorevole dell'artefatto.
-- **Piano annuale** resta il canone didattico e non viene avanzato per la sola presenza di un materiale.
-- **Orario** determina quando la classe viene incontrata; non determina automaticamente quale artefatto sia approvato.
-- **Il docente** mantiene l'autorità professionale sulla conferma e sull'uso effettivo del materiale.
+I campi già presenti restano conservati, inclusi quando disponibili:
 
-## 3. Rappresentazione senza nuovo dominio dati
+- `provider`, `resourceKind`, `audience`, `targetDate`;
+- `canonicalBlockId` e `canonicalBinding`;
+- `classroomSteps` e `classroomSupport`;
+- `approvalState`, inclusi i valori storici `PENDING_HUMAN` e `APPROVED`.
 
-La prima slice riusa `knowledge_assets` con:
+`approvalState=APPROVED` **non è autorità canonica** per lo stato corrente. Non viene cancellato né riscritto: resta evidenza storica della precedente procedura. Analogamente, `canonicalBlockId` è un indizio di lookup per ritrovare la lezione; non prova da solo che il materiale sia oggi accettato per quella lezione.
 
-```text
-asset_kind = WEB
-source_provider = MANUAL
-content_category = TEACHING_RESOURCE
-source_locator = URL HTTPS della risorsa
-class_labels = [classe canonica]
-context_status = REVIEWED
-reliability = VERIFIED
-```
+## Autorità canonica corrente
 
-`source_metadata` contiene il contratto applicativo:
+Un materiale è **Confermato** soltanto quando esistono congiuntamente:
 
-```text
-docenteOsResource = CLASS_LESSON_MATERIAL
-provider = CANVA | ...
-resourceKind = PRESENTATION | STUDENT_SHEET | ...
-audience = STUDENT | TEACHER
-approvalState = PENDING_HUMAN | APPROVED
-targetDate = YYYY-MM-DD
-sectionId = id sezione canonica
-canonicalBinding = ALIGNED | PRE_CANONICAL_DIAGNOSTIC
-canonicalBlockId? = Bxx
-teacherEditUrl? = URL riservato al docente
-```
+- una `LessonDesignExtension` con stato `ACCEPTED` nel contesto esatto di spazio di lavoro, anno scolastico, sezione, asset del Piano canonico, generazione del Piano, blocco e proiezione;
+- un payload tipizzato `LessonMaterialBindingV1`;
+- un riferimento al contenuto esatto (`assetId`, `generationId`, `contentDigest`);
+- una rilettura della stessa generazione Knowledge tramite il port canonico di sola lettura;
+- una risoluzione del contenuto con stato **`READY`**, cioè digest coincidente e contenuto effettivamente verificabile.
 
-Nessuna migrazione è richiesta per questa slice.
+Il provider esterno, il nome del file, l'URL o una stringa nei metadati non possono sostituire questa catena di evidenze.
 
-## 4. Semantica di stato
+## Proiezione per l'interfaccia
 
-### `PENDING_HUMAN`
+La presentazione usa tre soli stati professionali:
 
-Significa **predisposto**. Non significa:
+- **Predisposto** — non esiste ancora una binding canonica accettata e i metadati legacy non dichiarano una precedente approvazione;
+- **Da riconfermare** — esiste una precedente indicazione legacy `APPROVED`, oppure esiste una binding tipizzata accettata la cui verifica corrente non è `READY`;
+- **Confermato** — esiste una binding `LessonMaterialBindingV1` accettata e la risoluzione del contenuto esatto è `READY`.
 
-- pubblicato agli alunni;
-- approvato come materiale definitivo;
-- lezione svolta;
-- blocco CAN-PLAN completato.
+Di conseguenza, una precedente `APPROVED` non viene promossa automaticamente a `Confermato`.
 
-### `APPROVED`
+## Riconferma docente limitata
 
-Può essere usato solo a seguito di una conferma professionale esplicita del docente. Anche in questo stato non implica pubblicazione esterna né avanzamento automatico del Piano.
+Quando l'evidenza legacy non è sufficiente, il cockpit **In classe** può offrire una riconferma esplicita e circoscritta al singolo materiale e alla singola lezione.
 
-## 5. Legame con il Piano annuale
+La riconferma:
 
-### `ALIGNED`
+- richiede un gesto esplicito del docente;
+- richiede al docente di scegliere **funzione nella lezione**, **formato** e **destinatari**; nessuno di questi dati viene inferito dai metadati legacy;
+- usa `canonicalBlockId` solo per ritrovare il blocco, quindi ricostruisce server-side Piano canonico e proiezione correnti;
+- richiede una `currentGenerationId` Knowledge e calcola il digest sul contenuto realmente letto;
+- passa attraverso il confine applicativo canonico di accettazione, che rilegge e verifica nuovamente il contenuto;
+- scrive esclusivamente nello stato applicativo canonico già esistente delle `lesson_design_extensions`;
+- non modifica `KnowledgeAsset.sourceMetadata` e quindi preserva la storia dell'importazione;
+- è idempotente sul medesimo materiale, versione e contesto didattico;
+- fallisce in modo chiuso quando versione o contenuto non sono verificabili.
 
-Si usa quando il materiale è direttamente attribuibile al blocco canonico dichiarato. Deve essere presente `canonicalBlockId`.
+Non sono previsti modifica massiva, migrazione distruttiva o **nessuna auto-conferma** dei record legacy.
 
-### `PRE_CANONICAL_DIAGNOSTIC`
+## Contenuti non verificabili
 
-Si usa per attività iniziali, diagnostiche o di accoglienza che sono professionalmente utili ma non coincidono 1:1 con il primo blocco del CAN-PLAN. La superficie deve dichiarare:
+Un materiale senza generazione Knowledge corrente, con generazione non riuscita, snapshot assente, identità incoerente o contenuto non verificabile non può diventare `Confermato`. L'interfaccia mantiene lo stato non canonico e richiede prima una versione Knowledge verificabile.
 
-> Diagnostica di accoglienza · non imputata al Piano
+Questo principio impedisce di inventare digest, collegamenti provider o provenienze mancanti.
 
-Non è consentito convertire automaticamente tale materiale in avanzamento del Piano.
+## Indipendenza dal provider
 
-## 6. Selezione nella superficie Classe
+La conferma canonica dipende dal contenuto e dal contesto didattico, non dal fornitore. Eventuali campi provider nei metadati legacy o nella provenienza tipizzata sono descrittivi e non sono fonte di autorità.
 
-Per una sezione canonica DOCENTE OS:
+## Vincoli invarianti
 
-1. considera solo `TEACHING_RESOURCE` con classe corrispondente esattamente;
-2. richiede `docenteOsResource = CLASS_LESSON_MATERIAL`;
-3. accetta solo `source_locator` HTTPS;
-4. seleziona la data futura più vicina alla data corrente; in assenza di futuro usa la data passata più recente;
-5. mostra prima le risorse destinate alla classe e poi quelle solo docente;
-6. presenta il materiale predisposto **prima** della proiezione del Piano annuale, mantenendo i due significati separati.
-
-Un artefatto di un'altra classe non deve mai apparire per semplice somiglianza del titolo o del contenuto.
-
-## 7. Primo caso reale — 11 settembre 2026
-
-Materiali registrati:
-
-- **1A** — presentazione `Che cos'è Tecnologia?`: `ALIGNED` a `B01`, UDA `1-00`;
-- **2A** — presentazione `Osservo, misuro e rappresento`: `PRE_CANONICAL_DIAGNOSTIC`;
-- **3A** — presentazione `Leggo la tecnologia come sistema`: `PRE_CANONICAL_DIAGNOSTIC`;
-- **3C** — presentazione `Leggo la tecnologia come sistema`: `PRE_CANONICAL_DIAGNOSTIC`.
-
-Tutti partono con `approvalState = PENDING_HUMAN`.
-
-## 8. Criteri di accettazione
-
-- 1A vede esclusivamente il proprio materiale predisposto dell'11/09/2026.
-- 2A, 3A e 3C vedono il proprio materiale con l'avviso di non imputazione automatica al Piano.
-- Il collegamento apre l'artefatto Canva tramite HTTPS.
-- Nessuna risorsa di un'altra sezione viene mostrata.
-- URL non HTTPS o non validi non vengono resi come materiale predisposto.
-- Il riquadro Piano annuale resta separato e invariato.
-- `PENDING_HUMAN` viene mostrato come `Predisposto`, non come pubblicato o approvato.
-- Conoscenza conserva `source_locator`, identità e provenienza dell'artefatto; la superficie Classe usa quel riferimento per aprire la fonte esterna.
-
-## 9. Slice successive, non incluse
-
-- comando esplicito `Conferma materiale` che cambia `approvalState` tramite un boundary applicativo tracciato;
-- materiale docente separato (piano minuto per minuto, griglia diagnostica);
-- vista pubblicabile/alunni con whitelist delle sole risorse `APPROVED` e audience consentita;
-- associazione diretta all'occorrenza di Orario quando l'identità della sessione prevista è materializzata;
-- sincronizzazione del titolo/stato dal provider esterno senza rendere Canva una dipendenza autorevole.
+- nessun secondo store di accettazione;
+- nessuna tabella nuova per la riconferma legacy;
+- nessuna mutazione automatica dei metadati storici;
+- nessuna deduzione di ruolo, formato o destinatari dal solo legacy;
+- nessun `Confermato` senza binding accettata e contenuto `READY`;
+- nessun provider esterno può promuovere autonomamente un materiale.
