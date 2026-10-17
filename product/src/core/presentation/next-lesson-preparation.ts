@@ -24,7 +24,7 @@ export type NextLessonPreparation = {
   }
   canonicalLesson: {
     sectionLabel: string
-    disciplineLabel: string
+    disciplineLabel: string | null
     blockId: string
     title: string
     objective: string
@@ -112,7 +112,7 @@ export function buildNextLessonPreparation(input: {
   const canonicalLesson = input.lessonContext
     ? {
         sectionLabel: input.lessonContext.lesson.sectionLabel,
-        disciplineLabel: input.lessonContext.discipline,
+        disciplineLabel: input.lessonContext.discipline ?? null,
         blockId: input.lessonContext.lesson.blockId,
         title: input.lessonContext.lesson.title,
         objective: input.lessonContext.lesson.objective,
