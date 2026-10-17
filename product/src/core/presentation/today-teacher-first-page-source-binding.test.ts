@@ -35,3 +35,17 @@ test('Oggi keeps the existing AppShell and exposes Calendar as a secondary route
   assert.match(text, /href="\/calendario"/)
   assert.doesNotMatch(text, /MOBILE_NAVIGATION_KEYS|NAVIGATION_GROUPS/)
 })
+
+test('teacher-first quick actions are scoped to the known class and existing next-lesson materials', async () => {
+  const text = await source()
+  const start = text.indexOf('function TodayQuickActions')
+  const end = text.indexOf('function TodayFocusCard')
+  assert.ok(start >= 0 && end > start, 'TodayQuickActions source block must exist')
+  const quickActions = text.slice(start, end)
+
+  assert.match(quickActions, /Apri la classe/)
+  assert.match(quickActions, /\/classi\/\$\{encodeURIComponent\(sectionId\)\}/)
+  assert.match(quickActions, /Materiali della prossima lezione/)
+  assert.match(quickActions, /href="\/materiali\/prossima"/)
+  assert.doesNotMatch(quickActions, /href="\/orario"/)
+})
