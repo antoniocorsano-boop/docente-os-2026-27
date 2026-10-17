@@ -1,6 +1,7 @@
 # DOCENTE OS — Release Engineering Canonical
 
 Data: **2026-09-12**  
+Amended: **2026-10-17 — develop/Beta deployment authorization**  
 Programma: **M5-01 — Repository Hygiene & Release Engineering**  
 Stato: **CANONICAL ON MERGE**
 
@@ -16,13 +17,32 @@ Principio:
 
 Restano invariati:
 
-- `develop` come branch sorgente dei candidati;
+- `develop` come branch sorgente dei candidati e linea governata del Beta;
 - promozione Production tramite exact SHA immutabile;
 - Production separata dal Beta;
 - auto-deploy Production disabilitato;
 - rollback applicativo verso SHA precedentemente certificato;
 - nessun rollback distruttivo automatico del database;
 - nessuna cancellazione Storage implicita nel rollback applicativo.
+
+### 2A. Contratto `develop` → Beta
+
+Il Beta di DOCENTE OS segue il branch governato `develop` con deploy automatico all'aggiornamento del branch.
+
+La decisione umana resta a monte:
+
+`candidate qualification PASS -> Human Review / merge authorization -> merge su develop -> auto-deploy Beta -> runtime reconciliation`
+
+Regole vincolanti:
+
+- l'autorizzazione umana al merge di una PR qualificata su `develop` **include** il conseguente deploy automatico nel Beta;
+- non è richiesta una seconda micro-approvazione separata per “promuovere in Beta” lo stesso merge;
+- l'auto-deploy non costituisce autorità autonoma dell'agente o del provider: è l'effetto deterministico della precedente decisione umana di merge;
+- il commit effettivamente servito dal Beta deve essere verificato tramite i gate runtime applicabili, inclusa la riconciliazione L2 quando richiesta;
+- un deploy Beta fallito non autorizza workaround, promozione Production o modifica dei gate: produce un blocker runtime da diagnosticare;
+- **Production resta un ambiente e una decisione separati**: richiede exact SHA, contratto di promozione e decisione umana dedicata; l'auto-promozione Production resta vietata.
+
+Per le PR dirette a `develop`, quindi, formule come “merge autorizzato ma nessun deploy Beta autorizzato” sono incompatibili con la configurazione governata. È corretto distinguere tra **nessun deploy manuale** e **auto-deploy Beta conseguente al merge**.
 
 ## 3. Versioning
 
@@ -121,7 +141,7 @@ La promozione usa **esclusivamente** il contratto già esistente:
 - `ops/production-release-receipt.json`;
 - workflow Production Runtime Smoke.
 
-La release versionata aggiunge identità e tracciabilità; non autorizza deploy automatici.
+La release versionata aggiunge identità e tracciabilità; non autorizza deploy automatici in Production.
 
 Dopo il deploy deve essere dimostrato che Production serve lo SHA esatto promosso.
 
@@ -173,12 +193,13 @@ La prima release prodotta sotto M5-01 sarà la prima release formalmente version
 
 - spostare un tag RC/stable su un nuovo SHA;
 - chiamare release un branch mobile;
+- richiedere una seconda approvazione Beta dopo avere già autorizzato il merge su `develop` della stessa PR qualificata;
+- descrivere un merge su `develop` come “senza deploy Beta” quando il Beta è configurato in auto-deploy su `develop`;
 - promuovere Production perché `develop` è verde senza release decision;
 - retro-etichettare una vecchia Production con una versione non realmente emessa;
 - modificare codice dopo certificazione mantenendo la stessa versione/RC;
 - trattare GitHub Release come prova sufficiente di Production;
 - usare `1.0.0` prima della decisione M5.
-
 
 ## 14. Runtime Release Contract
 
@@ -189,12 +210,12 @@ Rapporto con i gate esistenti:
 - Certification Pipeline V2 determina gli assurance gate applicabili al diff;
 - Runtime Release Contract determina se servono replay DB, runtime reconciliation e, quando disponibile una fixture isolata, write E2E reale;
 - Product CI resta il gate di build/test generale;
-- Runtime Health verifica il Beta dopo il merge;
+- Runtime Health verifica il Beta dopo il merge e il conseguente auto-deploy;
 - nessuno di questi autorizza da solo la promozione Production.
 
 Regola operativa:
 
-`commit applicativo -> preflight rapido -> replay DB se necessario -> merge -> watermark + migration lineage coerenti -> startup Beta -> runtime health`.
+`commit applicativo -> preflight rapido -> replay DB se necessario -> merge autorizzato su develop -> auto-deploy Beta -> watermark + migration lineage coerenti -> startup Beta -> runtime health`.
 
 Se il database espone un watermark diverso da quello richiesto dal commit **oppure** manca una migrazione canonica richiesta nella lineage runtime, la nuova istanza applicativa deve fallire prima di essere servita.
 
