@@ -40,6 +40,15 @@ for (const key of ['exactShaRequired', 'immutableAfterFreeze', 'releaseNotesRequ
 }
 if (candidate.automaticProductionPromotionAllowed !== false) fail('automatic production promotion must remain disabled')
 
+const beta = policy.betaDeployment ?? {}
+if (beta.sourceBranch !== 'develop') fail('Beta deployment source branch must remain develop')
+if (beta.deploymentModel !== 'AUTO_DEPLOY_ON_SOURCE_BRANCH_UPDATE') fail('Beta deployment model must remain automatic on develop updates')
+if (beta.mergeAuthorizationIncludesBetaDeployment !== true) fail('merge authorization to develop must include Beta deployment')
+if (beta.separateBetaPromotionDecisionRequired !== false) fail('Beta deployment must not require a second human promotion decision')
+if (beta.runtimeReconciliationRequiredAfterDeploy !== true) fail('Beta deployment must require post-deploy runtime reconciliation')
+if (beta.productionPromotionRemainsSeparate !== true) fail('Production promotion must remain separate from Beta deployment')
+if (beta.sourceBranch !== candidate.sourceBranch) fail('candidate and Beta source branches must match')
+
 const rc = policy.releaseCandidate ?? {}
 if (rc.manifestPathPattern !== 'ops/releases/<version>/release-candidate.json') fail('unexpected release candidate manifest path')
 for (const key of ['tagRequired', 'tagMustResolveToCandidateSha', 'multipleRcAllowed', 'newCodeRequiresNewRc', 'gateFailureRequiresHold']) {
@@ -75,4 +84,4 @@ if (policy.historicalPilot?.classification !== 'LEGACY_UNVERSIONED_CERTIFIED_PIL
 if (historicalReceipt.activationDate !== policy.historicalPilot.productionPromotionDate) fail('historical pilot date does not match production receipt')
 if (historicalReceipt.candidate?.promotionModel !== 'IMMUTABLE_CERTIFIED_SHA') fail('historical pilot receipt is not an immutable certified SHA promotion')
 
-console.log(`Release engineering policy PASS: package=${pkg.version}, historicalPilot=${historicalReceipt.candidate.repositorySha}, states=${requiredStates.length}`)
+console.log(`Release engineering policy PASS: package=${pkg.version}, historicalPilot=${historicalReceipt.candidate.repositorySha}, states=${requiredStates.length}, beta=${beta.deploymentModel}`)
