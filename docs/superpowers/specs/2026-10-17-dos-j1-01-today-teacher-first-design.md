@@ -301,7 +301,7 @@ The J1 flow must be operable by keyboard as well as touch.
 - new diary/registro subsystem;
 - new student tracking/authentication;
 - new generic recents/activity analytics;
-- changes to curriculum authority;
+- changes to autorità del curricolo;
 - global navigation redesign;
 - provider/runtime authority changes;
 - DOC-04, IUI, Access, Argo, Visual Factory or other parked fronts.
