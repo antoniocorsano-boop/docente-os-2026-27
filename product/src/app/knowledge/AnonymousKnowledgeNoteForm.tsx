@@ -5,7 +5,7 @@ import type { FormEvent } from 'react'
 import { inspectFreeTextForPilot, pilotPrivacyErrorMessage } from '@/core/privacy/anonymization-guard'
 import { captureAnonymousKnowledgeNote } from './anonymous-actions'
 
-export function AnonymousKnowledgeNoteForm() {
+export function AnonymousKnowledgeNoteForm({ postCaptureQuery = null }: { postCaptureQuery?: string | null }) {
   const [privacyMessage, setPrivacyMessage] = useState<string | null>(null)
 
   function preflight(event: FormEvent<HTMLFormElement>) {
@@ -23,6 +23,7 @@ export function AnonymousKnowledgeNoteForm() {
 
   return (
     <form action={captureAnonymousKnowledgeNote} className="knowledgeCaptureForm" onSubmit={preflight}>
+      {postCaptureQuery ? <input type="hidden" name="postCaptureQuery" value={postCaptureQuery} /> : null}
       <label><span>Titolo, se vuoi</span><input name="title" maxLength={180} placeholder="Es. Collegio docenti — appunti" /></label>
       <label><span>Contenuto</span><textarea name="text" rows={7} required placeholder="Incolla o scrivi qui solo contenuti privi di dati personali…" /></label>
       {privacyMessage ? <div className="knowledgeUploadFeedback error" role="alert"><div><strong>Contenuto non ammesso nel pilot anonimo</strong><p>{privacyMessage}</p></div></div> : null}
