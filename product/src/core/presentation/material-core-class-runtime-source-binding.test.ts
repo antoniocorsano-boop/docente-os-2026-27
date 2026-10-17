@@ -7,16 +7,19 @@ function source(relativePath: string) {
   return readFileSync(path.resolve(process.cwd(), relativePath), 'utf8')
 }
 
-test('class workspace composes prepared-material confirmation from exact lesson extensions and canonical content evidence', () => {
+test('class workspace composes prepared-material confirmation across the canonical blocks of displayed materials', () => {
   const page = source('src/app/classi/[sectionId]/page.tsx')
 
   assert.match(page, /buildClassMaterialAcceptanceEvidenceV1/)
   assert.match(page, /SupabaseLessonDesignRepository/)
   assert.match(page, /SupabaseMaterialContentReadPortV1/)
+  assert.match(page, /preparedMaterialBlockIds/)
   assert.match(page, /canonicalPlanAssetId:\s*source\.assetId/)
   assert.match(page, /canonicalGenerationId:\s*source\.generationId/)
-  assert.match(page, /blockId:\s*nextCanonicalBlock\.id/)
-  assert.match(page, /projectionId:\s*nextProjection\.projectionId/)
+  assert.match(page, /blockId:\s*block\.id/)
+  assert.match(page, /projectionId:\s*projection\.projectionId/)
+  assert.doesNotMatch(page, /blockId:\s*nextCanonicalBlock\.id/)
+  assert.doesNotMatch(page, /projectionId:\s*nextProjection\.projectionId/)
   assert.match(page, /selectPreparedClassMaterials\(section, knowledgeItems, today, acceptanceEvidence\)/)
 })
 
