@@ -1,10 +1,10 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { ArrowUpRight, CalendarDays, Clock3 } from 'lucide-react'
+import { loadCurrentTodayOperationalContext } from '@/app/api/assistant/today-context-loader'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { LocalTeacherGreeting } from '@/components/local-user-profile/local-user-profile'
 import { SourceProvenance } from '@/components/source-provenance/source-provenance'
-import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
 import {
   buildTodayProjection,
   type TodayFocus,
@@ -13,10 +13,7 @@ import {
 } from '@/core/application/today-projection-service'
 import type { PlannerTask } from '@/core/domain/planner-task'
 import { parseKnowledgeTaskSourceRef } from '@/core/domain/knowledge-task-source'
-import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
-import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
-import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
-import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { buildTodayTeachingFocus } from '@/core/presentation/today-teaching-focus'
 import {
   completePlannerTask,
   createPlannerTask,
@@ -27,52 +24,39 @@ import {
   unschedulePlannerTask,
   waitPlannerTask,
 } from './actions'
+import { TodayTeachingFocusCard } from './today-teaching-focus-card'
 import './today-home.css'
 
 export const dynamic = 'force-dynamic'
 
 export default async function PlannerPage() {
-  const workspaceRepository = new SupabaseWorkspaceRepository()
-  const context = await workspaceRepository.getCurrentContext()
-  if (!context) redirect('/login')
+  const operational = await loadCurrentTodayOperationalContext()
+  if (!operational) redirect('/login')
 
-  const plannerRepository = new SupabasePlannerRepository()
-  const today = currentRomeDate()
-  const nowMinutes = currentRomeMinutes()
-  const temporalProjection = context.academicYear
-    ? new TemporalProjectionService(
-        new SupabaseTimetableProjectionReadRepository(),
-        new SupabaseCalendarProjectionReadRepository(),
-      )
-    : null
-
-  const [tasks, temporalDay] = await Promise.all([
-    plannerRepository.listByWorkspace(context.workspace.id),
-    temporalProjection && context.academicYear
-      ? temporalProjection.projectDay({
-          workspaceId: context.workspace.id,
-          academicYearId: context.academicYear.id,
-          localDate: today,
-        })
-      : Promise.resolve(null),
-  ])
-
+  const context = operational.workspaceContext
+  const today = operational.localDate
+  const nowMinutes = operational.minuteOfDay
   const projection = buildTodayProjection({
     localDate: today,
     nowMinutes,
-    temporalDay,
-    tasks,
+    temporalDay: operational.projectedDay,
+    tasks: operational.tasks,
+  })
+  const teachingFocus = buildTodayTeachingFocus({
+    preparation: operational.preparation?.preparation ?? null,
+    minuteOfDay: nowMinutes,
   })
   const humanDate = new Intl.DateTimeFormat('it-IT', {
-    timeZone: 'Europe/Rome',
+    timeZone: 'UTC',
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-  }).format(new Date())
-  const plannerFocusId = projection.focus?.kind === 'PLANNER' ? projection.focus.task.id : null
+  }).format(new Date(`${today}T12:00:00Z`))
+  const plannerFocusId = !teachingFocus && projection.focus?.kind === 'PLANNER' ? projection.focus.task.id : null
   const remainingPlanner = withoutFocusedPlannerTask(projection.planner, plannerFocusId)
-  const openCount = tasks.filter((task) => task.status === 'OPEN').length
+  const openCount = operational.tasks.filter((task) => task.status === 'OPEN').length
   const todayTaskCount = projection.planner.overdue.length + projection.planner.today.length
+  const materialsAvailable = Boolean(operational.preparation?.rendering?.bundle)
 
   return (
     <AppShell
@@ -83,77 +67,105 @@ export default async function PlannerPage() {
       contentClassName="plannerSurface"
     >
       <section className="plannerHeader plannerHeaderClarified todayHomeHeader">
-        <div>
-          <p className="todayHomeDate">{capitalize(humanDate)}</p>
-          <p className="todayHomeGreeting"><LocalTeacherGreeting /></p>
-          <h1>Oggi</h1>
-          <p className="plannerPurpose">La tua giornata professionale, già ricomposta.</p>
-          <div className="todayHomeSummary" aria-label="Sintesi della giornata">
-            <span><CalendarDays size={15} aria-hidden />{projection.timeline.length} {projection.timeline.length === 1 ? 'impegno' : 'impegni'}</span>
-            <span><Clock3 size={15} aria-hidden />{todayTaskCount} {todayTaskCount === 1 ? 'attività da fare' : 'attività da fare'}</span>
+        <div className="todayHomeHeaderMain">
+          <div>
+            <p className="todayHomeDate">{capitalize(humanDate)}</p>
+            <p className="todayHomeGreeting"><LocalTeacherGreeting /></p>
+            <h1>Oggi</h1>
+            <p className="plannerPurpose">La tua giornata professionale, già ricomposta.</p>
           </div>
+          <Link className="todayCalendarLink" href="/calendario"><CalendarDays size={17} aria-hidden /> Calendario</Link>
+        </div>
+        <div className="todayHomeSummary" aria-label="Sintesi della giornata">
+          <span><CalendarDays size={15} aria-hidden />{projection.timeline.length} {projection.timeline.length === 1 ? 'impegno' : 'impegni'}</span>
+          <span><Clock3 size={15} aria-hidden />{todayTaskCount} attività da fare</span>
         </div>
       </section>
 
-      <TodayFocusCard focus={projection.focus} moment={projection.moment} today={today} nowMinutes={nowMinutes} />
+      {teachingFocus ? (
+        <>
+          <TodayTeachingFocusCard focus={teachingFocus} />
+          <TodayQuickActions materialsAvailable={materialsAvailable} />
+        </>
+      ) : (
+        <TodayFocusCard focus={projection.focus} moment={projection.moment} today={today} nowMinutes={nowMinutes} />
+      )}
 
-      {projection.timeline.length ? <TodayTimeline items={projection.timeline} nowMinutes={nowMinutes} /> : null}
+      <div className={teachingFocus ? 'todaySecondaryWork' : undefined}>
+        {projection.timeline.length ? <TodayTimeline items={projection.timeline} nowMinutes={nowMinutes} /> : null}
 
-      <PlannerToday
-        projection={projection}
-        remaining={remainingPlanner}
-        today={today}
-        openCount={openCount}
-        todayTaskCount={todayTaskCount}
-      />
+        <PlannerToday
+          projection={projection}
+          remaining={remainingPlanner}
+          today={today}
+          openCount={openCount}
+          todayTaskCount={todayTaskCount}
+        />
 
-      {context.academicYear ? (
-        <details className="humanTaskSecondary">
-          <summary>Chiudi la giornata e prepara domani</summary>
-          <div className="humanTaskSecondaryBody">
-            <p>Controlla lezioni concluse, registrazioni nel Diario, continuità emerse e materiali di domani.</p>
-            <div className="humanTaskActions">
-              <Link className="primary" href="/giornata/resoconto">Apri il resoconto</Link>
-              <Link href="/materiali/domani">Materiali di domani</Link>
+        {context.academicYear ? (
+          <details className="humanTaskSecondary">
+            <summary>Chiudi la giornata e prepara domani</summary>
+            <div className="humanTaskSecondaryBody">
+              <p>Controlla lezioni concluse, registrazioni nel Diario, continuità emerse e materiali di domani.</p>
+              <div className="humanTaskActions">
+                <Link className="primary" href="/giornata/resoconto">Apri il resoconto</Link>
+                <Link href="/materiali/domani">Materiali di domani</Link>
+              </div>
             </div>
+          </details>
+        ) : null}
+
+        <details className="humanTaskSecondary">
+          <summary>Aggiungi un’attività</summary>
+          <div className="humanTaskSecondaryBody">
+            <form action={createPlannerTask} className="quickCapture advancedCapture">
+              <div className="captureMain">
+                <span className="capturePlus" aria-hidden>＋</span>
+                <label className="srOnly" htmlFor="new-task">Nuova attività</label>
+                <input id="new-task" name="title" type="text" maxLength={240} placeholder="Che cosa devi fare?" required />
+                <button type="submit">Aggiungi</button>
+              </div>
+              <div className="captureOptions" aria-label="Opzioni nuova attività">
+                <label>
+                  <span>Quando</span>
+                  <select name="destination" defaultValue="today">
+                    <option value="today">Oggi</option>
+                    <option value="tomorrow">Domani</option>
+                    <option value="week">Questa settimana</option>
+                    <option value="undated">Senza data</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Priorità</span>
+                  <select name="priority" defaultValue="NORMAL">
+                    <option value="NORMAL">Normale</option>
+                    <option value="HIGH">Alta</option>
+                    <option value="URGENT">Urgente</option>
+                    <option value="LOW">Bassa</option>
+                  </select>
+                </label>
+              </div>
+            </form>
           </div>
         </details>
-      ) : null}
-
-      <details className="humanTaskSecondary">
-        <summary>Aggiungi un’attività</summary>
-        <div className="humanTaskSecondaryBody">
-          <form action={createPlannerTask} className="quickCapture advancedCapture">
-            <div className="captureMain">
-              <span className="capturePlus" aria-hidden>＋</span>
-              <label className="srOnly" htmlFor="new-task">Nuova attività</label>
-              <input id="new-task" name="title" type="text" maxLength={240} placeholder="Che cosa devi fare?" required />
-              <button type="submit">Aggiungi</button>
-            </div>
-            <div className="captureOptions" aria-label="Opzioni nuova attività">
-              <label>
-                <span>Quando</span>
-                <select name="destination" defaultValue="today">
-                  <option value="today">Oggi</option>
-                  <option value="tomorrow">Domani</option>
-                  <option value="week">Questa settimana</option>
-                  <option value="undated">Senza data</option>
-                </select>
-              </label>
-              <label>
-                <span>Priorità</span>
-                <select name="priority" defaultValue="NORMAL">
-                  <option value="NORMAL">Normale</option>
-                  <option value="HIGH">Alta</option>
-                  <option value="URGENT">Urgente</option>
-                  <option value="LOW">Bassa</option>
-                </select>
-              </label>
-            </div>
-          </form>
-        </div>
-      </details>
+      </div>
     </AppShell>
+  )
+}
+
+function TodayQuickActions({ materialsAvailable }: { materialsAvailable: boolean }) {
+  return (
+    <section className="todayQuickActions" aria-labelledby="today-quick-actions-title">
+      <div className="todayQuickActionsHeading">
+        <h2 id="today-quick-actions-title">Azioni rapide</h2>
+        <span>Solo percorsi già disponibili</span>
+      </div>
+      <div className="todayQuickActionGrid">
+        {materialsAvailable ? <Link href="/materiali/prossima"><strong>Materiali della lezione</strong><span>Apri ciò che è già pronto</span></Link> : null}
+        <Link href="/classi"><strong>Classi</strong><span>Entra nel contesto della sezione</span></Link>
+        <Link href="/orario"><strong>Orario</strong><span>Controlla la settimana</span></Link>
+      </div>
+    </section>
   )
 }
 
@@ -414,28 +426,6 @@ function priorityLabel(priority: PlannerTask['priority']) {
   if (priority === 'HIGH') return 'Priorità alta'
   if (priority === 'LOW') return 'Priorità bassa'
   return 'Priorità normale'
-}
-
-function currentRomeDate() {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Rome',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date())
-  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  return `${value.year}-${value.month}-${value.day}`
-}
-
-function currentRomeMinutes() {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Rome',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(new Date())
-  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  return Number(value.hour) * 60 + Number(value.minute)
 }
 
 function minutes(value: string) {
