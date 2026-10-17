@@ -18,7 +18,7 @@ export function TodayTeachingFocusCard({ focus }: { focus: TodayTeachingFocus })
 
         <div className="todayTeachingIdentity">
           {focus.classLabel ? <strong className="todayTeachingClassBadge">{focus.classLabel}</strong> : null}
-          <span>{focus.occurrenceTitle}</span>
+          <span>{focus.subjectLabel ?? focus.occurrenceTitle}</span>
         </div>
 
         <h2 id="today-teaching-focus-title">{focus.lessonTitle}</h2>
