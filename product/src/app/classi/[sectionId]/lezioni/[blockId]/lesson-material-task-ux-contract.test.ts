@@ -150,16 +150,15 @@ test('creating a new material reuses Knowledge capture without attaching implici
 })
 
 test('creating a new material preserves preparation context after text and file capture', () => {
-  const knowledgePage = readFileSync(new URL('../../../../knowledge/page.tsx', import.meta.url), 'utf8')
   const captureModes = readFileSync(new URL('../../../../knowledge/KnowledgeCaptureModes.tsx', import.meta.url), 'utf8')
   const noteForm = readFileSync(new URL('../../../../knowledge/AnonymousKnowledgeNoteForm.tsx', import.meta.url), 'utf8')
-  const knowledgeActions = readFileSync(new URL('../../../../knowledge/actions.ts', import.meta.url), 'utf8')
+  const anonymousActions = readFileSync(new URL('../../../../knowledge/anonymous-actions.ts', import.meta.url), 'utf8')
 
-  assert.ok(knowledgePage.includes('taskPostCaptureQuery'))
-  assert.ok(knowledgePage.includes('postUploadQuery={calendarIntent && calendarReturnTo'))
-  assert.ok(knowledgePage.includes(': taskPostCaptureQuery}'))
-  assert.ok(captureModes.includes('<AnonymousKnowledgeNoteForm postCaptureQuery={postUploadQuery} />'))
+  assert.ok(captureModes.includes('taskPostCaptureQuery'))
+  assert.ok(captureModes.includes('<AnonymousKnowledgeNoteForm postCaptureQuery={effectivePostCaptureQuery} />'))
+  assert.ok(captureModes.includes('<KnowledgeFileUploader postUploadQuery={effectivePostCaptureQuery} />'))
   assert.ok(noteForm.includes('name="postCaptureQuery"'))
-  assert.ok(knowledgeActions.includes("formData.get('postCaptureQuery')"))
-  assert.ok(knowledgeActions.includes('postCaptureQuery ? `?${postCaptureQuery}` :'))
+  assert.ok(anonymousActions.includes("formData.get('postCaptureQuery')"))
+  assert.ok(anonymousActions.includes('sanitizeInternalReturnTo'))
+  assert.ok(anonymousActions.includes('redirect(`/knowledge/${asset.id}?${taskQuery}`)'))
 })
