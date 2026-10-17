@@ -102,16 +102,38 @@ export default async function ClassWorkspacePage({
   const nextProjection = nextCanonicalBlock
     ? resolveRuntimeHumanTaskLessonProjection(grade, nextCanonicalBlock)
     : null
-  const acceptanceExtensions = source && nextCanonicalBlock && nextProjection
-    ? await new SupabaseLessonDesignRepository().list({
-        workspaceId: context.workspace.id,
-        academicYearId: context.academicYear.id,
-        sectionId: section.id,
-        canonicalPlanAssetId: source.assetId,
-        canonicalGenerationId: source.generationId,
-        blockId: nextCanonicalBlock.id,
-        projectionId: nextProjection.projectionId,
-      })
+  const preparedMaterialsForEvidence = selectPreparedClassMaterials(section, knowledgeItems, today)
+  const preparedMaterialAssetIds = new Set(preparedMaterialsForEvidence.map((material) => material.assetId))
+  const preparedMaterialBlockIds = new Set(
+    knowledgeItems.flatMap(({ asset }) => {
+      if (!preparedMaterialAssetIds.has(asset.id)) return []
+      const canonicalBlockId = asset.sourceMetadata.canonicalBlockId
+      return typeof canonicalBlockId === 'string' && canonicalBlockId.trim().length > 0
+        ? [canonicalBlockId.trim()]
+        : []
+    }),
+  )
+  const lessonDesignRepository = new SupabaseLessonDesignRepository()
+  const acceptanceExtensions = source
+    ? (
+        await Promise.all(
+          blocks
+            .filter((block) => preparedMaterialBlockIds.has(block.id))
+            .map(async (block) => {
+              const projection = resolveRuntimeHumanTaskLessonProjection(grade, block)
+              if (!projection) return []
+              return lessonDesignRepository.list({
+                workspaceId: context.workspace.id,
+                academicYearId: context.academicYear.id,
+                sectionId: section.id,
+                canonicalPlanAssetId: source.assetId,
+                canonicalGenerationId: source.generationId,
+                blockId: block.id,
+                projectionId: projection.projectionId,
+              })
+            }),
+        )
+      ).flat()
     : []
   const acceptanceEvidence = await buildClassMaterialAcceptanceEvidenceV1({
     workspaceId: context.workspace.id,
