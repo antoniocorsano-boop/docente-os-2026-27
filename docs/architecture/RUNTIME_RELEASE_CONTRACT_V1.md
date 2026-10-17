@@ -1,6 +1,7 @@
 # DOCENTE OS — Runtime Release Contract V1
 
 Data: **2026-09-21**
+Amended: **2026-10-17 — develop/Beta auto-deploy timing**
 Stato: **IMPLEMENTATION CANDIDATE**
 
 ## Obiettivo
@@ -59,8 +60,10 @@ Il livello richiesto dipende dalla fase del ciclo di qualificazione, non soltant
 
 - **DEVELOPMENT** — esegue L0/static preflight. Un normale `opened`, `reopened` o `synchronize` di PR non autorizza L1, recovery rehearsal o browser assurance pesante.
 - **CANDIDATE** — l'ingresso avviene esclusivamente tramite `pull_request.ready_for_review` su `develop`, dopo `cv2/development-preflight` verde sullo stesso exact head. Se il diff completo ha impatto DB/persistenza, il candidato esegue L0 + **L1** effimero e la recovery assurance richiesta.
-- **RUNTIME** — dopo promozione/deploy esegue **L2** per riconciliare commit servito, watermark, lineage e capability del target.
+- **RUNTIME / Beta** — `develop` è la linea governata del Beta. Quando un candidato qualificato riceve autorizzazione umana al merge su `develop`, tale decisione include il conseguente auto-deploy Beta. Non esiste una seconda decisione umana di promozione Beta per lo stesso merge. Dopo l'auto-deploy, **L2** riconcilia il commit effettivamente servito, watermark, lineage e capability del target.
 - **L3** — resta limitato ai percorsi di scrittura critici e viene eseguito soltanto quando la fixture isolata governata lo autorizza.
+
+L'auto-deploy Beta non costituisce autorità autonoma dell'agente o del provider: è l'effetto deterministico del merge già autorizzato dall'umano. Un fallimento dell'auto-deploy o di L2 lascia il nuovo stato in blocker runtime e non abilita workaround o promozione Production.
 
 Un nuovo commit invalida la candidate qualification del vecchio SHA. La nuova testa torna DEVELOPMENT e deve essere ricandidata tramite Draft → Ready. Nessun livello L1/L2/L3 può essere riusato da uno SHA precedente senza una prova di equivalenza esplicitamente autorizzata dai contratti canonici.
 
@@ -86,12 +89,14 @@ Il watermark da solo non costituisce più prova sufficiente di allineamento.
 - CANDIDATE con DB/persistenza: L0 + L1 + recovery assurance richiesta;
 - capability esterna: L0 in DEVELOPMENT + verifica runtime appropriata nella fase governata;
 - write critico: L0 + L1 + L3 quando la fixture isolata sarà disponibile e il candidato lo richiede;
-- RUNTIME post-promozione: L2;
+- RUNTIME post-merge/auto-deploy Beta: L2;
 - controlli completi più pesanti: candidati espliciti, schedulati/notturni o release candidate secondo governance.
 
 ## Confini
 
+- il merge umano autorizzato su `develop` include l'auto-deploy Beta e non richiede una seconda micro-approvazione Beta;
 - nessuna promozione Production automatica;
+- la promozione Production resta una decisione umana separata, exact-SHA-bound e disciplinata dal relativo contratto;
 - nessun service-role nel client;
 - nessun database reale usato dal replay CI;
 - nessun dato didattico reale usato come fixture automatica;
