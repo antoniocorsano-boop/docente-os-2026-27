@@ -18,6 +18,7 @@ function preparation(overrides: Partial<NextLessonPreparation> = {}): NextLesson
     },
     canonicalLesson: {
       sectionLabel: '2ª C',
+      disciplineLabel: 'Tecnologia',
       blockId: 'B03',
       title: 'Misurare con precisione',
       objective: 'Misurare e rappresentare un oggetto con procedure controllabili.',
@@ -47,6 +48,7 @@ test('teacher-first focus exposes a direct canonical preparation action for the 
   assert.equal(focus.stateLabel, 'Prossima lezione')
   assert.equal(focus.minutesUntilStart, 30)
   assert.equal(focus.classLabel, '2ª C')
+  assert.equal(focus.subjectLabel, 'Tecnologia')
   assert.equal(focus.lessonTitle, 'Misurare con precisione')
   assert.deepEqual(focus.action, {
     kind: 'PREPARE',
