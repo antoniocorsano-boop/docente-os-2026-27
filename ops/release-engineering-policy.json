@@ -29,6 +29,14 @@
     "humanPromotionDecisionRequired": true,
     "automaticProductionPromotionAllowed": false
   },
+  "betaDeployment": {
+    "sourceBranch": "develop",
+    "deploymentModel": "AUTO_DEPLOY_ON_SOURCE_BRANCH_UPDATE",
+    "mergeAuthorizationIncludesBetaDeployment": true,
+    "separateBetaPromotionDecisionRequired": false,
+    "runtimeReconciliationRequiredAfterDeploy": true,
+    "productionPromotionRemainsSeparate": true
+  },
   "releaseCandidate": {
     "manifestPathPattern": "ops/releases/<version>/release-candidate.json",
     "tagRequired": true,
