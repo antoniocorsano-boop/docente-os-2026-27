@@ -5,6 +5,7 @@ import {
   composeFinalReportEvidenceBundle,
   deriveFinalReportReadiness,
 } from '../domain/final-report-evidence'
+import { buildFinalReportReadinessViewModel } from '../../app/documentazione/relazioni-finali/final-report-readiness-model'
 import {
   FINAL_REPORT_CANONICAL_TEMPLATE_V1,
   finalReportCanonicalTemplate,
@@ -164,4 +165,37 @@ test('final report evidence keeps planned and executed authority separate and fa
   assert.ok(readiness.findings.some((finding) => finding.code === 'UNALLOCATED_SESSION'))
   assert.ok(readiness.findings.some((finding) => finding.code === 'MISSING_ACTIVE_INSTITUTIONAL_BASE'))
   assert.notEqual(readiness.state, 'PRONTA_PER_BOZZA')
+})
+
+test('final report readiness view model exposes professional language and one safe primary action', () => {
+  const bundle = composeFinalReportEvidenceBundle({
+    context: {
+      workspaceId: 'workspace-1',
+      academicYearId: '2026-27',
+      sectionId: '2C',
+      disciplineId: 'Tecnologia',
+    },
+    plannedBlocks: [{ blockId: 'B01', state: 'PIANIFICATO' }],
+    teachingSessions: { sessions: [], allocations: [] },
+    observations: [],
+    evidenceReferences: [],
+    materialUsageReceipts: [],
+    institutionalSources: {
+      hasActiveInstitutionalBase: false,
+      hasActiveFinalReportTemplate: true,
+    },
+    humanRequired: [],
+    evidenceFreshness: 'frontier-2',
+  })
+
+  const viewModel = buildFinalReportReadinessViewModel(bundle)
+  const serialized = JSON.stringify(viewModel)
+
+  assert.equal(viewModel.stateLabel, 'Dati insufficienti')
+  assert.equal(viewModel.primaryAction.label, 'Controlla ciò che manca')
+  assert.equal(viewModel.primaryAction.enabled, false)
+  assert.ok(viewModel.missingItems.includes('Manca la veste istituzionale attiva per questa relazione.'))
+  assert.equal(serialized.includes('MISSING_ACTIVE_INSTITUTIONAL_BASE'), false)
+  assert.equal(serialized.includes('FINAL_REPORT'), false)
+  assert.equal(serialized.includes('B01'), false)
 })
