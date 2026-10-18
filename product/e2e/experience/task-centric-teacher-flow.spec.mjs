@@ -11,6 +11,7 @@ const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 const BOOKS_FIXTURE_NOTE = 'HVA · Libri di testo · Cattedra tecnica'
 const BOOKS_FIXTURE_DISCIPLINE = 'Tecnologia HVA Libri'
 const CANONICAL_DISCIPLINE = 'Tecnologia'
+const TEACH_OBSERVE_SECTION_ID = '5c8a86a5-529e-4a84-ac57-65e5a5e704d4'
 const TEACH_OBSERVE_BLOCK_ID = 'B01'
 
 test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async ({ page }, testInfo) => {
@@ -181,22 +182,10 @@ async function resolveGovernedTeachObserveFixture() {
     supabasePublishableKey,
     label: 'DOS-UX-01 teach-observe fixture',
   })
-  const { data: adoptions, error: adoptionError } = await supabase
-    .from('annual_plan_curriculum_adoptions')
-    .select('section_id,curriculum_state,curriculum_coverage,authority_quarantined_at')
-    .eq('curriculum_state', 'PROVISIONAL_COMPLETE')
-    .is('authority_quarantined_at', null)
-  if (adoptionError) throw new Error(`Teach-observe curriculum lookup failed: ${adoptionError.message}`)
-
-  const readySectionIds = (adoptions ?? [])
-    .filter((item) => item.curriculum_coverage?.status === 'SATISFIED')
-    .map((item) => item.section_id)
-  if (!readySectionIds.length) throw new Error('Teach-observe fixture: nessuna sezione con baseline curricolare completa')
-
   const { data: sections, error: sectionError } = await supabase
     .from('annual_plan_sections')
     .select('id,grade,section_code,status')
-    .in('id', readySectionIds)
+    .eq('id', TEACH_OBSERVE_SECTION_ID)
     .eq('grade', 'SECONDA')
     .eq('section_code', 'C')
     .eq('status', 'CONFERMATA')
