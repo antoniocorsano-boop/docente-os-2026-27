@@ -51,7 +51,7 @@ Purpose:
 - same canonical sequence and scenario as the overview;
 - no global title overlap;
 - clear separation of each teacher task state;
-- first page in the file so mobile Figma does not reopen an obsolete reconstruction.
+- first page in the file so mobile Figma opens the review surface directly.
 
 The Mobile Review is an **editable support surface**, not a new visual authority.
 
