@@ -12,6 +12,7 @@ const BOOKS_FIXTURE_NOTE = 'HVA · Libri di testo · Cattedra tecnica'
 const BOOKS_FIXTURE_DISCIPLINE = 'Tecnologia HVA Libri'
 const CANONICAL_DISCIPLINE = 'Tecnologia'
 const TEACH_OBSERVE_BLOCK_ID = 'B01'
+const NO_ATLAS_BLOCK_ID = 'B02'
 
 test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async ({ page }, testInfo) => {
   await loginE2E(page)
@@ -32,7 +33,15 @@ test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async
     const lessonTitle = (await focus.getByRole('heading', { level: 2 }).innerText()).trim()
     const primary = focus.locator('a.todayTeachingPrimaryAction')
 
+    await expect(primary).toHaveCount(1)
     await expect(primary).toHaveText(/Prepara lezione/)
+    await expectTouchTarget(primary, 'CTA primaria Oggi')
+    await expect(focus).not.toContainText(/CAN-PACK|CAN-PLAN|\bB\d{2}\b/)
+
+    if (testInfo.project.name.startsWith('mobile')) {
+      await assertResponsiveWidths(page, primary, 'Oggi → Prepara')
+    }
+
     const lessonContext = lessonContextFromPrepareHref(await primary.getAttribute('href'))
     materialFixture = await createClassroomMaterialFixture({
       sectionId: lessonContext.sectionId,
@@ -48,6 +57,7 @@ test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async
     ).toBeVisible()
     await expect(shell).toContainText(classLabel)
     await expect(shell).toContainText(lessonTitle)
+    await expect(shell).not.toContainText(/CAN-PACK|CAN-PLAN/)
     await expect(page.locator('[data-lesson-phase="prepare"]')).toHaveAttribute('aria-current', 'step')
 
     const materials = page.getByRole('button', { name: 'Materiali', exact: true })
@@ -56,13 +66,30 @@ test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async
       materials,
       'Materiali deve essere un subtask diretto di PREPARA, non nascosto dentro progettazione completa.',
     ).toBeVisible()
+    await expectTouchTarget(materials, 'Ingresso Materiali')
     await materials.click()
 
-    await expect(page.locator('[data-lesson-subtask="materials"]')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Riutilizza', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Adatta', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Crea/ })).toBeVisible()
+    const materialsTask = page.locator('[data-lesson-subtask="materials"]')
+    await expect(materialsTask).toBeVisible()
+    const reuse = page.getByRole('button', { name: 'Riutilizza', exact: true })
+    const adapt = page.getByRole('button', { name: 'Adatta', exact: true })
+    const create = page.getByRole('button', { name: /Crea/ })
+    await expect(reuse).toBeVisible()
+    await expect(adapt).toBeVisible()
+    await expect(create).toBeVisible()
     await expect(page.getByText('Progetta', { exact: true })).toHaveCount(0)
+    await expectTouchTarget(reuse, 'Riutilizza')
+    await expectTouchTarget(adapt, 'Adatta')
+    await expectTouchTarget(create, 'Crea nuovo')
+    await reuse.focus()
+    await expect(reuse).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(adapt).toBeFocused()
+    await expectVisibleFocus(adapt, 'Adatta')
+
+    if (testInfo.project.name.startsWith('mobile')) {
+      await assertResponsiveWidths(page, create, 'Materiali')
+    }
 
     const firstPreview = page.getByRole('link', { name: 'Controlla', exact: true }).first()
     await expect(
@@ -91,18 +118,39 @@ test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async
 
     if (testInfo.project.name.startsWith('mobile')) {
       await page.setViewportSize({ width: 320, height: 800 })
-      const geometry = await page.evaluate(() => ({
-        innerWidth: window.innerWidth,
-        scrollWidth: document.documentElement.scrollWidth,
-      }))
-      expect(
-        geometry.scrollWidth,
-        `Il flusso focalizzato non deve produrre overflow orizzontale a 320px: ${geometry.scrollWidth}px su ${geometry.innerWidth}px.`,
-      ).toBeLessThanOrEqual(geometry.innerWidth + 1)
+      await expectNoHorizontalOverflow(page, 'Il flusso focalizzato a 320px')
     }
   } finally {
     if (materialFixture) await deleteKnowledgeAsset(page, materialFixture.assetId).catch(() => {})
     await fixture.restore()
+  }
+})
+
+test('State: Materiali without qualified Atlas stays truthful and complete', async ({ page }, testInfo) => {
+  await loginE2E(page)
+  const sectionId = await currentSecondCSectionId()
+  await page.goto(`/classi/${encodeURIComponent(sectionId)}/lezioni/${NO_ATLAS_BLOCK_ID}?mode=prepare&subtask=materials`)
+
+  const shell = page.locator('[data-lesson-shell]')
+  const materialsTask = page.locator('[data-lesson-subtask="materials"]')
+  await expect(shell).toBeVisible()
+  await expect(materialsTask).toBeVisible()
+  await expect(materialsTask.getByText('Materiali disponibili', { exact: true })).toBeVisible()
+  await expect(materialsTask.getByRole('link', { name: /Atlas/i })).toHaveCount(0)
+  await expect(materialsTask.getByText(/Atlas non disponibile|Nessun materiale Atlas|In arrivo da Atlas/i)).toHaveCount(0)
+
+  const reuse = materialsTask.getByRole('button', { name: 'Riutilizza', exact: true })
+  const adapt = materialsTask.getByRole('button', { name: 'Adatta', exact: true })
+  const create = materialsTask.getByRole('button', { name: /Crea/ })
+  await expect(reuse).toBeVisible()
+  await expect(adapt).toBeVisible()
+  await expect(create).toBeVisible()
+  await expectTouchTarget(reuse, 'Riutilizza senza Atlas')
+  await expectTouchTarget(adapt, 'Adatta senza Atlas')
+  await expectTouchTarget(create, 'Crea senza Atlas')
+
+  if (testInfo.project.name.startsWith('mobile')) {
+    await assertResponsiveWidths(page, create, 'Materiali senza Atlas')
   }
 })
 
@@ -130,6 +178,7 @@ test('Journey: Conduci → Osserva preserves one governed lesson', async ({ page
     ).toBeVisible()
     await expect(teachShell).toContainText(fixture.classLabel)
     await expect(teachShell).toContainText('Il territorio agricolo come sistema')
+    await expect(teachShell).not.toContainText(/CAN-PACK|CAN-PLAN/)
     await expect(page.locator('[data-lesson-phase="teach"]')).toHaveAttribute('aria-current', 'step')
 
     const observePhase = page.locator('[data-lesson-phase="observe"]')
@@ -137,6 +186,7 @@ test('Journey: Conduci → Osserva preserves one governed lesson', async ({ page
       observePhase,
       'Da CONDUCI il passaggio a OSSERVA deve restare nel ciclo della stessa lezione.',
     ).toBeVisible()
+    await expectTouchTarget(observePhase, 'Passaggio a Osserva')
     await observePhase.click()
 
     const observeShell = page.locator('[data-lesson-shell]')
@@ -153,15 +203,10 @@ test('Journey: Conduci → Osserva preserves one governed lesson', async ({ page
     await expect(page.getByRole('link', { name: 'Torna alla lezione', exact: true })).toBeVisible()
 
     if (testInfo.project.name.startsWith('mobile')) {
-      await page.setViewportSize({ width: 320, height: 800 })
-      const geometry = await page.evaluate(() => ({
-        innerWidth: window.innerWidth,
-        scrollWidth: document.documentElement.scrollWidth,
-      }))
-      expect(
-        geometry.scrollWidth,
-        `CONDUCI → OSSERVA non deve produrre overflow orizzontale a 320px: ${geometry.scrollWidth}px su ${geometry.innerWidth}px.`,
-      ).toBeLessThanOrEqual(geometry.innerWidth + 1)
+      for (const width of [390, 320]) {
+        await page.setViewportSize({ width, height: 800 })
+        await expectNoHorizontalOverflow(page, `CONDUCI → OSSERVA a ${width}px`)
+      }
     }
   } finally {
     await fixture.restore()
@@ -174,6 +219,37 @@ function lessonContextFromPrepareHref(value) {
     : null
   if (!match) throw new Error(`Task-centric viewer fixture: PREPARA href inatteso ${value ?? 'senza href'}`)
   return { sectionId: decodeURIComponent(match[1]), blockId: match[2].toUpperCase() }
+}
+
+async function currentSecondCSectionId() {
+  if (!supabaseUrl || !supabasePublishableKey) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY sono richiesti dalla prova Materiali senza Atlas')
+  }
+
+  const { supabase } = await authenticatedAal2Supabase({
+    supabaseUrl,
+    supabasePublishableKey,
+    label: 'DOS-UX-01 no-Atlas state',
+  })
+  const { data: contextRows, error: contextError } = await supabase.rpc('current_workspace_context')
+  if (contextError) throw new Error(`No-Atlas workspace lookup failed: ${contextError.message}`)
+  const context = contextRows?.[0]
+  if (!context?.workspace_id || !context?.academic_year_id) {
+    throw new Error('No-Atlas state: workspace o anno scolastico corrente non disponibile')
+  }
+
+  const { data: section, error: sectionError } = await supabase
+    .from('annual_plan_sections')
+    .select('id')
+    .eq('workspace_id', context.workspace_id)
+    .eq('academic_year_id', context.academic_year_id)
+    .eq('grade', 'SECONDA')
+    .eq('section_code', 'C')
+    .limit(1)
+    .maybeSingle()
+  if (sectionError) throw new Error(`No-Atlas section lookup failed: ${sectionError.message}`)
+  if (!section?.id) throw new Error('No-Atlas state: la 2C tenant-local non è disponibile')
+  return section.id
 }
 
 async function createRecordedTeachObserveFixture() {
@@ -421,4 +497,48 @@ async function restoreFixture({
       .eq('id', disciplineId)
     if (error) throw new Error(`Task-centric fixture discipline restore failed: ${error.message}`)
   }
+}
+
+async function assertResponsiveWidths(page, target, label) {
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 800 })
+    await expectNoHorizontalOverflow(page, `${label} a ${width}px`)
+    const box = await target.boundingBox()
+    expect(box, `${label}: CTA non misurabile a ${width}px`).not.toBeNull()
+    expect(box.x, `${label}: CTA tagliata a sinistra a ${width}px`).toBeGreaterThanOrEqual(-1)
+    expect(box.x + box.width, `${label}: CTA tagliata a destra a ${width}px`).toBeLessThanOrEqual(width + 1)
+    expect(box.height, `${label}: target sotto i 44px a ${width}px`).toBeGreaterThanOrEqual(44)
+  }
+}
+
+async function expectNoHorizontalOverflow(page, label) {
+  const geometry = await page.evaluate(() => ({
+    innerWidth: window.innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }))
+  expect(
+    geometry.scrollWidth,
+    `${label}: overflow orizzontale ${geometry.scrollWidth}px su ${geometry.innerWidth}px.`,
+  ).toBeLessThanOrEqual(geometry.innerWidth + 1)
+}
+
+async function expectTouchTarget(locator, label) {
+  const box = await locator.boundingBox()
+  expect(box, `${label}: target non misurabile`).not.toBeNull()
+  expect(box.height, `${label}: altezza target sotto 44px`).toBeGreaterThanOrEqual(44)
+  expect(box.width, `${label}: larghezza target sotto 44px`).toBeGreaterThanOrEqual(44)
+}
+
+async function expectVisibleFocus(locator, label) {
+  const indicator = await locator.evaluate((element) => {
+    const style = window.getComputedStyle(element)
+    return {
+      outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
+      boxShadow: style.boxShadow,
+    }
+  })
+  const outlineVisible = indicator.outlineStyle !== 'none' && indicator.outlineWidth !== '0px'
+  const shadowVisible = indicator.boxShadow !== 'none'
+  expect(outlineVisible || shadowVisible, `${label}: nessun indicatore di focus visibile`).toBe(true)
 }
