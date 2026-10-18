@@ -44,6 +44,7 @@ export default async function PlannerPage() {
   })
   const teachingFocus = buildTodayTeachingFocus({
     preparation: operational.preparation?.preparation ?? null,
+    localDate: today,
     minuteOfDay: nowMinutes,
   })
   const humanDate = new Intl.DateTimeFormat('it-IT', {
