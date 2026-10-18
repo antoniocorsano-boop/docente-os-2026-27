@@ -8,15 +8,20 @@ const closeSource = fs.readFileSync(
   'src/app/classi/[sectionId]/lezioni/[blockId]/lesson-close-client.tsx',
   'utf8',
 )
-const classSource = fs.readFileSync(
-  'src/app/classi/[sectionId]/page.tsx',
-  'utf8',
-)
+const continuePath = 'src/app/classi/[sectionId]/lezioni/[blockId]/lesson-continue.tsx'
+const continueSource = fs.existsSync(continuePath) ? fs.readFileSync(continuePath, 'utf8') : ''
 
-test('lesson registration exposes failure and success feedback', () => {
+test('lesson registration exposes failure feedback and stays in the lesson task after success', () => {
   assert.match(closeSource, /role="alert"/)
-  assert.match(closeSource, /router\.push\(.*session=/s)
-  assert.match(classSource, /classRecordFeedback/)
-  assert.match(classSource, /role="status"/)
-  assert.match(classSource, /aria-live="polite"/)
+  assert.match(closeSource, /LessonContinue/)
+  assert.match(closeSource, /setContinuation/)
+  assert.doesNotMatch(closeSource, /router\.push\(.*session=/s)
+})
+
+test('post-record Continua is a presentation-only state with explicit recovery actions', () => {
+  assert.match(continueSource, /CONTINUA/)
+  assert.match(continueSource, /Lezione registrata/)
+  assert.match(continueSource, /Esito effettivo/)
+  assert.match(continueSource, /Prepara la prossima/)
+  assert.match(continueSource, /Torna a Oggi/)
 })
