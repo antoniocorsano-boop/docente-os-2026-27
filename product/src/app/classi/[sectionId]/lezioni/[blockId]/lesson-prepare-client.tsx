@@ -12,6 +12,7 @@ import {
 } from '@/core/presentation/human-task-content'
 import { buildLessonBrief } from '@/core/presentation/lesson-brief'
 import { LessonDesignTools } from './lesson-design-tools'
+import { LessonShell } from './lesson-shell'
 import type { LessonKnowledgeSuggestion } from './lesson-material-suggestions'
 import type { LessonAtlasSuggestion } from './atlas-material-suggestions'
 import { approveLessonPreparationAndProceed } from './preparation-approval-actions'
@@ -71,6 +72,14 @@ export default function LessonPrepareClient({
 
   return (
     <main className={styles.closeSurface}>
+      <LessonShell
+        sectionId={sectionId}
+        blockId={block.id}
+        sectionLabel={sectionLabel}
+        disciplineLabel="Tecnologia"
+        lessonTitle={brief.title}
+        phase="prepare"
+      />
       <section className={`${styles.closeCard} ${styles.lessonBriefCard}`}>
         <header className={styles.lessonBriefHeader}>
           <Link className={styles.back} href={classHref}>← {sectionLabel}</Link>
