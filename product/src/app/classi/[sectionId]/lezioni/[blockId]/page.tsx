@@ -59,6 +59,8 @@ export default async function LessonWorkspacePage({
   const blocks = buildBlocks(grade)
   const block = blocks.find((item) => item.id === blockId)
   if (!block) notFound()
+  const blockIndex = blocks.findIndex((item) => item.id === block.id)
+  const nextBlockId = blockIndex >= 0 ? blocks[blockIndex + 1]?.id ?? null : null
 
   const projection = resolveRuntimeHumanTaskLessonProjection(grade, block)
   if (!projection) {
@@ -216,6 +218,7 @@ export default async function LessonWorkspacePage({
           defaultLocalDate={currentRomeDate()}
           registrationKey={randomUUID()}
           voiceCaptureEnabled={voiceCaptureEnabled}
+          nextBlockId={nextBlockId}
         />
       ) : (
         <LessonPrepareClient
