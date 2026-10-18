@@ -1,3 +1,5 @@
+const TASK_CENTRIC_SPEC = 'e2e/experience/task-centric-teacher-flow.spec.mjs'
+
 const FULL_HVA_PATHS = [
   /^product\/src\/app\/layout\.tsx$/,
   /^product\/src\/app\/globals\.css$/,
@@ -27,6 +29,7 @@ const FOCUSED_RULES = [
       'e2e/experience/classroom-cockpit.spec.mjs',
       'e2e/experience/contextual-capabilities.spec.mjs',
       'e2e/experience/lesson-register.spec.mjs',
+      TASK_CENTRIC_SPEC,
     ],
   },
   {
@@ -44,11 +47,14 @@ const FOCUSED_RULES = [
   },
   {
     test: (path) => path.startsWith('product/src/app/planner/'),
-    specs: ['e2e/experience/surfaces.spec.mjs'],
+    specs: ['e2e/experience/surfaces.spec.mjs', TASK_CENTRIC_SPEC],
   },
 ]
 
 const SUPPORT_HVA_SPECS = new Map([
+  ['product/e2e/experience/task-centric-teacher-flow.spec.mjs', [
+    TASK_CENTRIC_SPEC,
+  ]],
   ['product/e2e/support/timetable-real-fixture.mjs', [
     'e2e/experience/timetable-import-real-fixture.spec.mjs',
   ]],
@@ -76,6 +82,7 @@ const SUPPORT_HVA_SPECS = new Map([
     'e2e/experience/classroom-cockpit.spec.mjs',
     'e2e/experience/contextual-capabilities.spec.mjs',
     'e2e/experience/lesson-register.spec.mjs',
+    TASK_CENTRIC_SPEC,
   ]],
 ])
 
