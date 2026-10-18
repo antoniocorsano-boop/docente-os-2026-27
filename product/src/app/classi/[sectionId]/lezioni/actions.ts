@@ -19,12 +19,15 @@ import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annua
 import { normalizeLessonObservationDraft, toTeachingObservationDraft } from './lesson-observation-model'
 import { hasCurrentBlockSessionOnDate, selectEligibleLessonOccurrence } from './lesson-registration-model'
 
+export type LessonExecutionOutcome = 'SVOLTO' | 'RECUPERATO' | 'RIMODULATO' | 'ANNULLATO'
+
 export async function recordLessonExecution(formData: FormData) {
   const sectionId = requiredText(formData, 'sectionId')
   const blockId = requiredText(formData, 'blockId').toUpperCase()
   const localDate = requiredDate(formData, 'localDate')
   const actualMinutes = positiveInt(formData, 'actualMinutes')
   const registrationKey = requiredUuid(formData, 'registrationKey')
+  const outcome = requiredLessonOutcome(formData, 'outcome')
   const freeEvidenceNote = optionalNote(formData.get('evidenceNote'))
   const nextActivity = optionalReflectionField(formData.get('nextActivity'), 'Next activity')
   const udaChangeProposal = optionalReflectionField(formData.get('udaChangeProposal'), 'UDA change proposal')
@@ -184,6 +187,8 @@ export async function recordLessonExecution(formData: FormData) {
   return {
     teachingSessionId: receipt.teachingSessionId,
     observationCount: observationDraft ? 1 : 0,
+    outcome,
+    nextActivity,
   }
 }
 
@@ -205,6 +210,12 @@ function requiredUuid(formData: FormData, name: string) {
     throw new Error(`${name} invalid`)
   }
   return value
+}
+
+function requiredLessonOutcome(formData: FormData, name: string): LessonExecutionOutcome {
+  const value = requiredText(formData, name)
+  if (value === 'SVOLTO' || value === 'RECUPERATO' || value === 'RIMODULATO' || value === 'ANNULLATO') return value
+  throw new Error(`${name} invalid`)
 }
 
 function positiveInt(formData: FormData, name: string) {
