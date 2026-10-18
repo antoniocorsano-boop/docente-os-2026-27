@@ -48,7 +48,7 @@ Therefore the target UX does **not** justify, by itself:
 - a schema migration;
 - a new lesson domain;
 - a new materials store;
-- a new curriculum authority;
+- a new curricolo authority;
 - a new macro-section;
 - a general Atlas catalogue;
 - a Studio Atlas runtime activation.
@@ -559,7 +559,7 @@ Current evidence does not justify changing these authorities:
 
 | Concern | Existing authority to preserve |
 | --- | --- |
-| Curriculum | Arena / governed canonical curriculum contracts |
+| Curricolo | Arena / governed canonical curricolo contracts |
 | Annual lesson progression | Docente OS annual-plan execution bound to canonical sources |
 | Timetable/date truth | Timetable + Calendar projections |
 | Lesson preparation | Docente OS lesson workspace and preparation approval |
@@ -729,7 +729,7 @@ Unless later evidence explicitly overturns this matrix, do **not** build:
 | --- | --- | --- |
 | Oversimplification | Hides professional state the teacher needs | Keep class/lesson/status coordinates persistent; progressive disclosure |
 | False certainty | System chooses lesson/fase when temporal/canonical authority is ambiguous | Preserve fail-closed ambiguity; human fallback |
-| Authority leakage | UI simplification changes curriculum/lesson/material authority | Presentation-only recomposition first; reuse authoritative stores |
+| Authority leakage | UI simplification changes curricolo/lesson/material authority | Presentation-only recomposition first; reuse authoritative stores |
 | Navigation trap | Focused mode makes broader areas unreachable | Explicit `Altro/Esplora` and predictable return |
 | Material duplication | New Materiali UX creates parallel store/lifecycle | Reuse Knowledge + LessonDesignExtension + render bundle |
 | Atlas overclaim | Atlas appears universal though only pilot binding exists | `available when qualified`; separate generalisation programme |
@@ -791,7 +791,7 @@ Noise-budget acceptance for every focused mockup:
 ### Not required for this UX closure
 
 - new persistence schema;
-- new lesson/material/curriculum authority;
+- new lesson/material/curricolo authority;
 - new macro-navigation domain.
 
 ### Separate future capability
