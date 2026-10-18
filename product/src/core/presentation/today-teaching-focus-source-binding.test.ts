@@ -123,6 +123,37 @@ test('teacher-first focus fails closed to the class when the canonical lesson is
   })
 })
 
+test('ambiguous canonical context keeps known lesson facts and states uncertainty in teacher language', () => {
+  const focus = buildTodayTeachingFocus({
+    preparation: preparation({
+      canonicalLesson: null,
+      missingInformation: ['Collegamento al blocco canonico non disponibile.'],
+      continuity: {
+        nextActivity: 'Riprendere la misura dell’oggetto e confrontare gli errori.',
+        sourceSessionId: 'session-previous',
+        sourceLocalDate: '2026-10-15',
+      },
+    }),
+    localDate: DATE,
+    minuteOfDay: 13 * 60 + 30,
+  })
+
+  assert.ok(focus)
+  assert.equal(focus.occurrenceTitle, '2C · Tecnologia')
+  assert.equal(focus.startAt, `${DATE}T14:00:00`)
+  assert.equal(focus.endAt, `${DATE}T15:00:00`)
+  assert.deepEqual(focus.action, {
+    kind: 'CLASS',
+    label: 'Apri la classe',
+    href: '/classi/section-2c',
+  })
+  assert.equal(focus.continuity?.detail, 'Riprendere la misura dell’oggetto e confrontare gli errori.')
+  assert.equal(
+    focus.contextNotice,
+    'Il collegamento al Piano annuale non è abbastanza certo: mantengo orario, classe e continuità disponibili senza inventare la lezione.',
+  )
+})
+
 test('teacher-first focus never invents an action without a section', () => {
   const base = preparation()
   const focus = buildTodayTeachingFocus({
