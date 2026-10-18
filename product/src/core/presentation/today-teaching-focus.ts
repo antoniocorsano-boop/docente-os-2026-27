@@ -16,7 +16,8 @@ export type TodayTeachingContinuity = {
 export type TodayTeachingFocus = {
   state: 'CURRENT' | 'NEXT'
   stateLabel: 'Lezione in corso' | 'Prossima lezione'
-  minutesUntilStart: number
+  minutesUntilStart: number | null
+  dateLabel: string | null
   classLabel: string | null
   subjectLabel: string | null
   occurrenceTitle: string
@@ -32,16 +33,21 @@ export type TodayTeachingFocus = {
 
 export function buildTodayTeachingFocus(input: {
   preparation: NextLessonPreparation | null
+  localDate: string
   minuteOfDay: number
 }): TodayTeachingFocus | null {
   const preparation = input.preparation
   if (!preparation) return null
 
+  const lessonDate = preparation.lesson.startAt.slice(0, 10)
+  if (lessonDate < input.localDate) return null
+
+  const futureDay = lessonDate > input.localDate
   const start = lessonMinute(preparation.lesson.startAt)
   const end = lessonMinute(preparation.lesson.endAt)
-  if (input.minuteOfDay >= end) return null
+  if (!futureDay && input.minuteOfDay >= end) return null
 
-  const state = input.minuteOfDay >= start ? 'CURRENT' : 'NEXT'
+  const state: TodayTeachingFocus['state'] = futureDay || input.minuteOfDay < start ? 'NEXT' : 'CURRENT'
   const canonical = preparation.canonicalLesson
   const action = buildAction(preparation)
   const nextActivity = preparation.continuity?.nextActivity.trim() ?? ''
@@ -49,7 +55,8 @@ export function buildTodayTeachingFocus(input: {
   return {
     state,
     stateLabel: state === 'CURRENT' ? 'Lezione in corso' : 'Prossima lezione',
-    minutesUntilStart: state === 'CURRENT' ? 0 : Math.max(0, start - input.minuteOfDay),
+    minutesUntilStart: futureDay ? null : state === 'CURRENT' ? 0 : Math.max(0, start - input.minuteOfDay),
+    dateLabel: futureDay ? futureDateLabel(input.localDate, lessonDate) : null,
     classLabel: canonical?.sectionLabel ?? null,
     subjectLabel: canonical?.disciplineLabel ?? null,
     occurrenceTitle: preparation.lesson.title,
@@ -104,6 +111,23 @@ function buildChips(preparation: NextLessonPreparation) {
     chips.push('Preparazione definita')
   }
   return unique(chips).slice(0, 3)
+}
+
+function futureDateLabel(localDate: string, lessonDate: string) {
+  if (lessonDate === addLocalDays(localDate, 1)) return 'Domani'
+  const label = new Intl.DateTimeFormat('it-IT', {
+    timeZone: 'UTC',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(new Date(`${lessonDate}T12:00:00Z`))
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+function addLocalDays(localDate: string, days: number) {
+  const date = new Date(`${localDate}T12:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
 }
 
 function lessonMinute(value: string) {
