@@ -42,7 +42,7 @@ export default async function LessonWorkspacePage({
   searchParams,
 }: {
   params: Promise<{ sectionId: string; blockId: string }>
-  searchParams: Promise<{ mode?: string; review?: string; approval?: string }>
+  searchParams: Promise<{ mode?: string; review?: string; approval?: string; subtask?: string }>
 }) {
   const { sectionId, blockId: rawBlockId } = await params
   const blockId = rawBlockId.toUpperCase()
@@ -228,6 +228,7 @@ export default async function LessonWorkspacePage({
           atlasSuggestions={atlasSuggestions}
           progress={progressView}
           udaProgress={udaProgressView}
+          initialSubtask={query.subtask === 'materials' ? 'materials' : null}
           approval={{
             status: approvalStatus,
             approvedAt: latestApproval?.approvedAt ?? null,

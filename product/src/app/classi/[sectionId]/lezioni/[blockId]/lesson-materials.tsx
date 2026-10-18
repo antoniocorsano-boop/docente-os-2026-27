@@ -283,12 +283,12 @@ function MaterialActionSubmit({ idle, pendingLabel }: { idle: string; pendingLab
 }
 
 function buildFocusedKnowledgeHref(assetId: string, sectionId: string, blockId: string) {
-  const returnTo = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(blockId)}?mode=prepare`
+  const returnTo = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(blockId)}?mode=prepare&subtask=materials`
   return `/knowledge/${encodeURIComponent(assetId)}?mode=prepare&section=${encodeURIComponent(sectionId)}&block=${encodeURIComponent(blockId)}&returnTo=${encodeURIComponent(returnTo)}`
 }
 
 function buildKnowledgeCaptureHref(sectionId: string, blockId: string) {
-  const returnTo = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(blockId)}?mode=prepare`
+  const returnTo = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(blockId)}?mode=prepare&subtask=materials`
   return `/knowledge?capture=text&mode=prepare&section=${encodeURIComponent(sectionId)}&block=${encodeURIComponent(blockId)}&returnTo=${encodeURIComponent(returnTo)}`
 }
 

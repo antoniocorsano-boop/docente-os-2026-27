@@ -2,9 +2,12 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { SourceProvenance } from '@/components/source-provenance/source-provenance'
+import { buildBlocks, GRADE_UI } from '@/app/piano-annuale/model'
+import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { knowledgeCalendarEventProposal } from '@/core/domain/knowledge-calendar-event'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 import {
   CONTENT_CATEGORIES,
   assetKindLabel,
@@ -19,10 +22,14 @@ import {
   validationStatusLabel,
 } from '@/core/presentation/product-language'
 import { asKnowledgeTaskMode, sanitizeInternalReturnTo } from '@/core/presentation/task-continuity'
+import { LessonShell } from '@/app/classi/[sectionId]/lezioni/[blockId]/lesson-shell'
+import { runLessonDesignWrite } from '@/app/classi/[sectionId]/lezioni/[blockId]/design-actions'
 import { confirmKnowledgeAction, confirmKnowledgeCalendarEvent, confirmKnowledgeCandidate, createPlannerTaskFromKnowledgeAsset, rejectKnowledgeCandidate, reprocessKnowledgeAsset, updateKnowledgeContext } from '../actions'
 import '../calendar-candidate.css'
 
 export const dynamic = 'force-dynamic'
+
+const GRADE_NUMBER = { PRIMA: '1', SECONDA: '2', TERZA: '3' } as const
 
 type PageProps = {
   params: Promise<{ assetId: string }>
@@ -58,6 +65,99 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
   const category = contentCategoryLabel(asset.contentCategory)
   const contextReference = [...asset.disciplines, ...asset.classLabels].join(' · ') || 'Non specificato'
   const taskMode = asKnowledgeTaskMode(query.mode)
+
+  const focusedLesson = taskMode === 'prepare' && context.academicYear
+    ? await resolveFocusedLessonContext({
+        workspaceId: context.workspace.id,
+        academicYearId: context.academicYear.id,
+        sectionId: query.section,
+        blockId: query.block,
+      })
+    : null
+
+  if (taskMode === 'prepare' && query.section && query.block && !focusedLesson) {
+    redirect(sanitizeInternalReturnTo(query.returnTo, '/planner'))
+  }
+
+  if (taskMode === 'prepare' && focusedLesson) {
+    const materialsReturnTo = `/classi/${encodeURIComponent(focusedLesson.sectionId)}/lezioni/${encodeURIComponent(focusedLesson.blockId)}?mode=prepare&subtask=materials`
+    const normalizedText = document?.normalizedText?.trim() ?? ''
+    const fallbackUnits = units
+      .filter((unit) => unit.unitType !== 'ACTION' && unit.unitType !== 'DEADLINE')
+      .slice(0, 12)
+      .map((unit) => `${unit.title ? `${unit.title}\n` : ''}${unit.content}`)
+      .join('\n\n')
+    const readableText = normalizedText || fallbackUnits
+
+    async function useInLesson(formData: FormData) {
+      'use server'
+      const state = await runLessonDesignWrite({ notice: null, revision: 0 }, formData)
+      if (state.notice === 'material-attached') redirect(materialsReturnTo)
+      redirect(`${materialsReturnTo}&material=failed`)
+    }
+
+    return (
+      <AppShell
+        active="classes"
+        academicYearLabel={context.academicYear?.label}
+        workspaceName={context.workspace.name}
+        role={context.role}
+        contentClassName="knowledgeSurface"
+      >
+        <LessonShell
+          sectionId={focusedLesson.sectionId}
+          blockId={focusedLesson.blockId}
+          sectionLabel={focusedLesson.sectionLabel}
+          disciplineLabel="Tecnologia"
+          lessonTitle={focusedLesson.lessonTitle}
+          phase="prepare"
+        />
+
+        <section data-lesson-material-preview>
+          <nav className="focusedKnowledgeContext" aria-label="Contesto del materiale">
+            <Link href={materialsReturnTo}>Torna ai materiali</Link>
+            <span>{focusedLesson.sectionLabel} · Tecnologia</span>
+          </nav>
+
+          <section className="focusedKnowledgeHero">
+            <p>RISORSA DELLA LEZIONE</p>
+            <h1>{displayTitle}</h1>
+            <p className="focusedKnowledgeSummary">{document?.summary ?? 'Controlla questa risorsa nel contesto della lezione prima di decidere se usarla.'}</p>
+            <div className="focusedKnowledgeMeta">
+              <span>{category}</span>
+              <SourceProvenance provider={asset.sourceProvider} />
+              <span>{processing.label}</span>
+            </div>
+          </section>
+
+          <section className="focusedKnowledgeUse" aria-labelledby="focused-use-title">
+            <header><span>ANTEPRIMA</span><h2 id="focused-use-title">{asset.contentCategory === 'UDA' ? 'Percorso operativo' : 'Contenuto della risorsa'}</h2></header>
+            {readableText ? <pre className="focusedKnowledgeText">{readableText}</pre> : <p className="focusedKnowledgeEmpty">Il contenuto leggibile non è ancora disponibile. La risorsa resta nel contesto della lezione e puoi tornare ai materiali senza perdere il punto di lavoro.</p>}
+          </section>
+
+          <nav className="focusedKnowledgeActions" aria-label="Usa il materiale nella lezione">
+            <form action={useInLesson}>
+              <input type="hidden" name="designIntent" value="attach-knowledge" />
+              <input type="hidden" name="sectionId" value={focusedLesson.sectionId} />
+              <input type="hidden" name="blockId" value={focusedLesson.blockId} />
+              <input type="hidden" name="projectionId" value={focusedLesson.projectionId} />
+              <input type="hidden" name="assetId" value={asset.id} />
+              <button className="primary" type="submit">Usa nella lezione</button>
+            </form>
+            {driveUrl ? <a href={driveUrl} target="_blank" rel="noreferrer">Apri fonte originale</a> : null}
+          </nav>
+
+          <details className="humanTaskSecondary focusedKnowledgeManage">
+            <summary>Approfondisci la risorsa</summary>
+            <div className="humanTaskSecondaryBody">
+              <p>La provenienza resta visibile; strumenti di elaborazione, versioni e gestione tecnica restano fuori dal compito corrente.</p>
+              <Link href={`/knowledge/${encodeURIComponent(asset.id)}`}>Apri la scheda completa di Conoscenza →</Link>
+            </div>
+          </details>
+        </section>
+      </AppShell>
+    )
+  }
 
   if (taskMode) {
     const returnTo = sanitizeInternalReturnTo(query.returnTo, '/knowledge')
@@ -325,6 +425,30 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
       </details>
     </AppShell>
   )
+}
+
+async function resolveFocusedLessonContext(input: {
+  workspaceId: string
+  academicYearId: string
+  sectionId?: string
+  blockId?: string
+}) {
+  if (!input.sectionId || !input.blockId) return null
+  const snapshot = await new SupabaseAnnualPlanExecutionRepository().list(input.workspaceId, input.academicYearId)
+  const section = snapshot.sections.find((item) => item.id === input.sectionId)
+  if (!section) return null
+  const grade = GRADE_UI[section.grade]
+  const block = buildBlocks(grade).find((item) => item.id === input.blockId?.toUpperCase())
+  if (!block) return null
+  const projection = resolveRuntimeHumanTaskLessonProjection(grade, block)
+  if (!projection) return null
+  return {
+    sectionId: section.id,
+    blockId: block.id,
+    sectionLabel: `${GRADE_NUMBER[section.grade]}ª ${section.sectionCode}`,
+    lessonTitle: projection.title,
+    projectionId: projection.projectionId,
+  }
 }
 
 function formatDate(value: string) {

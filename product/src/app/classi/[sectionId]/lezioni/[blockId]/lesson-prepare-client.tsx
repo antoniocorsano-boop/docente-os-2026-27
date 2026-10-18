@@ -45,6 +45,7 @@ export default function LessonPrepareClient({
   progress,
   udaProgress,
   approval,
+  initialSubtask,
 }: {
   sectionId: string
   sectionLabel: string
@@ -62,9 +63,10 @@ export default function LessonPrepareClient({
     alignmentAuthority: 'PROVISIONAL_BASELINE' | 'APPROVED_INSTITUTIONAL' | null
     requiresRevalidationOnApproval: boolean | null
   }
+  initialSubtask?: 'materials' | null
 }) {
   const [prepared, setPrepared] = useState<Record<number, boolean>>({})
-  const [activeSubtask, setActiveSubtask] = useState<'materials' | null>(null)
+  const [activeSubtask, setActiveSubtask] = useState<'materials' | null>(initialSubtask ?? null)
   const preparationResources = useMemo(() => resolveHumanTaskResourcesForSurface(projection, 'PREPARE'), [projection])
   const brief = useMemo(() => buildLessonBrief({ projection, extensions }), [projection, extensions])
   const preparedCount = Object.values(prepared).filter(Boolean).length
