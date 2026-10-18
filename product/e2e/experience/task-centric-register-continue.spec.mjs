@@ -23,7 +23,7 @@ test('Journey: Registra → Continua starts from factual outcome', async ({ page
     await expect(page.getByText(/REGISTRA LA LEZIONE/)).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Chiudi la lezione senza ricopiare tutto' })).toBeVisible()
 
-    const outcome = page.getByLabel('Esito effettivo', { exact: true })
+    const outcome = page.getByRole('combobox', { name: 'Esito effettivo', exact: true })
     await expect(
       outcome,
       'REGISTRA deve partire dall’esito effettivo della lezione, prima dei dettagli facoltativi.',
