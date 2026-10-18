@@ -41,6 +41,8 @@ export function TodayTeachingFocusCard({ focus }: { focus: TodayTeachingFocus })
           <p className="todayTeachingNotice">La collocazione deriva dall’orario provvisorio applicabile alla giornata.</p>
         ) : null}
 
+        {focus.contextNotice ? <p className="todayTeachingNotice">{focus.contextNotice}</p> : null}
+
         {focus.action ? (
           <Link className="todayTeachingPrimaryAction" href={focus.action.href}>
             {focus.action.label}
