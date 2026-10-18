@@ -4,7 +4,7 @@
 
 **Goal:** Implement the human-reviewed Docente OS teacher journey `OGGI → PREPARA → MATERIALI → VISUALIZZA → CONDUCI → OSSERVA → REGISTRA → CONTINUA`, while preserving existing domain authorities and keeping Classi/Progetta/Conoscenza/Piano/Atlas as subordinate capabilities rather than mandatory waypoints.
 
-**Architecture:** Recompose existing presentation and routing around the already-existing lesson workspace, Today focus, material suggestions, TeachingSession receipt and continuity state. Introduce presentation-only shell/material/continue surfaces where needed; do not add a new lesson/material/continuity domain, schema, store or curriculum authority. Implement in reviewable vertical slices, each independently testable and preserving fail-closed behavior.
+**Architecture:** Recompose existing presentation and routing around the already-existing lesson workspace, Today focus, material suggestions, TeachingSession receipt and continuity state. Introduce presentation-only shell/material/continue surfaces where needed; do not add a new lesson/material/continuity domain, schema, store or curricolo authority. Implement in reviewable vertical slices, each independently testable and preserving fail-closed behavior.
 
 **Tech Stack:** Next.js / React / TypeScript, existing CSS modules/global design tokens, existing server actions and presentation models, Playwright experience tests, repository Product CI/CV2 gates.
 
@@ -23,8 +23,8 @@
 - Material source is provenance, not navigation.
 - No Atlas affordance unless a qualified Atlas resource actually exists.
 - Studio Atlas runtime handoff remains deferred; do not simulate it.
-- No new schema, lesson domain, materials store, continuity store or curriculum authority.
-- Existing Arena/curriculum, timetable/calendar, TeachingSession, Knowledge and Atlas authority boundaries remain unchanged.
+- No new schema, lesson domain, materials store, continuity store or curricolo authority.
+- Existing Arena/curricolo, timetable/calendar, TeachingSession, Knowledge and Atlas authority boundaries remain unchanged.
 - Existing preparation approval remains explicit and governed; visual simplification must not weaken approval/revalidation rules.
 - Privacy-first: no student identity/auth/tracking is introduced.
 - Mobile-first: touch targets at least 44 px; no horizontal scrolling at 320 px.
@@ -385,7 +385,7 @@ Request explicit authorization before integration/fast-forward/Beta promotion. N
 ## Self-Review Result
 
 - **Spec coverage:** all primary nodes (`OGGI`, `PREPARA`, `MATERIALI`, material viewer, `CONDUCI`, `OSSERVA`, `REGISTRA`, `CONTINUA`, voluntary `CLASSE`) are owned by a task; Explore/Progetta/Knowledge generic mode remain intentionally secondary rather than redesigned wholesale.
-- **Authority coverage:** no task adds a competing timetable, lesson, material, continuity or curriculum authority; Atlas/Studio Atlas maturity constraints are preserved.
+- **Authority coverage:** no task adds a competing timetable, lesson, material, continuity or curricolo authority; Atlas/Studio Atlas maturity constraints are preserved.
 - **Failure-mode coverage:** ambiguity, no Atlas, task-aware Knowledge return, partial/remodelled continuity and 320 px/long-copy cases are pinned to Tasks 2, 5, 7 and 9.
 - **Type/interface consistency:** new units are presentation-only (`LessonShell`, focused `lesson-materials`, `LessonContinue`) and consume existing domain types/actions rather than inventing persistence contracts.
 - **Proportion:** the plan deliberately specifies boundaries, tests and file ownership; implementation details remain with the executor.
