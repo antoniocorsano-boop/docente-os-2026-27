@@ -149,7 +149,7 @@ test('ambiguous canonical context keeps known lesson facts and states uncertaint
   })
   assert.equal(focus.continuity?.detail, 'Riprendere la misura dell’oggetto e confrontare gli errori.')
   assert.equal(
-    focus.contextNotice,
+    (focus as { contextNotice?: string }).contextNotice,
     'Il collegamento al Piano annuale non è abbastanza certo: mantengo orario, classe e continuità disponibili senza inventare la lezione.',
   )
 })
