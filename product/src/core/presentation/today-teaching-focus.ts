@@ -29,6 +29,7 @@ export type TodayTeachingFocus = {
   chips: string[]
   action: TodayTeachingFocusAction | null
   continuity: TodayTeachingContinuity
+  contextNotice: string | null
 }
 
 export function buildTodayTeachingFocus(input: {
@@ -74,6 +75,9 @@ export function buildTodayTeachingFocus(input: {
           href: action.href,
         }
       : null,
+    contextNotice: canonical
+      ? null
+      : 'Il collegamento al Piano annuale non è abbastanza certo: mantengo orario, classe e continuità disponibili senza inventare la lezione.',
   }
 }
 
