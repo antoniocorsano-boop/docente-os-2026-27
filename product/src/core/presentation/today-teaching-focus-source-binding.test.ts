@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { TodayTeachingFocusCard } from '@/app/planner/today-teaching-focus-card'
 import type { NextLessonPreparation } from './next-lesson-preparation'
-import { buildTodayTeachingFocus } from './today-teaching-focus'
+import { buildTodayTeachingFocus, type TodayTeachingFocus } from './today-teaching-focus'
 
 const DATE = '2026-10-17'
 const FUTURE_DATE = '2026-10-18'
+const CONTEXT_NOTICE = 'Il collegamento al Piano annuale non è abbastanza certo: mantengo orario, classe e continuità disponibili senza inventare la lezione.'
 
 function preparation(overrides: Partial<NextLessonPreparation> = {}): NextLessonPreparation {
   return {
@@ -148,10 +152,21 @@ test('ambiguous canonical context keeps known lesson facts and states uncertaint
     href: '/classi/section-2c',
   })
   assert.equal(focus.continuity?.detail, 'Riprendere la misura dell’oggetto e confrontare gli errori.')
-  assert.equal(
-    (focus as { contextNotice?: string }).contextNotice,
-    'Il collegamento al Piano annuale non è abbastanza certo: mantengo orario, classe e continuità disponibili senza inventare la lezione.',
-  )
+  assert.equal((focus as { contextNotice?: string }).contextNotice, CONTEXT_NOTICE)
+})
+
+test('teacher-first card renders the uncertain canonical context notice', () => {
+  const focus = buildTodayTeachingFocus({
+    preparation: preparation({ canonicalLesson: null }),
+    localDate: DATE,
+    minuteOfDay: 13 * 60 + 30,
+  })
+
+  assert.ok(focus)
+  const markup = renderToStaticMarkup(createElement(TodayTeachingFocusCard, {
+    focus: { ...focus, contextNotice: CONTEXT_NOTICE } as TodayTeachingFocus,
+  }))
+  assert.match(markup, new RegExp(CONTEXT_NOTICE))
 })
 
 test('teacher-first focus never invents an action without a section', () => {
