@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import styles from './lesson-shell.module.css'
 
 export type LessonShellPhase = 'prepare' | 'teach' | 'observe' | 'record'
 
@@ -25,11 +26,11 @@ export function LessonShell({
   phase: LessonShellPhase
 }) {
   return (
-    <header className="lessonFocusedShell" data-lesson-shell>
-      <Link className="lessonFocusedBack" href="/planner">← Oggi</Link>
-      <p className="lessonFocusedContext">{sectionLabel} · {disciplineLabel}</p>
-      <h1>{lessonTitle}</h1>
-      <nav className="lessonFocusedPhases" aria-label="Fasi della lezione">
+    <header className={styles.shell} data-lesson-shell>
+      <Link className={styles.back} href="/planner">← Oggi</Link>
+      <p className={styles.context}>{sectionLabel} · {disciplineLabel}</p>
+      <h1 className={styles.title}>{lessonTitle}</h1>
+      <nav className={styles.phases} aria-label="Fasi della lezione">
         {PHASES.map((item) => (
           <Link
             key={item.id}
