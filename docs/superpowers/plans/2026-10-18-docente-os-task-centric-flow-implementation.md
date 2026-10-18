@@ -4,9 +4,9 @@
 
 **Goal:** Implement the approved teacher-first flow `OGGI → PREPARA → MATERIALI → VISUALIZZA MATERIALE → CONDUCI → OSSERVA → REGISTRA → CONTINUA` by recomposing existing Docente OS capabilities without creating a second lesson, materials, curriculum, or continuity authority.
 
-**Architecture:** Keep the current authoritative runtime stores and lesson workspace route. Make `Oggi` the only primary daily cockpit, add a persistent focused Lesson Shell around the existing `prepare / teach / observe / record` modes, extract the existing material-intent UI from the broader design tools, make Knowledge task-aware visually as well as in routing, and keep post-registration continuity inside the lesson task before returning to broader navigation. `Classe` remains voluntary longitudinal context; `Progetta`, `Conoscenza`, `Piano annuale`, Atlas and Studio Atlas remain subordinate/exploratory capabilities.
+**Architecture:** Keep the existing lesson workspace, repositories, annual-plan authority, timetable authority, TeachingSession model and preparation-approval boundary. Make `Oggi` the only primary daily cockpit; use a shared persistent Lesson Shell across the lesson workspace and task-aware material viewer; extract the existing `Riutilizza / Adatta / Crea` capability from the broader design tools; keep post-registration continuity inside the lesson task before broader navigation. `Classe` remains voluntary longitudinal context; `Progetta`, `Conoscenza`, `Piano annuale`, Atlas and Studio Atlas remain subordinate/exploratory capabilities.
 
-**Tech Stack:** Next.js 16.3.1, React 19.2.8, TypeScript 5.9.2, Node 22.x, Supabase repositories already in the product, `node:test`/`tsx`, Playwright experience tests, existing Docente OS CSS and Lucide icons.
+**Tech Stack:** Next.js 16.3.1, React 19.2.8, TypeScript 5.9.2, Node 22.x, existing Supabase repositories, `node:test`/`tsx`, Playwright experience tests, existing Docente OS CSS and Lucide icons.
 
 **Spec:** `docs/superpowers/specs/2026-10-18-docente-os-task-centric-flow-architecture-design.md`
 
@@ -17,43 +17,43 @@
 
 ## Global Constraints
 
-- Implementation baseline is `develop@692dcce6b6b2d75c45780d147118f6436a6704d7` unless an explicitly approved integration of PR #719 advances `develop` first.
-- PR #719 remains documentation/design only; product implementation must use a separate branch and PR.
+- Implementation baseline is `develop@692dcce6b6b2d75c45780d147118f6436a6704d7` unless an explicitly approved integration advances `develop` first.
+- PR #719 remains documentation/design only. Product implementation uses a separate branch and PR.
 - The teacher-visible primary graph is exactly `OGGI → PREPARA → MATERIALI → VISUALIZZA MATERIALE → CONDUCI → OSSERVA → REGISTRA → CONTINUA`.
-- `CLASSE` is voluntary longitudinal access, not a mandatory waypoint.
-- `ESPLORA` is outside the primary task flow.
-- Focused views expose one primary CTA, at most two secondary actions, one dominant professional object, no technical codes at first level, and no mandatory cross-domain navigation.
-- Do not add a database migration, lesson store, material store, curriculum authority, or teacher-facing macro-section for this work.
-- Do not change Arena/curriculum authority, annual-plan status semantics, preparation-approval semantics, teaching-session authority, or timetable authority.
-- Do not fabricate a lesson, class, block, timetable occurrence, Atlas catalogue, Atlas availability, or Studio Atlas handoff.
-- Atlas appears only when the existing qualified suggestion resolver returns a real suggestion; provider identity remains provenance, not navigation taxonomy.
+- `CLASSE` is voluntary longitudinal access; `ESPLORA` is outside the primary task flow.
+- Focused views: one primary CTA, at most two secondary actions, one dominant professional object, no technical codes at first level, no mandatory cross-domain navigation.
+- No database migration, new lesson/material store, new curriculum/continuity authority, or new teacher-facing macro-section.
+- Do not change Arena/curriculum authority, annual-plan status semantics, preparation-approval semantics, TeachingSession authority, or timetable authority.
+- Do not fabricate class, lesson, block, occurrence, Atlas catalogue, Atlas availability, or Studio Atlas handoff.
+- Atlas appears only when the existing qualified resolver returns a real suggestion; provider identity is provenance, not navigation taxonomy.
 - Studio Atlas runtime activation remains out of scope.
-- Opening a Knowledge material from PREPARE must preserve the lesson task and return path; the full Knowledge management surface remains available only by deliberate disclosure.
-- Global navigation may be visually subordinated in focused lesson work, but accessibility escape paths and the command/navigation surfaces must remain reachable.
-- No production deploy. Beta promotion requires separate explicit authorization after exact-head engineering qualification.
-- Automated gates never convert the final unaided teacher Human Review to PASS.
+- Opening a Knowledge material from PREPARE preserves class + lesson + task identity and a safe return path. Full Knowledge management appears only by deliberate disclosure.
+- Global navigation may be visually subordinate in focused lesson work, but accessibility escape paths, search and profile remain reachable.
+- No production deploy. Beta promotion needs separate explicit authorization after exact-head qualification.
+- Automated gates never convert final unaided teacher Human Review to PASS.
 
 ## Review Focus
 
-1. **Canonical lesson unresolved:** Oggi must explain uncertainty in task language and must not silently dump the teacher into `Classi → Progetta`; test this in Task 1.
-2. **Material provider unavailable or empty:** PREPARA must remain usable with zero Atlas/Knowledge suggestions and must not show a false Atlas capability; test this in Task 3.
-3. **Preparation approval `NEEDS_APPROVAL / STALE / CURRICULUM_REQUIRED`:** recomposition must not bypass or weaken the existing approval gate; test this in Task 3.
-4. **Registration save failure or browser-storage failure:** entered facts/notes must remain recoverable and CONTINUA must appear only after the authoritative receipt succeeds; test this in Task 6.
-5. **Focused material with missing readable text or malicious `returnTo`:** the viewer must stay inside the task safely, show the existing empty-state fallback, and sanitize return navigation; test this in Task 4.
+1. **Canonical lesson unresolved:** explain uncertainty in task language; never silently dump the teacher into `Classi → Progetta`. Owned by Task 1.
+2. **No qualified materials / no Atlas:** PREPARA remains usable; no synthetic provider card. Owned by Task 3.
+3. **Approval states `NEEDS_APPROVAL / STALE / CURRICULUM_REQUIRED`:** recomposition must not bypass the existing gate. Owned by Task 3.
+4. **Registration failure/browser-storage failure:** CONTINUA appears only after authoritative success; entered data remains retryable. Owned by Task 6.
+5. **Focused material missing readable text or malicious `returnTo`:** truthful empty state and sanitized navigation. Owned by Task 4.
 
 ---
 
 ## File Structure
 
-### New focused UI units
+### New shared/focused units
 
-- `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-shell.tsx` — persistent class/lesson/phase shell; presentation only.
-- `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-shell.css` — focused shell and phase rail styling.
-- `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-materials-panel.tsx` — extracted `Riutilizza / Adatta / Crea` material subtask using existing actions and suggestion types.
-- `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-continue-view.tsx` — post-receipt continuity state; no new persistence.
-- `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-continuation-model.ts` — pure presentation model for the post-registration next step.
-- `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-continuation-model.test.ts` — unit contract for truthful continuity.
-- `product/src/components/app-shell/focused-shell-contract.test.ts` — contract that focused lesson work subordinates global chrome without removing escape/navigation capability.
+- `product/src/components/lesson-task/lesson-shell.tsx` — shared persistent class/lesson/phase shell usable from lesson routes and task-aware Knowledge.
+- `product/src/components/lesson-task/lesson-shell.css` — shell/phase rail styles.
+- `product/src/components/lesson-task/lesson-shell-contract.test.ts` — shell semantics and no technical-code leakage.
+- `product/src/components/app-shell/focused-shell-contract.test.ts` — focused AppShell chrome contract.
+- `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-materials-panel.tsx` — extracted `Riutilizza / Adatta / Crea` subtask, reusing existing writes.
+- `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-continue-view.tsx` — post-receipt continuation screen.
+- `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-continuation-model.ts` — pure truthful continuation presenter.
+- `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-continuation-model.test.ts`.
 
 ### Existing files to recompose
 
@@ -80,12 +80,8 @@
 - `product/src/app/classi/[sectionId]/page.tsx`
 - `product/src/app/classi/class-workspace-model.ts`
 - `product/src/app/classi/class-workspace-model.test.ts`
-- `product/e2e/experience/today-teacher-first.spec.mjs`
-- `product/e2e/experience/lesson-close-task-first.spec.mjs`
-- `product/e2e/experience/lesson-materials.spec.mjs`
-- `product/e2e/experience/classroom-cockpit.spec.mjs`
-- `product/e2e/experience/accessibility.spec.mjs`
-- `product/package.json` only when a new unit test must be added to the explicit `npm test` list.
+- existing E2E specs listed in Task 8.
+- `product/package.json` only to register newly created unit/contract tests in the explicit `npm test` command.
 
 ---
 
@@ -104,12 +100,10 @@
 - Test: `product/e2e/experience/today-teacher-first.spec.mjs`
 
 **Interfaces:**
-- Consumes: existing `NextLessonPreparation`, `buildLessonWorkspaceHref(sectionId, blockId, 'prepare')`, and the current `TodayTeachingFocus` model.
-- Produces: the unchanged canonical PREPARE href when `sectionId + canonical blockId` exist; an explicit uncertainty presentation when they do not; primary navigation `Oggi / Classi / Orario / Altro` with Home no longer competing as a daily cockpit.
+- Consumes: `NextLessonPreparation`, `buildLessonWorkspaceHref(sectionId, blockId, 'prepare')`, current `TodayTeachingFocus`.
+- Produces: direct canonical PREPARE when `sectionId + canonical blockId` exist; explicit task-language uncertainty otherwise; primary mobile/work navigation `Oggi / Classi / Orario / Altro`.
 
-- [ ] **Step 1: Write the failing unit tests for canonical PREPARE and unresolved fallback**
-
-Add `today-teaching-focus.test.ts` with two contracts:
+- [ ] **Step 1: Write RED unit tests**
 
 ```ts
 test('canonical next lesson points directly to PREPARE', () => {
@@ -119,87 +113,71 @@ test('canonical next lesson points directly to PREPARE', () => {
   assert.equal(focus?.action?.href, '/classi/section-3e/lezioni/B01?mode=prepare')
 })
 
-test('unresolved lesson never presents class navigation as if it were preparation', () => {
+test('unresolved lesson never turns class fallback into preparation continuity', () => {
   const focus = buildTodayTeachingFocus(unresolvedPreparationFixture)
   assert.equal(focus?.action?.kind, 'CLASS')
   assert.equal(focus?.continuity, null)
 })
 ```
 
-The unresolved case may still expose `Apri la classe` as a deliberate secondary escape; it must not label it `Prepara lezione` and must not make `Riprendi il filo` point to that fallback.
+- [ ] **Step 2: Verify RED**
 
-- [ ] **Step 2: Run the new test and verify RED**
-
-Run from `product/`:
+From `product/`:
 
 `npx tsx --test src/core/presentation/today-teaching-focus.test.ts`
 
-Expected: at least the unresolved-continuity assertion fails on the baseline.
+Expected: unresolved-continuity assertion fails on baseline.
 
-- [ ] **Step 3: Implement the minimal focus-model correction**
+- [ ] **Step 3: Implement minimal focus-model correction**
 
-In `today-teaching-focus.ts`, keep the existing action union and canonical PREPARE behavior. Build `continuity` only when `action.kind === 'PREPARE'`. Do not invent a block when `canonicalLesson?.blockId` is absent.
+Keep the existing action union and canonical PREPARE href. Build `continuity` only when `action.kind === 'PREPARE'`. Never invent a block when `canonicalLesson?.blockId` is absent.
 
-- [ ] **Step 4: Recompose the Oggi card and remove competing quick actions from the focused state**
+- [ ] **Step 4: Recompose Oggi UI**
 
 In `today-teaching-focus-card.tsx`:
-- canonical PREPARE remains the single dominant CTA;
-- when `action.kind === 'CLASS'`, render an uncertainty message such as `Non riesco ancora a collegare con certezza la prossima fase.` and keep `Apri la classe` visually secondary;
-- do not show technical block/UDA codes.
+- PREPARE is the only dominant CTA when canonical;
+- unresolved case states `Non riesco ancora a collegare con certezza la prossima fase.` (or equivalent approved task-language copy) and keeps `Apri la classe` secondary;
+- no technical block/UDA identifiers first-level.
 
-In `planner/page.tsx`, stop rendering `TodayQuickActions` as a second action grid when `teachingFocus` is present. Keep the day remainder below the primary card.
+In `planner/page.tsx`, do not render `TodayQuickActions` as a competing action grid when a `teachingFocus` exists. Keep remainder-of-day content below the focus.
 
-- [ ] **Step 5: Make Oggi the primary navigation entry without deleting Home functionality**
+- [ ] **Step 5: Remove Home from primary navigation without deleting its route**
 
 In `navigation.ts`:
-- set `MOBILE_NAVIGATION_KEYS` to `['today', 'classes', 'timetable']`; the existing separate `Naviga` button is the fourth mobile item;
-- change the `Adesso` navigation group to contain `today` only;
-- leave the `home` route/item defined for compatibility, but remove it from primary work navigation.
+- `MOBILE_NAVIGATION_KEYS = ['today', 'classes', 'timetable']`;
+- `NAVIGATION_GROUPS` → `Adesso` contains `today` only;
+- retain the `home` item/route for compatibility.
 
-In `app-shell.tsx`, change brand links from `/` to `/planner` so the product logo returns to the daily cockpit. Do **not** delete `product/src/app/page.tsx` in this tranche.
+In `app-shell.tsx`, brand links point to `/planner`, not `/`.
 
-- [ ] **Step 6: Extend navigation tests**
-
-Assert:
-- mobile work navigation resolves `Oggi`, `Classi`, `Orario` in that order;
-- `Home` is not in the primary `Adesso` group;
-- secondary/explore groups remain reachable.
-
-Run:
+- [ ] **Step 6: Extend navigation tests and run GREEN**
 
 `npx tsx --test src/components/app-shell/navigation.test.ts src/core/presentation/today-teaching-focus.test.ts`
 
-Expected: PASS.
+Expected: PASS; mobile work items are `Oggi / Classi / Orario`, while secondary/explore functions remain reachable.
 
-- [ ] **Step 7: Tighten the existing J1 browser contract, without weakening its HVA fixture rules**
+- [ ] **Step 7: Tighten J1 browser contract**
 
-Update `today-teacher-first.spec.mjs` so that when a canonical lesson exists it asserts the first lesson CTA resolves directly to `?mode=prepare`, and the teacher is not required to visit `/classi/{id}` or `/progetta` first. Keep all existing fixture isolation/rollback logic and fail-closed behavior.
+In `today-teacher-first.spec.mjs`, canonical next lesson must go directly to `?mode=prepare`; no required `/classi/{id}` or `/progetta` waypoint. Preserve all existing HVA fixture isolation, rollback and fail-closed rules.
 
-- [ ] **Step 8: Run focused static/unit verification**
-
-Run:
+- [ ] **Step 8: Verify and commit**
 
 `npm run typecheck && npx tsx --test src/components/app-shell/navigation.test.ts src/core/presentation/today-teaching-focus.test.ts`
 
-Expected: PASS.
-
-- [ ] **Step 9: Commit**
-
 ```bash
-git add product/src/core/presentation/today-teaching-focus.ts \
-  product/src/core/presentation/today-teaching-focus.test.ts \
-  product/src/app/planner product/src/components/app-shell \
-  product/e2e/experience/today-teacher-first.spec.mjs product/package.json
+git add product/src/core/presentation/today-teaching-focus* product/src/app/planner \
+  product/src/components/app-shell product/e2e/experience/today-teacher-first.spec.mjs product/package.json
 git commit -m "feat: make Oggi the teacher-first cockpit"
 ```
 
 ---
 
-### Task 2: Add the persistent Lesson Shell and focused AppShell mode
+### Task 2: Add shared Lesson Shell and focused AppShell mode
 
 **Files:**
-- Create: `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-shell.tsx`
-- Create: `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-shell.css`
+- Create: `product/src/components/lesson-task/lesson-shell.tsx`
+- Create: `product/src/components/lesson-task/lesson-shell.css`
+- Create: `product/src/components/lesson-task/lesson-shell-contract.test.ts`
 - Create: `product/src/components/app-shell/focused-shell-contract.test.ts`
 - Modify: `product/src/components/app-shell/app-shell.tsx`
 - Modify: `product/src/app/app-shell.css`
@@ -207,13 +185,11 @@ git commit -m "feat: make Oggi the teacher-first cockpit"
 - Modify: `product/package.json`
 
 **Interfaces:**
-- Consumes: `sectionLabel`, `projection.title`, and `LessonWorkspaceMode` from the existing lesson workspace.
-- Produces:
 
 ```ts
-type LessonShellMode = 'prepare' | 'teach' | 'observe' | 'record'
+export type LessonShellMode = 'prepare' | 'teach' | 'observe' | 'record'
 
-type LessonShellProps = {
+export type LessonShellProps = {
   sectionLabel: string
   lessonTitle: string
   mode: LessonShellMode
@@ -223,64 +199,45 @@ type LessonShellProps = {
 
 `AppShellProps` gains `focusMode?: boolean`, default `false`.
 
-- [ ] **Step 1: Write the focused-shell RED contract**
+- [ ] **Step 1: Write RED shell contracts**
 
-Create `focused-shell-contract.test.ts` to assert from the real sources that:
-- `AppShellProps` exposes `focusMode?: boolean`;
-- focused shell uses a dedicated class on the root/main column;
-- `LessonShell` renders the four teacher phases `Prepara / Conduci / Osserva / Registra` and marks exactly one as current with `aria-current="step"`;
-- the shell contains class label and human lesson title;
-- no `B01`, `CAN-PACK`, UUID, or technical-source label is generated by the component.
+Assert:
+- AppShell exposes `focusMode?: boolean` and applies a stable focused class;
+- LessonShell shows class, human lesson title, four phases `Prepara / Conduci / Osserva / Registra`;
+- exactly one phase has `aria-current="step"`;
+- no `B01`, `CAN-PACK`, UUID or provider metadata is generated by LessonShell.
 
-- [ ] **Step 2: Run RED**
+- [ ] **Step 2: Verify RED**
 
-`npx tsx --test src/components/app-shell/focused-shell-contract.test.ts`
+`npx tsx --test src/components/app-shell/focused-shell-contract.test.ts src/components/lesson-task/lesson-shell-contract.test.ts`
 
-Expected: FAIL because `focusMode` and `lesson-shell.tsx` do not yet exist.
+Expected: FAIL; files/prop absent.
 
 - [ ] **Step 3: Implement `AppShell focusMode`**
 
-Add `focusMode?: boolean` to `AppShellProps`. When true, add a stable CSS class such as `dosShellFocused`. CSS must subordinate sidebar/bottom navigation visually on focused lesson work while preserving:
-- skip link;
-- search/command access;
-- profile access;
-- content focus target.
+Focused CSS visually subordinates sidebar/bottom nav while retaining skip link, search/command, profile and a clear task exit. Do not remove future escape capability merely to match a screenshot.
 
-Do not remove navigation from the DOM solely to obtain the visual result unless accessibility tests prove the alternate exit path is sufficient.
+- [ ] **Step 4: Implement shared `LessonShell`**
 
-- [ ] **Step 4: Implement `LessonShell`**
+Phase rail is orientation, not an authority bypass: future phases are not made freely clickable around the preparation gate.
 
-Render:
-- `sectionLabel`;
-- `lessonTitle`;
-- non-technical phase rail with one `aria-current="step"`;
-- children.
+- [ ] **Step 5: Wrap the lesson workspace**
 
-The phase rail is orientation, not an authority bypass: do not make future phases clickable in a way that circumvents preparation approval.
+In `page.tsx`, keep all current mode/approval authorization. Render `<AppShell ... focusMode>` and wrap the selected mode client in `<LessonShell sectionLabel={sectionLabel} lessonTitle={projection.title} mode={mode}>`.
 
-- [ ] **Step 5: Wrap the existing lesson mode switch in the shell**
+- [ ] **Step 6: Verify and commit**
 
-In `page.tsx`, use `<AppShell ... focusMode>` and wrap the selected client in `<LessonShell sectionLabel={sectionLabel} lessonTitle={projection.title} mode={mode}>`.
-
-Do not change mode authorization, approval redirects, repositories, or data loading.
-
-- [ ] **Step 6: Run contract + typecheck**
-
-`npm run typecheck && npx tsx --test src/components/app-shell/focused-shell-contract.test.ts`
-
-Expected: PASS.
-
-- [ ] **Step 7: Commit**
+`npm run typecheck && npx tsx --test src/components/app-shell/focused-shell-contract.test.ts src/components/lesson-task/lesson-shell-contract.test.ts`
 
 ```bash
-git add product/src/components/app-shell product/src/app/app-shell.css \
-  'product/src/app/classi/[sectionId]/lezioni/[blockId]' product/package.json
-git commit -m "feat: add focused lesson shell"
+git add product/src/components/lesson-task product/src/components/app-shell \
+  product/src/app/app-shell.css 'product/src/app/classi/[sectionId]/lezioni/[blockId]/page.tsx' product/package.json
+git commit -m "feat: add persistent lesson task shell"
 ```
 
 ---
 
-### Task 3: Recompose PREPARA and extract the Materials subtask
+### Task 3: Recompose PREPARA and extract Materials
 
 **Files:**
 - Create: `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-materials-panel.tsx`
@@ -291,8 +248,6 @@ git commit -m "feat: add focused lesson shell"
 - Modify: `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-live.module.css`
 
 **Interfaces:**
-- Consumes: existing `LessonDesignExtension[]`, `LessonKnowledgeSuggestion[]`, `LessonAtlasSuggestion[]`, `runLessonDesignWrite`, and existing explicit attachment/revision actions.
-- Produces:
 
 ```ts
 type LessonMaterialsPanelProps = {
@@ -307,134 +262,88 @@ type LessonMaterialsPanelProps = {
 }
 ```
 
-No new write path is introduced.
+It reuses the existing `runLessonDesignWrite` intents and never creates a second write path.
 
-- [ ] **Step 1: Move the existing material-intent contract to the new component and make it fail first**
+- [ ] **Step 1: Point the existing material UX contract at the new component and verify RED**
 
-Update `lesson-material-task-ux-contract.test.ts` to load `lesson-materials-panel.tsx` and require:
-- exactly three intent controls `Riutilizza / Adatta / Crea`;
-- intent switches are local UI state only;
-- Knowledge and Atlas attachment remain explicit server writes;
-- provider is provenance, not the primary taxonomy;
-- zero suggestions render a truthful empty state and **no** Atlas placeholder;
-- create reuses canonical Knowledge capture and never auto-attaches.
-
-Run:
+Require exactly three local intent controls `Riutilizza / Adatta / Crea`; explicit attachment only; provider as provenance; truthful zero-suggestion state; create via canonical Knowledge capture; source-preserving adaptation.
 
 `node --import tsx 'src/app/classi/[sectionId]/lezioni/[blockId]/lesson-material-task-ux-contract.test.ts'`
 
-Expected: FAIL because the new component does not exist.
+Expected: FAIL because `lesson-materials-panel.tsx` does not exist.
 
-- [ ] **Step 2: Extract `LessonMaterialsPanel` without duplicating authority**
+- [ ] **Step 2: Extract Materials from `LessonDesignTools`**
 
-Move only the material preparation UI and the helper functions it needs from `lesson-design-tools.tsx`. Keep the same `runLessonDesignWrite` intents (`attach-atlas`, `attach-knowledge`, `revise`, `accept`, `remove`) and existing source-preservation rules.
+Move only material intent UI and required helpers. Keep existing write intents (`attach-atlas`, `attach-knowledge`, `revise`, `accept`, `remove`) and source-preservation rules. `LessonDesignTools` remains advanced enrichment/proposals and must not render another material chooser.
 
-`LessonDesignTools` remains the advanced enrichment/proposal surface and must not render a second copy of the material chooser.
+- [ ] **Step 3: Promote Materials in PREPARA**
 
-- [ ] **Step 3: Promote materials into PREPARA**
+Above full-design disclosure, show objective, readiness, material summary/entry and one approval/proceed CTA. `Vedi progettazione completa` keeps sequence/outcomes/enrichment/detail.
 
-In `lesson-prepare-client.tsx`:
-- keep objective and preparation summary above the fold;
-- render a compact `Materiali della lezione` summary/entry before the primary approval CTA;
-- render `LessonMaterialsPanel` as the explicit MATERIALI subtask, not inside `Vedi progettazione completa`;
-- keep `Vedi progettazione completa` for sequence, outcomes, enrichment tools and technical/professional detail;
-- preserve the current preparation approval state machine and `approveLessonPreparationAndProceed` action unchanged.
+Do not weaken `NEEDS_APPROVAL`, `STALE`, `CURRICULUM_REQUIRED`, or approved-to-teach transitions. Intent switching must never approve or attach implicitly.
 
-Do not rename an approval action in a way that hides what is being approved. The visual hierarchy may say `Lezione pronta`; the actual approval copy must remain truthful to the existing approval receipt semantics.
+- [ ] **Step 4: Test zero-provider and approval states**
 
-- [ ] **Step 4: Add approval-regression assertions**
+Add assertions that zero Atlas/Knowledge suggestions do not render fake providers and all approval states preserve current authority semantics.
 
-Extend the contract test/source checks so that:
-- `CURRICULUM_REQUIRED` still provides no proceed action;
-- `STALE` still requires a new explicit approval;
-- `APPROVED` still permits teach;
-- material intent changes never invoke approval or attachment implicitly.
-
-- [ ] **Step 5: Run focused tests**
+- [ ] **Step 5: Verify and commit**
 
 `node --import tsx 'src/app/classi/[sectionId]/lezioni/[blockId]/lesson-material-task-ux-contract.test.ts' && npm run typecheck`
 
-Expected: PASS.
-
-- [ ] **Step 6: Commit**
-
 ```bash
-git add 'product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-materials-panel.tsx' \
-  'product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-prepare-client.tsx' \
-  'product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-design-tools.tsx' \
-  'product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-material-task-ux-contract.test.ts' \
-  'product/src/app/classi/[sectionId]/lezioni/[blockId]'/*.css
+git add 'product/src/app/classi/[sectionId]/lezioni/[blockId]'
 git commit -m "feat: make materials a preparation subtask"
 ```
 
 ---
 
-### Task 4: Make the Knowledge material viewer truly task-focused
+### Task 4: Make Knowledge preview preserve the Lesson Shell
 
 **Files:**
 - Modify: `product/src/core/presentation/task-continuity.ts`
-- Create or modify the existing task-continuity test under `product/src/core/presentation/` to cover the exact focused return contract.
+- Modify/create its exact test under `product/src/core/presentation/`
 - Modify: `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-materials-panel.tsx`
 - Modify: `product/src/app/knowledge/[assetId]/page.tsx`
 - Modify: `product/src/app/knowledge/knowledge-focus.css`
+- Reuse: `product/src/components/lesson-task/lesson-shell.tsx`
 - Test: `product/e2e/experience/lesson-materials.spec.mjs`
 
 **Interfaces:**
-- Consumes: existing `buildTaskAwareKnowledgeHref(assetId, { mode, returnTo, sectionId, blockId })` and `sanitizeInternalReturnTo`.
-- Produces: focused material navigation that returns to the exact PREPARA route and presents the resource as part of the lesson task rather than as a Knowledge-management destination.
+- Consumes: `buildTaskAwareKnowledgeHref`, `sanitizeInternalReturnTo`, query `section`/`block`, current academic annual-plan snapshot, `resolveRuntimeHumanTaskLessonProjection`.
+- Produces: authoritative focused lesson context when section/block resolve; safe generic focused context otherwise; exact return to PREPARE.
 
-- [ ] **Step 1: Write/extend task-continuity RED tests**
+- [ ] **Step 1: Extend task-continuity tests**
 
-Pin these exact behaviors:
-- `returnTo=/classi/<section>/lezioni/<block>?mode=prepare` survives round trip;
-- external/protocol-relative/backslash return targets fall back safely;
-- focused PREPARE links include `mode=prepare`, `section`, `block`, and encoded `returnTo`.
+Pin encoded PREPARE return path and rejection of external/protocol-relative/backslash return targets.
 
-Run the exact task-continuity test file with `npx tsx --test ...`.
+- [ ] **Step 2: Use task-aware Knowledge preview links from Materials**
 
-Expected: existing sanitization tests pass; the new focused material-link assertion fails until the caller is updated.
+Knowledge preview links include `mode=prepare`, `section`, `block`, and exact PREPARE `returnTo`. Atlas remains its real external/public preview only when qualified.
 
-- [ ] **Step 2: Use task-aware links from `LessonMaterialsPanel`**
+- [ ] **Step 3: Resolve class + lesson context server-side in focused Knowledge**
 
-For Knowledge suggestions, replace the generic `/knowledge/{assetId}` preview link with `buildTaskAwareKnowledgeHref` using the current PREPARE route as `returnTo`.
+When `taskMode === 'prepare'` and `query.section/query.block` exist, resolve the section from the active annual snapshot, derive grade/block from the canonical model, then call `resolveRuntimeHumanTaskLessonProjection`. Do **not** trust a query-supplied lesson title as authority.
 
-Atlas remains an external/public preview only when a real Atlas suggestion exists; do not route a fake Atlas item through Knowledge.
+If resolution succeeds, render shared `LessonShell` with authoritative `sectionLabel + projection.title + mode='prepare'`. If not, retain a truthful generic focused context and safe return link; do not invent identity.
 
-- [ ] **Step 3: Recompose the focused branch of `knowledge/[assetId]/page.tsx`**
+- [ ] **Step 4: Recompose the focused Knowledge branch**
 
-When `taskMode === 'prepare'`:
-- use focused AppShell presentation (`focusMode`) and do not make `Conoscenza` the dominant visual identity;
-- show the task return link first;
-- show human title, category/provenance, readable preview and the original-source action when available;
-- remove visible block IDs and technical processing metadata from first level;
-- keep `Gestisci o approfondisci questa risorsa` as the explicit exit to the full Knowledge sheet;
-- if no readable text exists, retain the truthful existing empty-state message rather than fabricating content.
+Use `<AppShell ... focusMode active="classes">`. First level: task return, resource type/title, provenance, readable preview, primary `Usa nella lezione`/return action as supported by the existing material attachment path, up to two secondary actions (`Adatta`, `Apri originale`) when truthful. Hide visible block IDs, processing/generation internals, professional-context editing and generic task creation. Keep one disclosure linking to full Knowledge management.
 
-Full `/knowledge/{assetId}` without task mode remains unchanged as Explore/management.
+If readable text is absent, keep the existing truthful empty-state fallback.
 
-- [ ] **Step 4: Add browser assertions**
+- [ ] **Step 5: Add browser assertions**
 
-In `lesson-materials.spec.mjs`, add a focused path assertion:
-- open a Knowledge suggestion from PREPARE;
-- URL carries task context;
-- page offers `Torna alla preparazione`;
-- first-level screen does not expose management-only headings such as `CONTESTO PROFESSIONALE` or `DAL CONTENUTO ALL’AZIONE`;
-- explicit full-sheet disclosure remains available.
+From PREPARE open a Knowledge suggestion and assert: task context remains, `Torna alla preparazione` exists, full-management headings are absent first-level, explicit full-sheet exit remains.
 
-- [ ] **Step 5: Verify**
-
-Run:
+- [ ] **Step 6: Verify and commit**
 
 `npm run typecheck && node --import tsx 'src/app/classi/[sectionId]/lezioni/[blockId]/lesson-material-task-ux-contract.test.ts'`
 
-Then run the focused Playwright spec in the repository's normal browser-certification environment.
-
-Expected: PASS.
-
-- [ ] **Step 6: Commit**
+Then run the focused `lesson-materials.spec.mjs` in the normal browser-certification environment.
 
 ```bash
-git add product/src/core/presentation/task-continuity.ts \
+git add product/src/core/presentation/task-continuity* \
   'product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-materials-panel.tsx' \
   'product/src/app/knowledge/[assetId]/page.tsx' product/src/app/knowledge/knowledge-focus.css \
   product/e2e/experience/lesson-materials.spec.mjs
@@ -443,64 +352,46 @@ git commit -m "feat: keep material preview inside the lesson task"
 
 ---
 
-### Task 5: Align CONDUCI and OSSERVA to the persistent lesson task
+### Task 5: Align CONDUCI and OSSERVA to the shared shell
 
 **Files:**
 - Modify: `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-live-client.tsx`
 - Modify: `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-observe-client.tsx`
 - Modify: `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-live.module.css`
 - Modify: `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-workspace.css`
-- Modify/Test: `product/src/app/classi/[sectionId]/lezioni/lesson-observation-model.test.ts`
+- Test: `product/src/app/classi/[sectionId]/lezioni/lesson-observation-model.test.ts`
 - Test: `product/e2e/experience/classroom-cockpit.spec.mjs`
 
 **Interfaces:**
-- Consumes: Lesson Shell from Task 2, accepted lesson resources from the existing design-extension pipeline, and existing observation draft/sessionStorage model.
-- Produces: body-only task views under the shared shell; no new teaching-session or observation persistence.
+- Consumes: LessonShell, accepted lesson resources, existing observation draft/sessionStorage model.
+- Produces: task-body views only; no new teaching-session/observation persistence.
 
-- [ ] **Step 1: Add failing presentation assertions to the existing browser/contract coverage**
+- [ ] **Step 1: Tighten browser assertions first**
 
-Pin that CONDUCI:
-- shows the current step/instruction and already selected material actions;
-- does not expose authoring/design controls;
-- primary CTA progresses to observation.
+CONDUCI: current step/instruction + already selected material actions; no design/authoring controls; primary progress toward observation. OSSERVA: concise lesson criteria + expected evidence; optional note remains; full rubric is disclosure.
 
-Pin that OSSERVA:
-- shows concise lesson-relevant criteria and expected evidence;
-- retains the existing optional note/draft behavior;
-- full criteria remain progressive disclosure rather than first-level chrome.
-
-- [ ] **Step 2: Run the existing observation unit tests and browser spec to establish baseline behavior**
-
-Run:
+- [ ] **Step 2: Establish baseline and RED**
 
 `npx tsx --test 'src/app/classi/[sectionId]/lezioni/lesson-observation-model.test.ts'`
 
-Expected: current unit tests PASS; newly tightened browser assertions RED.
+Existing model tests remain PASS; new browser hierarchy assertions should expose remaining UI delta.
 
-- [ ] **Step 3: Remove duplicate task identity from the clients and rely on Lesson Shell**
+- [ ] **Step 3: Remove duplicate class/title/phase identity from clients**
 
-Keep client-specific instructions and actions only. Do not duplicate class/title/phase headers that the shell now owns.
+LessonShell owns identity. Preserve lesson sequence, accepted-extension ordering, storage keys and observation semantics.
 
-- [ ] **Step 4: Recompose hierarchy/CSS to the frozen visual contract**
-
-Do not alter lesson sequence resolution, accepted-extension ordering, sessionStorage keys, or observation model semantics.
-
-- [ ] **Step 5: Verify**
+- [ ] **Step 4: Verify and commit**
 
 `npm run typecheck && npx tsx --test 'src/app/classi/[sectionId]/lezioni/lesson-observation-model.test.ts'`
 
-Then run `classroom-cockpit.spec.mjs` in browser certification.
-
-Expected: PASS.
-
-- [ ] **Step 6: Commit**
+Run `classroom-cockpit.spec.mjs` in browser certification.
 
 ```bash
 git add 'product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-live-client.tsx' \
   'product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-observe-client.tsx' \
   'product/src/app/classi/[sectionId]/lezioni/[blockId]'/*.css \
   product/e2e/experience/classroom-cockpit.spec.mjs
-git commit -m "feat: align teach and observe with the lesson shell"
+git commit -m "feat: align teach and observe with the lesson task"
 ```
 
 ---
@@ -518,8 +409,6 @@ git commit -m "feat: align teach and observe with the lesson shell"
 - Test: `product/e2e/experience/lesson-register.spec.mjs`
 
 **Interfaces:**
-- Consumes: authoritative success result from `recordLessonExecution`, the teacher-entered `nextActivity`, current lesson href, and `/planner`.
-- Produces:
 
 ```ts
 type LessonContinuation = {
@@ -536,58 +425,35 @@ function buildLessonContinuation(input: {
 }): LessonContinuation
 ```
 
-No new persisted status is created. Existing annual-plan semantics `PIANIFICATO / SVOLTO / RECUPERATO / RIMODULATO / ANNULLATO` remain unchanged.
+No new persisted status is created. Existing annual-plan statuses `PIANIFICATO / SVOLTO / RECUPERATO / RIMODULATO / ANNULLATO` remain authoritative. “Partial” continuity is represented only from actual session allocation/progress and/or confirmed `nextActivity`, not via a parallel status vocabulary.
 
-- [ ] **Step 1: Write RED continuation-model tests**
+- [ ] **Step 1: Write RED continuation tests**
 
-Test:
-- with a non-empty confirmed `nextActivity`, CONTINUA shows it and primary CTA returns to PREPARA for the same lesson context (`Riprendi la preparazione` or equivalent truthful copy);
-- with no `nextActivity`, do not invent a next block; primary CTA is `Torna a Oggi`;
-- whitespace-only next activity is treated as absent.
+With confirmed non-empty `nextActivity`, show it and a truthful route back to PREPARE for the current continuation context. With no next activity, do not invent the next annual-plan block; primary action returns to Oggi. Whitespace is absent.
 
-Run:
+- [ ] **Step 2: Verify RED**
 
 `npx tsx --test 'src/app/classi/[sectionId]/lezioni/[blockId]/lesson-continuation-model.test.ts'`
 
-Expected: FAIL because the model does not exist.
+- [ ] **Step 3: Implement pure presenter and Continue view**
 
-- [ ] **Step 2: Implement the pure continuation presenter**
+Presentation only; it never advances annual-plan state.
 
-The model may decide presentation only. It must not inspect or advance the annual plan and must not infer that the next canonical block is the teacher's next real step.
+- [ ] **Step 4: Change registration success behavior**
 
-- [ ] **Step 3: Change `LessonCloseClient` success behavior**
+After authoritative `recordLessonExecution` succeeds: clear existing lesson/observation storage as today, retain receipt in local success state, render `LessonContinueView`, show confirmed next activity when present, and expose presenter actions. Remove immediate `router.push(classHref)`.
 
-On successful `recordLessonExecution`:
-- clear the existing observation/live sessionStorage keys exactly as today;
-- retain the authoritative `teachingSessionId` in local success state;
-- render `LessonContinueView` instead of immediately `router.push(classHref)`;
-- show the teacher's confirmed next activity when present;
-- expose the safe primary/secondary actions from `buildLessonContinuation`.
+On error: no CONTINUA, no storage clear, keep entered state/retry path.
 
-On save failure:
-- do not show CONTINUA;
-- preserve current entered state and current retry copy;
-- do not clear browser storage.
+- [ ] **Step 5: Tighten close/register browser tests**
 
-This task deliberately does **not** invent a persisted `PARZIALE` status. Any future mapping of visual labels such as “Parzialmente svolta” must reuse the authoritative annual-plan/session model in a separately proved change rather than create a parallel status vocabulary.
+Successful registration shows `Lezione registrata` + `Prossimo passo` before broader navigation; `Torna a Oggi` exists; failure remains retryable; old automatic class redirect is absent.
 
-- [ ] **Step 4: Tighten close/register browser tests**
-
-Assert:
-- successful registration stays in the lesson task and shows `Lezione registrata` + `Prossimo passo` before any class navigation;
-- `Torna a Oggi` is available;
-- failure leaves form state/retry path intact;
-- the old automatic class redirect is absent after success.
-
-- [ ] **Step 5: Verify**
+- [ ] **Step 6: Verify and commit**
 
 `npx tsx --test 'src/app/classi/[sectionId]/lezioni/[blockId]/lesson-continuation-model.test.ts' && npm run typecheck`
 
-Then run the two existing close/register Playwright specs in browser certification.
-
-Expected: PASS.
-
-- [ ] **Step 6: Commit**
+Run both existing close/register Playwright specs in browser certification.
 
 ```bash
 git add 'product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-continuation-model.ts' \
@@ -611,48 +477,30 @@ git commit -m "feat: continue from the recorded lesson"
 - Test: `product/e2e/experience/critical-journeys.spec.mjs`
 
 **Interfaces:**
-- Consumes: existing `learningFocus`, annual-plan progress, teaching sessions, next modeled lesson, and existing task-aware links.
-- Produces: top-level class summary with next lesson, last real registered state, next activity/continuity when available, progress, and recent lessons. Deeper planning/material management remains progressive disclosure.
+- Consumes: existing learning focus, annual-plan progress, TeachingSession data, modeled next lesson, task-aware links.
+- Produces: first-level next lesson + recent actual continuity + progress/recent lessons. Advanced planning/material/recording remains behind existing disclosure.
 
-- [ ] **Step 1: Extend `class-workspace-model.test.ts` with the approved longitudinal hierarchy**
+- [ ] **Step 1: Add RED class-model assertions**
 
-Pin:
-- next lesson is first when modeled;
-- recent actual session/continuity is represented from recorded data, not inferred from the next plan block;
-- no next modeled lesson yields a truthful completion/uncertainty state;
-- class view can link to PREPARE but primary Oggi flow does not require visiting Class first.
+Next modeled lesson is first; recent actual session/continuity comes from recorded reality; no modeled lesson gives truthful completion/uncertainty; class can link to PREPARE but Oggi never requires Class as a waypoint.
 
-- [ ] **Step 2: Run RED**
+- [ ] **Step 2: Verify RED**
 
 `npx tsx --test src/app/classi/class-workspace-model.test.ts`
 
-Expected: new hierarchy assertions fail before recomposition.
+- [ ] **Step 3: Recompose first-level class page using existing loaded authorities**
 
-- [ ] **Step 3: Recompose only the first-level class page**
+Promote next lesson, latest actual state/continuity, progress and recent lessons. Demote advanced panels. Add no new data source unless an approved field cannot be obtained from already loaded authoritative data.
 
-Reuse existing loaded repositories/data. Promote:
-- next lesson;
-- latest actual lesson state;
-- next activity/continuity;
-- progress/recent lessons.
-
-Demote advanced registration/planning/material exploration into existing disclosures. Do not add new data loading unless an approved first-level field cannot be built from already loaded authoritative data.
-
-- [ ] **Step 4: Verify**
+- [ ] **Step 4: Verify and commit**
 
 `npx tsx --test src/app/classi/class-workspace-model.test.ts && npm run typecheck`
 
-Then run the affected critical-journey browser checks.
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
+Run affected critical-journey browser checks.
 
 ```bash
-git add product/src/app/classi/class-workspace-model.ts \
-  product/src/app/classi/class-workspace-model.test.ts \
-  'product/src/app/classi/[sectionId]/page.tsx' \
-  product/src/app/classi/class-workspace-operational.css \
+git add product/src/app/classi/class-workspace-model* \
+  'product/src/app/classi/[sectionId]/page.tsx' product/src/app/classi/class-workspace-operational.css \
   product/e2e/experience/critical-journeys.spec.mjs
 git commit -m "feat: make class a voluntary continuity view"
 ```
@@ -666,41 +514,30 @@ git commit -m "feat: make class a voluntary continuity view"
 - Modify: `product/e2e/experience/lesson-materials.spec.mjs`
 - Modify: `product/e2e/experience/classroom-cockpit.spec.mjs`
 - Modify: `product/e2e/experience/lesson-close-task-first.spec.mjs`
-- Modify: `product/e2e/experience/accessibility.spec.mjs` only if the new focused surfaces require additional selectors/coverage.
-- Optional create: `product/e2e/experience/task-centric-lesson-flow.spec.mjs` only if extending the existing specs would duplicate setup or make ownership unclear.
+- Modify: `product/e2e/experience/accessibility.spec.mjs` only if new focused selectors/coverage are needed.
+- Optional create: `product/e2e/experience/task-centric-lesson-flow.spec.mjs` only if one composed journey cannot be expressed cleanly in the existing specs.
 
 **Interfaces:**
-- Consumes: all prior task contracts.
-- Produces: exact-head engineering evidence that the real product implements the approved graph without weakening existing J1/HVA gates.
+- Consumes: all prior contracts.
+- Produces: exact-head engineering evidence for the frozen flow without weakening J1/HVA.
 
-- [ ] **Step 1: Add one end-to-end teacher journey assertion**
+- [ ] **Step 1: Add one composed teacher-journey assertion**
 
-The test must prove, with the existing governed authenticated fixture where applicable:
+Prove:
 
 `Oggi → PREPARA → MATERIALI → focused preview → PREPARA → CONDUCI → OSSERVA → REGISTRA → CONTINUA`
 
-Assertions:
-- task identity remains class + lesson across the focused journey;
-- no mandatory `/progetta` visit;
-- no full Knowledge-management chrome during focused preview;
-- Atlas appears only when an actual qualified suggestion exists;
-- one primary CTA per focused state;
-- after registration, CONTINUA appears before broader navigation;
-- Class remains directly reachable but is not required by the primary path.
+Assert class + lesson identity persists; no mandatory `/progetta`; no full Knowledge-management chrome; Atlas only when truly qualified; one dominant CTA per focused state; CONTINUA precedes broad navigation; Class remains directly reachable but optional.
 
-- [ ] **Step 2: Run the browser test and obtain a genuine RED if the full flow is not yet wired**
+- [ ] **Step 2: Obtain a real RED if integration is incomplete**
 
-Use the repository's normal Browser Certification / HVA workflow. Do not weaken fixtures or add a NOT_APPLICABLE escape merely to obtain GREEN.
+Use the governed Browser Certification/HVA workflow. No fixture weakening, synthetic clock, alternate timetable authority, or NOT_APPLICABLE shortcut.
 
-Expected before final fixes: a specific failure identifying the first broken transition, or PASS if all prior task browser tests already compose correctly.
+- [ ] **Step 3: Fix integration seams only**
 
-- [ ] **Step 3: Fix only integration seams exposed by the end-to-end test**
+Allowed: return href, focus CSS, task label, selector semantics. No new feature scope.
 
-No new feature work in this step. Typical allowed seams are return href, focus CSS, missing task label, or selector semantics.
-
-- [ ] **Step 4: Run local/full product qualification**
-
-From `product/`:
+- [ ] **Step 4: Run full local product qualification**
 
 ```bash
 npm run test
@@ -713,66 +550,51 @@ Expected: all PASS.
 
 - [ ] **Step 5: Run exact-head governed CI**
 
-Require:
-- Product CI PASS on the exact head;
-- Browser Certification/CV2 PASS on the exact head;
-- existing strict `today-teacher-first.spec.mjs` PASS on mobile and desktop;
-- WCAG/accessibility gate PASS;
-- no database/schema replay delta unless unrelated baseline policy already requires the replay.
+Require same-head Product CI PASS, Browser Certification/CV2 PASS, strict J1 mobile+desktop PASS, and accessibility/WCAG gate PASS. Do not rerun deterministic failures hoping for GREEN; diagnose first.
 
-Do not rerun deterministic failures hoping for GREEN; diagnose first.
+- [ ] **Step 6: Independent whole-branch review**
 
-- [ ] **Step 6: Perform independent whole-branch review**
+Review for authority duplication, approval bypass, domain leakage, synthetic Atlas/Studio Atlas claims, Explore regressions, mobile overflow and touch-target/accessibility regressions.
 
-Review specifically for:
-- authority duplication;
-- accidental approval bypass;
-- domain leakage in focused mode;
-- synthetic Atlas/Studio Atlas claims;
-- hidden regression in Home/Class/Knowledge Explore;
-- mobile overflow and touch-target regressions.
+- [ ] **Step 7: Stop at the integration/Beta authorization boundary**
 
-- [ ] **Step 7: Stop at the Beta authorization boundary**
-
-Engineering success is not authorization to merge or promote. Report exact head and evidence. Request separate explicit authorization for any integration/fast-forward and Beta promotion.
-
-After authorized Beta promotion, the final teacher Human Review is unaided and must exercise the real runtime. Automation cannot mark it PASS.
+Report exact head and evidence. Merge/fast-forward and Beta promotion require separate explicit authorization. After authorized Beta promotion, final teacher Human Review is unaided; automation cannot mark it PASS.
 
 ---
 
 ## Execution Order and Review Gates
 
-Execute strictly in this order:
+Execute strictly:
 
-`Task 1 Oggi → Task 2 Lesson Shell → Task 3 PREPARA/Materiali → Task 4 focused viewer → Task 5 Conduci/Osserva → Task 6 Registra/Continua → Task 7 Classe → Task 8 full qualification`
+`Task 1 Oggi → Task 2 Lesson Shell → Task 3 PREPARA/Materiali → Task 4 focused viewer → Task 5 Conduci/Osserva → Task 6 Registra/Continua → Task 7 Classe → Task 8 qualification`
 
-Each task must finish its RED → GREEN cycle and commit before the next task begins. Do not batch multiple task failures into one implementation commit.
+Each task completes its RED → GREEN cycle and commit before the next task. Do not batch failures from multiple tasks into one commit.
 
-The implementation branch should be created separately from PR #719, preferably from the then-current approved `develop`. Suggested branch name:
+Implementation uses a separate product branch from the then-approved `develop`:
 
 `feat/dos-ux-02-task-centric-flow`
 
-Suggested product PR title:
+Suggested PR:
 
 `DOS-UX-02 — task-centric teacher flow implementation`
 
-PR #719 remains the design source; it is not converted into the product PR.
+PR #719 remains the design source and is not converted into the product PR.
 
 ## Definition of Done
 
-Engineering is complete only when all of the following are true on the same exact head:
+Engineering is complete only when, on one exact head:
 
-- the primary teacher path is the frozen task graph;
+- primary teacher path matches the frozen graph;
 - Oggi is the unambiguous daily cockpit;
-- PREPARA opens directly when the canonical lesson is known;
-- focused lesson work preserves class + lesson identity;
+- canonical lesson opens PREPARA directly;
+- class + lesson identity persists through focused material preview and lesson phases;
 - Materials are a PREPARA subtask with `Riutilizza / Adatta / Crea`;
-- focused Knowledge preview does not become Knowledge management;
-- Atlas is shown only as real qualified provenance/source;
-- CONDUCI and OSSERVA remain operational, not authoring surfaces;
-- REGISTRA success produces CONTINUA before leaving the task;
+- focused Knowledge does not become Knowledge management;
+- Atlas is only real qualified provenance/source;
+- CONDUCI and OSSERVA are operational, not authoring surfaces;
+- successful REGISTRA yields CONTINUA before leaving the task;
 - Classe is useful but optional;
-- existing approval, timetable, curriculum, teaching-session and annual-plan authorities are unchanged;
+- approval, timetable, curriculum, TeachingSession and annual-plan authorities remain unchanged;
 - `npm run test`, `typecheck`, `lint`, `build`, Product CI, Browser Certification and accessibility all PASS;
-- exact-head Beta promotion, if desired, has separate explicit authorization;
-- final runtime Human Review remains pending until performed manually.
+- any Beta promotion has separate explicit authorization;
+- runtime Human Review remains pending until performed manually.
