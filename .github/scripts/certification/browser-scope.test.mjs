@@ -50,6 +50,40 @@ test('classroom fixture runs focused classroom HVA specs', () => {
   ])
 })
 
+test('class lesson runtime includes the canonical task-centric journey', () => {
+  const scope = deriveHvaScope([
+    'product/src/app/classi/section/lezioni/block/lesson-prepare-client.tsx',
+  ], { hvaRequired: true })
+  assert.equal(scope.mode, 'FOCUSED')
+  assert.deepEqual(scope.specs, [
+    'e2e/experience/classroom-cockpit.spec.mjs',
+    'e2e/experience/contextual-capabilities.spec.mjs',
+    'e2e/experience/lesson-register.spec.mjs',
+    'e2e/experience/task-centric-teacher-flow.spec.mjs',
+  ])
+})
+
+test('planner runtime includes the canonical task-centric journey', () => {
+  const scope = deriveHvaScope([
+    'product/src/app/planner/today-teaching-focus-card.tsx',
+  ], { hvaRequired: true })
+  assert.equal(scope.mode, 'FOCUSED')
+  assert.deepEqual(scope.specs, [
+    'e2e/experience/surfaces.spec.mjs',
+    'e2e/experience/task-centric-teacher-flow.spec.mjs',
+  ])
+})
+
+test('task-centric journey spec selects itself for focused HVA', () => {
+  const scope = deriveHvaScope([
+    'product/e2e/experience/task-centric-teacher-flow.spec.mjs',
+  ], { hvaRequired: true })
+  assert.equal(scope.mode, 'FOCUSED')
+  assert.deepEqual(scope.specs, [
+    'e2e/experience/task-centric-teacher-flow.spec.mjs',
+  ])
+})
+
 test('unmapped HVA-only support falls back to full HVA', () => {
   const scope = deriveHvaScope([
     'product/e2e/support/unmapped-hva-helper.mjs',
