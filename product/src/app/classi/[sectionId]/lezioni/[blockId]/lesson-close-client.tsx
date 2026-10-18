@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import type { LessonReflectionCaptureActionResult } from '@/core/application/copilot/lesson-reflection-handler'
 import type { ContextualCaptureProposalKind } from '@/core/presentation/contextual-capture'
@@ -16,7 +15,9 @@ import {
   parseStoredLessonObservationDraft,
   type LessonObservationDraftTransport,
 } from '../lesson-observation-model'
-import { recordLessonExecution } from '../actions'
+import { recordLessonExecution, type LessonExecutionOutcome } from '../actions'
+import LessonContinue from './lesson-continue'
+import { LessonShell } from './lesson-shell'
 import LessonVoiceCapture from './lesson-voice-capture'
 import styles from './lesson-live.module.css'
 
@@ -30,6 +31,20 @@ type Block = {
 }
 
 type CloseStep = 'facts' | 'reflection' | 'confirm'
+
+type ContinuationState = {
+  teachingSessionId: string
+  observationCount: number
+  outcome: LessonExecutionOutcome
+  nextActivity: string | null
+}
+
+const OUTCOME_OPTIONS: Array<{ value: LessonExecutionOutcome; label: string }> = [
+  { value: 'SVOLTO', label: 'Svolto' },
+  { value: 'RECUPERATO', label: 'Recuperato' },
+  { value: 'RIMODULATO', label: 'Rimodulato' },
+  { value: 'ANNULLATO', label: 'Annullato' },
+]
 
 const CAPTURE_LABELS: Record<ContextualCaptureProposalKind, string> = {
   LESSON_EXECUTION_NOTE: 'Ciò che è stato svolto',
@@ -47,6 +62,7 @@ export default function LessonCloseClient({
   defaultLocalDate,
   registrationKey,
   voiceCaptureEnabled,
+  nextBlockId,
 }: {
   sectionId: string
   sectionLabel: string
@@ -55,8 +71,8 @@ export default function LessonCloseClient({
   defaultLocalDate: string
   registrationKey: string
   voiceCaptureEnabled: boolean
+  nextBlockId: string | null
 }) {
-  const router = useRouter()
   const [step, setStep] = useState<CloseStep>('facts')
   const [observationDraft, setObservationDraft] = useState<LessonObservationDraftTransport | null>(null)
   const [draftLoaded, setDraftLoaded] = useState(false)
@@ -64,9 +80,11 @@ export default function LessonCloseClient({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [localDate, setLocalDate] = useState(defaultLocalDate)
   const [actualMinutes, setActualMinutes] = useState(String(projection.durationMinutes))
+  const [outcome, setOutcome] = useState<LessonExecutionOutcome>('SVOLTO')
   const [evidenceNote, setEvidenceNote] = useState('')
   const [nextActivity, setNextActivity] = useState('')
   const [udaChangeProposal, setUdaChangeProposal] = useState('')
+  const [continuation, setContinuation] = useState<ContinuationState | null>(null)
   const [capturePreview, setCapturePreview] = useState<LessonReflectionCaptureActionResult | null>(null)
   const [captureError, setCaptureError] = useState<string | null>(null)
   const [organizing, setOrganizing] = useState(false)
@@ -103,8 +121,7 @@ export default function LessonCloseClient({
       } catch {
         // The canonical receipt is authoritative even if browser storage is unavailable.
       }
-      router.push(`${classHref}?session=${encodeURIComponent(receipt.teachingSessionId)}`)
-      router.refresh()
+      setContinuation(receipt)
     } catch (error) {
       const message = error instanceof Error ? error.message : ''
       setSaveError(
@@ -189,14 +206,42 @@ export default function LessonCloseClient({
   const observationStateLabel = observationDraft
     ? LESSON_OBSERVATION_STATE_OPTIONS.find((item) => item.value === observationDraft.state)?.label ?? observationDraft.state
     : null
+  const outcomeLabel = OUTCOME_OPTIONS.find((item) => item.value === outcome)?.label ?? outcome
+
+  const lessonShell = (
+    <LessonShell
+      sectionId={sectionId}
+      blockId={block.id}
+      sectionLabel={sectionLabel}
+      disciplineLabel="Tecnologia"
+      lessonTitle={projection.title}
+      phase="record"
+    />
+  )
+
+  if (continuation) {
+    return (
+      <main className={styles.closeSurface}>
+        {lessonShell}
+        <LessonContinue
+          sectionId={sectionId}
+          blockId={block.id}
+          nextBlockId={nextBlockId}
+          outcome={continuation.outcome}
+          nextActivity={continuation.nextActivity}
+        />
+      </main>
+    )
+  }
 
   return (
     <main className={styles.closeSurface}>
+      {lessonShell}
       <form action={submitLesson} className={styles.closeCard}>
         <header className={styles.lessonBriefHeader}>
           <Link className={styles.back} href={classHref}>← {sectionLabel}</Link>
           <p className={styles.eyebrow}>REGISTRA LA LEZIONE · {sectionLabel}</p>
-          <h1>Chiudi la lezione senza ricopiare tutto</h1>
+          <h2>Chiudi la lezione senza ricopiare tutto</h2>
           <p className={styles.closeLead}>Un passaggio alla volta. Salvi solo ciò che confermi; Piano e UDA non vengono modificati automaticamente.</p>
         </header>
 
@@ -233,10 +278,16 @@ export default function LessonCloseClient({
         {step === 'facts' ? (
           <section className={styles.closeStepPanel} aria-labelledby="close-facts-title">
             <span className={styles.lessonBriefLabel}>1 · DATI ESSENZIALI</span>
-            <h2 id="close-facts-title">Quando e quanto?</h2>
-            <p className={styles.privacyNote}>Controlla soltanto i dati reali della lezione.</p>
+            <h2 id="close-facts-title">Com’è andata davvero?</h2>
+            <p className={styles.privacyNote}>Registra il fatto professionale; i dettagli restano facoltativi.</p>
 
             <div className={styles.sessionFacts}>
+              <label className={styles.sessionField}>
+                <span>Esito effettivo</span>
+                <select name="outcome" value={outcome} onChange={(event) => setOutcome(event.target.value as LessonExecutionOutcome)}>
+                  {OUTCOME_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                </select>
+              </label>
               <label className={styles.sessionField}>
                 <span>Data della lezione</span>
                 <input type="date" required value={localDate} max={defaultLocalDate} onChange={(event) => setLocalDate(event.target.value)} />
@@ -374,6 +425,7 @@ export default function LessonCloseClient({
             <h2 id="close-confirm-title">Controlla cosa verrà salvato</h2>
 
             <div className={styles.closeReviewGrid}>
+              <div><span>Esito effettivo</span><strong>{outcomeLabel}</strong></div>
               <div><span>Data</span><strong>{localDate}</strong></div>
               <div><span>Durata</span><strong>{actualMinutes} min</strong></div>
               <div><span>Osservazione</span><strong>{observationDraft ? `${observationDimensionLabel} · ${observationStateLabel}` : 'Nessuna'}</strong></div>
@@ -385,7 +437,7 @@ export default function LessonCloseClient({
             <details className={styles.compactDisclosure}>
               <summary>Cosa succede quando registri</summary>
               <div className={styles.detailStack}>
-                <p className={styles.privacyNote}>Salvi ciò che è stato svolto in questa lezione. Il percorso annuale non viene segnato automaticamente come completato.</p>
+                <p className={styles.privacyNote}>Salvi la TeachingSession e le eventuali note confermate. L’esito guida CONTINUA, ma non aggiorna automaticamente il Piano annuale.</p>
                 <Link href={observeHref}>Rivedi le osservazioni</Link>
                 <Link href={teachHref}>Torna alla guida della lezione</Link>
               </div>
@@ -396,7 +448,7 @@ export default function LessonCloseClient({
             <div className={styles.closeStepActions}>
               <button type="button" onClick={() => setStep('reflection')}>Modifica</button>
               <button className={styles.primary} type="submit" disabled={saving || !draftLoaded || voiceBusy || !localDate || !actualMinutes}>
-                {saving ? 'Registrazione…' : 'Registra e torna alla classe'}
+                {saving ? 'Registrazione…' : 'Registra e continua'}
               </button>
             </div>
           </section>
