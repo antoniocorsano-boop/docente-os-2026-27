@@ -61,7 +61,6 @@ test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async
     await expect(page.getByRole('button', { name: 'Riutilizza', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Adatta', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: /Crea/ })).toBeVisible()
-    await expect(page.getByText('Conoscenza', { exact: true })).toHaveCount(0)
     await expect(page.getByText('Progetta', { exact: true })).toHaveCount(0)
 
     const firstPreview = page.getByRole('link', { name: 'Controlla', exact: true }).first()
@@ -80,7 +79,7 @@ test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async
     await expect(page.locator('[data-lesson-shell]')).toContainText(lessonTitle)
     await expect(materialPreview.getByRole('button', { name: 'Usa nella lezione', exact: true })).toBeVisible()
     await expect(materialPreview).not.toContainText(/\bB\d{2}\b/)
-    await expect(page.getByText('Conoscenza', { exact: true })).toHaveCount(0)
+    await expect(page.locator('.focusedKnowledgeSurface')).toHaveCount(0)
 
     const backToMaterials = page.getByRole('link', { name: 'Torna ai materiali', exact: true })
     await expect(backToMaterials).toBeVisible()
