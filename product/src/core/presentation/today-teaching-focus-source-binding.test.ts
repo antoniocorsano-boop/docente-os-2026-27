@@ -4,6 +4,7 @@ import type { NextLessonPreparation } from './next-lesson-preparation'
 import { buildTodayTeachingFocus } from './today-teaching-focus'
 
 const DATE = '2026-10-17'
+const FUTURE_DATE = '2026-10-18'
 
 function preparation(overrides: Partial<NextLessonPreparation> = {}): NextLessonPreparation {
   return {
@@ -41,12 +42,13 @@ function preparation(overrides: Partial<NextLessonPreparation> = {}): NextLesson
 }
 
 test('teacher-first focus exposes a direct canonical preparation action for the next lesson', () => {
-  const focus = buildTodayTeachingFocus({ preparation: preparation(), minuteOfDay: 13 * 60 + 30 })
+  const focus = buildTodayTeachingFocus({ preparation: preparation(), localDate: DATE, minuteOfDay: 13 * 60 + 30 })
 
   assert.ok(focus)
   assert.equal(focus.state, 'NEXT')
   assert.equal(focus.stateLabel, 'Prossima lezione')
   assert.equal(focus.minutesUntilStart, 30)
+  assert.equal(focus.dateLabel, null)
   assert.equal(focus.classLabel, '2ª C')
   assert.equal(focus.subjectLabel, 'Tecnologia')
   assert.equal(focus.lessonTitle, 'Misurare con precisione')
@@ -59,16 +61,56 @@ test('teacher-first focus exposes a direct canonical preparation action for the 
 })
 
 test('teacher-first focus marks an in-progress lesson explicitly', () => {
-  const focus = buildTodayTeachingFocus({ preparation: preparation(), minuteOfDay: 14 * 60 + 20 })
+  const focus = buildTodayTeachingFocus({ preparation: preparation(), localDate: DATE, minuteOfDay: 14 * 60 + 20 })
   assert.ok(focus)
   assert.equal(focus.state, 'CURRENT')
   assert.equal(focus.stateLabel, 'Lezione in corso')
   assert.equal(focus.minutesUntilStart, 0)
+  assert.equal(focus.dateLabel, null)
+})
+
+test('teacher-first focus keeps the next future-day lesson visible independently of todays clock time', () => {
+  const base = preparation()
+  const focus = buildTodayTeachingFocus({
+    preparation: preparation({
+      lesson: {
+        ...base.lesson,
+        startAt: `${FUTURE_DATE}T09:00:00`,
+        endAt: `${FUTURE_DATE}T10:00:00`,
+      },
+    }),
+    localDate: DATE,
+    minuteOfDay: 18 * 60,
+  })
+
+  assert.ok(focus)
+  assert.equal(focus.state, 'NEXT')
+  assert.equal(focus.stateLabel, 'Prossima lezione')
+  assert.equal(focus.minutesUntilStart, null)
+  assert.equal(focus.dateLabel, 'Domani')
+})
+
+test('teacher-first focus rejects stale preparation from a previous date', () => {
+  const base = preparation()
+  const focus = buildTodayTeachingFocus({
+    preparation: preparation({
+      lesson: {
+        ...base.lesson,
+        startAt: '2026-10-16T14:00:00',
+        endAt: '2026-10-16T15:00:00',
+      },
+    }),
+    localDate: DATE,
+    minuteOfDay: 9 * 60,
+  })
+
+  assert.equal(focus, null)
 })
 
 test('teacher-first focus fails closed to the class when the canonical lesson is unavailable', () => {
   const focus = buildTodayTeachingFocus({
     preparation: preparation({ canonicalLesson: null }),
+    localDate: DATE,
     minuteOfDay: 13 * 60 + 30,
   })
 
@@ -85,6 +127,7 @@ test('teacher-first focus never invents an action without a section', () => {
   const base = preparation()
   const focus = buildTodayTeachingFocus({
     preparation: preparation({ lesson: { ...base.lesson, sectionId: null } }),
+    localDate: DATE,
     minuteOfDay: 13 * 60 + 30,
   })
 
@@ -101,6 +144,7 @@ test('Diary continuity is presented as Riprendi il filo, not as a fabricated res
         sourceLocalDate: '2026-10-15',
       },
     }),
+    localDate: DATE,
     minuteOfDay: 13 * 60 + 30,
   })
 
@@ -114,7 +158,7 @@ test('Diary continuity is presented as Riprendi il filo, not as a fabricated res
 })
 
 test('teacher-first focus omits continuity when no real Diary continuation exists', () => {
-  const focus = buildTodayTeachingFocus({ preparation: preparation(), minuteOfDay: 13 * 60 + 30 })
+  const focus = buildTodayTeachingFocus({ preparation: preparation(), localDate: DATE, minuteOfDay: 13 * 60 + 30 })
   assert.ok(focus)
   assert.equal(focus.continuity, null)
 })
@@ -123,6 +167,7 @@ test('provisional timetable authority remains explicit', () => {
   const base = preparation()
   const focus = buildTodayTeachingFocus({
     preparation: preparation({ lesson: { ...base.lesson, authority: 'PROVISIONAL_DRAFT' } }),
+    localDate: DATE,
     minuteOfDay: 13 * 60 + 30,
   })
 
@@ -132,5 +177,5 @@ test('provisional timetable authority remains explicit', () => {
 })
 
 test('no preparation means no teacher-first lesson focus', () => {
-  assert.equal(buildTodayTeachingFocus({ preparation: null, minuteOfDay: 13 * 60 + 30 }), null)
+  assert.equal(buildTodayTeachingFocus({ preparation: null, localDate: DATE, minuteOfDay: 13 * 60 + 30 }), null)
 })
