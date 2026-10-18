@@ -10,7 +10,7 @@ requireE2ECredentials()
 const outputRoot = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience'
 
 for (const classMatcher of [/2ª\s*A/i]) {
-  test('Journey: Classe → task corrente → supporti su richiesta', async ({ page }, testInfo) => {
+  test('Journey: Classe → continuità longitudinale → supporti su richiesta', async ({ page }, testInfo) => {
     await loginE2E(page)
     await page.goto('/classi')
 
@@ -32,11 +32,24 @@ for (const classMatcher of [/2ª\s*A/i]) {
       await expect(page.locator('.classLessonFocus')).toContainText(/ADESSO|PERCORSO COMPLETATO/)
       await expect(page.locator('.classLessonFocus')).toContainText(/Dopo |Consulta Piano/)
 
+      const continuity = page.getByRole('region', { name: 'Continuità della classe' })
+      await expect(
+        continuity,
+        'Task 8 richiede una vista longitudinale sempre leggibile senza dipendere da una receipt nella URL.',
+      ).toBeVisible()
+      await expect(continuity).toContainText('Ultimo lavoro')
+      await expect(continuity).toContainText('Prossima attività')
+      await expect(continuity).toContainText('Avanzamento')
+      await expect(continuity).toContainText('Contesto recente')
+
       const primaryActions = page.locator('.classLessonFocusActions a.primary')
       await expect(primaryActions, 'UX-0C richiede una sola CTA primaria nella Classe.').toHaveCount(1)
       const secondaryActions = page.locator('.classLessonFocusActions a:not(.primary)')
       await expect(secondaryActions, 'La Classe può esporre una sola azione secondaria stabile: Prima della lezione.').toHaveCount(1)
       await expect(secondaryActions.first()).toHaveText('Prima della lezione')
+
+      const exploration = page.locator('details.humanTaskSecondary')
+      await expect(exploration, 'Progetta, Conoscenza e Piano annuale devono restare esplorazione secondaria.').not.toHaveAttribute('open', '')
 
       const supports = page.getByTestId('class-lesson-supports')
       await expect(supports).toBeVisible()
@@ -90,7 +103,7 @@ for (const classMatcher of [/2ª\s*A/i]) {
       await screenshot(page, testInfo, 'classroom-cockpit')
       await recordJourney(testInfo.project.name, {
         status: 'PASS',
-        note: `${fixture.classLabel} · gerarchia Adesso→Dopo · CTA primaria unica · accesso secondario Prima della lezione · supporti chiusi per default e materiale predisposto raggiungibile`,
+        note: `${fixture.classLabel} · continuità longitudinale · gerarchia Adesso→Dopo · CTA primaria unica · supporti ed esplorazione secondari`,
       })
     } finally {
       await deleteKnowledgeAsset(page, fixture.assetId).catch(() => {})
@@ -110,7 +123,7 @@ async function recordJourney(project, result) {
   const payload = {
     schemaVersion: 1,
     id: 'classroom-cockpit',
-    label: 'Classe → task corrente → supporti su richiesta',
+    label: 'Classe → continuità longitudinale → supporti su richiesta',
     project,
     status: result.status,
     note: result.note,
