@@ -10,9 +10,11 @@ export function TodayTeachingFocusCard({ focus }: { focus: TodayTeachingFocus })
           <span className="todayTeachingState">{focus.stateLabel}</span>
           <span className="todayTeachingTime">
             <Clock3 size={15} aria-hidden />
-            {focus.state === 'NEXT' && focus.minutesUntilStart > 0
-              ? `Tra ${focus.minutesUntilStart} min`
-              : `${timeLabel(focus.startAt)}–${timeLabel(focus.endAt)}`}
+            {focus.dateLabel
+              ? `${focus.dateLabel} · ${timeLabel(focus.startAt)}`
+              : focus.state === 'NEXT' && focus.minutesUntilStart !== null && focus.minutesUntilStart > 0
+                ? `Tra ${focus.minutesUntilStart} min`
+                : `${timeLabel(focus.startAt)}–${timeLabel(focus.endAt)}`}
           </span>
         </div>
 
@@ -23,7 +25,8 @@ export function TodayTeachingFocusCard({ focus }: { focus: TodayTeachingFocus })
 
         <h2 id="today-teaching-focus-title">{focus.lessonTitle}</h2>
         <p className="todayTeachingSchedule">
-          {timeLabel(focus.startAt)}–{timeLabel(focus.endAt)}
+          {focus.dateLabel ? <><span>{focus.dateLabel}</span><span aria-hidden>·</span></> : null}
+          <span>{timeLabel(focus.startAt)}–{timeLabel(focus.endAt)}</span>
           <span aria-hidden>·</span>
           <span>{focus.authorityLabel}</span>
         </p>
