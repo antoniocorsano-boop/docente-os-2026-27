@@ -55,15 +55,30 @@ test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async
     await expect(page.getByText('Conoscenza', { exact: true })).toHaveCount(0)
     await expect(page.getByText('Progetta', { exact: true })).toHaveCount(0)
 
-    const firstPreview = page.getByRole('link', { name: 'Anteprima', exact: true }).first()
-      .or(page.getByRole('button', { name: 'Anteprima', exact: true }).first())
-    if (await firstPreview.count()) {
-      await firstPreview.click()
-      await expect(page.locator('[data-lesson-material-preview]')).toBeVisible()
-      await expect(page.locator('[data-lesson-shell]')).toContainText(classLabel)
-      await expect(page.locator('[data-lesson-shell]')).toContainText(lessonTitle)
-      await expect(page.getByText('Conoscenza', { exact: true })).toHaveCount(0)
-    }
+    const firstPreview = page.getByRole('link', { name: 'Controlla', exact: true }).first()
+    await expect(
+      firstPreview,
+      'Una risorsa Knowledge proposta in Materiali deve aprirsi nel Viewer focalizzato del compito.',
+    ).toBeVisible()
+    await firstPreview.click()
+
+    const materialPreview = page.locator('[data-lesson-material-preview]')
+    await expect(
+      materialPreview,
+      'Il Viewer deve restare una superficie della lezione, non diventare la scheda generica di Conoscenza.',
+    ).toBeVisible()
+    await expect(page.locator('[data-lesson-shell]')).toContainText(classLabel)
+    await expect(page.locator('[data-lesson-shell]')).toContainText(lessonTitle)
+    await expect(materialPreview.getByRole('button', { name: 'Usa nella lezione', exact: true })).toBeVisible()
+    await expect(materialPreview).not.toContainText(/\bB\d{2}\b/)
+    await expect(page.getByText('Conoscenza', { exact: true })).toHaveCount(0)
+
+    const backToMaterials = page.getByRole('link', { name: 'Torna ai materiali', exact: true })
+    await expect(backToMaterials).toBeVisible()
+    await backToMaterials.click()
+    await expect(page.locator('[data-lesson-subtask="materials"]')).toBeVisible()
+    await expect(page.locator('[data-lesson-shell]')).toContainText(classLabel)
+    await expect(page.locator('[data-lesson-shell]')).toContainText(lessonTitle)
 
     if (testInfo.project.name.startsWith('mobile')) {
       await page.setViewportSize({ width: 320, height: 800 })
