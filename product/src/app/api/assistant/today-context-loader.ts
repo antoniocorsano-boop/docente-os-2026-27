@@ -16,6 +16,11 @@ import {
   type LoadedNextLessonPreparation,
 } from './next-lesson-preparation-loader'
 
+const NEXT_LESSON_LOOKAHEAD_DAYS = 7
+
+type TimetableProjection = Awaited<ReturnType<SupabaseTimetableProjectionReadRepository['read']>>
+type CalendarProjection = Awaited<ReturnType<SupabaseCalendarProjectionReadRepository['read']>>
+
 export type LoadedTodayOperationalContext = {
   workspaceContext: NonNullable<Awaited<ReturnType<SupabaseWorkspaceRepository['getCurrentContext']>>>
   localDate: string
@@ -88,6 +93,15 @@ export async function loadCurrentTodayOperationalContext(): Promise<LoadedTodayO
       homeDaily,
       minuteOfDay: clock.minuteOfDay,
     })
+    if (!preparation) {
+      preparation = await loadNearestUpcomingPreparation({
+        workspaceId: workspaceContext.workspace.id,
+        academicYearId,
+        localDate: clock.localDate,
+        timetable,
+        calendar,
+      })
+    }
   } catch {
     console.warn('[DOCENTE OS] Lesson preparation unavailable; Today Copilot continues with base context.')
   }
@@ -101,6 +115,46 @@ export async function loadCurrentTodayOperationalContext(): Promise<LoadedTodayO
     homeDaily,
     preparation,
   }
+}
+
+async function loadNearestUpcomingPreparation(input: {
+  workspaceId: string
+  academicYearId: string
+  localDate: string
+  timetable: TimetableProjection
+  calendar: CalendarProjection
+}): Promise<LoadedNextLessonPreparation | null> {
+  for (let offset = 1; offset <= NEXT_LESSON_LOOKAHEAD_DAYS; offset += 1) {
+    const futureDate = addLocalDays(input.localDate, offset)
+    const projectedDay = projectTemporalDay({
+      localDate: futureDate,
+      timetableVersions: input.timetable.versions,
+      timetableSlots: input.timetable.slots,
+      calendarDays: input.calendar.days,
+      calendarEvents: input.calendar.events,
+    })
+    const futureDaily = resolveHomeDailyContext({
+      localDate: futureDate,
+      minuteOfDay: 0,
+      projectedDay,
+      timetableVersions: input.timetable.versions,
+      timetableSlots: input.timetable.slots,
+      sessions: [],
+    })
+
+    if (futureDaily.authority === 'AMBIGUOUS') return null
+    if (!futureDaily.lessons.length) continue
+
+    const preparation = await loadNextLessonPreparationBundle({
+      workspaceId: input.workspaceId,
+      academicYearId: input.academicYearId,
+      homeDaily: futureDaily,
+      minuteOfDay: 0,
+    })
+    if (preparation) return preparation
+  }
+
+  return null
 }
 
 export async function loadCurrentTodayCopilotContext(): Promise<LoadedTodayCopilotContext | null> {
@@ -146,6 +200,12 @@ function emptyDailyContext(localDate: string): HomeDailyContext {
     pendingRegistrationCount: 0,
     primary: null,
   }
+}
+
+function addLocalDays(localDate: string, days: number) {
+  const date = new Date(`${localDate}T12:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
 }
 
 function currentRomeClock() {
