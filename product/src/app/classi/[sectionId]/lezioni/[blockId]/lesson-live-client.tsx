@@ -14,6 +14,7 @@ import {
   type HumanTaskResource,
 } from '@/core/presentation/human-task-content'
 import { resolveLiveMaterialLink } from './lesson-live-material-link'
+import { LessonShell } from './lesson-shell'
 import styles from './lesson-live.module.css'
 
 type Block = {
@@ -65,9 +66,21 @@ export default function LessonLiveClient({
   const recordHref = buildLessonWorkspaceHref(sectionId, block.id, 'record')
   const recorded = progress.status === 'SVOLTO' || progress.status === 'RECUPERATO' || progress.status === 'RIMODULATO'
 
+  const lessonShell = (
+    <LessonShell
+      sectionId={sectionId}
+      blockId={block.id}
+      sectionLabel={sectionLabel}
+      disciplineLabel="Tecnologia"
+      lessonTitle={projection.title}
+      phase="teach"
+    />
+  )
+
   if (!currentStep) {
     return (
       <main className={styles.surface}>
+        {lessonShell}
         <section className={styles.stepCard}>
           <h2>Questa lezione non ha ancora una sequenza guidata.</h2>
           <p className={styles.instruction}>Torna alla classe: DOCENTE OS non inventa passaggi che non sono presenti nella proiezione approvata.</p>
@@ -79,12 +92,10 @@ export default function LessonLiveClient({
 
   return (
     <main className={styles.surface}>
+      {lessonShell}
       <header className={styles.header}>
-        <Link className={styles.back} href={classHref}>← {sectionLabel}</Link>
         <p className={styles.eyebrow}>{recorded ? 'LEZIONE REGISTRATA · MODALITÀ GUIDA' : 'IN CLASSE · MODALITÀ LEZIONE'}</p>
-        <h1>{projection.title}</h1>
         <div className={styles.meta}>
-          <span>{sectionLabel}</span>
           <span>{formatDuration(projection.durationMinutes)}</span>
           <span>{projection.udaTitle}</span>
           <span>{udaProgress.completed}/{udaProgress.total} concluse</span>
