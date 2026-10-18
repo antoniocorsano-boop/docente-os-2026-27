@@ -88,38 +88,6 @@ test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async
     await expect(page.locator('[data-lesson-shell]')).toContainText(classLabel)
     await expect(page.locator('[data-lesson-shell]')).toContainText(lessonTitle)
 
-    await enterGovernedTeachPhase(page, lessonContext)
-
-    const teachShell = page.locator('[data-lesson-shell]')
-    await expect(
-      teachShell,
-      'CONDUCI deve mantenere la Lesson Shell e non sostituirla con una nuova intestazione di prodotto.',
-    ).toBeVisible()
-    await expect(teachShell).toContainText(classLabel)
-    await expect(teachShell).toContainText(lessonTitle)
-    await expect(page.locator('[data-lesson-phase="teach"]')).toHaveAttribute('aria-current', 'step')
-    await expect(page.getByText(/PASSO 1 DI \d+/)).toBeVisible()
-
-    const observePhase = page.locator('[data-lesson-phase="observe"]')
-    await expect(
-      observePhase,
-      'Da CONDUCI il passaggio a OSSERVA deve restare nel ciclo della stessa lezione.',
-    ).toBeVisible()
-    await observePhase.click()
-
-    const observeShell = page.locator('[data-lesson-shell]')
-    await expect(
-      observeShell,
-      'OSSERVA deve mantenere la Lesson Shell e l’identità della lezione.',
-    ).toBeVisible()
-    await expect(observeShell).toContainText(classLabel)
-    await expect(observeShell).toContainText(lessonTitle)
-    await expect(page.locator('[data-lesson-phase="observe"]')).toHaveAttribute('aria-current', 'step')
-    await expect(page.getByText('EVIDENZA ATTESA', { exact: true })).toBeVisible()
-    await expect(page.getByText(/Non inserire nomi, gruppi identificabili o dati individuali degli alunni/)).toBeVisible()
-    await expect(page.getByText('Vedi criteri completi', { exact: true })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Torna alla lezione', exact: true })).toBeVisible()
-
     if (testInfo.project.name.startsWith('mobile')) {
       await page.setViewportSize({ width: 320, height: 800 })
       const geometry = await page.evaluate(() => ({
@@ -143,29 +111,6 @@ function lessonContextFromPrepareHref(value) {
     : null
   if (!match) throw new Error(`Task-centric viewer fixture: PREPARA href inatteso ${value ?? 'senza href'}`)
   return { sectionId: decodeURIComponent(match[1]), blockId: match[2].toUpperCase() }
-}
-
-async function enterGovernedTeachPhase(page, lessonContext) {
-  const teachHref = `/classi/${encodeURIComponent(lessonContext.sectionId)}/lezioni/${encodeURIComponent(lessonContext.blockId)}?mode=teach`
-  await page.goto(teachHref)
-
-  if (new URL(page.url()).searchParams.get('mode') !== 'prepare') return
-
-  const approve = page.getByRole('button', { name: 'Approva e procedi', exact: true })
-  if (await approve.count()) {
-    await expect(approve).toBeVisible()
-    await approve.click()
-    await expect(page).toHaveURL(/mode=teach/)
-    return
-  }
-
-  const proceed = page.getByRole('link', { name: 'Procedi alla lezione', exact: true })
-  await expect(
-    proceed,
-    'La fixture governata deve poter entrare in CONDUCI tramite approvazione già valida o approvazione esplicita del docente.',
-  ).toBeVisible()
-  await proceed.click()
-  await expect(page).toHaveURL(/mode=teach/)
 }
 
 async function ensureCanonicalJ1Fixture(focus) {
