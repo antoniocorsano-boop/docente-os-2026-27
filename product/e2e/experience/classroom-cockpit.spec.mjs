@@ -48,7 +48,10 @@ for (const classMatcher of [/2ª\s*A/i]) {
       await expect(secondaryActions, 'La Classe può esporre una sola azione secondaria stabile: Prima della lezione.').toHaveCount(1)
       await expect(secondaryActions.first()).toHaveText('Prima della lezione')
 
-      const exploration = page.locator('details.humanTaskSecondary')
+      const exploration = page
+        .locator('details.humanTaskSecondary')
+        .filter({ hasText: 'Contesto della classe e altri percorsi' })
+      await expect(exploration, 'Il pannello di esplorazione secondaria deve restare identificabile in modo univoco.').toHaveCount(1)
       await expect(exploration, 'Progetta, Conoscenza e Piano annuale devono restare esplorazione secondaria.').not.toHaveAttribute('open', '')
 
       const supports = page.getByTestId('class-lesson-supports')
