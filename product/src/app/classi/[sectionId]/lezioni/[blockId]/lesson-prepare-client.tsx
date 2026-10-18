@@ -12,6 +12,7 @@ import {
 } from '@/core/presentation/human-task-content'
 import { buildLessonBrief } from '@/core/presentation/lesson-brief'
 import { LessonDesignTools } from './lesson-design-tools'
+import { LessonMaterials } from './lesson-materials'
 import { LessonShell } from './lesson-shell'
 import type { LessonKnowledgeSuggestion } from './lesson-material-suggestions'
 import type { LessonAtlasSuggestion } from './atlas-material-suggestions'
@@ -63,6 +64,7 @@ export default function LessonPrepareClient({
   }
 }) {
   const [prepared, setPrepared] = useState<Record<number, boolean>>({})
+  const [activeSubtask, setActiveSubtask] = useState<'materials' | null>(null)
   const preparationResources = useMemo(() => resolveHumanTaskResourcesForSurface(projection, 'PREPARE'), [projection])
   const brief = useMemo(() => buildLessonBrief({ projection, extensions }), [projection, extensions])
   const preparedCount = Object.values(prepared).filter(Boolean).length
@@ -124,6 +126,30 @@ export default function LessonPrepareClient({
             ) : null}
           </section>
         </div>
+
+        <div className={styles.closeActions}>
+          <button
+            type="button"
+            aria-expanded={activeSubtask === 'materials'}
+            aria-controls="lesson-materials-subtask"
+            onClick={() => setActiveSubtask('materials')}
+          >
+            Materiali
+          </button>
+        </div>
+
+        {activeSubtask === 'materials' ? (
+          <div id="lesson-materials-subtask">
+            <LessonMaterials
+              sectionId={sectionId}
+              blockId={block.id}
+              projectionId={projection.projectionId}
+              extensions={extensions}
+              knowledgeSuggestions={knowledgeSuggestions}
+              atlasSuggestions={atlasSuggestions}
+            />
+          </div>
+        ) : null}
 
         <div className={styles.planBoundary} role="status" aria-live="polite">
           <strong>{approvalTitle(approval.status)}</strong>
