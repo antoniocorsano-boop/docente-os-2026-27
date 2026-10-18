@@ -79,6 +79,15 @@ test('lesson close no longer asks the teacher to decide plan status as part of r
   assert.match(closeSource, /name=["']actualMinutes["']/)
 })
 
+test('task-centric Registra captures factual outcome without restoring annual-plan write authority', () => {
+  assert.match(closeSource, /name=["']outcome["']/)
+  assert.match(closeSource, /Esito effettivo/)
+  assert.match(actionsSource, /requiredLessonOutcome\(formData, ['"]outcome['"]\)/)
+  assert.match(actionsSource, /outcome,/)
+  assert.doesNotMatch(actionsSource, /saveProgress\s*\(/)
+  assert.doesNotMatch(closeSource, /name=["']status["']/)
+})
+
 test('a TeachingSession cannot be registered with a future lesson date', () => {
   assert.match(actionsSource, /Teaching session date cannot be in the future/)
   assert.match(closeSource, /max=\{defaultLocalDate\}/)
