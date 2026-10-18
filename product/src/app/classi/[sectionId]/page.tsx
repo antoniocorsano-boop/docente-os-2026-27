@@ -5,6 +5,7 @@ import { LessonExperienceFeedback } from '@/components/experience-feedback/exper
 import { buildClassMaterialAcceptanceEvidenceV1 } from '@/core/application/class-material-acceptance-evidence'
 import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
 import { allocatedMinutesByBlock, completionProposal, currentTeachingSessions } from '@/core/domain/teaching-session'
+import { parseTeachingSessionEvidenceNote } from '@/core/domain/teaching-session-reflection'
 import { bindArenaDisciplineRefToDocenteOs, isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
 import { eco02PilotIdentityFromEnv } from '@/core/server/eco02-pilot-config'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
@@ -206,6 +207,31 @@ export default async function ClassWorkspacePage({
   const nextCompletion = nextCanonicalBlock && source
     ? completionProposal({ allocatedMinutes: nextAllocatedMinutes, plannedBlockMinutes: nextCanonicalBlock.hours * 60 })
     : null
+  const latestSession = [...currentSessions].sort((left, right) => {
+    const leftKey = left.plannedEndAt ?? left.plannedStartAt ?? `${left.localDate}T23:59:59`
+    const rightKey = right.plannedEndAt ?? right.plannedStartAt ?? `${right.localDate}T23:59:59`
+    return rightKey.localeCompare(leftKey) || right.recordedAt.localeCompare(left.recordedAt)
+  })[0] ?? null
+  const latestEvidence = parseTeachingSessionEvidenceNote(latestSession?.evidenceNote ?? null)
+  const latestAllocation = latestSession && source
+    ? teachingSnapshot.allocations.find((allocation) => (
+        allocation.sessionId === latestSession.id
+        && allocation.canonicalGenerationId === source.generationId
+      )) ?? null
+    : null
+  const latestBlock = latestAllocation
+    ? blocks.find((block) => block.id === latestAllocation.blockId) ?? null
+    : null
+  const latestProjection = latestBlock
+    ? resolveRuntimeHumanTaskLessonProjection(grade, latestBlock)
+    : null
+  const lastActualWork = latestEvidence?.reflection.activityDone || latestProjection?.title || (latestSession ? 'Lezione registrata' : 'Nessun lavoro registrato')
+  const nextActivity = latestEvidence?.reflection.nextActivity || nextTitle || 'Nessuna prossima attività registrata'
+  const recentContext = latestSession
+    ? `${formatDate(latestSession.localDate)} · ${latestSession.actualMinutes} minuti effettivi${preparedMaterials.length ? ` · ${preparedMaterials.length} ${preparedMaterials.length === 1 ? 'materiale predisposto' : 'materiali predisposti'}` : ''}`
+    : preparedMaterials.length
+      ? `${preparedMaterials.length} ${preparedMaterials.length === 1 ? 'materiale predisposto' : 'materiali predisposti'} per la prossima lezione.`
+      : 'Nessuna sessione effettiva o materiale predisposto recente.'
   const occurrenceEnded = eligibleOccurrence?.endAt ? timeMinutes(eligibleOccurrence.endAt) <= nowMinutes : false
   const taskDecision = resolveClassTaskDecision({
     hasNextBlock: Boolean(nextCanonicalBlock),
@@ -270,6 +296,25 @@ export default async function ClassWorkspacePage({
             {taskDecision.label ? <Link className="primary" href={taskHref}>{taskDecision.label}</Link> : null}
           </div>
         </div>
+      </section>
+
+      <section className="classWorkspaceGrid" aria-label="Continuità della classe">
+        <article className="classWorkspaceCard">
+          <div><h2>Ultimo lavoro</h2><p>{lastActualWork}</p></div>
+          <small>{latestSession ? `${formatDate(latestSession.localDate)} · ${latestSession.actualMinutes} minuti effettivi` : 'La continuità partirà dalla prima lezione registrata.'}</small>
+        </article>
+        <article className="classWorkspaceCard">
+          <div><h2>Prossima attività</h2><p>{nextActivity}</p></div>
+          <small>{latestEvidence?.reflection.nextActivity ? 'Ripresa dall’ultima registrazione reale.' : nextTitle ? 'Derivata dal prossimo passo disponibile del Piano annuale.' : 'Da definire quando sarà disponibile un prossimo passo attendibile.'}</small>
+        </article>
+        <article className="classWorkspaceCard">
+          <div><h2>Avanzamento</h2><p>{learningFocus.completedBlocks}/33 lezioni concluse</p></div>
+          <small>{nextCanonicalBlock ? `${nextAllocatedMinutes}/${nextCanonicalBlock.hours * 60} minuti effettivi registrati sul lavoro corrente.` : 'Percorso annuale completato.'}</small>
+        </article>
+        <article className="classWorkspaceCard">
+          <div><h2>Contesto recente</h2><p>{recentContext}</p></div>
+          <small>Solo dati già presenti nella classe: sessioni effettive, avanzamento e materiali predisposti.</small>
+        </article>
       </section>
 
       {recordedBlock && recordedProgress ? (
