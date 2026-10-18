@@ -11,6 +11,7 @@ const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 const BOOKS_FIXTURE_NOTE = 'HVA · Libri di testo · Cattedra tecnica'
 const BOOKS_FIXTURE_DISCIPLINE = 'Tecnologia HVA Libri'
 const CANONICAL_DISCIPLINE = 'Tecnologia'
+const TEACH_OBSERVE_BLOCK_ID = 'B01'
 
 test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async ({ page }, testInfo) => {
   await loginE2E(page)
@@ -105,12 +106,116 @@ test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async
   }
 })
 
+test('Journey: Conduci → Osserva preserves one governed lesson', async ({ page }, testInfo) => {
+  await loginE2E(page)
+  const fixture = await resolveGovernedTeachObserveFixture()
+  const teachHref = `/classi/${encodeURIComponent(fixture.sectionId)}/lezioni/${TEACH_OBSERVE_BLOCK_ID}?mode=teach`
+  await page.goto(teachHref)
+
+  await expect(
+    page,
+    'La fixture CONDUCI → OSSERVA deve entrare davvero in CONDUCI con una preparazione governata già valida.',
+  ).toHaveURL(new RegExp(`/classi/${fixture.sectionId}/lezioni/${TEACH_OBSERVE_BLOCK_ID}\\?mode=teach`))
+  await expect(
+    page.getByText(/PASSO 1 DI \d+/),
+    'Il RED di Task 6 è valido solo dopo che la superficie runbook di CONDUCI è realmente caricata.',
+  ).toBeVisible()
+
+  const teachShell = page.locator('[data-lesson-shell]')
+  await expect(
+    teachShell,
+    'CONDUCI deve mantenere la Lesson Shell invece di cambiare identità di prodotto.',
+  ).toBeVisible()
+  await expect(teachShell).toContainText('2ª C')
+  await expect(teachShell).toContainText('Il territorio agricolo come sistema')
+  await expect(page.locator('[data-lesson-phase="teach"]')).toHaveAttribute('aria-current', 'step')
+
+  const observePhase = page.locator('[data-lesson-phase="observe"]')
+  await expect(
+    observePhase,
+    'Da CONDUCI il passaggio a OSSERVA deve restare nel ciclo della stessa lezione.',
+  ).toBeVisible()
+  await observePhase.click()
+
+  const observeShell = page.locator('[data-lesson-shell]')
+  await expect(
+    observeShell,
+    'OSSERVA deve mantenere la Lesson Shell e l’identità della lezione.',
+  ).toBeVisible()
+  await expect(observeShell).toContainText('2ª C')
+  await expect(observeShell).toContainText('Il territorio agricolo come sistema')
+  await expect(page.locator('[data-lesson-phase="observe"]')).toHaveAttribute('aria-current', 'step')
+  await expect(page.getByText('EVIDENZA ATTESA', { exact: true })).toBeVisible()
+  await expect(page.getByText(/Non inserire nomi, gruppi identificabili o dati individuali degli alunni/)).toBeVisible()
+  await expect(page.getByText('Vedi criteri completi', { exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Torna alla lezione', exact: true })).toBeVisible()
+
+  if (testInfo.project.name.startsWith('mobile')) {
+    await page.setViewportSize({ width: 320, height: 800 })
+    const geometry = await page.evaluate(() => ({
+      innerWidth: window.innerWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }))
+    expect(
+      geometry.scrollWidth,
+      `CONDUCI → OSSERVA non deve produrre overflow orizzontale a 320px: ${geometry.scrollWidth}px su ${geometry.innerWidth}px.`,
+    ).toBeLessThanOrEqual(geometry.innerWidth + 1)
+  }
+})
+
 function lessonContextFromPrepareHref(value) {
   const match = typeof value === 'string'
     ? value.match(/^\/classi\/([^/?#]+)\/lezioni\/(B\d{2})(?:\?|$)/i)
     : null
   if (!match) throw new Error(`Task-centric viewer fixture: PREPARA href inatteso ${value ?? 'senza href'}`)
   return { sectionId: decodeURIComponent(match[1]), blockId: match[2].toUpperCase() }
+}
+
+async function resolveGovernedTeachObserveFixture() {
+  if (!supabaseUrl || !supabasePublishableKey) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY sono richiesti dalla fixture CONDUCI → OSSERVA')
+  }
+
+  const { supabase } = await authenticatedAal2Supabase({
+    supabaseUrl,
+    supabasePublishableKey,
+    label: 'DOS-UX-01 teach-observe fixture',
+  })
+  const { data: adoptions, error: adoptionError } = await supabase
+    .from('annual_plan_curriculum_adoptions')
+    .select('section_id,curriculum_state,curriculum_coverage,authority_quarantined_at')
+    .eq('curriculum_state', 'PROVISIONAL_COMPLETE')
+    .is('authority_quarantined_at', null)
+  if (adoptionError) throw new Error(`Teach-observe curriculum lookup failed: ${adoptionError.message}`)
+
+  const readySectionIds = (adoptions ?? [])
+    .filter((item) => item.curriculum_coverage?.status === 'SATISFIED')
+    .map((item) => item.section_id)
+  if (!readySectionIds.length) throw new Error('Teach-observe fixture: nessuna sezione con baseline curricolare completa')
+
+  const { data: sections, error: sectionError } = await supabase
+    .from('annual_plan_sections')
+    .select('id,grade,section_code,status')
+    .in('id', readySectionIds)
+    .eq('grade', 'SECONDA')
+    .eq('section_code', 'C')
+    .eq('status', 'CONFERMATA')
+  if (sectionError) throw new Error(`Teach-observe section lookup failed: ${sectionError.message}`)
+  const section = sections?.[0]
+  if (!section) throw new Error('Teach-observe fixture: la 2C governata non è disponibile')
+
+  const { data: receipts, error: receiptError } = await supabase
+    .from('lesson_preparation_receipts')
+    .select('id,block_id,projection_id,preparation_fingerprint,confirmed_at')
+    .eq('section_id', section.id)
+    .eq('block_id', TEACH_OBSERVE_BLOCK_ID)
+    .not('preparation_fingerprint', 'is', null)
+    .order('confirmed_at', { ascending: false })
+    .limit(1)
+  if (receiptError) throw new Error(`Teach-observe approval lookup failed: ${receiptError.message}`)
+  if (!receipts?.length) throw new Error('Teach-observe fixture: B01 non ha una ricevuta di preparazione governata')
+
+  return { sectionId: section.id }
 }
 
 async function ensureCanonicalJ1Fixture(focus) {
