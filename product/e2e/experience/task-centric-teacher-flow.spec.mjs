@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
+import { createClassroomMaterialFixture } from '../support/classroom-material-fixture.mjs'
 import { authenticatedAal2Supabase } from '../support/direct-aal2-supabase.mjs'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
+import { deleteKnowledgeAsset } from '../support/knowledge-fixture-hygiene.mjs'
 
 requireE2ECredentials()
 
@@ -17,6 +19,7 @@ test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async
   const focus = page.locator('.todayTeachingFocus')
   await expect(focus).toBeVisible()
   const fixture = await ensureCanonicalJ1Fixture(focus)
+  let materialFixture = null
 
   try {
     if (fixture.changed) {
@@ -29,6 +32,12 @@ test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async
     const primary = focus.locator('a.todayTeachingPrimaryAction')
 
     await expect(primary).toHaveText(/Prepara lezione/)
+    const lessonContext = lessonContextFromPrepareHref(await primary.getAttribute('href'))
+    materialFixture = await createClassroomMaterialFixture({
+      sectionId: lessonContext.sectionId,
+      suffix: `${lessonContext.blockId}-viewer-${process.env.GITHUB_RUN_ID ?? 'local'}-${testInfo.project.name}-${Date.now()}`,
+    })
+
     await primary.click()
 
     const shell = page.locator('[data-lesson-shell]')
@@ -92,9 +101,18 @@ test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async
       ).toBeLessThanOrEqual(geometry.innerWidth + 1)
     }
   } finally {
+    if (materialFixture) await deleteKnowledgeAsset(page, materialFixture.assetId).catch(() => {})
     await fixture.restore()
   }
 })
+
+function lessonContextFromPrepareHref(value) {
+  const match = typeof value === 'string'
+    ? value.match(/^\/classi\/([^/?#]+)\/lezioni\/(B\d{2})(?:\?|$)/i)
+    : null
+  if (!match) throw new Error(`Task-centric viewer fixture: PREPARA href inatteso ${value ?? 'senza href'}`)
+  return { sectionId: decodeURIComponent(match[1]), blockId: match[2].toUpperCase() }
+}
 
 async function ensureCanonicalJ1Fixture(focus) {
   const primary = focus.locator('a.todayTeachingPrimaryAction')
