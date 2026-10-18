@@ -1,9 +1,23 @@
 # DOCENTE OS — Task-Centric P0 Visual Review Artifact
 
-**Status:** REALIGNED / HUMAN REVIEW PENDING  
+**Status:** PASS / VISUAL FLOW CONTRACT FROZEN  
 **Date:** 2026-10-18  
 **Parent PR:** #719 — DOS-UX-01 — task-centric flow architecture  
 **Design contract:** `docs/superpowers/specs/2026-10-18-docente-os-task-centric-p0-mockup-contract.md`
+
+## Human Review verdict
+
+**Verdict:** `PASS`
+
+The complete task-centric experience traced in the long mobile review was reviewed by the human product owner and judged coherent for the intended teacher journey.
+
+This PASS freezes the **Visual/User Flow Contract** only. It does **not** certify the current Beta/runtime implementation, responsive behavior, accessibility, real-data fallbacks, Atlas availability, or end-to-end execution. Those remain implementation and Beta Human Review gates.
+
+The frozen teacher journey is:
+
+`OGGI → PREPARA → MATERIALI → VISUALIZZA MATERIALE → CONDUCI → OSSERVA → REGISTRA → CONTINUA`
+
+with `CLASSE` as voluntary longitudinal access and `ESPLORA` outside the primary flow.
 
 ## Visual source of truth
 
@@ -12,12 +26,6 @@ The raster PNG generated during the review remains the **canonical visual baseli
 SHA-256:
 
 `8de8bfc1e0e95438415e55914ec9d074aed1798532e18e191bb6c0cb65847b1f`
-
-Its canonical flow is:
-
-`OGGI → PREPARA → MATERIALI → VISUALIZZA MATERIALE → CONDUCI → OSSERVA → REGISTRA → CONTINUA`
-
-with `CLASSE` as voluntary access and `ESPLORA` outside the primary flow.
 
 Canonical scenario shown by the raster:
 
@@ -32,7 +40,7 @@ Figma file:
 
 https://www.figma.com/design/hCtCzxTuLs6bNXXExZm7tr
 
-The file now intentionally contains **two** review surfaces only.
+The file intentionally contains two review surfaces only.
 
 ### 1. Mobile Human Review — default first page
 
@@ -72,7 +80,7 @@ Purpose:
 - 1536 × 1024 canonical canvas;
 - comparison against the raster source of truth.
 
-The earlier five-screen reconstruction has been removed from the file rather than retained as another review surface, because it used a different scenario and omitted downstream states.
+The earlier five-screen reconstruction was removed because it used a different scenario and omitted downstream states.
 
 ## Realignment corrections applied
 
@@ -97,16 +105,16 @@ SHA-256:
 
 This derivative is a review convenience only. The canonical raster baseline above remains the pixel-level authority.
 
-## Review rule
+## Frozen review rule
 
-Human Review must judge the product model, hierarchy and continuity against the canonical raster. Figma is used to inspect and revise the design but must not silently introduce independent design decisions.
+Implementation must preserve the approved model, hierarchy and continuity. Figma may be used to inspect implementation fidelity but must not silently introduce independent design decisions.
+
+Any runtime evidence that requires changing the primary graph is a new product decision and must reopen this contract explicitly; ordinary responsive, accessibility and implementation corrections do not reopen it.
 
 ## Scope guard
 
-This artifact does not authorize product implementation, merge, deploy, schema change, navigation change, Atlas runtime activation or Studio Atlas handoff.
+This PASS authorizes **implementation planning only**. It does not authorize product implementation, merge, deploy, schema change, Atlas runtime activation, Studio Atlas handoff, or Beta promotion.
 
-Allowed gate outcomes remain:
+Next gate:
 
-- `PASS` — proceed to implementation planning only after the complete visual flow is approved;
-- `REWORK` — revise the visual board only;
-- `REJECT` — reopen the underlying task-centric architecture.
+`IMPLEMENTATION PLAN REVIEW`
