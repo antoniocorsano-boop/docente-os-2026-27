@@ -15,6 +15,7 @@ import {
   type LessonObservationState,
 } from '../lesson-observation-model'
 import type { TeachingEvidenceDimensionKey } from '@/core/domain/teaching-evidence'
+import { LessonShell } from './lesson-shell'
 import styles from './lesson-live.module.css'
 
 type Block = {
@@ -128,9 +129,16 @@ export default function LessonObserveClient({
 
   return (
     <main className={styles.closeSurface}>
+      <LessonShell
+        sectionId={sectionId}
+        blockId={block.id}
+        sectionLabel={sectionLabel}
+        disciplineLabel="Tecnologia"
+        lessonTitle={projection.title}
+        phase="observe"
+      />
       <section className={styles.closeCard}>
         <div>
-          <Link className={styles.back} href={classHref} onClick={persistBeforeNavigation}>← {sectionLabel}</Link>
           <p className={styles.eyebrow}>DOPO / DURANTE · OSSERVAZIONE</p>
           <h1>Guarda poche evidenze utili</h1>
           <p className={styles.closeLead}>Non devi compilare tutto. Usa questi indicatori solo per richiamare l’attenzione su ciò che ti serve per decidere il passo successivo.</p>
@@ -192,13 +200,13 @@ export default function LessonObserveClient({
         </section>
 
         <details className={styles.evidence}>
-          <summary>Nota sulla valutazione</summary>
+          <summary>Vedi criteri completi</summary>
           <p className={styles.detailText}>{projection.assessmentNote}</p>
         </details>
 
         <div className={styles.closeActions}>
           <Link className={styles.primary} href={recordHref} onClick={persistBeforeNavigation}>Chiudi la lezione</Link>
-          <Link href={teachHref} onClick={persistBeforeNavigation}>Torna alla guida</Link>
+          <Link href={teachHref} onClick={persistBeforeNavigation}>Torna alla lezione</Link>
           <Link href={classHref} onClick={persistBeforeNavigation}>Esci senza registrare</Link>
         </div>
       </section>
