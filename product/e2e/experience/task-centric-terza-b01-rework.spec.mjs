@@ -34,7 +34,7 @@ test('Beta REWORK: 3ª E B01 preserves PREPARA → MATERIALI → VISUALIZZA', as
     await expect(shell).toContainText(LESSON_TITLE)
     await expect(page.locator('[data-lesson-phase="prepare"]')).toHaveAttribute('aria-current', 'step')
 
-    const main = page.locator('main')
+    const main = page.locator('#dos-main-content')
     await expect(
       main,
       'Gli identificatori canonici devono restare fuori dal primo livello della superficie docente.',
