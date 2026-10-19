@@ -1,5 +1,6 @@
 const TASK_CENTRIC_SPEC = 'e2e/experience/task-centric-teacher-flow.spec.mjs'
 const TASK_CENTRIC_REGISTER_CONTINUE_SPEC = 'e2e/experience/task-centric-register-continue.spec.mjs'
+const TASK_CENTRIC_TERZA_B01_REWORK_SPEC = 'e2e/experience/task-centric-terza-b01-rework.spec.mjs'
 
 const FULL_HVA_PATHS = [
   /^product\/src\/app\/layout\.tsx$/,
@@ -59,6 +60,9 @@ const SUPPORT_HVA_SPECS = new Map([
   ]],
   ['product/e2e/experience/task-centric-register-continue.spec.mjs', [
     TASK_CENTRIC_REGISTER_CONTINUE_SPEC,
+  ]],
+  ['product/e2e/experience/task-centric-terza-b01-rework.spec.mjs', [
+    TASK_CENTRIC_TERZA_B01_REWORK_SPEC,
   ]],
   ['product/e2e/support/timetable-real-fixture.mjs', [
     'e2e/experience/timetable-import-real-fixture.spec.mjs',
