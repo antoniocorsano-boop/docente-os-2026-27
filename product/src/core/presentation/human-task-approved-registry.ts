@@ -5,6 +5,7 @@ import { APPROVED_HUMAN_TASK_PROJECTIONS_B11_B15 } from './human-task-approved-p
 import { APPROVED_HUMAN_TASK_PROJECTIONS_B16_B19 } from './human-task-approved-projections-b16-b19'
 import { APPROVED_HUMAN_TASK_PROJECTIONS_B20_B22 } from './human-task-approved-projections-b20-b22'
 import { APPROVED_HUMAN_TASK_PROJECTIONS_B23_B27 } from './human-task-approved-projections-b23-b27'
+import { APPROVED_HUMAN_TASK_PROJECTIONS_TERZA_B01 } from './human-task-approved-projections-terza-b01'
 import { APPROVED_HUMAN_TASK_MANIFESTS } from './human-task-approved-manifests'
 import { APPROVED_HUMAN_TASK_MANIFESTS_B31_B33_V2 } from './human-task-approved-manifests-b31-b33-v2'
 import { APPROVED_HUMAN_TASK_MANIFESTS_SECONDA_B01_B04 } from './human-task-approved-manifests-seconda-b01-b04'
@@ -26,6 +27,7 @@ export const APPROVED_HUMAN_TASK_RUNTIME_PROJECTIONS: readonly HumanTaskLessonPr
   ...APPROVED_HUMAN_TASK_PROJECTIONS_B16_B19,
   ...APPROVED_HUMAN_TASK_PROJECTIONS_B20_B22,
   ...APPROVED_HUMAN_TASK_PROJECTIONS_B23_B27,
+  ...APPROVED_HUMAN_TASK_PROJECTIONS_TERZA_B01,
   ...MANIFEST_PROJECTIONS,
 ]
 
