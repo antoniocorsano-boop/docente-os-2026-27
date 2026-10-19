@@ -145,14 +145,13 @@ export function LessonDesignTools({
                       {item.pedagogicalRoles.length ? (
                         <small className="lessonSuggestionRoles">Uso suggerito: {item.pedagogicalRoles.slice(0, 3).map(teachingMaterialRoleLabel).join(' · ')}</small>
                       ) : null}
-                      <small className="lessonSuggestionReason">Perché qui: {item.reason}</small>
                       <div className="lessonSuggestionTip">
                         <b>TIP</b>
                         <p>{item.usageTip}</p>
                       </div>
                     </div>
                     <div>
-                      <Link href={`/knowledge/${encodeURIComponent(item.assetId)}`}>Controlla</Link>
+                      <Link href={buildFocusedKnowledgeHref(item.assetId, sectionId, blockId)}>Controlla</Link>
                       <form action={writeAction}>
                         <input type="hidden" name="designIntent" value="attach-knowledge" />
                         <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
@@ -356,6 +355,11 @@ function buildKnowledgeCaptureHref(sectionId: string, blockId: string) {
   return `/knowledge?capture=text&mode=prepare&section=${encodeURIComponent(sectionId)}&block=${encodeURIComponent(blockId)}&returnTo=${encodeURIComponent(returnTo)}`
 }
 
+function buildFocusedKnowledgeHref(assetId: string, sectionId: string, blockId: string) {
+  const returnTo = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(blockId)}?mode=prepare`
+  return `/knowledge/${encodeURIComponent(assetId)}?mode=prepare&section=${encodeURIComponent(sectionId)}&block=${encodeURIComponent(blockId)}&returnTo=${encodeURIComponent(returnTo)}`
+}
+
 function AcceptedItem({
   extension,
   sectionId,
@@ -370,7 +374,7 @@ function AcceptedItem({
   writeAction: (payload: FormData) => void
 }) {
   const knowledgeHref = extension.sourceRef?.startsWith('knowledge:')
-    ? `/knowledge/${encodeURIComponent(extension.sourceRef.slice('knowledge:'.length))}`
+    ? buildFocusedKnowledgeHref(extension.sourceRef.slice('knowledge:'.length), sectionId, blockId)
     : null
   const atlasHref = extension.sourceKind === 'ATLAS' && typeof extension.payload.publicUrl === 'string'
     ? extension.payload.publicUrl
