@@ -192,7 +192,6 @@ function ReuseMaterials({
             {item.pedagogicalRoles.length ? (
               <small className="lessonSuggestionRoles">Uso suggerito: {item.pedagogicalRoles.slice(0, 3).map(teachingMaterialRoleLabel).join(' · ')}</small>
             ) : null}
-            <small className="lessonSuggestionReason">Perché qui: {item.reason}</small>
             <div className="lessonSuggestionTip"><b>TIP</b><p>{item.usageTip}</p></div>
           </div>
           <div>
