@@ -95,6 +95,16 @@ test('register-continue journey spec selects itself for focused HVA', () => {
   ])
 })
 
+test('Terza B01 rework spec selects itself for focused HVA', () => {
+  const scope = deriveHvaScope([
+    'product/e2e/experience/task-centric-terza-b01-rework.spec.mjs',
+  ], { hvaRequired: true })
+  assert.equal(scope.mode, 'FOCUSED')
+  assert.deepEqual(scope.specs, [
+    'e2e/experience/task-centric-terza-b01-rework.spec.mjs',
+  ])
+})
+
 test('direct AAL2 helper includes both task-centric journeys', () => {
   const scope = deriveHvaScope([
     'product/e2e/support/direct-aal2-supabase.mjs',
