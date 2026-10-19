@@ -21,7 +21,7 @@ test('Beta Human Review: Terza B01 resolves the canonical task-centric lesson', 
   assert.equal(projection.udaCode, '3-01')
   assert.equal(projection.packCode, 'CAN-PACK-3A')
   assert.equal(projection.durationMinutes, 120)
-  assert.equal(projection.title, 'Forme e trasformazioni dell’energia')
+  assert.equal(projection.title, 'Energia: forme, trasformazioni e fabbisogni')
   assert.deepEqual(
     projection.sources.map((source) => source.code),
     ['CAN-PLAN-3', 'CAN-UDA-3-01', 'CAN-PACK-3A'],
