@@ -88,7 +88,7 @@ export default function LessonPrepareClient({
         <header className={styles.lessonBriefHeader}>
           <Link className={styles.back} href={classHref}>← {sectionLabel}</Link>
           <p className={styles.eyebrow}>PRIMA DELLA LEZIONE · {sectionLabel}</p>
-          <h1>{brief.title}</h1>
+          <h2>Prepara la lezione</h2>
           <p className={styles.closeLead}>{brief.objective}</p>
         </header>
 
