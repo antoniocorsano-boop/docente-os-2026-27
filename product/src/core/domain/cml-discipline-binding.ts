@@ -325,6 +325,23 @@ function assertArenaSegmentsMatchReleaseVersion(
   }
 }
 
+function assertArenaNodesMatchReleaseVersion(
+  nodes: Record<string, unknown>[],
+  versionId: string,
+): void {
+  const nodeIds = new Set<string>()
+  for (const node of nodes) {
+    const nodeId = arenaString(node.id, 'Arena node id')
+    if (nodeIds.has(nodeId)) {
+      throw new Error('Arena node rejected: duplicate node id')
+    }
+    nodeIds.add(nodeId)
+    if (node.versionId !== versionId) {
+      throw new Error('Arena node version rejected: does not match release version')
+    }
+  }
+}
+
 function assertArenaStructuralFootprintMatches(release: Record<string, unknown>): {
   hash: string
   computedAt: string
@@ -377,9 +394,12 @@ export function selectArenaVerticalCurricoloSlice(input: {
 
   const segments = arenaArray(release.segments, 'Arena segments')
     .map((value) => arenaRecord(value, 'Arena segment'))
+  const allNodes = arenaArray(release.nodes, 'Arena nodes')
+    .map((value) => arenaRecord(value, 'Arena node'))
 
   assertArenaStructuralFootprintMatches(release)
   assertArenaSegmentsMatchReleaseVersion(segments, versionId)
+  assertArenaNodesMatchReleaseVersion(allNodes, versionId)
   assertArenaManifestMatches(release, segments)
 
   const perimeter = arenaRecord(release.perimeter, 'Arena perimeter')
@@ -425,17 +445,8 @@ export function selectArenaVerticalCurricoloSlice(input: {
   const segmentId = arenaString(selectedSegment.id, 'Arena segment id')
   const subjectOrFieldId = arenaString(selectedSegment.subjectOrFieldId, 'Arena segment discipline')
 
-  const nodes = arenaArray(release.nodes, 'Arena nodes')
-    .map((value) => arenaRecord(value, 'Arena node'))
-    .filter((node) => node.segmentId === segmentId)
-  if (nodes.length === 0) throw new Error('no applicable Arena curricolo nodes for target')
-
-  for (const node of nodes) {
-    if (node.versionId !== versionId) {
-      throw new Error('Arena node version rejected: does not match release version')
-    }
-    arenaString(node.id, 'Arena node id')
-  }
+  const matchingNodes = allNodes.filter((node) => node.segmentId === segmentId)
+  if (matchingNodes.length === 0) throw new Error('no applicable Arena curricolo nodes for target')
 
   const issuedAt = arenaString(release.issuedAt, 'Arena issuedAt')
   const detachedSegment = structuredClone(selectedSegment) as Record<string, unknown>
@@ -468,7 +479,7 @@ export function selectArenaVerticalCurricoloSlice(input: {
       automaticWriteAllowed: false,
     },
     segment: { ...detachedSegment, id: segmentId, subjectOrFieldId },
-    nodes: nodes.map((node) => ({
+    nodes: matchingNodes.map((node) => ({
       ...(structuredClone(node) as Record<string, unknown>),
       id: arenaString(node.id, 'Arena node id'),
       segmentId,
