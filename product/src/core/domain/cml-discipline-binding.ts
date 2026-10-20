@@ -308,6 +308,23 @@ function assertArenaManifestMatches(release: Record<string, unknown>, segments: 
   }
 }
 
+function assertArenaSegmentsMatchReleaseVersion(
+  segments: Record<string, unknown>[],
+  versionId: string,
+): void {
+  const segmentIds = new Set<string>()
+  for (const segment of segments) {
+    const segmentId = arenaString(segment.id, 'Arena segment id')
+    if (segmentIds.has(segmentId)) {
+      throw new Error('Arena segment rejected: duplicate segment id')
+    }
+    segmentIds.add(segmentId)
+    if (segment.versionId !== versionId) {
+      throw new Error('Arena segment version rejected: does not match release version')
+    }
+  }
+}
+
 function assertArenaStructuralFootprintMatches(release: Record<string, unknown>): {
   hash: string
   computedAt: string
@@ -351,10 +368,18 @@ export function selectArenaVerticalCurricoloSlice(input: {
 
   const requestedGrade = gradeNumber(input.target.gradeRef)
   const requestedDiscipline = bindArenaDisciplineRefToDocenteOs(input.target.disciplineRef)
+  const version = arenaRecord(release.version, 'Arena version')
+  const versionId = arenaString(version.id, 'Arena version id')
+  const versionNumber = arenaString(version.versionNumber, 'Arena version number')
+  if (version.institutionId !== undefined && version.institutionId !== institutionId) {
+    throw new Error('Arena version rejected: institution does not match release')
+  }
+
   const segments = arenaArray(release.segments, 'Arena segments')
     .map((value) => arenaRecord(value, 'Arena segment'))
 
   assertArenaStructuralFootprintMatches(release)
+  assertArenaSegmentsMatchReleaseVersion(segments, versionId)
   assertArenaManifestMatches(release, segments)
 
   const perimeter = arenaRecord(release.perimeter, 'Arena perimeter')
@@ -380,13 +405,6 @@ export function selectArenaVerticalCurricoloSlice(input: {
     throw new Error('Arena downstream policy rejected: automatic write is not allowed')
   }
 
-  const version = arenaRecord(release.version, 'Arena version')
-  const versionId = arenaString(version.id, 'Arena version id')
-  const versionNumber = arenaString(version.versionNumber, 'Arena version number')
-  if (version.institutionId !== undefined && version.institutionId !== institutionId) {
-    throw new Error('Arena version rejected: institution does not match release')
-  }
-
   const footprint = arenaRecord(release.structuralFootprint, 'Arena structural footprint')
   const footprintHash = arenaString(footprint.hash, 'Arena structural footprint hash')
   const footprintComputedAt = arenaString(footprint.computedAt, 'Arena structural footprint computedAt')
@@ -404,9 +422,6 @@ export function selectArenaVerticalCurricoloSlice(input: {
   }
 
   const selectedSegment = matchingSegments[0]
-  if (selectedSegment.versionId !== versionId) {
-    throw new Error('Arena segment version rejected: does not match release version')
-  }
   const segmentId = arenaString(selectedSegment.id, 'Arena segment id')
   const subjectOrFieldId = arenaString(selectedSegment.subjectOrFieldId, 'Arena segment discipline')
 
@@ -423,6 +438,7 @@ export function selectArenaVerticalCurricoloSlice(input: {
   }
 
   const issuedAt = arenaString(release.issuedAt, 'Arena issuedAt')
+  const detachedSegment = structuredClone(selectedSegment) as Record<string, unknown>
 
   return {
     institutionId,
@@ -451,9 +467,9 @@ export function selectArenaVerticalCurricoloSlice(input: {
       acceptanceRequired: true,
       automaticWriteAllowed: false,
     },
-    segment: { ...selectedSegment, id: segmentId, subjectOrFieldId },
+    segment: { ...detachedSegment, id: segmentId, subjectOrFieldId },
     nodes: nodes.map((node) => ({
-      ...node,
+      ...(structuredClone(node) as Record<string, unknown>),
       id: arenaString(node.id, 'Arena node id'),
       segmentId,
     })),
