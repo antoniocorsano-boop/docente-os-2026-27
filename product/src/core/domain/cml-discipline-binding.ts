@@ -122,6 +122,18 @@ type ArenaVerticalCurricoloSlice = {
   nodes: Array<Record<string, unknown> & { id: string; segmentId: string }>
 }
 
+type ArenaCurricoloScope =
+  | { type: 'grade'; grade: string }
+  | { type: 'grade-range'; grades: string[] }
+  | { type: 'school-level' }
+
+type ArenaExpectedScope = {
+  schoolOrder: string
+  scope: ArenaCurricoloScope
+  domainId: string
+  domainKind: string
+}
+
 function arenaRecord(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`${label} rejected: expected object`)
@@ -152,6 +164,169 @@ function gradeNumber(gradeRef: ArenaVerticalCurricoloTarget['gradeRef']): string
   throw new Error('unsupported gradeRef for Arena curricolo intake')
 }
 
+function arenaScope(value: unknown, label: string): ArenaCurricoloScope {
+  const scope = arenaRecord(value, label)
+  if (scope.type === 'school-level') return { type: 'school-level' }
+  if (scope.type === 'grade') {
+    return { type: 'grade', grade: arenaString(scope.grade, `${label} grade`) }
+  }
+  if (scope.type === 'grade-range') {
+    const grades = arenaArray(scope.grades, `${label} grades`).map((grade) => arenaString(grade, `${label} grade`))
+    if (grades.length === 0) throw new Error(`${label} rejected: grade-range cannot be empty`)
+    return { type: 'grade-range', grades: grades.sort((left, right) => Number(left) - Number(right)) }
+  }
+  throw new Error(`${label} rejected: unsupported scope type`)
+}
+
+function arenaScopeIncludesGrade(scope: ArenaCurricoloScope, grade: string): boolean {
+  if (scope.type === 'school-level') return true
+  if (scope.type === 'grade') return scope.grade === grade
+  return scope.grades.includes(grade)
+}
+
+function canonicalizeArena(value: unknown): unknown {
+  if (value === undefined) throw new Error('Arena release material cannot contain undefined values')
+  if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return value
+  }
+  if (Array.isArray(value)) return value.map(canonicalizeArena)
+  if (typeof value === 'object') {
+    const sorted: Record<string, unknown> = {}
+    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+      sorted[key] = canonicalizeArena((value as Record<string, unknown>)[key])
+    }
+    return sorted
+  }
+  throw new Error(`Arena release material cannot canonicalize ${typeof value}`)
+}
+
+function canonicalSerializeArena(value: unknown): string {
+  return JSON.stringify(canonicalizeArena(value))
+}
+
+function arenaFnv1a(value: string): string {
+  let hash = 0x811c9dc5
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0')
+}
+
+function normalizedExpectedScope(value: unknown, label: string): ArenaExpectedScope {
+  const entry = arenaRecord(value, label)
+  const schoolOrder = arenaString(entry.schoolOrder, `${label} schoolOrder`)
+  const domainId = arenaString(entry.domainId, `${label} domainId`)
+  const domainKind = arenaString(entry.domainKind, `${label} domainKind`)
+  if (!['infanzia', 'primaria', 'secondaria'].includes(schoolOrder)) {
+    throw new Error(`${label} rejected: unsupported school order`)
+  }
+  if (!['DISCIPLINA', 'CAMPO_ESPERIENZA', 'PERCORSO_CURRICOLARE', 'AMBITO_TRASVERSALE'].includes(domainKind)) {
+    throw new Error(`${label} rejected: unsupported domain kind`)
+  }
+  return {
+    schoolOrder,
+    scope: arenaScope(entry.scope, `${label} scope`),
+    domainId,
+    domainKind,
+  }
+}
+
+function expectedScopeKey(value: ArenaExpectedScope): string {
+  return canonicalSerializeArena({
+    schoolOrder: value.schoolOrder,
+    domainId: value.domainId,
+    domainKind: value.domainKind,
+    scope: value.scope,
+  })
+}
+
+function expectedSegmentKey(value: ArenaExpectedScope): string {
+  return canonicalSerializeArena({
+    schoolOrder: value.schoolOrder,
+    domainId: value.domainId,
+    scope: value.scope,
+  })
+}
+
+function segmentScopeKey(segment: Record<string, unknown>): string {
+  return canonicalSerializeArena({
+    schoolOrder: arenaString(segment.schoolLevel, 'Arena segment schoolLevel'),
+    domainId: arenaString(segment.subjectOrFieldId, 'Arena segment discipline'),
+    scope: arenaScope(segment.scope, 'Arena segment scope'),
+  })
+}
+
+function sortedUniqueExpected(values: ArenaExpectedScope[]): ArenaExpectedScope[] {
+  const unique = new Map<string, ArenaExpectedScope>()
+  for (const value of values) unique.set(expectedScopeKey(value), value)
+  return [...unique.values()].sort((left, right) => expectedScopeKey(left).localeCompare(expectedScopeKey(right)))
+}
+
+function rebuildArenaManifest(release: Record<string, unknown>, segments: Record<string, unknown>[]): Record<string, unknown> {
+  const perimeter = arenaRecord(release.perimeter, 'Arena perimeter')
+  const expected = sortedUniqueExpected(
+    arenaArray(perimeter.expected, 'Arena expected perimeter')
+      .map((value, index) => normalizedExpectedScope(value, `Arena expected perimeter ${index}`)),
+  )
+  const intentionallyNotApplicable = sortedUniqueExpected(
+    arenaArray(perimeter.intentionallyNotApplicable, 'Arena intentionally not applicable perimeter')
+      .map((value, index) => normalizedExpectedScope(value, `Arena intentionally not applicable perimeter ${index}`)),
+  )
+  if (expected.length + intentionallyNotApplicable.length === 0) {
+    throw new Error('Arena manifest rejected: perimeter is empty')
+  }
+
+  const presentSegmentKeys = new Set(segments.map(segmentScopeKey))
+  const notApplicableKeys = new Set(intentionallyNotApplicable.map(expectedScopeKey))
+  const present = expected.filter((item) => presentSegmentKeys.has(expectedSegmentKey(item)))
+  const missing = expected.filter((item) => (
+    !presentSegmentKeys.has(expectedSegmentKey(item)) && !notApplicableKeys.has(expectedScopeKey(item))
+  ))
+  const orderRank: Record<string, number> = { infanzia: 0, primaria: 1, secondaria: 2 }
+  const schoolOrders = [...new Set([...expected, ...intentionallyNotApplicable].map((item) => item.schoolOrder))]
+    .sort((left, right) => orderRank[left] - orderRank[right])
+
+  return {
+    coverageStatus: missing.length === 0 && segments.length > 0 ? 'SATISFIED' : 'INCOMPLETE',
+    schoolOrders,
+    expected,
+    present,
+    missing,
+    intentionallyNotApplicable,
+  }
+}
+
+function assertArenaManifestMatches(release: Record<string, unknown>, segments: Record<string, unknown>[]): void {
+  const manifest = arenaRecord(release.manifest, 'Arena manifest')
+  const rebuilt = rebuildArenaManifest(release, segments)
+  if (canonicalSerializeArena(rebuilt) !== canonicalSerializeArena(manifest)) {
+    throw new Error('Arena manifest rejected: coverage does not match actual segments and perimeter')
+  }
+  if (rebuilt.coverageStatus !== 'SATISFIED') {
+    throw new Error('Arena manifest incomplete: release rejected')
+  }
+}
+
+function assertArenaStructuralFootprintMatches(release: Record<string, unknown>): {
+  hash: string
+  computedAt: string
+} {
+  const footprint = arenaRecord(release.structuralFootprint, 'Arena structural footprint')
+  const footprintHash = arenaString(footprint.hash, 'Arena structural footprint hash')
+  const footprintComputedAt = arenaString(footprint.computedAt, 'Arena structural footprint computedAt')
+  if (footprint.algorithm !== 'fnv1a' || footprint.version !== 1) {
+    throw new Error('Arena structural footprint rejected: unsupported fingerprint format')
+  }
+
+  const { structuralFootprint: _footprint, issuedAt: _issuedAt, ...stable } = release
+  const recomputedHash = arenaFnv1a(canonicalSerializeArena(stable))
+  if (recomputedHash !== footprintHash) {
+    throw new Error('Arena structural footprint rejected: footprint does not match release material')
+  }
+  return { hash: footprintHash, computedAt: footprintComputedAt }
+}
+
 export function selectArenaVerticalCurricoloSlice(input: {
   release: unknown
   target: ArenaVerticalCurricoloTarget
@@ -176,26 +351,22 @@ export function selectArenaVerticalCurricoloSlice(input: {
 
   const requestedGrade = gradeNumber(input.target.gradeRef)
   const requestedDiscipline = bindArenaDisciplineRefToDocenteOs(input.target.disciplineRef)
+  const segments = arenaArray(release.segments, 'Arena segments')
+    .map((value) => arenaRecord(value, 'Arena segment'))
+
+  assertArenaStructuralFootprintMatches(release)
+  assertArenaManifestMatches(release, segments)
 
   const perimeter = arenaRecord(release.perimeter, 'Arena perimeter')
   const matchingPerimeter = arenaArray(perimeter.expected, 'Arena expected perimeter')
-    .map((value) => arenaRecord(value, 'Arena perimeter entry'))
+    .map((value, index) => normalizedExpectedScope(value, `Arena perimeter entry ${index}`))
     .filter((entry) => {
       if (entry.schoolOrder !== 'secondaria' || entry.domainKind !== 'DISCIPLINA') return false
-      const domainId = typeof entry.domainId === 'string' ? entry.domainId : ''
-      if (bindArenaDisciplineRefToDocenteOs(domainId) !== requestedDiscipline) return false
-      const scope = arenaRecord(entry.scope, 'Arena perimeter scope')
-      return scope.type === 'grade-range'
-        && Array.isArray(scope.grades)
-        && scope.grades.includes(requestedGrade)
+      if (bindArenaDisciplineRefToDocenteOs(entry.domainId) !== requestedDiscipline) return false
+      return arenaScopeIncludesGrade(entry.scope, requestedGrade)
     })
   if (matchingPerimeter.length !== 1) {
     throw new Error('no applicable unique Arena curricolo perimeter entry for target')
-  }
-
-  const manifest = arenaRecord(release.manifest, 'Arena manifest')
-  if (manifest.coverageStatus !== 'SATISFIED') {
-    throw new Error('Arena manifest incomplete: release rejected')
   }
 
   const releaseAuthority = arenaRecord(release.authority, 'Arena authority')
@@ -219,19 +390,13 @@ export function selectArenaVerticalCurricoloSlice(input: {
   const footprint = arenaRecord(release.structuralFootprint, 'Arena structural footprint')
   const footprintHash = arenaString(footprint.hash, 'Arena structural footprint hash')
   const footprintComputedAt = arenaString(footprint.computedAt, 'Arena structural footprint computedAt')
-  if (footprint.algorithm !== 'fnv1a' || footprint.version !== 1) {
-    throw new Error('Arena structural footprint rejected: unsupported fingerprint format')
-  }
 
-  const segments = arenaArray(release.segments, 'Arena segments')
-  const matchingSegments = segments.map((value) => arenaRecord(value, 'Arena segment')).filter((segment) => {
+  const matchingSegments = segments.filter((segment) => {
     if (segment.schoolLevel !== 'secondaria') return false
     const subjectOrFieldId = typeof segment.subjectOrFieldId === 'string' ? segment.subjectOrFieldId : ''
     if (bindArenaDisciplineRefToDocenteOs(subjectOrFieldId) !== requestedDiscipline) return false
-    const scope = arenaRecord(segment.scope, 'Arena segment scope')
-    return scope.type === 'grade-range'
-      && Array.isArray(scope.grades)
-      && scope.grades.includes(requestedGrade)
+    const scope = arenaScope(segment.scope, 'Arena segment scope')
+    return arenaScopeIncludesGrade(scope, requestedGrade)
   })
 
   if (matchingSegments.length !== 1) {
