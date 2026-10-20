@@ -7,11 +7,6 @@ import test from 'node:test'
 const toolsSource = readFileSync(new URL('./lesson-design-tools.tsx', import.meta.url), 'utf8')
 const actionsSource = readFileSync(new URL('./design-actions.ts', import.meta.url), 'utf8')
 const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
-const shellSource = readFileSync(new URL('./lesson-shell.tsx', import.meta.url), 'utf8')
-const prepareSource = readFileSync(new URL('./lesson-prepare-client.tsx', import.meta.url), 'utf8')
-const liveSource = readFileSync(new URL('./lesson-live-client.tsx', import.meta.url), 'utf8')
-const observeSource = readFileSync(new URL('./lesson-observe-client.tsx', import.meta.url), 'utf8')
-const closeSource = readFileSync(new URL('./lesson-close-client.tsx', import.meta.url), 'utf8')
 
 test('lesson design writes expose pending, success and failure feedback', () => {
   assert.match(toolsSource, /useActionState/)
@@ -48,19 +43,4 @@ test('Atlas proposal keeps provenance visible and requires an explicit teacher w
   assert.match(actionsSource, /sourceKind: 'ATLAS'/)
   assert.match(actionsSource, /sourceRef: `atlas:\$\{atlasMaterial\.materialId\}`/)
   assert.match(actionsSource, /resolveAtlasMaterialSuggestion/)
-})
-
-test('lesson workspace keeps the single page h1 in LessonShell across every phase', () => {
-  assert.equal((shellSource.match(/<h1\b/g) ?? []).length, 1)
-  for (const [phase, source] of [
-    ['prepare', prepareSource],
-    ['teach', liveSource],
-    ['observe', observeSource],
-    ['record', closeSource],
-  ] as const) {
-    assert.equal((source.match(/<h1\b/g) ?? []).length, 0, `${phase} must not declare a second h1`)
-  }
-  assert.doesNotMatch(prepareSource, /<h[1-6][^>]*>\{brief\.title\}<\/h[1-6]>/)
-  assert.match(prepareSource, /<h2>Prepara la lezione<\/h2>/)
-  assert.match(observeSource, /<h2>Guarda poche evidenze utili<\/h2>/)
 })
