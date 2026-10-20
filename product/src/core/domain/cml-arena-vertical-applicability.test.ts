@@ -352,6 +352,22 @@ describe('Arena vertical curricolo intake applicability', () => {
     assert.throws(() => selector()({ release, target }), /duplicate|node.*id|identifier|rejected/i)
   })
 
+  it('rejects a release node with an empty segment reference', () => {
+    const release = releaseFixture()
+    release.nodes[1].segmentId = ''
+    refreshFootprint(release)
+
+    assert.throws(() => selector()({ release, target }), /node.*segment|segment.*reference|segment.*id|rejected/i)
+  })
+
+  it('rejects a release node that references a segment absent from the release', () => {
+    const release = releaseFixture()
+    release.nodes[1].segmentId = 'seg-missing'
+    refreshFootprint(release)
+
+    assert.throws(() => selector()({ release, target }), /node.*segment|segment.*reference|segment.*id|rejected/i)
+  })
+
   it('returns a detached copy of nested selected-segment material', () => {
     const release = releaseFixture()
     release.segments[2].content = { nested: { label: 'original' } }
