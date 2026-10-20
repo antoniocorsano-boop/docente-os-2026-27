@@ -188,7 +188,7 @@ function releaseFixture() {
 
 function useScope(
   release: ReturnType<typeof releaseFixture>,
-  scope: { type: 'grade'; grade: string } | { type: 'grade-range'; grades: string[] } | { type: 'school-level' },
+  scope: { type: 'grade'; grade: string } | { type: 'grade-range'; grades: readonly string[] } | { type: 'school-level' },
 ): void {
   release.perimeter.expected[0].scope = structuredClone(scope) as never
   release.manifest.expected[0].scope = structuredClone(scope) as never
