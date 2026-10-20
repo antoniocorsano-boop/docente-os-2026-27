@@ -311,7 +311,7 @@ function assertArenaManifestMatches(release: Record<string, unknown>, segments: 
 function assertArenaSegmentsMatchReleaseVersion(
   segments: Record<string, unknown>[],
   versionId: string,
-): void {
+): Set<string> {
   const segmentIds = new Set<string>()
   for (const segment of segments) {
     const segmentId = arenaString(segment.id, 'Arena segment id')
@@ -323,11 +323,13 @@ function assertArenaSegmentsMatchReleaseVersion(
       throw new Error('Arena segment version rejected: does not match release version')
     }
   }
+  return segmentIds
 }
 
 function assertArenaNodesMatchReleaseVersion(
   nodes: Record<string, unknown>[],
   versionId: string,
+  segmentIds: Set<string>,
 ): void {
   const nodeIds = new Set<string>()
   for (const node of nodes) {
@@ -338,6 +340,10 @@ function assertArenaNodesMatchReleaseVersion(
     nodeIds.add(nodeId)
     if (node.versionId !== versionId) {
       throw new Error('Arena node version rejected: does not match release version')
+    }
+    const segmentId = arenaString(node.segmentId, 'Arena node segment id')
+    if (!segmentIds.has(segmentId)) {
+      throw new Error('Arena node segment reference rejected: segment id is not present in release')
     }
   }
 }
@@ -398,8 +404,8 @@ export function selectArenaVerticalCurricoloSlice(input: {
     .map((value) => arenaRecord(value, 'Arena node'))
 
   assertArenaStructuralFootprintMatches(release)
-  assertArenaSegmentsMatchReleaseVersion(segments, versionId)
-  assertArenaNodesMatchReleaseVersion(allNodes, versionId)
+  const segmentIds = assertArenaSegmentsMatchReleaseVersion(segments, versionId)
+  assertArenaNodesMatchReleaseVersion(allNodes, versionId, segmentIds)
   assertArenaManifestMatches(release, segments)
 
   const perimeter = arenaRecord(release.perimeter, 'Arena perimeter')
