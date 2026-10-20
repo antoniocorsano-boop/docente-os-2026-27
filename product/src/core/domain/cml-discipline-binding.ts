@@ -335,7 +335,7 @@ function assertArenaNodesMatchReleaseVersion(
   nodes: Record<string, unknown>[],
   versionId: string,
   segmentIds: Set<string>,
-): void {
+): Set<string> {
   const nodeIds = new Set<string>()
   for (const node of nodes) {
     const nodeId = arenaString(node.id, 'Arena node id')
@@ -349,6 +349,19 @@ function assertArenaNodesMatchReleaseVersion(
     const segmentId = arenaString(node.segmentId, 'Arena node segment id')
     if (!segmentIds.has(segmentId)) {
       throw new Error('Arena node segment reference rejected: segment id is not present in release')
+    }
+  }
+  return nodeIds
+}
+
+function assertArenaVerticalLinksReferenceNodes(value: unknown, nodeIds: Set<string>): void {
+  const verticalLinks = arenaArray(value, 'Arena verticalLinks')
+  for (const [index, linkValue] of verticalLinks.entries()) {
+    const link = arenaRecord(linkValue, `Arena vertical link ${index}`)
+    const sourceNodeId = arenaString(link.sourceNodeId, `Arena vertical link ${index} sourceNodeId`)
+    const targetNodeId = arenaString(link.targetNodeId, `Arena vertical link ${index} targetNodeId`)
+    if (!nodeIds.has(sourceNodeId) || !nodeIds.has(targetNodeId)) {
+      throw new Error('Arena vertical link rejected: endpoint references node outside release')
     }
   }
 }
@@ -410,7 +423,8 @@ export function selectArenaVerticalCurricoloSlice(input: {
 
   assertArenaStructuralFootprintMatches(release)
   const segmentIds = assertArenaSegmentsMatchReleaseVersion(segments, versionId)
-  assertArenaNodesMatchReleaseVersion(allNodes, versionId, segmentIds)
+  const nodeIds = assertArenaNodesMatchReleaseVersion(allNodes, versionId, segmentIds)
+  assertArenaVerticalLinksReferenceNodes(release.verticalLinks, nodeIds)
   assertArenaManifestMatches(release, segments)
 
   const perimeter = arenaRecord(release.perimeter, 'Arena perimeter')
