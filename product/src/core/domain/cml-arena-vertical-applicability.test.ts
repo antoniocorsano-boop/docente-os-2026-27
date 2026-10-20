@@ -315,4 +315,34 @@ describe('Arena vertical curricolo intake applicability', () => {
     refreshFootprint(release)
     assert.throws(() => selector()({ release, target }), /manifest|coverage|rejected/i)
   })
+
+  it('rejects duplicate segment identifiers before resolving nodes', () => {
+    const release = releaseFixture()
+    release.segments[1].id = release.segments[2].id
+    release.nodes[1].segmentId = release.segments[2].id
+    refreshFootprint(release)
+
+    assert.throws(() => selector()({ release, target }), /duplicate|segment.*id|identifier|rejected/i)
+  })
+
+  it('rejects any release segment whose version differs from the release version', () => {
+    const release = releaseFixture()
+    release.segments[1].versionId = 'other-version'
+    refreshFootprint(release)
+
+    assert.throws(() => selector()({ release, target }), /segment.*version|version|rejected/i)
+  })
+
+  it('returns a detached copy of nested selected-segment material', () => {
+    const release = releaseFixture()
+    release.segments[2].content = { nested: { label: 'original' } }
+    refreshFootprint(release)
+
+    const result = selector()({ release, target })
+    const selectedContent = (result.segment as Record<string, unknown>).content as { nested: { label: string } }
+    selectedContent.nested.label = 'changed'
+
+    const sourceContent = release.segments[2].content as { nested: { label: string } }
+    assert.equal(sourceContent.nested.label, 'original')
+  })
 })
