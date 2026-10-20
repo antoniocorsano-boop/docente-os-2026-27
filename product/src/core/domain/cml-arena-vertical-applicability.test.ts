@@ -186,7 +186,7 @@ function releaseFixture() {
   return release
 }
 
-function useScope(
+function applyScope(
   release: ReturnType<typeof releaseFixture>,
   scope: { type: 'grade'; grade: string } | { type: 'grade-range'; grades: readonly string[] } | { type: 'school-level' },
 ): void {
@@ -245,7 +245,7 @@ describe('Arena vertical curricolo intake applicability', () => {
       { type: 'school-level' } as const,
     ]) {
       const release = releaseFixture()
-      useScope(release, scope)
+      applyScope(release, scope)
       assert.equal(select({ release, target }).segment.id, 'seg-secondaria-tecnologia')
     }
   })
