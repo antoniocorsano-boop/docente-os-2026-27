@@ -368,6 +368,28 @@ describe('Arena vertical curricolo intake applicability', () => {
     assert.throws(() => selector()({ release, target }), /node.*segment|segment.*reference|segment.*id|rejected/i)
   })
 
+  it('rejects a target perimeter entry also marked intentionally not applicable', () => {
+    const release = releaseFixture()
+    const notApplicable = structuredClone(release.perimeter.expected[0])
+    release.perimeter.intentionallyNotApplicable = [notApplicable] as never
+    release.manifest.intentionallyNotApplicable = [structuredClone(notApplicable)] as never
+    refreshFootprint(release)
+
+    assert.throws(() => selector()({ release, target }), /not applicable|perimeter|manifest|rejected/i)
+  })
+
+  it('detects an own __proto__ field added after the structural footprint was computed', () => {
+    const release = releaseFixture()
+    Object.defineProperty(release.segments[2].content, '__proto__', {
+      value: { marker: 'tampered' },
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    })
+
+    assert.throws(() => selector()({ release, target }), /footprint|structural|provenance|rejected/i)
+  })
+
   it('returns a detached copy of nested selected-segment material', () => {
     const release = releaseFixture()
     release.segments[2].content = { nested: { label: 'original' } }
