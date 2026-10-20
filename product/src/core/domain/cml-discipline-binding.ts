@@ -191,7 +191,7 @@ function canonicalizeArena(value: unknown): unknown {
   }
   if (Array.isArray(value)) return value.map(canonicalizeArena)
   if (typeof value === 'object') {
-    const sorted: Record<string, unknown> = {}
+    const sorted = Object.create(null) as Record<string, unknown>
     for (const key of Object.keys(value as Record<string, unknown>).sort()) {
       sorted[key] = canonicalizeArena((value as Record<string, unknown>)[key])
     }
@@ -275,6 +275,11 @@ function rebuildArenaManifest(release: Record<string, unknown>, segments: Record
   )
   if (expected.length + intentionallyNotApplicable.length === 0) {
     throw new Error('Arena manifest rejected: perimeter is empty')
+  }
+
+  const expectedKeys = new Set(expected.map(expectedScopeKey))
+  if (intentionallyNotApplicable.some((item) => expectedKeys.has(expectedScopeKey(item)))) {
+    throw new Error('Arena manifest rejected: expected perimeter overlaps intentionally not applicable perimeter')
   }
 
   const presentSegmentKeys = new Set(segments.map(segmentScopeKey))
