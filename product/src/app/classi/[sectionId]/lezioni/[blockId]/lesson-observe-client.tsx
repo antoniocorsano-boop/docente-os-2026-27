@@ -140,7 +140,7 @@ export default function LessonObserveClient({
       <section className={styles.closeCard}>
         <div>
           <p className={styles.eyebrow}>DOPO / DURANTE · OSSERVAZIONE</p>
-          <h1>Guarda poche evidenze utili</h1>
+          <h2>Guarda poche evidenze utili</h2>
           <p className={styles.closeLead}>Non devi compilare tutto. Usa questi indicatori solo per richiamare l’attenzione su ciò che ti serve per decidere il passo successivo.</p>
         </div>
 
