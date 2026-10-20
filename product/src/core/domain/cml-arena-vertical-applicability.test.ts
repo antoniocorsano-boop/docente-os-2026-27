@@ -42,11 +42,11 @@ type SelectedSlice = {
 type Selector = (input: SelectorInput) => SelectedSlice
 
 function selector(): Selector {
-  const candidate = (disciplineBinding as Record<string, unknown>).selectArenaVerticalCurriculumSlice
+  const candidate = (disciplineBinding as Record<string, unknown>).selectArenaVerticalCurricoloSlice
   assert.equal(
     typeof candidate,
     'function',
-    'vertical Arena intake must expose selectArenaVerticalCurriculumSlice',
+    'vertical Arena intake must expose selectArenaVerticalCurricoloSlice',
   )
   return candidate as Selector
 }
@@ -156,7 +156,7 @@ const target = {
   disciplineRef: 'technology',
 }
 
-describe('Arena vertical curriculum intake applicability', () => {
+describe('Arena vertical curricolo intake applicability', () => {
   it('selects only the exact lower-secondary class slice and preserves Arena provenance', () => {
     const result = selector()({ release: releaseFixture(), target })
 
@@ -184,7 +184,7 @@ describe('Arena vertical curriculum intake applicability', () => {
       acceptanceRequired: true,
       automaticWriteAllowed: false,
     })
-    assert.equal('curriculumCoverage' in result, false)
+    assert.equal(Object.keys(result).some((key) => key.endsWith('Coverage')), false)
   })
 
   it('fails closed when institution, year, school order, grade or discipline do not match', () => {
