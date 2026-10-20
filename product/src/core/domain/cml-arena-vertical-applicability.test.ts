@@ -333,6 +333,25 @@ describe('Arena vertical curricolo intake applicability', () => {
     assert.throws(() => selector()({ release, target }), /segment.*version|version|rejected/i)
   })
 
+  it('rejects any release node whose version differs from the release version', () => {
+    const release = releaseFixture()
+    release.nodes[1].versionId = 'other-version'
+    refreshFootprint(release)
+
+    assert.throws(() => selector()({ release, target }), /node.*version|version|rejected/i)
+  })
+
+  it('rejects duplicate node identifiers before exposing the selected slice', () => {
+    const release = releaseFixture()
+    release.nodes.push({
+      ...structuredClone(release.nodes[0]),
+      title: 'Nodo duplicato',
+    })
+    refreshFootprint(release)
+
+    assert.throws(() => selector()({ release, target }), /duplicate|node.*id|identifier|rejected/i)
+  })
+
   it('returns a detached copy of nested selected-segment material', () => {
     const release = releaseFixture()
     release.segments[2].content = { nested: { label: 'original' } }
