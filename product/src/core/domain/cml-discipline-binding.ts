@@ -177,6 +177,22 @@ export function selectArenaVerticalCurricoloSlice(input: {
   const requestedGrade = gradeNumber(input.target.gradeRef)
   const requestedDiscipline = bindArenaDisciplineRefToDocenteOs(input.target.disciplineRef)
 
+  const perimeter = arenaRecord(release.perimeter, 'Arena perimeter')
+  const matchingPerimeter = arenaArray(perimeter.expected, 'Arena expected perimeter')
+    .map((value) => arenaRecord(value, 'Arena perimeter entry'))
+    .filter((entry) => {
+      if (entry.schoolOrder !== 'secondaria' || entry.domainKind !== 'DISCIPLINA') return false
+      const domainId = typeof entry.domainId === 'string' ? entry.domainId : ''
+      if (bindArenaDisciplineRefToDocenteOs(domainId) !== requestedDiscipline) return false
+      const scope = arenaRecord(entry.scope, 'Arena perimeter scope')
+      return scope.type === 'grade-range'
+        && Array.isArray(scope.grades)
+        && scope.grades.includes(requestedGrade)
+    })
+  if (matchingPerimeter.length !== 1) {
+    throw new Error('no applicable unique Arena curricolo perimeter entry for target')
+  }
+
   const manifest = arenaRecord(release.manifest, 'Arena manifest')
   if (manifest.coverageStatus !== 'SATISFIED') {
     throw new Error('Arena manifest incomplete: release rejected')
