@@ -82,7 +82,7 @@ export default function LessonCloseClient({
   const [draftLoaded, setDraftLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [localDate, setLocalDate] = useState(defaultLocalDate)
+  const [registrationLocalDate, setRegistrationLocalDate] = useState(defaultLocalDate)
   const [actualMinutes, setActualMinutes] = useState(String(projection.durationMinutes))
   const [outcome, setOutcome] = useState<LessonExecutionOutcome>('SVOLTO')
   const [evidenceNote, setEvidenceNote] = useState('')
@@ -249,7 +249,7 @@ export default function LessonCloseClient({
         <input type="hidden" name="sectionId" value={sectionId} />
         <input type="hidden" name="blockId" value={block.id} />
         <input type="hidden" name="registrationKey" value={registrationKey} />
-        <input type="hidden" name="localDate" value={localDate} />
+        <input type="hidden" name="localDate" value={registrationLocalDate} />
         <input type="hidden" name="actualMinutes" value={actualMinutes} />
         <input type="hidden" name="observationDimension" value={observationDraft?.dimensionKey ?? ''} />
         <input type="hidden" name="observationState" value={observationDraft?.state ?? ''} />
@@ -298,7 +298,7 @@ export default function LessonCloseClient({
               <div className={styles.sessionFacts}>
                 <label className={styles.sessionField}>
                   <span>Data della lezione</span>
-                  <input type="date" required value={localDate} max={defaultLocalDate} onChange={(event) => setLocalDate(event.target.value)} />
+                  <input type="date" required value={registrationLocalDate} max={defaultLocalDate} onChange={(event) => setRegistrationLocalDate(event.target.value)} />
                 </label>
                 <label className={styles.sessionField}>
                   <span>Minuti effettivi</span>

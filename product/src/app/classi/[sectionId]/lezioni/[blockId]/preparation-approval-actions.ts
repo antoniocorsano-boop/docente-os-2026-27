@@ -75,7 +75,7 @@ export async function approveLessonPreparationAndProceed(formData: FormData) {
   ])
 
   if (!isCurriculumBaselineReadyForLessonApproval(curriculumBaseline)) {
-    redirect(preparationHref(sectionId, blockId, localDate, occurrenceLogicalId, 'curriculum-required'))
+    redirect(preparationHref(sectionId, blockId, localDate, occurrenceLogicalId, 'curricolo-required'))
   }
 
   const supabase = await createClient()
