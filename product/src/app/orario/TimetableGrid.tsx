@@ -31,6 +31,8 @@ type TimetableGridProps = {
   slots: TimetableSlot[]
   assignments: TimetableGridAssignment[]
   lessonEntrypoints?: Record<string, TimetableLessonEntrypoint>
+  tomorrowMaterialsHref?: string
+  tomorrowMaterialsWeekday?: number
   readOnly?: boolean
   guided?: boolean
 }
@@ -88,7 +90,7 @@ const PRESENCE_LABELS: Record<TimetablePresenceKind, string> = {
   OTHER: 'Altra presenza',
 }
 
-export default function TimetableGrid({ versionId, days, periods, slots, assignments, lessonEntrypoints = {}, readOnly = false, guided = false }: TimetableGridProps) {
+export default function TimetableGrid({ versionId, days, periods, slots, assignments, lessonEntrypoints = {}, tomorrowMaterialsHref, tomorrowMaterialsWeekday, readOnly = false, guided = false }: TimetableGridProps) {
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week')
   const [selectedDay, setSelectedDay] = useState(days[0]?.value ?? 1)
   const [moment, setMoment] = useState<TimetableMoment | null>(null)
@@ -123,6 +125,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
   const focusedAssignment = focusedSlot?.teachingAssignmentId ? assignmentById.get(focusedSlot.teachingAssignmentId) : undefined
   const focusedEntrypoint = focusedSlot ? lessonEntrypoints[focusedSlot.id] ?? null : null
   const selectedDayIndex = Math.max(0, days.findIndex((day) => day.value === selectedDay))
+  const selectedDayIsTomorrow = viewMode === 'day' && tomorrowMaterialsWeekday === selectedDay
   const unresolvedAssignments = assignments.filter((assignment) => assignment.weeklyMinutes !== assignment.scheduledMinutes).length
 
   function openEmptyCell(weekday: number, startTime: string, endTime: string, ordinal: number | null) {
@@ -204,6 +207,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
             <button type="button" onClick={() => navigateDay(1)} disabled={selectedDayIndex >= days.length - 1} aria-label="Giorno successivo">›</button>
           </div>
         ) : <span className="gridHint">Tocca una voce per aprire il contesto</span>}
+        {selectedDayIsTomorrow && tomorrowMaterialsHref ? <Link className="tomorrowMaterialsLink" href={tomorrowMaterialsHref}>Materiali di domani</Link> : null}
         {!guided ? <button className="printTimetableButton" type="button" onClick={() => window.print()}>Stampa</button> : null}
       </div>
 

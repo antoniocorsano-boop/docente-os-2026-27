@@ -60,6 +60,10 @@ export async function TimetableExperience({
   )
 
   const moment = currentRomeMoment()
+  const literalTomorrowLocalDate = shiftLocalDate(moment.localDate, 1)
+  const isLiteralTomorrow = literalTomorrowLocalDate === shiftLocalDate(currentRomeDate(), 1)
+  const tomorrowMaterialsWeekday = isLiteralTomorrow ? weekdayFromLocalDate(literalTomorrowLocalDate) : null
+  const tomorrowMaterialsHref = mode === 'view' && isLiteralTomorrow ? '/knowledge?focus=domani' : undefined
   const settingsRepository = new SupabaseTeacherSettingsRepository()
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
   const timetableRepository = new SupabaseTimetableRepository()
@@ -502,6 +506,8 @@ export async function TimetableExperience({
           slots={operationalSlots}
           assignments={gridAssignments}
           lessonEntrypoints={lessonEntrypoints}
+          tomorrowMaterialsHref={tomorrowMaterialsHref}
+          tomorrowMaterialsWeekday={tomorrowMaterialsWeekday ?? undefined}
           readOnly
         />
       </section> : null}
@@ -663,6 +669,11 @@ function shiftLocalDate(localDate: string, offsetDays: number) {
   const date = new Date(`${localDate}T12:00:00Z`)
   date.setUTCDate(date.getUTCDate() + offsetDays)
   return date.toISOString().slice(0, 10)
+}
+
+function weekdayFromLocalDate(localDate: string) {
+  const weekday = new Date(`${localDate}T12:00:00Z`).getUTCDay()
+  return weekday === 0 ? 7 : weekday
 }
 
 function buildPeriods(startTime: string, durationMinutes: number, count: number) { const first = timeToMinutes(startTime); return Array.from({ length: count }, (_, index) => ({ ordinal: index + 1, start: minutesToTime(first + index * durationMinutes), end: minutesToTime(first + (index + 1) * durationMinutes) })) }
