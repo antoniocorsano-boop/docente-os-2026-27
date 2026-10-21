@@ -160,44 +160,49 @@ export default function LessonObserveClient({
           ))}
         </section>
 
-        <section className={styles.evidence} aria-labelledby="professional-observation-title">
-          <span id="professional-observation-title">OSSERVAZIONE PROFESSIONALE · FACOLTATIVA</span>
-          <strong>Registra una sola osservazione sintetica sulla classe</strong>
-          <p className={styles.detailText}>Scegli una dimensione e uno stato solo se vuoi conservarli con la lezione. Non inserire nomi, gruppi identificabili o dati individuali degli alunni.</p>
+        <details data-observation-capture className={styles.evidence}>
+          <summary>Registra un’osservazione professionale, se serve</summary>
+          <div className={styles.detailStack}>
+            <div>
+              <span id="professional-observation-title">OSSERVAZIONE PROFESSIONALE · FACOLTATIVA</span>
+              <strong>Registra una sola osservazione sintetica sulla classe</strong>
+              <p className={styles.detailText}>Scegli una dimensione e uno stato solo se vuoi conservarli con la lezione. Non inserire nomi, gruppi identificabili o dati individuali degli alunni.</p>
+            </div>
 
-          <div className={styles.sessionFacts}>
-            <label className={styles.sessionField}>
-              <span>Dimensione</span>
-              <select value={dimensionKey} onChange={(event) => setDimensionKey(event.target.value as '' | TeachingEvidenceDimensionKey)}>
-                <option value="">Nessuna osservazione da registrare</option>
-                {LESSON_OBSERVATION_DIMENSION_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </label>
+            <div className={styles.sessionFacts}>
+              <label className={styles.sessionField}>
+                <span>Dimensione</span>
+                <select value={dimensionKey} onChange={(event) => setDimensionKey(event.target.value as '' | TeachingEvidenceDimensionKey)}>
+                  <option value="">Nessuna osservazione da registrare</option>
+                  {LESSON_OBSERVATION_DIMENSION_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
 
-            <label className={styles.sessionField}>
-              <span>Stato osservato</span>
-              <select value={observationState} onChange={(event) => setObservationState(event.target.value as '' | LessonObservationState)}>
-                <option value="">Seleziona lo stato</option>
-                {LESSON_OBSERVATION_STATE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
+              <label className={styles.sessionField}>
+                <span>Stato osservato</span>
+                <select value={observationState} onChange={(event) => setObservationState(event.target.value as '' | LessonObservationState)}>
+                  <option value="">Seleziona lo stato</option>
+                  {LESSON_OBSERVATION_STATE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <label className={styles.note}>
+              <span>Nota breve, se serve</span>
+              <textarea
+                value={observationNote}
+                onChange={(event) => setObservationNote(event.target.value)}
+                maxLength={1000}
+                placeholder="Per esempio: la classe avvia il lavoro in autonomia ma richiede ancora una guida nella verifica finale."
+              />
             </label>
+            {draftError ? <p className={styles.privacyNote} role="alert">{draftError}</p> : null}
           </div>
-
-          <label className={styles.note}>
-            <span>Nota breve, se serve</span>
-            <textarea
-              value={observationNote}
-              onChange={(event) => setObservationNote(event.target.value)}
-              maxLength={1000}
-              placeholder="Per esempio: la classe avvia il lavoro in autonomia ma richiede ancora una guida nella verifica finale."
-            />
-          </label>
-          {draftError ? <p className={styles.privacyNote} role="alert">{draftError}</p> : null}
-        </section>
+        </details>
 
         <details className={styles.evidence}>
           <summary>Vedi criteri completi</summary>
