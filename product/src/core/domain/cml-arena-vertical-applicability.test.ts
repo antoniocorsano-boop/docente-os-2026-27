@@ -416,6 +416,24 @@ describe('Arena vertical curricolo intake applicability', () => {
     assert.throws(() => selector()({ release, target }), /vertical.*link|node.*outside|endpoint|reference|rejected/i)
   })
 
+  it('rejects a vertical link whose version differs from the release version', () => {
+    const release = releaseFixture()
+    release.verticalLinks = [{
+      id: 'link-technology-italiano',
+      versionId: 'other-version',
+      sourceNodeId: 'node-tecnologia-2',
+      targetNodeId: 'node-italiano-2',
+      relationType: 'prerequisite',
+      rationale: 'Cross-domain continuity',
+      status: 'draft',
+      createdAt: NOW,
+      updatedAt: NOW,
+    }] as never
+    refreshFootprint(release)
+
+    assert.throws(() => selector()({ release, target }), /vertical.*link.*version|version.*vertical.*link|version|rejected/i)
+  })
+
   it('returns a detached copy of nested selected-segment material', () => {
     const release = releaseFixture()
     release.segments[2].content = { nested: { label: 'original' } }
