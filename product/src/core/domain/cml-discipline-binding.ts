@@ -263,6 +263,18 @@ function sortedUniqueExpected(values: ArenaExpectedScope[]): ArenaExpectedScope[
   return [...unique.values()].sort((left, right) => expectedScopeKey(left).localeCompare(expectedScopeKey(right)))
 }
 
+function assertNoCrossKindCoverageCollisions(values: ArenaExpectedScope[]): void {
+  const domainKindsBySegmentKey = new Map<string, string>()
+  for (const value of values) {
+    const segmentKey = expectedSegmentKey(value)
+    const existingDomainKind = domainKindsBySegmentKey.get(segmentKey)
+    if (existingDomainKind !== undefined && existingDomainKind !== value.domainKind) {
+      throw new Error('Arena manifest rejected: coverage identity collides across domain kinds')
+    }
+    domainKindsBySegmentKey.set(segmentKey, value.domainKind)
+  }
+}
+
 function rebuildArenaManifest(release: Record<string, unknown>, segments: Record<string, unknown>[]): Record<string, unknown> {
   const perimeter = arenaRecord(release.perimeter, 'Arena perimeter')
   const expected = sortedUniqueExpected(
@@ -276,6 +288,8 @@ function rebuildArenaManifest(release: Record<string, unknown>, segments: Record
   if (expected.length + intentionallyNotApplicable.length === 0) {
     throw new Error('Arena manifest rejected: perimeter is empty')
   }
+
+  assertNoCrossKindCoverageCollisions(expected)
 
   const expectedKeys = new Set(expected.map(expectedScopeKey))
   if (intentionallyNotApplicable.some((item) => expectedKeys.has(expectedScopeKey(item)))) {
@@ -360,8 +374,14 @@ function assertArenaVerticalLinksReferenceNodes(
   nodeIds: Set<string>,
 ): void {
   const verticalLinks = arenaArray(value, 'Arena verticalLinks')
+  const linkIds = new Set<string>()
   for (const [index, linkValue] of verticalLinks.entries()) {
     const link = arenaRecord(linkValue, `Arena vertical link ${index}`)
+    const linkId = arenaString(link.id, `Arena vertical link ${index} id`)
+    if (linkIds.has(linkId)) {
+      throw new Error('Arena vertical link rejected: duplicate vertical link id')
+    }
+    linkIds.add(linkId)
     if (link.versionId !== versionId) {
       throw new Error('Arena vertical link version rejected: does not match release version')
     }
