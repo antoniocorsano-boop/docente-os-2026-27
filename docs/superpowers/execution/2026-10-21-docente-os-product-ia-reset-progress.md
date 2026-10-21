@@ -15,3 +15,10 @@ Pre-flight shared interfaces:
 - Task 7 materials -> Task 8 compatibility: new UI stops generating legacy material URLs before any redirect/retirement.
 
 No shared-interface conflict found against the approved specification.
+
+Task 1: Ruling: place `buildCanonicalLessonWorkspaceHref` in focused `lesson-workspace-route.ts` rather than the large lesson-content registry. This preserves the approved public behavior while keeping routing independent of curricular content. Cost if wrong: one import/re-export adjustment in consumers.
+
+Task 1: Ruling: execute the new state test by importing it from the already-registered `human-task-content.test.ts` instead of rewriting the repository's long explicit `npm test` command in this task. Product CI therefore executes the new assertions while avoiding unrelated script churn. Cost if wrong: test discoverability is less explicit until the suite is simplified or the path is registered directly.
+
+Task 1: RED confirmed on exact head `1065de0b4dc05368968f64c413fc447425a8c437`: Product CI #3284 failed at typecheck with the test-only contract and no implementation.
+Task 1: complete on exact head `f9166182108fcc5bcb4e80bcb45c5cfbff823e42`; Product CI #3286 PASS for typecheck, product tests, lint, and build. Canonical lesson state + phase-free canonical href implemented; legacy `?mode=` builder preserved.
