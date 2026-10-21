@@ -4,154 +4,193 @@ import { screenshotPath } from '../support/experience-observer.mjs'
 
 requireE2ECredentials()
 
-const TECHNICAL_ID = /CAN-(?:PACK|PLAN)|\bB\d{2}\b|[0-9a-f]{8}-[0-9a-f-]{27,}/i
-
-test('DOS-IA-RESET: root converge su Oggi e Oggi resta sparso', async ({ page }, testInfo) => {
+test('DOS-IA-RESET: root converge su Oggi e Oggi resta una superficie sparsa', async ({ page }, testInfo) => {
   await loginE2E(page)
   await page.goto('/')
-  await expect(page).toHaveURL(/\/planner(?:\?|$)/)
+  await expect(page).toHaveURL(/\/planner(?:[?#]|$)/)
   await expect(page.getByRole('heading', { level: 1, name: 'Oggi' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Calendario', exact: true }).first()).toHaveAttribute('href', '/calendario')
 
-  await expect(page.getByText('Chiudi giornata', { exact: true })).toHaveCount(0)
-  await expect(page.getByText('Planner', { exact: true })).toHaveCount(0)
-  await expect(page.locator('form[action*="planner"], .plannerQuickActions, .plannerTaskBoard')).toHaveCount(0)
-
-  const lessonActions = page.locator('a.todayPrimaryAction')
-  for (let index = 0; index < await lessonActions.count(); index += 1) {
-    const href = await lessonActions.nth(index).getAttribute('href')
-    expect(href).toMatch(/^\/(?:classi(?:\/[^/?#]+(?:\/lezioni\/[^/?#]+)?)?|orario)(?:\?|$)/)
-    expect(href).not.toMatch(/[?&]mode=(?:prepare|teach|observe|record)/)
+  const lessonCards = page.locator('.todayLessonCard')
+  expect(await lessonCards.count(), 'Oggi non deve trasformarsi in una bacheca di attività').toBeLessThanOrEqual(2)
+  for (let index = 0; index < await lessonCards.count(); index += 1) {
+    await expect(lessonCards.nth(index).locator('a.todayPrimaryAction')).toHaveCount(1)
   }
 
-  const firstLevel = await page.locator('#dos-main-content').innerText()
-  expect(firstLevel).not.toMatch(TECHNICAL_ID)
-  await page.screenshot({ path: await screenshotPath(testInfo.project.name, 'dos-ia-reset-oggi'), fullPage: true })
+  await expect(page.getByRole('button', { name: /Chiudi giornata|Aggiungi attività/i })).toHaveCount(0)
+  const commitments = page.locator('.todayCalendarCommitments')
+  if (await commitments.count()) {
+    await expect(commitments.getByRole('heading', { level: 2, name: 'Impegni' })).toBeVisible()
+    const links = commitments.locator('a')
+    for (let index = 0; index < await links.count(); index += 1) {
+      expect(await links.nth(index).getAttribute('href')).toMatch(/^\/calendario(?:[?#]|$)/)
+    }
+  }
+
+  await page.screenshot({
+    path: await screenshotPath(testInfo.project.name, 'dos-ia-reset-oggi-sparse'),
+    fullPage: true,
+  })
 })
 
-test('DOS-IA-RESET: Orario conserva Giorno/Settimana e separa consultazione da modifica', async ({ page }, testInfo) => {
+test('DOS-IA-RESET: Orario separa consultazione diretta della Lezione e modifica della griglia', async ({ page }, testInfo) => {
   await loginE2E(page)
   await page.goto('/orario')
   await expect(page.getByRole('heading', { level: 1, name: 'Il tuo orario' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Settimana', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Giorno', exact: true })).toBeVisible()
 
-  const week = page.getByRole('button', { name: 'Settimana', exact: true })
-  const day = page.getByRole('button', { name: 'Giorno', exact: true })
-  await expect(week).toBeVisible()
-  await expect(day).toBeVisible()
-  await week.click()
-  await expect(week).toHaveClass(/active/)
-  await day.click()
-  await expect(day).toHaveClass(/active/)
+  await page.getByRole('button', { name: 'Giorno', exact: true }).click()
+  await expect(page.locator('.dayNavigator')).toBeVisible()
+  await page.getByRole('button', { name: 'Settimana', exact: true }).click()
+  await expect(page.locator('.dayNavigator')).toHaveCount(0)
 
-  await week.click()
-  const lesson = page.locator('button.occupiedTimetableCell.kind-lesson').first()
-  if (await lesson.count()) {
-    await lesson.click()
-    const primary = page.locator('.timetableContextActions a.contextPrimaryAction').first()
-    await expect(primary).toBeVisible()
-    const href = await primary.getAttribute('href')
-    expect(href).toMatch(/^\/classi\//)
-    expect(href).not.toMatch(/[?&]mode=(?:prepare|teach|observe|record)/)
-  }
+  const lessonHref = await openResolvedLessonFromReadOnlyGrid(page)
+  expect(lessonHref).toMatch(/^\/classi\/[^/?#]+\/lezioni\/[^/?#]+/)
+  await page.locator('.timetableContextSheet').getByRole('button', { name: 'Chiudi' }).click()
 
-  await page.goto('/orario/aggiorna')
+  await page.goto('/orario/aggiorna?fase=modifica')
   await expect(page.getByRole('heading', { level: 1, name: 'Modifica orario' })).toBeVisible()
-  await expect(page.locator('.timetable-update')).toBeVisible()
-  await page.screenshot({ path: await screenshotPath(testInfo.project.name, 'dos-ia-reset-orario'), fullPage: true })
+  const editableLesson = page.locator('.occupiedTimetableCell.kind-lesson').first()
+  await expect(editableLesson).toBeVisible()
+  await editableLesson.click()
+  await expect(page.locator('.timetableEditorForm')).toBeVisible()
+  await expect(page.locator('.timetableEditor').getByRole('link', { name: 'Apri lezione' })).toHaveCount(0)
+
+  await page.screenshot({
+    path: await screenshotPath(testInfo.project.name, 'dos-ia-reset-orario-edit-separation'),
+    fullPage: true,
+  })
 })
 
-test('DOS-IA-RESET: Classi conduce a Classe con Diario e Altro della classe', async ({ page }, testInfo) => {
+test('DOS-IA-RESET: Classi è selettore e Classe mantiene continuità, Diario e un solo Altro della classe', async ({ page }, testInfo) => {
   await loginE2E(page)
   await page.goto('/classi')
-  const firstClass = page.locator('a.canonicalClassCard').first()
-  await expect(firstClass).toBeVisible()
-  await firstClass.click()
-  await expect(page).toHaveURL(/\/classi\/[^/?#]+(?:\?|$)/)
-  await expect(page.locator('h1').first()).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Scegli una classe' })).toBeVisible()
 
-  const diary = page.getByRole('link', { name: 'Apri Diario', exact: true })
-  await expect(diary).toBeVisible()
-  await expect(diary).toHaveAttribute('href', /\/classi\/[^/?#]+\/diario$/)
+  const classCards = page.locator('a.canonicalClassCard')
+  expect(await classCards.count(), 'La prova HVA richiede almeno una classe governata').toBeGreaterThan(0)
+  await classCards.first().click()
+
+  await expect(page.locator('[data-testid="class-continuity-primary"]')).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: 'Ultimo lavoro' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: 'Prossima attività' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: 'Avanzamento' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: 'Contesto recente' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Apri Diario', exact: true })).toBeVisible()
   await expect(page.locator('details#altro-della-classe > summary')).toHaveText('Altro della classe')
+  await expect(page.locator('details#altro-della-classe')).toHaveCount(1)
 
-  const lessonLink = page.locator('a[href*="/lezioni/"]').first()
-  if (await lessonLink.count()) {
-    const canonicalHref = await lessonLink.getAttribute('href')
-    expect(canonicalHref).not.toMatch(/[?&]mode=/)
-    await lessonLink.click()
-    await expect(page.locator('[data-lesson-shell]')).toBeVisible()
-    await expect(page.getByRole('navigation', { name: /Fasi della lezione/i })).toHaveCount(0)
-
-    const observation = page.getByRole('link', { name: /Osserv/i }).or(page.getByRole('button', { name: /Osserv/i })).first()
-    const materials = page.getByRole('link', { name: 'Materiali', exact: true }).or(page.getByRole('button', { name: 'Materiali', exact: true })).first()
-    if (await observation.count()) await expect(observation).toBeVisible()
-    if (await materials.count()) await expect(materials).toBeVisible()
-  }
-
-  await page.screenshot({ path: await screenshotPath(testInfo.project.name, 'dos-ia-reset-classe'), fullPage: true })
+  await page.screenshot({
+    path: await screenshotPath(testInfo.project.name, 'dos-ia-reset-classe-continuity'),
+    fullPage: true,
+  })
 })
 
-test('DOS-IA-RESET: Altro ospita Materiali e fonti e le route legacy restano sicure', async ({ page }) => {
+test('DOS-IA-RESET: Lezione usa una sola shell, emette subtask canonici e accetta mode solo in ingresso', async ({ page }) => {
+  await loginE2E(page)
+  await page.goto('/orario')
+  const lessonHref = await openResolvedLessonFromReadOnlyGrid(page)
+  await page.goto(lessonHref)
+
+  const shell = page.locator('[data-lesson-shell]')
+  await expect(shell).toBeVisible()
+  await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
+  await expect(page.locator('a[href*="mode="]')).toHaveCount(0)
+
+  const legacyUrl = new URL(lessonHref, 'http://docente-os.local')
+  legacyUrl.searchParams.set('mode', 'prepare')
+  await page.goto(`${legacyUrl.pathname}${legacyUrl.search}`)
+  await expect(page.locator('[data-lesson-shell]')).toBeVisible()
+  await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
+
+  const materials = page.getByRole('link', { name: 'Materiali', exact: true })
+  if (await materials.count()) {
+    await materials.first().click()
+    await expect(page).toHaveURL(/subtask=materials/)
+    expect(page.url()).not.toMatch(/[?&]mode=/)
+    await expect(page.locator('[data-lesson-subtask="materials"]')).toBeVisible()
+  }
+})
+
+test('DOS-IA-RESET: Altro → Materiali e fonti → Materiali di domani usa la casa stabile', async ({ page }) => {
   await loginE2E(page)
   await page.goto('/altro')
-  const materialsHome = page.getByRole('link', { name: /Materiali e fonti/ }).first()
-  await expect(materialsHome).toHaveAttribute('href', '/knowledge')
-  await materialsHome.click()
-  await expect(page).toHaveURL(/\/knowledge(?:\?|$)/)
+  await page.getByRole('link', { name: /Materiali e fonti/ }).click()
+  await expect(page).toHaveURL(/\/knowledge(?:[?#]|$)/)
 
   await page.goto('/knowledge?focus=domani')
   await expect(page.getByText('MATERIALI DI DOMANI', { exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Materiali e fonti/ })).toBeVisible()
 
-  for (const legacyPath of ['/materiali/domani', '/materiali/prossima']) {
-    await page.goto(legacyPath)
-    await expect(page.locator('#dos-main-content')).toBeVisible()
-    await expect(page).not.toHaveURL(/\/login(?:\?|$)/)
-  }
+  await page.goto('/materiali/domani')
+  await expect(page.getByText('MATERIALI DI DOMANI', { exact: true })).toBeVisible()
+  await page.goto('/materiali/prossima')
+  await expect(page.locator('#dos-main-content')).toBeVisible()
 })
 
-test('DOS-IA-RESET: legacy mode resta input compatibile ma la nuova Lezione non emette fasi URL', async ({ page }) => {
+test('DOS-IA-RESET responsive 320×800: gerarchia e touch target restano utilizzabili', async ({ page }) => {
   await loginE2E(page)
-  await page.goto('/classi')
-  const firstClass = page.locator('a.canonicalClassCard').first()
-  await expect(firstClass).toBeVisible()
-  await firstClass.click()
-  const lessonLink = page.locator('a[href*="/lezioni/"]').first()
-  if (!(await lessonLink.count())) return
-
-  const href = await lessonLink.getAttribute('href')
-  if (!href) return
-  const legacyHref = `${href}${href.includes('?') ? '&' : '?'}mode=prepare`
-  await page.goto(legacyHref)
-  await expect(page.locator('[data-lesson-shell]')).toBeVisible()
-  await expect(page.getByRole('navigation', { name: /Fasi della lezione/i })).toHaveCount(0)
-  await expect(page.locator('a[href*="mode="]')).toHaveCount(0)
+  await page.setViewportSize({ width: 320, height: 800 })
+  await page.goto('/planner')
+  await expectNoHorizontalOverflow(page, 'Oggi 320×800')
+  await assertMobilePrimaryTargets(page)
+  await expect(page.locator('#dos-main-content')).not.toContainText(/CAN-PACK|CAN-PLAN|[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i)
 })
 
-for (const viewport of [
-  { width: 320, height: 800 },
-  { width: 390, height: 844 },
-]) {
-  test(`DOS-IA-RESET: gerarchia responsive ${viewport.width}x${viewport.height}`, async ({ page }) => {
-    await page.setViewportSize(viewport)
-    await loginE2E(page)
-    await page.goto('/planner')
-    await expect(page.locator('#dos-main-content')).toBeVisible()
+test('DOS-IA-RESET responsive 390×844: Classe mantiene Diario e Altro senza overflow', async ({ page }) => {
+  await loginE2E(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/classi')
+  const classCards = page.locator('a.canonicalClassCard')
+  expect(await classCards.count(), 'La prova responsive richiede almeno una classe governata').toBeGreaterThan(0)
+  await classCards.first().click()
+  await expectNoHorizontalOverflow(page, 'Classe 390×844')
+  await assertMobilePrimaryTargets(page)
+  await expectTouchTarget(page.getByRole('link', { name: 'Apri Diario', exact: true }), 'Apri Diario 390×844')
+  await expectTouchTarget(page.locator('details#altro-della-classe > summary'), 'Altro della classe 390×844')
+})
 
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
-    expect(overflow).toBeLessThanOrEqual(1)
+async function openResolvedLessonFromReadOnlyGrid(page) {
+  const cells = page.locator('.occupiedTimetableCell.kind-lesson')
+  const count = await cells.count()
+  expect(count, 'L’Orario HVA deve contenere almeno una lezione').toBeGreaterThan(0)
 
-    const primary = page.locator('.dosBottomNav a')
-    await expect(primary).toHaveCount(4)
-    const labels = await primary.locator('small').allTextContents()
-    expect(labels).toEqual(['Oggi', 'Orario', 'Classi', 'Altro'])
-    for (let index = 0; index < await primary.count(); index += 1) {
-      const box = await primary.nth(index).boundingBox()
-      expect(box, `touch target ${index + 1} non misurabile`).not.toBeNull()
-      expect(box.width).toBeGreaterThanOrEqual(44)
-      expect(box.height).toBeGreaterThanOrEqual(44)
+  for (let index = 0; index < count; index += 1) {
+    await cells.nth(index).click()
+    const sheet = page.locator('.timetableContextSheet')
+    await expect(sheet).toBeVisible()
+    const lessonLink = sheet.getByRole('link', { name: 'Apri lezione', exact: true })
+    if (await lessonLink.count()) {
+      const href = await lessonLink.getAttribute('href')
+      expect(href, 'Apri lezione deve avere una route canonica').not.toBeNull()
+      return href
     }
+    await sheet.getByRole('button', { name: 'Chiudi' }).click()
+  }
+  throw new Error('Nessuna voce dell’Orario HVA risolve una Lezione canonica senza ambiguità')
+}
 
-    const firstLevel = await page.locator('#dos-main-content').innerText()
-    expect(firstLevel).not.toMatch(TECHNICAL_ID)
-  })
+async function assertMobilePrimaryTargets(page) {
+  const primary = page.locator('.dosBottomNav')
+  await expect(primary).toBeVisible()
+  expect(await primary.locator('small').allTextContents()).toEqual(['Oggi', 'Orario', 'Classi', 'Altro'])
+  const links = primary.locator('a')
+  for (let index = 0; index < await links.count(); index += 1) {
+    await expectTouchTarget(links.nth(index), `Navigazione mobile ${index + 1}`)
+  }
+}
+
+async function expectTouchTarget(locator, label) {
+  const box = await locator.boundingBox()
+  expect(box, `${label}: target non misurabile`).not.toBeNull()
+  expect(box.height, `${label}: altezza target sotto 44px`).toBeGreaterThanOrEqual(44)
+  expect(box.width, `${label}: larghezza target sotto 44px`).toBeGreaterThanOrEqual(44)
+}
+
+async function expectNoHorizontalOverflow(page, label) {
+  const geometry = await page.evaluate(() => ({
+    innerWidth: window.innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }))
+  expect(geometry.scrollWidth, `${label}: overflow ${geometry.scrollWidth}px su ${geometry.innerWidth}px`).toBeLessThanOrEqual(geometry.innerWidth + 1)
 }
