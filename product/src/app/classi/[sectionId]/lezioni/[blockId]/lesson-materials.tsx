@@ -178,7 +178,7 @@ function ReuseMaterials({
             </details>
           </div>
           <div>
-            <a href={item.publicUrl} target="_blank" rel="noreferrer">Anteprima</a>
+            <a href={item.publicUrl} target="_blank" rel="noreferrer">Controlla</a>
             <form action={writeAction}>
               <input type="hidden" name="designIntent" value="attach-atlas" />
               <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
@@ -209,7 +209,7 @@ function ReuseMaterials({
             ) : null}
           </div>
           <div>
-            <Link href={buildFocusedKnowledgeHref(item.assetId, sectionId, blockId)}>Anteprima</Link>
+            <Link href={buildFocusedKnowledgeHref(item.assetId, sectionId, blockId)}>Controlla</Link>
             <form action={writeAction}>
               <input type="hidden" name="designIntent" value="attach-knowledge" />
               <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
