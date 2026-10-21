@@ -4,6 +4,7 @@ import test from 'node:test'
 import { isCurrentDaySessionReceipt, presentClassRecorderEmptyState, presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
 
 const classPageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+const secondaryToolsSource = readFileSync(new URL('./class-secondary-tools.tsx', import.meta.url), 'utf8')
 const recorderSource = readFileSync(new URL('./TeachingSessionRecorderClient.tsx', import.meta.url), 'utf8')
 const recorderServerSource = readFileSync(new URL('./TeachingSessionRecorder.tsx', import.meta.url), 'utf8')
 const actionsSource = readFileSync(new URL('./actions.ts', import.meta.url), 'utf8')
@@ -215,8 +216,9 @@ test('la Classe cerca ieri prima di degradare al recorder manuale', () => {
 })
 
 test('il fallback retroattivo richiede una data esplicita non futura', () => {
-  assert.match(classPageSource, /allowDateSelection/)
-  assert.match(classPageSource, /maxLocalDate=\{today\}/)
+  assert.match(classPageSource, /allowDateSelection: true/)
+  assert.match(classPageSource, /maxLocalDate: today/)
+  assert.match(secondaryToolsSource, /<TeachingSessionRecorder \{\.\.\.advanced\.fallbackRecorder\} \/>/)
   assert.match(recorderSource, /type="date"/)
   assert.match(recorderSource, /max=\{maxLocalDate\}/)
   assert.match(actionsSource, /validTeachingLocalDate/)
