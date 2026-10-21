@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Realign the current Docente OS Beta presentation to the frozen task-centric visual contract without changing routes, domain authorities, persistence, curriculum semantics, TeachingSession write authority, Atlas governance or Production.
+**Goal:** Realign the current Docente OS Beta presentation to the frozen task-centric visual contract without changing routes, domain authorities, persistence, curricolo semantics, TeachingSession write authority, Atlas governance or Production.
 
 **Architecture:** Recompose existing presentation surfaces in place. Preserve all current server actions, domain models, routes and receipts; change only first-level composition, progressive disclosure, focused-mode shell treatment and visual hierarchy. Each vertical slice starts with an executable RED browser/source contract, applies the smallest presentational change, then returns to GREEN before the next slice.
 
@@ -21,13 +21,13 @@
 - Broader product navigation remains available but perceptually subordinate in focused lesson work.
 - Touch targets remain at least 44 px; 320 px must have no horizontal scrolling.
 - Atlas appears only when a qualified Atlas suggestion already exists; no new Atlas or Studio Atlas runtime integration.
-- Preparation approval/revalidation, TeachingSession receipt, idempotency, no-implicit-write and curriculum boundaries remain unchanged.
+- Preparation approval/revalidation, TeachingSession receipt, idempotency, no-implicit-write and curricolo boundaries remain unchanged.
 - No schema, migration, new store, new domain model, new authority, Production action or unrelated feature work.
 - No merge without explicit human authorization. A later authorized merge into `develop` includes only the governed automatic Beta deploy, followed by mandatory runtime reconciliation.
 
 ## Review Focus
 
-1. **Healthy approved PREPARA vs blocked/revalidation PREPARA:** healthy state must stay compact, but required curriculum/approval blockers must remain unmistakable and must never be hidden inside disclosure.
+1. **Healthy approved PREPARA vs blocked/revalidation PREPARA:** healthy state must stay compact, but required curricolo/approval blockers must remain unmistakable and must never be hidden inside disclosure.
 2. **Materiali with no qualified Atlas resource:** the surface must remain complete and truthful with Knowledge/other sources; no empty/synthetic Atlas affordance may appear.
 3. **REGISTRA when required factual values cannot be derived:** fast path must not invent date/minutes or bypass validation; mandatory unresolved facts stay visible.
 4. **Partial/remodelled/recovered lesson outcomes:** CONTINUA must not blindly advance the annual plan; the existing receipt semantics continue to decide the next block.
@@ -215,7 +215,7 @@ Expected: FAIL specifically on compact hierarchy assertions.
 
 - [ ] **Step 3: Recompose PREPARA**
 
-Keep first level to Lesson Shell, objective, readiness summary, one Materiali entry, blocking approval state/CTA and `Vedi progettazione completa`. Move full checklist, broad `LessonDesignTools`, outcomes and non-blocking authority explanation inside existing progressive disclosure. Required stale/curriculum blockers remain visible outside disclosure when they block progression.
+Keep first level to Lesson Shell, objective, readiness summary, one Materiali entry, blocking approval state/CTA and `Vedi progettazione completa`. Move full checklist, broad `LessonDesignTools`, outcomes and non-blocking authority explanation inside existing progressive disclosure. Required stale/curricolo blockers remain visible outside disclosure when they block progression.
 
 - [ ] **Step 4: Recompose MATERIALI**
 

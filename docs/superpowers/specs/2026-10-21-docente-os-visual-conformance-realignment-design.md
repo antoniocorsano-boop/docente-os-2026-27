@@ -50,7 +50,7 @@ The current Beta on `8177ceb1…` is functionally qualified and all published ru
 The implementation preserves the task-centric graph but several surfaces have accumulated extra hierarchy or system-facing detail:
 
 - `OGGI`: dominant lesson task exists, but global navigation and secondary planner content remain visually strong;
-- `PREPARA`: all required elements exist, but approval/curriculum and extended context create more visual weight than the frozen composition;
+- `PREPARA`: all required elements exist, but approval/curricolo and extended context create more visual weight than the frozen composition;
 - `MATERIALI`: correct intents exist, but the subtask is embedded inside PREPARA and cards expose more explanatory/provenance detail than the canonical board;
 - `VISUALIZZA`: lesson context and attach action are correct, but the preview is document/system-oriented rather than materially visual-first;
 - `CONDUCI`: closest to the frozen model; only noise reduction and hierarchy tightening are expected;
@@ -127,7 +127,7 @@ Move below first level where possible:
 - broad design tools;
 - extended UDA/outcome context.
 
-Curriculum and preparation approval semantics remain unchanged. Required warnings still appear when they block the primary action, but explanatory detail should not dominate the default healthy state.
+Curricolo and preparation approval semantics remain unchanged. Required warnings still appear when they block the primary action, but explanatory detail should not dominate the default healthy state.
 
 ### 6.3 MATERIALI
 
@@ -357,7 +357,7 @@ Explicitly out of scope:
 - new product capabilities;
 - new lesson/material/continuity domain models;
 - schema or migration changes;
-- changes to Arena/curriculum authority;
+- changes to Arena/curricolo authority;
 - new Atlas or Studio Atlas runtime integration;
 - DOC-04 expansion;
 - redesign of global information architecture outside what is necessary to subordinate navigation in focused mode;
