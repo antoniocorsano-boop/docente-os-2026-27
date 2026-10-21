@@ -190,6 +190,7 @@ export default async function LessonWorkspacePage({
       role={context.role}
       contentClassName="lessonWorkspaceSurface"
       contextualAssistantEnabled={approvalStatus === 'APPROVED'}
+      focusMode
     >
       <OpenDesignReview active={mode === 'prepare' && query.review === 'design'} />
       {mode === 'teach' ? (
