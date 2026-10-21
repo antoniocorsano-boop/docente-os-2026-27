@@ -5,6 +5,8 @@ import test from 'node:test'
 
 const migrationPath = path.join(process.cwd(), 'supabase', 'migrations', '0051_mfa_aal2_enforcement.sql')
 const migration = fs.readFileSync(migrationPath, 'utf8')
+const e2eAuthPath = path.join(process.cwd(), 'e2e', 'support', 'e2e-auth.mjs')
+const e2eAuth = fs.readFileSync(e2eAuthPath, 'utf8')
 
 test('MFA migration defines a fail-closed AAL2 JWT guard', () => {
   assert.match(migration, /create or replace function private\.current_session_is_aal2\(\)/i)
@@ -32,4 +34,16 @@ test('Knowledge Storage and future public tables remain inside the AAL2 ratchet'
   assert.match(migration, /create or replace function public\.rls_auto_enable\(\)/i)
   assert.match(migration, /enabled RLS \+ AAL2/i)
   assert.match(migration, /revoke execute on function public\.rls_auto_enable\(\) from public, anon, authenticated/i)
+})
+
+test('governed HVA MFA setup gives the server-rendered MFA boundary an explicit readiness budget', () => {
+  assert.match(e2eAuth, /const MFA_PAGE_READY_TIMEOUT_MS\s*=\s*30_000/)
+  assert.match(
+    e2eAuth,
+    /expect\(\s*page\.getByRole\('heading',\s*\{\s*name:\s*'Conferma il secondo fattore\.'\s*\}\),?\s*\)\.toBeVisible\(\{\s*timeout:\s*MFA_PAGE_READY_TIMEOUT_MS\s*\}\)/,
+  )
+  assert.doesNotMatch(
+    e2eAuth,
+    /expect\(\s*page\.getByRole\('heading',\s*\{\s*name:\s*'Conferma il secondo fattore\.'\s*\}\),?\s*\)\.toBeVisible\(\s*\)/,
+  )
 })
