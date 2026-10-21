@@ -153,16 +153,32 @@ export default function LessonPrepareClient({
           </div>
         ) : null}
 
-        <div className={styles.planBoundary} role="status" aria-live="polite">
-          <strong>{approvalTitle(approval.status)}</strong>
-          <span>{approvalMessage(
-            approval.status,
-            approval.approvedAt,
-            approval.notice,
-            approval.alignmentAuthority,
-            approval.requiresRevalidationOnApproval,
-          )}</span>
-        </div>
+        {approval.status === 'APPROVED' ? (
+          <details className={styles.compactDisclosure} data-preparation-approval-detail>
+            <summary>
+              <span>Preparazione approvata</span>
+              <small>Dettagli</small>
+            </summary>
+            <p>{approvalMessage(
+              approval.status,
+              approval.approvedAt,
+              approval.notice,
+              approval.alignmentAuthority,
+              approval.requiresRevalidationOnApproval,
+            )}</p>
+          </details>
+        ) : (
+          <div className={styles.planBoundary} role="status" aria-live="polite">
+            <strong>{approvalTitle(approval.status)}</strong>
+            <span>{approvalMessage(
+              approval.status,
+              approval.approvedAt,
+              approval.notice,
+              approval.alignmentAuthority,
+              approval.requiresRevalidationOnApproval,
+            )}</span>
+          </div>
+        )}
 
         <div className={styles.closeActions}>
           {recorded ? (

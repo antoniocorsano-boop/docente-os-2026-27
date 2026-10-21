@@ -62,7 +62,7 @@ export function LessonMaterials({
       </header>
 
       <p className="lessonKnowledgeLead">
-        Scegli l’intento: riutilizza una risorsa già disponibile, adattane una per questa lezione oppure crea un nuovo contenuto. La lezione resta il tuo contesto di lavoro.
+        Riutilizza una risorsa, adattane una per questa lezione oppure crea un nuovo contenuto.
       </p>
 
       {notice ? (
@@ -106,31 +106,33 @@ export function LessonMaterials({
       {materialIntent === 'create' ? (
         <div className="lessonKnowledgeSuggestions" aria-label="Crea un materiale">
           <p className="lessonKnowledgeLead">
-            Crea o carica un contenuto in Docente OS. L’originale resta separato dalla lezione finché non scegli esplicitamente di usarlo qui.
+            Crea o carica un contenuto. Resta separato dalla lezione finché non scegli esplicitamente di usarlo qui.
           </p>
           <Link href={buildKnowledgeCaptureHref(sectionId, blockId)}>Aggiungi un nuovo contenuto</Link>
         </div>
       ) : null}
 
       {acceptedResources.length ? (
-        <div className="lessonDesignAccepted" aria-label="Materiali allegati alla lezione">
-          <div className="lessonDesignSubheading"><strong>Già nella lezione</strong><small>{acceptedResources.length}</small></div>
-          {acceptedResources.map((extension) => (
-            <article className="lessonDesignAcceptedItem" key={extension.id}>
-              <div>
-                <span>{resourceKindLabel(extension.kind)}</span>
-                <strong>{extension.title}</strong>
-                <SourceProvenance kind={extension.sourceKind} />
-              </div>
-              <form action={writeAction}>
-                <input type="hidden" name="designIntent" value="remove" />
-                <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
-                <input type="hidden" name="extensionId" value={extension.id} />
-                <MaterialActionSubmit idle="Rimuovi" pendingLabel="Rimozione…" />
-              </form>
-            </article>
-          ))}
-        </div>
+        <details className="lessonAttachedResources">
+          <summary>Già nella lezione <span>{acceptedResources.length}</span></summary>
+          <div aria-label="Materiali allegati alla lezione">
+            {acceptedResources.map((extension) => (
+              <article key={extension.id}>
+                <div>
+                  <span>{resourceKindLabel(extension.kind)}</span>
+                  <strong>{extension.title}</strong>
+                  <SourceProvenance kind={extension.sourceKind} />
+                </div>
+                <form action={writeAction}>
+                  <input type="hidden" name="designIntent" value="remove" />
+                  <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
+                  <input type="hidden" name="extensionId" value={extension.id} />
+                  <MaterialActionSubmit idle="Rimuovi" pendingLabel="Rimozione…" />
+                </form>
+              </article>
+            ))}
+          </div>
+        </details>
       ) : null}
     </section>
   )
@@ -157,21 +159,26 @@ function ReuseMaterials({
         <strong>Materiali disponibili</strong>
         <small>{atlasSuggestions.length + knowledgeSuggestions.length}</small>
       </div>
-      <p className="lessonKnowledgeLead">Controlla la pertinenza e scegli se usare la risorsa in questa lezione. La provenienza resta visibile.</p>
+      <p className="lessonKnowledgeLead">Controlla la pertinenza e scegli se usare la risorsa in questa lezione.</p>
 
       {atlasSuggestions.map((item) => (
         <article key={item.materialId}>
           <div>
             <SourceProvenance kind="ATLAS" />
-            <span>{item.kind.toUpperCase()} · {item.state}</span>
+            <span>{item.kind.toUpperCase()}</span>
             <strong>{item.title}</strong>
             <p>{item.summary}</p>
-            <small className="lessonSuggestionReason">Perché qui: {item.reason}</small>
-            <small className="lessonSuggestionReason">Provenienza: {item.provenance} · versione {item.version}</small>
-            <div className="lessonSuggestionTip"><b>TIP</b><p>{item.usageTip}</p></div>
+            <details data-material-details className="lessonMaterialDetails">
+              <summary>Perché può servire qui</summary>
+              <div>
+                <small className="lessonSuggestionReason">{item.reason}</small>
+                <small className="lessonSuggestionReason">Provenienza: {item.provenance} · versione {item.version} · stato {item.state}</small>
+                <div className="lessonSuggestionTip"><b>TIP</b><p>{item.usageTip}</p></div>
+              </div>
+            </details>
           </div>
           <div>
-            <a href={item.publicUrl} target="_blank" rel="noreferrer">Controlla su Atlas</a>
+            <a href={item.publicUrl} target="_blank" rel="noreferrer">Controlla</a>
             <form action={writeAction}>
               <input type="hidden" name="designIntent" value="attach-atlas" />
               <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
@@ -189,10 +196,17 @@ function ReuseMaterials({
             <span>{knowledgeCategoryLabel(item.category)}</span>
             <strong>{item.title}</strong>
             <p>{item.summary}</p>
-            {item.pedagogicalRoles.length ? (
-              <small className="lessonSuggestionRoles">Uso suggerito: {item.pedagogicalRoles.slice(0, 3).map(teachingMaterialRoleLabel).join(' · ')}</small>
+            {(item.pedagogicalRoles.length > 0 || item.usageTip) ? (
+              <details data-material-details className="lessonMaterialDetails">
+                <summary>Perché può servire qui</summary>
+                <div>
+                  {item.pedagogicalRoles.length ? (
+                    <small className="lessonSuggestionRoles">Uso suggerito: {item.pedagogicalRoles.slice(0, 3).map(teachingMaterialRoleLabel).join(' · ')}</small>
+                  ) : null}
+                  <div className="lessonSuggestionTip"><b>TIP</b><p>{item.usageTip}</p></div>
+                </div>
+              </details>
             ) : null}
-            <div className="lessonSuggestionTip"><b>TIP</b><p>{item.usageTip}</p></div>
           </div>
           <div>
             <Link href={buildFocusedKnowledgeHref(item.assetId, sectionId, blockId)}>Controlla</Link>
@@ -232,7 +246,7 @@ function AdaptMaterials({
   return (
     <div className="lessonDesignProposalList" aria-label="Materiali da adattare">
       <p className="lessonKnowledgeLead">
-        Adatta nome e note per questa lezione. La risorsa originale non viene modificata; se era già accettata, la modifica richiederà una nuova conferma prima dell’uso.
+        Adatta nome e note per questa lezione. L’originale resta invariato e una modifica a una risorsa già accettata richiederà una nuova conferma.
       </p>
       {resources.map((extension) => (
         <article className="lessonDesignProposal" key={extension.id}>

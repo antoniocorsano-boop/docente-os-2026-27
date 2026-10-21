@@ -85,15 +85,24 @@ export default async function PlannerPage() {
       </section>
 
       {teachingFocus ? (
-        <>
-          <TodayTeachingFocusCard focus={teachingFocus} />
-          <TodayQuickActions materialsAvailable={materialsAvailable} sectionId={teachingSectionId} />
-        </>
+        <TodayTeachingFocusCard focus={teachingFocus} />
       ) : (
         <TodayFocusCard focus={projection.focus} moment={projection.moment} today={today} nowMinutes={nowMinutes} />
       )}
 
       <div className={teachingFocus ? 'todaySecondaryWork' : undefined}>
+        {teachingFocus && (materialsAvailable || teachingSectionId) ? (
+          <details className="humanTaskSecondary todayQuickActionsDisclosure">
+            <summary>Altri percorsi utili</summary>
+            <div className="humanTaskSecondaryBody">
+              <TodayQuickActions
+                materialsAvailable={materialsAvailable}
+                sectionId={teachingSectionId}
+              />
+            </div>
+          </details>
+        ) : null}
+
         {projection.timeline.length ? <TodayTimeline items={projection.timeline} nowMinutes={nowMinutes} /> : null}
 
         <PlannerToday
@@ -254,7 +263,7 @@ function TodayFocusCard({
 
 function TodayTimeline({ items, nowMinutes }: { items: TodayTemporalItem[]; nowMinutes: number }) {
   return (
-    <details className="humanTaskSecondary todayTimelineCard" open>
+    <details className="humanTaskSecondary todayTimelineCard">
       <summary>La mia giornata <span className="todaySectionCount">{items.length}</span></summary>
       <div className="humanTaskSecondaryBody">
         <div className="todayTimelineList">
