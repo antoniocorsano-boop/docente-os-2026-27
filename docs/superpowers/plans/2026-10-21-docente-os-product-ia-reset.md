@@ -4,592 +4,602 @@
 
 **Goal:** Implement the approved Docente OS information-architecture reset around **Oggi · Orario · Classi · Altro**, with **Lezione** as the single contextual operational workspace, while preserving every professional capability and governance boundary.
 
-**Architecture:** Keep domain authority, Supabase persistence/RLS, timetable lifecycle, TeachingSession/Diario, curriculum gates, material provenance/revalidation, Drive synchronization, authentication and MFA unchanged. Implement the reset in presentation and routing through small pure projection/resolution models, then render those decisions in the existing App Router surfaces. Legacy URLs remain compatible until behavioral parity is executable and proven.
+**Architecture:** Keep domain authority, Supabase persistence/RLS, timetable lifecycle, TeachingSession/Diario, curriculum gates, material provenance/revalidation, Drive synchronization, authentication and MFA unchanged. Implement the reset in presentation and routing through small pure projection/resolution models, then recompose the existing App Router surfaces. Legacy URLs remain compatible until behavioral parity is executable and proven.
 
-**Tech Stack:** Next.js 16.3.1 App Router, React 19.2.8, TypeScript 5.9.2, Supabase repositories/RLS, Node `node:test` through `tsx`, Playwright browser qualification.
+**Tech Stack:** Node 22.x, Next.js 16.3.1 App Router, React 19.2.8, TypeScript 5.9.2, Supabase repositories/RLS, Node `node:test` through `tsx`, Playwright 1.55.0 in CI.
 
 **Spec:** `docs/superpowers/specs/2026-10-21-docente-os-product-ia-reset-design.md` at exact approved spec commit `aa1ba597d2d8c55b92ae440e25fde465d75e184c` — human-approved 2026-10-21.
+
+**Planning baseline:** product baseline `develop@1c50c1bc620cdd0b7bafcff0dc5c613367df3298`. At execution time create an isolated worktree/branch from a commit that contains the approved spec and this plan; do not merge or deploy without separate authorization.
 
 ## Global Constraints
 
 - Primary teacher-facing IA is exactly **Oggi · Orario · Classi · Altro**. Lezione is contextual, never a global destination.
-- `/planner` remains Oggi; `/` and `/workspace` resolve to Oggi rather than rendering another teacher dashboard.
+- `/planner` remains the technical route for Oggi during this migration; `/` and `/workspace` resolve to Oggi rather than rendering another teacher dashboard.
 - Oggi exposes at most two lesson objects: one ended/unregistered lesson plus the first useful current/upcoming lesson. Calendar commitments are compact. Generic PlannerTask lists do not appear there.
 - PlannerTask remains complete and persistent under **Altro → Attività**.
 - Orario daily/weekly consultation UI is preserved. The governed `Modifica → Data di decorrenza → Controlla / attiva` flow is preserved and interaction cannot be confused with opening a lesson.
 - Orario and Calendario remain separate domains. Piano annuale remains separate from both.
 - Classi is primarily a selector. Classe exposes continuity, one dominant contextual CTA, visible Diario and one **Altro della classe** disclosure.
 - Lezione resolves future/current/ended-unregistered/registered state from reliable context. Ambiguity is explicit and fail-closed.
-- Curriculum, approval, authority, material provenance/version/revalidation, Atlas fail-closed behavior, TeachingSession persistence and Drive synchronization are not weakened.
+- `Inizia la lezione` and `Concludi la lezione` are action intents inside the same Lezione workspace; they do not reintroduce teacher-selected phases and cannot bypass approval/governance.
 - `Osserva`, assistant/Copilot, voice, curriculum details and revalidation remain contextual capabilities.
-- `Materiali di domani` has one stable home under **Altro → Materiali e fonti** and may be entered contextually from Orario when viewing tomorrow.
-- Legacy routes follow: relocate capability → prove parity/governance → stop generating old URL → redirect/retire.
-- Touch targets remain at least 44 px. No horizontal overflow at 320 px. Browser evidence covers 320 px, 390 px and desktop.
+- `Materiali di domani` has one stable home under **Altro → Materiali e fonti** and may be entered contextually from Orario when viewing literal tomorrow. It remains distinct from materials of the current Lezione.
+- Curriculum, approval, authority, material provenance/version/revalidation, Atlas fail-closed behavior, TeachingSession persistence and Drive synchronization are not weakened.
+- Legacy routes follow: relocate capability → prove parity/governance → stop generating old URL → redirect/retire only when deterministic and safe.
+- The first migration does **not** force a redirect for `/giornata/resoconto`; it becomes unlinked from the new IA and remains reachable until a later deterministic retirement decision.
+- Touch targets remain at least 44 px. No horizontal overflow at 320 px. Desktop must not restore a navigation-first hierarchy.
+- Reuse the existing `playwright.experience.config.mjs`; do not create a parallel test configuration. 320/390 responsive checks are exercised explicitly inside the IA reset browser spec.
+- No new dependency unless an executable failing test proves an existing dependency cannot satisfy the requirement.
 - No database migration, new student auth/tracking, unrelated technical front, merge, Beta promotion or production deploy is authorized by this plan.
 
 ## Review Focus
 
-1. **Ambiguous lesson context:** multiple compatible slots/classes must lead to explicit disambiguation in Orario/Classe; no class or phase is guessed. Pin in Tasks 3 and 5.
-2. **Pending registration + upcoming lesson + Calendar:** Oggi must show both lesson objects and compact Calendar items without PlannerTask buckets or a full timeline. Pin in Task 2.
-3. **Orario view/edit separation:** consultation opens Lezione only when resolved; edit mode edits the timetable and never opens Lezione. Pin in Task 3.
-4. **Known lesson with missing/uncertain preparation/material:** remain in Lezione, preserve blocker/provenance and expose the next legitimate action. Pin in Task 5.
-5. **Legacy deep links:** Home/day-review/material/phase links remain safe until capability parity is demonstrated. Pin in Tasks 7 and 8.
+1. **Pending registration + upcoming lesson + Calendar:** Oggi must show both lesson objects and compact Calendar items without PlannerTask buckets or a full timeline. Pin in Task 3.
+2. **Ambiguous lesson context:** overlapping/unresolved slots must lead to explicit disambiguation in Orario/Classe; no class, lesson or phase is guessed. Pin in Tasks 1, 3 and 4.
+3. **Action-driven lesson transitions:** starting early or closing before the scheduled boundary must remain inside one Lezione and must not bypass curriculum/preparation approval. Pin in Tasks 1 and 6.
+4. **Known lesson with missing/uncertain preparation/material:** remain in Lezione context, preserve blocker/provenance and expose the next legitimate action. Pin in Task 6.
+5. **Legacy deep links:** old phase/material/day-review links must remain safe until capability parity is demonstrated; new UI must stop generating them before retirement. Pin in Tasks 7 and 8.
 
 ---
 
 ## File Structure and Responsibility Map
 
-### Existing files to modify
+### Shared IA primitives
 
-- `product/src/components/app-shell/navigation.ts` — canonical destinations and Altro grouping.
-- `product/src/components/app-shell/navigation.test.ts` — executable shell IA contract.
-- `product/src/components/app-shell/app-shell.tsx` — Oggi/Orario/Classi/Altro rendering.
-- `product/src/app/page.tsx` — root alias/redirect to Oggi.
-- `product/src/app/planner/page.tsx` — sparse Oggi only.
-- `product/src/app/api/assistant/today-context-loader.ts` — authoritative day/timetable/calendar/session inputs.
-- `product/src/core/presentation/today-teaching-focus.ts` — direct lesson entry when context is resolved.
-- `product/src/app/orario/TimetableExperience.tsx` — preserved timetable UI plus consultation routing.
-- `product/src/app/orario/TimetableGrid.tsx` — consultation-only lesson activation affordance.
-- `product/src/app/orario/timetable-operational-model.ts` and `.test.ts` — pure view/edit entry rules.
-- `product/src/app/classi/page.tsx` — section selector.
+- `product/src/core/presentation/lesson-workspace-state.ts` — canonical lesson state resolution and action-driven transition semantics.
+- `product/src/core/presentation/lesson-workspace-state.test.ts` — state, ambiguity and intent contract.
+- `product/src/core/presentation/human-task-content.ts` — preserve legacy phase href builder and add canonical phase-free lesson href builder.
+- `product/src/core/presentation/human-task-content.test.ts` — canonical + legacy route contract.
+- `product/src/core/presentation/today-ia-projection.ts` — pure Oggi selection model.
+- `product/src/core/presentation/today-ia-projection.test.ts` — Oggi content-limit and ambiguity contract.
+
+### Global shell and tools
+
+- `product/src/components/app-shell/navigation.ts` — four primary entries, Altro children and search destinations.
+- `product/src/components/app-shell/navigation.test.ts` — executable IA contract.
+- `product/src/components/app-shell/app-shell.tsx` — render four primary entries; child tools highlight Altro.
+- `product/src/app/altro/page.tsx` + `altro.css` — one scannable grouped tool surface.
+- `product/src/app/attivita/page.tsx` + `planner-task-board.tsx` + `attivita.css` — PlannerTask workspace.
+- `product/src/app/attivita/actions.ts` — moved Planner actions, revalidating `/attivita`.
+
+### Oggi
+
+- `product/src/app/planner/page.tsx` — sparse approved Oggi only.
+- `product/src/app/api/assistant/today-context-loader.ts` — authoritative timetable/calendar/session inputs; planner tasks remain available to assistant context where already required, not rendered in Oggi.
+- `product/src/app/api/assistant/next-lesson-preparation-loader.ts` — reuse multi-lesson loader to resolve selected lesson metadata.
+- `product/src/app/planner/today-home.css` — sparse visual hierarchy.
+
+### Orario
+
+- `product/src/app/orario/timetable-lesson-entrypoint.ts` + `.test.ts` — safe section/block/occurrence → lesson entrypoint mapping.
+- `product/src/app/orario/TimetableExperience.tsx` — compute entrypoints while preserving view/update/manage flows.
+- `product/src/app/orario/TimetableGrid.tsx` — read-only lesson activation; edit cells remain editor-only.
+
+### Classi / Classe
+
+- `product/src/app/classi/page.tsx` — selector.
 - `product/src/app/classi/[sectionId]/page.tsx` — continuity-first Classe.
-- `product/src/app/classi/class-workspace-model.ts` and `.test.ts` — class continuity projection.
-- `product/src/app/classi/[sectionId]/class-task-state.ts` and `.test.ts` — lesson/task state semantics for Classe.
-- `product/src/app/classi/[sectionId]/lezioni/[blockId]/page.tsx` — authoritative Lezione state resolution.
-- `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-prepare-client.tsx` — preparation rendering.
-- `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-live-client.tsx` — teaching rendering.
-- `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-observe-client.tsx` — observation capability retained contextually.
-- `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-close-client.tsx` — closure/registration rendering.
-- `product/src/core/presentation/human-task-content.ts` and `.test.ts` — canonical lesson href and legacy phase compatibility.
-- `product/src/app/knowledge/page.tsx` — teacher-facing Materiali e fonti home.
-- `product/src/app/materiali/domani/tomorrow-preparation-loader.ts` — existing tomorrow-material source logic to reuse, not duplicate.
-- `product/src/app/materiali/domani/page.tsx` and `product/src/app/materiali/prossima/page.tsx` — compatibility surfaces until Task 8.
-- `product/src/app/giornata/resoconto/page.tsx` — compatibility surface until Task 8.
-- `product/e2e/experience/information-architecture.spec.mjs` — shell IA browser contract.
-- `product/e2e/experience/critical-journeys.spec.mjs` — Oggi/Orario/Classi/Lezione journeys.
-- `product/e2e/experience/contextual-capabilities.spec.mjs` — contextual materials/Copilot/voice/governance.
-- `product/e2e/experience/day-review.spec.mjs` — parity/legacy compatibility.
-- `product/e2e/experience/accessibility.spec.mjs` — focus/touch/responsive assertions.
-- `product/package.json` — register new Node contract tests in the explicit `test` script.
+- `product/src/app/classi/[sectionId]/class-task-state.ts` + `.test.ts` — professional state decision; canonical lesson intent rather than visible phase navigation.
+- `product/src/app/classi/[sectionId]/class-secondary-tools.tsx` — one `Altro della classe` disclosure.
+- `product/src/app/classi/[sectionId]/class-ia-contract.test.ts` — first-level hierarchy contract.
 
-### New focused files
+### Lezione
 
-- `product/src/core/presentation/today-ia-projection.ts`
-- `product/src/core/presentation/today-ia-projection.test.ts`
-- `product/src/core/presentation/lesson-workspace-state.ts`
-- `product/src/core/presentation/lesson-workspace-state.test.ts`
-- `product/src/app/attivita/page.tsx`
-- `product/src/app/attivita/planner-task-board.tsx`
-- `product/src/app/attivita/attivita.css`
-- `product/src/app/altro/altro-model.ts`
-- `product/src/app/altro/altro-model.test.ts`
-- `product/playwright.ia-reset.config.mjs` — dedicated 320/390/desktop qualification configuration; it must import/extend the existing `playwright.config.mjs` assumptions rather than changing the existing X3 412×915 gate.
+- `product/src/app/classi/[sectionId]/lezioni/[blockId]/page.tsx` — canonical state resolution from occurrence/registration/intent, retaining governance gates.
+- `lesson-shell.tsx` + `lesson-shell.module.css` — context/status header without four phase links.
+- Existing prepare/live/observe/close clients — capability implementations reused, transitions changed to canonical intents/subtasks.
+- `lesson-ia-contract.test.ts` — no phase nav/new-UI `mode=` generation.
 
-No Supabase migration or new table is planned.
+### Materials and compatibility
+
+- `product/src/app/knowledge/page.tsx` — teacher-facing Materiali e fonti stable home; tomorrow overview entry.
+- `product/src/app/materiali/domani/page.tsx` — legacy-compatible route; no duplicate loader.
+- `product/src/app/materiali/prossima/page.tsx` — legacy-compatible route.
+- `product/src/app/page.tsx` — redirect root to Oggi.
+- `product/src/app/workspace/page.tsx` — preserve existing redirect to Oggi.
+- `product/src/app/giornata/resoconto/page.tsx` — keep reachable but unlinked in this rollout.
+- `product/src/app/route-compatibility-contract.test.ts` — soft-retirement contract.
+
+### Browser qualification
+
+- `product/e2e/experience/information-architecture.spec.mjs` — four-entry shell + Altro groups.
+- `product/e2e/experience/product-ia-reset.spec.mjs` — end-to-end IA reset journeys and explicit 320/390 responsive checks.
+- Existing `product/playwright.experience.config.mjs` and `.github/workflows/experience-acceptance.yml` — reused unchanged unless a real discovery defect is demonstrated.
+
+New `.test.ts` files must be added to the explicit `product/package.json` `test` script in the task that creates them.
 
 ---
 
-### Task 1: Pin and implement the canonical shell IA
-
-**Files:**
-- Create: `product/playwright.ia-reset.config.mjs`
-- Modify: `product/src/components/app-shell/navigation.ts`
-- Modify: `product/src/components/app-shell/navigation.test.ts`
-- Modify: `product/src/components/app-shell/app-shell.tsx`
-- Modify: `product/src/app/page.tsx`
-- Test: `product/e2e/experience/information-architecture.spec.mjs`
-
-**Interfaces:**
-- Produces: work keys `['today', 'timetable', 'classes', 'more']` rendered as `Oggi · Orario · Classi · Altro`.
-- Produces: `/` → `/planner`; `/workspace` continues to resolve to `/planner`.
-- Produces: Playwright projects `ia-mobile-320`, `ia-mobile-390`, `ia-desktop` against `E2E_BASE_URL`, preserving existing governed E2E credentials and not replacing `playwright.config.mjs`.
-
-- [ ] **Step 1: Write the failing shell contract**
-
-In `navigation.test.ts` require:
-
-```ts
-assert.deepEqual(workNavigationItems().map((item) => item.key), ['today', 'timetable', 'classes', 'more'])
-assert.deepEqual(workNavigationItems().map((item) => item.label), ['Oggi', 'Orario', 'Classi', 'Altro'])
-assert.equal(PRIMARY_NAVIGATION.some((item) => item.key === 'home'), false)
-```
-
-Also pin the approved Altro group labels: `Lavoro`, `Risorse e organizzazione`, `Sistema`.
-
-- [ ] **Step 2: Add the dedicated browser qualification config**
-
-`playwright.ia-reset.config.mjs` defines only these projects:
-- `ia-mobile-320`: viewport 320×800, `isMobile: true`, `hasTouch: true`;
-- `ia-mobile-390`: viewport 390×844, `isMobile: true`, `hasTouch: true`;
-- `ia-desktop`: viewport 1440×1000, `isMobile: false`, `hasTouch: false`.
-
-Keep `testDir`, timeouts, locale, timezone, evidence folders and `baseURL = process.env.E2E_BASE_URL ?? ...` aligned with the existing Playwright configuration.
-
-- [ ] **Step 3: Run RED**
-
-Run:
-
-```bash
-cd product
-npx tsx --test src/components/app-shell/navigation.test.ts
-```
-
-Expected: FAIL because Home/Naviga still define the current shell.
-
-- [ ] **Step 4: Implement the minimum shell change**
-
-In `navigation.ts`, introduce `more`, remove Home from work navigation, retain all professional destinations inside Altro, and keep the three groups presentational rather than creating nested route levels. In `app-shell.tsx`, render Altro as the fourth global control on mobile and desktop using the existing secondary-surface mechanism.
-
-Replace the teacher-facing Home body in `product/src/app/page.tsx` with the existing authenticated route behavior followed by redirect to `/planner`; no Home-only priority/decision projection remains rendered.
-
-- [ ] **Step 5: Verify GREEN**
-
-Run:
-
-```bash
-cd product
-npx tsx --test src/components/app-shell/navigation.test.ts
-E2E_BASE_URL=http://127.0.0.1:3000 npx playwright test --config=playwright.ia-reset.config.mjs e2e/experience/information-architecture.spec.mjs --project=ia-mobile-390
-```
-
-Prerequisite for the Playwright command: use the existing X3 application harness to build/start the exact branch locally with governed E2E credentials. Expected: unit PASS; browser contract sees only Oggi, Orario, Classi, Altro at primary level.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add product/playwright.ia-reset.config.mjs product/src/components/app-shell/navigation.ts product/src/components/app-shell/navigation.test.ts product/src/components/app-shell/app-shell.tsx product/src/app/page.tsx product/e2e/experience/information-architecture.spec.mjs
-git commit -m "feat: establish canonical teacher IA shell"
-```
-
----
-
-### Task 2: Make Oggi sparse and relocate PlannerTask to Attività
-
-**Files:**
-- Create: `product/src/core/presentation/today-ia-projection.ts`
-- Create: `product/src/core/presentation/today-ia-projection.test.ts`
-- Create: `product/src/app/attivita/page.tsx`
-- Create: `product/src/app/attivita/planner-task-board.tsx`
-- Create: `product/src/app/attivita/attivita.css`
-- Modify: `product/src/app/planner/page.tsx`
-- Modify: `product/src/app/api/assistant/today-context-loader.ts`
-- Modify: `product/src/core/presentation/today-teaching-focus.ts`
-- Modify: `product/src/components/app-shell/navigation.ts`
-- Modify: `product/package.json`
-- Test: `product/e2e/experience/critical-journeys.spec.mjs`
-
-**Interfaces:**
-- Produces: `buildTodayIAProjection(input): TodayIAProjection` with `lessonObjects.length <= 2` and compact `calendarCommitments`.
-- Produces: `/attivita` with the complete existing PlannerTask create/complete/move/wait/reopen/provenance behavior.
-- Consumes: `LoadedTodayOperationalContext.homeDaily`, projected Calendar data, TeachingSession state and next-lesson preparation.
-
-- [ ] **Step 1: Write failing projection tests**
-
-Pin:
-
-```ts
-assert.deepEqual(result.lessonObjects.map((item) => item.kind), ['PENDING_REGISTRATION', 'UPCOMING_LESSON'])
-assert.equal(result.lessonObjects.length, 2)
-assert.equal(result.calendarCommitments.length, 1)
-assert.equal('plannerTasks' in result, false)
-```
-
-Also assert deduplication and safe Orario disambiguation when lesson context is ambiguous.
-
-- [ ] **Step 2: Run RED**
-
-Run: `cd product && npx tsx --test src/core/presentation/today-ia-projection.test.ts`
-
-Expected: FAIL because the projection does not exist.
-
-- [ ] **Step 3: Implement the pure Oggi projection**
-
-Keep selection rules in `today-ia-projection.ts`. Extend `today-context-loader.ts` only with authoritative inputs that the projection needs; do not move presentation policy into repositories.
-
-Update `today-teaching-focus.ts`: when section + canonical block are certain, use the canonical Lezione href; otherwise stop at Orario/Classe without guessing.
-
-- [ ] **Step 4: Split PlannerTask UI from Oggi**
-
-Move the existing task board/capture/actions rendering into `/attivita` and `planner-task-board.tsx`; keep server actions/persistence semantics unchanged. Give the moved surface its own `attivita.css` so Oggi styles no longer own PlannerTask presentation.
-
-Remove from `/planner`: generic task buckets/capture, generic quick links, full timeline, day-review CTA and tomorrow-material CTA. Render only the Oggi projection.
-
-Add `Attività` under Altro → Lavoro.
-
-- [ ] **Step 5: Verify**
-
-Run:
-
-```bash
-cd product
-npx tsx --test src/core/presentation/today-ia-projection.test.ts src/components/app-shell/navigation.test.ts
-npm test
-npm run typecheck
-```
-
-Expected: PASS; existing PlannerTask persistence tests remain green.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add product/src/core/presentation/today-ia-projection.ts product/src/core/presentation/today-ia-projection.test.ts product/src/app/attivita product/src/app/planner/page.tsx product/src/app/api/assistant/today-context-loader.ts product/src/core/presentation/today-teaching-focus.ts product/src/components/app-shell/navigation.ts product/package.json
-git commit -m "feat: make Oggi lesson-first and move activities to Altro"
-```
-
----
-
-### Task 3: Preserve Orario and add consultation-only direct Lezione entry
-
-**Files:**
-- Modify: `product/src/app/orario/TimetableExperience.tsx`
-- Modify: `product/src/app/orario/TimetableGrid.tsx`
-- Modify: `product/src/app/orario/timetable-operational-model.ts`
-- Modify: `product/src/app/orario/timetable-operational-model.test.ts`
-- Test: `product/e2e/experience/critical-journeys.spec.mjs`
-
-**Interfaces:**
-- Produces: `resolveTimetableLessonEntrypoint(input): { kind: 'LESSON'; href: string } | { kind: 'CLASS'; href: string } | { kind: 'AMBIGUOUS' } | null`.
-- Invariant: `mode !== 'view'` never returns a navigable lesson/class activation for the grid cell.
-- Consumes: existing slot → assignment → section/discipline mapping and current class continuity/canonical block resolution.
-
-- [ ] **Step 1: Write failing model tests**
-
-Assert:
-- resolved consultation slot → canonical Lezione href;
-- section known but canonical block unresolved → Classe href;
-- ambiguous context → `AMBIGUOUS`;
-- `update`/`manage` mode → no lesson navigation.
-
-- [ ] **Step 2: Run RED**
-
-Run: `cd product && npx tsx --test src/app/orario/timetable-operational-model.test.ts`
-
-- [ ] **Step 3: Implement minimum routing only**
-
-Wire the resolver into the existing grid/experience without restructuring daily/weekly views, density, view switching, draft edits, effective-date selection or activation.
-
-- [ ] **Step 4: Add browser assertions**
-
-In `critical-journeys.spec.mjs` pin direct entry from consultation and no navigation from `/orario/aggiorna`.
-
-Run, against the exact branch started by the existing local X3 harness:
-
-```bash
-cd product
-E2E_BASE_URL=http://127.0.0.1:3000 npx playwright test --config=playwright.ia-reset.config.mjs e2e/experience/critical-journeys.spec.mjs --project=ia-mobile-390
-```
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/src/app/orario/TimetableExperience.tsx product/src/app/orario/TimetableGrid.tsx product/src/app/orario/timetable-operational-model.ts product/src/app/orario/timetable-operational-model.test.ts product/e2e/experience/critical-journeys.spec.mjs
-git commit -m "feat: open resolved lessons directly from timetable"
-```
-
----
-
-### Task 4: Simplify Classi and make Classe a continuity surface
-
-**Files:**
-- Modify: `product/src/app/classi/page.tsx`
-- Modify: `product/src/app/classi/[sectionId]/page.tsx`
-- Modify: `product/src/app/classi/class-workspace-model.ts`
-- Modify: `product/src/app/classi/class-workspace-model.test.ts`
-- Modify: `product/src/app/classi/[sectionId]/class-task-state.ts`
-- Modify: `product/src/app/classi/[sectionId]/class-task-state.test.ts`
-- Test: `product/e2e/experience/critical-journeys.spec.mjs`
-
-**Interfaces:**
-- Produces: `ClassWorkspaceProjection` containing `latestRecorded`, `nextActivity`, essential progress, `primaryAction`, `diaryHref`, `moreItems`.
-- Consumes: existing annual-plan execution, TeachingSession/Diario continuity, assignments and canonical runtime projection.
-
-- [ ] **Step 1: Write failing hierarchy tests**
-
-Pin one dominant CTA, visible Diario, and that Piano annuale/Progetta/materials/knowledge/curriculum/cattedra are not peer first-level cards.
-
-- [ ] **Step 2: Run RED**
-
-```bash
-cd product
-npx tsx --test src/app/classi/class-workspace-model.test.ts src/app/classi/'[sectionId]'/class-task-state.test.ts
-```
-
-- [ ] **Step 3: Reduce Classi**
-
-Keep section identity, essential assignment/discipline context, concise useful state and secondary `Gestisci classi`. Remove dashboard-like summary weight not required for selection.
-
-- [ ] **Step 4: Recompose Classe**
-
-Order: identity/discipline → latest recorded work → next activity → essential progress/context → one contextual CTA → visible Diario → one `Altro della classe` disclosure. Reuse existing capability hrefs inside the disclosure; do not duplicate their internals.
-
-- [ ] **Step 5: Verify**
-
-```bash
-cd product
-npx tsx --test src/app/classi/class-workspace-model.test.ts src/app/classi/'[sectionId]'/class-task-state.test.ts
-npm run typecheck
-```
-
-Expected: PASS; no TeachingSession or Drive sync persistence change.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add product/src/app/classi/page.tsx product/src/app/classi/'[sectionId]'/page.tsx product/src/app/classi/class-workspace-model.ts product/src/app/classi/class-workspace-model.test.ts product/src/app/classi/'[sectionId]'/class-task-state.ts product/src/app/classi/'[sectionId]'/class-task-state.test.ts product/e2e/experience/critical-journeys.spec.mjs
-git commit -m "feat: make class surfaces continuity-first"
-```
-
----
-
-### Task 5: Turn Lezione into one automatically resolved workspace
+### Task 1: Canonical lesson href and workspace-state primitives
 
 **Files:**
 - Create: `product/src/core/presentation/lesson-workspace-state.ts`
 - Create: `product/src/core/presentation/lesson-workspace-state.test.ts`
 - Modify: `product/src/core/presentation/human-task-content.ts`
 - Modify: `product/src/core/presentation/human-task-content.test.ts`
-- Modify: `product/src/app/classi/[sectionId]/lezioni/[blockId]/page.tsx`
-- Modify: `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-prepare-client.tsx`
-- Modify: `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-live-client.tsx`
-- Modify: `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-observe-client.tsx`
-- Modify: `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-close-client.tsx`
 - Modify: `product/package.json`
-- Test: `product/e2e/experience/lesson-close-task-first.spec.mjs`
-- Test: `product/e2e/experience/contextual-capabilities.spec.mjs`
 
 **Interfaces:**
-- Produces: `resolveLessonWorkspaceState(input): 'PREPARATION' | 'TEACHING' | 'CLOSURE' | 'CONTINUITY' | 'AMBIGUOUS'`.
-- Produces: `buildLessonWorkspaceHref(sectionId, blockId)` without a teacher-selected phase query.
-- Consumes: reliable temporal context for the section occurrence, recorded session/progress state and preparation approval state.
-- Compatibility: legacy `?mode=prepare|teach|observe|record` remains parseable but cannot bypass authority/approval and is not emitted by new UI.
+- Produces `type LessonWorkspaceResolvedState = 'PREPARATION' | 'TEACHING' | 'REGISTRATION' | 'CONTINUITY' | 'AMBIGUOUS'`.
+- Produces `type LessonWorkspaceIntent = 'start' | 'close' | null`.
+- Produces `resolveLessonWorkspaceState(input: { localDate: string; minuteOfDay: number; occurrence: { localDate: string; startAt: string | null; endAt: string | null } | null; occurrenceAmbiguous: boolean; registered: boolean; intent: LessonWorkspaceIntent }): LessonWorkspaceResolvedState`.
+- Produces `buildCanonicalLessonWorkspaceHref(sectionId: string, blockId: string, context?: { localDate?: string | null; occurrenceLogicalId?: string | null; intent?: 'start' | 'close' | null; subtask?: 'observe' | 'materials' | null }): string`.
+- Preserves existing `buildLessonWorkspaceHref(sectionId, blockId, mode)` for legacy callers until Task 8.
 
-- [ ] **Step 1: Write failing state tests**
+- [ ] **Step 1: Write the failing state tests**
 
-Pin:
-
-```text
-future -> PREPARATION
-current -> TEACHING
-ended + not registered -> CLOSURE
-registered -> CONTINUITY
-insufficient/contradictory context -> AMBIGUOUS
-```
-
-Also pin known-lesson/missing-material behavior and fail-closed approval.
+Pin future → PREPARATION, current → TEACHING, ended/unregistered → REGISTRATION, registered → CONTINUITY, ambiguous/timeless context → AMBIGUOUS, `intent=start` → TEACHING, and `intent=close` → REGISTRATION.
 
 - [ ] **Step 2: Run RED**
 
 Run: `cd product && npx tsx --test src/core/presentation/lesson-workspace-state.test.ts`
 
-- [ ] **Step 3: Implement canonical href and server-side resolver**
+Expected: FAIL because the module does not exist.
 
-Change canonical lesson href generation to omit `mode`. In `page.tsx`, resolve temporal/professional state server-side. A query parameter is compatibility input, never state authority.
+- [ ] **Step 3: Implement state precedence**
 
-- [ ] **Step 4: Unify the workspace hierarchy**
+Exact precedence: registered → CONTINUITY; ambiguous or explicit occurrence with unusable timing → AMBIGUOUS; `intent=close` → REGISTRATION; `intent=start` → TEACHING for a non-registered lesson; future → PREPARATION; current interval → TEACHING; ended → REGISTRATION; no occurrence → PREPARATION.
 
-Shared header: `Lezione · Classe · Disciplina · Titolo`.
+The resolver is presentation state only; approval/curriculum authority is enforced later by the lesson page and may prevent the requested state from becoming actionable.
 
-Dominant CTAs:
-- PREPARATION → `Inizia la lezione`;
-- TEACHING → `Concludi la lezione`;
-- CLOSURE → `Registra la lezione`;
-- CONTINUITY → `Prepara la prossima` or `Torna a Oggi`.
+- [ ] **Step 4: Write canonical-route tests**
 
-`Osserva` becomes contextual `Aggiungi osservazione`. Voice, Copilot, detailed observations, UDA-change proposal, materials, curriculum/provenance and revalidation remain secondary/contextual.
+Require phase-free canonical URL, encoded occurrence context, deterministic query ordering `date`, `occurrence`, `intent`, `subtask`, and unchanged legacy `?mode=` output from the existing helper.
 
-- [ ] **Step 5: Verify**
+- [ ] **Step 5: Implement the canonical builder and register the new test in `package.json`**
 
-```bash
-cd product
-npx tsx --test src/core/presentation/lesson-workspace-state.test.ts src/core/presentation/human-task-content.test.ts
-npm test
-npm run typecheck
-```
+Do not change legacy builder behavior in this task.
 
-Expected: PASS with curriculum/approval/material/registration semantics unchanged.
+- [ ] **Step 6: Run GREEN**
 
-- [ ] **Step 6: Commit**
+Run: `cd product && npx tsx --test src/core/presentation/lesson-workspace-state.test.ts src/core/presentation/human-task-content.test.ts && npm run typecheck`
+
+Expected: PASS.
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add product/src/core/presentation/lesson-workspace-state.ts product/src/core/presentation/lesson-workspace-state.test.ts product/src/core/presentation/human-task-content.ts product/src/core/presentation/human-task-content.test.ts product/src/app/classi/'[sectionId]'/lezioni/'[blockId]' product/package.json product/e2e/experience/lesson-close-task-first.spec.mjs product/e2e/experience/contextual-capabilities.spec.mjs
-git commit -m "feat: resolve one lesson workspace from context"
+git add product/src/core/presentation/lesson-workspace-state.ts product/src/core/presentation/lesson-workspace-state.test.ts product/src/core/presentation/human-task-content.ts product/src/core/presentation/human-task-content.test.ts product/package.json
+git commit -m "feat(dos-ia): add canonical lesson workspace state"
 ```
 
 ---
 
-### Task 6: Complete Altro as the single scannable secondary surface
+### Task 2: Establish the four-entry shell and move generic Attività
 
 **Files:**
-- Create: `product/src/app/altro/altro-model.ts`
-- Create: `product/src/app/altro/altro-model.test.ts`
 - Modify: `product/src/components/app-shell/navigation.ts`
 - Modify: `product/src/components/app-shell/navigation.test.ts`
 - Modify: `product/src/components/app-shell/app-shell.tsx`
+- Create: `product/src/app/altro/page.tsx`
+- Create: `product/src/app/altro/altro.css`
+- Create: `product/src/app/attivita/page.tsx`
+- Create: `product/src/app/attivita/planner-task-board.tsx`
+- Create: `product/src/app/attivita/attivita.css`
+- Move: `product/src/app/planner/actions.ts` → `product/src/app/attivita/actions.ts`
+- Create: `product/src/app/attivita/attivita-ia-contract.test.ts`
 - Modify: `product/package.json`
-- Test: `product/e2e/experience/information-architecture.spec.mjs`
 
 **Interfaces:**
-- Produces exact groups:
+- Primary rendered keys/labels are exactly `today/Oggi`, `timetable/Orario`, `classes/Classi`, `more/Altro`.
+- Altro groups are exactly:
   - `Lavoro`: Attività, Progetta, Piano annuale
   - `Risorse e organizzazione`: Materiali e fonti, Calendario, Documentazione
   - `Sistema`: Impostazioni, Account e sicurezza
-- No nested category route is introduced.
+- Altro grouping adds no nested route layer.
+- Child tool pages remain direct routes; AppShell marks `Altro` active when the current active key belongs to an Altro child.
+- Planner server actions keep persistence semantics but revalidate `/attivita`.
 
-- [ ] **Step 1: Write failing model tests**
+- [ ] **Step 1: Rewrite navigation tests first**
 
-Assert exact labels/order, unique hrefs, complete capability coverage and absence of Curricolo Arena/Copilot/voice/revalidation as global entries.
+Assert the exact four primary entries, exact three Altro groups/order, no primary Home, and no duplication of the four primary items inside Altro.
 
 - [ ] **Step 2: Run RED**
 
-Run: `cd product && npx tsx --test src/app/altro/altro-model.test.ts`
+Run: `cd product && npx tsx --test src/components/app-shell/navigation.test.ts`
 
-- [ ] **Step 3: Implement and wire Altro**
+Expected: FAIL against current Home/Naviga model.
 
-Use the existing shell secondary surface. Label the existing `/knowledge` destination `Materiali e fonti` without weakening the knowledge/provenance domain. Attività points to `/attivita`.
+- [ ] **Step 3: Implement navigation constants and AppShell rendering**
 
-- [ ] **Step 4: Verify**
+Replace Home/Naviga primary behavior with the approved four-entry model. Keep command search capable of finding all tool destinations.
+
+- [ ] **Step 4: Create `/altro` as one grouped page**
+
+Render the three groups directly; do not introduce category pages or nested menu steps.
+
+- [ ] **Step 5: Move PlannerTask UI/actions to `/attivita`**
+
+Reuse current create/complete/move/wait/reopen behavior. Update server actions to revalidate `/attivita`. Do not change PlannerTask domain/repository types.
+
+- [ ] **Step 6: Add relocation contract and register it in `npm test`**
+
+Assert `/attivita` owns Planner controls and `planner/page.tsx` no longer imports Planner actions after Task 3 completes. Until Task 3, the test may pin only that `/attivita` has the complete behavior, then tighten in Task 3.
+
+- [ ] **Step 7: Run GREEN**
+
+Run: `cd product && npx tsx --test src/components/app-shell/navigation.test.ts src/app/attivita/attivita-ia-contract.test.ts && npm run typecheck`
+
+- [ ] **Step 8: Commit**
 
 ```bash
-cd product
-npx tsx --test src/app/altro/altro-model.test.ts src/components/app-shell/navigation.test.ts
-npm run typecheck
-```
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/src/app/altro product/src/components/app-shell/navigation.ts product/src/components/app-shell/navigation.test.ts product/src/components/app-shell/app-shell.tsx product/package.json product/e2e/experience/information-architecture.spec.mjs
-git commit -m "feat: complete Altro secondary workspace"
+git add product/src/components/app-shell product/src/app/altro product/src/app/attivita product/package.json
+git commit -m "feat(dos-ia): establish four-entry shell and activities home"
 ```
 
 ---
 
-### Task 7: Give Materiali di domani one stable home plus Orario contextual entry
+### Task 3: Make Oggi sparse and direct-to-lesson
+
+**Files:**
+- Create: `product/src/core/presentation/today-ia-projection.ts`
+- Create: `product/src/core/presentation/today-ia-projection.test.ts`
+- Modify: `product/src/app/planner/page.tsx`
+- Modify: `product/src/app/planner/today-home.css`
+- Modify: `product/src/app/api/assistant/today-context-loader.ts` only if additional Calendar projection fields are required.
+- Reuse: `product/src/app/api/assistant/next-lesson-preparation-loader.ts`
+- Modify: `product/package.json`
+
+**Interfaces:**
+- Produces `TodayIAProjection` with `pendingLesson`, `nextLesson`, `calendarCommitments`, and safe ambiguity fallback.
+- Consumes `HomeDailyContext`, projected Calendar occurrences and canonical lesson bundles for only the selected lessons.
+- PlannerTask is not an input to the render projection.
+
+- [ ] **Step 1: Write failing Oggi projection tests**
+
+Pin: pending + upcoming coexist; most recent pending is selected when several exist; first current/upcoming is selected; Calendar commitments are compact records; ambiguity returns Orario fallback; no PlannerTask field exists; canonical lesson links never require Classe as an intermediate step.
+
+- [ ] **Step 2: Run RED**
+
+Run: `cd product && npx tsx --test src/core/presentation/today-ia-projection.test.ts`
+
+- [ ] **Step 3: Implement the pure projection**
+
+Selection policy lives in the pure module. Resolve canonical metadata only for selected lessons using existing `loadLessonPreparationBundlesForLessons(...)`. Build canonical lesson hrefs with date + occurrence context.
+
+- [ ] **Step 4: Recompose `planner/page.tsx`**
+
+Render only, in order: optional `Lezione da registrare`; optional current/next lesson; compact Calendar commitments. Remove generic PlannerTask UI, quick links, full timeline, day-review CTA, tomorrow-material CTA, and generic summary dashboard.
+
+If canonical lesson resolution fails, keep human-readable context and route to the safest known Orario/Classe surface; do not fabricate a block.
+
+- [ ] **Step 5: Tighten Attività relocation contract**
+
+Update Task 2 contract to assert `planner/page.tsx` no longer imports create/complete/move/wait/reopen Planner actions.
+
+- [ ] **Step 6: Run GREEN**
+
+Run: `cd product && npx tsx --test src/core/presentation/today-ia-projection.test.ts src/app/attivita/attivita-ia-contract.test.ts src/app/api/assistant/today-context-loader-contract.test.ts && npm run typecheck`
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add product/src/core/presentation/today-ia-projection.ts product/src/core/presentation/today-ia-projection.test.ts product/src/app/planner product/src/app/attivita/attivita-ia-contract.test.ts product/src/app/api/assistant/today-context-loader.ts product/package.json
+git commit -m "feat(dos-ia): reduce Oggi to immediate teaching work"
+```
+
+---
+
+### Task 4: Preserve Orario and add consultation-only direct Lezione entry
+
+**Files:**
+- Create: `product/src/app/orario/timetable-lesson-entrypoint.ts`
+- Create: `product/src/app/orario/timetable-lesson-entrypoint.test.ts`
+- Modify: `product/src/app/orario/TimetableExperience.tsx`
+- Modify: `product/src/app/orario/TimetableGrid.tsx`
+- Modify only if needed: `product/src/app/orario/timetable.css`, `product/src/app/orario/orario-guidance.css`
+- Modify: `product/package.json`
+
+**Interfaces:**
+- Produces `resolveTimetableLessonEntrypoint(input: { mode: 'view' | 'update' | 'manage'; sectionId: string | null; blockId: string | null; localDate: string | null; occurrenceLogicalId: string | null; ambiguous: boolean }): { kind: 'LESSON' | 'CLASS'; href: string } | { kind: 'AMBIGUOUS' } | null`.
+- In view mode, resolved modeled lesson → canonical Lezione href with date/occurrence context; known class but unresolved block → Classe href; ambiguity → safe no-guess state.
+- In update/manage mode, no lesson navigation is produced.
+
+- [ ] **Step 1: Write RED entrypoint tests**
+
+Assert direct Lezione, Classe fallback, ambiguity, and update/manage no-navigation behavior.
+
+- [ ] **Step 2: Run RED**
+
+Run: `cd product && npx tsx --test src/app/orario/timetable-lesson-entrypoint.test.ts`
+
+- [ ] **Step 3: Build the view-mode entrypoint map**
+
+Reuse annual snapshot/canonical source/projection logic already present in class planning. Do not mutate timetable data. Pass lesson entrypoints to `TimetableGrid` only in view mode.
+
+- [ ] **Step 4: Change read-only cell/focus behavior only**
+
+Resolved lesson: primary action `Apri la lezione`. Unresolved modeled context: `Apri la classe`. Edit mode keeps `openOccupiedCell`; no click ambiguity.
+
+- [ ] **Step 5: Add literal-tomorrow contextual materials affordance**
+
+When day view is showing the actual next local date, expose secondary `Materiali di domani` pointing to the stable Materiali e fonti tomorrow context introduced in Task 7. Until Task 7 lands, use a helper/placeholder interface in code only if the route is already stable; otherwise defer wiring but keep the test specification here.
+
+- [ ] **Step 6: Run GREEN + timetable regressions**
+
+Run:
+
+```bash
+cd product && npx tsx --test \
+  src/app/orario/timetable-lesson-entrypoint.test.ts \
+  src/app/orario/timetable-grid-model.test.ts \
+  src/app/orario/timetable-operational-model.test.ts \
+  src/app/orario/timetable-import-feedback.test.ts \
+  src/app/orario/timetable-action-feedback.test.ts
+```
+
+Then `npm run typecheck`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add product/src/app/orario product/package.json
+git commit -m "feat(dos-ia): open resolved lessons from timetable view"
+```
+
+---
+
+### Task 5: Recompose Classi / Classe as selector + continuity
+
+**Files:**
+- Modify: `product/src/app/classi/page.tsx`
+- Modify: `product/src/app/classi/[sectionId]/page.tsx`
+- Modify: `product/src/app/classi/[sectionId]/class-task-state.ts`
+- Modify: `product/src/app/classi/[sectionId]/class-task-state.test.ts`
+- Create: `product/src/app/classi/[sectionId]/class-secondary-tools.tsx`
+- Create: `product/src/app/classi/[sectionId]/class-ia-contract.test.ts`
+- Modify: `product/src/app/classi/class-workspace-operational.css`
+- Modify: `product/package.json`
+
+**Interfaces:**
+- Class task states remain professionally equivalent to current behavior but new modeled-lesson CTAs use canonical phase-free Lezione hrefs.
+- `ClassSecondaryTools` receives already-computed data/URLs and renders exactly one disclosure labeled `Altro della classe`.
+- Diario remains outside that disclosure and always visible.
+
+- [ ] **Step 1: Write failing Class IA contract**
+
+Assert selector role for Classi and, for Classe: one dominant work focus/CTA, latest actual work, next activity, essential progress/context, visible Diario, exactly one `Altro della classe`, and absence of separate first-level Supporti/Altri percorsi/Dettagli tecnici disclosures.
+
+- [ ] **Step 2: Run RED**
+
+Run: `cd product && npx tsx --test 'src/app/classi/[sectionId]/class-ia-contract.test.ts'`
+
+- [ ] **Step 3: Switch modeled CTA to canonical lesson href**
+
+Keep `resolveClassTaskDecision` professional state semantics. Supply occurrence date/logical-id when known. Unmodeled inline-recorder capability remains available under `Altro della classe`; do not drop it.
+
+- [ ] **Step 4: Extract secondary capabilities**
+
+Move materials, Piano annuale, Progetta, Knowledge, Curricolo Arena, advanced registration/completion, cattedra and technical/provenance details into `ClassSecondaryTools`. Preserve all underlying server actions/data.
+
+- [ ] **Step 5: Keep Diario as the only named always-visible secondary action**
+
+Place `Apri Diario` directly after continuity/CTA.
+
+- [ ] **Step 6: Run GREEN + class regressions**
+
+Run:
+
+```bash
+cd product && npx tsx --test \
+  'src/app/classi/[sectionId]/class-ia-contract.test.ts' \
+  'src/app/classi/[sectionId]/class-task-state.test.ts' \
+  src/app/classi/class-workspace-model.test.ts \
+  src/app/classi/class-counts.test.ts
+```
+
+Then `npm run typecheck`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add product/src/app/classi product/package.json
+git commit -m "feat(dos-ia): make Classe a continuity surface"
+```
+
+---
+
+### Task 6: Turn Lezione into one automatically resolved workspace
+
+**Files:**
+- Modify: `product/src/app/classi/[sectionId]/lezioni/[blockId]/page.tsx`
+- Modify: `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-shell.tsx`
+- Modify: `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-shell.module.css`
+- Modify: `lesson-prepare-client.tsx`
+- Modify: `lesson-live-client.tsx`
+- Modify: `lesson-observe-client.tsx`
+- Modify: `lesson-close-client.tsx`
+- Create: `product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-ia-contract.test.ts`
+- Modify: `product/package.json`
+- Reuse: Task 1 state resolver and canonical href builder.
+
+**Interfaces:**
+- Canonical search params: `date`, `occurrence`, `intent`, `subtask`; legacy `mode` accepted only as compatibility input.
+- New UI never emits `mode=prepare|teach|observe|record`.
+- `LessonShell` becomes context/status header; it has no phase navigation.
+- `intent=start` comes only from preparation CTA; `intent=close` only from teaching CTA.
+- `subtask=observe` exposes observation contextually; `subtask=materials` exposes lesson materials contextually.
+
+- [ ] **Step 1: Write RED shell/route contract**
+
+Assert no `PHASES`, no `aria-label="Fasi della lezione"`, no four phase links, and no new-client `?mode=` generation.
+
+- [ ] **Step 2: Run RED**
+
+Run: `cd product && npx tsx --test 'src/app/classi/[sectionId]/lezioni/[blockId]/lesson-ia-contract.test.ts'`
+
+- [ ] **Step 3: Resolve reliable occurrence context server-side**
+
+When `date` + `occurrence` arrive from Oggi/Orario, verify the occurrence belongs to the requested section. Without explicit occurrence, use only a unique reliable current/nearest section occurrence; overlapping/unresolved timing is AMBIGUOUS.
+
+- [ ] **Step 4: Resolve visible state and enforce governance**
+
+Call Task 1 resolver. Completed registration/progress wins as CONTINUITY. `intent=start/close` requests a transition but does not bypass curriculum/preparation approval. If TEACHING/REGISTRATION would violate a gate, keep the Lezione context visible and render the blocker/preparation state in human language rather than redirecting to a visible phase URL.
+
+- [ ] **Step 5: Remove phase navigation and convert transitions**
+
+Preparation CTA → canonical route with `intent=start`; teaching final CTA → canonical route with `intent=close`; observation/materials → canonical `subtask`; registration completion → continuity/Oggi while preserving existing receipts and persistence.
+
+- [ ] **Step 6: Run GREEN + lesson domain regressions**
+
+Run:
+
+```bash
+cd product && npx tsx --test \
+  'src/app/classi/[sectionId]/lezioni/[blockId]/lesson-ia-contract.test.ts' \
+  src/core/presentation/lesson-workspace-state.test.ts \
+  'src/app/classi/[sectionId]/lezioni/register-boundary.test.ts' \
+  'src/app/classi/[sectionId]/lezioni/voice-capture-boundary.test.ts' \
+  'src/app/classi/[sectionId]/lezioni/lesson-registration-model.test.ts' \
+  'src/app/classi/[sectionId]/lezioni/lesson-observation-model.test.ts' \
+  'src/app/classi/[sectionId]/lezioni/[blockId]/lesson-close-feedback.test.ts' \
+  'src/app/classi/[sectionId]/lezioni/lesson-registration-runtime-contract.test.ts' \
+  'src/app/classi/[sectionId]/lezioni/[blockId]/lesson-close-error-contract.test.ts'
+```
+
+Then `npm run typecheck`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add 'product/src/app/classi/[sectionId]/lezioni' product/package.json
+git commit -m "feat(dos-ia): unify lesson workspace state"
+```
+
+---
+
+### Task 7: Give Materiali di domani one stable home and keep lesson materials contextual
 
 **Files:**
 - Modify: `product/src/app/knowledge/page.tsx`
-- Modify: `product/src/app/materiali/domani/tomorrow-preparation-loader.ts` only to make its existing read model reusable outside the legacy route; do not change source semantics.
-- Modify: `product/src/app/orario/TimetableExperience.tsx`
-- Modify: `product/e2e/experience/contextual-capabilities.spec.mjs`
-- Modify: `product/e2e/experience/day-review.spec.mjs`
+- Modify: `product/src/components/app-shell/navigation.ts` for teacher-facing `Materiali e fonti` label.
+- Modify: `product/src/app/orario/TimetableExperience.tsx` for tomorrow contextual entry.
+- Modify: lesson clients only if any new UI still links `/materiali/prossima`.
+- Create: `product/src/app/materiali/materials-ia-contract.test.ts`
+- Modify: `product/package.json`
 
 **Interfaces:**
-- Produces: stable tomorrow overview under `/knowledge?focus=domani` as the Materiali e fonti surface.
-- Produces: Orario contextual link to `/knowledge?focus=domani` only when the viewed day is tomorrow.
-- Consumes: `tomorrow-preparation-loader.ts`; no second tomorrow-material loader is created.
+- Stable teacher-facing home remains the existing `/knowledge` domain surface, labeled `Materiali e fonti`.
+- `Materiali di domani` is exposed there through a stable focus/entry (recommended URL: `/knowledge?focus=domani`) reusing the existing tomorrow loader/rendering logic rather than duplicating it.
+- Orario literal-tomorrow contextual link points to the same stable entry.
+- Current-lesson materials use Lezione `subtask=materials`; new UI does not require `/materiali/prossima`.
 
-- [ ] **Step 1: Write failing browser assertions**
+- [ ] **Step 1: Write RED materials IA contract**
 
-Pin that Altro → Materiali e fonti exposes the tomorrow overview; lesson-specific materials remain inside Lezione; Orario tomorrow points to `/knowledge?focus=domani`, not `/materiali/domani`.
+Assert label `Materiali e fonti`, stable tomorrow entry under `/knowledge`, no Oggi tomorrow-material link, no new lesson transition through `/materiali/prossima`, and continued existence of legacy material routes.
 
-- [ ] **Step 2: Run RED against the exact local branch**
+- [ ] **Step 2: Run RED**
 
-```bash
-cd product
-E2E_BASE_URL=http://127.0.0.1:3000 npx playwright test --config=playwright.ia-reset.config.mjs e2e/experience/contextual-capabilities.spec.mjs e2e/experience/day-review.spec.mjs --project=ia-desktop
-```
+Run: `cd product && npx tsx --test src/app/materiali/materials-ia-contract.test.ts`
 
-Expected: FAIL on the new canonical entrance.
+- [ ] **Step 3: Reuse existing tomorrow projection in Materiali e fonti**
 
-- [ ] **Step 3: Reuse the existing tomorrow loader in Materiali e fonti**
+Do not create a second loader. Preserve provenance, canonical linkage, role-view status and revalidation semantics.
 
-`knowledge/page.tsx` handles `focus=domani` and renders the existing tomorrow projection. Keep canonical material linkage, provenance and revalidation rules unchanged.
+- [ ] **Step 4: Wire Orario tomorrow contextual link**
 
-- [ ] **Step 4: Add Orario contextual entrance and stop generating the old URL from new UI**
+Only show it when the selected day is the literal next Rome-local date and mode is view. Never show in timetable edit/manage mode.
 
-Do not redirect the legacy route yet.
+- [ ] **Step 5: Run GREEN + material regressions**
 
-- [ ] **Step 5: Verify**
+Run:
 
 ```bash
-cd product
-npm test
-npm run typecheck
+cd product && npx tsx --test \
+  src/app/materiali/materials-ia-contract.test.ts \
+  src/app/materiali/prossima/lesson-materials-view-model.test.ts \
+  src/core/presentation/lesson-material-renderer.test.ts \
+  src/core/presentation/lesson-preparation-materials.test.ts \
+  src/core/presentation/roleview-governance.test.ts
 ```
+
+Then `npm run typecheck`.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add product/src/app/knowledge/page.tsx product/src/app/materiali/domani/tomorrow-preparation-loader.ts product/src/app/orario/TimetableExperience.tsx product/e2e/experience/contextual-capabilities.spec.mjs product/e2e/experience/day-review.spec.mjs
-git commit -m "feat: relocate tomorrow materials to stable resource home"
+git add product/src/app/knowledge product/src/app/materiali product/src/app/orario/TimetableExperience.tsx product/src/components/app-shell/navigation.ts product/src/app/classi/'[sectionId]'/lezioni product/package.json
+git commit -m "feat(dos-ia): place materials in stable and contextual homes"
 ```
 
 ---
 
-### Task 8: Soft-retire duplicate/legacy destinations after parity
+### Task 8: Apply soft route retirement without capability loss
 
 **Files:**
-- Modify: `product/src/app/giornata/resoconto/page.tsx`
-- Modify: `product/src/app/materiali/domani/page.tsx`
-- Modify: `product/src/app/materiali/prossima/page.tsx`
-- Modify: legacy `product/src/app/classi/[sectionId]/in-classe/[assetId]/...` route entry only where canonical Lezione material parity is proven.
-- Modify: `product/src/app/classi/[sectionId]/lezioni/[blockId]/page.tsx`
-- Modify: `product/e2e/experience/day-review.spec.mjs`
-- Modify: `product/e2e/experience/contextual-capabilities.spec.mjs`
-- Modify: `product/e2e/experience/critical-journeys.spec.mjs`
+- Modify: `product/src/app/page.tsx`
+- Verify unchanged: `product/src/app/workspace/page.tsx`
+- Verify/unlink: `product/src/app/giornata/resoconto/page.tsx`
+- Keep compatible: `product/src/app/materiali/domani/page.tsx`
+- Keep compatible: `product/src/app/materiali/prossima/page.tsx`
+- Keep compatible until deterministic mapping exists: `product/src/app/classi/[sectionId]/in-classe/[assetId]/...`
+- Create: `product/src/app/route-compatibility-contract.test.ts`
+- Modify: `product/package.json`
 
 **Interfaces:**
-- Produces safe aliases/redirects only after the destination capability exists and is tested.
-- Legacy `mode` can remain accepted but never overrides server-side state/governance.
+- `/` redirects to `/planner`.
+- `/workspace` continues redirecting to `/planner`.
+- `/giornata/resoconto` remains reachable but is no longer linked by the new primary UX in this rollout.
+- Legacy `mode` lesson links remain accepted by Lezione compatibility logic but are not emitted by new UI.
+- Legacy material routes remain reachable until a deterministic canonical redirect is proven.
 
-- [ ] **Step 1: Add parity assertions before redirects**
+- [ ] **Step 1: Write RED compatibility contract**
 
-For each old route, test both destination and capability availability; a redirect alone is insufficient.
+Assert root is redirect-only to Oggi, workspace remains Oggi, no new primary page links day review, and legacy route files remain present/non-deleted.
 
-- [ ] **Step 2: Stop new UI from generating old URLs**
+- [ ] **Step 2: Run RED**
 
-Search canonical UI call sites and replace only those whose parity test is already green.
+Run: `cd product && npx tsx --test src/app/route-compatibility-contract.test.ts`
 
-- [ ] **Step 3: Add redirects/aliases one by one**
+- [ ] **Step 3: Replace duplicate Home with redirect**
 
-Target mapping:
-- `/giornata/resoconto` → Oggi/Classe/Materiali canonical context appropriate to the requested work; never another dashboard;
-- `/materiali/domani` → `/knowledge?focus=domani`;
-- `/materiali/prossima` → resolved Lezione material context when deterministic, otherwise safe Classe/Materiali e fonti context;
-- `in-classe/...` → Lezione contextual material view only when canonical lesson resolution is reliable;
-- legacy lesson `mode` → compatibility input normalized by the Task 5 resolver.
+Remove the autonomous Home decision engine; do not recreate its quick links elsewhere.
 
-- [ ] **Step 4: Verify**
+- [ ] **Step 4: Stop generating legacy links before redirecting anything else**
 
-```bash
-cd product
-npm test
-npm run typecheck
-```
+Search new canonical UI for `/giornata/resoconto`, `/materiali/prossima`, direct `in-classe/...`, and `?mode=`. Remove only call sites whose capability already exists in canonical context. Keep legacy endpoints operational.
 
-Then, against the exact local branch:
+- [ ] **Step 5: Run GREEN**
+
+Run: `cd product && npx tsx --test src/app/route-compatibility-contract.test.ts && npm run typecheck`
+
+- [ ] **Step 6: Commit**
 
 ```bash
-E2E_BASE_URL=http://127.0.0.1:3000 npx playwright test --config=playwright.ia-reset.config.mjs e2e/experience/day-review.spec.mjs e2e/experience/contextual-capabilities.spec.mjs e2e/experience/critical-journeys.spec.mjs --project=ia-mobile-390
-```
-
-Expected: PASS with no capability loss.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add product/src/app/giornata/resoconto product/src/app/materiali product/src/app/classi product/e2e/experience/day-review.spec.mjs product/e2e/experience/contextual-capabilities.spec.mjs product/e2e/experience/critical-journeys.spec.mjs
-git commit -m "refactor: retire duplicate teacher routes after parity"
+git add product/src/app/page.tsx product/src/app/workspace/page.tsx product/src/app/giornata/resoconto product/src/app/materiali product/src/app/classi product/src/app/route-compatibility-contract.test.ts product/package.json
+git commit -m "refactor(dos-ia): retire duplicate home and preserve legacy routes"
 ```
 
 ---
 
-### Task 9: Exact-head automated and responsive qualification
+### Task 9: Browser acceptance, exact-head qualification and Human Product Review
 
 **Files:**
-- No feature expansion. Modify only an owning implementation/test file if a real defect is found.
-- Test: `product/e2e/experience/information-architecture.spec.mjs`
-- Test: `product/e2e/experience/critical-journeys.spec.mjs`
-- Test: `product/e2e/experience/contextual-capabilities.spec.mjs`
-- Test: `product/e2e/experience/day-review.spec.mjs`
-- Test: `product/e2e/experience/accessibility.spec.mjs`
+- Modify: `product/e2e/experience/information-architecture.spec.mjs`
+- Create: `product/e2e/experience/product-ia-reset.spec.mjs`
+- Reuse unchanged unless a real defect is demonstrated: `product/playwright.experience.config.mjs`, `.github/workflows/experience-acceptance.yml`
 
 **Interfaces:**
-- Produces one exact-head evidence set for automated, responsive and domain regression gates.
+- Existing HVA projects remain the governed browser gate.
+- `product-ia-reset.spec.mjs` uses `page.setViewportSize(...)` inside dedicated responsive tests for 320×800 and 390×844 so no second Playwright configuration is introduced.
+- Evidence uses existing screenshot/artifact conventions.
 
-- [ ] **Step 1: Run full product verification**
+- [ ] **Step 1: Update shell browser contract**
+
+Require primary labels exactly `Oggi`, `Orario`, `Classi`, `Altro`; open Altro and assert the three approved groups and eight tool labels; assert Home is absent as primary destination.
+
+- [ ] **Step 2: Add end-to-end IA reset journeys**
+
+Cover: Oggi pending/upcoming behavior; compact Calendar commitments without Planner controls; Orario day/week preservation; consultation direct Lezione vs edit-mode editor; Classi/Classe hierarchy; visible Diario + Altro della classe; all four Lezione states; contextual observation/materials; Altro → Materiali e fonti → Materiali di domani; `/` → Oggi; legacy `?mode=` and material routes still safe.
+
+Where authenticated runtime data cannot deterministically produce pending+upcoming coexistence, keep that exact coexistence pinned by Task 3 pure-model test rather than fabricating test data.
+
+- [ ] **Step 3: Add explicit 320/390 responsive assertions**
+
+In two focused tests, set viewport to 320×800 and 390×844 and assert: no horizontal overflow; primary touch targets >=44 px where measurable; no technical identifiers at first level; lesson global nav remains secondary. Keep desktop coverage through existing desktop HVA project.
+
+- [ ] **Step 4: Run full product verification**
 
 ```bash
 cd product
@@ -601,57 +611,41 @@ npm run build
 
 Expected: all PASS.
 
-- [ ] **Step 2: Start the exact built head using the existing X3 application harness**
+- [ ] **Step 5: Run targeted local browser acceptance when governed credentials/runtime are available**
 
-Use the same governed environment/credentials as `.github/workflows/x3-e2e.yml`, with `E2E_BASE_URL=http://127.0.0.1:3000`. Do not point application qualification at Render Beta before the exact head is promoted there.
-
-- [ ] **Step 3: Run IA browser suite on all three explicit viewport projects**
+Run:
 
 ```bash
 cd product
-E2E_BASE_URL=http://127.0.0.1:3000 npx playwright test --config=playwright.ia-reset.config.mjs e2e/experience/information-architecture.spec.mjs e2e/experience/critical-journeys.spec.mjs e2e/experience/contextual-capabilities.spec.mjs e2e/experience/day-review.spec.mjs e2e/experience/accessibility.spec.mjs --project=ia-mobile-320 --project=ia-mobile-390 --project=ia-desktop
+E2E_BASE_URL=http://127.0.0.1:3000 npx playwright test --config=playwright.experience.config.mjs \
+  e2e/experience/information-architecture.spec.mjs \
+  e2e/experience/product-ia-reset.spec.mjs
 ```
 
-Expected evidence covers Oggi composite state, Orario day/week/edit separation, Classi, Classe, Diario, Altro della classe, all four Lezione states, Altro groups, tomorrow materials, and legacy compatibility.
+If governed credentials are unavailable, record local browser gate as not executed; never call it PASS.
 
-- [ ] **Step 4: Pin responsive/accessibility requirements**
+- [ ] **Step 6: Observe PR Human + Visual Acceptance on exact head**
 
-At 320 and 390: no horizontal overflow, touch targets ≥44 px, visible focus, no technical identifiers at first level. Desktop must not restore a navigation-first hierarchy.
+Confirm `hva/application` runs on the exact PR head and passes. Missing credentials are ERROR/not-executed, not PASS. Do not use Render Beta as proof of a PR head before promotion.
 
-- [ ] **Step 5: Record exact head and workflow evidence**
+- [ ] **Step 7: Human Product Review**
 
-Capture `git rev-parse HEAD` plus CI/workflow run IDs. Any failed gate keeps the head unqualified. Fix only the owning defect, then rerun the failed contract and the full qualification set.
+On the exact candidate head, judge: teacher understands next action without module vocabulary; Oggi remains sparse; Orario is at least as convenient; Classe feels like continuity; Lezione is one coherent workspace; Altro is complete but calm; no professional capability disappeared. Record `PASS | REWORK | REJECT` separately from automated HVA.
 
-No empty qualification commit.
+- [ ] **Step 8: Independent whole-branch review**
 
----
+Use a fresh reviewer after all automated gates pass. Require explicit review of spec coverage, fail-closed governance, route compatibility, capability preservation and responsive hierarchy. Any blocker gets a targeted RED/GREEN fix and rerun.
 
-### Task 10: Final Human Product Review gate
+- [ ] **Step 9: Commit browser contract changes**
 
-**Files:**
-- No implementation file is changed by this task.
-- Evidence may be recorded in the controlling PR/checklist after Task 9 fixes the exact head.
+```bash
+git add product/e2e/experience/information-architecture.spec.mjs product/e2e/experience/product-ia-reset.spec.mjs
+git commit -m "test(dos-ia): qualify product IA reset"
+```
 
-**Interfaces:**
-- Produces one human decision: `PASS | REWORK | REJECT` on the exact qualified head.
+- [ ] **Step 10: Stop at qualified PR head**
 
-- [ ] **Step 1: Review the exact served candidate only after Task 9 PASS**
-
-Walk the approved scenarios in browser with mobile and desktop evidence. No new functionality is introduced during review.
-
-- [ ] **Step 2: Judge the seven product questions**
-
-1. Can the teacher understand what to do without learning internal module names?
-2. Does Oggi remain sparse?
-3. Is Orario at least as convenient as before?
-4. Does Classe feel like continuity rather than a dashboard?
-5. Does Lezione behave as one coherent workspace?
-6. Is Altro complete without becoming noisy?
-7. Has any important professional capability disappeared?
-
-- [ ] **Step 3: Stop at the decision boundary**
-
-`PASS` means eligible for a separate merge/promotion decision. `REWORK` returns only observed defects to their owning task. `REJECT` stops the branch. This plan itself authorizes no merge, Beta promotion or production deploy.
+Report exact head, automated gates, HVA, Human Product Review and residual risks. Do not merge or deploy without separate authorization.
 
 ---
 
@@ -659,36 +653,37 @@ Walk the approved scenarios in browser with mobile and desktop evidence. No new 
 
 ### Spec coverage
 
-- primary backbone/Home removal → Task 1;
-- Oggi + PlannerTask separation → Task 2;
-- Orario preservation/direct lesson entry → Task 3;
-- Classi/Classe/Diario hierarchy → Task 4;
-- single Lezione/state resolution/contextual capabilities → Task 5;
-- Altro grouping → Task 6;
-- Materiali di domani stable/contextual home → Task 7;
+- primary backbone/Home removal → Tasks 2 and 8;
+- Oggi + PlannerTask separation → Tasks 2–3;
+- Orario preservation/direct lesson entry → Task 4;
+- Classi/Classe/Diario hierarchy → Task 5;
+- one Lezione/state resolution/action intents/contextual capabilities → Tasks 1 and 6;
+- Altro grouping → Task 2;
+- Materiali di domani stable/contextual home → Tasks 4 and 7;
 - soft legacy retirement/capability parity → Task 8;
-- automated/browser/responsive qualification → Task 9;
-- final Human Review → Task 10.
+- automated/browser/responsive/human qualification → Task 9.
 
 No requirement needs a database migration or domain-authority rewrite.
 
 ### Step scan
 
-Tasks 1–8 each define the owning files, an executable RED contract, minimal implementation boundary, GREEN verification and commit boundary. Tasks 9–10 are deliberately qualification-only.
+Tasks 1–8 each have an executable RED contract, one owning implementation boundary, GREEN verification and commit boundary. Task 9 is qualification-only except for browser test code. No task asks the implementer to invent an unresolved product decision.
 
 ### Type consistency
 
-Only three new presentation contracts carry cross-task semantics:
-- `buildTodayIAProjection(...) -> TodayIAProjection`;
-- `resolveTimetableLessonEntrypoint(...) -> LESSON | CLASS | AMBIGUOUS | null`;
-- `resolveLessonWorkspaceState(...) -> PREPARATION | TEACHING | CLOSURE | CONTINUITY | AMBIGUOUS`.
+Cross-task contracts are explicit and stable:
 
-Canonical Lezione URLs do not encode a teacher-selected phase; legacy `mode` remains compatibility input only.
+- `resolveLessonWorkspaceState(...) -> PREPARATION | TEACHING | REGISTRATION | CONTINUITY | AMBIGUOUS`;
+- `buildCanonicalLessonWorkspaceHref(...)` carries optional `date`, `occurrence`, `intent`, `subtask` and no visible phase;
+- `TodayIAProjection` exposes only pending/next lesson + compact Calendar commitments;
+- `resolveTimetableLessonEntrypoint(...)` emits LESSON/CLASS/AMBIGUOUS/null and never activates lessons in edit/manage mode.
+
+Legacy `buildLessonWorkspaceHref(..., mode)` remains compatibility-only until Task 8.
 
 ### Review Focus coverage
 
-All five high-risk conditions are explicitly tested in Tasks 2, 3, 5, 7 and 8 and re-exercised across 320/390/desktop in Task 9.
+All five high-risk conditions are pinned by pure tests or browser journeys and rerun in Task 9. Action-driven start/close semantics are explicitly covered, and Resoconto is not prematurely redirected.
 
 ### Proportion and scope
 
-The plan reuses current repositories, loaders, Planner actions, timetable UI, lesson clients and material logic. It adds presentation models and a dedicated responsive test configuration, not a new product architecture. The implementation remains a controlled IA/routing migration.
+The plan reuses current repositories, loaders, Planner persistence, timetable UI, lesson clients, Diary and materials logic. It adds only focused presentation/routing models and browser contracts; no new subsystem or parallel test framework is introduced.
