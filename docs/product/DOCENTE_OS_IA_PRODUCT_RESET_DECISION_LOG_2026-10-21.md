@@ -150,7 +150,7 @@ Sintesi canonica:
 
 ---
 
-## IA-03 — CLASSI / CLASSE — DIREZIONE ACCETTATA, DA FORMALIZZARE NELLA SPEC
+## IA-03 — CLASSI / CLASSE — APPROVATA
 
 ### Classi
 
@@ -192,11 +192,14 @@ CTA possibili:
 
 La Classe non è un passaggio obbligatorio se Oggi o Orario conoscono già la Lezione.
 
-### Capability secondarie della Classe
+### Gerarchia secondaria approvata
 
-Da preservare, ma fuori dal primo livello:
+Dopo il contenuto essenziale e la CTA dominante, resta sempre visibile **un solo accesso secondario nominato: Diario**.
 
-- Diario / storia delle lezioni registrate;
+Il Diario è la memoria professionale storica della Classe e conserva lezioni svolte, osservazioni, prossima attività e stato di sincronizzazione Drive.
+
+Tutte le altre capability della Classe vengono raccolte sotto un unico livello secondario **Altro della classe**, senza competere con il compito corrente. In questo livello rientrano, quando pertinenti:
+
 - materiali della classe;
 - Piano annuale;
 - Progetta;
@@ -206,7 +209,11 @@ Da preservare, ma fuori dal primo livello:
 - cattedra;
 - dettagli professionali/tecnici.
 
-Il Diario esistente è una capability coerente con questo modello: conserva lezioni svolte, osservazioni, prossima attività e stato di sincronizzazione Drive. Non deve diventare una voce primaria della navigazione globale; appartiene al contesto Classe.
+Regola:
+
+> Classe = continuità + una CTA dominante + Diario visibile; tutto il resto vive in Altro della classe.
+
+Il Diario non diventa una voce primaria della navigazione globale: appartiene al contesto Classe.
 
 ---
 
@@ -332,11 +339,11 @@ Il Calendario conserva la capacità di gestire giorni scolastici reali, sospensi
 | Superficie attuale | Capability da preservare | Nuova collocazione |
 | --- | --- | --- |
 | `/classi/[sectionId]/lezioni/[blockId]` | preparazione, conduzione, osservazione, registrazione | unico workspace Lezione |
-| `/classi/[sectionId]/diario` | storia, osservazioni, prossima attività, sync Drive | livello secondario della Classe |
+| `/classi/[sectionId]/diario` | storia, osservazioni, prossima attività, sync Drive | unico accesso secondario sempre visibile nella Classe |
 | `/classi/[sectionId]/in-classe/[assetId]` | uso materiale in classe, viewer, riconferma | capability della Lezione |
 | `/materiali/prossima` | bundle prossimo incontro, viste LIM/scheda/docente | capability/materiali della Lezione |
 | `/materiali/domani` | panoramica dei pacchetti di domani | strumento Materiali o accesso contestuale da Orario; non navigazione primaria |
-| `curricolo-arena` | intake/controllo curricolare governato | contesto Classe/Lezione quando necessario |
+| `curricolo-arena` | intake/controllo curricolare governato | Altro della classe / Lezione quando necessario |
 
 ### D. Superfici candidate a cessare di essere destinazioni autonome
 
@@ -383,24 +390,24 @@ Restano necessarie ma non fanno parte del backbone quotidiano.
 | Orario giorno/settimana | primaria | UI preservata |
 | Modifica/attivazione Orario | interna a Orario | flusso governato separato |
 | Classi | primaria | selettore |
-| Classe | memoria/continuità | una CTA dominante |
+| Classe | memoria/continuità | una CTA dominante + Diario visibile + Altro della classe |
 | Lezione | workspace operativo centrale | stato determinato dal contesto |
 | Prepara | stato interno Lezione | non destinazione globale |
 | Conduci | stato interno Lezione | non destinazione globale |
 | Osserva | capability contestuale | non pagina obbligatoria |
 | Registra | chiusura Lezione | persistenza invariata |
-| Diario | secondario Classe | storia professionale |
+| Diario | secondario Classe sempre visibile | storia professionale |
 | Viewer materiale in classe | Lezione | contestuale |
 | Materiali prossima lezione | Lezione | contestuale |
 | Materiali di domani | Altro/Materiali o Orario | secondario |
 | Attività / PlannerTask | Altro -> Attività | escluse da Oggi |
 | Calendario | Altro -> Calendario | Oggi legge solo impegni odierni |
 | Circolare -> Calendario | Calendario | conferma esplicita invariata |
-| Progetta | Altro -> Progetta | richiamabile da Classe/Lezione |
+| Progetta | Altro -> Progetta | richiamabile da Altro della classe/Lezione |
 | Conoscenza / fonti | Altro -> Materiali e fonti | richiamabile contestualmente |
 | Piano annuale | Altro -> Piano annuale | letto da Classe/Lezione |
 | Documentazione | Altro -> Documentazione | capability professionale autonoma |
-| Curricolo Arena | Classe/Lezione | fail-closed e governato |
+| Curricolo Arena | Altro della classe/Lezione | fail-closed e governato |
 | Assistente / Copilota | contestuale | mai destinazione primaria |
 | Voce | contestuale | mai destinazione primaria |
 | Impostazioni | Altro | configurazione |
@@ -427,13 +434,14 @@ Restano necessarie ma non fanno parte del backbone quotidiano.
 
 ## Questioni ancora da chiudere nella specifica
 
-1. **Classe:** forma esatta del livello secondario (un unico `Approfondisci` oppure pochi accessi nominati come Diario/Materiali/Piano).
-2. **Lezione:** regola precisa di transizione visibile tra prima/durante/dopo senza reintrodurre una barra di quattro moduli.
-3. **Materiali di domani:** accesso preferenziale da Altro/Materiali, da Orario, o entrambi.
-4. **Altro:** gerarchia interna e numero massimo di voci visibili senza creare un nuovo menu rumoroso.
-5. **Route compatibility:** strategia di alias/redirect per Home, Planner, Resoconto e superfici assorbite.
+1. **Lezione:** regola precisa di transizione visibile tra prima/durante/dopo senza reintrodurre una barra di quattro moduli.
+2. **Materiali di domani:** accesso preferenziale da Altro/Materiali, da Orario, o entrambi.
+3. **Altro:** gerarchia interna e numero massimo di voci visibili senza creare un nuovo menu rumoroso.
+4. **Route compatibility:** strategia di alias/redirect per Home, Planner, Resoconto e superfici assorbite.
 
-Queste sono decisioni di design/implementazione successive; non riaprono IA-01 o IA-02.
+La gerarchia secondaria della Classe è chiusa: **Diario sempre visibile + Altro della classe**.
+
+Queste sono decisioni di design/implementazione successive; non riaprono IA-01, IA-02 o IA-03.
 
 ---
 
@@ -442,7 +450,7 @@ Queste sono decisioni di design/implementazione successive; non riaprono IA-01 o
 - IA-01 Oggi: APPROVATA
 - IA-02 Orario: APPROVATA
 - Attività generiche fuori da Oggi: APPROVATA
-- IA-03 Classi/Classe: DIREZIONE ACCETTATA / formalizzazione finale nella spec
+- IA-03 Classi/Classe: APPROVATA
 - IA-04 Lezione: DIREZIONE ACCETTATA / formalizzazione finale nella spec
 - IA-05 Altro: DIREZIONE APPROVATA / gerarchia interna da definire
 - Audit superfici/capability: ESTESO / nessuna perdita volontaria autorizzata
@@ -450,4 +458,4 @@ Queste sono decisioni di design/implementazione successive; non riaprono IA-01 o
 - Implementazione: NON AUTORIZZATA
 - Merge/deploy: NON AUTORIZZATI
 
-Passo successivo: chiudere le cinque questioni residue di design, presentare il design integrato per approvazione, quindi trasformarlo in specifica canonica revisionata. Solo dopo la review della specifica si potrà preparare un piano di implementazione.
+Passo successivo: chiudere le quattro questioni residue di design, presentare il design integrato per approvazione, quindi trasformarlo in specifica canonica revisionata. Solo dopo la review della specifica si potrà preparare un piano di implementazione.
