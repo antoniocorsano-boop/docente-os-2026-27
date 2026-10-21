@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 const plannerSource = readFileSync(new URL('../../app/planner/page.tsx', import.meta.url), 'utf8')
+const prepareSource = readFileSync(new URL('../../app/classi/[sectionId]/lezioni/[blockId]/lesson-prepare-client.tsx', import.meta.url), 'utf8')
+const materialsSource = readFileSync(new URL('../../app/classi/[sectionId]/lezioni/[blockId]/lesson-materials.tsx', import.meta.url), 'utf8')
 const viewerSource = readFileSync(new URL('../../app/knowledge/[assetId]/page.tsx', import.meta.url), 'utf8')
 const observeSource = readFileSync(new URL('../../app/classi/[sectionId]/lezioni/[blockId]/lesson-observe-client.tsx', import.meta.url), 'utf8')
 const registerSource = readFileSync(new URL('../../app/classi/[sectionId]/lezioni/[blockId]/lesson-close-client.tsx', import.meta.url), 'utf8')
@@ -20,6 +22,20 @@ test('focused work uses the existing AppShell through a presentation-only focus 
   assert.ok(appShellSource.includes("cn('dosShell', focusMode && 'dosShellFocused')"), 'Focused mode must be represented as presentation state on the existing shell.')
   assert.ok(appShellSource.includes('CommandPalette'), 'Focused mode must keep broader navigation reachable through the existing command surface.')
   assert.ok(appShellSource.includes('SecondaryMenu'), 'Focused mode must keep the existing subordinate navigation escape.')
+})
+
+test('healthy PREPARA keeps approval detail subordinate while blockers stay first-level', () => {
+  assert.ok(
+    prepareSource.includes("approval.status === 'APPROVED' ? (") && prepareSource.includes('data-preparation-approval-detail'),
+    'A healthy approved preparation must collapse verbose authority detail without hiding blocking approval states.',
+  )
+})
+
+test('MATERIALI keeps technical rationale and version detail behind progressive disclosure', () => {
+  assert.ok(
+    materialsSource.includes('<details data-material-details'),
+    'Material cards must keep long rationale, version and usage detail subordinate to the teacher decision.',
+  )
 })
 
 test('focused lesson viewer exposes a content-first preview canvas', () => {
