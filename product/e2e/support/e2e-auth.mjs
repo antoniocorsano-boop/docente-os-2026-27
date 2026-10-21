@@ -7,6 +7,8 @@ export const E2E_TOTP_SECRET = process.env.E2E_TOTP_SECRET
 
 let cachedAal2Cookies = null
 
+const MFA_PAGE_READY_TIMEOUT_MS = 30_000
+
 const MFA_TRANSIENT_MESSAGES = [
   'Non è stato possibile avviare la verifica del secondo fattore. Riprova.',
   'Il codice non è valido o non è più attivo. Attendi il codice successivo e riprova.',
@@ -131,7 +133,9 @@ async function reachPlannerBoundary(page) {
 }
 
 async function waitForMfaChallengeReady(page) {
-  await expect(page.getByRole('heading', { name: 'Conferma il secondo fattore.' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Conferma il secondo fattore.' }),
+  ).toBeVisible({ timeout: MFA_PAGE_READY_TIMEOUT_MS })
 
   for (let attempt = 1; attempt <= 8; attempt += 1) {
     const codeHeading = page.getByRole('heading', { name: 'Inserisci il codice temporaneo' })
