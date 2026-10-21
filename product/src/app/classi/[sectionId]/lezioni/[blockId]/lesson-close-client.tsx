@@ -257,6 +257,7 @@ export default function LessonCloseClient({
           <span className={styles.lessonBriefLabel}>REGISTRA</span>
           <h2 id="close-fast-title">Che cosa è successo davvero?</h2>
           <p className={styles.privacyNote}>Conferma i fatti essenziali. Dettagli, osservazione e assistente restano disponibili solo se ti servono.</p>
+          <p className={styles.lessonBriefLabel}>1 · DATI ESSENZIALI</p>
 
           <label className={styles.sessionField}>
             <span>Esito effettivo</span>
