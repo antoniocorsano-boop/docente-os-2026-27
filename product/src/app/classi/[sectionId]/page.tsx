@@ -101,6 +101,7 @@ export default async function ClassWorkspacePage({
   const nextCanonicalBlock = learningFocus.nextBlock
     ? blocks.find((item) => item.id === learningFocus.nextBlock?.id) ?? null
     : null
+  const advancedBlockId = nextCanonicalBlock?.id ?? null
   const nextProjection = nextCanonicalBlock
     ? resolveRuntimeHumanTaskLessonProjection(grade, nextCanonicalBlock)
     : null
@@ -338,11 +339,11 @@ export default async function ClassWorkspacePage({
 
       <ClassSecondaryTools
         open={taskDecision.useInlineRecorder || taskDecision.focusCompletion}
-        advanced={source && nextCanonicalBlock ? {
+        advanced={source && nextCanonicalBlock && advancedBlockId ? {
           focusCompletion: taskDecision.focusCompletion,
           state: taskDecision.state,
           sectionId,
-          blockId: nextCanonicalBlock.id,
+          blockId: advancedBlockId,
           allocatedMinutes: nextAllocatedMinutes,
           plannedMinutes: nextCanonicalBlock.hours * 60,
           recorder: recordingOccurrence ? {
