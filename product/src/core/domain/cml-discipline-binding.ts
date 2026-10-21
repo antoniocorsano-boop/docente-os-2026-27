@@ -354,10 +354,17 @@ function assertArenaNodesMatchReleaseVersion(
   return nodeIds
 }
 
-function assertArenaVerticalLinksReferenceNodes(value: unknown, nodeIds: Set<string>): void {
+function assertArenaVerticalLinksReferenceNodes(
+  value: unknown,
+  versionId: string,
+  nodeIds: Set<string>,
+): void {
   const verticalLinks = arenaArray(value, 'Arena verticalLinks')
   for (const [index, linkValue] of verticalLinks.entries()) {
     const link = arenaRecord(linkValue, `Arena vertical link ${index}`)
+    if (link.versionId !== versionId) {
+      throw new Error('Arena vertical link version rejected: does not match release version')
+    }
     const sourceNodeId = arenaString(link.sourceNodeId, `Arena vertical link ${index} sourceNodeId`)
     const targetNodeId = arenaString(link.targetNodeId, `Arena vertical link ${index} targetNodeId`)
     if (!nodeIds.has(sourceNodeId) || !nodeIds.has(targetNodeId)) {
@@ -424,7 +431,7 @@ export function selectArenaVerticalCurricoloSlice(input: {
   assertArenaStructuralFootprintMatches(release)
   const segmentIds = assertArenaSegmentsMatchReleaseVersion(segments, versionId)
   const nodeIds = assertArenaNodesMatchReleaseVersion(allNodes, versionId, segmentIds)
-  assertArenaVerticalLinksReferenceNodes(release.verticalLinks, nodeIds)
+  assertArenaVerticalLinksReferenceNodes(release.verticalLinks, versionId, nodeIds)
   assertArenaManifestMatches(release, segments)
 
   const perimeter = arenaRecord(release.perimeter, 'Arena perimeter')
