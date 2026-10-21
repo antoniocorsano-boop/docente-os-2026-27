@@ -40,10 +40,10 @@ test('governed HVA MFA setup gives the server-rendered MFA boundary an explicit 
   assert.match(e2eAuth, /const MFA_PAGE_READY_TIMEOUT_MS\s*=\s*30_000/)
   assert.match(
     e2eAuth,
-    /getByRole\('heading', \{ name: 'Conferma il secondo fattore\.' \}\)\)\.toBeVisible\(\{ timeout: MFA_PAGE_READY_TIMEOUT_MS \}\)/,
+    /expect\(\s*page\.getByRole\('heading',\s*\{\s*name:\s*'Conferma il secondo fattore\.'\s*\}\),?\s*\)\.toBeVisible\(\{\s*timeout:\s*MFA_PAGE_READY_TIMEOUT_MS\s*\}\)/,
   )
   assert.doesNotMatch(
     e2eAuth,
-    /getByRole\('heading', \{ name: 'Conferma il secondo fattore\.' \}\)\)\.toBeVisible\(\)/,
+    /expect\(\s*page\.getByRole\('heading',\s*\{\s*name:\s*'Conferma il secondo fattore\.'\s*\}\),?\s*\)\.toBeVisible\(\s*\)/,
   )
 })
