@@ -14,14 +14,33 @@ import { MOBILE_NAVIGATION_KEYS, NAVIGATION_GROUPS, SECONDARY_NAVIGATION_GROUPS,
 
 const ICONS: Record<NavigationKey, LucideIcon> = { home: Home, today: CheckCircle2, design: Sparkles, knowledge: LibraryBig, classes: UsersRound, timetable: CalendarClock, calendar: CalendarDays, 'annual-plan': BookOpenCheck, documentation: FileText, settings: Settings2, account: ShieldCheck }
 
-export type AppShellProps = { active: NavigationKey; academicYearLabel?: string | null; workspaceName: string; role?: string | null; children: ReactNode; contentClassName?: string; contextualAssistantEnabled?: boolean }
+export type AppShellProps = {
+  active: NavigationKey
+  academicYearLabel?: string | null
+  workspaceName: string
+  role?: string | null
+  children: ReactNode
+  contentClassName?: string
+  contextualAssistantEnabled?: boolean
+  focusMode?: boolean
+}
 
-export function AppShell({ active, academicYearLabel, workspaceName, role, children, contentClassName, contextualAssistantEnabled = true }: AppShellProps) {
+export function AppShell({
+  active,
+  academicYearLabel,
+  workspaceName,
+  role,
+  children,
+  contentClassName,
+  contextualAssistantEnabled = true,
+  focusMode = false,
+}: AppShellProps) {
   const router = useRouter()
   const [commandOpen, setCommandOpen] = useState(false)
   const [secondaryOpen, setSecondaryOpen] = useState(false)
   const activeItem = navigationItem(active)
   const secondaryActive = !MOBILE_NAVIGATION_KEYS.includes(active)
+  const mobileNavigationKeys: readonly NavigationKey[] = focusMode ? ['today', 'classes', 'timetable'] : MOBILE_NAVIGATION_KEYS
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -33,7 +52,7 @@ export function AppShell({ active, academicYearLabel, workspaceName, role, child
 
   const navigate = (href: string) => { setCommandOpen(false); setSecondaryOpen(false); router.push(href) }
 
-  return <div className="dosShell">
+  return <div className={cn('dosShell', focusMode && 'dosShellFocused')}>
     <a className="dosSkipLink" href="#dos-main-content">Salta al contenuto</a>
     <aside className="dosSidebar" aria-label="Navigazione principale">
       <Link href="/" className="dosBrand" aria-label="Docente OS — Home"><DocenteOsLockup compact inverse academicYearLabel={academicYearLabel ?? 'Mantieni il filo.'} /></Link>
@@ -48,7 +67,7 @@ export function AppShell({ active, academicYearLabel, workspaceName, role, child
       <header className="dosMobileHeader"><div className="dosMobileContext"><Link href="/" aria-label="Docente OS — Home"><DocenteOsMark size={30} className="dosMobileBrandMark" /></Link><span>{activeItem.label}</span><strong>{workspaceName}</strong></div><div className="dosMobileActions"><button type="button" onClick={() => setCommandOpen(true)} aria-label="Cerca o vai a una funzione"><Search size={19} aria-hidden /></button><LocalProfileAvatar /></div></header>
       <main id="dos-main-content" tabIndex={-1} className={cn('workSurface', 'dosContent', contentClassName)}>{children}</main>
       <nav className="dosBottomNav" aria-label="Navigazione mobile">
-        {MOBILE_NAVIGATION_KEYS.map((key) => { const item = navigationItem(key); const Icon = ICONS[key]; return <Link key={key} href={item.href} className={cn(key === active && 'active')} aria-current={key === active ? 'page' : undefined}><Icon size={20} strokeWidth={1.9} aria-hidden /><small>{item.shortLabel}</small></Link> })}
+        {mobileNavigationKeys.map((key) => { const item = navigationItem(key); const Icon = ICONS[key]; return <Link key={key} href={item.href} className={cn(key === active && 'active')} aria-current={key === active ? 'page' : undefined}><Icon size={20} strokeWidth={1.9} aria-hidden /><small>{item.shortLabel}</small></Link> })}
         <button type="button" onClick={() => setSecondaryOpen(true)} className={cn(secondaryActive && 'active')} aria-expanded={secondaryOpen} aria-label="Apri Naviga"><Menu size={20} aria-hidden /><small>Naviga</small></button>
       </nav>
     </div>
