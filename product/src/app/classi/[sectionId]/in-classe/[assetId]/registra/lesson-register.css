@@ -32,7 +32,8 @@
 .lessonRegisterContext,
 .lessonRegisterForm,
 .lessonRegisterReceipt,
-.lessonRegisterDrive {
+.lessonRegisterDrive,
+.lessonRegisterDisclosure {
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--surface);
@@ -73,12 +74,44 @@
   margin-top: .8rem;
 }
 
+.lessonRegisterDisclosure > summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: .85rem 1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.lessonRegisterDisclosure[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.lessonRegisterDisclosureBody,
+.lessonRegisterAdvancedBody {
+  padding: 1rem;
+}
+
+.lessonRegisterAdvancedBody {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.lessonRegisterAdvanced {
+  border-radius: var(--radius-sm);
+}
+
 .lessonRegisterDrive {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem 1.2rem;
+}
+
+.lessonRegisterDisclosureBody .lessonRegisterDrive,
+.lessonRegisterDisclosureBody .lessonRegisterContext {
+  border: 0;
 }
 
 .lessonRegisterDrive > div {
