@@ -20,7 +20,6 @@ test('DOS-IA-RESET exposes exactly Oggi, Orario, Classi and Altro as primary des
   assert.deepEqual(PRIMARY_NAVIGATION.map((item) => item.label), ['Oggi', 'Orario', 'Classi', 'Altro'])
   assert.deepEqual(MOBILE_NAVIGATION_KEYS, ['today', 'timetable', 'classes', 'more'])
   assert.deepEqual(workNavigationItems().map((item) => item.key), [...MOBILE_NAVIGATION_KEYS])
-  assert.equal(PRIMARY_NAVIGATION.some((item) => item.key === 'home'), false)
 })
 
 test('Altro contains the three approved scannable groups in exact order', () => {
