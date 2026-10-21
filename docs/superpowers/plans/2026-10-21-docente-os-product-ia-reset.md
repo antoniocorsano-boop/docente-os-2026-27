@@ -4,7 +4,7 @@
 
 **Goal:** Implement the approved Docente OS information-architecture reset around **Oggi · Orario · Classi · Altro**, with **Lezione** as the single contextual operational workspace, while preserving every professional capability and governance boundary.
 
-**Architecture:** Keep domain authority, Supabase persistence/RLS, timetable lifecycle, TeachingSession/Diario, curriculum gates, material provenance/revalidation, Drive synchronization, authentication and MFA unchanged. Implement the reset in presentation and routing through small pure projection/resolution models, then recompose the existing App Router surfaces. Legacy URLs remain compatible until behavioral parity is executable and proven.
+**Architecture:** Keep domain authority, Supabase persistence/RLS, timetable lifecycle, TeachingSession/Diario, curricolo gates, material provenance/revalidation, Drive synchronization, authentication and MFA unchanged. Implement the reset in presentation and routing through small pure projection/resolution models, then recompose the existing App Router surfaces. Legacy URLs remain compatible until behavioral parity is executable and proven.
 
 **Tech Stack:** Node 22.x, Next.js 16.3.1 App Router, React 19.2.8, TypeScript 5.9.2, Supabase repositories/RLS, Node `node:test` through `tsx`, Playwright 1.55.0 in CI.
 
@@ -23,9 +23,9 @@
 - Classi is primarily a selector. Classe exposes continuity, one dominant contextual CTA, visible Diario and one **Altro della classe** disclosure.
 - Lezione resolves future/current/ended-unregistered/registered state from reliable context. Ambiguity is explicit and fail-closed.
 - `Inizia la lezione` and `Concludi la lezione` are action intents inside the same Lezione workspace; they do not reintroduce teacher-selected phases and cannot bypass approval/governance.
-- `Osserva`, assistant/Copilot, voice, curriculum details and revalidation remain contextual capabilities.
+- `Osserva`, assistant/Copilot, voice, curricolo details and revalidation remain contextual capabilities.
 - `Materiali di domani` has one stable home under **Altro → Materiali e fonti** and may be entered contextually from Orario when viewing literal tomorrow. It remains distinct from materials of the current Lezione.
-- Curriculum, approval, authority, material provenance/version/revalidation, Atlas fail-closed behavior, TeachingSession persistence and Drive synchronization are not weakened.
+- Curricolo, approval, authority, material provenance/version/revalidation, Atlas fail-closed behavior, TeachingSession persistence and Drive synchronization are not weakened.
 - Legacy routes follow: relocate capability → prove parity/governance → stop generating old URL → redirect/retire only when deterministic and safe.
 - The first migration does **not** force a redirect for `/giornata/resoconto`; it becomes unlinked from the new IA and remains reachable until a later deterministic retirement decision.
 - Touch targets remain at least 44 px. No horizontal overflow at 320 px. Desktop must not restore a navigation-first hierarchy.
@@ -37,7 +37,7 @@
 
 1. **Pending registration + upcoming lesson + Calendar:** Oggi must show both lesson objects and compact Calendar items without PlannerTask buckets or a full timeline. Pin in Task 3.
 2. **Ambiguous lesson context:** overlapping/unresolved slots must lead to explicit disambiguation in Orario/Classe; no class, lesson or phase is guessed. Pin in Tasks 1, 3 and 4.
-3. **Action-driven lesson transitions:** starting early or closing before the scheduled boundary must remain inside one Lezione and must not bypass curriculum/preparation approval. Pin in Tasks 1 and 6.
+3. **Action-driven lesson transitions:** starting early or closing before the scheduled boundary must remain inside one Lezione and must not bypass curricolo/preparation approval. Pin in Tasks 1 and 6.
 4. **Known lesson with missing/uncertain preparation/material:** remain in Lezione context, preserve blocker/provenance and expose the next legitimate action. Pin in Task 6.
 5. **Legacy deep links:** old phase/material/day-review links must remain safe until capability parity is demonstrated; new UI must stop generating them before retirement. Pin in Tasks 7 and 8.
 
@@ -141,7 +141,7 @@ Expected: FAIL because the module does not exist.
 
 Exact precedence: registered → CONTINUITY; ambiguous or explicit occurrence with unusable timing → AMBIGUOUS; `intent=close` → REGISTRATION; `intent=start` → TEACHING for a non-registered lesson; future → PREPARATION; current interval → TEACHING; ended → REGISTRATION; no occurrence → PREPARATION.
 
-The resolver is presentation state only; approval/curriculum authority is enforced later by the lesson page and may prevent the requested state from becoming actionable.
+The resolver is presentation state only; approval/curricolo authority is enforced later by the lesson page and may prevent the requested state from becoming actionable.
 
 - [ ] **Step 4: Write canonical-route tests**
 
@@ -435,7 +435,7 @@ When `date` + `occurrence` arrive from Oggi/Orario, verify the occurrence belong
 
 - [ ] **Step 4: Resolve visible state and enforce governance**
 
-Call Task 1 resolver. Completed registration/progress wins as CONTINUITY. `intent=start/close` requests a transition but does not bypass curriculum/preparation approval. If TEACHING/REGISTRATION would violate a gate, keep the Lezione context visible and render the blocker/preparation state in human language rather than redirecting to a visible phase URL.
+Call Task 1 resolver. Completed registration/progress wins as CONTINUITY. `intent=start/close` requests a transition but does not bypass curricolo/preparation approval. If TEACHING/REGISTRATION would violate a gate, keep the Lezione context visible and render the blocker/preparation state in human language rather than redirecting to a visible phase URL.
 
 - [ ] **Step 5: Remove phase navigation and convert transitions**
 

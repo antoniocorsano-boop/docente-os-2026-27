@@ -35,7 +35,7 @@ This applies especially to:
 - observing during a lesson;
 - registering a lesson;
 - using materials in class;
-- curriculum checks;
+- curricolo checks;
 - Copilot/assistant actions;
 - voice capture;
 - material revalidation;
@@ -59,7 +59,7 @@ In particular:
 
 - Orario and Calendario remain distinct domains;
 - Piano annuale remains distinct from Calendario, Orario, and Attività;
-- curriculum and authority blockers remain fail-closed;
+- curricolo and authority blockers remain fail-closed;
 - sources and materials retain provenance, version, and approval state;
 - timetable changes remain versioned and explicitly activated;
 - TeachingSession/Diario remains the source of actual class continuity;
@@ -260,7 +260,7 @@ This may include, when relevant:
 - Piano annuale;
 - Progetta;
 - Conoscenza / fonti;
-- curriculum;
+- curricolo;
 - advanced recording;
 - teaching assignment/cattedra;
 - professional/technical details.
@@ -316,7 +316,7 @@ First-level content:
 - any real blocker;
 - dominant CTA `Inizia la lezione`.
 
-Curriculum, approval, and authority rules remain active and may block progression. They should be explained in human terms but must not be bypassed.
+Curricolo, approval, and authority rules remain active and may block progression. They should be explained in human terms but must not be bypassed.
 
 ### 7.4 During the lesson
 
@@ -578,7 +578,7 @@ When multiple lessons or contexts are compatible and no deterministic choice is 
 
 ### 15.2 Governance blockers
 
-When curriculum, approval, authority, material state, or other governed prerequisites block progression:
+When curricolo, approval, authority, material state, or other governed prerequisites block progression:
 
 - keep the block fail-closed;
 - explain what is blocked and why in professional language;
@@ -621,7 +621,7 @@ Existing tests for:
 - calendar separation;
 - planner persistence;
 - teaching-session/Diario persistence;
-- curriculum and authority gating;
+- curricolo and authority gating;
 - material provenance/versioning;
 - Drive synchronization;
 - authentication/MFA
@@ -686,7 +686,7 @@ This reset does **not** authorize:
 - rewriting the timetable UI;
 - merging Calendario and Orario;
 - deleting PlannerTask capability;
-- weakening curriculum approval or authority rules;
+- weakening curricolo approval or authority rules;
 - removing Diario or Drive synchronization;
 - removing materials/provenance/revalidation capability;
 - redesigning all tool internals under Altro;

@@ -16,7 +16,7 @@ Pre-flight shared interfaces:
 
 No shared-interface conflict found against the approved specification.
 
-Task 1: Ruling: place `buildCanonicalLessonWorkspaceHref` in focused `lesson-workspace-route.ts` rather than the large lesson-content registry. This preserves the approved public behavior while keeping routing independent of curricular content. Cost if wrong: one import/re-export adjustment in consumers.
+Task 1: Ruling: place `buildCanonicalLessonWorkspaceHref` in focused `lesson-workspace-route.ts` rather than the large lesson-content registry. This preserves the approved public behavior while keeping routing independent of curricolo-related content. Cost if wrong: one import/re-export adjustment in consumers.
 
 Task 1: Ruling: execute the new state test by importing it from the already-registered `human-task-content.test.ts` instead of rewriting the repository's long explicit `npm test` command in this task. Product CI therefore executes the new assertions while avoiding unrelated script churn. Cost if wrong: test discoverability is less explicit until the suite is simplified or the path is registered directly.
 
