@@ -22,20 +22,28 @@ test('prepara quando non esiste una lezione di oggi da svolgere', () => {
   assert.deepEqual(resolveClassTaskDecision(base), {
     state: 'PREPARE',
     label: 'Prepara la lezione',
-    lessonMode: 'prepare',
+    useModeledLesson: true,
     useInlineRecorder: false,
     focusCompletion: false,
   })
 })
 
-test('una occurrence precedente non registrata prevale sulla preparazione e resta inline', () => {
+test('una occurrence precedente non registrata prevale sulla preparazione e apre la lezione modellata', () => {
   assert.deepEqual(resolveClassTaskDecision({ ...base, hasPendingPastOccurrence: true }), {
     state: 'CATCH_UP',
     label: 'Registra la lezione precedente',
-    lessonMode: null,
-    useInlineRecorder: true,
+    useModeledLesson: true,
+    useInlineRecorder: false,
     focusCompletion: false,
   })
+})
+
+
+test('il recupero usa il recorder inline solo quando la lezione non e modellata', () => {
+  const decision = resolveClassTaskDecision({ ...base, hasModeledLesson: false, hasPendingPastOccurrence: true })
+  assert.equal(decision.state, 'CATCH_UP')
+  assert.equal(decision.useModeledLesson, false)
+  assert.equal(decision.useInlineRecorder, true)
 })
 
 test('una occurrence odierna prevale sul recupero precedente anche se entrambi sono pendenti', () => {
@@ -56,7 +64,7 @@ test('continua la lezione quando l occorrenza e iniziata ma non conclusa', () =>
 test('porta alla registrazione quando la lezione e terminata', () => {
   const decision = resolveClassTaskDecision({ ...base, hasEligibleOccurrence: true, occurrenceEnded: true })
   assert.equal(decision.state, 'RECORD')
-  assert.equal(decision.lessonMode, 'record')
+  assert.equal(decision.useModeledLesson, true)
   assert.equal(decision.useInlineRecorder, false)
   assert.equal(decision.focusCompletion, false)
 })
@@ -82,7 +90,7 @@ test('usa il recorder inline soltanto come fallback se manca il Lesson Workspace
     occurrenceEnded: true,
   })
   assert.equal(decision.state, 'RECORD')
-  assert.equal(decision.lessonMode, null)
+  assert.equal(decision.useModeledLesson, false)
   assert.equal(decision.useInlineRecorder, true)
   assert.equal(decision.focusCompletion, false)
 })
@@ -94,7 +102,7 @@ test('dopo una receipt non propone di registrare di nuovo la stessa attivita', (
   })
   assert.equal(decision.state, 'AFTER_RECORD')
   assert.equal(decision.label, 'Prepara il prossimo incontro')
-  assert.equal(decision.lessonMode, 'prepare')
+  assert.equal(decision.useModeledLesson, true)
   assert.equal(decision.useInlineRecorder, false)
   assert.equal(decision.focusCompletion, false)
 })
@@ -107,7 +115,7 @@ test('dopo la receipt focalizza il completamento session-aware senza riaprire il
   })
   assert.equal(decision.state, 'AFTER_RECORD')
   assert.equal(decision.label, 'Valuta il completamento')
-  assert.equal(decision.lessonMode, null)
+  assert.equal(decision.useModeledLesson, false)
   assert.equal(decision.useInlineRecorder, false)
   assert.equal(decision.focusCompletion, true)
 })
@@ -120,7 +128,7 @@ test('non espone una CTA quando il percorso annuale e completo', () => {
   }), {
     state: 'COMPLETE',
     label: null,
-    lessonMode: null,
+    useModeledLesson: false,
     useInlineRecorder: false,
     focusCompletion: false,
   })
@@ -237,4 +245,12 @@ test('il form usa la registration key canonica e ogni retry attraversa il bounda
   assert.doesNotMatch(actionsSource, /registration_intent:/)
   assert.doesNotMatch(actionsSource, /replaySession/)
   assert.match(actionsSource, /recordTeachingSessionCommand/)
+})
+
+
+test('le CTA modellate della Classe usano il workspace Lezione canonico senza fasi visibili', () => {
+  assert.match(classPageSource, /buildCanonicalLessonWorkspaceHref/)
+  assert.doesNotMatch(classPageSource, /buildLessonWorkspaceHref/)
+  assert.match(classPageSource, /localDate: taskOccurrence\?\.localDate \?\? null/)
+  assert.match(classPageSource, /occurrenceLogicalId: taskOccurrence\?\.logicalId \?\? null/)
 })

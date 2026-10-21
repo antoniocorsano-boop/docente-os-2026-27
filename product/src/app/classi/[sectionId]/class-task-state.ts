@@ -3,7 +3,7 @@ export type ClassTaskState = 'COMPLETE' | 'PREPARE' | 'TEACH' | 'RECORD' | 'CATC
 export type ClassTaskDecision = {
   state: ClassTaskState
   label: string | null
-  lessonMode: 'prepare' | 'teach' | 'record' | null
+  useModeledLesson: boolean
   useInlineRecorder: boolean
   focusCompletion: boolean
 }
@@ -37,7 +37,7 @@ export function resolveClassTaskDecision(input: {
     return {
       state: 'COMPLETE',
       label: null,
-      lessonMode: null,
+      useModeledLesson: false,
       useInlineRecorder: false,
       focusCompletion: false,
     }
@@ -50,7 +50,7 @@ export function resolveClassTaskDecision(input: {
     return {
       state: 'RECORD',
       label: 'Registra la lezione',
-      lessonMode: input.hasModeledLesson ? 'record' : null,
+      useModeledLesson: input.hasModeledLesson,
       useInlineRecorder: !input.hasModeledLesson,
       focusCompletion: false,
     }
@@ -60,21 +60,21 @@ export function resolveClassTaskDecision(input: {
     return {
       state: 'TEACH',
       label: input.hasModeledLesson ? 'Continua la lezione' : 'Apri il lavoro di classe',
-      lessonMode: input.hasModeledLesson ? 'teach' : null,
+      useModeledLesson: input.hasModeledLesson,
       useInlineRecorder: false,
       focusCompletion: false,
     }
   }
 
   // A previous projected occurrence that is still unrecorded is a real pending
-  // professional task once there is no eligible current-day occurrence. Keep it
-  // on the class surface so timetable/calendar provenance is preserved.
+  // professional task once there is no eligible current-day occurrence. A modeled
+  // lesson can open its canonical workspace; only unmodeled work stays inline.
   if (input.hasPendingPastOccurrence) {
     return {
       state: 'CATCH_UP',
       label: 'Registra la lezione precedente',
-      lessonMode: null,
-      useInlineRecorder: true,
+      useModeledLesson: input.hasModeledLesson,
+      useInlineRecorder: !input.hasModeledLesson,
       focusCompletion: false,
     }
   }
@@ -83,7 +83,7 @@ export function resolveClassTaskDecision(input: {
     return {
       state: 'AFTER_RECORD',
       label: 'Valuta il completamento',
-      lessonMode: null,
+      useModeledLesson: false,
       useInlineRecorder: false,
       // Keep the decision on the session-aware class surface: its confirmation
       // derives executedOn and provenance from the recorded TeachingSession.
@@ -95,7 +95,7 @@ export function resolveClassTaskDecision(input: {
     return {
       state: 'AFTER_RECORD',
       label: 'Prepara il prossimo incontro',
-      lessonMode: input.hasModeledLesson ? 'prepare' : null,
+      useModeledLesson: input.hasModeledLesson,
       useInlineRecorder: false,
       focusCompletion: false,
     }
@@ -104,7 +104,7 @@ export function resolveClassTaskDecision(input: {
   return {
     state: 'PREPARE',
     label: input.hasModeledLesson ? 'Prepara la lezione' : 'Prepara questa fase',
-    lessonMode: input.hasModeledLesson ? 'prepare' : null,
+    useModeledLesson: input.hasModeledLesson,
     useInlineRecorder: false,
     focusCompletion: false,
   }

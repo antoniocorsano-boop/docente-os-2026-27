@@ -19,14 +19,14 @@ import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
 import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { buildLessonWorkspaceHref, resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
+import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
+import { buildCanonicalLessonWorkspaceHref } from '@/core/presentation/lesson-workspace-route'
 import { buildTaskAwareKnowledgeHref, buildTaskAwareKnowledgeListHref } from '@/core/presentation/task-continuity'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes, selectPreparedClassMaterials } from '../class-workspace-model'
 import { isCurrentDaySessionReceipt, presentClassRecorderEmptyState, presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
-import { confirmTeachingBlockCompletion } from './actions'
 import { SessionReplanningReceipt } from './session-replanning-receipt'
-import { TeachingSessionRecorder } from './TeachingSessionRecorder'
+import { ClassSecondaryTools } from './class-secondary-tools'
 import '../classi.css'
 import '../class-workspace-operational.css'
 
@@ -248,14 +248,19 @@ export default async function ClassWorkspacePage({
     hasSessionReceipt: hasTodaySessionReceipt,
     hasFutureOccurrence,
   })
-  const taskHref = taskDecision.focusCompletion
-    ? '#decisione-completamento'
-    : taskDecision.useInlineRecorder
-      ? '#registrazione-avanzata'
-      : source && taskDecision.lessonMode && nextProjection && learningFocus.nextBlock
-        ? buildLessonWorkspaceHref(summary.sectionId, learningFocus.nextBlock.id, taskDecision.lessonMode)
-        : focusPlanningHref
-  const advancedPanelId = taskDecision.focusCompletion ? 'decisione-completamento' : 'registrazione-avanzata'
+  const taskOccurrence = taskDecision.state === 'CATCH_UP'
+    ? pendingPastOccurrence
+    : taskDecision.state === 'TEACH' || taskDecision.state === 'RECORD'
+      ? eligibleOccurrence
+      : null
+  const taskHref = taskDecision.focusCompletion || taskDecision.useInlineRecorder
+    ? '#altro-della-classe'
+    : source && taskDecision.useModeledLesson && nextProjection && learningFocus.nextBlock
+      ? buildCanonicalLessonWorkspaceHref(summary.sectionId, learningFocus.nextBlock.id, {
+          localDate: taskOccurrence?.localDate ?? null,
+          occurrenceLogicalId: taskOccurrence?.logicalId ?? null,
+        })
+      : focusPlanningHref
 
   return (
     <AppShell active="classes" academicYearLabel={context.academicYear.label} workspaceName={settings.schoolName || context.workspace.name} role={context.role} contentClassName="classesWorkspaceSurface">
@@ -270,7 +275,7 @@ export default async function ClassWorkspacePage({
         </section>
       ) : null}
 
-      <section className="classLessonFocus" aria-label="Lavoro della classe adesso">
+      <section className="classLessonFocus" aria-label="Lavoro della classe adesso" data-testid="class-continuity-primary">
         {learningFocus.nextBlock && nextTitle ? (
           <div className="classLessonFocusMain">
             <p>{taskPresentation.eyebrow}</p>
@@ -288,11 +293,6 @@ export default async function ClassWorkspacePage({
         <div className="classLessonFocusAside">
           <div className="classLessonProgress"><strong>{learningFocus.completedBlocks}/33</strong><span>lezioni concluse</span></div>
           <div className="classLessonFocusActions">
-            {source && nextProjection && learningFocus.nextBlock ? (
-              <Link href={buildLessonWorkspaceHref(summary.sectionId, learningFocus.nextBlock.id, 'prepare')}>
-                Prima della lezione
-              </Link>
-            ) : null}
             {taskDecision.label ? <Link className="primary" href={taskHref}>{taskDecision.label}</Link> : null}
           </div>
         </div>
@@ -317,6 +317,8 @@ export default async function ClassWorkspacePage({
         </article>
       </section>
 
+      <Link className="classDiaryAction" href={`${classHref}/diario`}>Apri Diario</Link>
+
       {recordedBlock && recordedProgress ? (
         <section className="classRecordFeedback" aria-label="Ultimo aggiornamento" role="status" aria-live="polite">
           <strong>Lezione registrata come svolta.</strong>
@@ -334,102 +336,69 @@ export default async function ClassWorkspacePage({
         </section>
       ) : null}
 
-      {source && nextCanonicalBlock ? (
-        <details id={advancedPanelId} className="humanTaskSecondary" open={taskDecision.useInlineRecorder || taskDecision.focusCompletion}>
-          <summary>{taskDecision.focusCompletion ? 'Valuta il completamento' : taskDecision.state === 'CATCH_UP' ? 'Registra la lezione precedente' : taskDecision.useInlineRecorder ? 'Registra questa lezione' : 'Decisioni e registrazione avanzata'}</summary>
-          <div className="humanTaskSecondaryBody">
-            <section className="teachingSessionCard" aria-labelledby="teaching-session-title">
-              <div className="teachingSessionHeading">
-                <div><p>{taskDecision.focusCompletion ? 'DECISIONE PROFESSIONALE' : 'ATTUAZIONE REALE'}</p><h2 id="teaching-session-title">{taskDecision.focusCompletion ? 'Valuta se il blocco è davvero concluso' : 'Registra ciò che hai svolto'}</h2></div>
-                <span>{nextCanonicalBlock.id}: <strong>{nextAllocatedMinutes}/{nextCanonicalBlock.hours * 60} min</strong></span>
-              </div>
-              {!taskDecision.focusCompletion ? (
-                recordingOccurrence ? (
-                  <TeachingSessionRecorder
-                    sectionId={sectionId}
-                    localDate={recordingOccurrence.localDate}
-                    occurrenceLogicalId={recordingOccurrence.logicalId}
-                    plannedMinutes={recordingOccurrence.startAt && recordingOccurrence.endAt ? timeMinutes(recordingOccurrence.endAt) - timeMinutes(recordingOccurrence.startAt) : null}
-                    blocks={recorderBlocks}
-                  />
-                ) : (
-                  <>
-                    <div className="teachingSessionEmpty">
-                      <strong>{recorderEmptyPresentation.title}</strong>
-                      <span>{recorderEmptyPresentation.detail}</span>
-                      {recorderEmptyPresentation.showScheduleLinks ? <div><Link href="/calendario">Apri Calendario</Link><Link href="/orario">Apri Orario</Link></div> : null}
-                    </div>
-                    <details className="teachingSessionSplit" id="registrazione-retroattiva">
-                      <summary>Registra una lezione precedente</summary>
-                      <TeachingSessionRecorder
-                        sectionId={sectionId}
-                        localDate={previousDate}
-                        occurrenceLogicalId={null}
-                        plannedMinutes={null}
-                        allowDateSelection
-                        maxLocalDate={today}
-                        blocks={recorderBlocks}
-                      />
-                    </details>
-                  </>
-                )
-              ) : null}
-
-              {nextCompletion?.maySuggestCompletion ? (
-                <div className="teachingCompletionProposal">
-                  <div><strong>Il monte minuti previsto è stato raggiunto.</strong><span>{nextAllocatedMinutes} minuti effettivi registrati su {nextCanonicalBlock.id}. Questo dato non certifica da solo il completamento didattico.</span></div>
-                  <form action={confirmTeachingBlockCompletion}>
-                    <input type="hidden" name="sectionId" value={sectionId} />
-                    <input type="hidden" name="blockId" value={nextCanonicalBlock.id} />
-                    <input type="hidden" name="note" value={`Completamento confermato dal docente dopo ${nextAllocatedMinutes} minuti effettivi registrati.`} />
-                    <button type="submit">Conferma come svolto</button>
-                  </form>
-                </div>
-              ) : null}
-            </section>
-          </div>
-        </details>
-      ) : null}
-
-      <details className="humanTaskSecondary" data-testid="class-lesson-supports">
-        <summary>Supporti per questa lezione</summary>
-        <div className="humanTaskSecondaryBody">
-          {preparedMaterials.length ? (
-            <article className="classWorkspaceCard classMaterialsCard" aria-label="Materiale predisposto per la classe">
-              <div><h2>Già predisposto</h2><p>Risorse pronte per il prossimo incontro, senza alterare automaticamente il Piano.</p></div>
-              <div className="classMaterialList">
-                {preparedMaterials.map((material) => (
-                  <a href={material.href} key={material.assetId}>
-                    <div>
-                      <strong>{material.title}</strong>
-                      <span>{material.resourceKindLabel} · {material.providerLabel}{material.targetDate ? ` · ${formatDate(material.targetDate)}` : ''}</span>
-                      {material.canonicalBindingLabel ? <span>{material.canonicalBindingLabel}</span> : null}
-                    </div>
-                    <small>{material.stateLabel} · {material.audienceLabel}</small>
-                  </a>
-                ))}
-              </div>
-            </article>
-          ) : null}
-
-          <article className="classWorkspaceCard classMaterialsCard">
-            <div><h2>Materiali collegati</h2><p>Contenuti pertinenti alla prossima lezione, al grado o a questa sezione.</p></div>
-            {learningFocus.materials.length ? <div className="classMaterialList">{learningFocus.materials.map((material) => <Link href={buildTaskAwareKnowledgeHref(material.assetId, { mode: 'class', returnTo: classHref, sectionId: summary.sectionId, blockId: learningFocus.nextBlock?.id })} key={material.assetId}><div><strong>{material.title}</strong><span>{material.categoryLabel}</span></div><small>{material.relevanceLabel}</small></Link>)}</div> : <div className="classMaterialsEmpty"><span>Nessun materiale esplicitamente collegato alla prossima lezione.</span><Link href={knowledgeHref}>Cerca nei materiali</Link></div>}
-          </article>
-        </div>
-      </details>
-
-      <details className="humanTaskSecondary">
-        <summary>Contesto della classe e altri percorsi</summary>
-        <div className="humanTaskSecondaryBody">
-          <section className="classWorkspaceGrid">
-            <article className="classWorkspaceCard"><div><h2>Cattedra</h2><p>Disciplina e carico settimanale previsto.</p></div>{summary.assignments.length ? <div className="classAssignmentList">{summary.assignments.map((assignment) => <div className="classAssignmentItem" key={assignment.id}><div><strong>{assignment.discipline}</strong><span>{assignment.status === 'CONFIRMED' ? 'Confermata' : 'Da confermare'}</span></div><small>{formatWeeklyMinutes(assignment.weeklyMinutes)}</small></div>)}</div> : <div className="classesEmpty"><strong>Questa classe non è ancora nella tua cattedra.</strong><Link href="/impostazioni#cattedra">Gestisci cattedra</Link></div>}</article>
-            <article className="classWorkspaceCard"><div><h2>Altri percorsi</h2><p>Usali quando devi uscire dal compito corrente.</p></div><div className="classQuickLinks"><Link href={annualPlanHref}><strong>Piano annuale</strong><span>Avanzamento e decisioni professionali.</span></Link><Link href={planningHref}><strong>Progetta</strong><span>Esplora il nucleo del grado.</span></Link><Link href={knowledgeHref}><strong>Conoscenza</strong><span>Fonti e materiali della classe.</span></Link>{showArenaPilotIntake ? <Link href={`/classi/${encodeURIComponent(summary.sectionId)}/curricolo-arena`}><strong>Curricolo Arena</strong><span>Pilota Tecnologia 2C: acquisisci o controlla la baseline provvisoria.</span></Link> : null}<Link href="/orario"><strong>Orario</strong><span>Torna alla settimana.</span></Link></div></article>
-          </section>
-        </div>
-      </details>
-
-      <details className="technicalDetails"><summary><span><strong>Dettagli tecnici</strong><small>Provenienza e riferimenti canonici</small></span><b aria-hidden>＋</b></summary><div className="technicalDetailsBody"><p>Identificatore sezione: <strong>{summary.sectionId}</strong></p>{learningFocus.nextBlock ? <p>Prossimo riferimento: <strong>{learningFocus.nextBlock.id}</strong> · UDA {learningFocus.nextBlock.uda} · {learningFocus.nextBlock.pack}</p> : null}<p>Identità piano: <strong>{CANONICAL_PLAN_SOURCES[grade].code}</strong>{source ? ` · generazione ${source.generationId}` : ' · collegamento runtime non disponibile'}</p><p>Fonte sezione: {section.sourceNote ?? 'Registro delle classi dell’anno scolastico corrente.'}</p><p>Sessioni effettive correnti: <strong>{currentSessions.length}</strong>. Le sessioni sostituite restano nella storia e non contribuiscono ai totali correnti.</p></div></details>
+      <ClassSecondaryTools
+        open={taskDecision.useInlineRecorder || taskDecision.focusCompletion}
+        advanced={source && nextCanonicalBlock ? {
+          focusCompletion: taskDecision.focusCompletion,
+          state: taskDecision.state,
+          sectionId,
+          blockId: nextCanonicalBlock.id,
+          allocatedMinutes: nextAllocatedMinutes,
+          plannedMinutes: nextCanonicalBlock.hours * 60,
+          recorder: recordingOccurrence ? {
+            sectionId,
+            localDate: recordingOccurrence.localDate,
+            occurrenceLogicalId: recordingOccurrence.logicalId,
+            plannedMinutes: recordingOccurrence.startAt && recordingOccurrence.endAt ? timeMinutes(recordingOccurrence.endAt) - timeMinutes(recordingOccurrence.startAt) : null,
+            blocks: recorderBlocks,
+          } : null,
+          fallbackRecorder: {
+            sectionId,
+            localDate: previousDate,
+            occurrenceLogicalId: null,
+            plannedMinutes: null,
+            allowDateSelection: true,
+            maxLocalDate: today,
+            blocks: recorderBlocks,
+          },
+          emptyPresentation: recorderEmptyPresentation,
+          maySuggestCompletion: Boolean(nextCompletion?.maySuggestCompletion),
+        } : null}
+        preparedMaterials={preparedMaterials.map((material) => ({
+          ...material,
+          targetDateLabel: material.targetDate ? formatDate(material.targetDate) : null,
+        }))}
+        linkedMaterials={learningFocus.materials.map((material) => ({
+          ...material,
+          href: buildTaskAwareKnowledgeHref(material.assetId, {
+            mode: 'class',
+            returnTo: classHref,
+            sectionId: summary.sectionId,
+            blockId: learningFocus.nextBlock?.id,
+          }),
+        }))}
+        knowledgeHref={knowledgeHref}
+        assignments={summary.assignments.map((assignment) => ({
+          ...assignment,
+          statusLabel: assignment.status === 'CONFIRMED' ? 'Confermata' : 'Da confermare',
+          weeklyMinutesLabel: formatWeeklyMinutes(assignment.weeklyMinutes),
+        }))}
+        toolLinks={[
+          { href: annualPlanHref, title: 'Piano annuale', detail: 'Avanzamento e decisioni professionali.' },
+          { href: planningHref, title: 'Progetta', detail: 'Esplora il nucleo del grado.' },
+          { href: knowledgeHref, title: 'Materiali e fonti', detail: 'Fonti e materiali della classe.' },
+          ...(showArenaPilotIntake ? [{ href: `/classi/${encodeURIComponent(summary.sectionId)}/curricolo-arena`, title: 'Curricolo Arena', detail: 'Acquisisci o controlla la baseline provvisoria.' }] : []),
+          { href: '/orario', title: 'Orario', detail: 'Torna alla settimana.' },
+        ]}
+        technical={{
+          sectionId: summary.sectionId,
+          nextBlock: learningFocus.nextBlock,
+          canonicalPlanCode: CANONICAL_PLAN_SOURCES[grade].code,
+          canonicalGenerationId: source?.generationId ?? null,
+          sourceNote: section.sourceNote ?? null,
+          currentSessionCount: currentSessions.length,
+        }}
+      />
     </AppShell>
   )
 }
