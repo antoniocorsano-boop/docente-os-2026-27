@@ -8,7 +8,7 @@ Branch: `docs/dos-ia-product-reset`
 
 Conservare in forma versionata le decisioni e le analisi del reset dell'information architecture di Docente OS, evitando che il lavoro resti soltanto nella conversazione.
 
-Questo documento NON è ancora la specifica finale di implementazione. Distingue decisioni già approvate da proposte ancora da chiudere.
+Questo documento NON è ancora la specifica finale di implementazione. Distingue decisioni già approvate, direzioni accettate da consolidare e questioni ancora aperte.
 
 ## Diagnosi condivisa
 
@@ -27,6 +27,12 @@ Principio di routing:
 Principio di esposizione:
 
 > Una capability può essere potente, completa e importante senza essere una destinazione primaria.
+
+Principio di semplificazione:
+
+> Semplificare la IA non significa cancellare capability. Significa assegnare a ogni capability una casa coerente e renderla visibile soltanto quando serve.
+
+---
 
 ## Backbone primario approvato
 
@@ -98,6 +104,12 @@ Non appartengono al primo livello di Oggi:
 
 Gli impegni di Calendario rimangono eventi di Calendario: Oggi li legge, non ne cambia la natura.
 
+### Attività generiche — decisione chiusa
+
+La richiesta esplicita "Oggi deve mostrare la lezione disponibile e, se ci sono, alcuni impegni in calendario. Solo questo" chiude il punto precedentemente aperto sulle `PlannerTask`.
+
+Le attività generiche restano una capability autonoma, ma **non vengono più composte dentro Oggi**. La loro nuova collocazione è `Altro -> Attività`.
+
 ---
 
 ## IA-02 — ORARIO — APPROVATA
@@ -138,13 +150,13 @@ Sintesi canonica:
 
 ---
 
-## IA-03 — CLASSI / CLASSE — PROPOSTA DA CONSOLIDARE
+## IA-03 — CLASSI / CLASSE — DIREZIONE ACCETTATA, DA FORMALIZZARE NELLA SPEC
 
 ### Classi
 
 Classi è principalmente un selettore delle sezioni.
 
-Al primo livello dovrebbe mostrare solo ciò che serve per identificare rapidamente una classe:
+Al primo livello deve mostrare ciò che serve per identificare rapidamente una classe:
 
 - classe;
 - disciplina/cattedra essenziale;
@@ -163,7 +175,7 @@ Deve rispondere a quattro domande:
 3. Che cosa viene dopo?
 4. Che cosa devo/posso fare adesso?
 
-Primo livello proposto:
+Primo livello:
 
 - identità classe + disciplina;
 - ultimo lavoro effettivamente registrato;
@@ -180,9 +192,11 @@ CTA possibili:
 
 La Classe non è un passaggio obbligatorio se Oggi o Orario conoscono già la Lezione.
 
-Capability da preservare ma spostare fuori dal primo livello:
+### Capability secondarie della Classe
 
-- storia/registro della classe;
+Da preservare, ma fuori dal primo livello:
+
+- Diario / storia delle lezioni registrate;
 - materiali della classe;
 - Piano annuale;
 - Progetta;
@@ -192,9 +206,11 @@ Capability da preservare ma spostare fuori dal primo livello:
 - cattedra;
 - dettagli professionali/tecnici.
 
+Il Diario esistente è una capability coerente con questo modello: conserva lezioni svolte, osservazioni, prossima attività e stato di sincronizzazione Drive. Non deve diventare una voce primaria della navigazione globale; appartiene al contesto Classe.
+
 ---
 
-## IA-04 — LEZIONE — PROPOSTA DA CONSOLIDARE
+## IA-04 — LEZIONE — DIREZIONE ACCETTATA, DA FORMALIZZARE NELLA SPEC
 
 ### Principio
 
@@ -206,7 +222,7 @@ L'attuale sequenza:
 Prepara -> Conduci -> Osserva -> Registra
 ```
 
-resta utile come modello interno/stato del sistema, ma non deve necessariamente essere presentata al docente come quattro destinazioni navigabili.
+resta utile come modello interno/stato del sistema, ma non deve essere presentata al docente come quattro destinazioni concorrenti.
 
 Per il docente esiste un solo workspace:
 
@@ -238,7 +254,7 @@ Primo livello:
 - avanzamento leggero;
 - CTA `Concludi la lezione`.
 
-`Osserva` diventa una capability contestuale, ad esempio `Aggiungi osservazione`, non necessariamente una pagina separata.
+`Osserva` diventa una capability contestuale, ad esempio `Aggiungi osservazione`, non una destinazione primaria autonoma.
 
 ### Chiusura
 
@@ -259,53 +275,137 @@ Conferma breve con continuità:
 - prossima attività;
 - CTA `Prepara la prossima` oppure `Torna a Oggi`.
 
+### Materiali dentro la Lezione
+
+Le attuali superfici `materiali/prossima` e `in-classe/[assetId]` dimostrano capability valide: vista docente, LIM/scheda, materiali canonici, riconferma esplicita, supporto alla conduzione. Nella nuova IA queste funzioni devono diventare **viste/capability contestuali della Lezione**, non passaggi di navigazione obbligatori.
+
 ---
 
-## IA-05 — ALTRO / STRUMENTI — DIREZIONE APPROVATA, DETTAGLI DA CHIUDERE
+## IA-05 — ALTRO / STRUMENTI — DIREZIONE APPROVATA
 
 Altro raccoglie capability professionali che devono restare disponibili ma non competere con il lavoro quotidiano primario.
 
-Inventario preliminare:
+Struttura target:
 
-- Attività;
-- Progetta;
-- Materiali e fonti / Conoscenza;
-- Piano annuale;
-- Calendario;
-- Documentazione;
-- Impostazioni;
-- Account e sicurezza.
+- Attività
+- Progetta
+- Materiali e fonti
+- Piano annuale
+- Calendario
+- Documentazione
+- Impostazioni
+- Account e sicurezza
 
-Capability come Curricolo Arena, assistente/Copilota e voce possono essere richiamate contestualmente senza diventare destinazioni primarie.
+Capability come Curricolo Arena, assistente/Copilota, voce e strumenti di riconferma materiali vengono richiamate contestualmente senza diventare destinazioni primarie.
 
 ---
 
-## Matrice anti-regressione preliminare
+## Audit delle superfici esistenti — classificazione IA
 
-| Capability attuale | Nuova collocazione proposta |
+### A. Superfici da preservare come destinazioni primarie
+
+| Superficie attuale | Destino |
 | --- | --- |
-| Home | assorbita da Oggi; route tecnica da decidere |
-| Oggi | superficie primaria essenziale |
-| Orario giorno/settimana | primaria; UI preservata |
-| Modifica/attivazione Orario | modalità secondaria interna a Orario |
-| Classi | primaria; selettore |
-| Classe | memoria/continuità della sezione |
-| Lezione | workspace operativo centrale |
-| Prepara | stato/capability della Lezione |
-| Conduci | stato della Lezione |
-| Osserva | capability contestuale della Lezione |
-| Registra | stato finale della Lezione |
-| Attività / PlannerTask | proposta: Altro -> Attività |
-| Calendario | Altro -> Calendario; gli impegni odierni sono leggibili da Oggi |
-| Progetta | Altro -> Progetta; richiamabile contestualmente |
-| Conoscenza / fonti | Altro -> Materiali e fonti; richiamabile contestualmente |
-| Piano annuale | Altro -> Piano annuale; letto anche da Classe/Lezione |
-| Documentazione | Altro -> Documentazione |
-| Curricolo Arena | capability contestuale governata |
-| Assistente / Copilota | capability contestuale |
-| Voce | capability contestuale |
-| Impostazioni | Altro |
-| Account / sicurezza | Altro |
+| `/planner` / Oggi | preservare come concetto Oggi, ma ridurre drasticamente il contenuto |
+| `/orario` | preservare; UI giorno/settimana invariata |
+| `/classi` | preservare come selettore |
+
+La route tecnica finale di Oggi (`/`, `/planner` o alias/redirect) viene decisa nel piano tecnico, non nella IA.
+
+### B. Superfici da preservare come strumenti sotto Altro
+
+| Superficie/capability | Nuova casa |
+| --- | --- |
+| PlannerTask: crea, completa, sposta, attesa, riapri | `Altro -> Attività` |
+| `/calendario` | `Altro -> Calendario` |
+| `/progetta` | `Altro -> Progetta` |
+| `/knowledge` | `Altro -> Materiali e fonti` |
+| `/piano-annuale` | `Altro -> Piano annuale` |
+| `/documentazione/modelli` | `Altro -> Documentazione` |
+| `/impostazioni` | `Altro -> Impostazioni` |
+| `/account` e MFA | `Altro -> Account e sicurezza` |
+
+Il Calendario conserva la capacità di gestire giorni scolastici reali, sospensioni, impegni, scadenze e acquisizione verificata da circolare. Oggi ne legge soltanto gli impegni pertinenti alla data.
+
+### C. Superfici da assorbire nel contesto corretto
+
+| Superficie attuale | Capability da preservare | Nuova collocazione |
+| --- | --- | --- |
+| `/classi/[sectionId]/lezioni/[blockId]` | preparazione, conduzione, osservazione, registrazione | unico workspace Lezione |
+| `/classi/[sectionId]/diario` | storia, osservazioni, prossima attività, sync Drive | livello secondario della Classe |
+| `/classi/[sectionId]/in-classe/[assetId]` | uso materiale in classe, viewer, riconferma | capability della Lezione |
+| `/materiali/prossima` | bundle prossimo incontro, viste LIM/scheda/docente | capability/materiali della Lezione |
+| `/materiali/domani` | panoramica dei pacchetti di domani | strumento Materiali o accesso contestuale da Orario; non navigazione primaria |
+| `curricolo-arena` | intake/controllo curricolare governato | contesto Classe/Lezione quando necessario |
+
+### D. Superfici candidate a cessare di essere destinazioni autonome
+
+#### Home attuale
+
+La Home attuale ricompone già prossimo passo, lezioni, attività e accessi rapidi. Nella nuova IA questa funzione è assorbita da Oggi. La route `/` può diventare alias/redirect a Oggi; non serve conservare una seconda dashboard.
+
+#### Resoconto della giornata
+
+`/giornata/resoconto` oggi combina:
+
+- lezioni da registrare;
+- Diario/continuità;
+- materiali di domani;
+- decisioni aperte.
+
+Nella nuova IA questi contenuti hanno già una casa più precisa:
+
+- lezione conclusa da registrare -> Oggi / Lezione;
+- continuità e riflessioni -> Classe / Diario;
+- pacchetti futuri -> Materiali / Orario / Lezione;
+- decisioni generiche -> non devono ricreare una dashboard parallela.
+
+Conclusione: **candidato a ritiro come superficie autonoma**, dopo aver verificato che nessuna capability venga persa. Il loader e le logiche utili possono essere riusati; ritiro della pagina non significa cancellazione del dominio.
+
+### E. Superfici di sistema fuori dalla IA quotidiana
+
+- Login/autenticazione;
+- workspace bootstrap/redirect;
+- setup iniziale;
+- MFA e sicurezza;
+- altre superfici strettamente amministrative.
+
+Restano necessarie ma non fanno parte del backbone quotidiano.
+
+---
+
+## Matrice anti-regressione estesa
+
+| Capability attuale | Nuova collocazione | Regola |
+| --- | --- | --- |
+| Home | assorbita da Oggi | niente seconda dashboard |
+| Oggi | primaria | max 2 lezioni operative + impegni Calendario |
+| Orario giorno/settimana | primaria | UI preservata |
+| Modifica/attivazione Orario | interna a Orario | flusso governato separato |
+| Classi | primaria | selettore |
+| Classe | memoria/continuità | una CTA dominante |
+| Lezione | workspace operativo centrale | stato determinato dal contesto |
+| Prepara | stato interno Lezione | non destinazione globale |
+| Conduci | stato interno Lezione | non destinazione globale |
+| Osserva | capability contestuale | non pagina obbligatoria |
+| Registra | chiusura Lezione | persistenza invariata |
+| Diario | secondario Classe | storia professionale |
+| Viewer materiale in classe | Lezione | contestuale |
+| Materiali prossima lezione | Lezione | contestuale |
+| Materiali di domani | Altro/Materiali o Orario | secondario |
+| Attività / PlannerTask | Altro -> Attività | escluse da Oggi |
+| Calendario | Altro -> Calendario | Oggi legge solo impegni odierni |
+| Circolare -> Calendario | Calendario | conferma esplicita invariata |
+| Progetta | Altro -> Progetta | richiamabile da Classe/Lezione |
+| Conoscenza / fonti | Altro -> Materiali e fonti | richiamabile contestualmente |
+| Piano annuale | Altro -> Piano annuale | letto da Classe/Lezione |
+| Documentazione | Altro -> Documentazione | capability professionale autonoma |
+| Curricolo Arena | Classe/Lezione | fail-closed e governato |
+| Assistente / Copilota | contestuale | mai destinazione primaria |
+| Voce | contestuale | mai destinazione primaria |
+| Impostazioni | Altro | configurazione |
+| Account / MFA | Altro | sicurezza |
+| Resoconto giornata | capability distribuite | candidata al ritiro come pagina autonoma |
 
 ---
 
@@ -319,18 +419,21 @@ Capability come Curricolo Arena, assistente/Copilota e voce possono essere richi
 6. La semplificazione riguarda esposizione, gerarchia e routing; non autorizza perdita di capability o indebolimento dei confini di dominio.
 7. Nessun nuovo passaggio intermedio viene introdotto quando il sistema conosce già il contesto necessario.
 8. In caso di ambiguità, il sistema non indovina.
+9. Il Diario/TeachingSession resta la fonte della continuità reale della Classe.
+10. Le fonti e i materiali conservano provenienza, versione e stato di approvazione anche quando vengono mostrati dentro la Lezione.
+11. Le route legacy possono restare temporaneamente per compatibilità, ma non devono obbligare il docente a conoscere l'architettura interna.
 
 ---
 
-## Decisione ancora aperta
+## Questioni ancora da chiudere nella specifica
 
-### Attività generiche
+1. **Classe:** forma esatta del livello secondario (un unico `Approfondisci` oppure pochi accessi nominati come Diario/Materiali/Piano).
+2. **Lezione:** regola precisa di transizione visibile tra prima/durante/dopo senza reintrodurre una barra di quattro moduli.
+3. **Materiali di domani:** accesso preferenziale da Altro/Materiali, da Orario, o entrambi.
+4. **Altro:** gerarchia interna e numero massimo di voci visibili senza creare un nuovo menu rumoroso.
+5. **Route compatibility:** strategia di alias/redirect per Home, Planner, Resoconto e superfici assorbite.
 
-Da confermare esplicitamente:
-
-> Le attività generiche (`PlannerTask`) restano disponibili in `Altro -> Attività`, ma non compaiono più in Oggi.
-
-Questa decisione modifica la precedente baseline in cui Oggi poteva comporre anche attività operative generiche. La separazione di dominio resta invariata; cambia soltanto l'esposizione nella IA primaria.
+Queste sono decisioni di design/implementazione successive; non riaprono IA-01 o IA-02.
 
 ---
 
@@ -338,11 +441,13 @@ Questa decisione modifica la precedente baseline in cui Oggi poteva comporre anc
 
 - IA-01 Oggi: APPROVATA
 - IA-02 Orario: APPROVATA
-- IA-03 Classi/Classe: PROPOSTA DA CONSOLIDARE
-- IA-04 Lezione: PROPOSTA DA CONSOLIDARE
-- IA-05 Altro: DIREZIONE APPROVATA / DETTAGLI APERTI
-- Matrice anti-regressione: PRELIMINARE
+- Attività generiche fuori da Oggi: APPROVATA
+- IA-03 Classi/Classe: DIREZIONE ACCETTATA / formalizzazione finale nella spec
+- IA-04 Lezione: DIREZIONE ACCETTATA / formalizzazione finale nella spec
+- IA-05 Altro: DIREZIONE APPROVATA / gerarchia interna da definire
+- Audit superfici/capability: ESTESO / nessuna perdita volontaria autorizzata
+- Matrice anti-regressione: ESTESA
 - Implementazione: NON AUTORIZZATA
 - Merge/deploy: NON AUTORIZZATI
 
-Passo successivo: chiudere le decisioni aperte, quindi trasformare questo decision log in specifica canonica revisionata prima di qualunque implementazione.
+Passo successivo: chiudere le cinque questioni residue di design, presentare il design integrato per approvazione, quindi trasformarlo in specifica canonica revisionata. Solo dopo la review della specifica si potrà preparare un piano di implementazione.
