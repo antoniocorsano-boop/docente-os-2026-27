@@ -111,6 +111,8 @@ Maximum first-level teaching load:
 
 > **two operational lesson objects + today's Calendar commitments**
 
+Calendar commitments are rendered compactly — essential time, title, and status/context only. They remain Calendar events and must not expand into planner-style task cards or a complete daily timeline.
+
 ### 4.3 Direct actions
 
 When the lesson is known, the CTA goes directly to Lezione. Examples:
@@ -431,6 +433,8 @@ It is not:
 - a new top-level dashboard;
 - content inside Oggi.
 
+The all-tomorrow overview belongs to Materiali e fonti. Materials for one specific resolved lesson belong contextually inside that Lezione.
+
 Rule:
 
 > **One stable home, plus intelligent contextual access.**
@@ -456,7 +460,8 @@ In the target IA these responsibilities are assigned to their natural homes:
 
 - ended lesson to register -> Oggi / Lezione;
 - continuity and reflections -> Classe / Diario;
-- tomorrow packages -> Materiali e fonti / Orario / Lezione context;
+- tomorrow overview -> Materiali e fonti, with contextual entry from Orario;
+- materials for one specific lesson -> that Lezione;
 - generic decisions -> do not recreate a parallel dashboard.
 
 The day-review page is therefore a candidate for retirement as an autonomous destination once capability parity has been demonstrated.
@@ -512,7 +517,7 @@ Legacy lesson phase URLs may remain temporarily compatible, but the new UI must 
 | Current capability/surface | Target placement | Rule |
 | --- | --- | --- |
 | Home | absorbed by Oggi | no second dashboard |
-| Oggi | primary | max two lesson objects + today's Calendar commitments |
+| Oggi | primary | max two lesson objects + compact today's Calendar commitments |
 | Timetable daily/weekly | primary | UI preserved |
 | Timetable edit/activate | inside Orario | separate governed maintenance mode |
 | Classi | primary | selector |
@@ -598,7 +603,7 @@ Implementation must not be accepted solely because routes render or unit tests p
 Add or adapt executable IA contracts for:
 
 - primary navigation = Oggi, Orario, Classi, Altro;
-- Oggi content limits;
+- Oggi content limits and compact Calendar rendering;
 - direct routing from Oggi/Orario to Lezione when context is certain;
 - no forced Class intermediate step;
 - Classe first-level content and Diario/Altro della classe hierarchy;
@@ -627,7 +632,7 @@ must continue to pass or be intentionally updated without weakening semantics.
 
 Human-visible qualification must cover at least:
 
-- Oggi with pending registration + upcoming lesson + calendar commitment;
+- Oggi with pending registration + upcoming lesson + compact calendar commitment;
 - Orario daily view;
 - Orario weekly view;
 - Orario edit mode kept distinct from lesson opening;
