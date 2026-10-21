@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import '../../app/attivita/attivita-ia-contract.test'
 import {
   MOBILE_NAVIGATION_KEYS,
   PRIMARY_NAVIGATION,
@@ -33,27 +34,15 @@ test('Altro contains the three approved scannable groups in exact order', () => 
     ['knowledge', 'calendar', 'documentation'],
     ['settings', 'account'],
   ])
-
   const secondaryKeys = SECONDARY_NAVIGATION_GROUPS.flatMap((group) => group.items)
   assert.equal(new Set(secondaryKeys).size, secondaryKeys.length)
   assert.equal(secondaryKeys.some((key) => MOBILE_NAVIGATION_KEYS.includes(key)), false)
 })
 
 test('Altro groups resolve direct tool routes without nested category pages', () => {
-  assert.deepEqual(navigationGroupItems(SECONDARY_NAVIGATION_GROUPS[0]).map((item) => item.href), [
-    '/attivita',
-    '/progetta',
-    '/piano-annuale',
-  ])
-  assert.deepEqual(navigationGroupItems(SECONDARY_NAVIGATION_GROUPS[1]).map((item) => item.href), [
-    '/knowledge',
-    '/calendario',
-    '/documentazione',
-  ])
-  assert.deepEqual(navigationGroupItems(SECONDARY_NAVIGATION_GROUPS[2]).map((item) => item.href), [
-    '/impostazioni',
-    '/account',
-  ])
+  assert.deepEqual(navigationGroupItems(SECONDARY_NAVIGATION_GROUPS[0]).map((item) => item.href), ['/attivita', '/progetta', '/piano-annuale'])
+  assert.deepEqual(navigationGroupItems(SECONDARY_NAVIGATION_GROUPS[1]).map((item) => item.href), ['/knowledge', '/calendario', '/documentazione'])
+  assert.deepEqual(navigationGroupItems(SECONDARY_NAVIGATION_GROUPS[2]).map((item) => item.href), ['/impostazioni', '/account'])
 })
 
 test('primary navigation keeps unique keys and routes', () => {
@@ -77,7 +66,6 @@ test('DOS-IA-RESET derives mobile navigation columns from rendered children inst
   const appShellCss = readFileSync(new URL('../../app/app-shell.css', import.meta.url), 'utf8')
   const bottomNavRules = appShellCss.match(/\.dosBottomNav\{[^}]+\}/g) ?? []
   const mobileRule = bottomNavRules.find((rule) => /position:fixed/.test(rule)) ?? ''
-
   assert.match(mobileRule, /grid-auto-flow:column/)
   assert.match(mobileRule, /grid-auto-columns:minmax\(0,1fr\)/)
   assert.doesNotMatch(mobileRule, /grid-template-columns:repeat\(\d+/)
@@ -90,7 +78,6 @@ test('DOS-IA-RESET reserves mobile content space above the fixed bottom navigati
   assert.notEqual(mobileStart, -1)
   assert.notEqual(mobileEnd, -1)
   const mobileCss = appShellCss.slice(mobileStart, mobileEnd)
-
   assert.match(mobileCss, /\.dosMainColumn\{[^}]*--dos-bottom-nav-height:68px[^}]*\}/)
   assert.match(mobileCss, /\.dosContent\.workSurface\{[^}]*padding-bottom:calc\(var\(--dos-bottom-nav-height\) \+ env\(safe-area-inset-bottom\) \+ 16px\)[^}]*\}/)
   assert.match(mobileCss, /\.dosBottomNav\{[^}]*min-height:var\(--dos-bottom-nav-height\)[^}]*\}/)
