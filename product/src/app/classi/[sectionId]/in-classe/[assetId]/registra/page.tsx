@@ -72,6 +72,7 @@ export default async function LessonRegisterPage({
       workspaceName={settings.schoolName || context.workspace.name}
       role={context.role}
       contentClassName="lessonRegisterSurface"
+      focusMode
     >
       <nav className="lessonRegisterNav" aria-label="Contesto della lezione">
         <Link href={`/classi/${encodeURIComponent(sectionId)}/in-classe/${encodeURIComponent(assetId)}`}>← Torna alla lezione</Link>
@@ -131,42 +132,25 @@ export default async function LessonRegisterPage({
         </section>
       ) : null}
 
-      <section className="lessonRegisterDrive" aria-label="Memoria documentale">
-        <div>
-          <span>MEMORIA DOCUMENTALE</span>
-          <strong>{googleConnected ? 'Google Drive collegato' : oauthConfigured ? 'Google Drive da collegare' : 'Google Drive in attesa di configurazione'}</strong>
-          <p>
-            {googleConnected
-              ? 'Dopo la registrazione, Docente OS aggiorna automaticamente il Diario persistente.'
-              : oauthConfigured
-                ? 'Docente OS conserva comunque la lezione; il collegamento abilita la copia automatica nel Diario Drive.'
-                : 'La registrazione resta sicura in Docente OS e verrà sincronizzata quando il collegamento Google sarà attivo.'}
-          </p>
+      <details className="lessonRegisterDisclosure">
+        <summary>Contesto e materiale della lezione</summary>
+        <div className="lessonRegisterDisclosureBody">
+          <section className="lessonRegisterContext" aria-label="Contesto didattico">
+            <div>
+              <span>UDA / percorso</span>
+              <strong>{udaLabel}</strong>
+            </div>
+            <div>
+              <span>Attività prevista</span>
+              <strong>{plannedActivity}</strong>
+            </div>
+            <div className="lessonRegisterMaterial">
+              <span>Materiale didattico</span>
+              <a href={view.sourceHref} target="_blank" rel="noreferrer">Apri materiale {view.providerLabel} ↗</a>
+            </div>
+          </section>
         </div>
-        {!googleConnected && oauthConfigured ? <Link href={driveConnectHref}>Collega Drive</Link> : null}
-        {googleConnected ? (
-          <form action={retryPendingDriveDiary}>
-            <input type="hidden" name="sectionId" value={sectionId} />
-            <input type="hidden" name="assetId" value={assetId} />
-            <button type="submit">Sincronizza registrazioni in attesa</button>
-          </form>
-        ) : null}
-      </section>
-
-      <section className="lessonRegisterContext" aria-label="Contesto didattico">
-        <div>
-          <span>UDA / percorso</span>
-          <strong>{udaLabel}</strong>
-        </div>
-        <div>
-          <span>Attività prevista</span>
-          <strong>{plannedActivity}</strong>
-        </div>
-        <div className="lessonRegisterMaterial">
-          <span>Materiale didattico</span>
-          <a href={view.sourceHref} target="_blank" rel="noreferrer">Apri materiale {view.providerLabel} ↗</a>
-        </div>
-      </section>
+      </details>
 
       <form action={recordClassroomLesson} className="lessonRegisterForm">
         <input type="hidden" name="sectionId" value={sectionId} />
@@ -182,33 +166,66 @@ export default async function LessonRegisterPage({
           <textarea name="activityDone" required maxLength={450} rows={3} placeholder="Attività realmente svolta, anche se diversa da quella prevista." />
         </label>
         <label>
-          <span>Che cosa hai osservato?</span>
-          <textarea name="observations" maxLength={450} rows={3} placeholder="Risposta della classe, evidenze di apprendimento, aspetti significativi." />
-        </label>
-        <label>
-          <span>Difficoltà?</span>
-          <textarea name="difficulties" maxLength={450} rows={3} placeholder="Ostacoli, tempi, passaggi da riprendere o differenze emerse nel gruppo." />
-        </label>
-        <label>
-          <span>Idee emerse?</span>
-          <textarea name="ideas" maxLength={450} rows={3} placeholder="Intuizioni, collegamenti, attività o materiali da sviluppare." />
-        </label>
-        <label>
-          <span>Che cosa potrebbe cambiare nell’UDA?</span>
-          <textarea name="udaChangeProposal" maxLength={450} rows={3} placeholder="Annota una proposta. Non modifica automaticamente l’UDA." />
-        </label>
-        <label>
           <span>Qual è la prossima attività?</span>
           <textarea name="nextActivity" maxLength={450} rows={3} placeholder="Passo successivo previsto per questa classe." />
         </label>
 
-        <aside className="lessonRegisterPrivacy">
-          <strong>Osservazioni professionali di classe</strong>
-          <p>Non inserire nomi degli alunni o dati personali. Le eventuali modifiche all’UDA restano proposte finché non vengono confermate dal docente.</p>
-        </aside>
+        <details className="lessonRegisterDisclosure lessonRegisterAdvanced" data-classroom-register-advanced>
+          <summary>Aggiungi osservazioni e riflessioni</summary>
+          <div className="lessonRegisterAdvancedBody">
+            <label>
+              <span>Che cosa hai osservato?</span>
+              <textarea name="observations" maxLength={450} rows={3} placeholder="Risposta della classe, evidenze di apprendimento, aspetti significativi." />
+            </label>
+            <label>
+              <span>Difficoltà?</span>
+              <textarea name="difficulties" maxLength={450} rows={3} placeholder="Ostacoli, tempi, passaggi da riprendere o differenze emerse nel gruppo." />
+            </label>
+            <label>
+              <span>Idee emerse?</span>
+              <textarea name="ideas" maxLength={450} rows={3} placeholder="Intuizioni, collegamenti, attività o materiali da sviluppare." />
+            </label>
+            <label>
+              <span>Che cosa potrebbe cambiare nell’UDA?</span>
+              <textarea name="udaChangeProposal" maxLength={450} rows={3} placeholder="Annota una proposta. Non modifica automaticamente l’UDA." />
+            </label>
+
+            <aside className="lessonRegisterPrivacy">
+              <strong>Osservazioni professionali di classe</strong>
+              <p>Non inserire nomi degli alunni o dati personali. Le eventuali modifiche all’UDA restano proposte finché non vengono confermate dal docente.</p>
+            </aside>
+          </div>
+        </details>
 
         <button type="submit" className="lessonRegisterSubmit">Registra la lezione</button>
       </form>
+
+      <details className="lessonRegisterDisclosure">
+        <summary>Memoria documentale · {googleConnected ? 'Google Drive collegato' : 'Google Drive'}</summary>
+        <div className="lessonRegisterDisclosureBody">
+          <section className="lessonRegisterDrive" aria-label="Memoria documentale">
+            <div>
+              <span>MEMORIA DOCUMENTALE</span>
+              <strong>{googleConnected ? 'Google Drive collegato' : oauthConfigured ? 'Google Drive da collegare' : 'Google Drive in attesa di configurazione'}</strong>
+              <p>
+                {googleConnected
+                  ? 'Dopo la registrazione, Docente OS aggiorna automaticamente il Diario persistente.'
+                  : oauthConfigured
+                    ? 'Docente OS conserva comunque la lezione; il collegamento abilita la copia automatica nel Diario Drive.'
+                    : 'La registrazione resta sicura in Docente OS e verrà sincronizzata quando il collegamento Google sarà attivo.'}
+              </p>
+            </div>
+            {!googleConnected && oauthConfigured ? <Link href={driveConnectHref}>Collega Drive</Link> : null}
+            {googleConnected ? (
+              <form action={retryPendingDriveDiary}>
+                <input type="hidden" name="sectionId" value={sectionId} />
+                <input type="hidden" name="assetId" value={assetId} />
+                <button type="submit">Sincronizza registrazioni in attesa</button>
+              </form>
+            ) : null}
+          </section>
+        </div>
+      </details>
     </AppShell>
   )
 }

@@ -43,31 +43,55 @@ test('Journey: Classe → Diario → In classe → Registra la lezione', async (
     await expect(page).toHaveURL(new RegExp(`/classi/${escapeRegExp(sectionId)}/in-classe/${escapeRegExp(fixture.assetId)}/registra$`))
     const heading = page.getByRole('heading', { name: new RegExp(fixture.classLabel) })
     await expect(heading).toBeVisible()
+
+    const activityDone = page.locator('textarea[name="activityDone"]')
+    const nextActivity = page.locator('textarea[name="nextActivity"]')
+    const actualMinutes = page.locator('input[name="actualMinutes"]')
+    const advanced = page.locator('details[data-classroom-register-advanced]')
+
+    await expect(actualMinutes, 'La durata obbligatoria resta disponibile nel fast path.').toBeVisible()
+    await expect(activityDone, 'L’attività svolta è il fatto professionale principale.').toBeVisible()
+    await expect(nextActivity, 'La prossima attività resta disponibile senza aprire dettagli avanzati.').toBeVisible()
+    await expect(page.getByRole('button', { name: 'Registra la lezione' })).toBeVisible()
+
+    for (const field of ['observations', 'difficulties', 'ideas', 'udaChangeProposal']) {
+      await expect(page.locator(`textarea[name="${field}"]`), `${field} deve restare disponibile ma non competere col fast path.`).toBeHidden()
+    }
+    await expect(page.getByText(/Non inserire nomi degli alunni/i)).toBeHidden()
+
+    await screenshot(page, testInfo, 'lesson-register')
+
+    await page.getByText('Contesto e materiale della lezione', { exact: true }).click()
     await expect(page.getByText('Attività prevista')).toBeVisible()
     await expect(page.getByRole('link', { name: /Apri materiale Canva/i })).toHaveAttribute('href', /^https:\/\//)
 
+    await advanced.locator('summary').click()
     for (const label of [
-      'Che cosa hai svolto?',
       'Che cosa hai osservato?',
       'Difficoltà?',
       'Idee emerse?',
       'Che cosa potrebbe cambiare nell’UDA?',
-      'Qual è la prossima attività?',
     ]) {
       await expect(page.getByText(label, { exact: true })).toBeVisible()
     }
-    await expect(page.getByRole('button', { name: 'Registra la lezione' })).toBeVisible()
     await expect(page.getByText(/Non inserire nomi degli alunni/i)).toBeVisible()
     await expect(page.getByText(/modifiche all’UDA restano proposte finché non vengono confermate dal docente/i)).toBeVisible()
     await expect(page.locator('textarea[name="udaChangeProposal"]')).toHaveAttribute('placeholder', /Non modifica automaticamente l’UDA/i)
+
+    await activityDone.fill('Attività HVA registrata dal fast path.')
+    await nextActivity.fill('Riprendere il passaggio successivo nella prossima lezione.')
+    await page.getByRole('button', { name: 'Registra la lezione' }).click()
+    await expect(page).toHaveURL(/\?saved=/)
+    await expect(page.getByText('Lezione registrata', { exact: true })).toBeVisible()
+
+    const driveDisclosure = page.getByText(/Memoria documentale · Google Drive/i).first()
+    await expect(driveDisclosure, 'La capability documentale Drive resta raggiungibile dopo la registrazione.').toBeVisible()
 
     const geometry = await page.evaluate(() => ({
       viewport: window.innerWidth,
       document: document.documentElement.scrollWidth,
     }))
     expect(geometry.document, 'Il diario non deve produrre overflow orizzontale.').toBeLessThanOrEqual(geometry.viewport)
-
-    await screenshot(page, testInfo, 'lesson-register')
   } finally {
     await deleteKnowledgeAsset(page, fixture.assetId).catch(() => {})
   }

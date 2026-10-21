@@ -74,6 +74,34 @@ export default function LessonPrepareClient({
   const teachHref = buildLessonWorkspaceHref(sectionId, block.id, 'teach')
   const recorded = progress.status === 'SVOLTO' || progress.status === 'RECUPERATO' || progress.status === 'RIMODULATO'
 
+  if (activeSubtask === 'materials') {
+    return (
+      <main className={styles.closeSurface} data-materials-focus>
+        <LessonShell
+          sectionId={sectionId}
+          blockId={block.id}
+          sectionLabel={sectionLabel}
+          disciplineLabel="Tecnologia"
+          lessonTitle={brief.title}
+          phase="prepare"
+        />
+        <section className={`${styles.closeCard} ${styles.materialsInline}`} id="lesson-materials-subtask">
+          <button type="button" className={styles.materialsBack} onClick={() => setActiveSubtask(null)}>
+            Torna a Prima della lezione
+          </button>
+          <LessonMaterials
+            sectionId={sectionId}
+            blockId={block.id}
+            projectionId={projection.projectionId}
+            extensions={extensions}
+            knowledgeSuggestions={knowledgeSuggestions}
+            atlasSuggestions={atlasSuggestions}
+          />
+        </section>
+      </main>
+    )
+  }
+
   return (
     <main className={styles.closeSurface}>
       <LessonShell
@@ -132,26 +160,13 @@ export default function LessonPrepareClient({
         <div className={styles.closeActions}>
           <button
             type="button"
-            aria-expanded={activeSubtask === 'materials'}
+            aria-expanded={false}
             aria-controls="lesson-materials-subtask"
             onClick={() => setActiveSubtask('materials')}
           >
             Materiali
           </button>
         </div>
-
-        {activeSubtask === 'materials' ? (
-          <div id="lesson-materials-subtask">
-            <LessonMaterials
-              sectionId={sectionId}
-              blockId={block.id}
-              projectionId={projection.projectionId}
-              extensions={extensions}
-              knowledgeSuggestions={knowledgeSuggestions}
-              atlasSuggestions={atlasSuggestions}
-            />
-          </div>
-        ) : null}
 
         {approval.status === 'APPROVED' ? (
           <details className={styles.compactDisclosure} data-preparation-approval-detail>

@@ -60,6 +60,79 @@ export default async function PlannerPage() {
   const materialsAvailable = Boolean(operational.preparation?.rendering?.bundle)
   const teachingSectionId = operational.preparation?.preparation.lesson.sectionId ?? null
 
+  const secondaryWork = (
+    <>
+      {teachingFocus && (materialsAvailable || teachingSectionId) ? (
+        <details className="humanTaskSecondary todayQuickActionsDisclosure">
+          <summary>Altri percorsi utili</summary>
+          <div className="humanTaskSecondaryBody">
+            <TodayQuickActions
+              materialsAvailable={materialsAvailable}
+              sectionId={teachingSectionId}
+            />
+          </div>
+        </details>
+      ) : null}
+
+      {projection.timeline.length ? <TodayTimeline items={projection.timeline} nowMinutes={nowMinutes} /> : null}
+
+      <PlannerToday
+        projection={projection}
+        remaining={remainingPlanner}
+        today={today}
+        openCount={openCount}
+        todayTaskCount={todayTaskCount}
+      />
+
+      {context.academicYear ? (
+        <details className="humanTaskSecondary">
+          <summary>Chiudi la giornata e prepara domani</summary>
+          <div className="humanTaskSecondaryBody">
+            <p>Controlla lezioni concluse, registrazioni nel Diario, continuità emerse e materiali di domani.</p>
+            <div className="humanTaskActions">
+              <Link className="primary" href="/giornata/resoconto">Apri il resoconto</Link>
+              <Link href="/materiali/domani">Materiali di domani</Link>
+            </div>
+          </div>
+        </details>
+      ) : null}
+
+      <details className="humanTaskSecondary">
+        <summary>Aggiungi un’attività</summary>
+        <div className="humanTaskSecondaryBody">
+          <form action={createPlannerTask} className="quickCapture advancedCapture">
+            <div className="captureMain">
+              <span className="capturePlus" aria-hidden>＋</span>
+              <label className="srOnly" htmlFor="new-task">Nuova attività</label>
+              <input id="new-task" name="title" type="text" maxLength={240} placeholder="Che cosa devi fare?" required />
+              <button type="submit">Aggiungi</button>
+            </div>
+            <div className="captureOptions" aria-label="Opzioni nuova attività">
+              <label>
+                <span>Quando</span>
+                <select name="destination" defaultValue="today">
+                  <option value="today">Oggi</option>
+                  <option value="tomorrow">Domani</option>
+                  <option value="week">Questa settimana</option>
+                  <option value="undated">Senza data</option>
+                </select>
+              </label>
+              <label>
+                <span>Priorità</span>
+                <select name="priority" defaultValue="NORMAL">
+                  <option value="NORMAL">Normale</option>
+                  <option value="HIGH">Alta</option>
+                  <option value="URGENT">Urgente</option>
+                  <option value="LOW">Bassa</option>
+                </select>
+              </label>
+            </div>
+          </form>
+        </div>
+      </details>
+    </>
+  )
+
   return (
     <AppShell
       active="today"
@@ -67,6 +140,7 @@ export default async function PlannerPage() {
       workspaceName={context.workspace.name}
       role={context.role}
       contentClassName="plannerSurface"
+      focusMode={Boolean(teachingFocus)}
     >
       <section className="plannerHeader plannerHeaderClarified todayHomeHeader">
         <div className="todayHomeHeaderMain">
@@ -90,76 +164,14 @@ export default async function PlannerPage() {
         <TodayFocusCard focus={projection.focus} moment={projection.moment} today={today} nowMinutes={nowMinutes} />
       )}
 
-      <div className={teachingFocus ? 'todaySecondaryWork' : undefined}>
-        {teachingFocus && (materialsAvailable || teachingSectionId) ? (
-          <details className="humanTaskSecondary todayQuickActionsDisclosure">
-            <summary>Altri percorsi utili</summary>
-            <div className="humanTaskSecondaryBody">
-              <TodayQuickActions
-                materialsAvailable={materialsAvailable}
-                sectionId={teachingSectionId}
-              />
-            </div>
-          </details>
-        ) : null}
-
-        {projection.timeline.length ? <TodayTimeline items={projection.timeline} nowMinutes={nowMinutes} /> : null}
-
-        <PlannerToday
-          projection={projection}
-          remaining={remainingPlanner}
-          today={today}
-          openCount={openCount}
-          todayTaskCount={todayTaskCount}
-        />
-
-        {context.academicYear ? (
-          <details className="humanTaskSecondary">
-            <summary>Chiudi la giornata e prepara domani</summary>
-            <div className="humanTaskSecondaryBody">
-              <p>Controlla lezioni concluse, registrazioni nel Diario, continuità emerse e materiali di domani.</p>
-              <div className="humanTaskActions">
-                <Link className="primary" href="/giornata/resoconto">Apri il resoconto</Link>
-                <Link href="/materiali/domani">Materiali di domani</Link>
-              </div>
-            </div>
-          </details>
-        ) : null}
-
-        <details className="humanTaskSecondary">
-          <summary>Aggiungi un’attività</summary>
-          <div className="humanTaskSecondaryBody">
-            <form action={createPlannerTask} className="quickCapture advancedCapture">
-              <div className="captureMain">
-                <span className="capturePlus" aria-hidden>＋</span>
-                <label className="srOnly" htmlFor="new-task">Nuova attività</label>
-                <input id="new-task" name="title" type="text" maxLength={240} placeholder="Che cosa devi fare?" required />
-                <button type="submit">Aggiungi</button>
-              </div>
-              <div className="captureOptions" aria-label="Opzioni nuova attività">
-                <label>
-                  <span>Quando</span>
-                  <select name="destination" defaultValue="today">
-                    <option value="today">Oggi</option>
-                    <option value="tomorrow">Domani</option>
-                    <option value="week">Questa settimana</option>
-                    <option value="undated">Senza data</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Priorità</span>
-                  <select name="priority" defaultValue="NORMAL">
-                    <option value="NORMAL">Normale</option>
-                    <option value="HIGH">Alta</option>
-                    <option value="URGENT">Urgente</option>
-                    <option value="LOW">Bassa</option>
-                  </select>
-                </label>
-              </div>
-            </form>
-          </div>
+      {teachingFocus ? (
+        <details data-today-secondary-work className="humanTaskSecondary todaySecondaryWork">
+          <summary>Altri impegni e strumenti</summary>
+          <div className="humanTaskSecondaryBody">{secondaryWork}</div>
         </details>
-      </div>
+      ) : (
+        <div>{secondaryWork}</div>
+      )}
     </AppShell>
   )
 }
