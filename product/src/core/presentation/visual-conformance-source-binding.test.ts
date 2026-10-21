@@ -6,12 +6,20 @@ const plannerSource = readFileSync(new URL('../../app/planner/page.tsx', import.
 const viewerSource = readFileSync(new URL('../../app/knowledge/[assetId]/page.tsx', import.meta.url), 'utf8')
 const observeSource = readFileSync(new URL('../../app/classi/[sectionId]/lezioni/[blockId]/lesson-observe-client.tsx', import.meta.url), 'utf8')
 const registerSource = readFileSync(new URL('../../app/classi/[sectionId]/lezioni/[blockId]/lesson-close-client.tsx', import.meta.url), 'utf8')
+const appShellSource = readFileSync(new URL('../../components/app-shell/app-shell.tsx', import.meta.url), 'utf8')
 
 test('OGGI keeps the canonical teaching task free from competing quick actions', () => {
   assert.ok(
     !plannerSource.includes('<TodayQuickActions materialsAvailable={materialsAvailable} sectionId={teachingSectionId} />'),
     'When a teaching focus exists, generic quick actions must not compete at the first visual level.',
   )
+})
+
+test('focused work uses the existing AppShell through a presentation-only focus mode', () => {
+  assert.ok(appShellSource.includes('focusMode?: boolean'), 'AppShell must expose only an optional presentation-level focus mode.')
+  assert.ok(appShellSource.includes("cn('dosShell', focusMode && 'dosShellFocused')"), 'Focused mode must be represented as presentation state on the existing shell.')
+  assert.ok(appShellSource.includes('CommandPalette'), 'Focused mode must keep broader navigation reachable through the existing command surface.')
+  assert.ok(appShellSource.includes('SecondaryMenu'), 'Focused mode must keep the existing subordinate navigation escape.')
 })
 
 test('focused lesson viewer exposes a content-first preview canvas', () => {
