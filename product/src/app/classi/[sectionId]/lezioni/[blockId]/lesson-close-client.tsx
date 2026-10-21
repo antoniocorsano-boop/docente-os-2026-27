@@ -30,8 +30,6 @@ type Block = {
   hours: number
 }
 
-type CloseStep = 'facts' | 'reflection' | 'confirm'
-
 type ContinuationState = {
   teachingSessionId: string
   observationCount: number
@@ -73,7 +71,6 @@ export default function LessonCloseClient({
   voiceCaptureEnabled: boolean
   nextBlockId: string | null
 }) {
-  const [step, setStep] = useState<CloseStep>('facts')
   const [observationDraft, setObservationDraft] = useState<LessonObservationDraftTransport | null>(null)
   const [draftLoaded, setDraftLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -206,7 +203,6 @@ export default function LessonCloseClient({
   const observationStateLabel = observationDraft
     ? LESSON_OBSERVATION_STATE_OPTIONS.find((item) => item.value === observationDraft.state)?.label ?? observationDraft.state
     : null
-  const outcomeLabel = OUTCOME_OPTIONS.find((item) => item.value === outcome)?.label ?? outcome
 
   const lessonShell = (
     <LessonShell
@@ -245,24 +241,6 @@ export default function LessonCloseClient({
           <p className={styles.closeLead}>Un passaggio alla volta. Salvi solo ciò che confermi; Piano e UDA non vengono modificati automaticamente.</p>
         </header>
 
-        <nav className={styles.closeStepper} aria-label="Passaggi di registrazione">
-          {[
-            ['facts', 'Dati essenziali'],
-            ['reflection', 'Riflessione'],
-            ['confirm', 'Conferma'],
-          ].map(([key, label], index) => (
-            <button
-              type="button"
-              key={key}
-              className={step === key ? styles.active : undefined}
-              onClick={() => setStep(key as CloseStep)}
-            >
-              <span>{index + 1}</span>
-              <strong>{label}</strong>
-            </button>
-          ))}
-        </nav>
-
         <input type="hidden" name="sectionId" value={sectionId} />
         <input type="hidden" name="blockId" value={block.id} />
         <input type="hidden" name="registrationKey" value={registrationKey} />
@@ -275,184 +253,140 @@ export default function LessonCloseClient({
         <input type="hidden" name="nextActivity" value={nextActivity} />
         <input type="hidden" name="udaChangeProposal" value={udaChangeProposal} />
 
-        {step === 'facts' ? (
-          <section className={styles.closeStepPanel} aria-labelledby="close-facts-title">
-            <span className={styles.lessonBriefLabel}>1 · DATI ESSENZIALI</span>
-            <h2 id="close-facts-title">Com’è andata davvero?</h2>
-            <p className={styles.privacyNote}>Registra il fatto professionale; i dettagli restano facoltativi.</p>
+        <section className={styles.closeStepPanel} aria-labelledby="close-fast-title">
+          <span className={styles.lessonBriefLabel}>REGISTRA</span>
+          <h2 id="close-fast-title">Che cosa è successo davvero?</h2>
+          <p className={styles.privacyNote}>Conferma i fatti essenziali. Dettagli, osservazione e assistente restano disponibili solo se ti servono.</p>
 
-            <div className={styles.sessionFacts}>
-              <label className={styles.sessionField}>
-                <span>Esito effettivo</span>
-                <select name="outcome" value={outcome} onChange={(event) => setOutcome(event.target.value as LessonExecutionOutcome)}>
-                  {OUTCOME_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-                </select>
-              </label>
-              <label className={styles.sessionField}>
-                <span>Data della lezione</span>
-                <input type="date" required value={localDate} max={defaultLocalDate} onChange={(event) => setLocalDate(event.target.value)} />
-              </label>
-              <label className={styles.sessionField}>
-                <span>Minuti effettivi</span>
-                <input type="number" required min={1} max={1440} value={actualMinutes} inputMode="numeric" onChange={(event) => setActualMinutes(event.target.value)} />
-              </label>
-            </div>
+          <label className={styles.sessionField}>
+            <span>Esito effettivo</span>
+            <select name="outcome" value={outcome} onChange={(event) => setOutcome(event.target.value as LessonExecutionOutcome)}>
+              {OUTCOME_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
+          </label>
 
-            <details className={styles.compactDisclosure}>
-              <summary>{observationDraft ? 'Osservazione già raccolta' : 'Nessuna osservazione raccolta'}</summary>
-              {observationDraft ? (
-                <div className={styles.detailStack}>
-                  <strong>{observationDimensionLabel} · {observationStateLabel}</strong>
-                  {observationDraft.note ? <p className={styles.detailText}>{observationDraft.note}</p> : null}
-                  <p className={styles.privacyNote}>Sarà salvata come osservazione della classe. Nessun dato individuale viene aggiunto.</p>
-                </div>
-              ) : (
-                <p className={styles.privacyNote}>Puoi registrare normalmente la lezione senza aggiungere osservazioni.</p>
-              )}
-            </details>
+          <label className={styles.note}>
+            <span>Cosa abbiamo fatto</span>
+            <textarea
+              maxLength={4000}
+              value={evidenceNote}
+              onChange={(event) => updateEvidenceNote(event.target.value)}
+              placeholder="Per esempio: completata l’introduzione; la catena di trasformazione sarà ripresa nella prossima lezione."
+            />
+          </label>
 
-            <div className={styles.closeStepActions}>
-              <button className={styles.primary} type="button" onClick={() => setStep('reflection')} disabled={!localDate || !actualMinutes}>Continua</button>
-            </div>
-          </section>
-        ) : null}
+          <label className={styles.note}>
+            <span>Prossima attività</span>
+            <textarea
+              maxLength={450}
+              value={nextActivity}
+              onChange={(event) => setNextActivity(event.target.value)}
+              placeholder="Per esempio: completare la catena di trasformazione e passare agli impieghi dell’energia."
+            />
+          </label>
+          <p className={styles.privacyNote}>La prossima attività resta nel Diario come continuità didattica; non modifica automaticamente il Piano annuale.</p>
 
-        {step === 'reflection' ? (
-          <section className={styles.closeStepPanel} aria-labelledby="close-reflection-title">
-            <span className={styles.lessonBriefLabel}>2 · RIFLESSIONE FACOLTATIVA</span>
-            <h2 id="close-reflection-title">Cosa vale la pena ricordare?</h2>
-            <p className={styles.privacyNote}>Puoi anche lasciare tutto vuoto e passare direttamente alla conferma.</p>
-
-            <label className={styles.note}>
-              <span>Una nota sulla lezione, solo se serve</span>
-              <textarea
-                maxLength={4000}
-                value={evidenceNote}
-                onChange={(event) => updateEvidenceNote(event.target.value)}
-                placeholder="Per esempio: funzione e materiali compresi; tecnica/tecnologia da riprendere."
-              />
-            </label>
-
-            {voiceCaptureEnabled ? (
-              <LessonVoiceCapture
-                disabled={saving || organizing}
-                onBusyChange={setVoiceBusy}
-                onTranscript={appendVoiceTranscript}
-              />
-            ) : null}
-
-            <details className={styles.compactDisclosure}>
-              <summary>Assistente professionale <small>facoltativo</small></summary>
-              <div className={styles.detailStack}>
-                <div className={styles.assistantTools}>
-                  <button className={styles.assistantAction} type="button" onClick={organizeEvidenceNote} disabled={!evidenceNote.trim() || organizing || voiceBusy}>
-                    {organizing ? 'Organizzazione…' : 'Organizza con il Copilota'}
-                  </button>
-                  <span>Il Copilota propone soltanto: nulla viene registrato finché non confermi la lezione.</span>
-                </div>
-                {captureError ? <p className={styles.privacyNote} role="alert">{captureError}</p> : null}
-                {capturePreview ? (
-                  <section className={styles.assistantPreview} aria-label="Proposta del Copilota" aria-live="polite">
-                    <span>PROPOSTA DEL COPILOTA · NON SALVATA</span>
-                    <strong>Ho organizzato la nota in {capturePreview.effects.length} {capturePreview.effects.length === 1 ? 'punto' : 'punti'}.</strong>
-                    <ul>
-                      {capturePreview.effects.map((effect) => (
-                        <li key={`${effect.kind}:${effect.summary}`}>
-                          <b>{CAPTURE_LABELS[effect.kind]}</b>
-                          <p>{effect.summary}</p>
-                        </li>
-                      ))}
-                    </ul>
-                    {suggestedNextActivity ? (
-                      <div className={styles.assistantSuggestion}>
-                        <span>PROSSIMA ATTIVITÀ PROPOSTA</span>
-                        <p>{suggestedNextActivity}</p>
-                        <button className={styles.assistantAction} type="button" onClick={() => setNextActivity(suggestedNextActivity)}>
-                          Usa come prossima attività
-                        </button>
-                      </div>
-                    ) : null}
-                  </section>
-                ) : null}
-              </div>
-            </details>
-
-            <details className={styles.compactDisclosure}>
-              <summary>Decisioni per il seguito <small>facoltative</small></summary>
-              <div className={styles.detailStack}>
-                <label className={styles.note}>
-                  <span>Prossima attività</span>
-                  <textarea
-                    maxLength={450}
-                    value={nextActivity}
-                    onChange={(event) => setNextActivity(event.target.value)}
-                    placeholder="Per esempio: riprendere la prospettiva centrale e completare l’esercizio 2."
-                  />
+          <details className={styles.compactDisclosure} data-registration-details>
+            <summary>Dettagli della registrazione <small>data, durata e osservazione</small></summary>
+            <div className={styles.detailStack}>
+              <div className={styles.sessionFacts}>
+                <label className={styles.sessionField}>
+                  <span>Data della lezione</span>
+                  <input type="date" required value={localDate} max={defaultLocalDate} onChange={(event) => setLocalDate(event.target.value)} />
                 </label>
-                <p className={styles.privacyNote}>Resterà nel Diario come continuità didattica per la prossima lezione.</p>
-
-                <label className={styles.note}>
-                  <span>Cosa cambieresti nel percorso?</span>
-                  <textarea
-                    maxLength={450}
-                    value={udaChangeProposal}
-                    onChange={(event) => setUdaChangeProposal(event.target.value)}
-                    placeholder="Per esempio: anticipare l’attività pratica e ridurre la spiegazione iniziale."
-                  />
+                <label className={styles.sessionField}>
+                  <span>Minuti effettivi</span>
+                  <input type="number" required min={1} max={1440} value={actualMinutes} inputMode="numeric" onChange={(event) => setActualMinutes(event.target.value)} />
                 </label>
-                <p className={styles.privacyNote}>Resta una riflessione nel Diario: non modifica Piano o UDA.</p>
               </div>
-            </details>
-
-            <details className={styles.compactDisclosure}>
-              <summary>Promemoria didattico</summary>
-              <div className={styles.detailStack}>
-                <strong>{projection.evidence}</strong>
-                <p className={styles.detailText}>Resta un riferimento per il docente e non viene trasformato automaticamente in una prova registrata.</p>
+              <div>
+                <strong>{observationDraft ? 'Osservazione già raccolta' : 'Nessuna osservazione raccolta'}</strong>
+                {observationDraft ? (
+                  <div className={styles.detailStack}>
+                    <p className={styles.detailText}>{observationDimensionLabel} · {observationStateLabel}</p>
+                    {observationDraft.note ? <p className={styles.detailText}>{observationDraft.note}</p> : null}
+                    <p className={styles.privacyNote}>Sarà salvata come osservazione della classe. Nessun dato individuale viene aggiunto.</p>
+                  </div>
+                ) : <p className={styles.privacyNote}>Puoi registrare normalmente la lezione senza aggiungere osservazioni.</p>}
               </div>
-            </details>
-
-            <div className={styles.closeStepActions}>
-              <button type="button" onClick={() => setStep('facts')}>Indietro</button>
-              <button className={styles.primary} type="button" onClick={() => setStep('confirm')}>{evidenceNote.trim() || nextActivity.trim() || udaChangeProposal.trim() ? 'Continua' : 'Salta e conferma'}</button>
             </div>
-          </section>
-        ) : null}
+          </details>
 
-        {step === 'confirm' ? (
-          <section className={styles.closeStepPanel} aria-labelledby="close-confirm-title">
-            <span className={styles.lessonBriefLabel}>3 · CONFERMA</span>
-            <h2 id="close-confirm-title">Controlla cosa verrà salvato</h2>
+          <details className={styles.compactDisclosure} data-registration-advanced>
+            <summary>Riflessione e assistente <small>facoltativi</small></summary>
+            <div className={styles.detailStack}>
+              {voiceCaptureEnabled ? (
+                <LessonVoiceCapture
+                  disabled={saving || organizing}
+                  onBusyChange={setVoiceBusy}
+                  onTranscript={appendVoiceTranscript}
+                />
+              ) : null}
 
-            <div className={styles.closeReviewGrid}>
-              <div><span>Esito effettivo</span><strong>{outcomeLabel}</strong></div>
-              <div><span>Data</span><strong>{localDate}</strong></div>
-              <div><span>Durata</span><strong>{actualMinutes} min</strong></div>
-              <div><span>Osservazione</span><strong>{observationDraft ? `${observationDimensionLabel} · ${observationStateLabel}` : 'Nessuna'}</strong></div>
-              <div><span>Nota</span><strong>{evidenceNote.trim() || 'Nessuna nota'}</strong></div>
-              <div><span>Prossima attività</span><strong>{nextActivity.trim() || 'Nessuna'}</strong></div>
-              <div><span>Riflessione sul percorso</span><strong>{udaChangeProposal.trim() || 'Nessuna'}</strong></div>
-            </div>
-
-            <details className={styles.compactDisclosure}>
-              <summary>Cosa succede quando registri</summary>
-              <div className={styles.detailStack}>
-                <p className={styles.privacyNote}>Salvi la TeachingSession e le eventuali note confermate. L’esito guida CONTINUA, ma non aggiorna automaticamente il Piano annuale.</p>
-                <Link href={observeHref}>Rivedi le osservazioni</Link>
-                <Link href={teachHref}>Torna alla guida della lezione</Link>
+              <div className={styles.assistantTools}>
+                <button className={styles.assistantAction} type="button" onClick={organizeEvidenceNote} disabled={!evidenceNote.trim() || organizing || voiceBusy}>
+                  {organizing ? 'Organizzazione…' : 'Organizza con il Copilota'}
+                </button>
+                <span>Il Copilota propone soltanto: nulla viene registrato finché non confermi la lezione.</span>
               </div>
-            </details>
+              {captureError ? <p className={styles.privacyNote} role="alert">{captureError}</p> : null}
+              {capturePreview ? (
+                <section className={styles.assistantPreview} aria-label="Proposta del Copilota" aria-live="polite">
+                  <span>PROPOSTA DEL COPILOTA · NON SALVATA</span>
+                  <strong>Ho organizzato la nota in {capturePreview.effects.length} {capturePreview.effects.length === 1 ? 'punto' : 'punti'}.</strong>
+                  <ul>
+                    {capturePreview.effects.map((effect) => (
+                      <li key={`${effect.kind}:${effect.summary}`}>
+                        <b>{CAPTURE_LABELS[effect.kind]}</b>
+                        <p>{effect.summary}</p>
+                      </li>
+                    ))}
+                  </ul>
+                  {suggestedNextActivity ? (
+                    <div className={styles.assistantSuggestion}>
+                      <span>PROSSIMA ATTIVITÀ PROPOSTA</span>
+                      <p>{suggestedNextActivity}</p>
+                      <button className={styles.assistantAction} type="button" onClick={() => setNextActivity(suggestedNextActivity)}>Usa come prossima attività</button>
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
 
-            {saveError ? <p className={styles.privacyNote} role="alert">{saveError}</p> : null}
+              <label className={styles.note}>
+                <span>Cosa cambieresti nel percorso?</span>
+                <textarea
+                  maxLength={450}
+                  value={udaChangeProposal}
+                  onChange={(event) => setUdaChangeProposal(event.target.value)}
+                  placeholder="Per esempio: anticipare l’attività pratica e ridurre la spiegazione iniziale."
+                />
+              </label>
+              <p className={styles.privacyNote}>Resta una riflessione nel Diario: non modifica Piano o UDA.</p>
 
-            <div className={styles.closeStepActions}>
-              <button type="button" onClick={() => setStep('reflection')}>Modifica</button>
-              <button className={styles.primary} type="submit" disabled={saving || !draftLoaded || voiceBusy || !localDate || !actualMinutes}>
-                {saving ? 'Registrazione…' : 'Registra e continua'}
-              </button>
+              <div>
+                <strong>Promemoria didattico</strong>
+                <p className={styles.detailText}>{projection.evidence}</p>
+              </div>
             </div>
-          </section>
-        ) : null}
+          </details>
+
+          <details className={styles.compactDisclosure}>
+            <summary>Cosa succede quando registri</summary>
+            <div className={styles.detailStack}>
+              <p className={styles.privacyNote}>Salvi la TeachingSession e le eventuali note confermate. L’esito guida CONTINUA, ma non aggiorna automaticamente il Piano annuale.</p>
+              <Link href={observeHref}>Rivedi le osservazioni</Link>
+              <Link href={teachHref}>Torna alla guida della lezione</Link>
+            </div>
+          </details>
+
+          {saveError ? <p className={styles.privacyNote} role="alert">{saveError}</p> : null}
+
+          <div className={styles.closeActions}>
+            <button className={styles.primary} type="submit" disabled={saving || !draftLoaded || voiceBusy || !localDate || !actualMinutes}>
+              {saving ? 'Registrazione…' : 'Registra lezione'}
+            </button>
+          </div>
+        </section>
       </form>
     </main>
   )
