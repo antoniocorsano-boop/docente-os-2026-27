@@ -1,0 +1,18 @@
+.dosShellFocused{grid-template-columns:92px minmax(0,1fr)}
+.dosShellFocused .dosSidebar{padding-inline:11px}
+.dosShellFocused .dosBrand{justify-content:center;padding-inline:0}
+.dosShellFocused .dosBrandText{display:none}
+.dosShellFocused .dosCommandTrigger{grid-template-columns:1fr;place-items:center;padding:0}
+.dosShellFocused .dosCommandTrigger span,.dosShellFocused .dosCommandTrigger kbd{display:none}
+.dosShellFocused .dosNavGroupLabel{display:none}
+.dosShellFocused .dosNavItem{justify-content:center;padding:0}
+.dosShellFocused .dosNavItem span{display:none}
+.dosShellFocused .dosSidebarFooter{justify-content:center}
+.dosShellFocused .dosSidebarFooter>div{display:none}
+
+@media(max-width:719px){
+  .dosShellFocused{display:block}
+  .dosShellFocused .dosMobileHeader{min-height:58px}
+  .dosShellFocused .dosMobileContext strong{display:none}
+  .dosShellFocused .dosBottomNav{grid-auto-columns:minmax(0,1fr)}
+}
