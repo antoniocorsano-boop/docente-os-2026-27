@@ -7,6 +7,7 @@ import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supaba
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 
 const ACTIVITIES_PATH = '/attivita'
+const LEGACY_PLANNER_PATH = '/planner'
 
 export async function createPlannerTask(formData: FormData) {
   const titleValue = formData.get('title')
@@ -38,7 +39,7 @@ export async function createPlannerTask(formData: FormData) {
     plannedFor,
   })
 
-  revalidatePath(ACTIVITIES_PATH)
+  revalidatePlannerSurfaces()
 }
 
 export async function completePlannerTask(formData: FormData) {
@@ -46,7 +47,7 @@ export async function completePlannerTask(formData: FormData) {
   if (!taskId) return
   const repository = new SupabasePlannerRepository()
   await repository.setStatus(taskId, 'DONE')
-  revalidatePath(ACTIVITIES_PATH)
+  revalidatePlannerSurfaces()
 }
 
 export async function waitPlannerTask(formData: FormData) {
@@ -54,7 +55,7 @@ export async function waitPlannerTask(formData: FormData) {
   if (!taskId) return
   const repository = new SupabasePlannerRepository()
   await repository.setStatus(taskId, 'WAITING')
-  revalidatePath(ACTIVITIES_PATH)
+  revalidatePlannerSurfaces()
 }
 
 export async function reopenPlannerTask(formData: FormData) {
@@ -62,7 +63,7 @@ export async function reopenPlannerTask(formData: FormData) {
   if (!taskId) return
   const repository = new SupabasePlannerRepository()
   await repository.setStatus(taskId, 'OPEN')
-  revalidatePath(ACTIVITIES_PATH)
+  revalidatePlannerSurfaces()
 }
 
 export async function movePlannerTaskToday(formData: FormData) {
@@ -86,7 +87,13 @@ async function moveTask(formData: FormData, plannedFor: string | null) {
   if (!taskId) return
   const repository = new SupabasePlannerRepository()
   await repository.move(taskId, plannedFor)
+  revalidatePlannerSurfaces()
+}
+
+function revalidatePlannerSurfaces() {
   revalidatePath(ACTIVITIES_PATH)
+  // Temporary compatibility only: Task 3 removes generic PlannerTask controls from Oggi.
+  revalidatePath(LEGACY_PLANNER_PATH)
 }
 
 function taskIdFrom(formData: FormData) {
