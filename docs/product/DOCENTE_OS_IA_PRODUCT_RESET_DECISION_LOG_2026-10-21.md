@@ -217,7 +217,7 @@ Il Diario non diventa una voce primaria della navigazione globale: appartiene al
 
 ---
 
-## IA-04 — LEZIONE — DIREZIONE ACCETTATA, DA FORMALIZZARE NELLA SPEC
+## IA-04 — LEZIONE — APPROVATA
 
 ### Principio
 
@@ -238,6 +238,21 @@ Lezione · Classe · Disciplina · Titolo
 ```
 
 che cambia contenuto in base allo stato.
+
+### Regola di apertura automatica approvata
+
+Il docente **non sceglie la fase** da una barra di navigazione. Docente OS apre la Lezione nello stato più coerente con il contesto temporale e professionale conosciuto:
+
+```text
+lezione futura -----------------> preparazione
+lezione in corso ---------------> conduzione
+lezione terminata non registrata -> chiusura / registrazione
+lezione registrata -------------> continuità / passo successivo
+```
+
+Il contesto può essere ricavato da Oggi, Orario o Classe. Se il sistema non dispone di sufficiente certezza, non indovina: mostra il contesto attendibile disponibile, mantiene esplicita l'ambiguità e non forza una fase non giustificata.
+
+La transizione tra stati avviene nel medesimo workspace Lezione; non richiede al docente di navigare tra moduli separati.
 
 ### Prima della lezione
 
@@ -261,7 +276,7 @@ Primo livello:
 - avanzamento leggero;
 - CTA `Concludi la lezione`.
 
-`Osserva` diventa una capability contestuale, ad esempio `Aggiungi osservazione`, non una destinazione primaria autonoma.
+`Osserva` diventa una capability contestuale, ad esempio `Aggiungi osservazione`, non una destinazione primaria autonoma e non una fase obbligatoria da attraversare.
 
 ### Chiusura
 
@@ -285,6 +300,10 @@ Conferma breve con continuità:
 ### Materiali dentro la Lezione
 
 Le attuali superfici `materiali/prossima` e `in-classe/[assetId]` dimostrano capability valide: vista docente, LIM/scheda, materiali canonici, riconferma esplicita, supporto alla conduzione. Nella nuova IA queste funzioni devono diventare **viste/capability contestuali della Lezione**, non passaggi di navigazione obbligatori.
+
+Regola sintetica:
+
+> Lezione = un solo workspace, stato determinato dal contesto, una CTA primaria coerente, capability secondarie richiamate quando servono.
 
 ---
 
@@ -391,11 +410,12 @@ Restano necessarie ma non fanno parte del backbone quotidiano.
 | Modifica/attivazione Orario | interna a Orario | flusso governato separato |
 | Classi | primaria | selettore |
 | Classe | memoria/continuità | una CTA dominante + Diario visibile + Altro della classe |
-| Lezione | workspace operativo centrale | stato determinato dal contesto |
-| Prepara | stato interno Lezione | non destinazione globale |
-| Conduci | stato interno Lezione | non destinazione globale |
-| Osserva | capability contestuale | non pagina obbligatoria |
-| Registra | chiusura Lezione | persistenza invariata |
+| Lezione | workspace operativo centrale | stato determinato dal contesto; nessuna barra di fasi richiesta |
+| Prepara | stato interno Lezione | apertura automatica per lezione futura |
+| Conduci | stato interno Lezione | apertura automatica per lezione in corso |
+| Osserva | capability contestuale | non pagina/fase obbligatoria |
+| Registra | chiusura Lezione | apertura automatica dopo lezione non registrata; persistenza invariata |
+| Continuità post-registrazione | Lezione | conferma + prossimo passo |
 | Diario | secondario Classe sempre visibile | storia professionale |
 | Viewer materiale in classe | Lezione | contestuale |
 | Materiali prossima lezione | Lezione | contestuale |
@@ -429,19 +449,20 @@ Restano necessarie ma non fanno parte del backbone quotidiano.
 9. Il Diario/TeachingSession resta la fonte della continuità reale della Classe.
 10. Le fonti e i materiali conservano provenienza, versione e stato di approvazione anche quando vengono mostrati dentro la Lezione.
 11. Le route legacy possono restare temporaneamente per compatibilità, ma non devono obbligare il docente a conoscere l'architettura interna.
+12. Lo stato visibile della Lezione viene determinato dal contesto attendibile; il docente non è tenuto a scegliere manualmente una fase del workflow.
 
 ---
 
 ## Questioni ancora da chiudere nella specifica
 
-1. **Lezione:** regola precisa di transizione visibile tra prima/durante/dopo senza reintrodurre una barra di quattro moduli.
-2. **Materiali di domani:** accesso preferenziale da Altro/Materiali, da Orario, o entrambi.
-3. **Altro:** gerarchia interna e numero massimo di voci visibili senza creare un nuovo menu rumoroso.
-4. **Route compatibility:** strategia di alias/redirect per Home, Planner, Resoconto e superfici assorbite.
+1. **Materiali di domani:** accesso preferenziale da Altro/Materiali, da Orario, o entrambi.
+2. **Altro:** gerarchia interna e numero massimo di voci visibili senza creare un nuovo menu rumoroso.
+3. **Route compatibility:** strategia di alias/redirect per Home, Planner, Resoconto e superfici assorbite.
 
 La gerarchia secondaria della Classe è chiusa: **Diario sempre visibile + Altro della classe**.
+La regola di transizione della Lezione è chiusa: **stato automatico coerente con il contesto, senza barra di quattro moduli**.
 
-Queste sono decisioni di design/implementazione successive; non riaprono IA-01, IA-02 o IA-03.
+Queste sono decisioni di design/implementazione successive; non riaprono IA-01, IA-02, IA-03 o IA-04.
 
 ---
 
@@ -451,11 +472,11 @@ Queste sono decisioni di design/implementazione successive; non riaprono IA-01, 
 - IA-02 Orario: APPROVATA
 - Attività generiche fuori da Oggi: APPROVATA
 - IA-03 Classi/Classe: APPROVATA
-- IA-04 Lezione: DIREZIONE ACCETTATA / formalizzazione finale nella spec
+- IA-04 Lezione: APPROVATA
 - IA-05 Altro: DIREZIONE APPROVATA / gerarchia interna da definire
 - Audit superfici/capability: ESTESO / nessuna perdita volontaria autorizzata
 - Matrice anti-regressione: ESTESA
 - Implementazione: NON AUTORIZZATA
 - Merge/deploy: NON AUTORIZZATI
 
-Passo successivo: chiudere le quattro questioni residue di design, presentare il design integrato per approvazione, quindi trasformarlo in specifica canonica revisionata. Solo dopo la review della specifica si potrà preparare un piano di implementazione.
+Passo successivo: chiudere le tre questioni residue di design, presentare il design integrato per approvazione, quindi trasformarlo in specifica canonica revisionata. Solo dopo la review della specifica si potrà preparare un piano di implementazione.
