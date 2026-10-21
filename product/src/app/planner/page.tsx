@@ -373,7 +373,7 @@ function TaskSection({
   return (
     <section className={`taskSection ${tone}`}>
       <div className="sectionHeading"><h2>{title}</h2><span>{tasks.length}</span></div>
-      <div className="taskList">{tasks.map((task) => <TaskRow key={task.title} task={task} today={today} />)}</div>
+      <div className="taskList">{tasks.map((task) => <TaskRow key={task.id} task={task} today={today} />)}</div>
     </section>
   )
 }
