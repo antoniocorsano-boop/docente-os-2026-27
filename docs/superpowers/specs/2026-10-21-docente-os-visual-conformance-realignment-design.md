@@ -1,7 +1,8 @@
 # DOCENTE OS — Visual Conformance Realignment Design
 
-**Status:** DESIGN APPROVED / SPEC REVIEW REQUIRED  
+**Status:** SPEC APPROVED / IMPLEMENTATION PLAN REVIEW REQUIRED  
 **Date:** 2026-10-21  
+**Approved:** 2026-10-21  
 **Baseline:** `develop@8177ceb1e24977eba261b8988243d0ba9f750761`  
 **Branch:** `docs/dos-visual-conformance-realignment`  
 **Scope:** presentation-only realignment to the frozen task-centric visual contract  
