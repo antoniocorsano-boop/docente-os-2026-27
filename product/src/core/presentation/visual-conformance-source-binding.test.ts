@@ -8,7 +8,8 @@ const materialsSource = readFileSync(new URL('../../app/classi/[sectionId]/lezio
 const viewerSource = readFileSync(new URL('../../app/knowledge/[assetId]/page.tsx', import.meta.url), 'utf8')
 const observeSource = readFileSync(new URL('../../app/classi/[sectionId]/lezioni/[blockId]/lesson-observe-client.tsx', import.meta.url), 'utf8')
 const registerSource = readFileSync(new URL('../../app/classi/[sectionId]/lezioni/[blockId]/lesson-close-client.tsx', import.meta.url), 'utf8')
-const classroomRegisterSource = readFileSync(new URL('../../app/classi/[sectionId]/in-classe/[assetId]/registra/page.tsx', import.meta.url), 'utf8')
+const classroomRegisterUrl = new URL('../../app/classi/[sectionId]/in-classe/[assetId]/registra/page.tsx', import.meta.url)
+const classroomRegisterSource = readFileSync(classroomRegisterUrl, 'utf8')
 const appShellSource = readFileSync(new URL('../../components/app-shell/app-shell.tsx', import.meta.url), 'utf8')
 
 test('OGGI keeps the canonical teaching task free from competing quick actions', () => {
@@ -83,6 +84,18 @@ test('REGISTRA exposes the frozen one-screen fast path instead of a mandatory wi
 })
 
 test('classroom REGISTRA uses a fast first level while preserving every professional capability', () => {
+  const activityIndex = classroomRegisterSource.indexOf('activityDone')
+  console.error('[visual-conformance-debug]', JSON.stringify({
+    url: classroomRegisterUrl.href,
+    length: classroomRegisterSource.length,
+    hasActivityDone: classroomRegisterSource.includes('activityDone'),
+    hasNameActivityDone: classroomRegisterSource.includes('name="activityDone"'),
+    activityIndex,
+    nearby: activityIndex >= 0
+      ? classroomRegisterSource.slice(Math.max(0, activityIndex - 100), activityIndex + 160)
+      : null,
+  }))
+
   assert.ok(
     classroomRegisterSource.includes('data-classroom-register-advanced'),
     'The classroom register must place extended reflection and documentary controls behind progressive disclosure.',
