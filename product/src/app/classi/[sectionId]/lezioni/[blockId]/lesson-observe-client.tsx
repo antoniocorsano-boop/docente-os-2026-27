@@ -160,13 +160,15 @@ export default function LessonObserveClient({
           ))}
         </section>
 
+        <p className={styles.privacyNote}>Non inserire nomi, gruppi identificabili o dati individuali degli alunni.</p>
+
         <details data-observation-capture className={styles.evidence}>
           <summary>Registra un’osservazione professionale, se serve</summary>
           <div className={styles.detailStack}>
             <div>
               <span id="professional-observation-title">OSSERVAZIONE PROFESSIONALE · FACOLTATIVA</span>
               <strong>Registra una sola osservazione sintetica sulla classe</strong>
-              <p className={styles.detailText}>Scegli una dimensione e uno stato solo se vuoi conservarli con la lezione. Non inserire nomi, gruppi identificabili o dati individuali degli alunni.</p>
+              <p className={styles.detailText}>Scegli una dimensione e uno stato solo se vuoi conservarli con la lezione.</p>
             </div>
 
             <div className={styles.sessionFacts}>
