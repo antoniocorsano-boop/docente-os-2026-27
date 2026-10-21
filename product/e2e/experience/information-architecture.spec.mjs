@@ -4,38 +4,48 @@ import { screenshotPath } from '../support/experience-observer.mjs'
 
 requireE2ECredentials()
 
-const PRIMARY_LABELS = ['Home', 'Oggi', 'Classi', 'Orario', 'Naviga']
-const SECONDARY_LABELS = ['Progetta', 'Piano annuale', 'Documentazione', 'Calendario', 'Conoscenza', 'Impostazioni', 'Account e sicurezza']
+const PRIMARY_LABELS = ['Oggi', 'Orario', 'Classi', 'Altro']
+const ALTRO_GROUPS = ['Lavoro', 'Risorse e organizzazione', 'Sistema']
+const ALTRO_TOOLS = [
+  'Attività',
+  'Progetta',
+  'Piano annuale',
+  'Materiali e fonti',
+  'Calendario',
+  'Documentazione',
+  'Impostazioni',
+  'Account e sicurezza',
+]
 
-test('UX-0E: la shell espone la IA DOS-VIEW-CONV-01A e rende Conoscenza contestuale', async ({ page }, testInfo) => {
+test('DOS-IA-RESET: la shell espone esattamente Oggi · Orario · Classi · Altro', async ({ page }, testInfo) => {
   await loginE2E(page)
   await page.goto('/planner')
   await expect(page.locator('#dos-main-content')).toBeVisible({ timeout: 30_000 })
 
-  if (testInfo.project.name.startsWith('mobile')) {
-    const primary = page.locator('.dosBottomNav')
-    await expect(primary).toBeVisible()
-    expect(await primary.locator('small').allTextContents()).toEqual(PRIMARY_LABELS)
-    await primary.getByRole('button', { name: 'Naviga' }).click()
-  } else {
-    const primary = page.locator('.dosSidebar .dosNavList')
-    await expect(primary).toBeVisible()
-    expect(await primary.locator('.dosNavItem span').allTextContents()).toEqual(PRIMARY_LABELS)
-    await primary.getByRole('button', { name: 'Apri Naviga' }).click()
-  }
+  const primary = testInfo.project.name.startsWith('mobile')
+    ? page.locator('.dosBottomNav')
+    : page.locator('.dosSidebar .dosNavList')
+  await expect(primary).toBeVisible()
 
-  const secondary = page.locator('.dosCommandDialog')
-  await expect(secondary).toBeVisible()
-  const secondaryLabels = await secondary.locator('.dosCommandItem strong').allTextContents()
-  expect(secondaryLabels).toEqual(SECONDARY_LABELS)
+  const labels = testInfo.project.name.startsWith('mobile')
+    ? await primary.locator('small').allTextContents()
+    : await primary.locator('.dosNavItem span').allTextContents()
+  expect(labels).toEqual(PRIMARY_LABELS)
+  expect(labels).not.toContain('Home')
+  expect(labels).not.toContain('Naviga')
 
-  for (const label of ['Home', 'Oggi', 'Classi', 'Orario']) {
-    expect(secondaryLabels, `Naviga non deve duplicare ${label}.`).not.toContain(label)
-  }
-  expect(secondaryLabels).toContain('Conoscenza')
+  await primary.getByRole('link', { name: 'Altro', exact: true }).click()
+  await expect(page).toHaveURL(/\/altro(?:\?|$)/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Strumenti professionali' })).toBeVisible()
+
+  const groups = await page.locator('.moreGroup > h2').allTextContents()
+  expect(groups).toEqual(ALTRO_GROUPS)
+  const tools = await page.locator('.moreLinks strong').allTextContents()
+  expect(tools).toEqual(ALTRO_TOOLS)
+  expect(tools).not.toContain('Home')
 
   await page.screenshot({
-    path: await screenshotPath(testInfo.project.name, 'ux0e-contextual-capabilities-navigation'),
+    path: await screenshotPath(testInfo.project.name, 'dos-ia-reset-primary-navigation'),
     fullPage: true,
   })
 })
