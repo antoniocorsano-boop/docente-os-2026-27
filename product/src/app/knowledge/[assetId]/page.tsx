@@ -103,6 +103,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
         workspaceName={context.workspace.name}
         role={context.role}
         contentClassName="knowledgeSurface"
+        focusMode
       >
         <LessonShell
           sectionId={focusedLesson.sectionId}
@@ -126,13 +127,12 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
             <div className="focusedKnowledgeMeta">
               <span>{category}</span>
               <SourceProvenance provider={asset.sourceProvider} />
-              <span>{processing.label}</span>
             </div>
           </section>
 
-          <section className="focusedKnowledgeUse" aria-labelledby="focused-use-title">
+          <section className="focusedKnowledgeUse" data-material-preview-canvas aria-labelledby="focused-use-title">
             <header><span>ANTEPRIMA</span><h2 id="focused-use-title">{asset.contentCategory === 'UDA' ? 'Percorso operativo' : 'Contenuto della risorsa'}</h2></header>
-            {readableText ? <pre className="focusedKnowledgeText">{readableText}</pre> : <p className="focusedKnowledgeEmpty">Il contenuto leggibile non è ancora disponibile. La risorsa resta nel contesto della lezione e puoi tornare ai materiali senza perdere il punto di lavoro.</p>}
+            {readableText ? <div className="focusedKnowledgeText">{readableText}</div> : <p className="focusedKnowledgeEmpty">Il contenuto leggibile non è ancora disponibile. La risorsa resta nel contesto della lezione e puoi tornare ai materiali senza perdere il punto di lavoro.</p>}
           </section>
 
           <nav className="focusedKnowledgeActions" aria-label="Usa il materiale nella lezione">
@@ -151,6 +151,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
             <summary>Approfondisci la risorsa</summary>
             <div className="humanTaskSecondaryBody">
               <p>La provenienza resta visibile; strumenti di elaborazione, versioni e gestione tecnica restano fuori dal compito corrente.</p>
+              <p>Stato elaborazione: {processing.label}.</p>
               <Link href={`/knowledge/${encodeURIComponent(asset.id)}`}>Apri la scheda completa di Conoscenza →</Link>
             </div>
           </details>
