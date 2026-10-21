@@ -7,12 +7,8 @@ import {
   composeLessonSequence,
   type LessonDesignExtension,
 } from '@/core/domain/lesson-design-extension'
-import {
-  buildLessonWorkspaceHref,
-  resolveHumanTaskStepResources,
-  type HumanTaskLessonProjection,
-  type HumanTaskResource,
-} from '@/core/presentation/human-task-content'
+import { resolveHumanTaskStepResources, type HumanTaskLessonProjection, type HumanTaskResource } from '@/core/presentation/human-task-content'
+import { buildCanonicalLessonWorkspaceHref } from '@/core/presentation/lesson-workspace-route'
 import { resolveLiveMaterialLink } from './lesson-live-material-link'
 import { LessonShell } from './lesson-shell'
 import styles from './lesson-live.module.css'
@@ -40,6 +36,9 @@ export default function LessonLiveClient({
   extensions,
   progress,
   udaProgress,
+  localDate,
+  occurrenceLogicalId,
+  statusLabel,
 }: {
   sectionId: string
   sectionLabel: string
@@ -48,6 +47,9 @@ export default function LessonLiveClient({
   extensions: LessonDesignExtension[]
   progress: Progress
   udaProgress: { completed: number; total: number }
+  localDate: string | null
+  occurrenceLogicalId: string | null
+  statusLabel: string
 }) {
   const composed = useMemo(() => composeLessonSequence(projection.steps, extensions), [projection.steps, extensions])
   const steps = composed.steps
@@ -61,19 +63,17 @@ export default function LessonLiveClient({
   const isLast = activeStep >= steps.length - 1
   const progressPercent = steps.length ? Math.round(((activeStep + 1) / steps.length) * 100) : 0
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
-  const prepareHref = buildLessonWorkspaceHref(sectionId, block.id, 'prepare')
-  const observeHref = buildLessonWorkspaceHref(sectionId, block.id, 'observe')
-  const recordHref = buildLessonWorkspaceHref(sectionId, block.id, 'record')
+  const observeHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, subtask: 'observe' })
+  const materialsHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, subtask: 'materials' })
+  const recordHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, intent: 'close' })
   const recorded = progress.status === 'SVOLTO' || progress.status === 'RECUPERATO' || progress.status === 'RIMODULATO'
 
   const lessonShell = (
     <LessonShell
-      sectionId={sectionId}
-      blockId={block.id}
       sectionLabel={sectionLabel}
       disciplineLabel="Tecnologia"
       lessonTitle={projection.title}
-      phase="teach"
+      statusLabel={statusLabel}
     />
   )
 
@@ -94,7 +94,7 @@ export default function LessonLiveClient({
     <main className={styles.surface}>
       {lessonShell}
       <header className={styles.header}>
-        <p className={styles.eyebrow}>{recorded ? 'LEZIONE REGISTRATA · MODALITÀ GUIDA' : 'IN CLASSE · MODALITÀ LEZIONE'}</p>
+        <p className={styles.eyebrow}>{recorded ? 'LEZIONE REGISTRATA · GUIDA' : 'LEZIONE IN CORSO'}</p>
         <div className={styles.meta}>
           <span>{formatDuration(projection.durationMinutes)}</span>
           <span>{projection.udaTitle}</span>
@@ -156,17 +156,19 @@ export default function LessonLiveClient({
         </div>
       </details>
 
-      <div className={styles.footer} aria-label="Controlli modalità lezione">
+      <div className={styles.footer} aria-label="Controlli lezione">
         <button type="button" onClick={() => setActiveStep((value) => Math.max(0, value - 1))} disabled={activeStep === 0}>Indietro</button>
         {isLast
-          ? <Link className={styles.primary} href={recordHref}>Chiudi la lezione</Link>
+          ? recorded
+            ? <Link className={styles.primary} href={classHref}>Torna alla classe</Link>
+            : <Link className={styles.primary} href={recordHref}>Chiudi la lezione</Link>
           : <button className={styles.primary} type="button" onClick={() => setActiveStep((value) => Math.min(steps.length - 1, value + 1))}>Avanti</button>}
       </div>
 
       <div className={styles.exitRow}>
-        <Link href={observeHref}>Vedi le evidenze</Link>
-        <Link href={prepareHref}>Preparazione</Link>
-        <Link href={classHref}>Esci dalla modalità lezione</Link>
+        <Link href={observeHref}>Osserva</Link>
+        <Link href={materialsHref}>Materiali</Link>
+        <Link href={classHref}>Torna alla classe</Link>
       </div>
     </main>
   )

@@ -2,10 +2,8 @@
 
 import Link from 'next/link'
 import { useEffect, useState, type MouseEvent } from 'react'
-import {
-  buildLessonWorkspaceHref,
-  type HumanTaskLessonProjection,
-} from '@/core/presentation/human-task-content'
+import type { HumanTaskLessonProjection } from '@/core/presentation/human-task-content'
+import { buildCanonicalLessonWorkspaceHref } from '@/core/presentation/lesson-workspace-route'
 import {
   LESSON_OBSERVATION_DIMENSION_OPTIONS,
   LESSON_OBSERVATION_STATE_OPTIONS,
@@ -32,11 +30,17 @@ export default function LessonObserveClient({
   sectionLabel,
   block,
   projection,
+  localDate,
+  occurrenceLogicalId,
+  statusLabel,
 }: {
   sectionId: string
   sectionLabel: string
   block: Block
   projection: HumanTaskLessonProjection
+  localDate: string | null
+  occurrenceLogicalId: string | null
+  statusLabel: string
 }) {
   const [observed, setObserved] = useState<Record<number, boolean>>({})
   const [dimensionKey, setDimensionKey] = useState<'' | TeachingEvidenceDimensionKey>('')
@@ -46,8 +50,8 @@ export default function LessonObserveClient({
   const [draftError, setDraftError] = useState<string | null>(null)
   const observedCount = Object.values(observed).filter(Boolean).length
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
-  const teachHref = buildLessonWorkspaceHref(sectionId, block.id, 'teach')
-  const recordHref = buildLessonWorkspaceHref(sectionId, block.id, 'record')
+  const lessonHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId })
+  const recordHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, intent: 'close' })
   const storageKey = lessonObservationStorageKey(sectionId, block.id)
 
   useEffect(() => {
@@ -130,12 +134,10 @@ export default function LessonObserveClient({
   return (
     <main className={styles.closeSurface}>
       <LessonShell
-        sectionId={sectionId}
-        blockId={block.id}
         sectionLabel={sectionLabel}
         disciplineLabel="Tecnologia"
         lessonTitle={projection.title}
-        phase="observe"
+        statusLabel={statusLabel}
       />
       <section className={styles.closeCard}>
         <div>
@@ -213,7 +215,7 @@ export default function LessonObserveClient({
 
         <div className={styles.closeActions}>
           <Link className={styles.primary} href={recordHref} onClick={persistBeforeNavigation}>Chiudi la lezione</Link>
-          <Link href={teachHref} onClick={persistBeforeNavigation}>Torna alla lezione</Link>
+          <Link href={lessonHref} onClick={persistBeforeNavigation}>Torna alla lezione</Link>
           <Link href={classHref} onClick={persistBeforeNavigation}>Esci senza registrare</Link>
         </div>
       </section>

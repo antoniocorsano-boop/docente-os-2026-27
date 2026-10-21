@@ -9,6 +9,7 @@ import {
   CONTEXTUAL_CAPTURE_MAX_TEXT_LENGTH,
 } from '@/core/presentation/contextual-capture-frontdoor'
 import type { HumanTaskLessonProjection } from '@/core/presentation/human-task-content'
+import { buildCanonicalLessonWorkspaceHref } from '@/core/presentation/lesson-workspace-route'
 import {
   LESSON_OBSERVATION_DIMENSION_OPTIONS,
   LESSON_OBSERVATION_STATE_OPTIONS,
@@ -61,6 +62,9 @@ export default function LessonCloseClient({
   registrationKey,
   voiceCaptureEnabled,
   nextBlockId,
+  localDate,
+  occurrenceLogicalId,
+  statusLabel,
 }: {
   sectionId: string
   sectionLabel: string
@@ -70,6 +74,9 @@ export default function LessonCloseClient({
   registrationKey: string
   voiceCaptureEnabled: boolean
   nextBlockId: string | null
+  localDate: string | null
+  occurrenceLogicalId: string | null
+  statusLabel: string
 }) {
   const [observationDraft, setObservationDraft] = useState<LessonObservationDraftTransport | null>(null)
   const [draftLoaded, setDraftLoaded] = useState(false)
@@ -87,8 +94,8 @@ export default function LessonCloseClient({
   const [organizing, setOrganizing] = useState(false)
   const [voiceBusy, setVoiceBusy] = useState(false)
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
-  const teachHref = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(block.id)}?mode=teach`
-  const observeHref = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(block.id)}?mode=observe`
+  const lessonHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId })
+  const observeHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, subtask: 'observe' })
   const observationStorageKey = lessonObservationStorageKey(sectionId, block.id)
   const liveStorageKey = `docente-os:lesson-live:${sectionId}:${block.id}`
   const suggestedNextActivity = capturePreview?.nextActivity ?? null
@@ -206,12 +213,10 @@ export default function LessonCloseClient({
 
   const lessonShell = (
     <LessonShell
-      sectionId={sectionId}
-      blockId={block.id}
       sectionLabel={sectionLabel}
       disciplineLabel="Tecnologia"
       lessonTitle={projection.title}
-      phase="record"
+      statusLabel={continuation ? 'Registrata' : statusLabel}
     />
   )
 
@@ -376,7 +381,7 @@ export default function LessonCloseClient({
             <div className={styles.detailStack}>
               <p className={styles.privacyNote}>Salvi la TeachingSession e le eventuali note confermate. L’esito guida CONTINUA, ma non aggiorna automaticamente il Piano annuale.</p>
               <Link href={observeHref}>Rivedi le osservazioni</Link>
-              <Link href={teachHref}>Torna alla guida della lezione</Link>
+              <Link href={lessonHref}>Torna alla Lezione</Link>
             </div>
           </details>
 

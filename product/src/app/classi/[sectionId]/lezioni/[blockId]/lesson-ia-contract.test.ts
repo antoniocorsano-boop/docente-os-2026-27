@@ -4,6 +4,7 @@ import test from 'node:test'
 
 const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
 const shellSource = readFileSync(new URL('./lesson-shell.tsx', import.meta.url), 'utf8')
+const approvalActionSource = readFileSync(new URL('./preparation-approval-actions.ts', import.meta.url), 'utf8')
 const clientSources = [
   './lesson-prepare-client.tsx',
   './lesson-live-client.tsx',
@@ -40,4 +41,6 @@ test('new lesson UI emits canonical intent and subtask routes, never phase mode 
   assert.match(clientSources, /intent:\s*'start'/)
   assert.match(clientSources, /intent:\s*'close'/)
   assert.match(clientSources, /subtask:\s*'observe'/)
+  assert.doesNotMatch(approvalActionSource, /\?mode=/)
+  assert.match(approvalActionSource, /buildCanonicalLessonWorkspaceHref/)
 })

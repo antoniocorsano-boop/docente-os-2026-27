@@ -5,11 +5,8 @@ import { useMemo, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
 import type { LessonPreparationApprovalStatus } from '@/core/application/lesson-preparation-approval'
-import {
-  buildLessonWorkspaceHref,
-  resolveHumanTaskResourcesForSurface,
-  type HumanTaskLessonProjection,
-} from '@/core/presentation/human-task-content'
+import { resolveHumanTaskResourcesForSurface, type HumanTaskLessonProjection } from '@/core/presentation/human-task-content'
+import { buildCanonicalLessonWorkspaceHref } from '@/core/presentation/lesson-workspace-route'
 import { buildLessonBrief } from '@/core/presentation/lesson-brief'
 import { LessonDesignTools } from './lesson-design-tools'
 import { LessonMaterials } from './lesson-materials'
@@ -46,6 +43,9 @@ export default function LessonPrepareClient({
   udaProgress,
   approval,
   initialSubtask,
+  localDate,
+  occurrenceLogicalId,
+  statusLabel,
 }: {
   sectionId: string
   sectionLabel: string
@@ -64,25 +64,27 @@ export default function LessonPrepareClient({
     requiresRevalidationOnApproval: boolean | null
   }
   initialSubtask?: 'materials' | null
+  localDate: string | null
+  occurrenceLogicalId: string | null
+  statusLabel: string
 }) {
   const [prepared, setPrepared] = useState<Record<number, boolean>>({})
-  const [activeSubtask, setActiveSubtask] = useState<'materials' | null>(initialSubtask ?? null)
+  const activeSubtask = initialSubtask ?? null
   const preparationResources = useMemo(() => resolveHumanTaskResourcesForSurface(projection, 'PREPARE'), [projection])
   const brief = useMemo(() => buildLessonBrief({ projection, extensions }), [projection, extensions])
   const preparedCount = Object.values(prepared).filter(Boolean).length
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
-  const teachHref = buildLessonWorkspaceHref(sectionId, block.id, 'teach')
+  const teachHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, intent: 'start' })
+  const materialsHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, subtask: 'materials' })
   const recorded = progress.status === 'SVOLTO' || progress.status === 'RECUPERATO' || progress.status === 'RIMODULATO'
 
   return (
     <main className={styles.closeSurface}>
       <LessonShell
-        sectionId={sectionId}
-        blockId={block.id}
         sectionLabel={sectionLabel}
         disciplineLabel="Tecnologia"
         lessonTitle={brief.title}
-        phase="prepare"
+        statusLabel={statusLabel}
       />
       <section className={`${styles.closeCard} ${styles.lessonBriefCard}`}>
         <header className={styles.lessonBriefHeader}>
@@ -130,14 +132,13 @@ export default function LessonPrepareClient({
         </div>
 
         <div className={styles.closeActions}>
-          <button
-            type="button"
+          <Link
+            href={materialsHref}
             aria-expanded={activeSubtask === 'materials'}
             aria-controls="lesson-materials-subtask"
-            onClick={() => setActiveSubtask('materials')}
           >
             Materiali
-          </button>
+          </Link>
         </div>
 
         {activeSubtask === 'materials' ? (
@@ -190,6 +191,8 @@ export default function LessonPrepareClient({
               <input type="hidden" name="sectionId" value={sectionId} />
               <input type="hidden" name="blockId" value={block.id} />
               <input type="hidden" name="projectionId" value={projection.projectionId} />
+              <input type="hidden" name="localDate" value={localDate ?? ''} />
+              <input type="hidden" name="occurrenceLogicalId" value={occurrenceLogicalId ?? ''} />
               <LessonApprovalSubmit />
             </form>
           )}
