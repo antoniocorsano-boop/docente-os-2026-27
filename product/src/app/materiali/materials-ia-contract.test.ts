@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
 
-const navigationSource = readFileSync(new URL('../../../components/app-shell/navigation.ts', import.meta.url), 'utf8')
+const navigationSource = readFileSync(new URL('../../components/app-shell/navigation.ts', import.meta.url), 'utf8')
 const knowledgeSource = readFileSync(new URL('../knowledge/page.tsx', import.meta.url), 'utf8')
 const timetableSource = readFileSync(new URL('../orario/TimetableExperience.tsx', import.meta.url), 'utf8')
 const todaySource = readFileSync(new URL('../planner/page.tsx', import.meta.url), 'utf8')
