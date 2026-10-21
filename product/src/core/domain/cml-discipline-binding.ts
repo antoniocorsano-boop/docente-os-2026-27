@@ -138,6 +138,10 @@ function arenaRecord(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`${label} rejected: expected object`)
   }
+  const prototype = Object.getPrototypeOf(value)
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new Error(`${label} rejected: Arena release material must be a plain JSON object with no custom prototype`)
+  }
   return value as Record<string, unknown>
 }
 
