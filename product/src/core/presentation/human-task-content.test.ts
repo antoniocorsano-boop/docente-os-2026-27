@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { buildBlocks } from '@/app/piano-annuale/model'
+import { buildCanonicalLessonWorkspaceHref } from './lesson-workspace-route'
 import {
-  buildCanonicalLessonWorkspaceHref,
   buildLessonWorkspaceHref,
   hasHumanTaskLessonProjection,
   resolveHumanTaskLessonProjection,
