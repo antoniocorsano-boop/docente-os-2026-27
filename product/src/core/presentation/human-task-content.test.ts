@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { buildBlocks } from '@/app/piano-annuale/model'
 import {
+  buildCanonicalLessonWorkspaceHref,
   buildLessonWorkspaceHref,
   hasHumanTaskLessonProjection,
   resolveHumanTaskLessonProjection,
@@ -140,9 +141,28 @@ test('exposes modeled Prima lessons through B06 and no farther', () => {
   assert.equal(hasHumanTaskLessonProjection('Seconda', 'B01'), false)
 })
 
-test('builds a section-safe internal lesson route', () => {
+test('builds a section-safe legacy internal lesson route', () => {
   assert.equal(
     buildLessonWorkspaceHref('section id', 'B01', 'teach'),
     '/classi/section%20id/lezioni/B01?mode=teach',
+  )
+})
+
+test('builds a phase-free canonical lesson route', () => {
+  assert.equal(
+    buildCanonicalLessonWorkspaceHref('section id', 'B01'),
+    '/classi/section%20id/lezioni/B01',
+  )
+})
+
+test('canonical lesson route orders and encodes context deterministically', () => {
+  assert.equal(
+    buildCanonicalLessonWorkspaceHref('section id', 'B01', {
+      localDate: '2026-10-21',
+      occurrenceLogicalId: 'slot:2C/11:00',
+      intent: 'start',
+      subtask: 'materials',
+    }),
+    '/classi/section%20id/lezioni/B01?date=2026-10-21&occurrence=slot%3A2C%2F11%3A00&intent=start&subtask=materials',
   )
 })
