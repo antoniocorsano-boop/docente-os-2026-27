@@ -9,8 +9,7 @@ const clientSources = [
   './lesson-live-client.tsx',
   './lesson-observe-client.tsx',
   './lesson-close-client.tsx',
-].map((path) => readFileSync(new URL(path, import.meta.url), 'utf8')).join('
-')
+].map((path) => readFileSync(new URL(path, import.meta.url), 'utf8')).join(String.fromCharCode(10))
 
 test('Lezione resolves visible state server-side from canonical context', () => {
   assert.match(pageSource, /resolveLessonWorkspaceState/)
