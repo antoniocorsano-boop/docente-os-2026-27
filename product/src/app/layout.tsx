@@ -4,6 +4,7 @@ import { PwaServiceWorkerRegistration } from '@/components/pwa/PwaServiceWorkerR
 import './tailwind.css'
 import './globals.css'
 import './app-shell.css'
+import './app-shell-focused.css'
 import './accessibility.css'
 import './assistant.css'
 import './assistant-safe-area.css'
