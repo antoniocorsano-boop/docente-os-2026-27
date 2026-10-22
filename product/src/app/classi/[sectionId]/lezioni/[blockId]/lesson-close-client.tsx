@@ -388,7 +388,7 @@ export default function LessonCloseClient({
           {saveError ? <p className={styles.privacyNote} role="alert">{saveError}</p> : null}
 
           <div className={styles.closeActions}>
-            <button className={styles.primary} type="submit" disabled={saving || !draftLoaded || voiceBusy || !localDate || !actualMinutes}>
+            <button className={styles.primary} type="submit" disabled={saving || !draftLoaded || voiceBusy || !registrationLocalDate || !actualMinutes}>
               {saving ? 'Registrazione…' : 'Registra lezione'}
             </button>
           </div>
