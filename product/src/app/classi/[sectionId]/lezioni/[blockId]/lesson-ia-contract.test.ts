@@ -8,8 +8,9 @@ const approvalActionSource = readFileSync(new URL('./preparation-approval-action
 const prepareClientSource = readFileSync(new URL('./lesson-prepare-client.tsx', import.meta.url), 'utf8')
 const liveClientSource = readFileSync(new URL('./lesson-live-client.tsx', import.meta.url), 'utf8')
 const observeClientSource = readFileSync(new URL('./lesson-observe-client.tsx', import.meta.url), 'utf8')
+const materialsWorkspaceSource = readFileSync(new URL('./lesson-materials-workspace.tsx', import.meta.url), 'utf8')
 const closeClientSource = readFileSync(new URL('./lesson-close-client.tsx', import.meta.url), 'utf8')
-const clientSources = [prepareClientSource, liveClientSource, observeClientSource, closeClientSource].join(String.fromCharCode(10))
+const clientSources = [prepareClientSource, liveClientSource, observeClientSource, materialsWorkspaceSource, closeClientSource].join(String.fromCharCode(10))
 
 test('Lezione resolves visible state server-side from canonical context', () => {
   assert.match(pageSource, /resolveLessonWorkspaceState/)
@@ -46,9 +47,10 @@ test('new lesson UI emits canonical intent and subtask routes, never phase mode 
 
 test('explicit start intent survives contextual observation and materials navigation', () => {
   const serverPropPasses = pageSource.match(/explicitStartIntent=\{requestedIntent === 'start'\}/g) ?? []
-  assert.equal(serverPropPasses.length, 2)
+  assert.equal(serverPropPasses.length, 3)
   assert.match(liveClientSource, /intent:\s*explicitStartIntent\s*\?\s*'start'\s*:\s*null/)
   assert.match(observeClientSource, /intent:\s*explicitStartIntent\s*\?\s*'start'\s*:\s*null/)
+  assert.match(materialsWorkspaceSource, /intent:\s*explicitStartIntent\s*\?\s*'start'\s*:\s*null/)
 })
 
 test('materials subtask renders before teaching and registration state branches', () => {
