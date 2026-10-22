@@ -23,7 +23,7 @@ test('Journey: Oggi → lezione immediata quando il contesto è risolto', async 
     await screenshot(page, testInfo, 'today-teacher-first-no-lesson')
     await recordJourney(testInfo.project.name, {
       status: 'NOT_APPLICABLE',
-      note: 'Il giorno HVA corrente non espone una lezione deterministica; il contratto pending/upcoming resta coperto dal pure-model test di Oggi.',
+      note: 'Il giorno HVA corrente non espone una lezione deterministica; il requisito browser pending + upcoming + Calendar resta UNVERIFIED e non è sostituito dal pure-model test.',
     })
     return
   }
