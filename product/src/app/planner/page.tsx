@@ -48,6 +48,10 @@ export default async function PlannerPage() {
     day: 'numeric',
     month: 'long',
   }).format(new Date(`${operational.localDate}T12:00:00Z`))
+  const isLegitimatelyEmpty = !projection.fallback
+    && !projection.pendingLesson
+    && !projection.nextLesson
+    && projection.calendarCommitments.length === 0
 
   return (
     <AppShell
@@ -97,6 +101,19 @@ export default async function PlannerPage() {
           ) : null}
         </>
       )}
+
+      {isLegitimatelyEmpty ? (
+        <section className="todayEmptyState" aria-labelledby="today-empty-title">
+          <div className="todayFallback">
+            <p className="todayCardEyebrow">NESSUNA ATTIVITÀ IMMEDIATA</p>
+            <h2 id="today-empty-title">Nessuna lezione o impegno da mostrare adesso</h2>
+            <p>Puoi controllare l’orario per vedere la prossima lezione.</p>
+            <Link className="todayPrimaryAction" href="/orario">
+              Apri l’orario <ArrowUpRight size={17} aria-hidden />
+            </Link>
+          </div>
+        </section>
+      ) : null}
 
       {projection.calendarCommitments.length ? (
         <section className="todayCalendarCommitments" aria-labelledby="today-calendar-title">
