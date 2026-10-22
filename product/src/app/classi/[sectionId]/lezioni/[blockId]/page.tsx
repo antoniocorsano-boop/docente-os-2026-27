@@ -189,13 +189,7 @@ export default async function LessonWorkspacePage({
     requestedOccurrenceLogicalId: query.occurrence,
     clock,
   })
-  const registeredByProgress = Boolean(
-    progress
-      && COMPLETE_STATUSES.has(progress.status)
-      && occurrenceContext.occurrence
-      && progress.executedOn === occurrenceContext.occurrence.localDate,
-  )
-  const registeredByOccurrence = registeredByProgress || !occurrenceContext.occurrence
+  const registered = !occurrenceContext.occurrence
     ? false
     : await occurrenceHasBlockRegistration({
         workspaceId: context.workspace.id,
@@ -204,7 +198,6 @@ export default async function LessonWorkspacePage({
         blockId: block.id,
         occurrenceLogicalId: occurrenceContext.occurrence.logicalId,
       })
-  const registered = registeredByProgress || registeredByOccurrence
   const automaticState = resolveLessonWorkspaceState({
     localDate: clock.localDate,
     minuteOfDay: clock.minuteOfDay,
