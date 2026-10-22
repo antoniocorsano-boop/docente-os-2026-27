@@ -17,7 +17,7 @@ export function resolveTimetableLessonEntrypoint(input: {
   if (input.ambiguous) return { kind: 'AMBIGUOUS' }
   if (!input.sectionId) return null
 
-  if (!input.blockId) {
+  if (!input.blockId || !input.localDate || !input.occurrenceLogicalId) {
     return {
       kind: 'CLASS',
       href: `/classi/${encodeURIComponent(input.sectionId)}`,
