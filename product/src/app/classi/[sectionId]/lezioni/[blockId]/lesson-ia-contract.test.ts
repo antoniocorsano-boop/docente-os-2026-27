@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+const actionSource = readFileSync(new URL('../actions.ts', import.meta.url), 'utf8')
 const shellSource = readFileSync(new URL('./lesson-shell.tsx', import.meta.url), 'utf8')
 const approvalActionSource = readFileSync(new URL('./preparation-approval-actions.ts', import.meta.url), 'utf8')
 const prepareClientSource = readFileSync(new URL('./lesson-prepare-client.tsx', import.meta.url), 'utf8')
@@ -71,6 +72,13 @@ test('occurrence registration is derived only from occurrence-bound TeachingSess
     pageSource,
     /const registered = !occurrenceContext\.occurrence\s*\?\s*false\s*:\s*await occurrenceHasBlockRegistration\(/,
   )
+})
+
+test('registration submit preserves the selected occurrence unless the teacher edits the date', () => {
+  assert.match(closeClientSource, /name="occurrenceLogicalId"/)
+  assert.match(closeClientSource, /registrationLocalDate === defaultLocalDate\s*\?\s*occurrenceLogicalId \?\? ''\s*:\s*''/)
+  assert.match(actionSource, /const occurrenceLogicalId = optionalText\(formData\.get\('occurrenceLogicalId'\)\)/)
+  assert.match(actionSource, /selectLessonOccurrenceByLogicalId\(/)
 })
 
 test('registration submit follows the editable registration date', () => {
