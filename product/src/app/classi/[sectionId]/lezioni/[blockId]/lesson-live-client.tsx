@@ -38,6 +38,7 @@ export default function LessonLiveClient({
   udaProgress,
   localDate,
   occurrenceLogicalId,
+  explicitStartIntent,
   statusLabel,
 }: {
   sectionId: string
@@ -49,6 +50,7 @@ export default function LessonLiveClient({
   udaProgress: { completed: number; total: number }
   localDate: string | null
   occurrenceLogicalId: string | null
+  explicitStartIntent: boolean
   statusLabel: string
 }) {
   const composed = useMemo(() => composeLessonSequence(projection.steps, extensions), [projection.steps, extensions])
@@ -63,8 +65,8 @@ export default function LessonLiveClient({
   const isLast = activeStep >= steps.length - 1
   const progressPercent = steps.length ? Math.round(((activeStep + 1) / steps.length) * 100) : 0
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
-  const observeHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, subtask: 'observe' })
-  const materialsHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, subtask: 'materials' })
+  const observeHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, intent: explicitStartIntent ? 'start' : null, subtask: 'observe' })
+  const materialsHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, intent: explicitStartIntent ? 'start' : null, subtask: 'materials' })
   const recordHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, intent: 'close' })
   const recorded = progress.status === 'SVOLTO' || progress.status === 'RECUPERATO' || progress.status === 'RIMODULATO'
 

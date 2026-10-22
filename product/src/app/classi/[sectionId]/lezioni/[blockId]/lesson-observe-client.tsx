@@ -32,6 +32,7 @@ export default function LessonObserveClient({
   projection,
   localDate,
   occurrenceLogicalId,
+  explicitStartIntent,
   statusLabel,
 }: {
   sectionId: string
@@ -40,6 +41,7 @@ export default function LessonObserveClient({
   projection: HumanTaskLessonProjection
   localDate: string | null
   occurrenceLogicalId: string | null
+  explicitStartIntent: boolean
   statusLabel: string
 }) {
   const [observed, setObserved] = useState<Record<number, boolean>>({})
@@ -50,7 +52,7 @@ export default function LessonObserveClient({
   const [draftError, setDraftError] = useState<string | null>(null)
   const observedCount = Object.values(observed).filter(Boolean).length
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
-  const lessonHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId })
+  const lessonHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, intent: explicitStartIntent ? 'start' : null })
   const recordHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, intent: 'close' })
   const storageKey = lessonObservationStorageKey(sectionId, block.id)
 

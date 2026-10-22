@@ -283,6 +283,7 @@ export default async function LessonWorkspacePage({
           sectionLabel={sectionLabel}
           block={block}
           projection={projection}
+          explicitStartIntent={requestedIntent === 'start'}
           {...commonWorkspaceProps}
         />
       ) : visibleState === 'TEACHING' || visibleState === 'CONTINUITY' ? (
@@ -294,6 +295,7 @@ export default async function LessonWorkspacePage({
           extensions={extensions}
           progress={progressView}
           udaProgress={udaProgressView}
+          explicitStartIntent={requestedIntent === 'start'}
           {...commonWorkspaceProps}
         />
       ) : visibleState === 'REGISTRATION' ? (
