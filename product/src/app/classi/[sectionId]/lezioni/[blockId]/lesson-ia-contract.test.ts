@@ -65,14 +65,11 @@ test('materials subtask renders before teaching and registration state branches'
   assert.match(pageSource.slice(materialsBranch, teachingBranch), /LessonMaterialsWorkspace/)
 })
 
-test('completed block progress registers only the matching selected occurrence date', () => {
+test('occurrence registration is derived only from occurrence-bound TeachingSession evidence', () => {
+  assert.doesNotMatch(pageSource, /registeredByProgress/)
   assert.match(
     pageSource,
-    /const registeredByProgress = Boolean\([\s\S]*progress\.executedOn === occurrenceContext\.occurrence\.localDate[\s\S]*\)/,
-  )
-  assert.doesNotMatch(
-    pageSource,
-    /const registeredByProgress = Boolean\(progress && COMPLETE_STATUSES\.has\(progress\.status\)\)/,
+    /const registered = !occurrenceContext\.occurrence\s*\?\s*false\s*:\s*await occurrenceHasBlockRegistration\(/,
   )
 })
 
