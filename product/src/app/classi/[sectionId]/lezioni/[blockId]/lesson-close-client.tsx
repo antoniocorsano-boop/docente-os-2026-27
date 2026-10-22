@@ -250,6 +250,7 @@ export default function LessonCloseClient({
         <input type="hidden" name="blockId" value={block.id} />
         <input type="hidden" name="registrationKey" value={registrationKey} />
         <input type="hidden" name="localDate" value={registrationLocalDate} />
+        <input type="hidden" name="occurrenceLogicalId" value={registrationLocalDate === defaultLocalDate ? occurrenceLogicalId ?? '' : ''} />
         <input type="hidden" name="actualMinutes" value={actualMinutes} />
         <input type="hidden" name="observationDimension" value={observationDraft?.dimensionKey ?? ''} />
         <input type="hidden" name="observationState" value={observationDraft?.state ?? ''} />
