@@ -29,6 +29,7 @@ import LessonPrepareClient from './lesson-prepare-client'
 import LessonLiveClient from './lesson-live-client'
 import LessonObserveClient from './lesson-observe-client'
 import LessonCloseClient from './lesson-close-client'
+import { LessonMaterialsWorkspace } from './lesson-materials-workspace'
 import { buildLessonMaterialSuggestions } from './lesson-material-suggestions'
 import { activeAtlasMaterialIds, buildAtlasLessonSuggestions } from './atlas-material-suggestions'
 import { OpenDesignReview } from './open-design-review'
@@ -277,6 +278,18 @@ export default async function LessonWorkspacePage({
             </div>
           </section>
         </main>
+      ) : activeSubtask === 'materials' ? (
+        <LessonMaterialsWorkspace
+          sectionId={section.id}
+          sectionLabel={sectionLabel}
+          blockId={block.id}
+          projection={projection}
+          extensions={extensions}
+          knowledgeSuggestions={knowledgeSuggestions}
+          atlasSuggestions={atlasSuggestions}
+          explicitStartIntent={requestedIntent === 'start'}
+          {...commonWorkspaceProps}
+        />
       ) : activeSubtask === 'observe' ? (
         <LessonObserveClient
           sectionId={section.id}
