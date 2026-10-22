@@ -10,6 +10,8 @@ const prepareClientSource = readFileSync(new URL('./lesson-prepare-client.tsx', 
 const liveClientSource = readFileSync(new URL('./lesson-live-client.tsx', import.meta.url), 'utf8')
 const observeClientSource = readFileSync(new URL('./lesson-observe-client.tsx', import.meta.url), 'utf8')
 const materialsWorkspaceSource = readFileSync(new URL('./lesson-materials-workspace.tsx', import.meta.url), 'utf8')
+const materialsSource = readFileSync(new URL('./lesson-materials.tsx', import.meta.url), 'utf8')
+const knowledgePageSource = readFileSync(new URL('../../../../knowledge/[assetId]/page.tsx', import.meta.url), 'utf8')
 const closeClientSource = readFileSync(new URL('./lesson-close-client.tsx', import.meta.url), 'utf8')
 const clientSources = [prepareClientSource, liveClientSource, observeClientSource, materialsWorkspaceSource, closeClientSource].join(String.fromCharCode(10))
 
@@ -84,4 +86,18 @@ test('registration submit preserves the selected occurrence unless the teacher e
 test('registration submit follows the editable registration date', () => {
   assert.match(closeClientSource, /disabled=\{saving \|\| !draftLoaded \|\| voiceBusy \|\| !registrationLocalDate \|\| !actualMinutes\}/)
   assert.doesNotMatch(closeClientSource, /disabled=\{saving \|\| !draftLoaded \|\| voiceBusy \|\| !localDate \|\| !actualMinutes\}/)
+})
+
+test('Knowledge material round-trip preserves exact lesson occurrence and explicit start intent', () => {
+  assert.match(materialsWorkspaceSource, /const materialsReturnTo = buildCanonicalLessonWorkspaceHref/)
+  assert.match(materialsWorkspaceSource, /subtask:\s*'materials'/)
+  assert.match(materialsWorkspaceSource, /localDate/)
+  assert.match(materialsWorkspaceSource, /occurrenceLogicalId/)
+  assert.match(materialsWorkspaceSource, /intent:\s*explicitStartIntent\s*\?\s*'start'\s*:\s*null/)
+  assert.match(materialsWorkspaceSource, /returnTo=\{materialsReturnTo\}/)
+  assert.match(materialsSource, /returnTo:\s*string/)
+  assert.match(materialsSource, /buildFocusedKnowledgeHref\(item\.assetId,\s*sectionId,\s*blockId,\s*returnTo\)/)
+  assert.match(materialsSource, /buildKnowledgeCaptureHref\(sectionId,\s*blockId,\s*returnTo\)/)
+  assert.doesNotMatch(materialsSource, /\?mode=prepare&subtask=materials/)
+  assert.match(knowledgePageSource, /const materialsReturnTo = sanitizeInternalReturnTo\(query\.returnTo,/)
 })
