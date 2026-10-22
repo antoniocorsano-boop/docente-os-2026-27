@@ -11,7 +11,7 @@ const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 const BLOCK_ID = 'B01'
 const LESSON_TITLE = 'Energia: forme, trasformazioni e fabbisogni'
 
-test('Beta REWORK: 3ª E B01 preserves PREPARA → MATERIALI → VISUALIZZA', async ({ page }, testInfo) => {
+test('Beta REWORK: 3ª E B01 preserves Lezione → Materiali → Visualizza', async ({ page }, testInfo) => {
   await loginE2E(page)
   const sectionId = await currentThirdESectionId()
   let materialFixture = null
@@ -28,11 +28,12 @@ test('Beta REWORK: 3ª E B01 preserves PREPARA → MATERIALI → VISUALIZZA', as
     const shell = page.locator('[data-lesson-shell]')
     await expect(
       shell,
-      'La 3ª E/B01 deve aprire PREPARA task-centric invece del fallback Progetta.',
+      'La 3ª E/B01 deve aprire la Lezione contestuale invece del fallback Progetta.',
     ).toBeVisible()
     await expect(shell).toContainText('3ª E')
     await expect(shell).toContainText(LESSON_TITLE)
-    await expect(page.locator('[data-lesson-phase="prepare"]')).toHaveAttribute('aria-current', 'step')
+    await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
+    await expect(page.locator('a[href*="mode="]')).toHaveCount(0)
 
     const main = page.locator('#dos-main-content')
     await expect(
@@ -44,7 +45,7 @@ test('Beta REWORK: 3ª E B01 preserves PREPARA → MATERIALI → VISUALIZZA', as
     await expect(backToClass).toBeVisible()
     await expect(
       backToClass,
-      'Torna alla classe non deve essere la CTA primaria dominante di PREPARA.',
+      'Torna alla classe non deve essere la CTA primaria dominante della Lezione.',
     ).not.toHaveClass(/\bprimary\b/)
 
     const materials = page.getByRole('button', { name: 'Materiali', exact: true })
@@ -52,6 +53,8 @@ test('Beta REWORK: 3ª E B01 preserves PREPARA → MATERIALI → VISUALIZZA', as
     await expect(materials).toBeVisible()
     await expectTouchTarget(materials, 'Ingresso Materiali 3ª E')
     await materials.click()
+    await expect(page).toHaveURL(/subtask=materials/)
+    expect(page.url()).not.toMatch(/[?&]mode=/)
 
     const materialsTask = page.locator('[data-lesson-subtask="materials"]')
     await expect(materialsTask).toBeVisible()
@@ -67,11 +70,10 @@ test('Beta REWORK: 3ª E B01 preserves PREPARA → MATERIALI → VISUALIZZA', as
     const materialPreview = page.locator('[data-lesson-material-preview]')
     await expect(
       materialPreview,
-      'Aprire il materiale non deve tornare silenziosamente a PREPARA.',
+      'Aprire il materiale deve mantenere il contesto della Lezione.',
     ).toBeVisible()
     await expect(page.locator('[data-lesson-shell]')).toContainText('3ª E')
     await expect(page.locator('[data-lesson-shell]')).toContainText(LESSON_TITLE)
-    await expect(page).toHaveURL(/\/knowledge\/[^/?#]+\?[^#]*mode=prepare/)
     await expect(materialPreview.getByRole('button', { name: 'Usa nella lezione', exact: true })).toBeVisible()
 
     const backToMaterials = page.getByRole('link', { name: 'Torna ai materiali', exact: true })
@@ -83,7 +85,7 @@ test('Beta REWORK: 3ª E B01 preserves PREPARA → MATERIALI → VISUALIZZA', as
     if (testInfo.project.name.startsWith('mobile')) {
       for (const width of [390, 320]) {
         await page.setViewportSize({ width, height: 800 })
-        await expectNoHorizontalOverflow(page, `3ª E PREPARA → MATERIALI a ${width}px`)
+        await expectNoHorizontalOverflow(page, `3ª E Lezione → MATERIALI a ${width}px`)
       }
     }
   } finally {
