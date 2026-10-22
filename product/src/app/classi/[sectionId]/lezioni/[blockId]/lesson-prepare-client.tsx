@@ -150,6 +150,7 @@ export default function LessonPrepareClient({
               extensions={extensions}
               knowledgeSuggestions={knowledgeSuggestions}
               atlasSuggestions={atlasSuggestions}
+              returnTo={materialsHref}
             />
           </div>
         ) : null}
