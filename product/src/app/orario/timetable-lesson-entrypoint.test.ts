@@ -30,6 +30,20 @@ test('view mode falls back to the known class when the canonical block is unreso
   })
 })
 
+test('view mode falls back to the known class when no unique projected occurrence is available', () => {
+  assert.deepEqual(resolveTimetableLessonEntrypoint({
+    mode: 'view',
+    sectionId: '2C',
+    blockId: 'B01',
+    localDate: null,
+    occurrenceLogicalId: null,
+    ambiguous: false,
+  }), {
+    kind: 'CLASS',
+    href: '/classi/2C',
+  })
+})
+
 test('view mode fails closed when lesson context is ambiguous', () => {
   assert.deepEqual(resolveTimetableLessonEntrypoint({
     mode: 'view',
