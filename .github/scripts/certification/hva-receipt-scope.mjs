@@ -1,8 +1,9 @@
-const FULL_JOURNEY_IDS = ['class-next-task', 'uda-reading', 'knowledge-document', 'calendar-controls']
+const FULL_JOURNEY_IDS = ['class-next-task', 'uda-reading', 'knowledge-document', 'calendar-controls', 'today-teacher-first']
 
 const FOCUSED_JOURNEY_IDS_BY_SPEC = new Map([
   ['e2e/experience/contextual-capabilities.spec.mjs', ['ux0e-contextual-capabilities']],
-  ['e2e/experience/critical-journeys.spec.mjs', FULL_JOURNEY_IDS],
+  ['e2e/experience/critical-journeys.spec.mjs', FULL_JOURNEY_IDS.filter((id) => id !== 'today-teacher-first')],
+  ['e2e/experience/today-teacher-first.spec.mjs', ['today-teacher-first']],
 ])
 
 export function resolveHvaReceiptScope({
