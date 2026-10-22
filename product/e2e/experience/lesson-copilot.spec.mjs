@@ -7,7 +7,7 @@ requireE2ECredentials()
 
 const outputRoot = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience'
 
-test('V1-C1: accesso diretto a Teach → gate docente prima del copilota', async ({ page }, testInfo) => {
+test('V1-C1: legacy Teach → gate docente prima del copilota', async ({ page }, testInfo) => {
   await loginE2E(page)
   await page.goto('/classi')
 
@@ -25,15 +25,17 @@ test('V1-C1: accesso diretto a Teach → gate docente prima del copilota', async
   const lessonPath = lessonHref.split('?')[0]
   await page.goto(`${lessonPath}?mode=teach`)
 
-  await expect(page).toHaveURL(/mode=prepare&approval=required/)
+  await expect(page.locator('[data-lesson-shell]')).toBeVisible()
+  await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
   await expect(
     page.getByText(/Curricolo da rivalidare|Conferma del docente richiesta|La preparazione è cambiata/).first(),
-    'Teach deve restare dietro il confine di approvazione docente.',
+    'Il deep link legacy Teach deve restare dietro il confine di approvazione docente.',
   ).toBeVisible()
   await expect(
     page.getByRole('button', { name: /Chiedi a DOCENTE OS/i }),
     'Il copilota operativo della lezione non deve aprirsi prima dell’approvazione.',
   ).toHaveCount(0)
+  await expect(page.locator('a[href*="mode="]')).toHaveCount(0)
 
   const geometry = await page.evaluate(() => ({
     viewport: window.innerWidth,
@@ -44,7 +46,7 @@ test('V1-C1: accesso diretto a Teach → gate docente prima del copilota', async
   await screenshot(page, testInfo, 'lesson-teach-approval-gate')
   await recordJourney(testInfo.project.name, {
     status: 'PASS',
-    note: 'Teach e copilota restano inaccessibili finché la preparazione corrente non è stata esplicitamente approvata dal docente.',
+    note: 'Il deep link legacy Teach resta accettato in ingresso, ma la Lezione unificata mantiene copilota e conduzione dietro l’approvazione docente.',
   })
 })
 
@@ -60,7 +62,7 @@ async function recordJourney(project, result) {
   const payload = {
     schemaVersion: 1,
     id: 'lesson-teach-approval-gate',
-    label: 'Accesso diretto a Teach → gate docente prima del copilota',
+    label: 'Legacy Teach → gate docente prima del copilota',
     project,
     status: result.status,
     note: result.note,
