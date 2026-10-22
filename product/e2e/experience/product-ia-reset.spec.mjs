@@ -50,6 +50,7 @@ test('DOS-IA-RESET: Orario separa consultazione diretta della Lezione e modifica
 
   await page.goto('/orario/aggiorna?fase=modifica')
   await expect(page.getByRole('heading', { level: 1, name: 'Modifica orario' })).toBeVisible()
+  await ensureWeekViewWhenCurrentDayHasNoLessons(page)
   const editableLesson = page.locator('.occupiedTimetableCell.kind-lesson').first()
   await expect(editableLesson).toBeVisible()
   await editableLesson.click()
@@ -151,6 +152,7 @@ test('DOS-IA-RESET responsive 390×844: Classe mantiene Diario e Altro senza ove
 })
 
 async function openResolvedLessonFromReadOnlyGrid(page) {
+  await ensureWeekViewWhenCurrentDayHasNoLessons(page)
   const cells = page.locator('.occupiedTimetableCell.kind-lesson')
   const count = await cells.count()
   expect(count, 'L’Orario HVA deve contenere almeno una lezione').toBeGreaterThan(0)
@@ -168,6 +170,17 @@ async function openResolvedLessonFromReadOnlyGrid(page) {
     await sheet.getByRole('button', { name: 'Chiudi' }).click()
   }
   throw new Error('Nessuna voce dell’Orario HVA risolve una Lezione canonica senza ambiguità')
+}
+
+async function ensureWeekViewWhenCurrentDayHasNoLessons(page) {
+  const lessons = page.locator('.occupiedTimetableCell.kind-lesson')
+  if (await lessons.count()) return
+
+  const weekView = page.getByRole('button', { name: 'Settimana', exact: true })
+  if (await weekView.count()) {
+    await weekView.click()
+    await expect(weekView).toHaveClass(/active/)
+  }
 }
 
 async function assertMobilePrimaryTargets(page) {
