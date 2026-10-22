@@ -8,72 +8,33 @@ requireE2ECredentials()
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-const BOOKS_FIXTURE_NOTE = 'HVA · Libri di testo · Cattedra tecnica'
-const BOOKS_FIXTURE_DISCIPLINE = 'Tecnologia HVA Libri'
-const CANONICAL_DISCIPLINE = 'Tecnologia'
 const TEACH_OBSERVE_BLOCK_ID = 'B01'
-const NO_ATLAS_BLOCK_ID = 'B02'
+const MATERIALS_BLOCK_ID = 'B02'
 
-test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async ({ page }, testInfo) => {
+test('Journey: Lezione → Materiali preserves one teacher task', async ({ page }, testInfo) => {
   await loginE2E(page)
-  await page.goto('/planner')
-
-  const focus = page.locator('.todayTeachingFocus')
-  await expect(focus).toBeVisible()
-  const fixture = await ensureCanonicalJ1Fixture(focus)
+  const sectionId = await currentSecondCSectionId()
   let materialFixture = null
 
   try {
-    if (fixture.changed) {
-      await page.goto('/planner')
-      await expect(focus).toBeVisible()
-    }
-
-    const classLabel = (await focus.locator('.todayTeachingClassBadge').innerText()).trim()
-    const lessonTitle = (await focus.getByRole('heading', { level: 2 }).innerText()).trim()
-    const primary = focus.locator('a.todayTeachingPrimaryAction')
-
-    await expect(primary).toHaveCount(1)
-    await expect(primary).toHaveText(/Prepara lezione/)
-    await expectTouchTarget(primary, 'CTA primaria Oggi')
-    await expect(focus).not.toContainText(/CAN-PACK|CAN-PLAN|\bB\d{2}\b/)
-
-    if (testInfo.project.name.startsWith('mobile')) {
-      await assertResponsiveWidths(page, primary, 'Oggi → Prepara')
-    }
-
-    const lessonContext = lessonContextFromPrepareHref(await primary.getAttribute('href'))
     materialFixture = await createClassroomMaterialFixture({
-      sectionId: lessonContext.sectionId,
-      suffix: `${lessonContext.blockId}-viewer-${process.env.GITHUB_RUN_ID ?? 'local'}-${testInfo.project.name}-${Date.now()}`,
+      sectionId,
+      suffix: `${MATERIALS_BLOCK_ID}-viewer-${process.env.GITHUB_RUN_ID ?? 'local'}-${testInfo.project.name}-${Date.now()}`,
     })
 
-    await primary.click()
+    await page.goto(`/classi/${encodeURIComponent(sectionId)}/lezioni/${MATERIALS_BLOCK_ID}?subtask=materials`)
 
     const shell = page.locator('[data-lesson-shell]')
-    await expect(
-      shell,
-      'PREPARA deve mantenere una Lesson Shell persistente invece di cambiare identità di prodotto.',
-    ).toBeVisible()
-    await expect(shell).toContainText(classLabel)
-    await expect(shell).toContainText(lessonTitle)
+    await expect(shell, 'Materiali deve restare dentro una Lesson Shell persistente.').toBeVisible()
     await expect(shell).not.toContainText(/CAN-PACK|CAN-PLAN/)
-    await expect(page.locator('[data-lesson-phase="prepare"]')).toHaveAttribute('aria-current', 'step')
-
-    const materials = page.getByRole('button', { name: 'Materiali', exact: true })
-      .or(page.getByRole('link', { name: 'Materiali', exact: true }))
-    await expect(
-      materials,
-      'Materiali deve essere un subtask diretto di PREPARA, non nascosto dentro progettazione completa.',
-    ).toBeVisible()
-    await expectTouchTarget(materials, 'Ingresso Materiali')
-    await materials.click()
+    await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
+    await expect(page.locator('a[href*="mode="]')).toHaveCount(0)
 
     const materialsTask = page.locator('[data-lesson-subtask="materials"]')
     await expect(materialsTask).toBeVisible()
-    const reuse = page.getByRole('button', { name: 'Riutilizza', exact: true })
-    const adapt = page.getByRole('button', { name: 'Adatta', exact: true })
-    const create = page.getByRole('button', { name: /Crea/ })
+    const reuse = materialsTask.getByRole('button', { name: 'Riutilizza', exact: true })
+    const adapt = materialsTask.getByRole('button', { name: 'Adatta', exact: true })
+    const create = materialsTask.getByRole('button', { name: /Crea/ })
     await expect(reuse).toBeVisible()
     await expect(adapt).toBeVisible()
     await expect(create).toBeVisible()
@@ -91,7 +52,7 @@ test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async
       await assertResponsiveWidths(page, create, 'Materiali')
     }
 
-    const firstPreview = page.getByRole('link', { name: 'Controlla', exact: true }).first()
+    const firstPreview = materialsTask.getByRole('link', { name: 'Controlla', exact: true }).first()
     await expect(
       firstPreview,
       'Una risorsa Knowledge proposta in Materiali deve aprirsi nel Viewer focalizzato del compito.',
@@ -103,18 +64,16 @@ test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async
       materialPreview,
       'Il Viewer deve restare una superficie della lezione, non diventare la scheda generica di Conoscenza.',
     ).toBeVisible()
-    await expect(page.locator('[data-lesson-shell]')).toContainText(classLabel)
-    await expect(page.locator('[data-lesson-shell]')).toContainText(lessonTitle)
+    await expect(page.locator('[data-lesson-shell]')).toBeVisible()
     await expect(materialPreview.getByRole('button', { name: 'Usa nella lezione', exact: true })).toBeVisible()
-    await expect(materialPreview.getByText(lessonContext.blockId, { exact: true })).toHaveCount(0)
+    await expect(materialPreview.getByText(MATERIALS_BLOCK_ID, { exact: true })).toHaveCount(0)
     await expect(page.locator('.focusedKnowledgeSurface')).toHaveCount(0)
 
     const backToMaterials = page.getByRole('link', { name: 'Torna ai materiali', exact: true })
     await expect(backToMaterials).toBeVisible()
     await backToMaterials.click()
     await expect(page.locator('[data-lesson-subtask="materials"]')).toBeVisible()
-    await expect(page.locator('[data-lesson-shell]')).toContainText(classLabel)
-    await expect(page.locator('[data-lesson-shell]')).toContainText(lessonTitle)
+    await expect(page.locator('[data-lesson-shell]')).toBeVisible()
 
     if (testInfo.project.name.startsWith('mobile')) {
       await page.setViewportSize({ width: 320, height: 800 })
@@ -122,14 +81,13 @@ test('Journey: Oggi → Prepara → Materiali preserves one teacher task', async
     }
   } finally {
     if (materialFixture) await deleteKnowledgeAsset(page, materialFixture.assetId).catch(() => {})
-    await fixture.restore()
   }
 })
 
 test('State: Materiali without qualified Atlas stays truthful and complete', async ({ page }, testInfo) => {
   await loginE2E(page)
   const sectionId = await currentSecondCSectionId()
-  await page.goto(`/classi/${encodeURIComponent(sectionId)}/lezioni/${NO_ATLAS_BLOCK_ID}?mode=prepare&subtask=materials`)
+  await page.goto(`/classi/${encodeURIComponent(sectionId)}/lezioni/${MATERIALS_BLOCK_ID}?subtask=materials`)
 
   const shell = page.locator('[data-lesson-shell]')
   const materialsTask = page.locator('[data-lesson-subtask="materials"]')
@@ -163,40 +121,30 @@ test('Journey: Conduci → Osserva preserves one governed lesson', async ({ page
     await page.goto(teachHref)
 
     await expect(
-      page,
-      'La fixture CONDUCI → OSSERVA deve entrare davvero in CONDUCI tramite uno stato annuale registrato e tenant-local.',
-    ).toHaveURL(new RegExp(`/classi/${fixture.sectionId}/lezioni/${TEACH_OBSERVE_BLOCK_ID}\\?mode=teach`))
-    await expect(
       page.getByText(/PASSO 1 DI \d+/),
-      'Il RED di Task 6 è valido solo dopo che la superficie runbook di CONDUCI è realmente caricata.',
+      'La fixture deve caricare la guida operativa della lezione registrata.',
     ).toBeVisible()
 
     const teachShell = page.locator('[data-lesson-shell]')
-    await expect(
-      teachShell,
-      'CONDUCI deve mantenere la Lesson Shell invece di cambiare identità di prodotto.',
-    ).toBeVisible()
+    await expect(teachShell, 'CONDUCI deve mantenere la Lesson Shell invece di cambiare identità di prodotto.').toBeVisible()
     await expect(teachShell).toContainText(fixture.classLabel)
     await expect(teachShell).toContainText('Il territorio agricolo come sistema')
     await expect(teachShell).not.toContainText(/CAN-PACK|CAN-PLAN/)
-    await expect(page.locator('[data-lesson-phase="teach"]')).toHaveAttribute('aria-current', 'step')
+    await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
 
-    const observePhase = page.locator('[data-lesson-phase="observe"]')
-    await expect(
-      observePhase,
-      'Da CONDUCI il passaggio a OSSERVA deve restare nel ciclo della stessa lezione.',
-    ).toBeVisible()
-    await expectTouchTarget(observePhase, 'Passaggio a Osserva')
-    await observePhase.click()
+    const observe = page.getByRole('link', { name: 'Osserva', exact: true })
+    await expect(observe, 'Osserva deve restare una capacità contestuale della stessa Lezione.').toBeVisible()
+    await expectTouchTarget(observe, 'Passaggio a Osserva')
+    await expect(observe).toHaveAttribute('href', /[?&]subtask=observe(?:&|$)/)
+    expect(await observe.getAttribute('href')).not.toMatch(/[?&]mode=/)
+    await observe.click()
 
     const observeShell = page.locator('[data-lesson-shell]')
-    await expect(
-      observeShell,
-      'OSSERVA deve mantenere la Lesson Shell e l’identità della lezione.',
-    ).toBeVisible()
+    await expect(observeShell, 'OSSERVA deve mantenere la Lesson Shell e l’identità della lezione.').toBeVisible()
     await expect(observeShell).toContainText(fixture.classLabel)
     await expect(observeShell).toContainText('Il territorio agricolo come sistema')
-    await expect(page.locator('[data-lesson-phase="observe"]')).toHaveAttribute('aria-current', 'step')
+    await expect(page).toHaveURL(/subtask=observe/)
+    await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
     await expect(page.getByText('EVIDENZA ATTESA', { exact: true })).toBeVisible()
     await expect(page.getByText(/Non inserire nomi, gruppi identificabili o dati individuali degli alunni/)).toBeVisible()
     await expect(page.getByText('Vedi criteri completi', { exact: true })).toBeVisible()
@@ -213,29 +161,21 @@ test('Journey: Conduci → Osserva preserves one governed lesson', async ({ page
   }
 })
 
-function lessonContextFromPrepareHref(value) {
-  const match = typeof value === 'string'
-    ? value.match(/^\/classi\/([^/?#]+)\/lezioni\/(B\d{2})(?:\?|$)/i)
-    : null
-  if (!match) throw new Error(`Task-centric viewer fixture: PREPARA href inatteso ${value ?? 'senza href'}`)
-  return { sectionId: decodeURIComponent(match[1]), blockId: match[2].toUpperCase() }
-}
-
 async function currentSecondCSectionId() {
   if (!supabaseUrl || !supabasePublishableKey) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY sono richiesti dalla prova Materiali senza Atlas')
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY sono richiesti dalla prova Materiali')
   }
 
   const { supabase } = await authenticatedAal2Supabase({
     supabaseUrl,
     supabasePublishableKey,
-    label: 'DOS-UX-01 no-Atlas state',
+    label: 'DOS-UX-01 material state',
   })
   const { data: contextRows, error: contextError } = await supabase.rpc('current_workspace_context')
-  if (contextError) throw new Error(`No-Atlas workspace lookup failed: ${contextError.message}`)
+  if (contextError) throw new Error(`Material workspace lookup failed: ${contextError.message}`)
   const context = contextRows?.[0]
   if (!context?.workspace_id || !context?.academic_year_id) {
-    throw new Error('No-Atlas state: workspace o anno scolastico corrente non disponibile')
+    throw new Error('Material state: workspace o anno scolastico corrente non disponibile')
   }
 
   const { data: section, error: sectionError } = await supabase
@@ -247,8 +187,8 @@ async function currentSecondCSectionId() {
     .eq('section_code', 'C')
     .limit(1)
     .maybeSingle()
-  if (sectionError) throw new Error(`No-Atlas section lookup failed: ${sectionError.message}`)
-  if (!section?.id) throw new Error('No-Atlas state: la 2C tenant-local non è disponibile')
+  if (sectionError) throw new Error(`Material section lookup failed: ${sectionError.message}`)
+  if (!section?.id) throw new Error('Material state: la 2C tenant-local non è disponibile')
   return section.id
 }
 
@@ -361,142 +301,6 @@ function currentRomeDate() {
   }).formatToParts(new Date())
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
   return `${values.year}-${values.month}-${values.day}`
-}
-
-async function ensureCanonicalJ1Fixture(focus) {
-  const primary = focus.locator('a.todayTeachingPrimaryAction')
-  const currentLabel = (await primary.innerText()).trim()
-  const existingBadge = await focus.locator('.todayTeachingClassBadge').count()
-  if (/Prepara lezione/i.test(currentLabel) && existingBadge === 1) {
-    return { changed: false, restore: async () => {} }
-  }
-
-  if (!supabaseUrl || !supabasePublishableKey) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY sono richiesti dalla fixture task-centric governata')
-  }
-
-  const href = await primary.getAttribute('href')
-  const sectionMatch = href?.match(/^\/classi\/([^/?#]+)$/)
-  if (!sectionMatch) {
-    throw new Error(`Task-centric flow non può isolare la fixture: fallback inatteso ${href ?? 'senza href'}`)
-  }
-  const sectionId = sectionMatch[1]
-
-  const { supabase } = await authenticatedAal2Supabase({
-    supabaseUrl,
-    supabasePublishableKey,
-    label: 'DOS-UX-01 canonical fixture',
-  })
-
-  const { data: assignments, error: assignmentsError } = await supabase
-    .from('teaching_assignments')
-    .select('id,status,discipline_id,source_note')
-    .eq('section_id', sectionId)
-  if (assignmentsError) throw new Error(`Task-centric fixture assignment lookup failed: ${assignmentsError.message}`)
-
-  const assignment = assignments?.find((item) => item.source_note === BOOKS_FIXTURE_NOTE)
-  if (!assignment) {
-    throw new Error('Task-centric fallback non appartiene alla Cattedra tecnica HVA nota: nessuna mutazione viene tentata')
-  }
-
-  const { data: discipline, error: disciplineError } = await supabase
-    .from('teaching_disciplines')
-    .select('id,workspace_id,academic_year_id,name,is_active')
-    .eq('id', assignment.discipline_id)
-    .single()
-  if (disciplineError || !discipline) {
-    throw new Error(`Task-centric fixture discipline lookup failed: ${disciplineError?.message ?? 'discipline missing'}`)
-  }
-  if (discipline.name !== BOOKS_FIXTURE_DISCIPLINE && discipline.name !== CANONICAL_DISCIPLINE) {
-    throw new Error(`Task-centric flow refuses unexpected technical discipline: ${discipline.name}`)
-  }
-
-  const { data: canonicalConflicts, error: conflictError } = await supabase
-    .from('teaching_disciplines')
-    .select('id')
-    .eq('workspace_id', discipline.workspace_id)
-    .eq('academic_year_id', discipline.academic_year_id)
-    .eq('name', CANONICAL_DISCIPLINE)
-    .neq('id', discipline.id)
-  if (conflictError) throw new Error(`Task-centric fixture canonical-discipline check failed: ${conflictError.message}`)
-  if (canonicalConflicts?.length) {
-    throw new Error('Task-centric fixture refuses to rename the technical discipline because a canonical Tecnologia already exists')
-  }
-
-  const original = {
-    assignmentStatus: assignment.status,
-    disciplineName: discipline.name,
-    disciplineActive: discipline.is_active,
-  }
-  let disciplineChanged = false
-  let assignmentChanged = false
-
-  try {
-    if (discipline.name !== CANONICAL_DISCIPLINE || !discipline.is_active) {
-      const { error } = await supabase
-        .from('teaching_disciplines')
-        .update({ name: CANONICAL_DISCIPLINE, is_active: true })
-        .eq('id', discipline.id)
-      if (error) throw new Error(`Task-centric fixture discipline promotion failed: ${error.message}`)
-      disciplineChanged = true
-    }
-
-    if (assignment.status !== 'CONFIRMED') {
-      const { error } = await supabase
-        .from('teaching_assignments')
-        .update({ status: 'CONFIRMED' })
-        .eq('id', assignment.id)
-      if (error) throw new Error(`Task-centric fixture assignment promotion failed: ${error.message}`)
-      assignmentChanged = true
-    }
-  } catch (error) {
-    await restoreFixture({
-      supabase,
-      assignmentId: assignment.id,
-      disciplineId: discipline.id,
-      original,
-      assignmentChanged,
-      disciplineChanged,
-    }).catch(() => {})
-    throw error
-  }
-
-  return {
-    changed: disciplineChanged || assignmentChanged,
-    restore: async () => restoreFixture({
-      supabase,
-      assignmentId: assignment.id,
-      disciplineId: discipline.id,
-      original,
-      assignmentChanged,
-      disciplineChanged,
-    }),
-  }
-}
-
-async function restoreFixture({
-  supabase,
-  assignmentId,
-  disciplineId,
-  original,
-  assignmentChanged,
-  disciplineChanged,
-}) {
-  if (assignmentChanged) {
-    const { error } = await supabase
-      .from('teaching_assignments')
-      .update({ status: original.assignmentStatus })
-      .eq('id', assignmentId)
-    if (error) throw new Error(`Task-centric fixture assignment restore failed: ${error.message}`)
-  }
-
-  if (disciplineChanged) {
-    const { error } = await supabase
-      .from('teaching_disciplines')
-      .update({ name: original.disciplineName, is_active: original.disciplineActive })
-      .eq('id', disciplineId)
-    if (error) throw new Error(`Task-centric fixture discipline restore failed: ${error.message}`)
-  }
 }
 
 async function assertResponsiveWidths(page, target, label) {
