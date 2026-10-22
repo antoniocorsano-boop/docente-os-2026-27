@@ -50,3 +50,15 @@ test('explicit start intent survives contextual observation and materials naviga
   assert.match(liveClientSource, /intent:\s*explicitStartIntent\s*\?\s*'start'\s*:\s*null/)
   assert.match(observeClientSource, /intent:\s*explicitStartIntent\s*\?\s*'start'\s*:\s*null/)
 })
+
+test('materials subtask renders before teaching and registration state branches', () => {
+  const materialsBranch = pageSource.indexOf("activeSubtask === 'materials' ? (")
+  const teachingBranch = pageSource.indexOf("visibleState === 'TEACHING' || visibleState === 'CONTINUITY' ? (")
+  const registrationBranch = pageSource.indexOf("visibleState === 'REGISTRATION' ? (")
+  assert.ok(materialsBranch >= 0)
+  assert.ok(teachingBranch >= 0)
+  assert.ok(registrationBranch >= 0)
+  assert.ok(materialsBranch < teachingBranch)
+  assert.ok(materialsBranch < registrationBranch)
+  assert.match(pageSource.slice(materialsBranch, teachingBranch), /LessonMaterialsWorkspace/)
+})
