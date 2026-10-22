@@ -7,7 +7,7 @@ import { canActivateTimetableDraft, minutesToTime, slotDurationMinutes, timeToMi
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabaseCalendarRepository } from '@/core/infrastructure/supabase/supabase-calendar-repository'
-import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
+import { CanonicalPlanSourceError, SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
 import { SupabaseTimetableImportRepository } from '@/core/infrastructure/supabase/supabase-timetable-import-repository'
@@ -614,14 +614,21 @@ async function buildTimetableLessonEntrypoints(input: {
   const timetableProjectionRepository = new SupabaseTimetableProjectionReadRepository()
   const calendarProjectionRepository = new SupabaseCalendarProjectionReadRepository()
   const [sourceEntries, timetableProjection, calendarProjection] = await Promise.all([
-    Promise.all(grades.map(async (grade) => [
-      grade,
-      await canonicalSourceRepository.resolve({
-        workspaceId: input.workspaceId,
-        academicYearId: input.academicYearId,
-        code: CANONICAL_PLAN_SOURCES[grade].code,
-      }),
-    ] as const)),
+    Promise.all(grades.map(async (grade) => {
+      try {
+        const source = await canonicalSourceRepository.resolve({
+          workspaceId: input.workspaceId,
+          academicYearId: input.academicYearId,
+          code: CANONICAL_PLAN_SOURCES[grade].code,
+        })
+        return [grade, source] as const
+      } catch (error) {
+        if (error instanceof CanonicalPlanSourceError && error.code === 'CANONICAL_PLAN_BINDING_MISSING') {
+          return [grade, null] as const
+        }
+        throw error
+      }
+    })),
     timetableProjectionRepository.read(input.workspaceId, input.academicYearId),
     calendarProjectionRepository.read(input.workspaceId, input.academicYearId),
   ])
