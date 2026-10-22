@@ -2,13 +2,16 @@ import { expect, test } from '@playwright/test'
 import { createClassroomMaterialFixture } from '../support/classroom-material-fixture.mjs'
 import { authenticatedAal2Supabase } from '../support/direct-aal2-supabase.mjs'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
+import {
+  HVA_RECORDED_LESSON_BLOCK,
+  readHvaRecordedLessonFixture,
+} from '../support/hva-recorded-lesson-fixture.mjs'
 import { deleteKnowledgeAsset } from '../support/knowledge-fixture-hygiene.mjs'
 
 requireE2ECredentials()
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-const TEACH_OBSERVE_BLOCK_ID = 'B01'
 const MATERIALS_BLOCK_ID = 'B02'
 
 test('Journey: Lezione → Materiali preserves one teacher task', async ({ page }, testInfo) => {
@@ -114,9 +117,9 @@ test('State: Materiali without qualified Atlas stays truthful and complete', asy
 
 test('Journey: Conduci → Osserva preserves one governed lesson', async ({ page }, testInfo) => {
   await loginE2E(page)
-  const fixture = await createRecordedTeachObserveFixture()
+  const fixture = await readHvaRecordedLessonFixture()
 
-  const teachHref = `/classi/${encodeURIComponent(fixture.sectionId)}/lezioni/${TEACH_OBSERVE_BLOCK_ID}?date=${encodeURIComponent(fixture.localDate)}&occurrence=${encodeURIComponent(fixture.occurrenceLogicalId)}&mode=teach`
+  const teachHref = `/classi/${encodeURIComponent(fixture.sectionId)}/lezioni/${HVA_RECORDED_LESSON_BLOCK}?date=${encodeURIComponent(fixture.localDate)}&occurrence=${encodeURIComponent(fixture.occurrenceLogicalId)}&mode=teach`
   await page.goto(teachHref)
 
   await expect(
@@ -186,72 +189,6 @@ async function currentSecondCSectionId() {
   if (sectionError) throw new Error(`Material section lookup failed: ${sectionError.message}`)
   if (!section?.id) throw new Error('Material state: la 2C tenant-local non è disponibile')
   return section.id
-}
-
-async function createRecordedTeachObserveFixture() {
-  if (!supabaseUrl || !supabasePublishableKey) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY sono richiesti dalla fixture CONDUCI → OSSERVA')
-  }
-
-  const { supabase } = await authenticatedAal2Supabase({
-    supabaseUrl,
-    supabasePublishableKey,
-    label: 'DOS-UX-01 teach-observe fixture',
-  })
-  const { data: contextRows, error: contextError } = await supabase.rpc('current_workspace_context')
-  if (contextError) throw new Error(`Teach-observe workspace lookup failed: ${contextError.message}`)
-  const context = contextRows?.[0]
-  if (!context?.workspace_id || !context?.academic_year_id) {
-    throw new Error('Teach-observe fixture: workspace o anno scolastico corrente non disponibile')
-  }
-
-  const { data: section, error: sectionError } = await supabase
-    .from('annual_plan_sections')
-    .select('id,section_code')
-    .eq('workspace_id', context.workspace_id)
-    .eq('academic_year_id', context.academic_year_id)
-    .eq('grade', 'SECONDA')
-    .eq('section_code', 'C')
-    .limit(1)
-    .maybeSingle()
-  if (sectionError) throw new Error(`Teach-observe section lookup failed: ${sectionError.message}`)
-  if (!section?.id) throw new Error('Teach-observe fixture: la 2C tenant-local non è disponibile')
-
-  const { data: sessions, error: sessionError } = await supabase
-    .from('teaching_sessions')
-    .select('id,local_date,projected_occurrence_logical_id,recorded_at')
-    .eq('workspace_id', context.workspace_id)
-    .eq('academic_year_id', context.academic_year_id)
-    .eq('section_id', section.id)
-    .eq('source_kind', 'PROJECTED_OCCURRENCE')
-    .not('projected_occurrence_logical_id', 'is', null)
-    .order('local_date', { ascending: false })
-    .order('recorded_at', { ascending: false })
-    .limit(50)
-  if (sessionError) throw new Error(`Teach-observe TeachingSession lookup failed: ${sessionError.message}`)
-  if (!sessions?.length) {
-    throw new Error('Teach-observe fixture: nessuna TeachingSession occurrence-bound disponibile nella 2C corrente')
-  }
-
-  const { data: allocations, error: allocationError } = await supabase
-    .from('teaching_session_allocations')
-    .select('session_id,block_id')
-    .in('session_id', sessions.map((session) => session.id))
-    .eq('block_id', TEACH_OBSERVE_BLOCK_ID)
-  if (allocationError) throw new Error(`Teach-observe allocation lookup failed: ${allocationError.message}`)
-
-  const b01SessionIds = new Set((allocations ?? []).map((allocation) => allocation.session_id))
-  const selected = sessions.find((session) => b01SessionIds.has(session.id) && session.local_date && session.projected_occurrence_logical_id)
-  if (!selected) {
-    throw new Error('Teach-observe fixture: nessuna TeachingSession B01 occurrence-bound disponibile nella 2C corrente')
-  }
-
-  return {
-    sectionId: section.id,
-    classLabel: `2ª ${section.section_code}`,
-    localDate: selected.local_date,
-    occurrenceLogicalId: selected.projected_occurrence_logical_id,
-  }
 }
 
 async function assertResponsiveWidths(page, target, label) {
