@@ -64,3 +64,8 @@ test('materials subtask renders before teaching and registration state branches'
   assert.ok(materialsBranch < registrationBranch)
   assert.match(pageSource.slice(materialsBranch, teachingBranch), /LessonMaterialsWorkspace/)
 })
+
+test('registration submit follows the editable registration date', () => {
+  assert.match(closeClientSource, /disabled=\{saving \|\| !draftLoaded \|\| voiceBusy \|\| !registrationLocalDate \|\| !actualMinutes\}/)
+  assert.doesNotMatch(closeClientSource, /disabled=\{saving \|\| !draftLoaded \|\| voiceBusy \|\| !localDate \|\| !actualMinutes\}/)
+})
