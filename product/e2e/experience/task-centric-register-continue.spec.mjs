@@ -12,21 +12,17 @@ test('Journey: legacy Registra resolves an already recorded lesson automatically
   await loginE2E(page)
   const fixture = await createRegisterFixture()
 
-  try {
-    const recordHref = `/classi/${encodeURIComponent(fixture.sectionId)}/lezioni/${BLOCK_ID}?mode=record`
-    await page.goto(recordHref)
+  const recordHref = `/classi/${encodeURIComponent(fixture.sectionId)}/lezioni/${BLOCK_ID}?date=${encodeURIComponent(fixture.localDate)}&occurrence=${encodeURIComponent(fixture.occurrenceLogicalId)}&mode=record`
+  await page.goto(recordHref)
 
-    await expect(page.locator('[data-lesson-shell]')).toBeVisible()
-    await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
-    await expect(page.getByText('Registrata', { exact: true }).first()).toBeVisible()
-    await expect(page.getByText(/LEZIONE REGISTRATA/).first()).toBeVisible()
-    await expect(page.getByRole('combobox', { name: 'Esito effettivo', exact: true })).toHaveCount(0)
-    await expect(page.locator('a[href*="mode="]')).toHaveCount(0)
-    await expect(page.getByRole('link', { name: 'Osserva', exact: true })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Materiali', exact: true })).toBeVisible()
-  } finally {
-    await fixture.restore()
-  }
+  await expect(page.locator('[data-lesson-shell]')).toBeVisible()
+  await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
+  await expect(page.getByText('Registrata', { exact: true }).first()).toBeVisible()
+  await expect(page.getByText(/LEZIONE REGISTRATA/).first()).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Esito effettivo', exact: true })).toHaveCount(0)
+  await expect(page.locator('a[href*="mode="]')).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Osserva', exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Materiali', exact: true })).toBeVisible()
 })
 
 async function createRegisterFixture() {
@@ -34,7 +30,7 @@ async function createRegisterFixture() {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY sono richiesti dalla fixture REGISTRA → CONTINUA')
   }
 
-  const { supabase, userId } = await authenticatedAal2Supabase({
+  const { supabase } = await authenticatedAal2Supabase({
     supabaseUrl,
     supabasePublishableKey,
     label: 'DOS-UX-01 register-continue fixture',
@@ -48,7 +44,7 @@ async function createRegisterFixture() {
 
   const { data: section, error: sectionError } = await supabase
     .from('annual_plan_sections')
-    .select('id,workspace_id,academic_year_id,grade,section_code,status')
+    .select('id')
     .eq('workspace_id', context.workspace_id)
     .eq('academic_year_id', context.academic_year_id)
     .eq('grade', 'SECONDA')
@@ -56,85 +52,40 @@ async function createRegisterFixture() {
     .limit(1)
     .maybeSingle()
   if (sectionError) throw new Error(`Register-continue section lookup failed: ${sectionError.message}`)
-  if (!section) throw new Error('Register-continue fixture: la 2C tenant-local non è disponibile')
+  if (!section?.id) throw new Error('Register-continue fixture: la 2C tenant-local non è disponibile')
 
-  const { data: binding, error: bindingError } = await supabase
-    .from('canonical_plan_runtime_bindings')
-    .select('asset_id,generation_id')
+  const { data: sessions, error: sessionError } = await supabase
+    .from('teaching_sessions')
+    .select('id,local_date,projected_occurrence_logical_id,recorded_at')
     .eq('workspace_id', context.workspace_id)
     .eq('academic_year_id', context.academic_year_id)
-    .eq('canonical_plan_code', 'CAN-PLAN-2')
-    .maybeSingle()
-  if (bindingError) throw new Error(`Register-continue canonical binding lookup failed: ${bindingError.message}`)
-  if (!binding?.asset_id || !binding?.generation_id) {
-    throw new Error('Register-continue fixture: CAN-PLAN-2 non è collegato al tenant E2E corrente')
+    .eq('section_id', section.id)
+    .eq('source_kind', 'PROJECTED_OCCURRENCE')
+    .not('projected_occurrence_logical_id', 'is', null)
+    .order('local_date', { ascending: false })
+    .order('recorded_at', { ascending: false })
+    .limit(50)
+  if (sessionError) throw new Error(`Register-continue TeachingSession lookup failed: ${sessionError.message}`)
+  if (!sessions?.length) {
+    throw new Error('Register-continue fixture: nessuna TeachingSession occurrence-bound disponibile nella 2C corrente')
   }
 
-  const identity = {
-    sectionId: section.id,
-    generationId: binding.generation_id,
-    blockId: BLOCK_ID,
-  }
-  const { data: previous, error: previousError } = await supabase
-    .from('annual_plan_block_progress')
-    .select('status,executed_on,evidence_note')
-    .eq('section_id', identity.sectionId)
-    .eq('canonical_generation_id', identity.generationId)
-    .eq('block_id', identity.blockId)
-    .maybeSingle()
-  if (previousError) throw new Error(`Register-continue progress snapshot failed: ${previousError.message}`)
+  const { data: allocations, error: allocationError } = await supabase
+    .from('teaching_session_allocations')
+    .select('session_id,block_id')
+    .in('session_id', sessions.map((session) => session.id))
+    .eq('block_id', BLOCK_ID)
+  if (allocationError) throw new Error(`Register-continue allocation lookup failed: ${allocationError.message}`)
 
-  const { error: writeError } = await supabase
-    .from('annual_plan_block_progress')
-    .upsert({
-      section_id: identity.sectionId,
-      canonical_plan_asset_id: binding.asset_id,
-      canonical_generation_id: identity.generationId,
-      block_id: identity.blockId,
-      status: 'SVOLTO',
-      executed_on: currentRomeDate(),
-      evidence_note: 'HVA temporaneo · REGISTRA → CONTINUA',
-      updated_by: userId,
-    }, { onConflict: 'section_id,canonical_generation_id,block_id' })
-  if (writeError) throw new Error(`Register-continue recorded-state setup failed: ${writeError.message}`)
+  const b01SessionIds = new Set((allocations ?? []).map((allocation) => allocation.session_id))
+  const selected = sessions.find((session) => b01SessionIds.has(session.id) && session.local_date && session.projected_occurrence_logical_id)
+  if (!selected) {
+    throw new Error('Register-continue fixture: nessuna TeachingSession B01 occurrence-bound disponibile nella 2C corrente')
+  }
 
   return {
     sectionId: section.id,
-    restore: async () => {
-      if (previous) {
-        const { error } = await supabase
-          .from('annual_plan_block_progress')
-          .update({
-            status: previous.status,
-            executed_on: previous.executed_on,
-            evidence_note: previous.evidence_note,
-            updated_by: userId,
-          })
-          .eq('section_id', identity.sectionId)
-          .eq('canonical_generation_id', identity.generationId)
-          .eq('block_id', identity.blockId)
-        if (error) throw new Error(`Register-continue progress restore failed: ${error.message}`)
-        return
-      }
-
-      const { error } = await supabase
-        .from('annual_plan_block_progress')
-        .delete()
-        .eq('section_id', identity.sectionId)
-        .eq('canonical_generation_id', identity.generationId)
-        .eq('block_id', identity.blockId)
-      if (error) throw new Error(`Register-continue progress cleanup failed: ${error.message}`)
-    },
+    localDate: selected.local_date,
+    occurrenceLogicalId: selected.projected_occurrence_logical_id,
   }
-}
-
-function currentRomeDate() {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Rome',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date())
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  return `${values.year}-${values.month}-${values.day}`
 }
