@@ -1,5 +1,6 @@
 import { chromium, expect } from '@playwright/test'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
+import { authenticatedAal2Supabase } from '../support/direct-aal2-supabase.mjs'
 import {
   deleteAllKnowledgeFixtures,
   knowledgeFixtureAssetIds,
@@ -12,10 +13,15 @@ import {
 import { writeExperienceFixtureState } from './surfaces.mjs'
 
 const baseURL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000'
+const HVA_DISCIPLINE_FIXTURE_NAME = 'Tecnologia HVA Libri'
+const HVA_CANONICAL_DISCIPLINE_NAME = 'Tecnologia'
 
 export default async function globalSetup() {
   requireE2ECredentials()
   const title = experienceUdaFixtureTitle()
+  const disciplineFixture = process.env.EXPERIENCE_TARGET === 'local'
+    ? await normalizeCanonicalDisciplineFixture()
+    : null
   const browser = await chromium.launch()
   const context = await browser.newContext({
     baseURL,
@@ -76,14 +82,111 @@ export default async function globalSetup() {
     process.stdout.write(`HVA UDA fixture ready: ${assetId}\n`)
   } catch (error) {
     await deleteAllKnowledgeFixtures(page, title).catch(() => {})
+    await restoreCanonicalDisciplineFixture(disciplineFixture).catch(() => {})
     throw error
   } finally {
     await browser.close()
   }
 
   return async () => {
-    await cleanupFixture(title)
+    try {
+      await cleanupFixture(title)
+    } finally {
+      await restoreCanonicalDisciplineFixture(disciplineFixture)
+    }
   }
+}
+
+async function normalizeCanonicalDisciplineFixture() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+  const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim()
+  if (!supabaseUrl || !supabasePublishableKey) {
+    throw new Error('Local HVA discipline fixture requires Supabase URL and publishable key')
+  }
+
+  const { supabase } = await authenticatedAal2Supabase({
+    supabaseUrl,
+    supabasePublishableKey,
+    label: 'HVA canonical discipline fixture',
+  })
+  const { data: disciplines, error: disciplinesError } = await supabase
+    .from('teaching_disciplines')
+    .select('id, workspace_id, academic_year_id, name, is_active')
+  if (disciplinesError) throw new Error(`HVA discipline lookup failed: ${disciplinesError.message}`)
+
+  const technical = (disciplines ?? []).filter((item) => item.name.trim() === HVA_DISCIPLINE_FIXTURE_NAME)
+  const canonical = (disciplines ?? []).filter((item) => item.name.trim() === HVA_CANONICAL_DISCIPLINE_NAME)
+  if (technical.length > 1) throw new Error('HVA discipline fixture is ambiguous')
+
+  const discipline = technical[0] ?? (canonical.length === 1 ? canonical[0] : null)
+  if (!discipline) {
+    throw new Error(`HVA discipline fixture must expose exactly one ${HVA_DISCIPLINE_FIXTURE_NAME} or ${HVA_CANONICAL_DISCIPLINE_NAME} discipline`)
+  }
+
+  const canonicalConflict = canonical.find((item) =>
+    item.id !== discipline.id
+    && item.workspace_id === discipline.workspace_id
+    && item.academic_year_id === discipline.academic_year_id,
+  )
+  if (canonicalConflict) throw new Error('HVA discipline fixture cannot be normalized because Tecnologia already exists in the same context')
+
+  const { data: assignments, error: assignmentsError } = await supabase
+    .from('teaching_assignments')
+    .select('id, status')
+    .eq('discipline_id', discipline.id)
+  if (assignmentsError) throw new Error(`HVA assignment lookup failed: ${assignmentsError.message}`)
+  if (!(assignments ?? []).length) throw new Error('HVA canonical discipline fixture has no teaching assignment')
+
+  const originalAssignments = assignments.map((item) => ({ id: item.id, status: item.status }))
+  const assignmentIdsToConfirm = originalAssignments.filter((item) => item.status !== 'CONFIRMED').map((item) => item.id)
+
+  if (discipline.name !== HVA_CANONICAL_DISCIPLINE_NAME || discipline.is_active !== true) {
+    const { error } = await supabase
+      .from('teaching_disciplines')
+      .update({ name: HVA_CANONICAL_DISCIPLINE_NAME, is_active: true })
+      .eq('id', discipline.id)
+    if (error) throw new Error(`HVA discipline normalization failed: ${error.message}`)
+  }
+
+  if (assignmentIdsToConfirm.length) {
+    const { error } = await supabase
+      .from('teaching_assignments')
+      .update({ status: 'CONFIRMED' })
+      .in('id', assignmentIdsToConfirm)
+    if (error) throw new Error(`HVA assignment normalization failed: ${error.message}`)
+  }
+
+  process.stdout.write(`HVA canonical discipline fixture ready: ${HVA_CANONICAL_DISCIPLINE_NAME}; assignments=${originalAssignments.length}\n`)
+  return {
+    supabase,
+    disciplineId: discipline.id,
+    originalName: discipline.name,
+    originalIsActive: discipline.is_active,
+    assignments: originalAssignments,
+  }
+}
+
+async function restoreCanonicalDisciplineFixture(fixture) {
+  if (!fixture) return
+
+  for (const assignment of fixture.assignments) {
+    if (assignment.status === 'CONFIRMED') continue
+    const { error } = await fixture.supabase
+      .from('teaching_assignments')
+      .update({ status: assignment.status })
+      .eq('id', assignment.id)
+    if (error) throw new Error(`HVA assignment restore failed: ${error.message}`)
+  }
+
+  if (fixture.originalName !== HVA_CANONICAL_DISCIPLINE_NAME || fixture.originalIsActive !== true) {
+    const { error } = await fixture.supabase
+      .from('teaching_disciplines')
+      .update({ name: fixture.originalName, is_active: fixture.originalIsActive })
+      .eq('id', fixture.disciplineId)
+    if (error) throw new Error(`HVA discipline restore failed: ${error.message}`)
+  }
+
+  process.stdout.write('HVA canonical discipline fixture restored.\n')
 }
 
 async function cleanupFixture(title) {

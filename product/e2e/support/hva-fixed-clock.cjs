@@ -1,5 +1,9 @@
 'use strict'
 
+const HVA_CANONICAL_NOW = '2026-10-19T08:30:00+02:00'
+
+module.exports = { HVA_CANONICAL_NOW }
+
 const fixedNow = process.env.HVA_FIXED_NOW?.trim()
 
 if (fixedNow) {
