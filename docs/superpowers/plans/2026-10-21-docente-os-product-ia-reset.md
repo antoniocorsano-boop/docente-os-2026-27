@@ -593,7 +593,7 @@ Require primary labels exactly `Oggi`, `Orario`, `Classi`, `Altro`; open Altro a
 
 Cover: Oggi pending/upcoming behavior; compact Calendar commitments without Planner controls; Orario day/week preservation; consultation direct Lezione vs edit-mode editor; Classi/Classe hierarchy; visible Diario + Altro della classe; all four Lezione states; contextual observation/materials; Altro → Materiali e fonti → Materiali di domani; `/` → Oggi; legacy `?mode=` and material routes still safe.
 
-Where authenticated runtime data cannot deterministically produce pending+upcoming coexistence, keep that exact coexistence pinned by Task 3 pure-model test rather than fabricating test data.
+Authenticated browser evidence for pending registration + upcoming lesson + compact Calendar commitment is mandatory. If current governed runtime data cannot deterministically produce that coexistence, do not substitute the Task 3 pure-model test: record this browser qualification requirement as `UNVERIFIED` and keep Task 9 open until deterministic governed browser data can exercise the rendered state. Do not fabricate test data.
 
 - [ ] **Step 3: Add explicit 320/390 responsive assertions**
 
@@ -682,7 +682,7 @@ Legacy `buildLessonWorkspaceHref(..., mode)` remains compatibility-only until Ta
 
 ### Review Focus coverage
 
-All five high-risk conditions are pinned by pure tests or browser journeys and rerun in Task 9. Action-driven start/close semantics are explicitly covered, and Resoconto is not prematurely redirected.
+All five high-risk conditions are pinned by executable tests or browser journeys and rerun in Task 9. The Oggi pending-registration + upcoming-lesson + Calendar coexistence additionally requires authenticated human-visible browser evidence and remains `UNVERIFIED` until that rendered state is exercised; a pure-model test cannot substitute for it. Action-driven start/close semantics are explicitly covered, and Resoconto is not prematurely redirected.
 
 ### Proportion and scope
 
