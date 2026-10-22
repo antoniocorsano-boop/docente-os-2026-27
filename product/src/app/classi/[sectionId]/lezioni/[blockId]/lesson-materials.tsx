@@ -6,6 +6,7 @@ import { useFormStatus } from 'react-dom'
 import { SourceProvenance } from '@/components/source-provenance/source-provenance'
 import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
 import { teachingMaterialRoleLabel } from '@/core/domain/textbook-teaching-kit'
+import { buildTaskAwareKnowledgeHref, buildTaskAwareKnowledgeListHref } from '@/core/presentation/task-continuity'
 import {
   runLessonDesignWrite,
   type DesignWriteState,
@@ -22,6 +23,7 @@ type LessonMaterialsProps = {
   extensions: LessonDesignExtension[]
   knowledgeSuggestions: LessonKnowledgeSuggestion[]
   atlasSuggestions: LessonAtlasSuggestion[]
+  returnTo: string
 }
 
 export function LessonMaterials({
@@ -31,6 +33,7 @@ export function LessonMaterials({
   extensions,
   knowledgeSuggestions,
   atlasSuggestions,
+  returnTo,
 }: LessonMaterialsProps) {
   const [materialIntent, setMaterialIntent] = useState<MaterialPreparationIntent>('reuse')
   const [writeState, writeAction] = useActionState(
@@ -89,6 +92,7 @@ export function LessonMaterials({
           knowledgeSuggestions={knowledgeSuggestions}
           atlasSuggestions={atlasSuggestions}
           writeAction={writeAction}
+          returnTo={returnTo}
         />
       ) : null}
 
@@ -108,7 +112,7 @@ export function LessonMaterials({
           <p className="lessonKnowledgeLead">
             Crea o carica un contenuto. Resta separato dalla lezione finché non scegli esplicitamente di usarlo qui.
           </p>
-          <Link href={buildKnowledgeCaptureHref(sectionId, blockId)}>Aggiungi un nuovo contenuto</Link>
+          <Link href={buildKnowledgeCaptureHref(sectionId, blockId, returnTo)}>Aggiungi un nuovo contenuto</Link>
         </div>
       ) : null}
 
@@ -145,6 +149,7 @@ function ReuseMaterials({
   knowledgeSuggestions,
   atlasSuggestions,
   writeAction,
+  returnTo,
 }: {
   sectionId: string
   blockId: string
@@ -152,6 +157,7 @@ function ReuseMaterials({
   knowledgeSuggestions: LessonKnowledgeSuggestion[]
   atlasSuggestions: LessonAtlasSuggestion[]
   writeAction: (payload: FormData) => void
+  returnTo: string
 }) {
   return (
     <div className="lessonKnowledgeSuggestions" aria-label="Materiali disponibili">
@@ -209,7 +215,7 @@ function ReuseMaterials({
             ) : null}
           </div>
           <div>
-            <Link href={buildFocusedKnowledgeHref(item.assetId, sectionId, blockId)}>Controlla</Link>
+            <Link href={buildFocusedKnowledgeHref(item.assetId, sectionId, blockId, returnTo)}>Controlla</Link>
             <form action={writeAction}>
               <input type="hidden" name="designIntent" value="attach-knowledge" />
               <ContextFields sectionId={sectionId} blockId={blockId} projectionId={projectionId} />
@@ -295,14 +301,23 @@ function MaterialActionSubmit({ idle, pendingLabel }: { idle: string; pendingLab
   )
 }
 
-function buildFocusedKnowledgeHref(assetId: string, sectionId: string, blockId: string) {
-  const returnTo = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(blockId)}?mode=prepare&subtask=materials`
-  return `/knowledge/${encodeURIComponent(assetId)}?mode=prepare&section=${encodeURIComponent(sectionId)}&block=${encodeURIComponent(blockId)}&returnTo=${encodeURIComponent(returnTo)}`
+function buildFocusedKnowledgeHref(assetId: string, sectionId: string, blockId: string, returnTo: string) {
+  return buildTaskAwareKnowledgeHref(assetId, {
+    mode: 'prepare',
+    returnTo,
+    sectionId,
+    blockId,
+  })
 }
 
-function buildKnowledgeCaptureHref(sectionId: string, blockId: string) {
-  const returnTo = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(blockId)}?mode=prepare&subtask=materials`
-  return `/knowledge?capture=text&mode=prepare&section=${encodeURIComponent(sectionId)}&block=${encodeURIComponent(blockId)}&returnTo=${encodeURIComponent(returnTo)}`
+function buildKnowledgeCaptureHref(sectionId: string, blockId: string, returnTo: string) {
+  const href = buildTaskAwareKnowledgeListHref({
+    mode: 'prepare',
+    returnTo,
+    sectionId,
+    blockId,
+  })
+  return `${href}&capture=text`
 }
 
 function isResource(kind: LessonDesignExtension['kind']) {
