@@ -116,48 +116,44 @@ test('Journey: Conduci → Osserva preserves one governed lesson', async ({ page
   await loginE2E(page)
   const fixture = await createRecordedTeachObserveFixture()
 
-  try {
-    const teachHref = `/classi/${encodeURIComponent(fixture.sectionId)}/lezioni/${TEACH_OBSERVE_BLOCK_ID}?mode=teach`
-    await page.goto(teachHref)
+  const teachHref = `/classi/${encodeURIComponent(fixture.sectionId)}/lezioni/${TEACH_OBSERVE_BLOCK_ID}?date=${encodeURIComponent(fixture.localDate)}&occurrence=${encodeURIComponent(fixture.occurrenceLogicalId)}&mode=teach`
+  await page.goto(teachHref)
 
-    await expect(
-      page.getByText(/PASSO 1 DI \d+/),
-      'La fixture deve caricare la guida operativa della lezione registrata.',
-    ).toBeVisible()
+  await expect(
+    page.getByText(/PASSO 1 DI \d+/),
+    'La fixture deve caricare la guida operativa della lezione registrata.',
+  ).toBeVisible()
 
-    const teachShell = page.locator('[data-lesson-shell]')
-    await expect(teachShell, 'CONDUCI deve mantenere la Lesson Shell invece di cambiare identità di prodotto.').toBeVisible()
-    await expect(teachShell).toContainText(fixture.classLabel)
-    await expect(teachShell).toContainText('Il territorio agricolo come sistema')
-    await expect(teachShell).not.toContainText(/CAN-PACK|CAN-PLAN/)
-    await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
+  const teachShell = page.locator('[data-lesson-shell]')
+  await expect(teachShell, 'CONDUCI deve mantenere la Lesson Shell invece di cambiare identità di prodotto.').toBeVisible()
+  await expect(teachShell).toContainText(fixture.classLabel)
+  await expect(teachShell).toContainText('Il territorio agricolo come sistema')
+  await expect(teachShell).not.toContainText(/CAN-PACK|CAN-PLAN/)
+  await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
 
-    const observe = page.getByRole('link', { name: 'Osserva', exact: true })
-    await expect(observe, 'Osserva deve restare una capacità contestuale della stessa Lezione.').toBeVisible()
-    await expectTouchTarget(observe, 'Passaggio a Osserva')
-    await expect(observe).toHaveAttribute('href', /[?&]subtask=observe(?:&|$)/)
-    expect(await observe.getAttribute('href')).not.toMatch(/[?&]mode=/)
-    await observe.click()
+  const observe = page.getByRole('link', { name: 'Osserva', exact: true })
+  await expect(observe, 'Osserva deve restare una capacità contestuale della stessa Lezione.').toBeVisible()
+  await expectTouchTarget(observe, 'Passaggio a Osserva')
+  await expect(observe).toHaveAttribute('href', /[?&]subtask=observe(?:&|$)/)
+  expect(await observe.getAttribute('href')).not.toMatch(/[?&]mode=/)
+  await observe.click()
 
-    const observeShell = page.locator('[data-lesson-shell]')
-    await expect(observeShell, 'OSSERVA deve mantenere la Lesson Shell e l’identità della lezione.').toBeVisible()
-    await expect(observeShell).toContainText(fixture.classLabel)
-    await expect(observeShell).toContainText('Il territorio agricolo come sistema')
-    await expect(page).toHaveURL(/subtask=observe/)
-    await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
-    await expect(page.getByText('EVIDENZA ATTESA', { exact: true })).toBeVisible()
-    await expect(page.getByText(/Non inserire nomi, gruppi identificabili o dati individuali degli alunni/)).toBeVisible()
-    await expect(page.getByText('Vedi criteri completi', { exact: true })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Torna alla lezione', exact: true })).toBeVisible()
+  const observeShell = page.locator('[data-lesson-shell]')
+  await expect(observeShell, 'OSSERVA deve mantenere la Lesson Shell e l’identità della lezione.').toBeVisible()
+  await expect(observeShell).toContainText(fixture.classLabel)
+  await expect(observeShell).toContainText('Il territorio agricolo come sistema')
+  await expect(page).toHaveURL(/subtask=observe/)
+  await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
+  await expect(page.getByText('EVIDENZA ATTESA', { exact: true })).toBeVisible()
+  await expect(page.getByText(/Non inserire nomi, gruppi identificabili o dati individuali degli alunni/)).toBeVisible()
+  await expect(page.getByText('Vedi criteri completi', { exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Torna alla lezione', exact: true })).toBeVisible()
 
-    if (testInfo.project.name.startsWith('mobile')) {
-      for (const width of [390, 320]) {
-        await page.setViewportSize({ width, height: 800 })
-        await expectNoHorizontalOverflow(page, `CONDUCI → OSSERVA a ${width}px`)
-      }
+  if (testInfo.project.name.startsWith('mobile')) {
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 800 })
+      await expectNoHorizontalOverflow(page, `CONDUCI → OSSERVA a ${width}px`)
     }
-  } finally {
-    await fixture.restore()
   }
 })
 
@@ -197,7 +193,7 @@ async function createRecordedTeachObserveFixture() {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY sono richiesti dalla fixture CONDUCI → OSSERVA')
   }
 
-  const { supabase, userId } = await authenticatedAal2Supabase({
+  const { supabase } = await authenticatedAal2Supabase({
     supabaseUrl,
     supabasePublishableKey,
     label: 'DOS-UX-01 teach-observe fixture',
@@ -211,7 +207,7 @@ async function createRecordedTeachObserveFixture() {
 
   const { data: section, error: sectionError } = await supabase
     .from('annual_plan_sections')
-    .select('id,workspace_id,academic_year_id,grade,section_code,status')
+    .select('id,section_code')
     .eq('workspace_id', context.workspace_id)
     .eq('academic_year_id', context.academic_year_id)
     .eq('grade', 'SECONDA')
@@ -219,88 +215,43 @@ async function createRecordedTeachObserveFixture() {
     .limit(1)
     .maybeSingle()
   if (sectionError) throw new Error(`Teach-observe section lookup failed: ${sectionError.message}`)
-  if (!section) throw new Error('Teach-observe fixture: la 2C tenant-local non è disponibile')
+  if (!section?.id) throw new Error('Teach-observe fixture: la 2C tenant-local non è disponibile')
 
-  const { data: binding, error: bindingError } = await supabase
-    .from('canonical_plan_runtime_bindings')
-    .select('asset_id,generation_id')
+  const { data: sessions, error: sessionError } = await supabase
+    .from('teaching_sessions')
+    .select('id,local_date,projected_occurrence_logical_id,recorded_at')
     .eq('workspace_id', context.workspace_id)
     .eq('academic_year_id', context.academic_year_id)
-    .eq('canonical_plan_code', 'CAN-PLAN-2')
-    .maybeSingle()
-  if (bindingError) throw new Error(`Teach-observe canonical binding lookup failed: ${bindingError.message}`)
-  if (!binding?.asset_id || !binding?.generation_id) {
-    throw new Error('Teach-observe fixture: CAN-PLAN-2 non è collegato al tenant E2E corrente')
+    .eq('section_id', section.id)
+    .eq('source_kind', 'PROJECTED_OCCURRENCE')
+    .not('projected_occurrence_logical_id', 'is', null)
+    .order('local_date', { ascending: false })
+    .order('recorded_at', { ascending: false })
+    .limit(50)
+  if (sessionError) throw new Error(`Teach-observe TeachingSession lookup failed: ${sessionError.message}`)
+  if (!sessions?.length) {
+    throw new Error('Teach-observe fixture: nessuna TeachingSession occurrence-bound disponibile nella 2C corrente')
   }
 
-  const identity = {
-    sectionId: section.id,
-    generationId: binding.generation_id,
-    blockId: TEACH_OBSERVE_BLOCK_ID,
-  }
-  const { data: previous, error: previousError } = await supabase
-    .from('annual_plan_block_progress')
-    .select('status,executed_on,evidence_note')
-    .eq('section_id', identity.sectionId)
-    .eq('canonical_generation_id', identity.generationId)
-    .eq('block_id', identity.blockId)
-    .maybeSingle()
-  if (previousError) throw new Error(`Teach-observe progress snapshot failed: ${previousError.message}`)
+  const { data: allocations, error: allocationError } = await supabase
+    .from('teaching_session_allocations')
+    .select('session_id,block_id')
+    .in('session_id', sessions.map((session) => session.id))
+    .eq('block_id', TEACH_OBSERVE_BLOCK_ID)
+  if (allocationError) throw new Error(`Teach-observe allocation lookup failed: ${allocationError.message}`)
 
-  const { error: writeError } = await supabase
-    .from('annual_plan_block_progress')
-    .upsert({
-      section_id: identity.sectionId,
-      canonical_plan_asset_id: binding.asset_id,
-      canonical_generation_id: identity.generationId,
-      block_id: identity.blockId,
-      status: 'SVOLTO',
-      executed_on: currentRomeDate(),
-      evidence_note: 'HVA temporaneo · CONDUCI → OSSERVA',
-      updated_by: userId,
-    }, { onConflict: 'section_id,canonical_generation_id,block_id' })
-  if (writeError) throw new Error(`Teach-observe recorded-state setup failed: ${writeError.message}`)
+  const b01SessionIds = new Set((allocations ?? []).map((allocation) => allocation.session_id))
+  const selected = sessions.find((session) => b01SessionIds.has(session.id) && session.local_date && session.projected_occurrence_logical_id)
+  if (!selected) {
+    throw new Error('Teach-observe fixture: nessuna TeachingSession B01 occurrence-bound disponibile nella 2C corrente')
+  }
 
   return {
     sectionId: section.id,
     classLabel: `2ª ${section.section_code}`,
-    restore: async () => {
-      if (previous) {
-        const { error } = await supabase
-          .from('annual_plan_block_progress')
-          .update({
-            status: previous.status,
-            executed_on: previous.executed_on,
-            evidence_note: previous.evidence_note,
-            updated_by: userId,
-          })
-          .eq('section_id', identity.sectionId)
-          .eq('canonical_generation_id', identity.generationId)
-          .eq('block_id', identity.blockId)
-        if (error) throw new Error(`Teach-observe progress restore failed: ${error.message}`)
-        return
-      }
-
-      const { error } = await supabase
-        .from('annual_plan_block_progress')
-        .delete()
-        .eq('section_id', identity.sectionId)
-        .eq('canonical_generation_id', identity.generationId)
-        .eq('block_id', identity.blockId)
-      if (error) throw new Error(`Teach-observe progress cleanup failed: ${error.message}`)
-    },
+    localDate: selected.local_date,
+    occurrenceLogicalId: selected.projected_occurrence_logical_id,
   }
-}
-
-function currentRomeDate() {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Rome',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date())
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  return `${values.year}-${values.month}-${values.day}`
 }
 
 async function assertResponsiveWidths(page, target, label) {
