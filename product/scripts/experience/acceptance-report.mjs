@@ -21,6 +21,7 @@ const receiptScope = resolveHvaReceiptScope({
   projectCount: expectedProjects.length,
 })
 const expectedJourneyIds = receiptScope.expectedJourneyIds
+const mandatoryJourneyIds = new Set(expectedJourneyIds.filter((id) => id === 'today-teacher-first'))
 const canonicalMinimumTargetPx = 44
 const designGovernanceCriteria = [
   ['DPG-05', 'Una sola azione primaria realmente dominante.'],
@@ -46,6 +47,9 @@ const missingObservationCount = Math.max(0, expectedObservationCount - observati
 const missingJourneyCount = Math.max(0, expectedJourneyCount - journeys.length)
 const failedJourneys = journeys.filter((item) => item.status === 'FAIL')
 const notApplicableJourneys = journeys.filter((item) => item.status === 'NOT_APPLICABLE')
+const unverifiedMandatoryJourneys = journeys.filter(
+  (item) => mandatoryJourneyIds.has(item.id) && item.status !== 'PASS',
+)
 
 const consoleIssueCount = observations.reduce((sum, item) => sum + item.consoleErrors.length + item.pageErrors.length, 0)
 const requestFailureCount = observations.reduce((sum, item) => sum + item.requestFailures.length, 0)
@@ -60,7 +64,7 @@ const gates = {
   designPolicy: 'EXTERNAL',
   deployment: target === 'beta' ? (deployment?.status ?? 'FAIL') : 'NOT_APPLICABLE',
   browser: testExitCode === 0 && missingObservationCount === 0 ? 'PASS' : 'FAIL',
-  journeys: missingJourneyCount === 0 && failedJourneys.length === 0 ? 'PASS' : 'FAIL',
+  journeys: missingJourneyCount === 0 && failedJourneys.length === 0 && unverifiedMandatoryJourneys.length === 0 ? 'PASS' : 'FAIL',
   console: consoleIssueCount === 0 ? 'PASS' : 'FAIL',
   network: requestFailureCount === 0 && serverErrorCount === 0 ? 'PASS' : 'FAIL',
   layout: overflowCount === 0 ? 'PASS' : 'FAIL',
@@ -73,6 +77,7 @@ const findings = []
 if (missingObservationCount) findings.push({ severity: 'FAIL', code: 'HVA-COVERAGE', message: `${missingObservationCount} osservazioni attese non sono state prodotte.` })
 if (missingJourneyCount) findings.push({ severity: 'FAIL', code: 'HVA-JOURNEY-COVERAGE', message: `${missingJourneyCount} ricevute journey attese non sono state prodotte.` })
 if (failedJourneys.length) findings.push({ severity: 'FAIL', code: 'HVA-JOURNEY', message: `${failedJourneys.length} journey Human risultano falliti.` })
+if (unverifiedMandatoryJourneys.length) findings.push({ severity: 'FAIL', code: 'HVA-JOURNEY-UNVERIFIED', message: `${unverifiedMandatoryJourneys.length} evidenze browser obbligatorie risultano non verificate.` })
 if (consoleIssueCount) findings.push({ severity: 'FAIL', code: 'HVA-CONSOLE', message: `${consoleIssueCount} errori console/page rilevati.` })
 if (requestFailureCount || serverErrorCount) findings.push({ severity: 'FAIL', code: 'HVA-NETWORK', message: `${requestFailureCount} richieste fallite e ${serverErrorCount} risposte 5xx.` })
 if (overflowCount) findings.push({ severity: 'FAIL', code: 'HVA-OVERFLOW', message: `${overflowCount} superfici producono overflow orizzontale della pagina.` })
@@ -116,6 +121,7 @@ const receipt = {
     canonicalMinimumTargetPx,
     mobileSmallTargetSurfaceCount: smallTargetObservations.length,
     journeyNotApplicableCount: notApplicableJourneys.length,
+    unverifiedMandatoryJourneyCount: unverifiedMandatoryJourneys.length,
   },
   deployment: deployment ?? null,
   findings,
