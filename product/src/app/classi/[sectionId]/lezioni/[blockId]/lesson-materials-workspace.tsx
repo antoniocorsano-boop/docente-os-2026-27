@@ -38,6 +38,12 @@ export function LessonMaterialsWorkspace({
     occurrenceLogicalId,
     intent: explicitStartIntent ? 'start' : null,
   })
+  const materialsReturnTo = buildCanonicalLessonWorkspaceHref(sectionId, blockId, {
+    subtask: 'materials',
+    localDate,
+    occurrenceLogicalId,
+    intent: explicitStartIntent ? 'start' : null,
+  })
 
   return (
     <main className={styles.closeSurface}>
@@ -61,6 +67,7 @@ export function LessonMaterialsWorkspace({
           extensions={extensions}
           knowledgeSuggestions={knowledgeSuggestions}
           atlasSuggestions={atlasSuggestions}
+          returnTo={materialsReturnTo}
         />
 
         <div className={styles.closeActions}>
