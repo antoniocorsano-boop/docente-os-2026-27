@@ -45,3 +45,12 @@ test('Oggi excludes legacy generic quick actions and next-lesson material destin
   assert.match(text, /href=\{item\.href\}/)
   assert.match(text, /fallbackActionLabel/)
 })
+
+test('Oggi explains a legitimate empty day and offers only the safe timetable continuation', async () => {
+  const text = await source()
+
+  assert.match(text, /className="todayEmptyState"/)
+  assert.match(text, /Nessuna lezione o impegno da mostrare adesso/)
+  assert.match(text, /href="\/orario"/)
+  assert.doesNotMatch(text, /Aggiungi attività/)
+})
