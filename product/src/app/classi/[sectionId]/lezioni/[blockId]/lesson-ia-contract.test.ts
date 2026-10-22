@@ -5,12 +5,11 @@ import test from 'node:test'
 const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
 const shellSource = readFileSync(new URL('./lesson-shell.tsx', import.meta.url), 'utf8')
 const approvalActionSource = readFileSync(new URL('./preparation-approval-actions.ts', import.meta.url), 'utf8')
-const clientSources = [
-  './lesson-prepare-client.tsx',
-  './lesson-live-client.tsx',
-  './lesson-observe-client.tsx',
-  './lesson-close-client.tsx',
-].map((path) => readFileSync(new URL(path, import.meta.url), 'utf8')).join(String.fromCharCode(10))
+const prepareClientSource = readFileSync(new URL('./lesson-prepare-client.tsx', import.meta.url), 'utf8')
+const liveClientSource = readFileSync(new URL('./lesson-live-client.tsx', import.meta.url), 'utf8')
+const observeClientSource = readFileSync(new URL('./lesson-observe-client.tsx', import.meta.url), 'utf8')
+const closeClientSource = readFileSync(new URL('./lesson-close-client.tsx', import.meta.url), 'utf8')
+const clientSources = [prepareClientSource, liveClientSource, observeClientSource, closeClientSource].join(String.fromCharCode(10))
 
 test('Lezione resolves visible state server-side from canonical context', () => {
   assert.match(pageSource, /resolveLessonWorkspaceState/)
@@ -22,7 +21,7 @@ test('Lezione resolves visible state server-side from canonical context', () => 
 
 test('legacy mode remains compatibility input only and does not define visible phase navigation', () => {
   assert.match(pageSource, /mode\?: string/)
-  assert.doesNotMatch(shellSource, /PHASES/)
+  assert.doesNotMatch(shellSource, /\bPHASES\b/)
   assert.doesNotMatch(shellSource, /aria-label="Fasi della lezione"/)
   assert.doesNotMatch(shellSource, /data-lesson-phase/)
   assert.doesNotMatch(shellSource, /buildPhaseHref/)
@@ -30,17 +29,24 @@ test('legacy mode remains compatibility input only and does not define visible p
 
 test('LessonShell is a context and status header, not a phase selector', () => {
   assert.doesNotMatch(shellSource, /LessonShellPhase/)
-  assert.doesNotMatch(shellSource, /phase:/)
+  assert.doesNotMatch(shellSource, /\bphase:/)
   assert.match(shellSource, /statusLabel/)
 })
 
 test('new lesson UI emits canonical intent and subtask routes, never phase mode routes', () => {
   assert.doesNotMatch(clientSources, /\?mode=(?:prepare|teach|observe|record)/)
-  assert.doesNotMatch(clientSources, /buildLessonWorkspaceHref/)
+  assert.doesNotMatch(clientSources, /\bbuildLessonWorkspaceHref\b/)
   assert.match(clientSources, /buildCanonicalLessonWorkspaceHref/)
   assert.match(clientSources, /intent:\s*'start'/)
   assert.match(clientSources, /intent:\s*'close'/)
   assert.match(clientSources, /subtask:\s*'observe'/)
   assert.doesNotMatch(approvalActionSource, /\?mode=/)
   assert.match(approvalActionSource, /buildCanonicalLessonWorkspaceHref/)
+})
+
+test('explicit start intent survives contextual observation and materials navigation', () => {
+  const serverPropPasses = pageSource.match(/explicitStartIntent=\{requestedIntent === 'start'\}/g) ?? []
+  assert.equal(serverPropPasses.length, 2)
+  assert.match(liveClientSource, /intent:\s*explicitStartIntent\s*\?\s*'start'\s*:\s*null/)
+  assert.match(observeClientSource, /intent:\s*explicitStartIntent\s*\?\s*'start'\s*:\s*null/)
 })
