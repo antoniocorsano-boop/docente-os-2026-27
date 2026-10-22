@@ -8,7 +8,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 const BLOCK_ID = 'B01'
 
-test('Journey: Registra → Continua starts from factual outcome', async ({ page }) => {
+test('Journey: legacy Registra resolves an already recorded lesson automatically', async ({ page }) => {
   await loginE2E(page)
   const fixture = await createRegisterFixture()
 
@@ -16,25 +16,14 @@ test('Journey: Registra → Continua starts from factual outcome', async ({ page
     const recordHref = `/classi/${encodeURIComponent(fixture.sectionId)}/lezioni/${BLOCK_ID}?mode=record`
     await page.goto(recordHref)
 
-    await expect(
-      page,
-      'La fixture REGISTRA → CONTINUA deve entrare davvero nella registrazione della lezione tenant-local.',
-    ).toHaveURL(new RegExp(`/classi/${fixture.sectionId}/lezioni/${BLOCK_ID}\\?mode=record`))
-    await expect(page.getByText(/REGISTRA LA LEZIONE/)).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Chiudi la lezione senza ricopiare tutto' })).toBeVisible()
-
-    const outcome = page.getByRole('combobox', { name: 'Esito effettivo', exact: true })
-    await expect(
-      outcome,
-      'REGISTRA deve partire dall’esito effettivo della lezione, prima dei dettagli facoltativi.',
-    ).toBeVisible()
-    await expect(outcome.locator('option[value="SVOLTO"]')).toHaveText('Svolto')
-    await expect(outcome.locator('option[value="RECUPERATO"]')).toHaveText('Recuperato')
-    await expect(outcome.locator('option[value="RIMODULATO"]')).toHaveText('Rimodulato')
-    await expect(outcome.locator('option[value="ANNULLATO"]')).toHaveText('Annullato')
-
-    await expect(page.getByText('1 · DATI ESSENZIALI', { exact: true })).toBeVisible()
-    await expect(page.getByLabel('Una nota sulla lezione, solo se serve', { exact: true })).toHaveCount(0)
+    await expect(page.locator('[data-lesson-shell]')).toBeVisible()
+    await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
+    await expect(page.getByText('Registrata', { exact: true }).first()).toBeVisible()
+    await expect(page.getByText(/LEZIONE REGISTRATA/).first()).toBeVisible()
+    await expect(page.getByRole('combobox', { name: 'Esito effettivo', exact: true })).toHaveCount(0)
+    await expect(page.locator('a[href*="mode="]')).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'Osserva', exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Materiali', exact: true })).toBeVisible()
   } finally {
     await fixture.restore()
   }
