@@ -3,6 +3,8 @@ import test from 'node:test'
 import { readFile } from 'node:fs/promises'
 
 const plannerPage = new URL('../../app/planner/page.tsx', import.meta.url)
+const acceptanceReport = new URL('../../../scripts/experience/acceptance-report.mjs', import.meta.url)
+const todayJourney = new URL('../../../e2e/experience/today-teacher-first.spec.mjs', import.meta.url)
 
 async function source() {
   return readFile(plannerPage, 'utf8')
@@ -53,4 +55,18 @@ test('Oggi explains a legitimate empty day and offers only the safe timetable co
   assert.match(text, /Nessuna lezione o impegno da mostrare adesso/)
   assert.match(text, /href="\/orario"/)
   assert.doesNotMatch(text, /Aggiungi attività/)
+})
+
+test('mandatory Oggi browser evidence fails closed when the governed journey is not PASS', async () => {
+  const [reportText, journeyText] = await Promise.all([
+    readFile(acceptanceReport, 'utf8'),
+    readFile(todayJourney, 'utf8'),
+  ])
+
+  assert.match(journeyText, /id:\s*'today-teacher-first'/)
+  assert.match(journeyText, /status:\s*'NOT_APPLICABLE'/)
+  assert.match(reportText, /mandatoryJourneyIds/)
+  assert.match(reportText, /today-teacher-first/)
+  assert.match(reportText, /item\.status\s*!==\s*'PASS'/)
+  assert.match(reportText, /HVA-JOURNEY-UNVERIFIED/)
 })
