@@ -189,7 +189,12 @@ export default async function LessonWorkspacePage({
     requestedOccurrenceLogicalId: query.occurrence,
     clock,
   })
-  const registeredByProgress = Boolean(progress && COMPLETE_STATUSES.has(progress.status))
+  const registeredByProgress = Boolean(
+    progress
+      && COMPLETE_STATUSES.has(progress.status)
+      && occurrenceContext.occurrence
+      && progress.executedOn === occurrenceContext.occurrence.localDate,
+  )
   const registeredByOccurrence = registeredByProgress || !occurrenceContext.occurrence
     ? false
     : await occurrenceHasBlockRegistration({
