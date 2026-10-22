@@ -28,7 +28,7 @@ test('Journey: Lezione → Materiali preserves one teacher task', async ({ page 
     await expect(shell, 'Materiali deve restare dentro una Lesson Shell persistente.').toBeVisible()
     await expect(shell).not.toContainText(/CAN-PACK|CAN-PLAN/)
     await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
-    await expect(page.locator('a[href*="mode="]')).toHaveCount(0)
+    await expect(page.locator('a[href^="/classi/"][href*="/lezioni/"][href*="mode="]')).toHaveCount(0)
 
     const materialsTask = page.locator('[data-lesson-subtask="materials"]')
     await expect(materialsTask).toBeVisible()

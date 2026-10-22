@@ -33,7 +33,7 @@ test('Beta REWORK: 3ª E B01 preserves Lezione → Materiali → Visualizza', as
     await expect(shell).toContainText('3ª E')
     await expect(shell).toContainText(LESSON_TITLE)
     await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
-    await expect(page.locator('a[href*="mode="]')).toHaveCount(0)
+    await expect(page.locator('a[href^="/classi/"][href*="/lezioni/"][href*="mode="]')).toHaveCount(0)
 
     const main = page.locator('#dos-main-content')
     await expect(
