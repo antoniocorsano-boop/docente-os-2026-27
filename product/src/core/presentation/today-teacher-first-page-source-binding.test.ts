@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises'
 const plannerPage = new URL('../../app/planner/page.tsx', import.meta.url)
 const acceptanceReport = new URL('../../../scripts/experience/acceptance-report.mjs', import.meta.url)
 const todayJourney = new URL('../../../e2e/experience/today-teacher-first.spec.mjs', import.meta.url)
+const hvaReceiptScope = new URL('../../../../.github/scripts/certification/hva-receipt-scope.mjs', import.meta.url)
 
 async function source() {
   return readFile(plannerPage, 'utf8')
@@ -58,13 +59,16 @@ test('Oggi explains a legitimate empty day and offers only the safe timetable co
 })
 
 test('mandatory Oggi browser evidence fails closed when the governed journey is not PASS', async () => {
-  const [reportText, journeyText] = await Promise.all([
+  const [reportText, journeyText, scopeText] = await Promise.all([
     readFile(acceptanceReport, 'utf8'),
     readFile(todayJourney, 'utf8'),
+    readFile(hvaReceiptScope, 'utf8'),
   ])
 
   assert.match(journeyText, /id:\s*'today-teacher-first'/)
   assert.match(journeyText, /status:\s*'NOT_APPLICABLE'/)
+  assert.match(scopeText, /FULL_JOURNEY_IDS[\s\S]*'today-teacher-first'/)
+  assert.match(scopeText, /today-teacher-first\.spec\.mjs[\s\S]*today-teacher-first/)
   assert.match(reportText, /mandatoryJourneyIds/)
   assert.match(reportText, /today-teacher-first/)
   assert.match(reportText, /item\.status\s*!==\s*'PASS'/)
