@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { resolveTimetableLessonEntrypoint } from './timetable-lesson-entrypoint'
+
+const timetableExperienceSource = readFileSync(new URL('./TimetableExperience.tsx', import.meta.url), 'utf8')
 
 test('view mode opens the canonical lesson directly when section and block are resolved', () => {
   assert.deepEqual(resolveTimetableLessonEntrypoint({
@@ -42,6 +45,12 @@ test('view mode falls back to the known class when no unique projected occurrenc
     kind: 'CLASS',
     href: '/classi/2C',
   })
+})
+
+test('view mode treats only a missing canonical binding as an unresolved grade source', () => {
+  assert.match(timetableExperienceSource, /CanonicalPlanSourceError/)
+  assert.match(timetableExperienceSource, /CANONICAL_PLAN_BINDING_MISSING/)
+  assert.match(timetableExperienceSource, /throw error/)
 })
 
 test('view mode fails closed when lesson context is ambiguous', () => {
