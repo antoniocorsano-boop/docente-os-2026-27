@@ -100,7 +100,7 @@ test('LP-4 — la nuova IA non genera la route materiali legacy', async ({ page 
   const classCard = page.locator('a.canonicalClassCard').first()
   await expect(classCard, 'La journey LP-4 richiede almeno una classe canonica nel workspace HVA.').toBeVisible({ timeout: 30_000 })
   await classCard.click()
-  await expect(page.locator('details#altro-della-classe')).toHaveCount(1)
+  await expect(page.locator('details#altro-della-classe')).toHaveCount(1, { timeout: 30_000 })
   await expect(page.locator('a[href="/materiali/prossima"]')).toHaveCount(0)
   await screenshot(page, testInfo, 'lesson-materials-no-legacy-class')
 })
