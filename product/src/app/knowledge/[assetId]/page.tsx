@@ -81,7 +81,10 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
   }
 
   if (taskMode === 'prepare' && focusedLesson) {
-    const materialsReturnTo = buildCanonicalLessonWorkspaceHref(focusedLesson.sectionId, focusedLesson.blockId, { subtask: 'materials' })
+    const materialsReturnTo = sanitizeInternalReturnTo(
+      query.returnTo,
+      buildCanonicalLessonWorkspaceHref(focusedLesson.sectionId, focusedLesson.blockId, { subtask: 'materials' }),
+    )
     const normalizedText = document?.normalizedText?.trim() ?? ''
     const fallbackUnits = units
       .filter((unit) => unit.unitType !== 'ACTION' && unit.unitType !== 'DEADLINE')
