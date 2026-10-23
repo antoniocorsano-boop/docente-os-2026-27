@@ -75,10 +75,10 @@ function expectedRuntime({ fixtureStatus = 'PASS' } = {}) {
     runtimeIds: {
       workspaceId: 'workspace-1',
       academicYearId: 'year-1',
-      activeTimetableVersionId: 'active-v1',
-      activeTimetableVersionIds: ['active-v1'],
+      activeTimetableVersionId: 'draft-v1',
+      activeTimetableVersionIds: ['draft-v1'],
       assignmentIds: ['assignment-1'],
-      mondayLessonIds: ['slot-07', 'slot-08-new'],
+      mondayLessonIds: ['slot-07', 'slot-08'],
       calendarEventIds: ['calendar-1'],
       baselineErrorCount: 0,
     },
@@ -103,17 +103,21 @@ function mutationRecorder() {
   return {
     calls,
     adapter: {
-      async ensureCanonicalAssignment(operation) {
-        calls.push(['ensureCanonicalAssignment', operation])
-        return { assignmentId: 'assignment-1' }
-      },
       async prepareCanonicalDraftTimetable(operation) {
         calls.push(['prepareCanonicalDraftTimetable', operation])
         return { timetableVersionId: 'draft-v1' }
       },
       async createCanonicalMondaySlot(operation, context) {
         calls.push(['createCanonicalMondaySlot', operation, context])
-        return { slotId: operation.start === '07:00' ? 'slot-07' : 'slot-08-new' }
+        return { slotId: 'slot-07' }
+      },
+      async upsertCanonicalCalendarEvent(operation) {
+        calls.push(['upsertCanonicalCalendarEvent', operation])
+        return { calendarEventId: 'calendar-1' }
+      },
+      async verifyPreparedDraft(context) {
+        calls.push(['verifyPreparedDraft', context])
+        return { status: 'PASS' }
       },
       async activateCanonicalTimetable(operation, context) {
         calls.push(['activateCanonicalTimetable', operation, context])
@@ -123,9 +127,8 @@ function mutationRecorder() {
           next_draft_version_id: 'draft-next',
         }
       },
-      async upsertCanonicalCalendarEvent(operation) {
-        calls.push(['upsertCanonicalCalendarEvent', operation])
-        return { calendarEventId: 'calendar-1' }
+      async rollbackPreActivation() {
+        calls.push(['rollbackPreActivation'])
       },
     },
   }
@@ -144,14 +147,13 @@ test('apply requires the exact governed confirmation and a durable plan path', (
     () => parseProvisionArgs(['--apply', '--confirm', BASELINE_ID]),
     /--plan/,
   )
-
   assert.deepEqual(
     parseProvisionArgs(['--apply', '--plan', 'plan.json', '--confirm', BASELINE_ID]),
     { mode: 'apply', planPath: 'plan.json', confirm: BASELINE_ID },
   )
 })
 
-test('dry-run computes the exact baseline-v0 changes, writes only the plan receipt, and performs no mutation', async () => {
+test('dry-run plans only the canonical reversible stage plus activation and performs no mutation', async () => {
   const runtime = baselineV0Runtime()
   let writtenPlan = null
   const writes = []
@@ -177,29 +179,29 @@ test('dry-run computes the exact baseline-v0 changes, writes only the plan recei
   assert.deepEqual(result.plan.operations.map((operation) => operation.kind), [
     'PREPARE_TIMETABLE_DRAFT',
     'CREATE_MONDAY_SLOT',
-    'CREATE_MONDAY_SLOT',
-    'ACTIVATE_TIMETABLE',
     'UPSERT_CALENDAR_EVENT',
+    'ACTIVATE_TIMETABLE',
   ])
   assert.deepEqual(
     result.plan.operations.filter((operation) => operation.kind === 'CREATE_MONDAY_SLOT')
       .map(({ start, end }) => `${start}-${end}`),
-    ['07:00-08:00', '08:00-09:00'],
+    ['07:00-08:00'],
   )
   assert.deepEqual(writes, ['plan'])
   assert.deepEqual(writtenPlan, result.plan)
 })
 
-test('planner includes canonical assignment repair only when assignment semantics require it', () => {
-  const plan = buildHvaBaselineProvisionPlan(baselineV0Runtime({ assignment: false }), {
-    plannedAt: '2026-10-23T20:30:00.000Z',
-  })
-  assert.equal(plan.operations[0].kind, 'ENSURE_ASSIGNMENT')
-  assert.equal(plan.operations.filter((operation) => operation.kind === 'ENSURE_ASSIGNMENT').length, 1)
+test('planner rejects a missing or non-canonical assignment instead of repairing governed identity', () => {
+  assert.throws(
+    () => buildHvaBaselineProvisionPlan(baselineV0Runtime({ assignment: false }), {
+      plannedAt: '2026-10-23T20:30:00.000Z',
+    }),
+    /assignment.*2A|assignment.*Tecnologia|canonical assignment/i,
+  )
 })
 
-test('apply executes assignment, DRAFT, both Monday slots, activation RPC and one Calendar upsert', async () => {
-  const pre = baselineV0Runtime({ assignment: false })
+test('apply completes reversible preparation and validation before the lifecycle activation RPC', async () => {
+  const pre = baselineV0Runtime()
   const post = expectedRuntime()
   const plan = buildHvaBaselineProvisionPlan(pre, { plannedAt: '2026-10-23T20:30:00.000Z' })
   const { calls, adapter } = mutationRecorder()
@@ -213,12 +215,11 @@ test('apply executes assignment, DRAFT, both Monday slots, activation RPC and on
 
   assert.equal(result.status, 'APPLIED')
   assert.deepEqual(calls.map(([name]) => name), [
-    'ensureCanonicalAssignment',
     'prepareCanonicalDraftTimetable',
     'createCanonicalMondaySlot',
-    'createCanonicalMondaySlot',
-    'activateCanonicalTimetable',
     'upsertCanonicalCalendarEvent',
+    'verifyPreparedDraft',
+    'activateCanonicalTimetable',
   ])
   const activation = calls.find(([name]) => name === 'activateCanonicalTimetable')
   assert.equal(activation[2].timetableVersionId, 'draft-v1')
@@ -281,6 +282,12 @@ test('apply fails closed if activation breaks the historical 26-Oct recorded-les
     }),
     /historical|fixture|provenance/i,
   )
+  assert.equal(recorder.calls.filter(([name]) => name === 'rollbackPreActivation').length, 0)
+})
+
+test('normal HVA workflow contains no provisioning invocation', async () => {
+  const workflow = await readFile(new URL('../../../.github/workflows/experience-acceptance.yml', import.meta.url), 'utf8')
+  assert.doesNotMatch(workflow, /hva-baseline-provision\.mjs|provision-hva-baseline\.mjs/)
 })
 
 test('provisioner source contains no password sign-in, service-role, or admin client flow', async () => {
