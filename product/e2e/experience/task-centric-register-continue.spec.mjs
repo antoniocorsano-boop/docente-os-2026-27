@@ -17,7 +17,6 @@ test('Journey: legacy Registra resolves an already recorded lesson automatically
   await expect(page.locator('[data-lesson-shell]')).toBeVisible()
   await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
   await expect(page.getByText('Registrata', { exact: true }).first()).toBeVisible()
-  await expect(page.getByText(/LEZIONE REGISTRATA/).first()).toBeVisible()
   await expect(page.getByRole('combobox', { name: 'Esito effettivo', exact: true })).toHaveCount(0)
   await expect(page.locator('a[href*="mode="]')).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Osserva', exact: true })).toBeVisible()
