@@ -1,0 +1,32 @@
+name: HVA-GOV-01 Task 3 RED
+
+on:
+  push:
+    branches: ["test/hva-gov-01-task3-red"]
+
+permissions:
+  contents: read
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Prove RED candidate product tree is unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "f758095b413a4b8fd638acfde40757932af28ce6"
+          git diff --exit-code f758095b413a4b8fd638acfde40757932af28ce6 HEAD -- product/
+
+      - name: Run Task 3 historical provenance contract
+        working-directory: product
+        run: node --test e2e/support/hva-recorded-lesson-fixture.test.mjs
