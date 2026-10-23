@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
+import './hva-governed-baseline-contract.test.mjs'
 import {
   HVA_TODAY_ASSIGNMENT_NOTE,
   HVA_TODAY_LOCAL_DATE,
