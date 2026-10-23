@@ -18,6 +18,11 @@
       "reason": "CPRI-01 integrated this call through the frozen lesson-preparation application contract. Renaming it locally would widen TERM-01 into a cross-module contract refactor; keep the exact bridge frozen until a separately governed canonical API transition."
     },
     {
+      "path": "product/src/app/classi/[sectionId]/lezioni/[blockId]/lesson-prepare-client.tsx",
+      "contains": "CURRICULUM_REQUIRED",
+      "reason": "This enum member belongs to the frozen lesson-preparation domain contract. The teacher-facing copy remains canonical Curricolo; renaming the identifier locally would widen this UX rework into a cross-module contract migration."
+    },
+    {
       "path": "product/src/core/infrastructure/supabase/supabase-lesson-preparation-approval-repository.ts",
       "contains": "input.curriculumBaseline.sourceHandoffFootprintHash",
       "reason": "This exact expression bridges the frozen lesson-preparation application input to the already-canonical RPC argument. Renaming the input member independently would require a wider application-contract migration, so the bridge is frozen as compatibility debt."
