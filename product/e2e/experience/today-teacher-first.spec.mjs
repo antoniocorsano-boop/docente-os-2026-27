@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
-import { createHvaTodayCoexistenceFixture } from '../support/hva-today-fixture.mjs'
+import { createHvaTodayCoexistenceFixture } from '../support/hva-today-coexistence-fixture.mjs'
 
 requireE2ECredentials()
 
