@@ -1,5 +1,3 @@
-import { authenticatedAal2Supabase } from './direct-aal2-supabase.mjs'
-
 export const HVA_TODAY_DISCIPLINE_NAME = 'Tecnologia'
 export const HVA_TODAY_ASSIGNMENT_NOTE = 'HVA · Oggi · Cattedra canonica'
 export const HVA_TODAY_LOCAL_DATE = '2026-10-19'
@@ -83,6 +81,7 @@ export async function assertHvaTodayRuntimeFixture() {
     throw new Error('HVA Today preflight requires Supabase URL and publishable key')
   }
 
+  const { authenticatedAal2Supabase } = await import('./direct-aal2-supabase.mjs')
   const { supabase } = await authenticatedAal2Supabase({
     supabaseUrl,
     supabasePublishableKey,
