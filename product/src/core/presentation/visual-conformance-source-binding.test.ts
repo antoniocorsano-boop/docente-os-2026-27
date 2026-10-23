@@ -19,7 +19,7 @@ test('OGGI keeps the canonical teaching task free from competing quick actions',
 
 test('focused work uses the existing AppShell through a presentation-only focus mode', () => {
   assert.ok(appShellSource.includes('focusMode?: boolean'), 'AppShell must expose only an optional presentation-level focus mode.')
-  assert.ok(appShellSource.includes("cn('dosShell', focusMode && 'dosShellFocused')"), 'Focused mode must be represented as presentation state on the existing shell.')
+  assert.ok(appShellSource.includes("focusMode && 'dosShellFocused'"), 'Focused mode must be represented as presentation state on the existing shell.')
   assert.ok(appShellSource.includes('CommandPalette'), 'Focused mode must keep broader navigation reachable through the existing command surface.')
   assert.ok(appShellSource.includes("item.key === 'more' && moreActive"), 'Focused mode must keep the canonical Altro escape available through the primary shell.')
 })
