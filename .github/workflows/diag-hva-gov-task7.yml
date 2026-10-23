@@ -1,0 +1,25 @@
+name: HVA-GOV Task 7 focused
+
+on:
+  push:
+    branches:
+      - diag/hva-gov-01-task7-red
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: product/package-lock.json
+      - run: npm ci
+      - run: node --test scripts/experience/provision-hva-baseline.test.mjs
