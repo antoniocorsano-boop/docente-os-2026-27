@@ -6,6 +6,9 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
+import './provision-hva-baseline.test.mjs'
+import './provision-hva-baseline-lease.test.mjs'
+import './provision-hva-baseline-hash.test.mjs'
 import {
   buildHvaBaselineIntegrityReceipt,
   classifyHvaBaselineIntegrity,
