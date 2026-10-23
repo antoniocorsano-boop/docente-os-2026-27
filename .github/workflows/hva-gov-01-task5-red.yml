@@ -1,0 +1,32 @@
+name: HVA-GOV-01 Task 5 RED
+
+on:
+  push:
+    branches: ["test/hva-gov-01-task5-red"]
+
+permissions:
+  contents: read
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Prove Task 5 RED is test-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only 14c421bb86e9508a728dc0ca21befc0d92d6485f HEAD -- product/)"
+          test "$changed" = "product/e2e/support/hva-today-fixture.test.mjs"
+
+      - name: Run Task 5 Today read-only contract
+        working-directory: product
+        run: node --test e2e/support/hva-today-fixture.test.mjs
