@@ -1,0 +1,31 @@
+name: HVA-GOV-01 Task 4 Final Qualification
+
+on:
+  push:
+    branches: ["test/hva-gov-01-task4-final-qualification"]
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify product tree matches Task 4 exact candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code 14c421bb86e9508a728dc0ca21befc0d92d6485f HEAD -- product/
+
+      - name: Run Task 4 baseline integrity contract
+        working-directory: product
+        run: node --test scripts/experience/hva-baseline-integrity.test.mjs
