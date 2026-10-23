@@ -36,6 +36,8 @@ export type AppShellProps = {
   contentClassName?: string
   contextualAssistantEnabled?: boolean
   focusMode?: boolean
+  mobileContextLabel?: string
+  mobileNavigationActive?: NavigationKey | null
 }
 
 export function AppShell({
@@ -47,11 +49,15 @@ export function AppShell({
   contentClassName,
   contextualAssistantEnabled = true,
   focusMode = false,
+  mobileContextLabel,
+  mobileNavigationActive,
 }: AppShellProps) {
   const router = useRouter()
   const [commandOpen, setCommandOpen] = useState(false)
   const activeItem = navigationItem(active)
   const moreActive = active === 'more' || isSecondaryNavigationKey(active)
+  const mobileActive = mobileNavigationActive === undefined ? active : mobileNavigationActive
+  const mobileMoreActive = mobileActive === 'more' || (mobileActive !== null && isSecondaryNavigationKey(mobileActive))
   const primaryNavigation = workNavigationItems()
 
   useEffect(() => {
@@ -70,7 +76,7 @@ export function AppShell({
     router.push(href)
   }
 
-  return <div className={cn('dosShell', focusMode && 'dosShellFocused')}>
+  return <div className={cn('dosShell', focusMode && 'dosShellFocused', contextualAssistantEnabled && 'dosShellAssistantEnabled')}>
     <a className="dosSkipLink" href="#dos-main-content">Salta al contenuto</a>
     <aside className="dosSidebar" aria-label="Navigazione principale">
       <Link href="/planner" className="dosBrand" aria-label="Docente OS — Oggi">
@@ -97,14 +103,14 @@ export function AppShell({
     </aside>
     <div className="dosMainColumn">
       <header className="dosMobileHeader">
-        <div className="dosMobileContext"><Link href="/planner" aria-label="Docente OS — Oggi"><DocenteOsMark size={30} className="dosMobileBrandMark" /></Link><span>{activeItem.label}</span><strong>{workspaceName}</strong></div>
+        <div className="dosMobileContext"><Link href="/planner" aria-label="Docente OS — Oggi"><DocenteOsMark size={30} className="dosMobileBrandMark" /></Link><span>{mobileContextLabel ?? activeItem.label}</span><strong>{workspaceName}</strong></div>
         <div className="dosMobileActions"><button type="button" onClick={() => setCommandOpen(true)} aria-label="Cerca o vai a una funzione"><Search size={19} aria-hidden /></button><LocalProfileAvatar /></div>
       </header>
       <main id="dos-main-content" tabIndex={-1} className={cn('workSurface', 'dosContent', contentClassName)}>{children}</main>
       <nav className="dosBottomNav" aria-label="Navigazione mobile">
         {primaryNavigation.map((item) => {
           const Icon = ICONS[item.key]
-          const itemActive = item.key === active || (item.key === 'more' && moreActive)
+          const itemActive = item.key === mobileActive || (item.key === 'more' && mobileMoreActive)
           return <Link key={item.key} href={item.href} className={cn(itemActive && 'active')} aria-current={itemActive ? 'page' : undefined}>
             <Icon size={20} strokeWidth={1.9} aria-hidden /><small>{item.shortLabel}</small>
           </Link>
