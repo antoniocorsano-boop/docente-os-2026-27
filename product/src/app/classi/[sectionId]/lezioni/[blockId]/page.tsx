@@ -256,6 +256,8 @@ export default async function LessonWorkspacePage({
       contentClassName="lessonWorkspaceSurface"
       contextualAssistantEnabled={approvalStatus === 'APPROVED'}
       focusMode
+      mobileContextLabel="Lezione"
+      mobileNavigationActive={null}
     >
       <OpenDesignReview active={visibleState === 'PREPARATION' && query.review === 'design'} />
       {visibleState === 'AMBIGUOUS' ? (
