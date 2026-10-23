@@ -21,66 +21,15 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-
           path = Path('.github/workflows/experience-acceptance.yml')
           text = path.read_text()
-
-          deps = """      - name: Install product dependencies
-        if: steps.credentials.outputs.ready == 'true'
-        working-directory: product
-        run: npm install --no-audit --no-fund
-
-      - name: Install Playwright runner without changing the lockfile
-"""
-          deps_with_gate = """      - name: Install product dependencies
-        if: steps.credentials.outputs.ready == 'true'
-        working-directory: product
-        run: npm install --no-audit --no-fund
-
-      - name: Verify governed baseline preflight
-        if: steps.credentials.outputs.ready == 'true'
-        working-directory: product
-        run: node scripts/experience/hva-baseline-integrity.mjs preflight
-
-      - name: Install Playwright runner without changing the lockfile
-"""
+          deps = "      - name: Install product dependencies\n        if: steps.credentials.outputs.ready == 'true'\n        working-directory: product\n        run: npm install --no-audit --no-fund\n\n      - name: Install Playwright runner without changing the lockfile\n"
+          deps_with_gate = "      - name: Install product dependencies\n        if: steps.credentials.outputs.ready == 'true'\n        working-directory: product\n        run: npm install --no-audit --no-fund\n\n      - name: Verify governed baseline preflight\n        if: steps.credentials.outputs.ready == 'true'\n        working-directory: product\n        run: node scripts/experience/hva-baseline-integrity.mjs preflight\n\n      - name: Install Playwright runner without changing the lockfile\n"
           if text.count(deps) < 1:
               raise SystemExit('application dependency insertion point not found')
           text = text.replace(deps, deps_with_gate, 1)
-
-          browser = """      - name: Run Human + Visual Acceptance
-        id: browser
-        if: steps.credentials.outputs.ready == 'true'
-        working-directory: product
-        shell: bash
-        run: |
-          set +e
-          npx playwright test --config=playwright.experience.config.mjs
-          code=$?
-          echo \"exit_code=$code\" >> \"$GITHUB_OUTPUT\"
-          exit 0
-
-      - name: Generate acceptance receipt
-"""
-          browser_with_gate = """      - name: Run Human + Visual Acceptance
-        id: browser
-        if: steps.credentials.outputs.ready == 'true'
-        working-directory: product
-        shell: bash
-        run: |
-          set +e
-          npx playwright test --config=playwright.experience.config.mjs
-          code=$?
-          echo \"exit_code=$code\" >> \"$GITHUB_OUTPUT\"
-          exit 0
-
-      - name: Verify governed baseline postflight
-        if: steps.credentials.outputs.ready == 'true'
-        working-directory: product
-        run: node scripts/experience/hva-baseline-integrity.mjs postflight
-
-      - name: Generate acceptance receipt
-"""
+          browser = "      - name: Run Human + Visual Acceptance\n        id: browser\n        if: steps.credentials.outputs.ready == 'true'\n        working-directory: product\n        shell: bash\n        run: |\n          set +e\n          npx playwright test --config=playwright.experience.config.mjs\n          code=$?\n          echo \"exit_code=$code\" >> \"$GITHUB_OUTPUT\"\n          exit 0\n\n      - name: Generate acceptance receipt\n"
+          browser_with_gate = "      - name: Run Human + Visual Acceptance\n        id: browser\n        if: steps.credentials.outputs.ready == 'true'\n        working-directory: product\n        shell: bash\n        run: |\n          set +e\n          npx playwright test --config=playwright.experience.config.mjs\n          code=$?\n          echo \"exit_code=$code\" >> \"$GITHUB_OUTPUT\"\n          exit 0\n\n      - name: Verify governed baseline postflight\n        if: steps.credentials.outputs.ready == 'true'\n        working-directory: product\n        run: node scripts/experience/hva-baseline-integrity.mjs postflight\n\n      - name: Generate acceptance receipt\n"
           if text.count(browser) < 1:
               raise SystemExit('application browser insertion point not found')
           text = text.replace(browser, browser_with_gate, 1)
