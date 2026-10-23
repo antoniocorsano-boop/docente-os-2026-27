@@ -59,20 +59,10 @@ function runtimeBase() {
     },
     provisioning: {
       activeVersions: [
-        {
-          id: 'active-v0',
-          status: 'ACTIVE',
-          effectiveFrom: '2026-09-28',
-          effectiveTo: null,
-        },
+        { id: 'active-v0', status: 'ACTIVE', effectiveFrom: '2026-09-28', effectiveTo: null },
       ],
       draftVersions: [
-        {
-          id: 'draft-v0',
-          status: 'DRAFT',
-          effectiveFrom: '2026-09-28',
-          effectiveTo: null,
-        },
+        { id: 'draft-v0', status: 'DRAFT', effectiveFrom: '2026-09-28', effectiveTo: null },
       ],
       draftSlots: [
         {
@@ -95,14 +85,17 @@ function clone(value) {
 
 function noopAdapter(overrides = {}) {
   return {
-    async ensureCanonicalAssignment() {
-      return { assignmentId: 'assignment-1' }
-    },
     async prepareCanonicalDraftTimetable() {
       return { timetableVersionId: 'draft-v0' }
     },
-    async createCanonicalMondaySlot(operation) {
-      return { slotId: operation.start === '07:00' ? 'slot-07' : 'slot-08-new' }
+    async createCanonicalMondaySlot() {
+      return { slotId: 'slot-07' }
+    },
+    async upsertCanonicalCalendarEvent() {
+      return { calendarEventId: 'calendar-1' }
+    },
+    async verifyPreparedDraft() {
+      return { status: 'PASS' }
     },
     async activateCanonicalTimetable() {
       return {
@@ -111,23 +104,9 @@ function noopAdapter(overrides = {}) {
         next_draft_version_id: 'draft-next',
       }
     },
-    async upsertCanonicalCalendarEvent() {
-      return { calendarEventId: 'calendar-1' }
-    },
     async rollbackPreActivation() {},
     ...overrides,
   }
-}
-
-function expectedPostRuntime() {
-  const runtime = runtimeBase()
-  runtime.fingerprint = 'expected-post-placeholder'
-  runtime.provisioning = {
-    ...runtime.provisioning,
-    activeVersions: [{ id: 'draft-v0', status: 'ACTIVE', effectiveFrom: '2026-10-27', effectiveTo: null }],
-    draftVersions: [{ id: 'draft-next', status: 'DRAFT', effectiveFrom: '2026-10-27', effectiveTo: null }],
-  }
-  return runtime
 }
 
 test('semantic lease includes DRAFT identity even when the baseline semantic fingerprint is unchanged', async () => {
@@ -203,7 +182,7 @@ test('planner fails closed when incompatible persistent state appears in 27-Oct 
   )
 })
 
-test('pre-activation failure invokes rollback, while post-activation failure never auto-rolls back', async () => {
+test('pre-activation verification failure rolls back, while post-activation verification failure never auto-rolls back', async () => {
   const pre = runtimeBase()
   const plan = buildHvaBaselineProvisionPlan(pre, { plannedAt: '2026-10-23T20:30:00.000Z' })
 
@@ -213,34 +192,33 @@ test('pre-activation failure invokes rollback, while post-activation failure nev
       plan,
       readRuntime: async () => pre,
       adapter: noopAdapter({
-        async createCanonicalMondaySlot(operation) {
-          if (operation.start === '08:00') throw new Error('synthetic pre-activation failure')
-          return { slotId: 'slot-07' }
+        async verifyPreparedDraft() {
+          throw new Error('synthetic prepared-DRAFT verification failure')
         },
         async rollbackPreActivation() {
           preRollback += 1
         },
       }),
     }),
-    /synthetic pre-activation failure/,
+    /prepared-DRAFT verification failure/,
   )
   assert.equal(preRollback, 1)
 
   let postRollback = 0
+  let reads = 0
+  const badPost = clone(pre)
+  badPost.fingerprint = 'unexpected-post-activation-fingerprint'
   await assert.rejects(
     applyHvaBaselineProvisionPlan({
       plan,
-      readRuntime: async () => pre,
+      readRuntime: async () => (reads++ === 0 ? pre : badPost),
       adapter: noopAdapter({
-        async upsertCanonicalCalendarEvent() {
-          throw new Error('synthetic post-activation failure')
-        },
         async rollbackPreActivation() {
           postRollback += 1
         },
       }),
     }),
-    /synthetic post-activation failure/,
+    /postcondition fingerprint mismatch/i,
   )
   assert.equal(postRollback, 0)
 })
