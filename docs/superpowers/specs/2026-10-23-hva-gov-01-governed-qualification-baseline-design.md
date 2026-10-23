@@ -32,12 +32,16 @@ Nel workspace HVA canonico, al 23 ottobre 2026:
 
 - esiste una sola versione `ACTIVE` rilevante per il workspace;
 - esiste una `DRAFT` clonata dall'ACTIVE dal lifecycle canonico;
-- l'ACTIVE contiene sei slot;
+- ACTIVE e DRAFT contengono entrambe sei slot;
 - il lunedì contiene una sola lezione: `08:00–09:00`, classe 2A, disciplina `Tecnologia`;
-- il relativo assignment è `CONFIRMED` e marcato `HVA · Oggi · Cattedra canonica`;
+- lo slot `07:00–08:00` del lunedì è libero nella DRAFT;
+- il relativo assignment canonico è `CONFIRMED`, marcato `HVA · Oggi · Cattedra canonica` e ha già `weekly_minutes = 120`, quindi due ore settimanali sono semanticamente coerenti senza modificare la cattedra;
 - il clock HVA è già congelato a `2026-10-19T08:30:00+02:00` sia lato server sia lato browser;
 - non esiste ancora un evento Calendario canonico per il journey di Oggi;
-- la fixture `today-teacher-first` fallisce correttamente perché non esiste una lezione precedente governata prima delle 08:30.
+- la fixture `today-teacher-first` fallisce correttamente perché non esiste una lezione precedente governata prima delle 08:30;
+- esiste una sola TeachingSession persistente occurrence-bound che dipende dall'ACTIVE corrente: la fixture legacy registrata del `2026-10-26`, blocco B01.
+
+L'ultimo punto è rilevante: attivando la DRAFT, la precedente ACTIVE viene archiviata e i nuovi slot hanno identità proprie. La fixture legacy del 26 ottobre non può quindi essere lasciata agganciata a una versione che, dopo l'attivazione, non sarà più in vigore in quella data. La migrazione di questa dipendenza è parte obbligatoria di HVA-GOV-01.
 
 Queste condizioni rendono possibile costruire la baseline senza creare un nuovo tenant o una nuova identità HVA.
 
@@ -50,11 +54,12 @@ HVA-GOV-01 deve:
 3. lasciare il dataset **read-only durante le run**;
 4. rendere il drift osservabile e bloccante;
 5. impedire che il CI corregga automaticamente il tenant;
-6. distinguere chiaramente baseline persistente da fixture run-scoped;
+6. distinguere chiaramente baseline persistente, fixture persistenti ausiliarie e fixture run-scoped;
 7. mantenere il clock HVA unico e condiviso tra server e browser;
 8. permettere postflight oggettivo sullo stesso stato iniziale;
 9. evitare dati studenti o identificativi reali;
-10. mantenere la soluzione abbastanza piccola da poter essere auditata manualmente.
+10. preservare la coerenza delle fixture occurrence-bound quando cambia la versione dell'orario;
+11. mantenere la soluzione abbastanza piccola da poter essere auditata manualmente.
 
 ## 5. Non-obiettivi
 
@@ -82,6 +87,7 @@ La soluzione è da considerare fallita anche se il test passa qualora:
 - l'orario venga modificato direttamente nell'ACTIVE fuori dal lifecycle canonico;
 - un secondo workspace venga affidato alla scelta implicita di `current_workspace_context()`;
 - il journey possa diventare PASS grazie a record sintetici fuori contratto;
+- una TeachingSession occurrence-bound continui a essere accettata pur riferendosi a una versione non in vigore nella propria data;
 - il fingerprint ignori elementi semanticamente rilevanti;
 - un drift venga classificato come NOT_APPLICABLE o PASS.
 
@@ -102,7 +108,8 @@ Si evolve una sola volta la DRAFT corrente attraverso il lifecycle normale, la s
 **Costo / trade-off**
 
 - la baseline HVA deve essere trattata come infrastruttura governata e non come spazio manuale liberamente modificabile;
-- ogni futura modifica strutturale deve essere versionata e deliberata.
+- ogni futura modifica strutturale deve essere versionata e deliberata;
+- l'attivazione deve includere una migrazione esplicita delle fixture persistenti legate agli ID della precedente ACTIVE.
 
 ### B. Secondo account HVA + workspace dedicato — non scelto ora
 
@@ -127,10 +134,11 @@ La baseline canonica sarà denominata:
 Sarà ospitata nell'attuale workspace HVA e sarà costruita una sola volta tramite:
 
 1. modifica della **DRAFT corrente**;
-2. verifica della DRAFT;
+2. verifica della DRAFT e delle dipendenze occurrence-bound;
 3. attivazione mediante il normale lifecycle `activate_timetable_version`;
-4. verifica della nuova ACTIVE;
-5. congelamento operativo della baseline durante le run HVA.
+4. migrazione governata delle fixture persistenti che puntavano alla precedente ACTIVE;
+5. verifica della nuova ACTIVE e delle fixture migrate;
+6. congelamento operativo della baseline durante le run HVA.
 
 Nessun passaggio deve scrivere direttamente nella versione ACTIVE esistente.
 
@@ -145,15 +153,16 @@ Il baseline contract del lunedì deve esporre esattamente due lezioni governate 
 1. **07:00–08:00 — lezione precedente**
    - classe: 2A;
    - disciplina: Tecnologia;
-   - assignment: CONFIRMED;
+   - assignment canonico: CONFIRMED;
+   - `weekly_minutes` dell'assignment: 120;
    - nessuna TeachingSession registrata per l'occorrenza canonica del 19 ottobre 2026;
    - quindi deve risultare `ended + unregistered`.
 
 2. **08:00–09:00 — lezione corrente**
    - classe: 2A;
    - disciplina: Tecnologia;
-   - assignment: CONFIRMED;
-   - marker canonico già esistente;
+   - stesso assignment canonico CONFIRMED;
+   - marker `HVA · Oggi · Cattedra canonica`;
    - alle 08:30 deve risultare current.
 
 Non è richiesto cambiare l'orario degli altri giorni salvo che un controllo di collisione dimostri un conflitto reale.
@@ -172,9 +181,9 @@ La baseline deve includere un singolo evento Calendario tecnico persistente e ri
 
 L'evento viene creato una volta attraverso il normale percorso autenticato del dominio Calendario e non viene più inserito/eliminato dal singolo browser test.
 
-## 11. Regola fondamentale: baseline persistente vs fixture run-scoped
+## 11. Tre classi di dati HVA
 
-### Baseline persistente
+### 11.1 Baseline persistente
 
 Appartengono alla baseline:
 
@@ -187,7 +196,19 @@ Appartengono alla baseline:
 
 Questi dati **non vengono creati, aggiornati o cancellati durante una run**.
 
-### Fixture run-scoped
+### 11.2 Fixture persistenti ausiliarie
+
+Sono dati persistenti necessari ad altri journey ma non parte dello stato `Oggi`, per esempio la TeachingSession legacy registrata del 26 ottobre.
+
+Regole:
+
+- devono avere un marker/versione espliciti;
+- devono essere occurrence-bound in modo coerente con una versione dell'orario in vigore nella loro data;
+- un cambio di ACTIVE deve invalidare il preflight della fixture se il suo source version/slot è diventato stantio;
+- la migrazione deve usare il contratto del dominio, inclusa la catena `supersedes_session_id` quando appropriata;
+- il reader non deve accettare silenziosamente una fixture stantia solo perché il marker esiste.
+
+### 11.3 Fixture run-scoped
 
 Possono restare run-scoped solo dati che:
 
@@ -197,7 +218,7 @@ Possono restare run-scoped solo dati che:
 - possono essere ripuliti in modo deterministico;
 - non costituiscono prerequisito della baseline di Oggi.
 
-Esempi: asset Knowledge tecnici, fixture materiali, eventuali TeachingSession create da journey specifici diversi da `today-teacher-first`.
+Esempi: asset Knowledge tecnici e fixture materiali.
 
 ## 12. Immutabilità durante la run
 
@@ -208,9 +229,11 @@ Durante `hva/application` sono vietate, per il perimetro baseline:
 - attivazione di una timetable version;
 - update di disciplina/assignment canonici;
 - insert/delete dell'evento Calendario canonico;
-- registrazione della TeachingSession relativa alla lezione canonica 07:00–08:00 prima che sia stata acquisita l'evidenza `Oggi` obbligatoria.
+- registrazione della TeachingSession relativa alla lezione canonica 07:00–08:00 del 19 ottobre.
 
-Se un journey successivo necessita di registrare quella specifica occorrenza, deve usare una sessione distinta/scenario distinto oppure essere eseguito dopo la cattura obbligatoria con un contratto di ripristino approvato separatamente. La baseline di Oggi non deve dipendere dall'ordine accidentale dei test.
+La baseline di Oggi non deve dipendere dall'ordine accidentale dei test.
+
+Le fixture persistenti ausiliarie non possono essere “riparate” in modo silenzioso da un journey browser: eventuale provisioning/migrazione deve appartenere a un passo esplicito e verificabile, separato dalla prova che consuma la fixture.
 
 ## 13. Fingerprint semantico
 
@@ -224,6 +247,13 @@ La baseline non deve essere validata tramite ID casuali o dump completi del data
   "timetable": {
     "activeCount": 1,
     "date": "2026-10-19",
+    "assignment": {
+      "class": "2A",
+      "discipline": "Tecnologia",
+      "status": "CONFIRMED",
+      "weeklyMinutes": 120,
+      "marker": "HVA · Oggi · Cattedra canonica"
+    },
     "lessons": [
       {
         "weekday": 1,
@@ -231,7 +261,6 @@ La baseline non deve essere validata tramite ID casuali o dump completi del data
         "end": "08:00",
         "class": "2A",
         "discipline": "Tecnologia",
-        "assignmentStatus": "CONFIRMED",
         "recorded": false
       },
       {
@@ -239,8 +268,7 @@ La baseline non deve essere validata tramite ID casuali o dump completi del data
         "start": "08:00",
         "end": "09:00",
         "class": "2A",
-        "discipline": "Tecnologia",
-        "assignmentStatus": "CONFIRMED"
+        "discipline": "Tecnologia"
       }
     ]
   },
@@ -256,6 +284,8 @@ La baseline non deve essere validata tramite ID casuali o dump completi del data
 
 L'oggetto viene serializzato in forma canonica e può essere accompagnato da SHA-256 per confronti rapidi. Il fingerprint non sostituisce il contenuto leggibile: in caso di drift il diagnostico deve indicare quale invariante è cambiato.
 
+Gli ID runtime di versioni e slot non fanno parte del fingerprint semantico atteso, ma devono essere raccolti nel receipt diagnostico per dimostrare quale stato reale è stato osservato.
+
 ## 14. Preflight
 
 Il preflight HVA deve essere **read-only** e deve verificare almeno:
@@ -265,16 +295,18 @@ Il preflight HVA deve essere **read-only** e deve verificare almeno:
 3. esattamente una versione ACTIVE valida alla data canonica;
 4. presenza e unicità delle due lezioni 07:00–08:00 e 08:00–09:00;
 5. stessa sezione 2A e disciplina Tecnologia;
-6. assignment CONFIRMED;
+6. assignment CONFIRMED con `weekly_minutes = 120` e marker canonico;
 7. assenza di TeachingSession per l'occorrenza 07:00–08:00 del 19/10;
 8. presenza e unicità dell'evento Calendario canonico;
 9. assenza di duplicati baseline;
-10. fingerprint uguale alla baseline attesa.
+10. fingerprint uguale alla baseline attesa;
+11. validità delle fixture persistenti ausiliarie richieste dalla suite, compreso il fatto che una TeachingSession occurrence-bound punti a una versione in vigore nella sua `local_date`.
 
 Esito possibile:
 
-- `PASS` — baseline esattamente conforme;
+- `PASS` — baseline e dipendenze richieste esattamente conformi;
 - `FAIL_BASELINE_DRIFT` — baseline diversa;
+- `FAIL_FIXTURE_DRIFT` — fixture persistente ausiliaria stantia o incoerente;
 - `ERROR` — impossibile leggere o autenticare.
 
 Non esiste `self-heal`.
@@ -289,7 +321,11 @@ Per il perimetro baseline:
 
 è una condizione obbligatoria del gate.
 
-Il postflight deve inoltre verificare l'assenza di fixture run-scoped residue note, secondo i rispettivi marker.
+Il postflight deve inoltre verificare:
+
+- l'assenza di fixture run-scoped residue note;
+- la validità delle fixture persistenti ausiliarie consumate;
+- l'assenza di nuove timetable version attivate durante la run.
 
 Una suite browser che passa ma altera la baseline deve essere classificata **FAIL**, non PASS con warning.
 
@@ -301,9 +337,13 @@ Una suite browser che passa ma altera la baseline deve essere classificata **FAI
 
 Comportamento: preflight `FAIL_BASELINE_DRIFT`; nessuna correzione automatica; HVA non parte o non viene qualificata.
 
-### TeachingSession precedente già registrata
+### TeachingSession 07:00–08:00 già registrata
 
-Comportamento: `FAIL_BASELINE_DRIFT`; il journey non deve creare un'altra lezione o cancellare la sessione per compensare.
+Comportamento: `FAIL_BASELINE_DRIFT`; il journey non deve cancellarla o inventare un'altra lezione per compensare.
+
+### Fixture legacy registrata legata a una versione archiviata non valida nella sua data
+
+Comportamento: `FAIL_FIXTURE_DRIFT`. La semplice presenza del marker non è sufficiente. La fixture deve essere migrata esplicitamente prima della qualificazione.
 
 ### Evento Calendario mancante/duplicato
 
@@ -328,12 +368,14 @@ Una modifica futura di HVA-GOV-01 richiede:
 1. motivazione documentata;
 2. nuova baseline version (`v2`, `v3`, ...);
 3. aggiornamento del contratto semantico;
-4. modifica della DRAFT, mai dell'ACTIVE;
-5. review della DRAFT;
-6. attivazione manuale/autorizzata fuori dalla normale run HVA;
-7. nuovo fingerprint atteso;
-8. rerun completo dei gate interessati;
-9. registrazione del passaggio di versione.
+4. inventario delle fixture persistenti occurrence-bound dipendenti dall'ACTIVE corrente;
+5. modifica della DRAFT, mai dell'ACTIVE;
+6. review della DRAFT;
+7. attivazione manuale/autorizzata fuori dalla normale run HVA;
+8. migrazione governata delle dipendenze occurrence-bound;
+9. nuovo fingerprint atteso;
+10. rerun completo dei gate interessati;
+11. registrazione del passaggio di versione.
 
 La baseline non è quindi “immutabile per sempre”; è **immutabile per versione e durante l'esecuzione**.
 
@@ -351,7 +393,11 @@ Sono esclusi:
 
 Il provisioning una tantum può essere automatizzato solo come comando esplicito di amministrazione HVA, separato dal gate ordinario, con dry-run e ricevuta. Non deve essere invocato automaticamente da `pull_request`.
 
-## 19. Compatibilità con i journey esistenti
+La migrazione della TeachingSession legacy deve avvenire attraverso `record_teaching_session` e il meccanismo `supersedes_session_id`, oppure attraverso un contratto applicativo equivalente già governato. Non è ammessa la cancellazione della storia per rendere il test più semplice.
+
+## 19. Compatibilità con i journey e le fixture esistenti
+
+### 19.1 Assunzioni d'ordine
 
 Prima dell'attivazione della baseline v1 va verificato che il secondo slot del lunedì non rompa journey che assumono implicitamente “prima lezione disponibile”.
 
@@ -362,6 +408,23 @@ Regola di hardening:
 - i journey che hanno bisogno di una qualsiasi lezione possono mantenere selezione generica solo se il risultato è semanticamente equivalente.
 
 La presenza di un secondo slot è quindi anche un test utile contro assunzioni d'ordine nascoste.
+
+### 19.2 Fixture legacy registrata del 26 ottobre
+
+La TeachingSession persistente `HVA · Legacy recorded lesson · 2026-10-26 · B01` è attualmente occurrence-bound all'ACTIVE pre-HVA-GOV-01.
+
+L'attivazione della nuova DRAFT cambierà `timetable_version_id`, `timetable_slot_id` e `projected_occurrence_logical_id` canonici per il 26 ottobre.
+
+Prima di dichiarare Baseline v1 pronta, è obbligatorio:
+
+1. rendere il reader della fixture capace di rifiutare una sessione il cui source timetable non è in vigore nella `local_date`;
+2. dopo l'attivazione, creare una nuova TeachingSession B01 legata alla nuova occorrenza canonica del 26 ottobre;
+3. collegarla alla precedente tramite `supersedes_session_id`;
+4. versionare il marker/receipt della fixture in modo che i test consumino la chain head valida, non il record storico precedente;
+5. verificare che Diario, Lezione e i journey legacy non mostrino due registrazioni operative concorrenti;
+6. preservare il record storico precedente come lineage, non cancellarlo.
+
+Attualmente questa è l'unica TeachingSession persistente rilevata nel workspace HVA che punta all'ACTIVE da sostituire. Il provisioning deve comunque rifare l'inventario immediatamente prima dell'attivazione e fermarsi se ne compaiono altre.
 
 ## 20. Concurrency
 
@@ -395,6 +458,7 @@ La ricevuta HVA dovrebbe riportare:
 - preflight fingerprint;
 - postflight fingerprint;
 - esito `baselineIntegrity`;
+- esito `persistentFixtureIntegrity`;
 - eventuale drift con diagnostico leggibile;
 - exact application commit testato;
 - journey `today-teacher-first` PASS/FAIL/UNVERIFIED;
@@ -403,7 +467,8 @@ La ricevuta HVA dovrebbe riportare:
 Questo consente di distinguere chiaramente:
 
 - regressione applicativa;
-- drift del dataset;
+- drift della baseline;
+- drift di fixture persistente;
 - errore infrastrutturale;
 - mancata esecuzione.
 
@@ -414,29 +479,34 @@ Il design è pronto per pianificazione solo se viene approvato che:
 1. l'attuale workspace HVA resta l'unico ambiente di qualificazione per questa fase;
 2. il secondo slot viene aggiunto alla DRAFT e promosso solo tramite lifecycle canonico;
 3. l'ACTIVE non viene mai modificata direttamente;
-4. Calendario diventa parte della baseline persistente;
-5. `today-teacher-first` diventa read-only rispetto alla baseline;
-6. preflight e postflight sono entrambi read-only e fail-closed;
-7. nessun self-healing CI è ammesso;
-8. il fingerprint semantico è parte del gate;
-9. ogni futura evoluzione della baseline richiede una nuova versione;
-10. nessun merge/deploy della #726 deriva automaticamente dall'approvazione di HVA-GOV-01.
+4. l'assignment canonico resta quello 2A/Tecnologia, CONFIRMED, 120 minuti;
+5. Calendario diventa parte della baseline persistente;
+6. `today-teacher-first` diventa read-only rispetto alla baseline;
+7. preflight e postflight sono entrambi read-only e fail-closed;
+8. nessun self-healing CI è ammesso;
+9. il fingerprint semantico è parte del gate;
+10. la fixture legacy occurrence-bound del 26 ottobre viene migrata con lineage, non lasciata stantia né cancellata;
+11. ogni futura evoluzione della baseline richiede una nuova versione e un nuovo inventario delle dipendenze;
+12. nessun merge/deploy della #726 deriva automaticamente dall'approvazione di HVA-GOV-01.
 
 ## 24. Sequenza concettuale dopo l'approvazione
 
 Questa sezione descrive l'ordine logico, non costituisce ancora piano di implementazione.
 
 1. hardening dei test che dipendono dall'ordine delle lezioni;
-2. implementazione del validator/fingerprint read-only;
-3. RED controllato sulla baseline attuale a una sola lezione;
-4. provisioning una tantum della DRAFT con lo slot 07:00–08:00;
-5. provisioning dell'evento Calendario canonico;
-6. review della DRAFT e del contratto;
-7. attivazione governata fuori dalla run HVA;
-8. verifica baseline v1;
-9. rimozione delle mutazioni Calendario dalla fixture Oggi;
-10. preflight + browser + postflight sullo stesso exact head;
-11. solo dopo PASS, riprendere la qualificazione finale della PR #726.
+2. hardening del reader della fixture legacy contro source version/slot stantii;
+3. implementazione del validator/fingerprint read-only;
+4. RED controllato sulla baseline attuale a una sola lezione;
+5. dry-run dell'inventario delle dipendenze occurrence-bound;
+6. provisioning una tantum della DRAFT con lo slot 07:00–08:00;
+7. provisioning dell'evento Calendario canonico;
+8. review della DRAFT e del contratto;
+9. attivazione governata fuori dalla run HVA;
+10. migrazione della TeachingSession legacy tramite nuova occorrenza + `supersedes_session_id`;
+11. verifica Baseline v1 e fixture persistenti;
+12. rimozione delle mutazioni Calendario dalla fixture Oggi;
+13. preflight + browser + postflight sullo stesso exact head;
+14. solo dopo PASS, riprendere la qualificazione finale della PR #726.
 
 ## 25. Decisione congelata
 
@@ -444,4 +514,4 @@ Questa sezione descrive l'ordine logico, non costituisce ancora piano di impleme
 
 **Ragione:** massimizza governo e determinismo con la minima nuova superficie infrastrutturale, riusa l'identità AAL2 e i contratti già qualificati e permette di rendere il journey Oggi realmente read-only.
 
-**Vincolo irrinunciabile:** nessuna scorciatoia può trasformare il dataset di qualificazione in stato auto-riparato o manipolato durante il test.
+**Vincolo irrinunciabile:** nessuna scorciatoia può trasformare il dataset di qualificazione in stato auto-riparato o manipolato durante il test; ogni dipendenza persistente legata al vecchio ACTIVE deve essere migrata con lineage verificabile.
