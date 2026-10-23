@@ -1,0 +1,32 @@
+name: HVA-GOV-01 Task 1 Final Qualification
+
+on:
+  push:
+    branches: ["test/hva-gov-01-task1-final-qualification"]
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Prove candidate product tree is unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "7a946c8b3087687ddc08196ee44f431794a1ab24"
+          git diff --exit-code 7a946c8b3087687ddc08196ee44f431794a1ab24 HEAD -- product/
+
+      - name: Run Task 1 focused contract tests
+        working-directory: product
+        run: node --test e2e/support/hva-governed-baseline-contract.test.mjs e2e/support/hva-today-fixture.test.mjs
