@@ -1,8 +1,10 @@
 import { spawn } from 'node:child_process'
+import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 
+const require = createRequire(import.meta.url)
+const { HVA_CANONICAL_NOW } = require('../e2e/support/hva-governed-baseline-config.cjs')
 const EXPECTED_RUNTIME_MIGRATION = '0103_material_reference_safety'
-const HVA_CANONICAL_NOW = '2026-10-19T08:30:00+02:00'
 const port = process.env.PORT?.trim() || '3000'
 const nextBin = process.platform === 'win32' ? 'next.cmd' : 'next'
 
