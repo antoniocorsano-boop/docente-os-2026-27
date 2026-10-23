@@ -1,0 +1,40 @@
+name: HVA-GOV-01 Task 6 cleanup
+
+on:
+  push:
+    branches:
+      - feat/hva-gov-01-task6-target-aware-receipts
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.event.head_commit.message != 'ci(hva): remove redundant pending status'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/hva-gov-01-task6-target-aware-receipts
+          fetch-depth: 2
+      - name: Remove redundant pending status block
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs')
+          const path = '.github/workflows/experience-acceptance.yml'
+          let text = fs.readFileSync(path, 'utf8')
+          const marker = "            const testedSha = context.payload.pull_request.head.sha\n            await github.rest.repos.createCommitStatus({\n              owner: context.repo.owner,\n              repo: context.repo.repo,\n              sha: testedSha,\n              state: 'pending',\n              context: 'hva/application',\n              description: 'Human + Visual Acceptance locale in esecuzione',\n              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,\n            })\n            await github.rest.repos.createCommitStatus({"
+          const replacement = "            const testedSha = context.payload.pull_request.head.sha\n            await github.rest.repos.createCommitStatus({"
+          if (!text.includes(marker)) throw new Error('redundant pending status block not found exactly once')
+          text = text.replace(marker, replacement)
+          fs.writeFileSync(path, text)
+          NODE
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          git config user.name 'Antonio Corsano'
+          git config user.email 'antonio.corsano@gmail.com'
+          git add .github/workflows/experience-acceptance.yml
+          git commit -m 'ci(hva): remove redundant pending status'
+          git push origin HEAD:feat/hva-gov-01-task6-target-aware-receipts
