@@ -74,7 +74,7 @@ export default async function ClassesPage() {
               {item.assignments.length ? (
                 <div className="classChairSummary">{item.assignments.map((assignment) => <span key={assignment.id}><strong>{assignment.discipline}</strong><small>{formatWeeklyMinutes(assignment.weeklyMinutes)}</small></span>)}</div>
               ) : <p className="classNoChair">Non ancora associata alla tua cattedra.</p>}
-              <div className="classProgressSummary"><span>{item.completedBlocks}/33 blocchi registrati</span><strong>Apri la classe <i aria-hidden>→</i></strong></div>
+              <div className="classProgressSummary"><span>{item.completedBlocks}/33 lezioni concluse</span><strong>Apri la classe <i aria-hidden>→</i></strong></div>
             </Link>
           ))}
         </section>
