@@ -1,5 +1,11 @@
 'use strict'
 
+// This preload is intentionally CommonJS because Node loads it through --require.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { HVA_CANONICAL_NOW } = require('./hva-governed-baseline-config.cjs')
+
+module.exports = { HVA_CANONICAL_NOW }
+
 const fixedNow = process.env.HVA_FIXED_NOW?.trim()
 
 if (fixedNow) {
