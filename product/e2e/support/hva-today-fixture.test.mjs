@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import {
   HVA_TODAY_ASSIGNMENT_NOTE,
   validateHvaTodayFixture,
 } from './hva-today-fixture.mjs'
+import { validateHvaTodayCoexistence } from './hva-today-coexistence-fixture.mjs'
+
+const coexistenceFixtureSource = new URL('./hva-today-coexistence-fixture.mjs', import.meta.url)
 
 function canonicalFixture() {
   return {
@@ -33,6 +37,32 @@ function canonicalFixture() {
   }
 }
 
+function coexistenceFixture() {
+  return {
+    slots: [
+      {
+        id: 'past',
+        timetable_version_id: 'v1',
+        weekday: 1,
+        start_time: '07:00:00',
+        end_time: '08:00:00',
+        slot_kind: 'LESSON',
+        section_id: 'section-1',
+      },
+      {
+        id: 'current',
+        timetable_version_id: 'v1',
+        weekday: 1,
+        start_time: '08:00:00',
+        end_time: '09:00:00',
+        slot_kind: 'LESSON',
+        section_id: 'section-2',
+      },
+    ],
+    sessions: [],
+  }
+}
+
 test('accepts one canonical current lesson', () => {
   assert.deepEqual(validateHvaTodayFixture(canonicalFixture()), [])
 })
@@ -59,4 +89,38 @@ test('rejects a different or ambiguous current lesson', () => {
   const fixture = canonicalFixture()
   fixture.slots[0].start_time = '09:00:00'
   assert.match(validateHvaTodayFixture(fixture).join('\n'), /Monday lesson at 08:30/)
+})
+
+test('coexistence accepts a natural prior unregistered lesson plus the canonical current lesson', () => {
+  assert.deepEqual(validateHvaTodayCoexistence(coexistenceFixture()), [])
+})
+
+test('coexistence fails closed when the ACTIVE timetable exposes only the canonical current lesson', () => {
+  const fixture = coexistenceFixture()
+  fixture.slots = fixture.slots.filter((slot) => slot.id !== 'past')
+  assert.match(validateHvaTodayCoexistence(fixture).join('\n'), /prior unregistered lesson/i)
+})
+
+test('coexistence rejects a prior lesson that is already recorded', () => {
+  const fixture = coexistenceFixture()
+  fixture.sessions = [{
+    section_id: 'section-1',
+    local_date: '2026-10-19',
+    source_timetable_slot_id: 'past',
+    projected_occurrence_logical_id: 'tt:v1:past:2026-10-19',
+  }]
+  assert.match(validateHvaTodayCoexistence(fixture).join('\n'), /prior unregistered lesson/i)
+})
+
+test('coexistence fixture never writes timetable_slots', async () => {
+  const text = await readFile(coexistenceFixtureSource, 'utf8')
+  const timetableSegments = text.split(".from('timetable_slots')").slice(1).map((tail) => {
+    const nextTable = tail.indexOf(".from('")
+    return nextTable >= 0 ? tail.slice(0, nextTable) : tail
+  })
+
+  assert.ok(timetableSegments.length > 0, 'coexistence fixture must inspect timetable_slots read-only')
+  for (const segment of timetableSegments) {
+    assert.doesNotMatch(segment, /\.(?:insert|update|delete)\s*\(/)
+  }
 })
