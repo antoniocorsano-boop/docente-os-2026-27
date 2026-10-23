@@ -4,7 +4,7 @@
 
 **Goal:** Rendere HVA deterministica e governata tramite una baseline persistente che esponga in `Oggi` una lezione conclusa non registrata, una lezione corrente e un impegno Calendario, senza mutare la baseline durante le run.
 
-**Architecture:** L'attuale workspace HVA resta l'unico tenant di qualificazione. Il codice introduce un contratto semantico read-only con fingerprint, preflight e postflight; la baseline viene predisposta una sola volta sulla DRAFT e attivata dal `2026-10-27`, mentre la giornata HVA canonica diventa `2026-11-02T08:30:00+01:00`. Il vecchio ACTIVE resta valido fino al 26 ottobre, così la TeachingSession legacy del 26 conserva la propria provenienza storica e non viene migrata.
+**Architecture:** L'attuale workspace HVA resta l'unico tenant di qualificazione. Il codice introduce un contratto semantico read-only con fingerprint, preflight e postflight; la baseline viene predisposta una sola volta sulla DRAFT e attivata dal `2026-10-27`, mentre la giornata HVA canonica diventa `2026-11-02T08:30:00+01:00`. Il vecchio ACTIVE resta valido fino al 26 ottobre, così la TeachingSession legacy del 26 conserva la propria provenienza storica e non viene migrata. La baseline temporale è obbligatoria esclusivamente per `hva/application` locale, dove server e browser condividono il clock controllato; i gate Beta/preview remoti non simulano il tempo e non dichiarano copertura del journey `today-teacher-first`.
 
 **Tech Stack:** Node.js 22, JavaScript ESM/CJS, TypeScript 5.9, Next.js 16.3.1, Supabase JS 2.57 con sessione AAL2, Playwright 1.55, GitHub Actions.
 
@@ -24,15 +24,17 @@
 - Baseline lunedì: `07:00–08:00` non registrata + `08:00–09:00` corrente.
 - Evento canonico: `2026-11-02 10:30–11:00`, `MEETING`, marker `HVA-GOV-01/v1`.
 - La TeachingSession legacy `2026-10-26 · B01` non viene duplicata, superseded, cancellata o riscritta da HVA-GOV-01.
-- Tutti i gate di integrità devono essere fail-closed e produrre diagnostica leggibile.
+- Il clock governato e il journey `today-teacher-first` sono requisiti di `EXPERIENCE_TARGET=local`; un target remoto `beta`/`preview` non deve alterare o simulare l'orologio server.
+- I gate remoti devono riportare la baseline temporale come `NOT_APPLICABLE`, non come PASS fittizio.
+- Tutti i gate di integrità applicabili devono essere fail-closed e produrre diagnostica leggibile.
 
 ## Review Focus
 
-- **Cambio ora legale:** il 2 novembre usa `+01:00`, non `+02:00`; testare che server e browser condividano esattamente lo stesso istante canonico.
+- **Cambio ora legale:** il 2 novembre usa `+01:00`, non `+02:00`; testare che server e browser locali condividano esattamente lo stesso istante canonico.
 - **Storia del 26 ottobre:** dopo l'attivazione, la vecchia ACTIVE deve coprire ancora il 26/10 e la TeachingSession B01 deve restare valida rispetto alla propria source version/slot.
-- **Drift della baseline:** lezione/evento mancanti o duplicati devono produrre `FAIL_BASELINE_DRIFT`, mai autoriparazione o `NOT_APPLICABLE`.
+- **Drift della baseline:** lezione/evento mancanti o duplicati devono produrre `FAIL_BASELINE_DRIFT`, mai autoriparazione o `NOT_APPLICABLE` nel gate locale.
 - **TOCTOU tra dry-run e apply:** qualsiasi variazione di ACTIVE, DRAFT o dipendenze dopo il dry-run deve bloccare l'apply prima della prima scrittura.
-- **Errore durante provisioning:** prima dell'attivazione le scritture reversibili devono essere ripristinate; dopo un'attivazione riuscita un post-check fallito deve fermarsi e produrre receipt, senza tentare rollback automatici dell'ACTIVE.
+- **Separazione local/remoto:** Beta/preview non devono eseguire la giornata congelata del 2 novembre né richiedere receipt baseline locali.
 
 ---
 
@@ -42,7 +44,7 @@
 - `product/e2e/support/hva-governed-baseline-config.cjs` — unica sorgente dei valori temporali/semantici v1 condivisa tra CJS ed ESM.
 - `product/e2e/support/hva-governed-baseline-contract.mjs` — proiezione, validazione e fingerprint puro.
 - `product/e2e/support/hva-governed-baseline-contract.test.mjs` — test del contratto e del drift.
-- `product/e2e/support/hva-governed-baseline-runtime.mjs` — lettura AAL2 read-only del tenant e receipt runtime.
+- `product/e2e/support/hva-governed-baseline-runtime.mjs` — lettura AAL2 read-only del tenant e receipt runtime locale.
 - `product/e2e/support/hva-recorded-lesson-fixture.test.mjs` — validità storica della fixture B01.
 - `product/scripts/experience/hva-baseline-integrity.mjs` — CLI preflight/postflight read-only.
 - `product/scripts/experience/hva-baseline-integrity.test.mjs` — confronto receipt e failure classification.
@@ -51,16 +53,18 @@
 
 **Modify**
 - `product/e2e/support/hva-fixed-clock.cjs` — usa config v1, senza duplicare la data.
-- `product/scripts/start-production.mjs` — usa lo stesso clock v1.
-- `product/e2e/support/e2e-auth.mjs` — continua ad allineare il browser allo stesso clock.
+- `product/scripts/start-production.mjs` — usa lo stesso clock v1 solo nel target locale HVA già previsto.
+- `product/e2e/support/e2e-auth.mjs` — continua ad allineare il browser soltanto per `EXPERIENCE_TARGET=local`.
 - `product/e2e/support/hva-today-fixture.mjs` — delega al contratto v1 e usa `2026-11-02`.
 - `product/e2e/support/hva-today-coexistence-fixture.mjs` — diventa esclusivamente read-only; rimuove insert/delete Calendario.
 - `product/e2e/support/hva-today-fixture.test.mjs` — nuovi valori, source guards e failure cases.
 - `product/e2e/support/hva-recorded-lesson-fixture.mjs` — aggiunge assert read-only della coerenza source version/slot.
-- `product/e2e/experience/global-setup.mjs` — non provisiona più fixture persistenti; consuma solo assert read-only.
-- `product/e2e/experience/today-teacher-first.spec.mjs` — nessun `create/restore`; consuma la baseline.
-- `product/scripts/experience/acceptance-report.mjs` — integra baseline integrity e persistent fixture integrity.
-- `.github/workflows/experience-acceptance.yml` — preflight prima del browser e postflight prima della receipt.
+- `product/e2e/experience/global-setup.mjs` — non provisiona più fixture persistenti; consuma solo assert read-only nel target locale.
+- `product/e2e/experience/today-teacher-first.spec.mjs` — nessun `create/restore`; viene eseguito soltanto nel target locale governato.
+- `.github/scripts/certification/hva-receipt-scope.mjs` — scope journey dipendente dal target.
+- `.github/scripts/certification/hva-receipt-scope.test.mjs` — prova local vs beta/preview.
+- `product/scripts/experience/acceptance-report.mjs` — integra baseline integrity soltanto quando applicabile.
+- `.github/workflows/experience-acceptance.yml` — preflight/postflight solo nel job `hva-application`; nessun clock baseline nel job runtime remoto.
 - `product/package.json` — aggiunge i nuovi test Node alla suite canonica.
 
 ---
@@ -96,9 +100,9 @@ Run: `cd product && node --test e2e/support/hva-governed-baseline-contract.test.
 
 Expected: FAIL because config does not exist / old `2026-10-19` values remain.
 
-- [ ] **Step 3: Create the shared config and wire all clock consumers**
+- [ ] **Step 3: Create the shared config and wire all local clock consumers**
 
-`hva-fixed-clock.cjs` must require the config and keep only Date-preload behavior. `start-production.mjs` must read the same exported `HVA_CANONICAL_NOW`; `hva-today-fixture.mjs` must import the same config rather than declaring its own date.
+`hva-fixed-clock.cjs` must require the config and keep only Date-preload behavior. `start-production.mjs` must read the same exported `HVA_CANONICAL_NOW`; `hva-today-fixture.mjs` must import the same config rather than declaring its own date. Do not add any fixed-clock behavior to beta/preview runtime.
 
 - [ ] **Step 4: Run focused test and existing fixed-clock consumers**
 
@@ -177,7 +181,7 @@ git commit -m "feat(hva): add governed baseline semantic contract"
 
 - [ ] **Step 1: Write failing fixture-validity tests**
 
-Test that a source timetable version is valid when `effective_from <= 2026-10-26 <= effective_to`, including `status = ARCHIVED`; reject source version ending before 26/10; reject missing source slot; reject slot not matching 08:00–09:00; reject multiple current fixture records not connected by domain history.
+Test that a source timetable version is valid when `effective_from <= 2026-10-26 <= effective_to`, including `status = ARCHIVED`; reject source version ending before 26/10; reject missing source slot; reject slot not matching 08:00–09:00; reject multiple independent current fixture records.
 
 - [ ] **Step 2: Verify RED**
 
@@ -189,11 +193,11 @@ Expected: FAIL because the current reader only checks marker/allocation/source I
 
 The assert must query the source version and source slot and prove that the version covers the TeachingSession `local_date`. It must accept the old version after it becomes ARCHIVED with `effective_to = 2026-10-26`.
 
-- [ ] **Step 4: Remove persistent provisioning from normal global setup**
+- [ ] **Step 4: Remove persistent provisioning from normal local global setup**
 
-Replace `ensureHvaRecordedLessonFixture()` with `assertHvaRecordedLessonFixture()`. Normal HVA must not create or repair the B01 session.
+Replace `ensureHvaRecordedLessonFixture()` with `assertHvaRecordedLessonFixture()` for the governed local HVA. Normal HVA must not create or repair the B01 session.
 
-- [ ] **Step 5: Verify GREEN and no write path in global setup**
+- [ ] **Step 5: Verify GREEN**
 
 Run: `cd product && node --test e2e/support/hva-recorded-lesson-fixture.test.mjs`
 
@@ -208,7 +212,7 @@ git commit -m "test(hva): preserve recorded lesson provenance across timetable v
 
 ---
 
-### Task 4: Implementare scanner runtime read-only e receipt preflight/postflight
+### Task 4: Implementare scanner runtime read-only e receipt preflight/postflight locale
 
 **Files:**
 - Create: `product/e2e/support/hva-governed-baseline-runtime.mjs`
@@ -220,7 +224,7 @@ git commit -m "test(hva): preserve recorded lesson provenance across timetable v
 - Consumes: Task 2 contract, Task 3 fixture assert, `authenticatedAal2Supabase`.
 - Produces:
   - `readHvaGovernedBaselineRuntime() -> { snapshot, fingerprint, runtimeIds, persistentFixtureIntegrity }`
-  - CLI `node scripts/experience/hva-baseline-integrity.mjs preflight|postflight`.
+  - CLI `node scripts/experience/hva-baseline-integrity.mjs preflight|postflight` per target locale.
 
 - [ ] **Step 1: Write failing integrity tests**
 
@@ -259,7 +263,7 @@ git commit -m "feat(hva): add read-only baseline integrity gate"
 
 ---
 
-### Task 5: Rendere `today-teacher-first` totalmente read-only
+### Task 5: Rendere `today-teacher-first` totalmente read-only e locale
 
 **Files:**
 - Modify: `product/e2e/support/hva-today-coexistence-fixture.mjs`
@@ -273,21 +277,21 @@ git commit -m "feat(hva): add read-only baseline integrity gate"
 
 - [ ] **Step 1: Write failing source-guard and behavior tests**
 
-Assert `hva-today-coexistence-fixture.mjs` performs no writes to `calendar_events`, `timetable_versions`, `timetable_slots`, `teaching_sessions`; assert missing canonical calendar event is drift rather than dynamically provisioned state.
+Assert `hva-today-coexistence-fixture.mjs` performs no writes to `calendar_events`, `timetable_versions`, `timetable_slots`, `teaching_sessions`; assert missing canonical calendar event is drift rather than dynamically provisioned state; assert the browser spec skips for `EXPERIENCE_TARGET=beta|preview` and runs for `local`.
 
 - [ ] **Step 2: Verify RED**
 
 Run: `cd product && node --test e2e/support/hva-today-fixture.test.mjs`
 
-Expected: FAIL because current code inserts/deletes a run-scoped calendar event.
+Expected: FAIL because current code inserts/deletes a run-scoped calendar event and has no remote-target boundary.
 
 - [ ] **Step 3: Remove Calendar setup/cleanup and make coexistence assertion read-only**
 
-The browser journey must only login, assert/read the governed baseline, render `/planner`, capture evidence and navigate to the lesson.
+The local browser journey must only login, assert/read the governed baseline, render `/planner`, capture evidence and navigate to the lesson.
 
-- [ ] **Step 4: Remove `try/finally fixture.restore()` from the browser journey**
+- [ ] **Step 4: Remove `try/finally fixture.restore()` and add target guard**
 
-Keep `UNVERIFIED` only for genuine governed-state absence when running outside the full baseline gate; in the canonical workflow baseline drift is already a failing preflight.
+`today-teacher-first` must execute only when `EXPERIENCE_TARGET === 'local'`. A remote skip is a scope decision, not a PASS for the journey.
 
 - [ ] **Step 5: Verify GREEN**
 
@@ -304,46 +308,67 @@ git commit -m "test(hva): make Today governed journey read only"
 
 ---
 
-### Task 6: Integrare integrità baseline nella receipt e nei workflow
+### Task 6: Rendere receipt e scope consapevoli del target
 
 **Files:**
+- Modify: `.github/scripts/certification/hva-receipt-scope.mjs`
+- Modify: `.github/scripts/certification/hva-receipt-scope.test.mjs`
 - Modify: `product/scripts/experience/acceptance-report.mjs`
 - Modify: `.github/workflows/experience-acceptance.yml`
 - Test: `product/scripts/experience/hva-baseline-integrity.test.mjs`
 
 **Interfaces:**
 - Consumes: preflight/postflight receipts Task 4.
-- Produces receipt fields: `baselineId`, `preflightFingerprint`, `postflightFingerprint`, `baselineIntegrity`, `persistentFixtureIntegrity`.
+- Produces local receipt fields: `baselineId`, `preflightFingerprint`, `postflightFingerprint`, `baselineIntegrity`, `persistentFixtureIntegrity`.
+- Produces remote receipt state: baseline fields `NOT_APPLICABLE`; `today-teacher-first` excluded from expected journey coverage.
 
-- [ ] **Step 1: Add failing receipt tests**
+- [ ] **Step 1: Add failing target-scope tests**
 
-Assert missing receipt, drift, or fixture invalidity forces a FAIL gate; matching PASS receipts do not hide browser/journey failures.
+Assert full `local` scope includes mandatory `today-teacher-first`; full `beta` and `preview` scopes exclude it. Focused local Today keeps two expected journey receipts (mobile+desktop). Remote scope must never convert the omitted journey into PASS.
 
-- [ ] **Step 2: Verify RED**
+- [ ] **Step 2: Add failing receipt tests**
 
-Run: `cd product && node --test scripts/experience/hva-baseline-integrity.test.mjs`
+For local: missing receipt, drift, or fixture invalidity forces a FAIL gate. For beta/preview: baseline receipt is not required and baseline gates render `NOT_APPLICABLE`.
 
-Expected: FAIL until receipt evaluation is wired.
+- [ ] **Step 3: Verify RED**
 
-- [ ] **Step 3: Update acceptance report**
+Run:
+```bash
+node --test .github/scripts/certification/hva-receipt-scope.test.mjs
+cd product && node --test scripts/experience/hva-baseline-integrity.test.mjs
+```
 
-Add gates `baselineIntegrity` and `persistentFixtureIntegrity`; include readable findings `HVA-BASELINE-DRIFT` and `HVA-PERSISTENT-FIXTURE-DRIFT`.
+Expected: FAIL until target is part of the scope/evaluation contract.
 
-- [ ] **Step 4: Add workflow preflight/postflight**
+- [ ] **Step 4: Extend scope resolver with target**
 
-For `hva-application`: run preflight after dependencies are installed and before build/browser; run postflight after browser and before receipt. For `hva-runtime`: run the same read-only checks around remote browser acceptance. Never run provisioning from either job.
+`resolveHvaReceiptScope` must receive the target. `local` includes Today; remote targets do not.
 
-- [ ] **Step 5: Verify workflow syntax and product tests**
+- [ ] **Step 5: Update acceptance report**
 
-Run: `cd product && npm test && npm run typecheck`
+Local only: add gates `baselineIntegrity` and `persistentFixtureIntegrity` and findings `HVA-BASELINE-DRIFT` / `HVA-PERSISTENT-FIXTURE-DRIFT`. Remote: both are `NOT_APPLICABLE` with no claim that the governed day was exercised.
+
+- [ ] **Step 6: Add workflow preflight/postflight only to `hva-application`**
+
+Run preflight after dependencies are installed and before build/browser; run postflight after browser and before receipt. Do **not** run fixed-date baseline preflight/postflight in `hva-runtime`; do not inject `HVA_FIXED_NOW` into a deployed Beta/preview target.
+
+- [ ] **Step 7: Verify workflow and product tests**
+
+Run:
+```bash
+node --test .github/scripts/certification/hva-receipt-scope.test.mjs
+cd product
+npm test
+npm run typecheck
+```
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add product/scripts/experience/acceptance-report.mjs product/scripts/experience/hva-baseline-integrity.test.mjs .github/workflows/experience-acceptance.yml
-git commit -m "ci(hva): enforce baseline integrity before and after browser acceptance"
+git add .github/scripts/certification/hva-receipt-scope.mjs .github/scripts/certification/hva-receipt-scope.test.mjs product/scripts/experience/acceptance-report.mjs product/scripts/experience/hva-baseline-integrity.test.mjs .github/workflows/experience-acceptance.yml
+git commit -m "ci(hva): scope governed baseline to local acceptance"
 ```
 
 ---
@@ -375,14 +400,14 @@ Expected: FAIL because provisioner does not exist.
 
 No writes. Inventory the exact current ACTIVE, DRAFT, legacy B01 provenance, future interval, assignment, Monday DRAFT slots and existing baseline calendar marker. Emit a deterministic plan and hash.
 
-- [ ] **Step 4: Implement guarded apply**
+- [ ] **Step 4: Implement guarded apply using only AAL2/RLS and the canonical lifecycle RPC**
 
 Before any write, re-read state and compare `preconditionFingerprint`. Reversible stage only:
-1. set DRAFT `effective_from` to `2026-10-27`;
-2. add 07:00–08:00 Monday lesson to the DRAFT using the canonical assignment;
+1. update only the unique DRAFT `effective_from` to `2026-10-27`;
+2. add 07:00–08:00 Monday lesson only to that DRAFT using the canonical assignment;
 3. create exactly one 2-Nov baseline Calendar event.
 
-Re-read and validate the prepared DRAFT. Only then call `activate_timetable_version` for that exact DRAFT. If a failure occurs before activation, remove only rows created by this command and restore the previous DRAFT date, then verify rollback. If activation succeeds, never self-repair the ACTIVE; run post-activation verification and emit a failing receipt if anything is unexpected.
+Re-read and validate the prepared DRAFT. Only then call `activate_timetable_version` for that exact DRAFT. Never update the old ACTIVE directly. If a failure occurs before activation, remove only rows created by this command and restore the previous DRAFT date, then verify rollback. If activation succeeds, never self-repair the ACTIVE; run post-activation verification and emit a failing receipt if anything is unexpected.
 
 - [ ] **Step 5: Add no-CI invocation guard test**
 
@@ -426,7 +451,7 @@ Expected: all PASS.
 
 - [ ] **Step 2: Run live read-only preflight against the untouched tenant**
 
-Run: `node scripts/experience/hva-baseline-integrity.mjs preflight`
+Run with `EXPERIENCE_TARGET=local`: `node scripts/experience/hva-baseline-integrity.mjs preflight`
 
 Expected: **FAIL_BASELINE_DRIFT**, specifically because v1 is not yet in force and the governed 07:00 lesson / 2-Nov calendar event are absent. No row count or timestamp in the tenant may change.
 
@@ -440,9 +465,9 @@ Expected: plan is generated; zero mutations; it reports old ACTIVE covering 26-O
 
 Reject execution if any ID/state differs from the receipt or if new persistent data appeared in 27-Oct→8-Nov.
 
-- [ ] **Step 5: Commit only code/evidence documentation if needed; do not apply yet**
+- [ ] **Step 5: Stop at the data-mutation boundary**
 
-No database mutation belongs to this task.
+No database mutation belongs to this task. Task 9 starts only after the plan itself has been approved for execution.
 
 ---
 
@@ -480,27 +505,28 @@ Read-only assertions must prove previous ACTIVE is ARCHIVED and valid through `2
 
 Same TeachingSession ID as before provisioning; same source timetable version/slot; source version now ARCHIVED but covers `2026-10-26`; no superseding TeachingSession created by HVA-GOV-01.
 
-- [ ] **Step 5: Run canonical preflight**
+- [ ] **Step 5: Run canonical local preflight**
 
-Run: `cd product && node scripts/experience/hva-baseline-integrity.mjs preflight`
+Run: `cd product && EXPERIENCE_TARGET=local node scripts/experience/hva-baseline-integrity.mjs preflight`
 
 Expected: `PASS`, baseline `HVA-GOV-01/v1` and stable fingerprint.
 
 ---
 
-### Task 10: Qualificare browser focused, full HVA e postflight
+### Task 10: Qualificare browser locale focused, full HVA e postflight
 
 **Files:**
 - Evidence only; no product mutations.
 
 **Interfaces:**
 - Consumes: Baseline v1 PASS from Task 9.
-- Produces: final HVA evidence for unblocking Task 9 of PR #726.
+- Produces: final local browser evidence for unblocking Task 9 of PR #726.
 
-- [ ] **Step 1: Run focused Today HVA**
+- [ ] **Step 1: Run focused Today HVA nel production build locale**
 
-Run with the normal production preview and AAL2 credentials:
+Run:
 ```bash
+EXPERIENCE_TARGET=local \
 EXPERIENCE_SCOPE_MODE=FOCUSED \
 EXPERIENCE_SCOPE_SPECS=e2e/experience/today-teacher-first.spec.mjs \
 npx playwright test e2e/experience/today-teacher-first.spec.mjs --config=playwright.experience.config.mjs
@@ -510,21 +536,25 @@ Expected on both mobile and desktop: exactly two lesson cards, one `LEZIONE DA R
 
 - [ ] **Step 2: Run postflight immediately after focused HVA**
 
-Run: `node scripts/experience/hva-baseline-integrity.mjs postflight`
+Run: `EXPERIENCE_TARGET=local node scripts/experience/hva-baseline-integrity.mjs postflight`
 
 Expected: same fingerprint and ACTIVE runtime identity as focused preflight.
 
-- [ ] **Step 3: Run full HVA**
+- [ ] **Step 3: Run full local HVA**
 
-Run: `npx playwright test --config=playwright.experience.config.mjs`
+Run: `EXPERIENCE_TARGET=local npx playwright test --config=playwright.experience.config.mjs`
 
 Expected: no regressions in legacy Registra/Teach, timetable, class, knowledge, calendar, visual/runtime guards; Today mandatory journey PASS mobile+desktop.
 
 - [ ] **Step 4: Run final postflight and acceptance report**
 
-Expected: `baselineIntegrity = PASS`, `persistentFixtureIntegrity = PASS`, preflight fingerprint equals postflight fingerprint; automated gates contain no FAIL.
+Expected: `baselineIntegrity = PASS`, `persistentFixtureIntegrity = PASS`, preflight fingerprint equals postflight fingerprint; automated local gates contain no FAIL.
 
-- [ ] **Step 5: Re-run product qualification**
+- [ ] **Step 5: Verify remote-scope contract without faking time**
+
+Run unit scope tests proving `beta`/`preview` do not expect `today-teacher-first` and do not require baseline receipts. Do not claim remote evidence for the governed day.
+
+- [ ] **Step 6: Re-run product qualification**
 
 Run:
 ```bash
@@ -551,7 +581,7 @@ The implementation branch must descend from PR #726 exact head plus approved HVA
 
 - [ ] **Step 2: Perform whole-branch review**
 
-Review focus: no hidden mutation in HVA workflow; no service-role; no self-heal; correct CET offset; historical B01 remains intact; pre/post integrity cannot be bypassed by a browser PASS.
+Review focus: no hidden mutation in HVA workflow; no service-role; no self-heal; correct CET offset; historical B01 remains intact; local pre/post integrity cannot be bypassed by a browser PASS; remote HVA makes no fixed-date claim.
 
 - [ ] **Step 3: Open a Draft PR targeting `feat/dos-ia-product-reset`**
 
@@ -559,9 +589,9 @@ Title suggestion: `HVA-GOV-01 — governed qualification baseline`.
 
 Body must state: separate qualification infrastructure; no merge/deploy authorized; runtime baseline provisioned once and evidenced; PR #726 exact head not modified by opening this PR.
 
-- [ ] **Step 4: Run CI/HVA on the Draft PR and bind evidence to its exact head**
+- [ ] **Step 4: Run CI and `hva/application` on the Draft PR and bind evidence to its exact head**
 
-Expected: Product CI PASS, HVA PASS with baseline integrity PASS, no unexpected governance gate regression.
+Expected: Product CI PASS, local HVA PASS with baseline integrity PASS, no unexpected governance gate regression.
 
 - [ ] **Step 5: Stop at human decision**
 
@@ -573,8 +603,9 @@ Do not merge HVA-GOV-01 into the #726 branch and do not merge #726 into `develop
 
 - Spec coverage: baseline, AAL2, no self-heal, read-only HVA, semantic fingerprint, pre/post equality, concurrency, calendar baseline, Today coexistence and historical B01 all map to explicit tasks.
 - Temporal amendment coverage: `effective_from 2026-10-27`, canonical Monday `2026-11-02`, CET `+01:00`, no B01 migration.
+- Target separation: fixed clock/baseline required only for `hva/application` local; Beta/preview do not simulate time and do not claim Today baseline coverage.
 - TDD: Tasks 1–7 each start from a failing focused test and end with a commit.
 - Mutation boundary: Tasks 1–8 do not alter canonical runtime data; Task 9 is the only baseline mutation task and requires a fresh dry-run plan plus explicit confirmation argument.
 - Rollback: only reversible pre-activation writes are rolled back automatically; ACTIVE is never auto-repaired after activation.
-- Review Focus tests are assigned to Tasks 1, 3, 4, 7 and 9.
+- Review Focus tests are assigned to Tasks 1, 3, 4, 5, 6, 7 and 9.
 - No merge/deploy is included in the plan.
