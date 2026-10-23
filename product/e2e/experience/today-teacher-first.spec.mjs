@@ -7,42 +7,43 @@ requireE2ECredentials()
 
 const outputRoot = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience'
 
-test('Journey: Oggi → lezione immediata quando il contesto è risolto', async ({ page }, testInfo) => {
+test('Journey: Oggi qualifica registrazione pendente + prossima lezione + impegno Calendario', async ({ page }, testInfo) => {
   await loginE2E(page)
   await page.goto('/planner')
 
   await expect(page.getByRole('heading', { level: 1, name: 'Oggi', exact: true })).toBeVisible()
-  await expect(page.locator('.todayLessonCard')).toHaveCount(await page.locator('.todayLessonCard').count())
   await expect(page.getByRole('button', { name: /Chiudi giornata|Aggiungi attività/i })).toHaveCount(0)
 
   const lessonCards = page.locator('.todayLessonCard')
-  const count = await lessonCards.count()
-  expect(count, 'Oggi può mostrare al massimo due oggetti lezione.').toBeLessThanOrEqual(2)
+  await expect(
+    lessonCards,
+    'Task 9 richiede browser evidence deterministica con una registrazione pendente e una prossima lezione.',
+  ).toHaveCount(2)
 
-  if (!count) {
-    await screenshot(page, testInfo, 'today-teacher-first-no-lesson')
-    await recordJourney(testInfo.project.name, {
-      status: 'NOT_APPLICABLE',
-      note: 'Il giorno HVA corrente non espone una lezione deterministica; il requisito browser pending + upcoming + Calendar resta UNVERIFIED e non è sostituito dal pure-model test.',
-    })
-    return
+  const pendingCard = lessonCards.filter({ hasText: 'LEZIONE DA REGISTRARE' })
+  const upcomingCard = lessonCards.filter({ hasText: 'PROSSIMA LEZIONE' })
+  await expect(pendingCard, 'Oggi deve rendere visibile la lezione conclusa ancora da registrare.').toHaveCount(1)
+  await expect(upcomingCard, 'Oggi deve rendere visibile la prossima lezione della giornata.').toHaveCount(1)
+
+  const commitments = page.locator('.todayCalendarCommitments')
+  await expect(
+    commitments,
+    'Task 9 richiede nello stesso stato browser almeno un impegno Calendario compatto.',
+  ).toBeVisible()
+  await expect(commitments.getByRole('heading', { level: 2, name: 'Impegni' })).toBeVisible()
+  const commitmentLinks = commitments.locator('a.todayCommitment')
+  expect(await commitmentLinks.count(), 'Oggi deve mostrare almeno un impegno Calendario reale.').toBeGreaterThan(0)
+  for (let index = 0; index < await commitmentLinks.count(); index += 1) {
+    expect(await commitmentLinks.nth(index).getAttribute('href')).toMatch(/^\/calendario(?:[?#]|$)/)
   }
 
-  const firstCard = lessonCards.first()
-  const primary = firstCard.locator('a.todayPrimaryAction')
-  await expect(primary, 'Ogni oggetto lezione Oggi deve avere una sola azione primaria.').toHaveCount(1)
-  await expectTouchTarget(primary, 'CTA primaria Oggi')
-  await expect(firstCard).not.toContainText(/CAN-PACK|CAN-PLAN|\bB\d{2}\b/)
+  const primary = upcomingCard.locator('a.todayPrimaryAction')
+  await expect(primary, 'La prossima lezione deve avere una sola azione primaria.').toHaveCount(1)
+  await expectTouchTarget(primary, 'CTA prossima lezione Oggi')
+  await expect(upcomingCard).not.toContainText(/CAN-PACK|CAN-PLAN|\bB\d{2}\b/)
 
   const href = await primary.getAttribute('href')
-  if (!href?.match(/^\/classi\/[^/?#]+\/lezioni\/[^/?#]+/)) {
-    await screenshot(page, testInfo, 'today-teacher-first-safe-fallback')
-    await recordJourney(testInfo.project.name, {
-      status: 'NOT_APPLICABLE',
-      note: `Oggi ha risolto correttamente un fallback sicuro (${href ?? 'senza href'}) invece di inventare una Lezione.`,
-    })
-    return
-  }
+  expect(href, 'La prossima lezione HVA deve risolvere una route Lezione canonica.').toMatch(/^\/classi\/[^/?#]+\/lezioni\/[^/?#]+/)
 
   await primary.click()
   await expect(page.locator('[data-lesson-shell]')).toBeVisible()
@@ -57,7 +58,7 @@ test('Journey: Oggi → lezione immediata quando il contesto è risolto', async 
   await screenshot(page, testInfo, 'today-teacher-first')
   await recordJourney(testInfo.project.name, {
     status: 'PASS',
-    note: 'Oggi apre direttamente la Lezione canonica quando il contesto runtime è risolto, senza reintrodurre fasi URL.',
+    note: 'Oggi rende insieme registrazione pendente, prossima lezione e impegno Calendario e apre la Lezione canonica senza reintrodurre fasi URL.',
   })
 })
 
@@ -76,7 +77,7 @@ async function recordJourney(project, result) {
   const payload = {
     schemaVersion: 1,
     id: 'today-teacher-first',
-    label: 'Oggi → lezione immediata quando il contesto è risolto',
+    label: 'Oggi → registrazione pendente + prossima lezione + impegno Calendario',
     project,
     status: result.status,
     note: result.note,
