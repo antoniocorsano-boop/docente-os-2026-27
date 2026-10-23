@@ -76,54 +76,45 @@ export function buildHvaBaselineProvisionPlan(runtime, { plannedAt = new Date().
   if (runtime.persistentFixtureIntegrity?.status !== 'PASS') {
     throw new Error('HVA baseline provisioning requires historical fixture provenance to PASS before planning')
   }
-  if (runtime.persistentFixtureIntegrity?.localDate && runtime.persistentFixtureIntegrity.localDate !== HISTORIC_FIXTURE_DATE) {
+  if (
+    runtime.persistentFixtureIntegrity?.localDate
+    && runtime.persistentFixtureIntegrity.localDate !== HISTORIC_FIXTURE_DATE
+  ) {
     throw new Error(`HVA historical fixture must remain bound to ${HISTORIC_FIXTURE_DATE}`)
+  }
+
+  if (!isCanonicalAssignment(runtime.snapshot?.timetable?.assignment)) {
+    throw new Error('HVA canonical assignment must already match 2A/Tecnologia/120/CONFIRMED before provisioning')
   }
 
   if (runtime.provisioning) assertLivePlanningPreconditions(runtime)
 
-  const operations = []
-  const assignment = runtime.snapshot?.timetable?.assignment ?? null
-  const assignmentIsCanonical = isCanonicalAssignment(assignment)
-  if (!assignmentIsCanonical) {
-    if (runtime.provisioning) {
-      throw new Error('Live HVA provisioning requires the canonical 2A/Tecnologia/120/CONFIRMED assignment before apply')
-    }
-    operations.push({
-      kind: 'ENSURE_ASSIGNMENT',
-      class: '2A',
-      discipline: 'Tecnologia',
-      status: 'CONFIRMED',
-      weeklyMinutes: 120,
-      marker: ASSIGNMENT_MARKER,
-    })
-  }
-
   const draftVersionId = runtime.provisioning?.draftVersions?.[0]?.id ?? null
-  operations.push({
-    kind: 'PREPARE_TIMETABLE_DRAFT',
-    draftVersionId,
-    effectiveFrom: HVA_EFFECTIVE_FROM,
-    label: TARGET_LABEL,
-    marker: HVA_BASELINE_ID,
-  })
-  operations.push(canonicalLessonOperation('07:00', '08:00', 1))
-  operations.push(canonicalLessonOperation('08:00', '09:00', 2))
-  operations.push({
-    kind: 'ACTIVATE_TIMETABLE',
-    draftVersionId,
-    effectiveFrom: HVA_EFFECTIVE_FROM,
-    expectedArchivedVersionId: runtime.runtimeIds?.activeTimetableVersionId ?? null,
-  })
-  operations.push({
-    kind: 'UPSERT_CALENDAR_EVENT',
-    title: CALENDAR_TITLE,
-    date: HVA_LOCAL_DATE,
-    start: '10:30',
-    end: '11:00',
-    eventKind: 'MEETING',
-    sourceRef: HVA_CALENDAR_SOURCE_REF,
-  })
+  const operations = [
+    {
+      kind: 'PREPARE_TIMETABLE_DRAFT',
+      draftVersionId,
+      effectiveFrom: HVA_EFFECTIVE_FROM,
+      label: TARGET_LABEL,
+      marker: HVA_BASELINE_ID,
+    },
+    canonicalLessonOperation('07:00', '08:00', 1),
+    {
+      kind: 'UPSERT_CALENDAR_EVENT',
+      title: CALENDAR_TITLE,
+      date: HVA_LOCAL_DATE,
+      start: '10:30',
+      end: '11:00',
+      eventKind: 'MEETING',
+      sourceRef: HVA_CALENDAR_SOURCE_REF,
+    },
+    {
+      kind: 'ACTIVATE_TIMETABLE',
+      draftVersionId,
+      effectiveFrom: HVA_EFFECTIVE_FROM,
+      expectedArchivedVersionId: runtime.runtimeIds?.activeTimetableVersionId ?? null,
+    },
+  ]
 
   const observed = buildObservedReceipt(runtime)
   const planBody = {
@@ -175,11 +166,6 @@ export async function applyHvaBaselineProvisionPlan({ plan, readRuntime, adapter
 
   try {
     for (const operation of plan.operations ?? []) {
-      if (operation.kind === 'ENSURE_ASSIGNMENT') {
-        const result = await requireMethod(adapter, 'ensureCanonicalAssignment')(operation, context)
-        context.assignmentId = result?.assignmentId ?? context.assignmentId
-        continue
-      }
       if (operation.kind === 'PREPARE_TIMETABLE_DRAFT') {
         const result = await requireMethod(adapter, 'prepareCanonicalDraftTimetable')(operation, context)
         context.timetableVersionId = result?.timetableVersionId ?? context.timetableVersionId
@@ -189,13 +175,14 @@ export async function applyHvaBaselineProvisionPlan({ plan, readRuntime, adapter
         await requireMethod(adapter, 'createCanonicalMondaySlot')(operation, context)
         continue
       }
-      if (operation.kind === 'ACTIVATE_TIMETABLE') {
-        await requireMethod(adapter, 'activateCanonicalTimetable')(operation, context)
-        activated = true
-        continue
-      }
       if (operation.kind === 'UPSERT_CALENDAR_EVENT') {
         await requireMethod(adapter, 'upsertCanonicalCalendarEvent')(operation, context)
+        continue
+      }
+      if (operation.kind === 'ACTIVATE_TIMETABLE') {
+        await requireMethod(adapter, 'verifyPreparedDraft')(context)
+        await requireMethod(adapter, 'activateCanonicalTimetable')(operation, context)
+        activated = true
         continue
       }
       throw new Error(`Unsupported HVA provisioning operation: ${operation.kind}`)
@@ -373,12 +360,9 @@ async function createLiveMutationAdapter({ plan }) {
 
   let draftBefore = null
   const slotMutations = []
+  let calendarMutation = null
 
   return {
-    async ensureCanonicalAssignment() {
-      throw new Error('Live HVA provisioning does not create or repair the canonical assignment; dry-run must fail closed first')
-    },
-
     async prepareCanonicalDraftTimetable(operation) {
       const timetableVersionId = operation.draftVersionId ?? plan.observed?.draftVersionIds?.[0]
       if (!timetableVersionId) throw new Error('HVA provisioning plan does not identify a unique DRAFT')
@@ -478,28 +462,10 @@ async function createLiveMutationAdapter({ plan }) {
       return { slotId: insertResult.data.id }
     },
 
-    async activateCanonicalTimetable(operation, applyContext) {
-      const timetableVersionId = applyContext.timetableVersionId
-      if (!timetableVersionId) throw new Error('HVA provisioning activation is missing the approved DRAFT id')
-      const activationResult = await supabase.rpc('activate_timetable_version', { p_version_id: timetableVersionId })
-      assertQuery(activationResult, 'DRAFT activation')
-      const activation = activationResult.data?.[0]
-      if (!activation || activation.active_version_id !== timetableVersionId) {
-        throw new Error('HVA provisioning activation did not activate the approved DRAFT')
-      }
-      if (
-        operation.expectedArchivedVersionId
-        && activation.archived_version_id !== operation.expectedArchivedVersionId
-      ) {
-        throw new Error('HVA provisioning activation archived an unexpected timetable version')
-      }
-      return activation
-    },
-
     async upsertCanonicalCalendarEvent(operation) {
       const existingResult = await supabase
         .from('calendar_events')
-        .select('id')
+        .select('*')
         .eq('workspace_id', context.workspace_id)
         .eq('academic_year_id', context.academic_year_id)
         .eq('source_ref', operation.sourceRef)
@@ -519,6 +485,7 @@ async function createLiveMutationAdapter({ plan }) {
         source_ref: operation.sourceRef,
       }
       if (existing.length === 1) {
+        calendarMutation = { kind: 'UPDATE', before: existing[0] }
         const updateResult = await supabase
           .from('calendar_events')
           .update(payload)
@@ -540,10 +507,126 @@ async function createLiveMutationAdapter({ plan }) {
         .select('id')
         .single()
       assertQuery(insertResult, 'canonical Calendar event insert')
+      calendarMutation = { kind: 'INSERT', id: insertResult.data.id }
       return { calendarEventId: insertResult.data.id }
     },
 
+    async verifyPreparedDraft(applyContext) {
+      const timetableVersionId = applyContext.timetableVersionId
+      const assignmentId = applyContext.assignmentId
+      const sectionId = applyContext.sectionId
+      const disciplineId = applyContext.disciplineId
+      if (!timetableVersionId || !assignmentId || !sectionId || !disciplineId) {
+        throw new Error('HVA prepared-DRAFT verification is missing approved identity')
+      }
+
+      const [versionResult, slotsResult, calendarResult] = await Promise.all([
+        supabase
+          .from('timetable_versions')
+          .select('id,status,effective_from,effective_to,label,source_kind,source_ref')
+          .eq('id', timetableVersionId)
+          .eq('workspace_id', context.workspace_id)
+          .eq('academic_year_id', context.academic_year_id)
+          .single(),
+        supabase
+          .from('timetable_slots')
+          .select('id,weekday,start_time,end_time,slot_kind,section_id,discipline_id,teaching_assignment_id')
+          .eq('timetable_version_id', timetableVersionId)
+          .eq('weekday', HVA_WEEKDAY),
+        supabase
+          .from('calendar_events')
+          .select('id,title,event_kind,starts_on,ends_on,all_day,start_time,end_time,source_kind,source_ref')
+          .eq('workspace_id', context.workspace_id)
+          .eq('academic_year_id', context.academic_year_id)
+          .eq('source_ref', HVA_CALENDAR_SOURCE_REF),
+      ])
+      assertQuery(versionResult, 'prepared DRAFT version verification')
+      assertQuery(slotsResult, 'prepared DRAFT slot verification')
+      assertQuery(calendarResult, 'prepared Calendar verification')
+
+      const version = versionResult.data
+      if (
+        version?.status !== 'DRAFT'
+        || version?.effective_from !== HVA_EFFECTIVE_FROM
+        || version?.effective_to !== null
+        || version?.label !== TARGET_LABEL
+        || version?.source_kind !== 'MANUAL'
+        || version?.source_ref !== HVA_BASELINE_ID
+      ) {
+        throw new Error('HVA prepared-DRAFT verification failed: DRAFT metadata is not canonical')
+      }
+
+      const mondayLessons = (slotsResult.data ?? []).filter((slot) => slot.slot_kind === 'LESSON')
+      if (mondayLessons.length !== 2) {
+        throw new Error(`HVA prepared-DRAFT verification failed: expected 2 Monday lessons, found ${mondayLessons.length}`)
+      }
+      for (const [start, end] of [['07:00', '08:00'], ['08:00', '09:00']]) {
+        const matches = mondayLessons.filter((slot) => clock(slot.start_time) === start && clock(slot.end_time) === end)
+        if (matches.length !== 1) {
+          throw new Error(`HVA prepared-DRAFT verification failed: expected exactly one ${start}-${end} lesson`)
+        }
+        const slot = matches[0]
+        if (
+          slot.section_id !== sectionId
+          || slot.discipline_id !== disciplineId
+          || slot.teaching_assignment_id !== assignmentId
+        ) {
+          throw new Error(`HVA prepared-DRAFT verification failed: ${start}-${end} lesson binding is not canonical`)
+        }
+      }
+
+      const events = calendarResult.data ?? []
+      if (events.length !== 1) {
+        throw new Error(`HVA prepared-DRAFT verification failed: expected one canonical Calendar event, found ${events.length}`)
+      }
+      const event = events[0]
+      if (
+        event.title !== CALENDAR_TITLE
+        || event.event_kind !== 'MEETING'
+        || event.starts_on !== HVA_LOCAL_DATE
+        || event.ends_on !== HVA_LOCAL_DATE
+        || event.all_day !== false
+        || clock(event.start_time) !== '10:30'
+        || clock(event.end_time) !== '11:00'
+        || event.source_kind !== 'MANUAL'
+        || event.source_ref !== HVA_CALENDAR_SOURCE_REF
+      ) {
+        throw new Error('HVA prepared-DRAFT verification failed: canonical Calendar event is not exact')
+      }
+
+      return { status: 'PASS' }
+    },
+
+    async activateCanonicalTimetable(operation, applyContext) {
+      const timetableVersionId = applyContext.timetableVersionId
+      if (!timetableVersionId) throw new Error('HVA provisioning activation is missing the approved DRAFT id')
+      const activationResult = await supabase.rpc('activate_timetable_version', { p_version_id: timetableVersionId })
+      assertQuery(activationResult, 'DRAFT activation')
+      const activation = activationResult.data?.[0]
+      if (!activation || activation.active_version_id !== timetableVersionId) {
+        throw new Error('HVA provisioning activation did not activate the approved DRAFT')
+      }
+      if (
+        operation.expectedArchivedVersionId
+        && activation.archived_version_id !== operation.expectedArchivedVersionId
+      ) {
+        throw new Error('HVA provisioning activation archived an unexpected timetable version')
+      }
+      return activation
+    },
+
     async rollbackPreActivation() {
+      if (calendarMutation?.kind === 'INSERT') {
+        const deleteResult = await supabase.from('calendar_events').delete().eq('id', calendarMutation.id)
+        assertQuery(deleteResult, 'pre-activation Calendar insert rollback')
+      } else if (calendarMutation?.kind === 'UPDATE') {
+        const restoreCalendarResult = await supabase
+          .from('calendar_events')
+          .update(mutableCalendarPayload(calendarMutation.before))
+          .eq('id', calendarMutation.before.id)
+        assertQuery(restoreCalendarResult, 'pre-activation Calendar update rollback')
+      }
+
       for (const mutation of [...slotMutations].reverse()) {
         if (mutation.kind === 'INSERT') {
           const deleteResult = await supabase.from('timetable_slots').delete().eq('id', mutation.id)
@@ -672,7 +755,9 @@ function fingerprintProvisioningLease(runtime) {
 }
 
 function verifyPlanHash(plan) {
-  if (!plan?.planSha256) return
+  if (!plan?.planSha256 || !/^[a-f0-9]{64}$/i.test(plan.planSha256)) {
+    throw new Error('HVA provision plan SHA-256 receipt is required before apply')
+  }
   const { planSha256, ...body } = plan
   const actual = sha256(stableJson(body))
   if (actual !== planSha256) {
@@ -796,6 +881,20 @@ function mutableSlotPayload(row) {
   }
   if (Object.hasOwn(row, 'activity_kind')) payload.activity_kind = row.activity_kind
   return payload
+}
+
+function mutableCalendarPayload(row) {
+  return {
+    title: row.title,
+    event_kind: row.event_kind,
+    starts_on: row.starts_on,
+    ends_on: row.ends_on,
+    all_day: row.all_day,
+    start_time: row.start_time,
+    end_time: row.end_time,
+    source_kind: row.source_kind,
+    source_ref: row.source_ref,
+  }
 }
 
 function classLabel(section) {
