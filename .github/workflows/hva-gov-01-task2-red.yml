@@ -1,0 +1,32 @@
+name: HVA-GOV-01 Task 2 RED
+
+on:
+  push:
+    branches: ["test/hva-gov-01-task2-red"]
+
+permissions:
+  contents: read
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Prove RED candidate product tree is unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "b3d592a95fd2ca67b2a06ddc0e22088a07ed23b6"
+          git diff --exit-code b3d592a95fd2ca67b2a06ddc0e22088a07ed23b6 HEAD -- product/
+
+      - name: Run Task 2 focused semantic contract
+        working-directory: product
+        run: node --test e2e/support/hva-governed-baseline-contract.test.mjs
