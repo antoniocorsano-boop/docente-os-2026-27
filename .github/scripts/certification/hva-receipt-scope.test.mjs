@@ -89,12 +89,14 @@ test('workflow runs governed baseline preflight and postflight only in local app
 
   const preflight = 'node scripts/experience/hva-baseline-integrity.mjs preflight'
   const postflight = 'node scripts/experience/hva-baseline-integrity.mjs postflight'
+  const playwrightInstall = 'Install Playwright runner without changing the lockfile'
   assert.equal(applicationJob.split(preflight).length - 1, 1)
   assert.equal(applicationJob.split(postflight).length - 1, 1)
   assert.equal(runtimeJob.includes(preflight), false)
   assert.equal(runtimeJob.includes(postflight), false)
 
   assert.ok(applicationJob.indexOf(preflight) > applicationJob.indexOf('Install product dependencies'))
+  assert.ok(applicationJob.indexOf(preflight) > applicationJob.indexOf(playwrightInstall), 'preflight must run after governed Playwright installation because e2e-auth imports @playwright/test')
   assert.ok(applicationJob.indexOf(preflight) < applicationJob.indexOf('Build tested application'))
   assert.ok(applicationJob.indexOf(postflight) > applicationJob.indexOf('Run Human + Visual Acceptance'))
   assert.ok(applicationJob.indexOf(postflight) < applicationJob.indexOf('Generate acceptance receipt'))
