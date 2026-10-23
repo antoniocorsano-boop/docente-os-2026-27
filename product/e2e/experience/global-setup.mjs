@@ -1,6 +1,6 @@
 import { chromium, expect } from '@playwright/test'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
-import { ensureHvaRecordedLessonFixture } from '../support/hva-recorded-lesson-fixture.mjs'
+import { assertHvaRecordedLessonFixture } from '../support/hva-recorded-lesson-fixture.mjs'
 import { assertHvaTodayRuntimeFixture } from '../support/hva-today-fixture.mjs'
 import {
   deleteAllKnowledgeFixtures,
@@ -20,7 +20,7 @@ export default async function globalSetup() {
   const title = experienceUdaFixtureTitle()
   if (process.env.EXPERIENCE_TARGET === 'local') {
     await assertHvaTodayRuntimeFixture()
-    await ensureHvaRecordedLessonFixture()
+    await assertHvaRecordedLessonFixture()
   }
 
   const browser = await chromium.launch()
@@ -59,7 +59,6 @@ export default async function globalSetup() {
     await contextForm.locator('input[name="disciplines"]').fill('Tecnologia')
     await contextForm.locator('input[name="classLabels"]').fill('1A')
     await expect(contextForm.locator('input[name="contextStatus"]')).toHaveValue('REVIEWED')
-    // Correcting professional context must not imply that the source itself was verified.
     await expect(contextForm.locator('input[name="reliability"]')).toHaveValue('AUTO')
     await Promise.all([
       page.waitForURL(new RegExp(`/knowledge/${escapeRegExp(assetId)}\\?context=updated$`), { timeout: 30_000 }),
@@ -70,14 +69,8 @@ export default async function globalSetup() {
     const udaGroup = page.locator('.progettaGroup').filter({ hasText: /Unità di apprendimento|UDA/i }).first()
     await expect(udaGroup, 'Il provisioning deve rendere disponibile il gruppo UDA della classe prima.').toBeVisible()
     const udaLink = udaGroup.locator(`a[href^="/knowledge/${assetId}?"]`).first()
-    await expect(
-      udaLink,
-      'L’UDA tecnica deve essere raggiungibile da Progetta tramite la normale risorsa Knowledge.',
-    ).toBeVisible()
-    await expect(
-      udaLink,
-      'Progetta deve già esporre la UDA tecnica nel contesto di preparazione.',
-    ).toHaveAttribute('href', /[?&]mode=prepare(?:&|$)/)
+    await expect(udaLink, 'L’UDA tecnica deve essere raggiungibile da Progetta tramite la normale risorsa Knowledge.').toBeVisible()
+    await expect(udaLink, 'Progetta deve già esporre la UDA tecnica nel contesto di preparazione.').toHaveAttribute('href', /[?&]mode=prepare(?:&|$)/)
 
     await writeExperienceFixtureState({ udaAssetId: assetId })
     process.stdout.write(`HVA UDA fixture ready: ${assetId}\n`)

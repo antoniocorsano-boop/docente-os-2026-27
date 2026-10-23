@@ -125,6 +125,11 @@ jobs:
         working-directory: product
         run: npm install --no-audit --no-fund
 
+      - name: HVA-GOV-01 read-only preflight
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: node scripts/experience/hva-baseline-integrity.mjs preflight
+
       - name: Install Playwright runner without changing the lockfile
         if: steps.credentials.outputs.ready == 'true'
         working-directory: product
@@ -177,6 +182,11 @@ jobs:
           code=$?
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           exit 0
+
+      - name: HVA-GOV-01 read-only postflight
+        if: always() && steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: node scripts/experience/hva-baseline-integrity.mjs postflight
 
       - name: Generate acceptance receipt
         if: always() && steps.credentials.outputs.ready == 'true'

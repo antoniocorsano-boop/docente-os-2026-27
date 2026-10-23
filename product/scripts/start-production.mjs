@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import baselineConfig from '../e2e/support/hva-governed-baseline-config.cjs'
 
 const EXPECTED_RUNTIME_MIGRATION = '0103_material_reference_safety'
-const HVA_CANONICAL_NOW = '2026-10-19T08:30:00+02:00'
+const { HVA_CANONICAL_NOW } = baselineConfig
 const port = process.env.PORT?.trim() || '3000'
 const nextBin = process.platform === 'win32' ? 'next.cmd' : 'next'
 
