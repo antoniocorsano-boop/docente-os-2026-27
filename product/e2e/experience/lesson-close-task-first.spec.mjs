@@ -20,7 +20,7 @@ test('Journey: legacy Registra → gate docente nella Lezione unificata', async 
   await expect(page.locator('[data-lesson-shell]')).toBeVisible()
   await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
   await expect(
-    page.getByText(/Curricolo da rivalidare|Conferma del docente richiesta|La preparazione è cambiata/).first(),
+    page.getByText('Curricolo da confermare', { exact: true }).first(),
     'Un deep link legacy alla registrazione non deve bypassare il gate di preparazione della Lezione.',
   ).toBeVisible()
 
