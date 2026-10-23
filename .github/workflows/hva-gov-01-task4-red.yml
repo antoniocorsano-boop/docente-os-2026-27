@@ -1,0 +1,32 @@
+name: HVA-GOV-01 Task 4 RED
+
+on:
+  push:
+    branches: ["test/hva-gov-01-task4-red"]
+
+permissions:
+  contents: read
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Prove Task 4 RED is test-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only c848ebe2414c9a68b7a45aa4ac2ea5f415173fd1 HEAD -- product/)"
+          test "$changed" = "product/scripts/experience/hva-baseline-integrity.test.mjs"
+
+      - name: Run Task 4 baseline integrity contract
+        working-directory: product
+        run: node --test scripts/experience/hva-baseline-integrity.test.mjs
