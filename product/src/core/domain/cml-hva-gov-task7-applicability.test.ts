@@ -8,6 +8,7 @@ test('HVA-GOV-01 Task 7 provisioning contracts run under native Node ESM', () =>
       '--test',
       'scripts/experience/provision-hva-baseline.test.mjs',
       'scripts/experience/provision-hva-baseline-lease.test.mjs',
+      'scripts/experience/provision-hva-baseline-hash.test.mjs',
     ],
     {
       cwd: process.cwd(),
