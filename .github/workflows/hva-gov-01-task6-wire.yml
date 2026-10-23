@@ -1,0 +1,102 @@
+name: HVA-GOV-01 Task 6 wiring
+
+on:
+  push:
+    branches:
+      - feat/hva-gov-01-task6-target-aware-receipts
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    if: github.event.head_commit.message != 'ci(hva): wire local baseline integrity gates'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/hva-gov-01-task6-target-aware-receipts
+          fetch-depth: 2
+      - name: Patch application acceptance only
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('.github/workflows/experience-acceptance.yml')
+          text = path.read_text()
+
+          deps = """      - name: Install product dependencies
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: npm install --no-audit --no-fund
+
+      - name: Install Playwright runner without changing the lockfile
+"""
+          deps_with_gate = """      - name: Install product dependencies
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: npm install --no-audit --no-fund
+
+      - name: Verify governed baseline preflight
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: node scripts/experience/hva-baseline-integrity.mjs preflight
+
+      - name: Install Playwright runner without changing the lockfile
+"""
+          if text.count(deps) < 1:
+              raise SystemExit('application dependency insertion point not found')
+          text = text.replace(deps, deps_with_gate, 1)
+
+          browser = """      - name: Run Human + Visual Acceptance
+        id: browser
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        shell: bash
+        run: |
+          set +e
+          npx playwright test --config=playwright.experience.config.mjs
+          code=$?
+          echo \"exit_code=$code\" >> \"$GITHUB_OUTPUT\"
+          exit 0
+
+      - name: Generate acceptance receipt
+"""
+          browser_with_gate = """      - name: Run Human + Visual Acceptance
+        id: browser
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        shell: bash
+        run: |
+          set +e
+          npx playwright test --config=playwright.experience.config.mjs
+          code=$?
+          echo \"exit_code=$code\" >> \"$GITHUB_OUTPUT\"
+          exit 0
+
+      - name: Verify governed baseline postflight
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: node scripts/experience/hva-baseline-integrity.mjs postflight
+
+      - name: Generate acceptance receipt
+"""
+          if text.count(browser) < 1:
+              raise SystemExit('application browser insertion point not found')
+          text = text.replace(browser, browser_with_gate, 1)
+          path.write_text(text)
+      - name: Verify runtime job remains free of fixed-date baseline gates
+        shell: bash
+        run: |
+          runtime="$(sed -n '/^  runtime-acceptance:/,$p' .github/workflows/experience-acceptance.yml)"
+          ! grep -Fq 'hva-baseline-integrity.mjs preflight' <<<"$runtime"
+          ! grep -Fq 'hva-baseline-integrity.mjs postflight' <<<"$runtime"
+          ! grep -Fq 'HVA_FIXED_NOW' <<<"$runtime"
+      - name: Commit wiring
+        shell: bash
+        run: |
+          git config user.name 'Antonio Corsano'
+          git config user.email 'antonio.corsano@gmail.com'
+          git add .github/workflows/experience-acceptance.yml
+          git commit -m 'ci(hva): wire local baseline integrity gates'
+          git push origin HEAD:feat/hva-gov-01-task6-target-aware-receipts
