@@ -146,7 +146,7 @@ async function assertMobileAssistantClearsBottomNavigation(page) {
   ).toBeVisible({ timeout: 20_000 })
 
   const position = await assistant.evaluate((element) => getComputedStyle(element).position)
-  expect(position, 'L’assistente chiuso del Planner deve appartenere al normale flusso della pagina.').toBe('static')
+  expect(position, 'L’assistente chiuso del Planner deve restare flottante sopra la navigazione mobile.').toBe('fixed')
 
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
   await page.waitForTimeout(100)
