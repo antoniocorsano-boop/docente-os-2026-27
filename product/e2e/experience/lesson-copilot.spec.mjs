@@ -28,7 +28,7 @@ test('V1-C1: legacy Teach → gate docente prima del copilota', async ({ page },
   await expect(page.locator('[data-lesson-shell]')).toBeVisible()
   await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
   await expect(
-    page.getByText(/Curricolo da rivalidare|Conferma del docente richiesta|La preparazione è cambiata/).first(),
+    page.getByText('Curricolo da confermare', { exact: true }).first(),
     'Il deep link legacy Teach deve restare dietro il confine di approvazione docente.',
   ).toBeVisible()
   await expect(
