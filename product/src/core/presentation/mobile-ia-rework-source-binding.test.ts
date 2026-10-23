@@ -27,7 +27,7 @@ test('lesson preparation keeps internal Arena and baseline vocabulary out of tea
   assert.doesNotMatch(lessonPrepareSource, /baseline Arena/)
   assert.doesNotMatch(lessonPrepareSource, /copertura curricolare soddisfatta/)
   assert.match(lessonPrepareSource, /Curricolo da confermare/)
-  assert.match(lessonPrepareSource, /curricolo di questa classe/i)
+  assert.match(lessonPrepareSource, /confermare il curricolo/i)
 })
 
 test('lesson progress uses the same teacher-facing unit across class selector and preparation', () => {
@@ -39,7 +39,7 @@ test('lesson progress uses the same teacher-facing unit across class selector an
 test('mobile contextual copilot collapses to an accessible FAB and reserves content space', () => {
   assert.match(assistantPanelSource, /aria-label="Chiedi a DOCENTE OS su questa pagina"/)
   assert.match(appShellSource, /contextualAssistantEnabled && 'dosShellAssistantEnabled'/)
-  assert.match(assistantSafeAreaCss, /\.dosAssistantFloatingTrigger\{[^}]*width:56px[^}]*height:56px[^}]*border-radius:50%/s)
+  assert.match(assistantSafeAreaCss, /\.dosAssistantFloatingTrigger\{[^}]*width:56px[^}]*height:56px[^}]*border-radius:var\(--radius-pill\)/s)
   assert.match(assistantSafeAreaCss, /\.dosAssistantFloatingTrigger>span:last-child\{display:none\}/)
   assert.match(assistantSafeAreaCss, /\.dosShellAssistantEnabled \.dosContent\.workSurface\{[^}]*padding-bottom:calc\([^}]*\+ 88px\)/s)
 })
