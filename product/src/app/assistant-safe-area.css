@@ -6,7 +6,7 @@
     width:56px;
     height:56px;
     padding:0;
-    border-radius:50%;
+    border-radius:var(--radius-pill);
     margin:0;
   }
   .dosAssistantFloatingTrigger>span:last-child{display:none}
