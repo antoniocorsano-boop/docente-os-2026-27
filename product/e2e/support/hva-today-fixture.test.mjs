@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import {
   HVA_TODAY_ASSIGNMENT_NOTE,
+  HVA_TODAY_LOCAL_DATE,
   validateHvaTodayFixture,
 } from './hva-today-fixture.mjs'
 import { validateHvaTodayCoexistence } from './hva-today-coexistence-fixture.mjs'
@@ -105,9 +106,9 @@ test('coexistence rejects a prior lesson that is already recorded', () => {
   const fixture = coexistenceFixture()
   fixture.sessions = [{
     section_id: 'section-1',
-    local_date: '2026-10-19',
+    local_date: HVA_TODAY_LOCAL_DATE,
     source_timetable_slot_id: 'past',
-    projected_occurrence_logical_id: 'tt:v1:past:2026-10-19',
+    projected_occurrence_logical_id: `tt:v1:past:${HVA_TODAY_LOCAL_DATE}`,
   }]
   assert.match(validateHvaTodayCoexistence(fixture).join('\n'), /prior unregistered lesson/i)
 })

@@ -1,8 +1,10 @@
+import baselineConfig from './hva-governed-baseline-config.cjs'
+
 export const HVA_TODAY_DISCIPLINE_NAME = 'Tecnologia'
 export const HVA_TODAY_ASSIGNMENT_NOTE = 'HVA · Oggi · Cattedra canonica'
-export const HVA_TODAY_LOCAL_DATE = '2026-10-19'
-export const HVA_TODAY_WEEKDAY = 1
-export const HVA_TODAY_MINUTE_OF_DAY = 8 * 60 + 30
+export const HVA_TODAY_LOCAL_DATE = baselineConfig.HVA_LOCAL_DATE
+export const HVA_TODAY_WEEKDAY = baselineConfig.HVA_WEEKDAY
+export const HVA_TODAY_MINUTE_OF_DAY = baselineConfig.HVA_MINUTE_OF_DAY
 
 export function validateHvaTodayFixture(input) {
   const errors = []
