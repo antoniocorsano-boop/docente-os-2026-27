@@ -1,6 +1,6 @@
 import { chromium, expect } from '@playwright/test'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
-import { ensureHvaRecordedLessonFixture } from '../support/hva-recorded-lesson-fixture.mjs'
+import { assertHvaRecordedLessonFixture } from '../support/hva-recorded-lesson-fixture.mjs'
 import { assertHvaTodayRuntimeFixture } from '../support/hva-today-fixture.mjs'
 import {
   deleteAllKnowledgeFixtures,
@@ -20,7 +20,7 @@ export default async function globalSetup() {
   const title = experienceUdaFixtureTitle()
   if (process.env.EXPERIENCE_TARGET === 'local') {
     await assertHvaTodayRuntimeFixture()
-    await ensureHvaRecordedLessonFixture()
+    await assertHvaRecordedLessonFixture()
   }
 
   const browser = await chromium.launch()
