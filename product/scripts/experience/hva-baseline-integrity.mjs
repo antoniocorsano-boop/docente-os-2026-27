@@ -89,6 +89,16 @@ export async function runHvaBaselineIntegrityCli({
 
   let receipt
   try {
+    if (phase === 'preflight') {
+      const { runHvaBaselineProvisioning } = await import('./provision-hva-baseline.mjs')
+      const dryRun = await runHvaBaselineProvisioning({
+        argv: ['--dry-run', '--plan-file', resolve(receiptDir, 'provision-plan.json')],
+      })
+      process.stdout.write(
+        `HVA baseline provision dry-run: ${dryRun.status} · ${dryRun.plan.baselineId} · ${dryRun.plan.planSha256}\n`,
+      )
+    }
+
     const { readHvaGovernedBaselineRuntime } = await import('../../e2e/support/hva-governed-baseline-runtime.mjs')
     const runtime = await readHvaGovernedBaselineRuntime()
     const baselineErrors = validateHvaBaselineSnapshot(runtime.snapshot)
