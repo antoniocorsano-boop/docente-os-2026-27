@@ -3,37 +3,12 @@ import {
   HVA_TODAY_WEEKDAY,
   assertHvaTodayRuntimeFixture,
 } from './hva-today-fixture.mjs'
+import { validateHvaLessonCoexistenceInput } from './hva-governed-baseline-contract.mjs'
 
 const CALENDAR_SOURCE_PREFIX = 'hva:today-coexistence:'
-const CANONICAL_NOW = '08:30:00'
 
 export function validateHvaTodayCoexistence(input) {
-  const slots = input.slots ?? []
-  const sessions = input.sessions ?? []
-  const errors = []
-
-  const mondayLessons = slots
-    .filter((slot) => slot.weekday === HVA_TODAY_WEEKDAY && slot.slot_kind === 'LESSON')
-    .sort((first, second) => clockMinute(first.start_time) - clockMinute(second.start_time) || String(first.id).localeCompare(String(second.id)))
-
-  const current = mondayLessons.filter((slot) =>
-    clockMinute(slot.start_time) <= clockMinute(CANONICAL_NOW)
-    && clockMinute(slot.end_time) > clockMinute(CANONICAL_NOW),
-  )
-  if (current.length !== 1) {
-    errors.push(`expected exactly one canonical current lesson at 08:30, found ${current.length}`)
-    return errors
-  }
-
-  const priorUnregistered = mondayLessons.filter((slot) =>
-    clockMinute(slot.end_time) <= clockMinute(CANONICAL_NOW)
-    && !isRecorded(slot, sessions),
-  )
-  if (!priorUnregistered.length) {
-    errors.push('governed ACTIVE timetable does not expose a prior unregistered lesson before the canonical 08:30 lesson')
-  }
-
-  return errors
+  return validateHvaLessonCoexistenceInput(input)
 }
 
 export async function createHvaTodayCoexistenceFixture({ suffix }) {
@@ -170,20 +145,4 @@ export async function createHvaTodayCoexistenceFixture({ suffix }) {
     }
     throw setupError
   }
-}
-
-function isRecorded(slot, sessions) {
-  const occurrenceLogicalId = `tt:${slot.timetable_version_id}:${slot.id}:${HVA_TODAY_LOCAL_DATE}`
-  return sessions.some((session) => {
-    if (session.local_date !== HVA_TODAY_LOCAL_DATE) return false
-    if (slot.section_id && session.section_id !== slot.section_id) return false
-    return session.source_timetable_slot_id === slot.id
-      || session.projected_occurrence_logical_id === occurrenceLogicalId
-  })
-}
-
-function clockMinute(value) {
-  const [hour, minute] = String(value ?? '').slice(0, 5).split(':').map(Number)
-  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return Number.NaN
-  return hour * 60 + minute
 }
