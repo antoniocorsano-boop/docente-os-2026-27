@@ -125,11 +125,6 @@ jobs:
         working-directory: product
         run: npm install --no-audit --no-fund
 
-      - name: Verify governed baseline preflight
-        if: steps.credentials.outputs.ready == 'true'
-        working-directory: product
-        run: node scripts/experience/hva-baseline-integrity.mjs preflight
-
       - name: Install Playwright runner without changing the lockfile
         if: steps.credentials.outputs.ready == 'true'
         working-directory: product
@@ -144,6 +139,11 @@ jobs:
             fi
           done
           exit 1
+
+      - name: Verify governed baseline preflight
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: node scripts/experience/hva-baseline-integrity.mjs preflight
 
       - name: Build tested application
         if: steps.credentials.outputs.ready == 'true'
