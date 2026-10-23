@@ -1,9 +1,5 @@
 'use strict'
 
-const { HVA_CANONICAL_NOW } = require('./hva-governed-baseline-config.cjs')
-
-module.exports = { HVA_CANONICAL_NOW }
-
 const fixedNow = process.env.HVA_FIXED_NOW?.trim()
 
 if (fixedNow) {
