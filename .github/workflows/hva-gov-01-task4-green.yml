@@ -1,0 +1,31 @@
+name: HVA-GOV-01 Task 4 GREEN
+
+on:
+  push:
+    branches: ["test/hva-gov-01-task4-green"]
+
+permissions:
+  contents: read
+
+jobs:
+  green:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Prove product tree matches Task 4 candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code 1705e5720cbe29703011dd668dd01bf06966c5e9 HEAD -- product/
+
+      - name: Run Task 4 baseline integrity contract
+        working-directory: product
+        run: node --test scripts/experience/hva-baseline-integrity.test.mjs
