@@ -66,7 +66,7 @@ test('mandatory Oggi browser evidence fails closed when the governed journey is 
   ])
 
   assert.match(journeyText, /id:\s*'today-teacher-first'/)
-  assert.match(journeyText, /status:\s*'NOT_APPLICABLE'/)
+  assert.match(journeyText, /status:\s*'PASS'/)
   assert.match(scopeText, /FULL_JOURNEY_IDS[\s\S]*'today-teacher-first'/)
   assert.match(scopeText, /today-teacher-first\.spec\.mjs[\s\S]*today-teacher-first/)
   assert.match(reportText, /mandatoryJourneyIds/)
