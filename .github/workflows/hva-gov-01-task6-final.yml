@@ -1,0 +1,32 @@
+name: HVA-GOV-01 Task 6 FINAL
+
+on:
+  push:
+    branches:
+      - test/hva-gov-01-task6-final
+
+permissions:
+  contents: read
+
+jobs:
+  final:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prove candidate tree is unchanged except final qualification workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only 129544b13acdf9970b22dcb4b2f1da28b4629ec8 HEAD)"
+          test "$changed" = ".github/workflows/hva-gov-01-task6-final.yml"
+      - name: Run target-aware scope contract
+        run: node --test .github/scripts/certification/hva-receipt-scope.test.mjs
+      - name: Run governed baseline receipt contract
+        working-directory: product
+        run: node --test scripts/experience/hva-baseline-integrity.test.mjs
