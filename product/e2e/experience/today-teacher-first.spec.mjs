@@ -10,9 +10,21 @@ const outputRoot = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience
 
 test('Journey: Oggi qualifica registrazione pendente + prossima lezione + impegno Calendario', async ({ page }, testInfo) => {
   await loginE2E(page)
-  const fixture = await createHvaTodayCoexistenceFixture({
-    suffix: `${process.env.GITHUB_RUN_ID ?? 'local'}-${testInfo.project.name}-${testInfo.retry}-${Date.now()}`,
-  })
+
+  let fixture
+  try {
+    fixture = await createHvaTodayCoexistenceFixture({
+      suffix: `${process.env.GITHUB_RUN_ID ?? 'local'}-${testInfo.project.name}-${testInfo.retry}-${Date.now()}`,
+    })
+  } catch (error) {
+    if (isUnverifiedJourney(error)) {
+      await recordJourney(testInfo.project.name, {
+        status: 'UNVERIFIED',
+        note: String(error instanceof Error ? error.message : error),
+      })
+    }
+    throw error
+  }
 
   try {
     await page.goto('/planner')
@@ -95,6 +107,10 @@ async function recordJourney(project, result) {
     capturedAt: new Date().toISOString(),
   }
   await fs.writeFile(path.join(dir, `${safe(project)}--today-teacher-first.json`), `${JSON.stringify(payload, null, 2)}\n`)
+}
+
+function isUnverifiedJourney(error) {
+  return String(error instanceof Error ? error.message : error).includes('HVA-JOURNEY-UNVERIFIED')
 }
 
 async function expectTouchTarget(locator, label) {
