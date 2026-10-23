@@ -1,0 +1,46 @@
+name: HVA-GOV-01 Task 1 Lint Diagnostic
+
+on:
+  push:
+    branches: ["test/hva-gov-01-task1-lint"]
+
+permissions:
+  contents: read
+
+jobs:
+  lint-diagnostic:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: product
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Capture exact lint diagnostics
+        id: lint
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p test-results/lint-diagnostic
+          status=0
+          npm run lint 2>&1 | tee test-results/lint-diagnostic/lint.log || status=$?
+          printf '%s\n' "$status" > test-results/lint-diagnostic/exit-code.txt
+          exit "$status"
+
+      - name: Upload lint diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hva-gov-01-task1-lint-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 7
+          path: product/test-results/lint-diagnostic/
