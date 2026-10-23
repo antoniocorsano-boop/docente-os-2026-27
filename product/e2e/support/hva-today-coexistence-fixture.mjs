@@ -5,9 +5,37 @@ import {
   assertHvaTodayRuntimeFixture,
 } from './hva-today-fixture.mjs'
 
-const SLOT_NOTE_PREFIX = 'HVA · Oggi · Task 9 coexistence'
 const CALENDAR_SOURCE_PREFIX = 'hva:today-coexistence:'
 const CANONICAL_NOW = '08:30:00'
+
+export function validateHvaTodayCoexistence(input) {
+  const slots = input.slots ?? []
+  const sessions = input.sessions ?? []
+  const errors = []
+
+  const mondayLessons = slots
+    .filter((slot) => slot.weekday === HVA_TODAY_WEEKDAY && slot.slot_kind === 'LESSON')
+    .sort((first, second) => clockMinute(first.start_time) - clockMinute(second.start_time) || String(first.id).localeCompare(String(second.id)))
+
+  const current = mondayLessons.filter((slot) =>
+    clockMinute(slot.start_time) <= clockMinute(CANONICAL_NOW)
+    && clockMinute(slot.end_time) > clockMinute(CANONICAL_NOW),
+  )
+  if (current.length !== 1) {
+    errors.push(`expected exactly one canonical current lesson at 08:30, found ${current.length}`)
+    return errors
+  }
+
+  const priorUnregistered = mondayLessons.filter((slot) =>
+    clockMinute(slot.end_time) <= clockMinute(CANONICAL_NOW)
+    && !isRecorded(slot, sessions),
+  )
+  if (!priorUnregistered.length) {
+    errors.push('governed ACTIVE timetable does not expose a prior unregistered lesson before the canonical 08:30 lesson')
+  }
+
+  return errors
+}
 
 export async function createHvaTodayCoexistenceFixture({ suffix }) {
   const fixtureSuffix = String(suffix ?? '').trim()
@@ -46,140 +74,67 @@ export async function createHvaTodayCoexistenceFixture({ suffix }) {
     (version) => !version.effective_to || version.effective_to >= HVA_TODAY_LOCAL_DATE,
   )
   if (eligibleVersions.length !== 1) {
-    throw new Error(`HVA Today coexistence expected exactly one ACTIVE timetable, found ${eligibleVersions.length}`)
+    throw new Error(`HVA-JOURNEY-UNVERIFIED: expected exactly one governed ACTIVE timetable on ${HVA_TODAY_LOCAL_DATE}, found ${eligibleVersions.length}`)
   }
   const activeVersion = eligibleVersions[0]
 
-  const { data: currentSlots, error: slotError } = await supabase
+  const { data: slots, error: slotError } = await supabase
     .from('timetable_slots')
-    .select('id,timetable_version_id,weekday,start_time,end_time,slot_kind,section_id,discipline_id,teaching_assignment_id,room,ordinal,activity_kind')
+    .select('id,timetable_version_id,weekday,start_time,end_time,slot_kind,section_id,discipline_id,teaching_assignment_id')
     .eq('timetable_version_id', activeVersion.id)
     .eq('weekday', HVA_TODAY_WEEKDAY)
     .eq('slot_kind', 'LESSON')
-    .lte('start_time', CANONICAL_NOW)
-    .gt('end_time', CANONICAL_NOW)
   if (slotError) throw new Error(`HVA Today coexistence slot lookup failed: ${slotError.message}`)
-  if ((currentSlots?.length ?? 0) !== 1) {
-    throw new Error(`HVA Today coexistence expected one canonical current slot, found ${currentSlots?.length ?? 0}`)
+
+  const { data: sessions, error: sessionError } = await supabase
+    .from('teaching_sessions')
+    .select('section_id,local_date,projected_occurrence_logical_id,source_timetable_slot_id')
+    .eq('workspace_id', current.workspace_id)
+    .eq('academic_year_id', current.academic_year_id)
+    .eq('local_date', HVA_TODAY_LOCAL_DATE)
+  if (sessionError) throw new Error(`HVA Today coexistence session lookup failed: ${sessionError.message}`)
+
+  const coexistenceErrors = validateHvaTodayCoexistence({
+    slots: slots ?? [],
+    sessions: sessions ?? [],
+  })
+  if (coexistenceErrors.length) {
+    throw new Error(
+      `HVA-JOURNEY-UNVERIFIED: authenticated browser evidence requires a naturally governed pending lesson plus the canonical current/upcoming lesson; ACTIVE timetable left unchanged.\n- ${coexistenceErrors.join('\n- ')}`,
+    )
   }
-  const canonicalSlot = currentSlots[0]
 
   const sourceRef = `${CALENDAR_SOURCE_PREFIX}${fixtureSuffix}`
-  const slotNote = `${SLOT_NOTE_PREFIX} · ${fixtureSuffix}`
-  const [staleSlotResult, staleEventResult] = await Promise.all([
-    supabase
-      .from('timetable_slots')
-      .select('id')
-      .eq('timetable_version_id', activeVersion.id)
-      .like('note', `${SLOT_NOTE_PREFIX}%`),
-    supabase
-      .from('calendar_events')
-      .select('id')
-      .eq('workspace_id', current.workspace_id)
-      .eq('academic_year_id', current.academic_year_id)
-      .like('source_ref', `${CALENDAR_SOURCE_PREFIX}%`),
-  ])
-  if (staleSlotResult.error) throw new Error(`HVA Today coexistence stale-slot check failed: ${staleSlotResult.error.message}`)
-  if (staleEventResult.error) throw new Error(`HVA Today coexistence stale-event check failed: ${staleEventResult.error.message}`)
-  if ((staleSlotResult.data?.length ?? 0) || (staleEventResult.data?.length ?? 0)) {
-    throw new Error('HVA Today coexistence found stale fixture records; refusing to mutate the canonical HVA baseline')
+  const { data: staleEvents, error: staleEventError } = await supabase
+    .from('calendar_events')
+    .select('id')
+    .eq('workspace_id', current.workspace_id)
+    .eq('academic_year_id', current.academic_year_id)
+    .like('source_ref', `${CALENDAR_SOURCE_PREFIX}%`)
+  if (staleEventError) throw new Error(`HVA Today coexistence stale-event check failed: ${staleEventError.message}`)
+  if ((staleEvents?.length ?? 0) > 0) {
+    throw new Error('HVA Today coexistence found stale fixture-owned Calendar records; refusing to continue')
   }
 
-  const originalStartTime = canonicalSlot.start_time
-  const originalEndTime = canonicalSlot.end_time
-  let canonicalShifted = false
-  let pendingSlotId = null
   let calendarEventId = null
-
   const restore = async () => {
-    const cleanupErrors = []
-
-    if (calendarEventId) {
-      const { data, error } = await supabase
-        .from('calendar_events')
-        .delete()
-        .eq('id', calendarEventId)
-        .eq('workspace_id', current.workspace_id)
-        .eq('academic_year_id', current.academic_year_id)
-        .select('id')
-      if (error) cleanupErrors.push(`calendar event cleanup failed: ${error.message}`)
-      else if ((data?.length ?? 0) !== 1) cleanupErrors.push('calendar event cleanup did not delete exactly one fixture row')
-      else calendarEventId = null
+    if (!calendarEventId) return
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .delete()
+      .eq('id', calendarEventId)
+      .eq('workspace_id', current.workspace_id)
+      .eq('academic_year_id', current.academic_year_id)
+      .eq('source_ref', sourceRef)
+      .select('id')
+    if (error) throw new Error(`HVA Today coexistence Calendar cleanup failed: ${error.message}`)
+    if ((data?.length ?? 0) !== 1) {
+      throw new Error('HVA Today coexistence Calendar cleanup did not delete exactly one fixture-owned row')
     }
-
-    if (pendingSlotId) {
-      const { data, error } = await supabase
-        .from('timetable_slots')
-        .delete()
-        .eq('id', pendingSlotId)
-        .eq('timetable_version_id', activeVersion.id)
-        .select('id')
-      if (error) cleanupErrors.push(`pending slot cleanup failed: ${error.message}`)
-      else if ((data?.length ?? 0) !== 1) cleanupErrors.push('pending slot cleanup did not delete exactly one fixture row')
-      else pendingSlotId = null
-    }
-
-    if (canonicalShifted) {
-      const { data, error } = await supabase
-        .from('timetable_slots')
-        .update({ start_time: originalStartTime, end_time: originalEndTime })
-        .eq('id', canonicalSlot.id)
-        .eq('timetable_version_id', activeVersion.id)
-        .select('id,start_time,end_time')
-        .single()
-      if (error) cleanupErrors.push(`canonical slot restore failed: ${error.message}`)
-      else if (!data || clockText(data.start_time) !== clockText(originalStartTime) || clockText(data.end_time) !== clockText(originalEndTime)) {
-        cleanupErrors.push('canonical slot restore verification failed')
-      } else {
-        canonicalShifted = false
-      }
-    }
-
-    if (cleanupErrors.length) {
-      throw new Error(`HVA Today coexistence cleanup failed:\n- ${cleanupErrors.join('\n- ')}`)
-    }
+    calendarEventId = null
   }
 
   try {
-    const { data: shiftedSlot, error: shiftError } = await supabase
-      .from('timetable_slots')
-      .update({ start_time: '09:00:00', end_time: '10:00:00' })
-      .eq('id', canonicalSlot.id)
-      .eq('timetable_version_id', activeVersion.id)
-      .select('id,start_time,end_time')
-      .single()
-    if (shiftError || !shiftedSlot) {
-      throw new Error(`HVA Today coexistence canonical slot shift failed: ${shiftError?.message ?? 'missing updated slot'}`)
-    }
-    if (clockText(shiftedSlot.start_time) !== '09:00' || clockText(shiftedSlot.end_time) !== '10:00') {
-      throw new Error('HVA Today coexistence canonical slot shift verification failed')
-    }
-    canonicalShifted = true
-
-    const { data: pendingSlot, error: pendingError } = await supabase
-      .from('timetable_slots')
-      .insert({
-        timetable_version_id: activeVersion.id,
-        weekday: HVA_TODAY_WEEKDAY,
-        start_time: '07:00:00',
-        end_time: '08:00:00',
-        slot_kind: 'LESSON',
-        section_id: canonicalSlot.section_id,
-        discipline_id: canonicalSlot.discipline_id,
-        teaching_assignment_id: canonicalSlot.teaching_assignment_id,
-        room: canonicalSlot.room,
-        note: slotNote,
-        ordinal: canonicalSlot.ordinal,
-        activity_kind: canonicalSlot.activity_kind,
-        created_by: userId,
-      })
-      .select('id')
-      .single()
-    if (pendingError || !pendingSlot?.id) {
-      throw new Error(`HVA Today coexistence pending slot insert failed: ${pendingError?.message ?? 'missing inserted slot'}`)
-    }
-    pendingSlotId = pendingSlot.id
-
     const { data: calendarEvent, error: calendarError } = await supabase
       .from('calendar_events')
       .insert({
@@ -202,7 +157,7 @@ export async function createHvaTodayCoexistenceFixture({ suffix }) {
       .select('id')
       .single()
     if (calendarError || !calendarEvent?.id) {
-      throw new Error(`HVA Today coexistence calendar insert failed: ${calendarError?.message ?? 'missing inserted event'}`)
+      throw new Error(`HVA Today coexistence Calendar insert failed: ${calendarError?.message ?? 'missing inserted event'}`)
     }
     calendarEventId = calendarEvent.id
 
@@ -217,6 +172,18 @@ export async function createHvaTodayCoexistenceFixture({ suffix }) {
   }
 }
 
-function clockText(value) {
-  return String(value ?? '').slice(0, 5)
+function isRecorded(slot, sessions) {
+  const occurrenceLogicalId = `tt:${slot.timetable_version_id}:${slot.id}:${HVA_TODAY_LOCAL_DATE}`
+  return sessions.some((session) => {
+    if (session.local_date !== HVA_TODAY_LOCAL_DATE) return false
+    if (slot.section_id && session.section_id !== slot.section_id) return false
+    return session.source_timetable_slot_id === slot.id
+      || session.projected_occurrence_logical_id === occurrenceLogicalId
+  })
+}
+
+function clockMinute(value) {
+  const [hour, minute] = String(value ?? '').slice(0, 5).split(':').map(Number)
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return Number.NaN
+  return hour * 60 + minute
 }
