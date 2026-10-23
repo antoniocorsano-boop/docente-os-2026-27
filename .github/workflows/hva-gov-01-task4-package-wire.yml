@@ -1,0 +1,45 @@
+name: HVA-GOV-01 Task 4 Package Wire
+
+on:
+  push:
+    branches: ["feat/hva-gov-01-task4-integrity-gate"]
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Append Task 4 test without removing existing suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs')
+          const path = 'product/package.json'
+          const packageJson = JSON.parse(fs.readFileSync(path, 'utf8'))
+          const command = 'node --test scripts/experience/hva-baseline-integrity.test.mjs'
+          if (!packageJson.scripts.test.includes(command)) {
+            packageJson.scripts.test += ` && ${command}`
+            fs.writeFileSync(path, `${JSON.stringify(packageJson, null, 2)}\n`)
+          }
+          NODE
+          if git diff --quiet -- product/package.json; then
+            echo 'Task 4 test already wired.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add product/package.json
+          git commit -m 'test(hva): wire baseline integrity into product suite'
+          git push origin HEAD:feat/hva-gov-01-task4-integrity-gate
