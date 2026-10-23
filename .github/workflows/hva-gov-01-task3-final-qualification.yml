@@ -1,0 +1,40 @@
+name: HVA-GOV-01 Task 3 Final Qualification
+
+on:
+  push:
+    branches: ["test/hva-gov-01-task3-final-qualification"]
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify product tree matches Task 3 candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "c848ebe2414c9a68b7a45aa4ac2ea5f415173fd1"
+          git diff --exit-code c848ebe2414c9a68b7a45aa4ac2ea5f415173fd1 HEAD -- product/
+
+      - name: Install locked product dependencies
+        working-directory: product
+        run: npm ci --no-audit --no-fund
+
+      - name: Install governed Playwright runner without changing lockfile
+        working-directory: product
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Run Task 3 historical provenance contract
+        working-directory: product
+        run: node --test e2e/support/hva-recorded-lesson-fixture.test.mjs
