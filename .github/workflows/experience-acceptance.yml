@@ -140,6 +140,11 @@ jobs:
           done
           exit 1
 
+      - name: Verify governed baseline preflight
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: node scripts/experience/hva-baseline-integrity.mjs preflight
+
       - name: Build tested application
         if: steps.credentials.outputs.ready == 'true'
         working-directory: product
@@ -177,6 +182,11 @@ jobs:
           code=$?
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           exit 0
+
+      - name: Verify governed baseline postflight
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: product
+        run: node scripts/experience/hva-baseline-integrity.mjs postflight
 
       - name: Generate acceptance receipt
         if: always() && steps.credentials.outputs.ready == 'true'
