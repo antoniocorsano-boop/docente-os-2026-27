@@ -1,8 +1,17 @@
+import { createRequire } from 'node:module'
+
+const require = createRequire(import.meta.url)
+const {
+  HVA_LOCAL_DATE,
+  HVA_MINUTE_OF_DAY,
+  HVA_WEEKDAY,
+} = require('./hva-governed-baseline-config.cjs')
+
 export const HVA_TODAY_DISCIPLINE_NAME = 'Tecnologia'
 export const HVA_TODAY_ASSIGNMENT_NOTE = 'HVA · Oggi · Cattedra canonica'
-export const HVA_TODAY_LOCAL_DATE = '2026-10-19'
-export const HVA_TODAY_WEEKDAY = 1
-export const HVA_TODAY_MINUTE_OF_DAY = 8 * 60 + 30
+export const HVA_TODAY_LOCAL_DATE = HVA_LOCAL_DATE
+export const HVA_TODAY_WEEKDAY = HVA_WEEKDAY
+export const HVA_TODAY_MINUTE_OF_DAY = HVA_MINUTE_OF_DAY
 
 export function validateHvaTodayFixture(input) {
   const errors = []
