@@ -5,11 +5,8 @@ import { useMemo, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import type { LessonDesignExtension } from '@/core/domain/lesson-design-extension'
 import type { LessonPreparationApprovalStatus } from '@/core/application/lesson-preparation-approval'
-import {
-  buildLessonWorkspaceHref,
-  resolveHumanTaskResourcesForSurface,
-  type HumanTaskLessonProjection,
-} from '@/core/presentation/human-task-content'
+import { resolveHumanTaskResourcesForSurface, type HumanTaskLessonProjection } from '@/core/presentation/human-task-content'
+import { buildCanonicalLessonWorkspaceHref } from '@/core/presentation/lesson-workspace-route'
 import { buildLessonBrief } from '@/core/presentation/lesson-brief'
 import { LessonDesignTools } from './lesson-design-tools'
 import { LessonMaterials } from './lesson-materials'
@@ -46,6 +43,9 @@ export default function LessonPrepareClient({
   udaProgress,
   approval,
   initialSubtask,
+  localDate,
+  occurrenceLogicalId,
+  statusLabel,
 }: {
   sectionId: string
   sectionLabel: string
@@ -64,29 +64,30 @@ export default function LessonPrepareClient({
     requiresRevalidationOnApproval: boolean | null
   }
   initialSubtask?: 'materials' | null
+  localDate: string | null
+  occurrenceLogicalId: string | null
+  statusLabel: string
 }) {
   const [prepared, setPrepared] = useState<Record<number, boolean>>({})
-  const [activeSubtask, setActiveSubtask] = useState<'materials' | null>(initialSubtask ?? null)
+  const activeSubtask = initialSubtask ?? null
   const preparationResources = useMemo(() => resolveHumanTaskResourcesForSurface(projection, 'PREPARE'), [projection])
   const brief = useMemo(() => buildLessonBrief({ projection, extensions }), [projection, extensions])
   const preparedCount = Object.values(prepared).filter(Boolean).length
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
-  const teachHref = buildLessonWorkspaceHref(sectionId, block.id, 'teach')
+  const teachHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, intent: 'start' })
+  const materialsHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, subtask: 'materials' })
   const recorded = progress.status === 'SVOLTO' || progress.status === 'RECUPERATO' || progress.status === 'RIMODULATO'
 
   return (
     <main className={styles.closeSurface}>
       <LessonShell
-        sectionId={sectionId}
-        blockId={block.id}
         sectionLabel={sectionLabel}
         disciplineLabel="Tecnologia"
         lessonTitle={brief.title}
-        phase="prepare"
+        statusLabel={statusLabel}
       />
       <section className={`${styles.closeCard} ${styles.lessonBriefCard}`}>
         <header className={styles.lessonBriefHeader}>
-          <Link className={styles.back} href={classHref}>← {sectionLabel}</Link>
           <p className={styles.eyebrow}>PRIMA DELLA LEZIONE · {sectionLabel}</p>
           <h2 className={styles.closeHeading}>Prepara la lezione</h2>
           <p className={styles.closeLead}>{brief.objective}</p>
@@ -95,7 +96,7 @@ export default function LessonPrepareClient({
         <div className={styles.meta}>
           <span>{formatDuration(brief.durationMinutes)}</span>
           <span>{projection.udaTitle}</span>
-          <span>{udaProgress.completed}/{udaProgress.total} concluse</span>
+          <span>{udaProgress.completed}/{udaProgress.total} lezioni concluse</span>
           {recorded ? <span>Già registrata</span> : null}
         </div>
 
@@ -130,14 +131,13 @@ export default function LessonPrepareClient({
         </div>
 
         <div className={styles.closeActions}>
-          <button
-            type="button"
+          <Link
+            href={materialsHref}
             aria-expanded={activeSubtask === 'materials'}
             aria-controls="lesson-materials-subtask"
-            onClick={() => setActiveSubtask('materials')}
           >
             Materiali
-          </button>
+          </Link>
         </div>
 
         {activeSubtask === 'materials' ? (
@@ -149,6 +149,7 @@ export default function LessonPrepareClient({
               extensions={extensions}
               knowledgeSuggestions={knowledgeSuggestions}
               atlasSuggestions={atlasSuggestions}
+              returnTo={materialsHref}
             />
           </div>
         ) : null}
@@ -190,6 +191,8 @@ export default function LessonPrepareClient({
               <input type="hidden" name="sectionId" value={sectionId} />
               <input type="hidden" name="blockId" value={block.id} />
               <input type="hidden" name="projectionId" value={projection.projectionId} />
+              <input type="hidden" name="localDate" value={localDate ?? ''} />
+              <input type="hidden" name="occurrenceLogicalId" value={occurrenceLogicalId ?? ''} />
               <LessonApprovalSubmit />
             </form>
           )}
@@ -250,7 +253,7 @@ function formatDuration(minutes: number) {
 function approvalTitle(status: LessonPreparationApprovalStatus) {
   if (status === 'APPROVED') return 'Preparazione approvata'
   if (status === 'STALE') return 'La preparazione è cambiata'
-  if (status === 'CURRICULUM_REQUIRED') return 'Curricolo da rivalidare'
+  if (status === 'CURRICULUM_REQUIRED') return 'Curricolo da confermare'
   return 'Conferma del docente richiesta'
 }
 
@@ -265,8 +268,8 @@ function approvalMessage(
   if (status === 'APPROVED') {
     if (provisional) {
       return approvedAt
-        ? `Hai approvato questa lezione il ${formatApprovalDate(approvedAt)} sulla baseline Arena provvisoria ma completa. Puoi procedere; quando Arena registrerà l’adozione istituzionale, Docente OS richiederà una nuova rivalidazione.`
-        : 'Hai approvato questa lezione sulla baseline Arena provvisoria ma completa. Puoi procedere; l’adozione istituzionale futura richiederà una nuova rivalidazione.'
+        ? `Hai approvato questa lezione il ${formatApprovalDate(approvedAt)} sul curricolo provvisorio di questa classe. Puoi procedere; quando il curricolo d’istituto sarà adottato, DOCENTE OS richiederà una nuova conferma.`
+        : 'Hai approvato questa lezione sul curricolo provvisorio di questa classe. Puoi procedere; l’adozione istituzionale futura richiederà una nuova conferma.'
     }
     return approvedAt
       ? `Hai approvato questa versione il ${formatApprovalDate(approvedAt)}. Puoi procedere alla lezione.`
@@ -276,7 +279,7 @@ function approvalMessage(
     return 'Dopo l’ultima approvazione sono cambiati curricolo, proiezione o elementi didattici accettati. Controlla e approva di nuovo.'
   }
   if (status === 'CURRICULUM_REQUIRED') {
-    return 'Prima di procedere serve una baseline Arena completa per la progettazione, coerente con questa classe e con copertura curricolare soddisfatta.'
+    return 'Prima di procedere serve confermare il curricolo di questa classe e verificare che copra gli apprendimenti previsti per la lezione.'
   }
   if (notice === 'failed') {
     return 'Approvazione non completata. La preparazione non è stata resa operativa: non ripetere il clic finché il problema non è stato verificato.'
@@ -288,7 +291,7 @@ function approvalMessage(
     return 'La proiezione della lezione è cambiata. Controlla la versione corrente prima di confermare.'
   }
   if (provisional) {
-    return 'La baseline Arena è provvisoria ma completa per la progettazione. “Approva e procedi” conferma solo questa preparazione didattica; non approva il curricolo d’istituto e resterà soggetta a rivalidazione quando Arena registrerà l’adozione definitiva.'
+    return 'Il curricolo di questa classe è provvisorio ma completo per la progettazione. “Approva e procedi” conferma solo questa preparazione didattica; non approva il curricolo d’istituto e richiederà una nuova conferma quando l’adozione sarà definitiva.'
   }
   return 'Controlla obiettivo, attività e materiali. “Approva e procedi” conferma esattamente la preparazione corrente.'
 }

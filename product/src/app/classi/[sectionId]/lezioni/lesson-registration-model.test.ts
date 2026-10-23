@@ -4,7 +4,7 @@ import { resolveUniqueDraftSlot } from '@/core/application/lesson-register-timin
 import type { TimetableSlotReadModel, TimetableVersionReadModel } from '@/core/application/ports/temporal-projection'
 import type { ProjectedOccurrence } from '@/core/application/temporal-projection-service'
 import type { TeachingSessionRecord, TeachingSessionSnapshot } from '@/core/domain/teaching-session'
-import { hasCurrentBlockSessionOnDate, selectEligibleLessonOccurrence } from './lesson-registration-model'
+import { hasCurrentBlockSessionOnDate, selectEligibleLessonOccurrence, selectLessonOccurrenceByLogicalId } from './lesson-registration-model'
 
 function occurrence(id: string, startAt: string, sectionId = 'section-2c'): ProjectedOccurrence {
   return {
@@ -67,6 +67,32 @@ test('selects the latest started unrecorded occurrence for the same section', ()
   })
 
   assert.equal(selected?.logicalId, 'second')
+})
+
+test('selects the explicitly requested occurrence instead of a later eligible one', () => {
+  const selected = selectLessonOccurrenceByLogicalId({
+    occurrences: [
+      occurrence('first', '2026-09-14T08:00:00'),
+      occurrence('second', '2026-09-14T10:00:00'),
+    ],
+    teaching: { sessions: [], allocations: [] },
+    sectionId: 'section-2c',
+    occurrenceLogicalId: 'first',
+    nowMinutes: 11 * 60,
+  })
+
+  assert.equal(selected?.logicalId, 'first')
+})
+
+test('explicit occurrence selection fails closed when the occurrence is future or already recorded', () => {
+  const occurrences = [
+    occurrence('used', '2026-09-14T08:00:00'),
+    occurrence('future', '2026-09-14T12:00:00'),
+  ]
+  const teaching = { sessions: [session('recorded', 'used')], allocations: [] }
+
+  assert.equal(selectLessonOccurrenceByLogicalId({ occurrences, teaching, sectionId: 'section-2c', occurrenceLogicalId: 'used', nowMinutes: 11 * 60 }), null)
+  assert.equal(selectLessonOccurrenceByLogicalId({ occurrences, teaching, sectionId: 'section-2c', occurrenceLogicalId: 'future', nowMinutes: 11 * 60 }), null)
 })
 
 test('a projected occurrence already present in session history is never selected again', () => {

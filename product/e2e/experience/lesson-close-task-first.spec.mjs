@@ -7,7 +7,7 @@ requireE2ECredentials()
 
 const outputRoot = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience'
 
-test('Journey: accesso diretto a Registra → gate docente → Prima della lezione', async ({ page }, testInfo) => {
+test('Journey: legacy Registra → gate docente nella Lezione unificata', async ({ page }, testInfo) => {
   await loginE2E(page)
   await page.goto('/classi')
 
@@ -17,24 +17,23 @@ test('Journey: accesso diretto a Registra → gate docente → Prima della lezio
 
   await page.goto(`/classi/${encodeURIComponent(sectionId)}/lezioni/B01?mode=record`)
 
-  await expect(page).toHaveURL(
-    new RegExp(`/classi/${escapeRegExp(encodeURIComponent(sectionId))}/lezioni/B01\\?mode=prepare&approval=required`),
-  )
-
+  await expect(page.locator('[data-lesson-shell]')).toBeVisible()
+  await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
   await expect(
-    page.getByText(/Curricolo da rivalidare|Conferma del docente richiesta|La preparazione è cambiata/).first(),
-    'Una lezione futura non deve entrare direttamente nella registrazione senza una preparazione approvata.',
+    page.getByText('Curricolo da confermare', { exact: true }).first(),
+    'Un deep link legacy alla registrazione non deve bypassare il gate di preparazione della Lezione.',
   ).toBeVisible()
 
   await expect(
     page.locator('form').filter({ hasText: 'Conferma ciò che hai svolto' }),
     'Il form di registrazione non deve essere disponibile prima dell’approvazione docente.',
   ).toHaveCount(0)
+  await expect(page.locator('a[href*="mode="]')).toHaveCount(0)
 
   await screenshot(page, testInfo, 'lesson-record-approval-gate')
   await recordJourney(testInfo.project.name, {
     status: 'PASS',
-    note: 'L’accesso diretto a Registra viene riportato a Prima della lezione; nessuna superficie operativa è disponibile senza una ricevuta di approvazione corrente.',
+    note: 'Il deep link legacy Registra resta accettato in ingresso, ma la Lezione unificata risolve il gate di preparazione senza reintrodurre fasi navigabili.',
   })
 })
 
@@ -50,7 +49,7 @@ async function recordJourney(project, result) {
   const payload = {
     schemaVersion: 1,
     id: 'lesson-record-approval-gate',
-    label: 'Accesso diretto a Registra → gate docente → Prima della lezione',
+    label: 'Legacy Registra → gate docente nella Lezione unificata',
     project,
     status: result.status,
     note: result.note,
@@ -63,10 +62,6 @@ function sectionIdFromHref(value) {
   const match = typeof value === 'string' ? value.match(/^\/classi\/([^/?#]+)$/) : null
   if (!match) throw new Error(`Section id not found in class href: ${value}`)
   return decodeURIComponent(match[1])
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function safe(value) {

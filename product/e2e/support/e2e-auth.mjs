@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test'
+import hvaClock from './hva-fixed-clock.cjs'
 import { generateTotp, governedMfaRetryJitterMs, millisecondsUntilNextTotpStep } from './totp.mjs'
 
 export const E2E_EMAIL = process.env.E2E_EMAIL
@@ -8,6 +9,7 @@ export const E2E_TOTP_SECRET = process.env.E2E_TOTP_SECRET
 let cachedAal2Cookies = null
 
 const MFA_PAGE_READY_TIMEOUT_MS = 30_000
+const HVA_CANONICAL_NOW = hvaClock.HVA_CANONICAL_NOW
 
 const MFA_TRANSIENT_MESSAGES = [
   'Non è stato possibile avviare la verifica del secondo fattore. Riprova.',
@@ -30,7 +32,10 @@ export function requireE2ECredentials() {
 export async function loginE2E(page) {
   requireE2ECredentials()
 
-  if (await tryReuseCachedAal2Session(page)) return
+  if (await tryReuseCachedAal2Session(page)) {
+    await alignLocalHvaBrowserClock(page)
+    return
+  }
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     await page.goto('/login')
@@ -62,6 +67,7 @@ export async function loginE2E(page) {
   await expect(page).toHaveURL(/\/planner(?:$|\?)/)
   await expect(page.locator('#dos-main-content')).toBeVisible()
   cachedAal2Cookies = await page.context().cookies()
+  await alignLocalHvaBrowserClock(page)
   process.stdout.write('Governed AAL2 full login completed; in-memory worker session cached.\n')
 }
 
@@ -81,6 +87,13 @@ async function tryReuseCachedAal2Session(page) {
     process.stdout.write('Governed AAL2 cached session rejected; full login required.\n')
     return false
   }
+}
+
+async function alignLocalHvaBrowserClock(page) {
+  if (process.env.EXPERIENCE_TARGET !== 'local') return
+  const fixedEpochMs = Date.parse(HVA_CANONICAL_NOW)
+  if (!Number.isFinite(fixedEpochMs)) throw new Error('HVA canonical browser clock is invalid')
+  await page.clock.setFixedTime(fixedEpochMs)
 }
 
 async function completeMfaChallenge(page) {

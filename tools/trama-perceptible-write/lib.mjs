@@ -9,7 +9,7 @@ export const PERSISTENT_FEEDBACK = /(aria-live|role=["']status["']|role=["']aler
 
 export function isMutationCandidate(text, path = '') {
   if (EXPLICIT_READ_ONLY.test(text)) return false
-  if (/(^|\/)(?:__tests__|test|tests|scripts|tools)(\/|$)|\.(?:test|spec)\.[cm]?[jt]sx?$/.test(path)) return false
+  if (/(^|\/)(?:__tests__|test|tests|e2e|scripts|tools)(\/|$)|\.(?:test|spec)\.[cm]?[jt]sx?$/.test(path)) return false
   if (HTTP_MUTATION.test(text) || DATA_MUTATION.test(text) || EXPLICIT_WRITE.test(text)) return true
   const namedBoundary = /(?:^|\/)(?:actions?|handlers?|hooks?|repositories?|commands?)(?:[./-]|$)/i.test(path)
     || /(?:Action|Handler|Repository|Command)\.[cm]?[jt]sx?$/.test(path)

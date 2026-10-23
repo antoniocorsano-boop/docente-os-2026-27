@@ -8,6 +8,7 @@ import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supa
 import { knowledgeCalendarEventProposal } from '@/core/domain/knowledge-calendar-event'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
+import { buildCanonicalLessonWorkspaceHref } from '@/core/presentation/lesson-workspace-route'
 import {
   CONTENT_CATEGORIES,
   assetKindLabel,
@@ -80,7 +81,9 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
   }
 
   if (taskMode === 'prepare' && focusedLesson) {
-    const materialsReturnTo = `/classi/${encodeURIComponent(focusedLesson.sectionId)}/lezioni/${encodeURIComponent(focusedLesson.blockId)}?mode=prepare&subtask=materials`
+    const materialsReturnTo = sanitizeInternalReturnTo(query.returnTo,
+      buildCanonicalLessonWorkspaceHref(focusedLesson.sectionId, focusedLesson.blockId, { subtask: 'materials' }),
+    )
     const normalizedText = document?.normalizedText?.trim() ?? ''
     const fallbackUnits = units
       .filter((unit) => unit.unitType !== 'ACTION' && unit.unitType !== 'DEADLINE')
@@ -106,12 +109,10 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
         focusMode
       >
         <LessonShell
-          sectionId={focusedLesson.sectionId}
-          blockId={focusedLesson.blockId}
           sectionLabel={focusedLesson.sectionLabel}
           disciplineLabel="Tecnologia"
           lessonTitle={focusedLesson.lessonTitle}
-          phase="prepare"
+          statusLabel="Materiali"
         />
 
         <section data-lesson-material-preview>

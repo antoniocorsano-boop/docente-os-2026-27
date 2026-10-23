@@ -65,7 +65,7 @@
 
 @media(max-width:719px){.lessonDesignTools{padding:15px;border-radius:var(--radius-md)}.lessonDesignAvailableTools article,.lessonDesignProposal,.lessonKnowledgeSuggestions article,.lessonDesignAcceptedItem,.lessonAttachedResources article{display:grid;gap:10px}.lessonDesignAvailableTools form,.lessonDesignProposalActions,.lessonKnowledgeSuggestions article>div:last-child,.lessonDesignAcceptedItem>div:last-child{justify-content:flex-start}.lessonDesignProposalActions,.lessonDesignAcceptedItem>div:last-child{display:grid;width:100%;justify-items:start}.lessonDesignEdit{max-width:none}.lessonAttachedResources article a{justify-self:start}.lessonDesignContract>div{gap:5px}.lessonSuggestionTip{grid-template-columns:1fr}}
 
-.lessonMaterialIntent{display:flex;flex-wrap:wrap;gap:8px}
-.lessonMaterialIntent button{min-height:44px}
-.lessonMaterialIntent button[aria-pressed="true"]{border-color:var(--brand);background:var(--brand);color:var(--ink-on-dark)}
+.lessonMaterialIntent{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.lessonMaterialIntent button{min-height:44px;border-radius:var(--radius-sm)}
+.lessonMaterialIntent button[aria-pressed="true"]{border-color:var(--brand);background:var(--surface);color:var(--brand)}
 .lessonDesignSubheading h4{margin:0;font-size:15px}

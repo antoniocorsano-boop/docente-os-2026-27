@@ -6,8 +6,8 @@ test('full HVA keeps canonical surface and journey coverage', () => {
   const scope = resolveHvaReceiptScope({ mode: 'FULL', specs: [], surfaceCount: 12, projectCount: 2 })
   assert.equal(scope.mode, 'FULL')
   assert.equal(scope.expectedObservationCount, 24)
-  assert.equal(scope.expectedJourneyCount, 8)
-  assert.deepEqual(scope.expectedJourneyIds, ['class-next-task', 'uda-reading', 'knowledge-document', 'calendar-controls'])
+  assert.equal(scope.expectedJourneyCount, 10)
+  assert.deepEqual(scope.expectedJourneyIds, ['class-next-task', 'uda-reading', 'knowledge-document', 'calendar-controls', 'today-teacher-first'])
 })
 
 test('focused Knowledge HVA requires only evidence produced by selected specs', () => {
@@ -21,6 +21,18 @@ test('focused Knowledge HVA requires only evidence produced by selected specs', 
   assert.equal(scope.expectedObservationCount, 24)
   assert.equal(scope.expectedJourneyCount, 2)
   assert.deepEqual(scope.expectedJourneyIds, ['ux0e-contextual-capabilities'])
+})
+
+test('focused Oggi HVA requires the mandatory today-teacher-first journey', () => {
+  const scope = resolveHvaReceiptScope({
+    mode: 'FOCUSED',
+    specs: ['e2e/experience/today-teacher-first.spec.mjs'],
+    surfaceCount: 12,
+    projectCount: 2,
+  })
+  assert.equal(scope.expectedObservationCount, 0)
+  assert.equal(scope.expectedJourneyCount, 2)
+  assert.deepEqual(scope.expectedJourneyIds, ['today-teacher-first'])
 })
 
 test('focused HVA without surfaces does not invent full-suite observation coverage', () => {

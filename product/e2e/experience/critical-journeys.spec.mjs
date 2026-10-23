@@ -10,7 +10,7 @@ const outputRoot = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience
 
 for (const journey of [
   { id: 'class-next-task', label: 'Classe → prossimo compito', run: classNextTask },
-  { id: 'timetable-open-class', label: 'Orario → apri classe', run: timetableOpenClass },
+  { id: 'timetable-open-lesson', label: 'Orario → apri lezione', run: timetableOpenLesson },
   { id: 'uda-reading', label: 'Progetta → UDA', run: udaReading },
   { id: 'knowledge-document', label: 'Conoscenza → documento', run: knowledgeDocument },
   { id: 'calendar-controls', label: 'Calendario → controlli intenzionali', run: calendarControls },
@@ -36,32 +36,41 @@ async function classNextTask(page, testInfo) {
   return pass(await page.locator('h1').first().innerText())
 }
 
-async function timetableOpenClass(page, testInfo) {
+async function timetableOpenLesson(page, testInfo) {
   await page.goto('/orario')
 
-  if (testInfo.project.name.startsWith('mobile')) {
-    const dayView = page.getByRole('button', { name: 'Giorno', exact: true })
-    const weekView = page.getByRole('button', { name: 'Settimana', exact: true })
-    await expect(dayView, 'Su mobile Orario deve stabilizzarsi nella vista Giorno prima della verifica del journey.').toHaveClass(/active/)
+  const weekView = page.getByRole('button', { name: 'Settimana', exact: true })
+  if (await weekView.count()) {
     await weekView.click()
-    await expect(weekView, 'Il journey mobile deve verificare una lezione sull’intera settimana, non soltanto sul giorno corrente.').toHaveClass(/active/)
+    await expect(weekView).toHaveClass(/active/)
   }
 
-  const lesson = page.locator('button.occupiedTimetableCell.kind-lesson').first()
+  const lessons = page.locator('button.occupiedTimetableCell.kind-lesson')
   await expect(
-    lesson,
-    'La fixture tecnica deve esporre almeno una lezione canonica nella settimana: il journey Apri classe non può essere NOT_APPLICABLE.',
+    lessons.first(),
+    'La fixture tecnica deve esporre almeno una lezione canonica nella settimana.',
   ).toBeVisible()
 
-  await lesson.click()
-  const openClass = page.getByRole('link', { name: 'Apri classe', exact: true })
-  await expect(openClass).toBeVisible()
-  await expect(openClass).toHaveAttribute('href', /^\/classi\//)
-  await openClass.click()
-  await expect(page).toHaveURL(/\/classi\//)
-  await expect(page.locator('h1').first()).toBeVisible()
-  await screenshot(page, testInfo, 'timetable-open-class')
-  return pass(`Classe aperta dall’orario: ${await page.locator('h1').first().innerText()}`)
+  let opened = false
+  for (let index = 0; index < await lessons.count(); index += 1) {
+    await lessons.nth(index).click()
+    const sheet = page.locator('.timetableContextSheet')
+    await expect(sheet).toBeVisible()
+    const openLesson = sheet.getByRole('link', { name: 'Apri lezione', exact: true })
+    if (await openLesson.count()) {
+      await expect(openLesson).toHaveAttribute('href', /^\/classi\/[^/?#]+\/lezioni\/[^/?#]+/)
+      await openLesson.click()
+      opened = true
+      break
+    }
+    await sheet.getByRole('button', { name: 'Chiudi' }).click()
+  }
+
+  expect(opened, 'Almeno una voce dell’Orario deve risolvere una Lezione canonica.').toBe(true)
+  await expect(page.locator('[data-lesson-shell]')).toBeVisible()
+  await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
+  await screenshot(page, testInfo, 'timetable-open-lesson')
+  return pass(`Lezione aperta direttamente dall’orario: ${await page.locator('h1').first().innerText()}`)
 }
 
 async function udaReading(page, testInfo) {

@@ -4,6 +4,7 @@ import test from 'node:test'
 
 const actionSource = readFileSync(new URL('./actions.ts', import.meta.url), 'utf8')
 const pageSource = readFileSync(new URL('./[blockId]/page.tsx', import.meta.url), 'utf8')
+const closeClientSource = readFileSync(new URL('./[blockId]/lesson-close-client.tsx', import.meta.url), 'utf8')
 
 test('lesson recording resolves the same runtime projection as the workspace page', () => {
   assert.ok(actionSource.includes("resolveRuntimeHumanTaskLessonProjection"))
@@ -13,4 +14,11 @@ test('lesson recording resolves the same runtime projection as the workspace pag
 
 test('lesson recording still fails closed when no runtime projection exists', () => {
   assert.ok(actionSource.includes("if (!projection) throw new Error('Human-task lesson projection is not available for this block')"))
+})
+
+test('lesson registration preserves an exact selected occurrence unless the teacher edits the date', () => {
+  assert.match(closeClientSource, /name="occurrenceLogicalId"/)
+  assert.match(closeClientSource, /registrationLocalDate === defaultLocalDate\s*\?\s*occurrenceLogicalId \?\? ''\s*:\s*''/)
+  assert.match(actionSource, /const occurrenceLogicalId = optionalText\(formData\.get\('occurrenceLogicalId'\)\)/)
+  assert.match(actionSource, /selectLessonOccurrenceByLogicalId\(/)
 })

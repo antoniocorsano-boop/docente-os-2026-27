@@ -35,7 +35,7 @@ for (const classMatcher of [/2ª\s*A/i]) {
       const continuity = page.getByRole('region', { name: 'Continuità della classe' })
       await expect(
         continuity,
-        'Task 8 richiede una vista longitudinale sempre leggibile senza dipendere da una receipt nella URL.',
+        'La Classe deve mantenere una vista longitudinale sempre leggibile senza dipendere da una receipt nella URL.',
       ).toBeVisible()
       await expect(continuity).toContainText('Ultimo lavoro')
       await expect(continuity).toContainText('Prossima attività')
@@ -43,23 +43,19 @@ for (const classMatcher of [/2ª\s*A/i]) {
       await expect(continuity).toContainText('Contesto recente')
 
       const primaryActions = page.locator('.classLessonFocusActions a.primary')
-      await expect(primaryActions, 'UX-0C richiede una sola CTA primaria nella Classe.').toHaveCount(1)
-      const secondaryActions = page.locator('.classLessonFocusActions a:not(.primary)')
-      await expect(secondaryActions, 'La Classe può esporre una sola azione secondaria stabile: Prima della lezione.').toHaveCount(1)
-      await expect(secondaryActions.first()).toHaveText('Prima della lezione')
+      await expect(primaryActions, 'La Classe richiede una sola CTA primaria contestuale.').toHaveCount(1)
+      await expect(page.locator('.classLessonFocusActions a:not(.primary)'), 'La nuova IA non espone una seconda fase accanto alla CTA primaria.').toHaveCount(0)
 
-      const exploration = page
-        .locator('details.humanTaskSecondary')
-        .filter({ hasText: 'Contesto della classe e altri percorsi' })
-      await expect(exploration, 'Il pannello di esplorazione secondaria deve restare identificabile in modo univoco.').toHaveCount(1)
-      await expect(exploration, 'Progetta, Conoscenza e Piano annuale devono restare esplorazione secondaria.').not.toHaveAttribute('open', '')
+      const otherClassTools = page.locator('details#altro-della-classe')
+      await expect(otherClassTools, 'Supporti e strumenti secondari devono confluire in un solo Altro della classe.').toHaveCount(1)
+      await expect(otherClassTools.locator(':scope > summary')).toHaveText('Altro della classe')
+      await expect(otherClassTools).not.toHaveAttribute('open', '')
+      await otherClassTools.locator(':scope > summary').click()
 
-      const supports = page.getByTestId('class-lesson-supports')
-      await expect(supports).toBeVisible()
-      await expect(supports).not.toHaveAttribute('open', '')
-      await supports.locator('summary').click()
+      await expect(otherClassTools.getByRole('heading', { name: 'Supporti e materiali' })).toBeVisible()
+      await expect(otherClassTools.getByRole('heading', { name: 'Strumenti della classe' })).toBeVisible()
 
-      const prepared = page.locator(`a[href="/classi/${sectionId}/in-classe/${fixture.assetId}"]`)
+      const prepared = otherClassTools.locator(`a[href="/classi/${sectionId}/in-classe/${fixture.assetId}"]`)
       await expect(prepared, 'Il materiale predisposto deve restare raggiungibile nella classe corretta.').toBeVisible()
       await expect(prepared).toContainText('Predisposto')
       await expect(prepared).toContainText('Per la classe')
@@ -106,7 +102,7 @@ for (const classMatcher of [/2ª\s*A/i]) {
       await screenshot(page, testInfo, 'classroom-cockpit')
       await recordJourney(testInfo.project.name, {
         status: 'PASS',
-        note: `${fixture.classLabel} · continuità longitudinale · gerarchia Adesso→Dopo · CTA primaria unica · supporti ed esplorazione secondari`,
+        note: `${fixture.classLabel} · continuità longitudinale · CTA primaria unica · Altro della classe · supporti su richiesta`,
       })
     } finally {
       await deleteKnowledgeAsset(page, fixture.assetId).catch(() => {})

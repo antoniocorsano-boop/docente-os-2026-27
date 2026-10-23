@@ -2,16 +2,22 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { TransientFeedback } from '@/components/ui/transient-feedback'
-import { canActivateTimetableDraft, minutesToTime, slotDurationMinutes, timeToMinutes, TIMETABLE_WEEKDAYS } from '@/core/domain/timetable'
+import { projectTemporalDay } from '@/core/application/temporal-projection-service'
+import { canActivateTimetableDraft, minutesToTime, slotDurationMinutes, timeToMinutes, TIMETABLE_WEEKDAYS, type TimetableSlot } from '@/core/domain/timetable'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
-import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
+import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabaseCalendarRepository } from '@/core/infrastructure/supabase/supabase-calendar-repository'
+import { CanonicalPlanSourceError, SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
+import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
 import { SupabaseTimetableImportRepository } from '@/core/infrastructure/supabase/supabase-timetable-import-repository'
 import { SupabaseTimetableExceptionRepository } from '@/core/infrastructure/supabase/supabase-timetable-exception-repository'
 import { SupabaseTimetableLifecycleRepository } from '@/core/infrastructure/supabase/supabase-timetable-lifecycle-repository'
+import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { buildClassWorkspaceLearningFocus } from '@/app/classi/class-workspace-model'
+import { CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import {
   activateTimetableDraft,
   addTimetableImportRow,
@@ -23,6 +29,7 @@ import {
 import TimetableGrid from './TimetableGrid'
 import { TimetableLocalImportLauncher } from './TimetableLocalImportLauncher'
 import { TimetableSubmitButton } from './TimetableSubmitButton'
+import { resolveTimetableLessonEntrypoint, type TimetableLessonEntrypoint } from './timetable-lesson-entrypoint'
 import './timetable.css'
 import './orario-guidance.css'
 
@@ -53,6 +60,10 @@ export async function TimetableExperience({
   )
 
   const moment = currentRomeMoment()
+  const literalTomorrowLocalDate = shiftLocalDate(moment.localDate, 1)
+  const isLiteralTomorrow = literalTomorrowLocalDate === shiftLocalDate(currentRomeDate(), 1)
+  const tomorrowMaterialsWeekday = isLiteralTomorrow ? weekdayFromLocalDate(literalTomorrowLocalDate) : null
+  const tomorrowMaterialsHref = mode === 'view' && isLiteralTomorrow ? '/knowledge?focus=domani' : undefined
   const settingsRepository = new SupabaseTeacherSettingsRepository()
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
   const timetableRepository = new SupabaseTimetableRepository()
@@ -111,6 +122,16 @@ export async function TimetableExperience({
   const draftLabel = versionStatusLabel(timetable.draftVersion.status)
   const days = weekdayOptions.map((day) => ({ value: day.value, label: day.label, short: day.short }))
   const operationalSlots = lifecycle.activeVersion ? lifecycle.activeSlots : timetable.slots
+  const lessonEntrypoints = mode === 'view'
+    ? await buildTimetableLessonEntrypoints({
+        workspaceId: context.workspace.id,
+        academicYearId: context.academicYear.id,
+        sections: annualSnapshot.sections,
+        progress: annualSnapshot.progress,
+        slots: operationalSlots,
+        moment,
+      })
+    : undefined
   const todayCalendarDay = calendarSnapshot.days.find((day) => day.localDate === moment.localDate) ?? null
   const todayNoLessons = Boolean(todayCalendarDay && todayCalendarDay.dayKind !== 'SCHOOL_DAY')
   const todaySlots = (todayNoLessons ? [] : operationalSlots.filter((slot) => slot.weekday === moment.weekday)).sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
@@ -484,6 +505,9 @@ export async function TimetableExperience({
           periods={periodPresets}
           slots={operationalSlots}
           assignments={gridAssignments}
+          lessonEntrypoints={lessonEntrypoints}
+          tomorrowMaterialsHref={tomorrowMaterialsHref}
+          tomorrowMaterialsWeekday={tomorrowMaterialsWeekday ?? undefined}
           readOnly
         />
       </section> : null}
@@ -569,6 +593,94 @@ export async function TimetableExperience({
       </> : null}
     </AppShell>
   )
+}
+
+
+async function buildTimetableLessonEntrypoints(input: {
+  workspaceId: string
+  academicYearId: string
+  sections: Array<Parameters<typeof buildClassWorkspaceLearningFocus>[0]>
+  progress: Parameters<typeof buildClassWorkspaceLearningFocus>[1]
+  slots: TimetableSlot[]
+  moment: ReturnType<typeof currentRomeMoment>
+}) {
+  const lessonSlots = input.slots.filter((slot) => slot.slotKind === 'LESSON' && slot.sectionId)
+  if (!lessonSlots.length) return {} satisfies Record<string, TimetableLessonEntrypoint>
+
+  const relevantSectionIds = new Set(lessonSlots.flatMap((slot) => slot.sectionId ? [slot.sectionId] : []))
+  const relevantSections = input.sections.filter((section) => relevantSectionIds.has(section.id))
+  const grades = [...new Set(relevantSections.map((section) => GRADE_UI[section.grade]))]
+  const canonicalSourceRepository = new SupabaseCanonicalPlanSourceRepository()
+  const timetableProjectionRepository = new SupabaseTimetableProjectionReadRepository()
+  const calendarProjectionRepository = new SupabaseCalendarProjectionReadRepository()
+  const [sourceEntries, timetableProjection, calendarProjection] = await Promise.all([
+    Promise.all(grades.map(async (grade) => {
+      try {
+        const source = await canonicalSourceRepository.resolve({
+          workspaceId: input.workspaceId,
+          academicYearId: input.academicYearId,
+          code: CANONICAL_PLAN_SOURCES[grade].code,
+        })
+        return [grade, source] as const
+      } catch (error) {
+        if (error instanceof CanonicalPlanSourceError && error.code === 'CANONICAL_PLAN_BINDING_MISSING') {
+          return [grade, null] as const
+        }
+        throw error
+      }
+    })),
+    timetableProjectionRepository.read(input.workspaceId, input.academicYearId),
+    calendarProjectionRepository.read(input.workspaceId, input.academicYearId),
+  ])
+  const generationByGrade = new Map(sourceEntries.map(([grade, source]) => [grade, source?.generationId ?? null]))
+  const blockBySection = new Map(relevantSections.map((section) => {
+    const grade = GRADE_UI[section.grade]
+    const focus = buildClassWorkspaceLearningFocus(section, input.progress, generationByGrade.get(grade) ?? null, [])
+    return [section.id, focus.nextBlock?.id ?? null] as const
+  }))
+
+  const projectedByWeekday = new Map<number, ReturnType<typeof projectTemporalDay>>()
+  for (const weekday of new Set(lessonSlots.map((slot) => slot.weekday))) {
+    const localDate = shiftLocalDate(input.moment.localDate, weekday - input.moment.weekday)
+    projectedByWeekday.set(weekday, projectTemporalDay({
+      localDate,
+      timetableVersions: timetableProjection.versions,
+      timetableSlots: timetableProjection.slots,
+      timetableExceptions: timetableProjection.exceptions ?? [],
+      calendarDays: calendarProjection.days,
+      calendarEvents: calendarProjection.events,
+    }))
+  }
+
+  const entries: Record<string, TimetableLessonEntrypoint> = {}
+  for (const slot of lessonSlots) {
+    if (!slot.sectionId) continue
+    const occurrences = projectedByWeekday.get(slot.weekday)?.occurrences.filter((occurrence) =>
+      occurrence.kind === 'LESSON' && occurrence.timetableSlotId === slot.id,
+    ) ?? []
+    const occurrence = occurrences.length === 1 ? occurrences[0] : null
+    const entrypoint = resolveTimetableLessonEntrypoint({
+      mode: 'view',
+      sectionId: slot.sectionId,
+      blockId: blockBySection.get(slot.sectionId) ?? null,
+      localDate: occurrence?.localDate ?? null,
+      occurrenceLogicalId: occurrence?.logicalId ?? null,
+      ambiguous: occurrences.length > 1,
+    })
+    if (entrypoint) entries[slot.id] = entrypoint
+  }
+  return entries
+}
+
+function shiftLocalDate(localDate: string, offsetDays: number) {
+  const date = new Date(`${localDate}T12:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + offsetDays)
+  return date.toISOString().slice(0, 10)
+}
+
+function weekdayFromLocalDate(localDate: string) {
+  const weekday = new Date(`${localDate}T12:00:00Z`).getUTCDay()
+  return weekday === 0 ? 7 : weekday
 }
 
 function buildPeriods(startTime: string, durationMinutes: number, count: number) { const first = timeToMinutes(startTime); return Array.from({ length: count }, (_, index) => ({ ordinal: index + 1, start: minutesToTime(first + index * durationMinutes), end: minutesToTime(first + (index + 1) * durationMinutes) })) }

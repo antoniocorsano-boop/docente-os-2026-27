@@ -76,7 +76,12 @@ export function ContextualAssistantPanel({
 
   if (presentation === 'floating' && !expanded) {
     return (
-      <button className="dosAssistantFloatingTrigger" type="button" onClick={() => setExpanded(true)}>
+      <button
+        className="dosAssistantFloatingTrigger"
+        type="button"
+        aria-label="Chiedi a DOCENTE OS su questa pagina"
+        onClick={() => setExpanded(true)}
+      >
         <span className="dosAssistantIcon" aria-hidden><Sparkles size={17} /></span>
         <span><strong>Chiedi a DOCENTE OS</strong><small>Su questa pagina</small></span>
       </button>

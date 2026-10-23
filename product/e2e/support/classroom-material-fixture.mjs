@@ -1,4 +1,5 @@
 import { authenticatedAal2Supabase } from './direct-aal2-supabase.mjs'
+import hvaClock from './hva-fixed-clock.cjs'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
@@ -129,16 +130,18 @@ export async function createClassroomMaterialFixture({ sectionId, expectedClassL
 }
 
 function romeDate() {
+  const referenceDate = process.env.EXPERIENCE_TARGET === 'local'
+    ? new Date(hvaClock.HVA_CANONICAL_NOW)
+    : new Date()
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Rome',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).formatToParts(new Date())
+  }).formatToParts(referenceDate)
   const value = Object.fromEntries(parts.map((part) => [part.type, part.value]))
   return `${value.year}-${value.month}-${value.day}`
 }
-
 
 function parseClassLabel(value) {
   const normalized = String(value).trim().toUpperCase().replace(/\s+/g, '')
