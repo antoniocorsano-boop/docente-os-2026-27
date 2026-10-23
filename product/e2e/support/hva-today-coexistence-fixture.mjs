@@ -1,4 +1,3 @@
-import { authenticatedAal2Supabase } from './direct-aal2-supabase.mjs'
 import {
   HVA_TODAY_LOCAL_DATE,
   HVA_TODAY_WEEKDAY,
@@ -49,6 +48,7 @@ export async function createHvaTodayCoexistenceFixture({ suffix }) {
     throw new Error('HVA Today coexistence fixture requires Supabase URL and publishable key')
   }
 
+  const { authenticatedAal2Supabase } = await import('./direct-aal2-supabase.mjs')
   const { supabase, userId } = await authenticatedAal2Supabase({
     supabaseUrl,
     supabasePublishableKey,
