@@ -228,15 +228,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha: testedSha,
-              state: 'pending',
-              context: 'hva/application',
-              description: 'Human + Visual Acceptance locale in esecuzione',
-              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-            })
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: testedSha,
               state: !ready ? 'error' : ok ? 'success' : 'failure',
               context: 'hva/application',
               description: !ready ? 'HVA non eseguito: credenziale AAL2 mancante' : ok ? 'Gate automatico HVA locale superato' : 'Gate automatico HVA locale non superato',
