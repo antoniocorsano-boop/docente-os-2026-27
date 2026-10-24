@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { ensurePersonalWorkspace } from '@/app/auth/bootstrap-personal-workspace'
 import { DocenteOsLockup } from '@/components/brand/docente-os-brand'
@@ -13,9 +14,17 @@ type MfaPageProps = {
 }
 
 export default async function MfaPage({ searchParams }: MfaPageProps) {
+  const cookieStore = await cookies()
+  const authCookieCount = cookieStore
+    .getAll()
+    .filter(({ name }) => name.startsWith('sb-') && name.includes('auth-token')).length
   const supabase = await createClient()
   const { data, error } = await supabase.auth.getClaims()
   const claims = error ? null : data?.claims ?? null
+
+  console.info(
+    `Governed MFA claims diagnostic: boundary=page authCookieCount=${authCookieCount} claimsSubPresent=${Boolean(data?.claims?.sub)} claimsError=${error?.name ?? 'none'}`,
+  )
 
   if (!claims?.sub) redirect('/login?error=session_required')
 
