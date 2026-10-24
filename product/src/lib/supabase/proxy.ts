@@ -41,6 +41,15 @@ export async function updateSession(request: NextRequest, requestHeaderOverrides
   // for authorization decisions on the server.
   const { data, error } = await supabase.auth.getClaims()
 
+  if (request.nextUrl.pathname === '/mfa') {
+    const authCookieCount = request.cookies
+      .getAll()
+      .filter(({ name }) => name.startsWith('sb-') && name.includes('auth-token')).length
+    console.info(
+      `Governed MFA claims diagnostic: boundary=proxy authCookieCount=${authCookieCount} claimsSubPresent=${Boolean(data?.claims?.sub)} claimsError=${error?.name ?? 'none'}`,
+    )
+  }
+
   return {
     response,
     claims: error ? null : data?.claims ?? null,
