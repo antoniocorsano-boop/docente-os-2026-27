@@ -6,6 +6,7 @@ import {
   writeInfrastructureReceipt,
 } from './android-runtime.mjs'
 import { runAr01OggiLateContext } from './ar-01-oggi-late-context.mjs'
+import { runAr02FabTouchDrag } from './ar-02-fab-touch-drag.mjs'
 import { writeAndroidRealityReceipt } from '../../scripts/experience/android-reality-report.mjs'
 
 const OUTPUT_ROOT = path.resolve('test-results/android-reality')
@@ -25,14 +26,20 @@ try {
   await writeInfrastructureReceipt({ infrastructure: 'PASS', metadata: runtime.metadata })
 
   const ar01 = await runAr01OggiLateContext(runtime.page)
+  const ar02 = await runAr02FabTouchDrag(runtime.page, runtime.device)
+  const journeys = [ar01.journey, ar02.journey]
+  const geometry = [...ar01.geometry, ...ar02.geometry]
+  const failures = [...ar01.failures, ...ar02.failures]
+  const requestedOutcome = failures.length ? 'FAIL_PRODUCT' : 'PASS'
+
   const { receipt } = await writeAndroidRealityReceipt({
     testedSha,
     infrastructure: 'PASS',
-    requestedOutcome: ar01.outcome,
+    requestedOutcome,
     device: runtime.metadata,
-    journeys: [ar01.journey],
-    geometry: ar01.geometry,
-    failures: ar01.failures,
+    journeys,
+    geometry,
+    failures,
   })
 
   process.stdout.write(`Android Reality ${receipt.outcome}: ${testedSha || '(missing sha)'}\n`)
@@ -54,7 +61,7 @@ try {
     journeys: [],
     geometry: [],
     failures: [{
-      journey: 'AR-01',
+      journey: 'AR-02',
       code: 'ANDROID_REALITY_EXECUTION_BLOCKED',
       message,
     }],
