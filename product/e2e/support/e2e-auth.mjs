@@ -78,6 +78,12 @@ export async function loginE2E(page) {
           !sessionContinuityLost
           || continuityAttempt === MFA_SESSION_CONTINUITY_RETRY_LIMIT
         ) {
+          if (continuityAttempt === MFA_SESSION_CONTINUITY_RETRY_LIMIT) {
+            const boundaryState = await describeTerminalMfaBoundary(page)
+            process.stdout.write(
+              `Governed MFA terminal boundary after continuity retry exhausted: ${JSON.stringify(boundaryState)}\n`,
+            )
+          }
           throw error
         }
 
@@ -241,4 +247,20 @@ async function waitForMfaVerificationOutcome(page) {
   }
 
   return 'verification-timeout'
+}
+
+async function describeTerminalMfaBoundary(page) {
+  const url = new URL(page.url())
+  const [mfaBoundaryVisible, codeHeadingVisible, loginSubmitVisible] = await Promise.all([
+    page.getByRole('heading', { name: 'Conferma il secondo fattore.' }).isVisible().catch(() => false),
+    page.getByRole('heading', { name: 'Inserisci il codice temporaneo' }).isVisible().catch(() => false),
+    page.getByRole('button', { name: 'Entra nel tuo spazio docente' }).isVisible().catch(() => false),
+  ])
+
+  return {
+    location: `${url.pathname}${url.search}`,
+    mfaBoundaryVisible,
+    codeHeadingVisible,
+    loginSubmitVisible,
+  }
 }
