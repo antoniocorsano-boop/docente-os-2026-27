@@ -75,31 +75,37 @@ export function ContextualAssistantPanel({
       dictation: resolvedDictationAdapter,
     },
   })
+  const positionStatus = fab.mode === 'manual'
+    ? `Posizione manuale del copilota attiva${fab.edge ? ` sul lato ${fab.edge === 'left' ? 'sinistro' : 'destro'}` : ''}.`
+    : 'Posizione automatica del copilota attiva.'
 
   if (presentation === 'floating' && !expanded) {
     return (
-      <button
-        ref={fab.triggerRef}
-        className="dosAssistantFloatingTrigger"
-        type="button"
-        aria-label="Chiedi a DOCENTE OS su questa pagina"
-        data-fab-ready={fab.ready ? 'true' : 'false'}
-        data-fab-mode={fab.mode}
-        data-fab-layout={fab.layout}
-        data-fab-displaced={fab.displaced ? 'true' : 'false'}
-        data-fab-edge={fab.edge}
-        style={fab.style}
-        onPointerDown={fab.onPointerDown}
-        onPointerMove={fab.onPointerMove}
-        onPointerUp={fab.onPointerUp}
-        onPointerCancel={fab.onPointerCancel}
-        onClick={() => {
-          if (fab.allowActivation()) setExpanded(true)
-        }}
-      >
-        <span className="dosAssistantIcon" aria-hidden><Sparkles size={17} /></span>
-        <span><strong>Chiedi a DOCENTE OS</strong><small>Su questa pagina</small></span>
-      </button>
+      <>
+        <button
+          ref={fab.triggerRef}
+          className="dosAssistantFloatingTrigger"
+          type="button"
+          aria-label="Chiedi a DOCENTE OS su questa pagina"
+          data-fab-ready={fab.ready ? 'true' : 'false'}
+          data-fab-mode={fab.mode}
+          data-fab-layout={fab.layout}
+          data-fab-displaced={fab.displaced ? 'true' : 'false'}
+          data-fab-edge={fab.edge}
+          style={fab.style}
+          onPointerDown={fab.onPointerDown}
+          onPointerMove={fab.onPointerMove}
+          onPointerUp={fab.onPointerUp}
+          onPointerCancel={fab.onPointerCancel}
+          onClick={() => {
+            if (fab.allowActivation()) setExpanded(true)
+          }}
+        >
+          <span className="dosAssistantIcon" aria-hidden><Sparkles size={17} /></span>
+          <span><strong>Chiedi a DOCENTE OS</strong><small>Su questa pagina</small></span>
+        </button>
+        <span className="srOnly dosAssistantPositionStatus" role="status" aria-live="polite">{positionStatus}</span>
+      </>
     )
   }
 
