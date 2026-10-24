@@ -1,6 +1,7 @@
 'use strict'
 
 // This preload is intentionally CommonJS because Node loads it through --require.
+// Diagnostic note: the wall-clock counterfactual branch intentionally does not preload this module into Next.js.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { HVA_CANONICAL_NOW } = require('./hva-governed-baseline-config.cjs')
 
