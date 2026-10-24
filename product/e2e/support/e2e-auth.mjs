@@ -9,6 +9,7 @@ export const E2E_TOTP_SECRET = process.env.E2E_TOTP_SECRET
 let cachedAal2Cookies = null
 
 const MFA_PAGE_READY_TIMEOUT_MS = 30_000
+const MFA_SESSION_CONTINUITY_RETRY_LIMIT = 1
 const HVA_CANONICAL_NOW = hvaClock.HVA_CANONICAL_NOW
 
 const MFA_TRANSIENT_MESSAGES = [
@@ -37,38 +38,64 @@ export async function loginE2E(page) {
     return
   }
 
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
-    await page.goto('/login')
-    await page.locator('#email').fill(E2E_EMAIL)
-    await page.locator('#password').fill(E2E_PASSWORD)
+  for (
+    let continuityAttempt = 0;
+    continuityAttempt <= MFA_SESSION_CONTINUITY_RETRY_LIMIT;
+    continuityAttempt += 1
+  ) {
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      await page.goto('/login')
+      await page.locator('#email').fill(E2E_EMAIL)
+      await page.locator('#password').fill(E2E_PASSWORD)
 
-    await Promise.all([
-      page.waitForURL(/(?:\/(?:mfa|planner|workspace)(?:$|\?)|\/login\?error=)/, { timeout: 30_000 }),
-      page.getByRole('button', { name: 'Entra nel tuo spazio docente' }).click(),
-    ])
+      await Promise.all([
+        page.waitForURL(/(?:\/(?:mfa|planner|workspace)(?:$|\?)|\/login\?error=)/, { timeout: 30_000 }),
+        page.getByRole('button', { name: 'Entra nel tuo spazio docente' }).click(),
+      ])
 
-    const url = new URL(page.url())
-    if (url.pathname === '/login') {
-      if (url.searchParams.get('error') !== 'auth_request_failed' || attempt === 2) {
-        throw new Error(`Governed login failed at ${url.pathname}${url.search}`)
+      const url = new URL(page.url())
+      if (url.pathname === '/login') {
+        if (url.searchParams.get('error') !== 'auth_request_failed' || attempt === 2) {
+          throw new Error(`Governed login failed at ${url.pathname}${url.search}`)
+        }
+        await page.waitForTimeout(750 + governedMfaRetryJitterMs())
+        continue
       }
-      await page.waitForTimeout(750 + governedMfaRetryJitterMs())
-      continue
+
+      break
     }
 
-    break
-  }
+    if (/\/mfa(?:$|\?)/.test(new URL(page.url()).pathname + new URL(page.url()).search)) {
+      try {
+        await completeMfaChallenge(page)
+      } catch (error) {
+        const url = new URL(page.url())
+        const sessionContinuityLost =
+          url.pathname === '/login'
+          && url.searchParams.get('error') === 'session_required'
 
-  if (/\/mfa(?:$|\?)/.test(new URL(page.url()).pathname + new URL(page.url()).search)) {
-    await completeMfaChallenge(page)
-  }
+        if (
+          !sessionContinuityLost
+          || continuityAttempt === MFA_SESSION_CONTINUITY_RETRY_LIMIT
+        ) {
+          throw error
+        }
 
-  await reachPlannerBoundary(page)
-  await expect(page).toHaveURL(/\/planner(?:$|\?)/)
-  await expect(page.locator('#dos-main-content')).toBeVisible()
-  cachedAal2Cookies = await page.context().cookies()
-  await alignLocalHvaBrowserClock(page)
-  process.stdout.write('Governed AAL2 full login completed; in-memory worker session cached.\n')
+        await page.context().clearCookies()
+        process.stdout.write('Governed MFA session continuity lost after first factor; retrying full login.\n')
+        await page.waitForTimeout(750 + governedMfaRetryJitterMs())
+        continue
+      }
+    }
+
+    await reachPlannerBoundary(page)
+    await expect(page).toHaveURL(/\/planner(?:$|\?)/)
+    await expect(page.locator('#dos-main-content')).toBeVisible()
+    cachedAal2Cookies = await page.context().cookies()
+    await alignLocalHvaBrowserClock(page)
+    process.stdout.write('Governed AAL2 full login completed; in-memory worker session cached.\n')
+    return
+  }
 }
 
 async function tryReuseCachedAal2Session(page) {
