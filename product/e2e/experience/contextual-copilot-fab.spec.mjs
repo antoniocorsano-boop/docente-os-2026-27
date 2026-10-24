@@ -96,3 +96,98 @@ test('Contextual Copilot FAB: manual drag snaps and persists semantic preference
   await page.reload()
   await expect(page.locator('.dosAssistantFloatingTrigger')).toHaveAttribute('data-fab-mode', 'auto')
 })
+
+test('Contextual Copilot FAB: late protected-region mount removal and resize re-resolve without external geometry events', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('mobile'), 'Dynamic protected-region qualification is mobile-first.')
+
+  await loginE2E(page)
+  await page.goto('/progetta?grade=prima')
+
+  const expectedTitle = experienceUdaFixtureTitle()
+  const udaGroup = page.locator('.progettaGroup').filter({ hasText: /Unità di apprendimento|UDA/i }).first()
+  await expect(udaGroup).toBeVisible()
+  const resource = udaGroup.locator('.progettaItems a').filter({ hasText: expectedTitle }).first()
+  await expect(resource).toBeVisible()
+  await resource.click()
+
+  const trigger = page.locator('.dosAssistantFloatingTrigger')
+  await expect(trigger).toBeVisible()
+  await expect(trigger).toHaveAttribute('data-fab-ready', 'true')
+  await expect(trigger).toHaveAttribute('data-fab-layout', 'floating')
+
+  await page.evaluate(() => {
+    const region = document.createElement('div')
+    region.id = 'hva-late-protected-region'
+    region.setAttribute('data-copilot-protected', 'true')
+    Object.assign(region.style, {
+      position: 'fixed',
+      inset: '0',
+      pointerEvents: 'none',
+      zIndex: '1',
+    })
+    document.body.append(region)
+  })
+
+  await expect(
+    trigger,
+    'A protected region mounted after FAB readiness must be discovered without resize, scroll or reload.',
+  ).toHaveAttribute('data-fab-layout', 'docked')
+
+  await page.evaluate(() => document.querySelector('#hva-late-protected-region')?.remove())
+  await expect(
+    trigger,
+    'Removing the late protected region must release the floating layout without remounting the FAB.',
+  ).toHaveAttribute('data-fab-layout', 'floating')
+
+  await page.evaluate(() => {
+    const region = document.createElement('div')
+    region.id = 'hva-resizable-protected-region'
+    region.setAttribute('data-copilot-protected', 'true')
+    Object.assign(region.style, {
+      position: 'fixed',
+      left: '0px',
+      top: '0px',
+      width: '1px',
+      height: '1px',
+      pointerEvents: 'none',
+      zIndex: '1',
+    })
+    document.body.append(region)
+  })
+
+  const beforeResize = await trigger.boundingBox()
+  expect(beforeResize).not.toBeNull()
+  if (!beforeResize) return
+
+  await page.evaluate((box) => {
+    const region = document.querySelector('#hva-resizable-protected-region')
+    if (!(region instanceof HTMLElement)) throw new Error('Resizable protected region missing')
+    Object.assign(region.style, {
+      left: `${box.x}px`,
+      top: `${box.y}px`,
+      width: `${box.width}px`,
+      height: `${box.height}px`,
+    })
+  }, beforeResize)
+
+  await expect.poll(async () => {
+    const [fabBox, regionBox] = await Promise.all([
+      trigger.boundingBox(),
+      page.locator('#hva-resizable-protected-region').boundingBox(),
+    ])
+    if (!fabBox || !regionBox) return Number.POSITIVE_INFINITY
+    return intersectionArea(fabBox, regionBox)
+  }, {
+    message: 'A late protected region that resizes over the FAB must trigger a new safe placement.',
+  }).toBe(0)
+
+  await page.evaluate(() => document.querySelector('#hva-resizable-protected-region')?.remove())
+})
+
+function intersectionArea(a, b) {
+  const left = Math.max(a.x, b.x)
+  const top = Math.max(a.y, b.y)
+  const right = Math.min(a.x + a.width, b.x + b.width)
+  const bottom = Math.min(a.y + a.height, b.y + b.height)
+  return Math.max(0, right - left) * Math.max(0, bottom - top)
+}
