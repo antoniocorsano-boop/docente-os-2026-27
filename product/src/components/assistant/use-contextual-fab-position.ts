@@ -50,6 +50,7 @@ export type ContextualFabPosition = {
 
 export function useContextualFabPosition({ enabled = true }: { enabled?: boolean } = {}): ContextualFabPosition {
   const [triggerNode, setTriggerNode] = useState<HTMLButtonElement | null>(null)
+  const [hydrated, setHydrated] = useState(false)
   const [ready, setReady] = useState(false)
   const [preference, setPreference] = useState<ContextualFabPreference>(AUTO_PREFERENCE)
   const [dragPreference, setDragPreference] = useState<ContextualFabPreference | null>(null)
@@ -61,10 +62,6 @@ export function useContextualFabPosition({ enabled = true }: { enabled?: boolean
 
   const triggerRef = useCallback<RefCallback<HTMLButtonElement>>((node) => {
     setTriggerNode(node)
-    setReady(false)
-    if (node && typeof window !== 'undefined') {
-      setPreference(parseContextualFabPreference(window.localStorage.getItem(STORAGE_KEY)))
-    }
   }, [])
 
   const commitPlacement = useCallback((next: FabPlacement) => {
@@ -95,15 +92,33 @@ export function useContextualFabPosition({ enabled = true }: { enabled?: boolean
     if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current)
     frameRef.current = window.requestAnimationFrame(() => {
       frameRef.current = null
-      const measured = measure(nextPreference, preserveCurrent)
-      setReady(Boolean(measured))
+      measure(nextPreference, preserveCurrent)
     })
   }, [measure])
 
   useEffect(() => {
-    if (!enabled || !triggerNode || typeof window === 'undefined') return
+    if (!enabled || typeof window === 'undefined') {
+      setHydrated(false)
+      setReady(false)
+      return
+    }
 
-    scheduleMeasure(preference, false)
+    setPreference(parseContextualFabPreference(window.localStorage.getItem(STORAGE_KEY)))
+    setHydrated(true)
+  }, [enabled])
+
+  useEffect(() => {
+    if (!enabled || !hydrated || !triggerNode) {
+      setReady(false)
+      return
+    }
+
+    const measured = measure(preference, false)
+    setReady(Boolean(measured))
+  }, [enabled, hydrated, measure, preference, triggerNode])
+
+  useEffect(() => {
+    if (!enabled || !hydrated || !triggerNode || typeof window === 'undefined') return
 
     const remeasure = () => scheduleMeasure(dragPreference ?? preference, true)
     const visualViewport = window.visualViewport
@@ -134,7 +149,7 @@ export function useContextualFabPosition({ enabled = true }: { enabled?: boolean
         frameRef.current = null
       }
     }
-  }, [dragPreference, enabled, preference, scheduleMeasure, triggerNode])
+  }, [dragPreference, enabled, hydrated, preference, scheduleMeasure, triggerNode])
 
   const onPointerDown = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
     if (!enabled || !ready || event.button !== 0) return
