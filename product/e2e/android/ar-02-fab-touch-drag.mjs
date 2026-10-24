@@ -7,6 +7,7 @@ const STORAGE_KEY = 'DOCENTE_OS_CONTEXTUAL_FAB_PLACEMENT_V1'
 const OUTPUT_ROOT = path.resolve('test-results/android-reality')
 const SCREENSHOTS_DIR = path.join(OUTPUT_ROOT, 'screenshots')
 const GEOMETRY_DIR = path.join(OUTPUT_ROOT, 'geometry')
+const NATIVE_INPUT_TIMEOUT_MS = 10_000
 
 export async function runAr02FabTouchDrag(page, device) {
   await mkdir(SCREENSHOTS_DIR, { recursive: true })
@@ -42,7 +43,11 @@ export async function runAr02FabTouchDrag(page, device) {
   const targetNative = cssToNative(targetCss, calibration)
 
   await installPointerTrace(page)
-  await device.input.drag(startNative, targetNative, 60)
+  await runNativeShellInput(
+    device,
+    `input swipe ${startNative.x} ${startNative.y} ${targetNative.x} ${targetNative.y} 350`,
+    'AR-02 native Android swipe did not complete within the bounded timeout',
+  )
   await page.waitForTimeout(600)
 
   const trace = await readPointerTrace(page)
@@ -53,6 +58,13 @@ export async function runAr02FabTouchDrag(page, device) {
   const persisted = parseStoredPlacement(persistedRaw)
   const failures = []
 
+  if (!trace.some((entry) => entry.type === 'pointerdown' && entry.pointerType === 'touch')) {
+    failures.push({
+      journey: JOURNEY_ID,
+      code: 'FAB_NATIVE_TOUCH_EVENT_NOT_OBSERVED',
+      message: 'The Android OS-level swipe did not reach Chrome as a touch pointer event',
+    })
+  }
   if (trace.some((entry) => entry.type === 'pointercancel')) {
     failures.push({
       journey: JOURNEY_ID,
@@ -142,6 +154,7 @@ export async function runAr02FabTouchDrag(page, device) {
     path.join(GEOMETRY_DIR, 'ar-02.json'),
     `${JSON.stringify({
       journey: JOURNEY_ID,
+      inputMethod: 'android-shell-input',
       calibration,
       viewport,
       before,
@@ -172,7 +185,11 @@ export async function runAr02FabTouchDrag(page, device) {
 }
 
 async function calibrateNativeInput(page, device) {
-  const wmSize = (await device.shell('wm size')).toString('utf8')
+  const wmSize = (await withTimeout(
+    device.shell('wm size'),
+    NATIVE_INPUT_TIMEOUT_MS,
+    'AR-02 could not read the Android display size within the bounded timeout',
+  )).toString('utf8')
   const nativeSize = parseWmSize(wmSize)
   if (!nativeSize) throw new Error(`AR-02 could not parse Android display size: ${wmSize.trim()}`)
 
@@ -198,7 +215,7 @@ async function calibrateNativeInput(page, device) {
     const record = (event) => {
       event.preventDefault()
       event.stopPropagation()
-      if (event.type === 'pointerdown') samples.push({ x: event.clientX, y: event.clientY })
+      if (event.type === 'pointerdown') samples.push({ x: event.clientX, y: event.clientY, pointerType: event.pointerType })
     }
     for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel']) {
       overlay.addEventListener(type, record, { capture: true })
@@ -214,7 +231,12 @@ async function calibrateNativeInput(page, device) {
 
   try {
     for (let index = 0; index < nativePoints.length; index += 1) {
-      await device.input.tap(nativePoints[index])
+      const point = nativePoints[index]
+      await runNativeShellInput(
+        device,
+        `input tap ${point.x} ${point.y}`,
+        `AR-02 native calibration tap ${index + 1} did not complete within the bounded timeout`,
+      )
       await page.waitForFunction(
         (expected) => Array.isArray(window.__hvaNativeTouchSamples) && window.__hvaNativeTouchSamples.length >= expected,
         index + 1,
@@ -222,6 +244,9 @@ async function calibrateNativeInput(page, device) {
       )
     }
     const cssPoints = await page.evaluate(() => window.__hvaNativeTouchSamples.slice(0, 3))
+    if (!cssPoints.every((sample) => sample.pointerType === 'touch')) {
+      throw new Error('AR-02 calibration did not observe native Android touch pointer events')
+    }
     const scaleX = (nativePoints[1].x - nativePoints[0].x) / (cssPoints[1].x - cssPoints[0].x)
     const scaleY = (nativePoints[2].y - nativePoints[0].y) / (cssPoints[2].y - cssPoints[0].y)
     const offsetX = nativePoints[0].x - cssPoints[0].x * scaleX
@@ -249,6 +274,24 @@ function cssToNative(point, calibration) {
   return {
     x: Math.round(point.x * calibration.scaleX + calibration.offsetX),
     y: Math.round(point.y * calibration.scaleY + calibration.offsetY),
+  }
+}
+
+async function runNativeShellInput(device, command, message) {
+  return withTimeout(device.shell(command), NATIVE_INPUT_TIMEOUT_MS, message)
+}
+
+async function withTimeout(promise, timeoutMs, message) {
+  let timer
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
   }
 }
 
