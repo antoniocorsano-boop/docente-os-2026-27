@@ -6,6 +6,10 @@ async function source() {
   return readFile(new URL('./today-context-loader.ts', import.meta.url), 'utf8')
 }
 
+async function timetableSource() {
+  return readFile(new URL('../../orario/TimetableExperience.tsx', import.meta.url), 'utf8')
+}
+
 test('Today exposes one operational loader and Copilot delegates to it', async () => {
   const text = await source()
   assert.match(text, /export type LoadedTodayOperationalContext = \{/)
@@ -46,4 +50,17 @@ test('Today resolves the nearest future lesson with a bounded lookahead when tod
 test('Future next-lesson lookup fails closed on ambiguous temporal authority', async () => {
   const text = await source()
   assert.match(text, /if \(futureDaily\.authority === 'AMBIGUOUS'\) return null/)
+})
+
+test('Today and Orario delegate current domain time to one shared scoped clock', async () => {
+  const [today, timetable] = await Promise.all([source(), timetableSource()])
+
+  assert.match(today, /import \{ currentRomeDomainClock \} from '@\/core\/application\/domain-clock'/)
+  assert.match(today, /const clock = currentRomeDomainClock\(\)/)
+  assert.doesNotMatch(today, /function currentRomeClock\(/)
+
+  assert.match(timetable, /import \{ currentRomeDomainClock \} from '@\/core\/application\/domain-clock'/)
+  assert.match(timetable, /currentRomeDomainClock\(\)/)
+  assert.doesNotMatch(timetable, /function currentRomeMoment\(/)
+  assert.doesNotMatch(timetable, /function currentRomeDate\(/)
 })
