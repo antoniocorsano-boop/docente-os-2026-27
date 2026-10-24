@@ -7,299 +7,230 @@
 
 ## Intent
 
-Replace screenshot-by-screenshot manual UX discovery with a governed, repeatable, zero-cost-first verification system that exercises Docente OS as a teacher would actually use it on mobile.
+Replace screenshot-by-screenshot manual UX discovery with a governed, repeatable, zero-cost-first verification system that exercises Docente OS as a teacher actually uses it on mobile.
 
 The system has two complementary layers:
 
-1. **HVA 2.0** — fast Playwright browser qualification on every relevant PR, strengthened to test dynamic layout changes, touch semantics, keyboard/viewport behavior, protected regions, scrolling and visual evidence generation.
-2. **Android Reality Gate (ARG)** — an Android Emulator + Chrome Android gate in GitHub Actions that drives the actual mobile browser through ADB/Playwright Android support and verifies real touch-oriented behavior on the same exact candidate SHA.
+1. **HVA 2.0** — fast Playwright browser qualification on every relevant PR, strengthened for dynamic layout changes, touch semantics, keyboard/viewport behavior, protected regions, scrolling and automatic evidence.
+2. **Android Reality Gate (ARG)** — Android Emulator + Chrome Android in GitHub Actions, driven through ADB/Playwright Android support against the same exact candidate SHA.
 
-The teacher must no longer be expected to capture and send screenshots as the normal qualification mechanism. Human review remains authoritative for product judgment, but automatic evidence collection does the repetitive exploration.
+The teacher should inspect surfaced findings, not manually explore every screen and capture screenshots. Final PASS / REWORK / REJECT product authority remains human.
 
 ## Problem established by PR #747
 
-The existing HVA mobile project sets `isMobile: true` and `hasTouch: true`, but the FAB drag test drives the gesture with `page.mouse`. This proved the geometry contract under a mobile viewport, not the real touch interaction path used on Android.
+The current mobile Playwright project sets `isMobile: true` and `hasTouch: true`, but the FAB drag test uses `page.mouse`. That proves geometry inside a mobile viewport, not the real Android touch path.
 
-The current positioning adapter also observes the protected regions that exist when its effect runs. A protected region that mounts later can become visible without necessarily being added to the active `ResizeObserver` set. The real-device review exposed exactly that class of failure when the reference/material bar appeared after initial render and the FAB overlapped its primary action.
+The current positioning adapter also attaches `ResizeObserver` only to protected regions present when its effect runs. A protected region mounted later can therefore escape observation. The real-device review exposed that failure when the delayed reference/material bar appeared and the FAB overlapped its primary action.
 
-Therefore automated qualification must cover both:
+Automated qualification must therefore cover both:
 
-- **input reality** — touch/pointer behavior on Android Chrome;
-- **layout reality** — elements that appear, disappear, resize or become sticky after hydration, data arrival or user interaction.
+- **input reality** — Android Chrome touch/pointer behavior;
+- **layout reality** — elements that mount, unmount, resize or become sticky after hydration, data arrival or interaction.
 
 ## Goals
 
-- Detect mobile interaction failures without requiring the teacher to reproduce them manually.
-- Detect overlap, clipping, hidden actions, inaccessible content and sticky/fixed-region conflicts after delayed DOM changes.
+- Detect mobile interaction failures without teacher reproduction.
+- Detect overlap, clipping, hidden actions and sticky/fixed-region conflicts after delayed DOM changes.
 - Bind all evidence to the exact candidate SHA.
-- Produce inspectable screenshots, video/trace, geometry snapshots and a machine-readable receipt on failure.
-- Keep the existing HVA gate fast enough for routine PR qualification.
-- Add Android Chrome reality coverage for changes that affect mobile presentation or interaction.
-- Preserve the governed AAL2 test identity and existing baseline-integrity contract.
-- Stay within public-repository GitHub Actions standard runners and free/open tooling.
-- Keep final PASS / REWORK / REJECT product authority human.
+- Produce screenshots, video/trace where available, geometry snapshots and machine-readable receipts automatically.
+- Keep normal HVA fast while adding Android reality coverage only when relevant.
+- Reuse governed AAL2 HVA identity and baseline-integrity controls.
+- Stay on public-repository standard GitHub-hosted runners and free/open tooling.
+- Preserve human product authority.
 
 ## Non-goals
 
-- No commercial device-farm dependency.
-- No telemetry or production session recording.
-- No recording of real teachers or student data.
-- No autonomous product decision.
-- No weakening of current HVA, WCAG, baseline integrity, MFA or persistence safeguards.
-- No requirement to run a full Android matrix on every documentation-only change.
-- No replacement of occasional real-device human review for high-risk releases.
+No commercial device farm, production telemetry, recording of real teachers, student data, MFA weakening, autonomous product decision, or full Android matrix on documentation-only changes.
 
 ## Approaches considered
 
 ### A. Strengthen Playwright HVA only
 
-Add touch-aware flows, DOM mutation detection, overlap scanning, visual viewport/keyboard scenarios and richer artifacts to the existing Chromium HVA.
-
-**Advantages:** fastest, simplest, cheapest per run.  
-**Limit:** still runs desktop Chromium with mobile emulation and cannot prove Android Chrome behavior.
+Fast and inexpensive, but still desktop Chromium under mobile emulation. Insufficient by itself.
 
 ### B. HVA 2.0 + Android Reality Gate
 
-Keep A for rapid qualification and add a second gate using an Android Emulator with Chrome Android, ADB and Playwright Android automation.
-
-**Advantages:** exercises a materially more realistic mobile stack, catches touch/browser/runtime issues, still uses public-repository GitHub-hosted infrastructure and open tooling.  
-**Tradeoff:** slower and more operationally complex than normal HVA.
-
-**Chosen approach.**
+Keep A as the rapid gate and add an Android Emulator + Chrome Android gate. This exercises a materially more realistic mobile stack while remaining zero-cost-first. **Chosen.**
 
 ### C. Record real-device teacher sessions
 
-Add a special review mode to capture interaction and geometry from a physical device.
-
-**Advantages:** highest behavioral realism.  
-**Rejected for the first implementation:** raises privacy, consent, persistence and support complexity and still places work on the teacher. It remains a possible later residual-validation tool, not the primary gate.
+Highest realism but creates privacy, persistence and user-effort costs. Deferred as a possible residual validation mechanism, not the primary gate.
 
 ## Cost and infrastructure boundary
 
-The repository is public. Standard GitHub-hosted runners for public repositories are free and unlimited under GitHub's current hosted-runner policy. Current GitHub-hosted Linux runners expose Android SDK hardware acceleration; KVM permissions must be enabled in the workflow.
+The repository is public. Standard GitHub-hosted runners for public repositories are currently free and unlimited. Current GitHub-hosted Linux runners expose Android SDK hardware acceleration when KVM permissions are enabled.
 
-The initial gate therefore uses:
+Initial infrastructure:
 
-- `ubuntu-latest` standard GitHub-hosted runner;
+- `ubuntu-latest` standard runner;
 - KVM enablement;
-- `reactivecircus/android-emulator-runner@v2` (current v2 line; pinning strategy defined in implementation plan);
-- Android API level chosen from a stable Google APIs x86_64 system image compatible with Chrome automation;
-- Node 22, matching Docente OS;
-- Playwright Android API (`_android`) over ADB;
-- existing governed HVA credentials and local/preview target.
+- `reactivecircus/android-emulator-runner@v2`, pinned to a reviewed immutable commit in implementation;
+- stable Google APIs x86_64 Android image compatible with Chrome automation;
+- Node 22;
+- Playwright Android API over ADB;
+- existing governed HVA credentials.
 
-No paid larger runner is a design requirement. If the standard runner cannot meet reliability limits, the gate fails closed as `INFRA_BLOCKED`; it must not silently downgrade to browser emulation and claim Android qualification.
+No paid larger runner is required. If standard-runner Android automation is not reliable enough, result is `INFRA_BLOCKED`; the workflow must not silently fall back to emulated Chromium and claim Android qualification.
 
-## Gate topology
+## Phase 0 — toolchain feasibility proof
 
-### Gate 1 — HVA 2.0 / `hva/application`
+Playwright Android support is experimental, so product implementation must not begin by assuming the toolchain works. The first implementation step is a narrow infrastructure proof that:
 
-Runs on every relevant PR as today, but gains the following capabilities:
+1. boots the chosen Android emulator on `ubuntu-latest`;
+2. proves ADB connectivity and records device/API identity;
+3. launches or connects to Chrome Android through Playwright;
+4. makes the exact local Docente OS runtime reachable from Android;
+5. loads a harmless public route and captures one screenshot;
+6. exits with a classified `INFRA_BLOCKED` result if any prerequisite fails.
 
-- route/journey exploration for Oggi, Orario, Classi and Altro;
-- mobile touch-semantic tests that do not use `page.mouse` as proof of touch behavior;
-- delayed-region mutation scenarios;
-- generic protected-region overlap scanner;
+**Host reachability call:** prefer `adb reverse tcp:3000 tcp:3000`, allowing Android Chrome to reach the exact candidate at `http://127.0.0.1:3000` without changing application URLs. If reverse port forwarding proves unreliable, use the emulator host bridge (`10.0.2.2`) only through an explicit test-target configuration; never mutate production routing to serve the gate.
+
+This feasibility proof is infrastructure-only and cannot qualify product behavior.
+
+## Gate 1 — HVA 2.0 / `hva/application`
+
+Existing HVA remains the fast PR gate and gains:
+
+- Oggi, Orario, Classi and Altro journey coverage;
+- deterministic delayed-region mutation scenarios;
+- generic protected-region overlap scanning;
 - sticky header/footer obstruction checks during scroll;
-- `visualViewport` resize tests for software-keyboard-like geometry changes;
-- screenshots at governed checkpoints, not only on failure for high-risk UI journeys;
-- retained video/trace on failure;
+- visual-viewport/keyboard-like geometry tests;
+- governed screenshots at critical checkpoints;
+- retained trace/video on failure;
 - machine-readable geometry evidence.
 
-This remains the fast gate and catches deterministic product errors before Android boot cost is incurred.
+A test that claims touch behavior must not use `page.mouse` as its proof mechanism.
 
-### Gate 2 — Android Reality Gate / `hva/android-reality`
+## Gate 2 — Android Reality / `hva/android-reality`
 
-Runs only when impact classification says mobile interaction/presentation may have changed, or when manually dispatched for a candidate.
-
-Initial triggers include changes under:
-
-- `product/src/app/**` affecting rendered surfaces;
-- `product/src/components/**` for navigation, assistant, overlays, sticky/fixed UI, forms or mobile interaction;
-- `product/e2e/android/**`;
-- Android Reality workflow/scripts;
-- mobile CSS / presentation layers;
-- package/config files required by the gate.
-
-Pure docs-only changes are excluded.
+Runs only when impact classification says mobile interaction or presentation may have changed, or by manual dispatch.
 
 The gate must:
 
-1. checkout the exact PR head;
-2. build/start the exact local candidate or explicitly target an exact preview;
-3. boot Android emulator;
-4. prove ADB connectivity and record device/API/Chrome identity;
-5. connect Playwright to Android;
-6. open Chrome and authenticate with the governed HVA identity;
-7. execute governed mobile journeys;
-8. collect screenshots, screen recording or equivalent video, console/browser diagnostics where available, DOM/geometry snapshots and a receipt;
-9. publish `hva/android-reality` status against the tested SHA;
-10. fail closed on product failure or unqualified infrastructure state.
+1. checkout `github.event.pull_request.head.sha`;
+2. build/start that exact candidate or verify exact identity of an explicit preview;
+3. boot Android and prove ADB/Chrome identity;
+4. authenticate with the governed HVA identity;
+5. execute Android journeys with product retries set to zero;
+6. collect screenshots, geometry, logs and screen recording when reliable;
+7. publish a receipt and commit status against the exact SHA;
+8. fail closed on product failure, target-integrity mismatch or unqualified infrastructure.
 
 ## Initial Android journeys
 
-The first implementation is deliberately narrow and causal. It targets the exact class of defect that escaped HVA before broadening coverage.
-
 ### AR-01 — Oggi late context + FAB safety
 
-- Open Oggi from a clean session.
-- Capture geometry before delayed contextual surfaces are available.
-- Wait for `Lezione di riferimento / Apri materiali` when applicable.
-- Assert the FAB does not intersect the reference bar, its CTA, bottom navigation or protected reading region.
-- Verify a late-mounted protected region triggers re-resolution without page reload.
+Open Oggi, capture geometry before delayed context, wait for `Lezione di riferimento / Apri materiali`, then verify FAB, CTA, bottom navigation and protected reading regions do not intersect. A late-mounted protected region must trigger re-resolution without reload.
 
-### AR-02 — Real touch drag + snap + persistence
+### AR-02 — real touch drag + snap + persistence
 
-- Drag the FAB using Android/touch-native automation, not `page.mouse`.
-- Verify movement crosses the drag threshold.
-- Verify snap to a safe edge.
-- Verify semantic local preference (`edge`, `yRatio`) only.
-- Reload and verify restoration.
-- Verify the stored preference never outranks protected-region safety.
+Drag with Android/touch-native automation, verify threshold, snap, semantic `edge + yRatio` persistence, reload restoration and protected-region precedence.
 
-### AR-03 — Copilot open + software keyboard
+### AR-03 — Copilot + software keyboard
 
-- Open the Copilot.
-- Focus the composer so Android software keyboard appears.
-- Verify usable viewport shrinks and no essential control is hidden behind keyboard or bottom navigation.
-- Verify internal panel scrolling remains possible.
-- Close keyboard/panel and verify stable restoration.
+Open Copilot, focus composer, make Android keyboard visible, verify essential controls remain usable and panel scrolling works, then verify stable restoration after keyboard/panel closure.
 
-### AR-04 — Long-page scroll + sticky regions
+### AR-04 — long-page scroll + sticky regions
 
-- Exercise at least one long Classi surface and one Altro/Calendario surface.
-- Scroll through top, middle and bottom checkpoints.
-- Verify sticky header does not make the current actionable heading/control unreachable.
-- Verify bottom navigation and any contextual action bar do not cover primary actions.
+Exercise at least one long Classi surface and one Altro/Calendario surface at top/middle/bottom checkpoints; verify sticky header, bottom navigation and contextual bars do not make actionable content unreachable.
 
 ## Dynamic protected-region contract
 
-The positioning system must not assume the protected DOM is static.
+The positioning system must not assume static DOM. HVA 2.0 requires deterministic tests for protected-region insertion, removal and resize after FAB readiness.
 
-HVA 2.0 must include a deterministic test where a protected region is inserted after FAB readiness and another where a protected region changes size. A valid implementation must re-resolve geometry after both operations.
+Implementation may use `MutationObserver`, a centralized protected-region registry or another deterministic mechanism, but behavior must guarantee:
 
-Implementation may use `MutationObserver`, a centralized protected-region registry, or another deterministic mechanism, but the contract is behavioral:
-
-- newly mounted protected regions become observable without remounting the FAB;
+- newly mounted protected regions become active without remounting the FAB;
 - removed regions stop constraining layout;
 - resized regions trigger re-resolution;
-- current placement is retained when still valid to avoid jitter;
-- no continuous polling loop.
+- current placement remains when still valid to avoid jitter;
+- no polling loop.
 
 ## Generic overlap evidence
 
-For every governed checkpoint the test harness records rectangles for:
+At governed checkpoints record rectangles for FAB, bottom navigation, sticky header, contextual bars, `[data-copilot-protected]` regions and configured primary actions.
 
-- FAB;
-- bottom navigation;
-- sticky header;
-- contextual action/reference bars;
-- elements carrying `[data-copilot-protected]`;
-- configured primary actions.
+Classify intersections as:
 
-The receipt records intersections in CSS pixels and classifies them:
+- `BLOCKING` — essential action/content materially covered;
+- `WARNING` — near collision or non-essential overlap;
+- `CLEAR` — no governed intersection.
 
-- `BLOCKING`: essential action/content materially covered;
-- `WARNING`: near collision or non-essential overlap;
-- `CLEAR`: no governed intersection.
-
-The automatic gate fails only on deterministic `BLOCKING` findings. Warnings are retained for human review.
+Only deterministic `BLOCKING` findings fail automatically. Warnings remain human-review evidence.
 
 ## Evidence package
 
-Each Android Reality run publishes one artifact named from run ID and exact SHA containing:
+Each Android run publishes an artifact containing:
 
 - `receipt/android-reality.json`;
-- device and Chrome metadata;
-- tested SHA and target URL;
-- journey result table;
-- screenshots at key checkpoints;
-- Android screen recording when supported reliably by the emulator;
-- ADB log excerpt relevant to Chrome/runtime failures;
-- geometry snapshots/intersection report;
-- test logs;
-- infrastructure classification when the journey could not start.
+- device/API/Chrome metadata;
+- exact tested SHA and target identity;
+- journey results;
+- screenshots;
+- screen recording when reliable;
+- relevant ADB/Chrome diagnostics;
+- geometry/intersection report;
+- infrastructure classification.
 
-No artifact may contain credentials, TOTP secrets, session cookies, access tokens, student data or real-user content outside the governed synthetic HVA fixture.
+No credential, TOTP secret, cookie, access token, student data or real-user content may enter artifacts.
 
 ## Receipt semantics
 
-The Android gate has four top-level outcomes:
-
-- `PASS` — all governed Android journeys passed on the exact candidate;
+- `PASS` — governed Android journeys passed on exact candidate;
 - `FAIL_PRODUCT` — deterministic product/interaction/layout defect established;
-- `INFRA_BLOCKED` — emulator/ADB/Chrome/tooling failed before product judgment;
-- `NOT_APPLICABLE` — impact classifier proves Android gate not required for this change.
+- `INFRA_BLOCKED` — emulator/ADB/Chrome/tooling/target integrity prevented product judgment;
+- `NOT_APPLICABLE` — impact classifier proves gate unnecessary.
 
-`INFRA_BLOCKED` is never equivalent to PASS.
-
-The final human product decision remains separate:
-
-- automated HVA qualification;
-- Android Reality qualification;
-- Human Visual / Design decision.
-
-## Exact-SHA and target integrity
-
-For PR execution the Android gate must use `github.event.pull_request.head.sha`, not a mutable branch head discovered later.
-
-If the test targets a public preview rather than the local runtime, the preview must expose or otherwise prove the served release identity before Android journeys begin. A mismatch is `INFRA_BLOCKED` / target-integrity failure, not a product test result.
+`INFRA_BLOCKED` is never PASS.
 
 ## Authentication and data safety
 
-- Reuse the existing governed AAL2 HVA credentials.
-- Never create a parallel test account automatically.
-- Never weaken MFA for Android testing.
-- Use only the HVA synthetic workspace/fixtures.
-- Preserve preflight/postflight baseline integrity where the Android journey can mutate controlled fixture state.
-- Prefer read-only journeys in the first Android slice; any write journey requires explicit fixture reset and receipt evidence.
+Reuse the existing governed AAL2 HVA account; never auto-create a parallel identity or weaken MFA. Use only synthetic HVA fixtures. Preserve baseline preflight/postflight where a journey can mutate controlled state. Prefer read-only Android journeys in the first slice.
 
 ## Reliability policy
 
-- No automatic retry may turn an initial deterministic product failure into PASS without preserving the first failure as evidence.
-- Emulator boot may have bounded infrastructure retry because it is not product behavior.
-- Product journey retry default: zero for Android Reality.
-- Every failure is classified as product, target-integrity or infrastructure.
-- A failure whose classification is uncertain remains blocked and does not qualify the SHA.
+- Product journey retries: **zero**.
+- Bounded emulator-boot retry is allowed and classified as infrastructure.
+- An initial deterministic product failure cannot be hidden by a later retry.
+- Every failure must be classified as product, target-integrity or infrastructure.
+- Uncertain classification remains blocked.
 
 ## Rollout
 
-### Phase 1 — Close the discovered gap
+### Phase 1 — close the discovered gap
 
-- Add Android Reality workflow and minimal harness.
-- Implement AR-01 and AR-02.
-- Add delayed protected-region HVA regression.
-- Add exact-SHA receipt/status.
-- Run against the PR #747 lineage and prove the known real-device failures are caught automatically.
+- Phase 0 feasibility proof;
+- Android workflow + minimal harness;
+- AR-01 and AR-02;
+- delayed protected-region HVA regression;
+- exact-SHA receipt/status;
+- demonstrate RED on the pre-fix PR #747 candidate, then GREEN only after the minimal product fix.
 
-### Phase 2 — Keyboard and scroll reality
+### Phase 2 — keyboard and scroll reality
 
-- Add AR-03 and AR-04.
-- Add automatic geometry checkpoint pack.
-- Add richer video/screenshot evidence.
+Add AR-03, AR-04 and richer evidence packaging.
 
-### Phase 3 — Reusable TRAMA mobile reality contract
+### Phase 3 — reusable TRAMA contract
 
-Extract the generic Android Reality runner and geometry evidence format so Registro Docente and other TRAMA products can consume the same gate without cloning Docente OS-specific domain logic.
+Extract generic Android runner and geometry receipt so Registro Docente and other TRAMA products can adopt the same gate without cloning Docente OS domain logic.
 
 ## Acceptance criteria
 
-The design is implemented successfully only when:
+Implementation is accepted only when:
 
-1. the pre-fix PR #747 candidate is demonstrated RED by at least one new causal Android/HVA2 regression covering the observed defect class;
-2. the same tests become GREEN only after the minimal product fix;
-3. Android touch drag is exercised through Android/touch-native automation, not `page.mouse`;
-4. a protected region inserted after FAB readiness causes geometry re-resolution;
-5. FAB and `Apri materiali` cannot overlap at the governed Oggi checkpoint;
-6. exact SHA is present in the Android receipt and commit status;
-7. Android product journey retries are zero;
-8. failure evidence is automatically uploaded and sufficient for diagnosis without teacher-supplied screenshots;
-9. existing Product CI, HVA, MFA and baseline-integrity contracts remain intact;
-10. no paid service, production telemetry or student data is introduced;
-11. the teacher's normal review burden becomes inspecting surfaced findings rather than manually exploring and documenting every screen.
+1. the pre-fix PR #747 candidate is causally RED under new HVA2/Android coverage;
+2. the same tests become GREEN only after minimal fix;
+3. Android drag uses Android/touch-native automation, not `page.mouse`;
+4. late protected-region insertion causes re-resolution;
+5. FAB and `Apri materiali` cannot overlap at governed Oggi checkpoint;
+6. exact SHA is present in Android receipt and commit status;
+7. product journey retries are zero;
+8. failure artifacts are sufficient for diagnosis without teacher screenshots;
+9. Product CI, HVA, MFA and baseline integrity remain intact;
+10. no paid service, telemetry or student data is introduced;
+11. normal human review becomes inspection of surfaced findings rather than manual exhaustive exploration.
 
 ## Human authority
 
-Automation discovers and documents. It does not decide whether a product experience is pedagogically or professionally acceptable.
-
-A candidate may be `HVA PASS + ANDROID PASS` and still receive Human Visual / Design `REWORK`. Conversely, an automated `FAIL_PRODUCT` cannot be overridden to technical PASS without either fixing the defect or explicitly changing the governed contract through a human-approved design decision.
+Automation discovers and documents; it does not decide pedagogical or professional acceptability. `HVA PASS + ANDROID PASS` may still receive Human Visual / Design `REWORK`. An automated `FAIL_PRODUCT` cannot become technical PASS without a fix or an explicitly human-approved contract change.
