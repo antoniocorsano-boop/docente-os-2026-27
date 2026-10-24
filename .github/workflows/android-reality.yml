@@ -47,7 +47,11 @@ jobs:
         run: npm install --no-save --package-lock=false @playwright/test@1.55.0
 
       - name: Run Android Reality contract tests
-        run: node --test product/e2e/android/android-geometry.test.mjs product/scripts/experience/android-reality-report.test.mjs
+        shell: bash
+        run: |
+          node --test product/e2e/android/android-geometry.test.mjs product/scripts/experience/android-reality-report.test.mjs
+          cd product
+          npx tsx --test src/components/assistant/contextual-fab-protected-regions.test.ts
 
       - name: Build exact local product
         working-directory: product
