@@ -4,7 +4,12 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 
-const STAGES = ['typecheck', 'product-tests', 'lint', 'build']
+const STAGES = [
+  { stage: 'typecheck', command: 'npm run typecheck' },
+  { stage: 'product-tests', command: 'npm test' },
+  { stage: 'lint', command: 'npm run lint' },
+  { stage: 'build', command: 'npm run build' },
+]
 
 function parseArgs(argv) {
   const args = {}
@@ -153,6 +158,7 @@ function makeBrief(packet) {
         return `- [${finding.severity}] ${classifier} — ${location} — ${finding.message}`
       })
     : ['- No structured finding extracted; inspect the redacted evidence tail in the manifest.']
+  const failingCommand = packet.stages.find((stage) => stage.stage === packet.failingStage)?.command ?? 'none'
 
   return [
     '# TRAMA Diagnostic Agent — AI brief',
@@ -164,6 +170,7 @@ function makeBrief(packet) {
     `- Base: \`${packet.baseSha}\``,
     `- Workflow run: \`${packet.workflowRunId}\``,
     `- First failing stage: \`${packet.failingStage ?? 'none'}\``,
+    `- Failing command: \`${failingCommand}\``,
     `- Failure fingerprint: \`${packet.failureFingerprint}\``,
     '',
     '## Structured findings',
@@ -192,10 +199,11 @@ function main() {
   const outputPath = requireArg(args, 'output')
   const briefPath = requireArg(args, 'brief')
 
-  const stages = STAGES.map((stage) => {
+  const stages = STAGES.map(({ stage, command }) => {
     const log = readOptional(join(inputDir, `${stage}.log`))
     return {
       stage,
+      command,
       exitCode: readExitCode(inputDir, stage),
       logPresent: Boolean(log),
       log,
@@ -224,7 +232,7 @@ function main() {
   const warnings = sanitizedFindings.filter((finding) => finding.severity === 'warning')
   const evidence = stages
     .filter((stage) => stage.logPresent && (stage.stage === failingStage || stage.exitCode !== 0))
-    .map((stage) => ({ stage: stage.stage, logTail: tail(stage.log) }))
+    .map((stage) => ({ stage: stage.stage, command: stage.command, logTail: tail(stage.log) }))
   const changedFiles = readOptional(changedFilesPath)
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -246,7 +254,7 @@ function main() {
     },
     rules: ruleCounts(sanitizedFindings),
     changedFiles,
-    stages: stages.map(({ stage, exitCode, logPresent }) => ({ stage, exitCode, logPresent })),
+    stages: stages.map(({ stage, command, exitCode, logPresent }) => ({ stage, command, exitCode, logPresent })),
     findings: sanitizedFindings,
     evidence,
   }
