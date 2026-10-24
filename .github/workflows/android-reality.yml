@@ -45,8 +45,8 @@ jobs:
         working-directory: product
         run: npm install --no-save --package-lock=false @playwright/test@1.55.0
 
-      - name: Run Android Reality report contract tests
-        run: node --test product/scripts/experience/android-reality-report.test.mjs
+      - name: Run Android Reality contract tests
+        run: node --test product/e2e/android/android-geometry.test.mjs product/scripts/experience/android-reality-report.test.mjs
 
       - name: Build exact local product
         working-directory: product
