@@ -68,6 +68,10 @@ jobs:
         working-directory: product
         run: npm install --no-save --package-lock=false @playwright/test@1.55.0
 
+      - name: Install Playwright Android driver
+        working-directory: product
+        run: npx playwright install android
+
       - name: Load governed HVA domain clock
         working-directory: product
         shell: bash
