@@ -29,6 +29,16 @@ export function requireE2ECredentials() {
   }
 }
 
+async function logAuthCookieContinuity(page, boundary) {
+  const cookies = await page.context().cookies().catch(() => [])
+  const authCookieCount = cookies.filter((cookie) =>
+    cookie.name.startsWith('sb-') && cookie.name.includes('auth-token'),
+  ).length
+  process.stdout.write(
+    `Governed MFA cookie diagnostic: boundary=${boundary} url=${page.url()} cookieCount=${cookies.length} authCookieCount=${authCookieCount}\n`,
+  )
+}
+
 export async function loginE2E(page) {
   requireE2ECredentials()
 
@@ -48,6 +58,7 @@ export async function loginE2E(page) {
     ])
 
     const url = new URL(page.url())
+    await logAuthCookieContinuity(page, 'after-first-factor-navigation')
     if (url.pathname === '/login') {
       if (url.searchParams.get('error') !== 'auth_request_failed' || attempt === 2) {
         throw new Error(`Governed login failed at ${url.pathname}${url.search}`)
@@ -60,7 +71,12 @@ export async function loginE2E(page) {
   }
 
   if (/\/mfa(?:$|\?)/.test(new URL(page.url()).pathname + new URL(page.url()).search)) {
-    await completeMfaChallenge(page)
+    try {
+      await completeMfaChallenge(page)
+    } catch (error) {
+      await logAuthCookieContinuity(page, 'mfa-readiness-failure')
+      throw error
+    }
   }
 
   await reachPlannerBoundary(page)
