@@ -23,7 +23,7 @@ export async function connectAndroidRuntime() {
   const [apiRaw, releaseRaw, chromeRaw] = await Promise.all([
     device.shell('getprop ro.build.version.sdk'),
     device.shell('getprop ro.build.version.release'),
-    device.shell('dumpsys package com.android.chrome | grep versionName | head -1'),
+    device.shell('dumpsys package com.android.chrome'),
   ])
 
   const metadata = {
@@ -31,7 +31,7 @@ export async function connectAndroidRuntime() {
     serial,
     apiLevel: apiRaw.toString('utf8').trim(),
     androidRelease: releaseRaw.toString('utf8').trim(),
-    chromeVersion: chromeRaw.toString('utf8').trim().replace(/^versionName=/, '') || 'unknown',
+    chromeVersion: parseChromeVersion(chromeRaw.toString('utf8')),
   }
 
   await device.shell('am force-stop com.android.chrome')
@@ -56,6 +56,11 @@ export async function writeInfrastructureReceipt({ infrastructure, metadata = nu
   }
   await writeFile(INFRASTRUCTURE_PATH, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8')
   return receipt
+}
+
+function parseChromeVersion(raw) {
+  const match = raw.match(/^\s*versionName=(.+)$/m)
+  return match?.[1]?.trim() || 'unknown'
 }
 
 function sanitizeMetadata(metadata) {
