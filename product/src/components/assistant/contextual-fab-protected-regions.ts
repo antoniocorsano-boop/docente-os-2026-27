@@ -1,4 +1,4 @@
-export type ProtectedRegionRoot<TElement, TMutationTarget = ProtectedRegionRoot<TElement>> = {
+export type ProtectedRegionRoot<TElement, TMutationTarget = unknown> = {
   queryProtectedRegions: () => Iterable<TElement>
   queryBottomNavigation: () => TElement | null
   mutationTarget?: TMutationTarget
@@ -16,7 +16,7 @@ export type MutationObserverLike<TMutationTarget> = {
 
 export type ProtectedRegionObservationInput<
   TElement,
-  TMutationTarget = ProtectedRegionRoot<TElement>,
+  TMutationTarget = unknown,
 > = {
   root: ProtectedRegionRoot<TElement, TMutationTarget>
   trigger: TElement
@@ -29,7 +29,7 @@ export type ProtectedRegionObservationInput<
 
 export function createProtectedRegionObservation<
   TElement,
-  TMutationTarget = ProtectedRegionRoot<TElement>,
+  TMutationTarget = unknown,
 >({
   root,
   trigger,
