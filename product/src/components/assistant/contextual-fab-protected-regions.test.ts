@@ -16,7 +16,7 @@ test('late protected-region insertion removal and resize refresh the observed se
   let protectedRegions: FakeElement[] = [firstProtected]
   const observed: string[][] = []
   let geometryChanges = 0
-  let mutationCallback: (() => void) | null = null
+  const mutation = { callback: null as null | (() => void) }
 
   const root: ProtectedRegionRoot<FakeElement> = {
     queryProtectedRegions: () => protectedRegions,
@@ -39,7 +39,7 @@ test('late protected-region insertion removal and resize refresh the observed se
     trigger,
     resizeObserver,
     createMutationObserver(callback) {
-      mutationCallback = callback
+      mutation.callback = callback
       return {
         observe(target, options) {
           assert.equal(target, root)
@@ -56,12 +56,16 @@ test('late protected-region insertion removal and resize refresh the observed se
   assert.deepEqual(observed.at(-1), ['fab', 'first', 'bottom-nav'])
 
   protectedRegions = [firstProtected, lateProtected]
-  mutationCallback?.()
+  const insertionCallback = mutation.callback
+  assert.ok(insertionCallback)
+  insertionCallback()
   assert.deepEqual(observed.at(-1), ['fab', 'first', 'late', 'bottom-nav'])
   assert.equal(geometryChanges, 1)
 
   protectedRegions = [lateProtected]
-  mutationCallback?.()
+  const removalCallback = mutation.callback
+  assert.ok(removalCallback)
+  removalCallback()
   assert.deepEqual(observed.at(-1), ['fab', 'late', 'bottom-nav'])
   assert.equal(geometryChanges, 2)
 
