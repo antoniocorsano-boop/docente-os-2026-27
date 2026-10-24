@@ -1,8 +1,5 @@
 import { spawn } from 'node:child_process'
-import { createRequire } from 'node:module'
-import { fileURLToPath } from 'node:url'
 
-const require = createRequire(import.meta.url)
 const EXPECTED_RUNTIME_MIGRATION = '0103_material_reference_safety'
 const port = process.env.PORT?.trim() || '3000'
 const nextBin = process.platform === 'win32' ? 'next.cmd' : 'next'
@@ -13,7 +10,7 @@ if (process.env.DOCENTE_OS_RUNTIME_SCHEMA_PREFLIGHT?.trim().toLowerCase() === 'o
 
 console.log('Timetable visual extractor:', process.env.OPENAI_TIMETABLE_API_KEY?.trim() ? 'CONFIGURED' : 'UNAVAILABLE')
 
-const childEnv = buildChildEnvironment(process.env)
+const childEnv = { ...process.env }
 const child = spawn(nextBin, ['start', '-H', '0.0.0.0', '-p', port], {
   stdio: 'inherit',
   env: childEnv,
@@ -38,24 +35,6 @@ child.on('exit', (code, signal) => {
   }
   process.exitCode = code ?? 1
 })
-
-function buildChildEnvironment(env) {
-  const childEnv = { ...env }
-  if (env.GITHUB_ACTIONS !== 'true' || env.EXPERIENCE_TARGET !== 'local') return childEnv
-
-  const { HVA_CANONICAL_NOW } = require('../e2e/support/hva-governed-baseline-config.cjs')
-  const preloadPath = fileURLToPath(new URL('../e2e/support/hva-fixed-clock.cjs', import.meta.url))
-  childEnv.HVA_FIXED_NOW = HVA_CANONICAL_NOW
-  childEnv.NODE_OPTIONS = appendNodeRequire(childEnv.NODE_OPTIONS, preloadPath)
-  console.log('HVA deterministic clock:', HVA_CANONICAL_NOW)
-  return childEnv
-}
-
-function appendNodeRequire(existing, preloadPath) {
-  const required = `--require=${preloadPath}`
-  const normalized = existing?.trim()
-  return normalized ? `${normalized} ${required}` : required
-}
 
 async function assertRuntimeSchemaReady() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
