@@ -4,7 +4,7 @@
 
 **Goal:** Replace the flaky mobile Copilot trigger geometry with a reusable AUTO + manual-drag safe-positioning adapter that never covers protected content and can fall back to normal flow.
 
-**Architecture:** Keep the Contextual Copilot domain/AI contract unchanged. Add a pure geometry resolver plus a client positioning hook owned by the presentation layer; persist only a semantic UI preference locally. Move closed-FAB positioning to one CSS owner, then prove behavior with deterministic unit contracts and real Playwright/HVA evidence.
+**Architecture:** Keep the Contextual Copilot domain/AI contract unchanged. Add a pure geometry resolver plus a client positioning hook owned by the presentation layer; persist only a semantic UI preference locally. Consumers register protected content explicitly through a generic presentation attribute, while the resolver receives rectangles only. Move closed-FAB positioning to one CSS owner and prove behavior with deterministic unit contracts plus real Playwright/HVA evidence.
 
 **Tech Stack:** TypeScript 5.9, React 19, Next.js 16.3, Pointer Events, `visualViewport` when available, localStorage UI preference, Node/tsx tests, Playwright HVA. No new dependency.
 
@@ -20,16 +20,17 @@
 - No new package dependency.
 - Manual preference is semantic (`edge` + normalized `yRatio`), never absolute persisted pixels.
 - Safety outranks manual preference; lack of safe floating placement means `DOCKED_SAFE`.
+- The pure resolver receives geometry only; vertical pages register protected regions through presentation metadata, not domain types.
 - One CSS/module owner for closed-FAB geometry; contradictory `static`/`fixed` declarations are not allowed.
 - Full HVA must finish without a flaky `Progetta → UDA` retry before Human Visual / Design PASS can be reconsidered.
 
 ## Review Focus
 
-- Scroll through long content: the FAB must stay where valid, move only on collision, and never jitter continuously. Covered in Task 4 browser tests.
-- Software keyboard / reduced visual viewport: the FAB must leave the occluded area or dock. Covered in Task 1 resolver tests and Task 4 browser geometry checks where supported.
-- Corrupt/old local preference: fail closed to AUTO without throwing or blocking the assistant. Covered in Task 1 persistence tests.
-- Pointer cancel / tap-vs-drag ambiguity: a tap opens the assistant; cancelled drag restores prior placement and does not persist garbage. Covered in Task 2 integration behavior and Task 4 browser tests.
-- No floating slot on a content-dense 320 px viewport: deterministic `DOCKED_SAFE`, not overlap. Covered in Task 1 and Task 4.
+- Long-content scroll: stay still while valid, move only on collision, never jitter continuously. Task 4.
+- Software keyboard / reduced visual viewport: leave the occluded area or dock. Tasks 1 and 4.
+- Corrupt/old local preference: fail closed to AUTO without throwing or blocking the assistant. Task 1.
+- Pointer cancel / tap-vs-drag ambiguity: tap opens; cancelled drag restores prior state and persists nothing. Tasks 2 and 4.
+- No floating slot on a content-dense 320 px viewport: deterministic `DOCKED_SAFE`, not overlap. Tasks 1 and 4.
 
 ---
 
@@ -38,40 +39,28 @@
 **Files:**
 - Create: `product/src/components/assistant/contextual-fab-positioning.ts`
 - Create: `product/src/components/assistant/contextual-fab-positioning.test.ts`
-- Modify: `product/package.json` test script to include the new test file
+- Modify: `product/package.json`
 
 **Interfaces:**
 - Produces: `ContextualFabPreference`, `FabRect`, `FabPlacement`, `resolveContextualFabPlacement(input)`, `snapContextualFabPreference(input)`, `parseContextualFabPreference(raw)`.
 - Consumes: no React, DOM, application-domain or provider types.
 
-- [ ] **Step 1: Write the failing resolver tests**
+- [ ] **Step 1: Write failing resolver tests**
 
-Cover exact cases:
+Cover exactly: AUTO valid right-edge placement; manual preference by normalized ratio; left/right snap; collision temporary displacement without erasing preference; no slot → docked; bottom-nav/visual-viewport exclusion; dense 320×800 → docked; corrupt/version-mismatched persistence → AUTO.
 
-```text
-AUTO returns a valid right-edge floating placement when one exists
-manual right preference resolves near its normalized yRatio
-manual drag near left snaps to left
-collision selects nearest valid safe slot without deleting preference
-no safe slot returns { layout: 'docked' }
-bottom-nav and visual-viewport occlusion are excluded
-320×800 dense protected region docks safely
-corrupt/version-mismatched persisted JSON parses as AUTO
-```
-
-- [ ] **Step 2: Run only the new test and verify RED**
-
-Run from `product/`:
+- [ ] **Step 2: Run the new test and verify causal RED**
 
 ```bash
+cd product
 npx tsx --test src/components/assistant/contextual-fab-positioning.test.ts
 ```
 
-Expected: FAIL because the positioning module does not yet exist.
+Expected: FAIL because the positioning module does not exist.
 
 - [ ] **Step 3: Implement the pure resolver**
 
-Use these public types/signatures:
+Public contract:
 
 ```ts
 export type ContextualFabPreference =
@@ -89,66 +78,65 @@ export function snapContextualFabPreference(input: SnapContextualFabPreferenceIn
 export function parseContextualFabPreference(raw: string | null): ContextualFabPreference
 ```
 
-Resolver priority is exact: geometry bounds → protected rects → manual preference → AUTO default. Keep the current placement when still valid to avoid jitter.
+Priority: geometry bounds → protected rects → manual preference → AUTO default. Keep the current placement when still valid.
 
-- [ ] **Step 4: Run the new test and verify GREEN**
-
-Run the same command. Expected: all new resolver tests PASS.
-
-- [ ] **Step 5: Add the test to `npm test` and run the full product test command**
-
-Run:
+- [ ] **Step 4: Verify GREEN and wire into full product tests**
 
 ```bash
+npx tsx --test src/components/assistant/contextual-fab-positioning.test.ts
 npm test
 ```
 
-Expected: PASS with the new test included; no unrelated test removed.
+Expected: PASS; no unrelated test removed from `package.json`.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/components/assistant/contextual-fab-positioning.ts src/components/assistant/contextual-fab-positioning.test.ts package.json
 git commit -m "feat: add safe contextual FAB positioning contract"
 ```
 
-### Task 2: Client hook, local preference, drag/snap and reset AUTO
+### Task 2: Client hook, explicit protected regions, drag/snap and reset AUTO
 
 **Files:**
 - Create: `product/src/components/assistant/use-contextual-fab-position.ts`
+- Create: `product/e2e/experience/contextual-copilot-fab.spec.mjs`
 - Modify: `product/src/components/assistant/contextual-assistant-panel.tsx`
+- Modify: `product/src/app/knowledge/[assetId]/page.tsx`
 
 **Interfaces:**
 - Consumes: Task 1 resolver and preference types.
-- Produces: `useContextualFabPosition(options)` returning trigger ref/bindings, resolved placement state, pointer handlers, and `resetToAuto()`.
+- Produces: `useContextualFabPosition(options)` returning trigger ref/bindings, resolved placement state, pointer handlers and `resetToAuto()`.
+- Protected-region convention: consumer elements opt in with `data-copilot-protected`; the hook converts their DOM rectangles to `FabRect[]` before calling the pure resolver.
 
-- [ ] **Step 1: Write a behavioral RED in Playwright before implementing the hook**
+- [ ] **Step 1: Write browser RED `manual drag snaps and persists semantic preference`**
 
-In Task 4's new spec file, first add only the test `manual drag snaps and persists semantic preference`, targeting the current branch. It must fail because the current trigger has no drag state/data attributes or persistence.
+Use `/planner` or another floating-capable governed surface. Require `data-fab-*`, drag to the opposite edge, reload, and assert restored manual side. Current baseline must fail because none of this contract exists.
 
-- [ ] **Step 2: Run that one Playwright test and certify the failure is causal**
+- [ ] **Step 2: Certify RED is causal**
 
-Expected failure must be one of: missing `data-fab-*` contract, drag does not move/snap, or preference is absent after reload. Do not proceed on auth/fixture/infrastructure failure.
+Accepted failures: missing `data-fab-*`, no drag movement/snap, or no restored preference. Stop on auth/fixture/infrastructure failure.
 
 - [ ] **Step 3: Implement `useContextualFabPosition`**
 
 Required behavior:
 
 ```text
-safe SSR/pre-hydration state = docked
+safe pre-hydration state = docked
 read DOCENTE_OS_CONTEXTUAL_FAB_PLACEMENT_V1 after mount
-measure trigger + registered protected regions
-use visualViewport when available
-re-resolve on material resize/scroll via requestAnimationFrame
-pointer movement threshold distinguishes tap from drag
-pointercancel restores prior state
-pointerup snaps and persists only a valid manual preference
-resetToAuto removes manual preference and re-resolves AUTO
+collect [data-copilot-protected] rects + bottom navigation + effective visual viewport
+re-resolve on material resize/scroll through requestAnimationFrame
+small movement threshold distinguishes tap from drag
+pointercancel restores prior placement
+pointerup snaps and persists only valid manual preference
+resetToAuto clears manual preference and resolves AUTO
 ```
 
-Do not store domain identifiers or send data remotely.
+- [ ] **Step 4: Register the UDA reading/task surface explicitly**
 
-- [ ] **Step 4: Integrate the hook into the closed floating branch of `ContextualAssistantPanel`**
+On `product/src/app/knowledge/[assetId]/page.tsx`, mark the focused operational regions that must never be obscured with `data-copilot-protected`. Do not pass `Lesson`, UDA or asset objects into the resolver.
+
+- [ ] **Step 5: Integrate the hook into `ContextualAssistantPanel`**
 
 Expose:
 
@@ -159,61 +147,68 @@ data-fab-ready="true|false"
 data-fab-displaced="true|false"
 ```
 
-Preserve the existing accessible name and normal click-to-open behavior. A drag must not open the assistant.
+Preserve the current accessible name and tap-to-open behavior. A drag must not open the assistant.
 
-- [ ] **Step 5: Add keyboard-accessible `Ripristina posizione automatica` when a manual preference exists**
+- [ ] **Step 6: Add keyboard-accessible `Ripristina posizione automatica`**
 
-Place the control inside the expanded floating assistant surface; do not make the expanded panel draggable.
+Expose it only when a manual preference exists, inside the expanded floating assistant. The expanded panel itself remains non-draggable.
 
-- [ ] **Step 6: Re-run the targeted Playwright test**
-
-Expected: manual drag snaps, reload restores the semantic side/ratio, and reset returns to AUTO.
-
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: Run targeted Playwright and verify GREEN**
 
 ```bash
-git add src/components/assistant/use-contextual-fab-position.ts src/components/assistant/contextual-assistant-panel.tsx e2e/experience/contextual-copilot-fab.spec.mjs
+npx playwright test e2e/experience/contextual-copilot-fab.spec.mjs --config=playwright.experience.config.mjs --project=mobile-412x915
+```
+
+Expected: drag, snap, reload persistence and reset AUTO PASS.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add src/components/assistant/use-contextual-fab-position.ts src/components/assistant/contextual-assistant-panel.tsx 'src/app/knowledge/[assetId]/page.tsx' e2e/experience/contextual-copilot-fab.spec.mjs
 git commit -m "feat: add adaptive contextual Copilot FAB"
 ```
 
-### Task 3: Make geometry ownership single and deterministic
+### Task 3: Give closed-FAB geometry one deterministic owner
 
 **Files:**
 - Modify: `product/src/app/assistant.css`
 - Modify: `product/src/app/assistant-safe-area.css`
+- Modify: `product/src/components/assistant/contextual-fab-positioning.test.ts`
 - Verify only: `product/src/app/layout.tsx`
 
 **Interfaces:**
-- Consumes: `data-fab-layout` and inline/CSS variables emitted by Task 2.
+- Consumes: `data-fab-layout` emitted by Task 2.
 - Produces: one authoritative CSS path for closed-trigger geometry.
 
-- [ ] **Step 1: Add a RED contract for duplicate geometry ownership**
+- [ ] **Step 1: Add a failing duplicate-ownership contract**
 
-Extend `product/src/components/assistant/contextual-fab-positioning.test.ts` with a source/CSS contract that reads both stylesheets and fails while the same mobile trigger state contains contradictory `position: static` and `position: fixed` declarations.
+Read both stylesheets in the existing positioning test and prove the inherited baseline contains contradictory mobile `position: static` and `position: fixed` declarations for `.dosAssistantFloatingTrigger`.
 
-- [ ] **Step 2: Run the contract and verify RED on the inherited baseline**
+- [ ] **Step 2: Run and verify RED**
 
-Expected: FAIL showing both current declarations are present.
+```bash
+npx tsx --test src/components/assistant/contextual-fab-positioning.test.ts
+```
+
+Expected: only the new ownership assertion fails.
 
 - [ ] **Step 3: Consolidate geometry**
 
-Keep visual styling in `assistant.css`. Make `assistant-safe-area.css` the only mobile closed-trigger geometry owner, keyed by deterministic layout state:
+Keep appearance in `assistant.css`; make `assistant-safe-area.css` the only closed-trigger positioning owner. Key geometry by state:
 
 ```css
-[data-fab-layout='docked'] { position: static; ... }
-[data-fab-layout='floating'] { position: fixed; ... }
+.dosAssistantFloatingTrigger[data-fab-layout='docked'] { position: static; }
+.dosAssistantFloatingTrigger[data-fab-layout='floating'] { position: fixed; }
 ```
 
-Remove unconditional conflicting mobile `position` declarations. Preserve the bottom-nav safe inset and 44 px minimum target. Use `prefers-reduced-motion` for reposition transitions.
+Remove unconditional conflicting mobile position rules. Preserve bottom-nav inset and ≥44 px target; reduced motion suppresses non-essential reposition transitions.
 
-- [ ] **Step 4: Run resolver/CSS contract tests and typecheck**
+- [ ] **Step 4: Verify GREEN + typecheck**
 
 ```bash
 npx tsx --test src/components/assistant/contextual-fab-positioning.test.ts
 npm run typecheck
 ```
-
-Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -222,55 +217,57 @@ git add src/app/assistant.css src/app/assistant-safe-area.css src/components/ass
 git commit -m "fix: give contextual FAB one geometry owner"
 ```
 
-### Task 4: Browser contract for no-overlap, drag, persistence and fallback
+### Task 4: Browser no-overlap, viewport matrix, persistence and scroll stability
 
 **Files:**
-- Create: `product/e2e/experience/contextual-copilot-fab.spec.mjs`
+- Modify: `product/e2e/experience/contextual-copilot-fab.spec.mjs`
 - Modify: `product/e2e/experience/critical-journeys.spec.mjs`
 
 **Interfaces:**
-- Consumes: `data-fab-*` attributes from Task 2.
+- Consumes: `data-fab-*` contract from Task 2.
 - Produces: HVA evidence for DPG-09 / DPG-18 and regression protection for the original UDA finding.
 
-- [ ] **Step 1: Replace the obsolete `position === 'static'` acceptance rule**
+- [ ] **Step 1: Replace the obsolete `position === 'static'` rule**
 
-`assertMobileAssistantDoesNotCoverTask` must now accept either:
+`assertMobileAssistantDoesNotCoverTask` accepts either:
 
 ```text
-floating AND no intersection with protected task/nav/viewport
+floating AND no intersection with protected task/nav/effective viewport
 OR
-docked AND positioned after the protected task with required spacing
+docked AND positioned after protected task with required spacing
 ```
 
-It must no longer require a specific CSS positioning primitive.
+It must test the user outcome, not a CSS primitive.
 
-- [ ] **Step 2: Add deterministic first-render UDA test**
+- [ ] **Step 2: Add first-render UDA regression**
 
-At 412×915, open `Progetta → UDA`; wait for `data-fab-ready="true"`; assert no intersection before any retry or user movement. Capture screenshot evidence.
+At 412×915, open `Progetta → UDA`; wait for `data-fab-ready="true"`; assert no intersection before user movement. Capture screenshot.
 
-- [ ] **Step 3: Add manual drag + reload + reset test**
+- [ ] **Step 3: Complete manual drag + reload + reset coverage**
 
-Drag the closed trigger across to the opposite safe edge, release, verify snapped mode, reload, verify semantic preference restored, open assistant, choose `Ripristina posizione automatica`, close/reload and verify AUTO.
+Verify semantic edge survives reload; reset AUTO removes it and remains AUTO after another reload.
 
-- [ ] **Step 4: Add viewport matrix and dense fallback**
+- [ ] **Step 4: Add 320×800, 390×844 and 412×915 matrix**
 
-Exercise 320×800, 390×844 and 412×915. On a deliberately dense/protected geometry, expect `data-fab-layout="docked"`, never overlap.
+At each viewport, assert either valid floating geometry or deterministic docked fallback. Dense protected geometry must dock rather than overlap.
 
-- [ ] **Step 5: Add scroll stability assertion**
+- [ ] **Step 5: Add scroll stability**
 
-Scroll the UDA in multiple increments. If placement remains valid, its state/edge must remain stable. If collision forces displacement, `data-fab-displaced="true"` is allowed but no overlap is allowed at any sampled point.
+Scroll a long UDA in several increments. If current placement remains valid, edge/layout stay stable. If collision forces displacement, `data-fab-displaced="true"` is allowed; overlap is never allowed.
 
-- [ ] **Step 6: Run focused browser tests until zero flaky**
+- [ ] **Step 6: Add tap-vs-drag and pointer-cancel coverage**
 
-Run:
+Normal tap opens the assistant. Cancelled drag restores prior geometry and does not alter stored preference.
+
+- [ ] **Step 7: Run focused browser tests until zero flaky**
 
 ```bash
 npx playwright test e2e/experience/contextual-copilot-fab.spec.mjs e2e/experience/critical-journeys.spec.mjs --config=playwright.experience.config.mjs --project=mobile-412x915
 ```
 
-Expected: PASS with zero flaky tests. A retry-pass is not sufficient.
+Expected: PASS with zero flaky. Retry-pass is insufficient.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add e2e/experience/contextual-copilot-fab.spec.mjs e2e/experience/critical-journeys.spec.mjs
@@ -281,36 +278,27 @@ git commit -m "test: qualify safe contextual Copilot FAB on mobile"
 
 **Files:**
 - No product file changes unless a new causal RED is found.
-- Evidence comes from Product CI and Human + Visual Acceptance on one exact SHA.
 
 **Interfaces:**
 - Consumes: completed Tasks 1–4.
 - Produces: engineering qualification plus evidence for the human DPG decision.
 
-- [ ] **Step 1: Freeze the candidate SHA and inspect the full diff**
+- [ ] **Step 1: Freeze candidate SHA and inspect full diff**
 
-Confirm scope is limited to FAB presentation/geometry/tests/docs. No AI policy, auth, domain, tenant or unrelated UX change.
+Scope must remain FAB presentation/geometry/tests/docs. No AI policy, auth, domain, tenant or unrelated UX change.
 
 - [ ] **Step 2: Require Product CI PASS on the exact candidate**
 
-Typecheck, product tests, lint and build must all pass.
+Typecheck, product tests, lint and build all PASS.
 
-- [ ] **Step 3: Require full HVA PASS on the same exact candidate**
+- [ ] **Step 3: Require full HVA PASS on the same SHA**
 
-Requirements:
-
-```text
-baseline pre/post fingerprint unchanged
-browser/journeys/layout/mobileTargets PASS
-Progetta → UDA mobile passes first attempt
-zero flaky tests attributable to FAB geometry
-no new console/network findings
-```
+Require unchanged baseline pre/post fingerprint, browser/journeys/layout/mobileTargets PASS, `Progetta → UDA` first-attempt PASS, zero FAB-geometry flaky, and no new console/network findings.
 
 - [ ] **Step 4: Perform Human Visual / Design Review**
 
-Review screenshots/video at minimum for 320×800, 390×844, 412×915 and desktop. Promote only if DPG-09 and DPG-18 are PASS and no new blocker appears under DPG-05, DPG-07 or DPG-17.
+Review 320×800, 390×844, 412×915 and desktop evidence. Promote only if DPG-09 and DPG-18 are PASS and no new blocker appears under DPG-05, DPG-07 or DPG-17.
 
 - [ ] **Step 5: Stop at human merge decision**
 
-Do not merge or deploy automatically. Record exact SHA, CI/HVA runs, visual decision and any watch items in the PR.
+Do not merge or deploy automatically. Record exact SHA, CI/HVA runs, visual decision and watch items in the PR.
