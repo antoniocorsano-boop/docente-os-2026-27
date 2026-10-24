@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/android-reality.yml'
       - 'product/e2e/android/**'
+      - 'product/e2e/support/**'
       - 'product/scripts/experience/android-reality-*'
       - 'product/package.json'
       - 'product/package-lock.json'
@@ -15,16 +16,24 @@ permissions:
   contents: read
   statuses: write
 
+concurrency:
+  group: docente-os-governed-mfa-e2e
+  queue: max
+
 env:
+  E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
+  E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
+  EXPERIENCE_TARGET: android
   NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
   NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
 
 jobs:
-  infrastructure-feasibility:
-    name: android-infrastructure-feasibility
+  android-reality:
+    name: android-reality-phase1
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
 
     steps:
       - name: Checkout exact tested candidate
@@ -78,7 +87,11 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Prove Android emulator, ADB and Chrome reachability
+      - name: Run Android Reality AR-01
+        id: android
+        continue-on-error: true
+        env:
+          EXPECTED_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
           api-level: 35
@@ -87,46 +100,60 @@ jobs:
           profile: pixel_7
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
           disable-animations: true
-          script: cd product && node e2e/android/android-smoke.mjs
+          script: cd product && node e2e/android/run-android-reality.mjs
 
-      - name: Publish Android infrastructure evidence
+      - name: Publish Android Reality evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-reality-infrastructure-${{ github.run_id }}
+          name: android-reality-${{ github.run_id }}-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           if-no-files-found: warn
           retention-days: 30
           path: |
             product/test-results/android-reality/
             /tmp/docente-os-android-server.log
 
-      - name: Summarize infrastructure result
-        if: always()
-        shell: bash
-        run: |
-          if [ -f product/test-results/android-reality/infrastructure.json ]; then
-            cat product/test-results/android-reality/infrastructure.json
-          else
-            echo '{"infrastructure":"INFRA_BLOCKED","error":"receipt missing"}'
-          fi
-
       - name: Publish exact-SHA Android Reality status
         if: always()
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require('fs')
             const sha = context.eventName === 'pull_request'
               ? context.payload.pull_request.head.sha
               : context.sha
-            const infrastructurePassed = '${{ job.status }}' === 'success'
+            let receipt = null
+            try {
+              receipt = JSON.parse(fs.readFileSync('product/test-results/android-reality/receipt/android-reality.json', 'utf8'))
+            } catch {}
+            const outcome = receipt?.outcome ?? 'INFRA_BLOCKED'
+            const state = outcome === 'FAIL_PRODUCT' ? 'failure'
+              : outcome === 'INFRA_BLOCKED' ? 'error'
+              : 'pending'
+            const description = outcome === 'FAIL_PRODUCT'
+              ? 'AR-01 ha rilevato un difetto prodotto; AR-02 non ancora eseguito'
+              : outcome === 'INFRA_BLOCKED'
+                ? 'Android Reality bloccato da infrastruttura o target integrity'
+                : 'AR-01 superato; AR-02 ancora pendente'
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha,
-              state: infrastructurePassed ? 'pending' : 'error',
+              state,
               context: 'hva/android-reality',
-              description: infrastructurePassed
-                ? 'Infrastructure proven; AR-01/AR-02 product journeys pending'
-                : 'Android Reality infrastructure or contract blocked',
+              description,
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
+
+      - name: Enforce Android Reality AR-01 outcome
+        if: always()
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('fs')
+          const path = 'product/test-results/android-reality/receipt/android-reality.json'
+          if (!fs.existsSync(path)) process.exit(2)
+          const receipt = JSON.parse(fs.readFileSync(path, 'utf8'))
+          if (receipt.outcome === 'FAIL_PRODUCT') process.exit(1)
+          if (receipt.outcome === 'INFRA_BLOCKED') process.exit(2)
+          NODE
