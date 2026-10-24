@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
@@ -110,4 +110,20 @@ test('redacts credential-like values from manifest and AI brief', () => {
   assert.doesNotMatch(brief, /abc\.def\.ghi/)
   assert.doesNotMatch(brief, /super-secret-value/)
   assert.match(serialized, /\[REDACTED\]/)
+})
+
+test('Product CI emits one common AI diagnostic packet without masking canonical stage failures', () => {
+  const workflow = readFileSync(resolve('.github/workflows/product-ci.yml'), 'utf8')
+
+  assert.match(workflow, /id: typecheck/)
+  assert.match(workflow, /id: product_tests/)
+  assert.match(workflow, /id: lint/)
+  assert.match(workflow, /id: build/)
+  assert.match(workflow, /test-results\/ai-diagnostics/)
+  assert.match(workflow, /eslint \. --format json --output-file test-results\/ai-diagnostics\/eslint\.json/)
+  assert.match(workflow, /node \.github\/scripts\/diagnostics\/diagnostic-packet\.mjs/)
+  assert.match(workflow, /product-ai-diagnostics-\$\{\{ github\.run_id \}\}/)
+  assert.match(workflow, /cat product\/test-results\/ai-diagnostics\/ai-brief\.md >> "\$GITHUB_STEP_SUMMARY"/)
+  assert.doesNotMatch(workflow, /continue-on-error:\s*true/)
+  assert.equal(existsSync(resolve('.github/workflows/product-lint-diagnostics.yml')), false)
 })
