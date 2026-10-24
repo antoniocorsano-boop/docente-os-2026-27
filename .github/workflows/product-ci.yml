@@ -8,6 +8,7 @@ on:
       - "render.yaml"
       - ".github/workflows/**"
       - ".github/scripts/certification/**"
+      - ".github/scripts/diagnostics/**"
       - ".github/scripts/runtime-release-contract.mjs"
       - ".github/scripts/runtime-release-contract.test.mjs"
       - "ops/runtime-release-contract.json"
@@ -173,17 +174,27 @@ jobs:
 
       - run: npm ci --no-audit --no-fund
 
-      - run: npm run typecheck
+      - name: Run typecheck
+        id: typecheck
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p test-results/ai-diagnostics
+          status=0
+          npm run typecheck 2>&1 | tee test-results/ai-diagnostics/typecheck.log || status=$?
+          printf '%s\n' "$status" > test-results/ai-diagnostics/typecheck.exit
+          exit "$status"
 
       - name: Run product tests
         id: product_tests
         shell: bash
         run: |
           set -o pipefail
-          mkdir -p test-results/product-ci
+          mkdir -p test-results/product-ci test-results/ai-diagnostics
           status=0
-          npm test 2>&1 | tee test-results/product-ci/npm-test.log || status=$?
+          npm test 2>&1 | tee test-results/product-ci/npm-test.log test-results/ai-diagnostics/product-tests.log || status=$?
           printf '%s\n' "$status" > test-results/product-ci/exit-code.txt
+          printf '%s\n' "$status" > test-results/ai-diagnostics/product-tests.exit
           grep -nE 'not ok|AssertionError|ERR_ASSERTION|Error:|FAIL|failed|failure' test-results/product-ci/npm-test.log > test-results/product-ci/failure-index.txt || true
           exit "$status"
 
@@ -225,9 +236,68 @@ jobs:
           retention-days: 30
           path: product/test-results/product-ci/
 
-      - run: npm run lint
+      - name: Run lint
+        id: lint
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p test-results/ai-diagnostics
+          status=0
+          npm run lint 2>&1 | tee test-results/ai-diagnostics/lint.log || status=$?
+          printf '%s\n' "$status" > test-results/ai-diagnostics/lint.exit
+          exit "$status"
 
-      - run: npm run build
+      - name: Collect structured lint diagnostics
+        if: failure() && steps.lint.outcome == 'failure'
+        shell: bash
+        run: |
+          ./node_modules/.bin/eslint . --format json --output-file test-results/ai-diagnostics/eslint.json || true
+
+      - name: Run build
+        id: build
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p test-results/ai-diagnostics
+          status=0
+          npm run build 2>&1 | tee test-results/ai-diagnostics/build.log || status=$?
+          printf '%s\n' "$status" > test-results/ai-diagnostics/build.exit
+          exit "$status"
+
+      - name: Generate Product CI AI diagnostic packet
+        if: failure() && (steps.typecheck.outcome == 'failure' || steps.product_tests.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.build.outcome == 'failure')
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        env:
+          EXACT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          mkdir -p product/test-results/ai-diagnostics
+          if [ -n "${BASE_SHA:-}" ] && git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            git diff --name-only "$BASE_SHA...$EXACT_HEAD_SHA" > product/test-results/ai-diagnostics/changed-files.txt
+          else
+            git show --pretty= --name-only "$EXACT_HEAD_SHA" > product/test-results/ai-diagnostics/changed-files.txt
+          fi
+          node .github/scripts/diagnostics/diagnostic-packet.mjs \
+            --input-dir product/test-results/ai-diagnostics \
+            --source product-ci \
+            --exact-head "$EXACT_HEAD_SHA" \
+            --base "${BASE_SHA:-unknown}" \
+            --run-id "${{ github.run_id }}" \
+            --changed-files product/test-results/ai-diagnostics/changed-files.txt \
+            --output product/test-results/ai-diagnostics/diagnostic-manifest.json \
+            --brief product/test-results/ai-diagnostics/ai-brief.md
+          cat product/test-results/ai-diagnostics/ai-brief.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Product CI AI diagnostic packet
+        if: failure() && (steps.typecheck.outcome == 'failure' || steps.product_tests.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.build.outcome == 'failure')
+        uses: actions/upload-artifact@v4
+        with:
+          name: product-ai-diagnostics-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 30
+          path: product/test-results/ai-diagnostics/
 
       - name: Set up Supabase CLI for deep DB replay
         if: steps.runtime_impact.outputs.database_deep == 'true'
