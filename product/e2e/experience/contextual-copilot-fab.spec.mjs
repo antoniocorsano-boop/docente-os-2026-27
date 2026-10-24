@@ -50,6 +50,10 @@ test('Contextual Copilot FAB: manual drag snaps and persists semantic preference
   await expect(trigger, 'A completed drag must switch the FAB to a manual semantic preference.').toHaveAttribute('data-fab-mode', 'manual')
   const snappedEdge = await trigger.getAttribute('data-fab-edge')
   expect(snappedEdge).toMatch(/^(left|right)$/)
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Posizione manuale del copilota attiva' }),
+    'Persisting the local FAB preference must have perceivable assistive feedback.',
+  ).toBeAttached()
 
   const persisted = await page.evaluate((key) => window.localStorage.getItem(key), STORAGE_KEY)
   expect(persisted, 'The device-local preference must be stored after a valid drag.').not.toBeNull()
@@ -73,4 +77,22 @@ test('Contextual Copilot FAB: manual drag snaps and persists semantic preference
   await expect(restoredTrigger).toHaveAttribute('data-fab-ready', 'true')
   await expect(restoredTrigger).toHaveAttribute('data-fab-mode', 'manual')
   await expect(restoredTrigger).toHaveAttribute('data-fab-edge', snappedEdge)
+
+  await restoredTrigger.click()
+  const reset = page.getByRole('button', { name: 'Ripristina posizione automatica' })
+  await expect(reset, 'A stored manual preference must expose a keyboard-accessible reset to AUTO.').toBeVisible()
+  await reset.click()
+  await expect(reset).toHaveCount(0)
+  await page.getByRole('button', { name: 'Chiudi' }).click()
+
+  const automaticTrigger = page.locator('.dosAssistantFloatingTrigger')
+  await expect(automaticTrigger).toHaveAttribute('data-fab-ready', 'true')
+  await expect(automaticTrigger).toHaveAttribute('data-fab-mode', 'auto')
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Posizione automatica del copilota attiva' }),
+  ).toBeAttached()
+  expect(await page.evaluate((key) => window.localStorage.getItem(key), STORAGE_KEY)).toBeNull()
+
+  await page.reload()
+  await expect(page.locator('.dosAssistantFloatingTrigger')).toHaveAttribute('data-fab-mode', 'auto')
 })
