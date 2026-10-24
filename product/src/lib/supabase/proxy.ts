@@ -15,6 +15,17 @@ function createResponse(request: NextRequest, requestHeaderOverrides?: Headers) 
   })
 }
 
+function authCookieShape(request: NextRequest) {
+  return request.cookies
+    .getAll()
+    .filter(({ name }) => name.startsWith('sb-') && name.includes('auth-token'))
+    .map(({ name, value }) => {
+      const chunk = name.match(/\.(\d+)$/)?.[1] ?? 'base'
+      return `${chunk}:${value.length}`
+    })
+    .join(',') || 'none'
+}
+
 export async function updateSession(request: NextRequest, requestHeaderOverrides?: Headers) {
   let response = createResponse(request, requestHeaderOverrides)
 
@@ -46,7 +57,7 @@ export async function updateSession(request: NextRequest, requestHeaderOverrides
       .getAll()
       .filter(({ name }) => name.startsWith('sb-') && name.includes('auth-token')).length
     console.info(
-      `Governed MFA claims diagnostic: boundary=proxy authCookieCount=${authCookieCount} claimsSubPresent=${Boolean(data?.claims?.sub)} claimsError=${error?.name ?? 'none'}`,
+      `Governed MFA claims diagnostic: boundary=proxy authCookieCount=${authCookieCount} authCookieShape=${authCookieShape(request)} cookieHeaderLength=${request.headers.get('cookie')?.length ?? 0} claimsSubPresent=${Boolean(data?.claims?.sub)} claimsError=${error?.name ?? 'none'}`,
     )
   }
 
