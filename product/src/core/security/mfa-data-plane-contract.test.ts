@@ -47,3 +47,13 @@ test('governed HVA MFA setup gives the server-rendered MFA boundary an explicit 
     /expect\(\s*page\.getByRole\('heading',\s*\{\s*name:\s*'Conferma il secondo fattore\.'\s*\}\),?\s*\)\.toBeVisible\(\s*\)/,
   )
 })
+
+test('governed HVA MFA setup retries exactly once when first-factor session continuity is lost', () => {
+  assert.match(e2eAuth, /const MFA_SESSION_CONTINUITY_RETRY_LIMIT\s*=\s*1/)
+  assert.match(
+    e2eAuth,
+    /url\.pathname\s*===\s*'\/login'[\s\S]*url\.searchParams\.get\('error'\)\s*===\s*'session_required'/,
+  )
+  assert.match(e2eAuth, /Governed MFA session continuity lost after first factor; retrying full login/)
+  assert.match(e2eAuth, /page\.context\(\)\.clearCookies\(\)/)
+})
