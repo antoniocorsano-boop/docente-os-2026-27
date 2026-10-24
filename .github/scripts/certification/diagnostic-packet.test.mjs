@@ -67,6 +67,12 @@ test('builds a lint diagnostic packet from structured ESLint findings', () => {
   assert.equal(packet.baseSha, 'base456')
   assert.equal(packet.workflowRunId, '42')
   assert.equal(packet.failingStage, 'lint')
+  assert.deepEqual(packet.stages.map(({ stage, command }) => ({ stage, command })), [
+    { stage: 'typecheck', command: 'npm run typecheck' },
+    { stage: 'product-tests', command: 'npm test' },
+    { stage: 'lint', command: 'npm run lint' },
+    { stage: 'build', command: 'npm run build' },
+  ])
   assert.equal(packet.counts.errors, 2)
   assert.deepEqual(packet.rules, {
     'react-hooks/refs': 1,
@@ -78,6 +84,7 @@ test('builds a lint diagnostic packet from structured ESLint findings', () => {
     '.github/workflows/product-ci.yml',
   ])
   assert.match(brief, /PROPOSE_ONLY/)
+  assert.match(brief, /Failing command: `npm run lint`/)
   assert.match(brief, /react-hooks\/refs/)
 })
 
