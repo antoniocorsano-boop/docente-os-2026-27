@@ -1,7 +1,5 @@
 import { chromium, expect } from '@playwright/test'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
-import { assertHvaRecordedLessonFixture } from '../support/hva-recorded-lesson-fixture.mjs'
-import { assertHvaTodayCoexistenceRuntime } from '../support/hva-today-coexistence-fixture.mjs'
 import {
   deleteAllKnowledgeFixtures,
   knowledgeFixtureAssetIds,
@@ -18,9 +16,14 @@ const baseURL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000'
 export default async function globalSetup() {
   requireE2ECredentials()
   const title = experienceUdaFixtureTitle()
+
+  // Diagnostic-only isolation: the workflow-level governed preflight already
+  // proves baseline v1 and historical B01 before this global setup runs.
+  // Skip only the redundant direct-AAL2 local assertions here so the first
+  // browser authentication can be compared without immediate pre-browser
+  // session churn. This branch must never be merged.
   if (process.env.EXPERIENCE_TARGET === 'local') {
-    await assertHvaTodayCoexistenceRuntime()
-    await assertHvaRecordedLessonFixture()
+    process.stdout.write('HVA diagnostic: skipped pre-browser direct AAL2 assertions; workflow baseline preflight remains authoritative.\n')
   }
 
   const browser = await chromium.launch()
