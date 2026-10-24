@@ -13,6 +13,7 @@ import {
 } from '@assistant-ui/react'
 import { Mic, SendHorizontal, ShieldCheck, Sparkles, Square } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
+import { useContextualFabPosition } from './use-contextual-fab-position'
 
 export type ContextualAssistantPanelProps = {
   presentation?: 'inline' | 'floating'
@@ -46,6 +47,7 @@ export function ContextualAssistantPanel({
   dictationAdapter,
 }: ContextualAssistantPanelProps) {
   const [expanded, setExpanded] = useState(false)
+  const fab = useContextualFabPosition({ enabled: presentation === 'floating' })
   const browserDictationAdapter = useMemo<DictationAdapter | undefined>(() => {
     if (typeof window === 'undefined' || !WebSpeechDictationAdapter.isSupported()) return undefined
     return new WebSpeechDictationAdapter({
@@ -77,10 +79,23 @@ export function ContextualAssistantPanel({
   if (presentation === 'floating' && !expanded) {
     return (
       <button
+        ref={fab.triggerRef}
         className="dosAssistantFloatingTrigger"
         type="button"
         aria-label="Chiedi a DOCENTE OS su questa pagina"
-        onClick={() => setExpanded(true)}
+        data-fab-ready={fab.ready ? 'true' : 'false'}
+        data-fab-mode={fab.mode}
+        data-fab-layout={fab.layout}
+        data-fab-displaced={fab.displaced ? 'true' : 'false'}
+        data-fab-edge={fab.edge}
+        style={fab.style}
+        onPointerDown={fab.onPointerDown}
+        onPointerMove={fab.onPointerMove}
+        onPointerUp={fab.onPointerUp}
+        onPointerCancel={fab.onPointerCancel}
+        onClick={() => {
+          if (fab.allowActivation()) setExpanded(true)
+        }}
       >
         <span className="dosAssistantIcon" aria-hidden><Sparkles size={17} /></span>
         <span><strong>Chiedi a DOCENTE OS</strong><small>Su questa pagina</small></span>
@@ -112,6 +127,12 @@ export function ContextualAssistantPanel({
       <div className="dosAssistantContextStrip" aria-label="Contesto usato dall’assistente">
         {contextChips.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}
       </div>
+
+      {presentation === 'floating' && fab.hasManualPreference ? (
+        <button className="dosAssistantPositionReset" type="button" onClick={fab.resetToAuto}>
+          Ripristina posizione automatica
+        </button>
+      ) : null}
 
       {!expanded ? (
         <div className="dosAssistantStart">
