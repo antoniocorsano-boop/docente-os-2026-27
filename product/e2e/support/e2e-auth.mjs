@@ -146,9 +146,16 @@ async function reachPlannerBoundary(page) {
 }
 
 async function waitForMfaChallengeReady(page) {
-  await expect(
-    page.getByRole('heading', { name: 'Conferma il secondo fattore.' }),
-  ).toBeVisible({ timeout: MFA_PAGE_READY_TIMEOUT_MS })
+  const heading = page.getByRole('heading', { name: 'Conferma il secondo fattore.' })
+  try {
+    await expect(heading).toBeVisible({ timeout: MFA_PAGE_READY_TIMEOUT_MS })
+  } catch (error) {
+    const title = await page.title().catch(() => '')
+    const body = await page.locator('body').innerText().catch(() => '')
+    const compactBody = body.replace(/\s+/g, ' ').trim().slice(0, 1_200)
+    process.stdout.write(`Governed MFA readiness diagnostic: url=${page.url()} title=${JSON.stringify(title)} body=${JSON.stringify(compactBody)}\n`)
+    throw error
+  }
 
   for (let attempt = 1; attempt <= 8; attempt += 1) {
     const codeHeading = page.getByRole('heading', { name: 'Inserisci il codice temporaneo' })
