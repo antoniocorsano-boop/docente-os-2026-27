@@ -90,12 +90,27 @@ export async function runHvaBaselineIntegrityCli({
   let receipt
   try {
     if (phase === 'preflight') {
+      const approvedPlanSha256 = 'a2f03efbfc0b778c7a05b62e503b4f45b9dfe0e505b38d1d5b426ec26f5aa2e2'
+      const approvedPlannedAt = '2026-10-23T23:13:15.780Z'
+      const planPath = resolve(receiptDir, 'provision-plan.json')
       const { runHvaBaselineProvisioning } = await import('./provision-hva-baseline.mjs')
       const dryRun = await runHvaBaselineProvisioning({
-        argv: ['--dry-run', '--plan-file', resolve(receiptDir, 'provision-plan.json')],
+        argv: ['--dry-run', '--plan-file', planPath],
+        now: () => approvedPlannedAt,
+      })
+      if (dryRun.plan.planSha256 !== approvedPlanSha256) {
+        throw new Error(
+          `Authorized HVA provisioning plan SHA-256 mismatch: expected ${approvedPlanSha256}, got ${dryRun.plan.planSha256}`,
+        )
+      }
+      process.stdout.write(
+        `HVA authorized plan verified: ${dryRun.plan.baselineId} · ${dryRun.plan.planSha256}\n`,
+      )
+      const applied = await runHvaBaselineProvisioning({
+        argv: ['--apply', '--plan-file', planPath, '--confirm', HVA_BASELINE_ID],
       })
       process.stdout.write(
-        `HVA baseline provision dry-run: ${dryRun.status} · ${dryRun.plan.baselineId} · ${dryRun.plan.planSha256}\n`,
+        `HVA authorized plan apply: ${applied.status} · ${applied.plan.baselineId} · ${applied.plan.planSha256}\n`,
       )
     }
 
