@@ -116,7 +116,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
         />
 
         <section data-lesson-material-preview>
-          <nav className="focusedKnowledgeContext" aria-label="Contesto del materiale">
+          <nav className="focusedKnowledgeContext" data-copilot-protected aria-label="Contesto del materiale">
             <Link href={materialsReturnTo}>Torna ai materiali</Link>
             <span>{focusedLesson.sectionLabel} · Tecnologia</span>
           </nav>
@@ -181,7 +181,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
         role={context.role}
         contentClassName="knowledgeSurface focusedKnowledgeSurface"
       >
-        <nav className="focusedKnowledgeContext" aria-label="Contesto del compito">
+        <nav className="focusedKnowledgeContext" data-copilot-protected aria-label="Contesto del compito">
           <Link href={returnTo}>← {returnLabel}</Link>
           <span>{query.block ? `${query.block} · ` : ''}{contextReference}</span>
         </nav>
