@@ -10,6 +10,11 @@ import {
   type RefCallback,
 } from 'react'
 import {
+  createProtectedRegionObservation,
+  type ProtectedRegionRoot,
+  type ResizeObserverLike,
+} from './contextual-fab-protected-regions'
+import {
   parseContextualFabPreference,
   resolveContextualFabPlacement,
   snapContextualFabPreference,
@@ -107,16 +112,35 @@ export function useContextualFabPosition({ enabled = true }: { enabled?: boolean
 
     const remeasure = () => scheduleMeasure(dragPreference ?? preference, true)
     const visualViewport = window.visualViewport
-    const resizeObserver = typeof ResizeObserver === 'undefined'
+    const nativeResizeObserver = typeof ResizeObserver === 'undefined'
       ? null
       : new ResizeObserver(remeasure)
-
-    resizeObserver?.observe(triggerNode)
-    for (const element of document.querySelectorAll<HTMLElement>('[data-copilot-protected]')) {
-      resizeObserver?.observe(element)
+    const resizeObserver: ResizeObserverLike<HTMLElement> | null = nativeResizeObserver
+      ? {
+          disconnect: () => nativeResizeObserver.disconnect(),
+          observe: (element) => nativeResizeObserver.observe(element),
+        }
+      : null
+    const protectedRegionRoot: ProtectedRegionRoot<HTMLElement, Node> = {
+      queryProtectedRegions: () => document.querySelectorAll<HTMLElement>('[data-copilot-protected]'),
+      queryBottomNavigation: () => document.querySelector<HTMLElement>('.dosBottomNav'),
+      mutationTarget: document.body,
     }
-    const bottomNav = document.querySelector<HTMLElement>('.dosBottomNav')
-    if (bottomNav) resizeObserver?.observe(bottomNav)
+    const stopProtectedRegionObservation = createProtectedRegionObservation({
+      root: protectedRegionRoot,
+      trigger: triggerNode,
+      resizeObserver,
+      createMutationObserver: typeof MutationObserver === 'undefined'
+        ? undefined
+        : (callback) => {
+            const observer = new MutationObserver(callback)
+            return {
+              disconnect: () => observer.disconnect(),
+              observe: (target, options) => observer.observe(target, options),
+            }
+          },
+      onGeometryChange: remeasure,
+    })
 
     window.addEventListener('resize', remeasure)
     window.addEventListener('scroll', remeasure, true)
@@ -124,7 +148,7 @@ export function useContextualFabPosition({ enabled = true }: { enabled?: boolean
     visualViewport?.addEventListener('scroll', remeasure)
 
     return () => {
-      resizeObserver?.disconnect()
+      stopProtectedRegionObservation()
       window.removeEventListener('resize', remeasure)
       window.removeEventListener('scroll', remeasure, true)
       visualViewport?.removeEventListener('resize', remeasure)
@@ -218,8 +242,8 @@ export function useContextualFabPosition({ enabled = true }: { enabled?: boolean
     ? effectivePreference.edge
     : placement.layout === 'floating' ? placement.edge : undefined
   const style: CSSProperties = placement.layout === 'floating'
-    ? { left: placement.left, top: placement.top, right: 'auto', bottom: 'auto' }
-    : {}
+    ? { left: placement.left, top: placement.top, right: 'auto', bottom: 'auto', touchAction: 'none' }
+    : { touchAction: 'none' }
 
   return {
     triggerRef,

@@ -139,7 +139,12 @@ async function reachPlannerBoundary(page) {
       await page.goto('/planner', { waitUntil: 'domcontentloaded' })
       return
     } catch (error) {
-      if (!String(error).includes('interrupted by another navigation') || attempt === 3) throw error
+      const message = String(error)
+      const transientNavigationRace =
+        message.includes('interrupted by another navigation')
+        || (message.includes('net::ERR_ABORTED') && message.includes('/planner'))
+      if (!transientNavigationRace || attempt === 3) throw error
+      process.stdout.write(`Governed planner navigation transient; retrying boundary (${attempt}/3).\n`)
       await page.waitForTimeout(300)
       await page.waitForLoadState('domcontentloaded').catch(() => {})
     }
