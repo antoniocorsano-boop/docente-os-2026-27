@@ -11,6 +11,15 @@ on:
         options:
           - beta
           - preview
+          - application_recheck
+      pr_number:
+        description: PR number richiesto solo per application_recheck
+        required: false
+        type: string
+      expected_sha:
+        description: SHA head a 40 caratteri richiesto solo per application_recheck
+        required: false
+        type: string
       base_url:
         description: URL pubblico richiesto solo per target preview
         required: false
@@ -48,6 +57,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
   statuses: write
 
 concurrency:
@@ -62,7 +72,7 @@ env:
 
 jobs:
   application-acceptance:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.target == 'application_recheck')
     name: hva-application
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -74,6 +84,43 @@ jobs:
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
 
     steps:
+      - name: Resolve exact application candidate
+        id: candidate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.eventName === 'pull_request') {
+              const sha = context.payload.pull_request.head.sha
+              core.setOutput('sha', sha)
+              core.setOutput('pr_number', String(context.payload.pull_request.number))
+              return
+            }
+
+            const prNumber = Number('${{ inputs.pr_number }}')
+            const expectedSha = '${{ inputs.expected_sha }}'.trim()
+            if (!Number.isInteger(prNumber) || prNumber <= 0) {
+              throw new Error('application_recheck requires a positive pr_number')
+            }
+            if (!/^[0-9a-f]{40}$/.test(expectedSha)) {
+              throw new Error('application_recheck requires a 40-character lowercase hex expected_sha')
+            }
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            })
+            if (pr.state !== 'open') {
+              throw new Error(`PR #${prNumber} is not open`)
+            }
+            if (pr.head.repo?.full_name !== `${context.repo.owner}/${context.repo.repo}`) {
+              throw new Error(`PR #${prNumber} head repository is not the governed repository`)
+            }
+            if (pr.head.sha !== expectedSha) {
+              throw new Error(`PR #${prNumber} head SHA mismatch: expected ${expectedSha}, actual ${pr.head.sha}`)
+            }
+            core.setOutput('sha', expectedSha)
+            core.setOutput('pr_number', String(prNumber))
+
       - name: Check governed AAL2 E2E credential configuration
         id: credentials
         shell: bash
@@ -96,7 +143,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const testedSha = context.payload.pull_request.head.sha
+            const testedSha = '${{ steps.candidate.outputs.sha }}'
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -111,7 +158,7 @@ jobs:
         if: steps.credentials.outputs.ready == 'true'
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ steps.candidate.outputs.sha }}
           fetch-depth: 0
 
       - name: Set up Node 22
@@ -193,7 +240,7 @@ jobs:
         working-directory: product
         env:
           EXPERIENCE_TEST_EXIT_CODE: ${{ steps.browser.outputs.exit_code || '99' }}
-          EXPECTED_COMMIT: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_COMMIT: ${{ steps.candidate.outputs.sha }}
         run: node scripts/experience/acceptance-report.mjs
 
       - name: Publish acceptance evidence
@@ -223,7 +270,7 @@ jobs:
           script: |
             const ready = process.env.READY === 'true'
             const ok = ready && process.env.JOB_STATUS === 'success'
-            const testedSha = context.payload.pull_request.head.sha
+            const testedSha = '${{ steps.candidate.outputs.sha }}'
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -235,7 +282,7 @@ jobs:
             })
 
   runtime-acceptance:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.target != 'application_recheck')
     name: hva-runtime
     runs-on: ubuntu-latest
     timeout-minutes: 50
