@@ -22,19 +22,19 @@ test('CV2 HVA orchestrator preserves governed baseline preflight/postflight arou
 })
 
 test('Oggi keeps an accessible calendar name even when mobile CSS hides the visible label', async () => {
-  const page = await read('../../../app/planner/page.tsx')
-  const css = await read('../../../app/planner/today-home.css')
+  const page = await read('../../app/planner/page.tsx')
+  const css = await read('../../app/planner/today-home.css')
   assert.match(page, /className="todayCalendarLink"[^>]*aria-label="Calendario"/)
   assert.match(css, /\.todayCalendarLink span\{display:none\}/)
 })
 
 test('optional textbook coverage badge does not lower foreground contrast through opacity', async () => {
-  const css = await read('../../../app/impostazioni/libri-di-testo/textbooks.css')
+  const css = await read('../../app/impostazioni/libri-di-testo/textbooks.css')
   assert.match(css, /\.textbookCoverageBadge\.optional\s*\{\s*opacity:\s*1;/)
 })
 
 test('X3 no-write regression observes the canonical Activities surface instead of superseded Planner task summary', async () => {
-  const x3 = await read('../../../../e2e/x3-acceptance.spec.mjs')
+  const x3 = await read('../../../e2e/x3-acceptance.spec.mjs')
   assert.ok(x3.includes("page.goto('/attivita'"))
   assert.match(x3, /activityBoardSnapshot/)
   assert.doesNotMatch(x3, /Sintesi della giornata/)
