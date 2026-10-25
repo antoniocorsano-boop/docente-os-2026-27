@@ -15,7 +15,7 @@ import './today-home.css'
 export const dynamic = 'force-dynamic'
 
 export default async function PlannerPage() {
-  const operational = await loadCurrentTodayOperationalContext()
+  const operational = await loadCurrentTodayOperationalContext({ includePreparation: false })
   if (!operational) redirect('/login')
 
   const context = operational.workspaceContext
@@ -67,7 +67,7 @@ export default async function PlannerPage() {
           <p className="todayHomeGreeting"><LocalTeacherGreeting hour={Math.floor(operational.minuteOfDay / 60)} /></p>
           <h1>Oggi</h1>
         </div>
-        <Link className="todayCalendarLink" href="/calendario">
+        <Link className="todayCalendarLink" href="/calendario" aria-label="Calendario">
           <CalendarDays size={18} aria-hidden />
           <span>Calendario</span>
         </Link>

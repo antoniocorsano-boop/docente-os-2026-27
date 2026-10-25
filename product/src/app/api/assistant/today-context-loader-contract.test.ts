@@ -10,10 +10,17 @@ async function timetableSource() {
   return readFile(new URL('../../orario/TimetableExperience.tsx', import.meta.url), 'utf8')
 }
 
+async function plannerSource() {
+  return readFile(new URL('../../planner/page.tsx', import.meta.url), 'utf8')
+}
+
 test('Today exposes one operational loader and Copilot delegates to it', async () => {
   const text = await source()
   assert.match(text, /export type LoadedTodayOperationalContext = \{/)
-  assert.match(text, /export async function loadCurrentTodayOperationalContext\(\): Promise<LoadedTodayOperationalContext \| null>/)
+  assert.match(
+    text,
+    /export async function loadCurrentTodayOperationalContext\([\s\S]*options: \{ includePreparation\?: boolean \} = \{\}[\s\S]*\): Promise<LoadedTodayOperationalContext \| null>/,
+  )
   assert.match(
     text,
     /export async function loadCurrentTodayCopilotContext\(\)[\s\S]*loadCurrentTodayOperationalContext\(\)/,
@@ -23,9 +30,15 @@ test('Today exposes one operational loader and Copilot delegates to it', async (
 test('Today operational loading keeps optional lesson preparation fail-soft', async () => {
   const text = await source()
   assert.match(text, /let preparation: LoadedNextLessonPreparation \| null = null/)
-  assert.match(text, /try \{[\s\S]*loadNextLessonPreparationBundle\(/)
+  assert.match(text, /if \(options\.includePreparation !== false\) \{[\s\S]*try \{[\s\S]*loadNextLessonPreparationBundle\(/)
   assert.match(text, /catch \{[\s\S]*Lesson preparation unavailable/)
   assert.match(text, /preparation,\n\s*\}/)
+})
+
+test('Today page skips the duplicate Copilot preparation load while preserving selected lesson resolution', async () => {
+  const text = await plannerSource()
+  assert.match(text, /loadCurrentTodayOperationalContext\(\{ includePreparation: false \}\)/)
+  assert.match(text, /loadLessonPreparationBundlesForLessons\(input\)/)
 })
 
 test('Today operational context exists without an academic year', async () => {
