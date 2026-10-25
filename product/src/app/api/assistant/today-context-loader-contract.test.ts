@@ -35,10 +35,11 @@ test('Today operational loading keeps optional lesson preparation fail-soft', as
   assert.match(text, /preparation,\n\s*\}/)
 })
 
-test('Today page skips the duplicate Copilot preparation load while preserving selected lesson resolution', async () => {
+test('Today page uses a minimal lesson-binding fast path and never loads full preparation bundles', async () => {
   const text = await plannerSource()
   assert.match(text, /loadCurrentTodayOperationalContext\(\{ includePreparation: false \}\)/)
-  assert.match(text, /loadLessonPreparationBundlesForLessons\(input\)/)
+  assert.match(text, /loadTodayLessonBindings\(\{/)
+  assert.doesNotMatch(text, /loadLessonPreparationBundlesForLessons/)
 })
 
 test('Today operational context exists without an academic year', async () => {
