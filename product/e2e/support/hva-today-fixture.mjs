@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module'
+import { validateHvaCurrentLessonInput } from './hva-governed-baseline-contract.mjs'
 
 const require = createRequire(import.meta.url)
 const {
@@ -14,73 +15,7 @@ export const HVA_TODAY_WEEKDAY = HVA_WEEKDAY
 export const HVA_TODAY_MINUTE_OF_DAY = HVA_MINUTE_OF_DAY
 
 export function validateHvaTodayFixture(input) {
-  const errors = []
-  const disciplines = input.disciplines ?? []
-  const assignments = input.assignments ?? []
-  const versions = input.versions ?? []
-  const slots = input.slots ?? []
-
-  const canonicalDisciplines = disciplines.filter((discipline) =>
-    discipline.name?.trim() === HVA_TODAY_DISCIPLINE_NAME,
-  )
-  if (canonicalDisciplines.length !== 1) {
-    errors.push(`expected exactly one ${HVA_TODAY_DISCIPLINE_NAME} discipline, found ${canonicalDisciplines.length}`)
-    return errors
-  }
-
-  const discipline = canonicalDisciplines[0]
-  if (discipline.is_active !== true) {
-    errors.push(`${HVA_TODAY_DISCIPLINE_NAME} discipline must be active`)
-  }
-
-  const activeVersions = versions.filter((version) =>
-    version.status === 'ACTIVE'
-    && version.effective_from <= HVA_TODAY_LOCAL_DATE
-    && (!version.effective_to || version.effective_to >= HVA_TODAY_LOCAL_DATE),
-  )
-  if (activeVersions.length !== 1) {
-    errors.push(`expected exactly one ACTIVE timetable on ${HVA_TODAY_LOCAL_DATE}, found ${activeVersions.length}`)
-    return errors
-  }
-
-  const activeVersion = activeVersions[0]
-  const currentSlots = slots.filter((slot) =>
-    slot.timetable_version_id === activeVersion.id
-    && slot.weekday === HVA_TODAY_WEEKDAY
-    && slot.slot_kind === 'LESSON'
-    && clockMinute(slot.start_time) <= HVA_TODAY_MINUTE_OF_DAY
-    && clockMinute(slot.end_time) > HVA_TODAY_MINUTE_OF_DAY,
-  )
-  if (currentSlots.length !== 1) {
-    errors.push(`expected exactly one Monday lesson at 08:30, found ${currentSlots.length}`)
-    return errors
-  }
-
-  const slot = currentSlots[0]
-  if (slot.discipline_id !== discipline.id) {
-    errors.push('current Monday lesson must use the canonical Tecnologia discipline')
-  }
-  if (!slot.teaching_assignment_id) {
-    errors.push('current Monday lesson must reference a teaching assignment')
-    return errors
-  }
-
-  const assignment = assignments.find((candidate) => candidate.id === slot.teaching_assignment_id)
-  if (!assignment) {
-    errors.push('current Monday lesson teaching assignment is missing from the HVA context')
-    return errors
-  }
-  if (assignment.discipline_id !== discipline.id) {
-    errors.push('current Monday lesson assignment must belong to the canonical Tecnologia discipline')
-  }
-  if (assignment.status !== 'CONFIRMED') {
-    errors.push('current Monday lesson assignment must be CONFIRMED')
-  }
-  if (assignment.source_note?.trim() !== HVA_TODAY_ASSIGNMENT_NOTE) {
-    errors.push(`current Monday lesson assignment must use the dedicated Oggi marker: ${HVA_TODAY_ASSIGNMENT_NOTE}`)
-  }
-
-  return errors
+  return validateHvaCurrentLessonInput(input)
 }
 
 export async function assertHvaTodayRuntimeFixture() {
@@ -146,10 +81,4 @@ export async function assertHvaTodayRuntimeFixture() {
   }
 
   process.stdout.write(`HVA Today preflight PASS: ${HVA_TODAY_LOCAL_DATE} 08:30 · ${HVA_TODAY_DISCIPLINE_NAME}\n`)
-}
-
-function clockMinute(value) {
-  const [hour, minute] = String(value ?? '').slice(0, 5).split(':').map(Number)
-  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return Number.NaN
-  return hour * 60 + minute
 }
