@@ -109,16 +109,16 @@ test('X3 mobile gate: grounded answers, useful proposals, write preview and no a
     await page.screenshot({ path: 'test-results/x3-04-write-preview.png' })
   })
 
-  await test.step('Verifica che la richiesta X3 non abbia scritto nel Planner', async () => {
-    await openPlannerReady(page)
+  await test.step('Verifica che la richiesta X3 non abbia scritto nelle Attività', async () => {
+    await openActivitiesReady(page)
     await expect(page.getByText(previewTitle, { exact: false })).toHaveCount(0)
   })
 })
 
 test('X3 Today/Planner gate: day context, useful answer and no automatic mutation', async ({ page }) => {
   await login(page)
-  const beforeState = await openPlannerReady(page)
-  const openCount = beforeState.openCount
+  const beforeState = await openActivitiesReady(page)
+  await openTodayReady(page)
 
   const trigger = page.getByRole('button', { name: /Chiedi a DOCENTE OS/ })
   await expect(trigger).toBeVisible({ timeout: 30_000 })
@@ -144,8 +144,8 @@ test('X3 Today/Planner gate: day context, useful answer and no automatic mutatio
     await page.screenshot({ path: 'test-results/x3-06-planner-write-boundary.png' })
   })
 
-  const afterState = await openPlannerReady(page)
-  expect(afterState.openCount).toBe(openCount)
+  const afterState = await openActivitiesReady(page)
+  expect(afterState.snapshot).toBe(beforeState.snapshot)
 })
 
 async function login(page) {
@@ -154,23 +154,52 @@ async function login(page) {
   })
 }
 
-async function openPlannerReady(page) {
+async function openTodayReady(page) {
   let lastError = null
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
       await page.goto('/planner', { waitUntil: 'domcontentloaded', timeout: 30_000 })
       await expect(page).toHaveURL(/\/planner(?:$|\?)/, { timeout: 15_000 })
       await expect(page.locator('#dos-main-content')).toBeVisible({ timeout: 30_000 })
-      const summary = page.getByLabel('Sintesi della giornata')
-      await expect(summary).toBeVisible({ timeout: 30_000 })
-      return { openCount: await plannerOpenCount(page) }
+      await expect(page.getByRole('heading', { name: 'Oggi', exact: true })).toBeVisible({ timeout: 30_000 })
+      return
     } catch (error) {
       lastError = error
       if (attempt === 2) break
       await page.waitForTimeout(500)
     }
   }
-  throw lastError ?? new Error('Planner did not become ready')
+  throw lastError ?? new Error('Today did not become ready')
+}
+
+async function openActivitiesReady(page) {
+  let lastError = null
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      await page.goto('/attivita', { waitUntil: 'domcontentloaded', timeout: 30_000 })
+      await expect(page).toHaveURL(/\/attivita(?:$|\?)/, { timeout: 15_000 })
+      await expect(page.locator('#dos-main-content')).toBeVisible({ timeout: 30_000 })
+      await expect(page.getByRole('heading', { name: 'Attività', exact: true })).toBeVisible({ timeout: 30_000 })
+      return { snapshot: await activityBoardSnapshot(page) }
+    } catch (error) {
+      lastError = error
+      if (attempt === 2) break
+      await page.waitForTimeout(500)
+    }
+  }
+  throw lastError ?? new Error('Activities did not become ready')
+}
+
+async function activityBoardSnapshot(page) {
+  const buckets = page.locator('.activityBuckets')
+  if (await buckets.count()) return normalizeSnapshot(await buckets.innerText())
+  const empty = page.locator('.activitiesEmpty')
+  await expect(empty).toBeVisible({ timeout: 30_000 })
+  return normalizeSnapshot(await empty.innerText())
+}
+
+function normalizeSnapshot(value) {
+  return value.replace(/\s+/g, ' ').trim()
 }
 
 async function openFileCapture(page) {
@@ -194,19 +223,4 @@ async function askAndCheck(page, prompt, expectedAssistantMessages, assertion) {
   const responses = page.locator('.dosAssistantBubble.assistant')
   await expect(responses).toHaveCount(expectedAssistantMessages)
   await assertion(responses.last())
-}
-
-async function plannerOpenCount(page) {
-  const stats = page.getByLabel('Riepilogo attività Planner')
-  if (await stats.count()) {
-    const text = await stats.innerText()
-    const match = text.match(/(\d+)\s+attività aperte/i)
-    if (!match) throw new Error(`Planner open count not found in: ${text}`)
-    return Number(match[1])
-  }
-
-  const quiet = page.locator('details.todayQuietSection')
-  await expect(quiet).toBeVisible({ timeout: 30_000 })
-  await expect(quiet).toContainText('Niente di urgente')
-  return 0
 }
