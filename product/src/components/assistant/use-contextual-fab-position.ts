@@ -242,8 +242,8 @@ export function useContextualFabPosition({ enabled = true }: { enabled?: boolean
     ? effectivePreference.edge
     : placement.layout === 'floating' ? placement.edge : undefined
   const style: CSSProperties = placement.layout === 'floating'
-    ? { left: placement.left, top: placement.top, right: 'auto', bottom: 'auto' }
-    : {}
+    ? { left: placement.left, top: placement.top, right: 'auto', bottom: 'auto', touchAction: 'none' }
+    : { touchAction: 'none' }
 
   return {
     triggerRef,
