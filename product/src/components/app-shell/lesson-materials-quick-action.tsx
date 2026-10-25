@@ -66,7 +66,12 @@ export function LessonMaterialsQuickAction({
   if (!entrypoint) return null
 
   return (
-    <aside className={styles.root} aria-label="Materiali della lezione" data-testid="lesson-materials-entrypoint">
+    <aside
+      className={styles.root}
+      aria-label="Materiali della lezione"
+      data-testid="lesson-materials-entrypoint"
+      data-copilot-protected
+    >
       <div className={styles.copy}>
         <span>{entrypoint.authorityLabel}</span>
         <strong>{entrypoint.sectionLabel}</strong>

@@ -3,11 +3,14 @@ import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import {
   HVA_TODAY_ASSIGNMENT_NOTE,
+  HVA_TODAY_LOCAL_DATE,
   validateHvaTodayFixture,
 } from './hva-today-fixture.mjs'
 import { validateHvaTodayCoexistence } from './hva-today-coexistence-fixture.mjs'
 
 const coexistenceFixtureSource = new URL('./hva-today-coexistence-fixture.mjs', import.meta.url)
+const todayJourneySource = new URL('../experience/today-teacher-first.spec.mjs', import.meta.url)
+const globalSetupSource = new URL('../experience/global-setup.mjs', import.meta.url)
 
 function canonicalFixture() {
   return {
@@ -105,22 +108,50 @@ test('coexistence rejects a prior lesson that is already recorded', () => {
   const fixture = coexistenceFixture()
   fixture.sessions = [{
     section_id: 'section-1',
-    local_date: '2026-10-19',
+    local_date: HVA_TODAY_LOCAL_DATE,
     source_timetable_slot_id: 'past',
-    projected_occurrence_logical_id: 'tt:v1:past:2026-10-19',
+    projected_occurrence_logical_id: `tt:v1:past:${HVA_TODAY_LOCAL_DATE}`,
   }]
   assert.match(validateHvaTodayCoexistence(fixture).join('\n'), /prior unregistered lesson/i)
 })
 
-test('coexistence fixture never writes timetable_slots', async () => {
+test('coexistence runtime never writes governed persistent state and exposes only a read-only assert', async () => {
   const text = await readFile(coexistenceFixtureSource, 'utf8')
-  const timetableSegments = text.split(".from('timetable_slots')").slice(1).map((tail) => {
-    const nextTable = tail.indexOf(".from('")
-    return nextTable >= 0 ? tail.slice(0, nextTable) : tail
-  })
-
-  assert.ok(timetableSegments.length > 0, 'coexistence fixture must inspect timetable_slots read-only')
-  for (const segment of timetableSegments) {
-    assert.doesNotMatch(segment, /\.(?:insert|update|delete)\s*\(/)
+  for (const forbidden of [
+    '.insert(',
+    '.update(',
+    '.delete(',
+    "rpc('record_teaching_session'",
+    'rpc("record_teaching_session"',
+    "rpc('activate_timetable_version'",
+    'rpc("activate_timetable_version"',
+  ]) {
+    assert.equal(text.includes(forbidden), false, `Today coexistence runtime must not contain ${forbidden}`)
   }
+  assert.match(text, /export async function assertHvaTodayCoexistenceRuntime\s*\(/)
+  assert.match(text, /readHvaGovernedBaselineRuntime/)
+  assert.match(text, /validateHvaBaselineSnapshot/)
+  assert.doesNotMatch(text, /CALENDAR_SOURCE_PREFIX|createHvaTodayCoexistenceFixture/)
+})
+
+test('missing or invalid canonical Calendar state is treated as governed drift rather than provisioned dynamically', async () => {
+  const text = await readFile(coexistenceFixtureSource, 'utf8')
+  assert.match(text, /HVA-JOURNEY-UNVERIFIED/)
+  assert.match(text, /baseline/i)
+  assert.doesNotMatch(text, /Calendar insert|Calendar cleanup|fixture-owned Calendar/)
+})
+
+test('today-teacher-first runs only for the governed local target and has no restore path', async () => {
+  const text = await readFile(todayJourneySource, 'utf8')
+  assert.match(text, /EXPERIENCE_TARGET\s*!==\s*['"]local['"]/)
+  assert.match(text, /test\.skip\s*\(/)
+  assert.match(text, /assertHvaTodayCoexistenceRuntime/)
+  assert.doesNotMatch(text, /createHvaTodayCoexistenceFixture|\.restore\s*\(/)
+})
+
+test('local global setup consumes the read-only coexistence assert', async () => {
+  const text = await readFile(globalSetupSource, 'utf8')
+  assert.match(text, /assertHvaTodayCoexistenceRuntime/)
+  assert.match(text, /EXPERIENCE_TARGET\s*===\s*['"]local['"]/)
+  assert.doesNotMatch(text, /createHvaTodayCoexistenceFixture/)
 })

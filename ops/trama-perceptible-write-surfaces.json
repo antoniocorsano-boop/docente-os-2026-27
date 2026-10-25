@@ -31,6 +31,19 @@
       ]
     },
     {
+      "id": "contextual-copilot-fab-preference-write",
+      "critical": false,
+      "sourcePatterns": [
+        "product/src/components/assistant/use-contextual-fab-position.ts"
+      ],
+      "feedbackFiles": [
+        "product/src/components/assistant/contextual-assistant-panel.tsx"
+      ],
+      "testFiles": [
+        "product/e2e/experience/contextual-copilot-fab.spec.mjs"
+      ]
+    },
+    {
       "id": "settings-professional-context-write",
       "critical": false,
       "sourcePatterns": [
