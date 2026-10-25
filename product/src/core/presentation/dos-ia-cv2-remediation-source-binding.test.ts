@@ -21,6 +21,13 @@ test('CV2 HVA orchestrator preserves governed baseline preflight/postflight arou
   assert.match(workflow, /hva-baseline-integrity\.mjs postflight/)
 })
 
+test('governed MFA queue hygiene also runs for stacked pull requests', async () => {
+  const workflow = await read('../../../../.github/workflows/governed-mfa-queue-hygiene.yml')
+  assert.match(workflow, /pull_request:\n\s+types:/)
+  assert.doesNotMatch(workflow, /pull_request:\n\s+branches:\n\s+- develop/)
+  assert.match(workflow, /cancelWorkflowRun/)
+})
+
 test('Oggi keeps an accessible calendar name even when mobile CSS hides the visible label', async () => {
   const page = await read('../../app/planner/page.tsx')
   const css = await read('../../app/planner/today-home.css')
