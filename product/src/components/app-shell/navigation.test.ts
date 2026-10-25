@@ -106,6 +106,38 @@ test('LP-4: provisional timetable authority remains explicit', () => {
   assert.equal(result?.authorityLabel, 'ORARIO PROVVISORIO')
 })
 
+test('Oggi greeting is hydration-safe and bound to the canonical operational hour', () => {
+  const plannerSource = readFileSync(new URL('../../app/planner/page.tsx', import.meta.url), 'utf8')
+  const profileSource = readFileSync(new URL('../local-user-profile/local-user-profile.tsx', import.meta.url), 'utf8')
+  const greetingSource = profileSource.slice(
+    profileSource.indexOf('export function LocalTeacherGreeting'),
+    profileSource.indexOf('export function useLocalTeacherProfile'),
+  )
+
+  assert.match(plannerSource, /<LocalTeacherGreeting\s+hour=\{Math\.floor\(operational\.minuteOfDay\s*\/\s*60\)\}\s*\/>/)
+  assert.match(greetingSource, /hour:\s*number/)
+  assert.doesNotMatch(greetingSource, /new Date\(\)/)
+})
+
+test('HVA 320×800 measures Oggi only after the final surface is visible', () => {
+  const source = readFileSync(new URL('../../../e2e/experience/product-ia-reset.spec.mjs', import.meta.url), 'utf8')
+  const start = source.indexOf("test('DOS-IA-RESET responsive 320×800")
+  const end = source.indexOf("test('DOS-IA-RESET responsive 390×844", start)
+  assert.notEqual(start, -1)
+  assert.notEqual(end, -1)
+
+  const contract = source.slice(start, end)
+  const navigation = contract.indexOf("await page.goto('/planner')")
+  const readiness = contract.indexOf("await expect(page.locator('#dos-main-content')).toBeVisible()")
+  const overflowCheck = contract.indexOf("await expectNoHorizontalOverflow(page, 'Oggi 320×800')")
+
+  assert.notEqual(navigation, -1)
+  assert.notEqual(readiness, -1)
+  assert.notEqual(overflowCheck, -1)
+  assert.ok(navigation < readiness, 'Oggi readiness must be checked after navigation')
+  assert.ok(readiness < overflowCheck, 'Overflow must be measured only after Oggi is visible')
+})
+
 function lessonMaterialsContext(authority: 'IN_FORCE' | 'PROVISIONAL_DRAFT' = 'IN_FORCE'): LessonMaterialsContext {
   return {
     nextLessonPreparation: {
