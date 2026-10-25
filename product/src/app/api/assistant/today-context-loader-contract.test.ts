@@ -19,7 +19,7 @@ test('Today exposes one operational loader and Copilot delegates to it', async (
   assert.match(text, /export type LoadedTodayOperationalContext = \{/)
   assert.match(
     text,
-    /export async function loadCurrentTodayOperationalContext\([\s\S]*options: \{ includePreparation\?: boolean \} = \{\}[\s\S]*\): Promise<LoadedTodayOperationalContext \| null>/,
+    /export async function loadCurrentTodayOperationalContext\([\s\S]*options: \{ includePreparation\?: boolean; includeTasks\?: boolean \} = \{\}[\s\S]*\): Promise<LoadedTodayOperationalContext \| null>/,
   )
   assert.match(
     text,
@@ -37,7 +37,10 @@ test('Today operational loading keeps optional lesson preparation fail-soft', as
 
 test('Today page uses a minimal lesson-binding fast path and never loads full preparation bundles', async () => {
   const text = await plannerSource()
-  assert.match(text, /loadCurrentTodayOperationalContext\(\{ includePreparation: false \}\)/)
+  assert.match(
+    text,
+    /loadCurrentTodayOperationalContext\(\{[\s\S]*includePreparation: false,[\s\S]*includeTasks: false,[\s\S]*\}\)/,
+  )
   assert.match(text, /loadTodayLessonBindings\(\{/)
   assert.doesNotMatch(text, /loadLessonPreparationBundlesForLessons/)
 })

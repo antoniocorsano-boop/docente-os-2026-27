@@ -15,7 +15,10 @@ import './today-home.css'
 export const dynamic = 'force-dynamic'
 
 export default async function PlannerPage() {
-  const operational = await loadCurrentTodayOperationalContext({ includePreparation: false })
+  const operational = await loadCurrentTodayOperationalContext({
+    includePreparation: false,
+    includeTasks: false,
+  })
   if (!operational) redirect('/login')
 
   const context = operational.workspaceContext
