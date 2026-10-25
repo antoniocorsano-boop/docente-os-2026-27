@@ -114,7 +114,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Run Android Reality AR-01
+      - name: Run Android Reality Phase 1 (AR-01 + AR-02)
         id: android
         continue-on-error: true
         env:
@@ -154,14 +154,16 @@ jobs:
               receipt = JSON.parse(fs.readFileSync('product/test-results/android-reality/receipt/android-reality.json', 'utf8'))
             } catch {}
             const outcome = receipt?.outcome ?? 'INFRA_BLOCKED'
-            const state = outcome === 'FAIL_PRODUCT' ? 'failure'
-              : outcome === 'INFRA_BLOCKED' ? 'error'
-              : 'pending'
-            const description = outcome === 'FAIL_PRODUCT'
-              ? 'AR-01 ha rilevato un difetto prodotto; AR-02 non ancora eseguito'
-              : outcome === 'INFRA_BLOCKED'
-                ? 'Android Reality bloccato da infrastruttura o target integrity'
-                : 'AR-01 superato; AR-02 ancora pendente'
+            const state = outcome === 'PASS' ? 'success'
+              : outcome === 'FAIL_PRODUCT' ? 'failure'
+              : 'error'
+            const description = outcome === 'PASS'
+              ? 'AR-01 + AR-02 PASS su Android reale'
+              : outcome === 'FAIL_PRODUCT'
+                ? 'Android Reality ha rilevato un difetto prodotto'
+                : outcome === 'INFRA_BLOCKED'
+                  ? 'Android Reality bloccato da infrastruttura o target integrity'
+                  : 'Android Reality non ha prodotto un esito qualificante'
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -172,7 +174,7 @@ jobs:
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
 
-      - name: Enforce Android Reality AR-01 outcome
+      - name: Enforce Android Reality Phase 1 outcome
         if: always()
         shell: bash
         run: |
@@ -181,6 +183,7 @@ jobs:
           const path = 'product/test-results/android-reality/receipt/android-reality.json'
           if (!fs.existsSync(path)) process.exit(2)
           const receipt = JSON.parse(fs.readFileSync(path, 'utf8'))
+          if (receipt.outcome === 'PASS') process.exit(0)
           if (receipt.outcome === 'FAIL_PRODUCT') process.exit(1)
-          if (receipt.outcome === 'INFRA_BLOCKED') process.exit(2)
+          process.exit(2)
           NODE
