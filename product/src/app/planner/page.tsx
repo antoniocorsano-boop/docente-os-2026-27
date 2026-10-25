@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { ArrowUpRight, CalendarDays, Clock3 } from 'lucide-react'
 import { loadCurrentTodayOperationalContext } from '@/app/api/assistant/today-context-loader'
-import { loadLessonPreparationBundlesForLessons } from '@/app/api/assistant/next-lesson-preparation-loader'
+import { loadTodayLessonBindings } from '@/app/api/assistant/today-lesson-binding-loader'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { LocalTeacherGreeting } from '@/components/local-user-profile/local-user-profile'
 import type { HomeDailyLesson } from '@/core/presentation/home-daily-context'
@@ -30,7 +30,7 @@ export default async function PlannerPage() {
     baseProjection.nextLesson?.lesson ?? null,
   ])
   const lessonBundles = context.academicYear
-    ? await resolveSelectedLessonBundles({
+    ? await resolveSelectedLessonBindings({
         workspaceId: context.workspace.id,
         academicYearId: context.academicYear.id,
         lessons: selectedLessons,
@@ -164,20 +164,20 @@ function TodayLessonCard({
   )
 }
 
-async function resolveSelectedLessonBundles(input: {
+async function resolveSelectedLessonBindings(input: {
   workspaceId: string
   academicYearId: string
   lessons: HomeDailyLesson[]
 }) {
   if (!input.lessons.length) return []
   try {
-    const bundles = await loadLessonPreparationBundlesForLessons(input)
-    return bundles.map(({ lesson, loaded }) => ({
-      lessonLogicalId: lesson.logicalId,
-      blockId: loaded.preparation.canonicalLesson?.blockId ?? null,
-    }))
+    return await loadTodayLessonBindings({
+      workspaceId: input.workspaceId,
+      academicYearId: input.academicYearId,
+      lessons: input.lessons,
+    })
   } catch {
-    console.warn('[DOCENTE OS] Selected lesson bundles unavailable; Oggi uses safe class/orario fallback.')
+    console.warn('[DOCENTE OS] Selected lesson bindings unavailable; Oggi uses safe class/orario fallback.')
     return []
   }
 }

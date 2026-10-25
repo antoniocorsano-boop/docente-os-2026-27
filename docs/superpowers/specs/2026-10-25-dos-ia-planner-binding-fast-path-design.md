@@ -8,7 +8,7 @@ Ridurre la latenza della home `Oggi` (`/planner`) senza cambiare budget, navigaz
 
 - mantenere invariata la semantica fail-closed di `LESSON | CLASS | ORARIO`;
 - risolvere solo i binding delle lezioni effettivamente mostrate da Oggi;
-- evitare su `/planner` Knowledge, manifest/rendering, lesson design, curriculum approval e continuità didattica;
+- evitare su `/planner` Knowledge, manifest/rendering, lesson design, approvazione del curricolo e continuità didattica;
 - non aumentare `P6_ROUTE_BUDGET_MS=2500` né `P6_P95_BUDGET_MS=1800`;
 - lasciare il caricamento completo di preparazione a Lezione/Materiali/Copilota.
 
