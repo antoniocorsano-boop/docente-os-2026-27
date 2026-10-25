@@ -37,7 +37,9 @@ export type LoadedTodayCopilotContext = {
   preparation: LoadedNextLessonPreparation | null
 }
 
-export async function loadCurrentTodayOperationalContext(): Promise<LoadedTodayOperationalContext | null> {
+export async function loadCurrentTodayOperationalContext(
+  options: { includePreparation?: boolean } = {},
+): Promise<LoadedTodayOperationalContext | null> {
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const workspaceContext = await workspaceRepository.getCurrentContext()
   if (!workspaceContext) return null
@@ -87,24 +89,26 @@ export async function loadCurrentTodayOperationalContext(): Promise<LoadedTodayO
   })
 
   let preparation: LoadedNextLessonPreparation | null = null
-  try {
-    preparation = await loadNextLessonPreparationBundle({
-      workspaceId: workspaceContext.workspace.id,
-      academicYearId,
-      homeDaily,
-      minuteOfDay: clock.minuteOfDay,
-    })
-    if (!preparation) {
-      preparation = await loadNearestUpcomingPreparation({
+  if (options.includePreparation !== false) {
+    try {
+      preparation = await loadNextLessonPreparationBundle({
         workspaceId: workspaceContext.workspace.id,
         academicYearId,
-        localDate: clock.localDate,
-        timetable,
-        calendar,
+        homeDaily,
+        minuteOfDay: clock.minuteOfDay,
       })
+      if (!preparation) {
+        preparation = await loadNearestUpcomingPreparation({
+          workspaceId: workspaceContext.workspace.id,
+          academicYearId,
+          localDate: clock.localDate,
+          timetable,
+          calendar,
+        })
+      }
+    } catch {
+      console.warn('[DOCENTE OS] Lesson preparation unavailable; Today Copilot continues with base context.')
     }
-  } catch {
-    console.warn('[DOCENTE OS] Lesson preparation unavailable; Today Copilot continues with base context.')
   }
 
   return {
@@ -208,4 +212,3 @@ function addLocalDays(localDate: string, days: number) {
   date.setUTCDate(date.getUTCDate() + days)
   return date.toISOString().slice(0, 10)
 }
-
