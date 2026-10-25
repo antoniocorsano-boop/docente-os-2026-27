@@ -42,6 +42,19 @@ test('Today page uses a minimal lesson-binding fast path and never loads full pr
   assert.doesNotMatch(text, /loadLessonPreparationBundlesForLessons/)
 })
 
+test('Today page skips planner tasks on the latency-sensitive Oggi path', async () => {
+  const [today, planner] = await Promise.all([source(), plannerSource()])
+  assert.match(today, /options: \{ includePreparation\?: boolean; includeTasks\?: boolean \} = \{\}/)
+  assert.match(
+    today,
+    /const tasks = options\.includeTasks === false[\s\S]*\? \[\][\s\S]*: await plannerRepository\.listByWorkspace\(workspaceContext\.workspace\.id\)/,
+  )
+  assert.match(
+    planner,
+    /loadCurrentTodayOperationalContext\(\{[\s\S]*includePreparation: false,[\s\S]*includeTasks: false,[\s\S]*\}\)/,
+  )
+})
+
 test('Today operational context exists without an academic year', async () => {
   const text = await source()
   assert.match(
