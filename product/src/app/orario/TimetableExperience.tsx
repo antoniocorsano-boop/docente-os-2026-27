@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { TransientFeedback } from '@/components/ui/transient-feedback'
+import { currentRomeDomainClock } from '@/core/application/domain-clock'
 import { projectTemporalDay } from '@/core/application/temporal-projection-service'
 import { canActivateTimetableDraft, minutesToTime, slotDurationMinutes, timeToMinutes, TIMETABLE_WEEKDAYS, type TimetableSlot } from '@/core/domain/timetable'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
@@ -59,9 +60,9 @@ export async function TimetableExperience({
     || singleParam(params.strumento) === 'importa',
   )
 
-  const moment = currentRomeMoment()
+  const moment = currentRomeDomainClock()
   const literalTomorrowLocalDate = shiftLocalDate(moment.localDate, 1)
-  const isLiteralTomorrow = literalTomorrowLocalDate === shiftLocalDate(currentRomeDate(), 1)
+  const isLiteralTomorrow = literalTomorrowLocalDate === shiftLocalDate(moment.localDate, 1)
   const tomorrowMaterialsWeekday = isLiteralTomorrow ? weekdayFromLocalDate(literalTomorrowLocalDate) : null
   const tomorrowMaterialsHref = mode === 'view' && isLiteralTomorrow ? '/knowledge?focus=domani' : undefined
   const settingsRepository = new SupabaseTeacherSettingsRepository()
@@ -135,8 +136,8 @@ export async function TimetableExperience({
   const todayCalendarDay = calendarSnapshot.days.find((day) => day.localDate === moment.localDate) ?? null
   const todayNoLessons = Boolean(todayCalendarDay && todayCalendarDay.dayKind !== 'SCHOOL_DAY')
   const todaySlots = (todayNoLessons ? [] : operationalSlots.filter((slot) => slot.weekday === moment.weekday)).sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
-  const currentSlot = todaySlots.find((slot) => timeToMinutes(slot.startTime) <= moment.minutes && timeToMinutes(slot.endTime) > moment.minutes) ?? null
-  const nextSlot = currentSlot ?? todaySlots.find((slot) => timeToMinutes(slot.startTime) > moment.minutes) ?? null
+  const currentSlot = todaySlots.find((slot) => timeToMinutes(slot.startTime) <= moment.minuteOfDay && timeToMinutes(slot.endTime) > moment.minuteOfDay) ?? null
+  const nextSlot = currentSlot ?? todaySlots.find((slot) => timeToMinutes(slot.startTime) > moment.minuteOfDay) ?? null
   const focusSlot = nextSlot ? describeSlot(nextSlot, sectionById, disciplineById) : null
   const focusActivityException = nextSlot
     ? todayExceptions.find((exception) => exception.timetableSlotId === nextSlot.id && exception.kind === 'ACTIVITY_KIND_CHANGED') ?? null
@@ -364,7 +365,7 @@ export async function TimetableExperience({
           
                   {!importCandidate || importCandidate.state === 'APPLIED_TO_DRAFT' ? (
                     <TimetableLocalImportLauncher
-                      defaultEffectiveFrom={clampDate(currentRomeDate(), context.academicYear.startsOn, context.academicYear.endsOn)}
+                      defaultEffectiveFrom={clampDate(moment.localDate, context.academicYear.startsOn, context.academicYear.endsOn)}
                     />
                   ) : (
                     <div className="timetableImportReview">
@@ -602,7 +603,7 @@ async function buildTimetableLessonEntrypoints(input: {
   sections: Array<Parameters<typeof buildClassWorkspaceLearningFocus>[0]>
   progress: Parameters<typeof buildClassWorkspaceLearningFocus>[1]
   slots: TimetableSlot[]
-  moment: ReturnType<typeof currentRomeMoment>
+  moment: ReturnType<typeof currentRomeDomainClock>
 }) {
   const lessonSlots = input.slots.filter((slot) => slot.slotKind === 'LESSON' && slot.sectionId)
   if (!lessonSlots.length) return {} satisfies Record<string, TimetableLessonEntrypoint>
@@ -688,24 +689,12 @@ function sectionLabel(grade: keyof typeof GRADE_LABELS, sectionCode: string) { r
 function versionStatusLabel(value: string) { if (value === 'DRAFT') return 'Bozza'; if (value === 'ACTIVE') return 'In uso'; if (value === 'ARCHIVED') return 'Precedente'; return value }
 function formatHours(minutes: number) { if (!minutes) return '0h'; const hours = Math.floor(minutes / 60); const rest = minutes % 60; if (!hours) return `${rest}m`; return rest ? `${hours}h ${rest}m` : `${hours}h` }
 function formatDate(value: string) { const [year, month, day] = value.split('-'); return `${day}/${month}/${year}` }
-function currentRomeMoment() { const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()); const value = Object.fromEntries(parts.map((part) => [part.type, part.value])); const weekday = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 }[value.weekday] ?? 7; return { localDate: `${value.year}-${value.month}-${value.day}`, weekday, minutes: Number(value.hour) * 60 + Number(value.minute) } }
 function describeSlot(slot: { sectionId: string | null; disciplineId: string | null; manualClassLabel: string | null; slotKind: string; startTime: string; endTime: string; room: string | null }, sectionById: Map<string, { grade: keyof typeof GRADE_LABELS; sectionCode: string }>, disciplineById: Map<string, { name: string }>) { const section = slot.sectionId ? sectionById.get(slot.sectionId) : null; const discipline = slot.disciplineId ? disciplineById.get(slot.disciplineId) : null; const title = section ? sectionLabel(section.grade, section.sectionCode) : slot.manualClassLabel || presenceLabel(slot.slotKind); return { title, sectionId: section ? slot.sectionId : null, time: `${slot.startTime.slice(0, 5)}–${slot.endTime.slice(0, 5)}`, kind: discipline?.name || presenceLabel(slot.slotKind), room: slot.room, description: section ? `Questa è la lezione pertinente nell’orario che vale adesso. Entra nella classe per vedere il prossimo tratto didattico e i materiali utili.` : `Questa presenza appartiene all’orario che vale adesso e non crea una classe canonica.` } }
 function presenceLabel(kind: string) { if (kind === 'DISPOSITION') return 'Disposizione'; if (kind === 'RECEPTION') return 'Ricevimento'; if (kind === 'CLASS_PRESENCE') return 'Presenza in classe'; return 'Impegno' }
 function activityKindLabel(kind: string) { if (kind === 'DRAWING_PROJECT') return 'Disegno / progettazione'; if (kind === 'PRACTICAL_LAB') return 'Pratica / laboratorio'; if (kind === 'ASSESSMENT') return 'Verifica / valutazione'; if (kind === 'OTHER') return 'Altro'; return 'Teoria' }
 
 function singleParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? null : value ?? null
-}
-
-function currentRomeDate() {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Rome',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date())
-  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  return [value.year, value.month, value.day].join('-')
 }
 
 function clampDate(value: string, min: string, max: string) {

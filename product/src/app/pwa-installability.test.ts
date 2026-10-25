@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import test from 'node:test'
+import '../components/assistant/contextual-fab-positioning.test'
 
 const manifestSource = fs.readFileSync(new URL('./manifest.ts', import.meta.url), 'utf8')
 const installControlSource = fs.readFileSync(new URL('../components/pwa/PwaInstallControl.tsx', import.meta.url), 'utf8')

@@ -1,6 +1,8 @@
 'use strict'
 
-const HVA_CANONICAL_NOW = '2026-10-19T08:30:00+02:00'
+// This preload is intentionally CommonJS because Node loads it through --require.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { HVA_CANONICAL_NOW } = require('./hva-governed-baseline-config.cjs')
 
 module.exports = { HVA_CANONICAL_NOW }
 
