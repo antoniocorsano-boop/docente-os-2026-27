@@ -1,3 +1,4 @@
+import { currentRomeDomainClock } from '@/core/application/domain-clock'
 import { projectTemporalDay } from '@/core/application/temporal-projection-service'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
@@ -41,7 +42,7 @@ export async function loadCurrentTodayOperationalContext(): Promise<LoadedTodayO
   const workspaceContext = await workspaceRepository.getCurrentContext()
   if (!workspaceContext) return null
 
-  const clock = currentRomeClock()
+  const clock = currentRomeDomainClock()
   const plannerRepository = new SupabasePlannerRepository()
   const tasks = await plannerRepository.listByWorkspace(workspaceContext.workspace.id)
 
@@ -208,18 +209,3 @@ function addLocalDays(localDate: string, days: number) {
   return date.toISOString().slice(0, 10)
 }
 
-function currentRomeClock() {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Rome',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(new Date())
-  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  const localDate = `${value.year}-${value.month}-${value.day}`
-  const minuteOfDay = Number(value.hour) * 60 + Number(value.minute)
-  return { localDate, minuteOfDay }
-}

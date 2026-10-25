@@ -1,0 +1,143 @@
+name: Product Lint Diagnostics
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    paths:
+      - "product/**"
+      - ".github/workflows/product-lint-diagnostics.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: product-lint-diagnostics-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: product
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Run ESLint and capture structured diagnostics
+        id: lint
+        shell: bash
+        env:
+          EXACT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set +e
+          mkdir -p test-results/lint-ci
+          ./node_modules/.bin/eslint . --format json --output-file test-results/lint-ci/eslint.json
+          status=$?
+          set -e
+          printf '%s\n' "$status" > test-results/lint-ci/exit-code.txt
+
+          node - <<'NODE'
+          const fs = require('node:fs')
+          const path = require('node:path')
+
+          const input = 'test-results/lint-ci/eslint.json'
+          const results = fs.existsSync(input)
+            ? JSON.parse(fs.readFileSync(input, 'utf8'))
+            : []
+
+          const findings = results.flatMap((result) =>
+            result.messages.map((message) => ({
+              file: path.relative(process.cwd(), result.filePath).replaceAll('\\', '/'),
+              line: message.line ?? null,
+              column: message.column ?? null,
+              endLine: message.endLine ?? null,
+              endColumn: message.endColumn ?? null,
+              severity: message.severity === 2 ? 'error' : message.severity === 1 ? 'warning' : 'info',
+              ruleId: message.ruleId ?? 'unknown',
+              message: message.message,
+            })),
+          )
+
+          const errors = findings.filter((finding) => finding.severity === 'error')
+          const warnings = findings.filter((finding) => finding.severity === 'warning')
+          const byRule = Object.entries(
+            findings.reduce((acc, finding) => {
+              acc[finding.ruleId] = (acc[finding.ruleId] ?? 0) + 1
+              return acc
+            }, {}),
+          ).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+
+          const manifest = {
+            schemaVersion: 1,
+            tool: 'eslint',
+            command: './node_modules/.bin/eslint . --format json --output-file test-results/lint-ci/eslint.json',
+            exactHeadSha: process.env.EXACT_HEAD_SHA,
+            baseSha: process.env.BASE_SHA,
+            exitCode: Number(fs.readFileSync('test-results/lint-ci/exit-code.txt', 'utf8').trim()),
+            counts: {
+              filesWithFindings: new Set(findings.map((finding) => finding.file)).size,
+              errors: errors.length,
+              warnings: warnings.length,
+              total: findings.length,
+            },
+            rules: Object.fromEntries(byRule),
+            findings,
+          }
+
+          fs.writeFileSync(
+            'test-results/lint-ci/diagnostic-manifest.json',
+            `${JSON.stringify(manifest, null, 2)}\n`,
+          )
+
+          const escapeCell = (value) => String(value ?? '').replaceAll('|', '\\|').replaceAll('\n', ' ')
+          const lines = [
+            '# Product lint diagnostics',
+            '',
+            `- Exact head: \`${manifest.exactHeadSha}\``,
+            `- Base: \`${manifest.baseSha}\``,
+            `- Exit code: \`${manifest.exitCode}\``,
+            `- Errors: **${manifest.counts.errors}**`,
+            `- Warnings: **${manifest.counts.warnings}**`,
+            `- Files with findings: **${manifest.counts.filesWithFindings}**`,
+            '',
+            '## Findings by rule',
+            '',
+            '| Rule | Count |',
+            '| --- | ---: |',
+            ...byRule.map(([rule, count]) => `| \`${escapeCell(rule)}\` | ${count} |`),
+            '',
+            '## Exact findings',
+            '',
+            '| Severity | Rule | File | Location | Message |',
+            '| --- | --- | --- | ---: | --- |',
+            ...findings.map((finding) =>
+              `| ${escapeCell(finding.severity)} | \`${escapeCell(finding.ruleId)}\` | \`${escapeCell(finding.file)}\` | ${escapeCell(`${finding.line ?? '?'}:${finding.column ?? '?'}`)} | ${escapeCell(finding.message)} |`,
+            ),
+            '',
+          ]
+
+          fs.writeFileSync('test-results/lint-ci/lint-index.md', `${lines.join('\n')}\n`)
+          NODE
+
+          cat test-results/lint-ci/lint-index.md >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Upload structured lint diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: product-lint-diagnostics-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 30
+          path: product/test-results/lint-ci/

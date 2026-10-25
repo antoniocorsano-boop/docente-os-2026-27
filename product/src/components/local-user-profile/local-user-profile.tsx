@@ -112,9 +112,9 @@ export function LocalProfileAvatar() {
   )
 }
 
-export function LocalTeacherGreeting({ className }: { className?: string }) {
+export function LocalTeacherGreeting({ className, hour }: { className?: string; hour: number }) {
   const profile = useLocalTeacherProfile()
-  const greeting = localGreeting(new Date())
+  const greeting = localGreetingForHour(hour)
   return <span className={className}>{profile.displayName ? `${greeting}, ${profile.displayName}` : greeting}</span>
 }
 
@@ -184,6 +184,10 @@ export function localGreeting(date: Date) {
     hour12: false,
     timeZone: 'Europe/Rome',
   }).format(date))
+  return localGreetingForHour(hour)
+}
+
+function localGreetingForHour(hour: number) {
   if (hour < 13) return 'Buongiorno'
   if (hour < 18) return 'Buon pomeriggio'
   return 'Buonasera'
