@@ -8,6 +8,8 @@ const OUTPUT_ROOT = path.resolve('test-results/android-reality')
 const SCREENSHOTS_DIR = path.join(OUTPUT_ROOT, 'screenshots')
 const GEOMETRY_DIR = path.join(OUTPUT_ROOT, 'geometry')
 const NATIVE_INPUT_TIMEOUT_MS = 10_000
+const CALIBRATION_TAP_ATTEMPTS = 3
+const CALIBRATION_SAMPLE_TIMEOUT_MS = 2_000
 
 export async function runAr02FabTouchDrag(page, device) {
   await mkdir(SCREENSHOTS_DIR, { recursive: true })
@@ -232,16 +234,33 @@ async function calibrateNativeInput(page, device) {
   try {
     for (let index = 0; index < nativePoints.length; index += 1) {
       const point = nativePoints[index]
-      await runNativeShellInput(
-        device,
-        `input tap ${point.x} ${point.y}`,
-        `AR-02 native calibration tap ${index + 1} did not complete within the bounded timeout`,
-      )
-      await page.waitForFunction(
-        (expected) => Array.isArray(window.__hvaNativeTouchSamples) && window.__hvaNativeTouchSamples.length >= expected,
-        index + 1,
-        { timeout: 5_000 },
-      )
+      let observed = false
+      for (let attempt = 1; attempt <= CALIBRATION_TAP_ATTEMPTS; attempt += 1) {
+        await runNativeShellInput(
+          device,
+          `input tap ${point.x} ${point.y}`,
+          `AR-02 native calibration tap ${index + 1} attempt ${attempt} did not complete within the bounded timeout`,
+        )
+        try {
+          await page.waitForFunction(
+            (expected) => Array.isArray(window.__hvaNativeTouchSamples) && window.__hvaNativeTouchSamples.length >= expected,
+            index + 1,
+            { timeout: CALIBRATION_SAMPLE_TIMEOUT_MS },
+          )
+          observed = true
+          break
+        } catch {
+          if (attempt < CALIBRATION_TAP_ATTEMPTS) await page.waitForTimeout(250)
+        }
+      }
+      if (!observed) {
+        const observedCount = await page.evaluate(() => (
+          Array.isArray(window.__hvaNativeTouchSamples) ? window.__hvaNativeTouchSamples.length : 0
+        ))
+        throw new Error(
+          `AR-02 native calibration tap ${index + 1} was not observed after ${CALIBRATION_TAP_ATTEMPTS} attempts (samples=${observedCount})`,
+        )
+      }
     }
     const cssPoints = await page.evaluate(() => window.__hvaNativeTouchSamples.slice(0, 3))
     if (!cssPoints.every((sample) => sample.pointerType === 'touch')) {
