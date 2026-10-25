@@ -35,7 +35,7 @@ test('optional textbook coverage badge does not lower foreground contrast throug
 
 test('X3 no-write regression observes the canonical Activities surface instead of superseded Planner task summary', async () => {
   const x3 = await read('../../../../e2e/x3-acceptance.spec.mjs')
-  assert.match(x3, /page\.goto\('\/attivita'/)
+  assert.ok(x3.includes("page.goto('/attivita'"))
   assert.match(x3, /activityBoardSnapshot/)
   assert.doesNotMatch(x3, /Sintesi della giornata/)
 })
