@@ -64,7 +64,7 @@ export default async function PlannerPage() {
       <header className="todayHomeHeader">
         <div>
           <p className="todayHomeDate">{capitalize(humanDate)}</p>
-          <p className="todayHomeGreeting"><LocalTeacherGreeting /></p>
+          <p className="todayHomeGreeting"><LocalTeacherGreeting hour={Math.floor(operational.minuteOfDay / 60)} /></p>
           <h1>Oggi</h1>
         </div>
         <Link className="todayCalendarLink" href="/calendario">
