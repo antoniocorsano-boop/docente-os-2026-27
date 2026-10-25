@@ -133,6 +133,7 @@ test('DOS-IA-RESET responsive 320×800: gerarchia e touch target restano utilizz
   await loginE2E(page)
   await page.setViewportSize({ width: 320, height: 800 })
   await page.goto('/planner')
+  await expect(page.locator('#dos-main-content')).toBeVisible()
   await expectNoHorizontalOverflow(page, 'Oggi 320×800')
   await assertMobilePrimaryTargets(page)
   await expect(page.locator('#dos-main-content')).not.toContainText(/CAN-PACK|CAN-PLAN|[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i)
