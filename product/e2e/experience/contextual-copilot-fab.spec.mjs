@@ -6,8 +6,8 @@ requireE2ECredentials()
 
 const STORAGE_KEY = 'DOCENTE_OS_CONTEXTUAL_FAB_PLACEMENT_V1'
 
-test('Contextual Copilot FAB: manual drag snaps and persists semantic preference', async ({ page }, testInfo) => {
-  test.skip(!testInfo.project.name.startsWith('mobile'), 'Manual FAB positioning is qualified on the mobile presentation contract.')
+test('Contextual Copilot FAB: browser pointer drag verifies geometry and persistence, not touch qualification', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('mobile'), 'Browser pointer FAB positioning is verified on the mobile presentation contract; Android Reality is authoritative for touch.')
 
   await loginE2E(page)
   await page.goto('/progetta?grade=prima')
