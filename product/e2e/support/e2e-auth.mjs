@@ -89,6 +89,7 @@ async function tryReuseCachedAal2Session(page) {
   }
 }
 
+// HVA canonical time is browser-scoped; server-side authentication must keep real wall-clock time for JWT validation.
 async function alignLocalHvaBrowserClock(page) {
   if (process.env.EXPERIENCE_TARGET !== 'local') return
   const fixedEpochMs = Date.parse(HVA_CANONICAL_NOW)

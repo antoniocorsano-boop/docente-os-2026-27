@@ -10,7 +10,7 @@ const outputRoot = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience
 
 test.skip(process.env.EXPERIENCE_TARGET !== 'local', 'Today governed-baseline evidence is local-only; beta/preview use their real wall clock.')
 
-test('Journey: Oggi qualifica registrazione pendente + prossima lezione + impegno Calendario', async ({ page }, testInfo) => {
+test('Journey: Oggi qualifica registrazione pendente + lezione in corso + impegno Calendario', async ({ page }, testInfo) => {
   await loginE2E(page)
 
   try {
@@ -33,13 +33,13 @@ test('Journey: Oggi qualifica registrazione pendente + prossima lezione + impegn
   const lessonCards = page.locator('.todayLessonCard')
   await expect(
     lessonCards,
-    'Task 9 richiede browser evidence deterministica con una registrazione pendente e una prossima lezione.',
+    'Task 9 richiede browser evidence deterministica con una registrazione pendente e una lezione in corso.',
   ).toHaveCount(2)
 
   const pendingCard = lessonCards.filter({ hasText: 'LEZIONE DA REGISTRARE' })
-  const upcomingCard = lessonCards.filter({ hasText: 'PROSSIMA LEZIONE' })
+  const currentCard = lessonCards.filter({ hasText: 'LEZIONE IN CORSO' })
   await expect(pendingCard, 'Oggi deve rendere visibile la lezione conclusa ancora da registrare.').toHaveCount(1)
-  await expect(upcomingCard, 'Oggi deve rendere visibile la prossima lezione della giornata.').toHaveCount(1)
+  await expect(currentCard, 'Oggi deve rendere visibile la lezione attualmente in corso.').toHaveCount(1)
 
   const commitments = page.locator('.todayCalendarCommitments')
   await expect(
@@ -53,13 +53,13 @@ test('Journey: Oggi qualifica registrazione pendente + prossima lezione + impegn
     expect(await commitmentLinks.nth(index).getAttribute('href')).toMatch(/^\/calendario(?:[?#]|$)/)
   }
 
-  const primary = upcomingCard.locator('a.todayPrimaryAction')
-  await expect(primary, 'La prossima lezione deve avere una sola azione primaria.').toHaveCount(1)
-  await expectTouchTarget(primary, 'CTA prossima lezione Oggi')
-  await expect(upcomingCard).not.toContainText(/CAN-PACK|CAN-PLAN|\bB\d{2}\b/)
+  const primary = currentCard.locator('a.todayPrimaryAction')
+  await expect(primary, 'La lezione in corso deve avere una sola azione primaria.').toHaveCount(1)
+  await expectTouchTarget(primary, 'CTA lezione in corso Oggi')
+  await expect(currentCard).not.toContainText(/CAN-PACK|CAN-PLAN|\bB\d{2}\b/)
 
   const href = await primary.getAttribute('href')
-  expect(href, 'La prossima lezione HVA deve risolvere una route Lezione canonica.').toMatch(/^\/classi\/[^/?#]+\/lezioni\/[^/?#]+/)
+  expect(href, 'La lezione in corso HVA deve risolvere una route Lezione canonica.').toMatch(/^\/classi\/[^/?#]+\/lezioni\/[^/?#]+/)
 
   await screenshot(page, testInfo, 'today-teacher-first-coexistence')
 
@@ -76,7 +76,7 @@ test('Journey: Oggi qualifica registrazione pendente + prossima lezione + impegn
   await screenshot(page, testInfo, 'today-teacher-first-lesson')
   await recordJourney(testInfo.project.name, {
     status: 'PASS',
-    note: 'Oggi rende insieme registrazione pendente, prossima lezione e impegno Calendario e apre la Lezione canonica senza reintrodurre fasi URL.',
+    note: 'Oggi rende insieme registrazione pendente, lezione in corso e impegno Calendario e apre la Lezione canonica senza reintrodurre fasi URL.',
   })
 })
 
@@ -95,7 +95,7 @@ async function recordJourney(project, result) {
   const payload = {
     schemaVersion: 1,
     id: 'today-teacher-first',
-    label: 'Oggi → registrazione pendente + prossima lezione + impegno Calendario',
+    label: 'Oggi → registrazione pendente + lezione in corso + impegno Calendario',
     project,
     status: result.status,
     note: result.note,

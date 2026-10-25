@@ -105,45 +105,49 @@ async function udaReading(page, testInfo) {
 }
 
 async function assertMobileAssistantDoesNotCoverTask(page) {
-  const support = page.locator('.dosAssistantFloatingTrigger, .dosAssistantFloatingStatus').first()
-  await expect(support, 'Il supporto contestuale deve restare disponibile anche quando non fluttua sul contenuto.').toBeVisible({ timeout: 20_000 })
+  const support = page.locator('.dosAssistantFloatingTrigger').first()
+  await expect(support, 'Il supporto contestuale deve restare disponibile sul compito mobile.').toBeVisible({ timeout: 20_000 })
+  await expect(support, 'La geometria adattiva del FAB deve essere pronta prima della misura.').toHaveAttribute('data-fab-ready', 'true', { timeout: 20_000 })
 
-  const documentGeometry = await page.evaluate(() => {
-    const taskEnd = document.querySelector('.focusedKnowledgeManage')
-    const assistant = document.querySelector('.dosAssistantFloatingTrigger, .dosAssistantFloatingStatus')
-    if (!taskEnd || !assistant) return null
-    const taskRect = taskEnd.getBoundingClientRect()
-    const assistantRect = assistant.getBoundingClientRect()
-    return {
-      position: getComputedStyle(assistant).position,
-      taskBottom: taskRect.bottom + window.scrollY,
-      assistantTop: assistantRect.top + window.scrollY,
-    }
-  })
+  const assertSafeGeometry = async (label) => {
+    const geometry = await page.evaluate(() => {
+      const assistant = document.querySelector('.dosAssistantFloatingTrigger')
+      const nav = document.querySelector('.dosBottomNav')
+      if (!assistant || !nav) return null
 
-  expect(documentGeometry, 'Impossibile misurare la relazione fra compito e assistente mobile.').not.toBeNull()
-  expect(documentGeometry.position, 'Su mobile l’assistente chiuso deve appartenere al normale flusso della pagina.').toBe('static')
-  expect(
-    documentGeometry.assistantTop,
-    'L’assistente deve iniziare dopo l’ultimo contenuto operativo della UDA.',
-  ).toBeGreaterThanOrEqual(documentGeometry.taskBottom + 8)
+      const assistantRect = assistant.getBoundingClientRect()
+      const navRect = nav.getBoundingClientRect()
+      const overlaps = [...document.querySelectorAll('[data-copilot-protected]')]
+        .filter((region) => {
+          const rect = region.getBoundingClientRect()
+          return assistantRect.left < rect.right
+            && assistantRect.right > rect.left
+            && assistantRect.top < rect.bottom
+            && assistantRect.bottom > rect.top
+        })
+        .map((region) => region.className || region.tagName)
 
+      return {
+        layout: assistant.getAttribute('data-fab-layout'),
+        overlaps,
+        assistantBottom: assistantRect.bottom,
+        navTop: navRect.top,
+      }
+    })
+
+    expect(geometry, `Impossibile misurare la geometria adattiva del FAB ${label}.`).not.toBeNull()
+    expect(['floating', 'docked'], `Il FAB ${label} deve dichiarare un layout adattivo valido.`).toContain(geometry.layout)
+    expect(geometry.overlaps, `Il FAB ${label} non deve intersecare contenuti operativi protetti.`).toEqual([])
+    expect(
+      geometry.assistantBottom,
+      `Il FAB ${label} non deve entrare nell’area della navigazione mobile.`,
+    ).toBeLessThanOrEqual(geometry.navTop - 8)
+  }
+
+  await assertSafeGeometry('all’apertura della UDA')
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
-  await page.waitForTimeout(100)
-  const viewportGeometry = await page.evaluate(() => {
-    const assistant = document.querySelector('.dosAssistantFloatingTrigger, .dosAssistantFloatingStatus')
-    const nav = document.querySelector('.dosBottomNav')
-    if (!assistant || !nav) return null
-    const assistantRect = assistant.getBoundingClientRect()
-    const navRect = nav.getBoundingClientRect()
-    return { assistantBottom: assistantRect.bottom, navTop: navRect.top }
-  })
-
-  expect(viewportGeometry, 'Impossibile misurare assistente e navigazione mobile.').not.toBeNull()
-  expect(
-    viewportGeometry.assistantBottom,
-    'L’assistente non deve entrare nell’area della navigazione mobile a fine pagina.',
-  ).toBeLessThanOrEqual(viewportGeometry.navTop - 8)
+  await page.waitForTimeout(150)
+  await assertSafeGeometry('a fine pagina')
 }
 
 async function knowledgeDocument(page, testInfo) {
