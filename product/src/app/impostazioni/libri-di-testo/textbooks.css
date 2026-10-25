@@ -243,7 +243,7 @@
 }
 
 .textbookCoverageBadge.optional {
-  opacity: 0.62;
+  opacity: 1;
 }
 
 .textbookCoverageBadge.attention {
