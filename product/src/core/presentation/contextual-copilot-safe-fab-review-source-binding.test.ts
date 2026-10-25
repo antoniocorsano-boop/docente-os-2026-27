@@ -45,5 +45,5 @@ test('mobile UDA HVA validates adaptive FAB geometry instead of requiring static
     /documentGeometry\.position[\s\S]*?toBe\(['"]static['"]\)/,
   )
   assert.match(criticalJourneysSource, /data-fab-layout/)
-  assert.match(criticalJourneysSource, /focusedKnowledgeContext/)
+  assert.match(criticalJourneysSource, /querySelectorAll\(['"]\[data-copilot-protected\]['"]\)/)
 })
