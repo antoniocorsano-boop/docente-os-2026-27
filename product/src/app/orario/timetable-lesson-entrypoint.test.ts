@@ -53,6 +53,13 @@ test('view mode treats only a missing canonical binding as an unresolved grade s
   assert.match(timetableExperienceSource, /throw error/)
 })
 
+test('view mode keeps the lesson block unresolved when the canonical generation is missing', () => {
+  assert.match(
+    timetableExperienceSource,
+    /const generationId = generationByGrade\.get\(grade\)\s+if \(!generationId\) return \[section\.id, null\] as const/,
+  )
+})
+
 test('view mode fails closed when lesson context is ambiguous', () => {
   assert.deepEqual(resolveTimetableLessonEntrypoint({
     mode: 'view',
