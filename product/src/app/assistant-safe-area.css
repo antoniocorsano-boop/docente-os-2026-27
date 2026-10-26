@@ -17,3 +17,10 @@
     margin-bottom:24px;
   }
 }
+.dosAssistantFloatingTrigger[data-fab-layout="docked"]{
+  position:static;
+  left:auto;
+  top:auto;
+  right:auto;
+  bottom:auto;
+}
