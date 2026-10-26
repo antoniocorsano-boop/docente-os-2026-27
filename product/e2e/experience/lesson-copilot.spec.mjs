@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
+import { resolveHvaPriorUnregisteredLessonOccurrence } from '../support/hva-today-coexistence-fixture.mjs'
 
 requireE2ECredentials()
 
@@ -23,7 +24,13 @@ test('V1-C1: legacy Teach → gate docente prima del copilota', async ({ page },
   if (!lessonHref) throw new Error('Missing lesson href')
 
   const lessonPath = lessonHref.split('?')[0]
-  await page.goto(`${lessonPath}?mode=teach`)
+  const occurrence = await resolveHvaPriorUnregisteredLessonOccurrence()
+  const query = new URLSearchParams({
+    mode: 'teach',
+    date: occurrence.localDate,
+    occurrence: occurrence.occurrenceLogicalId,
+  })
+  await page.goto(`${lessonPath}?${query.toString()}`)
 
   await expect(page.locator('[data-lesson-shell]')).toBeVisible()
   await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)

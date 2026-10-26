@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
+import { resolveHvaPriorUnregisteredLessonOccurrence } from '../support/hva-today-coexistence-fixture.mjs'
 
 requireE2ECredentials()
 
@@ -14,8 +15,14 @@ test('Journey: legacy Registra → gate docente nella Lezione unificata', async 
   const classCard = page.locator('a.canonicalClassCard').filter({ hasText: /2ª\s*A/i }).first()
   await expect(classCard, 'La fixture HVA deve avere una 2ª A utilizzabile.').toBeVisible()
   const sectionId = sectionIdFromHref(await classCard.getAttribute('href'))
+  const occurrence = await resolveHvaPriorUnregisteredLessonOccurrence()
+  const query = new URLSearchParams({
+    mode: 'record',
+    date: occurrence.localDate,
+    occurrence: occurrence.occurrenceLogicalId,
+  })
 
-  await page.goto(`/classi/${encodeURIComponent(sectionId)}/lezioni/B01?mode=record`)
+  await page.goto(`/classi/${encodeURIComponent(sectionId)}/lezioni/B01?${query.toString()}`)
 
   await expect(page.locator('[data-lesson-shell]')).toBeVisible()
   await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)

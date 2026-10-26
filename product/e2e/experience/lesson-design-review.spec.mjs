@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
+import { resolveHvaPriorUnregisteredLessonOccurrence } from '../support/hva-today-coexistence-fixture.mjs'
 
 requireE2ECredentials()
 
@@ -14,9 +15,16 @@ test('LP-6 — la revisione governata apre gli strumenti di progettazione della 
   const classCard = page.locator('a.canonicalClassCard').filter({ hasText: /2ª\s*A/i }).first()
   await expect(classCard, 'La fixture HVA deve avere una 2ª A utilizzabile.').toBeVisible()
   const sectionId = sectionIdFromHref(await classCard.getAttribute('href'))
+  const occurrence = await resolveHvaPriorUnregisteredLessonOccurrence()
+  const query = new URLSearchParams({
+    mode: 'prepare',
+    review: 'design',
+    date: occurrence.localDate,
+    occurrence: occurrence.occurrenceLogicalId,
+  })
 
   const response = await page.goto(
-    `/classi/${encodeURIComponent(sectionId)}/lezioni/B01?mode=prepare&review=design#lesson-design-tools-title`,
+    `/classi/${encodeURIComponent(sectionId)}/lezioni/B01?${query.toString()}#lesson-design-tools-title`,
   )
   if (!response) throw new Error('No navigation response for governed lesson design review')
   expect(response.status()).toBeLessThan(400)
