@@ -38,7 +38,7 @@ export type LoadedTodayCopilotContext = {
 }
 
 export async function loadCurrentTodayOperationalContext(
-  options: { includePreparation?: boolean } = {},
+  options: { includePreparation?: boolean; includeTasks?: boolean } = {},
 ): Promise<LoadedTodayOperationalContext | null> {
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const workspaceContext = await workspaceRepository.getCurrentContext()
@@ -46,7 +46,9 @@ export async function loadCurrentTodayOperationalContext(
 
   const clock = currentRomeDomainClock()
   const plannerRepository = new SupabasePlannerRepository()
-  const tasks = await plannerRepository.listByWorkspace(workspaceContext.workspace.id)
+  const tasks = options.includeTasks === false
+    ? []
+    : await plannerRepository.listByWorkspace(workspaceContext.workspace.id)
 
   if (!workspaceContext.academicYear) {
     return {

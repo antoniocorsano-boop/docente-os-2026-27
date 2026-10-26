@@ -19,7 +19,7 @@ test('Today exposes one operational loader and Copilot delegates to it', async (
   assert.match(text, /export type LoadedTodayOperationalContext = \{/)
   assert.match(
     text,
-    /export async function loadCurrentTodayOperationalContext\([\s\S]*options: \{ includePreparation\?: boolean \} = \{\}[\s\S]*\): Promise<LoadedTodayOperationalContext \| null>/,
+    /export async function loadCurrentTodayOperationalContext\([\s\S]*options: \{ includePreparation\?: boolean; includeTasks\?: boolean \} = \{\}[\s\S]*\): Promise<LoadedTodayOperationalContext \| null>/,
   )
   assert.match(
     text,
@@ -35,10 +35,27 @@ test('Today operational loading keeps optional lesson preparation fail-soft', as
   assert.match(text, /preparation,\n\s*\}/)
 })
 
-test('Today page skips the duplicate Copilot preparation load while preserving selected lesson resolution', async () => {
+test('Today page uses a minimal lesson-binding fast path and never loads full preparation bundles', async () => {
   const text = await plannerSource()
-  assert.match(text, /loadCurrentTodayOperationalContext\(\{ includePreparation: false \}\)/)
-  assert.match(text, /loadLessonPreparationBundlesForLessons\(input\)/)
+  assert.match(
+    text,
+    /loadCurrentTodayOperationalContext\(\{[\s\S]*includePreparation: false,[\s\S]*includeTasks: false,[\s\S]*\}\)/,
+  )
+  assert.match(text, /loadTodayLessonBindings\(\{/)
+  assert.doesNotMatch(text, /loadLessonPreparationBundlesForLessons/)
+})
+
+test('Today page skips planner tasks on the latency-sensitive Oggi path', async () => {
+  const [today, planner] = await Promise.all([source(), plannerSource()])
+  assert.match(today, /options: \{ includePreparation\?: boolean; includeTasks\?: boolean \} = \{\}/)
+  assert.match(
+    today,
+    /const tasks = options\.includeTasks === false[\s\S]*\? \[\][\s\S]*: await plannerRepository\.listByWorkspace\(workspaceContext\.workspace\.id\)/,
+  )
+  assert.match(
+    planner,
+    /loadCurrentTodayOperationalContext\(\{[\s\S]*includePreparation: false,[\s\S]*includeTasks: false,[\s\S]*\}\)/,
+  )
 })
 
 test('Today operational context exists without an academic year', async () => {
