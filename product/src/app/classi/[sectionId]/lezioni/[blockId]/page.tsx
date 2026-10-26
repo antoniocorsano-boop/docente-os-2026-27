@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
+import { currentRomeDomainClock } from '@/core/application/domain-clock'
 import { TemporalProjectionService, type ProjectedOccurrence } from '@/core/application/temporal-projection-service'
 import { isVoiceCaptureReady } from '@/core/application/voice/voice-capture-policy'
 import {
@@ -177,7 +178,7 @@ export default async function LessonWorkspacePage({
   })
 
   const query = await searchParams
-  const clock = currentRomeClock()
+  const clock = currentRomeDomainClock()
   const legacyMode = asLegacyMode(query.mode)
   const requestedIntent = asIntent(query.intent) ?? legacyIntent(legacyMode)
   const requestedSubtask = asSubtask(query.subtask) ?? (legacyMode === 'observe' ? 'observe' : null)
@@ -466,23 +467,6 @@ function isLocalDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
   const date = new Date(`${value}T12:00:00Z`)
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
-}
-
-function currentRomeClock() {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Rome',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(new Date())
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  return {
-    localDate: `${values.year}-${values.month}-${values.day}`,
-    minuteOfDay: Number(values.hour) * 60 + Number(values.minute),
-  }
 }
 
 async function lessonCurriculumBaselineOrNull(
