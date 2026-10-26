@@ -10,6 +10,10 @@ const fabPositionSource = readFileSync(
   'src/components/assistant/use-contextual-fab-position.ts',
   'utf8',
 )
+const assistantSafeAreaCss = readFileSync(
+  'src/app/assistant-safe-area.css',
+  'utf8',
+)
 const knowledgeAssetPageSource = readFileSync(
   'src/app/knowledge/[assetId]/page.tsx',
   'utf8',
@@ -30,6 +34,16 @@ test('contextual FAB re-observes protected regions that mount after initial plac
 
 test('contextual FAB preserves native touch drag by disabling browser touch gestures on the trigger', () => {
   assert.match(fabPositionSource, /touchAction:\s*['"]none['"]/) 
+})
+
+test('docked contextual FAB is forced back into normal document flow', () => {
+  const dockedRule = assistantSafeAreaCss.match(
+    /\.dosAssistantFloatingTrigger\[data-fab-layout=["']docked["']\]\s*\{([^}]*)\}/,
+  )?.[1] ?? ''
+
+  assert.match(dockedRule, /position:\s*static/)
+  assert.match(dockedRule, /right:\s*auto/)
+  assert.match(dockedRule, /bottom:\s*auto/)
 })
 
 test('focused knowledge task context is registered as a protected region for the contextual FAB', () => {
