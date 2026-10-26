@@ -89,7 +89,7 @@ async function ensureConfirmedTeachingAssignment(page) {
     await page.goto('/impostazioni#cattedra')
     await expect(page.locator('#cattedra')).toBeVisible()
 
-    let row = page.locator('#cattedra .humanAssignmentRow').filter({ hasText: FIXTURE_NOTE }).first()
+    let row = fixtureAssignmentRow(page)
 
     if (!(await row.count())) {
       const form = page.locator('#cattedra form.settingsAssignmentForm')
@@ -107,7 +107,7 @@ async function ensureConfirmedTeachingAssignment(page) {
       await pairSelect.selectOption(pairValue)
       await form.locator('input[name="sourceNote"]').fill(FIXTURE_NOTE)
       await form.getByRole('button', { name: 'Aggiungi alla cattedra' }).click()
-      row = page.locator('#cattedra .humanAssignmentRow').filter({ hasText: FIXTURE_NOTE }).first()
+      row = fixtureAssignmentRow(page)
       await expect(row, 'La Cattedra fixture deve essere creata tramite il normale flusso Impostazioni.').toBeVisible()
     }
 
@@ -179,6 +179,13 @@ async function restoreAssignmentToProvisional(page, assignmentId) {
   if (await details.getAttribute('open') === null) await details.locator(':scope > summary').click()
   await current.getByRole('button', { name: 'Rimetti da controllare' }).click()
   await expect(assignmentRow(page, assignmentId), 'La Cattedra fixture deve essere riportata allo stato provvisorio dopo il test.').toHaveClass(/needsConfirmation/)
+}
+
+function fixtureAssignmentRow(page) {
+  return page.locator('#cattedra .humanAssignmentRow')
+    .filter({ hasText: FIXTURE_DISCIPLINE })
+    .filter({ hasText: FIXTURE_NOTE })
+    .first()
 }
 
 function assignmentRow(page, assignmentId) {

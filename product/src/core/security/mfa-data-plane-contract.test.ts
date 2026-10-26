@@ -7,6 +7,8 @@ const migrationPath = path.join(process.cwd(), 'supabase', 'migrations', '0051_m
 const migration = fs.readFileSync(migrationPath, 'utf8')
 const e2eAuthPath = path.join(process.cwd(), 'e2e', 'support', 'e2e-auth.mjs')
 const e2eAuth = fs.readFileSync(e2eAuthPath, 'utf8')
+const startProductionPath = path.join(process.cwd(), 'scripts', 'start-production.mjs')
+const startProduction = fs.readFileSync(startProductionPath, 'utf8')
 
 test('MFA migration defines a fail-closed AAL2 JWT guard', () => {
   assert.match(migration, /create or replace function private\.current_session_is_aal2\(\)/i)
@@ -45,5 +47,18 @@ test('governed HVA MFA setup gives the server-rendered MFA boundary an explicit 
   assert.doesNotMatch(
     e2eAuth,
     /expect\(\s*page\.getByRole\('heading',\s*\{\s*name:\s*'Conferma il secondo fattore\.'\s*\}\),?\s*\)\.toBeVisible\(\s*\)/,
+  )
+})
+
+test('local HVA keeps deterministic browser time out of server-side JWT validation', () => {
+  assert.match(
+    e2eAuth,
+    /page\.clock\.setFixedTime\(fixedEpochMs\)/,
+    'local HVA should keep deterministic time at the browser boundary',
+  )
+  assert.doesNotMatch(
+    startProduction,
+    /childEnv\.NODE_OPTIONS\s*=\s*appendNodeRequire\(/,
+    'the authenticated Next.js runtime must not preload the fixed HVA Date into server-side JWT validation',
   )
 })

@@ -58,24 +58,15 @@ export default async function ClassesPage() {
       canonicalGenerationByGrade[section.grade],
     ))
     .sort((a, b) => a.compactLabel.localeCompare(b.compactLabel, 'it', { numeric: true }))
-  const confirmed = classes.filter((item) => item.sectionStatus === 'CONFERMATA').length
-  const onChair = classes.filter((item) => item.assignments.length > 0).length
-
   return (
     <AppShell active="classes" academicYearLabel={context.academicYear.label} workspaceName={settings.schoolName || context.workspace.name} role={context.role} contentClassName="classesWorkspaceSurface">
       <section className="classesHero">
-        <div><p>CLASSI · {context.academicYear.label}</p><h1>Le tue classi</h1><span>Le sezioni del tuo contesto professionale. I documenti possono essere collegati alle classi, ma non decidono quali classi esistono.</span></div>
+        <div><p>CLASSI · {context.academicYear.label}</p><h1>Scegli una classe</h1><span>Apri la classe su cui devi continuare il lavoro. Configurazione e gestione restano separate.</span></div>
         <Link href="/impostazioni#classi" className="secondaryButton">Gestisci classi</Link>
       </section>
 
-      <section className="classesSummary" aria-label="Riepilogo classi">
-        <article><span>Sezioni</span><strong>{classes.length}</strong><small>nel contesto corrente</small></article>
-        <article><span>Confermate</span><strong>{confirmed}</strong><small>sezioni confermate</small></article>
-        <article><span>In cattedra</span><strong>{onChair}</strong><small>con almeno un insegnamento</small></article>
-      </section>
-
       {classes.length ? (
-        <section className="canonicalClassesGrid" aria-label="Sezioni canoniche">
+        <section className="canonicalClassesGrid" aria-label="Seleziona una classe">
           {classes.map((item) => (
             <Link className="canonicalClassCard" href={`/classi/${item.sectionId}`} key={item.sectionId}>
               <div className="canonicalClassCardTop"><span>CLASSE</span><small className={`classState state-${item.sectionStatus.toLowerCase()}`}>{item.sectionStatusLabel}</small></div>
@@ -83,7 +74,7 @@ export default async function ClassesPage() {
               {item.assignments.length ? (
                 <div className="classChairSummary">{item.assignments.map((assignment) => <span key={assignment.id}><strong>{assignment.discipline}</strong><small>{formatWeeklyMinutes(assignment.weeklyMinutes)}</small></span>)}</div>
               ) : <p className="classNoChair">Non ancora associata alla tua cattedra.</p>}
-              <div className="classProgressSummary"><span>{item.completedBlocks}/33 blocchi registrati</span><strong>Apri la classe <i aria-hidden>→</i></strong></div>
+              <div className="classProgressSummary"><span>{item.completedBlocks}/33 lezioni concluse</span><strong>Apri la classe <i aria-hidden>→</i></strong></div>
             </Link>
           ))}
         </section>

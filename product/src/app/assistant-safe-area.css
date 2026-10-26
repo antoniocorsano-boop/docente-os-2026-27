@@ -1,6 +1,26 @@
 @media(max-width:719px){
-  .dosAssistantFloatingTrigger,
+  .dosAssistantFloatingTrigger{
+    position:fixed;
+    right:10px;
+    bottom:calc(var(--dos-bottom-nav-height,68px) + env(safe-area-inset-bottom) + 12px);
+    width:56px;
+    height:56px;
+    padding:0;
+    border-radius:var(--radius-pill);
+    margin:0;
+  }
+  .dosAssistantFloatingTrigger>span:last-child{display:none}
+  .dosShellAssistantEnabled .dosContent.workSurface{
+    padding-bottom:calc(var(--dos-bottom-nav-height,68px) + env(safe-area-inset-bottom) + 88px);
+  }
   .dosAssistantFloatingStatus{
     margin-bottom:24px;
   }
+}
+.dosAssistantFloatingTrigger[data-fab-layout="docked"]{
+  position:static;
+  left:auto;
+  top:auto;
+  right:auto;
+  bottom:auto;
 }

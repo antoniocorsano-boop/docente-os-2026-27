@@ -3,6 +3,8 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { SourceProvenance } from '@/components/source-provenance/source-provenance'
+import { TomorrowMaterialsContent } from '@/app/materiali/domani/tomorrow-materials-content'
+import { loadTomorrowPreparationBundle } from '@/app/materiali/domani/tomorrow-preparation-loader'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import {
@@ -39,6 +41,7 @@ type PageProps = {
     section?: string
     block?: string
     intent?: string
+    focus?: string
   }>
 }
 
@@ -46,6 +49,7 @@ const RECENT_VISIBLE_COUNT = 8
 
 export default async function KnowledgePage({ searchParams }: PageProps) {
   const params = await searchParams
+  const focus = params.focus?.trim() ?? ''
   const query = params.q?.trim() ?? ''
   const uploadMessage = uploadFeedback(params.upload)
   const filters = { category: params.category?.trim(), discipline: params.discipline?.trim(), classLabel: params.classLabel?.trim() }
@@ -68,6 +72,31 @@ export default async function KnowledgePage({ searchParams }: PageProps) {
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
   if (!context) redirect('/login')
+
+  if (focus === 'domani') {
+    if (!context.academicYear) redirect('/workspace')
+    const tomorrowFocusLabel = 'MATERIALI DI DOMANI'
+    const tomorrow = await loadTomorrowPreparationBundle({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+    })
+    return (
+      <AppShell
+        active="knowledge"
+        academicYearLabel={context.academicYear.label}
+        workspaceName={context.workspace.name}
+        role={context.role}
+        contentClassName="knowledgeSurface"
+      >
+        <TomorrowMaterialsContent
+          tomorrow={tomorrow}
+          backHref="/knowledge"
+          backLabel="Materiali e fonti"
+          eyebrow={tomorrowFocusLabel}
+        />
+      </AppShell>
+    )
+  }
 
   const cookieStore = textbookMaterialRequested ? await cookies() : null
   const cookieTextbookId = cookieStore?.get(TEXTBOOK_MATERIAL_CONTEXT_COOKIE)?.value?.trim() ?? ''

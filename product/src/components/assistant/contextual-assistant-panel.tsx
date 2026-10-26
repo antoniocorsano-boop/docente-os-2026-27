@@ -13,6 +13,7 @@ import {
 } from '@assistant-ui/react'
 import { Mic, SendHorizontal, ShieldCheck, Sparkles, Square } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
+import { useContextualFabPosition } from './use-contextual-fab-position'
 
 export type ContextualAssistantPanelProps = {
   presentation?: 'inline' | 'floating'
@@ -46,6 +47,22 @@ export function ContextualAssistantPanel({
   dictationAdapter,
 }: ContextualAssistantPanelProps) {
   const [expanded, setExpanded] = useState(false)
+  const {
+    triggerRef,
+    ready,
+    mode,
+    layout,
+    displaced,
+    edge,
+    style,
+    hasManualPreference,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    allowActivation,
+    resetToAuto,
+  } = useContextualFabPosition({ enabled: presentation === 'floating' })
   const browserDictationAdapter = useMemo<DictationAdapter | undefined>(() => {
     if (typeof window === 'undefined' || !WebSpeechDictationAdapter.isSupported()) return undefined
     return new WebSpeechDictationAdapter({
@@ -73,13 +90,37 @@ export function ContextualAssistantPanel({
       dictation: resolvedDictationAdapter,
     },
   })
+  const positionStatus = mode === 'manual'
+    ? `Posizione manuale del copilota attiva${edge ? ` sul lato ${edge === 'left' ? 'sinistro' : 'destro'}` : ''}.`
+    : 'Posizione automatica del copilota attiva.'
 
   if (presentation === 'floating' && !expanded) {
     return (
-      <button className="dosAssistantFloatingTrigger" type="button" onClick={() => setExpanded(true)}>
-        <span className="dosAssistantIcon" aria-hidden><Sparkles size={17} /></span>
-        <span><strong>Chiedi a DOCENTE OS</strong><small>Su questa pagina</small></span>
-      </button>
+      <>
+        <button
+          ref={triggerRef}
+          className="dosAssistantFloatingTrigger"
+          type="button"
+          aria-label="Chiedi a DOCENTE OS su questa pagina"
+          data-fab-ready={ready ? 'true' : 'false'}
+          data-fab-mode={mode}
+          data-fab-layout={layout}
+          data-fab-displaced={displaced ? 'true' : 'false'}
+          data-fab-edge={edge}
+          style={style}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
+          onClick={() => {
+            if (allowActivation()) setExpanded(true)
+          }}
+        >
+          <span className="dosAssistantIcon" aria-hidden><Sparkles size={17} /></span>
+          <span><strong>Chiedi a DOCENTE OS</strong><small>Su questa pagina</small></span>
+        </button>
+        <span className="srOnly dosAssistantPositionStatus" role="status" aria-live="polite">{positionStatus}</span>
+      </>
     )
   }
 
@@ -107,6 +148,12 @@ export function ContextualAssistantPanel({
       <div className="dosAssistantContextStrip" aria-label="Contesto usato dall’assistente">
         {contextChips.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}
       </div>
+
+      {presentation === 'floating' && hasManualPreference ? (
+        <button className="dosAssistantPositionReset" type="button" onClick={resetToAuto}>
+          Ripristina posizione automatica
+        </button>
+      ) : null}
 
       {!expanded ? (
         <div className="dosAssistantStart">

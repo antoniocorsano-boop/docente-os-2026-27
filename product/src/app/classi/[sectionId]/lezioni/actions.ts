@@ -17,7 +17,7 @@ import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supa
 import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { normalizeLessonObservationDraft, toTeachingObservationDraft } from './lesson-observation-model'
-import { hasCurrentBlockSessionOnDate, selectEligibleLessonOccurrence } from './lesson-registration-model'
+import { hasCurrentBlockSessionOnDate, selectEligibleLessonOccurrence, selectLessonOccurrenceByLogicalId } from './lesson-registration-model'
 
 export type LessonExecutionOutcome = 'SVOLTO' | 'RECUPERATO' | 'RIMODULATO' | 'ANNULLATO'
 
@@ -25,6 +25,7 @@ export async function recordLessonExecution(formData: FormData) {
   const sectionId = requiredText(formData, 'sectionId')
   const blockId = requiredText(formData, 'blockId').toUpperCase()
   const localDate = requiredDate(formData, 'localDate')
+  const occurrenceLogicalId = optionalText(formData.get('occurrenceLogicalId'))
   const actualMinutes = positiveInt(formData, 'actualMinutes')
   const registrationKey = requiredUuid(formData, 'registrationKey')
   const outcome = requiredLessonOutcome(formData, 'outcome')
@@ -87,13 +88,26 @@ export async function recordLessonExecution(formData: FormData) {
       localDate,
     }),
   ])
+  const nowMinutes = localDate === today ? currentRomeMinutes() : 24 * 60
 
-  const occurrence = selectEligibleLessonOccurrence({
-    occurrences: day.occurrences,
-    teaching,
-    sectionId,
-    nowMinutes: localDate === today ? currentRomeMinutes() : 24 * 60,
-  })
+  const occurrence = occurrenceLogicalId
+    ? selectLessonOccurrenceByLogicalId({
+        occurrences: day.occurrences,
+        teaching,
+        sectionId,
+        occurrenceLogicalId,
+        nowMinutes,
+      })
+    : selectEligibleLessonOccurrence({
+        occurrences: day.occurrences,
+        teaching,
+        sectionId,
+        nowMinutes,
+      })
+
+  if (occurrenceLogicalId && !occurrence) {
+    throw new Error('La lezione selezionata non è più disponibile per questa registrazione. Riapri la lezione dall’Orario o dalla classe.')
+  }
 
   if (!occurrence && hasCurrentBlockSessionOnDate({
     teaching,
@@ -222,6 +236,14 @@ function positiveInt(formData: FormData, name: string) {
   const value = Number(requiredText(formData, name))
   if (!Number.isInteger(value) || value <= 0 || value > 1440) throw new Error(`${name} invalid`)
   return value
+}
+
+function optionalText(value: FormDataEntryValue | null) {
+  if (typeof value !== 'string') return null
+  const text = value.trim()
+  if (!text) return null
+  if (text.length > 512) throw new Error('occurrenceLogicalId invalid')
+  return text
 }
 
 function optionalNote(value: FormDataEntryValue | null) {

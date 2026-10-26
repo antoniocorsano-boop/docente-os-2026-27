@@ -10,7 +10,7 @@ const outputRoot = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience
 
 for (const journey of [
   { id: 'class-next-task', label: 'Classe → prossimo compito', run: classNextTask },
-  { id: 'timetable-open-class', label: 'Orario → apri classe', run: timetableOpenClass },
+  { id: 'timetable-open-lesson', label: 'Orario → apri lezione', run: timetableOpenLesson },
   { id: 'uda-reading', label: 'Progetta → UDA', run: udaReading },
   { id: 'knowledge-document', label: 'Conoscenza → documento', run: knowledgeDocument },
   { id: 'calendar-controls', label: 'Calendario → controlli intenzionali', run: calendarControls },
@@ -36,32 +36,41 @@ async function classNextTask(page, testInfo) {
   return pass(await page.locator('h1').first().innerText())
 }
 
-async function timetableOpenClass(page, testInfo) {
+async function timetableOpenLesson(page, testInfo) {
   await page.goto('/orario')
 
-  if (testInfo.project.name.startsWith('mobile')) {
-    const dayView = page.getByRole('button', { name: 'Giorno', exact: true })
-    const weekView = page.getByRole('button', { name: 'Settimana', exact: true })
-    await expect(dayView, 'Su mobile Orario deve stabilizzarsi nella vista Giorno prima della verifica del journey.').toHaveClass(/active/)
+  const weekView = page.getByRole('button', { name: 'Settimana', exact: true })
+  if (await weekView.count()) {
     await weekView.click()
-    await expect(weekView, 'Il journey mobile deve verificare una lezione sull’intera settimana, non soltanto sul giorno corrente.').toHaveClass(/active/)
+    await expect(weekView).toHaveClass(/active/)
   }
 
-  const lesson = page.locator('button.occupiedTimetableCell.kind-lesson').first()
+  const lessons = page.locator('button.occupiedTimetableCell.kind-lesson')
   await expect(
-    lesson,
-    'La fixture tecnica deve esporre almeno una lezione canonica nella settimana: il journey Apri classe non può essere NOT_APPLICABLE.',
+    lessons.first(),
+    'La fixture tecnica deve esporre almeno una lezione canonica nella settimana.',
   ).toBeVisible()
 
-  await lesson.click()
-  const openClass = page.getByRole('link', { name: 'Apri classe', exact: true })
-  await expect(openClass).toBeVisible()
-  await expect(openClass).toHaveAttribute('href', /^\/classi\//)
-  await openClass.click()
-  await expect(page).toHaveURL(/\/classi\//)
-  await expect(page.locator('h1').first()).toBeVisible()
-  await screenshot(page, testInfo, 'timetable-open-class')
-  return pass(`Classe aperta dall’orario: ${await page.locator('h1').first().innerText()}`)
+  let opened = false
+  for (let index = 0; index < await lessons.count(); index += 1) {
+    await lessons.nth(index).click()
+    const sheet = page.locator('.timetableContextSheet')
+    await expect(sheet).toBeVisible()
+    const openLesson = sheet.getByRole('link', { name: 'Apri lezione', exact: true })
+    if (await openLesson.count()) {
+      await expect(openLesson).toHaveAttribute('href', /^\/classi\/[^/?#]+\/lezioni\/[^/?#]+/)
+      await openLesson.click()
+      opened = true
+      break
+    }
+    await sheet.getByRole('button', { name: 'Chiudi' }).click()
+  }
+
+  expect(opened, 'Almeno una voce dell’Orario deve risolvere una Lezione canonica.').toBe(true)
+  await expect(page.locator('[data-lesson-shell]')).toBeVisible()
+  await expect(page.locator('[data-lesson-phase]')).toHaveCount(0)
+  await screenshot(page, testInfo, 'timetable-open-lesson')
+  return pass(`Lezione aperta direttamente dall’orario: ${await page.locator('h1').first().innerText()}`)
 }
 
 async function udaReading(page, testInfo) {
@@ -96,45 +105,49 @@ async function udaReading(page, testInfo) {
 }
 
 async function assertMobileAssistantDoesNotCoverTask(page) {
-  const support = page.locator('.dosAssistantFloatingTrigger, .dosAssistantFloatingStatus').first()
-  await expect(support, 'Il supporto contestuale deve restare disponibile anche quando non fluttua sul contenuto.').toBeVisible({ timeout: 20_000 })
+  const support = page.locator('.dosAssistantFloatingTrigger').first()
+  await expect(support, 'Il supporto contestuale deve restare disponibile sul compito mobile.').toBeVisible({ timeout: 20_000 })
+  await expect(support, 'La geometria adattiva del FAB deve essere pronta prima della misura.').toHaveAttribute('data-fab-ready', 'true', { timeout: 20_000 })
 
-  const documentGeometry = await page.evaluate(() => {
-    const taskEnd = document.querySelector('.focusedKnowledgeManage')
-    const assistant = document.querySelector('.dosAssistantFloatingTrigger, .dosAssistantFloatingStatus')
-    if (!taskEnd || !assistant) return null
-    const taskRect = taskEnd.getBoundingClientRect()
-    const assistantRect = assistant.getBoundingClientRect()
-    return {
-      position: getComputedStyle(assistant).position,
-      taskBottom: taskRect.bottom + window.scrollY,
-      assistantTop: assistantRect.top + window.scrollY,
-    }
-  })
+  const assertSafeGeometry = async (label) => {
+    const geometry = await page.evaluate(() => {
+      const assistant = document.querySelector('.dosAssistantFloatingTrigger')
+      const nav = document.querySelector('.dosBottomNav')
+      if (!assistant || !nav) return null
 
-  expect(documentGeometry, 'Impossibile misurare la relazione fra compito e assistente mobile.').not.toBeNull()
-  expect(documentGeometry.position, 'Su mobile l’assistente chiuso deve appartenere al normale flusso della pagina.').toBe('static')
-  expect(
-    documentGeometry.assistantTop,
-    'L’assistente deve iniziare dopo l’ultimo contenuto operativo della UDA.',
-  ).toBeGreaterThanOrEqual(documentGeometry.taskBottom + 8)
+      const assistantRect = assistant.getBoundingClientRect()
+      const navRect = nav.getBoundingClientRect()
+      const overlaps = [...document.querySelectorAll('[data-copilot-protected]')]
+        .filter((region) => {
+          const rect = region.getBoundingClientRect()
+          return assistantRect.left < rect.right
+            && assistantRect.right > rect.left
+            && assistantRect.top < rect.bottom
+            && assistantRect.bottom > rect.top
+        })
+        .map((region) => region.className || region.tagName)
 
+      return {
+        layout: assistant.getAttribute('data-fab-layout'),
+        overlaps,
+        assistantBottom: assistantRect.bottom,
+        navTop: navRect.top,
+      }
+    })
+
+    expect(geometry, `Impossibile misurare la geometria adattiva del FAB ${label}.`).not.toBeNull()
+    expect(['floating', 'docked'], `Il FAB ${label} deve dichiarare un layout adattivo valido.`).toContain(geometry.layout)
+    expect(geometry.overlaps, `Il FAB ${label} non deve intersecare contenuti operativi protetti.`).toEqual([])
+    expect(
+      geometry.assistantBottom,
+      `Il FAB ${label} non deve entrare nell’area della navigazione mobile.`,
+    ).toBeLessThanOrEqual(geometry.navTop - 8)
+  }
+
+  await assertSafeGeometry('all’apertura della UDA')
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
-  await page.waitForTimeout(100)
-  const viewportGeometry = await page.evaluate(() => {
-    const assistant = document.querySelector('.dosAssistantFloatingTrigger, .dosAssistantFloatingStatus')
-    const nav = document.querySelector('.dosBottomNav')
-    if (!assistant || !nav) return null
-    const assistantRect = assistant.getBoundingClientRect()
-    const navRect = nav.getBoundingClientRect()
-    return { assistantBottom: assistantRect.bottom, navTop: navRect.top }
-  })
-
-  expect(viewportGeometry, 'Impossibile misurare assistente e navigazione mobile.').not.toBeNull()
-  expect(
-    viewportGeometry.assistantBottom,
-    'L’assistente non deve entrare nell’area della navigazione mobile a fine pagina.',
-  ).toBeLessThanOrEqual(viewportGeometry.navTop - 8)
+  await page.waitForTimeout(150)
+  await assertSafeGeometry('a fine pagina')
 }
 
 async function knowledgeDocument(page, testInfo) {

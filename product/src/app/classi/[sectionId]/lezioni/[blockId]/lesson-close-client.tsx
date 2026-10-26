@@ -9,6 +9,7 @@ import {
   CONTEXTUAL_CAPTURE_MAX_TEXT_LENGTH,
 } from '@/core/presentation/contextual-capture-frontdoor'
 import type { HumanTaskLessonProjection } from '@/core/presentation/human-task-content'
+import { buildCanonicalLessonWorkspaceHref } from '@/core/presentation/lesson-workspace-route'
 import {
   LESSON_OBSERVATION_DIMENSION_OPTIONS,
   LESSON_OBSERVATION_STATE_OPTIONS,
@@ -61,6 +62,9 @@ export default function LessonCloseClient({
   registrationKey,
   voiceCaptureEnabled,
   nextBlockId,
+  localDate,
+  occurrenceLogicalId,
+  statusLabel,
 }: {
   sectionId: string
   sectionLabel: string
@@ -70,12 +74,15 @@ export default function LessonCloseClient({
   registrationKey: string
   voiceCaptureEnabled: boolean
   nextBlockId: string | null
+  localDate: string | null
+  occurrenceLogicalId: string | null
+  statusLabel: string
 }) {
   const [observationDraft, setObservationDraft] = useState<LessonObservationDraftTransport | null>(null)
   const [draftLoaded, setDraftLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [localDate, setLocalDate] = useState(defaultLocalDate)
+  const [registrationLocalDate, setRegistrationLocalDate] = useState(defaultLocalDate)
   const [actualMinutes, setActualMinutes] = useState(String(projection.durationMinutes))
   const [outcome, setOutcome] = useState<LessonExecutionOutcome>('SVOLTO')
   const [evidenceNote, setEvidenceNote] = useState('')
@@ -87,8 +94,8 @@ export default function LessonCloseClient({
   const [organizing, setOrganizing] = useState(false)
   const [voiceBusy, setVoiceBusy] = useState(false)
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
-  const teachHref = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(block.id)}?mode=teach`
-  const observeHref = `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(block.id)}?mode=observe`
+  const lessonHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId })
+  const observeHref = buildCanonicalLessonWorkspaceHref(sectionId, block.id, { localDate, occurrenceLogicalId, subtask: 'observe' })
   const observationStorageKey = lessonObservationStorageKey(sectionId, block.id)
   const liveStorageKey = `docente-os:lesson-live:${sectionId}:${block.id}`
   const suggestedNextActivity = capturePreview?.nextActivity ?? null
@@ -206,12 +213,10 @@ export default function LessonCloseClient({
 
   const lessonShell = (
     <LessonShell
-      sectionId={sectionId}
-      blockId={block.id}
       sectionLabel={sectionLabel}
       disciplineLabel="Tecnologia"
       lessonTitle={projection.title}
-      phase="record"
+      statusLabel={continuation ? 'Registrata' : statusLabel}
     />
   )
 
@@ -244,7 +249,8 @@ export default function LessonCloseClient({
         <input type="hidden" name="sectionId" value={sectionId} />
         <input type="hidden" name="blockId" value={block.id} />
         <input type="hidden" name="registrationKey" value={registrationKey} />
-        <input type="hidden" name="localDate" value={localDate} />
+        <input type="hidden" name="localDate" value={registrationLocalDate} />
+        <input type="hidden" name="occurrenceLogicalId" value={registrationLocalDate === defaultLocalDate ? occurrenceLogicalId ?? '' : ''} />
         <input type="hidden" name="actualMinutes" value={actualMinutes} />
         <input type="hidden" name="observationDimension" value={observationDraft?.dimensionKey ?? ''} />
         <input type="hidden" name="observationState" value={observationDraft?.state ?? ''} />
@@ -293,7 +299,7 @@ export default function LessonCloseClient({
               <div className={styles.sessionFacts}>
                 <label className={styles.sessionField}>
                   <span>Data della lezione</span>
-                  <input type="date" required value={localDate} max={defaultLocalDate} onChange={(event) => setLocalDate(event.target.value)} />
+                  <input type="date" required value={registrationLocalDate} max={defaultLocalDate} onChange={(event) => setRegistrationLocalDate(event.target.value)} />
                 </label>
                 <label className={styles.sessionField}>
                   <span>Minuti effettivi</span>
@@ -376,14 +382,14 @@ export default function LessonCloseClient({
             <div className={styles.detailStack}>
               <p className={styles.privacyNote}>Salvi la TeachingSession e le eventuali note confermate. L’esito guida CONTINUA, ma non aggiorna automaticamente il Piano annuale.</p>
               <Link href={observeHref}>Rivedi le osservazioni</Link>
-              <Link href={teachHref}>Torna alla guida della lezione</Link>
+              <Link href={lessonHref}>Torna alla Lezione</Link>
             </div>
           </details>
 
           {saveError ? <p className={styles.privacyNote} role="alert">{saveError}</p> : null}
 
           <div className={styles.closeActions}>
-            <button className={styles.primary} type="submit" disabled={saving || !draftLoaded || voiceBusy || !localDate || !actualMinutes}>
+            <button className={styles.primary} type="submit" disabled={saving || !draftLoaded || voiceBusy || !registrationLocalDate || !actualMinutes}>
               {saving ? 'Registrazione…' : 'Registra lezione'}
             </button>
           </div>

@@ -125,7 +125,7 @@ export function buildClassWorkspaceLearningFocus(
       .map((entry) => [entry.blockId, entry]),
   )
   const completedBlocks = blocks.filter((block) => COMPLETE_STATUSES.has(progressByBlock.get(block.id)?.status ?? '')).length
-  const next = blocks.find((block) => {
+  const next = canonicalGenerationId === null ? undefined : blocks.find((block) => {
     const status = progressByBlock.get(block.id)?.status
     return !COMPLETE_STATUSES.has(status ?? '') && status !== 'ANNULLATO'
   })

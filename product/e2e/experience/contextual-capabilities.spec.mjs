@@ -9,7 +9,7 @@ requireE2ECredentials()
 
 const outputRoot = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience'
 
-test('UX-0E: Classe → Conoscenza contestuale → risorsa → Classe', async ({ page }, testInfo) => {
+test('UX-0E: Classe → Materiali e fonti contestuali → risorsa → Classe', async ({ page }, testInfo) => {
   await loginE2E(page)
   await page.goto('/classi')
 
@@ -27,11 +27,11 @@ test('UX-0E: Classe → Conoscenza contestuale → risorsa → Classe', async ({
   try {
     await page.goto(`/classi/${encodeURIComponent(sectionId)}`)
 
-    const otherPaths = page.locator('details.humanTaskSecondary').filter({ hasText: 'Contesto della classe e altri percorsi' })
-    await expect(otherPaths).toBeVisible()
-    await otherPaths.locator('summary').click()
+    const otherPaths = page.locator('details#altro-della-classe')
+    await expect(otherPaths, 'La Classe deve avere un solo contenitore Altro della classe.').toHaveCount(1)
+    await otherPaths.locator(':scope > summary').click()
 
-    const knowledgeLink = otherPaths.getByRole('link', { name: /Conoscenza/ })
+    const knowledgeLink = otherPaths.getByRole('link', { name: /Materiali e fonti/ })
     const knowledgeHref = await knowledgeLink.getAttribute('href')
     expect(knowledgeHref).toBeTruthy()
     const listUrl = new URL(knowledgeHref, 'https://docente-os.local')
@@ -74,7 +74,7 @@ test('UX-0E: Classe → Conoscenza contestuale → risorsa → Classe', async ({
 
     await recordJourney(testInfo.project.name, {
       status: 'PASS',
-      note: `${fixture.classLabel} · Classe → Conoscenza task-aware → risorsa → ritorno alla Classe con section/returnTo preservati`,
+      note: `${fixture.classLabel} · Classe → Altro della classe → Materiali e fonti → risorsa → ritorno con section/returnTo preservati`,
     })
   } finally {
     await deleteKnowledgeAsset(page, fixture.assetId).catch(() => {})
@@ -93,7 +93,7 @@ async function recordJourney(project, result) {
   const payload = {
     schemaVersion: 1,
     id: 'ux0e-contextual-capabilities',
-    label: 'Classe → Conoscenza contestuale → risorsa → Classe',
+    label: 'Classe → Materiali e fonti contestuali → risorsa → Classe',
     project,
     status: result.status,
     note: result.note,

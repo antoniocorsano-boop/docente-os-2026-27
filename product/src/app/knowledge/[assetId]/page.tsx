@@ -8,6 +8,7 @@ import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supa
 import { knowledgeCalendarEventProposal } from '@/core/domain/knowledge-calendar-event'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
+import { buildCanonicalLessonWorkspaceHref } from '@/core/presentation/lesson-workspace-route'
 import {
   CONTENT_CATEGORIES,
   assetKindLabel,
@@ -80,7 +81,9 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
   }
 
   if (taskMode === 'prepare' && focusedLesson) {
-    const materialsReturnTo = `/classi/${encodeURIComponent(focusedLesson.sectionId)}/lezioni/${encodeURIComponent(focusedLesson.blockId)}?mode=prepare&subtask=materials`
+    const materialsReturnTo = sanitizeInternalReturnTo(query.returnTo,
+      buildCanonicalLessonWorkspaceHref(focusedLesson.sectionId, focusedLesson.blockId, { subtask: 'materials' }),
+    )
     const normalizedText = document?.normalizedText?.trim() ?? ''
     const fallbackUnits = units
       .filter((unit) => unit.unitType !== 'ACTION' && unit.unitType !== 'DEADLINE')
@@ -106,21 +109,19 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
         focusMode
       >
         <LessonShell
-          sectionId={focusedLesson.sectionId}
-          blockId={focusedLesson.blockId}
           sectionLabel={focusedLesson.sectionLabel}
           disciplineLabel="Tecnologia"
           lessonTitle={focusedLesson.lessonTitle}
-          phase="prepare"
+          statusLabel="Materiali"
         />
 
         <section data-lesson-material-preview>
-          <nav className="focusedKnowledgeContext" aria-label="Contesto del materiale">
+          <nav className="focusedKnowledgeContext" data-copilot-protected aria-label="Contesto del materiale">
             <Link href={materialsReturnTo}>Torna ai materiali</Link>
             <span>{focusedLesson.sectionLabel} · Tecnologia</span>
           </nav>
 
-          <section className="focusedKnowledgeHero">
+          <section className="focusedKnowledgeHero" data-copilot-protected>
             <p>RISORSA DELLA LEZIONE</p>
             <h1>{displayTitle}</h1>
             <p className="focusedKnowledgeSummary">{document?.summary ?? 'Controlla questa risorsa nel contesto della lezione prima di decidere se usarla.'}</p>
@@ -130,12 +131,12 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
             </div>
           </section>
 
-          <section className="focusedKnowledgeUse" data-material-preview-canvas aria-labelledby="focused-use-title">
+          <section className="focusedKnowledgeUse" data-material-preview-canvas data-copilot-protected aria-labelledby="focused-use-title">
             <header><span>ANTEPRIMA</span><h2 id="focused-use-title">{asset.contentCategory === 'UDA' ? 'Percorso operativo' : 'Contenuto della risorsa'}</h2></header>
             {readableText ? <div className="focusedKnowledgeText">{readableText}</div> : <p className="focusedKnowledgeEmpty">Il contenuto leggibile non è ancora disponibile. La risorsa resta nel contesto della lezione e puoi tornare ai materiali senza perdere il punto di lavoro.</p>}
           </section>
 
-          <nav className="focusedKnowledgeActions" aria-label="Usa il materiale nella lezione">
+          <nav className="focusedKnowledgeActions" aria-label="Usa il materiale nella lezione" data-copilot-protected>
             <form action={useInLesson}>
               <input type="hidden" name="designIntent" value="attach-knowledge" />
               <input type="hidden" name="sectionId" value={focusedLesson.sectionId} />
@@ -147,7 +148,7 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
             {driveUrl ? <a href={driveUrl} target="_blank" rel="noreferrer">Apri fonte originale</a> : null}
           </nav>
 
-          <details className="humanTaskSecondary focusedKnowledgeManage">
+          <details className="humanTaskSecondary focusedKnowledgeManage" data-copilot-protected>
             <summary>Approfondisci la risorsa</summary>
             <div className="humanTaskSecondaryBody">
               <p>La provenienza resta visibile; strumenti di elaborazione, versioni e gestione tecnica restano fuori dal compito corrente.</p>
@@ -180,12 +181,12 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
         role={context.role}
         contentClassName="knowledgeSurface focusedKnowledgeSurface"
       >
-        <nav className="focusedKnowledgeContext" aria-label="Contesto del compito">
+        <nav className="focusedKnowledgeContext" data-copilot-protected aria-label="Contesto del compito">
           <Link href={returnTo}>← {returnLabel}</Link>
           <span>{query.block ? `${query.block} · ` : ''}{contextReference}</span>
         </nav>
 
-        <section className="focusedKnowledgeHero">
+        <section className="focusedKnowledgeHero" data-copilot-protected>
           <p>{focusLabel}</p>
           <h1>{displayTitle}</h1>
           <p className="focusedKnowledgeSummary">{document?.summary ?? (asset.contentCategory === 'UDA' ? 'Consulta il percorso, le attività e le evidenze utili per la fase che stai preparando.' : 'Questa risorsa è stata aperta dentro il tuo compito corrente: DOCENTE OS mantiene il contesto finché non scegli di uscirne.')}</p>
@@ -197,17 +198,17 @@ export default async function KnowledgeAssetPage({ params, searchParams }: PageP
           </div>
         </section>
 
-        <section className="focusedKnowledgeUse" aria-labelledby="focused-use-title">
+        <section className="focusedKnowledgeUse" data-copilot-protected aria-labelledby="focused-use-title">
           <header><span>USA ADESSO</span><h2 id="focused-use-title">{asset.contentCategory === 'UDA' ? 'Percorso operativo' : 'Contenuto della risorsa'}</h2></header>
           {readableText ? <pre className="focusedKnowledgeText">{readableText}</pre> : <p className="focusedKnowledgeEmpty">Il contenuto leggibile non è ancora disponibile. La risorsa resta collegata al compito e puoi aprire la scheda completa per controllarne lo stato.</p>}
         </section>
 
-        <nav className="focusedKnowledgeActions" aria-label="Continua il compito">
+        <nav className="focusedKnowledgeActions" aria-label="Continua il compito" data-copilot-protected>
           <Link className="primary" href={returnTo}>{returnLabel}</Link>
           {driveUrl ? <a href={driveUrl} target="_blank" rel="noreferrer">Apri fonte originale</a> : null}
         </nav>
 
-        <details className="humanTaskSecondary focusedKnowledgeManage">
+        <details className="humanTaskSecondary focusedKnowledgeManage" data-copilot-protected>
           <summary>Gestisci o approfondisci questa risorsa</summary>
           <div className="humanTaskSecondaryBody">
             <p>Esci dalla modalità operativa solo se devi modificare contesto, creare attività, verificare estrazioni o consultare versioni e provenienza.</p>

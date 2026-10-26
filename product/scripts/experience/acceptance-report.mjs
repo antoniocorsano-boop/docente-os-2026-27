@@ -7,6 +7,7 @@ const outputDir = process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience'
 const observationsDir = path.join(outputDir, 'observations')
 const journeysDir = path.join(outputDir, 'journeys')
 const receiptDir = path.join(outputDir, 'receipt')
+const baselineDir = path.join(outputDir, 'baseline')
 const target = process.env.EXPERIENCE_TARGET ?? 'local'
 const baseUrl = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000'
 const commit = process.env.EXPECTED_COMMIT ?? process.env.GITHUB_SHA ?? 'local-working-tree'
@@ -15,13 +16,16 @@ const expectedProjects = ['mobile-412x915', 'desktop-1440x1000']
 const scopeMode = process.env.EXPERIENCE_SCOPE_MODE ?? 'FULL'
 const scopeSpecs = parseHvaSpecs(process.env.EXPERIENCE_SCOPE_SPECS)
 const receiptScope = resolveHvaReceiptScope({
+  target,
   mode: scopeMode,
   specs: scopeSpecs,
   surfaceCount: EXPERIENCE_SURFACES.length,
   projectCount: expectedProjects.length,
 })
 const expectedJourneyIds = receiptScope.expectedJourneyIds
+const mandatoryJourneyIds = new Set(expectedJourneyIds.filter((id) => id === 'today-teacher-first'))
 const canonicalMinimumTargetPx = 44
+const governedBaselineId = 'HVA-GOV-01/v1'
 const designGovernanceCriteria = [
   ['DPG-05', 'Una sola azione primaria realmente dominante.'],
   ['DPG-06', 'Gerarchia: titolo → contesto → stato → azione → contenuto.'],
@@ -40,12 +44,16 @@ const designGovernanceCriteria = [
 const observations = await readJsonDirectory(observationsDir)
 const journeys = await readJsonDirectory(journeysDir)
 const deployment = await readJson(path.join(outputDir, 'deployment.json'))
+const baseline = await resolveBaselineAcceptance(target, baselineDir)
 const expectedObservationCount = receiptScope.expectedObservationCount
 const expectedJourneyCount = receiptScope.expectedJourneyCount
 const missingObservationCount = Math.max(0, expectedObservationCount - observations.length)
 const missingJourneyCount = Math.max(0, expectedJourneyCount - journeys.length)
 const failedJourneys = journeys.filter((item) => item.status === 'FAIL')
 const notApplicableJourneys = journeys.filter((item) => item.status === 'NOT_APPLICABLE')
+const unverifiedMandatoryJourneys = journeys.filter(
+  (item) => mandatoryJourneyIds.has(item.id) && item.status !== 'PASS',
+)
 
 const consoleIssueCount = observations.reduce((sum, item) => sum + item.consoleErrors.length + item.pageErrors.length, 0)
 const requestFailureCount = observations.reduce((sum, item) => sum + item.requestFailures.length, 0)
@@ -59,8 +67,10 @@ const gates = {
   productCi: 'EXTERNAL',
   designPolicy: 'EXTERNAL',
   deployment: target === 'beta' ? (deployment?.status ?? 'FAIL') : 'NOT_APPLICABLE',
+  baselineIntegrity: baseline.baselineIntegrity,
+  persistentFixtureIntegrity: baseline.persistentFixtureIntegrity,
   browser: testExitCode === 0 && missingObservationCount === 0 ? 'PASS' : 'FAIL',
-  journeys: missingJourneyCount === 0 && failedJourneys.length === 0 ? 'PASS' : 'FAIL',
+  journeys: missingJourneyCount === 0 && failedJourneys.length === 0 && unverifiedMandatoryJourneys.length === 0 ? 'PASS' : 'FAIL',
   console: consoleIssueCount === 0 ? 'PASS' : 'FAIL',
   network: requestFailureCount === 0 && serverErrorCount === 0 ? 'PASS' : 'FAIL',
   layout: overflowCount === 0 ? 'PASS' : 'FAIL',
@@ -73,6 +83,9 @@ const findings = []
 if (missingObservationCount) findings.push({ severity: 'FAIL', code: 'HVA-COVERAGE', message: `${missingObservationCount} osservazioni attese non sono state prodotte.` })
 if (missingJourneyCount) findings.push({ severity: 'FAIL', code: 'HVA-JOURNEY-COVERAGE', message: `${missingJourneyCount} ricevute journey attese non sono state prodotte.` })
 if (failedJourneys.length) findings.push({ severity: 'FAIL', code: 'HVA-JOURNEY', message: `${failedJourneys.length} journey Human risultano falliti.` })
+if (unverifiedMandatoryJourneys.length) findings.push({ severity: 'FAIL', code: 'HVA-JOURNEY-UNVERIFIED', message: `${unverifiedMandatoryJourneys.length} evidenze browser obbligatorie risultano non verificate.` })
+if (baseline.baselineIntegrity === 'FAIL') findings.push({ severity: 'FAIL', code: 'HVA-BASELINE-DRIFT', message: baseline.baselineMessage })
+if (baseline.persistentFixtureIntegrity === 'FAIL') findings.push({ severity: 'FAIL', code: 'HVA-PERSISTENT-FIXTURE-DRIFT', message: baseline.persistentFixtureMessage })
 if (consoleIssueCount) findings.push({ severity: 'FAIL', code: 'HVA-CONSOLE', message: `${consoleIssueCount} errori console/page rilevati.` })
 if (requestFailureCount || serverErrorCount) findings.push({ severity: 'FAIL', code: 'HVA-NETWORK', message: `${requestFailureCount} richieste fallite e ${serverErrorCount} risposte 5xx.` })
 if (overflowCount) findings.push({ severity: 'FAIL', code: 'HVA-OVERFLOW', message: `${overflowCount} superfici producono overflow orizzontale della pagina.` })
@@ -89,9 +102,15 @@ const receipt = {
   commit,
   target,
   baseUrl,
+  baselineId: baseline.baselineId,
+  preflightFingerprint: baseline.preflightFingerprint,
+  postflightFingerprint: baseline.postflightFingerprint,
+  baselineIntegrity: baseline.baselineIntegrity,
+  persistentFixtureIntegrity: baseline.persistentFixtureIntegrity,
   overall,
   gates,
   coverage: {
+    target: receiptScope.target,
     scopeMode: receiptScope.mode,
     scopeSpecs: receiptScope.specs,
     surfaces: EXPERIENCE_SURFACES.map((surface) => ({
@@ -116,6 +135,7 @@ const receipt = {
     canonicalMinimumTargetPx,
     mobileSmallTargetSurfaceCount: smallTargetObservations.length,
     journeyNotApplicableCount: notApplicableJourneys.length,
+    unverifiedMandatoryJourneyCount: unverifiedMandatoryJourneys.length,
   },
   deployment: deployment ?? null,
   findings,
@@ -141,6 +161,66 @@ function receiptSurfacePath(surface) {
     return resolveExperienceSurfacePath(surface)
   } catch {
     return surface.path
+  }
+}
+
+async function resolveBaselineAcceptance(currentTarget, dir) {
+  if (currentTarget !== 'local') {
+    return {
+      baselineId: 'NOT_APPLICABLE',
+      preflightFingerprint: 'NOT_APPLICABLE',
+      postflightFingerprint: 'NOT_APPLICABLE',
+      baselineIntegrity: 'NOT_APPLICABLE',
+      persistentFixtureIntegrity: 'NOT_APPLICABLE',
+      baselineMessage: '',
+      persistentFixtureMessage: '',
+    }
+  }
+
+  const preflight = await readJson(path.join(dir, 'preflight.json'))
+  const postflight = await readJson(path.join(dir, 'postflight.json'))
+  const receiptsPresent = Boolean(preflight && postflight)
+  const baselineIdentityValid = receiptsPresent
+    && preflight.baselineId === governedBaselineId
+    && postflight.baselineId === governedBaselineId
+  const fingerprintStable = receiptsPresent
+    && Boolean(preflight.fingerprint)
+    && preflight.fingerprint === postflight.fingerprint
+  const activeIdentityStable = receiptsPresent
+    && Boolean(preflight.activeTimetableVersionId)
+    && preflight.activeTimetableVersionId === postflight.activeTimetableVersionId
+  const baselineStatusesClean = receiptsPresent
+    && ![preflight.status, postflight.status].some((status) => status === 'ERROR' || status === 'FAIL_BASELINE_DRIFT')
+  const fixtureStatusesClean = receiptsPresent
+    && preflight?.persistentFixtureIntegrity?.status === 'PASS'
+    && postflight?.persistentFixtureIntegrity?.status === 'PASS'
+    && ![preflight.status, postflight.status].some((status) => status === 'ERROR' || status === 'FAIL_FIXTURE_DRIFT')
+
+  const baselineIntegrity = receiptsPresent && baselineIdentityValid && fingerprintStable && activeIdentityStable && baselineStatusesClean
+    ? 'PASS'
+    : 'FAIL'
+  const persistentFixtureIntegrity = receiptsPresent && fixtureStatusesClean ? 'PASS' : 'FAIL'
+  const diagnostics = [
+    ...(preflight?.diagnostics ?? []),
+    ...(postflight?.diagnostics ?? []),
+  ].filter(Boolean)
+  const fixtureErrors = [
+    ...(preflight?.persistentFixtureIntegrity?.errors ?? []),
+    ...(postflight?.persistentFixtureIntegrity?.errors ?? []),
+  ].filter(Boolean)
+
+  return {
+    baselineId: preflight?.baselineId ?? postflight?.baselineId ?? governedBaselineId,
+    preflightFingerprint: preflight?.fingerprint ?? null,
+    postflightFingerprint: postflight?.fingerprint ?? null,
+    baselineIntegrity,
+    persistentFixtureIntegrity,
+    baselineMessage: diagnostics.length
+      ? `Baseline governata non integra: ${diagnostics.join(' · ')}`
+      : 'Baseline governata non integra: receipt preflight/postflight mancanti o incoerenti.',
+    persistentFixtureMessage: fixtureErrors.length
+      ? `Fixture persistente B01 non integra: ${fixtureErrors.join(' · ')}`
+      : 'Fixture persistente B01 non integra: receipt preflight/postflight mancanti o non PASS.',
   }
 }
 
@@ -170,5 +250,5 @@ function markdown(value) {
   const frameworkNote = value.metrics.ignoredFrameworkAbortCount
     ? `\n- **Abort di framework registrati e ignorati:** ${value.metrics.ignoredFrameworkAbortCount} (solo pattern Next.js esplicitamente ammessi).`
     : ''
-  return `# Human + Visual Acceptance Receipt\n\n- **Commit:** \`${value.commit}\`\n- **Target:** ${value.target}\n- **Base URL:** ${value.baseUrl}\n- **Scope HVA:** ${value.coverage.scopeMode}${value.coverage.scopeSpecs.length ? ` · ${value.coverage.scopeSpecs.join(', ')}` : ''}\n- **Esito automatico complessivo:** **${value.overall}**\n- **Evidenze:** ${value.coverage.actualObservations}/${value.coverage.expectedObservations} osservazioni · ${value.coverage.actualJourneys}/${value.coverage.expectedJourneys} journey${frameworkNote}\n- **Target mobile minimo canonico:** ${value.metrics.canonicalMinimumTargetPx} px\n\n| Gate | Stato |\n| --- | --- |\n${gateRows}\n\n## Journey Human\n\n| Viewport | Percorso | Stato | Evidenza |\n| --- | --- | --- | --- |\n${journeyRows}\n\n## Finding automatici\n\n${findingRows}\n\n## Giudizio visuale\n\n**REVIEW_REQUIRED** — gli screenshot devono essere osservati secondo \`product/design/VISUAL-ACCEPTANCE.md\`.\n\n## Design Governance Review\n\n| Regola | Criterio | Stato |\n| --- | --- | --- |\n${governanceRows}\n\nLa checklist non viene auto-promossa a PASS: richiede osservazione degli artefatti e del percorso reale.\n`
+  return `# Human + Visual Acceptance Receipt\n\n- **Commit:** \`${value.commit}\`\n- **Target:** ${value.target}\n- **Base URL:** ${value.baseUrl}\n- **Scope HVA:** ${value.coverage.scopeMode}${value.coverage.scopeSpecs.length ? ` · ${value.coverage.scopeSpecs.join(', ')}` : ''}\n- **Baseline:** ${value.baselineId} · preflight ${value.preflightFingerprint} · postflight ${value.postflightFingerprint}\n- **Esito automatico complessivo:** **${value.overall}**\n- **Evidenze:** ${value.coverage.actualObservations}/${value.coverage.expectedObservations} osservazioni · ${value.coverage.actualJourneys}/${value.coverage.expectedJourneys} journey${frameworkNote}\n- **Target mobile minimo canonico:** ${value.metrics.canonicalMinimumTargetPx} px\n\n| Gate | Stato |\n| --- | --- |\n${gateRows}\n\n## Journey Human\n\n| Viewport | Percorso | Stato | Evidenza |\n| --- | --- | --- | --- |\n${journeyRows}\n\n## Finding automatici\n\n${findingRows}\n\n## Giudizio visuale\n\n**REVIEW_REQUIRED** — gli screenshot devono essere osservati secondo \`product/design/VISUAL-ACCEPTANCE.md\`.\n\n## Design Governance Review\n\n| Regola | Criterio | Stato |\n| --- | --- | --- |\n${governanceRows}\n\nLa checklist non viene auto-promossa a PASS: richiede osservazione degli artefatti e del percorso reale.\n`
 }

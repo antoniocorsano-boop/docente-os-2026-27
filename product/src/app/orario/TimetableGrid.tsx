@@ -10,6 +10,7 @@ import { addClassPresenceSlot, addLessonSlot, addSpecialSlot, deleteTimetableSlo
 import { TimetableSubmitButton } from './TimetableSubmitButton'
 import { buildTimetableGridRows, timetableCellKey, type TimetableGridPeriod } from './timetable-grid-model'
 import { isCurrentTimetableInterval, isCurrentTimetableRow, type TimetableMoment } from './timetable-operational-model'
+import type { TimetableLessonEntrypoint } from './timetable-lesson-entrypoint'
 
 export type TimetableGridDay = { value: number; label: string; short: string }
 export type TimetableGridAssignment = {
@@ -29,6 +30,9 @@ type TimetableGridProps = {
   periods: TimetableGridPeriod[]
   slots: TimetableSlot[]
   assignments: TimetableGridAssignment[]
+  lessonEntrypoints?: Record<string, TimetableLessonEntrypoint>
+  tomorrowMaterialsHref?: string
+  tomorrowMaterialsWeekday?: number
   readOnly?: boolean
   guided?: boolean
 }
@@ -86,7 +90,7 @@ const PRESENCE_LABELS: Record<TimetablePresenceKind, string> = {
   OTHER: 'Altra presenza',
 }
 
-export default function TimetableGrid({ versionId, days, periods, slots, assignments, readOnly = false, guided = false }: TimetableGridProps) {
+export default function TimetableGrid({ versionId, days, periods, slots, assignments, lessonEntrypoints = {}, tomorrowMaterialsHref, tomorrowMaterialsWeekday, readOnly = false, guided = false }: TimetableGridProps) {
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week')
   const [selectedDay, setSelectedDay] = useState(days[0]?.value ?? 1)
   const [moment, setMoment] = useState<TimetableMoment | null>(null)
@@ -119,7 +123,9 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
   const assignmentById = useMemo(() => new Map(assignments.map((assignment) => [assignment.id, assignment])), [assignments])
   const focusedSlot = focusedSlotId ? slots.find((slot) => slot.id === focusedSlotId) ?? null : null
   const focusedAssignment = focusedSlot?.teachingAssignmentId ? assignmentById.get(focusedSlot.teachingAssignmentId) : undefined
+  const focusedEntrypoint = focusedSlot ? lessonEntrypoints[focusedSlot.id] ?? null : null
   const selectedDayIndex = Math.max(0, days.findIndex((day) => day.value === selectedDay))
+  const selectedDayIsTomorrow = viewMode === 'day' && tomorrowMaterialsWeekday === selectedDay
   const unresolvedAssignments = assignments.filter((assignment) => assignment.weeklyMinutes !== assignment.scheduledMinutes).length
 
   function openEmptyCell(weekday: number, startTime: string, endTime: string, ordinal: number | null) {
@@ -201,6 +207,7 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
             <button type="button" onClick={() => navigateDay(1)} disabled={selectedDayIndex >= days.length - 1} aria-label="Giorno successivo">›</button>
           </div>
         ) : <span className="gridHint">Tocca una voce per aprire il contesto</span>}
+        {selectedDayIsTomorrow && tomorrowMaterialsHref ? <Link className="tomorrowMaterialsLink" href={tomorrowMaterialsHref}>Materiali di domani</Link> : null}
         {!guided ? <button className="printTimetableButton" type="button" onClick={() => window.print()}>Stampa</button> : null}
       </div>
 
@@ -267,9 +274,14 @@ export default function TimetableGrid({ versionId, days, periods, slots, assignm
               <div className="timetableContextHeading"><div><span>{days.find((day) => day.value === focusedSlot.weekday)?.label ?? 'Giorno'} · {focusedSlot.startTime}–{focusedSlot.endTime}</span><Dialog.Title asChild><h3>{contextTitle(focusedSlot, focusedAssignment)}</h3></Dialog.Title><Dialog.Description asChild><p>{contextSubtitle(focusedSlot, focusedAssignment)}</p></Dialog.Description></div><Dialog.Close asChild><button type="button" aria-label="Chiudi">×</button></Dialog.Close></div>
               {focusedSlot.room || focusedSlot.note ? <div className="timetableContextMeta">{focusedSlot.room ? <span><strong>Aula</strong>{focusedSlot.room}</span> : null}{focusedSlot.note ? <span><strong>Nota</strong>{focusedSlot.note}</span> : null}</div> : null}
               {focusedSlot.slotKind === 'CLASS_PRESENCE' ? <p className="timetableContextHint">Questa è una presenza registrata manualmente nell’Orario: non crea una classe nella tua Cattedra.</p> : null}
+              {focusedEntrypoint?.kind === 'AMBIGUOUS' ? <p className="timetableContextHint">Questa voce non identifica una sola lezione. Apri la classe e scegli senza forzare l’associazione.</p> : null}
               <div className="timetableContextActions">
                 {focusedSlot.slotKind === 'LESSON' && focusedAssignment ? <>
-                  <Link className="timetablePrimaryButton contextPrimaryAction" href={`/classi/${encodeURIComponent(focusedAssignment.sectionId)}`}>Apri classe</Link>
+                  {focusedEntrypoint?.kind === 'LESSON'
+                    ? <Link className="timetablePrimaryButton contextPrimaryAction" href={focusedEntrypoint.href}>Apri lezione</Link>
+                    : focusedEntrypoint?.kind === 'CLASS'
+                      ? <Link className="timetablePrimaryButton contextPrimaryAction" href={focusedEntrypoint.href}>Apri classe</Link>
+                      : <Link className="timetablePrimaryButton contextPrimaryAction" href={`/classi/${encodeURIComponent(focusedAssignment.sectionId)}`}>{focusedEntrypoint?.kind === 'AMBIGUOUS' ? 'Scegli dalla classe' : 'Apri classe'}</Link>}
                   <Link className="secondaryButton" href={`/piano-annuale?section=${encodeURIComponent(focusedAssignment.sectionId)}`}>Piano annuale</Link>
                 </> : null}
                 {!readOnly ? <button className="secondaryButton" type="button" onClick={editFocusedSlot}>Modifica orario</button> : null}

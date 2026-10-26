@@ -1,12 +1,13 @@
 export type NavigationKey =
-  | 'home'
   | 'today'
-  | 'design'
-  | 'knowledge'
-  | 'classes'
   | 'timetable'
-  | 'calendar'
+  | 'classes'
+  | 'more'
+  | 'activities'
+  | 'design'
   | 'annual-plan'
+  | 'knowledge'
+  | 'calendar'
   | 'documentation'
   | 'settings'
   | 'account'
@@ -21,45 +22,47 @@ export type NavigationItem = {
 }
 
 export type NavigationGroup = {
-  key: 'work' | 'teaching' | 'time' | 'resources' | 'system'
+  key: 'primary' | 'work' | 'resources' | 'system'
   label: string
   description: string
   items: NavigationKey[]
 }
 
 export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
-  { key: 'home', href: '/', label: 'Home', shortLabel: 'Home', description: 'Riprendi dal prossimo passo utile.', keywords: ['inizio', 'riprendi', 'prossimo passo', 'home'] },
-  { key: 'today', href: '/planner', label: 'Oggi', shortLabel: 'Oggi', description: 'Attività, priorità e cose da fare adesso.', keywords: ['attività', 'da fare', 'priorità', 'scadenze', 'oggi'] },
-  { key: 'design', href: '/progetta', label: 'Progetta', shortLabel: 'Progetta', description: 'Prepara la prossima fase didattica o esplora il nucleo del grado.', keywords: ['uda', 'progettazione', 'prepara', 'didattica', 'materiali'] },
-  { key: 'knowledge', href: '/knowledge', label: 'Conoscenza', shortLabel: 'Materiali', description: 'Trova documenti, fonti e materiali quando ti servono.', keywords: ['documenti', 'fonti', 'ricerca', 'materiali', 'conoscenza'] },
-  { key: 'classes', href: '/classi', label: 'Classi', shortLabel: 'Classi', description: 'Entra nel contesto operativo di una sezione.', keywords: ['classi', 'sezioni', 'lezione', 'prima', 'seconda', 'terza'] },
-  { key: 'timetable', href: '/orario', label: 'Orario', shortLabel: 'Orario', description: 'Vedi dove sei nella settimana e apri la lezione pertinente.', keywords: ['orario', 'lezioni', 'settimana', 'adesso', 'ore'] },
-  { key: 'calendar', href: '/calendario', label: 'Calendario', shortLabel: 'Calendario', description: 'Registra giorni reali, sospensioni, impegni e scadenze dell’anno scolastico.', keywords: ['calendario', 'date', 'sospensioni', 'festività', 'riunioni', 'scadenze', 'eventi'] },
-  { key: 'annual-plan', href: '/piano-annuale', label: 'Piano annuale', shortLabel: 'Piano', description: 'Registra e rivedi l’avanzamento didattico per sezione.', keywords: ['piano annuale', 'registra', 'blocchi', 'b01', 'avanzamento'] },
-  { key: 'documentation', href: '/documentazione', label: 'Documentazione', shortLabel: 'Documenti', description: 'Prepara e rivedi i documenti professionali dell’anno scolastico.', keywords: ['documentazione', 'relazione finale', 'programma svolto', 'programmazione', 'documenti'] },
+  { key: 'today', href: '/planner', label: 'Oggi', shortLabel: 'Oggi', description: 'Il lavoro didattico immediato e gli impegni di oggi.', keywords: ['oggi', 'lezione', 'adesso', 'registra'] },
+  { key: 'timetable', href: '/orario', label: 'Orario', shortLabel: 'Orario', description: 'Consulta la giornata o la settimana e apri la lezione pertinente.', keywords: ['orario', 'lezioni', 'settimana', 'ore'] },
+  { key: 'classes', href: '/classi', label: 'Classi', shortLabel: 'Classi', description: 'Entra nella continuità professionale di una sezione.', keywords: ['classi', 'sezioni', 'diario', 'continuità'] },
+  { key: 'more', href: '/altro', label: 'Altro', shortLabel: 'Altro', description: 'Apri gli strumenti professionali che non servono sempre.', keywords: ['altro', 'strumenti', 'attività', 'materiali', 'impostazioni'] },
+] as const
+
+export const TOOL_NAVIGATION: readonly NavigationItem[] = [
+  { key: 'activities', href: '/attivita', label: 'Attività', shortLabel: 'Attività', description: 'Gestisci attività, priorità, attese e scadenze.', keywords: ['attività', 'da fare', 'priorità', 'scadenze', 'planner'] },
+  { key: 'design', href: '/progetta', label: 'Progetta', shortLabel: 'Progetta', description: 'Prepara e adatta la progettazione didattica.', keywords: ['uda', 'progettazione', 'prepara', 'didattica'] },
+  { key: 'annual-plan', href: '/piano-annuale', label: 'Piano annuale', shortLabel: 'Piano', description: 'Registra e rivedi l’avanzamento didattico per sezione.', keywords: ['piano annuale', 'blocchi', 'avanzamento'] },
+  { key: 'knowledge', href: '/knowledge', label: 'Materiali e fonti', shortLabel: 'Materiali', description: 'Trova documenti, fonti e materiali quando ti servono.', keywords: ['documenti', 'fonti', 'ricerca', 'materiali', 'conoscenza'] },
+  { key: 'calendar', href: '/calendario', label: 'Calendario', shortLabel: 'Calendario', description: 'Registra date reali, sospensioni, impegni e scadenze.', keywords: ['calendario', 'date', 'sospensioni', 'riunioni', 'scadenze', 'eventi'] },
+  { key: 'documentation', href: '/documentazione', label: 'Documentazione', shortLabel: 'Documenti', description: 'Prepara e rivedi i documenti professionali dell’anno scolastico.', keywords: ['documentazione', 'relazione finale', 'programmazione', 'documenti'] },
   { key: 'settings', href: '/impostazioni', label: 'Impostazioni', shortLabel: 'Impostazioni', description: 'Configura contesto professionale, istituto, cattedra e organizzazione.', keywords: ['impostazioni', 'istituto', 'discipline', 'cattedra', 'configurazione'] },
   { key: 'account', href: '/account', label: 'Account e sicurezza', shortLabel: 'Account', description: 'Gestisci identità di accesso, password, MFA e sessioni.', keywords: ['account', 'sicurezza', 'password', 'mfa', 'sessioni', 'accesso'] },
 ] as const
 
-export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
-  { key: 'work', label: 'Adesso', description: 'Riprendi il lavoro o affronta ciò che richiede attenzione.', items: ['home', 'today'] },
-  { key: 'teaching', label: 'Prepara e insegna', description: 'Lavora con una classe, prepara la fase e documenta il percorso.', items: ['classes', 'design', 'annual-plan', 'documentation'] },
-  { key: 'time', label: 'Tempo', description: 'Distingui lo schema ricorrente dalle date reali dell’anno scolastico.', items: ['timetable', 'calendar'] },
-  { key: 'resources', label: 'Trova', description: 'Cerca una fonte o un materiale soltanto quando ti serve.', items: ['knowledge'] },
-  { key: 'system', label: 'Configura', description: 'Modifica il contesto professionale e la sicurezza dell’account.', items: ['settings', 'account'] },
-] as const
+const ALL_NAVIGATION: readonly NavigationItem[] = [...PRIMARY_NAVIGATION, ...TOOL_NAVIGATION]
 
-export const MOBILE_NAVIGATION_KEYS: readonly NavigationKey[] = ['home', 'today', 'classes', 'timetable']
+export const MOBILE_NAVIGATION_KEYS: readonly NavigationKey[] = ['today', 'timetable', 'classes', 'more']
 
 export const SECONDARY_NAVIGATION_GROUPS: readonly NavigationGroup[] = [
-  { key: 'teaching', label: 'Prepara e insegna', description: 'Prepara la didattica, segui il piano annuale e cura la documentazione.', items: ['design', 'annual-plan', 'documentation'] },
-  { key: 'time', label: 'Organizza', description: 'Organizza date, impegni e scadenze reali.', items: ['calendar'] },
-  { key: 'resources', label: 'Trova', description: 'Trova fonti e materiali quando servono.', items: ['knowledge'] },
-  { key: 'system', label: 'Configura', description: 'Gestisci contesto professionale e sicurezza.', items: ['settings', 'account'] },
+  { key: 'work', label: 'Lavoro', description: 'Attività e progettazione professionale.', items: ['activities', 'design', 'annual-plan'] },
+  { key: 'resources', label: 'Risorse e organizzazione', description: 'Materiali, date e documentazione.', items: ['knowledge', 'calendar', 'documentation'] },
+  { key: 'system', label: 'Sistema', description: 'Configurazione e sicurezza.', items: ['settings', 'account'] },
+] as const
+
+export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
+  { key: 'primary', label: 'Principale', description: 'I tre contesti quotidiani principali.', items: ['today', 'timetable', 'classes'] },
+  ...SECONDARY_NAVIGATION_GROUPS,
 ]
 
 export function navigationItem(key: NavigationKey) {
-  return PRIMARY_NAVIGATION.find((item) => item.key === key) ?? PRIMARY_NAVIGATION[0]
+  return ALL_NAVIGATION.find((item) => item.key === key) ?? PRIMARY_NAVIGATION[0]
 }
 
 export function navigationGroupItems(group: NavigationGroup) {
@@ -68,4 +71,8 @@ export function navigationGroupItems(group: NavigationGroup) {
 
 export function workNavigationItems() {
   return MOBILE_NAVIGATION_KEYS.map(navigationItem)
+}
+
+export function isSecondaryNavigationKey(key: NavigationKey) {
+  return key !== 'today' && key !== 'timetable' && key !== 'classes' && key !== 'more'
 }

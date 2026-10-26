@@ -2,8 +2,6 @@ name: Governed MFA Queue Hygiene
 
 on:
   pull_request:
-    branches:
-      - develop
     types:
       - opened
       - synchronize

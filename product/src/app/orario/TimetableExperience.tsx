@@ -2,16 +2,23 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { TransientFeedback } from '@/components/ui/transient-feedback'
-import { canActivateTimetableDraft, minutesToTime, slotDurationMinutes, timeToMinutes, TIMETABLE_WEEKDAYS } from '@/core/domain/timetable'
+import { currentRomeDomainClock } from '@/core/application/domain-clock'
+import { projectTemporalDay } from '@/core/application/temporal-projection-service'
+import { canActivateTimetableDraft, minutesToTime, slotDurationMinutes, timeToMinutes, TIMETABLE_WEEKDAYS, type TimetableSlot } from '@/core/domain/timetable'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
-import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
+import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabaseCalendarRepository } from '@/core/infrastructure/supabase/supabase-calendar-repository'
+import { CanonicalPlanSourceError, SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
+import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingSessionRepository } from '@/core/infrastructure/supabase/supabase-teaching-session-repository'
 import { SupabaseTimetableImportRepository } from '@/core/infrastructure/supabase/supabase-timetable-import-repository'
 import { SupabaseTimetableExceptionRepository } from '@/core/infrastructure/supabase/supabase-timetable-exception-repository'
 import { SupabaseTimetableLifecycleRepository } from '@/core/infrastructure/supabase/supabase-timetable-lifecycle-repository'
+import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-timetable-projection-read-repository'
 import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { buildClassWorkspaceLearningFocus } from '@/app/classi/class-workspace-model'
+import { CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import {
   activateTimetableDraft,
   addTimetableImportRow,
@@ -23,6 +30,7 @@ import {
 import TimetableGrid from './TimetableGrid'
 import { TimetableLocalImportLauncher } from './TimetableLocalImportLauncher'
 import { TimetableSubmitButton } from './TimetableSubmitButton'
+import { resolveTimetableLessonEntrypoint, type TimetableLessonEntrypoint } from './timetable-lesson-entrypoint'
 import './timetable.css'
 import './orario-guidance.css'
 
@@ -52,7 +60,11 @@ export async function TimetableExperience({
     || singleParam(params.strumento) === 'importa',
   )
 
-  const moment = currentRomeMoment()
+  const moment = currentRomeDomainClock()
+  const literalTomorrowLocalDate = shiftLocalDate(moment.localDate, 1)
+  const isLiteralTomorrow = literalTomorrowLocalDate === shiftLocalDate(moment.localDate, 1)
+  const tomorrowMaterialsWeekday = isLiteralTomorrow ? weekdayFromLocalDate(literalTomorrowLocalDate) : null
+  const tomorrowMaterialsHref = mode === 'view' && isLiteralTomorrow ? '/knowledge?focus=domani' : undefined
   const settingsRepository = new SupabaseTeacherSettingsRepository()
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
   const timetableRepository = new SupabaseTimetableRepository()
@@ -111,11 +123,21 @@ export async function TimetableExperience({
   const draftLabel = versionStatusLabel(timetable.draftVersion.status)
   const days = weekdayOptions.map((day) => ({ value: day.value, label: day.label, short: day.short }))
   const operationalSlots = lifecycle.activeVersion ? lifecycle.activeSlots : timetable.slots
+  const lessonEntrypoints = mode === 'view'
+    ? await buildTimetableLessonEntrypoints({
+        workspaceId: context.workspace.id,
+        academicYearId: context.academicYear.id,
+        sections: annualSnapshot.sections,
+        progress: annualSnapshot.progress,
+        slots: operationalSlots,
+        moment,
+      })
+    : undefined
   const todayCalendarDay = calendarSnapshot.days.find((day) => day.localDate === moment.localDate) ?? null
   const todayNoLessons = Boolean(todayCalendarDay && todayCalendarDay.dayKind !== 'SCHOOL_DAY')
   const todaySlots = (todayNoLessons ? [] : operationalSlots.filter((slot) => slot.weekday === moment.weekday)).sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
-  const currentSlot = todaySlots.find((slot) => timeToMinutes(slot.startTime) <= moment.minutes && timeToMinutes(slot.endTime) > moment.minutes) ?? null
-  const nextSlot = currentSlot ?? todaySlots.find((slot) => timeToMinutes(slot.startTime) > moment.minutes) ?? null
+  const currentSlot = todaySlots.find((slot) => timeToMinutes(slot.startTime) <= moment.minuteOfDay && timeToMinutes(slot.endTime) > moment.minuteOfDay) ?? null
+  const nextSlot = currentSlot ?? todaySlots.find((slot) => timeToMinutes(slot.startTime) > moment.minuteOfDay) ?? null
   const focusSlot = nextSlot ? describeSlot(nextSlot, sectionById, disciplineById) : null
   const focusActivityException = nextSlot
     ? todayExceptions.find((exception) => exception.timetableSlotId === nextSlot.id && exception.kind === 'ACTIVITY_KIND_CHANGED') ?? null
@@ -343,7 +365,7 @@ export async function TimetableExperience({
           
                   {!importCandidate || importCandidate.state === 'APPLIED_TO_DRAFT' ? (
                     <TimetableLocalImportLauncher
-                      defaultEffectiveFrom={clampDate(currentRomeDate(), context.academicYear.startsOn, context.academicYear.endsOn)}
+                      defaultEffectiveFrom={clampDate(moment.localDate, context.academicYear.startsOn, context.academicYear.endsOn)}
                     />
                   ) : (
                     <div className="timetableImportReview">
@@ -484,6 +506,9 @@ export async function TimetableExperience({
           periods={periodPresets}
           slots={operationalSlots}
           assignments={gridAssignments}
+          lessonEntrypoints={lessonEntrypoints}
+          tomorrowMaterialsHref={tomorrowMaterialsHref}
+          tomorrowMaterialsWeekday={tomorrowMaterialsWeekday ?? undefined}
           readOnly
         />
       </section> : null}
@@ -571,29 +596,105 @@ export async function TimetableExperience({
   )
 }
 
+
+async function buildTimetableLessonEntrypoints(input: {
+  workspaceId: string
+  academicYearId: string
+  sections: Array<Parameters<typeof buildClassWorkspaceLearningFocus>[0]>
+  progress: Parameters<typeof buildClassWorkspaceLearningFocus>[1]
+  slots: TimetableSlot[]
+  moment: ReturnType<typeof currentRomeDomainClock>
+}) {
+  const lessonSlots = input.slots.filter((slot) => slot.slotKind === 'LESSON' && slot.sectionId)
+  if (!lessonSlots.length) return {} satisfies Record<string, TimetableLessonEntrypoint>
+
+  const relevantSectionIds = new Set(lessonSlots.flatMap((slot) => slot.sectionId ? [slot.sectionId] : []))
+  const relevantSections = input.sections.filter((section) => relevantSectionIds.has(section.id))
+  const grades = [...new Set(relevantSections.map((section) => GRADE_UI[section.grade]))]
+  const canonicalSourceRepository = new SupabaseCanonicalPlanSourceRepository()
+  const timetableProjectionRepository = new SupabaseTimetableProjectionReadRepository()
+  const calendarProjectionRepository = new SupabaseCalendarProjectionReadRepository()
+  const [sourceEntries, timetableProjection, calendarProjection] = await Promise.all([
+    Promise.all(grades.map(async (grade) => {
+      try {
+        const source = await canonicalSourceRepository.resolve({
+          workspaceId: input.workspaceId,
+          academicYearId: input.academicYearId,
+          code: CANONICAL_PLAN_SOURCES[grade].code,
+        })
+        return [grade, source] as const
+      } catch (error) {
+        if (error instanceof CanonicalPlanSourceError && error.code === 'CANONICAL_PLAN_BINDING_MISSING') {
+          return [grade, null] as const
+        }
+        throw error
+      }
+    })),
+    timetableProjectionRepository.read(input.workspaceId, input.academicYearId),
+    calendarProjectionRepository.read(input.workspaceId, input.academicYearId),
+  ])
+  const generationByGrade = new Map(sourceEntries.map(([grade, source]) => [grade, source?.generationId ?? null]))
+  const blockBySection = new Map(relevantSections.map((section) => {
+    const grade = GRADE_UI[section.grade]
+    const focus = buildClassWorkspaceLearningFocus(section, input.progress, generationByGrade.get(grade) ?? null, [])
+    return [section.id, focus.nextBlock?.id ?? null] as const
+  }))
+
+  const projectedByWeekday = new Map<number, ReturnType<typeof projectTemporalDay>>()
+  for (const weekday of new Set(lessonSlots.map((slot) => slot.weekday))) {
+    const localDate = shiftLocalDate(input.moment.localDate, weekday - input.moment.weekday)
+    projectedByWeekday.set(weekday, projectTemporalDay({
+      localDate,
+      timetableVersions: timetableProjection.versions,
+      timetableSlots: timetableProjection.slots,
+      timetableExceptions: timetableProjection.exceptions ?? [],
+      calendarDays: calendarProjection.days,
+      calendarEvents: calendarProjection.events,
+    }))
+  }
+
+  const entries: Record<string, TimetableLessonEntrypoint> = {}
+  for (const slot of lessonSlots) {
+    if (!slot.sectionId) continue
+    const occurrences = projectedByWeekday.get(slot.weekday)?.occurrences.filter((occurrence) =>
+      occurrence.kind === 'LESSON' && occurrence.timetableSlotId === slot.id,
+    ) ?? []
+    const occurrence = occurrences.length === 1 ? occurrences[0] : null
+    const entrypoint = resolveTimetableLessonEntrypoint({
+      mode: 'view',
+      sectionId: slot.sectionId,
+      blockId: blockBySection.get(slot.sectionId) ?? null,
+      localDate: occurrence?.localDate ?? null,
+      occurrenceLogicalId: occurrence?.logicalId ?? null,
+      ambiguous: occurrences.length > 1,
+    })
+    if (entrypoint) entries[slot.id] = entrypoint
+  }
+  return entries
+}
+
+function shiftLocalDate(localDate: string, offsetDays: number) {
+  const date = new Date(`${localDate}T12:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + offsetDays)
+  return date.toISOString().slice(0, 10)
+}
+
+function weekdayFromLocalDate(localDate: string) {
+  const weekday = new Date(`${localDate}T12:00:00Z`).getUTCDay()
+  return weekday === 0 ? 7 : weekday
+}
+
 function buildPeriods(startTime: string, durationMinutes: number, count: number) { const first = timeToMinutes(startTime); return Array.from({ length: count }, (_, index) => ({ ordinal: index + 1, start: minutesToTime(first + index * durationMinutes), end: minutesToTime(first + (index + 1) * durationMinutes) })) }
 function sectionLabel(grade: keyof typeof GRADE_LABELS, sectionCode: string) { return `${GRADE_LABELS[grade]} ${sectionCode}` }
 function versionStatusLabel(value: string) { if (value === 'DRAFT') return 'Bozza'; if (value === 'ACTIVE') return 'In uso'; if (value === 'ARCHIVED') return 'Precedente'; return value }
 function formatHours(minutes: number) { if (!minutes) return '0h'; const hours = Math.floor(minutes / 60); const rest = minutes % 60; if (!hours) return `${rest}m`; return rest ? `${hours}h ${rest}m` : `${hours}h` }
 function formatDate(value: string) { const [year, month, day] = value.split('-'); return `${day}/${month}/${year}` }
-function currentRomeMoment() { const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()); const value = Object.fromEntries(parts.map((part) => [part.type, part.value])); const weekday = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 }[value.weekday] ?? 7; return { localDate: `${value.year}-${value.month}-${value.day}`, weekday, minutes: Number(value.hour) * 60 + Number(value.minute) } }
 function describeSlot(slot: { sectionId: string | null; disciplineId: string | null; manualClassLabel: string | null; slotKind: string; startTime: string; endTime: string; room: string | null }, sectionById: Map<string, { grade: keyof typeof GRADE_LABELS; sectionCode: string }>, disciplineById: Map<string, { name: string }>) { const section = slot.sectionId ? sectionById.get(slot.sectionId) : null; const discipline = slot.disciplineId ? disciplineById.get(slot.disciplineId) : null; const title = section ? sectionLabel(section.grade, section.sectionCode) : slot.manualClassLabel || presenceLabel(slot.slotKind); return { title, sectionId: section ? slot.sectionId : null, time: `${slot.startTime.slice(0, 5)}–${slot.endTime.slice(0, 5)}`, kind: discipline?.name || presenceLabel(slot.slotKind), room: slot.room, description: section ? `Questa è la lezione pertinente nell’orario che vale adesso. Entra nella classe per vedere il prossimo tratto didattico e i materiali utili.` : `Questa presenza appartiene all’orario che vale adesso e non crea una classe canonica.` } }
 function presenceLabel(kind: string) { if (kind === 'DISPOSITION') return 'Disposizione'; if (kind === 'RECEPTION') return 'Ricevimento'; if (kind === 'CLASS_PRESENCE') return 'Presenza in classe'; return 'Impegno' }
 function activityKindLabel(kind: string) { if (kind === 'DRAWING_PROJECT') return 'Disegno / progettazione'; if (kind === 'PRACTICAL_LAB') return 'Pratica / laboratorio'; if (kind === 'ASSESSMENT') return 'Verifica / valutazione'; if (kind === 'OTHER') return 'Altro'; return 'Teoria' }
 
 function singleParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? null : value ?? null
-}
-
-function currentRomeDate() {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Rome',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date())
-  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  return [value.year, value.month, value.day].join('-')
 }
 
 function clampDate(value: string, min: string, max: string) {

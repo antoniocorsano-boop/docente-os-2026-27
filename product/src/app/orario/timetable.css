@@ -576,3 +576,6 @@ button[aria-busy="true"]{cursor:progress}
 @media(prefers-reduced-motion:reduce){
   .timetableButtonSpinner{animation:none}
 }
+
+.tomorrowMaterialsLink{min-height:44px;display:inline-flex;align-items:center;padding:0 13px;border:1px solid var(--brand);border-radius:var(--radius-sm);background:var(--brand-soft);color:var(--brand);font-weight:750;text-decoration:none}
+@media(max-width:719px){.tomorrowMaterialsLink{order:4;width:100%;justify-content:center}}

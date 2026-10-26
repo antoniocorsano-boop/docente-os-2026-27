@@ -7,18 +7,19 @@ export function selectEligibleLessonOccurrence(input: {
   sectionId: string
   nowMinutes: number
 }) {
-  const recordedOccurrenceIds = new Set(
-    input.teaching.sessions
-      .map((session) => session.source.projectedOccurrenceLogicalId)
-      .filter((id): id is string => Boolean(id)),
-  )
-
-  return input.occurrences
-    .filter((occurrence) => occurrence.sectionId === input.sectionId)
-    .filter((occurrence) => occurrence.kind === 'LESSON' || occurrence.kind === 'CLASS_PRESENCE')
-    .filter((occurrence) => !recordedOccurrenceIds.has(occurrence.logicalId))
-    .filter((occurrence) => occurrence.startAt ? localTimeMinutes(occurrence.startAt) <= input.nowMinutes : true)
+  return eligibleLessonOccurrences(input)
     .sort((a, b) => (b.startAt ?? '').localeCompare(a.startAt ?? ''))[0] ?? null
+}
+
+export function selectLessonOccurrenceByLogicalId(input: {
+  occurrences: ProjectedOccurrence[]
+  teaching: TeachingSessionSnapshot
+  sectionId: string
+  occurrenceLogicalId: string
+  nowMinutes: number
+}) {
+  return eligibleLessonOccurrences(input)
+    .find((occurrence) => occurrence.logicalId === input.occurrenceLogicalId) ?? null
 }
 
 export function hasCurrentBlockSessionOnDate(input: {
@@ -35,6 +36,25 @@ export function hasCurrentBlockSessionOnDate(input: {
     const session = currentById.get(allocation.sessionId)
     return session?.localDate === input.localDate
   })
+}
+
+function eligibleLessonOccurrences(input: {
+  occurrences: ProjectedOccurrence[]
+  teaching: TeachingSessionSnapshot
+  sectionId: string
+  nowMinutes: number
+}) {
+  const recordedOccurrenceIds = new Set(
+    input.teaching.sessions
+      .map((session) => session.source.projectedOccurrenceLogicalId)
+      .filter((id): id is string => Boolean(id)),
+  )
+
+  return input.occurrences
+    .filter((occurrence) => occurrence.sectionId === input.sectionId)
+    .filter((occurrence) => occurrence.kind === 'LESSON' || occurrence.kind === 'CLASS_PRESENCE')
+    .filter((occurrence) => !recordedOccurrenceIds.has(occurrence.logicalId))
+    .filter((occurrence) => occurrence.startAt ? localTimeMinutes(occurrence.startAt) <= input.nowMinutes : true)
 }
 
 function localTimeMinutes(value: string) {

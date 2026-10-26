@@ -51,6 +51,12 @@ test('ignores tests and ordinary read-only modules for named heuristics', () => 
   assert.equal(isMutationCandidate('updatePreview()', 'src/pages/Preview.tsx'), false)
 })
 
+test('ignores e2e fixture mutations but still detects the same product write', () => {
+  const write = "await supabase.from('teaching_assignments').update({ status: 'CONFIRMED' })"
+  assert.equal(isMutationCandidate(write, 'product/e2e/experience/global-setup.mjs'), false)
+  assert.equal(isMutationCandidate(write, 'product/src/app/actions/teaching-assignment.ts'), true)
+})
+
 test('generic text assertions are not feedback evidence', () => {
   assert.equal(FEEDBACK_ASSERTION.test("expect(title).toHaveTextContent('Saved')"), false)
   assert.equal(FEEDBACK_ASSERTION.test("screen.getByRole('status')"), true)

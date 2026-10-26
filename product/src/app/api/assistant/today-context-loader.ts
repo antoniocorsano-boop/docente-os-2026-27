@@ -1,3 +1,4 @@
+import { currentRomeDomainClock } from '@/core/application/domain-clock'
 import { projectTemporalDay } from '@/core/application/temporal-projection-service'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
 import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supabase-planner-repository'
@@ -36,14 +37,18 @@ export type LoadedTodayCopilotContext = {
   preparation: LoadedNextLessonPreparation | null
 }
 
-export async function loadCurrentTodayOperationalContext(): Promise<LoadedTodayOperationalContext | null> {
+export async function loadCurrentTodayOperationalContext(
+  options: { includePreparation?: boolean; includeTasks?: boolean } = {},
+): Promise<LoadedTodayOperationalContext | null> {
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const workspaceContext = await workspaceRepository.getCurrentContext()
   if (!workspaceContext) return null
 
-  const clock = currentRomeClock()
+  const clock = currentRomeDomainClock()
   const plannerRepository = new SupabasePlannerRepository()
-  const tasks = await plannerRepository.listByWorkspace(workspaceContext.workspace.id)
+  const tasks = options.includeTasks === false
+    ? []
+    : await plannerRepository.listByWorkspace(workspaceContext.workspace.id)
 
   if (!workspaceContext.academicYear) {
     return {
@@ -86,24 +91,26 @@ export async function loadCurrentTodayOperationalContext(): Promise<LoadedTodayO
   })
 
   let preparation: LoadedNextLessonPreparation | null = null
-  try {
-    preparation = await loadNextLessonPreparationBundle({
-      workspaceId: workspaceContext.workspace.id,
-      academicYearId,
-      homeDaily,
-      minuteOfDay: clock.minuteOfDay,
-    })
-    if (!preparation) {
-      preparation = await loadNearestUpcomingPreparation({
+  if (options.includePreparation !== false) {
+    try {
+      preparation = await loadNextLessonPreparationBundle({
         workspaceId: workspaceContext.workspace.id,
         academicYearId,
-        localDate: clock.localDate,
-        timetable,
-        calendar,
+        homeDaily,
+        minuteOfDay: clock.minuteOfDay,
       })
+      if (!preparation) {
+        preparation = await loadNearestUpcomingPreparation({
+          workspaceId: workspaceContext.workspace.id,
+          academicYearId,
+          localDate: clock.localDate,
+          timetable,
+          calendar,
+        })
+      }
+    } catch {
+      console.warn('[DOCENTE OS] Lesson preparation unavailable; Today Copilot continues with base context.')
     }
-  } catch {
-    console.warn('[DOCENTE OS] Lesson preparation unavailable; Today Copilot continues with base context.')
   }
 
   return {
@@ -206,20 +213,4 @@ function addLocalDays(localDate: string, days: number) {
   const date = new Date(`${localDate}T12:00:00Z`)
   date.setUTCDate(date.getUTCDate() + days)
   return date.toISOString().slice(0, 10)
-}
-
-function currentRomeClock() {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Rome',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(new Date())
-  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  const localDate = `${value.year}-${value.month}-${value.day}`
-  const minuteOfDay = Number(value.hour) * 60 + Number(value.minute)
-  return { localDate, minuteOfDay }
 }

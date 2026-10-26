@@ -14,6 +14,7 @@ import { SupabaseLessonDesignRepository } from '@/core/infrastructure/supabase/s
 import { SupabaseLessonPreparationApprovalRepository } from '@/core/infrastructure/supabase/supabase-lesson-preparation-approval-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
+import { buildCanonicalLessonWorkspaceHref } from '@/core/presentation/lesson-workspace-route'
 import { createClient } from '@/lib/supabase/server'
 
 const TECHNOLOGY_DISCIPLINE_REF = 'technology'
@@ -22,6 +23,8 @@ export async function approveLessonPreparationAndProceed(formData: FormData) {
   const sectionId = requiredText(formData, 'sectionId')
   const blockId = requiredText(formData, 'blockId').toUpperCase()
   const expectedProjectionId = requiredText(formData, 'projectionId')
+  const localDate = optionalText(formData, 'localDate')
+  const occurrenceLogicalId = optionalText(formData, 'occurrenceLogicalId')
 
   const workspaceContext = await new SupabaseWorkspaceRepository().getCurrentContext()
   if (!workspaceContext?.academicYear) redirect('/workspace')
@@ -40,7 +43,7 @@ export async function approveLessonPreparationAndProceed(formData: FormData) {
 
   const projection = resolveRuntimeHumanTaskLessonProjection(grade, block)
   if (!projection || projection.projectionId !== expectedProjectionId) {
-    redirect(prepareHref(sectionId, blockId, 'changed'))
+    redirect(preparationHref(sectionId, blockId, localDate, occurrenceLogicalId, 'changed'))
   }
 
   const runtimeSource = await new SupabaseCanonicalPlanSourceRepository().resolve({
@@ -72,7 +75,7 @@ export async function approveLessonPreparationAndProceed(formData: FormData) {
   ])
 
   if (!isCurriculumBaselineReadyForLessonApproval(curriculumBaseline)) {
-    redirect(prepareHref(sectionId, blockId, 'curriculum-required'))
+    redirect(preparationHref(sectionId, blockId, localDate, occurrenceLogicalId, 'curricolo-required'))
   }
 
   const supabase = await createClient()
@@ -89,16 +92,22 @@ export async function approveLessonPreparationAndProceed(formData: FormData) {
       approvedBy,
     })
   } catch {
-    redirect(prepareHref(sectionId, blockId, 'failed'))
+    redirect(preparationHref(sectionId, blockId, localDate, occurrenceLogicalId, 'failed'))
   }
 
   revalidatePath(`/classi/${sectionId}`)
   revalidatePath(`/classi/${sectionId}/lezioni/${blockId}`)
-  redirect(`/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(blockId)}?mode=teach`)
+  redirect(buildCanonicalLessonWorkspaceHref(sectionId, blockId, { localDate, occurrenceLogicalId, intent: 'start' }))
 }
 
-function prepareHref(sectionId: string, blockId: string, approval: string) {
-  return `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(blockId)}?mode=prepare&approval=${encodeURIComponent(approval)}`
+function preparationHref(sectionId: string, blockId: string, localDate: string | null, occurrenceLogicalId: string | null, approval: string) {
+  const href = buildCanonicalLessonWorkspaceHref(sectionId, blockId, { localDate, occurrenceLogicalId })
+  return `${href}${href.includes('?') ? '&' : '?'}approval=${encodeURIComponent(approval)}`
+}
+
+function optionalText(formData: FormData, name: string) {
+  const value = formData.get(name)
+  return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
 function requiredText(formData: FormData, name: string) {
