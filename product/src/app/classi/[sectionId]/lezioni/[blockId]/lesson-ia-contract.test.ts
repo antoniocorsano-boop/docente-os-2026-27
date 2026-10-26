@@ -23,6 +23,12 @@ test('Lezione resolves visible state server-side from canonical context', () => 
   assert.match(pageSource, /subtask\?: string/)
 })
 
+test('Lezione resolves temporal state with the governed Rome domain clock', () => {
+  assert.match(pageSource, /import \{ currentRomeDomainClock \} from '@\/core\/application\/domain-clock'/)
+  assert.match(pageSource, /const clock = currentRomeDomainClock\(\)/)
+  assert.doesNotMatch(pageSource, /function currentRomeClock\(/)
+})
+
 test('legacy mode remains compatibility input only and does not define visible phase navigation', () => {
   assert.match(pageSource, /mode\?: string/)
   assert.doesNotMatch(shellSource, /\bPHASES\b/)
