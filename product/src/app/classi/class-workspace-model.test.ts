@@ -55,6 +55,13 @@ test('projects the next canonical block and only explicitly pertinent materials'
   assert.equal(focus.materials[0]?.relevanceLabel, 'Fase corrente')
 })
 
+test('keeps the canonical next block unresolved when no canonical generation is available', () => {
+  const focus = buildClassWorkspaceLearningFocus(section2C, [], null, [])
+
+  assert.equal(focus.completedBlocks, 0)
+  assert.equal(focus.nextBlock, null)
+})
+
 test('prepared class material is selected by exact class and nearest teaching date without inventing a CAN-PLAN binding', () => {
   const prepared = selectPreparedClassMaterials(
     section2C,
