@@ -48,7 +48,10 @@ export class SupabaseTimetableLifecycleRepository {
     if (versionsError) throw new Error(versionsError.message)
 
     const mappedVersions = versions.map(toVersion)
-    const activeVersion = resolveTimetableVersionForDate(mappedVersions, localDate)
+    const resolvedVersion = resolveTimetableVersionForDate(mappedVersions, localDate)
+    const activeVersion = resolvedVersion
+      ? mappedVersions.find((version) => version.id === resolvedVersion.id) ?? null
+      : null
     if (!activeVersion) return { activeVersion: null, activeSlots: [], versions: mappedVersions }
 
     const { data: slots, error: slotsError } = await supabase
