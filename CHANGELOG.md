@@ -6,11 +6,45 @@ DOCENTE OS adotta Semantic Versioning per le release formalmente emesse dal prog
 
 ## Unreleased
 
-Nessuna modifica applicativa successiva al candidate SHA di `0.1.0-rc.2`.
+Le modifiche successive a `0.1.0-rc.2` sono materialmente significative e richiedono una nuova Release Candidate. Nessun tag esistente viene spostato.
 
-## [0.1.0-rc.2] - 2026-10-03 (DRAFT)
+### Changed
 
-Release Candidate rc.2 preparata sul candidate SHA `617b4f8901259ce2318ce721236241d7681b1c9c`. Il tag e la GitHub prerelease non sono ancora creati; la candidata non è `CERTIFIED` né `PROMOTED`.
+- Consolidato il modello V1 Teacher Operating System attorno a `Teacher Moment → contesto → prossimo passo → copilota → conferma umana → traccia`.
+- Rafforzati Today/Next, Lesson Brief e la continuità Oggi → Lezione → Materiali → Registra.
+- Integrato il Contextual Copilot nel task corrente con FAB contestuale, protected regions, posizionamento AUTO/drag e fallback `DOCKED_SAFE`.
+- Rafforzata la governance HVA con baseline persistente, integrity preflight/postflight, MFA/AAL2 governato e journey mobile/desktop whole-product.
+- Consolidata la linea DOS-IA/RESET per ridurre latenza e fallback cognitivi, mantenendo invariati i confini di autorità del dominio.
+- Chiuso il filone Orario effective-date / recurring occurrence: la versione operativa è risolta sulla data governata e la cella ricorrente punta alla prossima occorrenza concreta preservando exact timetable-version + slot identity.
+- `develop` corrente e Beta convergono su `489d8ee67b16db304ede71be94241739d0fa0a79`.
+
+### Fixed
+
+- Corretto il boundary temporale in cui una versione Orario amministrativamente `ACTIVE` ma futura veniva trattata come già operativa (#760).
+- Corretto il resolver Orario → Lezione quando il weekday più vicino non rappresenta una lezione concreta o cade oltre il periodo valido della versione (#761).
+- Corretto il race del solo test harness HVA mobile tra inizializzazione week view e switch day view (#763), senza modifiche al runtime prodotto.
+- Corretti i finding del Contextual Copilot FAB relativi a sovrapposizione con CTA/regioni contestuali, touch drag e geometria dopo mount tardivi.
+- Stabilizzato l'isolamento tra clock deterministico HVA e validazione server-side Auth/MFA.
+
+### Validation
+
+- #761: Product CI, full HVA, Human Visual/Design, Candidate Qualification e Final Independent Review PASS sul candidato finale `df7cbfd3f2b662590cabc30d40efb1d9ffd5c434`.
+- Merge #761 `5112ac255c936f4becf0de80dd14a4bebdde6df3`: `p6-performance/render-beta` PASS.
+- #763: candidate test-harness-only `ee1191f0a419e79a30ccad75fb9da6fbe77a8e47` qualificato e integrato.
+- Merge corrente `489d8ee67b16db304ede71be94241739d0fa0a79`: Product CI, X3, Human Interaction Model, TERM-01 e HVA post-merge PASS; Beta Render serve lo stesso exact SHA.
+
+### Governance
+
+- La linea prodotto resta **M4 — Advanced Controlled Production Pilot**; `1.0.0` resta riservata alla decisione M5 esplicita.
+- Il prossimo freeze, se il perimetro resta `0.1.0`, richiede una nuova RC; `0.1.0-rc.3` è il candidato naturale ma non è ancora creato.
+- Prima del nuovo freeze RC è aperto il finding `PRODUCTION_PROVENANCE_DRIFT`: la receipt storica del 25 agosto e il deploy Production live del 17 settembre non descrivono lo stesso SHA.
+- Il finding di provenienza Production non autorizza rollback, redeploy o promozione; Production resta immutata durante la riconciliazione.
+- Dopo il freeze della nuova RC il gate di prodotto prioritario è QL-1 HUMAN_USE, seguito da QL-3, QL-4, Observe→Registra, Android Reality, assurance M5 e sustained pilot.
+- Voice/STT, Tier 2, multi-user e institutional expansion restano fuori dal release core corrente.
+
+## [0.1.0-rc.2] - 2026-10-03
+
+Release Candidate `0.1.0-rc.2` congelata sul candidate SHA `617b4f8901259ce2318ce721236241d7681b1c9c` e pubblicata come GitHub prerelease `v0.1.0-rc.2`. La candidata non è `CERTIFIED` né `PROMOTED`.
 
 ### Fixed
 
@@ -23,8 +57,8 @@ Release Candidate rc.2 preparata sul candidate SHA `617b4f8901259ce2318ce7212362
 ### Validation
 
 - Quarta review indipendente GitHub Copilot sulla remediation finale: **Findings: None**.
-- Product CI, Dependency Security, Release Engineering, Human Interaction e P6 PASS sul candidate SHA; P6 ha verificato che la Beta serve lo SHA candidato esatto.
-- Resta necessaria la prova Android fisica sul PDF rappresentativo: `Corsano → 14 lezioni → revisione → conferma → persistenza`.
+- Product CI, Dependency Security, Release Engineering, Human Interaction e P6 PASS sul candidate SHA; P6 ha verificato che la Beta serviva lo SHA candidato esatto.
+- La prova Android fisica sul PDF rappresentativo restava un requisito separato e la prerelease non autorizzava Production.
 
 ## [0.1.0-rc.1] - 2026-10-03
 
@@ -36,30 +70,22 @@ Il tag immutabile `v0.1.0-rc.1` e la GitHub prerelease sono pubblicati e verific
 - Aperto il programma **M5 — Maintenance & Maturation** e congelata la baseline di maturità del 12 settembre 2026.
 - Chiuso DPG-2 e resa permanente la governance del design system tramite ratchet.
 - Formalizzata la release engineering: versioni SemVer pre-1.0 durante M4, release candidate immutabili e `1.0.0` riservata alla promozione M5.
-- Chiuso il **canonical status drift**: `PROJECT_STATUS_CURRENT.md` resta l'unica fonte sintetica CURRENT, `CANONICAL_DOC_INDEX.md` include audit/readiness/release engineering e `PROJECT_HEALTH.md` è ora un historical pointer.
-- Avviato **M5-02 — Sustained Pilot Evidence** con journey J1–J9, ledger append-only, privacy Tier-1 e gate machine-readable; la raccolta parte intenzionalmente con `HUMAN_USE=0` e non autorizza ancora la chiusura del gate.
-- Avviato **M5-03 — WCAG 2.2 AA Assurance** con matrice completa dei 55 criteri A/AA, validator machine-readable, Playwright/axe su viewport desktop+mobile e bypass `Salta al contenuto` verificato da tastiera.
-- Corretto sistemicamente il baseline di contrasto emerso dal primo run axe mediante token canonici di brand/testo/successo e bottom navigation; il run WCAG `34672053257` è PASS sull'exact head `20eb47b7e35faf3114dcbfe32ee320c1cfcc9557`.
-- Avviato **M5-04 — OWASP ASVS 5.0 Assurance** sulla baseline stabile `v5.0.0`, con target L2, matrice machine-readable dei 17 capitoli, validator anti-waiver/anti-false-PASS e gate dedicato sull'exact head; M5-04A resta `PARTIAL`.
-- Congelati inizialmente come finding prioritari ASVS i gap **V3.4.3 CSP**, **V5.2.2 file content/type validation** e **V6.3.3 MFA**, senza attribuire una verifica L2 non ancora dimostrata.
-- Chiuso con evidenza strutturata **ASVS-002 / V5.2.2**: validazione fail-closed di estensione/MIME/contenuto sui tre ingressi di upload, parser reali per PDF/DOCX, firme per immagini, UTF-8 strict per testo, test negativi e rilettura server-side dei blob resumable prima dell'ammissione nella KB. La closure è legata all'implementation SHA `f0c5ee3b4b4995dec78836571584bc9f72e78890` e alle receipt Product CI `34674333510`, K1 `34674333522`, P6 `34674333530`, P7 `34674333531`, ASVS `34674333504`, Design Policy `34674333521` e Human Interaction Model `34674333487`.
-- Chiuso con evidenza strutturata **ASVS-001 / V3.4.3** sull'implementation SHA corretto `1498b675d7d8d9d897867317df3bf07193240833`: CSP globale request-scoped con nonce crittografico nel Proxy Next.js, `object-src 'none'`, `base-uri 'none'`, script policy senza `unsafe-inline`/`unsafe-eval` in produzione, allowlist Supabase senza wildcard e prova browser permanente di header, nonce framework e rotazione del nonce. L'allowlist `connect-src` include anche l'origin TUS esatto `https://<project>.storage.supabase.co`, derivato dal medesimo project ref, dopo che K1 ha dimostrato che l'origin precedente bloccava il PDF resumable >6 MiB. Receipt: Product CI `34678320805`, HVA `34678320813`, P6 `34678320851`, Design Policy `34678320842`, WCAG `34678320806`, Human Interaction Model `34678320833`, K1 `34678320870` e ASVS pre-closure `34678320823`.
-- Chiuso con evidenza strutturata **ASVS-003 / V6.3.3** sull'implementation SHA `1f04f2799f9993c53d0578f8caafbe9e9842e60f`: MFA TOTP provider-native, passaggio AAL1 → AAL2, blocco AAL1 su superfici operative e data plane, enforcement `RESTRICTIVE` via `0051_mfa_aal2_enforcement.sql`, Browser Gate e Data Plane Gate reali. La prova umana ha completato `recovery email → AAL1 → MFA → AAL2 → nuova password → logout → login con nuova password → MFA → Oggi`. Receipt machine: Product CI `34708557467`, MFA Data Plane `34708557509`, MFA Browser `34708557565`; runtime e prova umana in `ops/mfa-v6-3-3-closure-receipt.json`. **V6 resta PARTIAL, M5-04A resta PARTIAL e `verificationClaim=false`** perché la mappatura ASVS L1/L2 complessiva non è ancora completa.
-- Corretto il safe-area mobile dell'assistente contestuale da 20 a 24 px per preservare gli 8 px richiesti sopra la bottom navigation; HVA è PASS sul medesimo implementation SHA CSP.
-- Stabilizzati i gate browser senza ridurne la severità: P6 misura solo superfici operative reali e attende il landing canonico `/planner`; WCAG normalizza la precondizione di focus prima del controllo del primo `Tab`; K1 attende anch'esso `/planner` invece dell'intermedio `/workspace`.
-- Il gap professionale **Account e sicurezza** registrato nell'issue #347 è stato implementato nella **PR #348**, separando definitivamente identità digitale e credenziali dalle Impostazioni professionali. La slice introduce `/account`, `/account/mfa`, identità email, stato MFA, enrollment/rimozione controllata dei fattori TOTP, cambio password AAL2, revoca delle altre sessioni e logout corrente. Durante l'hardening è stato esteso il requisito AAL2 a **ogni** mutazione password, compreso il primo accesso `source=email`, ed è stata limitata la continuazione MFA alle sole destinazioni password esatte e same-origin. La capability resta **NOT INTEGRATED** finché #346 e #348 non superano la chiusura final-head.
-- Consolidata la documentazione canonica di Account e sicurezza con `docs/architecture/ACCOUNT_SECURITY_CANONICAL_SPEC.md`, `docs/product/ACCOUNT_SECURITY_EXPERIENCE_CONTRACT.md`, aggiornamento del Product Experience Masterplan, del Canonical Documentation Index e dello stato corrente.
+- Chiuso il **canonical status drift**: `PROJECT_STATUS_CURRENT.md` resta l'unica fonte sintetica CURRENT e `PROJECT_HEALTH.md` è un historical pointer.
+- Avviato **M5-02 — Sustained Pilot Evidence** con journey J1–J9, ledger append-only, privacy Tier-1 e gate machine-readable.
+- Avviato **M5-03 — WCAG 2.2 AA Assurance** con matrice A/AA, validator machine-readable e Playwright/axe desktop+mobile.
+- Avviato **M5-04 — OWASP ASVS 5.0 Assurance** con target L2, matrice machine-readable e gate dedicato; la verifica complessiva resta PARTIAL finché non è dimostrata requisito per requisito.
+- Chiuso con evidence strutturata il finding CSP V3.4.3.
+- Chiuso con evidence strutturata il finding file content/type validation V5.2.2.
+- Chiuso con evidence strutturata il finding MFA V6.3.3 con TOTP provider-native, passaggio AAL1→AAL2 e enforcement restrittivo.
+- Consolidata la documentazione canonica di Account e sicurezza.
 
 ### Governance
 
 - La promozione Production continua a richiedere exact SHA certificato, decisione umana, rollback target e smoke post-deploy.
 - Le release candidate non autorizzano automaticamente la promozione Production.
-- Le PR DPG-2 #328, #329, #330, #331, #332 e #334 sono state chiuse come `SUPERSEDED` dalla #336 integrata.
-- Un machine gate non può essere conteggiato come `HUMAN_USE`; SLI/SLO numerici non possono essere congelati prima di una baseline osservata M5-02 sufficiente.
-- Un PASS automatizzato axe/HVA non costituisce dichiarazione di conformità WCAG 2.2 AA: M5-03 resta `PARTIAL` finché criteri manuali, keyboard/focus/reflow e assistive technology non hanno receipt sufficienti.
-- Un PASS del gate `ASVS 5.0 Assurance` valida la coerenza del contratto e della matrice, ma non costituisce una dichiarazione di verifica ASVS L2; `verificationClaim=false` resta vincolante finché la mappatura requisito-per-requisito non è completa e i gap L1/L2 applicabili non sono chiusi con receipt.
-- La chiusura dei tre finding prioritari iniziali V3.4.3, V5.2.2 e V6.3.3 non autorizza da sola il passaggio di M5-04A a `COMPLETE`.
-- La documentazione Account distingue esplicitamente `IMPLEMENTED`, `INTEGRATED`, `CERTIFIED` e `PROMOTED`: la presenza del codice su una PR non autorizza a descrivere la capability come disponibile nel prodotto corrente.
+- Un machine gate non può essere conteggiato come `HUMAN_USE`.
+- Un PASS automatizzato axe/HVA non costituisce dichiarazione di conformità WCAG 2.2 AA.
+- Un PASS del gate ASVS valida la coerenza del contratto e della matrice, ma non costituisce dichiarazione di verifica ASVS L2 finché il mapping requisito-per-requisito non è completo.
 
 ## Legacy certified pilot — 2026-08-25
 
