@@ -42,10 +42,11 @@
 - exact candidate `92ea0fd0ea88b942d3dd630423264d9a50d04982`
 - HVA #1126
 - Human Visual/Design review `5663864955`
+- Candidate Qualification #69 / run `40472819003`
 
-- [ ] Verificare che head/base siano invariati.
-- [ ] Portare la PR da Draft a Ready.
-- [ ] Eseguire Candidate Qualification sullo stesso exact SHA.
+- [x] Verificare che head/base siano invariati.
+- [x] Portare la PR da Draft a Ready.
+- [ ] Eseguire Candidate Qualification sullo stesso exact SHA — **IN PROGRESS**.
 - [ ] Verificare WCAG e tutti i gate richiesti dal classifier.
 - [ ] Eseguire Final Independent Review sullo stesso exact SHA.
 - [ ] Fermarsi al confine di decisione umana di merge.
@@ -53,6 +54,8 @@
 - [ ] Qualificare il merge commit reale su `develop`.
 - [ ] Verificare Beta Orario→Lezione sul 27/10 e sulla prossima occorrenza.
 - [ ] Non confondere eventuali RED P6 `/knowledge` con il repair Orario.
+
+**Evidence live dopo Ready:** candidate lease + impact PASS; browser preflight PASS; `p6-performance/application` PASS; `x4-planner/application` PASS; HVA/WCAG candidate gates in progress sullo stesso exact SHA.
 
 **Exit:** merge commit reale qualificato oppure blocker causale aperto.
 
@@ -202,14 +205,15 @@ Le fasi successive non devono essere usate per aggirare un blocker delle precede
 - nuovi provider obbligatori;
 - nuove feature autonome non richieste da un finding professionale reale.
 
-## Stato iniziale del piano — 27/10/2026
+## Stato live del piano — 27/10/2026
 
 - Task 1: **IN PROGRESS**
   - Engineering PASS
   - Full HVA PASS
   - Human Visual/Design PASS WITH WATCH
-  - PR #761 ancora Draft
-  - Candidate Qualification dopo Ready: da eseguire
-- Task 2: **OPEN**
-  - precedente P6 Render `/knowledge` RED non ancora chiuso
+  - PR #761 Ready for review
+  - Candidate Qualification #69 in progress sull’exact SHA
+  - candidate P6 PASS
+- Task 2: **OPEN / BLOCKED BY TASK 1**
+  - precedente P6 Render `/knowledge` RED da rivalutare solo sul merge commit reale
 - Task 3–10: **BLOCKED BY SEQUENCE**
