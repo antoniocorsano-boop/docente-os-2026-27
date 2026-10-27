@@ -16,7 +16,7 @@ La branch `release/0.1.0-rc.3-prep` prepara la nuova RC ma **non** costituisce a
 
 Sono state inventariate 23 nuove migrazioni rispetto al candidate `0.1.0-rc.2`, dalla `0081_timetable_lesson_activity_kind.sql` alla `0103_material_reference_safety.sql`, in `ops/release/0.1.0-rc.3-migration-inventory.json`.
 
-Il precedente SHA Production canonicamente certificato `db3d4ab014ad11dec4aeccdb5aa8740220e4ebde` resta il riferimento storico, ma la sua compatibilità come rollback target contro lo schema evoluto da `0081` a `0103` è **NOT_VALIDATED**. Il freeze immutabile resta bloccato finché questa compatibilità non è dimostrata o non viene stabilito un diverso rollback target precedentemente certificato e compatibile. Anche `product/package-lock.json` deve essere rigenerato/sincronizzato con la versione `0.1.0-rc.3` prima del freeze.
+`product/package.json` e `product/package-lock.json` sono ora coerenti su `0.1.0-rc.3`. Il precedente SHA Production canonicamente certificato `db3d4ab014ad11dec4aeccdb5aa8740220e4ebde` è stato invece provato come rollback target e risulta **INCOMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE**: il replay dello schema corrente è PASS e il vecchio binario supera test, typecheck, build e startup, ma il browser journey fallisce causalmente perché `bootstrap_personal_workspace(text)` richiede AAL2 mentre lo SHA certificato di agosto non possiede il percorso MFA. Il freeze immutabile resta bloccato finché non esiste un rollback target già certificato e compatibile con il data plane AAL2 corrente.
 
 ### Changed
 
@@ -44,13 +44,14 @@ Il precedente SHA Production canonicamente certificato `db3d4ab014ad11dec4aeccdb
 - Baseline applicativa/Beta `489d8ee67b16db304ede71be94241739d0fa0a79`: Product CI, X3, Human Interaction Model, TERM-01 e HVA post-merge PASS; Beta Render ha servito lo stesso exact SHA.
 - `develop@fe762e3c6f6c6f1e4d61f232729c29024ce96e0c`: release engineering policy, pilot evidence policy e production-readiness review PASS dopo la merge documentale #762.
 - Production provenance reconciliation 2026-10-27: l'ultimo SHA canonicamente certificato/promosso resta `db3d4ab014ad11dec4aeccdb5aa8740220e4ebde`; il runtime Production osservato `7fa8deae375bc15b4386d17c97b1809f49488b98` è classificato `LIVE_SHA_NOT_CANONICALLY_CERTIFIED`.
+- Rollback compatibility run `40584199311`: current-schema replay PASS; `db3d4ab…` 209/209 product test PASS, typecheck/build/startup PASS; authenticated browser FAIL al bootstrap con Postgres SQLSTATE `42501` / `aal2 required`. Receipt: `ops/release/0.1.0-rc.3-rollback-compatibility.json`.
 
 ### Governance
 
 - La linea prodotto resta **M4 — Advanced Controlled Production Pilot**; `1.0.0` resta riservata alla decisione M5 esplicita.
 - `0.1.0-rc.3` è in **PREPARATION** e non è ancora congelata, taggata, certificata o promossa.
 - Il finding `PRODUCTION_PROVENANCE_DRIFT` è stato riconciliato senza mutare Production: `ops/production-provenance-reconciliation-2026-10-27.json` distingue lo SHA live non certificato dall'ultimo SHA certificato.
-- Non è autorizzato alcun rollback/redeploy. La compatibilità di `db3d4ab…` come rollback target della futura RC è `NOT_VALIDATED` e blocca il freeze immutabile finché non viene dimostrata rispetto alla migration inventory `0081–0103`.
+- Non è autorizzato alcun rollback/redeploy. `db3d4ab…` è stato dimostrato **incompatibile** con il data plane AAL2 corrente dal workflow `Release Rollback Compatibility` run `40584199311`; non può quindi essere usato come rollback target rc.3. Il freeze immutabile resta bloccato finché non viene stabilito un rollback target già certificato e compatibile. Un rollback applicativo non implica mai downgrade automatico dello schema; un eventuale restore database è un'azione di recovery separata e non autorizzata da questa preparazione.
 - Il prossimo passo, dopo la chiusura dei blocker di preparazione e la qualificazione final-head della PR, è il freeze exact-SHA della nuova RC; subito dopo viene QL-1 HUMAN_USE, seguito da QL-3, QL-4, Observe→Registra, Android Reality, assurance M5 e sustained pilot.
 - Voice/STT, Tier 2, multi-user e institutional expansion restano fuori dal release core corrente.
 
