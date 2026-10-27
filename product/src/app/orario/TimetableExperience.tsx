@@ -78,7 +78,7 @@ export async function TimetableExperience({
     settingsRepository.listDisciplines(context.workspace.id, context.academicYear.id),
     annualRepository.list(context.workspace.id, context.academicYear.id),
     timetableRepository.list(context.workspace.id, context.academicYear.id, context.academicYear.startsOn),
-    lifecycleRepository.read(context.workspace.id, context.academicYear.id),
+    lifecycleRepository.read(context.workspace.id, context.academicYear.id, moment.localDate),
     exceptionRepository.listByDate(context.workspace.id, context.academicYear.id, moment.localDate),
     calendarRepository.list(context.workspace.id, context.academicYear.id),
     teachingSessionRepository.listByDay(context.workspace.id, context.academicYear.id, moment.localDate),
