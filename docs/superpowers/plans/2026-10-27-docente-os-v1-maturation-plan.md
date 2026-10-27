@@ -62,39 +62,56 @@ Ruling: il PASS P6 resta evidence prodotto valida perché #763 non cambia produc
 
 ### Task 2A: Release-governance reconciliation
 
-**Stato: IN PROGRESS.** Per la sequenza di programma adottata il 27/10, questa riconciliazione precede il nuovo freeze RC. La policy generale richiede comunque che sia chiusa prima di qualsiasi futura promozione Production.
+**Stato: COMPLETE.**
 
-Finding: `PRODUCTION_PROVENANCE_DRIFT`.
+Finding iniziale: `PRODUCTION_PROVENANCE_DRIFT`.
 
-- receipt storica Production: candidate `db3d4ab014ad11dec4aeccdb5aa8740220e4ebde`;
-- Render Production attualmente live: `7fa8deae375bc15b4386d17c97b1809f49488b98`, deploy manuale 17/09/2026;
-- sullo SHA live diversi gate risultano PASS, mentre `hva/runtime` storico risulta failure;
-- Production deve restare immutata durante la ricostruzione.
+Evidence ricostruita:
 
-Checklist:
+- ultimo Production SHA certificato: `db3d4ab014ad11dec4aeccdb5aa8740220e4ebde`;
+- autorizzazione umana esplicita: 25/08/2026;
+- Production Runtime Smoke certificante: run `32903982577` PASS;
+- Render Production live osservato: `7fa8deae375bc15b4386d17c97b1809f49488b98`;
+- deploy live del 17/09/2026: trigger manual;
+- `7fa8deae…` proviene dalla PR #502, scoped al Beta Groq STT;
+- nessuna decisione di promozione Production specifica per `7fa8deae…` trovata;
+- nessun Production Runtime Smoke specifico per `7fa8deae…` trovato;
+- unico workflow manuale individuato il 17/09: X3 E2E Mobile Gate `35182202959` PASS;
+- `hva/runtime` sullo SHA live conserva FAILURE storico.
 
-- [ ] ricostruire l'autorità del deploy manuale `7fa8deae…`;
-- [ ] raccogliere le receipt/gate associati senza inventare equivalenze;
-- [ ] classificare lo SHA live come certificato, non certificato o superseded;
-- [ ] riallineare le fonti canoniche di Production;
-- [ ] verificare un rollback target certificato coerente per la futura RC;
-- [ ] fermarsi prima di qualsiasi redeploy o promozione.
+Classificazione:
 
-**Exit:** provenienza Production non ambigua e documentata.
+`7fa8deae… = LIVE_SHA_NOT_CANONICALLY_CERTIFIED`
+
+Receipt:
+
+`ops/production-provenance-reconciliation-2026-10-27.json`
+
+Regole risultanti:
+
+- Production resta immutata;
+- nessun rollback/redeploy autorizzato;
+- `7fa8deae…` non viene chiamato `CERTIFIED` o `PROMOTED`;
+- `db3d4ab…` resta l'ultimo SHA certificato noto;
+- la compatibilità di `db3d4ab…` come rollback target della futura RC viene verificata al freeze insieme alla migration inventory.
+
+**Exit raggiunta:** provenienza Production non ambigua e documentata.
 
 ---
 
 ### Task 3: Freeze della nuova Release Candidate V1
 
-**Stato: NEXT / BLOCKED BY TASK 2A per la sequenza di programma del 27/10.**
+**Stato: NEXT.**
 
 Sono già state emesse `v0.1.0-rc.1` e `v0.1.0-rc.2`. Le modifiche successive richiedono una nuova RC; nessun tag esistente viene spostato.
 
-- [ ] chiudere Task 2A;
 - [ ] scegliere un exact `develop` SHA immutabile;
+- [ ] verificare che il candidate SHA corrisponda al runtime Beta qualificato o documentare eventuale equivalenza ammessa;
 - [ ] verificare Product CI, HVA, candidate qualification e runtime evidence pertinenti;
-- [ ] aggiornare package/changelog solo secondo la decisione RC;
-- [ ] inventariare scope, capability modificate, migrazioni, known residuals e rollback target;
+- [ ] inventariare scope e capability modificate rispetto a rc.2;
+- [ ] inventariare le migrazioni comprese e verificare la compatibilità del rollback target;
+- [ ] registrare known residuals/watch;
+- [ ] aggiornare package/changelog secondo la decisione RC;
 - [ ] creare il tag della nuova RC e verificarne la risoluzione exact-SHA;
 - [ ] creare la prerelease GitHub coerente;
 - [ ] congelare feature expansion durante qualification;
@@ -208,7 +225,7 @@ Se il perimetro resta `0.1.0`, il nome naturale è `0.1.0-rc.3`; il nome diventa
 
 ## Sequenza bloccante aggiornata
 
-`Task 1 CLOSED → Task 2 CLOSED → Task 2A Production provenance → RC freeze → QL-1 HUMAN_USE → QL-3 → QL-4 → Observe/Registra → Android Reality → M5 assurance → sustained pilot → V1 decision`
+`Task 1 CLOSED → Task 2 CLOSED → Task 2A CLOSED → RC freeze → QL-1 HUMAN_USE → QL-3 → QL-4 → Observe/Registra → Android Reality → M5 assurance → sustained pilot → V1 decision`
 
 Le fasi successive non devono essere usate per aggirare un blocker delle precedenti.
 
@@ -227,6 +244,6 @@ Le fasi successive non devono essere usate per aggirare un blocker delle precede
 
 - Task 1: **COMPLETE**.
 - Task 2: **COMPLETE per il blocker pre-RC**.
-- Task 2A: **IN PROGRESS**.
-- Task 3: **NEXT / BLOCKED BY TASK 2A per decisione di programma**.
+- Task 2A: **COMPLETE**.
+- Task 3: **NEXT**.
 - Task 4–10: **BLOCKED BY SEQUENCE**.
