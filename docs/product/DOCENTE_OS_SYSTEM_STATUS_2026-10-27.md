@@ -43,7 +43,7 @@ Questo finding:
 - non prova da solo un difetto funzionale della Production corrente;
 - non autorizza rollback o redeploy;
 - non blocca il Beta;
-- richiede ricostruzione delle evidence e dell'autorità del deploy prima della nuova RC per la disciplina di programma adottata il 27/10 e, in ogni caso, prima di qualsiasi futura promozione Production.
+- richiede ricostruzione delle evidence e dell'autorità del deploy prima della nuova RC secondo la sequenza di programma adottata il 27/10 e, in ogni caso, prima di qualsiasi futura promozione Production.
 
 Production resta immutata durante la riconciliazione.
 
@@ -53,10 +53,10 @@ Sono già state emesse `v0.1.0-rc.1` e `v0.1.0-rc.2`. Dopo rc.2 sono avvenute mo
 
 Se il perimetro resta `0.1.0`, il prossimo candidato sarà presumibilmente `0.1.0-rc.3`, ma questa PR **non crea né certifica** la nuova RC.
 
-Prima del freeze servono:
+Prima del freeze, secondo la sequenza di programma del 27/10, servono:
 
 1. stato, piano e changelog coerenti con `develop@489d8ee6…`;
-2. riconciliazione del `PRODUCTION_PROVENANCE_DRIFT` secondo la decisione di programma del 27/10;
+2. riconciliazione del `PRODUCTION_PROVENANCE_DRIFT`;
 3. scelta di un exact `develop` SHA immutabile;
 4. matrice dei gate, known residuals e rollback target espliciti.
 
