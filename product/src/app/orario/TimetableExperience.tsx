@@ -641,24 +641,39 @@ async function buildTimetableLessonEntrypoints(input: {
     return [section.id, focus.nextBlock?.id ?? null] as const
   }))
 
-  const projectedByWeekday = new Map<number, ReturnType<typeof projectTemporalDay>>()
+  const projectedBySlotId = new Map<string, ReturnType<typeof projectTemporalDay>>()
   for (const weekday of new Set(lessonSlots.map((slot) => slot.weekday))) {
-    const localDate = nextTimetableOccurrenceDate(input.moment.localDate, weekday)
-    projectedByWeekday.set(weekday, projectTemporalDay({
-      localDate,
-      timetableVersions: timetableProjection.versions,
-      timetableSlots: timetableProjection.slots,
-      timetableExceptions: timetableProjection.exceptions ?? [],
-      calendarDays: calendarProjection.days,
-      calendarEvents: calendarProjection.events,
-    }))
+    const firstLocalDate = nextTimetableOccurrenceDate(input.moment.localDate, weekday)
+    for (const slot of lessonSlots.filter((candidate) => candidate.weekday === weekday)) {
+      const localDate = nextTimetableOccurrenceDate(firstLocalDate, weekday, {
+        timetableVersionId: slot.timetableVersionId,
+        timetableSlotId: slot.id,
+        timetableVersions: timetableProjection.versions,
+        timetableSlots: timetableProjection.slots,
+        timetableExceptions: timetableProjection.exceptions ?? [],
+        calendarDays: calendarProjection.days,
+        calendarEvents: calendarProjection.events,
+      })
+      if (!localDate) continue
+
+      projectedBySlotId.set(slot.id, projectTemporalDay({
+        localDate,
+        timetableVersions: timetableProjection.versions,
+        timetableSlots: timetableProjection.slots,
+        timetableExceptions: timetableProjection.exceptions ?? [],
+        calendarDays: calendarProjection.days,
+        calendarEvents: calendarProjection.events,
+      }))
+    }
   }
 
   const entries: Record<string, TimetableLessonEntrypoint> = {}
   for (const slot of lessonSlots) {
     if (!slot.sectionId) continue
-    const occurrences = projectedByWeekday.get(slot.weekday)?.occurrences.filter((occurrence) =>
-      occurrence.kind === 'LESSON' && occurrence.timetableSlotId === slot.id,
+    const occurrences = projectedBySlotId.get(slot.id)?.occurrences.filter((occurrence) =>
+      occurrence.kind === 'LESSON'
+      && occurrence.timetableVersionId === slot.timetableVersionId
+      && occurrence.timetableSlotId === slot.id,
     ) ?? []
     const occurrence = occurrences.length === 1 ? occurrences[0] : null
     const entrypoint = resolveTimetableLessonEntrypoint({
