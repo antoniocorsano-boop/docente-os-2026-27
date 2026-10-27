@@ -1,90 +1,108 @@
 # DOCENTE OS V1 Maturation Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** portare Docente OS dall’attuale M4 Advanced Controlled Production Pilot a una V1 single-owner realmente qualificata nell’uso quotidiano, senza aprire un nuovo feature train.
-
-**Architecture:** il piano non introduce un nuovo modello di prodotto. Riusa le capability esistenti e le qualifica lungo i journey canonici Teacher Moment → Next Step → Lezione → Fatto, mantenendo esatti confini di dominio, human authority, Tier 1 e assurance exact-SHA. Ogni fase produce una receipt indipendente e può bloccare la successiva.
-
-**Tech Stack:** Next.js 16, React 19, TypeScript strict, Supabase, GitHub Actions, Playwright/HVA, Render.
+**Goal:** portare Docente OS dall'attuale M4 Advanced Controlled Production Pilot a una V1 single-owner realmente qualificata nell'uso quotidiano, senza aprire un nuovo feature train.
 
 **Spec:** `docs/product/DOCENTE_OS_SYSTEM_STATUS_2026-10-27.md`
 
 ## Global Constraints
 
 - Nessun merge senza esplicita decisione umana.
-- Nessun deploy manuale senza autorizzazione separata.
-- Exact SHA è l’autorità di qualification.
+- `develop` → Beta è auto-deploy conseguente al merge autorizzato.
+- Nessuna promozione Production senza exact SHA, contratto di promozione e decisione umana dedicata.
 - Nessun budget performance viene allentato per ottenere un PASS.
 - Nessuna patch senza causa dimostrata.
 - Tier 1 only per il pilot corrente.
-- AI propone/prepara; il docente autorizza effetti persistenti/professionalmente significativi.
-- Orario, Calendario, TeachingSession e AnnualPlanBlockProgress mantengono le rispettive autorità.
+- AI propone/prepara; il docente autorizza gli effetti persistenti o professionalmente significativi.
+- Orario, Calendario, TeachingSession e AnnualPlanBlockProgress mantengono autorità distinte.
 - Arena resta autorità curricolare; Docente OS resta sistema operativo del lavoro docente.
 - Voice/STT resta DEFERRED.
 - Tier 2, multi-user e institutional administration restano fuori dal release core.
 - Default di programma: maturazione, non feature expansion.
 
-## Review Focus
-
-1. Effective-date / timezone / recurring-week boundaries non devono rompere Orario→Lezione.
-2. Cold/warm runtime non deve produrre falsi regressivi né mascherare latenze reali.
-3. Mobile bottom navigation/FAB/safe areas non devono coprire CTA o contenuti operativi.
-4. Auth/MFA e deterministic test clocks devono restare isolati.
-5. Il contesto docente deve sopravvivere a transizioni Oggi→Lezione→Materiali→Registra→Next.
-
 ---
 
 ### Task 1: Chiudere il repair Orario #761
 
-**Evidence:**
-- PR #761
-- exact candidate `92ea0fd0ea88b942d3dd630423264d9a50d04982`
-- HVA #1126
-- Human Visual/Design review `5663864955`
-- Candidate Qualification #69 / run `40472819003`
+**Stato: COMPLETE.**
 
-- [x] Verificare che head/base siano invariati.
-- [x] Portare la PR da Draft a Ready.
-- [ ] Eseguire Candidate Qualification sullo stesso exact SHA — **IN PROGRESS**.
-- [ ] Verificare WCAG e tutti i gate richiesti dal classifier.
-- [ ] Eseguire Final Independent Review sullo stesso exact SHA.
-- [ ] Fermarsi al confine di decisione umana di merge.
-- [ ] Dopo approvazione esplicita: merge exact candidate.
-- [ ] Qualificare il merge commit reale su `develop`.
-- [ ] Verificare Beta Orario→Lezione sul 27/10 e sulla prossima occorrenza.
-- [ ] Non confondere eventuali RED P6 `/knowledge` con il repair Orario.
+Evidence conclusiva:
 
-**Evidence live dopo Ready:** candidate lease + impact PASS; browser preflight PASS; `p6-performance/application` PASS; `x4-planner/application` PASS; HVA/WCAG candidate gates in progress sullo stesso exact SHA.
+- PR #761 merged;
+- exact candidate finale `df7cbfd3f2b662590cabc30d40efb1d9ffd5c434`;
+- merge `5112ac255c936f4becf0de80dd14a4bebdde6df3`;
+- Candidate Qualification PASS;
+- Final Independent Review PASS;
+- Human Visual / Design PASS WITH WATCH;
+- Orario → Lezione qualificato sul candidato.
 
-**Exit:** merge commit reale qualificato oppure blocker causale aperto.
+Il RED HVA successivo al merge è stato diagnosticato come problema separato del test harness e non ha riaperto il repair prodotto.
+
+**Exit raggiunta:** repair prodotto integrato e causalmente chiuso.
 
 ---
 
 ### Task 2: Stabilizzare runtime/P6
 
-**Scope:** Render Beta, runtime health, `/knowledge`.
+**Stato: COMPLETE per il blocker pre-RC.**
 
-- [ ] Rieseguire una sola volta P6 same-SHA solo se il precedente RED è classificato transient/warm-up.
-- [ ] Se il limite `/knowledge` fallisce nuovamente, catturare tempi cold/warm e route-by-route.
-- [ ] Verificare che non vi sia query/payload/app code causalmente responsabile prima di proporre patch.
-- [ ] Conservare invariati i budget.
-- [ ] Chiudere runtime health sul merge commit reale.
-- [ ] Produrre receipt `RUNTIME_STABLE` oppure finding causale separato.
+Evidence:
 
-**Exit:** P6 + runtime health PASS o finding causale non ambiguo.
+- `p6-performance/render-beta` PASS sul merge #761 `5112ac255c936f4becf0de80dd14a4bebdde6df3`;
+- il successivo HVA RED è stato isolato nel test harness mobile week/day;
+- PR #763 test-harness-only merged;
+- merge corrente `489d8ee67b16db304ede71be94241739d0fa0a79`;
+- Beta Render serve esattamente `489d8ee67b16db304ede71be94241739d0fa0a79`;
+- post-merge Product CI, X3, Human Interaction Model, TERM-01 e HVA PASS.
+
+Ruling: il PASS P6 resta evidence prodotto valida perché #763 non cambia product/runtime; non si riesegue P6 senza una nuova causa materiale.
+
+**Exit raggiunta:** runtime blocker chiuso senza allentare budget e senza patch speculativa.
 
 ---
 
-### Task 3: Freeze della Release Candidate V1
+### Task 2A: Release-governance reconciliation
 
-- [ ] Scegliere un exact `develop` SHA con Task 1–2 chiusi.
-- [ ] Verificare Product CI, HVA, Candidate Qualification e runtime receipt.
-- [ ] Creare/registrare RC immutabile secondo release engineering canonica.
-- [ ] Congelare feature expansion durante la qualification.
-- [ ] Aggiornare DOS-CRM freshness solo dove la RC produce nuova evidence.
+**Stato: IN PROGRESS. Bloccante per il nuovo freeze RC per decisione di programma del 27/10.**
 
-**Exit:** una sola RC V1 exact-SHA, immutabile e riproducibile.
+Finding: `PRODUCTION_PROVENANCE_DRIFT`.
+
+- receipt storica Production: candidate `db3d4ab014ad11dec4aeccdb5aa8740220e4ebde`;
+- Render Production attualmente live: `7fa8deae375bc15b4386d17c97b1809f49488b98`, deploy manuale 17/09/2026;
+- sullo SHA live diversi gate risultano PASS, mentre `hva/runtime` storico risulta failure;
+- Production deve restare immutata durante la ricostruzione.
+
+Checklist:
+
+- [ ] ricostruire l'autorità del deploy manuale `7fa8deae…`;
+- [ ] raccogliere le receipt/gate associati senza inventare equivalenze;
+- [ ] classificare lo SHA live come certificato, non certificato o superseded;
+- [ ] riallineare le fonti canoniche di Production;
+- [ ] verificare un rollback target certificato coerente per la futura RC;
+- [ ] fermarsi prima di qualsiasi redeploy o promozione.
+
+**Exit:** provenienza Production non ambigua e documentata.
+
+---
+
+### Task 3: Freeze della nuova Release Candidate V1
+
+**Stato: NEXT / BLOCKED BY TASK 2A.**
+
+Sono già state emesse `v0.1.0-rc.1` e `v0.1.0-rc.2`. Le modifiche successive richiedono una nuova RC; nessun tag esistente viene spostato.
+
+- [ ] chiudere Task 2A;
+- [ ] scegliere un exact `develop` SHA immutabile;
+- [ ] verificare Product CI, HVA, candidate qualification e runtime evidence pertinenti;
+- [ ] aggiornare package/changelog solo secondo la decisione RC;
+- [ ] inventariare scope, capability modificate, migrazioni, known residuals e rollback target;
+- [ ] creare il tag della nuova RC e verificarne la risoluzione exact-SHA;
+- [ ] creare la prerelease GitHub coerente;
+- [ ] congelare feature expansion durante qualification;
+- [ ] aggiornare DOS-CRM freshness solo dove la RC produce nuova evidence.
+
+Se il perimetro resta `0.1.0`, il nome naturale è `0.1.0-rc.3`; il nome diventa vincolante solo al freeze.
+
+**Exit:** una sola nuova RC exact-SHA, immutabile e riproducibile.
 
 ---
 
@@ -92,14 +110,14 @@
 
 **Journey:** `Oggi → Lezione → Materiali → Registra → prossimo passo/domani`
 
-- [ ] HU-1 Iniziare la giornata.
-- [ ] HU-2 Entrare nella lezione.
-- [ ] HU-3 Usare materiali/supporti e tornare senza perdere contesto.
-- [ ] HU-4 Registrare la lezione distinguendo TeachingSession da Piano.
-- [ ] HU-5 Chiudere oggi e capire cosa preparare domani.
-- [ ] Per ogni task registrare decision count, internal concepts, competing actions, surface transitions e net work.
-- [ ] Classificare PASS / FRICTION / WORKAROUND / FAIL senza occultare i finding.
-- [ ] Aprire repair separati solo per frizioni dimostrate.
+- [ ] HU-1 iniziare la giornata;
+- [ ] HU-2 entrare nella lezione;
+- [ ] HU-3 usare materiali/supporti e tornare senza perdere contesto;
+- [ ] HU-4 registrare la lezione distinguendo TeachingSession da Piano;
+- [ ] HU-5 chiudere oggi e capire cosa preparare domani;
+- [ ] registrare decision count, internal concepts, competing actions, surface transitions e net work;
+- [ ] classificare PASS / FRICTION / WORKAROUND / FAIL senza occultare i finding;
+- [ ] aprire repair separati solo per frizioni dimostrate.
 
 **Exit:** QL-1 QUALIFIED oppure finding umani espliciti.
 
@@ -107,13 +125,13 @@
 
 ### Task 5: QL-3 — Knowledge → Lesson → Materials
 
-- [ ] Partire da una fonte nella KB.
-- [ ] Recuperare provenance e contesto.
-- [ ] Trasformare/adattare la fonte verso una lezione reale.
-- [ ] Rendere il materiale disponibile dal Lesson Brief.
-- [ ] Aprirlo in classe e tornare alla Lezione senza perdita di contesto.
-- [ ] Verificare mobile e runtime.
-- [ ] Verificare che il docente non debba comprendere KnowledgeAsset/provider/internal IDs.
+- [ ] partire da una fonte nella KB;
+- [ ] recuperare provenance e contesto;
+- [ ] trasformare/adattare la fonte verso una lezione reale;
+- [ ] rendere il materiale disponibile dal Lesson Brief;
+- [ ] aprirlo in classe e tornare alla Lezione senza perdita di contesto;
+- [ ] verificare mobile e runtime;
+- [ ] verificare che il docente non debba comprendere ID/provider interni.
 
 **Exit:** Knowledge/Materials qualified whole-journey.
 
@@ -121,13 +139,13 @@
 
 ### Task 6: QL-4 — Governed Copilot
 
-- [ ] Recuperare Teacher Moment/lesson context.
-- [ ] Verificare ricerca/sintesi/produzione/adattamento.
-- [ ] Verificare proposta del prossimo passo.
-- [ ] Verificare write governata con conferma umana.
-- [ ] Verificare FAB AUTO/drag/protected regions/DOCKED_SAFE.
-- [ ] Verificare ritorno al task senza perdita di contesto.
-- [ ] HUMAN_USE del Copilot come strumento operativo, non chat separata.
+- [ ] recuperare Teacher Moment/lesson context;
+- [ ] verificare ricerca/sintesi/produzione/adattamento;
+- [ ] verificare proposta del prossimo passo;
+- [ ] verificare write governata con conferma umana;
+- [ ] verificare FAB AUTO/drag/protected regions/DOCKED_SAFE;
+- [ ] verificare ritorno al task senza perdita di contesto;
+- [ ] eseguire HUMAN_USE del Copilot come strumento operativo, non chat separata.
 
 **Exit:** Governed Copilot qualified o gap professionale esplicito.
 
@@ -135,12 +153,12 @@
 
 ### Task 7: Observe → Registra → Next
 
-- [ ] Catturare Observation/Evidence nel contesto lezione.
-- [ ] Verificare Tier 1 e privacy.
-- [ ] Registrare TeachingSession.
-- [ ] Provare recovery da errore senza perdita evitabile.
-- [ ] Verificare che AnnualPlanBlockProgress resti una decisione separata.
-- [ ] Collegare il risultato al prossimo Teacher Moment.
+- [ ] catturare Observation/Evidence nel contesto lezione;
+- [ ] verificare Tier 1 e privacy;
+- [ ] registrare TeachingSession;
+- [ ] provare recovery da errore senza perdita evitabile;
+- [ ] verificare che AnnualPlanBlockProgress resti una decisione separata;
+- [ ] collegare il risultato al prossimo Teacher Moment.
 
 **Exit:** whole-journey browser/mobile/HUMAN_USE PASS.
 
@@ -148,13 +166,13 @@
 
 ### Task 8: Android Reality / PWA
 
-- [ ] Qualificare installazione PWA su Chrome Android reale/emulatore governato.
-- [ ] Verificare share sheet → Docente OS.
-- [ ] Verificare apertura da file/documento condiviso.
-- [ ] Verificare gesture native del Contextual Copilot FAB.
-- [ ] Verificare safe area e bottom navigation.
-- [ ] Verificare offline/service worker nel perimetro autorizzato.
-- [ ] Produrre device receipt separata dall’HVA browser standard.
+- [ ] qualificare installazione PWA su Chrome Android reale/emulatore governato;
+- [ ] verificare share sheet → Docente OS;
+- [ ] verificare apertura da file/documento condiviso;
+- [ ] verificare gesture native del Contextual Copilot FAB;
+- [ ] verificare safe area e bottom navigation;
+- [ ] verificare offline/service worker nel perimetro autorizzato;
+- [ ] produrre device receipt separata dall'HVA browser standard.
 
 **Exit:** PWA/device intake qualified.
 
@@ -162,13 +180,13 @@
 
 ### Task 9: Assurance M5
 
-- [ ] Chiudere criteri WCAG A/AA manual-required.
-- [ ] Aggiungere evidence assistive technology sulle journey critiche.
-- [ ] Completare mapping ASVS L1/L2 applicabile.
-- [ ] Consolidare dependency/security cadence.
-- [ ] Definire SLI da pilot osservato.
-- [ ] Approvare SLO/error budget solo dopo una finestra dati sufficiente.
-- [ ] Rehearsal incident/support/recovery.
+- [ ] chiudere criteri WCAG A/AA manual-required;
+- [ ] aggiungere evidence assistive technology sulle journey critiche;
+- [ ] completare mapping ASVS L1/L2 applicabile;
+- [ ] consolidare dependency/security cadence;
+- [ ] definire SLI da pilot osservato;
+- [ ] approvare SLO/error budget solo dopo una finestra dati sufficiente;
+- [ ] rehearsal incident/support/recovery.
 
 **Exit:** M5 assurance senza gap critici aperti nel perimetro V1.
 
@@ -176,21 +194,21 @@
 
 ### Task 10: Sustained Pilot e decisione V1
 
-- [ ] Usare la RC in più giornate reali Tier-1-safe.
-- [ ] Registrare success, friction, workaround, failure e recovery.
-- [ ] Misurare Teacher Attention Returned / Task Cost.
-- [ ] Verificare trend runtime e performance.
-- [ ] Aggiornare DOS-CRM con evidence corrente.
-- [ ] Rieseguire maturity review M4→M5/V1.
-- [ ] Prendere decisione umana: V1 READY / V1 REWORK.
+- [ ] usare la RC in più giornate reali Tier-1-safe;
+- [ ] registrare success, friction, workaround, failure e recovery;
+- [ ] misurare Teacher Attention Returned / Task Cost;
+- [ ] verificare trend runtime e performance;
+- [ ] aggiornare DOS-CRM con evidence corrente;
+- [ ] rieseguire maturity review M4→M5/V1;
+- [ ] prendere decisione umana: V1 READY / V1 REWORK.
 
-**Exit:** decisione V1 basata su evidence, non su completezza narrativa.
+**Exit:** decisione V1 basata su evidence.
 
 ---
 
-## Sequenza bloccante
+## Sequenza bloccante aggiornata
 
-`#761 → runtime stable → RC freeze → QL-1 HUMAN_USE → QL-3 → QL-4 → Observe/Registra → Android Reality → M5 assurance → sustained pilot → V1 decision`
+`Task 1 CLOSED → Task 2 CLOSED → Task 2A Production provenance → RC freeze → QL-1 HUMAN_USE → QL-3 → QL-4 → Observe/Registra → Android Reality → M5 assurance → sustained pilot → V1 decision`
 
 Le fasi successive non devono essere usate per aggirare un blocker delle precedenti.
 
@@ -205,15 +223,10 @@ Le fasi successive non devono essere usate per aggirare un blocker delle precede
 - nuovi provider obbligatori;
 - nuove feature autonome non richieste da un finding professionale reale.
 
-## Stato live del piano — 27/10/2026
+## Stato live — 27/10/2026
 
-- Task 1: **IN PROGRESS**
-  - Engineering PASS
-  - Full HVA PASS
-  - Human Visual/Design PASS WITH WATCH
-  - PR #761 Ready for review
-  - Candidate Qualification #69 in progress sull’exact SHA
-  - candidate P6 PASS
-- Task 2: **OPEN / BLOCKED BY TASK 1**
-  - precedente P6 Render `/knowledge` RED da rivalutare solo sul merge commit reale
-- Task 3–10: **BLOCKED BY SEQUENCE**
+- Task 1: **COMPLETE**.
+- Task 2: **COMPLETE per il blocker pre-RC**.
+- Task 2A: **IN PROGRESS**.
+- Task 3: **NEXT / BLOCKED BY TASK 2A**.
+- Task 4–10: **BLOCKED BY SEQUENCE**.
