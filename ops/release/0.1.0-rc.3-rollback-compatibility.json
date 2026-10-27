@@ -8,10 +8,13 @@
   "rollbackTargetStatus": "LAST_CANONICALLY_CERTIFIED_PRODUCTION_SHA",
   "workflow": {
     "name": "Release Rollback Compatibility",
-    "runId": 40584199311,
+    "causalProofRunId": 40584199311,
     "currentSchemaReplay": "PASS",
     "oldBinaryCurrentSchema": "FAIL",
-    "publishedStatus": "FAIL"
+    "publishedStatus": "FAIL",
+    "finalExactHeadRerunRequested": true,
+    "finalizationParentSha": "a62340691ab8e592b04b9149b6b1b9348a329664",
+    "expectedFinalGateState": "FAIL_CLOSED_UNTIL_COMPATIBLE_CERTIFIED_TARGET_EXISTS"
   },
   "currentSchema": {
     "source": "CURRENT_RC3_MIGRATION_CHAIN_EPHEMERAL_REPLAY",
