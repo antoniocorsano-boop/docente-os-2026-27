@@ -1,4 +1,5 @@
 import type { Database } from '@/lib/supabase/database.types'
+import { resolveTimetableVersionForDate } from '@/core/application/temporal-projection-service'
 import { createClient } from '@/lib/supabase/server'
 import {
   asTimetableActivityKind,
@@ -34,7 +35,7 @@ type TimetableLifecycleRpcClient = {
 }
 
 export class SupabaseTimetableLifecycleRepository {
-  async read(workspaceId: string, academicYearId: string): Promise<TimetableLifecycleSnapshot> {
+  async read(workspaceId: string, academicYearId: string, localDate: string): Promise<TimetableLifecycleSnapshot> {
     const supabase = await createClient()
     const { data: versions, error: versionsError } = await supabase
       .from('timetable_versions')
@@ -47,7 +48,7 @@ export class SupabaseTimetableLifecycleRepository {
     if (versionsError) throw new Error(versionsError.message)
 
     const mappedVersions = versions.map(toVersion)
-    const activeVersion = mappedVersions.find((version) => version.status === 'ACTIVE') ?? null
+    const activeVersion = resolveTimetableVersionForDate(mappedVersions, localDate)
     if (!activeVersion) return { activeVersion: null, activeSlots: [], versions: mappedVersions }
 
     const { data: slots, error: slotsError } = await supabase
