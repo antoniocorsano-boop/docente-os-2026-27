@@ -1,8 +1,14 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { resolveTimetableVersionForDate } from '@/core/application/temporal-projection-service'
-import { isCurrentTimetableInterval, isCurrentTimetableRow, timetableMinutes } from './timetable-operational-model'
+import { projectTemporalDay, resolveTimetableVersionForDate } from '@/core/application/temporal-projection-service'
+import { resolveTimetableLessonEntrypoint } from './timetable-lesson-entrypoint'
+import {
+  isCurrentTimetableInterval,
+  isCurrentTimetableRow,
+  nextTimetableOccurrenceDate,
+  timetableMinutes,
+} from './timetable-operational-model'
 
 test('timetableMinutes accepts persisted times with seconds', () => {
   assert.equal(timetableMinutes('08:30:00'), 510)
@@ -39,4 +45,170 @@ test('Orario lifecycle uses the timetable effective on the operational date inst
   assert.match(lifecycleSource, /resolveTimetableVersionForDate/)
   assert.doesNotMatch(lifecycleSource, /find\(\(version\) => version\.status === 'ACTIVE'\)/)
   assert.match(experienceSource, /lifecycleRepository\.read\([^)]*moment\.localDate/s)
+})
+
+test('Orario current recurring week resolves a past weekday to its next concrete occurrence across an effective-date boundary', () => {
+  assert.equal(nextTimetableOccurrenceDate('2026-10-27', 1), '2026-11-02')
+  assert.equal(nextTimetableOccurrenceDate('2026-10-27', 2), '2026-10-27')
+  assert.equal(nextTimetableOccurrenceDate('2026-10-27', 3), '2026-10-28')
+
+  const experienceSource = readFileSync(new URL('./TimetableExperience.tsx', import.meta.url), 'utf8')
+  assert.match(experienceSource, /nextTimetableOccurrenceDate\(input\.moment\.localDate, weekday\)/)
+  assert.doesNotMatch(experienceSource, /shiftLocalDate\(input\.moment\.localDate, weekday - input\.moment\.weekday\)/)
+})
+
+const currentVersion = {
+  id: 'version-current',
+  status: 'ACTIVE' as const,
+  effectiveFrom: '2026-10-27',
+  effectiveTo: '2026-11-30',
+}
+
+const currentMondaySlot = {
+  id: 'slot-current',
+  timetableVersionId: currentVersion.id,
+  weekday: 1,
+  startTime: '09:00',
+  endTime: '10:00',
+  kind: 'LESSON' as const,
+  sectionId: 'section-2c',
+  sectionLabel: '2C',
+  disciplineId: 'technology',
+  disciplineLabel: 'Tecnologia',
+  manualClassLabel: null,
+  room: null,
+  activityKind: 'THEORY' as const,
+}
+
+function concreteOccurrenceDate(
+  localDate: string,
+  targetWeekday: number,
+  context: Record<string, unknown>,
+) {
+  return Reflect.apply(nextTimetableOccurrenceDate, null, [localDate, targetWeekday, context]) as string | null
+}
+
+test('next concrete timetable occurrence skips an explicit NO_LESSONS weekday while the same version and exact slot remain valid', () => {
+  const result = concreteOccurrenceDate('2026-10-27', 1, {
+    timetableVersionId: currentVersion.id,
+    timetableSlotId: currentMondaySlot.id,
+    timetableVersions: [currentVersion],
+    timetableSlots: [currentMondaySlot],
+    timetableExceptions: [],
+    calendarDays: [
+      { id: 'suspension-2026-11-02', localDate: '2026-11-02', kind: 'SUSPENSION', label: 'Lezioni sospese' },
+      { id: 'school-day-2026-11-09', localDate: '2026-11-09', kind: 'SCHOOL_DAY', label: 'Giorno di lezione' },
+    ],
+    calendarEvents: [],
+  })
+
+  assert.equal(result, '2026-11-09')
+})
+
+test('a suspended first matching weekday resolves through the next exact occurrence to the canonical lesson', () => {
+  const timetableVersions = [currentVersion]
+  const timetableSlots = [currentMondaySlot]
+  const timetableExceptions: [] = []
+  const calendarDays = [
+    { id: 'suspension-2026-11-02', localDate: '2026-11-02', kind: 'SUSPENSION' as const, label: 'Lezioni sospese' },
+    { id: 'school-day-2026-11-09', localDate: '2026-11-09', kind: 'SCHOOL_DAY' as const, label: 'Giorno di lezione' },
+  ]
+  const calendarEvents: [] = []
+
+  const localDate = nextTimetableOccurrenceDate('2026-10-27', 1, {
+    timetableVersionId: currentVersion.id,
+    timetableSlotId: currentMondaySlot.id,
+    timetableVersions,
+    timetableSlots,
+    timetableExceptions,
+    calendarDays,
+    calendarEvents,
+  })
+  assert.equal(localDate, '2026-11-09')
+  assert.ok(localDate)
+
+  const projected = projectTemporalDay({
+    localDate,
+    timetableVersions,
+    timetableSlots,
+    timetableExceptions,
+    calendarDays,
+    calendarEvents,
+  })
+  const occurrences = projected.occurrences.filter((occurrence) =>
+    occurrence.kind === 'LESSON'
+    && occurrence.timetableVersionId === currentVersion.id
+    && occurrence.timetableSlotId === currentMondaySlot.id,
+  )
+  assert.equal(occurrences.length, 1)
+
+  const occurrence = occurrences[0]
+  const entrypoint = resolveTimetableLessonEntrypoint({
+    mode: 'view',
+    sectionId: currentMondaySlot.sectionId,
+    blockId: 'block-current',
+    localDate: occurrence.localDate,
+    occurrenceLogicalId: occurrence.logicalId,
+    ambiguous: false,
+  })
+
+  assert.equal(entrypoint?.kind, 'LESSON')
+  assert.match(entrypoint?.kind === 'LESSON' ? entrypoint.href : '', /date=2026-11-09/)
+})
+
+test('next concrete timetable occurrence fails closed when the current timetable interval ends before another exact-slot lesson exists', () => {
+  const endingVersion = { ...currentVersion, effectiveTo: '2026-11-08' }
+  const result = concreteOccurrenceDate('2026-10-27', 1, {
+    timetableVersionId: endingVersion.id,
+    timetableSlotId: currentMondaySlot.id,
+    timetableVersions: [endingVersion],
+    timetableSlots: [currentMondaySlot],
+    timetableExceptions: [],
+    calendarDays: [
+      { id: 'suspension-2026-11-02', localDate: '2026-11-02', kind: 'SUSPENSION', label: 'Lezioni sospese' },
+    ],
+    calendarEvents: [],
+  })
+
+  assert.equal(result, null)
+})
+
+test('next concrete timetable occurrence never reconciles a slot id across timetable versions', () => {
+  const endingVersion = { ...currentVersion, effectiveTo: '2026-11-08' }
+  const nextVersion = {
+    id: 'version-next',
+    status: 'ACTIVE' as const,
+    effectiveFrom: '2026-11-09',
+    effectiveTo: null,
+  }
+  const clonedMondaySlot = {
+    ...currentMondaySlot,
+    id: 'slot-cloned-next-version',
+    timetableVersionId: nextVersion.id,
+  }
+  const result = concreteOccurrenceDate('2026-10-27', 1, {
+    timetableVersionId: endingVersion.id,
+    timetableSlotId: currentMondaySlot.id,
+    timetableVersions: [endingVersion, nextVersion],
+    timetableSlots: [currentMondaySlot, clonedMondaySlot],
+    timetableExceptions: [],
+    calendarDays: [
+      { id: 'suspension-2026-11-02', localDate: '2026-11-02', kind: 'SUSPENSION', label: 'Lezioni sospese' },
+      { id: 'school-day-2026-11-09', localDate: '2026-11-09', kind: 'SCHOOL_DAY', label: 'Giorno di lezione' },
+    ],
+    calendarEvents: [],
+  })
+
+  assert.equal(result, null)
+})
+
+test('Orario entrypoint integration searches the exact current version and slot instead of accepting a weekday-only date', () => {
+  const experienceSource = readFileSync(new URL('./TimetableExperience.tsx', import.meta.url), 'utf8')
+
+  assert.match(
+    experienceSource,
+    /nextTimetableOccurrenceDate\(\s*firstLocalDate,\s*weekday,\s*\{\s*timetableVersionId: slot\.timetableVersionId,\s*timetableSlotId: slot\.id,/s,
+  )
+  assert.match(experienceSource, /occurrence\.timetableVersionId === slot\.timetableVersionId/)
+  assert.match(experienceSource, /occurrence\.timetableSlotId === slot\.id/)
 })
