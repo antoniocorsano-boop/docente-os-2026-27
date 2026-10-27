@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "releaseVersion": "0.1.0-rc.3",
+  "assessmentDate": "2026-10-27",
+  "assessmentState": "COMPLETE_FAIL_CLOSED",
+  "testedPreparationSha": "d47587b0f339e8eff4bcad20c91a3c506597d9d2",
+  "rollbackTargetSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+  "rollbackTargetStatus": "LAST_CANONICALLY_CERTIFIED_PRODUCTION_SHA",
+  "workflow": {
+    "name": "Release Rollback Compatibility",
+    "runId": 40584199311,
+    "currentSchemaReplay": "PASS",
+    "oldBinaryCurrentSchema": "FAIL",
+    "publishedStatus": "FAIL"
+  },
+  "currentSchema": {
+    "source": "CURRENT_RC3_MIGRATION_CHAIN_EPHEMERAL_REPLAY",
+    "runtimeContractVersion": 103,
+    "runtimeMigrationId": "0103_material_reference_safety",
+    "replayResult": "PASS",
+    "betaReadOnlyCrossCheck": {
+      "projectRef": "gnshgapmwyjamhmlikeg",
+      "lineageOk": true,
+      "provenanceOk": true,
+      "containmentOk": true,
+      "cpriMovementCount": 0,
+      "observedAuthorityEpoch": 0
+    }
+  },
+  "oldApplication": {
+    "exactShaCheckout": "PASS",
+    "productTests": {
+      "result": "PASS",
+      "passed": 209,
+      "failed": 0
+    },
+    "typecheck": "PASS",
+    "build": "PASS",
+    "startupAgainstCurrentBetaSupabase": "PASS",
+    "browserAcceptance": "FAIL"
+  },
+  "failure": {
+    "classification": "INCOMPATIBLE_SECURITY_BOUNDARY_AAL2",
+    "phase": "AUTHENTICATED_WORKSPACE_BOOTSTRAP",
+    "observedApplicationUrl": "/login?error=workspace_bootstrap_failed",
+    "databaseEvidence": {
+      "message": "aal2 required",
+      "sqlState": "42501",
+      "context": "PL/pgSQL function public.bootstrap_personal_workspace(text) line 11 at RAISE",
+      "observedAtUtc": "2026-10-27T21:17:05.365Z"
+    },
+    "currentContract": "public.bootstrap_personal_workspace(text) requires private.current_session_is_aal2() before application-state bootstrap",
+    "introducedByMigration": "0051_mfa_aal2_enforcement.sql",
+    "rollbackTargetCapabilities": {
+      "migration0051Present": false,
+      "mfaRoutePresent": false,
+      "e2eLoginPerformsMfaChallenge": false,
+      "loginBootstrapsWorkspaceImmediatelyAfterPassword": true
+    },
+    "currentApplicationCapabilities": {
+      "mfaRoutePresent": true,
+      "bootstrapAfterAal2": true
+    },
+    "fixtureDriftRuledOut": true,
+    "reason": "The database emitted the AAL2 rejection from the bootstrap RPC at the exact failure timestamp. The certified August application has no MFA route or second-factor step capable of elevating the session before invoking that RPC."
+  },
+  "decision": {
+    "compatibilityStatus": "INCOMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE",
+    "safeRollbackClaimAllowed": false,
+    "eligibleAsRc3RollbackTarget": false,
+    "blocksImmutableFreeze": true,
+    "eligibleCompatibleCertifiedRollbackTargetKnown": false
+  },
+  "recoveryRule": {
+    "applicationRollbackImpliesSchemaDowngrade": false,
+    "databaseRestoreIsSeparateRecoveryAction": true,
+    "databaseRestoreAuthorized": false,
+    "productionRollbackAuthorized": false,
+    "productionMutationPerformed": false
+  }
+}
