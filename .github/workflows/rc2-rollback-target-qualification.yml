@@ -1,0 +1,174 @@
+name: RC2 Rollback Target Qualification
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types: [opened, reopened, synchronize]
+    paths:
+      - '.github/workflows/rc2-rollback-target-qualification.yml'
+      - 'ops/release/rc2-rollback-target-qualification-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: rc2-rollback-target-qualification-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  RC2_SHA: 617b4f8901259ce2318ce721236241d7681b1c9c
+  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  BETA_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+  BETA_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+
+jobs:
+  rc2-current-data-plane:
+    name: rc2-current-data-plane
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      EXPERIENCE_TARGET: rollback-current-schema
+      E2E_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      EXPERIENCE_OUTPUT_DIR: test-results/experience
+    steps:
+      - name: Require governed E2E credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${E2E_PASSWORD:-}" || { echo 'DOCENTE_OS_E2E_PASSWORD is required' >&2; exit 1; }
+
+      - name: Checkout exact rc.2 candidate
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RC2_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact rc.2 identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$RC2_SHA"
+          node -e "const p=require('./product/package.json'); if(p.version!=='0.1.0-rc.2') { console.error('unexpected package version', p.version); process.exit(1) }"
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install rc.2 dependencies
+        working-directory: product
+        run: npm install --no-audit --no-fund
+
+      - name: Run rc.2 product tests
+        working-directory: product
+        run: npm test
+
+      - name: Typecheck rc.2
+        working-directory: product
+        run: npm run typecheck
+
+      - name: Install Playwright runner without changing rc.2 lockfile
+        working-directory: product
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Build rc.2 against current Beta Supabase config
+        working-directory: product
+        run: npm run build
+
+      - name: Start rc.2 application
+        working-directory: product
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm start > /tmp/docente-os-rc2-rollback-server.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 5 "$E2E_BASE_URL/login" >/dev/null; then
+              echo 'rc.2 runtime is ready.'
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/docente-os-rc2-rollback-server.log >&2 || true
+          exit 1
+
+      - name: Install Chromium
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run rc.2 HVA against current Beta schema/data plane
+        id: browser
+        working-directory: product
+        shell: bash
+        run: |
+          set +e
+          npx playwright test --config=playwright.experience.config.mjs
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Generate rc.2 compatibility receipt
+        if: always()
+        working-directory: product
+        env:
+          EXPERIENCE_TEST_EXIT_CODE: ${{ steps.browser.outputs.exit_code || '99' }}
+          EXPECTED_COMMIT: ${{ env.RC2_SHA }}
+        run: node scripts/experience/acceptance-report.mjs
+
+      - name: Enforce rc.2 compatibility receipt
+        if: always()
+        working-directory: product
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const r = require('./test-results/experience/receipt/acceptance.json')
+          const failed = Object.entries(r.gates || {}).filter(([,v]) => v === 'FAIL')
+          if (failed.length) {
+            console.error('rc.2 rollback qualification gates failed:', failed)
+            process.exit(1)
+          }
+          NODE
+
+      - name: Upload rc.2 qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc2-rollback-target-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 90
+          path: |
+            product/test-results/experience/
+            product/playwright-report/experience/
+            /tmp/docente-os-rc2-rollback-server.log
+
+  publish-status:
+    name: publish-status
+    if: always()
+    needs: [rc2-current-data-plane]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish rc.2 rollback qualification status
+        uses: actions/github-script@v7
+        env:
+          QUALIFICATION_RESULT: ${{ needs.rc2-current-data-plane.result }}
+        with:
+          script: |
+            const sha = context.payload.pull_request?.head?.sha || context.sha
+            const ok = process.env.QUALIFICATION_RESULT === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha,
+              state: ok ? 'success' : 'failure',
+              context: 'release/rc2-rollback-qualification',
+              description: ok ? 'rc.2 compatible with current Beta data plane' : 'rc.2 compatibility not demonstrated',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+            if (!ok) core.setFailed('rc.2 rollback target qualification failed')
