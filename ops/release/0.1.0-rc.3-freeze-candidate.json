@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "releaseVersion": "0.1.0-rc.3",
   "plannedTag": "v0.1.0-rc.3",
-  "state": "PREPARATION",
+  "state": "PREPARATION_BLOCKED",
   "sourceBranch": "develop",
   "preparationBranch": "release/0.1.0-rc.3-prep",
   "sourceBaselineSha": "fe762e3c6f6c6f1e4d61f232729c29024ce96e0c",
   "candidateSha": null,
-  "candidateShaBinding": "TO_BE_BOUND_AFTER_PREPARATION_PR_FINAL_HEAD_QUALIFICATION",
+  "candidateShaBinding": "BLOCKED_UNTIL_ELIGIBLE_CERTIFIED_COMPATIBLE_ROLLBACK_TARGET_EXISTS",
   "scope": {
     "program": "M4 — Advanced Controlled Production Pilot",
     "mode": "COMPLETION_AND_MATURATION",
@@ -25,12 +25,23 @@
   ],
   "changelog": "CHANGELOG.md",
   "migrationInventory": "ops/release/0.1.0-rc.3-migration-inventory.json",
+  "rollbackCompatibilityReceipt": "ops/release/0.1.0-rc.3-rollback-compatibility.json",
   "previousCertifiedProductionSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+  "versionMetadata": {
+    "packageJson": "0.1.0-rc.3",
+    "packageLock": "0.1.0-rc.3",
+    "coherent": true
+  },
   "rollback": {
-    "candidateTargetSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
-    "compatibilityStatus": "NOT_VALIDATED",
+    "testedTargetSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "compatibilityStatus": "INCOMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE",
+    "failureClassification": "INCOMPATIBLE_SECURITY_BOUNDARY_AAL2",
+    "proofRunId": 40584199311,
     "safeRollbackClaimAllowed": false,
-    "blocksImmutableFreeze": true
+    "eligibleAsRc3RollbackTarget": false,
+    "eligibleCompatibleCertifiedRollbackTargetKnown": false,
+    "blocksImmutableFreeze": true,
+    "recoveryRule": "Application rollback never implies schema downgrade. Database restore is a separately authorized recovery action."
   },
   "applicableGates": [
     "product-ci",
@@ -42,11 +53,12 @@
     "x4-planner/render-beta",
     "x5-authoring/render-beta",
     "x5b-export/render-beta",
-    "hva/runtime"
+    "hva/runtime",
+    "release/rollback-compatibility"
   ],
   "knownResiduals": [
-    "Rollback compatibility against migrations 0081-0103 is not yet demonstrated.",
-    "product/package-lock.json still carries the rc.2 generated metadata until it is regenerated coherently with package.json; immutable freeze remains blocked until synchronized.",
+    "The last canonically certified Production SHA db3d4ab... is proven incompatible with the current AAL2 data plane: bootstrap_personal_workspace rejects the old password-only session with SQLSTATE 42501 / aal2 required.",
+    "No eligible already-certified compatible rollback target is currently known; immutable freeze remains blocked until one is established under release governance.",
     "QL-1 HUMAN_USE must run on the frozen RC after immutable freeze.",
     "Android/PWA real-device qualification remains outstanding for V1 maturity.",
     "M5 WCAG manual/assistive, ASVS requirement-level, SLI/SLO and sustained-pilot evidence remain partial."
