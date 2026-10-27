@@ -4,7 +4,7 @@
 
 **Goal:** Prepare one reviewable branch/PR that makes the next `0.1.0-rc.3` freeze mechanically coherent without creating the immutable tag, publishing a prerelease, merging, or touching Production.
 
-**Architecture:** Keep the delta release-metadata-only until rollback proof work begins. Version metadata, changelog, migration inventory and freeze-candidate evidence must describe the same release-preparation lineage and must fail closed on rollback compatibility when evidence is insufficient. A rollback proof may add a dedicated verification harness, but it must not mutate Production or execute repository migrations against Production.
+**Architecture:** Keep the product runtime unchanged. Version metadata, changelog, migration inventory, rollback proof and freeze-candidate evidence must describe the same release-preparation lineage and fail closed when no eligible rollback target exists.
 
 **Tech Stack:** Git/GitHub, JSON release receipts, npm package metadata, Markdown governance docs, GitHub Actions, ephemeral local Supabase.
 
@@ -14,17 +14,17 @@
 
 - Base is `develop@fe762e3c6f6c6f1e4d61f232729c29024ce96e0c`.
 - No application-runtime product behavior changes.
-- No Production migration execution.
+- No Production migration execution or Production Supabase restore/resume.
 - No tag, prerelease, merge, Production deploy, rollback or redeploy.
 - Existing `v0.1.0-rc.1` and `v0.1.0-rc.2` remain immutable.
 - Previous canonically certified Production SHA is `db3d4ab014ad11dec4aeccdb5aa8740220e4ebde`.
-- Rollback may be `VALIDATED` only with concrete compatibility evidence.
+- Rollback may be accepted only with concrete compatibility evidence; a causal FAIL remains a blocker.
 
 ## Review Focus
 
 - Version/changelog mismatch after the metadata bump.
 - Missing migration between rc.2 and the preparation branch.
-- Accidental claim that rollback is safe without schema compatibility evidence.
+- Any attempt to call an AAL2-incompatible old binary a safe rollback target.
 - Stale exact SHA copied from the pre-#762 Beta baseline.
 - Any accidental tag/release/Production side effect.
 
@@ -38,34 +38,40 @@
 
 - [x] Verify the starting package version was exactly `0.1.0-rc.2`.
 - [x] Change only the package version to `0.1.0-rc.3`.
-- [ ] Synchronize the lockfile top-level and root-package versions from `0.1.0-rc.2` to `0.1.0-rc.3` without normalizing unrelated lockfile content.
-- [ ] Re-read both files and verify package/lockfile coherence.
+- [x] Synchronize the lockfile top-level and root-package versions from `0.1.0-rc.2` to `0.1.0-rc.3` without normalizing unrelated lockfile content.
+- [x] Re-read both files and verify package/lockfile coherence.
 
 ### Task 2: Migration inventory and rollback assessment
 
 **Files:**
 - Create: `ops/release/0.1.0-rc.3-migration-inventory.json`
 - Create: `ops/release/0.1.0-rc.3-freeze-candidate.json`
-- Add verification harness/evidence only as required to prove old-binary/current-schema compatibility.
+- Create: `ops/release/0.1.0-rc.3-rollback-compatibility.json`
+- Add: `.github/workflows/release-rollback-compatibility.yml`
 
 - [x] Enumerate migrations present on the preparation branch but absent from rc.2 candidate `617b4f8901259ce2318ce721236241d7681b1c9c`.
 - [x] Record exact ordered filenames and counts in the inventory.
 - [x] Record the preparation base, scope, required gates, known residuals and previous certified Production SHA.
-- [x] Classify rollback conservatively; current state is `NOT_VALIDATED`.
 - [x] Perform read-only Beta schema/data-state audit: schema watermark `0103`, lineage/provenance/containment OK, zero CPRI movements, observed authority epochs all `0`.
-- [ ] Add a reproducible old-certified-binary/current-schema compatibility proof using an ephemeral local Supabase replay of the current migration chain; do not use or mutate Production.
-- [ ] Exercise the old certified SHA `db3d4ab…` against the replayed current schema at least at build/start plus database-contract surface level.
-- [ ] Record the database recovery/restore rule: application rollback never implies schema downgrade; database restore is a separately authorized recovery action.
-- [ ] Only if the compatibility proof passes, change rollback classification from `NOT_VALIDATED` to `VALIDATED_FOR_APPLICATION_ROLLBACK_WITH_CURRENT_SCHEMA`; otherwise leave the blocker closed-fail.
+- [x] Add a reproducible old-certified-binary/current-schema compatibility workflow using ephemeral local Supabase replay and current Beta data plane, without Production mutation.
+- [x] Replay the current migration chain and current DB contracts: PASS.
+- [x] Exercise certified SHA `db3d4ab…`: exact checkout PASS; product tests 209/209 PASS; typecheck PASS; build PASS; startup PASS.
+- [x] Exercise authenticated browser entry against the current data plane: FAIL at workspace bootstrap.
+- [x] Prove the cause from database logs: `aal2 required`, SQLSTATE `42501`, raised by `public.bootstrap_personal_workspace(text)` at the exact failure timestamp.
+- [x] Verify the compatibility boundary: current migration `0051_mfa_aal2_enforcement.sql` requires AAL2; the certified August SHA predates `0051`, has no `/mfa` route and bootstraps immediately after password login.
+- [x] Record the database recovery/restore rule: application rollback never implies schema downgrade; database restore is a separately authorized recovery action.
+- [x] Classify `db3d4ab…` as `INCOMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE`; safe rollback claim prohibited.
+- [ ] Establish an eligible already-certified AAL2-compatible rollback target, or separately complete a governed certification process for a compatible rollback target. **Not authorized in this preparation task.**
 
 ### Task 3: Changelog coherence
 
 **Files:**
 - Modify: `CHANGELOG.md`
 
-- [x] Replace stale wording that said current develop/Beta was `489d8ee6…` with release-preparation wording anchored to the rc.3 preparation lineage.
+- [x] Anchor rc.3 preparation to `develop@fe762e3c…`.
 - [x] State that `0.1.0-rc.3` is being prepared and is not yet tagged, certified or promoted.
-- [x] Link the migration inventory and rollback status without claiming validation.
+- [x] Link migration inventory and package/lockfile coherence.
+- [ ] Record the causal rollback incompatibility and the resulting immutable-freeze block.
 - [x] Verify the changelog contains no statement that rc.3 already exists as an immutable tag or prerelease.
 
 ### Task 4: Whole-branch verification and PR
@@ -77,5 +83,7 @@
 - [x] Confirm `v0.1.0-rc.3` did not exist before PR creation.
 - [x] Confirm no Production action occurred.
 - [x] Open Draft PR #765 targeting `develop` with exact base, scope, rollback status and explicit non-goals.
-- [ ] After lockfile/proof changes, re-run exact-head CI and review the complete final diff.
-- [ ] Keep PR Draft until all freeze blockers are either closed with evidence or explicitly retained as blockers.
+- [ ] Re-run exact-head CI after final evidence/doc updates.
+- [ ] Review the complete final diff and open review threads.
+- [ ] Confirm tag/prerelease remain absent and Production remains untouched.
+- [ ] Keep PR Draft and do not mark freeze-ready while the rollback gate is red.
