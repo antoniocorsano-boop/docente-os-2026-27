@@ -71,7 +71,7 @@
 - [x] Anchor rc.3 preparation to `develop@fe762e3c…`.
 - [x] State that `0.1.0-rc.3` is being prepared and is not yet tagged, certified or promoted.
 - [x] Link migration inventory and package/lockfile coherence.
-- [ ] Record the causal rollback incompatibility and the resulting immutable-freeze block.
+- [x] Record the causal rollback incompatibility and the resulting immutable-freeze block.
 - [x] Verify the changelog contains no statement that rc.3 already exists as an immutable tag or prerelease.
 
 ### Task 4: Whole-branch verification and PR
