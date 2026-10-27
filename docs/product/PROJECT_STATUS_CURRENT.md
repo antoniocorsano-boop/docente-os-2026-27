@@ -52,19 +52,37 @@ Sono già state emesse:
 
 Dopo rc.2 sono avvenute modifiche applicative sostanziali. Una RC esistente non può cambiare SHA. Se il perimetro resta `0.1.0`, il prossimo candidato sarà presumibilmente `0.1.0-rc.3`, ma non è ancora congelato.
 
-Per la sequenza di programma adottata il 27 ottobre, prima del freeze della nuova RC viene completata la riconciliazione della provenienza Production. La policy generale richiede comunque tale riconciliazione prima di qualsiasi futura promozione Production.
+La riconciliazione della provenienza Production prevista dalla sequenza di programma del 27 ottobre è completata. Il prossimo passo è il freeze della nuova RC exact-SHA.
 
-## 5. Production provenance finding
+## 5. Production provenance reconciled
 
 Production resta separata dal Beta e con auto-deploy disabilitato.
 
-La receipt canonica storica registra la promozione del 25 agosto sul candidate `db3d4ab014ad11dec4aeccdb5aa8740220e4ebde`.
+Ultimo SHA Production canonicamente certificato e promosso:
 
-Il provider mostra però come deploy Production attualmente live `7fa8deae375bc15b4386d17c97b1809f49488b98`, attivato manualmente il 17 settembre 2026. Sullo SHA live sono presenti gate verdi, ma anche uno storico `hva/runtime = failure`.
+`db3d4ab014ad11dec4aeccdb5aa8740220e4ebde`
 
-Classificazione: **PRODUCTION_PROVENANCE_DRIFT**.
+Evidence:
 
-Questo finding non prova da solo un difetto funzionale della Production corrente e non autorizza rollback/redeploy. Production resta immutata mentre si ricostruiscono autorità, receipt e stato di certificazione reale.
+- decisione umana esplicita del 25/08/2026;
+- Production Runtime Smoke `32903982577` PASS;
+- release receipt canonica.
+
+Runtime Production osservato il 27/10/2026:
+
+`7fa8deae375bc15b4386d17c97b1809f49488b98`
+
+Questo SHA è live a seguito di deploy manuale del 17/09/2026, ma la ricostruzione non ha trovato una decisione di promozione Production né un Production Runtime Smoke specifici. La PR sorgente #502 era esplicitamente scoped al Beta; inoltre lo SHA conserva uno storico `hva/runtime = failure`.
+
+Classificazione:
+
+`LIVE_SHA_NOT_CANONICALLY_CERTIFIED`
+
+Non viene dedotto un difetto funzionale della Production corrente e non è autorizzato alcun rollback/redeploy. La distinzione tra **live** e **certificato/promosso** è ora registrata in:
+
+`ops/production-provenance-reconciliation-2026-10-27.json`
+
+`db3d4ab…` resta il precedente SHA certificato noto. La sua compatibilità come rollback target della nuova RC deve essere verificata al freeze insieme alla migration inventory.
 
 ## 6. Capability disponibili da maturare
 
@@ -97,7 +115,7 @@ Il prossimo gate di prodotto dopo il freeze RC è QL-1 HUMAN_USE task-based:
 
 1. Orario repair — **COMPLETE**;
 2. runtime/P6 blocker — **COMPLETE**;
-3. Production provenance reconciliation — **IN PROGRESS**;
+3. Production provenance reconciliation — **COMPLETE**;
 4. nuova RC exact-SHA — **NEXT**;
 5. QL-1 HUMAN_USE;
 6. QL-3 Knowledge → Lesson → Materials;
@@ -134,9 +152,10 @@ Il prossimo gate di prodotto dopo il freeze RC è QL-1 HUMAN_USE task-based:
 - `ops/production-promotion-contract.json`;
 - `ops/production-readiness-review.json`;
 - `ops/production-release-receipt.json`;
+- `ops/production-provenance-reconciliation-2026-10-27.json`;
 - `docs/product/CAPABILITY_READINESS_CURRENT.md`;
 - `ops/capability-readiness.json`.
 
 ## 12. Stato sintetico
 
-**M4 ADVANCED CONTROLLED PRODUCTION PILOT / develop@489d8ee6… / BETA LIVE + QUALIFIED / PRODUCTION PROVENANCE RECONCILIATION IN PROGRESS / NEW RC FREEZE NEXT / HUMAN_USE AFTER RC.**
+**M4 ADVANCED CONTROLLED PRODUCTION PILOT / develop@489d8ee6… / BETA LIVE + QUALIFIED / PRODUCTION PROVENANCE RECONCILED / NEW RC FREEZE NEXT / HUMAN_USE AFTER RC.**
