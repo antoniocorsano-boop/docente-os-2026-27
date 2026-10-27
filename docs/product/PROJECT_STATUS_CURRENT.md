@@ -52,7 +52,7 @@ Sono già state emesse:
 
 Dopo rc.2 sono avvenute modifiche applicative sostanziali. Una RC esistente non può cambiare SHA. Se il perimetro resta `0.1.0`, il prossimo candidato sarà presumibilmente `0.1.0-rc.3`, ma non è ancora congelato.
 
-Prima del freeze della nuova RC è richiesta la riconciliazione della provenienza Production.
+Per decisione di programma del 27 ottobre, prima del freeze della nuova RC viene completata la riconciliazione della provenienza Production. La policy generale richiede comunque tale riconciliazione prima di qualsiasi futura promozione Production.
 
 ## 5. Production provenance finding
 
