@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { resolveTimetableVersionForDate } from '@/core/application/temporal-projection-service'
+import { projectTemporalDay, resolveTimetableVersionForDate } from '@/core/application/temporal-projection-service'
+import { resolveTimetableLessonEntrypoint } from './timetable-lesson-entrypoint'
 import {
   isCurrentTimetableInterval,
   isCurrentTimetableRow,
@@ -102,6 +103,57 @@ test('next concrete timetable occurrence skips an explicit NO_LESSONS weekday wh
   })
 
   assert.equal(result, '2026-11-09')
+})
+
+test('a suspended first matching weekday resolves through the next exact occurrence to the canonical lesson', () => {
+  const timetableVersions = [currentVersion]
+  const timetableSlots = [currentMondaySlot]
+  const timetableExceptions: [] = []
+  const calendarDays = [
+    { id: 'suspension-2026-11-02', localDate: '2026-11-02', kind: 'SUSPENSION' as const, label: 'Lezioni sospese' },
+    { id: 'school-day-2026-11-09', localDate: '2026-11-09', kind: 'SCHOOL_DAY' as const, label: 'Giorno di lezione' },
+  ]
+  const calendarEvents: [] = []
+
+  const localDate = nextTimetableOccurrenceDate('2026-10-27', 1, {
+    timetableVersionId: currentVersion.id,
+    timetableSlotId: currentMondaySlot.id,
+    timetableVersions,
+    timetableSlots,
+    timetableExceptions,
+    calendarDays,
+    calendarEvents,
+  })
+  assert.equal(localDate, '2026-11-09')
+  assert.ok(localDate)
+
+  const projected = projectTemporalDay({
+    localDate,
+    timetableVersions,
+    timetableSlots,
+    timetableExceptions,
+    calendarDays,
+    calendarEvents,
+  })
+  const occurrences = projected.occurrences.filter((occurrence) =>
+    occurrence.kind === 'LESSON'
+    && occurrence.timetableVersionId === currentVersion.id
+    && occurrence.timetableSlotId === currentMondaySlot.id,
+  )
+  assert.equal(occurrences.length, 1)
+
+  const occurrence = occurrences[0]
+  const entrypoint = resolveTimetableLessonEntrypoint({
+    mode: 'view',
+    sectionId: currentMondaySlot.sectionId,
+    blockId: 'block-current',
+    localDate: occurrence.localDate,
+    occurrenceLogicalId: occurrence.logicalId,
+    ambiguous: false,
+  })
+
+  assert.equal(entrypoint?.kind, 'LESSON')
+  assert.match(entrypoint?.kind === 'LESSON' ? entrypoint.href : '', /date=2026-11-09/)
 })
 
 test('next concrete timetable occurrence fails closed when the current timetable interval ends before another exact-slot lesson exists', () => {
