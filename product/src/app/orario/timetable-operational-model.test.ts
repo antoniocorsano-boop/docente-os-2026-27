@@ -149,3 +149,14 @@ test('next concrete timetable occurrence never reconciles a slot id across timet
 
   assert.equal(result, null)
 })
+
+test('Orario entrypoint integration searches the exact current version and slot instead of accepting a weekday-only date', () => {
+  const experienceSource = readFileSync(new URL('./TimetableExperience.tsx', import.meta.url), 'utf8')
+
+  assert.match(
+    experienceSource,
+    /nextTimetableOccurrenceDate\(\s*firstLocalDate,\s*weekday,\s*\{\s*timetableVersionId: slot\.timetableVersionId,\s*timetableSlotId: slot\.id,/s,
+  )
+  assert.match(experienceSource, /occurrence\.timetableVersionId === slot\.timetableVersionId/)
+  assert.match(experienceSource, /occurrence\.timetableSlotId === slot\.id/)
+})
