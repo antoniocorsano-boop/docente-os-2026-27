@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "releaseVersion": "0.1.0-rc.3",
+  "plannedTag": "v0.1.0-rc.3",
+  "state": "PREPARATION",
+  "sourceBranch": "develop",
+  "preparationBranch": "release/0.1.0-rc.3-prep",
+  "sourceBaselineSha": "fe762e3c6f6c6f1e4d61f232729c29024ce96e0c",
+  "candidateSha": null,
+  "candidateShaBinding": "TO_BE_BOUND_AFTER_PREPARATION_PR_FINAL_HEAD_QUALIFICATION",
+  "scope": {
+    "program": "M4 — Advanced Controlled Production Pilot",
+    "mode": "COMPLETION_AND_MATURATION",
+    "featureExpansionFrozen": true,
+    "summary": "Prepare the next immutable 0.1.0 release candidate from the qualified develop lineage without authorizing Production promotion."
+  },
+  "changedCapabilities": [
+    "Teacher Moment / Today-Next / Lesson continuity",
+    "Contextual Copilot task integration and FAB safety",
+    "HVA governance and deterministic runtime qualification",
+    "timetable effective-date and recurring-occurrence resolution",
+    "document template and institutional-base lifecycle",
+    "CPRI / TeachingSession runtime authority and binding revalidation",
+    "material-reference safety"
+  ],
+  "changelog": "CHANGELOG.md",
+  "migrationInventory": "ops/release/0.1.0-rc.3-migration-inventory.json",
+  "previousCertifiedProductionSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+  "rollback": {
+    "candidateTargetSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "compatibilityStatus": "NOT_VALIDATED",
+    "safeRollbackClaimAllowed": false,
+    "blocksImmutableFreeze": true
+  },
+  "applicableGates": [
+    "product-ci",
+    "ops-security/supabase",
+    "ops-security/dependencies",
+    "ops-health/render-beta",
+    "p6-performance/render-beta",
+    "x3-e2e/render-beta",
+    "x4-planner/render-beta",
+    "x5-authoring/render-beta",
+    "x5b-export/render-beta",
+    "hva/runtime"
+  ],
+  "knownResiduals": [
+    "Rollback compatibility against migrations 0081-0103 is not yet demonstrated.",
+    "product/package-lock.json still carries the rc.2 generated metadata until it is regenerated coherently with package.json; immutable freeze remains blocked until synchronized.",
+    "QL-1 HUMAN_USE must run on the frozen RC after immutable freeze.",
+    "Android/PWA real-device qualification remains outstanding for V1 maturity.",
+    "M5 WCAG manual/assistive, ASVS requirement-level, SLI/SLO and sustained-pilot evidence remain partial."
+  ],
+  "immutableFreezeBlocked": true,
+  "tagCreated": false,
+  "githubPrereleaseCreated": false,
+  "certified": false,
+  "promoted": false
+}
