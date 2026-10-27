@@ -1,0 +1,24 @@
+{
+  "schema": "docente-os.rollback-target-qualification-request.v1",
+  "createdAt": "2026-10-27",
+  "candidate": {
+    "version": "0.1.0-rc.2",
+    "sha": "617b4f8901259ce2318ce721236241d7681b1c9c",
+    "sourceTag": "v0.1.0-rc.2",
+    "publishedPrerelease": true
+  },
+  "qualificationAgainst": {
+    "applicationBaseline": "develop@fe762e3c6f6c6f1e4d61f232729c29024ce96e0c",
+    "dataPlane": "Beta",
+    "expectedRuntimeSchemaWatermark": "0103_material_reference_safety"
+  },
+  "purpose": "Determine whether rc.2 is compatible with the current AAL2-enforced Beta schema/data plane and may proceed to a separate governed rollback-target certification decision.",
+  "claims": {
+    "compatibilityPredeclared": false,
+    "certificationClaimAllowedByThisRequest": false,
+    "productionPromotionAuthorized": false,
+    "productionDeployAuthorized": false,
+    "databaseMutationAuthorized": false,
+    "rc3FreezeAuthorized": false
+  }
+}
