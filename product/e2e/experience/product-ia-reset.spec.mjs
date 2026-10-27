@@ -174,9 +174,6 @@ async function openResolvedLessonFromReadOnlyGrid(page) {
 }
 
 async function ensureWeekViewWhenCurrentDayHasNoLessons(page) {
-  const lessons = page.locator('.occupiedTimetableCell.kind-lesson')
-  if (await lessons.count()) return
-
   const weekView = page.getByRole('button', { name: 'Settimana', exact: true })
   if (await weekView.count()) {
     await weekView.click()
