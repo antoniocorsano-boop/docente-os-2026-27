@@ -62,7 +62,7 @@ Ruling: il PASS P6 resta evidence prodotto valida perché #763 non cambia produc
 
 ### Task 2A: Release-governance reconciliation
 
-**Stato: IN PROGRESS.** Per decisione di programma del 27/10, questa riconciliazione precede il nuovo freeze RC. La policy generale richiede comunque che sia chiusa prima di qualsiasi futura promozione Production.
+**Stato: IN PROGRESS.** Per la sequenza di programma adottata il 27/10, questa riconciliazione precede il nuovo freeze RC. La policy generale richiede comunque che sia chiusa prima di qualsiasi futura promozione Production.
 
 Finding: `PRODUCTION_PROVENANCE_DRIFT`.
 
