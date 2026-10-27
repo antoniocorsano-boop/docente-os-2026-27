@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "product": "DOCENTE OS",
+  "reconciliationDate": "2026-10-27",
+  "environment": "Production",
+  "provider": "Render",
+  "service": "docente-os-2026-27-production",
+  "serviceAutoDeploy": false,
+  "observedRuntime": {
+    "state": "LIVE",
+    "servedCommit": "7fa8deae375bc15b4386d17c97b1809f49488b98",
+    "deployTrigger": "manual",
+    "deployStartedAt": "2026-09-17T04:40:32.879484Z",
+    "deployFinishedAt": "2026-09-17T04:42:39.908909Z",
+    "sourcePullRequest": 502,
+    "sourcePullRequestScope": "BETA_GROQ_STT_PROVIDER"
+  },
+  "canonicalCertifiedPromotion": {
+    "lastCertifiedProductionSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "decisionSource": "EXPLICIT_HUMAN_OWNER_AUTHORIZATION",
+    "decisionDate": "2026-08-25",
+    "productionRuntimeSmokeRunId": 32903982577,
+    "productionRuntimeSmokeResult": "PASS",
+    "releaseReceipt": "ops/production-release-receipt.json"
+  },
+  "observedLiveShaEvidence": {
+    "explicitProductionPromotionDecisionFound": false,
+    "productionRuntimeSmokeFound": false,
+    "manualWorkflowDispatchesOnDeployDate": [
+      {
+        "workflow": "X3 E2E Mobile Gate",
+        "runId": 35182202959,
+        "result": "PASS"
+      }
+    ],
+    "hvaRuntimeStatus": "FAILURE",
+    "hvaRuntimeDescription": "Gate automatico HVA beta non superato",
+    "productionPromotionContractStatus": "PASS",
+    "releaseEngineeringPolicyStatus": "PASS",
+    "productionInfrastructureSpecStatus": "PASS"
+  },
+  "classification": {
+    "code": "LIVE_SHA_NOT_CANONICALLY_CERTIFIED",
+    "lastCertifiedProductionSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "currentLiveSha": "7fa8deae375bc15b4386d17c97b1809f49488b98",
+    "currentLiveShaMayBeCalledCertified": false,
+    "currentLiveShaMayBeCalledPromoted": false,
+    "productionFunctionalDefectProven": false
+  },
+  "authority": {
+    "rollbackAuthorized": false,
+    "redeployAuthorized": false,
+    "newProductionPromotionAuthorized": false,
+    "productionMustRemainUnchangedDuringReconciliation": true
+  },
+  "nextRelease": {
+    "lastCertifiedProductionShaKnown": true,
+    "candidateRollbackTarget": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "rollbackCompatibilityWithFutureRc": "REQUIRES_REVALIDATION_AT_RC_FREEZE",
+    "productionRuntimeMustBeReconciledBeforeFuturePromotion": true
+  }
+}

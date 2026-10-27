@@ -6,11 +6,46 @@ DOCENTE OS adotta Semantic Versioning per le release formalmente emesse dal prog
 
 ## Unreleased
 
-Nessuna modifica applicativa successiva al candidate SHA di `0.1.0-rc.2`.
+Le modifiche successive a `0.1.0-rc.2` sono materialmente significative e richiedono una nuova Release Candidate. Nessun tag esistente viene spostato.
 
-## [0.1.0-rc.2] - 2026-10-03 (DRAFT)
+### Changed
 
-Release Candidate rc.2 preparata sul candidate SHA `617b4f8901259ce2318ce721236241d7681b1c9c`. Il tag e la GitHub prerelease non sono ancora creati; la candidata non è `CERTIFIED` né `PROMOTED`.
+- Consolidato il modello V1 Teacher Operating System attorno a `Teacher Moment → contesto → prossimo passo → copilota → conferma umana → traccia`.
+- Rafforzati Today/Next, Lesson Brief e la continuità Oggi → Lezione → Materiali → Registra.
+- Integrato il Contextual Copilot nel task corrente con FAB contestuale, protected regions, posizionamento AUTO/drag e fallback `DOCKED_SAFE`.
+- Rafforzata la governance HVA con baseline persistente, integrity preflight/postflight, MFA/AAL2 governato e journey mobile/desktop whole-product.
+- Consolidata la linea DOS-IA/RESET per ridurre latenza e fallback cognitivi, mantenendo invariati i confini di autorità del dominio.
+- Chiuso il filone Orario effective-date / recurring occurrence: la versione operativa è risolta sulla data governata e la cella ricorrente punta alla prossima occorrenza concreta preservando exact timetable-version + slot identity.
+- `develop` corrente e Beta convergono su `489d8ee67b16db304ede71be94241739d0fa0a79`.
+
+### Fixed
+
+- Corretto il boundary temporale in cui una versione Orario amministrativamente `ACTIVE` ma futura veniva trattata come già operativa (#760).
+- Corretto il resolver Orario → Lezione quando il weekday più vicino non rappresenta una lezione concreta o cade oltre il periodo valido della versione (#761).
+- Corretto il race del solo test harness HVA mobile tra inizializzazione week view e switch day view (#763), senza modifiche al runtime prodotto.
+- Corretti i finding del Contextual Copilot FAB relativi a sovrapposizione con CTA/regioni contestuali, touch drag e geometria dopo mount tardivi.
+- Stabilizzato l'isolamento tra clock deterministico HVA e validazione server-side Auth/MFA.
+
+### Validation
+
+- #761: Product CI, full HVA, Human Visual/Design, Candidate Qualification e Final Independent Review PASS sul candidato finale `df7cbfd3f2b662590cabc30d40efb1d9ffd5c434`.
+- Merge #761 `5112ac255c936f4becf0de80dd14a4bebdde6df3`: `p6-performance/render-beta` PASS.
+- #763: candidate test-harness-only `ee1191f0a419e79a30ccad75fb9da6fbe77a8e47` qualificato e integrato.
+- Merge corrente `489d8ee67b16db304ede71be94241739d0fa0a79`: Product CI, X3, Human Interaction Model, TERM-01 e HVA post-merge PASS; Beta Render serve lo stesso exact SHA.
+- Production provenance reconciliation 2026-10-27: l'ultimo SHA canonicamente certificato/promosso resta `db3d4ab014ad11dec4aeccdb5aa8740220e4ebde`; il runtime Production osservato `7fa8deae375bc15b4386d17c97b1809f49488b98` è classificato `LIVE_SHA_NOT_CANONICALLY_CERTIFIED`.
+
+### Governance
+
+- La linea prodotto resta **M4 — Advanced Controlled Production Pilot**; `1.0.0` resta riservata alla decisione M5 esplicita.
+- Il prossimo freeze, se il perimetro resta `0.1.0`, richiede una nuova RC; `0.1.0-rc.3` è il candidato naturale ma non è ancora creato.
+- Il finding `PRODUCTION_PROVENANCE_DRIFT` è stato riconciliato senza mutare Production: `ops/production-provenance-reconciliation-2026-10-27.json` distingue lo SHA live non certificato dall'ultimo SHA certificato.
+- Non è autorizzato alcun rollback/redeploy. La compatibilità di `db3d4ab…` come rollback target della futura RC deve essere verificata al freeze con la migration inventory.
+- Il prossimo passo di programma è il freeze della nuova RC exact-SHA; subito dopo viene QL-1 HUMAN_USE, seguito da QL-3, QL-4, Observe→Registra, Android Reality, assurance M5 e sustained pilot.
+- Voice/STT, Tier 2, multi-user e institutional expansion restano fuori dal release core corrente.
+
+## [0.1.0-rc.2] - 2026-10-03
+
+Release Candidate `0.1.0-rc.2` congelata sul candidate SHA `617b4f8901259ce2318ce721236241d7681b1c9c` e pubblicata come GitHub prerelease `v0.1.0-rc.2`. La candidata non è `CERTIFIED` né `PROMOTED`.
 
 ### Fixed
 
