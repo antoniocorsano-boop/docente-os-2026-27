@@ -31,6 +31,7 @@ import TimetableGrid from './TimetableGrid'
 import { TimetableLocalImportLauncher } from './TimetableLocalImportLauncher'
 import { TimetableSubmitButton } from './TimetableSubmitButton'
 import { resolveTimetableLessonEntrypoint, type TimetableLessonEntrypoint } from './timetable-lesson-entrypoint'
+import { nextTimetableOccurrenceDate } from './timetable-operational-model'
 import './timetable.css'
 import './orario-guidance.css'
 
@@ -642,7 +643,7 @@ async function buildTimetableLessonEntrypoints(input: {
 
   const projectedByWeekday = new Map<number, ReturnType<typeof projectTemporalDay>>()
   for (const weekday of new Set(lessonSlots.map((slot) => slot.weekday))) {
-    const localDate = shiftLocalDate(input.moment.localDate, weekday - input.moment.weekday)
+    const localDate = nextTimetableOccurrenceDate(input.moment.localDate, weekday)
     projectedByWeekday.set(weekday, projectTemporalDay({
       localDate,
       timetableVersions: timetableProjection.versions,
