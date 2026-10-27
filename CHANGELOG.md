@@ -38,7 +38,7 @@ Le modifiche successive a `0.1.0-rc.2` sono materialmente significative e richie
 - La linea prodotto resta **M4 — Advanced Controlled Production Pilot**; `1.0.0` resta riservata alla decisione M5 esplicita.
 - Il prossimo freeze, se il perimetro resta `0.1.0`, richiede una nuova RC; `0.1.0-rc.3` è il candidato naturale ma non è ancora creato.
 - È aperto il finding `PRODUCTION_PROVENANCE_DRIFT`: la receipt storica del 25 agosto e il deploy Production live del 17 settembre non descrivono lo stesso SHA.
-- Per decisione di programma del 27 ottobre, la riconciliazione del finding precede il nuovo freeze RC; la policy generale richiede comunque la provenienza Production non ambigua prima di qualsiasi futura promozione.
+- Per la sequenza di programma adottata il 27 ottobre, la riconciliazione del finding precede il nuovo freeze RC; la policy generale richiede comunque la provenienza Production non ambigua prima di qualsiasi futura promozione.
 - Il finding non autorizza rollback, redeploy o promozione; Production resta immutata durante la riconciliazione.
 - Dopo il freeze della nuova RC il gate di prodotto prioritario è QL-1 HUMAN_USE, seguito da QL-3, QL-4, Observe→Registra, Android Reality, assurance M5 e sustained pilot.
 - Voice/STT, Tier 2, multi-user e institutional expansion restano fuori dal release core corrente.
