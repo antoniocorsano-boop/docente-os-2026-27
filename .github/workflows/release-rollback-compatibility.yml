@@ -1,0 +1,263 @@
+name: Release Rollback Compatibility
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types: [opened, reopened, synchronize]
+    paths:
+      - '.github/workflows/release-rollback-compatibility.yml'
+      - 'ops/release/**'
+      - 'product/package.json'
+      - 'product/package-lock.json'
+  workflow_dispatch:
+    inputs:
+      rollback_sha:
+        description: Previously certified application SHA to test
+        required: true
+        default: db3d4ab014ad11dec4aeccdb5aa8740220e4ebde
+        type: string
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: release-rollback-compatibility-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  DEFAULT_ROLLBACK_SHA: db3d4ab014ad11dec4aeccdb5aa8740220e4ebde
+  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  BETA_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+  BETA_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+
+jobs:
+  current-schema-replay:
+    name: current-schema-replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact current candidate
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+        with:
+          version: latest
+
+      - name: Replay current migration chain and contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/docente-os-rollback-current-schema"
+          rm -rf "$work"
+          mkdir -p "$work"
+          cd "$work"
+          supabase init
+          rm -rf supabase/migrations
+          mkdir -p supabase/migrations
+
+          i=1
+          while IFS= read -r src; do
+            version="$(printf '%014d' "$i")"
+            stem="$(basename "$src" .sql)"
+            cp "$src" "supabase/migrations/${version}_${stem}.sql"
+            i=$((i + 1))
+          done < <(find "$GITHUB_WORKSPACE/product/supabase/migrations" -maxdepth 1 -type f -name '*.sql' | sort)
+
+          supabase db start
+          trap 'supabase stop --no-backup >/dev/null 2>&1 || true' EXIT
+          supabase db reset --local --no-seed
+
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+
+          db_url="$(supabase status -o env | sed -n 's/^DB_URL=//p' | tr -d '"' | head -n 1)"
+          test -n "$db_url"
+
+          psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/runtime-release-contract.sql"
+          psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/timetable_import_g1_2_contract.sql"
+          psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/timetable_import_completion_contract.sql"
+          psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/knowledge_bounded_search_contract.sql"
+          psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/canonical_plan_runtime_identity_behavior.sql"
+
+          actual="$(psql "$db_url" -Atc "select migration_id from public.runtime_schema_contract_state where singleton")"
+          test "$actual" = '0103_material_reference_safety'
+
+          mkdir -p "$GITHUB_WORKSPACE/test-results/rollback-compatibility"
+          cat > "$GITHUB_WORKSPACE/test-results/rollback-compatibility/current-schema.json" <<JSON
+          {
+            "schema": "docente-os.rollback-current-schema.v1",
+            "testedCandidateSha": "${{ github.event.pull_request.head.sha || github.sha }}",
+            "runtimeSchemaMigrationId": "$actual",
+            "result": "PASS"
+          }
+          JSON
+
+      - name: Upload current-schema evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rollback-current-schema-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 90
+          path: test-results/rollback-compatibility/current-schema.json
+
+  old-binary-current-schema:
+    name: old-binary-current-schema
+    needs: current-schema-replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ROLLBACK_SHA: ${{ inputs.rollback_sha || 'db3d4ab014ad11dec4aeccdb5aa8740220e4ebde' }}
+      EXPERIENCE_TARGET: rollback-current-schema
+      E2E_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      EXPERIENCE_OUTPUT_DIR: test-results/experience
+    steps:
+      - name: Require governed E2E credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${E2E_PASSWORD:-}" || { echo 'DOCENTE_OS_E2E_PASSWORD is required' >&2; exit 1; }
+
+      - name: Checkout previously certified rollback application
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.ROLLBACK_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact rollback SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$ROLLBACK_SHA"
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install old application dependencies
+        working-directory: product
+        run: npm install --no-audit --no-fund
+
+      - name: Run old application product tests
+        working-directory: product
+        run: npm test
+
+      - name: Typecheck old application
+        working-directory: product
+        run: npm run typecheck
+
+      - name: Install Playwright runner without changing old lockfile
+        working-directory: product
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Build old certified application against current Beta Supabase config
+        working-directory: product
+        run: npm run build
+
+      - name: Start old certified application
+        working-directory: product
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm start > /tmp/docente-os-rollback-server.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 5 "$E2E_BASE_URL/login" >/dev/null; then
+              echo 'Rollback application runtime is ready.'
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/docente-os-rollback-server.log >&2 || true
+          exit 1
+
+      - name: Install Chromium
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run old application HVA against current Beta schema/data plane
+        id: browser
+        working-directory: product
+        shell: bash
+        run: |
+          set +e
+          npx playwright test --config=playwright.experience.config.mjs
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Generate old-binary compatibility receipt
+        if: always()
+        working-directory: product
+        env:
+          EXPERIENCE_TEST_EXIT_CODE: ${{ steps.browser.outputs.exit_code || '99' }}
+          EXPECTED_COMMIT: ${{ env.ROLLBACK_SHA }}
+        run: node scripts/experience/acceptance-report.mjs
+
+      - name: Enforce old-binary compatibility receipt
+        if: always()
+        working-directory: product
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const r = require('./test-results/experience/receipt/acceptance.json')
+          const failed = Object.entries(r.gates || {}).filter(([,v]) => v === 'FAIL')
+          if (failed.length) {
+            console.error('rollback compatibility gates failed:', failed)
+            process.exit(1)
+          }
+          NODE
+
+      - name: Upload old-binary compatibility evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rollback-old-binary-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 90
+          path: |
+            product/test-results/experience/
+            product/playwright-report/experience/
+            /tmp/docente-os-rollback-server.log
+
+  publish-status:
+    name: publish-status
+    if: always()
+    needs: [current-schema-replay, old-binary-current-schema]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish rollback compatibility status
+        uses: actions/github-script@v7
+        env:
+          SCHEMA_RESULT: ${{ needs.current-schema-replay.result }}
+          BINARY_RESULT: ${{ needs.old-binary-current-schema.result }}
+        with:
+          script: |
+            const sha = context.payload.pull_request?.head?.sha || context.sha
+            const ok = process.env.SCHEMA_RESULT === 'success' && process.env.BINARY_RESULT === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha,
+              state: ok ? 'success' : 'failure',
+              context: 'release/rollback-compatibility',
+              description: ok ? 'Old certified binary compatible with current schema' : 'Rollback compatibility not demonstrated',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+            if (!ok) core.setFailed('rollback compatibility not demonstrated')
