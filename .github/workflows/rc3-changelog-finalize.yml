@@ -1,0 +1,65 @@
+name: RC3 Changelog Finalize One-Shot
+
+on:
+  push:
+    branches:
+      - release/0.1.0-rc.3-prep
+    paths:
+      - .github/workflows/rc3-changelog-finalize.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: release/0.1.0-rc.3-prep
+          fetch-depth: 0
+
+      - name: Update only rc3 preparation status text
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('CHANGELOG.md')
+          s = p.read_text()
+
+          old = """Il precedente SHA Production canonicamente certificato `db3d4ab014ad11dec4aeccdb5aa8740220e4ebde` resta il riferimento storico, ma la sua compatibilità come rollback target contro lo schema evoluto da `0081` a `0103` è **NOT_VALIDATED**. Il freeze immutabile resta bloccato finché questa compatibilità non è dimostrata o non viene stabilito un diverso rollback target precedentemente certificato e compatibile. Anche `product/package-lock.json` deve essere rigenerato/sincronizzato con la versione `0.1.0-rc.3` prima del freeze."""
+          new = """`product/package.json` e `product/package-lock.json` sono ora coerenti su `0.1.0-rc.3`. Il precedente SHA Production canonicamente certificato `db3d4ab014ad11dec4aeccdb5aa8740220e4ebde` è stato invece provato come rollback target e risulta **INCOMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE**: il replay dello schema corrente è PASS e il vecchio binario supera test, typecheck, build e startup, ma il browser journey fallisce causalmente perché `bootstrap_personal_workspace(text)` richiede AAL2 mentre lo SHA certificato di agosto non possiede il percorso MFA. Il freeze immutabile resta bloccato finché non esiste un rollback target già certificato e compatibile con il data plane AAL2 corrente."""
+          if s.count(old) != 1:
+              raise SystemExit(f'expected one stale rc3 preparation paragraph, found {s.count(old)}')
+          s = s.replace(old, new, 1)
+
+          old_gov = """- Non è autorizzato alcun rollback/redeploy. La compatibilità di `db3d4ab…` come rollback target della futura RC è `NOT_VALIDATED` e blocca il freeze immutabile finché non viene dimostrata rispetto alla migration inventory `0081–0103`."""
+          new_gov = """- Non è autorizzato alcun rollback/redeploy. `db3d4ab…` è stato dimostrato **incompatibile** con il data plane AAL2 corrente dal workflow `Release Rollback Compatibility` run `40584199311`; non può quindi essere usato come rollback target rc.3. Il freeze immutabile resta bloccato finché non viene stabilito un rollback target già certificato e compatibile. Un rollback applicativo non implica mai downgrade automatico dello schema; un eventuale restore database è un'azione di recovery separata e non autorizzata da questa preparazione."""
+          if s.count(old_gov) != 1:
+              raise SystemExit(f'expected one stale governance bullet, found {s.count(old_gov)}')
+          s = s.replace(old_gov, new_gov, 1)
+
+          marker = """- Production provenance reconciliation 2026-10-27: l'ultimo SHA canonicamente certificato/promosso resta `db3d4ab014ad11dec4aeccdb5aa8740220e4ebde`; il runtime Production osservato `7fa8deae375bc15b4386d17c97b1809f49488b98` è classificato `LIVE_SHA_NOT_CANONICALLY_CERTIFIED`."""
+          extra = marker + "\n- Rollback compatibility run `40584199311`: current-schema replay PASS; `db3d4ab…` 209/209 product test PASS, typecheck/build/startup PASS; authenticated browser FAIL al bootstrap con Postgres SQLSTATE `42501` / `aal2 required`. Receipt: `ops/release/0.1.0-rc.3-rollback-compatibility.json`."
+          if s.count(marker) != 1:
+              raise SystemExit(f'expected one validation marker, found {s.count(marker)}')
+          s = s.replace(marker, extra, 1)
+
+          p.write_text(s)
+          PY
+          git diff --check
+          git diff -- CHANGELOG.md
+
+      - name: Commit changelog and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/rc3-changelog-finalize.yml
+          git add CHANGELOG.md
+          git diff --cached --check
+          git commit -m 'docs: finalize rc3 blocker status'
+          git push origin HEAD:release/0.1.0-rc.3-prep
