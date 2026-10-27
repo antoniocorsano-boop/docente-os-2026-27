@@ -23,6 +23,7 @@
 ## Review Focus
 
 - Version/changelog mismatch after the metadata bump.
+- Package/lockfile version mismatch before immutable freeze.
 - Missing migration between rc.2 and the preparation branch.
 - Accidental claim that rollback is safe without schema compatibility evidence.
 - Stale exact SHA copied from the pre-#762 Beta baseline.
@@ -34,10 +35,13 @@
 
 **Files:**
 - Modify: `product/package.json`
+- Modify before immutable freeze: `product/package-lock.json`
 
-- [ ] Verify the starting version is exactly `0.1.0-rc.2`.
-- [ ] Change only the package version to `0.1.0-rc.3`.
-- [ ] Re-read the file and verify the version is exactly `0.1.0-rc.3`.
+- [x] Verify the starting package version is exactly `0.1.0-rc.2`.
+- [x] Change the package version to `0.1.0-rc.3`.
+- [x] Re-read `package.json` and verify the version is exactly `0.1.0-rc.3`.
+- [x] Detect that `package-lock.json` also carries `0.1.0-rc.2` generated metadata in the root document and root package entry.
+- [ ] Regenerate/synchronize `package-lock.json` so both generated version fields are exactly `0.1.0-rc.3`; immutable freeze remains blocked until complete.
 
 ### Task 2: Migration inventory and rollback assessment
 
@@ -45,21 +49,22 @@
 - Create: `ops/release/0.1.0-rc.3-migration-inventory.json`
 - Create: `ops/release/0.1.0-rc.3-freeze-candidate.json`
 
-- [ ] Enumerate migrations present on the preparation branch but absent from rc.2 candidate `617b4f8901259ce2318ce721236241d7681b1c9c`.
-- [ ] Record exact ordered filenames and counts in the inventory.
-- [ ] Record the preparation base, scope, required gates, known residuals and previous certified Production SHA.
-- [ ] Classify rollback conservatively; if backward code/schema compatibility is not demonstrated, write `NOT_VALIDATED` and block any rollback-safety claim.
-- [ ] Validate both files as JSON and cross-check the migration count/list.
+- [x] Enumerate migrations present on the preparation branch but absent from rc.2 candidate `617b4f8901259ce2318ce721236241d7681b1c9c`.
+- [x] Record exact ordered filenames and counts in the inventory: 23 migrations, `0081` through `0103`.
+- [x] Record the preparation base, scope, required gates, known residuals and previous certified Production SHA.
+- [x] Classify rollback conservatively as `NOT_VALIDATED`; block rollback-safety claim and immutable freeze.
+- [ ] Complete the backward code/schema compatibility assessment for migrations `0081–0103` and either validate `db3d4ab…` or establish another previously certified compatible rollback target.
+- [ ] Record the database recovery/restore strategy required if application rollback is invoked.
 
 ### Task 3: Changelog coherence
 
 **Files:**
 - Modify: `CHANGELOG.md`
 
-- [ ] Replace stale wording that says current develop/Beta is `489d8ee6…` with release-preparation wording anchored to the rc.3 preparation lineage.
-- [ ] State that `0.1.0-rc.3` is being prepared and is not yet tagged, certified or promoted.
-- [ ] Link the migration inventory and rollback status without claiming validation.
-- [ ] Verify the changelog contains no statement that rc.3 already exists as an immutable tag or prerelease.
+- [x] Replace stale wording that described `489d8ee6…` as current develop with the distinction between the qualified product/Beta baseline and `develop@fe762e3c…` release-preparation source baseline.
+- [x] State that `0.1.0-rc.3` is being prepared and is not yet tagged, certified or promoted.
+- [x] Link the migration inventory and rollback status without claiming validation.
+- [x] Record the package-lock synchronization as a freeze blocker.
 
 ### Task 4: Whole-branch verification and PR
 
