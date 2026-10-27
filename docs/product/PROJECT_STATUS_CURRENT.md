@@ -288,7 +288,7 @@ Aggiornamento storico 2026-10-03:
 - Wave A remediation PR #642 e QL-1 PR #643 restano evidence valide; QL-1 ha technical PASS + Human Review PASS, ma `human_use=NOT_RUN`;
 - il filone Orario mobile era consolidato con PR #663 e #664; #664 aveva Product CI PASS, Browser Certification PASS, HVA full 69/69 e WCAG automated assurance 30/30 sull'exact head qualificato;
 - il DOS-CRM era rebaselined sul merge `57743e9d395ae5d739ca89e9afbdbb3a7edf875d`;
-- il registro include PWA/device intake, Materials, Observation/Evidence e Curriculum Intake pilot-scoped;
+- il registro include PWA/device intake, Materials, Observation/Evidence e intake curricolare pilot-scoped;
 - Share→Orario conserva CRL 5 storico ma freshness STALE dopo i cambi materiali del journey;
 - nessuna capability viene promossa automaticamente: HUMAN_USE e qualification capability-level restano necessarie dove previste.
 
@@ -320,7 +320,7 @@ La riconciliazione Production del 27 ottobre non costituisce una nuova promozion
 6. qualificare Observe → Registra come journey dedicato e PWA/device intake su Android reale;
 7. completare assurance M5 applicabile e raccogliere sustained runtime/pilot evidence;
 8. prendere la decisione formale V1 READY / V1 REWORK sulla base delle evidence;
-9. Voice/STT resta **DEFERRED** e Institutional Configurator/Curriculum generalizzato restano subordinati ad autorizzazione/pilot.
+9. Voice/STT resta **DEFERRED** e Institutional Configurator/curricolo generalizzato restano subordinati ad autorizzazione/pilot.
 
 La Production attualmente live resta immutata durante il freeze RC; nessuna promozione Production è implicita.
 
