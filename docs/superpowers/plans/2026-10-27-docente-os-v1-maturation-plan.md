@@ -62,7 +62,7 @@ Ruling: il PASS P6 resta evidence prodotto valida perché #763 non cambia produc
 
 ### Task 2A: Release-governance reconciliation
 
-**Stato: IN PROGRESS. Bloccante per il nuovo freeze RC per decisione di programma del 27/10.**
+**Stato: IN PROGRESS.** Per decisione di programma del 27/10, questa riconciliazione precede il nuovo freeze RC. La policy generale richiede comunque che sia chiusa prima di qualsiasi futura promozione Production.
 
 Finding: `PRODUCTION_PROVENANCE_DRIFT`.
 
@@ -86,7 +86,7 @@ Checklist:
 
 ### Task 3: Freeze della nuova Release Candidate V1
 
-**Stato: NEXT / BLOCKED BY TASK 2A.**
+**Stato: NEXT / BLOCKED BY TASK 2A per la sequenza di programma del 27/10.**
 
 Sono già state emesse `v0.1.0-rc.1` e `v0.1.0-rc.2`. Le modifiche successive richiedono una nuova RC; nessun tag esistente viene spostato.
 
@@ -228,5 +228,5 @@ Le fasi successive non devono essere usate per aggirare un blocker delle precede
 - Task 1: **COMPLETE**.
 - Task 2: **COMPLETE per il blocker pre-RC**.
 - Task 2A: **IN PROGRESS**.
-- Task 3: **NEXT / BLOCKED BY TASK 2A**.
+- Task 3: **NEXT / BLOCKED BY TASK 2A per decisione di programma**.
 - Task 4–10: **BLOCKED BY SEQUENCE**.
