@@ -15,8 +15,8 @@ permissions:
   statuses: write
 
 concurrency:
-  group: rc2-rollback-target-qualification-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: docente-os-governed-mfa-e2e
+  queue: max
 
 env:
   RC2_SHA: 617b4f8901259ce2318ce721236241d7681b1c9c
