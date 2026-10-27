@@ -28,43 +28,55 @@ Sul merge corrente Product CI, X3, Human Interaction Model, TERM-01 e HVA sono P
 
 **Conclusione:** Task 1 Orario CLOSED. Task 2 runtime/P6 CLOSED per il blocker che impediva il freeze RC. Non esiste evidenza corrente che giustifichi una nuova patch `/knowledge` o un allentamento dei budget.
 
-## 3. Production provenance
+## 3. Production provenance — riconciliazione completata
 
 Production resta separata dal Beta e non ha auto-deploy.
 
-La receipt storica registra la promozione certificata del 25 agosto sul candidate `db3d4ab014ad11dec4aeccdb5aa8740220e4ebde`.
+La promozione certificata canonica resta quella del 25 agosto sul candidate `db3d4ab014ad11dec4aeccdb5aa8740220e4ebde`, autorizzata esplicitamente dal proprietario e verificata dal Production Runtime Smoke `32903982577`.
 
-Il provider mostra però come deploy Production attualmente live il commit `7fa8deae375bc15b4386d17c97b1809f49488b98`, attivato manualmente il 17 settembre 2026. Sullo stesso SHA diversi gate risultano PASS, mentre lo status storico `hva/runtime` risulta failure.
+Il provider Render serve attualmente il commit `7fa8deae375bc15b4386d17c97b1809f49488b98`, distribuito manualmente il 17 settembre 2026. La provenienza è stata ricostruita:
 
-Classificazione: **PRODUCTION_PROVENANCE_DRIFT**.
+- `7fa8deae…` è il merge della PR #502, esplicitamente scoped al Beta Groq STT;
+- non è stata trovata una decisione umana di promozione Production specifica per tale SHA;
+- il 17 settembre l'unico workflow manuale individuato è X3 E2E Mobile Gate `35182202959`;
+- non è stato trovato un Production Runtime Smoke per `7fa8deae…`;
+- sullo stesso SHA `hva/runtime` conserva uno stato FAILURE storico;
+- le receipt canoniche di Production continuano correttamente a descrivere la promozione certificata `db3d4ab…`.
 
-Questo finding:
+Classificazione canonica:
 
-- non prova da solo un difetto funzionale della Production corrente;
-- non autorizza rollback o redeploy;
-- non blocca il Beta;
-- richiede ricostruzione delle evidence e dell'autorità del deploy prima della nuova RC secondo la sequenza di programma adottata il 27/10 e, in ogni caso, prima di qualsiasi futura promozione Production.
+`7fa8deae… = LIVE_SHA_NOT_CANONICALLY_CERTIFIED`
 
-Production resta immutata durante la riconciliazione.
+Questa classificazione non prova un difetto funzionale della Production corrente e non autorizza rollback o redeploy. L'ultimo SHA che può essere chiamato `CERTIFIED/PROMOTED` resta `db3d4ab…`.
+
+Receipt di riconciliazione:
+
+`ops/production-provenance-reconciliation-2026-10-27.json`
+
+Per una futura promozione, `db3d4ab…` è il precedente SHA certificato noto; la sua compatibilità come rollback target con la futura RC deve essere revalidata al freeze, quando saranno noti candidate SHA e migration inventory.
+
+**Conclusione:** Task 2A Production provenance CLOSED.
 
 ## 4. Release engineering
 
 Sono già state emesse `v0.1.0-rc.1` e `v0.1.0-rc.2`. Dopo rc.2 sono avvenute modifiche applicative sostanziali; la policy vieta di spostare lo SHA di una RC esistente.
 
-Se il perimetro resta `0.1.0`, il prossimo candidato sarà presumibilmente `0.1.0-rc.3`, ma questa PR **non crea né certifica** la nuova RC.
+Il prossimo passo di programma è il freeze di una nuova RC. Se il perimetro resta `0.1.0`, il nome naturale è `0.1.0-rc.3`, ma questa PR **non crea né certifica** la nuova RC.
 
-Prima del freeze, secondo la sequenza di programma del 27/10, servono:
+Al freeze devono essere verificati:
 
-1. stato, piano e changelog coerenti con `develop@489d8ee6…`;
-2. riconciliazione del `PRODUCTION_PROVENANCE_DRIFT`;
-3. scelta di un exact `develop` SHA immutabile;
-4. matrice dei gate, known residuals e rollback target espliciti.
+1. exact `develop` SHA immutabile;
+2. scope e changelog coerenti;
+3. matrice dei gate e known residuals;
+4. migration inventory;
+5. compatibilità del precedente SHA certificato come rollback target;
+6. receipt e prerelease legate allo stesso exact SHA.
 
 ## 5. Gap residui V1
 
 | Blocco | Gap |
 |---|---|
-| Release governance | Production provenance + freeze nuova RC |
+| Release governance | freeze nuova RC |
 | Daily Teaching Loop | QL-1 HUMAN_USE |
 | Knowledge / Materials | QL-3 end-to-end |
 | Governed Copilot | QL-4 + HUMAN_USE |
@@ -77,10 +89,10 @@ Prima del freeze, secondo la sequenza di programma del 27/10, servono:
 
 ## 6. Sequenza bloccante aggiornata
 
-`Orario/runtime closed → release-governance reconciliation → RC freeze → QL-1 HUMAN_USE → QL-3 → QL-4 → Observe/Registra → Android Reality → M5 assurance → sustained pilot → V1 decision`
+`Orario/runtime CLOSED → Production provenance CLOSED → RC freeze → QL-1 HUMAN_USE → QL-3 → QL-4 → Observe/Registra → Android Reality → M5 assurance → sustained pilot → V1 decision`
 
 Voice/STT, Tier 2, multi-user e institutional expansion restano fuori dal release core finché non vengono esplicitamente ri-autorizzati.
 
 ## 7. Stato canonico
 
-**M4 ADVANCED CONTROLLED PRODUCTION PILOT / develop@489d8ee6… / BETA LIVE + POST-MERGE QUALIFIED / ORARIO-RUNTIME BLOCKER CLOSED / PRODUCTION PROVENANCE RECONCILIATION REQUIRED / RC FREEZE NEXT AFTER RECONCILIATION.**
+**M4 ADVANCED CONTROLLED PRODUCTION PILOT / develop@489d8ee6… / BETA LIVE + POST-MERGE QUALIFIED / ORARIO-RUNTIME CLOSED / PRODUCTION PROVENANCE RECONCILED / NEW RC FREEZE NEXT.**
