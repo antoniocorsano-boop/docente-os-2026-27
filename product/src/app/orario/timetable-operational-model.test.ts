@@ -2,7 +2,12 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { resolveTimetableVersionForDate } from '@/core/application/temporal-projection-service'
-import { isCurrentTimetableInterval, isCurrentTimetableRow, timetableMinutes } from './timetable-operational-model'
+import {
+  isCurrentTimetableInterval,
+  isCurrentTimetableRow,
+  nextTimetableOccurrenceDate,
+  timetableMinutes,
+} from './timetable-operational-model'
 
 test('timetableMinutes accepts persisted times with seconds', () => {
   assert.equal(timetableMinutes('08:30:00'), 510)
@@ -39,4 +44,14 @@ test('Orario lifecycle uses the timetable effective on the operational date inst
   assert.match(lifecycleSource, /resolveTimetableVersionForDate/)
   assert.doesNotMatch(lifecycleSource, /find\(\(version\) => version\.status === 'ACTIVE'\)/)
   assert.match(experienceSource, /lifecycleRepository\.read\([^)]*moment\.localDate/s)
+})
+
+test('Orario current recurring week resolves a past weekday to its next concrete occurrence across an effective-date boundary', () => {
+  assert.equal(nextTimetableOccurrenceDate('2026-10-27', 1), '2026-11-02')
+  assert.equal(nextTimetableOccurrenceDate('2026-10-27', 2), '2026-10-27')
+  assert.equal(nextTimetableOccurrenceDate('2026-10-27', 3), '2026-10-28')
+
+  const experienceSource = readFileSync(new URL('./TimetableExperience.tsx', import.meta.url), 'utf8')
+  assert.match(experienceSource, /nextTimetableOccurrenceDate\(input\.moment\.localDate, weekday\)/)
+  assert.doesNotMatch(experienceSource, /shiftLocalDate\(input\.moment\.localDate, weekday - input\.moment\.weekday\)/)
 })
