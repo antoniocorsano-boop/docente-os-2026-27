@@ -32,15 +32,15 @@ Le modifiche successive a `0.1.0-rc.2` sono materialmente significative e richie
 - Merge #761 `5112ac255c936f4becf0de80dd14a4bebdde6df3`: `p6-performance/render-beta` PASS.
 - #763: candidate test-harness-only `ee1191f0a419e79a30ccad75fb9da6fbe77a8e47` qualificato e integrato.
 - Merge corrente `489d8ee67b16db304ede71be94241739d0fa0a79`: Product CI, X3, Human Interaction Model, TERM-01 e HVA post-merge PASS; Beta Render serve lo stesso exact SHA.
+- Production provenance reconciliation 2026-10-27: l'ultimo SHA canonicamente certificato/promosso resta `db3d4ab014ad11dec4aeccdb5aa8740220e4ebde`; il runtime Production osservato `7fa8deae375bc15b4386d17c97b1809f49488b98` è classificato `LIVE_SHA_NOT_CANONICALLY_CERTIFIED`.
 
 ### Governance
 
 - La linea prodotto resta **M4 — Advanced Controlled Production Pilot**; `1.0.0` resta riservata alla decisione M5 esplicita.
 - Il prossimo freeze, se il perimetro resta `0.1.0`, richiede una nuova RC; `0.1.0-rc.3` è il candidato naturale ma non è ancora creato.
-- È aperto il finding `PRODUCTION_PROVENANCE_DRIFT`: la receipt storica del 25 agosto e il deploy Production live del 17 settembre non descrivono lo stesso SHA.
-- Per la sequenza di programma adottata il 27 ottobre, la riconciliazione del finding precede il nuovo freeze RC; la policy generale richiede comunque la provenienza Production non ambigua prima di qualsiasi futura promozione.
-- Il finding non autorizza rollback, redeploy o promozione; Production resta immutata durante la riconciliazione.
-- Dopo il freeze della nuova RC il gate di prodotto prioritario è QL-1 HUMAN_USE, seguito da QL-3, QL-4, Observe→Registra, Android Reality, assurance M5 e sustained pilot.
+- Il finding `PRODUCTION_PROVENANCE_DRIFT` è stato riconciliato senza mutare Production: `ops/production-provenance-reconciliation-2026-10-27.json` distingue lo SHA live non certificato dall'ultimo SHA certificato.
+- Non è autorizzato alcun rollback/redeploy. La compatibilità di `db3d4ab…` come rollback target della futura RC deve essere verificata al freeze con la migration inventory.
+- Il prossimo passo di programma è il freeze della nuova RC exact-SHA; subito dopo viene QL-1 HUMAN_USE, seguito da QL-3, QL-4, Observe→Registra, Android Reality, assurance M5 e sustained pilot.
 - Voice/STT, Tier 2, multi-user e institutional expansion restano fuori dal release core corrente.
 
 ## [0.1.0-rc.2] - 2026-10-03
