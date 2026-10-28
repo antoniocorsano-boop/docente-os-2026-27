@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "releaseVersion": "0.1.0-rc.3",
+  "plannedTag": "v0.1.0-rc.3",
+  "state": "PREPARATION_READY_FOR_FINAL_EXACT_HEAD_QUALIFICATION",
+  "sourceBranch": "develop",
+  "preparationBranch": "release/0.1.0-rc.3-prep",
+  "sourceBaselineSha": "fe762e3c6f6c1e4d61f232729c29024ce96e0c",
+  "candidateSha": null,
+  "candidateShaBinding": "PENDING_FINAL_EXACT_HEAD_QUALIFICATION_AND_SEPARATE_FREEZE_DECISION",
+  "scope": {
+    "program": "M4 — Advanced Controlled Production Pilot",
+    "mode": "COMPLETION_AND_MATURATION",
+    "featureExpansionFrozen": true,
+    "summary": "Prepare the next immutable 0.1.0 release candidate from the qualified develop lineage without authorizing Production promotion."
+  },
+  "changedCapabilities": [
+    "Teacher Moment / Today-Next / Lesson continuity",
+    "Contextual Copilot task integration and FAB safety",
+    "HVA governance and deterministic runtime qualification",
+    "timetable effective-date and recurring-occurrence resolution",
+    "document template and institutional-base lifecycle",
+    "CPRI / TeachingSession runtime authority and binding revalidation",
+    "material-reference safety"
+  ],
+  "changelog": "CHANGELOG.md",
+  "migrationInventory": "ops/release/0.1.0-rc.3-migration-inventory.json",
+  "rollbackCompatibilityReceipt": "ops/release/0.1.0-rc.3-rollback-compatibility.json",
+  "rollbackCertificationReceipt": "ops/release/0.1.0-rc.3-rollback-target-certification.json",
+  "previousCertifiedProductionSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+  "versionMetadata": {
+    "packageJson": "0.1.0-rc.3",
+    "packageLock": "0.1.0-rc.3",
+    "coherent": true
+  },
+  "rollback": {
+    "previousCertifiedTarget": {
+      "sha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+      "compatibilityStatus": "INCOMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE",
+      "failureClassification": "INCOMPATIBLE_SECURITY_BOUNDARY_AAL2",
+      "proofRunId": 40584199311,
+      "safeRollbackClaimAllowed": false,
+      "eligibleAsRc3RollbackTarget": false
+    },
+    "compatibleCandidate": {
+      "version": "0.1.0-rc.2",
+      "sha": "617b4f8901259ce2318ce721236241d7681b1c9c",
+      "sourceTag": "v0.1.0-rc.2",
+      "qualificationPr": 766,
+      "qualificationHeadSha": "d3edcaf66730f0457d42559d08595ac45da70b80",
+      "qualificationRunId": 40591418391,
+      "qualificationArtifactId": 12774313447,
+      "qualificationArtifactDigest": "sha256:f2592ab6907157373476c86f1da303f8804c173ee90b5390c39a94229d2194eb",
+      "runtimeSchemaWatermark": "0103_material_reference_safety",
+      "compatibilityStatus": "DEMONSTRATED_COMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE",
+      "technicalQualificationPass": true,
+      "certificationStatus": "CERTIFIED_FOR_RC3_ROLLBACK_TARGET",
+      "certificationHeadSha": "2f881104439e1379516c06bd0b788cfcda84a446",
+      "certificationRunId": 40632860671,
+      "certificationArtifactId": 12792232167,
+      "certificationArtifactDigest": "sha256:ca7d06a08e763107b452730f12e702c4fbaa37c8a8c102cd77f0340457c50038",
+      "certifiedRollbackTarget": true,
+      "safeRollbackClaimAllowed": true,
+      "eligibleAsRc3RollbackTarget": true,
+      "certificationScope": "RC3_ROLLBACK_ONLY"
+    },
+    "eligibleCompatibleCertifiedRollbackTargetKnown": true,
+    "blocksImmutableFreeze": false,
+    "recoveryRule": "Application rollback never implies schema downgrade. Database restore is a separately authorized recovery action."
+  },
+  "applicableGates": [
+    "product-ci",
+    "ops-security/supabase",
+    "ops-security/dependencies",
+    "ops-health/render-beta",
+    "p6-performance/render-beta",
+    "x3-e2e/render-beta",
+    "x4-planner/render-beta",
+    "x5-authoring/render-beta",
+    "x5b-export/render-beta",
+    "hva/runtime",
+    "release/rollback-compatibility",
+    "release/rc2-rollback-certification"
+  ],
+  "gateSemantics": {
+    "release/rollback-compatibility": "NEGATIVE_EVIDENCE_FOR_PREVIOUS_CERTIFIED_TARGET_DB3D4AB_EXPECTED_FAIL",
+    "release/rc2-rollback-certification": "AUTHORITATIVE_RC3_ROLLBACK_TARGET_CERTIFICATION_GATE"
+  },
+  "knownResiduals": [
+    "The last canonically certified Production SHA db3d4ab... is proven incompatible with the current AAL2 data plane and remains ineligible as an rc.3 rollback target.",
+    "Published prerelease rc.2@617b4f8... is certified for RC3_ROLLBACK_ONLY by exact-head run 40632860671; this does not promote rc.2 globally and does not authorize rollback execution, deployment, database mutation or restore.",
+    "Final exact-head qualification of this updated preparation branch must complete before any rc.3 freeze decision.",
+    "QL-1 HUMAN_USE must run on the frozen RC after immutable freeze.",
+    "Android/PWA real-device qualification remains outstanding for V1 maturity.",
+    "M5 WCAG manual/assistive, ASVS requirement-level, SLI/SLO and sustained-pilot evidence remain partial."
+  ],
+  "immutableFreezeBlocked": true,
+  "immutableFreezeBlockReason": "FINAL_EXACT_HEAD_QUALIFICATION_AND_SEPARATE_FREEZE_DECISION_PENDING",
+  "tagCreated": false,
+  "githubPrereleaseCreated": false,
+  "certified": false,
+  "promoted": false
+}

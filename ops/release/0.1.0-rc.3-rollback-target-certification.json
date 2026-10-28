@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "releaseVersion": "0.1.0-rc.3",
+  "scope": "RC3_ROLLBACK_ONLY",
+  "decisionDate": "2026-10-28",
+  "decision": "CERTIFIED_FOR_RC3_ROLLBACK_TARGET",
+  "target": {
+    "version": "0.1.0-rc.2",
+    "sha": "617b4f8901259ce2318ce721236241d7681b1c9c",
+    "sourceTag": "v0.1.0-rc.2",
+    "immutableTagBindingVerified": true
+  },
+  "compatibilityQualification": {
+    "pr": 766,
+    "headSha": "d3edcaf66730f0457d42559d08595ac45da70b80",
+    "runId": 40591418391,
+    "statusContext": "release/rc2-rollback-qualification",
+    "artifactId": 12774313447,
+    "artifactDigest": "sha256:f2592ab6907157373476c86f1da303f8804c173ee90b5390c39a94229d2194eb",
+    "runtimeSchemaWatermark": "0103_material_reference_safety",
+    "observations": "26/26 PASS",
+    "journeysPassed": 16,
+    "findings": 0,
+    "result": "DEMONSTRATED_COMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE"
+  },
+  "certification": {
+    "workflow": "RC2 Rollback Target Certification",
+    "exactHeadSha": "2f881104439e1379516c06bd0b788cfcda84a446",
+    "runId": 40632860671,
+    "statusContext": "release/rc2-rollback-certification",
+    "artifactId": 12792232167,
+    "artifactDigest": "sha256:ca7d06a08e763107b452730f12e702c4fbaa37c8a8c102cd77f0340457c50038",
+    "gates": {
+      "exactHeadCheckout": "PASS",
+      "immutableCandidateAndQualification": "PASS",
+      "currentOperationalSecurity": "PASS",
+      "currentProductionReadiness": "PASS",
+      "receiptEnforcement": "PASS",
+      "statusPublication": "PASS"
+    }
+  },
+  "humanDecision": {
+    "decision": "AUTHORIZE_RC2_AS_RC3_ROLLBACK_TARGET_IF_CERTIFICATION_GATES_PASS",
+    "decisionDate": "2026-10-28",
+    "decisionSource": "EXPLICIT_HUMAN_OWNER_AUTHORIZATION_IN_CHAT",
+    "scope": "RC3_ROLLBACK_ONLY"
+  },
+  "result": {
+    "certifiedForRc3RollbackTarget": true,
+    "safeApplicationRollbackClaimAllowed": true,
+    "eligibleAsRc3RollbackTarget": true,
+    "globalRc2ReleaseStateChanged": false,
+    "globalRc2ProductionPromotion": false
+  },
+  "authorityBoundaries": {
+    "productionPromotionAuthorized": false,
+    "productionDeployAuthorized": false,
+    "productionRollbackExecutionAuthorized": false,
+    "databaseMutationAuthorized": false,
+    "databaseRestoreAuthorized": false,
+    "rc3TagCreationAuthorized": false,
+    "rc3PrereleasePublicationAuthorized": false,
+    "mergeAuthorized": false
+  },
+  "recoveryRule": {
+    "applicationRollbackImpliesSchemaDowngrade": false,
+    "databaseRestoreIsSeparateRecoveryAction": true
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "releaseVersion": "0.1.0-rc.3",
+  "assessmentDate": "2026-10-27",
+  "reconciledAt": "2026-10-28",
+  "assessmentState": "COMPLETE_WITH_CERTIFIED_COMPATIBLE_RC3_ROLLBACK_TARGET",
+  "testedPreparationSha": "d47587b0f339e8eff4bcad20c91a3c506597d9d2",
+  "previousCertifiedRollbackTarget": {
+    "sha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "status": "LAST_CANONICALLY_CERTIFIED_PRODUCTION_SHA",
+    "workflow": {
+      "name": "Release Rollback Compatibility",
+      "causalProofRunId": 40584199311,
+      "currentSchemaReplay": "PASS",
+      "oldBinaryCurrentSchema": "FAIL",
+      "publishedStatus": "FAIL"
+    },
+    "compatibilityStatus": "INCOMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE",
+    "safeRollbackClaimAllowed": false,
+    "eligibleAsRc3RollbackTarget": false
+  },
+  "currentSchema": {
+    "source": "CURRENT_RC3_MIGRATION_CHAIN_EPHEMERAL_REPLAY_AND_BETA_READ_ONLY_CROSSCHECK",
+    "runtimeContractVersion": 103,
+    "runtimeMigrationId": "0103_material_reference_safety",
+    "replayResult": "PASS",
+    "betaReadOnlyCrossCheck": {
+      "projectRef": "gnshgapmwyjamhmlikeg",
+      "lineageOk": true,
+      "provenanceOk": true,
+      "containmentOk": true,
+      "cpriMovementCount": 0,
+      "observedAuthorityEpoch": 0
+    }
+  },
+  "previousCertifiedTargetFailure": {
+    "classification": "INCOMPATIBLE_SECURITY_BOUNDARY_AAL2",
+    "phase": "AUTHENTICATED_WORKSPACE_BOOTSTRAP",
+    "observedApplicationUrl": "/login?error=workspace_bootstrap_failed",
+    "databaseEvidence": {
+      "message": "aal2 required",
+      "sqlState": "42501",
+      "context": "PL/pgSQL function public.bootstrap_personal_workspace(text) line 11 at RAISE",
+      "observedAtUtc": "2026-10-27T21:17:05.365Z"
+    },
+    "currentContract": "public.bootstrap_personal_workspace(text) requires private.current_session_is_aal2() before application-state bootstrap",
+    "introducedByMigration": "0051_mfa_aal2_enforcement.sql",
+    "fixtureDriftRuledOut": true
+  },
+  "compatibleCandidateEvidence": {
+    "version": "0.1.0-rc.2",
+    "sha": "617b4f8901259ce2318ce721236241d7681b1c9c",
+    "sourceTag": "v0.1.0-rc.2",
+    "qualificationPr": 766,
+    "qualificationHeadSha": "d3edcaf66730f0457d42559d08595ac45da70b80",
+    "qualificationRunId": 40591418391,
+    "qualificationArtifact": {
+      "id": 12774313447,
+      "digest": "sha256:f2592ab6907157373476c86f1da303f8804c173ee90b5390c39a94229d2194eb"
+    },
+    "testedAgainstRuntimeMigrationId": "0103_material_reference_safety",
+    "governedAal2Credentials": "PASS",
+    "exactShaCheckout": "PASS",
+    "productTests": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS",
+    "startupAgainstCurrentBetaSupabase": "PASS",
+    "browserAcceptance": "PASS",
+    "receiptEnforcement": "PASS",
+    "observations": {
+      "passed": 26,
+      "required": 26
+    },
+    "journeys": {
+      "passed": 16,
+      "failed": 0
+    },
+    "findings": 0,
+    "technicalCompatibilityStatus": "DEMONSTRATED_COMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE",
+    "certificationStatus": "CERTIFIED_FOR_RC3_ROLLBACK_TARGET",
+    "certificationScope": "RC3_ROLLBACK_ONLY",
+    "certificationHeadSha": "2f881104439e1379516c06bd0b788cfcda84a446",
+    "certificationRunId": 40632860671,
+    "certificationArtifact": {
+      "id": 12792232167,
+      "digest": "sha256:ca7d06a08e763107b452730f12e702c4fbaa37c8a8c102cd77f0340457c50038"
+    },
+    "currentOperationalSecurity": "PASS",
+    "currentProductionReadiness": "PASS",
+    "eligibleAsRc3RollbackTarget": true,
+    "safeApplicationRollbackClaimAllowed": true
+  },
+  "decision": {
+    "previousCertifiedTargetCompatible": false,
+    "compatibleCandidateKnown": true,
+    "compatibleCandidateSha": "617b4f8901259ce2318ce721236241d7681b1c9c",
+    "compatibleCandidateCertificationStatus": "CERTIFIED_FOR_RC3_ROLLBACK_TARGET",
+    "eligibleCompatibleCertifiedRollbackTargetKnown": true,
+    "safeRollbackClaimAllowed": true,
+    "blocksImmutableFreeze": false,
+    "nextRequiredDecision": "FINAL_EXACT_HEAD_QUALIFICATION_THEN_SEPARATE_RC3_FREEZE_DECISION"
+  },
+  "authorityBoundaries": {
+    "productionPromotionAuthorized": false,
+    "productionDeployAuthorized": false,
+    "productionRollbackExecutionAuthorized": false,
+    "databaseMutationAuthorized": false,
+    "databaseRestoreAuthorized": false
+  },
+  "recoveryRule": {
+    "applicationRollbackImpliesSchemaDowngrade": false,
+    "databaseRestoreIsSeparateRecoveryAction": true,
+    "databaseRestoreAuthorized": false,
+    "productionRollbackAuthorized": false,
+    "productionMutationPerformed": false
+  }
+}

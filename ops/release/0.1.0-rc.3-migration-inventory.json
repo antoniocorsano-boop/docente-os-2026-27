@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "releaseVersion": "0.1.0-rc.3",
+  "state": "PREPARATION",
+  "comparison": {
+    "fromRcCandidateSha": "617b4f8901259ce2318ce721236241d7681b1c9c",
+    "toPreparationBaseSha": "fe762e3c6f6c6f1e4d61f232729c29024ce96e0c"
+  },
+  "migrationDirectory": "product/supabase/migrations",
+  "baselineHighWatermark": "0080_timetable_import_same_id_live_source_revision.sql",
+  "addedCount": 23,
+  "added": [
+    {"name":"0081_timetable_lesson_activity_kind.sql","blobSha":"2a9ec28bbc0c5613b33233c0e0b95247a8274238"},
+    {"name":"0082_timetable_activity_kind_clone.sql","blobSha":"195b0a32a94684a5649648a9b090f80dcf76dd5d"},
+    {"name":"0083_timetable_occurrence_activity_kind.sql","blobSha":"0ea8403f28c86de5ffea5119478a62ff4cee4a90"},
+    {"name":"0084_timetable_occurrence_activity_guard.sql","blobSha":"d3206c9f1e84961fa7cee7616fc359e87b1dd203"},
+    {"name":"0085_timetable_same_date_replacement.sql","blobSha":"b779df7af040a68cfb4f264aa0873a5a69ff1ec0"},
+    {"name":"0086_timetable_backdated_replacement.sql","blobSha":"e263c4517c9022d90d8d274287b1038687386ff1"},
+    {"name":"0087_document_template_registry.sql","blobSha":"3f8df6a08a2b2fa2c7450aaa64415c1c4e410d19"},
+    {"name":"0088_document_template_registry_review_fixes.sql","blobSha":"98def0f729760993421374b351f3d6f2f177bf1e"},
+    {"name":"0089_institutional_base_and_template_lifecycle.sql","blobSha":"78cc5d1c57e9d0580fdc287b397ca7b15ece5de1"},
+    {"name":"0090_document_template_lifecycle_contract_fixes.sql","blobSha":"c40fee39fe2933e83478c0e73b821018871f3ca8"},
+    {"name":"0091_institutional_base_snapshot.sql","blobSha":"8e424885555ca5bc889c6c7e978f039bc6e1e1cc"},
+    {"name":"0092_document_template_activation_serialization.sql","blobSha":"1bef3e3a4225d872dbce98e9bc54ff1610e60c40"},
+    {"name":"0093_institutional_base_quality_hardening.sql","blobSha":"c7c84cce5fba254e45f1b198a89987d1fd78fdac"},
+    {"name":"0094_document_template_blocked_mutation_guard.sql","blobSha":"03c5ce05604a6bacbb1c5ba43eea3670f14b806b"},
+    {"name":"0095_document_template_trusted_purity.sql","blobSha":"19b3826d8f0b98a2882e0fb982228521fbca1158"},
+    {"name":"0096_document_template_structural_ingress_guard.sql","blobSha":"9aeef6cc3e122dfafcc5040c8fc176a77313d821"},
+    {"name":"0097_generalized_authored_documents.sql","blobSha":"4794a7e4a643cadcfda16c2dcf8ac508e2bb9e3f"},
+    {"name":"0098_contain_legacy_atlas_runtime_and_reconcile_cpri.sql","blobSha":"e4bba241a68a32b249c4eff08020912114879ead"},
+    {"name":"0099_contain_atlas_guard_origin_mode.sql","blobSha":"30149f6b48ba3b21367c2ea64780926fb342716f"},
+    {"name":"0100_contain_provenance_anchor_and_column_grants.sql","blobSha":"cbe0d8e8e84889bb288e65a4f611bc21b096a17e"},
+    {"name":"0101_cpri_teaching_session_runtime_authority.sql","blobSha":"d467bdb2341249f7d9eb276946445ba6e3b09415"},
+    {"name":"0102_cpri_binding_movement_and_revalidation.sql","blobSha":"f33322bfcd4be4badb9107d7060c87a7f027ec71"},
+    {"name":"0103_material_reference_safety.sql","blobSha":"4fe0f2e9cd7ae53f0b8952c217d7a56c6e016d63"}
+  ],
+  "execution": {
+    "performedByThisPreparation": false,
+    "productionMutationAuthorized": false
+  },
+  "rollbackAssessment": {
+    "previousCertifiedProductionSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "compatibilityStatus": "NOT_VALIDATED",
+    "safeRollbackClaimAllowed": false,
+    "reason": "No concrete evidence yet demonstrates that the previous certified application SHA is compatible with a database advanced through migrations 0081-0103. Production database migrations are not automatically rolled back.",
+    "requiredBeforeImmutableFreeze": [
+      "classify destructive and backward-compatibility effects for migrations 0081-0103",
+      "demonstrate previous-certified application compatibility with the resulting schema or establish another previously certified compatible rollback target",
+      "record the database recovery/restore strategy required if application rollback is invoked"
+    ]
+  }
+}
