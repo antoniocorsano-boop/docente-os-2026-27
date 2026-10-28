@@ -34,7 +34,7 @@ function session(input: {
       projectedOccurrenceLogicalId: `occurrence:${input.id}`,
       timetableVersionId: 'version-1',
       timetableSlotId: 'slot-1',
-      calendarState: 'SCHOOL_DAY',
+      calendarState: 'SCHOOL_DAY' as const,
       provenance: ['timetable_version:version-1'],
     },
     supersedesSessionId: input.supersedesSessionId ?? null,
