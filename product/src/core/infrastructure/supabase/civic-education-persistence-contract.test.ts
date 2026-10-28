@@ -62,6 +62,16 @@ test('QL2-A serializes keyed civic and legacy writes and protects direct histori
   )
 })
 
+test('QL2-A migration avoids PostgreSQL reserved AUTHORIZATION as an unquoted relation alias', () => {
+  const sql = migrationSql()
+
+  assert.doesNotMatch(
+    sql,
+    /\b(?:from|delete\s+from)\s+(?:private|public)\.[a-z0-9_]+\s+authorization\b/i,
+    'AUTHORIZATION is a PostgreSQL keyword and must not be used unquoted as a relation alias',
+  )
+})
+
 test('QL2-A civic persistence is read-only to authenticated table clients and advances runtime lineage', () => {
   const sql = migrationSql()
 
