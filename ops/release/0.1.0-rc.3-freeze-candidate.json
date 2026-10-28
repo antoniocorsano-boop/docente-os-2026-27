@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "releaseVersion": "0.1.0-rc.3",
   "plannedTag": "v0.1.0-rc.3",
-  "state": "PREPARATION_BLOCKED",
+  "state": "PREPARATION_BLOCKED_ROLLBACK_CERTIFICATION_PENDING",
   "sourceBranch": "develop",
   "preparationBranch": "release/0.1.0-rc.3-prep",
   "sourceBaselineSha": "fe762e3c6f6c6f1e4d61f232729c29024ce96e0c",
   "candidateSha": null,
-  "candidateShaBinding": "BLOCKED_UNTIL_ELIGIBLE_CERTIFIED_COMPATIBLE_ROLLBACK_TARGET_EXISTS",
+  "candidateShaBinding": "BLOCKED_UNTIL_COMPATIBLE_RC2_ROLLBACK_CANDIDATE_IS_SEPARATELY_CERTIFIED",
   "scope": {
     "program": "M4 — Advanced Controlled Production Pilot",
     "mode": "COMPLETION_AND_MATURATION",
@@ -33,12 +33,31 @@
     "coherent": true
   },
   "rollback": {
-    "testedTargetSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
-    "compatibilityStatus": "INCOMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE",
-    "failureClassification": "INCOMPATIBLE_SECURITY_BOUNDARY_AAL2",
-    "proofRunId": 40584199311,
-    "safeRollbackClaimAllowed": false,
-    "eligibleAsRc3RollbackTarget": false,
+    "previousCertifiedTarget": {
+      "sha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+      "compatibilityStatus": "INCOMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE",
+      "failureClassification": "INCOMPATIBLE_SECURITY_BOUNDARY_AAL2",
+      "proofRunId": 40584199311,
+      "safeRollbackClaimAllowed": false,
+      "eligibleAsRc3RollbackTarget": false
+    },
+    "compatibleCandidate": {
+      "version": "0.1.0-rc.2",
+      "sha": "617b4f8901259ce2318ce721236241d7681b1c9c",
+      "sourceTag": "v0.1.0-rc.2",
+      "qualificationPr": 766,
+      "qualificationHeadSha": "d3edcaf66730f0457d42559d08595ac45da70b80",
+      "qualificationRunId": 40591418391,
+      "evidenceArtifactId": 12774313447,
+      "evidenceArtifactDigest": "sha256:f2592ab6907157373476c86f1da303f8804c173ee90b5390c39a94229d2194eb",
+      "runtimeSchemaWatermark": "0103_material_reference_safety",
+      "compatibilityStatus": "DEMONSTRATED_COMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE",
+      "technicalQualificationPass": true,
+      "certificationStatus": "PENDING_SEPARATE_GOVERNED_CERTIFICATION",
+      "certifiedRollbackTarget": false,
+      "safeRollbackClaimAllowed": false,
+      "eligibleAsRc3RollbackTarget": false
+    },
     "eligibleCompatibleCertifiedRollbackTargetKnown": false,
     "blocksImmutableFreeze": true,
     "recoveryRule": "Application rollback never implies schema downgrade. Database restore is a separately authorized recovery action."
@@ -57,8 +76,8 @@
     "release/rollback-compatibility"
   ],
   "knownResiduals": [
-    "The last canonically certified Production SHA db3d4ab... is proven incompatible with the current AAL2 data plane: bootstrap_personal_workspace rejects the old password-only session with SQLSTATE 42501 / aal2 required.",
-    "No eligible already-certified compatible rollback target is currently known; immutable freeze remains blocked until one is established under release governance.",
+    "The last canonically certified Production SHA db3d4ab... is proven incompatible with the current AAL2 data plane and remains ineligible as an rc.3 rollback target.",
+    "Published prerelease rc.2@617b4f8... is now technically demonstrated compatible with the current AAL2 Beta data plane/schema 0103 by PR #766 / run 40591418391, but it is not a certified rollback target. A separate governed certification decision remains required before immutable rc.3 freeze.",
     "QL-1 HUMAN_USE must run on the frozen RC after immutable freeze.",
     "Android/PWA real-device qualification remains outstanding for V1 maturity.",
     "M5 WCAG manual/assistive, ASVS requirement-level, SLI/SLO and sustained-pilot evidence remain partial."

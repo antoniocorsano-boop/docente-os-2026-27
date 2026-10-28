@@ -2,22 +2,25 @@
   "schemaVersion": 1,
   "releaseVersion": "0.1.0-rc.3",
   "assessmentDate": "2026-10-27",
-  "assessmentState": "COMPLETE_FAIL_CLOSED",
+  "reconciledAt": "2026-10-28",
+  "assessmentState": "COMPLETE_WITH_COMPATIBLE_UNCERTIFIED_CANDIDATE",
   "testedPreparationSha": "d47587b0f339e8eff4bcad20c91a3c506597d9d2",
-  "rollbackTargetSha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
-  "rollbackTargetStatus": "LAST_CANONICALLY_CERTIFIED_PRODUCTION_SHA",
-  "workflow": {
-    "name": "Release Rollback Compatibility",
-    "causalProofRunId": 40584199311,
-    "currentSchemaReplay": "PASS",
-    "oldBinaryCurrentSchema": "FAIL",
-    "publishedStatus": "FAIL",
-    "finalExactHeadRerunRequested": true,
-    "finalizationParentSha": "a62340691ab8e592b04b9149b6b1b9348a329664",
-    "expectedFinalGateState": "FAIL_CLOSED_UNTIL_COMPATIBLE_CERTIFIED_TARGET_EXISTS"
+  "previousCertifiedRollbackTarget": {
+    "sha": "db3d4ab014ad11dec4aeccdb5aa8740220e4ebde",
+    "status": "LAST_CANONICALLY_CERTIFIED_PRODUCTION_SHA",
+    "workflow": {
+      "name": "Release Rollback Compatibility",
+      "causalProofRunId": 40584199311,
+      "currentSchemaReplay": "PASS",
+      "oldBinaryCurrentSchema": "FAIL",
+      "publishedStatus": "FAIL"
+    },
+    "compatibilityStatus": "INCOMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE",
+    "safeRollbackClaimAllowed": false,
+    "eligibleAsRc3RollbackTarget": false
   },
   "currentSchema": {
-    "source": "CURRENT_RC3_MIGRATION_CHAIN_EPHEMERAL_REPLAY",
+    "source": "CURRENT_RC3_MIGRATION_CHAIN_EPHEMERAL_REPLAY_AND_BETA_READ_ONLY_CROSSCHECK",
     "runtimeContractVersion": 103,
     "runtimeMigrationId": "0103_material_reference_safety",
     "replayResult": "PASS",
@@ -30,19 +33,7 @@
       "observedAuthorityEpoch": 0
     }
   },
-  "oldApplication": {
-    "exactShaCheckout": "PASS",
-    "productTests": {
-      "result": "PASS",
-      "passed": 209,
-      "failed": 0
-    },
-    "typecheck": "PASS",
-    "build": "PASS",
-    "startupAgainstCurrentBetaSupabase": "PASS",
-    "browserAcceptance": "FAIL"
-  },
-  "failure": {
+  "previousCertifiedTargetFailure": {
     "classification": "INCOMPATIBLE_SECURITY_BOUNDARY_AAL2",
     "phase": "AUTHENTICATED_WORKSPACE_BOOTSTRAP",
     "observedApplicationUrl": "/login?error=workspace_bootstrap_failed",
@@ -54,25 +45,51 @@
     },
     "currentContract": "public.bootstrap_personal_workspace(text) requires private.current_session_is_aal2() before application-state bootstrap",
     "introducedByMigration": "0051_mfa_aal2_enforcement.sql",
-    "rollbackTargetCapabilities": {
-      "migration0051Present": false,
-      "mfaRoutePresent": false,
-      "e2eLoginPerformsMfaChallenge": false,
-      "loginBootstrapsWorkspaceImmediatelyAfterPassword": true
+    "fixtureDriftRuledOut": true
+  },
+  "compatibleCandidateEvidence": {
+    "version": "0.1.0-rc.2",
+    "sha": "617b4f8901259ce2318ce721236241d7681b1c9c",
+    "sourceTag": "v0.1.0-rc.2",
+    "qualificationPr": 766,
+    "qualificationHeadSha": "d3edcaf66730f0457d42559d08595ac45da70b80",
+    "qualificationRunId": 40591418391,
+    "artifact": {
+      "id": 12774313447,
+      "digest": "sha256:f2592ab6907157373476c86f1da303f8804c173ee90b5390c39a94229d2194eb"
     },
-    "currentApplicationCapabilities": {
-      "mfaRoutePresent": true,
-      "bootstrapAfterAal2": true
+    "testedAgainstRuntimeMigrationId": "0103_material_reference_safety",
+    "governedAal2Credentials": "PASS",
+    "exactShaCheckout": "PASS",
+    "productTests": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS",
+    "startupAgainstCurrentBetaSupabase": "PASS",
+    "browserAcceptance": "PASS",
+    "receiptEnforcement": "PASS",
+    "observations": {
+      "passed": 26,
+      "required": 26
     },
-    "fixtureDriftRuledOut": true,
-    "reason": "The database emitted the AAL2 rejection from the bootstrap RPC at the exact failure timestamp. The certified August application has no MFA route or second-factor step capable of elevating the session before invoking that RPC."
+    "journeys": {
+      "passed": 16,
+      "failed": 0
+    },
+    "findings": 0,
+    "technicalCompatibilityStatus": "DEMONSTRATED_COMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE",
+    "certificationStatus": "NOT_CERTIFIED",
+    "eligibleAsRc3RollbackTarget": false,
+    "reasonNotYetEligible": "Release governance requires a separate rollback-target certification decision; technical compatibility evidence alone does not certify or promote the candidate."
   },
   "decision": {
-    "compatibilityStatus": "INCOMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE",
+    "previousCertifiedTargetCompatible": false,
+    "compatibleCandidateKnown": true,
+    "compatibleCandidateSha": "617b4f8901259ce2318ce721236241d7681b1c9c",
+    "compatibleCandidateCertificationStatus": "NOT_CERTIFIED",
+    "eligibleCompatibleCertifiedRollbackTargetKnown": false,
     "safeRollbackClaimAllowed": false,
-    "eligibleAsRc3RollbackTarget": false,
     "blocksImmutableFreeze": true,
-    "eligibleCompatibleCertifiedRollbackTargetKnown": false
+    "nextRequiredDecision": "SEPARATE_GOVERNED_CERTIFICATION_OF_RC2_AS_ROLLBACK_TARGET"
   },
   "recoveryRule": {
     "applicationRollbackImpliesSchemaDowngrade": false,
