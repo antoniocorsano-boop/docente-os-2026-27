@@ -54,13 +54,21 @@ type AllocationRow = {
   created_at: string
 }
 
+type CivicContributionRow = {
+  session_id: string
+  minutes: number
+  evidence_note: string | null
+  created_at: string
+}
+
 interface TeachingSessionReadClient {
   from(table: 'teaching_sessions'): TableBuilder<SessionRow>
   from(table: 'teaching_session_allocations'): TableBuilder<AllocationRow>
+  from(table: 'teaching_session_civic_contributions'): TableBuilder<CivicContributionRow>
 }
 
 interface TeachingSessionRpcClient {
-  rpc(name: 'record_teaching_session', args: {
+  rpc(name: 'record_teaching_session_with_civic_contribution', args: {
     target_workspace_id: string
     target_academic_year_id: string
     target_section_id: string
@@ -84,6 +92,8 @@ interface TeachingSessionRpcClient {
       canonical_plan_asset_id: string
       canonical_generation_id: string
     }>
+    target_civic_education_minutes: number | null
+    target_civic_education_evidence_note: string | null
   }): RpcResult<string>
 }
 
@@ -97,7 +107,7 @@ export class SupabaseTeachingSessionRepository {
   }) {
     const supabase = await createClient()
     const rpc = supabase as unknown as TeachingSessionRpcClient
-    const { data, error } = await rpc.rpc('record_teaching_session', {
+    const { data, error } = await rpc.rpc('record_teaching_session_with_civic_contribution', {
       target_workspace_id: input.workspaceId,
       target_academic_year_id: input.academicYearId,
       target_section_id: input.session.sectionId,
@@ -121,6 +131,8 @@ export class SupabaseTeachingSessionRepository {
         canonical_plan_asset_id: allocation.canonicalPlanAssetId,
         canonical_generation_id: allocation.canonicalGenerationId,
       })),
+      target_civic_education_minutes: input.session.civicEducation?.minutes ?? null,
+      target_civic_education_evidence_note: input.session.civicEducation?.evidenceNote ?? null,
     })
 
     if (error) throw new Error(error.message)
@@ -140,7 +152,9 @@ export class SupabaseTeachingSessionRepository {
       .order('recorded_at', { ascending: false })
 
     if (error) throw new Error(error.message)
-    return (data ?? []).map(toSession)
+    const sessionRows = data ?? []
+    const civicBySession = await loadCivicEducation(read, sessionRows.map((row) => row.id))
+    return sessionRows.map((row) => toSession(row, civicBySession.get(row.id) ?? null))
   }
 
   async listBySection(workspaceId: string, academicYearId: string, sectionId: string): Promise<TeachingSessionSnapshot> {
@@ -157,22 +171,41 @@ export class SupabaseTeachingSessionRepository {
 
     const { data: sessionRows, error: sessionError } = await sessionQuery
     if (sessionError) throw new Error(sessionError.message)
-    const sessions = (sessionRows ?? []).map(toSession)
-    const sessionIds = sessions.map((session) => session.id)
+    const rows = sessionRows ?? []
+    const sessionIds = rows.map((row) => row.id)
     if (!sessionIds.length) return { sessions: [], allocations: [] }
 
-    const { data: allocationRows, error: allocationError } = await read
-      .from('teaching_session_allocations')
-      .select('*')
-      .in('session_id', sessionIds)
-      .order('created_at', { ascending: true })
+    const [civicBySession, allocationResult] = await Promise.all([
+      loadCivicEducation(read, sessionIds),
+      read
+        .from('teaching_session_allocations')
+        .select('*')
+        .in('session_id', sessionIds)
+        .order('created_at', { ascending: true }),
+    ])
 
-    if (allocationError) throw new Error(allocationError.message)
-    return { sessions, allocations: (allocationRows ?? []).map(toAllocation) }
+    if (allocationResult.error) throw new Error(allocationResult.error.message)
+    const sessions = rows.map((row) => toSession(row, civicBySession.get(row.id) ?? null))
+    return { sessions, allocations: (allocationResult.data ?? []).map(toAllocation) }
   }
 }
 
-function toSession(row: SessionRow): TeachingSessionRecord {
+async function loadCivicEducation(read: TeachingSessionReadClient, sessionIds: string[]) {
+  const bySession = new Map<string, CivicContributionRow>()
+  if (!sessionIds.length) return bySession
+
+  const { data, error } = await read
+    .from('teaching_session_civic_contributions')
+    .select('*')
+    .in('session_id', sessionIds)
+    .order('created_at', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  for (const contribution of data ?? []) bySession.set(contribution.session_id, contribution)
+  return bySession
+}
+
+function toSession(row: SessionRow, civicEducation: CivicContributionRow | null): TeachingSessionRecord {
   return {
     id: row.id,
     workspaceId: row.workspace_id,
@@ -185,6 +218,12 @@ function toSession(row: SessionRow): TeachingSessionRecord {
     plannedMinutes: row.planned_minutes,
     actualMinutes: row.actual_minutes,
     evidenceNote: row.evidence_note,
+    civicEducation: civicEducation
+      ? {
+          minutes: civicEducation.minutes,
+          evidenceNote: civicEducation.evidence_note,
+        }
+      : null,
     source: {
       sourceKind: row.source_kind,
       projectedOccurrenceLogicalId: row.projected_occurrence_logical_id,
