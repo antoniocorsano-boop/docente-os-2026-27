@@ -1,42 +1,61 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import test from 'node:test'
 import {
+  civicEducationSchemaCompatibility,
   isMissingCivicEducationSchemaError,
+  isMissingCivicEducationWriteRpcError,
   selectTeachingSessionWriteRpc,
 } from './teaching-session-civic-schema-compat'
 
-test('QL2-A keeps legacy TeachingSession writes on the historical RPC when no civic contribution exists', () => {
-  assert.equal(selectTeachingSessionWriteRpc(null), 'record_teaching_session')
-  assert.equal(selectTeachingSessionWriteRpc(undefined), 'record_teaching_session')
-})
+const hvaWorkflow = readFileSync(resolve(process.cwd(), '../.github/workflows/experience-acceptance.yml'), 'utf8')
 
-test('QL2-A requires the composite RPC only when a civic contribution is actually present', () => {
+test('QL2-A routes current-schema writes through the civic wrapper even when the contribution is omitted', () => {
+  assert.equal(selectTeachingSessionWriteRpc(null), 'record_teaching_session_with_civic_contribution')
+  assert.equal(selectTeachingSessionWriteRpc(undefined), 'record_teaching_session_with_civic_contribution')
   assert.equal(
     selectTeachingSessionWriteRpc({ minutes: 20, evidenceNote: null }),
     'record_teaching_session_with_civic_contribution',
   )
 })
 
-test('QL2-A tolerates only the missing civic contribution table while a candidate is read against the previous schema', () => {
+test('QL2-A previous-schema fallback is explicit and accepts only the known missing civic table or wrapper', () => {
+  const strict = civicEducationSchemaCompatibility(undefined)
+  const previous = civicEducationSchemaCompatibility('previous')
+
+  assert.equal(strict, 'strict')
+  assert.equal(previous, 'previous')
   assert.equal(
     isMissingCivicEducationSchemaError({
       code: 'PGRST205',
       message: "Could not find the table 'public.teaching_session_civic_contributions' in the schema cache",
-    }),
-    true,
+    }, strict),
+    false,
   )
   assert.equal(
     isMissingCivicEducationSchemaError({
       code: 'PGRST205',
-      message: "Could not find the table 'public.teaching_sessions' in the schema cache",
-    }),
-    false,
+      message: "Could not find the table 'public.teaching_session_civic_contributions' in the schema cache",
+    }, previous),
+    true,
   )
   assert.equal(
-    isMissingCivicEducationSchemaError({
-      code: '42501',
-      message: 'permission denied for table teaching_session_civic_contributions',
-    }),
+    isMissingCivicEducationWriteRpcError({
+      code: 'PGRST202',
+      message: "Could not find the function public.record_teaching_session_with_civic_contribution in the schema cache",
+    }, previous),
+    true,
+  )
+  assert.equal(
+    isMissingCivicEducationWriteRpcError({
+      code: 'PGRST202',
+      message: 'Could not find the function public.record_teaching_session in the schema cache',
+    }, previous),
     false,
   )
+})
+
+test('QL2-A HVA is the only governed application path opting into previous civic schema compatibility', () => {
+  assert.match(hvaWorkflow, /application-acceptance:[\s\S]*DOCENTE_OS_CIVIC_SCHEMA_COMPAT:\s*previous/)
 })

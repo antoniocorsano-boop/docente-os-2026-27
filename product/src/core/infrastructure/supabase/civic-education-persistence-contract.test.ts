@@ -36,6 +36,15 @@ test('QL2-A exposes one atomic composite write while preserving the historical T
   assert.match(sql, /reused with different civic education payload/i)
 })
 
+test('QL2-A refuses to attach a new civic payload to a TeachingSession that already existed before the civic receipt boundary', () => {
+  const sql = migrationSql()
+
+  assert.match(sql, /preexisting_registration_session_id/i)
+  assert.match(sql, /public\.teaching_session_registration_receipts/i)
+  assert.match(sql, /preexisting_civic_receipt_session_id/i)
+  assert.match(sql, /cannot gain civic education on retry/i)
+})
+
 test('QL2-A civic persistence is read-only to authenticated table clients and advances runtime lineage', () => {
   const sql = migrationSql()
 
@@ -46,13 +55,15 @@ test('QL2-A civic persistence is read-only to authenticated table clients and ad
   assert.match(sql, /advance_runtime_schema_contract\(\s*'0104_teaching_session_civic_education'\s*\)/i)
 })
 
-test('QL2-A repository routes legacy writes safely and reads civic contributions with additive schema compatibility', () => {
+test('QL2-A repository routes all current-schema writes through civic payload validation and bounds previous-schema fallback', () => {
   const source = readFileSync(repositoryPath, 'utf8')
 
   assert.match(source, /record_teaching_session_with_civic_contribution/)
   assert.match(source, /record_teaching_session/)
   assert.match(source, /selectTeachingSessionWriteRpc/)
+  assert.match(source, /isMissingCivicEducationWriteRpcError/)
   assert.match(source, /isMissingCivicEducationSchemaError/)
+  assert.match(source, /civicEducationSchemaCompatibility/)
   assert.match(source, /target_civic_education_minutes/)
   assert.match(source, /target_civic_education_evidence_note/)
   assert.match(source, /teaching_session_civic_contributions/)
