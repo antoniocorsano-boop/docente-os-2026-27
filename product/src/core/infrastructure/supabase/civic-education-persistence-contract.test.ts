@@ -39,10 +39,27 @@ test('QL2-A exposes one atomic composite write while preserving the historical T
 test('QL2-A refuses to attach a new civic payload to a TeachingSession that already existed before the civic receipt boundary', () => {
   const sql = migrationSql()
 
-  assert.match(sql, /preexisting_registration_session_id/i)
   assert.match(sql, /public\.teaching_session_registration_receipts/i)
-  assert.match(sql, /preexisting_civic_receipt_session_id/i)
-  assert.match(sql, /cannot gain civic education on retry/i)
+  assert.match(
+    sql,
+    /if preexisting_registration_session_id is not null\s+and preexisting_civic_receipt_session_id is null\s+and target_civic_education_minutes is not null then\s+raise exception 'teaching session cannot gain civic education on retry';/i,
+  )
+})
+
+test('QL2-A serializes keyed civic and legacy writes and protects direct historical retries', () => {
+  const sql = migrationSql()
+
+  assert.match(sql, /create or replace function private\.lock_teaching_session_registration_key/i)
+  assert.ok(
+    (sql.match(/perform private\.lock_teaching_session_registration_key\(/gi) ?? []).length >= 2,
+    'both civic and historical public write boundaries must acquire the same keyed transaction lock',
+  )
+  assert.match(sql, /create table private\.teaching_session_civic_atomic_authorizations/i)
+  assert.match(sql, /revoke all on private\.teaching_session_civic_atomic_authorizations from public, anon, authenticated/i)
+  assert.match(
+    sql,
+    /create or replace function public\.record_teaching_session\([\s\S]*teaching_session_civic_atomic_authorizations[\s\S]*teaching session with civic contribution requires composite retry boundary/i,
+  )
 })
 
 test('QL2-A civic persistence is read-only to authenticated table clients and advances runtime lineage', () => {
@@ -61,7 +78,7 @@ test('QL2-A repository routes all current-schema writes through civic payload va
   assert.match(source, /record_teaching_session_with_civic_contribution/)
   assert.match(source, /record_teaching_session/)
   assert.match(source, /selectTeachingSessionWriteRpc/)
-  assert.match(source, /isMissingCivicEducationWriteRpcError/)
+  assert.match(source, /shouldFallbackToLegacyTeachingSessionRpc/)
   assert.match(source, /isMissingCivicEducationSchemaError/)
   assert.match(source, /civicEducationSchemaCompatibility/)
   assert.match(source, /target_civic_education_minutes/)
