@@ -107,7 +107,15 @@ interface TeachingSessionRpcClient {
   }): RpcResult<string>
 }
 
+type TeachingSessionRepositoryClient = TeachingSessionRpcClient & TeachingSessionReadClient
+type ClientFactory = () => Promise<TeachingSessionRepositoryClient>
+
 export class SupabaseTeachingSessionRepository {
+  constructor(
+    private readonly clientFactory: ClientFactory = async () =>
+      await createClient() as unknown as TeachingSessionRepositoryClient,
+  ) {}
+
   async record(input: {
     workspaceId: string
     academicYearId: string
@@ -115,8 +123,7 @@ export class SupabaseTeachingSessionRepository {
     allocations: TeachingSessionAllocationDraft[]
     supersedesSessionId?: string | null
   }) {
-    const supabase = await createClient()
-    const rpc = supabase as unknown as TeachingSessionRpcClient
+    const rpc = await this.clientFactory()
     const civicEducation = input.session.civicEducation ?? null
     const compatibility = civicEducationSchemaCompatibility(process.env.DOCENTE_OS_CIVIC_SCHEMA_COMPAT)
     const writeRpc = selectTeachingSessionWriteRpc(civicEducation)
@@ -173,8 +180,7 @@ export class SupabaseTeachingSessionRepository {
   }
 
   async listByDay(workspaceId: string, academicYearId: string, localDate: string): Promise<TeachingSessionRecord[]> {
-    const supabase = await createClient()
-    const read = supabase as unknown as TeachingSessionReadClient
+    const read = await this.clientFactory()
     const { data, error } = await read
       .from('teaching_sessions')
       .select('*')
@@ -190,8 +196,7 @@ export class SupabaseTeachingSessionRepository {
   }
 
   async listBySection(workspaceId: string, academicYearId: string, sectionId: string): Promise<TeachingSessionSnapshot> {
-    const supabase = await createClient()
-    const read = supabase as unknown as TeachingSessionReadClient
+    const read = await this.clientFactory()
     const sessionQuery = read
       .from('teaching_sessions')
       .select('*')
