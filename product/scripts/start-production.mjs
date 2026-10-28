@@ -3,7 +3,7 @@ import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
 
-const EXPECTED_RUNTIME_MIGRATION = '0103_material_reference_safety'
+const EXPECTED_RUNTIME_MIGRATION = '0104_teaching_session_civic_education'
 const port = process.env.PORT?.trim() || '3000'
 const nextBin = process.platform === 'win32' ? 'next.cmd' : 'next'
 
