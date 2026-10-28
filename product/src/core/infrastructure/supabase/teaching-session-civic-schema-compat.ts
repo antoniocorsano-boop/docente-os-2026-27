@@ -36,3 +36,16 @@ export function isMissingCivicEducationWriteRpcError(
     && error.code === 'PGRST202'
     && error.message.includes('public.record_teaching_session_with_civic_contribution')
 }
+
+export function shouldFallbackToLegacyTeachingSessionRpc({
+  civicEducation,
+  error,
+  compatibility,
+}: {
+  civicEducation: CivicEducationContribution | null | undefined
+  error: CivicEducationSchemaError
+  compatibility: CivicEducationSchemaCompatibility
+}) {
+  return civicEducation == null
+    && isMissingCivicEducationWriteRpcError(error, compatibility)
+}

@@ -9,8 +9,8 @@ import { createClient } from '@/lib/supabase/server'
 import {
   civicEducationSchemaCompatibility,
   isMissingCivicEducationSchemaError,
-  isMissingCivicEducationWriteRpcError,
   selectTeachingSessionWriteRpc,
+  shouldFallbackToLegacyTeachingSessionRpc,
 } from './teaching-session-civic-schema-compat'
 
 type DbError = { message: string; code?: string | null }
@@ -156,8 +156,11 @@ export class SupabaseTeachingSessionRepository {
 
     if (
       error
-      && civicEducation === null
-      && isMissingCivicEducationWriteRpcError(error, compatibility)
+      && shouldFallbackToLegacyTeachingSessionRpc({
+        civicEducation,
+        error,
+        compatibility,
+      })
     ) {
       const legacyResult = await rpc.rpc('record_teaching_session', args)
       data = legacyResult.data
