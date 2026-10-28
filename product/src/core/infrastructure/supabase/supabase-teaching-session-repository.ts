@@ -7,7 +7,9 @@ import type {
 } from '@/core/domain/teaching-session'
 import { createClient } from '@/lib/supabase/server'
 import {
+  civicEducationSchemaCompatibility,
   isMissingCivicEducationSchemaError,
+  isMissingCivicEducationWriteRpcError,
   selectTeachingSessionWriteRpc,
 } from './teaching-session-civic-schema-compat'
 
@@ -116,6 +118,7 @@ export class SupabaseTeachingSessionRepository {
     const supabase = await createClient()
     const rpc = supabase as unknown as TeachingSessionRpcClient
     const civicEducation = input.session.civicEducation ?? null
+    const compatibility = civicEducationSchemaCompatibility(process.env.DOCENTE_OS_CIVIC_SCHEMA_COMPAT)
     const writeRpc = selectTeachingSessionWriteRpc(civicEducation)
     const args: TeachingSessionRpcArgs = {
       target_workspace_id: input.workspaceId,
@@ -143,13 +146,23 @@ export class SupabaseTeachingSessionRepository {
       })),
     }
 
-    const { data, error } = writeRpc === 'record_teaching_session'
-      ? await rpc.rpc(writeRpc, args)
-      : await rpc.rpc(writeRpc, {
-          ...args,
-          target_civic_education_minutes: civicEducation?.minutes ?? null,
-          target_civic_education_evidence_note: civicEducation?.evidenceNote ?? null,
-        })
+    const compositeResult = await rpc.rpc(writeRpc, {
+      ...args,
+      target_civic_education_minutes: civicEducation?.minutes ?? null,
+      target_civic_education_evidence_note: civicEducation?.evidenceNote ?? null,
+    })
+    let data = compositeResult.data
+    let error = compositeResult.error
+
+    if (
+      error
+      && civicEducation === null
+      && isMissingCivicEducationWriteRpcError(error, compatibility)
+    ) {
+      const legacyResult = await rpc.rpc('record_teaching_session', args)
+      data = legacyResult.data
+      error = legacyResult.error
+    }
 
     if (error) throw new Error(error.message)
     if (!data) throw new Error('Teaching session receipt missing')
@@ -217,7 +230,8 @@ async function loadCivicEducation(read: TeachingSessionReadClient, sessionIds: s
     .order('created_at', { ascending: true })
 
   if (error) {
-    if (isMissingCivicEducationSchemaError(error)) return bySession
+    const compatibility = civicEducationSchemaCompatibility(process.env.DOCENTE_OS_CIVIC_SCHEMA_COMPAT)
+    if (isMissingCivicEducationSchemaError(error, compatibility)) return bySession
     throw new Error(error.message)
   }
   for (const contribution of data ?? []) bySession.set(contribution.session_id, contribution)

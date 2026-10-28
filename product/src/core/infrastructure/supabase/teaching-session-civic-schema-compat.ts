@@ -5,15 +5,34 @@ export type CivicEducationSchemaError = {
   message: string
 }
 
-export function selectTeachingSessionWriteRpc(
-  civicEducation: CivicEducationContribution | null | undefined,
-) {
-  return civicEducation
-    ? 'record_teaching_session_with_civic_contribution' as const
-    : 'record_teaching_session' as const
+export type CivicEducationSchemaCompatibility = 'strict' | 'previous'
+
+export function civicEducationSchemaCompatibility(
+  value: string | null | undefined,
+): CivicEducationSchemaCompatibility {
+  return value === 'previous' ? 'previous' : 'strict'
 }
 
-export function isMissingCivicEducationSchemaError(error: CivicEducationSchemaError) {
-  return error.code === 'PGRST205'
+export function selectTeachingSessionWriteRpc(
+  _civicEducation: CivicEducationContribution | null | undefined,
+) {
+  return 'record_teaching_session_with_civic_contribution' as const
+}
+
+export function isMissingCivicEducationSchemaError(
+  error: CivicEducationSchemaError,
+  compatibility: CivicEducationSchemaCompatibility = 'strict',
+) {
+  return compatibility === 'previous'
+    && error.code === 'PGRST205'
     && error.message.includes("public.teaching_session_civic_contributions")
+}
+
+export function isMissingCivicEducationWriteRpcError(
+  error: CivicEducationSchemaError,
+  compatibility: CivicEducationSchemaCompatibility = 'strict',
+) {
+  return compatibility === 'previous'
+    && error.code === 'PGRST202'
+    && error.message.includes('public.record_teaching_session_with_civic_contribution')
 }

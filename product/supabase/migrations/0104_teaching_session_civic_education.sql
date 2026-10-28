@@ -90,6 +90,8 @@ declare
   stored_session_id uuid;
   stored_civic_minutes integer;
   stored_civic_evidence_note text;
+  preexisting_registration_session_id uuid;
+  preexisting_civic_receipt_session_id uuid;
 begin
   normalized_civic_evidence_note := nullif(btrim(coalesce(target_civic_education_evidence_note, '')), '');
 
@@ -132,6 +134,30 @@ begin
       coalesce(target_civic_education_minutes::text, ''),
       coalesce(normalized_civic_evidence_note, '')
     ));
+
+    select receipt.session_id
+      into preexisting_registration_session_id
+    from public.teaching_session_registration_receipts receipt
+    where receipt.workspace_id = target_workspace_id
+      and receipt.academic_year_id = target_academic_year_id
+      and receipt.section_id = target_section_id
+      and receipt.recorded_by = actor
+      and receipt.registration_key = registration_key_value;
+
+    select receipt.session_id
+      into preexisting_civic_receipt_session_id
+    from public.teaching_session_civic_registration_receipts receipt
+    where receipt.workspace_id = target_workspace_id
+      and receipt.academic_year_id = target_academic_year_id
+      and receipt.section_id = target_section_id
+      and receipt.recorded_by = actor
+      and receipt.registration_key = registration_key_value;
+
+    if preexisting_registration_session_id is not null
+       and preexisting_civic_receipt_session_id is null
+       and target_civic_education_minutes is not null then
+      raise exception 'teaching session cannot gain civic education on retry';
+    end if;
   end if;
 
   -- Preserve the historical authoritative TeachingSession boundary. Its own
