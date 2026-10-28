@@ -46,10 +46,13 @@ test('QL2-A civic persistence is read-only to authenticated table clients and ad
   assert.match(sql, /advance_runtime_schema_contract\(\s*'0104_teaching_session_civic_education'\s*\)/i)
 })
 
-test('QL2-A repository writes through the composite RPC and reads civic contributions with sessions', () => {
+test('QL2-A repository routes legacy writes safely and reads civic contributions with additive schema compatibility', () => {
   const source = readFileSync(repositoryPath, 'utf8')
 
   assert.match(source, /record_teaching_session_with_civic_contribution/)
+  assert.match(source, /record_teaching_session/)
+  assert.match(source, /selectTeachingSessionWriteRpc/)
+  assert.match(source, /isMissingCivicEducationSchemaError/)
   assert.match(source, /target_civic_education_minutes/)
   assert.match(source, /target_civic_education_evidence_note/)
   assert.match(source, /teaching_session_civic_contributions/)

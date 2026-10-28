@@ -6,8 +6,12 @@ import type {
   TeachingSessionSnapshot,
 } from '@/core/domain/teaching-session'
 import { createClient } from '@/lib/supabase/server'
+import {
+  isMissingCivicEducationSchemaError,
+  selectTeachingSessionWriteRpc,
+} from './teaching-session-civic-schema-compat'
 
-type DbError = { message: string }
+type DbError = { message: string; code?: string | null }
 type RpcResult<T> = Promise<{ data: T | null; error: DbError | null }>
 type QueryResult<T> = { data: T[] | null; error: DbError | null }
 
@@ -67,31 +71,35 @@ interface TeachingSessionReadClient {
   from(table: 'teaching_session_civic_contributions'): TableBuilder<CivicContributionRow>
 }
 
+type TeachingSessionRpcArgs = {
+  target_workspace_id: string
+  target_academic_year_id: string
+  target_section_id: string
+  target_discipline_id: string | null
+  target_local_date: string
+  target_planned_start_time: string | null
+  target_planned_end_time: string | null
+  target_planned_minutes: number | null
+  target_actual_minutes: number
+  target_evidence_note: string | null
+  target_source_kind: TeachingSessionDraft['source']['sourceKind']
+  target_projected_occurrence_logical_id: string | null
+  target_source_timetable_version_id: string | null
+  target_source_timetable_slot_id: string | null
+  target_source_calendar_state: TeachingSessionDraft['source']['calendarState']
+  target_source_provenance: string[]
+  target_supersedes_session_id: string | null
+  target_allocations: Array<{
+    block_id: string
+    minutes: number
+    canonical_plan_asset_id: string
+    canonical_generation_id: string
+  }>
+}
+
 interface TeachingSessionRpcClient {
-  rpc(name: 'record_teaching_session_with_civic_contribution', args: {
-    target_workspace_id: string
-    target_academic_year_id: string
-    target_section_id: string
-    target_discipline_id: string | null
-    target_local_date: string
-    target_planned_start_time: string | null
-    target_planned_end_time: string | null
-    target_planned_minutes: number | null
-    target_actual_minutes: number
-    target_evidence_note: string | null
-    target_source_kind: TeachingSessionDraft['source']['sourceKind']
-    target_projected_occurrence_logical_id: string | null
-    target_source_timetable_version_id: string | null
-    target_source_timetable_slot_id: string | null
-    target_source_calendar_state: TeachingSessionDraft['source']['calendarState']
-    target_source_provenance: string[]
-    target_supersedes_session_id: string | null
-    target_allocations: Array<{
-      block_id: string
-      minutes: number
-      canonical_plan_asset_id: string
-      canonical_generation_id: string
-    }>
+  rpc(name: 'record_teaching_session', args: TeachingSessionRpcArgs): RpcResult<string>
+  rpc(name: 'record_teaching_session_with_civic_contribution', args: TeachingSessionRpcArgs & {
     target_civic_education_minutes: number | null
     target_civic_education_evidence_note: string | null
   }): RpcResult<string>
@@ -107,7 +115,9 @@ export class SupabaseTeachingSessionRepository {
   }) {
     const supabase = await createClient()
     const rpc = supabase as unknown as TeachingSessionRpcClient
-    const { data, error } = await rpc.rpc('record_teaching_session_with_civic_contribution', {
+    const civicEducation = input.session.civicEducation ?? null
+    const writeRpc = selectTeachingSessionWriteRpc(civicEducation)
+    const args: TeachingSessionRpcArgs = {
       target_workspace_id: input.workspaceId,
       target_academic_year_id: input.academicYearId,
       target_section_id: input.session.sectionId,
@@ -131,9 +141,15 @@ export class SupabaseTeachingSessionRepository {
         canonical_plan_asset_id: allocation.canonicalPlanAssetId,
         canonical_generation_id: allocation.canonicalGenerationId,
       })),
-      target_civic_education_minutes: input.session.civicEducation?.minutes ?? null,
-      target_civic_education_evidence_note: input.session.civicEducation?.evidenceNote ?? null,
-    })
+    }
+
+    const { data, error } = writeRpc === 'record_teaching_session'
+      ? await rpc.rpc(writeRpc, args)
+      : await rpc.rpc(writeRpc, {
+          ...args,
+          target_civic_education_minutes: civicEducation?.minutes ?? null,
+          target_civic_education_evidence_note: civicEducation?.evidenceNote ?? null,
+        })
 
     if (error) throw new Error(error.message)
     if (!data) throw new Error('Teaching session receipt missing')
@@ -200,7 +216,10 @@ async function loadCivicEducation(read: TeachingSessionReadClient, sessionIds: s
     .in('session_id', sessionIds)
     .order('created_at', { ascending: true })
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    if (isMissingCivicEducationSchemaError(error)) return bySession
+    throw new Error(error.message)
+  }
   for (const contribution of data ?? []) bySession.set(contribution.session_id, contribution)
   return bySession
 }
