@@ -142,9 +142,9 @@ begin
 
   if atomic_marker_count > 0 and not exists (
     select 1
-    from private.teaching_evidence_atomic_authorizations authorization
-    where authorization.transaction_id = txid_current()
-      and authorization.actor_id = actor
+    from private.teaching_evidence_atomic_authorizations as atomic_authorization
+    where atomic_authorization.transaction_id = txid_current()
+      and atomic_authorization.actor_id = actor
   ) then
     raise exception 'teaching evidence atomic provenance marker is reserved';
   end if;
@@ -190,10 +190,10 @@ begin
        )
        and not exists (
          select 1
-         from private.teaching_session_civic_atomic_authorizations authorization
-         where authorization.transaction_id = txid_current()
-           and authorization.actor_id = actor
-           and authorization.registration_key = registration_key_value
+         from private.teaching_session_civic_atomic_authorizations as atomic_authorization
+         where atomic_authorization.transaction_id = txid_current()
+           and atomic_authorization.actor_id = actor
+           and atomic_authorization.registration_key = registration_key_value
        ) then
       raise exception 'teaching session with civic contribution requires composite retry boundary';
     end if;
@@ -382,19 +382,19 @@ begin
     );
   exception when others then
     if registration_key_value is not null then
-      delete from private.teaching_session_civic_atomic_authorizations authorization
-      where authorization.transaction_id = txid_current()
-        and authorization.actor_id = actor
-        and authorization.registration_key = registration_key_value;
+      delete from private.teaching_session_civic_atomic_authorizations as atomic_authorization
+      where atomic_authorization.transaction_id = txid_current()
+        and atomic_authorization.actor_id = actor
+        and atomic_authorization.registration_key = registration_key_value;
     end if;
     raise;
   end;
 
   if registration_key_value is not null then
-    delete from private.teaching_session_civic_atomic_authorizations authorization
-    where authorization.transaction_id = txid_current()
-      and authorization.actor_id = actor
-      and authorization.registration_key = registration_key_value;
+    delete from private.teaching_session_civic_atomic_authorizations as atomic_authorization
+    where atomic_authorization.transaction_id = txid_current()
+      and atomic_authorization.actor_id = actor
+      and atomic_authorization.registration_key = registration_key_value;
 
     insert into public.teaching_session_civic_registration_receipts (
       workspace_id,
