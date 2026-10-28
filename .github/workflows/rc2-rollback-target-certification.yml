@@ -1,0 +1,255 @@
+name: RC2 Rollback Target Certification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - develop
+    types: [opened, reopened, synchronize]
+    paths:
+      - '.github/workflows/rc2-rollback-target-certification.yml'
+      - 'ops/release/0.1.0-rc.3-rollback-target-certification-request.json'
+      - 'ops/release/0.1.0-rc.3-rollback-target-certification.json'
+      - 'ops/release/0.1.0-rc.3-freeze-candidate.json'
+
+permissions:
+  actions: read
+  contents: read
+  statuses: write
+
+env:
+  RC2_SHA: 617b4f8901259ce2318ce721236241d7681b1c9c
+  RC2_TAG: v0.1.0-rc.2
+  QUALIFICATION_HEAD_SHA: d3edcaf66730f0457d42559d08595ac45da70b80
+  QUALIFICATION_RUN_ID: '40591418391'
+  QUALIFICATION_ARTIFACT_ID: '12774313447'
+  QUALIFICATION_ARTIFACT_DIGEST: sha256:f2592ab6907157373476c86f1da303f8804c173ee90b5390c39a94229d2194eb
+  REQUEST_PATH: ops/release/0.1.0-rc.3-rollback-target-certification-request.json
+  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+
+jobs:
+  preflight:
+    name: verify-immutable-candidate-and-qualification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout certification request head
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify certification request contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs')
+          const request = JSON.parse(fs.readFileSync(process.env.REQUEST_PATH, 'utf8'))
+          const expected = {
+            schema: 'docente-os.rc3-rollback-target-certification-request.v1',
+            scope: 'RC3_ROLLBACK_ONLY',
+            version: '0.1.0-rc.2',
+            sha: process.env.RC2_SHA,
+            tag: process.env.RC2_TAG,
+            qualificationHeadSha: process.env.QUALIFICATION_HEAD_SHA,
+            qualificationRunId: Number(process.env.QUALIFICATION_RUN_ID),
+            artifactId: Number(process.env.QUALIFICATION_ARTIFACT_ID),
+            artifactDigest: process.env.QUALIFICATION_ARTIFACT_DIGEST,
+          }
+          if (request.schema !== expected.schema) throw new Error(`unexpected schema: ${request.schema}`)
+          if (request.scope !== expected.scope) throw new Error(`unexpected scope: ${request.scope}`)
+          if (request.candidate?.version !== expected.version) throw new Error('candidate version mismatch')
+          if (request.candidate?.sha !== expected.sha) throw new Error('candidate SHA mismatch')
+          if (request.candidate?.sourceTag !== expected.tag) throw new Error('candidate tag mismatch')
+          if (request.qualification?.headSha !== expected.qualificationHeadSha) throw new Error('qualification head mismatch')
+          if (request.qualification?.runId !== expected.qualificationRunId) throw new Error('qualification run mismatch')
+          if (request.qualification?.artifactId !== expected.artifactId) throw new Error('qualification artifact id mismatch')
+          if (request.qualification?.artifactDigest !== expected.artifactDigest) throw new Error('qualification artifact digest mismatch')
+          if (request.humanDecision?.decision !== 'AUTHORIZE_RC2_AS_RC3_ROLLBACK_TARGET_IF_CERTIFICATION_GATES_PASS') throw new Error('human authorization missing')
+          if (request.humanDecision?.productionPromotionAuthorized !== false) throw new Error('Production promotion must remain unauthorized')
+          if (request.humanDecision?.productionDeployAuthorized !== false) throw new Error('Production deploy must remain unauthorized')
+          if (request.humanDecision?.productionRollbackExecutionAuthorized !== false) throw new Error('Production rollback execution must remain unauthorized')
+          if (request.humanDecision?.databaseMutationAuthorized !== false) throw new Error('database mutation must remain unauthorized')
+          NODE
+
+      - name: Verify immutable rc.2 tag binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          resolved="$(git rev-list -n 1 "refs/tags/${RC2_TAG}")"
+          echo "${RC2_TAG} -> ${resolved}"
+          test "$resolved" = "$RC2_SHA"
+
+      - name: Verify qualified rc.2 evidence on GitHub
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner
+            const repo = context.repo.repo
+            const qualificationHead = process.env.QUALIFICATION_HEAD_SHA
+            const runId = Number(process.env.QUALIFICATION_RUN_ID)
+            const artifactId = Number(process.env.QUALIFICATION_ARTIFACT_ID)
+            const expectedDigest = process.env.QUALIFICATION_ARTIFACT_DIGEST
+
+            const combined = await github.rest.repos.getCombinedStatusForRef({ owner, repo, ref: qualificationHead })
+            const qualificationStatus = combined.data.statuses.find((status) => status.context === 'release/rc2-rollback-qualification')
+            if (!qualificationStatus || qualificationStatus.state !== 'success') {
+              core.setFailed('release/rc2-rollback-qualification is not SUCCESS on the exact qualification head')
+              return
+            }
+
+            const run = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId })
+            if (run.data.head_sha !== qualificationHead || run.data.conclusion !== 'success') {
+              core.setFailed(`qualification run mismatch: head=${run.data.head_sha} conclusion=${run.data.conclusion}`)
+              return
+            }
+
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({ owner, repo, run_id: runId, per_page: 100 })
+            const artifact = artifacts.data.artifacts.find((item) => item.id === artifactId)
+            if (!artifact || artifact.expired) {
+              core.setFailed('qualification artifact missing or expired')
+              return
+            }
+            if (artifact.digest && artifact.digest !== expectedDigest) {
+              core.setFailed(`qualification artifact digest mismatch: ${artifact.digest}`)
+            }
+
+  operational-security-current:
+    name: current-operational-security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require operational security credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${E2E_PASSWORD:-}"
+
+      - name: Checkout current release-governance head
+        uses: actions/checkout@v6
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install current product dependencies
+        working-directory: product
+        run: npm ci --no-audit --no-fund
+
+      - name: Run current Operational Security contract against Beta
+        working-directory: product
+        run: node e2e/operational-security.spec.mjs
+
+  production-readiness-current:
+    name: current-production-readiness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current release-governance head
+        uses: actions/checkout@v6
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate current Production Readiness Review contract
+        run: node .github/scripts/validate-production-readiness-review.mjs
+
+  certify:
+    name: certify-rc2-for-rc3-rollback-only
+    if: always()
+    needs:
+      - preflight
+      - operational-security-current
+      - production-readiness-current
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout certification request head
+        uses: actions/checkout@v6
+
+      - name: Generate rollback-target certification receipt
+        env:
+          PREFLIGHT_RESULT: ${{ needs.preflight.result }}
+          OPERATIONAL_SECURITY_RESULT: ${{ needs.operational-security-current.result }}
+          PRODUCTION_READINESS_RESULT: ${{ needs.production-readiness-current.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/release-certification
+          node <<'NODE'
+          const fs = require('node:fs')
+          const request = JSON.parse(fs.readFileSync(process.env.REQUEST_PATH, 'utf8'))
+          const gates = {
+            immutableCandidateAndQualification: process.env.PREFLIGHT_RESULT,
+            currentOperationalSecurity: process.env.OPERATIONAL_SECURITY_RESULT,
+            currentProductionReadiness: process.env.PRODUCTION_READINESS_RESULT,
+          }
+          const pass = Object.values(gates).every((value) => value === 'success')
+          const receipt = {
+            schema: 'docente-os.rc3-rollback-target-certification-receipt.v1',
+            generatedAtUtc: new Date().toISOString(),
+            certificationHeadSha: process.env.GITHUB_SHA,
+            scope: 'RC3_ROLLBACK_ONLY',
+            candidate: request.candidate,
+            qualification: request.qualification,
+            currentDataPlane: request.currentDataPlane,
+            gates,
+            humanDecision: request.humanDecision,
+            decision: pass ? 'CERTIFIED_FOR_RC3_ROLLBACK_TARGET' : 'HOLD',
+            certifiedForRc3RollbackTarget: pass,
+            safeApplicationRollbackClaimAllowed: pass,
+            productionPromotionAuthorized: false,
+            productionDeployAuthorized: false,
+            productionRollbackExecutionAuthorized: false,
+            databaseMutationAuthorized: false,
+            databaseRestoreAuthorized: false,
+            applicationRollbackImpliesSchemaDowngrade: false,
+          }
+          fs.writeFileSync('test-results/release-certification/rc2-rollback-target-certification.json', JSON.stringify(receipt, null, 2) + '\n')
+          NODE
+
+      - name: Enforce rollback-target certification receipt
+        id: enforce
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs')
+          const receipt = JSON.parse(fs.readFileSync('test-results/release-certification/rc2-rollback-target-certification.json', 'utf8'))
+          if (receipt.decision !== 'CERTIFIED_FOR_RC3_ROLLBACK_TARGET') {
+            throw new Error(`rollback-target certification HOLD: ${JSON.stringify(receipt.gates)}`)
+          }
+          if (receipt.scope !== 'RC3_ROLLBACK_ONLY') throw new Error('unexpected certification scope')
+          if (receipt.productionPromotionAuthorized || receipt.productionDeployAuthorized || receipt.productionRollbackExecutionAuthorized || receipt.databaseMutationAuthorized) {
+            throw new Error('certification receipt crossed an authority boundary')
+          }
+          NODE
+
+      - name: Upload rollback-target certification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc2-rollback-target-certification-${{ github.run_id }}
+          path: test-results/release-certification
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish rollback-target certification status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          ENFORCE_OUTCOME: ${{ steps.enforce.outcome }}
+        with:
+          script: |
+            const ok = process.env.ENFORCE_OUTCOME === 'success'
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: ok ? 'success' : 'failure',
+              context: 'release/rc2-rollback-certification',
+              description: ok ? 'rc.2 certified for rc.3 rollback target only' : 'rc.2 rollback-target certification held',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
