@@ -80,10 +80,10 @@ set search_path = ''
 as $$
 declare
   actor uuid := auth.uid();
-  session_id uuid;
+  recorded_session_id_value uuid;
   registration_marker_count integer := 0;
   registration_key_text text;
-  registration_key uuid;
+  registration_key_value uuid;
   normalized_civic_evidence_note text;
   computed_signature text;
   stored_signature text;
@@ -118,7 +118,7 @@ begin
 
   if registration_marker_count = 1 then
     begin
-      registration_key := registration_key_text::uuid;
+      registration_key_value := registration_key_text::uuid;
     exception when invalid_text_representation then
       raise exception 'invalid teaching session registration key';
     end;
@@ -128,7 +128,7 @@ begin
       target_workspace_id::text,
       target_academic_year_id::text,
       target_section_id::text,
-      registration_key::text,
+      registration_key_value::text,
       coalesce(target_civic_education_minutes::text, ''),
       coalesce(normalized_civic_evidence_note, '')
     ));
@@ -137,7 +137,7 @@ begin
   -- Preserve the historical authoritative TeachingSession boundary. Its own
   -- registration receipt still validates the complete non-civic payload and
   -- resolves exact retries before this wrapper binds the transverse payload.
-  session_id := public.record_teaching_session(
+  recorded_session_id_value := public.record_teaching_session(
     target_workspace_id,
     target_academic_year_id,
     target_section_id,
@@ -158,7 +158,7 @@ begin
     target_allocations
   );
 
-  if registration_key is not null then
+  if registration_key_value is not null then
     insert into public.teaching_session_civic_registration_receipts (
       workspace_id,
       academic_year_id,
@@ -172,9 +172,9 @@ begin
       target_academic_year_id,
       target_section_id,
       actor,
-      registration_key,
+      registration_key_value,
       computed_signature,
-      session_id
+      recorded_session_id_value
     )
     on conflict (workspace_id, academic_year_id, section_id, recorded_by, registration_key)
     do nothing;
@@ -186,11 +186,11 @@ begin
       and receipt.academic_year_id = target_academic_year_id
       and receipt.section_id = target_section_id
       and receipt.recorded_by = actor
-      and receipt.registration_key = registration_key
+      and receipt.registration_key = registration_key_value
     for update;
 
     if stored_session_id is null
-       or stored_session_id <> session_id
+       or stored_session_id <> recorded_session_id_value
        or stored_signature is distinct from computed_signature then
       raise exception 'teaching session registration key reused with different civic education payload';
     end if;
@@ -202,7 +202,7 @@ begin
       minutes,
       evidence_note
     ) values (
-      session_id,
+      recorded_session_id_value,
       target_civic_education_minutes,
       normalized_civic_evidence_note
     )
@@ -211,7 +211,7 @@ begin
     select contribution.minutes, contribution.evidence_note
       into stored_civic_minutes, stored_civic_evidence_note
     from public.teaching_session_civic_contributions contribution
-    where contribution.session_id = session_id
+    where contribution.session_id = recorded_session_id_value
     for update;
 
     if stored_civic_minutes is distinct from target_civic_education_minutes
@@ -221,12 +221,12 @@ begin
   elsif exists (
     select 1
     from public.teaching_session_civic_contributions contribution
-    where contribution.session_id = session_id
+    where contribution.session_id = recorded_session_id_value
   ) then
     raise exception 'teaching session civic contribution already exists with different payload';
   end if;
 
-  return session_id;
+  return recorded_session_id_value;
 end;
 $$;
 
