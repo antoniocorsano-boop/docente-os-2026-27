@@ -1,0 +1,56 @@
+{
+  "schema": "docente-os.rc3-rollback-target-certification-request.v1",
+  "requestedAt": "2026-10-28",
+  "scope": "RC3_ROLLBACK_ONLY",
+  "candidate": {
+    "version": "0.1.0-rc.2",
+    "sha": "617b4f8901259ce2318ce721236241d7681b1c9c",
+    "sourceTag": "v0.1.0-rc.2",
+    "publishedPrerelease": true
+  },
+  "qualification": {
+    "pr": 766,
+    "headSha": "d3edcaf66730f0457d42559d08595ac45da70b80",
+    "runId": 40591418391,
+    "statusContext": "release/rc2-rollback-qualification",
+    "artifactId": 12774313447,
+    "artifactDigest": "sha256:f2592ab6907157373476c86f1da303f8804c173ee90b5390c39a94229d2194eb",
+    "observationsPassed": "26/26",
+    "journeyReceiptsPassed": 16,
+    "findings": 0,
+    "compatibilityStatus": "DEMONSTRATED_COMPATIBLE_WITH_CURRENT_AAL2_DATA_PLANE"
+  },
+  "currentDataPlane": {
+    "environment": "Beta",
+    "runtimeSchemaWatermark": "0103_material_reference_safety",
+    "aal2Enforced": true
+  },
+  "requiredCertificationEvidence": {
+    "immutableTagBinding": true,
+    "qualifiedCompatibilityEvidence": true,
+    "currentOperationalSecurity": "REQUIRED_FRESH",
+    "currentProductionReadiness": "REQUIRED_FRESH",
+    "explicitHumanOwnerDecision": true
+  },
+  "humanDecision": {
+    "decision": "AUTHORIZE_RC2_AS_RC3_ROLLBACK_TARGET_IF_CERTIFICATION_GATES_PASS",
+    "decisionDate": "2026-10-28",
+    "decisionSource": "EXPLICIT_HUMAN_OWNER_AUTHORIZATION_IN_CHAT",
+    "scope": "RC3_ROLLBACK_ONLY",
+    "productionPromotionAuthorized": false,
+    "productionDeployAuthorized": false,
+    "productionRollbackExecutionAuthorized": false,
+    "databaseMutationAuthorized": false,
+    "databaseRestoreAuthorized": false,
+    "rc3TagCreationAuthorized": false,
+    "rc3PrereleasePublicationAuthorized": false,
+    "mergeAuthorized": false
+  },
+  "certificationEffectIfAllGatesPass": {
+    "certifiedForRc3RollbackTarget": true,
+    "safeApplicationRollbackClaimAllowed": true,
+    "applicationRollbackImpliesSchemaDowngrade": false,
+    "globalRc2ProductionPromotion": false,
+    "globalRc2ReleaseStateMutationRequired": false
+  }
+}
