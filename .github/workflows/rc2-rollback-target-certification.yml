@@ -18,6 +18,7 @@ permissions:
   statuses: write
 
 env:
+  EXACT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
   RC2_SHA: 617b4f8901259ce2318ce721236241d7681b1c9c
   RC2_TAG: v0.1.0-rc.2
   QUALIFICATION_HEAD_SHA: d3edcaf66730f0457d42559d08595ac45da70b80
@@ -35,10 +36,17 @@ jobs:
     name: verify-immutable-candidate-and-qualification
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout certification request head
+      - name: Checkout exact certification request head
         uses: actions/checkout@v6
         with:
+          ref: ${{ env.EXACT_HEAD_SHA }}
           fetch-depth: 0
+
+      - name: Verify exact certification head checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXACT_HEAD_SHA"
 
       - name: Verify certification request contract
         shell: bash
@@ -126,8 +134,10 @@ jobs:
           set -euo pipefail
           test -n "${E2E_PASSWORD:-}"
 
-      - name: Checkout current release-governance head
+      - name: Checkout exact current release-governance head
         uses: actions/checkout@v6
+        with:
+          ref: ${{ env.EXACT_HEAD_SHA }}
 
       - name: Set up Node 22
         uses: actions/setup-node@v4
@@ -146,8 +156,10 @@ jobs:
     name: current-production-readiness
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout current release-governance head
+      - name: Checkout exact current release-governance head
         uses: actions/checkout@v6
+        with:
+          ref: ${{ env.EXACT_HEAD_SHA }}
 
       - name: Set up Node 22
         uses: actions/setup-node@v4
@@ -166,8 +178,10 @@ jobs:
       - production-readiness-current
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout certification request head
+      - name: Checkout exact certification request head
         uses: actions/checkout@v6
+        with:
+          ref: ${{ env.EXACT_HEAD_SHA }}
 
       - name: Generate rollback-target certification receipt
         env:
@@ -190,7 +204,7 @@ jobs:
           const receipt = {
             schema: 'docente-os.rc3-rollback-target-certification-receipt.v1',
             generatedAtUtc: new Date().toISOString(),
-            certificationHeadSha: process.env.GITHUB_SHA,
+            certificationHeadSha: process.env.EXACT_HEAD_SHA,
             scope: 'RC3_ROLLBACK_ONLY',
             candidate: request.candidate,
             qualification: request.qualification,
@@ -221,6 +235,7 @@ jobs:
           if (receipt.decision !== 'CERTIFIED_FOR_RC3_ROLLBACK_TARGET') {
             throw new Error(`rollback-target certification HOLD: ${JSON.stringify(receipt.gates)}`)
           }
+          if (receipt.certificationHeadSha !== process.env.EXACT_HEAD_SHA) throw new Error('certification receipt is not bound to the exact PR head')
           if (receipt.scope !== 'RC3_ROLLBACK_ONLY') throw new Error('unexpected certification scope')
           if (receipt.productionPromotionAuthorized || receipt.productionDeployAuthorized || receipt.productionRollbackExecutionAuthorized || receipt.databaseMutationAuthorized) {
             throw new Error('certification receipt crossed an authority boundary')
@@ -247,7 +262,7 @@ jobs:
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: context.sha,
+              sha: process.env.EXACT_HEAD_SHA,
               state: ok ? 'success' : 'failure',
               context: 'release/rc2-rollback-certification',
               description: ok ? 'rc.2 certified for rc.3 rollback target only' : 'rc.2 rollback-target certification held',
