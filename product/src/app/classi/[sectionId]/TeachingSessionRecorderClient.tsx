@@ -8,6 +8,7 @@ import {
   CONTEXTUAL_CAPTURE_MAX_TEXT_LENGTH,
 } from '@/core/presentation/contextual-capture-frontdoor'
 import { recordTeachingSession } from './actions'
+import { isCivicEducationMinutesInvalid } from './teaching-session-civic-form'
 import LessonVoiceCapture from './lezioni/[blockId]/lesson-voice-capture'
 import lessonStyles from './lezioni/[blockId]/lesson-live.module.css'
 
@@ -45,6 +46,9 @@ export function TeachingSessionRecorderClient({
   const [blockId2, setBlockId2] = useState('')
   const [minutes2, setMinutes2] = useState(0)
   const [evidenceNote, setEvidenceNote] = useState('')
+  const [civicEducationEnabled, setCivicEducationEnabled] = useState(false)
+  const [civicEducationMinutes, setCivicEducationMinutes] = useState(0)
+  const [civicEducationEvidenceNote, setCivicEducationEvidenceNote] = useState('')
   const [capturePreview, setCapturePreview] = useState<LessonReflectionCaptureActionResult | null>(null)
   const [captureError, setCaptureError] = useState<string | null>(null)
   const [organizing, setOrganizing] = useState(false)
@@ -53,7 +57,8 @@ export function TeachingSessionRecorderClient({
 
   const editableDate = allowDateSelection && !occurrenceLogicalId
   const total = minutes1 + (blockId2 ? minutes2 : 0)
-  const invalid = total > actualMinutes || !blockId1 || minutes1 <= 0 || !recordLocalDate || (blockId2 ? minutes2 <= 0 || blockId2 === blockId1 : false)
+  const civicEducationInvalid = isCivicEducationMinutesInvalid({ enabled: civicEducationEnabled, minutes: civicEducationMinutes, actualMinutes })
+  const invalid = total > actualMinutes || !blockId1 || minutes1 <= 0 || !recordLocalDate || (blockId2 ? minutes2 <= 0 || blockId2 === blockId1 : false) || civicEducationInvalid
   const lessonSurfacePath = blockId1
     ? `/classi/${encodeURIComponent(sectionId)}/lezioni/${encodeURIComponent(blockId1)}?mode=record`
     : null
@@ -210,6 +215,41 @@ export function TeachingSessionRecorderClient({
             <input name="minutes2" type="number" min="1" max="1440" value={minutes2 || ''} onChange={(event) => setMinutes2(Number(event.target.value))} disabled={!blockId2} />
           </label>
         </div>
+      </details>
+
+      <details
+        className="teachingSessionSplit"
+        open={civicEducationEnabled}
+        onToggle={(event) => setCivicEducationEnabled(event.currentTarget.open)}
+      >
+        <summary>Questa lezione contribuisce anche a Educazione civica</summary>
+        {civicEducationEnabled ? (
+          <div className="teachingSessionFields">
+            <label>
+              <span>Minuti di Educazione civica</span>
+              <input
+                name="civicEducationMinutes"
+                type="number"
+                min="1"
+                max={actualMinutes}
+                value={civicEducationMinutes || ''}
+                onChange={(event) => setCivicEducationMinutes(Number(event.target.value))}
+                required
+              />
+            </label>
+            <label className="teachingSessionEvidence">
+              <span>Evidenza di Educazione civica <small>facoltativa</small></span>
+              <textarea
+                name="civicEducationEvidenceNote"
+                maxLength={4000}
+                rows={2}
+                value={civicEducationEvidenceNote}
+                onChange={(event) => setCivicEducationEvidenceNote(event.target.value)}
+                placeholder="Es. tema trasversale affrontato, prodotto o evidenza osservabile…"
+              />
+            </label>
+          </div>
+        ) : null}
       </details>
 
       <label className="teachingSessionEvidence">
