@@ -4,5 +4,6 @@
 // in the governed product test suite without widening the global test command.
 import '../domain/civic-education-contribution.test'
 import '../infrastructure/supabase/civic-education-persistence-contract.test'
+import '../infrastructure/supabase/teaching-session-civic-schema-compat.test'
 import '../../app/classi/[sectionId]/teaching-session-civic-form.test'
 import '../../app/classi/[sectionId]/teaching-session-civic-ui.test'
