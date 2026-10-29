@@ -8,21 +8,21 @@ import {
 
 function alignment(overrides: Partial<TextbookAlignment> = {}): TextbookAlignment {
   return {
-    id: 'CAN-UDA-1-01:TECNOLOGIA:SOSTENIBILITA',
     udaCode: 'CAN-UDA-1-01',
-    textbookIsbn: '9788808950758',
+    textbookId: 'TECNOLOGIA_VERDE_2E_9788808950758',
     volume: 'TECNOLOGIA',
     relation: 'COMPOSED',
     coverage: 'FULL',
     evidenceLevel: 'VERIFIED_PAGE',
-    pageRange: { start: 16, end: 31 },
-    sourceRef: 'teacher-verified:sustainability-pages-16-31',
+    pageRange: { from: 16, to: 31 },
+    resourceRef: 'teacher-verified:sustainability-pages-16-31',
     ...overrides,
   }
 }
 
 test('rende esplicita l’identità del libro adottato senza includere Informatica', () => {
   assert.deepEqual(ADOPTED_TEXTBOOK, {
+    id: 'TECNOLOGIA_VERDE_2E_9788808950758',
     title: 'Tecnologia.verde',
     edition: 'seconda edizione',
     configuration: 'Tecnologia + Disegno',
@@ -44,7 +44,6 @@ test('TO_VERIFY non può esporre una pagina esatta come autorevole', () => {
 
 test('accetta copertura PARTIAL per i gap digitali senza precisione inventata', () => {
   const result = validateTextbookAlignment(alignment({
-    id: 'CAN-UDA-1-06:TECNOLOGIA:DIGITALE',
     udaCode: 'CAN-UDA-1-06',
     relation: 'SUPPORT',
     coverage: 'PARTIAL',
