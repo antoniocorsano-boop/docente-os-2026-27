@@ -1,4 +1,4 @@
-# T4 — Textbook / Curriculum Alignment Design
+# T4 — Textbook / Curricolo Alignment Design
 
 Status: DESIGN BASELINE
 Date: 2026-10-29
@@ -6,7 +6,7 @@ Base: `develop@87e3c3b3b4be5abf0dacdf8513cc2f320dec0b34`
 
 ## Goal
 
-Collegare il libro di testo effettivamente adottato ai requisiti curricolari e alle UDA/piano annuale senza trasformare il libro in fonte curricolare né creare una seconda identità del libro.
+Collegare il libro di testo effettivamente adottato ai requisiti del curricolo e alle UDA/piano annuale senza trasformare il libro in fonte del curricolo né creare una seconda identità del libro.
 
 ## Existing authority reused
 
@@ -15,26 +15,26 @@ T4 riusa i confini già presenti in DOCENTE OS:
 - `TextbookAdoption` / `Textbook`: identità e decisione di adozione;
 - MIM T1/T2: proposta ufficiale e conferma docente;
 - `PublisherResourcePointer` / `TextbookTeachingKit`: risorse editore e materiali docente;
-- `CurriculumContextForClassV1` / `CurriculumRequirementV1`: requisiti curricolari applicabili;
-- `CurriculumCoverageEvaluation`: copertura curricolare del piano annuale.
+- CML local handoff v2: contesto e requisiti del curricolo applicabili;
+- valutazione di copertura del curricolo del piano annuale.
 
 T4 non introduce un nuovo `Textbook` né un nuovo flusso di adozione.
 
 ## Authority rule
 
-`Arena/CML curriculum > annual plan/UDA > textbook support`.
+`Arena/CML curricolo > piano annuale/UDA > supporto del libro`.
 
-Un allineamento al libro può spiegare, supportare e rendere reperibili contenuti; non può soddisfare da solo un requisito curricolare, alterare una UDA o cambiare il piano annuale.
+Un allineamento al libro può spiegare, supportare e rendere reperibili contenuti; non può soddisfare da solo un requisito del curricolo, alterare una UDA o cambiare il piano annuale.
 
 ## Alignment record
 
-`TextbookCurriculumAlignmentV1` è una relazione derivata e verificabile. Deve contenere:
+`TextbookCurricoloAlignmentV1` è una relazione derivata e verificabile. Deve contenere:
 
 - `alignmentId`;
 - `textbookAdoptionId`;
 - `textbookId`;
 - `teachingAssignmentId`;
-- `curriculumContextId`;
+- `curricoloContextId`;
 - `requirementId`;
 - opzionale `udaCode`;
 - `relation`: `DIRECT | COMPOSED | SUPPORT`;
@@ -44,14 +44,23 @@ Un allineamento al libro può spiegare, supportare e rendere reperibili contenut
 - `source`: `TEACHER_VERIFIED | PUBLISHER_PUBLIC | PUBLISHER_ACCOUNT`;
 - opzionale `verifiedByTeacherAt`.
 
+## Curricolo binding
+
+T4 riceve `CurricoloContextBindingV1`, una proiezione read-only del CML local handoff già validato a monte. La proiezione contiene soltanto:
+
+- `contextId`;
+- gli identificativi `requirementId` applicabili.
+
+Questa scelta evita di duplicare il validatore CML e impedisce a T4 di introdurre una seconda rappresentazione autorevole del curricolo.
+
 ## Preconditions
 
 Fail closed unless:
 
 1. adoption status is `CONFIRMED`;
 2. `alignment.textbookAdoptionId`, `textbookId` and `teachingAssignmentId` match that confirmed adoption;
-3. the curricular context is valid;
-4. `requirementId` exists in that exact curricular context;
+3. il binding del contesto del curricolo ha un `contextId` valido;
+4. `requirementId` esiste esattamente in quel binding;
 5. exact pages are admitted only with `VERIFIED_PAGE`;
 6. `TO_VERIFY` cannot expose exact pages as authoritative;
 7. page ranges are positive, ordered integers;
@@ -64,7 +73,7 @@ For `Tecnologia.verde`, seconda edizione, configuration `Tecnologia + Disegno`, 
 - pp. 16–18;
 - pp. 19–23;
 - pp. 24–27;
-- pp. 28–31;
+- pp. 28–31.
 
 They support the sustainability area associated with first-year work. No other exact page number is promoted by T4 until verified.
 
@@ -79,11 +88,11 @@ The prior gap analysis is retained as evidence, not as authority:
 - 2 `PARTIAL_GAP`: `CAN-UDA-1-06`, `CAN-UDA-2-08`;
 - 1 `STRUCTURAL_GAP`: `CAN-UDA-3-07`.
 
-Candidate classifications become runtime alignment only after the corresponding curriculum requirement and confirmed adoption are bound.
+Candidate classifications become runtime alignment only after the corresponding requisito del curricolo and confirmed adoption are bound.
 
 ## Product behavior
 
-Progetta may expose a secondary disclosure “Supporto dal libro adottato” only after the curriculum/UDA context is known. Human Task projections may expose the same information as secondary provenance. Neither surface may reorder or mutate canonical PLAN/UDA/PACK/curriculum sources.
+Progetta may expose a secondary disclosure “Supporto dal libro adottato” only after the contesto del curricolo/UDA is known. Human Task projections may expose the same information as secondary provenance. Neither surface may reorder or mutate canonical PLAN/UDA/PACK/curricolo sources.
 
 ## Out of scope
 
