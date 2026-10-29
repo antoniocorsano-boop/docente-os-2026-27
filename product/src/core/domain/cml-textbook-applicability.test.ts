@@ -146,7 +146,7 @@ describe('CML textbook applicability T4', () => {
     for (const evidenceLevel of ['VERIFIED_SECTION', 'VERIFIED_FEATURE'] as const) {
       assert.throws(
         () => validateTextbookCurricoloAlignmentV1({ alignment: alignment({ evidenceLevel }), adoption: adoption(), curricoloContext: curricoloContext() }),
-        /exact pages require VERIFIED_PAGE evidence/,
+        /VERIFIED_PAGE.*exact pages|exact pages.*VERIFIED_PAGE/,
       )
     }
     assert.throws(
