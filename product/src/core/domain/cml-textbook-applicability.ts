@@ -138,6 +138,10 @@ export function validateTextbookCurricoloAlignmentV1(input: {
     throw new Error('TO_VERIFY alignment cannot expose exact pages')
   }
 
+  if (alignment.evidenceLevel !== 'VERIFIED_PAGE' && alignment.pageRange !== undefined) {
+    throw new Error('only VERIFIED_PAGE alignment can expose exact pages')
+  }
+
   if (alignment.pageRange !== undefined && !validPageRange(alignment.pageRange)) {
     throw new Error('textbook alignment page range is invalid')
   }
