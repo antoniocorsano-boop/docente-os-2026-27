@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
+import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseTextbookRepository } from '@/core/infrastructure/supabase/supabase-textbook-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
@@ -51,9 +52,10 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
   const assignmentReader = new SupabaseTeachingAssignmentReader()
   const textbookRepository = new SupabaseTextbookRepository()
+  const settingsRepository = new SupabaseTeacherSettingsRepository()
   const academicYearId = context.academicYear?.id ?? null
   const loadTextbookSupport = Boolean(focus && params.section && academicYearId)
-  const [items, annualSnapshot, assignments, adoptions] = await Promise.all([
+  const [items, annualSnapshot, assignments, adoptions, disciplines] = await Promise.all([
     knowledgeRepository.listRecent(context.workspace.id, 100),
     params.section && academicYearId
       ? annualRepository.list(context.workspace.id, academicYearId)
@@ -63,6 +65,9 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
       : Promise.resolve([]),
     loadTextbookSupport && academicYearId
       ? textbookRepository.list(context.workspace.id, academicYearId)
+      : Promise.resolve([]),
+    loadTextbookSupport && academicYearId
+      ? settingsRepository.listDisciplines(context.workspace.id, academicYearId)
       : Promise.resolve([]),
   ])
 
@@ -74,10 +79,15 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
     : null
   const compactSectionLabel = sectionContext ? `${GRADE_NUMBER[sectionContext.grade]}${sectionContext.sectionCode}` : null
   const displaySectionLabel = sectionContext ? `${GRADE_NUMBER[sectionContext.grade]}ª ${sectionContext.sectionCode}` : null
+  const disciplineNameById = new Map(disciplines.map((discipline) => [discipline.id, discipline.name]))
   const textbookSupport = buildProgettaTextbookSupport({
     sectionId: sectionContext?.id ?? null,
     focus,
-    assignments,
+    assignments: assignments.map((assignment) => ({
+      id: assignment.id,
+      sectionId: assignment.sectionId,
+      disciplineName: disciplineNameById.get(assignment.disciplineId) ?? null,
+    })),
     adoptions,
     validatedAlignments: [],
   })
