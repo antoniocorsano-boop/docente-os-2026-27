@@ -1,7 +1,3 @@
-import {
-  validateCurriculumContextForClassV1,
-  type CurriculumContextForClassV1,
-} from './cml-local-handoff-v2'
 import type { TextbookAdoptionWithBook } from './textbook-adoption'
 
 export const CML_TEXTBOOK_ALIGNMENT_CONTRACT = 'CML_TEXTBOOK_ALIGNMENT_V1' as const
@@ -23,13 +19,26 @@ export type TextbookPageRange = {
   to: number
 }
 
-export type TextbookCurriculumAlignmentV1 = {
+export type CurricoloRequirementBindingV1 = {
+  requirementId: string
+}
+
+/**
+ * Read-only projection of the already validated CML handoff.
+ * T4 only needs the exact context identity and applicable requirement ids.
+ */
+export type CurricoloContextBindingV1 = {
+  contextId: string
+  requirements: readonly CurricoloRequirementBindingV1[]
+}
+
+export type TextbookCurricoloAlignmentV1 = {
   contract: typeof CML_TEXTBOOK_ALIGNMENT_CONTRACT
   alignmentId: string
   textbookAdoptionId: string
   textbookId: string
   teachingAssignmentId: string
-  curriculumContextId: string
+  curricoloContextId: string
   requirementId: string
   udaCode?: string
   relation: TextbookAlignmentRelation
@@ -64,12 +73,12 @@ function validIsoTimestamp(value: string | undefined): boolean {
   return Number.isFinite(timestamp) && value.includes('T')
 }
 
-export function validateTextbookCurriculumAlignmentV1(input: {
-  alignment: TextbookCurriculumAlignmentV1
+export function validateTextbookCurricoloAlignmentV1(input: {
+  alignment: TextbookCurricoloAlignmentV1
   adoption: TextbookAdoptionWithBook
-  curricularContext: CurriculumContextForClassV1
-}): TextbookCurriculumAlignmentV1 {
-  const { alignment, adoption, curricularContext } = input
+  curricoloContext: CurricoloContextBindingV1
+}): TextbookCurricoloAlignmentV1 {
+  const { alignment, adoption, curricoloContext } = input
 
   if (alignment.contract !== CML_TEXTBOOK_ALIGNMENT_CONTRACT) {
     throw new Error('unsupported textbook alignment contract')
@@ -88,17 +97,16 @@ export function validateTextbookCurriculumAlignmentV1(input: {
     throw new Error('textbook alignment does not match confirmed adoption')
   }
 
-  const contextValidation = validateCurriculumContextForClassV1(curricularContext)
-  if (!contextValidation.valid) {
-    throw new Error(`invalid curricular context: ${contextValidation.errors.join('; ')}`)
+  if (!nonEmpty(curricoloContext.contextId) || !Array.isArray(curricoloContext.requirements)) {
+    throw new Error('valid curricolo context binding is required')
   }
 
-  if (alignment.curriculumContextId !== curricularContext.contextId) {
-    throw new Error('curriculum context mismatch')
+  if (alignment.curricoloContextId !== curricoloContext.contextId) {
+    throw new Error('curricolo context mismatch')
   }
 
-  if (!curricularContext.requirements.some((requirement) => requirement.requirementId === alignment.requirementId)) {
-    throw new Error('curriculum requirement not found')
+  if (!curricoloContext.requirements.some((requirement) => requirement.requirementId === alignment.requirementId)) {
+    throw new Error('curricolo requirement not found')
   }
 
   if (!nonEmpty(alignment.alignmentId) || !nonEmpty(alignment.requirementId)) {
