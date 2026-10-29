@@ -18,6 +18,7 @@ import {
   resolveCanonicalProgettaFocus,
   type ProgettaItem,
 } from './progetta-model'
+import { buildProgettaTextbookSupport } from './progetta-textbook-support'
 import './progetta.css'
 import './progetta-coverage.css'
 import './progetta-focus.css'
@@ -80,6 +81,7 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
     currentFocusParams.set('uda', focus.uda)
     currentFocusParams.set('pack', focus.pack)
     const currentFocusHref = `/progetta?${currentFocusParams.toString()}#focus-operativo`
+    const textbookSupport = buildProgettaTextbookSupport(focus.uda)
 
     return (
       <AppShell active="design" academicYearLabel={context.academicYear?.label} workspaceName={context.workspace.name} role={context.role} contentClassName="progettaSurface progettaGuidedSurface">
@@ -152,6 +154,26 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
               <p>Nessun adattamento specifico registrato. Per questa fase puoi usare direttamente il nucleo comune.</p>
             )}
           </section>
+        ) : null}
+
+        {textbookSupport ? (
+          <details className="guidedTextbookSupport">
+            <summary>
+              <span>{textbookSupport.heading}</span>
+              <strong>{textbookSupport.bookLabel}</strong>
+              <small>{textbookSupport.stateLabel}</small>
+            </summary>
+            <div className="guidedTextbookSupportBody">
+              <p>{textbookSupport.description}</p>
+              {textbookSupport.chapterLabel || textbookSupport.pageLabel ? (
+                <div className="guidedTextbookSupportEvidence">
+                  {textbookSupport.chapterLabel ? <strong>{textbookSupport.chapterLabel}</strong> : null}
+                  {textbookSupport.pageLabel ? <span>{textbookSupport.pageLabel}</span> : null}
+                </div>
+              ) : null}
+              <small>Il libro sostiene la progettazione: non modifica curricolo, UDA o piano annuale.</small>
+            </div>
+          </details>
         ) : null}
 
         <nav className="guidedPlanningActions" aria-label="Altri percorsi disponibili">
