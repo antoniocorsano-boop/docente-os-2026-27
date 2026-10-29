@@ -316,3 +316,18 @@ test('la modalità guidata rende primario l’authoring contestuale senza nascon
   assert.match(styleSource, /\.guidedPrimaryAuthoring/)
   assert.match(styleSource, /\.guidedPrimaryAuthoringAction/)
 })
+
+test('la modalità guidata collega il libro adottato come supporto secondario senza inferire pagine', () => {
+  const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+
+  assert.match(pageSource, /SupabaseTeachingAssignmentReader/)
+  assert.match(pageSource, /SupabaseTextbookRepository/)
+  assert.match(pageSource, /buildProgettaTextbookSupport/)
+  assert.match(pageSource, /Supporto dal libro adottato/)
+  assert.match(pageSource, /validatedAlignments:\s*\[\]/)
+  assert.match(pageSource, /Nessun riferimento puntuale è ancora verificato per questa UDA/)
+  assert.doesNotMatch(pageSource, /pp\.\s*16[–-]18/)
+  assert.doesNotMatch(pageSource, /pp\.\s*19[–-]23/)
+  assert.doesNotMatch(pageSource, /pp\.\s*24[–-]27/)
+  assert.doesNotMatch(pageSource, /pp\.\s*28[–-]31/)
+})
