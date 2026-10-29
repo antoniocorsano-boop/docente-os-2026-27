@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import type { TextbookAdoptionWithBook } from './textbook-adoption'
+import type { TextbookAdoptionWithBook, TextbookUsageKind } from './textbook-adoption'
 import {
   validateTextbookCurricoloAlignmentV1,
   type CurricoloContextBindingV1,
@@ -16,14 +16,17 @@ function curricoloContext(): CurricoloContextBindingV1 {
   }
 }
 
-function adoption(status: 'PROPOSED' | 'CONFIRMED' = 'CONFIRMED'): TextbookAdoptionWithBook {
+function adoption(
+  status: 'PROPOSED' | 'CONFIRMED' = 'CONFIRMED',
+  usageKind: TextbookUsageKind = 'ADOPTED',
+): TextbookAdoptionWithBook {
   return {
     id: 'adoption-tv2ed-1A',
     workspaceId: 'workspace-001',
     academicYearId: 'year-2026-27',
     teachingAssignmentId: 'assignment-technology-1A',
     textbookId: 'textbook-tv2ed',
-    usageKind: 'ADOPTED',
+    usageKind,
     sourceKind: 'MIM_OPEN_DATA',
     sourceRef: 'mim:adoption:technology-1A',
     status,
@@ -92,6 +95,13 @@ describe('CML textbook applicability T4', () => {
     assert.throws(
       () => validateTextbookCurricoloAlignmentV1({ alignment: alignment(), adoption: adoption('PROPOSED'), curricoloContext: curricoloContext() }),
       /confirmed textbook adoption is required/,
+    )
+  })
+
+  it('rejects a confirmed recommendation because T4 requires the actually adopted textbook', () => {
+    assert.throws(
+      () => validateTextbookCurricoloAlignmentV1({ alignment: alignment(), adoption: adoption('CONFIRMED', 'RECOMMENDED'), curricoloContext: curricoloContext() }),
+      /adopted textbook is required/,
     )
   })
 
