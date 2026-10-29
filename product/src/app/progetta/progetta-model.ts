@@ -1,6 +1,7 @@
 import type { KnowledgeAsset, KnowledgeDocument } from '@/core/domain/knowledge'
 import type { TextbookCurricoloAlignmentV1 } from '@/core/domain/cml-textbook-applicability'
 import type { TextbookAdoptionWithBook } from '@/core/domain/textbook-adoption'
+import { canonicalPlanSupportsDisciplineName } from '@/core/presentation/canonical-plan-discipline'
 import { buildBlocks, type GradeKey } from '../piano-annuale/model'
 
 export type ProgettaItem = { asset: KnowledgeAsset; document: KnowledgeDocument | null }
@@ -174,15 +175,19 @@ export function planningCoverage(items: ProgettaItem[]): PlanningCoverage[] {
 export function buildProgettaTextbookSupport(input: {
   sectionId: string | null
   focus: ResolvedProgettaFocus | null
-  assignments: readonly { id: string; sectionId: string }[]
+  assignments: readonly { id: string; sectionId: string; disciplineName?: string | null }[]
   adoptions: readonly TextbookAdoptionWithBook[]
   validatedAlignments: readonly TextbookCurricoloAlignmentV1[]
 }): ProgettaTextbookSupport[] {
   if (!input.sectionId || !input.focus) return []
 
+  const hasResolvedDisciplineNames = input.assignments.some((assignment) => assignment.disciplineName !== undefined)
   const assignmentIds = new Set(
     input.assignments
-      .filter((assignment) => assignment.sectionId === input.sectionId)
+      .filter((assignment) =>
+        assignment.sectionId === input.sectionId
+        && (!hasResolvedDisciplineNames || canonicalPlanSupportsDisciplineName(assignment.disciplineName)),
+      )
       .map((assignment) => assignment.id),
   )
   if (!assignmentIds.size) return []
