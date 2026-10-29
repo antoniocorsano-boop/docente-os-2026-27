@@ -12,6 +12,7 @@ import {
 
 const workflowDir = resolve(process.cwd(), '../.github/workflows')
 const hvaWorkflow = readFileSync(resolve(workflowDir, 'experience-acceptance.yml'), 'utf8')
+const browserCertificationWorkflow = readFileSync(resolve(workflowDir, 'browser-certification-orchestrator.yml'), 'utf8')
 
 test('QL2-A routes current-schema writes through the civic wrapper even when the contribution is omitted', () => {
   assert.equal(selectTeachingSessionWriteRpc(null), 'record_teaching_session_with_civic_contribution')
@@ -72,7 +73,7 @@ test('QL2-A previous-schema fallback is explicit and accepts only the known miss
   )
 })
 
-test('QL2-A HVA is the only governed application path opting into previous civic schema compatibility', () => {
+test('QL2-A previous-schema compatibility is limited to governed local application runners', () => {
   const previousOptIns = readdirSync(workflowDir)
     .filter((name) => name.endsWith('.yml') || name.endsWith('.yaml'))
     .flatMap((name) => {
@@ -80,9 +81,16 @@ test('QL2-A HVA is the only governed application path opting into previous civic
       const count = source.match(/DOCENTE_OS_CIVIC_SCHEMA_COMPAT:\s*previous/g)?.length ?? 0
       return Array.from({ length: count }, () => name)
     })
+    .sort()
 
-  assert.deepEqual(previousOptIns, ['experience-acceptance.yml'])
+  assert.deepEqual(previousOptIns, ['browser-certification-orchestrator.yml', 'experience-acceptance.yml'])
+
   const [applicationBlock, runtimeBlock = ''] = hvaWorkflow.split(/\n\s*runtime-acceptance:/)
   assert.match(applicationBlock, /application-acceptance:[\s\S]*DOCENTE_OS_CIVIC_SCHEMA_COMPAT:\s*previous/)
   assert.doesNotMatch(runtimeBlock, /DOCENTE_OS_CIVIC_SCHEMA_COMPAT:\s*previous/)
+
+  assert.match(
+    browserCertificationWorkflow,
+    /browser-certification:[\s\S]*DOCENTE_OS_CIVIC_SCHEMA_COMPAT:\s*previous/,
+  )
 })
