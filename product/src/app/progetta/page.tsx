@@ -3,12 +3,16 @@ import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseKnowledgeRepository } from '@/core/infrastructure/supabase/supabase-knowledge-repository'
+import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
+import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
+import { SupabaseTextbookRepository } from '@/core/infrastructure/supabase/supabase-textbook-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { humanizeKnowledgeTitle, reliabilityLabel } from '@/core/presentation/product-language'
 import { buildTaskAwareKnowledgeHref } from '@/core/presentation/task-continuity'
 import {
   asProgettaFocus,
   asProgettaGrade,
+  buildProgettaTextbookSupport,
   filterProgettaItemsByFocus,
   filterProgettaItemsByGrade,
   filterProgettaItemsBySectionContext,
@@ -46,11 +50,25 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
 
   const knowledgeRepository = new SupabaseKnowledgeRepository()
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
-  const [items, annualSnapshot] = await Promise.all([
+  const assignmentReader = new SupabaseTeachingAssignmentReader()
+  const textbookRepository = new SupabaseTextbookRepository()
+  const settingsRepository = new SupabaseTeacherSettingsRepository()
+  const academicYearId = context.academicYear?.id ?? null
+  const loadTextbookSupport = Boolean(focus && params.section && academicYearId)
+  const [items, annualSnapshot, assignments, adoptions, disciplines] = await Promise.all([
     knowledgeRepository.listRecent(context.workspace.id, 100),
-    params.section && context.academicYear
-      ? annualRepository.list(context.workspace.id, context.academicYear.id)
+    params.section && academicYearId
+      ? annualRepository.list(context.workspace.id, academicYearId)
       : Promise.resolve(null),
+    loadTextbookSupport && academicYearId
+      ? assignmentReader.list(context.workspace.id, academicYearId)
+      : Promise.resolve([]),
+    loadTextbookSupport && academicYearId
+      ? textbookRepository.list(context.workspace.id, academicYearId)
+      : Promise.resolve([]),
+    loadTextbookSupport && academicYearId
+      ? settingsRepository.listDisciplines(context.workspace.id, academicYearId)
+      : Promise.resolve([]),
   ])
 
   const requestedSection = params.section && annualSnapshot
@@ -61,6 +79,18 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
     : null
   const compactSectionLabel = sectionContext ? `${GRADE_NUMBER[sectionContext.grade]}${sectionContext.sectionCode}` : null
   const displaySectionLabel = sectionContext ? `${GRADE_NUMBER[sectionContext.grade]}ª ${sectionContext.sectionCode}` : null
+  const disciplineNameById = new Map(disciplines.map((discipline) => [discipline.id, discipline.name]))
+  const textbookSupport = buildProgettaTextbookSupport({
+    sectionId: sectionContext?.id ?? null,
+    focus,
+    assignments: assignments.map((assignment) => ({
+      id: assignment.id,
+      sectionId: assignment.sectionId,
+      disciplineName: disciplineNameById.get(assignment.disciplineId) ?? null,
+    })),
+    adoptions,
+    validatedAlignments: [],
+  })
 
   const gradeItems = filterProgettaItemsByGrade(items, grade)
   const scopedItems = filterProgettaItemsBySectionContext(gradeItems, compactSectionLabel)
@@ -113,6 +143,21 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
               <p>Usa l’UDA pertinente già collegata a questa fase e continua nel flusso di authoring esistente.</p>
             </div>
             <Link className="guidedPrimaryAuthoringAction" href={`/progetta/documenti/nuovo/${encodeURIComponent(guidedAuthoringItem.asset.id)}`}>Prepara documento <span aria-hidden>→</span></Link>
+          </section>
+        ) : null}
+
+        {textbookSupport.length ? (
+          <section className="guidedSectionAdaptation" aria-labelledby="guided-textbook-support-title">
+            <header><div><span>SUPPORTO SECONDARIO</span><h2 id="guided-textbook-support-title">Supporto dal libro adottato</h2></div></header>
+            <div className="guidedAdaptationItems">
+              {textbookSupport.map((support) => (
+                <div className="guidedEmpty" key={support.adoptionId}>
+                  <strong>{support.title}</strong>
+                  <p>{[support.authors, support.publisher, support.volumeLabel].filter(Boolean).join(' · ')}</p>
+                  <p>Nessun riferimento puntuale è ancora verificato per questa UDA.</p>
+                </div>
+              ))}
+            </div>
           </section>
         ) : null}
 

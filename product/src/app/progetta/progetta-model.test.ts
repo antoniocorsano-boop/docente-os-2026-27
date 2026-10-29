@@ -2,9 +2,12 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import type { KnowledgeAsset, KnowledgeDocument } from '@/core/domain/knowledge'
+import type { TextbookAdoptionWithBook } from '@/core/domain/textbook-adoption'
+import type { TextbookCurricoloAlignmentV1 } from '@/core/domain/cml-textbook-applicability'
 import {
   asProgettaFocus,
   asProgettaGrade,
+  buildProgettaTextbookSupport,
   filterProgettaItemsByFocus,
   filterProgettaItemsByGrade,
   filterProgettaItemsBySectionContext,
@@ -41,6 +44,75 @@ function item(id: string, contentCategory: KnowledgeAsset['contentCategory']) {
     updatedAt: '',
   }
   return { asset, document: null as KnowledgeDocument | null }
+}
+
+function textbookAdoption(input: {
+  adoptionId?: string
+  textbookId?: string
+  assignmentId?: string
+  title?: string
+  status?: 'PROPOSED' | 'CONFIRMED'
+  usageKind?: 'ADOPTED' | 'RECOMMENDED' | 'OTHER'
+} = {}): TextbookAdoptionWithBook {
+  const adoptionId = input.adoptionId ?? 'adoption-tv2ed-1A'
+  const textbookId = input.textbookId ?? 'textbook-tv2ed'
+  const assignmentId = input.assignmentId ?? 'assignment-technology-1A'
+  const status = input.status ?? 'CONFIRMED'
+  return {
+    id: adoptionId,
+    workspaceId: 'workspace-001',
+    academicYearId: 'year-2026-27',
+    teachingAssignmentId: assignmentId,
+    textbookId,
+    usageKind: input.usageKind ?? 'ADOPTED',
+    sourceKind: 'MIM_OPEN_DATA',
+    sourceRef: 'mim:adoption:technology',
+    status,
+    confirmedBy: status === 'CONFIRMED' ? 'teacher-001' : null,
+    confirmedAt: status === 'CONFIRMED' ? '2026-09-01T08:00:00.000Z' : null,
+    createdBy: 'teacher-001',
+    createdAt: '2026-09-01T07:00:00.000Z',
+    updatedAt: '2026-09-01T08:00:00.000Z',
+    textbook: {
+      id: textbookId,
+      workspaceId: 'workspace-001',
+      academicYearId: 'year-2026-27',
+      isbn13: '9788808950758',
+      title: input.title ?? 'Tecnologia.verde',
+      subtitle: null,
+      authors: 'Paci, Paci, Bernardini',
+      publisher: 'Zanichelli',
+      editionLabel: 'seconda edizione',
+      volumeLabel: 'Tecnologia + Disegno',
+      officialUrl: null,
+      publisherProductRef: null,
+      createdBy: 'teacher-001',
+      createdAt: '2026-09-01T07:00:00.000Z',
+      updatedAt: '2026-09-01T07:00:00.000Z',
+    },
+  }
+}
+
+function textbookAlignment(overrides: Partial<TextbookCurricoloAlignmentV1> = {}): TextbookCurricoloAlignmentV1 {
+  return {
+    contract: 'CML_TEXTBOOK_ALIGNMENT_V1',
+    alignmentId: 'align-1A-sustainability-pages-16-18',
+    textbookAdoptionId: 'adoption-tv2ed-1A',
+    textbookId: 'textbook-tv2ed',
+    teachingAssignmentId: 'assignment-technology-1A',
+    curricoloContextId: 'ctx-technology-1A-2026-27',
+    requirementId: 'req-sustainability-01',
+    udaCode: 'CAN-UDA-1-01',
+    relation: 'COMPOSED',
+    coverage: 'PARTIAL',
+    evidenceLevel: 'VERIFIED_PAGE',
+    chapterLabel: 'Sostenibilità: 2030 e oltre',
+    pageRange: { from: 16, to: 18 },
+    resourceRef: 'teacher-evidence:sustainability-pages-16-18',
+    source: 'TEACHER_VERIFIED',
+    verifiedByTeacherAt: '2026-10-28T12:00:00.000Z',
+    ...overrides,
+  }
 }
 
 test('organizza gli asset nelle tre aree di progettazione', () => {
@@ -148,6 +220,88 @@ test('la modalità guidata accetta solo un blocco coerente col piano canonico', 
   assert.equal(resolveCanonicalProgettaFocus(null, prima), null)
 })
 
+test('collega in Progetta solo il libro adottato confermato della sezione corrente', () => {
+  const focus = resolveCanonicalProgettaFocus(
+    'prima',
+    asProgettaFocus({ block: 'B03', uda: '1-01', pack: 'CAN-PACK-1A' }),
+  )
+  assert.ok(focus)
+
+  const result = buildProgettaTextbookSupport({
+    sectionId: 'section-1A',
+    focus,
+    assignments: [
+      { id: 'assignment-technology-1A', sectionId: 'section-1A', disciplineName: 'Tecnologia' },
+      { id: 'assignment-technology-1C', sectionId: 'section-1C', disciplineName: 'Tecnologia' },
+    ],
+    adoptions: [
+      textbookAdoption(),
+      textbookAdoption({
+        adoptionId: 'adoption-other-section',
+        textbookId: 'textbook-other-section',
+        assignmentId: 'assignment-technology-1C',
+        title: 'Libro di un’altra sezione',
+      }),
+      textbookAdoption({
+        adoptionId: 'adoption-proposed',
+        textbookId: 'textbook-proposed',
+        assignmentId: 'assignment-technology-1A',
+        title: 'Proposta non confermata',
+        status: 'PROPOSED',
+      }),
+    ],
+    validatedAlignments: [textbookAlignment()],
+  })
+
+  assert.equal(result.length, 1)
+  assert.equal(result[0]?.title, 'Tecnologia.verde')
+  assert.equal(result[0]?.isbn13, '9788808950758')
+  assert.equal(result[0]?.udaCode, 'CAN-UDA-1-01')
+  assert.equal(result[0]?.alignmentState, 'VERIFIED')
+  assert.deepEqual(result[0]?.references.map((reference) => reference.pageRangeLabel), ['pp. 16–18'])
+})
+
+test('non mostra supporto libro prima di avere sezione e UDA note', () => {
+  const adoption = textbookAdoption()
+  const assignments = [{ id: 'assignment-technology-1A', sectionId: 'section-1A', disciplineName: 'Tecnologia' }]
+
+  assert.deepEqual(buildProgettaTextbookSupport({
+    sectionId: null,
+    focus: null,
+    assignments,
+    adoptions: [adoption],
+    validatedAlignments: [],
+  }), [])
+
+  assert.deepEqual(buildProgettaTextbookSupport({
+    sectionId: 'section-1A',
+    focus: null,
+    assignments,
+    adoptions: [adoption],
+    validatedAlignments: [],
+  }), [])
+})
+
+test('distingue il libro adottato da un allineamento UDA ancora non verificato', () => {
+  const focus = resolveCanonicalProgettaFocus(
+    'prima',
+    asProgettaFocus({ block: 'B03', uda: '1-01', pack: 'CAN-PACK-1A' }),
+  )
+  assert.ok(focus)
+
+  const result = buildProgettaTextbookSupport({
+    sectionId: 'section-1A',
+    focus,
+    assignments: [{ id: 'assignment-technology-1A', sectionId: 'section-1A', disciplineName: 'Tecnologia' }],
+    adoptions: [textbookAdoption()],
+    validatedAlignments: [textbookAlignment({ udaCode: 'CAN-UDA-1-02' })],
+  })
+
+  assert.equal(result.length, 1)
+  assert.equal(result[0]?.alignmentState, 'ADOPTED_ONLY')
+  assert.deepEqual(result[0]?.references, [])
+})
+
 test('la modalità guidata rende primario l’authoring contestuale senza nascondere piano e archivio', () => {
   const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
   const styleSource = readFileSync(new URL('./progetta-focus.css', import.meta.url), 'utf8')
@@ -161,4 +315,19 @@ test('la modalità guidata rende primario l’authoring contestuale senza nascon
   assert.match(pageSource, />Esplora tutta la progettazione</)
   assert.match(styleSource, /\.guidedPrimaryAuthoring/)
   assert.match(styleSource, /\.guidedPrimaryAuthoringAction/)
+})
+
+test('la modalità guidata collega il libro adottato come supporto secondario senza inferire pagine', () => {
+  const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+
+  assert.match(pageSource, /SupabaseTeachingAssignmentReader/)
+  assert.match(pageSource, /SupabaseTextbookRepository/)
+  assert.match(pageSource, /buildProgettaTextbookSupport/)
+  assert.match(pageSource, /Supporto dal libro adottato/)
+  assert.match(pageSource, /validatedAlignments:\s*\[\]/)
+  assert.match(pageSource, /Nessun riferimento puntuale è ancora verificato per questa UDA/)
+  assert.doesNotMatch(pageSource, /pp\.\s*16[–-]18/)
+  assert.doesNotMatch(pageSource, /pp\.\s*19[–-]23/)
+  assert.doesNotMatch(pageSource, /pp\.\s*24[–-]27/)
+  assert.doesNotMatch(pageSource, /pp\.\s*28[–-]31/)
 })
