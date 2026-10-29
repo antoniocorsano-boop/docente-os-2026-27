@@ -88,6 +88,10 @@ export function validateTextbookCurricoloAlignmentV1(input: {
     throw new Error('confirmed textbook adoption is required')
   }
 
+  if (adoption.usageKind !== 'ADOPTED') {
+    throw new Error('adopted textbook is required')
+  }
+
   if (
     alignment.textbookAdoptionId !== adoption.id
     || alignment.textbookId !== adoption.textbookId
