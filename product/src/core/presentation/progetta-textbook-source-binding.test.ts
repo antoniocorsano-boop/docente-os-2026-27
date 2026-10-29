@@ -81,3 +81,24 @@ test('Progetta includes only textbook support from the canonical plan discipline
 
   assert.deepEqual(result.map((support) => support.title), ['Tecnologia.verde'])
 })
+
+test('Progetta fails closed when the teaching assignment discipline is unresolved', () => {
+  const result = buildProgettaTextbookSupport({
+    sectionId: 'section-1A',
+    focus,
+    assignments: [
+      { id: 'assignment-technology-1A', sectionId: 'section-1A' },
+    ],
+    adoptions: [
+      adoption({
+        id: 'adoption-technology',
+        assignmentId: 'assignment-technology-1A',
+        textbookId: 'textbook-technology',
+        title: 'Tecnologia.verde',
+      }),
+    ],
+    validatedAlignments: [],
+  })
+
+  assert.deepEqual(result, [])
+})
