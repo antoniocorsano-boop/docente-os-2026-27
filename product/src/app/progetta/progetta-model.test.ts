@@ -231,8 +231,8 @@ test('collega in Progetta solo il libro adottato confermato della sezione corren
     sectionId: 'section-1A',
     focus,
     assignments: [
-      { id: 'assignment-technology-1A', sectionId: 'section-1A' },
-      { id: 'assignment-technology-1C', sectionId: 'section-1C' },
+      { id: 'assignment-technology-1A', sectionId: 'section-1A', disciplineName: 'Tecnologia' },
+      { id: 'assignment-technology-1C', sectionId: 'section-1C', disciplineName: 'Tecnologia' },
     ],
     adoptions: [
       textbookAdoption(),
@@ -263,7 +263,7 @@ test('collega in Progetta solo il libro adottato confermato della sezione corren
 
 test('non mostra supporto libro prima di avere sezione e UDA note', () => {
   const adoption = textbookAdoption()
-  const assignments = [{ id: 'assignment-technology-1A', sectionId: 'section-1A' }]
+  const assignments = [{ id: 'assignment-technology-1A', sectionId: 'section-1A', disciplineName: 'Tecnologia' }]
 
   assert.deepEqual(buildProgettaTextbookSupport({
     sectionId: null,
@@ -292,7 +292,7 @@ test('distingue il libro adottato da un allineamento UDA ancora non verificato',
   const result = buildProgettaTextbookSupport({
     sectionId: 'section-1A',
     focus,
-    assignments: [{ id: 'assignment-technology-1A', sectionId: 'section-1A' }],
+    assignments: [{ id: 'assignment-technology-1A', sectionId: 'section-1A', disciplineName: 'Tecnologia' }],
     adoptions: [textbookAdoption()],
     validatedAlignments: [textbookAlignment({ udaCode: 'CAN-UDA-1-02' })],
   })
