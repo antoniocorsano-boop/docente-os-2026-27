@@ -223,7 +223,7 @@ test('la modalità guidata accetta solo un blocco coerente col piano canonico', 
 test('collega in Progetta solo il libro adottato confermato della sezione corrente', () => {
   const focus = resolveCanonicalProgettaFocus(
     'prima',
-    asProgettaFocus({ block: 'B02', uda: '1-01', pack: 'CAN-PACK-1A' }),
+    asProgettaFocus({ block: 'B03', uda: '1-01', pack: 'CAN-PACK-1A' }),
   )
   assert.ok(focus)
 
@@ -285,7 +285,7 @@ test('non mostra supporto libro prima di avere sezione e UDA note', () => {
 test('distingue il libro adottato da un allineamento UDA ancora non verificato', () => {
   const focus = resolveCanonicalProgettaFocus(
     'prima',
-    asProgettaFocus({ block: 'B02', uda: '1-01', pack: 'CAN-PACK-1A' }),
+    asProgettaFocus({ block: 'B03', uda: '1-01', pack: 'CAN-PACK-1A' }),
   )
   assert.ok(focus)
 
