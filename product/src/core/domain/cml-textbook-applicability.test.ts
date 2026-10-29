@@ -143,6 +143,12 @@ describe('CML textbook applicability T4', () => {
       () => validateTextbookCurricoloAlignmentV1({ alignment: alignment({ evidenceLevel: 'TO_VERIFY' }), adoption: adoption(), curricoloContext: curricoloContext() }),
       /TO_VERIFY alignment cannot expose exact pages/,
     )
+    for (const evidenceLevel of ['VERIFIED_SECTION', 'VERIFIED_FEATURE'] as const) {
+      assert.throws(
+        () => validateTextbookCurricoloAlignmentV1({ alignment: alignment({ evidenceLevel }), adoption: adoption(), curricoloContext: curricoloContext() }),
+        /exact pages require VERIFIED_PAGE evidence/,
+      )
+    }
     assert.throws(
       () => validateTextbookCurricoloAlignmentV1({ alignment: alignment({ pageRange: undefined }), adoption: adoption(), curricoloContext: curricoloContext() }),
       /VERIFIED_PAGE requires a valid page range/,
