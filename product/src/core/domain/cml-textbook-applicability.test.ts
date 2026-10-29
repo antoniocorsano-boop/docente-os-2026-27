@@ -1,55 +1,18 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import type { CmlCanonicalRef } from './cml-local-handoff'
-import type { CurriculumContextForClassV1 } from './cml-local-handoff-v2'
 import type { TextbookAdoptionWithBook } from './textbook-adoption'
 import {
-  validateTextbookCurriculumAlignmentV1,
-  type TextbookCurriculumAlignmentV1,
+  validateTextbookCurricoloAlignmentV1,
+  type CurricoloContextBindingV1,
+  type TextbookCurricoloAlignmentV1,
 } from './cml-textbook-applicability'
 
-function ref(entityType: string, entityId: string, versionId?: string): CmlCanonicalRef {
-  return { namespace: 'curmanlight.arena', entityType, entityId, ...(versionId ? { versionId } : {}) }
-}
-
-function curricularContext(): CurriculumContextForClassV1 {
+function curricoloContext(): CurricoloContextBindingV1 {
   return {
-    contract: 'CML_CURRICULUM_CONTEXT_V1',
     contextId: 'ctx-technology-1A-2026-27',
-    institutionRef: ref('Institution', 'school-demo'),
-    schoolYearRef: '2026-2027',
-    disciplineRef: 'technology',
-    gradeRef: 'grade-1',
-    sectionRef: '1A',
-    cohortRef: 'cohort-2026-grade-1',
-    curriculumRef: ref('Curriculum', 'technology'),
-    curriculumVersionRef: ref('CurriculumVersion', 'technology-grade-1', '2026-27'),
-    curriculumState: 'PROVISIONAL_COMPLETE',
-    approvalProcessRef: ref('RevisionProcess', 'curriculum-2025-transition'),
-    applicabilityStatus: 'TRANSITIONAL',
-    transitionRuleRef: ref('TransitionRule', 'dm221-2025-art5'),
-    completeForPlanning: true,
     requirements: [
-      {
-        requirementId: 'req-sustainability-01',
-        kind: 'SPECIFIC_LEARNING_OBJECTIVE',
-        authorityLevel: 'NATIONAL_PRESCRIPTIVE',
-        curriculumNodeRef: ref('CurriculumNode', 'node-sustainability'),
-        description: 'Leggere relazioni tra bisogni, risorse, tecnologie e impatti.',
-        coverageRequired: true,
-        sourceRefs: [ref('NationalFramework', 'indicazioni-2025')],
-      },
+      { requirementId: 'req-sustainability-01' },
     ],
-    transitionRemodulation: {
-      state: 'HYPOTHESIS',
-      rationale: 'Ipotesi transitoria usabile in progettazione.',
-      sourceRefs: [ref('NationalFramework', 'indicazioni-2012'), ref('NationalFramework', 'indicazioni-2025')],
-      affectedRequirementIds: ['req-sustainability-01'],
-      usableForPlanning: true,
-      institutionallyApproved: false,
-      proposalRef: ref('RevisionProposal', 'remod-001'),
-    },
-    sourceRefs: [ref('RevisionProposal', 'curriculum-draft-001')],
   }
 }
 
@@ -89,14 +52,14 @@ function adoption(status: 'PROPOSED' | 'CONFIRMED' = 'CONFIRMED'): TextbookAdopt
   }
 }
 
-function alignment(overrides: Partial<TextbookCurriculumAlignmentV1> = {}): TextbookCurriculumAlignmentV1 {
+function alignment(overrides: Partial<TextbookCurricoloAlignmentV1> = {}): TextbookCurricoloAlignmentV1 {
   return {
     contract: 'CML_TEXTBOOK_ALIGNMENT_V1',
     alignmentId: 'align-1A-sustainability-pages-16-18',
     textbookAdoptionId: 'adoption-tv2ed-1A',
     textbookId: 'textbook-tv2ed',
     teachingAssignmentId: 'assignment-technology-1A',
-    curriculumContextId: 'ctx-technology-1A-2026-27',
+    curricoloContextId: 'ctx-technology-1A-2026-27',
     requirementId: 'req-sustainability-01',
     udaCode: 'CAN-UDA-1-01',
     relation: 'COMPOSED',
@@ -112,11 +75,11 @@ function alignment(overrides: Partial<TextbookCurriculumAlignmentV1> = {}): Text
 }
 
 describe('CML textbook applicability T4', () => {
-  it('accepts verified textbook support only against a confirmed adoption and an existing curriculum requirement', () => {
-    const result = validateTextbookCurriculumAlignmentV1({
+  it('accepts verified textbook support only against a confirmed adoption and an existing curricolo requirement', () => {
+    const result = validateTextbookCurricoloAlignmentV1({
       alignment: alignment(),
       adoption: adoption(),
-      curricularContext: curricularContext(),
+      curricoloContext: curricoloContext(),
     })
 
     assert.equal(result.contract, 'CML_TEXTBOOK_ALIGNMENT_V1')
@@ -127,53 +90,64 @@ describe('CML textbook applicability T4', () => {
 
   it('rejects a merely proposed textbook adoption', () => {
     assert.throws(
-      () => validateTextbookCurriculumAlignmentV1({ alignment: alignment(), adoption: adoption('PROPOSED'), curricularContext: curricularContext() }),
+      () => validateTextbookCurricoloAlignmentV1({ alignment: alignment(), adoption: adoption('PROPOSED'), curricoloContext: curricoloContext() }),
       /confirmed textbook adoption is required/,
     )
   })
 
   it('rejects alignment identity that drifts from the confirmed adoption', () => {
     assert.throws(
-      () => validateTextbookCurriculumAlignmentV1({ alignment: alignment({ textbookId: 'other-book' }), adoption: adoption(), curricularContext: curricularContext() }),
+      () => validateTextbookCurricoloAlignmentV1({ alignment: alignment({ textbookId: 'other-book' }), adoption: adoption(), curricoloContext: curricoloContext() }),
       /textbook alignment does not match confirmed adoption/,
     )
     assert.throws(
-      () => validateTextbookCurriculumAlignmentV1({ alignment: alignment({ teachingAssignmentId: 'assignment-technology-1B' }), adoption: adoption(), curricularContext: curricularContext() }),
+      () => validateTextbookCurricoloAlignmentV1({ alignment: alignment({ teachingAssignmentId: 'assignment-technology-1B' }), adoption: adoption(), curricoloContext: curricoloContext() }),
       /textbook alignment does not match confirmed adoption/,
     )
   })
 
-  it('rejects a curriculum context or requirement that is not the bound planning context', () => {
+  it('rejects a curricolo context or requirement that is not the bound planning context', () => {
     assert.throws(
-      () => validateTextbookCurriculumAlignmentV1({ alignment: alignment({ curriculumContextId: 'ctx-other' }), adoption: adoption(), curricularContext: curricularContext() }),
-      /curriculum context mismatch/,
+      () => validateTextbookCurricoloAlignmentV1({ alignment: alignment({ curricoloContextId: 'ctx-other' }), adoption: adoption(), curricoloContext: curricoloContext() }),
+      /curricolo context mismatch/,
     )
     assert.throws(
-      () => validateTextbookCurriculumAlignmentV1({ alignment: alignment({ requirementId: 'req-missing' }), adoption: adoption(), curricularContext: curricularContext() }),
-      /curriculum requirement not found/,
+      () => validateTextbookCurricoloAlignmentV1({ alignment: alignment({ requirementId: 'req-missing' }), adoption: adoption(), curricoloContext: curricoloContext() }),
+      /curricolo requirement not found/,
+    )
+  })
+
+  it('rejects an invalid curricolo binding before evaluating requirement coverage', () => {
+    assert.throws(
+      () => validateTextbookCurricoloAlignmentV1({
+        alignment: alignment(),
+        adoption: adoption(),
+        curricoloContext: { contextId: '', requirements: [] },
+      }),
+      /valid curricolo context binding is required/,
     )
   })
 
   it('fails closed on exact-page claims without VERIFIED_PAGE evidence', () => {
     assert.throws(
-      () => validateTextbookCurriculumAlignmentV1({ alignment: alignment({ evidenceLevel: 'TO_VERIFY' }), adoption: adoption(), curricularContext: curricularContext() }),
+      () => validateTextbookCurricoloAlignmentV1({ alignment: alignment({ evidenceLevel: 'TO_VERIFY' }), adoption: adoption(), curricoloContext: curricoloContext() }),
       /TO_VERIFY alignment cannot expose exact pages/,
     )
     assert.throws(
-      () => validateTextbookCurriculumAlignmentV1({ alignment: alignment({ pageRange: undefined }), adoption: adoption(), curricularContext: curricularContext() }),
+      () => validateTextbookCurricoloAlignmentV1({ alignment: alignment({ pageRange: undefined }), adoption: adoption(), curricoloContext: curricoloContext() }),
       /VERIFIED_PAGE requires a valid page range/,
     )
   })
 
   it('requires an explicit teacher verification timestamp for TEACHER_VERIFIED evidence', () => {
     assert.throws(
-      () => validateTextbookCurriculumAlignmentV1({ alignment: alignment({ verifiedByTeacherAt: undefined }), adoption: adoption(), curricularContext: curricularContext() }),
+      () => validateTextbookCurricoloAlignmentV1({ alignment: alignment({ verifiedByTeacherAt: undefined }), adoption: adoption(), curricoloContext: curricoloContext() }),
       /teacher-verified alignment requires verifiedByTeacherAt/,
     )
   })
 
   it('allows a partial publisher feature without inventing chapters or pages', () => {
-    const result = validateTextbookCurriculumAlignmentV1({
+    const result = validateTextbookCurricoloAlignmentV1({
       alignment: alignment({
         alignmentId: 'align-digital-support',
         udaCode: 'CAN-UDA-1-06',
@@ -187,7 +161,7 @@ describe('CML textbook applicability T4', () => {
         verifiedByTeacherAt: undefined,
       }),
       adoption: adoption(),
-      curricularContext: curricularContext(),
+      curricoloContext: curricoloContext(),
     })
 
     assert.equal(result.coverage, 'PARTIAL')
