@@ -4,7 +4,7 @@ import { AppShell } from '@/components/app-shell/app-shell'
 import { LessonExperienceFeedback } from '@/components/experience-feedback/experience-feedback'
 import { buildClassMaterialAcceptanceEvidenceV1 } from '@/core/application/class-material-acceptance-evidence'
 import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
-import { allocatedMinutesByBlock, completionProposal, currentTeachingSessions } from '@/core/domain/teaching-session'
+import { allocatedMinutesByBlock, civicEducationMinutes, completionProposal, currentTeachingSessions } from '@/core/domain/teaching-session'
 import { parseTeachingSessionEvidenceNote } from '@/core/domain/teaching-session-reflection'
 import { bindArenaDisciplineRefToDocenteOs, isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
 import { eco02PilotIdentityFromEnv } from '@/core/server/eco02-pilot-config'
@@ -25,6 +25,7 @@ import { buildTaskAwareKnowledgeHref, buildTaskAwareKnowledgeListHref } from '@/
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI } from '@/app/piano-annuale/model'
 import { buildClassWorkspaceLearningFocus, buildClassWorkspaceSummary, formatWeeklyMinutes, selectPreparedClassMaterials } from '../class-workspace-model'
 import { isCurrentDaySessionReceipt, presentClassRecorderEmptyState, presentClassTaskState, resolveClassTaskDecision } from './class-task-state'
+import { presentClassCivicEducationProgress } from './class-civic-progress'
 import { SessionReplanningReceipt } from './session-replanning-receipt'
 import { ClassSecondaryTools } from './class-secondary-tools'
 import '../classi.css'
@@ -94,6 +95,7 @@ export default async function ClassWorkspacePage({
   )
   const learningFocus = buildClassWorkspaceLearningFocus(section, snapshot.progress, canonicalGenerationId, knowledgeItems)
   const currentSessions = currentTeachingSessions(teachingSnapshot)
+  const annualCivicEducationMinutes = civicEducationMinutes(teachingSnapshot)
   const allocationTotals = source
     ? allocatedMinutesByBlock(teachingSnapshot, source.generationId)
     : new Map<string, number>()
@@ -311,6 +313,7 @@ export default async function ClassWorkspacePage({
         <article className="classWorkspaceCard">
           <div><h2>Avanzamento</h2><p>{learningFocus.completedBlocks}/33 lezioni concluse</p></div>
           <small>{nextCanonicalBlock ? `${nextAllocatedMinutes}/${nextCanonicalBlock.hours * 60} minuti effettivi registrati sul lavoro corrente.` : 'Percorso annuale completato.'}</small>
+          <small>{presentClassCivicEducationProgress(annualCivicEducationMinutes)}</small>
         </article>
         <article className="classWorkspaceCard">
           <div><h2>Contesto recente</h2><p>{recentContext}</p></div>

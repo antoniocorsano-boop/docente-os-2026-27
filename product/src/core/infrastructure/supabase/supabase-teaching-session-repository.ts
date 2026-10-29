@@ -6,8 +6,14 @@ import type {
   TeachingSessionSnapshot,
 } from '@/core/domain/teaching-session'
 import { createClient } from '@/lib/supabase/server'
+import {
+  civicEducationSchemaCompatibility,
+  isMissingCivicEducationSchemaError,
+  selectTeachingSessionWriteRpc,
+  shouldFallbackToLegacyTeachingSessionRpc,
+} from './teaching-session-civic-schema-compat'
 
-type DbError = { message: string }
+type DbError = { message: string; code?: string | null }
 type RpcResult<T> = Promise<{ data: T | null; error: DbError | null }>
 type QueryResult<T> = { data: T[] | null; error: DbError | null }
 
@@ -54,40 +60,62 @@ type AllocationRow = {
   created_at: string
 }
 
+type CivicContributionRow = {
+  session_id: string
+  minutes: number
+  evidence_note: string | null
+  created_at: string
+}
+
 interface TeachingSessionReadClient {
   from(table: 'teaching_sessions'): TableBuilder<SessionRow>
   from(table: 'teaching_session_allocations'): TableBuilder<AllocationRow>
+  from(table: 'teaching_session_civic_contributions'): TableBuilder<CivicContributionRow>
+}
+
+type TeachingSessionRpcArgs = {
+  target_workspace_id: string
+  target_academic_year_id: string
+  target_section_id: string
+  target_discipline_id: string | null
+  target_local_date: string
+  target_planned_start_time: string | null
+  target_planned_end_time: string | null
+  target_planned_minutes: number | null
+  target_actual_minutes: number
+  target_evidence_note: string | null
+  target_source_kind: TeachingSessionDraft['source']['sourceKind']
+  target_projected_occurrence_logical_id: string | null
+  target_source_timetable_version_id: string | null
+  target_source_timetable_slot_id: string | null
+  target_source_calendar_state: TeachingSessionDraft['source']['calendarState']
+  target_source_provenance: string[]
+  target_supersedes_session_id: string | null
+  target_allocations: Array<{
+    block_id: string
+    minutes: number
+    canonical_plan_asset_id: string
+    canonical_generation_id: string
+  }>
 }
 
 interface TeachingSessionRpcClient {
-  rpc(name: 'record_teaching_session', args: {
-    target_workspace_id: string
-    target_academic_year_id: string
-    target_section_id: string
-    target_discipline_id: string | null
-    target_local_date: string
-    target_planned_start_time: string | null
-    target_planned_end_time: string | null
-    target_planned_minutes: number | null
-    target_actual_minutes: number
-    target_evidence_note: string | null
-    target_source_kind: TeachingSessionDraft['source']['sourceKind']
-    target_projected_occurrence_logical_id: string | null
-    target_source_timetable_version_id: string | null
-    target_source_timetable_slot_id: string | null
-    target_source_calendar_state: TeachingSessionDraft['source']['calendarState']
-    target_source_provenance: string[]
-    target_supersedes_session_id: string | null
-    target_allocations: Array<{
-      block_id: string
-      minutes: number
-      canonical_plan_asset_id: string
-      canonical_generation_id: string
-    }>
+  rpc(name: 'record_teaching_session', args: TeachingSessionRpcArgs): RpcResult<string>
+  rpc(name: 'record_teaching_session_with_civic_contribution', args: TeachingSessionRpcArgs & {
+    target_civic_education_minutes: number | null
+    target_civic_education_evidence_note: string | null
   }): RpcResult<string>
 }
 
+type TeachingSessionRepositoryClient = TeachingSessionRpcClient & TeachingSessionReadClient
+type ClientFactory = () => Promise<TeachingSessionRepositoryClient>
+
 export class SupabaseTeachingSessionRepository {
+  constructor(
+    private readonly clientFactory: ClientFactory = async () =>
+      await createClient() as unknown as TeachingSessionRepositoryClient,
+  ) {}
+
   async record(input: {
     workspaceId: string
     academicYearId: string
@@ -95,9 +123,11 @@ export class SupabaseTeachingSessionRepository {
     allocations: TeachingSessionAllocationDraft[]
     supersedesSessionId?: string | null
   }) {
-    const supabase = await createClient()
-    const rpc = supabase as unknown as TeachingSessionRpcClient
-    const { data, error } = await rpc.rpc('record_teaching_session', {
+    const rpc = await this.clientFactory()
+    const civicEducation = input.session.civicEducation ?? null
+    const compatibility = civicEducationSchemaCompatibility(process.env.DOCENTE_OS_CIVIC_SCHEMA_COMPAT)
+    const writeRpc = selectTeachingSessionWriteRpc(civicEducation)
+    const args: TeachingSessionRpcArgs = {
       target_workspace_id: input.workspaceId,
       target_academic_year_id: input.academicYearId,
       target_section_id: input.session.sectionId,
@@ -121,7 +151,28 @@ export class SupabaseTeachingSessionRepository {
         canonical_plan_asset_id: allocation.canonicalPlanAssetId,
         canonical_generation_id: allocation.canonicalGenerationId,
       })),
+    }
+
+    const compositeResult = await rpc.rpc(writeRpc, {
+      ...args,
+      target_civic_education_minutes: civicEducation?.minutes ?? null,
+      target_civic_education_evidence_note: civicEducation?.evidenceNote ?? null,
     })
+    let data = compositeResult.data
+    let error = compositeResult.error
+
+    if (
+      error
+      && shouldFallbackToLegacyTeachingSessionRpc({
+        civicEducation,
+        error,
+        compatibility,
+      })
+    ) {
+      const legacyResult = await rpc.rpc('record_teaching_session', args)
+      data = legacyResult.data
+      error = legacyResult.error
+    }
 
     if (error) throw new Error(error.message)
     if (!data) throw new Error('Teaching session receipt missing')
@@ -129,8 +180,7 @@ export class SupabaseTeachingSessionRepository {
   }
 
   async listByDay(workspaceId: string, academicYearId: string, localDate: string): Promise<TeachingSessionRecord[]> {
-    const supabase = await createClient()
-    const read = supabase as unknown as TeachingSessionReadClient
+    const read = await this.clientFactory()
     const { data, error } = await read
       .from('teaching_sessions')
       .select('*')
@@ -140,12 +190,13 @@ export class SupabaseTeachingSessionRepository {
       .order('recorded_at', { ascending: false })
 
     if (error) throw new Error(error.message)
-    return (data ?? []).map(toSession)
+    const sessionRows = data ?? []
+    const civicBySession = await loadCivicEducation(read, sessionRows.map((row) => row.id))
+    return sessionRows.map((row) => toSession(row, civicBySession.get(row.id) ?? null))
   }
 
   async listBySection(workspaceId: string, academicYearId: string, sectionId: string): Promise<TeachingSessionSnapshot> {
-    const supabase = await createClient()
-    const read = supabase as unknown as TeachingSessionReadClient
+    const read = await this.clientFactory()
     const sessionQuery = read
       .from('teaching_sessions')
       .select('*')
@@ -157,22 +208,45 @@ export class SupabaseTeachingSessionRepository {
 
     const { data: sessionRows, error: sessionError } = await sessionQuery
     if (sessionError) throw new Error(sessionError.message)
-    const sessions = (sessionRows ?? []).map(toSession)
-    const sessionIds = sessions.map((session) => session.id)
+    const rows = sessionRows ?? []
+    const sessionIds = rows.map((row) => row.id)
     if (!sessionIds.length) return { sessions: [], allocations: [] }
 
-    const { data: allocationRows, error: allocationError } = await read
-      .from('teaching_session_allocations')
-      .select('*')
-      .in('session_id', sessionIds)
-      .order('created_at', { ascending: true })
+    const [civicBySession, allocationResult] = await Promise.all([
+      loadCivicEducation(read, sessionIds),
+      read
+        .from('teaching_session_allocations')
+        .select('*')
+        .in('session_id', sessionIds)
+        .order('created_at', { ascending: true }),
+    ])
 
-    if (allocationError) throw new Error(allocationError.message)
-    return { sessions, allocations: (allocationRows ?? []).map(toAllocation) }
+    if (allocationResult.error) throw new Error(allocationResult.error.message)
+    const sessions = rows.map((row) => toSession(row, civicBySession.get(row.id) ?? null))
+    return { sessions, allocations: (allocationResult.data ?? []).map(toAllocation) }
   }
 }
 
-function toSession(row: SessionRow): TeachingSessionRecord {
+async function loadCivicEducation(read: TeachingSessionReadClient, sessionIds: string[]) {
+  const bySession = new Map<string, CivicContributionRow>()
+  if (!sessionIds.length) return bySession
+
+  const { data, error } = await read
+    .from('teaching_session_civic_contributions')
+    .select('*')
+    .in('session_id', sessionIds)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    const compatibility = civicEducationSchemaCompatibility(process.env.DOCENTE_OS_CIVIC_SCHEMA_COMPAT)
+    if (isMissingCivicEducationSchemaError(error, compatibility)) return bySession
+    throw new Error(error.message)
+  }
+  for (const contribution of data ?? []) bySession.set(contribution.session_id, contribution)
+  return bySession
+}
+
+function toSession(row: SessionRow, civicEducation: CivicContributionRow | null): TeachingSessionRecord {
   return {
     id: row.id,
     workspaceId: row.workspace_id,
@@ -185,6 +259,12 @@ function toSession(row: SessionRow): TeachingSessionRecord {
     plannedMinutes: row.planned_minutes,
     actualMinutes: row.actual_minutes,
     evidenceNote: row.evidence_note,
+    civicEducation: civicEducation
+      ? {
+          minutes: civicEducation.minutes,
+          evidenceNote: civicEducation.evidence_note,
+        }
+      : null,
     source: {
       sourceKind: row.source_kind,
       projectedOccurrenceLogicalId: row.projected_occurrence_logical_id,

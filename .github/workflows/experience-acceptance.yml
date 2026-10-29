@@ -72,6 +72,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      DOCENTE_OS_CIVIC_SCHEMA_COMPAT: previous
 
     steps:
       - name: Check governed AAL2 E2E credential configuration

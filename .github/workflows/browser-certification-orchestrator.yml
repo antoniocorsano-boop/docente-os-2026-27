@@ -226,6 +226,7 @@ jobs:
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
       EXPERIENCE_TARGET: local
       EXPERIENCE_OUTPUT_DIR: test-results/experience
+      DOCENTE_OS_CIVIC_SCHEMA_COMPAT: previous
       P6_ROUTE_BUDGET_MS: 2500
       P6_P95_BUDGET_MS: 1800
       P6_TESTED_SHA: ${{ inputs.tested_sha || github.event.pull_request.head.sha }}

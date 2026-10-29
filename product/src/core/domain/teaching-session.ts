@@ -10,6 +10,11 @@ export type TeachingSessionSourceSnapshot = {
   provenance: string[]
 }
 
+export type CivicEducationContribution = {
+  minutes: number
+  evidenceNote: string | null
+}
+
 export type TeachingSessionDraft = {
   sectionId: string
   disciplineId: string | null
@@ -19,6 +24,7 @@ export type TeachingSessionDraft = {
   plannedMinutes: number | null
   actualMinutes: number
   evidenceNote: string | null
+  civicEducation?: CivicEducationContribution | null
   source: TeachingSessionSourceSnapshot
 }
 
@@ -71,6 +77,35 @@ export type TeachingSessionAllocationValidation = {
   codes: TeachingSessionAllocationValidationCode[]
 }
 
+export function normalizeCivicEducationContribution(input: {
+  actualMinutes: number
+  minutes: number | null
+  evidenceNote: string | null
+}): CivicEducationContribution | null {
+  if (!Number.isInteger(input.actualMinutes) || input.actualMinutes <= 0) {
+    throw new Error('Invalid actual minutes')
+  }
+
+  const evidenceNote = input.evidenceNote?.trim() || null
+  if (evidenceNote && evidenceNote.length > 4000) {
+    throw new Error('Civic education evidence note is too long')
+  }
+
+  if (input.minutes === null) {
+    if (evidenceNote) throw new Error('Civic education minutes are required when evidence is present')
+    return null
+  }
+
+  if (!Number.isInteger(input.minutes) || input.minutes <= 0 || input.minutes > input.actualMinutes) {
+    throw new Error('Invalid civic education minutes')
+  }
+
+  return {
+    minutes: input.minutes,
+    evidenceNote,
+  }
+}
+
 export function validateTeachingSessionAllocations(input: {
   session: TeachingSessionDraft
   allocations: TeachingSessionAllocationDraft[]
@@ -120,6 +155,13 @@ export function validateTeachingSessionAllocations(input: {
 export function currentTeachingSessions(snapshot: TeachingSessionSnapshot) {
   const superseded = new Set(snapshot.sessions.map((session) => session.supersedesSessionId).filter((id): id is string => Boolean(id)))
   return snapshot.sessions.filter((session) => !superseded.has(session.id))
+}
+
+export function civicEducationMinutes(snapshot: TeachingSessionSnapshot) {
+  return currentTeachingSessions(snapshot).reduce(
+    (total, session) => total + (session.civicEducation?.minutes ?? 0),
+    0,
+  )
 }
 
 export function allocatedMinutesByBlock(snapshot: TeachingSessionSnapshot, canonicalGenerationId: string) {

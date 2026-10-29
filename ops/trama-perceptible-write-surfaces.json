@@ -76,7 +76,8 @@
       "id": "class-workspace-write",
       "critical": true,
       "sourcePatterns": [
-        "product/src/app/classi/[sectionId]/actions.ts"
+        "product/src/app/classi/[sectionId]/actions.ts",
+        "product/src/app/classi/[sectionId]/TeachingSessionRecorderClient.tsx"
       ],
       "feedbackFiles": [
         "product/src/app/classi/[sectionId]/page.tsx"

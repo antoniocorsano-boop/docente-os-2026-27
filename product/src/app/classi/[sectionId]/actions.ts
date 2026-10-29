@@ -21,6 +21,7 @@ import { SupabaseTimetableProjectionReadRepository } from '@/core/infrastructure
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { resolveRuntimeHumanTaskLessonProjection } from '@/core/presentation/human-task-runtime'
 import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_UI, type GradeKey } from '@/app/piano-annuale/model'
+import { civicEducationContributionFromFormData } from './teaching-session-civic-form'
 
 export async function recordTeachingSession(formData: FormData) {
   const context = await requireContext()
@@ -122,6 +123,11 @@ export async function recordTeachingSession(formData: FormData) {
         provenance: [`manual_session:${localDate}`, `section:${sectionId}`, registrationKeyProvenance],
       },
     }
+  }
+
+  session = {
+    ...session,
+    civicEducation: civicEducationContributionFromFormData(formData, actualMinutes),
   }
 
   const receipt = await recordTeachingSessionCommand({
