@@ -181,12 +181,11 @@ export function buildProgettaTextbookSupport(input: {
 }): ProgettaTextbookSupport[] {
   if (!input.sectionId || !input.focus) return []
 
-  const hasResolvedDisciplineNames = input.assignments.some((assignment) => assignment.disciplineName !== undefined)
   const assignmentIds = new Set(
     input.assignments
       .filter((assignment) =>
         assignment.sectionId === input.sectionId
-        && (!hasResolvedDisciplineNames || canonicalPlanSupportsDisciplineName(assignment.disciplineName)),
+        && canonicalPlanSupportsDisciplineName(assignment.disciplineName),
       )
       .map((assignment) => assignment.id),
   )
