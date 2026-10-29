@@ -1,4 +1,6 @@
 import type { KnowledgeAsset, KnowledgeDocument } from '@/core/domain/knowledge'
+import type { TextbookCurricoloAlignmentV1 } from '@/core/domain/cml-textbook-applicability'
+import type { TextbookAdoptionWithBook } from '@/core/domain/textbook-adoption'
 import { buildBlocks, type GradeKey } from '../piano-annuale/model'
 
 export type ProgettaItem = { asset: KnowledgeAsset; document: KnowledgeDocument | null }
@@ -30,6 +32,34 @@ export type PlanningCoverage = {
   programming: number
   uda: number
   materials: number
+}
+
+export type ProgettaTextbookReference = {
+  alignmentId: string
+  requirementId: string
+  relation: TextbookCurricoloAlignmentV1['relation']
+  coverage: TextbookCurricoloAlignmentV1['coverage']
+  evidenceLevel: TextbookCurricoloAlignmentV1['evidenceLevel']
+  sectionLabel: string | null
+  chapterLabel: string | null
+  pageRangeLabel: string | null
+  resourceRef: string | null
+}
+
+export type ProgettaTextbookSupport = {
+  adoptionId: string
+  textbookId: string
+  teachingAssignmentId: string
+  title: string
+  subtitle: string | null
+  authors: string | null
+  publisher: string
+  editionLabel: string | null
+  volumeLabel: string | null
+  isbn13: string
+  udaCode: string
+  alignmentState: 'VERIFIED' | 'ADOPTED_ONLY'
+  references: ProgettaTextbookReference[]
 }
 
 const GRADE_KEY: Record<ProgettaGrade, GradeKey> = {
@@ -139,6 +169,81 @@ export function planningCoverage(items: ProgettaItem[]): PlanningCoverage[] {
       && asset.sourceMetadata.grade === grade,
     ).length,
   }))
+}
+
+export function buildProgettaTextbookSupport(input: {
+  sectionId: string | null
+  focus: ResolvedProgettaFocus | null
+  assignments: readonly { id: string; sectionId: string }[]
+  adoptions: readonly TextbookAdoptionWithBook[]
+  validatedAlignments: readonly TextbookCurricoloAlignmentV1[]
+}): ProgettaTextbookSupport[] {
+  if (!input.sectionId || !input.focus) return []
+
+  const assignmentIds = new Set(
+    input.assignments
+      .filter((assignment) => assignment.sectionId === input.sectionId)
+      .map((assignment) => assignment.id),
+  )
+  if (!assignmentIds.size) return []
+
+  const udaCode = `CAN-UDA-${input.focus.uda}`
+
+  return input.adoptions
+    .filter((adoption) =>
+      adoption.status === 'CONFIRMED'
+      && adoption.usageKind === 'ADOPTED'
+      && assignmentIds.has(adoption.teachingAssignmentId),
+    )
+    .map((adoption) => {
+      const references = input.validatedAlignments
+        .filter((alignment) =>
+          alignment.textbookAdoptionId === adoption.id
+          && alignment.textbookId === adoption.textbookId
+          && alignment.teachingAssignmentId === adoption.teachingAssignmentId
+          && alignment.udaCode === udaCode,
+        )
+        .map(toProgettaTextbookReference)
+        .sort(compareTextbookReferences)
+
+      return {
+        adoptionId: adoption.id,
+        textbookId: adoption.textbookId,
+        teachingAssignmentId: adoption.teachingAssignmentId,
+        title: adoption.textbook.title,
+        subtitle: adoption.textbook.subtitle,
+        authors: adoption.textbook.authors,
+        publisher: adoption.textbook.publisher,
+        editionLabel: adoption.textbook.editionLabel,
+        volumeLabel: adoption.textbook.volumeLabel,
+        isbn13: adoption.textbook.isbn13,
+        udaCode,
+        alignmentState: references.length ? 'VERIFIED' as const : 'ADOPTED_ONLY' as const,
+        references,
+      }
+    })
+    .sort((left, right) => left.title.localeCompare(right.title, 'it') || left.isbn13.localeCompare(right.isbn13))
+}
+
+function toProgettaTextbookReference(alignment: TextbookCurricoloAlignmentV1): ProgettaTextbookReference {
+  return {
+    alignmentId: alignment.alignmentId,
+    requirementId: alignment.requirementId,
+    relation: alignment.relation,
+    coverage: alignment.coverage,
+    evidenceLevel: alignment.evidenceLevel,
+    sectionLabel: alignment.sectionLabel ?? null,
+    chapterLabel: alignment.chapterLabel ?? null,
+    pageRangeLabel: alignment.evidenceLevel === 'VERIFIED_PAGE' && alignment.pageRange
+      ? `pp. ${alignment.pageRange.from}–${alignment.pageRange.to}`
+      : null,
+    resourceRef: alignment.resourceRef ?? null,
+  }
+}
+
+function compareTextbookReferences(left: ProgettaTextbookReference, right: ProgettaTextbookReference) {
+  return (left.pageRangeLabel ?? left.chapterLabel ?? left.sectionLabel ?? left.alignmentId)
+    .localeCompare(right.pageRangeLabel ?? right.chapterLabel ?? right.sectionLabel ?? right.alignmentId, 'it')
 }
 
 function searchableText({ asset, document }: ProgettaItem) {
