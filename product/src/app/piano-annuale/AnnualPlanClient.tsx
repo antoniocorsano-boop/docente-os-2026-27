@@ -11,6 +11,7 @@ import type {
 import {
   addAnnualPlanSection,
   confirmAnnualPlanSection,
+  exportRegistroTeachingProjection,
   resetAnnualPlanProgress,
   saveAnnualPlanProgress,
 } from './actions'
@@ -62,6 +63,8 @@ export default function AnnualPlanClient({
   const [sectionId, setSectionId] = useState(initialSection?.id ?? '')
   const [newSection, setNewSection] = useState('')
   const [syncError, setSyncError] = useState<string | null>(null)
+  const [exportStatus, setExportStatus] = useState<string | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
   const [isPending, startTransition] = useTransition()
   const storageKey = `DOCENTE_OS_CAN_PLAN_CACHE_${academicYearId}`
 
@@ -170,6 +173,28 @@ export default function AnnualPlanClient({
     })
   }
 
+  async function downloadRegistroProjection() {
+    setExportStatus(null)
+    setIsExporting(true)
+    try {
+      const exported = await exportRegistroTeachingProjection()
+      const blob = new Blob([exported.json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = exported.filename
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+      setExportStatus('File pronto per Registro Docente.')
+    } catch (error) {
+      setExportStatus(errorMessage(error))
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   const saveStateLabel = syncError
     ? `Salvataggio non riuscito: ${syncError}`
     : !source
@@ -248,6 +273,8 @@ export default function AnnualPlanClient({
         <div className="humanTaskSecondaryBody annualManagementPanel">
           <div className="annualAddSection"><input value={newSection} onChange={(event) => setNewSection(event.target.value)} placeholder="Nuova sezione, es. A" aria-label="Nuova sezione" /><button className="secondaryButton" type="button" onClick={addSection} disabled={isPending || !newSection.trim()}>Aggiungi sezione</button></div>
           <div className="annualManagementLinks">{source ? <Link className="secondaryButton" href={`/knowledge/${source.assetId}`}>Documento di riferimento</Link> : <span>Documento di riferimento non collegato</span>}<button className="secondaryButton" type="button" onClick={resetSection} disabled={isPending || !selectedSection || !source}>Azzera avanzamento sezione</button></div>
+          <div className="annualManagementLinks"><button className="secondaryButton" type="button" onClick={downloadRegistroProjection} disabled={isExporting}>{isExporting ? 'Sto preparando il file…' : 'Esporta per Registro Docente'}</button><span>Nessun dato studente: il file contiene solo classi, UDA e provenienza del piano.</span></div>
+          {exportStatus ? <p role="status" aria-live="polite">{exportStatus}</p> : null}
           <p>Fonte {logicalSource.code}{source ? <> · generazione {source.generationId}</> : ' · collegamento runtime non disponibile'}. L’avanzamento è persistito sul servizio dati; la cache browser resta di supporto.</p>
         </div>
       </details>
