@@ -153,6 +153,12 @@ function isSchoolYear(value: unknown): value is string {
   return Boolean(match && Number(match[2]) === Number(match[1]) + 1)
 }
 
+function isIsoTimestamp(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  const parsed = Date.parse(value)
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value) && !Number.isNaN(parsed)
+}
+
 function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`
   if (isRecord(value)) {
@@ -245,7 +251,7 @@ export function validateRegistroTeachingProjection(input: unknown): RegistroTeac
   if (input.privacyClass !== 'PROFESSIONAL_NON_PERSONAL') {
     return invalid('INVALID_PRIVACY_CLASS', 'Projection must be professional and non-personal.')
   }
-  if (!isSchoolYear(input.schoolYear) || !isNonEmptyString(input.disciplineName) || !isNonEmptyString(input.generatedAt)) {
+  if (!isSchoolYear(input.schoolYear) || !isNonEmptyString(input.disciplineName) || !isIsoTimestamp(input.generatedAt)) {
     return invalid('INVALID_METADATA', 'Projection metadata is incomplete or invalid.')
   }
 
