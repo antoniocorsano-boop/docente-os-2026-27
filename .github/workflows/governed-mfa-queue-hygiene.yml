@@ -30,6 +30,7 @@ jobs:
               '.github/workflows/browser-certification-orchestrator.yml',
               '.github/workflows/dos-crm-ql1-daily-teaching-loop.yml',
               '.github/workflows/experience-acceptance.yml',
+              '.github/workflows/release-rollback-compatibility.yml',
               '.github/workflows/x4-planner-e2e.yml',
               '.github/workflows/x3-e2e.yml',
               '.github/workflows/wcag22-aa-assurance.yml',
