@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
   buildRegistroTeachingProjection,
@@ -126,4 +127,21 @@ test('validator rejects prohibited student-personal properties anywhere in proje
   }
   projection2.classes[0]!.udas[0]!.studentId = 'student-1'
   assert.equal(validateRegistroTeachingProjection(projection2).ok, false)
+})
+
+
+test('versioned JSON corpus accepts the canonical fixture and rejects every negative fixture', () => {
+  const load = (name: string) => JSON.parse(readFileSync(new URL(`./__fixtures__/${name}`, import.meta.url), 'utf8')) as unknown
+  const positive = load('registro-teaching-projection-v1.json')
+  assert.equal(validateRegistroTeachingProjection(positive).ok, true)
+
+  for (const name of [
+    'negative/automatic-write-enabled.json',
+    'negative/duplicate-section.json',
+    'negative/malformed-fingerprint.json',
+    'negative/personal-field.json',
+    'negative/wrong-source.json',
+  ]) {
+    assert.equal(validateRegistroTeachingProjection(load(name)).ok, false, name)
+  }
 })
