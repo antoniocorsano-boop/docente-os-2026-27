@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: docente-os-governed-mfa-e2e
-  cancel-in-progress: true
+  queue: max
 
 env:
   A4_R2B_PRODUCER_SHA: b0db8e311a5d8437f5974722b3d6cefd9e0f78ef
