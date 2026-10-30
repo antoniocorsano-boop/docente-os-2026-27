@@ -147,6 +147,12 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0
 }
 
+function isSchoolYear(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  const match = /^(\d{4})\/(\d{4})$/.exec(value)
+  return Boolean(match && Number(match[2]) === Number(match[1]) + 1)
+}
+
 function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`
   if (isRecord(value)) {
@@ -239,8 +245,8 @@ export function validateRegistroTeachingProjection(input: unknown): RegistroTeac
   if (input.privacyClass !== 'PROFESSIONAL_NON_PERSONAL') {
     return invalid('INVALID_PRIVACY_CLASS', 'Projection must be professional and non-personal.')
   }
-  if (!isNonEmptyString(input.schoolYear) || !isNonEmptyString(input.disciplineName) || !isNonEmptyString(input.generatedAt)) {
-    return invalid('INVALID_METADATA', 'Projection metadata is incomplete.')
+  if (!isSchoolYear(input.schoolYear) || !isNonEmptyString(input.disciplineName) || !isNonEmptyString(input.generatedAt)) {
+    return invalid('INVALID_METADATA', 'Projection metadata is incomplete or invalid.')
   }
 
   if (!isRecord(input.projectionFingerprint) || !hasExactKeys(input.projectionFingerprint, FINGERPRINT_KEYS)) {
