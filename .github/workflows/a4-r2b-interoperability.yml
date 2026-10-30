@@ -1,0 +1,195 @@
+name: A4-R2B Interoperability
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/a4-r2b-interoperability.yml'
+      - 'product/e2e/experience/a4-r2b-interoperability.spec.mjs'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docente-os-a4-r2b-interoperability
+  cancel-in-progress: true
+
+env:
+  A4_R2B_PRODUCER_SHA: b0db8e311a5d8437f5974722b3d6cefd9e0f78ef
+  A4_R2B_REGISTRO_SHA: 4b0dd2e8ca16456bcdc34757acd29078f80e87ff
+  E2E_BASE_URL: http://127.0.0.1:3000
+  REGISTRO_BASE_URL: http://127.0.0.1:4173
+  EXPERIENCE_TARGET: local
+  EXPERIENCE_OUTPUT_DIR: test-results/experience
+  RENDER_GIT_COMMIT: b0db8e311a5d8437f5974722b3d6cefd9e0f78ef
+  RENDER_GIT_BRANCH: fix/a4-r2b-export-canonical-uda-titles
+  NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
+  NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+  DOCENTE_OS_CIVIC_SCHEMA_COMPAT: previous
+  E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
+  E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
+
+jobs:
+  interoperability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check governed AAL2 E2E credentials
+        shell: bash
+        run: |
+          missing=0
+          for name in E2E_EMAIL E2E_PASSWORD E2E_TOTP_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is required for A4-R2B interoperability qualification."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Checkout qualification branch exactly
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Verify qualification-only delta from exact producer
+        shell: bash
+        run: |
+          git merge-base --is-ancestor "$A4_R2B_PRODUCER_SHA" HEAD
+          unexpected="$(git diff --name-only "$A4_R2B_PRODUCER_SHA"...HEAD | grep -Ev '^(\.github/workflows/a4-r2b-interoperability\.yml|product/e2e/experience/a4-r2b-interoperability\.spec\.mjs)$' || true)"
+          if [ -n "$unexpected" ]; then
+            echo '::error::Task 8 qualification branch changes producer product files:'
+            printf '%s\n' "$unexpected"
+            exit 1
+          fi
+          printf 'producer_sha=%s\nqualification_head=%s\n' "$A4_R2B_PRODUCER_SHA" "$(git rev-parse HEAD)"
+
+      - name: Checkout exact Registro consumer
+        uses: actions/checkout@v4
+        with:
+          repository: antoniocorsano-boop/registro-docente
+          ref: ${{ env.A4_R2B_REGISTRO_SHA }}
+          path: _interop/registro
+          persist-credentials: false
+
+      - name: Verify exact Registro checkout
+        shell: bash
+        run: |
+          actual="$(git -C _interop/registro rev-parse HEAD)"
+          test "$actual" = "$A4_R2B_REGISTRO_SHA"
+          echo "registro_sha=$actual"
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Docente OS dependencies
+        working-directory: product
+        run: npm ci --no-audit --no-fund
+
+      - name: Install focused Playwright runner
+        working-directory: product
+        run: npm install --no-save --package-lock=false @playwright/test@1.55.0
+
+      - name: Build exact producer product
+        working-directory: product
+        run: npm run build
+
+      - name: Start exact producer product
+        working-directory: product
+        shell: bash
+        run: |
+          PORT=3000 npm start > /tmp/docente-os-a4-r2b.log 2>&1 &
+          for attempt in $(seq 1 45); do
+            if curl -fsS --max-time 5 "$E2E_BASE_URL/login" >/dev/null; then
+              echo 'Docente OS exact producer runtime ready.'
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/docente-os-a4-r2b.log >&2 || true
+          exit 1
+
+      - name: Install exact Registro dependencies
+        working-directory: _interop/registro
+        run: bun install --frozen-lockfile
+
+      - name: Build exact Registro consumer
+        working-directory: _interop/registro
+        run: bun run build
+
+      - name: Start exact Registro consumer
+        working-directory: _interop/registro
+        shell: bash
+        run: |
+          PORT=4173 NODE_ENV=production bun run start > /tmp/registro-a4-r2b.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 5 "$REGISTRO_BASE_URL/" >/dev/null; then
+              echo 'Registro exact consumer runtime ready.'
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/registro-a4-r2b.log >&2 || true
+          exit 1
+
+      - name: Install Chromium
+        working-directory: product
+        run: npx playwright install --with-deps chromium
+
+      - name: Run exact cross-product browser qualification
+        working-directory: product
+        shell: bash
+        run: |
+          cat > playwright.a4-r2b-interoperability.config.mjs <<'EOF'
+          import { defineConfig } from '@playwright/test'
+          export default defineConfig({
+            testDir: './e2e/experience',
+            testMatch: 'a4-r2b-interoperability.spec.mjs',
+            timeout: 180_000,
+            expect: { timeout: 20_000 },
+            fullyParallel: false,
+            workers: 1,
+            retries: 0,
+            reporter: [['list']],
+            outputDir: 'test-results/experience/a4-r2b-interoperability/playwright-artifacts',
+            use: {
+              baseURL: process.env.E2E_BASE_URL,
+              locale: 'it-IT',
+              timezoneId: 'Europe/Rome',
+              screenshot: 'only-on-failure',
+              trace: 'retain-on-failure',
+            },
+            projects: [{
+              name: 'desktop-1440x1000',
+              use: { viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1, isMobile: false, hasTouch: false },
+            }],
+          })
+          EOF
+          npx playwright test --config=playwright.a4-r2b-interoperability.config.mjs
+
+      - name: Enforce Task 8 receipt
+        working-directory: product
+        shell: bash
+        run: |
+          receipt="test-results/experience/a4-r2b-interoperability/desktop-1440x1000--receipt.json"
+          test -f "$receipt"
+          node -e "const fs=require('fs'); const r=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); if(r.producerSha!==process.env.A4_R2B_PRODUCER_SHA||r.consumerSha!==process.env.A4_R2B_REGISTRO_SHA||r.preview!=='PASS'||r.reconciliation!=='PASS'||r.acceptance!=='PASS'||r.classCount<1||r.automaticWriteAllowed!==false) process.exit(1)" "$receipt"
+          cat "$receipt"
+
+      - name: Upload Task 8 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a4-r2b-interoperability-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 90
+          path: |
+            product/test-results/experience/a4-r2b-interoperability/
+            /tmp/docente-os-a4-r2b.log
+            /tmp/registro-a4-r2b.log
