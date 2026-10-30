@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto'
 
+// @trama-readonly — pure projection builder/validator; no persistence or remote mutation.
+
 export const REGISTRO_TEACHING_PROJECTION_CONTRACT = 'DOCENTE_OS_REGISTRO_TEACHING_PROJECTION_V1' as const
 
 export type RegistroTeachingProjectionGrade = 1 | 2 | 3
