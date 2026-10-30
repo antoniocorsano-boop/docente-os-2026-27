@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: docente-os-a4-r2b-interoperability
+  group: docente-os-governed-mfa-e2e
   cancel-in-progress: true
 
 env:
