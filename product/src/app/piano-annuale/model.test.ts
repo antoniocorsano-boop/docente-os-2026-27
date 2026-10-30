@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import test from 'node:test'
-import { buildBlocks, CANONICAL_PLAN_CODES } from './model'
+import { buildBlocks, CANONICAL_PLAN_CODES, DEFAULT_SECTION_SETS } from './model'
 
 const annualPlanClientSource = fs.readFileSync(new URL('./AnnualPlanClient.tsx', import.meta.url), 'utf8')
+const annualPlanPageSource = fs.readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
 const annualPlanCssSource = fs.readFileSync(new URL('./annual-plan.css', import.meta.url), 'utf8')
 
 test('canonical annual-plan logical identity contains only portable CAN-PLAN codes', () => {
@@ -13,6 +14,23 @@ test('canonical annual-plan logical identity contains only portable CAN-PLAN cod
     Terza: 'CAN-PLAN-3',
   })
   assert.equal(Object.values(CANONICAL_PLAN_CODES).every((code) => /^CAN-PLAN-[123]$/.test(code)), true)
+})
+
+test('2026/27 annual-plan defaults carry the complete seven-class teaching set', () => {
+  const gradeNumber = { Prima: 1, Seconda: 2, Terza: 3 } as const
+  const labels = (['Prima', 'Seconda', 'Terza'] as const).flatMap((grade) =>
+    DEFAULT_SECTION_SETS[grade].map((section) => `${gradeNumber[grade]}${section.code}`),
+  )
+
+  assert.deepEqual(labels, ['1A', '1C', '2A', '2C', '3A', '3C', '3E'])
+})
+
+test('Piano annuale reconciles missing defaults even after a partial bootstrap', () => {
+  assert.doesNotMatch(annualPlanPageSource, /if\s*\(\s*!initialSnapshot\.sections\.length\s*\)/)
+  assert.match(
+    annualPlanPageSource,
+    /await executionRepository\.ensureDefaultSections[\s\S]*initialSnapshot = await executionRepository\.list/,
+  )
 })
 
 test('Prima follows the canonical B07-B15 alternation from CAN-PLAN-1', () => {
