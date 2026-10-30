@@ -94,7 +94,9 @@ jobs:
           psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/canonical_plan_runtime_identity_behavior.sql"
 
           actual="$(psql "$db_url" -Atc "select migration_id from public.runtime_schema_contract_state where singleton")"
-          test "$actual" = '0103_material_reference_safety'
+          expected="$(psql "$db_url" -Atc "select migration_id from private.runtime_schema_required_migrations order by version desc limit 1")"
+          test -n "$expected"
+          test "$actual" = "$expected"
 
           mkdir -p "$GITHUB_WORKSPACE/test-results/rollback-compatibility"
           cat > "$GITHUB_WORKSPACE/test-results/rollback-compatibility/current-schema.json" <<JSON
