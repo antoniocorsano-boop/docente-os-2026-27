@@ -9,6 +9,7 @@ const producerSha = process.env.A4_R2B_PRODUCER_SHA ?? ''
 const consumerSha = process.env.A4_R2B_REGISTRO_SHA ?? ''
 const outputRoot = path.resolve(process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience')
 const evidenceDir = path.join(outputRoot, 'a4-r2b-interoperability')
+const expectedClassLabels = ['1A', '1C', '2A', '2C', '3A', '3C', '3E']
 
 test.skip(!producerSha || !consumerSha, 'A4-R2B exact SHA harness is not active.')
 
@@ -108,7 +109,11 @@ test('A4-R2B Task 8 transfers the real Docente OS JSON export into Registro prev
   expect(projection.automaticWriteAllowed).toBe(false)
   expect(projection.privacyClass).toBe('PROFESSIONAL_NON_PERSONAL')
   expect(projection.provenance?.sourceCommit).toBe(producerSha)
-  expect(projection.classes.length, 'Task 8 must exercise real class reconciliation, not an empty projection.').toBeGreaterThan(0)
+  expect(projection.classes).toHaveLength(expectedClassLabels.length)
+  expect(
+    projection.classes.map(item => canonicalClassLabel(item.compactLabel)).sort(),
+    'Task 8 must prove the complete seven-class teaching set, not a partial producer projection.',
+  ).toEqual(expectedClassLabels)
 
   const registroContext = await browser.newContext({
     locale: 'it-IT',
