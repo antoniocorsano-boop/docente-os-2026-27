@@ -159,6 +159,10 @@ function isIsoTimestamp(value: unknown): value is string {
   return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value) && !Number.isNaN(parsed)
 }
 
+function isSectionCode(value: unknown): value is string {
+  return typeof value === 'string' && /^[A-Z0-9-]{1,4}$/.test(value)
+}
+
 function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`
   if (isRecord(value)) {
@@ -288,7 +292,7 @@ export function validateRegistroTeachingProjection(input: unknown): RegistroTeac
     }
     sourceSectionIds.add(section.sourceSectionId)
     if (section.grade !== 1 && section.grade !== 2 && section.grade !== 3) return invalid('INVALID_CLASS', 'Projected class grade is invalid.')
-    if (!isNonEmptyString(section.sectionCode) || !isNonEmptyString(section.compactLabel) || !isNonEmptyString(section.displayLabel)) {
+    if (!isSectionCode(section.sectionCode) || !isNonEmptyString(section.compactLabel) || !isNonEmptyString(section.displayLabel)) {
       return invalid('INVALID_CLASS', 'Projected class labels are incomplete.')
     }
     if (section.sectionStatus !== 'PROVVISORIA' && section.sectionStatus !== 'DA_CONFERMARE' && section.sectionStatus !== 'CONFERMATA') {
