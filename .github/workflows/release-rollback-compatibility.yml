@@ -23,13 +23,14 @@ permissions:
   statuses: write
 
 concurrency:
-  group: release-rollback-compatibility-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: docente-os-governed-mfa-e2e
+  queue: max
 
 env:
   DEFAULT_ROLLBACK_SHA: 617b4f8901259ce2318ce721236241d7681b1c9c
-  E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
-  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
+  E2E_EMAIL: ${{ secrets.DOCENTE_OS_MFA_E2E_EMAIL }}
+  E2E_PASSWORD: ${{ secrets.DOCENTE_OS_MFA_E2E_PASSWORD }}
+  E2E_TOTP_SECRET: ${{ secrets.DOCENTE_OS_MFA_E2E_TOTP_SECRET }}
   BETA_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
   BETA_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
 
@@ -131,11 +132,18 @@ jobs:
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
       EXPERIENCE_OUTPUT_DIR: test-results/experience
     steps:
-      - name: Require governed E2E credential
+      - name: Require governed AAL2 E2E credentials
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${E2E_PASSWORD:-}" || { echo 'DOCENTE_OS_E2E_PASSWORD is required' >&2; exit 1; }
+          missing=0
+          for name in E2E_EMAIL E2E_PASSWORD E2E_TOTP_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is required for rollback compatibility qualification."
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
 
       - name: Checkout previously certified rollback application
         uses: actions/checkout@v6
