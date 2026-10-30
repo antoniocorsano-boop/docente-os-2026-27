@@ -10,6 +10,8 @@ const consumerSha = process.env.A4_R2B_REGISTRO_SHA ?? ''
 const outputRoot = path.resolve(process.env.EXPERIENCE_OUTPUT_DIR ?? 'test-results/experience')
 const evidenceDir = path.join(outputRoot, 'a4-r2b-interoperability')
 
+test.skip(!producerSha || !consumerSha, 'A4-R2B exact SHA harness is not active.')
+
 function canonicalClassLabel(value) {
   const normalized = value
     .normalize('NFD')
