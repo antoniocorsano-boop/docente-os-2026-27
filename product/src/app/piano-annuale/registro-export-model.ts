@@ -97,7 +97,18 @@ export function buildRegistroTeachingProjectionFromAnnualPlan(
   }
   if (!input.provenance.sourceBranch.trim()) throw new Error('INVALID_SOURCE_BRANCH')
 
-  const classes = input.snapshot.sections.map((section) => {
+  const orderedSections = [...input.snapshot.sections].sort((left, right) => {
+    const gradeDelta = GRADE_NUMBER[left.grade] - GRADE_NUMBER[right.grade]
+    if (gradeDelta !== 0) return gradeDelta
+
+    const leftCode = left.sectionCode.trim().toUpperCase()
+    const rightCode = right.sectionCode.trim().toUpperCase()
+    if (leftCode !== rightCode) return leftCode < rightCode ? -1 : 1
+    if (left.id === right.id) return 0
+    return left.id < right.id ? -1 : 1
+  })
+
+  const classes = orderedSections.map((section) => {
     const gradeKey = GRADE_UI[section.grade]
     const source = input.runtimeSources[gradeKey]
     if (!source) throw new Error(`MISSING_CANONICAL_PLAN_SOURCE:${gradeKey}`)
