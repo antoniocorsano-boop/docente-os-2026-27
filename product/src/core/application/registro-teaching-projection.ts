@@ -292,8 +292,12 @@ export function validateRegistroTeachingProjection(input: unknown): RegistroTeac
     }
     sourceSectionIds.add(section.sourceSectionId)
     if (section.grade !== 1 && section.grade !== 2 && section.grade !== 3) return invalid('INVALID_CLASS', 'Projected class grade is invalid.')
-    if (!isSectionCode(section.sectionCode) || !isNonEmptyString(section.compactLabel) || !isNonEmptyString(section.displayLabel)) {
-      return invalid('INVALID_CLASS', 'Projected class labels are incomplete.')
+    if (
+      !isSectionCode(section.sectionCode) ||
+      section.compactLabel !== `${section.grade}${section.sectionCode}` ||
+      !isNonEmptyString(section.displayLabel)
+    ) {
+      return invalid('INVALID_CLASS', 'Projected class labels are incomplete or inconsistent.')
     }
     if (section.sectionStatus !== 'PROVVISORIA' && section.sectionStatus !== 'DA_CONFERMARE' && section.sectionStatus !== 'CONFERMATA') {
       return invalid('INVALID_CLASS', 'Projected class status is invalid.')
