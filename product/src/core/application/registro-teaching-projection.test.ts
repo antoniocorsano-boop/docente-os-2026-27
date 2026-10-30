@@ -145,3 +145,24 @@ test('versioned JSON corpus accepts the canonical fixture and rejects every nega
     assert.equal(validateRegistroTeachingProjection(load(name)).ok, false, name)
   }
 })
+
+test('canonical cross-product docs corpus matches producer semantics and stable fail-closed error classes', () => {
+  const positive = JSON.parse(readFileSync(
+    new URL('../../../../docs/contracts/fixtures/docente-os-registro-teaching-projection-v1.json', import.meta.url),
+    'utf8',
+  )) as unknown
+  assert.equal(validateRegistroTeachingProjection(positive).ok, true)
+
+  const corpus = JSON.parse(readFileSync(
+    new URL('../../../../docs/contracts/fixtures/docente-os-registro-teaching-projection-v1-negative-corpus.json', import.meta.url),
+    'utf8',
+  )) as { cases: Array<{ id: string; expectedCode: string; payload: unknown }> }
+
+  assert.ok(corpus.cases.length >= 20)
+  for (const item of corpus.cases) {
+    const result = validateRegistroTeachingProjection(item.payload)
+    assert.equal(result.ok, false, item.id)
+    if (!result.ok) assert.equal(result.code, item.expectedCode, item.id)
+  }
+})
+
