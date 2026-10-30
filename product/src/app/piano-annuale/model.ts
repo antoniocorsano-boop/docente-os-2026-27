@@ -186,7 +186,10 @@ export const ANNUAL_PLAN_SEGMENTS: Record<GradeKey, AnnualPlanSegment[]> = {
 }
 
 export const DEFAULT_SECTION_SETS: Record<GradeKey, Array<{ code: string; status: 'PROVVISORIA' | 'DA_CONFERMARE' | 'CONFERMATA'; source: string }>> = {
-  Prima: [],
+  Prima: [
+    { code: 'A', status: 'PROVVISORIA', source: 'Assegnazione a.s. 2026/27' },
+    { code: 'C', status: 'PROVVISORIA', source: 'Assegnazione a.s. 2026/27' },
+  ],
   Seconda: [
     { code: 'A', status: 'PROVVISORIA', source: 'Continuità dalla 1A 2025/26' },
     { code: 'C', status: 'PROVVISORIA', source: 'Continuità dalla 1C 2025/26' },
