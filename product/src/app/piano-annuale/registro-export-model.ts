@@ -5,6 +5,7 @@ import {
   type RegistroTeachingProjectionV1,
 } from '@/core/application/registro-teaching-projection'
 import { APPROVED_HUMAN_TASK_RUNTIME_PROJECTIONS } from '@/core/presentation/human-task-approved-registry'
+import { resolveHumanTaskLessonProjection } from '@/core/presentation/human-task-content'
 import {
   buildBlocks,
   GRADE_UI,
@@ -30,17 +31,18 @@ const GRADE_NUMBER: Record<AnnualPlanGrade, 1 | 2 | 3> = {
   TERZA: 3,
 }
 
-function canonicalUdaTitleMap() {
-  const titles = new Map<string, string>()
-  for (const projection of APPROVED_HUMAN_TASK_RUNTIME_PROJECTIONS) {
-    const key = `${projection.grade}:${projection.udaCode}`
-    const existing = titles.get(key)
-    if (existing && existing !== projection.udaTitle) {
-      throw new Error(`CONFLICTING_CANONICAL_UDA_TITLE:${key}`)
-    }
-    titles.set(key, projection.udaTitle)
-  }
-  return titles
+function canonicalTitleForBlock(grade: GradeKey, block: ReturnType<typeof buildBlocks>[number]) {
+  const legacyProjection = resolveHumanTaskLessonProjection(grade, block)
+  const approvedProjection = APPROVED_HUMAN_TASK_RUNTIME_PROJECTIONS.find(
+    (projection) => projection.grade === grade && projection.blockId.toUpperCase() === block.id.toUpperCase(),
+  )
+
+  const candidates = [legacyProjection?.udaTitle, approvedProjection?.udaTitle].filter(
+    (value): value is string => Boolean(value?.trim()),
+  )
+  const unique = [...new Set(candidates)]
+  if (unique.length > 1) throw new Error(`CONFLICTING_CANONICAL_UDA_TITLE:${grade}:${block.id}`)
+  return unique[0] ?? null
 }
 
 function uniqueInOrder(values: readonly string[]) {
@@ -53,7 +55,6 @@ function uniqueInOrder(values: readonly string[]) {
 }
 
 function projectedUdasForGrade(grade: GradeKey, generationId: string) {
-  const titles = canonicalUdaTitleMap()
   const groups = new Map<string, ReturnType<typeof buildBlocks>>()
 
   for (const block of buildBlocks(grade)) {
@@ -63,8 +64,14 @@ function projectedUdasForGrade(grade: GradeKey, generationId: string) {
   }
 
   return [...groups.entries()].map(([udaCode, blocks]) => {
-    const title = titles.get(`${grade}:${udaCode}`)
-    if (!title) throw new Error(`MISSING_CANONICAL_UDA_TITLE:${grade}:${udaCode}`)
+    const titles = uniqueInOrder(
+      blocks
+        .map((block) => canonicalTitleForBlock(grade, block))
+        .filter((value): value is string => value !== null),
+    )
+    if (titles.length === 0) throw new Error(`MISSING_CANONICAL_UDA_TITLE:${grade}:${udaCode}`)
+    if (titles.length > 1) throw new Error(`CONFLICTING_CANONICAL_UDA_TITLE:${grade}:${udaCode}`)
+    const title = titles[0]!
 
     const periods = uniqueInOrder(blocks.map((block) => block.period))
     const focuses = uniqueInOrder(blocks.map((block) => block.focus))
