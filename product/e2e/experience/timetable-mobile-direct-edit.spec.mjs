@@ -3,11 +3,18 @@ import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
 
 requireE2ECredentials()
 
-const TEMP_NOTE = 'HVA mobile direct edit · temporaneo'
-const UPDATED_NOTE = 'HVA mobile direct edit · aggiornato'
-
 test('Orario mobile: heading percepibile e modifica diretta end-to-end', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('mobile'), 'Il contratto riguarda la gerarchia e l’editor mobile.')
+
+  const runMarker = [
+    process.env.GITHUB_RUN_ID ?? 'local',
+    process.env.GITHUB_RUN_ATTEMPT ?? '0',
+    testInfo.project.name,
+    testInfo.retry,
+    testInfo.workerIndex,
+  ].join('-')
+  const tempNote = `HVA mobile direct edit · temporaneo · ${runMarker}`
+  const updatedNote = `HVA mobile direct edit · aggiornato · ${runMarker}`
 
   await loginE2E(page)
   await page.goto('/orario/aggiorna')
@@ -48,7 +55,7 @@ test('Orario mobile: heading percepibile e modifica diretta end-to-end', async (
 
     await createDialog.getByLabel('Che cosa fai in quest’ora?').selectOption('OTHER')
     await createDialog.getByText('Dettagli opzionali', { exact: true }).click()
-    await createDialog.getByLabel('Nota').fill(TEMP_NOTE)
+    await createDialog.getByLabel('Nota').fill(tempNote)
     await createDialog.getByRole('button', { name: 'Aggiungi' }).click()
     temporarySlotCreated = true
 
@@ -63,7 +70,7 @@ test('Orario mobile: heading percepibile e modifica diretta end-to-end', async (
       'Il feedback di successo deve scomparire automaticamente: non può restare come riquadro statico.',
     ).toBeHidden({ timeout: 6_000 })
 
-    const createdCell = page.locator('.occupiedTimetableCell').filter({ hasText: TEMP_NOTE }).first()
+    const createdCell = page.locator('.occupiedTimetableCell').filter({ hasText: tempNote }).first()
     await expect(createdCell, 'La voce creata deve comparire nella griglia.').toBeVisible()
     await createdCell.click()
 
@@ -74,15 +81,15 @@ test('Orario mobile: heading percepibile e modifica diretta end-to-end', async (
     ).toBeVisible()
 
     await editDialog.getByText('Dettagli opzionali', { exact: true }).click()
-    await editDialog.getByLabel('Nota').fill(UPDATED_NOTE)
+    await editDialog.getByLabel('Nota').fill(updatedNote)
     await editDialog.getByRole('button', { name: 'Salva modifiche' }).click()
 
-    const updatedCell = page.locator('.occupiedTimetableCell').filter({ hasText: UPDATED_NOTE }).first()
+    const updatedCell = page.locator('.occupiedTimetableCell').filter({ hasText: updatedNote }).first()
     await expect(updatedCell, 'La modifica salvata deve tornare visibile nella griglia.').toBeVisible()
   } finally {
     if (temporarySlotCreated) {
       await page.goto('/orario/aggiorna')
-      const temporaryCell = page.locator('.occupiedTimetableCell').filter({ hasText: /HVA mobile direct edit/ }).first()
+      const temporaryCell = page.locator('.occupiedTimetableCell').filter({ hasText: runMarker }).first()
       if (await temporaryCell.count()) {
         await temporaryCell.click()
         const dialog = page.getByRole('dialog')
@@ -90,7 +97,7 @@ test('Orario mobile: heading percepibile e modifica diretta end-to-end', async (
           await dialog.getByRole('button', { name: 'Modifica orario' }).click()
         }
         await page.getByRole('button', { name: 'Rimuovi' }).click()
-        await expect(page.locator('.occupiedTimetableCell').filter({ hasText: /HVA mobile direct edit/ })).toHaveCount(0)
+        await expect(page.locator('.occupiedTimetableCell').filter({ hasText: runMarker })).toHaveCount(0)
       }
     }
   }
