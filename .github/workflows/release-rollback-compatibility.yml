@@ -15,7 +15,7 @@ on:
       rollback_sha:
         description: Previously certified application SHA to test
         required: true
-        default: db3d4ab014ad11dec4aeccdb5aa8740220e4ebde
+        default: 617b4f8901259ce2318ce721236241d7681b1c9c
         type: string
 
 permissions:
@@ -27,7 +27,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DEFAULT_ROLLBACK_SHA: db3d4ab014ad11dec4aeccdb5aa8740220e4ebde
+  DEFAULT_ROLLBACK_SHA: 617b4f8901259ce2318ce721236241d7681b1c9c
   E2E_EMAIL: docente-os-e2e-2dbf49e1@example.invalid
   E2E_PASSWORD: ${{ secrets.DOCENTE_OS_E2E_PASSWORD }}
   BETA_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
@@ -123,7 +123,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      ROLLBACK_SHA: ${{ inputs.rollback_sha || 'db3d4ab014ad11dec4aeccdb5aa8740220e4ebde' }}
+      ROLLBACK_SHA: ${{ inputs.rollback_sha || '617b4f8901259ce2318ce721236241d7681b1c9c' }}
       EXPERIENCE_TARGET: rollback-current-schema
       E2E_BASE_URL: http://127.0.0.1:3000
       NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
