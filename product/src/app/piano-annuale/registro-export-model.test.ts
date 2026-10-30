@@ -58,15 +58,19 @@ function runtimeSources(): CanonicalPlanRuntimeSources {
   }
 }
 
-test('projects real annual-plan section identities and canonical UDA metadata without execution evidence', () => {
-  const projection = buildRegistroTeachingProjectionFromAnnualPlan({
-    snapshot: snapshot(),
+function project(source: AnnualPlanExecutionSnapshot) {
+  return buildRegistroTeachingProjectionFromAnnualPlan({
+    snapshot: source,
     runtimeSources: runtimeSources(),
     schoolYear: '2026/2027',
     disciplineName: 'Tecnologia',
     generatedAt: '2026-10-30T06:00:00.000Z',
     provenance: { sourceCommit: COMMIT, sourceBranch: 'develop' },
   })
+}
+
+test('projects real annual-plan section identities and canonical UDA metadata without execution evidence', () => {
+  const projection = project(snapshot())
 
   assert.equal(projection.classes.length, 2)
   assert.deepEqual(
@@ -95,22 +99,16 @@ test('fails closed when a section has no resolved canonical plan source', () => 
   const state = snapshot()
   state.sections = [{ ...state.sections[0]!, grade: 'SECONDA' }]
   assert.throws(
-    () => buildRegistroTeachingProjectionFromAnnualPlan({
-      snapshot: state,
-      runtimeSources: runtimeSources(),
-      schoolYear: '2026/2027',
-      disciplineName: 'Tecnologia',
-      generatedAt: '2026-10-30T06:00:00.000Z',
-      provenance: { sourceCommit: COMMIT, sourceBranch: 'develop' },
-    }),
+    () => project(state),
     /MISSING_CANONICAL_PLAN_SOURCE:Seconda/,
   )
 })
 
 test('requires exact commit provenance instead of inventing a local or unknown source', () => {
+  const state = snapshot()
   assert.throws(
     () => buildRegistroTeachingProjectionFromAnnualPlan({
-      snapshot: snapshot(),
+      snapshot: state,
       runtimeSources: runtimeSources(),
       schoolYear: '2026/2027',
       disciplineName: 'Tecnologia',
@@ -119,4 +117,20 @@ test('requires exact commit provenance instead of inventing a local or unknown s
     }),
     /INVALID_SOURCE_COMMIT/,
   )
+})
+
+test('keeps export ordering and fingerprint deterministic when snapshot section order changes', () => {
+  const forward = snapshot()
+  const reversed = snapshot()
+  reversed.sections = [...reversed.sections].reverse()
+
+  const first = project(forward)
+  const second = project(reversed)
+
+  assert.deepEqual(
+    second.classes.map((item) => item.sourceSectionId),
+    ['section-1a', 'section-1c'],
+  )
+  assert.deepEqual(first.classes, second.classes)
+  assert.equal(first.projectionFingerprint.hash, second.projectionFingerprint.hash)
 })
