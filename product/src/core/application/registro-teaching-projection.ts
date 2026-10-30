@@ -295,7 +295,7 @@ export function validateRegistroTeachingProjection(input: unknown): RegistroTeac
     if (
       !isSectionCode(section.sectionCode) ||
       section.compactLabel !== `${section.grade}${section.sectionCode}` ||
-      !isNonEmptyString(section.displayLabel)
+      section.displayLabel !== `${section.grade}ª ${section.sectionCode}`
     ) {
       return invalid('INVALID_CLASS', 'Projected class labels are incomplete or inconsistent.')
     }
