@@ -119,7 +119,7 @@ test('A4-R2B Task 8 transfers the real Docente OS JSON export into Registro prev
   try {
     await setupFreshRegistroVault(registro, vaultPassword)
     await ensureRegistroClasses(registro, projection)
-    await openRegistroDrawerItem(registro, 'Programmazione')
+    await openRegistroDrawerItem(registro, 'Programmazione didattica')
     await expect(registro.getByRole('heading', { name: 'Programmazione didattica', exact: true })).toBeVisible()
 
     const importPanel = registro.locator('details').filter({ hasText: 'Importa da Docente OS' }).first()
