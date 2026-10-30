@@ -29,24 +29,19 @@ export default async function AnnualPlanPage({
   const academicYear = context.academicYear
 
   const executionRepository = new SupabaseAnnualPlanExecutionRepository()
-  let initialSnapshot = await executionRepository.list(context.workspace.id, academicYear.id)
-
-  // Default sections are a first-run bootstrap, not work to repeat on every navigation.
-  if (!initialSnapshot.sections.length) {
-    await executionRepository.ensureDefaultSections(
-      context.workspace.id,
-      academicYear.id,
-      GRADES.flatMap((grade) =>
-        DEFAULT_SECTION_SETS[grade].map((section) => ({
-          grade: GRADE_STORAGE[grade],
-          sectionCode: section.code,
-          status: section.status,
-          sourceNote: section.source,
-        })),
-      ),
-    )
-    initialSnapshot = await executionRepository.list(context.workspace.id, academicYear.id)
-  }
+  await executionRepository.ensureDefaultSections(
+    context.workspace.id,
+    academicYear.id,
+    GRADES.flatMap((grade) =>
+      DEFAULT_SECTION_SETS[grade].map((section) => ({
+        grade: GRADE_STORAGE[grade],
+        sectionCode: section.code,
+        status: section.status,
+        sourceNote: section.source,
+      })),
+    ),
+  )
+  const initialSnapshot = await executionRepository.list(context.workspace.id, academicYear.id)
 
   const sourceRepository = new SupabaseCanonicalPlanSourceRepository()
   const [primaSource, secondaSource, terzaSource] = await Promise.all(
