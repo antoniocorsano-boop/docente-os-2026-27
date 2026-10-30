@@ -31,7 +31,34 @@ const GRADE_NUMBER: Record<AnnualPlanGrade, 1 | 2 | 3> = {
   TERZA: 3,
 }
 
+const CANONICAL_UDA_TITLES: Partial<Record<GradeKey, Readonly<Record<string, string>>>> = {
+  Seconda: {
+    '2-01': 'Agricoltura, suolo e produzioni sostenibili',
+    '2-02': 'Alimenti, trasformazione e conservazione',
+    '2-03': 'Territorio, città e pianificazione',
+    '2-04': 'Edificio, strutture e materiali da costruzione',
+    '2-05': 'Abitazione, impianti, sicurezza ed efficienza',
+    '2-06': 'Rilievo, scale e proiezioni ortogonali',
+    '2-07': 'Progettare uno spazio o un semplice oggetto',
+    '2-08': 'Dati, rappresentazione digitale e modellazione introduttiva',
+  },
+  Terza: {
+    '3-01': 'Energia: forme, trasformazioni e fabbisogni',
+    '3-02': 'Fonti rinnovabili e non rinnovabili',
+    '3-03': 'Produzione, distribuzione e uso dell’energia elettrica',
+    '3-04': 'Elettricità, circuiti e sicurezza',
+    '3-05': 'Macchine, meccanismi e sistemi tecnologici',
+    '3-06': 'Assonometria, sezioni e rappresentazione tridimensionale',
+    '3-07': 'Informatica, algoritmi, reti e automazione',
+    '3-08': 'Tecnologia, sostenibilità e scelte responsabili',
+    '3-09': 'Progetto conclusivo e orientamento',
+  },
+}
+
 function canonicalTitleForBlock(grade: GradeKey, block: ReturnType<typeof buildBlocks>[number]) {
+  const canonicalTitle = CANONICAL_UDA_TITLES[grade]?.[block.uda]
+  if (canonicalTitle?.trim()) return canonicalTitle
+
   const legacyProjection = resolveHumanTaskLessonProjection(grade, block)
   const approvedProjection = APPROVED_HUMAN_TASK_RUNTIME_PROJECTIONS.find(
     (projection) => projection.grade === grade && projection.blockId.toUpperCase() === block.id.toUpperCase(),
