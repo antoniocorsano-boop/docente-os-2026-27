@@ -409,7 +409,46 @@ function assertArenaStructuralFootprintMatches(release: Record<string, unknown>)
   }
 
   const { structuralFootprint: _footprint, issuedAt: _issuedAt, ...stable } = release
-  const recomputedHash = arenaFnv1a(canonicalSerializeArena(stable))
+  const hasSourceMaster = Object.prototype.hasOwnProperty.call(stable, 'sourceMaster')
+  const hasSourceSnapshot = Object.prototype.hasOwnProperty.call(stable, 'sourceSnapshot')
+  if (hasSourceMaster !== hasSourceSnapshot) {
+    throw new Error('Arena complete release rejected: sourceMaster and sourceSnapshot must both be present')
+  }
+
+  let materialForFootprint: Record<string, unknown> = stable
+  if (hasSourceSnapshot) {
+    arenaRecord(stable.sourceMaster, 'Arena sourceMaster')
+    const snapshot = arenaRecord(stable.sourceSnapshot, 'Arena sourceSnapshot')
+    if (snapshot.format !== 'text/plain') {
+      throw new Error('Arena sourceSnapshot rejected: unsupported format')
+    }
+    arenaString(snapshot.content, 'Arena sourceSnapshot content')
+    const snapshotFootprint = arenaRecord(snapshot.contentFootprint, 'Arena sourceSnapshot contentFootprint')
+    if (snapshotFootprint.algorithm !== 'fnv1a' || snapshotFootprint.version !== 1) {
+      throw new Error('Arena sourceSnapshot rejected: unsupported content footprint')
+    }
+    arenaString(snapshotFootprint.computedAt, 'Arena sourceSnapshot computedAt')
+    const expectedSnapshotHash = arenaFnv1a(canonicalSerializeArena({
+      format: snapshot.format,
+      content: snapshot.content,
+    }))
+    if (snapshotFootprint.hash !== expectedSnapshotHash) {
+      throw new Error('Arena sourceSnapshot rejected: content footprint mismatch')
+    }
+
+    // Mirror Arena's complete-release signature: the nested timestamp is
+    // carried as metadata but intentionally omitted from the outer hash.
+    const { computedAt: _nestedComputedAt, ...stableSnapshotFootprint } = snapshotFootprint
+    materialForFootprint = {
+      ...stable,
+      sourceSnapshot: {
+        ...snapshot,
+        contentFootprint: stableSnapshotFootprint,
+      },
+    }
+  }
+
+  const recomputedHash = arenaFnv1a(canonicalSerializeArena(materialForFootprint))
   if (recomputedHash !== footprintHash) {
     throw new Error('Arena structural footprint rejected: footprint does not match release material')
   }
