@@ -516,4 +516,45 @@ describe('Arena vertical curricolo intake applicability', () => {
     )
   })
 
+  it('rejects complete Arena source provenance contradicting provisional authority', () => {
+    // A valid outer hash is not a substitute for Arena's sourceMaster
+    // provenance invariants: PROVISIONAL_COMPLETE means non-vigente.
+    const content = 'CAN-CURR-MASTER-00 — base da validare'
+    const sourceSnapshot = {
+      format: 'text/plain' as const,
+      content,
+      contentFootprint: {
+        algorithm: 'fnv1a' as const,
+        version: 1 as const,
+        hash: fnv1a(canonicalSerialize({ format: 'text/plain', content })),
+        computedAt: NOW,
+      },
+    }
+    const sourceMaster = {
+      masterId: 'CAN-CURR-MASTER-00',
+      driveFileId: '12eWTPUZBJxZixd6-p8drNAaW5_eL8qWpXZUSDyZZAv4',
+      masterVersion: '1.3',
+      revisionId: 'drive-revision-fixture',
+      materializationState: 'COMPLETE' as const,
+      humanProfessionalValidation: 'OPEN' as const,
+      curricoloVigente: true,
+      authority: 'INSTITUTE_APPROVED_CURRICOLO' as const,
+    }
+    const release = { ...releaseFixture(), sourceSnapshot, sourceMaster }
+    const { structuralFootprint: _footprint, issuedAt: _issuedAt, ...stable } = release
+    const { computedAt: _time, ...stableInner } = sourceSnapshot.contentFootprint
+    release.structuralFootprint.hash = fnv1a(canonicalSerialize({
+      ...stable,
+      sourceSnapshot: {
+        ...sourceSnapshot,
+        contentFootprint: stableInner,
+      },
+    }))
+
+    assert.throws(
+      () => selector()({ release, target }),
+      /sourceMaster|source.*authority|vigente|provisional|rejected/i,
+    )
+  })
+
 })
