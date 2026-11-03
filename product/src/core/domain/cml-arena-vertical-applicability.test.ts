@@ -496,6 +496,24 @@ describe('Arena vertical curricolo intake applicability', () => {
     assert.equal(selected.structuralFootprint.hash, release.structuralFootprint.hash)
     assert.equal(selected.authority.alignmentAuthority, 'PROVISIONAL_BASELINE')
     assert.equal(selected.downstreamPolicy.automaticWriteAllowed, false)
+
+    // Even if an attacker recomputes the weak outer checksum, the nested
+    // snapshot must remain bound to its own declared content footprint.
+    const tampered = structuredClone(release)
+    tampered.sourceSnapshot.content = `${sourceText} manomesso`
+    const { structuralFootprint: _tamperedOuter, issuedAt: _tamperedIssuedAt, ...tamperedStable } = tampered
+    const { computedAt: _tamperedInnerTime, ...tamperedInnerFootprint } = tampered.sourceSnapshot.contentFootprint
+    tampered.structuralFootprint.hash = fnv1a(canonicalSerialize({
+      ...tamperedStable,
+      sourceSnapshot: {
+        ...tampered.sourceSnapshot,
+        contentFootprint: tamperedInnerFootprint,
+      },
+    }))
+    assert.throws(
+      () => selector()({ release: tampered, target }),
+      /sourceSnapshot.*content footprint|snapshot.*mismatch|rejected/i,
+    )
   })
 
 })
