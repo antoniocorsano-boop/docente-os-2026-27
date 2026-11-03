@@ -1,0 +1,25 @@
+name: Arena real release local source only
+on:
+  push:
+    branches:
+      - test/arena-real-release-local-source-only-20261103
+permissions:
+  contents: read
+jobs:
+  export-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bundle existing receiver source code only (no master, no secrets)
+        run: |
+          tar -czf /tmp/docente-arena-receiver-only.tgz \
+            product/src/core/domain/cml-discipline-binding.ts \
+            product/src/core/domain/cml-arena-three-grade-preflight.ts \
+            product/scripts/check-canonical-vertical-release.mjs \
+            product/package.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docente-arena-receiver-only
+          path: /tmp/docente-arena-receiver-only.tgz
+          if-no-files-found: error
+          retention-days: 1
