@@ -196,7 +196,7 @@ describe('Arena three-grade canonical release read-only preflight', () => {
     release.manifest.expected = structuredClone(release.perimeter.expected)
     release.manifest.present = structuredClone(release.perimeter.expected)
     refreshOuter(release)
-    assert.throws(() => check(release), /grade-3|third|classe|segment/i)
+    assert.throws(() => check(release), /grade-3|third|classe|segment|perimeter/i)
   })
 
   it('validates the command-line verifier with a private temporary JSON file only', () => {
