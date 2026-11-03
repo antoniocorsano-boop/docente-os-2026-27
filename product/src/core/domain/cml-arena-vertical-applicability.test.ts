@@ -446,4 +446,56 @@ describe('Arena vertical curricolo intake applicability', () => {
     const sourceContent = release.segments[2].content as { nested: { label: string } }
     assert.equal(sourceContent.nested.label, 'original')
   })
+
+  it('accepts a complete Arena release with snapshot metadata excluded from the outer fingerprint', () => {
+    // Arena createCurricoloVerticaleCompleteReleaseV1 excludes only the nested
+    // sourceSnapshot.contentFootprint.computedAt from its outer stable hash.
+    // The value remains in the serialized release and must be accepted intact.
+    const sourceText = 'CAN-CURR-MASTER-00 — baseline da validare, non vigente'
+    const sourceSnapshot = {
+      format: 'text/plain' as const,
+      content: sourceText,
+      contentFootprint: {
+        algorithm: 'fnv1a' as const,
+        version: 1 as const,
+        hash: fnv1a(canonicalSerialize({ format: 'text/plain', content: sourceText })),
+        computedAt: NOW,
+      },
+    }
+    const release = {
+      ...releaseFixture(),
+      sourceMaster: {
+        masterId: 'CAN-CURR-MASTER-00',
+        driveFileId: '12eWTPUZBJxZixd6-p8drNAaW5_eL8qWpXZUSDyZZAv4',
+        masterVersion: '1.3',
+        revisionId: 'source-revision-fixture',
+        materializationState: 'COMPLETE' as const,
+        humanProfessionalValidation: 'OPEN' as const,
+        curricoloVigente: false,
+        authority: 'INSTITUTE_CANONICAL_WORKING_BASELINE' as const,
+      },
+      sourceSnapshot,
+    }
+
+    const { structuralFootprint: _fingerprint, issuedAt: _issuedAt, ...stable } = release
+    const { computedAt: _nestedComputedAt, ...stableContentFootprint } = sourceSnapshot.contentFootprint
+    release.structuralFootprint.hash = fnv1a(canonicalSerialize({
+      ...stable,
+      sourceSnapshot: {
+        ...sourceSnapshot,
+        contentFootprint: stableContentFootprint,
+      },
+    }))
+
+    // This detects that the producer and the legacy receiver hash different
+    // material: the complete release is valid according to Arena's algorithm.
+    assert.notEqual(release.structuralFootprint.hash, fnv1a(canonicalSerialize(stable)))
+
+    const selected = selector()({ release, target })
+    assert.equal(selected.segment.id, 'seg-secondaria-tecnologia')
+    assert.equal(selected.structuralFootprint.hash, release.structuralFootprint.hash)
+    assert.equal(selected.authority.alignmentAuthority, 'PROVISIONAL_BASELINE')
+    assert.equal(selected.downstreamPolicy.automaticWriteAllowed, false)
+  })
+
 })
