@@ -47,7 +47,7 @@ function year(value: string): string {
 /**
  * Offline, read-only compatibility check of a complete Arena release against
  * the existing Docente OS class selector. This is not workspace acceptance,
- * institutional authorization, or a new curricular source of authority.
+ * institutional authorization, or an additional authoritative source for the curricolo.
  */
 export function verifyCanonicalArenaReleaseForThreeGrades(input: {
   release: unknown
@@ -145,7 +145,7 @@ export function verifyCanonicalArenaReleaseForThreeGrades(input: {
       throw new Error(`Arena ${gradeRef} has an incorrect or unresolved transitional framework`)
     }
     if (selected.nodes.length < 1) {
-      throw new Error(`Arena ${gradeRef} has no curricular nodes`)
+      throw new Error(`Arena ${gradeRef} has no nodes for the curricolo`)
     }
     if (selected.authority.state !== 'PROVISIONAL_COMPLETE'
       || selected.downstreamPolicy.automaticWriteAllowed !== false) {
