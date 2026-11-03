@@ -417,7 +417,24 @@ function assertArenaStructuralFootprintMatches(release: Record<string, unknown>)
 
   let materialForFootprint: Record<string, unknown> = stable
   if (hasSourceSnapshot) {
-    arenaRecord(stable.sourceMaster, 'Arena sourceMaster')
+    const sourceMaster = arenaRecord(stable.sourceMaster, 'Arena sourceMaster')
+    for (const key of ['masterId', 'driveFileId', 'masterVersion', 'revisionId'] as const) {
+      arenaString(sourceMaster[key], `Arena sourceMaster ${key}`)
+    }
+    if (sourceMaster.materializationState !== 'COMPLETE') {
+      throw new Error('Arena sourceMaster rejected: canonical materialization must be COMPLETE')
+    }
+    if (sourceMaster.humanProfessionalValidation !== 'OPEN'
+      && sourceMaster.humanProfessionalValidation !== 'CLOSED') {
+      throw new Error('Arena sourceMaster rejected: unsupported professional validation state')
+    }
+    // The Docente OS intake currently accepts only provisional authority.
+    // Preserve Arena's corresponding source invariants, not just its checksum.
+    if (sourceMaster.curricoloVigente !== false
+      || sourceMaster.authority !== 'INSTITUTE_CANONICAL_WORKING_BASELINE') {
+      throw new Error('Arena sourceMaster rejected: provisional source cannot be in force or approved')
+    }
+
     const snapshot = arenaRecord(stable.sourceSnapshot, 'Arena sourceSnapshot')
     if (snapshot.format !== 'text/plain') {
       throw new Error('Arena sourceSnapshot rejected: unsupported format')
