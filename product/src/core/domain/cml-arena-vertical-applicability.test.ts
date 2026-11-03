@@ -446,4 +446,115 @@ describe('Arena vertical curricolo intake applicability', () => {
     const sourceContent = release.segments[2].content as { nested: { label: string } }
     assert.equal(sourceContent.nested.label, 'original')
   })
+
+  it('accepts a complete Arena release with snapshot metadata excluded from the outer fingerprint', () => {
+    // Arena createCurricoloVerticaleCompleteReleaseV1 excludes only the nested
+    // sourceSnapshot.contentFootprint.computedAt from its outer stable hash.
+    // The value remains in the serialized release and must be accepted intact.
+    const sourceText = 'CAN-CURR-MASTER-00 — baseline da validare, non vigente'
+    const sourceSnapshot = {
+      format: 'text/plain' as const,
+      content: sourceText,
+      contentFootprint: {
+        algorithm: 'fnv1a' as const,
+        version: 1 as const,
+        hash: fnv1a(canonicalSerialize({ format: 'text/plain', content: sourceText })),
+        computedAt: NOW,
+      },
+    }
+    const release = {
+      ...releaseFixture(),
+      sourceMaster: {
+        masterId: 'CAN-CURR-MASTER-00',
+        driveFileId: '12eWTPUZBJxZixd6-p8drNAaW5_eL8qWpXZUSDyZZAv4',
+        masterVersion: '1.3',
+        revisionId: 'source-revision-fixture',
+        materializationState: 'COMPLETE' as const,
+        humanProfessionalValidation: 'OPEN' as const,
+        curricoloVigente: false,
+        authority: 'INSTITUTE_CANONICAL_WORKING_BASELINE' as const,
+      },
+      sourceSnapshot,
+    }
+
+    const { structuralFootprint: _fingerprint, issuedAt: _issuedAt, ...stable } = release
+    const { computedAt: _nestedComputedAt, ...stableContentFootprint } = sourceSnapshot.contentFootprint
+    release.structuralFootprint.hash = fnv1a(canonicalSerialize({
+      ...stable,
+      sourceSnapshot: {
+        ...sourceSnapshot,
+        contentFootprint: stableContentFootprint,
+      },
+    }))
+
+    // This detects that the producer and the legacy receiver hash different
+    // material: the complete release is valid according to Arena's algorithm.
+    assert.notEqual(release.structuralFootprint.hash, fnv1a(canonicalSerialize(stable)))
+
+    const selected = selector()({ release, target })
+    assert.equal(selected.segment.id, 'seg-secondaria-tecnologia')
+    assert.equal(selected.structuralFootprint.hash, release.structuralFootprint.hash)
+    assert.equal(selected.authority.alignmentAuthority, 'PROVISIONAL_BASELINE')
+    assert.equal(selected.downstreamPolicy.automaticWriteAllowed, false)
+
+    // Even if an attacker recomputes the weak outer checksum, the nested
+    // snapshot must remain bound to its own declared content footprint.
+    const tampered = structuredClone(release)
+    tampered.sourceSnapshot.content = `${sourceText} manomesso`
+    const { structuralFootprint: _tamperedOuter, issuedAt: _tamperedIssuedAt, ...tamperedStable } = tampered
+    const { computedAt: _tamperedInnerTime, ...tamperedInnerFootprint } = tampered.sourceSnapshot.contentFootprint
+    tampered.structuralFootprint.hash = fnv1a(canonicalSerialize({
+      ...tamperedStable,
+      sourceSnapshot: {
+        ...tampered.sourceSnapshot,
+        contentFootprint: tamperedInnerFootprint,
+      },
+    }))
+    assert.throws(
+      () => selector()({ release: tampered, target }),
+      /sourceSnapshot.*content footprint|snapshot.*mismatch|rejected/i,
+    )
+  })
+
+  it('rejects complete Arena source provenance contradicting provisional authority', () => {
+    // A valid outer hash is not a substitute for Arena's sourceMaster
+    // provenance invariants: PROVISIONAL_COMPLETE means non-vigente.
+    const content = 'CAN-CURR-MASTER-00 — base da validare'
+    const sourceSnapshot = {
+      format: 'text/plain' as const,
+      content,
+      contentFootprint: {
+        algorithm: 'fnv1a' as const,
+        version: 1 as const,
+        hash: fnv1a(canonicalSerialize({ format: 'text/plain', content })),
+        computedAt: NOW,
+      },
+    }
+    const sourceMaster = {
+      masterId: 'CAN-CURR-MASTER-00',
+      driveFileId: '12eWTPUZBJxZixd6-p8drNAaW5_eL8qWpXZUSDyZZAv4',
+      masterVersion: '1.3',
+      revisionId: 'drive-revision-fixture',
+      materializationState: 'COMPLETE' as const,
+      humanProfessionalValidation: 'OPEN' as const,
+      curricoloVigente: true,
+      authority: 'INSTITUTE_APPROVED_CURRICOLO' as const,
+    }
+    const release = { ...releaseFixture(), sourceSnapshot, sourceMaster }
+    const { structuralFootprint: _footprint, issuedAt: _issuedAt, ...stable } = release
+    const { computedAt: _time, ...stableInner } = sourceSnapshot.contentFootprint
+    release.structuralFootprint.hash = fnv1a(canonicalSerialize({
+      ...stable,
+      sourceSnapshot: {
+        ...sourceSnapshot,
+        contentFootprint: stableInner,
+      },
+    }))
+
+    assert.throws(
+      () => selector()({ release, target }),
+      /sourceMaster|source.*authority|vigente|provisional|rejected/i,
+    )
+  })
+
 })
