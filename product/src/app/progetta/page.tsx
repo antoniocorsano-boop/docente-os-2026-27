@@ -20,6 +20,8 @@ import {
   partitionProgettaFocusBySection,
   planningCoverage,
   resolveCanonicalProgettaFocus,
+  resolveProgettaRouteMode,
+  shouldLoadProgettaItems,
   type ProgettaItem,
 } from './progetta-model'
 import './progetta.css'
@@ -37,6 +39,8 @@ type ProgettaSearchParams = {
   block?: string
   uda?: string
   pack?: string
+  view?: string
+  notice?: string
 }
 
 export default async function ProgettaPage({ searchParams }: { searchParams: Promise<ProgettaSearchParams> }) {
@@ -44,6 +48,12 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
   const grade = asProgettaGrade(params.grade)
   const requestedFocus = asProgettaFocus({ block: params.block, uda: params.uda, pack: params.pack })
   const focus = resolveCanonicalProgettaFocus(grade, requestedFocus)
+  const routeMode = resolveProgettaRouteMode({
+    grade,
+    focus,
+    sectionId: params.section ?? null,
+    view: params.view ?? null,
+  })
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
   if (!context) redirect('/login')
@@ -56,8 +66,8 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
   const academicYearId = context.academicYear?.id ?? null
   const loadTextbookSupport = Boolean(focus && params.section && academicYearId)
   const [items, annualSnapshot, assignments, adoptions, disciplines] = await Promise.all([
-    knowledgeRepository.listRecent(context.workspace.id, 100),
-    params.section && academicYearId
+    shouldLoadProgettaItems(routeMode) ? knowledgeRepository.listRecent(context.workspace.id, 100) : Promise.resolve([]),
+    (params.section || routeMode === 'start') && academicYearId
       ? annualRepository.list(context.workspace.id, academicYearId)
       : Promise.resolve(null),
     loadTextbookSupport && academicYearId
@@ -79,6 +89,66 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
     : null
   const compactSectionLabel = sectionContext ? `${GRADE_NUMBER[sectionContext.grade]}${sectionContext.sectionCode}` : null
   const displaySectionLabel = sectionContext ? `${GRADE_NUMBER[sectionContext.grade]}ª ${sectionContext.sectionCode}` : null
+  // A stale/foreign section must not silently fall back to another class or common plan.
+  if (params.section && !sectionContext) redirect('/progetta?notice=class-not-available')
+
+  if (routeMode === 'start' || routeMode === 'section') {
+    const availableSections = [...(
+      routeMode === 'section' && sectionContext ? [sectionContext] : (annualSnapshot?.sections ?? [])
+    )].sort((left, right) =>
+      `${GRADE_NUMBER[left.grade]}${left.sectionCode}`.localeCompare(
+        `${GRADE_NUMBER[right.grade]}${right.sectionCode}`, 'it', { numeric: true },
+      ),
+    )
+
+    return (
+      <AppShell active="design" academicYearLabel={context.academicYear?.label} workspaceName={context.workspace.name} role={context.role} contentClassName="progettaSurface progettaEntrySurface">
+        <header className="progettaEntryHeader">
+          <p>PROGETTA · {context.academicYear?.label ?? 'Anno scolastico'}</p>
+          <h1>{sectionContext ? `Continua dalla ${displaySectionLabel}` : 'Scegli una classe'}</h1>
+          <p>Per preparare la prossima fase, apri la classe: il lavoro prosegue dal Piano annuale, non dall'ultimo documento caricato.</p>
+        </header>
+
+        {params.notice === 'class-not-available' ? (
+          <p className="progettaEntryNotice" role="status">La classe richiesta non è disponibile nel contesto corrente. Scegli una classe valida.</p>
+        ) : null}
+
+        {availableSections.length ? (
+          <section aria-label="Scegli una classe" className="progettaEntryClasses">
+            <h2>{sectionContext ? 'Classe selezionata' : 'Classi disponibili'}</h2>
+            <div className="progettaEntryGrid">
+              {availableSections.map((section) => (
+                <Link className="progettaEntryClass" href={`/classi/${encodeURIComponent(section.id)}`} key={section.id}>
+                  <span>CLASSE</span>
+                  <strong>{GRADE_NUMBER[section.grade]}ª {section.sectionCode}</strong>
+                  <small>Apri la classe e continua dal Piano annuale <span aria-hidden>→</span></small>
+                </Link>
+              ))}
+            </div>
+            {sectionContext ? <Link className="progettaEntryChooseAnother" href="/progetta">Scegli un'altra classe</Link> : null}
+          </section>
+        ) : (
+          <section className="progettaEntryEmpty">
+            <h2>Nessuna classe disponibile</h2>
+            <p>Definisci le classi nell'anno scolastico corrente prima di avviare la progettazione contestuale.</p>
+            <Link href={context.academicYear ? '/impostazioni#classi' : '/workspace'}>Configura le classi</Link>
+          </section>
+        )}
+
+        <section className="progettaEntryExplore" aria-labelledby="progetta-explore-title">
+          <div>
+            <h2 id="progetta-explore-title">Esplora la progettazione</h2>
+            <p>Consulta i contenuti recenti per grado e tipologia; per cercare altre fonti usa Conoscenza. L'archivio completo sarà oggetto di una successiva modifica.</p>
+          </div>
+          <nav aria-label="Esplorazione e ricerca">
+            <Link href="/progetta?view=catalog">Esplora la progettazione</Link>
+            <Link href="/knowledge">Cerca in Conoscenza</Link>
+          </nav>
+        </section>
+      </AppShell>
+    )
+  }
+
   const disciplineNameById = new Map(disciplines.map((discipline) => [discipline.id, discipline.name]))
   const textbookSupport = buildProgettaTextbookSupport({
     sectionId: sectionContext?.id ?? null,
@@ -97,6 +167,7 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
   const gradeLabel = grade ? `Classe ${grade}` : null
   const planningReturnParams = new URLSearchParams()
   if (grade) planningReturnParams.set('grade', grade)
+  if (routeMode === 'catalog') planningReturnParams.set('view', 'catalog')
   if (sectionContext) planningReturnParams.set('section', sectionContext.id)
   const planningReturnQuery = planningReturnParams.toString()
   const planningReturnHref = planningReturnQuery ? `/progetta?${planningReturnQuery}` : '/progetta'
@@ -246,9 +317,9 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
         <div><span>01</span><strong>Fonti</strong><small>Documenti e riferimenti originali</small></div><i>→</i><div><span>02</span><strong>Quadro annuale</strong><small>Obiettivi, tempi e copertura</small></div><i>→</i><div><span>03</span><strong>UDA</strong><small>Percorsi ed evidenze</small></div><i>→</i><div><span>04</span><strong>Materiali</strong><small>Attività, rubriche e verifiche</small></div>
       </section>
 
-      <div className="progettaSummary"><div><span>CONTENUTI DISPONIBILI</span><strong>{total}</strong></div><p>{gradeLabel ? `Contenuti pertinenti alla ${gradeLabel.toLowerCase()}${displaySectionLabel ? `, esclusi gli adattamenti appartenenti ad altre sezioni` : ''}.` : 'Qui trovi i contenuti già raccolti e collegati alla progettazione.'} DOCENTE OS usa la versione di lavoro corrente senza modificare le fonti originali.</p></div>
+      <div className="progettaSummary"><div><span>CONTENUTI RECENTI MOSTRATI</span><strong>{total}</strong></div><p>{gradeLabel ? `Contenuti pertinenti alla ${gradeLabel.toLowerCase()}${displaySectionLabel ? `, esclusi gli adattamenti appartenenti ad altre sezioni` : ''}.` : 'Qui trovi i contenuti già raccolti e collegati alla progettazione.'} Elenco limitato agli ultimi 100 contenuti: non rappresenta l'intero archivio. DOCENTE OS usa la versione di lavoro corrente senza modificare le fonti originali.</p></div>
 
-      {!grade ? <section className="planningCoverage" aria-label="Copertura della progettazione per classe">
+      {!grade ? <section className="planningCoverage" aria-label="Indicatori sulle sole risorse recenti mostrate">
         {coverage.map((item) => <div key={item.grade}><span>CLASSE {item.grade.toUpperCase()}</span><strong>{item.programming ? 'Programmazione disponibile' : 'Programmazione da aggiungere'}</strong><small className={item.uda ? 'covered' : ''}>{item.uda} {item.uda === 1 ? 'UDA collegata' : 'UDA collegate'}</small><small className={item.materials ? 'covered' : ''}>{item.materials} {item.materials === 1 ? 'pacchetto operativo' : 'pacchetti operativi'}</small></div>)}
       </section> : null}
 
