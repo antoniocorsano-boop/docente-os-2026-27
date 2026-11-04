@@ -33,6 +33,27 @@ function pathOf(line, ref = null) {
   return normalized.split(":", 1)[0];
 }
 
+/*
+ * The frozen vocabulary baseline counts legacy debt, not exact documented
+ * compatibility fragments. Apply the same exclusion to baseline and HEAD.
+ * Any extra legacy wording on the same line remains countable.
+ */
+function unexceptedDebtLines(lines, ref = null) {
+  const pattern = /curriculum|curricular/i;
+  return lines.filter((line) => {
+    const normalized = ref && line.startsWith(`${ref}:`) ? line.slice(ref.length + 1) : line;
+    const file = pathOf(line, ref);
+    const first = normalized.indexOf(":");
+    const second = normalized.indexOf(":", first + 1);
+    let text = (second === -1 ? normalized : normalized.slice(second + 1)).toLowerCase();
+    for (const exception of registry.exceptions) {
+      if (exception.path !== file) continue;
+      text = text.replaceAll(exception.contains.toLowerCase(), "");
+    }
+    return pattern.test(text);
+  });
+}
+
 function scopeFor(filePath) {
   if (filePath.startsWith("product/src/")) return "product-runtime";
   if (filePath.startsWith("src/")) return "legacy-runtime";
@@ -54,8 +75,10 @@ function summarize(lines, ref = null) {
 }
 
 assert.equal(registry.baselineRef, "a9006cb632fc5c3c9b1b0e4a9f2587c55c9c5ba2");
-const baseline = grep(registry.baselineRef);
-const current = grep();
+const baselineRaw = grep(registry.baselineRef);
+const currentRaw = grep();
+const baseline = unexceptedDebtLines(baselineRaw, registry.baselineRef);
+const current = unexceptedDebtLines(currentRaw);
 assert.ok(baseline.length > 0, "TERM-01 baseline must capture the known legacy vocabulary debt");
 assert.ok(
   current.length <= baseline.length,
@@ -67,6 +90,8 @@ console.log(JSON.stringify({
   baselineRef: registry.baselineRef,
   baselineCount: baseline.length,
   currentCount: current.length,
+  baselineRawCount: baselineRaw.length,
+  currentRawCount: currentRaw.length,
   removedCount: baseline.length - current.length,
   baselineByScope: summarize(baseline, registry.baselineRef),
   currentByScope: summarize(current),
