@@ -126,7 +126,7 @@ export function ArenaProvisionalGradePreviewClient({
         la release completa di Arena. Il file viene letto solo sul dispositivo, senza invio o salvataggio.
       </small></p>
 
-      {reading ? <p role="status" aria-live="polite">Verifica della fonte e dell'annualità in corso…</p> : null}
+      {reading ? <p role="status" aria-live="polite">Verifica della fonte e dell&apos;annualità in corso…</p> : null}
       {error ? <p role="alert">{error} Nessuna progettazione è stata modificata.</p> : null}
 
       {preview ? (
