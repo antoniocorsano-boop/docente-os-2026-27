@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import fs from 'node:fs'
+import path from 'node:path'
 import {
   verifyDocumentedPilot2CP7Receipt,
   PILOT_2C_P7_DOCUMENTED_RECEIPT_ID,
@@ -84,4 +86,19 @@ test('malformed receipts fail closed without exposing private data', () => {
     assert.equal(status.historicalReceiptVerified, false)
     assert.equal(status.writePerformed, false)
   }
+})
+
+test('P7 repository performs a scoped RLS read without admin privileges or data writes', () => {
+  const source = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/core/infrastructure/supabase/supabase-2c-p7-receipt-evidence-repository.ts'),
+    'utf8',
+  )
+  assert.match(source, /server-only/)
+  assert.match(source, /auth\.getClaims/)
+  assert.match(source, /\.eq\('id', PILOT_2C_P7_DOCUMENTED_RECEIPT_ID\)/)
+  assert.match(source, /\.eq\('workspace_id', input\.workspaceId\)/)
+  assert.match(source, /\.eq\('academic_year_id', input\.academicYearId\)/)
+  assert.match(source, /\.eq\('section_id', input\.sectionId\)/)
+  assert.match(source, /\.maybeSingle\(\)/)
+  assert.doesNotMatch(source, /createAdminClient|service_role|\.insert\(|\.update\(|\.upsert\(/)
 })
