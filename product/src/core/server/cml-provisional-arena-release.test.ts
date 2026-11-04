@@ -104,7 +104,9 @@ it('rejects an incorrectly configured source key even when the workspace matches
   try {
     process.env.ARENA_VERTICAL_RELEASE_WORKSPACE_ID = id
     process.env.ARENA_VERTICAL_RELEASE_BUCKET = 'arena-curricolo-private'
-    process.env.ARENA_VERTICAL_RELEASE_OBJECT_KEY = 'another/release.json'
+    // The legacy global key must be rejected, even in a valid workspace.
+    process.env.ARENA_VERTICAL_RELEASE_OBJECT_KEY =
+      'vertical/2026-2027/master-1.3-rev27/complete-release.json'
     assert.deepEqual(await readProvisionalArenaReferenceForClass({
       ...scope, workspaceId: id,
       assignments: scope.assignments.map(assignment => ({ ...assignment, workspaceId: id })),
