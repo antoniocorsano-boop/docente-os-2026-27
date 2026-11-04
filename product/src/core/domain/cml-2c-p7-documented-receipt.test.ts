@@ -18,7 +18,7 @@ const documentedReceipt = {
   section_id: scope.sectionId,
   block_id: 'B01',
   projection_id: 'HTC-SECONDA-B01-v1',
-  curriculum_source_handoff_footprint_hash: '7bb48175',
+  sourceHandoffFootprintHash: '7bb48175',
   preparation_fingerprint: '311770ecff1401c4d9c7db855f4eeb3be983c6ece2ff39a1143889dd4782667e',
   confirmed_at: '2026-09-21T08:37:23.959195+00:00',
 }
@@ -54,7 +54,7 @@ test('a receipt for any other source or preparation exact state is rejected', ()
     { id: '11111111-1111-4111-8111-111111111111' },
     { block_id: 'B02' },
     { projection_id: 'OTHER-PROJECTION' },
-    { curriculum_source_handoff_footprint_hash: '8588371c' },
+    { sourceHandoffFootprintHash: '8588371c' },
     { preparation_fingerprint: '00000000' },
     { confirmed_at: '2026-09-22T08:37:23.959195Z' },
   ]) {
