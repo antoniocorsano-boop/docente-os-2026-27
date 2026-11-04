@@ -108,7 +108,8 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
         <header className="progettaEntryHeader">
           <p>PROGETTA · {context.academicYear?.label ?? 'Anno scolastico'}</p>
           <h1>{sectionContext ? `Continua dalla ${displaySectionLabel}` : 'Scegli una classe'}</h1>
-          <p>Per preparare la prossima fase, apri la classe: il lavoro prosegue dal Piano annuale, non dall&apos;ultimo documento caricato.</p>
+          <p className="progettaEntryIntro">Per preparare la prossima fase, apri la classe: il lavoro prosegue dal Piano annuale, non dall&apos;ultimo documento caricato.</p>
+          <Link className="progettaEntryBrowse" href="/progetta?view=catalog">Esplora i contenuti recenti <span aria-hidden>→</span></Link>
         </header>
 
         {params.notice === 'class-not-available' || params.notice === 'path-not-available' ? (
@@ -141,11 +142,10 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
 
         <section className="progettaEntryExplore" aria-labelledby="progetta-explore-title">
           <div>
-            <h2 id="progetta-explore-title">Esplora la progettazione</h2>
-            <p>Consulta i contenuti recenti per grado e tipologia; per cercare altre fonti usa Conoscenza. L&apos;archivio completo sarà oggetto di una successiva modifica.</p>
+            <h2 id="progetta-explore-title">Cerchi altre fonti?</h2>
+            <p>Per una ricerca nell&apos;archivio usa Conoscenza. Il catalogo di Progetta mostra soltanto i contenuti recenti; la consultazione completa arriverà con il prossimo intervento.</p>
           </div>
-          <nav aria-label="Esplorazione e ricerca">
-            <Link href="/progetta?view=catalog">Esplora la progettazione</Link>
+          <nav aria-label="Ricerca di altre fonti">
             <Link href="/knowledge">Cerca in Conoscenza</Link>
           </nav>
         </section>
