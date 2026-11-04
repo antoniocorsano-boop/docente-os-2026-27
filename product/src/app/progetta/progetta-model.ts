@@ -88,6 +88,27 @@ export function filterProgettaItemsBySectionContext(items: ProgettaItem[], compa
   })
 }
 
+export type ProgettaRouteMode = 'start' | 'section' | 'catalog' | 'focus'
+
+/** The canonical block has priority; the class registry owns section identity. */
+export function resolveProgettaRouteMode(input: {
+  grade: ProgettaGrade | null
+  focus: ResolvedProgettaFocus | null
+  sectionId: string | null
+  view: string | null
+}): ProgettaRouteMode {
+  if (input.focus) return 'focus'
+  if (input.view === 'catalog') return 'catalog'
+  if (input.sectionId) return 'section'
+  if (input.grade) return 'catalog'
+  return 'start'
+}
+
+/** Starting from a class never depends on a sampled Knowledge catalogue. */
+export function shouldLoadProgettaItems(mode: ProgettaRouteMode): boolean {
+  return mode === 'focus' || mode === 'catalog'
+}
+
 export function asProgettaGrade(value: string | undefined): ProgettaGrade | null {
   return value === 'prima' || value === 'seconda' || value === 'terza' ? value : null
 }
