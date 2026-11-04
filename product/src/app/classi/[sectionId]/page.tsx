@@ -6,7 +6,8 @@ import { buildClassMaterialAcceptanceEvidenceV1 } from '@/core/application/class
 import { TemporalProjectionService } from '@/core/application/temporal-projection-service'
 import { allocatedMinutesByBlock, civicEducationMinutes, completionProposal, currentTeachingSessions } from '@/core/domain/teaching-session'
 import { parseTeachingSessionEvidenceNote } from '@/core/domain/teaching-session-reflection'
-import { bindArenaDisciplineRefToDocenteOs, isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
+import { isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
+import { mayConsultProvisionalTechnology } from '@/core/domain/cml-provisional-technology-reference'
 import { eco02PilotIdentityFromEnv } from '@/core/server/eco02-pilot-config'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCalendarProjectionReadRepository } from '@/core/infrastructure/supabase/supabase-calendar-projection-read-repository'
@@ -84,18 +85,21 @@ export default async function ClassWorkspacePage({
   })
   const canonicalGenerationId = source?.generationId ?? null
   const summary = buildClassWorkspaceSummary(section, assignments, disciplines, snapshot.progress, canonicalGenerationId)
-  const hasTechnologyAssignment = summary.assignments.some(
-    (assignment) => bindArenaDisciplineRefToDocenteOs(assignment.discipline) === 'technology',
-  )
-  const showArenaPilotIntake = isEco02PilotClass({
+  const showArenaProvisionalReference = mayConsultProvisionalTechnology({
+    workspaceId: context.workspace.id,
+    academicYearId,
+    sectionId: section.id,
+    schoolYearRef: context.academicYear.label,
+    assignments,
+    disciplines,
+  })
+  const showArenaPilotIntake = showArenaProvisionalReference && isEco02PilotClass({
     workspaceId: context.workspace.id,
     academicYearId,
     sectionId: section.id,
     grade: section.grade,
     sectionCode: section.sectionCode,
-  }, eco02PilotIdentityFromEnv()) && hasTechnologyAssignment
-  const showArenaProvisionalReference = hasTechnologyAssignment
-    && context.academicYear.label.replaceAll('/', '-') === '2026-2027'
+  }, eco02PilotIdentityFromEnv())
   const learningFocus = buildClassWorkspaceLearningFocus(section, snapshot.progress, canonicalGenerationId, knowledgeItems)
   const currentSessions = currentTeachingSessions(teachingSnapshot)
   const annualCivicEducationMinutes = civicEducationMinutes(teachingSnapshot)
