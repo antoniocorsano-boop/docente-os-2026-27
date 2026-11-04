@@ -211,7 +211,7 @@ jobs:
     name: browser-certification-selected-gates
     needs: preflight
     if: needs.preflight.outputs.any_required == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 55
     concurrency:
       group: docente-os-governed-mfa-e2e
