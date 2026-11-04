@@ -3,13 +3,17 @@ import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { SupabaseAnnualPlanCurriculumRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-curriculum-repository'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
+import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { Supabase2CP7ReceiptEvidenceRepository } from '@/core/infrastructure/supabase/supabase-2c-p7-receipt-evidence-repository'
 import { isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
 import { eco02PilotIdentityFromEnv } from '@/core/server/eco02-pilot-config'
 import { CurriculumArenaIntakeClient } from './curriculum-arena-intake-client'
 import { ArenaCanonicalAlignmentPreviewClient } from './arena-canonical-alignment-preview-client'
+import { ArenaProvisionalGradePreviewClient } from './arena-provisional-grade-preview-client'
 import { classify2CPilotBaselineAgainstP7, type Pilot2CP7BaselineStatus } from '@/core/domain/cml-2c-p7-provenance'
+import { mayConsultProvisionalTechnology } from '@/core/domain/cml-provisional-technology-reference'
 import '../../classi.css'
 import '../../class-workspace-operational.css'
 
@@ -34,13 +38,58 @@ export default async function CurriculumArenaPage({
   )
   const section = snapshot.sections.find((candidate) => candidate.id === sectionId)
   if (!section) notFound()
-  if (!isEco02PilotClass({
+  const isPilot2C = isEco02PilotClass({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
     sectionId: section.id,
     grade: section.grade,
     sectionCode: section.sectionCode,
-  }, eco02PilotIdentityFromEnv())) notFound()
+  }, eco02PilotIdentityFromEnv())
+
+  const classHref = `/classi/${encodeURIComponent(sectionId)}`
+  const sectionLabel = `${gradeNumber(section.grade)}ª ${section.sectionCode}`
+  // Existing ECO-02/P7 intake and professional receipts remain strictly 2C-only.
+  // Other sections receive consultation of the same provisional Arena release,
+  // without any path to a write action or legacy handoff.
+  if (!isPilot2C) {
+    const [assignments, disciplines] = await Promise.all([
+      new SupabaseTeachingAssignmentReader().list(context.workspace.id, context.academicYear.id),
+      new SupabaseTeacherSettingsRepository().listDisciplines(context.workspace.id, context.academicYear.id),
+    ])
+    if (!mayConsultProvisionalTechnology({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      sectionId,
+      schoolYearRef: context.academicYear.label,
+      assignments,
+      disciplines,
+    })) notFound()
+    return (
+      <AppShell
+        active="classes"
+        academicYearLabel={context.academicYear.label}
+        workspaceName={context.workspace.name}
+        role={context.role}
+        contentClassName="classesWorkspaceSurface"
+      >
+        <section className="classWorkspaceHeader">
+          <div>
+            <p>CLASSE · CURRICOLO VERTICALE</p>
+            <h1>{sectionLabel}</h1>
+            <span>Consulta il curricolo provvisorio di Tecnologia da Arena. La programmazione e i materiali della classe restano distinti.</span>
+          </div>
+        </section>
+        <section aria-label="Consultazione curricolare provvisoria">
+          <ArenaProvisionalGradePreviewClient section={{
+            grade: section.grade,
+            sectionCode: section.sectionCode,
+            schoolYearRef: context.academicYear.label,
+          }} />
+        </section>
+        <Link href={classHref}>← Torna alla classe</Link>
+      </AppShell>
+    )
+  }
 
   const curriculumRepository = new SupabaseAnnualPlanCurriculumRepository()
   const baseline = await curriculumRepository.currentBaseline({
@@ -73,9 +122,6 @@ export default async function CurriculumArenaPage({
     })
     .catch(() => null)
 
-  const sectionLabel = `${gradeNumber(section.grade)}ª ${section.sectionCode}`
-  const classHref = `/classi/${encodeURIComponent(sectionId)}`
-
   return (
     <AppShell
       active="classes"
@@ -91,6 +137,15 @@ export default async function CurriculumArenaPage({
           <span>Pilota Tecnologia 2C: acquisisci una baseline provvisoria da Arena senza sincronizzazioni automatiche.</span>
         </div>
       </section>
+
+      <p>
+        <strong>Riferimento curricolare di lavoro:</strong> Arena, master 1.3 (revisione 27),
+        provvisorio e non approvato.{' '}
+        <a href="https://docs.google.com/document/d/12eWTPUZBJxZixd6-p8drNAaW5_eL8qWpXZUSDyZZAv4/edit"
+          target="_blank" rel="noopener noreferrer">
+          Consulta il curricolo verticale integrale
+        </a>.
+      </p>
 
       {query.accepted ? (
         <section className="classRecordFeedback" aria-label="Esito acquisizione curricolo" role="status" aria-live="polite">
