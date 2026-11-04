@@ -84,15 +84,18 @@ export default async function ClassWorkspacePage({
   })
   const canonicalGenerationId = source?.generationId ?? null
   const summary = buildClassWorkspaceSummary(section, assignments, disciplines, snapshot.progress, canonicalGenerationId)
+  const hasTechnologyAssignment = summary.assignments.some(
+    (assignment) => bindArenaDisciplineRefToDocenteOs(assignment.discipline) === 'technology',
+  )
   const showArenaPilotIntake = isEco02PilotClass({
     workspaceId: context.workspace.id,
     academicYearId,
     sectionId: section.id,
     grade: section.grade,
     sectionCode: section.sectionCode,
-  }, eco02PilotIdentityFromEnv()) && summary.assignments.some(
-    (assignment) => bindArenaDisciplineRefToDocenteOs(assignment.discipline) === 'technology',
-  )
+  }, eco02PilotIdentityFromEnv()) && hasTechnologyAssignment
+  const showArenaProvisionalReference = hasTechnologyAssignment
+    && context.academicYear.label.replaceAll('/', '-') === '2026-2027'
   const learningFocus = buildClassWorkspaceLearningFocus(section, snapshot.progress, canonicalGenerationId, knowledgeItems)
   const currentSessions = currentTeachingSessions(teachingSnapshot)
   const annualCivicEducationMinutes = civicEducationMinutes(teachingSnapshot)
@@ -391,7 +394,13 @@ export default async function ClassWorkspacePage({
           { href: annualPlanHref, title: 'Piano annuale', detail: 'Avanzamento e decisioni professionali.' },
           { href: planningHref, title: 'Progetta', detail: 'Esplora il nucleo del grado.' },
           { href: knowledgeHref, title: 'Materiali e fonti', detail: 'Fonti e materiali della classe.' },
-          ...(showArenaPilotIntake ? [{ href: `/classi/${encodeURIComponent(summary.sectionId)}/curricolo-arena`, title: 'Curricolo Arena', detail: 'Acquisisci o controlla la baseline provvisoria.' }] : []),
+          ...(showArenaProvisionalReference ? [{
+            href: `/classi/${encodeURIComponent(summary.sectionId)}/curricolo-arena`,
+            title: 'Curricolo Arena',
+            detail: showArenaPilotIntake
+              ? 'Consulta il curricolo provvisorio e verifica la baseline storica 2C.'
+              : 'Consulta il riferimento provvisorio di Tecnologia per questa annualità, senza modifiche.',
+          }] : []),
           { href: '/orario', title: 'Orario', detail: 'Torna alla settimana.' },
         ]}
         technical={{
