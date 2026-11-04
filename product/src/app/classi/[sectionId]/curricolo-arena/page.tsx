@@ -115,9 +115,9 @@ export default async function CurriculumArenaPage({
             sourceHandoffFootprintHash: baseline.sourceHandoffFootprintHash,
             alignmentAuthority: baseline.alignmentAuthority,
             acceptedAt: baseline.acceptedAt,
-            requirements: baseline.curricularContext.requirements.map(requirement => ({
-              requirementId: requirement.requirementId,
-              description: requirement.description,
+            reviewedConstraints: baseline.reviewedFramework.constraints.map(constraint => ({
+              id: constraint.id,
+              description: constraint.description,
             })),
           } : null}
         />
