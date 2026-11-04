@@ -43,6 +43,7 @@ Non proporre un nuovo cruscotto e non creare una terza gerarchia globale. `Proge
 | D — Contesto invalido/obsoleto | Classe non presente nello spazio/anno o grado/pack non coerenti | Avviso discreto «Il percorso richiesto non è disponibile in questa classe» + scelta classe/catalogo | Non applicare silenziosamente filtro di altra classe; nessuna persistenza |
 | E — Nessun piano canonico disponibile | Binding mancante/non qualificato | «Consulta le risorse» + stato «Piano non disponibile per individuare la prossima fase» | Non etichettare UDA come attiva né ripiegare su date importazione |
 | F — Tutti i blocchi conclusi | Nessuna fase canonica successiva | «Percorso concluso» + «Esplora la progettazione» | Non riproporre B01 come attività corrente |
+| G — Nessuna classe autorizzata nell'anno | Registry vuota per il docente e lo spazio corrente | «Nessuna classe disponibile» + collegamento secondario «Esplora le UDA» | Non mostrare selettori vuoti, non chiedere di creare classi per la sola consultazione e non inventare un contesto didattico |
 
 `grade` senza `section` equivale a esplorazione del nucleo di grado, **non** a fase attiva. `section` senza `grade` deve essere riconciliata esplicitamente con la registry o rifiutata; mai mostrare come «della classe» l'intero catalogo trasversale.
 
@@ -62,7 +63,7 @@ Esplora tutte le UDA
 Consulta per grado, tipologia o parola chiave
 ```
 
-La vista iniziale visualizza solo le sezioni della registry corrente e autorizzata. L'eventuale filtro disciplina si basa su assegnazioni riconosciute, non su etichette testuali nei documenti. Per una singola classe esplicitamente selezionata, è ammessa una scheda «Prossima fase del Piano» **solo** se esiste un binding canonico attendibile; il collegamento porta alla vista focalizzata già esistente.
+La vista iniziale visualizza solo le sezioni della registry corrente e autorizzata. Se la registry è vuota, la CTA «Scegli una classe» non deve comparire come azione inutilizzabile: presentare lo stato G e offrire l'esplorazione delle risorse accessibili. La selezione di una classe porta al relativo workspace o a un focus già validato, senza inventare un blocco corrente. L'eventuale filtro disciplina si basa su assegnazioni riconosciute, non su etichette testuali nei documenti. Per una singola classe esplicitamente selezionata, è ammessa una scheda «Prossima fase del Piano» **solo** se esiste un binding canonico attendibile; il collegamento porta alla vista focalizzata già esistente.
 
 ### Vista con fase valida
 
@@ -146,7 +147,7 @@ type PlanningCatalogPage = {
 ### R1-B — Ingresso orientato al contesto
 - Usare registry delle classi già disponibile, senza introdurre nuova entità.
 - Sostituire **solo** il ramo generico senza focus con la scelta classe e l'accesso al catalogo. Preservare gli URL di focus e l'accesso esplorativo.
-- Test: nessuna classe; una classe; molte; classe di altro workspace; `grade` senza `section`; `section` invalida; tutti blocchi conclusi; binding mancante.
+- Test: nessuna classe autorizzata (stato vuoto e catalogo raggiungibile); una classe; molte; classe di altro workspace; `grade` senza `section`; `section` invalida; tutti blocchi conclusi; binding mancante.
 
 ### R1-C — Catalogo completo con lettura limitata/paginata
 - Estrarre il carico documentale dal percorso iniziale; creare read model con filtri server-side e paginazione.
@@ -157,6 +158,7 @@ type PlanningCatalogPage = {
 - UNA CTA dominante per il contesto; «Apri UDA» come consultazione primaria se la UDA è presente; authoring come alternativa visibile e non concorrente, salvo richiesta esplicita.
 - Ripristinare corpo 15–17 px, metadati 12–14 px tramite token condivisi, non ingrandimenti indiscriminati.
 - Disposizione 320/360/390/412 CSS px e desktop: nessun contenuto importante sotto elementi fissi; target >=44 px, focus visibile, zoom 200% e lettore di schermo.
+- Misurare sulla **prima finestra realmente visibile**, al netto di intestazione, barra inferiore e area di sicurezza del dispositivo, la presenza del titolo, contesto e CTA. Il solo superamento del test di assenza di overflow non dimostra la leggibilità.
 
 ### R1-E — Certificazione e revisione umana
 - Product CI, Design Policy, accessibilità, test browser desktop/mobile e revisione indipendente **sullo stesso commit**.
