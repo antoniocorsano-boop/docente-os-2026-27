@@ -34,14 +34,14 @@ describe('provisional Arena private Storage transport governance', () => {
     assert.match(sql, /de58f418b4d1fe0be449895736d6267f6c5a58c1b1a476b1f36558579a200809/)
     assert.match(sql, /source_revision_id = '27'/)
     assert.match(sql, /source_master_version = '1\.3'/)
-    const insertTargets = [...sql.matchAll(/insert into\\s+([a-z_]+\\.[a-z_]+)/gi)]
+    const insertTargets = [...sql.matchAll(/insert into\s+([a-z_]+\.[a-z_]+)/gi)]
       .map(match => match[1].toLowerCase())
       .sort()
     assert.deepEqual(insertTargets, [
       'private.runtime_schema_required_migrations',
       'storage.buckets',
     ].sort())
-    assert.doesNotMatch(sql, /\\bupdate\\s+public\\./i)
-    assert.doesNotMatch(sql, /\\bdelete\\s+from\\s+public\\./i)
+    assert.doesNotMatch(sql, /\bupdate\s+public\./i)
+    assert.doesNotMatch(sql, /\bdelete\s+from\s+public\./i)
   })
 })
