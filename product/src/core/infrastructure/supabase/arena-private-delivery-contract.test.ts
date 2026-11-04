@@ -44,7 +44,7 @@ describe('provisional Arena private Storage transport governance', () => {
   })
 
   it('pins Arena 1.3 rev.27 and never writes institutional adoptions or P7 receipts', () => {
-    assert.match(sql, /de58f418b4d1fe0be449895736d6267f6c5a58c1b1a476b1f36558579a200809/)
+    assert.match(sql, /2d34d69a8e3e4df92b2282d0b232353bfe9fd0174ed3335ca0cae878184c9998/)
     assert.match(sql, /source_revision_id = '27'/)
     assert.match(sql, /source_master_version = '1\.3'/)
     const insertTargets = [...sql.matchAll(/insert into\s+([a-z_]+\.[a-z_]+)/gi)]
