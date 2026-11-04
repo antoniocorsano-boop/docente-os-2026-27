@@ -15,14 +15,14 @@ const scope = {
 
 const documentedReceipt = {
   id: PILOT_2C_P7_DOCUMENTED_RECEIPT_ID,
-  workspace_id: scope.workspaceId,
-  academic_year_id: scope.academicYearId,
-  section_id: scope.sectionId,
-  block_id: 'B01',
-  projection_id: 'HTC-SECONDA-B01-v1',
+  workspaceId: scope.workspaceId,
+  academicYearId: scope.academicYearId,
+  sectionId: scope.sectionId,
+  blockId: 'B01',
+  projectionId: 'HTC-SECONDA-B01-v1',
   sourceHandoffFootprintHash: '7bb48175',
-  preparation_fingerprint: '311770ecff1401c4d9c7db855f4eeb3be983c6ece2ff39a1143889dd4782667e',
-  confirmed_at: '2026-09-21T08:37:23.959195+00:00',
+  preparationFingerprint: '311770ecff1401c4d9c7db855f4eeb3be983c6ece2ff39a1143889dd4782667e',
+  confirmedAt: '2026-09-21T08:37:23.959195+00:00',
 }
 
 function verify(receipt: unknown, override?: Partial<typeof scope>) {
@@ -42,7 +42,7 @@ test('P7 is verified only when the actual receipt matches source, preparation an
   assert.equal(result.writePerformed, false)
   assert.deepEqual(input, before)
   assert.equal(JSON.stringify(result).includes(scope.workspaceId), false)
-  assert.equal(JSON.stringify(result).includes(input.preparation_fingerprint), false)
+  assert.equal(JSON.stringify(result).includes(input.preparationFingerprint), false)
 })
 
 test('a non-existent P7 receipt is not inferred from the baseline fingerprint', () => {
@@ -54,11 +54,11 @@ test('a non-existent P7 receipt is not inferred from the baseline fingerprint', 
 test('a receipt for any other source or preparation exact state is rejected', () => {
   for (const difference of [
     { id: '11111111-1111-4111-8111-111111111111' },
-    { block_id: 'B02' },
-    { projection_id: 'OTHER-PROJECTION' },
+    { blockId: 'B02' },
+    { projectionId: 'OTHER-PROJECTION' },
     { sourceHandoffFootprintHash: '8588371c' },
-    { preparation_fingerprint: '00000000' },
-    { confirmed_at: '2026-09-22T08:37:23.959195Z' },
+    { preparationFingerprint: '00000000' },
+    { confirmedAt: '2026-09-22T08:37:23.959195Z' },
   ]) {
     const result = verify({ ...documentedReceipt, ...difference })
     assert.equal(result.status, 'DOCUMENTED_RECEIPT_MISMATCH')
@@ -69,9 +69,9 @@ test('a receipt for any other source or preparation exact state is rejected', ()
 
 test('a receipt from another workspace, year or section cannot attest this pilot', () => {
   for (const difference of [
-    { workspace_id: 'other-workspace' },
-    { academic_year_id: 'other-year' },
-    { section_id: '11111111-1111-4111-8111-111111111111' },
+    { workspaceId: 'other-workspace' },
+    { academicYearId: 'other-year' },
+    { sectionId: '11111111-1111-4111-8111-111111111111' },
   ]) {
     assert.equal(verify({ ...documentedReceipt, ...difference }).status, 'DOCUMENTED_RECEIPT_MISMATCH')
   }
@@ -81,7 +81,7 @@ test('a receipt from another workspace, year or section cannot attest this pilot
 })
 
 test('malformed receipts fail closed without exposing private data', () => {
-  for (const value of [[], {}, 42, 'untrusted', { ...documentedReceipt, confirmed_at: 'bad' }]) {
+  for (const value of [[], {}, 42, 'untrusted', { ...documentedReceipt, confirmedAt: 'bad' }]) {
     const status = verify(value)
     assert.equal(status.historicalReceiptVerified, false)
     assert.equal(status.writePerformed, false)
