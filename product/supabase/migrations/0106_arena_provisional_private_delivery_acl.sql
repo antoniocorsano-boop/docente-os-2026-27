@@ -53,7 +53,7 @@ revoke all on private.arena_provisional_delivery_read_grants
 
 -- A narrowly-scoped helper is used because the private grant register
 -- is intentionally not selectable by browser-authenticated clients.
-create function private.can_read_arena_provisional_release_v1()
+create function private.can_read_arena_provisional_release_v1(target_workspace_ref text)
 returns boolean
 language sql
 stable
@@ -68,6 +68,7 @@ as $$
       join private.arena_provisional_delivery_active_binding b
         on b.source_key = 'arena-1.3-rev27'
        and b.workspace_id = g.workspace_id
+       and b.workspace_id::text = target_workspace_ref
        and b.academic_year_id = g.academic_year_id
        and b.source_sha256 = g.source_sha256
        and b.enabled = true
@@ -87,9 +88,9 @@ as $$
     );
 $$;
 
-revoke all on function private.can_read_arena_provisional_release_v1()
+revoke all on function private.can_read_arena_provisional_release_v1(text)
   from public, anon, authenticated;
-grant execute on function private.can_read_arena_provisional_release_v1()
+grant execute on function private.can_read_arena_provisional_release_v1(text)
   to authenticated;
 
 -- Empty by design: no release bytes are written by this migration.
@@ -130,12 +131,17 @@ on storage.objects
 for select to authenticated
 using (
   bucket_id = 'arena-curricolo-private'
-  and name = 'vertical/2026-2027/master-1.3-rev27/complete-release.json'
+  -- The object path carries the workspace identity. A grant in another
+  -- workspace cannot authorize this path even if the same user belongs to both.
+  and name = ((storage.foldername(name))[1] ||
+    '/vertical/2026-2027/master-1.3-rev27/complete-release.json')
   and storage.allow_any_operation(array[
     'object.get_authenticated',
     'object.get_authenticated_info'
   ])
-  and private.can_read_arena_provisional_release_v1()
+  and private.can_read_arena_provisional_release_v1(
+    (storage.foldername(name))[1]
+  )
 );
 
 select private.advance_runtime_schema_contract(
