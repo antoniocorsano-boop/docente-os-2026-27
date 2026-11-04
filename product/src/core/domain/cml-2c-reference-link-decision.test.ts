@@ -45,6 +45,7 @@ function plan(overrides: Record<string, unknown> = {}) {
     documentedP7ReceiptVerified: true,
     source: localSource,
     institutionBinding: { status: 'NOT_ATTESTED' },
+    identityContext: { expectedSchoolCode: 'AVIC849003', expectedArenaInstitutionId: 'ics-lorenzo-milani' },
     ...overrides,
   })
 }
@@ -122,6 +123,17 @@ test('a mismatched or undocumented school identity cannot be accepted by declara
     institutionBinding: { ...attestedBinding, schoolCode: 'OTHER' },
   })
   assert.ok(otherCode.blockers.includes('INSTITUTION_BINDING_NOT_ATTESTED'))
+})
+
+test('a claimed attestation without independently supplied identity context cannot unlock linking', () => {
+  const result = plan({
+    source: attestedSource,
+    institutionBinding: attestedBinding,
+    identityContext: { expectedSchoolCode: null, expectedArenaInstitutionId: null },
+  })
+  assert.equal(result.status, 'REVIEW_BLOCKED')
+  assert.ok(result.blockers.includes('INSTITUTION_BINDING_NOT_ATTESTED'))
+  assert.equal(result.writeAllowed, false)
 })
 
 test('source fingerprint, revision, framework and authority must match the exact proposed release', () => {
