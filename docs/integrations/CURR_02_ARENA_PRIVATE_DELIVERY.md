@@ -4,11 +4,11 @@
 
 ## Fonte e autorità
 
-L'unico riferimento di lavoro è il master Arena `CAN-CURR-MASTER-00@1.3`, revisione **27**, **PROVVISORIO / NON VIGENTE / NON APPROVATO**. La release completa già emessa e collaudata separatamente in Arena ha:
+L'unico riferimento di lavoro è il master Arena `CAN-CURR-MASTER-00@1.3`, revisione **27**, **PROVVISORIO / NON VIGENTE / NON APPROVATO**. La release completa emessa il **04/11/2026** e confrontata con il master Arena ha:
 - versione 1.3, 113 segmenti, 566 nodi, 103 collegamenti;
 - identificativo dichiarato Arena `ics-lorenzo-milani`, **non prova di attestazione del workspace**;
 - impronta contenuto `fnv1a:99c4ccc3`, impronta strutturale `8588371c`;
-- **SHA-256 esatto del file integrale:** `de58f418b4d1fe0be449895736d6267f6c5a58c1b1a476b1f36558579a200809` (ricevuta Arena PR #350).
+- **SHA-256 esatto del file integrale:** `2d34d69a8e3e4df92b2282d0b232353bfe9fd0174ed3335ca0cae878184c9998` (nuova emissione del 04/11/2026, salvata e verificata in Biblioteca privata e Drive; distinta dalla ricevuta Arena PR #350 del 03/11/2026).
 
 L'SHA-256 è il controllo crittografico del file esatto già qualificato; l'impronta strutturale FNV-1a è un controllo di coerenza del contratto e **non** sostituisce la prova di origine. Nessun testo integrale del master né file della release viene copiato nel repository.
 
@@ -35,6 +35,14 @@ Non sono precompilate: il codice **non sostiene che l'archivio esista**. In asse
 7. Presentazione del solo segmento della classe come **PROVVISORIO / NON VIGENTE**; nessuna ricevuta, adozione o scrittura.
 8. In caso di fonte assente, non leggibile, alterata o di identità di classe incoerente: **fallimento chiuso**. Non usare copie alternative non qualificate.
 
+### Copia privata della release disponibile (04/11/2026)
+
+- **Emissione corrente:** `2d34d69a8e3e4df92b2282d0b232353bfe9fd0174ed3335ca0cae878184c9998`, **725.968 byte**, 113 segmenti, 566 nodi, 103 collegamenti; `issuedAt=2026-11-04T08:55:02.145Z`.
+- **Sorgente:** master 1.3/rev.27, SHA-256 del testo esportato `8ef11dcb5d6f0574270e28ce4d46592078923e6e5518902524c09fed3c71a815`; ricevute strutturali `99c4ccc3` e `8588371c` immutate.
+- **Conservazione:** due copie private leggibili e ricontrollate in Biblioteca ChatGPT e Google Drive, con identico SHA-256. La copia Drive è un **backup facoltativo**; l'applicazione non ne dipende.
+- **Confine:** l'emissione del 03/11/2026 aveva SHA-256 `de58f418b4d1fe0be449895736d6267f6c5a58c1b1a476b1f36558579a200809` e non è stata sovrascritta né presentata come identica; il precedente file non è recuperabile tramite i collegamenti attuali.
+- **NON attivato:** nessuna copia sullo Storage operativo, nessuna attestazione di corrispondenza istituzionale/workspace, nessuna concessione RLS reale e nessuna adozione del curricolo.
+
 ### Prerequisiti di pubblicazione non soddisfatti
 
 - L'operatore di Arena deve autorizzare e materializzare un **mezzo di trasporto**, non una seconda fonte autorevole. Non pubblicare il master integralmente in GitHub o in un bucket pubblico.
@@ -55,7 +63,7 @@ La migrazione **`0106_arena_provisional_private_delivery_acl.sql`** prepara escl
 
 La policy `storage.objects` consente **esclusivamente il download autenticato del singolo oggetto esatto** e solo quando una concessione personale è attiva per l'utente, con effettiva appartenenza al workspace e anno scolastico 2026/2027. L'accesso al documento completo è un permesso personale di **consultazione**, non certifica la titolarità istituzionale del curricolo. Non sono definite policy di inserimento, sovrascrittura o cancellazione per gli utenti.
 
-La migration **non viene eseguita sul progetto attivo da questa PR**. Prima di distribuire occorrono una revisione SQL indipendente, prova in database effimero e un'evidenza di autorizzazione relativa ai contenuti da condividere. Il file originale della release deve essere recuperato dall'emissione qualificata Arena e confrontato byte per byte con l'impronta SHA-256 prima e dopo ogni consegna. Nessuna generazione o nuova esportazione può sostituire silenziosamente il file validato.
+La migration **non viene eseguita sul progetto attivo da questa PR**. Prima di distribuire occorrono una revisione SQL indipendente, prova in database effimero e un'evidenza di autorizzazione relativa ai contenuti da condividere. Il nuovo file integrale, ora presente in due copie private verificate, deve essere trasferito soltanto dopo l'autorizzazione dello spazio destinatario; prima e dopo la consegna va confrontato byte per byte con l'impronta SHA-256 indicata. La copia su Drive è esclusivamente di recupero e non costituisce origine operativa per Docente OS. Nessuna generazione o nuova esportazione può sostituire silenziosamente il file validato.
 
 La successiva attivazione richiede un operatore responsabile che:
 1. identifichi un workspace e un account realmente autorizzati (non un codice scuola dichiarato dal browser);
