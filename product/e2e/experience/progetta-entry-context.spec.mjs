@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { expect, test } from '@playwright/test'
 import { loginE2E, requireE2ECredentials } from '../support/e2e-auth.mjs'
 
@@ -126,7 +127,7 @@ async function writeEvidence(testInfo, name, data) {
   const record = {
     schemaVersion: 1,
     project: testInfo.project.name,
-    testedCommit: process.env.GITHUB_SHA ?? 'local-working-tree',
+    testedCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
     capturedAt: new Date().toISOString(),
     ...data,
     noClassesScenario: 'NOT_TESTED_REQUIRES_ISOLATED_EMPTY_WORKSPACE',
