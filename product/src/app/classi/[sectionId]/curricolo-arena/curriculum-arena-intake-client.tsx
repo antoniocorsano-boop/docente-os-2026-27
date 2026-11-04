@@ -48,7 +48,7 @@ export function CurriculumArenaIntakeClient({
     setLocalError(null)
     if (!file) return
     if (file.size > ECO02_PILOT_UPLOAD_MAX_BYTES) {
-      setLocalError('Il file supera 500 KB: esporta di nuovo il passaggio direttamente da Arena.')
+      setLocalError('Il file supera 500 KB. Qui puoi caricare soltanto il vecchio passaggio ECO-02; per il nuovo curricolo usa il confronto precedente.')
       return
     }
     try {
@@ -71,12 +71,12 @@ export function CurriculumArenaIntakeClient({
   return (
     <article className="classWorkspaceCard" aria-labelledby="arena-intake-title">
       <div>
-        <h2 id="arena-intake-title">Importa da Arena</h2>
-        <p>Usa il file scaricato da Arena. Prima vedi la provenienza e il contesto; nulla viene scritto finché non confermi.</p>
+        <h2 id="arena-intake-title">Passaggio storico del pilota 2C</h2>
+        <p>Questa acquisizione precedente accetta soltanto il passaggio ECO-02 nel formato CML_LOCAL_HANDOFF_V2. Per il nuovo curricolo verticale utilizza il confronto nella scheda precedente. Nessuna scrittura avviene senza conferma.</p>
       </div>
 
       <label>
-        <span>Passaggio Arena per Docente OS</span>
+        <span>File storico del pilota 2C (non la release verticale completa)</span>
         <input
           type="file"
           accept=".json,.cml-handoff.json,application/json"
