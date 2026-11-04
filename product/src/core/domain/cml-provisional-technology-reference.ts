@@ -140,3 +140,39 @@ export function projectProvisionalTechnologyReference(input: {
     legacyReplacementAllowed: false,
   }
 }
+
+
+/**
+ * Route and navigation share this fail-closed eligibility rule.
+ * A URL alone cannot bypass workspace, academic-year and teaching-assignment
+ * checks. It deliberately does not assert institutional authority.
+ */
+export function mayConsultProvisionalTechnology(input: {
+  workspaceId: string
+  academicYearId: string
+  sectionId: string
+  schoolYearRef: string
+  assignments: readonly {
+    workspaceId: string
+    academicYearId: string
+    sectionId: string
+    disciplineId: string
+  }[]
+  disciplines: readonly { id: string; name: string }[]
+}): boolean {
+  if (input.schoolYearRef.trim().replaceAll('/', '-') !== '2026-2027') return false
+  const technologyIds = new Set(
+    input.disciplines
+      .filter(item => {
+        const name = item.name.trim().toLocaleLowerCase('it')
+        return name === 'tecnologia' || name === 'technology'
+      })
+      .map(item => item.id),
+  )
+  return input.assignments.some(item =>
+    item.workspaceId === input.workspaceId
+    && item.academicYearId === input.academicYearId
+    && item.sectionId === input.sectionId
+    && technologyIds.has(item.disciplineId),
+  )
+}
