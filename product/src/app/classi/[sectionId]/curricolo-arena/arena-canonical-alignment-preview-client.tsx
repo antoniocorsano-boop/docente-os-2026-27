@@ -122,10 +122,10 @@ export function ArenaCanonicalAlignmentPreviewClient({
             {preview.legacy ? (
               <>
                 <p>Baseline precedente conservata: impronta <code>{preview.legacy.sourceHandoffFootprintHash}</code>.</p>
-                <p>Requisiti da confrontare, senza dichiarare equivalenze automatiche:</p>
+                <p>Vincoli storici della progettazione da confrontare, senza dichiarare equivalenze automatiche:</p>
                 <ul>
-                  {preview.legacy.requirements.map(item => (
-                    <li key={item.requirementId}>
+                  {preview.legacy.reviewedConstraints.map(item => (
+                    <li key={item.id}>
                       {item.description} <strong>· Da verificare</strong>
                     </li>
                   ))}
