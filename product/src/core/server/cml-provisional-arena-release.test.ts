@@ -75,7 +75,7 @@ it('does not allow provisional source access in another workspace', async () => 
     workspace: process.env.ARENA_VERTICAL_RELEASE_WORKSPACE_ID,
   }
   try {
-    process.env.ARENA_VERTICAL_RELEASE_BUCKET = 'arena-curriculum-private'
+    process.env.ARENA_VERTICAL_RELEASE_BUCKET = 'arena-curricolo-private'
     process.env.ARENA_VERTICAL_RELEASE_OBJECT_KEY =
       'vertical/2026-2027/master-1.3-rev27/complete-release.json'
     process.env.ARENA_VERTICAL_RELEASE_WORKSPACE_ID =
@@ -103,7 +103,7 @@ it('rejects an incorrectly configured source key even when the workspace matches
   const id = '00000000-0000-4000-8000-000000000001'
   try {
     process.env.ARENA_VERTICAL_RELEASE_WORKSPACE_ID = id
-    process.env.ARENA_VERTICAL_RELEASE_BUCKET = 'arena-curriculum-private'
+    process.env.ARENA_VERTICAL_RELEASE_BUCKET = 'arena-curricolo-private'
     process.env.ARENA_VERTICAL_RELEASE_OBJECT_KEY = 'another/release.json'
     assert.deepEqual(await readProvisionalArenaReferenceForClass({
       ...scope, workspaceId: id,
