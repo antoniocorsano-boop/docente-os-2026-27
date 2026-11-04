@@ -7,6 +7,7 @@ import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supa
 import { isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
 import { eco02PilotIdentityFromEnv } from '@/core/server/eco02-pilot-config'
 import { CurriculumArenaIntakeClient } from './curriculum-arena-intake-client'
+import { ArenaCanonicalAlignmentPreviewClient } from './arena-canonical-alignment-preview-client'
 import '../../classi.css'
 import '../../class-workspace-operational.css'
 
@@ -107,6 +108,22 @@ export default async function CurriculumArenaPage({
         <CurriculumArenaIntakeClient
           sectionId={sectionId}
           currentFootprint={baseline?.sourceHandoffFootprintHash ?? null}
+        />
+        <ArenaCanonicalAlignmentPreviewClient
+          section={{
+            grade: section.grade,
+            sectionCode: section.sectionCode,
+            schoolYearRef: context.academicYear.label,
+          }}
+          legacyBaseline={baseline ? {
+            sourceHandoffFootprintHash: baseline.sourceHandoffFootprintHash,
+            alignmentAuthority: baseline.alignmentAuthority,
+            acceptedAt: baseline.acceptedAt,
+            requirements: baseline.curricularContext.requirements.map(requirement => ({
+              requirementId: requirement.requirementId,
+              description: requirement.description,
+            })),
+          } : null}
         />
       </section>
 
