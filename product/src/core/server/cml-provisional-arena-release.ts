@@ -45,7 +45,7 @@ export async function readProvisionalArenaReferenceForClass(
   }
   // Operator configuration is not an URL and is never interpolated from
   // request content. Reject path traversal and unexpected storage routes.
-  if (!/^[a-z0-9][a-z0-9-_]{2,62}$/.test(bucket)
+  if (!/^[a-z0-9][a-z0-9_-]{2,62}$/.test(bucket)
     || objectKey.startsWith('/')
     || objectKey.endsWith('/')
     || objectKey.includes('\\')
