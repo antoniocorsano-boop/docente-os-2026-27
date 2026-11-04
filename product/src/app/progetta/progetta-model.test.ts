@@ -357,6 +357,8 @@ test('UX-R1B: Progetta presenta scelta classe senza caricare archivio ed espone 
   assert.match(pageSource, /Scegli una classe/)
   assert.match(pageSource, /\/classi\/\$\{encodeURIComponent\(section\.id\)\}/)
   assert.match(pageSource, /href="\/progetta\?view=catalog"/)
+  assert.match(pageSource, /className="progettaEntryBrowse" href="\/progetta\?view=catalog"/)
+  assert.ok(pageSource.indexOf('className="progettaEntryBrowse"') < pageSource.indexOf('className="progettaEntryClasses"'), 'Esplora deve essere disponibile prima dell’elenco lungo delle classi.')
   assert.match(pageSource, /Esplora la progettazione/)
   assert.match(pageSource, /CONTENUTI RECENTI MOSTRATI/)
   assert.doesNotMatch(pageSource, /planningCoverage\(items\)/)
