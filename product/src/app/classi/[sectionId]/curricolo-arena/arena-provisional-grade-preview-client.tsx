@@ -28,14 +28,17 @@ export function ArenaProvisionalGradePreviewClient({
   serverReference?: ProvisionalTechnologyReference | null
   sourceStatus?: 'AVAILABLE' | 'NOT_AUTHORIZED' | 'NOT_CONFIGURED' | 'SOURCE_UNAVAILABLE' | 'SOURCE_UNVERIFIED'
 }) {
-  const [preview, setPreview] = useState<ProvisionalTechnologyReference | null>(serverReference)
+  const [localPreview, setLocalPreview] = useState<ProvisionalTechnologyReference | null>(null)
+  // Server evidence wins on each render; never retain a stale server reference
+  // if the authenticated source later becomes unavailable.
+  const preview = serverReference ?? localPreview
   const [error, setError] = useState<string | null>(null)
   const [reading, setReading] = useState(false)
   const sequence = useRef(0)
 
   async function onFile(file: File | null) {
     const request = ++sequence.current
-    setPreview(null)
+    setLocalPreview(null)
     setError(null)
     setReading(false)
     if (!file) return
@@ -77,7 +80,7 @@ export function ArenaProvisionalGradePreviewClient({
         grade: section.grade,
         schoolYearRef: section.schoolYearRef,
       })
-      if (sequence.current === request) setPreview(detached)
+      if (sequence.current === request) setLocalPreview(detached)
     } catch {
       if (sequence.current === request) {
         setError('Impossibile verificare la release per questa classe. Controlla provenienza, integrità, revisione e anno scolastico del file Arena.')
