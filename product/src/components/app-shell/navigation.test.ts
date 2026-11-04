@@ -146,3 +146,11 @@ function lessonMaterialsContext(authority: 'IN_FORCE' | 'PROVISIONAL_DRAFT' = 'I
     },
   }
 }
+
+
+test('DOS-UX-R1B-HR: Altro è la posizione contenitore, non la pagina corrente di Progetta', () => {
+  const source = readFileSync(new URL('./app-shell.tsx', import.meta.url), 'utf8')
+  assert.match(source, /item\.key === active \? 'page' : item\.key === 'more' && moreActive \? 'location'/)
+  assert.match(source, /item\.key === mobileActive \? 'page' : item\.key === 'more' && mobileMoreActive \? 'location'/)
+  assert.match(source, /aria-current={itemCurrent}/)
+})
