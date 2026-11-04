@@ -75,8 +75,6 @@ const REFERENCE = {
 } as const
 
 const P7_SOURCE_HASH = '7bb48175'
-const SCHOOL_CODE = 'AVIC849003'
-const ARENA_INSTITUTION_ID = 'ics-lorenzo-milani'
 
 function year(value: string): string {
   return value.trim().replace('/', '-')
@@ -103,9 +101,14 @@ function exactScope(scope: {
   }
 }
 
-function matchingSource(source: Pilot2CReferenceSource | null): boolean {
+function matchingSource(
+  source: Pilot2CReferenceSource | null,
+  identityContext: { expectedSchoolCode: string | null; expectedArenaInstitutionId: string | null },
+): boolean {
   return source !== null
-    && source.institutionId === ARENA_INSTITUTION_ID
+    && isNonBlank(source.institutionId)
+    && (identityContext.expectedArenaInstitutionId === null
+      || source.institutionId === identityContext.expectedArenaInstitutionId)
     && source.sourceMasterVersion === REFERENCE.sourceMasterVersion
     && source.sourceRevisionId === REFERENCE.sourceRevisionId
     && source.sourceContentFootprint === REFERENCE.sourceContentFootprint
@@ -116,12 +119,17 @@ function matchingSource(source: Pilot2CReferenceSource | null): boolean {
     && source.curricoloVigente === false
 }
 
-function bindingAttested(binding: Pilot2CInstitutionBinding): boolean {
+function bindingAttested(
+  binding: Pilot2CInstitutionBinding,
+  identityContext: { expectedSchoolCode: string | null; expectedArenaInstitutionId: string | null },
+): binding is Extract<Pilot2CInstitutionBinding, { status: 'ATTESTED' }> {
   return binding.status === 'ATTESTED'
-    && binding.schoolCode === SCHOOL_CODE
-    && binding.institutionId === ARENA_INSTITUTION_ID
-      ? isNonBlank(binding.attestationRef) && isNonBlank(binding.attestedBy)
-      : false
+    && isNonBlank(identityContext.expectedSchoolCode)
+    && isNonBlank(identityContext.expectedArenaInstitutionId)
+    && binding.schoolCode === identityContext.expectedSchoolCode
+    && binding.institutionId === identityContext.expectedArenaInstitutionId
+    && isNonBlank(binding.attestationRef)
+    && isNonBlank(binding.attestedBy)
 }
 
 /**
@@ -139,6 +147,12 @@ export function plan2CCanonicalReferenceDecision(input: {
   documentedP7ReceiptVerified: boolean
   source: Pilot2CReferenceSource | null
   institutionBinding: Pilot2CInstitutionBinding
+  // These expectations must originate from a trusted workspace/server source.
+  // An unattested browser value cannot supply them as a write authorization.
+  identityContext: {
+    expectedSchoolCode: string | null
+    expectedArenaInstitutionId: string | null
+  }
 }): Pilot2CReferenceDecisionPlan {
   exactScope(input.scope)
   const output = (
@@ -183,25 +197,26 @@ export function plan2CCanonicalReferenceDecision(input: {
   if (input.source?.status !== 'SERVER_QUALIFIED') {
     blockers.push('SOURCE_NOT_SERVER_QUALIFIED')
   }
-  if (!matchingSource(input.source)) {
+  if (!matchingSource(input.source, input.identityContext)) {
     blockers.push('SOURCE_REFERENCE_MISMATCH')
   }
 
-  if (!bindingAttested(input.institutionBinding)) {
+  if (!bindingAttested(input.institutionBinding, input.identityContext)) {
     blockers.push('INSTITUTION_BINDING_NOT_ATTESTED')
   } else if (input.source?.institutionId !== input.institutionBinding.institutionId) {
     blockers.push('INSTITUTION_ID_MISMATCH')
   }
-  // A claimed attestation for another institution must not silently count as
-  // an attestation for the target even if the source itself is malformed.
+  // Record the mismatch separately when a claimed attestation references
+  // another institution. It does not become an authoritative binding.
   if (input.institutionBinding.status === 'ATTESTED'
-    && input.institutionBinding.institutionId !== ARENA_INSTITUTION_ID
+    && isNonBlank(input.identityContext.expectedSchoolCode)
+    && isNonBlank(input.identityContext.expectedArenaInstitutionId)
+    && input.institutionBinding.schoolCode === input.identityContext.expectedSchoolCode
     && isNonBlank(input.institutionBinding.attestationRef)
     && isNonBlank(input.institutionBinding.attestedBy)
-    && input.institutionBinding.schoolCode === SCHOOL_CODE) {
-    if (!blockers.includes('INSTITUTION_ID_MISMATCH')) {
-      blockers.push('INSTITUTION_ID_MISMATCH')
-    }
+    && input.institutionBinding.institutionId !== input.identityContext.expectedArenaInstitutionId
+    && !blockers.includes('INSTITUTION_ID_MISMATCH')) {
+    blockers.push('INSTITUTION_ID_MISMATCH')
   }
 
   return blockers.length
