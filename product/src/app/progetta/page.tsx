@@ -106,9 +106,16 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
     return (
       <AppShell active="design" academicYearLabel={context.academicYear?.label} workspaceName={context.workspace.name} role={context.role} contentClassName="progettaSurface progettaEntrySurface">
         <header className="progettaEntryHeader">
-          <p>PROGETTA · {context.academicYear?.label ?? 'Anno scolastico'}</p>
+          <nav aria-label="Percorso di navigazione" className="progettaEntryTrail">
+            <Link href="/altro">Altro</Link>
+            <span aria-hidden>›</span>
+            <span aria-current="page">Progetta</span>
+            <span className="progettaEntryYear">{context.academicYear?.label ?? 'Anno scolastico'}</span>
+          </nav>
           <h1>{sectionContext ? `Continua dalla ${displaySectionLabel}` : 'Scegli una classe'}</h1>
-          <p className="progettaEntryIntro">Per preparare la prossima fase, apri la classe: il lavoro prosegue dal Piano annuale, non dall&apos;ultimo documento caricato.</p>
+          <p className="progettaEntryIntro">{sectionContext
+            ? 'Apri la panoramica della classe per consultare il Piano annuale e preparare la prossima lezione.'
+            : 'Scegli una classe per aprire la sua panoramica. Da lì puoi consultare il Piano annuale e preparare la prossima lezione.'}</p>
           <Link className="progettaEntryBrowse" href="/progetta?view=catalog">Esplora i contenuti recenti <span aria-hidden>→</span></Link>
         </header>
 
@@ -123,10 +130,9 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
             <h2>{sectionContext ? 'Classe selezionata' : 'Classi disponibili'}</h2>
             <div className="progettaEntryGrid">
               {availableSections.map((section) => (
-                <Link className="progettaEntryClass" href={`/classi/${encodeURIComponent(section.id)}`} key={section.id}>
-                  <span>CLASSE</span>
+                <Link className="progettaEntryClass" aria-label={`Apri la panoramica della classe ${GRADE_NUMBER[section.grade]}ª ${section.sectionCode}`} href={`/classi/${encodeURIComponent(section.id)}`} key={section.id}>
                   <strong>{GRADE_NUMBER[section.grade]}ª {section.sectionCode}</strong>
-                  <small>Apri la classe e continua dal Piano annuale <span aria-hidden>→</span></small>
+                  <small>Apri <span aria-hidden>→</span></small>
                 </Link>
               ))}
             </div>
