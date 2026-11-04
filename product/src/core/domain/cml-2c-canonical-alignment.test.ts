@@ -5,7 +5,7 @@ import { buildPilot2CCanonicalAlignmentPreview } from './cml-2c-canonical-alignm
 const YEAR = '2026/2027'
 const LEGACY = {
   sourceHandoffFootprintHash: '7bb48175',
-  curriculumState: 'PROVISIONAL_COMPLETE',
+  alignmentAuthority: 'PROVISIONAL_BASELINE',
   acceptedAt: '2026-09-21T08:37:23.959195Z',
   requirements: [{
     requirementId: 'older-technology-requirement',
@@ -23,7 +23,7 @@ function grade2Slice() {
     version: { id: 'can-curr-master-00-v1-3', versionNumber: '1.3' },
     structuralFootprint: { algorithm: 'fnv1a', version: 1, hash: '8588371c', computedAt: '2026-11-03T20:00:00Z' },
     provenance: { sourceProduct: 'CURMANLIGHT_ARENA', sourceContract: 'TRAMA_CURRICOLO_VERTICALE_RELEASE_V1', issuedAt: '2026-11-03T20:00:00Z' },
-    authority: { state: 'PROVISIONAL_COMPLETE', alignmentAuthority: 'PROVISIONAL_BASELINE', requiresRevalidationOnApproval: true },
+    authority: { state: 'PROVISIONAL_BASELINE', alignmentAuthority: 'PROVISIONAL_BASELINE', requiresRevalidationOnApproval: true },
     downstreamPolicy: { acceptanceRequired: true, automaticWriteAllowed: false },
     segment: {
       id: 'can-curr-master-00-secondaria-tecnologia-2',
@@ -92,19 +92,19 @@ test('comparison does not invent acceptance or semantic equivalence when histori
 })
 
 test('a previously approved historical baseline cannot be silently downgraded or replaced', () => {
-  const result = preview({ legacyBaseline: { ...LEGACY, curriculumState: 'APPROVED' } })
-  assert.equal(result.legacy?.curriculumState, 'APPROVED')
+  const result = preview({ legacyBaseline: { ...LEGACY, alignmentAuthority: 'APPROVED_INSTITUTIONAL' } })
+  assert.equal(result.legacy?.alignmentAuthority, 'APPROVED_INSTITUTIONAL')
   assert.equal(result.status, 'PROFESSIONAL_REVIEW_REQUIRED')
   assert.equal(result.authorization.replacementAllowed, false)
   assert.equal(result.authorization.writeAllowed, false)
 })
 
-test('fails closed on other sections, years, grades and curricular regimes', () => {
+test('fails closed on other sections, years, grades and framework applicability', () => {
   assert.throws(() => preview({ section: { grade: 'SECONDA', sectionCode: 'A', schoolYearRef: YEAR } }), /2C|section/i)
   assert.throws(() => preview({ section: { grade: 'TERZA', sectionCode: 'C', schoolYearRef: YEAR } }), /2C|grade/i)
   assert.throws(() => preview({ section: { grade: 'SECONDA', sectionCode: 'C', schoolYearRef: '2027/2028' } }), /year/i)
   assert.throws(() => preview({ selected: { ...grade2Slice(), gradeRef: 'grade-3' } }), /grade|class/i)
-  assert.throws(() => preview({ selected: { ...grade2Slice(), authority: { state: 'APPROVED' } } }), /authority|provisional/i)
+  assert.throws(() => preview({ selected: { ...grade2Slice(), authority: { state: 'APPROVED_INSTITUTIONAL' } } }), /authority|provisional/i)
   assert.throws(() => preview({ selected: { ...grade2Slice(), segment: { ...grade2Slice().segment, frameworkApplicability: { framework: 'IN2025', resolutionStatus: 'resolved' } } } }), /IN2012|framework/i)
   assert.throws(() => preview({ selected: { ...grade2Slice(), downstreamPolicy: { automaticWriteAllowed: true } } }), /write|policy/i)
 })
