@@ -92,7 +92,7 @@ describe('provisional Arena reference for a teaching class', () => {
     }), /automatic writes/)
   })
 
-  it('rejects missing or cross-segment evidence without inventing a curriculum', () => {
+  it('rejects missing or cross-segment evidence without inventing a curricolo', () => {
     const selected = fixture('SECONDA')
     selected.nodes[0].segmentId = 'other'
     assert.throws(() => projectProvisionalTechnologyReference({
