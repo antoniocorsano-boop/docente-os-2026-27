@@ -17,14 +17,18 @@ const MASTER_URL = 'https://docs.google.com/document/d/12eWTPUZBJxZixd6-p8drNAaW
 
 export function ArenaProvisionalGradePreviewClient({
   section,
+  serverReference = null,
+  sourceStatus = 'NOT_CONFIGURED',
 }: {
   section: {
     grade: ProvisionalTechnologyGrade
     sectionCode: string
     schoolYearRef: string
   }
+  serverReference?: ProvisionalTechnologyReference | null
+  sourceStatus?: 'AVAILABLE' | 'NOT_AUTHORIZED' | 'NOT_CONFIGURED' | 'SOURCE_UNAVAILABLE' | 'SOURCE_UNVERIFIED'
 }) {
-  const [preview, setPreview] = useState<ProvisionalTechnologyReference | null>(null)
+  const [preview, setPreview] = useState<ProvisionalTechnologyReference | null>(serverReference)
   const [error, setError] = useState<string | null>(null)
   const [reading, setReading] = useState(false)
   const sequence = useRef(0)
@@ -112,19 +116,33 @@ export function ArenaProvisionalGradePreviewClient({
         </a>
       </p>
 
-      <label>
-        <span>Esamina la release verificabile di Arena (file JSON)</span>
-        <input
-          type="file"
-          accept=".json,application/json"
-          aria-label="Seleziona la release completa di Arena per il confronto in sola lettura"
-          onChange={event => { void onFile(event.target.files?.[0] ?? null) }}
-        />
-      </label>
-      <p><small>
-        La consultazione del documento integrale è immediata; per estrarre il segmento della classe serve
-        la release completa di Arena. Il file viene letto solo sul dispositivo, senza invio o salvataggio.
-      </small></p>
+      {serverReference ? (
+        <p role="status">
+          <strong>Fonte verificata e consultabile senza file.</strong> La release di Arena è stata
+          letta in sola lettura mediante la sessione corrente e confrontata con la sua impronta
+          crittografica. Nessun riferimento è stato salvato nella classe.
+        </p>
+      ) : (
+        <>
+          <p role="status">
+            <strong>{sourceStatus === 'SOURCE_UNVERIFIED'
+              ? 'La fonte disponibile non ha superato i controlli.'
+              : 'La consegna automatica del curricolo non è ancora disponibile.'}</strong>
+            {' '}Il documento integrale resta consultabile; per estrarre i contenuti
+            della classe puoi utilizzare la release completa di Arena sul dispositivo.
+          </p>
+          <label>
+            <span>Esamina la release di Arena sul dispositivo (file JSON)</span>
+            <input
+              type="file"
+              accept=".json,application/json"
+              aria-label="Seleziona la release completa di Arena per il confronto in sola lettura"
+              onChange={event => { void onFile(event.target.files?.[0] ?? null) }}
+            />
+          </label>
+          <p><small>Il file viene letto solo su questo dispositivo, senza invio né salvataggio.</small></p>
+        </>
+      )}
 
       {reading ? <p role="status" aria-live="polite">Verifica della fonte e dell&apos;annualità in corso…</p> : null}
       {error ? <p role="alert">{error} Nessuna progettazione è stata modificata.</p> : null}
