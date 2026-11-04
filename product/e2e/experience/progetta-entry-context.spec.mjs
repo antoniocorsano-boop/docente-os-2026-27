@@ -108,7 +108,7 @@ test('UX-R1B: Progetta mostra la classe nella prima area utilizzabile, non il ca
   await expect(page.locator('.dosBottomNav a[href="/altro"]')).not.toHaveClass(/active/)
   await screenshot(page, testInfo, 'class-overview-after-progetta')
   await page.goBack()
-  await expect(page).toHaveURL(/\\/progetta$/)
+  await expect(page).toHaveURL((url) => url.pathname === '/progetta' && !url.search)
   await expect(page.locator('.progettaEntryTrail')).toBeVisible()
   await writeEvidence(testInfo, 'entry-visible', { expectedClassCount, results, firstHref, state: 'classes-present', navigation: 'Altro > Progetta > Classi > Progetta' })
 })
