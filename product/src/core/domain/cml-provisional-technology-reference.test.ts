@@ -3,6 +3,7 @@ import { describe, it } from 'node:test'
 import {
   projectProvisionalTechnologyReference,
   provisionalTechnologyGradeRef,
+  mayConsultProvisionalTechnology,
   type ProvisionalTechnologyGrade,
 } from './cml-provisional-technology-reference'
 
@@ -103,5 +104,43 @@ describe('provisional Arena reference for a teaching class', () => {
     assert.throws(() => projectProvisionalTechnologyReference({
       selected, grade: 'SECONDA', schoolYearRef: '2026/2027',
     }), /Evidenze/)
+  })
+})
+
+
+describe('access to the provisional reference through a teaching assignment', () => {
+  const eligible = {
+    workspaceId: 'my-space',
+    academicYearId: '2026-year',
+    sectionId: 'class-1a',
+    schoolYearRef: '2026/2027',
+    assignments: [{
+      workspaceId: 'my-space',
+      academicYearId: '2026-year',
+      sectionId: 'class-1a',
+      disciplineId: 'technology-id',
+    }],
+    disciplines: [{ id: 'technology-id', name: 'Tecnologia' }],
+  }
+
+  it('allows the same verified assignment from navigation and direct route', () => {
+    assert.equal(mayConsultProvisionalTechnology(eligible), true)
+    assert.equal(mayConsultProvisionalTechnology({
+      ...eligible, disciplines: [{ id: 'technology-id', name: 'technology' }],
+    }), true)
+  })
+
+  it('fails closed across workspace, year, section and missing Technology assignments', () => {
+    assert.equal(mayConsultProvisionalTechnology({ ...eligible, workspaceId: 'another-space' }), false)
+    assert.equal(mayConsultProvisionalTechnology({ ...eligible, academicYearId: 'another-year' }), false)
+    assert.equal(mayConsultProvisionalTechnology({ ...eligible, sectionId: 'class-2c' }), false)
+    assert.equal(mayConsultProvisionalTechnology({ ...eligible, schoolYearRef: '2027/2028' }), false)
+    assert.equal(mayConsultProvisionalTechnology({ ...eligible, assignments: [] }), false)
+    assert.equal(mayConsultProvisionalTechnology({
+      ...eligible, disciplines: [{ id: 'technology-id', name: 'Matematica' }],
+    }), false)
+    assert.equal(mayConsultProvisionalTechnology({
+      ...eligible, assignments: [{ ...eligible.assignments[0], disciplineId: 'another-id' }],
+    }), false)
   })
 })
