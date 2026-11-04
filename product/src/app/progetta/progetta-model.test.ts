@@ -390,3 +390,24 @@ test('UX-R1B: in caso di riferimento scorretto l’ingresso rende visibile il re
   assert.match(pageSource, /notice=path-not-available/)
   assert.match(pageSource, /Il percorso richiesto non è disponibile/)
 })
+
+
+test('UX-R1B-HR: schede compatte e gerarchia di navigazione Altro → Progetta → Classe', () => {
+  const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+  const classSource = readFileSync(new URL('../classi/[sectionId]/page.tsx', import.meta.url), 'utf8')
+  const styleSource = readFileSync(new URL('./progetta.css', import.meta.url), 'utf8')
+
+  assert.match(pageSource, /aria-label="Percorso di navigazione"/)
+  assert.match(pageSource, /className="progettaEntryTrail"/)
+  assert.match(pageSource, /href="\/altro">Altro<\/Link>/)
+  assert.match(pageSource, /aria-current="page">Progetta<\/span>/)
+  assert.match(pageSource, /Scegli una classe per aprire la sua panoramica/)
+  assert.match(pageSource, /aria-label={`Apri la panoramica della classe/)
+  assert.match(pageSource, /<small>Apri <span aria-hidden>→<\/span><\/small>/)
+  assert.doesNotMatch(pageSource, /Apri la classe e continua dal Piano annuale/)
+  assert.match(pageSource, /href={`\/classi\/\$\{encodeURIComponent\(section\.id\)\}`}/)
+  assert.match(pageSource, /<AppShell active="design"/)
+  assert.match(classSource, /<AppShell\s+active="classes"/)
+  assert.match(styleSource, /\.progettaEntryTrail/)
+  assert.match(styleSource, /\.progettaEntryClass:focus-visible/)
+})
