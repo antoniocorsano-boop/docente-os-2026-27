@@ -15,7 +15,7 @@ create table private.arena_provisional_delivery_read_grants (
   academic_year_id uuid not null references public.academic_years(id) on delete restrict,
   user_id uuid not null references auth.users(id) on delete restrict,
   source_sha256 text not null
-    check (source_sha256 = 'de58f418b4d1fe0be449895736d6267f6c5a58c1b1a476b1f36558579a200809'),
+    check (source_sha256 = '2d34d69a8e3e4df92b2282d0b232353bfe9fd0174ed3335ca0cae878184c9998'),
   source_revision_id text not null check (source_revision_id = '27'),
   source_master_version text not null check (source_master_version = '1.3'),
   access_receipt_ref text not null check (char_length(btrim(access_receipt_ref)) between 8 and 240),
@@ -35,7 +35,7 @@ create table private.arena_provisional_delivery_active_binding (
   workspace_id uuid not null references public.workspaces(id) on delete restrict,
   academic_year_id uuid not null references public.academic_years(id) on delete restrict,
   source_sha256 text not null
-    check (source_sha256 = 'de58f418b4d1fe0be449895736d6267f6c5a58c1b1a476b1f36558579a200809'),
+    check (source_sha256 = '2d34d69a8e3e4df92b2282d0b232353bfe9fd0174ed3335ca0cae878184c9998'),
   authorization_receipt_ref text not null
     check (char_length(btrim(authorization_receipt_ref)) between 8 and 240),
   bound_by uuid not null references auth.users(id) on delete restrict,
@@ -81,7 +81,7 @@ as $$
       where g.user_id = (select auth.uid())
         and g.enabled = true
         and g.source_sha256 =
-          'de58f418b4d1fe0be449895736d6267f6c5a58c1b1a476b1f36558579a200809'
+          '2d34d69a8e3e4df92b2282d0b232353bfe9fd0174ed3335ca0cae878184c9998'
         and g.source_revision_id = '27'
         and g.source_master_version = '1.3'
         and replace(ay.label, '/', '-') = '2026-2027'
