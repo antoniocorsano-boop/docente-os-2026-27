@@ -8,6 +8,7 @@ import { isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
 import { eco02PilotIdentityFromEnv } from '@/core/server/eco02-pilot-config'
 import { CurriculumArenaIntakeClient } from './curriculum-arena-intake-client'
 import { ArenaCanonicalAlignmentPreviewClient } from './arena-canonical-alignment-preview-client'
+import { classify2CPilotBaselineAgainstP7, type Pilot2CP7BaselineStatus } from '@/core/domain/cml-2c-p7-provenance'
 import '../../classi.css'
 import '../../class-workspace-operational.css'
 
@@ -46,6 +47,19 @@ export default async function CurriculumArenaPage({
     academicYearId: context.academicYear.id,
     sectionId,
     disciplineRef: 'technology',
+  })
+
+  const p7Provenance = classify2CPilotBaselineAgainstP7({
+    scope: {
+      grade: section.grade,
+      sectionCode: section.sectionCode,
+      schoolYearRef: context.academicYear.label,
+    },
+    currentBaseline: baseline ? {
+      sourceHandoffFootprintHash: baseline.sourceHandoffFootprintHash,
+      alignmentAuthority: baseline.alignmentAuthority,
+      acceptedAt: baseline.acceptedAt,
+    } : null,
   })
 
   const sectionLabel = `${gradeNumber(section.grade)}ª ${section.sectionCode}`
@@ -103,6 +117,13 @@ export default async function CurriculumArenaPage({
               <span>Scarica il passaggio da Arena, controllalo qui e confermalo esplicitamente.</span>
             </div>
           )}
+          <div className="classAssignmentItem">
+            <div>
+              <strong>Riscontro con il pilota del 21 settembre</strong>
+              <span>{p7SourceStatusLabel(p7Provenance.status)}</span>
+            </div>
+            <small>È un confronto fra impronte della fonte. Non certifica che la ricevuta di preparazione P7 sia attualmente presente, né verifica l’identità istituzionale.</small>
+          </div>
         </article>
 
         <ArenaCanonicalAlignmentPreviewClient
@@ -140,6 +161,19 @@ export default async function CurriculumArenaPage({
       <Link href={classHref}>← Torna alla classe</Link>
     </AppShell>
   )
+}
+
+function p7SourceStatusLabel(status: Pilot2CP7BaselineStatus): string {
+  switch (status) {
+    case 'NO_CURRENT_BASELINE':
+      return 'Nessuna baseline corrente rilevata per la 2C'
+    case 'P7_SOURCE_FOOTPRINT_MATCH':
+      return 'La fonte della baseline corrente coincide con quella documentata nel pilota'
+    case 'CURRENT_BASELINE_DIFFERS_FROM_P7':
+      return 'Fonte corrente diversa da quella documentata: confronto professionale necessario'
+    case 'P7_FOOTPRINT_WITH_CHANGED_AUTHORITY':
+      return 'Impronta coincidente, ma stato di autorità cambiato: verifica necessaria'
+  }
 }
 
 function gradeNumber(grade: 'PRIMA' | 'SECONDA' | 'TERZA') {
