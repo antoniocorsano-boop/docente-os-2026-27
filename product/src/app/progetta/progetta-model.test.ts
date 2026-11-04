@@ -15,6 +15,8 @@ import {
   partitionProgettaFocusBySection,
   planningCoverage,
   resolveCanonicalProgettaFocus,
+  resolveProgettaRouteMode,
+  shouldLoadProgettaItems,
 } from './progetta-model'
 
 function item(id: string, contentCategory: KnowledgeAsset['contentCategory']) {
@@ -330,4 +332,29 @@ test('la modalità guidata collega il libro adottato come supporto secondario se
   assert.doesNotMatch(pageSource, /pp\.\s*19[–-]23/)
   assert.doesNotMatch(pageSource, /pp\.\s*24[–-]27/)
   assert.doesNotMatch(pageSource, /pp\.\s*28[–-]31/)
+})
+
+test('UX-R1B: ingresso per classe distinto da catalogo e focus canonico', () => {
+  assert.equal(resolveProgettaRouteMode({ grade: null, focus: null, sectionId: null, view: null }), 'start')
+  assert.equal(resolveProgettaRouteMode({ grade: 'prima', focus: null, sectionId: null, view: null }), 'catalog')
+  assert.equal(resolveProgettaRouteMode({ grade: null, focus: null, sectionId: null, view: 'catalog' }), 'catalog')
+  assert.equal(resolveProgettaRouteMode({ grade: 'seconda', focus: null, sectionId: 'section-2C', view: null }), 'section')
+  assert.equal(resolveProgettaRouteMode({ grade: null, focus: null, sectionId: 'section-2C', view: null }), 'section')
+  assert.equal(resolveProgettaRouteMode({ grade: 'seconda', focus: null, sectionId: 'section-2C', view: 'catalog' }), 'catalog')
+  const focus = resolveCanonicalProgettaFocus('prima', asProgettaFocus({ block: 'B01', uda: '1-00', pack: 'CAN-PACK-1A' }))
+  assert.equal(resolveProgettaRouteMode({ grade: 'prima', focus, sectionId: 'section-1A', view: 'catalog' }), 'focus')
+  assert.equal(shouldLoadProgettaItems('start'), false)
+  assert.equal(shouldLoadProgettaItems('section'), false)
+  assert.equal(shouldLoadProgettaItems('focus'), true)
+  assert.equal(shouldLoadProgettaItems('catalog'), true)
+})
+
+test('UX-R1B: Progetta presenta scelta classe senza caricare archivio ed espone esplorazione esplicita', () => {
+  const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+  assert.match(pageSource, /shouldLoadProgettaItems\(routeMode\)\s*\?\s*knowledgeRepository\.listRecent/)
+  assert.match(pageSource, /if \(routeMode === 'start' \|\| routeMode === 'section'\)/)
+  assert.match(pageSource, /Scegli una classe/)
+  assert.match(pageSource, /\/classi\/\$\{encodeURIComponent\(section\.id\)\}/)
+  assert.match(pageSource, /href="\/progetta\?view=catalog"/)
+  assert.match(pageSource, /Esplora la progettazione/)
 })
