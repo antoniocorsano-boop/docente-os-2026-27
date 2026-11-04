@@ -132,7 +132,7 @@ export function ArenaCanonicalAlignmentPreviewClient({
                 </ul>
               </>
             ) : (
-              <p>Non risulta una baseline storica nell'attuale contesto di classe. Questo dato non annulla le ricevute professionali precedenti: richiede una verifica separata.</p>
+              <p>Non risulta una baseline storica nel contesto di classe corrente. Questo dato non annulla le ricevute professionali precedenti: richiede una verifica separata.</p>
             )}
           </section>
 
