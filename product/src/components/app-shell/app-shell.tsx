@@ -92,7 +92,8 @@ export function AppShell({
             {primaryNavigation.map((item) => {
               const Icon = ICONS[item.key]
               const itemActive = item.key === active || (item.key === 'more' && moreActive)
-              return <Link key={item.key} href={item.href} className={cn('dosNavItem', itemActive && 'active')} aria-current={itemActive ? 'page' : undefined} title={`${item.shortLabel} — ${item.description}`}>
+              const itemCurrent = item.key === active ? 'page' : item.key === 'more' && moreActive ? 'location' : undefined
+              return <Link key={item.key} href={item.href} className={cn('dosNavItem', itemActive && 'active')} aria-current={itemCurrent} title={`${item.shortLabel} — ${item.description}`}>
                 <Icon size={18} strokeWidth={1.9} aria-hidden /><span>{item.shortLabel}</span>
               </Link>
             })}
@@ -111,7 +112,8 @@ export function AppShell({
         {primaryNavigation.map((item) => {
           const Icon = ICONS[item.key]
           const itemActive = item.key === mobileActive || (item.key === 'more' && mobileMoreActive)
-          return <Link key={item.key} href={item.href} className={cn(itemActive && 'active')} aria-current={itemActive ? 'page' : undefined}>
+          const itemCurrent = item.key === mobileActive ? 'page' : item.key === 'more' && mobileMoreActive ? 'location' : undefined
+          return <Link key={item.key} href={item.href} className={cn(itemActive && 'active')} aria-current={itemCurrent}>
             <Icon size={20} strokeWidth={1.9} aria-hidden /><small>{item.shortLabel}</small>
           </Link>
         })}
