@@ -59,6 +59,16 @@
       "path": "product/src/core/infrastructure/supabase/eco02-2c-vertical-reference-receipt-contract.test.ts",
       "contains": "annual_plan_curriculum_adoptions",
       "reason": "The security regression references the already-deployed legacy SQL table as a stable compatibility contract, without introducing an English term in product copy."
+    },
+    {
+      "path": "product/supabase/migrations/0105_eco02_2c_governed_vertical_reference_receipt.sql",
+      "contains": "eco02_curriculum_intake_scopes",
+      "reason": "The ECO-02 exact-pilot scope table is an existing deployed security boundary. Its immutable SQL identifier is needed for the new append-only reference RPC; it does not add English vocabulary to product copy."
+    },
+    {
+      "path": "product/src/core/infrastructure/supabase/eco02-2c-vertical-reference-receipt-contract.test.ts",
+      "contains": "eco02_curriculum_intake_scopes",
+      "reason": "The regression test must verify that the new 2C RPC continues to require the existing deployed ECO-02 pilot scope table; this is an exact compatibility reference."
     }
   ]
 }
