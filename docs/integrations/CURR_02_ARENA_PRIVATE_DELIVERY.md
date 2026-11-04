@@ -51,7 +51,7 @@ Il percorso ECO-02 2C, la baseline `7bb48175`, la ricevuta P7 del 21/09/2026, le
 
 ## CURR-03 — Predisposizione dei permessi (richiesta di integrazione separata)
 
-La migrazione **`0106_arena_provisional_private_delivery_acl.sql`** prepara esclusivamente il trasporto: crea un bucket `public=false` (vuoto), consente soltanto JSON fino a 2 MB e introduce il registro **privato** `arena_provisional_delivery_read_grants`. Il registro nasce **vuoto**; `enabled` vale `false` salvo attivazione esplicita e tracciata di un operatore autorizzato. Un normale utente autenticato non può inserire, abilitare, leggere o modificare le concessioni di accesso.
+La migrazione **`0106_arena_provisional_private_delivery_acl.sql`** prepara esclusivamente il trasporto: crea un bucket `public=false` (vuoto), consente soltanto JSON fino a 2 MB e introduce il registro **privato** `arena_provisional_delivery_read_grants`. Il registro nasce **vuoto**; `enabled` vale `false` salvo attivazione esplicita e tracciata di un operatore autorizzato. Un secondo registro privato **`arena_provisional_delivery_active_binding`** nasce anch'esso vuoto, con `enabled=false`, e permette di associare l'unico artefatto di trasporto a **un solo workspace e anno scolastico autorizzati**. Per aprire il documento occorrono **entrambi**: il legame alla fonte attivo e la concessione individuale attiva nello stesso workspace e anno. Una concessione per un diverso spazio non deve conferire accesso, neppure se l'utente appartiene a entrambi. Un normale utente autenticato non può inserire, abilitare, leggere o modificare le concessioni di accesso.
 
 La policy `storage.objects` consente **esclusivamente il download autenticato del singolo oggetto esatto** e solo quando una concessione personale è attiva per l'utente, con effettiva appartenenza al workspace e anno scolastico 2026/2027. L'accesso al documento completo è un permesso personale di **consultazione**, non certifica la titolarità istituzionale del curricolo. Non sono definite policy di inserimento, sovrascrittura o cancellazione per gli utenti.
 
@@ -60,8 +60,8 @@ La migration **non viene eseguita sul progetto attivo da questa PR**. Prima di d
 La successiva attivazione richiede un operatore responsabile che:
 1. identifichi un workspace e un account realmente autorizzati (non un codice scuola dichiarato dal browser);
 2. verifichi che l'oggetto esatto sia caricato privatamente e che la sua impronta corrisponda;
-3. registri una concessione individuale con **riferimento alla ricevuta** e mantenga inizialmente `enabled=false`;
-4. attivi solo le concessioni autorizzate e collaudi download consentito/negato e assenza di privilegi di modifica;
+3. registri la **corrispondenza univoca fra fonte, workspace e anno** nel registro privato di collegamento, con riferimento alla ricevuta e `enabled=false`; registri poi una concessione individuale nello **stesso** workspace/anno, anch'essa disabilitata;
+4. abiliti il collegamento alla fonte e soltanto le concessioni individuali autorizzate, verificando anche il caso di concessione valida in uno spazio diverso, il rifiuto del download e l'assenza di privilegi di modifica;
 5. configuri le tre variabili server di questo percorso e verifichi la consultazione reale delle classi;
 6. documenti l'esito della Human Review senza alterare l'adozione 2C/P7 o lo stato di approvazione.
 
