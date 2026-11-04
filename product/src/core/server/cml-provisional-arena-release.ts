@@ -40,20 +40,20 @@ export async function readProvisionalArenaReferenceForClass(
 
   const bucket = process.env.ARENA_VERTICAL_RELEASE_BUCKET?.trim()
   const objectKey = process.env.ARENA_VERTICAL_RELEASE_OBJECT_KEY?.trim()
-  if (!bucket || !objectKey) {
+  const authorizedWorkspaceId = process.env.ARENA_VERTICAL_RELEASE_WORKSPACE_ID?.trim()
+  if (!bucket || !objectKey || !authorizedWorkspaceId
+    || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(authorizedWorkspaceId)) {
     return { status: 'NOT_CONFIGURED', reference: null }
   }
-  // Operator configuration is not an URL and is never interpolated from
-  // request content. Reject path traversal and unexpected storage routes.
-  if (!/^[a-z0-9][a-z0-9_-]{2,62}$/.test(bucket)
-    || objectKey.startsWith('/')
-    || objectKey.endsWith('/')
-    || objectKey.includes('\\')
-    || objectKey.split('/').some(part => !part || part === '.' || part === '..')
-    || objectKey.length > 420) {
+  if (scope.workspaceId !== authorizedWorkspaceId) {
+    return { status: 'NOT_AUTHORIZED', reference: null }
+  }
+  // This limits the current teacher's *provisional consultation* to one
+  // provisioned workspace. It does not attest institutional adoption.
+  if (bucket !== 'arena-curriculum-private'
+    || objectKey !== 'vertical/2026-2027/master-1.3-rev27/complete-release.json') {
     return { status: 'NOT_CONFIGURED', reference: null }
   }
-
   try {
     const supabase = await createClient()
     const { data: userResult, error: userError } = await supabase.auth.getUser()
