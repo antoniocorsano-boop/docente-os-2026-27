@@ -65,7 +65,7 @@ export default async function CurriculumArenaPage({
             <span>Consulta il curricolo provvisorio di Tecnologia da Arena. La programmazione e i materiali della classe restano distinti.</span>
           </div>
         </section>
-        <section className="classWorkspaceGrid" aria-label="Consultazione curricolare provvisoria">
+        <section aria-label="Consultazione curricolare provvisoria">
           <ArenaProvisionalGradePreviewClient section={{
             grade: section.grade,
             sectionCode: section.sectionCode,
@@ -123,6 +123,15 @@ export default async function CurriculumArenaPage({
           <span>Pilota Tecnologia 2C: acquisisci una baseline provvisoria da Arena senza sincronizzazioni automatiche.</span>
         </div>
       </section>
+
+      <p>
+        <strong>Riferimento curricolare di lavoro:</strong> Arena, master 1.3 (revisione 27),
+        provvisorio e non approvato.{' '}
+        <a href="https://docs.google.com/document/d/12eWTPUZBJxZixd6-p8drNAaW5_eL8qWpXZUSDyZZAv4/edit"
+          target="_blank" rel="noopener noreferrer">
+          Consulta il curricolo verticale integrale
+        </a>.
+      </p>
 
       {query.accepted ? (
         <section className="classRecordFeedback" aria-label="Esito acquisizione curricolo" role="status" aria-live="polite">
