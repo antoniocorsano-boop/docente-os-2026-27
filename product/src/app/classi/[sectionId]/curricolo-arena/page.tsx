@@ -133,7 +133,7 @@ export default async function CurriculumArenaPage({
               <strong>Riscontro con il pilota del 21 settembre</strong>
               <span>{p7SourceStatusLabel(p7Provenance.status)}</span>
             </div>
-            <small>Il confronto delle sole impronte non prova l'esistenza attuale della ricevuta di preparazione e non verifica l'identità istituzionale.</small>
+            <small>Il confronto delle sole impronte non prova l’esistenza attuale della ricevuta di preparazione e non verifica l’identità istituzionale.</small>
           </div>
           <div className="classAssignmentItem">
             <div>
