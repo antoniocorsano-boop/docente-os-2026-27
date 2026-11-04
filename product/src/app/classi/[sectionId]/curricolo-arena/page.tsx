@@ -4,6 +4,7 @@ import { AppShell } from '@/components/app-shell/app-shell'
 import { SupabaseAnnualPlanCurriculumRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-curriculum-repository'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { Supabase2CP7ReceiptEvidenceRepository } from '@/core/infrastructure/supabase/supabase-2c-p7-receipt-evidence-repository'
 import { isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
 import { eco02PilotIdentityFromEnv } from '@/core/server/eco02-pilot-config'
 import { CurriculumArenaIntakeClient } from './curriculum-arena-intake-client'
@@ -61,6 +62,16 @@ export default async function CurriculumArenaPage({
       acceptedAt: baseline.acceptedAt,
     } : null,
   })
+
+  // Exact P7 evidence is read with the current user's session and workspace RLS.
+  // Failure is reported as unverified, never as a new teacher approval.
+  const p7ReceiptEvidence = await new Supabase2CP7ReceiptEvidenceRepository()
+    .check({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      sectionId,
+    })
+    .catch(() => null)
 
   const sectionLabel = `${gradeNumber(section.grade)}ª ${section.sectionCode}`
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
@@ -122,7 +133,20 @@ export default async function CurriculumArenaPage({
               <strong>Riscontro con il pilota del 21 settembre</strong>
               <span>{p7SourceStatusLabel(p7Provenance.status)}</span>
             </div>
-            <small>È un confronto fra impronte della fonte. Non certifica che la ricevuta di preparazione P7 sia attualmente presente, né verifica l’identità istituzionale.</small>
+            <small>Il confronto delle sole impronte non prova l'esistenza attuale della ricevuta di preparazione e non verifica l'identità istituzionale.</small>
+          </div>
+          <div className="classAssignmentItem">
+            <div>
+              <strong>Ricevuta di preparazione P7</strong>
+              <span>{p7ReceiptEvidence === null
+                ? 'Verifica temporaneamente non disponibile'
+                : p7ReceiptEvidence.status === 'DOCUMENTED_RECEIPT_VERIFIED'
+                  ? 'Presente e coerente con la preparazione del 21 settembre'
+                  : p7ReceiptEvidence.status === 'DOCUMENTED_RECEIPT_NOT_FOUND'
+                    ? 'Non presente nell’attuale contesto autorizzato'
+                    : 'Presente, ma non corrispondente alla prova storica documentata'}</span>
+            </div>
+            <small>Riscontro autenticato sul solo blocco B01 della 2C; non modifica la progettazione e non approva il nuovo curricolo.</small>
           </div>
         </article>
 
