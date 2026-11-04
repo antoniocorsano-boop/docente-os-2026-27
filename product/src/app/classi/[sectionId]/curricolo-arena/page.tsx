@@ -9,6 +9,7 @@ import { isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
 import { eco02PilotIdentityFromEnv } from '@/core/server/eco02-pilot-config'
 import { CurriculumArenaIntakeClient } from './curriculum-arena-intake-client'
 import { ArenaCanonicalAlignmentPreviewClient } from './arena-canonical-alignment-preview-client'
+import { ArenaProvisionalGradePreviewClient } from './arena-provisional-grade-preview-client'
 import { classify2CPilotBaselineAgainstP7, type Pilot2CP7BaselineStatus } from '@/core/domain/cml-2c-p7-provenance'
 import '../../classi.css'
 import '../../class-workspace-operational.css'
@@ -34,13 +35,47 @@ export default async function CurriculumArenaPage({
   )
   const section = snapshot.sections.find((candidate) => candidate.id === sectionId)
   if (!section) notFound()
-  if (!isEco02PilotClass({
+  const isPilot2C = isEco02PilotClass({
     workspaceId: context.workspace.id,
     academicYearId: context.academicYear.id,
     sectionId: section.id,
     grade: section.grade,
     sectionCode: section.sectionCode,
-  }, eco02PilotIdentityFromEnv())) notFound()
+  }, eco02PilotIdentityFromEnv())
+
+  const classHref = `/classi/${encodeURIComponent(sectionId)}`
+  const sectionLabel = `${gradeNumber(section.grade)}ª ${section.sectionCode}`
+  // Existing ECO-02/P7 intake and professional receipts remain strictly 2C-only.
+  // Other sections receive consultation of the same provisional Arena release,
+  // without any path to a write action or legacy handoff.
+  if (!isPilot2C) {
+    if (context.academicYear.label.replaceAll('/', '-') !== '2026-2027') notFound()
+    return (
+      <AppShell
+        active="classes"
+        academicYearLabel={context.academicYear.label}
+        workspaceName={context.workspace.name}
+        role={context.role}
+        contentClassName="classesWorkspaceSurface"
+      >
+        <section className="classWorkspaceHeader">
+          <div>
+            <p>CLASSE · CURRICOLO VERTICALE</p>
+            <h1>{sectionLabel}</h1>
+            <span>Consulta il curricolo provvisorio di Tecnologia da Arena. La programmazione e i materiali della classe restano distinti.</span>
+          </div>
+        </section>
+        <section className="classWorkspaceGrid" aria-label="Consultazione curricolare provvisoria">
+          <ArenaProvisionalGradePreviewClient section={{
+            grade: section.grade,
+            sectionCode: section.sectionCode,
+            schoolYearRef: context.academicYear.label,
+          }} />
+        </section>
+        <Link href={classHref}>← Torna alla classe</Link>
+      </AppShell>
+    )
+  }
 
   const curriculumRepository = new SupabaseAnnualPlanCurriculumRepository()
   const baseline = await curriculumRepository.currentBaseline({
@@ -72,9 +107,6 @@ export default async function CurriculumArenaPage({
       sectionId,
     })
     .catch(() => null)
-
-  const sectionLabel = `${gradeNumber(section.grade)}ª ${section.sectionCode}`
-  const classHref = `/classi/${encodeURIComponent(sectionId)}`
 
   return (
     <AppShell
