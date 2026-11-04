@@ -20,7 +20,7 @@ L'adattatore server `readProvisionalArenaReferenceForClass` usa esclusivamente l
 - `ARENA_VERTICAL_RELEASE_OBJECT_KEY`: percorso interno di un oggetto immutabile della release completa, non URL;
 - `ARENA_VERTICAL_RELEASE_WORKSPACE_ID`: UUID dello spazio docente **specificamente autorizzato per la consultazione provvisoria**, non prova di collegamento istituzionale. Il lettore rifiuta gli altri spazi.
 
-Per il candidato CURR-03 le prime due variabili devono corrispondere **esattamente** a `arena-curriculum-private` e `vertical/2026-2027/master-1.3-rev27/complete-release.json`. Il nome generico di un altro bucket non è più accettato dal codice, neppure con impronta coincidente.
+Per il candidato CURR-03 le prime due variabili devono corrispondere **esattamente** a `arena-curricolo-private` e `vertical/2026-2027/master-1.3-rev27/complete-release.json`. Il nome generico di un altro bucket non è più accettato dal codice, neppure con impronta coincidente.
  
 Non sono precompilate: il codice **non sostiene che l'archivio esista**. In assenza di configurazione, la pagina mostra che la consegna automatica non è ancora disponibile. Il docente può comunque aprire il documento Drive e, dove previsto, verificare il file Arena sul proprio dispositivo.
 
