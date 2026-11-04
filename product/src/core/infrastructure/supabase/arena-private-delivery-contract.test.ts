@@ -13,6 +13,7 @@ describe('provisional Arena private Storage transport governance', () => {
   it('starts with empty grants and a non-public JSON-only bucket', () => {
     assert.match(sql, /create table private\.arena_provisional_delivery_read_grants/i)
     assert.match(sql, /enabled boolean not null default false/i)
+    assert.equal((sql.match(/enabled boolean not null default false/gi) ?? []).length, 2)
     assert.match(sql, /alter table private\.arena_provisional_delivery_read_grants enable row level security/i)
     assert.match(sql, /revoke all on private\.arena_provisional_delivery_read_grants\s+from public, anon, authenticated/i)
     assert.match(sql, /'arena-curricolo-private',\s*'arena-curricolo-private',\s*false,\s*2000000,\s*array\['application\/json'\]/i)
@@ -24,6 +25,15 @@ describe('provisional Arena private Storage transport governance', () => {
     assert.match(sql, /name = 'vertical\/2026-2027\/master-1\.3-rev27\/complete-release\.json'/i)
     assert.match(sql, /storage\.allow_any_operation\(array\[\s*'object\.get_authenticated',\s*'object\.get_authenticated_info'\s*\]\)/i)
     assert.match(sql, /private\.can_read_arena_provisional_release_v1\(\)/i)
+    assert.match(sql, /create table private\.arena_provisional_delivery_active_binding/i)
+    assert.match(sql, /alter table private\.arena_provisional_delivery_active_binding enable row level security/i)
+    assert.match(sql, /revoke all on private\.arena_provisional_delivery_active_binding\s+from public, anon, authenticated/i)
+    assert.match(sql, /b\.source_key = 'arena-1\.3-rev27'/i)
+    assert.match(sql, /b\.workspace_id = g\.workspace_id/i)
+    assert.match(sql, /b\.academic_year_id = g\.academic_year_id/i)
+    assert.match(sql, /b\.source_sha256 = g\.source_sha256/i)
+    assert.match(sql, /b\.enabled = true/i)
+
     assert.match(sql, /g\.enabled = true/i)
     assert.match(sql, /wm\.user_id = g\.user_id/i)
     assert.match(sql, /g\.user_id = \(select auth\.uid\(\)\)/i)
