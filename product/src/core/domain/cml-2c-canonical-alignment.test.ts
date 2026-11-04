@@ -7,8 +7,8 @@ const LEGACY: Pilot2CLegacyBaseline = {
   sourceHandoffFootprintHash: '7bb48175',
   alignmentAuthority: 'PROVISIONAL_BASELINE',
   acceptedAt: '2026-09-21T08:37:23.959195Z',
-  requirements: [{
-    requirementId: 'older-technology-requirement',
+  reviewedConstraints: [{
+    id: 'older-technology-requirement',
     description: 'Analizzare sistemi e processi produttivi; documentare i risultati della progettazione.',
   }],
 }
@@ -69,7 +69,7 @@ test('2C receives the canonical Technology II source for comparison, while histo
   assert.equal(result.provenance.curricoloVigente, false)
   assert.equal(result.legacy?.sourceHandoffFootprintHash, '7bb48175')
   assert.equal(result.legacy?.acceptedAt, '2026-09-21T08:37:23.959195Z')
-  assert.deepEqual(result.legacy?.requirements.map(r => r.review), ['TO_REVIEW'])
+  assert.deepEqual(result.legacy?.reviewedConstraints.map(r => r.review), ['TO_REVIEW'])
   assert.ok(result.canonical.obiettivi[0].includes('processi produttivi'))
   assert.ok(result.canonical.conoscenze[0].includes('filiere'))
   assert.ok(result.canonical.evidenze[0].includes('schema di filiera'))
