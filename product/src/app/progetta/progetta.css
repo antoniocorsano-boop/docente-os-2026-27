@@ -4,7 +4,10 @@
 /* DOS-UX-R1B: the class is the professional entry, not a sample of recent assets. */
 .progettaEntrySurface{max-width:900px}
 .progettaEntryHeader{display:grid;gap:9px;margin-bottom:24px}
-.progettaEntryHeader>p:first-child{margin:0;color:var(--brand);font-size:13px;font-weight:750;letter-spacing:.035em}
+.progettaEntryTrail{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0;min-height:44px;color:var(--ink-soft);font-size:13px;line-height:1.4}
+.progettaEntryTrail a{display:inline-flex;align-items:center;min-height:44px;color:var(--brand);font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.progettaEntryTrail [aria-current="page"]{color:var(--ink);font-weight:800}
+.progettaEntryYear{margin-left:auto;font-weight:650;color:var(--ink-soft)}
 .progettaEntryHeader h1{margin:0;font-size:clamp(27px,5vw,36px);line-height:1.12}
 .progettaEntryIntro{max-width:680px;margin:0;color:var(--ink-soft);font-size:16px;line-height:1.55}
 .progettaEntryBrowse{display:inline-flex;align-items:center;gap:7px;min-height:44px;width:max-content;max-width:100%;color:var(--brand);font-size:14px;font-weight:750;line-height:1.4;text-decoration:underline;text-underline-offset:3px}
@@ -12,9 +15,8 @@
 .progettaEntryClasses{display:grid;gap:12px;margin-bottom:22px}
 .progettaEntryClasses h2,.progettaEntryExplore h2,.progettaEntryEmpty h2{margin:0;font-size:19px;line-height:1.3}
 .progettaEntryGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.progettaEntryClass{display:grid;align-content:start;gap:10px;min-width:0;min-height:154px;padding:17px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);color:var(--ink);text-decoration:none}
+.progettaEntryClass{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:7px;min-width:0;min-height:100px;padding:14px 17px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);color:var(--ink);text-decoration:none}
 .progettaEntryClass:hover{border-color:var(--brand);background:var(--surface-soft)}
-.progettaEntryClass>span{color:var(--ink-soft);font-size:13px;font-weight:750}
 .progettaEntryClass strong{font-size:25px;line-height:1.1}
 .progettaEntryClass small{color:var(--brand);font-size:13px;line-height:1.4;font-weight:700}
 .progettaEntryChooseAnother{display:inline-flex;align-items:center;min-height:44px;width:max-content;color:var(--brand);font-size:14px;font-weight:700}
@@ -26,6 +28,6 @@
 .progettaEntryExplore p{margin:0;max-width:520px;font-size:14px;line-height:1.5;color:var(--ink-soft)}
 .progettaEntryExplore nav{display:grid;gap:9px;min-width:186px}
 .progettaEntryExplore nav a{display:flex;align-items:center;justify-content:center;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font-size:14px;font-weight:700;text-decoration:none;text-align:center}
-.progettaEntryBrowse:focus-visible,.progettaEntryClass:focus-visible,.progettaEntryExplore nav a:focus-visible,.progettaEntryChooseAnother:focus-visible,.progettaEntryEmpty a:focus-visible{outline:3px solid var(--brand);outline-offset:3px}
-@media(max-width:719px){.progettaEntryHeader{margin-bottom:18px}.progettaEntryIntro{font-size:15px}.progettaEntryGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.progettaEntryClass{padding:14px;min-height:145px}.progettaEntryClass strong{font-size:22px}.progettaEntryExplore{display:grid;gap:16px;padding:16px}.progettaEntryExplore nav{min-width:0}}
-@media(max-width:350px){.progettaEntryGrid{grid-template-columns:minmax(0,1fr)}.progettaEntryClass{min-height:110px}}
+.progettaEntryTrail a:focus-visible,.progettaEntryBrowse:focus-visible,.progettaEntryClass:focus-visible,.progettaEntryExplore nav a:focus-visible,.progettaEntryChooseAnother:focus-visible,.progettaEntryEmpty a:focus-visible{outline:3px solid var(--brand);outline-offset:3px}
+@media(max-width:719px){.progettaEntryHeader{margin-bottom:18px}.progettaEntryIntro{font-size:15px}.progettaEntryGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.progettaEntryClass{padding:12px 14px;min-height:92px}.progettaEntryClass strong{font-size:22px}.progettaEntryExplore{display:grid;gap:16px;padding:16px}.progettaEntryExplore nav{min-width:0}}
+@media(max-width:350px){.progettaEntryGrid{grid-template-columns:minmax(0,1fr)}.progettaEntryClass{min-height:88px}}
