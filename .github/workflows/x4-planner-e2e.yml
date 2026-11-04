@@ -37,7 +37,7 @@ jobs:
   x4-application-acceptance:
     if: github.event_name == 'pull_request'
     name: x4-application-acceptance
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
       E2E_BASE_URL: http://127.0.0.1:3000
@@ -150,7 +150,7 @@ jobs:
   x4-render-acceptance:
     if: github.event_name != 'pull_request'
     name: x4-render-acceptance
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
       E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
