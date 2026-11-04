@@ -1,6 +1,6 @@
 -- CURR-DELIVERY-02B: provision a private, fail-closed transport boundary.
 -- This does NOT publish the Arena master, create a read entitlement,
--- attest an institution, or mutate any 2C/P7 curriculum/lesson receipt.
+-- attest an institution, or mutate any 2C/P7 curricolo/lesson receipt.
 begin;
 
 insert into private.runtime_schema_required_migrations(version, migration_id)
@@ -8,7 +8,7 @@ values (106, '0106_arena_provisional_private_delivery_acl')
 on conflict (version) do update
 set migration_id = excluded.migration_id;
 
--- Personal/teacher *read permission* is NOT a school curriculum approval
+-- Personal/teacher *read permission* is NOT a school curricolo approval
 -- and NOT the institution binding gate from migration 0105.
 create table private.arena_provisional_delivery_read_grants (
   workspace_id uuid not null references public.workspaces(id) on delete restrict,
@@ -69,8 +69,8 @@ grant execute on function private.can_read_arena_provisional_release_v1()
 -- with broader settings; reject it and require an operator review.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
-  'arena-curriculum-private',
-  'arena-curriculum-private',
+  'arena-curricolo-private',
+  'arena-curricolo-private',
   false,
   2000000,
   array['application/json']::text[]
@@ -82,8 +82,8 @@ begin
   if not exists (
     select 1
     from storage.buckets
-    where id = 'arena-curriculum-private'
-      and name = 'arena-curriculum-private'
+    where id = 'arena-curricolo-private'
+      and name = 'arena-curricolo-private'
       and public is false
       and file_size_limit = 2000000
       and allowed_mime_types = array['application/json']::text[]
@@ -95,13 +95,13 @@ $$;
 
 -- Only reading the one qualified immutable key can be authorized. There
 -- is deliberately NO INSERT/UPDATE/DELETE policy for client roles.
-drop policy if exists arena_curriculum_provisional_release_read_granted
+drop policy if exists arena_curricolo_provisional_release_read_granted
   on storage.objects;
-create policy arena_curriculum_provisional_release_read_granted
+create policy arena_curricolo_provisional_release_read_granted
 on storage.objects
 for select to authenticated
 using (
-  bucket_id = 'arena-curriculum-private'
+  bucket_id = 'arena-curricolo-private'
   and name = 'vertical/2026-2027/master-1.3-rev27/complete-release.json'
   and storage.allow_any_operation(array[
     'object.get_authenticated',
