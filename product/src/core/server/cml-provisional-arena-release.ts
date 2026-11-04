@@ -50,8 +50,12 @@ export async function readProvisionalArenaReferenceForClass(
   }
   // This limits the current teacher's *provisional consultation* to one
   // provisioned workspace. It does not attest institutional adoption.
+  // The server-provisioned path must encode the SAME workspace that the
+  // authenticated class scope requires. SQL checks that path against its
+  // separately authorized workspace binding and individual read grant.
+  const scopedObjectKey = `${authorizedWorkspaceId.toLowerCase()}/vertical/2026-2027/master-1.3-rev27/complete-release.json`
   if (bucket !== 'arena-curricolo-private'
-    || objectKey !== 'vertical/2026-2027/master-1.3-rev27/complete-release.json') {
+    || objectKey !== scopedObjectKey) {
     return { status: 'NOT_CONFIGURED', reference: null }
   }
   try {
