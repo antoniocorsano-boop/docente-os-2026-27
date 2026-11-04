@@ -8,6 +8,11 @@ import {
 } from '@/core/domain/cml-2c-canonical-alignment'
 import { selectArenaVerticalCurricoloSlice } from '@/core/domain/cml-discipline-binding'
 import { verifyCanonicalArenaReleaseForThreeGrades } from '@/core/domain/cml-arena-three-grade-preflight'
+import {
+  plan2CCanonicalReferenceDecision,
+  type Pilot2CReferenceChoice,
+  type Pilot2CReferenceDecisionBlocker,
+} from '@/core/domain/cml-2c-reference-link-decision'
 
 const CANONICAL_2C_MAX_BYTES = 2_000_000
 const REFERENCE_REVISION = '27'
@@ -16,18 +21,22 @@ const REFERENCE_SOURCE_FOOTPRINT = '99c4ccc3'
 export function ArenaCanonicalAlignmentPreviewClient({
   section,
   legacyBaseline,
+  p7ReceiptVerified,
 }: {
   section: { grade: 'PRIMA' | 'SECONDA' | 'TERZA'; sectionCode: string; schoolYearRef: string }
   legacyBaseline: Pilot2CLegacyBaseline | null
+  p7ReceiptVerified: boolean
 }) {
   const [preview, setPreview] = useState<Pilot2CCanonicalAlignmentPreview | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [choice, setChoice] = useState<Pilot2CReferenceChoice | null>(null)
   const sequence = useRef(0)
 
   async function onFile(file: File | null) {
     const request = ++sequence.current
     setPreview(null)
     setError(null)
+    setChoice(null)
     if (!file) return
     if (file.size > CANONICAL_2C_MAX_BYTES || file.size === 0) {
       setError('Il documento supera il limite di confronto o è vuoto.')
@@ -73,6 +82,33 @@ export function ArenaCanonicalAlignmentPreviewClient({
       }
     }
   }
+
+  // The loaded local JSON is a comparison only. There is intentionally no
+  // institutional binding, server-qualified source or persistence action here.
+  const decision = preview ? plan2CCanonicalReferenceDecision({
+    scope: { ...section, disciplineRef: 'technology' },
+    choice,
+    baseline: legacyBaseline ? {
+      sourceHandoffFootprintHash: legacyBaseline.sourceHandoffFootprintHash,
+      alignmentAuthority: legacyBaseline.alignmentAuthority,
+      acceptedAt: legacyBaseline.acceptedAt,
+    } : null,
+    documentedP7ReceiptVerified: p7ReceiptVerified,
+    source: {
+      status: 'LOCAL_PREVIEW',
+      institutionId: preview.provenance.institutionIdDeclared,
+      sourceMasterVersion: preview.provenance.sourceVersion,
+      sourceRevisionId: REFERENCE_REVISION,
+      sourceContentFootprint: REFERENCE_SOURCE_FOOTPRINT,
+      releaseStructuralFootprint: preview.provenance.releaseStructuralFootprint,
+      segmentId: preview.canonical.segmentId,
+      framework: preview.scope.framework,
+      authorityState: 'PROVISIONAL_COMPLETE',
+      curricoloVigente: preview.provenance.curricoloVigente,
+    },
+    institutionBinding: { status: 'NOT_ATTESTED' },
+    identityContext: { expectedSchoolCode: null, expectedArenaInstitutionId: null },
+  }) : null
 
   return (
     <article className="classWorkspaceCard" aria-labelledby="arena-canonical-2c-title">
@@ -141,8 +177,66 @@ export function ArenaCanonicalAlignmentPreviewClient({
             <p>{preview.proposal.text}</p>
             <p role="status"><strong>Da rivalidare dal docente.</strong> Non sono stati modificati obiettivi, materiali, attività o ricevute della 2C.</p>
           </section>
+          <section aria-label="Scelta preliminare sul riferimento Tecnologia II">
+            <h3>Quale riferimento usare nella 2C?</h3>
+            <p>Questa scelta è soltanto una simulazione locale per esaminare le conseguenze: non viene registrata, inviata né applicata alla classe.</p>
+            <div className="arena2cReviewChoices">
+              <button
+                type="button"
+                className="arena2cReviewChoice"
+                aria-pressed={choice === 'KEEP_CURRENT_REFERENCE'}
+                onClick={() => setChoice('KEEP_CURRENT_REFERENCE')}
+              >
+                Mantieni il riferimento attuale
+              </button>
+              <button
+                type="button"
+                className="arena2cReviewChoice"
+                aria-pressed={choice === 'REQUEST_PROVISIONAL_REFERENCE'}
+                onClick={() => setChoice('REQUEST_PROVISIONAL_REFERENCE')}
+              >
+                Esamina il nuovo riferimento provvisorio
+              </button>
+            </div>
+            {decision?.status === 'KEEP_CURRENT_NO_CHANGE' ? (
+              <p role="status"><strong>Nessuna modifica prevista.</strong> La baseline del pilota P7, la preparazione e i materiali restano invariati. Questa scelta non è stata salvata.</p>
+            ) : null}
+            {decision?.status === 'REVIEW_BLOCKED' ? (
+              <div role="status">
+                <p><strong>Collegamento non attivabile da questa anteprima.</strong> Prima di confermare nella 2C occorre:</p>
+                <ul>{decision.blockers.map(blocker => (
+                  <li key={blocker}>{referenceBlockerLabel(blocker)}</li>
+                ))}</ul>
+                <p>Il nuovo curricolo non è vigente e nessuna decisione professionale è stata registrata.</p>
+              </div>
+            ) : null}
+            {decision?.status === 'AWAITING_AUTHENTICATED_CONFIRMATION' ? (
+              <p role="status">Le verifiche preliminari sono coerenti. Occorrono ancora una conferma autenticata e una nuova ricevuta, senza sovrascrivere la precedente.</p>
+            ) : null}
+          </section>
         </div>
       ) : null}
     </article>
   )
+}
+
+function referenceBlockerLabel(blocker: Pilot2CReferenceDecisionBlocker): string {
+  switch (blocker) {
+    case 'P7_RECEIPT_NOT_VERIFIED':
+      return 'Verificare la ricevuta della preparazione storica P7.'
+    case 'NO_HISTORICAL_BASELINE':
+      return 'Individuare la baseline già utilizzata dalla 2C.'
+    case 'HISTORICAL_BASELINE_DRIFT':
+      return 'Ricontrollare la versione esatta della baseline storica.'
+    case 'HISTORICAL_AUTHORITY_CHANGED':
+      return 'Rivedere lo stato di autorità della baseline precedente.'
+    case 'SOURCE_NOT_SERVER_QUALIFIED':
+      return 'Ottenere la release di Arena attraverso un canale verificato dal server.'
+    case 'SOURCE_REFERENCE_MISMATCH':
+      return 'Controllare versione, revisione, impronte e segmento Tecnologia II.'
+    case 'INSTITUTION_BINDING_NOT_ATTESTED':
+      return 'Attestare il collegamento fra istituto scolastico e identificativo Arena.'
+    case 'INSTITUTION_ID_MISMATCH':
+      return 'Risolvere la differenza fra gli identificativi degli istituti.'
+  }
 }

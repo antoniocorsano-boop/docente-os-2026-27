@@ -151,6 +151,7 @@ export default async function CurriculumArenaPage({
         </article>
 
         <ArenaCanonicalAlignmentPreviewClient
+          p7ReceiptVerified={p7ReceiptEvidence?.historicalReceiptVerified === true}
           section={{
             grade: section.grade,
             sectionCode: section.sectionCode,
