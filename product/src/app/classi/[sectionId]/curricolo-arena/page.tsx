@@ -105,10 +105,6 @@ export default async function CurriculumArenaPage({
           )}
         </article>
 
-        <CurriculumArenaIntakeClient
-          sectionId={sectionId}
-          currentFootprint={baseline?.sourceHandoffFootprintHash ?? null}
-        />
         <ArenaCanonicalAlignmentPreviewClient
           section={{
             grade: section.grade,
@@ -124,6 +120,10 @@ export default async function CurriculumArenaPage({
               description: requirement.description,
             })),
           } : null}
+        />
+        <CurriculumArenaIntakeClient
+          sectionId={sectionId}
+          currentFootprint={baseline?.sourceHandoffFootprintHash ?? null}
         />
       </section>
 
