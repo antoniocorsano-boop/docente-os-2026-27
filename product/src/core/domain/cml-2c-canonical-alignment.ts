@@ -2,7 +2,7 @@ export type Pilot2CLegacyBaseline = {
   sourceHandoffFootprintHash: string
   alignmentAuthority: 'PROVISIONAL_BASELINE' | 'APPROVED_INSTITUTIONAL'
   acceptedAt: string
-  requirements: Array<{ requirementId: string; description: string }>
+  reviewedConstraints: Array<{ id: string; description: string }>
 }
 
 export type Pilot2CCanonicalAlignmentPreview = {
@@ -30,7 +30,7 @@ export type Pilot2CCanonicalAlignmentPreview = {
     sourceHandoffFootprintHash: string
     alignmentAuthority: 'PROVISIONAL_BASELINE' | 'APPROVED_INSTITUTIONAL'
     acceptedAt: string
-    requirements: Array<{ requirementId: string; description: string; review: 'TO_REVIEW' }>
+    reviewedConstraints: Array<{ id: string; description: string; review: 'TO_REVIEW' }>
   }
   proposal: { status: 'TO_BE_ASSESSED_BY_TEACHER'; text: string }
   authorization: {
@@ -149,13 +149,13 @@ export function buildPilot2CCanonicalAlignmentPreview(input: {
     }
     const acceptedAt = nonEmpty(old.acceptedAt, 'historic acceptance timestamp')
     if (Number.isNaN(Date.parse(acceptedAt))) throw new Error('invalid historic acceptance timestamp')
-    if (!Array.isArray(old.requirements)) throw new Error('historic requirements are required')
+    if (!Array.isArray(old.reviewedConstraints)) throw new Error('historic reviewedConstraints are required')
     legacy = {
       sourceHandoffFootprintHash,
       alignmentAuthority: old.alignmentAuthority,
       acceptedAt,
-      requirements: old.requirements.map((row, i) => ({
-        requirementId: nonEmpty(row.requirementId, `historic requirement ${i} id`),
+      reviewedConstraints: old.reviewedConstraints.map((row, i) => ({
+        id: nonEmpty(row.id, `historic requirement ${i} id`),
         description: nonEmpty(row.description, `historic requirement ${i} description`),
         review: 'TO_REVIEW' as const,
       })),
