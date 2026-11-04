@@ -40,20 +40,15 @@ function pathOf(line, ref = null) {
  */
 function unexceptedDebtLines(lines, ref = null) {
   const pattern = /curriculum|curricular/i;
-  const escapePattern = (value) => value.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\function pathOf(line, ref = null) {
-  const normalized = ref && line.startsWith(`${ref}:`) ? line.slice(ref.length + 1) : line;
-  return normalized.split(":", 1)[0];
-}
-");
   return lines.filter((line) => {
     const normalized = ref && line.startsWith(`${ref}:`) ? line.slice(ref.length + 1) : line;
     const file = pathOf(line, ref);
     const first = normalized.indexOf(":");
     const second = normalized.indexOf(":", first + 1);
-    let text = second === -1 ? normalized : normalized.slice(second + 1);
+    let text = (second === -1 ? normalized : normalized.slice(second + 1)).toLowerCase();
     for (const exception of registry.exceptions) {
       if (exception.path !== file) continue;
-      text = text.replace(new RegExp(escapePattern(exception.contains), "gi"), "");
+      text = text.replaceAll(exception.contains.toLowerCase(), "");
     }
     return pattern.test(text);
   });
