@@ -161,7 +161,7 @@ test('collision-prone local identifiers fail static preflight', () => {
 
 test('production startup preflight fails closed on provenance drift', async () => {
   const result = await runProductionStartupPreflight({
-    migrationId: '0105_eco02_2c_governed_vertical_reference_receipt',
+    migrationId: '0106_arena_provisional_private_delivery_acl',
     lineageOk: true,
     missingMigrations: [],
     provenanceOk: false,
@@ -177,7 +177,7 @@ test('production startup preflight fails closed on provenance drift', async () =
 
 test('production startup preflight fails closed on containment drift', async () => {
   const result = await runProductionStartupPreflight({
-    migrationId: '0105_eco02_2c_governed_vertical_reference_receipt',
+    migrationId: '0106_arena_provisional_private_delivery_acl',
     lineageOk: true,
     missingMigrations: [],
     provenanceOk: true,
