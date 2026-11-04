@@ -14,6 +14,7 @@ import { ArenaCanonicalAlignmentPreviewClient } from './arena-canonical-alignmen
 import { ArenaProvisionalGradePreviewClient } from './arena-provisional-grade-preview-client'
 import { classify2CPilotBaselineAgainstP7, type Pilot2CP7BaselineStatus } from '@/core/domain/cml-2c-p7-provenance'
 import { mayConsultProvisionalTechnology } from '@/core/domain/cml-provisional-technology-reference'
+import { readProvisionalArenaReferenceForClass } from '@/core/server/cml-provisional-arena-release'
 import '../../classi.css'
 import '../../class-workspace-operational.css'
 
@@ -48,22 +49,28 @@ export default async function CurriculumArenaPage({
 
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
   const sectionLabel = `${gradeNumber(section.grade)}ª ${section.sectionCode}`
-  // Existing ECO-02/P7 intake and professional receipts remain strictly 2C-only.
-  // Other sections receive consultation of the same provisional Arena release,
-  // without any path to a write action or legacy handoff.
+  // All automatic reads use the same scoped, authenticated teacher assignment
+  // gate. The historical ECO-02/P7 path remains separate from the new source.
+  const [assignments, disciplines] = await Promise.all([
+    new SupabaseTeachingAssignmentReader().list(context.workspace.id, context.academicYear.id),
+    new SupabaseTeacherSettingsRepository().listDisciplines(context.workspace.id, context.academicYear.id),
+  ])
+  const readScope = {
+    workspaceId: context.workspace.id,
+    academicYearId: context.academicYear.id,
+    sectionId,
+    schoolYearRef: context.academicYear.label,
+    grade: section.grade,
+    assignments,
+    disciplines,
+  }
+  const eligible = mayConsultProvisionalTechnology(readScope)
+  if (!isPilot2C && !eligible) notFound()
+  const arenaSource = eligible
+    ? await readProvisionalArenaReferenceForClass(readScope)
+    : { status: 'NOT_AUTHORIZED' as const, reference: null }
+
   if (!isPilot2C) {
-    const [assignments, disciplines] = await Promise.all([
-      new SupabaseTeachingAssignmentReader().list(context.workspace.id, context.academicYear.id),
-      new SupabaseTeacherSettingsRepository().listDisciplines(context.workspace.id, context.academicYear.id),
-    ])
-    if (!mayConsultProvisionalTechnology({
-      workspaceId: context.workspace.id,
-      academicYearId: context.academicYear.id,
-      sectionId,
-      schoolYearRef: context.academicYear.label,
-      assignments,
-      disciplines,
-    })) notFound()
     return (
       <AppShell
         active="classes"
@@ -80,11 +87,15 @@ export default async function CurriculumArenaPage({
           </div>
         </section>
         <section aria-label="Consultazione curricolare provvisoria">
-          <ArenaProvisionalGradePreviewClient section={{
-            grade: section.grade,
-            sectionCode: section.sectionCode,
-            schoolYearRef: context.academicYear.label,
-          }} />
+          <ArenaProvisionalGradePreviewClient
+            section={{
+              grade: section.grade,
+              sectionCode: section.sectionCode,
+              schoolYearRef: context.academicYear.label,
+            }}
+            serverReference={arenaSource.reference}
+            sourceStatus={arenaSource.status}
+          />
         </section>
         <Link href={classHref}>← Torna alla classe</Link>
       </AppShell>
@@ -153,6 +164,20 @@ export default async function CurriculumArenaPage({
           <span>{query.accepted === 'known'
             ? 'La stessa impronta strutturale è già associata alla classe.'
             : 'La baseline provvisoria è ora associata alla 2C. Puoi tornare alla preparazione della lezione.'}</span>
+        </section>
+      ) : null}
+
+      {arenaSource.status === 'AVAILABLE' ? (
+        <section aria-label="Riferimento provvisorio verificato da Arena">
+          <ArenaProvisionalGradePreviewClient
+            section={{
+              grade: section.grade,
+              sectionCode: section.sectionCode,
+              schoolYearRef: context.academicYear.label,
+            }}
+            serverReference={arenaSource.reference}
+            sourceStatus={arenaSource.status}
+          />
         </section>
       ) : null}
 
