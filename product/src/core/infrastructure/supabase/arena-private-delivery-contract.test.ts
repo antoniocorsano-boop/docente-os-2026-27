@@ -15,7 +15,7 @@ describe('provisional Arena private Storage transport governance', () => {
     assert.match(sql, /enabled boolean not null default false/i)
     assert.match(sql, /alter table private\.arena_provisional_delivery_read_grants enable row level security/i)
     assert.match(sql, /revoke all on private\.arena_provisional_delivery_read_grants\s+from public, anon, authenticated/i)
-    assert.match(sql, /'arena-curriculum-private',\s*'arena-curriculum-private',\s*false,\s*2000000,\s*array\['application\/json'\]/i)
+    assert.match(sql, /'arena-curricolo-private',\s*'arena-curricolo-private',\s*false,\s*2000000,\s*array\['application\/json'\]/i)
     assert.doesNotMatch(sql, /create policy[\s\S]{0,200}?for insert to authenticated/i)
   })
 
@@ -30,7 +30,7 @@ describe('provisional Arena private Storage transport governance', () => {
     assert.match(sql, /is_anonymous/i)
   })
 
-  it('pins Arena 1.3 rev.27 and never writes curriculum adoptions or P7 receipts', () => {
+  it('pins Arena 1.3 rev.27 and never writes institutional adoptions or P7 receipts', () => {
     assert.match(sql, /de58f418b4d1fe0be449895736d6267f6c5a58c1b1a476b1f36558579a200809/)
     assert.match(sql, /source_revision_id = '27'/)
     assert.match(sql, /source_master_version = '1\.3'/)
