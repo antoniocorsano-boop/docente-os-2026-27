@@ -184,3 +184,25 @@ Scelta: D — **ingresso contestuale + catalogo completo paginato**, senza infer
 La revisione della proposta è distinta dal collaudo del prodotto. Sullo smartphone reale, valutare con dati fittizi e dopo un candidato implementato: (1) ingresso `/progetta` senza contesto e scelta di una classe; (2) apertura del focus di grado senza sezione; (3) ingresso da Classe con fase attendibile; (4) recupero di una UDA oltre il centesimo risultato; (5) assenza di sezioni/assenza di Piano e percorso di uscita; (6) ritorno dal catalogo senza perdere filtri o contesto. Per ogni percorso annotare il primo compito percepito, la visibilità dell'azione principale nello spazio utile, i tocchi, gli scorrimenti, l'eventuale esitazione e la comprensibilità dello stato. Ripetere su 320, 390 e 412 px virtuali, poi confermare su un dispositivo fisico.
 
 **Decisione da registrare separatamente:** `HUMAN_UX_REVIEW = PASS | REWORK` con evidenze, commit e dispositivo; fino a quel momento lo stato resta `PENDING`. La presente specifica, anche se accettabile tecnicamente, non prova la qualità di una UI non ancora implementata.
+
+## 11. Esito della simulazione docente e vincoli di continuità (04/11/2026)
+
+La revisione conversazionale del percorso **1ª A → UDA 1-00 → B01 → prepara → scheda studente** ha ricevuto riscontro positivo dal docente, compresa la possibilità di visualizzare, personalizzare ed esportare una scheda A4 con campi guidati e spazi di risposta. Tale riscontro vale **per il modello concettuale illustrato**, non per la UI di Docente OS, che non è stata collaudata sullo smartphone reale.
+
+### Contratto integrativo per le successive PR operative (non incluso in R1-B)
+
+1. **Riuso senza duplicazioni.** La proiezione canonica `HTC-PRIMA-B01-v3` (`human-task-content.ts`) descrive già `STUDENT-A` («Scheda alunno A — Osservo un oggetto tecnico») e `EXIT-B01`. Prima di generare altro, verificare se i relativi documenti siano effettivamente accessibili: una definizione testuale nel runtime **non** prova che esista un PDF scaricabile.
+2. **Capacità già integrata.** La PR #713 è merged e `lesson-design-tools.tsx` presenta `Riutilizza / Adatta / Crea nuovo`. Riutilizzarne i collegamenti e le conferme. L'attuale `Adatta` modifica prevalentemente titolo/note di un'estensione; **non** è l'editor di domande e impaginazione simulato. L'eventuale editor di schede richiede uno sviluppo separato, senza introdurre un secondo modello di persistenza.
+3. **Divergenze esplicite.** Il percorso B01 canonico prevede osservazione individuale seguita da confronto a coppie, riconoscimento di parti e materiali ed `EXIT-B01`. La scheda a cinque domande prodotta nella simulazione e la diversa scansione temporale sono **proposte del docente**, non testi canonici né prove di svolgimento. Mostrare sempre «dalla fonte / adattato / proposto» e consentire di recuperare l'originale.
+4. **Continuità dell'intento.** `/progetta/documenti/nuovo/{assetId}` e `openUdaAuthoring` attualmente non trasportano esplicitamente `sectionId`, `blockId`, `returnTo` lungo tutto il percorso. Qualsiasi successiva modifica dell'authoring dovrà riportare a classe, UDA e blocco validi dopo anteprima, modifica, annullamento ed errore, senza URL esterni o stato implicito.
+5. **Stati professionali distinti.** Anteprima temporanea, PDF esportato, bozza nella Biblioteca, materiale collegato alla lezione e lavoro effettivamente svolto non sono sinonimi. Nessuna creazione, pubblicazione, accettazione, voto o registrazione senza un'azione umana esplicita con esito percepibile.
+6. **Accessibilità dell'artefatto.** Provare A4 stampabile, lunghezze delle risposte, contenuti su una o più pagine, leggibilità, zoom, tastiera e modalità digitale compilabile quando richiesta; l'assenza dell'assistente non deve impedire il lavoro.
+
+### Sequenza senza interferenze
+
+- **#791 / R1-B**: ingresso per classe e catalogo accessibile esplicitamente; mantenere distinta la revisione sul runtime. A conferma della lettura del 04/11, Product CI e DPG erano PASS su `8b1227c6c837ab9afa48fc0b4d161faa51567f39`, ma HVA e gate browser X5/X5B risultavano bloccati dall'installazione di Chromium sul runner e **non** qualificati.
+- **R1-C**: catalogo completo con ricerca e filtri server-side, oltre i cento recenti.
+- **R1-D**: un'azione principale, ritorno contestuale e tipografia della vista di progettazione.
+- **Materiali/Lezione**: estensione autonoma e solo dopo audit del riuso di #713, delle fonti `STUDENT-A/EXIT-B01` e della gestione di versioni, adattamenti ed esportazione.
+
+**Esito umano limitato:** `SIMULATED_CONCEPT_FEEDBACK_POSITIVE`; `RUNTIME_HUMAN_UX_REVIEW_PENDING`, `HVA_PENDING`. Nessun merge, deploy, migration, modifica a dati reali o alla PR curricolare #788 è autorizzato da questa annotazione.
