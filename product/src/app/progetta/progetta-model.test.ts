@@ -357,4 +357,7 @@ test('UX-R1B: Progetta presenta scelta classe senza caricare archivio ed espone 
   assert.match(pageSource, /\/classi\/\$\{encodeURIComponent\(section\.id\)\}/)
   assert.match(pageSource, /href="\/progetta\?view=catalog"/)
   assert.match(pageSource, /Esplora la progettazione/)
+  assert.match(pageSource, /CONTENUTI RECENTI MOSTRATI/)
+  assert.doesNotMatch(pageSource, /planningCoverage\(items\)/)
+  assert.doesNotMatch(pageSource, /Programmazione da aggiungere/)
 })
