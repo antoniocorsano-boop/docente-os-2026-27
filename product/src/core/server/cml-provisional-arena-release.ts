@@ -50,7 +50,7 @@ export async function readProvisionalArenaReferenceForClass(
   }
   // This limits the current teacher's *provisional consultation* to one
   // provisioned workspace. It does not attest institutional adoption.
-  if (bucket !== 'arena-curriculum-private'
+  if (bucket !== 'arena-curricolo-private'
     || objectKey !== 'vertical/2026-2027/master-1.3-rev27/complete-release.json') {
     return { status: 'NOT_CONFIGURED', reference: null }
   }
