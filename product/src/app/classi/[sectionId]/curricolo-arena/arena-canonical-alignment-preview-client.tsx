@@ -107,6 +107,7 @@ export function ArenaCanonicalAlignmentPreviewClient({
       curricoloVigente: preview.provenance.curricoloVigente,
     },
     institutionBinding: { status: 'NOT_ATTESTED' },
+    identityContext: { expectedSchoolCode: null, expectedArenaInstitutionId: null },
   }) : null
 
   return (
