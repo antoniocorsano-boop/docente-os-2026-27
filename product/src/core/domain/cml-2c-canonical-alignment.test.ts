@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildPilot2CCanonicalAlignmentPreview } from './cml-2c-canonical-alignment'
+import { buildPilot2CCanonicalAlignmentPreview, type Pilot2CLegacyBaseline } from './cml-2c-canonical-alignment'
 
 const YEAR = '2026/2027'
-const LEGACY = {
+const LEGACY: Pilot2CLegacyBaseline = {
   sourceHandoffFootprintHash: '7bb48175',
   alignmentAuthority: 'PROVISIONAL_BASELINE',
   acceptedAt: '2026-09-21T08:37:23.959195Z',
@@ -23,7 +23,7 @@ function grade2Slice() {
     version: { id: 'can-curr-master-00-v1-3', versionNumber: '1.3' },
     structuralFootprint: { algorithm: 'fnv1a', version: 1, hash: '8588371c', computedAt: '2026-11-03T20:00:00Z' },
     provenance: { sourceProduct: 'CURMANLIGHT_ARENA', sourceContract: 'TRAMA_CURRICOLO_VERTICALE_RELEASE_V1', issuedAt: '2026-11-03T20:00:00Z' },
-    authority: { state: 'PROVISIONAL_BASELINE', alignmentAuthority: 'PROVISIONAL_BASELINE', requiresRevalidationOnApproval: true },
+    authority: { state: 'PROVISIONAL_COMPLETE', alignmentAuthority: 'PROVISIONAL_BASELINE', requiresRevalidationOnApproval: true },
     downstreamPolicy: { acceptanceRequired: true, automaticWriteAllowed: false },
     segment: {
       id: 'can-curr-master-00-secondaria-tecnologia-2',
