@@ -179,10 +179,10 @@ export function ArenaCanonicalAlignmentPreviewClient({
           <section aria-label="Scelta preliminare sul riferimento Tecnologia II">
             <h3>Quale riferimento usare nella 2C?</h3>
             <p>Questa scelta è soltanto una simulazione locale per esaminare le conseguenze: non viene registrata, inviata né applicata alla classe.</p>
-            <div className="classAssignmentItem">
+            <div className="arena2cReviewChoices">
               <button
                 type="button"
-                className="buttonSecondary"
+                className="arena2cReviewChoice"
                 aria-pressed={choice === 'KEEP_CURRENT_REFERENCE'}
                 onClick={() => setChoice('KEEP_CURRENT_REFERENCE')}
               >
@@ -190,7 +190,7 @@ export function ArenaCanonicalAlignmentPreviewClient({
               </button>
               <button
                 type="button"
-                className="buttonSecondary"
+                className="arena2cReviewChoice"
                 aria-pressed={choice === 'REQUEST_PROVISIONAL_REFERENCE'}
                 onClick={() => setChoice('REQUEST_PROVISIONAL_REFERENCE')}
               >
