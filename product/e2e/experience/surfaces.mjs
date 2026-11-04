@@ -11,6 +11,7 @@ export const EXPERIENCE_SURFACES = [
   { id: 'next-lesson-materials', label: 'Materiali della prossima lezione', path: '/materiali/prossima' },
   { id: 'knowledge', label: 'Conoscenza', path: '/knowledge' },
   { id: 'annual-plan', label: 'Piano annuale', path: '/piano-annuale' },
+  { id: 'design-entry', label: 'Progetta — ingresso per classe', path: '/progetta' },
   { id: 'design-first-grade', label: 'Progetta — classe prima', path: '/progetta?grade=prima' },
   { id: 'uda-authoring-entry', label: 'Progetta — ingresso documento UDA', path: UDA_FIXTURE_ROUTE },
   { id: 'classes', label: 'Classi', path: '/classi' },
