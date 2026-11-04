@@ -1,6 +1,6 @@
 export type Pilot2CLegacyBaseline = {
   sourceHandoffFootprintHash: string
-  curriculumState: 'PROVISIONAL_COMPLETE' | 'APPROVED'
+  alignmentAuthority: 'PROVISIONAL_BASELINE' | 'APPROVED_INSTITUTIONAL'
   acceptedAt: string
   requirements: Array<{ requirementId: string; description: string }>
 }
@@ -28,7 +28,7 @@ export type Pilot2CCanonicalAlignmentPreview = {
   }
   legacy: null | {
     sourceHandoffFootprintHash: string
-    curriculumState: 'PROVISIONAL_COMPLETE' | 'APPROVED'
+    alignmentAuthority: 'PROVISIONAL_BASELINE' | 'APPROVED_INSTITUTIONAL'
     acceptedAt: string
     requirements: Array<{ requirementId: string; description: string; review: 'TO_REVIEW' }>
   }
@@ -144,7 +144,7 @@ export function buildPilot2CCanonicalAlignmentPreview(input: {
     if (!/^[0-9a-f]{8}$/.test(sourceHandoffFootprintHash)) {
       throw new Error('historic footprint has an invalid format')
     }
-    if (old.curriculumState !== 'PROVISIONAL_COMPLETE' && old.curriculumState !== 'APPROVED') {
+    if (old.alignmentAuthority !== 'PROVISIONAL_BASELINE' && old.alignmentAuthority !== 'APPROVED_INSTITUTIONAL') {
       throw new Error('unsupported historic authority state')
     }
     const acceptedAt = nonEmpty(old.acceptedAt, 'historic acceptance timestamp')
@@ -152,7 +152,7 @@ export function buildPilot2CCanonicalAlignmentPreview(input: {
     if (!Array.isArray(old.requirements)) throw new Error('historic requirements are required')
     legacy = {
       sourceHandoffFootprintHash,
-      curriculumState: old.curriculumState,
+      alignmentAuthority: old.alignmentAuthority,
       acceptedAt,
       requirements: old.requirements.map((row, i) => ({
         requirementId: nonEmpty(row.requirementId, `historic requirement ${i} id`),
