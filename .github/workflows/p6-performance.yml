@@ -30,7 +30,7 @@ env:
 jobs:
   p6-performance-application:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
       E2E_BASE_URL: http://127.0.0.1:3000
@@ -110,7 +110,7 @@ jobs:
 
   p6-performance-runtime:
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
       E2E_BASE_URL: https://docente-os-2026-27-beta.onrender.com
