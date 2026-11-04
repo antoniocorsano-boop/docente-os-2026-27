@@ -20,6 +20,7 @@ import {
   partitionProgettaFocusBySection,
   resolveCanonicalProgettaFocus,
   resolveProgettaRouteMode,
+  resolveProgettaRequestIssue,
   shouldLoadProgettaItems,
   type ProgettaItem,
 } from './progetta-model'
@@ -56,6 +57,8 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
   if (!context) redirect('/login')
+  // A wrong canonical focus is not an invitation to browse unrelated UDA.
+  if (resolveProgettaRequestIssue(params)) redirect('/progetta?notice=path-not-available')
 
   const knowledgeRepository = new SupabaseKnowledgeRepository()
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
@@ -108,8 +111,10 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
           <p>Per preparare la prossima fase, apri la classe: il lavoro prosegue dal Piano annuale, non dall&apos;ultimo documento caricato.</p>
         </header>
 
-        {params.notice === 'class-not-available' ? (
-          <p className="progettaEntryNotice" role="status">La classe richiesta non è disponibile nel contesto corrente. Scegli una classe valida.</p>
+        {params.notice === 'class-not-available' || params.notice === 'path-not-available' ? (
+          <p className="progettaEntryNotice" role="status">{params.notice === 'class-not-available'
+            ? 'La classe richiesta non è disponibile nel contesto corrente. Scegli una classe valida.'
+            : 'Il percorso richiesto non è disponibile in questo contesto. Scegli una classe valida oppure esplora la progettazione.'}</p>
         ) : null}
 
         {availableSections.length ? (
