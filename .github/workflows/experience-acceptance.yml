@@ -64,7 +64,7 @@ jobs:
   application-acceptance:
     if: github.event_name == 'pull_request'
     name: hva-application
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
       EXPERIENCE_TARGET: local
@@ -238,7 +238,7 @@ jobs:
   runtime-acceptance:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     name: hva-runtime
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 50
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://gnshgapmwyjamhmlikeg.supabase.co
