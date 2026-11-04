@@ -22,9 +22,12 @@ describe('provisional Arena private Storage transport governance', () => {
 
   it('only grants authenticated download for the one immutable object after explicit private access', () => {
     assert.match(sql, /for select to authenticated\s+using\s*\(/i)
-    assert.match(sql, /name = 'vertical\/2026-2027\/master-1\.3-rev27\/complete-release\.json'/i)
+    assert.match(sql, /name = \(\(storage\.foldername\(name\)\)\[1\] \|\|/i)
+    assert.match(sql, /'\/vertical\/2026-2027\/master-1\.3-rev27\/complete-release\.json'/i)
+    assert.match(sql, /can_read_arena_provisional_release_v1\(\s*\(storage\.foldername\(name\)\)\[1\]\s*\)/i)
     assert.match(sql, /storage\.allow_any_operation\(array\[\s*'object\.get_authenticated',\s*'object\.get_authenticated_info'\s*\]\)/i)
-    assert.match(sql, /private\.can_read_arena_provisional_release_v1\(\)/i)
+    assert.match(sql, /create function private\.can_read_arena_provisional_release_v1\(target_workspace_ref text\)/i)
+    assert.match(sql, /b\.workspace_id::text = target_workspace_ref/i)
     assert.match(sql, /create table private\.arena_provisional_delivery_active_binding/i)
     assert.match(sql, /alter table private\.arena_provisional_delivery_active_binding enable row level security/i)
     assert.match(sql, /revoke all on private\.arena_provisional_delivery_active_binding\s+from public, anon, authenticated/i)
