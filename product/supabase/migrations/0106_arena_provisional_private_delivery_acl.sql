@@ -25,6 +25,28 @@ create table private.arena_provisional_delivery_read_grants (
   primary key (workspace_id, academic_year_id, user_id)
 );
 
+-- The one source object must be bound to ONE explicitly authorized workspace
+-- before any individual grant can unlock it. This stops a grant for space A
+-- from authorizing access while the application is operating in space B.
+-- An empty or disabled binding is a hard denial, not a default permission.
+create table private.arena_provisional_delivery_active_binding (
+  source_key text primary key
+    check (source_key = 'arena-1.3-rev27'),
+  workspace_id uuid not null references public.workspaces(id) on delete restrict,
+  academic_year_id uuid not null references public.academic_years(id) on delete restrict,
+  source_sha256 text not null
+    check (source_sha256 = 'de58f418b4d1fe0be449895736d6267f6c5a58c1b1a476b1f36558579a200809'),
+  authorization_receipt_ref text not null
+    check (char_length(btrim(authorization_receipt_ref)) between 8 and 240),
+  bound_by uuid not null references auth.users(id) on delete restrict,
+  bound_at timestamptz not null default now(),
+  enabled boolean not null default false
+);
+
+alter table private.arena_provisional_delivery_active_binding enable row level security;
+revoke all on private.arena_provisional_delivery_active_binding
+  from public, anon, authenticated;
+
 alter table private.arena_provisional_delivery_read_grants enable row level security;
 revoke all on private.arena_provisional_delivery_read_grants
   from public, anon, authenticated;
@@ -43,6 +65,12 @@ as $$
     and exists (
       select 1
       from private.arena_provisional_delivery_read_grants g
+      join private.arena_provisional_delivery_active_binding b
+        on b.source_key = 'arena-1.3-rev27'
+       and b.workspace_id = g.workspace_id
+       and b.academic_year_id = g.academic_year_id
+       and b.source_sha256 = g.source_sha256
+       and b.enabled = true
       join public.workspace_memberships wm
         on wm.workspace_id = g.workspace_id
        and wm.user_id = g.user_id
