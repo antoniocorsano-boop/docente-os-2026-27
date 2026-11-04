@@ -28,6 +28,14 @@ test('UX-R1B: Progetta mostra la classe nella prima area utilizzabile, non il ca
   await expect(page.locator('.progettaEntryClass')).toHaveCount(expectedClassCount)
   await expect(page.locator('.progettaGroups')).toHaveCount(0)
   await expect(page.locator('.progettaEntryBrowse[href="/progetta?view=catalog"]')).toBeVisible()
+  const trail = page.getByRole('navigation', { name: 'Percorso di navigazione' })
+  await expect(trail.getByRole('link', { name: 'Altro' })).toHaveAttribute('href', '/altro')
+  await expect(trail.locator('[aria-current="page"]')).toHaveText('Progetta')
+  await expect(page.locator('.dosBottomNav a[href="/altro"]')).toHaveClass(/active/)
+  await expect(page.locator('.dosBottomNav a[href="/classi"]')).not.toHaveClass(/active/)
+  await expect(page.locator('.progettaEntryClass').first()).toHaveAttribute('aria-label', /^Apri la panoramica della classe/)
+  await expect(page.locator('.progettaEntryClass').first()).toContainText('Apri')
+  await expect(page.locator('.progettaEntryClass').first()).not.toContainText('Piano annuale')
 
   const sizes = testInfo.project.name.startsWith('mobile')
     ? mobileSizes
@@ -95,7 +103,14 @@ test('UX-R1B: Progetta mostra la classe nella prima area utilizzabile, non il ca
   await page.locator('.progettaEntryClass').first().click()
   await expect(page).toHaveURL(new RegExp(firstHref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
   await expect(page.locator('#dos-main-content h1')).toBeVisible()
-  await writeEvidence(testInfo, 'entry-visible', { expectedClassCount, results, firstHref, state: 'classes-present' })
+  await expect(page.locator('.classWorkspaceHeader')).toBeVisible()
+  await expect(page.locator('.dosBottomNav a[href="/classi"]')).toHaveClass(/active/)
+  await expect(page.locator('.dosBottomNav a[href="/altro"]')).not.toHaveClass(/active/)
+  await screenshot(page, testInfo, 'class-overview-after-progetta')
+  await page.goBack()
+  await expect(page).toHaveURL(/\\/progetta$/)
+  await expect(page.locator('.progettaEntryTrail')).toBeVisible()
+  await writeEvidence(testInfo, 'entry-visible', { expectedClassCount, results, firstHref, state: 'classes-present', navigation: 'Altro > Progetta > Classi > Progetta' })
 })
 
 test('UX-R1B: collegamenti invalidi recuperano la scelta classe senza aprire UDA estranee', async ({ page }, testInfo) => {
