@@ -101,7 +101,7 @@ insert into storage.objects(bucket_id,name) values
   '00000000-0000-4000-8000-00000000c210/vertical/2026-2027/master-1.2-rev27/complete-release.json');
 
 select set_config('request.jwt.claims',
- '{"sub":"00000000-0000-4000-8000-00000000c201","role":"authenticated","is_anonymous":false}',true);
+ '{"sub":"00000000-0000-4000-8000-00000000c201","role":"authenticated","aal":"aal2","is_anonymous":false}',true);
 select set_config('storage.operation','object.get_authenticated',true);
 set local role authenticated;
 
@@ -143,6 +143,18 @@ select pg_temp.arena_assert(
   '07 grant in foreign workspace does not authorize direct helper access'
 );
 
+-- The existing global restrictive MFA policy on storage.objects must remain
+-- effective even when both Arena-specific grants are authorized.
+select set_config('request.jwt.claims',
+ '{"sub":"00000000-0000-4000-8000-00000000c201","role":"authenticated","aal":"aal1","is_anonymous":false}',true);
+select pg_temp.arena_assert(
+  private.can_read_arena_provisional_release_v1('00000000-0000-4000-8000-00000000c210')
+  and (select count(*) from storage.objects where bucket_id='arena-curricolo-private')=0,
+  '07b AAL1 session remains blocked by global restrictive MFA even when Arena grant is active'
+);
+select set_config('request.jwt.claims',
+ '{"sub":"00000000-0000-4000-8000-00000000c201","role":"authenticated","aal":"aal2","is_anonymous":false}',true);
+
 select set_config('storage.operation','object.list',true);
 select pg_temp.arena_assert(
   (select count(*) from storage.objects where bucket_id='arena-curricolo-private')=0,
@@ -162,7 +174,7 @@ select set_config('storage.operation','object.get_authenticated',true);
 
 -- An ordinary member without a grant must not inherit the owner's privilege.
 select set_config('request.jwt.claims',
- '{"sub":"00000000-0000-4000-8000-00000000c202","role":"authenticated","is_anonymous":false}',true);
+ '{"sub":"00000000-0000-4000-8000-00000000c202","role":"authenticated","aal":"aal2","is_anonymous":false}',true);
 select pg_temp.arena_assert(
   not private.can_read_arena_provisional_release_v1('00000000-0000-4000-8000-00000000c210')
   and (select count(*) from storage.objects where bucket_id='arena-curricolo-private')=0,
@@ -170,7 +182,7 @@ select pg_temp.arena_assert(
 );
 
 select set_config('request.jwt.claims',
- '{"sub":"00000000-0000-4000-8000-00000000c203","role":"authenticated","is_anonymous":false}',true);
+ '{"sub":"00000000-0000-4000-8000-00000000c203","role":"authenticated","aal":"aal2","is_anonymous":false}',true);
 select pg_temp.arena_assert(
   not private.can_read_arena_provisional_release_v1('00000000-0000-4000-8000-00000000c210')
   and (select count(*) from storage.objects where bucket_id='arena-curricolo-private')=0,
@@ -178,7 +190,7 @@ select pg_temp.arena_assert(
 );
 
 select set_config('request.jwt.claims',
- '{"sub":"00000000-0000-4000-8000-00000000c201","role":"authenticated","is_anonymous":true}',true);
+ '{"sub":"00000000-0000-4000-8000-00000000c201","role":"authenticated","aal":"aal2","is_anonymous":true}',true);
 select pg_temp.arena_assert(
   not private.can_read_arena_provisional_release_v1('00000000-0000-4000-8000-00000000c210')
   and (select count(*) from storage.objects where bucket_id='arena-curricolo-private')=0,
@@ -201,7 +213,7 @@ select pg_temp.arena_assert(
 
 reset role;
 select set_config('request.jwt.claims',
- '{"sub":"00000000-0000-4000-8000-00000000c201","role":"authenticated","is_anonymous":false}',true);
+ '{"sub":"00000000-0000-4000-8000-00000000c201","role":"authenticated","aal":"aal2","is_anonymous":false}',true);
 -- Mismatched year is not authorization even if both records are changed to it.
 update private.arena_provisional_delivery_read_grants
 set academic_year_id='00000000-0000-4000-8000-00000000c212'
