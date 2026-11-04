@@ -3,7 +3,10 @@
   "canonicalTerm": "curricolo",
   "canonicalInstitutionalTerm": "curricolo di istituto",
   "baselineRef": "a9006cb632fc5c3c9b1b0e4a9f2587c55c9c5ba2",
-  "legacyTokens": ["curriculum", "curricular"],
+  "legacyTokens": [
+    "curriculum",
+    "curricular"
+  ],
   "policy": "Existing legacy vocabulary is frozen as compatibility debt. New occurrences are forbidden unless an exact path, fragment and reason are declared here.",
   "compatibilityClasses": [
     "published-v1-contract-or-wire-field",
@@ -36,6 +39,26 @@
       "path": "product/supabase/tests/canonical_plan_runtime_identity_behavior.sql",
       "contains": "'curriculum', jsonb_build_object(",
       "reason": "The curriculum JSON key is part of the deployed lesson-preparation approval snapshot v1 wire contract. The behavioral test must preserve the serialized key verbatim until a versioned contract transition is approved."
+    },
+    {
+      "path": "product/supabase/migrations/0105_eco02_2c_governed_vertical_reference_receipt.sql",
+      "contains": "annual_plan_curriculum_adoptions",
+      "reason": "This deployed append-only table name is a persistent SQL identifier and must remain exact in the new 2C receipt foreign key and baseline revalidation. No new English vocabulary is introduced to presentation or domain fields."
+    },
+    {
+      "path": "product/supabase/migrations/0105_eco02_2c_governed_vertical_reference_receipt.sql",
+      "contains": "curriculum_source_handoff_footprint_hash",
+      "reason": "The canonical P7 receipt stores its historically deployed source fingerprint in this immutable column; exact SQL access is necessary to verify the original receipt."
+    },
+    {
+      "path": "product/supabase/migrations/0105_eco02_2c_governed_vertical_reference_receipt.sql",
+      "contains": "curriculum_state",
+      "reason": "The existing provisional-state column belongs to the deployed 2C annual-plan adoption schema, and can only be checked by its original SQL name."
+    },
+    {
+      "path": "product/src/core/infrastructure/supabase/eco02-2c-vertical-reference-receipt-contract.test.ts",
+      "contains": "annual_plan_curriculum_adoptions",
+      "reason": "The security regression references the already-deployed legacy SQL table as a stable compatibility contract, without introducing an English term in product copy."
     }
   ]
 }
