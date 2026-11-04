@@ -16,6 +16,7 @@ import {
   planningCoverage,
   resolveCanonicalProgettaFocus,
   resolveProgettaRouteMode,
+  resolveProgettaRequestIssue,
   shouldLoadProgettaItems,
 } from './progetta-model'
 
@@ -360,4 +361,29 @@ test('UX-R1B: Progetta presenta scelta classe senza caricare archivio ed espone 
   assert.match(pageSource, /CONTENUTI RECENTI MOSTRATI/)
   assert.doesNotMatch(pageSource, /planningCoverage\(items\)/)
   assert.doesNotMatch(pageSource, /Programmazione da aggiungere/)
+})
+
+test('UX-R1B: i riferimenti di navigazione non validi non devono diventare catalogo implicito', () => {
+  assert.equal(resolveProgettaRequestIssue({}), null)
+  assert.equal(resolveProgettaRequestIssue({ grade: 'prima' }), null)
+  assert.equal(resolveProgettaRequestIssue({ section: 'section-1A' }), null)
+  assert.equal(resolveProgettaRequestIssue({ grade: 'prima', block: 'B01' }), null)
+  assert.equal(resolveProgettaRequestIssue({
+    grade: 'prima', block: 'B01', uda: '1-00', pack: 'CAN-PACK-1A',
+  }), null)
+
+  assert.equal(resolveProgettaRequestIssue({ grade: 'quarta' }), 'invalid-grade')
+  assert.equal(resolveProgettaRequestIssue({ grade: 'prima', block: 'B99' }), 'invalid-focus')
+  assert.equal(resolveProgettaRequestIssue({ grade: 'prima', block: 'B01', uda: '1-99' }), 'invalid-focus')
+  assert.equal(resolveProgettaRequestIssue({ grade: 'prima', block: 'b1' }), 'invalid-focus')
+  assert.equal(resolveProgettaRequestIssue({ grade: 'prima', uda: '1-00' }), 'invalid-focus')
+  assert.equal(resolveProgettaRequestIssue({ grade: 'prima', block: 'B01', pack: 'wrong-pack' }), 'invalid-focus')
+  assert.equal(resolveProgettaRequestIssue({ block: 'B01' }), 'invalid-focus')
+})
+
+test('UX-R1B: in caso di riferimento scorretto l’ingresso rende visibile il recupero sicuro', () => {
+  const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+  assert.match(pageSource, /resolveProgettaRequestIssue\(params\)/)
+  assert.match(pageSource, /notice=path-not-available/)
+  assert.match(pageSource, /Il percorso richiesto non è disponibile/)
 })
