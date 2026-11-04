@@ -40,7 +40,7 @@ export class Supabase2CP7ReceiptEvidenceRepository {
       throw new Error('P7 read-only verification is disabled outside the exact ECO-02 pilot scope')
     }
 
-    // Session-bound user client, never service_role. RLS SELECT requires
+    // Session-bound user client, without administrator privileges. RLS SELECT requires
     // membership of the current workspace.
     const supabase = await createClient()
     const { data: claims, error: claimsError } = await supabase.auth.getClaims()
