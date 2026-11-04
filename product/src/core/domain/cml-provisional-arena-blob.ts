@@ -8,10 +8,11 @@ import {
   type ProvisionalTechnologyReference,
 } from './cml-provisional-technology-reference'
 
-// Attested against the actual Arena v1.3 rev.27 emission in TRAMA #302.
+// SHA of the 2026-11-04 re-emission, verified against two private archival copies.
+// The 2026-11-03 emission has a different SHA and is not substituted implicitly.
 // This is a source-integrity PIN, not an institute's formal approval.
 export const TRUSTED_ARENA_2026_RELEASE_SHA256 =
-  'de58f418b4d1fe0be449895736d6267f6c5a58c1b1a476b1f36558579a200809'
+  '2d34d69a8e3e4df92b2282d0b232353bfe9fd0174ed3335ca0cae878184c9998'
 export const TRUSTED_ARENA_2026_SOURCE_FOOTPRINT = '99c4ccc3'
 export const TRUSTED_ARENA_2026_REVISION = '27'
 export const TRUSTED_ARENA_2026_INSTITUTION_ID = 'ics-lorenzo-milani'
