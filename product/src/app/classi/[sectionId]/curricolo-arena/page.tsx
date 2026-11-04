@@ -3,6 +3,8 @@ import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
 import { SupabaseAnnualPlanCurriculumRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-curriculum-repository'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
+import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
+import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { Supabase2CP7ReceiptEvidenceRepository } from '@/core/infrastructure/supabase/supabase-2c-p7-receipt-evidence-repository'
 import { isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
@@ -11,6 +13,7 @@ import { CurriculumArenaIntakeClient } from './curriculum-arena-intake-client'
 import { ArenaCanonicalAlignmentPreviewClient } from './arena-canonical-alignment-preview-client'
 import { ArenaProvisionalGradePreviewClient } from './arena-provisional-grade-preview-client'
 import { classify2CPilotBaselineAgainstP7, type Pilot2CP7BaselineStatus } from '@/core/domain/cml-2c-p7-provenance'
+import { mayConsultProvisionalTechnology } from '@/core/domain/cml-provisional-technology-reference'
 import '../../classi.css'
 import '../../class-workspace-operational.css'
 
@@ -49,7 +52,18 @@ export default async function CurriculumArenaPage({
   // Other sections receive consultation of the same provisional Arena release,
   // without any path to a write action or legacy handoff.
   if (!isPilot2C) {
-    if (context.academicYear.label.replaceAll('/', '-') !== '2026-2027') notFound()
+    const [assignments, disciplines] = await Promise.all([
+      new SupabaseTeachingAssignmentReader().list(context.workspace.id, context.academicYear.id),
+      new SupabaseTeacherSettingsRepository().listDisciplines(context.workspace.id, context.academicYear.id),
+    ])
+    if (!mayConsultProvisionalTechnology({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      sectionId,
+      schoolYearRef: context.academicYear.label,
+      assignments,
+      disciplines,
+    })) notFound()
     return (
       <AppShell
         active="classes"
