@@ -27,7 +27,7 @@ test('UX-R1B: Progetta mostra la classe nella prima area utilizzabile, non il ca
   await expect(page.locator('.progettaEntryHeader h1')).toHaveText('Scegli una classe')
   await expect(page.locator('.progettaEntryClass')).toHaveCount(expectedClassCount)
   await expect(page.locator('.progettaGroups')).toHaveCount(0)
-  await expect(page.locator('.progettaEntryExplore a[href="/progetta?view=catalog"]')).toBeVisible()
+  await expect(page.locator('.progettaEntryBrowse[href="/progetta?view=catalog"]')).toBeVisible()
 
   const sizes = testInfo.project.name.startsWith('mobile')
     ? mobileSizes
@@ -40,11 +40,13 @@ test('UX-R1B: Progetta mostra la classe nella prima area utilizzabile, non il ca
     const geometry = await page.evaluate(() => {
       const header = document.querySelector('.progettaEntryHeader')
       const firstClass = document.querySelector('a.progettaEntryClass')
+      const browseLink = document.querySelector('a.progettaEntryBrowse')
       const bottomNavigation = document.querySelector('.dosBottomNav')
-      if (!header || !firstClass) return null
+      if (!header || !firstClass || !browseLink) return null
 
       const headerRect = header.getBoundingClientRect()
       const classRect = firstClass.getBoundingClientRect()
+      const browseRect = browseLink.getBoundingClientRect()
       const navRect = bottomNavigation?.getBoundingClientRect()
       const navVisible = navRect && navRect.height > 0 && getComputedStyle(bottomNavigation).display !== 'none'
       const usableBottom = navVisible ? Math.min(window.innerHeight, navRect.top) : window.innerHeight
@@ -55,6 +57,9 @@ test('UX-R1B: Progetta mostra la classe nella prima area utilizzabile, non il ca
         documentHeight: document.documentElement.scrollHeight,
         headerTop: headerRect.top,
         headerBottom: headerRect.bottom,
+        browseTop: browseRect.top,
+        browseBottom: browseRect.bottom,
+        browseHeight: browseRect.height,
         firstClassTop: classRect.top,
         firstClassBottom: classRect.bottom,
         firstClassWidth: classRect.width,
@@ -69,6 +74,9 @@ test('UX-R1B: Progetta mostra la classe nella prima area utilizzabile, non il ca
     expect(geometry.documentWidth, 'La pagina iniziale non deve eccedere la larghezza dello schermo.').toBeLessThanOrEqual(size.width + 1)
     expect(geometry.headerTop, 'Il titolo non deve risultare nascosto sopra lo schermo.').toBeGreaterThanOrEqual(0)
     expect(geometry.firstClassTop, 'La prima classe deve trovarsi nell’area iniziale.').toBeGreaterThanOrEqual(0)
+    expect(geometry.browseHeight, 'Il collegamento secondario deve essere un obiettivo tattile adeguato.').toBeGreaterThanOrEqual(44)
+    expect(geometry.browseBottom, 'Esplora deve essere visibile nella prima area utile sopra la navigazione.').toBeLessThanOrEqual(geometry.usableBottom - 4)
+    expect(geometry.browseBottom, 'Esplora deve precedere il lungo elenco delle classi.').toBeLessThanOrEqual(geometry.firstClassTop)
     expect(geometry.firstClassHeight, 'La classe deve essere un obiettivo tattile utile.').toBeGreaterThanOrEqual(44)
     expect(geometry.firstClassBottom,
       'La prima classe deve essere interamente visibile sopra la navigazione inferiore, senza scorrere.',
@@ -103,7 +111,7 @@ test('UX-R1B: collegamenti invalidi recuperano la scelta classe senza aprire UDA
   await page.goto('/progetta?section=invalid-section-id')
   await expect(page).toHaveURL(/\/progetta\?notice=class-not-available/)
   await expect(page.locator('.progettaEntryNotice[role="status"]')).toContainText('classe richiesta non è disponibile')
-  await expect(page.locator('.progettaEntryExplore a[href="/progetta?view=catalog"]')).toBeVisible()
+  await expect(page.locator('.progettaEntryBrowse[href="/progetta?view=catalog"]')).toBeVisible()
   await screenshot(page, testInfo, 'invalid-section')
 
   await writeEvidence(testInfo, 'invalid-context', {
