@@ -18,7 +18,6 @@ import {
   filterProgettaItemsBySectionContext,
   groupProgettaItems,
   partitionProgettaFocusBySection,
-  planningCoverage,
   resolveCanonicalProgettaFocus,
   resolveProgettaRouteMode,
   shouldLoadProgettaItems,
@@ -106,7 +105,7 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
         <header className="progettaEntryHeader">
           <p>PROGETTA · {context.academicYear?.label ?? 'Anno scolastico'}</p>
           <h1>{sectionContext ? `Continua dalla ${displaySectionLabel}` : 'Scegli una classe'}</h1>
-          <p>Per preparare la prossima fase, apri la classe: il lavoro prosegue dal Piano annuale, non dall'ultimo documento caricato.</p>
+          <p>Per preparare la prossima fase, apri la classe: il lavoro prosegue dal Piano annuale, non dall&apos;ultimo documento caricato.</p>
         </header>
 
         {params.notice === 'class-not-available' ? (
@@ -125,12 +124,12 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
                 </Link>
               ))}
             </div>
-            {sectionContext ? <Link className="progettaEntryChooseAnother" href="/progetta">Scegli un'altra classe</Link> : null}
+            {sectionContext ? <Link className="progettaEntryChooseAnother" href="/progetta">Scegli un&apos;altra classe</Link> : null}
           </section>
         ) : (
           <section className="progettaEntryEmpty">
             <h2>Nessuna classe disponibile</h2>
-            <p>Definisci le classi nell'anno scolastico corrente prima di avviare la progettazione contestuale.</p>
+            <p>Definisci le classi nell&apos;anno scolastico corrente prima di avviare la progettazione contestuale.</p>
             <Link href={context.academicYear ? '/impostazioni#classi' : '/workspace'}>Configura le classi</Link>
           </section>
         )}
@@ -138,7 +137,7 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
         <section className="progettaEntryExplore" aria-labelledby="progetta-explore-title">
           <div>
             <h2 id="progetta-explore-title">Esplora la progettazione</h2>
-            <p>Consulta i contenuti recenti per grado e tipologia; per cercare altre fonti usa Conoscenza. L'archivio completo sarà oggetto di una successiva modifica.</p>
+            <p>Consulta i contenuti recenti per grado e tipologia; per cercare altre fonti usa Conoscenza. L&apos;archivio completo sarà oggetto di una successiva modifica.</p>
           </div>
           <nav aria-label="Esplorazione e ricerca">
             <Link href="/progetta?view=catalog">Esplora la progettazione</Link>
@@ -297,7 +296,6 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
   }
 
   const groups = groupProgettaItems(scopedItems)
-  const coverage = planningCoverage(items)
   const total = groups.reduce((sum, group) => sum + group.items.length, 0)
 
   return (
@@ -317,11 +315,7 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
         <div><span>01</span><strong>Fonti</strong><small>Documenti e riferimenti originali</small></div><i>→</i><div><span>02</span><strong>Quadro annuale</strong><small>Obiettivi, tempi e copertura</small></div><i>→</i><div><span>03</span><strong>UDA</strong><small>Percorsi ed evidenze</small></div><i>→</i><div><span>04</span><strong>Materiali</strong><small>Attività, rubriche e verifiche</small></div>
       </section>
 
-      <div className="progettaSummary"><div><span>CONTENUTI RECENTI MOSTRATI</span><strong>{total}</strong></div><p>{gradeLabel ? `Contenuti pertinenti alla ${gradeLabel.toLowerCase()}${displaySectionLabel ? `, esclusi gli adattamenti appartenenti ad altre sezioni` : ''}.` : 'Qui trovi i contenuti già raccolti e collegati alla progettazione.'} Elenco limitato agli ultimi 100 contenuti: non rappresenta l'intero archivio. DOCENTE OS usa la versione di lavoro corrente senza modificare le fonti originali.</p></div>
-
-      {!grade ? <section className="planningCoverage" aria-label="Indicatori sulle sole risorse recenti mostrate">
-        {coverage.map((item) => <div key={item.grade}><span>CLASSE {item.grade.toUpperCase()}</span><strong>{item.programming ? 'Programmazione disponibile' : 'Programmazione da aggiungere'}</strong><small className={item.uda ? 'covered' : ''}>{item.uda} {item.uda === 1 ? 'UDA collegata' : 'UDA collegate'}</small><small className={item.materials ? 'covered' : ''}>{item.materials} {item.materials === 1 ? 'pacchetto operativo' : 'pacchetti operativi'}</small></div>)}
-      </section> : null}
+      <div className="progettaSummary"><div><span>CONTENUTI RECENTI MOSTRATI</span><strong>{total}</strong></div><p>{gradeLabel ? `Contenuti pertinenti alla ${gradeLabel.toLowerCase()}${displaySectionLabel ? `, esclusi gli adattamenti appartenenti ad altre sezioni` : ''}.` : 'Qui trovi i contenuti già raccolti e collegati alla progettazione.'} Elenco limitato agli ultimi 100 contenuti: non rappresenta l&apos;intero archivio. DOCENTE OS usa la versione di lavoro corrente senza modificare le fonti originali.</p></div>
 
       <section className="progettaGroups" aria-label="Aree di progettazione">
         {groups.map((group, index) => <article className="progettaGroup" key={group.key}>
