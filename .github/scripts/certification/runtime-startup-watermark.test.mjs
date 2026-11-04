@@ -11,7 +11,7 @@ import { validateMigrationInventory } from '../runtime-release-contract.mjs'
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
 const STARTUP_PATH = path.join(ROOT, 'product/scripts/start-production.mjs')
 const MIGRATION_DIR = path.join(ROOT, 'product/supabase/migrations')
-const EXPECTED = '0105_eco02_2c_governed_vertical_reference_receipt'
+const EXPECTED = '0106_arena_provisional_private_delivery_acl'
 
 test('production startup release watermark matches repository migration inventory', () => {
   const source = readFileSync(STARTUP_PATH, 'utf8')
