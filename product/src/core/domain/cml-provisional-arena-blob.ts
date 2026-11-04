@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { hash } from 'node:crypto'
 import { selectArenaVerticalCurricoloSlice } from './cml-discipline-binding'
 import { verifyCanonicalArenaReleaseForThreeGrades } from './cml-arena-three-grade-preflight'
 import {
@@ -27,7 +27,7 @@ export function assertArenaReleaseDigest(
   if (!/^[0-9a-f]{64}$/.test(expectedSha256)) {
     throw new Error('Arena release expected SHA-256 is malformed')
   }
-  const computed = createHash('sha256').update(input).digest('hex')
+  const computed = hash('sha256', input, 'hex')
   if (computed !== expectedSha256) {
     throw new Error('Arena release SHA-256 differs from qualified emission')
   }
