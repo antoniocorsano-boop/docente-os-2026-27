@@ -112,6 +112,7 @@ test "$RESTORED_MARKERS" = "1:P7_SYNTHETIC_DATABASE_ROW_ALPHA,2:P7_SYNTHETIC_DAT
 # Cleanup is part of the acceptance contract. Never publish a PASS receipt
 # until the synthetic ciphertext was successfully deleted from off-site R2.
 # Keep the EXIT trap armed for all failure paths.
+R2_CLEANUP_RESULT="NOT_APPLICABLE"
 if [[ "$R2_UPLOADED" == "1" ]]; then
   if ! aws s3 rm "s3://$R2_BACKUP_BUCKET/$R2_KEY" \
     --endpoint-url "$R2_ENDPOINT" --only-show-errors >/dev/null; then
@@ -119,6 +120,7 @@ if [[ "$R2_UPLOADED" == "1" ]]; then
     exit 1
   fi
   R2_UPLOADED=0
+  R2_CLEANUP_RESULT="VERIFIED"
 fi
 
 CIPHER_SHA256="$(sha256sum "$TMP_DIR/verified.age" | cut -d ' ' -f1)"
@@ -134,7 +136,7 @@ if [[ -n "$GITHUB_STEP_SUMMARY" ]]; then
     echo "- Transport: **$MODE**"
     echo "- Restore: **fresh local PostgreSQL database, exact row IDs and markers verified**"
     echo "- Wrong-key decryption: **rejected**"
-    echo "- R2 synthetic cleanup: **$([[ \"$MODE\" == \"r2\" ]] && echo VERIFIED || echo NOT_APPLICABLE)**"
+    echo "- R2 synthetic cleanup: **$R2_CLEANUP_RESULT**"
     echo "- Ciphertext SHA-256: \`$CIPHER_SHA256\`"
     echo "- Real Supabase access / user records: **NONE**"
     echo "- Authorization for live database backup: **NOT GRANTED**"
