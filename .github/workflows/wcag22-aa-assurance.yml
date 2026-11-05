@@ -23,7 +23,7 @@ env:
 jobs:
   wcag22-aa-assurance:
     name: wcag22-aa-assurance
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
 
     steps:

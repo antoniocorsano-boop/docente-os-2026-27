@@ -18,10 +18,14 @@ import {
   filterProgettaItemsBySectionContext,
   groupProgettaItems,
   partitionProgettaFocusBySection,
-  planningCoverage,
   resolveCanonicalProgettaFocus,
+  resolveProgettaCatalogGrade,
+  resolveProgettaRouteMode,
+  resolveProgettaRequestIssue,
+  shouldLoadProgettaItems,
   type ProgettaItem,
 } from './progetta-model'
+import { ProgettaEmptyState } from './progetta-empty-state'
 import './progetta.css'
 import './progetta-coverage.css'
 import './progetta-focus.css'
@@ -37,6 +41,8 @@ type ProgettaSearchParams = {
   block?: string
   uda?: string
   pack?: string
+  view?: string
+  notice?: string
 }
 
 export default async function ProgettaPage({ searchParams }: { searchParams: Promise<ProgettaSearchParams> }) {
@@ -44,9 +50,17 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
   const grade = asProgettaGrade(params.grade)
   const requestedFocus = asProgettaFocus({ block: params.block, uda: params.uda, pack: params.pack })
   const focus = resolveCanonicalProgettaFocus(grade, requestedFocus)
+  const routeMode = resolveProgettaRouteMode({
+    grade,
+    focus,
+    sectionId: params.section ?? null,
+    view: params.view ?? null,
+  })
   const workspaceRepository = new SupabaseWorkspaceRepository()
   const context = await workspaceRepository.getCurrentContext()
   if (!context) redirect('/login')
+  // A wrong canonical focus is not an invitation to browse unrelated UDA.
+  if (resolveProgettaRequestIssue(params)) redirect('/progetta?notice=path-not-available')
 
   const knowledgeRepository = new SupabaseKnowledgeRepository()
   const annualRepository = new SupabaseAnnualPlanExecutionRepository()
@@ -56,8 +70,8 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
   const academicYearId = context.academicYear?.id ?? null
   const loadTextbookSupport = Boolean(focus && params.section && academicYearId)
   const [items, annualSnapshot, assignments, adoptions, disciplines] = await Promise.all([
-    knowledgeRepository.listRecent(context.workspace.id, 100),
-    params.section && academicYearId
+    shouldLoadProgettaItems(routeMode) ? knowledgeRepository.listRecent(context.workspace.id, 100) : Promise.resolve([]),
+    (params.section || routeMode === 'start') && academicYearId
       ? annualRepository.list(context.workspace.id, academicYearId)
       : Promise.resolve(null),
     loadTextbookSupport && academicYearId
@@ -79,6 +93,70 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
     : null
   const compactSectionLabel = sectionContext ? `${GRADE_NUMBER[sectionContext.grade]}${sectionContext.sectionCode}` : null
   const displaySectionLabel = sectionContext ? `${GRADE_NUMBER[sectionContext.grade]}ª ${sectionContext.sectionCode}` : null
+  // A stale/foreign section must not silently fall back to another class or common plan.
+  if (params.section && !sectionContext) redirect('/progetta?notice=class-not-available')
+
+  if (routeMode === 'start' || routeMode === 'section') {
+    const availableSections = [...(
+      routeMode === 'section' && sectionContext ? [sectionContext] : (annualSnapshot?.sections ?? [])
+    )].sort((left, right) =>
+      `${GRADE_NUMBER[left.grade]}${left.sectionCode}`.localeCompare(
+        `${GRADE_NUMBER[right.grade]}${right.sectionCode}`, 'it', { numeric: true },
+      ),
+    )
+
+    return (
+      <AppShell active="design" academicYearLabel={context.academicYear?.label} workspaceName={context.workspace.name} role={context.role} contentClassName="progettaSurface progettaEntrySurface">
+        <header className="progettaEntryHeader">
+          <nav aria-label="Percorso di navigazione" className="progettaEntryTrail">
+            <Link href="/altro">Altro</Link>
+            <span aria-hidden>›</span>
+            <span aria-current="page">Progetta</span>
+            <span className="progettaEntryYear">{context.academicYear?.label ?? 'Anno scolastico'}</span>
+          </nav>
+          <h1>{sectionContext ? `Continua dalla ${displaySectionLabel}` : 'Scegli una classe'}</h1>
+          <p className="progettaEntryIntro">{sectionContext
+            ? 'Apri la panoramica della classe per consultare il Piano annuale e preparare la prossima lezione.'
+            : 'Scegli una classe per aprire la sua panoramica. Da lì puoi consultare il Piano annuale e preparare la prossima lezione.'}</p>
+          <Link className="progettaEntryBrowse" href="/progetta?view=catalog">Esplora i contenuti recenti <span aria-hidden>→</span></Link>
+        </header>
+
+        {params.notice === 'class-not-available' || params.notice === 'path-not-available' ? (
+          <p className="progettaEntryNotice" role="status">{params.notice === 'class-not-available'
+            ? 'La classe richiesta non è disponibile nel contesto corrente. Scegli una classe valida.'
+            : 'Il percorso richiesto non è disponibile in questo contesto. Scegli una classe valida oppure esplora la progettazione.'}</p>
+        ) : null}
+
+        {availableSections.length ? (
+          <section aria-label="Scegli una classe" className="progettaEntryClasses">
+            <h2>{sectionContext ? 'Classe selezionata' : 'Classi disponibili'}</h2>
+            <div className="progettaEntryGrid">
+              {availableSections.map((section) => (
+                <Link className="progettaEntryClass" aria-label={`Apri la panoramica della classe ${GRADE_NUMBER[section.grade]}ª ${section.sectionCode}`} href={`/classi/${encodeURIComponent(section.id)}`} key={section.id}>
+                  <strong>{GRADE_NUMBER[section.grade]}ª {section.sectionCode}</strong>
+                  <small>Apri <span aria-hidden>→</span></small>
+                </Link>
+              ))}
+            </div>
+            {sectionContext ? <Link className="progettaEntryChooseAnother" href="/progetta">Scegli un&apos;altra classe</Link> : null}
+          </section>
+        ) : (
+          <ProgettaEmptyState hasAcademicYear={Boolean(context.academicYear)} />
+        )}
+
+        <section className="progettaEntryExplore" aria-labelledby="progetta-explore-title">
+          <div>
+            <h2 id="progetta-explore-title">Cerchi altre fonti?</h2>
+            <p>Per una ricerca nell&apos;archivio usa Conoscenza. Il catalogo di Progetta mostra soltanto i contenuti recenti; la consultazione completa arriverà con il prossimo intervento.</p>
+          </div>
+          <nav aria-label="Ricerca di altre fonti">
+            <Link href="/knowledge">Cerca in Conoscenza</Link>
+          </nav>
+        </section>
+      </AppShell>
+    )
+  }
+
   const disciplineNameById = new Map(disciplines.map((discipline) => [discipline.id, discipline.name]))
   const textbookSupport = buildProgettaTextbookSupport({
     sectionId: sectionContext?.id ?? null,
@@ -92,11 +170,13 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
     validatedAlignments: [],
   })
 
-  const gradeItems = filterProgettaItemsByGrade(items, grade)
+  const catalogGrade = resolveProgettaCatalogGrade(grade, sectionContext?.grade ?? null)
+  const gradeItems = filterProgettaItemsByGrade(items, catalogGrade)
   const scopedItems = filterProgettaItemsBySectionContext(gradeItems, compactSectionLabel)
-  const gradeLabel = grade ? `Classe ${grade}` : null
+  const gradeLabel = catalogGrade ? `Classe ${catalogGrade}` : null
   const planningReturnParams = new URLSearchParams()
-  if (grade) planningReturnParams.set('grade', grade)
+  if (catalogGrade) planningReturnParams.set('grade', catalogGrade)
+  if (routeMode === 'catalog') planningReturnParams.set('view', 'catalog')
   if (sectionContext) planningReturnParams.set('section', sectionContext.id)
   const planningReturnQuery = planningReturnParams.toString()
   const planningReturnHref = planningReturnQuery ? `/progetta?${planningReturnQuery}` : '/progetta'
@@ -226,7 +306,6 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
   }
 
   const groups = groupProgettaItems(scopedItems)
-  const coverage = planningCoverage(items)
   const total = groups.reduce((sum, group) => sum + group.items.length, 0)
 
   return (
@@ -235,22 +314,18 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
         <div><p className="contextLine">{context.workspace.name} · {context.academicYear?.label ?? 'Anno scolastico'}</p><h1>Progetta</h1><p className="dayLine">{gradeLabel ? `Stai lavorando sul nucleo didattico della ${gradeLabel.toLowerCase()}.` : 'Parti dalle fonti già raccolte e trasformale in programmazione, UDA e materiali da usare in classe.'}</p></div>
         <div className="progettaHeaderActions">
           {sectionContext ? <Link className="secondaryButton" href={`/classi/${encodeURIComponent(sectionContext.id)}`}>Apri classe</Link> : null}
-          {grade ? <Link className="secondaryButton" href="/progetta">Tutte le classi</Link> : null}
+          {catalogGrade ? <Link className="secondaryButton" href="/progetta">Tutte le classi</Link> : null}
           <Link className="secondaryButton" href="/knowledge">Apri Conoscenza</Link>
         </div>
       </section>
 
-      {grade ? <section className="progettaContextBanner"><div className="progettaContextIdentity"><span>NUCLEO COMUNE</span><strong>{gradeLabel}</strong></div><p>Il nucleo didattico appartiene al grado. {displaySectionLabel ? `La ${displaySectionLabel} è il contesto corrente per eventuali adattamenti, che restano separati e non duplicano l’UDA comune.` : 'Gli adattamenti per una singola sezione restano separati dal nucleo condiviso.'}</p></section> : null}
+      {catalogGrade ? <section className="progettaContextBanner"><div className="progettaContextIdentity"><span>NUCLEO COMUNE</span><strong>{gradeLabel}</strong></div><p>Il nucleo didattico appartiene al grado. {displaySectionLabel ? `La ${displaySectionLabel} è il contesto corrente per eventuali adattamenti, che restano separati e non duplicano l’UDA comune.` : 'Gli adattamenti per una singola sezione restano separati dal nucleo condiviso.'}</p></section> : null}
 
       <section className="progettaWorkflow" aria-label="Percorso di progettazione">
         <div><span>01</span><strong>Fonti</strong><small>Documenti e riferimenti originali</small></div><i>→</i><div><span>02</span><strong>Quadro annuale</strong><small>Obiettivi, tempi e copertura</small></div><i>→</i><div><span>03</span><strong>UDA</strong><small>Percorsi ed evidenze</small></div><i>→</i><div><span>04</span><strong>Materiali</strong><small>Attività, rubriche e verifiche</small></div>
       </section>
 
-      <div className="progettaSummary"><div><span>CONTENUTI DISPONIBILI</span><strong>{total}</strong></div><p>{gradeLabel ? `Contenuti pertinenti alla ${gradeLabel.toLowerCase()}${displaySectionLabel ? `, esclusi gli adattamenti appartenenti ad altre sezioni` : ''}.` : 'Qui trovi i contenuti già raccolti e collegati alla progettazione.'} DOCENTE OS usa la versione di lavoro corrente senza modificare le fonti originali.</p></div>
-
-      {!grade ? <section className="planningCoverage" aria-label="Copertura della progettazione per classe">
-        {coverage.map((item) => <div key={item.grade}><span>CLASSE {item.grade.toUpperCase()}</span><strong>{item.programming ? 'Programmazione disponibile' : 'Programmazione da aggiungere'}</strong><small className={item.uda ? 'covered' : ''}>{item.uda} {item.uda === 1 ? 'UDA collegata' : 'UDA collegate'}</small><small className={item.materials ? 'covered' : ''}>{item.materials} {item.materials === 1 ? 'pacchetto operativo' : 'pacchetti operativi'}</small></div>)}
-      </section> : null}
+      <div className="progettaSummary"><div><span>CONTENUTI RECENTI MOSTRATI</span><strong>{total}</strong></div><p>{gradeLabel ? `Contenuti pertinenti alla ${gradeLabel.toLowerCase()}${displaySectionLabel ? `, esclusi gli adattamenti appartenenti ad altre sezioni` : ''}.` : 'Qui trovi i contenuti già raccolti e collegati alla progettazione.'} Elenco limitato agli ultimi 100 contenuti: non rappresenta l&apos;intero archivio. DOCENTE OS usa la versione di lavoro corrente senza modificare le fonti originali.</p></div>
 
       <section className="progettaGroups" aria-label="Aree di progettazione">
         {groups.map((group, index) => <article className="progettaGroup" key={group.key}>

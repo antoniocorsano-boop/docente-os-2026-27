@@ -88,6 +88,68 @@ export function filterProgettaItemsBySectionContext(items: ProgettaItem[], compa
   })
 }
 
+export type ProgettaRouteMode = 'start' | 'section' | 'catalog' | 'focus'
+
+/**
+ * A catalog opened from a verified class must retain that class's grade.
+ * The caller only passes sectionGrade after checking the authenticated
+ * annual-plan registry. An explicitly requested matching grade remains authoritative.
+ */
+export function resolveProgettaCatalogGrade(
+  explicitGrade: ProgettaGrade | null,
+  sectionGrade: 'PRIMA' | 'SECONDA' | 'TERZA' | null,
+): ProgettaGrade | null {
+  if (explicitGrade) return explicitGrade
+  if (sectionGrade === 'PRIMA') return 'prima'
+  if (sectionGrade === 'SECONDA') return 'seconda'
+  if (sectionGrade === 'TERZA') return 'terza'
+  return null
+}
+
+
+/** The canonical block has priority; the class registry owns section identity. */
+export function resolveProgettaRouteMode(input: {
+  grade: ProgettaGrade | null
+  focus: ResolvedProgettaFocus | null
+  sectionId: string | null
+  view: string | null
+}): ProgettaRouteMode {
+  if (input.focus) return 'focus'
+  if (input.view === 'catalog') return 'catalog'
+  if (input.sectionId) return 'section'
+  if (input.grade) return 'catalog'
+  return 'start'
+}
+
+/**
+ * Malformed or internally inconsistent planning URLs must not silently become
+ * a broad catalogue, especially when a specific class/lesson was requested.
+ * Section ownership is checked separately against the authenticated registry.
+ */
+export function resolveProgettaRequestIssue(input: {
+  grade?: string
+  section?: string
+  block?: string
+  uda?: string
+  pack?: string
+}): 'invalid-grade' | 'invalid-focus' | null {
+  const grade = asProgettaGrade(input.grade)
+  if (input.grade !== undefined && !grade) return 'invalid-grade'
+  const hasFocusFields = input.block !== undefined || input.uda !== undefined || input.pack !== undefined
+  if (!hasFocusFields) return null
+  const malformed = (input.block !== undefined && !/^B\d{2}$/i.test(input.block))
+    || (input.uda !== undefined && !/^\d-\d{2}$/i.test(input.uda))
+    || (input.pack !== undefined && !/^CAN-PACK-\d[A-Z]$/i.test(input.pack))
+  if (malformed) return 'invalid-focus'
+  const parsed = asProgettaFocus({ block: input.block, uda: input.uda, pack: input.pack })
+  return resolveCanonicalProgettaFocus(grade, parsed) ? null : 'invalid-focus'
+}
+
+/** Starting from a class never depends on a sampled Knowledge catalogue. */
+export function shouldLoadProgettaItems(mode: ProgettaRouteMode): boolean {
+  return mode === 'focus' || mode === 'catalog'
+}
+
 export function asProgettaGrade(value: string | undefined): ProgettaGrade | null {
   return value === 'prima' || value === 'seconda' || value === 'terza' ? value : null
 }

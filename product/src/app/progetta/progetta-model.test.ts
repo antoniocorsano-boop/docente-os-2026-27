@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { ProgettaEmptyState } from './progetta-empty-state'
 import type { KnowledgeAsset, KnowledgeDocument } from '@/core/domain/knowledge'
 import type { TextbookAdoptionWithBook } from '@/core/domain/textbook-adoption'
 import type { TextbookCurricoloAlignmentV1 } from '@/core/domain/cml-textbook-applicability'
@@ -15,6 +18,10 @@ import {
   partitionProgettaFocusBySection,
   planningCoverage,
   resolveCanonicalProgettaFocus,
+  resolveProgettaCatalogGrade,
+  resolveProgettaRouteMode,
+  resolveProgettaRequestIssue,
+  shouldLoadProgettaItems,
 } from './progetta-model'
 
 function item(id: string, contentCategory: KnowledgeAsset['contentCategory']) {
@@ -330,4 +337,141 @@ test('la modalità guidata collega il libro adottato come supporto secondario se
   assert.doesNotMatch(pageSource, /pp\.\s*19[–-]23/)
   assert.doesNotMatch(pageSource, /pp\.\s*24[–-]27/)
   assert.doesNotMatch(pageSource, /pp\.\s*28[–-]31/)
+})
+
+test('UX-R1B: ingresso per classe distinto da catalogo e focus canonico', () => {
+  assert.equal(resolveProgettaRouteMode({ grade: null, focus: null, sectionId: null, view: null }), 'start')
+  assert.equal(resolveProgettaRouteMode({ grade: 'prima', focus: null, sectionId: null, view: null }), 'catalog')
+  assert.equal(resolveProgettaRouteMode({ grade: null, focus: null, sectionId: null, view: 'catalog' }), 'catalog')
+  assert.equal(resolveProgettaRouteMode({ grade: 'seconda', focus: null, sectionId: 'section-2C', view: null }), 'section')
+  assert.equal(resolveProgettaRouteMode({ grade: null, focus: null, sectionId: 'section-2C', view: null }), 'section')
+  assert.equal(resolveProgettaRouteMode({ grade: 'seconda', focus: null, sectionId: 'section-2C', view: 'catalog' }), 'catalog')
+  const focus = resolveCanonicalProgettaFocus('prima', asProgettaFocus({ block: 'B01', uda: '1-00', pack: 'CAN-PACK-1A' }))
+  assert.equal(resolveProgettaRouteMode({ grade: 'prima', focus, sectionId: 'section-1A', view: 'catalog' }), 'focus')
+  assert.equal(shouldLoadProgettaItems('start'), false)
+  assert.equal(shouldLoadProgettaItems('section'), false)
+  assert.equal(shouldLoadProgettaItems('focus'), true)
+  assert.equal(shouldLoadProgettaItems('catalog'), true)
+})
+
+test('UX-R1B: Progetta presenta scelta classe senza caricare archivio ed espone esplorazione esplicita', () => {
+  const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+  assert.match(pageSource, /shouldLoadProgettaItems\(routeMode\)\s*\?\s*knowledgeRepository\.listRecent/)
+  assert.match(pageSource, /if \(routeMode === 'start' \|\| routeMode === 'section'\)/)
+  assert.match(pageSource, /Scegli una classe/)
+  assert.match(pageSource, /\/classi\/\$\{encodeURIComponent\(section\.id\)\}/)
+  assert.match(pageSource, /href="\/progetta\?view=catalog"/)
+  assert.match(pageSource, /className="progettaEntryBrowse" href="\/progetta\?view=catalog"/)
+  assert.ok(pageSource.indexOf('className="progettaEntryBrowse"') < pageSource.indexOf('className="progettaEntryClasses"'), 'Esplora deve essere disponibile prima dell’elenco lungo delle classi.')
+  assert.match(pageSource, /Esplora i contenuti recenti/)
+  assert.match(pageSource, /Cerchi altre fonti\?/)
+  assert.match(pageSource, /CONTENUTI RECENTI MOSTRATI/)
+  assert.doesNotMatch(pageSource, /planningCoverage\(items\)/)
+  assert.doesNotMatch(pageSource, /Programmazione da aggiungere/)
+})
+
+test('UX-R1B: i riferimenti di navigazione non validi non devono diventare catalogo implicito', () => {
+  assert.equal(resolveProgettaRequestIssue({}), null)
+  assert.equal(resolveProgettaRequestIssue({ grade: 'prima' }), null)
+  assert.equal(resolveProgettaRequestIssue({ section: 'section-1A' }), null)
+  assert.equal(resolveProgettaRequestIssue({ grade: 'prima', block: 'B01' }), null)
+  assert.equal(resolveProgettaRequestIssue({
+    grade: 'prima', block: 'B01', uda: '1-00', pack: 'CAN-PACK-1A',
+  }), null)
+
+  assert.equal(resolveProgettaRequestIssue({ grade: 'quarta' }), 'invalid-grade')
+  assert.equal(resolveProgettaRequestIssue({ grade: 'prima', block: 'B99' }), 'invalid-focus')
+  assert.equal(resolveProgettaRequestIssue({ grade: 'prima', block: 'B01', uda: '1-99' }), 'invalid-focus')
+  assert.equal(resolveProgettaRequestIssue({ grade: 'prima', block: 'b1' }), 'invalid-focus')
+  assert.equal(resolveProgettaRequestIssue({ grade: 'prima', uda: '1-00' }), 'invalid-focus')
+  assert.equal(resolveProgettaRequestIssue({ grade: 'prima', block: 'B01', pack: 'wrong-pack' }), 'invalid-focus')
+  assert.equal(resolveProgettaRequestIssue({ block: 'B01' }), 'invalid-focus')
+})
+
+test('UX-R1B: in caso di riferimento scorretto l’ingresso rende visibile il recupero sicuro', () => {
+  const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+  assert.match(pageSource, /resolveProgettaRequestIssue\(params\)/)
+  assert.match(pageSource, /notice=path-not-available/)
+  assert.match(pageSource, /Il percorso richiesto non è disponibile/)
+})
+
+
+test('UX-R1B-HR: schede compatte e gerarchia di navigazione Altro → Progetta → Classe', () => {
+  const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+  const classSource = readFileSync(new URL('../classi/[sectionId]/page.tsx', import.meta.url), 'utf8')
+  const styleSource = readFileSync(new URL('./progetta.css', import.meta.url), 'utf8')
+
+  assert.match(pageSource, /aria-label="Percorso di navigazione"/)
+  assert.match(pageSource, /className="progettaEntryTrail"/)
+  assert.match(pageSource, /href="\/altro">Altro<\/Link>/)
+  assert.match(pageSource, /aria-current="page">Progetta<\/span>/)
+  assert.match(pageSource, /Scegli una classe per aprire la sua panoramica/)
+  assert.match(pageSource, /aria-label={`Apri la panoramica della classe/)
+  assert.match(pageSource, /<small>Apri <span aria-hidden>→<\/span><\/small>/)
+  assert.doesNotMatch(pageSource, /Apri la classe e continua dal Piano annuale/)
+  assert.match(pageSource, /href={`\/classi\/\$\{encodeURIComponent\(section\.id\)\}`}/)
+  assert.match(pageSource, /<AppShell active="design"/)
+  assert.match(classSource, /<AppShell\s+active="classes"/)
+  assert.match(styleSource, /\.progettaEntryTrail/)
+  assert.match(styleSource, /\.progettaEntryClass:focus-visible/)
+})
+
+
+test('UX-R1B-EMPTY: fixture isolata senza classi rende azione utile senza dati reali', () => {
+  // Test server-side reale del componente con props sintetiche: nessuna
+  // classe viene creata, cancellata o modificata nel workspace autenticato.
+  const configuredYear = renderToStaticMarkup(createElement(ProgettaEmptyState, { hasAcademicYear: true }))
+  assert.match(configuredYear, /Nessuna classe disponibile/)
+  assert.match(configuredYear, /Definisci le classi nell/)
+  assert.match(configuredYear, /href="\/impostazioni#classi"/)
+  assert.match(configuredYear, /Configura le classi/)
+  assert.doesNotMatch(configuredYear, /href="\/classi\//)
+  assert.doesNotMatch(configuredYear, /progettaEntryClass"/)
+
+  const missingYear = renderToStaticMarkup(createElement(ProgettaEmptyState, { hasAcademicYear: false }))
+  assert.match(missingYear, /Anno scolastico non disponibile/)
+  assert.match(missingYear, /href="\/planner"/)
+  assert.match(missingYear, /Torna a Oggi/)
+  assert.doesNotMatch(missingYear, /Configura le classi/)
+  assert.doesNotMatch(missingYear, /href="\/workspace"/)
+  assert.doesNotMatch(missingYear, /href="\/impostazioni#classi"/)
+
+  const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+  assert.match(source, /availableSections\.length\s*\?/)
+  assert.match(source, /<ProgettaEmptyState hasAcademicYear={Boolean\(context\.academicYear\)}\s*\/>/)
+  assert.match(source, /href="\/progetta\?view=catalog"/)
+})
+
+test('UX-R1B-REWORK: il catalogo ricava il grado dalla classe autorizzata quando non è esplicito', () => {
+  assert.equal(resolveProgettaCatalogGrade(null, null), null)
+  assert.equal(resolveProgettaCatalogGrade(null, 'PRIMA'), 'prima')
+  assert.equal(resolveProgettaCatalogGrade(null, 'SECONDA'), 'seconda')
+  assert.equal(resolveProgettaCatalogGrade(null, 'TERZA'), 'terza')
+  assert.equal(resolveProgettaCatalogGrade('terza', null), 'terza')
+  assert.equal(resolveProgettaCatalogGrade('prima', 'PRIMA'), 'prima')
+
+  const prima = { ...item('prima', 'UDA'), asset: { ...item('prima', 'UDA').asset, sourceMetadata: { grade: 'prima' }, classLabels: ['1A'] } }
+  const seconda = { ...item('seconda', 'UDA'), asset: { ...item('seconda', 'UDA').asset, sourceMetadata: { grade: 'seconda' }, classLabels: ['2C'] } }
+  const common = item('common', 'PROGRAMMING')
+  const catalog = [prima, seconda, common]
+  const effectiveGrade = resolveProgettaCatalogGrade(null, 'SECONDA')
+  const gradeFiltered = filterProgettaItemsByGrade(catalog, effectiveGrade)
+  assert.deepEqual(gradeFiltered.map(({ asset }) => asset.id), ['seconda', 'common'])
+  const sectionFiltered = filterProgettaItemsBySectionContext(gradeFiltered, '2C')
+  assert.deepEqual(sectionFiltered.map(({ asset }) => asset.id), ['seconda', 'common'])
+
+  // La pagina deve filtrare per il grado verificato della sezione, non per l'URL privo di grade.
+  const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+  assert.match(source, /resolveProgettaCatalogGrade\(grade, sectionContext\?\.grade \?\? null\)/)
+  assert.match(source, /filterProgettaItemsByGrade\(items, catalogGrade\)/)
+  assert.match(source, /filterProgettaItemsBySectionContext\(gradeItems, compactSectionLabel\)/)
+  assert.match(source, /planningReturnParams\.set\('grade', catalogGrade\)/)
+})
+
+test('UX-R1B-REVIEW: il receipt browser distingue il commit servito dalla checkout locale', () => {
+  const source = readFileSync(new URL('../../../e2e/experience/progetta-entry-context.spec.mjs', import.meta.url), 'utf8')
+  assert.match(source, /checkoutCommit:/)
+  assert.match(source, /testedCommit: verifiedLocalBuild \? checkoutCommit : null/)
+  assert.match(source, /servedCommitEvidence: verifiedLocalBuild/)
+  assert.doesNotMatch(source, /testedCommit: execFileSync\(/)
 })
