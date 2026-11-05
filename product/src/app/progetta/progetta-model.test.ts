@@ -450,10 +450,28 @@ test('UX-R1B-REWORK: il catalogo ricava il grado dalla classe autorizzata quando
   assert.equal(resolveProgettaCatalogGrade('terza', null), 'terza')
   assert.equal(resolveProgettaCatalogGrade('prima', 'PRIMA'), 'prima')
 
+  const prima = { ...item('prima', 'UDA'), asset: { ...item('prima', 'UDA').asset, sourceMetadata: { grade: 'prima' }, classLabels: ['1A'] } }
+  const seconda = { ...item('seconda', 'UDA'), asset: { ...item('seconda', 'UDA').asset, sourceMetadata: { grade: 'seconda' }, classLabels: ['2C'] } }
+  const common = item('common', 'PROGRAMMING')
+  const catalog = [prima, seconda, common]
+  const effectiveGrade = resolveProgettaCatalogGrade(null, 'SECONDA')
+  const gradeFiltered = filterProgettaItemsByGrade(catalog, effectiveGrade)
+  assert.deepEqual(gradeFiltered.map(({ asset }) => asset.id), ['seconda', 'common'])
+  const sectionFiltered = filterProgettaItemsBySectionContext(gradeFiltered, '2C')
+  assert.deepEqual(sectionFiltered.map(({ asset }) => asset.id), ['seconda', 'common'])
+
   // La pagina deve filtrare per il grado verificato della sezione, non per l'URL privo di grade.
   const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
   assert.match(source, /resolveProgettaCatalogGrade\(grade, sectionContext\?\.grade \?\? null\)/)
   assert.match(source, /filterProgettaItemsByGrade\(items, catalogGrade\)/)
   assert.match(source, /filterProgettaItemsBySectionContext\(gradeItems, compactSectionLabel\)/)
   assert.match(source, /planningReturnParams\.set\('grade', catalogGrade\)/)
+})
+
+test('UX-R1B-REVIEW: il receipt browser distingue il commit servito dalla checkout locale', () => {
+  const source = readFileSync(new URL('../../../e2e/experience/progetta-entry-context.spec.mjs', import.meta.url), 'utf8')
+  assert.match(source, /checkoutCommit:/)
+  assert.match(source, /testedCommit: verifiedLocalBuild \? checkoutCommit : null/)
+  assert.match(source, /servedCommitEvidence: verifiedLocalBuild/)
+  assert.doesNotMatch(source, /testedCommit: execFileSync\(/)
 })
