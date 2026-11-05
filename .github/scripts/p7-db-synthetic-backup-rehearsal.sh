@@ -21,6 +21,8 @@ test "$PGPASSWORD" = "postgres"
 TMP_DIR="$(mktemp -d "$RUNNER_TEMP/p7-db-synthetic.XXXXXXXX")"
 R2_UPLOADED=0
 R2_KEY=""
+# cleanup: preserve the exit status, remove the private temporary directory,
+# and attempt to delete any synthetic R2 object still present after failure.
 cleanup() {
   status="$?"
   trap - EXIT
@@ -66,11 +68,12 @@ if grep -a -q 'P7_SYNTHETIC_DATABASE_ROW_ALPHA' "$TMP_DIR/synthetic.dump.age"; t
 fi
 
 if [[ "$MODE" == "r2" ]]; then
-  test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
+  test "$GITHUB_EVENT_NAME" = "push"
   test "$GITHUB_REF" = "refs/heads/develop"
   [[ "$GITHUB_RUN_ID" =~ ^[0-9]+$ ]]
   [[ "$R2_ENDPOINT" == https://* ]]
   test -n "$R2_BACKUP_BUCKET"
+  test "$R2_BACKUP_BUCKET" = "docente-os-backup-eu"
   test -n "$AWS_ACCESS_KEY_ID"
   test -n "$AWS_SECRET_ACCESS_KEY"
 
