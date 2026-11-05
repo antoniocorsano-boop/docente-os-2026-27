@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { ProgettaEmptyState } from './progetta-empty-state'
 import type { KnowledgeAsset, KnowledgeDocument } from '@/core/domain/knowledge'
 import type { TextbookAdoptionWithBook } from '@/core/domain/textbook-adoption'
 import type { TextbookCurricoloAlignmentV1 } from '@/core/domain/cml-textbook-applicability'
@@ -410,4 +413,27 @@ test('UX-R1B-HR: schede compatte e gerarchia di navigazione Altro â†’ Progetta â
   assert.match(classSource, /<AppShell\s+active="classes"/)
   assert.match(styleSource, /\.progettaEntryTrail/)
   assert.match(styleSource, /\.progettaEntryClass:focus-visible/)
+})
+
+
+test('UX-R1B-EMPTY: fixture isolata senza classi rende azione utile senza dati reali', () => {
+  // Test server-side reale del componente con props sintetiche: nessuna
+  // classe viene creata, cancellata o modificata nel workspace autenticato.
+  const configuredYear = renderToStaticMarkup(createElement(ProgettaEmptyState, { hasAcademicYear: true }))
+  assert.match(configuredYear, /Nessuna classe disponibile/)
+  assert.match(configuredYear, /Definisci le classi nell/)
+  assert.match(configuredYear, /href="\/impostazioni#classi"/)
+  assert.match(configuredYear, /Configura le classi/)
+  assert.doesNotMatch(configuredYear, /href="\/classi\//)
+  assert.doesNotMatch(configuredYear, /progettaEntryClass"/)
+
+  const missingYear = renderToStaticMarkup(createElement(ProgettaEmptyState, { hasAcademicYear: false }))
+  assert.match(missingYear, /Nessuna classe disponibile/)
+  assert.match(missingYear, /href="\/workspace"/)
+  assert.doesNotMatch(missingYear, /href="\/impostazioni#classi"/)
+
+  const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+  assert.match(source, /availableSections\.length\s*\?/)
+  assert.match(source, /<ProgettaEmptyState hasAcademicYear={Boolean\(context\.academicYear\)}\s*\/>/)
+  assert.match(source, /href="\/progetta\?view=catalog"/)
 })
