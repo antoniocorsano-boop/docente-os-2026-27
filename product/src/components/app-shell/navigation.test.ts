@@ -152,5 +152,6 @@ test('DOS-UX-R1B-HR: Altro è la posizione contenitore, non la pagina corrente d
   const source = readFileSync(new URL('./app-shell.tsx', import.meta.url), 'utf8')
   assert.match(source, /item\.key === active \? 'page' : item\.key === 'more' && moreActive \? 'location'/)
   assert.match(source, /item\.key === mobileActive \? 'page' : item\.key === 'more' && mobileMoreActive \? 'location'/)
-  assert.match(source, /aria-current={itemCurrent}/)
+  assert.ok(source.includes("className={cn('dosNavItem', itemActive && 'active')} aria-current={itemCurrent}"), 'La navigazione desktop deve esporre aria-current')
+  assert.ok(source.includes("className={cn(itemActive && 'active')} aria-current={itemCurrent}"), 'La navigazione mobile deve esporre aria-current')
 })
