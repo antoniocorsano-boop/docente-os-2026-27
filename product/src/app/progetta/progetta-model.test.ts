@@ -18,6 +18,7 @@ import {
   partitionProgettaFocusBySection,
   planningCoverage,
   resolveCanonicalProgettaFocus,
+  resolveProgettaCatalogGrade,
   resolveProgettaRouteMode,
   resolveProgettaRequestIssue,
   shouldLoadProgettaItems,
@@ -428,12 +429,31 @@ test('UX-R1B-EMPTY: fixture isolata senza classi rende azione utile senza dati r
   assert.doesNotMatch(configuredYear, /progettaEntryClass"/)
 
   const missingYear = renderToStaticMarkup(createElement(ProgettaEmptyState, { hasAcademicYear: false }))
-  assert.match(missingYear, /Nessuna classe disponibile/)
-  assert.match(missingYear, /href="\/workspace"/)
+  assert.match(missingYear, /Anno scolastico non disponibile/)
+  assert.match(missingYear, /href="\/planner"/)
+  assert.match(missingYear, /Torna a Oggi/)
+  assert.doesNotMatch(missingYear, /Configura le classi/)
+  assert.doesNotMatch(missingYear, /href="\/workspace"/)
   assert.doesNotMatch(missingYear, /href="\/impostazioni#classi"/)
 
   const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
   assert.match(source, /availableSections\.length\s*\?/)
   assert.match(source, /<ProgettaEmptyState hasAcademicYear={Boolean\(context\.academicYear\)}\s*\/>/)
   assert.match(source, /href="\/progetta\?view=catalog"/)
+})
+
+test('UX-R1B-REWORK: il catalogo ricava il grado dalla classe autorizzata quando non è esplicito', () => {
+  assert.equal(resolveProgettaCatalogGrade(null, null), null)
+  assert.equal(resolveProgettaCatalogGrade(null, 'PRIMA'), 'prima')
+  assert.equal(resolveProgettaCatalogGrade(null, 'SECONDA'), 'seconda')
+  assert.equal(resolveProgettaCatalogGrade(null, 'TERZA'), 'terza')
+  assert.equal(resolveProgettaCatalogGrade('terza', null), 'terza')
+  assert.equal(resolveProgettaCatalogGrade('prima', 'PRIMA'), 'prima')
+
+  // La pagina deve filtrare per il grado verificato della sezione, non per l'URL privo di grade.
+  const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
+  assert.match(source, /resolveProgettaCatalogGrade\(grade, sectionContext\?\.grade \?\? null\)/)
+  assert.match(source, /filterProgettaItemsByGrade\(items, catalogGrade\)/)
+  assert.match(source, /filterProgettaItemsBySectionContext\(gradeItems, compactSectionLabel\)/)
+  assert.match(source, /planningReturnParams\.set\('grade', catalogGrade\)/)
 })
