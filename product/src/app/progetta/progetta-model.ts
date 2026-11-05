@@ -90,6 +90,23 @@ export function filterProgettaItemsBySectionContext(items: ProgettaItem[], compa
 
 export type ProgettaRouteMode = 'start' | 'section' | 'catalog' | 'focus'
 
+/**
+ * A catalog opened from a verified class must retain that class's grade.
+ * The caller only passes sectionGrade after checking the authenticated
+ * annual-plan registry. An explicitly requested matching grade remains authoritative.
+ */
+export function resolveProgettaCatalogGrade(
+  explicitGrade: ProgettaGrade | null,
+  sectionGrade: 'PRIMA' | 'SECONDA' | 'TERZA' | null,
+): ProgettaGrade | null {
+  if (explicitGrade) return explicitGrade
+  if (sectionGrade === 'PRIMA') return 'prima'
+  if (sectionGrade === 'SECONDA') return 'seconda'
+  if (sectionGrade === 'TERZA') return 'terza'
+  return null
+}
+
+
 /** The canonical block has priority; the class registry owns section identity. */
 export function resolveProgettaRouteMode(input: {
   grade: ProgettaGrade | null
