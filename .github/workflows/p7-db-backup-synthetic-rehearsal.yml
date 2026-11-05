@@ -7,16 +7,14 @@ on:
       - '.github/scripts/p7-db-synthetic-backup-rehearsal.sh'
       - '.github/workflows/p7-db-backup-synthetic-rehearsal.yml'
       - 'docs/product/P7_DB_BACKUP_SYNTHETIC_REHEARSAL.md'
-  workflow_dispatch:
-    inputs:
-      transfer:
-        description: 'Synthetic-only rehearsal: local, or encrypted transfer to R2'
-        required: true
-        type: choice
-        default: local
-        options:
-          - local
-          - r2
+  # The default branch is main. GitHub will not offer workflow_dispatch
+  # for a workflow added only to develop. Run the R2 rehearsal after
+  # an authorized merge to develop, never from a public pull_request.
+  push:
+    branches: [develop]
+    paths:
+      - '.github/scripts/p7-db-synthetic-backup-rehearsal.sh'
+      - '.github/workflows/p7-db-backup-synthetic-rehearsal.yml'
 
 permissions:
   contents: read
@@ -63,8 +61,8 @@ jobs:
 
   r2-rehearsal:
     name: synthetic-only / R2 ciphertext / restore
-    # Secrets are made available ONLY on explicit manual dispatch from develop.
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop' && inputs.transfer == 'r2'
+    # R2 secrets are available ONLY after an authorized push to develop.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     needs: local-rehearsal
     runs-on: ubuntu-24.04
     timeout-minutes: 20
