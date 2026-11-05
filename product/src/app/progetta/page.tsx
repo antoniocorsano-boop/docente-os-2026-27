@@ -24,6 +24,7 @@ import {
   shouldLoadProgettaItems,
   type ProgettaItem,
 } from './progetta-model'
+import { ProgettaEmptyState } from './progetta-empty-state'
 import './progetta.css'
 import './progetta-coverage.css'
 import './progetta-focus.css'
@@ -139,11 +140,7 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
             {sectionContext ? <Link className="progettaEntryChooseAnother" href="/progetta">Scegli un&apos;altra classe</Link> : null}
           </section>
         ) : (
-          <section className="progettaEntryEmpty">
-            <h2>Nessuna classe disponibile</h2>
-            <p>Definisci le classi nell&apos;anno scolastico corrente prima di avviare la progettazione contestuale.</p>
-            <Link href={context.academicYear ? '/impostazioni#classi' : '/workspace'}>Configura le classi</Link>
-          </section>
+          <ProgettaEmptyState hasAcademicYear={Boolean(context.academicYear)} />
         )}
 
         <section className="progettaEntryExplore" aria-labelledby="progetta-explore-title">
