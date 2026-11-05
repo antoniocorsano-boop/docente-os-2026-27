@@ -13,7 +13,7 @@ Non è richiesto Termux né un computer dell'utente. L'esecuzione non modifica D
 ## Componenti
 
 - `.github/scripts/p7-db-synthetic-backup-rehearsal.sh`: funzione **deliberatamente limitata** ai dati sintetici; impone `PGHOST=127.0.0.1`, `PGPORT=5432`, `PGUSER=postgres`, `PGDATABASE=postgres`, `PGPASSWORD=postgres` e `P7_SYNTHETIC_ONLY=yes`. Non accetta stringhe di connessione Supabase.
-- `.github/workflows/p7-db-backup-synthetic-rehearsal.yml`: prova locale su ogni PR che modifica il percorso; prova R2 **solo su attivazione manuale dal ramo develop** dopo integrazione e review. La prova sulle PR non riceve credenziali R2.
+- `.github/workflows/p7-db-backup-synthetic-rehearsal.yml`: prova locale su ogni PR che modifica il percorso; prova R2 **solo su un evento `push` verso `develop`** dopo integrazione autorizzata e revisione. La prova sulle PR non riceve credenziali R2.
 - Un archivio `pg_dump -Fc` contenente **solo due record fittizi** creati in PostgreSQL temporaneo. Nessuna anagrafica, sessione didattica reale o elemento Storage.
 - `age`: chiave privata temporanea generata nello spazio del runner, distrutta a fine lavoro. Non è e non deve diventare la chiave di recupero del futuro backup reale.
 
@@ -31,7 +31,9 @@ Non è richiesto Termux né un computer dell'utente. L'esecuzione non modifica D
 
 La PR attiva automaticamente **`local-rehearsal`**: deve terminare con `P7_DB_SYNTHETIC_BACKUP_RESTORE_PASS mode=local`.
 
-Dopo revisione e integrazione del flusso in `develop`, da GitHub **Actions → P7 Database Backup Synthetic Rehearsal → Run workflow → transfer=r2**, si può eseguire la prova R2. In questo caso devono concludersi con esito positivo sia `local-rehearsal` sia `r2-rehearsal`, con la ricevuta `mode=r2`.
+**GitHub usa `main` come ramo predefinito**, mentre Docente OS mantiene questo flusso di lavoro su `develop`. Gli avvii manuali `workflow_dispatch` non vengono resi disponibili se il flusso non è presente sul ramo predefinito. Pertanto la prova R2 è prevista **automaticamente al primo `push` autorizzato su `develop` che introduce lo script o il flusso**; non parte dalle richieste di modifica. Devono concludersi con esito positivo sia `local-rehearsal` sia `r2-rehearsal`, con ricevuta `mode=r2` emessa solo dopo la pulizia dell'oggetto sintetico.
+
+**Attenzione prima di integrare:** il servizio Render Beta segue automaticamente `develop` e il suo database è ancora alla migration `0103`. Anche un'integrazione limitata ai file di prova può avviare un tentativo di distribuzione applicativa, che il controllo sullo schema `0104` rifiuterebbe. L'integrazione in `develop` resta soggetta a coordinamento e approvazione esplicita; questa PR non la effettua.
 
 La prova R2 riusa le credenziali già configurate per la destinazione privata `docente-os-backup-eu`, ma utilizza soltanto dati sintetici. Se le credenziali non sono disponibili, **fallisce chiusa**, senza crearne o esporne di nuove.
 
