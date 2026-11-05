@@ -1,0 +1,107 @@
+name: P7 Database Backup Synthetic Rehearsal
+
+on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - '.github/scripts/p7-db-synthetic-backup-rehearsal.sh'
+      - '.github/workflows/p7-db-backup-synthetic-rehearsal.yml'
+      - 'docs/product/P7_DB_BACKUP_SYNTHETIC_REHEARSAL.md'
+  workflow_dispatch:
+    inputs:
+      transfer:
+        description: 'Synthetic-only rehearsal: local, or encrypted transfer to R2'
+        required: true
+        type: choice
+        default: local
+        options:
+          - local
+          - r2
+
+permissions:
+  contents: read
+
+# No real Supabase credentials, connection string, or customer data are accepted.
+# R2 credentials are NEVER exposed to the pull_request job.
+jobs:
+  local-rehearsal:
+    name: synthetic-only / encrypt / restore
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      P7_SYNTHETIC_ONLY: 'yes'
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install local database and encryption clients
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client age
+      - name: Rehearse synthetic encrypted backup and independent database restore
+        run: bash .github/scripts/p7-db-synthetic-backup-rehearsal.sh local
+
+  r2-rehearsal:
+    name: synthetic-only / R2 ciphertext / restore
+    # Secrets are made available ONLY on explicit manual dispatch from develop.
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop' && inputs.transfer == 'r2'
+    needs: local-rehearsal
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      P7_SYNTHETIC_ONLY: 'yes'
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      R2_BACKUP_BUCKET: ${{ vars.R2_BACKUP_BUCKET }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install local database and encryption clients
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client age
+      - name: Verify existing R2 credentials and destination
+        run: |
+          test -n "$AWS_ACCESS_KEY_ID"
+          test -n "$AWS_SECRET_ACCESS_KEY"
+          test -n "$R2_ENDPOINT"
+          test -n "$R2_BACKUP_BUCKET"
+      - name: Rehearse encrypted R2 upload download and isolated DB restore
+        run: bash .github/scripts/p7-db-synthetic-backup-rehearsal.sh r2
