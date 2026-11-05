@@ -55,8 +55,9 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client-16 age
-          pg_dump --version | grep -E 'PostgreSQL\) 16\\.'
-          pg_restore --version | grep -E 'PostgreSQL\) 16\\.'
+          /usr/lib/postgresql/16/bin/pg_dump --version | grep -q ' 16.'
+          /usr/lib/postgresql/16/bin/pg_restore --version | grep -q ' 16.'
+          echo '/usr/lib/postgresql/16/bin' >> "$GITHUB_PATH"
       - name: Rehearse synthetic encrypted backup and independent database restore
         run: bash .github/scripts/p7-db-synthetic-backup-rehearsal.sh local
 
@@ -99,8 +100,9 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client-16 age
-          pg_dump --version | grep -E 'PostgreSQL\) 16\\.'
-          pg_restore --version | grep -E 'PostgreSQL\) 16\\.'
+          /usr/lib/postgresql/16/bin/pg_dump --version | grep -q ' 16.'
+          /usr/lib/postgresql/16/bin/pg_restore --version | grep -q ' 16.'
+          echo '/usr/lib/postgresql/16/bin' >> "$GITHUB_PATH"
       - name: Verify existing R2 credentials and destination
         run: |
           test -n "$AWS_ACCESS_KEY_ID"
