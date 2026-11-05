@@ -71,6 +71,7 @@ if [[ "$MODE" == "r2" ]]; then
   test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
   test "$GITHUB_REF" = "refs/heads/main"
   [[ "$GITHUB_RUN_ID" =~ ^[0-9]+$ ]]
+  [[ "$GITHUB_RUN_ATTEMPT" =~ ^[0-9]+$ ]]
   [[ "$R2_ENDPOINT" == https://* ]]
   test -n "$R2_BACKUP_BUCKET"
   test "$R2_BACKUP_BUCKET" = "docente-os-backup-eu"
@@ -78,7 +79,7 @@ if [[ "$MODE" == "r2" ]]; then
   test -n "$AWS_SECRET_ACCESS_KEY"
 
   # Never touch the locked production/ prefix or upload unencrypted files.
-  R2_KEY="rehearsal/p7-db-synthetic-main/$GITHUB_RUN_ID/snapshot.dump.age"
+  R2_KEY="rehearsal/p7-db-synthetic-main/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/snapshot.dump.age"
   R2_UPLOADED=1
   aws s3 cp "$TMP_DIR/synthetic.dump.age" "s3://$R2_BACKUP_BUCKET/$R2_KEY" \
     --endpoint-url "$R2_ENDPOINT" --only-show-errors
@@ -120,6 +121,18 @@ if [[ "$R2_UPLOADED" == "1" ]]; then
   if ! aws s3 rm "s3://$R2_BACKUP_BUCKET/$R2_KEY" \
     --endpoint-url "$R2_ENDPOINT" --only-show-errors >/dev/null; then
     echo "P7_REHEARSAL_ERROR: synthetic R2 cleanup failed before PASS receipt" >&2
+    exit 1
+  fi
+  # aws s3 rm can report success when the key was already missing.
+  # A 404/NoSuchKey is the only accepted absence evidence; 403, 5xx,
+  # networking problems and other errors must never yield a PASS.
+  if aws s3api head-object --bucket "$R2_BACKUP_BUCKET" --key "$R2_KEY" \
+    --endpoint-url "$R2_ENDPOINT" >"$TMP_DIR/r2-post-delete.out" 2>"$TMP_DIR/r2-post-delete.err"; then
+    echo "P7_REHEARSAL_ERROR: synthetic R2 object still exists after deletion" >&2
+    exit 1
+  fi
+  if ! grep -Eq '\(404\)|\(NoSuchKey\)|\(NotFound\)' "$TMP_DIR/r2-post-delete.err"; then
+    echo "P7_REHEARSAL_ERROR: synthetic R2 absence not proven (non-404 error)" >&2
     exit 1
   fi
   R2_UPLOADED=0
