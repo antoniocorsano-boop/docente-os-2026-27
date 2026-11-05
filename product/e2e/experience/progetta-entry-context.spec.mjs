@@ -123,7 +123,14 @@ test('UX-R1B: collegamenti invalidi recuperano la scelta classe senza aprire UDA
   await expect(page.locator('.progettaEntryHeader h1')).toHaveText('Scegli una classe')
   await expect(page.locator('.progettaEntryNotice[role="status"]')).toContainText('percorso richiesto non è disponibile')
   await expect(page.locator('.progettaGroups')).toHaveCount(0)
-  await screenshot(page, testInfo, 'invalid-focus')
+  await screenshot(page, testInfo, 'invalid-grade')
+
+  await page.goto('/progetta?grade=prima&block=B01&uda=1-99')
+  await expect(page).toHaveURL(/\/progetta\?notice=path-not-available/)
+  await expect(page.locator('.progettaEntryHeader h1')).toHaveText('Scegli una classe')
+  await expect(page.locator('.progettaEntryNotice[role="status"]')).toContainText('percorso richiesto non è disponibile')
+  await expect(page.locator('.progettaGroups')).toHaveCount(0)
+  await screenshot(page, testInfo, 'invalid-canonical-focus')
 
   await page.goto('/progetta?section=invalid-section-id')
   await expect(page).toHaveURL(/\/progetta\?notice=class-not-available/)
@@ -132,7 +139,7 @@ test('UX-R1B: collegamenti invalidi recuperano la scelta classe senza aprire UDA
   await screenshot(page, testInfo, 'invalid-section')
 
   await writeEvidence(testInfo, 'invalid-context', {
-    cases: ['invalid-grade -> path-not-available', 'foreign-or-unknown-section -> class-not-available'],
+    cases: ['invalid-grade -> path-not-available', 'invalid-canonical-focus -> path-not-available', 'foreign-or-unknown-section -> class-not-available'],
     state: 'safe-recovery',
   })
 })
@@ -147,12 +154,21 @@ async function screenshot(page, testInfo, name) {
 }
 
 async function writeEvidence(testInfo, name, data) {
+  const targetUrl = new URL(process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000')
+  const isLoopbackTarget = ['127.0.0.1', 'localhost', '[::1]', '::1'].includes(targetUrl.hostname)
+  const verifiedLocalBuild = process.env.EXPERIENCE_TARGET === 'local' && isLoopbackTarget
+  const checkoutCommit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
   const dir = path.join(outputRoot, 'progetta-entry')
   await fs.mkdir(dir, { recursive: true })
   const record = {
     schemaVersion: 1,
     project: testInfo.project.name,
-    testedCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+    // E2E_BASE_URL may serve a remote commit different from the test checkout.
+    // Only the governed HVA application job confirms it built a local server
+    // from this checkout. For other targets, report the served commit as unknown.
+    checkoutCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+    testedCommit: verifiedLocalBuild ? checkoutCommit : null,
+    servedCommitEvidence: verifiedLocalBuild ? 'HVA_LOCAL_BUILD_FROM_CHECKOUT' : 'UNVERIFIED_REMOTE_OR_EXTERNAL_SERVER',
     capturedAt: new Date().toISOString(),
     ...data,
     noClassesScenario: 'NOT_TESTED_REQUIRES_ISOLATED_EMPTY_WORKSPACE',
