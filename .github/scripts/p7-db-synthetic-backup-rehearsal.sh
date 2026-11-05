@@ -106,8 +106,20 @@ pg_restore --exit-on-error --clean --if-exists --no-owner --no-acl \
   -d "$RESTORED_DB" "$TMP_DIR/verified.dump"
 
 RESTORED_MARKERS="$(psql -X -At -v ON_ERROR_STOP=1 -d "$RESTORED_DB" \
-  -c "select string_agg(marker, ',' order by row_id) from public.p7_backup_fixture")"
-test "$RESTORED_MARKERS" = "P7_SYNTHETIC_DATABASE_ROW_ALPHA,P7_SYNTHETIC_DATABASE_ROW_BETA"
+  -c "select string_agg(row_id || ':' || marker, ',' order by row_id) from public.p7_backup_fixture")"
+test "$RESTORED_MARKERS" = "1:P7_SYNTHETIC_DATABASE_ROW_ALPHA,2:P7_SYNTHETIC_DATABASE_ROW_BETA"
+
+# Cleanup is part of the acceptance contract. Never publish a PASS receipt
+# until the synthetic ciphertext was successfully deleted from off-site R2.
+# Keep the EXIT trap armed for all failure paths.
+if [[ "$R2_UPLOADED" == "1" ]]; then
+  if ! aws s3 rm "s3://$R2_BACKUP_BUCKET/$R2_KEY" \
+    --endpoint-url "$R2_ENDPOINT" --only-show-errors >/dev/null; then
+    echo "P7_REHEARSAL_ERROR: synthetic R2 cleanup failed before PASS receipt" >&2
+    exit 1
+  fi
+  R2_UPLOADED=0
+fi
 
 CIPHER_SHA256="$(sha256sum "$TMP_DIR/verified.age" | cut -d ' ' -f1)"
 echo "P7_DB_SYNTHETIC_BACKUP_RESTORE_PASS mode=$MODE cipher_sha256=$CIPHER_SHA256"
@@ -120,8 +132,9 @@ if [[ -n "$GITHUB_STEP_SUMMARY" ]]; then
     echo "- Source: **disposable local PostgreSQL with 2 synthetic rows**"
     echo "- Encryption: **age, ephemeral recipient generated inside the job**"
     echo "- Transport: **$MODE**"
-    echo "- Restore: **fresh local PostgreSQL database, exact markers verified**"
+    echo "- Restore: **fresh local PostgreSQL database, exact row IDs and markers verified**"
     echo "- Wrong-key decryption: **rejected**"
+    echo "- R2 synthetic cleanup: **$([[ \"$MODE\" == \"r2\" ]] && echo VERIFIED || echo NOT_APPLICABLE)**"
     echo "- Ciphertext SHA-256: \`$CIPHER_SHA256\`"
     echo "- Real Supabase access / user records: **NONE**"
     echo "- Authorization for live database backup: **NOT GRANTED**"
