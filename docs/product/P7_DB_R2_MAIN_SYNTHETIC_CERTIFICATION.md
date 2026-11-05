@@ -14,7 +14,7 @@ La [PR #793](https://github.com/antoniocorsano-boop/docente-os-2026-27/pull/793)
 - Procedura: `.github/scripts/p7-db-r2-main-synthetic-rehearsal.sh`.
 - Un database PostgreSQL 16.6 *temporaneo*, composto da due righe sintetiche `row_id:marker`.
 - Esportazione con `pg_dump -Fc` client PostgreSQL 16, cifratura `age` con identità effimera, confronto byte e SHA-256 del **solo cifrato**, decifratura e ripristino in un secondo database temporaneo.
-- In modalità R2: caricamento del **solo file cifrato** nel bucket privato `docente-os-backup-eu`, prefisso `rehearsal/p7-db-synthetic-main/<run_id>/`; scaricamento, confronto integrità, ripristino, verifica identificativi e contenuti, eliminazione R2 **prima** della ricevuta `PASS`.
+- In modalità R2: caricamento del **solo file cifrato** nel bucket privato `docente-os-backup-eu`, prefisso `rehearsal/p7-db-synthetic-main/<run_id>-<run_attempt>/`; scaricamento, confronto integrità, ripristino, verifica identificativi e contenuti, eliminazione R2 e successiva verifica **`head-object` con risposta 404** prima della ricevuta `PASS`.
 
 ## Confini di sicurezza e attivazione
 
@@ -27,7 +27,7 @@ La [PR #793](https://github.com/antoniocorsano-boop/docente-os-2026-27/pull/793)
 
 Il processo R2 rifiuta esecuzioni diverse da `workflow_dispatch` su `refs/heads/main`; impone `PGHOST=127.0.0.1`, `PGPORT=5432`, `PGUSER=postgres`, password locale fittizia, `P7_SYNTHETIC_ONLY=yes`, bucket atteso e prefisso `rehearsal/`. Nessuna stringa di connessione del database Supabase reale è prevista, ammessa o richiesta.
 
-La cancellazione R2 è parte del contratto di accettazione: **non stampare PASS finché la cancellazione non è riuscita**. Un errore attiva un ulteriore tentativo durante la pulizia finale e impedisce il PASS.
+La cancellazione R2 è parte del contratto di accettazione: **non stampare PASS finché la cancellazione non è riuscita e l'assenza dell'oggetto non è stata verificata**. Solo una risposta di oggetto assente (404/NoSuchKey/NotFound) è accettata; errori 403, 5xx o di connessione non costituiscono prova di cancellazione. Un errore attiva un ulteriore tentativo durante la pulizia finale e impedisce il PASS. Ogni tentativo di GitHub Actions usa un prefisso distinto, per non interferire con eventuali riesecuzioni.
 
 - Nessun allegato GitHub con dump o chiave privata.
 - Nessuna applicazione della migrazione `0104`.
