@@ -19,6 +19,7 @@ import {
   groupProgettaItems,
   partitionProgettaFocusBySection,
   resolveCanonicalProgettaFocus,
+  resolveProgettaCatalogGrade,
   resolveProgettaRouteMode,
   resolveProgettaRequestIssue,
   shouldLoadProgettaItems,
@@ -169,11 +170,12 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
     validatedAlignments: [],
   })
 
-  const gradeItems = filterProgettaItemsByGrade(items, grade)
+  const catalogGrade = resolveProgettaCatalogGrade(grade, sectionContext?.grade ?? null)
+  const gradeItems = filterProgettaItemsByGrade(items, catalogGrade)
   const scopedItems = filterProgettaItemsBySectionContext(gradeItems, compactSectionLabel)
-  const gradeLabel = grade ? `Classe ${grade}` : null
+  const gradeLabel = catalogGrade ? `Classe ${catalogGrade}` : null
   const planningReturnParams = new URLSearchParams()
-  if (grade) planningReturnParams.set('grade', grade)
+  if (catalogGrade) planningReturnParams.set('grade', catalogGrade)
   if (routeMode === 'catalog') planningReturnParams.set('view', 'catalog')
   if (sectionContext) planningReturnParams.set('section', sectionContext.id)
   const planningReturnQuery = planningReturnParams.toString()
@@ -312,12 +314,12 @@ export default async function ProgettaPage({ searchParams }: { searchParams: Pro
         <div><p className="contextLine">{context.workspace.name} · {context.academicYear?.label ?? 'Anno scolastico'}</p><h1>Progetta</h1><p className="dayLine">{gradeLabel ? `Stai lavorando sul nucleo didattico della ${gradeLabel.toLowerCase()}.` : 'Parti dalle fonti già raccolte e trasformale in programmazione, UDA e materiali da usare in classe.'}</p></div>
         <div className="progettaHeaderActions">
           {sectionContext ? <Link className="secondaryButton" href={`/classi/${encodeURIComponent(sectionContext.id)}`}>Apri classe</Link> : null}
-          {grade ? <Link className="secondaryButton" href="/progetta">Tutte le classi</Link> : null}
+          {catalogGrade ? <Link className="secondaryButton" href="/progetta">Tutte le classi</Link> : null}
           <Link className="secondaryButton" href="/knowledge">Apri Conoscenza</Link>
         </div>
       </section>
 
-      {grade ? <section className="progettaContextBanner"><div className="progettaContextIdentity"><span>NUCLEO COMUNE</span><strong>{gradeLabel}</strong></div><p>Il nucleo didattico appartiene al grado. {displaySectionLabel ? `La ${displaySectionLabel} è il contesto corrente per eventuali adattamenti, che restano separati e non duplicano l’UDA comune.` : 'Gli adattamenti per una singola sezione restano separati dal nucleo condiviso.'}</p></section> : null}
+      {catalogGrade ? <section className="progettaContextBanner"><div className="progettaContextIdentity"><span>NUCLEO COMUNE</span><strong>{gradeLabel}</strong></div><p>Il nucleo didattico appartiene al grado. {displaySectionLabel ? `La ${displaySectionLabel} è il contesto corrente per eventuali adattamenti, che restano separati e non duplicano l’UDA comune.` : 'Gli adattamenti per una singola sezione restano separati dal nucleo condiviso.'}</p></section> : null}
 
       <section className="progettaWorkflow" aria-label="Percorso di progettazione">
         <div><span>01</span><strong>Fonti</strong><small>Documenti e riferimenti originali</small></div><i>→</i><div><span>02</span><strong>Quadro annuale</strong><small>Obiettivi, tempi e copertura</small></div><i>→</i><div><span>03</span><strong>UDA</strong><small>Percorsi ed evidenze</small></div><i>→</i><div><span>04</span><strong>Materiali</strong><small>Attività, rubriche e verifiche</small></div>
