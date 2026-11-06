@@ -21,7 +21,10 @@ done
 test "$PGHOST" = "127.0.0.1"
 test "$PGPORT" = "5432"
 test "$PGUSER" = "postgres"
-test "$PGPASSWORD" = "synthetic-only-password"
+if printenv PGPASSWORD >/dev/null 2>&1; then
+  echo "P7_PG17_READINESS_BLOCKED: unexpected database password" >&2
+  exit 1
+fi
 test "$PGDATABASE" = "postgres"
 
 temp_dir="$(mktemp -d "$RUNNER_TEMP/p7-pg17-readiness.XXXXXXXX")"
@@ -36,7 +39,7 @@ trap cleanup EXIT
 # PostgreSQL 17 client container talks only to the ephemeral CI service.
 pg17() {
   docker run -i --rm --network host \
-    -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD -e PGDATABASE \
+    -e PGHOST -e PGPORT -e PGUSER -e PGDATABASE \
     postgres:17.6 "$@"
 }
 
