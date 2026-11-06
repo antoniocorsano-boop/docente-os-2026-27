@@ -56,7 +56,7 @@ I metadati sono stati rilevati tramite interrogazioni **in sola lettura**; non s
 - L'oggetto reale, se mai autorizzato, dovrà essere cifrato **prima** del trasferimento, non pubblicato come allegato di GitHub Actions, non inserito nel repository e non stampato nei log.
 - L'identità privata di recupero `age` deve essere **recuperabile e custodita separatamente** dai runner GitHub e dal bucket R2, con gestione degli accessi e un collaudo di decifratura. Il destinatario pubblico può essere reso disponibile al flusso dopo tale verifica.
 - Non generare una chiave privata soltanto all'interno di un processo temporaneo destinato a distruggerla; questo renderebbe la copia inutilizzabile.
-- Il Bucket Lock verificato sul prefisso `production/` ha una finestra tecnica di 90 giorni. La conformità della conservazione e l'idoneità della destinazione per dati scolastici **richiedono decisione privacy separata**: l'immutabilità non equivale a cifratura o autorizzazione.
+- Nella schermata di **configurazione** Cloudflare R2 condivisa dall'utente il 06/11/2026 sono visibili regola `production-backup-90d`, prefisso `production/`, durata `90` giorni e interruttore abilitato. La schermata mostra il pulsante **«Salva modifiche»**, dunque non prova che la regola sia stata salvata e persista sul bucket. Stato: `LOCK_FORM_VALUES_CONFIRMED / LOCK_SAVED_STATE_UNVERIFIED`. L'immutabilità non equivale a cifratura, scadenza automatica o autorizzazione al trattamento: la conservazione e la destinazione per dati reali richiedono decisione separata.
 
 ## 4. Condizioni di attivazione del backup reale
 
