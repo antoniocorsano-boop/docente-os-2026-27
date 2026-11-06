@@ -22,9 +22,9 @@ Il percorso di cifratura con PostgreSQL 17 e la prova off-site R2 sono già qual
 6. La ricevuta, senza identità privata né testo originale, documenta soltanto: data, funzione del custode, metodo di custodia, esito del recupero **PASS/FAIL**, tipo e versione dello strumento, identificatore non sensibile della prova.
 7. Solo quando il collaudo è PASS il destinatario pubblico può essere configurato nel processo futuro e sottoposto a revisione.
 
-## Attuazione operativa: custode autorizzato, non il docente né GitHub
+## Attuazione operativa: custode responsabile, mai GitHub
 
-**Decisione di progettazione (06/11/2026):** il sistema GitHub può preparare controlli e cifrare verso un destinatario pubblico, ma non può assumere il ruolo di custode della chiave privata. La generazione e la custodia sono operazioni **organizzative**, da svolgere in un ambiente fidato gestito da un soggetto formalmente autorizzato dal titolare dei dati. Non è necessario utilizzare il PC o lo smartphone personale del docente. Non è autorizzata la delega implicita a ChatGPT, runner CI, Render, Supabase o R2.
+**Decisione di progettazione (06/11/2026):** il sistema GitHub può preparare controlli e cifrare verso un destinatario pubblico, ma non può assumere il ruolo di custode della chiave privata. La generazione e la custodia sono operazioni **organizzative**, da svolgere in un ambiente fidato sotto responsabilità del titolare dei dati. Per dati scolastici occorrono le autorizzazioni pertinenti. Per un progetto personale, il titolare può essere anche il custode, con metodo Android senza PC descritto in [P7_RB03_PERSONAL_ANDROID_CUSTODY.md](./P7_RB03_PERSONAL_ANDROID_CUSTODY.md); questa scelta **non** autorizza l'esportazione di dati scolastici. Non è autorizzata la delega implicita a ChatGPT, runner CI, Render, Supabase o R2.
 
 **Sequenza obbligatoria, senza dati scolastici:**
 
@@ -82,7 +82,7 @@ Valutazione finale RB-03: HOLD / PASS
 
 ## Criterio di accettazione RB-03
 
-`RB-03=PASS` soltanto dopo **generazione e custodia indipendente**, prova di recupero condotta dal custode e attestazione della responsabilità. Al momento tutti questi passaggi restano `PENDING`. Non è necessario installare Termux, ma l'applicazione che custodisce la chiave deve essere realmente disponibile e qualificata; un servizio web arbitrario per la generazione della chiave non è un'alternativa sicura.
+`RB-03=PASS` soltanto dopo **generazione e custodia indipendente**, prova di recupero condotta dal custode e attestazione della responsabilità. Al momento tutti questi passaggi restano `PENDING`. Il profilo personale Android prevede Termux come *possibile ambiente locale*, senza richiedere un PC, e non autorizza a generare chiavi da GitHub. Gli altri profili non sono obbligati a usare Termux; lo strumento impiegato dal custode deve essere realmente disponibile e qualificato. Un sito arbitrario per la generazione delle chiavi non è un'alternativa sicura.
 
 ## Divieti
 
