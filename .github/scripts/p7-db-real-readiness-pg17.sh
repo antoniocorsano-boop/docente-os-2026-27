@@ -35,7 +35,7 @@ trap cleanup EXIT
 
 # PostgreSQL 17 client container talks only to the ephemeral CI service.
 pg17() {
-  docker run --rm --network host \
+  docker run -i --rm --network host \
     -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD -e PGDATABASE \
     postgres:17.6 "$@"
 }
