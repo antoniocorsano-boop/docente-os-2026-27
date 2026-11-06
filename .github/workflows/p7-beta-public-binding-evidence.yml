@@ -1,0 +1,41 @@
+name: P7 Beta Public Binding Evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/scripts/p7-beta-public-binding-readonly.py'
+      - '.github/workflows/p7-beta-public-binding-evidence.yml'
+      - 'docs/product/P7_DB_REAL_BACKUP_ACTIVATION_GATE.md'
+
+permissions:
+  contents: read
+
+# Public GET requests only. No GitHub secrets, Render private settings,
+# Supabase database access, R2 access or privileged actions.
+jobs:
+  public-client-probe:
+    name: Public Next.js bundle evidence only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate public evidence probe offline
+        run: |
+          python3 -m py_compile .github/scripts/p7-beta-public-binding-readonly.py
+          python3 .github/scripts/p7-beta-public-binding-readonly.py --self-test
+      - name: Inspect public Beta HTML and static bundles (informational)
+        continue-on-error: true
+        run: python3 .github/scripts/p7-beta-public-binding-readonly.py
+      - name: Preserve strict conclusion boundary
+        if: always()
+        run: |
+          {
+            echo "## Public Beta client binding evidence"
+            echo
+            echo "- Inspect probe log for explicit PASS / INCONCLUSIVE / CONFLICT."
+            echo "- Inspected material: **public HTML and same-origin JavaScript only**"
+            echo "- Private Render configuration and credentials: **NOT READ**"
+            echo "- Actual Render environment binding attested: **NO**"
+            echo "- Real database backup authorization: **NOT GRANTED**"
+          } >> "$GITHUB_STEP_SUMMARY"
