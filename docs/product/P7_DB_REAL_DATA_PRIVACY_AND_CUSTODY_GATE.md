@@ -16,13 +16,13 @@
 |---|---|---|
 | Giurisdizione R2 UE | Impostazioni del contenitore, conferma umana | PASS |
 | Esposizione pubblica | URL di sviluppo disabilitato e assenza di domini | PASS visivo |
-| Regola di blocco degli oggetti | La schermata delle 15:48 del 06/11/2026 mostra `production-backup-90d` **nell'elenco delle regole del bucket**, dopo la schermata di configurazione delle 15:46 con `production/`, `90` giorni e interruttore abilitato. Il prefisso appare troncato in elenco; durata e abilitazione **salvate** non sono visibili nel dettaglio. | `LOCK_RULE_PRESENT_SAVED=PASS_VISUAL / PREFIX_DURATION_ENABLED_PERSISTENCE=UNVERIFIED` |
+| Regola di blocco degli oggetti | Screenshot del 06/11/2026: regola `production-backup-90d` comparsa nell'elenco alle 15:48; riapertura dal menu della regola esistente alle 15:52 con interruttore abilitato, prefisso esatto `production/`, durata `90` giorni. Controllo **visivo della configurazione salvata**; non è stata effettuata una prova di immutabilità su un oggetto reale. | `RB02_R2_BUCKET_LOCK_SAVED_CONFIG=PASS_VISUAL / OBJECT_LOCK_EFFECTIVENESS=NOT_TESTED` |
 | Regola di scadenza | Presenza di una regola di ciclo di vita per lo stesso prefisso e durata approvata | NON VERIFICATA |
 | Permessi del processo R2 | Conferma di autorizzazione limitata al contenitore richiesto e assenza di privilegi amministrativi non necessari | NON VERIFICATI |
 | Condizioni e conservazione dei dati personali | Ricevuta di decisione personale con perimetro e durata | NON APPROVATA |
 | Recupero crittografico indipendente | Custodia e prova da seconda copia, senza Termux né PC personale | RB-03 HOLD |
 
-**Distinzione tecnica:** una regola di blocco impedisce l'eliminazione anticipata, ma non prova la cancellazione automatica alla sua scadenza. Una regola di ciclo di vita separata può definire la cancellazione, nel rispetto del blocco. La regola compare ora nell'elenco dopo la configurazione: presenza e salvataggio visibili, ma per attestare prefisso completo, durata e stato persistiti occorre aprirne il dettaglio in sola lettura. Non confondere la presenza della regola con una verifica della sua efficacia su oggetti reali.
+**Distinzione tecnica:** una regola di blocco impedisce l'eliminazione anticipata, ma non prova la cancellazione automatica alla sua scadenza. Una regola di ciclo di vita separata può definire la cancellazione, nel rispetto del blocco. La regola è stata verificata anche riaprendone il dettaglio dall'elenco: nome, prefisso completo, durata e interruttore sono coerenti con la configurazione prevista. La prova **visiva** non dimostra tuttavia l'effettiva resistenza alla cancellazione/sovrascrittura su oggetti reali, né la presenza di una regola di scadenza automatica.
 
 **Controllo richiesto:** leggere soltanto le sezioni delle impostazioni R2 relative a regole di blocco e ciclo di vita degli oggetti. Non modificare o rimuovere regole, non aprire credenziali, non avviare upload di dati reali.
 
