@@ -24,6 +24,14 @@ Collegato alla [PR #795](https://github.com/antoniocorsano-boop/docente-os-2026-
 - **Limite:** `BETA_SERVING_BUNDLE_REF=UNATTESTED`; il controllo automatico dei bundle pubblici non ha fornito conferme. Inoltre questa verifica non prova la disponibilità di credenziali per l'esportazione né la completezza del recupero.
 - **Protezione:** non acquisire, ripubblicare o copiare password, `SUPABASE_SECRET_KEY`, credenziali PostgreSQL o altre variabili d'ambiente della schermata Render.
 
+## 1-bis. Classificazione prudenziale dei dati e autorizzazione
+
+Una nuova verifica **aggregata e in sola lettura** ha rilevato 4 identità Auth, 4 spazi di lavoro, 6 sessioni didattiche e 9 oggetti Storage. Le quantità **non** distinguono dati sintetici da dati personali reali; di conseguenza il contenuto della Beta deve essere trattato come **potenzialmente personale/scolastico**, finché il titolare o un soggetto autorizzato non attesta il contrario.
+
+Il documento canonico di classificazione e autorizzazione è [P7_DB_REAL_DATA_PRIVACY_AND_CUSTODY_GATE.md](./P7_DB_REAL_DATA_PRIVACY_AND_CUSTODY_GATE.md): `RB-02=HOLD`, nessuna esportazione reale né trasferimento R2 autorizzato.
+
+**Preferenza operativa:** nessuna installazione di Termux o utilizzo del PC personale dell'utente. Il metodo Android/Termux descritto negli altri documenti è **opzionale e non adottato**; se serve una chiave reale, la custodia deve essere effettuata da un responsabile autorizzato in un ambiente affidabile già disponibile, con recupero da una seconda copia dimostrato. `RB-03=HOLD`.
+
 ## 2. Inventario per la recuperabilità
 
 I metadati sono stati rilevati tramite interrogazioni **in sola lettura**; non sono stati esportati record, allegati, utenti né nomi di file.
@@ -67,7 +75,9 @@ I metadati sono stati rilevati tramite interrogazioni **in sola lettura**; non s
 
 Il protocollo [P7_DB_KEY_CUSTODY_RECOVERY_PROTOCOL.md](./P7_DB_KEY_CUSTODY_RECOVERY_PROTOCOL.md) identifica i soggetti autorizzati, le due copie protette, la verifica del ripristino a partire dalla seconda copia, la custodia separata da GitHub/R2 e una ricevuta priva di segreti. Il verificatore [p7-rb03-local-custody-check.sh](../../.github/scripts/p7-rb03-local-custody-check.sh) può certificare **solo** il test crittografico su contenuto fittizio; la CI esegue esclusivamente `--self-test` con chiavi effimere. Nessun job CI può attestare la custodia di un'identità reale o sostituire la responsabilità umana. **RB-03=HOLD** fino a prova della seconda copia custodita e attestazione separata del titolare.
 
-**Profilo personale mobile — metodo predisposto, non eseguito.** Il [protocollo Android senza PC](./P7_RB03_PERSONAL_ANDROID_CUSTODY.md) definisce una custodia della chiave privata `age` indipendente da GitHub e R2: origine privata in Termux, copia locale cifrata con passphrase, replica cifrata su Google Drive o archivio separato, recupero della **seconda copia** e verifica del destinatario e del test sintetico. La passphrase rimane fuori dai repository e separata dall'archivio. L'assunzione di responsabilità del custode per un progetto personale **non cambia** la necessità di verificare se il database contenga dati scolastici in `RB-02`. **RB-03 rimane HOLD: nessuna chiave è stata creata e nessuna prova di recupero personale è stata ricevuta.**
+**Profilo personale mobile — metodo opzionale, non selezionato dall'utente e non eseguito.** Il [protocollo Android senza PC](./P7_RB03_PERSONAL_ANDROID_CUSTODY.md) definisce una custodia della chiave privata `age` indipendente da GitHub e R2: origine privata in Termux, copia locale cifrata con passphrase, replica cifrata su Google Drive o archivio separato, recupero della **seconda copia** e verifica del destinatario e del test sintetico. La passphrase rimane fuori dai repository e separata dall'archivio. L'assunzione di responsabilità del custode per un progetto personale **non cambia** la necessità di verificare se il database contenga dati scolastici in `RB-02`. **RB-03 rimane HOLD: nessuna chiave è stata creata e nessuna prova di recupero personale è stata ricevuta.**
+
+**Blocco sul contenuto:** non dichiarare il database sintetico sulla sola base del nome del progetto; l'inventario contiene identità e oggetti Storage non verificati come fittizi. `RB-02=HOLD` fino a decisione del soggetto competente. Nessuna installazione Termux deve essere chiesta all'utente. 
 
 **Blocco obbligatorio:** non creare un workflow con `workflow_dispatch` che riceva connessioni reali finché tutti i requisiti `RB-01`–`RB-05` non siano attestati, compresi `RB-02`–`RB-05` tuttora aperti; non applicare DDL `0104` né promuovere la Beta se `RB-06`–`RB-08` non sono PASS.
 
