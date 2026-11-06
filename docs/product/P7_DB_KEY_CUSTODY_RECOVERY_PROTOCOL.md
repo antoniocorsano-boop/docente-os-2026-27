@@ -84,6 +84,10 @@ Valutazione finale RB-03: HOLD / PASS
 
 `RB-03=PASS` soltanto dopo **generazione e custodia indipendente**, prova di recupero condotta dal custode e attestazione della responsabilità. Al momento tutti questi passaggi restano `PENDING`. Il profilo personale Android prevede Termux come *possibile ambiente locale*, senza richiedere un PC, e non autorizza a generare chiavi da GitHub. Gli altri profili non sono obbligati a usare Termux; lo strumento impiegato dal custode deve essere realmente disponibile e qualificato. Un sito arbitrario per la generazione delle chiavi non è un'alternativa sicura.
 
+## Variante senza Termux: due smartphone Android (solo candidata)
+
+L'utente ha dichiarato disponibile un secondo Android. Il protocollo [P7_RB03_TWO_ANDROID_GUI_CANDIDATE.md](./P7_RB03_TWO_ANDROID_GUI_CANDIDATE.md) descrive una **prova preliminare con chiave sintetica classica X25519**, applicazione AgePony e recupero autonomo sul secondo telefono, senza PC o Termux. La compatibilità operativa e l'effettiva recuperabilità **non sono ancora dimostrate**; nessuna identità permanente è stata generata. Questo percorso è opzionale e non sostituisce la custodia autorizzata né il gate umano RB-03. Prima dell'esportazione reale rimangono richiesti tutti i controlli RB-02/RB-04/RB-05.
+
 ## Divieti
 
 Non inserire l'identità privata age in file del repository, secret GitHub, bucket R2, log di esecuzione, messaggi ChatGPT o immagini condivise. Nessun passaggio su dati reali è autorizzato da questo documento.
