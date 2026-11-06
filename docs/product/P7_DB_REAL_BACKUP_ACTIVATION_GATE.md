@@ -1,6 +1,6 @@
 # P7-DB-REAL-ACTIVATION — Contratto di attivazione e recuperabilità Beta
 
-**Stato al 06/11/2026:** `READ_ONLY_INVENTORY_COMPLETE / BINDING_UNATTESTED / RECOVERY_IDENTITY_UNCONFIGURED / REAL_EXPORT_HOLD`.
+**Stato al 06/11/2026:** `READ_ONLY_INVENTORY_COMPLETE / RENDER_PUBLIC_CONFIG_CONFIRMED / RUNTIME_BUILD_UNATTESTED / RECOVERY_IDENTITY_UNCONFIGURED / REAL_EXPORT_HOLD`.
 
 Collegato alla [PR #795](https://github.com/antoniocorsano-boop/docente-os-2026-27/pull/795) e al blocco [#792](https://github.com/antoniocorsano-boop/docente-os-2026-27/issues/792).
 
@@ -12,17 +12,17 @@ Collegato alla [PR #795](https://github.com/antoniocorsano-boop/docente-os-2026-
 | Progetto Supabase candidato | `gnshgapmwyjamhmlikeg`, `eu-west-1`, PostgreSQL 17.6, attivo | VERIFICATO |
 | Versione schema del candidato | `0103_material_reference_safety`; tabella contributi civici `0104` assente | VERIFICATO |
 | Contratto del repository | Il controllo di separazione della produzione in `.github/scripts/production-runtime-smoke.mjs` identifica il ref candidato come Beta e ne vieta l'uso nella prova Production | EVIDENZA DOCUMENTALE |
-| Associazione effettiva Render Beta → ref Supabase | Il connettore Render espone solo metadati del servizio, **non** il valore delle variabili private; ricerca di riscontri nei log della Beta senza esito | **NON ATTESTATA** |
+| Render Beta → progetto Supabase configurato | Verifica umana del 06/11/2026 nella schermata **Render Environment** del servizio Beta, con URL pubblico comunicato `https://gnshgapmwyjamhmlikeg.supabase.co` | **PASS — CONFIGURAZIONE PUBBLICA** |
 
-**ATTENZIONE:** la corrispondenza di un nome, di un ref nei sorgenti o di una URL nella documentazione non dimostra la configurazione effettiva della Beta in esecuzione. Non assumere `BINDING_PASS` per deduzione.
+**Precisazione:** la configurazione pubblica della Beta è stata verificata direttamente dall'utente nell'interfaccia Render, non dedotta dal repository. Il controllo dei bundle pubblici della versione servita ha dato esito inconcludente (9 file esaminati): la corrispondenza con la **compilazione attualmente distribuita** resta distinta e non è qui attestata. La verifica non concede permessi di lettura/esportazione del database.
 
-### Modalità corretta per chiudere il collegamento (senza esportare dati)
+### Ricevuta della verifica umana (senza esportare dati)
 
-Una persona autorizzata accede a **Render → docente-os-2026-27-beta → Environment** e controlla *solo* che l'host della variabile `NEXT_PUBLIC_SUPABASE_URL` identifichi esattamente il ref Supabase candidato. La verifica va associata all'identificativo del servizio e alla revisione pubblicata.
-
-- Non copiare la variabile con credenziali di connessione PostgreSQL, `SUPABASE_SECRET_KEY`, chiavi di autenticazione o valori di altri segreti; non inviare schermate della pagina contenenti segreti.
-- Una conferma del solo valore pubblico `NEXT_PUBLIC_SUPABASE_URL` attesta l'identità configurata dell'origine applicativa, **non** la validità delle credenziali per il dump o la completezza del restore.
-- Registrare nella segnalazione #792 soltanto `BETA_SUPABASE_BINDING=PASS/FAIL`, riferimento servizio e data; se FAIL, bloccare qualsiasi esportazione senza tentare correzioni automatiche.
+- **Data:** 06/11/2026. **Origine:** servizio Render `srv-da5gcjrncjis738rfov0`, `docente-os-2026-27-beta`, schermata Environment consultata dall'utente.
+- **Variabile applicativa:** `NEXT_PUBLIC_SUPABASE_URL` (valore pubblico, non credenziale). **Ref verificato:** `gnshgapmwyjamhmlikeg`.
+- **Risultato:** `RB-01=PASS_RENDER_PUBLIC_CONFIG`. Nessuna richiesta di ripetere la verifica di questa configurazione. Screenshot originale **non archiviato nel repository pubblico**.
+- **Limite:** `BETA_SERVING_BUNDLE_REF=UNATTESTED`; il controllo automatico dei bundle pubblici non ha fornito conferme. Inoltre questa verifica non prova la disponibilità di credenziali per l'esportazione né la completezza del recupero.
+- **Protezione:** non acquisire, ripubblicare o copiare password, `SUPABASE_SECRET_KEY`, credenziali PostgreSQL o altre variabili d'ambiente della schermata Render.
 
 ## 2. Inventario per la recuperabilità
 
@@ -54,7 +54,7 @@ I metadati sono stati rilevati tramite interrogazioni **in sola lettura**; non s
 
 | Codice | Condizione | Stato |
 |---|---|---|
-| `RB-01` | Identità Render Beta → Supabase confermata dalla configurazione attiva | HOLD |
+| `RB-01` | Identità Render Beta → Supabase confermata dalla configurazione pubblica in Render Environment | **PASS_RENDER_PUBLIC_CONFIG** (runtime bundle separatamente non attestato) |
 | `RB-02` | Titolarità, autorizzazione al trattamento, trasferimento e conservazione in R2 approvati | HOLD |
 | `RB-03` | Chiave privata `age` custodita indipendentemente e recupero dimostrato | HOLD |
 | `RB-04` | Credenziale di esportazione protetta e perimetro minimo documentati | HOLD |
@@ -63,7 +63,7 @@ I metadati sono stati rilevati tramite interrogazioni **in sola lettura**; non s
 | `RB-07` | Recupero reale su ambiente isolato protetto, con verifica di dati, permessi e oggetti | NON ESEGUITO |
 | `RB-08` | Revisione umana del recupero e autorizzazione specifica prima della migrazione `0104` | HOLD |
 
-**Blocco obbligatorio:** non creare un workflow con `workflow_dispatch` che riceva connessioni reali finché `RB-01`–`RB-05` non siano attestati; non applicare DDL `0104` né promuovere la Beta se `RB-06`–`RB-08` non sono PASS.
+**Blocco obbligatorio:** non creare un workflow con `workflow_dispatch` che riceva connessioni reali finché tutti i requisiti `RB-01`–`RB-05` non siano attestati, compresi `RB-02`–`RB-05` tuttora aperti; non applicare DDL `0104` né promuovere la Beta se `RB-06`–`RB-08` non sono PASS.
 
 ## 5. Evidenze ammesse nel repository pubblico
 
