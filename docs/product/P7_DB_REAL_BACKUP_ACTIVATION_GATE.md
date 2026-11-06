@@ -97,6 +97,10 @@ I metadati sono stati rilevati tramite interrogazioni **in sola lettura**; non s
 | `RB-07` | Recupero reale su ambiente isolato protetto, con verifica di dati, permessi e oggetti | NON ESEGUITO |
 | `RB-08` | Revisione umana del recupero e autorizzazione specifica prima della migrazione `0104` | HOLD |
 
+### RB-03 — candidato senza computer: due Android con interfaccia grafica
+
+In data 06/11/2026 l'utente ha dichiarato la disponibilità di un **secondo smartphone Android**. È documentata una [variante candidata a due dispositivi senza Termux](./P7_RB03_TWO_ANDROID_GUI_CANDIDATE.md), che impiega un'applicazione open source per la gestione di identità age e un recupero di prova autonomo sul secondo telefono. Prima di usare la chiave permanente, bisogna verificare su dati **esclusivamente fittizi** il trasferimento cifrato, la lettura indipendente dal telefono A e la compatibilità con la versione age disponibile nel flusso PostgreSQL/R2. L'esistenza del secondo telefono **non qualifica** la custodia: `RB03_TWO_ANDROID_CANDIDATE=DOCUMENTED / DEVICE_TEST=NOT_RUN / RB-03=HOLD`.
+
 ### RB-03 — predisposizione tecnica distinta dalla custodia reale
 
 Il protocollo [P7_DB_KEY_CUSTODY_RECOVERY_PROTOCOL.md](./P7_DB_KEY_CUSTODY_RECOVERY_PROTOCOL.md) identifica i soggetti autorizzati, le due copie protette, la verifica del ripristino a partire dalla seconda copia, la custodia separata da GitHub/R2 e una ricevuta priva di segreti. Il verificatore [p7-rb03-local-custody-check.sh](../../.github/scripts/p7-rb03-local-custody-check.sh) può certificare **solo** il test crittografico su contenuto fittizio; la CI esegue esclusivamente `--self-test` con chiavi effimere. Nessun job CI può attestare la custodia di un'identità reale o sostituire la responsabilità umana. **RB-03=HOLD** fino a prova della seconda copia custodita e attestazione separata del titolare.
