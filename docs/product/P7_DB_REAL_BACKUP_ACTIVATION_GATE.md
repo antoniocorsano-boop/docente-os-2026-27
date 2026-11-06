@@ -63,6 +63,10 @@ I metadati sono stati rilevati tramite interrogazioni **in sola lettura**; non s
 | `RB-07` | Recupero reale su ambiente isolato protetto, con verifica di dati, permessi e oggetti | NON ESEGUITO |
 | `RB-08` | Revisione umana del recupero e autorizzazione specifica prima della migrazione `0104` | HOLD |
 
+### RB-03 — predisposizione tecnica distinta dalla custodia reale
+
+Il protocollo [P7_DB_KEY_CUSTODY_RECOVERY_PROTOCOL.md](./P7_DB_KEY_CUSTODY_RECOVERY_PROTOCOL.md) identifica i soggetti autorizzati, le due copie protette, la verifica del ripristino a partire dalla seconda copia, la custodia separata da GitHub/R2 e una ricevuta priva di segreti. Il verificatore [p7-rb03-local-custody-check.sh](../../.github/scripts/p7-rb03-local-custody-check.sh) può certificare **solo** il test crittografico su contenuto fittizio; la CI esegue esclusivamente `--self-test` con chiavi effimere. Nessun job CI può attestare la custodia di un'identità reale o sostituire la responsabilità umana. **RB-03=HOLD** fino a prova della seconda copia custodita e attestazione separata del titolare.
+
 **Blocco obbligatorio:** non creare un workflow con `workflow_dispatch` che riceva connessioni reali finché tutti i requisiti `RB-01`–`RB-05` non siano attestati, compresi `RB-02`–`RB-05` tuttora aperti; non applicare DDL `0104` né promuovere la Beta se `RB-06`–`RB-08` non sono PASS.
 
 ## 5. Evidenze ammesse nel repository pubblico
