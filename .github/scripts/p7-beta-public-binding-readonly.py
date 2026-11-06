@@ -3,7 +3,7 @@
 This never reads Render secrets, authenticates, or contacts the Supabase database.
 """
 from html.parser import HTMLParser
-from urllib.request import Request, urlopen
+from urllib.request import Request, build_opener, HTTPRedirectHandler
 from urllib.parse import urljoin, urlsplit
 from urllib.error import HTTPError, URLError
 import argparse
@@ -29,13 +29,20 @@ def refs(text):
     text = text.replace(r"\/", "/").replace(r"\u002F", "/").replace(r"\u002f", "/")
     return {m.group(1).lower() for m in REF_RE.finditer(text)}
 
+class NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # Refuse before any second network request, including HTTP downgrades.
+        raise ValueError("all redirects denied before following")
+
+
 def get(url, limit):
     if urlsplit(url).scheme != "https" or urlsplit(url).netloc != urlsplit(BASE).netloc:
         raise ValueError("cross-origin access denied")
     req = Request(url, headers={"User-Agent": "P7-Beta-Public-Ref-ReadOnly", "Accept-Encoding": "identity"})
-    with urlopen(req, timeout=45) as response:
-        if urlsplit(response.url).netloc != urlsplit(BASE).netloc:
-            raise ValueError("cross-origin redirect denied")
+    opener = build_opener(NoRedirect())
+    with opener.open(req, timeout=45) as response:
+        if urlsplit(response.url).scheme != "https" or urlsplit(response.url).netloc != urlsplit(BASE).netloc:
+            raise ValueError("cross-origin response denied")
         if response.status != 200:
             raise ValueError("unexpected HTTP response")
         data = response.read(limit + 1)
@@ -95,6 +102,20 @@ def selftest():
     assert refs(good.replace("/", r"\/")) == {EXPECTED}
     assert refs("https://abcdefghijklmnopqrst.supabase.co") == {"abcdefghijklmnopqrst"}
     assert refs("nothing") == set()
+    # Fail closed before following 301/302/303/307/308, regardless of origin.
+    for code in (301, 302, 303, 307, 308):
+        try:
+            NoRedirect().redirect_request(None, None, code, "Moved", {}, "http://unsafe.example/")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("redirect not rejected")
+    try:
+        get("http://docente-os-2026-27-beta.onrender.com/", 100)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("HTTP downgrade not rejected")
     print("P7_PUBLIC_REF_PARSER_SELFTEST_PASS")
     return 0
 
