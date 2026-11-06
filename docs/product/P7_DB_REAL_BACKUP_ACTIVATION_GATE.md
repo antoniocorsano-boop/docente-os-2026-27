@@ -49,6 +49,32 @@ I metadati sono stati rilevati tramite interrogazioni **in sola lettura**; non s
 
 **Coerenza del punto di ripristino:** per tabelle e oggetti Storage prevedere una finestra di acquisizione coerente, eventuale sospensione controllata delle scritture, e ricevute d'integrità che permettano di riconciliare i due insiemi senza duplicare o perdere allegati.
 
+## 2-bis. RB-05 — Ricognizione tecnica aggiornata, sola lettura (06/11/2026)
+
+**Origine dei dati:** interrogazioni aggregate `SELECT` sul progetto Supabase candidato, senza leggere righe personali, identificativi di utenti, nomi di oggetti, contenuti dei file, password o segreti. **Nessun trasferimento o dump**. Il progetto risulta attivo, con PostgreSQL 17.6.1.155.
+
+| Risorsa | Ricognizione | Limite della prova |
+|---|---:|---|
+| Tabelle `public` | 62; RLS abilitata su 62/62 | Non qualifica da sola la corretta applicazione delle singole policy dopo il recupero |
+| Tabelle `private` | 7; RLS abilitata su 0/7 | Schema non automaticamente pubblico: permessi di connessione, `GRANT` e accesso Data API da verificare; non dedurre esposizione |
+| Tabelle `auth` | 27 | Piano di trasferimento e ripristino delle identità da qualificare |
+| Tabelle `storage` | 8 | Metadati SQL distinti dai byte effettivi dei file |
+| Tabelle `supabase_migrations` | 1 | Verificare storico e corretta ricostruzione senza riapplicare migrazioni incompatibili |
+| Contenitori Storage | 1, non pubblico | Ripristino delle impostazioni e delle autorizzazioni da verificare |
+| Oggetti Storage | 9 | Nessun byte né nome di file esportato: integrità/consistenza ancora da qualificare |
+| Trigger applicativi `public`/`private` | 46 | Ordine di creazione e dipendenze da verificare nel ripristino |
+| Estensioni PostgreSQL installate | 6 | Disponibilità e configurazione nel target non verificate |
+
+**Contratto di recupero non eludibile:**
+
+1. Ricostruire schema applicativo, relazioni, funzioni, trigger, ruoli, privilegi e policy RLS; verificare i percorsi autenticati e il diniego dei percorsi non autorizzati.
+2. Separare la ricostruzione delle identità `auth`, le configurazioni del servizio e gli schemi gestiti da Supabase dal semplice `pg_dump` applicativo.
+3. Per Storage, recuperare **i metadati SQL e i byte dei 9 oggetti** mediante un percorso compatibile con le API ufficiali, senza affidarsi alla sola copia PostgreSQL. La documentazione Supabase afferma esplicitamente che i backup del database non includono gli oggetti Storage: https://supabase.com/docs/guides/platform/backups .
+4. Verificare la coerenza temporale fra dati e oggetti, la riservatezza della destinazione, i controlli sui file, i metadati di migrabilità e le dipendenze esterne (Vault, Realtime, estensioni, configurazione Auth) prima di qualificare un recupero.
+5. Eseguire l'eventuale recupero reale **solo** in ambiente isolato approvato dopo `RB-02`, `RB-03`, `RB-04` e `RB-05` operativamente qualificati. Non provare sui dati reali tramite GitHub Actions.
+
+**Esito corretto:** `RB05_METADATA_INVENTORY=PASS_READ_ONLY` / `RB05_RECOVERY_PLAN_AND_RESTORE=HOLD`. Il censimento è una prova preparatoria, **non** autorizza copie, accessi privilegiati, restore, migrazione `0104` o distribuzione Beta.
+
 ## 3. Destinazione e cifratura
 
 - Il percorso GitHub Actions → `age` → Cloudflare R2 → scaricamento → ripristino è già **PASS con dati sintetici** (run [#42172909680](https://github.com/antoniocorsano-boop/docente-os-2026-27/actions/runs/42172909680)).
