@@ -47,5 +47,19 @@ jobs:
           sudo apt-get install -y -qq age
       - name: Validate fail-closed synthetic-only script syntax
         run: bash -n .github/scripts/p7-db-real-readiness-pg17.sh
+      - name: Verify fail-closed guards against real-export activation
+        run: |
+          if P7_REAL_BACKUP_APPROVED=yes bash .github/scripts/p7-db-real-readiness-pg17.sh >/dev/null 2>&1; then
+            echo "ERROR: real-export flag was not rejected" >&2
+            exit 1
+          fi
+          if P7_READINESS_SYNTHETIC_ONLY=no bash .github/scripts/p7-db-real-readiness-pg17.sh >/dev/null 2>&1; then
+            echo "ERROR: non-synthetic mode was not rejected" >&2
+            exit 1
+          fi
+          if GITHUB_EVENT_NAME=workflow_dispatch bash .github/scripts/p7-db-real-readiness-pg17.sh >/dev/null 2>&1; then
+            echo "ERROR: manual event was not rejected" >&2
+            exit 1
+          fi
       - name: Rehearse PostgreSQL 17 encrypted stream and independent local restore
         run: bash .github/scripts/p7-db-real-readiness-pg17.sh
