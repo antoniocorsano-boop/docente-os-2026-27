@@ -23,7 +23,8 @@ jobs:
         image: postgres:17.6
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: synthetic-only-password
+          # Temporary synthetic DB only; no hardcoded password in the repository.
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: postgres
         ports:
           - 5432:5432
@@ -37,7 +38,6 @@ jobs:
       PGHOST: '127.0.0.1'
       PGPORT: '5432'
       PGUSER: 'postgres'
-      PGPASSWORD: 'synthetic-only-password'
       PGDATABASE: 'postgres'
     steps:
       - uses: actions/checkout@v6
