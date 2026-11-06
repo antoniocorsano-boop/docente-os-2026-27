@@ -7,6 +7,8 @@ on:
       - '.github/scripts/p7-db-real-readiness-pg17.sh'
       - '.github/workflows/p7-db-real-readiness-pg17.yml'
       - 'docs/product/P7_DB_REAL_BACKUP_READINESS.md'
+      - '.github/scripts/p7-rb03-local-custody-check.sh'
+      - 'docs/product/P7_DB_KEY_CUSTODY_RECOVERY_PROTOCOL.md'
 
 permissions:
   contents: read
@@ -45,6 +47,15 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq age
+      - name: Certify RB-03 verifier on synthetic material only
+        run: |
+          bash -n .github/scripts/p7-rb03-local-custody-check.sh
+          bash .github/scripts/p7-rb03-local-custody-check.sh --self-test
+          # A custodian identity must never be consumed by a CI job.
+          if bash .github/scripts/p7-rb03-local-custody-check.sh --check /nonexistent age1notarealrecipient >/dev/null 2>&1; then
+            echo "ERROR: offline custody mode accepted in GitHub Actions" >&2
+            exit 1
+          fi
       - name: Validate fail-closed synthetic-only script syntax
         run: bash -n .github/scripts/p7-db-real-readiness-pg17.sh
       - name: Verify fail-closed guards against real-export activation
