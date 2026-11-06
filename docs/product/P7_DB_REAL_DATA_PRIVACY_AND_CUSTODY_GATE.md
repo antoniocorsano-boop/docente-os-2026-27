@@ -4,6 +4,34 @@
 **Progetto candidato:** `gnshgapmwyjamhmlikeg` (Beta Docente OS)  
 **Esito:** `RB-02=HOLD / DATA_TREAT_AS_PERSONAL_PENDING_ATTESTATION / REAL_BACKUP_FORBIDDEN`
 
+## RB-02 — Esame dei controlli R2 successivo alla verifica UE
+
+**Verifiche confermate dall'utente (06/11/2026):** progetto personale, dati reali propri dichiarati, bucket `docente-os-backup-eu` con giurisdizione **Unione europea**, URL pubblico di sviluppo disabilitato e nessun dominio personalizzato. Nessun record personale è stato esaminato.
+
+**Evidenza tecnica verificata sul ramo main:** il workflow `.github/workflows/p7-db-r2-main-certification.yml` utilizza R2 esclusivamente quando avviato manualmente da `main` per dati sintetici. Le credenziali non sono disponibili nelle richieste di modifica. Lo script `.github/scripts/p7-db-r2-main-synthetic-rehearsal.sh` usa il prefisso `rehearsal/`, non `production/`, e verifica l'eliminazione dell'oggetto fittizio dopo il test.
+
+### Condizioni ancora da attestare
+
+| Verifica | Evidenza necessaria | Stato |
+|---|---|---|
+| Giurisdizione R2 UE | Impostazioni del contenitore, conferma umana | PASS |
+| Esposizione pubblica | URL di sviluppo disabilitato e assenza di domini | PASS visivo |
+| Regola di blocco degli oggetti | Nome, prefisso, durata, attivazione della regola che coprirà la futura copia reale | NON VERIFICATA |
+| Regola di scadenza | Presenza di una regola di ciclo di vita per lo stesso prefisso e durata approvata | NON VERIFICATA |
+| Permessi del processo R2 | Conferma di autorizzazione limitata al contenitore richiesto e assenza di privilegi amministrativi non necessari | NON VERIFICATI |
+| Condizioni e conservazione dei dati personali | Ricevuta di decisione personale con perimetro e durata | NON APPROVATA |
+| Recupero crittografico indipendente | Custodia e prova da seconda copia, senza Termux né PC personale | RB-03 HOLD |
+
+**Distinzione tecnica:** una regola di blocco impedisce l'eliminazione anticipata, ma non prova la cancellazione automatica alla sua scadenza. Una regola di ciclo di vita separata può definire la cancellazione, nel rispetto del blocco. Il vincolo di 90 giorni indicato nelle note precedenti non deve essere considerato confermato finché non si visionano le regole effettive.
+
+**Controllo richiesto:** leggere soltanto le sezioni delle impostazioni R2 relative a regole di blocco e ciclo di vita degli oggetti. Non modificare o rimuovere regole, non aprire credenziali, non avviare upload di dati reali.
+
+**Fonti tecniche:** https://developers.cloudflare.com/r2/buckets/bucket-locks/ e https://developers.cloudflare.com/r2/buckets/object-lifecycles/ .
+
+**Esito complessivo RB-02:** HOLD, anche con giurisdizione UE confermata. Nessuna esportazione reale è autorizzata.
+
+---
+
 ## 1. Evidenze ottenute senza accedere ai contenuti
 
 La verifica è stata eseguita mediante **sole interrogazioni aggregate**, senza leggere email, nomi, profili, informazioni sugli studenti, nomi di file o altri contenuti.
