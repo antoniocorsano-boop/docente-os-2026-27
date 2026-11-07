@@ -10,6 +10,16 @@
 
 **Evidenza tecnica verificata sul ramo main:** il workflow `.github/workflows/p7-db-r2-main-certification.yml` utilizza R2 esclusivamente quando avviato manualmente da `main` per dati sintetici. Le credenziali non sono disponibili nelle richieste di modifica. Lo script `.github/scripts/p7-db-r2-main-synthetic-rehearsal.sh` usa il prefisso `rehearsal/`, non `production/`, e verifica l'eliminazione dell'oggetto fittizio dopo il test.
 
+### Qualifica del contratto di configurazione (07/11/2026)
+
+Lo script [`p7-rb02-rb04-r2-policy-contract.py`](../../.github/scripts/p7-rb02-rb04-r2-policy-contract.py) verifica **soltanto configurazioni fittizie** e il vincolo statico del flusso già approvato per i backup sintetici. I casi negativi respingono: bucket o giurisdizione sbagliati, esposizione pubblica, blocco disabilitato, scadenza prima o alla stessa data del blocco, prefisso lifecycle troppo ampio, accessi di tipo **Admin**, permessi su tutti i contenitori, credenziali incluse nel repository, utilizzo del prefisso `production/` nel collaudo e assenza di una decisione sulla privacy o sulla conservazione. Il test non legge token o impostazioni effettive del pannello Cloudflare e non può portare `RB-02` a PASS.
+
+**Proposta tecnica non approvata:** per un blocco di 90 giorni, la prova sintetica usa la scadenza a **91 giorni** come margine prudenziale. Non significa che tale cancellazione sia stata autorizzata o configurata. Prima di introdurre una regola reale occorre stabilire se debba essere adottata, quali copie debbano sopravvivere e come verificare che la cancellazione non elimini l'unica copia ripristinabile. La regola Cloudflare per gli upload incompleti non equivale alla scadenza degli oggetti terminati.
+
+**Autorizzazioni R2:** le credenziali S3 con permesso `Object Read & Write` possono essere limitate al contenitore `docente-os-backup-eu`. La documentazione R2 descrive il vincolo **per contenitore**, non garantisce un isolamento degli accessi fra i prefissi `rehearsal/` e `production/` del medesimo contenitore. Il collaudo sintetico resta dunque vincolato per codice a `rehearsal/` e all'avvio manuale su `main`; il percorso reale deve essere progettato e approvato separatamente. Non condividere codici di accesso, chiavi segrete né screenshot che li contengano.
+
+**Limite operativo:** per completare RB-02 occorre una **attestazione reale non segreta** dei privilegi di Cloudflare e una **decisione di trattamento e conservazione**. Nessuna di esse può essere sostituita da un risultato PASS di prova sintetica.
+
 ### Condizioni ancora da attestare
 
 | Verifica | Evidenza necessaria | Stato |
