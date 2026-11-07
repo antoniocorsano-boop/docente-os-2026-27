@@ -8,6 +8,7 @@ on:
       - '.github/workflows/p7-db-real-readiness-pg17.yml'
       - 'docs/product/P7_DB_REAL_BACKUP_READINESS.md'
       - '.github/scripts/p7-rb03-local-custody-check.sh'
+      - '.github/scripts/p7-rb05-synthetic-recovery-contract.py'
       - 'docs/product/P7_DB_KEY_CUSTODY_RECOVERY_PROTOCOL.md'
 
 permissions:
@@ -56,6 +57,10 @@ jobs:
             echo "ERROR: offline custody mode accepted in GitHub Actions" >&2
             exit 1
           fi
+      - name: Qualify RB-05 synthetic database plus Storage inventory and fail-closed restore
+        run: |
+          python3 -m py_compile .github/scripts/p7-rb05-synthetic-recovery-contract.py
+          python3 .github/scripts/p7-rb05-synthetic-recovery-contract.py --self-test
       - name: Validate fail-closed synthetic-only script syntax
         run: bash -n .github/scripts/p7-db-real-readiness-pg17.sh
       - name: Verify fail-closed guards against real-export activation
