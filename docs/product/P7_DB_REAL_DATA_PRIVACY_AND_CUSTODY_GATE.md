@@ -20,7 +20,7 @@
 | Regola di scadenza | Presenza di una regola di ciclo di vita per lo stesso prefisso e durata approvata | NON VERIFICATA |
 | Permessi del processo R2 | Conferma di autorizzazione limitata al contenitore richiesto e assenza di privilegi amministrativi non necessari | NON VERIFICATI |
 | Condizioni e conservazione dei dati personali | Ricevuta di decisione personale con perimetro e durata | NON APPROVATA |
-| Recupero crittografico indipendente | Custodia e prova da seconda copia, senza Termux né PC personale | RB-03 HOLD |
+| Recupero crittografico indipendente | Recupero su secondo Android e custodia della password cartacea in luogo separato, attestati dal custode il 07/11/2026 | `RB-03=PASS_CUSTODIAN_ATTESTED` |
 
 **Distinzione tecnica:** una regola di blocco impedisce l'eliminazione anticipata, ma non prova la cancellazione automatica alla sua scadenza. Una regola di ciclo di vita separata può definire la cancellazione, nel rispetto del blocco. La regola è stata verificata anche riaprendone il dettaglio dall'elenco: nome, prefisso completo, durata e interruttore sono coerenti con la configurazione prevista. La prova **visiva** non dimostra tuttavia l'effettiva resistenza alla cancellazione/sovrascrittura su oggetti reali, né la presenza di una regola di scadenza automatica.
 
@@ -79,15 +79,13 @@ RB-02: PASS / HOLD
 
 Fino a completa attestazione, **`RB-02=HOLD`**. Non acquisire copie dei documenti di autorizzazione nel repository pubblico.
 
-## 3. Custodia della chiave senza Termux e senza PC dell'utente
+## 3. Custodia della chiave — collaudo completato dal custode (07/11/2026)
 
-Il protocollo Android/Termux già presente nella PR #795 è **una proposta opzionale, non adottata**. L'utente ha precedentemente escluso l'installazione di Termux sul proprio telefono; non bisogna proporgliela come requisito operativo né chiedergli di generare chiavi in chat.
+L'utente ha successivamente **scelto di usare Termux su due smartphone Android sotto il proprio controllo**, superando la precedente preferenza per il percorso senza Termux. Il programma `age-keygen` del primo telefono presentava un errore; il collaudo interoperabile con `rage-keygen` e `age` è stato eseguito con dati sintetici e ha avuto esito PASS. La chiave privata permanente è custodita nella directory privata del primo smartphone; una copia cifrata `recovery.age` è stata trasferita al secondo. L'utente ha confermato la decifratura autonoma della copia e del testo sintetico di verifica sul secondo dispositivo e, il 07/11/2026, **la conservazione cartacea separata della password**.
 
-**Percorso di riferimento proposto:** affidare l'attivazione della chiave a un **custode autorizzato**, mediante ambiente affidabile e già disponibile nell'organizzazione, con due copie indipendenti protette. Il custode deve dimostrare il recupero da una seconda copia, e comunica a GitHub **esclusivamente il destinatario pubblico `age1...`** dopo l'approvazione. Il controllo locale può essere eseguito dal custode in un ambiente qualificato, senza richiedere il PC personale dell'utente.
+**Esito:** `RB-03=PASS_CUSTODIAN_ATTESTED`, con grado di prova esplicitamente basato su screenshot e attestazioni dell'utente. La prova non è una verifica remota dei dispositivi né dimostra la custodia a tempo indeterminato; preservare almeno una copia di recupero cifrata sul secondo smartphone e non esportare mai l'identità privata in chiaro. Le credenziali, la password e la chiave privata non sono state acquisite dal repository.
 
-Se non esiste un custode autorizzato con un ambiente sicuro, `RB-03` resta **HOLD**: non generare la chiave privata dentro GitHub Actions, non inserirla in un account cloud generico in chiaro e non sostituire il recupero indipendente con la sola riuscita della prova sintetica.
-
-**RB-02 e RB-03 sono distinti.** Anche se la chiave sarà custodita correttamente, il trasferimento di dati reali resta non autorizzato finché RB-02 non è PASS.
+**Separazione dei requisiti:** il PASS di RB-03 non attribuisce al custode autorizzazioni ulteriori a esportare dati personali/scolastici. `RB-02=HOLD`, fino alla decisione sul trattamento, sulla destinazione R2, sui privilegi e sulla durata di conservazione. `RB-04/05=HOLD` fino alla qualifica tecnica dei processi reali. Il documento di riferimento per i dettagli di custodia resta [P7_DB_KEY_CUSTODY_RECOVERY_PROTOCOL.md](./P7_DB_KEY_CUSTODY_RECOVERY_PROTOCOL.md).
 
 ## 4. Stato dei controlli
 
@@ -96,7 +94,7 @@ Se non esiste un custode autorizzato con un ambiente sicuro, `RB-03` resta **HOL
 | Collegamento URL pubblico configurato Render Beta→Supabase | `RB-01=PASS_RENDER_PUBLIC_CONFIG` |
 | Classificazione prudenziale del contenuto | `ASSUMED_PROTECTED`, senza leggere contenuti |
 | Autorizzazione per backup reale su R2 | **RB-02 HOLD** |
-| Generazione, custodia e recupero della chiave privata | **RB-03 HOLD** |
+| Generazione, custodia e recupero della chiave privata | **RB-03 PASS_CUSTODIAN_ATTESTED** (07/11/2026) |
 | Perimetro completo, credenziali di lettura e procedure di recupero | **RB-04/05 HOLD** |
 | Copia reale cifrata e ripristino indipendente | **RB-06/07 NON ESEGUITI** |
 | Revisione e autorizzazione alla migrazione 0104 | **RB-08 HOLD** |
