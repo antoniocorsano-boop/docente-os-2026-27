@@ -45,13 +45,14 @@ def check(expected: dict) -> None:
         raise PolicyRejected("required 90-day lock not attested")
 
     lifecycle = expected.get("lifecycle", {})
-    # A 91-day illustrative TTL gives a one-day margin after a 90-day lock.
+    # User-approved policy: expire production/ at 91 days after a 90-day lock.
+    # This is still a fixture and does NOT attest or change live Cloudflare settings.
     # There is NO decision to activate this rule in Cloudflare.
     if (lifecycle.get("enabled") is not True
             or lifecycle.get("prefix") != PRODUCTION_PREFIX
             or not isinstance(lifecycle.get("days"), int)
             or isinstance(lifecycle["days"], bool)
-            or lifecycle["days"] <= lock["days"]):
+            or lifecycle["days"] != 91):
         raise PolicyRejected("expiration not strictly later than lock")
 
     cred = expected.get("object_access", {})
@@ -132,6 +133,8 @@ def main() -> int:
         ("MISSING_LIFECYCLE", ("lifecycle", "enabled"), False),
         ("EARLY_LIFECYCLE", ("lifecycle", "days"), 30),
         ("EXACT_LOCK_EXPIRATION", ("lifecycle", "days"), 90),
+        ("LATER_THAN_APPROVED", ("lifecycle", "days"), 92),
+        ("LONGER_UNAPPROVED", ("lifecycle", "days"), 365),
         ("GLOBAL_LIFECYCLE", ("lifecycle", "prefix"), ""),
         ("DISABLED_LOCK", ("bucket_lock", "enabled"), False),
         ("WRONG_LOCK_PREFIX", ("bucket_lock", "prefix"), REHEARSAL_PREFIX),
