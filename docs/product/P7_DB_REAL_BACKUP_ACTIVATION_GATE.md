@@ -133,6 +133,14 @@ Per RB-05 la prova [`p7-rb05-synthetic-recovery-contract.py`](../../.github/scri
 
 Fonti tecniche: [Cloudflare R2 API Tokens](https://developers.cloudflare.com/r2/api/tokens/), [Cloudflare Bucket Locks](https://developers.cloudflare.com/r2/buckets/bucket-locks/), [Cloudflare Object Lifecycles](https://developers.cloudflare.com/r2/buckets/object-lifecycles/), [Supabase Restore from Platform](https://supabase.com/docs/guides/self-hosting/restore-from-platform).
 
+### RB-02/RB-04 — Verifica statica della politica di accesso e conservazione (07/11/2026)
+
+Il nuovo [controllo sintetico delle politiche R2](../../.github/scripts/p7-rb02-rb04-r2-policy-contract.py), eseguito dalla stessa prova PostgreSQL 17, rifiuta in modalità di test: scadenza mancante o non successiva al blocco di 90 giorni, scadenza applicata indistintamente al contenitore, blocco disattivato, bucket o giurisdizione errati, esposizione pubblica, credenziali amministrative o estese a tutti i bucket, utilizzo dei dati reali nelle PR, e assenza della revisione privacy/della durata. Controlla anche che il percorso sintetico esistente resti nel prefisso `rehearsal/` e sia limitato a `main` con avvio esplicito.
+
+**Doppia distinzione:** (a) il test esamina **solo valori fittizi** predisposti per individuare regressioni e non interroga Cloudflare; (b) l'esempio di scadenza a 91 giorni è un'**ipotesi non approvata**, non una regola configurata. Il controllo `RB02_RB04_POLICY_CONTRACT=PASS` non qualifica la protezione reale dei dati né equivale al via libera a un'esportazione. I permessi R2 sono verificabili per singolo contenitore e **non è comprovata** una restrizione alle sole chiavi di oggetto con prefisso `production/` o `rehearsal/`; occorre quindi conservare la separazione del processo e una revisione dei privilegi effettivi.
+
+**Gates residui:** `RB-02=HOLD` finché non siano disponibili una decisione sul trattamento, la conservazione e il trasferimento a R2, una verifica del ciclo di vita e la prova dei privilegi non sensibili. `RB-04=HOLD` finché non sia stata qualificata l'autorizzazione dell'identità di esportazione. La prova sintentica RB-05 è PASS, ma le procedure di ripristino vere restano HOLD. Nessun segreto, utente reale o allegato effettivo è stato esportato.
+
 ## 5. Evidenze ammesse nel repository pubblico
 
 Solo commit esatto, identificativo di prova, stato dei gate, versione PostgreSQL, descrizione dello schema e impronte **dei soli archivi cifrati**. Nessun dato di autenticazione, record scolastico, oggetto Storage, identità `age`, password, token, URL autenticato, configurazione segreta o log applicativo con dati degli utenti.
