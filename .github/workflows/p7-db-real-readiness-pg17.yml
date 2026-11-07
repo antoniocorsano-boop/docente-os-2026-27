@@ -9,6 +9,9 @@ on:
       - 'docs/product/P7_DB_REAL_BACKUP_READINESS.md'
       - '.github/scripts/p7-rb03-local-custody-check.sh'
       - '.github/scripts/p7-rb05-synthetic-recovery-contract.py'
+      - '.github/scripts/p7-rb02-rb04-r2-policy-contract.py'
+      - '.github/scripts/p7-db-r2-main-synthetic-rehearsal.sh'
+      - '.github/workflows/p7-db-r2-main-certification.yml'
       - 'docs/product/P7_DB_KEY_CUSTODY_RECOVERY_PROTOCOL.md'
 
 permissions:
@@ -57,6 +60,10 @@ jobs:
             echo "ERROR: offline custody mode accepted in GitHub Actions" >&2
             exit 1
           fi
+      - name: Qualify RB-02/RB-04 synthetic R2 policy and fail-closed access boundaries
+        run: |
+          python3 -m py_compile .github/scripts/p7-rb02-rb04-r2-policy-contract.py
+          python3 .github/scripts/p7-rb02-rb04-r2-policy-contract.py --self-test
       - name: Qualify RB-05 synthetic database plus Storage inventory and fail-closed restore
         run: |
           python3 -m py_compile .github/scripts/p7-rb05-synthetic-recovery-contract.py
