@@ -1,6 +1,12 @@
 # RB-03 — Protocollo di custodia e recupero della chiave age
 
-**Stato:** `DESIGN_ONLY / KEY_NOT_CREATED / REAL_EXPORT_NOT_AUTHORIZED`.
+**Stato aggiornato al 07/11/2026:** `RB03_CRYPTO_INTEROP=PASS / RB03_LOCAL_RECOVERY=PASS / RB03_SECOND_ANDROID_RECOVERY=PASS_USER_ATTESTED / RB03_PASSWORD_SEPARATE_CUSTODY=PASS_USER_ATTESTED / RB-03=PASS_CUSTODIAN_ATTESTED / REAL_EXPORT_NOT_AUTHORIZED`.
+
+> **Ricevuta successiva alle sezioni progettuali del 06/11/2026.** La prima formulazione `DESIGN_ONLY` non descrive più lo stato attuale. Il custode (utente, controlla entrambi i dispositivi) ha condotto su Termux Android una prova `rage-keygen` → `age` con testo esclusivamente fittizio, creato un'identità permanente **sul primo dispositivo** in memoria privata, una copia `recovery.age` protetta da passphrase, e testato il recupero locale della medesima identità tramite confronto del destinatario pubblico. La copia cifrata e il testo fittizio cifrato `verifica.age` sono stati trasferiti al **secondo** Android. L'utente ha attestato l'esito `RB03_RECUPERO_INDIPENDENTE_PASS` dalla decifratura di entrambi i file esclusivamente sul secondo dispositivo e il **07/11/2026** ha confermato la custodia della password su supporto cartaceo separato dagli smartphone. Nessuna password né identità privata è stata condivisa con il repository, ChatGPT o i servizi di backup.
+
+**Limite del PASS:** la prova indipendente è un'**attestazione del custode** e non una certificazione hardware eseguita remotamente. Rimangono da presidiare la disponibilità duratura della copia cifrata su Android B, l'eliminazione controllata delle sole copie transitorie in Download (dopo verifica di una copia di recupero mantenuta) e la protezione dei telefoni. Non esportare `identity.agekey` in chiaro. `RB-03=PASS_CUSTODIAN_ATTESTED` significa soltanto che la custodia e il recupero sono dimostrati al livello di evidenza dichiarato; **non** implica `RB-02/04/05=PASS` né approva dump, caricamento R2, modifiche a Supabase, deploy o DDL `0104`.
+
+**Registro di prova (senza segreti):** discussione della PR #795, con evidenze fotografiche del test locale e del trasferimento e attestazioni esplicite dell'utente per il recupero indipendente e la custodia separata.
 
 Il percorso di cifratura con PostgreSQL 17 e la prova off-site R2 sono già qualificati **solo con dati sintetici**. Una chiave di recupero reale non può essere generata esclusivamente nel sistema temporaneo GitHub Actions: alla sua distruzione seguirebbe l'impossibilità di decifrare la copia.
 
@@ -82,11 +88,11 @@ Valutazione finale RB-03: HOLD / PASS
 
 ## Criterio di accettazione RB-03
 
-`RB-03=PASS` soltanto dopo **generazione e custodia indipendente**, prova di recupero condotta dal custode e attestazione della responsabilità. Al momento tutti questi passaggi restano `PENDING`. Il profilo personale Android prevede Termux come *possibile ambiente locale*, senza richiedere un PC, e non autorizza a generare chiavi da GitHub. Gli altri profili non sono obbligati a usare Termux; lo strumento impiegato dal custode deve essere realmente disponibile e qualificato. Un sito arbitrario per la generazione delle chiavi non è un'alternativa sicura.
+`RB-03=PASS` soltanto dopo **generazione e custodia indipendente**, prova di recupero condotta dal custode e attestazione della responsabilità. Al 07/11/2026 questi passaggi sono attestati dal custode come `PASS`; le restanti sezioni di progettazione riportano anche lo stato storico, anteriore al collaudo. Il profilo personale Android prevede Termux come *possibile ambiente locale*, senza richiedere un PC, e non autorizza a generare chiavi da GitHub. Gli altri profili non sono obbligati a usare Termux; lo strumento impiegato dal custode deve essere realmente disponibile e qualificato. Un sito arbitrario per la generazione delle chiavi non è un'alternativa sicura.
 
 ## Variante senza Termux: due smartphone Android (solo candidata)
 
-L'utente ha dichiarato disponibile un secondo Android. Il protocollo [P7_RB03_TWO_ANDROID_GUI_CANDIDATE.md](./P7_RB03_TWO_ANDROID_GUI_CANDIDATE.md) descrive una **prova preliminare con chiave sintetica classica X25519**, applicazione AgePony e recupero autonomo sul secondo telefono, senza PC o Termux. La compatibilità operativa e l'effettiva recuperabilità **non sono ancora dimostrate**; nessuna identità permanente è stata generata. Questo percorso è opzionale e non sostituisce la custodia autorizzata né il gate umano RB-03. Prima dell'esportazione reale rimangono richiesti tutti i controlli RB-02/RB-04/RB-05.
+L'utente ha dichiarato disponibile un secondo Android. Il protocollo [P7_RB03_TWO_ANDROID_GUI_CANDIDATE.md](./P7_RB03_TWO_ANDROID_GUI_CANDIDATE.md) descrive una **prova preliminare con chiave sintetica classica X25519**, applicazione AgePony e recupero autonomo sul secondo telefono, senza PC o Termux. Per questa specifica variante con interfaccia grafica l'interoperabilità e il recupero non sono stati qualificati; il custode ha successivamente adottato **Termux con `rage-keygen` e `age`**, raggiungendo il `PASS` riportato in apertura. L'identità permanente è stata generata su Android A, non nell'interfaccia grafica. Questo percorso è opzionale e non sostituisce la custodia autorizzata né il gate umano RB-03. Prima dell'esportazione reale rimangono richiesti tutti i controlli RB-02/RB-04/RB-05.
 
 ## Divieti
 
