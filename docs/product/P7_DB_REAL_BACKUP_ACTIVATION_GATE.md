@@ -1,6 +1,10 @@
 # P7-DB-REAL-ACTIVATION — Contratto di attivazione e recuperabilità Beta
 
-**Stato al 06/11/2026:** `READ_ONLY_INVENTORY_COMPLETE / RENDER_PUBLIC_CONFIG_CONFIRMED / RUNTIME_BUILD_UNATTESTED / RECOVERY_IDENTITY_UNCONFIGURED / REAL_EXPORT_HOLD`.
+**Stato al 07/11/2026:** `READ_ONLY_INVENTORY_COMPLETE / RENDER_PUBLIC_CONFIG_CONFIRMED / RUNTIME_BUILD_UNATTESTED / RB03_CUSTODY_PASS_USER_ATTESTED / REAL_EXPORT_HOLD`.
+
+**Aggiornamento operativo RB-03 (07/11/2026).** La chiave `age` permanente è stata generata *sul primo smartphone Android* con `rage-keygen`, custodita nella directory privata Termux e protetta mediante copia cifrata `recovery.age`. Il custode ha documentato una prova locale `PASS`; ha trasferito la copia cifrata e il messaggio sintetico cifrato al secondo smartphone e **attestato** `RB03_RECUPERO_INDIPENDENTE_PASS`. Ha inoltre confermato di aver custodito la passphrase su supporto cartaceo in luogo separato dai due telefoni. **`RB-03=PASS_CUSTODIAN_ATTESTED` limitatamente a recuperabilità e custodia; non è un'autorizzazione a esportare dati reali.** Restano `RB-02/04/05=HOLD` per la parte operativa non qualificata, `RB-06/07=NOT_RUN` e i vincoli del blocco `0104`. Tenere una copia cifrata sul telefono B in luogo stabile, preservare le copie originali fino a verifica di tale conservazione; poi eliminare solo gli artefatti transitori in Download. La custodia della passphrase deve restare separata dai file cifrati.
+
+*Nota di lettura:* i paragrafi seguenti che descrivono `RB-03=HOLD`, assenza di chiave o percorso Termux «non adottato» documentano uno **stato storico precedente alla prova**, ora superato dalla presente attestazione e dal [protocollo aggiornato](./P7_DB_KEY_CUSTODY_RECOVERY_PROTOCOL.md).
 
 Collegato alla [PR #795](https://github.com/antoniocorsano-boop/docente-os-2026-27/pull/795) e al blocco [#792](https://github.com/antoniocorsano-boop/docente-os-2026-27/issues/792).
 
@@ -90,7 +94,7 @@ I metadati sono stati rilevati tramite interrogazioni **in sola lettura**; non s
 |---|---|---|
 | `RB-01` | Identità Render Beta → Supabase confermata dalla configurazione pubblica in Render Environment | **PASS_RENDER_PUBLIC_CONFIG** (runtime bundle separatamente non attestato) |
 | `RB-02` | Titolarità, autorizzazione al trattamento, trasferimento e conservazione in R2 approvati | HOLD |
-| `RB-03` | Chiave privata `age` custodita indipendentemente e recupero dimostrato | HOLD |
+| `RB-03` | Chiave privata `age` custodita indipendentemente e recupero dimostrato | PASS_CUSTODIAN_ATTESTED (07/11/2026); nessuna autorizzazione export |
 | `RB-04` | Credenziale di esportazione protetta e perimetro minimo documentati | HOLD |
 | `RB-05` | Piano per `public`, `private`, `auth`, metadati/oggetti Storage, ruoli, migrazioni e dipendenze approvato | HOLD |
 | `RB-06` | Copia reale cifrata creata e trasferita, ricevuta senza informazioni personali | NON ESEGUITO |
