@@ -137,9 +137,27 @@ Fonti tecniche: [Cloudflare R2 API Tokens](https://developers.cloudflare.com/r2/
 
 Il nuovo [controllo sintetico delle politiche R2](../../.github/scripts/p7-rb02-rb04-r2-policy-contract.py), eseguito dalla stessa prova PostgreSQL 17, rifiuta in modalità di test: scadenza mancante o non successiva al blocco di 90 giorni, scadenza applicata indistintamente al contenitore, blocco disattivato, bucket o giurisdizione errati, esposizione pubblica, credenziali amministrative o estese a tutti i bucket, utilizzo dei dati reali nelle PR, e assenza della revisione privacy/della durata. Controlla anche che il percorso sintetico esistente resti nel prefisso `rehearsal/` e sia limitato a `main` con avvio esplicito.
 
-**Doppia distinzione:** (a) il test esamina **solo valori fittizi** predisposti per individuare regressioni e non interroga Cloudflare; (b) l'esempio di scadenza a 91 giorni è un'**ipotesi non approvata**, non una regola configurata. Il controllo `RB02_RB04_POLICY_CONTRACT=PASS` non qualifica la protezione reale dei dati né equivale al via libera a un'esportazione. I permessi R2 sono verificabili per singolo contenitore e **non è comprovata** una restrizione alle sole chiavi di oggetto con prefisso `production/` o `rehearsal/`; occorre quindi conservare la separazione del processo e una revisione dei privilegi effettivi.
+**Doppia distinzione:** (a) il test esamina **solo valori fittizi** predisposti per individuare regressioni e non interroga Cloudflare; (b) il **07/11/2026 il custode ha approvato esplicitamente la scadenza automatica a 91 giorni** per il solo prefisso `production/`, mantenendo il blocco a 90 giorni; questa decisione **non è una regola Cloudflare già configurata o verificata**. Il controllo `RB02_RB04_POLICY_CONTRACT=PASS` non qualifica la protezione reale dei dati né equivale al via libera a un'esportazione. I permessi R2 sono verificabili per singolo contenitore e **non è comprovata** una restrizione alle sole chiavi di oggetto con prefisso `production/` o `rehearsal/`; occorre quindi conservare la separazione del processo e una revisione dei privilegi effettivi.
 
-**Gates residui:** `RB-02=HOLD` finché non siano disponibili una decisione sul trattamento, la conservazione e il trasferimento a R2, una verifica del ciclo di vita e la prova dei privilegi non sensibili. `RB-04=HOLD` finché non sia stata qualificata l'autorizzazione dell'identità di esportazione. La prova sintentica RB-05 è PASS, ma le procedure di ripristino vere restano HOLD. Nessun segreto, utente reale o allegato effettivo è stato esportato.
+**Gates residui:** `RB-02=HOLD` nonostante la **durata di cancellazione a 91 giorni sia approvata**: restano la decisione sul trattamento e trasferimento di dati reali a R2, la prova visiva della regola di ciclo di vita effettivamente attiva sul prefisso `production/` e la verifica dei privilegi non sensibili. `RB-04=HOLD` finché non sia stata qualificata l'autorizzazione dell'identità di esportazione. La prova sintentica RB-05 è PASS, ma le procedure di ripristino vere restano HOLD. Nessun segreto, utente reale o allegato effettivo è stato esportato.
+
+### Decisione di conservazione approvata (07/11/2026) — verifica esterna ancora necessaria
+
+| Voce | Decisione |
+|---|---|
+| Contenitore R2 | `docente-os-backup-eu` (giurisdizione UE precedentemente attestata) |
+| Prefisso | `production/` (non tutto il contenitore) |
+| Regola di blocco | `production-backup-90d`, 90 giorni, già documentata visivamente |
+| Regola di ciclo di vita da verificare | Cancellazione automatica degli **oggetti completati dopo 91 giorni** |
+| `rehearsal/` | Escluso da questa nuova scadenza |
+| Stato della scelta | `RETENTION_91_DAYS=USER_APPROVED` |
+| Stato configurazione R2 | `LIVE_LIFECYCLE_91_DAYS=NOT_VERIFIED` |
+
+La scadenza si riferisce all'**età di ciascun oggetto**, non a un calendario globale. Secondo Cloudflare, la cancellazione viene normalmente completata entro **24 ore dalla scadenza**, e i tempi possono variare. La regola a 91 giorni non garantisce da sola che esista sempre una copia recuperabile: prima di attivare backup reali occorre definire e qualificare la frequenza di generazione e recupero, evitare che una copia scada come unica fonte disponibile, verificare i permessi di accesso al contenitore e rispettare il vincolo di costo zero. La decisione sulla sola durata non equivale all'approvazione dell'esportazione di dati reali (`RB-02=HOLD`).
+
+**Verifica assistita da smartphone, senza esposizione di segreti:** Cloudflare → R2 Object Storage → `docente-os-backup-eu` → Settings → Object lifecycle rules → Add rule; selezionare cancellazione automatica per gli oggetti dopo **91 giorni**, con prefisso **`production/`**; salvare e riaprire la regola per documentare nome, prefisso, stato e durata, evitando che lo screenshot includa token o altri segreti. Non sostituire o modificare la regola Bucket lock esistente. La sola conferma verbale della scelta non prova che la regola sia stata salvata.
+
+Fonti: https://developers.cloudflare.com/r2/buckets/object-lifecycles/ ; https://developers.cloudflare.com/r2/buckets/bucket-locks/ .
 
 ## 5. Evidenze ammesse nel repository pubblico
 
