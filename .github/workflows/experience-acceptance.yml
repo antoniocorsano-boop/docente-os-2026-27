@@ -75,6 +75,23 @@ jobs:
       DOCENTE_OS_CIVIC_SCHEMA_COMPAT: previous
 
     steps:
+      - name: P0 - refuse non-isolated live services in automated certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          # No secret values or URLs are printed.
+          reject_remote() {
+            local variable="$1"
+            local target="${!variable:-}"
+            case "$target" in
+              ''|http://localhost|http://localhost:*|http://127.0.0.1|http://127.0.0.1:*|http://\[::1\]:*) ;;
+              *) echo "::error::P0 issue 796: $variable must be an isolated local target; real Beta certification is HOLD"; exit 1 ;;
+            esac
+          }
+          for variable in NEXT_PUBLIC_SUPABASE_URL SUPABASE_URL E2E_BASE_URL BROWSER_BASE_URL TEST_BASE_URL; do
+            reject_remote "$variable"
+          done
+          echo 'P0_BROWSER_REAL_BETA_ISOLATION=PASS_LOCAL_ONLY'
       - name: Check governed AAL2 E2E credential configuration
         id: credentials
         shell: bash
@@ -245,6 +262,23 @@ jobs:
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_4Hqwe3dIqEWGrqSZmmQB8w_TgsfKc7L
 
     steps:
+      - name: P0 - refuse non-isolated live services in automated certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          # No secret values or URLs are printed.
+          reject_remote() {
+            local variable="$1"
+            local target="${!variable:-}"
+            case "$target" in
+              ''|http://localhost|http://localhost:*|http://127.0.0.1|http://127.0.0.1:*|http://\[::1\]:*) ;;
+              *) echo "::error::P0 issue 796: $variable must be an isolated local target; real Beta certification is HOLD"; exit 1 ;;
+            esac
+          }
+          for variable in NEXT_PUBLIC_SUPABASE_URL SUPABASE_URL E2E_BASE_URL BROWSER_BASE_URL TEST_BASE_URL; do
+            reject_remote "$variable"
+          done
+          echo 'P0_BROWSER_REAL_BETA_ISOLATION=PASS_LOCAL_ONLY'
       - name: Resolve target
         id: target
         shell: bash
