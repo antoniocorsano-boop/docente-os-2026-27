@@ -15,17 +15,7 @@ type LoginPageProps = {
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const supabase = await createClient()
   const { data } = await supabase.auth.getClaims()
-  if (data?.claims) {
-    const assurance = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-    if (
-      assurance.error ||
-      !assurance.data ||
-      (assurance.data.currentLevel !== 'aal2' && assurance.data.nextLevel === 'aal2')
-    ) {
-      redirect('/sicurezza/mfa')
-    }
-    redirect('/workspace')
-  }
+  if (data?.claims) redirect('/workspace')
 
   const params = await searchParams
   const message = params.sent
