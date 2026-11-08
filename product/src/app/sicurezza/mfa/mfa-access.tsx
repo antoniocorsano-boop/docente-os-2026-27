@@ -2,11 +2,11 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
-import { recoverableDocenteDrafts, resolveMfaStage, validTotpCode } from './mfa-state'
+import { nextDocenteFactorName, recoverableDocenteDrafts, resolveMfaStage, validTotpCode } from './mfa-state'
 
 type View = 'loading' | 'setup' | 'enroll' | 'recover' | 'challenge' | 'ready'
 type PendingEnrollment = { id: string; secret: string }
@@ -23,25 +23,49 @@ export function MfaAccess() {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const currentUserId = useRef<string | null>(null)
+  const authEpoch = useRef(0)
+
+  function sameSession(epoch: number, userId: string | null): boolean {
+    return userId !== null && currentUserId.current === userId && authEpoch.current === epoch
+  }
 
   useEffect(() => {
     let active = true
+
+    function resetSensitiveState() {
+      authEpoch.current += 1
+      currentUserId.current = null
+      setPending(null)
+      setSecretRevealed(false)
+      setCode('')
+      setFactorId(null)
+      setVerifiedFactors([])
+      setDraftCount(0)
+      setError(null)
+      setBusy(false)
+      setView('loading')
+    }
+
     async function load() {
+      const epoch = authEpoch.current
       try {
-        // The server route validates claims; validate the active browser user too.
         const user = await supabase.auth.getUser()
+        if (!active || epoch !== authEpoch.current) return
         if (!user.data.user || user.error) {
+          resetSensitiveState()
           router.replace('/login?error=session_required')
           return
         }
+        currentUserId.current = user.data.user.id
         const [level, factors] = await Promise.all([
           supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
           supabase.auth.mfa.listFactors(),
         ])
+        if (!active || !sameSession(epoch, user.data.user.id)) return
         if (level.error || factors.error || !level.data || !factors.data) {
           throw new Error('MFA status unavailable')
         }
-        if (!active) return
         const verified = factors.data.totp.filter((factor) => factor.status === 'verified')
         const recoverable = recoverableDocenteDrafts(factors.data.all)
         setVerifiedFactors(verified.map((factor, index) => ({
@@ -52,11 +76,37 @@ export function MfaAccess() {
         setFactorId(verified[0]?.id ?? null)
         setView(resolveMfaStage(level.data.currentLevel, verified.length, recoverable.length))
       } catch {
-        if (active) setError('Non è stato possibile verificare la sessione. Ricarica la pagina e riprova.')
+        if (active && epoch === authEpoch.current) {
+          setError('Non è stato possibile verificare la sessione. Ricarica la pagina e riprova.')
+        }
       }
     }
+
+    // This listener is synchronous: do not await Supabase calls inside the
+    // callback. Invalidate sensitive state before navigation or future requests.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!active) return
+      const newId = session?.user?.id ?? null
+      const oldId = currentUserId.current
+      if (event === 'SIGNED_OUT' || (oldId !== null && oldId !== newId)) {
+        resetSensitiveState()
+        router.replace('/login?error=session_required')
+        return
+      }
+      if (event === 'TOKEN_REFRESHED' && oldId !== null && newId === oldId) {
+        // Recheck AAL if a refreshed JWT has a different assurance level.
+        // A prior 'ready' screen must never survive a token downgrade.
+        resetSensitiveState()
+        Promise.resolve().then(() => { if (active) void load() })
+      }
+    })
+
     void load()
-    return () => { active = false }
+    return () => {
+      active = false
+      authEpoch.current += 1
+      subscription.unsubscribe()
+    }
   }, [router, supabase])
 
   async function startEnrollment() {
