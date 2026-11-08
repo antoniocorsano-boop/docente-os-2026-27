@@ -16,6 +16,7 @@ export function MfaAccess() {
   const supabase = useMemo(() => createClient(), [])
   const [view, setView] = useState<View>('loading')
   const [factorId, setFactorId] = useState<string | null>(null)
+  const [verifiedFactors, setVerifiedFactors] = useState<{ id: string; label: string }[]>([])
   const [pending, setPending] = useState<PendingEnrollment | null>(null)
   const [secretRevealed, setSecretRevealed] = useState(false)
   const [draftCount, setDraftCount] = useState(0)
@@ -41,11 +42,15 @@ export function MfaAccess() {
           throw new Error('MFA status unavailable')
         }
         if (!active) return
-        const verified = factors.data.totp.find((factor) => factor.status === 'verified')
+        const verified = factors.data.totp.filter((factor) => factor.status === 'verified')
         const recoverable = recoverableDocenteDrafts(factors.data.all)
+        setVerifiedFactors(verified.map((factor, index) => ({
+          id: factor.id,
+          label: `App di autenticazione ${index + 1}`,
+        })))
         setDraftCount(recoverable.length)
-        setFactorId(verified?.id ?? null)
-        setView(resolveMfaStage(level.data.currentLevel, verified ? 1 : 0, recoverable.length))
+        setFactorId(verified[0]?.id ?? null)
+        setView(resolveMfaStage(level.data.currentLevel, verified.length, recoverable.length))
       } catch {
         if (active) setError('Non è stato possibile verificare la sessione. Ricarica la pagina e riprova.')
       }
@@ -55,7 +60,7 @@ export function MfaAccess() {
   }, [router, supabase])
 
   async function startEnrollment() {
-    if (busy || view !== 'setup') return
+    if (busy || (view !== 'setup' && view !== 'ready')) return
     setError(null)
     setBusy(true)
     try {
@@ -92,8 +97,19 @@ export function MfaAccess() {
       const factors = await supabase.auth.mfa.listFactors()
       if (factors.error || !factors.data) return
       const leftovers = recoverableDocenteDrafts(factors.data.all)
+      const verified = factors.data.totp.filter((factor) => factor.status === 'verified')
       setDraftCount(leftovers.length)
-      setView(leftovers.length ? 'recover' : 'setup')
+      if (verified.length) {
+        setVerifiedFactors(verified.map((factor, index) => ({
+          id: factor.id,
+          label: `App di autenticazione ${index + 1}`,
+        })))
+        setFactorId(verified[0].id)
+        const level = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+        setView(level.data?.currentLevel === 'aal2' ? 'ready' : 'challenge')
+      } else {
+        setView(leftovers.length ? 'recover' : 'setup')
+      }
     } catch {
       setError('Impossibile annullare la configurazione. Conserva l’accesso a questa schermata e riprova.')
     } finally {
@@ -109,9 +125,13 @@ export function MfaAccess() {
       // Re-fetch immediately before deletion. NEVER delete a verified factor.
       const latest = await supabase.auth.mfa.listFactors()
       if (latest.error || !latest.data) throw new Error('MFA factor refresh failed')
-      const verified = latest.data.totp.find((factor) => factor.status === 'verified')
-      if (verified) {
-        setFactorId(verified.id)
+      const verified = latest.data.totp.filter((factor) => factor.status === 'verified')
+      if (verified.length) {
+        setVerifiedFactors(verified.map((factor, index) => ({
+          id: factor.id,
+          label: `App di autenticazione ${index + 1}`,
+        })))
+        setFactorId(verified[0].id)
         setView('challenge')
         return
       }
@@ -158,6 +178,14 @@ export function MfaAccess() {
       }
       setPending(null)
       setSecretRevealed(false)
+      const allFactors = await supabase.auth.mfa.listFactors()
+      if (!allFactors.error && allFactors.data) {
+        const verified = allFactors.data.totp.filter((factor) => factor.status === 'verified')
+        setVerifiedFactors(verified.map((factor, index) => ({
+          id: factor.id,
+          label: `App di autenticazione ${index + 1}`,
+        })))
+      }
       setFactorId(id)
       setView('ready')
       router.refresh()
@@ -257,6 +285,22 @@ export function MfaAccess() {
               <p className="m-0 text-sm leading-6">
                 Il secondo fattore risulta già registrato. Inserisci il codice aggiornato della tua app di autenticazione.
               </p>
+              {verifiedFactors.length > 1 ? (
+                <label className="grid gap-2 text-sm font-semibold" htmlFor="mfa-factor">
+                  Scegli l’app di autenticazione
+                  <select
+                    id="mfa-factor"
+                    value={factorId ?? ''}
+                    onChange={(event) => { setFactorId(event.target.value); setCode(''); setError(null) }}
+                    disabled={busy}
+                    className="min-h-12 rounded-[var(--radius-sm)] border border-input bg-card px-3 text-base"
+                  >
+                    {verifiedFactors.map((factor) => (
+                      <option key={factor.id} value={factor.id}>{factor.label}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
             </>
           ) : null}
 
@@ -297,6 +341,13 @@ export function MfaAccess() {
               <Link href="/workspace" className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-sm)] bg-primary px-5 text-sm font-semibold text-primary-foreground">
                 Continua nello spazio docente
               </Link>
+              <p className="m-0 text-sm text-muted-foreground">
+                Supabase non fornisce codici di recupero MFA. Per evitare di perdere l’accesso
+                puoi registrare un secondo fattore su un dispositivo distinto, conservato in modo sicuro.
+              </p>
+              <Button variant="secondary" disabled={busy} onClick={() => void startEnrollment()}>
+                {busy ? 'Configurazione in corso…' : 'Aggiungi un secondo fattore di recupero'}
+              </Button>
             </>
           ) : null}
         </section>
