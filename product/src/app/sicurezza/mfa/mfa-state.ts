@@ -13,7 +13,7 @@ const RECOVERY_FACTOR_PREFIX = 'Docente OS recupero '
 
 export function isDocenteFactorName(value: string | undefined): boolean {
   return value === PRIMARY_FACTOR ||
-    (typeof value === 'string' && /^Docente OS recupero [2-9][0-9]*$/.test(value))
+    (typeof value === 'string' && /^Docente OS recupero (?:[2-9]|[1-9][0-9]+)$/.test(value))
 }
 
 export function nextDocenteFactorName(factors: readonly FactorSummary[]): string {
