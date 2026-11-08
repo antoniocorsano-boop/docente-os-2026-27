@@ -21,6 +21,16 @@ export async function signInWithPassword(formData: FormData) {
     redirect('/login?error=invalid_credentials')
   }
 
+  // A registered second factor must be confirmed before the teacher workspace
+  // is opened. Password-only sessions remain aal1 and cannot read protected Storage.
+  const assurance = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (assurance.error || !assurance.data) {
+    redirect('/sicurezza/mfa')
+  }
+  if (assurance.data.currentLevel !== 'aal2' && assurance.data.nextLevel === 'aal2') {
+    redirect('/sicurezza/mfa')
+  }
+
   const bootstrap = await ensurePersonalWorkspace(supabase)
   if (!bootstrap.ok) {
     await supabase.auth.signOut()
