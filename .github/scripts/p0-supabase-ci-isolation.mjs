@@ -5,7 +5,8 @@
  * This does not constrain external/browser cloud test infrastructure.
  */
 import assert from 'node:assert/strict'
-import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, lstatSync, readdirSync, readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 const DATABASE_TARGETS = [
@@ -134,6 +135,15 @@ function selfTest() {
     DATABASE_URL: 'postgresql://u:p@db.fictional-live.supabase.co/postgres',
     SUPABASE_SECRET_KEY: 'private-value',
   }), ['DATABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SECRET_KEY'])
+  const temp = mkdtempSync(path.join(tmpdir(), 'p0-supabase-guard-'))
+  try {
+    writeFileSync(path.join(temp, '.env.test'), 'NEXT_PUBLIC_SUPABASE_URL=https://fictional-live.supabase.co\\n')
+    assert.deepEqual(checkSources({}, [temp]), [
+      { source: 'local dotenv configuration', names: ['NEXT_PUBLIC_SUPABASE_URL'] },
+    ])
+  } finally {
+    rmSync(temp, { recursive: true, force: true })
+  }
   console.log('P0_CI_SUPABASE_ISOLATION_SELF_TEST=PASS')
 }
 
