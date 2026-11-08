@@ -62,7 +62,7 @@ export function MfaAccess() {
           supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
           supabase.auth.mfa.listFactors(),
         ])
-        if (!active || !sameSession(epoch, user.data.user.id)) return
+        if (!active || epoch !== authEpoch.current || currentUserId.current !== user.data.user.id) return
         if (level.error || factors.error || !level.data || !factors.data) {
           throw new Error('MFA status unavailable')
         }
@@ -111,22 +111,34 @@ export function MfaAccess() {
 
   async function startEnrollment() {
     if (busy || (view !== 'setup' && view !== 'ready')) return
+    const userId = currentUserId.current
+    const epoch = authEpoch.current
+    if (!userId) return
     setError(null)
     setBusy(true)
     try {
+      // Supabase forbids duplicate friendly names. Use an available name
+      // across both verified and unfinished factors, including backups.
+      const latest = await supabase.auth.mfa.listFactors()
+      if (!sameSession(epoch, userId)) return
+      if (latest.error || !latest.data) throw new Error('MFA factor refresh failed')
+      const friendlyName = nextDocenteFactorName(latest.data.all)
       const { data, error: enrollError } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
-        friendlyName: 'Docente OS',
+        friendlyName,
       })
+      if (!sameSession(epoch, userId)) return
       if (enrollError || !data?.totp?.secret) throw new Error('MFA enrollment failed')
       // The secret exists only in this component's memory, never in URLs or logs.
       setPending({ id: data.id, secret: data.totp.secret })
       setSecretRevealed(false)
       setView('enroll')
     } catch {
-      setError('Impossibile avviare la configurazione. Riprova oppure verifica le impostazioni MFA di Supabase.')
+      if (sameSession(epoch, userId)) {
+        setError('Impossibile avviare la configurazione. Riprova oppure verifica le impostazioni MFA di Supabase.')
+      }
     } finally {
-      setBusy(false)
+      if (sameSession(epoch, userId)) setBusy(false)
     }
   }
 
