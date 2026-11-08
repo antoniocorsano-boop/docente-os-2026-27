@@ -39,6 +39,23 @@ jobs:
       P6_P95_BUDGET_MS: 1800
       P6_TESTED_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
+      - name: P0 - refuse non-isolated live services in automated certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          # No secret values or URLs are printed.
+          reject_remote() {
+            local variable="$1"
+            local target="${!variable:-}"
+            case "$target" in
+              ''|http://localhost|http://localhost:*|http://127.0.0.1|http://127.0.0.1:*|http://\[::1\]:*) ;;
+              *) echo "::error::P0 issue 796: $variable must be an isolated local target; real Beta certification is HOLD"; exit 1 ;;
+            esac
+          }
+          for variable in NEXT_PUBLIC_SUPABASE_URL SUPABASE_URL E2E_BASE_URL BROWSER_BASE_URL TEST_BASE_URL; do
+            reject_remote "$variable"
+          done
+          echo 'P0_BROWSER_REAL_BETA_ISOLATION=PASS_LOCAL_ONLY'
       - name: Require governed AAL2 E2E credential
         run: test -n "${E2E_EMAIL:-}" && test -n "${E2E_PASSWORD:-}" && test -n "${E2E_TOTP_SECRET:-}"
       - name: Checkout exact tested PR head
@@ -117,6 +134,23 @@ jobs:
       P6_ROUTE_BUDGET_MS: 3000
       P6_P95_BUDGET_MS: 2200
     steps:
+      - name: P0 - refuse non-isolated live services in automated certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          # No secret values or URLs are printed.
+          reject_remote() {
+            local variable="$1"
+            local target="${!variable:-}"
+            case "$target" in
+              ''|http://localhost|http://localhost:*|http://127.0.0.1|http://127.0.0.1:*|http://\[::1\]:*) ;;
+              *) echo "::error::P0 issue 796: $variable must be an isolated local target; real Beta certification is HOLD"; exit 1 ;;
+            esac
+          }
+          for variable in NEXT_PUBLIC_SUPABASE_URL SUPABASE_URL E2E_BASE_URL BROWSER_BASE_URL TEST_BASE_URL; do
+            reject_remote "$variable"
+          done
+          echo 'P0_BROWSER_REAL_BETA_ISOLATION=PASS_LOCAL_ONLY'
       - name: Require governed AAL2 E2E credential
         run: test -n "${E2E_EMAIL:-}" && test -n "${E2E_PASSWORD:-}" && test -n "${E2E_TOTP_SECRET:-}"
       - uses: actions/checkout@v6

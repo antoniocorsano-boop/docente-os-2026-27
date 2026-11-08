@@ -1,0 +1,20 @@
+name: P0 Browser Real Beta Isolation Contract
+
+on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - '.github/workflows/**'
+      - '.github/scripts/p0-browser-real-beta-isolation-contract.py'
+
+permissions:
+  contents: read
+
+jobs:
+  isolation-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Qualify 11 browser workflows without contacting live Supabase
+        run: python3 .github/scripts/p0-browser-real-beta-isolation-contract.py
