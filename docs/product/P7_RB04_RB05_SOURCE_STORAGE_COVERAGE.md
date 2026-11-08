@@ -84,6 +84,22 @@ La matrice artificiale copre: utente autenticato con `aal2` e appartenenza a tre
 
 **Soglia di evidenza:** anche il confronto positivo di numero e dimensioni **non dimostra identità dei file, autorizzazione al download, correttezza dei byte o recuperabilità**. `RB04_SESSION_RUNTIME=NOT_RUN`, `RB04_S3_REAL_LIST=NOT_RUN`, `RB04_S3_BYTE_RECOVERY=NOT_RUN`. Il PASS del solo contratto sintetico non cambia `RB-02`, `RB-04` o `RB-05`.
 
+### MFA applicativa — implementazione proposta e collaudo richiesto (08/11/2026)
+
+La configurazione **TOTP abilitata** è stata attestata dall'utente nel pannello Supabase (08/11/2026). Questa impostazione di progetto **non** registra automaticamente un fattore sugli account Docente OS né prova una sessione `aal2`.
+
+Nella presente PR, senza distribuirla, sono stati aggiunti:
+- `product/src/app/sicurezza/mfa/page.tsx`: pagina riservata a sessioni Supabase Auth già valide, con verifica server `getClaims()`.
+- `product/src/app/sicurezza/mfa/mfa-access.tsx`: flusso mobile TOTP con `mfa.listFactors()`, `mfa.getAuthenticatorAssuranceLevel()`, `mfa.enroll()`, `mfa.challengeAndVerify()`; controllo finale esplicito di `aal2`. L'utente inserisce la chiave TOTP in un'app di autenticazione e poi il codice di sei cifre nella pagina. **Solo durante l'attivazione** la chiave è visualizzata nel componente, senza salvarla nel repository, URL, archivio del progetto o log. Un fattore non verificato creato in questo flusso può essere annullato con un'azione esplicita. Non è prevista cancellazione di fattori già verificati.
+- L'accesso con password indirizza al controllo MFA se risulta necessario un secondo fattore già registrato; nelle Impostazioni compare un collegamento a `/sicurezza/mfa`.
+- `mfa-state.ts` e `mfa-state.test.ts` con test unitari dell'instradamento e della validazione del codice, integrati nel test `npm test`. Le prove isolate non costituiscono test di autenticazione reale.
+
+**Vincoli:** la pagina non contiene operazioni S3, lettura di Storage, backup, chiavi S3 permanenti, ruoli privilegiati o cambi di RLS. Registrare un fattore TOTP modifica soltanto lo stato Auth dell'utente che lo attiva; la procedura sarà utilizzabile **solo dopo revisione, approvazione e distribuzione controllata** dell'applicazione. Supabase indica che la verifica di un nuovo fattore può terminare le altre sessioni attive. Per non perdere l'accesso, predisporre prima un metodo di recupero sicuro per l'app di autenticazione (i codici di recupero MFA nativi non sono disponibili).
+
+**Human Review prima di qualunque distribuzione:** verificare su smartphone con identità di prova l'assenza di segreti in schermate condivise, registri e URL; la leggibilità del passaggio di chiave manuale e codice TOTP; gli errori per `aal1`, codice errato, fattore inesistente, sessione scaduta; la persistenza dei permessi del workspace; e la continuità di accesso dopo verifica `aal2`. Non registrare screenshot contenenti la chiave temporanea o codici.
+
+**Successiva qualificazione RB-04 reale (non eseguita):** su ambiente autorizzato e isolato, l'utente completa il secondo fattore sull'app; si attesta `aal2` con prova riservata che non espone JWT. Separatamente, quando permesso, un esecutore di sola enumerazione verifica la visibilità degli oggetti RLS. `aal2` **non** autorizza automaticamente la copia reale: `RB-02`, `RB-04` e `RB-05` restano `HOLD` in assenza dei rispettivi riscontri. Nessun merge, deploy, lettura dei nove byte privati o DDL `0104` è implicitamente autorizzato.
+
 ## 2. Inventario Supabase osservato — soli aggregati (08/11/2026)
 
 Eseguita una sola interrogazione aggregata in sola lettura; non sono stati letti nomi di file, account, record, URL o allegati.
