@@ -72,6 +72,18 @@ Sono state interrogate **esclusivamente le definizioni di politica** nel catalog
 
 Questa è un'evidenza di **configurazione effettiva e disegno di prova**, non una qualifica di accesso reale; nessun backup, file o migrazione è stato avviato.
 
+### Verifica preparatoria MFA/S3 — contratto sintetico di sessione (08/11/2026)
+
+**Implementazione disponibile, senza rete né credenziali:** [`p7-rb04-s3-session-visibility-contract.py`](../../.github/scripts/p7-rb04-s3-session-visibility-contract.py). Lo strumento esegue soltanto `--self-test` su un elenco interamente fittizio di nove file; non dispone di modalità reale, non legge l'ambiente Supabase, non richiama API e rifiuta la presenza di variabili di credenziali reali. L'esecuzione è inserita nel workflow [PG17 sintetico](../../.github/workflows/p7-db-real-readiness-pg17.yml), che non ha `workflow_dispatch` né accesso a segreti e si attiva solo in PR verso `main`.
+
+La matrice artificiale copre: utente autenticato con `aal2` e appartenenza a tre spazi (tutti e nove visibili), assenza di MFA, identità anonima, progetto errato, zero appartenenze e appartenenza parziale; rifiuta `GetObject`, `HeadObject`, `PutObject`, `DeleteObject`, `ListBuckets`, paginazione incompleta, chiavi duplicate e discordanza degli aggregati di conteggio/dimensione. Il risultato è ridotto a **stati e conteggi sintetici**, senza stampare identità o nomi. **Non si tratta di una prova S3 contro la sorgente reale**, né del risultato di una chiamata SQL RLS eseguita con la sessione utente.
+
+**Precisazione sull'identità:** il `sessionToken` descritto nella [documentazione ufficiale Supabase S3](https://supabase.com/docs/guides/storage/s3/authentication) è un JWT di **Supabase Auth per l'utente applicativo Docente OS**, non un token di accesso al pannello amministrativo Supabase. La stessa fonte richiede, per questa modalità, `accessKeyId = project_ref` e la chiave pubblica `anonKey` legacy come `secretAccessKey` S3 (la nuova `publishableKey` non è attualmente supportata); la sicurezza deriva dal JWT e dalle RLS verificate dal servizio, non dalla segretezza della chiave anonima. **Non** esportare JWT da smartphone/browser verso GitHub, chat, registri, file del repository o job sintetici. Le sessioni del pannello Supabase per [accesso PostgreSQL temporaneo](https://supabase.com/docs/guides/platform/temporary-access) appartengono a un meccanismo diverso e non vanno sostituite al JWT applicativo Storage.
+
+**Passo eseguibile dopo separata autorizzazione:** occorrerà individuare o predisporre un contesto *già autenticato nell'applicazione* con MFA effettivo `aal2`; eseguire in ambiente protetto una richiesta `ListObjectsV2` verso il contenitore autorizzato; elaborare tutte le pagine senza esporre `Key`, identificativi, token o dimensioni per singolo file; confrontare il conteggio con l'inventario aggregato indipendente di **9** e la somma precedentemente rilevata **5.371.962 byte**, assicurando l'assenza di modifiche concorrenti. In caso di rifiuto, elenco vuoto o discordanza: `HOLD` senza allargamento delle policy. Solo dopo RB-02 e altre autorizzazioni potranno essere trattati i byte, le impronte e il ripristino.
+
+**Soglia di evidenza:** anche il confronto positivo di numero e dimensioni **non dimostra identità dei file, autorizzazione al download, correttezza dei byte o recuperabilità**. `RB04_SESSION_RUNTIME=NOT_RUN`, `RB04_S3_REAL_LIST=NOT_RUN`, `RB04_S3_BYTE_RECOVERY=NOT_RUN`. Il PASS del solo contratto sintetico non cambia `RB-02`, `RB-04` o `RB-05`.
+
 ## 2. Inventario Supabase osservato — soli aggregati (08/11/2026)
 
 Eseguita una sola interrogazione aggregata in sola lettura; non sono stati letti nomi di file, account, record, URL o allegati.
