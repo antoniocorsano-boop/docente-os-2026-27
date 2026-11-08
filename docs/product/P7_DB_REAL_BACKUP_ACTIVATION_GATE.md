@@ -28,9 +28,17 @@ Collegato alla [PR #795](https://github.com/antoniocorsano-boop/docente-os-2026-
 - **Limite:** `BETA_SERVING_BUNDLE_REF=UNATTESTED`; il controllo automatico dei bundle pubblici non ha fornito conferme. Inoltre questa verifica non prova la disponibilità di credenziali per l'esportazione né la completezza del recupero.
 - **Protezione:** non acquisire, ripubblicare o copiare password, `SUPABASE_SECRET_KEY`, credenziali PostgreSQL o altre variabili d'ambiente della schermata Render.
 
-## 1-bis. Classificazione prudenziale dei dati e autorizzazione
+## 1-bis. Perimetro dei dati — attestazione del custode (08/11/2026)
 
-Una nuova verifica **aggregata e in sola lettura** ha rilevato 4 identità Auth, 4 spazi di lavoro, 6 sessioni didattiche e 9 oggetti Storage. Le quantità **non** distinguono dati sintetici da dati personali reali; di conseguenza il contenuto della Beta deve essere trattato come **potenzialmente personale/scolastico**, finché il titolare o un soggetto autorizzato non attesta il contrario.
+**Dichiarazione umana sopravvenuta:** nel progetto Beta sono presenti dati personali reali del custode e dati fittizi; il custode **esclude la presenza di dati reali di studenti, genitori o altri docenti**. Ricevuta senza nomi, account né contenuti personali: `SELF_PERSONAL_PLUS_SYNTHETIC=PASS_CUSTODIAN_ATTESTED`; `THIRD_PARTY_REAL_DATA=NONE_USER_ATTESTED`.
+
+Il perimetro non è `SYNTHETIC_ONLY`. I conteggi aggregati rilevati in precedenza non dimostrano né smentiscono la dichiarazione; non è stato effettuato accesso alle righe del database, alle identità Auth o ai byte Storage. La classificazione riduce il rischio dichiarato di dati reali di terzi, ma **non** attesta da sola l'assenza effettiva di dati scolastici né l'idoneità della destinazione Cloudflare R2 per i dati personali del custode.
+
+**Separazione delle autorizzazioni:** `RB-02=HOLD` fino a chiarire se la Beta viene usata in un contesto personale o professionale/scolastico, la relativa competenza sul trattamento, i termini di conservazione e servizio applicabili e una **decisione espressa di backup reale cifrato**. `RB-04=HOLD` e `RB-05_REAL=HOLD` finché non si qualificano credenziale di origine, perimetro completo e recupero inclusi i file Storage. Nessun nuovo `workflow_dispatch` per dati reali deve essere reso attivabile prima della qualificazione dei gate.
+
+
+
+Una verifica **aggregata e in sola lettura** ha rilevato 4 identità Auth, 4 spazi di lavoro, 6 sessioni didattiche e 9 oggetti Storage. Le quantità **non** distinguono dati sintetici da dati personali reali. **L'08/11/2026 il custode ha attestato** che i dati reali sono solo propri, affiancati a dati fittizi, e che non sono presenti dati reali di studenti, genitori o altri docenti. L'attestazione non deriva dalla lettura dei contenuti e non elimina l'obbligo di protezione dei dati personali.
 
 Il documento canonico di classificazione e autorizzazione è [P7_DB_REAL_DATA_PRIVACY_AND_CUSTODY_GATE.md](./P7_DB_REAL_DATA_PRIVACY_AND_CUSTODY_GATE.md): `RB-02=HOLD`, nessuna esportazione reale né trasferimento R2 autorizzato.
 
