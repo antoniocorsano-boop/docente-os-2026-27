@@ -197,6 +197,16 @@ Tre schermate della pagina Cloudflare «Modifica token API Account» mostrano il
 
 Fonti: [Cloudflare R2 Authentication](https://developers.cloudflare.com/r2/api/tokens/), [Cloudflare Restrict tokens](https://developers.cloudflare.com/fundamentals/api/how-to/restrict-tokens/).
 
+### RB-04/RB-05 — Provenienza della sorgente e copertura completa (08/11/2026)
+
+La nuova [specifica di copertura RB-04/RB-05](./P7_RB04_RB05_SOURCE_STORAGE_COVERAGE.md) documenta i requisiti distinti per l'identità PostgreSQL, per l'accesso ai byte di Supabase Storage e per la destinazione Cloudflare R2. Non equiparare la validità visiva dei permessi del token R2 a un'autorizzazione di lettura dell'origine Supabase. Il ruolo concreto e le capacità necessarie per esportare `auth`, `private` e gli schemi gestiti non sono ancora qualificate.
+
+L'inventario aggregato in sola lettura del **08/11/2026** riporta **62** tabelle `public`, **7** `private`, **4** account Auth, **1** bucket Storage privato, **9** oggetti, tutti con dimensione numerica nei metadati, per una somma riportata di **5.371.962 byte**. Nessuna riga nominativa o byte di file è stata consultata; tali dimensioni non rappresentano un export verificato. La documentazione Supabase conferma che il solo dump database esclude i **byte degli oggetti Storage** e che l'uso ordinario `supabase db dump` richiede attenzione agli schemi gestiti `auth`/`storage`.
+
+Lo script [`p7-rb04-rb05-source-storage-contract.py`](../../.github/scripts/p7-rb04-rb05-source-storage-contract.py) crea **solo materiale inventato** e verifica mediante casi negativi: stessa origine e istantanea tra database e Storage; autorizzazioni dichiarate limitate; presenza esplicita di ruoli, schema, dati, Auth, metadati e migrazioni; corrispondenza fra inventario e byte Storage, inclusi nomi duplicati fra bucket distinti, file vuoti, hash e dimensioni, percorsi non validi. Esito tecnico subordinato alla verifica automatica sul commit esatto.
+
+**Limite vincolante:** `RB04_SOURCE_IDENTITY_REAL=HOLD`, `RB05_STORAGE_AND_AUTH_REAL=HOLD`; il collaudo sintetico non qualifica credenziali di origine, coerenza effettiva dei sistemi o ripristino autenticato. `RB-02=HOLD` e nessun `RB-06/07` può iniziare senza distinta autorizzazione.
+
 ## 5. Evidenze ammesse nel repository pubblico
 
 Solo commit esatto, identificativo di prova, stato dei gate, versione PostgreSQL, descrizione dello schema e impronte **dei soli archivi cifrati**. Nessun dato di autenticazione, record scolastico, oggetto Storage, identità `age`, password, token, URL autenticato, configurazione segreta o log applicativo con dati degli utenti.
