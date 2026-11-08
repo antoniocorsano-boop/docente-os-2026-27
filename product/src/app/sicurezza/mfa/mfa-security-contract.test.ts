@@ -25,10 +25,11 @@ test('a pending TOTP secret is not shown in the initial render', () => {
 test('interrupted factors are rechecked before user-initiated cleanup', () => {
   assert.ok(mfaUi.includes("if (busy || view !== 'recover') return"))
   const fresh = mfaUi.indexOf('const latest = await supabase.auth.mfa.listFactors()')
-  const verified = mfaUi.indexOf("latest.data.totp.find((factor) => factor.status === 'verified')")
-  const selection = mfaUi.indexOf('recoverableDocenteDrafts(latest.data.all)')
-  const removal = mfaUi.indexOf('supabase.auth.mfa.unenroll({ factorId: draft.id })')
-  assert.ok(fresh >= 0 && verified > fresh && selection > verified && removal > selection)
+  const verified = mfaUi.indexOf("latest.data.totp.filter((factor) => factor.status === 'verified')", fresh)
+  const guard = mfaUi.indexOf('if (verified.length)', verified)
+  const selection = mfaUi.indexOf('recoverableDocenteDrafts(latest.data.all)', guard)
+  const removal = mfaUi.indexOf('supabase.auth.mfa.unenroll({ factorId: draft.id })', selection)
+  assert.ok(fresh >= 0 && verified > fresh && guard > verified && selection > guard && removal > selection)
 })
 
 test('verified backup factors can be chosen without removing the original', () => {
