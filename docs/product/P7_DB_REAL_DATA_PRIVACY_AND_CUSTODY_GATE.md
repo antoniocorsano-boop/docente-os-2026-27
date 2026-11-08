@@ -2,7 +2,17 @@
 
 **Data:** 06/11/2026  
 **Progetto candidato:** `gnshgapmwyjamhmlikeg` (Beta Docente OS)  
-**Esito:** `RB-02=HOLD / DATA_TREAT_AS_PERSONAL_PENDING_ATTESTATION / REAL_BACKUP_FORBIDDEN`
+**Esito aggiornato all'08/11/2026:** `RB-02=HOLD / DATA_SCOPE_SELF_PERSONAL_PLUS_SYNTHETIC_USER_ATTESTED / THIRD_PARTY_REAL_DATA_DENIED_BY_CUSTODIAN / REAL_BACKUP_FORBIDDEN`
+
+## Attestazione del perimetro dei dati (08/11/2026)
+
+Il custode ha dichiarato esplicitamente: «No, non sono presenti dati reali di studenti, genitori o altri docenti, oltre ai miei dati personali e ai dati fittizi». Registrare quindi **`DATA_SCOPE=SELF_PERSONAL_PLUS_SYNTHETIC / THIRD_PARTY_REAL_DATA=NONE_USER_ATTESTED`**.
+
+**Valore probatorio:** classificazione fondata su dichiarazione diretta del custode, non su verifica del contenuto del database. I conteggi aggregati precedenti (4 identità Auth, 4 spazi di lavoro, 6 sessioni, 9 oggetti Storage) rimangono fatti tecnici, senza potere discriminante sulla natura personale dei record. Non ispezionare account, nomi, allegati, righe o email per confermare questa dichiarazione, a meno di autorizzazione separata e necessità documentata.
+
+**Conseguenze immediate:** il database **NON** deve essere classificato come `SYNTHETIC_ONLY`; include dati personali reali del custode. La precedente categoria generica «potenzialmente personale/scolastico» è affinata, sulla sola attestazione dell'utente, a «personali del custode + sintetici; nessun dato reale di studenti, famiglie o altri docenti dichiarato». Questa attestazione **non** equivale a una verifica tecnica dell'assenza di dati di terzi, né autorizza il trasferimento a R2.
+
+**RB-02 resta HOLD.** Sono da accertare la natura personale o professionale dell'uso della Beta, l'eventuale titolarità/competenza di istituto sui documenti, le condizioni applicabili al trattamento e al servizio di archiviazione, e la decisione espressa di effettuare un backup reale cifrato verso R2. I controlli tecnici su cifratura, privilegi del token e durata 90/91 giorni già attestati non sostituiscono questa decisione. `RB-04` e `RB-05` per dati reali rimangono HOLD, `RB-06/07` non eseguiti, `0104` non autorizzata.
 
 ## RB-02 — Esame dei controlli R2 successivo alla verifica UE
 
@@ -60,7 +70,7 @@ La verifica è stata eseguita mediante **sole interrogazioni aggregate**, senza 
 | Oggetti presenti in Supabase Storage | 9 |
 | Voci dello storico delle migrazioni | 113 |
 
-Le quantità dimostrano che il progetto non è vuoto, ma **non permettono di distinguere dati inventati da persone reali**. La denominazione personale del progetto Supabase e l'utilizzo di una Beta non costituiscono prove che i dati siano fittizi.
+Le quantità dimostrano che il progetto non è vuoto, ma **non permettono di distinguere dati inventati da persone reali**. La successiva **attestazione diretta del custode dell'08/11/2026** classifica il perimetro in dati personali propri + fittizi, senza dati reali di terzi dichiarati; questa dichiarazione resta distinta dall'inventario tecnico e non giustifica una classificazione `SYNTHETIC_ONLY`.
 
 **Classificazione conservativa:** trattare tutti i dati come **potenzialmente personali e/o scolastici**, fino a un'attestazione separata della loro natura. Non occorre ispezionare o pubblicare alcuna riga per adottare la misura cautelativa.
 
