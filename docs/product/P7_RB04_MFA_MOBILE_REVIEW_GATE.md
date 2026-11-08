@@ -8,6 +8,8 @@
 
 È stata aggiunta una pagina `/sicurezza/mfa` accessibile soltanto a sessioni Supabase Auth valide, che usa gli strumenti ufficiali `mfa.listFactors`, `mfa.enroll`, `mfa.challengeAndVerify` e `mfa.getAuthenticatorAssuranceLevel`. L'esito `aal2` viene verificato dopo la prova del secondo fattore. L'accesso ordinario e il recupero password instradano al secondo fattore quando l'utente ne possiede già uno verificato. La verifica MFA per mutazioni di password è **prima** di `updateUser`, non dopo.
 
+L'interfaccia supporta anche la scelta fra più fattori TOTP **già verificati** e l'aggiunta volontaria di un fattore su un secondo dispositivo quando la sessione è `aal2`. Il fattore primario non viene rimosso; la procedura deve essere provata sul backend sintetico prima di qualunque registrazione reale. Non sono previsti codici di recupero generati dall'applicazione.
+
 ### Rilievi della revisione e correzioni
 
 | Rilievo | Conseguenza | Correzione |
