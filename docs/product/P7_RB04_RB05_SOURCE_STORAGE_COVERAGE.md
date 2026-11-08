@@ -31,6 +31,20 @@ La parola `service_role` identifica qui un **ruolo interno PostgreSQL**, non pro
 
 **Conseguenza:** la credenziale effettiva di esportazione non è stata scoperta né usata; non è attestato che esista già una credenziale a privilegi minimi capace di esportare tutti gli schemi necessari. Prima di RB-04 PASS occorre verificare senza pubblicare segreti il metodo di autenticazione scelto, gli accessi a `auth` e `private`, l'effettiva necessità degli eventuali privilegi elevati e le modalità di custodia delle credenziali. **Non creare un ruolo SQL o una credenziale in questa PR.**
 
+### Verifica umana Storage S3 e controllo RLS — 08/11/2026
+
+**Evidenza fornita dal custode:** nella schermata Supabase **Storage → S3 Configuration** del progetto `gnshgapmwyjamhmlikeg` il commutatore **S3 protocol connection** risulta abilitato, l'endpoint di progetto è visualizzato, la regione è `eu-west-1` e la sezione **Access keys** mostra «No access keys created». La schermata non dimostra una sessione S3 autenticata né la lettura dei byte di alcun file. Non sono state create credenziali né modificata l'impostazione già attiva.
+
+**Verifica aggregata del catalogo PostgreSQL, sola lettura:** per `storage.objects`, `relrowsecurity=true`, `relforcerowsecurity=false`; esistono **2** politiche `SELECT/ALL`, entrambe applicabili a `authenticated` o `public`. Sono stati contati **solo metadati delle politiche**, senza estrarne le espressioni, leggere righe personali, nomi di oggetti o scaricare file. La sola presenza delle politiche **non** dimostra che l'utente/custode possa vedere tutti i 9 oggetti: occorre verificare la loro efficacia in un ambiente autorizzato.
+
+**Due possibili modalità ufficiali di accesso alla sorgente Storage:**
+- **Sessione S3 con token utente (JWT)**: rispetta le politiche RLS e limita l'accesso all'identità autenticata; è la candidata a privilegio minimo da **qualificare**, senza comunicare il JWT in chat, GitHub o nei log.
+- **Chiavi S3 generate dal progetto**: consentono l'accesso a tutte le operazioni di tutti i bucket e aggirano RLS, secondo la [documentazione ufficiale Supabase](https://supabase.com/docs/guides/storage/s3/authentication). **Nessuna è presente**, e non è autorizzata ora la generazione di una chiave con privilegi così ampi.
+
+**Esito:** `RB04_STORAGE_S3_PROTOCOL=PASS_VISUAL_ENABLED`; `RB04_STORAGE_S3_PERMANENT_KEYS=NONE_USER_SCREENSHOT`; `RB04_STORAGE_RLS_SELECT_POLICIES=2_READ_ONLY_CATALOG`; `RB04_STORAGE_READ_ACCESS_TO_ALL_BYTES=HOLD`. Il catalogo e le schermate non costituiscono credenziali né una prova di esportazione riuscita.
+
+**Vincoli:** non premere «New access key» né «Save», non creare chiavi permanenti, non copiare token di sessione, non eseguire download dei 9 allegati o backup reali prima di RB-02/RB-04/RB-05 e della successiva autorizzazione esplicita. Il servizio S3 è una **origine** Supabase distinta dal contenitore di **destinazione** Cloudflare R2.
+
 ## 2. Inventario Supabase osservato — soli aggregati (08/11/2026)
 
 Eseguita una sola interrogazione aggregata in sola lettura; non sono stati letti nomi di file, account, record, URL o allegati.
