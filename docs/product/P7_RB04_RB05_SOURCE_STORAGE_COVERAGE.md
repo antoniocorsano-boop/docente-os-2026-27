@@ -61,6 +61,14 @@ Si rifiutano, tramite prove negative:
 
 **Interpretazione del PASS:** prova di regole di rifiuto e coerenza dei dati inventati; **non** dimostra che Supabase conceda effettivamente un ruolo denominato come nella fixture, che PostgreSQL e Storage reali possano essere congelati in modo atomico, o che sia stato eseguito un ripristino autentico.
 
+## 4-bis. Verifica PostgreSQL 17 su cinque schemi fittizi (08/11/2026)
+
+Lo script [`p7-db-real-readiness-pg17.sh`](../../.github/scripts/p7-db-real-readiness-pg17.sh) ha esteso il collaudo cifrato a tabelle inventate negli schemi `public`, `private`, `auth`, `storage` e `supabase_migrations`, tutte create **esclusivamente** nel database PostgreSQL 17 effimero di GitHub Actions. `pg_dump` esporta i cinque schemi direttamente verso `age`, quindi `pg_restore` ripristina un secondo database fittizio, verificando il contenuto atteso di ciascuno. Il controllo crittografico respinge ancora una chiave privata non pertinente e non scrive copie SQL in chiaro sul filesystem del job.
+
+**Evidenza sul commit esatto `e8f765a99cd447b6555f36e7cf103b4b11cb7e20`:** [PG17 run #42490032994](https://github.com/antoniocorsano-boop/docente-os-2026-27/actions/runs/42490032994) = PASS, compreso il passaggio di esportazione/ripristino multischema. Il controllo non riproduce definizioni, dati, dipendenze, privilegi o configurazioni gestite di `auth` e `storage` della piattaforma reale.
+
+**Distinzione irrinunciabile:** il flusso `pg_dump` usato qui con `--schema` espliciti non coincide con la procedura standard `supabase db dump`, che può escludere schemi gestiti. Non considerare superato `RB-05_REAL` prima di qualificare la selezione effettiva delle componenti necessarie e di provare un recupero con autenticazione e file tramite API Storage/S3, in ambiente isolato e autorizzato.
+
 ## 5. Uscita dei gate
 
 | Gate | Condizione ancora necessaria |
