@@ -15,6 +15,12 @@ export default async function PasswordSetupPage({ searchParams }: PasswordSetupP
 
   if (!data?.claims) redirect('/login?error=session_required')
 
+  const assurance = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  const continueHref = assurance.error || !assurance.data ||
+    (assurance.data.currentLevel !== 'aal2' && assurance.data.nextLevel === 'aal2')
+    ? '/sicurezza/mfa'
+    : '/workspace'
+
   const params = await searchParams
   const message = params.error === 'weak_password'
     ? 'La password deve contenere almeno 10 caratteri.'
@@ -45,7 +51,7 @@ export default async function PasswordSetupPage({ searchParams }: PasswordSetupP
           <button type="submit">Salva password e continua</button>
         </form>
 
-        <Link href="/workspace">Continua senza modificare la password</Link>
+        <Link href={continueHref}>Continua senza modificare la password</Link>
       </section>
     </main>
   )
