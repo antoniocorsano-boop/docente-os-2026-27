@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 const passwordAction = readFileSync(new URL('../../imposta-password/actions.ts', import.meta.url), 'utf8')
+const loginAction = readFileSync(new URL('../../login/actions.ts', import.meta.url), 'utf8')
+const loginPage = readFileSync(new URL('../../login/page.tsx', import.meta.url), 'utf8')
 const mfaUi = readFileSync(new URL('./mfa-access.tsx', import.meta.url), 'utf8')
 
 test('account password mutation checks second-factor assurance BEFORE writing', () => {
@@ -44,4 +46,37 @@ test('MFA UI never writes or downloads teacher materials', () => {
   for (const unsafeCall of ['.storage.', 'GetObject', 'PutObject', 'DeleteObject', 'service_role']) {
     assert.equal(mfaUi.includes(unsafeCall), false, `unexpected Storage or privileged operation: ${unsafeCall}`)
   }
+})
+
+test('RB-04 MFA is deliberately limited to elevated operations, not a fake workspace gate', () => {
+  assert.equal(loginAction.includes('auth.mfa.getAuthenticatorAssuranceLevel()'), false)
+  assert.equal(loginPage.includes('auth.mfa.getAuthenticatorAssuranceLevel()'), false)
+  assert.ok(passwordAction.includes('auth.mfa.getAuthenticatorAssuranceLevel()'))
+  assert.ok(mfaUi.includes("level.data?.currentLevel"))
+})
+
+test('MFA cancel never deletes a factor that might already be verified', () => {
+  const start = mfaUi.indexOf('async function cancelEnrollment()')
+  const end = mfaUi.indexOf('async function discardInterruptedDraft()', start)
+  assert.ok(start >= 0 && end > start)
+  const cancel = mfaUi.slice(start, end)
+  assert.equal(cancel.includes('auth.mfa.unenroll('), false)
+  assert.ok(cancel.includes('auth.mfa.listFactors()'))
+  assert.ok(cancel.includes('Interrompi') === false)
+})
+
+test('MFA session changes clear secrets and stale request state', () => {
+  assert.ok(mfaUi.includes('auth.onAuthStateChange('))
+  assert.ok(mfaUi.includes("event === 'SIGNED_OUT'"))
+  assert.ok(mfaUi.includes("event === 'TOKEN_REFRESHED'"))
+  assert.ok(mfaUi.includes('authEpoch.current += 1'))
+  assert.ok(mfaUi.includes('setPending(null)'))
+  assert.ok(mfaUi.includes('setSecretRevealed(false)'))
+  assert.ok(mfaUi.includes('sameSession(epoch, userId)'))
+})
+
+test('backup enrollment uses a collision-free factor name instead of a fixed label', () => {
+  assert.ok(mfaUi.includes('nextDocenteFactorName(latest.data.all)'))
+  assert.ok(mfaUi.includes('friendlyName,'))
+  assert.equal(mfaUi.includes("friendlyName: 'Docente OS'"), false)
 })
