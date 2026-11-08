@@ -1,6 +1,6 @@
 # P7-DB-REAL-READINESS-01 — Preparazione alla copia del database reale
 
-**Stato aggiornato al 08/11/2026:** `RB01_PASS / RB02_HOLD / RB03_PASS_CUSTODIAN_ATTESTED / RB04_SYNTHETIC_SOURCE_CONTRACT_UNDER_CI / RB05_SYNTHETIC_STORAGE_CONTRACT_UNDER_CI / RB04_RB05_REAL_HOLD / RB06_RB07_NOT_RUN / REAL_EXPORT_HOLD`.
+**Stato aggiornato al 08/11/2026:** `RB01_PASS / RB02_HOLD / RB03_PASS_CUSTODIAN_ATTESTED / RB04_SYNTHETIC_SOURCE_CONTRACT_PASS / RB05_SYNTHETIC_STORAGE_CONTRACT_PASS / PG17_FIVE_FICTIONAL_SCHEMAS_PASS / RB04_RB05_REAL_HOLD / RB06_RB07_NOT_RUN / REAL_EXPORT_HOLD`.
 
 **Nota sullo stato storico:** i fatti e i controlli datati 06/11/2026 riportati di seguito descrivono la baseline iniziale, ora integrata da [RB-02 — condizioni Cloudflare per uso professionale](./P7_RB02_PROFESSIONAL_R2_COMPLIANCE_ASSESSMENT.md) e [RB-04/RB-05 — identità di origine e ripristino con allegati](./P7_RB04_RB05_SOURCE_STORAGE_COVERAGE.md). L'identità pubblica del progetto Supabase collegato a Render Beta è stata attestata dal custode il 06/11/2026; le chiavi reali restano non lette. Resta vietata ogni esportazione reale.
 
@@ -13,7 +13,7 @@
 
 ## Oggetto della PR
 
-- Script `.github/scripts/p7-db-real-readiness-pg17.sh`: due database effimeri PostgreSQL 17; due righe fittizie; `pg_dump -Fc` convogliato **direttamente nella cifratura `age`**, senza creare un archivio non cifrato sul disco del runner; successiva decifratura in memoria tramite condotto verso `pg_restore`; verifica esatta di `row_id:marker`; rifiuto di chiave sbagliata.
+- Script `.github/scripts/p7-db-real-readiness-pg17.sh`: due database effimeri PostgreSQL 17; due righe fittizie in `public` **e quattro ulteriori schemi interamente inventati** (`private`, `auth`, `storage`, `supabase_migrations`) con dati di prova. `pg_dump -Fc` dei cinque schemi è convogliato **direttamente nella cifratura `age`**, senza creare un archivio non cifrato sul disco del runner; decifratura tramite condotto verso `pg_restore`; verifica esatta dei dati recuperati in ogni schema; rifiuto di chiave sbagliata. Le strutture fittizie di `auth`/`storage` non rappresentano una copia né la riproduzione completa degli schemi gestiti reali.
 - Workflow `.github/workflows/p7-db-real-readiness-pg17.yml`: solo `pull_request` contro `main`, `permissions: contents: read`, **nessun segreto** Supabase o R2, **nessun `workflow_dispatch`**, nessun collegamento di rete al database reale.
 - Questo lavoro certifica la **compatibilità degli strumenti PG17 e la tecnica di cifratura durante l'esportazione**, non la recuperabilità di Supabase.
 
