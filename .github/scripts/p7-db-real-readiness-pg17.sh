@@ -57,14 +57,48 @@ create table public.p7_pg17_backup_fixture (
 insert into public.p7_pg17_backup_fixture(row_id, marker) values
   (1, 'P7_PG17_SYNTHETIC_ALPHA'),
   (2, 'P7_PG17_SYNTHETIC_BETA');
+
+-- All schemas below are FICTIONAL and exist only in the temporary CI database.
+-- Their structure is intentionally not a reproduction of managed Supabase schemas.
+create schema private;
+create table private.p7_pg17_private_fixture (
+  row_id integer primary key, marker text not null
+);
+insert into private.p7_pg17_private_fixture values
+  (1, 'P7_PG17_SYNTHETIC_PRIVATE');
+
+create schema auth;
+create table auth.p7_pg17_auth_fixture (
+  row_id integer primary key, marker text not null
+);
+insert into auth.p7_pg17_auth_fixture values
+  (1, 'P7_PG17_SYNTHETIC_AUTH');
+
+create schema storage;
+create table storage.p7_pg17_storage_metadata_fixture (
+  row_id integer primary key, marker text not null
+);
+insert into storage.p7_pg17_storage_metadata_fixture values
+  (1, 'P7_PG17_SYNTHETIC_STORAGE_META_ONLY');
+
+create schema supabase_migrations;
+create table supabase_migrations.p7_pg17_migrations_fixture (
+  version text primary key
+);
+insert into supabase_migrations.p7_pg17_migrations_fixture values
+  ('P7_SYNTHETIC_0103');
 SQL
 
 # Stream the custom-format archive directly into authenticated encryption.
 # NO unencrypted backup file is ever created in the runner filesystem.
 age-keygen -o "$temp_dir/ephemeral.identity" >/dev/null 2>&1
 recipient="$(age-keygen -y "$temp_dir/ephemeral.identity")"
-pg17 pg_dump --format=custom --no-owner --no-acl --schema=public \
-  -d "$source_db" |
+# The extra schemas test PostgreSQL's multi-schema dump/restore mechanics
+# against fictional tables ONLY. Real Supabase auth/storage are managed schemas,
+# and the ordinary Supabase CLI dump may exclude them: RB-05_REAL remains HOLD.
+pg17 pg_dump --format=custom --no-owner --no-acl \
+  --schema=public --schema=private --schema=auth --schema=storage \
+  --schema=supabase_migrations -d "$source_db" |
   age -r "$recipient" -o "$temp_dir/synthetic.dump.age"
 
 test -s "$temp_dir/synthetic.dump.age"
@@ -89,6 +123,22 @@ restored="$(pg17 psql -X -At -v ON_ERROR_STOP=1 -d "$restore_db" \
   -c "select string_agg(row_id || ':' || marker, ',' order by row_id) from public.p7_pg17_backup_fixture")"
 test "$restored" = "1:P7_PG17_SYNTHETIC_ALPHA,2:P7_PG17_SYNTHETIC_BETA"
 
+# Check that each declared fictional component survived an encrypted
+# PostgreSQL 17 dump/restore; none can be mistaken for a real Auth migration.
+test "$(pg17 psql -X -At -v ON_ERROR_STOP=1 -d "$restore_db" \
+  -c "select marker from private.p7_pg17_private_fixture where row_id = 1")" \
+  = "P7_PG17_SYNTHETIC_PRIVATE"
+test "$(pg17 psql -X -At -v ON_ERROR_STOP=1 -d "$restore_db" \
+  -c "select marker from auth.p7_pg17_auth_fixture where row_id = 1")" \
+  = "P7_PG17_SYNTHETIC_AUTH"
+test "$(pg17 psql -X -At -v ON_ERROR_STOP=1 -d "$restore_db" \
+  -c "select marker from storage.p7_pg17_storage_metadata_fixture where row_id = 1")" \
+  = "P7_PG17_SYNTHETIC_STORAGE_META_ONLY"
+test "$(pg17 psql -X -At -v ON_ERROR_STOP=1 -d "$restore_db" \
+  -c "select version from supabase_migrations.p7_pg17_migrations_fixture")" \
+  = "P7_SYNTHETIC_0103"
+echo "P7_PG17_FICTIONAL_FIVE_SCHEMA_RESTORE_PASS"
+
 cipher_sha256="$(sha256sum "$temp_dir/synthetic.dump.age" | cut -d ' ' -f1)"
 echo "P7_PG17_SYNTHETIC_STREAM_RESTORE_PASS cipher_sha256=$cipher_sha256"
 if [[ -n "$GITHUB_STEP_SUMMARY" ]]; then
@@ -98,6 +148,8 @@ if [[ -n "$GITHUB_STEP_SUMMARY" ]]; then
     echo "- PostgreSQL dump/restore client: **17.6**"
     echo "- Source and restore target: **two isolated synthetic databases**"
     echo "- Encrypted-stream dump/restore: **PASS**"
+    echo "- Fictional public/private/auth/storage/supabase_migrations schemas restored: **PASS**"
+    echo "- Actual managed Supabase schemas/Storage byte recovery: **NOT TESTED**"
     echo "- Wrong private key: **rejected**"
     echo "- Unencrypted dump written to runner filesystem: **NO**"
     echo "- R2 or real Supabase accessed: **NO**"
