@@ -10,6 +10,7 @@ on:
       - '.github/scripts/p7-rb03-local-custody-check.sh'
       - '.github/scripts/p7-rb05-synthetic-recovery-contract.py'
       - '.github/scripts/p7-rb04-rb05-source-storage-contract.py'
+      - '.github/scripts/p7-rb04-s3-session-visibility-contract.py'
       - '.github/scripts/p7-rb02-rb04-r2-policy-contract.py'
       - '.github/scripts/p7-db-r2-main-synthetic-rehearsal.sh'
       - '.github/workflows/p7-db-r2-main-certification.yml'
@@ -79,6 +80,18 @@ jobs:
           fi
           if GITHUB_EVENT_NAME=workflow_dispatch python3 .github/scripts/p7-rb04-rb05-source-storage-contract.py --self-test >/dev/null 2>&1; then
             echo 'ERROR: RB-04/05 accepted non-PR execution' >&2
+            exit 1
+          fi
+      - name: Qualify RB-04 synthetic MFA session and redacted Storage listing
+        run: |
+          python3 -m py_compile .github/scripts/p7-rb04-s3-session-visibility-contract.py
+          python3 .github/scripts/p7-rb04-s3-session-visibility-contract.py --self-test
+          if P7_RB04_USER_JWT=DENY python3 .github/scripts/p7-rb04-s3-session-visibility-contract.py --self-test >/dev/null 2>&1; then
+            echo 'ERROR: RB-04 synthetic check accepted live user JWT' >&2
+            exit 1
+          fi
+          if GITHUB_EVENT_NAME=workflow_dispatch python3 .github/scripts/p7-rb04-s3-session-visibility-contract.py --self-test >/dev/null 2>&1; then
+            echo 'ERROR: RB-04 synthetic check accepted a non-PR context' >&2
             exit 1
           fi
       - name: Qualify RB-05 synthetic database plus Storage inventory and fail-closed restore
