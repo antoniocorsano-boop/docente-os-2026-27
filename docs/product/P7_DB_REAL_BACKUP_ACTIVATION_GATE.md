@@ -159,6 +159,16 @@ La scadenza si riferisce all'**età di ciascun oggetto**, non a un calendario gl
 
 Fonti: https://developers.cloudflare.com/r2/buckets/object-lifecycles/ ; https://developers.cloudflare.com/r2/buckets/bucket-locks/ .
 
+### RB-02/RB-04 — Permessi del token R2 già esistente verificati visivamente (08/11/2026)
+
+Tre schermate della pagina Cloudflare «Modifica token API Account» mostrano il token `docente-os-p7-backup` con selezione **Lettura e scrittura di oggetti**, circoscritta a **bucket specifici**, unico bucket visualizzato `docente-os-backup-eu`. Non sono selezionati ruoli amministrativi di lettura/scrittura né di sola lettura. TTL impostato a «Per sempre»; campi per filtri indirizzi IP vuoti. L'utente non ha chiesto, né si è eseguita, alcuna modifica o rigenerazione del token.
+
+**Ricevuta:** `RB02_R2_TOKEN_SCOPED_OBJECT_READ_WRITE=PASS_VISUAL`; `RB02_R2_TOKEN_NON_ADMIN=PASS_VISUAL`; `RB02_R2_TTL=NON_EXPIRING`; `RB02_R2_IP_FILTER=NONE`. Gli ultimi due richiedono una gestione della custodia e una strategia di rotazione, ma non rendono non conforme l'ambito dei permessi R2. La prova riguarda le selezioni nell'interfaccia e non dimostra con un'API quali credenziali GitHub stia effettivamente usando.
+
+**Valutazione dei gate:** la verifica **dell'ambito R2** di RB-02 è superata a livello di evidenza visiva; `RB-02=HOLD` per la distinta autorizzazione al trattamento e al trasferimento dei dati effettivi, altre condizioni contrattuali e resilienza della conservazione. `RB-04=HOLD`: non è ancora stata qualificata l'identità che può leggere/esportare il database Supabase e il suo perimetro minimo. `RB-05_REAL=HOLD`: non è attestato un recupero completo di Auth e dei byte Storage reali. Nessun backup reale né modifica Cloudflare.
+
+Fonti: [Cloudflare R2 Authentication](https://developers.cloudflare.com/r2/api/tokens/), [Cloudflare Restrict tokens](https://developers.cloudflare.com/fundamentals/api/how-to/restrict-tokens/).
+
 ## 5. Evidenze ammesse nel repository pubblico
 
 Solo commit esatto, identificativo di prova, stato dei gate, versione PostgreSQL, descrizione dello schema e impronte **dei soli archivi cifrati**. Nessun dato di autenticazione, record scolastico, oggetto Storage, identità `age`, password, token, URL autenticato, configurazione segreta o log applicativo con dati degli utenti.
