@@ -1,6 +1,6 @@
 # P7-DB-REAL-ACTIVATION — Contratto di attivazione e recuperabilità Beta
 
-**Stato al 07/11/2026:** `READ_ONLY_INVENTORY_COMPLETE / RENDER_PUBLIC_CONFIG_CONFIRMED / RUNTIME_BUILD_UNATTESTED / RB03_CUSTODY_PASS_USER_ATTESTED / REAL_EXPORT_HOLD`.
+**Stato tecnico (aggiornamento RB-02 all'08/11/2026):** `READ_ONLY_INVENTORY_COMPLETE / RENDER_PUBLIC_CONFIG_CONFIRMED / RUNTIME_BUILD_UNATTESTED / RB03_CUSTODY_PASS_USER_ATTESTED / REAL_EXPORT_HOLD`.
 
 **Aggiornamento operativo RB-03 (07/11/2026).** La chiave `age` permanente è stata generata *sul primo smartphone Android* con `rage-keygen`, custodita nella directory privata Termux e protetta mediante copia cifrata `recovery.age`. Il custode ha documentato una prova locale `PASS`; ha trasferito la copia cifrata e il messaggio sintetico cifrato al secondo smartphone e **attestato** `RB03_RECUPERO_INDIPENDENTE_PASS`. Ha inoltre confermato di aver custodito la passphrase su supporto cartaceo in luogo separato dai due telefoni. **`RB-03=PASS_CUSTODIAN_ATTESTED` limitatamente a recuperabilità e custodia; non è un'autorizzazione a esportare dati reali.** Restano `RB-02/04/05=HOLD` per la parte operativa non qualificata, `RB-06/07=NOT_RUN` e i vincoli del blocco `0104`. Tenere una copia cifrata sul telefono B in luogo stabile, preservare le copie originali fino a verifica di tale conservazione; poi eliminare solo gli artefatti transitori in Download. La custodia della passphrase deve restare separata dai file cifrati.
 
@@ -139,9 +139,9 @@ Il nuovo [controllo sintetico delle politiche R2](../../.github/scripts/p7-rb02-
 
 **Doppia distinzione:** (a) il test esamina **solo valori fittizi** predisposti per individuare regressioni e non interroga Cloudflare; (b) il **07/11/2026 il custode ha approvato esplicitamente la scadenza automatica a 91 giorni** per il solo prefisso `production/`, mantenendo il blocco a 90 giorni; questa decisione **non è una regola Cloudflare già configurata o verificata**. Il controllo `RB02_RB04_POLICY_CONTRACT=PASS` non qualifica la protezione reale dei dati né equivale al via libera a un'esportazione. I permessi R2 sono verificabili per singolo contenitore e **non è comprovata** una restrizione alle sole chiavi di oggetto con prefisso `production/` o `rehearsal/`; occorre quindi conservare la separazione del processo e una revisione dei privilegi effettivi.
 
-**Gates residui:** `RB-02=HOLD` nonostante la **durata di cancellazione a 91 giorni sia approvata**: restano la decisione sul trattamento e trasferimento di dati reali a R2, la prova visiva della regola di ciclo di vita effettivamente attiva sul prefisso `production/` e la verifica dei privilegi non sensibili. `RB-04=HOLD` finché non sia stata qualificata l'autorizzazione dell'identità di esportazione. La prova sintentica RB-05 è PASS, ma le procedure di ripristino vere restano HOLD. Nessun segreto, utente reale o allegato effettivo è stato esportato.
+**Gates residui:** `RB-02=HOLD` nonostante la **durata di cancellazione a 91 giorni sia approvata** e il **salvataggio della regola sia attestato dall'utente l'08/11/2026**: restano la decisione sul trattamento e trasferimento di dati reali a R2, la verifica dei privilegi effettivi non sensibili e la futura prova operativa della conservazione/cancellazione senza dati reali. `RB-04=HOLD` finché non sia stata qualificata l'autorizzazione dell'identità di esportazione. La prova sintentica RB-05 è PASS, ma le procedure di ripristino vere restano HOLD. Nessun segreto, utente reale o allegato effettivo è stato esportato.
 
-### Decisione di conservazione approvata (07/11/2026) — verifica esterna ancora necessaria
+### Decisione di conservazione approvata (07/11/2026) — configurazione R2 salvata, attestata l'08/11/2026
 
 | Voce | Decisione |
 |---|---|
@@ -151,11 +151,11 @@ Il nuovo [controllo sintetico delle politiche R2](../../.github/scripts/p7-rb02-
 | Regola di ciclo di vita da verificare | Cancellazione automatica degli **oggetti completati dopo 91 giorni** |
 | `rehearsal/` | Escluso da questa nuova scadenza |
 | Stato della scelta | `RETENTION_91_DAYS=USER_APPROVED` |
-| Stato configurazione R2 | `LIVE_LIFECYCLE_91_DAYS=NOT_VERIFIED` |
+| Stato configurazione R2 | `LIVE_LIFECYCLE_91_DAYS=PASS_USER_ATTESTED_SAVED` — screenshot pre-salvataggio e successiva riapertura confermata, senza prova API o cancellazione operativa |
 
 La scadenza si riferisce all'**età di ciascun oggetto**, non a un calendario globale. Secondo Cloudflare, la cancellazione viene normalmente completata entro **24 ore dalla scadenza**, e i tempi possono variare. La regola a 91 giorni non garantisce da sola che esista sempre una copia recuperabile: prima di attivare backup reali occorre definire e qualificare la frequenza di generazione e recupero, evitare che una copia scada come unica fonte disponibile, verificare i permessi di accesso al contenitore e rispettare il vincolo di costo zero. La decisione sulla sola durata non equivale all'approvazione dell'esportazione di dati reali (`RB-02=HOLD`).
 
-**Verifica assistita da smartphone, senza esposizione di segreti:** Cloudflare → R2 Object Storage → `docente-os-backup-eu` → Settings → Object lifecycle rules → Add rule; selezionare cancellazione automatica per gli oggetti dopo **91 giorni**, con prefisso **`production/`**; salvare e riaprire la regola per documentare nome, prefisso, stato e durata, evitando che lo screenshot includa token o altri segreti. Non sostituire o modificare la regola Bucket lock esistente. La sola conferma verbale della scelta non prova che la regola sia stata salvata.
+**Verifica assistita da smartphone, senza esposizione di segreti:** Cloudflare → R2 Object Storage → `docente-os-backup-eu` → Settings → Object lifecycle rules → Add rule; selezionare cancellazione automatica per gli oggetti dopo **91 giorni**, con prefisso **`production/`**; salvare e riaprire la regola per documentare nome, prefisso, stato e durata, evitando che lo screenshot includa token o altri segreti. Non sostituire o modificare la regola Bucket lock esistente. In data 08/11/2026 il custode ha confermato esplicitamente di aver riaperto la regola trovandola salvata; tale attestazione, insieme alla schermata di configurazione, documenta il salvataggio, ma non una verifica tramite API né l'effettiva cancellazione di oggetti dopo 91 giorni.
 
 Fonti: https://developers.cloudflare.com/r2/buckets/object-lifecycles/ ; https://developers.cloudflare.com/r2/buckets/bucket-locks/ .
 
