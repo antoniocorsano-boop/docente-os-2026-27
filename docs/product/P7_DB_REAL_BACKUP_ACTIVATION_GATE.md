@@ -28,13 +28,23 @@ Collegato alla [PR #795](https://github.com/antoniocorsano-boop/docente-os-2026-
 - **Limite:** `BETA_SERVING_BUNDLE_REF=UNATTESTED`; il controllo automatico dei bundle pubblici non ha fornito conferme. Inoltre questa verifica non prova la disponibilità di credenziali per l'esportazione né la completezza del recupero.
 - **Protezione:** non acquisire, ripubblicare o copiare password, `SUPABASE_SECRET_KEY`, credenziali PostgreSQL o altre variabili d'ambiente della schermata Render.
 
+## 1-bis. Contesto di gestione — progetto professionale autonomo (08/11/2026)
+
+**Attestazione umana:** il progetto è gestito dal custode **a titolo professionale, senza operare per conto dell'istituto scolastico**. `PROJECT_CONTEXT=INDEPENDENT_PROFESSIONAL_USE / SCHOOL_AGENCY=NO_USER_ATTESTED`. Non attribuire al dirigente scolastico o all'istituto poteri di approvazione del backup di questo progetto per il solo fatto che l'utente è docente.
+
+Non classificare però il trattamento come **puramente personale o domestico**: l'articolo 2, paragrafo 2, lettera c), e il considerando 18 del GDPR distinguono le attività strettamente private da quelle collegate all'attività professionale. La determinazione del soggetto responsabile del trattamento e delle condizioni applicabili resta contestuale e va valutata in funzione dei dati e delle finalità effettivi.
+
+**Conseguenza per RB-02:** `PROFESSIONAL_CONTEXT=PASS_CUSTODIAN_ATTESTED`, mentre `RB-02=HOLD` fino alla verifica delle condizioni contrattuali e tecniche della destinazione R2 in rapporto all'uso professionale, dell'eventuale ruolo privacy e di una **decisione espressa di eseguire il backup reale cifrato**. L'attestazione non autorizza un'esportazione né modifica i blocchi RB-04/05/06/07/08.
+
+Fonti ufficiali: [Regolamento (UE) 2016/679 art. 2 e considerando 18](https://eur-lex.europa.eu/legal-content/IT-EN/ALL/?uri=CELEX%3A32016R0679) e [Commissione europea — Applicazione del GDPR](https://commission.europa.eu/law/law-topic/data-protection/information-business-and-organisations/application-gdpr_en).
+
 ## 1-bis. Perimetro dei dati — attestazione del custode (08/11/2026)
 
 **Dichiarazione umana sopravvenuta:** nel progetto Beta sono presenti dati personali reali del custode e dati fittizi; il custode **esclude la presenza di dati reali di studenti, genitori o altri docenti**. Ricevuta senza nomi, account né contenuti personali: `SELF_PERSONAL_PLUS_SYNTHETIC=PASS_CUSTODIAN_ATTESTED`; `THIRD_PARTY_REAL_DATA=NONE_USER_ATTESTED`.
 
 Il perimetro non è `SYNTHETIC_ONLY`. I conteggi aggregati rilevati in precedenza non dimostrano né smentiscono la dichiarazione; non è stato effettuato accesso alle righe del database, alle identità Auth o ai byte Storage. La classificazione riduce il rischio dichiarato di dati reali di terzi, ma **non** attesta da sola l'assenza effettiva di dati scolastici né l'idoneità della destinazione Cloudflare R2 per i dati personali del custode.
 
-**Separazione delle autorizzazioni:** `RB-02=HOLD` fino a chiarire se la Beta viene usata in un contesto personale o professionale/scolastico, la relativa competenza sul trattamento, i termini di conservazione e servizio applicabili e una **decisione espressa di backup reale cifrato**. `RB-04=HOLD` e `RB-05_REAL=HOLD` finché non si qualificano credenziale di origine, perimetro completo e recupero inclusi i file Storage. Nessun nuovo `workflow_dispatch` per dati reali deve essere reso attivabile prima della qualificazione dei gate.
+**Separazione delle autorizzazioni:** `RB-02=HOLD` anche se il custode ha chiarito che la Beta è usata **professionalmente in autonomia, non per conto dell'istituto**. Restano da accertare le condizioni contrattuali e di protezione dati applicabili al trattamento effettivo e al servizio R2, e da ottenere una **decisione espressa di backup reale cifrato**. `RB-04=HOLD` e `RB-05_REAL=HOLD` finché non si qualificano credenziale di origine, perimetro completo e recupero inclusi i file Storage. Nessun nuovo `workflow_dispatch` per dati reali deve essere reso attivabile prima della qualificazione dei gate.
 
 
 
