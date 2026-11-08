@@ -6,9 +6,9 @@ import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
-import { resolveMfaStage, validTotpCode } from './mfa-state'
+import { recoverableDocenteDrafts, resolveMfaStage, validTotpCode } from './mfa-state'
 
-type View = 'loading' | 'setup' | 'enroll' | 'challenge' | 'ready'
+type View = 'loading' | 'setup' | 'enroll' | 'recover' | 'challenge' | 'ready'
 type PendingEnrollment = { id: string; secret: string }
 
 export function MfaAccess() {
@@ -17,6 +17,8 @@ export function MfaAccess() {
   const [view, setView] = useState<View>('loading')
   const [factorId, setFactorId] = useState<string | null>(null)
   const [pending, setPending] = useState<PendingEnrollment | null>(null)
+  const [secretRevealed, setSecretRevealed] = useState(false)
+  const [draftCount, setDraftCount] = useState(0)
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,8 +42,10 @@ export function MfaAccess() {
         }
         if (!active) return
         const verified = factors.data.totp.find((factor) => factor.status === 'verified')
+        const recoverable = recoverableDocenteDrafts(factors.data.all)
+        setDraftCount(recoverable.length)
         setFactorId(verified?.id ?? null)
-        setView(resolveMfaStage(level.data.currentLevel, verified ? 1 : 0))
+        setView(resolveMfaStage(level.data.currentLevel, verified ? 1 : 0, recoverable.length))
       } catch {
         if (active) setError('Non è stato possibile verificare la sessione. Ricarica la pagina e riprova.')
       }
@@ -62,6 +66,7 @@ export function MfaAccess() {
       if (enrollError || !data?.totp?.secret) throw new Error('MFA enrollment failed')
       // The secret exists only in this component's memory, never in URLs or logs.
       setPending({ id: data.id, secret: data.totp.secret })
+      setSecretRevealed(false)
       setView('enroll')
     } catch {
       setError('Impossibile avviare la configurazione. Riprova oppure verifica le impostazioni MFA di Supabase.')
@@ -79,10 +84,49 @@ export function MfaAccess() {
       const { error: cancelError } = await supabase.auth.mfa.unenroll({ factorId: pending.id })
       if (cancelError) throw new Error('MFA cancel failed')
       setPending(null)
+      setSecretRevealed(false)
       setCode('')
-      setView('setup')
+      const factors = await supabase.auth.mfa.listFactors()
+      if (factors.error || !factors.data) throw new Error('Failed to reload factors')
+      const leftovers = recoverableDocenteDrafts(factors.data.all)
+      setDraftCount(leftovers.length)
+      setView(leftovers.length ? 'recover' : 'setup')
     } catch {
       setError('Impossibile annullare la configurazione. Conserva l’accesso a questa schermata e riprova.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function discardInterruptedDraft() {
+    if (busy || view !== 'recover') return
+    setBusy(true)
+    setError(null)
+    try {
+      // Re-fetch immediately before deletion. NEVER delete a verified factor.
+      const latest = await supabase.auth.mfa.listFactors()
+      if (latest.error || !latest.data) throw new Error('MFA factor refresh failed')
+      const verified = latest.data.totp.find((factor) => factor.status === 'verified')
+      if (verified) {
+        setFactorId(verified.id)
+        setView('challenge')
+        return
+      }
+      const [draft] = recoverableDocenteDrafts(latest.data.all)
+      if (!draft) {
+        setDraftCount(0)
+        setView('setup')
+        return
+      }
+      const result = await supabase.auth.mfa.unenroll({ factorId: draft.id })
+      if (result.error) throw new Error('MFA draft removal failed')
+      const after = await supabase.auth.mfa.listFactors()
+      if (after.error || !after.data) throw new Error('MFA factor refresh failed')
+      const remaining = recoverableDocenteDrafts(after.data.all)
+      setDraftCount(remaining.length)
+      setView(remaining.length ? 'recover' : 'setup')
+    } catch {
+      setError('Non è stato possibile rimuovere il tentativo incompleto. Nessun fattore già verificato è stato modificato.')
     } finally {
       setBusy(false)
     }
@@ -110,6 +154,7 @@ export function MfaAccess() {
         throw new Error('MFA assurance level not confirmed')
       }
       setPending(null)
+      setSecretRevealed(false)
       setFactorId(id)
       setView('ready')
       router.refresh()
@@ -161,15 +206,45 @@ export function MfaAccess() {
                 Apri la tua app di autenticazione, scegli l’aggiunta manuale di un account e inserisci questa chiave.
                 Non fotografarla, non inviarla in chat e non inserirla nei documenti del progetto.
               </p>
-              <div className="rounded-[var(--radius-sm)] border border-border bg-muted/40 p-3">
-                <p className="m-0 text-xs font-semibold">Chiave temporanea di configurazione — riservata</p>
-                <code className="mt-2 block select-all break-all text-sm" aria-label="Chiave TOTP da inserire nell’app">
-                  {pending.secret}
-                </code>
+              <div className="grid gap-3 rounded-[var(--radius-sm)] border border-border bg-muted/40 p-3">
+                <p className="m-0 text-xs font-semibold">Chiave di configurazione — riservata</p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setSecretRevealed((value) => !value)}
+                  aria-expanded={secretRevealed}
+                >
+                  {secretRevealed ? 'Nascondi la chiave' : 'Mostra la chiave soltanto quando serve'}
+                </Button>
+                {secretRevealed ? (
+                  <code className="block select-all break-all text-sm" aria-label="Chiave TOTP da inserire nell’app">
+                    {pending.secret}
+                  </code>
+                ) : <p className="m-0 text-sm text-muted-foreground">Chiave nascosta.</p>}
               </div>
               <p className="m-0 text-sm leading-6">
                 Una volta aggiunto l’account, inserisci qui il codice di sei cifre generato dall’app per completare l’attivazione.
               </p>
+            </>
+          ) : null}
+
+          {view === 'recover' ? (
+            <>
+              <h2 className="m-0 text-lg font-semibold">Configurazione interrotta</h2>
+              <p className="m-0 text-sm leading-6">
+                {draftCount === 1
+                  ? 'È presente un tentativo di registrazione non completato.'
+                  : `Sono presenti ${draftCount} tentativi di registrazione non completati.`}
+                {' '}Per sicurezza la vecchia chiave non viene recuperata dal browser.
+                Puoi annullare un tentativo incompleto per volta e ricominciare.
+              </p>
+              <p className="m-0 text-sm text-muted-foreground">
+                Questa azione non elimina i fattori già verificati e non accede ai materiali di Docente OS.
+              </p>
+              <Button size="lg" disabled={busy} onClick={() => void discardInterruptedDraft()}>
+                {busy ? 'Verifica in corso…' : 'Annulla un tentativo incompleto'}
+              </Button>
             </>
           ) : null}
 
