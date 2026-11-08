@@ -13,6 +13,9 @@ on:
       - '.github/scripts/p7-db-r2-main-synthetic-rehearsal.sh'
       - '.github/workflows/p7-db-r2-main-certification.yml'
       - 'docs/product/P7_DB_KEY_CUSTODY_RECOVERY_PROTOCOL.md'
+      - 'docs/product/P7_RB02_PROFESSIONAL_R2_COMPLIANCE_ASSESSMENT.md'
+      - 'docs/product/P7_DB_REAL_DATA_PRIVACY_AND_CUSTODY_GATE.md'
+      - 'docs/product/P7_DB_REAL_BACKUP_ACTIVATION_GATE.md'
 
 permissions:
   contents: read
