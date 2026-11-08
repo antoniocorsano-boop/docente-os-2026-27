@@ -1,7 +1,7 @@
 # P7 — RB-02 | Valutazione documentale R2 per Docente OS professionale autonomo
 
 **Data della ricognizione:** 08/11/2026  
-**Stato:** `SOURCE_REVIEW_PASS / SCOPE_CUSTODIAN_ATTESTED / CLOUDFARE_ACCOUNT_CONTRACT_RECEIPT_PENDING / REAL_DATA_EXPORT_HOLD`  
+**Stato:** `SOURCE_REVIEW_PASS / SCOPE_CUSTODIAN_ATTESTED / CLOUDFLARE_ACCOUNT_CONTRACT_RECEIPT_PENDING / REAL_DATA_EXPORT_HOLD`  
 **Ambito:** Docente OS Beta, Supabase candidato `gnshgapmwyjamhmlikeg`, destinazione R2 `docente-os-backup-eu`. **Nessuna acquisizione di dati o di credenziali**. Documento pubblico privo di segreti, nominativi e allegati; non costituisce consulenza legale definitiva.
 
 ## 1. Fatti sul progetto (attestazioni, non ispezione di dati)
