@@ -16,6 +16,21 @@ Esistono **tre ruoli tecnici diversi**:
 
 **Non equiparare i tre account.** Nessuna chiave R2 autorizza la lettura del database Supabase, nessuna chiave Supabase va usata per caricare su R2. Le autorizzazioni reali andranno custodite nel solo ambiente protetto che eseguirà il backup, dopo revisione privacy e autorizzazione esplicita, mai esposte in PR, registri o test da contributi esterni.
 
+### Ricognizione delle capacità dei ruoli standard — sola lettura (08/11/2026)
+
+Una query del catalogo `pg_roles`, che **non accede ai dati delle tabelle**, ha restituito la seguente matrice per i soli ruoli standard di Supabase:
+
+| Ruolo | `LOGIN` | `BYPASSRLS` | `CREATEDB` / `CREATEROLE` |
+|---|---|---|---|
+| `anon` | NO | NO | NO / NO |
+| `authenticated` | NO | NO | NO / NO |
+| `service_role` | NO | SÌ | NO / NO |
+| `postgres` | SÌ | SÌ | SÌ / SÌ |
+
+La parola `service_role` identifica qui un **ruolo interno PostgreSQL**, non prova l'idoneità di una chiave API omonima a eseguire `pg_dump`. `postgres` **non è superuser** nel catalogo, ma ha comunque ampi privilegi (`BYPASSRLS`, `CREATEDB`, `CREATEROLE`) e non deve essere chiamato «backup reader a privilegi minimi». I ruoli senza `LOGIN` non sono identità autonome per collegarsi a PostgreSQL.
+
+**Conseguenza:** la credenziale effettiva di esportazione non è stata scoperta né usata; non è attestato che esista già una credenziale a privilegi minimi capace di esportare tutti gli schemi necessari. Prima di RB-04 PASS occorre verificare senza pubblicare segreti il metodo di autenticazione scelto, gli accessi a `auth` e `private`, l'effettiva necessità degli eventuali privilegi elevati e le modalità di custodia delle credenziali. **Non creare un ruolo SQL o una credenziale in questa PR.**
+
 ## 2. Inventario Supabase osservato — soli aggregati (08/11/2026)
 
 Eseguita una sola interrogazione aggregata in sola lettura; non sono stati letti nomi di file, account, record, URL o allegati.
