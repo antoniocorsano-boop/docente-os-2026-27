@@ -30,6 +30,16 @@ Collegato alla [PR #795](https://github.com/antoniocorsano-boop/docente-os-2026-
 
 ## 1-bis. Contesto di gestione — progetto professionale autonomo (08/11/2026)
 
+### Accordo Cloudflare e valutazione del fornitore (ricognizione 08/11/2026)
+
+La verifica del [contratto Cloudflare Self-Serve](https://www.cloudflare.com/terms/) (sez. 6.1) ha rilevato l'incorporazione per riferimento del [Cloudflare DPA v6.4](https://www.cloudflare.com/cloudflare-customer-dpa/), efficace dal 03/04/2026, per i trattamenti di dati personali pertinenti. È stata esaminata la previsione di possibili trattamenti internazionali e delle relative garanzie contrattuali (§6), oltre alle condizioni per i sottofornitori (§4). Questa è una **verifica di documentazione pubblica**, non una ricevuta delle condizioni effettivamente applicabili all'account Cloudflare del custode.
+
+L'analisi [RB-02 professionale / R2 / accordi / soglie gratuite](./P7_RB02_PROFESSIONAL_R2_COMPLIANCE_ASSESSMENT.md) distingue fonti, fatti già attestati e decisioni residue: `RB02_CONTRACT_RESEARCH=PASS_DOCUMENTARY`, `RB02_ACCOUNT_LEGAL_AND_TRANSFERS=PRIVATE_REVIEW_PENDING`, `RB02_ZERO_COST_USAGE=NOT_ATTESTED`. Il bucket UE garantisce la giurisdizione dichiarata degli oggetti secondo le condizioni del servizio, non l'assenza totale di metadati o trattamenti all'estero. La franchigia gratuita R2 Standard **non** impedisce automaticamente spese oltre soglia.
+
+**RB-02 resta HOLD** finché non sia documentato in sede riservata il riscontro sull'accordo/condizioni effettivamente applicabili, l'analisi proporzionata dei rischi di trattamento, il perimetro minimo da conservare, il controllo della capacità e una distinta autorizzazione esplicita al backup dei dati reali. Le prove RB-04/05 reali rimangono non qualificate. Nessuna istruzione di export reale viene aggiunta da questo documento.
+
+
+
 **Attestazione umana:** il progetto è gestito dal custode **a titolo professionale, senza operare per conto dell'istituto scolastico**. `PROJECT_CONTEXT=INDEPENDENT_PROFESSIONAL_USE / SCHOOL_AGENCY=NO_USER_ATTESTED`. Non attribuire al dirigente scolastico o all'istituto poteri di approvazione del backup di questo progetto per il solo fatto che l'utente è docente.
 
 Non classificare però il trattamento come **puramente personale o domestico**: l'articolo 2, paragrafo 2, lettera c), e il considerando 18 del GDPR distinguono le attività strettamente private da quelle collegate all'attività professionale. La determinazione del soggetto responsabile del trattamento e delle condizioni applicabili resta contestuale e va valutata in funzione dei dati e delle finalità effettivi.
