@@ -9,6 +9,7 @@ on:
       - 'docs/product/P7_DB_REAL_BACKUP_READINESS.md'
       - '.github/scripts/p7-rb03-local-custody-check.sh'
       - '.github/scripts/p7-rb05-synthetic-recovery-contract.py'
+      - '.github/scripts/p7-rb04-rb05-source-storage-contract.py'
       - '.github/scripts/p7-rb02-rb04-r2-policy-contract.py'
       - '.github/scripts/p7-db-r2-main-synthetic-rehearsal.sh'
       - '.github/workflows/p7-db-r2-main-certification.yml'
@@ -67,6 +68,10 @@ jobs:
         run: |
           python3 -m py_compile .github/scripts/p7-rb02-rb04-r2-policy-contract.py
           python3 .github/scripts/p7-rb02-rb04-r2-policy-contract.py --self-test
+      - name: Qualify RB-04/RB-05 fictional source identity and Storage bytes reconciliation
+        run: |
+          python3 -m py_compile .github/scripts/p7-rb04-rb05-source-storage-contract.py
+          python3 .github/scripts/p7-rb04-rb05-source-storage-contract.py --self-test
       - name: Qualify RB-05 synthetic database plus Storage inventory and fail-closed restore
         run: |
           python3 -m py_compile .github/scripts/p7-rb05-synthetic-recovery-contract.py
