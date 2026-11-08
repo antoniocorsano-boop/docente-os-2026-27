@@ -144,38 +144,44 @@ export function MfaAccess() {
 
   async function cancelEnrollment() {
     if (busy || !pending || view !== 'enroll') return
+    const userId = currentUserId.current
+    const epoch = authEpoch.current
+    if (!userId) return
+
+    // Do not delete a factor from the enrollment screen. Its verification may
+    // already have succeeded on the server while the response was lost.
+    // Simply drop the secret from memory and refresh remote status. Actual
+    // removal is an explicit, separately guarded action on unverified drafts.
+    setPending(null)
+    setSecretRevealed(false)
+    setCode('')
+    setView('loading')
     setBusy(true)
     setError(null)
     try {
-      // Only the unverified factor initiated on this page may be canceled.
-      const { error: cancelError } = await supabase.auth.mfa.unenroll({ factorId: pending.id })
-      if (cancelError) throw new Error('MFA cancel failed')
-      setPending(null)
-      setSecretRevealed(false)
-      setCode('')
-      // The remote draft has been removed. Do not leave the UI stuck in
-      // enroll when refreshing the remaining-factor count fails.
-      setView('setup')
-      const factors = await supabase.auth.mfa.listFactors()
-      if (factors.error || !factors.data) return
-      const leftovers = recoverableDocenteDrafts(factors.data.all)
-      const verified = factors.data.totp.filter((factor) => factor.status === 'verified')
-      setDraftCount(leftovers.length)
-      if (verified.length) {
-        setVerifiedFactors(verified.map((factor, index) => ({
-          id: factor.id,
-          label: `App di autenticazione ${index + 1}`,
-        })))
-        setFactorId(verified[0].id)
-        const level = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-        setView(level.data?.currentLevel === 'aal2' ? 'ready' : 'challenge')
-      } else {
-        setView(leftovers.length ? 'recover' : 'setup')
+      const [factors, level] = await Promise.all([
+        supabase.auth.mfa.listFactors(),
+        supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+      ])
+      if (!sameSession(epoch, userId)) return
+      if (factors.error || !factors.data || level.error || !level.data) {
+        throw new Error('MFA status refresh failed')
       }
+      const verified = factors.data.totp.filter((factor) => factor.status === 'verified')
+      const drafts = recoverableDocenteDrafts(factors.data.all)
+      setVerifiedFactors(verified.map((factor, index) => ({
+        id: factor.id,
+        label: `App di autenticazione ${index + 1}`,
+      })))
+      setFactorId(verified[0]?.id ?? null)
+      setDraftCount(drafts.length)
+      setView(resolveMfaStage(level.data.currentLevel, verified.length, drafts.length))
     } catch {
-      setError('Impossibile annullare la configurazione. Conserva l’accesso a questa schermata e riprova.')
+      if (sameSession(epoch, userId)) {
+        setError('Configurazione interrotta. Ricarica la pagina per controllare lo stato del fattore.')
+      }
     } finally {
-      setBusy(false)
+      if (sameSession(epoch, userId)) setBusy(false)
     }
   }
 
@@ -393,7 +399,7 @@ export function MfaAccess() {
               </Button>
               {view === 'enroll' ? (
                 <Button type="button" variant="secondary" disabled={busy} onClick={() => void cancelEnrollment()}>
-                  Annulla la configurazione
+                  Interrompi la configurazione
                 </Button>
               ) : null}
             </form>
