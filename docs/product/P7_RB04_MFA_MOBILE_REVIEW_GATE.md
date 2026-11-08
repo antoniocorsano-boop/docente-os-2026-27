@@ -29,6 +29,16 @@ Una distribuzione Vercel del progetto `docente-os-product` risulta **READY** per
 
 **Decisione:** `PUBLIC_PREVIEW_FOR_REAL_MFA=NOT_QUALIFIED`; `MFA_SYNTHETIC_TEST_BACKEND=NOT_READY`. Non condividere l'URL precedente come collegamento sicuro per la prova; non creare nuove risorse, non ripristinare progetti inattivi né modificare la configurazione Vercel/Netlify senza una decisione separata sulle condizioni economiche e l'isolamento.
 
+### Aggiornamento operativo — progetto gratuito di prova e destinazione Vercel (08/11/2026)
+
+Dopo la revisione del vincolo economico, Supabase ha confermato per l'organizzazione **EduManag** il piano **Free**, con **un solo progetto attivo su due consentiti** (i progetti sospesi non contano ai fini del limite gratuito). È stata accettata l'operazione di ripristino **del progetto già esistente** `DOCENTE OS MFA Test` (`xyowtnivxnzgwewvvmyz`), senza creare un nuovo progetto o modificare il piano. All'ultimo controllo il progetto risulta `COMING_UP`: **non è attestato operativo**. Sono state consultate soltanto informazioni amministrative e chiavi *pubblicabili* di progetto, senza chiavi di servizio o token utente.
+
+Sul progetto Vercel `docente-os-product` le variabili `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` sono state create come **override limitati al ramo PR** `feat/p7-db-real-readiness-pg17`, target `preview`, verso il progetto MFA Test. La verifica successiva della configurazione restituisce entrambi gli override con il ramo esatto. **Le variabili condivise e l'ambiente Production non sono stati modificati.**
+
+**Vincolo di qualificazione fondamentale:** l'anteprima pubblicata *prima* della creazione degli override può ancora contenere il vecchio indirizzo Supabase, perché le variabili `NEXT_PUBLIC_*` vengono fissate in compilazione. Occorre una **nuova distribuzione di anteprima sul commit successivo**, verificarne la destinazione effettiva *senza rivelare chiavi*, accertare lo stato `ACTIVE_HEALTHY` del progetto di prova e attestare che Auth e contenuti dell'ambiente test non contengano dati reali. Fino a tale evidenza: `ISOLATED_PREVIEW_RUNTIME=HOLD`, `REAL_ACCOUNT_MFA_TEST=PROHIBITED`.
+
+La modifica riguarda soltanto l'anteprima del ramo, **non** Beta, Production, `main`, RLS, schemi, file Storage o RB-02. Il collaudo con account sintetico e la revisione indipendente sul commit finale rimangono requisiti separati.
+
 ## 3. Protocollo di revisione umana sullo smartphone (NON ESEGUITO)
 
 *Prerequisito:* un'istanza autorizzata e qualificata per il test, con **identità sintetica**, Auth e Storage non collegati alla Beta reale. Nessun JWT, codice TOTP o segreto deve essere archiviato in una PR, nel sistema di segnalazione o nelle schermate trasmesse.
