@@ -187,11 +187,15 @@ export function MfaAccess() {
 
   async function discardInterruptedDraft() {
     if (busy || view !== 'recover') return
+    const userId = currentUserId.current
+    const epoch = authEpoch.current
+    if (!userId) return
     setBusy(true)
     setError(null)
     try {
       // Re-fetch immediately before deletion. NEVER delete a verified factor.
       const latest = await supabase.auth.mfa.listFactors()
+      if (!sameSession(epoch, userId)) return
       if (latest.error || !latest.data) throw new Error('MFA factor refresh failed')
       const verified = latest.data.totp.filter((factor) => factor.status === 'verified')
       if (verified.length) {
@@ -209,17 +213,22 @@ export function MfaAccess() {
         setView('setup')
         return
       }
+      if (!sameSession(epoch, userId)) return
       const result = await supabase.auth.mfa.unenroll({ factorId: draft.id })
+      if (!sameSession(epoch, userId)) return
       if (result.error) throw new Error('MFA draft removal failed')
       const after = await supabase.auth.mfa.listFactors()
+      if (!sameSession(epoch, userId)) return
       if (after.error || !after.data) throw new Error('MFA factor refresh failed')
       const remaining = recoverableDocenteDrafts(after.data.all)
       setDraftCount(remaining.length)
       setView(remaining.length ? 'recover' : 'setup')
     } catch {
-      setError('Non è stato possibile rimuovere il tentativo incompleto. Nessun fattore già verificato è stato modificato.')
+      if (sameSession(epoch, userId)) {
+        setError('Non è stato possibile rimuovere il tentativo incompleto. Nessun fattore già verificato è stato modificato.')
+      }
     } finally {
-      setBusy(false)
+      if (sameSession(epoch, userId)) setBusy(false)
     }
   }
 
