@@ -86,8 +86,11 @@ export function MfaAccess() {
       setPending(null)
       setSecretRevealed(false)
       setCode('')
+      // The remote draft has been removed. Do not leave the UI stuck in
+      // enroll when refreshing the remaining-factor count fails.
+      setView('setup')
       const factors = await supabase.auth.mfa.listFactors()
-      if (factors.error || !factors.data) throw new Error('Failed to reload factors')
+      if (factors.error || !factors.data) return
       const leftovers = recoverableDocenteDrafts(factors.data.all)
       setDraftCount(leftovers.length)
       setView(leftovers.length ? 'recover' : 'setup')
