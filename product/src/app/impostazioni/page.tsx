@@ -118,6 +118,12 @@ export default async function SettingsPage() {
         ))}
       </nav>
 
+      <section className="settingsCard" aria-labelledby="access-security-title">
+        <h2 id="access-security-title">Sicurezza dell’accesso</h2>
+        <p>Configura o verifica il secondo fattore dell’account, necessario per accedere ai materiali privati protetti da MFA.</p>
+        <Link href="/sicurezza/mfa" className="settingsSecondaryButton">Gestisci la verifica in due passaggi</Link>
+      </section>
+
       <section className="settingsCard" id="contesto" aria-labelledby="context-title">
         <SettingsSectionHeading area={areaFor(experience.areas, 'context')} id="context-title" />
         <SettingsContextDisclosure
