@@ -1,6 +1,8 @@
 # P7-DB-REAL-READINESS-01 — Preparazione alla copia del database reale
 
-**Stato:** `ENGINEERING_PREPARATION / SYNTHETIC_ONLY / REAL_EXPORT_HOLD`.
+**Stato aggiornato al 08/11/2026:** `RB01_PASS / RB02_HOLD / RB03_PASS_CUSTODIAN_ATTESTED / RB04_SYNTHETIC_SOURCE_CONTRACT_UNDER_CI / RB05_SYNTHETIC_STORAGE_CONTRACT_UNDER_CI / RB04_RB05_REAL_HOLD / RB06_RB07_NOT_RUN / REAL_EXPORT_HOLD`.
+
+**Nota sullo stato storico:** i fatti e i controlli datati 06/11/2026 riportati di seguito descrivono la baseline iniziale, ora integrata da [RB-02 — condizioni Cloudflare per uso professionale](./P7_RB02_PROFESSIONAL_R2_COMPLIANCE_ASSESSMENT.md) e [RB-04/RB-05 — identità di origine e ripristino con allegati](./P7_RB04_RB05_SOURCE_STORAGE_COVERAGE.md). L'identità pubblica del progetto Supabase collegato a Render Beta è stata attestata dal custode il 06/11/2026; le chiavi reali restano non lette. Resta vietata ogni esportazione reale.
 
 ## Fatti verificati (06/11/2026)
 
@@ -30,6 +32,14 @@
 Utilizzare GitHub Actions come esecutore temporaneo **solo dopo** la verifica delle condizioni precedenti, strumenti PostgreSQL 17 coerenti con il server e **cifratura prima dell'upload R2**. Privilegiare il trasferimento del solo cifrato, accessi minimi, prefisso protetto e prova di recupero indipendente.
 
 **Vietato in questa PR:** export reale, accesso alle credenziali Supabase, upload R2, ripristino con dati scolastici, merge su `develop`, migrazione `0104`, deploy Beta e utilizzo di servizi a pagamento.
+
+### Ulteriori verifiche sintetiche RB-04/RB-05 (08/11/2026)
+
+Accanto al ripristino PostgreSQL 17 di due database fittizi, il ramo PR aggiunge un verificatore sintetico che controlla provenienza di origine, dichiarazione di soli privilegi di lettura, corrispondenza del progetto e del periodo di cattura, completezza Auth e migrazioni, inventario e SHA-256 dei file Storage. Il collaudo utilizza due contenitori *inventati*, oggetti binari e file vuoti, e respinge autorizzazioni dichiarate eccessive, contenuti mancanti, cambiati o scambiati fra bucket. Il verificatore non legge alcun progetto Supabase e non fornisce prove della disponibilità di una credenziale reale.
+
+La ricognizione aggregata in sola lettura del progetto candidato conta 62 tabelle `public`, 7 `private`, 4 identità Auth, 1 bucket e 9 oggetti Storage, con somma delle dimensioni da metadati pari a **5.371.962 byte**. Non sono stati consultati dati personali, nomi dei file né i byte degli oggetti; il dato è una stima di metadati, non di archivio o spazio R2 consumato.
+
+**Blocco formale:** i test di provenienza e completezza sintetici **non sbloccano** `RB-04_REAL`, `RB-05_REAL`, `RB-02` o la produzione di un primo backup cifrato; devono essere qualificati anche il piano di ripristino effettivo e l'uso professionale delle credenziali protette.
 
 ## Condizione di uscita
 
