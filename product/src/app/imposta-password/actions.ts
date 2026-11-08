@@ -22,13 +22,9 @@ export async function setPassword(formData: FormData) {
     redirect('/login?error=session_required')
   }
 
-  const { error } = await supabase.auth.updateUser({ password })
-
-  if (error) {
-    console.error('Password update failed', error.code)
-    redirect('/imposta-password?error=password_update_failed')
-  }
-
+  // A session with an already enrolled MFA factor may not change the
+  // account password until the second factor has actually been verified.
+  // Verify BEFORE updateUser; checking afterwards permits an aal1 mutation.
   const assurance = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
   if (
     assurance.error ||
@@ -36,6 +32,13 @@ export async function setPassword(formData: FormData) {
     (assurance.data.currentLevel !== 'aal2' && assurance.data.nextLevel === 'aal2')
   ) {
     redirect('/sicurezza/mfa')
+  }
+
+  const { error } = await supabase.auth.updateUser({ password })
+
+  if (error) {
+    console.error('Password update failed', error.code)
+    redirect('/imposta-password?error=password_update_failed')
   }
 
   redirect('/workspace')
