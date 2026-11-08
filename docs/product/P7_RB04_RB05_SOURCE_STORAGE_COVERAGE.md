@@ -1,7 +1,7 @@
 # P7 / RB-04–RB-05 — Identità di origine e recupero completo di Supabase
 
 **Verifica:** 08/11/2026  
-**Stato:** `CATALOG_READ_ONLY_PASS / CREDENTIALS_REAL_UNQUALIFIED / STORAGE_RECONCILIATION_SYNTHETIC_PENDING_CI / REAL_RESTORE_HOLD`  
+**Stato:** `CATALOG_READ_ONLY_PASS / CREDENTIALS_REAL_UNQUALIFIED / STORAGE_RECONCILIATION_SYNTHETIC_CONTRACT_IN_CI / REAL_RESTORE_HOLD`  
 **Ambiente:** Beta Docente OS, progetto candidato `gnshgapmwyjamhmlikeg`. Nessuna credenziale, dump reale, byte di oggetti Storage o dato personale acquisito per redigere questo documento.
 
 ## 1. Distinguere origine, autorizzazione e destinazione
