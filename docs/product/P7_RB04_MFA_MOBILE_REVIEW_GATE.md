@@ -6,7 +6,7 @@
 
 ## 1. Revisione del codice
 
-È stata aggiunta una pagina `/sicurezza/mfa` accessibile soltanto a sessioni Supabase Auth valide, che usa gli strumenti ufficiali `mfa.listFactors`, `mfa.enroll`, `mfa.challengeAndVerify` e `mfa.getAuthenticatorAssuranceLevel`. L'esito `aal2` viene verificato dopo la prova del secondo fattore. L'accesso ordinario e il recupero password instradano al secondo fattore quando l'utente ne possiede già uno verificato. La verifica MFA per mutazioni di password è **prima** di `updateUser`, non dopo.
+È stata aggiunta una pagina `/sicurezza/mfa` accessibile soltanto a sessioni Supabase Auth valide, che usa gli strumenti ufficiali `mfa.listFactors`, `mfa.enroll`, `mfa.challengeAndVerify` e `mfa.getAuthenticatorAssuranceLevel`. L'esito `aal2` viene verificato dopo la prova del secondo fattore. L'accesso ordinario allo spazio docente **non** richiede MFA in RB-04: la verifica AAL2 viene richiesta per gli allegati privati attraverso le politiche RLS. In caso di fattore già registrato, la modifica della password mantiene un controllo MFA specifico, applicato prima della mutazione. La verifica MFA per mutazioni di password è **prima** di `updateUser`, non dopo.
 
 L'interfaccia supporta anche la scelta fra più fattori TOTP **già verificati** e l'aggiunta volontaria di un fattore su un secondo dispositivo quando la sessione è `aal2`. Il fattore primario non viene rimosso; la procedura deve essere provata sul backend sintetico prima di qualunque registrazione reale. Non sono previsti codici di recupero generati dall'applicazione.
 
@@ -17,7 +17,7 @@ L'interfaccia supporta anche la scelta fra più fattori TOTP **già verificati**
 | Un'app Android può chiudere la pagina durante una prima registrazione TOTP | Un fattore non verificato resta associato a Supabase; il segreto visualizzato in precedenza non è più recuperabile dalla pagina | `recover`: elenco delle sole registrazioni TOTP non verificate contrassegnate `Docente OS`, annullamento esplicito di **un tentativo alla volta**; nuovo controllo sul server `listFactors()` prima di ciascun `unenroll`; nessuna eliminazione di fattori `verified` |
 | La chiave di registrazione era visibile immediatamente | Rischio di divulgazione in schermate e acquisizioni dello schermo | Chiave inizialmente nascosta, visibile solo a seguito di un gesto esplicito e rimossa dalla vista alla conclusione; nessun salvataggio in URL, registri o repository |
 | Nel recupero password, la valutazione MFA avveniva dopo la modifica | Una sessione `aal1` con secondo fattore già registrato poteva tentare una modifica password prima della verifica ulteriore | Spostato il controllo dell'Authenticator Assurance Level **prima** di `auth.updateUser`; in mancanza della conferma si passa a `/sicurezza/mfa` |
-| Dopo annullamento remoto di un tentativo TOTP il nuovo caricamento dei fattori può non riuscire | La UI poteva rimanere in una vista priva di chiave/ID | Ritorno sicuro alla vista iniziale prima dell'aggiornamento della lista; nessuna cancellazione automatica di fattori verificati |
+| La verifica TOTP può riuscire sul server mentre la risposta si perde | Il pulsante di annullamento poteva eliminare un fattore già verificato | L'interruzione cancella esclusivamente il segreto locale e rilegge lo stato remoto; la rimozione rimane un comando separato in `recover`, previa nuova verifica che il fattore sia ancora `unverified` |
 
 **Prove automatiche:** `mfa-state.test.ts` verifica i passaggi `setup`, `recover`, `challenge` e `ready`, la selezione stretta dei fattori incompleti e il codice a sei cifre. `mfa-security-contract.test.ts` verifica l'ordine della guardia prima della modifica password, la protezione iniziale del segreto e la verifica dei fattori prima della rimozione. Questi test, basati sul codice, non sostituiscono un collaudo sul runtime reale.
 
@@ -39,6 +39,14 @@ Sul progetto Vercel `docente-os-product` le variabili `NEXT_PUBLIC_SUPABASE_URL`
 
 La modifica riguarda soltanto l'anteprima del ramo, **non** Beta, Production, `main`, RLS, schemi, file Storage o RB-02. Il collaudo con account sintetico e la revisione indipendente sul commit finale rimangono requisiti separati.
 
+### Verifica dell'istanza ripristinata e revisione Codex (08/11/2026)
+
+Il progetto `DOCENTE OS MFA Test` è ora `ACTIVE_HEALTHY`. Una query di **soli conteggi aggregati** ha restituito: **0 account Auth**, **0 fattori MFA**, **2 oggetti Storage preesistenti** e **7 tabelle pubbliche**. Non sono stati letti nomi, file, email, segreti o righe. Gli oggetti preesistenti impediscono di definire l'intero progetto «privo di dati», ma il perimetro Auth non contiene account o fattori esistenti; le prove MFA dovranno restare nell'area Auth senza toccare Storage.
+
+Una nuova distribuzione Vercel del ramo `feat/p7-db-real-readiness-pg17` è risultata `READY` sul commit `38a2518f2bec316ef8e40a76de06b44ea44b434e`, successivo alla creazione degli override di ambiente limitati al ramo. Questo conferma la **nuova compilazione**, non da solo la destinazione Supabase effettivamente utilizzata nel browser o l'accessibilità del login: `PREVIEW_RUNTIME_BINDING=HOLD_UNTIL_VERIFIED`. In particolare non utilizzare l'account Beta né le credenziali reali sul collegamento di anteprima.
+
+Codex ha eseguito una **revisione indipendente** sul commit `27fefda5a3dd98a458f454f3b471a95b48de94b5`, individuando **P1** (reindirizzamento MFA applicato solo dopo login, aggirabile aprendo direttamente le viste) e **tre P2** (nome duplicato per il fattore di recupero, mancato azzeramento del segreto al cambio account, eliminazione pericolosa del fattore dopo una verifica con risposta persa). Le correzioni adottate restringono intenzionalmente il perimetro: nessuna MFA globale fittizia per tutte le viste, RLS AAL2 conservata solo sugli allegati privati; nomi distinti per i fattori di recupero; ascolto degli eventi Auth e invalidazione delle richieste precedenti; interruzione senza cancellazione remota, con rimozione consentita solo per registrazioni ancora non verificate. Questa è una **risposta tecnica ai rilievi, non un'approvazione indipendente dell'ultimo commit**: nuovo Product CI e nuova review rimangono necessari.
+
 ## 3. Protocollo di revisione umana sullo smartphone (NON ESEGUITO)
 
 *Prerequisito:* un'istanza autorizzata e qualificata per il test, con **identità sintetica**, Auth e Storage non collegati alla Beta reale. Nessun JWT, codice TOTP o segreto deve essere archiviato in una PR, nel sistema di segnalazione o nelle schermate trasmesse.
@@ -46,7 +54,7 @@ La modifica riguarda soltanto l'anteprima del ramo, **non** Beta, Production, `m
 1. Con identità fittizia già autenticata, verificare la pagina `/sicurezza/mfa` su Android a larghezza mobile e l'ingresso dalle Impostazioni. La chiave deve essere nascosta all'apertura.
 2. Avviare una registrazione TOTP fittizia, mostrare la chiave solo quando necessario, configurare l'app di autenticazione e confermare con codice. Verificare che l'interfaccia riporti `aal2` **solo dopo** la verifica ufficiale Supabase e che il browser non pubblichi segreti nei parametri URL.
 3. Ripetere in ambiente sintetico: codice sbagliato; scadenza della sessione; ritorno al browser dopo passaggio all'app TOTP; chiusura/ricaricamento durante `enroll`; rimozione **esplicita e selettiva** della sola registrazione incompleta. Un fattore verificato non deve essere rimosso.
-4. Eseguire un nuovo accesso con fattore già verificato. Accertare che login/password-reset non consentano di saltare la verifica quando `aal2` è richiesto.
+4. Eseguire un nuovo accesso con fattore già verificato. Confermare che le schermate didattiche ordinarie rimangano accessibili senza AAL2 e che l'accesso agli allegati privati protetti da RLS richieda `aal2`; la mutazione di password su account MFA deve richiedere il controllo preventivo. Non estendere implicitamente MFA a tutte le tabelle applicative.
 5. Verificare la navigazione Android, la dimensione dei controlli, lo stato del caricamento, il ritorno alla schermata precedente, i messaggi di errore e la possibilità di completare l'operazione con lo stesso telefono.
 6. Registrare soltanto una ricevuta **senza segreti**: commit, dispositivo/versione browser, percorso, `aal1→aal2`, esito di ogni controllo, anomalie e autorizzazione umana.
 
@@ -57,4 +65,4 @@ La modifica riguarda soltanto l'anteprima del ramo, **non** Beta, Production, `m
 - Completare la revisione mobile con esito **PASS** su un'istanza isolata prima di discutere la distribuzione della funzionalità in Beta.
 - Soltanto dopo, e **con autorizzazione separata**, attivare un fattore dell'account reale. Un MFA `aal2` attestato non equivale a RB-04 PASS: resta da qualificare la visibilità autorizzata dei nove oggetti. RB-02/05 continuano a impedire download, backup reale e ripristino.
 
-**Nessun merge, deploy, creazione reale di fattori MFA, accesso ai file privati o modifica RLS viene autorizzato da questo documento.**
+**Nessun merge, distribuzione Beta/Production, creazione reale di fattori MFA, accesso ai file privati o modifica RLS viene autorizzato da questo documento.** Le anteprime automatiche GitHub/Vercel sono separate e non rappresentano promozione della Beta.
