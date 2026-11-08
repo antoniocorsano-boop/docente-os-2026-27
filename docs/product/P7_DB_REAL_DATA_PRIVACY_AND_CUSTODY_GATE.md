@@ -26,6 +26,14 @@ Il custode ha precisato: **«È un progetto che gestisco a titolo professionale 
 
 **Fonti normative:** [Regolamento (UE) 2016/679, art. 2 e considerando 18](https://eur-lex.europa.eu/legal-content/IT-EN/ALL/?uri=CELEX%3A32016R0679) e [Commissione europea — Ambito di applicazione del GDPR](https://commission.europa.eu/law/law-topic/data-protection/information-business-and-organisations/application-gdpr_en).
 
+## Ricognizione contrattuale e costo zero — 08/11/2026
+
+È disponibile la valutazione documentale dedicata [P7_RB02_PROFESSIONAL_R2_COMPLIANCE_ASSESSMENT.md](./P7_RB02_PROFESSIONAL_R2_COMPLIANCE_ASSESSMENT.md), basata sulle fonti ufficiali Cloudflare aggiornate, con confronto tra il progetto professionale autonomo, l'accordo di abbonamento, il DPA, la giurisdizione UE e le soglie gratuite.
+
+**Fatti esterni verificati:** l'[accordo Cloudflare Self-Serve, §6.1](https://www.cloudflare.com/terms/) **incorpora per riferimento il DPA** per i contenuti personali pertinenti; il [DPA v6.4, efficace dal 03/04/2026](https://www.cloudflare.com/cloudflare-customer-dpa/) disciplina ruoli, misure di sicurezza e trasferimenti, ma contempla possibili trattamenti al di fuori del SEE. Il [listino R2 Standard](https://developers.cloudflare.com/r2/pricing/) offre una franchigia mensile, non una garanzia di assenza di addebiti oltre soglia. L'account e le condizioni effettivamente applicate all'utente **non sono state ispezionate**. La giurisdizione UE degli oggetti non elimina automaticamente i controlli su metadati e sottofornitori.
+
+**Stato:** `RB02_CLOUDFLARE_OFFICIAL_CONTRACT_RESEARCH=PASS_DOCUMENTARY`; `RB02_ACCOUNT_TERMS_AND_TRANSFERS=PRIVATE_REVIEW_PENDING`; `RB02_ZERO_COST_CAPACITY=NOT_ATTESTED`; `RB-02=HOLD`. Prima di un'esportazione reale rimane necessaria una scelta espressa, distinta dalla precedente approvazione della durata di 91 giorni. Nessuna credenziale o contenuto personale deve entrare in una PR.
+
 ## RB-02 — Esame dei controlli R2 successivo alla verifica UE
 
 **Verifiche iniziali dell'utente (06/11/2026), qualificate dalla successiva attestazione professionale dell'08/11/2026:** progetto gestito autonomamente, dati reali propri dichiarati, bucket `docente-os-backup-eu` con giurisdizione **Unione europea**, URL pubblico di sviluppo disabilitato e nessun dominio personalizzato. Nessun record personale è stato esaminato.
@@ -66,7 +74,7 @@ Lo script [`p7-rb02-rb04-r2-policy-contract.py`](../../.github/scripts/p7-rb02-r
 
 **Fonti tecniche:** https://developers.cloudflare.com/r2/buckets/bucket-locks/ e https://developers.cloudflare.com/r2/buckets/object-lifecycles/ .
 
-**Esito complessivo RB-02:** HOLD, anche con giurisdizione UE confermata. Nessuna esportazione reale è autorizzata.
+**Esito complessivo RB-02:** HOLD. Fonti contrattuali Cloudflare esaminate (PASS documentale); condizioni applicabili all'account, qualificazione dei possibili trasferimenti, capacità entro la franchigia gratuita e decisione espressa sull'esportazione reale ancora non attestate. Nessuna esportazione reale è autorizzata.
 
 ---
 
