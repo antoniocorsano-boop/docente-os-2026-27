@@ -29,6 +29,15 @@ export async function setPassword(formData: FormData) {
     redirect('/imposta-password?error=password_update_failed')
   }
 
+  const assurance = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (
+    assurance.error ||
+    !assurance.data ||
+    (assurance.data.currentLevel !== 'aal2' && assurance.data.nextLevel === 'aal2')
+  ) {
+    redirect('/sicurezza/mfa')
+  }
+
   redirect('/workspace')
 }
 
