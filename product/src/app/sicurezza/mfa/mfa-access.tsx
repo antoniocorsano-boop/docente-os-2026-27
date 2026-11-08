@@ -235,7 +235,9 @@ export function MfaAccess() {
   async function verifyCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const id = pending?.id ?? factorId
-    if (busy || !id || (view !== 'enroll' && view !== 'challenge')) return
+    const userId = currentUserId.current
+    const epoch = authEpoch.current
+    if (busy || !id || !userId || (view !== 'enroll' && view !== 'challenge')) return
     if (!validTotpCode(code)) {
       setError('Inserisci le sei cifre mostrate dall’app di autenticazione.')
       return
@@ -247,9 +249,11 @@ export function MfaAccess() {
         factorId: id,
         code,
       })
+      if (!sameSession(epoch, userId)) return
       if (verifyError) throw new Error('MFA challenge failed')
       setCode('')
       const level = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (!sameSession(epoch, userId)) return
       if (level.error || level.data?.currentLevel !== 'aal2') {
         throw new Error('MFA assurance level not confirmed')
       }
@@ -262,6 +266,7 @@ export function MfaAccess() {
       // a transient list failure must not report a false authentication failure.
       try {
         const allFactors = await supabase.auth.mfa.listFactors()
+        if (!sameSession(epoch, userId)) return
         if (!allFactors.error && allFactors.data) {
           const verified = allFactors.data.totp.filter((factor) => factor.status === 'verified')
           setVerifiedFactors(verified.map((factor, index) => ({
@@ -273,10 +278,12 @@ export function MfaAccess() {
         // Keep the authoritative successful aal2 state.
       }
     } catch {
-      setCode('')
-      setError('Verifica non riuscita. Controlla il codice e riprova; la sessione non è ancora confermata.')
+      if (sameSession(epoch, userId)) {
+        setCode('')
+        setError('Verifica non riuscita. Controlla il codice e riprova; la sessione non è ancora confermata.')
+      }
     } finally {
-      setBusy(false)
+      if (sameSession(epoch, userId)) setBusy(false)
     }
   }
 
