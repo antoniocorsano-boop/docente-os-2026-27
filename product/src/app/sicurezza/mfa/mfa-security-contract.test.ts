@@ -31,6 +31,14 @@ test('interrupted factors are rechecked before user-initiated cleanup', () => {
   assert.ok(fresh >= 0 && verified > fresh && selection > verified && removal > selection)
 })
 
+test('verified backup factors can be chosen without removing the original', () => {
+  assert.ok(mfaUi.includes('verifiedFactors.length > 1'))
+  assert.ok(mfaUi.includes('setFactorId(event.target.value)'))
+  assert.ok(mfaUi.includes('Aggiungi un secondo fattore di recupero'))
+  assert.ok(mfaUi.includes("(view !== 'setup' && view !== 'ready')"))
+  assert.equal(mfaUi.includes("supabase.auth.mfa.unenroll({ factorId: factorId"), false)
+})
+
 test('MFA UI never writes or downloads teacher materials', () => {
   for (const unsafeCall of ['.storage.', 'GetObject', 'PutObject', 'DeleteObject', 'service_role']) {
     assert.equal(mfaUi.includes(unsafeCall), false, `unexpected Storage or privileged operation: ${unsafeCall}`)
