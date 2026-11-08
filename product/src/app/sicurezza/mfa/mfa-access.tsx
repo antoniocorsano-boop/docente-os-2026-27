@@ -178,17 +178,23 @@ export function MfaAccess() {
       }
       setPending(null)
       setSecretRevealed(false)
-      const allFactors = await supabase.auth.mfa.listFactors()
-      if (!allFactors.error && allFactors.data) {
-        const verified = allFactors.data.totp.filter((factor) => factor.status === 'verified')
-        setVerifiedFactors(verified.map((factor, index) => ({
-          id: factor.id,
-          label: `App di autenticazione ${index + 1}`,
-        })))
-      }
       setFactorId(id)
       setView('ready')
       router.refresh()
+      // Factor enumeration is only presentation data. Once aal2 is confirmed,
+      // a transient list failure must not report a false authentication failure.
+      try {
+        const allFactors = await supabase.auth.mfa.listFactors()
+        if (!allFactors.error && allFactors.data) {
+          const verified = allFactors.data.totp.filter((factor) => factor.status === 'verified')
+          setVerifiedFactors(verified.map((factor, index) => ({
+            id: factor.id,
+            label: `App di autenticazione ${index + 1}`,
+          })))
+        }
+      } catch {
+        // Keep the authoritative successful aal2 state.
+      }
     } catch {
       setCode('')
       setError('Verifica non riuscita. Controlla il codice e riprova; la sessione non è ancora confermata.')
