@@ -22,6 +22,8 @@ Lo script [`p7-rb02-rb04-r2-policy-contract.py`](../../.github/scripts/p7-rb02-r
 
 **Limite operativo:** per completare RB-02 occorre una **attestazione reale non segreta** dei privilegi di Cloudflare e una **decisione di trattamento e conservazione**. Nessuna di esse può essere sostituita da un risultato PASS di prova sintetica.
 
+**Aggiornamento R2 — 08/11/2026.** Il custode ha mostrato la configurazione della regola `Cancel backup` prima del salvataggio (abilitata, `production/`, eliminazione dopo `91` giorni) e ha confermato successivamente «Ho riaperto e la regola è salvata». `RB02_R2_LIFECYCLE_91D_SAVED=PASS_USER_ATTESTED`. Rimangono NON attestati i permessi effettivi delle credenziali R2, l'approvazione del trattamento/trasferimento di dati reali e la prova pratica di scadenza. **RB-02 complessivo = HOLD.**
+
 ### Condizioni ancora da attestare
 
 | Verifica | Evidenza necessaria | Stato |
@@ -29,12 +31,12 @@ Lo script [`p7-rb02-rb04-r2-policy-contract.py`](../../.github/scripts/p7-rb02-r
 | Giurisdizione R2 UE | Impostazioni del contenitore, conferma umana | PASS |
 | Esposizione pubblica | URL di sviluppo disabilitato e assenza di domini | PASS visivo |
 | Regola di blocco degli oggetti | Screenshot del 06/11/2026: regola `production-backup-90d` comparsa nell'elenco alle 15:48; riapertura dal menu della regola esistente alle 15:52 con interruttore abilitato, prefisso esatto `production/`, durata `90` giorni. Controllo **visivo della configurazione salvata**; non è stata effettuata una prova di immutabilità su un oggetto reale. | `RB02_R2_BUCKET_LOCK_SAVED_CONFIG=PASS_VISUAL / OBJECT_LOCK_EFFECTIVENESS=NOT_TESTED` |
-| Regola di scadenza | `production/` con eliminazione automatica **a 91 giorni**, scelta esplicita del custode il 07/11/2026. Verificare impostazione abilitata e salvata nel pannello Cloudflare, senza modificarne altri prefissi. | **DURATA_APPROVATA / CONFIGURAZIONE_LIVE_NON_VERIFICATA** |
+| Regola di scadenza | `Cancel backup`, abilitata; prefisso `production/`; azione eliminazione oggetti dopo **91 giorni**. Screenshot di configurazione prima del salvataggio e conferma esplicita dell'utente in data 08/11/2026 di aver **riaperto** la regola trovandola salvata. | **PASS_USER_ATTESTED_SAVED** (senza verifica tramite API o test operativo di scadenza) |
 | Permessi del processo R2 | Conferma di autorizzazione limitata al contenitore richiesto e assenza di privilegi amministrativi non necessari | NON VERIFICATI |
 | Condizioni e conservazione dei dati personali | Ricevuta di decisione personale con perimetro e durata | NON APPROVATA |
 | Recupero crittografico indipendente | Recupero su secondo Android e custodia della password cartacea in luogo separato, attestati dal custode il 07/11/2026 | `RB-03=PASS_CUSTODIAN_ATTESTED` |
 
-**Distinzione tecnica:** una regola di blocco impedisce l'eliminazione anticipata, ma non prova la cancellazione automatica alla sua scadenza. Una regola di ciclo di vita separata può definire la cancellazione, nel rispetto del blocco. La regola è stata verificata anche riaprendone il dettaglio dall'elenco: nome, prefisso completo, durata e interruttore sono coerenti con la configurazione prevista. La prova **visiva** non dimostra tuttavia l'effettiva resistenza alla cancellazione/sovrascrittura su oggetti reali, né la presenza di una regola di scadenza automatica.
+**Distinzione tecnica:** il blocco impedisce la cancellazione anticipata, mentre la regola di ciclo di vita salvata imposta la scadenza. Per la regola di blocco 90 giorni esiste evidenza visiva della configurazione salvata; per la scadenza a 91 giorni esiste lo screenshot del modulo abilitato e la successiva attestazione del custode che la regola è stata riaperta e risultava salvata. Questa è **evidenza di configurazione**, non prova operativa di resistenza alla cancellazione anticipata o dell'effettiva eliminazione al 91° giorno. Non sono stati caricati oggetti reali per provare il ciclo di vita.
 
 **Controllo richiesto:** leggere soltanto le sezioni delle impostazioni R2 relative a regole di blocco e ciclo di vita degli oggetti. Non modificare o rimuovere regole, non aprire credenziali, non avviare upload di dati reali.
 
