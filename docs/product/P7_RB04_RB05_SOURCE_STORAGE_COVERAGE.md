@@ -45,6 +45,33 @@ La parola `service_role` identifica qui un **ruolo interno PostgreSQL**, non pro
 
 **Vincoli:** non premere «New access key» né «Save», non creare chiavi permanenti, non copiare token di sessione, non eseguire download dei 9 allegati o backup reali prima di RB-02/RB-04/RB-05 e della successiva autorizzazione esplicita. Il servizio S3 è una **origine** Supabase distinta dal contenitore di **destinazione** Cloudflare R2.
 
+### Audit effettivo RLS: MFA e appartenenza (08/11/2026, sola lettura)
+
+Sono state interrogate **esclusivamente le definizioni di politica** nel catalogo `pg_policies` e la definizione della funzione di controllo MFA; non sono state lette righe di `storage.objects`, `workspace_memberships`, identità, percorsi o byte. Le definizioni effettive sul progetto candidato attestano:
+
+| Politica su `storage.objects` | Operazione / modo | Vincolo osservato |
+|---|---|---|
+| `knowledge_assets_storage_select_member` | `SELECT`, **PERMISSIVE**, `authenticated` | `bucket_id = 'knowledge-assets'` e appartenenza dell'utente corrente allo spazio di lavoro identificato dal primo segmento di `storage.foldername(name)` |
+| `mfa_aal2_required` | `ALL`, **RESTRICTIVE**, `authenticated` | `private.current_session_is_aal2()`; la funzione SQL `STABLE`, senza `SECURITY DEFINER`, richiede `auth.jwt()->>'aal' = 'aal2'` |
+| `knowledge_assets_storage_insert_member` | `INSERT`, **PERMISSIVE**, `authenticated` | Inserimento consentito secondo appartenenza allo spazio di lavoro |
+| `knowledge_assets_storage_delete_own` | `DELETE`, **PERMISSIVE**, `authenticated` | Eliminazione limitata a oggetto proprio e appartenenza allo spazio di lavoro |
+
+**Correzione interpretativa essenziale:** la politica MFA `ALL` è **RESTRICTIVE**, non permissiva. Per `SELECT` PostgreSQL combina l'autorizzazione dello spazio di lavoro con il requisito `aal2`; la presenza di MFA **non** apre accesso indipendente a tutti gli oggetti. Non è stato effettuato alcun tentativo di accesso con un JWT di utente e non è quindi confermata la copertura degli attuali nove oggetti.
+
+**Limite del privilegio:** una sessione S3 basata su JWT **non è una credenziale intrinsecamente di sola lettura**: nel medesimo schema esistono politiche di `INSERT` e `DELETE`. Un esecutore limitato per codice a `ListObjectsV2`, `HeadObject` e, solo dopo autorizzazione separata, `GetObject` riduce le operazioni svolte ma non revoca i privilegi sottostanti della sessione. Non chiamare questa identità `read_only_role` né equipararla a una credenziale di backup dedicata e non scrivente.
+
+**Decisione RB-04 sul percorso S3: `RLS_POLICY_STRUCTURE_PASS_READ_ONLY_CATALOG / USER_SESSION_AND_NINE_OBJECT_COVERAGE_HOLD`.** Non usare una connessione amministrativa al database o una chiave `service_role` per simulare la visibilità di un utente: aggirerebbe RLS e produrrebbe un falso positivo.
+
+#### Protocollo minimo di qualificazione successivo (NON ESEGUITO)
+
+1. **Prima di accedere a metadati nominativi o file reali:** autorizzare esplicitamente la prova di accesso e predisporre un ambiente protetto, evitando JWT, chiavi, percorsi e nominativi in chat, PR, CI e registri. `RB-02` resta separatamente `HOLD` per l'esportazione e il trasferimento effettivi.
+2. Usare **una sessione utente reale con MFA `aal2`** nel progetto esatto. La [documentazione Supabase su S3 Authentication](https://supabase.com/docs/guides/storage/s3/authentication) prevede `accessKeyId = project_ref`, chiave anonima **legacy** e `sessionToken = JWT`; allo stato della documentazione, la chiave pubblicabile nuova non è intercambiabile nel protocollo S3. Non generare chiavi S3 permanenti e non esporre il token.
+3. In ambiente protetto verificare **solo con operazioni non mutanti** l'accesso consentito al contenitore e la quantità degli oggetti visibili. Confrontare il totale con l'inventario aggregato di **9**; effettuare eventuale controllo di dimensioni e percorso solo in evidenza riservata, mai in uscita testuale pubblica. Un totale coincidente **non** prova da solo l'identità byte-per-byte degli oggetti né la loro recuperabilità.
+4. Se un oggetto è invisibile o `aal2` non è disponibile, riportare **`HOLD`** senza indebolire RLS, aggiungere permessi, eseguire `GetObject` o creare chiavi S3 generali.
+5. Solo dopo la distinta autorizzazione RB-02 e una soluzione qualificata di lettura DB + Storage potranno essere verificate acquisizione dei byte, SHA-256, coerenza e ripristino RB-05; il percorso reale non è un effetto implicito della ricognizione.
+
+Questa è un'evidenza di **configurazione effettiva e disegno di prova**, non una qualifica di accesso reale; nessun backup, file o migrazione è stato avviato.
+
 ## 2. Inventario Supabase osservato — soli aggregati (08/11/2026)
 
 Eseguita una sola interrogazione aggregata in sola lettura; non sono stati letti nomi di file, account, record, URL o allegati.
