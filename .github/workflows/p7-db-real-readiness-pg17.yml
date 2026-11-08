@@ -73,6 +73,14 @@ jobs:
         run: |
           python3 -m py_compile .github/scripts/p7-rb04-rb05-source-storage-contract.py
           python3 .github/scripts/p7-rb04-rb05-source-storage-contract.py --self-test
+          if P7_REAL_DATABASE_URL=DENY python3 .github/scripts/p7-rb04-rb05-source-storage-contract.py --self-test >/dev/null 2>&1; then
+            echo 'ERROR: RB-04/05 accepted a real database URL variable' >&2
+            exit 1
+          fi
+          if GITHUB_EVENT_NAME=workflow_dispatch python3 .github/scripts/p7-rb04-rb05-source-storage-contract.py --self-test >/dev/null 2>&1; then
+            echo 'ERROR: RB-04/05 accepted non-PR execution' >&2
+            exit 1
+          fi
       - name: Qualify RB-05 synthetic database plus Storage inventory and fail-closed restore
         run: |
           python3 -m py_compile .github/scripts/p7-rb05-synthetic-recovery-contract.py
