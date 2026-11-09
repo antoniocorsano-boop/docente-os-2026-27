@@ -11,7 +11,9 @@ import { localSessionId, nextDocenteFactorName, recoverableDocenteDrafts, resolv
 type View = 'loading' | 'setup' | 'enroll' | 'recover' | 'challenge' | 'ready'
 type PendingEnrollment = { id: string; secret: string }
 
-export function MfaAccess() {
+type MfaReturnTo = '/workspace' | '/imposta-password?source=mfa'
+
+export function MfaAccess({ returnTo }: { returnTo: MfaReturnTo }) {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
   const [view, setView] = useState<View>('loading')
@@ -447,8 +449,16 @@ export function MfaAccess() {
                 La sessione è pronta per le operazioni consentite dalle politiche di accesso. Questa verifica
                 non avvia alcun backup e non prova ancora la leggibilità dei nove allegati.
               </p>
-              <Link href="/workspace" className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-sm)] bg-primary px-5 text-sm font-semibold text-primary-foreground">
-                Continua nello spazio docente
+              {returnTo === '/imposta-password?source=mfa' ? (
+                <p className="m-0 text-sm leading-6">
+                  La password non è stata ancora modificata. Torna al modulo, inserisci di nuovo
+                  la nuova password e conferma il salvataggio.
+                </p>
+              ) : null}
+              <Link href={returnTo} className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-sm)] bg-primary px-5 text-sm font-semibold text-primary-foreground">
+                {returnTo === '/imposta-password?source=mfa'
+                  ? 'Torna a impostare la password'
+                  : 'Continua nello spazio docente'}
               </Link>
               <p className="m-0 text-sm text-muted-foreground">
                 Supabase non fornisce codici di recupero MFA. Per evitare di perdere l’accesso
