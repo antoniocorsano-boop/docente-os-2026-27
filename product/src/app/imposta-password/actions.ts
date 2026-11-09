@@ -31,7 +31,7 @@ export async function setPassword(formData: FormData) {
     !assurance.data ||
     (assurance.data.currentLevel !== 'aal2' && assurance.data.nextLevel === 'aal2')
   ) {
-    redirect('/sicurezza/mfa')
+    redirect('/sicurezza/mfa?return=password')
   }
 
   const { error } = await supabase.auth.updateUser({ password })
