@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   isDocenteFactorName,
+  localSessionId,
   nextDocenteFactorName,
   recoverableDocenteDrafts,
   resolveMfaStage,
@@ -58,4 +59,16 @@ test('backup factor name avoids collisions including unfinished factors', () => 
     recoverableDocenteDrafts([primary, recovery]).map((factor) => factor.id),
     ['two'],
   )
+})
+
+test('local JWT fingerprint follows stable session_id and never trusts malformed claims', () => {
+  const id = 'abcd1234-1111-2222-3333-1234567890ab'
+  const jwt = (session: string) =>
+    'header.' + btoa(JSON.stringify({ sub: 'fictional-user', session_id: session, aal: 'aal1' }))
+      .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_') + '.signature'
+  assert.equal(localSessionId(jwt(id)), id)
+  assert.equal(localSessionId(jwt('different-session')), null)
+  assert.equal(localSessionId('not-a-jwt'), null)
+  assert.equal(localSessionId('a.!.b'), null)
+  assert.notEqual(localSessionId(jwt(id)), localSessionId(jwt('12345678-1111-2222-3333-1234567890ab')))
 })
