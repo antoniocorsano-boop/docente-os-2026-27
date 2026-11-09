@@ -5,6 +5,8 @@ import test from 'node:test'
 const passwordAction = readFileSync(new URL('../../imposta-password/actions.ts', import.meta.url), 'utf8')
 const loginAction = readFileSync(new URL('../../login/actions.ts', import.meta.url), 'utf8')
 const loginPage = readFileSync(new URL('../../login/page.tsx', import.meta.url), 'utf8')
+const passwordPage = readFileSync(new URL('../../imposta-password/page.tsx', import.meta.url), 'utf8')
+const mfaPage = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8')
 const mfaUi = readFileSync(new URL('./mfa-access.tsx', import.meta.url), 'utf8')
 
 test('account password mutation checks second-factor assurance BEFORE writing', () => {
@@ -13,7 +15,7 @@ test('account password mutation checks second-factor assurance BEFORE writing', 
   assert.ok(guard > 0, 'missing MFA assurance guard')
   assert.ok(mutation > guard, 'password changed before MFA assurance was evaluated')
   assert.ok(
-    passwordAction.slice(guard, mutation).includes("redirect('/sicurezza/mfa')"),
+    passwordAction.slice(guard, mutation).includes("redirect('/sicurezza/mfa?return=password')"),
     'missing fail-closed redirect before password update',
   )
 })
@@ -79,4 +81,29 @@ test('backup enrollment uses a collision-free factor name instead of a fixed lab
   assert.ok(mfaUi.includes('nextDocenteFactorName(latest.data.all)'))
   assert.ok(mfaUi.includes('friendlyName,'))
   assert.equal(mfaUi.includes("friendlyName: 'Docente OS'"), false)
+})
+
+test('password recovery return intent is whitelisted and requires password resubmission', () => {
+  assert.ok(passwordAction.includes("redirect('/sicurezza/mfa?return=password')"))
+  assert.ok(mfaPage.includes("params.return === 'password'"))
+  assert.ok(mfaPage.includes("'/imposta-password?source=mfa'"))
+  assert.ok(mfaPage.includes("'/workspace'"))
+  assert.ok(mfaPage.includes('return <MfaAccess returnTo={returnTo} />'))
+  assert.ok(mfaUi.includes('<Link href={returnTo}'))
+  assert.ok(mfaUi.includes('Torna a impostare la password'))
+  assert.ok(mfaUi.includes('La password non è stata ancora modificata.'))
+  assert.ok(passwordPage.includes("params.source === 'mfa'"))
+  assert.ok(passwordPage.includes('La password non è stata ancora salvata'))
+  assert.equal(mfaPage.includes("params.return ||"), false)
+})
+
+test('same-user new SIGNED_IN session invalidates local secret and aal2 state', () => {
+  assert.ok(mfaUi.includes("event === 'SIGNED_IN'"))
+  assert.ok(mfaUi.includes('currentSessionId.current'))
+  assert.ok(mfaUi.includes('incomingSessionId !== currentSessionId.current'))
+  assert.ok(mfaUi.includes('resetSensitiveState()'))
+  assert.ok(mfaUi.includes('localSessionId(session.access_token)'))
+  assert.ok(mfaUi.includes("const session = await supabase.auth.getSession()"))
+  assert.ok(mfaUi.includes('currentSessionId.current = id'))
+  assert.ok(mfaUi.includes('authEpoch.current += 1'))
 })
