@@ -6,7 +6,7 @@ import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
-import { nextDocenteFactorName, recoverableDocenteDrafts, resolveMfaStage, validTotpCode } from './mfa-state'
+import { localSessionId, nextDocenteFactorName, recoverableDocenteDrafts, resolveMfaStage, validTotpCode } from './mfa-state'
 
 type View = 'loading' | 'setup' | 'enroll' | 'recover' | 'challenge' | 'ready'
 type PendingEnrollment = { id: string; secret: string }
@@ -24,6 +24,7 @@ export function MfaAccess() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const currentUserId = useRef<string | null>(null)
+  const currentSessionId = useRef<string | null>(null)
   const authEpoch = useRef(0)
 
   function sameSession(epoch: number, userId: string | null): boolean {
@@ -36,6 +37,7 @@ export function MfaAccess() {
     function resetSensitiveState() {
       authEpoch.current += 1
       currentUserId.current = null
+      currentSessionId.current = null
       setPending(null)
       setSecretRevealed(false)
       setCode('')
@@ -57,7 +59,20 @@ export function MfaAccess() {
           router.replace('/login?error=session_required')
           return
         }
+        // getSession is used solely for a local session fingerprint. The
+        // verified getUser above and RLS remain the authorization authorities.
+        const session = await supabase.auth.getSession()
+        if (!active || epoch !== authEpoch.current) return
+        if (session.error || !session.data.session ||
+            session.data.session.user.id !== user.data.user.id) {
+          resetSensitiveState()
+          router.replace('/login?error=session_required')
+          return
+        }
+        const id = localSessionId(session.data.session.access_token)
+        if (!id) throw new Error('Missing Auth session identity')
         currentUserId.current = user.data.user.id
+        currentSessionId.current = id
         const [level, factors] = await Promise.all([
           supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
           supabase.auth.mfa.listFactors(),
@@ -88,14 +103,18 @@ export function MfaAccess() {
       if (!active) return
       const newId = session?.user?.id ?? null
       const oldId = currentUserId.current
+      const incomingSessionId = session ? localSessionId(session.access_token) : null
       if (event === 'SIGNED_OUT' || (oldId !== null && oldId !== newId)) {
         resetSensitiveState()
         router.replace('/login?error=session_required')
         return
       }
-      if (event === 'TOKEN_REFRESHED' && oldId !== null && newId === oldId) {
-        // Recheck AAL if a refreshed JWT has a different assurance level.
-        // A prior 'ready' screen must never survive a token downgrade.
+      const replacementSignIn = event === 'SIGNED_IN' && oldId !== null &&
+        (currentSessionId.current === null || incomingSessionId !== currentSessionId.current)
+      if (replacementSignIn || (event === 'TOKEN_REFRESHED' && oldId !== null)) {
+        // A new login can reuse the same user ID yet have a DIFFERENT session
+        // ID. Clear all secrets and stale aal2 state before checking remotely.
+        // Same-session SIGNED_IN notifications (e.g. tab refocus) are ignored.
         resetSensitiveState()
         Promise.resolve().then(() => { if (active) void load() })
       }
