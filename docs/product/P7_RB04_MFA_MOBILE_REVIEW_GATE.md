@@ -58,6 +58,17 @@ Codex ha eseguito una **revisione indipendente** sul commit `27fefda5a3dd98a458f
 5. Verificare la navigazione Android, la dimensione dei controlli, lo stato del caricamento, il ritorno alla schermata precedente, i messaggi di errore e la possibilità di completare l'operazione con lo stesso telefono.
 6. Registrare soltanto una ricevuta **senza segreti**: commit, dispositivo/versione browser, percorso, `aal1→aal2`, esito di ogni controllo, anomalie e autorizzazione umana.
 
+### Revisione Codex sul commit `ced45cee69cd…` — due P2 successivi, rework 09/11/2026
+
+La seconda revisione indipendente ha confermato la necessità di intervenire su **due scenari** non qualificati dai test precedenti:
+
+1. **Recupero password dopo MFA:** `setPassword` rifiutava correttamente una mutazione in `aal1`, ma dopo il secondo fattore rinviava a `/workspace`, abbandonando la modifica richiesta. Ora il server passa esclusivamente l'intento codificato `?return=password`, senza accettare destinazioni arbitrarie. `/sicurezza/mfa` lo valida con confronto letterale e, **solo dopo conferma `aal2`**, propone un collegamento a `/imposta-password?source=mfa`. La password non viene conservata né trasmessa nel percorso e deve essere **reinserita e salvata esplicitamente**. Il modulo segnala che la modifica precedente non era stata eseguita.
+2. **Cambio sessione dello stesso utente:** Supabase include il claim `session_id` nel JWT dell'utente. È stato introdotto il solo identificatore di sessione **a uso di interfaccia**, estratto dal JWT per confrontare vecchia e nuova sessione. Non è usato per autorizzazioni: il controllo dell'identità resta `auth.getUser()`, mentre permessi e allegati dipendono dalle politiche RLS e dal livello `aal2` effettivo. Su `SIGNED_IN` con **nuovo** identificatore di sessione, anche quando l'identificativo utente non cambia, il componente cancella il segreto TOTP, il codice, le viste di conferma e incrementa l'epoca delle operazioni asincrone; poi ricalcola lo stato remoto. Il semplice segnale `SIGNED_IN` della medesima sessione non provoca un azzeramento non necessario. Restano gestiti `SIGNED_OUT` e `TOKEN_REFRESHED`.
+
+I test `mfa-state.test.ts` verificano l'estrazione di identificativi fittizi, il rifiuto di JWT malformati e la distinzione fra sessioni; `mfa-security-contract.test.ts` verifica che soltanto la destinazione password ammessa possa attraversare il percorso e che un nuovo accesso dello stesso account invalidi lo stato precedente. **Queste prove non sostituiscono l'esecuzione reale su Android né la revisione indipendente dell'ultimo commit.**
+
+**Nuovo gate:** `REWORK_PASSWORD_RETURN=CODED`, `REWORK_SAME_USER_SESSION=CODED`, `REAL_MFA_AAL2=NOT_RUN`, `REAL_PRIVATE_STORAGE=NOT_RUN`; `RB-02/05=HOLD`. Nessun segreto, fattore o contenuto privato è stato acquisito.
+
 ## 4. Condizioni per la fase successiva
 
 - Concludere Product CI e la revisione del nuovo codice sull'**exact head**.
