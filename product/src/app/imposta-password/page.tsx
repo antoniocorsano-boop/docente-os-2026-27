@@ -22,9 +22,11 @@ export default async function PasswordSetupPage({ searchParams }: PasswordSetupP
       ? 'Le due password non coincidono.'
       : params.error === 'password_update_failed'
         ? 'Non è stato possibile salvare la password. Riprova.'
-        : params.source === 'email'
-          ? 'Accesso verificato. Imposta ora una password: da questo momento gli accessi ordinari non richiederanno più email.'
-          : null
+        : params.source === 'mfa'
+          ? 'Verifica in due passaggi completata. La password non è stata ancora salvata: inseriscila nuovamente e conferma.'
+          : params.source === 'email'
+            ? 'Accesso verificato. Imposta ora una password: da questo momento gli accessi ordinari non richiederanno più email.'
+            : null
 
   return (
     <main className="shell">
