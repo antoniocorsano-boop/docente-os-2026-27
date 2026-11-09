@@ -47,3 +47,26 @@ export function resolveMfaStage(
 export function validTotpCode(value: string): boolean {
   return /^[0-9]{6}$/.test(value)
 }
+
+
+/**
+ * Supabase Auth embeds a stable session_id UUID in each user JWT. Read it
+ * ONLY to invalidate local presentation state when the browser session
+ * changes; never use decoded, unverified claims for access control.
+ * Authorization still relies on getUser, getClaims and the database RLS.
+ */
+export function localSessionId(accessToken: string): string | null {
+  try {
+    const payload = accessToken.split('.')[1]
+    if (!payload) return null
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const claims = JSON.parse(atob(base64)) as { session_id?: unknown }
+    const id = claims.session_id
+    return typeof id === 'string' &&
+      /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(id)
+      ? id
+      : null
+  } catch {
+    return null
+  }
+}
