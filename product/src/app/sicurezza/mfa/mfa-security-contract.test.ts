@@ -88,7 +88,7 @@ test('password recovery return intent is whitelisted and requires password resub
   assert.ok(mfaPage.includes("params.return === 'password'"))
   assert.ok(mfaPage.includes("'/imposta-password?source=mfa'"))
   assert.ok(mfaPage.includes("'/workspace'"))
-  assert.ok(mfaPage.includes('return <MfaAccess returnTo={returnTo} />'))
+  assert.ok(mfaPage.includes('return <MfaAccess returnTo={returnTo} isTestPreview={isIsolatedMfaPreview()} />'))
   assert.ok(mfaUi.includes('<Link href={returnTo}'))
   assert.ok(mfaUi.includes('Torna a impostare la password'))
   assert.ok(mfaUi.includes('La password non è stata ancora modificata.'))
