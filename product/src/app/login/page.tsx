@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { createClient } from '@/lib/supabase/server'
+import { isIsolatedMfaPreview } from '@/lib/supabase/mfa-isolated-preview'
 import { requestMagicLink, signInWithPassword } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -15,7 +16,7 @@ type LoginPageProps = {
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const supabase = await createClient()
   const { data } = await supabase.auth.getClaims()
-  if (data?.claims) redirect('/workspace')
+  if (data?.claims) redirect(isIsolatedMfaPreview() ? '/sicurezza/mfa' : '/workspace')
 
   const params = await searchParams
   const message = params.sent
