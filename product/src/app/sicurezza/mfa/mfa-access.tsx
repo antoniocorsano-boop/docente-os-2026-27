@@ -317,7 +317,7 @@ export function MfaAccess({ returnTo, isTestPreview = false }: { returnTo: MfaRe
           {isTestPreview ? (
             <p role="note" className="m-0 rounded-[var(--radius-sm)] border border-amber-400 p-3 text-sm font-semibold">
               Ambiente di prova MFA: utilizzare solo identità fittizie.
-              Non usare l'account Docente OS Beta o le credenziali Vercel.
+              Non usare l’account Docente OS Beta o le credenziali Vercel.
             </p>
           ) : null}
           <p className="m-0 text-sm leading-6 text-muted-foreground">
