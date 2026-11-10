@@ -1,0 +1,118 @@
+name: P7 Database Real Readiness PostgreSQL 17
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/scripts/p7-db-real-readiness-pg17.sh'
+      - '.github/workflows/p7-db-real-readiness-pg17.yml'
+      - 'docs/product/P7_DB_REAL_BACKUP_READINESS.md'
+      - '.github/scripts/p7-rb03-local-custody-check.sh'
+      - '.github/scripts/p7-rb05-synthetic-recovery-contract.py'
+      - '.github/scripts/p7-rb04-rb05-source-storage-contract.py'
+      - '.github/scripts/p7-rb04-s3-session-visibility-contract.py'
+      - '.github/scripts/p7-rb02-rb04-r2-policy-contract.py'
+      - '.github/scripts/p7-db-r2-main-synthetic-rehearsal.sh'
+      - '.github/workflows/p7-db-r2-main-certification.yml'
+      - 'docs/product/P7_DB_KEY_CUSTODY_RECOVERY_PROTOCOL.md'
+      - 'docs/product/P7_RB02_PROFESSIONAL_R2_COMPLIANCE_ASSESSMENT.md'
+      - 'docs/product/P7_RB04_RB05_SOURCE_STORAGE_COVERAGE.md'
+      - 'docs/product/P7_DB_REAL_DATA_PRIVACY_AND_CUSTODY_GATE.md'
+      - 'docs/product/P7_DB_REAL_BACKUP_ACTIVATION_GATE.md'
+
+permissions:
+  contents: read
+
+# Intentionally NO workflow_dispatch and NO R2/Supabase secret references.
+# This workflow can only exercise disposable synthetic data on pull requests.
+jobs:
+  pg17-encrypted-stream-rehearsal:
+    name: PostgreSQL 17 / synthetic encrypt / restore
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: postgres
+          # Temporary synthetic DB only; no hardcoded password in the repository.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      P7_READINESS_SYNTHETIC_ONLY: 'yes'
+      PGHOST: '127.0.0.1'
+      PGPORT: '5432'
+      PGUSER: 'postgres'
+      PGDATABASE: 'postgres'
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install encryption utility
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age
+      - name: Certify RB-03 verifier on synthetic material only
+        run: |
+          bash -n .github/scripts/p7-rb03-local-custody-check.sh
+          bash .github/scripts/p7-rb03-local-custody-check.sh --self-test
+          # A custodian identity must never be consumed by a CI job.
+          if bash .github/scripts/p7-rb03-local-custody-check.sh --check /nonexistent age1notarealrecipient >/dev/null 2>&1; then
+            echo "ERROR: offline custody mode accepted in GitHub Actions" >&2
+            exit 1
+          fi
+      - name: Qualify RB-02/RB-04 synthetic R2 policy and fail-closed access boundaries
+        run: |
+          python3 -m py_compile .github/scripts/p7-rb02-rb04-r2-policy-contract.py
+          python3 .github/scripts/p7-rb02-rb04-r2-policy-contract.py --self-test
+      - name: Qualify RB-04/RB-05 fictional source identity and Storage bytes reconciliation
+        run: |
+          python3 -m py_compile .github/scripts/p7-rb04-rb05-source-storage-contract.py
+          python3 .github/scripts/p7-rb04-rb05-source-storage-contract.py --self-test
+          if P7_REAL_DATABASE_URL=DENY python3 .github/scripts/p7-rb04-rb05-source-storage-contract.py --self-test >/dev/null 2>&1; then
+            echo 'ERROR: RB-04/05 accepted a real database URL variable' >&2
+            exit 1
+          fi
+          if GITHUB_EVENT_NAME=workflow_dispatch python3 .github/scripts/p7-rb04-rb05-source-storage-contract.py --self-test >/dev/null 2>&1; then
+            echo 'ERROR: RB-04/05 accepted non-PR execution' >&2
+            exit 1
+          fi
+      - name: Qualify RB-04 synthetic MFA session and redacted Storage listing
+        run: |
+          python3 -m py_compile .github/scripts/p7-rb04-s3-session-visibility-contract.py
+          python3 .github/scripts/p7-rb04-s3-session-visibility-contract.py --self-test
+          if P7_RB04_USER_JWT=DENY python3 .github/scripts/p7-rb04-s3-session-visibility-contract.py --self-test >/dev/null 2>&1; then
+            echo 'ERROR: RB-04 synthetic check accepted live user JWT' >&2
+            exit 1
+          fi
+          if GITHUB_EVENT_NAME=workflow_dispatch python3 .github/scripts/p7-rb04-s3-session-visibility-contract.py --self-test >/dev/null 2>&1; then
+            echo 'ERROR: RB-04 synthetic check accepted a non-PR context' >&2
+            exit 1
+          fi
+      - name: Qualify RB-05 synthetic database plus Storage inventory and fail-closed restore
+        run: |
+          python3 -m py_compile .github/scripts/p7-rb05-synthetic-recovery-contract.py
+          python3 .github/scripts/p7-rb05-synthetic-recovery-contract.py --self-test
+      - name: Validate fail-closed synthetic-only script syntax
+        run: bash -n .github/scripts/p7-db-real-readiness-pg17.sh
+      - name: Verify fail-closed guards against real-export activation
+        run: |
+          if P7_REAL_BACKUP_APPROVED=yes bash .github/scripts/p7-db-real-readiness-pg17.sh >/dev/null 2>&1; then
+            echo "ERROR: real-export flag was not rejected" >&2
+            exit 1
+          fi
+          if P7_READINESS_SYNTHETIC_ONLY=no bash .github/scripts/p7-db-real-readiness-pg17.sh >/dev/null 2>&1; then
+            echo "ERROR: non-synthetic mode was not rejected" >&2
+            exit 1
+          fi
+          if GITHUB_EVENT_NAME=workflow_dispatch bash .github/scripts/p7-db-real-readiness-pg17.sh >/dev/null 2>&1; then
+            echo "ERROR: manual event was not rejected" >&2
+            exit 1
+          fi
+      - name: Rehearse PostgreSQL 17 encrypted stream and independent local restore
+        run: bash .github/scripts/p7-db-real-readiness-pg17.sh

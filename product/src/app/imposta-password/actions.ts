@@ -22,6 +22,18 @@ export async function setPassword(formData: FormData) {
     redirect('/login?error=session_required')
   }
 
+  // A session with an already enrolled MFA factor may not change the
+  // account password until the second factor has actually been verified.
+  // Verify BEFORE updateUser; checking afterwards permits an aal1 mutation.
+  const assurance = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (
+    assurance.error ||
+    !assurance.data ||
+    (assurance.data.currentLevel !== 'aal2' && assurance.data.nextLevel === 'aal2')
+  ) {
+    redirect('/sicurezza/mfa?return=password')
+  }
+
   const { error } = await supabase.auth.updateUser({ password })
 
   if (error) {

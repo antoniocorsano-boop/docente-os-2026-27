@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { createClient } from '@/lib/supabase/server'
+import { isIsolatedMfaPreview } from '@/lib/supabase/mfa-isolated-preview'
 import { requestMagicLink, signInWithPassword } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -15,7 +16,8 @@ type LoginPageProps = {
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const supabase = await createClient()
   const { data } = await supabase.auth.getClaims()
-  if (data?.claims) redirect('/workspace')
+  const isolatedMfaPreview = isIsolatedMfaPreview()
+  if (data?.claims) redirect(isolatedMfaPreview ? '/sicurezza/mfa' : '/workspace')
 
   const params = await searchParams
   const message = params.sent
@@ -51,6 +53,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </CardHeader>
 
           <CardContent className="grid gap-6 pt-6">
+            {isolatedMfaPreview ? (
+              <Alert variant="warning">
+                <AlertDescription>
+                  Ambiente di prova MFA separato: utilizzare esclusivamente un account fittizio.
+                  Non inserire le credenziali di Docente OS Beta o dell’account Vercel.
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
             {message ? <Alert variant={alertVariant}><AlertDescription>{message}</AlertDescription></Alert> : null}
 
             <form action={signInWithPassword} className="grid gap-4">

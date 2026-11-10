@@ -2,6 +2,7 @@ import type { EmailOtpType } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 import { ensurePersonalWorkspace } from '@/app/auth/bootstrap-personal-workspace'
 import { createClient } from '@/lib/supabase/server'
+import { isIsolatedMfaPreview } from '@/lib/supabase/mfa-isolated-preview'
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code')
@@ -29,6 +30,12 @@ export async function GET(request: NextRequest) {
   if (authError) {
     redirectTo.pathname = '/login'
     redirectTo.searchParams.set('error', 'invalid_token')
+    return NextResponse.redirect(redirectTo)
+  }
+
+  if (isIsolatedMfaPreview()) {
+    // No workspace bootstrap in the dedicated MFA test backend.
+    redirectTo.pathname = '/sicurezza/mfa'
     return NextResponse.redirect(redirectTo)
   }
 
