@@ -57,7 +57,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               <Alert variant="warning">
                 <AlertDescription>
                   Ambiente di prova MFA separato: utilizzare esclusivamente un account fittizio.
-                  Non inserire le credenziali di Docente OS Beta o dell'account Vercel.
+                  Non inserire le credenziali di Docente OS Beta o dell’account Vercel.
                 </AlertDescription>
               </Alert>
             ) : null}
