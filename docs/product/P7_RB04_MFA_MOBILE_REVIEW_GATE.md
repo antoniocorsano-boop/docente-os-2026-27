@@ -69,6 +69,21 @@ I test `mfa-state.test.ts` verificano l'estrazione di identificativi fittizi, il
 
 **Nuovo gate:** `REWORK_PASSWORD_RETURN=CODED`, `REWORK_SAME_USER_SESSION=CODED`, `REAL_MFA_AAL2=NOT_RUN`, `REAL_PRIVATE_STORAGE=NOT_RUN`; `RB-02/05=HOLD`. Nessun segreto, fattore o contenuto privato è stato acquisito.
 
+### Diagnosi errore reale dell'anteprima Android — 10/11/2026
+
+**Evidenza determinante:** Vercel Runtime Logs, ambiente `Preview`, ramo `feat/p7-db-real-readiness-pg17`, richiesta `GET /` delle **19:08:37 CET**. Il server restituisce: `Could not find the function public.current_workspace_context without parameters in the schema cache` (`digest 1284875912`). Il problema non deriva dal TOTP: la pagina iniziale invocava `SupabaseWorkspaceRepository.getCurrentContext()` **prima** di verificare se fosse presente una sessione.
+
+**Controllo del backend isolato:** la query di sola lettura su `xyowtnivxnzgwewvvmyz` conferma che `public.current_workspace_context()` e `bootstrap_personal_workspace` **non esistono**. Sono presenti soltanto sette tabelle pubbliche e lo schema applicativo completo (es. `academic_years`) non è installato. Nessuna migrazione o funzione fittizia è stata inserita; il progetto non deve diventare una copia della Beta.
+
+**Soluzione delimitata al collaudo Auth/MFA:**
+
+- `product/src/app/page.tsx`: autenticare con `auth.getClaims()` **prima** di accedere al contesto; se manca la sessione, rimandare al login senza richiamare RPC non disponibili.
+- `isIsolatedMfaPreview`: solo `VERCEL_ENV=preview` **e** indirizzo Supabase **identico** a `https://xyowtnivxnzgwewvvmyz.supabase.co`. Ogni altra combinazione, incluse produzione, sviluppo e Beta, mantiene l'applicazione completa. Il confronto serve solo a decidere una **destinazione di navigazione**, mai ad autorizzare l'accesso ai dati.
+- Nel solo ambiente così delimitato, login già autenticato, accesso con password, conferma del collegamento monouso e `/workspace` rimandano alla pagina `/sicurezza/mfa`, evitando deliberatamente la creazione dello spazio docente. L'identità resta verificata da Supabase Auth e la stessa pagina MFA richiede una sessione reale.
+- Le prove `mfa-isolated-preview.test.ts` verificano che il bypass non possa essere attivato da un indirizzo Beta o in produzione, e che `GET /` senza sessione non tenti la RPC.
+
+**Limiti:** questa è una **soluzione temporanea di anteprima**, da riesaminare esplicitamente prima di un'eventuale integrazione. Non certifica `/workspace`, il backend didattico, la persistenza delle UDA o la leggibilità degli allegati privati. Il prossimo test deve accertare il collegamento runtime in Android e l'effettivo comportamento con un'**identità sintetica**. Fino ad allora `MFA_PREVIEW_RUNTIME=HOLD`, `ANDROID_MFA_HPR=REWORK`.
+
 ## 4. Condizioni per la fase successiva
 
 - Concludere Product CI e la revisione del nuovo codice sull'**exact head**.
