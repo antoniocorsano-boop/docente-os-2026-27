@@ -14,5 +14,5 @@ export function isIsolatedMfaPreview(
   },
 ): boolean {
   return env.VERCEL_ENV === 'preview'
-    && env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, '') === 'https://xyowtnivxnzgwewvvmyz.supabase.co'
+    && env.NEXT_PUBLIC_SUPABASE_URL === 'https://xyowtnivxnzgwewvvmyz.supabase.co'
 }
