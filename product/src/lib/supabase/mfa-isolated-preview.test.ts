@@ -8,7 +8,8 @@ const betaProject = 'https://gnshgapmwyjamhmlikeg.supabase.co'
 
 test('MFA-only routing is strictly scoped to preview and dedicated test backend', () => {
   assert.equal(isIsolatedMfaPreview({ VERCEL_ENV: 'preview', NEXT_PUBLIC_SUPABASE_URL: mfaProject }), true)
-  assert.equal(isIsolatedMfaPreview({ VERCEL_ENV: 'preview', NEXT_PUBLIC_SUPABASE_URL: mfaProject + '/' }), true)
+  assert.equal(isIsolatedMfaPreview({ VERCEL_ENV: 'preview', NEXT_PUBLIC_SUPABASE_URL: mfaProject + '/' }), false)
+  assert.equal(isIsolatedMfaPreview({ VERCEL_ENV: 'preview', NEXT_PUBLIC_SUPABASE_URL: mfaProject + '///' }), false)
   assert.equal(isIsolatedMfaPreview({ VERCEL_ENV: 'production', NEXT_PUBLIC_SUPABASE_URL: mfaProject }), false)
   assert.equal(isIsolatedMfaPreview({ VERCEL_ENV: 'preview', NEXT_PUBLIC_SUPABASE_URL: betaProject }), false)
   assert.equal(isIsolatedMfaPreview({ VERCEL_ENV: 'development', NEXT_PUBLIC_SUPABASE_URL: mfaProject }), false)
