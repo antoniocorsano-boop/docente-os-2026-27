@@ -4,6 +4,7 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { ensurePersonalWorkspace } from '@/app/auth/bootstrap-personal-workspace'
 import { createClient } from '@/lib/supabase/server'
+import { isIsolatedMfaPreview } from '@/lib/supabase/mfa-isolated-preview'
 
 export async function signInWithPassword(formData: FormData) {
   const email = normalizeEmail(formData.get('email'))
@@ -24,6 +25,10 @@ export async function signInWithPassword(formData: FormData) {
   // RB-04: MFA is an elevation for the private Storage area enforced by RLS,
   // not a universal access requirement for the teaching workspace. Avoid an
   // unenforced login-only MFA gate that could be bypassed by direct routes.
+
+  // In the dedicated Auth-only MFA preview the full teaching schema is
+  // deliberately absent. This cannot run against Beta or Production.
+  if (isIsolatedMfaPreview()) redirect('/sicurezza/mfa')
 
   const bootstrap = await ensurePersonalWorkspace(supabase)
   if (!bootstrap.ok) {
