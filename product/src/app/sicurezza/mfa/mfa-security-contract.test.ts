@@ -107,3 +107,10 @@ test('same-user new SIGNED_IN session invalidates local secret and aal2 state', 
   assert.ok(mfaUi.includes('currentSessionId.current = id'))
   assert.ok(mfaUi.includes('authEpoch.current += 1'))
 })
+
+test('isolated MFA preview does not link to unavailable workspace settings', () => {
+  const guard = mfaUi.lastIndexOf('{!isTestPreview ? (')
+  const link = mfaUi.lastIndexOf('href="/impostazioni"')
+  const close = mfaUi.indexOf(') : null}', link)
+  assert.ok(guard >= 0 && link > guard && close > link)
+})
