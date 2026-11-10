@@ -13,7 +13,7 @@ type PendingEnrollment = { id: string; secret: string }
 
 type MfaReturnTo = '/workspace' | '/imposta-password?source=mfa'
 
-export function MfaAccess({ returnTo }: { returnTo: MfaReturnTo }) {
+export function MfaAccess({ returnTo, isTestPreview = false }: { returnTo: MfaReturnTo; isTestPreview?: boolean }) {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
   const [view, setView] = useState<View>('loading')
@@ -314,6 +314,12 @@ export function MfaAccess({ returnTo }: { returnTo: MfaReturnTo }) {
         <header className="grid gap-2">
           <p className="m-0 text-xs font-bold tracking-[0.12em] text-primary">DOCENTE OS · SICUREZZA</p>
           <h1 className="m-0 text-2xl font-bold tracking-tight sm:text-3xl">Verifica in due passaggi</h1>
+          {isTestPreview ? (
+            <p role="note" className="m-0 rounded-[var(--radius-sm)] border border-amber-400 p-3 text-sm font-semibold">
+              Ambiente di prova MFA: utilizzare solo identità fittizie.
+              Non usare l'account Docente OS Beta o le credenziali Vercel.
+            </p>
+          ) : null}
           <p className="m-0 text-sm leading-6 text-muted-foreground">
             Proteggi l’accesso ai materiali privati con un codice generato da un’app di autenticazione.
           </p>
