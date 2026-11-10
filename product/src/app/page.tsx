@@ -8,6 +8,8 @@ import { SupabasePlannerRepository } from '@/core/infrastructure/supabase/supaba
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseTimetableRepository } from '@/core/infrastructure/supabase/supabase-timetable-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
+import { createClient } from '@/lib/supabase/server'
+import { isIsolatedMfaPreview } from '@/lib/supabase/mfa-isolated-preview'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +23,13 @@ const entrances = [
 ] as const
 
 export default async function HomePage() {
+  // Avoid calling application RPCs before identifying the user. In the
+  // isolated MFA Auth-only preview, workspace RPCs are intentionally absent.
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.getClaims()
+  if (error || !data?.claims) redirect('/login')
+  if (isIsolatedMfaPreview()) redirect('/sicurezza/mfa')
+
   const context = await new SupabaseWorkspaceRepository().getCurrentContext()
   if (!context) redirect('/login')
 
