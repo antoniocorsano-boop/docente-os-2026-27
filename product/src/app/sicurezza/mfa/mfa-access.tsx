@@ -477,9 +477,11 @@ export function MfaAccess({ returnTo, isTestPreview = false }: { returnTo: MfaRe
           ) : null}
         </section>
 
-        <Link href="/impostazioni" className="text-sm font-semibold text-primary underline underline-offset-4">
-          Torna alle impostazioni
-        </Link>
+        {!isTestPreview ? (
+          <Link href="/impostazioni" className="text-sm font-semibold text-primary underline underline-offset-4">
+            Torna alle impostazioni
+          </Link>
+        ) : null}
       </div>
     </main>
   )
