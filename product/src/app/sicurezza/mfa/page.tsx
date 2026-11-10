@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { isIsolatedMfaPreview } from '@/lib/supabase/mfa-isolated-preview'
 import { MfaAccess } from './mfa-access'
 
 export const dynamic = 'force-dynamic'
@@ -20,5 +21,5 @@ export default async function MfaPage({ searchParams }: MfaPageProps) {
     ? '/imposta-password?source=mfa'
     : '/workspace'
 
-  return <MfaAccess returnTo={returnTo} />
+  return <MfaAccess returnTo={returnTo} isTestPreview={isIsolatedMfaPreview()} />
 }
