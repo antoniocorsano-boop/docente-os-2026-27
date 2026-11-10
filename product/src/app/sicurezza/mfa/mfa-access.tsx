@@ -461,11 +461,18 @@ export function MfaAccess({ returnTo, isTestPreview = false }: { returnTo: MfaRe
                   la nuova password e conferma il salvataggio.
                 </p>
               ) : null}
-              <Link href={returnTo} className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-sm)] bg-primary px-5 text-sm font-semibold text-primary-foreground">
-                {returnTo === '/imposta-password?source=mfa'
-                  ? 'Torna a impostare la password'
-                  : 'Continua nello spazio docente'}
-              </Link>
+              {isTestPreview && returnTo === '/workspace' ? (
+                <p role="status" className="m-0 text-sm text-muted-foreground">
+                  Il collaudo riguarda soltanto l’autenticazione: lo spazio docente completo
+                  non è disponibile nel progetto di prova.
+                </p>
+              ) : (
+                <Link href={returnTo} className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-sm)] bg-primary px-5 text-sm font-semibold text-primary-foreground">
+                  {returnTo === '/imposta-password?source=mfa'
+                    ? 'Torna a impostare la password'
+                    : 'Continua nello spazio docente'}
+                </Link>
+              )}
               <p className="m-0 text-sm text-muted-foreground">
                 Supabase non fornisce codici di recupero MFA. Per evitare di perdere l’accesso
                 puoi registrare un secondo fattore su un dispositivo distinto, conservato in modo sicuro.
