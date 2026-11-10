@@ -8,7 +8,7 @@
  * Supabase Auth and RLS remain authoritative.
  */
 export function isIsolatedMfaPreview(
-  env: Pick<NodeJS.ProcessEnv, 'VERCEL_ENV' | 'NEXT_PUBLIC_SUPABASE_URL'> = process.env,
+  env: { VERCEL_ENV?: string; NEXT_PUBLIC_SUPABASE_URL?: string } = process.env,
 ): boolean {
   return env.VERCEL_ENV === 'preview'
     && env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, '') === 'https://xyowtnivxnzgwewvvmyz.supabase.co'
