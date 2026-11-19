@@ -258,3 +258,223 @@ test('DOC-01/D2b3a source generation changes bind a different candidate; extract
   assert.equal(next.sources.pack?.generationId, 'demo-next-generation')
   assert.equal(compileHumanTaskContentCandidate('Prima', 'B03', { uda, pack: null }).gate.status, 'BLOCKED')
 })
+
+
+// DOC-01/D2b3b — test-only selection contract over the existing V1 producer.
+// No runtime producer, new archive, approval, export endpoint or personal data.
+import { createHash } from 'node:crypto'
+import { buildRegistroTeachingProjectionFromAnnualPlan } from '../../app/piano-annuale/registro-export-model'
+import { buildBlocks, GRADE_STORAGE, CANONICAL_PLAN_CODES, type GradeKey } from '../../app/piano-annuale/model'
+import { validateRegistroTeachingProjection, type RegistroTeachingProjectionV1 } from './registro-teaching-projection'
+
+type DocField = 'significant-task' | 'methodology' | 'resource' | 'assessment-method'
+type DocLocator = {
+  field: DocField; sourceCode: string; assetId: string; generationId: string;
+  contentDigest: string; ordinal: number; heading: string; item: number | null;
+}
+type DocSelection = {
+  parentHash: string; sectionId: string; udaId: string; blockId: string; locators: DocLocator[];
+}
+type DocBasis = { parent: RegistroTeachingProjectionV1; sources: HumanTaskPipelineSource[] }
+const digest = (value: string) => createHash('sha256').update(value, 'utf8').digest('hex')
+const exactKeys = (value: object, keys: readonly string[]) =>
+  Reflect.ownKeys(value).length === keys.length && keys.every(key => {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key)
+    return descriptor?.enumerable && Object.prototype.hasOwnProperty.call(descriptor, 'value')
+  })
+const documentFields: readonly DocField[] = ['significant-task', 'methodology', 'resource', 'assessment-method']
+
+function prepareDocumentSelection(parent: unknown, basis: DocBasis, selection: DocSelection) {
+  // The separate basis is exclusively a synthetic producer-side fixture.
+  // A caller-controlled basis is NOT an authority or privacy verifier.
+  try {
+    const checked = validateRegistroTeachingProjection(parent)
+    const trusted = validateRegistroTeachingProjection(basis.parent)
+    if (!checked.ok || !trusted.ok || checked.value.projectionFingerprint.hash !== trusted.value.projectionFingerprint.hash ||
+        checked.value.projectionFingerprint.hash !== selection.parentHash) return null
+    if (!exactKeys(selection, ['parentHash','sectionId','udaId','blockId','locators']) ||
+        !Array.isArray(selection.locators) || !selection.locators.length || selection.locators.length > 100) return null
+    const section = checked.value.classes.find(s => s.sourceSectionId === selection.sectionId)
+    if (!section || section.sectionStatus !== 'CONFERMATA') return null
+    const uda = section.udas.find(u => u.projectedUdaId === selection.udaId)
+    if (!uda) return null
+    const grade: GradeKey = section.grade === 1 ? 'Prima' : section.grade === 2 ? 'Seconda' : 'Terza'
+    const block = buildBlocks(grade).find(b => b.id === selection.blockId)
+    if (!block || block.uda !== uda.sourceUdaRef || section.canonicalPlan.code !== CANONICAL_PLAN_CODES[grade] ||
+        uda.canonicalGenerationId !== section.canonicalPlan.generationId ||
+        ![block.pack, ...block.supportPacks].every(code => uda.packRefs.includes(code))) return null
+    const udaCode = 'CAN-UDA-' + block.uda
+    const codes = [udaCode, block.pack, ...block.supportPacks]
+    const sources = codes.map(code => {
+      const matches = basis.sources.filter(s => s.code === code)
+      if (matches.length !== 1 || !matches[0].assetId || !matches[0].generationId || !matches[0].normalizedText.trim()) throw Error('source missing or ambiguous')
+      return matches[0]
+    })
+    const candidate = compileHumanTaskContentCandidate(grade, block.id, { uda: sources[0], pack: sources[1], supportPacks: sources.slice(2) })
+    if (candidate.gate.status !== 'READY_FOR_HUMAN_REVIEW' || candidate.gate.promotion !== 'HUMAN_REVIEW_REQUIRED') return null
+    const seen = new Set<string>()
+    const values: Array<{field:DocField;text:string;locator:DocLocator}> = []
+    for (const locator of selection.locators) {
+      if (!locator || !exactKeys(locator,['field','sourceCode','assetId','generationId','contentDigest','ordinal','heading','item']) ||
+          !documentFields.includes(locator.field) || !Number.isInteger(locator.ordinal) ||
+          !(locator.item === null || Number.isInteger(locator.item) && locator.item >= 0)) return null
+      const source = sources.find(s => s.code === locator.sourceCode)
+      if (!source || locator.assetId !== source.assetId || locator.generationId !== source.generationId ||
+          locator.contentDigest !== digest(source.normalizedText)) return null
+      const key = JSON.stringify([locator.sourceCode,locator.ordinal,locator.field,locator.item])
+      if (seen.has(key)) return null
+      seen.add(key)
+      let text: string | undefined | null
+      if (source.code === udaCode) {
+        const matches = candidate.evidence.uda?.sections.filter(s => s.heading === locator.heading) ?? []
+        const item = matches.length === 1 && matches[0].ordinal === locator.ordinal ? matches[0] : undefined
+        const headings: Partial<Record<DocField,string>> = {
+          'significant-task':'COMPITO AUTENTICO', methodology:'METODOLOGIE', 'assessment-method':'VERIFICA',
+        }
+        if (!item || headings[locator.field] !== item.heading || locator.item === null) return null
+        text = item.listItems[locator.item]
+      } else {
+        const packs = [candidate.evidence.pack, ...candidate.evidence.supportPacks].filter(p => p?.code === source.code)
+        if (packs.length !== 1) return null
+        const matches = packs[0]?.sections.filter(s => s.heading === locator.heading) ?? []
+        const item = matches.length === 1 && matches[0].ordinal === locator.ordinal ? matches[0] : undefined
+        if (!item) return null
+        if (locator.field === 'significant-task' && item.kind === 'TASK_BRIEF' && locator.item === null) text = item.content
+        if (locator.field === 'methodology' && locator.item === null) text = item.methodNote
+        if (locator.field === 'resource' && locator.item !== null) text = item.materials[locator.item]
+        // Rubric/observation/student sheet are not automatically assessment methods.
+      }
+      if (!text?.trim()) return null
+      values.push(Object.freeze({ field:locator.field, text, locator:Object.freeze({...locator}) }))
+    }
+    const fingerprint = digest(JSON.stringify({
+      parentHash:selection.parentHash, sectionId:section.sourceSectionId, udaId:uda.projectedUdaId,
+      blockId:block.id, plan:section.canonicalPlan,
+      sources:sources.map(s=>[s.code,s.assetId,s.generationId,digest(s.normalizedText)]), values,
+    }))
+    return Object.freeze({
+      labOnly:true as const, canExport:false as const, requiresTeacherReview:true as const,
+      nature:'planned' as const, scope:'selected-block' as const, complete:false as const,
+      values:Object.freeze(values), missing:Object.freeze(documentFields.filter(f=>!values.some(v=>v.field===f))),
+      fingerprint,
+    })
+  } catch { return null }
+}
+
+function documentBasis(grade:GradeKey='Prima', confirmed=true) {
+  const gradeNum = grade === 'Prima' ? 1 : grade === 'Seconda' ? 2 : 3
+  const block = buildBlocks(grade).find(b=>b.id===(grade==='Prima'?'B03':'B01'))!
+  const timestamp='2026-11-19T00:00:00.000Z'
+  const parent = buildRegistroTeachingProjectionFromAnnualPlan({
+    snapshot:{sections:[{
+      id:'demo-section',workspaceId:'demo-workspace',academicYearId:'demo-year',grade:GRADE_STORAGE[grade],
+      sectionCode:'A',status:confirmed?'CONFERMATA':'PROVVISORIA',sourceNote:null,
+      confirmedAt:confirmed?timestamp:null,createdAt:timestamp,updatedAt:timestamp,
+    }],progress:[]},
+    runtimeSources:{
+      Prima:{code:'CAN-PLAN-1',assetId:'demo-plan-asset-1',generationId:'demo-plan-gen-1'},
+      Seconda:{code:'CAN-PLAN-2',assetId:'demo-plan-asset-2',generationId:'demo-plan-gen-2'},
+      Terza:{code:'CAN-PLAN-3',assetId:'demo-plan-asset-3',generationId:'demo-plan-gen-3'},
+    },
+    schoolYear:'2026/2027',disciplineName:'Tecnologia',generatedAt:timestamp,
+    provenance:{sourceCommit:'a'.repeat(40),sourceBranch:'demo'},
+  })
+  assert.equal(parent.classes[0].grade,gradeNum)
+  const udaCode='CAN-UDA-'+block.uda
+  const uda=source(udaCode,DOCUMENTATION_UDA_FIXTURE.replace('CAN-UDA-1-01',udaCode))
+  const pack=source(block.pack,DOCUMENTATION_PACK_FIXTURE.replace('CAN-PACK-1A',block.pack))
+  const supports=block.supportPacks.map(code=>source(code,DOCUMENTATION_PACK_FIXTURE.replace('CAN-PACK-1A',code)))
+  const basis:DocBasis={parent,sources:[uda,pack,...supports]}
+  const extractedUda=extractCanonicalUda(uda.code,uda.normalizedText)
+  const extractedPack=extractCanonicalPack(pack.code,pack.normalizedText)
+  const locator=(field:DocField,s:HumanTaskPipelineSource,part:{ordinal:number;heading:string},item:number|null):DocLocator=>({
+    field,sourceCode:s.code,assetId:s.assetId,generationId:s.generationId,contentDigest:digest(s.normalizedText),
+    ordinal:part.ordinal,heading:part.heading,item,
+  })
+  const method=extractedUda.sections.find(s=>s.heading==='METODOLOGIE')!
+  const verification=extractedUda.sections.find(s=>s.heading==='VERIFICA')!
+  const task=extractedPack.sections.find(s=>s.kind==='TASK_BRIEF')!
+  const guide=extractedPack.sections.find(s=>s.kind==='TEACHER_GUIDE')!
+  const selection:DocSelection={
+    parentHash:parent.projectionFingerprint.hash,sectionId:'demo-section',
+    udaId:parent.classes[0].udas.find(u=>u.sourceUdaRef===block.uda)!.projectedUdaId,blockId:block.id,
+    locators:[locator('methodology',uda,method,0),locator('assessment-method',uda,verification,0),
+      locator('significant-task',pack,task,null),locator('resource',pack,guide,0)],
+  }
+  return {basis,selection,uda,pack,locator,extractedPack}
+}
+
+test('DOC-01/D2b3b uses the real V1 producer and exact selected fields, never auto-exports',()=>{
+  const {basis,selection}=documentBasis()
+  const r=prepareDocumentSelection(basis.parent,basis,selection)
+  assert.ok(r)
+  assert.equal(r.labOnly,true)
+  assert.equal(r.canExport,false)
+  assert.equal(r.requiresTeacherReview,true)
+  assert.equal(r.complete,false)
+  assert.deepEqual(r.values.map(v=>v.field),['methodology','assessment-method','significant-task','resource'])
+  assert.deepEqual(r.values.slice(0,2).map(v=>v.text),['Discussione guidata.','Restituzione individuale.'])
+  assert.match(r.values[2].text,/Elaborare una mappa esplicativa/)
+  assert.equal(r.values[3].text,'Fogli.')
+  assert.deepEqual(r.missing,[])
+  assert.equal(r.scope,'selected-block')
+  assert.doesNotMatch(JSON.stringify(r),/Mappa prevista|Criterio dimostrativo|demo-workspace|demo-year/)
+})
+
+test('DOC-01/D2b3b preserves distinct canonical grade and selected UDA identities',()=>{
+  for(const grade of ['Prima','Seconda','Terza'] as const){
+    const {basis,selection}=documentBasis(grade)
+    assert.ok(prepareDocumentSelection(basis.parent,basis,selection))
+    const other=basis.parent.classes[0].udas.find(u=>u.projectedUdaId!==selection.udaId)!
+    assert.equal(prepareDocumentSelection(basis.parent,basis,{...selection,udaId:other.projectedUdaId}),null)
+  }
+})
+
+test('DOC-01/D2b3b rejects provisional sections, tampered parent or wrong plan block',()=>{
+  const {basis,selection}=documentBasis()
+  const provisional=documentBasis('Prima',false)
+  assert.equal(prepareDocumentSelection(provisional.basis.parent,provisional.basis,provisional.selection),null)
+  assert.equal(prepareDocumentSelection(basis.parent,basis,{...selection,parentHash:'b'.repeat(64)}),null)
+  assert.equal(prepareDocumentSelection(basis.parent,basis,{...selection,blockId:'B01'}),null)
+  assert.equal(prepareDocumentSelection({...basis.parent,automaticWriteAllowed:true},basis,selection),null)
+})
+
+test('DOC-01/D2b3b rejects missing, ambiguous, changed generation or changed source bytes',()=>{
+  const {basis,selection,pack}=documentBasis()
+  for(const sources of [
+    basis.sources.filter(s=>s.code!==pack.code),
+    [...basis.sources,pack],
+    basis.sources.map(s=>s.code===pack.code?{...s,generationId:'demo-next-generation'}:s),
+    basis.sources.map(s=>s.code===pack.code?{...s,normalizedText:s.normalizedText+'\nModifica'}:s),
+  ]) assert.equal(prepareDocumentSelection(basis.parent,{...basis,sources},selection),null)
+})
+
+test('DOC-01/D2b3b cannot derive verification from a rubric or method from a title',()=>{
+  const {basis,selection,pack,locator,extractedPack}=documentBasis()
+  const rubric=extractedPack.sections.find(s=>s.kind==='RUBRIC')!
+  assert.equal(prepareDocumentSelection(basis.parent,basis,{...selection,locators:[locator('assessment-method',pack,rubric,null)]}),null)
+  assert.equal(prepareDocumentSelection(basis.parent,basis,{...selection,locators:[{...selection.locators[0],heading:'ARTICOLAZIONE'}]}),null)
+  assert.equal(prepareDocumentSelection(basis.parent,basis,{...selection,locators:[{...selection.locators[0],item:99}]}),null)
+})
+
+test('DOC-01/D2b3b keeps missing fields distinct and rejects duplicate or editorial text input',()=>{
+  const {basis,selection}=documentBasis()
+  const r=prepareDocumentSelection(basis.parent,basis,{...selection,locators:[selection.locators[0]]})
+  assert.ok(r)
+  assert.deepEqual(r.missing,['significant-task','resource','assessment-method'])
+  assert.equal(r.values.length,1)
+  assert.equal(prepareDocumentSelection(basis.parent,basis,{...selection,locators:[selection.locators[0],selection.locators[0]]}),null)
+  assert.equal(prepareDocumentSelection(basis.parent,basis,{...selection,locators:[{...selection.locators[0],text:'Editoriale'}]}),null)
+  assert.ok(Object.isFrozen(r.values[0].locator))
+})
+
+test('DOC-01/D2b3b binds a new review to changed selection; no automatic annual coverage',()=>{
+  const {basis,selection}=documentBasis()
+  const first=prepareDocumentSelection(basis.parent,basis,selection)
+  const next=prepareDocumentSelection(basis.parent,basis,{...selection,locators:[...selection.locators].reverse()})
+  assert.ok(first&&next)
+  assert.notEqual(first.fingerprint,next.fingerprint)
+  assert.equal(first.fingerprint,prepareDocumentSelection(basis.parent,basis,selection)?.fingerprint)
+  assert.equal(first.complete,false)
+  assert.equal(next.canExport,false)
+})
