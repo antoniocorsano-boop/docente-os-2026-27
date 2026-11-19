@@ -174,3 +174,87 @@ test('extracts canonical codes only from supported source names', () => {
   assert.equal(canonicalCodeFromOriginalName('CAN-PLAN-1_Piano_annuale'), 'CAN-PLAN-1')
   assert.equal(canonicalCodeFromOriginalName('materiale-libero.pdf'), null)
 })
+
+
+// DOC-01/D2b3a — synthetic source capability checks; no new runtime/export contract.
+const DOCUMENTATION_UDA_FIXTURE = `CAN-UDA-1-01 — UDA dimostrativa
+Durata prevista: 8 ore.
+1. METODOLOGIE
+- Discussione guidata.
+- Confronto di rappresentazioni.
+2. COMPITO AUTENTICO
+- Elaborare una mappa esplicativa.
+3. VERIFICA
+- Restituzione individuale.
+- Autovalutazione.
+4. ARTICOLAZIONE
+Ora 1 — Fase dimostrativa
+Attività prevista.
+Ora 2 — Seconda fase
+Attività prevista.`
+
+const DOCUMENTATION_PACK_FIXTURE = `CAN-PACK-1A — Pacchetto dimostrativo
+SCHEDA DOCENTE 3 — ATTIVITÀ DIMOSTRATIVA
+Materiali:
+- Fogli.
+- Matite.
+Regola metodologica: Confronto guidato.
+Evidenza: Mappa prevista.
+COMPITO SIGNIFICATIVO BREVE — UDA 1
+Consegna: Elaborare una mappa esplicativa.
+RUBRICA BREVE — UDA 1
+Criterio dimostrativo: chiarezza della rappresentazione.
+SCHEDA ALUNNO A — SUPPORTO
+Materiale di consultazione.`
+
+test('DOC-01/D2b3a preserves explicit UDA document headings and list items', () => {
+  const uda = extractCanonicalUda('CAN-UDA-1-01', DOCUMENTATION_UDA_FIXTURE)
+  const byHeading = (heading: string) => uda.sections.filter((section) => section.heading === heading)
+  assert.equal(byHeading('METODOLOGIE').length, 1)
+  assert.deepEqual(byHeading('METODOLOGIE')[0].listItems, ['Discussione guidata.', 'Confronto di rappresentazioni.'])
+  assert.deepEqual(byHeading('COMPITO AUTENTICO')[0].listItems, ['Elaborare una mappa esplicativa.'])
+  assert.deepEqual(byHeading('VERIFICA')[0].listItems, ['Restituzione individuale.', 'Autovalutazione.'])
+  assert.equal(byHeading('VALUTAZIONI EFFETTIVE').length, 0)
+})
+
+test('DOC-01/D2b3a preserves typed task, rubric, method, materials and expected evidence without conflation', () => {
+  const pack = extractCanonicalPack('CAN-PACK-1A', DOCUMENTATION_PACK_FIXTURE)
+  const guide = pack.sections.find((section) => section.kind === 'TEACHER_GUIDE')
+  assert.ok(guide)
+  assert.deepEqual(guide.materials, ['Fogli.', 'Matite.'])
+  assert.equal(guide.methodNote, 'Confronto guidato.')
+  assert.equal(guide.evidence, 'Mappa prevista.')
+  const task = pack.sections.find((section) => section.kind === 'TASK_BRIEF')
+  const rubric = pack.sections.find((section) => section.kind === 'RUBRIC')
+  const sheet = pack.sections.find((section) => section.kind === 'STUDENT_SHEET')
+  assert.ok(task && rubric && sheet)
+  assert.match(task.content, /Elaborare una mappa esplicativa/)
+  assert.match(rubric.content, /chiarezza della rappresentazione/)
+  assert.equal(sheet.methodNote, null)
+  assert.deepEqual(sheet.materials, [])
+  assert.equal(sheet.evidence, null)
+})
+
+test('DOC-01/D2b3a missing explicit document fields are not reconstructed from a title or a rubric', () => {
+  const uda = extractCanonicalUda('CAN-UDA-1-01', 'CAN-UDA-1-01 — Verifica e metodi\nOra 1 — Compito significativo\nAttività generica.')
+  const pack = extractCanonicalPack('CAN-PACK-1A', 'CAN-PACK-1A — Metodi e materiali\nRUBRICA BREVE — UDA 1\nCriterio dimostrativo.')
+  assert.equal(uda.sections.length, 0)
+  assert.equal(pack.sections.filter((section) => section.kind === 'TASK_BRIEF').length, 0)
+  assert.equal(pack.sections[0].methodNote, null)
+  assert.deepEqual(pack.sections[0].materials, [])
+  assert.equal(pack.sections[0].evidence, null)
+})
+
+test('DOC-01/D2b3a source generation changes bind a different candidate; extraction never grants approval', () => {
+  const uda = source('CAN-UDA-1-01', DOCUMENTATION_UDA_FIXTURE)
+  const pack = source('CAN-PACK-1A', DOCUMENTATION_PACK_FIXTURE)
+  const first = compileHumanTaskContentCandidate('Prima', 'B03', { uda, pack })
+  const next = compileHumanTaskContentCandidate('Prima', 'B03', { uda, pack: { ...pack, generationId: 'demo-next-generation' } })
+  assert.equal(first.gate.status, 'READY_FOR_HUMAN_REVIEW')
+  assert.equal(first.gate.promotion, 'HUMAN_REVIEW_REQUIRED')
+  assert.equal(next.gate.promotion, 'HUMAN_REVIEW_REQUIRED')
+  assert.notEqual(first.candidateId, next.candidateId)
+  assert.equal(first.sources.pack?.generationId, pack.generationId)
+  assert.equal(next.sources.pack?.generationId, 'demo-next-generation')
+  assert.equal(compileHumanTaskContentCandidate('Prima', 'B03', { uda, pack: null }).gate.status, 'BLOCKED')
+})
