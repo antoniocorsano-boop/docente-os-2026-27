@@ -2,10 +2,13 @@
 
 import { revalidatePath } from 'next/cache'
 import { asAnnualPlanBlockStatus } from '@/core/domain/annual-plan-execution'
+import { validateRegistroTeachingProjection } from '@/core/application/registro-teaching-projection'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseCanonicalPlanSourceRepository } from '@/core/infrastructure/supabase/supabase-canonical-plan-source-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_STORAGE, type GradeKey } from './model'
+import { buildBlocks, CANONICAL_PLAN_SOURCES, GRADE_STORAGE, type CanonicalPlanRuntimeSources, type GradeKey } from './model'
+import { buildRegistroTeachingProjectionFromAnnualPlan } from './registro-export-model'
+import { projectionDownloadFilename, resolveRegistroExportRuntimeProvenance } from './registro-export-runtime'
 
 export async function addAnnualPlanSection(gradeValue: string, sectionCode: string) {
   const grade = asGradeKey(gradeValue)
@@ -80,6 +83,48 @@ export async function resetAnnualPlanProgress(gradeValue: string, sectionId: str
     source.generationId,
   )
   revalidatePath('/piano-annuale')
+}
+
+export async function exportRegistroTeachingProjection() {
+  const provenance = resolveRegistroExportRuntimeProvenance(process.env)
+  if (!provenance) {
+    throw new Error('Export non disponibile: identità della build non verificabile.')
+  }
+
+  const context = await requireContext()
+  const executionRepository = new SupabaseAnnualPlanExecutionRepository()
+  const sourceRepository = new SupabaseCanonicalPlanSourceRepository()
+  const [snapshot, primaSource, secondaSource, terzaSource] = await Promise.all([
+    executionRepository.list(context.workspace.id, context.academicYear.id),
+    ...(['Prima', 'Seconda', 'Terza'] as const).map((grade) => sourceRepository.resolve({
+      workspaceId: context.workspace.id,
+      academicYearId: context.academicYear.id,
+      code: CANONICAL_PLAN_SOURCES[grade].code,
+    })),
+  ])
+  const runtimeSources: CanonicalPlanRuntimeSources = {
+    Prima: primaSource,
+    Seconda: secondaSource,
+    Terza: terzaSource,
+  }
+
+  const projection = buildRegistroTeachingProjectionFromAnnualPlan({
+    snapshot,
+    runtimeSources,
+    schoolYear: context.academicYear.label,
+    disciplineName: 'Tecnologia',
+    generatedAt: new Date().toISOString(),
+    provenance,
+  })
+  const validated = validateRegistroTeachingProjection(projection)
+  if (!validated.ok) {
+    throw new Error(`Export non disponibile: ${validated.code}`)
+  }
+
+  return {
+    filename: projectionDownloadFilename(context.academicYear.label),
+    json: JSON.stringify(validated.value, null, 2),
+  }
 }
 
 async function requireContext() {
