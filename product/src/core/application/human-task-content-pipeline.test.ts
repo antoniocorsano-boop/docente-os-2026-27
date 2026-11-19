@@ -464,7 +464,8 @@ test('DOC-01/D2b3b keeps missing fields distinct and rejects duplicate or editor
   assert.deepEqual(r.missing,['significant-task','resource','assessment-method'])
   assert.equal(r.values.length,1)
   assert.equal(prepareDocumentSelection(basis.parent,basis,{...selection,locators:[selection.locators[0],selection.locators[0]]}),null)
-  assert.equal(prepareDocumentSelection(basis.parent,basis,{...selection,locators:[{...selection.locators[0],text:'Editoriale'}]}),null)
+  const editorial={...selection.locators[0],text:'Editoriale'}
+  assert.equal(prepareDocumentSelection(basis.parent,basis,{...selection,locators:[editorial]}),null)
   assert.ok(Object.isFrozen(r.values[0].locator))
 })
 
