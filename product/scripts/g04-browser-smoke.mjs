@@ -68,6 +68,10 @@ ${css}</style></head>
     assert(button && button.disabled,'initial confirmation must be disabled');
     assert(!!document.querySelector('fieldset legend'),'fieldset must have a legend');
     assert(!!document.querySelector('[aria-live=polite]'),'status must be announced');
+    checks[0].focus();
+    assert(document.activeElement===checks[0],'criterion checkbox must be keyboard focusable');
+    button.focus();
+    assert(document.activeElement===button,'confirmation button must be focusable');
     const before=box.scrollWidth-box.clientWidth;
     checks[0].click();
     await delay(40);
@@ -94,7 +98,7 @@ ${css}</style></head>
     assert(box.scrollWidth-box.clientWidth<=2, 'horizontal overflow: '+JSON.stringify({before,after:box.scrollWidth-box.clientWidth,clipped}));
     assert(clipped.length===0,'elements outside mobile viewport: '+clipped.join(','));
     document.body.dataset.g04Status='PASS';
-    document.body.dataset.g04Details=JSON.stringify({width:${width},zoom:${zoom},before,overflow:box.scrollWidth-box.clientWidth,selection:'OK',keyboardMarkers:'OK'});
+    document.body.dataset.g04Details=JSON.stringify({width:${width},zoom:${zoom},before,overflow:box.scrollWidth-box.clientWidth,selection:'OK',focusableControls:'OK'});
   } catch(error){
     document.body.dataset.g04Status='FAIL';
     document.body.dataset.g04Details=String(error.message || error);
