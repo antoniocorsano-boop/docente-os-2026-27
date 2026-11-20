@@ -19,7 +19,8 @@ assert.equal(createHash('sha256').update(original).digest('hex'), manifest.sha25
 assert.equal(manifest.dataStorage, false)
 assert.equal(manifest.networkRequired, false)
 assert.equal(manifest.authorizedForStudentData, false)
-assert.equal((original.match(/<script>/g) || []).length, 1, 'single local JS bundle required')
+assert.ok(original.includes('\n<script>\n') && original.endsWith('\n</script></body></html>'),
+  'single embedded entrypoint and closed HTML required')
 assert.equal((original.match(/<link\b|<script src=|<iframe\b/g) || []).length, 0,
   'offline package cannot load external assets')
 const options = [
