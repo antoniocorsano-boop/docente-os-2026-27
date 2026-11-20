@@ -35,6 +35,33 @@ Verificare sul navigatore e su dispositivo stretto (320/390 px e ingrandimento t
 
 Il collaudo del componente non equivale ancora a prova sull'intero percorso autenticato o su uno smartphone fisico. Devono restare distinti: controllo del dispositivo reale, navigazione tra schermate, comportamento dei sistemi di ingrandimento testo Android, assistive technology e autorizzazione all'eventuale integrazione con Registro Docente. Una conferma G04 **non** è `CriterionRevision` del Registro.
 
+
+## Pacchetto autonomo per smartphone — origine univoca
+Il file di prova non è una nuova implementazione dei criteri. Il generatore `product/scripts/build-g04-offline-package.mjs` assembla **lo stesso componente React `G04CriteriaPanel`** e la sua stessa logica, con la proiezione B25 approvata e i fogli di stile della schermata. La compilazione autonoma non carica la versione in rete e non dipende da Supabase. Il pacchetto contiene:
+- `G04-prova-offline.html`: file unico con codice e stili incorporati;
+- `manifest.json`: provenienza del repository, revisione, riferimenti e impronta SHA-256 del file;
+- `LEGGIMI.txt`: istruzioni per aprirlo e provarlo su smartphone, senza usare dati reali.
+
+La pipeline `Product CI` ora compila il pacchetto, ne ricalcola l'impronta, lo apre realmente in Chromium e lo conserva come **artefatto di prova della PR #801** per 14 giorni, scaricabile dalla pagina del controllo in GitHub (se autorizzati). Il pacchetto non è una pubblicazione sul web e non modifica l'applicazione installata. Per riprodurre localmente:
+```bash
+cd product
+npm run package:g04:offline
+npm run test:g04:package
+```
+
+Il collaudo del file scaricato su un Android reale rimane un passaggio separato. Se l'app File non riesce ad aprire il documento HTML con Chrome, non ridurre le protezioni del dispositivo e segnalare il comportamento. Nessuna connessione a servizi scolastici deve essere necessaria.
+
+## Coordinamento fra sistemi — responsabilità non sovrapposte
+| Fonte o componente | Responsabilità | Stato G04 |
+|---|---|---|
+| Arena | Fonte curricolare, versione e applicabilità | Master 1.3 provvisorio; non qualificato come vigente |
+| TRAMA CURR-REF-01/G03 | Identificativi e significato del raccordo | Proposta editoriale qualificata |
+| Docente OS B25 | Proiezione didattica e evidenze attese | Fonte effettiva del componente G04 |
+| Docente OS G04 | Scelta e conferma temporanee dei criteri | Nessuna scrittura o trasferimento |
+| Registro Docente `AssessmentEvidenceV1` | Revisioni valutative locali confermate ed eventuali osservazioni individuali | Non toccato; nessun import autorizzato |
+
+La conferma nel pacchetto non costituisce conferma in Registro e non introduce nuovi identificativi istituzionali. Per un'integrazione fra prodotti serviranno un contratto approvato, controllo degli accessi e la validazione professionale E-R4. Non alterare i rami paralleli VAL-01/DOC-01.
+
 ## Confini e decisione successiva
 Questa è **qualificazione dell'usabilità locale**, non un flusso Arena → Docente OS → Registro né l'approvazione dei criteri. Per rendere la scelta persistente o effettivamente utilizzabile nel Registro serve una decisione distinta su contratto, identità, autorizzazione del docente e vincoli di protezione dei dati; non usare il medesimo formato per trasferire osservazioni individuali.
 
