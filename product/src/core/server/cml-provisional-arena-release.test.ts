@@ -66,3 +66,57 @@ it('rejects unqualified storage routes without making a download', async () => {
     else process.env.ARENA_VERTICAL_RELEASE_OBJECT_KEY = oldObject
   }
 })
+
+
+it('does not allow provisional source access in another workspace', async () => {
+  const old = {
+    bucket: process.env.ARENA_VERTICAL_RELEASE_BUCKET,
+    object: process.env.ARENA_VERTICAL_RELEASE_OBJECT_KEY,
+    workspace: process.env.ARENA_VERTICAL_RELEASE_WORKSPACE_ID,
+  }
+  try {
+    process.env.ARENA_VERTICAL_RELEASE_BUCKET = 'arena-curricolo-private'
+    process.env.ARENA_VERTICAL_RELEASE_OBJECT_KEY =
+      'vertical/2026-2027/master-1.3-rev27/complete-release.json'
+    process.env.ARENA_VERTICAL_RELEASE_WORKSPACE_ID =
+      '00000000-0000-4000-8000-000000000001'
+    assert.deepEqual(await readProvisionalArenaReferenceForClass(scope), {
+      status: 'NOT_AUTHORIZED',
+      reference: null,
+    })
+  } finally {
+    if (old.bucket === undefined) delete process.env.ARENA_VERTICAL_RELEASE_BUCKET
+    else process.env.ARENA_VERTICAL_RELEASE_BUCKET = old.bucket
+    if (old.object === undefined) delete process.env.ARENA_VERTICAL_RELEASE_OBJECT_KEY
+    else process.env.ARENA_VERTICAL_RELEASE_OBJECT_KEY = old.object
+    if (old.workspace === undefined) delete process.env.ARENA_VERTICAL_RELEASE_WORKSPACE_ID
+    else process.env.ARENA_VERTICAL_RELEASE_WORKSPACE_ID = old.workspace
+  }
+})
+
+it('rejects an incorrectly configured source key even when the workspace matches', async () => {
+  const old = {
+    bucket: process.env.ARENA_VERTICAL_RELEASE_BUCKET,
+    object: process.env.ARENA_VERTICAL_RELEASE_OBJECT_KEY,
+    workspace: process.env.ARENA_VERTICAL_RELEASE_WORKSPACE_ID,
+  }
+  const id = '00000000-0000-4000-8000-000000000001'
+  try {
+    process.env.ARENA_VERTICAL_RELEASE_WORKSPACE_ID = id
+    process.env.ARENA_VERTICAL_RELEASE_BUCKET = 'arena-curricolo-private'
+    // The legacy global key must be rejected, even in a valid workspace.
+    process.env.ARENA_VERTICAL_RELEASE_OBJECT_KEY =
+      'vertical/2026-2027/master-1.3-rev27/complete-release.json'
+    assert.deepEqual(await readProvisionalArenaReferenceForClass({
+      ...scope, workspaceId: id,
+      assignments: scope.assignments.map(assignment => ({ ...assignment, workspaceId: id })),
+    }), { status: 'NOT_CONFIGURED', reference: null })
+  } finally {
+    if (old.bucket === undefined) delete process.env.ARENA_VERTICAL_RELEASE_BUCKET
+    else process.env.ARENA_VERTICAL_RELEASE_BUCKET = old.bucket
+    if (old.object === undefined) delete process.env.ARENA_VERTICAL_RELEASE_OBJECT_KEY
+    else process.env.ARENA_VERTICAL_RELEASE_OBJECT_KEY = old.object
+    if (old.workspace === undefined) delete process.env.ARENA_VERTICAL_RELEASE_WORKSPACE_ID
+    else process.env.ARENA_VERTICAL_RELEASE_WORKSPACE_ID = old.workspace
+  }
+})

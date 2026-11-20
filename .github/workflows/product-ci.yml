@@ -277,6 +277,10 @@ jobs:
           psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/timetable_import_completion_contract.sql"
           psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/knowledge_bounded_search_contract.sql"
           psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/canonical_plan_runtime_identity_behavior.sql"
+          # CURR-03: real RLS behavior under simulated authenticated/anon roles
+          # against the isolated database only; SQL starts a transaction and
+          # rolls back all fictional users, bindings and metadata-only objects.
+          psql "$db_url" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/product/supabase/tests/arena_private_delivery_behavior.sql"
 
           actual="$(psql "$db_url" -Atc "select migration_id from public.runtime_schema_contract_state where singleton")"
           expected="${{ steps.runtime_impact.outputs.latest_migration }}"

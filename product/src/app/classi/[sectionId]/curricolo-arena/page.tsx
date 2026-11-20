@@ -167,8 +167,8 @@ export default async function CurriculumArenaPage({
         </section>
       ) : null}
 
-      {arenaSource.status === 'AVAILABLE' ? (
-        <section aria-label="Riferimento provvisorio verificato da Arena">
+      {eligible ? (
+        <section aria-label="Consultazione provvisoria di Arena">
           <ArenaProvisionalGradePreviewClient
             section={{
               grade: section.grade,
