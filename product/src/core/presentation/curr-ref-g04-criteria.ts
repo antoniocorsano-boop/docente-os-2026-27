@@ -65,6 +65,7 @@ export function resolveG04CriteriaProposal(
       projection.udaTitle !== 'Dal problema al progetto' ||
       projection.title !== 'Confrontare e scegliere' ||
       projection.durationMinutes !== 120 ||
+      projection.objective !== 'Confrontare le alternative con criteri espliciti di funzionalità, fattibilità, materiali, sicurezza, costo indicativo e riduzione degli sprechi e motivare la scelta finale.' ||
       projection.evidence !== 'Matrice di scelta motivata.' ||
       projection.outcomes.length !== 1 ||
       projection.outcomes[0] !== 'confrontare alternative con una semplice matrice di criteri;' ||
@@ -109,8 +110,12 @@ export function confirmG04Selection(
   selection: G04SessionSelection,
   proposal: G04Proposal,
 ): G04SessionSelection {
+  const normalized = proposal.criteria
+    .filter((criterion) => selection.selectedIds.includes(criterion.id))
+    .map((criterion) => criterion.id)
   if (selection.selectedIds.length === 0 ||
-      selection.selectedIds.some((id) => !proposal.criteria.some((criterion) => criterion.id === id))) {
+      normalized.length !== selection.selectedIds.length ||
+      normalized.some((id, index) => selection.selectedIds[index] !== id)) {
     return { selectedIds: [], confirmedIds: null }
   }
   return { selectedIds: [...selection.selectedIds], confirmedIds: [...selection.selectedIds] }
