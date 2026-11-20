@@ -8,24 +8,28 @@
 @media(max-width:719px){.lessonSupport{margin-top:-9px}.lessonSupport>p{font-size:11px}}
 
 
-/* CURR-REF-01/G04: no persistence, no personal data, not an approved rubric. */
-.g04CriteriaPanel{display:grid;gap:14px;padding:18px;border:1px solid var(--line,#e3e8ef);border-radius:18px;background:var(--surface,#fff)}
-.g04CriteriaEyebrow{margin:0 0 5px;color:var(--brand,#2864e8);font-size:11px;font-weight:850;letter-spacing:.055em}
-.g04CriteriaHeading h3{margin:0;font-size:19px;line-height:1.35}
-.g04CriteriaHeading>p:last-child,.g04CriteriaPrivacy{margin:8px 0 0;color:var(--ink-soft,#667085);font-size:13px;line-height:1.5}
+/* CURR-REF-01/G04e: compact, accessible, locally confirmed criteria. */
+.g04CriteriaPanel{display:grid;gap:11px;padding:15px;border:1px solid var(--line,#e3e8ef);border-radius:16px;background:var(--surface,#fff);min-width:0}
+.g04CriteriaEyebrow{margin:0 0 4px;color:var(--brand,#2864e8);font-size:11px;font-weight:850;letter-spacing:.045em}
+.g04CriteriaHeading h3{margin:0;font-size:19px;line-height:1.25}
+.g04CriteriaHeading>p:last-child{margin:5px 0 0;color:var(--ink-soft,#667085);font-size:13px;line-height:1.4}
+.g04VisuallyHidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 .g04CriteriaChoices{min-width:0;margin:0;padding:0;border:0}
-.g04CriteriaChoices legend{padding:0 0 7px;font-size:13px;font-weight:800}
-.g04CriterionChoice{display:flex;gap:12px;align-items:flex-start;padding:13px 6px;border-top:1px solid var(--line,#e3e8ef);cursor:pointer}
-.g04CriterionChoice input{width:20px;height:20px;flex:0 0 20px;margin:2px 0 0;accent-color:var(--brand,#2864e8)}
-.g04CriterionChoice>span{display:grid;gap:4px;line-height:1.5}
-.g04CriterionChoice strong{font-size:15px}
-.g04CriterionChoice small{font-size:12px;color:var(--ink-soft,#667085)}
-.g04CriterionActions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-.g04CriterionActions button{min-height:48px;padding:11px 16px;border:1px solid var(--brand,#2864e8);border-radius:12px;background:var(--brand,#2864e8);color:#fff;font:inherit;font-weight:800;cursor:pointer}
+.g04CriterionItem{min-width:0;border-top:1px solid var(--line,#e3e8ef);padding:4px 0 7px}
+.g04CriterionChoice{display:flex;align-items:center;gap:11px;min-height:46px;padding:5px 2px;cursor:pointer}
+.g04CriterionChoice input{width:21px;height:21px;flex:0 0 21px;margin:0;accent-color:var(--brand,#2864e8)}
+.g04CriterionChoice strong{min-width:0;font-size:15px;line-height:1.35}
+.g04CriterionEvidence{margin:0 0 3px 34px;min-width:0}
+.g04CriterionEvidence>summary{display:list-item;cursor:pointer;color:var(--ink-soft,#667085);font-size:12px;font-weight:750;line-height:1.4}
+.g04CriterionEvidence>p{margin:7px 0 0;color:var(--ink-soft,#667085);font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.g04CriterionEvidence>p strong{color:var(--ink,#172033)}
+.g04CriterionActions{display:grid;gap:6px}
+.g04CriterionActions button{min-height:48px;width:100%;padding:9px 14px;border:1px solid var(--brand,#2864e8);border-radius:12px;background:var(--brand,#2864e8);color:#fff;font:inherit;font-size:14px;font-weight:850;cursor:pointer}
 .g04CriterionActions button:disabled{cursor:default;opacity:.65}
-.g04CriterionActions p{margin:0;color:var(--ink-soft,#667085);font-size:13px}
-.g04CriteriaRefs{border-top:1px solid var(--line,#e3e8ef);padding-top:10px}
-.g04CriteriaRefs summary{cursor:pointer;font-size:12px;font-weight:750}
+.g04CriterionActions p{margin:0;color:var(--ink-soft,#667085);font-size:12px;line-height:1.45}
+.g04CriteriaPrivacy{margin:0;color:var(--ink-soft,#667085);font-size:12px;line-height:1.45}
+.g04CriteriaRefs{min-width:0;border-top:1px solid var(--line,#e3e8ef);padding-top:8px}
+.g04CriteriaRefs summary{cursor:pointer;color:var(--ink-soft,#667085);font-size:12px;font-weight:750}
 .g04CriteriaRefs p{margin:8px 0 0;color:var(--ink-soft,#667085);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
 .g04CriteriaPanel :focus-visible{outline:3px solid var(--brand,#2864e8);outline-offset:3px}
-@media(max-width:719px){.g04CriteriaPanel{padding:16px;border-radius:16px}.g04CriterionActions{display:grid}.g04CriterionActions button{width:100%}}
+@media(max-width:719px){.g04CriteriaPanel{padding:13px;gap:9px;border-radius:14px}.g04CriterionChoice{gap:9px}.g04CriterionEvidence{margin-left:32px}}
