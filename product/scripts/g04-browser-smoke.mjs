@@ -70,12 +70,12 @@ ${css}</style></head>
     assert(!!document.querySelector('[aria-live=polite]'),'status must be announced');
     checks[0].focus();
     assert(document.activeElement===checks[0],'criterion checkbox must be keyboard focusable');
-    button.focus();
-    assert(document.activeElement===button,'confirmation button must be focusable');
     const before=box.scrollWidth-box.clientWidth;
     checks[0].click();
     await delay(40);
     assert(!button.disabled,'selection must enable confirmation');
+    button.focus();
+    assert(document.activeElement===button,'enabled confirmation button must be keyboard focusable');
     button.click();
     await delay(40);
     assert(button.disabled && status().includes('confermat'),'confirmation must change status');
