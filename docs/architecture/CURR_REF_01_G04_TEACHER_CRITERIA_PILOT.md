@@ -66,3 +66,20 @@ La conferma nel pacchetto non costituisce conferma in Registro e non introduce n
 Questa è **qualificazione dell'usabilità locale**, non un flusso Arena → Docente OS → Registro né l'approvazione dei criteri. Per rendere la scelta persistente o effettivamente utilizzabile nel Registro serve una decisione distinta su contratto, identità, autorizzazione del docente e vincoli di protezione dei dati; non usare il medesimo formato per trasferire osservazioni individuali.
 
 Non integrare in `main`, non distribuire a studenti e non avviare deploy senza decisione separata. Non interferire con le attività DOC-01/VAL-01 già in corso in Registro Docente.
+
+## Riscontro da smartphone Android — schermate fornite dall'utilizzatore
+
+**Data di acquisizione nel ciclo G04: 20 novembre 2026.** Due immagini dello schermo Android mostrano l'apertura del file HTML come documento locale (`content://`), la visualizzazione della proposta G04 e i due criteri «Confronto delle alternative» e «Motivazione della scelta» entrambi selezionati. La seconda immagine mostra il pulsante **«Scelta confermata»** e il messaggio **«2 criteri confermati solo per questa sessione»**.
+
+**Esito documentabile dalle immagini:**
+- APERTURA LOCALE: **OSSERVATA**; documento visualizzato nel navigatore su Android, senza schermo vuoto o errore evidente.
+- COMPONENTE B25 E DUE CRITERI: **OSSERVATI**.
+- SELEZIONE DI ENTRAMBI I CRITERI: **OSSERVATA**.
+- STATO DI CONFERMA DI DUE CRITERI: **OSSERVATO**.
+- DISPOSIZIONE VERTICALE DEL CONTENUTO: **VISIBILE SENZA TAGLI EVIDENTI** nelle porzioni acquisite; non costituisce una prova di ogni larghezza o orientamento.
+
+**Da verificare con azioni distinte:** revoca della conferma dopo modifica, azzeramento al ricaricamento, assenza di connessione internet durante l'interazione, ingrandimento caratteri Android, disposizione orizzontale, leggibilità con strumenti assistivi, navigazione autenticata.
+
+**Rilievi di usabilità e terminologia:** il testo è lungo e impone uno scorrimento significativo prima della conferma; informazioni su provvisorietà e assenza di salvataggio sono ripetute fra pagina e riquadro. Il dettaglio «Nucleo del curricolo locale: confrontare soluzioni» andrebbe denominato **«Riferimento curricolare locale proposto»**, poiché `confrontare soluzioni` nella fonte G03 è una competenza locale candidata, non uno dei nove nuclei fondanti verificati. Eventuali modifiche UI richiedono nuovo collaudo.
+
+**Protezione dei dati:** conservare nella documentazione soltanto questi riscontri testuali, non trasferire le schermate originali (che contengono anche informazioni di sistema Android) nel repository. Nessun dato scolastico personale è stato inserito nel caso G04. Il riscontro resta una prova di dispositivo **parziale**, non autorizza integrazione o pubblicazione.
