@@ -19,6 +19,8 @@ assert.equal(createHash('sha256').update(original).digest('hex'), manifest.sha25
 assert.equal(manifest.dataStorage, false)
 assert.equal(manifest.networkRequired, false)
 assert.equal(manifest.authorizedForStudentData, false)
+assert.equal((original.match(/Solo dimostrazione\./g) || []).length, 0,
+  'redundant standalone disclaimer must stay removed')
 assert.ok(original.includes('\n<script>\n') && original.endsWith('\n</script></body></html>'),
   'single embedded entrypoint and closed HTML required')
 assert.equal((original.match(/^\s*<(?:link|iframe|script\s+src=)/gm) || []).length, 0,
@@ -42,6 +44,13 @@ try {
     '    const button=document.querySelector(".g04CriterionActions button");',
     '    const inputs=[...document.querySelectorAll(".g04CriterionChoice input")];',
     '    if(labels.length!==2||inputs.length!==2||!button||!button.disabled)throw Error("NOT_MOUNTED");',
+    '    const disclosures=[...document.querySelectorAll(".g04CriterionEvidence")];',
+    '    if(disclosures.length!==2 || disclosures.some(item=>item.open))throw Error("DETAILS_NOT_COMPACT");',
+    '    if(!document.body.textContent.includes("Riferimento curricolare locale proposto"))throw Error("BAD_CURRICOLO_LABEL");',
+    '    if(document.body.textContent.includes("Nucleo del curricolo locale"))throw Error("FALSE_CURRICOLO_NUCLEUS");',
+    '    disclosures[0].open=true;',
+    '    if(!disclosures[0].textContent.includes("Matrice di confronto"))throw Error("EVIDENCE_LOST");',
+    '    disclosures[0].open=false;',
     '    inputs[0].click();',
     '    setTimeout(function(){',
     '      try {',
