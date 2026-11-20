@@ -75,8 +75,8 @@ ${css}</style></head>
     evidence[0].open=true;
     assert(evidence[0].open,'evidence disclosure should open');
     evidence[0].open=false;
-    assert(document.body.textContent.includes('Riferimento curricolare locale proposto'),'curricolo reference terminology must be precise');
-    assert(!document.body.textContent.includes('Nucleo del curricolo locale'),'do not mislabel a local competence as a foundational nucleus');
+    assert(panel.textContent.includes('Riferimento curricolare locale proposto'),'curricolo reference terminology must be precise');
+    assert(!panel.textContent.includes('Nucleo del curricolo locale'),'do not mislabel a local competence as a foundational nucleus');
     assert(panel && (${zoom}===2 || panel.getBoundingClientRect().height<(${width}===390?540:600)),'compact layout height exceeded');
     checks[0].focus();
     assert(document.activeElement===checks[0],'criterion checkbox must be keyboard focusable');
