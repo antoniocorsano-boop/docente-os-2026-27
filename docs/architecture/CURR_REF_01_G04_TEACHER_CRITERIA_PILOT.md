@@ -30,6 +30,11 @@ npm run build
 ```
 Verificare sul navigatore e su dispositivo stretto (320/390 px e ingrandimento testo 200%): selezione tramite tastiera, lettura degli stati, pulsanti, assenza di scorrimento orizzontale, selezione mantenuta passando fra le fasi finché la pagina resta aperta, azzeramento al ricaricamento, contenuti non presenti per B24 e B26. Nessuna prova sui dati reali.
 
+## Verifica automatizzata nel navigatore (senza servizi collegati)
+È stata aggiunta alla stessa procedura `Product CI` la prova `npm run test:g04:browser`: una pagina di prova temporanea monta il **vero componente React G04**, utilizzando la vera proiezione didattica B25 già approvata; non è una nuova pagina pubblica dell'applicazione. Chromium verifica interattività, annullamento della conferma, stato accessibile, dimensioni 320/390 px e fattore d'ingrandimento simulato 200%, inclusa l'assenza di scorrimento orizzontale. Non usa Supabase, account, rete o dati individuali.
+
+Il collaudo del componente non equivale ancora a prova sull'intero percorso autenticato o su uno smartphone fisico. Devono restare distinti: controllo del dispositivo reale, navigazione tra schermate, comportamento dei sistemi di ingrandimento testo Android, assistive technology e autorizzazione all'eventuale integrazione con Registro Docente. Una conferma G04 **non** è `CriterionRevision` del Registro.
+
 ## Confini e decisione successiva
 Questa è **qualificazione dell'usabilità locale**, non un flusso Arena → Docente OS → Registro né l'approvazione dei criteri. Per rendere la scelta persistente o effettivamente utilizzabile nel Registro serve una decisione distinta su contratto, identità, autorizzazione del docente e vincoli di protezione dei dati; non usare il medesimo formato per trasferire osservazioni individuali.
 
