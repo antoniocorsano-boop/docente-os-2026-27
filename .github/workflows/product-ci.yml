@@ -28,3 +28,13 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm run test:g04:browser
+      - run: npm run package:g04:offline
+      - run: npm run test:g04:package
+      - name: Save G04 standalone offline package for smartphone test
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: G04-prova-offline-DocenteOS
+          path: product/artifacts/g04-offline/
+          if-no-files-found: error
+          retention-days: 14
