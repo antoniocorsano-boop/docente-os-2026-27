@@ -13,6 +13,14 @@ import {
   type HumanTaskSourceAlignment,
 } from '@/core/presentation/human-task-content'
 import { recordLessonExecution } from '../actions'
+import G04CriteriaPanel from './g04-criteria-panel'
+import {
+  EMPTY_G04_SELECTION,
+  confirmG04Selection,
+  resolveG04CriteriaProposal,
+  toggleG04Criterion,
+  type G04SessionSelection,
+} from '@/core/presentation/curr-ref-g04-criteria'
 
 export type LessonWorkspaceMode = 'prepare' | 'teach' | 'observe' | 'record'
 
@@ -59,6 +67,9 @@ export default function LessonWorkspaceClient({
   const [activeStep, setActiveStep] = useState(0)
   const [prepared, setPrepared] = useState<Record<number, boolean>>({})
   const [observed, setObserved] = useState<Record<number, boolean>>({})
+  // G04 is intentionally local to this client session: never persisted or exported.
+  const [g04Selection, setG04Selection] = useState<G04SessionSelection>(EMPTY_G04_SELECTION)
+  const g04Proposal = resolveG04CriteriaProposal(projection)
   const currentStep = projection.steps[activeStep]
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
   const recorded = progress.status === 'SVOLTO' || progress.status === 'RECUPERATO' || progress.status === 'RIMODULATO'
@@ -198,6 +209,15 @@ export default function LessonWorkspaceClient({
           </section>
 
           <aside className="lessonAssessmentNote"><strong>Valutazione</strong><p>{projection.assessmentNote}</p></aside>
+
+          {g04Proposal ? (
+            <G04CriteriaPanel
+              proposal={g04Proposal}
+              selection={g04Selection}
+              onToggle={(id) => setG04Selection((current) => toggleG04Criterion(current, g04Proposal, id))}
+              onConfirm={() => setG04Selection((current) => confirmG04Selection(current, g04Proposal))}
+            />
+          ) : null}
 
           {observationResources.map((resource) => <ResourceCard resource={resource} key={resource.id} />)}
 
