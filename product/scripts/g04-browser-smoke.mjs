@@ -68,6 +68,16 @@ ${css}</style></head>
     assert(button && button.disabled,'initial confirmation must be disabled');
     assert(!!document.querySelector('fieldset legend'),'fieldset must have a legend');
     assert(!!document.querySelector('[aria-live=polite]'),'status must be announced');
+    const panel=document.querySelector('.g04CriteriaPanel');
+    const evidence=[...document.querySelectorAll('.g04CriterionEvidence')];
+    assert(evidence.length===2 && evidence.every(item=>!item.open),'evidence should be collapsed initially');
+    assert(evidence[0].textContent.includes('Matrice di confronto'),'complete source evidence must remain accessible');
+    evidence[0].open=true;
+    assert(evidence[0].open,'evidence disclosure should open');
+    evidence[0].open=false;
+    assert(document.body.textContent.includes('Riferimento curricolare locale proposto'),'curricolo reference terminology must be precise');
+    assert(!document.body.textContent.includes('Nucleo del curricolo locale'),'do not mislabel a local competence as a foundational nucleus');
+    assert(panel && (${zoom}===2 || panel.getBoundingClientRect().height<(${width}===390?540:600)),'compact layout height exceeded');
     checks[0].focus();
     assert(document.activeElement===checks[0],'criterion checkbox must be keyboard focusable');
     const before=box.scrollWidth-box.clientWidth;
