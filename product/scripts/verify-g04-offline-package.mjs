@@ -68,7 +68,8 @@ try {
     '--no-first-run', '--no-default-browser-check', '--allow-file-access-from-files',
     '--window-size=500,900', '--virtual-time-budget=4500', '--dump-dom',
     pathToFileURL(testFile).href,
-  ], { encoding: 'utf8', timeout: 30000, stdio: ['ignore','pipe','ignore'] })
+  ], { encoding: 'utf8', timeout: 30000, maxBuffer: 20 * 1024 * 1024,
+       stdio: ['ignore','pipe','ignore'] })
   const status = /data-offline-check="([^"]+)"/.exec(result)?.[1] ?? 'NOT_SET'
   assert.equal(status, 'PASS', 'Actual standalone HTML did not work: ' + status)
   console.log('G04 standalone HTML: browser execution, interaction and SHA256 PASS')
