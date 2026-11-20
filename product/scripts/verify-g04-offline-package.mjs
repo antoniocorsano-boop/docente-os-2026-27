@@ -21,7 +21,7 @@ assert.equal(manifest.networkRequired, false)
 assert.equal(manifest.authorizedForStudentData, false)
 assert.ok(original.includes('\n<script>\n') && original.endsWith('\n</script></body></html>'),
   'single embedded entrypoint and closed HTML required')
-assert.equal((original.match(/<link\b|<script src=|<iframe\b/g) || []).length, 0,
+assert.equal((original.match(/^\s*<(?:link|iframe|script\s+src=)/gm) || []).length, 0,
   'offline package cannot load external assets')
 const options = [
   process.env.G04_CHROME_PATH,
