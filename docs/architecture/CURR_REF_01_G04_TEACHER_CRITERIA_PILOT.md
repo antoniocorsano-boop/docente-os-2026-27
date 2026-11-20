@@ -89,3 +89,17 @@ Non integrare in `main`, non distribuire a studenti e non avviare deploy senza d
 Tre ulteriori schermate del 20 novembre 2026 documentano: **(1)** il criterio «Motivazione della scelta» selezionato e lo stato «1 criterio confermato solo per questa sessione»; **(2)** entrambi i criteri selezionati e lo stato «2 criteri confermati solo per questa sessione»; **(3)** entrambi i criteri non selezionati e il pulsante «Conferma la scelta». Il terzo stato è compatibile con l'azzeramento tramite ricaricamento, ma l'azione di ricarica non è visibile nella singola immagine. I tre stati principali di presentazione sono quindi **OSSERVATI** su smartphone, senza evidenti tagli di contenuto.
 
 **Non ancora dimostrato dalle immagini:** lo stato *intermedio* immediatamente successivo alla deselezione di un criterio (prima di ripremere «Conferma la scelta»), che deve revocare la conferma. La logica automatizzata lo verifica, ma le nuove schermate non documentano la sequenza completa. Restano aperte la prova senza rete, l'ingrandimento dei caratteri di sistema, l'orientamento orizzontale e la navigazione autenticata. Le immagini originali non vengono copiate nel repository. Nessuna nuova funzione valutativa o integrazione con Registro è autorizzata da questi riscontri.
+
+## G04e — Semplificazione dopo il collaudo su Android
+
+Le immagini ricevute durante il collaudo reale mostrano che le due caselle e la conferma funzionano, ma che la presentazione iniziale impone uno scorrimento eccessivo. La modifica G04e **interviene sul componente già esistente**, non sul modello della lezione o sui contratti dei prodotti.
+
+- **Gerarchia:** titolo «Cosa vuoi osservare?», due criteri sempre presenti, comando di conferma in posizione più vicina, stato visibile e annunciato.
+- **Approfondimento su richiesta:** descrizione originale ed evidenza attesa di ciascun criterio restano integralmente disponibili mediante `details/summary`, inizialmente chiusi. Il contenuto pedagogico non viene sintetizzato né alterato dalla presentazione.
+- **Dichiarazioni essenziali:** una breve nota ricorda che la scelta non è salvata, non produce voto e non è inviata al Registro; le spiegazioni estese di provenienza, non vigenza del master e assenza di approvazione sono disponibili in una sezione espandibile. L'intestazione del documento offline non ripete più gli stessi avvisi.
+- **Precisione:** «confrontare soluzioni» è una *competenza locale candidata* e ora viene presentata come «Riferimento curricolare locale proposto», non come uno dei nove nuclei fondanti.
+- **Compatibilità:** inalterati gli identificativi `HTC-PRIMA-B25-PLAN-v1`, `CR-G01-01/02`, la conferma solo in memoria e la revoca su modifica. Nessun intervento alla persistenza, all'azione di registrazione della lezione o a Registro Docente.
+
+La procedura di prova in Chromium ora verifica la presenza delle due descrizioni complete, la loro apertura su richiesta, la terminologia corretta, l'ingombro verticale ridotto a 320/390 px, lo zoom simulato al 200% e il corretto funzionamento delle selezioni. Il pacchetto offline v1.1 deve essere rigenerato **dalla stessa revisione** del componente e distribuito soltanto come artefatto di prova privato.
+
+**Stato:** modifica candidata in PR #801; il risultato automatico è distinto dal successivo riesame su Android reale. Non considerare il sistema curricolare approvato o l'integrazione con Registro Docente completata.
