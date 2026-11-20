@@ -56,7 +56,7 @@ export default function G04CriteriaPanel({
         </button>
         <p role="status" aria-live="polite">
           {confirmed
-            ? `${selection.confirmedIds?.length ?? 0} criteri confermati solo per questa sessione.`
+            ? `${selection.confirmedIds?.length ?? 0} ${selection.confirmedIds?.length === 1 ? 'criterio confermato' : 'criteri confermati'} solo per questa sessione.`
             : selection.selectedIds.length === 0
               ? 'Nessun criterio selezionato.'
               : `${selection.selectedIds.length} criteri selezionati, in attesa della tua conferma.`}
