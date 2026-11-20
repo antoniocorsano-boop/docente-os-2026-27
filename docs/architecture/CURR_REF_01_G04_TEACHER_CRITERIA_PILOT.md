@@ -103,3 +103,19 @@ Le immagini ricevute durante il collaudo reale mostrano che le due caselle e la 
 La procedura di prova in Chromium ora verifica la presenza delle due descrizioni complete, la loro apertura su richiesta, la terminologia corretta, l'ingombro verticale ridotto a 320/390 px, lo zoom simulato al 200% e il corretto funzionamento delle selezioni. Il pacchetto offline v1.1 deve essere rigenerato **dalla stessa revisione** del componente e distribuito soltanto come artefatto di prova privato.
 
 **Stato:** modifica candidata in PR #801; il risultato automatico è distinto dal successivo riesame su Android reale. Non considerare il sistema curricolare approvato o l'integrazione con Registro Docente completata.
+
+## G04e — Riscontro dal telefono Android sulla versione compatta v1.1
+
+**Data:** 20 novembre 2026. Quattro ulteriori schermate dell'utilizzatore raffigurano la **nuova** interfaccia semplificata aperta in Chrome mediante documento locale `content://`, non la versione iniziale v1.0.
+
+**Osservazioni documentate dalle immagini:**
+- L'intestazione B25, il titolo «Cosa vuoi osservare?» e i due criteri sono visualizzati senza tagli orizzontali evidenti.
+- Il pannello «Descrizione ed evidenza» del primo criterio è **aperto** nelle prime tre immagini, mostra la descrizione e il testo completo dell'evidenza attesa; quello del secondo criterio è chiuso. Il meccanismo di approfondimento su richiesta è quindi utilizzabile sul telefono.
+- Nella seconda schermata il primo criterio è selezionato e compare **«Scelta confermata»** con **«1 criterio confermato solo per questa sessione»**.
+- Nella terza entrambi i criteri sono selezionati e compare **«Conferma la scelta»** con **«2 criteri selezionati, in attesa della tua conferma»**. Il passaggio dalla seconda alla terza schermata è **coerente con la revoca automatica della conferma** dopo l'aggiunta del secondo criterio; la singola immagine non è una registrazione del gesto.
+- Nella quarta entrambe le caselle sono vuote, le descrizioni sono chiuse e lo stato indica **«Nessun criterio selezionato»**. È uno stato compatibile con la ricarica; la fotografia non mostra direttamente l'azione di ricaricamento.
+- L'espansione «Fonte, limiti e riferimenti» mostra la corretta denominazione **«Riferimento curricolare locale proposto»** e distingue la competenza candidata dal nucleo fondante.
+
+**Esito:** `ANDROID_V1_1_VISUAL_FUNCTIONAL_PASS_WITH_OPEN_GAPS`. Il miglioramento della gerarchia e dell'ingombro rispetto alla versione iniziale risulta visivamente positivo; si conserva integralmente il contenuto pedagogico apribile su richiesta. Restano verifiche non dimostrate dalle fotografie: prova senza connettività abilitata, aumento del testo dalle impostazioni Android, orientamento orizzontale, assistenza alla navigazione e intero percorso autenticato in ambiente dimostrativo. Non sono state copiate nel repository le immagini originali né informazioni identificative del dispositivo.
+
+**Decisione:** non aprire un ulteriore ciclo di rielaborazione cosmetica senza un difetto riproducibile. Conservare G04e come candidata qualificata dal collaudo automatico e dal riscontro visivo Android; passare a definire il **punto di ingresso in Registro Docente** rispettandone i contratti esistenti e impedendo trasmissioni di dati individuali. Nessuna fusione della PR #801, pubblicazione o acquisizione di criteri valutativi viene autorizzata da questo riscontro.
