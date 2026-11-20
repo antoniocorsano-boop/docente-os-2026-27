@@ -47,7 +47,7 @@ test('G04 rejects mismatched content or source identity instead of silently reus
     { observation: ['Altro indicatore'] },
     { sources: [...base.sources].reverse() },
     { sources: [{ ...base.sources[0], code: 'CAN-PLAN-2' }, base.sources[1]] },
-  ] as const
+  ]
   for (const changed of changes) {
     const bad = { ...base, ...changed }
     assert.equal(resolveG04CriteriaProposal(bad), null, JSON.stringify(changed))
