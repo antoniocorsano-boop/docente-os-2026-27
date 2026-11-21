@@ -106,6 +106,7 @@ export async function saveArenaUdaInProgetta(input: {
       sourceSegmentId: result.reference.segmentId,
       sourceField: selected.facet,
       sourceIndex: selected.sourceIndex,
+      sourceEvidence: input.sourceEvidence,
       excerptIndex: selected.excerptIndex,
       schoolYearRef: result.reference.schoolYearRef,
       sectionId: section.id,
@@ -146,6 +147,6 @@ function sanitizeEditable(input: EditableFields): EditableFields {
     safe[key] = input[key].trim()
   }
   if (!safe.title || safe.title.length > 300) throw new Error('Inserisci un titolo di massimo 300 caratteri')
-  if (!safe.objective || !safe.task) throw new Error('Completa almeno obiettivo e compito della UDA')
+  if (!safe.objective || !safe.evidence || !safe.task) throw new Error('Completa obiettivo, evidenza e compito della UDA')
   return safe
 }
