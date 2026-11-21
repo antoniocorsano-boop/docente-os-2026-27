@@ -25,7 +25,7 @@ export default async function CurriculumArenaPage({
   searchParams,
 }: {
   params: Promise<{ sectionId: string }>
-  searchParams: Promise<{ accepted?: string }>
+  searchParams: Promise<{ accepted?: string; google?: string }>
 }) {
   const { sectionId } = await params
   const query = await searchParams
@@ -101,6 +101,7 @@ export default async function CurriculumArenaPage({
             serverReference={arenaSource.reference}
             sourceStatus={arenaSource.status}
             googleConnectHref={googleConnectHref}
+            googleState={query.google}
           />
         </section>
         <Link href={classHref}>← Torna alla classe</Link>
@@ -184,6 +185,7 @@ export default async function CurriculumArenaPage({
             serverReference={arenaSource.reference}
             sourceStatus={arenaSource.status}
             googleConnectHref={googleConnectHref}
+            googleState={query.google}
           />
         </section>
       ) : null}

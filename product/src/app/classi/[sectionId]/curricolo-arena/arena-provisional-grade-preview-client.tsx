@@ -1,4 +1,5 @@
 import type { ProvisionalTechnologyGrade, ProvisionalTechnologyReference } from '@/core/domain/cml-provisional-technology-reference'
+import { arenaGoogleConnectionMessage } from './arena-google-connection-feedback'
 
 const MASTER_URL = 'https://docs.google.com/document/d/12eWTPUZBJxZixd6-p8drNAaW5_eL8qWpXZUSDyZZAv4/edit'
 
@@ -7,6 +8,7 @@ export function ArenaProvisionalGradePreviewClient({
   serverReference = null,
   sourceStatus = 'NOT_CONFIGURED',
   googleConnectHref,
+  googleState,
 }: {
   section: {
     grade: ProvisionalTechnologyGrade
@@ -16,10 +18,15 @@ export function ArenaProvisionalGradePreviewClient({
   serverReference?: ProvisionalTechnologyReference | null
   sourceStatus?: 'AVAILABLE' | 'NOT_AUTHORIZED' | 'NOT_CONFIGURED' | 'SOURCE_UNAVAILABLE' | 'SOURCE_UNVERIFIED'
   googleConnectHref?: string | null
+  googleState?: string | null
 }) {
   const preview = serverReference
+  const googleFeedback = arenaGoogleConnectionMessage(googleState)
   return (
     <article className="classWorkspaceCard" aria-labelledby="arena-vertical-consultation-heading">
+      {googleFeedback ? (
+        <p role="status" aria-live="polite"><strong>{googleFeedback}</strong></p>
+      ) : null}
       <div>
         <h2 id="arena-vertical-consultation-heading">Curricolo provvisorio di Tecnologia</h2>
         <p>
