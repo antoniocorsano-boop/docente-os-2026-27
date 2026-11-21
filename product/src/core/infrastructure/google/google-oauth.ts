@@ -1,13 +1,10 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { GoogleOAuthConnectionRepository } from './google-oauth-connection-repository'
+import { googleOAuthScopesForPurpose, type GoogleOAuthPurpose } from './google-oauth-purpose'
 
-export const GOOGLE_DIARY_SCOPES = [
-  'openid',
-  'email',
-  'https://www.googleapis.com/auth/spreadsheets',
-]
+export { GOOGLE_DIARY_SCOPES } from './google-oauth-purpose'
 
-export function createGoogleOAuthRequest(returnTo: string) {
+export function createGoogleOAuthRequest(returnTo: string, purpose: GoogleOAuthPurpose = 'diary') {
   const state = randomBytes(24).toString('base64url')
   const verifier = randomBytes(48).toString('base64url')
   const challenge = createHash('sha256').update(verifier).digest('base64url')
@@ -15,7 +12,8 @@ export function createGoogleOAuthRequest(returnTo: string) {
   url.searchParams.set('client_id', googleClientId())
   url.searchParams.set('redirect_uri', googleRedirectUri())
   url.searchParams.set('response_type', 'code')
-  url.searchParams.set('scope', GOOGLE_DIARY_SCOPES.join(' '))
+  const scopes = googleOAuthScopesForPurpose(purpose)
+  url.searchParams.set('scope', scopes.join(' '))
   url.searchParams.set('access_type', 'offline')
   url.searchParams.set('include_granted_scopes', 'true')
   url.searchParams.set('prompt', 'consent')
@@ -46,7 +44,7 @@ export async function exchangeGoogleAuthorizationCode(code: string, verifier: st
   return {
     accessToken: payload.access_token,
     refreshToken: typeof payload.refresh_token === 'string' ? payload.refresh_token : null,
-    scopes: typeof payload.scope === 'string' ? payload.scope.split(/\s+/).filter(Boolean) : GOOGLE_DIARY_SCOPES,
+    scopes: typeof payload.scope === 'string' ? payload.scope.split(/\s+/).filter(Boolean) : [],
     expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
   }
 }

@@ -177,6 +177,22 @@
       "testFiles": [
         "product/src/app/piano-annuale/model.test.ts"
       ]
+    },
+    {
+      "id": "google-oauth-private-arena-connection-write",
+      "critical": true,
+      "sourcePatterns": [
+        "product/src/core/infrastructure/google/google-oauth.ts",
+        "product/src/app/api/google/drive/connect/route.ts",
+        "product/src/app/api/google/drive/callback/route.ts",
+        "product/src/core/infrastructure/google/google-oauth-connection-repository.ts"
+      ],
+      "feedbackFiles": [
+        "product/src/app/classi/[sectionId]/curricolo-arena/arena-provisional-grade-preview-client.tsx"
+      ],
+      "testFiles": [
+        "product/src/app/classi/[sectionId]/curricolo-arena/arena-google-connection-feedback.test.ts"
+      ]
     }
   ]
 }
