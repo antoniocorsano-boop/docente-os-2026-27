@@ -1,28 +1,27 @@
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { createGoogleOAuthRequest, googleOAuthConfigured } from '@/core/infrastructure/google/google-oauth'
+import { googleOAuthPublicOrigin, googleOAuthResultUrl } from '@/core/infrastructure/google/google-oauth-public-url'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   const returnTo = request.nextUrl.searchParams.get('returnTo') ?? '/classi'
-  if (!googleOAuthConfigured()) {
-    const target = new URL(returnTo.startsWith('/') ? returnTo : '/classi', request.url)
-    target.searchParams.set('google', 'not-configured')
-    return NextResponse.redirect(target)
+  const publicOrigin = googleOAuthPublicOrigin()
+  if (!publicOrigin) {
+    return NextResponse.json({ error: 'Indirizzo pubblico di collegamento Google non configurato.' }, { status: 503 })
   }
+  if (!googleOAuthConfigured()) return redirectWithGoogleState(returnTo, 'not-configured')
 
   const context = await new SupabaseWorkspaceRepository().getCurrentContext()
-  if (!context) return NextResponse.redirect(new URL('/login', request.url))
+  if (!context) return NextResponse.redirect(new URL('/login', publicOrigin))
 
   const purpose = request.nextUrl.searchParams.get('purpose') === 'arena' ? 'arena' : 'diary'
   if (purpose === 'arena' && (context.workspace.kind !== 'PERSONAL'
     || context.role !== 'OWNER'
     || process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/[/]$/, '') !== 'https://gnshgapmwyjamhmlikeg.supabase.co')) {
-    const target = new URL(returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/classi', request.url)
-    target.searchParams.set('google', 'context-mismatch')
-    return NextResponse.redirect(target)
+    return redirectWithGoogleState(returnTo, 'context-mismatch')
   }
   const oauth = createGoogleOAuthRequest(returnTo, purpose)
   const jar = await cookies()
@@ -33,4 +32,12 @@ export async function GET(request: NextRequest) {
   jar.set('docente_google_oauth_workspace', context.workspace.id, options)
   jar.set('docente_google_oauth_purpose', purpose, options)
   return NextResponse.redirect(oauth.url)
+}
+
+function redirectWithGoogleState(returnTo: string, state: string) {
+  const target = googleOAuthResultUrl(returnTo, state)
+  return target ? NextResponse.redirect(target) : NextResponse.json(
+    { error: 'Indirizzo pubblico di collegamento Google non configurato.' },
+    { status: 503 },
+  )
 }

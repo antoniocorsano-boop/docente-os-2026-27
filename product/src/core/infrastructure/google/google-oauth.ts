@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { GoogleOAuthConnectionRepository } from './google-oauth-connection-repository'
 import { googleOAuthScopesForPurpose, type GoogleOAuthPurpose } from './google-oauth-purpose'
+import { googleOAuthPublicOrigin, safeGoogleOAuthReturnTo } from './google-oauth-public-url'
 
 export { GOOGLE_DIARY_SCOPES } from './google-oauth-purpose'
 
@@ -20,7 +21,7 @@ export function createGoogleOAuthRequest(returnTo: string, purpose: GoogleOAuthP
   url.searchParams.set('state', state)
   url.searchParams.set('code_challenge', challenge)
   url.searchParams.set('code_challenge_method', 'S256')
-  return { url: url.toString(), state, verifier, returnTo: safeReturnTo(returnTo) }
+  return { url: url.toString(), state, verifier, returnTo: safeGoogleOAuthReturnTo(returnTo) }
 }
 
 export async function exchangeGoogleAuthorizationCode(code: string, verifier: string) {
@@ -90,7 +91,7 @@ export async function activeGoogleAccessToken(workspaceId: string) {
 }
 
 export function googleOAuthConfigured() {
-  return Boolean(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET && process.env.GOOGLE_TOKEN_ENCRYPTION_KEY && process.env.NEXT_PUBLIC_APP_URL)
+  return Boolean(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET && process.env.GOOGLE_TOKEN_ENCRYPTION_KEY && googleOAuthPublicOrigin())
 }
 
 function googleClientId() {
@@ -106,11 +107,7 @@ function googleClientSecret() {
 }
 
 function googleRedirectUri() {
-  const base = process.env.NEXT_PUBLIC_APP_URL
-  if (!base) throw new Error('NEXT_PUBLIC_APP_URL is not configured')
+  const base = googleOAuthPublicOrigin()
+  if (!base) throw new Error('Public Google OAuth origin is not configured')
   return new URL('/api/google/drive/callback', base).toString()
-}
-
-function safeReturnTo(value: string) {
-  return value.startsWith('/') && !value.startsWith('//') ? value : '/classi'
 }

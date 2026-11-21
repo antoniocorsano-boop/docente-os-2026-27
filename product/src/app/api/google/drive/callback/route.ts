@@ -9,6 +9,7 @@ import { GoogleOAuthConnectionRepository } from '@/core/infrastructure/google/go
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
 import { createClient } from '@/lib/supabase/server'
 import { assessGoogleOAuthConnection } from '@/core/infrastructure/google/google-oauth-purpose'
+import { googleOAuthResultUrl, safeGoogleOAuthReturnTo } from '@/core/infrastructure/google/google-oauth-public-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
   const jar = await cookies()
   const expectedState = jar.get('docente_google_oauth_state')?.value ?? null
   const verifier = jar.get('docente_google_oauth_verifier')?.value ?? null
-  const returnTo = safeReturnTo(jar.get('docente_google_oauth_return')?.value ?? '/classi')
+  const returnTo = safeGoogleOAuthReturnTo(jar.get('docente_google_oauth_return')?.value ?? '/classi')
   const expectedWorkspace = jar.get('docente_google_oauth_workspace')?.value ?? null
   const purpose = jar.get('docente_google_oauth_purpose')?.value ?? null
   clearOAuthCookies(jar)
@@ -26,18 +27,18 @@ export async function GET(request: NextRequest) {
   const error = request.nextUrl.searchParams.get('error')
   if (error || !state || !code || !expectedState || state !== expectedState || !verifier || !expectedWorkspace
     || (purpose !== 'diary' && purpose !== 'arena')) {
-    return redirectWithGoogleState(request.url, returnTo, 'rejected')
+    return redirectWithGoogleState(returnTo, 'rejected')
   }
 
   const context = await new SupabaseWorkspaceRepository().getCurrentContext()
   if (!context || context.workspace.id !== expectedWorkspace) {
-    return redirectWithGoogleState(request.url, returnTo, 'context-mismatch')
+    return redirectWithGoogleState(returnTo, 'context-mismatch')
   }
 
   if (purpose === 'arena' && (context.workspace.kind !== 'PERSONAL'
     || context.role !== 'OWNER'
     || process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/[/]$/, '') !== 'https://gnshgapmwyjamhmlikeg.supabase.co')) {
-    return redirectWithGoogleState(request.url, returnTo, 'context-mismatch')
+    return redirectWithGoogleState(returnTo, 'context-mismatch')
   }
 
   try {
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
       const { data, error: userError } = await supabase.auth.getUser()
       if (userError || !data.user || data.user.is_anonymous === true
         || data.user.id !== context.workspace.ownerUserId) {
-        return redirectWithGoogleState(request.url, returnTo, 'context-mismatch')
+        return redirectWithGoogleState(returnTo, 'context-mismatch')
       }
       signedInEmail = data.user.email ?? null
     }
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
       existingScopes: existing?.scopes ?? [],
     })
     if (!assessment.allowed) {
-      return redirectWithGoogleState(request.url, returnTo, assessment.reason)
+      return redirectWithGoogleState(returnTo, assessment.reason)
     }
     await repository.save({
       workspaceId: context.workspace.id,
@@ -76,12 +77,12 @@ export async function GET(request: NextRequest) {
       expiresAt: tokens.expiresAt,
     })
     if (!assessment.synchronizeDiary) {
-      return redirectWithGoogleState(request.url, returnTo, 'connected')
+      return redirectWithGoogleState(returnTo, 'connected')
     }
     const sync = await synchronizePendingDriveDiary(context.workspace.id)
-    return redirectWithGoogleState(request.url, returnTo, 'connected', sync.synced)
+    return redirectWithGoogleState(returnTo, 'connected', sync.synced)
   } catch {
-    return redirectWithGoogleState(request.url, returnTo, 'failed')
+    return redirectWithGoogleState(returnTo, 'failed')
   }
 }
 
@@ -97,13 +98,10 @@ function clearOAuthCookies(jar: Awaited<ReturnType<typeof cookies>>) {
   }
 }
 
-function redirectWithGoogleState(baseUrl: string, returnTo: string, state: string, synced = 0) {
-  const target = new URL(returnTo, baseUrl)
-  target.searchParams.set('google', state)
-  if (synced > 0) target.searchParams.set('driveSynced', String(synced))
-  return NextResponse.redirect(target)
-}
-
-function safeReturnTo(value: string) {
-  return value.startsWith('/') && !value.startsWith('//') ? value : '/classi'
+function redirectWithGoogleState(returnTo: string, state: string, synced = 0) {
+  const target = googleOAuthResultUrl(returnTo, state, synced)
+  return target ? NextResponse.redirect(target) : NextResponse.json(
+    { error: 'Indirizzo pubblico di collegamento Google non configurato.' },
+    { status: 503 },
+  )
 }
