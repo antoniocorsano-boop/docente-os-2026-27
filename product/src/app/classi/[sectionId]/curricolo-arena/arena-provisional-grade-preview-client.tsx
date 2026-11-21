@@ -1,116 +1,243 @@
-import type { ProvisionalTechnologyGrade, ProvisionalTechnologyReference } from '@/core/domain/cml-provisional-technology-reference'
-import { arenaGoogleConnectionMessage } from './arena-google-connection-feedback'
+'use client'
 
-const MASTER_URL = 'https://docs.google.com/document/d/12eWTPUZBJxZixd6-p8drNAaW5_eL8qWpXZUSDyZZAv4/edit'
+import { useMemo, useState } from 'react'
+import type {
+  ProvisionalTechnologyGrade, ProvisionalTechnologyReference,
+} from '@/core/domain/cml-provisional-technology-reference'
+import {
+  createCurriculumWorkProposal,
+  curriculumReadingExcerpts,
+  searchCurriculumExcerpts,
+  type CurriculumFacet,
+  type CurriculumWorkKind,
+  type CurriculumWorkProposal,
+} from '@/core/domain/cml-curriculum-workbench'
+import { arenaGoogleConnectionMessage } from './arena-google-connection-feedback'
+import styles from './arena-curriculum-workbench.module.css'
+
+const ORIGINAL_SOURCE_URL = 'https://drive.google.com/file/d/1r6CUQ0ziNEHSnttJ7tgeoOCkUZpOQg6-/view'
+const KINDS: readonly { id: CurriculumWorkKind; label: string }[] = [
+  { id: 'ATTIVITA', label: 'Attività' },
+  { id: 'LEZIONE', label: 'Lezione' },
+  { id: 'UDA', label: 'UDA' },
+  { id: 'PERCORSO', label: 'Percorso' },
+]
+const FACETS: readonly { id: CurriculumFacet; label: string }[] = [
+  { id: 'obiettivi', label: 'Obiettivi' },
+  { id: 'conoscenze', label: 'Conoscenze' },
+  { id: 'evidenze', label: 'Evidenze attese' },
+]
 
 export function ArenaProvisionalGradePreviewClient({
-  section,
-  serverReference = null,
-  sourceStatus = 'NOT_CONFIGURED',
-  googleConnectHref,
-  googleState,
+  section, serverReference = null, sourceStatus = 'NOT_CONFIGURED', googleConnectHref, googleState,
 }: {
-  section: {
-    grade: ProvisionalTechnologyGrade
-    sectionCode: string
-    schoolYearRef: string
-  }
+  section: { grade: ProvisionalTechnologyGrade; sectionCode: string; schoolYearRef: string }
   serverReference?: ProvisionalTechnologyReference | null
   sourceStatus?: 'AVAILABLE' | 'NOT_AUTHORIZED' | 'NOT_CONFIGURED' | 'SOURCE_UNAVAILABLE' | 'SOURCE_UNVERIFIED'
   googleConnectHref?: string | null
   googleState?: string | null
 }) {
-  const preview = serverReference
+  const [startMode, setStartMode] = useState<'curricolo' | 'tema'>('curricolo')
+  const [query, setQuery] = useState('')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [workKind, setWorkKind] = useState<CurriculumWorkKind>('ATTIVITA')
+  const [theme, setTheme] = useState('')
+  const [evidence, setEvidence] = useState('')
+  const [draft, setDraft] = useState<CurriculumWorkProposal | null>(null)
+  const [showSource, setShowSource] = useState(false)
   const googleFeedback = arenaGoogleConnectionMessage(googleState)
+  const entries = useMemo(
+    () => serverReference ? curriculumReadingExcerpts(serverReference) : [],
+    [serverReference],
+  )
+  const matches = useMemo(() => searchCurriculumExcerpts(entries, query), [entries, query])
+  const selected = entries.find(item => item.id === selectedId) ?? null
+  const evidenceEntries = entries.filter(item => item.facet === 'evidenze')
+
+  function startDraft() {
+    if (!serverReference || !selected) return
+    setDraft(createCurriculumWorkProposal({
+      reference: serverReference, selected, kind: workKind, theme,
+      evidence,
+    }))
+  }
+
+  function updateDraft<K extends keyof Pick<CurriculumWorkProposal,
+    'title' | 'theme' | 'objective' | 'evidence' | 'task' | 'resources' | 'duration' | 'steps' | 'observation'
+  >>(key: K, value: CurriculumWorkProposal[K]) {
+    setDraft(current => current ? { ...current, [key]: value } : null)
+  }
+
   return (
-    <article className="classWorkspaceCard" aria-labelledby="arena-vertical-consultation-heading">
-      {googleFeedback ? (
-        <p role="status" aria-live="polite"><strong>{googleFeedback}</strong></p>
-      ) : null}
-      <div>
-        <h2 id="arena-vertical-consultation-heading">Curricolo provvisorio di Tecnologia</h2>
-        <p>
-          Riferimento comune da Arena, distinto dalla programmazione della classe.
-          Proposta di lavoro sperimentale, non vigente e non approvata.
-        </p>
-      </div>
-      <div className="classAssignmentList">
-        <div className="classAssignmentItem">
-          <div>
-            <strong>Annualità</strong>
-            <span>{section.grade.toLocaleLowerCase('it')} · sezione {section.sectionCode}</span>
-          </div>
-          <small>{section.grade === 'PRIMA' ? 'Indicazioni 2025' : 'Indicazioni 2012 · regime transitorio'}</small>
-        </div>
-        <div className="classAssignmentItem">
-          <div><strong>Fonte unica</strong><span>Arena · master 1.3 · revisione 27</span></div>
-          <small>Provvisorio · non vigente</small>
-        </div>
+    <article className={styles.workbench} aria-labelledby="arena-vertical-consultation-heading">
+      <div className={styles.heading}>
+        <p className={styles.eyebrow}>ARENA · CURRICOLO DI LAVORO</p>
+        <h2 id="arena-vertical-consultation-heading">Tecnologia · {section.grade.toLocaleLowerCase('it')}</h2>
+        <p>Obiettivi ed evidenze come punto di partenza per la tua progettazione.</p>
+        <small>Master 1.3, revisione 27 · proposta provvisoria, non vigente e non approvata · {section.schoolYearRef}</small>
       </div>
 
-      <p>
-        <a href={MASTER_URL} target="_blank" rel="noopener noreferrer">
-          Consulta il curricolo verticale integrale
-        </a>
-      </p>
+      {googleFeedback ? <p role="status" className={styles.notice}><strong>{googleFeedback}</strong></p> : null}
 
-      {serverReference ? (
-        <p role="status">
-          <strong>Fonte verificata e consultabile senza file.</strong> La release di Arena è stata
-          letta in sola lettura mediante la sessione corrente e confrontata con la sua impronta
-          crittografica. Nessun riferimento è stato salvato nella classe.
-        </p>
+      {!serverReference ? (
+        <section className={styles.gate} aria-label="Stato della fonte curricolare">
+          <h3>Collega la fonte per consultare il curricolo</h3>
+          <p role="status">{sourceStatus === 'SOURCE_UNVERIFIED'
+            ? 'La copia Arena non ha superato la verifica di integrità. Nessun testo viene mostrato.'
+            : sourceStatus === 'NOT_AUTHORIZED'
+              ? 'La consultazione non è autorizzata per questa classe o questo account.'
+              : 'La fonte privata Arena non è ancora collegata a questo ambiente di prova.'}</p>
+          {googleConnectHref ? (
+            <a className={styles.primaryLink} href={googleConnectHref}>
+              Collega Google Drive in sola lettura
+            </a>
+          ) : null}
+          <small>Nessun caricamento manuale. Il collegamento richiede consenso personale e verifica della fonte originale.</small>
+        </section>
       ) : (
         <>
-          <p role="status">
-            <strong>{sourceStatus === 'SOURCE_UNVERIFIED'
-              ? 'La fonte disponibile non ha superato i controlli.'
-              : 'La consegna automatica del curricolo non è ancora disponibile.'}</strong>
-            {' '}Il curricolo resta protetto; la consultazione per classe avviene soltanto
-            dopo il collegamento personale e la verifica della fonte originale.
-          </p>
-          {googleConnectHref ? (
-            <p><a href={googleConnectHref}>Collega Google Drive per consultare automaticamente il curricolo privato</a></p>
-          ) : null}
-          <p><small>Nessun file da selezionare o caricare manualmente. L&apos;accesso Google è personale e richiede consenso esplicito.</small></p>
-        </>
-      )}
+          <p role="status" className={styles.verified}>Fonte originale verificata. Consultazione in sola lettura, senza adozione né salvataggi automatici.</p>
 
-      {preview ? (
-        <div className="classAssignmentList" aria-live="polite">
-          <div className="classAssignmentItem">
-            <div><strong>Riferimento individuato</strong><span>Tecnologia · {section.grade.toLocaleLowerCase('it')}</span></div>
-            <small>{preview.framework} · provvisorio, non vigente</small>
-          </div>
-          <div className="classAssignmentItem">
-            <div><strong>Fonte dichiarata</strong><span>{preview.institutionIdDeclared}</span></div>
-            <small>Identità istituzionale non attestata dal caricamento locale</small>
-          </div>
-          <div className="classAssignmentItem">
-            <div><strong>Integrità della release</strong><span>{preview.releaseStructuralFootprint}</span></div>
-            <small>{preview.nodeCount} nodi del segmento · nessuna associazione salvata</small>
-          </div>
-          <section aria-label="Obiettivi curricolari di Tecnologia">
-            <h3>Obiettivi</h3>
-            <ul>{preview.obiettivi.map((item, i) => <li key={i}>{item}</li>)}</ul>
-          </section>
-          {preview.conoscenze.length ? (
-            <section aria-label="Conoscenze curricolari">
-              <h3>Conoscenze</h3>
-              <ul>{preview.conoscenze.map((item, i) => <li key={i}>{item}</li>)}</ul>
+          {!draft ? (
+            <>
+              <section className={styles.entry} aria-label="Scegli come iniziare">
+                <div className={styles.modeChoices} role="group" aria-label="Punto di partenza">
+                  <button type="button" aria-pressed={startMode === 'curricolo'}
+                    className={startMode === 'curricolo' ? styles.activeMode : ''}
+                    onClick={() => { setStartMode('curricolo'); setQuery('') }}>
+                    Parto dal curricolo
+                  </button>
+                  <button type="button" aria-pressed={startMode === 'tema'}
+                    className={startMode === 'tema' ? styles.activeMode : ''}
+                    onClick={() => { setStartMode('tema'); setQuery('') }}>
+                    Parto da un argomento
+                  </button>
+                </div>
+                <label className={styles.searchLabel} htmlFor="arena-curriculum-query">
+                  {startMode === 'tema' ? 'Quale argomento vuoi affrontare?' : 'Cerca un obiettivo, una conoscenza o un’evidenza'}
+                </label>
+                <input id="arena-curriculum-query" type="search" className={styles.search}
+                  value={query} onChange={event => { setQuery(event.target.value); setSelectedId(null) }}
+                  placeholder={startMode === 'tema' ? 'Es. energia, materiali, filiere…' : 'Cerca nel curricolo verificato…'} />
+                {startMode === 'tema' ? <p className={styles.helper}>
+                  La ricerca individua soltanto riferimenti presenti nella fonte, senza inventare corrispondenze.
+                </p> : null}
+              </section>
+
+              <section aria-label="Riferimenti curricolari individuati" className={styles.results}>
+                {FACETS.map(facet => {
+                  const items = matches.filter(item => item.facet === facet.id)
+                  return items.length ? (
+                    <div key={facet.id}>
+                      <h3>{facet.label} <small>({items.length})</small></h3>
+                      <div className={styles.excerptList}>
+                        {items.map(item => (
+                          <button type="button" key={item.id}
+                            aria-pressed={selectedId === item.id}
+                            className={selectedId === item.id ? styles.selectedItem : styles.excerpt}
+                            onClick={() => {
+                              setSelectedId(item.id)
+                              setEvidence('')
+                              if (startMode === 'tema' && query.trim()) setTheme(query.trim())
+                              else setTheme(item.text)
+                            }}>
+                            <span>{item.text}</span>
+                            <small>{item.editorialExcerpt ? 'Estratto di lettura · testo Arena disponibile' : 'Testo Arena'}</small>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null
+                })}
+                {!matches.length ? (
+                  <p role="status" className={styles.notice}>Nessun riferimento corrispondente. Prova un altro termine: non vengono creati obiettivi non presenti in Arena.</p>
+                ) : null}
+              </section>
+
+              {selected ? (
+                <section className={styles.selected} aria-label="Dettaglio del riferimento selezionato">
+                  <p className={styles.eyebrow}>RIFERIMENTO SELEZIONATO</p>
+                  <h3>{selected.text}</h3>
+                  <p className={styles.helper}>Questa è {selected.editorialExcerpt ? 'una parte testuale della formulazione originale' : 'la formulazione originale'}; non costituisce un nuovo obiettivo ufficiale.</p>
+                  <details className={styles.sourceDetail}>
+                    <summary>Leggi il testo integrale della fonte</summary>
+                    <p>{selected.originalText}</p>
+                  </details>
+                  <label className={styles.searchLabel} htmlFor="arena-draft-theme">Tema di lavoro (modificabile)</label>
+                  <input id="arena-draft-theme" className={styles.search} value={theme}
+                    onChange={event => setTheme(event.target.value)} maxLength={200} />
+                  <label className={styles.searchLabel} htmlFor="arena-evidence">Evidenza da osservare</label>
+                  <select id="arena-evidence" className={styles.search} value={evidence}
+                    onChange={event => setEvidence(event.target.value)}>
+                    <option value="">Da scegliere durante la progettazione</option>
+                    {evidenceEntries.map(item => <option key={item.id} value={item.text}>{item.text}</option>)}
+                  </select>
+                  <label className={styles.searchLabel} htmlFor="arena-draft-kind">Che cosa vuoi preparare?</label>
+                  <select id="arena-draft-kind" className={styles.search} value={workKind}
+                    onChange={event => setWorkKind(event.target.value as CurriculumWorkKind)}>
+                    {KINDS.map(kind => <option key={kind.id} value={kind.id}>{kind.label}</option>)}
+                  </select>
+                  <button type="button" className={styles.primary} onClick={startDraft}>
+                    Usa per progettare
+                  </button>
+                </section>
+              ) : null}
+            </>
+          ) : (
+            <section className={styles.draft} aria-label="Bozza didattica modificabile">
+              <div>
+                <p className={styles.eyebrow}>PROPOSTA DEL DOCENTE · NON SALVATA</p>
+                <h3>Prepara {KINDS.find(item => item.id === draft.kind)?.label.toLocaleLowerCase('it')}</h3>
+                <p>Il testo Arena rimane invariato. Modifica liberamente la proposta prima di confermarla nel tuo lavoro.</p>
+              </div>
+              {([
+                ['title', 'Titolo'],
+                ['theme', 'Tema o contesto'],
+                ['objective', 'Obiettivo di lavoro'],
+                ['evidence', 'Evidenza attesa'],
+                ['task', 'Compito o situazione'],
+                ['resources', 'Risorse e materiali'],
+                ['duration', 'Durata prevista'],
+                ['steps', 'Fasi di lavoro'],
+                ['observation', 'Osservazione e verifica'],
+              ] as const).map(([key, label]) => (
+                <label key={key} className={styles.draftField}>
+                  <strong>{label}</strong>
+                  {key === 'task' || key === 'steps' || key === 'observation' ? (
+                    <textarea value={draft[key]} rows={3} onChange={event => updateDraft(key, event.target.value)} />
+                  ) : (
+                    <input value={draft[key]} onChange={event => updateDraft(key, event.target.value)} />
+                  )}
+                </label>
+              ))}
+              <details className={styles.sourceDetail}>
+                <summary>Provenienza verificabile</summary>
+                <p>Arena · master {draft.source.sourceVersion} · {draft.source.framework} · {draft.source.segmentId}.</p>
+                <p>Fonte autentica, non vigente: {draft.source.originalText}</p>
+              </details>
+              <p role="status" className={styles.notice}>
+                Questa è una bozza locale alla schermata. Il salvataggio e la riapertura in Progetta/Lezione saranno attivati soltanto dopo l'integrazione governata M3.
+              </p>
+              <button type="button" className={styles.secondary} onClick={() => setDraft(null)}>
+                Torna ai riferimenti
+              </button>
+            </section>
+          )}
+
+          <button type="button" className={styles.sourceToggle}
+            aria-expanded={showSource} onClick={() => setShowSource(value => !value)}>
+            {showSource ? 'Nascondi' : 'Mostra'} origine e dettagli della fonte
+          </button>
+          {showSource ? (
+            <section className={styles.sourceInfo} aria-label="Origine curricolare">
+              <p>Fonte unica: Arena · master 1.3 · revisione 27 · {serverReference.framework}.</p>
+              <p>Identità istituzionale dichiarata: {serverReference.institutionIdDeclared}. Non costituisce attestazione di approvazione.</p>
+              <p>Impronta strutturale: <code>{serverReference.releaseStructuralFootprint}</code></p>
+              <a href={ORIGINAL_SOURCE_URL} target="_blank" rel="noopener noreferrer">Apri la copia originale in Google Drive</a>
             </section>
           ) : null}
-          <section aria-label="Evidenze attese del curricolo">
-            <h3>Evidenze attese</h3>
-            <ul>{preview.evidenze.map((item, i) => <li key={i}>{item}</li>)}</ul>
-          </section>
-          <p role="status">
-            <strong>Consultazione completata in sola lettura.</strong> Questa fonte è utilizzabile come
-            riferimento provvisorio per elaborare la progettazione, ma non è stata adottata,
-            approvata né associata automaticamente alla classe.
-          </p>
-        </div>
-      ) : null}
+        </>
+      )}
     </article>
   )
 }
