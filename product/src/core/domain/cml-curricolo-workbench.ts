@@ -133,7 +133,7 @@ export function createCurricoloWorkProposal(input: {
     case 'LEZIONE':
       return { ...common, title: `Lezione · ${theme}`, task: 'Formula la domanda guida della lezione.', steps: 'Attivazione; esplorazione guidata; rielaborazione; verifica formativa.', observation: 'Quale evidenza raccoglierai durante la lezione?' }
     case 'UDA':
-      return { ...common, title: `UDA · ${theme}`, task: 'Definisci una situazione-problema e un prodotto significativo.', steps: 'Problema iniziale; esplorazione; produzione; condivisione e revisione.', observation: 'Quali evidenze e criteri di osservazione userai?' }
+      return { ...common, title: `UDA · ${theme}`, task: '', steps: 'Problema iniziale; esplorazione; produzione; condivisione e revisione.', observation: 'Quali evidenze e criteri di osservazione userai?' }
     case 'PERCORSO':
       return { ...common, title: `Percorso · ${theme}`, task: 'Definisci il risultato finale e la progressione delle attività.', steps: 'Esplorare il problema; approfondire; sperimentare; discutere e documentare.', observation: 'Come riconoscerai la progressione degli apprendimenti?' }
   }
