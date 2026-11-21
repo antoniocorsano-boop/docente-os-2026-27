@@ -117,7 +117,7 @@ export async function saveArenaUdaInProgetta(input: {
     academicYearId: context.academicYear.id,
     contentCategory: 'UDA',
     disciplines: ['Tecnologia'],
-    classLabels: [`${section.grade} ${section.sectionCode}`],
+    classLabels: [`${section.grade === 'PRIMA' ? '1' : section.grade === 'SECONDA' ? '2' : '3'}${section.sectionCode}`],
     contextStatus: 'REVIEWED',
     reliability: 'TO_VERIFY',
   })
