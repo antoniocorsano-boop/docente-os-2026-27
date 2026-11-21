@@ -238,7 +238,9 @@ export function ArenaProvisionalGradePreviewClient({
                 <label key={key} className={styles.draftField}>
                   <strong>{label}</strong>
                   {key === 'task' || key === 'steps' || key === 'observation' ? (
-                    <textarea value={draft[key]} rows={3} onChange={event => updateDraft(key, event.target.value)} />
+                    <textarea value={draft[key]} rows={3}
+                      placeholder={key === 'task' ? 'Descrivi il compito concreto e il prodotto degli alunni…' : undefined}
+                      onChange={event => updateDraft(key, event.target.value)} />
                   ) : (
                     <input value={draft[key]} onChange={event => updateDraft(key, event.target.value)} />
                   )}
@@ -251,8 +253,8 @@ export function ArenaProvisionalGradePreviewClient({
               </details>
               {draft.kind === 'UDA' ? (
                 <>
-                  <p className={styles.helper}>La conferma crea una UDA personale in Progetta, con versione e provenienza Arena; non modifica la fonte e non crea attività per gli studenti.</p>
-                  <button type="button" className={styles.primary} onClick={saveInProgetta} disabled={saving}>
+                  <p className={styles.helper}>La conferma richiede titolo, obiettivo, evidenza e compito concreti. Crea una UDA personale in Progetta, con versione e provenienza Arena; non modifica la fonte e non crea attività per gli studenti.</p>
+                  <button type="button" className={styles.primary} onClick={saveInProgetta} disabled={saving || !draft.title.trim() || !draft.objective.trim() || !draft.evidence.trim() || !draft.task.trim()}>
                     {saving ? 'Salvataggio in corso…' : 'Salva UDA in Progetta'}
                   </button>
                   {saveError ? <p role="alert" className={styles.notice}>{saveError}</p> : null}
