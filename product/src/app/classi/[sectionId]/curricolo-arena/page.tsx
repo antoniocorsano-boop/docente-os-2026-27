@@ -64,6 +64,11 @@ export default async function CurriculumArenaPage({
     assignments,
     disciplines,
   }
+  const googleConnectHref = context.workspace.kind === 'PERSONAL'
+    && context.role === 'OWNER'
+    && process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') === 'https://gnshgapmwyjamhmlikeg.supabase.co'
+    ? `/api/google/drive/connect?purpose=arena&returnTo=${encodeURIComponent(`/classi/${sectionId}/curricolo-arena`)}`
+    : null
   const eligible = mayConsultProvisionalTechnology(readScope)
   if (!isPilot2C && !eligible) notFound()
   const arenaSource = eligible
@@ -95,6 +100,7 @@ export default async function CurriculumArenaPage({
             }}
             serverReference={arenaSource.reference}
             sourceStatus={arenaSource.status}
+            googleConnectHref={googleConnectHref}
           />
         </section>
         <Link href={classHref}>← Torna alla classe</Link>
@@ -145,7 +151,7 @@ export default async function CurriculumArenaPage({
         <div>
           <p>CLASSE · CURRICOLO ARENA</p>
           <h1>{sectionLabel}</h1>
-          <span>Pilota Tecnologia 2C: acquisisci una baseline provvisoria da Arena senza sincronizzazioni automatiche.</span>
+          <span>Pilota Tecnologia 2C: consulta la proposta Arena in sola lettura, conservando la baseline storica P7.</span>
         </div>
       </section>
 
@@ -177,6 +183,7 @@ export default async function CurriculumArenaPage({
             }}
             serverReference={arenaSource.reference}
             sourceStatus={arenaSource.status}
+            googleConnectHref={googleConnectHref}
           />
         </section>
       ) : null}

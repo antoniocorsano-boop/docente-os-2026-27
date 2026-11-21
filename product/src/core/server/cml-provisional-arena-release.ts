@@ -5,6 +5,7 @@ import {
   type ProvisionalTechnologyReference,
 } from '@/core/domain/cml-provisional-technology-reference'
 import { projectPinnedArenaReleaseForClass } from '@/core/domain/cml-provisional-arena-blob'
+import { readPrivateArenaFromDriveForPrototype } from './cml-provisional-arena-drive-read'
 
 type Scope = {
   workspaceId: string
@@ -41,6 +42,11 @@ export async function readProvisionalArenaReferenceForClass(
   const bucket = process.env.ARENA_VERTICAL_RELEASE_BUCKET?.trim()
   const objectKey = process.env.ARENA_VERTICAL_RELEASE_OBJECT_KEY?.trim()
   const authorizedWorkspaceId = process.env.ARENA_VERTICAL_RELEASE_WORKSPACE_ID?.trim()
+  // A strictly test-project fallback reads the private Drive original with the
+  // owner's Google OAuth session. Never bypass an explicitly configured Storage ACL.
+  if (!bucket && !objectKey && !authorizedWorkspaceId) {
+    return readPrivateArenaFromDriveForPrototype(scope)
+  }
   if (!bucket || !objectKey || !authorizedWorkspaceId
     || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(authorizedWorkspaceId)) {
     return { status: 'NOT_CONFIGURED', reference: null }

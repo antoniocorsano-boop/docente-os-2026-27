@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { GoogleOAuthConnectionRepository } from './google-oauth-connection-repository'
+import { GOOGLE_ARENA_DRIVE_READ_SCOPE } from './arena-provisional-drive-source'
 
 export const GOOGLE_DIARY_SCOPES = [
   'openid',
@@ -7,7 +8,7 @@ export const GOOGLE_DIARY_SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
 ]
 
-export function createGoogleOAuthRequest(returnTo: string) {
+export function createGoogleOAuthRequest(returnTo: string, purpose: 'diary' | 'arena' = 'diary') {
   const state = randomBytes(24).toString('base64url')
   const verifier = randomBytes(48).toString('base64url')
   const challenge = createHash('sha256').update(verifier).digest('base64url')
@@ -15,7 +16,8 @@ export function createGoogleOAuthRequest(returnTo: string) {
   url.searchParams.set('client_id', googleClientId())
   url.searchParams.set('redirect_uri', googleRedirectUri())
   url.searchParams.set('response_type', 'code')
-  url.searchParams.set('scope', GOOGLE_DIARY_SCOPES.join(' '))
+  const scopes = purpose === 'arena' ? [...GOOGLE_DIARY_SCOPES, GOOGLE_ARENA_DRIVE_READ_SCOPE] : GOOGLE_DIARY_SCOPES
+  url.searchParams.set('scope', scopes.join(' '))
   url.searchParams.set('access_type', 'offline')
   url.searchParams.set('include_granted_scopes', 'true')
   url.searchParams.set('prompt', 'consent')

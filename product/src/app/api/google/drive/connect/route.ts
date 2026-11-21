@@ -16,7 +16,8 @@ export async function GET(request: NextRequest) {
   const context = await new SupabaseWorkspaceRepository().getCurrentContext()
   if (!context) return NextResponse.redirect(new URL('/login', request.url))
 
-  const oauth = createGoogleOAuthRequest(returnTo)
+  const purpose = request.nextUrl.searchParams.get('purpose') === 'arena' ? 'arena' : 'diary'
+  const oauth = createGoogleOAuthRequest(returnTo, purpose)
   const jar = await cookies()
   const options = { httpOnly: true, sameSite: 'lax' as const, secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 600 }
   jar.set('docente_google_oauth_state', oauth.state, options)

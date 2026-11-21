@@ -1,24 +1,12 @@
-'use client'
+import type { ProvisionalTechnologyGrade, ProvisionalTechnologyReference } from '@/core/domain/cml-provisional-technology-reference'
 
-import { useRef, useState } from 'react'
-import { selectArenaVerticalCurricoloSlice } from '@/core/domain/cml-discipline-binding'
-import { verifyCanonicalArenaReleaseForThreeGrades } from '@/core/domain/cml-arena-three-grade-preflight'
-import {
-  projectProvisionalTechnologyReference,
-  provisionalTechnologyGradeRef,
-  type ProvisionalTechnologyGrade,
-  type ProvisionalTechnologyReference,
-} from '@/core/domain/cml-provisional-technology-reference'
-
-const MAX_RELEASE_BYTES = 2_000_000
-const SOURCE_REVISION = '27'
-const SOURCE_FOOTPRINT = '99c4ccc3'
 const MASTER_URL = 'https://docs.google.com/document/d/12eWTPUZBJxZixd6-p8drNAaW5_eL8qWpXZUSDyZZAv4/edit'
 
 export function ArenaProvisionalGradePreviewClient({
   section,
   serverReference = null,
   sourceStatus = 'NOT_CONFIGURED',
+  googleConnectHref,
 }: {
   section: {
     grade: ProvisionalTechnologyGrade
@@ -27,76 +15,16 @@ export function ArenaProvisionalGradePreviewClient({
   }
   serverReference?: ProvisionalTechnologyReference | null
   sourceStatus?: 'AVAILABLE' | 'NOT_AUTHORIZED' | 'NOT_CONFIGURED' | 'SOURCE_UNAVAILABLE' | 'SOURCE_UNVERIFIED'
+  googleConnectHref?: string | null
 }) {
-  const [localPreview, setLocalPreview] = useState<ProvisionalTechnologyReference | null>(null)
-  // Server evidence wins on each render; never retain a stale server reference
-  // if the authenticated source later becomes unavailable.
-  const preview = serverReference ?? localPreview
-  const [error, setError] = useState<string | null>(null)
-  const [reading, setReading] = useState(false)
-  const sequence = useRef(0)
-
-  async function onFile(file: File | null) {
-    const request = ++sequence.current
-    setLocalPreview(null)
-    setError(null)
-    setReading(false)
-    if (!file) return
-    if (file.size === 0 || file.size > MAX_RELEASE_BYTES) {
-      setError('Il file Arena è vuoto oppure supera il limite previsto per la consultazione.')
-      return
-    }
-    setReading(true)
-    try {
-      // Source is read solely by the browser. No upload, write, receipt or
-      // persistence. Only the detached grade-specific projection is retained.
-      const release: unknown = JSON.parse(await file.text())
-      if (!release || typeof release !== 'object' || Array.isArray(release)) {
-        throw new Error('Invalid release')
-      }
-      const institutionId = (release as Record<string, unknown>).institutionId
-      if (typeof institutionId !== 'string' || !institutionId.trim()) {
-        throw new Error('No declared institution')
-      }
-      verifyCanonicalArenaReleaseForThreeGrades({
-        release,
-        targetInstitutionId: institutionId,
-        schoolYearRef: section.schoolYearRef,
-        expectedRevisionId: SOURCE_REVISION,
-        expectedSourceContentFootprint: SOURCE_FOOTPRINT,
-      })
-      const selected = selectArenaVerticalCurricoloSlice({
-        release,
-        target: {
-          institutionId,
-          schoolYearRef: section.schoolYearRef,
-          schoolOrder: 'secondaria',
-          gradeRef: provisionalTechnologyGradeRef(section.grade),
-          disciplineRef: 'technology',
-        },
-      })
-      const detached = projectProvisionalTechnologyReference({
-        selected,
-        grade: section.grade,
-        schoolYearRef: section.schoolYearRef,
-      })
-      if (sequence.current === request) setLocalPreview(detached)
-    } catch {
-      if (sequence.current === request) {
-        setError('Impossibile verificare la release per questa classe. Controlla provenienza, integrità, revisione e anno scolastico del file Arena.')
-      }
-    } finally {
-      if (sequence.current === request) setReading(false)
-    }
-  }
-
+  const preview = serverReference
   return (
     <article className="classWorkspaceCard" aria-labelledby="arena-vertical-consultation-heading">
       <div>
         <h2 id="arena-vertical-consultation-heading">Curricolo provvisorio di Tecnologia</h2>
         <p>
           Riferimento comune da Arena, distinto dalla programmazione della classe.
-          Il documento non è ancora approvato dal Collegio dei docenti.
+          Proposta di lavoro sperimentale, non vigente e non approvata.
         </p>
       </div>
       <div className="classAssignmentList">
@@ -134,21 +62,12 @@ export function ArenaProvisionalGradePreviewClient({
             {' '}Il documento integrale resta consultabile; per estrarre i contenuti
             della classe puoi utilizzare la release completa di Arena sul dispositivo.
           </p>
-          <label>
-            <span>Esamina la release di Arena sul dispositivo (file JSON)</span>
-            <input
-              type="file"
-              accept=".json,application/json"
-              aria-label="Seleziona la release completa di Arena per il confronto in sola lettura"
-              onChange={event => { void onFile(event.target.files?.[0] ?? null) }}
-            />
-          </label>
-          <p><small>Il file viene letto solo su questo dispositivo, senza invio né salvataggio.</small></p>
+          {googleConnectHref ? (
+            <p><a href={googleConnectHref}>Collega Google Drive per consultare automaticamente il curricolo privato</a></p>
+          ) : null}
+          <p><small>Nessun file da selezionare o caricare manualmente. L'accesso Google è personale e richiede consenso esplicito.</small></p>
         </>
       )}
-
-      {reading ? <p role="status" aria-live="polite">Verifica della fonte e dell&apos;annualità in corso…</p> : null}
-      {error ? <p role="alert">{error} Nessuna progettazione è stata modificata.</p> : null}
 
       {preview ? (
         <div className="classAssignmentList" aria-live="polite">
