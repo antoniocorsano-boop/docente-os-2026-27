@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import type {
   ProvisionalTechnologyGrade, ProvisionalTechnologyReference,
 } from '@/core/domain/cml-provisional-technology-reference'
@@ -13,6 +14,7 @@ import {
   type CurricoloWorkProposal,
 } from '@/core/domain/cml-curricolo-workbench'
 import { arenaGoogleConnectionMessage } from './arena-google-connection-feedback'
+import { saveArenaUdaInProgetta } from './curricolo-uda-save-actions'
 import styles from './arena-curricolo-workbench.module.css'
 
 const ORIGINAL_SOURCE_URL = 'https://drive.google.com/file/d/1r6CUQ0ziNEHSnttJ7tgeoOCkUZpOQg6-/view'
@@ -29,8 +31,9 @@ const FACETS: readonly { id: CurricoloFacet; label: string }[] = [
 ]
 
 export function ArenaProvisionalGradePreviewClient({
-  section, serverReference = null, sourceStatus = 'NOT_CONFIGURED', googleConnectHref, googleState,
+  sectionId, section, serverReference = null, sourceStatus = 'NOT_CONFIGURED', googleConnectHref, googleState,
 }: {
+  sectionId: string
   section: { grade: ProvisionalTechnologyGrade; sectionCode: string; schoolYearRef: string }
   serverReference?: ProvisionalTechnologyReference | null
   sourceStatus?: 'AVAILABLE' | 'NOT_AUTHORIZED' | 'NOT_CONFIGURED' | 'SOURCE_UNAVAILABLE' | 'SOURCE_UNVERIFIED'
@@ -45,6 +48,9 @@ export function ArenaProvisionalGradePreviewClient({
   const [evidence, setEvidence] = useState('')
   const [draft, setDraft] = useState<CurricoloWorkProposal | null>(null)
   const [showSource, setShowSource] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saving, startSave] = useTransition()
+  const router = useRouter()
   const googleFeedback = arenaGoogleConnectionMessage(googleState)
   const entries = useMemo(
     () => serverReference ? curricoloReadingExcerpts(serverReference) : [],
@@ -60,6 +66,34 @@ export function ArenaProvisionalGradePreviewClient({
       reference: serverReference, selected, kind: workKind, theme,
       evidence,
     }))
+  }
+
+  function saveInProgetta() {
+    if (!draft || draft.kind !== 'UDA' || !selectedId) return
+    setSaveError(null)
+    startSave(async () => {
+      try {
+        const result = await saveArenaUdaInProgetta({
+          sectionId,
+          excerptId: selectedId,
+          sourceEvidence: evidence,
+          editable: {
+            title: draft.title,
+            theme: draft.theme,
+            objective: draft.objective,
+            evidence: draft.evidence,
+            task: draft.task,
+            resources: draft.resources,
+            duration: draft.duration,
+            steps: draft.steps,
+            observation: draft.observation,
+          },
+        })
+        router.push(result.href)
+      } catch (error) {
+        setSaveError(error instanceof Error ? error.message : 'Salvataggio non riuscito: riprova')
+      }
+    })
   }
 
   function updateDraft<K extends keyof Pick<CurricoloWorkProposal,
@@ -215,9 +249,17 @@ export function ArenaProvisionalGradePreviewClient({
                 <p>Arena · master {draft.source.sourceVersion} · {draft.source.framework} · {draft.source.segmentId}.</p>
                 <p>Fonte autentica, non vigente: {draft.source.originalText}</p>
               </details>
-              <p role="status" className={styles.notice}>
-                Questa è una bozza locale alla schermata. Il salvataggio e la riapertura in Progetta/Lezione saranno attivati soltanto dopo l'integrazione governata M3.
-              </p>
+              {draft.kind === 'UDA' ? (
+                <>
+                  <p className={styles.helper}>La conferma crea una UDA personale in Progetta, con versione e provenienza Arena; non modifica la fonte e non crea attività per gli studenti.</p>
+                  <button type="button" className={styles.primary} onClick={saveInProgetta} disabled={saving}>
+                    {saving ? 'Salvataggio in corso…' : 'Salva UDA in Progetta'}
+                  </button>
+                  {saveError ? <p role="alert" className={styles.notice}>{saveError}</p> : null}
+                </>
+              ) : (
+                <p role="status" className={styles.notice}>Questa proposta è modificabile qui, ma il salvataggio integrato di attività, lezioni e percorsi verrà aggiunto dopo la verifica del raccordo con le funzioni esistenti.</p>
+              )}
               <button type="button" className={styles.secondary} onClick={() => setDraft(null)}>
                 Torna ai riferimenti
               </button>
